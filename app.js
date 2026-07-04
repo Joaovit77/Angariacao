@@ -429,7 +429,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.id === "modal-overlay") closeModal();
   });
 
-  supabaseClient.auth.onAuthStateChange((_event, session) => {
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (event === "PASSWORD_RECOVERY") {
+      // Usuário chegou aqui pelo link de "esqueci minha senha" do e-mail —
+      // mostra a tela de definir nova senha em vez do fluxo normal.
+      document.getElementById("app-shell").style.display = "none";
+      document.getElementById("auth-screen").style.display = "flex";
+      switchAuthTab("reset");
+      return;
+    }
     if (session && session.user) {
       handleAuthenticated(session.user);
     } else {
@@ -461,6 +469,53 @@ function switchAuthTab(tab) {
   document.getElementById("tab-signup").classList.toggle("active", tab === "signup");
   document.getElementById("auth-form-login").style.display = tab === "login" ? "" : "none";
   document.getElementById("auth-form-signup").style.display = tab === "signup" ? "" : "none";
+  document.getElementById("auth-form-forgot").style.display = tab === "forgot" ? "" : "none";
+  document.getElementById("auth-form-reset").style.display = tab === "reset" ? "" : "none";
+  // Nas telas de "esqueci a senha" e "definir nova senha" não faz sentido
+  // mostrar as abas Entrar/Criar conta.
+  document.querySelector(".auth-tabs").style.display = (tab === "forgot" || tab === "reset") ? "none" : "";
+}
+
+/* ----------------------------------------------------------------
+   Senha: mostrar/ocultar e indicador de força
+   ---------------------------------------------------------------- */
+function togglePasswordVisibility(inputId, btnEl) {
+  const input = document.getElementById(inputId);
+  const isPassword = input.type === "password";
+  input.type = isPassword ? "text" : "password";
+  btnEl.classList.toggle("active", isPassword);
+}
+
+function passwordStrength(pw) {
+  if (!pw) return { pct: 0, label: "", color: "" };
+  let score = 0;
+  if (pw.length >= 6) score++;
+  if (pw.length >= 10) score++;
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+
+  if (score <= 1) return { pct: 25, label: "Fraca", color: "var(--bad)" };
+  if (score <= 2) return { pct: 50, label: "Razoável", color: "var(--warn)" };
+  if (score <= 3) return { pct: 75, label: "Boa", color: "var(--info)" };
+  return { pct: 100, label: "Forte", color: "var(--good)" };
+}
+
+function updatePasswordStrength(value, suffix) {
+  const wrapId = suffix ? `pw-strength-${suffix}` : "pw-strength";
+  const fillId = suffix ? `pw-strength-fill-${suffix}` : "pw-strength-fill";
+  const labelId = suffix ? `pw-strength-label-${suffix}` : "pw-strength-label";
+  const wrap = document.getElementById(wrapId);
+  const fill = document.getElementById(fillId);
+  const label = document.getElementById(labelId);
+  if (!wrap) return;
+  if (!value) { wrap.style.display = "none"; return; }
+  wrap.style.display = "flex";
+  const s = passwordStrength(value);
+  fill.style.width = s.pct + "%";
+  fill.style.background = s.color;
+  label.textContent = s.label;
+  label.style.color = s.color;
 }
 
 function wireAuthForms() {
@@ -469,6 +524,7 @@ function wireAuthForms() {
     const email = document.getElementById("auth-login-email").value.trim();
     const password = document.getElementById("auth-login-password").value;
     const errEl = document.getElementById("auth-login-error");
+    errEl.style.color = "var(--bad)";
     errEl.textContent = "";
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) errEl.textContent = traduzErroAuth(error);
@@ -480,11 +536,39 @@ function wireAuthForms() {
     const email = document.getElementById("auth-signup-email").value.trim();
     const password = document.getElementById("auth-signup-password").value;
     const errEl = document.getElementById("auth-signup-error");
+    errEl.style.color = "var(--bad)";
     errEl.textContent = "";
     const { error } = await supabaseClient.auth.signUp({ email, password, options: { data: { name } } });
     if (error) { errEl.textContent = traduzErroAuth(error); return; }
     errEl.style.color = "var(--good)";
     errEl.textContent = "Conta criada! Se pedir confirmação por e-mail, confira sua caixa de entrada.";
+  });
+
+  document.getElementById("auth-form-forgot").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("auth-forgot-email").value.trim();
+    const errEl = document.getElementById("auth-forgot-error");
+    errEl.style.color = "var(--bad)";
+    errEl.textContent = "";
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+    if (error) { errEl.textContent = traduzErroAuth(error); return; }
+    errEl.style.color = "var(--good)";
+    errEl.textContent = "Link enviado! Confira seu e-mail (e a caixa de spam, por garantia).";
+  });
+
+  document.getElementById("auth-form-reset").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const password = document.getElementById("auth-reset-password").value;
+    const errEl = document.getElementById("auth-reset-error");
+    errEl.style.color = "var(--bad)";
+    errEl.textContent = "";
+    const { error } = await supabaseClient.auth.updateUser({ password });
+    if (error) { errEl.textContent = traduzErroAuth(error); return; }
+    toast("Senha atualizada com sucesso.");
+    // Depois de trocar a senha, o Supabase já autentica a sessão normalmente —
+    // deixa o próprio onAuthStateChange (SIGNED_IN) assumir da próxima vez.
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session && session.user) handleAuthenticated(session.user);
   });
 }
 
@@ -493,6 +577,7 @@ function traduzErroAuth(error) {
   if (msg.includes("Invalid login credentials")) return "E-mail ou senha incorretos.";
   if (msg.includes("User already registered")) return "Já existe uma conta com esse e-mail.";
   if (msg.includes("Password should be at least")) return "A senha precisa ter pelo menos 6 caracteres.";
+  if (msg.includes("Unable to validate email address")) return "Esse e-mail não parece válido.";
   return msg || "Não foi possível concluir. Tente novamente.";
 }
 
