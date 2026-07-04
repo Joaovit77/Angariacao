@@ -1,0 +1,43 @@
+# ============================================================
+# Arquivos de sistema operacional
+# ============================================================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ============================================================
+# Editores de código
+# ============================================================
+.vscode/
+.idea/
+*.swp
+
+# ============================================================
+# Vercel
+# Criado quando você usa o comando "vercel" localmente — guarda
+# o ID do seu projeto/conta. Não tem nada de sensível, mas não
+# faz sentido versionar (é específico de cada máquina).
+# ============================================================
+.vercel/
+
+# ============================================================
+# Variáveis de ambiente
+# Não usamos hoje (a config do Supabase fica direto no
+# supabase-config.js, porque a chave é pública), mas caso um dia
+# você troque para variáveis de ambiente, isso evita vazar
+# alguma secreta sem querer.
+# ============================================================
+.env
+.env.local
+.env*.local
+
+# ============================================================
+# Dependências (caso um dia adicione ferramentas via npm)
+# ============================================================
+node_modules/
+
+# ============================================================
+# Logs
+# ============================================================
+*.log
+npm-debug.log*

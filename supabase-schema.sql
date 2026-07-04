@@ -1,0 +1,156 @@
+-- ============================================================
+-- SCHEMA: Painel de Angariações — Supabase
+-- ============================================================
+-- Como usar:
+-- 1. Crie um projeto gratuito em https://supabase.com
+-- 2. No painel do projeto, vá em "SQL Editor"
+-- 3. Cole todo este arquivo e clique em "Run"
+-- 4. Pronto — as tabelas, segurança e políticas de acesso
+--    já ficam configuradas automaticamente.
+--
+-- Segurança: Row Level Security (RLS) garante que cada usuário
+-- só enxerga e só consegue alterar as próprias linhas. Isso é
+-- obrigatório aqui, já que o app expõe a "anon key" publicamente
+-- no código — sem RLS, qualquer pessoa poderia ler os dados de
+-- todo mundo. Com RLS ativado, o banco recusa qualquer leitura
+-- ou escrita que não seja do dono da linha (auth.uid()).
+-- ============================================================
+
+create extension if not exists "pgcrypto";
+
+-- ------------------------------------------------------------
+-- IMÓVEIS
+-- ------------------------------------------------------------
+create table if not exists imoveis (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  codigo text,
+  cep text,
+  endereco text not null,
+  bairro text,
+  cidade text,
+  tipo text,
+  quartos int,
+  banheiros int,
+  vagas int,
+  valor_aluguel numeric default 0,
+  valor_condominio numeric default 0,
+  proprietario_nome text,
+  proprietario_telefone text,
+  forma_abordagem text,
+  origem_imovel text,
+  imobiliaria_concorrente text,
+  latitude double precision,
+  longitude double precision,
+  data_angariacao date,
+  responsavel text,
+  status text not null default 'Novo contato',
+  observacoes text,
+  status_history jsonb not null default '[]'::jsonb,
+  pausado_ate date,
+  motivo_perda text,
+  motivo_perda_outro text,
+  comissao_recebida boolean default false,
+  comissao_recebida_valor numeric,
+  comissao_recebida_data date,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table imoveis enable row level security;
+
+create policy "select_own_imoveis" on imoveis
+  for select using (auth.uid() = user_id);
+create policy "insert_own_imoveis" on imoveis
+  for insert with check (auth.uid() = user_id);
+create policy "update_own_imoveis" on imoveis
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "delete_own_imoveis" on imoveis
+  for delete using (auth.uid() = user_id);
+
+create index if not exists imoveis_user_id_idx on imoveis(user_id);
+
+-- ------------------------------------------------------------
+-- METAS (uma linha por usuário + mês)
+-- ------------------------------------------------------------
+create table if not exists metas (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  month_key text not null,
+  angariacoes int default 0,
+  locados int default 0,
+  comissao numeric default 0,
+  unique (user_id, month_key)
+);
+
+alter table metas enable row level security;
+
+create policy "select_own_metas" on metas
+  for select using (auth.uid() = user_id);
+create policy "insert_own_metas" on metas
+  for insert with check (auth.uid() = user_id);
+create policy "update_own_metas" on metas
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "delete_own_metas" on metas
+  for delete using (auth.uid() = user_id);
+
+-- ------------------------------------------------------------
+-- AGENDA
+-- ------------------------------------------------------------
+create table if not exists agenda (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  type text not null,
+  date date not null,
+  imovel_id uuid references imoveis(id) on delete set null,
+  notes text,
+  done boolean default false,
+  created_at timestamptz default now()
+);
+
+alter table agenda enable row level security;
+
+create policy "select_own_agenda" on agenda
+  for select using (auth.uid() = user_id);
+create policy "insert_own_agenda" on agenda
+  for insert with check (auth.uid() = user_id);
+create policy "update_own_agenda" on agenda
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "delete_own_agenda" on agenda
+  for delete using (auth.uid() = user_id);
+
+create index if not exists agenda_user_id_idx on agenda(user_id);
+
+-- ------------------------------------------------------------
+-- CONFIGURAÇÕES (uma linha por usuário)
+-- ------------------------------------------------------------
+create table if not exists user_config (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  comissao_percent numeric default 100
+);
+
+alter table user_config enable row level security;
+
+create policy "select_own_config" on user_config
+  for select using (auth.uid() = user_id);
+create policy "insert_own_config" on user_config
+  for insert with check (auth.uid() = user_id);
+create policy "update_own_config" on user_config
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- ------------------------------------------------------------
+-- Atualiza updated_at automaticamente nos imóveis
+-- ------------------------------------------------------------
+create or replace function set_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_imoveis_updated_at on imoveis;
+create trigger trg_imoveis_updated_at
+  before update on imoveis
+  for each row execute function set_updated_at();
