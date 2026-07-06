@@ -123,8 +123,24 @@
 
 <!-- APP (só aparece após login confirmado) -->
 <div class="app-shell" id="app-shell" style="display:none;">
+  <!-- BARRA SUPERIOR MOBILE (só aparece em telas estreitas) -->
+  <div class="mobile-topbar">
+    <button class="icon-btn" onclick="toggleMobileSidebar()" aria-label="Abrir menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div class="brand" style="border:none; padding:0; margin:0;">
+      <div class="brand-mark">A</div>
+      <div class="brand-text">
+        <span class="brand-title">Angariações</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FUNDO ESCURO ATRÁS DA GAVETA (mobile) -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
+
   <!-- SIDEBAR -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="brand">
       <div class="brand-mark">A</div>
       <div class="brand-text">
@@ -172,8 +188,8 @@
 
     <div class="sidebar-footer">
       <div class="sidebar-user" id="sidebar-user"></div>
-      <button class="nav-item" style="padding:7px 8px; font-size:12.5px;" onclick="openConfigModal()">⚙ Configurações</button>
-      <button class="nav-item" style="padding:7px 8px; font-size:12.5px;" onclick="handleLogout()">↩ Sair</button>
+      <button class="nav-item" style="padding:7px 8px; font-size:12.5px;" onclick="closeMobileSidebar(); openConfigModal();">⚙ Configurações</button>
+      <button class="nav-item" style="padding:7px 8px; font-size:12.5px;" onclick="closeMobileSidebar(); handleLogout();">↩ Sair</button>
       Dados salvos na nuvem<br>(Supabase), por login.
     </div>
   </aside>

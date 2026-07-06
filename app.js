@@ -594,8 +594,19 @@ function wireNav() {
       currentView = btn.dataset.view;
       document.querySelectorAll(".nav-item[data-view]").forEach((b) => b.classList.toggle("active", b === btn));
       renderCurrentView();
+      closeMobileSidebar();
     });
   });
+}
+
+function toggleMobileSidebar() {
+  document.getElementById("sidebar").classList.toggle("open");
+  document.getElementById("sidebar-backdrop").classList.toggle("open");
+}
+
+function closeMobileSidebar() {
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("sidebar-backdrop").classList.remove("open");
 }
 
 function updateNavBadges() {
