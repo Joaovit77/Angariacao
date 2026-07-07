@@ -14,6 +14,10 @@
 -- no código — sem RLS, qualquer pessoa poderia ler os dados de
 -- todo mundo. Com RLS ativado, o banco recusa qualquer leitura
 -- ou escrita que não seja do dono da linha (auth.uid()).
+--
+-- Este script pode ser rodado quantas vezes precisar sem erro
+-- (é "idempotente"): tabelas só são criadas se não existirem, e
+-- políticas são removidas e recriadas a cada execução.
 -- ============================================================
 
 create extension if not exists "pgcrypto";
@@ -59,12 +63,16 @@ create table if not exists imoveis (
 
 alter table imoveis enable row level security;
 
+drop policy if exists "select_own_imoveis" on imoveis;
 create policy "select_own_imoveis" on imoveis
   for select using (auth.uid() = user_id);
+drop policy if exists "insert_own_imoveis" on imoveis;
 create policy "insert_own_imoveis" on imoveis
   for insert with check (auth.uid() = user_id);
+drop policy if exists "update_own_imoveis" on imoveis;
 create policy "update_own_imoveis" on imoveis
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "delete_own_imoveis" on imoveis;
 create policy "delete_own_imoveis" on imoveis
   for delete using (auth.uid() = user_id);
 
@@ -85,12 +93,16 @@ create table if not exists metas (
 
 alter table metas enable row level security;
 
+drop policy if exists "select_own_metas" on metas;
 create policy "select_own_metas" on metas
   for select using (auth.uid() = user_id);
+drop policy if exists "insert_own_metas" on metas;
 create policy "insert_own_metas" on metas
   for insert with check (auth.uid() = user_id);
+drop policy if exists "update_own_metas" on metas;
 create policy "update_own_metas" on metas
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "delete_own_metas" on metas;
 create policy "delete_own_metas" on metas
   for delete using (auth.uid() = user_id);
 
@@ -106,17 +118,26 @@ create table if not exists agenda (
   imovel_id uuid references imoveis(id) on delete set null,
   notes text,
   done boolean default false,
+  is_verificacao_disponibilidade boolean not null default false,
   created_at timestamptz default now()
 );
 
+-- Cobre o caso de quem já tinha a tabela "agenda" criada antes dessa
+-- coluna existir — "add column if not exists" não falha se já rodou.
+alter table agenda add column if not exists is_verificacao_disponibilidade boolean not null default false;
+
 alter table agenda enable row level security;
 
+drop policy if exists "select_own_agenda" on agenda;
 create policy "select_own_agenda" on agenda
   for select using (auth.uid() = user_id);
+drop policy if exists "insert_own_agenda" on agenda;
 create policy "insert_own_agenda" on agenda
   for insert with check (auth.uid() = user_id);
+drop policy if exists "update_own_agenda" on agenda;
 create policy "update_own_agenda" on agenda
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "delete_own_agenda" on agenda;
 create policy "delete_own_agenda" on agenda
   for delete using (auth.uid() = user_id);
 
@@ -132,10 +153,13 @@ create table if not exists user_config (
 
 alter table user_config enable row level security;
 
+drop policy if exists "select_own_config" on user_config;
 create policy "select_own_config" on user_config
   for select using (auth.uid() = user_id);
+drop policy if exists "insert_own_config" on user_config;
 create policy "insert_own_config" on user_config
   for insert with check (auth.uid() = user_id);
+drop policy if exists "update_own_config" on user_config;
 create policy "update_own_config" on user_config
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 

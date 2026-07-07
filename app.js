@@ -78,6 +78,10 @@ const AGENDA_TYPES = ["Retorno ao proprietário", "Visita", "Pendência", "Docum
 // para fins de alerta visual no kanban e nos insights.
 const STALE_DAYS_THRESHOLD = 7;
 
+// Dias após a angariação (sem locação) para gerar o lembrete automático
+// de "verificar disponibilidade com o proprietário".
+const VERIFICACAO_DISPONIBILIDADE_DIAS = 60;
+
 let STATE = {
   imoveis: [],
   metas: {},   // { "YYYY-MM": { angariacoes, locados, comissao } }
@@ -180,11 +184,12 @@ function toDbAgenda(a) {
     imovel_id: a.imovelId || null,
     notes: a.notes || null,
     done: !!a.done,
+    is_verificacao_disponibilidade: !!a.isVerificacaoDisponibilidade,
   };
 }
 
 function fromDbAgenda(r) {
-  return { id: r.id, title: r.title, type: r.type, date: r.date, imovelId: r.imovel_id, notes: r.notes || "", done: !!r.done };
+  return { id: r.id, title: r.title, type: r.type, date: r.date, imovelId: r.imovel_id, notes: r.notes || "", done: !!r.done, isVerificacaoDisponibilidade: !!r.is_verificacao_disponibilidade };
 }
 
 async function loadState() {
@@ -233,6 +238,16 @@ function daysBetween(isoA, isoB) {
   const a = parseDate(isoA), b = parseDate(isoB);
   if (!a || !b) return null;
   return Math.round((b - a) / 86400000);
+}
+
+// Soma dias a uma data ISO — usado para calcular a data do próximo
+// lembrete de verificação de disponibilidade (imóvel angariado, ainda
+// não locado após X dias).
+function addDaysISO(iso, days) {
+  const d = parseDate(iso);
+  if (!d) return null;
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 function fmtDate(iso) {
@@ -1411,6 +1426,34 @@ async function saveImovel() {
     }
   }
 
+  // ----------------------------------------------------------------
+  // Lembrete automático de "verificar disponibilidade" (novo)
+  // Regras: ao chegar em Angariado, agenda um lembrete 60 dias depois
+  // da angariação para confirmar com o proprietário se o imóvel segue
+  // disponível, enquanto não for Locado. Ao ser marcado como Locado,
+  // qualquer lembrete desse tipo ainda em aberto é cancelado.
+  // ----------------------------------------------------------------
+  let novaVerificacao = null;
+  let verificacoesACancelar = [];
+  if (data.status === "Locado") {
+    verificacoesACancelar = STATE.agenda.filter(a => a.imovelId === data.id && a.isVerificacaoDisponibilidade && !a.done);
+  } else if (foiAngariado(data)) {
+    const jaTemVerificacaoAberta = STATE.agenda.some(a => a.imovelId === data.id && a.isVerificacaoDisponibilidade && !a.done);
+    if (!jaTemVerificacaoAberta) {
+      const dataBase = dataAngariadoEfetiva(data) || todayISO();
+      novaVerificacao = {
+        id: uid(),
+        title: `Verificar disponibilidade — ${data.codigo || data.endereco}`,
+        type: "Follow-up",
+        date: addDaysISO(dataBase, VERIFICACAO_DISPONIBILIDADE_DIAS),
+        imovelId: data.id,
+        notes: "Lembrete automático: imóvel angariado sem locação após 60 dias. Confirme com o proprietário se ainda está disponível.",
+        done: false,
+        isVerificacaoDisponibilidade: true,
+      };
+    }
+  }
+
   const saveBtn = document.querySelector(".modal-foot .btn-primary");
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "Salvando..."; }
 
@@ -1424,6 +1467,17 @@ async function saveImovel() {
   if (novoLembrete) {
     const { error: agErr } = await supabaseClient.from("agenda").insert(toDbAgenda(novoLembrete));
     if (!agErr) STATE.agenda.push(novoLembrete);
+  }
+
+  if (novaVerificacao) {
+    const { error: verErr } = await supabaseClient.from("agenda").insert(toDbAgenda(novaVerificacao));
+    if (!verErr) STATE.agenda.push(novaVerificacao);
+  }
+
+  if (verificacoesACancelar.length > 0) {
+    const ids = verificacoesACancelar.map(a => a.id);
+    const { error: cancelErr } = await supabaseClient.from("agenda").delete().in("id", ids);
+    if (!cancelErr) STATE.agenda = STATE.agenda.filter(a => !ids.includes(a.id));
   }
 
   if (existing) {
@@ -1449,7 +1503,7 @@ function numOrNull(v) {
    6B. MODAL GENÉRICO (open/close)
    ================================================================ */
 function openModal() { document.getElementById("modal-overlay").classList.add("open"); }
-function closeModal() { document.getElementById("modal-overlay").classList.remove("open"); editingImovelId = null; editingAgendaId = null; editingMetaKey = null; miniMap = null; miniMapMarker = null; }
+function closeModal() { document.getElementById("modal-overlay").classList.remove("open"); editingImovelId = null; editingAgendaId = null; editingMetaKey = null; miniMap = null; miniMapMarker = null; concluirVerificacaoId = null; }
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
 
 /* ================================================================
@@ -1669,11 +1723,12 @@ function viewAgenda() {
 function renderAgendaItem(a) {
   const overdue = !a.done && a.date < todayISO();
   const imovel = a.imovelId ? STATE.imoveis.find(i => i.id === a.imovelId) : null;
+  const checkAction = (a.isVerificacaoDisponibilidade && !a.done) ? `concluirVerificacao('${a.id}')` : `toggleAgendaDone('${a.id}')`;
   return `
     <div class="agenda-item ${a.done ? "done" : ""} ${overdue ? "overdue" : ""}">
-      <div class="agenda-check ${a.done ? "checked" : ""}" onclick="toggleAgendaDone('${a.id}')">${a.done ? "✓" : ""}</div>
+      <div class="agenda-check ${a.done ? "checked" : ""}" onclick="${checkAction}">${a.done ? "✓" : ""}</div>
       <div class="agenda-item-body" onclick="openAgendaModal('${a.id}')" style="cursor:pointer;">
-        <div class="agenda-item-title">${escapeHtml(a.title)}</div>
+        <div class="agenda-item-title">${a.isVerificacaoDisponibilidade ? "🔔 " : ""}${escapeHtml(a.title)}</div>
         <div class="agenda-item-meta">
           <span class="agenda-type-tag" data-type="${a.type}">${a.type}</span>
           ${imovel ? `<span>${escapeHtml(imovel.codigo || imovel.endereco)}</span>` : ""}
@@ -1694,6 +1749,77 @@ async function toggleAgendaDone(id) {
   if (error) { toast("Não foi possível atualizar: " + error.message, "error"); return; }
   a.done = novoValor;
   refresh();
+}
+
+/* ----------------------------------------------------------------
+   VERIFICAÇÃO DE DISPONIBILIDADE (lembrete automático de 60 dias)
+   Ao concluir, pede a data do novo contato e — se o imóvel ainda não
+   estiver Locado — já agenda o próximo lembrete 60 dias depois dessa
+   data, encadeando automaticamente enquanto não houver locação.
+   ---------------------------------------------------------------- */
+let concluirVerificacaoId = null;
+
+function concluirVerificacao(id) {
+  const a = STATE.agenda.find(x => x.id === id);
+  if (!a) return;
+  concluirVerificacaoId = id;
+  const imovel = a.imovelId ? STATE.imoveis.find(i => i.id === a.imovelId) : null;
+
+  document.getElementById("modal-box").innerHTML = `
+    <div class="modal-head">
+      <div class="modal-title">Registrar novo contato</div>
+      <button class="icon-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="section-note" style="margin-bottom:14px;">
+        ${imovel ? `Imóvel: <strong>${escapeHtml(imovel.codigo || imovel.endereco)}</strong>` : ""}
+      </p>
+      <div class="field-group">
+        <label>Data do contato com o proprietário</label>
+        <input type="date" id="verificacao-data-contato" value="${todayISO()}">
+        <div class="field-hint">Se o imóvel continuar sem locação, o próximo lembrete é agendado automaticamente para ${VERIFICACAO_DISPONIBILIDADE_DIAS} dias após essa data.</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <div></div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="confirmarConclusaoVerificacao()">Confirmar contato</button>
+      </div>
+    </div>
+  `;
+  openModal();
+}
+
+async function confirmarConclusaoVerificacao() {
+  const id = concluirVerificacaoId;
+  const a = STATE.agenda.find(x => x.id === id);
+  if (!a) { closeModal(); return; }
+  const dataContato = document.getElementById("verificacao-data-contato").value || todayISO();
+
+  const { error } = await supabaseClient.from("agenda").update({ done: true }).eq("id", id);
+  if (error) { toast("Não foi possível concluir: " + error.message, "error"); return; }
+  a.done = true;
+
+  const imovel = a.imovelId ? STATE.imoveis.find(i => i.id === a.imovelId) : null;
+  if (imovel && imovel.status !== "Locado") {
+    const proximo = {
+      id: uid(),
+      title: `Verificar disponibilidade — ${imovel.codigo || imovel.endereco}`,
+      type: "Follow-up",
+      date: addDaysISO(dataContato, VERIFICACAO_DISPONIBILIDADE_DIAS),
+      imovelId: imovel.id,
+      notes: "Lembrete automático: confirme novamente com o proprietário se o imóvel segue disponível.",
+      done: false,
+      isVerificacaoDisponibilidade: true,
+    };
+    const { error: proxErr } = await supabaseClient.from("agenda").insert(toDbAgenda(proximo));
+    if (!proxErr) STATE.agenda.push(proximo);
+  }
+
+  closeModal();
+  refresh();
+  toast(imovel && imovel.status !== "Locado" ? "Contato registrado. Próximo lembrete agendado." : "Contato registrado.");
 }
 
 async function deleteAgenda(id) {
