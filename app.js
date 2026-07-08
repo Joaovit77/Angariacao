@@ -90,7 +90,7 @@ let STATE = {
 };
 
 let currentView = "dashboard";
-let pipelineViewMode = "kanban"; // "kanban" | "lista"
+let pipelineViewMode = "lista"; // "kanban" | "lista"
 let chartInstances = {}; // referências Chart.js para destruir ao re-renderizar
 let bigMap = null; // referência do mapa Leaflet da view Mapa
 let currentUser = null; // usuário autenticado no Supabase (auth.users)
@@ -638,7 +638,7 @@ function renderCurrentView() {
   if (bigMap) { bigMap.remove(); bigMap = null; }
   switch (currentView) {
     case "dashboard": main.innerHTML = viewDashboard(); afterRenderDashboard(); break;
-    case "pipeline": main.innerHTML = viewPipeline(); afterRenderPipeline(); break;
+    case "pipeline": main.innerHTML = viewPipelineEnhanced(); afterRenderPipeline(); break;
     case "metas": main.innerHTML = viewMetas(); afterRenderMetas(); break;
     case "agenda": main.innerHTML = viewAgenda(); afterRenderAgenda(); break;
     case "insights": main.innerHTML = viewInsights(); break;
@@ -865,7 +865,8 @@ function switchView(v) {
 /* ================================================================
    5B. VIEW: PIPELINE (Kanban / Lista)
    ================================================================ */
-let pipelineFilters = { search: "", tipo: "", bairro: "" };
+let pipelineFilters = { search: "", tipo: "", bairro: "", status: "", responsavel: "", cidade: "" };
+let pipelineDrawerImovelId = null;
 
 function viewPipeline() {
   const bairros = [...new Set(STATE.imoveis.map(i => i.bairro).filter(Boolean))].sort();
@@ -985,6 +986,191 @@ function renderLista() {
 
 function afterRenderPipeline() {}
 
+function viewPipelineEnhanced() {
+  const bairros = pipelineUniqueSorted(STATE.imoveis.map(i => i.bairro));
+  const cidades = pipelineUniqueSorted(STATE.imoveis.map(i => i.cidade));
+  const responsaveis = pipelineUniqueSorted(STATE.imoveis.map(i => i.responsavel));
+  const imoveisFiltrados = filteredImoveisEnhanced();
+
+  return `
+    <div class="page-head">
+      <div><h1 class="page-title">Pipeline</h1><p class="page-sub">${STATE.imoveis.length} im&oacute;veis cadastrados</p></div>
+      <div class="page-actions">
+        <button class="btn btn-primary" onclick="openImovelModal()">+ Nova angaria&ccedil;&atilde;o</button>
+      </div>
+    </div>
+
+    <div class="pipeline-toolbar pipeline-toolbar-enhanced">
+      <div class="pipeline-filterbar">
+        <input type="text" class="search-input pipeline-search" placeholder="Buscar por c&oacute;digo, propriet&aacute;rio, endere&ccedil;o, bairro, cidade, telefone ou tipo..." value="${escapeHtml(pipelineFilters.search)}" oninput="pipelineFilters.search=this.value; renderCurrentView();">
+        <select class="filter-select" onchange="pipelineFilters.tipo=this.value; renderCurrentView();">
+          <option value="">Todos os tipos</option>
+          ${TIPOS_IMOVEL.map(t => `<option value="${escapeHtml(t)}" ${pipelineFilters.tipo === t ? "selected" : ""}>${escapeHtml(t)}</option>`).join("")}
+        </select>
+        <select class="filter-select" onchange="pipelineFilters.bairro=this.value; renderCurrentView();">
+          <option value="">Todos os bairros</option>
+          ${bairros.map(b => `<option value="${escapeHtml(b)}" ${pipelineFilters.bairro === b ? "selected" : ""}>${escapeHtml(b)}</option>`).join("")}
+        </select>
+        <select class="filter-select" onchange="pipelineFilters.status=this.value; renderCurrentView();">
+          <option value="">Todos os status</option>
+          ${STATUS_ALL.map(s => `<option value="${escapeHtml(s)}" ${pipelineFilters.status === s ? "selected" : ""}>${escapeHtml(s)}</option>`).join("")}
+        </select>
+        <select class="filter-select" onchange="pipelineFilters.responsavel=this.value; renderCurrentView();">
+          <option value="">Todos os captadores</option>
+          ${responsaveis.map(r => `<option value="${escapeHtml(r)}" ${pipelineFilters.responsavel === r ? "selected" : ""}>${escapeHtml(r)}</option>`).join("")}
+        </select>
+        <select class="filter-select" onchange="pipelineFilters.cidade=this.value; renderCurrentView();">
+          <option value="">Todas as cidades</option>
+          ${cidades.map(c => `<option value="${escapeHtml(c)}" ${pipelineFilters.cidade === c ? "selected" : ""}>${escapeHtml(c)}</option>`).join("")}
+        </select>
+      </div>
+      <div class="pipeline-toolbar-side">
+        <span class="pipeline-result-count">${imoveisFiltrados.length} de ${STATE.imoveis.length}</span>
+        <div class="view-toggle">
+          <button class="${pipelineViewMode === "lista" ? "active" : ""}" onclick="pipelineViewMode='lista'; renderCurrentView();">Lista</button>
+          <button class="${pipelineViewMode === "kanban" ? "active" : ""}" onclick="pipelineViewMode='kanban'; closePipelineDrawer(); renderCurrentView();">Kanban</button>
+        </div>
+      </div>
+    </div>
+
+    ${pipelineViewMode === "kanban" ? renderKanbanEnhanced() : renderListaEnhanced()}
+    ${renderPipelineDrawer()}
+  `;
+}
+
+function pipelineUniqueSorted(values) {
+  return [...new Set(values.map(v => (v || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+function filteredImoveisEnhanced() {
+  const s = (pipelineFilters.search || "").toLowerCase().trim();
+  return STATE.imoveis.filter(i => {
+    if (pipelineFilters.tipo && i.tipo !== pipelineFilters.tipo) return false;
+    if (pipelineFilters.bairro && i.bairro !== pipelineFilters.bairro) return false;
+    if (pipelineFilters.status && i.status !== pipelineFilters.status) return false;
+    if (pipelineFilters.responsavel && i.responsavel !== pipelineFilters.responsavel) return false;
+    if (pipelineFilters.cidade && i.cidade !== pipelineFilters.cidade) return false;
+    const haystack = [
+      i.codigo, i.proprietarioNome, i.endereco, i.bairro, i.cidade,
+      i.proprietarioTelefone, i.tipo,
+    ].join(" ").toLowerCase();
+    if (s && !haystack.includes(s)) return false;
+    return true;
+  });
+}
+
+function renderKanbanEnhanced() {
+  const imoveis = filteredImoveisEnhanced();
+  return `<div class="kanban">
+    ${STATUS_ALL.map(status => {
+      const items = imoveis.filter(i => i.status === status).sort((a, b) => (b.dataAngariacao || "").localeCompare(a.dataAngariacao || ""));
+      const color = STATUS_COLORS[status] || "#3a4150";
+      return `
+      <div class="kanban-col" style="--col-color:${color};">
+        <div class="kanban-col-head" style="--col-bg:${color}12;">
+          <span class="badge" data-status="${status}"><span class="dot"></span>${status}</span>
+          <span class="kanban-col-count">${items.length}</span>
+        </div>
+        <div class="kanban-col-body">
+          ${items.length === 0 ? `<div class="kanban-empty">Nenhum im&oacute;vel</div>` : items.map(i => renderKanbanCard(i, color)).join("")}
+        </div>
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+
+function renderListaEnhanced() {
+  const imoveis = filteredImoveisEnhanced().sort((a, b) => (b.dataAngariacao || "").localeCompare(a.dataAngariacao || ""));
+  if (imoveis.length === 0) {
+    return `<div class="empty-state card"><h3>Nenhum im&oacute;vel encontrado</h3><p>Ajuste os filtros ou cadastre uma nova angaria&ccedil;&atilde;o.</p></div>`;
+  }
+  return `
+    <div class="card table-scroll pipeline-list-card">
+      <table>
+        <thead><tr>
+          <th>C&oacute;digo</th><th>Endere&ccedil;o</th><th>Bairro</th><th>Tipo</th><th>Origem</th><th>Aluguel</th><th>Status</th><th>Cadastro</th><th>Captador</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${imoveis.map(i => `
+            <tr class="pipeline-list-row ${pipelineDrawerImovelId === i.id ? "selected" : ""}" onclick="openPipelineDrawer('${i.id}')">
+              <td class="cell-strong">${escapeHtml(i.codigo || "-")}</td>
+              <td>${escapeHtml(i.endereco || "-")}</td>
+              <td class="cell-dim">${escapeHtml(i.bairro || "-")}</td>
+              <td class="cell-dim">${escapeHtml(i.tipo || "-")}</td>
+              <td class="cell-dim">${escapeHtml(i.origemImovel || "-")}</td>
+              <td>${fmtMoney(i.valorAluguel)}</td>
+              <td><span class="badge" data-status="${i.status}"><span class="dot"></span>${escapeHtml(i.status || "-")}</span> ${isStale(i) ? `<span class="stale-flag">parado</span>` : ""}</td>
+              <td class="cell-dim">${fmtDate(i.dataAngariacao)}</td>
+              <td class="cell-dim">${escapeHtml(i.responsavel || "-")}</td>
+              <td><button class="icon-btn btn-danger" onclick="event.stopPropagation(); deleteImovel('${i.id}')" title="Excluir">&times;</button></td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderPipelineDrawer() {
+  const imovel = pipelineDrawerImovelId ? STATE.imoveis.find(i => i.id === pipelineDrawerImovelId) : null;
+  if (!imovel || pipelineViewMode !== "lista") return "";
+  const enderecoCompleto = [imovel.endereco, imovel.bairro, imovel.cidade].filter(Boolean).join(", ");
+  const fotos = Array.isArray(imovel.fotos) ? imovel.fotos.filter(Boolean) : [];
+  return `
+    <div class="pipeline-drawer-backdrop" onclick="closePipelineDrawer(); renderCurrentView();"></div>
+    <aside class="pipeline-drawer" aria-label="Detalhes do imovel">
+      <div class="pipeline-drawer-head">
+        <div>
+          <div class="pipeline-drawer-kicker">Im&oacute;vel selecionado</div>
+          <h2>${escapeHtml(imovel.codigo || "Sem codigo")}</h2>
+        </div>
+        <button class="icon-btn" onclick="closePipelineDrawer(); renderCurrentView();" title="Fechar painel">&times;</button>
+      </div>
+      <div class="pipeline-drawer-body">
+        <div class="drawer-status-line">
+          <span class="badge" data-status="${imovel.status}"><span class="dot"></span>${escapeHtml(imovel.status || "-")}</span>
+          ${isStale(imovel) ? `<span class="stale-flag">parado</span>` : ""}
+        </div>
+        <div class="drawer-info-grid">
+          ${drawerInfo("Codigo", imovel.codigo || "-")}
+          ${drawerInfo("Proprietario", imovel.proprietarioNome || "-")}
+          ${drawerInfo("Telefones", imovel.proprietarioTelefone || "-")}
+          ${drawerInfo("Endereco completo", enderecoCompleto || "-")}
+          ${drawerInfo("Bairro", imovel.bairro || "-")}
+          ${drawerInfo("Cidade", imovel.cidade || "-")}
+          ${drawerInfo("Tipo", imovel.tipo || "-")}
+          ${drawerInfo("Valor", fmtMoney(imovel.valorAluguel))}
+          ${drawerInfo("Status", imovel.status || "-")}
+          ${drawerInfo("Data de cadastro", fmtDate(imovel.dataAngariacao))}
+        </div>
+        <div class="drawer-section">
+          <div class="drawer-section-title">Observacoes</div>
+          <div class="drawer-notes">${escapeHtml(imovel.observacoes || "Sem observacoes cadastradas.")}</div>
+        </div>
+        <div class="drawer-section">
+          <div class="drawer-section-title">Fotos</div>
+          ${fotos.length ? `<div class="drawer-photos">${fotos.map(src => `<img src="${escapeHtml(src)}" alt="Foto do imovel">`).join("")}</div>` : `<div class="drawer-empty-photos">Sem fotos cadastradas.</div>`}
+        </div>
+      </div>
+      <div class="pipeline-drawer-foot">
+        <button class="btn btn-ghost" onclick="closePipelineDrawer(); renderCurrentView();">Fechar painel</button>
+        <button class="btn btn-ghost btn-danger" onclick="deleteImovel('${imovel.id}')">Excluir</button>
+        <button class="btn btn-primary" onclick="openImovelModal('${imovel.id}')">Editar</button>
+      </div>
+    </aside>`;
+}
+
+function drawerInfo(label, value) {
+  return `<div class="drawer-info-item"><span>${label}</span><strong>${escapeHtml(value)}</strong></div>`;
+}
+
+function openPipelineDrawer(id) {
+  pipelineDrawerImovelId = id;
+  renderCurrentView();
+}
+
+function closePipelineDrawer() {
+  pipelineDrawerImovelId = null;
+}
+
 async function deleteImovel(id) {
   const imovel = STATE.imoveis.find(i => i.id === id);
   if (!imovel) return;
@@ -1004,6 +1190,39 @@ async function deleteImovel(id) {
    6A. MODAL: IMÓVEL (criação / edição)
    ================================================================ */
 let editingImovelId = null;
+
+function imobiliariasConcorrentesOptions(currentValue = "") {
+  const nomes = [
+    ...STATE.imoveis.map(i => i.imobiliariaConcorrente),
+    currentValue,
+  ]
+    .map(v => (v || "").trim())
+    .filter(Boolean);
+  return [...new Set(nomes)]
+    .sort((a, b) => a.localeCompare(b, "pt-BR"))
+    .map(nome => `<option value="${escapeHtml(nome)}"></option>`)
+    .join("");
+}
+
+function setupImobiliariaConcorrenteField(currentValue = "") {
+  const input = document.getElementById("f-imobiliariaConcorrente");
+  if (!input) return;
+  input.setAttribute("list", "imobiliarias-concorrentes-list");
+  input.setAttribute("placeholder", "Selecione ou digite uma nova imobiliária");
+
+  let list = document.getElementById("imobiliarias-concorrentes-list");
+  if (!list) {
+    list = document.createElement("datalist");
+    list.id = "imobiliarias-concorrentes-list";
+    input.insertAdjacentElement("afterend", list);
+  }
+  list.innerHTML = imobiliariasConcorrentesOptions(currentValue);
+
+  const hint = input.closest(".field-group")?.querySelector(".field-hint");
+  if (hint) {
+    hint.textContent = "Selecione uma imobiliária já usada ou digite um novo nome. Ao salvar, o novo nome aparecerá como opção nos próximos cadastros.";
+  }
+}
 
 function openImovelModal(id) {
   editingImovelId = id || null;
@@ -1169,6 +1388,7 @@ function openImovelModal(id) {
     document.getElementById("pausa-lembrete-wrap").style.display = e.target.value ? "" : "none";
   });
 
+  setupImobiliariaConcorrenteField(d.imobiliariaConcorrente);
   openModal();
   initMiniMap(d.latitude, d.longitude);
 }
@@ -1504,7 +1724,14 @@ function numOrNull(v) {
    ================================================================ */
 function openModal() { document.getElementById("modal-overlay").classList.add("open"); }
 function closeModal() { document.getElementById("modal-overlay").classList.remove("open"); editingImovelId = null; editingAgendaId = null; editingMetaKey = null; miniMap = null; miniMapMarker = null; concluirVerificacaoId = null; }
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  closeModal();
+  if (pipelineDrawerImovelId) {
+    closePipelineDrawer();
+    renderCurrentView();
+  }
+});
 
 /* ================================================================
    5C. VIEW: METAS
@@ -1698,7 +1925,7 @@ function viewAgenda() {
           </div>` : dateKeys.map(date => `
           <div class="agenda-day-group">
             <div class="agenda-day-label ${date === todayISO() ? "today" : ""}">${date === todayISO() ? "Hoje · " : ""}${fmtDateLong(date)}</div>
-            ${grouped[date].map(a => renderAgendaItem(a)).join("")}
+            ${grouped[date].map(a => renderAgendaItemEnhanced(a)).join("")}
           </div>
         `).join("")}
       </div>
@@ -1737,6 +1964,146 @@ function renderAgendaItem(a) {
       </div>
       <button class="icon-btn" onclick="deleteAgenda('${a.id}')" title="Excluir">✕</button>
     </div>`;
+}
+
+function renderAgendaItemEnhanced(a) {
+  const overdue = !a.done && a.date < todayISO();
+  const today = !a.done && a.date === todayISO();
+  const future = !a.done && a.date > todayISO();
+  const imovel = a.imovelId ? STATE.imoveis.find(i => i.id === a.imovelId) : null;
+  const checkAction = (a.isVerificacaoDisponibilidade && !a.done) ? `concluirVerificacao('${a.id}')` : `toggleAgendaDone('${a.id}')`;
+  const dueInfo = agendaVencimentoInfo(a);
+  const typeIcon = agendaTypeIcon(a.type, a.isVerificacaoDisponibilidade);
+  const canSendWhatsapp = imovel && isAgendaAngariacaoVencida(a);
+
+  return `
+    <div class="agenda-item agenda-item-enhanced ${a.done ? "done" : ""} ${overdue ? "overdue" : ""} ${today ? "today" : ""} ${future ? "future" : ""}">
+      <div class="agenda-check ${a.done ? "checked" : ""}" onclick="${checkAction}">${a.done ? "✓" : ""}</div>
+      <div class="agenda-item-body" onclick="openAgendaModal('${a.id}')" style="cursor:pointer;">
+        <div class="agenda-item-title"><span class="agenda-type-icon">${typeIcon}</span>${escapeHtml(a.title)}</div>
+        <div class="agenda-item-meta">
+          <span class="agenda-type-tag" data-type="${a.type}">${escapeHtml(a.type)}</span>
+          ${imovel ? `<span>${escapeHtml(imovel.codigo || imovel.endereco)}</span>` : ""}
+          ${dueInfo ? `<span class="agenda-due-chip ${dueInfo.tone}"><span class="agenda-due-dot"></span>${dueInfo.label}</span>` : ""}
+          ${overdue ? `<span class="agenda-date-state overdue">atrasado</span>` : ""}
+          ${today ? `<span class="agenda-date-state today">hoje</span>` : ""}
+          ${future ? `<span class="agenda-date-state future">futuro</span>` : ""}
+        </div>
+      </div>
+      <div class="agenda-actions">
+        ${canSendWhatsapp ? `<button class="btn btn-sm btn-ghost agenda-whatsapp-btn" onclick="event.stopPropagation(); enviarWhatsappAngariacao('${imovel.id}')" title="Enviar WhatsApp">Enviar WhatsApp</button>` : ""}
+        <button class="icon-btn" onclick="event.stopPropagation(); deleteAgenda('${a.id}')" title="Excluir">&times;</button>
+      </div>
+    </div>`;
+}
+
+function agendaTypeIcon(type, isVerificacao) {
+  if (isVerificacao) return "🔔";
+  const icons = {
+    "Retorno ao proprietÃ¡rio": "☎",
+    "Retorno ao proprietário": "☎",
+    "Visita": "⌂",
+    "PendÃªncia": "!",
+    "Pendência": "!",
+    "DocumentaÃ§Ã£o": "§",
+    "Documentação": "§",
+    "Follow-up": "↻",
+  };
+  return icons[type] || "•";
+}
+
+function isAgendaAngariacaoVencida(a) {
+  if (!a || a.done || !a.imovelId || a.date > todayISO()) return false;
+  if (a.isVerificacaoDisponibilidade) return true;
+  const text = `${a.type || ""} ${a.title || ""} ${a.notes || ""}`.toLowerCase();
+  return a.type === "Follow-up" || text.includes("verificar disponibilidade") || text.includes("vencimento") || text.includes("angaria");
+}
+
+function isAgendaAngariacaoMonitorada(a) {
+  if (!a || a.done || !a.imovelId) return false;
+  if (a.isVerificacaoDisponibilidade) return true;
+  const text = `${a.type || ""} ${a.title || ""} ${a.notes || ""}`.toLowerCase();
+  return a.type === "Follow-up" || text.includes("verificar disponibilidade") || text.includes("vencimento") || text.includes("angaria");
+}
+
+function agendaVencimentoInfo(a) {
+  if (!isAgendaAngariacaoMonitorada(a)) return null;
+  const days = daysBetween(todayISO(), a.date);
+  if (days == null) return null;
+  if (days < 0) return { tone: "expired", label: "Vencido" };
+  if (days < 7) return { tone: "soon", label: days === 0 ? "Vence hoje" : "Menos de 7 dias" };
+  if (days <= 15) return { tone: "warning", label: "Entre 7 e 15 dias" };
+  return { tone: "ok", label: "Mais de 15 dias" };
+}
+
+function mensagemRenovacaoAngariacao(imovel) {
+  const nome = (imovel && imovel.proprietarioNome) ? imovel.proprietarioNome.trim() : "";
+  const saudacao = nome ? `Olá, ${nome}! Tudo bem?` : "Olá! Tudo bem?";
+  return `${saudacao}
+
+Percebemos que o período de angariação do seu imóvel chegou ao vencimento.
+
+Gostaríamos de saber se você deseja renovar a parceria conosco para continuarmos trabalhando na divulgação e comercialização do imóvel.
+
+Caso tenha interesse, estamos à disposição para dar continuidade ao atendimento.
+
+Atenciosamente,
+Equipe da imobiliária.`;
+}
+
+function telefoneWhatsapp(telefone) {
+  const digits = String(telefone || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("55")) return digits;
+  if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+  return digits;
+}
+
+function enviarWhatsappAngariacao(imovelId) {
+  const imovel = STATE.imoveis.find(i => i.id === imovelId);
+  if (!imovel) return;
+  const message = mensagemRenovacaoAngariacao(imovel);
+  const phone = telefoneWhatsapp(imovel.proprietarioTelefone);
+  if (phone) {
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
+    return;
+  }
+  abrirMensagemWhatsappModal(imovel, message);
+}
+
+function abrirMensagemWhatsappModal(imovel, message) {
+  document.getElementById("modal-box").innerHTML = `
+    <div class="modal-head">
+      <div class="modal-title">Mensagem para WhatsApp</div>
+      <button class="icon-btn" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="section-note" style="margin-bottom:14px;">${escapeHtml(imovel.codigo || imovel.endereco || "Imóvel sem código")} não tem telefone cadastrado. Copie a mensagem abaixo para enviar manualmente.</p>
+      <textarea id="whatsapp-message-copy" readonly style="min-height:220px;">${escapeHtml(message)}</textarea>
+    </div>
+    <div class="modal-foot">
+      <div></div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn" onclick="closeModal()">Fechar</button>
+        <button class="btn btn-primary" onclick="copiarMensagemWhatsapp()">Copiar mensagem</button>
+      </div>
+    </div>
+  `;
+  openModal();
+}
+
+async function copiarMensagemWhatsapp() {
+  const el = document.getElementById("whatsapp-message-copy");
+  if (!el) return;
+  try {
+    await navigator.clipboard.writeText(el.value);
+    toast("Mensagem copiada.");
+  } catch (e) {
+    el.focus();
+    el.select();
+    document.execCommand("copy");
+    toast("Mensagem copiada.");
+  }
 }
 
 function afterRenderAgenda() {}
