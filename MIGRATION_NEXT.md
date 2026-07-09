@@ -142,6 +142,22 @@ Regras do processo:
 - **Capturar o baseline de paridade**: com o usuário de teste, fotografar (screenshots + valores anotados) cada view do app antigo — todos os KPIs do Dashboard, contagens do funil, números de Metas/Insights/Relatórios. Este baseline é o critério de aceitação das etapas 5–8.
 
 ### Etapa 1 — Fundação do projeto Next
+
+> **Status: ✅ concluída em 2026-07-09.** Decisões registradas:
+> - **Diretório do app Next: `web/`** (não `next/` como exemplificado — um package npm
+>   não pode se chamar `next` e depender de `next`). App antigo intocado na raiz.
+> - **Versões instaladas**: Next **16.2.10** (App Router, Turbopack), `@supabase/supabase-js`
+>   **2.110.2**, `chart.js` **4.4.1** e `leaflet` **1.9.4** (idênticas às do CDN).
+> - **Sem webfonts**: o app antigo não carrega webfont (a 'Zilla Slab' do CSS cai nos
+>   fallbacks serif); o shell Next replica isso — fontes default do create-next-app removidas.
+> - `style.css` copiado **sem modificações** para `web/app/style.css` e importado no layout raiz;
+>   `favicon.ico` idem. Placeholder validado no browser (tokens aplicados, console limpo).
+> - `web/.env.local` (não versionado) + `web/.env.example` (versionado) com
+>   `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+> - `next build`, `tsc --noEmit` e ESLint verdes.
+> - Atenção para as próximas etapas: **Next 16 tem breaking changes** vs. conhecimento prévio —
+>   consultar os docs empacotados em `web/node_modules/next/dist/docs/` (aviso do `web/AGENTS.md`).
+
 - `create-next-app` (App Router, TypeScript, ESLint; sem Tailwind) no diretório escolhido.
 - Importar `style.css` como CSS global sem modificações; copiar `favicon.ico`.
 - Configurar `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` via `.env.local` (+ `.env.example` commitado).
