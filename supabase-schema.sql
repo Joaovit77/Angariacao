@@ -29,6 +29,7 @@ create table if not exists imoveis (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   codigo text,
+  referencia_crm text,
   cep text,
   endereco text not null,
   bairro text,
@@ -60,6 +61,11 @@ create table if not exists imoveis (
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+-- Cobre quem já tinha a tabela "imoveis" criada antes dessa coluna existir
+-- (referência gerada pelo CRM da imobiliária). "add column if not exists" é
+-- seguro de rodar várias vezes.
+alter table imoveis add column if not exists referencia_crm text;
 
 alter table imoveis enable row level security;
 

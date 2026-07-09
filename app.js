@@ -108,6 +108,7 @@ function toDbImovel(i) {
     id: i.id,
     user_id: currentUser.id,
     codigo: i.codigo || null,
+    referencia_crm: i.referenciaCrm || null,
     cep: i.cep || null,
     endereco: i.endereco,
     bairro: i.bairro || null,
@@ -143,6 +144,7 @@ function fromDbImovel(r) {
   return {
     id: r.id,
     codigo: r.codigo || "",
+    referenciaCrm: r.referencia_crm || "",
     cep: r.cep || "",
     endereco: r.endereco,
     bairro: r.bairro || "",
@@ -1351,6 +1353,7 @@ function renderPipelineDrawer() {
         </div>
         <div class="drawer-info-grid">
           ${drawerInfo("Codigo", imovel.codigo || "-")}
+          ${drawerInfo("Referência CRM", imovel.referenciaCrm || "-")}
           ${drawerInfo("Proprietario", imovel.proprietarioNome || "-")}
           ${drawerInfo("Telefones", imovel.proprietarioTelefone || "-")}
           ${drawerInfo("Endereco completo", enderecoCompleto || "-")}
@@ -1448,7 +1451,7 @@ function openImovelModal(id) {
   editingImovelId = id || null;
   const imovel = id ? STATE.imoveis.find(i => i.id === id) : null;
   const d = imovel || {
-    codigo: "", cep: "", endereco: "", bairro: "", cidade: "Londrina", tipo: "Apartamento",
+    codigo: "", referenciaCrm: "", cep: "", endereco: "", bairro: "", cidade: "Londrina", tipo: "Apartamento",
     quartos: "", banheiros: "", vagas: "", valorAluguel: "", valorCondominio: "",
     proprietarioNome: "", proprietarioTelefone: "", dataAngariacao: todayISO(),
     responsavel: "", status: "Novo contato", observacoes: "",
@@ -1467,12 +1470,14 @@ function openImovelModal(id) {
     <div class="modal-body">
       <fieldset>
         <legend>Dados do imóvel</legend>
-        <div class="field-row">
+        <div class="field-row-3">
           <div class="field-group"><label>Código do imóvel</label><input type="text" id="f-codigo" value="${escapeHtml(d.codigo)}" placeholder="Ex: LD-0234"></div>
+          <div class="field-group"><label>Referência CRM</label><input type="text" id="f-referenciaCrm" value="${escapeHtml(d.referenciaCrm || "")}" placeholder="Ex: 45231"></div>
           <div class="field-group"><label>Tipo do imóvel</label>
             <select id="f-tipo">${TIPOS_IMOVEL.map(t => `<option value="${t}" ${d.tipo === t ? "selected" : ""}>${t}</option>`).join("")}</select>
           </div>
         </div>
+        <div class="field-hint" style="margin-top:-6px;">A <strong>Referência CRM</strong> é o código que o sistema da imobiliária gera para o imóvel angariado — aparece nos relatórios.</div>
         <div class="field-group">
           <label>CEP</label>
           <div class="geocode-box">
@@ -1807,6 +1812,7 @@ async function saveImovel() {
   const data = {
     id: existing ? existing.id : uid(),
     codigo: document.getElementById("f-codigo").value.trim(),
+    referenciaCrm: document.getElementById("f-referenciaCrm").value.trim(),
     cep: document.getElementById("f-cep").value.trim(),
     endereco,
     bairro: document.getElementById("f-bairro").value.trim(),
@@ -2774,6 +2780,13 @@ function reportDoc(d) {
 
   return `
     <div class="report-doc">
+      <div class="report-print-header">
+        <div class="rph-brand">Painel de Angaria&ccedil;&otilde;es<span class="rph-brand-sub">Relat&oacute;rio de produtividade</span></div>
+        <div class="rph-meta">
+          <span>Respons&aacute;vel: ${escapeHtml((typeof currentUser !== "undefined" && currentUser && currentUser.email) || "-")}</span>
+          <span>Emitido em: ${fmtDate(todayISO())}</span>
+        </div>
+      </div>
       <h2>${d.title}</h2>
       <div class="report-period">${d.period}</div>
 
@@ -2796,9 +2809,9 @@ function reportDoc(d) {
       ${d.imoveisAtual.length === 0 ? `<p class="section-note">Nenhum imóvel chegou na etapa Angariado neste período.</p>` : `
         <div class="table-scroll">
           <table>
-            <thead><tr><th>Código</th><th>Endereço</th><th>Tipo</th><th>Status atual</th><th>Aluguel</th></tr></thead>
+            <thead><tr><th>Código</th><th>Ref. CRM</th><th>Endereço</th><th>Tipo</th><th>Status atual</th><th>Aluguel</th></tr></thead>
             <tbody>
-              ${d.imoveisAtual.map(i => `<tr><td class="cell-strong">${escapeHtml(i.codigo || "—")}</td><td>${escapeHtml(i.endereco)}</td><td class="cell-dim">${escapeHtml(i.tipo)}</td><td><span class="badge" data-status="${i.status}">${i.status}</span></td><td>${fmtMoney(i.valorAluguel)}</td></tr>`).join("")}
+              ${d.imoveisAtual.map(i => `<tr><td class="cell-strong">${escapeHtml(i.codigo || "—")}</td><td class="cell-dim">${escapeHtml(i.referenciaCrm || "—")}</td><td>${escapeHtml(i.endereco)}</td><td class="cell-dim">${escapeHtml(i.tipo)}</td><td><span class="badge" data-status="${i.status}">${i.status}</span></td><td>${fmtMoney(i.valorAluguel)}</td></tr>`).join("")}
             </tbody>
           </table>
         </div>
