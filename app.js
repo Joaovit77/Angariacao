@@ -385,7 +385,9 @@ function metricsForRange(imoveis) {
   const conversaoFechados = fechados ? (locados.length / fechados) * 100 : 0;
   const tempos = locados.map(tempoAteLocacao).filter((t) => t != null && t >= 0);
   const tempoMedio = tempos.length ? tempos.reduce((a, b) => a + b, 0) / tempos.length : null;
-  const comissaoEst = imoveis.reduce((s, i) => s + comissaoEstimada(i), 0);
+  // Comissão estimada só sobre os locados — a comissão só é recebida quando o
+  // imóvel é locado.
+  const comissaoEst = locados.reduce((s, i) => s + comissaoEstimada(i), 0);
   const comissaoRec = imoveis.reduce((s, i) => s + comissaoRecebidaValor(i), 0);
   const valorMedioAluguel = total ? imoveis.reduce((s, i) => s + (i.valorAluguel || 0), 0) / total : 0;
   return { total, locados: locados.length, perdidosCancelados: perdidosCancelados.length, conversaoGeral, conversaoFechados, tempoMedio, comissaoEst, comissaoRec, valorMedioAluguel };
@@ -685,7 +687,8 @@ function viewDashboard() {
   const deltaAngariacoes = thisMonth.length - prevMonth.length;
   const deltaLocados = locadosThisMonth.length - locadosPrevMonth.length;
 
-  const comissaoEstMes = thisMonth.reduce((s, i) => s + comissaoEstimada(i), 0);
+  // Estimada só sobre os locados do mês — a comissão só entra quando o imóvel é locado.
+  const comissaoEstMes = locadosThisMonth.reduce((s, i) => s + comissaoEstimada(i), 0);
   const comissaoRecMes = STATE.imoveis.reduce((s, i) => {
     if (i.status === "Locado" && i.comissaoRecebida && monthKey(i.comissaoRecebidaData) === mKey) return s + comissaoRecebidaValor(i);
     return s;
@@ -834,7 +837,7 @@ function afterRenderDashboard() {
     options: { plugins: { legend: { position: "right", labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: "circle", padding: 10 } } }, maintainAspectRatio: false, responsive: true },
   });
 
-  const comEst = keys.map(k => imoveisAngariadosNoMes(k).reduce((s, i) => s + comissaoEstimada(i), 0));
+  const comEst = keys.map(k => imoveisLocadosNoMes(k).reduce((s, i) => s + comissaoEstimada(i), 0));
   const comRec = keys.map(k => STATE.imoveis.filter(i => i.status === "Locado" && i.comissaoRecebida && monthKey(i.comissaoRecebidaData) === k).reduce((s, i) => s + comissaoRecebidaValor(i), 0));
   chartInstances.comissao = new Chart(document.getElementById("chart-comissao"), {
     type: "line",
@@ -2731,7 +2734,9 @@ function renderMonthlyReport(key) {
   const prev = imoveisAngariadosNoMes(prevKey);
   const curLocados = imoveisLocadosNoMes(key);
   const prevLocados = imoveisLocadosNoMes(prevKey);
-  const comissaoEst = cur.reduce((s, i) => s + comissaoEstimada(i), 0);
+  // Comissão estimada considera só os imóveis locados no período — a comissão
+  // só é recebida quando o imóvel é locado.
+  const comissaoEst = curLocados.reduce((s, i) => s + comissaoEstimada(i), 0);
   const comissaoRec = STATE.imoveis.reduce((s, i) => (i.status === "Locado" && i.comissaoRecebida && monthKey(i.comissaoRecebidaData) === key) ? s + comissaoRecebidaValor(i) : s, 0);
   const comissaoRecPrev = STATE.imoveis.reduce((s, i) => (i.status === "Locado" && i.comissaoRecebida && monthKey(i.comissaoRecebidaData) === prevKey) ? s + comissaoRecebidaValor(i) : s, 0);
 
@@ -2756,7 +2761,9 @@ function renderWeeklyReport(offset) {
   const prev = imoveisAngariadosNoPeriodo(prevStart, prevEnd);
   const curLocados = STATE.imoveis.filter(i => i.status === "Locado" && dateEnteredStatus(i, "Locado") >= start && dateEnteredStatus(i, "Locado") <= end);
   const prevLocados = STATE.imoveis.filter(i => i.status === "Locado" && dateEnteredStatus(i, "Locado") >= prevStart && dateEnteredStatus(i, "Locado") <= prevEnd);
-  const comissaoEst = cur.reduce((s, i) => s + comissaoEstimada(i), 0);
+  // Comissão estimada considera só os imóveis locados no período — a comissão
+  // só é recebida quando o imóvel é locado.
+  const comissaoEst = curLocados.reduce((s, i) => s + comissaoEstimada(i), 0);
   const comissaoRec = STATE.imoveis.reduce((s, i) => (i.status === "Locado" && i.comissaoRecebida && i.comissaoRecebidaData >= start && i.comissaoRecebidaData <= end) ? s + comissaoRecebidaValor(i) : s, 0);
   const comissaoRecAnterior = STATE.imoveis.reduce((s, i) => (i.status === "Locado" && i.comissaoRecebida && i.comissaoRecebidaData >= prevStart && i.comissaoRecebidaData <= prevEnd) ? s + comissaoRecebidaValor(i) : s, 0);
 
