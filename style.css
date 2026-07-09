@@ -909,6 +909,67 @@ legend{
 
 .section-note{ font-size:12px; color:var(--text-faint); margin-top: 4px; }
 
+/* ============================================================
+   IMPRESSÃO / PDF DO RELATÓRIO
+   Na tela o app é escuro e cheio de cromo (sidebar, toolbars). Ao
+   imprimir (ou "Salvar como PDF"), queremos só o documento do
+   relatório, em tema claro e com cara de documento — não um print
+   da tela.
+   ============================================================ */
+.report-print-header{ display:none; }
+
+@media print {
+  /* fundo claro e destrava alturas/overflow do shell */
+  html, body, .app-shell, .main, #main-content{
+    background:#fff !important; height:auto !important; min-height:0 !important; overflow:visible !important;
+  }
+  body{ color:#111 !important; }
+
+  /* esconde tudo que não faz parte do relatório */
+  .sidebar, #sidebar, .sidebar-backdrop, .mobile-topbar,
+  .page-head, .pipeline-toolbar, .modal-overlay, .toast-container{ display:none !important; }
+
+  .app-shell{ display:block !important; }
+  .main, #main-content{ padding:0 !important; margin:0 !important; max-width:none !important; }
+  @page{ margin:14mm 12mm; }
+
+  /* papel timbrado — só na impressão */
+  .report-print-header{
+    display:flex !important; justify-content:space-between; align-items:flex-end; gap:16px;
+    border-bottom:2px solid #111; padding-bottom:10px; margin-bottom:18px;
+  }
+  .rph-brand{ font-weight:800; font-size:15pt; color:#111; line-height:1.1; display:flex; flex-direction:column; }
+  .rph-brand-sub{ font-size:8.5pt; font-weight:600; color:#555; letter-spacing:.4px; text-transform:uppercase; margin-top:3px; }
+  .rph-meta{ font-size:9pt; color:#444; text-align:right; display:flex; flex-direction:column; gap:2px; }
+
+  /* documento em tema claro */
+  .report-doc{ background:#fff !important; border:none !important; border-radius:0 !important; padding:0 !important; color:#111 !important; }
+  .report-doc h2{ color:#111 !important; font-size:17pt; margin-bottom:2px; }
+  .report-period{ color:#555 !important; font-size:10pt !important; margin-bottom:16px !important; }
+  .report-section-title{ color:#111 !important; border-bottom:1px solid #bbb; padding-bottom:4px; margin:20px 0 10px !important; }
+  .section-note{ color:#666 !important; }
+
+  /* cartões de indicadores */
+  .report-stat-row{ gap:8px !important; }
+  .report-stat{ background:#fff !important; border:1px solid #bbb !important; padding:8px 10px !important; break-inside:avoid; }
+  .report-stat-label{ color:#666 !important; }
+  .report-stat-value{ color:#111 !important; font-size:15pt !important; }
+  .report-stat-cmp{ color:#444 !important; }
+
+  /* tabela de imóveis */
+  .table-scroll{ overflow:visible !important; }
+  table{ width:100% !important; border-collapse:collapse !important; }
+  thead{ display:table-header-group; } /* repete cabeçalho a cada página */
+  th, td{ border:1px solid #bbb !important; color:#111 !important; padding:6px 8px !important; font-size:9.5pt !important; }
+  th{ background:#f0f0f0 !important; color:#111 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  tr{ break-inside:avoid; }
+  tbody tr:hover{ background:transparent !important; }
+
+  /* badges: no papel o translúcido some — vira contorno legível */
+  .badge{ background:transparent !important; color:#111 !important; border:1px solid #888 !important; padding:1px 6px !important; }
+  .badge .dot{ display:none !important; }
+}
+
 .divider{ height:1px; background: var(--border-soft); margin: 24px 0; }
 
 .config-inline{ display:flex; align-items:center; gap:8px; font-size:12.5px; color: var(--text-dim); }

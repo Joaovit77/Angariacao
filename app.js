@@ -108,6 +108,7 @@ function toDbImovel(i) {
     id: i.id,
     user_id: currentUser.id,
     codigo: i.codigo || null,
+    referencia_crm: i.referenciaCrm || null,
     cep: i.cep || null,
     endereco: i.endereco,
     bairro: i.bairro || null,
@@ -143,6 +144,7 @@ function fromDbImovel(r) {
   return {
     id: r.id,
     codigo: r.codigo || "",
+    referenciaCrm: r.referencia_crm || "",
     cep: r.cep || "",
     endereco: r.endereco,
     bairro: r.bairro || "",
@@ -383,7 +385,9 @@ function metricsForRange(imoveis) {
   const conversaoFechados = fechados ? (locados.length / fechados) * 100 : 0;
   const tempos = locados.map(tempoAteLocacao).filter((t) => t != null && t >= 0);
   const tempoMedio = tempos.length ? tempos.reduce((a, b) => a + b, 0) / tempos.length : null;
-  const comissaoEst = imoveis.reduce((s, i) => s + comissaoEstimada(i), 0);
+  // Comissão estimada só sobre os locados — a comissão só é recebida quando o
+  // imóvel é locado.
+  const comissaoEst = locados.reduce((s, i) => s + comissaoEstimada(i), 0);
   const comissaoRec = imoveis.reduce((s, i) => s + comissaoRecebidaValor(i), 0);
   const valorMedioAluguel = total ? imoveis.reduce((s, i) => s + (i.valorAluguel || 0), 0) / total : 0;
   return { total, locados: locados.length, perdidosCancelados: perdidosCancelados.length, conversaoGeral, conversaoFechados, tempoMedio, comissaoEst, comissaoRec, valorMedioAluguel };
@@ -683,7 +687,8 @@ function viewDashboard() {
   const deltaAngariacoes = thisMonth.length - prevMonth.length;
   const deltaLocados = locadosThisMonth.length - locadosPrevMonth.length;
 
-  const comissaoEstMes = thisMonth.reduce((s, i) => s + comissaoEstimada(i), 0);
+  // Estimada só sobre os locados do mês — a comissão só entra quando o imóvel é locado.
+  const comissaoEstMes = locadosThisMonth.reduce((s, i) => s + comissaoEstimada(i), 0);
   const comissaoRecMes = STATE.imoveis.reduce((s, i) => {
     if (i.status === "Locado" && i.comissaoRecebida && monthKey(i.comissaoRecebidaData) === mKey) return s + comissaoRecebidaValor(i);
     return s;
@@ -832,7 +837,7 @@ function afterRenderDashboard() {
     options: { plugins: { legend: { position: "right", labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: "circle", padding: 10 } } }, maintainAspectRatio: false, responsive: true },
   });
 
-  const comEst = keys.map(k => imoveisAngariadosNoMes(k).reduce((s, i) => s + comissaoEstimada(i), 0));
+  const comEst = keys.map(k => imoveisLocadosNoMes(k).reduce((s, i) => s + comissaoEstimada(i), 0));
   const comRec = keys.map(k => STATE.imoveis.filter(i => i.status === "Locado" && i.comissaoRecebida && monthKey(i.comissaoRecebidaData) === k).reduce((s, i) => s + comissaoRecebidaValor(i), 0));
   chartInstances.comissao = new Chart(document.getElementById("chart-comissao"), {
     type: "line",
@@ -1351,6 +1356,7 @@ function renderPipelineDrawer() {
         </div>
         <div class="drawer-info-grid">
           ${drawerInfo("Codigo", imovel.codigo || "-")}
+          ${drawerInfo("Referência CRM", imovel.referenciaCrm || "-")}
           ${drawerInfo("Proprietario", imovel.proprietarioNome || "-")}
           ${drawerInfo("Telefones", imovel.proprietarioTelefone || "-")}
           ${drawerInfo("Endereco completo", enderecoCompleto || "-")}
@@ -1448,7 +1454,7 @@ function openImovelModal(id) {
   editingImovelId = id || null;
   const imovel = id ? STATE.imoveis.find(i => i.id === id) : null;
   const d = imovel || {
-    codigo: "", cep: "", endereco: "", bairro: "", cidade: "Londrina", tipo: "Apartamento",
+    codigo: "", referenciaCrm: "", cep: "", endereco: "", bairro: "", cidade: "Londrina", tipo: "Apartamento",
     quartos: "", banheiros: "", vagas: "", valorAluguel: "", valorCondominio: "",
     proprietarioNome: "", proprietarioTelefone: "", dataAngariacao: todayISO(),
     responsavel: "", status: "Novo contato", observacoes: "",
@@ -1467,12 +1473,14 @@ function openImovelModal(id) {
     <div class="modal-body">
       <fieldset>
         <legend>Dados do imóvel</legend>
-        <div class="field-row">
+        <div class="field-row-3">
           <div class="field-group"><label>Código do imóvel</label><input type="text" id="f-codigo" value="${escapeHtml(d.codigo)}" placeholder="Ex: LD-0234"></div>
+          <div class="field-group"><label>Referência CRM</label><input type="text" id="f-referenciaCrm" value="${escapeHtml(d.referenciaCrm || "")}" placeholder="Ex: 45231"></div>
           <div class="field-group"><label>Tipo do imóvel</label>
             <select id="f-tipo">${TIPOS_IMOVEL.map(t => `<option value="${t}" ${d.tipo === t ? "selected" : ""}>${t}</option>`).join("")}</select>
           </div>
         </div>
+        <div class="field-hint" style="margin-top:-6px;">A <strong>Referência CRM</strong> é o código que o sistema da imobiliária gera para o imóvel angariado — aparece nos relatórios.</div>
         <div class="field-group">
           <label>CEP</label>
           <div class="geocode-box">
@@ -1807,6 +1815,7 @@ async function saveImovel() {
   const data = {
     id: existing ? existing.id : uid(),
     codigo: document.getElementById("f-codigo").value.trim(),
+    referenciaCrm: document.getElementById("f-referenciaCrm").value.trim(),
     cep: document.getElementById("f-cep").value.trim(),
     endereco,
     bairro: document.getElementById("f-bairro").value.trim(),
@@ -2725,7 +2734,9 @@ function renderMonthlyReport(key) {
   const prev = imoveisAngariadosNoMes(prevKey);
   const curLocados = imoveisLocadosNoMes(key);
   const prevLocados = imoveisLocadosNoMes(prevKey);
-  const comissaoEst = cur.reduce((s, i) => s + comissaoEstimada(i), 0);
+  // Comissão estimada considera só os imóveis locados no período — a comissão
+  // só é recebida quando o imóvel é locado.
+  const comissaoEst = curLocados.reduce((s, i) => s + comissaoEstimada(i), 0);
   const comissaoRec = STATE.imoveis.reduce((s, i) => (i.status === "Locado" && i.comissaoRecebida && monthKey(i.comissaoRecebidaData) === key) ? s + comissaoRecebidaValor(i) : s, 0);
   const comissaoRecPrev = STATE.imoveis.reduce((s, i) => (i.status === "Locado" && i.comissaoRecebida && monthKey(i.comissaoRecebidaData) === prevKey) ? s + comissaoRecebidaValor(i) : s, 0);
 
@@ -2750,7 +2761,9 @@ function renderWeeklyReport(offset) {
   const prev = imoveisAngariadosNoPeriodo(prevStart, prevEnd);
   const curLocados = STATE.imoveis.filter(i => i.status === "Locado" && dateEnteredStatus(i, "Locado") >= start && dateEnteredStatus(i, "Locado") <= end);
   const prevLocados = STATE.imoveis.filter(i => i.status === "Locado" && dateEnteredStatus(i, "Locado") >= prevStart && dateEnteredStatus(i, "Locado") <= prevEnd);
-  const comissaoEst = cur.reduce((s, i) => s + comissaoEstimada(i), 0);
+  // Comissão estimada considera só os imóveis locados no período — a comissão
+  // só é recebida quando o imóvel é locado.
+  const comissaoEst = curLocados.reduce((s, i) => s + comissaoEstimada(i), 0);
   const comissaoRec = STATE.imoveis.reduce((s, i) => (i.status === "Locado" && i.comissaoRecebida && i.comissaoRecebidaData >= start && i.comissaoRecebidaData <= end) ? s + comissaoRecebidaValor(i) : s, 0);
   const comissaoRecAnterior = STATE.imoveis.reduce((s, i) => (i.status === "Locado" && i.comissaoRecebida && i.comissaoRecebidaData >= prevStart && i.comissaoRecebidaData <= prevEnd) ? s + comissaoRecebidaValor(i) : s, 0);
 
@@ -2774,6 +2787,13 @@ function reportDoc(d) {
 
   return `
     <div class="report-doc">
+      <div class="report-print-header">
+        <div class="rph-brand">Painel de Angaria&ccedil;&otilde;es<span class="rph-brand-sub">Relat&oacute;rio de produtividade</span></div>
+        <div class="rph-meta">
+          <span>Respons&aacute;vel: ${escapeHtml((typeof currentUser !== "undefined" && currentUser && currentUser.email) || "-")}</span>
+          <span>Emitido em: ${fmtDate(todayISO())}</span>
+        </div>
+      </div>
       <h2>${d.title}</h2>
       <div class="report-period">${d.period}</div>
 
@@ -2796,9 +2816,9 @@ function reportDoc(d) {
       ${d.imoveisAtual.length === 0 ? `<p class="section-note">Nenhum imóvel chegou na etapa Angariado neste período.</p>` : `
         <div class="table-scroll">
           <table>
-            <thead><tr><th>Código</th><th>Endereço</th><th>Tipo</th><th>Status atual</th><th>Aluguel</th></tr></thead>
+            <thead><tr><th>Código</th><th>Ref. CRM</th><th>Endereço</th><th>Tipo</th><th>Status atual</th><th>Aluguel</th></tr></thead>
             <tbody>
-              ${d.imoveisAtual.map(i => `<tr><td class="cell-strong">${escapeHtml(i.codigo || "—")}</td><td>${escapeHtml(i.endereco)}</td><td class="cell-dim">${escapeHtml(i.tipo)}</td><td><span class="badge" data-status="${i.status}">${i.status}</span></td><td>${fmtMoney(i.valorAluguel)}</td></tr>`).join("")}
+              ${d.imoveisAtual.map(i => `<tr><td class="cell-strong">${escapeHtml(i.codigo || "—")}</td><td class="cell-dim">${escapeHtml(i.referenciaCrm || "—")}</td><td>${escapeHtml(i.endereco)}</td><td class="cell-dim">${escapeHtml(i.tipo)}</td><td><span class="badge" data-status="${i.status}">${i.status}</span></td><td>${fmtMoney(i.valorAluguel)}</td></tr>`).join("")}
             </tbody>
           </table>
         </div>
