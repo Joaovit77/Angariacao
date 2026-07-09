@@ -430,9 +430,11 @@ tbody tr:last-child td{ border-bottom:none; }
 }
 
 /* No modo Lista, o topo mostra só busca + Cidade (os demais viram funis de
-   coluna); troca o grid de 6 colunas por um flex enxuto. */
-.pipeline-filterbar.lista{ display:flex; }
-.pipeline-filterbar.lista .search-input{ flex:1; }
+   coluna). Mantém o grid, mas com exatamente 2 colunas — sem tracks vazios que
+   apareceriam se o grid de 6 colunas do Kanban fosse reutilizado aqui. */
+.pipeline-filterbar.lista{
+  grid-template-columns: minmax(240px, 1fr) minmax(130px, 200px);
+}
 
 /* ============================================================
    FILTROS DE COLUNA (estilo Explorer) — só no modo Lista
