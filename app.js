@@ -636,6 +636,7 @@ function renderCurrentView() {
   Object.values(chartInstances).forEach((c) => c && c.destroy());
   chartInstances = {};
   if (bigMap) { bigMap.remove(); bigMap = null; }
+  clearTimeout(pipelineSearchDebounceTimer);
   switch (currentView) {
     case "dashboard": main.innerHTML = viewDashboard(); afterRenderDashboard(); break;
     case "pipeline": main.innerHTML = viewPipelineEnhanced(); afterRenderPipeline(); break;
@@ -1002,7 +1003,7 @@ function viewPipelineEnhanced() {
 
     <div class="pipeline-toolbar pipeline-toolbar-enhanced">
       <div class="pipeline-filterbar">
-        <input type="text" class="search-input pipeline-search" placeholder="Buscar por c&oacute;digo, propriet&aacute;rio, endere&ccedil;o, bairro, cidade, telefone ou tipo..." value="${escapeHtml(pipelineFilters.search)}" oninput="pipelineFilters.search=this.value; renderCurrentView();">
+        <input type="text" class="search-input pipeline-search" placeholder="Buscar por c&oacute;digo, propriet&aacute;rio, endere&ccedil;o, bairro, cidade, telefone ou tipo..." value="${escapeHtml(pipelineFilters.search)}" oninput="onPipelineSearchInput(this.value)">
         <select class="filter-select" onchange="pipelineFilters.tipo=this.value; renderCurrentView();">
           <option value="">Todos os tipos</option>
           ${TIPOS_IMOVEL.map(t => `<option value="${escapeHtml(t)}" ${pipelineFilters.tipo === t ? "selected" : ""}>${escapeHtml(t)}</option>`).join("")}
@@ -1025,7 +1026,7 @@ function viewPipelineEnhanced() {
         </select>
       </div>
       <div class="pipeline-toolbar-side">
-        <span class="pipeline-result-count">${imoveisFiltrados.length} de ${STATE.imoveis.length}</span>
+        <span class="pipeline-result-count" id="pipeline-result-count">${imoveisFiltrados.length} de ${STATE.imoveis.length}</span>
         <div class="view-toggle">
           <button class="${pipelineViewMode === "lista" ? "active" : ""}" onclick="pipelineViewMode='lista'; renderCurrentView();">Lista</button>
           <button class="${pipelineViewMode === "kanban" ? "active" : ""}" onclick="pipelineViewMode='kanban'; closePipelineDrawer(); renderCurrentView();">Kanban</button>
@@ -1033,13 +1034,32 @@ function viewPipelineEnhanced() {
       </div>
     </div>
 
-    ${pipelineViewMode === "kanban" ? renderKanbanEnhanced() : renderListaEnhanced()}
+    <div id="pipeline-results">${pipelineViewMode === "kanban" ? renderKanbanEnhanced() : renderListaEnhanced()}</div>
     ${renderPipelineDrawer()}
   `;
 }
 
 function pipelineUniqueSorted(values) {
   return [...new Set(values.map(v => (v || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+// Digitar na busca do pipeline não pode recriar a barra de filtros/input a
+// cada tecla (isso rouba o foco do campo). Por isso, o texto é aplicado a
+// pipelineFilters.search na hora, mas o re-render fica com debounce e atinge
+// só o container de resultados + contador — o input em si nunca é recriado.
+let pipelineSearchDebounceTimer = null;
+function onPipelineSearchInput(value) {
+  pipelineFilters.search = value;
+  clearTimeout(pipelineSearchDebounceTimer);
+  pipelineSearchDebounceTimer = setTimeout(updatePipelineResults, 180);
+}
+
+function updatePipelineResults() {
+  const resultsEl = document.getElementById("pipeline-results");
+  if (!resultsEl) return; // usuário já saiu da view Pipeline
+  const countEl = document.getElementById("pipeline-result-count");
+  if (countEl) countEl.textContent = `${filteredImoveisEnhanced().length} de ${STATE.imoveis.length}`;
+  resultsEl.innerHTML = pipelineViewMode === "kanban" ? renderKanbanEnhanced() : renderListaEnhanced();
 }
 
 function filteredImoveisEnhanced() {
