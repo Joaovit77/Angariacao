@@ -152,9 +152,10 @@ input, select, textarea{ font-family: inherit; font-size: 14px; }
 .auth-screen{
   min-height: 100vh;
   display:flex; align-items:center; justify-content:center;
-  padding: 20px;
+  padding: 40px 24px;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   background:
     radial-gradient(600px circle at 15% 20%, #d98a4f14, transparent 60%),
     radial-gradient(500px circle at 85% 80%, #6fa8c914, transparent 60%),
@@ -194,6 +195,62 @@ input, select, textarea{ font-family: inherit; font-size: 14px; }
 }
 .auth-hint{ color: var(--text-faint); font-size:11.5px; margin-top:14px; text-align:center; line-height:1.5; }
 .auth-loading{ text-align:center; color: var(--text-faint); font-size:13px; padding: 60px 20px; }
+
+/* ============================================================
+   LANDING / VITRINE NA TELA DE LOGIN
+   Split-screen: apresentação do sistema à esquerda + formulário
+   à direita. Vira apresentação/venda sem perder a função de login.
+   ============================================================ */
+.auth-layout{
+  width:100%; max-width:1000px;
+  display:grid; grid-template-columns: 1.05fr 400px; gap:48px;
+  align-items:center;
+}
+.auth-box-brand{ display:none; } /* no desktop a marca fica na vitrine */
+.auth-layout .auth-box{ max-width:none; margin:0; }
+
+.auth-showcase{ animation: authboxin .4s ease; min-width:0; }
+.auth-showcase-brand{ border:none; padding:0; margin-bottom:26px; }
+.showcase-headline{
+  font-family: var(--font-display); font-weight:700;
+  font-size:33px; line-height:1.12; letter-spacing:.2px;
+  color: var(--text); margin-bottom:14px;
+}
+.showcase-headline .hl{ color: var(--accent-strong); }
+.showcase-sub{
+  color: var(--text-dim); font-size:14.5px; line-height:1.6;
+  max-width:520px; margin-bottom:28px;
+}
+.showcase-features{ list-style:none; display:grid; gap:15px; margin:0 0 26px 0; }
+.showcase-feature{ display:flex; gap:13px; align-items:flex-start; }
+.showcase-feature-ic{
+  flex-shrink:0; width:38px; height:38px; border-radius:10px;
+  display:inline-flex; align-items:center; justify-content:center;
+  background: var(--accent-soft); color: var(--accent-strong);
+  border:1px solid #d98a4f2e;
+}
+.showcase-feature-ic svg{ width:19px; height:19px; }
+.showcase-feature-txt{ font-size:13px; color: var(--text-dim); line-height:1.5; }
+.showcase-feature-txt strong{ display:block; color: var(--text); font-size:13.5px; font-weight:700; margin-bottom:2px; }
+.showcase-foot{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding-top:18px; border-top:1px solid var(--border-soft); }
+.showcase-badge{
+  display:inline-flex; align-items:center; gap:7px;
+  font-size:11.5px; font-weight:700; color: var(--good);
+  background: var(--good-soft); padding:6px 11px; border-radius:20px;
+}
+.showcase-badge svg{ width:14px; height:14px; }
+.showcase-foot-note{ font-size:12px; color: var(--text-faint); }
+
+@media (max-width: 900px){
+  .auth-layout{ grid-template-columns:1fr; max-width:430px; gap:28px; }
+  .showcase-headline{ font-size:26px; }
+  .showcase-sub{ margin-bottom:20px; }
+  .showcase-features{ gap:13px; }
+}
+@media (max-width: 600px){
+  .auth-showcase{ display:none; }
+  .auth-box-brand{ display:flex; }
+}
 .auth-link-sm{
   font-size: 11.5px; font-weight:600; color: var(--accent-strong);
   text-decoration:none;
