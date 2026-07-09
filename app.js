@@ -1907,9 +1907,16 @@ async function saveMeta() {
 let editingAgendaId = null;
 let agendaFilter = "pendentes"; // "pendentes" | "todas" | "atrasadas"
 
+// Janela de "perto o suficiente" para aparecer na aba Pendentes — atrasados,
+// hoje, e o que vence nos próximos 15 dias. O resto (não concluído, mas
+// distante) fica escondido dessa aba para não afogar o que precisa de ação
+// agora, mas continua contando no Resumo e visível na aba Todas.
+const AGENDA_PENDENTES_JANELA_DIAS = 15;
+
 function viewAgenda() {
+  const limitePendentes = addDaysISO(todayISO(), AGENDA_PENDENTES_JANELA_DIAS);
   const items = STATE.agenda.filter(a => {
-    if (agendaFilter === "pendentes") return !a.done;
+    if (agendaFilter === "pendentes") return !a.done && a.date <= limitePendentes;
     if (agendaFilter === "atrasadas") return !a.done && a.date < todayISO();
     return true;
   }).sort((a, b) => a.date.localeCompare(b.date));
@@ -1919,6 +1926,9 @@ function viewAgenda() {
   const dateKeys = Object.keys(grouped).sort();
 
   const atrasadas = STATE.agenda.filter(a => !a.done && a.date < todayISO()).length;
+  const futurosOcultos = agendaFilter === "pendentes"
+    ? STATE.agenda.filter(a => !a.done && a.date > limitePendentes).length
+    : 0;
 
   return `
     <div class="page-head">
@@ -1948,6 +1958,10 @@ function viewAgenda() {
             ${grouped[date].map(a => renderAgendaItemEnhanced(a)).join("")}
           </div>
         `).join("")}
+        ${futurosOcultos > 0 ? `
+          <div class="agenda-future-hint" onclick="agendaFilter='todas'; renderCurrentView();">
+            + ${futurosOcultos} compromisso${futurosOcultos > 1 ? "s" : ""} futuro${futurosOcultos > 1 ? "s" : ""}
+          </div>` : ""}
       </div>
 
       <div class="card">
