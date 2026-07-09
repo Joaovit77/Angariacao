@@ -1,0 +1,182 @@
+{
+  "comentario": "Fixtures de caracterização da Etapa 2 (MIGRATION_NEXT.md). Data de referência congelada: 2026-07-09. Consumidas pelo gerador do oráculo (scripts/gera-oraculo.mjs, que executa o app.js ANTIGO) e pelos testes do port em TypeScript. Não alterar sem regerar o oráculo.",
+  "config": { "comissaoPercent": 50 },
+  "imoveis": [
+    {
+      "id": "f01", "codigo": "F-01", "endereco": "Rua Haddock Lobo, 600", "bairro": "Cerqueira César",
+      "cidade": "São Paulo", "tipo": "Apartamento", "responsavel": "João", "proprietarioNome": "Sílvia Prado",
+      "proprietarioTelefone": "(11) 98888-0001", "valorAluguel": 3600, "dataAngariacao": "2026-06-08",
+      "status": "Locado", "pausadoAte": null,
+      "comissaoRecebida": true, "comissaoRecebidaValor": 1800, "comissaoRecebidaData": "2026-07-06",
+      "statusHistory": [
+        { "status": "Novo contato", "date": "2026-05-20" },
+        { "status": "Visita agendada", "date": "2026-05-25" },
+        { "status": "Em negociação", "date": "2026-05-28" },
+        { "status": "Documentação", "date": "2026-06-02" },
+        { "status": "Angariado", "date": "2026-06-08" },
+        { "status": "Publicado", "date": "2026-06-12" },
+        { "status": "Locado", "date": "2026-07-02" }
+      ]
+    },
+    {
+      "id": "f02", "codigo": "F-02", "endereco": "Rua Legado, 10", "bairro": "Pinheiros",
+      "cidade": "São Paulo", "tipo": "Casa", "responsavel": "João", "proprietarioNome": "Sem Histórico",
+      "proprietarioTelefone": "(11) 98888-0002", "valorAluguel": 2000, "dataAngariacao": "2026-06-01",
+      "status": "Novo contato", "pausadoAte": null,
+      "comissaoRecebida": false, "comissaoRecebidaValor": null, "comissaoRecebidaData": null,
+      "statusHistory": []
+    },
+    {
+      "id": "f03", "codigo": "F-03", "endereco": "Rua Sem Data, 20", "bairro": null,
+      "cidade": null, "tipo": null, "responsavel": null, "proprietarioNome": null,
+      "proprietarioTelefone": null, "valorAluguel": null, "dataAngariacao": null,
+      "status": "Em negociação", "pausadoAte": null,
+      "comissaoRecebida": false, "comissaoRecebidaValor": null, "comissaoRecebidaData": null,
+      "statusHistory": []
+    },
+    {
+      "id": "f04", "codigo": "F-04", "endereco": "Rua Inconsistente, 30", "bairro": "Moema",
+      "cidade": "São Paulo", "tipo": "Apartamento", "responsavel": "Maria", "proprietarioNome": "Status Sem Hist",
+      "proprietarioTelefone": "(11) 98888-0004", "valorAluguel": 2500, "dataAngariacao": "2026-07-01",
+      "status": "Angariado", "pausadoAte": null,
+      "comissaoRecebida": false, "comissaoRecebidaValor": null, "comissaoRecebidaData": null,
+      "statusHistory": [ { "status": "Novo contato", "date": "2026-07-01" } ]
+    },
+    {
+      "id": "f05", "codigo": "F-05", "endereco": "Rua Perdida, 40", "bairro": "Pinheiros",
+      "cidade": "São Paulo", "tipo": "Sobrado", "responsavel": "João", "proprietarioNome": "Antônio Neves",
+      "proprietarioTelefone": "(11) 98888-0005", "valorAluguel": 4800, "dataAngariacao": null,
+      "status": "Perdido", "pausadoAte": null, "motivoPerda": "Optou por outra imobiliária",
+      "comissaoRecebida": false, "comissaoRecebidaValor": null, "comissaoRecebidaData": null,
+      "statusHistory": [
+        { "status": "Novo contato", "date": "2026-06-05" },
+        { "status": "Em negociação", "date": "2026-06-10" },
+        { "status": "Perdido", "date": "2026-06-25" }
+      ]
+    },
+    {
+      "id": "f06", "codigo": "F-06", "endereco": "Rua Pausada, 50", "bairro": "Vila Mariana",
+      "cidade": "São Paulo", "tipo": "Apartamento", "responsavel": "Maria", "proprietarioNome": "Pausado Futuro",
+      "proprietarioTelefone": "(11) 98888-0006", "valorAluguel": 3100, "dataAngariacao": null,
+      "status": "Em negociação", "pausadoAte": "2026-07-20",
+      "comissaoRecebida": false, "comissaoRecebidaValor": null, "comissaoRecebidaData": null,
+      "statusHistory": [
+        { "status": "Novo contato", "date": "2026-06-20" },
+        { "status": "Em negociação", "date": "2026-06-25" }
+      ]
+    },
+    {
+      "id": "f07", "codigo": "F-07", "endereco": "Rua Pausada Hoje, 60", "bairro": "Vila Mariana",
+      "cidade": "Osasco", "tipo": "Kitnet/Studio", "responsavel": "João", "proprietarioNome": "Pausado Hoje",
+      "proprietarioTelefone": "(11) 98888-0007", "valorAluguel": 1500, "dataAngariacao": null,
+      "status": "Visita agendada", "pausadoAte": "2026-07-09",
+      "comissaoRecebida": false, "comissaoRecebidaValor": null, "comissaoRecebidaData": null,
+      "statusHistory": [
+        { "status": "Novo contato", "date": "2026-06-28" },
+        { "status": "Visita agendada", "date": "2026-07-01" }
+      ]
+    },
+    {
+      "id": "f08", "codigo": "F-08", "endereco": "Rua Pausa Vencida, 70", "bairro": "",
+      "cidade": "Osasco", "tipo": "Casa", "responsavel": "", "proprietarioNome": "Pausa Vencida",
+      "proprietarioTelefone": "(11) 98888-0008", "valorAluguel": 2700, "dataAngariacao": null,
+      "status": "Visita agendada", "pausadoAte": "2026-07-08",
+      "comissaoRecebida": false, "comissaoRecebidaValor": null, "comissaoRecebidaData": null,
+      "statusHistory": [
+        { "status": "Novo contato", "date": "2026-06-25" },
+        { "status": "Visita agendada", "date": "2026-07-01" }
+      ]
+    },
+    {
+      "id": "f09", "codigo": "F-09", "endereco": "Rua Limiar Exato, 80", "bairro": "Centro",
+      "cidade": "Osasco", "tipo": "Sala Comercial", "responsavel": "Maria", "proprietarioNome": "Sete Dias",
+      "proprietarioTelefone": "(11) 98888-0009", "valorAluguel": 2200, "dataAngariacao": "2026-07-02",
+      "status": "Novo contato", "pausadoAte": null,
+      "comissaoRecebida": false, "comissaoRecebidaValor": null, "comissaoRecebidaData": null,
+      "statusHistory": [ { "status": "Novo contato", "date": "2026-07-02" } ]
+    },
+    {
+      "id": "f10", "codigo": "F-10", "endereco": "Rua Abaixo Limiar, 90", "bairro": "Centro",
+      "cidade": "Osasco", "tipo": "Terreno", "responsavel": "João", "proprietarioNome": "Seis Dias",
+      "proprietarioTelefone": "(11) 98888-0010", "valorAluguel": 8000, "dataAngariacao": "2026-07-03",
+      "status": "Novo contato", "pausadoAte": null,
+      "comissaoRecebida": false, "comissaoRecebidaValor": null, "comissaoRecebidaData": null,
+      "statusHistory": [ { "status": "Novo contato", "date": "2026-07-03" } ]
+    },
+    {
+      "id": "f11", "codigo": "F-11", "endereco": "Rua Comissão Fallback, 100", "bairro": "Lapa",
+      "cidade": "São Paulo", "tipo": "Apartamento", "responsavel": "Maria", "proprietarioNome": "Sem Valor Informado",
+      "proprietarioTelefone": "(11) 98888-0011", "valorAluguel": 2400, "dataAngariacao": "2026-06-10",
+      "status": "Locado", "pausadoAte": null,
+      "comissaoRecebida": true, "comissaoRecebidaValor": null, "comissaoRecebidaData": "2026-06-22",
+      "statusHistory": [
+        { "status": "Novo contato", "date": "2026-06-01" },
+        { "status": "Angariado", "date": "2026-06-10" },
+        { "status": "Locado", "date": "2026-06-20" }
+      ]
+    },
+    {
+      "id": "f12", "codigo": "F-12", "endereco": "Rua Sem Comissão, 110", "bairro": "Lapa",
+      "cidade": "São Paulo", "tipo": "Casa de Condomínio", "responsavel": "João", "proprietarioNome": "Henrique Barros",
+      "proprietarioTelefone": "(11) 98888-0012", "valorAluguel": 3000, "dataAngariacao": "2026-05-06",
+      "status": "Locado", "pausadoAte": null,
+      "comissaoRecebida": false, "comissaoRecebidaValor": null, "comissaoRecebidaData": null,
+      "statusHistory": [
+        { "status": "Novo contato", "date": "2026-04-24" },
+        { "status": "Angariado", "date": "2026-05-06" },
+        { "status": "Locado", "date": "2026-05-28" }
+      ]
+    },
+    {
+      "id": "f13", "codigo": "F-13", "endereco": "Rua Publicado Pago, 120", "bairro": "Moema",
+      "cidade": "São Paulo", "tipo": "Apartamento", "responsavel": "Maria", "proprietarioNome": "Inconsistente Pago",
+      "proprietarioTelefone": "(11) 98888-0013", "valorAluguel": 5500, "dataAngariacao": "2026-06-05",
+      "status": "Publicado", "pausadoAte": null,
+      "comissaoRecebida": true, "comissaoRecebidaValor": 999, "comissaoRecebidaData": "2026-06-30",
+      "statusHistory": [
+        { "status": "Novo contato", "date": "2026-05-22" },
+        { "status": "Angariado", "date": "2026-06-05" },
+        { "status": "Publicado", "date": "2026-06-15" }
+      ]
+    },
+    {
+      "id": "f14", "codigo": "F-14", "endereco": "Rua Locado Órfão, 130", "bairro": "Brás",
+      "cidade": "São Paulo", "tipo": "Galpão", "responsavel": null, "proprietarioNome": "Sem Data Angariação",
+      "proprietarioTelefone": null, "valorAluguel": 9500, "dataAngariacao": null,
+      "status": "Locado", "pausadoAte": null,
+      "comissaoRecebida": false, "comissaoRecebidaValor": null, "comissaoRecebidaData": null,
+      "statusHistory": [ { "status": "Locado", "date": "2026-07-01" } ]
+    },
+    {
+      "id": "f15", "codigo": "F-15", "endereco": "Rua Tempo Negativo, 140", "bairro": "Brás",
+      "cidade": "São Paulo", "tipo": "Galpão", "responsavel": "João", "proprietarioNome": "Datas Invertidas",
+      "proprietarioTelefone": "(11) 98888-0015", "valorAluguel": 7000, "dataAngariacao": "2026-07-05",
+      "status": "Locado", "pausadoAte": null,
+      "comissaoRecebida": false, "comissaoRecebidaValor": null, "comissaoRecebidaData": null,
+      "statusHistory": [ { "status": "Locado", "date": "2026-07-01" } ]
+    },
+    {
+      "id": "f16", "codigo": "F-16", "endereco": "Rua Histórico Repetido, 150", "bairro": "Pinheiros",
+      "cidade": "São Paulo", "tipo": "Casa", "responsavel": "João", "proprietarioNome": "Voltou Atrás",
+      "proprietarioTelefone": "(11) 98888-0016", "valorAluguel": 4100, "dataAngariacao": "2026-06-01",
+      "status": "Novo contato", "pausadoAte": null,
+      "comissaoRecebida": false, "comissaoRecebidaValor": null, "comissaoRecebidaData": null,
+      "statusHistory": [
+        { "status": "Novo contato", "date": "2026-06-01" },
+        { "status": "Visita agendada", "date": "2026-06-05" },
+        { "status": "Novo contato", "date": "2026-06-20" }
+      ]
+    },
+    {
+      "id": "f17", "codigo": "F-17", "endereco": "Rua Aluguel Zero, 160", "bairro": "",
+      "cidade": "", "tipo": "Outro", "responsavel": "Maria", "proprietarioNome": "Valor Zero",
+      "proprietarioTelefone": "(11) 98888-0017", "valorAluguel": 0, "dataAngariacao": "2026-07-05",
+      "status": "Documentação", "pausadoAte": null,
+      "comissaoRecebida": false, "comissaoRecebidaValor": null, "comissaoRecebidaData": null,
+      "statusHistory": [
+        { "status": "Novo contato", "date": "2026-07-05" },
+        { "status": "Documentação", "date": "2026-07-08" }
+      ]
+    }
+  ]
+}

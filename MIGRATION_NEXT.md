@@ -164,6 +164,28 @@ Regras do processo:
 - Página placeholder renderizando com as custom properties do CSS aplicadas.
 
 ### Etapa 2 — Núcleo puro (a etapa mais importante)
+
+> **Status: ✅ concluída em 2026-07-09.** Módulos criados (TypeScript puro, zero imports de
+> React/Next/Supabase): `web/lib/constantes.ts`, `web/lib/datas.ts`, `web/lib/formatadores.ts`,
+> `web/lib/tipos.ts`, `web/lib/calculo/motor.ts`, `web/lib/calculo/filtros.ts`.
+> **79 testes de caracterização** (Vitest) passando — os valores esperados foram capturados
+> executando o **app.js antigo real** em sandbox Node com relógio congelado
+> (`web/scripts/gera-oraculo.mjs` → `web/tests/oracle-expected.json`, ambos versionados;
+> fixtures em `web/tests/fixtures.json`). Regra de ESLint proibindo `new Date` fora de
+> `lib/datas.ts` ativa e verificada. Decisões/registros:
+> - **Forma alterada, lógica intacta**: as funções do motor recebem `imoveis`/`comissaoPercent`
+>   por parâmetro em vez de ler o `STATE` global; filtros recebem filtros/modo/colunas por
+>   parâmetro em vez dos globals `pipelineFilters`/`pipelineViewMode`/`pipelineColFilters`.
+> - **`escapeHtml` não foi portado**: o escape no React/JSX é automático; a função era a
+>   defesa específica da montagem de HTML por string do app antigo.
+> - Comportamentos legados capturados como contrato (não "corrigir" no port): stale com
+>   exatamente 7 dias parado; `pausadoAte` no próprio dia ainda pausa; status atual
+>   "Angariado" sem entrada no histórico NÃO conta como angariado; comissão recebida sem
+>   valor cai na estimada; comissão "recebida" em imóvel não-locado vale 0; `tempoAteLocacao`
+>   pode ser negativo (excluído da média em `metricsForRange`); histórico com status repetido
+>   (primeira entrada vale para `dateEnteredStatus`, última para `currentStatusSince`).
+> - O oráculo depende do fuso da máquina (America/Sao_Paulo) — regerar sempre na mesma
+>   máquina/fuso, e somente quando as fixtures mudarem.
 - Portar, **antes de qualquer UI**: constantes de negócio; helpers de data (`parseDate`, `daysBetween`, `addDaysISO`, `todayISO`); formatadores (`fmtMoney`, `fmtDate`); **todo o motor de cálculo** (`foiAngariado`, `dateEnteredStatus`, `currentStatusSince`, `isStale`, funções de conversão/coorte/tempo médio, `filteredImoveisEnhanced` na parte pura de filtro).
 - Escrever **testes de caracterização** (ver §9) para cada função, com fixtures derivadas do dataset de teste. Estes testes são a rede de segurança de toda a migração.
 - Nada aqui importa React, Next ou Supabase — é TypeScript puro, executável em Node.

@@ -1,0 +1,584 @@
+{
+  "geradoEm": "2026-07-09T15:00:00.000Z",
+  "fusoHorario": "America/Sao_Paulo",
+  "datas": {
+    "todayISO": "2026-07-09",
+    "currentMonthKey": "2026-07",
+    "last6MonthKeys": [
+      "2026-02",
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07"
+    ],
+    "parseDate_null": null,
+    "parseDate_vazio": null,
+    "parseDate_iso_como_iso": "2026-07-09T03:00:00.000Z",
+    "daysBetween": {
+      "2026-07-01__2026-07-09": 8,
+      "2026-07-09__2026-07-01": -8,
+      "null__2026-07-09": null,
+      "2026-07-09__null": null,
+      "2025-12-31__2026-01-01": 1,
+      "iguais": 0
+    },
+    "addDaysISO": {
+      "2026-01-31_mais1": "2026-02-01",
+      "2026-12-31_mais1": "2027-01-01",
+      "2024-02-28_mais1": "2024-02-29",
+      "2026-07-05_mais60": "2026-09-03",
+      "2026-07-09_menos30": "2026-06-09",
+      "null_mais5": null
+    },
+    "monthKey": {
+      "null": null,
+      "2026-07-09": "2026-07"
+    },
+    "monthLabel": {
+      "2026-07": "jul de 26",
+      "2026-02": "fev de 26",
+      "2025-12": "dez de 25"
+    },
+    "monthLabelLong": {
+      "2026-07": "Julho de 2026",
+      "2026-02": "Fevereiro de 2026"
+    },
+    "shiftMonthKey": {
+      "2026-01_menos1": "2025-12",
+      "2026-12_mais1": "2027-01",
+      "2026-07_menos6": "2026-01",
+      "2026-07_mais0": "2026-07"
+    }
+  },
+  "formatadores": {
+    "fmtDate": {
+      "null": "—",
+      "2026-07-09": "09/07/2026"
+    },
+    "fmtDateLong": {
+      "null": "—",
+      "2026-07-09": "09 de jul. de 2026",
+      "2026-01-02": "02 de jan. de 2026"
+    },
+    "fmtMoney": {
+      "1800": "R$ 1.800",
+      "9500000": "R$ 9.500.000",
+      "null": "—",
+      "nan": "—",
+      "zero": "R$ 0",
+      "1234.56": "R$ 1.235"
+    },
+    "fmtMoneyFull": {
+      "1800": "R$ 1.800,00",
+      "null": "—",
+      "1234.56": "R$ 1.234,56"
+    }
+  },
+  "porImovel": {
+    "f01": {
+      "dateEnteredStatus_NovoContato": "2026-05-20",
+      "dateEnteredStatus_Angariado": "2026-06-08",
+      "dateEnteredStatus_Locado": "2026-07-02",
+      "currentStatusSince": "2026-07-02",
+      "isPausado": false,
+      "isStale": false,
+      "daysInCurrentStatus": 7,
+      "comissaoEstimada": 1800,
+      "comissaoRecebidaValor": 1800,
+      "tempoAteLocacao": 24,
+      "foiAngariado": true,
+      "dataAngariadoEfetiva": "2026-06-08"
+    },
+    "f02": {
+      "dateEnteredStatus_NovoContato": "2026-06-01",
+      "dateEnteredStatus_Angariado": null,
+      "dateEnteredStatus_Locado": null,
+      "currentStatusSince": "2026-06-01",
+      "isPausado": false,
+      "isStale": true,
+      "daysInCurrentStatus": 38,
+      "comissaoEstimada": 1000,
+      "comissaoRecebidaValor": 0,
+      "tempoAteLocacao": null,
+      "foiAngariado": false,
+      "dataAngariadoEfetiva": null
+    },
+    "f03": {
+      "dateEnteredStatus_NovoContato": null,
+      "dateEnteredStatus_Angariado": null,
+      "dateEnteredStatus_Locado": null,
+      "currentStatusSince": null,
+      "isPausado": false,
+      "isStale": false,
+      "daysInCurrentStatus": null,
+      "comissaoEstimada": 0,
+      "comissaoRecebidaValor": 0,
+      "tempoAteLocacao": null,
+      "foiAngariado": false,
+      "dataAngariadoEfetiva": null
+    },
+    "f04": {
+      "dateEnteredStatus_NovoContato": "2026-07-01",
+      "dateEnteredStatus_Angariado": null,
+      "dateEnteredStatus_Locado": null,
+      "currentStatusSince": "2026-07-01",
+      "isPausado": false,
+      "isStale": true,
+      "daysInCurrentStatus": 8,
+      "comissaoEstimada": 1250,
+      "comissaoRecebidaValor": 0,
+      "tempoAteLocacao": null,
+      "foiAngariado": false,
+      "dataAngariadoEfetiva": null
+    },
+    "f05": {
+      "dateEnteredStatus_NovoContato": "2026-06-05",
+      "dateEnteredStatus_Angariado": null,
+      "dateEnteredStatus_Locado": null,
+      "currentStatusSince": "2026-06-25",
+      "isPausado": false,
+      "isStale": false,
+      "daysInCurrentStatus": 14,
+      "comissaoEstimada": 2400,
+      "comissaoRecebidaValor": 0,
+      "tempoAteLocacao": null,
+      "foiAngariado": false,
+      "dataAngariadoEfetiva": null
+    },
+    "f06": {
+      "dateEnteredStatus_NovoContato": "2026-06-20",
+      "dateEnteredStatus_Angariado": null,
+      "dateEnteredStatus_Locado": null,
+      "currentStatusSince": "2026-06-25",
+      "isPausado": true,
+      "isStale": false,
+      "daysInCurrentStatus": 14,
+      "comissaoEstimada": 1550,
+      "comissaoRecebidaValor": 0,
+      "tempoAteLocacao": null,
+      "foiAngariado": false,
+      "dataAngariadoEfetiva": null
+    },
+    "f07": {
+      "dateEnteredStatus_NovoContato": "2026-06-28",
+      "dateEnteredStatus_Angariado": null,
+      "dateEnteredStatus_Locado": null,
+      "currentStatusSince": "2026-07-01",
+      "isPausado": true,
+      "isStale": false,
+      "daysInCurrentStatus": 8,
+      "comissaoEstimada": 750,
+      "comissaoRecebidaValor": 0,
+      "tempoAteLocacao": null,
+      "foiAngariado": false,
+      "dataAngariadoEfetiva": null
+    },
+    "f08": {
+      "dateEnteredStatus_NovoContato": "2026-06-25",
+      "dateEnteredStatus_Angariado": null,
+      "dateEnteredStatus_Locado": null,
+      "currentStatusSince": "2026-07-01",
+      "isPausado": false,
+      "isStale": true,
+      "daysInCurrentStatus": 8,
+      "comissaoEstimada": 1350,
+      "comissaoRecebidaValor": 0,
+      "tempoAteLocacao": null,
+      "foiAngariado": false,
+      "dataAngariadoEfetiva": null
+    },
+    "f09": {
+      "dateEnteredStatus_NovoContato": "2026-07-02",
+      "dateEnteredStatus_Angariado": null,
+      "dateEnteredStatus_Locado": null,
+      "currentStatusSince": "2026-07-02",
+      "isPausado": false,
+      "isStale": true,
+      "daysInCurrentStatus": 7,
+      "comissaoEstimada": 1100,
+      "comissaoRecebidaValor": 0,
+      "tempoAteLocacao": null,
+      "foiAngariado": false,
+      "dataAngariadoEfetiva": null
+    },
+    "f10": {
+      "dateEnteredStatus_NovoContato": "2026-07-03",
+      "dateEnteredStatus_Angariado": null,
+      "dateEnteredStatus_Locado": null,
+      "currentStatusSince": "2026-07-03",
+      "isPausado": false,
+      "isStale": false,
+      "daysInCurrentStatus": 6,
+      "comissaoEstimada": 4000,
+      "comissaoRecebidaValor": 0,
+      "tempoAteLocacao": null,
+      "foiAngariado": false,
+      "dataAngariadoEfetiva": null
+    },
+    "f11": {
+      "dateEnteredStatus_NovoContato": "2026-06-01",
+      "dateEnteredStatus_Angariado": "2026-06-10",
+      "dateEnteredStatus_Locado": "2026-06-20",
+      "currentStatusSince": "2026-06-20",
+      "isPausado": false,
+      "isStale": false,
+      "daysInCurrentStatus": 19,
+      "comissaoEstimada": 1200,
+      "comissaoRecebidaValor": 1200,
+      "tempoAteLocacao": 10,
+      "foiAngariado": true,
+      "dataAngariadoEfetiva": "2026-06-10"
+    },
+    "f12": {
+      "dateEnteredStatus_NovoContato": "2026-04-24",
+      "dateEnteredStatus_Angariado": "2026-05-06",
+      "dateEnteredStatus_Locado": "2026-05-28",
+      "currentStatusSince": "2026-05-28",
+      "isPausado": false,
+      "isStale": false,
+      "daysInCurrentStatus": 42,
+      "comissaoEstimada": 1500,
+      "comissaoRecebidaValor": 0,
+      "tempoAteLocacao": 22,
+      "foiAngariado": true,
+      "dataAngariadoEfetiva": "2026-05-06"
+    },
+    "f13": {
+      "dateEnteredStatus_NovoContato": "2026-05-22",
+      "dateEnteredStatus_Angariado": "2026-06-05",
+      "dateEnteredStatus_Locado": null,
+      "currentStatusSince": "2026-06-15",
+      "isPausado": false,
+      "isStale": true,
+      "daysInCurrentStatus": 24,
+      "comissaoEstimada": 2750,
+      "comissaoRecebidaValor": 0,
+      "tempoAteLocacao": null,
+      "foiAngariado": true,
+      "dataAngariadoEfetiva": "2026-06-05"
+    },
+    "f14": {
+      "dateEnteredStatus_NovoContato": null,
+      "dateEnteredStatus_Angariado": null,
+      "dateEnteredStatus_Locado": "2026-07-01",
+      "currentStatusSince": "2026-07-01",
+      "isPausado": false,
+      "isStale": false,
+      "daysInCurrentStatus": 8,
+      "comissaoEstimada": 4750,
+      "comissaoRecebidaValor": 0,
+      "tempoAteLocacao": null,
+      "foiAngariado": false,
+      "dataAngariadoEfetiva": null
+    },
+    "f15": {
+      "dateEnteredStatus_NovoContato": "2026-07-05",
+      "dateEnteredStatus_Angariado": null,
+      "dateEnteredStatus_Locado": "2026-07-01",
+      "currentStatusSince": "2026-07-01",
+      "isPausado": false,
+      "isStale": false,
+      "daysInCurrentStatus": 8,
+      "comissaoEstimada": 3500,
+      "comissaoRecebidaValor": 0,
+      "tempoAteLocacao": -4,
+      "foiAngariado": false,
+      "dataAngariadoEfetiva": null
+    },
+    "f16": {
+      "dateEnteredStatus_NovoContato": "2026-06-01",
+      "dateEnteredStatus_Angariado": null,
+      "dateEnteredStatus_Locado": null,
+      "currentStatusSince": "2026-06-20",
+      "isPausado": false,
+      "isStale": true,
+      "daysInCurrentStatus": 19,
+      "comissaoEstimada": 2050,
+      "comissaoRecebidaValor": 0,
+      "tempoAteLocacao": null,
+      "foiAngariado": false,
+      "dataAngariadoEfetiva": null
+    },
+    "f17": {
+      "dateEnteredStatus_NovoContato": "2026-07-05",
+      "dateEnteredStatus_Angariado": null,
+      "dateEnteredStatus_Locado": null,
+      "currentStatusSince": "2026-07-08",
+      "isPausado": false,
+      "isStale": false,
+      "daysInCurrentStatus": 1,
+      "comissaoEstimada": 0,
+      "comissaoRecebidaValor": 0,
+      "tempoAteLocacao": null,
+      "foiAngariado": false,
+      "dataAngariadoEfetiva": null
+    }
+  },
+  "metricsForRange": {
+    "todos": {
+      "total": 17,
+      "locados": 5,
+      "perdidosCancelados": 1,
+      "conversaoGeral": 29.411764705882355,
+      "conversaoFechados": 83.33333333333334,
+      "tempoMedio": 18.666666666666668,
+      "comissaoEst": 12750,
+      "comissaoRec": 3000,
+      "valorMedioAluguel": 3641.176470588235
+    },
+    "vazio": {
+      "total": 0,
+      "locados": 0,
+      "perdidosCancelados": 0,
+      "conversaoGeral": 0,
+      "conversaoFechados": 0,
+      "tempoMedio": null,
+      "comissaoEst": 0,
+      "comissaoRec": 0,
+      "valorMedioAluguel": 0
+    },
+    "soLocados": {
+      "total": 5,
+      "locados": 5,
+      "perdidosCancelados": 0,
+      "conversaoGeral": 100,
+      "conversaoFechados": 100,
+      "tempoMedio": 18.666666666666668,
+      "comissaoEst": 12750,
+      "comissaoRec": 3000,
+      "valorMedioAluguel": 5100
+    }
+  },
+  "porMes": {
+    "angariadosNoMes": {
+      "2026-05": [
+        "f12"
+      ],
+      "2026-06": [
+        "f01",
+        "f11",
+        "f13"
+      ],
+      "2026-07": []
+    },
+    "angariadosNoPeriodo": {
+      "2026-06-01__2026-06-30": [
+        "f01",
+        "f11",
+        "f13"
+      ],
+      "2026-06-05__2026-06-10": [
+        "f01",
+        "f11",
+        "f13"
+      ]
+    },
+    "contatadosNoMes": {
+      "2026-06": [
+        "f01",
+        "f02",
+        "f11",
+        "f13",
+        "f16"
+      ],
+      "2026-07": [
+        "f04",
+        "f09",
+        "f10",
+        "f15",
+        "f17"
+      ]
+    },
+    "contatadosNoPeriodo": {
+      "2026-07-01__2026-07-09": [
+        "f04",
+        "f09",
+        "f10",
+        "f15",
+        "f17"
+      ]
+    },
+    "locadosNoMes": {
+      "2026-05": [
+        "f12"
+      ],
+      "2026-06": [
+        "f11"
+      ],
+      "2026-07": [
+        "f01",
+        "f14",
+        "f15"
+      ]
+    }
+  },
+  "groupCount": {
+    "porBairro": {
+      "Cerqueira César": 1,
+      "Pinheiros": 3,
+      "Não informado": 3,
+      "Moema": 2,
+      "Vila Mariana": 2,
+      "Centro": 2,
+      "Lapa": 2,
+      "Brás": 2
+    },
+    "porTipo": {
+      "Apartamento": 5,
+      "Casa": 3,
+      "Não informado": 1,
+      "Sobrado": 1,
+      "Kitnet/Studio": 1,
+      "Sala Comercial": 1,
+      "Terreno": 1,
+      "Casa de Condomínio": 1,
+      "Galpão": 2,
+      "Outro": 1
+    },
+    "porStatus": {
+      "Locado": 5,
+      "Novo contato": 4,
+      "Em negociação": 2,
+      "Angariado": 1,
+      "Perdido": 1,
+      "Visita agendada": 2,
+      "Publicado": 1,
+      "Documentação": 1
+    }
+  },
+  "filtros": {
+    "semFiltro_lista": [
+      "f01",
+      "f02",
+      "f03",
+      "f04",
+      "f05",
+      "f06",
+      "f07",
+      "f08",
+      "f09",
+      "f10",
+      "f11",
+      "f12",
+      "f13",
+      "f14",
+      "f15",
+      "f16",
+      "f17"
+    ],
+    "busca_cidade_osasco": [
+      "f07",
+      "f08",
+      "f09",
+      "f10"
+    ],
+    "busca_telefone": [
+      "f02"
+    ],
+    "busca_com_espacos": [
+      "f01"
+    ],
+    "tipo_apartamento": [
+      "f01",
+      "f04",
+      "f06",
+      "f11",
+      "f13"
+    ],
+    "cidade_osasco": [
+      "f07",
+      "f08",
+      "f09",
+      "f10"
+    ],
+    "status_locado": [
+      "f01",
+      "f11",
+      "f12",
+      "f14",
+      "f15"
+    ],
+    "responsavel_maria": [
+      "f04",
+      "f06",
+      "f09",
+      "f11",
+      "f13",
+      "f17"
+    ],
+    "busca_e_tipo": [
+      "f02",
+      "f08",
+      "f16"
+    ],
+    "col_bairro_vazio_lista": [
+      "f03",
+      "f08",
+      "f17"
+    ],
+    "col_bairro_pinheiros_lista": [
+      "f02",
+      "f05",
+      "f16"
+    ],
+    "col_bairro_pinheiros_kanban": [
+      "f01",
+      "f02",
+      "f03",
+      "f04",
+      "f05",
+      "f06",
+      "f07",
+      "f08",
+      "f09",
+      "f10",
+      "f11",
+      "f12",
+      "f13",
+      "f14",
+      "f15",
+      "f16",
+      "f17"
+    ],
+    "col_combinado_lista": [
+      "f02",
+      "f05",
+      "f12",
+      "f16"
+    ]
+  },
+  "pipelineColDistinct": {
+    "bairro": [
+      "",
+      "Brás",
+      "Centro",
+      "Cerqueira César",
+      "Lapa",
+      "Moema",
+      "Pinheiros",
+      "Vila Mariana"
+    ],
+    "captador": [
+      "",
+      "João",
+      "Maria"
+    ]
+  },
+  "pipelineUniqueSorted": {
+    "bairros": [
+      "Brás",
+      "Centro",
+      "Cerqueira César",
+      "Lapa",
+      "Moema",
+      "Pinheiros",
+      "Vila Mariana"
+    ],
+    "comEspacosEDuplicatas": [
+      "a",
+      "á",
+      "B"
+    ]
+  }
+}
