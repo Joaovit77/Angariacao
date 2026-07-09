@@ -125,6 +125,13 @@ Regras do processo:
 ## 6. Ordem recomendada das etapas
 
 ### Etapa 0 — Preparação (sem código Next)
+
+> **Status: ✅ concluída em 2026-07-09.** Branch `migracao-next` criada; usuário de teste
+> `claude@acesso.com` criado no Supabase e populado via [scripts/seed-teste.mjs](scripts/seed-teste.mjs)
+> (idempotente — regenera o estado exato; credenciais via `SEED_EMAIL`/`SEED_PASSWORD`);
+> baseline numérico completo capturado em [BASELINE_ETAPA0.md](BASELINE_ETAPA0.md) com
+> console limpo em todas as views.
+
 - Criar branch `migracao-next` a partir de `main`. Todo o trabalho acontece nela (ou em branches filhas com PRs para ela).
 - Criar usuário de teste no Supabase e popular com um dataset representativo: imóveis em todos os 10 status, imóveis com histórico multi-status, imóveis stale, imóveis perdidos com motivo, metas de meses distintos, itens de agenda (incluindo auto-gerados), imóveis com e sem lat/lng.
 - Registrar neste documento as versões exatas de Chart.js, Leaflet e Supabase JS usadas nos CDNs do `index.html`.

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "painel-angariacoes",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", ".", "-l", "8123"],
+      "port": 8123
+    }
+  ]
+}
