@@ -274,6 +274,31 @@ input, select, textarea{ font-family: inherit; font-size: 14px; }
 .input-icon-btn.active{ color: var(--accent-strong); }
 .input-icon-btn .eye-icon{ width:16px; height:16px; }
 
+/* Caixinhas da tela de login/cadastro: padroniza e-mail/senha/nome no tema
+   escuro (antes e-mail e senha herdavam o visual padrão do navegador) e
+   garante espaço para o ícone à esquerda — a regra base de input sobrescrevia
+   o padding e o ícone acabava sobre o placeholder "Seu nome". Especificidade
+   maior (.auth-form ...) para vencer a regra base. */
+.auth-form .input-icon-wrap input{
+  width:100%;
+  padding:11px 14px 11px 40px;
+  background: var(--bg-elev-2);
+  border:1px solid var(--border);
+  border-radius:9px;
+  color: var(--text);
+  font-size:14px;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.auth-form .input-icon-wrap input[type="password"]{ padding-right:42px; }
+.auth-form .input-icon-wrap input::placeholder{ color: var(--text-faint); }
+.auth-form .input-icon-wrap input:hover{ border-color: var(--text-faint); }
+.auth-form .input-icon-wrap input:focus{
+  border-color: var(--accent);
+  background: var(--bg-elev-1);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.auth-form .input-icon-wrap:focus-within .input-icon{ color: var(--accent-strong); }
+
 /* ---- Indicador de força de senha ---- */
 .pw-strength{ margin-top:8px; display:flex; align-items:center; gap:8px; }
 .pw-strength-track{
