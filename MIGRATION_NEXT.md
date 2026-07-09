@@ -128,6 +128,10 @@ Regras do processo:
 - Criar branch `migracao-next` a partir de `main`. Todo o trabalho acontece nela (ou em branches filhas com PRs para ela).
 - Criar usuário de teste no Supabase e popular com um dataset representativo: imóveis em todos os 10 status, imóveis com histórico multi-status, imóveis stale, imóveis perdidos com motivo, metas de meses distintos, itens de agenda (incluindo auto-gerados), imóveis com e sem lat/lng.
 - Registrar neste documento as versões exatas de Chart.js, Leaflet e Supabase JS usadas nos CDNs do `index.html`.
+  - **Registrado em 2026-07-09** (fonte: `index.html` linhas 7–10):
+    - Chart.js **4.4.1** (cdnjs, `chart.umd.min.js`)
+    - Leaflet **1.9.4** (cdnjs, JS + CSS)
+    - Supabase JS **@2** (jsdelivr, major 2 sem minor fixado — no npm, fixar em `@supabase/supabase-js@^2` e anotar aqui a versão instalada na Etapa 1)
 - **Capturar o baseline de paridade**: com o usuário de teste, fotografar (screenshots + valores anotados) cada view do app antigo — todos os KPIs do Dashboard, contagens do funil, números de Metas/Insights/Relatórios. Este baseline é o critério de aceitação das etapas 5–8.
 
 ### Etapa 1 — Fundação do projeto Next
