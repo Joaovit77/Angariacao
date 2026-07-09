@@ -637,6 +637,15 @@ function renderCurrentView() {
   chartInstances = {};
   if (bigMap) { bigMap.remove(); bigMap = null; }
   clearTimeout(pipelineSearchDebounceTimer);
+  // Desmonta o listener do dropdown de filtro de coluna e fecha qualquer menu
+  // aberto — evita binding duplicado/vazamento ao reentrar no Pipeline ou trocar
+  // de view.
+  if (pipelineColDocListener) {
+    document.removeEventListener("click", pipelineColDocListener);
+    document.removeEventListener("keydown", pipelineColDocListener);
+    pipelineColDocListener = null;
+  }
+  openPipelineCol = null;
   switch (currentView) {
     case "dashboard": main.innerHTML = viewDashboard(); afterRenderDashboard(); break;
     case "pipeline": main.innerHTML = viewPipelineEnhanced(); afterRenderPipeline(); break;
@@ -869,6 +878,27 @@ function switchView(v) {
 let pipelineFilters = { search: "", tipo: "", bairro: "", status: "", responsavel: "", cidade: "" };
 let pipelineDrawerImovelId = null;
 
+// Filtros de coluna estilo Windows Explorer — só atuam no modo Lista. Arrays
+// vazios = coluna sem filtro; valores marcados combinam em OR dentro da coluna,
+// e colunas diferentes combinam em AND. É tudo estado de exibição no cliente:
+// nada disso vai ao Supabase.
+let pipelineColFilters = { bairro: [], tipo: [], origem: [], status: [], captador: [] };
+let pipelineColSort = { key: null, dir: null }; // key = coluna; dir = "asc" | "desc"
+let openPipelineCol = null;                      // coluna com dropdown aberto, ou null
+let pipelineColMenuPos = { top: 0, left: 0 };    // posição (fixed) do dropdown aberto
+let pipelineColDocListener = null;               // handler de clique-fora/Esc (removido ao sair da view)
+
+// Cada coluna filtrável -> campo no imóvel e rótulo do cabeçalho.
+const PIPELINE_COL_ACCESSOR = {
+  bairro: i => i.bairro,
+  tipo: i => i.tipo,
+  origem: i => i.origemImovel,
+  status: i => i.status,
+  captador: i => i.responsavel,
+};
+const PIPELINE_COL_LABEL = { bairro: "Bairro", tipo: "Tipo", origem: "Origem", status: "Status", captador: "Captador" };
+const PIPELINE_COL_EMPTY = "(vazio)"; // rótulo exibido para valores em branco (mapeado ao "" real)
+
 function viewPipeline() {
   const bairros = [...new Set(STATE.imoveis.map(i => i.bairro).filter(Boolean))].sort();
 
@@ -985,7 +1015,132 @@ function renderLista() {
     </div>`;
 }
 
-function afterRenderPipeline() {}
+function afterRenderPipeline() {
+  // Um único listener de documento fecha o dropdown de coluna aberto ao clicar
+  // fora ou apertar Esc. A referência fica em módulo para ser removida na troca
+  // de view (ver renderCurrentView). Os controles do menu usam onclick inline
+  // com stopPropagation, então sobrevivem aos re-renders de updatePipelineResults
+  // sem religar listeners aqui.
+  pipelineColDocListener = (e) => {
+    if (!openPipelineCol) return;
+    if (e.type === "keydown") {
+      if (e.key === "Escape") { openPipelineCol = null; updatePipelineResults(); }
+      return;
+    }
+    if (!e.target.closest(".col-menu") && !e.target.closest(".col-funnel-btn")) {
+      openPipelineCol = null;
+      updatePipelineResults();
+    }
+  };
+  document.addEventListener("click", pipelineColDocListener);
+  document.addEventListener("keydown", pipelineColDocListener);
+}
+
+// Ordena a Lista: por coluna quando há sort ativo; senão, o padrão (mais
+// recentes primeiro por data de cadastro).
+function sortPipelineLista(imoveis) {
+  const arr = imoveis.slice();
+  if (pipelineColSort.key && PIPELINE_COL_ACCESSOR[pipelineColSort.key]) {
+    const accessor = PIPELINE_COL_ACCESSOR[pipelineColSort.key];
+    const fator = pipelineColSort.dir === "desc" ? -1 : 1;
+    return arr.sort((a, b) => fator * (accessor(a) || "").localeCompare(accessor(b) || "", "pt-BR"));
+  }
+  return arr.sort((a, b) => (b.dataAngariacao || "").localeCompare(a.dataAngariacao || ""));
+}
+
+// Cabeçalho de coluna filtrável: rótulo + seta de ordenação + botão de funil.
+// O funil fica destacado quando há um subconjunto real selecionado (não quando
+// tudo/nada está marcado, espelhando o Explorer).
+function pipelineColHeader(col) {
+  const label = PIPELINE_COL_LABEL[col];
+  const total = pipelineColDistinct(col).length;
+  const n = pipelineColFilters[col].length;
+  const ativo = n > 0 && n < total;
+  const seta = pipelineColSort.key === col ? (pipelineColSort.dir === "desc" ? " ▾" : " ▴") : "";
+  return `
+    <th class="th-filter">
+      <span class="th-filter-inner">
+        <span class="th-filter-label">${label}${seta}</span>
+        <button type="button" class="col-funnel-btn ${ativo ? "active" : ""}" title="Filtrar ${label}" onclick="event.stopPropagation(); togglePipelineColMenu('${col}', event)">
+          <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M1 2h10L7 6.5V11L5 9.5V6.5z" fill="currentColor"/></svg>
+        </button>
+      </span>
+      ${openPipelineCol === col ? pipelineColMenu(col) : ""}
+    </th>`;
+}
+
+function pipelineColMenu(col) {
+  const distintos = pipelineColDistinct(col);
+  const selecionados = pipelineColFilters[col];
+  const itens = distintos.map((v, idx) => {
+    const marcado = selecionados.includes(v) ? "checked" : "";
+    const rotulo = v === "" ? PIPELINE_COL_EMPTY : v;
+    return `
+      <label class="col-menu-item">
+        <input type="checkbox" ${marcado} onclick="event.stopPropagation(); togglePipelineColValue('${col}', ${idx})">
+        <span>${escapeHtml(rotulo)}</span>
+      </label>`;
+  }).join("");
+  const sortAsc = pipelineColSort.key === col && pipelineColSort.dir === "asc" ? "active" : "";
+  const sortDesc = pipelineColSort.key === col && pipelineColSort.dir === "desc" ? "active" : "";
+  return `
+    <div class="col-menu" style="top:${pipelineColMenuPos.top}px; left:${pipelineColMenuPos.left}px;" onclick="event.stopPropagation();">
+      <div class="col-menu-sort">
+        <button type="button" class="${sortAsc}" onclick="setPipelineColSort('${col}','asc')">A &rarr; Z</button>
+        <button type="button" class="${sortDesc}" onclick="setPipelineColSort('${col}','desc')">Z &rarr; A</button>
+      </div>
+      <div class="col-menu-actions">
+        <button type="button" onclick="pipelineColSelectAll('${col}')">Selecionar todos</button>
+        <button type="button" onclick="pipelineColClear('${col}')">Limpar</button>
+      </div>
+      <div class="col-menu-list">${itens || `<div class="col-menu-empty">Sem valores</div>`}</div>
+    </div>`;
+}
+
+function togglePipelineColMenu(col, ev) {
+  if (openPipelineCol === col) { openPipelineCol = null; updatePipelineResults(); return; }
+  openPipelineCol = col;
+  const r = ev.currentTarget.getBoundingClientRect();
+  // Dropdown em position:fixed (coords de viewport) para escapar do overflow da
+  // tabela; alinhado pela direita do botão-funil.
+  pipelineColMenuPos = { top: Math.round(r.bottom + 4), left: Math.round(r.left) };
+  updatePipelineResults();
+  requestAnimationFrame(ajustarPosicaoMenuColuna);
+}
+
+// Reposiciona o menu para dentro da viewport caso vaze pela direita.
+function ajustarPosicaoMenuColuna() {
+  const menu = document.querySelector(".col-menu");
+  if (!menu) return;
+  const r = menu.getBoundingClientRect();
+  const excesso = r.right - (window.innerWidth - 8);
+  if (excesso > 0) menu.style.left = Math.max(8, r.left - excesso) + "px";
+}
+
+function setPipelineColSort(col, dir) {
+  pipelineColSort = { key: col, dir };
+  openPipelineCol = null;
+  updatePipelineResults();
+}
+
+function togglePipelineColValue(col, idx) {
+  const valor = pipelineColDistinct(col)[idx];
+  if (valor === undefined) return;
+  const arr = pipelineColFilters[col];
+  const pos = arr.indexOf(valor);
+  if (pos >= 0) arr.splice(pos, 1); else arr.push(valor);
+  updatePipelineResults();
+}
+
+function pipelineColSelectAll(col) {
+  pipelineColFilters[col] = pipelineColDistinct(col).slice();
+  updatePipelineResults();
+}
+
+function pipelineColClear(col) {
+  pipelineColFilters[col] = [];
+  updatePipelineResults();
+}
 
 function viewPipelineEnhanced() {
   const bairros = pipelineUniqueSorted(STATE.imoveis.map(i => i.bairro));
@@ -1002,8 +1157,9 @@ function viewPipelineEnhanced() {
     </div>
 
     <div class="pipeline-toolbar pipeline-toolbar-enhanced">
-      <div class="pipeline-filterbar">
+      <div class="pipeline-filterbar ${pipelineViewMode === "lista" ? "lista" : ""}">
         <input type="text" class="search-input pipeline-search" placeholder="Buscar por c&oacute;digo, propriet&aacute;rio, endere&ccedil;o, bairro, cidade, telefone ou tipo..." value="${escapeHtml(pipelineFilters.search)}" oninput="onPipelineSearchInput(this.value)">
+        ${pipelineViewMode === "kanban" ? `
         <select class="filter-select" onchange="pipelineFilters.tipo=this.value; renderCurrentView();">
           <option value="">Todos os tipos</option>
           ${TIPOS_IMOVEL.map(t => `<option value="${escapeHtml(t)}" ${pipelineFilters.tipo === t ? "selected" : ""}>${escapeHtml(t)}</option>`).join("")}
@@ -1020,6 +1176,7 @@ function viewPipelineEnhanced() {
           <option value="">Todos os captadores</option>
           ${responsaveis.map(r => `<option value="${escapeHtml(r)}" ${pipelineFilters.responsavel === r ? "selected" : ""}>${escapeHtml(r)}</option>`).join("")}
         </select>
+        ` : ""}
         <select class="filter-select" onchange="pipelineFilters.cidade=this.value; renderCurrentView();">
           <option value="">Todas as cidades</option>
           ${cidades.map(c => `<option value="${escapeHtml(c)}" ${pipelineFilters.cidade === c ? "selected" : ""}>${escapeHtml(c)}</option>`).join("")}
@@ -1028,8 +1185,8 @@ function viewPipelineEnhanced() {
       <div class="pipeline-toolbar-side">
         <span class="pipeline-result-count" id="pipeline-result-count">${imoveisFiltrados.length} de ${STATE.imoveis.length}</span>
         <div class="view-toggle">
-          <button class="${pipelineViewMode === "lista" ? "active" : ""}" onclick="pipelineViewMode='lista'; renderCurrentView();">Lista</button>
-          <button class="${pipelineViewMode === "kanban" ? "active" : ""}" onclick="pipelineViewMode='kanban'; closePipelineDrawer(); renderCurrentView();">Kanban</button>
+          <button class="${pipelineViewMode === "lista" ? "active" : ""}" onclick="setPipelineViewMode('lista')">Lista</button>
+          <button class="${pipelineViewMode === "kanban" ? "active" : ""}" onclick="setPipelineViewMode('kanban')">Kanban</button>
         </div>
       </div>
     </div>
@@ -1070,6 +1227,9 @@ function filteredImoveisEnhanced() {
     if (pipelineFilters.status && i.status !== pipelineFilters.status) return false;
     if (pipelineFilters.responsavel && i.responsavel !== pipelineFilters.responsavel) return false;
     if (pipelineFilters.cidade && i.cidade !== pipelineFilters.cidade) return false;
+    // Filtros de coluna (estilo Explorer) só atuam na Lista — no Kanban são
+    // ignorados, para não alterar o comportamento existente do quadro.
+    if (pipelineViewMode === "lista" && !matchesPipelineColFilters(i)) return false;
     const haystack = [
       i.codigo, i.proprietarioNome, i.endereco, i.bairro, i.cidade,
       i.proprietarioTelefone, i.tipo,
@@ -1077,6 +1237,46 @@ function filteredImoveisEnhanced() {
     if (s && !haystack.includes(s)) return false;
     return true;
   });
+}
+
+// AND entre colunas, OR dentro de cada coluna. Coluna sem valores marcados não
+// filtra nada.
+function matchesPipelineColFilters(i) {
+  for (const col of Object.keys(pipelineColFilters)) {
+    const selecionados = pipelineColFilters[col];
+    if (!selecionados.length) continue;
+    const valor = (PIPELINE_COL_ACCESSOR[col](i) || "").trim();
+    if (!selecionados.includes(valor)) return false;
+  }
+  return true;
+}
+
+// Valores distintos de uma coluna (ordem estável pt-BR). Vazio vira "" — a
+// checklist o exibe como "(vazio)".
+function pipelineColDistinct(col) {
+  const accessor = PIPELINE_COL_ACCESSOR[col];
+  const valores = STATE.imoveis.map(i => (accessor(i) || "").trim());
+  return [...new Set(valores)].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+function setPipelineViewMode(mode) {
+  if (mode === pipelineViewMode) return;
+  // Ao entrar na Lista, os selects single-value do topo ficam ocultos; migramos
+  // seus valores ativos para os arrays de coluna equivalentes, para nenhum filtro
+  // ficar ativo e invisível. Cidade não tem coluna, então permanece no topo.
+  if (mode === "lista") migrarFiltrosTopoParaColuna();
+  pipelineViewMode = mode;
+  if (mode === "kanban") { openPipelineCol = null; closePipelineDrawer(); }
+  renderCurrentView();
+}
+
+function migrarFiltrosTopoParaColuna() {
+  const mapa = { tipo: "tipo", bairro: "bairro", status: "status", responsavel: "captador" };
+  for (const [campo, col] of Object.entries(mapa)) {
+    const valor = (pipelineFilters[campo] || "").trim();
+    if (valor && !pipelineColFilters[col].includes(valor)) pipelineColFilters[col].push(valor);
+    pipelineFilters[campo] = "";
+  }
 }
 
 function renderKanbanEnhanced() {
@@ -1100,7 +1300,7 @@ function renderKanbanEnhanced() {
 }
 
 function renderListaEnhanced() {
-  const imoveis = filteredImoveisEnhanced().sort((a, b) => (b.dataAngariacao || "").localeCompare(a.dataAngariacao || ""));
+  const imoveis = sortPipelineLista(filteredImoveisEnhanced());
   if (imoveis.length === 0) {
     return `<div class="empty-state card"><h3>Nenhum im&oacute;vel encontrado</h3><p>Ajuste os filtros ou cadastre uma nova angaria&ccedil;&atilde;o.</p></div>`;
   }
@@ -1108,7 +1308,7 @@ function renderListaEnhanced() {
     <div class="card table-scroll pipeline-list-card">
       <table>
         <thead><tr>
-          <th>C&oacute;digo</th><th>Endere&ccedil;o</th><th>Bairro</th><th>Tipo</th><th>Origem</th><th>Aluguel</th><th>Status</th><th>Cadastro</th><th>Captador</th><th></th>
+          <th>C&oacute;digo</th><th>Endere&ccedil;o</th>${pipelineColHeader("bairro")}${pipelineColHeader("tipo")}${pipelineColHeader("origem")}<th>Aluguel</th>${pipelineColHeader("status")}<th>Cadastro</th>${pipelineColHeader("captador")}<th></th>
         </tr></thead>
         <tbody>
           ${imoveis.map(i => `

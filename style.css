@@ -429,6 +429,69 @@ tbody tr:last-child td{ border-bottom:none; }
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
+/* No modo Lista, o topo mostra só busca + Cidade (os demais viram funis de
+   coluna); troca o grid de 6 colunas por um flex enxuto. */
+.pipeline-filterbar.lista{ display:flex; }
+.pipeline-filterbar.lista .search-input{ flex:1; }
+
+/* ============================================================
+   FILTROS DE COLUNA (estilo Explorer) — só no modo Lista
+   ============================================================ */
+th.th-filter{ position:relative; }
+.th-filter-inner{ display:inline-flex; align-items:center; gap:6px; }
+.th-filter-label{ white-space:nowrap; }
+.col-funnel-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:20px; height:20px; padding:0;
+  background:transparent; border:1px solid transparent; border-radius:4px;
+  color: var(--text-faint); line-height:0;
+  transition: color .12s ease, background .12s ease, border-color .12s ease;
+}
+.col-funnel-btn:hover{ color: var(--text); background: var(--bg-elev-3); }
+.col-funnel-btn.active{
+  color: var(--accent-strong); background: var(--accent-soft); border-color: var(--accent);
+}
+
+.col-menu{
+  position:fixed;
+  z-index:4600;
+  width:230px;
+  background: var(--bg-elev-2);
+  border:1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 14px 34px rgba(0,0,0,.42);
+  padding:8px;
+  text-transform:none; letter-spacing:normal;
+  animation: fadein .12s ease;
+}
+.col-menu-sort{ display:flex; gap:6px; margin-bottom:6px; }
+.col-menu-sort button{
+  flex:1; padding:6px 8px; font-size:12px; font-weight:600;
+  background: var(--bg-elev-3); border:1px solid var(--border); border-radius:4px; color: var(--text-dim);
+}
+.col-menu-sort button:hover{ color: var(--text); }
+.col-menu-sort button.active{ background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
+.col-menu-actions{ display:flex; gap:6px; margin-bottom:6px; }
+.col-menu-actions button{
+  flex:1; padding:5px 8px; font-size:11px; font-weight:600;
+  background:transparent; border:1px solid var(--border-soft); border-radius:4px; color: var(--text-dim);
+}
+.col-menu-actions button:hover{ color: var(--accent-strong); border-color: var(--accent); }
+.col-menu-list{
+  max-height:240px; overflow-y:auto;
+  border-top:1px solid var(--border-soft); padding-top:6px;
+}
+.col-menu-item{
+  display:flex; align-items:center; gap:8px;
+  padding:5px 6px; border-radius:4px; margin:0;
+  font-size:12.5px; font-weight:500; color: var(--text);
+  text-transform:none; letter-spacing:normal; cursor:pointer;
+}
+.col-menu-item:hover{ background: var(--bg-elev-3); }
+.col-menu-item input{ accent-color: var(--accent); cursor:pointer; }
+.col-menu-item span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.col-menu-empty{ font-size:12px; color: var(--text-faint); padding:6px; }
+
 .pipeline-drawer-backdrop{
   position:fixed;
   inset:0;
