@@ -1948,11 +1948,17 @@ function viewAgenda() {
           </div>
         </div>
 
-        ${dateKeys.length === 0 ? `
+        ${dateKeys.length === 0 ? (
+          agendaFilter === "pendentes" && futurosOcultos > 0 ? `
+          <div class="empty-state card">
+            <h3>Nada para os próximos 15 dias</h3>
+            <p>Você tem ${futurosOcultos} compromisso${futurosOcultos > 1 ? "s" : ""} pendente${futurosOcultos > 1 ? "s" : ""} mais à frente.</p>
+          </div>` : `
           <div class="empty-state card">
             <h3>Nada por aqui</h3>
             <p>Sem compromissos ${agendaFilter === "pendentes" ? "pendentes" : agendaFilter === "atrasadas" ? "atrasados" : "cadastrados"} no momento.</p>
-          </div>` : dateKeys.map(date => `
+          </div>`
+        ) : dateKeys.map(date => `
           <div class="agenda-day-group">
             <div class="agenda-day-label ${date === todayISO() ? "today" : ""}">${date === todayISO() ? "Hoje · " : ""}${fmtDateLong(date)}</div>
             ${grouped[date].map(a => renderAgendaItemEnhanced(a)).join("")}
@@ -1974,7 +1980,14 @@ function viewAgenda() {
         <div class="divider"></div>
         <div class="card-title">Por tipo</div>
         <div style="display:flex; flex-direction:column; gap:8px;">
-          ${AGENDA_TYPES.map(t => `<div class="agenda-item-meta" style="justify-content:space-between; display:flex;"><span class="agenda-type-tag" data-type="${t}">${t}</span> <span>${STATE.agenda.filter(a => a.type === t && !a.done).length}</span></div>`).join("")}
+          ${(() => {
+            const porTipo = AGENDA_TYPES
+              .map(t => ({ t, count: STATE.agenda.filter(a => a.type === t && !a.done).length }))
+              .filter(x => x.count > 0)
+              .sort((a, b) => b.count - a.count);
+            if (porTipo.length === 0) return `<div class="agenda-item-meta">Nenhum pendente</div>`;
+            return porTipo.map(({ t, count }) => `<div class="agenda-item-meta" style="justify-content:space-between; display:flex;"><span class="agenda-type-tag" data-type="${t}">${t}</span> <span style="min-width:16px; text-align:right;">${count}</span></div>`).join("");
+          })()}
         </div>
       </div>
     </div>
