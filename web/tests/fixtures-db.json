@@ -1,0 +1,80 @@
+{
+  "comentario": "Linhas snake_case como o Supabase/PostgREST retorna, para caracterizar fromDb* — e itens camelCase de agenda para toDbAgenda. Cobrem: linha completa, linha toda nula, zeros/strings numéricas (Number coercion) e status_history null. Não alterar sem regerar o oráculo dos mapeadores.",
+  "imoveisRows": [
+    {
+      "id": "r1", "user_id": "user-outro", "codigo": "DB-01", "referencia_crm": "CRM-778",
+      "cep": "01415-001", "endereco": "Rua Haddock Lobo, 600", "bairro": "Cerqueira César",
+      "cidade": "São Paulo", "tipo": "Apartamento", "quartos": 2, "banheiros": 2, "vagas": 1,
+      "valor_aluguel": "3500.5", "valor_condominio": 800, "proprietario_nome": "Sílvia Prado",
+      "proprietario_telefone": "(11) 98888-0009", "forma_abordagem": "Indicação",
+      "origem_imovel": "Ex-cliente", "imobiliaria_concorrente": "Rival Ltda",
+      "latitude": -23.559, "longitude": -46.664, "data_angariacao": "2026-06-08",
+      "responsavel": "João Vitor", "status": "Locado", "observacoes": "Portaria 24h",
+      "status_history": [
+        { "status": "Novo contato", "date": "2026-05-20" },
+        { "status": "Angariado", "date": "2026-06-08" },
+        { "status": "Locado", "date": "2026-07-02" }
+      ],
+      "pausado_ate": null, "motivo_perda": null, "motivo_perda_outro": null,
+      "comissao_recebida": true, "comissao_recebida_valor": "1800", "comissao_recebida_data": "2026-07-06",
+      "created_at": "2026-05-20T10:00:00+00:00", "updated_at": "2026-07-02T09:30:00+00:00"
+    },
+    {
+      "id": "r2", "user_id": "user-outro", "codigo": null, "referencia_crm": null,
+      "cep": null, "endereco": "Rua Toda Nula, 1", "bairro": null,
+      "cidade": null, "tipo": null, "quartos": null, "banheiros": null, "vagas": null,
+      "valor_aluguel": null, "valor_condominio": null, "proprietario_nome": null,
+      "proprietario_telefone": null, "forma_abordagem": null,
+      "origem_imovel": null, "imobiliaria_concorrente": null,
+      "latitude": null, "longitude": null, "data_angariacao": null,
+      "responsavel": null, "status": "Novo contato", "observacoes": null,
+      "status_history": null,
+      "pausado_ate": null, "motivo_perda": null, "motivo_perda_outro": null,
+      "comissao_recebida": null, "comissao_recebida_valor": null, "comissao_recebida_data": null,
+      "created_at": "2026-07-09T12:00:00+00:00", "updated_at": "2026-07-09T12:00:00+00:00"
+    },
+    {
+      "id": "r3", "user_id": "user-outro", "codigo": "", "referencia_crm": "",
+      "cep": "", "endereco": "Rua Zeros, 0", "bairro": "",
+      "cidade": "", "tipo": "Kitnet/Studio", "quartos": 0, "banheiros": 0, "vagas": 0,
+      "valor_aluguel": 0, "valor_condominio": 0, "proprietario_nome": "",
+      "proprietario_telefone": "", "forma_abordagem": "",
+      "origem_imovel": "", "imobiliaria_concorrente": "",
+      "latitude": 0, "longitude": 0, "data_angariacao": "2026-07-01",
+      "responsavel": "", "status": "Perdido", "observacoes": "",
+      "status_history": [
+        { "status": "Novo contato", "date": "2026-07-01" },
+        { "status": "Perdido", "date": "2026-07-08" }
+      ],
+      "pausado_ate": "2026-07-15", "motivo_perda": "Outro", "motivo_perda_outro": "Vai reformar",
+      "comissao_recebida": false, "comissao_recebida_valor": 0, "comissao_recebida_data": null,
+      "created_at": "2026-07-01T08:00:00+00:00", "updated_at": "2026-07-08T18:00:00+00:00"
+    }
+  ],
+  "agendaRows": [
+    {
+      "id": "a1", "user_id": "user-outro", "title": "Verificar disponibilidade — DB-01",
+      "type": "Follow-up", "date": "2026-08-07", "imovel_id": "r1",
+      "notes": "Lembrete automático", "done": false, "is_verificacao_disponibilidade": true,
+      "created_at": "2026-06-08T10:00:00+00:00"
+    },
+    {
+      "id": "a2", "user_id": "user-outro", "title": "Item mínimo",
+      "type": "Pendência", "date": "2026-07-10", "imovel_id": null,
+      "notes": null, "done": null, "is_verificacao_disponibilidade": null,
+      "created_at": "2026-07-09T12:00:00+00:00"
+    }
+  ],
+  "agendaCamel": [
+    {
+      "id": "c1", "title": "Retornar ligação", "type": "Retorno ao proprietário",
+      "date": "2026-07-10", "imovelId": "r1", "notes": "Confirmar horário",
+      "done": true, "isVerificacaoDisponibilidade": false
+    },
+    {
+      "id": "c2", "title": "Sem vínculo", "type": "Visita",
+      "date": "2026-07-12", "imovelId": null, "notes": "",
+      "done": false, "isVerificacaoDisponibilidade": false
+    }
+  ]
+}

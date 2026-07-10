@@ -191,6 +191,23 @@ Regras do processo:
 - Nada aqui importa React, Next ou Supabase — é TypeScript puro, executável em Node.
 
 ### Etapa 3 — Camada de dados
+
+> **Status: ✅ concluída em 2026-07-09.** Criados `web/lib/persistencia/mapeadores.ts`
+> (toDb/fromDb de imóvel e agenda + tipos das linhas do banco), `web/lib/persistencia/supabase.ts`
+> (singleton com as env `NEXT_PUBLIC_*`), `web/lib/persistencia/carregarEstado.ts` (port do
+> `loadState`) e `web/lib/store.ts` (**Zustand 5.0.14** — decisão fechada, espelho fiel do
+> `STATE` legado com `setEstado`/`limparEstado`). Suíte total: **136 testes verdes**.
+> - Mapeadores caracterizados contra o app antigo real (`scripts/gera-oraculo-mapeadores.mjs`
+>   → `tests/oracle-mapeadores.json`), incluindo ida-e-volta e as assimetrias intencionais
+>   (toDb: `""`→`null`, aluguel/condomínio `null`→`0`; fromDb: `null`→`""` em textos,
+>   `Number()` nos numéricos, `status_history null`→`[]`, 0 preservado em quartos/vagas).
+> - `carregarEstado` retorna o estado em vez de mutar global; toast/erro ficam no chamador
+>   (Etapa 4). Comportamento legado preservado: erro em `user_config` NÃO derruba o
+>   carregamento (o app antigo só checava imoveis/metas/agenda) — default `comissaoPercent=100`.
+> - `toDbImovel`/`toDbAgenda` recebem `userId` por parâmetro (antes: global `currentUser`).
+> - **Validação ao vivo executada**: `carregarEstado` contra o Supabase real, logado como o
+>   usuário de teste, reproduziu exatamente o baseline da Etapa 0 (14 imóveis, contagens por
+>   status idênticas ao Kanban, 8 agenda/3 verificações, 3 metas, comissão 50%).
 - Tipos `Imovel`, `Meta`, `AgendaItem`, `UserConfig`.
 - Portar `toDbImovel`/`fromDbImovel`, `toDbAgenda`/`fromDbAgenda` e os demais mapeadores, com testes de ida-e-volta (`fromDb(toDb(x)) ≅ x`).
 - Cliente Supabase singleton (browser).
