@@ -1,83 +1,160 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Este arquivo orienta o Claude Code (claude.ai/code) ao trabalhar neste repositório.
 
-## What this is
+## O que é
 
-"Painel de Angariações" — a single-tenant-per-login CRM/dashboard for real-estate agents to track property acquisition (angariação) for rental listings, from first contact through to a signed lease. UI and all code comments/strings are in Brazilian Portuguese.
+"Painel de Angariações" — um CRM/dashboard single-tenant-por-login para corretores de imóveis
+acompanharem a **angariação (captação) de imóveis para locação**, do primeiro contato com o
+proprietário até o imóvel locado. Toda a UI, strings, comentários e mensagens são em **português
+do Brasil**.
 
-## Stack and structure
+> **Migração concluída (2026-07).** O app era um site estático puro (`index.html` + `app.js` +
+> `style.css`) e foi migrado para **Next.js (App Router) + TypeScript**, hoje na pasta
+> [`web/`](web/). O app antigo foi removido. O histórico completo da migração — decisões, achados e
+> pós-mortem — está em [MIGRATION_NEXT.md](MIGRATION_NEXT.md); a lista de correções que ficaram
+> para depois da paridade está na **§15** daquele documento e continua valendo.
 
-Pure static site, no build step, no package manager, no bundler:
+## Stack e estrutura
 
-- [index.html](index.html) — single HTML shell (login screen + app shell with empty `#main-content`); loads Chart.js, Leaflet, and Supabase JS via CDN `<script>` tags, then `supabase-config.js`, `style.css`, `app.js`.
-- [app.js](app.js) — the entire application (~2900 lines): state, data mapping, calculations, view rendering, modals, auth. Everything is global functions and a global `STATE` object — there are no modules/imports/build tooling.
-- [style.css](style.css) — all styling, driven by CSS custom properties defined at the top under `:root`.
-- [supabase-config.js](supabase-config.js) — holds `SUPABASE_URL` / `SUPABASE_ANON_KEY` and creates the global `supabaseClient`. The anon key is meant to be public; per-row access is enforced entirely by Postgres RLS policies, not app logic.
-- [supabase-schema.sql](supabase-schema.sql) — full DB schema (`imoveis`, `metas`, `agenda`, `user_config` tables) with RLS policies scoping every row to `auth.uid() = user_id`. Idempotent — safe to re-run in the Supabase SQL editor.
-- [DEPLOY.md](DEPLOY.md) — end-user deployment walkthrough (Supabase project setup + Vercel static deploy). No CI/build config exists; Vercel serves the files as-is.
+O que fica na **raiz** do repositório:
 
-## Running / testing locally
+- [supabase-schema.sql](supabase-schema.sql) — schema completo do banco (tabelas `imoveis`, `metas`,
+  `agenda`, `user_config`) com as políticas RLS que escopam cada linha a `auth.uid() = user_id`.
+  Idempotente — pode ser re-rodado no SQL editor do Supabase. **É a fonte de verdade do schema.**
+- [DEPLOY.md](DEPLOY.md) — passo a passo de deploy (Supabase + Vercel com Root Directory `web`),
+  runbook de cutover e rollback.
+- [MIGRATION_NEXT.md](MIGRATION_NEXT.md) / [BASELINE_ETAPA0.md](BASELINE_ETAPA0.md) — guia da
+  migração e o baseline numérico de paridade (contrato de aceitação das views).
+- [scripts/seed-teste.mjs](scripts/seed-teste.mjs) — semeia a conta de teste no Supabase
+  (idempotente; credenciais via `SEED_EMAIL`/`SEED_PASSWORD`). Ver §15 do MIGRATION_NEXT para um
+  bug conhecido do re-seed em `user_config`.
 
-There is no build, lint, or test command — this is hand-written vanilla JS/CSS/HTML served statically. To work on it locally, serve the directory with any static file server (e.g. `npx serve .` or the VS Code Live Server extension) and open it in a browser; a real Supabase project (see `supabase-config.js` + `supabase-schema.sql`) is required for auth and data to work, since there is no offline/mock mode.
+O aplicativo vive em **[`web/`](web/)** — Next 16 (App Router, Turbopack), TypeScript, sem Tailwind:
 
-Verify changes by exercising the UI in a browser directly — check browser devtools console for JS errors, since there is no test suite or type checker.
+- **`web/app/`** — App Router. `layout.tsx` (raiz: monta `SessaoProvider` + `Toasts`, importa o CSS
+  do Leaflet e o `style.css`), `page.tsx` (tela de acesso e queda do link de recuperação de senha),
+  e o grupo **`(painel)/`** com o shell autenticado (`layout.tsx`) e uma rota por view
+  (`dashboard`, `pipeline`, `metas`, `agenda`, `insights`, `mapa`, `relatorios`, `roadmap`).
+- **`web/app/style.css`** — o CSS do app antigo copiado **sem alterações**, dirigido por custom
+  properties em `:root`. Não há redesign; classes e tokens são os mesmos.
+- **`web/lib/`** — todo o núcleo sem UI (ver "Arquitetura" abaixo). Não importa React/Next.
+- **`web/components/`** — os componentes React por view e os modais.
+- **`web/tests/`** — Vitest. Testes de caracterização + o baseline como teste executável.
 
-## Architecture
+Variáveis de ambiente: `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+(em `web/.env.local` localmente; nas configs do projeto na Vercel). A anon key é **pública por
+design** — o isolamento é 100% RLS. Nenhum outro segredo entra no cliente.
 
-### `app.js` is organized into clearly numbered sections (see the header comment for the full list); use it as your map rather than scanning the whole file:
+## Rodar / testar localmente
 
-1. **Constants & global state** — `STATUS_FLOW` (the funnel: Novo contato → Visita agendada → ... → Locado), `STATUS_TERMINAL_NEGATIVE` (Sem resposta/Perdido/Cancelado — lateral exits, not part of the funnel), and the single global `STATE = { imoveis, metas, agenda, config }`.
-2. **Persistence** — `toDbImovel`/`fromDbImovel` and `toDbAgenda`/`fromDbAgenda` map between the app's camelCase objects and Supabase's snake_case columns. `loadState()` fetches all four tables in parallel on login. There is no per-mutation reconciliation with the server: writes are optimistic — the calling function updates `STATE` locally and calls `refresh()`/`renderCurrentView()` directly after the Supabase call succeeds.
-3. **Utilities** — date helpers (all dates are ISO `YYYY-MM-DD` strings, parsed via `parseDate`/`daysBetween`/`addDaysISO`), formatters (`fmtMoney`, `fmtDate`), `toast()` for notifications, `escapeHtml()` (used everywhere views build strings — any new HTML-string-building code must escape user data through this).
-4. **Calculation engine** — the single source of truth for all derived metrics, shared by Dashboard/Metas/Insights/Relatórios so they never disagree. Key concept: **`statusHistory`** (an array of `{status, date}` on each imóvel) drives everything — `dateEnteredStatus()`, `currentStatusSince()`, `isStale()` (≥`STALE_DAYS_THRESHOLD` days without a status change), and `foiAngariado()` (an imóvel only counts as "angariado" once its history actually records entering the "Angariado" status — just creating the record or making first contact does not count).
-5. **Views** — each view is a pair: a `viewX()` function returning an HTML string assigned to `#main-content`, and (where the view needs post-render JS wiring, e.g. Chart.js/Leaflet instances or event listeners) an `afterRenderX()` called right after. `renderCurrentView()` is the router — it destroys prior Chart.js instances and the Leaflet map before switching views to avoid leaks. Views: Dashboard, Pipeline (Kanban or Lista — a toggle, both reading from the same filtered set via `filteredImoveisEnhanced()`), Metas (monthly goals), Agenda (tasks/reminders, including auto-generated "verificar disponibilidade" reminders `VERIFICACAO_DISPONIBILIDADE_DIAS` after acquisition), Insights, Mapa (Leaflet map of imóveis with lat/lng), Relatórios (printable weekly/monthly reports), Roadmap (static "Integrações & IA" info page).
-6. **Modals** — `openImovelModal(id?)` (create/edit imóvel; includes CEP lookup via ViaCEP-style API and geocoding via Nominatim for the mini-map), `openMetaModal()`, `openAgendaModal(id?)`. Generic open/close via `openModal()`/`closeModal()` toggling `#modal-overlay`; `closeModal()` also resets all the `editingXId`/mini-map module-level state, so any new modal type must add its own reset there.
-7. **Auth & boot** — Supabase Auth (email/password + password recovery flow) drives everything via `supabaseClient.auth.onAuthStateChange`; `handleAuthenticated()`/`handleUnauthenticated()` toggle between `#auth-screen` and `#app-shell` and trigger `loadState()` + first render. No client-side router/URL state — `currentView` is just an in-memory string, navigation resets on reload.
+Tudo dentro de `web/`:
 
-### Status-history invariant
+```bash
+cd web
+npm install
+npm run dev        # http://localhost:3000
+npm test           # Vitest (testes de caracterização + baseline)
+npx tsc --noEmit   # type-check
+npm run lint       # ESLint (regras do projeto incluídas)
+npm run build      # build de produção
+```
 
-Whenever code changes an imóvel's `status`, it must push `{status, date: todayISO()}` onto `statusHistory` (only if the last entry isn't already that status — see `saveImovel()` around line 1620) rather than mutating status in place. Nearly all metrics (conversion time, stale detection, monthly cohorts) are derived from this history, not from `status` alone.
+Precisa de um projeto Supabase real (schema + `.env.local`) para auth e dados — não há modo
+offline/mock. Para dados de teste, use o `seed-teste.mjs` da raiz.
 
-### Row-level security model
+> **Atenção — Next 16 tem breaking changes** vs. versões anteriores. Antes de escrever código de
+> app, consultar os docs empacotados em `web/node_modules/next/dist/docs/` (aviso do
+> `web/AGENTS.md`). Duas regras do React Compiler que já morderam durante a migração: **não** chamar
+> `setState` dentro de `useEffect` (derive o valor) e **não** escrever em `ref.current` durante o
+> render (faça no efeito).
 
-There is no server-side app code — Supabase (Postgres + Auth) is the entire backend, and per-user data isolation is enforced purely by the RLS policies in [supabase-schema.sql](supabase-schema.sql) (`auth.uid() = user_id` on every table). When adding a new table or column that should be user-scoped, it must get its own RLS policies following the same pattern, plus a corresponding `toDb*`/`fromDb*` mapper pair in `app.js`.
+## Arquitetura
 
----
+A regra de ouro herdada do app antigo: **o núcleo de cálculo é a fonte única de verdade** — Dashboard,
+Metas, Insights e Relatórios consomem as mesmas funções, então nunca divergem. Esse núcleo vive em
+`web/lib/` e **não importa React, Next, Supabase nem o store** — só tipos e helpers de data. É o que
+o torna testável puro.
 
-## Domínio do negócio (contexto)
+### `web/lib/` — núcleo e dados
 
-O sistema é a ferramenta de trabalho de um agente de imóveis para **angariação (captação) de imóveis para locação** — o processo de trazer um imóvel novo para a carteira, do primeiro contato com o proprietário até o imóvel estar disponível/locado. Termos que aparecem no código e o que significam no negócio:
+- **`constantes.ts`** — `STATUS_FLOW` (funil: Novo contato → … → Locado), `STATUS_TERMINAL_NEGATIVE`
+  (Sem resposta / Perdido / Cancelado — saídas laterais, fora do funil), `TIPOS_IMOVEL`,
+  `FORMAS_ABORDAGEM`, `ORIGENS_IMOVEL`, `MOTIVOS_PERDA`, `STATUS_COLORS`, `AGENDA_TYPES`,
+  `STALE_DAYS_THRESHOLD`, `VERIFICACAO_DISPONIBILIDADE_DIAS`.
+- **`datas.ts`** — **único módulo autorizado a usar `new Date`** (regra de ESLint). Datas circulam
+  sempre como string ISO `YYYY-MM-DD`, manipuladas por `parseDate`/`daysBetween`/`addDaysISO`/
+  `todayISO`/`weekRange`. `new Date` cru interpreta ISO como UTC e desloca o dia.
+- **`formatadores.ts`** — `fmtMoney`, `fmtDate`, etc.
+- **`tipos.ts`** — `Imovel`, `Meta`, `AgendaItem`, `UserConfig`, `StatusHistoryEntry`.
+- **`calculo/motor.ts`** — o motor: `dateEnteredStatus`, `currentStatusSince`, `isStale`,
+  `foiAngariado`, `metricsForRange`, coortes mensais, tempo médio, etc.
+- **`calculo/filtros.ts`** — filtro/ordenação do Pipeline (parte pura).
+- **`calculo/dashboard.ts` · `insights.ts` · `relatorios.ts` · `agenda.ts`** — as métricas de cada
+  view, extraídas da montagem de HTML antiga sem alterar nenhuma fórmula.
+- **`persistencia/mapeadores.ts`** — `toDb*`/`fromDb*` que traduzem entre o camelCase do app e o
+  snake_case do Supabase. Definem o contrato de dados.
+- **`persistencia/supabase.ts`** — cliente singleton do browser. **`persistencia/carregarEstado.ts`**
+  — o `loadState()`: busca as 4 tabelas em paralelo no login.
+- **`store.ts`** — store Zustand espelhando o `STATE` legado (`{ imoveis, metas, agenda, config }`).
+- **`mutacoes.ts`** — **todas as escritas no Supabase** num só lugar (criar/editar/excluir imóvel,
+  metas, agenda, verificação, config, dados demo). `aplicarMudancaDeStatus()` é o **único** ponto
+  que empurra no `statusHistory`.
+- **`uiPipeline.ts` / `uiModal.ts`** — estado de UI (filtros/drawer do Pipeline; modal ativo).
+- **`toast.ts` / `geo.ts` / `dadosDemo.ts` / `auth/`** — notificações; CEP (ViaCEP) + geocoding
+  (Nominatim); seed de exemplo; força de senha e tradução de erros do Supabase Auth.
 
-- **Angariação / angariar** — captar um imóvel para a carteira. Um imóvel só é considerado *angariado* quando o `statusHistory` registra a entrada no status "Angariado" (via `foiAngariado()`). Criar o registro ou fazer o primeiro contato **não** conta como angariado — essa distinção é intencional e sustenta os KPIs.
-- **Funil (`STATUS_FLOW`)** — a sequência positiva de progresso (Novo contato → ... → Locado). Avançar no funil é o que a operação quer maximizar.
-- **Saídas laterais (`STATUS_TERMINAL_NEGATIVE`)** — Sem resposta / Perdido / Cancelado. Não fazem parte do funil; são perdas. Não trate essas como etapas do funil em cálculos de conversão.
-- **Stale** — imóvel parado há ≥ `STALE_DAYS_THRESHOLD` dias sem mudança de status. É o principal sinal de "precisa de ação" no pipeline e na agenda.
-- **Verificar disponibilidade** — lembrete auto-gerado `VERIFICACAO_DISPONIBILIDADE_DIAS` dias após a angariação, para confirmar com o proprietário se o imóvel segue disponível.
+### `web/components/` — UI
 
-### Semântica de status: cuidado ao tirar conclusões
+Cada view é `components/<view>/<View>.tsx` renderizado pela rota correspondente. Chart.js e Leaflet
+são instanciados em `useEffect` **com cleanup** (`chart.destroy()` / `map.remove()`) — é o que
+substitui o destroy que o `renderCurrentView()` fazia no app antigo; sem isso, vazam. Leaflet entra
+por `dynamic(..., { ssr: false })`. Os modais vivem em `components/modais/`, orquestrados por
+`ModalOverlay` (um modal ativo por vez, via `uiModal.ts`).
 
-A verdade sobre o progresso de um imóvel **mora no `statusHistory`, não no campo `status` atual nem na simples existência do registro.** Antes de escrever qualquer lógica que classifique, conte ou reporte imóveis por status:
+### Invariante do `statusHistory`
 
-- Confirme o significado do status em `STATUS_FLOW` / `STATUS_TERMINAL_NEGATIVE` — não assuma pelo nome.
-- Não confunda "registro existe" ou "status atual = X" com "passou por X" — use os helpers do motor de cálculo (`foiAngariado()`, `dateEnteredStatus()`, etc.), que leem o histórico.
-- Métricas de conversão e coortes derivam do histórico. Contar direto pelo `status` atual gera números errados.
+A verdade sobre o progresso de um imóvel mora no **`statusHistory`** (array de `{status, date}`), não
+no campo `status` atual nem na existência do registro. Toda mudança de status passa por
+`aplicarMudancaDeStatus()`, que empurra `{status, date: todayISO()}` (só se a última entrada já não
+for esse status). Métricas de conversão, coortes e stale derivam do histórico. `foiAngariado()` só
+conta um imóvel como angariado quando o histórico registra a entrada em "Angariado" — criar o
+registro ou fazer o primeiro contato **não** conta.
+
+### Modelo de RLS
+
+Não há código de servidor — Supabase (Postgres + Auth) é o backend inteiro, e o isolamento por
+usuário é 100% das políticas RLS (`auth.uid() = user_id`) em `supabase-schema.sql`. Ao adicionar uma
+tabela/coluna user-scoped, ela precisa das próprias políticas RLS no mesmo padrão + o par
+`toDb*`/`fromDb*` em `web/lib/persistencia/mapeadores.ts` + o tipo em `web/lib/tipos.ts`.
 
 ## Convenções e regras (o que sempre / nunca fazer)
 
-Regras que o Claude Code deve seguir ao alterar este repositório:
-
-- **Manter o site estático puro.** Nada de build step, bundler, framework, npm/package.json ou etapa de compilação. Bibliotecas novas entram por `<script>` via CDN em `index.html`, do mesmo jeito que Chart.js, Leaflet e Supabase JS. Se uma mudança "pediria" um framework, proponha a alternativa em vanilla JS antes.
-- **Tudo em português do Brasil** — strings de UI, comentários, mensagens de `toast()`, labels. Manter o padrão existente.
-- **Invariante do `statusHistory`** — ao mudar `status`, sempre empurrar `{status, date: todayISO()}` no `statusHistory` (só se a última entrada já não for esse status). Nunca mutar `status` sem registrar no histórico.
-- **Sempre escapar dados do usuário** com `escapeHtml()` em qualquer código que monte HTML como string. É a defesa de XSS do app.
-- **Datas sempre como string ISO `YYYY-MM-DD`**, manipuladas pelos helpers (`parseDate`/`daysBetween`/`addDaysISO`). Não introduzir `Date` cru nem outros formatos.
-- **Escritas otimistas exigem tratamento de erro.** Como não há reconciliação por mutação com o servidor, toda chamada ao Supabase que altera dados precisa tratar a falha — reverter o `STATE` local (ou re-buscar) e avisar com `toast()`. Nunca deixar a UI dessincronizada do banco por assumir que o write deu certo.
-- **Novo dado user-scoped = RLS + mapper.** Toda tabela/coluna nova por usuário precisa da política RLS `auth.uid() = user_id` em `supabase-schema.sql` (mantendo o SQL idempotente) e do par `toDb*`/`fromDb*` correspondente em `app.js`.
-- **Novo modal precisa registrar seu reset** em `closeModal()`, junto com os `editingXId`/mini-map existentes.
-- **Ao adicionar/alterar views**, seguir o padrão `viewX()` + `afterRenderX()` e garantir que `renderCurrentView()` destrua instâncias de Chart.js/Leaflet antes de trocar de view, para evitar vazamento de memória.
-- **Sem segredo no cliente além da anon key.** A `SUPABASE_ANON_KEY` é pública de propósito; o isolamento é responsabilidade da RLS. Não colocar chaves de serviço/privadas no front.
+- **Tudo em pt-BR** — strings de UI, comentários, toasts, labels, mensagens de validação.
+- **Invariante do `statusHistory`** — nunca mutar `status` sem passar por `aplicarMudancaDeStatus()`.
+- **Datas só via `lib/datas.ts`** — proibido `new Date(` fora dele (regra de ESLint ativa).
+- **Sem `dangerouslySetInnerHTML`** (regra do checklist; o escape do JSX é a defesa de XSS).
+  Para HTML fora do React — ex.: popup do Leaflet — montar com nós do DOM e `textContent`.
+- **Escritas primeiro no Supabase, depois no estado local.** O app chama o Supabase e só atualiza
+  o store se a escrita deu certo; em falha, mostra `toast` de erro e o estado não muda. (Isto **não**
+  é o otimismo com rollback que versões antigas da doc descreviam — ver achado A1 na §15 do
+  MIGRATION_NEXT.) Toda mutação passa por `web/lib/mutacoes.ts`.
+- **Novo dado user-scoped = RLS + mapper + tipo** (ver "Modelo de RLS").
+- **Núcleo sem dependências** — `web/lib/` (fora de `persistencia/` e `mutacoes.ts`) não importa
+  React/Next/Supabase/store. É o que mantém as 4 views concordando e permite testar puro.
+- **Chart.js / Leaflet** — instanciar em `useEffect` com cleanup; testar navegação repetida (sem
+  `canvas` órfão nem `.leaflet-container` sobrando).
+- **Novo modal** — encapsular o próprio estado e registrar no `ModalOverlay`/`uiModal.ts`; garantir
+  que reabrir não herde estado do uso anterior.
+- **Bibliotecas novas via npm** em `web/`, fixando a mesma major das existentes quando fizer sentido
+  (Chart.js 4, Leaflet 1.9, Supabase JS 2, Zustand 5).
+- **Sem segredo no cliente além da anon key.** Uma futura API Route pode ter service key; código que
+  chega ao browser, nunca.
 
 ## Ao trabalhar aqui
 
-Não existe suíte de testes nem type checker. Depois de qualquer mudança, valide exercitando a UI no browser e conferindo o console do devtools por erros de JS. Para mudanças que tocam cálculo/KPIs, confira se Dashboard, Metas, Insights e Relatórios continuam concordando entre si (todos consomem o mesmo motor de cálculo — divergência entre eles é sinal de bug).
+Depois de qualquer mudança: `npm test`, `npx tsc --noEmit`, `npm run lint` e `npm run build` verdes,
+e validar exercitando a UI no browser com o console limpo. Para mudanças de cálculo/KPIs, conferir
+que Dashboard, Metas, Insights e Relatórios continuam concordando entre si (divergência entre eles é
+sinal de bug) e comparar com o [BASELINE_ETAPA0.md](BASELINE_ETAPA0.md) — que é também um teste
+executável (`web/tests/baseline-etapa0.test.ts`).

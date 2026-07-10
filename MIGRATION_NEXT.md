@@ -1,7 +1,9 @@
 # MIGRATION_NEXT.md — Guia Oficial da Migração para Next.js (App Router)
 
-> **Status:** planejamento — a migração ainda NÃO foi iniciada.
-> Este documento é a fonte de verdade da migração. Qualquer desvio do plano deve ser registrado aqui antes de ser executado.
+> **Status: ✅ CONCLUÍDA em 2026-07-10.** As 9 etapas fecharam; a produção
+> (`angariacao.vercel.app`) serve o app Next e o app antigo foi removido do repositório. O
+> pós-mortem está na Etapa 9, e as correções adiadas na §15 continuam valendo.
+> Este documento foi a fonte de verdade da migração; qualquer desvio do plano foi registrado aqui.
 
 ---
 
@@ -423,9 +425,47 @@ Cada view é comparada ao baseline da Etapa 0 antes de passar à próxima.
 - Manter o app antigo acessível (ex.: deployment de preview congelado) por um período de segurança definido (sugestão: 2 semanas).
 
 ### Etapa 9 — Limpeza
+
+> **Status: ✅ concluída em 2026-07-10.**
+> - [x] Removidos da raiz: `index.html`, `app.js`, `style.css`, `supabase-config.js` e o
+>       `favicon.ico` do app antigo. O `supabase-schema.sql` **ficou** (fonte do schema); `scripts/`
+>       e os docs também.
+> - [x] `CLAUDE.md` reescrito para a arquitetura Next (mapa de `web/lib` e `web/components`, mesmas
+>       regras de negócio). `DEPLOY.md` ajustado (cutover feito; rollback agora via "Promote to
+>       Production" na Vercel ou `git revert` da limpeza).
+> - [x] Pós-mortem abaixo.
+
 - Remover `app.js`, `index.html`, `style.css` (raiz), `supabase-config.js` antigos (o `supabase-schema.sql` **fica** — continua sendo a fonte do schema).
 - Reescrever o CLAUDE.md para a nova arquitetura (novo mapa de módulos, mesmas regras de negócio).
 - Marcar este documento como concluído, com um pós-mortem curto (o que divergiu do plano).
+
+#### Pós-mortem (o que divergiu do plano)
+
+O que funcionou bem:
+- **Strangler por camadas de dentro para fora** (núcleo puro → dados → auth → views → mutações)
+  segurou o risco: as mutações, único ponto capaz de corromper dados, só chegaram com toda a base
+  já testada.
+- **Baseline como teste executável** (`web/tests/baseline-etapa0.test.ts`) acabou sendo a rede mais
+  valiosa — pegou paridade de número de forma objetiva, sem depender de olhar tela.
+- **Núcleo sem dependências de React/Next/Supabase** manteve as 4 views do motor sempre concordando.
+
+Desvios e surpresas (todos registrados no caminho):
+- **Node.js não estava instalado** na máquina de trabalho — instalado via winget no meio da Etapa 4.
+- **Tab de preview roda oculto**, então `requestAnimationFrame` não dispara e o Chart.js não pinta;
+  não deu para validar gráfico por pixel no ambiente local. Contornado extraindo as séries para
+  funções puras e conferindo-as no teste de baseline. Já na Vercel (tab visível), os 6 gráficos
+  pintaram normalmente.
+- **As escritas do app antigo não são otimistas** (achado A1, §15): contrariam o que o CLAUDE.md e o
+  §3.6 diziam. Port fiel à ordem real (Supabase primeiro); a doc é que estava errada.
+- **Regras do React Compiler no Next 16** (`set-state-in-effect`, `ref` no render) exigiram ajustes
+  de forma que não existiam no plano.
+- **Senha da conta de teste** mudou de `teste` para `teste123` ao validar o recovery (achado B2).
+- **Cutover simplificado**: em vez de dois projetos Vercel com troca de domínio, bastou trocar a
+  Root Directory do projeto `angariacao` para `web` — `angariacao.vercel.app` passou a servir o Next
+  sem trocar de endereço.
+
+Pendências herdadas: a **§15** deste documento (correções e melhorias adiadas) permanece a lista de
+trabalho pós-migração — nada dali foi feito durante a migração, de propósito.
 
 ---
 

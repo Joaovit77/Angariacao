@@ -1,10 +1,9 @@
 # Como colocar o sistema no ar (Supabase + Vercel)
 
-> **Nota sobre a migração (2026-07).** O sistema foi migrado de um site estático puro
-> para uma aplicação **Next.js**, que agora vive na pasta **`web/`**. Os arquivos antigos
-> (`index.html`, `app.js`, `style.css`, `supabase-config.js`) continuam na raiz durante o
-> período de segurança do cutover e serão removidos depois (ver `MIGRATION_NEXT.md`, Etapa 9).
-> Este guia descreve o deploy do app **novo**. O banco (Supabase) não muda.
+> **Nota sobre a migração (2026-07).** O sistema foi migrado de um site estático puro para uma
+> aplicação **Next.js**, que vive na pasta **`web/`**. Os arquivos antigos (`index.html`, `app.js`,
+> `style.css`, `supabase-config.js`) já foram removidos. Este guia descreve o deploy do app atual.
+> O banco (Supabase) não muda.
 
 Duas partes: primeiro o banco de dados (Supabase), depois o site (Vercel).
 Os dois são gratuitos no plano que você vai usar.
@@ -69,7 +68,7 @@ que a **raiz do projeto é `web`**. O resto ela detecta sozinha (é um projeto N
 1. Garanta que o código esteja no GitHub (este repositório).
 2. Na Vercel: **Add New → Project** → **Import Git Repository** → selecione este repositório.
 3. **Root Directory:** clique em **Edit** e escolha a pasta **`web`**. (Este é o passo que não pode
-   faltar — sem ele a Vercel tenta publicar a raiz, que é o site antigo.)
+   faltar — o app fica nessa subpasta; sem ele a Vercel tenta publicar a raiz, que não tem o app.)
 4. **Framework Preset:** deve aparecer **Next.js** automaticamente. Build Command, Output e Install
    ficam nos padrões — não precisa mexer.
 5. **Environment Variables:** adicione as duas da Parte 2
@@ -94,33 +93,25 @@ que a **raiz do projeto é `web`**. O resto ela detecta sozinha (é um projeto N
 
 ---
 
-## Cutover: trocar a produção do app antigo para o novo
+## Cutover (já feito em 2026-07) e rollback
 
-Enquanto os dois apps coexistem no repositório, o caminho seguro é:
+O cutover foi concluído: o projeto Vercel `angariacao` (que serve `angariacao.vercel.app`) teve a
+**Root Directory trocada de `./` para `web`** e ganhou as duas env vars, passando a servir o app
+Next. Os arquivos do app antigo foram removidos da raiz na sequência.
 
-1. **Rodar o app novo em preview** por alguns dias (a URL de preview da Vercel, ou um projeto
-   Vercel separado com Root Directory `web`), com o app antigo ainda em produção. Os dois leem o
-   mesmo banco, então dá para comparar lado a lado.
-2. Quando estiver aprovado, apontar a produção para o app novo. Duas formas:
-   - **Mesmo projeto Vercel:** em **Settings → General → Root Directory**, troque de raiz para
-     `web` e refaça o deploy. O domínio de produção passa a servir o Next.
-   - **Projeto novo:** mova o domínio de produção (Settings → Domains) do projeto antigo para o
-     projeto novo.
-3. Manter o app antigo acessível (deploy de preview congelado) por um período de segurança
-   (sugestão: **2 semanas**).
+### Rollback (se algo der errado)
 
-### Rollback (se algo der errado depois do cutover)
+O app antigo não está mais na árvore de arquivos atual, mas continua **recuperável**:
 
-O app antigo continua sendo um site estático servido a partir da raiz do repositório — nada nele
-foi alterado. Para voltar:
+- **Imediato (segundos), sem Git:** na Vercel, projeto `angariacao` → **Deployments** → num deploy
+  **anterior ao cutover** (que servia o site estático) use **"Promote to Production"**. O site
+  estático volta ao ar na hora. *(Válido pela janela de retenção de deploys da Vercel.)*
+- **Via Git:** os arquivos antigos seguem no histórico. `git revert` do commit de limpeza
+  (`[migração][etapa-9] …`) restaura `index.html`/`app.js`/`style.css`/`supabase-config.js` na raiz;
+  aí basta apontar a Root Directory de volta para `./`.
 
-- **Mesmo projeto:** em **Settings → General → Root Directory**, apague o `web` (volta para a raiz)
-  e refaça o deploy — a produção volta a servir o `index.html`/`app.js` antigos.
-- **Projeto novo:** mova o domínio de produção de volta para o projeto antigo.
-- Alternativa imediata: na Vercel, em **Deployments**, use **"Promote to Production"** num deploy
-  antigo que sabidamente funcionava.
-
-Como os dois apps usam o mesmo banco e o mesmo contrato de dados, o rollback não perde nenhum dado.
+Como o app novo e o antigo usam o mesmo banco e o mesmo contrato de dados, o rollback não perde
+nenhum dado.
 
 ---
 
