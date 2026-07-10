@@ -347,8 +347,10 @@ Cada view é comparada ao baseline da Etapa 0 antes de passar à próxima.
 
 ### Etapa 7 — Paridade final
 
-> **Status: 🟡 parcial em 2026-07-10.** A parte verificável por código está fechada; o que falta
-> depende do usuário final (uso real e dados reais).
+> **Status: ✅ concluída em 2026-07-10.** Checklist de paridade fechado; o usuário final conferiu
+> as views com os dados reais (iguais ao app antigo) e o relatório impresso. Falta só o passo
+> operacional de deploy de preview na Vercel + uso real por alguns dias, que acontece dentro da
+> Etapa 8 (cutover), antes de repontar a produção.
 >
 > **Concluído — checklist de paridade sobre a conta de teste, com os dois apps lado a lado no
 > mesmo banco (app antigo em `localhost:8123`, Next em `localhost:3000`):**
@@ -380,17 +382,42 @@ Cada view é comparada ao baseline da Etapa 0 antes de passar à próxima.
 >       `.toast-container`) existem uma vez só, e o papel timbrado (`.report-print-header`) é
 >       renderizado com responsável e data de emissão.
 >
-> **Pendente (depende do usuário final):**
-> - [ ] Conferir as views com os **dados reais** (login real, somente leitura — nenhuma mutação).
-> - [ ] **Imprimir** o relatório (Ctrl+P) nos dois apps e comparar o PDF — é uma checagem visual.
-> - [ ] Deploy de **preview na Vercel** (precisa da conta do dono do projeto) e sessão de uso real
->       por alguns dias, com o app antigo ainda em produção.
-> - [ ] Aprovação explícita do usuário final antes do cutover (Etapa 8).
+> - [x] **Relatório impresso conferido pelo usuário**: o PDF gerado (Ctrl+P) bate com o do app
+>       antigo — confirmado por João em 2026-07-10.
+> - [x] **Views conferidas com os dados reais** pelo usuário final — iguais ao app antigo
+>       (João, 2026-07-10).
+>
+> **Segue na Etapa 8 (antes de repontar a produção):** deploy de preview na Vercel + sessão de
+> uso real por alguns dias, com o app antigo ainda em produção.
 
 - Rodar o **checklist de paridade completo** (§8 e baseline da Etapa 0) com o usuário de teste E com os dados reais (somente leitura nos reais).
 - Sessão de uso real pelo usuário final no app novo em URL de preview da Vercel, por alguns dias, com o app antigo ainda em produção.
 
 ### Etapa 8 — Cutover
+
+> **Status: 🟡 preparada em 2026-07-10 — aguarda os passos operacionais na Vercel (só o dono do
+> projeto tem acesso à conta).** O que estava ao alcance do código/docs está pronto:
+> - [x] **`DEPLOY.md` reescrito** para o app Next: banco inalterado; credenciais agora via
+>       `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY`; **Root Directory = `web`** na
+>       Vercel (o passo que não pode faltar — sem ele a Vercel publica o site antigo da raiz);
+>       Framework detectado como Next.js; lembrete da **Site URL** no Supabase para o link de
+>       recuperação de senha cair em `/`.
+> - [x] **Runbook de cutover** (preview → aprovar → repontar produção) e **rollback documentado**
+>       no `DEPLOY.md`: como os dois apps usam o mesmo banco e o mesmo contrato de dados, voltar é
+>       só trocar a Root Directory de volta para a raiz (ou promover um deploy antigo) — sem perda
+>       de dados. Testável a qualquer momento pela própria Vercel.
+> - [x] Verificado que a raiz do repositório **não tem `package.json`**, então o deploy estático
+>       atual continua intacto enquanto os dois apps coexistem; `next build` verde.
+>
+> **Pendente (passos na conta Vercel/Supabase do dono — não executáveis por aqui):**
+> - [ ] Criar/ajustar o projeto Vercel com Root Directory `web` + as 2 env vars e gerar a **URL de
+>       preview**.
+> - [ ] Ajustar a **Site URL** no Supabase para o endereço da Vercel.
+> - [ ] Sessão de **uso real por ~alguns dias** no preview, com o app antigo ainda em produção.
+> - [ ] **Repontar a produção** para o app Next após aprovação.
+> - [ ] Manter o app antigo acessível por **2 semanas** (deploy de preview congelado) como rede de
+>       segurança para rollback.
+
 - Ajustar o projeto Vercel para servir o app Next (variáveis de ambiente incluídas).
 - Atualizar `DEPLOY.md`.
 - Manter o app antigo acessível (ex.: deployment de preview congelado) por um período de segurança definido (sugestão: 2 semanas).
