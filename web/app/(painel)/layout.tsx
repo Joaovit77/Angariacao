@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSessao } from "@/components/SessaoProvider";
 import BarraLateral from "@/components/painel/BarraLateral";
+import ModalOverlay from "@/components/modais/ModalOverlay";
 import { useAppStore } from "@/lib/store";
 
 export default function PainelLayout({ children }: { children: React.ReactNode }) {
@@ -28,6 +29,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
   if (estado !== "auth") return null;
 
   return (
+    <>
     <div className="app-shell" id="app-shell">
       {/* BARRA SUPERIOR MOBILE (só aparece em telas estreitas) */}
       <div className="mobile-topbar">
@@ -68,5 +70,9 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
         {carregado ? children : <div className="auth-loading">Carregando seus dados...</div>}
       </main>
     </div>
+
+    {/* Irmão do .app-shell, como no index.html original. */}
+    <ModalOverlay />
+    </>
   );
 }

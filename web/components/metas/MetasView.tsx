@@ -12,6 +12,7 @@ import { comissaoRecebidaValor, imoveisAngariadosNoMes, imoveisLocadosNoMes } fr
 import { currentMonthKey, monthKey, monthLabelLong } from "@/lib/datas";
 import { fmtMoney } from "@/lib/formatadores";
 import { useAppStore } from "@/lib/store";
+import { useUiModal } from "@/lib/uiModal";
 import type { Imovel, Meta } from "@/lib/tipos";
 
 function comissaoRecebidaNoMes(imoveis: Imovel[], key: string, comissaoPercent: number): number {
@@ -73,6 +74,7 @@ export default function MetasView() {
   const imoveis = useAppStore((s) => s.imoveis);
   const metas = useAppStore((s) => s.metas);
   const comissaoPercent = useAppStore((s) => s.config.comissaoPercent);
+  const abrirModal = useUiModal((s) => s.abrirModal);
 
   const mKey = currentMonthKey();
   const meta: Meta = metas[mKey] || { angariacoes: 0, locados: 0, comissao: 0 };
@@ -91,7 +93,7 @@ export default function MetasView() {
           <p className="page-sub">{monthLabelLong(mKey)}</p>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn btn-primary">
+          <button type="button" className="btn btn-primary" onClick={() => abrirModal("meta")}>
             {hasGoals ? "Editar metas do mês" : "+ Definir metas"}
           </button>
         </div>
@@ -105,7 +107,7 @@ export default function MetasView() {
             mês.
           </p>
           <div style={{ marginTop: "16px" }}>
-            <button type="button" className="btn btn-primary">
+            <button type="button" className="btn btn-primary" onClick={() => abrirModal("meta")}>
               + Definir metas
             </button>
           </div>

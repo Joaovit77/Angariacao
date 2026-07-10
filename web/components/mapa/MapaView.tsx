@@ -12,11 +12,13 @@
    ================================================================ */
 import dynamic from "next/dynamic";
 import { useAppStore } from "@/lib/store";
+import { useUiModal } from "@/lib/uiModal";
 
 const MapaLeaflet = dynamic(() => import("./MapaLeaflet"), { ssr: false });
 
 export default function MapaView() {
   const imoveis = useAppStore((s) => s.imoveis);
+  const abrirModal = useUiModal((s) => s.abrirModal);
   const comLocalizacao = imoveis.filter((i) => i.latitude != null && i.longitude != null);
   const semLocalizacao = imoveis.length - comLocalizacao.length;
 
@@ -45,13 +47,13 @@ export default function MapaView() {
           <p className="page-sub">{comLocalizacao.length} imóveis localizados no mapa</p>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn btn-primary">
+          <button type="button" className="btn btn-primary" onClick={() => abrirModal("imovel")}>
             + Nova angariação
           </button>
         </div>
       </div>
       <div className="map-page-wrap">
-        <MapaLeaflet imoveis={imoveis} />
+        <MapaLeaflet imoveis={imoveis} aoAbrirImovel={(id) => abrirModal("imovel", id)} />
         {semLocalizacao > 0 && (
           <div className="map-unlocated-note">
             {semLocalizacao}

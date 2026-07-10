@@ -6,10 +6,9 @@
    Tipos: Retorno ao proprietário, Visita, Pendência, Documentação,
    Follow-up.
 
-   Etapa 5 é somente-leitura: concluir, excluir, abrir o modal do
-   compromisso e o fallback "copiar mensagem" (quando o imóvel não
-   tem telefone) chegam na Etapa 6. O botão de WhatsApp já abre o
-   wa.me quando há telefone, porque não é mutação.
+   Concluir um lembrete de "verificar disponibilidade" abre o modal
+   que registra o novo contato e encadeia o próximo lembrete; os
+   demais compromissos alternam done direto.
    ================================================================ */
 import { useState } from "react";
 import {
@@ -23,22 +22,15 @@ import {
 import { AGENDA_TYPES } from "@/lib/constantes";
 import { addDaysISO, todayISO } from "@/lib/datas";
 import { fmtDateLong } from "@/lib/formatadores";
+import { alternarAgendaDone, excluirAgenda } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import type { AgendaItem, Imovel } from "@/lib/tipos";
+import { useUiModal } from "@/lib/uiModal";
 
 type FiltroAgenda = "pendentes" | "todas" | "atrasadas";
 
-function enviarWhatsappAngariacao(imovel: Imovel) {
-  const message = mensagemRenovacaoAngariacao(imovel);
-  const phone = telefoneWhatsapp(imovel.proprietarioTelefone);
-  if (phone) {
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
-  }
-  // Sem telefone o app antigo abre um modal com a mensagem para copiar —
-  // depende da infraestrutura de modais, que chega na Etapa 6.
-}
-
 function ItemAgenda({ a, imovel }: { a: AgendaItem; imovel: Imovel | null }) {
+  const abrirModal = useUiModal((s) => s.abrirModal);
   const hoje = todayISO();
   const overdue = !a.done && a.date < hoje;
   const today = !a.done && a.date === hoje;
@@ -47,12 +39,32 @@ function ItemAgenda({ a, imovel }: { a: AgendaItem; imovel: Imovel | null }) {
   const typeIcon = agendaTypeIcon(a.type, a.isVerificacaoDisponibilidade);
   const canSendWhatsapp = imovel && isAgendaAngariacaoVencida(a);
 
+  // Concluir uma verificação de disponibilidade não é um simples "done":
+  // abre o modal que registra o contato e encadeia o próximo lembrete.
+  function alternarConclusao() {
+    if (a.isVerificacaoDisponibilidade && !a.done) abrirModal("verificacao", a.id);
+    else alternarAgendaDone(a.id);
+  }
+
+  function enviarWhatsapp() {
+    if (!imovel) return;
+    const phone = telefoneWhatsapp(imovel.proprietarioTelefone);
+    if (phone) {
+      const message = mensagemRenovacaoAngariacao(imovel);
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
+      return;
+    }
+    abrirModal("whatsapp", imovel.id);
+  }
+
   return (
     <div
       className={`agenda-item agenda-item-enhanced ${a.done ? "done" : ""} ${overdue ? "overdue" : ""} ${today ? "today" : ""} ${future ? "future" : ""}`}
     >
-      <div className={`agenda-check ${a.done ? "checked" : ""}`}>{a.done ? "✓" : ""}</div>
-      <div className="agenda-item-body" style={{ cursor: "pointer" }}>
+      <div className={`agenda-check ${a.done ? "checked" : ""}`} onClick={alternarConclusao}>
+        {a.done ? "✓" : ""}
+      </div>
+      <div className="agenda-item-body" style={{ cursor: "pointer" }} onClick={() => abrirModal("agenda", a.id)}>
         <div className="agenda-item-title">
           <span className="agenda-type-icon">{typeIcon}</span>
           {a.title}
@@ -81,13 +93,21 @@ function ItemAgenda({ a, imovel }: { a: AgendaItem; imovel: Imovel | null }) {
             title="Enviar WhatsApp"
             onClick={(e) => {
               e.stopPropagation();
-              enviarWhatsappAngariacao(imovel);
+              enviarWhatsapp();
             }}
           >
             Enviar WhatsApp
           </button>
         )}
-        <button type="button" className="icon-btn" title="Excluir" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          className="icon-btn"
+          title="Excluir"
+          onClick={(e) => {
+            e.stopPropagation();
+            excluirAgenda(a.id);
+          }}
+        >
           ×
         </button>
       </div>
@@ -98,6 +118,7 @@ function ItemAgenda({ a, imovel }: { a: AgendaItem; imovel: Imovel | null }) {
 export default function AgendaView() {
   const agenda = useAppStore((s) => s.agenda);
   const imoveis = useAppStore((s) => s.imoveis);
+  const abrirModal = useUiModal((s) => s.abrirModal);
   const [filtro, setFiltro] = useState<FiltroAgenda>("pendentes");
 
   const hoje = todayISO();
@@ -139,7 +160,7 @@ export default function AgendaView() {
           <p className="page-sub">Retornos, visitas, pendências e follow-ups</p>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn btn-primary">
+          <button type="button" className="btn btn-primary" onClick={() => abrirModal("agenda")}>
             + Novo compromisso
           </button>
         </div>

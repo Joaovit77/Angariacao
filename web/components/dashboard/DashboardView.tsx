@@ -19,6 +19,7 @@ import { STATUS_FLOW } from "@/lib/constantes";
 import { monthLabelLong } from "@/lib/datas";
 import { fmtMoney } from "@/lib/formatadores";
 import { useAppStore } from "@/lib/store";
+import { useUiModal } from "@/lib/uiModal";
 
 function KpiCard({
   label,
@@ -66,6 +67,7 @@ export default function DashboardView() {
   const router = useRouter();
   const imoveis = useAppStore((s) => s.imoveis);
   const comissaoPercent = useAppStore((s) => s.config.comissaoPercent);
+  const abrirModal = useUiModal((s) => s.abrirModal);
 
   const kpis = kpisDashboard(imoveis, comissaoPercent);
   const { overall, mKey } = kpis;
@@ -79,7 +81,7 @@ export default function DashboardView() {
             <p className="page-sub">Visão geral da sua produtividade</p>
           </div>
           <div className="page-actions">
-            <button type="button" className="btn btn-primary">
+            <button type="button" className="btn btn-primary" onClick={() => abrirModal("imovel")}>
               + Nova angariação
             </button>
           </div>
@@ -88,7 +90,7 @@ export default function DashboardView() {
           <h3>Nenhum imóvel cadastrado ainda</h3>
           <p>Cadastre sua primeira angariação para começar a acompanhar seus resultados aqui.</p>
           <div style={{ marginTop: "16px" }}>
-            <button type="button" className="btn btn-primary">
+            <button type="button" className="btn btn-primary" onClick={() => abrirModal("imovel")}>
               + Cadastrar imóvel
             </button>
           </div>
@@ -241,7 +243,7 @@ export default function DashboardView() {
           <button type="button" className="btn" onClick={() => router.push("/agenda")}>
             Ver agenda
           </button>
-          <button type="button" className="btn btn-primary">
+          <button type="button" className="btn btn-primary" onClick={() => abrirModal("imovel")}>
             + Nova angariação
           </button>
         </div>

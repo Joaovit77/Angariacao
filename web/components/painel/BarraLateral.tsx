@@ -12,6 +12,7 @@ import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
 import { STATUS_FLOW } from "@/lib/constantes";
 import { getSupabase } from "@/lib/persistencia/supabase";
 import { useAppStore } from "@/lib/store";
+import { useUiModal } from "@/lib/uiModal";
 
 const STATUS_FUNIL: readonly string[] = STATUS_FLOW;
 
@@ -117,6 +118,7 @@ export default function BarraLateral({ aberta, aoFechar }: { aberta: boolean; ao
   const { usuario } = useSessao();
   const imoveis = useAppStore((s) => s.imoveis);
   const agenda = useAppStore((s) => s.agenda);
+  const abrirModal = useUiModal((s) => s.abrirModal);
 
   // updateNavBadges(): pipeline = imóveis no funil ainda não locados;
   // agenda = compromissos pendentes.
@@ -164,9 +166,15 @@ export default function BarraLateral({ aberta, aoFechar }: { aberta: boolean; ao
         <div className="sidebar-user" id="sidebar-user">
           {rotuloUsuario(usuario)}
         </div>
-        {/* O modal de configurações chega na Etapa 6 — por ora o botão só
-            fecha a gaveta, sem abrir nada. */}
-        <button type="button" className="nav-item" style={ESTILO_ITEM_RODAPE} onClick={aoFechar}>
+        <button
+          type="button"
+          className="nav-item"
+          style={ESTILO_ITEM_RODAPE}
+          onClick={() => {
+            aoFechar();
+            abrirModal("config");
+          }}
+        >
           ⚙ Configurações
         </button>
         <button type="button" className="nav-item" style={ESTILO_ITEM_RODAPE} onClick={sair}>

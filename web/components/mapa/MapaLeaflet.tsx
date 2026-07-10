@@ -25,7 +25,7 @@ export function markerColorForStatus(status: string): string {
   return "#e0b458";
 }
 
-function conteudoPopup(i: Imovel): HTMLElement {
+function conteudoPopup(i: Imovel, aoAbrirImovel: (id: string) => void): HTMLElement {
   const wrap = document.createElement("div");
 
   const titulo = document.createElement("div");
@@ -43,21 +43,29 @@ function conteudoPopup(i: Imovel): HTMLElement {
   status.textContent = `${i.status} · ${fmtMoney(i.valorAluguel)}`;
   wrap.appendChild(status);
 
-  // "Ver / editar imóvel" abre o modal do imóvel — Etapa 6.
   const link = document.createElement("div");
   link.className = "map-popup-link";
   link.textContent = "Ver / editar imóvel";
+  link.addEventListener("click", () => aoAbrirImovel(i.id));
   wrap.appendChild(link);
 
   return wrap;
 }
 
-export default function MapaLeaflet({ imoveis }: { imoveis: Imovel[] }) {
+export default function MapaLeaflet({
+  imoveis,
+  aoAbrirImovel,
+}: {
+  imoveis: Imovel[];
+  aoAbrirImovel: (id: string) => void;
+}) {
   const divRef = useRef<HTMLDivElement>(null);
   const imoveisRef = useRef(imoveis);
+  const aoAbrirRef = useRef(aoAbrirImovel);
   useEffect(() => {
     imoveisRef.current = imoveis;
-  }, [imoveis]);
+    aoAbrirRef.current = aoAbrirImovel;
+  }, [imoveis, aoAbrirImovel]);
 
   useEffect(() => {
     const el = divRef.current;
@@ -87,7 +95,7 @@ export default function MapaLeaflet({ imoveis }: { imoveis: Imovel[] }) {
         iconAnchor: [8, 8],
       });
       const marker = L.marker([Number(i.latitude), Number(i.longitude)], { icon }).addTo(mapa);
-      marker.bindPopup(conteudoPopup(i));
+      marker.bindPopup(conteudoPopup(i, (id) => aoAbrirRef.current(id)));
       markers.push(marker);
     });
 

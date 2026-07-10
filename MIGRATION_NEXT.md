@@ -303,6 +303,42 @@ Regras do processo:
 Cada view é comparada ao baseline da Etapa 0 antes de passar à próxima.
 
 ### Etapa 6 — Modais e mutações
+
+> **Status: ✅ concluída em 2026-07-10.** Criados `web/lib/mutacoes.ts` (todas as escritas),
+> `web/lib/uiModal.ts` (modal ativo), `web/lib/geo.ts` (ViaCEP + Nominatim),
+> `web/lib/dadosDemo.ts` (port do `seedDemoData`) e `web/components/modais/`
+> (ModalOverlay, ModalImovel, MiniMapa, ModalMeta, ModalAgenda, ModalVerificacao,
+> ModalConfig, ModalWhatsapp). Suíte: **161 testes verdes**; `next build`, `tsc --noEmit` e
+> ESLint limpos; console sem erros. Decisões/registros:
+> - **`[migração][achado]` — as escritas do app antigo NÃO são otimistas.** Apesar do que o
+>   CLAUDE.md e o §3.6 deste documento descrevem, o `saveImovel()`/`saveMeta()`/`saveAgenda()`/
+>   `toggleAgendaDone()`/`deleteImovel()` chamam o Supabase **primeiro** e só atualizam o `STATE`
+>   se a escrita deu certo (em falha: `toast` e nada muda). O port preserva essa ordem — ela já
+>   garante o objetivo da regra (UI nunca dessincronizada do banco) e torna o rollback
+>   desnecessário. Verificado no browser interceptando o `fetch`: toast de erro, modal segue
+>   aberto, botão reabilitado e o estado local intacto.
+> - **`aplicarMudancaDeStatus()` é o único ponto que empurra no `statusHistory`** (§12): todo
+>   fluxo de mudança de status passa por ela. Coberta por testes de caracterização
+>   (`web/tests/mutacoes.test.ts`), incluindo não-duplicação e imóvel novo.
+> - **Reset de modal virou estrutural**: em vez do `closeModal()` zerando `editingImovelId`,
+>   `editingAgendaId`, `editingMetaKey`, `miniMap`, `miniMapMarker` e `concluirVerificacaoId` à
+>   mão, existe UM modal ativo por vez e cada componente descarta o próprio estado ao desmontar.
+> - **`seedDemoData` portado com helpers ISO** (`addDaysISO`/`todayISO`) no lugar de `new Date` +
+>   `toISOString()`, para respeitar a regra de lint. Mesmas contas, mesmos intervalos.
+> - **Validação de mutações no browser, na conta de teste**, com conferência direta no banco:
+>   criar imóvel → `status_history` = `[{Novo contato, data do primeiro contato}]`; mudar para
+>   Angariado → empurra `{Angariado, hoje}` e cria a verificação de disponibilidade 60 dias
+>   depois; mudar para Locado → cancela a verificação em aberto e grava a comissão (placeholder
+>   da estimativa = 50% do aluguel, batendo com `comissao_percent`); concluir uma verificação →
+>   encadeia a próxima 60 dias após a data do contato; excluir imóvel → `confirm()` com o texto
+>   idêntico, cancelar não apaga; criar/concluir/excluir compromisso; salvar metas; salvar
+>   configurações; busca de CEP preenchendo endereço/bairro/cidade e geocodificando o pino; Esc
+>   fechando modal e drawer. Ao final, o dataset foi restaurado pelo `seed-teste.mjs`.
+> - **`scripts/seed-teste.mjs` falha no último passo ao re-semear**: o `DELETE` em `user_config`
+>   não remove nada (o schema não tem policy de DELETE nessa tabela), então o `INSERT` final bate
+>   em `duplicate key`. Todo o resto do seed já rodou; a linha existente mantém
+>   `comissao_percent = 50`. Corrigir depois da migração (trocar o insert por upsert).
+
 - Modal de Imóvel (criar/editar): todos os campos, CEP lookup, geocoding Nominatim + mini-mapa, **push no `statusHistory` na mudança de status**, motivo de perda quando Perdido/Cancelado.
 - Modal de Meta e modal de Agenda.
 - Todas as mutações com o padrão otimista + rollback + toast de erro (testar o caminho de falha desligando a rede no devtools).

@@ -6,8 +6,6 @@
    renderKanbanEnhanced() + renderKanbanCard() + renderPipelineDrawer()
    (app.js, seção 5B).
 
-   Etapa 5 é somente-leitura: os botões que mutam (+ Nova angariação,
-   Excluir, Editar, abrir modal do imóvel) ficam inertes até a Etapa 6.
    O debounce da busca do app antigo não foi portado — ele existia só
    para o input não ser recriado a cada tecla pela montagem de HTML por
    string; com input controlado do React o foco nunca se perde.
@@ -23,12 +21,14 @@ import {
 import { daysInCurrentStatus, isPausado, isStale } from "@/lib/calculo/motor";
 import { STATUS_ALL, STATUS_COLORS, TIPOS_IMOVEL } from "@/lib/constantes";
 import { fmtDate, fmtMoney } from "@/lib/formatadores";
+import { excluirImovel } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import type { Imovel } from "@/lib/tipos";
+import { useUiModal } from "@/lib/uiModal";
 import { usePipelineUi } from "@/lib/uiPipeline";
 import ColunaFiltro from "./ColunaFiltro";
 
-function CartaoKanban({ i, color }: { i: Imovel; color: string }) {
+function CartaoKanban({ i, color, aoAbrir }: { i: Imovel; color: string; aoAbrir: (id: string) => void }) {
   const stale = isStale(i);
   const paused = isPausado(i);
   const dias = daysInCurrentStatus(i);
@@ -56,7 +56,11 @@ function CartaoKanban({ i, color }: { i: Imovel; color: string }) {
       : null;
 
   return (
-    <div className="kanban-card" style={{ "--col-color": color } as React.CSSProperties}>
+    <div
+      className="kanban-card"
+      style={{ "--col-color": color } as React.CSSProperties}
+      onClick={() => aoAbrir(i.id)}
+    >
       <div className="kanban-card-code">{i.codigo || "s/ código"}</div>
       <div className="kanban-card-addr">
         {i.endereco}
@@ -74,7 +78,7 @@ function CartaoKanban({ i, color }: { i: Imovel; color: string }) {
   );
 }
 
-function Kanban({ imoveis }: { imoveis: Imovel[] }) {
+function Kanban({ imoveis, aoAbrir }: { imoveis: Imovel[]; aoAbrir: (id: string) => void }) {
   return (
     <div className="kanban">
       {STATUS_ALL.map((status) => {
@@ -99,7 +103,7 @@ function Kanban({ imoveis }: { imoveis: Imovel[] }) {
               {items.length === 0 ? (
                 <div className="kanban-empty">Nenhum imóvel</div>
               ) : (
-                items.map((i) => <CartaoKanban key={i.id} i={i} color={color} />)
+                items.map((i) => <CartaoKanban key={i.id} i={i} color={color} aoAbrir={aoAbrir} />)
               )}
             </div>
           </div>
@@ -167,7 +171,10 @@ function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
                   type="button"
                   className="icon-btn btn-danger"
                   title="Excluir"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    excluirImovel(i.id);
+                  }}
                 >
                   ×
                 </button>
@@ -191,6 +198,7 @@ function InfoDrawer({ label, value }: { label: string; value: string }) {
 
 function Drawer({ imovel }: { imovel: Imovel }) {
   const fecharDrawer = usePipelineUi((s) => s.fecharDrawer);
+  const abrirModal = useUiModal((s) => s.abrirModal);
   const enderecoCompleto = [imovel.endereco, imovel.bairro, imovel.cidade].filter(Boolean).join(", ");
 
   return (
@@ -242,10 +250,17 @@ function Drawer({ imovel }: { imovel: Imovel }) {
           <button type="button" className="btn btn-ghost" onClick={fecharDrawer}>
             Fechar painel
           </button>
-          <button type="button" className="btn btn-ghost btn-danger">
+          <button
+            type="button"
+            className="btn btn-ghost btn-danger"
+            onClick={async () => {
+              const ok = await excluirImovel(imovel.id);
+              if (ok) fecharDrawer();
+            }}
+          >
             Excluir
           </button>
-          <button type="button" className="btn btn-primary">
+          <button type="button" className="btn btn-primary" onClick={() => abrirModal("imovel", imovel.id)}>
             Editar
           </button>
         </div>
@@ -256,6 +271,7 @@ function Drawer({ imovel }: { imovel: Imovel }) {
 
 export default function PipelineView() {
   const imoveis = useAppStore((s) => s.imoveis);
+  const abrirModal = useUiModal((s) => s.abrirModal);
   const { filters, viewMode, colFilters, colSort, openCol, drawerImovelId, setFiltro, setViewMode, fecharColMenu } =
     usePipelineUi();
 
@@ -294,7 +310,7 @@ export default function PipelineView() {
           <p className="page-sub">{imoveis.length} imóveis cadastrados</p>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn btn-primary">
+          <button type="button" className="btn btn-primary" onClick={() => abrirModal("imovel")}>
             + Nova angariação
           </button>
         </div>
@@ -399,7 +415,7 @@ export default function PipelineView() {
 
       <div id="pipeline-results">
         {viewMode === "kanban" ? (
-          <Kanban imoveis={filtrados} />
+          <Kanban imoveis={filtrados} aoAbrir={(id) => abrirModal("imovel", id)} />
         ) : (
           <Lista imoveis={ordenarPipelineLista(filtrados, colSort)} todos={imoveis} />
         )}
