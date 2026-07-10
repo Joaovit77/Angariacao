@@ -57,11 +57,25 @@ async function insert(table, rows) {
   console.log(`Inseriu ${Array.isArray(rows) ? rows.length : 1} em ${table}`);
 }
 
+// Upsert (POST com merge-duplicates) — usado onde não dá para apagar antes.
+// Ex.: user_config não tem policy de DELETE na RLS, então o del() vira no-op
+// e um INSERT depois bateria em chave duplicada; o upsert resolve nos dois casos.
+async function upsert(table, rows, onConflict) {
+  const url = `${SUPABASE_URL}/rest/v1/${table}` + (onConflict ? `?on_conflict=${onConflict}` : "");
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { ...headers, Prefer: "return=minimal,resolution=merge-duplicates" },
+    body: JSON.stringify(rows),
+  });
+  if (!r.ok) throw new Error(`UPSERT ${table}: ${r.status} ${await r.text()}`);
+  console.log(`Upsert de ${Array.isArray(rows) ? rows.length : 1} em ${table}`);
+}
+
 // ---- limpeza (ordem: agenda referencia imoveis) -------------------
 await del("agenda");
 await del("imoveis");
 await del("metas");
-await del("user_config");
+// user_config não tem policy de DELETE — não apagamos aqui; é feito via upsert no final.
 
 // ---- imóveis ------------------------------------------------------
 // Hoje = 2026-07-09. IDs fixos por randomUUID para vincular agenda.
@@ -291,7 +305,7 @@ await insert("agenda", [
 ]);
 
 // ---- user_config ---------------------------------------------------
-await insert("user_config", [{ user_id: USER_ID, comissao_percent: 50 }]);
+await upsert("user_config", [{ user_id: USER_ID, comissao_percent: 50 }], "user_id");
 
 console.log("\nSeed concluído com sucesso.");
 console.log("Resumo: 14 imóveis (10 status cobertos), 3 metas (mai/jun/jul 2026), 8 itens de agenda (3 verificações automáticas), comissão 50%.");

@@ -626,7 +626,7 @@ passagem" esconda regressões (§2, §4). Cada item vira um commit próprio, for
 
 | # | Achado | Onde | Encaminhamento sugerido |
 |---|---|---|---|
-| A1 | **As escritas não são otimistas.** `saveImovel`/`saveMeta`/`saveAgenda`/`toggleAgendaDone`/`deleteImovel` chamam o Supabase primeiro e só então atualizam o estado; em falha, nada muda. | `app.js` seções 5C/5D/6A; portado em `web/lib/mutacoes.ts` | Decidir: manter a ordem atual (mais segura, sem rollback) e **corrigir o texto** do CLAUDE.md e do §3.6 deste documento, que descrevem um otimismo que não existe. Recomendação: manter o comportamento, ajustar a documentação. |
+| A1 ✅ | **As escritas não são otimistas.** Chamam o Supabase primeiro e só então atualizam o estado; em falha, nada muda. | `web/lib/mutacoes.ts` | **Resolvido (doc):** o comportamento foi mantido (mais seguro, sem rollback) e o `CLAUDE.md` reescrito na Etapa 9 já descreve a ordem real, apontando este achado. O §3.6 deste documento fica como está — é registro histórico do plano. |
 | A2 | **O drawer do Pipeline lê `imovel.fotos`**, campo que nenhum mapeador produz — na prática o bloco sempre cai em "Sem fotos cadastradas.". | `app.js` `renderPipelineDrawer()`; `web/components/pipeline/PipelineView.tsx` | Ou remover o bloco, ou implementar fotos de verdade (coluna + RLS + mapeadores). Decisão de produto. |
 | A3 | **A "Conversão" do relatório usa definição própria** (locados ÷ angariados no período), diferente da taxa do Dashboard (locados ÷ processos fechados). Por isso Julho/26 mostra 100% no relatório e 33% no Dashboard. | `app.js` `renderMonthlyReport()`/`renderWeeklyReport()` | Confirmar com o usuário qual é a definição desejada. Se forem duas métricas diferentes de propósito, renomear a do relatório para não parecer a mesma coisa. |
 | A4 | **`tempoAteLocacao` pode ser negativo** (excluído da média em `metricsForRange`), e comissão "recebida" em imóvel não-locado vale 0. | `app.js` seção 4 | Investigar se são dados inconsistentes ou fórmula errada. Já coberto por testes de caracterização — qualquer correção precisa atualizá-los. |
@@ -635,8 +635,8 @@ passagem" esconda regressões (§2, §4). Cada item vira um commit próprio, for
 
 | # | Problema | Onde | Encaminhamento |
 |---|---|---|---|
-| B1 | **`seed-teste.mjs` falha ao re-semear.** O `DELETE` em `user_config` não remove nada (o schema não tem policy de DELETE nessa tabela), então o `INSERT` final bate em `duplicate key`. Todo o resto do seed roda. | `scripts/seed-teste.mjs` linha ~294 | Trocar o `insert` por `upsert` com `onConflict: user_id`. Opcionalmente adicionar a policy de DELETE em `user_config` no `supabase-schema.sql` (idempotente). |
-| B2 | **Senha da conta de teste mudou** de `teste` para `teste123` ao validar o fluxo de recuperação (o projeto exige ≥ 6 caracteres, então a original não pôde ser restaurada pela API do usuário). | Supabase Auth | Se quiser a senha antiga de volta, redefinir pelo painel do Supabase (o admin não tem o limite de 6 caracteres). Enquanto isso, `SEED_PASSWORD=teste123`. |
+| B1 ✅ | **`seed-teste.mjs` falhava ao re-semear** (`DELETE` em `user_config` era no-op → `INSERT` batia em `duplicate key`). | `scripts/seed-teste.mjs` | **Resolvido (2026-07-10):** o passo de `user_config` virou `upsert` com `on_conflict=user_id`; o `del("user_config")` foi removido. Seed roda ponta a ponta (verificado). Não foi mexido no schema/RLS. |
+| B2 ✅ | **Senha da conta de teste** virou `teste123` ao validar o recovery. | Supabase Auth | **Resolvido pelo usuário** (2026-07-10). |
 
 ### Melhorias adiadas (ideias que surgiram durante a migração)
 
@@ -646,7 +646,8 @@ passagem" esconda regressões (§2, §4). Cada item vira um commit próprio, for
   reseta o sublinhado de `<a>`); exigiria uma regra de CSS nova, o que é redesign.
 - Reintroduzir um debounce na busca do Pipeline **se** a lista crescer o suficiente para o filtro
   em cada tecla pesar (hoje não pesa, e o motivo original do debounce — perda de foco — sumiu).
-- CI simples (`tsc && vitest && next build`) no GitHub Actions, como previsto em §9.
+- ✅ **CI simples** (`tsc && lint && vitest && next build`) no GitHub Actions —
+  feito em `.github/workflows/ci.yml` (2026-07-10), rodando em push na main e em cada PR.
 
 ---
 

@@ -1,0 +1,43 @@
+# CI — roda a verificação completa do app (pasta web/) a cada push na main e em
+# cada Pull Request. É a rede de regressão prevista no MIGRATION_NEXT.md §9:
+# type-check + lint + testes de caracterização/baseline + build de produção.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Testes
+        run: npm test
+
+      - name: Build de produção
+        run: npm run build
+        env:
+          # A anon key é pública, mas o build não precisa de um projeto real —
+          # placeholders bastam (getSupabase() só é chamado em runtime no browser).
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
