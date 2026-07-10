@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import SessaoProvider from "@/components/SessaoProvider";
+import Toasts from "@/components/Toasts";
 import "./style.css";
 
 // O style.css é uma cópia fiel do app estático original — a migração
@@ -17,7 +19,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body>
+        <SessaoProvider>{children}</SessaoProvider>
+        <Toasts />
+      </body>
     </html>
   );
 }

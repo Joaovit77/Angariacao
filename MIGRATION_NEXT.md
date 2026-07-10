@@ -214,6 +214,41 @@ Regras do processo:
 - Portar `loadState()` (fetch paralelo das 4 tabelas) e o store (shape espelhando `STATE = { imoveis, metas, agenda, config }`).
 
 ### Etapa 4 — Auth e shell
+
+> **Status: ✅ concluída em 2026-07-10.** Criados: `web/lib/toast.ts` + `web/components/Toasts.tsx`
+> (port do `toast()`, mesmas classes `.toast`/`.toast-container` e mesmos tempos),
+> `web/lib/auth/forcaSenha.ts` e `web/lib/auth/erros.ts` (ports de `passwordStrength()` e
+> `traduzErroAuth()`), `web/components/SessaoProvider.tsx` (o `onAuthStateChange` +
+> `handleAuthenticated`/`handleUnauthenticated` + boot com `carregarEstado()`),
+> `web/components/auth/` (TelaAuth + Vitrine + CampoSenha — port literal das linhas 17–172 do
+> `index.html`), `web/app/(painel)/layout.tsx` + `web/components/painel/BarraLateral.tsx`
+> (shell autenticado, gaveta mobile, badges) e as 8 rotas com páginas placeholder.
+> Suíte: **144 testes verdes**; `next build`, `tsc --noEmit` e ESLint limpos.
+> Decisões/registros:
+> - **Rotas**: grupo `(painel)` para o shell autenticado; `/` é a tela de acesso e também o
+>   ponto de queda do link de recuperação (o `redirectTo` continua `window.location.origin`).
+> - **Nav em `<button>`, não `<Link>`**: o CSS `.nav-item` não reseta o sublinhado de `<a>`;
+>   manter `<button>` + `router.push()` preserva o DOM e o visual do app antigo. A URL passa a
+>   refletir a view (reload preserva a página — melhoria prevista em §4).
+> - **Proteção de rota client-side** (o layout do `(painel)` redireciona para `/` sem sessão),
+>   coerente com a decisão de manter auth 100% no browser (§4).
+> - **`sincronizarSessao()`** no provider substitui o `getSession()` + `handleAuthenticated()`
+>   que o app antigo chamava após `updateUser({password})`.
+> - **Erro de carregamento** reproduz o `loadState()` antigo: `console.error` + toast
+>   "Não foi possível carregar seus dados. Verifique sua conexão." e o app segue com estado vazio.
+> - **Botão ⚙ Configurações fica inerte** até a Etapa 6 (só fecha a gaveta) — o modal de config
+>   pertence àquela etapa.
+> - **Validação no browser** (conta de teste, lado a lado com o app antigo na 8123): badges
+>   Pipeline **8** / Agenda **7** (bate com o BASELINE_ETAPA0); `innerText` da sidebar idêntico ao
+>   do app antigo; as 8 rotas navegam sem erro de console; login com credencial errada mostra
+>   "E-mail ou senha incorretos."; logout volta para `/`; rota protegida deslogada redireciona
+>   para `/`; fluxo de recuperação (hash `type=recovery`) abre "Defina sua nova senha", salva e
+>   entra no app com o toast "Senha atualizada com sucesso.". Gaveta mobile abre/fecha.
+> - ⚠️ **Efeito colateral do teste de recuperação**: a senha da conta de teste
+>   `claude@acesso.com` passou de `teste` para **`teste123`**. O projeto Supabase exige senha de
+>   ≥ 6 caracteres, então não foi possível restaurar a original pela API do usuário. Usar
+>   `SEED_PASSWORD=teste123` (ou redefinir a senha pelo painel do Supabase).
+
 - Tela de login/cadastro/recuperação de senha com os mesmos textos e fluxo atual (inclusive o fluxo de recovery via `onAuthStateChange`).
 - Layout autenticado: sidebar/nav com as mesmas entradas, proteção de rotas (usuário não autenticado → login), boot que dispara `loadState()`.
 - Toasts portados.
