@@ -89,8 +89,16 @@ export function pipelineColDistinct(imoveis: Imovel[], col: PipelineCol): string
   return [...new Set(valores)].sort((a, b) => a.localeCompare(b, "pt-BR"));
 }
 
+// Colunas ordenáveis: as filtráveis + "codigo" (que não é filtro, só ordena).
+export type PipelineSortKey = PipelineCol | "codigo";
+
+export const PIPELINE_SORT_ACCESSOR: Record<PipelineSortKey, (i: Imovel) => string | null | undefined> = {
+  ...PIPELINE_COL_ACCESSOR,
+  codigo: (i) => i.codigo,
+};
+
 export interface PipelineColSort {
-  key: PipelineCol | null;
+  key: PipelineSortKey | null;
   dir: "asc" | "desc" | null;
 }
 
@@ -98,8 +106,8 @@ export interface PipelineColSort {
 // recentes primeiro por data de cadastro). Port de sortPipelineLista().
 export function ordenarPipelineLista(imoveis: Imovel[], colSort: PipelineColSort): Imovel[] {
   const arr = imoveis.slice();
-  if (colSort.key && PIPELINE_COL_ACCESSOR[colSort.key]) {
-    const accessor = PIPELINE_COL_ACCESSOR[colSort.key];
+  if (colSort.key && PIPELINE_SORT_ACCESSOR[colSort.key]) {
+    const accessor = PIPELINE_SORT_ACCESSOR[colSort.key];
     const fator = colSort.dir === "desc" ? -1 : 1;
     return arr.sort((a, b) => fator * (accessor(a) || "").localeCompare(accessor(b) || "", "pt-BR"));
   }

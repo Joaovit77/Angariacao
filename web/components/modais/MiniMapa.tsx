@@ -85,5 +85,14 @@ export default function MiniMapa({ lat, lng, zoom, visivel, aoEscolherPonto }: P
     return () => clearTimeout(t);
   }, [visivel]);
 
-  return <div id="map-mini" className={visivel ? "visible" : ""} ref={divRef}></div>;
+  // O Leaflet inicializa no div INTERNO (divRef), não no #map-mini. Se ele
+  // inicializasse no #map-mini, o `className={visivel...}` do React sobrescreveria
+  // a cada render as classes que o Leaflet adiciona ao container — em especial
+  // `leaflet-container`, que traz `overflow:hidden`. Sem ela, os tiles (posição
+  // absoluta) vazavam para fora dos 320px e sobrepunham a seção de baixo.
+  return (
+    <div id="map-mini" className={visivel ? "visible" : ""}>
+      <div ref={divRef} style={{ height: "100%", borderRadius: "inherit", overflow: "hidden" }} />
+    </div>
+  );
 }

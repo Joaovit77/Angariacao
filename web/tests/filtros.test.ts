@@ -4,7 +4,7 @@
    compara com a saída real capturada no oráculo. */
 import { describe, it, expect } from "vitest";
 import {
-  filtrarImoveis, filtrosPipelineVazios, pipelineColFiltersVazios,
+  filtrarImoveis, filtrosPipelineVazios, ordenarPipelineLista, pipelineColFiltersVazios,
   pipelineColDistinct, pipelineUniqueSorted,
   type FiltrosPipeline, type PipelineColFilters, type PipelineViewMode,
 } from "@/lib/calculo/filtros";
@@ -62,5 +62,27 @@ describe("pipelineColDistinct / pipelineUniqueSorted", () => {
   it("uniqueSorted apara espaços, remove vazios/duplicatas e ordena pt-BR", () => {
     expect(pipelineUniqueSorted(imoveis.map((i) => i.bairro))).toEqual(oracle.pipelineUniqueSorted.bairros);
     expect(pipelineUniqueSorted([" a", "a ", "", null, "B", "á"])).toEqual(oracle.pipelineUniqueSorted.comEspacosEDuplicatas);
+  });
+});
+
+describe("ordenarPipelineLista — ordenação por código (pós-migração)", () => {
+  const codigos = (arr: Imovel[]) => arr.map((i) => i.codigo);
+
+  it("crescente por código (A→Z, pt-BR)", () => {
+    const asc = codigos(ordenarPipelineLista(imoveis, { key: "codigo", dir: "asc" }));
+    const esperado = [...codigos(imoveis)].sort((a, b) => (a || "").localeCompare(b || "", "pt-BR"));
+    expect(asc).toEqual(esperado);
+  });
+
+  it("decrescente é o inverso do crescente", () => {
+    const asc = codigos(ordenarPipelineLista(imoveis, { key: "codigo", dir: "asc" }));
+    const desc = codigos(ordenarPipelineLista(imoveis, { key: "codigo", dir: "desc" }));
+    expect(desc).toEqual([...asc].reverse());
+  });
+
+  it("sem sort ativo mantém o padrão (mais recentes por data de cadastro)", () => {
+    const padrao = codigos(ordenarPipelineLista(imoveis, { key: null, dir: null }));
+    const esperado = codigos([...imoveis].sort((a, b) => (b.dataAngariacao || "").localeCompare(a.dataAngariacao || "")));
+    expect(padrao).toEqual(esperado);
   });
 });

@@ -113,6 +113,27 @@ function Kanban({ imoveis, aoAbrir }: { imoveis: Imovel[]; aoAbrir: (id: string)
   );
 }
 
+// Cabeçalho "Código" clicável: ordena crescente → decrescente → sem ordenação.
+function HeaderCodigo() {
+  const { colSort, setColSort, limparColSort } = usePipelineUi();
+  const ativo = colSort.key === "codigo";
+  const seta = ativo ? (colSort.dir === "desc" ? " ▾" : " ▴") : "";
+  function alternar() {
+    if (!ativo) setColSort("codigo", "asc");
+    else if (colSort.dir === "asc") setColSort("codigo", "desc");
+    else limparColSort();
+  }
+  return (
+    <th
+      onClick={alternar}
+      title="Ordenar por código"
+      style={{ cursor: "pointer", userSelect: "none" }}
+    >
+      Código{seta}
+    </th>
+  );
+}
+
 function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
   const { drawerImovelId, abrirDrawer } = usePipelineUi();
 
@@ -132,7 +153,7 @@ function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
       <table>
         <thead>
           <tr>
-            <th>Código</th>
+            <HeaderCodigo />
             <th>Endereço</th>
             <ColunaFiltro col="bairro" distintos={distintos("bairro")} />
             <ColunaFiltro col="tipo" distintos={distintos("tipo")} />

@@ -15,6 +15,7 @@ import {
   type PipelineCol,
   type PipelineColFilters,
   type PipelineColSort,
+  type PipelineSortKey,
   type PipelineViewMode,
 } from "./calculo/filtros";
 
@@ -34,7 +35,8 @@ interface PipelineUi {
 
   setFiltro: (campo: keyof FiltrosPipeline, valor: string) => void;
   setViewMode: (mode: PipelineViewMode) => void;
-  setColSort: (col: PipelineCol, dir: "asc" | "desc") => void;
+  setColSort: (key: PipelineSortKey, dir: "asc" | "desc") => void;
+  limparColSort: () => void;
   toggleColValue: (col: PipelineCol, valor: string) => void;
   colSelectAll: (col: PipelineCol, valores: string[]) => void;
   colClear: (col: PipelineCol) => void;
@@ -87,7 +89,8 @@ export const usePipelineUi = create<PipelineUi>((set, get) => ({
     set({ viewMode: mode, openCol: null, drawerImovelId: null });
   },
 
-  setColSort: (col, dir) => set({ colSort: { key: col, dir }, openCol: null }),
+  setColSort: (key, dir) => set({ colSort: { key, dir }, openCol: null }),
+  limparColSort: () => set({ colSort: { key: null, dir: null } }),
 
   toggleColValue: (col, valor) =>
     set((s) => {

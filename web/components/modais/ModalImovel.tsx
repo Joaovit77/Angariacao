@@ -196,6 +196,20 @@ export default function ModalImovel({ id }: { id?: string }) {
       return;
     }
 
+    // Impede código de imóvel repetido (comparação sem diferenciar
+    // maiúsculas/minúsculas). Código é opcional: em branco não bloqueia.
+    const codigoLimpo = codigo.trim();
+    if (codigoLimpo) {
+      const idAtual = imovel ? imovel.id : null;
+      const jaExiste = imoveis.some(
+        (i) => i.id !== idAtual && (i.codigo || "").trim().toLowerCase() === codigoLimpo.toLowerCase(),
+      );
+      if (jaExiste) {
+        toast(`Já existe um imóvel com o código "${codigoLimpo}".`, "error");
+        return;
+      }
+    }
+
     const historico: StatusHistoryEntry[] = imovel
       ? [...(imovel.statusHistory || [])]
       : [{ status: "Novo contato", date: dataAngariacao }];
