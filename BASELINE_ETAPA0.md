@@ -105,7 +105,7 @@ Histórico: Julho/26 → 5|1, 2|1, R$ 5.000|R$ 1.800 · Junho/26 → 4|**3**, 2|
 ## Relatórios
 
 **Mensal — Julho de 2026:** Novos contatos **1** (▼2) · Angariações **1** (▼2) · Locados **1** (▲1) · Conversão **100%** · Comissão recebida **R$ 1.800** (▲ R$ 300) · Comissão estimada no período **R$ 1.800** · Tabela "angariados no período" com 1 linha: KT-006 (Ref. CRM "—", Kitnet/Studio, Angariado, R$ 1.900).
-(Nota: a conversão do relatório usa definição própria de período — 100% aqui convive com 33% no Dashboard; comportamento atual a preservar.)
+(Nota: no app antigo a conversão do relatório usava definição própria — locados ÷ angariados —, por isso 100% aqui convivia com 33% no Dashboard. **Alterado pós-migração** (achado A3, MIGRATION_NEXT.md §15): a conversão do relatório foi alinhada à fórmula do Dashboard (locados ÷ processos fechados), escopada ao período — Julho passou a mostrar **50%**. Divergência intencional deste baseline.)
 
 **Semanal — 06/07/2026 a 12/07/2026:** Novos contatos **0** (▼1) · Angariações **0** (▼1) · Locados **0** (▼1) · Conversão **0%** · Comissão recebida **R$ 1.800** (▲ R$ 1.800) · Estimada no período **R$ 0** · "Nenhum imóvel chegou na etapa Angariado neste período."
 

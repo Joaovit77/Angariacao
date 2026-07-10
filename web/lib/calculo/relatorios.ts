@@ -1,12 +1,17 @@
 /* ================================================================
    RELATÓRIOS — números do documento (parte pura)
-   Port literal de renderMonthlyReport()/renderWeeklyReport()
-   (app.js, 5F), sem a montagem de HTML.
+   Derivado de renderMonthlyReport()/renderWeeklyReport() (app.js, 5F),
+   sem a montagem de HTML.
 
-   Atenção (comportamento preservado): a "conversão" do relatório usa
-   definição própria — locados no período ÷ angariados no período —
-   e por isso pode divergir da taxa do Dashboard. É intencional.
+   Achado A3 (pós-migração, MIGRATION_NEXT.md §15): a "Conversão" do
+   relatório usava definição própria — locados ÷ angariados no período —
+   diferente do Dashboard, o que confundia (Julho aparecia 100% aqui e
+   33% lá). Alinhada à MESMA definição do Dashboard (conversaoFechados):
+   locados ÷ processos fechados. Continua escopada ao período — um
+   relatório de período deve permanecer do período. Esta é uma divergência
+   INTENCIONAL do comportamento do app antigo.
    ================================================================ */
+import { STATUS_TERMINAL_NEGATIVE } from "../constantes";
 import { monthKey, monthLabelLong, shiftMonthKey, weekRange } from "../datas";
 import { fmtDate } from "../formatadores";
 import type { Imovel } from "../tipos";
@@ -20,6 +25,28 @@ import {
   imoveisContatadosNoPeriodo,
   imoveisLocadosNoMes,
 } from "./motor";
+
+const TERMINAIS: readonly string[] = STATUS_TERMINAL_NEGATIVE;
+
+// Imóveis que ENTRARAM num status terminal negativo (Perdido/Cancelado/Sem
+// resposta) dentro do período — a outra metade dos "processos fechados", ao
+// lado dos locados no período.
+function terminaisNoMes(imoveis: Imovel[], key: string): number {
+  return imoveis.filter((i) => TERMINAIS.includes(i.status) && monthKey(dateEnteredStatus(i, i.status)) === key).length;
+}
+function terminaisNoPeriodo(imoveis: Imovel[], start: string, end: string): number {
+  return imoveis.filter((i) => {
+    if (!TERMINAIS.includes(i.status)) return false;
+    const d = dateEnteredStatus(i, i.status);
+    return d != null && d >= start && d <= end;
+  }).length;
+}
+
+// Mesma fórmula do Dashboard (motor `conversaoFechados`), escopada ao período.
+function pctConversaoFechados(locados: number, terminais: number): number {
+  const fechados = locados + terminais;
+  return fechados ? (locados / fechados) * 100 : 0;
+}
 
 export interface DadosRelatorio {
   title: string;
@@ -77,7 +104,7 @@ export function relatorioMensal(imoveis: Imovel[], comissaoPercent: number, key:
     totalAnterior: prev.length,
     locadosAtual: curLocados.length,
     locadosAnterior: prevLocados.length,
-    conversao: cur.length ? (curLocados.length / cur.length) * 100 : 0,
+    conversao: pctConversaoFechados(curLocados.length, terminaisNoMes(imoveis, key)),
     comissaoEst,
     comissaoRec,
     comissaoRecAnterior: comissaoRecPrev,
@@ -123,7 +150,7 @@ export function relatorioSemanal(imoveis: Imovel[], comissaoPercent: number, off
     totalAnterior: prev.length,
     locadosAtual: curLocados.length,
     locadosAnterior: prevLocados.length,
-    conversao: cur.length ? (curLocados.length / cur.length) * 100 : 0,
+    conversao: pctConversaoFechados(curLocados.length, terminaisNoPeriodo(imoveis, start, end)),
     comissaoEst,
     comissaoRec: recebidaEntre(start, end),
     comissaoRecAnterior: recebidaEntre(prevStart, prevEnd),

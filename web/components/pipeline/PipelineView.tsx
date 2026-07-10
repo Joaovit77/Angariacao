@@ -239,12 +239,9 @@ function Drawer({ imovel }: { imovel: Imovel }) {
             <div className="drawer-section-title">Observacoes</div>
             <div className="drawer-notes">{imovel.observacoes || "Sem observacoes cadastradas."}</div>
           </div>
-          <div className="drawer-section">
-            <div className="drawer-section-title">Fotos</div>
-            {/* O app antigo lia imovel.fotos, campo que nenhum mapeador produz —
-                na prática o drawer sempre caiu neste estado vazio. */}
-            <div className="drawer-empty-photos">Sem fotos cadastradas.</div>
-          </div>
+          {/* A seção "Fotos" do app antigo lia imovel.fotos, campo que nenhum
+              mapeador produz — sempre mostrava "Sem fotos cadastradas.". Removida
+              na pós-migração (achado A2) por ser bloco morto. */}
         </div>
         <div className="pipeline-drawer-foot">
           <button type="button" className="btn btn-ghost" onClick={fecharDrawer}>

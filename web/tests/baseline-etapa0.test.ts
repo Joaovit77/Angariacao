@@ -165,8 +165,11 @@ describe("Relatórios", () => {
     expect(r.totalAtual - r.totalAnterior).toBe(-2);
     expect(r.locadosAtual).toBe(1);
     expect(r.locadosAtual - r.locadosAnterior).toBe(1);
-    // Conversão do relatório = locados ÷ angariados no período (definição própria).
-    expect(r.conversao.toFixed(0)).toBe("100");
+    // A3 (pós-migração): conversão do relatório alinhada ao Dashboard —
+    // locados ÷ processos fechados, escopada ao período. Julho: 1 locado e
+    // 1 terminal fechados no mês → 50%. (O app antigo mostrava 100% aqui,
+    // por usar locados ÷ angariados; divergência intencional.)
+    expect(r.conversao.toFixed(0)).toBe("50");
     expect(r.comissaoRec).toBe(1800);
     expect(r.comissaoRec - r.comissaoRecAnterior).toBe(300);
     expect(r.comissaoEst).toBe(1800);
