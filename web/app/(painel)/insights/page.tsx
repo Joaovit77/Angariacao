@@ -1,5 +1,5 @@
-import PaginaEmMigracao from "@/components/painel/PaginaEmMigracao";
+import InsightsView from "@/components/insights/InsightsView";
 
 export default function Pagina() {
-  return <PaginaEmMigracao titulo="Insights" />;
+  return <InsightsView />;
 }

@@ -1,5 +1,5 @@
-import PaginaEmMigracao from "@/components/painel/PaginaEmMigracao";
+import AgendaView from "@/components/agenda/AgendaView";
 
 export default function Pagina() {
-  return <PaginaEmMigracao titulo="Agenda" />;
+  return <AgendaView />;
 }

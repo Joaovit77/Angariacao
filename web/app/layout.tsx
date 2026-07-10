@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import SessaoProvider from "@/components/SessaoProvider";
 import Toasts from "@/components/Toasts";
+// O app antigo carregava o CSS do Leaflet por <link> no index.html; aqui ele
+// entra pelo bundle, na mesma ordem (antes do style.css do projeto).
+import "leaflet/dist/leaflet.css";
 import "./style.css";
 
 // O style.css é uma cópia fiel do app estático original — a migração

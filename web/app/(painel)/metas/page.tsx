@@ -1,5 +1,5 @@
-import PaginaEmMigracao from "@/components/painel/PaginaEmMigracao";
+import MetasView from "@/components/metas/MetasView";
 
 export default function Pagina() {
-  return <PaginaEmMigracao titulo="Metas" />;
+  return <MetasView />;
 }

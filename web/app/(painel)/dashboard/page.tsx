@@ -1,5 +1,5 @@
-import PaginaEmMigracao from "@/components/painel/PaginaEmMigracao";
+import DashboardView from "@/components/dashboard/DashboardView";
 
 export default function Pagina() {
-  return <PaginaEmMigracao titulo="Dashboard" />;
+  return <DashboardView />;
 }

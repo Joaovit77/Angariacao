@@ -1,5 +1,5 @@
-import PaginaEmMigracao from "@/components/painel/PaginaEmMigracao";
+import RelatoriosView from "@/components/relatorios/RelatoriosView";
 
 export default function Pagina() {
-  return <PaginaEmMigracao titulo="Relatórios" />;
+  return <RelatoriosView />;
 }

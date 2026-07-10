@@ -254,6 +254,42 @@ Regras do processo:
 - Toasts portados.
 
 ### Etapa 5 — Views somente-leitura, em ordem de complexidade
+
+> **Status: ✅ concluída em 2026-07-10.** As 9 views portadas, nesta ordem: Roadmap, Pipeline
+> (Lista e Kanban), Agenda, Dashboard, Metas, Insights, Mapa e Relatórios.
+> Suíte: **155 testes verdes**; `next build`, `tsc --noEmit` e ESLint limpos; console do browser
+> sem erros navegando todas as rotas.
+> Decisões/registros:
+> - **Baseline virou teste executável**: `web/tests/baseline-etapa0.test.ts` confere os números do
+>   BASELINE_ETAPA0.md (KPIs e as 6 séries de gráfico do Dashboard, badges de stale do Pipeline,
+>   Metas do mês e do histórico, os 9 cards de Insights com seus números, relatórios mensal e
+>   semanal, contagem do Mapa) sobre `web/tests/fixtures-baseline.json` — as linhas reais da conta
+>   de teste, baixadas por `web/scripts/gera-fixture-baseline.mjs` — com o relógio congelado em
+>   2026-07-09, o dia da captura. Isso resolve a impossibilidade de conferir gráficos por pixel.
+> - **Novas partes puras extraídas** (lógica intacta, só tirada da montagem de HTML):
+>   `lib/calculo/dashboard.ts` (KPIs + séries), `lib/calculo/insights.ts` (`buildInsights`),
+>   `lib/calculo/relatorios.ts` (mensal/semanal), `lib/calculo/agenda.ts` (ícones, vencimento,
+>   WhatsApp), `ordenarPipelineLista` em `lib/calculo/filtros.ts` e `weekRange` em `lib/datas.ts`
+>   (único módulo autorizado a usar `new Date`).
+> - **Estado de UI do Pipeline** (filtros, ordenação, modo, drawer) vive em `lib/uiPipeline.ts`
+>   (Zustand): no app antigo eram variáveis de módulo que sobreviviam à troca de view, e o store
+>   preserva exatamente essa semântica.
+> - **Debounce da busca do Pipeline não foi portado**: ele existia só porque o app antigo recriava
+>   o `<input>` a cada tecla ao remontar o HTML por string. Com input controlado do React o foco
+>   nunca se perde; o filtro é aplicado direto.
+> - **Chart.js e Leaflet** entram por `useEffect` com cleanup (`chart.destroy()` / `map.remove()`),
+>   assumindo o papel que o `renderCurrentView()` tinha. Verificado: 3 idas e voltas ao Mapa
+>   deixam exatamente 1 `.leaflet-container`, e sair da view não deixa `canvas` órfão. O Leaflet
+>   entra por `dynamic(..., { ssr: false })` e seu CSS virou import no layout raiz.
+> - **Popup do mapa sem `dangerouslySetInnerHTML`**: montado com nós do DOM e `textContent`, que é
+>   o equivalente ao `escapeHtml()` do app antigo.
+> - **Ações de mutação ficam inertes até a Etapa 6**: "+ Nova angariação", excluir imóvel, abrir o
+>   modal do imóvel, concluir/excluir compromisso, "Ver / editar imóvel" no popup do mapa,
+>   definir/editar metas. O botão "Enviar WhatsApp" já funciona quando há telefone (não é mutação);
+>   o fallback "copiar mensagem" (imóvel sem telefone) depende do modal, e vai na Etapa 6.
+> - **`[migração][achado]`**: o drawer do Pipeline lê `imovel.fotos`, campo que nenhum mapeador
+>   produz — no app antigo ele sempre caiu no estado "Sem fotos cadastradas.". Reproduzido igual.
+
 1. **Roadmap** (estática — valida o pipeline de página inteiro com risco zero).
 2. **Pipeline — modo Lista** (tabela + filtros via `filteredImoveisEnhanced`).
 3. **Pipeline — modo Kanban** (colunas por `STATUS_FLOW`, cores, badges de stale).

@@ -1,5 +1,5 @@
-import PaginaEmMigracao from "@/components/painel/PaginaEmMigracao";
+import PipelineView from "@/components/pipeline/PipelineView";
 
 export default function Pagina() {
-  return <PaginaEmMigracao titulo="Pipeline" />;
+  return <PipelineView />;
 }

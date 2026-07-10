@@ -1,0 +1,847 @@
+{
+  "comentario": "Linhas do banco da conta de teste (dataset do BASELINE_ETAPA0.md). Regenerar com scripts/gera-fixture-baseline.mjs apenas se o seed mudar.",
+  "imoveis": [
+    {
+      "id": "fc85e810-6b77-49d7-a125-7022ed8658ae",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "codigo": "AP-001",
+      "cep": null,
+      "endereco": "Rua das Acácias, 120 apto 32",
+      "bairro": "Pinheiros",
+      "cidade": "São Paulo",
+      "tipo": "Apartamento",
+      "quartos": 2,
+      "banheiros": 1,
+      "vagas": 1,
+      "valor_aluguel": 2800,
+      "valor_condominio": 650,
+      "proprietario_nome": "Marcos Ferreira",
+      "proprietario_telefone": "(11) 98888-0001",
+      "forma_abordagem": "Ligação telefônica",
+      "origem_imovel": "Placa no imóvel",
+      "imobiliaria_concorrente": null,
+      "latitude": null,
+      "longitude": null,
+      "data_angariacao": null,
+      "responsavel": "João Vitor",
+      "status": "Novo contato",
+      "observacoes": null,
+      "status_history": [
+        {
+          "date": "2026-07-09",
+          "status": "Novo contato"
+        }
+      ],
+      "pausado_ate": null,
+      "motivo_perda": null,
+      "motivo_perda_outro": null,
+      "comissao_recebida": false,
+      "comissao_recebida_valor": null,
+      "comissao_recebida_data": null,
+      "created_at": "2026-07-09T23:13:57.818232+00:00",
+      "updated_at": "2026-07-09T23:13:57.818232+00:00",
+      "referencia_crm": null
+    },
+    {
+      "id": "eff9e9df-6a01-40f2-95ad-0f9713f25303",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "codigo": "CA-002",
+      "cep": "05407-002",
+      "endereco": "Rua Fradique Coutinho, 800",
+      "bairro": "Vila Madalena",
+      "cidade": "São Paulo",
+      "tipo": "Casa",
+      "quartos": 3,
+      "banheiros": 2,
+      "vagas": 2,
+      "valor_aluguel": 5200,
+      "valor_condominio": 0,
+      "proprietario_nome": "Regina Alves",
+      "proprietario_telefone": "(11) 98888-0002",
+      "forma_abordagem": "WhatsApp",
+      "origem_imovel": "Prospecção ativa (porta a porta)",
+      "imobiliaria_concorrente": null,
+      "latitude": -23.5582,
+      "longitude": -46.6889,
+      "data_angariacao": null,
+      "responsavel": "João Vitor",
+      "status": "Novo contato",
+      "observacoes": null,
+      "status_history": [
+        {
+          "date": "2026-06-27",
+          "status": "Novo contato"
+        }
+      ],
+      "pausado_ate": null,
+      "motivo_perda": null,
+      "motivo_perda_outro": null,
+      "comissao_recebida": false,
+      "comissao_recebida_valor": null,
+      "comissao_recebida_data": null,
+      "created_at": "2026-07-09T23:13:57.818232+00:00",
+      "updated_at": "2026-07-09T23:13:57.818232+00:00",
+      "referencia_crm": null
+    },
+    {
+      "id": "3b1a79dc-4df8-4831-8dfe-e3e3079a8e34",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "codigo": "AP-003",
+      "cep": null,
+      "endereco": "Av. Rebouças, 1500 apto 74",
+      "bairro": "Jardim Paulista",
+      "cidade": "São Paulo",
+      "tipo": "Apartamento",
+      "quartos": 1,
+      "banheiros": 1,
+      "vagas": 1,
+      "valor_aluguel": 2300,
+      "valor_condominio": 480,
+      "proprietario_nome": "Paulo Sousa",
+      "proprietario_telefone": "(11) 98888-0003",
+      "forma_abordagem": "Indicação",
+      "origem_imovel": "Indicação de cliente",
+      "imobiliaria_concorrente": null,
+      "latitude": -23.5629,
+      "longitude": -46.6698,
+      "data_angariacao": null,
+      "responsavel": "João Vitor",
+      "status": "Visita agendada",
+      "observacoes": null,
+      "status_history": [
+        {
+          "date": "2026-07-04",
+          "status": "Novo contato"
+        },
+        {
+          "date": "2026-07-07",
+          "status": "Visita agendada"
+        }
+      ],
+      "pausado_ate": null,
+      "motivo_perda": null,
+      "motivo_perda_outro": null,
+      "comissao_recebida": false,
+      "comissao_recebida_valor": null,
+      "comissao_recebida_data": null,
+      "created_at": "2026-07-09T23:13:57.818232+00:00",
+      "updated_at": "2026-07-09T23:13:57.818232+00:00",
+      "referencia_crm": null
+    },
+    {
+      "id": "11a63128-2938-4b8e-b84d-1cc01fd79a47",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "codigo": "SO-004",
+      "cep": null,
+      "endereco": "Rua Harmonia, 45",
+      "bairro": "Sumarezinho",
+      "cidade": "São Paulo",
+      "tipo": "Sobrado",
+      "quartos": 4,
+      "banheiros": 3,
+      "vagas": 2,
+      "valor_aluguel": 6800,
+      "valor_condominio": 0,
+      "proprietario_nome": "Cláudia Menezes",
+      "proprietario_telefone": "(11) 98888-0004",
+      "forma_abordagem": "Visita presencial",
+      "origem_imovel": "OLX / Canal Pro",
+      "imobiliaria_concorrente": "Imob Rival Ltda",
+      "latitude": null,
+      "longitude": null,
+      "data_angariacao": null,
+      "responsavel": "João Vitor",
+      "status": "Em negociação",
+      "observacoes": null,
+      "status_history": [
+        {
+          "date": "2026-06-20",
+          "status": "Novo contato"
+        },
+        {
+          "date": "2026-06-24",
+          "status": "Visita agendada"
+        },
+        {
+          "date": "2026-06-28",
+          "status": "Em negociação"
+        }
+      ],
+      "pausado_ate": null,
+      "motivo_perda": null,
+      "motivo_perda_outro": null,
+      "comissao_recebida": false,
+      "comissao_recebida_valor": null,
+      "comissao_recebida_data": null,
+      "created_at": "2026-07-09T23:13:57.818232+00:00",
+      "updated_at": "2026-07-09T23:13:57.818232+00:00",
+      "referencia_crm": null
+    },
+    {
+      "id": "69eef681-8633-4d7f-b062-a814ea349ef2",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "codigo": "AP-005",
+      "cep": "04038-001",
+      "endereco": "Rua Sena Madureira, 300 apto 11",
+      "bairro": "Vila Mariana",
+      "cidade": "São Paulo",
+      "tipo": "Apartamento",
+      "quartos": 2,
+      "banheiros": 2,
+      "vagas": 1,
+      "valor_aluguel": 3400,
+      "valor_condominio": 720,
+      "proprietario_nome": "Fernanda Lima",
+      "proprietario_telefone": "(11) 98888-0005",
+      "forma_abordagem": "WhatsApp",
+      "origem_imovel": "Redes sociais",
+      "imobiliaria_concorrente": null,
+      "latitude": -23.5893,
+      "longitude": -46.6416,
+      "data_angariacao": null,
+      "responsavel": "João Vitor",
+      "status": "Documentação",
+      "observacoes": null,
+      "status_history": [
+        {
+          "date": "2026-06-25",
+          "status": "Novo contato"
+        },
+        {
+          "date": "2026-06-30",
+          "status": "Visita agendada"
+        },
+        {
+          "date": "2026-07-03",
+          "status": "Em negociação"
+        },
+        {
+          "date": "2026-07-08",
+          "status": "Documentação"
+        }
+      ],
+      "pausado_ate": null,
+      "motivo_perda": null,
+      "motivo_perda_outro": null,
+      "comissao_recebida": false,
+      "comissao_recebida_valor": null,
+      "comissao_recebida_data": null,
+      "created_at": "2026-07-09T23:13:57.818232+00:00",
+      "updated_at": "2026-07-09T23:13:57.818232+00:00",
+      "referencia_crm": null
+    },
+    {
+      "id": "53478f99-fd70-4065-9f78-bf47ecd6911c",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "codigo": "KT-006",
+      "cep": null,
+      "endereco": "Rua Augusta, 2200 studio 5",
+      "bairro": "Consolação",
+      "cidade": "São Paulo",
+      "tipo": "Kitnet/Studio",
+      "quartos": 1,
+      "banheiros": 1,
+      "vagas": 0,
+      "valor_aluguel": 1900,
+      "valor_condominio": 380,
+      "proprietario_nome": "Ricardo Tanaka",
+      "proprietario_telefone": "(11) 98888-0006",
+      "forma_abordagem": "Rede social",
+      "origem_imovel": "Redes sociais",
+      "imobiliaria_concorrente": null,
+      "latitude": -23.556,
+      "longitude": -46.6602,
+      "data_angariacao": "2026-07-05",
+      "responsavel": "João Vitor",
+      "status": "Angariado",
+      "observacoes": null,
+      "status_history": [
+        {
+          "date": "2026-06-28",
+          "status": "Novo contato"
+        },
+        {
+          "date": "2026-07-01",
+          "status": "Visita agendada"
+        },
+        {
+          "date": "2026-07-02",
+          "status": "Em negociação"
+        },
+        {
+          "date": "2026-07-04",
+          "status": "Documentação"
+        },
+        {
+          "date": "2026-07-05",
+          "status": "Angariado"
+        }
+      ],
+      "pausado_ate": null,
+      "motivo_perda": null,
+      "motivo_perda_outro": null,
+      "comissao_recebida": false,
+      "comissao_recebida_valor": null,
+      "comissao_recebida_data": null,
+      "created_at": "2026-07-09T23:13:57.818232+00:00",
+      "updated_at": "2026-07-09T23:13:57.818232+00:00",
+      "referencia_crm": null
+    },
+    {
+      "id": "ec56f829-1eb1-4245-9795-9a5537a8f14f",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "codigo": "CA-007",
+      "cep": null,
+      "endereco": "Rua Girassol, 88",
+      "bairro": "Vila Madalena",
+      "cidade": "São Paulo",
+      "tipo": "Casa",
+      "quartos": 2,
+      "banheiros": 1,
+      "vagas": 1,
+      "valor_aluguel": 4100,
+      "valor_condominio": 0,
+      "proprietario_nome": "Beatriz Rocha",
+      "proprietario_telefone": "(11) 98888-0007",
+      "forma_abordagem": "Panfletagem",
+      "origem_imovel": "Prospecção ativa (porta a porta)",
+      "imobiliaria_concorrente": null,
+      "latitude": -23.5541,
+      "longitude": -46.6921,
+      "data_angariacao": "2026-06-10",
+      "responsavel": "João Vitor",
+      "status": "Angariado",
+      "observacoes": null,
+      "status_history": [
+        {
+          "date": "2026-05-30",
+          "status": "Novo contato"
+        },
+        {
+          "date": "2026-06-03",
+          "status": "Visita agendada"
+        },
+        {
+          "date": "2026-06-06",
+          "status": "Em negociação"
+        },
+        {
+          "date": "2026-06-10",
+          "status": "Angariado"
+        }
+      ],
+      "pausado_ate": null,
+      "motivo_perda": null,
+      "motivo_perda_outro": null,
+      "comissao_recebida": false,
+      "comissao_recebida_valor": null,
+      "comissao_recebida_data": null,
+      "created_at": "2026-07-09T23:13:57.818232+00:00",
+      "updated_at": "2026-07-09T23:13:57.818232+00:00",
+      "referencia_crm": null
+    },
+    {
+      "id": "3ba3fabd-69c9-4cd2-aa21-ebadb3702b89",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "codigo": "AP-008",
+      "cep": null,
+      "endereco": "Al. Santos, 1000 apto 92",
+      "bairro": "Cerqueira César",
+      "cidade": "São Paulo",
+      "tipo": "Apartamento",
+      "quartos": 3,
+      "banheiros": 2,
+      "vagas": 2,
+      "valor_aluguel": 5500,
+      "valor_condominio": 1100,
+      "proprietario_nome": "Otávio Guimarães",
+      "proprietario_telefone": "(11) 98888-0008",
+      "forma_abordagem": "E-mail",
+      "origem_imovel": "Site da imobiliária",
+      "imobiliaria_concorrente": null,
+      "latitude": -23.5658,
+      "longitude": -46.6535,
+      "data_angariacao": "2026-06-05",
+      "responsavel": "João Vitor",
+      "status": "Publicado",
+      "observacoes": null,
+      "status_history": [
+        {
+          "date": "2026-05-22",
+          "status": "Novo contato"
+        },
+        {
+          "date": "2026-05-27",
+          "status": "Visita agendada"
+        },
+        {
+          "date": "2026-05-30",
+          "status": "Em negociação"
+        },
+        {
+          "date": "2026-06-02",
+          "status": "Documentação"
+        },
+        {
+          "date": "2026-06-05",
+          "status": "Angariado"
+        },
+        {
+          "date": "2026-06-15",
+          "status": "Publicado"
+        }
+      ],
+      "pausado_ate": null,
+      "motivo_perda": null,
+      "motivo_perda_outro": null,
+      "comissao_recebida": false,
+      "comissao_recebida_valor": null,
+      "comissao_recebida_data": null,
+      "created_at": "2026-07-09T23:13:57.818232+00:00",
+      "updated_at": "2026-07-09T23:13:57.818232+00:00",
+      "referencia_crm": null
+    },
+    {
+      "id": "b94bf563-5175-4c27-b9e3-9ab08f470640",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "codigo": "AP-009",
+      "cep": "01415-001",
+      "endereco": "Rua Haddock Lobo, 600 apto 41",
+      "bairro": "Cerqueira César",
+      "cidade": "São Paulo",
+      "tipo": "Apartamento",
+      "quartos": 2,
+      "banheiros": 2,
+      "vagas": 1,
+      "valor_aluguel": 3600,
+      "valor_condominio": 800,
+      "proprietario_nome": "Sílvia Prado",
+      "proprietario_telefone": "(11) 98888-0009",
+      "forma_abordagem": "Indicação",
+      "origem_imovel": "Ex-cliente",
+      "imobiliaria_concorrente": null,
+      "latitude": -23.559,
+      "longitude": -46.664,
+      "data_angariacao": "2026-06-08",
+      "responsavel": "João Vitor",
+      "status": "Locado",
+      "observacoes": null,
+      "status_history": [
+        {
+          "date": "2026-05-20",
+          "status": "Novo contato"
+        },
+        {
+          "date": "2026-05-25",
+          "status": "Visita agendada"
+        },
+        {
+          "date": "2026-05-28",
+          "status": "Em negociação"
+        },
+        {
+          "date": "2026-06-02",
+          "status": "Documentação"
+        },
+        {
+          "date": "2026-06-08",
+          "status": "Angariado"
+        },
+        {
+          "date": "2026-06-12",
+          "status": "Publicado"
+        },
+        {
+          "date": "2026-07-02",
+          "status": "Locado"
+        }
+      ],
+      "pausado_ate": null,
+      "motivo_perda": null,
+      "motivo_perda_outro": null,
+      "comissao_recebida": true,
+      "comissao_recebida_valor": 1800,
+      "comissao_recebida_data": "2026-07-06",
+      "created_at": "2026-07-09T23:13:57.818232+00:00",
+      "updated_at": "2026-07-09T23:13:57.818232+00:00",
+      "referencia_crm": null
+    },
+    {
+      "id": "bafc6eba-a460-49a5-a538-f650454a7f5b",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "codigo": "CA-010",
+      "cep": null,
+      "endereco": "Rua dos Pinheiros, 415",
+      "bairro": "Pinheiros",
+      "cidade": "São Paulo",
+      "tipo": "Casa de Condomínio",
+      "quartos": 3,
+      "banheiros": 3,
+      "vagas": 2,
+      "valor_aluguel": 3000,
+      "valor_condominio": 550,
+      "proprietario_nome": "Henrique Barros",
+      "proprietario_telefone": "(11) 98888-0010",
+      "forma_abordagem": "Ligação telefônica",
+      "origem_imovel": "Placa no imóvel",
+      "imobiliaria_concorrente": null,
+      "latitude": -23.5665,
+      "longitude": -46.682,
+      "data_angariacao": "2026-05-06",
+      "responsavel": "João Vitor",
+      "status": "Locado",
+      "observacoes": null,
+      "status_history": [
+        {
+          "date": "2026-04-24",
+          "status": "Novo contato"
+        },
+        {
+          "date": "2026-04-28",
+          "status": "Visita agendada"
+        },
+        {
+          "date": "2026-05-02",
+          "status": "Em negociação"
+        },
+        {
+          "date": "2026-05-06",
+          "status": "Angariado"
+        },
+        {
+          "date": "2026-05-12",
+          "status": "Publicado"
+        },
+        {
+          "date": "2026-05-28",
+          "status": "Locado"
+        }
+      ],
+      "pausado_ate": null,
+      "motivo_perda": null,
+      "motivo_perda_outro": null,
+      "comissao_recebida": true,
+      "comissao_recebida_valor": 1500,
+      "comissao_recebida_data": "2026-06-01",
+      "created_at": "2026-07-09T23:13:57.818232+00:00",
+      "updated_at": "2026-07-09T23:13:57.818232+00:00",
+      "referencia_crm": null
+    },
+    {
+      "id": "c528080f-ada6-44f1-81c5-18fea8f48a59",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "codigo": "AP-011",
+      "cep": null,
+      "endereco": "Rua Teodoro Sampaio, 1200 apto 15",
+      "bairro": "Pinheiros",
+      "cidade": "São Paulo",
+      "tipo": "Apartamento",
+      "quartos": 1,
+      "banheiros": 1,
+      "vagas": 0,
+      "valor_aluguel": 1700,
+      "valor_condominio": 420,
+      "proprietario_nome": "Vera Castro",
+      "proprietario_telefone": "(11) 98888-0011",
+      "forma_abordagem": "WhatsApp",
+      "origem_imovel": "OLX / Canal Pro",
+      "imobiliaria_concorrente": null,
+      "latitude": null,
+      "longitude": null,
+      "data_angariacao": null,
+      "responsavel": "João Vitor",
+      "status": "Sem resposta",
+      "observacoes": null,
+      "status_history": [
+        {
+          "date": "2026-06-15",
+          "status": "Novo contato"
+        },
+        {
+          "date": "2026-06-22",
+          "status": "Sem resposta"
+        }
+      ],
+      "pausado_ate": null,
+      "motivo_perda": null,
+      "motivo_perda_outro": null,
+      "comissao_recebida": false,
+      "comissao_recebida_valor": null,
+      "comissao_recebida_data": null,
+      "created_at": "2026-07-09T23:13:57.818232+00:00",
+      "updated_at": "2026-07-09T23:13:57.818232+00:00",
+      "referencia_crm": null
+    },
+    {
+      "id": "d64b88f1-cb5d-4a29-a876-d487326cd7f7",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "codigo": "SO-012",
+      "cep": null,
+      "endereco": "Rua Cardeal Arcoverde, 900",
+      "bairro": "Pinheiros",
+      "cidade": "São Paulo",
+      "tipo": "Sobrado",
+      "quartos": 3,
+      "banheiros": 2,
+      "vagas": 1,
+      "valor_aluguel": 4800,
+      "valor_condominio": 0,
+      "proprietario_nome": "Antônio Neves",
+      "proprietario_telefone": "(11) 98888-0012",
+      "forma_abordagem": "Visita presencial",
+      "origem_imovel": "Prospecção ativa (porta a porta)",
+      "imobiliaria_concorrente": "Concorrente Imóveis",
+      "latitude": null,
+      "longitude": null,
+      "data_angariacao": null,
+      "responsavel": "João Vitor",
+      "status": "Perdido",
+      "observacoes": null,
+      "status_history": [
+        {
+          "date": "2026-06-05",
+          "status": "Novo contato"
+        },
+        {
+          "date": "2026-06-10",
+          "status": "Em negociação"
+        },
+        {
+          "date": "2026-06-25",
+          "status": "Perdido"
+        }
+      ],
+      "pausado_ate": null,
+      "motivo_perda": "Optou por outra imobiliária",
+      "motivo_perda_outro": null,
+      "comissao_recebida": false,
+      "comissao_recebida_valor": null,
+      "comissao_recebida_data": null,
+      "created_at": "2026-07-09T23:13:57.818232+00:00",
+      "updated_at": "2026-07-09T23:13:57.818232+00:00",
+      "referencia_crm": null
+    },
+    {
+      "id": "46e4e726-fc30-4688-9a9a-397aba9ce675",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "codigo": "AP-013",
+      "cep": null,
+      "endereco": "Av. Brigadeiro Luís Antônio, 3000 apto 88",
+      "bairro": "Jardim Paulista",
+      "cidade": "São Paulo",
+      "tipo": "Apartamento",
+      "quartos": 2,
+      "banheiros": 1,
+      "vagas": 1,
+      "valor_aluguel": 2900,
+      "valor_condominio": 690,
+      "proprietario_nome": "Márcia Duarte",
+      "proprietario_telefone": "(11) 98888-0013",
+      "forma_abordagem": "Ligação telefônica",
+      "origem_imovel": "Indicação de cliente",
+      "imobiliaria_concorrente": null,
+      "latitude": null,
+      "longitude": null,
+      "data_angariacao": null,
+      "responsavel": "João Vitor",
+      "status": "Cancelado",
+      "observacoes": null,
+      "status_history": [
+        {
+          "date": "2026-06-01",
+          "status": "Novo contato"
+        },
+        {
+          "date": "2026-06-05",
+          "status": "Visita agendada"
+        },
+        {
+          "date": "2026-06-18",
+          "status": "Cancelado"
+        }
+      ],
+      "pausado_ate": null,
+      "motivo_perda": "Proprietário desistiu de alugar",
+      "motivo_perda_outro": null,
+      "comissao_recebida": false,
+      "comissao_recebida_valor": null,
+      "comissao_recebida_data": null,
+      "created_at": "2026-07-09T23:13:57.818232+00:00",
+      "updated_at": "2026-07-09T23:13:57.818232+00:00",
+      "referencia_crm": null
+    },
+    {
+      "id": "086ba27f-fc34-4d6c-99b4-1e04bddf0533",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "codigo": "GA-014",
+      "cep": null,
+      "endereco": "Rua do Gasômetro, 500",
+      "bairro": "Brás",
+      "cidade": "São Paulo",
+      "tipo": "Galpão",
+      "quartos": null,
+      "banheiros": null,
+      "vagas": null,
+      "valor_aluguel": 9500,
+      "valor_condominio": 0,
+      "proprietario_nome": "Grupo Andrade",
+      "proprietario_telefone": "(11) 98888-0014",
+      "forma_abordagem": "E-mail",
+      "origem_imovel": "Outro",
+      "imobiliaria_concorrente": null,
+      "latitude": null,
+      "longitude": null,
+      "data_angariacao": null,
+      "responsavel": "João Vitor",
+      "status": "Perdido",
+      "observacoes": null,
+      "status_history": [
+        {
+          "date": "2026-07-01",
+          "status": "Novo contato"
+        },
+        {
+          "date": "2026-07-08",
+          "status": "Perdido"
+        }
+      ],
+      "pausado_ate": null,
+      "motivo_perda": "Outro",
+      "motivo_perda_outro": "Proprietário vai reformar o galpão antes de alugar",
+      "comissao_recebida": false,
+      "comissao_recebida_valor": null,
+      "comissao_recebida_data": null,
+      "created_at": "2026-07-09T23:13:57.818232+00:00",
+      "updated_at": "2026-07-09T23:13:57.818232+00:00",
+      "referencia_crm": null
+    }
+  ],
+  "metas": [
+    {
+      "id": "d7a203cb-2f5e-432a-894f-796d6d4f6e74",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "month_key": "2026-05",
+      "angariacoes": 3,
+      "locados": 1,
+      "comissao": 3000
+    },
+    {
+      "id": "9cd81bfc-d0b0-4451-b3a6-4fb499479f05",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "month_key": "2026-06",
+      "angariacoes": 4,
+      "locados": 2,
+      "comissao": 4000
+    },
+    {
+      "id": "51c9e90b-741c-4f9e-856b-dbb9b0651417",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "month_key": "2026-07",
+      "angariacoes": 5,
+      "locados": 2,
+      "comissao": 5000
+    }
+  ],
+  "agenda": [
+    {
+      "id": "ad74e23b-9751-4422-ac2c-66260f983368",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "title": "Retornar ligação — proprietário do AP-003",
+      "type": "Retorno ao proprietário",
+      "date": "2026-07-10",
+      "imovel_id": "3b1a79dc-4df8-4831-8dfe-e3e3079a8e34",
+      "notes": "Confirmar horário da visita de sábado.",
+      "done": false,
+      "created_at": "2026-07-09T23:13:58.300516+00:00",
+      "is_verificacao_disponibilidade": false
+    },
+    {
+      "id": "9aff25c1-155d-4cba-9f96-4a14486d7c1d",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "title": "Visita ao sobrado da Rua Harmonia",
+      "type": "Visita",
+      "date": "2026-07-09",
+      "imovel_id": "11a63128-2938-4b8e-b84d-1cc01fd79a47",
+      "notes": null,
+      "done": false,
+      "created_at": "2026-07-09T23:13:58.300516+00:00",
+      "is_verificacao_disponibilidade": false
+    },
+    {
+      "id": "669a0729-8ef1-4892-ad48-a80b7a5ca984",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "title": "Enviar minuta do contrato ao proprietário",
+      "type": "Documentação",
+      "date": "2026-07-05",
+      "imovel_id": "69eef681-8633-4d7f-b062-a814ea349ef2",
+      "notes": "Minuta enviada por e-mail.",
+      "done": true,
+      "created_at": "2026-07-09T23:13:58.300516+00:00",
+      "is_verificacao_disponibilidade": false
+    },
+    {
+      "id": "d05dc7f1-47ee-42ef-a036-0473d9cebfcb",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "title": "Cobrar certidão negativa pendente",
+      "type": "Pendência",
+      "date": "2026-07-12",
+      "imovel_id": "69eef681-8633-4d7f-b062-a814ea349ef2",
+      "notes": null,
+      "done": false,
+      "created_at": "2026-07-09T23:13:58.300516+00:00",
+      "is_verificacao_disponibilidade": false
+    },
+    {
+      "id": "f86969d8-b9cc-44ca-b6b9-54377a640f8f",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "title": "Follow-up com proprietária da CA-002",
+      "type": "Follow-up",
+      "date": "2026-07-03",
+      "imovel_id": "eff9e9df-6a01-40f2-95ad-0f9713f25303",
+      "notes": "Sem retorno até agora.",
+      "done": false,
+      "created_at": "2026-07-09T23:13:58.300516+00:00",
+      "is_verificacao_disponibilidade": false
+    },
+    {
+      "id": "29967f63-951b-4215-a629-2cdf0477bb21",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "title": "Verificar disponibilidade — KT-006",
+      "type": "Follow-up",
+      "date": "2026-09-03",
+      "imovel_id": "53478f99-fd70-4065-9f78-bf47ecd6911c",
+      "notes": "Lembrete automático: imóvel angariado sem locação após 60 dias. Confirme com o proprietário se ainda está disponível.",
+      "done": false,
+      "created_at": "2026-07-09T23:13:58.300516+00:00",
+      "is_verificacao_disponibilidade": true
+    },
+    {
+      "id": "2dd4aae0-a940-4309-aeb8-1511ba6bdccc",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "title": "Verificar disponibilidade — CA-007",
+      "type": "Follow-up",
+      "date": "2026-08-09",
+      "imovel_id": "ec56f829-1eb1-4245-9795-9a5537a8f14f",
+      "notes": "Lembrete automático: imóvel angariado sem locação após 60 dias. Confirme com o proprietário se ainda está disponível.",
+      "done": false,
+      "created_at": "2026-07-09T23:13:58.300516+00:00",
+      "is_verificacao_disponibilidade": true
+    },
+    {
+      "id": "9f2163af-5d2e-4b26-9df3-4ddba50cf353",
+      "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+      "title": "Verificar disponibilidade — AP-008",
+      "type": "Follow-up",
+      "date": "2026-08-04",
+      "imovel_id": "3ba3fabd-69c9-4cd2-aa21-ebadb3702b89",
+      "notes": "Lembrete automático: imóvel angariado sem locação após 60 dias. Confirme com o proprietário se ainda está disponível.",
+      "done": false,
+      "created_at": "2026-07-09T23:13:58.300516+00:00",
+      "is_verificacao_disponibilidade": true
+    }
+  ],
+  "user_config": {
+    "user_id": "08bcf286-c972-4541-98a3-19b6fe0a2b73",
+    "comissao_percent": 50
+  }
+}

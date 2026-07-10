@@ -1,5 +1,5 @@
-import PaginaEmMigracao from "@/components/painel/PaginaEmMigracao";
+import MapaView from "@/components/mapa/MapaView";
 
 export default function Pagina() {
-  return <PaginaEmMigracao titulo="Mapa" />;
+  return <MapaView />;
 }
