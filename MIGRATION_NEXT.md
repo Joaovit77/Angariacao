@@ -346,6 +346,47 @@ Cada view é comparada ao baseline da Etapa 0 antes de passar à próxima.
 - Exclusões (com confirmação idêntica à atual).
 
 ### Etapa 7 — Paridade final
+
+> **Status: 🟡 parcial em 2026-07-10.** A parte verificável por código está fechada; o que falta
+> depende do usuário final (uso real e dados reais).
+>
+> **Concluído — checklist de paridade sobre a conta de teste, com os dois apps lado a lado no
+> mesmo banco (app antigo em `localhost:8123`, Next em `localhost:3000`):**
+> - [x] Dashboard: os 9 KPIs idênticos, incluindo os deltas vs. mês anterior.
+> - [x] Gráficos: as 6 séries e os rótulos lidos **das instâncias vivas do Chart.js do app antigo**
+>       conferem com `seriesDashboard()`. Os rótulos viraram assertiva no teste de baseline.
+> - [x] Funil: contagem por status idêntica; saídas laterais fora da conversão.
+> - [x] Pipeline: Lista e Kanban com o mesmo conjunto filtrado, **na mesma ordem**, e os badges de
+>       stale nos mesmos 4 imóveis (CA-002, SO-004, CA-007, AP-008).
+> - [x] Metas: progresso do mês corrente e histórico dos 3 meses idênticos.
+> - [x] Insights: os 9 cards, na mesma ordem, com os mesmos títulos e números.
+> - [x] Relatórios semanal e mensal: mesmos números. A conversão do relatório (100%) diverge da do
+>       Dashboard (33%) **nos dois apps** — é a definição própria do relatório (achado A3, §15).
+> - [x] Mapa: 8 pins, aviso de 6 sem localização, mesma legenda.
+> - [x] Agenda: mesmos itens e agrupamento por dia, mesmo resumo e mesma contagem por tipo.
+> - [x] Criar imóvel → avançar status até Locado → `statusHistory` conferido **direto no banco** e
+>       refletido em todas as métricas; verificação de disponibilidade criada e depois cancelada.
+> - [x] Marcar como Perdido/Cancelado com motivo → métricas de perda conferidas.
+> - [x] CEP lookup e geocoding funcionando no modal (ViaCEP + Nominatim + mini-mapa).
+> - [x] Fluxo completo de recuperação de senha (validado na Etapa 4).
+> - [x] **Um registro criado no app novo abre perfeitamente no app antigo, e vice-versa**: imóvel
+>       `PARIDADE-7` criado no Next, aberto no modal do app antigo com todos os campos corretos,
+>       editado lá (status → Documentação) e o Next refletiu a mudança, com `statusHistory` correto
+>       nas duas pontas. Registro removido ao final; dataset de volta ao baseline (14/3/8, badges 8/7).
+> - [x] Sem erros de console em nenhuma view; 24 trocas de view seguidas sem degradação — nenhum
+>       `canvas` órfão e nenhum `.leaflet-container` sobrando (leak check).
+> - [x] Estrutura do CSS de impressão idêntica: todos os seletores que o `@media print` esconde
+>       (`#sidebar`, `.mobile-topbar`, `.page-head`, `.pipeline-toolbar`, `#modal-overlay`,
+>       `.toast-container`) existem uma vez só, e o papel timbrado (`.report-print-header`) é
+>       renderizado com responsável e data de emissão.
+>
+> **Pendente (depende do usuário final):**
+> - [ ] Conferir as views com os **dados reais** (login real, somente leitura — nenhuma mutação).
+> - [ ] **Imprimir** o relatório (Ctrl+P) nos dois apps e comparar o PDF — é uma checagem visual.
+> - [ ] Deploy de **preview na Vercel** (precisa da conta do dono do projeto) e sessão de uso real
+>       por alguns dias, com o app antigo ainda em produção.
+> - [ ] Aprovação explícita do usuário final antes do cutover (Etapa 8).
+
 - Rodar o **checklist de paridade completo** (§8 e baseline da Etapa 0) com o usuário de teste E com os dados reais (somente leitura nos reais).
 - Sessão de uso real pelo usuário final no app novo em URL de preview da Vercel, por alguns dias, com o app antigo ainda em produção.
 
@@ -506,6 +547,39 @@ Esta Definição de Pronto é transversal a **todas** as etapas (0–9) e se som
 5. **Ordem de risco crescente:** primeiro código puro testável, depois leitura, por último escrita — mutações (o único ponto capaz de corromper dados) chegam quando toda a base já foi validada.
 6. **Dados reais protegidos:** conta de teste para mutações, backup antes das etapas de escrita e do cutover, rollback simples (repontar a Vercel para o deploy estático).
 7. **Checklists obrigatórios por etapa** (§8) — nenhuma etapa "está pronta" por sensação; está pronta quando a lista fecha.
+
+---
+
+## 15. Lista pós-migração (correções e decisões adiadas)
+
+Nada aqui é feito antes da paridade (Etapa 7) ser atingida — é a lista que impede que "corrigir de
+passagem" esconda regressões (§2, §4). Cada item vira um commit próprio, fora do fluxo de paridade.
+
+### Achados no app antigo (hoje reproduzidos igual, de propósito)
+
+| # | Achado | Onde | Encaminhamento sugerido |
+|---|---|---|---|
+| A1 | **As escritas não são otimistas.** `saveImovel`/`saveMeta`/`saveAgenda`/`toggleAgendaDone`/`deleteImovel` chamam o Supabase primeiro e só então atualizam o estado; em falha, nada muda. | `app.js` seções 5C/5D/6A; portado em `web/lib/mutacoes.ts` | Decidir: manter a ordem atual (mais segura, sem rollback) e **corrigir o texto** do CLAUDE.md e do §3.6 deste documento, que descrevem um otimismo que não existe. Recomendação: manter o comportamento, ajustar a documentação. |
+| A2 | **O drawer do Pipeline lê `imovel.fotos`**, campo que nenhum mapeador produz — na prática o bloco sempre cai em "Sem fotos cadastradas.". | `app.js` `renderPipelineDrawer()`; `web/components/pipeline/PipelineView.tsx` | Ou remover o bloco, ou implementar fotos de verdade (coluna + RLS + mapeadores). Decisão de produto. |
+| A3 | **A "Conversão" do relatório usa definição própria** (locados ÷ angariados no período), diferente da taxa do Dashboard (locados ÷ processos fechados). Por isso Julho/26 mostra 100% no relatório e 33% no Dashboard. | `app.js` `renderMonthlyReport()`/`renderWeeklyReport()` | Confirmar com o usuário qual é a definição desejada. Se forem duas métricas diferentes de propósito, renomear a do relatório para não parecer a mesma coisa. |
+| A4 | **`tempoAteLocacao` pode ser negativo** (excluído da média em `metricsForRange`), e comissão "recebida" em imóvel não-locado vale 0. | `app.js` seção 4 | Investigar se são dados inconsistentes ou fórmula errada. Já coberto por testes de caracterização — qualquer correção precisa atualizá-los. |
+
+### Bugs de ferramenta (não afetam o app em produção)
+
+| # | Problema | Onde | Encaminhamento |
+|---|---|---|---|
+| B1 | **`seed-teste.mjs` falha ao re-semear.** O `DELETE` em `user_config` não remove nada (o schema não tem policy de DELETE nessa tabela), então o `INSERT` final bate em `duplicate key`. Todo o resto do seed roda. | `scripts/seed-teste.mjs` linha ~294 | Trocar o `insert` por `upsert` com `onConflict: user_id`. Opcionalmente adicionar a policy de DELETE em `user_config` no `supabase-schema.sql` (idempotente). |
+| B2 | **Senha da conta de teste mudou** de `teste` para `teste123` ao validar o fluxo de recuperação (o projeto exige ≥ 6 caracteres, então a original não pôde ser restaurada pela API do usuário). | Supabase Auth | Se quiser a senha antiga de volta, redefinir pelo painel do Supabase (o admin não tem o limite de 6 caracteres). Enquanto isso, `SEED_PASSWORD=teste123`. |
+
+### Melhorias adiadas (ideias que surgiram durante a migração)
+
+- Reavaliar Server Components/SSR para dados do usuário — hoje deliberadamente fora (§4).
+- Trocar `confirm()` nativo por um modal de confirmação próprio (o app antigo usa `confirm()`).
+- Voltar a usar `<Link>` na navegação (hoje são `<button>` porque o `.nav-item` do `style.css` não
+  reseta o sublinhado de `<a>`); exigiria uma regra de CSS nova, o que é redesign.
+- Reintroduzir um debounce na busca do Pipeline **se** a lista crescer o suficiente para o filtro
+  em cada tecla pesar (hoje não pesa, e o motivo original do debounce — perda de foco — sumiu).
+- CI simples (`tsc && vitest && next build`) no GitHub Actions, como previsto em §9.
 
 ---
 

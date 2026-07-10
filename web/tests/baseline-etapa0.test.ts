@@ -61,6 +61,8 @@ describe("Dashboard (Julho de 2026)", () => {
   const series = seriesDashboard(imoveis, comissaoPercent);
 
   it("séries dos gráficos batem com o baseline", () => {
+    // Rótulos capturados das instâncias do Chart.js do app antigo, ao vivo.
+    expect(series.labels).toEqual(["fev de 26", "mar de 26", "abr de 26", "mai de 26", "jun de 26", "jul de 26"]);
     expect(series.angariacoesPorMes).toEqual([0, 0, 0, 1, 3, 1]);
     expect(series.locadosPorMes).toEqual([0, 0, 0, 1, 0, 1]);
     expect(series.bairroTop8).toEqual([
