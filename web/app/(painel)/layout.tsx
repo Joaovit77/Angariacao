@@ -10,15 +10,17 @@
    "Carregando seus dados..." do handleAuthenticated().
    ================================================================ */
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSessao } from "@/components/SessaoProvider";
 import BarraLateral from "@/components/painel/BarraLateral";
+import EsqueletoPainel from "@/components/painel/EsqueletoPainel";
 import ModalOverlay from "@/components/modais/ModalOverlay";
 import { useAppStore } from "@/lib/store";
 
 export default function PainelLayout({ children }: { children: React.ReactNode }) {
   const { estado } = useSessao();
   const router = useRouter();
+  const pathname = usePathname();
   const carregado = useAppStore((s) => s.carregado);
   const [gavetaAberta, setGavetaAberta] = useState(false);
 
@@ -67,7 +69,13 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
       <BarraLateral aberta={gavetaAberta} aoFechar={() => setGavetaAberta(false)} />
 
       <main className="main" id="main-content">
-        {carregado ? children : <div className="auth-loading">Carregando seus dados...</div>}
+        {carregado ? (
+          <div key={pathname} className="view-anim">
+            {children}
+          </div>
+        ) : (
+          <EsqueletoPainel />
+        )}
       </main>
     </div>
 

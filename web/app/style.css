@@ -1237,3 +1237,66 @@ legend{
   .agenda-whatsapp-btn{ flex:1; }
   .agenda-item-title{ align-items:flex-start; }
 }
+
+/* ============================================================
+   MICROANIMAÇÕES
+   Estende a linguagem já usada no app (fade + leve translate,
+   durações curtas). Tudo é neutralizado quando o usuário ativa
+   "reduzir movimento" no sistema — ver o último bloco.
+   ============================================================ */
+
+/* -- Entrada de tela: cada troca de rota refaz o fade (o wrapper
+      .view-anim é remontado por pathname no shell do painel). -- */
+.view-anim{ animation: fadein .24s ease; }
+
+/* -- Entrada de cards em sequência (stagger). Aplicado em
+      contêineres de grid via a classe .anim-stagger; cada filho
+      sobe com um atraso incremental. -- */
+@keyframes rise{ from{ opacity:0; transform: translateY(10px); } to{ opacity:1; transform: translateY(0); } }
+.anim-stagger > *{ animation: rise .34s ease both; }
+.anim-stagger > *:nth-child(1){ animation-delay: .02s; }
+.anim-stagger > *:nth-child(2){ animation-delay: .06s; }
+.anim-stagger > *:nth-child(3){ animation-delay: .10s; }
+.anim-stagger > *:nth-child(4){ animation-delay: .14s; }
+.anim-stagger > *:nth-child(5){ animation-delay: .18s; }
+.anim-stagger > *:nth-child(6){ animation-delay: .22s; }
+.anim-stagger > *:nth-child(7){ animation-delay: .26s; }
+.anim-stagger > *:nth-child(8){ animation-delay: .30s; }
+.anim-stagger > *:nth-child(9){ animation-delay: .34s; }
+.anim-stagger > *:nth-child(n+10){ animation-delay: .38s; }
+
+/* -- Micro-interações: hover eleva, clique afunda. O kanban-card já
+      tem hover/lift próprio, então não entra aqui. -- */
+.card{ transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease; }
+.kpi-card:hover, .insight-card:hover, .report-stat:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,.22);
+}
+.btn:active{ transform: translateY(1px) scale(.985); }
+.icon-btn:active{ transform: scale(.9); }
+.nav-item:active{ transform: scale(.985); }
+.kanban-card:active{ transform: scale(.98); }
+.pipeline-list-row:hover{ background: var(--bg-elev-2); }
+
+/* -- Skeleton de carregamento (shimmer) -- */
+@keyframes shimmer{ from{ background-position: -200px 0; } to{ background-position: 200px 0; } }
+.skeleton{
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--bg-elev-1) 25%, var(--bg-elev-2) 37%, var(--bg-elev-1) 63%);
+  background-size: 400px 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+.skel-grid{ display:grid; grid-template-columns: repeat(3,1fr); gap:14px; }
+.skel-card{ height: 108px; }
+.skel-title{ height: 26px; width: 220px; margin-bottom: 22px; }
+@media (max-width: 720px){ .skel-grid{ grid-template-columns: 1fr; } }
+
+/* -- Respeita "reduzir movimento" do sistema operacional -- */
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
