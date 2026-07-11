@@ -1064,6 +1064,11 @@ legend{
 .report-print-header{ display:none; }
 
 @media print {
+  /* Zera qualquer animação/transição: sem isto, o fill-mode "both" do
+     stagger poderia imprimir cards com opacity:0 se a impressão saísse
+     antes de a animação terminar. */
+  *, *::before, *::after{ animation: none !important; transition: none !important; }
+
   /* fundo claro e destrava alturas/overflow do shell */
   html, body, .app-shell, .main, #main-content{
     background:#fff !important; height:auto !important; min-height:0 !important; overflow:visible !important;

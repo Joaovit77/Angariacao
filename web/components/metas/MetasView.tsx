@@ -8,6 +8,7 @@
 
    Etapa 5 é somente-leitura: o modal de metas chega na Etapa 6.
    ================================================================ */
+import Contador from "@/components/Contador";
 import { comissaoRecebidaValor, imoveisAngariadosNoMes, imoveisLocadosNoMes } from "@/lib/calculo/motor";
 import { currentMonthKey, monthKey, monthLabelLong } from "@/lib/datas";
 import { fmtMoney } from "@/lib/formatadores";
@@ -48,11 +49,15 @@ function GoalCard({
       <div className="goal-head">
         <div className="goal-title">{label}</div>
         <div className="goal-foot">
-          <span className="pct">{pct.toFixed(0)}%</span>
+          <span className="pct">
+            <Contador valor={pct} formatar={(n) => n.toFixed(0) + "%"} />
+          </span>
         </div>
       </div>
       <div className="goal-numbers">
-        <div className="goal-current">{fmt(current)}</div>
+        <div className="goal-current">
+          <Contador valor={current} formatar={fmt} />
+        </div>
         <div className="goal-target">/ {target > 0 ? fmt(target) : "sem meta"}</div>
       </div>
       <div className="progress-track">
@@ -113,7 +118,7 @@ export default function MetasView() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-3">
+        <div className="grid grid-3 anim-stagger">
           <GoalCard
             label="Angariações"
             current={thisMonth.length}

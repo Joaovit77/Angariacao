@@ -62,7 +62,7 @@ function ReportDoc({ d, responsavel }: { d: DadosRelatorio; responsavel: string 
       <h2>{d.title}</h2>
       <div className="report-period">{d.period}</div>
 
-      <div className="report-stat-row">
+      <div className="report-stat-row anim-stagger">
         <ReportStat label="Novos contatos" value={d.contatosAtual} delta={deltaContatos} />
         <ReportStat label="Angariações" value={d.totalAtual} delta={deltaTotal} />
         <ReportStat label="Locados" value={d.locadosAtual} delta={deltaLocados} />
