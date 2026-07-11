@@ -1170,7 +1170,10 @@ legend{
 
 @media (max-width: 720px){
   .grid-4, .grid-3, .grid-2{ grid-template-columns:1fr; }
-  .app-shell{ grid-template-columns: 1fr; }
+  /* Barra superior compacta + conteúdo ocupando o resto. Sem isto, o grid
+     (min-height:100vh) estica a linha da .mobile-topbar quando a página tem
+     pouco conteúdo, inflando a barra e escondendo o topo da gaveta atrás dela. */
+  .app-shell{ grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
 
   .mobile-topbar{
     display:flex; align-items:center; gap:12px;
