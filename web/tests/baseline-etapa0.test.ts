@@ -128,31 +128,75 @@ describe("Metas (Julho de 2026)", () => {
 describe("Insights", () => {
   const insights = buildInsights(imoveis, comissaoPercent);
 
-  it("gera os 9 cards do baseline, na mesma ordem", () => {
-    expect(insights).toHaveLength(9);
-    expect(insights.map((i) => i.icon)).toEqual(["📍", "✅", "📞", "🔎", "📈", "🚧", "🔄", "🔍", "🎯"]);
+  // Um índice pela CHAVE do ícone (única neste fixture; ver icones.tsx). Os cards
+  // são gerados na ordem do código e reordenados por seção (ação → garimpo →
+  // desempenho → padrões) e prioridade; localizamos cada um pela chave do ícone.
+  const porIcone = (icone: string) => {
+    const card = insights.find((i) => i.icon === icone);
+    if (!card) throw new Error(`insight ausente: ${icone}`);
+    return card;
+  };
+
+  it("gera os 12 cards do baseline, na ordem agrupada por seção", () => {
+    expect(insights).toHaveLength(12);
+    expect(insights.map((i) => i.icon)).toEqual([
+      "funil", "ampulheta", "estagnado", "escopo", "alvo", "alta", "check", "telefone", "grafico", "local", "entrada", "busca",
+    ]);
+    // As seções saem em blocos, na ordem de INSIGHT_GROUP_ORDER.
+    expect(insights.map((i) => i.group)).toEqual([
+      "acao", "acao", "acao",
+      "garimpo",
+      "desempenho", "desempenho", "desempenho", "desempenho", "desempenho",
+      "padroes", "padroes", "padroes",
+    ]);
   });
 
   it("os números de cada card batem com o baseline", () => {
-    expect(insights[0].title).toContain("Pinheiros");
-    expect(insights[0].text).toContain("4 de 14 imóveis (29%)");
-    expect(insights[1].title).toContain("Apartamento");
-    expect(insights[1].text).toContain("33%");
-    expect(insights[1].text).toContain("(7 cadastrados)");
-    expect(insights[2].title).toContain("Ligação telefônica");
-    expect(insights[2].text).toContain("50%");
-    expect(insights[2].text).toContain("(3 contatos)");
-    expect(insights[3].title).toContain("Prospecção ativa");
-    expect(insights[3].text).toContain("3 dos seus imóveis");
-    expect(insights[4].title).toContain("Julho de 2026");
-    expect(insights[4].text).toContain("Foram 1 imóveis locados");
-    expect(insights[5].title).toBe('Gargalo em "Novo contato"');
-    expect(insights[5].text).toContain("1 imóvel(is)");
-    expect(insights[6].title).toBe("4 imóveis estagnados no pipeline");
-    expect(insights[7].title).toBe("Principal motivo de perda: Optou por outra imobiliária");
-    expect(insights[7].text).toContain("1 de 3 perdas registradas (33%)");
-    expect(insights[8].title).toBe("Taxa de conversão geral: 33%");
-    expect(insights[8].text).toContain("os 6 processos já encerrados");
+    expect(porIcone("local").title).toContain("Pinheiros");
+    expect(porIcone("local").text).toContain("4 de 14 imóveis (29%)");
+    expect(porIcone("check").title).toContain("Apartamento");
+    expect(porIcone("check").text).toContain("33%");
+    expect(porIcone("check").text).toContain("(7 na carteira)");
+    expect(porIcone("telefone").title).toContain("Ligação telefônica");
+    expect(porIcone("telefone").text).toContain("50%");
+    expect(porIcone("telefone").text).toContain("(3 contatos)");
+    expect(porIcone("entrada").title).toContain("Prospecção ativa");
+    expect(porIcone("entrada").text).toContain("3 imóveis vieram dessa origem");
+    expect(porIcone("grafico").title).toContain("Julho de 2026");
+    expect(porIcone("grafico").text).toContain("1 imóveis locados");
+    expect(porIcone("funil").title).toBe('Gargalo em "Novo contato"');
+    expect(porIcone("funil").text).toContain("1 imóvel(is)");
+    expect(porIcone("estagnado").title).toBe("4 imóveis estagnados no pipeline");
+    expect(porIcone("busca").title).toBe("Principal motivo de perda: Optou por outra imobiliária");
+    expect(porIcone("busca").text).toContain("1 de 3 perdas registradas (33%)");
+    expect(porIcone("alvo").title).toBe("Taxa de conversão geral: 33%");
+    expect(porIcone("alvo").text).toContain("os 6 processos já encerrados");
+    // Card por-imóvel: o mais parado da carteira, nominal.
+    expect(porIcone("ampulheta").title).toBe("CA-007 é o mais parado: 31 dias");
+    expect(porIcone("ampulheta").text).toContain('há 31 dias em "Angariado"');
+    // Tendência mês a mês (Julho/2026 = 1 vs Junho/2026 = 0).
+    expect(porIcone("alta").title).toContain("Julho de 2026");
+    expect(porIcone("alta").text).toContain("contra 0 em Junho de 2026");
+    // Garimpo: 2 imóveis com fonte nomeada + 1 com origem "Garimpo em site".
+    expect(porIcone("escopo").title).toBe("Garimpo em concorrentes: 3 imóveis");
+    expect(porIcone("escopo").text).toContain("3 de 14 angariações (21%)");
+  });
+
+  it("os cards acionáveis apontam para a ação certa do Pipeline", () => {
+    expect(porIcone("funil").action).toEqual({ tipo: "coluna", col: "status", valor: "Novo contato" });
+    expect(porIcone("check").action).toEqual({ tipo: "coluna", col: "tipo", valor: "Apartamento" });
+    expect(porIcone("local").action).toEqual({ tipo: "coluna", col: "bairro", valor: "Pinheiros" });
+    expect(porIcone("entrada").action).toEqual({
+      tipo: "coluna",
+      col: "origem",
+      valor: "Prospecção ativa (porta a porta)",
+    });
+    // O card por-imóvel busca pelo código do imóvel específico.
+    expect(porIcone("ampulheta").action).toEqual({ tipo: "busca", termo: "CA-007", rotulo: "Ver imóvel →" });
+    // Cards sem recorte equivalente não oferecem atalho.
+    expect(porIcone("telefone").action).toBeUndefined();
+    expect(porIcone("alvo").action).toBeUndefined();
+    expect(porIcone("escopo").action).toBeUndefined();
   });
 });
 

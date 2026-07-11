@@ -44,6 +44,8 @@ interface PipelineUi {
   fecharColMenu: () => void;
   abrirDrawer: (id: string) => void;
   fecharDrawer: () => void;
+  aplicarFiltroColuna: (col: PipelineCol, valor: string) => void;
+  aplicarBusca: (termo: string) => void;
 }
 
 export const usePipelineUi = create<PipelineUi>((set, get) => ({
@@ -109,4 +111,30 @@ export const usePipelineUi = create<PipelineUi>((set, get) => ({
 
   abrirDrawer: (id) => set({ drawerImovelId: id }),
   fecharDrawer: () => set({ drawerImovelId: null }),
+
+  // Usado pelos Insights: zera todos os filtros e deixa ativo só um valor de uma
+  // coluna, na Lista (onde os filtros de coluna aparecem no cabeçalho e podem ser
+  // limpos). Entra direto no estado final, sem passar pela migração do setViewMode.
+  aplicarFiltroColuna: (col, valor) =>
+    set({
+      filters: filtrosPipelineVazios(),
+      colFilters: { ...pipelineColFiltersVazios(), [col]: [valor] },
+      viewMode: "lista",
+      colSort: { key: null, dir: null },
+      openCol: null,
+      drawerImovelId: null,
+    }),
+
+  // Também usado pelos Insights: zera tudo e busca por um termo livre (ex.: o
+  // código de um imóvel específico), na Lista. A busca cobre código, endereço,
+  // proprietário, bairro etc. (ver filtrarImoveis).
+  aplicarBusca: (termo) =>
+    set({
+      filters: { ...filtrosPipelineVazios(), search: termo },
+      colFilters: pipelineColFiltersVazios(),
+      viewMode: "lista",
+      colSort: { key: null, dir: null },
+      openCol: null,
+      drawerImovelId: null,
+    }),
 }));

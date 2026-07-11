@@ -36,11 +36,26 @@ export const FORMAS_ABORDAGEM = [
   "Panfletagem", "E-mail", "Rede social", "Outro",
 ] as const;
 
+// Valor de origem que representa o garimpo em sites de OUTRAS imobiliárias
+// (a corretora acha o anúncio no site de uma concorrente e vai atrás do
+// proprietário para angariar). Exportado para os insights referenciarem sem
+// string mágica.
+export const ORIGEM_GARIMPO_SITE = "Garimpo em site de imobiliária";
+
 // Onde a oportunidade de angariação foi encontrada
 export const ORIGENS_IMOVEL = [
   "Placa no imóvel", "Indicação de cliente", "Prospecção ativa (porta a porta)",
-  "OLX / Canal Pro", "Redes sociais", "Site da imobiliária", "Ex-cliente", "Outro",
+  "OLX / Canal Pro", "Redes sociais", ORIGEM_GARIMPO_SITE, "Ex-cliente", "Outro",
 ] as const;
+
+// Rótulos de origem que já foram gravados no banco e hoje têm nome novo.
+// O fromDbImovel normaliza para o valor atual, sem migração destrutiva —
+// registros antigos passam a exibir/filtrar pelo texto novo, e são regravados
+// já normalizados na próxima edição. "Site da imobiliária" dava a impressão de
+// ser o site da PRÓPRIA imobiliária; na prática é o garimpo em sites alheios.
+export const ORIGENS_LEGADAS: Record<string, string> = {
+  "Site da imobiliária": ORIGEM_GARIMPO_SITE,
+};
 
 // Motivo específico quando o imóvel é marcado como Perdido ou Cancelado.
 export const MOTIVOS_PERDA = [

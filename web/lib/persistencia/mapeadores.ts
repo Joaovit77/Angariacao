@@ -12,6 +12,7 @@
    Diferença de forma: userId entra por parâmetro em vez do global
    currentUser do app antigo.
    ================================================================ */
+import { ORIGENS_LEGADAS } from "../constantes";
 import type { AgendaItem, Imovel, StatusHistoryEntry } from "../tipos";
 
 /** Linha da tabela `imoveis` como o Supabase retorna/aceita. */
@@ -137,7 +138,12 @@ export function fromDbImovel(r: DbImovelRow): Imovel {
     proprietarioNome: r.proprietario_nome || "",
     proprietarioTelefone: r.proprietario_telefone || "",
     formaAbordagem: r.forma_abordagem || "",
-    origemImovel: r.origem_imovel || "",
+    // Normaliza rótulos de origem renomeados (ex.: "Site da imobiliária").
+    origemImovel: (r.origem_imovel && ORIGENS_LEGADAS[r.origem_imovel]) || r.origem_imovel || "",
+    // Nome da imobiliária em cuja vitrine/site a oportunidade foi garimpada —
+    // é a FONTE da angariação, não um rival disputando o proprietário. O nome
+    // da coluna (imobiliaria_concorrente) foi mantido para evitar migração de
+    // schema; a semântica atual é "fonte de garimpo".
     imobiliariaConcorrente: r.imobiliaria_concorrente || "",
     latitude: r.latitude,
     longitude: r.longitude,

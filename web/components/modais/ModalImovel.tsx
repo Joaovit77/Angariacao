@@ -367,13 +367,13 @@ export default function ModalImovel({ id }: { id?: string }) {
             </select>
           </div>
           <div className="field-group">
-            <label>Já está com outra imobiliária?</label>
+            <label>Garimpado no site de qual imobiliária?</label>
             <input
               type="text"
               list="imobiliarias-concorrentes-list"
               value={imobiliariaConcorrente ?? ""}
               onChange={(e) => setImobiliariaConcorrente(e.target.value)}
-              placeholder="Selecione ou digite uma nova imobiliária"
+              placeholder="Se achou o anúncio no site de outra imobiliária, informe qual"
             />
             <datalist id="imobiliarias-concorrentes-list">
               {concorrentes.map((nome) => (
@@ -381,8 +381,9 @@ export default function ModalImovel({ id }: { id?: string }) {
               ))}
             </datalist>
             <div className="field-hint">
-              Selecione uma imobiliária já usada ou digite um novo nome. Ao salvar, o novo nome
-              aparecerá como opção nos próximos cadastros.
+              Preencha quando você encontrou este imóvel no site/vitrine de outra imobiliária e foi
+              atrás de angariar. É a fonte do garimpo — deixe em branco se a oportunidade não veio
+              daí. Nomes já usados viram sugestão nos próximos cadastros.
             </div>
           </div>
         </fieldset>

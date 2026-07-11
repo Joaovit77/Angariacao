@@ -1,32 +1,82 @@
 /* ================================================================
    INSIGHTS — motor de regras (parte pura)
-   Port literal de buildInsights() (app.js, 5E). Motor de regras
-   simples (sem IA externa) que lê os dados atuais e gera observações.
-   Cada insight só aparece se houver dados suficientes para
-   sustentá-lo (evita afirmações vazias).
+   Motor de regras simples (sem IA externa) que lê os dados atuais e
+   gera observações específicas e acionáveis. Cada insight só aparece
+   se houver dados suficientes para sustentá-lo (evita afirmações
+   vazias), traz números concretos e, quando possível, um atalho para
+   os imóveis no Pipeline.
+
+   Enquadramento importante: a "imobiliária concorrente" registrada num
+   imóvel é a FONTE do garimpo (onde a corretora achou o anúncio e foi
+   atrás de angariar), não uma rival disputando o proprietário. Os
+   insights de garimpo tratam isso como canal de prospecção.
    ================================================================ */
-import { STALE_DAYS_THRESHOLD, STATUS_TERMINAL_NEGATIVE } from "../constantes";
-import { monthKey, monthLabelLong } from "../datas";
+import { ORIGEM_GARIMPO_SITE, STALE_DAYS_THRESHOLD, STATUS_TERMINAL_NEGATIVE } from "../constantes";
+import { monthKey, monthLabelLong, shiftMonthKey } from "../datas";
 import type { Imovel } from "../tipos";
-import { dateEnteredStatus, groupCount, isStale, metricsForRange, tempoAteLocacao } from "./motor";
+import type { PipelineCol } from "./filtros";
+import {
+  dateEnteredStatus,
+  daysInCurrentStatus,
+  groupCount,
+  isStale,
+  metricsForRange,
+  tempoAteLocacao,
+} from "./motor";
 
 /** mínimo de imóveis para uma métrica ser considerada confiável */
 export const MIN_SAMPLE = 3;
 
 const TERMINAIS: readonly string[] = STATUS_TERMINAL_NEGATIVE;
 
+/** Um imóvel foi garimpado quando registra a imobiliária-fonte onde foi achado. */
+const ehGarimpado = (i: Imovel) => !!(i.imobiliariaConcorrente && i.imobiliariaConcorrente.trim());
+const fonteGarimpo = (i: Imovel) => (i.imobiliariaConcorrente || "").trim();
+
+/** Agrupamento temático dos insights, na ordem em que as seções aparecem. */
+export type InsightGroup = "acao" | "garimpo" | "desempenho" | "padroes";
+
+export const INSIGHT_GROUP_ORDER: readonly InsightGroup[] = ["acao", "garimpo", "desempenho", "padroes"];
+
+// `icon` é a CHAVE do ícone (ver components/insights/icones.tsx), não um emoji.
+export const INSIGHT_GROUP_META: Record<InsightGroup, { icon: string; label: string; sub: string }> = {
+  acao: { icon: "alerta", label: "Precisa de atenção", sub: "Onde o pipeline está travando agora" },
+  garimpo: { icon: "escopo", label: "Garimpo em concorrentes", sub: "De onde você tira suas oportunidades" },
+  desempenho: { icon: "alta", label: "Desempenho", sub: "O que os seus números dizem" },
+  padroes: { icon: "camadas", label: "Padrões da carteira", sub: "Leitura do perfil das suas angariações" },
+};
+
+/** Ação de um card: leva ao Pipeline filtrado por uma coluna ou por uma busca. */
+export type InsightAction =
+  | { tipo: "coluna"; col: PipelineCol; valor: string; rotulo?: string }
+  | { tipo: "busca"; termo: string; rotulo?: string };
+
 export interface Insight {
   tone: "info" | "pos" | "warn" | "bad";
+  /** Chave do ícone de linha (ver components/insights/icones.tsx), não um emoji. */
   icon: string;
   title: string;
   text: string;
+  /** Seção temática do card. */
+  group: InsightGroup;
+  /** Peso de ordenação dentro da seção — maior aparece primeiro. */
+  priority: number;
+  /** Se presente, o card abre o Pipeline já recortado nesses imóveis. */
+  action?: InsightAction;
+}
+
+/** Taxa de conversão em locação entre os imóveis que já tiveram desfecho. */
+function taxaConversao(imoveis: Imovel[]): { taxa: number | null; fechados: number; locados: number } {
+  const locados = imoveis.filter((i) => i.status === "Locado").length;
+  const fechados = imoveis.filter((i) => i.status === "Locado" || TERMINAIS.includes(i.status)).length;
+  return { taxa: fechados ? (locados / fechados) * 100 : null, fechados, locados };
 }
 
 export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insight[] {
   const list: Insight[] = [];
   if (imoveis.length < MIN_SAMPLE) return list;
 
-  // 1. Bairro mais procurado (maior volume de angariações)
+  // 1. Bairro mais trabalhado (maior volume de tentativas)
   const bairroCounts = groupCount(imoveis, (i) => i.bairro);
   const bairroEntries = Object.entries(bairroCounts)
     .filter(([b]) => b !== "Não informado")
@@ -36,20 +86,22 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
     const pct = ((count / imoveis.length) * 100).toFixed(0);
     list.push({
       tone: "info",
-      icon: "📍",
-      title: `${bairro} concentra suas tentativas de contato`,
-      text: `${count} de ${imoveis.length} imóveis (${pct}%) do seu pipeline vieram desse bairro. Pode valer investir mais tempo prospectando ali, já que você já tem presença e conhecimento da região.`,
+      icon: "local",
+      title: `${bairro} é seu bairro mais trabalhado`,
+      text: `${count} de ${imoveis.length} imóveis (${pct}%) do pipeline estão nesse bairro — sua maior concentração de esforço.`,
+      group: "padroes",
+      priority: 50,
+      action: { tipo: "coluna", col: "bairro", valor: bairro },
     });
   }
 
-  // 2. Tipo de imóvel com maior conversão (entre tipos com amostra mínima)
+  // 2. Tipo de imóvel com maior/menor conversão (entre tipos com amostra mínima)
   const tipos = [...new Set(imoveis.map((i) => i.tipo))];
   const tipoConv = tipos
     .map((t) => {
       const doTipo = imoveis.filter((i) => i.tipo === t);
-      const fechados = doTipo.filter((i) => i.status === "Locado" || TERMINAIS.includes(i.status));
-      const locados = doTipo.filter((i) => i.status === "Locado");
-      return { tipo: t, total: doTipo.length, taxa: fechados.length ? (locados.length / fechados.length) * 100 : null };
+      const { taxa } = taxaConversao(doTipo);
+      return { tipo: t, total: doTipo.length, taxa };
     })
     .filter((t) => t.total >= MIN_SAMPLE && t.taxa != null)
     .sort((a, b) => (b.taxa as number) - (a.taxa as number));
@@ -57,18 +109,24 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
     const best = tipoConv[0];
     list.push({
       tone: "pos",
-      icon: "✅",
-      title: `${best.tipo} tem a melhor taxa de conversão`,
-      text: `${(best.taxa as number).toFixed(0)}% dos imóveis do tipo "${best.tipo}" que chegaram a um desfecho foram locados (${best.total} cadastrados). Priorizar esse perfil de imóvel tende a gerar resultado mais rápido.`,
+      icon: "check",
+      title: `${best.tipo} é o tipo que mais converte`,
+      text: `${(best.taxa as number).toFixed(0)}% dos "${best.tipo}" com desfecho viraram locação (${best.total} na carteira). Priorizar esse perfil tende a render mais rápido.`,
+      group: "desempenho",
+      priority: 60,
+      action: { tipo: "coluna", col: "tipo", valor: best.tipo as string },
     });
     if (tipoConv.length > 1) {
       const worst = tipoConv[tipoConv.length - 1];
       if ((worst.taxa as number) < 40 && worst.tipo !== best.tipo) {
         list.push({
           tone: "warn",
-          icon: "⚠️",
+          icon: "alerta",
           title: `${worst.tipo} converte pouco`,
-          text: `Apenas ${(worst.taxa as number).toFixed(0)}% dos imóveis do tipo "${worst.tipo}" viraram locação. Vale entender se o problema é preço, demanda da região ou qualidade do anúncio antes de continuar investindo tempo nesse perfil.`,
+          text: `Só ${(worst.taxa as number).toFixed(0)}% dos "${worst.tipo}" com desfecho viraram locação. Vale revisar preço, demanda ou anúncio antes de investir mais tempo.`,
+          group: "acao",
+          priority: 70,
+          action: { tipo: "coluna", col: "tipo", valor: worst.tipo as string },
         });
       }
     }
@@ -79,13 +137,8 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
   const abordagemConv = abordagens
     .map((a) => {
       const doAbordagem = imoveis.filter((i) => i.formaAbordagem === a);
-      const fechados = doAbordagem.filter((i) => i.status === "Locado" || TERMINAIS.includes(i.status));
-      const locadosA = doAbordagem.filter((i) => i.status === "Locado");
-      return {
-        abordagem: a as string,
-        total: doAbordagem.length,
-        taxa: fechados.length ? (locadosA.length / fechados.length) * 100 : null,
-      };
+      const { taxa } = taxaConversao(doAbordagem);
+      return { abordagem: a as string, total: doAbordagem.length, taxa };
     })
     .filter((a) => a.total >= MIN_SAMPLE && a.taxa != null)
     .sort((a, b) => (b.taxa as number) - (a.taxa as number));
@@ -93,9 +146,11 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
     const best = abordagemConv[0];
     list.push({
       tone: "pos",
-      icon: "📞",
-      title: `"${best.abordagem}" converte melhor`,
-      text: `Entre as abordagens usadas com pelo menos ${MIN_SAMPLE} tentativas, "${best.abordagem}" teve ${(best.taxa as number).toFixed(0)}% de conversão em locação (${best.total} contatos). Vale priorizar esse canal ao iniciar um novo contato.`,
+      icon: "telefone",
+      title: `"${best.abordagem}" é sua abordagem mais eficaz`,
+      text: `${(best.taxa as number).toFixed(0)}% de conversão em locação (${best.total} contatos) — a melhor entre as abordagens com ao menos ${MIN_SAMPLE} usos.`,
+      group: "desempenho",
+      priority: 55,
     });
   }
 
@@ -108,24 +163,51 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
     const [origem, count] = origemEntries[0];
     list.push({
       tone: "info",
-      icon: "🔎",
-      title: `${origem} é sua principal fonte de oportunidades`,
-      text: `${count} dos seus imóveis angariados vieram dessa origem. Reforçar esse canal tende a manter o volume de entrada de novas oportunidades.`,
+      icon: "entrada",
+      title: `${origem} traz mais oportunidades`,
+      text: `${count} imóveis vieram dessa origem — sua principal porta de entrada de novas angariações.`,
+      group: "padroes",
+      priority: 45,
+      action: { tipo: "coluna", col: "origem", valor: origem },
     });
   }
 
-  // 2d. Concorrente mais frequente
-  const comConcorrente = imoveis.filter((i) => i.imobiliariaConcorrente && i.imobiliariaConcorrente.trim());
-  if (comConcorrente.length >= MIN_SAMPLE) {
-    const concorrenteCounts = groupCount(comConcorrente, (i) => (i.imobiliariaConcorrente as string).trim());
-    const [concorrente, count] = Object.entries(concorrenteCounts).sort((a, b) => b[1] - a[1])[0];
+  // --- GARIMPO EM CONCORRENTES -------------------------------------------
+  // Imóveis achados no site/vitrine de outras imobiliárias (fonte registrada).
+  const garimpados = imoveis.filter(ehGarimpado);
+  const porOrigemGarimpo = imoveis.filter((i) => i.origemImovel === ORIGEM_GARIMPO_SITE);
+  // Une os dois sinais: fonte nomeada OU origem marcada como garimpo em site.
+  const universoGarimpo = [...new Set([...garimpados, ...porOrigemGarimpo])];
+
+  if (universoGarimpo.length >= 2) {
+    const pct = ((universoGarimpo.length / imoveis.length) * 100).toFixed(0);
+    const locadosG = universoGarimpo.filter((i) => i.status === "Locado").length;
+    const complemento = locadosG > 0 ? ` — ${locadosG} já viraram locação.` : ".";
+    list.push({
+      tone: "info",
+      icon: "escopo",
+      title: `Garimpo em concorrentes: ${universoGarimpo.length} imóveis`,
+      text: `${universoGarimpo.length} de ${imoveis.length} angariações (${pct}%) você garimpou em sites de outras imobiliárias${complemento}`,
+      group: "garimpo",
+      priority: 60,
+    });
+  }
+
+  // Melhor fonte de garimpo: a imobiliária cujo site mais te rende (com amostra ≥ 2).
+  if (garimpados.length >= 2) {
+    const fonteCounts = groupCount(garimpados, fonteGarimpo);
+    const [fonte, count] = Object.entries(fonteCounts).sort((a, b) => b[1] - a[1])[0];
     if (count >= 2) {
-      const pct = ((count / comConcorrente.length) * 100).toFixed(0);
+      const daFonte = garimpados.filter((i) => fonteGarimpo(i) === fonte);
+      const locadosF = daFonte.filter((i) => i.status === "Locado").length;
+      const complemento = locadosF > 0 ? `, ${locadosF} já locado(s)` : "";
       list.push({
-        tone: "warn",
-        icon: "🏢",
-        title: `${concorrente} é seu concorrente mais frequente`,
-        text: `Apareceu em ${count} dos ${comConcorrente.length} imóveis (${pct}%) onde havia outra imobiliária envolvida. Vale entender o que essa imobiliária costuma oferecer de diferente para o proprietário.`,
+        tone: "pos",
+        icon: "predio",
+        title: `"${fonte}" é sua melhor fonte de garimpo`,
+        text: `${count} imóveis vieram do site dessa imobiliária${complemento}. Monitorar essa vitrine com frequência tende a manter o volume de entrada.`,
+        group: "garimpo",
+        priority: 70,
       });
     }
   }
@@ -137,26 +219,51 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
     const media = tempos.reduce((a, b) => a + b, 0) / tempos.length;
     list.push({
       tone: "info",
-      icon: "⏱️",
+      icon: "relogio",
       title: `Tempo médio até locação: ${Math.round(media)} dias`,
-      text: `Com base em ${tempos.length} imóveis já locados, esse é o tempo médio entre o primeiro contato e a locação efetiva. Use essa referência para prever quando um imóvel recém-contatado deve gerar retorno.`,
+      text: `Média entre o primeiro contato e a locação, com base em ${tempos.length} imóveis locados. Use como referência de prazo ao prospectar.`,
+      group: "desempenho",
+      priority: 40,
     });
   }
 
-  // 4. Melhor mês de desempenho
+  // 4. Locações por mês: melhor mês + tendência entre os dois últimos meses
   const monthGroups: Record<string, number> = {};
   locados.forEach((i) => {
     const k = monthKey(dateEnteredStatus(i, "Locado"));
     if (k) monthGroups[k] = (monthGroups[k] || 0) + 1;
   });
-  const monthEntries = Object.entries(monthGroups).sort((a, b) => b[1] - a[1]);
-  if (monthEntries.length >= 2) {
-    const [bestMonth, bestCount] = monthEntries[0];
+  const monthKeysOrd = Object.keys(monthGroups).sort();
+  if (monthKeysOrd.length >= 1) {
+    // Tendência: mês mais recente com locação vs. o mês de calendário anterior.
+    const ultimo = monthKeysOrd[monthKeysOrd.length - 1];
+    const anterior = shiftMonthKey(ultimo, -1);
+    const atualQ = monthGroups[ultimo];
+    const antQ = monthGroups[anterior] || 0;
+    if (atualQ !== antQ) {
+      const subiu = atualQ > antQ;
+      list.push({
+        tone: subiu ? "pos" : "warn",
+        icon: subiu ? "alta" : "baixa",
+        title: subiu
+          ? `Locações em alta: ${atualQ} em ${monthLabelLong(ultimo)}`
+          : `Locações em queda: ${atualQ} em ${monthLabelLong(ultimo)}`,
+        text: `Você fechou ${atualQ} locação(ões) em ${monthLabelLong(ultimo)}, contra ${antQ} em ${monthLabelLong(anterior)}. ${subiu ? "Vale entender o que mudou pra manter o ritmo." : "Vale reforçar o follow-up dos imóveis em negociação."}`,
+        group: "desempenho",
+        priority: 75,
+      });
+    }
+  }
+  const monthByVolume = Object.entries(monthGroups).sort((a, b) => b[1] - a[1]);
+  if (monthByVolume.length >= 2) {
+    const [bestMonth, bestCount] = monthByVolume[0];
     list.push({
       tone: "pos",
-      icon: "📈",
+      icon: "grafico",
       title: `${monthLabelLong(bestMonth)} foi seu melhor mês`,
-      text: `Foram ${bestCount} imóveis locados nesse período, o maior volume registrado até agora. Vale revisar o que foi diferente — canais usados, tipos de imóvel, ritmo de follow-up — para tentar repetir o padrão.`,
+      text: `${bestCount} imóveis locados nesse período — o maior volume registrado até agora.`,
+      group: "desempenho",
+      priority: 35,
     });
   }
 
@@ -170,24 +277,51 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
     const [status, count] = staleEntries[0];
     list.push({
       tone: "bad",
-      icon: "🚧",
+      icon: "funil",
       title: `Gargalo em "${status}"`,
-      text: `${count} imóvel(is) estão parados há mais de ${STALE_DAYS_THRESHOLD} dias nessa etapa. Esse é um bom ponto de partida para retomar contato ou revisar o que está travando o andamento.`,
+      text: `${count} imóvel(is) parado(s) há mais de ${STALE_DAYS_THRESHOLD} dias nessa etapa. Bom ponto de partida pra retomar contato.`,
+      group: "acao",
+      priority: 100,
+      action: { tipo: "coluna", col: "status", valor: status },
     });
   }
 
-  // 6. Slots vs demanda: comparação simples entre volume por tipo e conversão
+  // 5b. O imóvel específico parado há mais tempo — ação concreta e nominal.
+  const parados = imoveis
+    .filter(isStale)
+    .map((i) => ({ i, dias: daysInCurrentStatus(i) ?? 0 }))
+    .sort((a, b) => b.dias - a.dias);
+  if (parados.length > 0) {
+    const { i, dias } = parados[0];
+    const rotuloImovel = (i.codigo && i.codigo.trim()) || (i.endereco && i.endereco.trim()) || "Um imóvel";
+    list.push({
+      tone: "bad",
+      icon: "ampulheta",
+      title: `${rotuloImovel} é o mais parado: ${dias} dias`,
+      text: `Está há ${dias} dias em "${i.status}" sem avançar — o maior tempo parado da carteira. Priorize retomar esse contato.`,
+      group: "acao",
+      priority: 95,
+      action:
+        i.codigo && i.codigo.trim()
+          ? { tipo: "busca", termo: i.codigo.trim(), rotulo: "Ver imóvel →" }
+          : { tipo: "coluna", col: "status", valor: i.status },
+    });
+  }
+
+  // 5c. Total de estagnados no pipeline
   const totalStale = imoveis.filter(isStale).length;
   if (totalStale >= 3) {
     list.push({
       tone: "warn",
-      icon: "🔄",
+      icon: "estagnado",
       title: `${totalStale} imóveis estagnados no pipeline`,
-      text: `Isso representa uma fatia relevante da sua carteira ativa sem movimentação recente. Reservar um horário fixo na semana só para retomar esses casos costuma destravar parte deles.`,
+      text: `Uma fatia relevante da carteira ativa sem movimentação recente. Reservar um horário fixo na semana só pra esses casos costuma destravar parte deles.`,
+      group: "acao",
+      priority: 90,
     });
   }
 
-  // 6b. Principal motivo de perda (entre Perdido/Cancelado com motivo informado)
+  // 6. Principal motivo de perda (entre Perdido/Cancelado com motivo informado)
   const comMotivo = imoveis.filter((i) => (i.status === "Perdido" || i.status === "Cancelado") && i.motivoPerda);
   if (comMotivo.length >= MIN_SAMPLE) {
     const motivoCounts = groupCount(comMotivo, (i) =>
@@ -197,9 +331,11 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
     const pct = ((count / comMotivo.length) * 100).toFixed(0);
     list.push({
       tone: "info",
-      icon: "🔍",
+      icon: "busca",
       title: `Principal motivo de perda: ${motivo}`,
-      text: `${count} de ${comMotivo.length} perdas registradas (${pct}%) foram por esse motivo. Se for algo recorrente como imóvel já vendido/alugado por fora, pode valer reduzir o tempo entre o primeiro contato e a visita, pra chegar antes da concorrência.`,
+      text: `${count} de ${comMotivo.length} perdas registradas (${pct}%) foram por esse motivo. Se for recorrente (ex.: alugado por fora), reduzir o tempo até a visita ajuda a chegar antes.`,
+      group: "padroes",
+      priority: 40,
     });
   }
 
@@ -215,11 +351,21 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
           : "um ponto de atenção";
     list.push({
       tone,
-      icon: "🎯",
+      icon: "alvo",
       title: `Taxa de conversão geral: ${m.conversaoFechados.toFixed(0)}%`,
-      text: `Considerando os ${m.locados + m.perdidosCancelados} processos já encerrados (locados + perdidos/cancelados), essa taxa representa ${read}. Comparar mês a mês ajuda a identificar se mudanças no processo estão funcionando.`,
+      text: `Sobre os ${m.locados + m.perdidosCancelados} processos já encerrados (locados + perdidos/cancelados) — ${read}.`,
+      group: "desempenho",
+      priority: 80,
     });
   }
+
+  // Ordena por seção (ação → garimpo → desempenho → padrões) e, dentro dela, por
+  // prioridade decrescente — o mais urgente/relevante primeiro. A geração acima
+  // segue a ordem do código; só aqui a lista ganha a ordem de exibição.
+  list.sort((a, b) => {
+    const g = INSIGHT_GROUP_ORDER.indexOf(a.group) - INSIGHT_GROUP_ORDER.indexOf(b.group);
+    return g !== 0 ? g : b.priority - a.priority;
+  });
 
   return list;
 }
