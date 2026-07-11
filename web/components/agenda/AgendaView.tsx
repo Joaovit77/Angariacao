@@ -82,9 +82,6 @@ function ItemAgenda({ a, imovel }: { a: AgendaItem; imovel: Imovel | null }) {
               {dueInfo.label}
             </span>
           )}
-          {overdue && <span className="agenda-date-state overdue">atrasado</span>}
-          {today && <span className="agenda-date-state today">hoje</span>}
-          {future && <span className="agenda-date-state future">futuro</span>}
         </div>
       </div>
       <div className="agenda-actions">
