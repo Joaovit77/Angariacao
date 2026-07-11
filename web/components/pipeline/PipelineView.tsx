@@ -10,7 +10,7 @@
    para o input não ser recriado a cada tecla pela montagem de HTML por
    string; com input controlado do React o foco nunca se perde.
    ================================================================ */
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   filtrarImoveis,
   ordenarPipelineLista,
@@ -19,10 +19,17 @@ import {
   type PipelineCol,
 } from "@/lib/calculo/filtros";
 import { daysInCurrentStatus, isPausado, isStale } from "@/lib/calculo/motor";
+import {
+  linkWhatsapp,
+  mensagemWhatsapp,
+  MODELOS_WHATSAPP,
+  modeloPadraoWhatsapp,
+} from "@/lib/calculo/whatsapp";
 import { STATUS_ALL, STATUS_COLORS, TIPOS_IMOVEL } from "@/lib/constantes";
 import { fmtDate, fmtMoney } from "@/lib/formatadores";
 import { excluirImovel } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
+import { toast } from "@/lib/toast";
 import type { Imovel } from "@/lib/tipos";
 import { useUiModal } from "@/lib/uiModal";
 import { usePipelineUi } from "@/lib/uiPipeline";
@@ -217,6 +224,80 @@ function InfoDrawer({ label, value }: { label: string; value: string }) {
   );
 }
 
+// Item "WhatsApp" do roadmap na versão sem API: modelo por etapa do funil,
+// prévia editável e envio via link wa.me (click-to-chat). O componente é
+// montado com key={imovel.id} para trocar de imóvel descartar edições.
+function DrawerWhatsapp({ imovel }: { imovel: Imovel }) {
+  const padrao = modeloPadraoWhatsapp(imovel.status);
+  const [modeloId, setModeloId] = useState(padrao);
+  const [texto, setTexto] = useState(() => mensagemWhatsapp(padrao, imovel));
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const link = linkWhatsapp(imovel, texto);
+
+  function trocarModelo(id: string) {
+    setModeloId(id);
+    setTexto(mensagemWhatsapp(id, imovel));
+  }
+
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(texto);
+      toast("Mensagem copiada.");
+    } catch {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      el.select();
+      document.execCommand("copy");
+      toast("Mensagem copiada.");
+    }
+  }
+
+  return (
+    <div className="drawer-section">
+      <div className="drawer-section-title">Mensagem de WhatsApp</div>
+      <select
+        aria-label="Modelo de mensagem"
+        value={modeloId}
+        onChange={(e) => trocarModelo(e.target.value)}
+        style={{ width: "100%", marginBottom: "8px" }}
+      >
+        {MODELOS_WHATSAPP.map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.rotulo}
+          </option>
+        ))}
+      </select>
+      <textarea
+        ref={textareaRef}
+        aria-label="Prévia da mensagem"
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        style={{ width: "100%", minHeight: "160px", marginBottom: "8px" }}
+      />
+      {!link && (
+        <p className="section-note" style={{ marginBottom: "8px" }}>
+          Sem telefone cadastrado — copie a mensagem para enviar manualmente.
+        </p>
+      )}
+      <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+        <button type="button" className="btn btn-sm" onClick={copiar}>
+          Copiar mensagem
+        </button>
+        {link && (
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost agenda-whatsapp-btn"
+            onClick={() => window.open(link, "_blank", "noopener")}
+          >
+            Enviar WhatsApp
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Drawer({ imovel }: { imovel: Imovel }) {
   const fecharDrawer = usePipelineUi((s) => s.fecharDrawer);
   const abrirModal = useUiModal((s) => s.abrirModal);
@@ -263,6 +344,7 @@ function Drawer({ imovel }: { imovel: Imovel }) {
           {/* A seção "Fotos" do app antigo lia imovel.fotos, campo que nenhum
               mapeador produz — sempre mostrava "Sem fotos cadastradas.". Removida
               na pós-migração (achado A2) por ser bloco morto. */}
+          <DrawerWhatsapp key={imovel.id} imovel={imovel} />
         </div>
         <div className="pipeline-drawer-foot">
           <button type="button" className="btn btn-ghost" onClick={fecharDrawer}>
