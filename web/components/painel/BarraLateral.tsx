@@ -7,6 +7,7 @@
    reseta o sublinhado de <a>), mas agora navegam por URL — cada view
    virou uma rota (§4 do MIGRATION_NEXT.md).
    ================================================================ */
+import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
 import { STATUS_FLOW } from "@/lib/constantes";
@@ -119,6 +120,15 @@ export default function BarraLateral({ aberta, aoFechar }: { aberta: boolean; ao
   const imoveis = useAppStore((s) => s.imoveis);
   const agenda = useAppStore((s) => s.agenda);
   const abrirModal = useUiModal((s) => s.abrirModal);
+
+  // Prefetch das rotas: os itens são <button> com router.push (não <Link>),
+  // então o Next não faz o prefetch automático. Sem isto, cada clique só
+  // começa a buscar o chunk/RSC da view depois do clique, atrasando a pintura
+  // (INP alto). Aquece o cache no mount. (No dev o prefetch é no-op — a
+  // lentidão ao navegar em localhost é a compilação sob demanda, não isto.)
+  useEffect(() => {
+    for (const item of ITENS) router.prefetch(item.rota);
+  }, [router]);
 
   // updateNavBadges(): pipeline = imóveis no funil ainda não locados;
   // agenda = compromissos pendentes.
