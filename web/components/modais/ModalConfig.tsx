@@ -7,8 +7,10 @@
    ================================================================ */
 import { useState } from "react";
 import { useSessao } from "@/components/SessaoProvider";
+import { AGENDA_TYPES } from "@/lib/constantes";
 import { apagarTodosOsDados, carregarDadosDemo, numOrNull, salvarConfig } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
+import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
 
 export default function ModalConfig() {
@@ -17,12 +19,33 @@ export default function ModalConfig() {
   const config = useAppStore((s) => s.config);
 
   const [comissao, setComissao] = useState(String(config.comissaoPercent));
+  const [tipos, setTipos] = useState<string[]>(config.agendaTipos ?? []);
+  const [novoTipo, setNovoTipo] = useState("");
   const [ocupado, setOcupado] = useState(false);
+
+  function adicionarTipo() {
+    const t = novoTipo.trim();
+    if (!t) return;
+    // Não duplica um fixo nem um já existente (ignorando maiúsc./minúsc.).
+    const jaExiste =
+      AGENDA_TYPES.some((f) => f.toLowerCase() === t.toLowerCase()) ||
+      tipos.some((x) => x.toLowerCase() === t.toLowerCase());
+    if (jaExiste) {
+      toast("Esse tipo já existe.", "error");
+      return;
+    }
+    setTipos([...tipos, t]);
+    setNovoTipo("");
+  }
+
+  function removerTipo(t: string) {
+    setTipos(tipos.filter((x) => x !== t));
+  }
 
   async function salvar() {
     if (!usuario) return;
     setOcupado(true);
-    const ok = await salvarConfig(numOrNull(comissao) || 100, usuario.id);
+    const ok = await salvarConfig({ comissaoPercent: numOrNull(comissao) || 100, agendaTipos: tipos }, usuario.id);
     setOcupado(false);
     if (ok) fecharModal();
   }
@@ -58,6 +81,44 @@ export default function ModalConfig() {
           <div className="field-hint">
             100% equivale a 1 mês de aluguel. Usado para calcular a comissão estimada de cada imóvel
             automaticamente.
+          </div>
+        </div>
+        <div className="divider"></div>
+        <div className="field-group">
+          <label>Tipos de compromisso da agenda</label>
+          <div className="field-hint" style={{ marginBottom: "10px" }}>
+            Além dos tipos fixos ({AGENDA_TYPES.join(", ")}), crie os seus próprios (ex.: Avaliação,
+            Sessão de fotos, Vistoria) para escolher ao marcar um compromisso.
+          </div>
+          {tipos.length > 0 && (
+            <div className="config-tipos-lista">
+              {tipos.map((t) => (
+                <span key={t} className="config-tipo-chip">
+                  {t}
+                  <button type="button" aria-label={`Remover ${t}`} onClick={() => removerTipo(t)}>
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: "8px" }}>
+            <input
+              type="text"
+              value={novoTipo}
+              onChange={(e) => setNovoTipo(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  adicionarTipo();
+                }
+              }}
+              placeholder="Novo tipo (ex.: Avaliação)"
+              style={{ flex: 1 }}
+            />
+            <button type="button" className="btn" onClick={adicionarTipo}>
+              Adicionar
+            </button>
           </div>
         </div>
         <div className="divider"></div>

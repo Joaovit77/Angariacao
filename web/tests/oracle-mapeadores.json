@@ -1585,7 +1585,8 @@
       "imovelId": "r1",
       "notes": "Lembrete automático",
       "done": false,
-      "isVerificacaoDisponibilidade": true
+      "isVerificacaoDisponibilidade": true,
+      "hora": null
     },
     "a2": {
       "id": "a2",
@@ -1595,7 +1596,8 @@
       "imovelId": null,
       "notes": "",
       "done": false,
-      "isVerificacaoDisponibilidade": false
+      "isVerificacaoDisponibilidade": false,
+      "hora": null
     }
   },
   "toDbAgenda": {
@@ -1608,7 +1610,8 @@
       "imovel_id": "r1",
       "notes": "Confirmar horário",
       "done": true,
-      "is_verificacao_disponibilidade": false
+      "is_verificacao_disponibilidade": false,
+      "hora": null
     },
     "c2": {
       "id": "c2",
@@ -1619,7 +1622,8 @@
       "imovel_id": null,
       "notes": null,
       "done": false,
-      "is_verificacao_disponibilidade": false
+      "is_verificacao_disponibilidade": false,
+      "hora": null
     }
   },
   "roundTripAgenda": {
@@ -1631,7 +1635,8 @@
       "imovelId": "r1",
       "notes": "Confirmar horário",
       "done": true,
-      "isVerificacaoDisponibilidade": false
+      "isVerificacaoDisponibilidade": false,
+      "hora": null
     },
     "c2": {
       "id": "c2",
@@ -1641,7 +1646,8 @@
       "imovelId": null,
       "notes": "",
       "done": false,
-      "isVerificacaoDisponibilidade": false
+      "isVerificacaoDisponibilidade": false,
+      "hora": null
     }
   }
 }

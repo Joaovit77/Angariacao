@@ -15,6 +15,7 @@ import {
   agendaTypeIcon,
   agendaVencimentoInfo,
   AGENDA_PENDENTES_JANELA_DIAS,
+  compararAgenda,
   isAgendaAngariacaoVencida,
   mensagemRenovacaoAngariacao,
   telefoneWhatsapp,
@@ -27,7 +28,7 @@ import { useAppStore } from "@/lib/store";
 import type { AgendaItem, Imovel } from "@/lib/tipos";
 import { useUiModal } from "@/lib/uiModal";
 
-type FiltroAgenda = "pendentes" | "todas" | "atrasadas";
+type FiltroAgenda = "pendentes" | "todas" | "atrasadas" | "concluidas";
 
 function ItemAgenda({ a, imovel }: { a: AgendaItem; imovel: Imovel | null }) {
   const abrirModal = useUiModal((s) => s.abrirModal);
@@ -67,6 +68,7 @@ function ItemAgenda({ a, imovel }: { a: AgendaItem; imovel: Imovel | null }) {
       <div className="agenda-item-body" style={{ cursor: "pointer" }} onClick={() => abrirModal("agenda", a.id)}>
         <div className="agenda-item-title">
           <span className="agenda-type-icon">{typeIcon}</span>
+          {a.hora && <span className="agenda-hora">{a.hora}</span>}
           {a.title}
         </div>
         <div className="agenda-item-meta">
@@ -120,23 +122,37 @@ export default function AgendaView() {
   const imoveis = useAppStore((s) => s.imoveis);
   const abrirModal = useUiModal((s) => s.abrirModal);
   const [filtro, setFiltro] = useState<FiltroAgenda>("pendentes");
+  const [filtroTipo, setFiltroTipo] = useState("");
+  const [filtroImovel, setFiltroImovel] = useState("");
 
   const hoje = todayISO();
   const limitePendentes = addDaysISO(hoje, AGENDA_PENDENTES_JANELA_DIAS) as string;
+
+  // Opções de refino: só os tipos e imóveis que realmente aparecem na agenda.
+  const tiposPresentes = Array.from(new Set(agenda.map((a) => a.type).filter(Boolean))).sort();
+  const imovelIdsUsados = new Set(agenda.map((a) => a.imovelId).filter(Boolean));
+  const imoveisFiltro = imoveis
+    .filter((i) => imovelIdsUsados.has(i.id))
+    .sort((a, b) => (a.codigo || a.endereco).localeCompare(b.codigo || b.endereco));
 
   const items = agenda
     .filter((a) => {
       if (filtro === "pendentes") return !a.done && a.date <= limitePendentes;
       if (filtro === "atrasadas") return !a.done && a.date < hoje;
+      if (filtro === "concluidas") return a.done;
       return true;
     })
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .filter((a) => (filtroTipo ? a.type === filtroTipo : true))
+    .filter((a) => (filtroImovel ? a.imovelId === filtroImovel : true))
+    .sort(compararAgenda);
 
   const grouped: Record<string, AgendaItem[]> = {};
   items.forEach((a) => {
     (grouped[a.date] = grouped[a.date] || []).push(a);
   });
   const dateKeys = Object.keys(grouped).sort();
+  // No histórico (Concluídas), mostra os dias mais recentes primeiro.
+  if (filtro === "concluidas") dateKeys.reverse();
 
   const atrasadas = agenda.filter((a) => !a.done && a.date < hoje).length;
   const futurosOcultos =
@@ -168,7 +184,7 @@ export default function AgendaView() {
 
       <div className="agenda-layout">
         <div>
-          <div className="pipeline-toolbar" style={{ marginBottom: "16px" }}>
+          <div className="pipeline-toolbar" style={{ marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
             <div className="view-toggle">
               <button
                 type="button"
@@ -186,11 +202,46 @@ export default function AgendaView() {
               </button>
               <button
                 type="button"
+                className={filtro === "concluidas" ? "active" : ""}
+                onClick={() => setFiltro("concluidas")}
+              >
+                Concluídas
+              </button>
+              <button
+                type="button"
                 className={filtro === "todas" ? "active" : ""}
                 onClick={() => setFiltro("todas")}
               >
                 Todas
               </button>
+            </div>
+            <div style={{ display: "flex", gap: "8px", marginLeft: "auto", flexWrap: "wrap" }}>
+              <select
+                className="filter-select"
+                value={filtroTipo}
+                onChange={(e) => setFiltroTipo(e.target.value)}
+                aria-label="Filtrar por tipo"
+              >
+                <option value="">Todos os tipos</option>
+                {tiposPresentes.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="filter-select"
+                value={filtroImovel}
+                onChange={(e) => setFiltroImovel(e.target.value)}
+                aria-label="Filtrar por imóvel"
+              >
+                <option value="">Todos os imóveis</option>
+                {imoveisFiltro.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.codigo || i.endereco}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -211,8 +262,10 @@ export default function AgendaView() {
                     ? "pendentes"
                     : filtro === "atrasadas"
                       ? "atrasados"
-                      : "cadastrados"}{" "}
-                  no momento.
+                      : filtro === "concluidas"
+                        ? "concluídos"
+                        : "cadastrados"}
+                  {filtroTipo || filtroImovel ? " com esses filtros" : ""} no momento.
                 </p>
               </div>
             )

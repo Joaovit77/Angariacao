@@ -6,7 +6,7 @@ const estadoExemplo = {
   imoveis: [{ id: "x1", endereco: "Rua A, 1", status: "Novo contato" }],
   metas: { "2026-07": { angariacoes: 5, locados: 2, comissao: 5000 } },
   agenda: [{ id: "a1", title: "t", type: "Visita", date: "2026-07-10", done: false, isVerificacaoDisponibilidade: false }],
-  config: { comissaoPercent: 50 },
+  config: { comissaoPercent: 50, agendaTipos: [] },
 };
 
 beforeEach(() => {
@@ -19,7 +19,7 @@ describe("useAppStore", () => {
     expect(s.imoveis).toEqual([]);
     expect(s.metas).toEqual({});
     expect(s.agenda).toEqual([]);
-    expect(s.config).toEqual({ comissaoPercent: 100 });
+    expect(s.config).toEqual({ comissaoPercent: 100, agendaTipos: [] });
     expect(s.carregado).toBe(false);
   });
 
@@ -36,7 +36,7 @@ describe("useAppStore", () => {
     useAppStore.getState().limparEstado();
     const s = useAppStore.getState();
     expect(s.imoveis).toEqual([]);
-    expect(s.config).toEqual({ comissaoPercent: 100 });
+    expect(s.config).toEqual({ comissaoPercent: 100, agendaTipos: [] });
     expect(s.carregado).toBe(false);
   });
 });

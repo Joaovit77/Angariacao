@@ -20,7 +20,7 @@ import { toDbAgenda, toDbImovel } from "./persistencia/mapeadores";
 import { getSupabase } from "./persistencia/supabase";
 import { useAppStore } from "./store";
 import { toast } from "./toast";
-import type { AgendaItem, Imovel, Meta } from "./tipos";
+import type { AgendaItem, Imovel, Meta, UserConfig } from "./tipos";
 
 export function uid(): string {
   return crypto.randomUUID();
@@ -266,15 +266,15 @@ export async function confirmarConclusaoVerificacao(
   return true;
 }
 
-export async function salvarConfig(comissaoPercent: number, userId: string): Promise<boolean> {
+export async function salvarConfig(config: UserConfig, userId: string): Promise<boolean> {
   const { error } = await getSupabase()
     .from("user_config")
-    .upsert({ user_id: userId, comissao_percent: comissaoPercent });
+    .upsert({ user_id: userId, comissao_percent: config.comissaoPercent, agenda_tipos: config.agendaTipos });
   if (error) {
     toast("Não foi possível salvar: " + error.message, "error");
     return false;
   }
-  useAppStore.getState().setConfig({ comissaoPercent });
+  useAppStore.getState().setConfig(config);
   toast("Configurações salvas.");
   return true;
 }

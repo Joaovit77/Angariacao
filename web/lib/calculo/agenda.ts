@@ -4,8 +4,25 @@
    isAgendaAngariacaoMonitorada / agendaVencimentoInfo /
    mensagemRenovacaoAngariacao / telefoneWhatsapp (app.js, seção 5D).
    ================================================================ */
+import { AGENDA_TYPES } from "../constantes";
 import { daysBetween, todayISO } from "../datas";
 import type { AgendaItem, Imovel } from "../tipos";
+
+// Lista de tipos oferecida ao usuário: os fixos do app + os personalizados
+// salvos no config, sem duplicar e preservando a ordem (fixos primeiro).
+export function tiposAgendaDisponiveis(agendaTipos: string[] | null | undefined): string[] {
+  const base = AGENDA_TYPES as readonly string[];
+  const extras = (agendaTipos || [])
+    .map((t) => t.trim())
+    .filter((t) => t !== "" && !base.includes(t));
+  return [...base, ...Array.from(new Set(extras))];
+}
+
+// Ordena por data e, no mesmo dia, por hora — compromissos sem hora
+// ("dia inteiro") vêm antes dos com hora (string vazia < "HH:MM").
+export function compararAgenda(a: AgendaItem, b: AgendaItem): number {
+  return a.date.localeCompare(b.date) || (a.hora || "").localeCompare(b.hora || "");
+}
 
 // Janela de "perto o suficiente" para aparecer na aba Pendentes — atrasados,
 // hoje, e o que vence nos próximos 15 dias. O resto (não concluído, mas

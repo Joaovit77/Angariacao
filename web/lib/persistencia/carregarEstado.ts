@@ -48,10 +48,15 @@ export async function carregarEstado(client: SupabaseClient = getSupabase()): Pr
   });
 
   const cfData = cfRes.data as DbUserConfigRow | null;
+  // agenda_tipos é jsonb; blinda contra null/undefined/valor não-array e
+  // descarta entradas vazias/não-string vindas do banco.
+  const agendaTipos = Array.isArray(cfData?.agenda_tipos)
+    ? cfData.agenda_tipos.filter((t): t is string => typeof t === "string" && t.trim() !== "")
+    : [];
   return {
     imoveis: ((imRes.data || []) as DbImovelRow[]).map(fromDbImovel),
     agenda: ((agRes.data || []) as DbAgendaRow[]).map(fromDbAgenda),
     metas,
-    config: { comissaoPercent: cfData ? Number(cfData.comissao_percent) : 100 },
+    config: { comissaoPercent: cfData ? Number(cfData.comissao_percent) : 100, agendaTipos },
   };
 }

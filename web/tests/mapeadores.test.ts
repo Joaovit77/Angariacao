@@ -83,4 +83,20 @@ describe("toDbAgenda / fromDbAgenda / ida-e-volta", () => {
     expect(a2.done).toBe(false);
     expect(a2.isVerificacaoDisponibilidade).toBe(false);
   });
+
+  it("hora: preserva 'HH:MM' e coage vazio para null na ida", () => {
+    const base: AgendaItem = {
+      id: "h1", title: "Visita", type: "Visita", date: "2026-07-14",
+      done: false, isVerificacaoDisponibilidade: false,
+    };
+    expect(toDbAgenda({ ...base, hora: "14:30" }, USER_ID).hora).toBe("14:30");
+    expect(toDbAgenda({ ...base, hora: "" }, USER_ID).hora).toBeNull();
+    expect(toDbAgenda(base, USER_ID).hora).toBeNull();
+  });
+
+  it("hora: null no banco vira null; 'HH:MM' passa intacto na volta", () => {
+    const row = agendaRows.find((r) => r.id === "a1")!;
+    expect(fromDbAgenda({ ...row, hora: null }).hora).toBeNull();
+    expect(fromDbAgenda({ ...row, hora: "09:00" }).hora).toBe("09:00");
+  });
 });
