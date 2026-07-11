@@ -86,7 +86,7 @@ export default function InsightsView() {
                 </div>
                 <span className="insight-group-count">{doGrupo.length}</span>
               </div>
-              <div className="insight-grid">
+              <div className="insight-grid anim-stagger">
                 {doGrupo.map((i, idx) => (
                   <CartaoInsight key={idx} i={i} aoAbrirNoPipeline={abrirNoPipeline} />
                 ))}

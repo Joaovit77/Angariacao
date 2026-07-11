@@ -13,6 +13,7 @@
    ================================================================ */
 import { useRouter } from "next/navigation";
 import type { ChartConfiguration } from "chart.js/auto";
+import Contador from "@/components/Contador";
 import Grafico, { baseBarOptions, CHART_COLORS } from "@/components/graficos/Grafico";
 import { kpisDashboard, seriesDashboard } from "@/lib/calculo/dashboard";
 import { STATUS_FLOW } from "@/lib/constantes";
@@ -30,7 +31,7 @@ function KpiCard({
   description,
 }: {
   label: string;
-  value: string | number;
+  value: React.ReactNode;
   delta?: number | null;
   unit?: string;
   hint?: string;
@@ -249,19 +250,19 @@ export default function DashboardView() {
         </div>
       </div>
 
-      <div className="grid grid-3" style={{ marginBottom: "16px" }}>
-        <KpiCard label="Novos contatos no mês" value={kpis.contatosThisMonth} delta={kpis.deltaContatos} unit="un." description="Imóveis que entraram no funil este mês" />
-        <KpiCard label="Angariações no mês" value={kpis.angariacoesThisMonth} delta={kpis.deltaAngariacoes} unit="un." description="Só conta ao chegar na etapa Angariado" />
-        <KpiCard label="Imóveis locados no mês" value={kpis.locadosThisMonth} delta={kpis.deltaLocados} unit="un." />
-        <KpiCard label="Taxa de conversão" value={overall.conversaoFechados.toFixed(0) + "%"} hint="Locado ÷ processos fechados" />
-        <KpiCard label="Tempo médio até locação" value={overall.tempoMedio != null ? Math.round(overall.tempoMedio) : "—"} unit="dias" />
-        <KpiCard label="Em andamento agora" value={kpis.emAndamento} unit="imóveis" />
-        <KpiCard label="Comissão estimada (mês)" value={fmtMoney(kpis.comissaoEstMes)} />
-        <KpiCard label="Comissão recebida (mês)" value={fmtMoney(kpis.comissaoRecMes)} />
-        <KpiCard label="Valor médio de aluguel" value={fmtMoney(overall.valorMedioAluguel)} />
+      <div className="grid grid-3 anim-stagger" style={{ marginBottom: "16px" }}>
+        <KpiCard label="Novos contatos no mês" value={<Contador valor={kpis.contatosThisMonth} />} delta={kpis.deltaContatos} unit="un." description="Imóveis que entraram no funil este mês" />
+        <KpiCard label="Angariações no mês" value={<Contador valor={kpis.angariacoesThisMonth} />} delta={kpis.deltaAngariacoes} unit="un." description="Só conta ao chegar na etapa Angariado" />
+        <KpiCard label="Imóveis locados no mês" value={<Contador valor={kpis.locadosThisMonth} />} delta={kpis.deltaLocados} unit="un." />
+        <KpiCard label="Taxa de conversão" value={<Contador valor={overall.conversaoFechados} formatar={(n) => Math.round(n) + "%"} />} hint="Locado ÷ processos fechados" />
+        <KpiCard label="Tempo médio até locação" value={overall.tempoMedio != null ? <Contador valor={overall.tempoMedio} /> : "—"} unit="dias" />
+        <KpiCard label="Em andamento agora" value={<Contador valor={kpis.emAndamento} />} unit="imóveis" />
+        <KpiCard label="Comissão estimada (mês)" value={<Contador valor={kpis.comissaoEstMes} formatar={fmtMoney} />} />
+        <KpiCard label="Comissão recebida (mês)" value={<Contador valor={kpis.comissaoRecMes} formatar={fmtMoney} />} />
+        <KpiCard label="Valor médio de aluguel" value={<Contador valor={overall.valorMedioAluguel} formatar={fmtMoney} />} />
       </div>
 
-      <div className="grid grid-2" style={{ marginBottom: "16px" }}>
+      <div className="grid grid-2 anim-stagger" style={{ marginBottom: "16px" }}>
         <div className="card chart-card">
           <div className="card-title">
             Angariações por mês <span className="section-note">últimos 6 meses</span>
@@ -278,7 +279,7 @@ export default function DashboardView() {
         </div>
       </div>
 
-      <div className="grid grid-2" style={{ marginBottom: "16px" }}>
+      <div className="grid grid-2 anim-stagger" style={{ marginBottom: "16px" }}>
         <div className="card chart-card">
           <div className="card-title">
             Imóveis no pipeline por bairro <span className="section-note">top 8 · todos os status</span>
@@ -297,7 +298,7 @@ export default function DashboardView() {
         </div>
       </div>
 
-      <div className="grid grid-2">
+      <div className="grid grid-2 anim-stagger">
         <div className="card chart-card">
           <div className="card-title">
             Comissão: estimada vs. recebida <span className="section-note">últimos 6 meses</span>
