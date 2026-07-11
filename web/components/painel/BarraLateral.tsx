@@ -7,6 +7,7 @@
    reseta o sublinhado de <a>), mas agora navegam por URL — cada view
    virou uma rota (§4 do MIGRATION_NEXT.md).
    ================================================================ */
+import Image from "next/image";
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
@@ -150,7 +151,7 @@ export default function BarraLateral({ aberta, aoFechar }: { aberta: boolean; ao
   return (
     <aside className={`sidebar${aberta ? " open" : ""}`} id="sidebar">
       <div className="brand">
-        <div className="brand-mark">A</div>
+        <Image className="brand-mark" src="/logo.png" alt="Angariações" width={52} height={52} />
         <div className="brand-text">
           <span className="brand-title">Angariações</span>
           <span className="brand-sub">Controle de Locação</span>

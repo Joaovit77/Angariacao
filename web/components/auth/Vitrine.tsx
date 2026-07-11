@@ -3,12 +3,13 @@
    Port literal das linhas 21–64 do index.html — mesmos textos,
    mesmos ícones, mesma ordem. Conteúdo estático (Server Component).
    ================================================================ */
+import Image from "next/image";
 
 export default function Vitrine() {
   return (
     <section className="auth-showcase">
       <div className="brand auth-showcase-brand">
-        <div className="brand-mark">A</div>
+        <Image className="brand-mark" src="/logo.png" alt="Angariações" width={52} height={52} />
         <div className="brand-text">
           <span className="brand-title">Angariações</span>
           <span className="brand-sub">Controle de Locação</span>

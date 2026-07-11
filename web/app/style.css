@@ -1,23 +1,23 @@
 /* ============================================================
    DESIGN TOKENS
-   Paleta: base grafite/slate profunda + acento âmbar-terracota
-   (referência ao universo imobiliário: plantas, chaves, tijolo)
+   Paleta: base verde-floresta profunda + acento dourado
+   (casa com o logo: casa/prédios em verde escuro com traço dourado)
    Tipografia: display condensada para números grandes (KPIs),
    corpo em sans neutra para leitura de tabelas longas.
    ============================================================ */
 :root{
-  --bg: #12151a;
-  --bg-elev-1: #181c23;
-  --bg-elev-2: #1f242d;
-  --bg-elev-3: #272d38;
-  --border: #2c323d;
-  --border-soft: #232830;
+  --bg: #121613;
+  --bg-elev-1: #171e19;
+  --bg-elev-2: #1e2721;
+  --bg-elev-3: #27322a;
+  --border: #2f3a32;
+  --border-soft: #222c25;
   --text: #e8e6e1;
   --text-dim: #9aa1ad;
-  --text-faint: #666e7b;
-  --accent: #d98a4f;
-  --accent-soft: #d98a4f26;
-  --accent-strong: #f0a868;
+  --text-faint: #6d766e;
+  --accent: #cca24a;
+  --accent-soft: #cca24a26;
+  --accent-strong: #e3c368;
   --good: #5fb896;
   --good-soft: #5fb89622;
   --warn: #e0b458;
@@ -84,15 +84,22 @@ input, select, textarea{ font-family: inherit; font-size: 14px; }
   border-bottom: 1px solid var(--border-soft);
 }
 .brand-mark{
-  width: 35px; height: 35px;
+  width: 44px; height: 44px;
   border-radius: 7px;
-  background: linear-gradient(155deg, var(--accent), #b5652c);
+  background: linear-gradient(155deg, var(--accent), #8f6f2a);
   display:flex; align-items:center; justify-content:center;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 15px;
   color: #1a1207;
   flex-shrink:0;
+}
+/* Quando a marca é a imagem do logo (arquivo em /public), não usa o quadrado
+   de gradiente: mostra a arte com fundo transparente, contida no mesmo box. */
+img.brand-mark{
+  background: none;
+  border-radius: 0;
+  object-fit: contain;
 }
 .brand-text{ display:flex; flex-direction:column; line-height:1.15; }
 .brand-title{ font-family: Arial, Helvetica, sans-serif; font-size: 19px; font-weight:400; letter-spacing:.2px; margin: 5px;}
@@ -157,7 +164,7 @@ input, select, textarea{ font-family: inherit; font-size: 14px; }
   overflow-x: hidden;
   overflow-y: auto;
   background:
-    radial-gradient(600px circle at 15% 20%, #d98a4f14, transparent 60%),
+    radial-gradient(600px circle at 15% 20%, #cca24a14, transparent 60%),
     radial-gradient(500px circle at 85% 80%, #6fa8c914, transparent 60%),
     var(--bg);
 }
@@ -172,7 +179,7 @@ input, select, textarea{ font-family: inherit; font-size: 14px; }
   animation: authboxin .35s ease;
 }
 @keyframes authboxin{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
-.auth-box .brand-mark{ width:38px; height:38px; font-size:18px; border-radius:9px; }
+.auth-box .brand-mark{ width:52px; height:52px; font-size:18px; border-radius:9px; }
 .auth-box .brand-title{ font-size:16.5px; }
 .auth-box .brand-sub{ font-size:11px; }
 .auth-tagline{
@@ -227,7 +234,7 @@ input, select, textarea{ font-family: inherit; font-size: 14px; }
   flex-shrink:0; width:38px; height:38px; border-radius:10px;
   display:inline-flex; align-items:center; justify-content:center;
   background: var(--accent-soft); color: var(--accent-strong);
-  border:1px solid #d98a4f2e;
+  border:1px solid #cca24a2e;
 }
 .showcase-feature-ic svg{ width:19px; height:19px; }
 .showcase-feature-txt{ font-size:13px; color: var(--text-dim); line-height:1.5; }
@@ -452,7 +459,7 @@ tbody tr:last-child td{ border-bottom:none; }
 .badge[data-status="Visita agendada"]{ background:#9b8fd922; color:#b3a8ea; }
 .badge[data-status="Em negociação"]{ background:#e0b45822; color:#e0b458; }
 .badge[data-status="Documentação"]{ background:#d9a45f22; color:#e0a35e; }
-.badge[data-status="Angariado"]{ background:#d98a4f26; color:#f0a868; }
+.badge[data-status="Angariado"]{ background:#cca24a26; color:#e3c368; }
 .badge[data-status="Publicado"]{ background:#6fc9a822; color:#7bd4b2; }
 .badge[data-status="Locado"]{ background:#5fb89622; color:#5fb896; }
 .badge[data-status="Sem resposta"]{ background:#8a8a8a22; color:#b8b8b8; }
@@ -860,7 +867,7 @@ legend{
   border:1px solid var(--border);
   border-radius: var(--radius);
 }
-.badge-card:not(.bloqueada){ border-color:#d98a4f66; background: linear-gradient(180deg, var(--accent-soft), var(--bg-elev-1) 60%); }
+.badge-card:not(.bloqueada){ border-color:#cca24a66; background: linear-gradient(180deg, var(--accent-soft), var(--bg-elev-1) 60%); }
 .badge-card.bloqueada{ opacity:.5; filter: grayscale(1); }
 .badge-icone{ font-size:24px; line-height:1.2; }
 .badge-nome{ font-family: var(--font-display); font-size:13.5px; font-weight:600; }
@@ -878,7 +885,7 @@ legend{
   color: var(--text-faint); margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid var(--border-soft);
   display:flex; align-items:center; gap:8px;
 }
-.agenda-day-label.today{ color: var(--accent-strong); border-bottom-color:#d98a4f55; }
+.agenda-day-label.today{ color: var(--accent-strong); border-bottom-color:#cca24a55; }
 .agenda-future-hint{
   text-align:center; font-size:12px; color:var(--text-dim); cursor:pointer;
   padding:12px; border:1px dashed var(--border); border-radius: var(--radius-sm);
@@ -898,7 +905,7 @@ legend{
 }
 .agenda-item.done{ opacity:.45; }
 .agenda-item.overdue{ border-color: #d9787855; box-shadow: inset 3px 0 0 var(--bad); }
-.agenda-item.today{ border-color:#d98a4f66; box-shadow: inset 3px 0 0 var(--accent); }
+.agenda-item.today{ border-color:#cca24a66; box-shadow: inset 3px 0 0 var(--accent); }
 .agenda-item.future{ box-shadow: inset 3px 0 0 #6fa8c955; }
 .agenda-check{
   width:18px; height:18px; border-radius:5px; border:1.5px solid var(--border);
@@ -1251,8 +1258,17 @@ legend{
   }
 
   .sidebar{
-    position: fixed; top:0; left:0; height:100vh; width:260px;
+    position: fixed; top:0; left:0; width:260px;
+    /* 100dvh = altura VISÍVEL real (desconta a barra do navegador no celular);
+       100vh como fallback para navegadores sem dvh. */
+    height:100vh; height:100dvh;
     z-index: 2000;
+    /* Gaveta rola por dentro quando o menu é mais alto que a tela — sem isto o
+       rodapé (Sair) fica cortado e o toque rola a página por baixo.
+       overscroll-behavior:contain impede o scroll de "vazar" para o body. */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     transform: translateX(-100%);
     transition: transform .22s ease;
     box-shadow: 8px 0 30px rgba(0,0,0,.4);

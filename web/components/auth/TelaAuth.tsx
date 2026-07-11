@@ -7,6 +7,7 @@
    togglePasswordVisibility/updatePasswordStrength do app.js.
    Mesmos textos, mesma estrutura, mesmas classes CSS.
    ================================================================ */
+import Image from "next/image";
 import { useState } from "react";
 import { useSessao } from "@/components/SessaoProvider";
 import { traduzErroAuth } from "@/lib/auth/erros";
@@ -130,7 +131,7 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
             className="brand auth-box-brand"
             style={{ border: "none", padding: 0, marginBottom: "8px", justifyContent: "center" }}
           >
-            <div className="brand-mark">A</div>
+            <Image className="brand-mark" src="/logo.png" alt="Angariações" width={52} height={52} />
             <div className="brand-text">
               <span className="brand-title">Angariações</span>
               <span className="brand-sub">Controle de Locação</span>

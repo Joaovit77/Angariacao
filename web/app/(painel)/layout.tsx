@@ -9,6 +9,7 @@
    Enquanto carregarEstado() não termina, o <main> mostra o mesmo
    "Carregando seus dados..." do handleAuthenticated().
    ================================================================ */
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSessao } from "@/components/SessaoProvider";
@@ -52,7 +53,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
           </svg>
         </button>
         <div className="brand" style={{ border: "none", padding: 0, margin: 0 }}>
-          <div className="brand-mark">A</div>
+          <Image className="brand-mark" src="/logo.png" alt="Angariações" width={52} height={52} />
           <div className="brand-text">
             <span className="brand-title">Angariações</span>
           </div>
