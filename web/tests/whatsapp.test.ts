@@ -78,6 +78,31 @@ describe("mensagemWhatsapp", () => {
     expect(mensagemWhatsapp("nao-existe", base)).toBe(mensagemWhatsapp("retomada-contato", base));
   });
 
+  it("feedback-divulgacao assina com o nome do captador quando informado", () => {
+    const msg = mensagemWhatsapp("feedback-divulgacao", base, "Ana");
+    expect(msg).toContain("Olá, Marta! Tudo bem?");
+    expect(msg).toContain("Aqui é Ana, da equipe de locação da imobiliária.");
+    expect(msg).toContain("seu imóvel (Rua Haddock Lobo, 55, Cerqueira César)");
+    expect(msg).toContain("ativo no nosso pipeline");
+  });
+
+  it("feedback-divulgacao sem nome cai na apresentação genérica", () => {
+    const msg = mensagemWhatsapp("feedback-divulgacao", base);
+    expect(msg).toContain("Falo com você em nome da equipe de locação da imobiliária.");
+    expect(msg).not.toContain("Aqui é");
+  });
+
+  it("o nome do captador não altera os modelos antigos (saída byte-idêntica)", () => {
+    for (const m of MODELOS_WHATSAPP) {
+      if (m.id === "feedback-divulgacao") continue;
+      expect(mensagemWhatsapp(m.id, base, "Ana")).toBe(mensagemWhatsapp(m.id, base));
+    }
+  });
+
+  it("o novo modelo está no seletor", () => {
+    expect(MODELOS_WHATSAPP.map((m) => m.id)).toContain("feedback-divulgacao");
+  });
+
   it("renovação de angariação reaproveita a mensagem da Agenda", () => {
     expect(mensagemWhatsapp("renovacao-angariacao", base)).toBe(mensagemRenovacaoAngariacao(base));
   });

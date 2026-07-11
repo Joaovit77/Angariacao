@@ -13,6 +13,7 @@ import ModalAgenda from "./ModalAgenda";
 import ModalConfig from "./ModalConfig";
 import ModalImovel from "./ModalImovel";
 import ModalMeta from "./ModalMeta";
+import ModalNotas from "./ModalNotas";
 import ModalVerificacao from "./ModalVerificacao";
 import ModalWhatsapp from "./ModalWhatsapp";
 
@@ -46,6 +47,7 @@ export default function ModalOverlay() {
         {modal?.tipo === "verificacao" && modal.id && <ModalVerificacao id={modal.id} />}
         {modal?.tipo === "config" && <ModalConfig />}
         {modal?.tipo === "whatsapp" && modal.id && <ModalWhatsapp imovelId={modal.id} />}
+        {modal?.tipo === "notas" && modal.id && <ModalNotas imovelId={modal.id} />}
       </div>
     </div>
   );

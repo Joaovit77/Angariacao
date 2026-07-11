@@ -44,7 +44,7 @@ export async function carregarEstado(client: SupabaseClient = getSupabase()): Pr
 
   const metas: Metas = {};
   ((mtRes.data || []) as DbMetaRow[]).forEach((m) => {
-    metas[m.month_key] = { angariacoes: m.angariacoes || 0, locados: m.locados || 0, comissao: Number(m.comissao) || 0 };
+    metas[m.month_key] = { angariacoes: m.angariacoes || 0, locados: m.locados || 0, comissao: Number(m.comissao) || 0, faturamento: Number(m.faturamento) || 0 };
   });
 
   const cfData = cfRes.data as DbUserConfigRow | null;

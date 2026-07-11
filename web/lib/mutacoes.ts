@@ -14,13 +14,13 @@
    ponto que empurra {status, date} no histórico.
    ================================================================ */
 import { VERIFICACAO_DISPONIBILIDADE_DIAS } from "./constantes";
-import { addDaysISO, currentMonthKey, todayISO } from "./datas";
+import { addDaysISO, agoraISOComHora, currentMonthKey, todayISO } from "./datas";
 import { dataAngariadoEfetiva, foiAngariado } from "./calculo/motor";
 import { toDbAgenda, toDbImovel } from "./persistencia/mapeadores";
 import { getSupabase } from "./persistencia/supabase";
 import { useAppStore } from "./store";
 import { toast } from "./toast";
-import type { AgendaItem, Imovel, Meta } from "./tipos";
+import type { AgendaItem, Imovel, Meta, NotaImovel } from "./tipos";
 
 export function uid(): string {
   return crypto.randomUUID();
@@ -115,6 +115,8 @@ export async function salvarImovel(
     }
   }
 
+  // Atenção: o upsert grava a linha inteira, incluindo `notas` do objeto em
+  // memória — por isso as mutações de nota usam update parcial da coluna.
   const { error } = await supabase.from("imoveis").upsert(toDbImovel(data, userId));
   if (error) {
     toast("Não foi possível salvar: " + error.message, "error");
@@ -147,6 +149,48 @@ export async function salvarImovel(
   return { ok: true, criado: !existing };
 }
 
+/**
+ * Acrescenta uma nota ao histórico de interações do imóvel. Usa update
+ * PARCIAL (só a coluna `notas`, como o alternarAgendaDone faz com `done`)
+ * para não reescrever a linha inteira e não competir com uma edição do
+ * imóvel aberta em paralelo.
+ */
+export async function adicionarNotaImovel(imovelId: string, texto: string): Promise<boolean> {
+  const { imoveis, setImoveis } = useAppStore.getState();
+  const imovel = imoveis.find((i) => i.id === imovelId);
+  const textoLimpo = texto.trim();
+  if (!imovel || !textoLimpo) return false;
+
+  const nota: NotaImovel = { id: uid(), texto: textoLimpo, data: agoraISOComHora() };
+  const novasNotas = [...(imovel.notas || []), nota];
+
+  const { error } = await getSupabase().from("imoveis").update({ notas: novasNotas }).eq("id", imovelId);
+  if (error) {
+    toast("Não foi possível salvar a nota: " + error.message, "error");
+    return false;
+  }
+  setImoveis(imoveis.map((i) => (i.id === imovelId ? { ...i, notas: novasNotas } : i)));
+  toast("Nota adicionada.");
+  return true;
+}
+
+export async function excluirNotaImovel(imovelId: string, notaId: string): Promise<boolean> {
+  const { imoveis, setImoveis } = useAppStore.getState();
+  const imovel = imoveis.find((i) => i.id === imovelId);
+  if (!imovel) return false;
+  if (!confirm("Excluir esta nota do histórico?")) return false;
+
+  const novasNotas = (imovel.notas || []).filter((n) => n.id !== notaId);
+  const { error } = await getSupabase().from("imoveis").update({ notas: novasNotas }).eq("id", imovelId);
+  if (error) {
+    toast("Não foi possível excluir a nota: " + error.message, "error");
+    return false;
+  }
+  setImoveis(imoveis.map((i) => (i.id === imovelId ? { ...i, notas: novasNotas } : i)));
+  toast("Nota removida.");
+  return true;
+}
+
 export async function excluirImovel(id: string): Promise<boolean> {
   const supabase = getSupabase();
   const { imoveis, agenda } = useAppStore.getState();
@@ -171,7 +215,7 @@ export async function salvarMeta(monthKey: string, meta: Meta, userId: string): 
   const { error } = await getSupabase()
     .from("metas")
     .upsert(
-      { user_id: userId, month_key: monthKey, angariacoes: meta.angariacoes, locados: meta.locados, comissao: meta.comissao },
+      { user_id: userId, month_key: monthKey, angariacoes: meta.angariacoes, locados: meta.locados, comissao: meta.comissao, faturamento: meta.faturamento },
       { onConflict: "user_id,month_key" },
     );
   if (error) {
@@ -299,7 +343,7 @@ export async function carregarDadosDemo(userId: string): Promise<boolean> {
 
   await supabase
     .from("metas")
-    .upsert({ user_id: userId, month_key: currentMonthKey(), angariacoes: 15, locados: 8, comissao: 12000 }, { onConflict: "user_id,month_key" });
+    .upsert({ user_id: userId, month_key: currentMonthKey(), angariacoes: 15, locados: 8, comissao: 12000, faturamento: 20000 }, { onConflict: "user_id,month_key" });
   await supabase.from("agenda").insert(agendaDemo.map((a) => toDbAgenda(a, userId)));
 
   const { carregarEstado } = await import("./persistencia/carregarEstado");

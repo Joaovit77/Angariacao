@@ -11,6 +11,7 @@
    string; com input controlado do React o foco nunca se perde.
    ================================================================ */
 import { useEffect, useRef, useState } from "react";
+import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
 import {
   filtrarImoveis,
   ordenarPipelineLista,
@@ -34,6 +35,23 @@ import type { Imovel } from "@/lib/tipos";
 import { useUiModal } from "@/lib/uiModal";
 import { usePipelineUi } from "@/lib/uiPipeline";
 import ColunaFiltro from "./ColunaFiltro";
+
+/** Abre o wa.me do proprietário com o modelo preenchido; sem telefone,
+    orienta a copiar a mensagem pelo drawer/modal do imóvel. */
+function abrirWhatsapp(imovel: Imovel, modeloId: string, nomeCaptador?: string): void {
+  const link = linkWhatsapp(imovel, mensagemWhatsapp(modeloId, imovel, nomeCaptador));
+  if (link) window.open(link, "_blank", "noopener");
+  else toast("Sem telefone cadastrado — abra o imóvel para copiar a mensagem.", "error");
+}
+
+/** Ação rápida "Retomar Contato": só para imóveis parados na etapa inicial. */
+function precisaRetomarContato(i: Imovel): boolean {
+  return i.status === "Novo contato" && isStale(i);
+}
+
+function rotuloModelo(id: string): string {
+  return MODELOS_WHATSAPP.find((m) => m.id === id)?.rotulo || id;
+}
 
 function CartaoKanban({ i, color, aoAbrir }: { i: Imovel; color: string; aoAbrir: (id: string) => void }) {
   const stale = isStale(i);
@@ -81,6 +99,19 @@ function CartaoKanban({ i, color, aoAbrir }: { i: Imovel; color: string; aoAbrir
         <div className="kanban-card-concorrente">🏢 {i.imobiliariaConcorrente}</div>
       )}
       {motivo && <div className="kanban-card-motivo">{motivo}</div>}
+      {precisaRetomarContato(i) && (
+        <button
+          type="button"
+          className="btn btn-sm kanban-retomar"
+          title="Abrir WhatsApp com a mensagem de retomada de contato"
+          onClick={(e) => {
+            e.stopPropagation();
+            abrirWhatsapp(i, "retomada-contato");
+          }}
+        >
+          ↺ Retomar contato
+        </button>
+      )}
     </div>
   );
 }
@@ -143,6 +174,8 @@ function HeaderCodigo() {
 
 function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
   const { drawerImovelId, abrirDrawer } = usePipelineUi();
+  const { usuario } = useSessao();
+  const nomeCaptador = rotuloUsuario(usuario);
 
   if (imoveis.length === 0) {
     return (
@@ -195,17 +228,45 @@ function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
               <td className="cell-dim">{fmtDate(i.dataAngariacao)}</td>
               <td className="cell-dim">{i.responsavel || "-"}</td>
               <td>
-                <button
-                  type="button"
-                  className="icon-btn btn-danger"
-                  title="Excluir"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    excluirImovel(i.id);
-                  }}
-                >
-                  ×
-                </button>
+                <div className="row-actions">
+                  {precisaRetomarContato(i) && (
+                    <button
+                      type="button"
+                      className="icon-btn retomar"
+                      title="Retomar contato: abrir WhatsApp com a mensagem de retomada"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        abrirWhatsapp(i, "retomada-contato");
+                      }}
+                    >
+                      ↺
+                    </button>
+                  )}
+                  {/* O modelo acompanha a etapa do imóvel no funil — mesma regra
+                      do drawer (modeloPadraoWhatsapp). */}
+                  <button
+                    type="button"
+                    className="icon-btn whatsapp"
+                    title={`WhatsApp: ${rotuloModelo(modeloPadraoWhatsapp(i.status))}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      abrirWhatsapp(i, modeloPadraoWhatsapp(i.status), nomeCaptador);
+                    }}
+                  >
+                    💬
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-btn btn-danger"
+                    title="Excluir"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      excluirImovel(i.id);
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
@@ -227,16 +288,16 @@ function InfoDrawer({ label, value }: { label: string; value: string }) {
 // Item "WhatsApp" do roadmap na versão sem API: modelo por etapa do funil,
 // prévia editável e envio via link wa.me (click-to-chat). O componente é
 // montado com key={imovel.id} para trocar de imóvel descartar edições.
-function DrawerWhatsapp({ imovel }: { imovel: Imovel }) {
+function DrawerWhatsapp({ imovel, nomeCaptador }: { imovel: Imovel; nomeCaptador?: string }) {
   const padrao = modeloPadraoWhatsapp(imovel.status);
   const [modeloId, setModeloId] = useState(padrao);
-  const [texto, setTexto] = useState(() => mensagemWhatsapp(padrao, imovel));
+  const [texto, setTexto] = useState(() => mensagemWhatsapp(padrao, imovel, nomeCaptador));
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const link = linkWhatsapp(imovel, texto);
 
   function trocarModelo(id: string) {
     setModeloId(id);
-    setTexto(mensagemWhatsapp(id, imovel));
+    setTexto(mensagemWhatsapp(id, imovel, nomeCaptador));
   }
 
   async function copiar() {
@@ -301,7 +362,9 @@ function DrawerWhatsapp({ imovel }: { imovel: Imovel }) {
 function Drawer({ imovel }: { imovel: Imovel }) {
   const fecharDrawer = usePipelineUi((s) => s.fecharDrawer);
   const abrirModal = useUiModal((s) => s.abrirModal);
+  const { usuario } = useSessao();
   const enderecoCompleto = [imovel.endereco, imovel.bairro, imovel.cidade].filter(Boolean).join(", ");
+  const totalNotas = (imovel.notas || []).length;
 
   return (
     <>
@@ -341,10 +404,25 @@ function Drawer({ imovel }: { imovel: Imovel }) {
             <div className="drawer-section-title">Observacoes</div>
             <div className="drawer-notes">{imovel.observacoes || "Sem observacoes cadastradas."}</div>
           </div>
+          <div className="drawer-section">
+            <div className="drawer-section-title">Histórico de interações</div>
+            <div className="drawer-notas-resumo">
+              <span className="drawer-notes">
+                {totalNotas === 0
+                  ? "Nenhuma nota registrada ainda."
+                  : `${totalNotas} nota(s) registrada(s).`}
+              </span>
+              {/* O modal abre por cima do drawer (z-index maior); Esc fecha os dois,
+                  comportamento pré-existente do ModalOverlay. */}
+              <button type="button" className="btn btn-sm" onClick={() => abrirModal("notas", imovel.id)}>
+                Ver / adicionar notas
+              </button>
+            </div>
+          </div>
           {/* A seção "Fotos" do app antigo lia imovel.fotos, campo que nenhum
               mapeador produz — sempre mostrava "Sem fotos cadastradas.". Removida
               na pós-migração (achado A2) por ser bloco morto. */}
-          <DrawerWhatsapp key={imovel.id} imovel={imovel} />
+          <DrawerWhatsapp key={imovel.id} imovel={imovel} nomeCaptador={rotuloUsuario(usuario)} />
         </div>
         <div className="pipeline-drawer-foot">
           <button type="button" className="btn btn-ghost" onClick={fecharDrawer}>

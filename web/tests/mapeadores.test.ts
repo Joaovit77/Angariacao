@@ -35,6 +35,11 @@ describe("fromDbImovel (snake_case -> camelCase)", () => {
   it("status_history null vira [] (r2)", () => {
     expect(fromDbImovel(imoveisRows.find((r) => r.id === "r2")!).statusHistory).toEqual([]);
   });
+  it("notas null/ausente vira [] (linha anterior à migração da coluna)", () => {
+    const r2 = imoveisRows.find((r) => r.id === "r2")!;
+    expect(fromDbImovel(r2).notas).toEqual([]);
+    expect(fromDbImovel({ ...r2, notas: null }).notas).toEqual([]);
+  });
   it("quartos/banheiros/vagas preservam 0; textos '' continuam '' (r3)", () => {
     const r3 = fromDbImovel(imoveisRows.find((r) => r.id === "r3")!);
     expect(r3.quartos).toBe(0);
@@ -59,6 +64,14 @@ describe("ida-e-volta imóvel: fromDb(toDb(x)) reproduz o app antigo", () => {
   it("assimetria intencional: valorAluguel null vira 0 na ida (f03)", () => {
     const f03 = imoveisCamel.find((i) => i.id === "f03")!;
     expect(toDbImovel(f03, USER_ID).valor_aluguel).toBe(0);
+  });
+  it("notas fazem ida-e-volta preservando id/texto/data", () => {
+    const notas = [
+      { id: "n1", texto: "Liguei, ficou de responder.", data: "2026-07-10T09:15" },
+      { id: "n2", texto: "Respondeu: quer ajustar o valor.", data: "2026-07-11T14:32" },
+    ];
+    const com = { ...imoveisCamel[0], notas };
+    expect(fromDbImovel(toDbImovel(com, USER_ID) as DbImovelRow).notas).toEqual(notas);
   });
 });
 

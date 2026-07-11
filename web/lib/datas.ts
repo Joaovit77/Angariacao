@@ -30,6 +30,26 @@ export function weekRange(offset: number): IntervaloSemana {
   return { start: toISO(monday), end: toISO(sunday) };
 }
 
+/** Segunda-feira (ISO) da semana que contém a data — chave de agrupamento
+    semanal para qualquer semana histórica (o weekRange acima é ancorado em
+    "agora" e só serve para a semana corrente). Usa componentes locais em vez
+    de toISOString() para não deslocar o dia em fusos negativos. */
+export function inicioDaSemana(iso: string | null | undefined): string | null {
+  const d = parseDate(iso);
+  if (!d) return null;
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Agora, como datetime local "YYYY-MM-DDTHH:mm" — carimbo das notas do
+    histórico de interações. Lexicograficamente ordenável. */
+export function agoraISOComHora(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function parseDate(iso: string | null | undefined): Date | null {
   if (!iso) return null;
   const [y, m, d] = iso.split("-").map(Number);

@@ -240,6 +240,9 @@ export default function ModalImovel({ id }: { id?: string }) {
       status,
       observacoes: observacoes.trim(),
       statusHistory: historico,
+      // Preserva o histórico de interações: o upsert grava a linha inteira,
+      // então omitir as notas aqui as apagaria no banco.
+      notas: imovel ? imovel.notas || [] : [],
       pausadoAte: semPausa(status) ? null : pausadoAte || null,
       motivoPerda: pedeMotivo(status) ? motivoPerda : "",
       motivoPerdaOutro: pedeMotivo(status) && motivoPerda === "Outro" ? motivoPerdaOutro.trim() : "",

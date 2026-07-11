@@ -13,7 +13,7 @@
    currentUser do app antigo.
    ================================================================ */
 import { ORIGENS_LEGADAS } from "../constantes";
-import type { AgendaItem, Imovel, StatusHistoryEntry } from "../tipos";
+import type { AgendaItem, Imovel, NotaImovel, StatusHistoryEntry } from "../tipos";
 
 /** Linha da tabela `imoveis` como o Supabase retorna/aceita. */
 export interface DbImovelRow {
@@ -43,6 +43,7 @@ export interface DbImovelRow {
   status: string;
   observacoes: string | null;
   status_history: StatusHistoryEntry[] | null;
+  notas: NotaImovel[] | null;
   pausado_ate: string | null;
   motivo_perda: string | null;
   motivo_perda_outro: string | null;
@@ -75,6 +76,7 @@ export interface DbMetaRow {
   angariacoes: number | null;
   locados: number | null;
   comissao: number | string | null;
+  faturamento?: number | string | null;
 }
 
 /** Linha da tabela `user_config`. */
@@ -111,6 +113,7 @@ export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "create
     status: i.status,
     observacoes: i.observacoes || null,
     status_history: i.statusHistory || [],
+    notas: i.notas || [],
     pausado_ate: i.pausadoAte || null,
     motivo_perda: i.motivoPerda || null,
     motivo_perda_outro: i.motivoPerdaOutro || null,
@@ -152,6 +155,7 @@ export function fromDbImovel(r: DbImovelRow): Imovel {
     status: r.status,
     observacoes: r.observacoes || "",
     statusHistory: r.status_history || [],
+    notas: r.notas || [],
     pausadoAte: r.pausado_ate,
     motivoPerda: r.motivo_perda || "",
     motivoPerdaOutro: r.motivo_perda_outro || "",

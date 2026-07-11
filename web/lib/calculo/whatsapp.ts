@@ -30,7 +30,16 @@ function referenciaImovel(imovel: Imovel): string {
   return `seu imóvel (${endereco}${bairro ? `, ${bairro}` : ""})`;
 }
 
-const GERADORES: Record<string, (imovel: Imovel) => string> = {
+/** "Aqui é Fulano, da equipe..." quando há nome do captador; senão a
+    apresentação genérica que os modelos antigos sempre usaram. */
+function apresentacao(nomeCaptador?: string): string {
+  const nome = (nomeCaptador || "").trim();
+  return nome
+    ? `Aqui é ${nome}, da equipe de locação da imobiliária.`
+    : `Falo com você em nome da equipe de locação da imobiliária.`;
+}
+
+const GERADORES: Record<string, (imovel: Imovel, nomeCaptador?: string) => string> = {
   "primeiro-contato": (i) => `${saudacao(i)}
 
 Falo com você em nome da equipe de locação da imobiliária. Gostaríamos de conversar sobre cuidar da locação do ${referenciaImovel(i)} para você.
@@ -73,6 +82,14 @@ Assim que tivermos visitas ou propostas, entro em contato.`,
 
 Obrigado pela confiança no nosso trabalho. Seguimos à disposição para o que precisar.`,
 
+  // "Dar feedback": aviso de que o imóvel está ativo no pipeline e em
+  // divulgação — disparado pelo botão de WhatsApp da listagem do Pipeline.
+  "feedback-divulgacao": (i, nome) => `${saudacao(i)}
+
+${apresentacao(nome)} Passando para avisar que o ${referenciaImovel(i)} já está ativo no nosso pipeline e estamos trabalhando na divulgação dele.
+
+Qualquer novidade sobre interessados, te aviso por aqui.`,
+
   "retomada-contato": (i) => `${saudacao(i)}
 
 Tentei falar com você há alguns dias sobre o ${referenciaImovel(i)}, mas não consegui retorno.
@@ -90,6 +107,7 @@ export const MODELOS_WHATSAPP: ModeloWhatsapp[] = [
   { id: "cobranca-documentacao", rotulo: "Cobrança de documentação" },
   { id: "inicio-divulgacao", rotulo: "Início da divulgação" },
   { id: "atualizacao-anuncio", rotulo: "Atualização do anúncio" },
+  { id: "feedback-divulgacao", rotulo: "Feedback de divulgação" },
   { id: "imovel-locado", rotulo: "Imóvel locado" },
   { id: "retomada-contato", rotulo: "Retomada de contato" },
   { id: "renovacao-angariacao", rotulo: "Renovação de angariação" },
@@ -113,9 +131,9 @@ export function modeloPadraoWhatsapp(status: string | null | undefined): string 
   return MODELO_PADRAO_POR_STATUS[status || ""] || "retomada-contato";
 }
 
-export function mensagemWhatsapp(modeloId: string, imovel: Imovel): string {
+export function mensagemWhatsapp(modeloId: string, imovel: Imovel, nomeCaptador?: string): string {
   const gerar = GERADORES[modeloId] || GERADORES["retomada-contato"];
-  return gerar(imovel);
+  return gerar(imovel, nomeCaptador);
 }
 
 /** Link click-to-chat; null quando o imóvel não tem telefone utilizável. */

@@ -26,7 +26,8 @@ function clienteFake(tabelas: Record<string, Resultado>): SupabaseClient {
 }
 
 const METAS_ROWS = [
-  { user_id: "u", month_key: "2026-06", angariacoes: 4, locados: 2, comissao: "4000" },
+  { user_id: "u", month_key: "2026-06", angariacoes: 4, locados: 2, comissao: "4000", faturamento: "15000" },
+  // Linha sem a coluna faturamento (banco anterior à migração) — vira 0.
   { user_id: "u", month_key: "2026-07", angariacoes: null, locados: null, comissao: null },
 ];
 
@@ -43,8 +44,8 @@ describe("carregarEstado", () => {
     expect(estado.agenda).toHaveLength(2);
     // metas por month_key, com coerções do app antigo (null -> 0, string -> Number)
     expect(estado.metas).toEqual({
-      "2026-06": { angariacoes: 4, locados: 2, comissao: 4000 },
-      "2026-07": { angariacoes: 0, locados: 0, comissao: 0 },
+      "2026-06": { angariacoes: 4, locados: 2, comissao: 4000, faturamento: 15000 },
+      "2026-07": { angariacoes: 0, locados: 0, comissao: 0, faturamento: 0 },
     });
     expect(estado.config).toEqual({ comissaoPercent: 50 });
   });

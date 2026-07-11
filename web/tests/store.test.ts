@@ -4,7 +4,7 @@ import { useAppStore } from "@/lib/store";
 
 const estadoExemplo = {
   imoveis: [{ id: "x1", endereco: "Rua A, 1", status: "Novo contato" }],
-  metas: { "2026-07": { angariacoes: 5, locados: 2, comissao: 5000 } },
+  metas: { "2026-07": { angariacoes: 5, locados: 2, comissao: 5000, faturamento: 12000 } },
   agenda: [{ id: "a1", title: "t", type: "Visita", date: "2026-07-10", done: false, isVerificacaoDisponibilidade: false }],
   config: { comissaoPercent: 50 },
 };

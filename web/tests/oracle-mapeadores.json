@@ -62,7 +62,8 @@
       "motivo_perda_outro": null,
       "comissao_recebida": true,
       "comissao_recebida_valor": 1800,
-      "comissao_recebida_data": "2026-07-06"
+      "comissao_recebida_data": "2026-07-06",
+      "notas": []
     },
     "f02": {
       "id": "f02",
@@ -96,7 +97,8 @@
       "motivo_perda_outro": null,
       "comissao_recebida": false,
       "comissao_recebida_valor": null,
-      "comissao_recebida_data": null
+      "comissao_recebida_data": null,
+      "notas": []
     },
     "f03": {
       "id": "f03",
@@ -130,7 +132,8 @@
       "motivo_perda_outro": null,
       "comissao_recebida": false,
       "comissao_recebida_valor": null,
-      "comissao_recebida_data": null
+      "comissao_recebida_data": null,
+      "notas": []
     },
     "f04": {
       "id": "f04",
@@ -169,7 +172,8 @@
       "motivo_perda_outro": null,
       "comissao_recebida": false,
       "comissao_recebida_valor": null,
-      "comissao_recebida_data": null
+      "comissao_recebida_data": null,
+      "notas": []
     },
     "f05": {
       "id": "f05",
@@ -216,7 +220,8 @@
       "motivo_perda_outro": null,
       "comissao_recebida": false,
       "comissao_recebida_valor": null,
-      "comissao_recebida_data": null
+      "comissao_recebida_data": null,
+      "notas": []
     },
     "f06": {
       "id": "f06",
@@ -259,7 +264,8 @@
       "motivo_perda_outro": null,
       "comissao_recebida": false,
       "comissao_recebida_valor": null,
-      "comissao_recebida_data": null
+      "comissao_recebida_data": null,
+      "notas": []
     },
     "f07": {
       "id": "f07",
@@ -302,7 +308,8 @@
       "motivo_perda_outro": null,
       "comissao_recebida": false,
       "comissao_recebida_valor": null,
-      "comissao_recebida_data": null
+      "comissao_recebida_data": null,
+      "notas": []
     },
     "f08": {
       "id": "f08",
@@ -345,7 +352,8 @@
       "motivo_perda_outro": null,
       "comissao_recebida": false,
       "comissao_recebida_valor": null,
-      "comissao_recebida_data": null
+      "comissao_recebida_data": null,
+      "notas": []
     },
     "f09": {
       "id": "f09",
@@ -384,7 +392,8 @@
       "motivo_perda_outro": null,
       "comissao_recebida": false,
       "comissao_recebida_valor": null,
-      "comissao_recebida_data": null
+      "comissao_recebida_data": null,
+      "notas": []
     },
     "f10": {
       "id": "f10",
@@ -423,7 +432,8 @@
       "motivo_perda_outro": null,
       "comissao_recebida": false,
       "comissao_recebida_valor": null,
-      "comissao_recebida_data": null
+      "comissao_recebida_data": null,
+      "notas": []
     },
     "f11": {
       "id": "f11",
@@ -470,7 +480,8 @@
       "motivo_perda_outro": null,
       "comissao_recebida": true,
       "comissao_recebida_valor": null,
-      "comissao_recebida_data": "2026-06-22"
+      "comissao_recebida_data": "2026-06-22",
+      "notas": []
     },
     "f12": {
       "id": "f12",
@@ -517,7 +528,8 @@
       "motivo_perda_outro": null,
       "comissao_recebida": false,
       "comissao_recebida_valor": null,
-      "comissao_recebida_data": null
+      "comissao_recebida_data": null,
+      "notas": []
     },
     "f13": {
       "id": "f13",
@@ -564,7 +576,8 @@
       "motivo_perda_outro": null,
       "comissao_recebida": true,
       "comissao_recebida_valor": 999,
-      "comissao_recebida_data": "2026-06-30"
+      "comissao_recebida_data": "2026-06-30",
+      "notas": []
     },
     "f14": {
       "id": "f14",
@@ -603,7 +616,8 @@
       "motivo_perda_outro": null,
       "comissao_recebida": false,
       "comissao_recebida_valor": null,
-      "comissao_recebida_data": null
+      "comissao_recebida_data": null,
+      "notas": []
     },
     "f15": {
       "id": "f15",
@@ -642,7 +656,8 @@
       "motivo_perda_outro": null,
       "comissao_recebida": false,
       "comissao_recebida_valor": null,
-      "comissao_recebida_data": null
+      "comissao_recebida_data": null,
+      "notas": []
     },
     "f16": {
       "id": "f16",
@@ -689,7 +704,8 @@
       "motivo_perda_outro": null,
       "comissao_recebida": false,
       "comissao_recebida_valor": null,
-      "comissao_recebida_data": null
+      "comissao_recebida_data": null,
+      "notas": []
     },
     "f17": {
       "id": "f17",
@@ -732,7 +748,8 @@
       "motivo_perda_outro": null,
       "comissao_recebida": false,
       "comissao_recebida_valor": null,
-      "comissao_recebida_data": null
+      "comissao_recebida_data": null,
+      "notas": []
     }
   },
   "roundTripImovel": {
@@ -796,7 +813,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": true,
       "comissaoRecebidaValor": 1800,
-      "comissaoRecebidaData": "2026-07-06"
+      "comissaoRecebidaData": "2026-07-06",
+      "notas": []
     },
     "f02": {
       "id": "f02",
@@ -829,7 +847,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": false,
       "comissaoRecebidaValor": null,
-      "comissaoRecebidaData": null
+      "comissaoRecebidaData": null,
+      "notas": []
     },
     "f03": {
       "id": "f03",
@@ -862,7 +881,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": false,
       "comissaoRecebidaValor": null,
-      "comissaoRecebidaData": null
+      "comissaoRecebidaData": null,
+      "notas": []
     },
     "f04": {
       "id": "f04",
@@ -900,7 +920,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": false,
       "comissaoRecebidaValor": null,
-      "comissaoRecebidaData": null
+      "comissaoRecebidaData": null,
+      "notas": []
     },
     "f05": {
       "id": "f05",
@@ -946,7 +967,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": false,
       "comissaoRecebidaValor": null,
-      "comissaoRecebidaData": null
+      "comissaoRecebidaData": null,
+      "notas": []
     },
     "f06": {
       "id": "f06",
@@ -988,7 +1010,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": false,
       "comissaoRecebidaValor": null,
-      "comissaoRecebidaData": null
+      "comissaoRecebidaData": null,
+      "notas": []
     },
     "f07": {
       "id": "f07",
@@ -1030,7 +1053,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": false,
       "comissaoRecebidaValor": null,
-      "comissaoRecebidaData": null
+      "comissaoRecebidaData": null,
+      "notas": []
     },
     "f08": {
       "id": "f08",
@@ -1072,7 +1096,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": false,
       "comissaoRecebidaValor": null,
-      "comissaoRecebidaData": null
+      "comissaoRecebidaData": null,
+      "notas": []
     },
     "f09": {
       "id": "f09",
@@ -1110,7 +1135,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": false,
       "comissaoRecebidaValor": null,
-      "comissaoRecebidaData": null
+      "comissaoRecebidaData": null,
+      "notas": []
     },
     "f10": {
       "id": "f10",
@@ -1148,7 +1174,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": false,
       "comissaoRecebidaValor": null,
-      "comissaoRecebidaData": null
+      "comissaoRecebidaData": null,
+      "notas": []
     },
     "f11": {
       "id": "f11",
@@ -1194,7 +1221,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": true,
       "comissaoRecebidaValor": null,
-      "comissaoRecebidaData": "2026-06-22"
+      "comissaoRecebidaData": "2026-06-22",
+      "notas": []
     },
     "f12": {
       "id": "f12",
@@ -1240,7 +1268,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": false,
       "comissaoRecebidaValor": null,
-      "comissaoRecebidaData": null
+      "comissaoRecebidaData": null,
+      "notas": []
     },
     "f13": {
       "id": "f13",
@@ -1286,7 +1315,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": true,
       "comissaoRecebidaValor": 999,
-      "comissaoRecebidaData": "2026-06-30"
+      "comissaoRecebidaData": "2026-06-30",
+      "notas": []
     },
     "f14": {
       "id": "f14",
@@ -1324,7 +1354,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": false,
       "comissaoRecebidaValor": null,
-      "comissaoRecebidaData": null
+      "comissaoRecebidaData": null,
+      "notas": []
     },
     "f15": {
       "id": "f15",
@@ -1362,7 +1393,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": false,
       "comissaoRecebidaValor": null,
-      "comissaoRecebidaData": null
+      "comissaoRecebidaData": null,
+      "notas": []
     },
     "f16": {
       "id": "f16",
@@ -1408,7 +1440,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": false,
       "comissaoRecebidaValor": null,
-      "comissaoRecebidaData": null
+      "comissaoRecebidaData": null,
+      "notas": []
     },
     "f17": {
       "id": "f17",
@@ -1450,7 +1483,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": false,
       "comissaoRecebidaValor": null,
-      "comissaoRecebidaData": null
+      "comissaoRecebidaData": null,
+      "notas": []
     }
   },
   "fromDbImovel": {
@@ -1498,7 +1532,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": true,
       "comissaoRecebidaValor": "1800",
-      "comissaoRecebidaData": "2026-07-06"
+      "comissaoRecebidaData": "2026-07-06",
+      "notas": []
     },
     "r2": {
       "id": "r2",
@@ -1531,7 +1566,8 @@
       "motivoPerdaOutro": "",
       "comissaoRecebida": false,
       "comissaoRecebidaValor": null,
-      "comissaoRecebidaData": null
+      "comissaoRecebidaData": null,
+      "notas": []
     },
     "r3": {
       "id": "r3",
@@ -1573,7 +1609,8 @@
       "motivoPerdaOutro": "Vai reformar",
       "comissaoRecebida": false,
       "comissaoRecebidaValor": 0,
-      "comissaoRecebidaData": null
+      "comissaoRecebidaData": null,
+      "notas": []
     }
   },
   "fromDbAgenda": {

@@ -17,11 +17,12 @@ export default function ModalMeta() {
   const metas = useAppStore((s) => s.metas);
 
   const mKey = currentMonthKey();
-  const meta = metas[mKey] || { angariacoes: 0, locados: 0, comissao: 0 };
+  const meta = metas[mKey] || { angariacoes: 0, locados: 0, comissao: 0, faturamento: 0 };
 
   const [angariacoes, setAngariacoes] = useState(meta.angariacoes ? String(meta.angariacoes) : "");
   const [locados, setLocados] = useState(meta.locados ? String(meta.locados) : "");
   const [comissao, setComissao] = useState(meta.comissao ? String(meta.comissao) : "");
+  const [faturamento, setFaturamento] = useState(meta.faturamento ? String(meta.faturamento) : "");
   const [salvando, setSalvando] = useState(false);
 
   async function salvar() {
@@ -33,6 +34,7 @@ export default function ModalMeta() {
         angariacoes: numOrNull(angariacoes) || 0,
         locados: numOrNull(locados) || 0,
         comissao: numOrNull(comissao) || 0,
+        faturamento: numOrNull(faturamento) || 0,
       },
       usuario.id,
     );
@@ -64,6 +66,13 @@ export default function ModalMeta() {
         <div className="field-group">
           <label>Meta financeira de comissão (R$)</label>
           <input type="number" min="0" step="0.01" value={comissao} onChange={(e) => setComissao(e.target.value)} />
+        </div>
+        <div className="field-group">
+          <label>Meta de faturamento em contratos (R$)</label>
+          <input type="number" min="0" step="0.01" value={faturamento} onChange={(e) => setFaturamento(e.target.value)} />
+          <div className="field-hint">
+            Soma dos valores de aluguel dos imóveis locados no mês.
+          </div>
         </div>
       </div>
       <div className="modal-foot">

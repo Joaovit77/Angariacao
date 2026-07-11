@@ -6,6 +6,7 @@ import { describe, it, expect } from "vitest";
 import {
   todayISO, parseDate, daysBetween, addDaysISO, monthKey,
   monthLabel, monthLabelLong, currentMonthKey, shiftMonthKey, last6MonthKeys,
+  agoraISOComHora, inicioDaSemana,
 } from "@/lib/datas";
 import { congelaRelogio } from "./setup-relogio";
 import oracle from "./oracle-expected.json";
@@ -48,6 +49,37 @@ describe("addDaysISO", () => {
   it("+60 dias (prazo da verificação de disponibilidade)", () => expect(addDaysISO("2026-07-05", 60)).toBe(casos["2026-07-05_mais60"]));
   it("dias negativos", () => expect(addDaysISO("2026-07-09", -30)).toBe(casos["2026-07-09_menos30"]));
   it("null retorna null", () => expect(addDaysISO(null, 5)).toBe(casos.null_mais5));
+});
+
+/* Funções novas da pós-migração (gamificação/notas) — sem oráculo do app
+   antigo; os testes fixam o contrato. */
+describe("inicioDaSemana", () => {
+  it("qualquer dia da semana cai na segunda-feira dela", () => {
+    expect(inicioDaSemana("2026-07-06")).toBe("2026-07-06"); // segunda -> ela mesma
+    expect(inicioDaSemana("2026-07-09")).toBe("2026-07-06"); // quinta
+    expect(inicioDaSemana("2026-07-11")).toBe("2026-07-06"); // sábado
+  });
+  it("domingo pertence à semana da segunda ANTERIOR", () => {
+    expect(inicioDaSemana("2026-07-12")).toBe("2026-07-06");
+    expect(inicioDaSemana("2026-07-13")).toBe("2026-07-13"); // segunda seguinte
+  });
+  it("atravessa virada de mês", () => {
+    expect(inicioDaSemana("2026-08-01")).toBe("2026-07-27");
+  });
+  it("null/vazio retornam null", () => {
+    expect(inicioDaSemana(null)).toBeNull();
+    expect(inicioDaSemana("")).toBeNull();
+  });
+});
+
+describe("agoraISOComHora (relógio congelado)", () => {
+  it("carimbo local YYYY-MM-DDTHH:mm, ordenável e compatível com fmtDate via slice", () => {
+    const agora = agoraISOComHora();
+    expect(agora).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+    // no instante do oráculo (2026-07-09 12:00 em São Paulo) a data local
+    // coincide com o todayISO() legado
+    expect(agora.slice(0, 10)).toBe(todayISO());
+  });
 });
 
 describe("monthKey / monthLabel / monthLabelLong / shiftMonthKey", () => {

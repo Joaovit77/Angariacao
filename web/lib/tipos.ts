@@ -12,6 +12,14 @@ export interface StatusHistoryEntry {
   date: string; // ISO YYYY-MM-DD
 }
 
+/** Nota do histórico de interações com o proprietário (CRM). */
+export interface NotaImovel {
+  id: string;
+  texto: string;
+  /** Datetime local "YYYY-MM-DDTHH:mm" — lexicograficamente ordenável. */
+  data: string;
+}
+
 export interface Imovel {
   id: string;
   codigo?: string | null;
@@ -38,6 +46,7 @@ export interface Imovel {
   status: string;
   observacoes?: string | null;
   statusHistory?: StatusHistoryEntry[] | null;
+  notas?: NotaImovel[] | null;
   pausadoAte?: string | null; // ISO YYYY-MM-DD
   motivoPerda?: string | null;
   motivoPerdaOutro?: string | null;
@@ -50,6 +59,8 @@ export interface Meta {
   angariacoes: number;
   locados: number;
   comissao: number;
+  /** Meta de faturamento estimado em contratos (R$ de aluguéis locados no mês). */
+  faturamento: number;
 }
 
 /** Metas por mês: { "YYYY-MM": Meta } — mesmo shape do STATE.metas legado. */

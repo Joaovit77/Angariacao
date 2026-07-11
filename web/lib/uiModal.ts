@@ -9,7 +9,7 @@
    ================================================================ */
 import { create } from "zustand";
 
-export type TipoModal = "imovel" | "meta" | "agenda" | "verificacao" | "config" | "whatsapp";
+export type TipoModal = "imovel" | "meta" | "agenda" | "verificacao" | "config" | "whatsapp" | "notas";
 
 export interface ModalAtivo {
   tipo: TipoModal;

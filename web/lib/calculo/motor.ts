@@ -128,6 +128,12 @@ export function imoveisLocadosNoMes(imoveis: Imovel[], key: string): Imovel[] {
   return imoveis.filter((i) => i.status === "Locado" && monthKey(dateEnteredStatus(i, "Locado")) === key);
 }
 
+// "Faturamento em contratos": soma dos aluguéis dos imóveis que entraram em
+// "Locado" no mês — os contratos efetivamente fechados no período.
+export function faturamentoContratosNoMes(imoveis: Imovel[], key: string): number {
+  return imoveisLocadosNoMes(imoveis, key).reduce((s, i) => s + (i.valorAluguel || 0), 0);
+}
+
 export function groupCount(imoveis: Imovel[], keyFn: (i: Imovel) => string | null | undefined): Record<string, number> {
   const map: Record<string, number> = {};
   imoveis.forEach((i) => {

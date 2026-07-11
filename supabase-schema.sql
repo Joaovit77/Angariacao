@@ -52,6 +52,7 @@ create table if not exists imoveis (
   status text not null default 'Novo contato',
   observacoes text,
   status_history jsonb not null default '[]'::jsonb,
+  notas jsonb not null default '[]'::jsonb,
   pausado_ate date,
   motivo_perda text,
   motivo_perda_outro text,
@@ -66,6 +67,10 @@ create table if not exists imoveis (
 -- (referência gerada pelo CRM da imobiliária). "add column if not exists" é
 -- seguro de rodar várias vezes.
 alter table imoveis add column if not exists referencia_crm text;
+
+-- Histórico de interações (notas) com o proprietário — mesmo padrão do
+-- status_history: jsonb na própria linha, herdando as políticas de RLS.
+alter table imoveis add column if not exists notas jsonb not null default '[]'::jsonb;
 
 alter table imoveis enable row level security;
 
@@ -94,8 +99,13 @@ create table if not exists metas (
   angariacoes int default 0,
   locados int default 0,
   comissao numeric default 0,
+  faturamento numeric default 0,
   unique (user_id, month_key)
 );
+
+-- Meta de faturamento estimado em contratos (soma dos aluguéis dos imóveis
+-- locados no mês) — cobre quem já tinha a tabela criada antes da coluna.
+alter table metas add column if not exists faturamento numeric default 0;
 
 alter table metas enable row level security;
 

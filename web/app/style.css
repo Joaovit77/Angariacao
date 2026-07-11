@@ -831,8 +831,41 @@ legend{
 .progress-fill{ height:100%; border-radius:20px; background: linear-gradient(90deg, var(--accent), var(--accent-strong)); transition: width .4s ease; }
 .progress-fill.good{ background: linear-gradient(90deg, #4a9b78, var(--good)); }
 .progress-fill.warn{ background: linear-gradient(90deg, #c99a3f, var(--warn)); }
+/* Termômetro: o gradiente laranja→verde tem o comprimento do track inteiro
+   (background-size = 100% / pct) e é recortado pelo width do fill — a cor da
+   ponta acompanha o progresso: começa laranja e chega ao verde nos 100%. */
+.progress-fill.termometro{
+  background: linear-gradient(90deg, var(--accent), var(--accent-strong) 55%, var(--good));
+  background-size: calc(10000% / var(--pct, 100)) 100%;
+}
+/* Pulso/brilho discreto quando a meta passa de 90%. */
+.progress-fill.pulsante{ animation: metapulse 1.8s ease-in-out infinite; }
+@keyframes metapulse{
+  0%, 100%{ box-shadow: 0 0 0 0 rgba(95, 184, 150, 0); filter: brightness(1); }
+  50%{ box-shadow: 0 0 10px 1px rgba(95, 184, 150, .5); filter: brightness(1.12); }
+}
+@media (prefers-reduced-motion: reduce){
+  .progress-fill.pulsante{ animation: none; }
+}
 .goal-foot{ display:flex; justify-content:space-between; font-size:12px; color:var(--text-dim); }
 .goal-foot .pct{ font-weight:700; color: var(--text); }
+
+/* Medalhas (gamificação) */
+.badges-contador{ font-size:12px; font-weight:400; color: var(--text-dim); margin-left:6px; }
+.badges-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:12px; }
+.badge-card{
+  display:flex; gap:12px; align-items:flex-start;
+  padding:14px 16px;
+  background: var(--bg-elev-1);
+  border:1px solid var(--border);
+  border-radius: var(--radius);
+}
+.badge-card:not(.bloqueada){ border-color:#d98a4f66; background: linear-gradient(180deg, var(--accent-soft), var(--bg-elev-1) 60%); }
+.badge-card.bloqueada{ opacity:.5; filter: grayscale(1); }
+.badge-icone{ font-size:24px; line-height:1.2; }
+.badge-nome{ font-family: var(--font-display); font-size:13.5px; font-weight:600; }
+.badge-desc{ font-size:11.5px; color: var(--text-dim); line-height:1.4; }
+.badge-detalhe{ font-size:11px; color: var(--good); margin-top:4px; }
 
 /* ============================================================
    AGENDA
@@ -1053,6 +1086,34 @@ legend{
 }
 
 .section-note{ font-size:12px; color:var(--text-faint); margin-top: 4px; }
+
+/* ============================================================
+   CRM — ações rápidas da listagem e histórico de interações
+   ============================================================ */
+.row-actions{ display:flex; gap:6px; justify-content:flex-end; align-items:center; }
+.icon-btn.whatsapp{ color: var(--good); border-color:#5fb89644; }
+.icon-btn.whatsapp:hover{ color: var(--good); border-color: var(--good); background: var(--good-soft); }
+.icon-btn.retomar{ color: var(--warn); border-color:#e0b45844; font-size:15px; }
+.icon-btn.retomar:hover{ color: var(--warn); border-color: var(--warn); background: var(--warn-soft); }
+.kanban-retomar{ margin-top:8px; width:100%; color: var(--warn); border-color:#e0b45844; }
+.kanban-retomar:hover{ border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+
+.drawer-notas-resumo{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.notas-lista{ max-height:320px; overflow-y:auto; }
+.nota-item{
+  border:1px solid var(--border-soft);
+  border-radius: var(--radius);
+  background: var(--bg-elev-2);
+  padding:10px 12px;
+  margin-bottom:8px;
+}
+.nota-data{
+  font-size:11px; color:var(--text-faint);
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:4px;
+}
+.nota-data .icon-btn{ width:22px; height:22px; }
+.nota-texto{ font-size:13px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
 
 /* ============================================================
    IMPRESSÃO / PDF DO RELATÓRIO

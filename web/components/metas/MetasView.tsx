@@ -9,12 +9,18 @@
    Etapa 5 é somente-leitura: o modal de metas chega na Etapa 6.
    ================================================================ */
 import Contador from "@/components/Contador";
-import { comissaoRecebidaValor, imoveisAngariadosNoMes, imoveisLocadosNoMes } from "@/lib/calculo/motor";
+import {
+  comissaoRecebidaValor,
+  faturamentoContratosNoMes,
+  imoveisAngariadosNoMes,
+  imoveisLocadosNoMes,
+} from "@/lib/calculo/motor";
 import { currentMonthKey, monthKey, monthLabelLong } from "@/lib/datas";
 import { fmtMoney } from "@/lib/formatadores";
 import { useAppStore } from "@/lib/store";
 import { useUiModal } from "@/lib/uiModal";
 import type { Imovel, Meta } from "@/lib/tipos";
+import BadgesConquistas from "./BadgesConquistas";
 
 function comissaoRecebidaNoMes(imoveis: Imovel[], key: string, comissaoPercent: number): number {
   return imoveis.reduce(
@@ -41,7 +47,10 @@ function GoalCard({
 }) {
   const pct = target > 0 ? Math.min(100, (current / target) * 100) : 0;
   const remaining = Math.max(0, target - current);
-  const cls = pct >= 100 ? "good" : pct >= 60 ? "" : "warn";
+  // Termômetro: gradiente laranja→verde de comprimento fixo (o do track),
+  // recortado pelo width — a ponta da barra reflete o progresso. Acima de
+  // 90% ganha o pulso/brilho discreto (.pulsante).
+  const pulsante = pct >= 90;
   const fmt = (v: number) => (unit === "money" ? fmtMoney(v) : `${v}${unit ? " " + unit : ""}`);
 
   return (
@@ -61,7 +70,10 @@ function GoalCard({
         <div className="goal-target">/ {target > 0 ? fmt(target) : "sem meta"}</div>
       </div>
       <div className="progress-track">
-        <div className={`progress-fill ${cls}`} style={{ width: `${pct}%` }}></div>
+        <div
+          className={`progress-fill termometro${pulsante ? " pulsante" : ""}`}
+          style={{ width: `${pct}%`, "--pct": Math.max(pct, 1) } as React.CSSProperties}
+        ></div>
       </div>
       <div className="goal-foot">
         <span>{target > 0 ? (pct >= 100 ? "Meta atingida 🎉" : `Faltam ${fmt(remaining)}`) : "—"}</span>
@@ -82,12 +94,13 @@ export default function MetasView() {
   const abrirModal = useUiModal((s) => s.abrirModal);
 
   const mKey = currentMonthKey();
-  const meta: Meta = metas[mKey] || { angariacoes: 0, locados: 0, comissao: 0 };
+  const meta: Meta = metas[mKey] || { angariacoes: 0, locados: 0, comissao: 0, faturamento: 0 };
   const thisMonth = imoveisAngariadosNoMes(imoveis, mKey);
   const locadosThisMonth = imoveisLocadosNoMes(imoveis, mKey);
   const comissaoRecMes = comissaoRecebidaNoMes(imoveis, mKey, comissaoPercent);
+  const faturamentoMes = faturamentoContratosNoMes(imoveis, mKey);
 
-  const hasGoals = meta.angariacoes > 0 || meta.locados > 0 || meta.comissao > 0;
+  const hasGoals = meta.angariacoes > 0 || meta.locados > 0 || meta.comissao > 0 || meta.faturamento > 0;
   const historico = Object.keys(metas).sort().reverse().slice(0, 6);
 
   return (
@@ -118,7 +131,7 @@ export default function MetasView() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-3 anim-stagger">
+        <div className="grid grid-4 anim-stagger">
           <GoalCard
             label="Angariações"
             current={thisMonth.length}
@@ -128,8 +141,18 @@ export default function MetasView() {
           />
           <GoalCard label="Imóveis locados" current={locadosThisMonth.length} target={meta.locados} unit="un." />
           <GoalCard label="Comissão recebida" current={comissaoRecMes} target={meta.comissao} unit="money" />
+          <GoalCard
+            label="Faturamento em contratos"
+            current={faturamentoMes}
+            target={meta.faturamento}
+            unit="money"
+            note="Soma dos aluguéis dos imóveis locados no mês"
+          />
         </div>
       )}
+
+      <div className="divider"></div>
+      <BadgesConquistas />
 
       <div className="divider"></div>
       <div className="card-title" style={{ marginBottom: "14px" }}>
@@ -149,6 +172,8 @@ export default function MetasView() {
                 <th>Realizado</th>
                 <th>Meta comissão</th>
                 <th>Recebido</th>
+                <th>Meta faturamento</th>
+                <th>Realizado</th>
               </tr>
             </thead>
             <tbody>
@@ -157,6 +182,7 @@ export default function MetasView() {
                 const ang = imoveisAngariadosNoMes(imoveis, k).length;
                 const loc = imoveisLocadosNoMes(imoveis, k).length;
                 const rec = comissaoRecebidaNoMes(imoveis, k, comissaoPercent);
+                const fat = faturamentoContratosNoMes(imoveis, k);
                 return (
                   <tr key={k}>
                     <td className="cell-strong">{monthLabelLong(k)}</td>
@@ -166,6 +192,9 @@ export default function MetasView() {
                     <td className="cell-dim">{loc}</td>
                     <td>{m.comissao ? fmtMoney(m.comissao) : "—"}</td>
                     <td className="cell-dim">{fmtMoney(rec)}</td>
+                    {/* Metas de meses anteriores à coluna podem não ter faturamento. */}
+                    <td>{m.faturamento ? fmtMoney(m.faturamento) : "—"}</td>
+                    <td className="cell-dim">{fmtMoney(fat)}</td>
                   </tr>
                 );
               })}
