@@ -107,7 +107,6 @@ export default function MetasView() {
     <>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Metas</h1>
           <p className="page-sub">{monthLabelLong(mKey)}</p>
         </div>
         <div className="page-actions">

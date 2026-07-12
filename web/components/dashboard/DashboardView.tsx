@@ -78,7 +78,6 @@ export default function DashboardView() {
       <>
         <div className="page-head">
           <div>
-            <h1 className="page-title">Dashboard</h1>
             <p className="page-sub">Visão geral da sua produtividade</p>
           </div>
           <div className="page-actions">
@@ -111,7 +110,7 @@ export default function DashboardView() {
         {
           label: "Angariações",
           data: series.angariacoesPorMes,
-          backgroundColor: "#d98a4f",
+          backgroundColor: "#cca24a",
           borderRadius: 5,
           maxBarThickness: 34,
         },
@@ -128,7 +127,7 @@ export default function DashboardView() {
         {
           label: "Angariados",
           data: series.angariacoesPorMes,
-          backgroundColor: "#3a4150",
+          backgroundColor: "#3a453a",
           borderRadius: 5,
           maxBarThickness: 26,
         },
@@ -160,7 +159,7 @@ export default function DashboardView() {
     data: {
       labels: bairroSorted.map((x) => x[0]),
       datasets: [
-        { data: bairroSorted.map((x) => x[1]), backgroundColor: "#6fa8c9", borderRadius: 5, maxBarThickness: 22 },
+        { data: bairroSorted.map((x) => x[1]), backgroundColor: "#cca24a", borderRadius: 5, maxBarThickness: 22 },
       ],
     },
     options: { ...baseBarOptions(), indexAxis: "y" },
@@ -172,7 +171,7 @@ export default function DashboardView() {
     data: {
       labels: tipoSorted.map((x) => x[0]),
       datasets: [
-        { data: tipoSorted.map((x) => x[1]), backgroundColor: CHART_COLORS, borderColor: "#181c23", borderWidth: 2 },
+        { data: tipoSorted.map((x) => x[1]), backgroundColor: CHART_COLORS, borderColor: "#171e19", borderWidth: 2 },
       ],
     },
     options: {
@@ -195,7 +194,7 @@ export default function DashboardView() {
     data: {
       labels,
       datasets: [
-        { label: "Estimada", data: comEst, borderColor: "#e0b458", backgroundColor: "#e0b45822", tension: 0.35, fill: true },
+        { label: "Estimada", data: comEst, borderColor: "#cca24a", backgroundColor: "#cca24a22", tension: 0.35, fill: true },
         { label: "Recebida", data: comRec, borderColor: "#5fb896", backgroundColor: "#5fb89622", tension: 0.35, fill: true },
       ],
     },
@@ -237,7 +236,6 @@ export default function DashboardView() {
     <>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Dashboard</h1>
           <p className="page-sub">{monthLabelLong(mKey)} · visão geral da produtividade</p>
         </div>
         <div className="page-actions">

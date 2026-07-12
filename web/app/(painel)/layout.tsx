@@ -9,11 +9,11 @@
    Enquanto carregarEstado() não termina, o <main> mostra o mesmo
    "Carregando seus dados..." do handleAuthenticated().
    ================================================================ */
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSessao } from "@/components/SessaoProvider";
 import BarraLateral from "@/components/painel/BarraLateral";
+import Topbar from "@/components/painel/Topbar";
 import EsqueletoPainel from "@/components/painel/EsqueletoPainel";
 import ModalOverlay from "@/components/modais/ModalOverlay";
 import { useAppStore } from "@/lib/store";
@@ -34,31 +34,8 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
   return (
     <>
     <div className="app-shell" id="app-shell">
-      {/* BARRA SUPERIOR MOBILE (só aparece em telas estreitas) */}
-      <div className="mobile-topbar">
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={() => setGavetaAberta((v) => !v)}
-          aria-label="Abrir menu"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            style={{ width: "18px", height: "18px" }}
-          >
-            <path d="M3 6h18M3 12h18M3 18h18" />
-          </svg>
-        </button>
-        <div className="brand" style={{ border: "none", padding: 0, margin: 0 }}>
-          <Image className="brand-mark" src="/logo.png" alt="Angariações" width={52} height={52} />
-          <div className="brand-text">
-            <span className="brand-title">Angariações</span>
-          </div>
-        </div>
-      </div>
+      {/* BARRA DE TOPO (nome da tela + notificações + usuário) */}
+      <Topbar aoAbrirMenu={() => setGavetaAberta((v) => !v)} />
 
       {/* FUNDO ESCURO ATRÁS DA GAVETA (mobile) */}
       <div

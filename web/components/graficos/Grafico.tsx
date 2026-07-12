@@ -13,11 +13,13 @@ export function aplicarPadroesChart() {
   Chart.defaults.color = "#9aa1ad";
   Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, Segoe UI, Inter, Roboto, sans-serif";
   Chart.defaults.font.size = 11.5;
-  Chart.defaults.borderColor = "#2c323d";
+  Chart.defaults.borderColor = "#2f3a32";
 }
 
+// Paleta categórica dos gráficos — lidera com o dourado da marca e o verde
+// (antes começava no terracota #d98a4f, que destoava do logo verde/dourado).
 export const CHART_COLORS = [
-  "#d98a4f", "#6fa8c9", "#9b8fd9", "#5fb896", "#e0b458", "#d97878", "#7bd4b2", "#e08f8f",
+  "#cca24a", "#5fb896", "#6fa8c9", "#9b8fd9", "#e0b458", "#d97878", "#7bd4b2", "#e08f8f",
 ];
 
 export function baseBarOptions() {
@@ -27,7 +29,7 @@ export function baseBarOptions() {
     plugins: { legend: { display: false } },
     scales: {
       x: { grid: { display: false }, border: { display: false } },
-      y: { grid: { color: "#232830" }, border: { display: false }, beginAtZero: true, ticks: { precision: 0 } },
+      y: { grid: { color: "#222c25" }, border: { display: false }, beginAtZero: true, ticks: { precision: 0 } },
     },
   };
 }

@@ -484,7 +484,6 @@ export default function PipelineView() {
     <>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Pipeline</h1>
           <p className="page-sub">{imoveis.length} imóveis cadastrados</p>
         </div>
         <div className="page-actions">

@@ -55,7 +55,6 @@ export default function InsightsView() {
     <>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Insights</h1>
           <p className="page-sub">Leitura automática dos seus dados de angariação</p>
         </div>
       </div>

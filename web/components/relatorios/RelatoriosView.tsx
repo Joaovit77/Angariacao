@@ -143,7 +143,6 @@ export default function RelatoriosView() {
     <>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Relatórios</h1>
           <p className="page-sub">Resumo de produtividade para acompanhamento e prestação de contas</p>
         </div>
         <div className="page-actions">

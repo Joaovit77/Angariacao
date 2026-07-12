@@ -60,6 +60,7 @@ input, select, textarea{ font-family: inherit; font-size: 14px; }
 .app-shell{
   display: grid;
   grid-template-columns: 240px 1fr;
+  grid-template-rows: auto 1fr;
   min-height: 100vh;
 }
 
@@ -74,6 +75,10 @@ input, select, textarea{ font-family: inherit; font-size: 14px; }
   position: sticky;
   top: 0;
   height: 100vh;
+  /* Ocupa a coluna esquerda nas duas linhas do grid (topo + conteúdo), pra
+     ficar ao lado da .topbar em vez de empurrá-la. */
+  grid-column: 1;
+  grid-row: 1 / -1;
 }
 .brand{
   display:flex;
@@ -321,7 +326,127 @@ img.brand-mark{
   width: 100%;
   min-width: 0;
   overflow-x: hidden;
+  grid-column: 2;
+  grid-row: 2;
 }
+
+/* ============================================================
+   TOPBAR (app bar) — nome da tela + notificações + usuário
+   Presente no mobile e no desktop. No desktop ocupa a coluna do
+   conteúdo (col 2, linha 1); no mobile vira faixa de largura total.
+   ============================================================ */
+.topbar{
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 24px;
+  background: var(--bg-elev-1);
+  border-bottom: 1px solid var(--border-soft);
+  position: sticky;
+  top: 0;
+  z-index: 2100;
+}
+.topbar-menu{ display:none; }   /* hambúrguer: só no mobile */
+.topbar-logo{ display:none; }   /* logo: só no mobile (no desktop a sidebar já tem) */
+.topbar-title{
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: .2px;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.topbar-actions{ display:flex; align-items:center; gap:8px; }
+
+.topbar-menu, .topbar-icon-btn, .topbar-avatar{
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: var(--bg-elev-2);
+  color: var(--text-dim);
+  border-radius: 8px;
+  transition: background .12s ease, color .12s ease, border-color .12s ease;
+}
+.topbar-menu:hover, .topbar-icon-btn:hover, .topbar-avatar:hover{
+  background: var(--bg-elev-3);
+  color: var(--text);
+  border-color: var(--text-faint);
+}
+.topbar-icon-btn{ position: relative; }
+.topbar-avatar{
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  color: #1a1207;
+  border: none;
+  background: linear-gradient(155deg, var(--accent), #8f6f2a);
+}
+.topbar-avatar:hover{ filter: brightness(1.06); color: #1a1207; }
+
+.topbar-badge{
+  position: absolute; top: -5px; right: -5px;
+  min-width: 17px; height: 17px; padding: 0 4px;
+  border-radius: 999px;
+  background: var(--bad); color: #fff;
+  font-size: 10px; font-weight: 700; line-height: 17px; text-align: center;
+}
+
+/* Dropdown (notificações / usuário) */
+.topbar-pop-wrap{ position: relative; }
+.topbar-pop{
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 288px;
+  max-width: 84vw;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 14px 34px rgba(0,0,0,.45);
+  padding: 6px;
+  z-index: 2200;
+  transform-origin: top right;
+  animation: topbarpop .2s cubic-bezier(.16, .8, .3, 1);
+}
+@keyframes topbarpop{
+  from{ opacity:0; transform: translateY(-7px) scale(.96); }
+  to{ opacity:1; transform: none; }
+}
+.topbar-pop-head{
+  font-size: 11px; text-transform: uppercase; letter-spacing: .6px;
+  color: var(--text-faint); padding: 8px 10px 6px;
+}
+.topbar-pop-empty{ padding: 12px 10px; color: var(--text-dim); font-size: 13px; }
+.topbar-pop-user-head{
+  padding: 8px 10px; font-size: 12.5px; font-weight: 600; color: var(--text-dim);
+  border-bottom: 1px solid var(--border-soft); margin-bottom: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.topbar-pop-item{
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; text-align: left;
+  padding: 8px 10px;
+  border: none; background: transparent; color: var(--text);
+  border-radius: 7px;
+  transition: background .12s ease;
+}
+.topbar-pop-item:hover{ background: var(--bg-elev-3); }
+.topbar-pop-ic{
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-soft); color: var(--accent-strong); font-size: 13px;
+}
+.topbar-pop-txt{ display: flex; flex-direction: column; min-width: 0; }
+.topbar-pop-txt strong{
+  font-size: 13px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.topbar-pop-txt span{ font-size: 11.5px; color: var(--text-faint); }
 .view{ display:none; animation: fadein .18s ease; }
 .view.active{ display:block; }
 @keyframes fadein{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
@@ -1144,7 +1269,7 @@ legend{
   body{ color:#111 !important; }
 
   /* esconde tudo que não faz parte do relatório */
-  .sidebar, #sidebar, .sidebar-backdrop, .mobile-topbar,
+  .sidebar, #sidebar, .sidebar-backdrop, .topbar,
   .page-head, .pipeline-toolbar, .modal-overlay, .toast-container{ display:none !important; }
 
   .app-shell{ display:block !important; }
@@ -1238,24 +1363,21 @@ legend{
    A sidebar vira uma gaveta deslizante (aberta pelo botão
    hambúrguer), em vez de simplesmente sumir sem alternativa.
    ============================================================ */
-.mobile-topbar{ display:none; }
 .sidebar-backdrop{ display:none; }
 
 @media (max-width: 720px){
   .grid-4, .grid-3, .grid-2{ grid-template-columns:1fr; }
-  /* Barra superior compacta + conteúdo ocupando o resto. Sem isto, o grid
-     (min-height:100vh) estica a linha da .mobile-topbar quando a página tem
-     pouco conteúdo, inflando a barra e escondendo o topo da gaveta atrás dela. */
+  /* Uma coluna: a topbar (largura total) em cima e o conteúdo embaixo. Sem
+     definir as linhas, o grid (min-height:100vh) estica a linha da .topbar
+     quando a página tem pouco conteúdo, inflando a barra. */
   .app-shell{ grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
 
-  .mobile-topbar{
-    display:flex; align-items:center; gap:12px;
-    padding: 12px 16px;
-    background: var(--bg-elev-1);
-    border-bottom: 1px solid var(--border-soft);
-    position: sticky; top:0; z-index: 2100;
-    grid-column: 1 / -1;
-  }
+  /* No mobile a topbar ganha o hambúrguer e o logo; a sidebar vira gaveta. */
+  .topbar{ grid-column: 1 / -1; padding: 10px 14px; gap: 10px; }
+  .topbar-menu{ display:flex; }
+  .topbar-logo{ display:block; }
+  .topbar-title{ font-size: 17px; }
+  .main{ grid-column: 1 / -1; }
 
   .sidebar{
     position: fixed; top:0; left:0; width:260px;
@@ -1270,7 +1392,8 @@ legend{
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     transform: translateX(-100%);
-    transition: transform .22s ease;
+    /* Easing mais macio na entrada/saída da gaveta (menos "seco" que ease). */
+    transition: transform .28s cubic-bezier(.32, .72, 0, 1);
     box-shadow: 8px 0 30px rgba(0,0,0,.4);
   }
   .sidebar.open{ transform: translateX(0); }
@@ -1281,7 +1404,7 @@ legend{
     background: rgba(8,10,13,.6);
     z-index: 1900;
     opacity:0; pointer-events:none;
-    transition: opacity .2s ease;
+    transition: opacity .28s ease;
   }
   .sidebar-backdrop.open{ opacity:1; pointer-events:auto; }
 

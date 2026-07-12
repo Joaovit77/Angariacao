@@ -27,7 +27,6 @@ export default function MapaView() {
       <>
         <div className="page-head">
           <div>
-            <h1 className="page-title">Mapa</h1>
             <p className="page-sub">Onde você tentou e onde conseguiu angariar</p>
           </div>
         </div>
@@ -43,7 +42,6 @@ export default function MapaView() {
     <>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Mapa</h1>
           <p className="page-sub">{comLocalizacao.length} imóveis localizados no mapa</p>
         </div>
         <div className="page-actions">

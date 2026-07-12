@@ -156,7 +156,6 @@ export default function AgendaView() {
     <>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Agenda</h1>
           <p className="page-sub">Retornos, visitas, pendências e follow-ups</p>
         </div>
         <div className="page-actions">
