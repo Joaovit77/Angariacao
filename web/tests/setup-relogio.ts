@@ -8,6 +8,12 @@ import { beforeAll, afterAll, vi } from "vitest";
 export const INSTANTE_ORACULO = "2026-07-09T15:00:00.000Z";
 
 export function congelaRelogio() {
+  // Congela JÁ na chamada — que roda na fase de COLEÇÃO do vitest, antes dos
+  // hooks. Sem isto, valores calculados no corpo de um describe (ex.:
+  // `const insights = buildInsights(...)`) rodam com a data REAL e derivam
+  // (o `beforeAll` abaixo só congela na hora de executar os `it`).
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(INSTANTE_ORACULO));
   beforeAll(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(INSTANTE_ORACULO));

@@ -1389,7 +1389,9 @@ legend{
     /* 100dvh = altura VISÍVEL real (desconta a barra do navegador no celular);
        100vh como fallback para navegadores sem dvh. */
     height:100vh; height:100dvh;
-    z-index: 2000;
+    /* Acima da topbar (2100): a gaveta abre POR CIMA do header, senão o header
+       tapa o logo/título no topo do menu. O fundo (backdrop) escurece o header. */
+    z-index: 2300;
     /* Gaveta rola por dentro quando o menu é mais alto que a tela — sem isto o
        rodapé (Sair) fica cortado e o toque rola a página por baixo.
        overscroll-behavior:contain impede o scroll de "vazar" para o body. */
@@ -1407,7 +1409,7 @@ legend{
     display:block;
     position: fixed; inset:0;
     background: rgba(8,10,13,.6);
-    z-index: 1900;
+    z-index: 2250;
     opacity:0; pointer-events:none;
     transition: opacity .28s ease;
   }

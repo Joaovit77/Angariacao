@@ -172,8 +172,8 @@ describe("Insights", () => {
     expect(porIcone("alvo").title).toBe("Taxa de conversão geral: 33%");
     expect(porIcone("alvo").text).toContain("os 6 processos já encerrados");
     // Card por-imóvel: o mais parado da carteira, nominal.
-    expect(porIcone("ampulheta").title).toBe("CA-007 é o mais parado: 31 dias");
-    expect(porIcone("ampulheta").text).toContain('há 31 dias em "Angariado"');
+    expect(porIcone("ampulheta").title).toBe("CA-007 é o mais parado: 29 dias");
+    expect(porIcone("ampulheta").text).toContain('há 29 dias em "Angariado"');
     // Tendência mês a mês (Julho/2026 = 1 vs Junho/2026 = 0).
     expect(porIcone("alta").title).toContain("Julho de 2026");
     expect(porIcone("alta").text).toContain("contra 0 em Junho de 2026");
