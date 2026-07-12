@@ -61,6 +61,7 @@ export interface DbAgendaRow {
   title: string;
   type: string;
   date: string;
+  hora: string | null;
   imovel_id: string | null;
   notes: string | null;
   done: boolean | null;
@@ -83,6 +84,7 @@ export interface DbMetaRow {
 export interface DbUserConfigRow {
   user_id: string;
   comissao_percent: number | string | null;
+  agenda_tipos: string[] | null;
 }
 
 export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "created_at" | "updated_at"> {
@@ -172,6 +174,7 @@ export function toDbAgenda(a: AgendaItem, userId: string): Omit<DbAgendaRow, "cr
     title: a.title,
     type: a.type,
     date: a.date,
+    hora: a.hora || null,
     imovel_id: a.imovelId || null,
     notes: a.notes || null,
     done: !!a.done,
@@ -180,5 +183,5 @@ export function toDbAgenda(a: AgendaItem, userId: string): Omit<DbAgendaRow, "cr
 }
 
 export function fromDbAgenda(r: DbAgendaRow): AgendaItem {
-  return { id: r.id, title: r.title, type: r.type, date: r.date, imovelId: r.imovel_id, notes: r.notes || "", done: !!r.done, isVerificacaoDisponibilidade: !!r.is_verificacao_disponibilidade };
+  return { id: r.id, title: r.title, type: r.type, date: r.date, hora: r.hora ?? null, imovelId: r.imovel_id, notes: r.notes || "", done: !!r.done, isVerificacaoDisponibilidade: !!r.is_verificacao_disponibilidade };
 }

@@ -1045,10 +1045,14 @@ legend{
 }
 .agenda-check.checked{ background: var(--good); border-color: var(--good); color:#0c1512; }
 .agenda-item-body{ flex:1; min-width:0; }
-.agenda-item-title{ font-size:13.5px; font-weight:700; margin-bottom:6px; line-height:1.35; display:flex; align-items:center; gap:8px; }
-.agenda-item-meta{ font-size:11.5px; color: var(--text-dim); display:flex; gap:8px; flex-wrap:wrap; }
+.agenda-item-title{ font-size:14px; font-weight:600; margin-bottom:7px; line-height:1.35; display:flex; align-items:center; gap:8px; }
+.agenda-item-meta{ font-size:11.5px; color: var(--text-faint); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+/* Hora discreta em destaque (sem pílula cheia, que competia com o ícone). */
+.agenda-hora{ font-family: var(--font-display); font-weight:700; font-size:13px; color: var(--accent-strong); letter-spacing:.3px; }
 .agenda-type-tag{
   font-size: 10px; font-weight:700; text-transform:uppercase; padding:2px 7px; border-radius:4px; letter-spacing:.3px;
+  /* Fundo neutro padrão — tipos personalizados (sem cor própria) caem aqui. */
+  background: var(--bg-elev-3); color: var(--text-dim);
 }
 .agenda-type-tag[data-type="Retorno ao proprietário"]{ background:#6fa8c922; color:#8ec2df; }
 .agenda-type-tag[data-type="Visita"]{ background:#9b8fd922; color:#b3a8ea; }
@@ -1067,15 +1071,11 @@ legend{
 .agenda-actions{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
 .agenda-whatsapp-btn{ white-space:nowrap; color:var(--good); border-color:#5fb89655; }
 .agenda-whatsapp-btn:hover{ background:var(--good-soft); color:var(--good); }
-.agenda-date-state,
 .agenda-due-chip{
   display:inline-flex; align-items:center; gap:5px;
   font-size:10.5px; font-weight:700;
   padding:2px 7px; border-radius:20px;
 }
-.agenda-date-state.overdue{ color:var(--bad); background:var(--bad-soft); }
-.agenda-date-state.today{ color:var(--accent-strong); background:var(--accent-soft); }
-.agenda-date-state.future{ color:var(--info); background:var(--info-soft); }
 .agenda-due-chip.ok{ color:var(--good); background:var(--good-soft); }
 .agenda-due-chip.warning{ color:var(--warn); background:var(--warn-soft); }
 .agenda-due-chip.soon{ color:var(--accent-strong); background:var(--accent-soft); }
@@ -1447,6 +1447,29 @@ legend{
   .agenda-whatsapp-btn{ flex:1; }
   .agenda-item-title{ align-items:flex-start; }
 }
+
+/* ============================================================
+   AGENDA — tipos personalizados e utilitários do modal
+   ============================================================ */
+/* Botão-texto discreto (ex.: "＋ novo tipo" no modal da agenda). */
+.link-btn{
+  background:none; border:none; padding:0; cursor:pointer;
+  color: var(--accent-strong); font-size:11.5px; font-weight:600;
+}
+.link-btn:hover{ text-decoration: underline; }
+/* Chips dos tipos personalizados nas Configurações. */
+.config-tipos-lista{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+.config-tipo-chip{
+  display:inline-flex; align-items:center; gap:6px;
+  background: var(--bg-elev-2); border:1px solid var(--border-soft);
+  border-radius:20px; padding:3px 6px 3px 10px; font-size:12px; color: var(--text-dim);
+}
+.config-tipo-chip button{
+  background: var(--bg-elev-3); border:none; cursor:pointer; color: var(--text-dim);
+  width:16px; height:16px; border-radius:50%; line-height:1; font-size:12px;
+  display:inline-flex; align-items:center; justify-content:center;
+}
+.config-tipo-chip button:hover{ background: var(--bad); color:#fff; }
 
 /* ============================================================
    MICROANIMAÇÕES

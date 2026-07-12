@@ -38,7 +38,7 @@ const ESTADO_INICIAL = {
   imoveis: [] as Imovel[],
   metas: {} as Metas,
   agenda: [] as AgendaItem[],
-  config: { comissaoPercent: 100 } as UserConfig, // % sobre 1 aluguel (100 = 1 mês)
+  config: { comissaoPercent: 100, agendaTipos: [] } as UserConfig, // % sobre 1 aluguel (100 = 1 mês)
   carregado: false,
 };
 

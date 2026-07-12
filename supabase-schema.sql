@@ -131,6 +131,7 @@ create table if not exists agenda (
   title text not null,
   type text not null,
   date date not null,
+  hora text,
   imovel_id uuid references imoveis(id) on delete set null,
   notes text,
   done boolean default false,
@@ -138,9 +139,11 @@ create table if not exists agenda (
   created_at timestamptz default now()
 );
 
--- Cobre o caso de quem já tinha a tabela "agenda" criada antes dessa
--- coluna existir — "add column if not exists" não falha se já rodou.
+-- Cobre o caso de quem já tinha a tabela "agenda" criada antes dessas
+-- colunas existirem — "add column if not exists" não falha se já rodou.
 alter table agenda add column if not exists is_verificacao_disponibilidade boolean not null default false;
+-- Hora "HH:MM" (24h) do compromisso; nula = "dia inteiro" (compat. retroativa).
+alter table agenda add column if not exists hora text;
 
 alter table agenda enable row level security;
 
@@ -164,8 +167,12 @@ create index if not exists agenda_user_id_idx on agenda(user_id);
 -- ------------------------------------------------------------
 create table if not exists user_config (
   user_id uuid primary key references auth.users(id) on delete cascade,
-  comissao_percent numeric default 100
+  comissao_percent numeric default 100,
+  agenda_tipos jsonb not null default '[]'::jsonb
 );
+
+-- Tipos de compromisso personalizados do usuário (além dos fixos do app).
+alter table user_config add column if not exists agenda_tipos jsonb not null default '[]'::jsonb;
 
 alter table user_config enable row level security;
 

@@ -6,9 +6,9 @@
    ================================================================ */
 import { useState } from "react";
 import { useSessao } from "@/components/SessaoProvider";
-import { AGENDA_TYPES } from "@/lib/constantes";
+import { tiposAgendaDisponiveis } from "@/lib/calculo/agenda";
 import { todayISO } from "@/lib/datas";
-import { excluirAgenda, salvarAgenda, uid } from "@/lib/mutacoes";
+import { excluirAgenda, salvarAgenda, salvarConfig, uid } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import { useUiModal } from "@/lib/uiModal";
 import { toast } from "@/lib/toast";
@@ -18,19 +18,45 @@ export default function ModalAgenda({ id }: { id?: string }) {
   const { usuario } = useSessao();
   const agenda = useAppStore((s) => s.agenda);
   const imoveis = useAppStore((s) => s.imoveis);
+  const config = useAppStore((s) => s.config);
 
   const item = id ? agenda.find((a) => a.id === id) || null : null;
 
   const [title, setTitle] = useState(item?.title ?? "");
   const [type, setType] = useState(item?.type ?? "Retorno ao proprietário");
   const [date, setDate] = useState(item?.date ?? todayISO());
+  const [hora, setHora] = useState(item?.hora ?? "");
   const [imovelId, setImovelId] = useState(item?.imovelId ?? "");
   const [notes, setNotes] = useState(item?.notes ?? "");
   const [salvando, setSalvando] = useState(false);
+  const [novoTipoAberto, setNovoTipoAberto] = useState(false);
+  const [novoTipo, setNovoTipo] = useState("");
+
+  // Fixos + personalizados; garante que o tipo atual apareça mesmo se ele
+  // tiver sido removido da lista personalizada depois de já usado.
+  const tiposBase = tiposAgendaDisponiveis(config.agendaTipos);
+  const tipos = tiposBase.includes(type) ? tiposBase : [type, ...tiposBase];
 
   const imoveisOptions = imoveis
     .slice()
     .sort((a, b) => (a.codigo || a.endereco).localeCompare(b.codigo || b.endereco));
+
+  // Cria um tipo personalizado na hora, persiste no config e já o seleciona.
+  async function criarTipo() {
+    if (!usuario) return;
+    const t = novoTipo.trim();
+    if (!t) return;
+    if (tiposBase.some((x) => x.toLowerCase() === t.toLowerCase())) {
+      toast("Esse tipo já existe.", "error");
+      return;
+    }
+    const ok = await salvarConfig({ ...config, agendaTipos: [...config.agendaTipos, t] }, usuario.id);
+    if (ok) {
+      setType(t);
+      setNovoTipo("");
+      setNovoTipoAberto(false);
+    }
+  }
 
   async function salvar() {
     if (!usuario) return;
@@ -46,6 +72,7 @@ export default function ModalAgenda({ id }: { id?: string }) {
         title: titulo,
         type,
         date,
+        hora: hora || null,
         imovelId: imovelId || null,
         notes: notes.trim(),
         done: item ? item.done : false,
@@ -81,20 +108,56 @@ export default function ModalAgenda({ id }: { id?: string }) {
             placeholder="Ex: Ligar para proprietário sobre documentação"
           />
         </div>
-        <div className="field-row">
-          <div className="field-group">
-            <label>Tipo</label>
+        <div className="field-group">
+          <label>
+            Tipo
+            <button
+              type="button"
+              className="link-btn"
+              style={{ marginLeft: "8px" }}
+              onClick={() => setNovoTipoAberto((v) => !v)}
+            >
+              {novoTipoAberto ? "cancelar" : "＋ novo tipo"}
+            </button>
+          </label>
+          {novoTipoAberto ? (
+            <div style={{ display: "flex", gap: "8px" }}>
+              <input
+                type="text"
+                autoFocus
+                value={novoTipo}
+                onChange={(e) => setNovoTipo(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    criarTipo();
+                  }
+                }}
+                placeholder="Ex.: Avaliação"
+                style={{ flex: 1 }}
+              />
+              <button type="button" className="btn" onClick={criarTipo}>
+                Criar
+              </button>
+            </div>
+          ) : (
             <select value={type} onChange={(e) => setType(e.target.value)}>
-              {AGENDA_TYPES.map((t) => (
+              {tipos.map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>
               ))}
             </select>
-          </div>
+          )}
+        </div>
+        <div className="field-row">
           <div className="field-group">
             <label>Data</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+          <div className="field-group">
+            <label>Hora (opcional)</label>
+            <input type="time" value={hora ?? ""} onChange={(e) => setHora(e.target.value)} />
           </div>
         </div>
         <div className="field-group">

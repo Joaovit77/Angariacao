@@ -71,6 +71,8 @@ export interface AgendaItem {
   title: string;
   type: string;
   date: string; // ISO YYYY-MM-DD
+  /** Hora "HH:MM" (24h). null/"" = compromisso sem hora ("dia inteiro"). */
+  hora?: string | null;
   imovelId?: string | null;
   notes?: string | null;
   done: boolean;
@@ -80,4 +82,6 @@ export interface AgendaItem {
 export interface UserConfig {
   /** % sobre 1 aluguel (100 = 1 mês de aluguel) */
   comissaoPercent: number;
+  /** Tipos de compromisso extras definidos pelo usuário (além dos fixos). */
+  agendaTipos: string[];
 }
