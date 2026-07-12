@@ -364,7 +364,7 @@ img.brand-mark{
 .topbar-actions{ display:flex; align-items:center; gap:8px; }
 
 .topbar-menu, .topbar-icon-btn, .topbar-avatar{
-  display: flex; align-items: center; justify-content: center;
+  align-items: center; justify-content: center;
   width: 36px; height: 36px; flex-shrink: 0;
   border: 1px solid var(--border);
   background: var(--bg-elev-2);
@@ -372,6 +372,11 @@ img.brand-mark{
   border-radius: 8px;
   transition: background .12s ease, color .12s ease, border-color .12s ease;
 }
+/* Sino e avatar aparecem sempre; o hambúrguer (.topbar-menu) fica só no
+   mobile (display definido acima como none e reativado no @media). Antes o
+   `display:flex` da regra compartilhada reexibia o hambúrguer no desktop,
+   onde a sidebar já está sempre visível — botão morto. */
+.topbar-icon-btn, .topbar-avatar{ display: flex; }
 .topbar-menu:hover, .topbar-icon-btn:hover, .topbar-avatar:hover{
   background: var(--bg-elev-3);
   color: var(--text);
