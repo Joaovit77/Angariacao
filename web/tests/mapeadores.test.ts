@@ -65,6 +65,15 @@ describe("ida-e-volta imóvel: fromDb(toDb(x)) reproduz o app antigo", () => {
     const f03 = imoveisCamel.find((i) => i.id === "f03")!;
     expect(toDbImovel(f03, USER_ID).valor_aluguel).toBe(0);
   });
+  it("preCadastro faz ida-e-volta (true sobrevive; ausente vira false)", () => {
+    const pre = { ...imoveisCamel[0], preCadastro: true };
+    expect(toDbImovel(pre, USER_ID).pre_cadastro).toBe(true);
+    expect(fromDbImovel(toDbImovel(pre, USER_ID) as DbImovelRow).preCadastro).toBe(true);
+    // Linha antiga sem a coluna (undefined) vira false na leitura.
+    const semColuna = { ...imoveisRows[0], pre_cadastro: undefined } as unknown as DbImovelRow;
+    expect(fromDbImovel(semColuna).preCadastro).toBe(false);
+  });
+
   it("notas fazem ida-e-volta preservando id/texto/data", () => {
     const notas = [
       { id: "n1", texto: "Liguei, ficou de responder.", data: "2026-07-10T09:15" },

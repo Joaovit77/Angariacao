@@ -88,7 +88,10 @@ function CartaoKanban({ i, color, aoAbrir }: { i: Imovel; color: string; aoAbrir
       style={{ "--col-color": color } as React.CSSProperties}
       onClick={() => aoAbrir(i.id)}
     >
-      <div className="kanban-card-code">{i.codigo || "s/ código"}</div>
+      <div className="kanban-card-code">
+        {i.codigo || "s/ código"}
+        {i.preCadastro && <span className="pre-cadastro-flag">pré-cadastro</span>}
+      </div>
       <div className="kanban-card-addr">
         {i.endereco}
         {i.bairro ? `, ${i.bairro}` : ""}
@@ -214,7 +217,10 @@ function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
               className={`pipeline-list-row ${drawerImovelId === i.id ? "selected" : ""}`}
               onClick={() => abrirDrawer(i.id)}
             >
-              <td className="cell-strong">{i.codigo || "-"}</td>
+              <td className="cell-strong">
+                {i.codigo || "-"}
+                {i.preCadastro && <span className="pre-cadastro-flag">pré-cadastro</span>}
+              </td>
               <td>{i.endereco || "-"}</td>
               <td className="cell-dim">{i.bairro || "-"}</td>
               <td className="cell-dim">{i.tipo || "-"}</td>
@@ -572,6 +578,9 @@ export default function PipelineView() {
           <p className="page-sub">{imoveis.length} imóveis cadastrados</p>
         </div>
         <div className="page-actions">
+          <button type="button" className="btn" onClick={() => abrirModal("preCadastro")}>
+            ⚡ Pré-cadastro rápido
+          </button>
           <button type="button" className="btn btn-primary" onClick={() => abrirModal("imovel")}>
             + Nova angariação
           </button>

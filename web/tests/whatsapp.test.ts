@@ -95,10 +95,20 @@ describe("mensagemWhatsapp", () => {
   });
 
   it("o nome do captador não altera os modelos antigos (saída byte-idêntica)", () => {
+    // Modelos que assinam com o captador (usam apresentacao(nome)) mudam de
+    // propósito quando há nome — ficam de fora deste contrato de estabilidade.
+    const usamCaptador = ["feedback-divulgacao", "confirmacao-endereco"];
     for (const m of MODELOS_WHATSAPP) {
-      if (m.id === "feedback-divulgacao") continue;
+      if (usamCaptador.includes(m.id)) continue;
       expect(mensagemWhatsapp(m.id, base, "Ana")).toBe(mensagemWhatsapp(m.id, base));
     }
+  });
+
+  it("confirmação de endereço repete o endereço completo para conferência", () => {
+    const msg = mensagemWhatsapp("confirmacao-endereco", { ...base, cidade: "São Paulo" }, "Ana");
+    expect(msg).toContain("Rua Haddock Lobo, 55, Cerqueira César, São Paulo");
+    expect(msg).toContain("confirmar o endereço");
+    expect(msg).toContain("Aqui é Ana");
   });
 
   it("o novo modelo está no seletor", () => {

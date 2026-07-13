@@ -264,6 +264,8 @@ export default function ModalImovel({ id }: { id?: string }) {
       comissaoRecebida: status === "Locado" ? comissaoRecebida : false,
       comissaoRecebidaValor: status === "Locado" ? numOrNull(comissaoRecebidaValor) : null,
       comissaoRecebidaData: status === "Locado" ? comissaoRecebidaData || null : null,
+      // Salvar pelo modal completo confirma os dados: sai de pré-cadastro.
+      preCadastro: false,
     };
 
     aplicarMudancaDeStatus(data, status, imovel ? imovel.status : null);
@@ -289,6 +291,12 @@ export default function ModalImovel({ id }: { id?: string }) {
         </button>
       </div>
       <div className="modal-body">
+        {imovel?.preCadastro && (
+          <p className="section-note" style={{ marginBottom: "14px" }}>
+            📋 Este imóvel é um <strong>pré-cadastro</strong>. Confira os dados com o que o
+            proprietário respondeu e clique em <strong>Salvar alterações</strong> para confirmar.
+          </p>
+        )}
         <fieldset>
           <legend>Dados do imóvel</legend>
           <div className="field-row-3">

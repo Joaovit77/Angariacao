@@ -15,6 +15,7 @@ import ModalConfig from "./ModalConfig";
 import ModalImovel from "./ModalImovel";
 import ModalMeta from "./ModalMeta";
 import ModalNotas from "./ModalNotas";
+import ModalPreCadastro from "./ModalPreCadastro";
 import ModalVerificacao from "./ModalVerificacao";
 import ModalWhatsapp from "./ModalWhatsapp";
 
@@ -37,11 +38,14 @@ export default function ModalOverlay() {
     <div className={`modal-overlay${modal ? " open" : ""}`} id="modal-overlay">
       <div className="modal" id="modal-box">
         {modal?.tipo === "imovel" && <ModalImovel id={modal.id} />}
+        {modal?.tipo === "preCadastro" && <ModalPreCadastro />}
         {modal?.tipo === "meta" && <ModalMeta />}
         {modal?.tipo === "agenda" && <ModalAgenda id={modal.id} />}
         {modal?.tipo === "verificacao" && modal.id && <ModalVerificacao id={modal.id} />}
         {modal?.tipo === "config" && <ModalConfig />}
-        {modal?.tipo === "whatsapp" && modal.id && <ModalWhatsapp imovelId={modal.id} />}
+        {modal?.tipo === "whatsapp" && modal.id && (
+          <ModalWhatsapp imovelId={modal.id} modeloInicial={modal.modeloWhatsapp} />
+        )}
         {modal?.tipo === "notas" && modal.id && <ModalNotas imovelId={modal.id} />}
       </div>
     </div>

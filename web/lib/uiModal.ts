@@ -9,22 +9,32 @@
    ================================================================ */
 import { create } from "zustand";
 
-export type TipoModal = "imovel" | "meta" | "agenda" | "verificacao" | "config" | "whatsapp" | "notas";
+export type TipoModal =
+  | "imovel"
+  | "preCadastro"
+  | "meta"
+  | "agenda"
+  | "verificacao"
+  | "config"
+  | "whatsapp"
+  | "notas";
 
 export interface ModalAtivo {
   tipo: TipoModal;
   /** id do imóvel / compromisso em edição; ausente = criação. */
   id?: string;
+  /** Modelo de WhatsApp pré-selecionado ao abrir o modal "whatsapp". */
+  modeloWhatsapp?: string;
 }
 
 interface UiModal {
   modal: ModalAtivo | null;
-  abrirModal: (tipo: TipoModal, id?: string) => void;
+  abrirModal: (tipo: TipoModal, id?: string, modeloWhatsapp?: string) => void;
   fecharModal: () => void;
 }
 
 export const useUiModal = create<UiModal>((set) => ({
   modal: null,
-  abrirModal: (tipo, id) => set({ modal: { tipo, id } }),
+  abrirModal: (tipo, id, modeloWhatsapp) => set({ modal: { tipo, id, modeloWhatsapp } }),
   fecharModal: () => set({ modal: null }),
 }));

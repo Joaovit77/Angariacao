@@ -2,50 +2,62 @@
 
 /* ================================================================
    MODAL: MENSAGEM PARA WHATSAPP
-   Aberto pela Agenda no "Enviar WhatsApp" do retorno ao proprietário.
-   Mostra a mensagem preenchida e editável, com modelos: o padrão de
-   renovação + os modelos criados pelo próprio usuário (config). Dá
-   para salvar a mensagem atual como um novo modelo reutilizável — o
-   nome do proprietário vira {nome} para a saudação se adaptar depois.
+   Aberto pela Agenda ("Enviar WhatsApp" do retorno ao proprietário)
+   e pelo pré-cadastro rápido (confirmação de endereço). Mostra a
+   mensagem preenchida e EDITÁVEL, com seletor de modelos: os modelos
+   prontos por etapa do funil + os criados pelo usuário. Dá para
+   salvar a mensagem atual como um novo modelo reutilizável — o nome
+   do proprietário vira {nome} para a saudação se adaptar depois.
    Com telefone, envia pelo wa.me; sem telefone, é só copiar.
    ================================================================ */
 import { useRef, useState } from "react";
-import { useSessao } from "@/components/SessaoProvider";
-import { mensagemRenovacaoAngariacao, telefoneWhatsapp } from "@/lib/calculo/agenda";
-import { aplicarModeloUsuario, linkWhatsapp, tokenizarModeloUsuario } from "@/lib/calculo/whatsapp";
+import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
+import { telefoneWhatsapp } from "@/lib/calculo/agenda";
+import {
+  aplicarModeloUsuario,
+  linkWhatsapp,
+  mensagemWhatsapp,
+  MODELOS_WHATSAPP,
+  tokenizarModeloUsuario,
+} from "@/lib/calculo/whatsapp";
 import { adicionarModeloWhatsapp, removerModeloWhatsapp } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
 
-const RENOVACAO = "__renovacao";
+const MODELO_PADRAO = "renovacao-angariacao";
 
-export default function ModalWhatsapp({ imovelId }: { imovelId: string }) {
+export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: string; modeloInicial?: string }) {
   const fecharModal = useUiModal((s) => s.fecharModal);
   const { usuario } = useSessao();
   const imoveis = useAppStore((s) => s.imoveis);
   const config = useAppStore((s) => s.config);
   const imovel = imoveis.find((i) => i.id === imovelId) || null;
+  const nomeCaptador = rotuloUsuario(usuario);
+  const modelosUsuario = config.whatsappModelos || [];
+
+  // Modelo inicial: o pedido pela abertura (ex.: confirmação de endereço no
+  // pré-cadastro), desde que exista; senão, a renovação de angariação.
+  const padraoInicial =
+    modeloInicial && MODELOS_WHATSAPP.some((m) => m.id === modeloInicial) ? modeloInicial : MODELO_PADRAO;
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [mensagem, setMensagem] = useState(() => mensagemRenovacaoAngariacao(imovel));
-  const [modeloSel, setModeloSel] = useState(RENOVACAO);
+  const [modeloId, setModeloId] = useState(padraoInicial);
+  const [mensagem, setMensagem] = useState(() =>
+    imovel ? mensagemWhatsapp(padraoInicial, imovel, nomeCaptador) : "",
+  );
   const [salvarAberto, setSalvarAberto] = useState(false);
   const [nomeNovo, setNomeNovo] = useState("");
 
   if (!imovel) return null;
   const temTelefone = !!telefoneWhatsapp(imovel.proprietarioTelefone);
-  const modelos = config.whatsappModelos || [];
-  const modeloCustomSel = modelos.find((m) => m.id === modeloSel) || null;
+  const modeloCustomSel = modelosUsuario.find((m) => m.id === modeloId) || null;
 
   function trocarModelo(id: string) {
     if (!imovel) return;
-    setModeloSel(id);
-    if (id === RENOVACAO) {
-      setMensagem(mensagemRenovacaoAngariacao(imovel));
-      return;
-    }
-    const m = modelos.find((x) => x.id === id);
-    if (m) setMensagem(aplicarModeloUsuario(m.texto, imovel));
+    setModeloId(id);
+    const custom = modelosUsuario.find((m) => m.id === id);
+    setMensagem(custom ? aplicarModeloUsuario(custom.texto, imovel) : mensagemWhatsapp(id, imovel, nomeCaptador));
   }
 
   async function salvarModelo() {
@@ -55,14 +67,14 @@ export default function ModalWhatsapp({ imovelId }: { imovelId: string }) {
       toast("Dê um nome ao modelo.", "error");
       return;
     }
-    if (modelos.some((m) => m.nome.toLowerCase() === nome.toLowerCase())) {
+    if (modelosUsuario.some((m) => m.nome.toLowerCase() === nome.toLowerCase())) {
       toast("Já existe um modelo com esse nome.", "error");
       return;
     }
     const texto = tokenizarModeloUsuario(mensagem, imovel);
     const novo = await adicionarModeloWhatsapp(nome, texto, config, usuario.id);
     if (novo) {
-      setModeloSel(novo.id);
+      setModeloId(novo.id);
       setNomeNovo("");
       setSalvarAberto(false);
     }
@@ -72,8 +84,8 @@ export default function ModalWhatsapp({ imovelId }: { imovelId: string }) {
     if (!usuario || !modeloCustomSel || !imovel) return;
     const ok = await removerModeloWhatsapp(modeloCustomSel.id, config, usuario.id);
     if (ok) {
-      setModeloSel(RENOVACAO);
-      setMensagem(mensagemRenovacaoAngariacao(imovel));
+      setModeloId(padraoInicial);
+      setMensagem(mensagemWhatsapp(padraoInicial, imovel, nomeCaptador));
     }
   }
 
@@ -118,11 +130,15 @@ export default function ModalWhatsapp({ imovelId }: { imovelId: string }) {
         <div className="field-group">
           <label>Modelo</label>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <select value={modeloSel} onChange={(e) => trocarModelo(e.target.value)} style={{ flex: 1 }}>
-              <option value={RENOVACAO}>Renovação de angariação (padrão)</option>
-              {modelos.length > 0 && (
+            <select value={modeloId} onChange={(e) => trocarModelo(e.target.value)} style={{ flex: 1 }}>
+              {MODELOS_WHATSAPP.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.rotulo}
+                </option>
+              ))}
+              {modelosUsuario.length > 0 && (
                 <optgroup label="Meus modelos">
-                  {modelos.map((m) => (
+                  {modelosUsuario.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.nome}
                     </option>

@@ -50,6 +50,7 @@ export interface DbImovelRow {
   comissao_recebida: boolean | null;
   comissao_recebida_valor: number | string | null;
   comissao_recebida_data: string | null;
+  pre_cadastro: boolean | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -123,6 +124,7 @@ export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "create
     comissao_recebida: !!i.comissaoRecebida,
     comissao_recebida_valor: i.comissaoRecebidaValor ?? null,
     comissao_recebida_data: i.comissaoRecebidaData || null,
+    pre_cadastro: !!i.preCadastro,
   };
 }
 
@@ -165,6 +167,7 @@ export function fromDbImovel(r: DbImovelRow): Imovel {
     comissaoRecebida: !!r.comissao_recebida,
     comissaoRecebidaValor: r.comissao_recebida_valor as number | null,
     comissaoRecebidaData: r.comissao_recebida_data,
+    preCadastro: !!r.pre_cadastro,
   };
 }
 

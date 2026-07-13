@@ -30,6 +30,12 @@ function referenciaImovel(imovel: Imovel): string {
   return `seu imóvel (${endereco}${bairro ? `, ${bairro}` : ""})`;
 }
 
+/** Endereço "cru" (rua, bairro, cidade) para a mensagem de confirmação. */
+function enderecoCompletoTexto(imovel: Imovel): string {
+  const partes = [imovel.endereco, imovel.bairro, imovel.cidade].map((s) => (s || "").trim()).filter(Boolean);
+  return partes.join(", ") || "seu imóvel";
+}
+
 /** "Aqui é Fulano, da equipe..." quando há nome do captador; senão a
     apresentação genérica que os modelos antigos sempre usaram. */
 function apresentacao(nomeCaptador?: string): string {
@@ -97,10 +103,21 @@ Tentei falar com você há alguns dias sobre o ${referenciaImovel(i)}, mas não 
 Ainda tem interesse em conversar sobre a locação? Fico à disposição.`,
 
   "renovacao-angariacao": (i) => mensagemRenovacaoAngariacao(i),
+
+  // Confirmação de endereço: disparada no pré-cadastro rápido. Repete o
+  // endereço que temos para o proprietário conferir/corrigir na conversa.
+  "confirmacao-endereco": (i, nome) => `${saudacao(i)}
+
+${apresentacao(nome)} Estou organizando o cadastro do seu imóvel para a locação e, antes de seguir, queria confirmar o endereço com você:
+
+📍 ${enderecoCompletoTexto(i)}
+
+Está tudo certo? Se algo estiver diferente, é só me avisar por aqui que eu ajusto. Assim que você confirmar, já damos andamento na divulgação.`,
 };
 
 /** Ordem de exibição no seletor — acompanha a progressão do funil. */
 export const MODELOS_WHATSAPP: ModeloWhatsapp[] = [
+  { id: "confirmacao-endereco", rotulo: "Confirmação de endereço" },
   { id: "primeiro-contato", rotulo: "Primeiro contato" },
   { id: "confirmacao-visita", rotulo: "Confirmação de visita" },
   { id: "retorno-negociacao", rotulo: "Retorno de negociação" },

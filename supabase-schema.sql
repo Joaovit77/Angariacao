@@ -59,6 +59,7 @@ create table if not exists imoveis (
   comissao_recebida boolean default false,
   comissao_recebida_valor numeric,
   comissao_recebida_data date,
+  pre_cadastro boolean not null default false,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -71,6 +72,10 @@ alter table imoveis add column if not exists referencia_crm text;
 -- Histórico de interações (notas) com o proprietário — mesmo padrão do
 -- status_history: jsonb na própria linha, herdando as políticas de RLS.
 alter table imoveis add column if not exists notas jsonb not null default '[]'::jsonb;
+
+-- Pré-cadastro pendente de confirmação (disparo rápido de WhatsApp): o imóvel
+-- nasce marcado e é "confirmado" quando editado/salvo pelo modal completo.
+alter table imoveis add column if not exists pre_cadastro boolean not null default false;
 
 alter table imoveis enable row level security;
 

@@ -53,6 +53,9 @@ export interface Imovel {
   comissaoRecebida?: boolean | null;
   comissaoRecebidaValor?: number | null;
   comissaoRecebidaData?: string | null; // ISO YYYY-MM-DD
+  /** Pré-cadastro pendente de confirmação: criado no disparo rápido, some
+      quando o imóvel é editado/salvo pelo modal completo (§ pré-cadastro). */
+  preCadastro?: boolean | null;
 }
 
 export interface Meta {
