@@ -24,6 +24,7 @@ import { sugerirCodigoImovel } from "@/lib/codigoImovel";
 import { todayISO } from "@/lib/datas";
 import { fmtMoney } from "@/lib/formatadores";
 import { buscarCep, geocodeEndereco, maskCEP } from "@/lib/geo";
+import { canonizarValor, distintosCanonizados } from "@/lib/normalizacao";
 import { aplicarMudancaDeStatus, excluirImovel, numOrNull, salvarImovel, uid } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
@@ -99,9 +100,13 @@ export default function ModalImovel({ id }: { id?: string }) {
   });
   const [salvando, setSalvando] = useState(false);
 
-  const concorrentes = [...new Set([...imoveis.map((i) => i.imobiliariaConcorrente), imobiliariaConcorrente]
-    .map((v) => (v || "").trim())
-    .filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  // Sugestões sem duplicata por acento/caixa/espaço: uma grafia por
+  // imobiliária/captador já usado (ver lib/normalizacao.ts).
+  const concorrentes = distintosCanonizados([
+    ...imoveis.map((i) => i.imobiliariaConcorrente),
+    imobiliariaConcorrente,
+  ]);
+  const responsaveis = distintosCanonizados([...imoveis.map((i) => i.responsavel), responsavel]);
 
   async function aoBuscarCep() {
     const raw = cep.replace(/\D/g, "");
@@ -213,6 +218,13 @@ export default function ModalImovel({ id }: { id?: string }) {
       }
     }
 
+    // Snap para a grafia já usada da mesma imobiliária/captador (ignorando
+    // acento/caixa/espaço), evitando duplicar o dado. Compara com os OUTROS
+    // imóveis para que uma correção de grafia deste registro não seja desfeita.
+    const outros = imoveis.filter((i) => i.id !== (imovel ? imovel.id : null));
+    const imobiliariaCanon = canonizarValor(imobiliariaConcorrente, outros.map((i) => i.imobiliariaConcorrente));
+    const responsavelCanon = canonizarValor(responsavel, outros.map((i) => i.responsavel));
+
     const historico: StatusHistoryEntry[] = imovel
       ? [...(imovel.statusHistory || [])]
       : [{ status: "Novo contato", date: dataAngariacao }];
@@ -235,11 +247,11 @@ export default function ModalImovel({ id }: { id?: string }) {
       proprietarioTelefone: proprietarioTelefone.trim(),
       formaAbordagem,
       origemImovel,
-      imobiliariaConcorrente: imobiliariaConcorrente.trim(),
+      imobiliariaConcorrente: imobiliariaCanon,
       latitude,
       longitude,
       dataAngariacao,
-      responsavel: responsavel.trim(),
+      responsavel: responsavelCanon,
       status,
       observacoes: observacoes.trim(),
       statusHistory: historico,
@@ -465,7 +477,17 @@ export default function ModalImovel({ id }: { id?: string }) {
             </div>
             <div className="field-group">
               <label>Responsável</label>
-              <input type="text" value={responsavel ?? ""} onChange={(e) => setResponsavel(e.target.value)} />
+              <input
+                type="text"
+                list="responsaveis-list"
+                value={responsavel ?? ""}
+                onChange={(e) => setResponsavel(e.target.value)}
+              />
+              <datalist id="responsaveis-list">
+                {responsaveis.map((nome) => (
+                  <option key={nome} value={nome}></option>
+                ))}
+              </datalist>
             </div>
           </div>
           <div className="field-group">

@@ -4,7 +4,8 @@
    OVERLAY DE MODAL
    Port de openModal()/closeModal() e do handler global de Escape
    (app.js, 6B): Esc fecha o modal e também o drawer do Pipeline.
-   Clicar no fundo fecha, como no listener do #modal-overlay.
+   Clicar no fundo NÃO fecha — só o X ou o Esc — para não perder o
+   preenchimento por um clique fora (ex.: ao copiar algo do modal).
    ================================================================ */
 import { useEffect } from "react";
 import { usePipelineUi } from "@/lib/uiPipeline";
@@ -33,13 +34,7 @@ export default function ModalOverlay() {
   }, [fecharModal, drawerImovelId, fecharDrawer]);
 
   return (
-    <div
-      className={`modal-overlay${modal ? " open" : ""}`}
-      id="modal-overlay"
-      onClick={(e) => {
-        if ((e.target as HTMLElement).id === "modal-overlay") fecharModal();
-      }}
-    >
+    <div className={`modal-overlay${modal ? " open" : ""}`} id="modal-overlay">
       <div className="modal" id="modal-box">
         {modal?.tipo === "imovel" && <ModalImovel id={modal.id} />}
         {modal?.tipo === "meta" && <ModalMeta />}
