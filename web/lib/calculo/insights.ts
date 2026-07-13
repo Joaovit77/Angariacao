@@ -105,7 +105,9 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
     })
     .filter((t) => t.total >= MIN_SAMPLE && t.taxa != null)
     .sort((a, b) => (b.taxa as number) - (a.taxa as number));
-  if (tipoConv.length > 0) {
+  // Só destaca "o tipo que mais converte" se ele de fato converte (> 0%); caso
+  // contrário o card seria contraditório ("0% é o que mais converte").
+  if (tipoConv.length > 0 && (tipoConv[0].taxa as number) > 0) {
     const best = tipoConv[0];
     list.push({
       tone: "pos",
@@ -142,7 +144,9 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
     })
     .filter((a) => a.total >= MIN_SAMPLE && a.taxa != null)
     .sort((a, b) => (b.taxa as number) - (a.taxa as number));
-  if (abordagemConv.length > 1) {
+  // Mesma regra do tipo: só faz sentido eleger "a abordagem mais eficaz" se ela
+  // tiver conversão real (> 0%).
+  if (abordagemConv.length > 1 && (abordagemConv[0].taxa as number) > 0) {
     const best = abordagemConv[0];
     list.push({
       tone: "pos",
@@ -341,7 +345,8 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
 
   // 7. Taxa de conversão geral, com leitura
   const m = metricsForRange(imoveis, comissaoPercent);
-  if (m.locados + m.perdidosCancelados >= MIN_SAMPLE) {
+  // Não mostra a taxa geral quando ela é 0% — um "0%" cru não agrega leitura.
+  if (m.locados + m.perdidosCancelados >= MIN_SAMPLE && m.conversaoFechados > 0) {
     const tone = m.conversaoFechados >= 60 ? "pos" : m.conversaoFechados >= 35 ? "info" : "warn";
     const read =
       m.conversaoFechados >= 60
