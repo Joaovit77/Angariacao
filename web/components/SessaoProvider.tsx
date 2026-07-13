@@ -51,7 +51,7 @@ export function rotuloUsuario(usuario: User | null): string {
   return typeof nome === "string" && nome ? nome : (usuario.email ?? "");
 }
 
-const ESTADO_VAZIO = { imoveis: [], metas: {}, agenda: [], config: { comissaoPercent: 100, agendaTipos: [] } };
+const ESTADO_VAZIO = { imoveis: [], metas: {}, agenda: [], config: { comissaoPercent: 100, agendaTipos: [], whatsappModelos: [] } };
 
 export default function SessaoProvider({ children }: { children: React.ReactNode }) {
   const [sessao, setSessao] = useState<{ estado: EstadoSessao; usuario: User | null }>({

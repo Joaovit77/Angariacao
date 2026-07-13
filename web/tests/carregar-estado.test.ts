@@ -37,7 +37,18 @@ describe("carregarEstado", () => {
       imoveis: { data: dbJson.imoveisRows, error: null },
       metas: { data: METAS_ROWS, error: null },
       agenda: { data: dbJson.agendaRows, error: null },
-      user_config: { data: { user_id: "u", comissao_percent: "50", agenda_tipos: ["Avaliação", "Fotos"] }, error: null },
+      user_config: {
+        data: {
+          user_id: "u",
+          comissao_percent: "50",
+          agenda_tipos: ["Avaliação", "Fotos"],
+          whatsapp_modelos: [
+            { id: "m1", nome: "Falar mais tarde", texto: "Olá, {nome}!" },
+            { nome: "sem id — descartado", texto: "x" },
+          ],
+        },
+        error: null,
+      },
     }));
     expect(estado.imoveis).toHaveLength(dbJson.imoveisRows.length);
     expect(estado.imoveis[0].valorAluguel).toBe(3500.5); // Number() aplicado
@@ -47,8 +58,13 @@ describe("carregarEstado", () => {
       "2026-06": { angariacoes: 4, locados: 2, comissao: 4000, faturamento: 15000 },
       "2026-07": { angariacoes: 0, locados: 0, comissao: 0, faturamento: 0 },
     });
-    // agenda_tipos (jsonb) vira o array de tipos personalizados
-    expect(estado.config).toEqual({ comissaoPercent: 50, agendaTipos: ["Avaliação", "Fotos"] });
+    // agenda_tipos e whatsapp_modelos (jsonb): tipos personalizados e modelos
+    // válidos; entradas malformadas (sem id/nome/texto string) são descartadas.
+    expect(estado.config).toEqual({
+      comissaoPercent: 50,
+      agendaTipos: ["Avaliação", "Fotos"],
+      whatsappModelos: [{ id: "m1", nome: "Falar mais tarde", texto: "Olá, {nome}!" }],
+    });
   });
 
   it("sem linha de user_config, vale o default comissaoPercent = 100", async () => {
@@ -58,7 +74,7 @@ describe("carregarEstado", () => {
       agenda: { data: [], error: null },
       user_config: { data: null, error: null },
     }));
-    expect(estado.config).toEqual({ comissaoPercent: 100, agendaTipos: [] });
+    expect(estado.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [] });
     expect(estado.imoveis).toEqual([]);
     expect(estado.metas).toEqual({});
     expect(estado.agenda).toEqual([]);
@@ -80,7 +96,7 @@ describe("carregarEstado", () => {
       agenda: { data: [], error: null },
       user_config: { data: null, error: new Error("config indisponível") },
     }));
-    expect(estado.config).toEqual({ comissaoPercent: 100, agendaTipos: [] });
+    expect(estado.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [] });
   });
 
   it("data null nas tabelas vira coleção vazia (paridade com `|| []` legado)", async () => {

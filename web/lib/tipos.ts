@@ -79,9 +79,20 @@ export interface AgendaItem {
   isVerificacaoDisponibilidade: boolean;
 }
 
+/** Modelo de mensagem de WhatsApp criado pelo usuário (ex.: "Falar mais tarde").
+    O texto pode conter os marcadores {nome} (proprietário) e {imovel}, que são
+    preenchidos com os dados do imóvel na hora de usar. */
+export interface WhatsappModelo {
+  id: string;
+  nome: string;
+  texto: string;
+}
+
 export interface UserConfig {
   /** % sobre 1 aluguel (100 = 1 mês de aluguel) */
   comissaoPercent: number;
   /** Tipos de compromisso extras definidos pelo usuário (além dos fixos). */
   agendaTipos: string[];
+  /** Modelos de mensagem de WhatsApp criados pelo usuário. */
+  whatsappModelos: WhatsappModelo[];
 }

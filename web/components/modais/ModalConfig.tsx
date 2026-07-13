@@ -45,7 +45,10 @@ export default function ModalConfig() {
   async function salvar() {
     if (!usuario) return;
     setOcupado(true);
-    const ok = await salvarConfig({ comissaoPercent: numOrNull(comissao) || 100, agendaTipos: tipos }, usuario.id);
+    const ok = await salvarConfig(
+      { ...config, comissaoPercent: numOrNull(comissao) || 100, agendaTipos: tipos },
+      usuario.id,
+    );
     setOcupado(false);
     if (ok) fecharModal();
   }

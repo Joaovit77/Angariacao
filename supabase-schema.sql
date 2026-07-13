@@ -168,11 +168,15 @@ create index if not exists agenda_user_id_idx on agenda(user_id);
 create table if not exists user_config (
   user_id uuid primary key references auth.users(id) on delete cascade,
   comissao_percent numeric default 100,
-  agenda_tipos jsonb not null default '[]'::jsonb
+  agenda_tipos jsonb not null default '[]'::jsonb,
+  whatsapp_modelos jsonb not null default '[]'::jsonb
 );
 
 -- Tipos de compromisso personalizados do usuário (além dos fixos do app).
 alter table user_config add column if not exists agenda_tipos jsonb not null default '[]'::jsonb;
+
+-- Modelos de mensagem de WhatsApp criados pelo usuário (ex.: "Falar mais tarde").
+alter table user_config add column if not exists whatsapp_modelos jsonb not null default '[]'::jsonb;
 
 alter table user_config enable row level security;
 

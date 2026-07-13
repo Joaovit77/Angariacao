@@ -20,7 +20,7 @@ import { toDbAgenda, toDbImovel } from "./persistencia/mapeadores";
 import { getSupabase } from "./persistencia/supabase";
 import { useAppStore } from "./store";
 import { toast } from "./toast";
-import type { AgendaItem, Imovel, Meta, NotaImovel, UserConfig } from "./tipos";
+import type { AgendaItem, Imovel, Meta, NotaImovel, UserConfig, WhatsappModelo } from "./tipos";
 
 export function uid(): string {
   return crypto.randomUUID();
@@ -310,17 +310,47 @@ export async function confirmarConclusaoVerificacao(
   return true;
 }
 
-export async function salvarConfig(config: UserConfig, userId: string): Promise<boolean> {
-  const { error } = await getSupabase()
-    .from("user_config")
-    .upsert({ user_id: userId, comissao_percent: config.comissaoPercent, agenda_tipos: config.agendaTipos });
+export async function salvarConfig(
+  config: UserConfig,
+  userId: string,
+  mensagemOk = "Configurações salvas.",
+): Promise<boolean> {
+  const { error } = await getSupabase().from("user_config").upsert({
+    user_id: userId,
+    comissao_percent: config.comissaoPercent,
+    agenda_tipos: config.agendaTipos,
+    whatsapp_modelos: config.whatsappModelos,
+  });
   if (error) {
     toast("Não foi possível salvar: " + error.message, "error");
     return false;
   }
   useAppStore.getState().setConfig(config);
-  toast("Configurações salvas.");
+  toast(mensagemOk);
   return true;
+}
+
+/** Cria um modelo de WhatsApp na config do usuário; devolve o modelo ou null. */
+export async function adicionarModeloWhatsapp(
+  nome: string,
+  texto: string,
+  config: UserConfig,
+  userId: string,
+): Promise<WhatsappModelo | null> {
+  const novo: WhatsappModelo = { id: uid(), nome: nome.trim(), texto };
+  const whatsappModelos = [...(config.whatsappModelos || []), novo];
+  const ok = await salvarConfig({ ...config, whatsappModelos }, userId, "Modelo salvo.");
+  return ok ? novo : null;
+}
+
+/** Remove um modelo de WhatsApp da config do usuário. */
+export async function removerModeloWhatsapp(
+  id: string,
+  config: UserConfig,
+  userId: string,
+): Promise<boolean> {
+  const whatsappModelos = (config.whatsappModelos || []).filter((m) => m.id !== id);
+  return salvarConfig({ ...config, whatsappModelos }, userId, "Modelo excluído.");
 }
 
 /**

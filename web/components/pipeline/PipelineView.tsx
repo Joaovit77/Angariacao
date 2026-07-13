@@ -21,14 +21,16 @@ import {
 } from "@/lib/calculo/filtros";
 import { daysInCurrentStatus, isPausado, isStale } from "@/lib/calculo/motor";
 import {
+  aplicarModeloUsuario,
   linkWhatsapp,
   mensagemWhatsapp,
   MODELOS_WHATSAPP,
   modeloPadraoWhatsapp,
+  tokenizarModeloUsuario,
 } from "@/lib/calculo/whatsapp";
 import { STATUS_ALL, STATUS_COLORS, TIPOS_IMOVEL } from "@/lib/constantes";
 import { fmtDate, fmtMoney } from "@/lib/formatadores";
-import { excluirImovel } from "@/lib/mutacoes";
+import { adicionarModeloWhatsapp, excluirImovel, removerModeloWhatsapp } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import type { Imovel } from "@/lib/tipos";
@@ -289,15 +291,50 @@ function InfoDrawer({ label, value }: { label: string; value: string }) {
 // prévia editável e envio via link wa.me (click-to-chat). O componente é
 // montado com key={imovel.id} para trocar de imóvel descartar edições.
 function DrawerWhatsapp({ imovel, nomeCaptador }: { imovel: Imovel; nomeCaptador?: string }) {
+  const { usuario } = useSessao();
+  const config = useAppStore((s) => s.config);
+  const modelosUsuario = config.whatsappModelos || [];
   const padrao = modeloPadraoWhatsapp(imovel.status);
   const [modeloId, setModeloId] = useState(padrao);
   const [texto, setTexto] = useState(() => mensagemWhatsapp(padrao, imovel, nomeCaptador));
+  const [salvarAberto, setSalvarAberto] = useState(false);
+  const [nomeNovo, setNomeNovo] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const link = linkWhatsapp(imovel, texto);
+  const modeloCustomSel = modelosUsuario.find((m) => m.id === modeloId) || null;
 
   function trocarModelo(id: string) {
     setModeloId(id);
-    setTexto(mensagemWhatsapp(id, imovel, nomeCaptador));
+    const custom = modelosUsuario.find((m) => m.id === id);
+    setTexto(custom ? aplicarModeloUsuario(custom.texto, imovel) : mensagemWhatsapp(id, imovel, nomeCaptador));
+  }
+
+  async function salvarModelo() {
+    if (!usuario) return;
+    const nome = nomeNovo.trim();
+    if (!nome) {
+      toast("Dê um nome ao modelo.", "error");
+      return;
+    }
+    if (modelosUsuario.some((m) => m.nome.toLowerCase() === nome.toLowerCase())) {
+      toast("Já existe um modelo com esse nome.", "error");
+      return;
+    }
+    const novo = await adicionarModeloWhatsapp(nome, tokenizarModeloUsuario(texto, imovel), config, usuario.id);
+    if (novo) {
+      setModeloId(novo.id);
+      setNomeNovo("");
+      setSalvarAberto(false);
+    }
+  }
+
+  async function excluirModelo() {
+    if (!usuario || !modeloCustomSel) return;
+    const ok = await removerModeloWhatsapp(modeloCustomSel.id, config, usuario.id);
+    if (ok) {
+      setModeloId(padrao);
+      setTexto(mensagemWhatsapp(padrao, imovel, nomeCaptador));
+    }
   }
 
   async function copiar() {
@@ -317,18 +354,34 @@ function DrawerWhatsapp({ imovel, nomeCaptador }: { imovel: Imovel; nomeCaptador
   return (
     <div className="drawer-section">
       <div className="drawer-section-title">Mensagem de WhatsApp</div>
-      <select
-        aria-label="Modelo de mensagem"
-        value={modeloId}
-        onChange={(e) => trocarModelo(e.target.value)}
-        style={{ width: "100%", marginBottom: "8px" }}
-      >
-        {MODELOS_WHATSAPP.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.rotulo}
-          </option>
-        ))}
-      </select>
+      <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+        <select
+          aria-label="Modelo de mensagem"
+          value={modeloId}
+          onChange={(e) => trocarModelo(e.target.value)}
+          style={{ flex: 1 }}
+        >
+          {MODELOS_WHATSAPP.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.rotulo}
+            </option>
+          ))}
+          {modelosUsuario.length > 0 && (
+            <optgroup label="Meus modelos">
+              {modelosUsuario.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nome}
+                </option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+        {modeloCustomSel && (
+          <button type="button" className="btn btn-sm btn-ghost btn-danger" onClick={excluirModelo}>
+            Excluir
+          </button>
+        )}
+      </div>
       <textarea
         ref={textareaRef}
         aria-label="Prévia da mensagem"
@@ -336,6 +389,38 @@ function DrawerWhatsapp({ imovel, nomeCaptador }: { imovel: Imovel; nomeCaptador
         onChange={(e) => setTexto(e.target.value)}
         style={{ width: "100%", minHeight: "160px", marginBottom: "8px" }}
       />
+      {salvarAberto ? (
+        <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+          <input
+            type="text"
+            value={nomeNovo}
+            onChange={(e) => setNomeNovo(e.target.value)}
+            placeholder="Nome do modelo (ex: Falar mais tarde)"
+            style={{ flex: 1 }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                salvarModelo();
+              }
+            }}
+          />
+          <button type="button" className="btn btn-sm btn-primary" onClick={salvarModelo}>
+            Salvar
+          </button>
+          <button type="button" className="btn btn-sm" onClick={() => setSalvarAberto(false)}>
+            Cancelar
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="btn btn-sm btn-ghost"
+          style={{ marginBottom: "8px" }}
+          onClick={() => setSalvarAberto(true)}
+        >
+          + Salvar como modelo
+        </button>
+      )}
       {!link && (
         <p className="section-note" style={{ marginBottom: "8px" }}>
           Sem telefone cadastrado — copie a mensagem para enviar manualmente.

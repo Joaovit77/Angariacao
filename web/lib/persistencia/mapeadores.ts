@@ -85,6 +85,7 @@ export interface DbUserConfigRow {
   user_id: string;
   comissao_percent: number | string | null;
   agenda_tipos: string[] | null;
+  whatsapp_modelos: unknown[] | null;
 }
 
 export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "created_at" | "updated_at"> {

@@ -17,7 +17,7 @@
    comissaoPercent = 100.
    ================================================================ */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AgendaItem, Imovel, Metas, UserConfig } from "../tipos";
+import type { AgendaItem, Imovel, Metas, UserConfig, WhatsappModelo } from "../tipos";
 import {
   fromDbAgenda, fromDbImovel,
   type DbAgendaRow, type DbImovelRow, type DbMetaRow, type DbUserConfigRow,
@@ -53,10 +53,21 @@ export async function carregarEstado(client: SupabaseClient = getSupabase()): Pr
   const agendaTipos = Array.isArray(cfData?.agenda_tipos)
     ? cfData.agenda_tipos.filter((t): t is string => typeof t === "string" && t.trim() !== "")
     : [];
+  // whatsapp_modelos é jsonb; blinda contra valores malformados vindos do banco.
+  const whatsappModelos: WhatsappModelo[] = Array.isArray(cfData?.whatsapp_modelos)
+    ? cfData.whatsapp_modelos
+        .filter((m): m is WhatsappModelo =>
+          !!m && typeof m === "object" &&
+          typeof (m as WhatsappModelo).id === "string" &&
+          typeof (m as WhatsappModelo).nome === "string" &&
+          typeof (m as WhatsappModelo).texto === "string",
+        )
+        .map((m) => ({ id: m.id, nome: m.nome, texto: m.texto }))
+    : [];
   return {
     imoveis: ((imRes.data || []) as DbImovelRow[]).map(fromDbImovel),
     agenda: ((agRes.data || []) as DbAgendaRow[]).map(fromDbAgenda),
     metas,
-    config: { comissaoPercent: cfData ? Number(cfData.comissao_percent) : 100, agendaTipos },
+    config: { comissaoPercent: cfData ? Number(cfData.comissao_percent) : 100, agendaTipos, whatsappModelos },
   };
 }

@@ -5,10 +5,12 @@
 import { describe, expect, it } from "vitest";
 import { mensagemRenovacaoAngariacao } from "@/lib/calculo/agenda";
 import {
+  aplicarModeloUsuario,
   linkWhatsapp,
   mensagemWhatsapp,
   MODELOS_WHATSAPP,
   modeloPadraoWhatsapp,
+  tokenizarModeloUsuario,
 } from "@/lib/calculo/whatsapp";
 import { STATUS_ALL } from "@/lib/constantes";
 import type { Imovel } from "@/lib/tipos";
@@ -105,6 +107,47 @@ describe("mensagemWhatsapp", () => {
 
   it("renovação de angariação reaproveita a mensagem da Agenda", () => {
     expect(mensagemWhatsapp("renovacao-angariacao", base)).toBe(mensagemRenovacaoAngariacao(base));
+  });
+});
+
+describe("modelos personalizados do usuário", () => {
+  it("tokeniza o nome do proprietário atual ao salvar", () => {
+    const texto = "Olá, Marta! Sem problemas, retomo o contato com você em duas semanas.";
+    expect(tokenizarModeloUsuario(texto, base)).toBe(
+      "Olá, {nome}! Sem problemas, retomo o contato com você em duas semanas.",
+    );
+  });
+
+  it("não tokeniza quando o imóvel não tem nome de proprietário", () => {
+    const texto = "Olá! Retomo o contato depois.";
+    expect(tokenizarModeloUsuario(texto, { ...base, proprietarioNome: null })).toBe(texto);
+  });
+
+  it("aplica o modelo preenchendo {nome} com o proprietário do imóvel", () => {
+    const modelo = "Olá, {nome}! Retomo o contato depois.";
+    expect(aplicarModeloUsuario(modelo, { ...base, proprietarioNome: "João" })).toBe(
+      "Olá, João! Retomo o contato depois.",
+    );
+  });
+
+  it("sem nome, limpa a vírgula solta da saudação", () => {
+    const modelo = "Olá, {nome}! Retomo o contato depois.";
+    expect(aplicarModeloUsuario(modelo, { ...base, proprietarioNome: "" })).toBe(
+      "Olá! Retomo o contato depois.",
+    );
+  });
+
+  it("preenche {imovel} com a referência de endereço/bairro", () => {
+    expect(aplicarModeloUsuario("Sobre {imovel}.", base)).toBe(
+      "Sobre seu imóvel (Rua Haddock Lobo, 55, Cerqueira César).",
+    );
+  });
+
+  it("salvar e reusar em outro contato adapta a saudação (ida e volta)", () => {
+    const editado = "Olá, Marta! Sem problemas, falo com você mais para frente.";
+    const modelo = tokenizarModeloUsuario(editado, base);
+    const paraOutro = aplicarModeloUsuario(modelo, { ...base, proprietarioNome: "Carlos" });
+    expect(paraOutro).toBe("Olá, Carlos! Sem problemas, falo com você mais para frente.");
   });
 });
 
