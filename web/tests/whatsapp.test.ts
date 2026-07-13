@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { mensagemRenovacaoAngariacao } from "@/lib/calculo/agenda";
 import {
   aplicarModeloUsuario,
+  avisoAoSalvarModelo,
   linkWhatsapp,
   mensagemWhatsapp,
   MODELOS_WHATSAPP,
@@ -179,6 +180,36 @@ describe("modelos personalizados do usuário", () => {
     const modelo = tokenizarModeloUsuario(editado, base);
     const paraOutro = aplicarModeloUsuario(modelo, { ...base, proprietarioNome: "Carlos" });
     expect(paraOutro).toBe("Olá, Carlos! Sem problemas, falo com você mais para frente.");
+  });
+});
+
+describe("avisoAoSalvarModelo", () => {
+  it("confirma (ok) quando o nome e o endereço viraram marcadores", () => {
+    const aviso = avisoAoSalvarModelo("Olá, {nome}! Sobre {endereco}.");
+    expect(aviso.ok).toBe(true);
+    expect(aviso.mensagem).toContain("{nome}");
+    expect(aviso.mensagem).toContain("{endereco}");
+  });
+
+  it("confirma (ok) quando ao menos o nome virou {nome}", () => {
+    expect(avisoAoSalvarModelo("Olá, {nome}!").ok).toBe(true);
+  });
+
+  it("avisa (não ok) quando o nome não virou {nome}, mesmo com {endereco}", () => {
+    const aviso = avisoAoSalvarModelo("Confirma o endereço {endereco}?");
+    expect(aviso.ok).toBe(false);
+    expect(aviso.mensagem).toContain("botão {nome}");
+  });
+
+  it("avisa (não ok) quando o texto não tem nenhum marcador", () => {
+    expect(avisoAoSalvarModelo("Olá, tudo bem?").ok).toBe(false);
+  });
+
+  it("o resultado da tokenização casa com o aviso (nome detectado no texto real)", () => {
+    const ok = avisoAoSalvarModelo(tokenizarModeloUsuario("Olá, Marta! Sobre a Rua Haddock Lobo, 55.", base));
+    expect(ok.ok).toBe(true);
+    const semNome = avisoAoSalvarModelo(tokenizarModeloUsuario("Olá, Sr. proprietário! Tudo bem?", base));
+    expect(semNome.ok).toBe(false);
   });
 });
 

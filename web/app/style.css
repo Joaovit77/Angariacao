@@ -1211,6 +1211,7 @@ legend{
 }
 .toast.success{ border-color: #5fb89655; }
 .toast.error{ border-color: #d9787855; }
+.toast.warning{ border-color: var(--warn); }
 @keyframes toastin{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
 
 .empty-state{ text-align:center; padding: 60px 20px; color: var(--text-faint); }

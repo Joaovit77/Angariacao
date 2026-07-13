@@ -15,6 +15,7 @@ import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
 import { telefoneWhatsapp } from "@/lib/calculo/agenda";
 import {
   aplicarModeloUsuario,
+  avisoAoSalvarModelo,
   linkWhatsapp,
   MARCADORES_MODELO,
   mensagemWhatsapp,
@@ -73,8 +74,10 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
       return;
     }
     const texto = tokenizarModeloUsuario(mensagem, imovel);
-    const novo = await adicionarModeloWhatsapp(nome, texto, config, usuario.id);
+    const aviso = avisoAoSalvarModelo(texto);
+    const novo = await adicionarModeloWhatsapp(nome, texto, config, usuario.id, "");
     if (novo) {
+      toast(aviso.mensagem, aviso.ok ? "success" : "warning");
       setModeloId(novo.id);
       setNomeNovo("");
       setSalvarAberto(false);

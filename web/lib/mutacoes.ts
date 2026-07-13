@@ -326,7 +326,9 @@ export async function salvarConfig(
     return false;
   }
   useAppStore.getState().setConfig(config);
-  toast(mensagemOk);
+  // Mensagem vazia = o chamador cuida do próprio toast (ex.: salvar modelo de
+  // WhatsApp, que avisa quais marcadores pegaram).
+  if (mensagemOk) toast(mensagemOk);
   return true;
 }
 
@@ -336,10 +338,11 @@ export async function adicionarModeloWhatsapp(
   texto: string,
   config: UserConfig,
   userId: string,
+  mensagemOk = "Modelo salvo.",
 ): Promise<WhatsappModelo | null> {
   const novo: WhatsappModelo = { id: uid(), nome: nome.trim(), texto };
   const whatsappModelos = [...(config.whatsappModelos || []), novo];
-  const ok = await salvarConfig({ ...config, whatsappModelos }, userId, "Modelo salvo.");
+  const ok = await salvarConfig({ ...config, whatsappModelos }, userId, mensagemOk);
   return ok ? novo : null;
 }
 

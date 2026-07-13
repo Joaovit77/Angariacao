@@ -189,6 +189,29 @@ export function tokenizarModeloUsuario(texto: string, imovel: Imovel): string {
   return out;
 }
 
+/** Confirmação a mostrar ao salvar um modelo, a partir do texto JÁ tokenizado.
+    A tokenização é silenciosa (o texto reaparece com o nome do imóvel atual),
+    então o usuário não vê que {nome} "pegou"; este aviso torna isso explícito.
+    `ok` indica que o nome do proprietário virou {nome} — o caso que o usuário
+    mais espera; quando falso, o modelo salvou mas o nome não se adaptará sozinho
+    e ele deve inserir o marcador pelo botão. */
+export function avisoAoSalvarModelo(textoTokenizado: string): { mensagem: string; ok: boolean } {
+  const temNome = textoTokenizado.includes("{nome}");
+  const temEndereco = textoTokenizado.includes("{endereco}");
+  if (temNome && temEndereco)
+    return { ok: true, mensagem: "Modelo salvo! O nome e o endereço viram {nome} e {endereco} e se adaptam a cada imóvel." };
+  if (temNome) return { ok: true, mensagem: "Modelo salvo! O nome vira {nome} e se adapta a cada imóvel." };
+  if (temEndereco)
+    return {
+      ok: false,
+      mensagem: "Modelo salvo, mas o nome não virou {nome}. Use o botão {nome} para marcar onde o nome do proprietário entra.",
+    };
+  return {
+    ok: false,
+    mensagem: "Modelo salvo, mas sem marcadores. Use os botões {nome} e {endereco} para o texto se adaptar a cada imóvel.",
+  };
+}
+
 /** Link click-to-chat; null quando o imóvel não tem telefone utilizável. */
 export function linkWhatsapp(imovel: Imovel, mensagem: string): string | null {
   const phone = telefoneWhatsapp(imovel.proprietarioTelefone);

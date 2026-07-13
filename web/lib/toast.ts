@@ -8,7 +8,7 @@
    Continua chamável de fora do React, como no app antigo.
    ================================================================ */
 
-export type TipoToast = "success" | "error";
+export type TipoToast = "success" | "error" | "warning";
 
 export interface ToastItem {
   id: number;

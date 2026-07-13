@@ -22,6 +22,7 @@ import {
 import { daysInCurrentStatus, isPausado, isStale } from "@/lib/calculo/motor";
 import {
   aplicarModeloUsuario,
+  avisoAoSalvarModelo,
   linkWhatsapp,
   MARCADORES_MODELO,
   mensagemWhatsapp,
@@ -327,8 +328,11 @@ function DrawerWhatsapp({ imovel, nomeCaptador }: { imovel: Imovel; nomeCaptador
       toast("Já existe um modelo com esse nome.", "error");
       return;
     }
-    const novo = await adicionarModeloWhatsapp(nome, tokenizarModeloUsuario(texto, imovel), config, usuario.id);
+    const tokenizado = tokenizarModeloUsuario(texto, imovel);
+    const aviso = avisoAoSalvarModelo(tokenizado);
+    const novo = await adicionarModeloWhatsapp(nome, tokenizado, config, usuario.id, "");
     if (novo) {
+      toast(aviso.mensagem, aviso.ok ? "success" : "warning");
       setModeloId(novo.id);
       setNomeNovo("");
       setSalvarAberto(false);
