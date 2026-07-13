@@ -20,6 +20,7 @@ import {
   STATUS_TERMINAL_NEGATIVE,
   TIPOS_IMOVEL,
 } from "@/lib/constantes";
+import { sugerirCodigoImovel } from "@/lib/codigoImovel";
 import { todayISO } from "@/lib/datas";
 import { fmtMoney } from "@/lib/formatadores";
 import { buscarCep, geocodeEndereco, maskCEP } from "@/lib/geo";
@@ -51,7 +52,9 @@ export default function ModalImovel({ id }: { id?: string }) {
 
   const imovel = id ? imoveis.find((i) => i.id === id) || null : null;
 
-  const [codigo, setCodigo] = useState(imovel?.codigo ?? "");
+  // Nova angariação já vem com o próximo código sugerido (ex.: LD-0235);
+  // na edição, mantém o código do próprio imóvel.
+  const [codigo, setCodigo] = useState(() => imovel?.codigo ?? sugerirCodigoImovel(imoveis));
   const [referenciaCrm, setReferenciaCrm] = useState(imovel?.referenciaCrm ?? "");
   const [tipo, setTipo] = useState(imovel?.tipo ?? "Apartamento");
   const [cep, setCep] = useState(imovel?.cep ?? "");
@@ -279,7 +282,8 @@ export default function ModalImovel({ id }: { id?: string }) {
           <div className="field-row-3">
             <div className="field-group">
               <label>Código do imóvel</label>
-              <input type="text" value={codigo ?? ""} onChange={(e) => setCodigo(e.target.value)} placeholder="Ex: LD-0234" />
+              <input type="text" value={codigo ?? ""} onChange={(e) => setCodigo(e.target.value)} placeholder="Ex: LD-01" />
+              {!imovel && <div className="field-hint">Sugerido automaticamente — pode editar ou apagar.</div>}
             </div>
             <div className="field-group">
               <label>Referência CRM</label>

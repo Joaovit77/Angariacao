@@ -17,8 +17,6 @@ import {
   AGENDA_PENDENTES_JANELA_DIAS,
   compararAgenda,
   isAgendaAngariacaoVencida,
-  mensagemRenovacaoAngariacao,
-  telefoneWhatsapp,
 } from "@/lib/calculo/agenda";
 import { AGENDA_TYPES } from "@/lib/constantes";
 import { addDaysISO, todayISO } from "@/lib/datas";
@@ -47,14 +45,11 @@ function ItemAgenda({ a, imovel }: { a: AgendaItem; imovel: Imovel | null }) {
     else alternarAgendaDone(a.id);
   }
 
+  // Sempre passa pelo modal para o corretor revisar/editar a mensagem
+  // antes de enviar (o envio pelo wa.me acontece lá dentro, se houver
+  // telefone; senão, é só copiar e mandar à mão).
   function enviarWhatsapp() {
     if (!imovel) return;
-    const phone = telefoneWhatsapp(imovel.proprietarioTelefone);
-    if (phone) {
-      const message = mensagemRenovacaoAngariacao(imovel);
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
-      return;
-    }
     abrirModal("whatsapp", imovel.id);
   }
 
