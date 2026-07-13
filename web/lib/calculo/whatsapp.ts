@@ -155,24 +155,38 @@ export function mensagemWhatsapp(modeloId: string, imovel: Imovel, nomeCaptador?
 
 /* --- Modelos personalizados do usuário -------------------------------------
    Guardados na config (user_config.whatsapp_modelos). O texto pode conter os
-   marcadores {nome} e {imovel}, preenchidos com o imóvel na hora de usar. Ao
-   salvar um modelo, o nome do proprietário atual vira {nome} para a saudação
-   se adaptar quando o modelo for reutilizado em outro contato. */
+   marcadores {nome} (proprietário), {endereco} (rua/número) e {imovel} ("seu
+   imóvel (rua, bairro)"), preenchidos com o imóvel na hora de usar. Ao salvar
+   um modelo, o nome e o endereço do imóvel atual viram {nome}/{endereco} para
+   o texto se adaptar quando o modelo for reutilizado em outro contato. */
 
-/** Preenche {nome} e {imovel} de um modelo com os dados do imóvel. */
+/** Marcadores oferecidos ao usuário na UI (botões de inserir). */
+export const MARCADORES_MODELO = [
+  { token: "{nome}", rotulo: "Nome do proprietário" },
+  { token: "{endereco}", rotulo: "Endereço (rua/número)" },
+] as const;
+
+/** Preenche os marcadores de um modelo com os dados do imóvel. */
 export function aplicarModeloUsuario(texto: string, imovel: Imovel): string {
   const nome = (imovel.proprietarioNome || "").trim();
-  let out = texto.replace(/\{nome\}/g, nome).replace(/\{imovel\}/g, referenciaImovel(imovel));
+  const endereco = (imovel.endereco || "").trim();
+  let out = texto
+    .replace(/\{nome\}/g, nome)
+    .replace(/\{endereco\}/g, endereco)
+    .replace(/\{imovel\}/g, referenciaImovel(imovel));
   // Sem nome, a saudação "Olá, {nome}!" viraria "Olá, !" — limpa a vírgula solta.
   if (!nome) out = out.replace(/,\s*!/g, "!");
   return out.replace(/[ \t]{2,}/g, " ");
 }
 
-/** Troca o nome do proprietário atual por {nome} ao salvar um modelo. */
+/** Troca o nome e o endereço do imóvel atual pelos marcadores ao salvar. */
 export function tokenizarModeloUsuario(texto: string, imovel: Imovel): string {
+  let out = texto;
+  const endereco = (imovel.endereco || "").trim();
+  if (endereco.length >= 3) out = out.split(endereco).join("{endereco}");
   const nome = (imovel.proprietarioNome || "").trim();
-  if (nome.length < 2) return texto;
-  return texto.split(nome).join("{nome}");
+  if (nome.length >= 2) out = out.split(nome).join("{nome}");
+  return out;
 }
 
 /** Link click-to-chat; null quando o imóvel não tem telefone utilizável. */

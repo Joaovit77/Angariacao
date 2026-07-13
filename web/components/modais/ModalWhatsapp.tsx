@@ -16,6 +16,7 @@ import { telefoneWhatsapp } from "@/lib/calculo/agenda";
 import {
   aplicarModeloUsuario,
   linkWhatsapp,
+  MARCADORES_MODELO,
   mensagemWhatsapp,
   MODELOS_WHATSAPP,
   tokenizarModeloUsuario,
@@ -112,6 +113,21 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
     fecharModal();
   }
 
+  /** Insere um marcador ({nome}/{endereco}) na posição do cursor do textarea. */
+  function inserirMarcador(token: string) {
+    const el = textareaRef.current;
+    const start = el?.selectionStart ?? mensagem.length;
+    const end = el?.selectionEnd ?? mensagem.length;
+    setMensagem(mensagem.slice(0, start) + token + mensagem.slice(end));
+    if (el) {
+      requestAnimationFrame(() => {
+        el.focus();
+        const pos = start + token.length;
+        el.setSelectionRange(pos, pos);
+      });
+    }
+  }
+
   return (
     <>
       <div className="modal-head">
@@ -160,6 +176,20 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
           value={mensagem}
           onChange={(e) => setMensagem(e.target.value)}
         />
+        <div className="marcadores-modelo">
+          <span>Inserir marcador:</span>
+          {MARCADORES_MODELO.map((m) => (
+            <button
+              key={m.token}
+              type="button"
+              className="chip-marcador"
+              title={`${m.rotulo} — adapta-se a cada imóvel`}
+              onClick={() => inserirMarcador(m.token)}
+            >
+              {m.token}
+            </button>
+          ))}
+        </div>
 
         {salvarAberto ? (
           <div className="field-group" style={{ marginTop: "10px" }}>
@@ -186,8 +216,9 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
               </button>
             </div>
             <div className="field-hint">
-              O modelo guarda o texto atual. O nome do proprietário vira um marcador e se adapta
-              sozinho quando você usar o modelo em outro contato.
+              O modelo guarda o texto atual. O nome e o endereço do imóvel viram os marcadores{" "}
+              <strong>{"{nome}"}</strong> e <strong>{"{endereco}"}</strong>, que se adaptam sozinhos
+              quando você usar o modelo em outro contato.
             </div>
           </div>
         ) : (

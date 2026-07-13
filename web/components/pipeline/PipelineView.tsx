@@ -23,6 +23,7 @@ import { daysInCurrentStatus, isPausado, isStale } from "@/lib/calculo/motor";
 import {
   aplicarModeloUsuario,
   linkWhatsapp,
+  MARCADORES_MODELO,
   mensagemWhatsapp,
   MODELOS_WHATSAPP,
   modeloPadraoWhatsapp,
@@ -357,6 +358,21 @@ function DrawerWhatsapp({ imovel, nomeCaptador }: { imovel: Imovel; nomeCaptador
     }
   }
 
+  /** Insere um marcador ({nome}/{endereco}) na posição do cursor do textarea. */
+  function inserirMarcador(token: string) {
+    const el = textareaRef.current;
+    const start = el?.selectionStart ?? texto.length;
+    const end = el?.selectionEnd ?? texto.length;
+    setTexto(texto.slice(0, start) + token + texto.slice(end));
+    if (el) {
+      requestAnimationFrame(() => {
+        el.focus();
+        const pos = start + token.length;
+        el.setSelectionRange(pos, pos);
+      });
+    }
+  }
+
   return (
     <div className="drawer-section">
       <div className="drawer-section-title">Mensagem de WhatsApp</div>
@@ -395,6 +411,20 @@ function DrawerWhatsapp({ imovel, nomeCaptador }: { imovel: Imovel; nomeCaptador
         onChange={(e) => setTexto(e.target.value)}
         style={{ width: "100%", minHeight: "160px", marginBottom: "8px" }}
       />
+      <div className="marcadores-modelo">
+        <span>Inserir marcador:</span>
+        {MARCADORES_MODELO.map((m) => (
+          <button
+            key={m.token}
+            type="button"
+            className="chip-marcador"
+            title={`${m.rotulo} — adapta-se a cada imóvel`}
+            onClick={() => inserirMarcador(m.token)}
+          >
+            {m.token}
+          </button>
+        ))}
+      </div>
       {salvarAberto ? (
         <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
           <input

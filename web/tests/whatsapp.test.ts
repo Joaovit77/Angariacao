@@ -153,6 +153,27 @@ describe("modelos personalizados do usuário", () => {
     );
   });
 
+  it("preenche {endereco} só com a rua/número do imóvel", () => {
+    expect(aplicarModeloUsuario("Confirma o endereço {endereco}?", base)).toBe(
+      "Confirma o endereço Rua Haddock Lobo, 55?",
+    );
+  });
+
+  it("tokeniza também o endereço ao salvar", () => {
+    const texto = "Oi Marta, o imóvel na Rua Haddock Lobo, 55 já está no ar.";
+    expect(tokenizarModeloUsuario(texto, base)).toBe(
+      "Oi {nome}, o imóvel na {endereco} já está no ar.",
+    );
+  });
+
+  it("{nome} e {endereco} se adaptam ao reusar em outro imóvel (ida e volta)", () => {
+    const editado = "Oi Marta, confirma o endereço Rua Haddock Lobo, 55?";
+    const modelo = tokenizarModeloUsuario(editado, base);
+    expect(modelo).toBe("Oi {nome}, confirma o endereço {endereco}?");
+    const outro = { ...base, proprietarioNome: "Ana", endereco: "Av. Brasil, 900" };
+    expect(aplicarModeloUsuario(modelo, outro)).toBe("Oi Ana, confirma o endereço Av. Brasil, 900?");
+  });
+
   it("salvar e reusar em outro contato adapta a saudação (ida e volta)", () => {
     const editado = "Olá, Marta! Sem problemas, falo com você mais para frente.";
     const modelo = tokenizarModeloUsuario(editado, base);
