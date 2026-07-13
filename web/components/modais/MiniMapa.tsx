@@ -13,6 +13,19 @@ import L from "leaflet";
 
 const LONDRINA_CENTER: [number, number] = [-23.3103, -51.1628];
 
+// Pino próprio via divIcon. O ícone PADRÃO do Leaflet aponta para PNGs
+// (marker-icon.png / marker-shadow.png) por caminhos derivados do CSS que o
+// bundler do Next não serve — o resultado é um "broken image". A view /mapa já
+// evita isso com divIcon; aqui replicamos com um pino em gota, âncora na ponta.
+function pinoIcon(): L.DivIcon {
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;background:#e0b458;border:2px solid #12151a;box-shadow:0 2px 5px rgba(0,0,0,.45);transform:rotate(-45deg);"></div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 22],
+  });
+}
+
 interface Props {
   /** Coordenadas atuais do formulário (null = ainda não localizado). */
   lat: number | null;
@@ -45,7 +58,7 @@ export default function MiniMapa({ lat, lng, zoom, visivel, aoEscolherPonto }: P
     const mapa = L.map(el, { attributionControl: false }).setView(center, hasCoords ? 16 : 13);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(mapa);
 
-    const marker = L.marker(center, { draggable: true }).addTo(mapa);
+    const marker = L.marker(center, { draggable: true, icon: pinoIcon() }).addTo(mapa);
     marker.on("dragend", () => {
       const pos = marker.getLatLng();
       aoEscolherRef.current(pos.lat, pos.lng, "arraste");

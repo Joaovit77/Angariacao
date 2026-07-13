@@ -4,6 +4,10 @@ import Toasts from "@/components/Toasts";
 // O app antigo carregava o CSS do Leaflet por <link> no index.html; aqui ele
 // entra pelo bundle, na mesma ordem (antes do style.css do projeto).
 import "leaflet/dist/leaflet.css";
+// CSS estrutural do markercluster (posicionamento/animação dos clusters). NÃO
+// importamos o MarkerCluster.Default.css: o tema claro dele destoaria do app —
+// os clusters ganham ícone próprio na paleta via iconCreateFunction (MapaLeaflet).
+import "leaflet.markercluster/dist/MarkerCluster.css";
 import "./style.css";
 
 // O style.css é uma cópia fiel do app estático original — a migração
