@@ -134,6 +134,18 @@ export function faturamentoContratosNoMes(imoveis: Imovel[], key: string): numbe
   return imoveisLocadosNoMes(imoveis, key).reduce((s, i) => s + (i.valorAluguel || 0), 0);
 }
 
+// Comissão efetivamente recebida no mês, pela data de recebimento — só os
+// locados marcados como recebidos contam. Fonte única para Metas e Início.
+export function comissaoRecebidaNoMes(imoveis: Imovel[], key: string, comissaoPercent: number): number {
+  return imoveis.reduce(
+    (s, i) =>
+      i.status === "Locado" && i.comissaoRecebida && monthKey(i.comissaoRecebidaData) === key
+        ? s + comissaoRecebidaValor(i, comissaoPercent)
+        : s,
+    0,
+  );
+}
+
 export function groupCount(imoveis: Imovel[], keyFn: (i: Imovel) => string | null | undefined): Record<string, number> {
   const map: Record<string, number> = {};
   imoveis.forEach((i) => {

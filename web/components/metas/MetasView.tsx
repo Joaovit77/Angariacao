@@ -10,27 +10,17 @@
    ================================================================ */
 import Contador from "@/components/Contador";
 import {
-  comissaoRecebidaValor,
+  comissaoRecebidaNoMes,
   faturamentoContratosNoMes,
   imoveisAngariadosNoMes,
   imoveisLocadosNoMes,
 } from "@/lib/calculo/motor";
-import { currentMonthKey, monthKey, monthLabelLong } from "@/lib/datas";
+import { currentMonthKey, monthLabelLong } from "@/lib/datas";
 import { fmtMoney } from "@/lib/formatadores";
 import { useAppStore } from "@/lib/store";
 import { useUiModal } from "@/lib/uiModal";
-import type { Imovel, Meta } from "@/lib/tipos";
+import type { Meta } from "@/lib/tipos";
 import BadgesConquistas from "./BadgesConquistas";
-
-function comissaoRecebidaNoMes(imoveis: Imovel[], key: string, comissaoPercent: number): number {
-  return imoveis.reduce(
-    (s, i) =>
-      i.status === "Locado" && i.comissaoRecebida && monthKey(i.comissaoRecebidaData) === key
-        ? s + comissaoRecebidaValor(i, comissaoPercent)
-        : s,
-    0,
-  );
-}
 
 function GoalCard({
   label,

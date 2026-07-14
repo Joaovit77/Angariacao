@@ -18,7 +18,7 @@ export default function Raiz() {
   const router = useRouter();
 
   useEffect(() => {
-    if (estado === "auth") router.replace("/dashboard");
+    if (estado === "auth") router.replace("/home");
   }, [estado, router]);
 
   if (estado === "auth") return null;

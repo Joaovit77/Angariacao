@@ -14,6 +14,7 @@ import SinoNotificacoes from "./SinoNotificacoes";
 import MenuUsuario from "./MenuUsuario";
 
 const TITULOS: Record<string, string> = {
+  "/home": "Início",
   "/dashboard": "Dashboard",
   "/pipeline": "Pipeline",
   "/metas": "Metas",
