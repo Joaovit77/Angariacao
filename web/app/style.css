@@ -1721,6 +1721,14 @@ legend{
     border-top: none;
     padding: 4px 2px;
   }
+  /* Quando as metas sobem para a coluna principal (larga), as barras viram
+     grade 2×2 — na lateral (estreita) seguem empilhadas. Evita barras longas
+     e esparsas esticadas na largura toda. */
+  .home-main .home-meta-list{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 24px;
+  }
 }
 
 /* Abaixo de 980px a lateral desce para baixo da coluna principal (mesmo

@@ -98,6 +98,144 @@ export default function HomeView() {
   const comissaoMes = comissaoRecebidaNoMes(imoveis, mKey, comissaoPercent);
   const faturamentoMes = faturamentoContratosNoMes(imoveis, mKey);
 
+  // Cada card de resumo é montado uma vez e posicionado conforme tenha conteúdo:
+  // com itens vai para a coluna principal (larga); vazio desce para a lateral,
+  // compacto, ao lado das metas — para não desperdiçar o espaço principal.
+  const cardCompromissos = (
+    <div className="card" key="compromissos">
+      <div className="home-card-head">
+        <div className="card-title">Próximos compromissos</div>
+        <button type="button" className="home-link" onClick={() => router.push("/agenda")}>
+          Ver agenda →
+        </button>
+      </div>
+      {pendentes.length === 0 ? (
+        <p className="section-note">Nada pendente para os próximos {AGENDA_PENDENTES_JANELA_DIAS} dias. 🎉</p>
+      ) : (
+        <div className="home-list">
+          {pendentes.slice(0, LIMITE_LISTA).map((a) => {
+            const imovel = imovelDe(a.imovelId);
+            const overdue = a.date < hoje;
+            const today = a.date === hoje;
+            return (
+              <div key={a.id} className="home-list-item" onClick={() => abrirModal("agenda", a.id)}>
+                <span className="home-list-ic">{agendaTypeIcon(a.type, a.isVerificacaoDisponibilidade)}</span>
+                <span className="home-list-body">
+                  <span className="home-list-title" title={a.title}>
+                    {a.hora ? `${a.hora} · ` : ""}
+                    {a.title}
+                  </span>
+                  <span className="home-list-sub">
+                    {imovel ? `${imovel.codigo || imovel.endereco} · ` : ""}
+                    {a.type}
+                  </span>
+                </span>
+                <span className={`home-list-chip${overdue ? " bad" : today ? " today" : ""}`}>
+                  {overdue ? "Atrasado" : today ? "Hoje" : fmtDateLong(a.date)}
+                </span>
+              </div>
+            );
+          })}
+          {pendentes.length > LIMITE_LISTA && (
+            <button type="button" className="home-more" onClick={() => router.push("/agenda")}>
+              + {pendentes.length - LIMITE_LISTA} compromisso
+              {pendentes.length - LIMITE_LISTA > 1 ? "s" : ""}
+            </button>
+          )}
+        </div>
+      )}
+      {atrasados > 0 && (
+        <div className="home-alert" onClick={() => router.push("/agenda")}>
+          {atrasados} compromisso{atrasados > 1 ? "s" : ""} atrasado{atrasados > 1 ? "s" : ""}
+        </div>
+      )}
+    </div>
+  );
+
+  const cardParados = (
+    <div className="card" key="imoveis">
+      <div className="home-card-head">
+        <div className="card-title">Imóveis parados</div>
+        <button type="button" className="home-link" onClick={() => router.push("/pipeline")}>
+          Ver pipeline →
+        </button>
+      </div>
+      {parados.length === 0 ? (
+        <p className="section-note">Nenhum imóvel parado no funil. 🎉</p>
+      ) : (
+        <div className="home-list">
+          {parados.slice(0, LIMITE_LISTA).map((i) => {
+            const dias = daysInCurrentStatus(i);
+            return (
+              <div key={i.id} className="home-list-item" onClick={() => abrirModal("imovel", i.id)}>
+                <span className="home-list-ic">⏳</span>
+                <span className="home-list-body">
+                  <span className="home-list-title" title={i.codigo || i.endereco}>
+                    {i.codigo || i.endereco}
+                  </span>
+                  <span className="home-list-sub">
+                    {i.status}
+                    {i.bairro ? ` · ${i.bairro}` : ""}
+                  </span>
+                </span>
+                <span className="home-list-chip bad">{dias != null ? `${dias} dias` : "parado"}</span>
+              </div>
+            );
+          })}
+          {parados.length > LIMITE_LISTA && (
+            <button type="button" className="home-more" onClick={() => router.push("/pipeline")}>
+              + {parados.length - LIMITE_LISTA} imóvel
+              {parados.length - LIMITE_LISTA > 1 ? "eis" : ""} parado
+              {parados.length - LIMITE_LISTA > 1 ? "s" : ""}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  // Com conteúdo → coluna principal (larga); vazio → lateral (compacto).
+  const cardMetas = (
+    <div className="card home-metas" key="metas">
+      <div className="home-card-head">
+        <div className="home-metas-title">
+          <span className="card-title">Metas do mês</span>
+          <span className="home-metas-mes">{monthLabelLong(mKey)}</span>
+        </div>
+        <button type="button" className="home-link" onClick={() => router.push("/metas")}>
+          Ver →
+        </button>
+      </div>
+      {!temMetas ? (
+        <div className="home-metas-empty">
+          <p className="section-note">Nenhuma meta definida para este mês.</p>
+          <button type="button" className="btn btn-sm btn-primary" onClick={() => abrirModal("meta")}>
+            + Definir metas
+          </button>
+        </div>
+      ) : (
+        <div className="home-meta-list">
+          <MiniMeta label="Angariações" atual={angariacoesMes} alvo={meta.angariacoes} />
+          <MiniMeta label="Imóveis locados" atual={locadosMes} alvo={meta.locados} />
+          <MiniMeta label="Comissão recebida" atual={comissaoMes} alvo={meta.comissao} money />
+          <MiniMeta label="Faturamento" atual={faturamentoMes} alvo={meta.faturamento} money />
+        </div>
+      )}
+    </div>
+  );
+
+  // Com conteúdo → coluna principal (larga); vazio → lateral (compacto).
+  const principais: React.ReactNode[] = [];
+  const laterais: React.ReactNode[] = [];
+  (pendentes.length ? principais : laterais).push(cardCompromissos);
+  (parados.length ? principais : laterais).push(cardParados);
+
+  // Se algum resumo ficou vazio (desceu para a lateral), a coluna principal fica
+  // curta; as metas sobem para ela para equilibrar as colunas. Caso contrário,
+  // ficam na lateral, ao lado das ações.
+  const metasNaPrincipal = laterais.length > 0;
+  if (metasNaPrincipal) principais.push(cardMetas);
+
   return (
     <>
       <div className="page-head">
@@ -108,110 +246,7 @@ export default function HomeView() {
 
       <div className="home-grid anim-stagger">
         {/* COLUNA PRINCIPAL — o que precisa de ação hoje */}
-        <div className="home-main">
-          {/* Próximos compromissos */}
-          <div className="card">
-            <div className="home-card-head">
-              <div className="card-title">Próximos compromissos</div>
-              <button type="button" className="home-link" onClick={() => router.push("/agenda")}>
-                Ver agenda →
-              </button>
-            </div>
-            {pendentes.length === 0 ? (
-              <p className="section-note">Nada pendente para os próximos {AGENDA_PENDENTES_JANELA_DIAS} dias. 🎉</p>
-            ) : (
-              <div className="home-list">
-                {pendentes.slice(0, LIMITE_LISTA).map((a) => {
-                  const imovel = imovelDe(a.imovelId);
-                  const overdue = a.date < hoje;
-                  const today = a.date === hoje;
-                  return (
-                    <div
-                      key={a.id}
-                      className="home-list-item"
-                      onClick={() => abrirModal("agenda", a.id)}
-                    >
-                      <span className="home-list-ic">
-                        {agendaTypeIcon(a.type, a.isVerificacaoDisponibilidade)}
-                      </span>
-                      <span className="home-list-body">
-                        <span className="home-list-title" title={a.title}>
-                          {a.hora ? `${a.hora} · ` : ""}
-                          {a.title}
-                        </span>
-                        <span className="home-list-sub">
-                          {imovel ? `${imovel.codigo || imovel.endereco} · ` : ""}
-                          {a.type}
-                        </span>
-                      </span>
-                      <span className={`home-list-chip${overdue ? " bad" : today ? " today" : ""}`}>
-                        {overdue ? "Atrasado" : today ? "Hoje" : fmtDateLong(a.date)}
-                      </span>
-                    </div>
-                  );
-                })}
-                {pendentes.length > LIMITE_LISTA && (
-                  <button type="button" className="home-more" onClick={() => router.push("/agenda")}>
-                    + {pendentes.length - LIMITE_LISTA} compromisso
-                    {pendentes.length - LIMITE_LISTA > 1 ? "s" : ""}
-                  </button>
-                )}
-              </div>
-            )}
-            {atrasados > 0 && (
-              <div className="home-alert" onClick={() => router.push("/agenda")}>
-                {atrasados} compromisso{atrasados > 1 ? "s" : ""} atrasado{atrasados > 1 ? "s" : ""}
-              </div>
-            )}
-          </div>
-
-          {/* Imóveis parados */}
-          <div className="card">
-            <div className="home-card-head">
-              <div className="card-title">Imóveis parados</div>
-              <button type="button" className="home-link" onClick={() => router.push("/pipeline")}>
-                Ver pipeline →
-              </button>
-            </div>
-            {parados.length === 0 ? (
-              <p className="section-note">Nenhum imóvel parado no funil. 🎉</p>
-            ) : (
-              <div className="home-list">
-                {parados.slice(0, LIMITE_LISTA).map((i) => {
-                  const dias = daysInCurrentStatus(i);
-                  return (
-                    <div
-                      key={i.id}
-                      className="home-list-item"
-                      onClick={() => abrirModal("imovel", i.id)}
-                    >
-                      <span className="home-list-ic">⏳</span>
-                      <span className="home-list-body">
-                        <span className="home-list-title" title={i.codigo || i.endereco}>
-                          {i.codigo || i.endereco}
-                        </span>
-                        <span className="home-list-sub">
-                          {i.status}
-                          {i.bairro ? ` · ${i.bairro}` : ""}
-                        </span>
-                      </span>
-                      <span className="home-list-chip bad">
-                        {dias != null ? `${dias} dias` : "parado"}
-                      </span>
-                    </div>
-                  );
-                })}
-                {parados.length > LIMITE_LISTA && (
-                  <button type="button" className="home-more" onClick={() => router.push("/pipeline")}>
-                    + {parados.length - LIMITE_LISTA} imóvel
-                    {parados.length - LIMITE_LISTA > 1 ? "eis" : ""} parado
-                    {parados.length - LIMITE_LISTA > 1 ? "s" : ""}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+        <div className="home-main">{principais}</div>
 
         {/* COLUNA LATERAL — atalhos de ação e resumo de metas */}
         <aside className="home-aside">
@@ -239,33 +274,10 @@ export default function HomeView() {
             </button>
           </div>
 
-          {/* Metas do mês */}
-          <div className="card home-metas">
-            <div className="home-card-head">
-              <div className="home-metas-title">
-                <span className="card-title">Metas do mês</span>
-                <span className="home-metas-mes">{monthLabelLong(mKey)}</span>
-              </div>
-              <button type="button" className="home-link" onClick={() => router.push("/metas")}>
-                Ver →
-              </button>
-            </div>
-            {!temMetas ? (
-              <div className="home-metas-empty">
-                <p className="section-note">Nenhuma meta definida para este mês.</p>
-                <button type="button" className="btn btn-sm btn-primary" onClick={() => abrirModal("meta")}>
-                  + Definir metas
-                </button>
-              </div>
-            ) : (
-              <div className="home-meta-list">
-                <MiniMeta label="Angariações" atual={angariacoesMes} alvo={meta.angariacoes} />
-                <MiniMeta label="Imóveis locados" atual={locadosMes} alvo={meta.locados} />
-                <MiniMeta label="Comissão recebida" atual={comissaoMes} alvo={meta.comissao} money />
-                <MiniMeta label="Faturamento" atual={faturamentoMes} alvo={meta.faturamento} money />
-              </div>
-            )}
-          </div>
+          {laterais}
+
+          {/* Metas do mês — só aqui quando não subiram para a coluna principal. */}
+          {!metasNaPrincipal && cardMetas}
         </aside>
       </div>
     </>
