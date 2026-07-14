@@ -307,9 +307,16 @@ function DrawerWhatsapp({ imovel, nomeCaptador }: { imovel: Imovel; nomeCaptador
   const [texto, setTexto] = useState(() => mensagemWhatsapp(padrao, imovel, nomeCaptador));
   const [salvarAberto, setSalvarAberto] = useState(false);
   const [nomeNovo, setNomeNovo] = useState("");
+  // Grupos do seletor (accordion) — ambos fechados por padrão; "Meus modelos"
+  // em cima (preferência). O "Selecionado: …" abaixo mostra o modelo ativo.
+  const [verUsuario, setVerUsuario] = useState(false);
+  const [verSistema, setVerSistema] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const link = linkWhatsapp(imovel, texto);
   const modeloCustomSel = modelosUsuario.find((m) => m.id === modeloId) || null;
+  const rotuloSelecionado = modeloCustomSel
+    ? modeloCustomSel.nome
+    : MODELOS_WHATSAPP.find((m) => m.id === modeloId)?.rotulo || "Modelo";
 
   function trocarModelo(id: string) {
     setModeloId(id);
@@ -339,10 +346,11 @@ function DrawerWhatsapp({ imovel, nomeCaptador }: { imovel: Imovel; nomeCaptador
     }
   }
 
-  async function excluirModelo() {
-    if (!usuario || !modeloCustomSel) return;
-    const ok = await removerModeloWhatsapp(modeloCustomSel.id, config, usuario.id);
-    if (ok) {
+  async function excluirModelo(id: string) {
+    if (!usuario) return;
+    const ok = await removerModeloWhatsapp(id, config, usuario.id);
+    // Só reescreve o texto se o modelo excluído era o que estava selecionado.
+    if (ok && modeloId === id) {
       setModeloId(padrao);
       setTexto(mensagemWhatsapp(padrao, imovel, nomeCaptador));
     }
@@ -380,34 +388,78 @@ function DrawerWhatsapp({ imovel, nomeCaptador }: { imovel: Imovel; nomeCaptador
   return (
     <div className="drawer-section">
       <div className="drawer-section-title">Mensagem de WhatsApp</div>
-      <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
-        <select
-          aria-label="Modelo de mensagem"
-          value={modeloId}
-          onChange={(e) => trocarModelo(e.target.value)}
-          style={{ flex: 1 }}
-        >
-          {MODELOS_WHATSAPP.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.rotulo}
-            </option>
-          ))}
-          {modelosUsuario.length > 0 && (
-            <optgroup label="Meus modelos">
-              {modelosUsuario.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.nome}
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
-        {modeloCustomSel && (
-          <button type="button" className="btn btn-sm btn-ghost btn-danger" onClick={excluirModelo}>
-            Excluir
+      <div className="wpp-picker" style={{ marginBottom: "8px" }}>
+        {/* Meus modelos primeiro — preferência aos modelos do usuário. */}
+        <div className="wpp-grupo">
+          <button
+            type="button"
+            className="wpp-grupo-head"
+            aria-expanded={verUsuario}
+            onClick={() => setVerUsuario((v) => !v)}
+          >
+            <span className="wpp-grupo-caret" aria-hidden>
+              {verUsuario ? "▾" : "▸"}
+            </span>
+            <span className="wpp-grupo-nome">Meus modelos</span>
+            <span className="wpp-grupo-count">{modelosUsuario.length}</span>
           </button>
-        )}
+          {verUsuario && (
+            <div className="wpp-grupo-lista">
+              {modelosUsuario.length === 0 ? (
+                <p className="wpp-vazio">
+                  Nenhum modelo salvo ainda. Ajuste o texto abaixo e use “+ Salvar como modelo”.
+                </p>
+              ) : (
+                modelosUsuario.map((m) => (
+                  <div key={m.id} className={`wpp-opt${modeloId === m.id ? " ativa" : ""}`}>
+                    <button type="button" className="wpp-opt-sel" onClick={() => trocarModelo(m.id)}>
+                      {m.nome}
+                    </button>
+                    <button
+                      type="button"
+                      className="wpp-opt-del"
+                      title={`Excluir “${m.nome}”`}
+                      onClick={() => excluirModelo(m.id)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Modelos do sistema — prontos por etapa do funil. */}
+        <div className="wpp-grupo">
+          <button
+            type="button"
+            className="wpp-grupo-head"
+            aria-expanded={verSistema}
+            onClick={() => setVerSistema((v) => !v)}
+          >
+            <span className="wpp-grupo-caret" aria-hidden>
+              {verSistema ? "▾" : "▸"}
+            </span>
+            <span className="wpp-grupo-nome">Modelos do sistema</span>
+            <span className="wpp-grupo-count">{MODELOS_WHATSAPP.length}</span>
+          </button>
+          {verSistema && (
+            <div className="wpp-grupo-lista">
+              {MODELOS_WHATSAPP.map((m) => (
+                <div key={m.id} className={`wpp-opt${modeloId === m.id ? " ativa" : ""}`}>
+                  <button type="button" className="wpp-opt-sel" onClick={() => trocarModelo(m.id)}>
+                    {m.rotulo}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+      <p className="wpp-selecionado" style={{ marginBottom: "8px" }}>
+        Selecionado: <strong>{rotuloSelecionado}</strong>
+      </p>
       <textarea
         ref={textareaRef}
         aria-label="Prévia da mensagem"

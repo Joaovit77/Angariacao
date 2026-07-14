@@ -1667,6 +1667,112 @@ legend{
 .home-list-chip.today{ color: var(--accent-strong); background: var(--accent-soft); }
 .home-list-chip.bad{ color: var(--bad); background: var(--bad-soft); }
 
+/* Cartão de imóvel parado — layout do desenho: código + motivo na 1ª linha e,
+   abaixo, endereço, proprietário e telefone empilhados (cada um com ícone). */
+.home-parado{
+  display: flex; flex-direction: column; gap: 7px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border-soft);
+  cursor: pointer;
+  transition: background .12s;
+}
+.home-parado:first-child{ border-top: none; }
+.home-parado:hover{ background: var(--bg-elev-2); }
+.home-parado-top{
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px;
+}
+.home-parado-codigo{
+  font-size: 14px; font-weight: 700; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.home-parado-motivo{ display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.home-parado-status{ font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+.home-parado-row{
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--text-dim);
+  min-width: 0;
+}
+.home-parado-ic{ flex: 0 0 auto; width: 16px; text-align: center; opacity: .8; }
+.home-parado-val{
+  color: var(--text); min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.home-parado-val.vazio{ color: var(--text-faint); font-style: italic; }
+/* Botão de WhatsApp: pílula verde à direita da linha do telefone. Abre o
+   wa.me com o modelo da etapa atual do imóvel (mesmo fluxo do Pipeline). */
+.home-parado-wpp{
+  margin-left: auto; flex: 0 0 auto;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  font-size: 11.5px; font-weight: 600; line-height: 1;
+  color: var(--good);
+  background: var(--good-soft);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.home-parado-wpp:hover{ border-color: var(--good); transform: translateY(-1px); }
+.home-parado-wpp-ic{ font-size: 12.5px; }
+
+/* Seletor de modelos do WhatsApp — dois grupos recolhíveis ("Meus modelos"
+   em cima, com preferência, e "Modelos do sistema"), cada um abre ao clicar. */
+.wpp-picker{
+  display: flex; flex-direction: column; gap: 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  background: var(--bg-elev-1);
+}
+.wpp-grupo{ display: flex; flex-direction: column; }
+.wpp-grupo-head{
+  display: flex; align-items: center; gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  background: none; border: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--text);
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+.wpp-grupo-head:hover{ background: var(--bg-elev-2); }
+.wpp-grupo-caret{ flex: 0 0 auto; width: 12px; font-size: 10px; color: var(--text-dim); }
+.wpp-grupo-nome{ flex: 1 1 auto; }
+.wpp-grupo-count{
+  flex: 0 0 auto;
+  font-size: 11px; font-weight: 700; color: var(--text-dim);
+  background: var(--bg-elev-3);
+  padding: 1px 8px; border-radius: 999px;
+}
+.wpp-grupo-lista{
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 2px 2px 6px;
+  max-height: 220px; overflow-y: auto;
+}
+.wpp-opt{ display: flex; align-items: center; border-radius: var(--radius-sm); }
+.wpp-opt:hover{ background: var(--bg-elev-2); }
+.wpp-opt.ativa{ background: var(--accent-soft); }
+.wpp-opt-sel{
+  flex: 1 1 auto; min-width: 0; text-align: left;
+  padding: 8px 10px;
+  background: none; border: none; cursor: pointer;
+  font-size: 13px; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.wpp-opt.ativa .wpp-opt-sel{ color: var(--accent-strong); font-weight: 600; }
+.wpp-opt-del{
+  flex: 0 0 auto;
+  width: 26px; height: 26px; margin-right: 4px;
+  display: grid; place-items: center;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-faint); font-size: 12px;
+  border-radius: var(--radius-sm);
+}
+.wpp-opt-del:hover{ color: var(--bad); background: var(--bad-soft); }
+.wpp-vazio{ font-size: 12px; color: var(--text-dim); padding: 6px 10px; margin: 0; }
+.wpp-selecionado{ font-size: 12px; color: var(--text-dim); margin: 8px 2px 0; }
+.wpp-selecionado strong{ color: var(--text); }
+
 .home-more{
   background: none; border: none; cursor: pointer;
   text-align: left; padding: 10px 6px;
@@ -1716,6 +1822,14 @@ legend{
     border-radius: var(--radius-sm);
   }
   .home-list-item:hover{ background: var(--bg-elev-3); border-color: var(--accent); }
+  /* Os cards de imóvel parado também viram tiles na grade de 2 colunas. */
+  .home-parado{
+    border-top: none;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+  }
+  .home-parado:hover{ background: var(--bg-elev-3); border-color: var(--accent); }
   .home-more{
     grid-column: 1 / -1;
     border-top: none;

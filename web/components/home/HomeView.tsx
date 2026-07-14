@@ -25,6 +25,7 @@ import {
   imoveisLocadosNoMes,
   isStale,
 } from "@/lib/calculo/motor";
+import { modeloPadraoWhatsapp } from "@/lib/calculo/whatsapp";
 import { addDaysISO, currentMonthKey, monthLabelLong, todayISO } from "@/lib/datas";
 import { fmtDateLong, fmtMoney } from "@/lib/formatadores";
 import { useAppStore } from "@/lib/store";
@@ -163,22 +164,60 @@ export default function HomeView() {
       {parados.length === 0 ? (
         <p className="section-note">Nenhum imóvel parado no funil. 🎉</p>
       ) : (
-        <div className="home-list">
+        <div className="home-list home-list-parados">
           {parados.slice(0, LIMITE_LISTA).map((i) => {
             const dias = daysInCurrentStatus(i);
             return (
-              <div key={i.id} className="home-list-item" onClick={() => abrirModal("imovel", i.id)}>
-                <span className="home-list-ic">⏳</span>
-                <span className="home-list-body">
-                  <span className="home-list-title" title={i.codigo || i.endereco}>
-                    {i.codigo || i.endereco}
+              <div
+                key={i.id}
+                className="home-parado"
+                onClick={() => abrirModal("imovel", i.id)}
+              >
+                {/* Linha 1: código do imóvel + motivo (status/tempo em que travou) */}
+                <div className="home-parado-top">
+                  <span className="home-parado-codigo" title={i.codigo || i.referenciaCrm || ""}>
+                    {i.codigo || i.referenciaCrm || "Sem código"}
                   </span>
-                  <span className="home-list-sub">
-                    {i.status}
-                    {i.bairro ? ` · ${i.bairro}` : ""}
+                  <span className="home-parado-motivo">
+                    <span className="home-list-chip bad">
+                      {dias != null ? `${dias} dias` : "parado"}
+                    </span>
+                    <span className="home-parado-status">{i.status}</span>
                   </span>
-                </span>
-                <span className="home-list-chip bad">{dias != null ? `${dias} dias` : "parado"}</span>
+                </div>
+                {/* Endereço · Proprietário · Telefone */}
+                <div className="home-parado-row" title={i.endereco}>
+                  <span className="home-parado-ic">📍</span>
+                  <span className="home-parado-val">{i.endereco || "Sem endereço"}</span>
+                </div>
+                <div className="home-parado-row">
+                  <span className="home-parado-ic">👤</span>
+                  <span className={`home-parado-val${i.proprietarioNome ? "" : " vazio"}`}>
+                    {i.proprietarioNome || "Sem proprietário"}
+                  </span>
+                </div>
+                <div className="home-parado-row">
+                  <span className="home-parado-ic">📞</span>
+                  <span className={`home-parado-val${i.proprietarioTelefone ? "" : " vazio"}`}>
+                    {i.proprietarioTelefone || "Sem telefone"}
+                  </span>
+                  {i.proprietarioTelefone && (
+                    <button
+                      type="button"
+                      className="home-parado-wpp"
+                      title="Escrever mensagem no WhatsApp"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        abrirModal("whatsapp", i.id, modeloPadraoWhatsapp(i.status));
+                      }}
+                    >
+                      <span className="home-parado-wpp-ic" aria-hidden>
+                        💬
+                      </span>
+                      WhatsApp
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
