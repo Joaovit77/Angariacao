@@ -184,9 +184,8 @@ export default function HomeView() {
           })}
           {parados.length > LIMITE_LISTA && (
             <button type="button" className="home-more" onClick={() => router.push("/pipeline")}>
-              + {parados.length - LIMITE_LISTA} imóvel
-              {parados.length - LIMITE_LISTA > 1 ? "eis" : ""} parado
-              {parados.length - LIMITE_LISTA > 1 ? "s" : ""}
+              + {parados.length - LIMITE_LISTA}{" "}
+              {parados.length - LIMITE_LISTA > 1 ? "imóveis parados" : "imóvel parado"}
             </button>
           )}
         </div>
