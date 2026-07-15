@@ -12,9 +12,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
 import { STATUS_FLOW } from "@/lib/constantes";
-import { getSupabase } from "@/lib/persistencia/supabase";
 import { useAppStore } from "@/lib/store";
-import { useUiModal } from "@/lib/uiModal";
 
 const STATUS_FUNIL: readonly string[] = STATUS_FLOW;
 
@@ -111,18 +109,10 @@ const ITENS: ItemNav[] = [
       </svg>
     ),
   },
-  {
-    rota: "/roadmap",
-    texto: "Integrações & IA",
-    icone: (
-      <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M13 2 3 14h7l-1 8 10-12h-7z" />
-      </svg>
-    ),
-  },
+  // "Integrações & IA" (/roadmap) fica fora do menu por ora — a página segue
+  // no código (app/(painel)/roadmap) para reativar quando as integrações
+  // entrarem: basta devolver este item ao array.
 ];
-
-const ESTILO_ITEM_RODAPE = { padding: "7px 8px", fontSize: "12.5px" };
 
 export default function BarraLateral({ aberta, aoFechar }: { aberta: boolean; aoFechar: () => void }) {
   const router = useRouter();
@@ -130,7 +120,6 @@ export default function BarraLateral({ aberta, aoFechar }: { aberta: boolean; ao
   const { usuario } = useSessao();
   const imoveis = useAppStore((s) => s.imoveis);
   const agenda = useAppStore((s) => s.agenda);
-  const abrirModal = useUiModal((s) => s.abrirModal);
 
   // Prefetch das rotas: os itens são <button> com router.push (não <Link>),
   // então o Next não faz o prefetch automático. Sem isto, cada clique só
@@ -151,11 +140,6 @@ export default function BarraLateral({ aberta, aoFechar }: { aberta: boolean; ao
   function navegar(rota: string) {
     router.push(rota);
     aoFechar();
-  }
-
-  async function sair() {
-    aoFechar();
-    await getSupabase().auth.signOut();
   }
 
   return (
@@ -187,20 +171,6 @@ export default function BarraLateral({ aberta, aoFechar }: { aberta: boolean; ao
         <div className="sidebar-user" id="sidebar-user">
           {rotuloUsuario(usuario)}
         </div>
-        <button
-          type="button"
-          className="nav-item"
-          style={ESTILO_ITEM_RODAPE}
-          onClick={() => {
-            aoFechar();
-            abrirModal("config");
-          }}
-        >
-          ⚙ Configurações
-        </button>
-        <button type="button" className="nav-item" style={ESTILO_ITEM_RODAPE} onClick={sair}>
-          ↩ Sair
-        </button>
         Dados salvos na nuvem
         <br />
         (Supabase), por login.
