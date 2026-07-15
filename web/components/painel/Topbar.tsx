@@ -3,8 +3,11 @@
 /* ================================================================
    BARRA DE TOPO (app bar) — mobile e desktop
    Mostra o NOME da tela atual (contexto) + sino de notificações +
-   menu do usuário. No mobile ganha o botão do menu (hambúrguer) e um
-   logo pequeno; no desktop o hambúrguer/logo somem (a sidebar já os tem).
+   menu do usuário. O hambúrguer aparece nas DUAS larguras: no desktop
+   ele recolhe/expande a barra lateral (trilha de ícones ↔ menu
+   completo); no mobile abre/fecha a gaveta. O ícone vira X quando o
+   menu está "ativo" (expandido no desktop, gaveta aberta no mobile).
+   O logo pequeno segue só no mobile (no desktop a sidebar já o tem).
    O título aqui substitui o <h1 class="page-title"> que cada view
    renderizava — agora vive num só lugar.
    ================================================================ */
@@ -25,16 +28,31 @@ const TITULOS: Record<string, string> = {
   "/roadmap": "Integrações & IA",
 };
 
-export default function Topbar({ aoAbrirMenu }: { aoAbrirMenu: () => void }) {
+export default function Topbar({
+  aoAlternar,
+  menuAtivo,
+}: {
+  aoAlternar: () => void;
+  menuAtivo: boolean;
+}) {
   const pathname = usePathname();
   const titulo = TITULOS[pathname] ?? "Angariações";
 
   return (
     <header className="topbar">
-      <button type="button" className="topbar-menu" onClick={aoAbrirMenu} aria-label="Abrir menu">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18 }}>
-          <path d="M3 6h18M3 12h18M3 18h18" />
-        </svg>
+      <button
+        type="button"
+        className={`topbar-menu${menuAtivo ? " is-x" : ""}`}
+        onClick={aoAlternar}
+        aria-label="Alternar menu"
+        aria-expanded={menuAtivo}
+      >
+        {/* Três barras que viram X via CSS (.topbar-menu.is-x). */}
+        <span className="ham" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
       </button>
       <Image className="topbar-logo" src="/logo.png" alt="" width={28} height={28} />
       <h1 className="topbar-title">{titulo}</h1>

@@ -59,7 +59,10 @@ input, select, textarea{ font-family: inherit; font-size: 14px; }
    ============================================================ */
 .app-shell{
   display: grid;
-  grid-template-columns: 240px 1fr;
+  /* Trilho fixo de 72px + conteúdo: a coluna do conteúdo NUNCA muda de
+     largura, então nada reflui quando a barra abre. A barra expandida flutua
+     por cima (ver bloco de desktop), não empurra. No mobile isto vira 1fr. */
+  grid-template-columns: 72px 1fr;
   grid-template-rows: auto 1fr;
   min-height: 100vh;
 }
@@ -156,6 +159,84 @@ img.brand-mark{
 .sidebar-user{
   font-size: 12px; color: var(--text-dim); font-weight:600;
   padding: 4px 8px 10px 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* ============================================================
+   BARRA RECOLHIDA (desktop) — trilha só de ícones
+   O hambúrguer da topbar alterna .app-shell.recolhida; a coluna do grid
+   encolhe de 240px para 72px (animado) e a barra vira uma trilha de
+   ícones. Tudo escopado a min-width:721px pra NUNCA afetar o mobile,
+   onde a barra é uma gaveta (a classe .recolhida pode estar ligada de
+   um uso anterior no desktop e não deve mexer na gaveta).
+   ============================================================ */
+@media (min-width: 721px){
+  /* Barra EXPANDIDA = 240px flutuando POR CIMA do conteúdo (o trilho segue
+     72px, então o conteúdo fica parado). z-index acima do conteúdo e abaixo
+     da topbar (2100), pra o hambúrguer continuar clicável. */
+  .sidebar{
+    width: 240px;
+    z-index: 2000;
+    box-shadow: 8px 0 30px rgba(0, 0, 0, .28);
+    /* topo = 0: o cabeçalho (.brand, 63px) faz o topo alinhado à topbar. */
+    padding: 0 14px 22px 14px;
+    transition:
+      width .42s cubic-bezier(.32, .72, 0, 1),
+      padding .42s cubic-bezier(.32, .72, 0, 1),
+      box-shadow .3s ease;
+  }
+  /* Barra RECOLHIDA = encaixa no trilho de 72px, rente, sem sombra. */
+  .recolhida .sidebar{
+    width: 72px;
+    padding: 0 12px 22px 12px;
+    align-items: center;
+    box-shadow: none;
+  }
+
+  /* Marca no DESKTOP = só o logo (o texto "Angariações/Controle de Locação"
+     colidia com a topbar na faixa do conteúdo; ele segue visível na gaveta do
+     mobile, onde não há conflito). O cabeçalho vira um bloco de 63px, a mesma
+     altura da topbar, com o logo centralizado — assim a linha divisória do
+     cabeçalho casa com a borda inferior da topbar (uma linha só). No expandido
+     o logo fica à esquerda (dentro dos 72px do trilho, fora da área da topbar);
+     no recolhido, centralizado no trilho. */
+  .brand-text{ display: none; }
+  .brand{ height: 63px; box-sizing: border-box; padding: 0 8px; margin-bottom: 8px; }
+  .recolhida .brand{ justify-content: center; padding: 0; }
+
+  /* Itens: ícone centralizado, sem rótulo. */
+  .recolhida .nav-group{ width: 100%; }
+  .recolhida .nav-item{ justify-content: center; gap: 0; padding: 10px 0; position: relative; }
+  .recolhida .nav-item-txt{ display: none; }
+  /* Badge (pipeline/agenda) vira um selo no canto do ícone. */
+  .recolhida .nav-item-badge{
+    position: absolute; top: 2px; right: 8px;
+    margin-left: 0; min-width: auto;
+  }
+
+  /* Rodapé (texto "Dados salvos…" + usuário) some na trilha estreita. */
+  .recolhida .sidebar-footer{ display: none; }
+
+  /* Tooltip: o rótulo aparece à direita ao passar o mouse. */
+  .recolhida .nav-item::after{
+    content: attr(data-tip);
+    position: absolute; left: calc(100% + 12px); top: 50%;
+    transform: translateY(-50%) translateX(-4px);
+    background: var(--bg-elev-3);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 5px 9px;
+    border-radius: 6px;
+    font-size: 12.5px; font-weight: 500;
+    white-space: nowrap;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .28);
+    opacity: 0; pointer-events: none;
+    transition: opacity .14s ease, transform .14s ease;
+    z-index: 2400;
+  }
+  .recolhida .nav-item:hover::after{
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
 }
 
 /* ============================================================
@@ -348,8 +429,47 @@ img.brand-mark{
   top: 0;
   z-index: 2100;
 }
-.topbar-menu{ display:none; }   /* hambúrguer: só no mobile */
+/* Hambúrguer: presente nas duas larguras (recolhe a barra no desktop,
+   abre a gaveta no mobile). O logo pequeno segue só no mobile. */
 .topbar-logo{ display:none; }   /* logo: só no mobile (no desktop a sidebar já tem) */
+
+/* --- Botão hambúrguer que vira X ---
+   A "box" inteira gira 180° (a mesma sensação do menu do Canal Pro) e as três
+   barras se recompõem no X junto — o X acompanha o giro. Easing com leve
+   overshoot (spring) pra não ficar "duro". */
+.topbar-menu{ display: flex; }
+/* Especificidade .topbar .topbar-menu (0,2,0) pra vencer a transição curta da
+   regra compartilhada .topbar-menu,.topbar-icon-btn,.topbar-avatar — senão o
+   transform do giro não entra na lista de transições e a box "salta". */
+.topbar .topbar-menu{
+  transition:
+    transform .5s cubic-bezier(.34, 1.32, .5, 1),
+    background .14s ease, color .14s ease, border-color .14s ease;
+  will-change: transform;
+}
+.topbar .topbar-menu.is-x{ transform: rotate(180deg); }
+
+.topbar-menu .ham{
+  position: relative;
+  width: 18px; height: 14px;
+  display: block;
+}
+.topbar-menu .ham span{
+  position: absolute; left: 0;
+  width: 100%; height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transition:
+    transform .5s cubic-bezier(.34, 1.32, .5, 1),
+    top .42s cubic-bezier(.5, .1, .2, 1),
+    opacity .24s ease;
+}
+.topbar-menu .ham span:nth-child(1){ top: 0; }
+.topbar-menu .ham span:nth-child(2){ top: 6px; }
+.topbar-menu .ham span:nth-child(3){ top: 12px; }
+.topbar-menu.is-x .ham span:nth-child(1){ top: 6px; transform: rotate(45deg); }
+.topbar-menu.is-x .ham span:nth-child(2){ opacity: 0; }
+.topbar-menu.is-x .ham span:nth-child(3){ top: 6px; transform: rotate(-45deg); }
 .topbar-title{
   font-family: var(--font-display);
   font-size: 20px;

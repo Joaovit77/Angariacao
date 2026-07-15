@@ -159,9 +159,12 @@ export default function BarraLateral({ aberta, aoFechar }: { aberta: boolean; ao
             type="button"
             className={`nav-item${pathname === item.rota ? " active" : ""}`}
             onClick={() => navegar(item.rota)}
+            data-tip={item.texto}
           >
             {item.icone}
-            {item.texto}
+            {/* Rótulo em span: some quando a barra recolhe (vira só ícones);
+                o data-tip vira tooltip no hover nesse estado. */}
+            <span className="nav-item-txt">{item.texto}</span>
             {item.badge && <span className="nav-item-badge">{badges[item.badge]}</span>}
           </button>
         ))}
