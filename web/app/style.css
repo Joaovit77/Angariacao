@@ -1667,6 +1667,10 @@ legend{
 .home-list-chip.today{ color: var(--accent-strong); background: var(--accent-soft); }
 .home-list-chip.bad{ color: var(--bad); background: var(--bad-soft); }
 
+/* "Próximos compromissos" na Início reusa os itens ricos da Agenda; só
+   remove a margem sobrando do último grupo dentro do card. */
+.home-agenda .agenda-day-group:last-child{ margin-bottom: 0; }
+
 /* Cartão de imóvel parado — layout do desenho: código + motivo na 1ª linha e,
    abaixo, endereço, proprietário e telefone empilhados (cada um com ícone). */
 .home-parado{

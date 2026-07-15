@@ -12,11 +12,8 @@
    uma composição/atalho — sem métricas novas.
    ================================================================ */
 import { useRouter } from "next/navigation";
-import {
-  AGENDA_PENDENTES_JANELA_DIAS,
-  agendaTypeIcon,
-  compararAgenda,
-} from "@/lib/calculo/agenda";
+import ItemAgenda from "@/components/agenda/ItemAgenda";
+import { AGENDA_PENDENTES_JANELA_DIAS, compararAgenda } from "@/lib/calculo/agenda";
 import {
   comissaoRecebidaNoMes,
   daysInCurrentStatus,
@@ -29,7 +26,7 @@ import { modeloPadraoWhatsapp } from "@/lib/calculo/whatsapp";
 import { addDaysISO, currentMonthKey, monthLabelLong, todayISO } from "@/lib/datas";
 import { fmtDateLong, fmtMoney } from "@/lib/formatadores";
 import { useAppStore } from "@/lib/store";
-import type { Meta } from "@/lib/tipos";
+import type { AgendaItem, Meta } from "@/lib/tipos";
 import { useUiModal } from "@/lib/uiModal";
 
 // Quantos itens de cada lista de resumo mostrar antes do "ver tudo".
@@ -106,6 +103,19 @@ export default function HomeView() {
   const comissaoMes = comissaoRecebidaNoMes(imoveis, mKey, comissaoPercent);
   const faturamentoMes = faturamentoContratosNoMes(imoveis, mKey);
 
+  // Card "Próximos compromissos": mesma janela da aba Pendentes, mas agora com
+  // o item rico e acionável da Agenda (concluir, WhatsApp), agrupado por dia.
+  // Limita ao total de LIMITE_LISTA e agrupa só o recorte visível.
+  const amanha = addDaysISO(hoje, 1) as string;
+  const pendentesVisiveis = pendentes.slice(0, LIMITE_LISTA);
+  const gruposPendentes: Record<string, AgendaItem[]> = {};
+  pendentesVisiveis.forEach((a) => {
+    (gruposPendentes[a.date] = gruposPendentes[a.date] || []).push(a);
+  });
+  const diasPendentes = Object.keys(gruposPendentes).sort();
+  const rotuloDia = (date: string) =>
+    date === hoje ? "Hoje" : date === amanha ? "Amanhã" : fmtDateLong(date);
+
   // Cada card de resumo é montado uma vez e posicionado conforme tenha conteúdo:
   // com itens vai para a coluna principal (larga); vazio desce para a lateral,
   // compacto, ao lado das metas — para não desperdiçar o espaço principal.
@@ -120,30 +130,15 @@ export default function HomeView() {
       {pendentes.length === 0 ? (
         <p className="section-note">Nada pendente para os próximos {AGENDA_PENDENTES_JANELA_DIAS} dias. 🎉</p>
       ) : (
-        <div className="home-list">
-          {pendentes.slice(0, LIMITE_LISTA).map((a) => {
-            const imovel = imovelDe(a.imovelId);
-            const overdue = a.date < hoje;
-            const today = a.date === hoje;
-            return (
-              <div key={a.id} className="home-list-item" onClick={() => abrirModal("agenda", a.id)}>
-                <span className="home-list-ic">{agendaTypeIcon(a.type, a.isVerificacaoDisponibilidade)}</span>
-                <span className="home-list-body">
-                  <span className="home-list-title" title={a.title}>
-                    {a.hora ? `${a.hora} · ` : ""}
-                    {a.title}
-                  </span>
-                  <span className="home-list-sub">
-                    {imovel ? `${imovel.codigo || imovel.endereco} · ` : ""}
-                    {a.type}
-                  </span>
-                </span>
-                <span className={`home-list-chip${overdue ? " bad" : today ? " today" : ""}`}>
-                  {overdue ? "Atrasado" : today ? "Hoje" : fmtDateLong(a.date)}
-                </span>
-              </div>
-            );
-          })}
+        <div className="home-agenda">
+          {diasPendentes.map((date) => (
+            <div className="agenda-day-group" key={date}>
+              <div className={`agenda-day-label ${date === hoje ? "today" : ""}`}>{rotuloDia(date)}</div>
+              {gruposPendentes[date].map((a) => (
+                <ItemAgenda key={a.id} a={a} imovel={imovelDe(a.imovelId)} />
+              ))}
+            </div>
+          ))}
           {pendentes.length > LIMITE_LISTA && (
             <button type="button" className="home-more" onClick={() => router.push("/agenda")}>
               + {pendentes.length - LIMITE_LISTA} compromisso
