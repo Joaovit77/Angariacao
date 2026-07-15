@@ -13,7 +13,13 @@ import { useAppStore } from "@/lib/store";
 import { useUiModal } from "@/lib/uiModal";
 import { toast } from "@/lib/toast";
 
-export default function ModalAgenda({ id }: { id?: string }) {
+export default function ModalAgenda({
+  id,
+  imovelIdRelacionado,
+}: {
+  id?: string;
+  imovelIdRelacionado?: string;
+}) {
   const fecharModal = useUiModal((s) => s.fecharModal);
   const { usuario } = useSessao();
   const agenda = useAppStore((s) => s.agenda);
@@ -26,7 +32,7 @@ export default function ModalAgenda({ id }: { id?: string }) {
   const [type, setType] = useState(item?.type ?? "Retorno ao proprietário");
   const [date, setDate] = useState(item?.date ?? todayISO());
   const [hora, setHora] = useState(item?.hora ?? "");
-  const [imovelId, setImovelId] = useState(item?.imovelId ?? "");
+  const [imovelId, setImovelId] = useState(item?.imovelId ?? imovelIdRelacionado ?? "");
   const [notes, setNotes] = useState(item?.notes ?? "");
   const [salvando, setSalvando] = useState(false);
   const [novoTipoAberto, setNovoTipoAberto] = useState(false);

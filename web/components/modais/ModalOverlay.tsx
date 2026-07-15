@@ -40,7 +40,9 @@ export default function ModalOverlay() {
         {modal?.tipo === "imovel" && <ModalImovel id={modal.id} />}
         {modal?.tipo === "preCadastro" && <ModalPreCadastro />}
         {modal?.tipo === "meta" && <ModalMeta />}
-        {modal?.tipo === "agenda" && <ModalAgenda id={modal.id} />}
+        {modal?.tipo === "agenda" && (
+          <ModalAgenda id={modal.id} imovelIdRelacionado={modal.imovelIdRelacionado} />
+        )}
         {modal?.tipo === "verificacao" && modal.id && <ModalVerificacao id={modal.id} />}
         {modal?.tipo === "config" && <ModalConfig />}
         {modal?.tipo === "whatsapp" && modal.id && (

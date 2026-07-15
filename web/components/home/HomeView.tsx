@@ -90,6 +90,13 @@ export default function HomeView() {
     .filter(isStale)
     .sort((a, b) => (daysInCurrentStatus(b) ?? 0) - (daysInCurrentStatus(a) ?? 0));
 
+  // Imóveis em negociação: a etapa mais quente do funil (mais perto de fechar).
+  // Mostra todos nesse status, os que estão há mais tempo parados primeiro —
+  // para retomar antes que esfriem.
+  const emNegociacao = imoveis
+    .filter((i) => i.status === "Em negociação")
+    .sort((a, b) => (daysInCurrentStatus(b) ?? 0) - (daysInCurrentStatus(a) ?? 0));
+
   // Metas do mês (mesma leitura da view Metas).
   const mKey = currentMonthKey();
   const meta: Meta = metas[mKey] || { angariacoes: 0, locados: 0, comissao: 0, faturamento: 0 };
@@ -232,6 +239,90 @@ export default function HomeView() {
     </div>
   );
 
+  const cardEmNegociacao = (
+    <div className="card" key="em-negociacao">
+      <div className="home-card-head">
+        <div className="card-title">Em negociação</div>
+        <button type="button" className="home-link" onClick={() => router.push("/pipeline")}>
+          Ver pipeline →
+        </button>
+      </div>
+      {emNegociacao.length === 0 ? (
+        <p className="section-note">Nenhum imóvel em negociação no momento.</p>
+      ) : (
+        <div className="home-list home-list-parados">
+          {emNegociacao.slice(0, LIMITE_LISTA).map((i) => {
+            const dias = daysInCurrentStatus(i);
+            return (
+              <div key={i.id} className="home-parado" onClick={() => abrirModal("imovel", i.id)}>
+                <div className="home-parado-top">
+                  <span className="home-parado-codigo" title={i.codigo || i.referenciaCrm || ""}>
+                    {i.codigo || i.referenciaCrm || "Sem código"}
+                  </span>
+                  <span className="home-parado-motivo">
+                    {dias != null && (
+                      <span className="home-list-chip">
+                        há {dias} dia{dias === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <div className="home-parado-row" title={i.endereco}>
+                  <span className="home-parado-ic">📍</span>
+                  <span className="home-parado-val">{i.endereco || "Sem endereço"}</span>
+                </div>
+                <div className="home-parado-row">
+                  <span className="home-parado-ic">👤</span>
+                  <span className={`home-parado-val${i.proprietarioNome ? "" : " vazio"}`}>
+                    {i.proprietarioNome || "Sem proprietário"}
+                  </span>
+                </div>
+                <div className="home-parado-acoes">
+                  <button
+                    type="button"
+                    className="home-parado-agendar"
+                    title="Agendar um retorno para este imóvel"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      abrirModal("agenda", undefined, undefined, i.id);
+                    }}
+                  >
+                    <span className="home-parado-agendar-ic" aria-hidden>
+                      ＋
+                    </span>
+                    Agendar retorno
+                  </button>
+                  {i.proprietarioTelefone && (
+                    <button
+                      type="button"
+                      className="home-parado-wpp"
+                      title="Escrever mensagem no WhatsApp"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        abrirModal("whatsapp", i.id, modeloPadraoWhatsapp(i.status));
+                      }}
+                    >
+                      <span className="home-parado-wpp-ic" aria-hidden>
+                        💬
+                      </span>
+                      WhatsApp
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {emNegociacao.length > LIMITE_LISTA && (
+            <button type="button" className="home-more" onClick={() => router.push("/pipeline")}>
+              + {emNegociacao.length - LIMITE_LISTA}{" "}
+              {emNegociacao.length - LIMITE_LISTA > 1 ? "imóveis em negociação" : "imóvel em negociação"}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   // Com conteúdo → coluna principal (larga); vazio → lateral (compacto).
   const cardMetas = (
     <div className="card home-metas" key="metas">
@@ -267,6 +358,7 @@ export default function HomeView() {
   const laterais: React.ReactNode[] = [];
   (pendentes.length ? principais : laterais).push(cardCompromissos);
   (parados.length ? principais : laterais).push(cardParados);
+  (emNegociacao.length ? principais : laterais).push(cardEmNegociacao);
 
   // Se algum resumo ficou vazio (desceu para a lateral), a coluna principal fica
   // curta; as metas sobem para ela para equilibrar as colunas. Caso contrário,

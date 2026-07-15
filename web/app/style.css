@@ -1716,6 +1716,27 @@ legend{
 .home-parado-wpp:hover{ border-color: var(--good); transform: translateY(-1px); }
 .home-parado-wpp-ic{ font-size: 12.5px; }
 
+/* Linha de ações do card "Em negociação": agendar um retorno e/ou já disparar
+   o WhatsApp. Fica no rodapé do cartão, alinhada à direita. */
+.home-parado-acoes{
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  flex-wrap: wrap;
+}
+.home-parado-agendar{
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  font-size: 11.5px; font-weight: 600; line-height: 1;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.home-parado-agendar:hover{ border-color: var(--accent-strong); transform: translateY(-1px); }
+.home-parado-agendar-ic{ font-size: 12.5px; }
+
 /* Seletor de modelos do WhatsApp — dois grupos recolhíveis ("Meus modelos"
    em cima, com preferência, e "Modelos do sistema"), cada um abre ao clicar. */
 .wpp-picker{
