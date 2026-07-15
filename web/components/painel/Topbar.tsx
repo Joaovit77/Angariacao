@@ -39,26 +39,31 @@ export default function Topbar({
   const titulo = TITULOS[pathname] ?? "Angariações";
 
   return (
+    // A barra ocupa a largura toda (fundo/borda full-bleed); o conteúdo interno
+    // (.topbar-inner) é centralizado no mesmo max-width do .main, pra o título
+    // ficar alinhado com o conteúdo abaixo.
     <header className="topbar">
-      <button
-        type="button"
-        className={`topbar-menu${menuAtivo ? " is-x" : ""}`}
-        onClick={aoAlternar}
-        aria-label="Alternar menu"
-        aria-expanded={menuAtivo}
-      >
-        {/* Três barras que viram X via CSS (.topbar-menu.is-x). */}
-        <span className="ham" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
-        </span>
-      </button>
-      <Image className="topbar-logo" src="/logo.png" alt="" width={28} height={28} />
-      <h1 className="topbar-title">{titulo}</h1>
-      <div className="topbar-actions">
-        <SinoNotificacoes />
-        <MenuUsuario />
+      <div className="topbar-inner">
+        <button
+          type="button"
+          className={`topbar-menu${menuAtivo ? " is-x" : ""}`}
+          onClick={aoAlternar}
+          aria-label="Alternar menu"
+          aria-expanded={menuAtivo}
+        >
+          {/* Três barras que viram X via CSS (.topbar-menu.is-x). */}
+          <span className="ham" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+        </button>
+        <Image className="topbar-logo" src="/logo.png" alt="" width={28} height={28} />
+        <h1 className="topbar-title">{titulo}</h1>
+        <div className="topbar-actions">
+          <SinoNotificacoes />
+          <MenuUsuario />
+        </div>
       </div>
     </header>
   );

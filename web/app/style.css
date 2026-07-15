@@ -409,6 +409,9 @@ img.brand-mark{
   overflow-x: hidden;
   grid-column: 2;
   grid-row: 2;
+  /* Centraliza o conteúdo na área disponível (quando mais largo que 1400px),
+     em vez de encostá-lo à esquerda. */
+  margin-inline: auto;
 }
 
 /* ============================================================
@@ -419,15 +422,24 @@ img.brand-mark{
 .topbar{
   grid-column: 2;
   grid-row: 1;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 13px 24px;
+  /* Fundo/borda ocupam a largura toda; o conteúdo interno é centralizado. */
+  padding: 13px 0;
   background: var(--bg-elev-1);
   border-bottom: 1px solid var(--border-soft);
   position: sticky;
   top: 0;
   z-index: 2100;
+}
+/* Conteúdo da topbar centralizado no mesmo max-width do .main, com o mesmo
+   recuo lateral (34px) — assim o título fica alinhado ao conteúdo abaixo. */
+.topbar-inner{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 1400px;
+  margin-inline: auto;
+  padding-inline: 34px;
 }
 /* Hambúrguer: presente nas duas larguras (recolhe a barra no desktop,
    abre a gaveta no mobile). O logo pequeno segue só no mobile. */
@@ -1540,7 +1552,8 @@ legend{
   .app-shell{ grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
 
   /* No mobile a topbar ganha o hambúrguer e o logo; a sidebar vira gaveta. */
-  .topbar{ grid-column: 1 / -1; padding: 10px 14px; gap: 10px; }
+  .topbar{ grid-column: 1 / -1; padding: 10px 0; }
+  .topbar-inner{ padding-inline: 16px; gap: 10px; }
   .topbar-menu{ display:flex; }
   .topbar-logo{ display:block; }
   .topbar-title{ font-size: 17px; }
