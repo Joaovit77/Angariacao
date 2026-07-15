@@ -4,14 +4,16 @@
     {
       "name": "painel-angariacoes",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", ".", "-l", "8123"],
-      "port": 8123
+      "runtimeArgs": ["serve", "."],
+      "port": 8123,
+      "autoPort": true
     },
     {
       "name": "web-next",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--prefix", "web"],
-      "port": 3000
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }
