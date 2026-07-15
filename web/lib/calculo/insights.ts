@@ -11,7 +11,7 @@
    atrás de angariar), não uma rival disputando o proprietário. Os
    insights de garimpo tratam isso como canal de prospecção.
    ================================================================ */
-import { ORIGEM_GARIMPO_SITE, STALE_DAYS_THRESHOLD, STATUS_TERMINAL_NEGATIVE } from "../constantes";
+import { ORIGEM_GARIMPO_SITE, STATUS_TERMINAL_NEGATIVE } from "../constantes";
 import { monthKey, monthLabelLong, shiftMonthKey } from "../datas";
 import type { Imovel } from "../tipos";
 import type { PipelineCol } from "./filtros";
@@ -20,6 +20,7 @@ import {
   daysInCurrentStatus,
   groupCount,
   isStale,
+  limiteStaleParaStatus,
   metricsForRange,
   tempoAteLocacao,
 } from "./motor";
@@ -283,7 +284,7 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
       tone: "bad",
       icon: "funil",
       title: `Gargalo em "${status}"`,
-      text: `${count} imóvel(is) parado(s) há mais de ${STALE_DAYS_THRESHOLD} dias nessa etapa. Bom ponto de partida pra retomar contato.`,
+      text: `${count} imóvel(is) parado(s) há mais de ${limiteStaleParaStatus(status)} dias nessa etapa. Bom ponto de partida pra retomar contato.`,
       group: "acao",
       priority: 100,
       action: { tipo: "coluna", col: "status", valor: status },

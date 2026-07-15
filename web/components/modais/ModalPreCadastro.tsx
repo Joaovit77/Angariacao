@@ -13,7 +13,7 @@ import { useState } from "react";
 import { useSessao } from "@/components/SessaoProvider";
 import { sugerirCodigoImovel } from "@/lib/codigoImovel";
 import { todayISO } from "@/lib/datas";
-import { buscarCep, maskCEP } from "@/lib/geo";
+import { buscarCep, geocodeEndereco, maskCEP } from "@/lib/geo";
 import { salvarImovel, uid } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
@@ -40,6 +40,10 @@ export default function ModalPreCadastro() {
   const [proprietarioTelefone, setProprietarioTelefone] = useState("");
   const [cepStatus, setCepStatus] = useState<Status>({ msg: "", tone: "" });
   const [salvando, setSalvando] = useState(false);
+  // Coordenadas geocodificadas a partir do CEP: gravadas junto do imóvel para
+  // que a edição posterior já abra o mapa no ponto certo (sem rebuscar o CEP).
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
 
   async function aoBuscarCep() {
     const raw = cep.replace(/\D/g, "");
@@ -48,21 +52,41 @@ export default function ModalPreCadastro() {
       return;
     }
     setCepStatus({ msg: "Buscando...", tone: "" });
+    let data;
     try {
-      const data = await buscarCep(raw);
-      if (data.erro) {
-        setCepStatus({ msg: "CEP não encontrado.", tone: "err" });
-        return;
-      }
-      if (data.logradouro) {
-        const numeroDigitado = (endereco.match(/,\s*(.+)$/) || [])[1];
-        setEndereco(numeroDigitado ? `${data.logradouro}, ${numeroDigitado}` : data.logradouro);
-      }
-      if (data.bairro) setBairro(data.bairro);
-      if (data.localidade) setCidade(data.localidade);
-      setCepStatus({ msg: "Endereço preenchido a partir do CEP.", tone: "ok" });
+      data = await buscarCep(raw);
     } catch {
       setCepStatus({ msg: "Não foi possível buscar o CEP agora. Verifique sua conexão.", tone: "err" });
+      return;
+    }
+    if (data.erro) {
+      setCepStatus({ msg: "CEP não encontrado.", tone: "err" });
+      return;
+    }
+    let novoEndereco = endereco;
+    if (data.logradouro) {
+      const numeroDigitado = (endereco.match(/,\s*(.+)$/) || [])[1];
+      novoEndereco = numeroDigitado ? `${data.logradouro}, ${numeroDigitado}` : data.logradouro;
+      setEndereco(novoEndereco);
+    }
+    const novoBairro = data.bairro || bairro;
+    const novaCidade = data.localidade || cidade;
+    if (data.bairro) setBairro(data.bairro);
+    if (data.localidade) setCidade(data.localidade);
+    setCepStatus({ msg: "Endereço preenchido a partir do CEP.", tone: "ok" });
+
+    // Geocodifica em segundo plano e guarda as coordenadas. Assim, quando o
+    // corretor abrir a edição depois, o mini-mapa já aparece no ponto do CEP —
+    // sem precisar clicar em "Buscar CEP" de novo. É um bônus silencioso: se
+    // falhar, o cadastro segue normalmente e a edição ainda pode localizar.
+    try {
+      const found = await geocodeEndereco(novoEndereco.trim(), novoBairro.trim(), novaCidade.trim());
+      if (found) {
+        setLatitude(found.lat);
+        setLongitude(found.lon);
+      }
+    } catch {
+      /* silencioso — coordenadas são opcionais aqui */
     }
   }
 
@@ -94,6 +118,8 @@ export default function ModalPreCadastro() {
       proprietarioNome: proprietarioNome.trim(),
       proprietarioTelefone: proprietarioTelefone.trim(),
       cep: cep.trim(),
+      latitude,
+      longitude,
       status: "Novo contato",
       dataAngariacao: hoje,
       statusHistory: historico,

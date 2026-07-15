@@ -82,6 +82,13 @@ export const AGENDA_TYPES = ["Retorno ao proprietário", "Visita", "Pendência",
 // Quantos dias parado num mesmo status já é considerado "estagnado".
 export const STALE_DAYS_THRESHOLD = 7;
 
+// Etapas onde o imóvel já foi captado e está aguardando locação
+// (Angariado, Publicado): ficam naturalmente semanas/meses no mesmo status,
+// então só contam como "parado" depois de um prazo bem mais longo — a
+// cobrança dessa fase é o lembrete de disponibilidade (60 dias), não o funil.
+export const STATUS_STALE_LENTO = ["Angariado", "Publicado"] as const;
+export const STALE_DAYS_THRESHOLD_POS_ANGARIACAO = 60;
+
 // Dias após a angariação (sem locação) para gerar o lembrete automático
 // de "verificar disponibilidade com o proprietário".
 export const VERIFICACAO_DISPONIBILIDADE_DIAS = 60;

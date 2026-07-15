@@ -92,9 +92,13 @@ describe("Dashboard (Julho de 2026)", () => {
 });
 
 describe("Pipeline", () => {
-  it("badges de stale nos mesmos 4 imóveis do baseline", () => {
+  // Divergência intencional do app antigo: Angariado/Publicado só contam como
+  // "parado" após 60 dias (não 7), pois são etapas de imóvel já captado
+  // aguardando locação. Isso tira do baseline o AP-008 (Publicado, 24d) e o
+  // CA-007 (Angariado, 29d) — restam só as etapas de perseguição ativa.
+  it("badges de stale só nas etapas de perseguição ativa", () => {
     const parados = imoveis.filter(isStale).map((i) => i.codigo).sort();
-    expect(parados).toEqual(["AP-008", "CA-002", "CA-007", "SO-004"]);
+    expect(parados).toEqual(["CA-002", "SO-004"]);
   });
 });
 
@@ -137,14 +141,16 @@ describe("Insights", () => {
     return card;
   };
 
-  it("gera os 12 cards do baseline, na ordem agrupada por seção", () => {
-    expect(insights).toHaveLength(12);
+  // Com a regra nova de "parado", só 2 imóveis ficam estagnados (< 3), então o
+  // card "estagnado" (que exige ao menos 3) não é gerado — 11 cards, não 12.
+  it("gera os 11 cards do baseline, na ordem agrupada por seção", () => {
+    expect(insights).toHaveLength(11);
     expect(insights.map((i) => i.icon)).toEqual([
-      "funil", "ampulheta", "estagnado", "escopo", "alvo", "alta", "check", "telefone", "grafico", "local", "entrada", "busca",
+      "funil", "ampulheta", "escopo", "alvo", "alta", "check", "telefone", "grafico", "local", "entrada", "busca",
     ]);
     // As seções saem em blocos, na ordem de INSIGHT_GROUP_ORDER.
     expect(insights.map((i) => i.group)).toEqual([
-      "acao", "acao", "acao",
+      "acao", "acao",
       "garimpo",
       "desempenho", "desempenho", "desempenho", "desempenho", "desempenho",
       "padroes", "padroes", "padroes",
@@ -166,14 +172,14 @@ describe("Insights", () => {
     expect(porIcone("grafico").text).toContain("1 imóveis locados");
     expect(porIcone("funil").title).toBe('Gargalo em "Novo contato"');
     expect(porIcone("funil").text).toContain("1 imóvel(is)");
-    expect(porIcone("estagnado").title).toBe("4 imóveis estagnados no pipeline");
     expect(porIcone("busca").title).toBe("Principal motivo de perda: Optou por outra imobiliária");
     expect(porIcone("busca").text).toContain("1 de 3 perdas registradas (33%)");
     expect(porIcone("alvo").title).toBe("Taxa de conversão geral: 33%");
     expect(porIcone("alvo").text).toContain("os 6 processos já encerrados");
-    // Card por-imóvel: o mais parado da carteira, nominal.
-    expect(porIcone("ampulheta").title).toBe("CA-007 é o mais parado: 29 dias");
-    expect(porIcone("ampulheta").text).toContain('há 29 dias em "Angariado"');
+    // Card por-imóvel: o mais parado da carteira, nominal. Com a regra nova,
+    // Angariado/Publicado não entram, então o topo passa a ser CA-002.
+    expect(porIcone("ampulheta").title).toBe("CA-002 é o mais parado: 12 dias");
+    expect(porIcone("ampulheta").text).toContain('há 12 dias em "Novo contato"');
     // Tendência mês a mês (Julho/2026 = 1 vs Junho/2026 = 0).
     expect(porIcone("alta").title).toContain("Julho de 2026");
     expect(porIcone("alta").text).toContain("contra 0 em Junho de 2026");
@@ -192,7 +198,7 @@ describe("Insights", () => {
       valor: "Prospecção ativa (porta a porta)",
     });
     // O card por-imóvel busca pelo código do imóvel específico.
-    expect(porIcone("ampulheta").action).toEqual({ tipo: "busca", termo: "CA-007", rotulo: "Ver imóvel →" });
+    expect(porIcone("ampulheta").action).toEqual({ tipo: "busca", termo: "CA-002", rotulo: "Ver imóvel →" });
     // Cards sem recorte equivalente não oferecem atalho.
     expect(porIcone("telefone").action).toBeUndefined();
     expect(porIcone("alvo").action).toBeUndefined();

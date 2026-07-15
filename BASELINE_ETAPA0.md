@@ -11,6 +11,17 @@
 > ⚠️ Vários números dependem da data corrente (mês "Julho de 2026", badges de stale, atrasados
 > da agenda). Ao comparar em outra data, re-capturar o baseline no app antigo no mesmo dia,
 > com o mesmo seed — o script é idempotente e regenera o estado exato.
+>
+> 🔁 **Divergência intencional pós-baseline (regra de "parado").** O app antigo marcava como
+> "parado" (stale) qualquer imóvel com 7 dias no mesmo status. A partir da migração, **Angariado**
+> e **Publicado** só contam como parado após **60 dias** (imóvel já captado, aguardando locação —
+> a cobrança dessa fase é o lembrete de disponibilidade). Onde este documento marca CA-007
+> (Angariado, 29d) e AP-008 (Publicado, 24d) como stale, o app Next.js **não** os marca mais.
+> Efeitos no baseline: badges de stale passam a ser só **CA-002** e **SO-004**; o card "mais parado"
+> vira **CA-002 (12 dias)**; e o card "N imóveis estagnados" (mínimo 3) deixa de existir, caindo de
+> **9 → 8** insights aqui listados (12 → 11 na contagem interna do `buildInsights`). O teste
+> executável [`web/tests/baseline-etapa0.test.ts`](web/tests/baseline-etapa0.test.ts) já reflete
+> os valores novos.
 
 ## Dataset de referência (resumo do seed)
 

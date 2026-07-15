@@ -13,7 +13,12 @@
    A verdade sobre o progresso de um imóvel mora no statusHistory,
    não no campo status atual nem na existência do registro.
    ================================================================ */
-import { STATUS_TERMINAL_NEGATIVE, STALE_DAYS_THRESHOLD } from "../constantes";
+import {
+  STATUS_TERMINAL_NEGATIVE,
+  STALE_DAYS_THRESHOLD,
+  STALE_DAYS_THRESHOLD_POS_ANGARIACAO,
+  STATUS_STALE_LENTO,
+} from "../constantes";
 import { daysBetween, monthKey, todayISO } from "../datas";
 import type { Imovel } from "../tipos";
 
@@ -36,12 +41,22 @@ export function isPausado(imovel: Imovel): boolean {
   return !!(imovel.pausadoAte && imovel.pausadoAte >= todayISO());
 }
 
+// Prazo (em dias) até um imóvel nesse status contar como "parado".
+// Angariado/Publicado já estão captados e aguardando locação — ficam
+// semanas/meses no mesmo status por natureza, então usam um prazo bem
+// mais longo do que as etapas de perseguição ativa do funil.
+export function limiteStaleParaStatus(status: string): number {
+  return (STATUS_STALE_LENTO as readonly string[]).includes(status)
+    ? STALE_DAYS_THRESHOLD_POS_ANGARIACAO
+    : STALE_DAYS_THRESHOLD;
+}
+
 export function isStale(imovel: Imovel): boolean {
   if ((STATUS_TERMINAL_NEGATIVE as readonly string[]).includes(imovel.status) || imovel.status === "Locado") return false;
   if (isPausado(imovel)) return false;
   const since = currentStatusSince(imovel);
   const d = daysBetween(since, todayISO());
-  return d !== null && d >= STALE_DAYS_THRESHOLD;
+  return d !== null && d >= limiteStaleParaStatus(imovel.status);
 }
 
 export function daysInCurrentStatus(imovel: Imovel): number | null {
