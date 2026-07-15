@@ -107,6 +107,28 @@ export default function ModalPreCadastro() {
       }
     }
 
+    setSalvando(true);
+
+    // Garante as coordenadas ANTES de salvar. A geocodificação disparada no
+    // "Buscar CEP" roda em segundo plano e faz várias tentativas no Nominatim
+    // (leva alguns segundos); se o corretor clicar rápido em salvar, ela ainda
+    // não terminou e latitude/longitude estariam null — o imóvel iria sem
+    // localização e a edição depois abriria sem o mapa (tinha que rebuscar).
+    // Se as coordenadas já vieram do segundo plano, reusa e não rebusca.
+    let lat = latitude;
+    let lng = longitude;
+    if (lat == null) {
+      try {
+        const found = await geocodeEndereco(enderecoLimpo, bairro.trim(), cidade.trim());
+        if (found) {
+          lat = found.lat;
+          lng = found.lon;
+        }
+      } catch {
+        /* silencioso — coordenadas são opcionais; a edição ainda pode localizar */
+      }
+    }
+
     const hoje = todayISO();
     const historico: StatusHistoryEntry[] = [{ status: "Novo contato", date: hoje }];
     const data: Imovel = {
@@ -118,15 +140,14 @@ export default function ModalPreCadastro() {
       proprietarioNome: proprietarioNome.trim(),
       proprietarioTelefone: proprietarioTelefone.trim(),
       cep: cep.trim(),
-      latitude,
-      longitude,
+      latitude: lat,
+      longitude: lng,
       status: "Novo contato",
       dataAngariacao: hoje,
       statusHistory: historico,
       preCadastro: true,
     };
 
-    setSalvando(true);
     const { ok } = await salvarImovel(data, usuario.id, false);
     setSalvando(false);
     if (!ok) return;
