@@ -6,8 +6,11 @@
    Os números vêm de lib/calculo/relatorios.ts.
    ================================================================ */
 import { useState } from "react";
-import { useSessao } from "@/components/SessaoProvider";
+import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
+import { desempenhoPorCanal, type CanalDesempenho } from "@/lib/calculo/canais";
+import { dateEnteredStatus } from "@/lib/calculo/motor";
 import { relatorioMensal, relatorioSemanal, weekRangeLabel, type DadosRelatorio } from "@/lib/calculo/relatorios";
+import { gerarCsv } from "@/lib/csv";
 import { currentMonthKey, monthLabelLong, shiftMonthKey, todayISO } from "@/lib/datas";
 import { fmtDate, fmtMoney } from "@/lib/formatadores";
 import { useAppStore } from "@/lib/store";
@@ -125,6 +128,61 @@ function ReportDoc({ d, responsavel }: { d: DadosRelatorio; responsavel: string 
   );
 }
 
+function DesempenhoCanais({ canais }: { canais: CanalDesempenho[] }) {
+  return (
+    <div className="report-doc" style={{ marginTop: "22px" }}>
+      <div className="report-section-title" style={{ marginTop: 0 }}>
+        Desempenho por canal de captação
+      </div>
+      <p className="section-note" style={{ marginBottom: "14px" }}>
+        Carteira completa (não recortada pelo período). Considera apenas imóveis que chegaram na
+        etapa Angariado. Conversão = locados ÷ angariados do canal.
+      </p>
+      {canais.length === 0 ? (
+        <p className="section-note">Nenhum imóvel angariado ainda para analisar por canal.</p>
+      ) : (
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Origem</th>
+                <th>Angariados</th>
+                <th>Locados</th>
+                <th>Conversão</th>
+                <th>Tempo médio</th>
+              </tr>
+            </thead>
+            <tbody>
+              {canais.map((c) => (
+                <tr key={c.origem}>
+                  <td className="cell-strong">{c.origem}</td>
+                  <td>{c.angariados}</td>
+                  <td>{c.locados}</td>
+                  <td>{c.conversao.toFixed(0)}%</td>
+                  <td>{c.tempoMedio != null ? `${Math.round(c.tempoMedio)} dias` : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Dispara o download de um CSV no browser (Blob + link temporário).
+function baixarCsv(nomeArquivo: string, conteudo: string) {
+  const blob = new Blob([conteudo], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nomeArquivo;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export default function RelatoriosView() {
   const imoveis = useAppStore((s) => s.imoveis);
   const comissaoPercent = useAppStore((s) => s.config.comissaoPercent);
@@ -139,6 +197,38 @@ export default function RelatoriosView() {
       ? relatorioMensal(imoveis, comissaoPercent, mesKey)
       : relatorioSemanal(imoveis, comissaoPercent, semanaOffset);
 
+  // Análise por canal: carteira inteira, independente do período selecionado.
+  const canais = desempenhoPorCanal(imoveis);
+
+  // Exporta os imóveis angariados no período (o que a tabela do relatório
+  // mostra), com colunas mais ricas do que a versão de tela — o CSV serve para
+  // planilha/backup/prestação de contas.
+  function exportarImoveis() {
+    const cabecalho = [
+      "Código", "Ref. CRM", "Endereço", "Bairro", "Cidade", "Tipo", "Status",
+      "Proprietário", "Telefone", "Origem", "Forma de abordagem", "Aluguel", "Angariado em",
+    ];
+    const linhas = dados.imoveisAtual.map((i) => {
+      const angariadoEm = dateEnteredStatus(i, "Angariado");
+      return [
+        i.codigo, i.referenciaCrm, i.endereco, i.bairro, i.cidade, i.tipo, i.status,
+        i.proprietarioNome, i.proprietarioTelefone, i.origemImovel, i.formaAbordagem,
+        i.valorAluguel, angariadoEm ? fmtDate(angariadoEm) : "",
+      ];
+    });
+    baixarCsv(`imoveis-angariados-${modo}-${todayISO()}.csv`, gerarCsv(cabecalho, linhas));
+  }
+
+  // Exporta a tabela de desempenho por canal (carteira completa).
+  function exportarCanais() {
+    const cabecalho = ["Origem", "Angariados", "Locados", "Conversão (%)", "Tempo médio (dias)"];
+    const linhas = canais.map((c) => [
+      c.origem, c.angariados, c.locados, c.conversao.toFixed(0),
+      c.tempoMedio != null ? Math.round(c.tempoMedio) : "",
+    ]);
+    baixarCsv(`desempenho-canais-${todayISO()}.csv`, gerarCsv(cabecalho, linhas));
+  }
+
   return (
     <>
       <div className="page-head">
@@ -146,6 +236,24 @@ export default function RelatoriosView() {
           <p className="page-sub">Resumo de produtividade para acompanhamento e prestação de contas</p>
         </div>
         <div className="page-actions">
+          <button
+            type="button"
+            className="btn"
+            onClick={exportarImoveis}
+            disabled={dados.imoveisAtual.length === 0}
+            title="Baixar os imóveis angariados no período em CSV"
+          >
+            Exportar imóveis (CSV)
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={exportarCanais}
+            disabled={canais.length === 0}
+            title="Baixar a tabela de desempenho por canal em CSV"
+          >
+            Exportar canais (CSV)
+          </button>
           <button type="button" className="btn" onClick={() => window.print()}>
             Imprimir / salvar PDF
           </button>
@@ -196,7 +304,8 @@ export default function RelatoriosView() {
       </div>
 
       <div id="report-doc">
-        <ReportDoc d={dados} responsavel={usuario?.email || "-"} />
+        <ReportDoc d={dados} responsavel={rotuloUsuario(usuario) || "-"} />
+        <DesempenhoCanais canais={canais} />
       </div>
     </>
   );
