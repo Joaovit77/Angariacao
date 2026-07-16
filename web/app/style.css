@@ -213,14 +213,15 @@ img.brand-mark{
     padding-inline: 12px;
   }
 
-  /* Marca no DESKTOP = só o logo, abaixo da linha do cabeçalho (o texto
-     "Angariações/Controle de Locação" colidia com a topbar na faixa do
-     conteúdo; ele segue visível na gaveta do mobile, onde não há conflito).
+  /* Marca no DESKTOP: logo + texto, abaixo da linha do cabeçalho. O texto
+     cabe de novo porque o hambúrguer empurrou a marca para baixo de y=63 —
+     antes ela ficava na faixa da topbar e o texto colidia com ela.
      SEM divisória própria: a única linha horizontal é a do .sidebar-head, que
      casa com a da topbar — uma segunda linha aqui não encontraria nada. */
-  .brand-text{ display: none; }
   .brand{ border-bottom: none; padding: 0 8px; margin-bottom: 10px; }
+  /* No trilho de 72px não há espaço para o texto: só o logo, centralizado. */
   .recolhida .brand{ justify-content: center; padding: 0; }
+  .recolhida .brand-text{ display: none; }
 
   /* Itens: ícone centralizado, sem rótulo. */
   .recolhida .nav-group{ width: 100%; }
@@ -438,27 +439,21 @@ img.brand-mark{
    Presente no mobile e no desktop. No desktop ocupa a coluna do
    conteúdo (col 2, linha 1); no mobile vira faixa de largura total.
    ============================================================ */
+/* A barra usa a largura toda: título junto ao menu e sino/avatar no canto
+   direito. Ela NÃO acompanha a centralização do .main de propósito — presa ao
+   bloco de 1400px, os ícones do canto ficavam puxados para dentro. */
 .topbar{
   grid-column: 2;
   grid-row: 1;
-  /* Fundo/borda ocupam a largura toda; o conteúdo interno é centralizado. */
-  padding: 13px 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 34px;
   background: var(--bg-elev-1);
   border-bottom: 1px solid var(--border-soft);
   position: sticky;
   top: 0;
   z-index: 2100;
-}
-/* Conteúdo da topbar centralizado no mesmo max-width do .main, com o mesmo
-   recuo lateral (34px) — assim o título fica alinhado ao conteúdo abaixo. */
-.topbar-inner{
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  max-width: 1400px;
-  margin-inline: auto;
-  padding-inline: 34px;
 }
 .topbar-logo{ display:none; }   /* logo: só no mobile (no desktop a sidebar já tem) */
 
@@ -1590,8 +1585,7 @@ legend{
      cobre a topbar (z-index 2300 > 2100) e aparece o X dela, que fecha. Sem o
      botão da gaveta, abrir o menu escondia o X atrás dela e não sobrava nada
      clicável. */
-  .topbar{ grid-column: 1 / -1; padding: 10px 0; }
-  .topbar-inner{ padding-inline: 16px; gap: 10px; }
+  .topbar{ grid-column: 1 / -1; padding: 10px 16px; gap: 10px; }
   .topbar-menu{ display:flex; }
   .topbar-logo{ display:block; }
   .topbar-title{ font-size: 17px; }
