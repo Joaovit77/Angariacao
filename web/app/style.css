@@ -1557,13 +1557,15 @@ legend{
      quando a página tem pouco conteúdo, inflando a barra. */
   .app-shell{ grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
 
-  /* No mobile a topbar ganha o hambúrguer e o logo; a sidebar vira gaveta —
-     por isso o botão volta pra topbar (a gaveta fica fora da tela, o botão
-     dela não estaria alcançável). */
+  /* No mobile a topbar ganha o hambúrguer e o logo; a sidebar vira gaveta.
+     Os DOIS botões existem, e só um fica visível de cada vez: com a gaveta
+     fechada ela está fora da tela (sobra o da topbar, que abre); aberta, ela
+     cobre a topbar (z-index 2300 > 2100) e aparece o X dela, que fecha. Sem o
+     botão da gaveta, abrir o menu escondia o X atrás dela e não sobrava nada
+     clicável. */
   .topbar{ grid-column: 1 / -1; padding: 10px 0; }
   .topbar-inner{ padding-inline: 16px; gap: 10px; }
   .topbar-menu{ display:flex; }
-  .sidebar-menu{ display:none; }
   .topbar-logo{ display:block; }
   .topbar-title{ font-size: 17px; }
   .main{ grid-column: 1 / -1; }
