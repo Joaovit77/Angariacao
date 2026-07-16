@@ -36,6 +36,7 @@ O aplicativo vive em **[`web/`](web/)** — Next 16 (App Router, Turbopack), Typ
   do Leaflet e o `style.css`), `page.tsx` (tela de acesso e queda do link de recuperação de senha),
   e o grupo **`(painel)/`** com o shell autenticado (`layout.tsx`) e uma rota por view
   (`dashboard`, `pipeline`, `metas`, `agenda`, `insights`, `mapa`, `relatorios`, `roadmap`).
+  **`app/api/whatsapp/enviar/route.ts`** é a única rota de servidor do projeto (ver abaixo).
 - **`web/app/style.css`** — o CSS do app antigo copiado **sem alterações**, dirigido por custom
   properties em `:root`. Não há redesign; classes e tokens são os mesmos.
 - **`web/lib/`** — todo o núcleo sem UI (ver "Arquitetura" abaixo). Não importa React/Next.
@@ -123,10 +124,42 @@ registro ou fazer o primeiro contato **não** conta.
 
 ### Modelo de RLS
 
-Não há código de servidor — Supabase (Postgres + Auth) é o backend inteiro, e o isolamento por
-usuário é 100% das políticas RLS (`auth.uid() = user_id`) em `supabase-schema.sql`. Ao adicionar uma
-tabela/coluna user-scoped, ela precisa das próprias políticas RLS no mesmo padrão + o par
-`toDb*`/`fromDb*` em `web/lib/persistencia/mapeadores.ts` + o tipo em `web/lib/tipos.ts`.
+Supabase (Postgres + Auth) é o backend dos **dados**: nenhum código de servidor participa da
+leitura/escrita, e o isolamento por usuário é 100% das políticas RLS (`auth.uid() = user_id`) em
+`supabase-schema.sql`. Ao adicionar uma tabela/coluna user-scoped, ela precisa das próprias
+políticas RLS no mesmo padrão + o par `toDb*`/`fromDb*` em `web/lib/persistencia/mapeadores.ts` +
+o tipo em `web/lib/tipos.ts`.
+
+### A única rota de servidor: `web/app/api/whatsapp/enviar`
+
+O envio direto de WhatsApp (Evolution API) é a **única** exceção ao "sem servidor", e existe por um
+motivo: o token da Evolution não pode chegar ao browser. O fluxo é
+`ModalWhatsapp` → `lib/envioWhatsapp.ts` (browser) → a rota (servidor) → Evolution.
+
+Três regras ao mexer nela:
+
+- **O destinatário sai do banco, não do browser.** A rota recebe `{ imovelId, mensagem }` e lê o
+  telefone com o token de quem chamou (o RLS escopa ao dono). Aceitar o número do cliente
+  transformaria a rota num disparador para qualquer número.
+- **Toda requisição valida a sessão do Supabase** (`Authorization: Bearer <access_token>`). Sem
+  isso, qualquer um na internet manda WhatsApp pela nossa instância.
+- **As env vars da Evolution nunca levam `NEXT_PUBLIC_`** (`EVOLUTION_SERVER_URL`,
+  `EVOLUTION_INSTANCE`, `EVOLUTION_TOKEN`). Sem elas o app não quebra: o modal cai no `wa.me`.
+
+As partes puras (`numeroEvolution`, `mensagemFalhaEnvio` e o tipo `FalhaEnvio`) ficam em
+`lib/calculo/whatsapp.ts`, para cliente e servidor concordarem no mesmo vocabulário de erros.
+
+**O número: quem valida é o WhatsApp, não uma regex.** `numeroEvolution` só confere o *formato*
+(DDI 55 + DDD + 8–9 dígitos); antes de enviar, a rota chama `/chat/whatsappNumbers` e usa o **jid
+canônico** que volta. Isso resolve duas coisas que regex nenhuma resolve:
+
+- **O nono dígito.** O WhatsApp guarda muitos celulares brasileiros *sem* o 9 — em Londrina,
+  `5543998024316` e `554398024316` são a mesma conta, e o jid canônico é o sem o 9. Uma versão
+  antiga deste código exigia "9 dígitos começando em 9" e **recusava números reais que funcionam**.
+  Não reintroduza essa regra.
+- **O telefone estrangeiro.** `telefoneWhatsapp()` prefixa `55` em qualquer número de 10–11 dígitos,
+  então `+1 415 555 2671` vira `5514155552671` — que passa por qualquer teste de forma. Só a
+  consulta revela que não existe, evitando mandar mensagem para um estranho.
 
 ## Convenções e regras (o que sempre / nunca fazer)
 
@@ -148,8 +181,9 @@ tabela/coluna user-scoped, ela precisa das próprias políticas RLS no mesmo pad
   que reabrir não herde estado do uso anterior.
 - **Bibliotecas novas via npm** em `web/`, fixando a mesma major das existentes quando fizer sentido
   (Chart.js 4, Leaflet 1.9, Supabase JS 2, Zustand 5).
-- **Sem segredo no cliente além da anon key.** Uma futura API Route pode ter service key; código que
-  chega ao browser, nunca.
+- **Sem segredo no cliente além da anon key.** Segredo mora em API Route (é o caso das env vars da
+  Evolution, em `app/api/whatsapp/enviar`); código que chega ao browser, nunca. Na prática: variável
+  com `NEXT_PUBLIC_` é pública — se é segredo, não leva o prefixo.
 
 ## Ao trabalhar aqui
 

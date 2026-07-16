@@ -218,3 +218,71 @@ export function linkWhatsapp(imovel: Imovel, mensagem: string): string | null {
   if (!phone) return null;
   return `https://wa.me/${phone}?text=${encodeURIComponent(mensagem)}`;
 }
+
+/* --- Envio direto pela Evolution API ---------------------------------------
+   O wa.me acima só ABRE a conversa — quem envia é o corretor, na mão. O envio
+   direto dispara a mensagem pela Evolution (nossa instância do WhatsApp) sem
+   abrir o WhatsApp Web. A chamada em si vive em lib/envioWhatsapp.ts (browser)
+   e app/api/whatsapp/enviar (servidor, onde mora o token); aqui ficam só as
+   partes puras — normalização do número e a redação dos erros — para serem
+   testáveis e para cliente e servidor concordarem no mesmo vocabulário. */
+
+/** Motivos de falha de envio. O servidor devolve um destes; a UI traduz. */
+export type FalhaEnvio =
+  | "sem-telefone"
+  | "numero-invalido"
+  | "sem-whatsapp"
+  | "instancia-desconectada"
+  | "nao-configurado"
+  // Duas recusas diferentes, de propósito: "sessao-expirada" é o corretor sem
+  // login válido (ele reloga e resolve); "sem-permissao" é a Evolution
+  // recusando NOSSO token (só o admin resolve). Juntar as duas mandaria o
+  // corretor caçar um token quando bastava entrar de novo.
+  | "sessao-expirada"
+  | "sem-permissao"
+  | "imovel-nao-encontrado"
+  | "falha-evolution"
+  | "sem-conexao";
+
+/* Formato plausível: DDI 55 + DDD (dois dígitos, nenhum 0 — não existe DDD com
+   0) + 8 ou 9 dígitos de assinante.
+
+   Este teste é de FORMA, não de existência, e de propósito. Tentamos aqui exigir
+   o "nono dígito" (celular = 9 dígitos começando em 9) e a realidade reprovou: o
+   WhatsApp guarda muitos celulares brasileiros SEM o nono dígito — o jid
+   canônico de um número de Londrina volta como 554398024316, com 8 dígitos. A
+   regra do papel recusava números que funcionam.
+
+   Quem decide de verdade é o WhatsApp, via /chat/whatsappNumbers na rota de
+   envio: ele diz se o número existe e devolve o jid canônico (resolvendo o nono
+   dígito sozinho). É o que também barra o telefone estrangeiro — o
+   telefoneWhatsapp() prefixa 55 em qualquer número de 10–11 dígitos, então
+   +1 415 555 2671 vira 5514155552671, que PARECE brasileiro e passa por
+   qualquer regex; só a consulta revela que não existe. */
+const FORMATO_BR = /^55[1-9][1-9]\d{8,9}$/;
+
+/** Número com DDI, no formato que a Evolution espera (5543988887777).
+    null quando nem vale a tentativa — sem telefone ou fora do formato. Passar
+    aqui não garante entrega: a existência é conferida no envio. */
+export function numeroEvolution(telefone: string | null | undefined): string | null {
+  const digits = telefoneWhatsapp(telefone);
+  if (!digits || !FORMATO_BR.test(digits)) return null;
+  return digits;
+}
+
+const TEXTO_FALHA: Record<FalhaEnvio, string> = {
+  "sem-telefone": "Este imóvel não tem telefone cadastrado.",
+  "numero-invalido": "O telefone cadastrado não parece um número de celular válido. Confira o DDD e os dígitos.",
+  "sem-whatsapp": "Este número não tem WhatsApp.",
+  "instancia-desconectada": "Seu WhatsApp está desconectado da Evolution. Releia o QR Code no painel da Evolution.",
+  "nao-configurado": "O envio direto não está configurado neste ambiente.",
+  "sessao-expirada": "Sua sessão expirou. Entre novamente para enviar.",
+  "sem-permissao": "A Evolution recusou nossas credenciais. Confira o token da instância.",
+  "imovel-nao-encontrado": "Imóvel não encontrado.",
+  "falha-evolution": "A Evolution não conseguiu enviar a mensagem agora.",
+  "sem-conexao": "Não foi possível falar com o servidor de envio. Verifique sua conexão.",
+};
+
+export function mensagemFalhaEnvio(falha: FalhaEnvio): string {
+  return TEXTO_FALHA[falha] || TEXTO_FALHA["falha-evolution"];
+}

@@ -56,6 +56,30 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-anon-key
 Os valores são os que você copiou no passo 5 da Parte 1 (ou os que já estão em `supabase-config.js`,
 na raiz, do deploy antigo — são os mesmos).
 
+### Evolution API (envio direto de WhatsApp) — opcional
+
+O botão **"Enviar agora"** do modal de WhatsApp dispara a mensagem pela Evolution sem abrir o
+WhatsApp Web. Ele exige mais três variáveis — e estas são **segredos**:
+
+```
+EVOLUTION_SERVER_URL=https://sua-evolution.exemplo.com
+EVOLUTION_INSTANCE=nome-da-sua-instancia
+EVOLUTION_TOKEN=token-da-instancia
+```
+
+- **Nunca** prefixe com `NEXT_PUBLIC_`. Isso publicaria o token no navegador e qualquer visitante
+  passaria a mandar WhatsApp pela sua instância. Sem o prefixo, elas só existem no servidor
+  (a rota `web/app/api/whatsapp/enviar`) — é ela, e só ela, que fala com a Evolution.
+- Use o **token da instância**, não a *global api key*: a rota só envia mensagem e não precisa de
+  poder para criar/apagar instâncias.
+- **Se você não configurar:** nada quebra. O modal cai no `wa.me` (abrir o WhatsApp Web com a
+  mensagem pronta), que é como o app funcionava antes.
+- Para conferir se a instância está no ar (`state` deve ser `open`):
+  ```bash
+  curl -H "apikey: $EVOLUTION_TOKEN" "$EVOLUTION_SERVER_URL/instance/connectionState/$EVOLUTION_INSTANCE"
+  ```
+  Se voltar `close`, releia o QR Code no painel da Evolution — o app avisa isso no toast.
+
 ---
 
 ## Parte 3 — Colocar no ar na Vercel
@@ -72,7 +96,8 @@ que a **raiz do projeto é `web`**. O resto ela detecta sozinha (é um projeto N
 4. **Framework Preset:** deve aparecer **Next.js** automaticamente. Build Command, Output e Install
    ficam nos padrões — não precisa mexer.
 5. **Environment Variables:** adicione as duas da Parte 2
-   (`NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
+   (`NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`) e, se for usar o envio direto de
+   WhatsApp, as três da Evolution (`EVOLUTION_SERVER_URL`, `EVOLUTION_INSTANCE`, `EVOLUTION_TOKEN`).
 6. Clique em **Deploy**. Em 1–2 minutos a Vercel te dá um link
    (ex.: `https://angariacoes-web.vercel.app`).
 7. Volte no Supabase (Parte 1, passo 7) e confirme que a **Site URL** aponta para esse endereço.

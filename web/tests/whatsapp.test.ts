@@ -3,14 +3,17 @@
    fixam o contrato: modelo padrão por status, personalização com os dados
    do imóvel e o link wa.me. */
 import { describe, expect, it } from "vitest";
-import { mensagemRenovacaoAngariacao } from "@/lib/calculo/agenda";
+import { mensagemRenovacaoAngariacao, telefoneWhatsapp } from "@/lib/calculo/agenda";
 import {
   aplicarModeloUsuario,
   avisoAoSalvarModelo,
+  type FalhaEnvio,
   linkWhatsapp,
+  mensagemFalhaEnvio,
   mensagemWhatsapp,
   MODELOS_WHATSAPP,
   modeloPadraoWhatsapp,
+  numeroEvolution,
   tokenizarModeloUsuario,
 } from "@/lib/calculo/whatsapp";
 import { STATUS_ALL } from "@/lib/constantes";
@@ -227,5 +230,83 @@ describe("linkWhatsapp", () => {
   it("sem telefone retorna null", () => {
     expect(linkWhatsapp({ ...base, proprietarioTelefone: null }, "oi")).toBeNull();
     expect(linkWhatsapp({ ...base, proprietarioTelefone: "sem número" }, "oi")).toBeNull();
+  });
+});
+
+describe("numeroEvolution", () => {
+  it("normaliza o telefone digitado para só dígitos com DDI", () => {
+    expect(numeroEvolution("(11) 98888-0002")).toBe("5511988880002");
+    expect(numeroEvolution("+55 11 98888-0002")).toBe("5511988880002");
+    expect(numeroEvolution(" 43 9 8888-7777 ")).toBe("5543988887777");
+  });
+
+  it("aceita celular com e sem o nono dígito, e fixo", () => {
+    expect(numeroEvolution("5543988887777")).toBe("5543988887777");
+    expect(numeroEvolution("554332221111")).toBe("554332221111");
+  });
+
+  it("aceita celular cujo jid do WhatsApp não tem o nono dígito", () => {
+    // Caso real (Londrina): 554398024316 é uma conta de WhatsApp que existe, e
+    // é o jid canônico do número — exigir "9 dígitos começando em 9" recusava
+    // um número que funciona. Quem confere existência é a rota de envio.
+    expect(numeroEvolution("43 9802-4316")).toBe("554398024316");
+    expect(numeroEvolution("5543998024316")).toBe("5543998024316");
+  });
+
+  it("recusa o que não dá para enviar — resta o wa.me/copiar", () => {
+    expect(numeroEvolution(null)).toBeNull();
+    expect(numeroEvolution("")).toBeNull();
+    expect(numeroEvolution("sem número")).toBeNull();
+    expect(numeroEvolution("5511")).toBeNull();
+    expect(numeroEvolution("5511988880002999")).toBeNull();
+    expect(numeroEvolution("5501988887777")).toBeNull(); // DDD com 0
+    expect(numeroEvolution("5510988887777")).toBeNull(); // DDD com 0
+  });
+
+  it("número estrangeiro passa no formato — quem barra é a consulta ao WhatsApp", () => {
+    // telefoneWhatsapp() prefixa 55 em qualquer número de 10–11 dígitos, então
+    // este vira 5514155552671 e PARECE um DDD 14 legítimo: nenhuma regex
+    // distingue. A rota consulta /chat/whatsappNumbers e ele volta exists:false,
+    // virando "sem-whatsapp" em vez de mensagem para um estranho.
+    expect(telefoneWhatsapp("+1 415 555 2671")).toBe("5514155552671");
+    expect(numeroEvolution("+1 415 555 2671")).toBe("5514155552671");
+  });
+
+  it("concorda com o wa.me: se dá para enviar direto, dá para abrir o link", () => {
+    for (const tel of ["(11) 98888-0002", "+55 11 98888-0002", "4332221111"]) {
+      expect(numeroEvolution(tel)).not.toBeNull();
+      expect(linkWhatsapp({ ...base, proprietarioTelefone: tel }, "oi")).toContain(numeroEvolution(tel)!);
+    }
+  });
+});
+
+describe("mensagemFalhaEnvio", () => {
+  it("toda falha tem texto em pt-BR", () => {
+    const falhas: FalhaEnvio[] = [
+      "sem-telefone",
+      "numero-invalido",
+      "sem-whatsapp",
+      "instancia-desconectada",
+      "nao-configurado",
+      "sessao-expirada",
+      "sem-permissao",
+      "imovel-nao-encontrado",
+      "falha-evolution",
+      "sem-conexao",
+    ];
+    for (const f of falhas) {
+      expect(mensagemFalhaEnvio(f).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("sessão expirada e token recusado dizem coisas diferentes", () => {
+    // Um o corretor resolve relogando; o outro é o token da Evolution, que só
+    // o admin troca. Trocar as mensagens manda ele caçar o problema errado.
+    expect(mensagemFalhaEnvio("sessao-expirada")).not.toBe(mensagemFalhaEnvio("sem-permissao"));
+    expect(mensagemFalhaEnvio("sessao-expirada")).toContain("Entre novamente");
+  });
+
+  it("falha desconhecida não deixa a UI sem texto", () => {
+    expect(mensagemFalhaEnvio("qualquer-coisa" as FalhaEnvio)).toBe(mensagemFalhaEnvio("falha-evolution"));
   });
 });

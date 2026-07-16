@@ -8,7 +8,9 @@
    prontos por etapa do funil + os criados pelo usuário. Dá para
    salvar a mensagem atual como um novo modelo reutilizável — o nome
    do proprietário vira {nome} para a saudação se adaptar depois.
-   Com telefone, envia pelo wa.me; sem telefone, é só copiar.
+   "Enviar agora" dispara pela Evolution (nosso WhatsApp), sem abrir o
+   WhatsApp Web; se a Evolution recusar, o wa.me aparece como saída.
+   Sem telefone, é só copiar.
    ================================================================ */
 import { useRef, useState } from "react";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
@@ -18,10 +20,13 @@ import {
   avisoAoSalvarModelo,
   linkWhatsapp,
   MARCADORES_MODELO,
+  mensagemFalhaEnvio,
   mensagemWhatsapp,
   MODELOS_WHATSAPP,
+  numeroEvolution,
   tokenizarModeloUsuario,
 } from "@/lib/calculo/whatsapp";
+import { enviarWhatsapp } from "@/lib/envioWhatsapp";
 import { adicionarModeloWhatsapp, removerModeloWhatsapp } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
@@ -54,9 +59,14 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
   // em cima (preferência) e o "Selecionado: …" abaixo deixa claro o modelo ativo.
   const [verUsuario, setVerUsuario] = useState(false);
   const [verSistema, setVerSistema] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  // Envio direto falhou (instância caída, número sem WhatsApp...): revela o
+  // wa.me como saída, em vez de deixar o corretor sem caminho.
+  const [falhouEnvio, setFalhouEnvio] = useState(false);
 
   if (!imovel) return null;
   const temTelefone = !!telefoneWhatsapp(imovel.proprietarioTelefone);
+  const podeEnviarDireto = !!numeroEvolution(imovel.proprietarioTelefone);
   const modeloCustomSel = modelosUsuario.find((m) => m.id === modeloId) || null;
   const rotuloSelecionado = modeloCustomSel
     ? modeloCustomSel.nome
@@ -116,7 +126,29 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
     }
   }
 
-  function enviar() {
+  /** Envia pela Evolution — o corretor não sai do painel. */
+  async function enviarAgora() {
+    if (!imovel || enviando) return;
+    const texto = mensagem.trim();
+    if (!texto) {
+      toast("Escreva a mensagem antes de enviar.", "error");
+      return;
+    }
+    setEnviando(true);
+    const r = await enviarWhatsapp(imovel.id, texto);
+    setEnviando(false);
+    if (r.ok) {
+      toast("Mensagem enviada no WhatsApp.");
+      fecharModal();
+      return;
+    }
+    // A rota já manda o texto pronto; o fallback cobre falha de rede.
+    toast(r.mensagem || mensagemFalhaEnvio(r.falha || "falha-evolution"), "error");
+    setFalhouEnvio(true);
+  }
+
+  /** Saída antiga (click-to-chat): abre a conversa com o texto pronto. */
+  function abrirWhatsappWeb() {
     if (!imovel) return;
     const link = linkWhatsapp(imovel, mensagem);
     if (!link) return;
@@ -149,9 +181,11 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
       </div>
       <div className="modal-body">
         <p className="section-note" style={{ marginBottom: "14px" }}>
-          {temTelefone
-            ? "Escolha um modelo, ajuste o texto e clique em Enviar WhatsApp para abrir a conversa já com a mensagem."
-            : `${imovel.codigo || imovel.endereco || "Imóvel sem código"} não tem telefone cadastrado. Edite e copie a mensagem abaixo para enviar manualmente.`}
+          {podeEnviarDireto
+            ? "Escolha um modelo, ajuste o texto e clique em Enviar agora — a mensagem sai direto pelo WhatsApp da imobiliária, sem abrir o WhatsApp Web."
+            : temTelefone
+              ? "Escolha um modelo, ajuste o texto e clique em Abrir WhatsApp Web para abrir a conversa já com a mensagem."
+              : `${imovel.codigo || imovel.endereco || "Imóvel sem código"} não tem telefone cadastrado. Edite e copie a mensagem abaixo para enviar manualmente.`}
         </p>
 
         <div className="field-group">
@@ -301,9 +335,20 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
           <button type="button" className="btn" onClick={copiar}>
             Copiar mensagem
           </button>
-          {temTelefone && (
-            <button type="button" className="btn btn-primary" onClick={enviar}>
-              Enviar WhatsApp
+          {/* wa.me: caminho principal quando o envio direto não serve (número
+              fora do padrão) e saída de emergência quando ele falha. */}
+          {temTelefone && (!podeEnviarDireto || falhouEnvio) && (
+            <button
+              type="button"
+              className={`btn${podeEnviarDireto ? "" : " btn-primary"}`}
+              onClick={abrirWhatsappWeb}
+            >
+              Abrir WhatsApp Web
+            </button>
+          )}
+          {podeEnviarDireto && (
+            <button type="button" className="btn btn-primary" onClick={enviarAgora} disabled={enviando}>
+              {enviando ? "Enviando..." : falhouEnvio ? "Tentar de novo" : "Enviar agora"}
             </button>
           )}
         </div>
