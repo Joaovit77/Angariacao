@@ -177,8 +177,7 @@ img.brand-mark{
     width: 240px;
     z-index: 2000;
     box-shadow: 8px 0 30px rgba(0, 0, 0, .28);
-    /* topo = 0: o cabeçalho (.brand, 63px) faz o topo alinhado à topbar. */
-    padding: 0 14px 22px 14px;
+    padding: 14px 14px 22px 14px;
     transition:
       width .42s cubic-bezier(.32, .72, 0, 1),
       padding .42s cubic-bezier(.32, .72, 0, 1),
@@ -187,21 +186,18 @@ img.brand-mark{
   /* Barra RECOLHIDA = encaixa no trilho de 72px, rente, sem sombra. */
   .recolhida .sidebar{
     width: 72px;
-    padding: 0 12px 22px 12px;
+    padding: 14px 12px 22px 12px;
     align-items: center;
     box-shadow: none;
   }
 
-  /* Marca no DESKTOP = só o logo (o texto "Angariações/Controle de Locação"
-     colidia com a topbar na faixa do conteúdo; ele segue visível na gaveta do
-     mobile, onde não há conflito). O cabeçalho vira um bloco de 63px, a mesma
-     altura da topbar, com o logo centralizado — assim a linha divisória do
-     cabeçalho casa com a borda inferior da topbar (uma linha só). No expandido
-     o logo fica à esquerda (dentro dos 72px do trilho, fora da área da topbar);
-     no recolhido, centralizado no trilho. */
+  /* Marca no DESKTOP = só o logo, logo abaixo do hambúrguer (o texto
+     "Angariações/Controle de Locação" colidia com a topbar na faixa do
+     conteúdo; ele segue visível na gaveta do mobile, onde não há conflito).
+     O logo fica dentro dos 72px do trilho — fora da área coberta pela topbar. */
   .brand-text{ display: none; }
-  .brand{ height: 63px; box-sizing: border-box; padding: 0 8px; margin-bottom: 8px; }
-  .recolhida .brand{ justify-content: center; padding: 0; }
+  .brand{ padding: 0 8px 14px 8px; margin-bottom: 8px; }
+  .recolhida .brand{ justify-content: center; padding: 0 0 14px 0; }
 
   /* Itens: ícone centralizado, sem rótulo. */
   .recolhida .nav-group{ width: 100%; }
@@ -441,32 +437,39 @@ img.brand-mark{
   margin-inline: auto;
   padding-inline: 34px;
 }
-/* Hambúrguer: presente nas duas larguras (recolhe a barra no desktop,
-   abre a gaveta no mobile). O logo pequeno segue só no mobile. */
 .topbar-logo{ display:none; }   /* logo: só no mobile (no desktop a sidebar já tem) */
 
-/* --- Botão hambúrguer que vira X ---
-   A "box" inteira gira 180° (a mesma sensação do menu do Canal Pro) e as três
-   barras se recompõem no X junto — o X acompanha o giro. Easing com leve
-   overshoot (spring) pra não ficar "duro". */
-.topbar-menu{ display: flex; }
-/* Especificidade .topbar .topbar-menu (0,2,0) pra vencer a transição curta da
-   regra compartilhada .topbar-menu,.topbar-icon-btn,.topbar-avatar — senão o
-   transform do giro não entra na lista de transições e a box "salta". */
-.topbar .topbar-menu{
+/* --- Botão hambúrguer que vira X (.menu-toggle) ---
+   Um só estilo para os dois lugares onde ele aparece: no DESKTOP vive na barra
+   lateral, acima do logo (fixo no canto, fazendo parte do menu — como no Canal
+   Pro); no MOBILE fica na topbar, porque lá a barra é uma gaveta fora da tela.
+   A "box" inteira gira 180° e as três barras se recompõem no X junto — o X
+   acompanha o giro. Easing com leve overshoot (spring) pra não ficar "duro". */
+.menu-toggle{
+  align-items: center; justify-content: center;
+  width: 36px; height: 36px; flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: var(--bg-elev-2);
+  color: var(--text-dim);
+  border-radius: 8px;
   transition:
     transform .5s cubic-bezier(.34, 1.32, .5, 1),
     background .14s ease, color .14s ease, border-color .14s ease;
   will-change: transform;
 }
-.topbar .topbar-menu.is-x{ transform: rotate(180deg); }
+.menu-toggle:hover{
+  background: var(--bg-elev-3);
+  color: var(--text);
+  border-color: var(--text-faint);
+}
+.menu-toggle.is-x{ transform: rotate(180deg); }
 
-.topbar-menu .ham{
+.menu-toggle .ham{
   position: relative;
   width: 18px; height: 14px;
   display: block;
 }
-.topbar-menu .ham span{
+.menu-toggle .ham span{
   position: absolute; left: 0;
   width: 100%; height: 2px;
   border-radius: 2px;
@@ -476,12 +479,16 @@ img.brand-mark{
     top .42s cubic-bezier(.5, .1, .2, 1),
     opacity .24s ease;
 }
-.topbar-menu .ham span:nth-child(1){ top: 0; }
-.topbar-menu .ham span:nth-child(2){ top: 6px; }
-.topbar-menu .ham span:nth-child(3){ top: 12px; }
-.topbar-menu.is-x .ham span:nth-child(1){ top: 6px; transform: rotate(45deg); }
-.topbar-menu.is-x .ham span:nth-child(2){ opacity: 0; }
-.topbar-menu.is-x .ham span:nth-child(3){ top: 6px; transform: rotate(-45deg); }
+.menu-toggle .ham span:nth-child(1){ top: 0; }
+.menu-toggle .ham span:nth-child(2){ top: 6px; }
+.menu-toggle .ham span:nth-child(3){ top: 12px; }
+.menu-toggle.is-x .ham span:nth-child(1){ top: 6px; transform: rotate(45deg); }
+.menu-toggle.is-x .ham span:nth-child(2){ opacity: 0; }
+.menu-toggle.is-x .ham span:nth-child(3){ top: 6px; transform: rotate(-45deg); }
+
+/* Onde cada um aparece (o inverso vale no @media do mobile). */
+.topbar-menu{ display: none; }
+.sidebar-menu{ display: flex; margin-bottom: 14px; }
 .topbar-title{
   font-family: var(--font-display);
   font-size: 20px;
@@ -495,7 +502,10 @@ img.brand-mark{
 }
 .topbar-actions{ display:flex; align-items:center; gap:8px; }
 
-.topbar-menu, .topbar-icon-btn, .topbar-avatar{
+/* Sino e avatar. O hambúrguer NÃO entra aqui: ele é .menu-toggle, com estilo
+   próprio (inclui o transform do giro na transição) — se herdasse a transição
+   curta desta regra, o giro da box não animaria. */
+.topbar-icon-btn, .topbar-avatar{
   align-items: center; justify-content: center;
   width: 36px; height: 36px; flex-shrink: 0;
   border: 1px solid var(--border);
@@ -504,12 +514,8 @@ img.brand-mark{
   border-radius: 8px;
   transition: background .12s ease, color .12s ease, border-color .12s ease;
 }
-/* Sino e avatar aparecem sempre; o hambúrguer (.topbar-menu) fica só no
-   mobile (display definido acima como none e reativado no @media). Antes o
-   `display:flex` da regra compartilhada reexibia o hambúrguer no desktop,
-   onde a sidebar já está sempre visível — botão morto. */
 .topbar-icon-btn, .topbar-avatar{ display: flex; }
-.topbar-menu:hover, .topbar-icon-btn:hover, .topbar-avatar:hover{
+.topbar-icon-btn:hover, .topbar-avatar:hover{
   background: var(--bg-elev-3);
   color: var(--text);
   border-color: var(--text-faint);
@@ -1551,10 +1557,13 @@ legend{
      quando a página tem pouco conteúdo, inflando a barra. */
   .app-shell{ grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
 
-  /* No mobile a topbar ganha o hambúrguer e o logo; a sidebar vira gaveta. */
+  /* No mobile a topbar ganha o hambúrguer e o logo; a sidebar vira gaveta —
+     por isso o botão volta pra topbar (a gaveta fica fora da tela, o botão
+     dela não estaria alcançável). */
   .topbar{ grid-column: 1 / -1; padding: 10px 0; }
   .topbar-inner{ padding-inline: 16px; gap: 10px; }
   .topbar-menu{ display:flex; }
+  .sidebar-menu{ display:none; }
   .topbar-logo{ display:block; }
   .topbar-title{ font-size: 17px; }
   .main{ grid-column: 1 / -1; }

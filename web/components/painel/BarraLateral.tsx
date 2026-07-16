@@ -114,7 +114,17 @@ const ITENS: ItemNav[] = [
   // entrarem: basta devolver este item ao array.
 ];
 
-export default function BarraLateral({ aberta, aoFechar }: { aberta: boolean; aoFechar: () => void }) {
+export default function BarraLateral({
+  aberta,
+  aoFechar,
+  aoAlternar,
+  menuAtivo,
+}: {
+  aberta: boolean;
+  aoFechar: () => void;
+  aoAlternar: () => void;
+  menuAtivo: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const { usuario } = useSessao();
@@ -144,6 +154,22 @@ export default function BarraLateral({ aberta, aoFechar }: { aberta: boolean; ao
 
   return (
     <aside className={`sidebar${aberta ? " open" : ""}`} id="sidebar">
+      {/* Hambúrguer do DESKTOP: fica acima do logo, no topo da própria barra
+          (o CSS o esconde no mobile, onde ele vive na topbar). */}
+      <button
+        type="button"
+        className={`menu-toggle sidebar-menu${menuAtivo ? " is-x" : ""}`}
+        onClick={aoAlternar}
+        aria-label="Alternar menu"
+        aria-expanded={menuAtivo}
+      >
+        <span className="ham" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+      </button>
+
       <div className="brand">
         <Image className="brand-mark" src="/logo.png" alt="Angariações" width={52} height={52} />
         <div className="brand-text">

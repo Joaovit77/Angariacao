@@ -105,7 +105,12 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
         onClick={() => setGavetaAberta(false)}
       />
 
-      <BarraLateral aberta={gavetaAberta} aoFechar={fecharMenu} />
+      <BarraLateral
+        aberta={gavetaAberta}
+        aoFechar={fecharMenu}
+        aoAlternar={alternarMenu}
+        menuAtivo={menuAtivo}
+      />
 
       <main className="main" id="main-content">
         {carregado ? (

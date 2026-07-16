@@ -3,11 +3,12 @@
 /* ================================================================
    BARRA DE TOPO (app bar) — mobile e desktop
    Mostra o NOME da tela atual (contexto) + sino de notificações +
-   menu do usuário. O hambúrguer aparece nas DUAS larguras: no desktop
-   ele recolhe/expande a barra lateral (trilha de ícones ↔ menu
-   completo); no mobile abre/fecha a gaveta. O ícone vira X quando o
-   menu está "ativo" (expandido no desktop, gaveta aberta no mobile).
-   O logo pequeno segue só no mobile (no desktop a sidebar já o tem).
+   menu do usuário. O hambúrguer aqui é SÓ do mobile (CSS): lá a barra
+   lateral é uma gaveta fora da tela, então o botão precisa morar no
+   topo. No desktop ele vive na própria barra lateral, acima do logo
+   (ver BarraLateral) — no topo-esquerdo fixo, sem ser puxado para o
+   meio pela centralização do conteúdo. O logo pequeno também só no
+   mobile (no desktop a sidebar já o tem).
    O título aqui substitui o <h1 class="page-title"> que cada view
    renderizava — agora vive num só lugar.
    ================================================================ */
@@ -46,7 +47,7 @@ export default function Topbar({
       <div className="topbar-inner">
         <button
           type="button"
-          className={`topbar-menu${menuAtivo ? " is-x" : ""}`}
+          className={`menu-toggle topbar-menu${menuAtivo ? " is-x" : ""}`}
           onClick={aoAlternar}
           aria-label="Alternar menu"
           aria-expanded={menuAtivo}
