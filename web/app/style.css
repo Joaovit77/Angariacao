@@ -177,7 +177,8 @@ img.brand-mark{
     width: 240px;
     z-index: 2000;
     box-shadow: 8px 0 30px rgba(0, 0, 0, .28);
-    padding: 14px 14px 22px 14px;
+    /* topo = 0: a faixa .sidebar-head (63px) faz o topo, alinhada à topbar. */
+    padding: 0 14px 22px 14px;
     transition:
       width .42s cubic-bezier(.32, .72, 0, 1),
       padding .42s cubic-bezier(.32, .72, 0, 1),
@@ -186,18 +187,40 @@ img.brand-mark{
   /* Barra RECOLHIDA = encaixa no trilho de 72px, rente, sem sombra. */
   .recolhida .sidebar{
     width: 72px;
-    padding: 14px 12px 22px 12px;
+    padding: 0 12px 22px 12px;
     align-items: center;
     box-shadow: none;
   }
 
-  /* Marca no DESKTOP = só o logo, logo abaixo do hambúrguer (o texto
+  /* Faixa do hambúrguer = mesma altura da topbar (63px), e a borda inferior
+     dela CONTINUA a borda da topbar: uma linha só de ponta a ponta. As margens
+     negativas sangram a linha até as bordas da barra (o padding lateral fica
+     por conta do próprio .sidebar-head). */
+  .sidebar-head{
+    height: 63px;
+    box-sizing: border-box;
+    border-bottom: 1px solid var(--border-soft);
+    margin-inline: -14px;
+    padding-inline: 14px;
+  }
+  /* Recolhida: acompanha o padding menor do trilho e centraliza o botão.
+     align-self:stretch vence o align-items:center da barra — sem ele a faixa
+     encolheria no conteúdo e a linha não atravessaria o trilho. */
+  .recolhida .sidebar-head{
+    align-self: stretch;
+    justify-content: center;
+    margin-inline: -12px;
+    padding-inline: 12px;
+  }
+
+  /* Marca no DESKTOP = só o logo, abaixo da linha do cabeçalho (o texto
      "Angariações/Controle de Locação" colidia com a topbar na faixa do
      conteúdo; ele segue visível na gaveta do mobile, onde não há conflito).
-     O logo fica dentro dos 72px do trilho — fora da área coberta pela topbar. */
+     SEM divisória própria: a única linha horizontal é a do .sidebar-head, que
+     casa com a da topbar — uma segunda linha aqui não encontraria nada. */
   .brand-text{ display: none; }
-  .brand{ padding: 0 8px 14px 8px; margin-bottom: 8px; }
-  .recolhida .brand{ justify-content: center; padding: 0 0 14px 0; }
+  .brand{ border-bottom: none; padding: 0 8px; margin-bottom: 10px; }
+  .recolhida .brand{ justify-content: center; padding: 0; }
 
   /* Itens: ícone centralizado, sem rótulo. */
   .recolhida .nav-group{ width: 100%; }
@@ -488,7 +511,11 @@ img.brand-mark{
 
 /* Onde cada um aparece (o inverso vale no @media do mobile). */
 .topbar-menu{ display: none; }
-.sidebar-menu{ display: flex; margin-bottom: 14px; }
+.sidebar-menu{ display: flex; }
+/* Faixa do topo da barra, onde mora o hambúrguer. No desktop ela vira a
+   continuação da topbar (ver bloco min-width:721px); no mobile é só o
+   espaçador acima do logo, dentro da gaveta. */
+.sidebar-head{ display: flex; align-items: center; margin-bottom: 14px; }
 .topbar-title{
   font-family: var(--font-display);
   font-size: 20px;

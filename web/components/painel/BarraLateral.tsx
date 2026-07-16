@@ -154,21 +154,24 @@ export default function BarraLateral({
 
   return (
     <aside className={`sidebar${aberta ? " open" : ""}`} id="sidebar">
-      {/* Hambúrguer do DESKTOP: fica acima do logo, no topo da própria barra
-          (o CSS o esconde no mobile, onde ele vive na topbar). */}
-      <button
-        type="button"
-        className={`menu-toggle sidebar-menu${menuAtivo ? " is-x" : ""}`}
-        onClick={aoAlternar}
-        aria-label="Alternar menu"
-        aria-expanded={menuAtivo}
-      >
-        <span className="ham" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
-        </span>
-      </button>
+      {/* Faixa de cabeçalho da barra: no desktop tem a mesma altura da topbar,
+          e a sua borda inferior CONTINUA a borda dela — uma linha só
+          atravessando o app. Dentro, o hambúrguer; o logo fica abaixo. */}
+      <div className="sidebar-head">
+        <button
+          type="button"
+          className={`menu-toggle sidebar-menu${menuAtivo ? " is-x" : ""}`}
+          onClick={aoAlternar}
+          aria-label="Alternar menu"
+          aria-expanded={menuAtivo}
+        >
+          <span className="ham" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+        </button>
+      </div>
 
       <div className="brand">
         <Image className="brand-mark" src="/logo.png" alt="Angariações" width={52} height={52} />
