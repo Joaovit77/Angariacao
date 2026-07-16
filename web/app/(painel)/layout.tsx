@@ -81,12 +81,13 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
     else setGavetaAberta((v) => !v);
   }
 
-  // Fechar ao navegar: no desktop a barra expandida flutua por cima do
-  // conteúdo, então clicar num item recolhe (libera o conteúdo); no mobile
-  // fecha a gaveta.
+  // Ao navegar, só a GAVETA do mobile fecha (senão ela taparia a tela inteira
+  // que o usuário acabou de abrir). No desktop a barra fica como estava: com o
+  // conteúdo centralizado, a barra expandida cai quase toda na margem vazia,
+  // então não há motivo para recolhê-la sozinha — quem decide é o hambúrguer,
+  // e a escolha é lembrada.
   function fecharMenu() {
     setGavetaAberta(false);
-    if (ehDesktop) definirRecolhida(true);
   }
 
   // Ícone vira X quando o menu está "expandido/aberto" no contexto atual.
