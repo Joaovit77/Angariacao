@@ -10,8 +10,7 @@
    para o input não ser recriado a cada tecla pela montagem de HTML por
    string; com input controlado do React o foco nunca se perde.
    ================================================================ */
-import { useEffect, useRef, useState } from "react";
-import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
+import { useEffect } from "react";
 import {
   filtrarImoveis,
   ordenarPipelineLista,
@@ -20,32 +19,21 @@ import {
   type PipelineCol,
 } from "@/lib/calculo/filtros";
 import { daysInCurrentStatus, isPausado, isStale } from "@/lib/calculo/motor";
-import {
-  aplicarModeloUsuario,
-  avisoAoSalvarModelo,
-  linkWhatsapp,
-  MARCADORES_MODELO,
-  mensagemWhatsapp,
-  MODELOS_WHATSAPP,
-  modeloPadraoWhatsapp,
-  tokenizarModeloUsuario,
-} from "@/lib/calculo/whatsapp";
+import { MODELOS_WHATSAPP, modeloPadraoWhatsapp } from "@/lib/calculo/whatsapp";
 import { STATUS_ALL, STATUS_COLORS, TIPOS_IMOVEL } from "@/lib/constantes";
 import { fmtDate, fmtMoney } from "@/lib/formatadores";
-import { adicionarModeloWhatsapp, excluirImovel, removerModeloWhatsapp } from "@/lib/mutacoes";
+import { excluirImovel } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
-import { toast } from "@/lib/toast";
 import type { Imovel } from "@/lib/tipos";
 import { useUiModal } from "@/lib/uiModal";
 import { usePipelineUi } from "@/lib/uiPipeline";
 import ColunaFiltro from "./ColunaFiltro";
 
-/** Abre o wa.me do proprietário com o modelo preenchido; sem telefone,
-    orienta a copiar a mensagem pelo drawer/modal do imóvel. */
-function abrirWhatsapp(imovel: Imovel, modeloId: string, nomeCaptador?: string): void {
-  const link = linkWhatsapp(imovel, mensagemWhatsapp(modeloId, imovel, nomeCaptador));
-  if (link) window.open(link, "_blank", "noopener");
-  else toast("Sem telefone cadastrado — abra o imóvel para copiar a mensagem.", "error");
+/** Abre o compositor de WhatsApp do imóvel já no modelo pedido. É o
+    ModalWhatsapp quem envia — direto pela Evolution, com o wa.me como
+    saída — e quem trata o imóvel sem telefone (só copiar). */
+function abrirWhatsapp(imovel: Imovel, modeloId: string): void {
+  useUiModal.getState().abrirModal("whatsapp", imovel.id, modeloId);
 }
 
 /** Ação rápida "Retomar Contato": só para imóveis parados na etapa inicial. */
@@ -181,8 +169,6 @@ function HeaderCodigo() {
 
 function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
   const { drawerImovelId, abrirDrawer } = usePipelineUi();
-  const { usuario } = useSessao();
-  const nomeCaptador = rotuloUsuario(usuario);
 
   if (imoveis.length === 0) {
     return (
@@ -260,7 +246,7 @@ function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
                     title={`WhatsApp: ${rotuloModelo(modeloPadraoWhatsapp(i.status))}`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      abrirWhatsapp(i, modeloPadraoWhatsapp(i.status), nomeCaptador);
+                      abrirWhatsapp(i, modeloPadraoWhatsapp(i.status));
                     }}
                   >
                     💬
@@ -295,251 +281,9 @@ function InfoDrawer({ label, value }: { label: string; value: string }) {
   );
 }
 
-// Item "WhatsApp" do roadmap na versão sem API: modelo por etapa do funil,
-// prévia editável e envio via link wa.me (click-to-chat). O componente é
-// montado com key={imovel.id} para trocar de imóvel descartar edições.
-function DrawerWhatsapp({ imovel, nomeCaptador }: { imovel: Imovel; nomeCaptador?: string }) {
-  const { usuario } = useSessao();
-  const config = useAppStore((s) => s.config);
-  const modelosUsuario = config.whatsappModelos || [];
-  const padrao = modeloPadraoWhatsapp(imovel.status);
-  const [modeloId, setModeloId] = useState(padrao);
-  const [texto, setTexto] = useState(() => mensagemWhatsapp(padrao, imovel, nomeCaptador));
-  const [salvarAberto, setSalvarAberto] = useState(false);
-  const [nomeNovo, setNomeNovo] = useState("");
-  // Grupos do seletor (accordion) — ambos fechados por padrão; "Meus modelos"
-  // em cima (preferência). O "Selecionado: …" abaixo mostra o modelo ativo.
-  const [verUsuario, setVerUsuario] = useState(false);
-  const [verSistema, setVerSistema] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const link = linkWhatsapp(imovel, texto);
-  const modeloCustomSel = modelosUsuario.find((m) => m.id === modeloId) || null;
-  const rotuloSelecionado = modeloCustomSel
-    ? modeloCustomSel.nome
-    : MODELOS_WHATSAPP.find((m) => m.id === modeloId)?.rotulo || "Modelo";
-
-  function trocarModelo(id: string) {
-    setModeloId(id);
-    const custom = modelosUsuario.find((m) => m.id === id);
-    setTexto(custom ? aplicarModeloUsuario(custom.texto, imovel) : mensagemWhatsapp(id, imovel, nomeCaptador));
-  }
-
-  async function salvarModelo() {
-    if (!usuario) return;
-    const nome = nomeNovo.trim();
-    if (!nome) {
-      toast("Dê um nome ao modelo.", "error");
-      return;
-    }
-    if (modelosUsuario.some((m) => m.nome.toLowerCase() === nome.toLowerCase())) {
-      toast("Já existe um modelo com esse nome.", "error");
-      return;
-    }
-    const tokenizado = tokenizarModeloUsuario(texto, imovel);
-    const aviso = avisoAoSalvarModelo(tokenizado);
-    const novo = await adicionarModeloWhatsapp(nome, tokenizado, config, usuario.id, "");
-    if (novo) {
-      toast(aviso.mensagem, aviso.ok ? "success" : "warning");
-      setModeloId(novo.id);
-      setNomeNovo("");
-      setSalvarAberto(false);
-    }
-  }
-
-  async function excluirModelo(id: string) {
-    if (!usuario) return;
-    const ok = await removerModeloWhatsapp(id, config, usuario.id);
-    // Só reescreve o texto se o modelo excluído era o que estava selecionado.
-    if (ok && modeloId === id) {
-      setModeloId(padrao);
-      setTexto(mensagemWhatsapp(padrao, imovel, nomeCaptador));
-    }
-  }
-
-  async function copiar() {
-    try {
-      await navigator.clipboard.writeText(texto);
-      toast("Mensagem copiada.");
-    } catch {
-      const el = textareaRef.current;
-      if (!el) return;
-      el.focus();
-      el.select();
-      document.execCommand("copy");
-      toast("Mensagem copiada.");
-    }
-  }
-
-  /** Insere um marcador ({nome}/{endereco}) na posição do cursor do textarea. */
-  function inserirMarcador(token: string) {
-    const el = textareaRef.current;
-    const start = el?.selectionStart ?? texto.length;
-    const end = el?.selectionEnd ?? texto.length;
-    setTexto(texto.slice(0, start) + token + texto.slice(end));
-    if (el) {
-      requestAnimationFrame(() => {
-        el.focus();
-        const pos = start + token.length;
-        el.setSelectionRange(pos, pos);
-      });
-    }
-  }
-
-  return (
-    <div className="drawer-section">
-      <div className="drawer-section-title">Mensagem de WhatsApp</div>
-      <div className="wpp-picker" style={{ marginBottom: "8px" }}>
-        {/* Meus modelos primeiro — preferência aos modelos do usuário. */}
-        <div className="wpp-grupo">
-          <button
-            type="button"
-            className="wpp-grupo-head"
-            aria-expanded={verUsuario}
-            onClick={() => setVerUsuario((v) => !v)}
-          >
-            <span className="wpp-grupo-caret" aria-hidden>
-              {verUsuario ? "▾" : "▸"}
-            </span>
-            <span className="wpp-grupo-nome">Meus modelos</span>
-            <span className="wpp-grupo-count">{modelosUsuario.length}</span>
-          </button>
-          {verUsuario && (
-            <div className="wpp-grupo-lista">
-              {modelosUsuario.length === 0 ? (
-                <p className="wpp-vazio">
-                  Nenhum modelo salvo ainda. Ajuste o texto abaixo e use “+ Salvar como modelo”.
-                </p>
-              ) : (
-                modelosUsuario.map((m) => (
-                  <div key={m.id} className={`wpp-opt${modeloId === m.id ? " ativa" : ""}`}>
-                    <button type="button" className="wpp-opt-sel" onClick={() => trocarModelo(m.id)}>
-                      {m.nome}
-                    </button>
-                    <button
-                      type="button"
-                      className="wpp-opt-del"
-                      title={`Excluir “${m.nome}”`}
-                      onClick={() => excluirModelo(m.id)}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Modelos do sistema — prontos por etapa do funil. */}
-        <div className="wpp-grupo">
-          <button
-            type="button"
-            className="wpp-grupo-head"
-            aria-expanded={verSistema}
-            onClick={() => setVerSistema((v) => !v)}
-          >
-            <span className="wpp-grupo-caret" aria-hidden>
-              {verSistema ? "▾" : "▸"}
-            </span>
-            <span className="wpp-grupo-nome">Modelos do sistema</span>
-            <span className="wpp-grupo-count">{MODELOS_WHATSAPP.length}</span>
-          </button>
-          {verSistema && (
-            <div className="wpp-grupo-lista">
-              {MODELOS_WHATSAPP.map((m) => (
-                <div key={m.id} className={`wpp-opt${modeloId === m.id ? " ativa" : ""}`}>
-                  <button type="button" className="wpp-opt-sel" onClick={() => trocarModelo(m.id)}>
-                    {m.rotulo}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-      <p className="wpp-selecionado" style={{ marginBottom: "8px" }}>
-        Selecionado: <strong>{rotuloSelecionado}</strong>
-      </p>
-      <textarea
-        ref={textareaRef}
-        aria-label="Prévia da mensagem"
-        value={texto}
-        onChange={(e) => setTexto(e.target.value)}
-        style={{ width: "100%", minHeight: "160px", marginBottom: "8px" }}
-      />
-      <div className="marcadores-modelo">
-        <span>Inserir marcador:</span>
-        {MARCADORES_MODELO.map((m) => (
-          <button
-            key={m.token}
-            type="button"
-            className="chip-marcador"
-            title={`${m.rotulo} — adapta-se a cada imóvel`}
-            onClick={() => inserirMarcador(m.token)}
-          >
-            {m.token}
-          </button>
-        ))}
-      </div>
-      {salvarAberto ? (
-        <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
-          <input
-            type="text"
-            value={nomeNovo}
-            onChange={(e) => setNomeNovo(e.target.value)}
-            placeholder="Nome do modelo (ex: Falar mais tarde)"
-            style={{ flex: 1 }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                salvarModelo();
-              }
-            }}
-          />
-          <button type="button" className="btn btn-sm btn-primary" onClick={salvarModelo}>
-            Salvar
-          </button>
-          <button type="button" className="btn btn-sm" onClick={() => setSalvarAberto(false)}>
-            Cancelar
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          className="btn btn-sm btn-ghost"
-          style={{ marginBottom: "8px" }}
-          onClick={() => setSalvarAberto(true)}
-        >
-          + Salvar como modelo
-        </button>
-      )}
-      {!link && (
-        <p className="section-note" style={{ marginBottom: "8px" }}>
-          Sem telefone cadastrado — copie a mensagem para enviar manualmente.
-        </p>
-      )}
-      <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-        <button type="button" className="btn btn-sm" onClick={copiar}>
-          Copiar mensagem
-        </button>
-        {link && (
-          <button
-            type="button"
-            className="btn btn-sm btn-ghost agenda-whatsapp-btn"
-            onClick={() => window.open(link, "_blank", "noopener")}
-          >
-            Enviar WhatsApp
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function Drawer({ imovel }: { imovel: Imovel }) {
   const fecharDrawer = usePipelineUi((s) => s.fecharDrawer);
   const abrirModal = useUiModal((s) => s.abrirModal);
-  const { usuario } = useSessao();
   const enderecoCompleto = [imovel.endereco, imovel.bairro, imovel.cidade].filter(Boolean).join(", ");
   const totalNotas = (imovel.notas || []).length;
 
@@ -599,7 +343,24 @@ function Drawer({ imovel }: { imovel: Imovel }) {
           {/* A seção "Fotos" do app antigo lia imovel.fotos, campo que nenhum
               mapeador produz — sempre mostrava "Sem fotos cadastradas.". Removida
               na pós-migração (achado A2) por ser bloco morto. */}
-          <DrawerWhatsapp key={imovel.id} imovel={imovel} nomeCaptador={rotuloUsuario(usuario)} />
+          {/* O compositor era embutido aqui (DrawerWhatsapp), duplicando o
+              ModalWhatsapp e preso ao wa.me. Abrir o modal dá ao Pipeline o
+              envio direto pela Evolution sem manter dois compositores. */}
+          <div className="drawer-section">
+            <div className="drawer-section-title">Mensagem de WhatsApp</div>
+            <div className="drawer-notas-resumo">
+              <span className="drawer-notes">
+                Modelo sugerido para esta etapa: {rotuloModelo(modeloPadraoWhatsapp(imovel.status))}.
+              </span>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => abrirModal("whatsapp", imovel.id, modeloPadraoWhatsapp(imovel.status))}
+              >
+                Escrever mensagem
+              </button>
+            </div>
+          </div>
         </div>
         <div className="pipeline-drawer-foot">
           <button type="button" className="btn btn-ghost" onClick={fecharDrawer}>
