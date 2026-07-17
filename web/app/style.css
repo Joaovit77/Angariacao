@@ -1798,12 +1798,21 @@ legend{
    Reusa .card / .progress-track / .grid; classes próprias só para o
    layout que essa tela introduz.
    ================================================================ */
+/* As ações rápidas são filhas diretas do grid (e não da lateral) só para poderem
+   subir para o topo no mobile — ver o media query lá embaixo. No desktop as áreas
+   as recolocam no alto da coluna da direita, como sempre estiveram. */
 .home-grid{
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 20px;
+  grid-template-areas:
+    "main actions"
+    "main aside";
+  gap: 16px 20px;
   align-items: start;
 }
+.home-grid > .home-main{ grid-area: main; }
+.home-grid > .home-actions{ grid-area: actions; }
+.home-grid > .home-aside{ grid-area: aside; }
 .home-main{ display: flex; flex-direction: column; gap: 16px; }
 .home-aside{ display: flex; flex-direction: column; gap: 16px; }
 
@@ -2090,5 +2099,13 @@ legend{
    que deixa a coluna encolher abaixo do min-content do conteúdo (senão os
    chips à direita vazam e o .main corta com overflow:hidden em telas estreitas). */
 @media (max-width: 980px){
-  .home-grid{ grid-template-columns: minmax(0, 1fr); }
+  .home-grid{
+    grid-template-columns: minmax(0, 1fr);
+    /* Sem a coluna lateral, as ações rápidas iriam parar no fim da rolagem —
+       longe demais para o que é o atalho mais usado da tela. Sobem para o topo. */
+    grid-template-areas:
+      "actions"
+      "main"
+      "aside";
+  }
 }

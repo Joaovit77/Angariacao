@@ -370,40 +370,45 @@ export default function HomeView() {
       </div>
 
       <div className="home-grid anim-stagger">
+        {/* AÇÕES RÁPIDAS — no alto da coluna da direita no desktop; no mobile, o CSS
+            as leva para o topo da tela (é o atalho mais usado). */}
+        <div className="home-actions">
+          <button type="button" className="home-action" onClick={() => abrirModal("preCadastro")}>
+            <span className="home-action-ic">⚡</span>
+            <span className="home-action-text">
+              <span className="home-action-title">Pré-cadastro rápido</span>
+              <span className="home-action-sub">Cadastrar e disparar o WhatsApp de confirmação</span>
+            </span>
+          </button>
+          <button type="button" className="home-action" onClick={() => abrirModal("imovel")}>
+            <span className="home-action-ic">⌂</span>
+            <span className="home-action-text">
+              <span className="home-action-title">Nova angariação</span>
+              <span className="home-action-sub">Cadastro completo do imóvel no funil</span>
+            </span>
+          </button>
+          <button type="button" className="home-action" onClick={() => abrirModal("agenda")}>
+            <span className="home-action-ic">＋</span>
+            <span className="home-action-text">
+              <span className="home-action-title">Novo compromisso</span>
+              <span className="home-action-sub">Retorno, visita ou follow-up na agenda</span>
+            </span>
+          </button>
+        </div>
+
         {/* COLUNA PRINCIPAL — o que precisa de ação hoje */}
         <div className="home-main">{principais}</div>
 
-        {/* COLUNA LATERAL — atalhos de ação e resumo de metas */}
-        <aside className="home-aside">
-          <div className="home-actions">
-            <button type="button" className="home-action" onClick={() => abrirModal("preCadastro")}>
-              <span className="home-action-ic">⚡</span>
-              <span className="home-action-text">
-                <span className="home-action-title">Pré-cadastro rápido</span>
-                <span className="home-action-sub">Cadastrar e disparar o WhatsApp de confirmação</span>
-              </span>
-            </button>
-            <button type="button" className="home-action" onClick={() => abrirModal("imovel")}>
-              <span className="home-action-ic">⌂</span>
-              <span className="home-action-text">
-                <span className="home-action-title">Nova angariação</span>
-                <span className="home-action-sub">Cadastro completo do imóvel no funil</span>
-              </span>
-            </button>
-            <button type="button" className="home-action" onClick={() => abrirModal("agenda")}>
-              <span className="home-action-ic">＋</span>
-              <span className="home-action-text">
-                <span className="home-action-title">Novo compromisso</span>
-                <span className="home-action-sub">Retorno, visita ou follow-up na agenda</span>
-              </span>
-            </button>
-          </div>
+        {/* COLUNA LATERAL — resumos vazios e metas. Sem nada para mostrar, não
+            renderiza: um elemento vazio no grid só somaria gap. */}
+        {(laterais.length > 0 || !metasNaPrincipal) && (
+          <aside className="home-aside">
+            {laterais}
 
-          {laterais}
-
-          {/* Metas do mês — só aqui quando não subiram para a coluna principal. */}
-          {!metasNaPrincipal && cardMetas}
-        </aside>
+            {/* Metas do mês — só aqui quando não subiram para a coluna principal. */}
+            {!metasNaPrincipal && cardMetas}
+          </aside>
+        )}
       </div>
     </>
   );
