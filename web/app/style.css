@@ -264,7 +264,7 @@ img.brand-mark{
    ============================================================ */
 .auth-screen{
   min-height: 100vh;
-  display:flex; align-items:center; justify-content:center;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
   padding: 40px 24px;
   position: relative;
   overflow-x: hidden;
@@ -318,6 +318,9 @@ img.brand-mark{
   width:100%; max-width:1000px;
   display:grid; grid-template-columns: 1.05fr 400px; gap:48px;
   align-items:center;
+  /* Absorve a sobra vertical do .auth-screen: mantém o card centralizado
+     e joga o rodapé para a base, sem sobrepor nada quando a tela é baixa. */
+  margin-block: auto;
 }
 .auth-box-brand{ display:none; } /* no desktop a marca fica na vitrine */
 .auth-layout .auth-box{ max-width:none; margin:0; }
@@ -422,7 +425,9 @@ img.brand-mark{
 
 /* ---- Main ---- */
 .main{
-  padding: 26px 34px 60px 34px;
+  /* O respiro de baixo é curto porque o rodapé é o último filho e já traz o
+     próprio espaçamento; os 60px de antes viravam espaço morto sob ele. */
+  padding: 26px 34px 22px 34px;
   max-width: 1400px;
   width: 100%;
   min-width: 0;
@@ -432,6 +437,50 @@ img.brand-mark{
   /* Centraliza o conteúdo na área disponível (quando mais largo que 1400px),
      em vez de encostá-lo à esquerda. */
   margin-inline: auto;
+}
+
+/* ---- Rodapé (fim do .main e base da tela de acesso) ---- */
+/* Assinatura centrada: o oferecimento é o protagonista (display + dourado),
+   marca e versão ficam de legenda embaixo do risco. */
+.rodape-app{
+  margin-top: 44px;
+  padding-top: 26px;
+  border-top: 1px solid var(--border-soft);
+  text-align: center;
+}
+.rodape-rotulo{
+  font-size: 10.5px;
+  color: var(--text-faint);
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.rodape-oferecimento{
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1.2;
+  color: var(--accent-strong);
+  letter-spacing: .3px;
+}
+.rodape-risco{
+  width: 34px;
+  height: 1px;
+  background: var(--accent);
+  opacity: .45;
+  margin: 12px auto;
+}
+.rodape-assinatura{ font-size: 11.5px; color: var(--text-faint); }
+.rodape-versao{ font-variant-numeric: tabular-nums; }
+
+/* Na tela de acesso não há .main: o rodapé é o último filho do
+   .auth-screen (flex column), empurrado para a base pelas margens
+   automáticas do .auth-layout — que seguem centralizando o conteúdo.
+   Sem borda: ali o rodapé não fecha um bloco de conteúdo. */
+.rodape-app-auth{
+  margin-top: 36px;
+  padding-top: 0;
+  border-top: none;
+  width: 100%;
 }
 
 /* ============================================================
@@ -1453,7 +1502,8 @@ legend{
 
   /* esconde tudo que não faz parte do relatório */
   .sidebar, #sidebar, .sidebar-backdrop, .topbar,
-  .page-head, .pipeline-toolbar, .modal-overlay, .toast-container{ display:none !important; }
+  .page-head, .pipeline-toolbar, .modal-overlay, .toast-container,
+  .rodape-app{ display:none !important; }
 
   .app-shell{ display:block !important; }
   .main, #main-content{ padding:0 !important; margin:0 !important; max-width:none !important; }
@@ -1622,7 +1672,7 @@ legend{
   }
   .sidebar-backdrop.open{ opacity:1; pointer-events:auto; }
 
-  .main{ padding: 18px 16px 50px 16px; }
+  .main{ padding: 18px 16px 18px 16px; }
   .page-head{ align-items:flex-start; }
   .page-title{ font-size:21px; }
 

@@ -13,6 +13,7 @@ import { useSessao } from "@/components/SessaoProvider";
 import { traduzErroAuth } from "@/lib/auth/erros";
 import { getSupabase } from "@/lib/persistencia/supabase";
 import { toast } from "@/lib/toast";
+import RodapeApp from "@/components/RodapeApp";
 import CampoSenha from "./CampoSenha";
 import Vitrine from "./Vitrine";
 
@@ -326,6 +327,8 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
           )}
         </div>
       </div>
+
+      <RodapeApp variante="auth" />
     </div>
   );
 }

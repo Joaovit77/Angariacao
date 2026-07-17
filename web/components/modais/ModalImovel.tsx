@@ -11,7 +11,7 @@
    ================================================================ */
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { useSessao } from "@/components/SessaoProvider";
+import { captadorPadrao, useSessao } from "@/components/SessaoProvider";
 import {
   FORMAS_ABORDAGEM,
   MOTIVOS_PERDA,
@@ -75,7 +75,13 @@ export default function ModalImovel({ id }: { id?: string }) {
   const [proprietarioTelefone, setProprietarioTelefone] = useState(imovel?.proprietarioTelefone ?? "");
   const [formaAbordagem, setFormaAbordagem] = useState(imovel?.formaAbordagem ?? FORMAS_ABORDAGEM[0]);
   const [dataAngariacao, setDataAngariacao] = useState(imovel?.dataAngariacao ?? todayISO());
-  const [responsavel, setResponsavel] = useState(imovel?.responsavel ?? "");
+  // Angariação nova já vem com o próprio usuário como captador (o caso comum:
+  // quem cadastra é quem captou). Continua editável, e na edição o valor
+  // gravado manda — trocar o captador de um imóvel já existente não pode
+  // acontecer só por abrir o modal.
+  const [responsavel, setResponsavel] = useState(
+    () => imovel?.responsavel ?? captadorPadrao(usuario, imoveis),
+  );
   const [status, setStatus] = useState(imovel?.status ?? "Novo contato");
   const [observacoes, setObservacoes] = useState(imovel?.observacoes ?? "");
   const [pausadoAte, setPausadoAte] = useState(imovel?.pausadoAte ?? "");

@@ -64,6 +64,37 @@ export function canonizarValor(
 }
 
 /**
+ * O valor mais usado da lista, já na grafia dominante do seu grupo. Agrupa
+ * pela chave normalizada, então "João Vitor" e "joao vitor" contam juntos.
+ * Ignora vazios; empate fica com o grupo visto primeiro. Devolve "" quando
+ * não há nenhum valor — quem chama decide o que fazer com isso.
+ */
+export function valorMaisUsado(valores: (string | null | undefined)[]): string {
+  const porChave = new Map<string, Map<string, number>>();
+  const totalPorChave = new Map<string, number>();
+  for (const v of valores) {
+    const grafia = limpar(v);
+    if (!grafia) continue;
+    const chave = chaveNormalizada(grafia);
+    const m = porChave.get(chave) ?? new Map<string, number>();
+    m.set(grafia, (m.get(grafia) || 0) + 1);
+    porChave.set(chave, m);
+    totalPorChave.set(chave, (totalPorChave.get(chave) || 0) + 1);
+  }
+
+  let melhorChave = "";
+  let melhorN = 0;
+  for (const [chave, n] of totalPorChave) {
+    if (n > melhorN) {
+      melhorChave = chave;
+      melhorN = n;
+    }
+  }
+  const grupo = porChave.get(melhorChave);
+  return grupo ? grafiaDominante(grupo) : "";
+}
+
+/**
  * Lista de sugestões sem duplicatas por chave: para cada grupo de variações,
  * mantém a grafia dominante. Ordena em pt-BR. Serve para datalists.
  */

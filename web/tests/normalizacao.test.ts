@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { chaveNormalizada, canonizarValor, distintosCanonizados } from "@/lib/normalizacao";
+import {
+  chaveNormalizada,
+  canonizarValor,
+  distintosCanonizados,
+  valorMaisUsado,
+} from "@/lib/normalizacao";
 
 describe("chaveNormalizada", () => {
   it("ignora acento, caixa e espaços extras", () => {
@@ -42,5 +47,23 @@ describe("distintosCanonizados", () => {
 
   it("ignora vazios e nulos", () => {
     expect(distintosCanonizados(["", null, "  ", "Beta"])).toEqual(["Beta"]);
+  });
+});
+
+describe("valorMaisUsado", () => {
+  it("devolve o mais frequente, ignorando vazios", () => {
+    expect(valorMaisUsado(["João Vitor", "Maria", "João Vitor", null, ""])).toBe("João Vitor");
+  });
+
+  it("agrupa variações da mesma grafia e devolve a dominante", () => {
+    // "joao vitor" (2x) + "João Vitor" (1x) = 3 do mesmo captador, contra 2 de
+    // Maria — e sai na grafia mais usada do grupo, não na primeira vista.
+    const valores = ["Maria", "joao vitor", "João Vitor", "Maria", "joao vitor"];
+    expect(valorMaisUsado(valores)).toBe("joao vitor");
+  });
+
+  it("sem nenhum valor, devolve vazio", () => {
+    expect(valorMaisUsado([])).toBe("");
+    expect(valorMaisUsado([null, "  ", undefined])).toBe("");
   });
 });

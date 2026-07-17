@@ -19,10 +19,12 @@
    ================================================================ */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import { valorMaisUsado } from "@/lib/normalizacao";
 import { carregarEstado } from "@/lib/persistencia/carregarEstado";
 import { getSupabase } from "@/lib/persistencia/supabase";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
+import type { Imovel } from "@/lib/tipos";
 
 /** "carregando" = ainda não sabemos se há sessão (antes do INITIAL_SESSION). */
 export type EstadoSessao = "carregando" | "anon" | "auth" | "recuperacao";
@@ -49,6 +51,26 @@ export function rotuloUsuario(usuario: User | null): string {
   if (!usuario) return "";
   const nome = usuario.user_metadata?.name;
   return typeof nome === "string" && nome ? nome : (usuario.email ?? "");
+}
+
+/** Nome gravado na conta (só existe se foi digitado no "Criar conta").
+    Diferente do rotuloUsuario de propósito: aqui NÃO vale cair no e-mail,
+    porque "fulano@imobiliaria.com" viraria um captador com esse nome no
+    Pipeline, nos filtros e nos relatórios — pior que vazio. */
+function nomeCaptador(usuario: User | null): string {
+  const nome = usuario?.user_metadata?.name;
+  return typeof nome === "string" ? nome.trim() : "";
+}
+
+/**
+ * Captador para pré-preencher um imóvel novo. O nome da conta vem primeiro,
+ * mas boa parte das contas não tem nome nenhum (quem criou sem preencher, ou
+ * por seed) — então cai no captador que o próprio usuário mais usa nos seus
+ * imóveis, que é o mesmo dado visto por outro ângulo. Conta nova e sem
+ * imóveis não tem de onde tirar: devolve "" e o campo fica vazio, como antes.
+ */
+export function captadorPadrao(usuario: User | null, imoveis: Imovel[]): string {
+  return nomeCaptador(usuario) || valorMaisUsado(imoveis.map((i) => i.responsavel));
 }
 
 const ESTADO_VAZIO = { imoveis: [], metas: {}, agenda: [], config: { comissaoPercent: 100, agendaTipos: [], whatsappModelos: [] } };

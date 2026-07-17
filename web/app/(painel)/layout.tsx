@@ -16,6 +16,7 @@ import BarraLateral from "@/components/painel/BarraLateral";
 import Topbar from "@/components/painel/Topbar";
 import EsqueletoPainel from "@/components/painel/EsqueletoPainel";
 import ModalOverlay from "@/components/modais/ModalOverlay";
+import RodapeApp from "@/components/RodapeApp";
 import { useAppStore } from "@/lib/store";
 
 const CHAVE_RECOLHIDA = "sidebar-recolhida";
@@ -121,6 +122,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
         ) : (
           <EsqueletoPainel />
         )}
+        <RodapeApp />
       </main>
     </div>
 

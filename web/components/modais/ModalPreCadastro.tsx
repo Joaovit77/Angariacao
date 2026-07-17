@@ -10,7 +10,7 @@
    pelo modal completo — o que limpa a marca de pré-cadastro.
    ================================================================ */
 import { useState } from "react";
-import { useSessao } from "@/components/SessaoProvider";
+import { captadorPadrao, useSessao } from "@/components/SessaoProvider";
 import { sugerirCodigoImovel } from "@/lib/codigoImovel";
 import { todayISO } from "@/lib/datas";
 import { buscarCep, geocodeEndereco, maskCEP } from "@/lib/geo";
@@ -144,6 +144,10 @@ export default function ModalPreCadastro() {
       longitude: lng,
       status: "Novo contato",
       dataAngariacao: hoje,
+      // O pré-cadastro não pergunta o captador (é o modal de 3 campos), mas
+      // quem cadastra é quem captou — sem isso a linha nasce com captador
+      // vazio e some dos filtros/relatórios por captador.
+      responsavel: captadorPadrao(usuario, imoveis),
       statusHistory: historico,
       preCadastro: true,
     };
