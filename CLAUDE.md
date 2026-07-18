@@ -20,7 +20,8 @@ do Brasil**.
 O que fica na **raiz** do repositório:
 
 - [supabase-schema.sql](supabase-schema.sql) — schema completo do banco (tabelas `imoveis`, `metas`,
-  `agenda`, `user_config`) com as políticas RLS que escopam cada linha a `auth.uid() = user_id`.
+  `agenda`, `abordagens`, `user_config`) com as políticas RLS que escopam cada linha a
+  `auth.uid() = user_id`.
   Idempotente — pode ser re-rodado no SQL editor do Supabase. **É a fonte de verdade do schema.**
 - [DEPLOY.md](DEPLOY.md) — passo a passo de deploy (Supabase + Vercel com Root Directory `web`),
   runbook de cutover e rollback.
@@ -82,25 +83,32 @@ o torna testável puro.
 - **`constantes.ts`** — `STATUS_FLOW` (funil: Novo contato → … → Locado), `STATUS_TERMINAL_NEGATIVE`
   (Sem resposta / Perdido / Cancelado — saídas laterais, fora do funil), `TIPOS_IMOVEL`,
   `FORMAS_ABORDAGEM`, `ORIGENS_IMOVEL`, `MOTIVOS_PERDA`, `STATUS_COLORS`, `AGENDA_TYPES`,
-  `STALE_DAYS_THRESHOLD`, `VERIFICACAO_DISPONIBILIDADE_DIAS`.
+  `RESULTADOS_TENTATIVA`, `STALE_DAYS_THRESHOLD`, `VERIFICACAO_DISPONIBILIDADE_DIAS`.
 - **`datas.ts`** — **único módulo autorizado a usar `new Date`** (regra de ESLint). Datas circulam
   sempre como string ISO `YYYY-MM-DD`, manipuladas por `parseDate`/`daysBetween`/`addDaysISO`/
   `todayISO`/`weekRange`. `new Date` cru interpreta ISO como UTC e desloca o dia.
 - **`formatadores.ts`** — `fmtMoney`, `fmtDate`, etc.
-- **`tipos.ts`** — `Imovel`, `Meta`, `AgendaItem`, `UserConfig`, `StatusHistoryEntry`.
+- **`tipos.ts`** — `Imovel`, `Meta`, `AgendaItem`, `Abordagem`, `Tentativa`, `UserConfig`,
+  `StatusHistoryEntry`.
 - **`calculo/motor.ts`** — o motor: `dateEnteredStatus`, `currentStatusSince`, `isStale`,
   `foiAngariado`, `metricsForRange`, coortes mensais, tempo médio, etc.
 - **`calculo/filtros.ts`** — filtro/ordenação do Pipeline (parte pura).
 - **`calculo/dashboard.ts` · `insights.ts` · `relatorios.ts` · `agenda.ts`** — as métricas de cada
   view, extraídas da montagem de HTML antiga sem alterar nenhuma fórmula.
+- **`calculo/canais.ts` · `abordagens.ts`** — features da pós-migração (sem oráculo do app antigo),
+  os **dois eixos da captação**: `canais` mede a ORIGEM do imóvel (onde a oportunidade foi achada);
+  `abordagens` mede o ROTEIRO usado no contato (o que se diz). Não confundir com a
+  `formaAbordagem` do imóvel, que é o CANAL. Ver "Abordagens e tentativas" abaixo.
 - **`persistencia/mapeadores.ts`** — `toDb*`/`fromDb*` que traduzem entre o camelCase do app e o
   snake_case do Supabase. Definem o contrato de dados.
 - **`persistencia/supabase.ts`** — cliente singleton do browser. **`persistencia/carregarEstado.ts`**
-  — o `loadState()`: busca as 4 tabelas em paralelo no login.
-- **`store.ts`** — store Zustand espelhando o `STATE` legado (`{ imoveis, metas, agenda, config }`).
+  — o `loadState()`: busca as 5 tabelas em paralelo no login. Erro em `user_config` ou `abordagens`
+  **não** derruba o carregamento (o app inteiro funciona sem eles); erro nas outras três propaga.
+- **`store.ts`** — store Zustand espelhando o `STATE` legado, mais o catálogo de abordagens
+  (`{ imoveis, metas, agenda, abordagens, config }`).
 - **`mutacoes.ts`** — **todas as escritas no Supabase** num só lugar (criar/editar/excluir imóvel,
-  metas, agenda, verificação, config, dados demo). `aplicarMudancaDeStatus()` é o **único** ponto
-  que empurra no `statusHistory`.
+  metas, agenda, abordagens, tentativas, verificação, config, dados demo).
+  `aplicarMudancaDeStatus()` é o **único** ponto que empurra no `statusHistory`.
 - **`uiPipeline.ts` / `uiModal.ts`** — estado de UI (filtros/drawer do Pipeline; modal ativo).
 - **`toast.ts` / `geo.ts` / `dadosDemo.ts` / `auth/`** — notificações; CEP (ViaCEP) + geocoding
   (Nominatim); seed de exemplo; força de senha e tradução de erros do Supabase Auth.
@@ -121,6 +129,31 @@ no campo `status` atual nem na existência do registro. Toda mudança de status 
 for esse status). Métricas de conversão, coortes e stale derivam do histórico. `foiAngariado()` só
 conta um imóvel como angariado quando o histórico registra a entrada em "Angariado" — criar o
 registro ou fazer o primeiro contato **não** conta.
+
+### Abordagens e tentativas
+
+Mesma ideia do `statusHistory`, aplicada à captação: a verdade mora no **histórico de tentativas**,
+não num campo único do imóvel.
+
+- **Abordagem** é o **roteiro** — o que se diz ao proprietário ("ofereço avaliação gratuita").
+  Vive na tabela `abordagens` (catálogo por usuário). **Não confundir** com `imovel.formaAbordagem`,
+  que é o **canal** (WhatsApp, ligação, visita). São eixos independentes: o mesmo roteiro roda em
+  canais diferentes.
+- **Tentativa** é um contato feito. Fica em `imoveis.tentativas` (`jsonb`, como `notas` e
+  `status_history`), com `{ abordagemId, canal, resultado, data, observacao }`.
+
+Um imóvel tem **várias** tentativas de propósito. Creditar só uma enviesaria o ranking: os roteiros
+de fechamento sempre pareceriam melhores que os de abertura, porque só eles apareceriam nos casos
+que deram certo. Por isso `calculo/abordagens.ts` mede três coisas **separadas** — `taxaResposta`
+(o proprietário reagiu; recusa conta, porque reagir ≠ aceitar), `taxaAngariacao` (participação, sem
+atribuir causa) e `destravou` (foi a última tentativa antes da entrada em "Angariado").
+
+Duas regras ao mexer nisso:
+
+- **Abordagem se arquiva, não se exclui** (`arquivada`). As tentativas apontam para o `id`; apagar
+  deixaria o histórico órfão e o ranking perderia a leitura do que já foi feito.
+- **Amostra mínima é parte do contrato.** Abaixo de `MIN_TENTATIVAS` a linha é marcada e vai para o
+  fim do ranking — com 1 tentativa, "100% de conversão" só significa que aconteceu uma vez.
 
 ### Modelo de RLS
 
