@@ -1806,7 +1806,12 @@ legend{
   grid-template-columns: minmax(0, 1fr) 320px;
   grid-template-areas:
     "main actions"
-    "main aside";
+    "main aside"
+    "main .";
+  /* A .home-main ocupa as três linhas e é bem mais alta que a coluna da direita.
+     Sem a terceira linha em 1fr, a sobra de altura dela seria distribuída entre
+     as linhas "actions" e "aside" — abrindo um buraco entre os dois blocos. */
+  grid-template-rows: min-content min-content 1fr;
   gap: 16px 20px;
   align-items: start;
 }
@@ -2107,5 +2112,7 @@ legend{
       "actions"
       "main"
       "aside";
+    /* Em coluna única nada mais transborda entre linhas: cada bloco ocupa a sua. */
+    grid-template-rows: auto;
   }
 }
