@@ -17,7 +17,9 @@ export type TipoModal =
   | "verificacao"
   | "config"
   | "whatsapp"
-  | "notas";
+  | "notas"
+  | "tentativas"
+  | "abordagens";
 
 export interface ModalAtivo {
   tipo: TipoModal;

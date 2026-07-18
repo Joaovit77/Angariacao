@@ -10,12 +10,14 @@
 import { useEffect } from "react";
 import { usePipelineUi } from "@/lib/uiPipeline";
 import { useUiModal } from "@/lib/uiModal";
+import ModalAbordagens from "./ModalAbordagens";
 import ModalAgenda from "./ModalAgenda";
 import ModalConfig from "./ModalConfig";
 import ModalImovel from "./ModalImovel";
 import ModalMeta from "./ModalMeta";
 import ModalNotas from "./ModalNotas";
 import ModalPreCadastro from "./ModalPreCadastro";
+import ModalTentativas from "./ModalTentativas";
 import ModalVerificacao from "./ModalVerificacao";
 import ModalWhatsapp from "./ModalWhatsapp";
 
@@ -49,6 +51,8 @@ export default function ModalOverlay() {
           <ModalWhatsapp imovelId={modal.id} modeloInicial={modal.modeloWhatsapp} />
         )}
         {modal?.tipo === "notas" && modal.id && <ModalNotas imovelId={modal.id} />}
+        {modal?.tipo === "tentativas" && modal.id && <ModalTentativas imovelId={modal.id} />}
+        {modal?.tipo === "abordagens" && <ModalAbordagens />}
       </div>
     </div>
   );

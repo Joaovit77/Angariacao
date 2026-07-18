@@ -7,6 +7,13 @@
    ================================================================ */
 import { useState } from "react";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
+import {
+  desempenhoPorAbordagem,
+  resumoTentativas,
+  MIN_TENTATIVAS,
+  type AbordagemDesempenho,
+  type ResumoTentativas,
+} from "@/lib/calculo/abordagens";
 import { desempenhoPorCanal, type CanalDesempenho } from "@/lib/calculo/canais";
 import { dateEnteredStatus } from "@/lib/calculo/motor";
 import { relatorioMensal, relatorioSemanal, weekRangeLabel, type DadosRelatorio } from "@/lib/calculo/relatorios";
@@ -14,6 +21,7 @@ import { gerarCsv } from "@/lib/csv";
 import { currentMonthKey, monthLabelLong, shiftMonthKey, todayISO } from "@/lib/datas";
 import { fmtDate, fmtMoney } from "@/lib/formatadores";
 import { useAppStore } from "@/lib/store";
+import { useUiModal } from "@/lib/uiModal";
 
 function ReportStat({
   label,
@@ -170,6 +178,95 @@ function DesempenhoCanais({ canais }: { canais: CanalDesempenho[] }) {
   );
 }
 
+/* Ranking de roteiros de captação. Ao contrário da tabela de canais, aqui as
+   três medidas ficam lado a lado de propósito: participação numa angariação
+   não é o mesmo que tê-la destravado, e um roteiro pode ser ótimo abrindo
+   conversa e fraco fechando contrato. Uma coluna só esconderia isso. */
+function DesempenhoAbordagens({
+  abordagens,
+  resumo,
+  aoGerenciar,
+}: {
+  abordagens: AbordagemDesempenho[];
+  resumo: ResumoTentativas;
+  aoGerenciar: () => void;
+}) {
+  return (
+    <div className="report-doc" style={{ marginTop: "22px" }}>
+      <div
+        className="report-section-title"
+        style={{ marginTop: 0, display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}
+      >
+        <span>Desempenho por abordagem</span>
+        <button type="button" className="btn btn-sm" onClick={aoGerenciar}>
+          Gerenciar abordagens
+        </button>
+      </div>
+      <p className="section-note" style={{ marginBottom: "14px" }}>
+        Carteira completa (não recortada pelo período). Roteiro usado no contato — o que se diz —,
+        diferente do canal acima. Resposta = o proprietário reagiu (inclui recusa). Angariação = dos
+        imóveis que receberam o roteiro, quantos chegaram a Angariado. Destravou = foi a última
+        tentativa antes da angariação.
+      </p>
+      {abordagens.length === 0 ? (
+        <p className="section-note">
+          Nenhuma tentativa com roteiro registrada ainda. Cadastre suas abordagens e registre as
+          tentativas no painel de cada imóvel (Pipeline) para o ranking aparecer aqui.
+        </p>
+      ) : (
+        <>
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Abordagem</th>
+                  <th>Tentativas</th>
+                  <th>Resposta</th>
+                  <th>Imóveis</th>
+                  <th>Angariação</th>
+                  <th>Destravou</th>
+                  <th>Abertura / seguimento</th>
+                </tr>
+              </thead>
+              <tbody>
+                {abordagens.map((a) => (
+                  <tr key={a.abordagemId}>
+                    <td className="cell-strong">
+                      {a.nome}
+                      {!a.amostraSuficiente && (
+                        <span className="section-note"> · amostra baixa</span>
+                      )}
+                    </td>
+                    <td>{a.tentativas}</td>
+                    <td>{a.taxaResposta.toFixed(0)}%</td>
+                    <td>{a.imoveis}</td>
+                    <td>
+                      {a.taxaAngariacao.toFixed(0)}% ({a.angariados}/{a.imoveis})
+                    </td>
+                    <td>{a.destravou}</td>
+                    <td>
+                      {a.aberturas} / {a.seguimentos}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="section-note" style={{ marginTop: "12px" }}>
+            {resumo.total} tentativa(s) em {resumo.imoveisComTentativa} imóvel(is).
+            {resumo.semAbordagem > 0 &&
+              ` ${resumo.semAbordagem} sem roteiro registrado — essas ficam de fora do ranking.`}
+            {resumo.mediaTentativasAteAngariar != null &&
+              ` Média de ${resumo.mediaTentativasAteAngariar.toFixed(1)} tentativa(s) até angariar.`}
+            {" "}Abordagens com menos de {MIN_TENTATIVAS} tentativas aparecem marcadas como amostra
+            baixa e vão para o fim — abaixo disso, uma taxa alta significa só que aconteceu uma vez.
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
 // Dispara o download de um CSV no browser (Blob + link temporário).
 function baixarCsv(nomeArquivo: string, conteudo: string) {
   const blob = new Blob([conteudo], { type: "text/csv;charset=utf-8;" });
@@ -185,7 +282,9 @@ function baixarCsv(nomeArquivo: string, conteudo: string) {
 
 export default function RelatoriosView() {
   const imoveis = useAppStore((s) => s.imoveis);
+  const abordagens = useAppStore((s) => s.abordagens);
   const comissaoPercent = useAppStore((s) => s.config.comissaoPercent);
+  const abrirModal = useUiModal((s) => s.abrirModal);
   const { usuario } = useSessao();
 
   const [modo, setModo] = useState<"mensal" | "semanal">("mensal");
@@ -199,6 +298,9 @@ export default function RelatoriosView() {
 
   // Análise por canal: carteira inteira, independente do período selecionado.
   const canais = desempenhoPorCanal(imoveis);
+  // Ranking de roteiros — mesma base (carteira inteira), eixo diferente.
+  const rankingAbordagens = desempenhoPorAbordagem(imoveis, abordagens);
+  const resumo = resumoTentativas(imoveis);
 
   // Exporta os imóveis angariados no período (o que a tabela do relatório
   // mostra), com colunas mais ricas do que a versão de tela — o CSV serve para
@@ -229,6 +331,20 @@ export default function RelatoriosView() {
     baixarCsv(`desempenho-canais-${todayISO()}.csv`, gerarCsv(cabecalho, linhas));
   }
 
+  // Exporta o ranking de abordagens (carteira completa).
+  function exportarAbordagens() {
+    const cabecalho = [
+      "Abordagem", "Tentativas", "Respostas", "Taxa de resposta (%)", "Imóveis",
+      "Angariados", "Taxa de angariação (%)", "Destravou", "Aberturas", "Seguimentos", "Amostra suficiente",
+    ];
+    const linhas = rankingAbordagens.map((a) => [
+      a.nome, a.tentativas, a.respostas, a.taxaResposta.toFixed(0), a.imoveis,
+      a.angariados, a.taxaAngariacao.toFixed(0), a.destravou, a.aberturas, a.seguimentos,
+      a.amostraSuficiente ? "Sim" : "Não",
+    ]);
+    baixarCsv(`desempenho-abordagens-${todayISO()}.csv`, gerarCsv(cabecalho, linhas));
+  }
+
   return (
     <>
       <div className="page-head">
@@ -253,6 +369,15 @@ export default function RelatoriosView() {
             title="Baixar a tabela de desempenho por canal em CSV"
           >
             Exportar canais (CSV)
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={exportarAbordagens}
+            disabled={rankingAbordagens.length === 0}
+            title="Baixar o ranking de abordagens em CSV"
+          >
+            Exportar abordagens (CSV)
           </button>
           <button type="button" className="btn" onClick={() => window.print()}>
             Imprimir / salvar PDF
@@ -306,6 +431,11 @@ export default function RelatoriosView() {
       <div id="report-doc">
         <ReportDoc d={dados} responsavel={rotuloUsuario(usuario) || "-"} />
         <DesempenhoCanais canais={canais} />
+        <DesempenhoAbordagens
+          abordagens={rankingAbordagens}
+          resumo={resumo}
+          aoGerenciar={() => abrirModal("abordagens")}
+        />
       </div>
     </>
   );

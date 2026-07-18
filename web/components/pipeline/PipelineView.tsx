@@ -286,6 +286,7 @@ function Drawer({ imovel }: { imovel: Imovel }) {
   const abrirModal = useUiModal((s) => s.abrirModal);
   const enderecoCompleto = [imovel.endereco, imovel.bairro, imovel.cidade].filter(Boolean).join(", ");
   const totalNotas = (imovel.notas || []).length;
+  const totalTentativas = (imovel.tentativas || []).length;
 
   return (
     <>
@@ -337,6 +338,19 @@ function Drawer({ imovel }: { imovel: Imovel }) {
                   comportamento pré-existente do ModalOverlay. */}
               <button type="button" className="btn btn-sm" onClick={() => abrirModal("notas", imovel.id)}>
                 Ver / adicionar notas
+              </button>
+            </div>
+          </div>
+          <div className="drawer-section">
+            <div className="drawer-section-title">Tentativas de abordagem</div>
+            <div className="drawer-notas-resumo">
+              <span className="drawer-notes">
+                {totalTentativas === 0
+                  ? "Nenhuma tentativa registrada ainda."
+                  : `${totalTentativas} tentativa(s) registrada(s).`}
+              </span>
+              <button type="button" className="btn btn-sm" onClick={() => abrirModal("tentativas", imovel.id)}>
+                Registrar / ver tentativas
               </button>
             </div>
           </div>

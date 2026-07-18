@@ -36,6 +36,24 @@ export const FORMAS_ABORDAGEM = [
   "Panfletagem", "E-mail", "Rede social", "Outro",
 ] as const;
 
+// Desfecho de uma tentativa de abordagem, em ordem crescente de engajamento
+// do proprietário. A ordem importa: o ranking de abordagens usa a posição para
+// separar "fez o proprietário responder" de "fez o proprietário avançar".
+// "recusou" fica por último de propósito — é resposta (ele reagiu), mas
+// negativa; por isso não é o mesmo que "sem resposta".
+export const RESULTADOS_TENTATIVA = [
+  { valor: "sem-resposta", rotulo: "Sem resposta", respondeu: false },
+  { valor: "respondeu", rotulo: "Respondeu", respondeu: true },
+  { valor: "agendou", rotulo: "Agendou visita/reunião", respondeu: true },
+  { valor: "recusou", rotulo: "Recusou", respondeu: true },
+] as const;
+
+export type ResultadoTentativa = (typeof RESULTADOS_TENTATIVA)[number]["valor"];
+
+/** Resultados que contam como "o proprietário reagiu" (taxa de resposta). */
+export const RESULTADOS_COM_RESPOSTA: readonly ResultadoTentativa[] =
+  RESULTADOS_TENTATIVA.filter((r) => r.respondeu).map((r) => r.valor);
+
 // Valor de origem que representa o garimpo em sites de OUTRAS imobiliárias
 // (a corretora acha o anúncio no site de uma concorrente e vai atrás do
 // proprietário para angariar). Exportado para os insights referenciarem sem

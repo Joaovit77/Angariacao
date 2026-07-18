@@ -15,8 +15,10 @@ import { useUiModal } from "@/lib/uiModal";
 
 export default function ModalConfig() {
   const fecharModal = useUiModal((s) => s.fecharModal);
+  const abrirModal = useUiModal((s) => s.abrirModal);
   const { usuario } = useSessao();
   const config = useAppStore((s) => s.config);
+  const totalAbordagens = useAppStore((s) => s.abordagens.length);
 
   const [comissao, setComissao] = useState(String(config.comissaoPercent));
   const [tipos, setTipos] = useState<string[]>(config.agendaTipos ?? []);
@@ -123,6 +125,19 @@ export default function ModalConfig() {
               Adicionar
             </button>
           </div>
+        </div>
+        <div className="divider"></div>
+        <div className="field-group">
+          <label>Abordagens de captação</label>
+          <div className="field-hint" style={{ marginBottom: "10px" }}>
+            Os roteiros que você usa ao abordar proprietários — o que você diz, não por onde diz.
+            Ao registrar uma tentativa num imóvel você escolhe o roteiro usado, e o ranking em
+            Relatórios mostra quais funcionam.
+            {totalAbordagens > 0 && ` ${totalAbordagens} cadastrada(s).`}
+          </div>
+          <button type="button" className="btn" onClick={() => abrirModal("abordagens")}>
+            Gerenciar abordagens
+          </button>
         </div>
         <div className="divider"></div>
         <div className="field-group">

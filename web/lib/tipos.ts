@@ -6,6 +6,7 @@
    trata todos esses casos — o tipo documenta o contrato, não o
    restringe além do que o código antigo garantia.
    ================================================================ */
+import type { ResultadoTentativa } from "./constantes";
 
 export interface StatusHistoryEntry {
   status: string;
@@ -18,6 +19,31 @@ export interface NotaImovel {
   texto: string;
   /** Datetime local "YYYY-MM-DDTHH:mm" — lexicograficamente ordenável. */
   data: string;
+}
+
+/** Roteiro de captação cadastrado pelo usuário — o QUE se diz ao proprietário.
+    Não confundir com `Imovel.formaAbordagem`, que é o CANAL usado. */
+export interface Abordagem {
+  id: string;
+  nome: string;
+  roteiro?: string | null;
+  /** Canal em que a abordagem costuma ser usada (um de FORMAS_ABORDAGEM). */
+  canalSugerido?: string | null;
+  /** Arquivada: some dos seletores, mas segue nomeando as tentativas antigas. */
+  arquivada: boolean;
+}
+
+/** Uma tentativa de contato com o proprietário de um imóvel. */
+export interface Tentativa {
+  id: string;
+  /** Datetime local "YYYY-MM-DDTHH:mm" — lexicograficamente ordenável (igual NotaImovel). */
+  data: string;
+  /** id da Abordagem usada; null quando o roteiro não foi registrado. */
+  abordagemId?: string | null;
+  /** Canal do contato (um de FORMAS_ABORDAGEM). */
+  canal?: string | null;
+  resultado: ResultadoTentativa;
+  observacao?: string | null;
 }
 
 export interface Imovel {
@@ -47,6 +73,7 @@ export interface Imovel {
   observacoes?: string | null;
   statusHistory?: StatusHistoryEntry[] | null;
   notas?: NotaImovel[] | null;
+  tentativas?: Tentativa[] | null;
   pausadoAte?: string | null; // ISO YYYY-MM-DD
   motivoPerda?: string | null;
   motivoPerdaOutro?: string | null;

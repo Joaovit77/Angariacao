@@ -99,6 +99,42 @@ describe("carregarEstado", () => {
     expect(estado.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [] });
   });
 
+  it("mapeia o catálogo de abordagens", async () => {
+    const estado = await carregarEstado(clienteFake({
+      imoveis: { data: [], error: null },
+      metas: { data: [], error: null },
+      agenda: { data: [], error: null },
+      abordagens: {
+        data: [
+          { id: "ab1", user_id: "u", nome: "Avaliação gratuita", roteiro: "Ofereço avaliação sem custo", canal_sugerido: "WhatsApp", arquivada: false },
+          { id: "ab2", user_id: "u", nome: "Imóvel parado?", roteiro: null, canal_sugerido: null, arquivada: true },
+        ],
+        error: null,
+      },
+      user_config: { data: null, error: null },
+    }));
+    expect(estado.abordagens).toEqual([
+      { id: "ab1", nome: "Avaliação gratuita", roteiro: "Ofereço avaliação sem custo", canalSugerido: "WhatsApp", arquivada: false },
+      { id: "ab2", nome: "Imóvel parado?", roteiro: "", canalSugerido: "", arquivada: true },
+    ]);
+  });
+
+  // Cenário real do rollout: o código sobe antes de o schema ser aplicado, e a
+  // tabela `abordagens` ainda não existe. O app inteiro tem que continuar
+  // carregando — só o ranking de abordagens fica indisponível.
+  it("erro em abordagens NÃO derruba o carregamento (schema ainda não aplicado)", async () => {
+    const estado = await carregarEstado(clienteFake({
+      imoveis: { data: dbJson.imoveisRows, error: null },
+      metas: { data: METAS_ROWS, error: null },
+      agenda: { data: dbJson.agendaRows, error: null },
+      abordagens: { data: null, error: new Error('relation "abordagens" does not exist') },
+      user_config: { data: null, error: null },
+    }));
+    expect(estado.abordagens).toEqual([]);
+    expect(estado.imoveis).toHaveLength(dbJson.imoveisRows.length);
+    expect(estado.agenda).toHaveLength(2);
+  });
+
   it("data null nas tabelas vira coleção vazia (paridade com `|| []` legado)", async () => {
     const estado = await carregarEstado(clienteFake({
       imoveis: { data: null, error: null },
@@ -109,5 +145,6 @@ describe("carregarEstado", () => {
     expect(estado.imoveis).toEqual([]);
     expect(estado.metas).toEqual({});
     expect(estado.agenda).toEqual([]);
+    expect(estado.abordagens).toEqual([]);
   });
 });

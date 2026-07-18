@@ -77,6 +77,13 @@ alter table imoveis add column if not exists notas jsonb not null default '[]'::
 -- nasce marcado e é "confirmado" quando editado/salvo pelo modal completo.
 alter table imoveis add column if not exists pre_cadastro boolean not null default false;
 
+-- Tentativas de abordagem: cada contato feito com o proprietário, com o roteiro
+-- usado (abordagem_id -> tabela `abordagens`), o canal e o resultado. Mesmo
+-- padrão de `notas`: jsonb na própria linha, herdando o RLS do imóvel.
+-- Um imóvel tem VÁRIAS tentativas de propósito — é o que permite separar o
+-- roteiro que abre a conversa do que fecha o contrato.
+alter table imoveis add column if not exists tentativas jsonb not null default '[]'::jsonb;
+
 alter table imoveis enable row level security;
 
 drop policy if exists "select_own_imoveis" on imoveis;
@@ -166,6 +173,48 @@ create policy "delete_own_agenda" on agenda
   for delete using (auth.uid() = user_id);
 
 create index if not exists agenda_user_id_idx on agenda(user_id);
+
+-- ------------------------------------------------------------
+-- ABORDAGENS (catálogo de roteiros de captação do usuário)
+-- ------------------------------------------------------------
+-- Uma abordagem é o ROTEIRO — o que você diz ao proprietário
+-- ("ofereço avaliação gratuita do aluguel"). Não confundir com
+-- `imoveis.forma_abordagem`, que é o CANAL (WhatsApp, ligação,
+-- visita). São eixos independentes: o mesmo roteiro roda em
+-- canais diferentes, e o mesmo canal carrega roteiros diferentes.
+--
+-- As TENTATIVAS ficam em `imoveis.tentativas` (jsonb), no mesmo
+-- padrão de `notas`/`status_history` — histórico por imóvel viaja
+-- junto com a linha do imóvel e herda o RLS dela.
+create table if not exists abordagens (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  nome text not null,
+  roteiro text,
+  canal_sugerido text,
+  -- Arquivar em vez de excluir: uma abordagem usada em 40 tentativas
+  -- ainda é a chave de leitura desse histórico. Arquivada some dos
+  -- seletores, mas continua nomeando as tentativas antigas.
+  arquivada boolean not null default false,
+  created_at timestamptz default now()
+);
+
+alter table abordagens enable row level security;
+
+drop policy if exists "select_own_abordagens" on abordagens;
+create policy "select_own_abordagens" on abordagens
+  for select using (auth.uid() = user_id);
+drop policy if exists "insert_own_abordagens" on abordagens;
+create policy "insert_own_abordagens" on abordagens
+  for insert with check (auth.uid() = user_id);
+drop policy if exists "update_own_abordagens" on abordagens;
+create policy "update_own_abordagens" on abordagens
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "delete_own_abordagens" on abordagens;
+create policy "delete_own_abordagens" on abordagens
+  for delete using (auth.uid() = user_id);
+
+create index if not exists abordagens_user_id_idx on abordagens(user_id);
 
 -- ------------------------------------------------------------
 -- CONFIGURAÇÕES (uma linha por usuário)

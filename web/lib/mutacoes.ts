@@ -16,11 +16,11 @@
 import { VERIFICACAO_DISPONIBILIDADE_DIAS } from "./constantes";
 import { addDaysISO, agoraISOComHora, currentMonthKey, todayISO } from "./datas";
 import { dataAngariadoEfetiva, foiAngariado } from "./calculo/motor";
-import { toDbAgenda, toDbImovel } from "./persistencia/mapeadores";
+import { toDbAbordagem, toDbAgenda, toDbImovel } from "./persistencia/mapeadores";
 import { getSupabase } from "./persistencia/supabase";
 import { useAppStore } from "./store";
 import { toast } from "./toast";
-import type { AgendaItem, Imovel, Meta, NotaImovel, UserConfig, WhatsappModelo } from "./tipos";
+import type { Abordagem, AgendaItem, Imovel, Meta, NotaImovel, Tentativa, UserConfig, WhatsappModelo } from "./tipos";
 
 export function uid(): string {
   return crypto.randomUUID();
@@ -188,6 +188,104 @@ export async function excluirNotaImovel(imovelId: string, notaId: string): Promi
   }
   setImoveis(imoveis.map((i) => (i.id === imovelId ? { ...i, notas: novasNotas } : i)));
   toast("Nota removida.");
+  return true;
+}
+
+/**
+ * Registra uma tentativa de abordagem no imóvel. Mesma estratégia das notas:
+ * update PARCIAL da coluna `tentativas`, para não reescrever a linha inteira
+ * nem competir com uma edição do imóvel aberta em paralelo.
+ *
+ * O `resultado` é obrigatório de propósito: uma tentativa sem desfecho não
+ * entra no denominador de nada e tornaria o ranking de abordagens otimista
+ * (só as que deram certo seriam registradas).
+ */
+export async function registrarTentativa(
+  imovelId: string,
+  dados: Omit<Tentativa, "id" | "data">,
+): Promise<boolean> {
+  const { imoveis, setImoveis } = useAppStore.getState();
+  const imovel = imoveis.find((i) => i.id === imovelId);
+  if (!imovel) return false;
+
+  const tentativa: Tentativa = {
+    id: uid(),
+    data: agoraISOComHora(),
+    abordagemId: dados.abordagemId || null,
+    canal: dados.canal || null,
+    resultado: dados.resultado,
+    observacao: dados.observacao?.trim() || null,
+  };
+  const novasTentativas = [...(imovel.tentativas || []), tentativa];
+
+  const { error } = await getSupabase().from("imoveis").update({ tentativas: novasTentativas }).eq("id", imovelId);
+  if (error) {
+    toast("Não foi possível registrar a tentativa: " + error.message, "error");
+    return false;
+  }
+  setImoveis(imoveis.map((i) => (i.id === imovelId ? { ...i, tentativas: novasTentativas } : i)));
+  toast("Tentativa registrada.");
+  return true;
+}
+
+export async function excluirTentativa(imovelId: string, tentativaId: string): Promise<boolean> {
+  const { imoveis, setImoveis } = useAppStore.getState();
+  const imovel = imoveis.find((i) => i.id === imovelId);
+  if (!imovel) return false;
+  if (!confirm("Excluir esta tentativa do histórico?")) return false;
+
+  const novasTentativas = (imovel.tentativas || []).filter((t) => t.id !== tentativaId);
+  const { error } = await getSupabase().from("imoveis").update({ tentativas: novasTentativas }).eq("id", imovelId);
+  if (error) {
+    toast("Não foi possível excluir a tentativa: " + error.message, "error");
+    return false;
+  }
+  setImoveis(imoveis.map((i) => (i.id === imovelId ? { ...i, tentativas: novasTentativas } : i)));
+  toast("Tentativa removida.");
+  return true;
+}
+
+/** Cria ou atualiza uma abordagem do catálogo. */
+export async function salvarAbordagem(data: Abordagem, userId: string): Promise<boolean> {
+  const { abordagens, setAbordagens } = useAppStore.getState();
+  const nome = data.nome.trim();
+  if (!nome) {
+    toast("Dê um nome à abordagem.", "error");
+    return false;
+  }
+  const existente = abordagens.find((a) => a.id === data.id) || null;
+  const abordagem: Abordagem = { ...data, nome };
+
+  const { error } = await getSupabase().from("abordagens").upsert(toDbAbordagem(abordagem, userId));
+  if (error) {
+    toast("Não foi possível salvar a abordagem: " + error.message, "error");
+    return false;
+  }
+  setAbordagens(
+    existente ? abordagens.map((a) => (a.id === abordagem.id ? abordagem : a)) : [...abordagens, abordagem],
+  );
+  toast(existente ? "Abordagem atualizada." : "Abordagem cadastrada.");
+  return true;
+}
+
+/**
+ * Arquiva/desarquiva uma abordagem. Não existe exclusão de propósito: as
+ * tentativas antigas referenciam a abordagem pelo id, e apagá-la deixaria o
+ * histórico órfão — o ranking perderia a leitura do que já foi feito.
+ */
+export async function alternarArquivamentoAbordagem(id: string): Promise<boolean> {
+  const { abordagens, setAbordagens } = useAppStore.getState();
+  const abordagem = abordagens.find((a) => a.id === id);
+  if (!abordagem) return false;
+
+  const arquivada = !abordagem.arquivada;
+  const { error } = await getSupabase().from("abordagens").update({ arquivada }).eq("id", id);
+  if (error) {
+    toast("Não foi possível arquivar: " + error.message, "error");
+    return false;
+  }
+  setAbordagens(abordagens.map((a) => (a.id === id ? { ...a, arquivada } : a)));
+  toast(arquivada ? "Abordagem arquivada." : "Abordagem reativada.");
   return true;
 }
 
@@ -388,7 +486,7 @@ export async function carregarDadosDemo(userId: string): Promise<boolean> {
 export async function apagarTodosOsDados(userId: string): Promise<boolean> {
   if (
     !confirm(
-      "Isso vai apagar PERMANENTEMENTE todos os seus imóveis, metas e compromissos salvos na nuvem. Essa ação não pode ser desfeita. Continuar?",
+      "Isso vai apagar PERMANENTEMENTE todos os seus imóveis, metas, compromissos e abordagens salvos na nuvem. Essa ação não pode ser desfeita. Continuar?",
     )
   )
     return false;
@@ -396,14 +494,16 @@ export async function apagarTodosOsDados(userId: string): Promise<boolean> {
   const { error: e1 } = await supabase.from("imoveis").delete().eq("user_id", userId);
   const { error: e2 } = await supabase.from("agenda").delete().eq("user_id", userId);
   const { error: e3 } = await supabase.from("metas").delete().eq("user_id", userId);
-  if (e1 || e2 || e3) {
+  const { error: e4 } = await supabase.from("abordagens").delete().eq("user_id", userId);
+  if (e1 || e2 || e3 || e4) {
     toast("Não foi possível apagar todos os dados. Tente novamente.", "error");
     return false;
   }
-  const { setImoveis, setAgenda, setMetas } = useAppStore.getState();
+  const { setImoveis, setAgenda, setMetas, setAbordagens } = useAppStore.getState();
   setImoveis([]);
   setAgenda([]);
   setMetas({});
+  setAbordagens([]);
   toast("Todos os dados foram apagados.");
   return true;
 }

@@ -14,12 +14,14 @@
    ================================================================ */
 import { create } from "zustand";
 import type { EstadoApp } from "./persistencia/carregarEstado";
-import type { AgendaItem, Imovel, Metas, UserConfig } from "./tipos";
+import type { Abordagem, AgendaItem, Imovel, Metas, UserConfig } from "./tipos";
 
 interface AppStore {
   imoveis: Imovel[];
   metas: Metas;
   agenda: AgendaItem[];
+  /** Catálogo de roteiros de captação (o QUE se diz), não o canal. */
+  abordagens: Abordagem[];
   config: UserConfig;
   /** true depois que carregarEstado() populou o store nesta sessão. */
   carregado: boolean;
@@ -30,6 +32,7 @@ interface AppStore {
 
   setImoveis: (imoveis: Imovel[]) => void;
   setAgenda: (agenda: AgendaItem[]) => void;
+  setAbordagens: (abordagens: Abordagem[]) => void;
   setMetas: (metas: Metas) => void;
   setConfig: (config: UserConfig) => void;
 }
@@ -38,6 +41,7 @@ const ESTADO_INICIAL = {
   imoveis: [] as Imovel[],
   metas: {} as Metas,
   agenda: [] as AgendaItem[],
+  abordagens: [] as Abordagem[],
   config: { comissaoPercent: 100, agendaTipos: [], whatsappModelos: [] } as UserConfig, // % sobre 1 aluguel (100 = 1 mês)
   carregado: false,
 };
@@ -48,6 +52,7 @@ export const useAppStore = create<AppStore>((set) => ({
   limparEstado: () => set({ ...ESTADO_INICIAL }),
   setImoveis: (imoveis) => set({ imoveis }),
   setAgenda: (agenda) => set({ agenda }),
+  setAbordagens: (abordagens) => set({ abordagens }),
   setMetas: (metas) => set({ metas }),
   setConfig: (config) => set({ config }),
 }));

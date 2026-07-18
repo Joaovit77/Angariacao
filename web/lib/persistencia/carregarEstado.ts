@@ -17,10 +17,10 @@
    comissaoPercent = 100.
    ================================================================ */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AgendaItem, Imovel, Metas, UserConfig, WhatsappModelo } from "../tipos";
+import type { Abordagem, AgendaItem, Imovel, Metas, UserConfig, WhatsappModelo } from "../tipos";
 import {
-  fromDbAgenda, fromDbImovel,
-  type DbAgendaRow, type DbImovelRow, type DbMetaRow, type DbUserConfigRow,
+  fromDbAbordagem, fromDbAgenda, fromDbImovel,
+  type DbAbordagemRow, type DbAgendaRow, type DbImovelRow, type DbMetaRow, type DbUserConfigRow,
 } from "./mapeadores";
 import { getSupabase } from "./supabase";
 
@@ -28,19 +28,24 @@ export interface EstadoApp {
   imoveis: Imovel[];
   metas: Metas;
   agenda: AgendaItem[];
+  abordagens: Abordagem[];
   config: UserConfig;
 }
 
 export async function carregarEstado(client: SupabaseClient = getSupabase()): Promise<EstadoApp> {
-  const [imRes, mtRes, agRes, cfRes] = await Promise.all([
+  const [imRes, mtRes, agRes, abRes, cfRes] = await Promise.all([
     client.from("imoveis").select("*"),
     client.from("metas").select("*"),
     client.from("agenda").select("*"),
+    client.from("abordagens").select("*"),
     client.from("user_config").select("*").maybeSingle(),
   ]);
   if (imRes.error) throw imRes.error;
   if (mtRes.error) throw mtRes.error;
   if (agRes.error) throw agRes.error;
+  // Mesma tolerância deliberada aplicada a user_config: um erro no catálogo de
+  // abordagens (ex.: schema ainda não atualizado) NÃO derruba o carregamento —
+  // o app funciona inteiro sem ele, só sem o ranking de abordagens.
 
   const metas: Metas = {};
   ((mtRes.data || []) as DbMetaRow[]).forEach((m) => {
@@ -67,6 +72,7 @@ export async function carregarEstado(client: SupabaseClient = getSupabase()): Pr
   return {
     imoveis: ((imRes.data || []) as DbImovelRow[]).map(fromDbImovel),
     agenda: ((agRes.data || []) as DbAgendaRow[]).map(fromDbAgenda),
+    abordagens: abRes.error ? [] : ((abRes.data || []) as DbAbordagemRow[]).map(fromDbAbordagem),
     metas,
     config: { comissaoPercent: cfData ? Number(cfData.comissao_percent) : 100, agendaTipos, whatsappModelos },
   };

@@ -13,7 +13,7 @@
    currentUser do app antigo.
    ================================================================ */
 import { ORIGENS_LEGADAS } from "../constantes";
-import type { AgendaItem, Imovel, NotaImovel, StatusHistoryEntry } from "../tipos";
+import type { Abordagem, AgendaItem, Imovel, NotaImovel, StatusHistoryEntry, Tentativa } from "../tipos";
 
 /** Linha da tabela `imoveis` como o Supabase retorna/aceita. */
 export interface DbImovelRow {
@@ -44,6 +44,7 @@ export interface DbImovelRow {
   observacoes: string | null;
   status_history: StatusHistoryEntry[] | null;
   notas: NotaImovel[] | null;
+  tentativas: Tentativa[] | null;
   pausado_ate: string | null;
   motivo_perda: string | null;
   motivo_perda_outro: string | null;
@@ -67,6 +68,17 @@ export interface DbAgendaRow {
   notes: string | null;
   done: boolean | null;
   is_verificacao_disponibilidade: boolean | null;
+  created_at?: string;
+}
+
+/** Linha da tabela `abordagens` (catálogo de roteiros de captação). */
+export interface DbAbordagemRow {
+  id: string;
+  user_id: string;
+  nome: string;
+  roteiro: string | null;
+  canal_sugerido: string | null;
+  arquivada: boolean | null;
   created_at?: string;
 }
 
@@ -118,6 +130,7 @@ export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "create
     observacoes: i.observacoes || null,
     status_history: i.statusHistory || [],
     notas: i.notas || [],
+    tentativas: i.tentativas || [],
     pausado_ate: i.pausadoAte || null,
     motivo_perda: i.motivoPerda || null,
     motivo_perda_outro: i.motivoPerdaOutro || null,
@@ -161,6 +174,7 @@ export function fromDbImovel(r: DbImovelRow): Imovel {
     observacoes: r.observacoes || "",
     statusHistory: r.status_history || [],
     notas: r.notas || [],
+    tentativas: r.tentativas || [],
     pausadoAte: r.pausado_ate,
     motivoPerda: r.motivo_perda || "",
     motivoPerdaOutro: r.motivo_perda_outro || "",
@@ -168,6 +182,27 @@ export function fromDbImovel(r: DbImovelRow): Imovel {
     comissaoRecebidaValor: r.comissao_recebida_valor as number | null,
     comissaoRecebidaData: r.comissao_recebida_data,
     preCadastro: !!r.pre_cadastro,
+  };
+}
+
+export function toDbAbordagem(a: Abordagem, userId: string): Omit<DbAbordagemRow, "created_at"> {
+  return {
+    id: a.id,
+    user_id: userId,
+    nome: a.nome,
+    roteiro: a.roteiro || null,
+    canal_sugerido: a.canalSugerido || null,
+    arquivada: !!a.arquivada,
+  };
+}
+
+export function fromDbAbordagem(r: DbAbordagemRow): Abordagem {
+  return {
+    id: r.id,
+    nome: r.nome,
+    roteiro: r.roteiro || "",
+    canalSugerido: r.canal_sugerido || "",
+    arquivada: !!r.arquivada,
   };
 }
 

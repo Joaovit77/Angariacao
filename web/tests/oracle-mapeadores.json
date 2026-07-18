@@ -64,6 +64,7 @@
       "comissao_recebida_valor": 1800,
       "comissao_recebida_data": "2026-07-06",
       "notas": [],
+      "tentativas": [],
       "pre_cadastro": false
     },
     "f02": {
@@ -100,6 +101,7 @@
       "comissao_recebida_valor": null,
       "comissao_recebida_data": null,
       "notas": [],
+      "tentativas": [],
       "pre_cadastro": false
     },
     "f03": {
@@ -136,6 +138,7 @@
       "comissao_recebida_valor": null,
       "comissao_recebida_data": null,
       "notas": [],
+      "tentativas": [],
       "pre_cadastro": false
     },
     "f04": {
@@ -177,6 +180,7 @@
       "comissao_recebida_valor": null,
       "comissao_recebida_data": null,
       "notas": [],
+      "tentativas": [],
       "pre_cadastro": false
     },
     "f05": {
@@ -226,6 +230,7 @@
       "comissao_recebida_valor": null,
       "comissao_recebida_data": null,
       "notas": [],
+      "tentativas": [],
       "pre_cadastro": false
     },
     "f06": {
@@ -271,6 +276,7 @@
       "comissao_recebida_valor": null,
       "comissao_recebida_data": null,
       "notas": [],
+      "tentativas": [],
       "pre_cadastro": false
     },
     "f07": {
@@ -316,6 +322,7 @@
       "comissao_recebida_valor": null,
       "comissao_recebida_data": null,
       "notas": [],
+      "tentativas": [],
       "pre_cadastro": false
     },
     "f08": {
@@ -361,6 +368,7 @@
       "comissao_recebida_valor": null,
       "comissao_recebida_data": null,
       "notas": [],
+      "tentativas": [],
       "pre_cadastro": false
     },
     "f09": {
@@ -402,6 +410,7 @@
       "comissao_recebida_valor": null,
       "comissao_recebida_data": null,
       "notas": [],
+      "tentativas": [],
       "pre_cadastro": false
     },
     "f10": {
@@ -443,6 +452,7 @@
       "comissao_recebida_valor": null,
       "comissao_recebida_data": null,
       "notas": [],
+      "tentativas": [],
       "pre_cadastro": false
     },
     "f11": {
@@ -492,6 +502,7 @@
       "comissao_recebida_valor": null,
       "comissao_recebida_data": "2026-06-22",
       "notas": [],
+      "tentativas": [],
       "pre_cadastro": false
     },
     "f12": {
@@ -541,6 +552,7 @@
       "comissao_recebida_valor": null,
       "comissao_recebida_data": null,
       "notas": [],
+      "tentativas": [],
       "pre_cadastro": false
     },
     "f13": {
@@ -590,6 +602,7 @@
       "comissao_recebida_valor": 999,
       "comissao_recebida_data": "2026-06-30",
       "notas": [],
+      "tentativas": [],
       "pre_cadastro": false
     },
     "f14": {
@@ -631,6 +644,7 @@
       "comissao_recebida_valor": null,
       "comissao_recebida_data": null,
       "notas": [],
+      "tentativas": [],
       "pre_cadastro": false
     },
     "f15": {
@@ -672,6 +686,7 @@
       "comissao_recebida_valor": null,
       "comissao_recebida_data": null,
       "notas": [],
+      "tentativas": [],
       "pre_cadastro": false
     },
     "f16": {
@@ -721,6 +736,7 @@
       "comissao_recebida_valor": null,
       "comissao_recebida_data": null,
       "notas": [],
+      "tentativas": [],
       "pre_cadastro": false
     },
     "f17": {
@@ -766,6 +782,7 @@
       "comissao_recebida_valor": null,
       "comissao_recebida_data": null,
       "notas": [],
+      "tentativas": [],
       "pre_cadastro": false
     }
   },
@@ -832,6 +849,7 @@
       "comissaoRecebidaValor": 1800,
       "comissaoRecebidaData": "2026-07-06",
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "f02": {
@@ -867,6 +885,7 @@
       "comissaoRecebidaValor": null,
       "comissaoRecebidaData": null,
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "f03": {
@@ -902,6 +921,7 @@
       "comissaoRecebidaValor": null,
       "comissaoRecebidaData": null,
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "f04": {
@@ -942,6 +962,7 @@
       "comissaoRecebidaValor": null,
       "comissaoRecebidaData": null,
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "f05": {
@@ -990,6 +1011,7 @@
       "comissaoRecebidaValor": null,
       "comissaoRecebidaData": null,
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "f06": {
@@ -1034,6 +1056,7 @@
       "comissaoRecebidaValor": null,
       "comissaoRecebidaData": null,
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "f07": {
@@ -1078,6 +1101,7 @@
       "comissaoRecebidaValor": null,
       "comissaoRecebidaData": null,
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "f08": {
@@ -1122,6 +1146,7 @@
       "comissaoRecebidaValor": null,
       "comissaoRecebidaData": null,
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "f09": {
@@ -1162,6 +1187,7 @@
       "comissaoRecebidaValor": null,
       "comissaoRecebidaData": null,
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "f10": {
@@ -1202,6 +1228,7 @@
       "comissaoRecebidaValor": null,
       "comissaoRecebidaData": null,
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "f11": {
@@ -1250,6 +1277,7 @@
       "comissaoRecebidaValor": null,
       "comissaoRecebidaData": "2026-06-22",
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "f12": {
@@ -1298,6 +1326,7 @@
       "comissaoRecebidaValor": null,
       "comissaoRecebidaData": null,
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "f13": {
@@ -1346,6 +1375,7 @@
       "comissaoRecebidaValor": 999,
       "comissaoRecebidaData": "2026-06-30",
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "f14": {
@@ -1386,6 +1416,7 @@
       "comissaoRecebidaValor": null,
       "comissaoRecebidaData": null,
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "f15": {
@@ -1426,6 +1457,7 @@
       "comissaoRecebidaValor": null,
       "comissaoRecebidaData": null,
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "f16": {
@@ -1474,6 +1506,7 @@
       "comissaoRecebidaValor": null,
       "comissaoRecebidaData": null,
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "f17": {
@@ -1518,6 +1551,7 @@
       "comissaoRecebidaValor": null,
       "comissaoRecebidaData": null,
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     }
   },
@@ -1568,6 +1602,7 @@
       "comissaoRecebidaValor": "1800",
       "comissaoRecebidaData": "2026-07-06",
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "r2": {
@@ -1603,6 +1638,7 @@
       "comissaoRecebidaValor": null,
       "comissaoRecebidaData": null,
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     },
     "r3": {
@@ -1647,6 +1683,7 @@
       "comissaoRecebidaValor": 0,
       "comissaoRecebidaData": null,
       "notas": [],
+      "tentativas": [],
       "preCadastro": false
     }
   },
