@@ -11,6 +11,7 @@
     "gera-oraculo": "node scripts/gera-oraculo.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.112.3",
     "@supabase/supabase-js": "^2.110.2",
     "chart.js": "^4.4.1",
     "leaflet": "^1.9.4",

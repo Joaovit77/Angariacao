@@ -13,9 +13,12 @@
    ================================================================ */
 import { useState } from "react";
 import { useSessao } from "@/components/SessaoProvider";
-import { FORMAS_ABORDAGEM } from "@/lib/constantes";
+import { FORMAS_ABORDAGEM, TIPOS_IMOVEL } from "@/lib/constantes";
+import type { RoteiroSugerido } from "@/lib/calculo/ia";
+import { sugerirRoteiros } from "@/lib/ia";
 import { alternarArquivamentoAbordagem, salvarAbordagem, uid } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
+import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
 import type { Abordagem } from "@/lib/tipos";
 
@@ -28,6 +31,38 @@ export default function ModalAbordagens() {
   const [edicao, setEdicao] = useState<Abordagem | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [mostrarArquivadas, setMostrarArquivadas] = useState(false);
+
+  // Sugestão por IA: painel de contexto + resultados. As sugestões NÃO são
+  // salvas sozinhas — viram um rascunho no formulário e o corretor decide.
+  const [painelIa, setPainelIa] = useState(false);
+  const [ctxTipo, setCtxTipo] = useState("");
+  const [ctxBairro, setCtxBairro] = useState("");
+  const [ctxSituacao, setCtxSituacao] = useState("");
+  const [gerando, setGerando] = useState(false);
+  const [sugestoes, setSugestoes] = useState<RoteiroSugerido[]>([]);
+
+  async function gerar() {
+    if (gerando) return;
+    setGerando(true);
+    const r = await sugerirRoteiros({
+      tipoImovel: ctxTipo || null,
+      bairro: ctxBairro || null,
+      situacao: ctxSituacao || null,
+    });
+    setGerando(false);
+    if (!r.ok || !r.roteiros) {
+      toast(r.mensagem || "A IA não respondeu agora.", "error");
+      return;
+    }
+    setSugestoes(r.roteiros);
+  }
+
+  /** Leva a sugestão para o formulário de cadastro — ainda não salva nada. */
+  function usarSugestao(s: RoteiroSugerido) {
+    setEdicao({ id: uid(), nome: s.nome, roteiro: s.roteiro, canalSugerido: "", arquivada: false });
+    setPainelIa(false);
+    setSugestoes([]);
+  }
 
   const visiveis = abordagens.filter((a) => mostrarArquivadas || !a.arquivada);
   const totalArquivadas = abordagens.filter((a) => a.arquivada).length;
@@ -111,10 +146,81 @@ export default function ModalAbordagens() {
             </div>
           </div>
         ) : (
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "14px" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginBottom: "14px" }}>
+            <button type="button" className="btn btn-sm" onClick={() => setPainelIa((v) => !v)}>
+              {painelIa ? "Fechar sugestões" : "Sugerir com IA"}
+            </button>
             <button type="button" className="btn btn-primary btn-sm" onClick={novaAbordagem}>
               Nova abordagem
             </button>
+          </div>
+        )}
+
+        {painelIa && !edicao && (
+          <div className="card" style={{ padding: "14px", marginBottom: "16px" }}>
+            <div className="field-hint" style={{ marginBottom: "10px" }}>
+              Descreva o cenário e a IA escreve 3 abordagens diferentes. Nada é salvo automaticamente —
+              você escolhe uma, edita se quiser e só então cadastra.
+            </div>
+            <div className="field-row">
+              <div className="field-group">
+                <label>Tipo de imóvel</label>
+                <select value={ctxTipo} onChange={(e) => setCtxTipo(e.target.value)}>
+                  <option value="">Qualquer</option>
+                  {TIPOS_IMOVEL.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field-group">
+                <label>Bairro / região</label>
+                <input
+                  type="text"
+                  value={ctxBairro}
+                  onChange={(e) => setCtxBairro(e.target.value)}
+                  placeholder="Ex.: Gleba Palhano"
+                />
+              </div>
+            </div>
+            <div className="field-group">
+              <label>Situação observada</label>
+              <input
+                type="text"
+                value={ctxSituacao}
+                onChange={(e) => setCtxSituacao(e.target.value)}
+                placeholder="Ex.: não respondeu meus dois contatos por WhatsApp"
+              />
+              {/* Frase completa, não rótulo: "sem resposta" é ambíguo (o
+                  proprietário não respondeu? o anúncio não teve interessados?)
+                  e a IA escolhe um dos dois sem avisar. */}
+              <div className="field-hint">
+                Escreva em frase, não em rótulo. &quot;Sem resposta&quot; pode significar duas coisas
+                opostas — e a IA vai escolher uma delas por você.
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button type="button" className="btn btn-primary btn-sm" onClick={gerar} disabled={gerando}>
+                {gerando ? "Gerando..." : "Gerar sugestões"}
+              </button>
+            </div>
+
+            {sugestoes.length > 0 && (
+              <div className="notas-lista" style={{ marginTop: "14px" }}>
+                {sugestoes.map((s, i) => (
+                  <div className="nota-item" key={i}>
+                    <div className="nota-data">
+                      <span>{s.nome}</span>
+                      <button type="button" className="btn btn-sm" onClick={() => usarSugestao(s)}>
+                        Usar esta
+                      </button>
+                    </div>
+                    <div className="nota-texto">{s.roteiro}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

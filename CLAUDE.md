@@ -37,7 +37,8 @@ O aplicativo vive em **[`web/`](web/)** — Next 16 (App Router, Turbopack), Typ
   do Leaflet e o `style.css`), `page.tsx` (tela de acesso e queda do link de recuperação de senha),
   e o grupo **`(painel)/`** com o shell autenticado (`layout.tsx`) e uma rota por view
   (`dashboard`, `pipeline`, `metas`, `agenda`, `insights`, `mapa`, `relatorios`, `roadmap`).
-  **`app/api/whatsapp/enviar/route.ts`** é a única rota de servidor do projeto (ver abaixo).
+  **`app/api/whatsapp/enviar/route.ts`** e **`app/api/ia/route.ts`** são as duas rotas de servidor
+  do projeto — ambas existem só porque guardam um segredo (ver abaixo).
 - **`web/app/style.css`** — o CSS do app antigo copiado **sem alterações**, dirigido por custom
   properties em `:root`. Não há redesign; classes e tokens são os mesmos.
 - **`web/lib/`** — todo o núcleo sem UI (ver "Arquitetura" abaixo). Não importa React/Next.
@@ -163,10 +164,16 @@ leitura/escrita, e o isolamento por usuário é 100% das políticas RLS (`auth.u
 políticas RLS no mesmo padrão + o par `toDb*`/`fromDb*` em `web/lib/persistencia/mapeadores.ts` +
 o tipo em `web/lib/tipos.ts`.
 
-### A única rota de servidor: `web/app/api/whatsapp/enviar`
+### As rotas de servidor: `api/whatsapp/enviar` e `api/ia`
 
-O envio direto de WhatsApp (Evolution API) é a **única** exceção ao "sem servidor", e existe por um
-motivo: o token da Evolution não pode chegar ao browser. O fluxo é
+São as **duas** exceções ao "sem servidor", e existem pelo mesmo motivo: guardam um segredo que não
+pode chegar ao browser. Toda rota nova aqui precisa justificar-se por esse critério — se não guarda
+segredo, é código de cliente.
+
+#### `api/whatsapp/enviar`
+
+O envio direto de WhatsApp (Evolution API) existe por um motivo: o token da Evolution não pode
+chegar ao browser. O fluxo é
 `ModalWhatsapp` → `lib/envioWhatsapp.ts` (browser) → a rota (servidor) → Evolution.
 
 Três regras ao mexer nela:
@@ -194,6 +201,27 @@ canônico** que volta. Isso resolve duas coisas que regex nenhuma resolve:
   então `+1 415 555 2671` vira `5514155552671` — que passa por qualquer teste de forma. Só a
   consulta revela que não existe, evitando mandar mensagem para um estranho.
 
+#### `api/ia` — sugestão de roteiros e leitura do ranking (Claude)
+
+Duas funções, ambas escrevendo **texto**: sugerir roteiros de abordagem e interpretar o ranking.
+O fluxo espelha o do WhatsApp — `lib/ia.ts` (browser) → a rota (servidor) → Anthropic —, e as
+partes puras (prompts, esquema, `FalhaIa`) ficam em `lib/calculo/ia.ts`.
+
+A chave (`ANTHROPIC_API_KEY`, **sem** `NEXT_PUBLIC_`) é cobrada por token consumido. Sem ela o app
+não quebra: os botões respondem "não configurado" e o resto segue igual.
+
+Três regras ao mexer nela:
+
+- **O prompt é montado no servidor, nunca recebido do browser.** O cliente manda no máximo um
+  contexto curto e tipado, que `lib/calculo/ia.ts` trunca (`MAX_CONTEXTO`). Aceitar texto livre
+  transformaria a rota num proxy de LLM aberto, pago na nossa conta — é o análogo exato do
+  "o destinatário sai do banco".
+- **Os números da análise saem do banco.** A rota relê os imóveis com o token de quem chamou e roda
+  o **mesmo** cálculo puro da tela (`calculo/abordagens.ts`). Se o browser mandasse o ranking pronto,
+  a análise sairia bem escrita em cima de números forjados — e ninguém notaria.
+- **A IA não calcula métrica.** Ela recebe os números prontos e só interpreta. Trocar isso por "pede
+  pra IA analisar os dados crus" devolveria número inventado com cara de relatório.
+
 ## Convenções e regras (o que sempre / nunca fazer)
 
 - **Tudo em pt-BR** — strings de UI, comentários, toasts, labels, mensagens de validação.
@@ -215,8 +243,9 @@ canônico** que volta. Isso resolve duas coisas que regex nenhuma resolve:
 - **Bibliotecas novas via npm** em `web/`, fixando a mesma major das existentes quando fizer sentido
   (Chart.js 4, Leaflet 1.9, Supabase JS 2, Zustand 5).
 - **Sem segredo no cliente além da anon key.** Segredo mora em API Route (é o caso das env vars da
-  Evolution, em `app/api/whatsapp/enviar`); código que chega ao browser, nunca. Na prática: variável
-  com `NEXT_PUBLIC_` é pública — se é segredo, não leva o prefixo.
+  Evolution em `app/api/whatsapp/enviar` e da `ANTHROPIC_API_KEY` em `app/api/ia`); código que chega
+  ao browser, nunca. Na prática: variável com `NEXT_PUBLIC_` é pública — se é segredo, não leva o
+  prefixo.
 
 ## Ao trabalhar aqui
 

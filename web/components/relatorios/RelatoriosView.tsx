@@ -18,6 +18,8 @@ import { desempenhoPorCanal, type CanalDesempenho } from "@/lib/calculo/canais";
 import { dateEnteredStatus } from "@/lib/calculo/motor";
 import { relatorioMensal, relatorioSemanal, weekRangeLabel, type DadosRelatorio } from "@/lib/calculo/relatorios";
 import { gerarCsv } from "@/lib/csv";
+import { analisarAbordagens } from "@/lib/ia";
+import { toast } from "@/lib/toast";
 import { currentMonthKey, monthLabelLong, shiftMonthKey, todayISO } from "@/lib/datas";
 import { fmtDate, fmtMoney } from "@/lib/formatadores";
 import { useAppStore } from "@/lib/store";
@@ -191,6 +193,24 @@ function DesempenhoAbordagens({
   resumo: ResumoTentativas;
   aoGerenciar: () => void;
 }) {
+  // Leitura por IA: interpreta a tabela acima. Os números NÃO vêm daqui —
+  // o servidor os recalcula do banco (ver app/api/ia), então o texto nunca
+  // descreve um ranking diferente do que está na tela.
+  const [lendo, setLendo] = useState(false);
+  const [leitura, setLeitura] = useState("");
+
+  async function lerComIa() {
+    if (lendo) return;
+    setLendo(true);
+    const r = await analisarAbordagens();
+    setLendo(false);
+    if (!r.ok || !r.texto) {
+      toast(r.mensagem || "A IA não respondeu agora.", "error");
+      return;
+    }
+    setLeitura(r.texto);
+  }
+
   return (
     <div className="report-doc" style={{ marginTop: "22px" }}>
       <div
@@ -198,9 +218,16 @@ function DesempenhoAbordagens({
         style={{ marginTop: 0, display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}
       >
         <span>Desempenho por abordagem</span>
-        <button type="button" className="btn btn-sm" onClick={aoGerenciar}>
-          Gerenciar abordagens
-        </button>
+        <span style={{ display: "flex", gap: "8px" }}>
+          {abordagens.length > 0 && (
+            <button type="button" className="btn btn-sm" onClick={lerComIa} disabled={lendo}>
+              {lendo ? "Lendo..." : "Ler com IA"}
+            </button>
+          )}
+          <button type="button" className="btn btn-sm" onClick={aoGerenciar}>
+            Gerenciar abordagens
+          </button>
+        </span>
       </div>
       <p className="section-note" style={{ marginBottom: "14px" }}>
         Carteira completa (não recortada pelo período). Roteiro usado no contato — o que se diz —,
@@ -261,6 +288,20 @@ function DesempenhoAbordagens({
             {" "}Abordagens com menos de {MIN_TENTATIVAS} tentativas aparecem marcadas como amostra
             baixa e vão para o fim — abaixo disso, uma taxa alta significa só que aconteceu uma vez.
           </p>
+          {leitura && (
+            <div className="card" style={{ padding: "14px", marginTop: "14px" }}>
+              <div className="card-title" style={{ marginBottom: "8px" }}>
+                Leitura por IA <span className="section-note">interpretação dos números acima</span>
+              </div>
+              {/* Sem dangerouslySetInnerHTML: o texto vem de fora, e o escape do
+                  JSX é a defesa. Quebras de linha viram parágrafos. */}
+              {leitura.split(/\n{2,}/).map((paragrafo, i) => (
+                <p key={i} className="drawer-notes" style={{ marginBottom: "8px" }}>
+                  {paragrafo}
+                </p>
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>
