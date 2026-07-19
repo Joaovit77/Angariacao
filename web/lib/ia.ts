@@ -47,6 +47,20 @@ async function chamar<T>(corpo: unknown): Promise<T | { ok: false; falha: FalhaI
   }
 }
 
+/** Este ambiente tem a chave configurada? Serve para a UI esconder os botões
+    de IA em vez de oferecer algo que só responderia "não configurado".
+    Falha de rede conta como "não tem" — na dúvida, não oferece. */
+export async function iaConfigurada(): Promise<boolean> {
+  try {
+    const resposta = await fetch("/api/ia");
+    if (!resposta.ok) return false;
+    const dados = (await resposta.json().catch(() => null)) as { configurado?: unknown } | null;
+    return dados?.configurado === true;
+  } catch {
+    return false;
+  }
+}
+
 /** Pede 3 roteiros de abordagem para o cenário informado. */
 export function sugerirRoteiros(contexto: ContextoRoteiro): Promise<ResultadoRoteiros> {
   return chamar<ResultadoRoteiros>({ tipo: "sugerir-roteiros", contexto });

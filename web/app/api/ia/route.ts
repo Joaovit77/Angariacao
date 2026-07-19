@@ -76,6 +76,14 @@ function textoDaResposta(mensagem: Anthropic.Message): string {
     .trim();
 }
 
+/** A UI precisa saber se vale mostrar os botões de IA. Devolve só um
+    booleano — nunca a chave, nem parte dela. Sem sessão exigida de
+    propósito: a informação "este ambiente tem IA" não é sensível, e pedir
+    token aqui só complicaria o boot. */
+export function GET(): Response {
+  return Response.json({ configurado: !!process.env.ANTHROPIC_API_KEY });
+}
+
 export async function POST(request: Request): Promise<Response> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

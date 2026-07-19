@@ -25,6 +25,9 @@ interface AppStore {
   config: UserConfig;
   /** true depois que carregarEstado() populou o store nesta sessão. */
   carregado: boolean;
+  /** O servidor tem ANTHROPIC_API_KEY? Decide se os botões de IA aparecem.
+      Começa false: sem confirmação, não oferecemos o que não funciona. */
+  iaDisponivel: boolean;
   /** Grava o resultado de carregarEstado() (login/boot). */
   setEstado: (estado: EstadoApp) => void;
   /** Volta ao estado inicial (logout). */
@@ -33,6 +36,7 @@ interface AppStore {
   setImoveis: (imoveis: Imovel[]) => void;
   setAgenda: (agenda: AgendaItem[]) => void;
   setAbordagens: (abordagens: Abordagem[]) => void;
+  setIaDisponivel: (disponivel: boolean) => void;
   setMetas: (metas: Metas) => void;
   setConfig: (config: UserConfig) => void;
 }
@@ -44,6 +48,7 @@ const ESTADO_INICIAL = {
   abordagens: [] as Abordagem[],
   config: { comissaoPercent: 100, agendaTipos: [], whatsappModelos: [] } as UserConfig, // % sobre 1 aluguel (100 = 1 mês)
   carregado: false,
+  iaDisponivel: false,
 };
 
 export const useAppStore = create<AppStore>((set) => ({
@@ -53,6 +58,7 @@ export const useAppStore = create<AppStore>((set) => ({
   setImoveis: (imoveis) => set({ imoveis }),
   setAgenda: (agenda) => set({ agenda }),
   setAbordagens: (abordagens) => set({ abordagens }),
+  setIaDisponivel: (iaDisponivel) => set({ iaDisponivel }),
   setMetas: (metas) => set({ metas }),
   setConfig: (config) => set({ config }),
 }));

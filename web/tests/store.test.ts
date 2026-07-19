@@ -23,6 +23,15 @@ describe("useAppStore", () => {
     expect(s.abordagens).toEqual([]);
     expect(s.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [] });
     expect(s.carregado).toBe(false);
+    // Começa false de propósito: sem confirmação do servidor, a UI não
+    // oferece os botões de IA.
+    expect(s.iaDisponivel).toBe(false);
+  });
+
+  it("limparEstado (logout) também desliga a IA", () => {
+    useAppStore.getState().setIaDisponivel(true);
+    useAppStore.getState().limparEstado();
+    expect(useAppStore.getState().iaDisponivel).toBe(false);
   });
 
   it("setEstado grava o resultado de carregarEstado e marca carregado", () => {

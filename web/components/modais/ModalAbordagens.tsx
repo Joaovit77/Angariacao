@@ -26,6 +26,7 @@ export default function ModalAbordagens() {
   const fecharModal = useUiModal((s) => s.fecharModal);
   const { usuario } = useSessao();
   const abordagens = useAppStore((s) => s.abordagens);
+  const iaDisponivel = useAppStore((s) => s.iaDisponivel);
 
   // `edicao` guarda a abordagem em edição (ou a nova, ainda sem id salvo).
   const [edicao, setEdicao] = useState<Abordagem | null>(null);
@@ -147,9 +148,13 @@ export default function ModalAbordagens() {
           </div>
         ) : (
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginBottom: "14px" }}>
-            <button type="button" className="btn btn-sm" onClick={() => setPainelIa((v) => !v)}>
-              {painelIa ? "Fechar sugestões" : "Sugerir com IA"}
-            </button>
+            {/* Sem chave no servidor o botão nem aparece — oferecer algo que
+                só responderia "não configurado" é ruído. */}
+            {iaDisponivel && (
+              <button type="button" className="btn btn-sm" onClick={() => setPainelIa((v) => !v)}>
+                {painelIa ? "Fechar sugestões" : "Sugerir com IA"}
+              </button>
+            )}
             <button type="button" className="btn btn-primary btn-sm" onClick={novaAbordagem}>
               Nova abordagem
             </button>

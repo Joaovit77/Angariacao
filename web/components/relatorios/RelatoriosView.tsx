@@ -198,6 +198,7 @@ function DesempenhoAbordagens({
   // descreve um ranking diferente do que está na tela.
   const [lendo, setLendo] = useState(false);
   const [leitura, setLeitura] = useState("");
+  const iaDisponivel = useAppStore((s) => s.iaDisponivel);
 
   async function lerComIa() {
     if (lendo) return;
@@ -219,7 +220,8 @@ function DesempenhoAbordagens({
       >
         <span>Desempenho por abordagem</span>
         <span style={{ display: "flex", gap: "8px" }}>
-          {abordagens.length > 0 && (
+          {/* Precisa das duas coisas: ranking para ler e chave no servidor. */}
+          {iaDisponivel && abordagens.length > 0 && (
             <button type="button" className="btn btn-sm" onClick={lerComIa} disabled={lendo}>
               {lendo ? "Lendo..." : "Ler com IA"}
             </button>

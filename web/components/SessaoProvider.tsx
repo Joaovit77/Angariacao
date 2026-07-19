@@ -19,6 +19,7 @@
    ================================================================ */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import { iaConfigurada } from "@/lib/ia";
 import { valorMaisUsado } from "@/lib/normalizacao";
 import { carregarEstado } from "@/lib/persistencia/carregarEstado";
 import { getSupabase } from "@/lib/persistencia/supabase";
@@ -82,6 +83,7 @@ export default function SessaoProvider({ children }: { children: React.ReactNode
   });
   const setEstado = useAppStore((s) => s.setEstado);
   const limparEstado = useAppStore((s) => s.limparEstado);
+  const setIaDisponivel = useAppStore((s) => s.setIaDisponivel);
 
   useEffect(() => {
     const { data } = getSupabase().auth.onAuthStateChange((event, session) => {
@@ -117,6 +119,20 @@ export default function SessaoProvider({ children }: { children: React.ReactNode
       cancelado = true;
     };
   }, [sessao.estado, usuarioId, setEstado]);
+
+  // A IA está configurada neste ambiente? Uma consulta por sessão, só para a
+  // UI decidir se mostra os botões. Independente do carregamento dos dados:
+  // se esta falhar, o app inteiro segue — só fica sem os botões de IA.
+  useEffect(() => {
+    if (sessao.estado !== "auth") return;
+    let cancelado = false;
+    iaConfigurada().then((disponivel) => {
+      if (!cancelado) setIaDisponivel(disponivel);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [sessao.estado, setIaDisponivel]);
 
   // Logout: zera o store (o app antigo perdia o STATE ao recarregar a página).
   useEffect(() => {
