@@ -70,8 +70,17 @@ describe("ordenarPipelineLista — ordenação por código (pós-migração)", (
 
   it("crescente por código (A→Z, pt-BR)", () => {
     const asc = codigos(ordenarPipelineLista(imoveis, { key: "codigo", dir: "asc" }));
-    const esperado = [...codigos(imoveis)].sort((a, b) => (a || "").localeCompare(b || "", "pt-BR"));
+    const esperado = [...codigos(imoveis)].sort((a, b) =>
+      (a || "").localeCompare(b || "", "pt-BR", { numeric: true, sensitivity: "base" }));
     expect(asc).toEqual(esperado);
+  });
+
+  it("ordem natural: LD-100 vem depois de LD-99, não depois de LD-10", () => {
+    const amostra = ["LD-9", "LD-100", "LD-10", "LD-99", "LD-1"].map(
+      (codigo, n) => ({ id: String(n), codigo }) as Imovel,
+    );
+    expect(codigos(ordenarPipelineLista(amostra, { key: "codigo", dir: "asc" })))
+      .toEqual(["LD-1", "LD-9", "LD-10", "LD-99", "LD-100"]);
   });
 
   it("decrescente é o inverso do crescente", () => {

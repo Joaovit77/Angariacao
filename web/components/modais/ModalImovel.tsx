@@ -25,6 +25,7 @@ import { todayISO } from "@/lib/datas";
 import { fmtMoney } from "@/lib/formatadores";
 import { buscarCep, geocodeEndereco, maskCEP } from "@/lib/geo";
 import { canonizarValor, distintosCanonizados } from "@/lib/normalizacao";
+import { descreverDuplicados, imoveisDuplicados } from "@/lib/calculo/duplicidade";
 import { aplicarMudancaDeStatus, excluirImovel, numOrNull, salvarImovel, uid } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
@@ -62,6 +63,9 @@ export default function ModalImovel({ id }: { id?: string }) {
   const [endereco, setEndereco] = useState(imovel?.endereco ?? "");
   const [bairro, setBairro] = useState(imovel?.bairro ?? "");
   const [cidade, setCidade] = useState(imovel?.cidade ?? "Londrina");
+  const [unidade, setUnidade] = useState(imovel?.unidade ?? "");
+  const [bloco, setBloco] = useState(imovel?.bloco ?? "");
+  const [edificio, setEdificio] = useState(imovel?.edificio ?? "");
   const [quartos, setQuartos] = useState(imovel?.quartos != null ? String(imovel.quartos) : "");
   const [banheiros, setBanheiros] = useState(imovel?.banheiros != null ? String(imovel.banheiros) : "");
   const [vagas, setVagas] = useState(imovel?.vagas != null ? String(imovel.vagas) : "");
@@ -113,6 +117,16 @@ export default function ModalImovel({ id }: { id?: string }) {
     imobiliariaConcorrente,
   ]);
   const responsaveis = distintosCanonizados([...imoveis.map((i) => i.responsavel), responsavel]);
+  const edificios = distintosCanonizados([...imoveis.map((i) => i.edificio), edificio]);
+
+  // Valor derivado a cada render (nada de setState em efeito — regra do
+  // React Compiler no CLAUDE.md): o aviso aparece assim que o endereço
+  // digitado bate com um imóvel já cadastrado.
+  const duplicados = imoveisDuplicados(
+    { endereco, cidade, unidade, bloco },
+    imoveis,
+    imovel ? imovel.id : null,
+  );
 
   async function aoBuscarCep() {
     const raw = cep.replace(/\D/g, "");
@@ -224,6 +238,16 @@ export default function ModalImovel({ id }: { id?: string }) {
       }
     }
 
+    // Endereço repetido AVISA, não bloqueia: às vezes o cadastro duplicado é
+    // proposital (o proprietário voltou a atender depois de um "Perdido").
+    // Quem decide é o corretor — mas não sem ver que já existe.
+    if (duplicados.length) {
+      const seguir = confirm(
+        `${descreverDuplicados(duplicados)}\n\nDeseja cadastrar assim mesmo?`,
+      );
+      if (!seguir) return;
+    }
+
     // Snap para a grafia já usada da mesma imobiliária/captador (ignorando
     // acento/caixa/espaço), evitando duplicar o dado. Compara com os OUTROS
     // imóveis para que uma correção de grafia deste registro não seja desfeita.
@@ -243,6 +267,9 @@ export default function ModalImovel({ id }: { id?: string }) {
       endereco: enderecoLimpo,
       bairro: bairro.trim(),
       cidade: cidade.trim(),
+      unidade: unidade.trim(),
+      bloco: bloco.trim(),
+      edificio: edificio.trim(),
       tipo,
       quartos: numOrNull(quartos),
       banheiros: numOrNull(banheiros),
@@ -354,6 +381,11 @@ export default function ModalImovel({ id }: { id?: string }) {
           <div className="field-group">
             <label>Endereço</label>
             <input type="text" value={endereco} onChange={(e) => setEndereco(e.target.value)} placeholder="Rua, número" />
+            {duplicados.length > 0 && (
+              <div className="field-hint" style={{ color: "var(--danger, #d64545)", fontWeight: 600 }}>
+                ⚠️ {descreverDuplicados(duplicados)} Confira antes de cadastrar de novo.
+              </div>
+            )}
           </div>
           <div className="field-row">
             <div className="field-group">
@@ -364,6 +396,36 @@ export default function ModalImovel({ id }: { id?: string }) {
               <label>Cidade</label>
               <input type="text" value={cidade ?? ""} onChange={(e) => setCidade(e.target.value)} />
             </div>
+          </div>
+          <div className="field-row-3">
+            <div className="field-group">
+              <label>Nº do apartamento / unidade</label>
+              <input type="text" value={unidade ?? ""} onChange={(e) => setUnidade(e.target.value)} placeholder="Ex: 101" />
+            </div>
+            <div className="field-group">
+              <label>Bloco / torre</label>
+              <input type="text" value={bloco ?? ""} onChange={(e) => setBloco(e.target.value)} placeholder="Ex: B" />
+            </div>
+            <div className="field-group">
+              <label>Edifício / condomínio</label>
+              <input
+                type="text"
+                list="edificios-list"
+                value={edificio ?? ""}
+                onChange={(e) => setEdificio(e.target.value)}
+                placeholder="Ex: Ed. Solar das Palmeiras"
+              />
+              <datalist id="edificios-list">
+                {edificios.map((nome) => (
+                  <option key={nome} value={nome}></option>
+                ))}
+              </datalist>
+            </div>
+          </div>
+          <div className="field-hint" style={{ marginTop: "-6px" }}>
+            Preencha quando for apartamento, kitnet ou imóvel em condomínio. O
+            <strong> nº da unidade</strong> e o <strong>bloco</strong> são o que diferenciam dois
+            imóveis no mesmo endereço — sem eles, o ap 101 e o ap 202 pareceriam cadastro repetido.
           </div>
           <div className="field-row-3">
             <div className="field-group">

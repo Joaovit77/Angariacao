@@ -25,6 +25,9 @@ export interface DbImovelRow {
   endereco: string;
   bairro: string | null;
   cidade: string | null;
+  unidade: string | null;
+  bloco: string | null;
+  edificio: string | null;
   tipo: string | null;
   quartos: number | null;
   banheiros: number | null;
@@ -111,6 +114,9 @@ export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "create
     endereco: i.endereco,
     bairro: i.bairro || null,
     cidade: i.cidade || null,
+    unidade: i.unidade || null,
+    bloco: i.bloco || null,
+    edificio: i.edificio || null,
     tipo: i.tipo || null,
     quartos: i.quartos ?? null,
     banheiros: i.banheiros ?? null,
@@ -150,6 +156,9 @@ export function fromDbImovel(r: DbImovelRow): Imovel {
     endereco: r.endereco,
     bairro: r.bairro || "",
     cidade: r.cidade || "",
+    unidade: r.unidade || "",
+    bloco: r.bloco || "",
+    edificio: r.edificio || "",
     tipo: r.tipo || "",
     quartos: r.quartos,
     banheiros: r.banheiros,

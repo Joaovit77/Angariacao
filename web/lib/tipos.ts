@@ -54,6 +54,13 @@ export interface Imovel {
   endereco: string;
   bairro?: string | null;
   cidade?: string | null;
+  /** Número do apartamento/unidade (ex.: "101"). Junto com `bloco`, é o que
+      distingue dois imóveis no MESMO endereço — ver calculo/duplicidade.ts. */
+  unidade?: string | null;
+  /** Bloco/torre dentro do condomínio (ex.: "B", "Torre 2"). */
+  bloco?: string | null;
+  /** Nome do edifício/condomínio (ex.: "Ed. Solar das Palmeiras"). */
+  edificio?: string | null;
   tipo?: string | null;
   quartos?: number | null;
   banheiros?: number | null;

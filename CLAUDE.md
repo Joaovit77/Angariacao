@@ -100,6 +100,11 @@ o torna testável puro.
   os **dois eixos da captação**: `canais` mede a ORIGEM do imóvel (onde a oportunidade foi achada);
   `abordagens` mede o ROTEIRO usado no contato (o que se diz). Não confundir com a
   `formaAbordagem` do imóvel, que é o CANAL. Ver "Abordagens e tentativas" abaixo.
+- **`calculo/duplicidade.ts`** — detecta imóvel já cadastrado. A identidade é
+  `endereço + cidade + unidade + bloco`, comparada por chave normalizada (grafia, acento,
+  pontuação e abreviação de logradouro não contam). `unidade`/`bloco` fazem parte da identidade
+  de propósito: no mesmo prédio o ap 101 e o ap 202 são imóveis **diferentes**. O modal **avisa,
+  não bloqueia** — recadastrar às vezes é proposital (um "Perdido" que voltou a atender).
 - **`persistencia/mapeadores.ts`** — `toDb*`/`fromDb*` que traduzem entre o camelCase do app e o
   snake_case do Supabase. Definem o contrato de dados.
 - **`persistencia/supabase.ts`** — cliente singleton do browser. **`persistencia/carregarEstado.ts`**

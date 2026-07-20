@@ -317,6 +317,13 @@ function Drawer({ imovel }: { imovel: Imovel }) {
             <InfoDrawer label="Endereco completo" value={enderecoCompleto || "-"} />
             <InfoDrawer label="Bairro" value={imovel.bairro || "-"} />
             <InfoDrawer label="Cidade" value={imovel.cidade || "-"} />
+            <InfoDrawer
+              label="Unidade"
+              value={[imovel.unidade && `ap ${imovel.unidade}`, imovel.bloco && `bloco ${imovel.bloco}`]
+                .filter(Boolean)
+                .join(" · ") || "-"}
+            />
+            <InfoDrawer label="Edifício" value={imovel.edificio || "-"} />
             <InfoDrawer label="Tipo" value={imovel.tipo || "-"} />
             <InfoDrawer label="Valor" value={fmtMoney(imovel.valorAluguel)} />
             <InfoDrawer label="Status" value={imovel.status || "-"} />

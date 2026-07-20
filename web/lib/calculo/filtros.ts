@@ -62,7 +62,7 @@ export function filtrarImoveis(
     if (viewMode === "lista" && !matchesPipelineColFilters(i, colFilters)) return false;
     const haystack = [
       i.codigo, i.proprietarioNome, i.endereco, i.bairro, i.cidade,
-      i.proprietarioTelefone, i.tipo,
+      i.proprietarioTelefone, i.tipo, i.unidade, i.bloco, i.edificio,
     ].join(" ").toLowerCase();
     if (s && !haystack.includes(s)) return false;
     return true;
@@ -102,6 +102,14 @@ export interface PipelineColSort {
   dir: "asc" | "desc" | null;
 }
 
+// Comparação "natural": trata os trechos de dígitos como número, então
+// LD-100 vem DEPOIS de LD-99 (na ordem alfabética pura viria logo após
+// LD-10, como se o código fosse "10"). Vale para qualquer coluna — códigos,
+// bairros e nomes numerados sofrem do mesmo problema.
+function compararNatural(a: string, b: string): number {
+  return a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" });
+}
+
 // Ordena a Lista: por coluna quando há sort ativo; senão, o padrão (mais
 // recentes primeiro por data de cadastro). Port de sortPipelineLista().
 export function ordenarPipelineLista(imoveis: Imovel[], colSort: PipelineColSort): Imovel[] {
@@ -109,7 +117,7 @@ export function ordenarPipelineLista(imoveis: Imovel[], colSort: PipelineColSort
   if (colSort.key && PIPELINE_SORT_ACCESSOR[colSort.key]) {
     const accessor = PIPELINE_SORT_ACCESSOR[colSort.key];
     const fator = colSort.dir === "desc" ? -1 : 1;
-    return arr.sort((a, b) => fator * (accessor(a) || "").localeCompare(accessor(b) || "", "pt-BR"));
+    return arr.sort((a, b) => fator * compararNatural(accessor(a) || "", accessor(b) || ""));
   }
   return arr.sort((a, b) => (b.dataAngariacao || "").localeCompare(a.dataAngariacao || ""));
 }
