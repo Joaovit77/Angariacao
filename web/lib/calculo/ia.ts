@@ -64,6 +64,12 @@ export interface ContextoRoteiro {
       placeholder do campo. */
   situacao?: string | null;
   canal?: string | null;
+  /** Quem assina a mensagem. O captador é o usuário (pré-preenchido pela
+      conta); a empresa vem da config — por conta, pensando em outras
+      imobiliárias usando o sistema. Com eles a IA escreve a apresentação
+      ("meu nome é X e falo da Y"); sem eles, escreve sem se apresentar. */
+  captador?: string | null;
+  empresa?: string | null;
 }
 
 /** Limite por campo do contexto. Corta texto colado sem querer (e um prompt
@@ -104,7 +110,14 @@ function limpar(valor: string | null | undefined): string {
   return (valor || "").trim().slice(0, MAX_CONTEXTO);
 }
 
-export function promptSugerirRoteiros(contexto: ContextoRoteiro): string {
+/** Teto de nomes já cadastrados levados no prompt. Evita que um catálogo
+    grande infle o custo — os mais recentes bastam para não repetir. */
+export const MAX_NOMES_EXISTENTES = 20;
+
+export function promptSugerirRoteiros(
+  contexto: ContextoRoteiro,
+  nomesExistentes: string[] = [],
+): string {
   const partes = [
     contexto.tipoImovel && `Tipo de imóvel: ${limpar(contexto.tipoImovel)}`,
     contexto.bairro && `Bairro/região: ${limpar(contexto.bairro)}`,
@@ -114,19 +127,46 @@ export function promptSugerirRoteiros(contexto: ContextoRoteiro): string {
 
   const cenario = partes.length > 0 ? partes.join("\n") : "Nenhum detalhe informado — gere abordagens de uso geral.";
 
+  const captador = limpar(contexto.captador);
+  const empresa = limpar(contexto.empresa);
+
+  // A apresentação usa os valores reais — não são marcadores, porque não
+  // variam por mensagem: quem varia é o proprietário e o imóvel.
+  const apresentacao =
+    captador || empresa
+      ? `- Apresente-se logo no início: o corretor se chama ${captador || "(nome não informado)"}${empresa ? ` e fala da ${empresa}` : ""}. Escreva a apresentação com esses dados reais, no estilo "meu nome é X e falo da Y".`
+      : `- O corretor não informou nome nem empresa — escreva sem apresentação nominal.`;
+
+  // Só os nomes: o suficiente para a IA não devolver o mesmo ângulo com
+  // outras palavras — a reclamação clássica de quem gera duas vezes.
+  const jaExistem =
+    nomesExistentes.length > 0
+      ? `\n\nO corretor já tem estas abordagens cadastradas — NÃO repita estes ângulos, proponha caminhos que ele ainda não tem:\n${nomesExistentes
+          .slice(0, MAX_NOMES_EXISTENTES)
+          .map((n) => `- ${limpar(n)}`)
+          .join("\n")}`
+      : "";
+
   return `${PAPEL}
 
 Sugira 3 abordagens DIFERENTES entre si para o primeiro contato com o proprietário. Cenário:
 
-${cenario}
+${cenario}${jaExistem}
+
+Referência de tom — um exemplo real do estilo do corretor (NÃO copie; use como calibragem de formalidade e estrutura; a apresentação usa os dados reais da regra abaixo, nunca nomes inventados):
+"Olá, {nome}, tudo bem?
+Meu nome é [nome do corretor] e falo da [empresa].
+Estou entrando em contato sobre o imóvel localizado na {imovel}. Gostaria de confirmar se estou falando com o proprietário do imóvel ou com o responsável por ele.
+Agradeço desde já pela atenção e fico à disposição."
 
 Regras:
-- Cada abordagem é uma mensagem pronta para enviar, de 2 a 4 frases.
-- Varie o ângulo entre elas (ex.: uma oferece algo concreto, outra faz uma pergunta, outra parte de uma observação sobre o imóvel). Não escreva três variações do mesmo texto.
-- Use {nome} onde entra o nome do proprietário. Não invente outros marcadores.
+- Cada abordagem é uma mensagem pronta para enviar, com o mesmo tom cordial e direto da referência: cumprimento, apresentação, motivo do contato, fecho educado.
+${apresentacao}
+- Varie o ÂNGULO entre as três (ex.: uma confirma quem é o dono, outra oferece algo concreto, outra parte de uma observação sobre o imóvel). Não escreva três variações do mesmo texto.
+- Use {nome} onde entra o nome do proprietário e {imovel} onde entra o endereço do imóvel. Não invente outros marcadores.
 - Nada de promessa de valor, prazo ou resultado ("alugo em 30 dias", "consigo 20% a mais"). Você não tem como saber.
 - Não ofereça material que já esteja pronto — comparativo, relatório, lista de interessados, estudo do bairro. Você não sabe se o corretor tem isso, e prometer o que não existe queima o contato. Pode oferecer o que ele produz na hora: uma avaliação do valor, uma visita, uma conversa de 10 minutos.
-- Sem emoji. Sem "Olá, tudo bem?" como abertura de todas.
+- Sem emoji. Não abra as três com o mesmo cumprimento.
 - O campo "nome" é um rótulo curto para o corretor identificar a abordagem depois, não faz parte da mensagem.`;
 }
 

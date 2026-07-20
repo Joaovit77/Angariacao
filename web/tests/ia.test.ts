@@ -111,6 +111,57 @@ describe("promptSugerirRoteiros", () => {
     expect(p).toContain("Não ofereça material que já esteja pronto");
     expect(p).toContain("uma avaliação do valor, uma visita");
   });
+
+  // Feedback do dono: a abordagem dele sempre se apresenta com nome e
+  // empresa ("meu nome é João e falo da Imobiliária Atual"). Com os dados,
+  // a IA escreve a apresentação; sem eles, não inventa nome nenhum.
+  it("com captador e empresa, manda se apresentar com os dados reais", () => {
+    const p = promptSugerirRoteiros({ captador: "João", empresa: "Imobiliária Atual" });
+    expect(p).toContain("o corretor se chama João e fala da Imobiliária Atual");
+  });
+
+  it("sem captador nem empresa, proíbe apresentação nominal em vez de inventar", () => {
+    const p = promptSugerirRoteiros({});
+    expect(p).toContain("sem apresentação nominal");
+    // O exemplo de referência não pode conter nome real fixo — outra
+    // imobiliária usando o sistema não pode herdar "Imobiliária Atual".
+    expect(p).not.toContain("falo da Imobiliária Atual");
+  });
+
+  it("usa os marcadores da casa: {nome} e {imovel}, nada de {endereço}", () => {
+    const p = promptSugerirRoteiros({});
+    expect(p).toContain("{nome}");
+    expect(p).toContain("{imovel}");
+    expect(p).toContain("Não invente outros marcadores");
+  });
+
+  it("traz o exemplo de tom do corretor como referência, com aviso de não copiar", () => {
+    const p = promptSugerirRoteiros({});
+    expect(p).toContain("Referência de tom");
+    expect(p).toContain("NÃO copie");
+    expect(p).toContain("confirmar se estou falando com o proprietário");
+  });
+
+  // A reclamação "ela sempre se repete": os nomes já cadastrados vão no
+  // prompt para a IA propor ângulos que o corretor ainda não tem.
+  it("lista as abordagens existentes e manda não repetir esses ângulos", () => {
+    const p = promptSugerirRoteiros({}, ["Avaliação gratuita", "Imóvel parado?"]);
+    expect(p).toContain("NÃO repita estes ângulos");
+    expect(p).toContain("- Avaliação gratuita");
+    expect(p).toContain("- Imóvel parado?");
+  });
+
+  it("sem abordagens cadastradas, não inventa seção de repetição", () => {
+    const p = promptSugerirRoteiros({});
+    expect(p).not.toContain("NÃO repita estes ângulos");
+  });
+
+  it("trunca a lista de existentes em MAX_NOMES_EXISTENTES", () => {
+    const muitos = Array.from({ length: 50 }, (_, i) => `Abordagem ${i + 1}`);
+    const p = promptSugerirRoteiros({}, muitos);
+    expect(p).toContain("- Abordagem 20");
+    expect(p).not.toContain("- Abordagem 21");
+  });
 });
 
 describe("resumirRankingParaPrompt", () => {

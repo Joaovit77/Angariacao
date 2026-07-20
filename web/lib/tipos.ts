@@ -132,4 +132,7 @@ export interface UserConfig {
   agendaTipos: string[];
   /** Modelos de mensagem de WhatsApp criados pelo usuário. */
   whatsappModelos: WhatsappModelo[];
+  /** Nome da empresa/imobiliária — entra na apresentação das abordagens
+      sugeridas por IA. Por conta, pensando em várias imobiliárias. */
+  empresa: string;
 }

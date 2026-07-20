@@ -239,6 +239,11 @@ alter table user_config add column if not exists agenda_tipos jsonb not null def
 -- Modelos de mensagem de WhatsApp criados pelo usuário (ex.: "Falar mais tarde").
 alter table user_config add column if not exists whatsapp_modelos jsonb not null default '[]'::jsonb;
 
+-- Nome da empresa/imobiliária do usuário. Usado nas sugestões de abordagem
+-- por IA ("meu nome é X e falo da Y") — cada conta tem a sua, pensando em
+-- múltiplas imobiliárias usando o sistema.
+alter table user_config add column if not exists empresa text;
+
 alter table user_config enable row level security;
 
 drop policy if exists "select_own_config" on user_config;

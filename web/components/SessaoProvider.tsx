@@ -74,7 +74,7 @@ export function captadorPadrao(usuario: User | null, imoveis: Imovel[]): string 
   return nomeCaptador(usuario) || valorMaisUsado(imoveis.map((i) => i.responsavel));
 }
 
-const ESTADO_VAZIO = { imoveis: [], metas: {}, agenda: [], abordagens: [], config: { comissaoPercent: 100, agendaTipos: [], whatsappModelos: [] } };
+const ESTADO_VAZIO = { imoveis: [], metas: {}, agenda: [], abordagens: [], config: { comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "" } };
 
 export default function SessaoProvider({ children }: { children: React.ReactNode }) {
   const [sessao, setSessao] = useState<{ estado: EstadoSessao; usuario: User | null }>({

@@ -21,6 +21,7 @@ export default function ModalConfig() {
   const totalAbordagens = useAppStore((s) => s.abordagens.length);
 
   const [comissao, setComissao] = useState(String(config.comissaoPercent));
+  const [empresa, setEmpresa] = useState(config.empresa || "");
   const [tipos, setTipos] = useState<string[]>(config.agendaTipos ?? []);
   const [novoTipo, setNovoTipo] = useState("");
   const [ocupado, setOcupado] = useState(false);
@@ -48,7 +49,7 @@ export default function ModalConfig() {
     if (!usuario) return;
     setOcupado(true);
     const ok = await salvarConfig(
-      { ...config, comissaoPercent: numOrNull(comissao) || 100, agendaTipos: tipos },
+      { ...config, comissaoPercent: numOrNull(comissao) || 100, agendaTipos: tipos, empresa: empresa.trim() },
       usuario.id,
     );
     setOcupado(false);
@@ -86,6 +87,19 @@ export default function ModalConfig() {
           <div className="field-hint">
             100% equivale a 1 mês de aluguel. Usado para calcular a comissão estimada de cada imóvel
             automaticamente.
+          </div>
+        </div>
+        <div className="divider"></div>
+        <div className="field-group">
+          <label>Empresa / imobiliária</label>
+          <input
+            type="text"
+            value={empresa}
+            onChange={(e) => setEmpresa(e.target.value)}
+            placeholder="Ex.: Imobiliária Atual"
+          />
+          <div className="field-hint">
+            Entra na apresentação das abordagens sugeridas por IA (&quot;meu nome é X e falo da Y&quot;).
           </div>
         </div>
         <div className="divider"></div>

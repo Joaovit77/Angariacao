@@ -12,7 +12,7 @@
    perderia a leitura do que já foi feito.
    ================================================================ */
 import { useState } from "react";
-import { useSessao } from "@/components/SessaoProvider";
+import { captadorPadrao, useSessao } from "@/components/SessaoProvider";
 import { FORMAS_ABORDAGEM, TIPOS_IMOVEL } from "@/lib/constantes";
 import type { RoteiroSugerido } from "@/lib/calculo/ia";
 import { sugerirRoteiros } from "@/lib/ia";
@@ -26,6 +26,8 @@ export default function ModalAbordagens() {
   const fecharModal = useUiModal((s) => s.fecharModal);
   const { usuario } = useSessao();
   const abordagens = useAppStore((s) => s.abordagens);
+  const imoveis = useAppStore((s) => s.imoveis);
+  const config = useAppStore((s) => s.config);
   const iaDisponivel = useAppStore((s) => s.iaDisponivel);
 
   // `edicao` guarda a abordagem em edição (ou a nova, ainda sem id salvo).
@@ -39,6 +41,12 @@ export default function ModalAbordagens() {
   const [ctxTipo, setCtxTipo] = useState("");
   const [ctxBairro, setCtxBairro] = useState("");
   const [ctxSituacao, setCtxSituacao] = useState("");
+  // Quem assina: captador (nome da conta, ou o mais usado nos imóveis) e
+  // empresa (da config). Editáveis só para esta geração — o padrão da
+  // empresa mora em Configurações. O modal monta do zero a cada abertura
+  // (ModalOverlay), então o initializer do useState pega os valores atuais.
+  const [ctxCaptador, setCtxCaptador] = useState(() => captadorPadrao(usuario, imoveis));
+  const [ctxEmpresa, setCtxEmpresa] = useState(config.empresa || "");
   const [gerando, setGerando] = useState(false);
   const [sugestoes, setSugestoes] = useState<RoteiroSugerido[]>([]);
 
@@ -49,6 +57,8 @@ export default function ModalAbordagens() {
       tipoImovel: ctxTipo || null,
       bairro: ctxBairro || null,
       situacao: ctxSituacao || null,
+      captador: ctxCaptador || null,
+      empresa: ctxEmpresa || null,
     });
     setGerando(false);
     if (!r.ok || !r.roteiros) {
@@ -166,6 +176,29 @@ export default function ModalAbordagens() {
             <div className="field-hint" style={{ marginBottom: "10px" }}>
               Descreva o cenário e a IA escreve 3 abordagens diferentes. Nada é salvo automaticamente —
               você escolhe uma, edita se quiser e só então cadastra.
+            </div>
+            <div className="field-row">
+              <div className="field-group">
+                <label>Seu nome (captador)</label>
+                <input
+                  type="text"
+                  value={ctxCaptador}
+                  onChange={(e) => setCtxCaptador(e.target.value)}
+                  placeholder="Ex.: João"
+                />
+              </div>
+              <div className="field-group">
+                <label>Empresa / imobiliária</label>
+                <input
+                  type="text"
+                  value={ctxEmpresa}
+                  onChange={(e) => setCtxEmpresa(e.target.value)}
+                  placeholder="Ex.: Imobiliária Atual"
+                />
+                <div className="field-hint">
+                  A IA se apresenta com esses dados. O padrão da empresa fica em Configurações.
+                </div>
+              </div>
             </div>
             <div className="field-row">
               <div className="field-group">

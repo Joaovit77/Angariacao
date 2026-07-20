@@ -418,6 +418,7 @@ export async function salvarConfig(
     comissao_percent: config.comissaoPercent,
     agenda_tipos: config.agendaTipos,
     whatsapp_modelos: config.whatsappModelos,
+    empresa: config.empresa || null,
   });
   if (error) {
     toast("Não foi possível salvar: " + error.message, "error");

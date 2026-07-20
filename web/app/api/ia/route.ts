@@ -222,7 +222,22 @@ export async function POST(request: Request): Promise<Response> {
       bairro: texto("bairro"),
       situacao: texto("situacao"),
       canal: texto("canal"),
+      captador: texto("captador"),
+      empresa: texto("empresa"),
     };
+
+    // Nomes já cadastrados (ativos), para a IA não devolver o mesmo ângulo
+    // com outras palavras — a reclamação de quem gera duas vezes. Vêm do
+    // BANCO, não do browser; erro aqui não impede a sugestão, só perde a
+    // proteção contra repetição.
+    const { data: abData, error: abErro } = await supabase
+      .from("abordagens")
+      .select("nome, arquivada")
+      .order("created_at", { ascending: false });
+    if (abErro) console.error("IA: falha ao ler abordagens existentes:", abErro.message);
+    const nomesExistentes = ((abData || []) as { nome: string; arquivada: boolean | null }[])
+      .filter((a) => !a.arquivada && typeof a.nome === "string" && a.nome.trim() !== "")
+      .map((a) => a.nome);
 
     let conclusao: OpenAI.Chat.ChatCompletion;
     try {
@@ -237,7 +252,7 @@ export async function POST(request: Request): Promise<Response> {
           type: "json_schema",
           json_schema: { name: "roteiros", strict: true, schema: ESQUEMA_ROTEIROS },
         },
-        messages: [{ role: "user", content: promptSugerirRoteiros(contexto) }],
+        messages: [{ role: "user", content: promptSugerirRoteiros(contexto, nomesExistentes) }],
       });
     } catch (e) {
       console.error("IA: falha ao sugerir roteiros:", e);

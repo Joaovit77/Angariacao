@@ -74,6 +74,11 @@ export async function carregarEstado(client: SupabaseClient = getSupabase()): Pr
     agenda: ((agRes.data || []) as DbAgendaRow[]).map(fromDbAgenda),
     abordagens: abRes.error ? [] : ((abRes.data || []) as DbAbordagemRow[]).map(fromDbAbordagem),
     metas,
-    config: { comissaoPercent: cfData ? Number(cfData.comissao_percent) : 100, agendaTipos, whatsappModelos },
+    config: {
+      comissaoPercent: cfData ? Number(cfData.comissao_percent) : 100,
+      agendaTipos,
+      whatsappModelos,
+      empresa: typeof cfData?.empresa === "string" ? cfData.empresa : "",
+    },
   };
 }
