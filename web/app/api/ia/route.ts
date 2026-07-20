@@ -1,7 +1,7 @@
 /* ================================================================
-   API: SUGESTÃO E LEITURA POR IA (Claude)
+   API: SUGESTÃO E LEITURA POR IA (OpenAI)
    A SEGUNDA rota de servidor do projeto, pelo mesmo motivo da
-   primeira: a chave da Anthropic não pode chegar ao browser. Quem
+   primeira: a chave da OpenAI não pode chegar ao browser. Quem
    tivesse a chave gastaria na nossa conta à vontade.
 
    Contrato: POST + Authorization: Bearer <access_token do Supabase>
@@ -24,7 +24,7 @@
       cima de números forjados — e ninguém notaria, porque o texto sai
       bem escrito de qualquer jeito.
    ================================================================ */
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
 import { desempenhoPorAbordagem, resumoTentativas } from "@/lib/calculo/abordagens";
 import {
@@ -38,9 +38,16 @@ import {
 } from "@/lib/calculo/ia";
 import { fromDbAbordagem, fromDbImovel, type DbAbordagemRow, type DbImovelRow } from "@/lib/persistencia/mapeadores";
 
-/** Opus 4.8 — o modelo mais capaz da linha Opus. Trocar por
-    "claude-sonnet-5" corta o custo por token se o volume crescer. */
-const MODELO = "claude-opus-4-8";
+/** Modelo da OpenAI. A linha "-mini" é o meio-termo custo/qualidade:
+    sobe para "gpt-5.4" se a análise sair rasa, desce para "gpt-5.4-nano"
+    se o volume crescer e o custo pesar. É a ÚNICA linha a mudar para isso
+    — confira o preço atual em platform.openai.com/docs/pricing. */
+const MODELO = "gpt-5.4-mini";
+
+/** Teto de tokens da resposta. Nos modelos de raciocínio o orçamento é
+    compartilhado entre raciocínio e texto visível, por isso a folga: um
+    teto curto demais consome tudo pensando e devolve conteúdo vazio. */
+const MAX_TOKENS = 4000;
 
 interface Resposta {
   ok: boolean;
@@ -58,22 +65,36 @@ function erro(falha: FalhaIa, status: number): Response {
 }
 
 /** Traduz a falha do SDK para o nosso vocabulário. O detalhe fica no log
-    do servidor; o browser recebe só o motivo classificado. */
+    do servidor; o browser recebe só o motivo classificado.
+    Cota esgotada chega como 429 igual a rate limit — daí o "limite
+    excedido" cobrir os dois casos; a mensagem pt-BR serve para ambos. */
 function classificarErroIa(e: unknown): FalhaIa {
-  if (e instanceof Anthropic.RateLimitError) return "limite-excedido";
-  if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError)
+  if (e instanceof OpenAI.RateLimitError) return "limite-excedido";
+  if (e instanceof OpenAI.AuthenticationError || e instanceof OpenAI.PermissionDeniedError)
     return "nao-configurado";
   return "falha-ia";
 }
 
-/** Extrai o texto da resposta. `content` é uma união — sem estreitar por
-    `.type`, um bloco de thinking viria no lugar da resposta. */
-function textoDaResposta(mensagem: Anthropic.Message): string {
-  return mensagem.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("\n")
-    .trim();
+/** Extrai o texto da resposta.
+    Dois casos que não são "deu certo" e precisam virar erro em vez de
+    string vazia silenciosa:
+    - `refusal`: o modelo se recusou a responder (campo próprio, separado
+      do content — ignorá-lo devolveria vazio sem explicação no log).
+    - `finish_reason: "length"`: bateu no MAX_TOKENS e o texto veio pela
+      metade — no caso dos roteiros o JSON quebra, no da análise sai um
+      parágrafo cortado no meio da frase. */
+function textoDaResposta(conclusao: OpenAI.Chat.ChatCompletion): string {
+  const escolha = conclusao.choices[0];
+  if (!escolha) return "";
+  if (escolha.message.refusal) {
+    console.error("IA: o modelo recusou responder:", escolha.message.refusal);
+    return "";
+  }
+  if (escolha.finish_reason === "length") {
+    console.error("IA: resposta truncada em MAX_TOKENS.");
+    return "";
+  }
+  return (escolha.message.content || "").trim();
 }
 
 /** A UI precisa saber se vale mostrar os botões de IA. Devolve só um
@@ -81,11 +102,11 @@ function textoDaResposta(mensagem: Anthropic.Message): string {
     propósito: a informação "este ambiente tem IA" não é sensível, e pedir
     token aqui só complicaria o boot. */
 export function GET(): Response {
-  return Response.json({ configurado: !!process.env.ANTHROPIC_API_KEY });
+  return Response.json({ configurado: !!process.env.OPENAI_API_KEY });
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!apiKey || !supabaseUrl || !anonKey) {
@@ -118,7 +139,7 @@ export async function POST(request: Request): Promise<Response> {
     return erro("requisicao-invalida", 400);
   }
 
-  const anthropic = new Anthropic({ apiKey });
+  const openai = new OpenAI({ apiKey });
 
   // ---------------------------------------------------------------
   // 3a. Sugerir roteiros — o contexto vem do browser, mas só os campos
@@ -134,15 +155,18 @@ export async function POST(request: Request): Promise<Response> {
       canal: texto("canal"),
     };
 
-    let mensagem: Anthropic.Message;
+    let conclusao: OpenAI.Chat.ChatCompletion;
     try {
-      mensagem = await anthropic.messages.create({
+      conclusao = await openai.chat.completions.create({
         model: MODELO,
-        max_tokens: 2000,
-        thinking: { type: "adaptive" },
-        output_config: {
-          effort: "medium",
-          format: { type: "json_schema", schema: ESQUEMA_ROTEIROS },
+        max_completion_tokens: MAX_TOKENS,
+        reasoning_effort: "medium",
+        // strict: true faz o modelo aderir ao esquema, em vez de "tentar".
+        // Exige que todo objeto liste tudo em `required` e traga
+        // additionalProperties: false — o ESQUEMA_ROTEIROS já atende.
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: "roteiros", strict: true, schema: ESQUEMA_ROTEIROS },
         },
         messages: [{ role: "user", content: promptSugerirRoteiros(contexto) }],
       });
@@ -155,7 +179,7 @@ export async function POST(request: Request): Promise<Response> {
     // resposta vier truncada (max_tokens) o JSON quebra — melhor um erro
     // claro do que meia sugestão.
     try {
-      const dados = JSON.parse(textoDaResposta(mensagem)) as { roteiros?: RoteiroSugerido[] };
+      const dados = JSON.parse(textoDaResposta(conclusao)) as { roteiros?: RoteiroSugerido[] };
       const roteiros = (dados.roteiros || []).filter(
         (r) => r && typeof r.nome === "string" && typeof r.roteiro === "string",
       );
@@ -189,13 +213,12 @@ export async function POST(request: Request): Promise<Response> {
   // uma tabela vazia só produziria texto genérico convincente.
   if (ranking.length === 0) return erro("sem-dados", 422);
 
-  let mensagem: Anthropic.Message;
+  let conclusao: OpenAI.Chat.ChatCompletion;
   try {
-    mensagem = await anthropic.messages.create({
+    conclusao = await openai.chat.completions.create({
       model: MODELO,
-      max_tokens: 2000,
-      thinking: { type: "adaptive" },
-      output_config: { effort: "medium" },
+      max_completion_tokens: MAX_TOKENS,
+      reasoning_effort: "medium",
       messages: [{ role: "user", content: promptAnalisarAbordagens(ranking, resumo) }],
     });
   } catch (e) {
@@ -203,7 +226,7 @@ export async function POST(request: Request): Promise<Response> {
     return erro(classificarErroIa(e), 502);
   }
 
-  const texto = textoDaResposta(mensagem);
+  const texto = textoDaResposta(conclusao);
   if (!texto) return erro("falha-ia", 502);
   const resposta: Resposta = { ok: true, texto };
   return Response.json(resposta);

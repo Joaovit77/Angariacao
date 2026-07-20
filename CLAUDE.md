@@ -201,14 +201,18 @@ canônico** que volta. Isso resolve duas coisas que regex nenhuma resolve:
   então `+1 415 555 2671` vira `5514155552671` — que passa por qualquer teste de forma. Só a
   consulta revela que não existe, evitando mandar mensagem para um estranho.
 
-#### `api/ia` — sugestão de roteiros e leitura do ranking (Claude)
+#### `api/ia` — sugestão de roteiros e leitura do ranking (OpenAI)
 
 Duas funções, ambas escrevendo **texto**: sugerir roteiros de abordagem e interpretar o ranking.
-O fluxo espelha o do WhatsApp — `lib/ia.ts` (browser) → a rota (servidor) → Anthropic —, e as
+O fluxo espelha o do WhatsApp — `lib/ia.ts` (browser) → a rota (servidor) → OpenAI —, e as
 partes puras (prompts, esquema, `FalhaIa`) ficam em `lib/calculo/ia.ts`.
 
-A chave (`ANTHROPIC_API_KEY`, **sem** `NEXT_PUBLIC_`) é cobrada por token consumido. Sem ela o app
+A chave (`OPENAI_API_KEY`, **sem** `NEXT_PUBLIC_`) é cobrada por token consumido. Sem ela o app
 não quebra: os botões respondem "não configurado" e o resto segue igual.
+
+O provedor está isolado na rota: `lib/calculo/ia.ts` (prompts, esquema, vocabulário de erro) não
+importa SDK nenhum, e `lib/ia.ts` só fala com `/api/ia`. Trocar de provedor de novo mexe em um
+arquivo. O modelo é a constante `MODELO` no topo da rota.
 
 Três regras ao mexer nela:
 
@@ -243,7 +247,7 @@ Três regras ao mexer nela:
 - **Bibliotecas novas via npm** em `web/`, fixando a mesma major das existentes quando fizer sentido
   (Chart.js 4, Leaflet 1.9, Supabase JS 2, Zustand 5).
 - **Sem segredo no cliente além da anon key.** Segredo mora em API Route (é o caso das env vars da
-  Evolution em `app/api/whatsapp/enviar` e da `ANTHROPIC_API_KEY` em `app/api/ia`); código que chega
+  Evolution em `app/api/whatsapp/enviar` e da `OPENAI_API_KEY` em `app/api/ia`); código que chega
   ao browser, nunca. Na prática: variável com `NEXT_PUBLIC_` é pública — se é segredo, não leva o
   prefixo.
 

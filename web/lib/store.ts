@@ -25,7 +25,7 @@ interface AppStore {
   config: UserConfig;
   /** true depois que carregarEstado() populou o store nesta sessão. */
   carregado: boolean;
-  /** O servidor tem ANTHROPIC_API_KEY? Decide se os botões de IA aparecem.
+  /** O servidor tem OPENAI_API_KEY? Decide se os botões de IA aparecem.
       Começa false: sem confirmação, não oferecemos o que não funciona. */
   iaDisponivel: boolean;
   /** Grava o resultado de carregarEstado() (login/boot). */

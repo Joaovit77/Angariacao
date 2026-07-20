@@ -80,6 +80,28 @@ EVOLUTION_TOKEN=token-da-instancia
   ```
   Se voltar `close`, releia o QR Code no painel da Evolution — o app avisa isso no toast.
 
+### OpenAI (sugestão de roteiros e leitura do ranking) — opcional
+
+Os botões de IA — sugerir roteiros de abordagem e interpretar o ranking — exigem mais uma
+variável, também **segredo**:
+
+```
+OPENAI_API_KEY=sk-...
+```
+
+- Crie a chave em <https://platform.openai.com/api-keys>. A cobrança é **por token consumido**,
+  em faturamento separado de qualquer assinatura do ChatGPT — ter ChatGPT Plus não dá crédito de
+  API. Vale colocar um limite de gasto no painel da OpenAI (Settings → Limits).
+- **Nunca** prefixe com `NEXT_PUBLIC_`: qualquer visitante leria a chave no DevTools e gastaria
+  na sua conta. Sem o prefixo, ela só existe no servidor (a rota `web/app/api/ia`).
+- **Se você não configurar:** nada quebra. Os botões de IA simplesmente não aparecem — o app
+  pergunta ao servidor se há chave (`GET /api/ia`) e esconde o que não funcionaria.
+- O modelo usado é a constante `MODELO` no topo de `web/app/api/ia/route.ts`. Para conferir se a
+  chave está válida:
+  ```bash
+  curl -H "Authorization: Bearer $OPENAI_API_KEY" https://api.openai.com/v1/models
+  ```
+
 ---
 
 ## Parte 3 — Colocar no ar na Vercel
@@ -98,6 +120,7 @@ que a **raiz do projeto é `web`**. O resto ela detecta sozinha (é um projeto N
 5. **Environment Variables:** adicione as duas da Parte 2
    (`NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`) e, se for usar o envio direto de
    WhatsApp, as três da Evolution (`EVOLUTION_SERVER_URL`, `EVOLUTION_INSTANCE`, `EVOLUTION_TOKEN`).
+   Se for usar os botões de IA, some a `OPENAI_API_KEY`.
 6. Clique em **Deploy**. Em 1–2 minutos a Vercel te dá um link
    (ex.: `https://angariacoes-web.vercel.app`).
 7. Volte no Supabase (Parte 1, passo 7) e confirme que a **Site URL** aponta para esse endereço.

@@ -1,6 +1,6 @@
 /* ================================================================
    IA (lado do browser)
-   Chama a nossa rota /api/ia, que é quem fala com a Anthropic — a
+   Chama a nossa rota /api/ia, que é quem fala com a OpenAI — a
    chave nunca chega aqui. Fora de mutacoes.ts pelo mesmo motivo do
    envioWhatsapp: não é escrita no Supabase, é efeito externo.
    Nunca lança: devolve o resultado ou o motivo da falha, e a UI
