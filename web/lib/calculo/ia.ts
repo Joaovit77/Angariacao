@@ -17,9 +17,14 @@
    dados crus" devolveria número inventado com cara de relatório.
    ================================================================ */
 import type { AbordagemDesempenho, ResumoTentativas } from "./abordagens";
+import type { KpisDashboard } from "./dashboard";
+import { daysInCurrentStatus, isStale } from "./motor";
+import { daysBetween, todayISO } from "../datas";
+import type { AgendaItem, Imovel } from "../tipos";
 
 export type FalhaIa =
   | "nao-configurado"
+  | "sem-permissao"
   | "sessao-expirada"
   | "requisicao-invalida"
   | "sem-dados"
@@ -30,6 +35,11 @@ export function mensagemFalhaIa(falha: FalhaIa): string {
   switch (falha) {
     case "nao-configurado":
       return "A sugestão por IA não está configurada neste ambiente.";
+    // Distinta de "nao-configurado" de propósito: ali a IA não existe no
+    // ambiente, aqui ela existe e esta conta não tem acesso. Confundir as
+    // duas manda o usuário procurar problema de configuração que não há.
+    case "sem-permissao":
+      return "Sua conta não tem acesso aos recursos de IA. Fale com o responsável pelo sistema.";
     case "sessao-expirada":
       return "Sua sessão expirou. Entre novamente para usar a IA.";
     case "requisicao-invalida":
@@ -139,6 +149,175 @@ export function resumirRankingParaPrompt(
   return `${linhas.join("\n")}
 
 Totais: ${resumo.total} tentativa(s) em ${resumo.imoveisComTentativa} imóvel(is); ${resumo.semAbordagem} sem roteiro registrado. Média de tentativas até angariar: ${media}.`;
+}
+
+/* ----------------------------------------------------------------
+   DASHBOARD — duas leituras diferentes da mesma carteira.
+   "Ler os números" olha para trás (o que os KPIs dizem); "o que fazer
+   hoje" olha para frente (o que está vencendo). Ambas seguem a regra da
+   casa: os números chegam prontos, a IA só interpreta.
+   ---------------------------------------------------------------- */
+
+/** Quantos imóveis em cada etapa do funil. */
+export interface ContagemStatus {
+  status: string;
+  quantidade: number;
+}
+
+/** Distribuição da carteira pelos status, na ordem do funil. Serve para a
+    IA enxergar onde os imóveis empacam — um acúmulo numa etapa é o
+    gargalo, e isso não aparece em nenhum KPI isolado. */
+export function contagemPorStatus(imoveis: Imovel[]): ContagemStatus[] {
+  const contagem = new Map<string, number>();
+  for (const i of imoveis) contagem.set(i.status, (contagem.get(i.status) || 0) + 1);
+  return [...contagem.entries()].map(([status, quantidade]) => ({ status, quantidade }));
+}
+
+export function promptAnalisarDashboard(kpis: KpisDashboard, funil: ContagemStatus[]): string {
+  const etapas = funil
+    .filter((f) => f.quantidade > 0)
+    .map((f) => `${f.status}: ${f.quantidade}`)
+    .join(", ");
+
+  const delta = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+  const o = kpis.overall;
+
+  return `${PAPEL}
+
+Abaixo está o desempenho da carteira deste corretor, já calculado pelo sistema. Interprete os números — não os recalcule e não invente nenhum que não esteja aqui.
+
+Mês atual:
+- Novos contatos: ${kpis.contatosThisMonth} (${delta(kpis.deltaContatos)} vs. mês anterior)
+- Angariações: ${kpis.angariacoesThisMonth} (${delta(kpis.deltaAngariacoes)} vs. mês anterior)
+- Locados: ${kpis.locadosThisMonth} (${delta(kpis.deltaLocados)} vs. mês anterior)
+- Em andamento no funil: ${kpis.emAndamento}
+
+Carteira inteira:
+- ${o.total} imóvel(is), ${o.locados} locado(s), ${o.perdidosCancelados} perdido(s)/cancelado(s)
+- Conversão geral: ${o.conversaoGeral.toFixed(0)}% — considerando só os casos já encerrados: ${o.conversaoFechados.toFixed(0)}%
+- Tempo médio até locar: ${o.tempoMedio != null ? `${Math.round(o.tempoMedio)} dias` : "ainda sem caso para calcular"}
+
+Distribuição no funil: ${etapas || "nenhum imóvel em etapa ativa"}
+
+Como ler as medidas:
+- "Angariações" conta só imóveis que chegaram na etapa Angariado — contato feito não conta.
+- "Conversão geral" divide pelo total, incluindo quem ainda está em andamento; por isso ela é sempre menor que a dos encerrados. Comparar as duas diz se o problema é volume ou aproveitamento.
+- Um acúmulo numa etapa do funil indica onde os imóveis empacam.
+
+Escreva no máximo 3 parágrafos curtos, em português do Brasil, dirigindo-se ao corretor por "você":
+1. Como o mês está indo em relação ao anterior.
+2. Onde está o gargalo do funil — em qual etapa os imóveis estão parando.
+3. Uma sugestão concreta do que priorizar.
+
+Com carteira pequena, uma variação de um ou dois imóveis não é tendência — diga isso em vez de narrar oscilação como se fosse padrão. Não use bullet points, títulos nem markdown.`;
+}
+
+/** Um compromisso ou imóvel que pede ação. O texto já vem pronto do
+    servidor; a IA não recebe o objeto do imóvel inteiro — só o que
+    precisa para priorizar, o que também segura o tamanho do prompt. */
+export interface ItemDoDia {
+  descricao: string;
+  /** Dias de atraso (positivo) ou parados. 0 = vence hoje. */
+  dias: number;
+}
+
+export interface PanoramaDia {
+  hoje: string;
+  compromissosHoje: ItemDoDia[];
+  atrasados: ItemDoDia[];
+  parados: ItemDoDia[];
+}
+
+/** Teto por lista. Uma carteira grande com 200 imóveis parados geraria um
+    prompt enorme e caro, e a IA não consegue priorizar 200 coisas de
+    qualquer jeito — as primeiras (mais atrasadas) é que importam. */
+export const MAX_ITENS_DIA = 12;
+
+/** Rótulo curto de um imóvel para a IA citar. Endereço, não id: o texto é
+    lido por uma pessoa. Sem endereço, cai no código. */
+function rotuloImovel(imovel: Imovel | undefined): string {
+  if (!imovel) return "imóvel não identificado";
+  return imovel.endereco || imovel.codigo || "imóvel sem endereço";
+}
+
+/** Monta o que está pendente hoje: compromissos do dia, compromissos
+    atrasados e imóveis parados. Ordena por urgência (mais atrasado
+    primeiro) porque a truncagem em MAX_ITENS_DIA corta do fim — sem
+    ordenar, cortaríamos justamente os mais críticos.
+
+    Concluídos ficam de fora, e `isStale` já exclui pausados, terminais e
+    locados: o que sobra é ação real. */
+export function panoramaDoDia(imoveis: Imovel[], agenda: AgendaItem[]): PanoramaDia {
+  const hoje = todayISO();
+  const porId = new Map(imoveis.map((i) => [i.id, i]));
+
+  const compromissosHoje: ItemDoDia[] = [];
+  const atrasados: ItemDoDia[] = [];
+
+  for (const a of agenda) {
+    if (a.done) continue;
+    const atraso = daysBetween(a.date, hoje);
+    if (atraso == null || atraso < 0) continue; // futuro: não é pendência de hoje
+    const imovel = a.imovelId ? porId.get(a.imovelId) : undefined;
+    const descricao = `${a.title} — ${rotuloImovel(imovel)}`;
+    if (atraso === 0) compromissosHoje.push({ descricao, dias: 0 });
+    else atrasados.push({ descricao, dias: atraso });
+  }
+
+  const parados: ItemDoDia[] = imoveis
+    .filter(isStale)
+    .map((i) => ({
+      descricao: `${rotuloImovel(i)} — parado em "${i.status}"`,
+      dias: daysInCurrentStatus(i) ?? 0,
+    }));
+
+  atrasados.sort((a, b) => b.dias - a.dias);
+  parados.sort((a, b) => b.dias - a.dias);
+
+  return { hoje, compromissosHoje, atrasados, parados };
+}
+
+function listaDoDia(itens: ItemDoDia[], sufixo: (d: number) => string): string {
+  const visiveis = itens.slice(0, MAX_ITENS_DIA);
+  const linhas = visiveis.map((i) => `- ${i.descricao} (${sufixo(i.dias)})`);
+  const resto = itens.length - visiveis.length;
+  if (resto > 0) linhas.push(`- ...e mais ${resto} item(ns) semelhante(s).`);
+  return linhas.join("\n");
+}
+
+export function promptResumoDia(panorama: PanoramaDia): string {
+  const partes: string[] = [];
+
+  if (panorama.compromissosHoje.length > 0) {
+    partes.push(`Compromissos de hoje:\n${listaDoDia(panorama.compromissosHoje, () => "hoje")}`);
+  }
+  if (panorama.atrasados.length > 0) {
+    partes.push(
+      `Compromissos atrasados:\n${listaDoDia(panorama.atrasados, (d) => `${d} dia(s) de atraso`)}`,
+    );
+  }
+  if (panorama.parados.length > 0) {
+    partes.push(
+      `Imóveis parados no mesmo status:\n${listaDoDia(panorama.parados, (d) => `${d} dia(s) parado`)}`,
+    );
+  }
+
+  const corpo =
+    partes.length > 0 ? partes.join("\n\n") : "Nada vencido, nada atrasado e nenhum imóvel parado.";
+
+  return `${PAPEL}
+
+Hoje é ${panorama.hoje}. Abaixo está o que o sistema encontrou pendente na carteira deste corretor.
+
+${corpo}
+
+Escreva um resumo curto em português do Brasil, dirigindo-se ao corretor por "você", dizendo por onde começar o dia. Regras:
+- No máximo 5 itens, do mais urgente para o menos. Um por linha, começando com "- ".
+- Priorize por consequência, não só por data: um compromisso atrasado com proprietário que já demonstrou interesse vale mais que um imóvel parado numa etapa inicial.
+- Cite o imóvel pelo que foi dado acima. Não invente endereço, nome ou telefone que não esteja na lista.
+- Se a lista estiver vazia, diga que não há pendência e sugira uma ação de prospecção — sem inventar dado.
+- Nada de introdução nem fechamento motivacional. Vá direto aos itens.
+- Texto puro: sem negrito, sem markdown. A tela mostra os asteriscos como caracteres crus.`;
 }
 
 export function promptAnalisarAbordagens(

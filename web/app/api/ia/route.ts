@@ -25,18 +25,31 @@
       bem escrito de qualquer jeito.
    ================================================================ */
 import OpenAI from "openai";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { desempenhoPorAbordagem, resumoTentativas } from "@/lib/calculo/abordagens";
+import { kpisDashboard } from "@/lib/calculo/dashboard";
 import {
   ESQUEMA_ROTEIROS,
+  contagemPorStatus,
   mensagemFalhaIa,
+  panoramaDoDia,
   promptAnalisarAbordagens,
+  promptAnalisarDashboard,
+  promptResumoDia,
   promptSugerirRoteiros,
   type ContextoRoteiro,
   type FalhaIa,
   type RoteiroSugerido,
 } from "@/lib/calculo/ia";
-import { fromDbAbordagem, fromDbImovel, type DbAbordagemRow, type DbImovelRow } from "@/lib/persistencia/mapeadores";
+import {
+  fromDbAbordagem,
+  fromDbAgenda,
+  fromDbImovel,
+  type DbAbordagemRow,
+  type DbAgendaRow,
+  type DbImovelRow,
+  type DbUserConfigRow,
+} from "@/lib/persistencia/mapeadores";
 
 /** Modelo da OpenAI. A linha "-mini" é o meio-termo custo/qualidade:
     sobe para "gpt-5.4" se a análise sair rasa, desce para "gpt-5.4-nano"
@@ -97,12 +110,66 @@ function textoDaResposta(conclusao: OpenAI.Chat.ChatCompletion): string {
   return (escolha.message.content || "").trim();
 }
 
-/** A UI precisa saber se vale mostrar os botões de IA. Devolve só um
-    booleano — nunca a chave, nem parte dela. Sem sessão exigida de
-    propósito: a informação "este ambiente tem IA" não é sensível, e pedir
-    token aqui só complicaria o boot. */
-export function GET(): Response {
-  return Response.json({ configurado: !!process.env.OPENAI_API_KEY });
+/** Cliente do Supabase com a identidade de QUEM CHAMOU — o RLS escopa
+    tudo ao dono do token. Nunca usar service role aqui: é o que faz a
+    rota ler apenas os dados de quem pediu. */
+function clienteDoChamador(supabaseUrl: string, anonKey: string, accessToken: string) {
+  return createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+/** Extrai o access token do header. Vazio quando não veio. */
+function tokenDaRequisicao(request: Request): string {
+  const auth = request.headers.get("authorization") || "";
+  return auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
+}
+
+/** Esta conta pode usar a IA?
+
+    A permissão vive em `ia_permissoes`, que o usuário LÊ mas não escreve
+    (ver supabase-schema.sql: existe política de select e nenhuma de
+    escrita). Por isso dá para confiar no que a leitura devolve.
+
+    Ausência de linha = sem acesso. O padrão é negar: uma conta nova não
+    ganha IA por descuido, e revogar é apagar a linha. */
+async function podeUsarIa(supabase: SupabaseClient, userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("ia_permissoes")
+    .select("liberado")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) {
+    // Falha de leitura não libera — na dúvida, nega.
+    console.error("IA: falha ao ler a permissão:", error.message);
+    return false;
+  }
+  return data?.liberado === true;
+}
+
+/** A UI precisa saber se vale mostrar os botões de IA. Duas condições
+    independentes: o ambiente tem chave E esta conta tem acesso.
+
+    Passou a exigir o token (antes era público) porque a resposta agora é
+    POR USUÁRIO. Sem token responde `permitido: false` em vez de 401: o
+    boot do app não deve quebrar por causa disto, e a UI só precisa saber
+    se esconde os botões. Quem vale mesmo é a checagem do POST. */
+export async function GET(request: Request): Promise<Response> {
+  const configurado = !!process.env.OPENAI_API_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const accessToken = tokenDaRequisicao(request);
+
+  if (!configurado || !supabaseUrl || !anonKey || !accessToken) {
+    return Response.json({ configurado, permitido: false });
+  }
+
+  const supabase = clienteDoChamador(supabaseUrl, anonKey, accessToken);
+  const { data: sessao, error } = await supabase.auth.getUser();
+  if (error || !sessao.user) return Response.json({ configurado, permitido: false });
+
+  return Response.json({ configurado, permitido: await podeUsarIa(supabase, sessao.user.id) });
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -116,28 +183,30 @@ export async function POST(request: Request): Promise<Response> {
 
   // 1. Quem está chamando? Sem sessão do Supabase a rota não existe — senão
   //    qualquer um na internet gastaria nossa cota de tokens.
-  const auth = request.headers.get("authorization") || "";
-  const accessToken = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
+  const accessToken = tokenDaRequisicao(request);
   if (!accessToken) return erro("sessao-expirada", 401);
 
-  const supabase = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const supabase = clienteDoChamador(supabaseUrl, anonKey, accessToken);
   const { data: sessao, error: erroAuth } = await supabase.auth.getUser();
   if (erroAuth || !sessao.user) return erro("sessao-expirada", 401);
 
-  // 2. Corpo — só os dois tipos conhecidos.
+  // 2. Esta conta pode usar a IA? A checagem mora AQUI, não na UI: o botão
+  //    escondido é conveniência, e quem souber o endereço chama a rota
+  //    direto. Sem isto, qualquer usuário autenticado gastaria tokens.
+  if (!(await podeUsarIa(supabase, sessao.user.id))) return erro("sem-permissao", 403);
+
+  // 3. Corpo — só os tipos conhecidos.
   let corpo: { tipo?: unknown; contexto?: unknown };
   try {
     corpo = await request.json();
   } catch {
     return erro("requisicao-invalida", 400);
   }
+  const TIPOS = ["sugerir-roteiros", "analisar-abordagens", "analisar-dashboard", "resumo-dia"] as const;
+  type Tipo = (typeof TIPOS)[number];
   const tipo = typeof corpo.tipo === "string" ? corpo.tipo : "";
-  if (tipo !== "sugerir-roteiros" && tipo !== "analisar-abordagens") {
-    return erro("requisicao-invalida", 400);
-  }
+  if (!(TIPOS as readonly string[]).includes(tipo)) return erro("requisicao-invalida", 400);
+  const pedido = tipo as Tipo;
 
   const openai = new OpenAI({ apiKey });
 
@@ -145,7 +214,7 @@ export async function POST(request: Request): Promise<Response> {
   // 3a. Sugerir roteiros — o contexto vem do browser, mas só os campos
   //     que conhecemos, e o promptSugerirRoteiros trunca cada um.
   // ---------------------------------------------------------------
-  if (tipo === "sugerir-roteiros") {
+  if (pedido === "sugerir-roteiros") {
     const bruto = (corpo.contexto ?? {}) as Record<string, unknown>;
     const texto = (chave: string) => (typeof bruto[chave] === "string" ? (bruto[chave] as string) : null);
     const contexto: ContextoRoteiro = {
@@ -193,25 +262,51 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   // ---------------------------------------------------------------
-  // 3b. Analisar abordagens — os números saem do BANCO e do mesmo
-  //     cálculo puro da tela. O browser não manda nada.
+  // 3b. As três análises de texto. Todas leem o BANCO e rodam os MESMOS
+  //     cálculos puros da tela — o browser não manda número nenhum.
+  //     Se mandasse, a análise sairia bem escrita em cima de dados
+  //     forjados, e ninguém notaria.
   // ---------------------------------------------------------------
-  const [imRes, abRes] = await Promise.all([
+  const [imRes, abRes, agRes, cfgRes] = await Promise.all([
     supabase.from("imoveis").select("*"),
     supabase.from("abordagens").select("*"),
+    supabase.from("agenda").select("*"),
+    supabase.from("user_config").select("*").maybeSingle(),
   ]);
-  if (imRes.error || abRes.error) {
-    console.error("IA: falha ao ler os dados:", imRes.error?.message || abRes.error?.message);
+  if (imRes.error || abRes.error || agRes.error) {
+    console.error(
+      "IA: falha ao ler os dados:",
+      imRes.error?.message || abRes.error?.message || agRes.error?.message,
+    );
     return erro("falha-ia", 500);
   }
 
   const imoveis = ((imRes.data || []) as DbImovelRow[]).map(fromDbImovel);
-  const abordagens = ((abRes.data || []) as DbAbordagemRow[]).map(fromDbAbordagem);
-  const ranking = desempenhoPorAbordagem(imoveis, abordagens);
-  const resumo = resumoTentativas(imoveis);
-  // Sem tentativa com roteiro não há o que interpretar — e pedir análise de
-  // uma tabela vazia só produziria texto genérico convincente.
-  if (ranking.length === 0) return erro("sem-dados", 422);
+  // Mesma tolerância do carregarEstado: um erro (ou ausência) em user_config
+  // não derruba nada — sem config, vale o padrão comissaoPercent = 100. Usar
+  // outro padrão aqui faria a comissão da análise divergir da tela.
+  const cfg = cfgRes.data as DbUserConfigRow | null;
+  const comissaoPercent = cfg ? Number(cfg.comissao_percent) : 100;
+
+  let prompt: string;
+
+  if (pedido === "analisar-abordagens") {
+    const abordagens = ((abRes.data || []) as DbAbordagemRow[]).map(fromDbAbordagem);
+    const ranking = desempenhoPorAbordagem(imoveis, abordagens);
+    // Sem tentativa com roteiro não há o que interpretar — e pedir análise de
+    // uma tabela vazia só produziria texto genérico convincente.
+    if (ranking.length === 0) return erro("sem-dados", 422);
+    prompt = promptAnalisarAbordagens(ranking, resumoTentativas(imoveis));
+  } else if (pedido === "analisar-dashboard") {
+    // Carteira vazia: os KPIs seriam todos zero e a leitura, pura invenção.
+    if (imoveis.length === 0) return erro("sem-dados", 422);
+    prompt = promptAnalisarDashboard(kpisDashboard(imoveis, comissaoPercent), contagemPorStatus(imoveis));
+  } else {
+    const agenda = ((agRes.data || []) as DbAgendaRow[]).map(fromDbAgenda);
+    // Aqui NÃO há "sem-dados": nada pendente é uma resposta legítima e útil
+    // ("seu dia está limpo"), diferente de uma tabela vazia para analisar.
+    prompt = promptResumoDia(panoramaDoDia(imoveis, agenda));
+  }
 
   let conclusao: OpenAI.Chat.ChatCompletion;
   try {
@@ -219,10 +314,10 @@ export async function POST(request: Request): Promise<Response> {
       model: MODELO,
       max_completion_tokens: MAX_TOKENS,
       reasoning_effort: "medium",
-      messages: [{ role: "user", content: promptAnalisarAbordagens(ranking, resumo) }],
+      messages: [{ role: "user", content: prompt }],
     });
   } catch (e) {
-    console.error("IA: falha ao analisar abordagens:", e);
+    console.error(`IA: falha em ${pedido}:`, e);
     return erro(classificarErroIa(e), 502);
   }
 

@@ -19,7 +19,7 @@
    ================================================================ */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
-import { iaConfigurada } from "@/lib/ia";
+import { iaDisponivelParaUsuario } from "@/lib/ia";
 import { valorMaisUsado } from "@/lib/normalizacao";
 import { carregarEstado } from "@/lib/persistencia/carregarEstado";
 import { getSupabase } from "@/lib/persistencia/supabase";
@@ -120,19 +120,23 @@ export default function SessaoProvider({ children }: { children: React.ReactNode
     };
   }, [sessao.estado, usuarioId, setEstado]);
 
-  // A IA está configurada neste ambiente? Uma consulta por sessão, só para a
-  // UI decidir se mostra os botões. Independente do carregamento dos dados:
-  // se esta falhar, o app inteiro segue — só fica sem os botões de IA.
+  // A IA está disponível para ESTA conta? Duas condições: o ambiente tem
+  // chave e o usuário tem permissão (ia_permissoes). Uma consulta por
+  // sessão, só para a UI decidir se mostra os botões — quem barra de fato
+  // é a rota. Independente do carregamento dos dados: se esta falhar, o
+  // app inteiro segue, só fica sem os botões de IA.
+  // Depende de usuarioId, não só do estado: ao trocar de conta na mesma
+  // aba, a permissão precisa ser reconsultada em vez de herdar a anterior.
   useEffect(() => {
-    if (sessao.estado !== "auth") return;
+    if (sessao.estado !== "auth" || !usuarioId) return;
     let cancelado = false;
-    iaConfigurada().then((disponivel) => {
+    iaDisponivelParaUsuario().then((disponivel) => {
       if (!cancelado) setIaDisponivel(disponivel);
     });
     return () => {
       cancelado = true;
     };
-  }, [sessao.estado, setIaDisponivel]);
+  }, [sessao.estado, usuarioId, setIaDisponivel]);
 
   // Logout: zera o store (o app antigo perdia o STATE ao recarregar a página).
   useEffect(() => {

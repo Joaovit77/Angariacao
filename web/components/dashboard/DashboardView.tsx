@@ -11,6 +11,7 @@
    gráficos" do app antigo não existe mais: o Chart.js agora entra
    pelo bundle, não por CDN.
    ================================================================ */
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ChartConfiguration } from "chart.js/auto";
 import Contador from "@/components/Contador";
@@ -19,7 +20,9 @@ import { kpisDashboard, seriesDashboard } from "@/lib/calculo/dashboard";
 import { STATUS_FLOW } from "@/lib/constantes";
 import { monthLabelLong } from "@/lib/datas";
 import { fmtMoney } from "@/lib/formatadores";
+import { analisarDashboard, resumoDoDia } from "@/lib/ia";
 import { useAppStore } from "@/lib/store";
+import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
 
 function KpiCard({
@@ -60,6 +63,87 @@ function KpiCard({
       </div>
       {deltaEl}
       {description && <div className="kpi-desc">{description}</div>}
+    </div>
+  );
+}
+
+/* Leitura por IA do Dashboard. Duas perguntas diferentes sobre a mesma
+   carteira: "Ler os números" olha para trás (o que os KPIs dizem) e "O que
+   fazer hoje" olha para frente (o que está vencendo). Compartilham a área
+   de texto porque são alternativas, não complementares — pedir uma
+   substitui a outra, e duas respostas na tela ao mesmo tempo só competiriam
+   pela atenção.
+
+   Os números NÃO saem daqui: o servidor relê tudo do banco e roda os mesmos
+   cálculos puros da tela (ver app/api/ia). */
+function LeituraIa() {
+  const [carregando, setCarregando] = useState<"numeros" | "hoje" | null>(null);
+  const [texto, setTexto] = useState("");
+  const [titulo, setTitulo] = useState("");
+  const iaDisponivel = useAppStore((s) => s.iaDisponivel);
+
+  if (!iaDisponivel) return null;
+
+  async function pedir(qual: "numeros" | "hoje") {
+    if (carregando) return;
+    setCarregando(qual);
+    const r = await (qual === "numeros" ? analisarDashboard() : resumoDoDia());
+    setCarregando(null);
+    if (!r.ok || !r.texto) {
+      toast(r.mensagem || "A IA não respondeu agora.", "error");
+      return;
+    }
+    setTitulo(qual === "numeros" ? "Leitura dos números" : "Por onde começar hoje");
+    setTexto(r.texto);
+  }
+
+  return (
+    <div className="card" style={{ marginBottom: "16px" }}>
+      <div className="card-title">
+        <span>Leitura por IA</span>
+        <span style={{ display: "flex", gap: "8px" }}>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => pedir("numeros")}
+            disabled={carregando !== null}
+          >
+            {carregando === "numeros" ? "Lendo..." : "Ler os números"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => pedir("hoje")}
+            disabled={carregando !== null}
+          >
+            {carregando === "hoje" ? "Montando..." : "O que fazer hoje"}
+          </button>
+        </span>
+      </div>
+      {texto ? (
+        <>
+          <div className="section-note" style={{ marginBottom: "8px" }}>
+            {titulo} · interpretação dos números desta tela
+          </div>
+          {/* Sem dangerouslySetInnerHTML: o texto vem de fora, e o escape do
+              JSX é a defesa. Uma linha por parágrafo — serve tanto para a
+              análise (3 parágrafos) quanto para o resumo do dia (lista). */}
+          {texto
+            .split("\n")
+            .map((linha) => linha.trim())
+            .filter(Boolean)
+            .map((linha, i) => (
+              <p key={i} className="drawer-notes" style={{ marginBottom: "6px" }}>
+                {linha}
+              </p>
+            ))}
+        </>
+      ) : (
+        <p className="section-note">
+          A IA interpreta os números desta tela ou monta a lista do que priorizar hoje. Os dados
+          vêm do seu banco — ela não recalcula nada.
+        </p>
+      )}
     </div>
   );
 }
@@ -247,6 +331,8 @@ export default function DashboardView() {
           </button>
         </div>
       </div>
+
+      <LeituraIa />
 
       <div className="grid grid-3 anim-stagger" style={{ marginBottom: "16px" }}>
         <KpiCard label="Novos contatos no mês" value={<Contador valor={kpis.contatosThisMonth} />} delta={kpis.deltaContatos} unit="un." description="Imóveis que entraram no funil este mês" />

@@ -47,15 +47,31 @@ async function chamar<T>(corpo: unknown): Promise<T | { ok: false; falha: FalhaI
   }
 }
 
-/** Este ambiente tem a chave configurada? Serve para a UI esconder os botões
-    de IA em vez de oferecer algo que só responderia "não configurado".
-    Falha de rede conta como "não tem" — na dúvida, não oferece. */
-export async function iaConfigurada(): Promise<boolean> {
+/** A IA está disponível PARA ESTE USUÁRIO? São duas condições: o ambiente
+    tem chave e a conta tem permissão (tabela ia_permissoes).
+
+    Serve só para a UI esconder os botões em vez de oferecer algo que
+    responderia erro. Quem de fato barra é o POST — esconder botão não é
+    controle de acesso.
+
+    Falha de rede ou sessão ausente contam como "não disponível": na
+    dúvida, não oferece. */
+export async function iaDisponivelParaUsuario(): Promise<boolean> {
   try {
-    const resposta = await fetch("/api/ia");
+    const {
+      data: { session },
+    } = await getSupabase().auth.getSession();
+    if (!session) return false;
+
+    const resposta = await fetch("/api/ia", {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
     if (!resposta.ok) return false;
-    const dados = (await resposta.json().catch(() => null)) as { configurado?: unknown } | null;
-    return dados?.configurado === true;
+    const dados = (await resposta.json().catch(() => null)) as {
+      configurado?: unknown;
+      permitido?: unknown;
+    } | null;
+    return dados?.configurado === true && dados?.permitido === true;
   } catch {
     return false;
   }
@@ -66,8 +82,21 @@ export function sugerirRoteiros(contexto: ContextoRoteiro): Promise<ResultadoRot
   return chamar<ResultadoRoteiros>({ tipo: "sugerir-roteiros", contexto });
 }
 
-/** Pede a leitura do ranking. Não recebe parâmetro de propósito: os números
-    são recalculados no servidor a partir do banco (ver a rota). */
+/* As três leituras abaixo não recebem parâmetro de propósito: os números
+   são recalculados no servidor a partir do banco (ver a rota). Passar o
+   que está na tela abriria espaço para análise em cima de número forjado. */
+
+/** Pede a leitura do ranking de abordagens. */
 export function analisarAbordagens(): Promise<ResultadoAnalise> {
   return chamar<ResultadoAnalise>({ tipo: "analisar-abordagens" });
+}
+
+/** Pede a leitura dos KPIs do Dashboard. */
+export function analisarDashboard(): Promise<ResultadoAnalise> {
+  return chamar<ResultadoAnalise>({ tipo: "analisar-dashboard" });
+}
+
+/** Pede a lista priorizada do que fazer hoje. */
+export function resumoDoDia(): Promise<ResultadoAnalise> {
+  return chamar<ResultadoAnalise>({ tipo: "resumo-dia" });
 }

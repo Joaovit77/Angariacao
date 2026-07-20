@@ -25,7 +25,10 @@ interface AppStore {
   config: UserConfig;
   /** true depois que carregarEstado() populou o store nesta sessão. */
   carregado: boolean;
-  /** O servidor tem OPENAI_API_KEY? Decide se os botões de IA aparecem.
+  /** A IA está disponível para ESTA conta? Duas condições somadas: o
+      servidor tem OPENAI_API_KEY e o usuário está liberado em
+      `ia_permissoes`. Decide se os botões de IA aparecem — é UX, não
+      controle de acesso: quem barra de fato é a rota /api/ia.
       Começa false: sem confirmação, não oferecemos o que não funciona. */
   iaDisponivel: boolean;
   /** Grava o resultado de carregarEstado() (login/boot). */

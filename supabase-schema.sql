@@ -245,6 +245,37 @@ create policy "update_own_config" on user_config
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ------------------------------------------------------------
+-- PERMISSÃO DE USO DA IA (uma linha por usuário liberado)
+--
+-- Diferente de todas as outras tabelas daqui: esta NÃO é dado do
+-- usuário, é uma decisão do dono do sistema sobre ele. Por isso a
+-- assimetria proposital nas políticas abaixo — o usuário LÊ a própria
+-- linha (o app precisa saber se mostra os botões) e não escreve nada.
+--
+-- Repare no que está FALTANDO: não há política de insert, update nem
+-- delete. Com RLS ligada, a ausência de política é o próprio bloqueio —
+-- ninguém escreve aqui pelo browser, nem na própria linha. É isso que
+-- impede alguém de se autoliberar com a anon key, que é pública por
+-- design. Se um dia alguém acrescentar "update_own_ia" por simetria com
+-- as outras tabelas, o controle inteiro cai.
+--
+-- Para liberar/revogar: Table Editor do Supabase (usa a service role,
+-- que passa por cima da RLS). Sem deploy, sem mexer em código.
+-- ------------------------------------------------------------
+create table if not exists ia_permissoes (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  liberado boolean not null default false,
+  observacao text,
+  criado_em timestamptz not null default now()
+);
+
+alter table ia_permissoes enable row level security;
+
+drop policy if exists "select_own_ia" on ia_permissoes;
+create policy "select_own_ia" on ia_permissoes
+  for select using (auth.uid() = user_id);
+
+-- ------------------------------------------------------------
 -- Atualiza updated_at automaticamente nos imóveis
 -- ------------------------------------------------------------
 create or replace function set_updated_at()
