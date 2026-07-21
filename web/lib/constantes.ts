@@ -46,6 +46,10 @@ export const RESULTADOS_TENTATIVA = [
   { valor: "respondeu", rotulo: "Respondeu", respondeu: true },
   { valor: "agendou", rotulo: "Agendou visita/reunião", respondeu: true },
   { valor: "recusou", rotulo: "Recusou", respondeu: true },
+  // "numero-errado" não é desfecho da conversa: a mensagem foi parar em outra
+  // pessoa, ou em ninguém. Fica fora do ranking (ver RESULTADOS_FORA_DO_RANKING)
+  // porque não diz nada sobre o roteiro — só sobre o cadastro do telefone.
+  { valor: "numero-errado", rotulo: "Número errado", respondeu: false },
 ] as const;
 
 export type ResultadoTentativa = (typeof RESULTADOS_TENTATIVA)[number]["valor"];
@@ -53,6 +57,17 @@ export type ResultadoTentativa = (typeof RESULTADOS_TENTATIVA)[number]["valor"];
 /** Resultados que contam como "o proprietário reagiu" (taxa de resposta). */
 export const RESULTADOS_COM_RESPOSTA: readonly ResultadoTentativa[] =
   RESULTADOS_TENTATIVA.filter((r) => r.respondeu).map((r) => r.valor);
+
+/**
+ * Resultados que a tentativa registra mas o ranking ignora por completo —
+ * nem no numerador, nem no denominador.
+ *
+ * O roteiro não foi testado: ninguém do outro lado o leu. Contá-lo como
+ * "tentativa sem resposta" faria uma abordagem boa parecer ruim toda vez que o
+ * telefone estivesse errado no cadastro, que é um problema de dado, não de
+ * texto. É a mesma lógica de `!t.abordagemId` — sem o que medir, fora.
+ */
+export const RESULTADOS_FORA_DO_RANKING: readonly ResultadoTentativa[] = ["numero-errado"];
 
 // Valor de origem que representa o garimpo em sites de OUTRAS imobiliárias
 // (a corretora acha o anúncio no site de uma concorrente e vai atrás do
@@ -76,9 +91,15 @@ export const ORIGENS_LEGADAS: Record<string, string> = {
 };
 
 // Motivo específico quando o imóvel é marcado como Perdido ou Cancelado.
+// Motivo usado quando o telefone cadastrado não leva ao proprietário. Tem
+// constante própria porque o nudge de resultados o aplica sozinho — string
+// mágica ali e no filtro do relatório sairiam do ar em silêncio.
+export const MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO = "Número não encontrado";
+
 export const MOTIVOS_PERDA = [
   "Imóvel já vendido", "Imóvel já alugado por conta própria", "Proprietário desistiu de alugar",
-  "Valor pedido incompatível com mercado", "Optou por outra imobiliária", "Perda de contato definitiva", "Outro",
+  "Valor pedido incompatível com mercado", "Optou por outra imobiliária", "Perda de contato definitiva",
+  MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO, "Outro",
 ] as const;
 
 // Cores de identidade visual por status (kanban).

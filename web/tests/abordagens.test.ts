@@ -253,6 +253,58 @@ describe("resumoTentativas", () => {
   });
 });
 
+describe("número errado fica fora do ranking", () => {
+  it("não entra no denominador — telefone errado não reprova o roteiro", () => {
+    const imoveis = [
+      imovel({
+        id: "i1",
+        tentativas: [
+          tentativa("2026-02-01T10:00", "a1", "respondeu"),
+          tentativa("2026-02-05T10:00", "a1", "numero-errado"),
+        ],
+      }),
+    ];
+    const [linha] = desempenhoPorAbordagem(imoveis, CATALOGO);
+    // Duas tentativas registradas, mas só uma testou o roteiro.
+    expect(linha.tentativas).toBe(1);
+    expect(linha.respostas).toBe(1);
+    expect(linha.taxaResposta).toBe(100);
+  });
+
+  it("some do ranking a abordagem que só teve número errado", () => {
+    const imoveis = [
+      imovel({ id: "i1", tentativas: [tentativa("2026-02-01T10:00", "a2", "numero-errado")] }),
+    ];
+    expect(desempenhoPorAbordagem(imoveis, CATALOGO)).toHaveLength(0);
+  });
+
+  it("não rouba o crédito de quem destravou a angariação", () => {
+    const i = imovel({
+      id: "i1",
+      angariadoEm: "2026-02-20",
+      tentativas: [
+        tentativa("2026-02-10T10:00", "a1", "agendou"),
+        // Última antes da angariação, mas não falou com ninguém.
+        tentativa("2026-02-18T10:00", "a2", "numero-errado"),
+      ],
+    });
+    expect(abordagemQueDestravou(i)).toBe("a1");
+  });
+
+  it("continua contando no resumo geral — a tentativa aconteceu", () => {
+    const imoveis = [
+      imovel({
+        id: "i1",
+        tentativas: [
+          tentativa("2026-02-01T10:00", "a1", "respondeu"),
+          tentativa("2026-02-05T10:00", "a1", "numero-errado"),
+        ],
+      }),
+    ];
+    expect(resumoTentativas(imoveis).total).toBe(2);
+  });
+});
+
 describe("resultadosPendentes (o nudge)", () => {
   const HOJE = "2026-07-21";
 

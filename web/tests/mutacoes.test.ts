@@ -6,6 +6,7 @@
    ================================================================ */
 import { describe, expect, it } from "vitest";
 import { congelaRelogio } from "./setup-relogio";
+import { MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO, MOTIVOS_PERDA } from "@/lib/constantes";
 import { aplicarMudancaDeStatus, numOrNull } from "@/lib/mutacoes";
 import type { Imovel } from "@/lib/tipos";
 
@@ -51,6 +52,21 @@ describe("aplicarMudancaDeStatus", () => {
     const i = imovelBase(null, "Publicado");
     aplicarMudancaDeStatus(i, "Publicado", "Angariado");
     expect(i.statusHistory).toEqual([{ status: "Publicado", date: HOJE }]);
+  });
+});
+
+describe("motivo de perda aplicado pelo nudge", () => {
+  it("está na lista do seletor — senão editar o imóvel o apagaria em silêncio", () => {
+    // O nudge grava este motivo direto no banco, sem passar pelo formulário.
+    // Se ele não constasse em MOTIVOS_PERDA, o <select> do ModalImovel abriria
+    // sem opção correspondente e a primeira edição do imóvel salvaria vazio.
+    expect(MOTIVOS_PERDA).toContain(MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO);
+  });
+
+  it("não desloca 'Outro' do fim da lista", () => {
+    // "Outro" é o que libera o campo de texto livre; a UI conta com ele por
+    // último ao montar o seletor.
+    expect(MOTIVOS_PERDA[MOTIVOS_PERDA.length - 1]).toBe("Outro");
   });
 });
 

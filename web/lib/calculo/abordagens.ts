@@ -25,7 +25,7 @@
    Puro: consome só tipos + constantes + helpers do motor, sem
    React/Next/Supabase/store.
    ================================================================ */
-import { RESULTADOS_COM_RESPOSTA } from "../constantes";
+import { RESULTADOS_COM_RESPOSTA, RESULTADOS_FORA_DO_RANKING } from "../constantes";
 import { daysBetween } from "../datas";
 import type { Abordagem, Imovel, Tentativa } from "../tipos";
 import { dateEnteredStatus, foiAngariado } from "./motor";
@@ -136,6 +136,14 @@ function rotuloImovel(imovel: Imovel): string {
 }
 
 const RESPONDEU: readonly string[] = RESULTADOS_COM_RESPOSTA;
+const FORA: readonly string[] = RESULTADOS_FORA_DO_RANKING;
+
+/** A tentativa aconteceu, mas não testou roteiro nenhum (ver
+    RESULTADOS_FORA_DO_RANKING). Fica registrada no histórico do imóvel e some
+    das medidas de desempenho. */
+function foraDoRanking(t: Tentativa): boolean {
+  return FORA.includes(t.resultado);
+}
 
 /**
  * Id da abordagem que destravou o imóvel: a última tentativa registrada ANTES
@@ -151,7 +159,12 @@ export function abordagemQueDestravou(imovel: Imovel): string | null {
   // A tentativa guarda "YYYY-MM-DDTHH:mm" e o histórico guarda "YYYY-MM-DD":
   // comparar só a parte da data mantém no páreo a tentativa feita no MESMO dia
   // da angariação — que é justamente a que costuma ter destravado.
-  const anteriores = tentativasOrdenadas(imovel).filter((t) => t.data.slice(0, 10) <= dataAngariado);
+  // Número errado não destrava nada — a mensagem não chegou ao proprietário.
+  // Sem este filtro, uma tentativa perdida logo antes da angariação roubaria
+  // o crédito do roteiro que de fato conversou com ele.
+  const anteriores = tentativasOrdenadas(imovel).filter(
+    (t) => t.data.slice(0, 10) <= dataAngariado && !foraDoRanking(t),
+  );
   const ultima = anteriores[anteriores.length - 1];
   return ultima?.abordagemId || null;
 }
@@ -193,6 +206,10 @@ export function desempenhoPorAbordagem(imoveis: Imovel[], abordagens: Abordagem[
       // Tentativa sem roteiro não entra no ranking: não há o que ranquear.
       // Ela continua contando no resumo geral (resumoTentativas).
       if (!t.abordagemId) return;
+      // Número errado: o roteiro não chegou a ser lido por ninguém. Fica fora
+      // dos dois lados da conta — contá-lo como "sem resposta" faria uma
+      // abordagem boa parecer ruim por causa de um telefone mal cadastrado.
+      if (foraDoRanking(t)) return;
       const a = pegar(t.abordagemId);
       a.tentativas++;
       if (RESPONDEU.includes(t.resultado)) a.respostas++;

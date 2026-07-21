@@ -19,9 +19,13 @@
    ================================================================ */
 import { useState } from "react";
 import { DIAS_COBRANCA_RESULTADO, resultadosPendentes } from "@/lib/calculo/abordagens";
-import { RESULTADOS_TENTATIVA, type ResultadoTentativa } from "@/lib/constantes";
+import {
+  MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO,
+  RESULTADOS_TENTATIVA,
+  type ResultadoTentativa,
+} from "@/lib/constantes";
 import { todayISO } from "@/lib/datas";
-import { confirmarResultadoTentativa } from "@/lib/mutacoes";
+import { confirmarResultadoTentativa, marcarPerdidoNumeroNaoEncontrado } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
@@ -34,17 +38,54 @@ export default function ModalResultadosPendentes() {
 
   const pendentes = resultadosPendentes(imoveis, abordagens, todayISO());
 
+  /**
+   * Oferece encerrar o imóvel depois de um "número errado".
+   *
+   * Pergunta em vez de fazer: número errado NÃO é sinônimo de negócio perdido
+   * — o proprietário pode estar acessível por outro telefone, por indicação ou
+   * pela placa. Encerrar sozinho tiraria o imóvel do pipeline sem o corretor
+   * perceber, e é bem mais caro descobrir isso depois do que dar um clique.
+   *
+   * Recusar não desfaz nada: a tentativa já saiu do ranking, e o imóvel segue
+   * ativo esperando o telefone certo.
+   */
+  async function ofertarPerda(imovelId: string) {
+    const imovel = imoveis.find((i) => i.id === imovelId);
+    const alvo = imovel ? imovel.proprietarioNome || imovel.codigo || imovel.endereco : "este imóvel";
+    const querEncerrar = confirm(
+      `Marcado como número errado — a tentativa não conta no ranking.\n\n` +
+        `Quer também dar ${alvo} como Perdido, com o motivo "${MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO}"?\n\n` +
+        `Cancele se pretende procurar outro telefone: o imóvel continua ativo no pipeline.`,
+    );
+    if (!querEncerrar) {
+      toast("Fora do ranking. Corrija o telefone no cadastro para não enviar de novo.", "warning");
+      return;
+    }
+    if (await marcarPerdidoNumeroNaoEncontrado(imovelId)) {
+      toast(`Imóvel marcado como Perdido — ${MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO}.`);
+    }
+  }
+
   async function confirmar(imovelId: string, tentativaId: string, resultado: ResultadoTentativa) {
     if (salvando) return;
     setSalvando(tentativaId);
     const ok = await confirmarResultadoTentativa(imovelId, tentativaId, resultado);
     setSalvando(null);
-    // A linha some da lista sozinha (o store mudou). Um toast por clique seria
-    // barulho: a própria lista encolhendo já é a confirmação.
-    if (ok && pendentes.length === 1) {
+    if (!ok) return;
+
+    // Exceção consciente ao silêncio abaixo: marcar "número errado" tira a
+    // tentativa do ranking, mas NÃO conserta o cadastro — e o imóvel volta
+    // para a próxima fila de follow-up com o mesmo telefone. O aviso é a
+    // única coisa que transforma a marcação numa correção de verdade.
+    const ultima = pendentes.length === 1;
+    if (resultado === "numero-errado") {
+      await ofertarPerda(imovelId);
+    } else if (ultima) {
+      // A linha some da lista sozinha (o store mudou). Fora do caso acima, um
+      // toast por clique seria barulho: a lista encolhendo já é a confirmação.
       toast("Tudo confirmado. O ranking de abordagens já reflete estes contatos.");
-      fecharModal();
     }
+    if (ultima) fecharModal();
   }
 
   return (

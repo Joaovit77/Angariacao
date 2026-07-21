@@ -13,7 +13,11 @@
    mudança de status passa por `aplicarMudancaDeStatus`, o único
    ponto que empurra {status, date} no histórico.
    ================================================================ */
-import { type ResultadoTentativa, VERIFICACAO_DISPONIBILIDADE_DIAS } from "./constantes";
+import {
+  MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO,
+  type ResultadoTentativa,
+  VERIFICACAO_DISPONIBILIDADE_DIAS,
+} from "./constantes";
 import { addDaysISO, agoraISOComHora, currentMonthKey, todayISO } from "./datas";
 import { dataAngariadoEfetiva, foiAngariado } from "./calculo/motor";
 import { toDbAbordagem, toDbAgenda, toDbImovel } from "./persistencia/mapeadores";
@@ -302,6 +306,61 @@ export async function confirmarResultadoTentativa(
     return false;
   }
   setImoveis(imoveis.map((i) => (i.id === imovelId ? { ...i, tentativas: novasTentativas } : i)));
+  return true;
+}
+
+/**
+ * Dá o imóvel por perdido porque o telefone não leva ao proprietário.
+ *
+ * Atalho do nudge: marcar "número errado" e depois ter de abrir o imóvel,
+ * trocar o status e escolher o motivo é trabalho repetido para uma conclusão
+ * que já está clara. Quem decide continua sendo o corretor — a confirmação
+ * fica na UI, porque número errado NÃO é sinônimo de negócio perdido (o
+ * proprietário pode estar acessível por outro caminho).
+ *
+ * Escreve só as colunas do desfecho, em update parcial. Não passa pelo
+ * salvarImovel de propósito: aquele faz upsert da linha inteira, e aqui não há
+ * formulário nenhum por trás — seria carregar o objeto inteiro só para mexer
+ * em três campos, com todo o risco de apagar histórico que isso traz.
+ */
+export async function marcarPerdidoNumeroNaoEncontrado(imovelId: string): Promise<boolean> {
+  const { imoveis, setImoveis } = useAppStore.getState();
+  const imovel = imoveis.find((i) => i.id === imovelId);
+  if (!imovel) return false;
+
+  // Cópia do histórico ANTES de aplicar: aplicarMudancaDeStatus empurra no
+  // array recebido, e sem copiar mutaríamos o objeto que está no store — o
+  // estado local mudaria mesmo se a escrita no Supabase falhasse.
+  const alvo: Imovel = { ...imovel, statusHistory: [...(imovel.statusHistory || [])] };
+  aplicarMudancaDeStatus(alvo, "Perdido", imovel.status);
+
+  const { error } = await getSupabase()
+    .from("imoveis")
+    .update({
+      status: "Perdido",
+      status_history: alvo.statusHistory,
+      motivo_perda: MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO,
+      motivo_perda_outro: null,
+    })
+    .eq("id", imovelId);
+  if (error) {
+    toast("Não foi possível marcar como perdido: " + error.message, "error");
+    return false;
+  }
+
+  setImoveis(
+    imoveis.map((i) =>
+      i.id === imovelId
+        ? {
+            ...i,
+            status: "Perdido",
+            statusHistory: alvo.statusHistory,
+            motivoPerda: MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO,
+            motivoPerdaOutro: "",
+          }
+        : i,
+    ),
+  );
   return true;
 }
 
