@@ -44,6 +44,13 @@ export interface Tentativa {
   canal?: string | null;
   resultado: ResultadoTentativa;
   observacao?: string | null;
+  /** Tentativa criada AUTOMATICAMENTE ao enviar a mensagem, cujo `resultado`
+      ainda é um palpite. No instante do envio ninguém sabe se o proprietário
+      vai responder, então ela nasce "sem-resposta" — mas isso é um placeholder,
+      não um fato observado, e a diferença importa: uma "sem-resposta" digitada
+      à mão é uma afirmação sua, e o nudge não deve cobrar você por ela.
+      Some quando o resultado é atualizado. */
+  aguardandoResultado?: boolean;
 }
 
 export interface Imovel {

@@ -135,7 +135,16 @@ export async function dispararLote(itens: ItemFila[], abordagemId: string | null
       // toasts por cima do que o corretor está fazendo.
       await registrarTentativa(
         item.imovelId,
-        { abordagemId, canal: FOLLOWUP_CANAL, resultado: "sem-resposta", observacao: "Follow-up em lote" },
+        {
+          abordagemId,
+          canal: FOLLOWUP_CANAL,
+          resultado: "sem-resposta",
+          observacao: "Follow-up em lote",
+          // Palpite, como em qualquer envio: o nudge cobra a confirmação
+          // depois. Sem isso, um lote de 10 empurraria dez "sem-resposta"
+          // definitivos para o ranking sem ninguém ter observado nada.
+          aguardandoResultado: true,
+        },
         true,
       );
       useFilaFollowUp.getState().registrarEnvio();

@@ -11,6 +11,15 @@
    "Enviar agora" dispara pela Evolution (nosso WhatsApp), sem abrir o
    WhatsApp Web; se a Evolution recusar, o wa.me aparece como saída.
    Sem telefone, é só copiar.
+
+   O seletor tem TRÊS grupos, e o terceiro ("Minhas abordagens") é o que
+   liga esta tela ao ranking. Enviar por uma abordagem registra a tentativa
+   sozinho — antes disso o ranking só enxergava o que fosse anotado à mão,
+   ou seja, quase nada: o caminho real de envio era invisível para ele.
+
+   Modelo comum NÃO registra tentativa, de propósito. "Imóvel locado" e
+   "confirmação de visita" não disputam captação nenhuma; creditá-los
+   encheria o ranking de mensagens que não são roteiro de abordagem.
    ================================================================ */
 import { useRef, useState } from "react";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
@@ -27,7 +36,7 @@ import {
   tokenizarModeloUsuario,
 } from "@/lib/calculo/whatsapp";
 import { enviarWhatsapp } from "@/lib/envioWhatsapp";
-import { adicionarModeloWhatsapp, removerModeloWhatsapp } from "@/lib/mutacoes";
+import { adicionarModeloWhatsapp, registrarTentativa, removerModeloWhatsapp } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
@@ -36,12 +45,16 @@ const MODELO_PADRAO = "renovacao-angariacao";
 
 export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: string; modeloInicial?: string }) {
   const fecharModal = useUiModal((s) => s.fecharModal);
+  const abrirModal = useUiModal((s) => s.abrirModal);
   const { usuario } = useSessao();
   const imoveis = useAppStore((s) => s.imoveis);
   const config = useAppStore((s) => s.config);
+  const abordagens = useAppStore((s) => s.abordagens);
   const imovel = imoveis.find((i) => i.id === imovelId) || null;
   const nomeCaptador = rotuloUsuario(usuario);
   const modelosUsuario = config.whatsappModelos || [];
+  // Sem roteiro não há o que enviar; arquivada saiu de circulação.
+  const abordagensUsaveis = abordagens.filter((a) => !a.arquivada && (a.roteiro || "").trim());
 
   // Modelo inicial: o pedido pela abertura (ex.: confirmação de endereço no
   // pré-cadastro), desde que exista; senão, a renovação de angariação.
@@ -49,6 +62,10 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
     modeloInicial && MODELOS_WHATSAPP.some((m) => m.id === modeloInicial) ? modeloInicial : MODELO_PADRAO;
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // A origem do texto anda junto com o id: sem ela não daria para saber se o
+  // selecionado é uma abordagem (que credita tentativa) ou um modelo comum
+  // (que não credita), e ids de modelo e de abordagem são ambos uuid.
+  const [tipoSel, setTipoSel] = useState<"sistema" | "usuario" | "abordagem">("sistema");
   const [modeloId, setModeloId] = useState(padraoInicial);
   const [mensagem, setMensagem] = useState(() =>
     imovel ? mensagemWhatsapp(padraoInicial, imovel, nomeCaptador) : "",
@@ -59,6 +76,7 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
   // em cima (preferência) e o "Selecionado: …" abaixo deixa claro o modelo ativo.
   const [verUsuario, setVerUsuario] = useState(false);
   const [verSistema, setVerSistema] = useState(false);
+  const [verAbordagens, setVerAbordagens] = useState(false);
   const [enviando, setEnviando] = useState(false);
   // Envio direto falhou (instância caída, número sem WhatsApp...): revela o
   // wa.me como saída, em vez de deixar o corretor sem caminho.
@@ -67,16 +85,29 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
   if (!imovel) return null;
   const temTelefone = !!telefoneWhatsapp(imovel.proprietarioTelefone);
   const podeEnviarDireto = !!numeroEvolution(imovel.proprietarioTelefone);
-  const modeloCustomSel = modelosUsuario.find((m) => m.id === modeloId) || null;
-  const rotuloSelecionado = modeloCustomSel
-    ? modeloCustomSel.nome
-    : MODELOS_WHATSAPP.find((m) => m.id === modeloId)?.rotulo || "Modelo";
+  const modeloCustomSel = tipoSel === "usuario" ? modelosUsuario.find((m) => m.id === modeloId) || null : null;
+  const abordagemSel = tipoSel === "abordagem" ? abordagensUsaveis.find((a) => a.id === modeloId) || null : null;
+  const rotuloSelecionado =
+    abordagemSel?.nome ||
+    modeloCustomSel?.nome ||
+    MODELOS_WHATSAPP.find((m) => m.id === modeloId)?.rotulo ||
+    "Modelo";
 
-  function trocarModelo(id: string) {
+  function trocarModelo(tipo: "sistema" | "usuario" | "abordagem", id: string) {
     if (!imovel) return;
+    setTipoSel(tipo);
     setModeloId(id);
-    const custom = modelosUsuario.find((m) => m.id === id);
-    setMensagem(custom ? aplicarModeloUsuario(custom.texto, imovel) : mensagemWhatsapp(id, imovel, nomeCaptador));
+    if (tipo === "abordagem") {
+      const a = abordagensUsaveis.find((x) => x.id === id);
+      setMensagem(a ? aplicarModeloUsuario(a.roteiro || "", imovel) : "");
+      return;
+    }
+    if (tipo === "usuario") {
+      const custom = modelosUsuario.find((m) => m.id === id);
+      setMensagem(custom ? aplicarModeloUsuario(custom.texto, imovel) : "");
+      return;
+    }
+    setMensagem(mensagemWhatsapp(id, imovel, nomeCaptador));
   }
 
   async function salvarModelo() {
@@ -95,6 +126,7 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
     const novo = await adicionarModeloWhatsapp(nome, texto, config, usuario.id, "");
     if (novo) {
       toast(aviso.mensagem, aviso.ok ? "success" : "warning");
+      setTipoSel("usuario");
       setModeloId(novo.id);
       setNomeNovo("");
       setSalvarAberto(false);
@@ -106,6 +138,7 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
     const ok = await removerModeloWhatsapp(id, config, usuario.id);
     // Só reescreve o texto se o modelo excluído era o que estava selecionado.
     if (ok && modeloId === id) {
+      setTipoSel("sistema");
       setModeloId(padraoInicial);
       setMensagem(mensagemWhatsapp(padraoInicial, imovel, nomeCaptador));
     }
@@ -136,9 +169,32 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
     }
     setEnviando(true);
     const r = await enviarWhatsapp(imovel.id, texto);
+    if (r.ok && abordagemSel) {
+      // Só depois do envio CONFIRMADO pela Evolution. Registrar antes criaria
+      // tentativa fantasma toda vez que o número não tivesse WhatsApp.
+      //
+      // O resultado nasce "sem-resposta" porque agora ninguém sabe — e nasce
+      // marcado como palpite, para o nudge cobrar a confirmação depois. Sem
+      // essa cobrança, toda taxa de resposta tenderia a zero.
+      await registrarTentativa(
+        imovel.id,
+        {
+          abordagemId: abordagemSel.id,
+          canal: "WhatsApp",
+          resultado: "sem-resposta",
+          observacao: null,
+          aguardandoResultado: true,
+        },
+        true,
+      );
+    }
     setEnviando(false);
     if (r.ok) {
-      toast("Mensagem enviada no WhatsApp.");
+      toast(
+        abordagemSel
+          ? `Mensagem enviada. Tentativa registrada em “${abordagemSel.nome}”.`
+          : "Mensagem enviada no WhatsApp.",
+      );
       fecharModal();
       return;
     }
@@ -191,7 +247,56 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
         <div className="field-group">
           <label>Modelo</label>
           <div className="wpp-picker">
-            {/* Meus modelos primeiro — preferência aos modelos do usuário. */}
+            {/* Abordagens no topo: são as únicas que alimentam o ranking, e é
+                onde caem os roteiros sugeridos pela IA. */}
+            <div className="wpp-grupo">
+              <button
+                type="button"
+                className="wpp-grupo-head"
+                aria-expanded={verAbordagens}
+                onClick={() => setVerAbordagens((v) => !v)}
+              >
+                <span className="wpp-grupo-caret" aria-hidden>
+                  {verAbordagens ? "▾" : "▸"}
+                </span>
+                <span className="wpp-grupo-nome">Abordagens sugeridas por IA</span>
+                <span className="wpp-grupo-count">{abordagensUsaveis.length}</span>
+              </button>
+              {verAbordagens && (
+                <div className="wpp-grupo-lista">
+                  {abordagensUsaveis.length === 0 ? (
+                    <p className="wpp-vazio">
+                      Nenhuma abordagem com roteiro ainda.{" "}
+                      <button
+                        type="button"
+                        className="insight-action"
+                        style={{ padding: 0 }}
+                        onClick={() => abrirModal("abordagens")}
+                      >
+                        Cadastrar abordagens
+                      </button>
+                    </p>
+                  ) : (
+                    abordagensUsaveis.map((a) => (
+                      <div
+                        key={a.id}
+                        className={`wpp-opt${tipoSel === "abordagem" && modeloId === a.id ? " ativa" : ""}`}
+                      >
+                        <button
+                          type="button"
+                          className="wpp-opt-sel"
+                          onClick={() => trocarModelo("abordagem", a.id)}
+                        >
+                          {a.nome}
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Meus modelos — texto livre, sem crédito no ranking. */}
             <div className="wpp-grupo">
               <button
                 type="button"
@@ -213,8 +318,11 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
                     </p>
                   ) : (
                     modelosUsuario.map((m) => (
-                      <div key={m.id} className={`wpp-opt${modeloId === m.id ? " ativa" : ""}`}>
-                        <button type="button" className="wpp-opt-sel" onClick={() => trocarModelo(m.id)}>
+                      <div
+                        key={m.id}
+                        className={`wpp-opt${tipoSel === "usuario" && modeloId === m.id ? " ativa" : ""}`}
+                      >
+                        <button type="button" className="wpp-opt-sel" onClick={() => trocarModelo("usuario", m.id)}>
                           {m.nome}
                         </button>
                         <button
@@ -249,8 +357,11 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
               {verSistema && (
                 <div className="wpp-grupo-lista">
                   {MODELOS_WHATSAPP.map((m) => (
-                    <div key={m.id} className={`wpp-opt${modeloId === m.id ? " ativa" : ""}`}>
-                      <button type="button" className="wpp-opt-sel" onClick={() => trocarModelo(m.id)}>
+                    <div
+                      key={m.id}
+                      className={`wpp-opt${tipoSel === "sistema" && modeloId === m.id ? " ativa" : ""}`}
+                    >
+                      <button type="button" className="wpp-opt-sel" onClick={() => trocarModelo("sistema", m.id)}>
                         {m.rotulo}
                       </button>
                     </div>
@@ -261,6 +372,7 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
           </div>
           <p className="wpp-selecionado">
             Selecionado: <strong>{rotuloSelecionado}</strong>
+            {abordagemSel && " · o envio entra no ranking desta abordagem"}
           </p>
         </div>
 
