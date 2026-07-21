@@ -66,6 +66,21 @@ export async function salvarImovel(
   const { imoveis, agenda } = useAppStore.getState();
   const existing = imoveis.find((i) => i.id === data.id) || null;
 
+  // Rede de segurança dos históricos jsonb. O upsert abaixo grava a linha
+  // INTEIRA, então um chamador que monte o Imovel campo a campo e esqueça de
+  // carregar `notas`/`tentativas` apaga o histórico no banco — sem erro, sem
+  // toast, sem nada na tela. Foi o que aconteceu com as tentativas: o modal de
+  // imóvel preservava as notas (com direito a comentário explicando o risco) e
+  // as tentativas, criadas depois, nunca entraram na lista.
+  //
+  // Aqui só o `undefined` é reposto: quem passa `[]` está dizendo "vazio", e
+  // esvaziar de fato é trabalho das mutações próprias de cada histórico, que
+  // usam update parcial da coluna.
+  if (existing) {
+    if (data.notas === undefined) data.notas = existing.notas || [];
+    if (data.tentativas === undefined) data.tentativas = existing.tentativas || [];
+  }
+
   // Se foi definida uma data de retomada e a pessoa pediu lembrete,
   // cria automaticamente um compromisso de follow-up na agenda —
   // evita ter que cadastrar a mesma informação duas vezes.
@@ -115,8 +130,11 @@ export async function salvarImovel(
     }
   }
 
-  // Atenção: o upsert grava a linha inteira, incluindo `notas` do objeto em
-  // memória — por isso as mutações de nota usam update parcial da coluna.
+  // Atenção: o upsert grava a linha inteira, incluindo as colunas jsonb
+  // (`notas`, `tentativas`, `status_history`) do objeto em memória — por isso
+  // as mutações desses históricos usam update parcial da coluna, e por isso
+  // quem monta um Imovel para salvar precisa CARREGAR os históricos que não
+  // edita. Omitir um deles não dá erro: salva "com sucesso" e apaga o dado.
   const { error } = await supabase.from("imoveis").upsert(toDbImovel(data, userId));
   if (error) {
     toast("Não foi possível salvar: " + error.message, "error");

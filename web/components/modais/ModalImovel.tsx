@@ -288,9 +288,14 @@ export default function ModalImovel({ id }: { id?: string }) {
       status,
       observacoes: observacoes.trim(),
       statusHistory: historico,
-      // Preserva o histórico de interações: o upsert grava a linha inteira,
-      // então omitir as notas aqui as apagaria no banco.
+      // Preserva os históricos que este formulário não edita: o upsert grava a
+      // linha inteira, então omitir qualquer um deles aqui o apagaria no banco.
+      // As TENTATIVAS entram na mesma regra e por um motivo mais caro que as
+      // notas: elas são a fonte do ranking de abordagens e do corte do
+      // follow-up em lote, e some sem erro nenhum — o imóvel salva "com
+      // sucesso" e o histórico simplesmente deixa de existir.
       notas: imovel ? imovel.notas || [] : [],
+      tentativas: imovel ? imovel.tentativas || [] : [],
       pausadoAte: semPausa(status) ? null : pausadoAte || null,
       motivoPerda: pedeMotivo(status) ? motivoPerda : "",
       motivoPerdaOutro: pedeMotivo(status) && motivoPerda === "Outro" ? motivoPerdaOutro.trim() : "",
