@@ -15,6 +15,7 @@ import { sugerirCodigoImovel } from "@/lib/codigoImovel";
 import { todayISO } from "@/lib/datas";
 import { buscarCep, geocodeEndereco, maskCEP } from "@/lib/geo";
 import { salvarImovel, uid } from "@/lib/mutacoes";
+import { nomeProprio } from "@/lib/normalizacao";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
@@ -137,7 +138,7 @@ export default function ModalPreCadastro() {
       endereco: enderecoLimpo,
       bairro: bairro.trim(),
       cidade: cidade.trim(),
-      proprietarioNome: proprietarioNome.trim(),
+      proprietarioNome: nomeProprio(proprietarioNome),
       proprietarioTelefone: proprietarioTelefone.trim(),
       cep: cep.trim(),
       latitude: lat,
@@ -227,10 +228,12 @@ export default function ModalPreCadastro() {
           <div className="field-row">
             <div className="field-group">
               <label>Nome do proprietário</label>
+              {/* Caixa ajustada no blur — ver o comentário no ModalImovel. */}
               <input
                 type="text"
                 value={proprietarioNome}
                 onChange={(e) => setProprietarioNome(e.target.value)}
+                onBlur={(e) => setProprietarioNome(nomeProprio(e.target.value))}
               />
             </div>
             <div className="field-group">

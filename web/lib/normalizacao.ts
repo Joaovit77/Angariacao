@@ -27,6 +27,63 @@ export function chaveNormalizada(valor: string | null | undefined): string {
     .toLowerCase();
 }
 
+/* --- Caixa de nome próprio --------------------------------------------------
+   Nome copiado de portal/contrato costuma vir em CAIXA ALTA. Além de gritar na
+   tela, ele entra na saudação das mensagens — "Olá, JOÃO DA SILVA!" —, que é
+   onde o problema fica visível para o proprietário, não só para o corretor. */
+
+/** Partículas que ficam minúsculas no MEIO do nome: "João da Silva", não
+    "João Da Silva". É o que title case ingênuo erra em quase todo nome
+    brasileiro. No começo do nome elas são capitalizadas normalmente. */
+const PARTICULAS = new Set([
+  "de", "da", "do", "das", "dos", "e",
+  // Estrangeiras que aparecem em sobrenome brasileiro.
+  "di", "du", "del", "della", "la", "le", "van", "von", "y",
+]);
+
+/**
+ * Ajusta a caixa de um nome próprio.
+ *
+ * Só age quando a caixa NÃO carrega informação — o texto todo em maiúsculas ou
+ * todo em minúsculas. Caixa mista é escolha de quem digitou e fica intocada:
+ * "Maria McDonald" e "Imóveis MEI" seriam estragados por uma normalização
+ * cega, e não há como distinguir isso de um erro de digitação.
+ *
+ * Por isso também é idempotente e seguro de rodar de novo: o resultado é misto,
+ * então uma segunda passagem não mexe mais nele — e uma correção manual feita
+ * depois sobrevive.
+ */
+export function nomeProprio(valor: string | null | undefined): string {
+  const limpo = limpar(valor);
+  if (!limpo) return "";
+
+  const temMinuscula = /\p{Ll}/u.test(limpo);
+  const temMaiuscula = /\p{Lu}/u.test(limpo);
+  if (temMinuscula && temMaiuscula) return limpo;
+
+  return limpo
+    .split(" ")
+    .map((palavra, i) => {
+      const base = palavra.toLocaleLowerCase("pt-BR");
+      const semPonto = base.replace(/\.$/, "");
+
+      // Partícula no meio do nome. Vem antes do teste de inicial de propósito:
+      // o "e" solto é muito mais comum como partícula ("Silva e Filhos") do que
+      // como inicial do meio, e os dois casos são indistinguíveis aqui.
+      if (i > 0 && PARTICULAS.has(semPonto)) return base;
+
+      // Inicial isolada ("J", "J.") é abreviação, não palavra — segue maiúscula.
+      if (/^\p{L}\.?$/u.test(palavra)) return palavra.toLocaleUpperCase("pt-BR");
+
+      // Capitaliza no início e depois de hífen/apóstrofo, para "Ana-Maria" e
+      // "D'Ávila" não saírem como "Ana-maria" e "D'ávila".
+      return base.replace(/(^|[-'’])(\p{L})/gu, (_m, sep: string, letra: string) =>
+        sep + letra.toLocaleUpperCase("pt-BR"),
+      );
+    })
+    .join(" ");
+}
+
 /** Grafia mais frequente em `m` (mapa grafia→contagem); empate mantém a 1ª. */
 function grafiaDominante(m: Map<string, number>): string {
   let melhor = "";

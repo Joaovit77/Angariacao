@@ -24,7 +24,7 @@ import { sugerirCodigoImovel } from "@/lib/codigoImovel";
 import { todayISO } from "@/lib/datas";
 import { fmtMoney } from "@/lib/formatadores";
 import { buscarCep, geocodeEndereco, maskCEP } from "@/lib/geo";
-import { canonizarValor, distintosCanonizados } from "@/lib/normalizacao";
+import { canonizarValor, distintosCanonizados, nomeProprio } from "@/lib/normalizacao";
 import { descreverDuplicados, imoveisDuplicados } from "@/lib/calculo/duplicidade";
 import { aplicarMudancaDeStatus, excluirImovel, numOrNull, salvarImovel, uid } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
@@ -276,7 +276,9 @@ export default function ModalImovel({ id }: { id?: string }) {
       vagas: numOrNull(vagas),
       valorAluguel: numOrNull(valorAluguel) || 0,
       valorCondominio: numOrNull(valorCondominio) || 0,
-      proprietarioNome: proprietarioNome.trim(),
+      // Rede: o blur cobre o caminho normal, mas salvar sem tirar o foco do
+      // campo (Enter) o pularia. Idempotente, então não desfaz correção manual.
+      proprietarioNome: nomeProprio(proprietarioNome),
       proprietarioTelefone: proprietarioTelefone.trim(),
       formaAbordagem,
       origemImovel,
@@ -525,7 +527,15 @@ export default function ModalImovel({ id }: { id?: string }) {
           <div className="field-row">
             <div className="field-group">
               <label>Nome do proprietário</label>
-              <input type="text" value={proprietarioNome ?? ""} onChange={(e) => setProprietarioNome(e.target.value)} />
+              {/* Ajusta a caixa ao sair do campo, e não a cada tecla: durante a
+                  digitação o texto está sempre "todo minúsculo" e a correção
+                  brigaria com quem digita. No blur o valor já está inteiro. */}
+              <input
+                type="text"
+                value={proprietarioNome ?? ""}
+                onChange={(e) => setProprietarioNome(e.target.value)}
+                onBlur={(e) => setProprietarioNome(nomeProprio(e.target.value))}
+              />
             </div>
             <div className="field-group">
               <label>Telefone</label>
