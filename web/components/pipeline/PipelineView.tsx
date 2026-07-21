@@ -10,7 +10,8 @@
    para o input não ser recriado a cada tecla pela montagem de HTML por
    string; com input controlado do React o foco nunca se perde.
    ================================================================ */
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import { selecionarFollowUp } from "@/lib/calculo/followup";
 import {
   filtrarImoveis,
   ordenarPipelineLista,
@@ -21,6 +22,7 @@ import {
 import { daysInCurrentStatus, isPausado, isStale } from "@/lib/calculo/motor";
 import { MODELOS_WHATSAPP, modeloPadraoWhatsapp } from "@/lib/calculo/whatsapp";
 import { STATUS_ALL, STATUS_COLORS, TIPOS_IMOVEL } from "@/lib/constantes";
+import { todayISO } from "@/lib/datas";
 import { fmtDate, fmtMoney } from "@/lib/formatadores";
 import { excluirImovel } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
@@ -436,6 +438,12 @@ export default function PipelineView() {
   const cidades = pipelineUniqueSorted(imoveis.map((i) => i.cidade));
   const responsaveis = pipelineUniqueSorted(imoveis.map((i) => i.responsavel));
   const filtrados = filtrarImoveis(imoveis, filters, viewMode, colFilters);
+  // Quantos "Sem resposta" estão prontos para uma cutucada. O botão só
+  // aparece quando há alguém — com a fila vazia ele seria só ruído.
+  const prontosFollowUp = useMemo(
+    () => selecionarFollowUp(imoveis, todayISO()).elegiveis.length,
+    [imoveis],
+  );
   const drawerImovel =
     viewMode === "lista" && drawerImovelId ? imoveis.find((i) => i.id === drawerImovelId) : null;
 
@@ -446,6 +454,16 @@ export default function PipelineView() {
           <p className="page-sub">{imoveis.length} imóveis cadastrados</p>
         </div>
         <div className="page-actions">
+          {prontosFollowUp > 0 && (
+            <button
+              type="button"
+              className="btn"
+              title="Enviar um follow-up para os proprietários que não responderam"
+              onClick={() => abrirModal("followUpLote")}
+            >
+              📣 Follow-up ({prontosFollowUp})
+            </button>
+          )}
           <button type="button" className="btn" onClick={() => abrirModal("preCadastro")}>
             ⚡ Pré-cadastro rápido
           </button>

@@ -19,7 +19,8 @@ export type TipoModal =
   | "whatsapp"
   | "notas"
   | "tentativas"
-  | "abordagens";
+  | "abordagens"
+  | "followUpLote";
 
 export interface ModalAtivo {
   tipo: TipoModal;

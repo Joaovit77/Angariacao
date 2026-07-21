@@ -100,6 +100,8 @@ o torna testável puro.
   os **dois eixos da captação**: `canais` mede a ORIGEM do imóvel (onde a oportunidade foi achada);
   `abordagens` mede o ROTEIRO usado no contato (o que se diz). Não confundir com a
   `formaAbordagem` do imóvel, que é o CANAL. Ver "Abordagens e tentativas" abaixo.
+- **`calculo/followup.ts`** — elegibilidade e texto do follow-up em lote (os freios que impedem
+  o disparo em rajada). A fila que executa é `filaFollowUp.ts`. Ver "Follow-up em lote" abaixo.
 - **`calculo/duplicidade.ts`** — detecta imóvel já cadastrado. A identidade é
   `endereço + cidade + unidade + bloco`, comparada por chave normalizada (grafia, acento,
   pontuação e abreviação de logradouro não contam). `unidade`/`bloco` fazem parte da identidade
@@ -116,6 +118,8 @@ o torna testável puro.
   metas, agenda, abordagens, tentativas, verificação, config, dados demo).
   `aplicarMudancaDeStatus()` é o **único** ponto que empurra no `statusHistory`.
 - **`uiPipeline.ts` / `uiModal.ts`** — estado de UI (filtros/drawer do Pipeline; modal ativo).
+- **`filaFollowUp.ts`** — a fila do follow-up em lote (estado + orquestração dos envios). Como o
+  `mutacoes.ts`, é exceção consciente à regra abaixo: orquestra efeitos, não calcula.
 - **`toast.ts` / `geo.ts` / `dadosDemo.ts` / `auth/`** — notificações; CEP (ViaCEP) + geocoding
   (Nominatim); seed de exemplo; força de senha e tradução de erros do Supabase Auth.
 
@@ -160,6 +164,48 @@ Duas regras ao mexer nisso:
   deixaria o histórico órfão e o ranking perderia a leitura do que já foi feito.
 - **Amostra mínima é parte do contrato.** Abaixo de `MIN_TENTATIVAS` a linha é marcada e vai para o
   fim do ranking — com 1 tentativa, "100% de conversão" só significa que aconteceu uma vez.
+
+**Os históricos jsonb somem sem avisar.** `notas`, `tentativas` e `status_history` moram em colunas
+jsonb da linha do imóvel, e `salvarImovel` faz **upsert da linha inteira**. Quem montar um `Imovel`
+campo a campo (é o que os modais fazem) e esquecer de carregar um desses históricos o **apaga no
+banco** — sem erro, sem toast, com o imóvel salvando "com sucesso". Foi um bug real: as tentativas
+ficaram de fora do `ModalImovel` e toda edição de imóvel zerava o histórico, corrompendo o ranking
+em silêncio. Hoje `salvarImovel` repõe o que vier `undefined`, mas a rede não cobre quem passa `[]`
+— esvaziar de verdade é trabalho das mutações próprias de cada histórico, que usam update parcial
+da coluna.
+
+### Follow-up em lote
+
+Uma mensagem para cada proprietário parado em "Sem resposta", de uma vez. As partes puras
+(elegibilidade, texto, intervalo, resumo) ficam em `calculo/followup.ts`; a execução em
+`filaFollowUp.ts`, um store Zustand que roda a fila em background chamando a rota de WhatsApp já
+existente uma vez por imóvel. Entrada pelo Pipeline; UI em `ModalFollowUpLote` +
+`painel/IndicadorFollowUp`.
+
+O desenho é governado por um risco que **não é de software**: disparar mensagens em rajada pela
+mesma instância derruba o número da imobiliária, e o público aqui é o pior possível para o detector
+de spam — gente que já não respondeu. Os freios não são preferência de UX:
+
+- **O lote nunca vira rajada.** 10 por rodada, 20 por dia, envio sequencial com intervalo
+  **sorteado** entre 30 e 60s (cadência exata de N em N segundos é assinatura de bot). Mexer nesses
+  números é mexer na chance de o número ser banido, não em conforto.
+- **Os cortes saem das tentativas, não de campo novo.** "Falou há menos de 14 dias" e "já acumulou
+  4 tentativas" são lidos do histórico que já existe — mesma leitura do ranking de abordagens.
+  Nenhuma coluna, nenhuma migração, nenhuma política RLS a mais.
+- **Um seletor só, o de abordagem.** Ela é ao mesmo tempo o texto que sai (o `roteiro`) e o
+  `abordagemId` que fica registrado na tentativa. Dois seletores permitiriam divergir "o que eu
+  disse" de "o que eu anotei que disse", e o ranking passaria a medir ficção.
+- **O texto base é um MOLDE**, com `{nome}`/`{endereco}` — nunca a mensagem já preenchida de um
+  proprietário, senão as outras nove sairiam com o nome errado. Sem `{nome}` o modal avisa: as
+  mensagens sairiam idênticas, que é a assinatura de spam mais forte que existe.
+- **Falha de ambiente encerra a fila** (`falhaEncerraLote`): instância caída ou token recusado vai
+  falhar igual nos nove seguintes. Falha do contato da vez (`sem-whatsapp`, número inválido) não
+  interrompe — não diz nada sobre o próximo.
+
+A fila mora num store, e não no modal, porque o corretor segue prospectando enquanto as mensagens
+saem; o indicador fica montado no layout do painel (fora do `<main>`) para sobreviver à troca de
+view. Cada envio bem-sucedido registra a tentativa em modo **silencioso** — dez toasts por cima do
+formulário que ele está preenchendo tornariam a feature inutilizável; o resumo é um toast só, no fim.
 
 ### Modelo de RLS
 

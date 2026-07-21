@@ -15,6 +15,7 @@ import { useSessao } from "@/components/SessaoProvider";
 import BarraLateral from "@/components/painel/BarraLateral";
 import Topbar from "@/components/painel/Topbar";
 import EsqueletoPainel from "@/components/painel/EsqueletoPainel";
+import IndicadorFollowUp from "@/components/painel/IndicadorFollowUp";
 import ModalOverlay from "@/components/modais/ModalOverlay";
 import RodapeApp from "@/components/RodapeApp";
 import { useAppStore } from "@/lib/store";
@@ -128,6 +129,9 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
 
     {/* Irmão do .app-shell, como no index.html original. */}
     <ModalOverlay />
+    {/* Fora do <main>: a fila do follow-up precisa seguir visível ao trocar
+        de view, e é aqui que ela não é desmontada pela navegação. */}
+    <IndicadorFollowUp />
     </>
   );
 }

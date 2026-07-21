@@ -218,9 +218,19 @@ export async function excluirNotaImovel(imovelId: string, notaId: string): Promi
  * entra no denominador de nada e tornaria o ranking de abordagens otimista
  * (só as que deram certo seriam registradas).
  */
+/**
+ * Registra uma tentativa de contato.
+ *
+ * `silencioso` suprime os toasts: o follow-up em lote chama esta função uma
+ * vez por imóvel e o corretor segue usando o painel enquanto a fila roda —
+ * dez "Tentativa registrada" pipocando por cima do formulário que ele está
+ * preenchendo tornariam a feature inutilizável. A fila mostra o progresso no
+ * indicador e dá um toast só, de resumo, no fim.
+ */
 export async function registrarTentativa(
   imovelId: string,
   dados: Omit<Tentativa, "id" | "data">,
+  silencioso = false,
 ): Promise<boolean> {
   const { imoveis, setImoveis } = useAppStore.getState();
   const imovel = imoveis.find((i) => i.id === imovelId);
@@ -238,11 +248,11 @@ export async function registrarTentativa(
 
   const { error } = await getSupabase().from("imoveis").update({ tentativas: novasTentativas }).eq("id", imovelId);
   if (error) {
-    toast("Não foi possível registrar a tentativa: " + error.message, "error");
+    if (!silencioso) toast("Não foi possível registrar a tentativa: " + error.message, "error");
     return false;
   }
   setImoveis(imoveis.map((i) => (i.id === imovelId ? { ...i, tentativas: novasTentativas } : i)));
-  toast("Tentativa registrada.");
+  if (!silencioso) toast("Tentativa registrada.");
   return true;
 }
 
