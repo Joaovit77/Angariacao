@@ -31,6 +31,7 @@ import { kpisDashboard } from "@/lib/calculo/dashboard";
 import {
   ESQUEMA_ROTEIROS,
   contagemPorStatus,
+  corrigirMarcadores,
   mensagemFalhaIa,
   panoramaDoDia,
   promptAnalisarAbordagens,
@@ -264,9 +265,10 @@ export async function POST(request: Request): Promise<Response> {
     // claro do que meia sugestão.
     try {
       const dados = JSON.parse(textoDaResposta(conclusao)) as { roteiros?: RoteiroSugerido[] };
-      const roteiros = (dados.roteiros || []).filter(
-        (r) => r && typeof r.nome === "string" && typeof r.roteiro === "string",
-      );
+      const roteiros = (dados.roteiros || [])
+        .filter((r) => r && typeof r.nome === "string" && typeof r.roteiro === "string")
+        // Rede contra o {imovel} escapado — ver corrigirMarcadores.
+        .map((r) => ({ ...r, roteiro: corrigirMarcadores(r.roteiro) }));
       if (roteiros.length === 0) return erro("falha-ia", 502);
       const resposta: Resposta = { ok: true, roteiros };
       return Response.json(resposta);

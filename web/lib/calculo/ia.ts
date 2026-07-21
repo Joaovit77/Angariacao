@@ -81,6 +81,23 @@ export interface RoteiroSugerido {
   roteiro: string;
 }
 
+/**
+ * Corrige o marcador que o prompt não deve mais pedir.
+ *
+ * `{imovel}` expande para a FRASE "seu imóvel (rua, bairro)", não para um
+ * endereço. Enquanto o prompt dizia que ele era "o endereço do imóvel", a IA
+ * escrevia construções como "o imóvel na {imovel}", que chegavam ao
+ * proprietário como "o imóvel na seu imóvel (Rua X, Bairro)". O prompt foi
+ * corrigido, mas modelo é probabilístico: se escapar um `{imovel}`, o estrago
+ * acontece na conversa com uma pessoa real, então vale a rede aqui.
+ *
+ * A troca é por `{endereco}` (rua e número), que é o que aquelas construções
+ * pedem — e é o marcador que o prompt agora ensina.
+ */
+export function corrigirMarcadores(texto: string): string {
+  return texto.replace(/\{imovel\}/g, "{endereco}");
+}
+
 /** Esquema dos roteiros — structured outputs garante que a resposta volta
     parseável, então a UI monta cards em vez de despejar texto solto. */
 export const ESQUEMA_ROTEIROS = {
@@ -156,14 +173,14 @@ ${cenario}${jaExistem}
 Referência de tom — um exemplo real do estilo do corretor (NÃO copie; use como calibragem de formalidade e estrutura; a apresentação usa os dados reais da regra abaixo, nunca nomes inventados):
 "Olá, {nome}, tudo bem?
 Meu nome é [nome do corretor] e falo da [empresa].
-Estou entrando em contato sobre o imóvel localizado na {imovel}. Gostaria de confirmar se estou falando com o proprietário do imóvel ou com o responsável por ele.
+Estou entrando em contato sobre o imóvel localizado na {endereco}. Gostaria de confirmar se estou falando com o proprietário do imóvel ou com o responsável por ele.
 Agradeço desde já pela atenção e fico à disposição."
 
 Regras:
 - Cada abordagem é uma mensagem pronta para enviar, com o mesmo tom cordial e direto da referência: cumprimento, apresentação, motivo do contato, fecho educado.
 ${apresentacao}
 - Varie o ÂNGULO entre as três (ex.: uma confirma quem é o dono, outra oferece algo concreto, outra parte de uma observação sobre o imóvel). Não escreva três variações do mesmo texto.
-- Use {nome} onde entra o nome do proprietário e {imovel} onde entra o endereço do imóvel. Não invente outros marcadores.
+- Existem DOIS marcadores e só eles: {nome}, que vira o nome do proprietário ("Jonathas Fernando"), e {endereco}, que vira a rua e o número ("Rua José Freitas dos Santos, 250"). Escreva a frase em volta contando com esse encaixe: "o imóvel na {endereco}" fica certo. Nunca use {imovel} nem invente outros marcadores.
 - Nada de promessa de valor, prazo ou resultado ("alugo em 30 dias", "consigo 20% a mais"). Você não tem como saber.
 - Não ofereça material que já esteja pronto — comparativo, relatório, lista de interessados, estudo do bairro. Você não sabe se o corretor tem isso, e prometer o que não existe queima o contato. Pode oferecer o que ele produz na hora: uma avaliação do valor, uma visita, uma conversa de 10 minutos.
 - Sem emoji. Não abra as três com o mesmo cumprimento.

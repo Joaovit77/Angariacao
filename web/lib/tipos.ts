@@ -124,8 +124,11 @@ export interface AgendaItem {
 }
 
 /** Modelo de mensagem de WhatsApp criado pelo usuário (ex.: "Falar mais tarde").
-    O texto pode conter os marcadores {nome} (proprietário) e {imovel}, que são
-    preenchidos com os dados do imóvel na hora de usar. */
+    O texto pode conter marcadores preenchidos com os dados do imóvel na hora de
+    usar: {nome} (proprietário) e {endereco} (rua e número) são os oferecidos na
+    UI. {imovel} ainda funciona, para não quebrar modelo antigo, mas expande
+    para a FRASE "seu imóvel (rua, bairro)" e só encaixa em construções como
+    "sobre o {imovel}" — ver aplicarModeloUsuario. */
 export interface WhatsappModelo {
   id: string;
   nome: string;

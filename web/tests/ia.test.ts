@@ -4,6 +4,7 @@
    (a IA não recalcula nada) e todo motivo de falha tem mensagem pt-BR. */
 import { describe, expect, it } from "vitest";
 import {
+  corrigirMarcadores,
   MAX_CONTEXTO,
   mensagemFalhaIa,
   promptAnalisarAbordagens,
@@ -128,11 +129,31 @@ describe("promptSugerirRoteiros", () => {
     expect(p).not.toContain("falo da Imobiliária Atual");
   });
 
-  it("usa os marcadores da casa: {nome} e {imovel}, nada de {endereço}", () => {
+  it("pede os marcadores que encaixam na frase: {nome} e {endereco}, nunca {imovel}", () => {
     const p = promptSugerirRoteiros({});
     expect(p).toContain("{nome}");
-    expect(p).toContain("{imovel}");
-    expect(p).toContain("Não invente outros marcadores");
+    expect(p).toContain("{endereco}");
+    // Regressão: o prompt dizia que {imovel} era "o endereço do imóvel", mas
+    // ele expande para "seu imóvel (rua, bairro)". A IA obedecia e escrevia
+    // "o imóvel na {imovel}", que chegava ao proprietário como "o imóvel na
+    // seu imóvel (Rua X, Bairro)".
+    //
+    // O prompt ainda CITA {imovel}, mas só para proibi-lo — o que não pode
+    // voltar é ele aparecer como marcador utilizável, e o exemplo de
+    // referência é onde o modelo copia o padrão.
+    expect(p).toContain("Nunca use {imovel}");
+    expect(p).toContain('o imóvel localizado na {endereco}');
+    expect(p).not.toContain("na {imovel}");
+  });
+
+  it("corrigirMarcadores desarma o {imovel} que escape do modelo", () => {
+    // A construção que a IA de fato produziu e quebrou em produção.
+    expect(corrigirMarcadores("Vi que o imóvel na {imovel} está desocupado")).toBe(
+      "Vi que o imóvel na {endereco} está desocupado",
+    );
+    expect(corrigirMarcadores("Sobre {imovel} e {imovel}.")).toBe("Sobre {endereco} e {endereco}.");
+    // Não mexe em quem já está certo.
+    expect(corrigirMarcadores("Olá, {nome}! Sobre a {endereco}.")).toBe("Olá, {nome}! Sobre a {endereco}.");
   });
 
   it("traz o exemplo de tom do corretor como referência, com aviso de não copiar", () => {
