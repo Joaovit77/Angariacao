@@ -11,6 +11,7 @@
    string; com input controlado do React o foco nunca se perde.
    ================================================================ */
 import { useEffect, useMemo } from "react";
+import { resultadosPendentes } from "@/lib/calculo/abordagens";
 import { selecionarFollowUp } from "@/lib/calculo/followup";
 import {
   filtrarImoveis,
@@ -410,6 +411,7 @@ function Drawer({ imovel }: { imovel: Imovel }) {
 
 export default function PipelineView() {
   const imoveis = useAppStore((s) => s.imoveis);
+  const abordagens = useAppStore((s) => s.abordagens);
   const abrirModal = useUiModal((s) => s.abrirModal);
   const { filters, viewMode, colFilters, colSort, openCol, drawerImovelId, setFiltro, setViewMode, fecharColMenu } =
     usePipelineUi();
@@ -444,6 +446,13 @@ export default function PipelineView() {
     () => selecionarFollowUp(imoveis, todayISO()).elegiveis.length,
     [imoveis],
   );
+  // Conversas cujo desfecho o sistema chutou no envio e ainda não foi
+  // confirmado. Sem esta cobrança, a taxa de resposta de todo roteiro
+  // tenderia a zero e o ranking viraria ruído.
+  const aguardandoResultado = useMemo(
+    () => resultadosPendentes(imoveis, abordagens, todayISO()).length,
+    [imoveis, abordagens],
+  );
   const drawerImovel =
     viewMode === "lista" && drawerImovelId ? imoveis.find((i) => i.id === drawerImovelId) : null;
 
@@ -454,6 +463,16 @@ export default function PipelineView() {
           <p className="page-sub">{imoveis.length} imóveis cadastrados</p>
         </div>
         <div className="page-actions">
+          {aguardandoResultado > 0 && (
+            <button
+              type="button"
+              className="btn btn-nudge"
+              title="Confirmar como terminaram as conversas que você já enviou"
+              onClick={() => abrirModal("resultadosPendentes")}
+            >
+              ❓ Confirmar resultado ({aguardandoResultado})
+            </button>
+          )}
           {prontosFollowUp > 0 && (
             <button
               type="button"

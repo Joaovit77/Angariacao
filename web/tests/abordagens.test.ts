@@ -8,6 +8,7 @@ import {
   ABORDAGEM_NAO_INFORMADA,
   abordagemQueDestravou,
   desempenhoPorAbordagem,
+  resultadosPendentes,
   resumoTentativas,
   tentativasOrdenadas,
 } from "@/lib/calculo/abordagens";
@@ -249,5 +250,51 @@ describe("resumoTentativas", () => {
   it("devolve média nula quando ainda não há imóvel angariado com tentativas", () => {
     const imoveis = [imovel({ id: "i1", tentativas: [tentativa("2026-01-01T10:00", "a1", "sem-resposta")] })];
     expect(resumoTentativas(imoveis).mediaTentativasAteAngariar).toBeNull();
+  });
+});
+
+describe("resultadosPendentes (o nudge)", () => {
+  const HOJE = "2026-07-21";
+
+  /** Tentativa criada no envio: o "sem-resposta" ainda é palpite. */
+  function palpite(data: string, abordagemId: string | null): Tentativa {
+    return { ...tentativa(data, abordagemId, "sem-resposta"), aguardandoResultado: true };
+  }
+
+  it("cobra só o que o sistema chutou, nunca o que foi anotado à mão", () => {
+    const imoveis = [
+      imovel({ id: "i1", tentativas: [palpite("2026-07-20T10:00", "a1")] }),
+      // Mesmo resultado, mas afirmado pelo corretor — não se cobra.
+      imovel({ id: "i2", tentativas: [tentativa("2026-07-20T10:00", "a1", "sem-resposta")] }),
+    ];
+    const pend = resultadosPendentes(imoveis, CATALOGO, HOJE);
+    expect(pend.map((p) => p.imovelId)).toEqual(["i1"]);
+  });
+
+  it("para de cobrar depois do prazo — a essa altura 'não respondeu' é verdade", () => {
+    const dentro = imovel({ id: "dentro", tentativas: [palpite("2026-07-07T10:00", "a1")] }); // 14 dias
+    const fora = imovel({ id: "fora", tentativas: [palpite("2026-07-06T10:00", "a1")] }); // 15 dias
+    const pend = resultadosPendentes([dentro, fora], CATALOGO, HOJE);
+    expect(pend.map((p) => p.imovelId)).toEqual(["dentro"]);
+  });
+
+  it("pergunta primeiro por quem espera há mais tempo", () => {
+    const imoveis = [
+      imovel({ id: "novo", tentativas: [palpite("2026-07-20T10:00", "a1")] }),
+      imovel({ id: "velho", tentativas: [palpite("2026-07-12T10:00", "a2")] }),
+    ];
+    const pend = resultadosPendentes(imoveis, CATALOGO, HOJE);
+    expect(pend.map((p) => p.imovelId)).toEqual(["velho", "novo"]);
+    expect(pend[0].dias).toBe(9);
+    expect(pend[0].abordagemNome).toBe("Imóvel parado há meses?");
+  });
+
+  it("nomeia a tentativa sem roteiro em vez de deixar o rótulo vazio", () => {
+    const pend = resultadosPendentes(
+      [imovel({ id: "i1", tentativas: [palpite("2026-07-20T10:00", null)] })],
+      CATALOGO,
+      HOJE,
+    );
+    expect(pend[0].abordagemNome).toBe(ABORDAGEM_NAO_INFORMADA);
   });
 });

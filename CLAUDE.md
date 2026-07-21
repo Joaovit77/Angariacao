@@ -165,6 +165,37 @@ Duas regras ao mexer nisso:
 - **Amostra mínima é parte do contrato.** Abaixo de `MIN_TENTATIVAS` a linha é marcada e vai para o
   fim do ranking — com 1 tentativa, "100% de conversão" só significa que aconteceu uma vez.
 
+#### De onde vêm as tentativas (e por que isso quase matou o ranking)
+
+Por muito tempo a tentativa **só** entrava por registro manual, no ModalTentativas. O caminho real
+de envio — o ModalWhatsapp — mandava a mensagem e não registrava nada, então o ranking media apenas
+o que alguém lembrasse de anotar depois. Na prática, quase nada.
+
+Hoje há três origens, e a diferença entre elas é o que mantém o ranking honesto:
+
+- **Manual** (ModalTentativas) — o corretor afirma o que aconteceu. É a única em que o `resultado`
+  é uma observação de verdade no instante em que é gravado.
+- **Envio por abordagem** (ModalWhatsapp, grupo "Abordagens sugeridas por IA" do seletor) — registra
+  sozinho, creditando a abordagem escolhida. É o elo que liga o que se FAZ ao que se MEDE.
+- **Follow-up em lote** — idem, uma por imóvel da fila.
+
+Três regras que caem daí:
+
+- **Só registra com envio confirmado** pela Evolution. Registrar antes criaria tentativa fantasma
+  toda vez que o número não tivesse WhatsApp, e o ranking mediria mensagem que nunca saiu. Pelo
+  mesmo motivo o `wa.me` **não** registra: ele só abre a conversa, quem manda é a pessoa, e o app
+  não tem como saber se mandou.
+- **Modelo comum não credita.** "Imóvel locado" e "confirmação de visita" não disputam captação
+  nenhuma; creditá-los encheria o ranking de mensagens que não são roteiro de abordagem. Só o que
+  vem do catálogo de abordagens entra.
+- **`aguardandoResultado` separa palpite de fato.** No instante do envio ninguém sabe o desfecho,
+  então a tentativa automática nasce `"sem-resposta"` **marcada**. Sem alguém confirmando depois,
+  toda `taxaResposta` tenderia a zero e o ranking diria "nenhum roteiro funciona" quando o que
+  faltou foi anotação. O nudge (`resultadosPendentes` + `ModalResultadosPendentes` + o chip no
+  Pipeline) existe só para cobrar essa confirmação, e cobra por `DIAS_COBRANCA_RESULTADO` dias —
+  passado o prazo, "não respondeu" é quase certamente verdade. A tentativa **manual não leva a
+  marca** e nunca é cobrada: ali o "sem resposta" é afirmação do corretor, não chute do sistema.
+
 **Os históricos jsonb somem sem avisar.** `notas`, `tentativas` e `status_history` moram em colunas
 jsonb da linha do imóvel, e `salvarImovel` faz **upsert da linha inteira**. Quem montar um `Imovel`
 campo a campo (é o que os modais fazem) e esquecer de carregar um desses históricos o **apaga no

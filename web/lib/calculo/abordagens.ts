@@ -26,6 +26,7 @@
    React/Next/Supabase/store.
    ================================================================ */
 import { RESULTADOS_COM_RESPOSTA } from "../constantes";
+import { daysBetween } from "../datas";
 import type { Abordagem, Imovel, Tentativa } from "../tipos";
 import { dateEnteredStatus, foiAngariado } from "./motor";
 
@@ -70,6 +71,68 @@ export interface AbordagemDesempenho {
 /** Tentativas do imóvel em ordem cronológica (a `data` é ordenável como string). */
 export function tentativasOrdenadas(imovel: Imovel): Tentativa[] {
   return [...(imovel.tentativas || [])].sort((a, b) => a.data.localeCompare(b.data));
+}
+
+/* --- Resultados pendentes (o nudge) -----------------------------------------
+   Enviar uma mensagem por uma abordagem registra a tentativa na hora — é o que
+   liga o que o corretor FAZ ao ranking, em vez de depender de ele lembrar de
+   anotar. Mas no instante do envio ninguém sabe o desfecho, então a tentativa
+   nasce "sem-resposta" com a marca `aguardandoResultado`.
+
+   Sem alguém confirmando depois, toda taxa de resposta tenderia a zero e o
+   ranking viraria ruído — a marca existe para o nudge poder cobrar essa
+   confirmação, e só ela. Tentativa anotada à mão não tem a marca e não é
+   cobrada: ali o "sem resposta" é afirmação do corretor, não chute do sistema. */
+
+/** Dias após os quais o palpite deixa de ser cobrado. Passado esse prazo,
+    "não respondeu" é quase certamente verdade — continuar perguntando seria
+    implicância, e o dado já está certo do jeito que está. */
+export const DIAS_COBRANCA_RESULTADO = 14;
+
+export interface ResultadoPendente {
+  imovelId: string;
+  /** Rótulo do imóvel para a lista do nudge. */
+  imovelRotulo: string;
+  tentativa: Tentativa;
+  /** Nome da abordagem usada, para o corretor lembrar o que mandou. */
+  abordagemNome: string;
+  /** Há quantos dias a mensagem saiu. */
+  dias: number;
+}
+
+/** Tentativas criadas no envio que ainda esperam confirmação de desfecho,
+    da mais antiga para a mais recente (quem esperou mais pergunta primeiro). */
+export function resultadosPendentes(
+  imoveis: Imovel[],
+  abordagens: Abordagem[],
+  hoje: string,
+): ResultadoPendente[] {
+  const nomePorId = new Map(abordagens.map((a) => [a.id, a.nome]));
+  const pendentes: ResultadoPendente[] = [];
+
+  for (const imovel of imoveis) {
+    for (const t of imovel.tentativas || []) {
+      if (!t.aguardandoResultado) continue;
+      const dias = daysBetween(t.data.slice(0, 10), hoje);
+      if (dias === null || dias > DIAS_COBRANCA_RESULTADO) continue;
+      pendentes.push({
+        imovelId: imovel.id,
+        imovelRotulo: rotuloImovel(imovel),
+        tentativa: t,
+        abordagemNome: (t.abordagemId && nomePorId.get(t.abordagemId)) || ABORDAGEM_NAO_INFORMADA,
+        dias: Math.max(0, dias),
+      });
+    }
+  }
+
+  return pendentes.sort((a, b) => a.tentativa.data.localeCompare(b.tentativa.data));
+}
+
+/** "Marta — Rua Haddock Lobo, 55" */
+function rotuloImovel(imovel: Imovel): string {
+  const nome = (imovel.proprietarioNome || "").trim();
+  const onde = (imovel.codigo || imovel.endereco || "imóvel sem endereço").trim();
+  return nome ? `${nome} — ${onde}` : onde;
 }
 
 const RESPONDEU: readonly string[] = RESULTADOS_COM_RESPOSTA;

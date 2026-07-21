@@ -13,7 +13,7 @@
    mudança de status passa por `aplicarMudancaDeStatus`, o único
    ponto que empurra {status, date} no histórico.
    ================================================================ */
-import { VERIFICACAO_DISPONIBILIDADE_DIAS } from "./constantes";
+import { type ResultadoTentativa, VERIFICACAO_DISPONIBILIDADE_DIAS } from "./constantes";
 import { addDaysISO, agoraISOComHora, currentMonthKey, todayISO } from "./datas";
 import { dataAngariadoEfetiva, foiAngariado } from "./calculo/motor";
 import { toDbAbordagem, toDbAgenda, toDbImovel } from "./persistencia/mapeadores";
@@ -273,6 +273,35 @@ export async function excluirTentativa(imovelId: string, tentativaId: string): P
   }
   setImoveis(imoveis.map((i) => (i.id === imovelId ? { ...i, tentativas: novasTentativas } : i)));
   toast("Tentativa removida.");
+  return true;
+}
+
+/**
+ * Confirma o desfecho de uma tentativa criada no envio.
+ *
+ * É o outro lado do `aguardandoResultado`: a tentativa nasceu com um palpite
+ * ("sem-resposta") porque no instante do envio ninguém sabia, e aqui o palpite
+ * vira fato — a marca sai, e o nudge para de perguntar. Confirmar "sem
+ * resposta" também é resposta: o resultado não muda, mas deixa de ser chute.
+ */
+export async function confirmarResultadoTentativa(
+  imovelId: string,
+  tentativaId: string,
+  resultado: ResultadoTentativa,
+): Promise<boolean> {
+  const { imoveis, setImoveis } = useAppStore.getState();
+  const imovel = imoveis.find((i) => i.id === imovelId);
+  if (!imovel) return false;
+
+  const novasTentativas = (imovel.tentativas || []).map((t) =>
+    t.id === tentativaId ? { ...t, resultado, aguardandoResultado: false } : t,
+  );
+  const { error } = await getSupabase().from("imoveis").update({ tentativas: novasTentativas }).eq("id", imovelId);
+  if (error) {
+    toast("Não foi possível atualizar a tentativa: " + error.message, "error");
+    return false;
+  }
+  setImoveis(imoveis.map((i) => (i.id === imovelId ? { ...i, tentativas: novasTentativas } : i)));
   return true;
 }
 

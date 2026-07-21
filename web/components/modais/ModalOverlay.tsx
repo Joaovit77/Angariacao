@@ -18,6 +18,7 @@ import ModalImovel from "./ModalImovel";
 import ModalMeta from "./ModalMeta";
 import ModalNotas from "./ModalNotas";
 import ModalPreCadastro from "./ModalPreCadastro";
+import ModalResultadosPendentes from "./ModalResultadosPendentes";
 import ModalTentativas from "./ModalTentativas";
 import ModalVerificacao from "./ModalVerificacao";
 import ModalWhatsapp from "./ModalWhatsapp";
@@ -55,6 +56,7 @@ export default function ModalOverlay() {
         {modal?.tipo === "tentativas" && modal.id && <ModalTentativas imovelId={modal.id} />}
         {modal?.tipo === "abordagens" && <ModalAbordagens />}
         {modal?.tipo === "followUpLote" && <ModalFollowUpLote />}
+        {modal?.tipo === "resultadosPendentes" && <ModalResultadosPendentes />}
       </div>
     </div>
   );
