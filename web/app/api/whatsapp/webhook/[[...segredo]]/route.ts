@@ -1,5 +1,5 @@
 /* ================================================================
-   API: RECEBIMENTO DE WHATSAPP (Evolution -> nós) — PASSO 1
+   API: RECEBIMENTO DE WHATSAPP (Evolution -> nós)
 
    A TERCEIRA rota de servidor do projeto, e a única que inverte o
    sentido: as outras duas o app chama; esta a Evolution chama quando
@@ -11,25 +11,40 @@
    proprietário respondeu" vira fato observado.
 
    ---------------------------------------------------------------
-   ESTA VERSÃO NÃO ESCREVE NADA. É o passo de descoberta: valida o
-   segredo e registra o payload no log, para escrevermos o parser em
-   cima do JSON REAL da instância, não de um formato imaginado. A
-   escrita (nota + fechamento da tentativa) vem depois, junto da
-   tabela `whatsapp_instancias` — sem ela não há como saber de QUAL
-   corretor é a conversa, e errar isso escreveria na carteira da
-   pessoa errada.
+   ESTA VERSÃO AINDA NÃO ESCREVE. Ela já identifica de quem é a
+   conversa e a qual imóvel pertence — e DESCARTA todo o resto. A
+   gravação (nota + fechamento da tentativa) é o passo seguinte, e a
+   decisão do que gravar já está pronta e testada em
+   lib/calculo/webhookWhatsapp.ts.
    ---------------------------------------------------------------
 
-   DUAS diferenças que fazem desta rota um caso à parte:
+   O FILTRO É O CORAÇÃO DESTA ROTA. O número é o da imobiliária: por
+   ele passa proprietário, mas também colega, cliente e grupo. O evento
+   não diz quem é quem — quem diz é a carteira do corretor. Por isso a
+   sequência é sempre a mesma, e cada etapa só existe para descartar:
+
+     segredo -> é mensagem recebida? -> de qual corretor (instância)?
+     -> esse telefone é de algum imóvel DELE? -> só então interessa.
+
+   Mensagem que não passa por tudo isso não é processada, não é
+   gravada e não vira log com conteúdo.
+
+   TRÊS diferenças que fazem desta rota um caso à parte:
 
    1. **Ela não tem sessão de usuário.** Quem chama é a Evolution, não
       o corretor logado. O modelo do projeto inteiro é "o RLS escopa
       pelo token de quem chamou" — aqui não existe token. Por isso a
-      autenticação é um segredo nosso (EVOLUTION_WEBHOOK_SECRET), e
-      por isso a versão que escrever no banco vai precisar da primeira
-      service role key do repositório.
+      autenticação é um segredo nosso (EVOLUTION_WEBHOOK_SECRET) e por
+      isso ela usa a ÚNICA service role key do repositório.
 
-   2. **O segredo protege o sentido contrário do usual.** Quem hospeda
+   2. **A service role ignora a RLS.** É o que permite ler a carteira
+      do corretor sem ele estar logado — e é o que torna esta rota o
+      lugar mais perigoso do projeto. A regra que a segura: o user_id
+      NUNCA vem de fora. Ele é descoberto a partir do nome da instância
+      na tabela `whatsapp_instancias`, e toda consulta seguinte é
+      filtrada por ele.
+
+   3. **O segredo protege o sentido contrário do usual.** Quem hospeda
       a Evolution já enxerga as conversas — o segredo não esconde nada
       dele. O que ele impede é qualquer um na internet POSTAR aqui e
       forjar "o proprietário respondeu", envenenando o ranking de
@@ -46,6 +61,8 @@
      https://angariacao.vercel.app/api/whatsapp/webhook/<segredo>  (path)
    ================================================================ */
 import { createHash, timingSafeEqual } from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
+import { interpretarEvento } from "@/lib/calculo/webhookWhatsapp";
 
 /* --- Log sem conteúdo -------------------------------------------------------
    A primeira versão desta rota registrava o payload inteiro, para descobrirmos
@@ -121,6 +138,27 @@ function autorizar(request: Request, segmentos: string[] | undefined): boolean |
   return segredoConfere(segredoDaRequisicao(request, segmentos), esperado);
 }
 
+/** Cliente do Supabase com a SERVICE ROLE — a única do projeto.
+
+    Ela ignora a RLS por completo, e é isso que permite ler a carteira do
+    corretor numa requisição que não tem sessão de usuário. O que a torna
+    aceitável é o escopo: ela é lida SÓ aqui dentro, nunca exportada de um
+    módulo compartilhado (de onde vazaria para outra rota por descuido), e
+    toda consulta feita com ela é filtrada por um user_id descoberto a partir
+    da instância — nunca por algo que veio na requisição.
+
+    `null` quando não está configurada: sem ela não dá para saber de quem é a
+    conversa, e o certo aí é não processar em vez de adivinhar. */
+function clienteServico() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !chave) {
+    console.error("Webhook do WhatsApp: SUPABASE_SERVICE_ROLE_KEY ausente — evento ignorado.");
+    return null;
+  }
+  return createClient(url, chave, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
 /** Teste de vida, para quem administra a Evolution conferir a URL antes de
     apontar o webhook — sem isso a primeira validação vira adivinhação. */
 export async function GET(
@@ -155,7 +193,70 @@ export async function POST(
     return Response.json({ ok: true });
   }
 
-  console.log("Webhook do WhatsApp:", resumirEvento(corpo));
+  // A cadeia de descarte. Cada `return` daqui para baixo é uma mensagem que
+  // não interessa — e sair cedo é o que garante que conversa de colega não
+  // chegue nem perto do banco.
+
+  // 1. É uma mensagem de texto recebida de um número individual? (Descarta
+  //    o que nós mesmos enviamos, grupo, status e evento de conexão.)
+  const mensagem = interpretarEvento(corpo);
+  if (!mensagem) {
+    console.log("Webhook do WhatsApp: descartado —", resumirEvento(corpo));
+    return Response.json({ ok: true });
+  }
+
+  const supabase = clienteServico();
+  if (!supabase) return Response.json({ ok: true });
+
+  // 2. De qual corretor é esta instância? É AQUI que nasce o user_id — nunca
+  //    de algo que veio na requisição.
+  const { data: dono, error: erroDono } = await supabase
+    .from("whatsapp_instancias")
+    .select("user_id")
+    .eq("instancia", mensagem.instancia)
+    .maybeSingle();
+  if (erroDono) {
+    console.error("Webhook do WhatsApp: falha ao resolver a instância:", erroDono.message);
+    return Response.json({ ok: true });
+  }
+  if (!dono) {
+    console.log(`Webhook do WhatsApp: instância desconhecida (${mensagem.instancia}) — descartado.`);
+    return Response.json({ ok: true });
+  }
+  const userId = dono.user_id as string;
+
+  // 3. Este telefone é de algum imóvel DELE? Este é o filtro que separa
+  //    proprietário de todo o resto do WhatsApp da imobiliária. Quem não
+  //    está na carteira simplesmente não existe para esta rota.
+  const { data: imoveis, error: erroImovel } = await supabase
+    .from("imoveis")
+    .select("id, codigo, endereco")
+    .eq("user_id", userId)
+    .eq("proprietario_telefone_canonico", mensagem.telefone)
+    // Mais de um imóvel do mesmo proprietário é normal (investidor com vários).
+    // O mais recentemente mexido é o da conversa em andamento.
+    .order("updated_at", { ascending: false })
+    .limit(2);
+  if (erroImovel) {
+    console.error("Webhook do WhatsApp: falha ao buscar o imóvel:", erroImovel.message);
+    return Response.json({ ok: true });
+  }
+  if (!imoveis || imoveis.length === 0) {
+    // O caso mais comum de todos: não é proprietário. Nada de telefone no log.
+    console.log(`Webhook do WhatsApp: sem imóvel para o remetente — descartado (tipo=${mensagem.tipo}).`);
+    return Response.json({ ok: true });
+  }
+
+  const imovel = imoveis[0];
+  const ambiguo = imoveis.length > 1 ? " (o proprietário tem mais de um imóvel; usando o mais recente)" : "";
+  console.log(
+    `Webhook do WhatsApp: resposta de proprietário — imóvel ${imovel.codigo || imovel.id}` +
+      `, tipo=${mensagem.tipo}, caracteres=${mensagem.texto.length}${ambiguo}`,
+  );
+
+  // Passo seguinte: gravar a nota e fechar a tentativa pendente
+  // (fecharTentativaPendente, já pronta e testada em calculo/webhookWhatsapp).
+  return Response.json({ ok: true });
 
   // Sempre 200 para quem se autenticou. Webhook que responde erro é webhook
   // reentregue em loop — e, em algumas versões da Evolution, desativado depois
