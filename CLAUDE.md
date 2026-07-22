@@ -102,6 +102,16 @@ o torna testável puro.
   `formaAbordagem` do imóvel, que é o CANAL. Ver "Abordagens e tentativas" abaixo.
 - **`calculo/followup.ts`** — elegibilidade e texto do follow-up em lote (os freios que impedem
   o disparo em rajada). A fila que executa é `filaFollowUp.ts`. Ver "Follow-up em lote" abaixo.
+- **`calculo/gamificacao.ts` · `celebracao.ts`** — o reconhecimento do progresso, em dois recortes
+  que não se misturam: `gamificacao` são as **medalhas** (o acumulado, consultável a qualquer hora
+  na view de Metas); `celebracao` é o **instante** — o card de parabéns que aparece quando um imóvel
+  chega em "Angariado" ou quando a meta do mês fecha, e some depois. Ambos derivam do
+  `statusHistory` e das metas já persistidas: **nenhum estado novo no banco**. A regra da
+  `celebracao` é comemorar o **cruzamento**, nunca o estado — reeditar um imóvel que já era
+  angariado não recomemora, senão corrigir um telefone jogaria confete na tela e o parabéns viraria
+  ruído. Quem dispara é o `salvarImovel`; o card mora em `components/painel/Celebracao.tsx` e no
+  store `lib/celebracao.ts`, **fora do `uiModal`** — o salvamento termina fechando o modal, e no
+  mesmo store esse `fecharModal()` apagaria a festa no instante em que ela nasce.
 - **`calculo/duplicidade.ts`** — detecta imóvel já cadastrado. A identidade é
   `endereço + cidade + unidade + bloco`, comparada por chave normalizada (grafia, acento,
   pontuação e abreviação de logradouro não contam). `unidade`/`bloco` fazem parte da identidade

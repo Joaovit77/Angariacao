@@ -19,7 +19,9 @@ import {
   VERIFICACAO_DISPONIBILIDADE_DIAS,
 } from "./constantes";
 import { addDaysISO, agoraISOComHora, currentMonthKey, todayISO } from "./datas";
+import { celebracaoAoSalvar } from "./calculo/celebracao";
 import { dataAngariadoEfetiva, foiAngariado } from "./calculo/motor";
+import { useCelebracao } from "./celebracao";
 import { toDbAbordagem, toDbAgenda, toDbImovel } from "./persistencia/mapeadores";
 import { getSupabase } from "./persistencia/supabase";
 import { useAppStore } from "./store";
@@ -67,7 +69,7 @@ export async function salvarImovel(
   criarLembretePausa: boolean,
 ): Promise<ResultadoSalvarImovel> {
   const supabase = getSupabase();
-  const { imoveis, agenda } = useAppStore.getState();
+  const { imoveis, agenda, metas } = useAppStore.getState();
   const existing = imoveis.find((i) => i.id === data.id) || null;
 
   // Rede de segurança dos históricos jsonb. O upsert abaixo grava a linha
@@ -161,13 +163,19 @@ export async function salvarImovel(
   }
   if (novaAgenda !== agenda) useAppStore.getState().setAgenda(novaAgenda);
 
-  if (existing) {
-    useAppStore.getState().setImoveis(imoveis.map((i) => (i.id === data.id ? data : i)));
-    toast("Imóvel atualizado.");
-  } else {
-    useAppStore.getState().setImoveis([...imoveis, data]);
-    toast("Imóvel cadastrado com sucesso.");
-  }
+  const imoveisDepois = existing
+    ? imoveis.map((i) => (i.id === data.id ? data : i))
+    : [...imoveis, data];
+  useAppStore.getState().setImoveis(imoveisDepois);
+  toast(existing ? "Imóvel atualizado." : "Imóvel cadastrado com sucesso.");
+
+  // Parabéns pelo que acabou de acontecer — angariação nova ou meta do mês
+  // fechada. Vai DEPOIS da escrita e da atualização do estado: comemorar algo
+  // que o Supabase recusou seria mentir para o corretor. As listas antes/depois
+  // vão inteiras para o cálculo puro decidir se houve cruzamento.
+  const festa = celebracaoAoSalvar(existing, data, imoveis, imoveisDepois, metas, currentMonthKey());
+  if (festa) useCelebracao.getState().comemorar(festa);
+
   return { ok: true, criado: !existing };
 }
 
