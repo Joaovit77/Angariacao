@@ -9,6 +9,7 @@ import {
   fecharTentativaPendente,
   interpretarEvento,
   notaDaResposta,
+  sugerirNaTentativaPendente,
   telefoneCanonico,
   textoDaMensagem,
 } from "@/lib/calculo/webhookWhatsapp";
@@ -279,11 +280,55 @@ describe("fecharTentativaPendente", () => {
     expect(r?.tentativas.find((t) => t.id === "t0")?.resultado).toBe("recusou");
   });
 
+  it("fecha como 'respondeu' quando não há IA — é o teto do que dá para afirmar", () => {
+    const t = tentativa({ id: "t1", data: "2026-07-20T10:00", aguardandoResultado: true });
+    expect(fecharTentativaPendente([t], HOJE)?.fechada.resultado).toBe("respondeu");
+  });
+
   it("não muta o array original", () => {
     const t = tentativa({ id: "t1", data: "2026-07-20T10:00", aguardandoResultado: true });
     const original = [t];
     fecharTentativaPendente(original, HOJE);
     expect(original[0].aguardandoResultado).toBe(true);
     expect(original[0].resultado).toBe("sem-resposta");
+  });
+});
+
+/* --- sugerirNaTentativaPendente -------------------------------------------- */
+
+describe("sugerirNaTentativaPendente", () => {
+  const SUGESTAO = {
+    resultado: "vai-retornar" as const,
+    retomarEm: "2026-07-29",
+    resumo: "Vai avaliar com a esposa e retorna na semana que vem.",
+  };
+
+  it("aplica o desfecho sugerido e guarda a leitura", () => {
+    const t = tentativa({ id: "t1", data: "2026-07-20T10:00", aguardandoResultado: true });
+    const r = sugerirNaTentativaPendente([t], SUGESTAO, HOJE);
+    expect(r?.fechada.resultado).toBe("vai-retornar");
+    expect(r?.fechada.sugestaoIa?.resumo).toContain("esposa");
+    expect(r?.fechada.sugestaoIa?.retomarEm).toBe("2026-07-29");
+  });
+
+  it("MANTÉM a marca de pendente: sugestão da IA não é fato confirmado", () => {
+    // Esta é a diferença que separa esta função de fecharTentativaPendente.
+    // Sem a marca, o ranking passaria a medir a interpretação da IA em vez do
+    // que o corretor observou.
+    const t = tentativa({ id: "t1", data: "2026-07-20T10:00", aguardandoResultado: true });
+    expect(sugerirNaTentativaPendente([t], SUGESTAO, HOJE)?.fechada.aguardandoResultado).toBe(true);
+  });
+
+  it("obedece aos mesmos cortes: só a marcada, a mais recente e dentro da janela", () => {
+    const manual = tentativa({ id: "t0", data: "2026-07-21T10:00" });
+    const velha = tentativa({ id: "t1", data: "2026-06-01T10:00", aguardandoResultado: true });
+    const alvo = tentativa({ id: "t2", data: "2026-07-19T10:00", aguardandoResultado: true });
+    const r = sugerirNaTentativaPendente([manual, velha, alvo], SUGESTAO, HOJE);
+    expect(r?.fechada.id).toBe("t2");
+    expect(r?.tentativas.find((t) => t.id === "t0")?.sugestaoIa).toBeUndefined();
+  });
+
+  it("sem tentativa pendente não inventa registro", () => {
+    expect(sugerirNaTentativaPendente([], SUGESTAO, HOJE)).toBeNull();
   });
 });

@@ -2208,6 +2208,10 @@ legend{
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .pendente-meta{ font-size: 11.5px; color: var(--text-faint); }
+/* Leitura da IA sobre a resposta recebida. Discreta de propósito: é sugestão,
+   e o que manda na tela continua sendo o que o corretor decide. */
+.pendente-sugestao{ margin: 4px 0 6px; font-size: 12.5px; line-height: 1.45; }
+.pendente-resumo{ color: var(--text-soft); font-style: italic; }
 /* Os quatro desfechos quebram linha no mobile em vez de espremer. */
 .pendente-acoes{ display:flex; flex-wrap:wrap; gap:6px; }
 

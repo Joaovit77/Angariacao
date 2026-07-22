@@ -254,12 +254,7 @@ export interface FechamentoTentativa {
  * "recusou" exige ler o texto, e isso é a fase 2 (IA) — com confirmação do
  * corretor, nunca gravado direto.
  */
-export function fecharTentativaPendente(
-  historico: Tentativa[] | null | undefined,
-  hoje: string,
-): FechamentoTentativa | null {
-  const tentativas = historico || [];
-
+function alvoPendente(tentativas: Tentativa[], hoje: string): Tentativa | null {
   let alvo: Tentativa | null = null;
   for (const t of tentativas) {
     if (!t.aguardandoResultado) continue;
@@ -268,11 +263,55 @@ export function fecharTentativaPendente(
     // A mais recente entre as elegíveis.
     if (!alvo || t.data.localeCompare(alvo.data) > 0) alvo = t;
   }
-  if (!alvo) return null;
+  return alvo;
+}
 
-  const fechada: Tentativa = { ...alvo, resultado: "respondeu", aguardandoResultado: undefined };
-  return {
-    tentativas: tentativas.map((t) => (t.id === fechada.id ? fechada : t)),
-    fechada,
-  };
+function trocar(tentativas: Tentativa[], nova: Tentativa): FechamentoTentativa {
+  return { tentativas: tentativas.map((t) => (t.id === nova.id ? nova : t)), fechada: nova };
+}
+
+export function fecharTentativaPendente(
+  historico: Tentativa[] | null | undefined,
+  hoje: string,
+): FechamentoTentativa | null {
+  const tentativas = historico || [];
+  const alvo = alvoPendente(tentativas, hoje);
+  if (!alvo) return null;
+  return trocar(tentativas, { ...alvo, resultado: "respondeu", aguardandoResultado: undefined });
+}
+
+/**
+ * Anota na tentativa o que a IA leu da resposta — como SUGESTÃO, não fato.
+ *
+ * Diferença central para `fecharTentativaPendente`: a marca
+ * `aguardandoResultado` **continua lá**. Não é esquecimento: a IA leu uma
+ * frase solta, sem o resto da conversa e sem saber o histórico com aquele
+ * proprietário, e "vou ver com minha esposa" tanto pode ser interesse quanto
+ * recusa educada. Gravar como fato trocaria o palpite do sistema por outro
+ * palpite mais bem escrito — e o ranking de abordagens passaria a medir a
+ * interpretação da IA em vez do que aconteceu.
+ *
+ * Mantendo a marca, a conversa continua no nudge, que já é a tela de
+ * confirmação — só que agora com a resposta na frente do corretor e o desfecho
+ * provável pré-escolhido: vira um clique de confirmar, não uma escolha entre
+ * cinco às cegas.
+ *
+ * Se ninguém confirmar dentro da janela, fica valendo a leitura da IA. Que é
+ * pior que a confirmação do corretor, e melhor que o "sem-resposta" de antes:
+ * pelo menos nasceu de uma mensagem que existiu.
+ */
+export function sugerirNaTentativaPendente(
+  historico: Tentativa[] | null | undefined,
+  sugestao: NonNullable<Tentativa["sugestaoIa"]>,
+  hoje: string,
+): FechamentoTentativa | null {
+  const tentativas = historico || [];
+  const alvo = alvoPendente(tentativas, hoje);
+  if (!alvo) return null;
+  return trocar(tentativas, {
+    ...alvo,
+    resultado: sugestao.resultado,
+    aguardandoResultado: true,
+    sugestaoIa: sugestao,
+  });
 }

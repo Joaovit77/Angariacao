@@ -44,6 +44,27 @@ export interface Tentativa {
   canal?: string | null;
   resultado: ResultadoTentativa;
   observacao?: string | null;
+  /** Leitura da IA sobre a resposta que o proprietário mandou.
+
+      Existe para separar o que se MEDE do que se FAZ. O `resultado` acima é
+      categoria fixa, porque é ele que alimenta o ranking — categoria aberta
+      daria amostra 1 a cada rótulo inventado. Já `retomarEm` e `resumo` são
+      livres: descrevem a próxima ação daquela conversa específica, e é aí que
+      o sistema se encaixa no que a pessoa realmente disse.
+
+      É SUGESTÃO, não fato: chega junto com `aguardandoResultado`, e some
+      quando o corretor confirma. A IA não sabe se entendeu certo. */
+  sugestaoIa?: {
+    /** Desfecho sugerido, sempre um de RESULTADOS_TENTATIVA. */
+    resultado: ResultadoTentativa;
+    /** Data sugerida para retomar (ISO YYYY-MM-DD), quando a mensagem
+        indicar prazo ("te retorno na semana que vem"). null quando não há. */
+    retomarEm?: string | null;
+    /** Uma linha sobre o que a pessoa disse, para o corretor decidir sem
+        reler a conversa inteira. */
+    resumo: string;
+  } | null;
+
   /** Tentativa criada AUTOMATICAMENTE ao enviar a mensagem, cujo `resultado`
       ainda é um palpite. No instante do envio ninguém sabe se o proprietário
       vai responder, então ela nasce "sem-resposta" — mas isso é um placeholder,

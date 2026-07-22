@@ -44,6 +44,13 @@ export const FORMAS_ABORDAGEM = [
 export const RESULTADOS_TENTATIVA = [
   { valor: "sem-resposta", rotulo: "Sem resposta", respondeu: false },
   { valor: "respondeu", rotulo: "Respondeu", respondeu: true },
+  // "vai-retornar" é o meio-termo mais comum da captação — "vou pensar e te
+  // dou um retorno". Sem ele, isso caía em "respondeu" junto com qualquer
+  // outra reação, e o desfecho que PEDE follow-up ficava indistinguível do
+  // que não pede. É categoria fixa de propósito: deixar a IA inventar um
+  // rótulo por mensagem daria a cada um amostra 1, e o ranking inteiro viraria
+  // uma lista de ocorrências únicas (ver MIN_TENTATIVAS).
+  { valor: "vai-retornar", rotulo: "Vai retornar / vai pensar", respondeu: true },
   { valor: "agendou", rotulo: "Agendou visita/reunião", respondeu: true },
   { valor: "recusou", rotulo: "Recusou", respondeu: true },
   // "numero-errado" não é desfecho da conversa: a mensagem foi parar em outra

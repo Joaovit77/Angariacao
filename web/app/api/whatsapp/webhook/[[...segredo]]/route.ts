@@ -66,7 +66,9 @@ import {
   fecharTentativaPendente,
   interpretarEvento,
   notaDaResposta,
+  sugerirNaTentativaPendente,
 } from "@/lib/calculo/webhookWhatsapp";
+import { classificarResposta } from "@/lib/servidor/ia";
 import { agoraISOComHora, todayISO } from "@/lib/datas";
 import type { Tentativa } from "@/lib/tipos";
 
@@ -275,10 +277,16 @@ export async function POST(
     return Response.json({ ok: true });
   }
 
-  // 5. Fecha a tentativa que esperava desfecho: o palpite "sem-resposta" que
-  //    o envio deixou marcado vira o fato "respondeu". É isto que tira o
-  //    imóvel do nudge sem ninguém precisar confirmar à mão.
-  const fechamento = fecharTentativaPendente(imovel.tentativas, todayISO());
+  // 5. Interpreta a resposta. A IA lê o texto e sugere o desfecho — mas é
+  //    SUGESTÃO: a tentativa continua marcada e o corretor confirma no nudge,
+  //    agora com a resposta na frente e o provável já escolhido. Sem chave da
+  //    OpenAI (ou em qualquer falha) `sugestao` vem null e o comportamento cai
+  //    no anterior: fecha como "respondeu", que é o que dá para afirmar sem ler.
+  const hoje = todayISO();
+  const sugestao = await classificarResposta(mensagem.texto, hoje);
+  const fechamento = sugestao
+    ? sugerirNaTentativaPendente(imovel.tentativas, sugestao, hoje)
+    : fecharTentativaPendente(imovel.tentativas, hoje);
   if (!fechamento) {
     console.log(`Webhook do WhatsApp: nota gravada — imóvel ${rotulo}, sem tentativa pendente${ambiguo}.`);
     return Response.json({ ok: true });
@@ -300,7 +308,8 @@ export async function POST(
   }
 
   console.log(
-    `Webhook do WhatsApp: resposta registrada — imóvel ${rotulo}, tentativa fechada como "respondeu"${ambiguo}.`,
+    `Webhook do WhatsApp: resposta registrada — imóvel ${rotulo}, tentativa marcada como ` +
+      `"${fechamento.fechada.resultado}"${sugestao ? " (sugestão da IA, aguardando confirmação)" : ""}${ambiguo}.`,
   );
   return Response.json({ ok: true });
 

@@ -377,6 +377,87 @@ Escreva um resumo curto em português do Brasil, dirigindo-se ao corretor por "v
 - Texto puro: sem negrito, sem markdown. A tela mostra os asteriscos como caracteres crus.`;
 }
 
+/* ----------------------------------------------------------------
+   CLASSIFICAR A RESPOSTA DO PROPRIETÁRIO
+
+   A terceira coisa que a IA faz aqui, e a única que não é texto para
+   ler: é leitura de texto para virar dado. Vem do webhook — o
+   proprietário respondeu, e alguém precisa dizer o que aquilo
+   significa.
+
+   A divisão que dá forma a isto: o `resultado` sai de uma lista
+   FECHADA, porque é ele que alimenta o ranking de abordagens; deixar
+   o modelo inventar um rótulo por mensagem daria amostra 1 a cada um
+   e o ranking viraria uma lista de ocorrências únicas. Já `retomarEm`
+   e `resumo` são livres — descrevem a próxima ação daquela conversa,
+   não uma categoria a comparar com outras.
+
+   E é SUGESTÃO: o corretor confirma no nudge. A IA lê uma frase solta,
+   sem o contexto da conversa inteira, e "vou ver com minha esposa"
+   pode ser entusiasmo ou desculpa educada. Gravar direto trocaria um
+   palpite do sistema por outro mais bem escrito.
+   ---------------------------------------------------------------- */
+
+/** Teto do texto da mensagem levado ao prompt. Mensagem encaminhada pode ter
+    milhares de caracteres e o que decide o desfecho está sempre no começo. */
+export const MAX_TEXTO_CLASSIFICACAO = 600;
+
+export interface RespostaClassificada {
+  resultado: string;
+  retomarEm?: string | null;
+  resumo: string;
+}
+
+/** Esquema fechado: o `enum` é o que impede o modelo de inventar desfecho.
+    Os valores espelham RESULTADOS_TENTATIVA — se um for acrescentado lá sem
+    entrar aqui, a IA nunca o sugerirá (falha silenciosa, mas inofensiva). */
+export const ESQUEMA_CLASSIFICACAO = {
+  type: "object",
+  properties: {
+    resultado: {
+      type: "string",
+      enum: ["respondeu", "vai-retornar", "agendou", "recusou", "numero-errado"],
+      description: "Desfecho da conversa, um dos valores permitidos",
+    },
+    retomarEm: {
+      type: ["string", "null"],
+      description:
+        "Data sugerida para retomar o contato, no formato YYYY-MM-DD. null quando a mensagem não indica prazo.",
+    },
+    resumo: {
+      type: "string",
+      description: "Uma linha em português do Brasil sobre o que o proprietário disse",
+    },
+  },
+  required: ["resultado", "retomarEm", "resumo"],
+  additionalProperties: false,
+} as const;
+
+export function promptClassificarResposta(texto: string, hoje: string): string {
+  return `${PAPEL}
+
+Você mandou uma mensagem para um proprietário sobre a locação do imóvel dele, e ele respondeu isto:
+
+"""
+${texto.trim().slice(0, MAX_TEXTO_CLASSIFICACAO)}
+"""
+
+Hoje é ${hoje}. Classifique o desfecho desta conversa.
+
+O que cada desfecho significa:
+- "agendou" — ficou marcada uma visita, reunião ou ligação. Só use quando houver compromisso, não quando houver intenção.
+- "vai-retornar" — ele não decidiu agora e vai pensar, consultar alguém ou responder depois. É o caso de "vou ver e te falo", "preciso conversar com minha esposa", "me liga semana que vem".
+- "recusou" — não tem interesse, já resolveu por outro caminho, ou não quer alugar. Recusa educada continua sendo recusa.
+- "numero-errado" — quem respondeu não é o proprietário, ou não sabe do que se trata.
+- "respondeu" — reagiu, mas não se encaixa em nenhum acima (uma dúvida, um "oi", um pedido de informação).
+
+Regras:
+- Na dúvida entre dois, escolha o MENOS otimista. Marcar "agendou" o que foi só interesse infla a medição de fechamento do corretor e ele passa a confiar num número errado.
+- "retomarEm": só preencha se a mensagem indicar prazo, mesmo que vago ("semana que vem", "depois do dia 10", "mês que vem"). Converta para uma data real a partir de hoje. Se ele não deu prazo, devolva null — não invente um.
+- "resumo": uma linha curta, factual, sobre o que ELE disse. Nada de conselho ao corretor e nada de repetir a mensagem inteira. Exemplo: "Vai avaliar com a esposa e retorna na semana que vem."
+- Não deduza nada que não esteja na mensagem.`;
+}
+
 export function promptAnalisarAbordagens(
   ranking: AbordagemDesempenho[],
   resumo: ResumoTentativas,

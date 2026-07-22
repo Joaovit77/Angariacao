@@ -25,6 +25,7 @@ import {
   type ResultadoTentativa,
 } from "@/lib/constantes";
 import { todayISO } from "@/lib/datas";
+import { fmtDate } from "@/lib/formatadores";
 import { confirmarResultadoTentativa, marcarPerdidoNumeroNaoEncontrado } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
@@ -116,18 +117,37 @@ export default function ModalResultadosPendentes() {
                     {p.abordagemNome} · {p.dias === 0 ? "hoje" : p.dias === 1 ? "ontem" : `há ${p.dias} dias`}
                   </span>
                 </div>
+                {/* Leitura da IA sobre a resposta que chegou. Mostrada como
+                    sugestão e não como fato: ela leu uma frase solta, sem o
+                    resto da conversa. O que ela economiza é a ida ao WhatsApp
+                    para lembrar do que se tratava. */}
+                {p.tentativa.sugestaoIa && (
+                  <div className="pendente-sugestao">
+                    <span className="pendente-resumo">{p.tentativa.sugestaoIa.resumo}</span>
+                    {p.tentativa.sugestaoIa.retomarEm && (
+                      <span className="pendente-meta">
+                        {" "}
+                        · sugere retomar em {fmtDate(p.tentativa.sugestaoIa.retomarEm)}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="pendente-acoes">
-                  {RESULTADOS_TENTATIVA.map((r) => (
-                    <button
-                      key={r.valor}
-                      type="button"
-                      className="btn btn-sm"
-                      disabled={salvando === p.tentativa.id}
-                      onClick={() => confirmar(p.imovelId, p.tentativa.id, r.valor)}
-                    >
-                      {r.rotulo}
-                    </button>
-                  ))}
+                  {RESULTADOS_TENTATIVA.map((r) => {
+                    const sugerido = p.tentativa.sugestaoIa?.resultado === r.valor;
+                    return (
+                      <button
+                        key={r.valor}
+                        type="button"
+                        className={sugerido ? "btn btn-sm btn-primary" : "btn btn-sm"}
+                        disabled={salvando === p.tentativa.id}
+                        onClick={() => confirmar(p.imovelId, p.tentativa.id, r.valor)}
+                        title={sugerido ? "Sugerido pela leitura da resposta" : undefined}
+                      >
+                        {r.rotulo}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}
