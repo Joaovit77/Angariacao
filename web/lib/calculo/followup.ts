@@ -251,6 +251,9 @@ export function avisoTextoLote(base: string): string | null {
     vez e não dizem nada sobre o próximo, então a fila segue. */
 const FALHAS_FATAIS: readonly FalhaEnvio[] = [
   "nao-configurado",
+  // Conta sem número próprio: os nove seguintes falhariam igual, porque a
+  // falta é da conta e não do contato.
+  "sem-instancia",
   "sem-permissao",
   "instancia-desconectada",
   "sessao-expirada",

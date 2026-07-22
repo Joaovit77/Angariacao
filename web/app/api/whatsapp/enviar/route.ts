@@ -17,6 +17,14 @@
    Se o browser mandasse o número, esta rota viraria um disparador de
    mensagem para qualquer número — o texto o corretor edita, o
    destinatário não.
+
+   DE QUAL NÚMERO SAI A MENSAGEM: da linha do corretor em
+   `whatsapp_instancias`, não de env var. A env var era uma instância só
+   para o deploy inteiro — com dois corretores, o segundo mandaria pelo
+   número do primeiro, e a resposta do proprietário cairia na caixa
+   errada (e, com o webhook de recebimento, seria creditada ao imóvel do
+   outro). Sem linha na tabela a rota RECUSA em vez de cair num padrão:
+   um padrão aqui é sempre o número de outra pessoa.
    ================================================================ */
 import { createClient } from "@supabase/supabase-js";
 import { mensagemFalhaEnvio, numeroEvolution, type FalhaEnvio } from "@/lib/calculo/whatsapp";
@@ -87,13 +95,48 @@ function classificarErroEvolution(status: number, corpo: string): FalhaEnvio {
   return "falha-evolution";
 }
 
+/** Instância de WhatsApp DESTE corretor.
+
+    Antes vinha de env var — uma só para o deploy inteiro, o que significava
+    que um segundo corretor mandaria mensagem pelo número do primeiro, e a
+    resposta do proprietário voltaria para a caixa errada. Agora sai da
+    tabela `whatsapp_instancias`, uma linha por conta.
+
+    Precisa da service role porque aquela tabela não tem política nenhuma de
+    leitura: o `token` é segredo e uma política de select o entregaria ao
+    browser com a anon key. A disciplina que torna isso seguro é a mesma do
+    webhook — o `userId` já foi verificado por `auth.getUser()` e nunca veio
+    do corpo da requisição. */
+async function instanciaDoUsuario(
+  supabaseUrl: string,
+  userId: string,
+): Promise<{ instancia: string; token: string } | null> {
+  const servico = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!servico) {
+    console.error("Envio de WhatsApp: SUPABASE_SERVICE_ROLE_KEY ausente (ver web/.env.example).");
+    return null;
+  }
+  const admin = createClient(supabaseUrl, servico, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data, error } = await admin
+    .from("whatsapp_instancias")
+    .select("instancia, token")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) {
+    console.error("Envio de WhatsApp: falha ao ler a instância do usuário:", error.message);
+    return null;
+  }
+  if (!data?.instancia || !data?.token) return null;
+  return { instancia: data.instancia as string, token: data.token as string };
+}
+
 export async function POST(request: Request): Promise<Response> {
   const serverUrl = process.env.EVOLUTION_SERVER_URL;
-  const instancia = process.env.EVOLUTION_INSTANCE;
-  const token = process.env.EVOLUTION_TOKEN;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!serverUrl || !instancia || !token || !supabaseUrl || !anonKey) {
+  if (!serverUrl || !supabaseUrl || !anonKey) {
     console.error("Envio de WhatsApp: variáveis de ambiente da Evolution ausentes (ver web/.env.example).");
     return erro("nao-configurado", 500);
   }
@@ -111,7 +154,14 @@ export async function POST(request: Request): Promise<Response> {
   const { data: sessao, error: erroAuth } = await supabase.auth.getUser();
   if (erroAuth || !sessao.user) return erro("sessao-expirada", 401);
 
-  // 2. Corpo da requisição.
+  // 2. Qual número é o DESTE corretor? Sem linha na tabela não há por onde
+  //    enviar — e o certo é recusar, nunca cair num número padrão: com vários
+  //    corretores, o padrão seria mandar pelo número de outra pessoa.
+  const minha = await instanciaDoUsuario(supabaseUrl, sessao.user.id);
+  if (!minha) return erro("sem-instancia", 422);
+  const { instancia, token } = minha;
+
+  // 3. Corpo da requisição.
   let corpo: { imovelId?: unknown; mensagem?: unknown };
   try {
     corpo = await request.json();
@@ -122,7 +172,7 @@ export async function POST(request: Request): Promise<Response> {
   const mensagem = typeof corpo.mensagem === "string" ? corpo.mensagem.trim() : "";
   if (!imovelId || !mensagem) return erro("imovel-nao-encontrado", 400);
 
-  // 3. O telefone vem do banco, nunca do browser. O RLS garante que o
+  // 4. O telefone vem do banco, nunca do browser. O RLS garante que o
   //    imóvel é de quem chamou — de outro dono, isto volta vazio.
   const { data: imovel, error: erroBusca } = await supabase
     .from("imoveis")
@@ -140,13 +190,13 @@ export async function POST(request: Request): Promise<Response> {
   const numero = numeroEvolution(telefone);
   if (!numero) return erro("numero-invalido", 422);
 
-  // 4. O número existe no WhatsApp? Também é aqui que o nono dígito se resolve.
+  // 5. O número existe no WhatsApp? Também é aqui que o nono dígito se resolve.
   const base = serverUrl.replace(/\/+$/, "");
   const jid = await resolverJid(base, instancia, token, numero);
   if (jid === null) return erro("sem-whatsapp", 422);
   const destino = jid ?? numero;
 
-  // 5. Envia. Usamos o token DA INSTÂNCIA (não a global key): ele basta para
+  // 6. Envia. Usamos o token DA INSTÂNCIA (não a global key): ele basta para
   //    mandar mensagem e não dá poder de criar/apagar instâncias.
   let resposta: globalThis.Response;
   try {

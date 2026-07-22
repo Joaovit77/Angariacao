@@ -288,6 +288,7 @@ describe("mensagemFalhaEnvio", () => {
       "sem-whatsapp",
       "instancia-desconectada",
       "nao-configurado",
+      "sem-instancia",
       "sessao-expirada",
       "sem-permissao",
       "imovel-nao-encontrado",
@@ -297,6 +298,14 @@ describe("mensagemFalhaEnvio", () => {
     for (const f of falhas) {
       expect(mensagemFalhaEnvio(f).length).toBeGreaterThan(0);
     }
+  });
+
+  it("ambiente sem envio e conta sem número dizem coisas diferentes", () => {
+    // "nao-configurado" manda procurar configuração de servidor; "sem-instancia"
+    // é a conta sem número próprio, que se resolve cadastrando a linha do
+    // corretor. Juntar as duas manda ele caçar o problema errado.
+    expect(mensagemFalhaEnvio("sem-instancia")).not.toBe(mensagemFalhaEnvio("nao-configurado"));
+    expect(mensagemFalhaEnvio("sem-instancia")).toContain("Sua conta");
   });
 
   it("sessão expirada e token recusado dizem coisas diferentes", () => {

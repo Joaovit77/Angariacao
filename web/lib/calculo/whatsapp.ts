@@ -234,6 +234,12 @@ export type FalhaEnvio =
   | "sem-whatsapp"
   | "instancia-desconectada"
   | "nao-configurado"
+  // Distinta de "nao-configurado" pelo mesmo motivo que a IA separa
+  // "sem-permissao": ali o ambiente inteiro não tem envio direto; aqui ele
+  // tem, e é ESTA CONTA que não tem número próprio. Juntar as duas mandaria
+  // o corretor caçar configuração de servidor quando o que falta é a linha
+  // dele em `whatsapp_instancias`.
+  | "sem-instancia"
   // Duas recusas diferentes, de propósito: "sessao-expirada" é o corretor sem
   // login válido (ele reloga e resolve); "sem-permissao" é a Evolution
   // recusando NOSSO token (só o admin resolve). Juntar as duas mandaria o
@@ -276,6 +282,7 @@ const TEXTO_FALHA: Record<FalhaEnvio, string> = {
   "sem-whatsapp": "Este número não tem WhatsApp.",
   "instancia-desconectada": "Seu WhatsApp está desconectado da Evolution. Releia o QR Code no painel da Evolution.",
   "nao-configurado": "O envio direto não está configurado neste ambiente.",
+  "sem-instancia": "Sua conta não tem um número de WhatsApp configurado para envio. Fale com o responsável pelo sistema.",
   "sessao-expirada": "Sua sessão expirou. Entre novamente para enviar.",
   "sem-permissao": "A Evolution recusou nossas credenciais. Confira o token da instância.",
   "imovel-nao-encontrado": "Imóvel não encontrado.",

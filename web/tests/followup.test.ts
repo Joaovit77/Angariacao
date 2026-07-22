@@ -241,6 +241,8 @@ describe("resumoLote", () => {
 describe("falhaEncerraLote", () => {
   it("para a fila quando o problema é do ambiente, não do número", () => {
     expect(falhaEncerraLote("nao-configurado")).toBe(true);
+    // Conta sem número próprio: os nove seguintes falhariam igual.
+    expect(falhaEncerraLote("sem-instancia")).toBe(true);
     expect(falhaEncerraLote("instancia-desconectada")).toBe(true);
     expect(falhaEncerraLote("sem-permissao")).toBe(true);
     expect(falhaEncerraLote("sessao-expirada")).toBe(true);

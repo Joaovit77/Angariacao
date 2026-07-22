@@ -275,8 +275,12 @@ Três regras ao mexer nela:
   transformaria a rota num disparador para qualquer número.
 - **Toda requisição valida a sessão do Supabase** (`Authorization: Bearer <access_token>`). Sem
   isso, qualquer um na internet manda WhatsApp pela nossa instância.
-- **As env vars da Evolution nunca levam `NEXT_PUBLIC_`** (`EVOLUTION_SERVER_URL`,
-  `EVOLUTION_INSTANCE`, `EVOLUTION_TOKEN`). Sem elas o app não quebra: o modal cai no `wa.me`.
+- **O número de saída é do CORRETOR, não do deploy.** Nome da instância e token vêm da tabela
+  `whatsapp_instancias` (uma linha por conta), lida com a service role — aquela tabela não tem
+  política de leitura, porque o token é segredo. Só `EVOLUTION_SERVER_URL` continua sendo env var,
+  e nenhuma delas leva `NEXT_PUBLIC_`. Sem linha na tabela a rota **recusa** (`sem-instancia`) em
+  vez de cair num padrão: com vários corretores, o padrão é sempre o número de outra pessoa — e a
+  resposta do proprietário voltaria para a caixa errada.
 
 As partes puras (`numeroEvolution`, `mensagemFalhaEnvio` e o tipo `FalhaEnvio`) ficam em
 `lib/calculo/whatsapp.ts`, para cliente e servidor concordarem no mesmo vocabulário de erros.
@@ -338,10 +342,16 @@ Três regras ao mexer nela:
   que reabrir não herde estado do uso anterior.
 - **Bibliotecas novas via npm** em `web/`, fixando a mesma major das existentes quando fizer sentido
   (Chart.js 4, Leaflet 1.9, Supabase JS 2, Zustand 5).
-- **Sem segredo no cliente além da anon key.** Segredo mora em API Route (é o caso das env vars da
-  Evolution em `app/api/whatsapp/enviar` e da `OPENAI_API_KEY` em `app/api/ia`); código que chega
-  ao browser, nunca. Na prática: variável com `NEXT_PUBLIC_` é pública — se é segredo, não leva o
-  prefixo.
+- **Sem segredo no cliente além da anon key.** Segredo mora em API Route (é o caso da
+  `EVOLUTION_SERVER_URL`/`EVOLUTION_WEBHOOK_SECRET`, da `OPENAI_API_KEY` e da
+  `SUPABASE_SERVICE_ROLE_KEY`); código que chega ao browser, nunca. Na prática: variável com
+  `NEXT_PUBLIC_` é pública — se é segredo, não leva o prefixo.
+- **A service role é a exceção mais perigosa do projeto.** Ela ignora a RLS por completo, e por
+  isso só existe em duas rotas de servidor (`api/whatsapp/webhook` e `api/whatsapp/enviar`), lida
+  dentro do próprio arquivo e nunca exportada de módulo compartilhado — de onde vazaria para outra
+  rota por descuido. A regra que a segura: **o `user_id` nunca vem da requisição**. No webhook ele
+  nasce do nome da instância em `whatsapp_instancias`; no envio, de `auth.getUser()`. Toda consulta
+  feita com ela é filtrada por esse id.
 
 ## Ao trabalhar aqui
 
