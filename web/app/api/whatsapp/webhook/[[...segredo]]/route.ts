@@ -47,9 +47,48 @@
    ================================================================ */
 import { createHash, timingSafeEqual } from "node:crypto";
 
-/** Quanto do payload vai para o log. Um evento da Evolution traz base64 de
-    mídia e metadados longos; o que interessa aqui é a forma do objeto. */
-const MAX_LOG = 4000;
+/* --- Log sem conteúdo -------------------------------------------------------
+   A primeira versão desta rota registrava o payload inteiro, para descobrirmos
+   o formato real da Evolution. Serviu: o formato está conhecido e documentado
+   no parser. Agora ele SAI, por dois motivos que só apareceram quando o webhook
+   pegou tráfego de verdade:
+
+   - este número é o da imobiliária. Passa por ele conversa com proprietário,
+     mas também com colega, cliente e todo mundo mais. Guardar o texto de tudo
+     isso no log da Vercel é acumular conversa alheia sem necessidade nenhuma.
+   - a Evolution manda o TOKEN DA INSTÂNCIA dentro do corpo (campo `apikey`) a
+     cada requisição. Logar o payload cru gravava o segredo junto, a cada
+     mensagem.
+
+   O que fica é a forma do evento — o suficiente para saber que chegou, de qual
+   instância e de que tipo, sem guardar o que foi dito. O filtro de verdade
+   (descartar quem não é proprietário) exige o casamento com o banco e vem com
+   o parser; este log já não atrapalha enquanto isso. */
+
+function texto(v: unknown): string {
+  return typeof v === "string" ? v : "";
+}
+
+function objeto(v: unknown): Record<string, unknown> {
+  return v && typeof v === "object" ? (v as Record<string, unknown>) : {};
+}
+
+/** Uma linha de log que descreve o evento sem citar conteúdo, telefone nem
+    segredo. `caracteres` existe só para distinguir "chegou vazio" de "chegou
+    texto" ao depurar — o texto em si não é registrado. */
+function resumirEvento(corpo: unknown): string {
+  const raiz = objeto(corpo);
+  const dados = objeto(raiz.data);
+  const chave = objeto(dados.key);
+  const conversa = texto(objeto(dados.message).conversation);
+  return [
+    `evento=${texto(raiz.event) || "?"}`,
+    `instancia=${texto(raiz.instance) || "?"}`,
+    `fromMe=${typeof chave.fromMe === "boolean" ? String(chave.fromMe) : "?"}`,
+    `tipo=${texto(dados.messageType) || "?"}`,
+    `caracteres=${conversa.length}`,
+  ].join(" ");
+}
 
 /** Compara em tempo constante. O sha256 antes do timingSafeEqual não é
     zelo estético: a função exige buffers do MESMO tamanho e joga quando
@@ -116,13 +155,7 @@ export async function POST(
     return Response.json({ ok: true });
   }
 
-  // ATENÇÃO: este log inclui o TEXTO das mensagens recebidas, que é conversa
-  // de uma pessoa real e fica visível em quem tiver acesso aos logs da Vercel.
-  // É aceitável enquanto durar a descoberta do formato; sai assim que o parser
-  // estiver escrito, junto com o resto deste bloco.
-  const evento =
-    corpo && typeof corpo === "object" && "event" in corpo ? String((corpo as { event: unknown }).event) : "(sem event)";
-  console.log(`Webhook do WhatsApp [${evento}]:`, JSON.stringify(corpo).slice(0, MAX_LOG));
+  console.log("Webhook do WhatsApp:", resumirEvento(corpo));
 
   // Sempre 200 para quem se autenticou. Webhook que responde erro é webhook
   // reentregue em loop — e, em algumas versões da Evolution, desativado depois
