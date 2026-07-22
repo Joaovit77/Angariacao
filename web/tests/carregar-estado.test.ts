@@ -66,6 +66,8 @@ describe("carregarEstado", () => {
       whatsappModelos: [{ id: "m1", nome: "Falar mais tarde", texto: "Olá, {nome}!" }],
       // A linha do fake não traz `empresa` — o loader cobre com "".
       empresa: "",
+      // Nem `origens_extras` — mesma blindagem do agenda_tipos, cobre com [].
+      origensExtras: [],
     });
   });
 
@@ -76,7 +78,7 @@ describe("carregarEstado", () => {
       agenda: { data: [], error: null },
       user_config: { data: null, error: null },
     }));
-    expect(estado.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "" });
+    expect(estado.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [] });
     expect(estado.imoveis).toEqual([]);
     expect(estado.metas).toEqual({});
     expect(estado.agenda).toEqual([]);
@@ -98,7 +100,7 @@ describe("carregarEstado", () => {
       agenda: { data: [], error: null },
       user_config: { data: null, error: new Error("config indisponível") },
     }));
-    expect(estado.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "" });
+    expect(estado.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [] });
   });
 
   it("mapeia o catálogo de abordagens", async () => {

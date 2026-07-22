@@ -548,6 +548,7 @@ export async function salvarConfig(
     agenda_tipos: config.agendaTipos,
     whatsapp_modelos: config.whatsappModelos,
     empresa: config.empresa || null,
+    origens_extras: config.origensExtras,
   });
   if (error) {
     toast("Não foi possível salvar: " + error.message, "error");

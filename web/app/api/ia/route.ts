@@ -28,6 +28,8 @@ import OpenAI from "openai";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { desempenhoPorAbordagem, resumoTentativas } from "@/lib/calculo/abordagens";
 import { kpisDashboard } from "@/lib/calculo/dashboard";
+import { planoDoDia } from "@/lib/calculo/planoDia";
+import { todayISO } from "@/lib/datas";
 import {
   ESQUEMA_ROTEIROS,
   contagemPorStatus,
@@ -36,6 +38,7 @@ import {
   panoramaDoDia,
   promptAnalisarAbordagens,
   promptAnalisarDashboard,
+  promptExplicarFoco,
   promptResumoDia,
   promptSugerirRoteiros,
   type ContextoRoteiro,
@@ -203,7 +206,7 @@ export async function POST(request: Request): Promise<Response> {
   } catch {
     return erro("requisicao-invalida", 400);
   }
-  const TIPOS = ["sugerir-roteiros", "analisar-abordagens", "analisar-dashboard", "resumo-dia"] as const;
+  const TIPOS = ["sugerir-roteiros", "analisar-abordagens", "analisar-dashboard", "resumo-dia", "explicar-foco"] as const;
   type Tipo = (typeof TIPOS)[number];
   const tipo = typeof corpo.tipo === "string" ? corpo.tipo : "";
   if (!(TIPOS as readonly string[]).includes(tipo)) return erro("requisicao-invalida", 400);
@@ -318,6 +321,15 @@ export async function POST(request: Request): Promise<Response> {
     // Carteira vazia: os KPIs seriam todos zero e a leitura, pura invenção.
     if (imoveis.length === 0) return erro("sem-dados", 422);
     prompt = promptAnalisarDashboard(kpisDashboard(imoveis, comissaoPercent), contagemPorStatus(imoveis));
+  } else if (pedido === "explicar-foco") {
+    // origens_extras é jsonb; mesma blindagem do carregarEstado. Sem portal em
+    // jogo não há ordem a explicar — texto genérico só encheria linguiça.
+    const origensExtras = Array.isArray(cfg?.origens_extras)
+      ? cfg.origens_extras.filter((o): o is string => typeof o === "string" && o.trim() !== "")
+      : [];
+    const plano = planoDoDia(imoveis, origensExtras, todayISO());
+    if (plano.portais.length === 0) return erro("sem-dados", 422);
+    prompt = promptExplicarFoco(plano);
   } else {
     const agenda = ((agRes.data || []) as DbAgendaRow[]).map(fromDbAgenda);
     // Aqui NÃO há "sem-dados": nada pendente é uma resposta legítima e útil

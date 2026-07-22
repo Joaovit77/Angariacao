@@ -7,7 +7,7 @@
    ================================================================ */
 import { useState } from "react";
 import { useSessao } from "@/components/SessaoProvider";
-import { AGENDA_TYPES } from "@/lib/constantes";
+import { AGENDA_TYPES, ORIGENS_IMOVEL } from "@/lib/constantes";
 import { apagarTodosOsDados, carregarDadosDemo, numOrNull, salvarConfig } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
@@ -24,6 +24,8 @@ export default function ModalConfig() {
   const [empresa, setEmpresa] = useState(config.empresa || "");
   const [tipos, setTipos] = useState<string[]>(config.agendaTipos ?? []);
   const [novoTipo, setNovoTipo] = useState("");
+  const [portais, setPortais] = useState<string[]>(config.origensExtras ?? []);
+  const [novoPortal, setNovoPortal] = useState("");
   const [ocupado, setOcupado] = useState(false);
 
   function adicionarTipo() {
@@ -45,11 +47,30 @@ export default function ModalConfig() {
     setTipos(tipos.filter((x) => x !== t));
   }
 
+  function adicionarPortal() {
+    const p = novoPortal.trim();
+    if (!p) return;
+    // Não duplica um portal fixo nem um já cadastrado (ignorando maiúsc./minúsc.).
+    const jaExiste =
+      ORIGENS_IMOVEL.some((f) => f.toLowerCase() === p.toLowerCase()) ||
+      portais.some((x) => x.toLowerCase() === p.toLowerCase());
+    if (jaExiste) {
+      toast("Esse portal já existe.", "error");
+      return;
+    }
+    setPortais([...portais, p]);
+    setNovoPortal("");
+  }
+
+  function removerPortal(p: string) {
+    setPortais(portais.filter((x) => x !== p));
+  }
+
   async function salvar() {
     if (!usuario) return;
     setOcupado(true);
     const ok = await salvarConfig(
-      { ...config, comissaoPercent: numOrNull(comissao) || 100, agendaTipos: tipos, empresa: empresa.trim() },
+      { ...config, comissaoPercent: numOrNull(comissao) || 100, agendaTipos: tipos, empresa: empresa.trim(), origensExtras: portais },
       usuario.id,
     );
     setOcupado(false);
@@ -136,6 +157,45 @@ export default function ModalConfig() {
               style={{ flex: 1 }}
             />
             <button type="button" className="btn" onClick={adicionarTipo}>
+              Adicionar
+            </button>
+          </div>
+        </div>
+        <div className="divider"></div>
+        <div className="field-group">
+          <label>Portais de prospecção</label>
+          <div className="field-hint" style={{ marginBottom: "10px" }}>
+            Onde você garimpa imóveis. Além dos fixos ({ORIGENS_IMOVEL.join(", ")}), cadastre os seus
+            (ex.: Marketplace, Grupo de Zap, Site de imobiliária) para escolher em &quot;Onde encontrou o
+            imóvel&quot; e para o &quot;Foco do dia&quot; sugerir quantos contatos fazer em cada um.
+          </div>
+          {portais.length > 0 && (
+            <div className="config-tipos-lista">
+              {portais.map((p) => (
+                <span key={p} className="config-tipo-chip">
+                  {p}
+                  <button type="button" aria-label={`Remover ${p}`} onClick={() => removerPortal(p)}>
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: "8px" }}>
+            <input
+              type="text"
+              value={novoPortal}
+              onChange={(e) => setNovoPortal(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  adicionarPortal();
+                }
+              }}
+              placeholder="Novo portal (ex.: Marketplace)"
+              style={{ flex: 1 }}
+            />
+            <button type="button" className="btn" onClick={adicionarPortal}>
               Adicionar
             </button>
           </div>

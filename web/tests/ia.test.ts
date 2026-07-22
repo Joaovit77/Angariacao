@@ -8,11 +8,14 @@ import {
   MAX_CONTEXTO,
   mensagemFalhaIa,
   promptAnalisarAbordagens,
+  promptExplicarFoco,
   promptSugerirRoteiros,
+  resumirFocoParaPrompt,
   resumirRankingParaPrompt,
   type FalhaIa,
 } from "@/lib/calculo/ia";
 import type { AbordagemDesempenho, ResumoTentativas } from "@/lib/calculo/abordagens";
+import type { PlanoDoDia } from "@/lib/calculo/planoDia";
 
 const RANKING: AbordagemDesempenho[] = [
   {
@@ -224,5 +227,56 @@ describe("promptAnalisarAbordagens", () => {
   it("autoriza dizer que os dados são escassos em vez de forçar conclusão", () => {
     const p = promptAnalisarAbordagens(RANKING, RESUMO);
     expect(p).toContain("diga isso com franqueza");
+  });
+});
+
+const PLANO_COM_RITMO: PlanoDoDia = {
+  ritmo: 8,
+  temSugestao: true,
+  feitosHoje: 2,
+  portais: [
+    { origem: "OLX / Canal Pro", sugerido: 6, feitos: 2, restantes: 4, conversao: 40, indicativo: false },
+    { origem: "Marketplace", sugerido: 2, feitos: 0, restantes: 2, conversao: null, indicativo: true },
+  ],
+};
+
+const PLANO_COLD_START: PlanoDoDia = {
+  ritmo: null,
+  temSugestao: false,
+  feitosHoje: 0,
+  portais: [{ origem: "Ex-cliente", sugerido: 0, feitos: 0, restantes: 0, conversao: 100, indicativo: true }],
+};
+
+describe("resumirFocoParaPrompt", () => {
+  it("leva os números prontos (ritmo, sugerido, feitos, conversão) por portal", () => {
+    const t = resumirFocoParaPrompt(PLANO_COM_RITMO);
+    expect(t).toContain("Ritmo típico do dia: 8");
+    expect(t).toContain('"OLX / Canal Pro": sugerido 6, feitos 2, conversão 40%');
+    // Sem histórico de conversão vira rótulo textual, não um número inventado.
+    expect(t).toContain('"Marketplace": sugerido 2, feitos 0, conversão sem histórico');
+  });
+
+  it("no cold start avisa que a ordem é só por conversão histórica", () => {
+    const t = resumirFocoParaPrompt(PLANO_COLD_START);
+    expect(t).toContain("ainda sem histórico para estimar");
+    expect(t).toContain("(amostra baixa)");
+  });
+});
+
+describe("promptExplicarFoco", () => {
+  it("manda interpretar, não recalcular — a IA não inventa número", () => {
+    const p = promptExplicarFoco(PLANO_COM_RITMO);
+    expect(p).toContain("não recalcule e não invente nenhum número que não esteja aqui");
+  });
+
+  it("explica o vocabulário (sugerido reparte o ritmo pela conversão)", () => {
+    const p = promptExplicarFoco(PLANO_COM_RITMO);
+    expect(p).toContain("reparte o ritmo típico do dia dando mais peso ao portal cujos leads mais fecham");
+  });
+
+  it("autoriza dizer que a base é fraca em vez de eleger um portal", () => {
+    const p = promptExplicarFoco(PLANO_COM_RITMO);
+    expect(p).toContain("trate como indício");
+    expect(p).toContain("diga com franqueza");
   });
 });

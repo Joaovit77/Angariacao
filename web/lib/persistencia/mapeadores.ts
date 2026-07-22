@@ -103,6 +103,7 @@ export interface DbUserConfigRow {
   agenda_tipos: string[] | null;
   whatsapp_modelos: unknown[] | null;
   empresa: string | null;
+  origens_extras: string[] | null;
 }
 
 export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "created_at" | "updated_at"> {

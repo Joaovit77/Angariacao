@@ -58,6 +58,10 @@ export async function carregarEstado(client: SupabaseClient = getSupabase()): Pr
   const agendaTipos = Array.isArray(cfData?.agenda_tipos)
     ? cfData.agenda_tipos.filter((t): t is string => typeof t === "string" && t.trim() !== "")
     : [];
+  // origens_extras é jsonb; mesma blindagem do agenda_tipos.
+  const origensExtras = Array.isArray(cfData?.origens_extras)
+    ? cfData.origens_extras.filter((o): o is string => typeof o === "string" && o.trim() !== "")
+    : [];
   // whatsapp_modelos é jsonb; blinda contra valores malformados vindos do banco.
   const whatsappModelos: WhatsappModelo[] = Array.isArray(cfData?.whatsapp_modelos)
     ? cfData.whatsapp_modelos
@@ -79,6 +83,7 @@ export async function carregarEstado(client: SupabaseClient = getSupabase()): Pr
       agendaTipos,
       whatsappModelos,
       empresa: typeof cfData?.empresa === "string" ? cfData.empresa : "",
+      origensExtras,
     },
   };
 }

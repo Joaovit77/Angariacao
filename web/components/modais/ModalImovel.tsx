@@ -51,6 +51,7 @@ export default function ModalImovel({ id }: { id?: string }) {
   const { usuario } = useSessao();
   const imoveis = useAppStore((s) => s.imoveis);
   const comissaoPercent = useAppStore((s) => s.config.comissaoPercent);
+  const origensExtras = useAppStore((s) => s.config.origensExtras);
 
   const imovel = id ? imoveis.find((i) => i.id === id) || null : null;
 
@@ -461,7 +462,9 @@ export default function ModalImovel({ id }: { id?: string }) {
           <div className="field-group">
             <label>Onde encontrou o imóvel</label>
             <select value={origemImovel ?? ""} onChange={(e) => setOrigemImovel(e.target.value)}>
-              {ORIGENS_IMOVEL.map((o) => (
+              {/* Fixos + portais cadastrados pelo corretor. Preserva a origem
+                  atual do imóvel mesmo se o portal extra foi removido depois. */}
+              {[...new Set([...ORIGENS_IMOVEL, ...origensExtras, ...(origemImovel ? [origemImovel] : [])])].map((o) => (
                 <option key={o} value={o}>
                   {o}
                 </option>

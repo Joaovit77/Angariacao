@@ -244,6 +244,12 @@ alter table user_config add column if not exists whatsapp_modelos jsonb not null
 -- múltiplas imobiliárias usando o sistema.
 alter table user_config add column if not exists empresa text;
 
+-- Portais de prospecção que o corretor cadastrou além dos fixos (ORIGENS_IMOVEL).
+-- Alimentam o seletor de origem do imóvel e o "Foco do dia" do Dashboard. É o
+-- gêmeo do agenda_tipos: lista de extras, sem política RLS própria (as policies
+-- da tabela já escopam a linha inteira ao dono).
+alter table user_config add column if not exists origens_extras jsonb not null default '[]'::jsonb;
+
 alter table user_config enable row level security;
 
 drop policy if exists "select_own_config" on user_config;

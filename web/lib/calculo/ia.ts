@@ -18,6 +18,7 @@
    ================================================================ */
 import type { AbordagemDesempenho, ResumoTentativas } from "./abordagens";
 import type { KpisDashboard } from "./dashboard";
+import type { PlanoDoDia } from "./planoDia";
 import { daysInCurrentStatus, isStale } from "./motor";
 import { daysBetween, todayISO } from "../datas";
 import type { AgendaItem, Imovel } from "../tipos";
@@ -267,6 +268,50 @@ Escreva no máximo 3 parágrafos curtos, em português do Brasil, dirigindo-se a
 3. Uma sugestão concreta do que priorizar.
 
 Com carteira pequena, uma variação de um ou dois imóveis não é tendência — diga isso em vez de narrar oscilação como se fosse padrão. Não use bullet points, títulos nem markdown.`;
+}
+
+/* ----------------------------------------------------------------
+   FOCO DO DIA — a IA explica a ordem de prioridade dos portais.
+   Segue a regra da casa: a repartição já vem calculada (planoDia.ts,
+   o MESMO cálculo da tela); a IA só interpreta em prosa "por onde
+   começar hoje e por quê". Nunca recalcula nem inventa número.
+   ---------------------------------------------------------------- */
+
+/** Serializa o plano do dia em texto compacto — é isto que a IA lê. */
+export function resumirFocoParaPrompt(plano: PlanoDoDia): string {
+  const ritmo = plano.temSugestao
+    ? `Ritmo típico do dia: ${plano.ritmo} contato(s) novo(s). Já feitos hoje: ${plano.feitosHoje}.`
+    : `Ritmo do dia: ainda sem histórico para estimar — a ordem abaixo é só pela conversão histórica. Já feitos hoje: ${plano.feitosHoje}.`;
+
+  const linhas = plano.portais.map((p) => {
+    const conv = p.conversao != null ? `${Math.round(p.conversao)}%${p.indicativo ? " (amostra baixa)" : ""}` : "sem histórico";
+    const alvo = plano.temSugestao ? `sugerido ${p.sugerido}, feitos ${p.feitos}` : `feitos ${p.feitos}`;
+    return `- "${p.origem}": ${alvo}, conversão ${conv}.`;
+  });
+
+  return `${ritmo}
+
+Portais, na ordem de prioridade que o sistema já definiu:
+${linhas.join("\n")}`;
+}
+
+export function promptExplicarFoco(plano: PlanoDoDia): string {
+  return `${PAPEL}
+
+Este é o plano de prospecção de HOJE deste corretor, já calculado pelo sistema. Interprete — não recalcule e não invente nenhum número que não esteja aqui.
+
+${resumirFocoParaPrompt(plano)}
+
+Como ler as medidas:
+- "sugerido" = quantos contatos novos o sistema recomenda hoje naquele portal. Ele reparte o ritmo típico do dia dando mais peso ao portal cujos leads mais fecham (conversão = locado ÷ angariado).
+- "feitos" = contatos novos já feitos hoje naquele portal.
+- "conversão" com "(amostra baixa)" ou "sem histórico" = base fraca; trate como indício, nunca como certeza.
+- Sem ritmo estimado = ainda faltam dados; a ordem é só por conversão histórica.
+
+Escreva 2 a 3 frases curtas em português do Brasil, dirigindo-se ao corretor por "você": por onde COMEÇAR hoje, por quê, e o que ainda falta bater. Regras:
+- Fundamente na conversão e no que falta — não mande "faça mais" sem dizer onde e por quê.
+- Quando a base for fraca (amostra baixa / sem histórico), diga com franqueza em vez de afirmar que um portal é melhor.
+- Sem introdução nem fechamento motivacional, sem bullet points, títulos ou markdown.`;
 }
 
 /** Um compromisso ou imóvel que pede ação. O texto já vem pronto do

@@ -100,3 +100,8 @@ export function analisarDashboard(): Promise<ResultadoAnalise> {
 export function resumoDoDia(): Promise<ResultadoAnalise> {
   return chamar<ResultadoAnalise>({ tipo: "resumo-dia" });
 }
+
+/** Pede a explicação da ordem de prioridade dos portais (Foco do dia). */
+export function explicarFoco(): Promise<ResultadoAnalise> {
+  return chamar<ResultadoAnalise>({ tipo: "explicar-foco" });
+}

@@ -178,4 +178,7 @@ export interface UserConfig {
   /** Nome da empresa/imobiliária — entra na apresentação das abordagens
       sugeridas por IA. Por conta, pensando em várias imobiliárias. */
   empresa: string;
+  /** Portais de prospecção criados pelo usuário, além dos fixos (ORIGENS_IMOVEL).
+      Aparecem no seletor "Onde encontrou o imóvel" e no "Foco do dia". */
+  origensExtras: string[];
 }

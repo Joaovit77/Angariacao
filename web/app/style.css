@@ -2280,3 +2280,34 @@ legend{
   .celebracao-fundo, .celebracao-card{ animation: none; }
   .celebracao-confete{ display: none; }
 }
+
+/* ============================================================
+   FOCO DO DIA (Dashboard) — plano de prospecção por portal
+   Lista sóbria: reusa .card / .card-title / .progress-*. Linhas
+   separadas por divisória, números em alinhamento tabular, sem
+   molduras, badges ou cores — o idioma dos demais cards da tela.
+   ============================================================ */
+.foco-lista{ display:flex; flex-direction:column; }
+.foco-row{
+  display:grid; grid-template-columns:1fr auto; gap:7px 16px; align-items:baseline;
+  padding:11px 0; border-top:1px solid var(--border-soft);
+}
+.foco-row:first-child{ border-top:none; padding-top:2px; }
+.foco-nome{ font-size:13.5px; color: var(--text); font-weight:500; }
+.foco-conv{ color: var(--text-faint); font-weight:400; font-size:11.5px; margin-left:9px; }
+.foco-metric{ text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.foco-metric .n{ color: var(--text); font-weight:600; font-size:14px; }
+.foco-metric .alvo{ color: var(--text-dim); font-size:13px; }
+.foco-metric .faltam{ color: var(--text-faint); font-size:11.5px; margin-left:7px; }
+.foco-metric .ok{ color: var(--good); font-size:11.5px; margin-left:7px; }
+.foco-bar{ grid-column:1 / -1; }
+.foco-bar .progress-track{ height:4px; margin:0; }
+.foco-aviso{ font-size:12.5px; color: var(--text-faint); margin-bottom:4px; }
+.foco-vazio{ font-size:13px; color: var(--text-dim); line-height:1.55; }
+.foco-foot{ margin-top:16px; display:flex; gap:8px; flex-wrap:wrap; }
+.foco-ia{
+  margin-top:14px; padding-top:14px; border-top:1px solid var(--border-soft);
+  font-size:13px; color: var(--text-dim); line-height:1.6;
+}
+.foco-ia p{ margin:0 0 6px; }
+.foco-ia .rotulo{ font-size:11px; text-transform:uppercase; letter-spacing:.5px; color: var(--text-faint); margin-bottom:6px; }
