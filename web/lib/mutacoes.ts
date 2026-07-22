@@ -252,6 +252,8 @@ export async function registrarTentativa(
     id: uid(),
     data: agoraISOComHora(),
     abordagemId: dados.abordagemId || null,
+    // Só grava quando existe: tentativa por abordagem não carrega o campo.
+    ...(dados.modeloNome ? { modeloNome: dados.modeloNome } : {}),
     canal: dados.canal || null,
     resultado: dados.resultado,
     observacao: dados.observacao?.trim() || null,

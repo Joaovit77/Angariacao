@@ -40,6 +40,18 @@ export interface Tentativa {
   data: string;
   /** id da Abordagem usada; null quando o roteiro não foi registrado. */
   abordagemId?: string | null;
+  /** Nome do modelo PRÓPRIO do corretor (user_config.whatsapp_modelos) usado
+      no envio, quando não foi uma abordagem do catálogo.
+
+      É só RÓTULO — guardado por valor, não por id, e de propósito: modelo se
+      apaga (tem botão de remover), enquanto abordagem se arquiva justamente
+      para as tentativas antigas não ficarem órfãs. Guardar o id faria o
+      histórico perder o nome no dia em que o modelo fosse excluído.
+
+      Não entra no ranking de abordagens: sem id estável não há como comparar
+      séries, e "confirmação de visita" não disputa captação com um roteiro de
+      primeiro contato. Serve para o corretor lembrar o que mandou. */
+  modeloNome?: string | null;
   /** Canal do contato (um de FORMAS_ABORDAGEM). */
   canal?: string | null;
   resultado: ResultadoTentativa;

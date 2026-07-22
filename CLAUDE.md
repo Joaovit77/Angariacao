@@ -195,9 +195,15 @@ Três regras que caem daí:
   toda vez que o número não tivesse WhatsApp, e o ranking mediria mensagem que nunca saiu. Pelo
   mesmo motivo o `wa.me` **não** registra: ele só abre a conversa, quem manda é a pessoa, e o app
   não tem como saber se mandou.
-- **Modelo comum não credita.** "Imóvel locado" e "confirmação de visita" não disputam captação
-  nenhuma; creditá-los encheria o ranking de mensagens que não são roteiro de abordagem. Só o que
-  vem do catálogo de abordagens entra.
+- **Registrar ≠ creditar.** Três origens registram tentativa: abordagem do catálogo, **modelo
+  próprio do corretor** (`user_config.whatsapp_modelos`) e follow-up em lote. Modelo do SISTEMA
+  não registra — "imóvel locado" e "confirmação de visita" não são contato de captação.
+  Mas só a **abordagem** entra no ranking: ela tem id estável e se arquiva em vez de ser
+  excluída, então as séries continuam comparáveis. O modelo próprio grava `abordagemId: null` +
+  `modeloNome` (por VALOR, não por id — modelo tem botão de apagar, e guardar o id deixaria o
+  histórico órfão). Ele aparece no histórico, no resumo e no nudge; no ranking, não.
+  O motivo de registrá-lo apesar disso é o webhook: sem tentativa não há o que fechar quando a
+  resposta do proprietário chega.
 - **`aguardandoResultado` separa palpite de fato.** No instante do envio ninguém sabe o desfecho,
   então a tentativa automática nasce `"sem-resposta"` **marcada**. Sem alguém confirmando depois,
   toda `taxaResposta` tenderia a zero e o ranking diria "nenhum roteiro funciona" quando o que

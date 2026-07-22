@@ -169,7 +169,16 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
     }
     setEnviando(true);
     const r = await enviarWhatsapp(imovel.id, texto);
-    if (r.ok && abordagemSel) {
+    // Registra tanto a abordagem do catálogo quanto o modelo PRÓPRIO do
+    // corretor: os dois são coisas que ele disse a um proprietário, e sem
+    // registro o webhook não teria tentativa nenhuma para fechar quando a
+    // resposta chegasse. O que os separa é o ranking — só a abordagem tem id
+    // estável (arquiva, não apaga) e é comparável com as outras; o modelo
+    // entra sem `abordagemId` e fica de fora, com o nome guardado por valor.
+    //
+    // Modelo do SISTEMA continua sem registrar: "imóvel locado" e
+    // "confirmação de visita" não são contato de captação.
+    if (r.ok && (abordagemSel || modeloCustomSel)) {
       // Só depois do envio CONFIRMADO pela Evolution. Registrar antes criaria
       // tentativa fantasma toda vez que o número não tivesse WhatsApp.
       //
@@ -179,7 +188,8 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
       await registrarTentativa(
         imovel.id,
         {
-          abordagemId: abordagemSel.id,
+          abordagemId: abordagemSel ? abordagemSel.id : null,
+          modeloNome: modeloCustomSel ? modeloCustomSel.nome : null,
           canal: "WhatsApp",
           resultado: "sem-resposta",
           observacao: null,
@@ -193,7 +203,9 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
       toast(
         abordagemSel
           ? `Mensagem enviada. Tentativa registrada em “${abordagemSel.nome}”.`
-          : "Mensagem enviada no WhatsApp.",
+          : modeloCustomSel
+            ? `Mensagem enviada. Tentativa registrada com o modelo “${modeloCustomSel.nome}”.`
+            : "Mensagem enviada no WhatsApp.",
       );
       fecharModal();
       return;

@@ -350,3 +350,38 @@ describe("resultadosPendentes (o nudge)", () => {
     expect(pend[0].abordagemNome).toBe(ABORDAGEM_NAO_INFORMADA);
   });
 });
+
+/* Envio por MODELO PRÓPRIO do corretor: registra tentativa (para o webhook ter
+   o que fechar quando a resposta chegar) mas fica fora do ranking, porque
+   modelo se apaga e não tem id estável para comparar séries. */
+describe("tentativa vinda de modelo próprio", () => {
+  const doModelo: Tentativa = {
+    id: "tm1",
+    data: "2026-07-20T10:00",
+    abordagemId: null,
+    modeloNome: "Falar mais tarde",
+    canal: "WhatsApp",
+    resultado: "sem-resposta",
+    aguardandoResultado: true,
+  };
+
+  it("o nudge mostra o nome do modelo, não 'não informada'", () => {
+    const pendentes = resultadosPendentes(
+      [imovel({ id: "i1", tentativas: [doModelo] })],
+      CATALOGO,
+      "2026-07-22",
+    );
+    expect(pendentes[0].abordagemNome).toBe("Falar mais tarde");
+  });
+
+  it("não entra no ranking de abordagens", () => {
+    const ranking = desempenhoPorAbordagem([imovel({ id: "i1", tentativas: [doModelo] })], CATALOGO);
+    expect(ranking.every((a) => a.tentativas === 0)).toBe(true);
+  });
+
+  it("mas conta no resumo geral — o contato aconteceu", () => {
+    const resumo = resumoTentativas([imovel({ id: "i1", tentativas: [doModelo] })]);
+    expect(resumo.total).toBe(1);
+    expect(resumo.semAbordagem).toBe(1);
+  });
+});

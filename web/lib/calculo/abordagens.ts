@@ -119,7 +119,11 @@ export function resultadosPendentes(
         imovelId: imovel.id,
         imovelRotulo: rotuloImovel(imovel),
         tentativa: t,
-        abordagemNome: (t.abordagemId && nomePorId.get(t.abordagemId)) || ABORDAGEM_NAO_INFORMADA,
+        // O modelo próprio do corretor não tem id no catálogo, mas tem nome —
+        // e mostrar "não informada" para algo que ele nomeou faria o nudge
+        // parecer quebrado justo onde ele precisa lembrar o que mandou.
+        abordagemNome:
+          (t.abordagemId && nomePorId.get(t.abordagemId)) || t.modeloNome || ABORDAGEM_NAO_INFORMADA,
         dias: Math.max(0, dias),
       });
     }
