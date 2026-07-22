@@ -288,6 +288,131 @@ create policy "select_own_ia" on ia_permissoes
   for select using (auth.uid() = user_id);
 
 -- ------------------------------------------------------------
+-- INSTÂNCIAS DE WHATSAPP (uma linha por corretor)
+--
+-- De quem é esta conversa? Quando o proprietário responde, a Evolution
+-- avisa o app (app/api/whatsapp/webhook) e manda o NOME DA INSTÂNCIA no
+-- evento. Esta tabela é o que traduz esse nome para um usuário.
+--
+-- Sem ela o casamento teria de ser só pelo telefone — e dois corretores
+-- podem ter o MESMO proprietário na carteira (mesmo prédio, mesmo
+-- investidor: é comum). Aí a resposta de um atualizaria a tentativa do
+-- outro, que é escrever na carteira alheia. A instância desempata porque
+-- a mensagem chegou num número, e o número é de uma pessoa só.
+--
+-- Um número por corretor, então `user_id` é a própria chave primária. Se
+-- um dia alguém tiver dois números, isto vira `id` + unique em `user_id`
+-- — e é só aqui que muda.
+--
+-- REPARE NO QUE ESTÁ FALTANDO: RLS ligada e NENHUMA política. Como em
+-- `ia_permissoes`, a ausência é o bloqueio — e aqui ela vale para leitura
+-- também, por dois motivos:
+--
+--   1. `token` é segredo. Com uma política de select, qualquer usuário
+--      leria o próprio token pelo DevTools com a anon key (que é pública
+--      por design) e passaria a mandar mensagem pela instância por fora
+--      do app. Segredo não chega ao browser — a mesma regra das env vars
+--      da Evolution.
+--   2. Se houvesse política de escrita, um usuário poderia apontar a
+--      própria linha para a instância de OUTRO e passar a receber as
+--      respostas dos proprietários dele.
+--
+-- Quem lê são as rotas de servidor, com a service role, sempre a partir
+-- de um user_id já verificado por auth.getUser() — nunca de um id vindo
+-- do browser. Preenche-se/edita-se pelo Table Editor do Supabase, como a
+-- liberação de IA: sem deploy.
+-- ------------------------------------------------------------
+create table if not exists whatsapp_instancias (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  -- Nome da instância na Evolution, exatamente como vem no campo "instance"
+  -- do evento. Unique porque é a chave da tradução: duas linhas com o mesmo
+  -- nome tornariam o dono ambíguo, que é justamente o que a tabela evita.
+  instancia text not null unique,
+  -- Token DA INSTÂNCIA (não a global api key). Fica aqui para o envio deixar
+  -- de depender da env var única EVOLUTION_INSTANCE/EVOLUTION_TOKEN, que hoje
+  -- faria todo corretor mandar mensagem pelo mesmo número.
+  token text,
+  observacao text,
+  criado_em timestamptz not null default now()
+);
+
+alter table whatsapp_instancias enable row level security;
+
+-- ------------------------------------------------------------
+-- TELEFONE EM FORMA CANÔNICA (para casar a resposta com o imóvel)
+--
+-- O evento traz o jid ("554398024316@s.whatsapp.net"); o banco guarda o
+-- telefone como a pessoa digitou ("(43) 99802-4316"). Comparar os dois
+-- exige normalizar, e normalizar aqui — em coluna indexada — em vez de no
+-- código: o webhook roda com service role, então varrer imóveis em memória
+-- significaria carregar a carteira de TODO MUNDO a cada mensagem recebida.
+--
+-- A regra que importa é o nono dígito. O WhatsApp guarda muitos celulares
+-- brasileiros SEM ele: em Londrina, 5543998024316 e 554398024316 são a
+-- MESMA conta (é o mesmo fato que a rota de envio resolve consultando o jid
+-- canônico — ver lib/calculo/whatsapp.ts). A forma canônica aqui é DDD +
+-- assinante SEM o 9, para as duas grafias caírem no mesmo valor:
+--
+--   (43) 99802-4316  ->  4398024316
+--   5543998024316    ->  4398024316
+--   554398024316     ->  4398024316
+--   (43) 3324-5678   ->  4333245678   (fixo, intocado)
+--
+-- Devolve null para o que não é telefone brasileiro plausível — inclusive o
+-- estrangeiro que ganhou um "55" na frente (+1 415 555 2671 vira
+-- 5514155552671, que PARECE nacional). Null nunca casa com nada, que é o
+-- comportamento certo: melhor não achar do que achar o imóvel errado.
+-- ------------------------------------------------------------
+create or replace function telefone_canonico(telefone text)
+returns text
+language sql
+immutable
+as $$
+  select case
+           -- 11 dígitos = DDD + celular com o nono; tira o 9 para bater com
+           -- a forma de 10 que o WhatsApp costuma devolver.
+           when length(n.nac) = 11 and substr(n.nac, 3, 1) = '9'
+             then left(n.nac, 2) || substr(n.nac, 4)
+           when length(n.nac) = 10 then n.nac
+           else null
+         end
+  from (
+    select case
+             -- DDI 55 na frente (12 ou 13 dígitos): fora.
+             when length(g.d) in (12, 13) and left(g.d, 2) = '55' then substr(g.d, 3)
+             else g.d
+           end as nac
+    from (
+      -- Só dígitos, e sem o zero de "0 43 9..." — nenhum número válido
+      -- começa com zero, então isso não estraga nada.
+      select regexp_replace(
+               regexp_replace(coalesce(telefone, ''), '[^0-9]', '', 'g'),
+               '^0+', ''
+             ) as d
+    ) g
+  ) n
+$$;
+
+-- Coluna GERADA: o banco mantém em dia sozinho a cada insert/update, então
+-- não há como o app salvar um telefone e esquecer de atualizar a chave de
+-- busca. Ela não pode ser escrita — e não é: o toDbImovel lista as colunas
+-- uma a uma e não a inclui.
+--
+-- Atenção ao mexer na regra: mudar `telefone_canonico` NÃO recalcula o que
+-- já está gravado (coluna stored). Se a função mudar, é preciso dropar e
+-- recriar a coluna para reprocessar a base.
+alter table imoveis
+  add column if not exists proprietario_telefone_canonico text
+  generated always as (telefone_canonico(proprietario_telefone)) stored;
+
+-- Índice do casamento do webhook: chega (instância -> user_id) + telefone.
+-- Parcial porque imóvel sem telefone nunca é resposta de ninguém — e são
+-- muitos, então deixá-los fora encolhe o índice de graça.
+create index if not exists imoveis_telefone_canonico_idx
+  on imoveis(user_id, proprietario_telefone_canonico)
+  where proprietario_telefone_canonico is not null;
+
+-- ------------------------------------------------------------
 -- Atualiza updated_at automaticamente nos imóveis
 -- ------------------------------------------------------------
 create or replace function set_updated_at()
