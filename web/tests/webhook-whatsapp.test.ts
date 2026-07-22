@@ -5,12 +5,14 @@
    que a instância de verdade manda, não um formato imaginado. */
 import { describe, expect, it } from "vitest";
 import {
+  MAX_TEXTO_NOTA,
   fecharTentativaPendente,
   interpretarEvento,
+  notaDaResposta,
   telefoneCanonico,
   textoDaMensagem,
 } from "@/lib/calculo/webhookWhatsapp";
-import type { Imovel, Tentativa } from "@/lib/tipos";
+import type { Tentativa } from "@/lib/tipos";
 
 /* --- telefoneCanonico -------------------------------------------------------
    Esta é a tabela que PRENDE a função à gêmea `telefone_canonico()` do
@@ -166,6 +168,63 @@ describe("textoDaMensagem", () => {
   });
 });
 
+/* --- notaDaResposta -------------------------------------------------------- */
+
+const AGORA = "2026-07-22T15:48";
+
+function mensagem(over: Partial<Parameters<typeof notaDaResposta>[0]> = {}) {
+  return {
+    instancia: "Angarimovel",
+    mensagemId: "3EB0322C86C02D2331D663",
+    telefone: "4398024316",
+    texto: "Pode sim, me liga amanhã",
+    tipo: "conversation",
+    ...over,
+  };
+}
+
+describe("notaDaResposta", () => {
+  it("monta a nota com o texto da resposta", () => {
+    const nota = notaDaResposta(mensagem(), AGORA);
+    expect(nota.texto).toBe("Resposta pelo WhatsApp: Pode sim, me liga amanhã");
+    expect(nota.data).toBe(AGORA);
+  });
+
+  it("o id sai do id da mensagem — é o que garante a idempotência", () => {
+    const nota = notaDaResposta(mensagem(), AGORA);
+    expect(nota.id).toBe("wa:3EB0322C86C02D2331D663");
+    // Duas entregas do MESMO evento produzem o MESMO id, então a segunda é
+    // recusada pelo banco em vez de virar nota duplicada.
+    expect(notaDaResposta(mensagem(), "2026-07-22T16:00").id).toBe(nota.id);
+  });
+
+  it("descreve o que chegou quando não há texto — áudio é resposta de verdade", () => {
+    expect(notaDaResposta(mensagem({ texto: "", tipo: "audioMessage" }), AGORA).texto).toBe(
+      "Resposta pelo WhatsApp: [áudio]",
+    );
+    expect(notaDaResposta(mensagem({ texto: "", tipo: "imageMessage" }), AGORA).texto).toBe(
+      "Resposta pelo WhatsApp: [imagem]",
+    );
+  });
+
+  it("tipo desconhecido sem texto não vira nota vazia", () => {
+    expect(notaDaResposta(mensagem({ texto: "", tipo: "pollCreationMessage" }), AGORA).texto).toBe(
+      "Resposta pelo WhatsApp: [mensagem sem texto]",
+    );
+  });
+
+  it("trunca mensagem gigante para não virar uma parede no histórico", () => {
+    const nota = notaDaResposta(mensagem({ texto: "a".repeat(MAX_TEXTO_NOTA + 500) }), AGORA);
+    expect(nota.texto.endsWith("…")).toBe(true);
+    expect(nota.texto.length).toBeLessThan(MAX_TEXTO_NOTA + 40);
+  });
+
+  it("não trunca o que cabe", () => {
+    const texto = "a".repeat(MAX_TEXTO_NOTA);
+    expect(notaDaResposta(mensagem({ texto }), AGORA).texto.endsWith("…")).toBe(false);
+  });
+});
+
 /* --- fecharTentativaPendente ---------------------------------------------- */
 
 const HOJE = "2026-07-22";
@@ -179,20 +238,11 @@ function tentativa(over: Partial<Tentativa> & { id: string; data: string }): Ten
   };
 }
 
-function imovel(tentativas: Tentativa[]): Imovel {
-  return {
-    id: "i1",
-    endereco: "Rua Souza Naves, 100",
-    status: "Sem resposta",
-    statusHistory: [{ status: "Novo contato", date: "2026-07-01" }],
-    tentativas,
-  };
-}
 
 describe("fecharTentativaPendente", () => {
   it("fecha a tentativa que esperava desfecho", () => {
     const t = tentativa({ id: "t1", data: "2026-07-20T10:00", aguardandoResultado: true });
-    const r = fecharTentativaPendente(imovel([t]), HOJE);
+    const r = fecharTentativaPendente(([t]), HOJE);
     expect(r?.fechada.resultado).toBe("respondeu");
     expect(r?.fechada.aguardandoResultado).toBeUndefined();
     expect(r?.tentativas).toHaveLength(1);
@@ -200,13 +250,13 @@ describe("fecharTentativaPendente", () => {
 
   it("não toca em tentativa anotada à mão — ali o 'sem resposta' é afirmação do corretor", () => {
     const t = tentativa({ id: "t1", data: "2026-07-20T10:00" }); // sem a marca
-    expect(fecharTentativaPendente(imovel([t]), HOJE)).toBeNull();
+    expect(fecharTentativaPendente(([t]), HOJE)).toBeNull();
   });
 
   it("fecha a mais recente: a resposta responde à última mensagem", () => {
     const antiga = tentativa({ id: "t1", data: "2026-07-15T10:00", aguardandoResultado: true });
     const nova = tentativa({ id: "t2", data: "2026-07-21T09:00", aguardandoResultado: true });
-    const r = fecharTentativaPendente(imovel([antiga, nova]), HOJE);
+    const r = fecharTentativaPendente(([antiga, nova]), HOJE);
     expect(r?.fechada.id).toBe("t2");
     // a antiga fica como estava — ela de fato não teve resposta
     expect(r?.tentativas.find((t) => t.id === "t1")?.aguardandoResultado).toBe(true);
@@ -214,26 +264,26 @@ describe("fecharTentativaPendente", () => {
 
   it("ignora tentativa fora da janela do nudge: conversa nova não ressuscita cobrança velha", () => {
     const velha = tentativa({ id: "t1", data: "2026-06-01T10:00", aguardandoResultado: true });
-    expect(fecharTentativaPendente(imovel([velha]), HOJE)).toBeNull();
+    expect(fecharTentativaPendente(([velha]), HOJE)).toBeNull();
   });
 
   it("devolve null quando não há tentativa nenhuma (caso comum, não é erro)", () => {
-    expect(fecharTentativaPendente(imovel([]), HOJE)).toBeNull();
+    expect(fecharTentativaPendente(([]), HOJE)).toBeNull();
   });
 
   it("preserva as demais tentativas do histórico", () => {
     const outra = tentativa({ id: "t0", data: "2026-07-10T10:00", resultado: "recusou" });
     const alvo = tentativa({ id: "t1", data: "2026-07-20T10:00", aguardandoResultado: true });
-    const r = fecharTentativaPendente(imovel([outra, alvo]), HOJE);
+    const r = fecharTentativaPendente(([outra, alvo]), HOJE);
     expect(r?.tentativas).toHaveLength(2);
     expect(r?.tentativas.find((t) => t.id === "t0")?.resultado).toBe("recusou");
   });
 
   it("não muta o array original", () => {
     const t = tentativa({ id: "t1", data: "2026-07-20T10:00", aguardandoResultado: true });
-    const original = imovel([t]);
+    const original = [t];
     fecharTentativaPendente(original, HOJE);
-    expect(original.tentativas?.[0].aguardandoResultado).toBe(true);
-    expect(original.tentativas?.[0].resultado).toBe("sem-resposta");
+    expect(original[0].aguardandoResultado).toBe(true);
+    expect(original[0].resultado).toBe("sem-resposta");
   });
 });

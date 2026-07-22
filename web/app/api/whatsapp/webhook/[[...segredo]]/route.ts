@@ -62,7 +62,13 @@
    ================================================================ */
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { interpretarEvento } from "@/lib/calculo/webhookWhatsapp";
+import {
+  fecharTentativaPendente,
+  interpretarEvento,
+  notaDaResposta,
+} from "@/lib/calculo/webhookWhatsapp";
+import { agoraISOComHora, todayISO } from "@/lib/datas";
+import type { Tentativa } from "@/lib/tipos";
 
 /* --- Log sem conteúdo -------------------------------------------------------
    A primeira versão desta rota registrava o payload inteiro, para descobrirmos
@@ -230,7 +236,7 @@ export async function POST(
   //    está na carteira simplesmente não existe para esta rota.
   const { data: imoveis, error: erroImovel } = await supabase
     .from("imoveis")
-    .select("id, codigo, endereco")
+    .select("id, codigo, endereco, tentativas")
     .eq("user_id", userId)
     .eq("proprietario_telefone_canonico", mensagem.telefone)
     // Mais de um imóvel do mesmo proprietário é normal (investidor com vários).
@@ -247,15 +253,55 @@ export async function POST(
     return Response.json({ ok: true });
   }
 
-  const imovel = imoveis[0];
+  const imovel = imoveis[0] as { id: string; codigo: string | null; tentativas: Tentativa[] | null };
   const ambiguo = imoveis.length > 1 ? " (o proprietário tem mais de um imóvel; usando o mais recente)" : "";
-  console.log(
-    `Webhook do WhatsApp: resposta de proprietário — imóvel ${imovel.codigo || imovel.id}` +
-      `, tipo=${mensagem.tipo}, caracteres=${mensagem.texto.length}${ambiguo}`,
-  );
+  const rotulo = imovel.codigo || imovel.id;
 
-  // Passo seguinte: gravar a nota e fechar a tentativa pendente
-  // (fecharTentativaPendente, já pronta e testada em calculo/webhookWhatsapp).
+  // 4. Grava a nota. A função do banco faz a verificação de duplicata e a
+  //    escrita numa instrução só — ver registrar_nota_whatsapp no schema.
+  //    `false` = reentrega do mesmo evento: paramos aqui, senão fecharíamos
+  //    a tentativa de novo a cada retentativa da Evolution.
+  const { data: gravou, error: erroNota } = await supabase.rpc("registrar_nota_whatsapp", {
+    p_imovel_id: imovel.id,
+    p_user_id: userId,
+    p_nota: notaDaResposta(mensagem, agoraISOComHora()),
+  });
+  if (erroNota) {
+    console.error("Webhook do WhatsApp: falha ao gravar a nota:", erroNota.message);
+    return Response.json({ ok: true });
+  }
+  if (gravou !== true) {
+    console.log(`Webhook do WhatsApp: reentrega do mesmo evento — imóvel ${rotulo}, ignorado.`);
+    return Response.json({ ok: true });
+  }
+
+  // 5. Fecha a tentativa que esperava desfecho: o palpite "sem-resposta" que
+  //    o envio deixou marcado vira o fato "respondeu". É isto que tira o
+  //    imóvel do nudge sem ninguém precisar confirmar à mão.
+  const fechamento = fecharTentativaPendente(imovel.tentativas, todayISO());
+  if (!fechamento) {
+    console.log(`Webhook do WhatsApp: nota gravada — imóvel ${rotulo}, sem tentativa pendente${ambiguo}.`);
+    return Response.json({ ok: true });
+  }
+
+  // Update PARCIAL da coluna: nunca a linha inteira. O upsert do app grava
+  // todas as colunas jsonb de uma vez, e usá-lo aqui apagaria uma nota que o
+  // corretor tivesse acabado de escrever na tela.
+  const { error: erroTentativa } = await supabase
+    .from("imoveis")
+    .update({ tentativas: fechamento.tentativas })
+    .eq("id", imovel.id)
+    .eq("user_id", userId);
+  if (erroTentativa) {
+    // A nota já está gravada; perder só o fechamento é degradação aceitável
+    // (o nudge volta a cobrar), e não vale desfazer o que deu certo.
+    console.error("Webhook do WhatsApp: nota gravada, mas falhou ao fechar a tentativa:", erroTentativa.message);
+    return Response.json({ ok: true });
+  }
+
+  console.log(
+    `Webhook do WhatsApp: resposta registrada — imóvel ${rotulo}, tentativa fechada como "respondeu"${ambiguo}.`,
+  );
   return Response.json({ ok: true });
 
   // Sempre 200 para quem se autenticou. Webhook que responde erro é webhook

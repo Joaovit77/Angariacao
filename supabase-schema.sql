@@ -413,6 +413,58 @@ create index if not exists imoveis_telefone_canonico_idx
   where proprietario_telefone_canonico is not null;
 
 -- ------------------------------------------------------------
+-- GRAVAÇÃO DA RESPOSTA RECEBIDA (webhook do WhatsApp)
+--
+-- Duas coisas que o app NÃO consegue fazer com um read-modify-write no
+-- cliente, e que são exatamente o que quebra aqui:
+--
+-- 1. IDEMPOTÊNCIA. A Evolution reentrega evento (retentativa, endpoint
+--    lento). Ler as notas, ver que não tem, e gravar deixa uma janela
+--    entre a leitura e a escrita — duas entregas simultâneas passam as
+--    duas pela verificação e criam nota duplicada. Aqui a checagem e a
+--    escrita são UMA instrução: o `not exists` é avaliado com a linha
+--    travada, então a segunda entrega não afeta linha nenhuma.
+--
+-- 2. MENSAGENS EM RAJADA. No WhatsApp as pessoas mandam três mensagens
+--    curtas seguidas, e não uma longa. Isso vira três requisições quase
+--    simultâneas. Com read-modify-write, a última a gravar sobrescreve
+--    o array que as outras acabaram de montar, e as notas somem sem
+--    erro nenhum. O `notas || nova` acontece dentro do UPDATE, sobre o
+--    valor corrente da linha, então as três se acumulam.
+--
+-- Devolve true quando gravou, false quando era reentrega. A rota só
+-- fecha a tentativa quando isto devolve true — para não reprocessar.
+--
+-- `p_user_id` não é redundante com o id do imóvel: é a mesma disciplina
+-- da rota, onde toda consulta é filtrada pelo dono descoberto a partir
+-- da instância. Um id de imóvel trocado não atravessa para outra conta.
+-- ------------------------------------------------------------
+create or replace function registrar_nota_whatsapp(
+  p_imovel_id uuid,
+  p_user_id uuid,
+  p_nota jsonb
+)
+returns boolean
+language plpgsql
+as $$
+declare
+  afetadas int;
+begin
+  update imoveis
+     set notas = coalesce(notas, '[]'::jsonb) || p_nota
+   where id = p_imovel_id
+     and user_id = p_user_id
+     and not exists (
+       select 1
+       from jsonb_array_elements(coalesce(notas, '[]'::jsonb)) as n
+       where n->>'id' = p_nota->>'id'
+     );
+  get diagnostics afetadas = row_count;
+  return afetadas > 0;
+end;
+$$;
+
+-- ------------------------------------------------------------
 -- Atualiza updated_at automaticamente nos imóveis
 -- ------------------------------------------------------------
 create or replace function set_updated_at()

@@ -20,7 +20,7 @@
    ================================================================ */
 import { DIAS_COBRANCA_RESULTADO } from "./abordagens";
 import { daysBetween } from "../datas";
-import type { Imovel, Tentativa } from "../tipos";
+import type { NotaImovel, Tentativa } from "../tipos";
 
 /* ----------------------------------------------------------------
    TELEFONE EM FORMA CANÔNICA
@@ -165,6 +165,60 @@ export function interpretarEvento(corpo: unknown): MensagemRecebida | null {
    O QUE MUDA NO IMÓVEL
    ---------------------------------------------------------------- */
 
+/* --- A nota da resposta ---------------------------------------------------
+   A resposta vira uma NOTA no histórico do imóvel, ao lado das que o corretor
+   escreve à mão. É o que faz o CRM deixar de ser cego: abrindo o imóvel, ele
+   lê o que o proprietário disse sem sair para o WhatsApp.
+
+   O id da nota é `wa:<id da mensagem>` — e isso não é enfeite, é o mecanismo
+   de IDEMPOTÊNCIA. A Evolution reentrega evento (por retentativa, ou quando o
+   endpoint demora a responder), e sem isso a mesma resposta viraria duas,
+   três notas. Derivando o id da mensagem, a segunda entrega tenta gravar uma
+   nota com id que já existe e é recusada pelo banco — sem tabela nova, sem
+   estado extra, com a garantia visível no próprio dado. */
+
+/** Prefixo do id da nota criada pelo webhook. Também serve para distinguir,
+    na tela, o que veio automático do que o corretor escreveu. */
+export const PREFIXO_ID_NOTA = "wa:";
+
+export function idNotaDaMensagem(mensagemId: string): string {
+  return `${PREFIXO_ID_NOTA}${mensagemId}`;
+}
+
+/** Rótulo do que chegou quando não há texto para mostrar. Áudio e foto são
+    respostas de verdade — registrar "(vazio)" faria o corretor achar que o
+    sistema falhou, quando na verdade o proprietário mandou um áudio. */
+const SEM_TEXTO: Record<string, string> = {
+  audioMessage: "áudio",
+  imageMessage: "imagem",
+  videoMessage: "vídeo",
+  documentMessage: "documento",
+  stickerMessage: "figurinha",
+  locationMessage: "localização",
+  contactMessage: "contato",
+};
+
+/** Teto do texto guardado na nota. Uma mensagem encaminhada pode ter milhares
+    de caracteres e viraria uma parede no histórico do imóvel; a conversa
+    inteira continua no WhatsApp, que é o lugar dela. */
+export const MAX_TEXTO_NOTA = 1000;
+
+/** A nota a gravar no imóvel. `agora` entra por parâmetro (e não de `new Date`)
+    para a função ser pura e testável — é a mesma disciplina do resto do núcleo. */
+export function notaDaResposta(mensagem: MensagemRecebida, agora: string): NotaImovel {
+  const texto = mensagem.texto.trim();
+  const corpo = texto
+    ? texto.length > MAX_TEXTO_NOTA
+      ? `${texto.slice(0, MAX_TEXTO_NOTA)}…`
+      : texto
+    : `[${SEM_TEXTO[mensagem.tipo] || "mensagem sem texto"}]`;
+  return {
+    id: idNotaDaMensagem(mensagem.mensagemId),
+    texto: `Resposta pelo WhatsApp: ${corpo}`,
+    data: agora,
+  };
+}
+
 /** A tentativa que a resposta fecha, e como fica o histórico depois.
     `null` quando não há nada a fechar — o que é comum e não é erro: o
     proprietário pode responder dias depois, ou sem nunca ter havido
@@ -200,8 +254,11 @@ export interface FechamentoTentativa {
  * "recusou" exige ler o texto, e isso é a fase 2 (IA) — com confirmação do
  * corretor, nunca gravado direto.
  */
-export function fecharTentativaPendente(imovel: Imovel, hoje: string): FechamentoTentativa | null {
-  const tentativas = imovel.tentativas || [];
+export function fecharTentativaPendente(
+  historico: Tentativa[] | null | undefined,
+  hoje: string,
+): FechamentoTentativa | null {
+  const tentativas = historico || [];
 
   let alvo: Tentativa | null = null;
   for (const t of tentativas) {
