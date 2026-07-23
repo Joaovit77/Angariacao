@@ -25,9 +25,9 @@ function Linha({ p }: { p: FocoPortal }) {
     <div className="foco-row">
       <div className="foco-nome">
         {p.origem}
-        {p.conversao != null && (
+        {p.angariados > 0 && (
           <span className="foco-conv">
-            {Math.round(p.conversao)}% fecham{p.indicativo ? " · poucos dados" : ""}
+            {p.angariados} angariaç{p.angariados === 1 ? "ão" : "ões"} até aqui
           </span>
         )}
       </div>

@@ -271,27 +271,30 @@ Com carteira pequena, uma variação de um ou dois imóveis não é tendência �
 }
 
 /* ----------------------------------------------------------------
-   FOCO DO DIA — a IA explica a ordem de prioridade dos portais.
+   FOCO DO DIA — a IA interpreta o plano de prospecção do dia.
    Segue a regra da casa: a repartição já vem calculada (planoDia.ts,
-   o MESMO cálculo da tela); a IA só interpreta em prosa "por onde
-   começar hoje e por quê". Nunca recalcula nem inventa número.
+   o MESMO cálculo da tela); a IA só lê o que falta e nudge. Nunca
+   recalcula nem inventa número.
+
+   O plano divide o ritmo do dia IGUALMENTE entre os portais — o
+   sistema não ranqueia por conversão porque o registro de leads
+   difere entre eles. A IA não deve dizer "esse portal é melhor".
    ---------------------------------------------------------------- */
 
 /** Serializa o plano do dia em texto compacto — é isto que a IA lê. */
 export function resumirFocoParaPrompt(plano: PlanoDoDia): string {
   const ritmo = plano.temSugestao
-    ? `Ritmo típico do dia: ${plano.ritmo} contato(s) novo(s). Já feitos hoje: ${plano.feitosHoje}.`
-    : `Ritmo do dia: ainda sem histórico para estimar — a ordem abaixo é só pela conversão histórica. Já feitos hoje: ${plano.feitosHoje}.`;
+    ? `Ritmo típico do dia: ${plano.ritmo} contato(s) novo(s), dividido igualmente entre os portais. Já feitos hoje: ${plano.feitosHoje}.`
+    : `Ritmo do dia: ainda sem histórico para estimar. Já feitos hoje: ${plano.feitosHoje}.`;
 
   const linhas = plano.portais.map((p) => {
-    const conv = p.conversao != null ? `${Math.round(p.conversao)}%${p.indicativo ? " (amostra baixa)" : ""}` : "sem histórico";
-    const alvo = plano.temSugestao ? `sugerido ${p.sugerido}, feitos ${p.feitos}` : `feitos ${p.feitos}`;
-    return `- "${p.origem}": ${alvo}, conversão ${conv}.`;
+    const alvo = plano.temSugestao ? `sugerido ${p.sugerido}, feitos ${p.feitos}, faltam ${p.restantes}` : `feitos ${p.feitos}`;
+    return `- "${p.origem}": ${alvo}. (${p.angariados} angariação(ões) no total.)`;
   });
 
   return `${ritmo}
 
-Portais, na ordem de prioridade que o sistema já definiu:
+Portais que o corretor usa (o que mais falta fazer hoje primeiro):
 ${linhas.join("\n")}`;
 }
 
@@ -303,14 +306,14 @@ Este é o plano de prospecção de HOJE deste corretor, já calculado pelo siste
 ${resumirFocoParaPrompt(plano)}
 
 Como ler as medidas:
-- "sugerido" = quantos contatos novos o sistema recomenda hoje naquele portal. Ele reparte o ritmo típico do dia dando mais peso ao portal cujos leads mais fecham (conversão = locado ÷ angariado).
-- "feitos" = contatos novos já feitos hoje naquele portal.
-- "conversão" com "(amostra baixa)" ou "sem histórico" = base fraca; trate como indício, nunca como certeza.
-- Sem ritmo estimado = ainda faltam dados; a ordem é só por conversão histórica.
+- O ritmo do dia é dividido IGUALMENTE entre os portais. O sistema NÃO ranqueia portais por conversão de propósito: o corretor registra leads de forma diferente em cada portal, então "qual converte mais" não é comparável. NÃO diga que um portal é melhor que outro.
+- "sugerido" = a meta de contatos novos de hoje naquele portal; "feitos" = quantos já foram; "faltam" = o que resta.
+- "angariação(ões) no total" é só contexto histórico do que o portal já rendeu — não é para ranquear o dia.
 
-Escreva 2 a 3 frases curtas em português do Brasil, dirigindo-se ao corretor por "você": por onde COMEÇAR hoje, por quê, e o que ainda falta bater. Regras:
-- Fundamente na conversão e no que falta — não mande "faça mais" sem dizer onde e por quê.
-- Quando a base for fraca (amostra baixa / sem histórico), diga com franqueza em vez de afirmar que um portal é melhor.
+Escreva 2 a 3 frases curtas em português do Brasil, dirigindo-se ao corretor por "você": onde ele está em dia e onde está atrasado, e o que falta bater no total. Regras:
+- Aponte os portais em que ele está PARADO ou atrás hoje (maior "faltam"), e os que já cumpriu.
+- NÃO eleja um portal como melhor nem sugira concentrar num só — a divisão é igual de propósito.
+- Se ainda não há ritmo estimado, diga que falta histórico para montar a meta e sugira só manter a prospecção nos canais de sempre.
 - Sem introdução nem fechamento motivacional, sem bullet points, títulos ou markdown.`;
 }
 

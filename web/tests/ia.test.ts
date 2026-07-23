@@ -235,8 +235,8 @@ const PLANO_COM_RITMO: PlanoDoDia = {
   temSugestao: true,
   feitosHoje: 2,
   portais: [
-    { origem: "OLX / Canal Pro", sugerido: 6, feitos: 2, restantes: 4, conversao: 40, indicativo: false },
-    { origem: "Marketplace", sugerido: 2, feitos: 0, restantes: 2, conversao: null, indicativo: true },
+    { origem: "OLX / Canal Pro", sugerido: 4, feitos: 0, restantes: 4, angariados: 2 },
+    { origem: "Garimpo em site de imobiliária", sugerido: 4, feitos: 2, restantes: 2, angariados: 3 },
   ],
 };
 
@@ -244,22 +244,22 @@ const PLANO_COLD_START: PlanoDoDia = {
   ritmo: null,
   temSugestao: false,
   feitosHoje: 0,
-  portais: [{ origem: "Ex-cliente", sugerido: 0, feitos: 0, restantes: 0, conversao: 100, indicativo: true }],
+  portais: [{ origem: "Ex-cliente", sugerido: 0, feitos: 0, restantes: 0, angariados: 1 }],
 };
 
 describe("resumirFocoParaPrompt", () => {
-  it("leva os números prontos (ritmo, sugerido, feitos, conversão) por portal", () => {
+  it("leva os números prontos por portal e diz que a divisão é igual", () => {
     const t = resumirFocoParaPrompt(PLANO_COM_RITMO);
     expect(t).toContain("Ritmo típico do dia: 8");
-    expect(t).toContain('"OLX / Canal Pro": sugerido 6, feitos 2, conversão 40%');
-    // Sem histórico de conversão vira rótulo textual, não um número inventado.
-    expect(t).toContain('"Marketplace": sugerido 2, feitos 0, conversão sem histórico');
+    expect(t).toContain("dividido igualmente entre os portais");
+    expect(t).toContain('"OLX / Canal Pro": sugerido 4, feitos 0, faltam 4');
+    // Angariações entram como contexto, não como taxa a ranquear.
+    expect(t).toContain("angariação(ões) no total");
   });
 
-  it("no cold start avisa que a ordem é só por conversão histórica", () => {
+  it("no cold start avisa que ainda falta histórico", () => {
     const t = resumirFocoParaPrompt(PLANO_COLD_START);
     expect(t).toContain("ainda sem histórico para estimar");
-    expect(t).toContain("(amostra baixa)");
   });
 });
 
@@ -269,14 +269,14 @@ describe("promptExplicarFoco", () => {
     expect(p).toContain("não recalcule e não invente nenhum número que não esteja aqui");
   });
 
-  it("explica o vocabulário (sugerido reparte o ritmo pela conversão)", () => {
+  it("proíbe ranquear portais por conversão (o registro enviesa a comparação)", () => {
     const p = promptExplicarFoco(PLANO_COM_RITMO);
-    expect(p).toContain("reparte o ritmo típico do dia dando mais peso ao portal cujos leads mais fecham");
+    expect(p).toContain("NÃO ranqueia portais por conversão");
+    expect(p).toContain("NÃO eleja um portal como melhor");
   });
 
-  it("autoriza dizer que a base é fraca em vez de eleger um portal", () => {
+  it("manda apontar onde o corretor está parado/atrás hoje", () => {
     const p = promptExplicarFoco(PLANO_COM_RITMO);
-    expect(p).toContain("trate como indício");
-    expect(p).toContain("diga com franqueza");
+    expect(p).toContain("PARADO ou atrás");
   });
 });
