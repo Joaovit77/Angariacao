@@ -19,8 +19,9 @@
    processada, não é gravada e não é registrada em log.
    ================================================================ */
 import { DIAS_COBRANCA_RESULTADO } from "./abordagens";
+import { historicoComStatus } from "./motor";
 import { daysBetween } from "../datas";
-import type { NotaImovel, Tentativa } from "../tipos";
+import type { NotaImovel, StatusHistoryEntry, Tentativa } from "../tipos";
 
 /* ----------------------------------------------------------------
    TELEFONE EM FORMA CANÔNICA
@@ -219,6 +220,36 @@ export function notaDaResposta(mensagem: MensagemRecebida, agora: string): NotaI
   };
 }
 
+/**
+ * Nota que explica o encerramento automático.
+ *
+ * Nota SEPARADA da resposta, por dois motivos. Primeiro, são dois fatos
+ * diferentes: o que o proprietário disse e o que o sistema fez por causa
+ * disso. Segundo, e decisivo: a nota da resposta é o que garante a
+ * idempotência, e ela é gravada ANTES de a IA ser chamada — se o aviso
+ * tivesse de caber nela, cada reentrega da Evolution custaria uma chamada de
+ * IA para só depois descobrir que era duplicata.
+ *
+ * O id derivado do mesmo mensagemId a mantém idempotente igual à primeira.
+ *
+ * Ela existe porque, sem nada na tela, o status mudaria sozinho e a única
+ * explicação estaria no log do servidor — que o corretor não lê. Ele veria um
+ * imóvel fora da carteira sem saber por quê, e desconfiaria do sistema todo.
+ */
+export function notaDoEncerramento(
+  mensagemId: string,
+  encerrou: { status: string; motivoPerda: string },
+  agora: string,
+): NotaImovel {
+  return {
+    id: `${idNotaDaMensagem(mensagemId)}:encerrado`,
+    texto:
+      `Imóvel marcado como ${encerrou.status} automaticamente a partir da resposta acima ` +
+      `(motivo: ${encerrou.motivoPerda}). Se não foi isso, altere o status no cadastro.`,
+    data: agora,
+  };
+}
+
 /** A tentativa que a resposta fecha, e como fica o histórico depois.
     `null` quando não há nada a fechar — o que é comum e não é erro: o
     proprietário pode responder dias depois, ou sem nunca ter havido
@@ -300,6 +331,63 @@ export function fecharTentativaPendente(
  * pior que a confirmação do corretor, e melhor que o "sem-resposta" de antes:
  * pelo menos nasceu de uma mensagem que existiu.
  */
+/* --- Encerramento automático ----------------------------------------------
+   A única coisa aqui que a IA muda SEM confirmação do corretor, e a exceção
+   existe porque a mensagem já disse tudo: "já aluguei", "já estou com outra
+   imobiliária". Pedir um clique para transcrever o que está escrito é o
+   atrito que esta feature toda existe para eliminar.
+
+   O que mantém a exceção segura são três coisas:
+
+   - o motivo vem de uma lista FECHADA e menor que MOTIVOS_PERDA (ver
+     MOTIVOS_PERDA_IA), da qual ficaram fora justamente os que exigem
+     julgamento;
+   - só encerra junto de uma recusa explícita, e o prompt manda devolver null
+     em qualquer recusa mole ("por enquanto não", "esse já alugou mas tenho
+     outro");
+   - o encerramento é AUDITÁVEL: entra no statusHistory como qualquer outra
+     transição e a nota diz que foi automático. Reverter é trocar o status.
+
+   E o que ele NUNCA faz: virar "Locado". "Já aluguei por conta própria" é
+   perda — o proprietário resolveu sozinho e a imobiliária não ganhou nada.
+   Marcar Locado somaria à conversão, ao tempo médio, à comissão e à meta do
+   mês um negócio que não existiu, e o corretor passaria a confiar num número
+   inflado. O domínio já registra isso como motivo de PERDA. */
+
+/** Status terminal aplicado pelo encerramento automático. */
+export const STATUS_ENCERRAMENTO_IA = "Perdido";
+
+export interface EncerramentoAutomatico {
+  status: string;
+  motivoPerda: string;
+  statusHistory: StatusHistoryEntry[];
+}
+
+/**
+ * O imóvel deve ser encerrado por causa desta resposta?
+ *
+ * `null` quando não — e "não" é o caso normal. Também devolve `null` quando o
+ * imóvel JÁ está num status terminal: reencerrar reescreveria o histórico e o
+ * motivo de uma perda que já tinha explicação, possivelmente melhor que esta.
+ */
+export function encerramentoPorResposta(
+  imovel: { status: string; statusHistory?: StatusHistoryEntry[] | null },
+  motivoPerda: string | null | undefined,
+  hoje: string,
+): EncerramentoAutomatico | null {
+  if (!motivoPerda) return null;
+  if (imovel.status === "Locado") return null; // já deu certo: não desfazer
+  // "Sem resposta" é terminal na lista, mas é justamente o estado de quem
+  // acabou de responder — encerrar a partir dele é o caso mais comum. Só
+  // "Perdido" e "Cancelado" barram, porque ali já existe um desfecho escrito.
+  if (imovel.status === "Perdido" || imovel.status === "Cancelado") return null;
+  return {
+    status: STATUS_ENCERRAMENTO_IA,
+    motivoPerda,
+    statusHistory: historicoComStatus(imovel.statusHistory, STATUS_ENCERRAMENTO_IA, imovel.status, hoje),
+  };
+}
+
 export function sugerirNaTentativaPendente(
   historico: Tentativa[] | null | undefined,
   sugestao: NonNullable<Tentativa["sugestaoIa"]>,

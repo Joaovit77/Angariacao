@@ -63,14 +63,16 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import {
+  encerramentoPorResposta,
   fecharTentativaPendente,
   interpretarEvento,
   notaDaResposta,
+  notaDoEncerramento,
   sugerirNaTentativaPendente,
 } from "@/lib/calculo/webhookWhatsapp";
 import { classificarResposta } from "@/lib/servidor/ia";
 import { agoraISOComHora, todayISO } from "@/lib/datas";
-import type { Tentativa } from "@/lib/tipos";
+import type { StatusHistoryEntry, Tentativa } from "@/lib/tipos";
 
 /* --- Log sem conteúdo -------------------------------------------------------
    A primeira versão desta rota registrava o payload inteiro, para descobrirmos
@@ -238,7 +240,7 @@ export async function POST(
   //    está na carteira simplesmente não existe para esta rota.
   const { data: imoveis, error: erroImovel } = await supabase
     .from("imoveis")
-    .select("id, codigo, endereco, tentativas")
+    .select("id, codigo, endereco, tentativas, status, status_history")
     .eq("user_id", userId)
     .eq("proprietario_telefone_canonico", mensagem.telefone)
     // Mais de um imóvel do mesmo proprietário é normal (investidor com vários).
@@ -255,7 +257,13 @@ export async function POST(
     return Response.json({ ok: true });
   }
 
-  const imovel = imoveis[0] as { id: string; codigo: string | null; tentativas: Tentativa[] | null };
+  const imovel = imoveis[0] as {
+    id: string;
+    codigo: string | null;
+    tentativas: Tentativa[] | null;
+    status: string;
+    status_history: StatusHistoryEntry[] | null;
+  };
   const ambiguo = imoveis.length > 1 ? " (o proprietário tem mais de um imóvel; usando o mais recente)" : "";
   const rotulo = imovel.codigo || imovel.id;
 
@@ -305,6 +313,46 @@ export async function POST(
     // (o nudge volta a cobrar), e não vale desfazer o que deu certo.
     console.error("Webhook do WhatsApp: nota gravada, mas falhou ao fechar a tentativa:", erroTentativa.message);
     return Response.json({ ok: true });
+  }
+
+  // 6. Encerra o imóvel quando a resposta não deixou nada a fazer ("já
+  //    aluguei", "já estou com outra imobiliária"). É a ÚNICA coisa aqui que
+  //    a IA muda sem confirmação, e o que a segura é o motivo vir de lista
+  //    fechada — ver encerramentoPorResposta. Nunca vira "Locado": alugado
+  //    por conta própria é perda, e marcá-lo como ganho inflaria a comissão
+  //    e a meta do mês com negócio que não houve.
+  const encerramento = encerramentoPorResposta(
+    { status: imovel.status, statusHistory: imovel.status_history },
+    sugestao?.motivoPerda,
+    hoje,
+  );
+  if (encerramento) {
+    const { error: erroStatus } = await supabase
+      .from("imoveis")
+      .update({
+        status: encerramento.status,
+        status_history: encerramento.statusHistory,
+        motivo_perda: encerramento.motivoPerda,
+        motivo_perda_outro: null,
+      })
+      .eq("id", imovel.id)
+      .eq("user_id", userId);
+    if (erroStatus) {
+      console.error("Webhook do WhatsApp: falha ao encerrar o imóvel:", erroStatus.message);
+    } else {
+      // Deixa na tela por que o status mudou. Sem isto a explicação existiria
+      // só no log do servidor, que o corretor não lê.
+      await supabase.rpc("registrar_nota_whatsapp", {
+        p_imovel_id: imovel.id,
+        p_user_id: userId,
+        p_nota: notaDoEncerramento(mensagem.mensagemId, encerramento, agoraISOComHora()),
+      });
+      console.log(
+        `Webhook do WhatsApp: imóvel ${rotulo} encerrado como ${encerramento.status} — ` +
+          `${encerramento.motivoPerda} (lido da resposta).`,
+      );
+      return Response.json({ ok: true });
+    }
   }
 
   console.log(

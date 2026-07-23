@@ -454,7 +454,31 @@ export interface RespostaClassificada {
   resultado: string;
   retomarEm?: string | null;
   resumo: string;
+  motivoPerda?: string | null;
 }
+
+/**
+ * Motivos que uma mensagem recebida pode estabelecer SOZINHA — e por isso os
+ * únicos que a IA pode preencher. É um subconjunto proposital de MOTIVOS_PERDA:
+ *
+ * - "Valor pedido incompatível com mercado" fica fora porque é conclusão de
+ *   negociação, não fato que o proprietário anuncia; ele diz um preço, e quem
+ *   julga se é incompatível é o corretor.
+ * - "Perda de contato definitiva" fica fora por contradição: a mensagem chegou.
+ * - "Número não encontrado" tem caminho próprio (o nudge, ver
+ *   MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO).
+ * - "Outro" fica fora porque encerrar um imóvel sem dizer por quê é pior que
+ *   não encerrar — some do pipeline e não alimenta o gráfico de perdas.
+ *
+ * Os dois primeiros são os casos reais que apareceram no teste de follow-up:
+ * "já aluguei" e "já trabalho com outra imobiliária".
+ */
+export const MOTIVOS_PERDA_IA = [
+  "Imóvel já alugado por conta própria",
+  "Optou por outra imobiliária",
+  "Imóvel já vendido",
+  "Proprietário desistiu de alugar",
+] as const;
 
 /** Esquema fechado: o `enum` é o que impede o modelo de inventar desfecho.
     Os valores espelham RESULTADOS_TENTATIVA — se um for acrescentado lá sem
@@ -476,8 +500,14 @@ export const ESQUEMA_CLASSIFICACAO = {
       type: "string",
       description: "Uma linha em português do Brasil sobre o que o proprietário disse",
     },
+    motivoPerda: {
+      type: ["string", "null"],
+      enum: [...MOTIVOS_PERDA_IA, null],
+      description:
+        "Só quando a mensagem encerra o assunto de forma explícita e sem ambiguidade. null em qualquer outro caso.",
+    },
   },
-  required: ["resultado", "retomarEm", "resumo"],
+  required: ["resultado", "retomarEm", "resumo", "motivoPerda"],
   additionalProperties: false,
 } as const;
 
@@ -503,7 +533,19 @@ Regras:
 - Na dúvida entre dois, escolha o MENOS otimista. Marcar "agendou" o que foi só interesse infla a medição de fechamento do corretor e ele passa a confiar num número errado.
 - "retomarEm": só preencha se a mensagem indicar prazo, mesmo que vago ("semana que vem", "depois do dia 10", "mês que vem"). Converta para uma data real a partir de hoje. Se ele não deu prazo, devolva null — não invente um.
 - "resumo": uma linha curta, factual, sobre o que ELE disse. Nada de conselho ao corretor e nada de repetir a mensagem inteira. Exemplo: "Vai avaliar com a esposa e retorna na semana que vem."
-- Não deduza nada que não esteja na mensagem.`;
+- Não deduza nada que não esteja na mensagem.
+
+Sobre "motivoPerda" — leia com atenção, porque preenchê-lo ENCERRA o imóvel automaticamente e o tira da carteira ativa do corretor:
+- Preencha SOMENTE quando a mensagem disser, de forma explícita e sem ambiguidade, que não há mais o que fazer com este imóvel. O texto tem que bastar por si: se você precisa supor qualquer coisa para chegar lá, devolva null.
+- "Imóvel já alugado por conta própria" — ele já alugou, sozinho ou com inquilino próprio.
+- "Optou por outra imobiliária" — já está com outra imobiliária, ou já foi alugado por ela.
+- "Imóvel já vendido" — vendeu, então não há locação a fazer.
+- "Proprietário desistiu de alugar" — desistiu de alugar (vai morar, deixar vazio, reformar por tempo indefinido).
+- Devolva null quando houver qualquer porta aberta para ESTE imóvel: "por enquanto não", "ainda não aluguei", "estou vendo com outra imobiliária ainda", "depois eu vejo". Recusa mole NÃO é encerramento.
+- Atenção à negação: "ainda NÃO foi alugado" e "não quero alugar agora" são coisas diferentes. A primeira é null.
+- Se ele disser que ESTE imóvel já está resolvido e mencionar OUTRO imóvel que tem ("esse já aluguei, mas tenho outro na mesma rua"), encerre este mesmo assim: o outro é um cadastro novo, não um motivo para manter este aberto. Cite o outro imóvel no resumo, para o corretor saber que existe uma oportunidade nova ali.
+- Se a mensagem falar SÓ de um imóvel que você não consegue identificar como o do contato, devolva null.
+- Na dúvida, null. Errar para null custa um clique ao corretor; errar preenchendo tira um imóvel bom da carteira dele sem ninguém perceber.`;
 }
 
 export function promptAnalisarAbordagens(

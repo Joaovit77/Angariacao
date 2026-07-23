@@ -12,6 +12,12 @@
 
    A verdade sobre o progresso de um imóvel mora no statusHistory,
    não no campo status atual nem na existência do registro.
+
+   Por isso a REGRA de como o histórico cresce também mora aqui
+   (`historicoComStatus`), e não junto das escritas: o webhook do
+   WhatsApp precisa dela no servidor, e `mutacoes.ts` importa store e
+   Supabase. Duas cópias da regra é o caminho mais curto para o
+   histórico divergir dependendo de quem mexeu no status.
    ================================================================ */
 import {
   STATUS_TERMINAL_NEGATIVE,
@@ -20,7 +26,32 @@ import {
   STATUS_STALE_LENTO,
 } from "../constantes";
 import { daysBetween, monthKey, todayISO } from "../datas";
-import type { Imovel } from "../tipos";
+import type { Imovel, StatusHistoryEntry } from "../tipos";
+
+/**
+ * O histórico depois de uma mudança de status — a REGRA, num só lugar.
+ *
+ * Não duplica quando a última entrada já é o status novo: reabrir e salvar um
+ * imóvel sem mexer na etapa não deve criar transição, senão "dias parado" e
+ * tempo médio contariam a partir do último clique em Salvar.
+ *
+ * Devolve novo array em vez de mutar o recebido: quem escreve precisa poder
+ * montar o histórico ANTES de saber se a escrita deu certo — mutar o objeto do
+ * store mudaria a tela mesmo com o Supabase recusando.
+ */
+export function historicoComStatus(
+  historico: StatusHistoryEntry[] | null | undefined,
+  novoStatus: string,
+  statusAnterior: string | null,
+  hoje: string,
+): StatusHistoryEntry[] {
+  const hist = [...(historico || [])];
+  if (statusAnterior !== null && statusAnterior === novoStatus) return hist;
+  if (hist.length === 0 || hist[hist.length - 1].status !== novoStatus) {
+    hist.push({ status: novoStatus, date: hoje });
+  }
+  return hist;
+}
 
 // Retorna a data (ISO) em que o imóvel entrou em determinado status,
 // usando o histórico de transições. Cai para dataAngariacao se não

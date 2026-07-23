@@ -19,6 +19,7 @@
 import OpenAI from "openai";
 import {
   ESQUEMA_CLASSIFICACAO,
+  MOTIVOS_PERDA_IA,
   promptClassificarResposta,
   type RespostaClassificada,
 } from "../calculo/ia";
@@ -52,7 +53,12 @@ function dataValida(valor: unknown, hoje: string): string | null {
 export async function classificarResposta(
   texto: string,
   hoje: string,
-): Promise<{ resultado: ResultadoTentativa; retomarEm: string | null; resumo: string } | null> {
+): Promise<{
+  resultado: ResultadoTentativa;
+  retomarEm: string | null;
+  resumo: string;
+  motivoPerda: string | null;
+} | null> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
   // Sem texto não há o que ler (áudio, figurinha): a nota já registra o que
@@ -87,10 +93,22 @@ export async function classificarResposta(
       return null;
     }
 
+    // Encerramento só vale junto de uma recusa. O modelo às vezes preenche o
+    // motivo e classifica como "respondeu" ou "vai-retornar" — e aí as duas
+    // leituras se contradizem. Diante da contradição, fica a menos destrutiva:
+    // o imóvel continua na carteira e o corretor decide.
+    const motivo =
+      typeof dados.motivoPerda === "string" &&
+      (MOTIVOS_PERDA_IA as readonly string[]).includes(dados.motivoPerda) &&
+      dados.resultado === "recusou"
+        ? dados.motivoPerda
+        : null;
+
     return {
       resultado: dados.resultado as ResultadoTentativa,
       retomarEm: dataValida(dados.retomarEm, hoje),
       resumo: typeof dados.resumo === "string" ? dados.resumo.trim().slice(0, 300) : "",
+      motivoPerda: motivo,
     };
   } catch (e) {
     console.error("IA: falha ao classificar a resposta:", e);

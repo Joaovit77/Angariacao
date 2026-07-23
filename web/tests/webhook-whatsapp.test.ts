@@ -8,7 +8,9 @@ import {
   MAX_TEXTO_NOTA,
   fecharTentativaPendente,
   interpretarEvento,
+  encerramentoPorResposta,
   notaDaResposta,
+  notaDoEncerramento,
   sugerirNaTentativaPendente,
   telefoneCanonico,
   textoDaMensagem,
@@ -330,5 +332,75 @@ describe("sugerirNaTentativaPendente", () => {
 
   it("sem tentativa pendente não inventa registro", () => {
     expect(sugerirNaTentativaPendente([], SUGESTAO, HOJE)).toBeNull();
+  });
+});
+
+/* --- encerramentoPorResposta -----------------------------------------------
+   A única coisa que a IA muda sem confirmação do corretor. Estes testes
+   fixam onde ela PODE e onde ela NÃO pode agir — e o caso mais importante é
+   o último: nada aqui produz "Locado". */
+describe("encerramentoPorResposta", () => {
+  const MOTIVO = "Imóvel já alugado por conta própria";
+
+  it("encerra como Perdido, com o motivo lido da mensagem", () => {
+    const r = encerramentoPorResposta({ status: "Sem resposta", statusHistory: [] }, MOTIVO, HOJE);
+    expect(r?.status).toBe("Perdido");
+    expect(r?.motivoPerda).toBe(MOTIVO);
+  });
+
+  it("NUNCA produz Locado — alugado por conta própria é perda, não ganho", () => {
+    // Se virasse Locado, entraria na conversão, no tempo médio, na comissão e
+    // na meta do mês um negócio que a imobiliária não fez.
+    const r = encerramentoPorResposta({ status: "Novo contato", statusHistory: [] }, MOTIVO, HOJE);
+    expect(r?.status).not.toBe("Locado");
+    expect(r?.status).toBe("Perdido");
+  });
+
+  it("registra a transição no statusHistory", () => {
+    const r = encerramentoPorResposta(
+      { status: "Novo contato", statusHistory: [{ status: "Novo contato", date: "2026-07-01" }] },
+      MOTIVO,
+      HOJE,
+    );
+    expect(r?.statusHistory).toEqual([
+      { status: "Novo contato", date: "2026-07-01" },
+      { status: "Perdido", date: HOJE },
+    ]);
+  });
+
+  it("age a partir de 'Sem resposta' — é o estado de quem acabou de responder", () => {
+    // Regressão: "Sem resposta" está em STATUS_TERMINAL_NEGATIVE, e barrar por
+    // aquela lista faria a feature nunca disparar no caso do follow-up.
+    expect(encerramentoPorResposta({ status: "Sem resposta", statusHistory: [] }, MOTIVO, HOJE)).not.toBeNull();
+  });
+
+  it("não faz nada sem motivo — o caso normal", () => {
+    expect(encerramentoPorResposta({ status: "Novo contato", statusHistory: [] }, null, HOJE)).toBeNull();
+    expect(encerramentoPorResposta({ status: "Novo contato", statusHistory: [] }, undefined, HOJE)).toBeNull();
+  });
+
+  it("não desfaz um imóvel já Locado", () => {
+    expect(encerramentoPorResposta({ status: "Locado", statusHistory: [] }, MOTIVO, HOJE)).toBeNull();
+  });
+
+  it("não reescreve o desfecho de quem já estava Perdido ou Cancelado", () => {
+    // Lá já existe um motivo escrito, possivelmente melhor que este.
+    expect(encerramentoPorResposta({ status: "Perdido", statusHistory: [] }, MOTIVO, HOJE)).toBeNull();
+    expect(encerramentoPorResposta({ status: "Cancelado", statusHistory: [] }, MOTIVO, HOJE)).toBeNull();
+  });
+});
+
+describe("notaDoEncerramento", () => {
+  it("explica na tela por que o status mudou", () => {
+    const n = notaDoEncerramento("MSG1", { status: "Perdido", motivoPerda: "Optou por outra imobiliária" }, AGORA);
+    expect(n.texto).toContain("Perdido");
+    expect(n.texto).toContain("Optou por outra imobiliária");
+    expect(n.texto).toContain("altere o status");
+  });
+
+  it("é idempotente e não colide com a nota da resposta", () => {
+    const n = notaDoEncerramento("MSG1", { status: "Perdido", motivoPerda: "x" }, AGORA);
+    expect(n.id).toBe("wa:MSG1:encerrado");
+    expect(n.id).not.toBe(notaDaResposta(mensagem({ mensagemId: "MSG1" }), AGORA).id);
   });
 });

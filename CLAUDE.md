@@ -262,9 +262,9 @@ leitura/escrita, e o isolamento por usuário é 100% das políticas RLS (`auth.u
 políticas RLS no mesmo padrão + o par `toDb*`/`fromDb*` em `web/lib/persistencia/mapeadores.ts` +
 o tipo em `web/lib/tipos.ts`.
 
-### As rotas de servidor: `api/whatsapp/enviar` e `api/ia`
+### As rotas de servidor: `api/whatsapp/enviar`, `api/whatsapp/webhook` e `api/ia`
 
-São as **duas** exceções ao "sem servidor", e existem pelo mesmo motivo: guardam um segredo que não
+São as **três** exceções ao "sem servidor", e existem pelo mesmo motivo: guardam um segredo que não
 pode chegar ao browser. Toda rota nova aqui precisa justificar-se por esse critério — se não guarda
 segredo, é código de cliente.
 
@@ -302,6 +302,49 @@ canônico** que volta. Isso resolve duas coisas que regex nenhuma resolve:
 - **O telefone estrangeiro.** `telefoneWhatsapp()` prefixa `55` em qualquer número de 10–11 dígitos,
   então `+1 415 555 2671` vira `5514155552671` — que passa por qualquer teste de forma. Só a
   consulta revela que não existe, evitando mandar mensagem para um estranho.
+
+#### `api/whatsapp/webhook` — a resposta do proprietário chegando
+
+A única rota que inverte o sentido: as outras o app chama, esta a **Evolution** chama quando uma
+mensagem chega no número do corretor. É o que fecha o buraco que o `aguardandoResultado` tapava na
+marra — antes o app enviava e ficava cego, e o desfecho dependia de alguém lembrar de anotar.
+
+As partes puras vivem em `lib/calculo/webhookWhatsapp.ts`; a rota só aplica.
+
+**O filtro é o coração dela.** O número é o da imobiliária: por ele passa proprietário, mas também
+colega, cliente e grupo. O evento não diz quem é quem — quem diz é a carteira do corretor. Daí a
+cadeia, em que cada etapa só existe para descartar:
+
+```
+segredo → é mensagem recebida? → de qual corretor (instância)?
+       → esse telefone é de algum imóvel DELE? → só então interessa
+```
+
+Regras ao mexer nela:
+
+- **Não tem sessão de usuário**, então a autenticação é um segredo próprio
+  (`EVOLUTION_WEBHOOK_SECRET`, por header **ou** no fim da URL — nem toda instalação da Evolution
+  deixa configurar header). Ele protege o sentido contrário do usual: não esconde nada de quem
+  hospeda a Evolution, e sim impede que qualquer um **poste** aqui forjando "o proprietário
+  respondeu", o que envenenaria o ranking.
+- **O `user_id` nasce do nome da instância**, nunca da requisição (ver "Modelo de RLS").
+- **O telefone é casado por forma canônica**, e `telefoneCanonico()` é **gêmea** da função SQL
+  `telefone_canonico()`. Divergir uma da outra faz o casamento falhar **em silêncio** — sem erro,
+  sem log, só respostas que nunca acham o imóvel. Os testes rodam a mesma tabela de casos.
+- **Idempotência sem tabela nova:** o id da nota é `wa:<id da mensagem>`, e
+  `registrar_nota_whatsapp` faz checagem de duplicata e append numa instrução só. Isso resolve os
+  dois problemas juntos — a reentrega da Evolution e a **rajada** (no WhatsApp as pessoas mandam
+  três mensagens curtas, e um read-modify-write perderia notas sem dar erro).
+- **A IA sugere o desfecho, o corretor confirma** (`sugerirNaTentativaPendente` mantém a marca de
+  pendente). Ela lê uma frase solta, sem o resto da conversa.
+- **A exceção:** encerramento automático. Quando a resposta não deixa nada a fazer ("já aluguei",
+  "já estou com outra imobiliária"), o imóvel vai para **Perdido** com o motivo, sem clique. O que
+  segura isso é o motivo sair de uma lista fechada e **menor** que `MOTIVOS_PERDA`
+  (`MOTIVOS_PERDA_IA`, sem os que exigem julgamento), só valer junto de `recusou`, e uma segunda
+  nota explicar na tela por que o status mudou — senão o imóvel sairia da carteira e a única
+  explicação estaria no log do servidor. **Nunca vira "Locado":** "já aluguei por conta própria" é
+  PERDA, e marcá-lo como ganho somaria à conversão, à comissão e à meta do mês um negócio que não
+  existiu.
 
 #### `api/ia` — sugestão de roteiros e leitura do ranking (OpenAI)
 

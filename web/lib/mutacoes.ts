@@ -20,7 +20,7 @@ import {
 } from "./constantes";
 import { addDaysISO, agoraISOComHora, currentMonthKey, todayISO } from "./datas";
 import { celebracaoAoSalvar } from "./calculo/celebracao";
-import { dataAngariadoEfetiva, foiAngariado } from "./calculo/motor";
+import { dataAngariadoEfetiva, foiAngariado, historicoComStatus } from "./calculo/motor";
 import { useCelebracao } from "./celebracao";
 import { toDbAbordagem, toDbAgenda, toDbImovel } from "./persistencia/mapeadores";
 import { getSupabase } from "./persistencia/supabase";
@@ -39,17 +39,15 @@ export function numOrNull(v: string | number | null | undefined): number | null 
 }
 
 /**
- * Único ponto de mudança de status: registra a transição no histórico
- * (para cálculo de tempo médio e "dias parado"). Não duplica quando a
- * última entrada já é o status novo.
+ * Único ponto de mudança de status DO LADO DO CLIENTE: registra a transição no
+ * histórico (para cálculo de tempo médio e "dias parado").
+ *
+ * A regra em si mora em `calculo/motor.ts` (`historicoComStatus`), porque o
+ * webhook do WhatsApp também encerra imóvel e não pode importar este arquivo
+ * (store + cliente do Supabase). Aqui fica só o açúcar que os modais usam.
  */
 export function aplicarMudancaDeStatus(imovel: Imovel, novoStatus: string, statusAnterior: string | null): void {
-  if (statusAnterior !== null && statusAnterior === novoStatus) return;
-  const hist = imovel.statusHistory || [];
-  if (hist.length === 0 || hist[hist.length - 1].status !== novoStatus) {
-    hist.push({ status: novoStatus, date: todayISO() });
-  }
-  imovel.statusHistory = hist;
+  imovel.statusHistory = historicoComStatus(imovel.statusHistory, novoStatus, statusAnterior, todayISO());
 }
 
 interface ResultadoSalvarImovel {
