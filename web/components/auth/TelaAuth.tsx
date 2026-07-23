@@ -1,19 +1,26 @@
 "use client";
 
 /* ================================================================
-   TELA DE LOGIN / CADASTRO
-   Port das linhas 17–172 do index.html original (vitrine + card com
-   as 4 abas) e das funções switchAuthTab/wireAuthForms/
-   togglePasswordVisibility/updatePasswordStrength do app.js.
-   Mesmos textos, mesma estrutura, mesmas classes CSS.
+   TELA DE ACESSO
+   A página é a APRESENTAÇÃO (Vitrine, largura toda); o formulário
+   com as 4 abas — login, cadastro, "esqueci a senha" e a nova senha —
+   vive num MODAL, chamado pelo cabeçalho ou pelos CTAs da página.
+   Antes ele dividia a tela com a vitrine e roubava o palco dela.
+
+   O modal é local, e não o ModalOverlay/uiModal do painel, de
+   propósito: aquele importa os doze modais da área logada (store,
+   mutações, Supabase) e arrastá-lo para cá jogaria o app inteiro no
+   pacote de quem ainda nem entrou. O que se reaproveita são as
+   classes CSS, para o visual não divergir.
    ================================================================ */
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSessao } from "@/components/SessaoProvider";
 import { traduzErroAuth } from "@/lib/auth/erros";
 import { getSupabase } from "@/lib/persistencia/supabase";
 import { toast } from "@/lib/toast";
 import RodapeApp from "@/components/RodapeApp";
+import CabecalhoAuth from "./CabecalhoAuth";
 import CampoSenha from "./CampoSenha";
 import Vitrine from "./Vitrine";
 
@@ -47,6 +54,76 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
   // por efeito. Equivale ao switchAuthTab("reset") do app antigo, que também
   // ignorava a aba anterior enquanto a recuperação estava em curso.
   const aba: AbaAuth = recuperacao ? "reset" : abaEscolhida;
+
+  // Quem chega pelo link do e-mail não clicou em nada: o modal já nasce aberto
+  // na nova senha. Derivado, pelo mesmo motivo da aba — mas dispensável, senão
+  // fechá-lo seria impossível enquanto a recuperação estivesse em curso.
+  const [aberto, setAberto] = useState(false);
+  const [recuperacaoDispensada, setRecuperacaoDispensada] = useState(false);
+  const modalAberto = aberto || (recuperacao && !recuperacaoDispensada);
+
+  const dialogoRef = useRef<HTMLDivElement | null>(null);
+  const focoAnteriorRef = useRef<HTMLElement | null>(null);
+
+  function abrir(qual: AbaAuth) {
+    focoAnteriorRef.current = document.activeElement as HTMLElement | null;
+    setAba(qual);
+    setAberto(true);
+  }
+
+  function fechar() {
+    setAberto(false);
+    if (recuperacao) setRecuperacaoDispensada(true);
+    focoAnteriorRef.current?.focus();
+  }
+
+  // Esc fecha e o Tab circula dentro do diálogo — enquanto ele está aberto, o
+  // resto da página é decoração. Clicar no fundo NÃO fecha, como nos modais do
+  // painel: um clique fora não deve custar a senha já digitada.
+  useEffect(() => {
+    if (!modalAberto) return;
+
+    // Repete o corpo de fechar() em vez de depender dela: uma função nova a
+    // cada render reexecutaria este efeito, e o foco pularia de volta para o
+    // primeiro campo no meio da digitação.
+    const encerrar = () => {
+      setAberto(false);
+      if (recuperacao) setRecuperacaoDispensada(true);
+      focoAnteriorRef.current?.focus();
+    };
+
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        encerrar();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const focaveis = dialogoRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not(:disabled), input:not(:disabled), [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focaveis || focaveis.length === 0) return;
+      const primeiro = focaveis[0];
+      const ultimo = focaveis[focaveis.length - 1];
+      if (e.shiftKey && document.activeElement === primeiro) {
+        e.preventDefault();
+        ultimo.focus();
+      } else if (!e.shiftKey && document.activeElement === ultimo) {
+        e.preventDefault();
+        primeiro.focus();
+      }
+    };
+
+    document.addEventListener("keydown", aoTeclar);
+    // Trava a rolagem da apresentação atrás do modal.
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialogoRef.current?.querySelector<HTMLElement>("input")?.focus();
+
+    return () => {
+      document.removeEventListener("keydown", aoTeclar);
+      document.body.style.overflow = overflowAnterior;
+    };
+  }, [modalAberto, aba, recuperacao]);
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginSenha, setLoginSenha] = useState("");
@@ -123,11 +200,26 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
 
   return (
     <div className="auth-screen" id="auth-screen">
-      <div className="auth-layout">
-        <Vitrine />
+      <CabecalhoAuth aoEntrar={() => abrir("login")} aoCriarConta={() => abrir("signup")} />
 
-        {/* FORMULÁRIO DE ACESSO */}
-        <div className="auth-box">
+      <Vitrine aoEntrar={() => abrir("login")} aoCriarConta={() => abrir("signup")} />
+
+      <RodapeApp variante="auth" />
+
+      {/* FORMULÁRIO DE ACESSO — modal sobre a apresentação */}
+      <div className={`auth-modal-overlay${modalAberto ? " open" : ""}`}>
+        <div
+          className="auth-box"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Acesso à conta"
+          ref={dialogoRef}
+        >
+          <button type="button" className="auth-box-fechar" onClick={fechar} aria-label="Fechar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
           <div
             className="brand auth-box-brand"
             style={{ border: "none", padding: 0, marginBottom: "8px", justifyContent: "center" }}
@@ -327,8 +419,6 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
           )}
         </div>
       </div>
-
-      <RodapeApp variante="auth" />
     </div>
   );
 }
