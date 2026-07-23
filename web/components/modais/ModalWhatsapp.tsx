@@ -17,9 +17,12 @@
    sozinho — antes disso o ranking só enxergava o que fosse anotado à mão,
    ou seja, quase nada: o caminho real de envio era invisível para ele.
 
-   Modelo comum NÃO registra tentativa, de propósito. "Imóvel locado" e
-   "confirmação de visita" não disputam captação nenhuma; creditá-los
-   encheria o ranking de mensagens que não são roteiro de abordagem.
+   Os modelos do sistema que SÃO contato de captação (primeiro contato,
+   retomada, renovação, confirmação de endereço) também registram — sem
+   entrar no ranking, que é privilégio do catálogo. Os operacionais
+   ("imóvel locado", "confirmação de visita") continuam de fora: tratam
+   de um passo já combinado e encheriam o histórico de mensagem que não
+   é abordagem. Ver MODELOS_CAPTACAO em lib/calculo/whatsapp.ts.
    ================================================================ */
 import { useRef, useState } from "react";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
@@ -27,6 +30,7 @@ import { telefoneWhatsapp } from "@/lib/calculo/agenda";
 import {
   aplicarModeloUsuario,
   avisoAoSalvarModelo,
+  ehContatoDeCaptacao,
   linkWhatsapp,
   MARCADORES_MODELO,
   mensagemFalhaEnvio,
@@ -87,11 +91,21 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
   const podeEnviarDireto = !!numeroEvolution(imovel.proprietarioTelefone);
   const modeloCustomSel = tipoSel === "usuario" ? modelosUsuario.find((m) => m.id === modeloId) || null : null;
   const abordagemSel = tipoSel === "abordagem" ? abordagensUsaveis.find((a) => a.id === modeloId) || null : null;
+  // Modelo do sistema que é contato de captação (primeiro contato, retomada...):
+  // registra tentativa como o modelo próprio, e pelo mesmo motivo — é algo que
+  // ele disse a um proprietário para conquistar o imóvel.
+  const modeloSistemaSel =
+    tipoSel === "sistema" && ehContatoDeCaptacao(modeloId)
+      ? MODELOS_WHATSAPP.find((m) => m.id === modeloId) || null
+      : null;
   const rotuloSelecionado =
     abordagemSel?.nome ||
     modeloCustomSel?.nome ||
     MODELOS_WHATSAPP.find((m) => m.id === modeloId)?.rotulo ||
     "Modelo";
+  // Nome guardado na tentativa quando não há abordagem do catálogo (por VALOR:
+  // modelo não tem id estável no banco — o do corretor pode ser apagado).
+  const nomeSemCatalogo = modeloCustomSel?.nome || modeloSistemaSel?.rotulo || null;
 
   function trocarModelo(tipo: "sistema" | "usuario" | "abordagem", id: string) {
     if (!imovel) return;
@@ -178,7 +192,7 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
     //
     // Modelo do SISTEMA continua sem registrar: "imóvel locado" e
     // "confirmação de visita" não são contato de captação.
-    if (r.ok && (abordagemSel || modeloCustomSel)) {
+    if (r.ok && (abordagemSel || nomeSemCatalogo)) {
       // Só depois do envio CONFIRMADO pela Evolution. Registrar antes criaria
       // tentativa fantasma toda vez que o número não tivesse WhatsApp.
       //
@@ -189,7 +203,7 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
         imovel.id,
         {
           abordagemId: abordagemSel ? abordagemSel.id : null,
-          modeloNome: modeloCustomSel ? modeloCustomSel.nome : null,
+          modeloNome: abordagemSel ? null : nomeSemCatalogo,
           canal: "WhatsApp",
           resultado: "sem-resposta",
           observacao: null,
@@ -203,8 +217,8 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
       toast(
         abordagemSel
           ? `Mensagem enviada. Tentativa registrada em “${abordagemSel.nome}”.`
-          : modeloCustomSel
-            ? `Mensagem enviada. Tentativa registrada com o modelo “${modeloCustomSel.nome}”.`
+          : nomeSemCatalogo
+            ? `Mensagem enviada. Tentativa registrada com o modelo “${nomeSemCatalogo}”.`
             : "Mensagem enviada no WhatsApp.",
       );
       fecharModal();

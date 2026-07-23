@@ -130,6 +130,40 @@ export const MODELOS_WHATSAPP: ModeloWhatsapp[] = [
   { id: "renovacao-angariacao", rotulo: "Renovação de angariação" },
 ];
 
+/**
+ * Modelos do sistema que SÃO contato de captação: os que abrem ou reabrem a
+ * conversa para conquistar o imóvel. Enviá-los registra tentativa, como já
+ * acontece com a abordagem do catálogo e com o modelo próprio do corretor.
+ *
+ * A regra antiga era por GRUPO — "modelo do sistema não registra" — e a
+ * justificativa citava só "imóvel locado" e "confirmação de visita". Só que o
+ * mesmo balde continha "primeiro contato" e "retomada", que são exatamente o
+ * contato de captação. Na prática o caminho mais usado do app não registrava
+ * nada: carteira inteira com zero tentativas, ranking cego, nenhum contato para
+ * o webhook fechar quando o proprietário respondesse — e nem o canal do contato
+ * o app sabia dizer depois. Por isso a classificação passa a ser por MODELO.
+ *
+ * Fora ficam os operacionais (confirmação de visita, cobrança de documentação,
+ * divulgação, imóvel locado): tratam de um passo já combinado, não buscam o sim
+ * do proprietário. "Retorno de negociação" também fica de fora por isso —
+ * continua uma conversa já aberta.
+ *
+ * Como qualquer registro fora do catálogo, entra sem `abordagemId`: aparece no
+ * histórico, no resumo e no nudge, e NÃO entra no ranking de abordagens (ver
+ * "Registrar ≠ creditar" no CLAUDE.md).
+ */
+export const MODELOS_CAPTACAO: readonly string[] = [
+  "confirmacao-endereco",
+  "primeiro-contato",
+  "retomada-contato",
+  "renovacao-angariacao",
+];
+
+/** O envio deste modelo do sistema conta como tentativa de captação? */
+export function ehContatoDeCaptacao(modeloId: string): boolean {
+  return MODELOS_CAPTACAO.includes(modeloId);
+}
+
 const MODELO_PADRAO_POR_STATUS: Record<string, string> = {
   "Novo contato": "primeiro-contato",
   "Visita agendada": "confirmacao-visita",

@@ -261,12 +261,38 @@ export async function registrarTentativa(
   };
   const novasTentativas = [...(imovel.tentativas || []), tentativa];
 
-  const { error } = await getSupabase().from("imoveis").update({ tentativas: novasTentativas }).eq("id", imovelId);
+  // O canal da PRIMEIRA tentativa É a forma de abordagem do imóvel — e o app
+  // acabou de descobri-la, então não faz sentido continuar perguntando. Sem
+  // isto, mandar um WhatsApp pelo próprio painel e abrir a edição em seguida
+  // mostrava "Ligação telefônica" no seletor: o sistema ignorando o que ele
+  // mesmo registrou um segundo antes. Pior que o incômodo, o campo alimenta os
+  // insights por forma de abordagem — o palpite virava número na tela.
+  //
+  // Só preenche quando está VAZIO: o valor escolhido pelo corretor manda
+  // sempre, e o canal do follow-up nunca reescreve o da abertura.
+  const preencherForma = !(imovel.formaAbordagem || "").trim() && !!tentativa.canal;
+
+  const { error } = await getSupabase()
+    .from("imoveis")
+    // Update parcial, como o resto das mutações de histórico: nunca reescreve a
+    // linha inteira (ver o aviso sobre os jsonb no salvarImovel).
+    .update({ tentativas: novasTentativas, ...(preencherForma ? { forma_abordagem: tentativa.canal } : {}) })
+    .eq("id", imovelId);
   if (error) {
     if (!silencioso) toast("Não foi possível registrar a tentativa: " + error.message, "error");
     return false;
   }
-  setImoveis(imoveis.map((i) => (i.id === imovelId ? { ...i, tentativas: novasTentativas } : i)));
+  setImoveis(
+    imoveis.map((i) =>
+      i.id === imovelId
+        ? {
+            ...i,
+            tentativas: novasTentativas,
+            ...(preencherForma ? { formaAbordagem: tentativa.canal } : {}),
+          }
+        : i,
+    ),
+  );
   if (!silencioso) toast("Tentativa registrada.");
   return true;
 }

@@ -7,7 +7,9 @@ import { mensagemRenovacaoAngariacao, telefoneWhatsapp } from "@/lib/calculo/age
 import {
   aplicarModeloUsuario,
   avisoAoSalvarModelo,
+  ehContatoDeCaptacao,
   type FalhaEnvio,
+  MODELOS_CAPTACAO,
   linkWhatsapp,
   mensagemFalhaEnvio,
   mensagemWhatsapp,
@@ -317,5 +319,34 @@ describe("mensagemFalhaEnvio", () => {
 
   it("falha desconhecida não deixa a UI sem texto", () => {
     expect(mensagemFalhaEnvio("qualquer-coisa" as FalhaEnvio)).toBe(mensagemFalhaEnvio("falha-evolution"));
+  });
+});
+
+describe("ehContatoDeCaptacao", () => {
+  it("os modelos que abrem ou reabrem a conversa contam como captação", () => {
+    // São os que buscam o sim do proprietário — enviá-los registra tentativa,
+    // e é o que preenche a forma de abordagem e dá ao webhook o que fechar.
+    expect(ehContatoDeCaptacao("primeiro-contato")).toBe(true);
+    expect(ehContatoDeCaptacao("retomada-contato")).toBe(true);
+    expect(ehContatoDeCaptacao("renovacao-angariacao")).toBe(true);
+    expect(ehContatoDeCaptacao("confirmacao-endereco")).toBe(true);
+  });
+
+  it("os operacionais ficam de fora — tratam de passo já combinado", () => {
+    for (const id of ["confirmacao-visita", "cobranca-documentacao", "inicio-divulgacao", "imovel-locado"]) {
+      expect(ehContatoDeCaptacao(id)).toBe(false);
+    }
+  });
+
+  it("id desconhecido não vira captação por acidente", () => {
+    expect(ehContatoDeCaptacao("")).toBe(false);
+    expect(ehContatoDeCaptacao("modelo-que-nao-existe")).toBe(false);
+  });
+
+  it("toda a lista de captação existe entre os modelos do sistema", () => {
+    // Um id com erro de digitação aqui sairia do ar em silêncio: o modelo
+    // continuaria enviando e simplesmente nunca registraria tentativa.
+    const ids = MODELOS_WHATSAPP.map((m) => m.id);
+    for (const id of MODELOS_CAPTACAO) expect(ids).toContain(id);
   });
 });

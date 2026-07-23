@@ -25,6 +25,7 @@ import { todayISO } from "@/lib/datas";
 import { fmtMoney } from "@/lib/formatadores";
 import { buscarCep, geocodeEndereco, maskCEP } from "@/lib/geo";
 import { canonizarValor, distintosCanonizados, nomeProprio } from "@/lib/normalizacao";
+import { canalObservado } from "@/lib/calculo/abordagens";
 import { descreverDuplicados, imoveisDuplicados } from "@/lib/calculo/duplicidade";
 import { aplicarMudancaDeStatus, excluirImovel, numOrNull, salvarImovel, uid } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
@@ -74,11 +75,24 @@ export default function ModalImovel({ id }: { id?: string }) {
   const [valorCondominio, setValorCondominio] = useState(
     imovel?.valorCondominio != null ? String(imovel.valorCondominio) : "",
   );
-  const [origemImovel, setOrigemImovel] = useState(imovel?.origemImovel ?? ORIGENS_IMOVEL[0]);
+  // Sem padrão: um imóvel novo nasce SEM origem, e não "Placa no imóvel" só por
+  // ser o primeiro item da lista. O ranking de canais lê este campo — chutar a
+  // origem enche a leitura de imóveis que ninguém disse de onde vieram, e o
+  // corretor descobre isso tarde, quando o "melhor canal" já é o padrão do
+  // seletor. O cálculo já sabe lidar com o vazio ("Não informado").
+  const [origemImovel, setOrigemImovel] = useState(imovel?.origemImovel ?? "");
   const [imobiliariaConcorrente, setImobiliariaConcorrente] = useState(imovel?.imobiliariaConcorrente ?? "");
   const [proprietarioNome, setProprietarioNome] = useState(imovel?.proprietarioNome ?? "");
   const [proprietarioTelefone, setProprietarioTelefone] = useState(imovel?.proprietarioTelefone ?? "");
-  const [formaAbordagem, setFormaAbordagem] = useState(imovel?.formaAbordagem ?? FORMAS_ABORDAGEM[0]);
+  // A forma de abordagem não é chute: quando o imóvel já tem tentativa
+  // registrada (um WhatsApp enviado pelo painel, por exemplo), o canal dela é o
+  // que de fato aconteceu. O valor gravado manda; o histórico entra só quando o
+  // campo está vazio; e não havendo nem um nem outro, fica "Não informado" em
+  // vez do primeiro item da lista.
+  const canalDoHistorico = imovel ? canalObservado(imovel) : null;
+  const [formaAbordagem, setFormaAbordagem] = useState(
+    () => imovel?.formaAbordagem || canalDoHistorico || "",
+  );
   const [dataAngariacao, setDataAngariacao] = useState(imovel?.dataAngariacao ?? todayISO());
   // Angariação nova já vem com o próprio usuário como captador (o caso comum:
   // quem cadastra é quem captou). Continua editável, e na edição o valor
@@ -462,6 +476,7 @@ export default function ModalImovel({ id }: { id?: string }) {
           <div className="field-group">
             <label>Onde encontrou o imóvel</label>
             <select value={origemImovel ?? ""} onChange={(e) => setOrigemImovel(e.target.value)}>
+              <option value="">Não informado</option>
               {/* Fixos + portais cadastrados pelo corretor. Preserva a origem
                   atual do imóvel mesmo se o portal extra foi removido depois. */}
               {[...new Set([...ORIGENS_IMOVEL, ...origensExtras, ...(origemImovel ? [origemImovel] : [])])].map((o) => (
@@ -553,12 +568,19 @@ export default function ModalImovel({ id }: { id?: string }) {
           <div className="field-group">
             <label>Forma de abordagem</label>
             <select value={formaAbordagem ?? ""} onChange={(e) => setFormaAbordagem(e.target.value)}>
+              <option value="">Não informado</option>
               {FORMAS_ABORDAGEM.map((a) => (
                 <option key={a} value={a}>
                   {a}
                 </option>
               ))}
             </select>
+            {!imovel?.formaAbordagem && canalDoHistorico && (
+              <div className="field-hint">
+                Preenchido a partir das tentativas registradas: o primeiro contato saiu por{" "}
+                <strong>{canalDoHistorico}</strong>. Ajuste se não foi assim.
+              </div>
+            )}
           </div>
         </fieldset>
 

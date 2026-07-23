@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   ABORDAGEM_NAO_INFORMADA,
   abordagemQueDestravou,
+  canalObservado,
   desempenhoPorAbordagem,
   resultadosPendentes,
   resumoTentativas,
@@ -52,6 +53,34 @@ describe("tentativasOrdenadas", () => {
   it("aceita imóvel sem a coluna tentativas (registro anterior à feature)", () => {
     const legado: Imovel = { id: "z", endereco: "Rua Z", status: "Novo contato" };
     expect(tentativasOrdenadas(legado)).toEqual([]);
+  });
+});
+
+describe("canalObservado", () => {
+  /** Igual ao helper acima, mas com o canal escolhido caso a caso. */
+  function comCanal(data: string, canal: string | null): Tentativa {
+    return { id: `t-${data}`, data, abordagemId: "a1", canal, resultado: "sem-resposta" };
+  }
+
+  it("devolve o canal da PRIMEIRA tentativa, não o do último follow-up", () => {
+    const i = imovel({
+      id: "1",
+      tentativas: [comCanal("2026-03-02T10:00", "Ligação telefônica"), comCanal("2026-01-04T09:00", "WhatsApp")],
+    });
+    expect(canalObservado(i)).toBe("WhatsApp");
+  });
+
+  it("ignora tentativa sem canal e segue procurando", () => {
+    const i = imovel({
+      id: "2",
+      tentativas: [comCanal("2026-01-04T09:00", null), comCanal("2026-02-01T09:00", "  Visita presencial  ")],
+    });
+    expect(canalObservado(i)).toBe("Visita presencial");
+  });
+
+  it("devolve null sem tentativas — nada a observar, nada a chutar", () => {
+    expect(canalObservado(imovel({ id: "3", tentativas: [] }))).toBeNull();
+    expect(canalObservado({ id: "z", endereco: "Rua Z", status: "Novo contato" })).toBeNull();
   });
 });
 

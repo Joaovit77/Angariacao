@@ -161,6 +161,13 @@ não num campo único do imóvel.
   canais diferentes.
 - **Tentativa** é um contato feito. Fica em `imoveis.tentativas` (`jsonb`, como `notas` e
   `status_history`), com `{ abordagemId, canal, resultado, data, observacao }`.
+- **O canal não se pergunta duas vezes.** `imovel.formaAbordagem` é derivado do histórico, não
+  chutado num seletor: `registrarTentativa` o preenche com o canal da tentativa quando o campo está
+  **vazio**, e o ModalImovel cai em `canalObservado()` (a primeira tentativa com canal) antes de
+  oferecer "Não informado". Nenhum campo do cadastro nasce no primeiro item da lista — um padrão
+  fixo dizia "Ligação telefônica" logo depois de um WhatsApp enviado pelo próprio painel, e o
+  palpite ia direto para os insights por forma de abordagem. Mesma regra para `origemImovel`, que
+  alimenta o ranking de canais.
 
 Um imóvel tem **várias** tentativas de propósito. Creditar só uma enviesaria o ranking: os roteiros
 de fechamento sempre pareceriam melhores que os de abertura, porque só eles apareceriam nos casos
@@ -187,6 +194,8 @@ Hoje há três origens, e a diferença entre elas é o que mantém o ranking hon
   é uma observação de verdade no instante em que é gravado.
 - **Envio por abordagem** (ModalWhatsapp, grupo "Abordagens sugeridas por IA" do seletor) — registra
   sozinho, creditando a abordagem escolhida. É o elo que liga o que se FAZ ao que se MEDE.
+- **Envio por modelo de captação** (ModalWhatsapp, modelo próprio do corretor ou modelo do sistema
+  listado em `MODELOS_CAPTACAO`) — registra sem creditar ninguém no ranking.
 - **Follow-up em lote** — idem, uma por imóvel da fila.
 
 Três regras que caem daí:
@@ -195,15 +204,21 @@ Três regras que caem daí:
   toda vez que o número não tivesse WhatsApp, e o ranking mediria mensagem que nunca saiu. Pelo
   mesmo motivo o `wa.me` **não** registra: ele só abre a conversa, quem manda é a pessoa, e o app
   não tem como saber se mandou.
-- **Registrar ≠ creditar.** Três origens registram tentativa: abordagem do catálogo, **modelo
-  próprio do corretor** (`user_config.whatsapp_modelos`) e follow-up em lote. Modelo do SISTEMA
-  não registra — "imóvel locado" e "confirmação de visita" não são contato de captação.
+- **Registrar ≠ creditar.** Registram tentativa: abordagem do catálogo, **modelo próprio do
+  corretor** (`user_config.whatsapp_modelos`), **modelo do sistema que é contato de captação**
+  (`MODELOS_CAPTACAO` em `calculo/whatsapp.ts`) e follow-up em lote. Ficam de fora os modelos
+  operacionais — "imóvel locado", "confirmação de visita", cobrança de documentação, divulgação:
+  tratam de um passo já combinado, não buscam o sim do proprietário.
   Mas só a **abordagem** entra no ranking: ela tem id estável e se arquiva em vez de ser
-  excluída, então as séries continuam comparáveis. O modelo próprio grava `abordagemId: null` +
+  excluída, então as séries continuam comparáveis. Os modelos gravam `abordagemId: null` +
   `modeloNome` (por VALOR, não por id — modelo tem botão de apagar, e guardar o id deixaria o
-  histórico órfão). Ele aparece no histórico, no resumo e no nudge; no ranking, não.
-  O motivo de registrá-lo apesar disso é o webhook: sem tentativa não há o que fechar quando a
+  histórico órfão). Aparecem no histórico, no resumo e no nudge; no ranking, não.
+  O motivo de registrá-los apesar disso é o webhook: sem tentativa não há o que fechar quando a
   resposta do proprietário chega.
+  > A classificação já foi por GRUPO ("modelo do sistema não registra"), e o balde misturava
+  > "primeiro contato" e "retomada" com "imóvel locado". O caminho mais usado do app — o botão 💬
+  > do Pipeline, que abre um modelo do sistema — não registrava nada: carteira inteira com zero
+  > tentativas e ranking cego. Não volte a classificar por grupo.
 - **`aguardandoResultado` separa palpite de fato.** No instante do envio ninguém sabe o desfecho,
   então a tentativa automática nasce `"sem-resposta"` **marcada**. Sem alguém confirmando depois,
   toda `taxaResposta` tenderia a zero e o ranking diria "nenhum roteiro funciona" quando o que

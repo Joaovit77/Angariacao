@@ -132,6 +132,27 @@ export function resultadosPendentes(
   return pendentes.sort((a, b) => a.tentativa.data.localeCompare(b.tentativa.data));
 }
 
+/**
+ * Canal por onde o proprietário foi de fato abordado, lido do histórico de
+ * tentativas. Mesma ideia do `statusHistory` aplicada ao contato: a verdade
+ * está no que aconteceu, não num campo que alguém escolheu num seletor.
+ *
+ * Vale a PRIMEIRA tentativa com canal registrado, não a última — o campo
+ * "Forma de abordagem" descreve como o contato foi ABERTO. Lendo a última, o
+ * valor mudaria sozinho a cada follow-up, e o mesmo imóvel apareceria em canais
+ * diferentes nos insights conforme o dia em que fosse consultado.
+ *
+ * Retorna null quando não há tentativa com canal — aí não há o que observar, e
+ * chutar um padrão é exatamente o que esta função existe para evitar.
+ */
+export function canalObservado(imovel: Imovel): string | null {
+  for (const t of tentativasOrdenadas(imovel)) {
+    const canal = (t.canal || "").trim();
+    if (canal) return canal;
+  }
+  return null;
+}
+
 /** "Marta — Rua Haddock Lobo, 55" */
 function rotuloImovel(imovel: Imovel): string {
   const nome = (imovel.proprietarioNome || "").trim();
