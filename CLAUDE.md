@@ -201,9 +201,16 @@ Hoje há três origens, e a diferença entre elas é o que mantém o ranking hon
 Três regras que caem daí:
 
 - **Só registra com envio confirmado** pela Evolution. Registrar antes criaria tentativa fantasma
-  toda vez que o número não tivesse WhatsApp, e o ranking mediria mensagem que nunca saiu. Pelo
-  mesmo motivo o `wa.me` **não** registra: ele só abre a conversa, quem manda é a pessoa, e o app
-  não tem como saber se mandou.
+  toda vez que o número não tivesse WhatsApp, e o ranking mediria mensagem que nunca saiu. O `wa.me`
+  não tem essa confirmação — ele só abre a conversa, quem aperta enviar é a pessoa —, então ali o
+  app **pergunta**: ao voltar do link, o rodapé do ModalWhatsapp vira "você chegou a mandar a
+  mensagem?", e só o "sim" grava. A resposta é afirmação do corretor, do mesmo tipo da tentativa
+  anotada à mão; o que não pode é o app afirmar sozinho. O critério de o que se registra é o
+  mesmo dos dois lados (`registraTentativa`) — o histórico não deve depender de por onde a
+  mensagem saiu.
+  > Até 21/07/2026 o `wa.me` era o único caminho de envio e não registrava nada. É por isso que
+  > não existe tentativa nenhuma no banco antes dessa data: o histórico anterior foi reconstruído
+  > por backfill (assinado na `observacao`), não observado.
 - **Registrar ≠ creditar.** Registram tentativa: abordagem do catálogo, **modelo próprio do
   corretor** (`user_config.whatsapp_modelos`), **modelo do sistema que é contato de captação**
   (`MODELOS_CAPTACAO` em `calculo/whatsapp.ts`) e follow-up em lote. Ficam de fora os modelos
