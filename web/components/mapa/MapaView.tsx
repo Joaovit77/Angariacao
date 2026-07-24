@@ -16,6 +16,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { useUiModal } from "@/lib/uiModal";
+import { CATEGORIAS_MAPA, type CategoriaMapa, categoriaMapa } from "@/lib/calculo/mapa";
 import { foiAngariado } from "@/lib/calculo/motor";
 import { HEAT_GRADIENT, type ModoMapa } from "./MapaLeaflet";
 
@@ -37,10 +38,19 @@ export default function MapaView() {
   const imoveis = useAppStore((s) => s.imoveis);
   const abrirModal = useUiModal((s) => s.abrirModal);
   const [modo, setModo] = useState<ModoMapa>("pinos");
+  // Categoria isolada pela legenda (null = todas). Clicar numa categoria mostra
+  // só ela; clicar de novo (ou em "ver todos") volta a mostrar tudo.
+  const [filtro, setFiltro] = useState<CategoriaMapa | null>(null);
 
   const comLocalizacao = imoveis.filter((i) => i.latitude != null && i.longitude != null);
   const semLocalizacao = imoveis.length - comLocalizacao.length;
   const angariadosLocalizados = comLocalizacao.filter(foiAngariado).length;
+
+  // Quantos localizados há em cada categoria — o número ao lado de cada linha
+  // da legenda, e o que decide se a linha é clicável (categoria vazia não é).
+  const contagem: Record<CategoriaMapa, number> = { locado: 0, angariado: 0, andamento: 0, "sem-sucesso": 0 };
+  for (const i of comLocalizacao) contagem[categoriaMapa(i)]++;
+  const visiveis = filtro ? contagem[filtro] : comLocalizacao.length;
 
   if (imoveis.length === 0) {
     return (
@@ -65,7 +75,9 @@ export default function MapaView() {
           <p className="page-sub">
             {modo === "calor"
               ? `${angariadosLocalizados} imóvel(is) angariado(s) no mapa de calor`
-              : `${comLocalizacao.length} imóveis localizados no mapa`}
+              : filtro
+                ? `${visiveis} de ${comLocalizacao.length} imóveis — ${CATEGORIAS_MAPA.find((c) => c.id === filtro)?.label.toLowerCase()}`
+                : `${comLocalizacao.length} imóveis localizados no mapa`}
           </p>
         </div>
         <div className="page-actions">
@@ -88,7 +100,12 @@ export default function MapaView() {
         </div>
       </div>
       <div className="map-page-wrap">
-        <MapaLeaflet imoveis={imoveis} aoAbrirImovel={(id) => abrirModal("imovel", id)} modo={modo} />
+        <MapaLeaflet
+          imoveis={imoveis}
+          aoAbrirImovel={(id) => abrirModal("imovel", id)}
+          modo={modo}
+          filtro={modo === "calor" ? null : filtro}
+        />
 
         {semLocalizacao > 0 && (
           <div className="map-unlocated-note">
@@ -115,16 +132,36 @@ export default function MapaView() {
           </div>
         ) : (
           <div className="map-legend">
-            <div className="map-legend-title">Legenda</div>
-            <div className="map-legend-row">
-              <span className="map-legend-dot" style={{ background: "#5fb896" }}></span>Locado (conseguiu)
+            <div className="map-legend-title">
+              <span>Legenda</span>
+              {filtro && (
+                <button type="button" className="map-legend-clear" onClick={() => setFiltro(null)}>
+                  ver todos
+                </button>
+              )}
             </div>
-            <div className="map-legend-row">
-              <span className="map-legend-dot" style={{ background: "#e0b458" }}></span>Em andamento
-            </div>
-            <div className="map-legend-row">
-              <span className="map-legend-dot" style={{ background: "#d97878" }}></span>Tentado, sem sucesso
-            </div>
+            {CATEGORIAS_MAPA.map((c) => {
+              const total = contagem[c.id];
+              const ativo = filtro === c.id;
+              // Com um filtro ativo, as outras categorias ficam apagadas; sem
+              // nenhum imóvel na categoria, a linha não filtra (não há o que ver).
+              const apagado = filtro != null && !ativo;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={`map-legend-row map-legend-filtro${ativo ? " ativo" : ""}${apagado ? " apagado" : ""}`}
+                  aria-pressed={ativo}
+                  disabled={total === 0}
+                  title={total === 0 ? "Nenhum imóvel localizado nesta categoria" : "Clique para ver só esta categoria"}
+                  onClick={() => setFiltro(ativo ? null : c.id)}
+                >
+                  <span className="map-legend-dot" style={{ background: c.cor }}></span>
+                  <span className="map-legend-label">{c.label}</span>
+                  <span className="map-legend-count">{total}</span>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>

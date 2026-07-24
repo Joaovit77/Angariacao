@@ -114,6 +114,11 @@ o torna testável puro.
   mesmo store esse `fecharModal()` apagaria a festa no instante em que ela nasce.
 - **`calculo/desdobramento.ts`** — um espaço captado que vira várias unidades (o galpão que o
   proprietário aceita dividir em salas). Ver "Desdobramento" abaixo.
+- **`calculo/mapa.ts`** — em qual dos quatro baldes de cor cada imóvel cai no mapa
+  (`categoriaMapa`: locado / angariado / andamento / sem-sucesso) e as cores/rótulos da legenda
+  (`CATEGORIAS_MAPA`). Fonte única: o pino (`MapaLeaflet`) e a legenda-filtro (`MapaView`) leem
+  daqui. A prioridade é por **desfecho atual**, não por histórico — angariado-e-depois-perdido é
+  "sem sucesso", não captação viva; "angariado" fica para o captado que segue na carteira sem locar.
 - **`calculo/duplicidade.ts`** — detecta imóvel já cadastrado. A identidade é
   `endereço + cidade + unidade + bloco`, comparada por chave normalizada (grafia, acento,
   pontuação e abreviação de logradouro não contam). `unidade`/`bloco` fazem parte da identidade

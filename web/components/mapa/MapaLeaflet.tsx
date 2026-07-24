@@ -27,14 +27,13 @@ import L from "leaflet";
 // layout.tsx; o heat não tem CSS.
 import "leaflet.markercluster";
 import "leaflet.heat";
-import { STATUS_TERMINAL_NEGATIVE } from "@/lib/constantes";
+import { type CategoriaMapa, categoriaMapa, corDaCategoria } from "@/lib/calculo/mapa";
 import { foiAngariado } from "@/lib/calculo/motor";
 import { fmtMoney } from "@/lib/formatadores";
 import type { Imovel } from "@/lib/tipos";
 
 export type ModoMapa = "pinos" | "agrupado" | "calor";
 
-const TERMINAIS: readonly string[] = STATUS_TERMINAL_NEGATIVE;
 const LONDRINA_CENTER: [number, number] = [-23.3103, -51.1628];
 
 /* Gradiente do mapa de calor — do menos ao mais captado. Exportado para a
@@ -45,12 +44,6 @@ export const HEAT_GRADIENT: Record<number, string> = {
   0.7: "#e0b458",
   1.0: "#d98f2b",
 };
-
-export function markerColorForStatus(status: string): string {
-  if (status === "Locado") return "#5fb896";
-  if (TERMINAIS.includes(status)) return "#d97878";
-  return "#e0b458";
-}
 
 function conteudoPopup(i: Imovel, aoAbrirImovel: (id: string) => void): HTMLElement {
   const wrap = document.createElement("div");
@@ -80,7 +73,7 @@ function conteudoPopup(i: Imovel, aoAbrirImovel: (id: string) => void): HTMLElem
 }
 
 function criarMarcador(i: Imovel, aoAbrir: (id: string) => void): L.Marker {
-  const color = markerColorForStatus(i.status);
+  const color = corDaCategoria(i);
   const icon = L.divIcon({
     className: "",
     html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #12151a;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>`,
@@ -109,10 +102,14 @@ export default function MapaLeaflet({
   imoveis,
   aoAbrirImovel,
   modo,
+  filtro = null,
 }: {
   imoveis: Imovel[];
   aoAbrirImovel: (id: string) => void;
   modo: ModoMapa;
+  /** Mostra só a categoria escolhida (pinos/agrupado). null = todas. O calor
+      ignora o filtro: ele é sempre a densidade da captação. */
+  filtro?: CategoriaMapa | null;
 }) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapaRef = useRef<L.Map | null>(null);
@@ -154,8 +151,12 @@ export default function MapaLeaflet({
     const comLocalizacao = imoveis.filter((i) => i.latitude != null && i.longitude != null);
     const aoAbrir = (id: string) => aoAbrirRef.current(id);
 
-    // Pontos usados para enquadrar: no calor, só os angariados (é o que aparece).
-    const usados = modo === "calor" ? comLocalizacao.filter(foiAngariado) : comLocalizacao;
+    // Filtro da legenda: vale para pinos/agrupado. Sem filtro, todos.
+    const visiveis = filtro ? comLocalizacao.filter((i) => categoriaMapa(i) === filtro) : comLocalizacao;
+
+    // Pontos usados para enquadrar: no calor, só os angariados (é o que aparece);
+    // nos outros modos, os que estão de fato visíveis com o filtro atual.
+    const usados = modo === "calor" ? comLocalizacao.filter(foiAngariado) : visiveis;
 
     if (modo === "calor") {
       const pontos: [number, number, number][] = usados.map((i) => [
@@ -171,7 +172,7 @@ export default function MapaLeaflet({
         gradient: HEAT_GRADIENT,
       }).addTo(mapa);
     } else {
-      const marcadores = comLocalizacao.map((i) => criarMarcador(i, aoAbrir));
+      const marcadores = visiveis.map((i) => criarMarcador(i, aoAbrir));
       if (modo === "agrupado") {
         const grupo = L.markerClusterGroup({
           iconCreateFunction: iconeCluster,
@@ -192,7 +193,9 @@ export default function MapaLeaflet({
       else mapa.fitBounds(L.latLngBounds(coords).pad(0.2));
       jaEnquadrouRef.current = true;
     }
-  }, [modo, imoveis]);
+    // `filtro` reconstrói a camada, mas não re-enquadra (jaEnquadrouRef já é
+    // true): filtrar não deve dar um salto de zoom na cara de quem clicou.
+  }, [modo, imoveis, filtro]);
 
   return <div id="map-big" ref={divRef}></div>;
 }
