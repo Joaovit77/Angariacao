@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   avisoTextoLote,
   enviadosFollowUpHoje,
+  falhaEhDoNumero,
   falhaEncerraLote,
   FOLLOWUP_DIAS_DESDE_ULTIMO,
   FOLLOWUP_INTERVALO_MAX_MS,
@@ -343,5 +344,37 @@ describe("falhaEncerraLote", () => {
     expect(falhaEncerraLote("numero-invalido")).toBe(false);
     expect(falhaEncerraLote("sem-telefone")).toBe(false);
     expect(falhaEncerraLote(undefined)).toBe(false);
+  });
+});
+
+describe("falhaEhDoNumero", () => {
+  it("reconhece as falhas que falam do telefone do proprietário", () => {
+    // São as únicas em que o relatório pode oferecer "corrigir telefone" e
+    // "dar como Perdido": o problema está no cadastro, não no nosso servidor.
+    expect(falhaEhDoNumero("sem-telefone")).toBe(true);
+    expect(falhaEhDoNumero("numero-invalido")).toBe(true);
+    expect(falhaEhDoNumero("sem-whatsapp")).toBe(true);
+  });
+
+  it("não oferece perda quando o problema foi do ambiente", () => {
+    // Dar um imóvel como Perdido porque a Evolution caiu tiraria da carteira
+    // um proprietário que nunca chegou a receber mensagem nenhuma.
+    for (const f of ["instancia-desconectada", "falha-evolution", "sem-conexao",
+                     "sessao-expirada", "sem-permissao", "nao-configurado",
+                     "sem-instancia", "imovel-nao-encontrado"] as const) {
+      expect(falhaEhDoNumero(f)).toBe(false);
+    }
+    expect(falhaEhDoNumero(undefined)).toBe(false);
+  });
+
+  it("é disjunto de falhaEncerraLote — nenhuma falha é das duas coisas", () => {
+    // Uma falha que encerrasse o lote E oferecesse perda daria como Perdido
+    // um imóvel por causa de um problema que nem chegou a testar o número.
+    const todas = ["sem-telefone", "numero-invalido", "sem-whatsapp", "instancia-desconectada",
+                   "nao-configurado", "sem-instancia", "sessao-expirada", "sem-permissao",
+                   "imovel-nao-encontrado", "falha-evolution", "sem-conexao"] as const;
+    for (const f of todas) {
+      expect(falhaEhDoNumero(f) && falhaEncerraLote(f)).toBe(false);
+    }
   });
 });

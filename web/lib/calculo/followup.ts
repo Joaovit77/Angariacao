@@ -317,6 +317,20 @@ export function falhaEncerraLote(falha: FalhaEnvio | undefined): boolean {
   return !!falha && FALHAS_FATAIS.includes(falha);
 }
 
+/** Falhas que dizem algo sobre o TELEFONE do proprietário — o cadastro está
+    errado, ou aquele número não tem WhatsApp. São as únicas em que faz sentido
+    oferecer "corrigir o telefone" ou encerrar o imóvel por
+    {@link MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO}.
+
+    As demais (instância caída, Evolution fora do ar, sessão expirada) não
+    falam do proprietário: oferecer perda ali daria como Perdido um imóvel
+    porque o NOSSO servidor teve um mau minuto. */
+const FALHAS_DO_NUMERO: readonly FalhaEnvio[] = ["sem-telefone", "numero-invalido", "sem-whatsapp"];
+
+export function falhaEhDoNumero(falha: FalhaEnvio | undefined): boolean {
+  return !!falha && FALHAS_DO_NUMERO.includes(falha);
+}
+
 /** Sorteia o intervalo até o próximo envio. Recebe o sorteio de fora
     (0–1) para o módulo continuar puro e o teste ser determinístico. */
 export function intervaloFollowUpMs(sorteio: number): number {

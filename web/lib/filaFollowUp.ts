@@ -24,7 +24,7 @@ import {
   intervaloFollowUpMs,
   resumoLote,
 } from "./calculo/followup";
-import { mensagemFalhaEnvio } from "./calculo/whatsapp";
+import { type FalhaEnvio, mensagemFalhaEnvio } from "./calculo/whatsapp";
 import { enviarWhatsapp } from "./envioWhatsapp";
 import { registrarTentativa } from "./mutacoes";
 import { toast } from "./toast";
@@ -38,8 +38,13 @@ export interface ItemFila {
 }
 
 export interface FalhaFila {
+  /** Para a UI abrir o cadastro e corrigir o telefone sem procurar o imóvel. */
+  imovelId: string;
   rotulo: string;
   mensagem: string;
+  /** O motivo classificado, que decide quais ações a UI oferece
+      (ver `falhaEhDoNumero`). */
+  falha?: FalhaEnvio;
 }
 
 interface FilaFollowUp {
@@ -49,6 +54,16 @@ interface FilaFollowUp {
   enviados: number;
   falhas: FalhaFila[];
   rodando: boolean;
+  /**
+   * O lote acabou deixando falhas para trás, e elas ainda não foram lidas.
+   *
+   * Sem isto, o motivo de cada falha era coletado e jogado fora: o indicador
+   * mostrava "1 falhou" e sumia junto com a fila, e o único registro de QUEM
+   * falhou e POR QUÊ morria no store. Quem visse "9 enviadas, 1 falhou" não
+   * tinha como saber que o telefone de um proprietário estava errado — o
+   * imóvel voltava para a fila do dia seguinte com o mesmo número.
+   */
+  resumoAberto: boolean;
   /** Abordagem creditada nas tentativas deste lote. */
   abordagemId: string | null;
 
@@ -56,6 +71,7 @@ interface FilaFollowUp {
   cancelar: () => void;
   registrarEnvio: (falha?: FalhaFila) => void;
   encerrar: () => void;
+  fecharResumo: () => void;
 }
 
 const VAZIO = {
@@ -64,6 +80,7 @@ const VAZIO = {
   enviados: 0,
   falhas: [] as FalhaFila[],
   rodando: false,
+  resumoAberto: false,
   abordagemId: null as string | null,
 };
 
@@ -84,7 +101,11 @@ export const useFilaFollowUp = create<FilaFollowUp>((set) => ({
       falhas: falha ? [...s.falhas, falha] : s.falhas,
     })),
 
-  encerrar: () => set({ rodando: false }),
+  // A fila para, mas o que falhou fica na tela até alguém ler. É o único
+  // momento em que o motivo de cada falha existe — a rodada seguinte zera tudo.
+  encerrar: () => set((s) => ({ rodando: false, resumoAberto: s.falhas.length > 0 })),
+
+  fecharResumo: () => set({ resumoAberto: false }),
 }));
 
 /* --- Espera cancelável ------------------------------------------------------
@@ -150,8 +171,10 @@ export async function dispararLote(itens: ItemFila[], abordagemId: string | null
       useFilaFollowUp.getState().registrarEnvio();
     } else {
       useFilaFollowUp.getState().registrarEnvio({
+        imovelId: item.imovelId,
         rotulo: item.rotulo,
         mensagem: r.mensagem || mensagemFalhaEnvio(r.falha || "falha-evolution"),
+        falha: r.falha,
       });
       // Instância caída, token recusado, sessão expirada: não é problema
       // deste número, é do ambiente. Os nove seguintes falhariam igual.
@@ -175,8 +198,14 @@ export async function dispararLote(itens: ItemFila[], abordagemId: string | null
       ? "cancelado"
       : "concluido";
   fim.encerrar();
-  toast(
-    resumoLote(fim.enviados, fim.falhas.length, situacao),
-    fim.falhas.length > 0 ? "warning" : "success",
-  );
+  // Com falhas, quem informa é o relatório do indicador — ele fica na tela e
+  // diz QUEM falhou, não só quantos. O toast continua para o lote limpo (onde
+  // não há relatório) e para o encerramento anormal, cuja explicação
+  // ("o problema afetaria todos os envios seguintes") o relatório não carrega.
+  if (fim.falhas.length === 0 || situacao !== "concluido") {
+    toast(
+      resumoLote(fim.enviados, fim.falhas.length, situacao),
+      fim.falhas.length > 0 ? "warning" : "success",
+    );
+  }
 }

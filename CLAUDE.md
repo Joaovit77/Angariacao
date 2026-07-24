@@ -314,6 +314,14 @@ de spam — gente que já não respondeu. Os freios não são preferência de UX
 - **Falha de ambiente encerra a fila** (`falhaEncerraLote`): instância caída ou token recusado vai
   falhar igual nos nove seguintes. Falha do contato da vez (`sem-whatsapp`, número inválido) não
   interrompe — não diz nada sobre o próximo.
+- **O que falhou fica na tela.** Ao fim do lote o indicador vira relatório (`resumoAberto`), com
+  nome, motivo e ação por imóvel. Antes o motivo era coletado e jogado fora: via-se "1 falhou" e a
+  fila era zerada na rodada seguinte, então o telefone errado de um proprietário nunca aparecia — e
+  o imóvel voltava para a fila do dia seguinte com o mesmo número. As ações (corrigir telefone,
+  dar como Perdido por `MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO`) só aparecem quando `falhaEhDoNumero`:
+  Evolution fora do ar não diz nada sobre o proprietário, e encerrar o imóvel ali seria dá-lo como
+  perdido por um mau minuto do nosso servidor. Como no nudge, **pergunta antes** — número errado
+  não é sinônimo de negócio perdido.
 
 A fila mora num store, e não no modal, porque o corretor segue prospectando enquanto as mensagens
 saem; o indicador fica montado no layout do painel (fora do `<main>`) para sobreviver à troca de

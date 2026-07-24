@@ -2407,6 +2407,23 @@ legend{
 }
 .followup-indicador-rodape{ font-size: 11px; color: var(--text-faint); margin-top: 6px; }
 
+/* Relatório de falhas do lote. Rola quando são muitas: o painel é fixo no
+   canto e não pode crescer até tapar a tela que o corretor está usando. */
+.followup-falhas{
+  display:flex; flex-direction:column; gap:8px;
+  margin-top: 10px; max-height: 46vh; overflow-y: auto;
+}
+.followup-falha{
+  border:1px solid var(--border-soft); border-radius: var(--radius-sm);
+  padding: 8px 10px; background: var(--bg-elev-2);
+}
+.followup-falha-nome{
+  font-size: 12px; color: var(--text); font-weight: 600;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.followup-falha-motivo{ font-size: 11px; color: var(--warn); margin-top: 2px; }
+.followup-falha-acoes{ display:flex; flex-wrap:wrap; gap:6px; margin-top: 8px; }
+
 /* No mobile a barra inferior já ocupa o canto: o indicador vira faixa. */
 @media (max-width: 720px){
   .followup-indicador{ left: 12px; right: 12px; bottom: 12px; width: auto; }
