@@ -13,6 +13,7 @@ import { useUiModal } from "@/lib/uiModal";
 import ModalAbordagens from "./ModalAbordagens";
 import ModalAgenda from "./ModalAgenda";
 import ModalConfig from "./ModalConfig";
+import ModalDesdobrar from "./ModalDesdobrar";
 import ModalFollowUpLote from "./ModalFollowUpLote";
 import ModalImovel from "./ModalImovel";
 import ModalMeta from "./ModalMeta";
@@ -57,6 +58,7 @@ export default function ModalOverlay() {
         {modal?.tipo === "abordagens" && <ModalAbordagens />}
         {modal?.tipo === "followUpLote" && <ModalFollowUpLote />}
         {modal?.tipo === "resultadosPendentes" && <ModalResultadosPendentes />}
+        {modal?.tipo === "desdobrar" && modal.id && <ModalDesdobrar imovelId={modal.id} />}
       </div>
     </div>
   );

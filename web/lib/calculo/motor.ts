@@ -149,12 +149,48 @@ export function dataAngariadoEfetiva(imovel: Imovel): string | null {
   return dateEnteredStatus(imovel, "Angariado");
 }
 
+/* ----------------------------------------------------------------
+   CAPTAÇÃO vs. CARTEIRA — as unidades desdobradas
+
+   Um espaço captado pode virar VÁRIAS linhas: o proprietário aceita
+   dividir o galpão em salas, e cada sala tem aluguel, contrato e
+   comissão próprios. Sem as linhas extras o dinheiro não fecha; com
+   elas contando como angariações, uma conversa ganha viraria quatro.
+
+   O corte é este: quem tem `imovelPrincipalId` entra em TUDO que é
+   carteira, locação e dinheiro (esses cálculos leem a lista inteira),
+   e fica de fora só das quatro funções abaixo — as que medem ESFORÇO
+   de captação. É delas que descendem o KPI de angariações, a meta do
+   mês, as coortes e o relatório, então o corte num lugar só mantém
+   Dashboard, Metas, Insights e Relatórios concordando.
+
+   Consequência deliberada: a meta de angariação passa a significar
+   "negociações ganhas". Quantas unidades saem de cada uma é decisão
+   do proprietário, não trabalho do corretor.
+   ---------------------------------------------------------------- */
+
+/** O imóvel é uma unidade de um espaço já captado (não uma captação nova). */
+export function ehUnidadeDesdobrada(imovel: Imovel): boolean {
+  return !!imovel.imovelPrincipalId;
+}
+
+/** As unidades desdobradas a partir de um imóvel. */
+export function unidadesDesdobradas(imoveis: Imovel[], principalId: string): Imovel[] {
+  return imoveis.filter((i) => i.imovelPrincipalId === principalId);
+}
+
+/** Só o que representa uma captação própria — a base de toda métrica de
+    esforço. Ver o bloco acima. */
+export function imoveisDeCaptacao(imoveis: Imovel[]): Imovel[] {
+  return imoveis.filter((i) => !ehUnidadeDesdobrada(i));
+}
+
 export function imoveisAngariadosNoMes(imoveis: Imovel[], key: string): Imovel[] {
-  return imoveis.filter((i) => foiAngariado(i) && monthKey(dataAngariadoEfetiva(i)) === key);
+  return imoveisDeCaptacao(imoveis).filter((i) => foiAngariado(i) && monthKey(dataAngariadoEfetiva(i)) === key);
 }
 
 export function imoveisAngariadosNoPeriodo(imoveis: Imovel[], start: string, end: string): Imovel[] {
-  return imoveis.filter((i) => {
+  return imoveisDeCaptacao(imoveis).filter((i) => {
     const d = dataAngariadoEfetiva(i);
     return d != null && d >= start && d <= end;
   });
@@ -163,11 +199,13 @@ export function imoveisAngariadosNoPeriodo(imoveis: Imovel[], start: string, end
 // "Contato" é o topo do funil: todo imóvel que entrou no pipeline,
 // independente de já ter sido efetivamente angariado ou não.
 export function imoveisContatadosNoMes(imoveis: Imovel[], key: string): Imovel[] {
-  return imoveis.filter((i) => monthKey(i.dataAngariacao) === key);
+  return imoveisDeCaptacao(imoveis).filter((i) => monthKey(i.dataAngariacao) === key);
 }
 
 export function imoveisContatadosNoPeriodo(imoveis: Imovel[], start: string, end: string): Imovel[] {
-  return imoveis.filter((i) => i.dataAngariacao != null && i.dataAngariacao >= start && i.dataAngariacao <= end);
+  return imoveisDeCaptacao(imoveis).filter(
+    (i) => i.dataAngariacao != null && i.dataAngariacao >= start && i.dataAngariacao <= end,
+  );
 }
 
 export function imoveisLocadosNoMes(imoveis: Imovel[], key: string): Imovel[] {

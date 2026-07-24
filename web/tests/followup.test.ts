@@ -29,15 +29,34 @@ function tentativa(data: string, canal = "WhatsApp"): Tentativa {
   return { id: `t-${data}-${canal}`, data: `${data}T10:00`, canal, resultado: "sem-resposta" };
 }
 
+/* Telefone distinto por imóvel, derivado do id.
+
+   O lote manda uma mensagem por PROPRIETÁRIO, não por imóvel. Se os fixtures
+   compartilhassem telefone — como compartilhavam antes desse corte existir —
+   qualquer lista colapsaria numa linha só, e os testes de ordenação e de teto
+   passariam a medir a deduplicação sem querer. Quem quer testar "mesmo dono"
+   passa `proprietarioTelefone` explicitamente. */
+const telefonesPorId = new Map<string, string>();
+
+function telefoneDe(id: string): string {
+  const existente = telefonesPorId.get(id);
+  if (existente) return existente;
+  const n = telefonesPorId.size;
+  const novo = `(43) 9${String(9000 + n)}-${String(1000 + n)}`;
+  telefonesPorId.set(id, novo);
+  return novo;
+}
+
 /** Imóvel elegível por padrão: "Sem resposta", telefone bom, último
     contato bem antigo. Cada teste estraga só o que quer medir. */
 function imovel(over: Partial<Imovel> = {}): Imovel {
+  const id = over.id ?? "im-1";
   return {
-    id: "im-1",
+    id,
     endereco: "Rua Haddock Lobo, 55",
     bairro: "Cerqueira César",
     proprietarioNome: "Marta",
-    proprietarioTelefone: "(43) 99802-4316",
+    proprietarioTelefone: telefoneDe(id),
     status: "Sem resposta",
     tentativas: [tentativa("2026-05-01")],
     ...over,
@@ -113,6 +132,77 @@ describe("selecionarFollowUp — quem fica de fora", () => {
     expect(elegiveis).toHaveLength(0);
     expect(excluidos[0].motivo).toBe("tentativas-demais");
     expect(excluidos[0].detalhe).toBe("4 tentativas");
+  });
+});
+
+/* O freio que os outros quatro não pegam: eles leem as tentativas DAQUELE
+   imóvel, e quatro imóveis do mesmo dono têm quatro históricos limpos. É o
+   caso do galpão desdobrado em salas — e o de quem põe três apartamentos
+   para alugar de uma vez. Quatro mensagens quase iguais no mesmo número em
+   três minutos é o padrão que derruba o número da imobiliária. */
+describe("selecionarFollowUp — uma mensagem por proprietário", () => {
+  const MESMO = "(43) 99802-4316";
+
+  it("manda para um imóvel só quando o proprietário tem vários", () => {
+    const lista = [
+      imovel({ id: "galpao", codigo: "LD-01", proprietarioTelefone: MESMO }),
+      imovel({ id: "sala-1", codigo: "LD-02", proprietarioTelefone: MESMO }),
+      imovel({ id: "sala-2", codigo: "LD-03", proprietarioTelefone: MESMO }),
+      imovel({ id: "sala-3", codigo: "LD-04", proprietarioTelefone: MESMO }),
+    ];
+    const { elegiveis, excluidos } = selecionarFollowUp(lista, HOJE);
+    expect(elegiveis).toHaveLength(1);
+    expect(excluidos).toHaveLength(3);
+    expect(excluidos.every((e) => e.motivo === "mesmo-proprietario")).toBe(true);
+  });
+
+  it("quem fica é quem espera há mais tempo", () => {
+    const lista = [
+      imovel({ id: "novo", proprietarioTelefone: MESMO, tentativas: [tentativa("2026-06-20")] }),
+      imovel({ id: "antigo", proprietarioTelefone: MESMO, tentativas: [tentativa("2026-01-10")] }),
+    ];
+    const { elegiveis } = selecionarFollowUp(lista, HOJE);
+    expect(elegiveis.map((i) => i.id)).toEqual(["antigo"]);
+  });
+
+  it("a exclusão diz por qual imóvel o proprietário já entrou", () => {
+    const lista = [
+      imovel({ id: "a", codigo: "LD-77", proprietarioTelefone: MESMO, tentativas: [tentativa("2026-01-10")] }),
+      imovel({ id: "b", codigo: "LD-78", proprietarioTelefone: MESMO }),
+    ];
+    const { excluidos } = selecionarFollowUp(lista, HOJE);
+    expect(excluidos[0].imovel.id).toBe("b");
+    expect(excluidos[0].detalhe).toBe("já entrou por LD-77");
+  });
+
+  it("agrupa grafias diferentes do mesmo número — inclusive com e sem o nono dígito", () => {
+    const lista = [
+      imovel({ id: "a", proprietarioTelefone: "(43) 99802-4316" }),
+      imovel({ id: "b", proprietarioTelefone: "43998024316" }),
+      imovel({ id: "c", proprietarioTelefone: "+55 43 9802-4316" }),
+    ];
+    const { elegiveis } = selecionarFollowUp(lista, HOJE);
+    expect(elegiveis).toHaveLength(1);
+  });
+
+  it("não junta proprietários diferentes", () => {
+    const lista = [
+      imovel({ id: "a", proprietarioTelefone: "(43) 99802-4316" }),
+      imovel({ id: "b", proprietarioTelefone: "(43) 99111-2222" }),
+    ];
+    const { elegiveis } = selecionarFollowUp(lista, HOJE);
+    expect(elegiveis).toHaveLength(2);
+  });
+
+  it("o excluído volta a ser elegível quando o outro sai do público do lote", () => {
+    // Mesma carteira do primeiro teste, mas o galpão já foi angariado: some
+    // do público e a sala 1 assume a vez — a fila não fica travada por ele.
+    const lista = [
+      imovel({ id: "galpao", codigo: "LD-01", proprietarioTelefone: MESMO, status: "Angariado" }),
+      imovel({ id: "sala-1", codigo: "LD-02", proprietarioTelefone: MESMO }),
+    ];
+    const { elegiveis } = selecionarFollowUp(lista, HOJE);
+    expect(elegiveis.map((i) => i.id)).toEqual(["sala-1"]);
   });
 });
 

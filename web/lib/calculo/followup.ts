@@ -23,6 +23,7 @@
    ================================================================ */
 import { daysBetween } from "../datas";
 import type { Abordagem, Imovel, Tentativa } from "../tipos";
+import { telefoneCanonico } from "./webhookWhatsapp";
 import { aplicarModeloUsuario, type FalhaEnvio, mensagemWhatsapp, numeroEvolution } from "./whatsapp";
 
 /** Quantas mensagens saem numa rodada. Dez leva ~7 minutos no intervalo
@@ -69,7 +70,8 @@ export type MotivoExclusao =
   | "sem-telefone"
   | "numero-invalido"
   | "contato-recente"
-  | "tentativas-demais";
+  | "tentativas-demais"
+  | "mesmo-proprietario";
 
 export interface ExcluidoFollowUp {
   imovel: Imovel;
@@ -97,6 +99,7 @@ const TEXTO_MOTIVO: Record<MotivoExclusao, string> = {
   "numero-invalido": "Telefone fora do formato de celular",
   "contato-recente": "Falou com você há pouco tempo",
   "tentativas-demais": "Já recebeu tentativas demais",
+  "mesmo-proprietario": "Mesmo proprietário de outro imóvel do lote",
 };
 
 export function textoMotivoExclusao(motivo: MotivoExclusao): string {
@@ -136,6 +139,38 @@ export function enviadosFollowUpHoje(imoveis: Imovel[], hoje: string): number {
     }
   }
   return total;
+}
+
+/* --- Um proprietário, uma mensagem ------------------------------------------
+   O lote é montado imóvel a imóvel, mas quem recebe é PESSOA. Um proprietário
+   com quatro imóveis parados em "Sem resposta" — o galpão que ele aceita
+   dividir em salas, os três apartamentos que ele pôs para alugar de uma vez —
+   levaria quatro mensagens quase iguais no mesmo número, dentro de três
+   minutos. Do lado de lá isso não parece follow-up: parece robô, e é
+   exatamente o comportamento que derruba o número da imobiliária.
+
+   Nenhum dos outros freios pega esse caso, e por um detalhe fácil de não ver:
+   todos leem as tentativas DAQUELE imóvel. Quatro imóveis têm quatro
+   históricos separados, então "falou há menos de 14 dias" e "já acumulou 4
+   tentativas" olham cada um deles e não veem nada de errado.
+
+   O corte roda DEPOIS da ordenação, então quem fica é quem está esperando há
+   mais tempo. Os outros não somem: viram exclusão explicada, e voltam a ser
+   elegíveis na próxima rodada — quando aí sim o corte de 14 dias vai valer
+   para eles, porque a tentativa registrada agora é do mesmo proprietário. */
+
+/** Identidade do destinatário. Usa a MESMA forma canônica do webhook (DDD +
+    assinante sem o nono dígito), senão "(43) 99802-4316" e "43 9802-4316"
+    passariam por pessoas diferentes. Sem forma canônica, cai nos dígitos
+    crus: agrupa só o que for idêntico, que é o lado seguro do erro —
+    juntar dois proprietários distintos calaria um follow-up devido. */
+function chaveProprietario(telefone: string): string {
+  return telefoneCanonico(telefone) || telefone.replace(/\D/g, "");
+}
+
+/** Como o imóvel que ficou aparece na explicação de quem saiu. */
+function rotuloCurto(imovel: Imovel): string {
+  return (imovel.codigo || "").trim() || (imovel.endereco || "").trim() || "outro imóvel";
 }
 
 /** Monta o público do lote: quem entra, quem fica de fora e por quê. */
@@ -192,10 +227,29 @@ export function selecionarFollowUp(imoveis: Imovel[], hoje: string): SelecaoFoll
     return ua < ub ? -1 : 1;
   });
 
+  // Um proprietário, uma mensagem (ver o bloco acima). Depois da ordenação:
+  // fica quem espera há mais tempo, os demais viram exclusão explicada.
+  const porProprietario = new Map<string, Imovel>();
+  const unicos: Imovel[] = [];
+  for (const imovel of elegiveis) {
+    const chave = chaveProprietario(imovel.proprietarioTelefone || "");
+    const jaTem = porProprietario.get(chave);
+    if (jaTem) {
+      excluidos.push({
+        imovel,
+        motivo: "mesmo-proprietario",
+        detalhe: `já entrou por ${rotuloCurto(jaTem)}`,
+      });
+      continue;
+    }
+    porProprietario.set(chave, imovel);
+    unicos.push(imovel);
+  }
+
   const enviadosHoje = enviadosFollowUpHoje(imoveis, hoje);
   const restante = Math.max(0, FOLLOWUP_TETO_DIA - enviadosHoje);
   return {
-    elegiveis,
+    elegiveis: unicos,
     excluidos,
     limite: Math.min(FOLLOWUP_LOTE_MAX, restante),
     enviadosHoje,

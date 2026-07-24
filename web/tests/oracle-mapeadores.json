@@ -68,7 +68,8 @@
       "comissao_recebida_data": "2026-07-06",
       "notas": [],
       "tentativas": [],
-      "pre_cadastro": false
+      "pre_cadastro": false,
+      "imovel_principal_id": null
     },
     "f02": {
       "id": "f02",
@@ -108,7 +109,8 @@
       "comissao_recebida_data": null,
       "notas": [],
       "tentativas": [],
-      "pre_cadastro": false
+      "pre_cadastro": false,
+      "imovel_principal_id": null
     },
     "f03": {
       "id": "f03",
@@ -148,7 +150,8 @@
       "comissao_recebida_data": null,
       "notas": [],
       "tentativas": [],
-      "pre_cadastro": false
+      "pre_cadastro": false,
+      "imovel_principal_id": null
     },
     "f04": {
       "id": "f04",
@@ -193,7 +196,8 @@
       "comissao_recebida_data": null,
       "notas": [],
       "tentativas": [],
-      "pre_cadastro": false
+      "pre_cadastro": false,
+      "imovel_principal_id": null
     },
     "f05": {
       "id": "f05",
@@ -246,7 +250,8 @@
       "comissao_recebida_data": null,
       "notas": [],
       "tentativas": [],
-      "pre_cadastro": false
+      "pre_cadastro": false,
+      "imovel_principal_id": null
     },
     "f06": {
       "id": "f06",
@@ -295,7 +300,8 @@
       "comissao_recebida_data": null,
       "notas": [],
       "tentativas": [],
-      "pre_cadastro": false
+      "pre_cadastro": false,
+      "imovel_principal_id": null
     },
     "f07": {
       "id": "f07",
@@ -344,7 +350,8 @@
       "comissao_recebida_data": null,
       "notas": [],
       "tentativas": [],
-      "pre_cadastro": false
+      "pre_cadastro": false,
+      "imovel_principal_id": null
     },
     "f08": {
       "id": "f08",
@@ -393,7 +400,8 @@
       "comissao_recebida_data": null,
       "notas": [],
       "tentativas": [],
-      "pre_cadastro": false
+      "pre_cadastro": false,
+      "imovel_principal_id": null
     },
     "f09": {
       "id": "f09",
@@ -438,7 +446,8 @@
       "comissao_recebida_data": null,
       "notas": [],
       "tentativas": [],
-      "pre_cadastro": false
+      "pre_cadastro": false,
+      "imovel_principal_id": null
     },
     "f10": {
       "id": "f10",
@@ -483,7 +492,8 @@
       "comissao_recebida_data": null,
       "notas": [],
       "tentativas": [],
-      "pre_cadastro": false
+      "pre_cadastro": false,
+      "imovel_principal_id": null
     },
     "f11": {
       "id": "f11",
@@ -536,7 +546,8 @@
       "comissao_recebida_data": "2026-06-22",
       "notas": [],
       "tentativas": [],
-      "pre_cadastro": false
+      "pre_cadastro": false,
+      "imovel_principal_id": null
     },
     "f12": {
       "id": "f12",
@@ -589,7 +600,8 @@
       "comissao_recebida_data": null,
       "notas": [],
       "tentativas": [],
-      "pre_cadastro": false
+      "pre_cadastro": false,
+      "imovel_principal_id": null
     },
     "f13": {
       "id": "f13",
@@ -642,7 +654,8 @@
       "comissao_recebida_data": "2026-06-30",
       "notas": [],
       "tentativas": [],
-      "pre_cadastro": false
+      "pre_cadastro": false,
+      "imovel_principal_id": null
     },
     "f14": {
       "id": "f14",
@@ -687,7 +700,8 @@
       "comissao_recebida_data": null,
       "notas": [],
       "tentativas": [],
-      "pre_cadastro": false
+      "pre_cadastro": false,
+      "imovel_principal_id": null
     },
     "f15": {
       "id": "f15",
@@ -732,7 +746,8 @@
       "comissao_recebida_data": null,
       "notas": [],
       "tentativas": [],
-      "pre_cadastro": false
+      "pre_cadastro": false,
+      "imovel_principal_id": null
     },
     "f16": {
       "id": "f16",
@@ -785,7 +800,8 @@
       "comissao_recebida_data": null,
       "notas": [],
       "tentativas": [],
-      "pre_cadastro": false
+      "pre_cadastro": false,
+      "imovel_principal_id": null
     },
     "f17": {
       "id": "f17",
@@ -834,7 +850,8 @@
       "comissao_recebida_data": null,
       "notas": [],
       "tentativas": [],
-      "pre_cadastro": false
+      "pre_cadastro": false,
+      "imovel_principal_id": null
     }
   },
   "roundTripImovel": {
@@ -904,7 +921,8 @@
       "comissaoRecebidaData": "2026-07-06",
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "f02": {
       "id": "f02",
@@ -943,7 +961,8 @@
       "comissaoRecebidaData": null,
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "f03": {
       "id": "f03",
@@ -982,7 +1001,8 @@
       "comissaoRecebidaData": null,
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "f04": {
       "id": "f04",
@@ -1026,7 +1046,8 @@
       "comissaoRecebidaData": null,
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "f05": {
       "id": "f05",
@@ -1078,7 +1099,8 @@
       "comissaoRecebidaData": null,
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "f06": {
       "id": "f06",
@@ -1126,7 +1148,8 @@
       "comissaoRecebidaData": null,
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "f07": {
       "id": "f07",
@@ -1174,7 +1197,8 @@
       "comissaoRecebidaData": null,
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "f08": {
       "id": "f08",
@@ -1222,7 +1246,8 @@
       "comissaoRecebidaData": null,
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "f09": {
       "id": "f09",
@@ -1266,7 +1291,8 @@
       "comissaoRecebidaData": null,
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "f10": {
       "id": "f10",
@@ -1310,7 +1336,8 @@
       "comissaoRecebidaData": null,
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "f11": {
       "id": "f11",
@@ -1362,7 +1389,8 @@
       "comissaoRecebidaData": "2026-06-22",
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "f12": {
       "id": "f12",
@@ -1414,7 +1442,8 @@
       "comissaoRecebidaData": null,
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "f13": {
       "id": "f13",
@@ -1466,7 +1495,8 @@
       "comissaoRecebidaData": "2026-06-30",
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "f14": {
       "id": "f14",
@@ -1510,7 +1540,8 @@
       "comissaoRecebidaData": null,
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "f15": {
       "id": "f15",
@@ -1554,7 +1585,8 @@
       "comissaoRecebidaData": null,
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "f16": {
       "id": "f16",
@@ -1606,7 +1638,8 @@
       "comissaoRecebidaData": null,
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "f17": {
       "id": "f17",
@@ -1654,7 +1687,8 @@
       "comissaoRecebidaData": null,
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     }
   },
   "fromDbImovel": {
@@ -1708,7 +1742,8 @@
       "comissaoRecebidaData": "2026-07-06",
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "r2": {
       "id": "r2",
@@ -1747,7 +1782,8 @@
       "comissaoRecebidaData": null,
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     },
     "r3": {
       "id": "r3",
@@ -1795,7 +1831,8 @@
       "comissaoRecebidaData": null,
       "notas": [],
       "tentativas": [],
-      "preCadastro": false
+      "preCadastro": false,
+      "imovelPrincipalId": null
     }
   },
   "fromDbAgenda": {
