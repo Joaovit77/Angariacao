@@ -21,7 +21,8 @@ export type TipoModal =
   | "tentativas"
   | "abordagens"
   | "followUpLote"
-  | "resultadosPendentes";
+  | "resultadosPendentes"
+  | "desdobrar";
 
 export interface ModalAtivo {
   tipo: TipoModal;

@@ -239,7 +239,10 @@ export default function ModalFollowUpLote() {
             <div className="field-hint">
               Ficam de fora quem não tem celular válido, quem falou com você nos últimos{" "}
               {FOLLOWUP_DIAS_DESDE_ULTIMO} dias e quem já acumulou {FOLLOWUP_MAX_TENTATIVAS} tentativas
-              — insistir além disso costuma render bloqueio, não resposta.
+              — insistir além disso costuma render bloqueio, não resposta. Também sai o imóvel cujo
+              proprietário já está no lote por outro: o lote manda{" "}
+              <strong>uma mensagem por pessoa</strong>, não uma por imóvel. Os que sobraram voltam na
+              próxima rodada.
             </div>
           </div>
         )}

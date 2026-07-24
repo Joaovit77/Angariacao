@@ -20,6 +20,12 @@ import {
 } from "./constantes";
 import { addDaysISO, agoraISOComHora, currentMonthKey, todayISO } from "./datas";
 import { celebracaoAoSalvar } from "./calculo/celebracao";
+import {
+  type EspecificacaoUnidade,
+  motivoNaoPodeDesdobrar,
+  textoNotaDesdobramento,
+  unidadeDesdobrada,
+} from "./calculo/desdobramento";
 import { dataAngariadoEfetiva, foiAngariado, historicoComStatus } from "./calculo/motor";
 import { useCelebracao } from "./celebracao";
 import { toDbAbordagem, toDbAgenda, toDbImovel } from "./persistencia/mapeadores";
@@ -199,6 +205,64 @@ export async function adicionarNotaImovel(imovelId: string, texto: string): Prom
   }
   setImoveis(imoveis.map((i) => (i.id === imovelId ? { ...i, notas: novasNotas } : i)));
   toast("Nota adicionada.");
+  return true;
+}
+
+/**
+ * Cria as unidades de um imóvel desdobrado (galpão que vira salas comerciais).
+ *
+ * Escrita ÚNICA: as unidades vão num insert só. Não é economia de rede — é
+ * atomicidade. Uma a uma, uma falha no meio deixaria duas salas cadastradas e
+ * uma faltando, e o corretor teria que descobrir qual olhando a lista.
+ *
+ * A nota no principal é o registro do que foi feito e vai por update PARCIAL
+ * da coluna (mesma estratégia de `adicionarNotaImovel`): o principal pode
+ * estar aberto em edição noutra aba, e um upsert da linha inteira aqui
+ * apagaria o que estivesse sendo escrito lá.
+ *
+ * Falhar a nota não desfaz as unidades: elas são o dado, a nota é o recado.
+ */
+export async function desdobrarImovel(
+  principalId: string,
+  specs: EspecificacaoUnidade[],
+  userId: string,
+): Promise<boolean> {
+  const { imoveis, setImoveis } = useAppStore.getState();
+  const principal = imoveis.find((i) => i.id === principalId);
+  if (!principal || specs.length === 0) return false;
+
+  const motivo = motivoNaoPodeDesdobrar(principal);
+  if (motivo) {
+    toast(motivo, "error");
+    return false;
+  }
+
+  const novas = specs.map((spec) => unidadeDesdobrada(principal, spec, uid()));
+
+  const { error } = await getSupabase()
+    .from("imoveis")
+    .insert(novas.map((u) => toDbImovel(u, userId)));
+  if (error) {
+    toast("Não foi possível criar as unidades: " + error.message, "error");
+    return false;
+  }
+
+  const nota: NotaImovel = {
+    id: uid(),
+    texto: textoNotaDesdobramento(specs),
+    data: agoraISOComHora(),
+  };
+  const novasNotas = [...(principal.notas || []), nota];
+  const { error: notaErr } = await getSupabase()
+    .from("imoveis")
+    .update({ notas: novasNotas })
+    .eq("id", principalId);
+
+  setImoveis([
+    ...imoveis.map((i) => (i.id === principalId && !notaErr ? { ...i, notas: novasNotas } : i)),
+    ...novas,
+  ]);
+  toast(novas.length === 1 ? "1 unidade criada." : `${novas.length} unidades criadas.`);
   return true;
 }
 

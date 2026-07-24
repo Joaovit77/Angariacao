@@ -26,7 +26,9 @@ import { fmtMoney } from "@/lib/formatadores";
 import { buscarCep, geocodeEndereco, maskCEP } from "@/lib/geo";
 import { canonizarValor, distintosCanonizados, nomeProprio } from "@/lib/normalizacao";
 import { canalObservado } from "@/lib/calculo/abordagens";
+import { podeDesdobrar } from "@/lib/calculo/desdobramento";
 import { descreverDuplicados, imoveisDuplicados } from "@/lib/calculo/duplicidade";
+import { unidadesDesdobradas } from "@/lib/calculo/motor";
 import { aplicarMudancaDeStatus, excluirImovel, numOrNull, salvarImovel, uid } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
@@ -47,8 +49,34 @@ interface Status {
   tone: "" | "ok" | "warn" | "err";
 }
 
+/** Ícone do desdobramento: um espaço dividido em unidades. Mesmo padrão de
+    linha da sidebar e dos insights (viewBox 24, stroke currentColor), para
+    herdar a cor de onde estiver. `verticalAlign` alinha com o texto quando ele
+    aparece dentro de um parágrafo; no `.btn`, que é flex, é ignorado. */
+function IconeDesdobrar() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={15}
+      height={15}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ flexShrink: 0, verticalAlign: "-2px" }}
+      aria-hidden="true"
+    >
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <line x1="12" y1="4" x2="12" y2="20" />
+      <line x1="12" y1="12" x2="21" y2="12" />
+    </svg>
+  );
+}
+
 export default function ModalImovel({ id }: { id?: string }) {
   const fecharModal = useUiModal((s) => s.fecharModal);
+  const abrirModal = useUiModal((s) => s.abrirModal);
   const { usuario } = useSessao();
   const imoveis = useAppStore((s) => s.imoveis);
   const comissaoPercent = useAppStore((s) => s.config.comissaoPercent);
@@ -142,6 +170,21 @@ export default function ModalImovel({ id }: { id?: string }) {
     imoveis,
     imovel ? imovel.id : null,
   );
+
+  // Desdobramento: este imóvel é uma unidade de outro, ou tem unidades próprias?
+  const principalDeste = imovel?.imovelPrincipalId
+    ? imoveis.find((i) => i.id === imovel.imovelPrincipalId) || null
+    : null;
+  const unidades = imovel ? unidadesDesdobradas(imoveis, imovel.id) : [];
+
+  /** Troca este modal pelo de desdobramento. Pergunta antes porque só existe
+      UM modal por vez: abrir o outro desmonta este e leva junto o que estiver
+      digitado e ainda não salvo. */
+  function irParaDesdobrar() {
+    if (!imovel) return;
+    if (!confirm("Alterações não salvas neste formulário serão perdidas. Continuar?")) return;
+    abrirModal("desdobrar", imovel.id);
+  }
 
   async function aoBuscarCep() {
     const raw = cep.replace(/\D/g, "");
@@ -350,6 +393,24 @@ export default function ModalImovel({ id }: { id?: string }) {
           <p className="section-note" style={{ marginBottom: "14px" }}>
             📋 Este imóvel é um <strong>pré-cadastro</strong>. Confira os dados com o que o
             proprietário respondeu e clique em <strong>Salvar alterações</strong> para confirmar.
+          </p>
+        )}
+        {principalDeste && (
+          <p className="section-note" style={{ marginBottom: "14px" }}>
+            <IconeDesdobrar /> Esta é uma <strong>unidade</strong> de{" "}
+            {principalDeste.codigo || principalDeste.endereco}. Ela conta na carteira, na locação e
+            na comissão, mas <strong>não</strong> como uma angariação nova — a captação foi uma só e
+            está registrada no imóvel principal, junto com as tentativas e as notas.
+          </p>
+        )}
+        {unidades.length > 0 && (
+          <p className="section-note" style={{ marginBottom: "14px" }}>
+            <IconeDesdobrar /> Este imóvel foi desdobrado em{" "}
+            <strong>
+              {unidades.length === 1 ? "1 unidade" : `${unidades.length} unidades`}
+            </strong>{" "}
+            ({unidades.map((u) => u.unidade || u.codigo || u.tipo).join(", ")}). A captação continua
+            contando uma vez, aqui.
           </p>
         )}
         <fieldset>
@@ -711,10 +772,16 @@ export default function ModalImovel({ id }: { id?: string }) {
         </fieldset>
       </div>
       <div className="modal-foot">
-        <div>
+        <div style={{ display: "flex", gap: "10px" }}>
           {imovel && (
             <button type="button" className="btn btn-ghost btn-danger" onClick={excluir}>
               Excluir imóvel
+            </button>
+          )}
+          {imovel && podeDesdobrar(imovel) && (
+            <button type="button" className="btn btn-ghost" onClick={irParaDesdobrar}>
+              <IconeDesdobrar />
+              Desdobrar em unidades
             </button>
           )}
         </div>

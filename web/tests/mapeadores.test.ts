@@ -74,6 +74,18 @@ describe("ida-e-volta imóvel: fromDb(toDb(x)) reproduz o app antigo", () => {
     expect(fromDbImovel(semColuna).preCadastro).toBe(false);
   });
 
+  it("imovelPrincipalId faz ida-e-volta; vazio e ausente viram null", () => {
+    const unidade = { ...imoveisCamel[0], imovelPrincipalId: "galpao-1" };
+    expect(toDbImovel(unidade, USER_ID).imovel_principal_id).toBe("galpao-1");
+    expect(fromDbImovel(toDbImovel(unidade, USER_ID) as DbImovelRow).imovelPrincipalId).toBe("galpao-1");
+    // String vazia não pode virar FK: o Postgres recusaria a linha inteira.
+    const vazio = { ...imoveisCamel[0], imovelPrincipalId: "" };
+    expect(toDbImovel(vazio, USER_ID).imovel_principal_id).toBeNull();
+    // Linha anterior à coluna (undefined) lê como null, não "".
+    const semColuna = { ...imoveisRows[0], imovel_principal_id: undefined } as unknown as DbImovelRow;
+    expect(fromDbImovel(semColuna).imovelPrincipalId).toBeNull();
+  });
+
   it("notas fazem ida-e-volta preservando id/texto/data", () => {
     const notas = [
       { id: "n1", texto: "Liguei, ficou de responder.", data: "2026-07-10T09:15" },

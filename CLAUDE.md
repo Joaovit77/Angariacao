@@ -112,6 +112,8 @@ o torna testável puro.
   ruído. Quem dispara é o `salvarImovel`; o card mora em `components/painel/Celebracao.tsx` e no
   store `lib/celebracao.ts`, **fora do `uiModal`** — o salvamento termina fechando o modal, e no
   mesmo store esse `fecharModal()` apagaria a festa no instante em que ela nasce.
+- **`calculo/desdobramento.ts`** — um espaço captado que vira várias unidades (o galpão que o
+  proprietário aceita dividir em salas). Ver "Desdobramento" abaixo.
 - **`calculo/duplicidade.ts`** — detecta imóvel já cadastrado. A identidade é
   `endereço + cidade + unidade + bloco`, comparada por chave normalizada (grafia, acento,
   pontuação e abreviação de logradouro não contam). `unidade`/`bloco` fazem parte da identidade
@@ -149,6 +151,40 @@ no campo `status` atual nem na existência do registro. Toda mudança de status 
 for esse status). Métricas de conversão, coortes e stale derivam do histórico. `foiAngariado()` só
 conta um imóvel como angariado quando o histórico registra a entrada em "Angariado" — criar o
 registro ou fazer o primeiro contato **não** conta.
+
+### Desdobramento: carteira ≠ captação
+
+O proprietário aceita angariar o galpão **e** dividi-lo em salas comerciais. São quatro anúncios e
+até quatro contratos, mas **uma** conversa ganha — e os cenários são parcialmente excludentes
+(locou o galpão inteiro, não há salas). O sistema separa os dois eixos com um campo só,
+`imovel.imovelPrincipalId`:
+
+- **Carteira** — a unidade é uma linha inteira, com aluguel, contrato, comissão e locação próprios.
+  Sem isso o dinheiro não fecha: `valorAluguel` é um campo só por imóvel.
+- **Captação** — a unidade **não** conta. O corte mora nas quatro funções de esforço de
+  `calculo/motor.ts` (`imoveisAngariadosNoMes/Periodo`, `imoveisContatadosNoMes/Periodo`), que
+  filtram por `imoveisDeCaptacao`. Num lugar só, porque é delas que descendem o KPI, a meta, as
+  coortes e o relatório — e é o que mantém as quatro views concordando.
+
+Consequência deliberada: **a meta de angariação passa a significar "negociações ganhas"**. Quantas
+unidades saem de cada uma é decisão do proprietário, não trabalho do corretor.
+
+Regras ao mexer:
+
+- **Só desdobra depois de angariado** (`motivoNaoPodeDesdobrar`). Antes disso as unidades seriam
+  imóveis que talvez nunca existam — e imóvel que não existe não fica quieto: entra no pipeline,
+  dispara `isStale` cobrando o corretor por imóvel parado, empilha no mapa e entra na fila do
+  follow-up. Quem desdobra é quem já tem interessado numa sala.
+- **A unidade herda o `statusHistory`, não as tentativas.** O histórico de status é copiado porque
+  ela É a mesma captação (e faz `tempoAteLocacao` medir o negócio inteiro); as tentativas ficam no
+  principal, porque duplicá-las faria uma mensagem enviada valer por quatro no ranking de
+  abordagens — o viés exato que `calculo/abordagens.ts` existe para não ter.
+- **Unidade nunca nasce "Locado"**, nem quando o principal está: somaria à conversão, ao
+  faturamento e à comissão do mês um contrato que não existiu.
+- **O vínculo não vira corrente** — não se desdobra uma unidade. Com dois níveis, "de quem é esta
+  captação?" deixaria de ter resposta única, que é a pergunta inteira que o campo responde.
+- No banco, `on delete set null` (não cascade): excluir o galpão não pode levar junto salas com
+  contrato ativo.
 
 ### Abordagens e tentativas
 
@@ -261,6 +297,14 @@ de spam — gente que já não respondeu. Os freios não são preferência de UX
 - **Os cortes saem das tentativas, não de campo novo.** "Falou há menos de 14 dias" e "já acumulou
   4 tentativas" são lidos do histórico que já existe — mesma leitura do ranking de abordagens.
   Nenhuma coluna, nenhuma migração, nenhuma política RLS a mais.
+- **Uma mensagem por PROPRIETÁRIO, não por imóvel.** Quem tem quatro imóveis parados em "Sem
+  resposta" — o galpão desdobrado em salas, os três apartamentos anunciados de uma vez — levaria
+  quatro mensagens quase iguais no mesmo número em três minutos, que é assinatura de bot. Nenhum
+  dos outros freios pega esse caso, por um detalhe fácil de não ver: **todos leem as tentativas
+  daquele imóvel**, e quatro imóveis têm quatro históricos limpos. O corte roda depois da
+  ordenação (fica quem espera há mais tempo), casa os telefones pela forma canônica de
+  `telefoneCanonico` — a mesma do webhook, senão o mesmo número com e sem o nono dígito passaria
+  por duas pessoas — e os demais voltam na rodada seguinte.
 - **Um seletor só, o de abordagem.** Ela é ao mesmo tempo o texto que sai (o `roteiro`) e o
   `abordagemId` que fica registrado na tentativa. Dois seletores permitiriam divergir "o que eu
   disse" de "o que eu anotei que disse", e o ranking passaria a medir ficção.

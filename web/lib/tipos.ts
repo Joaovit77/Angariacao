@@ -130,6 +130,15 @@ export interface Imovel {
   /** Pré-cadastro pendente de confirmação: criado no disparo rápido, some
       quando o imóvel é editado/salvo pelo modal completo (§ pré-cadastro). */
   preCadastro?: boolean | null;
+  /** Este imóvel é uma UNIDADE de um espaço já captado — aponta para o imóvel
+      que registrou a captação. null (o caso normal) = captação própria.
+
+      Existe porque um galpão que o proprietário aceita dividir em salas vira
+      várias linhas na carteira, mas continua sendo UMA conversa ganha. As
+      linhas extras precisam existir para ter aluguel, contrato e comissão
+      próprios; o que elas não podem é contar como angariações novas.
+      Ver `imoveisDeCaptacao` em calculo/motor.ts. */
+  imovelPrincipalId?: string | null;
 }
 
 export interface Meta {
