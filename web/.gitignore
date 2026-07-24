@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# config local do preview do Claude Code (dev server) — ferramenta, não app
+.claude/
