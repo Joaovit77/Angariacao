@@ -23,6 +23,12 @@
    ("imóvel locado", "confirmação de visita") continuam de fora: tratam
    de um passo já combinado e encheriam o histórico de mensagem que não
    é abordagem. Ver MODELOS_CAPTACAO em lib/calculo/whatsapp.ts.
+
+   O wa.me registra pelo mesmo critério, só que PERGUNTANDO ("mandou a
+   mensagem?"): o link abre a conversa e quem envia é o corretor, então
+   o app não pode afirmar o envio nem pode continuar ignorando-o. As duas
+   saídas gravam a mesma tentativa — o histórico não deve depender de por
+   onde a mensagem saiu.
    ================================================================ */
 import { useRef, useState } from "react";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
@@ -85,6 +91,9 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
   // Envio direto falhou (instância caída, número sem WhatsApp...): revela o
   // wa.me como saída, em vez de deixar o corretor sem caminho.
   const [falhouEnvio, setFalhouEnvio] = useState(false);
+  // O wa.me foi aberto e agora esperamos o corretor dizer se mandou. Ver
+  // abrirWhatsappWeb() para o porquê de perguntar.
+  const [perguntandoEnvio, setPerguntandoEnvio] = useState(false);
 
   if (!imovel) return null;
   const temTelefone = !!telefoneWhatsapp(imovel.proprietarioTelefone);
@@ -106,6 +115,9 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
   // Nome guardado na tentativa quando não há abordagem do catálogo (por VALOR:
   // modelo não tem id estável no banco — o do corretor pode ser apagado).
   const nomeSemCatalogo = modeloCustomSel?.nome || modeloSistemaSel?.rotulo || null;
+  // Este envio vira tentativa? Mesma regra nos dois caminhos (direto e wa.me),
+  // para o histórico não depender de por onde a mensagem saiu.
+  const registraTentativa = !!(abordagemSel || nomeSemCatalogo);
 
   function trocarModelo(tipo: "sistema" | "usuario" | "abordagem", id: string) {
     if (!imovel) return;
@@ -192,7 +204,7 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
     //
     // Modelo do SISTEMA continua sem registrar: "imóvel locado" e
     // "confirmação de visita" não são contato de captação.
-    if (r.ok && (abordagemSel || nomeSemCatalogo)) {
+    if (r.ok && registraTentativa) {
       // Só depois do envio CONFIRMADO pela Evolution. Registrar antes criaria
       // tentativa fantasma toda vez que o número não tivesse WhatsApp.
       //
@@ -235,6 +247,58 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
     const link = linkWhatsapp(imovel, mensagem);
     if (!link) return;
     window.open(link, "_blank", "noopener");
+    // O wa.me só ABRE a conversa: quem aperta o botão de enviar é o corretor,
+    // no WhatsApp dele, e o painel não fica sabendo. Por muito tempo isso
+    // significou não registrar nada — e como esse era o único caminho de envio
+    // até 21/07/2026, o histórico inteiro anterior a essa data não existe.
+    //
+    // Registrar por conta própria criaria tentativa fantasma toda vez que ele
+    // abrisse a conversa e desistisse. Então o app pergunta. A resposta dele é
+    // afirmação, do mesmo tipo da tentativa anotada à mão no ModalTentativas —
+    // a diferença é só o momento em que se pergunta.
+    //
+    // Só pergunta quando há o que registrar: com modelo operacional do sistema
+    // ("imóvel locado", "confirmação de visita") nada seria gravado de todo
+    // jeito, e a pergunta viraria só um clique a mais no caminho.
+    if (registraTentativa) {
+      setPerguntandoEnvio(true);
+      return;
+    }
+    fecharModal();
+  }
+
+  /**
+   * Resposta do corretor à pergunta acima. "Não mandei" fecha sem registrar —
+   * é o caso que justifica perguntar em vez de assumir.
+   *
+   * O resultado nasce "sem-resposta" MARCADO, igual ao envio direto: ele acabou
+   * de mandar e ninguém sabe o desfecho ainda. A marca é sobre o resultado, não
+   * sobre o envio — é o envio que ele está confirmando aqui.
+   */
+  async function confirmarEnvioManual(enviou: boolean) {
+    if (!imovel) return;
+    if (!enviou) {
+      setPerguntandoEnvio(false);
+      fecharModal();
+      return;
+    }
+    const ok = await registrarTentativa(imovel.id, {
+      abordagemId: abordagemSel ? abordagemSel.id : null,
+      modeloNome: abordagemSel ? null : nomeSemCatalogo,
+      canal: "WhatsApp",
+      resultado: "sem-resposta",
+      observacao: null,
+      aguardandoResultado: true,
+    });
+    // Em falha a pergunta continua de pé (o registrarTentativa já avisou do
+    // erro): fechar aqui perderia a confirmação que ele acabou de dar.
+    if (!ok) return;
+    toast(
+      abordagemSel
+        ? `Tentativa registrada em “${abordagemSel.nome}”.`
+        : `Tentativa registrada com o modelo “${nomeSemCatalogo}”.`,
+    );
+    setPerguntandoEnvio(false);
     fecharModal();
   }
 
@@ -464,33 +528,53 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
           </button>
         )}
       </div>
-      <div className="modal-foot">
-        <div></div>
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button type="button" className="btn" onClick={fecharModal}>
-            Fechar
-          </button>
-          <button type="button" className="btn" onClick={copiar}>
-            Copiar mensagem
-          </button>
-          {/* wa.me: caminho principal quando o envio direto não serve (número
-              fora do padrão) e saída de emergência quando ele falha. */}
-          {temTelefone && (!podeEnviarDireto || falhouEnvio) && (
-            <button
-              type="button"
-              className={`btn${podeEnviarDireto ? "" : " btn-primary"}`}
-              onClick={abrirWhatsappWeb}
-            >
-              Abrir WhatsApp Web
+      {/* Com a conversa aberta no WhatsApp Web, o rodapé vira a pergunta: só o
+          corretor sabe se chegou a mandar. As ações normais saem de cena para
+          a resposta não competir com "Fechar" — fechar sem responder é o que
+          deixaria a tentativa perdida de novo. */}
+      {perguntandoEnvio ? (
+        <div className="modal-foot">
+          <p className="section-note" style={{ margin: 0 }}>
+            Abrimos a conversa no WhatsApp. Você chegou a mandar a mensagem?
+          </p>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button type="button" className="btn" onClick={() => confirmarEnvioManual(false)}>
+              Não mandei
             </button>
-          )}
-          {podeEnviarDireto && (
-            <button type="button" className="btn btn-primary" onClick={enviarAgora} disabled={enviando}>
-              {enviando ? "Enviando..." : falhouEnvio ? "Tentar de novo" : "Enviar agora"}
+            <button type="button" className="btn btn-primary" onClick={() => confirmarEnvioManual(true)}>
+              Sim, mandei
             </button>
-          )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="modal-foot">
+          <div></div>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button type="button" className="btn" onClick={fecharModal}>
+              Fechar
+            </button>
+            <button type="button" className="btn" onClick={copiar}>
+              Copiar mensagem
+            </button>
+            {/* wa.me: caminho principal quando o envio direto não serve (número
+                fora do padrão) e saída de emergência quando ele falha. */}
+            {temTelefone && (!podeEnviarDireto || falhouEnvio) && (
+              <button
+                type="button"
+                className={`btn${podeEnviarDireto ? "" : " btn-primary"}`}
+                onClick={abrirWhatsappWeb}
+              >
+                Abrir WhatsApp Web
+              </button>
+            )}
+            {podeEnviarDireto && (
+              <button type="button" className="btn btn-primary" onClick={enviarAgora} disabled={enviando}>
+                {enviando ? "Enviando..." : falhouEnvio ? "Tentar de novo" : "Enviar agora"}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
