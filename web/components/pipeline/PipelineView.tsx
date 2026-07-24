@@ -12,7 +12,7 @@
    ================================================================ */
 import { useEffect, useMemo } from "react";
 import { resultadosPendentes } from "@/lib/calculo/abordagens";
-import { selecionarFollowUp } from "@/lib/calculo/followup";
+import { selecionarFollowUp, selecionarVerificacaoDisponibilidade } from "@/lib/calculo/followup";
 import {
   filtrarImoveis,
   ordenarPipelineLista,
@@ -446,6 +446,12 @@ export default function PipelineView() {
     () => selecionarFollowUp(imoveis, todayISO()).elegiveis.length,
     [imoveis],
   );
+  // Imóveis angariados/publicados há tempo, prontos para confirmar se ainda
+  // estão disponíveis. Mesmo critério do botão acima: só aparece com fila.
+  const prontosDisponibilidade = useMemo(
+    () => selecionarVerificacaoDisponibilidade(imoveis, todayISO()).elegiveis.length,
+    [imoveis],
+  );
   // Conversas cujo desfecho o sistema chutou no envio e ainda não foi
   // confirmado. Sem esta cobrança, a taxa de resposta de todo roteiro
   // tenderia a zero e o ranking viraria ruído.
@@ -481,6 +487,16 @@ export default function PipelineView() {
               onClick={() => abrirModal("followUpLote")}
             >
               📣 Follow-up ({prontosFollowUp})
+            </button>
+          )}
+          {prontosDisponibilidade > 0 && (
+            <button
+              type="button"
+              className="btn"
+              title="Confirmar com os proprietários se os imóveis anunciados há tempo ainda estão disponíveis"
+              onClick={() => abrirModal("confirmarDisponibilidade")}
+            >
+              🏠 Confirmar disponibilidade ({prontosDisponibilidade})
             </button>
           )}
           <button type="button" className="btn" onClick={() => abrirModal("preCadastro")}>

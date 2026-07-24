@@ -18,10 +18,13 @@ import {
   intervaloFollowUpMs,
   resumoLote,
   selecionarFollowUp,
+  selecionarVerificacaoDisponibilidade,
+  textoBaseDisponibilidade,
   textoBaseFollowUp,
   textoFollowUp,
   ultimoContatoISO,
 } from "@/lib/calculo/followup";
+import { VERIFICACAO_DISPONIBILIDADE_DIAS } from "@/lib/constantes";
 import type { Abordagem, Imovel, Tentativa } from "@/lib/tipos";
 
 const HOJE = "2026-07-21";
@@ -376,5 +379,150 @@ describe("falhaEhDoNumero", () => {
     for (const f of todas) {
       expect(falhaEhDoNumero(f) && falhaEncerraLote(f)).toBe(false);
     }
+  });
+});
+
+/* --- Lote de disponibilidade ------------------------------------------------
+   O segundo público: imóveis já captados que seguem sem locar há tempo. */
+
+/** Imóvel elegível por padrão para o lote de disponibilidade: Angariado bem
+    antigo (fora do prazo mínimo), telefone bom, último contato fora da janela
+    de recência. Cada teste estraga só o que quer medir. */
+function imovelAngariado(over: Partial<Imovel> = {}): Imovel {
+  const id = over.id ?? "d-1";
+  return {
+    id,
+    endereco: "Rua das Flores, 10",
+    proprietarioNome: "Bruno",
+    proprietarioTelefone: telefoneDe(id),
+    status: "Angariado",
+    statusHistory: [
+      { status: "Novo contato", date: "2026-03-01" },
+      { status: "Angariado", date: "2026-04-01" }, // ~111 dias antes de HOJE
+    ],
+    tentativas: [tentativa("2026-04-05")], // ~107 dias: fora da janela de recência
+    ...over,
+  };
+}
+
+describe("selecionarVerificacaoDisponibilidade — quem entra", () => {
+  it("pega Angariado e Publicado, ignora o resto do funil", () => {
+    const lista = [
+      imovelAngariado({ id: "a", status: "Angariado" }),
+      imovelAngariado({ id: "b", status: "Publicado" }),
+      imovelAngariado({ id: "c", status: "Novo contato" }),
+      imovelAngariado({ id: "d", status: "Sem resposta" }),
+      imovelAngariado({ id: "e", status: "Locado" }),
+    ];
+    const { elegiveis } = selecionarVerificacaoDisponibilidade(lista, HOJE);
+    expect(elegiveis.map((i) => i.id).sort()).toEqual(["a", "b"]);
+  });
+
+  it("só cutuca depois do prazo mínimo desde a angariação", () => {
+    // Angariado há menos de VERIFICACAO_DISPONIBILIDADE_DIAS: nem entra, nem vira
+    // exclusão explicada — é cedo demais para perguntar.
+    const recemAngariado = imovelAngariado({
+      id: "novo",
+      statusHistory: [
+        { status: "Novo contato", date: "2026-06-20" },
+        { status: "Angariado", date: "2026-07-01" }, // 20 dias antes de HOJE
+      ],
+      tentativas: [tentativa("2026-07-01")],
+    });
+    const { elegiveis, excluidos } = selecionarVerificacaoDisponibilidade([recemAngariado], HOJE);
+    expect(elegiveis).toHaveLength(0);
+    expect(excluidos).toHaveLength(0);
+  });
+
+  it("sem 'Angariado' no histórico não entra (dado antigo), sem alarde", () => {
+    const semHistorico = imovelAngariado({ id: "semh", statusHistory: [] });
+    const { elegiveis, excluidos } = selecionarVerificacaoDisponibilidade([semHistorico], HOJE);
+    expect(elegiveis).toHaveLength(0);
+    expect(excluidos).toHaveLength(0);
+  });
+});
+
+describe("selecionarVerificacaoDisponibilidade — freios", () => {
+  it("exclui quem foi contatado dentro da janela de recência (60 dias)", () => {
+    // Falou faz 20 dias: dentro da cadência, não pergunta de novo.
+    const recente = imovelAngariado({ id: "r", tentativas: [tentativa("2026-07-01")] });
+    const { elegiveis, excluidos } = selecionarVerificacaoDisponibilidade([recente], HOJE);
+    expect(elegiveis).toHaveLength(0);
+    expect(excluidos[0].motivo).toBe("confirmado-recente");
+  });
+
+  it("NÃO tem corte de tentativas demais — imóvel anunciado há muito segue elegível", () => {
+    // Cinco tentativas antigas (todas fora da janela de recência). No lote de
+    // seguimento isso barraria em FOLLOWUP_MAX_TENTATIVAS; aqui não.
+    const muitas = imovelAngariado({
+      id: "m",
+      tentativas: [
+        tentativa("2026-04-02"),
+        tentativa("2026-04-05"),
+        tentativa("2026-04-10"),
+        tentativa("2026-04-15"),
+        tentativa("2026-04-20"),
+      ],
+    });
+    const { elegiveis } = selecionarVerificacaoDisponibilidade([muitas], HOJE);
+    expect(elegiveis.map((i) => i.id)).toEqual(["m"]);
+  });
+
+  it("manda uma mensagem por proprietário, não uma por imóvel", () => {
+    const tel = "(43) 3333-3333";
+    const lista = [
+      imovelAngariado({ id: "p1", proprietarioTelefone: tel, endereco: "Sala 1" }),
+      imovelAngariado({ id: "p2", proprietarioTelefone: tel, endereco: "Sala 2" }),
+    ];
+    const { elegiveis, excluidos } = selecionarVerificacaoDisponibilidade(lista, HOJE);
+    expect(elegiveis).toHaveLength(1);
+    expect(excluidos.some((e) => e.motivo === "mesmo-proprietario")).toBe(true);
+  });
+
+  it("compartilha o teto do dia com o outro lote (conta envios WhatsApp de hoje)", () => {
+    // Um imóvel qualquer com FOLLOWUP_TETO_DIA tentativas WhatsApp HOJE zera o
+    // que ainda cabe — o número é o mesmo, não importa o tipo de lote.
+    const jaEnviou = imovelAngariado({
+      id: "hoje",
+      status: "Publicado",
+      tentativas: Array.from({ length: FOLLOWUP_TETO_DIA }, () => tentativa(HOJE)),
+    });
+    // esse mesmo imóvel foi contatado hoje, então ele próprio sai por recência;
+    // outro elegível prova que o limite caiu a zero.
+    const outro = imovelAngariado({ id: "outro" });
+    const { limite } = selecionarVerificacaoDisponibilidade([jaEnviou, outro], HOJE);
+    expect(limite).toBe(0);
+  });
+});
+
+describe("textoBaseDisponibilidade", () => {
+  it("é um molde com os marcadores {nome} e {endereco}", () => {
+    const base = textoBaseDisponibilidade();
+    expect(base).toContain("{nome}");
+    expect(base).toContain("{endereco}");
+    // E vira mensagem real ao preencher para um proprietário.
+    const pronto = textoFollowUp(base, imovelAngariado({ proprietarioNome: "Ana", endereco: "Av. Brasil, 9" }));
+    expect(pronto).toContain("Ana");
+    expect(pronto).toContain("Av. Brasil, 9");
+    expect(pronto).not.toContain("{");
+  });
+
+  it("o prazo mínimo é a mesma cadência do lembrete de verificação", () => {
+    // Guarda a invariante que o comentário promete: age gate == recência ==
+    // VERIFICACAO_DISPONIBILIDADE_DIAS. Se alguém mudar um sem o outro, este
+    // teste força a conversa.
+    const exatamenteNoPrazo = imovelAngariado({
+      id: "prazo",
+      statusHistory: [
+        { status: "Novo contato", date: "2026-01-01" },
+        // Angariado exatamente VERIFICACAO_DISPONIBILIDADE_DIAS antes de HOJE.
+        { status: "Angariado", date: "2026-05-22" },
+      ],
+      tentativas: [tentativa("2026-05-22")],
+    });
+    // 2026-05-22 é 60 dias antes de 2026-07-21.
+    expect(VERIFICACAO_DISPONIBILIDADE_DIAS).toBe(60);
+    const { elegiveis } = selecionarVerificacaoDisponibilidade([exatamenteNoPrazo], HOJE);
+    expect(elegiveis.map((i) => i.id)).toEqual(["prazo"]);
   });
 });

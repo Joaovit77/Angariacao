@@ -625,6 +625,71 @@ export async function confirmarConclusaoVerificacao(
   return true;
 }
 
+/**
+ * Versão em LOTE e SILENCIOSA da conclusão de verificação, chamada uma vez por
+ * imóvel pela fila do lote de disponibilidade (filaFollowUp) após cada envio
+ * confirmado.
+ *
+ * Faz o que o ModalVerificacao faz num clique, mas achando o lembrete pelo
+ * IMÓVEL (não pelo id do compromisso): dá baixa em qualquer lembrete de
+ * disponibilidade pendente daquele imóvel e, se ainda não estiver Locado e não
+ * sobrar outro em aberto, agenda o próximo para daqui VERIFICACAO_
+ * DISPONIBILIDADE_DIAS dias. Sem isto, o lote e o lembrete da agenda cutucariam
+ * o mesmo proprietário pelos dois caminhos.
+ *
+ * Silenciosa de propósito: roda dentro da fila, e um toast por baixa afogaria o
+ * corretor que segue trabalhando (mesma razão do `silencioso` da tentativa).
+ * Não dá para reaproveitar confirmarConclusaoVerificacao: aquela é por id de
+ * agenda, dá toast e o imóvel pode nem ter um lembrete aberto (dado antigo) —
+ * aqui, nesse caso, criamos o primeiro.
+ */
+export async function registrarConfirmacaoDisponibilidade(
+  imovelId: string,
+  dataContato: string,
+  userId: string,
+): Promise<boolean> {
+  const supabase = getSupabase();
+  const { agenda, imoveis } = useAppStore.getState();
+  const imovel = imoveis.find((i) => i.id === imovelId);
+  if (!imovel) return false;
+
+  let novaAgenda = agenda;
+  const pendentes = agenda.filter(
+    (a) => a.imovelId === imovelId && a.isVerificacaoDisponibilidade && !a.done,
+  );
+  if (pendentes.length > 0) {
+    const ids = pendentes.map((a) => a.id);
+    const { error } = await supabase.from("agenda").update({ done: true }).in("id", ids);
+    if (error) return false;
+    novaAgenda = novaAgenda.map((a) => (ids.includes(a.id) ? { ...a, done: true } : a));
+  }
+
+  // Reagenda só enquanto ainda faz sentido perguntar de novo, e nunca empilha:
+  // se algum lembrete futuro já sobrou aberto, não cria outro.
+  if (imovel.status !== "Locado") {
+    const jaTemAberto = novaAgenda.some(
+      (a) => a.imovelId === imovelId && a.isVerificacaoDisponibilidade && !a.done,
+    );
+    if (!jaTemAberto) {
+      const proximo: AgendaItem = {
+        id: uid(),
+        title: `Verificar disponibilidade — ${imovel.codigo || imovel.endereco}`,
+        type: "Follow-up",
+        date: addDaysISO(dataContato, VERIFICACAO_DISPONIBILIDADE_DIAS) as string,
+        imovelId,
+        notes: "Lembrete automático: confirme novamente com o proprietário se o imóvel segue disponível.",
+        done: false,
+        isVerificacaoDisponibilidade: true,
+      };
+      const { error } = await supabase.from("agenda").insert(toDbAgenda(proximo, userId));
+      if (!error) novaAgenda = [...novaAgenda, proximo];
+    }
+  }
+
+  if (novaAgenda !== agenda) useAppStore.getState().setAgenda(novaAgenda);
+  return true;
+}
+
 export async function salvarConfig(
   config: UserConfig,
   userId: string,

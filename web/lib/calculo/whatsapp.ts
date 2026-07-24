@@ -82,6 +82,15 @@ Passando para te manter a par: o ${referenciaImovel(i)} está publicado e em div
 
 Assim que tivermos visitas ou propostas, entro em contato.`,
 
+  // Confirmação de disponibilidade: o imóvel está anunciado há um tempo e o
+  // corretor confirma, de tempos em tempos, se segue disponível. É o texto do
+  // lote de disponibilidade (ver calculo/followup) e também escolhível avulso.
+  "confirmacao-disponibilidade": (i) => `${saudacao(i)}
+
+Passando para confirmar se o ${referenciaImovel(i)} ainda está disponível para locação.
+
+Se já alugou, decidiu não alugar agora ou quer ajustar algo, é só me avisar por aqui. Seguindo disponível, continuamos com a divulgação para você.`,
+
   "imovel-locado": (i) => `${saudacao(i)}
 
 Ótima notícia: o ${referenciaImovel(i)} foi locado!
@@ -124,6 +133,7 @@ export const MODELOS_WHATSAPP: ModeloWhatsapp[] = [
   { id: "cobranca-documentacao", rotulo: "Cobrança de documentação" },
   { id: "inicio-divulgacao", rotulo: "Início da divulgação" },
   { id: "atualizacao-anuncio", rotulo: "Atualização do anúncio" },
+  { id: "confirmacao-disponibilidade", rotulo: "Confirmar disponibilidade" },
   { id: "feedback-divulgacao", rotulo: "Feedback de divulgação" },
   { id: "imovel-locado", rotulo: "Imóvel locado" },
   { id: "retomada-contato", rotulo: "Retomada de contato" },

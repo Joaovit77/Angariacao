@@ -1,28 +1,38 @@
 /* ================================================================
-   FOLLOW-UP EM LOTE — parte pura
+   ENVIO EM LOTE — parte pura
    Feature nova da pós-migração (sem oráculo do app antigo).
 
-   Responde uma pergunta só: "de quem eu não obtive resposta, para
-   quem vale mandar uma cutucada hoje?". Quem envia é a fila em
-   lib/uiFollowUp.ts, que chama a rota /api/whatsapp/enviar uma vez
-   por imóvel; aqui ficam a ELEGIBILIDADE e o TEXTO, puros e
-   testáveis — sem React/Next/Supabase/store.
+   Dois públicos, mesma máquina. Ambos respondem "de quem vale mandar
+   uma mensagem hoje, sem cutucar duas vezes nem virar spam?":
+
+   1. SEGUIMENTO (selecionarFollowUp) — proprietários em "Sem resposta",
+      uma cutucada para reabrir a conversa.
+   2. DISPONIBILIDADE (selecionarVerificacaoDisponibilidade) — imóveis
+      já angariados/publicados há tempo, confirmando se ainda estão
+      disponíveis. É a versão em LOTE do lembrete individual de
+      "verificar disponibilidade" (ver ModalVerificacao / a agenda).
+
+   Quem envia é a fila em lib/filaFollowUp.ts, que chama a rota
+   /api/whatsapp/enviar uma vez por imóvel; aqui ficam a ELEGIBILIDADE
+   e o TEXTO, puros e testáveis — sem React/Next/Supabase/store.
 
    O desenho inteiro é governado por um risco que não é de software:
    disparar mensagens em rajada pela mesma instância do WhatsApp é o
-   padrão que a plataforma classifica como spam, e o público aqui é o
-   pior possível para esse detector — gente que JÁ não respondeu.
-   Taxa de resposta baixa + textos iguais + rajada = número banido, e
-   o número é da imobiliária. Daí os quatro freios abaixo; eles não
-   são preferência de UX, são o que mantém a conta viva.
+   padrão que a plataforma classifica como spam. Taxa de resposta baixa
+   + textos iguais + rajada = número banido, e o número é da imobiliária.
+   Daí os freios abaixo; eles não são preferência de UX, são o que mantém
+   a conta viva. Os dois lotes COMPARTILHAM o teto do dia (mesma instância,
+   mesma conta) e a regra de uma mensagem por proprietário.
 
    Nenhum deles precisou de campo novo no banco: as TENTATIVAS já
    registram quando se falou com o proprietário e quantas vezes. É a
    mesma leitura que o ranking de abordagens faz — a verdade está no
    histórico, não num campo único do imóvel.
    ================================================================ */
+import { VERIFICACAO_DISPONIBILIDADE_DIAS } from "../constantes";
 import { daysBetween } from "../datas";
 import type { Abordagem, Imovel, Tentativa } from "../tipos";
+import { dataAngariadoEfetiva, isPausado } from "./motor";
 import { telefoneCanonico } from "./webhookWhatsapp";
 import { aplicarModeloUsuario, type FalhaEnvio, mensagemWhatsapp, numeroEvolution } from "./whatsapp";
 
@@ -56,10 +66,16 @@ export const FOLLOWUP_INTERVALO_MAX_MS = 60_000;
 /** Canal registrado nas tentativas criadas pelo lote (um de FORMAS_ABORDAGEM). */
 export const FOLLOWUP_CANAL = "WhatsApp";
 
-/** Status que o lote atende. Só "Sem resposta": "Perdido" e "Cancelado"
-    também são terminais, mas são saídas DELIBERADAS — o proprietário disse
-    não, ou o negócio caiu. Cutucar quem recusou é outro produto. */
+/** Status que o lote de SEGUIMENTO atende. Só "Sem resposta": "Perdido" e
+    "Cancelado" também são terminais, mas são saídas DELIBERADAS — o
+    proprietário disse não, ou o negócio caiu. Cutucar quem recusou é outro
+    produto. */
 export const FOLLOWUP_STATUS_ALVO = "Sem resposta";
+
+/** Público do lote de DISPONIBILIDADE: imóveis já captados que seguem sem
+    locar. Mesmos valores de STATUS_STALE_LENTO, com nome próprio porque a
+    intenção aqui é outra — confirmar disponibilidade, não medir "parado". */
+export const DISPONIBILIDADE_STATUS_ALVO = ["Angariado", "Publicado"] as const;
 
 /** Modelo do sistema usado quando a abordagem escolhida não tem roteiro.
     É o texto escrito exatamente para este caso ("tentei falar com você há
@@ -71,6 +87,9 @@ export type MotivoExclusao =
   | "numero-invalido"
   | "contato-recente"
   | "tentativas-demais"
+  // Só do lote de disponibilidade: já perguntamos há pouco (dentro da mesma
+  // cadência do lembrete). Distinto de "contato-recente" só na redação.
+  | "confirmado-recente"
   | "mesmo-proprietario";
 
 export interface ExcluidoFollowUp {
@@ -99,6 +118,7 @@ const TEXTO_MOTIVO: Record<MotivoExclusao, string> = {
   "numero-invalido": "Telefone fora do formato de celular",
   "contato-recente": "Falou com você há pouco tempo",
   "tentativas-demais": "Já recebeu tentativas demais",
+  "confirmado-recente": "Você já falou com este proprietário há pouco",
   "mesmo-proprietario": "Mesmo proprietário de outro imóvel do lote",
 };
 
@@ -256,6 +276,104 @@ export function selecionarFollowUp(imoveis: Imovel[], hoje: string): SelecaoFoll
   };
 }
 
+/* --- Lote de disponibilidade ------------------------------------------------
+   O outro público: imóveis já captados (Angariado/Publicado) que seguem sem
+   locar há um tempo, para confirmar se ainda estão disponíveis. Reaproveita
+   TODOS os freios anti-spam do lote de seguimento — a diferença é o público e
+   a cadência.
+
+   Duas escolhas de desenho que separam este lote do de "Sem resposta":
+
+   - NÃO tem o corte de "tentativas demais". Um imóvel anunciado por um ano é
+     legitimamente perguntado várias vezes; parar na 4ª deixaria de confirmar
+     justo os que ficaram mais tempo no mercado. Quem segura a insistência aqui
+     é a JANELA de recência, não uma contagem.
+   - A janela de recência é a mesma cadência do lembrete (VERIFICACAO_
+     DISPONIBILIDADE_DIAS, 60 dias), não os 14 do seguimento: confirmar
+     disponibilidade é uma cutucada de ciclo longo, não de perseguição. Assim
+     cada proprietário entra no máximo uma vez por ciclo, mesmo que fique meses
+     anunciado — e o registro da tentativa (canal WhatsApp) é o que o exclui da
+     rodada seguinte, igual ao outro lote. */
+export function selecionarVerificacaoDisponibilidade(imoveis: Imovel[], hoje: string): SelecaoFollowUp {
+  const elegiveis: Imovel[] = [];
+  const excluidos: ExcluidoFollowUp[] = [];
+  const alvo: readonly string[] = DISPONIBILIDADE_STATUS_ALVO;
+
+  for (const imovel of imoveis) {
+    if (!alvo.includes(imovel.status)) continue;
+    // Follow-up pausado pelo corretor (viagem do proprietário, etc.): respeita.
+    if (isPausado(imovel)) continue;
+
+    // Só cutuca depois de um tempo anunciado. Sem data de angariação no
+    // histórico (dado antigo/corrompido) fica de fora sem alarde — não é algo
+    // que o corretor resolve nesta tela.
+    const desdeAngariado = dataAngariadoEfetiva(imovel);
+    if (!desdeAngariado) continue;
+    const diasAngariado = daysBetween(desdeAngariado, hoje);
+    if (diasAngariado === null || diasAngariado < VERIFICACAO_DISPONIBILIDADE_DIAS) continue;
+
+    const telefone = (imovel.proprietarioTelefone || "").trim();
+    if (!telefone) {
+      excluidos.push({ imovel, motivo: "sem-telefone", detalhe: "" });
+      continue;
+    }
+    if (!numeroEvolution(telefone)) {
+      excluidos.push({ imovel, motivo: "numero-invalido", detalhe: telefone });
+      continue;
+    }
+
+    // Já falamos há pouco (qualquer canal): não pergunta de novo dentro do
+    // ciclo. É o freio que substitui o "tentativas demais" aqui.
+    const ultimo = ultimoContatoISO(imovel);
+    const dias = ultimo ? daysBetween(ultimo, hoje) : null;
+    if (dias !== null && dias < VERIFICACAO_DISPONIBILIDADE_DIAS) {
+      excluidos.push({
+        imovel,
+        motivo: "confirmado-recente",
+        detalhe: dias <= 0 ? "hoje" : dias === 1 ? "ontem" : `há ${dias} dias`,
+      });
+      continue;
+    }
+
+    elegiveis.push(imovel);
+  }
+
+  // Quem está esperando confirmação há mais tempo primeiro. Base: o último
+  // contato ou, sem nenhum, a data da angariação.
+  elegiveis.sort((a, b) => {
+    const ua = ultimoContatoISO(a) || dataAngariadoEfetiva(a) || "";
+    const ub = ultimoContatoISO(b) || dataAngariadoEfetiva(b) || "";
+    if (ua === ub) return 0;
+    return ua < ub ? -1 : 1;
+  });
+
+  // Uma mensagem por proprietário — mesma regra e mesma chave canônica do outro
+  // lote (o dono do galpão desdobrado em salas não leva quatro mensagens).
+  const porProprietario = new Map<string, Imovel>();
+  const unicos: Imovel[] = [];
+  for (const imovel of elegiveis) {
+    const chave = chaveProprietario(imovel.proprietarioTelefone || "");
+    const jaTem = porProprietario.get(chave);
+    if (jaTem) {
+      excluidos.push({ imovel, motivo: "mesmo-proprietario", detalhe: `já entrou por ${rotuloCurto(jaTem)}` });
+      continue;
+    }
+    porProprietario.set(chave, imovel);
+    unicos.push(imovel);
+  }
+
+  // Teto do dia COMPARTILHADO com o outro lote: é a mesma instância e a mesma
+  // conta, então o que protege o número é o total de envios do dia, não o tipo.
+  const enviadosHoje = enviadosFollowUpHoje(imoveis, hoje);
+  const restante = Math.max(0, FOLLOWUP_TETO_DIA - enviadosHoje);
+  return {
+    elegiveis: unicos,
+    excluidos,
+    limite: Math.min(FOLLOWUP_LOTE_MAX, restante),
+    enviadosHoje,
+  };
+}
+
 /* --- Texto ------------------------------------------------------------------
    A abordagem escolhida é ao mesmo tempo o que SAI (o roteiro) e o que fica
    REGISTRADO (o abordagemId da tentativa). Um seletor só, porque dois
@@ -281,6 +399,17 @@ const IMOVEL_MOLDE: Imovel = {
 export function textoBaseFollowUp(abordagem: Abordagem | null): string {
   const roteiro = (abordagem?.roteiro || "").trim();
   return roteiro || mensagemWhatsapp(MODELO_PADRAO, IMOVEL_MOLDE);
+}
+
+/** Modelo do sistema usado no lote de disponibilidade — a mensagem escrita
+    para "seu imóvel ainda está disponível?". */
+const MODELO_DISPONIBILIDADE = "confirmacao-disponibilidade";
+
+/** Texto base do lote de disponibilidade — o mesmo MOLDE com {nome}/{endereco}.
+    Diferente do seguimento, aqui não há seletor de abordagem: confirmar
+    disponibilidade não é roteiro de captação e não entra no ranking. */
+export function textoBaseDisponibilidade(): string {
+  return mensagemWhatsapp(MODELO_DISPONIBILIDADE, IMOVEL_MOLDE);
 }
 
 /** O texto base preenchido para um proprietário ({nome}, {endereco}). */

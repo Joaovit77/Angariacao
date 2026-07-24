@@ -21,6 +21,7 @@ export type TipoModal =
   | "tentativas"
   | "abordagens"
   | "followUpLote"
+  | "confirmarDisponibilidade"
   | "resultadosPendentes"
   | "desdobrar";
 

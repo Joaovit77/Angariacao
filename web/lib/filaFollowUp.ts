@@ -133,9 +133,29 @@ function esperar(ms: number): Promise<void> {
   });
 }
 
+/** O que muda de um lote para o outro. O SEGUIMENTO usa os defaults; o de
+    DISPONIBILIDADE passa a observação, o nome do modelo e o efeito de dar baixa
+    no lembrete da agenda. Tudo o mais (freios, intervalo, relatório) é igual. */
+export interface OpcoesLote {
+  /** Observação gravada na tentativa de cada envio. */
+  observacao?: string;
+  /** Nome guardado na tentativa quando não há abordagem — para o histórico e o
+      nudge mostrarem o que saiu (não entra no ranking). */
+  modeloNome?: string | null;
+  /** Efeito após CADA envio confirmado, depois de registrar a tentativa (ex.:
+      dar baixa no lembrete de disponibilidade e reagendar o próximo). O retorno
+      é ignorado (a mutação devolve boolean, a fila não o usa). Não deve lançar —
+      se lançar, a falha é engolida para não derrubar a fila. */
+  aposEnvioOk?: (imovelId: string) => Promise<unknown>;
+}
+
 /** Dispara o lote. Não lança: cada falha entra no resumo e a fila segue —
     um número sem WhatsApp no meio da lista não pode abortar os outros nove. */
-export async function dispararLote(itens: ItemFila[], abordagemId: string | null): Promise<void> {
+export async function dispararLote(
+  itens: ItemFila[],
+  abordagemId: string | null,
+  opcoes: OpcoesLote = {},
+): Promise<void> {
   const store = useFilaFollowUp.getState();
   if (store.rodando || itens.length === 0) return;
   store.iniciar(itens, abordagemId);
@@ -158,9 +178,10 @@ export async function dispararLote(itens: ItemFila[], abordagemId: string | null
         item.imovelId,
         {
           abordagemId,
+          modeloNome: opcoes.modeloNome ?? null,
           canal: FOLLOWUP_CANAL,
           resultado: "sem-resposta",
-          observacao: "Follow-up em lote",
+          observacao: opcoes.observacao ?? "Follow-up em lote",
           // Palpite, como em qualquer envio: o nudge cobra a confirmação
           // depois. Sem isso, um lote de 10 empurraria dez "sem-resposta"
           // definitivos para o ranking sem ninguém ter observado nada.
@@ -168,6 +189,15 @@ export async function dispararLote(itens: ItemFila[], abordagemId: string | null
         },
         true,
       );
+      // Efeito próprio do lote (ex.: dar baixa no lembrete de disponibilidade).
+      // Só depois da tentativa, e nunca derruba a fila — é auxiliar ao envio.
+      if (opcoes.aposEnvioOk) {
+        try {
+          await opcoes.aposEnvioOk(item.imovelId);
+        } catch {
+          /* efeito secundário: o envio valeu, a baixa do lembrete pode esperar */
+        }
+      }
       useFilaFollowUp.getState().registrarEnvio();
     } else {
       useFilaFollowUp.getState().registrarEnvio({

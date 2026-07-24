@@ -287,6 +287,27 @@ Uma mensagem para cada proprietário parado em "Sem resposta", de uma vez. As pa
 existente uma vez por imóvel. Entrada pelo Pipeline; UI em `ModalFollowUpLote` +
 `painel/IndicadorFollowUp`.
 
+**São DOIS lotes, uma máquina só.** Além do seguimento de "Sem resposta", há a **confirmação de
+disponibilidade** (`selecionarVerificacaoDisponibilidade` + `ModalConfirmarDisponibilidade`):
+imóveis já **angariados/publicados** há tempo, perguntando se ainda estão disponíveis — a versão
+em LOTE do lembrete individual de "verificar disponibilidade" (ver `ModalVerificacao` / a agenda).
+Os dois lotes compartilham a fila, os freios anti-spam abaixo, o relatório de falhas e o **teto do
+dia** (mesma instância, mesma conta — o que protege o número é o total de envios, não o tipo). O
+que muda no lote de disponibilidade:
+
+- **Alvo e cadência longos.** Público é `DISPONIBILIDADE_STATUS_ALVO` (Angariado/Publicado) parado
+  há ≥ `VERIFICACAO_DISPONIBILIDADE_DIAS` (60) dias desde a angariação. E a janela de recência é os
+  mesmos 60 dias, não os 14 do seguimento: confirmar disponibilidade é cutucada de ciclo longo.
+- **Sem corte de "tentativas demais".** Um imóvel anunciado um ano é perguntado várias vezes de
+  propósito; quem segura a insistência é a janela de recência, não uma contagem.
+- **Sem seletor de abordagem.** Não é roteiro de captação e não entra no ranking — a tentativa nasce
+  com `abordagemId: null` + `modeloNome: "Confirmar disponibilidade"` (aparece no histórico e no
+  nudge, nunca no ranking). O texto padrão é o modelo do sistema `confirmacao-disponibilidade`.
+- **Dá baixa e reagenda o lembrete.** Cada envio confirmado chama `registrarConfirmacaoDisponibilidade`
+  (via o `aposEnvioOk` da fila): marca como feito qualquer lembrete "Verificar disponibilidade"
+  pendente do imóvel e agenda o próximo para +60 dias. Sem isso, o lote e o lembrete da agenda
+  cutucariam o mesmo proprietário pelos dois caminhos.
+
 O desenho é governado por um risco que **não é de software**: disparar mensagens em rajada pela
 mesma instância derruba o número da imobiliária, e o público aqui é o pior possível para o detector
 de spam — gente que já não respondeu. Os freios não são preferência de UX:
