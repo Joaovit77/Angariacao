@@ -388,6 +388,72 @@ export function encerramentoPorResposta(
   };
 }
 
+/* ----------------------------------------------------------------
+   AGENDA INTELIGENTE — o compromisso que o proprietário marcou
+
+   Quando ele responde "pode ser quinta às 10h", isso É um compromisso.
+   Antes a data ficava só guardada em `sugestaoIa.retomarEm`, exibida
+   numa lista de pendências que ninguém abre — o corretor tinha um
+   horário marcado pelo próprio proprietário e nada o avisava no dia.
+
+   Criar aqui é uma escrita automática, como o encerramento — mas
+   MUITO mais barata de errar: um compromisso errado custa um clique
+   para apagar, enquanto um encerramento errado tira um imóvel bom da
+   carteira. Por isso as travas são outras, e menores:
+
+   - **Sem data, não cria.** Inventar um dia faria o corretor ligar
+     na quarta para quem pediu sexta. Prazo vago que a IA não
+     conseguiu converter vira null e o nudge cobra como antes.
+   - **Data no passado não cria** — é leitura errada da mensagem
+     ("me liga dia 5" quando o dia 5 já passou é o mês que vem, e
+     adivinhar qual seria pior que não agendar).
+   - **A nota diz de onde veio**, com a frase que o proprietário
+     escreveu. Compromisso que aparece sozinho e não se explica é
+     compromisso que o corretor apaga por desconfiança.
+   ---------------------------------------------------------------- */
+
+/** Tipos usados pelo compromisso automático — ambos de AGENDA_TYPES. */
+export const TIPO_AGENDA_VISITA = "Visita";
+export const TIPO_AGENDA_RETORNO = "Retorno ao proprietário";
+
+export interface CompromissoAutomatico {
+  titulo: string;
+  tipo: string;
+  data: string;
+  hora: string | null;
+  notas: string;
+}
+
+/**
+ * O compromisso que esta resposta marca, ou `null` quando ela não marca nada.
+ *
+ * `rotulo` é o código ou endereço do imóvel, só para o título ser legível na
+ * lista sem precisar abrir.
+ */
+export function compromissoDaResposta(
+  sugestao: { resultado?: string; retomarEm?: string | null; horaRetomar?: string | null; resumo?: string } | null | undefined,
+  rotulo: string,
+  hoje: string,
+): CompromissoAutomatico | null {
+  const data = (sugestao?.retomarEm || "").slice(0, 10);
+  // Sem data não há compromisso; data anterior a hoje é leitura errada.
+  if (!data || data < hoje) return null;
+
+  // "agendou" é o desfecho em que ficou marcada visita ou reunião; o resto
+  // que traz data é retomada de conversa.
+  const tipo = sugestao?.resultado === "agendou" ? TIPO_AGENDA_VISITA : TIPO_AGENDA_RETORNO;
+  const hora = (sugestao?.horaRetomar || "").trim() || null;
+  const resumo = (sugestao?.resumo || "").trim();
+
+  return {
+    titulo: `${tipo === TIPO_AGENDA_VISITA ? "Visita" : "Retorno"} — ${rotulo}`,
+    tipo,
+    data,
+    hora,
+    notas: `Criado a partir da resposta do proprietário no WhatsApp.${resumo ? ` ${resumo}` : ""}`,
+  };
+}
+
 export function sugerirNaTentativaPendente(
   historico: Tentativa[] | null | undefined,
   sugestao: NonNullable<Tentativa["sugestaoIa"]>,

@@ -13,6 +13,7 @@
    próximo lembrete; os demais alternam done direto.
    ================================================================ */
 import { agendaTypeIcon, agendaVencimentoInfo, isAgendaAngariacaoVencida } from "@/lib/calculo/agenda";
+import { enderecoComUnidade } from "@/lib/calculo/whatsapp";
 import { todayISO } from "@/lib/datas";
 import { alternarAgendaDone, excluirAgenda } from "@/lib/mutacoes";
 import type { AgendaItem, Imovel } from "@/lib/tipos";
@@ -43,31 +44,54 @@ export default function ItemAgenda({ a, imovel }: { a: AgendaItem; imovel: Imove
     abrirModal("whatsapp", imovel.id);
   }
 
+  // Quem e onde — o que faltava na linha. "Retomar contato — LD-140" obrigava
+  // a abrir o item para saber com quem é e em que endereço; agora o nome do
+  // proprietário e o endereço (com ap/bloco) ficam na própria linha.
+  const proprietario = imovel?.proprietarioNome?.trim() || "";
+  const onde = imovel ? enderecoComUnidade(imovel) : "";
+
   return (
     <div
       className={`agenda-item agenda-item-enhanced ${a.done ? "done" : ""} ${overdue ? "overdue" : ""} ${today ? "today" : ""} ${future ? "future" : ""}`}
     >
+      {/* Faixa de hora à esquerda: é o que faz a lista se ler como agenda.
+          Some quando o compromisso não tem hora, e aí o item ocupa a linha
+          inteira — sem buraco de alinhamento. */}
+      {a.hora && <div className="agenda-item-hora">{a.hora}</div>}
       <div className={`agenda-check ${a.done ? "checked" : ""}`} onClick={alternarConclusao}>
         {a.done ? "✓" : ""}
       </div>
       <div className="agenda-item-body" style={{ cursor: "pointer" }} onClick={() => abrirModal("agenda", a.id)}>
         <div className="agenda-item-title">
           <span className="agenda-type-icon">{typeIcon}</span>
-          {a.hora && <span className="agenda-hora">{a.hora}</span>}
           {a.title}
         </div>
-        <div className="agenda-item-meta">
-          <span className="agenda-type-tag" data-type={a.type}>
-            {a.type}
+        {(proprietario || onde) && (
+          <div className="agenda-item-quem">
+            {proprietario && <span className="agenda-item-nome">{proprietario}</span>}
+            {onde && (
+              <span className="agenda-item-onde" title={onde}>
+                {onde}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+      {/* Etiquetas à DIREITA, não empilhadas sob o título: à esquerda elas
+          disputavam espaço com o nome e o endereço e tudo virava um bloco só.
+          Separadas, o lado esquerdo responde "quem/onde" e o direito
+          "que tipo/quando" — dois olhares em vez de um amontoado. */}
+      <div className="agenda-item-tags">
+        <span className="agenda-type-tag" data-type={a.type}>
+          {a.type}
+        </span>
+        {imovel?.codigo && <span className="agenda-item-cod">{imovel.codigo}</span>}
+        {dueInfo && (
+          <span className={`agenda-due-chip ${dueInfo.tone}`}>
+            <span className="agenda-due-dot"></span>
+            {dueInfo.label}
           </span>
-          {imovel && <span>{imovel.codigo || imovel.endereco}</span>}
-          {dueInfo && (
-            <span className={`agenda-due-chip ${dueInfo.tone}`}>
-              <span className="agenda-due-dot"></span>
-              {dueInfo.label}
-            </span>
-          )}
-        </div>
+        )}
       </div>
       <div className="agenda-actions">
         {canSendWhatsapp && (
@@ -83,10 +107,15 @@ export default function ItemAgenda({ a, imovel }: { a: AgendaItem; imovel: Imove
             Enviar WhatsApp
           </button>
         )}
+        {/* Excluir só aparece no hover/foco: é a única ação destrutiva da
+            linha e estava com o mesmo peso visual do resto, encostada na
+            borda — fácil de acertar sem querer numa lista longa. Continua
+            alcançável pelo teclado (:focus-visible no CSS). */}
         <button
           type="button"
-          className="icon-btn"
-          title="Excluir"
+          className="icon-btn agenda-del"
+          title="Excluir compromisso"
+          aria-label={`Excluir compromisso: ${a.title}`}
           onClick={(e) => {
             e.stopPropagation();
             excluirAgenda(a.id);

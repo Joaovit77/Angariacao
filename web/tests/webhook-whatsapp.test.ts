@@ -6,6 +6,9 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_TEXTO_NOTA,
+  TIPO_AGENDA_RETORNO,
+  TIPO_AGENDA_VISITA,
+  compromissoDaResposta,
   fecharTentativaPendente,
   interpretarEvento,
   encerramentoPorResposta,
@@ -402,5 +405,60 @@ describe("notaDoEncerramento", () => {
     const n = notaDoEncerramento("MSG1", { status: "Perdido", motivoPerda: "x" }, AGORA);
     expect(n.id).toBe("wa:MSG1:encerrado");
     expect(n.id).not.toBe(notaDaResposta(mensagem({ mensagemId: "MSG1" }), AGORA).id);
+  });
+});
+
+describe("compromissoDaResposta — a agenda inteligente", () => {
+  const HOJE = "2026-07-24";
+
+  it('"pode ser quinta às 10h" vira compromisso com hora', () => {
+    const c = compromissoDaResposta(
+      { resultado: "agendou", retomarEm: "2026-07-30", horaRetomar: "10:00", resumo: "Aceitou visita." },
+      "LD-120",
+      HOJE,
+    );
+    expect(c).toEqual({
+      titulo: "Visita — LD-120",
+      tipo: TIPO_AGENDA_VISITA,
+      data: "2026-07-30",
+      hora: "10:00",
+      notas: "Criado a partir da resposta do proprietário no WhatsApp. Aceitou visita.",
+    });
+  });
+
+  it("sem hora, é compromisso do dia (cai na lista sem hora da agenda)", () => {
+    const c = compromissoDaResposta(
+      { resultado: "vai-retornar", retomarEm: "2026-08-01", horaRetomar: null, resumo: "Pediu retorno." },
+      "LD-99",
+      HOJE,
+    );
+    expect(c?.hora).toBeNull();
+    expect(c?.tipo).toBe(TIPO_AGENDA_RETORNO);
+    expect(c?.titulo).toBe("Retorno — LD-99");
+  });
+
+  it("SEM DATA não cria nada — inventar um dia faz ligar no dia errado", () => {
+    expect(
+      compromissoDaResposta({ resultado: "respondeu", retomarEm: null, resumo: "Perguntou o valor." }, "LD-1", HOJE),
+    ).toBeNull();
+  });
+
+  it("data no passado não cria — é leitura errada da mensagem", () => {
+    expect(
+      compromissoDaResposta({ resultado: "agendou", retomarEm: "2026-07-01", resumo: "x" }, "LD-1", HOJE),
+    ).toBeNull();
+  });
+
+  it("hoje ainda vale — quem disse 'me liga hoje à tarde' precisa aparecer", () => {
+    expect(compromissoDaResposta({ resultado: "agendou", retomarEm: HOJE, resumo: "x" }, "LD-1", HOJE)).not.toBeNull();
+  });
+
+  it("sugestão ausente (IA fora do ar) não cria nada", () => {
+    expect(compromissoDaResposta(null, "LD-1", HOJE)).toBeNull();
+  });
+
+  it("a nota sempre diz de onde veio — compromisso órfão o corretor apaga", () => {
+    const c = compromissoDaResposta({ resultado: "agendou", retomarEm: "2026-08-02", resumo: "" }, "LD-5", HOJE);
+    expect(c?.notas).toContain("resposta do proprietário no WhatsApp");
   });
 });

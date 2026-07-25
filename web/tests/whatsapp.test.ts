@@ -8,6 +8,7 @@ import {
   aplicarModeloUsuario,
   avisoAoSalvarModelo,
   ehContatoDeCaptacao,
+  enderecoComUnidade,
   type FalhaEnvio,
   MODELOS_CAPTACAO,
   linkWhatsapp,
@@ -348,5 +349,59 @@ describe("ehContatoDeCaptacao", () => {
     // continuaria enviando e simplesmente nunca registraria tentativa.
     const ids = MODELOS_WHATSAPP.map((m) => m.id);
     for (const id of MODELOS_CAPTACAO) expect(ids).toContain(id);
+  });
+});
+
+describe("enderecoComUnidade", () => {
+  const ap: Imovel = { ...base, endereco: "Rua Ulrico Zuínglio, 320", unidade: "806", bloco: "B" };
+
+  it("inclui ap e bloco — sem eles a mensagem cita o endereço do PRÉDIO", () => {
+    expect(enderecoComUnidade(ap)).toBe("Rua Ulrico Zuínglio, 320, ap 806, bloco B");
+  });
+
+  it("sem unidade, continua sendo só a rua", () => {
+    expect(enderecoComUnidade(base)).toBe("Rua Haddock Lobo, 55");
+  });
+
+  it("não duplica o prefixo quando o corretor já digitou 'ap 806'", () => {
+    expect(enderecoComUnidade({ ...ap, unidade: "ap 806", bloco: "bloco B" })).toBe(
+      "Rua Ulrico Zuínglio, 320, ap 806, bloco B",
+    );
+  });
+
+  it("sala comercial não vira 'ap'", () => {
+    expect(enderecoComUnidade({ ...ap, tipo: "Sala Comercial", bloco: "" })).toContain("sala 806");
+  });
+
+  it("sem endereço devolve vazio — quem chama decide o fallback", () => {
+    expect(enderecoComUnidade({ ...base, endereco: "" })).toBe("");
+  });
+});
+
+describe("unidade nas mensagens", () => {
+  const ap: Imovel = { ...base, endereco: "Rua Ulrico Zuínglio, 320", unidade: "806", bloco: "B" };
+
+  it("os modelos do sistema citam a unidade", () => {
+    expect(mensagemWhatsapp("primeiro-contato", ap)).toContain("ap 806");
+  });
+
+  it("a confirmação de endereço traz unidade e edifício, para ele corrigir", () => {
+    const msg = mensagemWhatsapp("confirmacao-endereco", { ...ap, edificio: "Ed. Solar" });
+    expect(msg).toContain("ap 806");
+    expect(msg).toContain("Ed. Solar");
+  });
+
+  it("o marcador {endereco} do modelo do corretor também leva a unidade", () => {
+    expect(aplicarModeloUsuario("Sobre o imóvel na {endereco}, tudo bem?", ap)).toBe(
+      "Sobre o imóvel na Rua Ulrico Zuínglio, 320, ap 806, bloco B, tudo bem?",
+    );
+  });
+
+  it("ao salvar o modelo, o ap NÃO fica gravado no texto", () => {
+    // Senão o apartamento deste proprietário seguiria para todos os próximos.
+    const texto = "Sobre o imóvel na Rua Ulrico Zuínglio, 320, ap 806, bloco B, tudo bem?";
+    const salvo = tokenizarModeloUsuario(texto, ap);
+    expect(salvo).toBe("Sobre o imóvel na {endereco}, tudo bem?");
+    expect(salvo).not.toContain("806");
   });
 });

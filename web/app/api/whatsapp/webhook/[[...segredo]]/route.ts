@@ -63,6 +63,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import {
+  compromissoDaResposta,
   encerramentoPorResposta,
   fecharTentativaPendente,
   interpretarEvento,
@@ -259,6 +260,7 @@ export async function POST(
 
   const imovel = imoveis[0] as {
     id: string;
+    endereco: string | null;
     codigo: string | null;
     tentativas: Tentativa[] | null;
     status: string;
@@ -355,15 +357,65 @@ export async function POST(
     }
   }
 
+  // 7. Agenda inteligente: "pode ser quinta às 10h" É um compromisso. Só roda
+  //    quando o imóvel NÃO foi encerrado — marcar retorno para quem acabou de
+  //    dizer que já alugou é cobrar uma conversa que terminou.
+  // No título do compromisso o endereço serve melhor que o id: `rotulo` cai
+  // no id quando o imóvel não tem código, e "Visita — 3f7a…" não diz nada na
+  // lista da agenda.
+  const rotuloVisivel = imovel.codigo?.trim() || imovel.endereco?.trim() || rotulo;
+  const compromisso = encerramento ? null : compromissoDaResposta(sugestao, rotuloVisivel, hoje);
+  if (compromisso) {
+    // Trava contra a rajada: no WhatsApp as pessoas mandam três mensagens
+    // curtas ("pode quinta", "às 10h", "combinado"), e cada uma passaria por
+    // aqui com a mesma data. A reentrega do MESMO evento já parou lá em cima
+    // (registrar_nota_whatsapp); esta trava é para eventos diferentes que
+    // marcam o mesmo dia — um compromisso pendente por imóvel/dia basta.
+    const { data: jaTem, error: erroBusca } = await supabase
+      .from("agenda")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("imovel_id", imovel.id)
+      .eq("date", compromisso.data)
+      .eq("done", false)
+      .limit(1);
+
+    if (erroBusca) {
+      console.error("Webhook do WhatsApp: falha ao checar a agenda:", erroBusca.message);
+    } else if (jaTem && jaTem.length > 0) {
+      console.log(`Webhook do WhatsApp: imóvel ${rotulo} já tem compromisso em ${compromisso.data}.`);
+    } else {
+      const { error: erroAgenda } = await supabase.from("agenda").insert({
+        id: crypto.randomUUID(),
+        user_id: userId,
+        title: compromisso.titulo,
+        type: compromisso.tipo,
+        date: compromisso.data,
+        hora: compromisso.hora,
+        imovel_id: imovel.id,
+        notes: compromisso.notas,
+        done: false,
+        is_verificacao_disponibilidade: false,
+      });
+      if (erroAgenda) {
+        // A nota e a tentativa já estão gravadas; perder só o compromisso é
+        // degradação aceitável — a data segue visível na sugestão da IA.
+        console.error("Webhook do WhatsApp: falha ao criar o compromisso:", erroAgenda.message);
+      } else {
+        console.log(
+          `Webhook do WhatsApp: compromisso criado — ${compromisso.tipo} em ${compromisso.data}` +
+            `${compromisso.hora ? ` às ${compromisso.hora}` : ""} para o imóvel ${rotulo}.`,
+        );
+      }
+    }
+  }
+
   console.log(
     `Webhook do WhatsApp: resposta registrada — imóvel ${rotulo}, tentativa marcada como ` +
       `"${fechamento.fechada.resultado}"${sugestao ? " (sugestão da IA, aguardando confirmação)" : ""}${ambiguo}.`,
   );
-  return Response.json({ ok: true });
-
   // Sempre 200 para quem se autenticou. Webhook que responde erro é webhook
   // reentregue em loop — e, em algumas versões da Evolution, desativado depois
-  // de tantas falhas. Enquanto não escrevemos nada, não há o que dar errado
-  // que justifique pedir reentrega.
+  // de tantas falhas.
   return Response.json({ ok: true });
 }

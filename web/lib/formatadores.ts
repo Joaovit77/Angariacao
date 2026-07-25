@@ -19,6 +19,14 @@ export function fmtDateLong(iso: string | null | undefined): string {
   return d!.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+/** "segunda-feira" — o dia da SEMANA, que é como se planeja uma agenda.
+    "27 de jul." não diz se cai num sábado; o nome do dia diz. */
+export function fmtDiaSemana(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = parseDate(iso);
+  return d!.toLocaleDateString("pt-BR", { weekday: "long" });
+}
+
 /** "11/07/2026 14:32" a partir de "2026-07-11T14:32" — manipulação de
     string pura (a parte da data reusa o fmtDate). */
 export function fmtDataHora(iso: string | null | undefined): string {

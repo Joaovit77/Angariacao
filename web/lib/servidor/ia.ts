@@ -42,6 +42,19 @@ function dataValida(valor: unknown, hoje: string): string | null {
   return valor >= hoje ? valor : null;
 }
 
+/** Hora "HH:MM" em 24h, com os limites reais do relógio. O esquema pede o
+    formato, mas nada nele impede "25:80" — e isso viraria um compromisso com
+    hora impossível na faixa de horários da agenda. */
+function horaValida(valor: unknown): string | null {
+  if (typeof valor !== "string") return null;
+  const m = valor.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 23 || min > 59) return null;
+  return `${String(h).padStart(2, "0")}:${m[2]}`;
+}
+
 /**
  * Lê a resposta do proprietário e devolve o desfecho sugerido.
  *
@@ -56,6 +69,7 @@ export async function classificarResposta(
 ): Promise<{
   resultado: ResultadoTentativa;
   retomarEm: string | null;
+  horaRetomar: string | null;
   resumo: string;
   motivoPerda: string | null;
 } | null> {
@@ -104,9 +118,13 @@ export async function classificarResposta(
         ? dados.motivoPerda
         : null;
 
+    // Hora sem data não agenda nada ("às 10h" de que dia?), e sozinha só
+    // poluiria a sugestão — por isso depende da data ter passado no filtro.
+    const data = dataValida(dados.retomarEm, hoje);
     return {
       resultado: dados.resultado as ResultadoTentativa,
-      retomarEm: dataValida(dados.retomarEm, hoje),
+      retomarEm: data,
+      horaRetomar: data ? horaValida(dados.horaRetomar) : null,
       resumo: typeof dados.resumo === "string" ? dados.resumo.trim().slice(0, 300) : "",
       motivoPerda: motivo,
     };

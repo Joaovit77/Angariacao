@@ -96,6 +96,12 @@ o torna testável puro.
 - **`calculo/filtros.ts`** — filtro/ordenação do Pipeline (parte pura).
 - **`calculo/dashboard.ts` · `insights.ts` · `relatorios.ts` · `agenda.ts`** — as métricas de cada
   view, extraídas da montagem de HTML antiga sem alterar nenhuma fórmula.
+- **`calculo/agenda.ts` → `separarPorHorario`** — parte o dia em **dois modos de trabalho**:
+  `comHora` (faixa cronológica) e `semHora` (checklist do dia). Misturados, a visita das 10h vira
+  mais uma linha no meio de sete follow-ups, e a lista de tarefas ganha uma ordem que não significa
+  nada. Os rótulos dos blocos só aparecem quando existem os DOIS — com um tipo só, seriam ruído.
+  Hora vazia, `null` e `"  "` caem todas em `semHora`: o modal grava `null`, mas dado antigo tem
+  `""`, e um item sem horário na faixa cronológica é uma linha fantasma.
 - **`calculo/canais.ts` · `abordagens.ts`** — features da pós-migração (sem oráculo do app antigo),
   os **dois eixos da captação**: `canais` mede a ORIGEM do imóvel (onde a oportunidade foi achada);
   `abordagens` mede o ROTEIRO usado no contato (o que se diz). Não confundir com a
@@ -114,6 +120,27 @@ o torna testável puro.
   mesmo store esse `fecharModal()` apagaria a festa no instante em que ela nasce.
 - **`calculo/desdobramento.ts`** — um espaço captado que vira várias unidades (o galpão que o
   proprietário aceita dividir em salas). Ver "Desdobramento" abaixo.
+- **`calculo/temperatura.ts`** — o **termômetro do proprietário**: de quem correr atrás hoje,
+  do que já está na carteira. É a outra metade da manhã que o `planoDia` não responde (aquele diz
+  ONDE prospectar; este, QUEM chamar). Ordena por **faixa** de sinal — compromisso vencido >
+  agendou > vai retornar > respondeu > lead nunca contatado —, e cada linha carrega o
+  `motivo` já escrito: faixa explicável, e não nota contínua, porque uma ordem em que o corretor
+  não consegue concordar com o critério vira uma lista que ele para de ler.
+  **Não há faixa de "imóvel parado", e tirá-la foi a correção mais importante daqui.** Ela existia
+  e, na carteira real, 7 das 8 linhas viraram "parado há 11 dias" — os mesmos imóveis do card
+  "Imóveis parados" logo abaixo, na mesma ordem, enterrando a única linha de calor de verdade. A
+  causa é estrutural: em captação a esmagadora maioria dos contatos fica sem resposta, então a
+  faixa mais fraca é sempre a mais populosa e sempre vence no volume. Estagnação já tem card
+  próprio; **enviado e sem reação é espera, não calor** — quem cobra isso é o follow-up em lote e
+  o nudge de resultados pendentes.
+  Duas regras que caem daí: **quem foi contatado hoje sai inteiro** (a lista não manda cutucar de
+  novo alguém com quem você acabou de falar — e o corte tem que vir antes das faixas, senão quem
+  respondeu hoje reaparece como "parado há 8 dias", já que o status não muda quando o proprietário
+  responde); e **quem já foi captado** (Angariado/Publicado) só entra por compromisso marcado, porque
+  a cobrança dessa fase é o lembrete de disponibilidade, não esta lista.
+  O sinal mais forte já estava no banco e ninguém consumia: quando o proprietário diz "me chama
+  semana que vem", o webhook grava em `sugestaoIa.retomarEm` — e até aqui isso só era *exibido* na
+  lista de pendências, sem nada avisar no dia marcado.
 - **`calculo/mapa.ts`** — em qual dos quatro baldes de cor cada imóvel cai no mapa
   (`categoriaMapa`: locado / angariado / andamento / sem-sucesso) e as cores/rótulos da legenda
   (`CATEGORIAS_MAPA`). Fonte única: o pino (`MapaLeaflet`) e a legenda-filtro (`MapaView`) leem
@@ -437,6 +464,21 @@ Regras ao mexer nela:
   três mensagens curtas, e um read-modify-write perderia notas sem dar erro).
 - **A IA sugere o desfecho, o corretor confirma** (`sugerirNaTentativaPendente` mantém a marca de
   pendente). Ela lê uma frase solta, sem o resto da conversa.
+- **A agenda inteligente.** "Pode ser quinta às 10h" É um compromisso, e o webhook o cria
+  (`compromissoDaResposta` + a inserção na rota). Antes a data ficava só em
+  `sugestaoIa.retomarEm`, exibida numa lista de pendências que ninguém abre — o corretor tinha
+  horário marcado pelo próprio proprietário e nada o avisava no dia. É escrita automática como o
+  encerramento, mas **barata de errar**: compromisso errado custa um clique para apagar, enquanto
+  encerramento errado tira um imóvel bom da carteira — por isso as travas são menores. As que
+  existem: **sem data não cria** (inventar um dia faz ligar no dia errado); **data no passado não
+  cria** (é leitura errada); **imóvel encerrado não ganha compromisso** (marcar retorno para quem
+  acabou de dizer que já alugou); **um pendente por imóvel/dia** — a reentrega do mesmo evento já
+  para na `registrar_nota_whatsapp`, mas no WhatsApp as pessoas mandam três mensagens curtas
+  ("pode quinta", "às 10h", "combinado") e cada uma é um evento diferente com a mesma data. E a
+  nota do compromisso **diz de onde ele veio**, com a frase do proprietário: compromisso que
+  aparece sozinho e não se explica é compromisso que o corretor apaga por desconfiança.
+  A `horaRetomar` entrou junto no esquema da classificação — é ela que separa "te ligo quinta"
+  de "quinta às 10h", e só com hora o item cai na faixa de horários da agenda.
 - **A exceção:** encerramento automático. Quando a resposta não deixa nada a fazer ("já aluguei",
   "já estou com outra imobiliária"), o imóvel vai para **Perdido** com o motivo, sem clique. O que
   segura isso é o motivo sair de uma lista fechada e **menor** que `MOTIVOS_PERDA`
@@ -446,7 +488,7 @@ Regras ao mexer nela:
   PERDA, e marcá-lo como ganho somaria à conversão, à comissão e à meta do mês um negócio que não
   existiu.
 
-#### `api/ia` — sugestão de roteiros e leitura do ranking (OpenAI)
+#### `api/ia` — sugestão de roteiros, leitura do ranking e captura de anúncio (OpenAI)
 
 Duas funções, ambas escrevendo **texto**: sugerir roteiros de abordagem e interpretar o ranking.
 O fluxo espelha o do WhatsApp — `lib/ia.ts` (browser) → a rota (servidor) → OpenAI —, e as
@@ -470,6 +512,53 @@ Três regras ao mexer nela:
   a análise sairia bem escrita em cima de números forjados — e ninguém notaria.
 - **A IA não calcula métrica.** Ela recebe os números prontos e só interpreta. Trocar isso por "pede
   pra IA analisar os dados crus" devolveria número inventado com cara de relatório.
+
+##### A captura em 1 toque (`tipo: "extrair-anuncio"`)
+
+O garimpo do corretor. Foto da placa de "aluga-se", print do anúncio ou texto colado entram no
+`ModalPreCadastro` e saem como campos preenchidos — daí ele confere, salva, e o WhatsApp já abre.
+O gargalo do garimpo nunca foi *achar* o imóvel: foi o telefone (que a placa mostra e o portal
+esconde, às vezes ofuscado por extenso) e o tempo entre ver o anúncio e mandar a mensagem.
+
+> Isto **não** reabre o scraping de portais, descartado em 2026-07-10 (`RADAR_CAPTACAO.md`): não há
+> busca automatizada, não há chat automatizado, e quem aponta a câmera ou cola o texto é a pessoa.
+
+Três coisas a saber ao mexer:
+
+- **É a única chamada em que o browser manda CONTEÚDO** (a imagem/texto), e não um contexto curto e
+  tipado — desvio consciente da regra "o prompt é montado no servidor". O que o segura: prompt e
+  esquema continuam do servidor, a saída é objeto **fechado** (enums de `TIPOS_IMOVEL`/
+  `ORIGENS_IMOVEL` + `additionalProperties: false`, não texto livre), o acesso já passa por
+  `podeUsarIa`, e `MAX_TEXTO_ANUNCIO`/`MAX_IMAGEM_BYTES` limitam o custo por chamada. Não é proxy
+  de LLM aberto — é um extrator de campos.
+- **A IA preenche, o corretor confirma** — nada salva sozinho, mesma regra do webhook. Modelo de
+  visão troca dígito com naturalidade, e um telefone errado gravado sem revisão vira mensagem para
+  um estranho. Por isso o prompt manda devolver `null` em vez de telefone "quase certo", e a
+  `confianca` existe para a UI pedir conferência quando a foto sai ruim.
+- **`lib/imagem.ts` reduz a foto antes de enviar.** Não é otimização: foto de celular atual sai com
+  3–8 MB, acima do teto — sem reduzir, o caminho principal da feature (apontar a câmera para a
+  placa) falharia quase sempre, e o corretor não tem como "mandar uma foto menor".
+
+**A unidade é identidade, e a mensagem precisa dela.** `enderecoComUnidade()` em
+`calculo/whatsapp.ts` é a fonte única que compõe "rua, número, ap X, bloco Y" — usada pela
+referência curta (`{imovel}`), pelo marcador `{endereco}` dos modelos do corretor e pela
+confirmação de endereço, para as três não divergirem. Sem ela, quem tem apartamento recebia uma
+mensagem sobre "o imóvel na Rua X, 250" — o endereço do PRÉDIO, que não diz nada a quem mora no
+806 e menos ainda a quem tem duas unidades ali. Dois detalhes que parecem enfeite e não são:
+o prefixo respeita o tipo (sala comercial não é "ap") e não duplica quando o corretor já digitou
+"ap 806"; e **`tokenizarModeloUsuario` troca o endereço COMPOSTO antes do simples** — na ordem
+inversa, salvar um modelo gravaria `{endereco}, ap 806` e o apartamento daquele proprietário
+viajaria para todos os contatos seguintes.
+
+Três correções que vieram junto, no `ModalPreCadastro`, e valem por si. Ele agora tem
+**`unidade`/`bloco`/`edificio`** — que num modal de cadastro *mínimo* parecem excesso, mas são a
+identidade do imóvel: sem eles dois apartamentos vizinhos caem na mesma chave de duplicidade e o
+cadastro acusa falso a cada unidade nova (e prédio é a maior parte do garimpo). Grava
+**`origemImovel`** (não gravava nenhuma — e como `planoDia`/`canais` pulam imóvel sem origem, tudo
+que entrava pelo cadastro rápido ficava invisível no Foco do dia e no ranking de canais, justamente
+para quem só trabalha por garimpo). E checa **duplicidade de endereço** (checava só código repetido;
+garimpo produz duplicata o tempo todo — a mesma placa fotografada duas vezes, o mesmo anúncio visto
+na OLX e no Marketplace). Como no `ModalImovel`, o aviso de duplicata **avisa, não bloqueia**.
 
 ## Convenções e regras (o que sempre / nunca fazer)
 

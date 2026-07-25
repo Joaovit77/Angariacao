@@ -13,6 +13,7 @@
    ================================================================ */
 import { useRouter } from "next/navigation";
 import ItemAgenda from "@/components/agenda/ItemAgenda";
+import QuemEstaQuente from "@/components/home/QuemEstaQuente";
 import { AGENDA_PENDENTES_JANELA_DIAS, compararAgenda } from "@/lib/calculo/agenda";
 import {
   comissaoRecebidaNoMes,
@@ -396,8 +397,13 @@ export default function HomeView() {
           </button>
         </div>
 
-        {/* COLUNA PRINCIPAL — o que precisa de ação hoje */}
-        <div className="home-main">{principais}</div>
+        {/* COLUNA PRINCIPAL — o que precisa de ação hoje. O termômetro vem
+            primeiro: é a única lista que responde "quem eu chamo AGORA", e o
+            resto da coluna é resumo. Ele mesmo se esconde quando não há sinal. */}
+        <div className="home-main">
+          <QuemEstaQuente />
+          {principais}
+        </div>
 
         {/* COLUNA LATERAL — resumos vazios e metas. Sem nada para mostrar, não
             renderiza: um elemento vazio no grid só somaria gap. */}

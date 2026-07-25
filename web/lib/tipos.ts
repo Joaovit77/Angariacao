@@ -70,8 +70,15 @@ export interface Tentativa {
     /** Desfecho sugerido, sempre um de RESULTADOS_TENTATIVA. */
     resultado: ResultadoTentativa;
     /** Data sugerida para retomar (ISO YYYY-MM-DD), quando a mensagem
-        indicar prazo ("te retorno na semana que vem"). null quando não há. */
+        indicar prazo ("te retorno na semana que vem"). null quando não há.
+
+        Quando existe, o webhook cria um COMPROMISSO na agenda com ela — ver
+        `compromissoDaResposta` em calculo/webhookWhatsapp.ts. */
     retomarEm?: string | null;
+    /** Hora combinada ("HH:MM"), quando a mensagem marcar uma. É o que separa
+        "te ligo quinta" de "quinta às 10h" — só com hora o compromisso entra
+        na faixa de horários da agenda em vez da lista solta do dia. */
+    horaRetomar?: string | null;
     /** Uma linha sobre o que a pessoa disse, para o corretor decidir sem
         reler a conversa inteira. */
     resumo: string;

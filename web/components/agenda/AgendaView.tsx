@@ -12,10 +12,10 @@
    ================================================================ */
 import { useState } from "react";
 import ItemAgenda from "@/components/agenda/ItemAgenda";
-import { AGENDA_PENDENTES_JANELA_DIAS, compararAgenda } from "@/lib/calculo/agenda";
+import { AGENDA_PENDENTES_JANELA_DIAS, compararAgenda, separarPorHorario } from "@/lib/calculo/agenda";
 import { AGENDA_TYPES } from "@/lib/constantes";
 import { addDaysISO, todayISO } from "@/lib/datas";
-import { fmtDateLong } from "@/lib/formatadores";
+import { fmtDateLong, fmtDiaSemana } from "@/lib/formatadores";
 import { useAppStore } from "@/lib/store";
 import type { AgendaItem } from "@/lib/tipos";
 import { useUiModal } from "@/lib/uiModal";
@@ -174,17 +174,38 @@ export default function AgendaView() {
               </div>
             )
           ) : (
-            dateKeys.map((date) => (
-              <div className="agenda-day-group" key={date}>
-                <div className={`agenda-day-label ${date === hoje ? "today" : ""}`}>
-                  {date === hoje ? "Hoje · " : ""}
-                  {fmtDateLong(date)}
+            dateKeys.map((date) => {
+              // O dia se lê em dois modos: o que tem hora marcada (a faixa de
+              // horários) e o que é só "para hoje". Os rótulos só aparecem
+              // quando existem os DOIS — com um tipo só, seriam ruído.
+              const { comHora, semHora } = separarPorHorario(grouped[date]);
+              const doisBlocos = comHora.length > 0 && semHora.length > 0;
+              return (
+                <div className="agenda-day-group" key={date}>
+                  <div className={`agenda-day-label ${date === hoje ? "today" : ""}`}>
+                    {date === hoje && <span className="agenda-day-hoje">Hoje</span>}
+                    <span className="agenda-day-data">{fmtDateLong(date)}</span>
+                    <span className="agenda-day-semana">{fmtDiaSemana(date)}</span>
+                  </div>
+                  {comHora.length > 0 && (
+                    <div className="agenda-bloco">
+                      {doisBlocos && <div className="agenda-bloco-label">Com horário</div>}
+                      {comHora.map((a) => (
+                        <ItemAgenda key={a.id} a={a} imovel={imovelDe(a)} />
+                      ))}
+                    </div>
+                  )}
+                  {semHora.length > 0 && (
+                    <div className="agenda-bloco">
+                      {doisBlocos && <div className="agenda-bloco-label">Sem hora marcada</div>}
+                      {semHora.map((a) => (
+                        <ItemAgenda key={a.id} a={a} imovel={imovelDe(a)} />
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {grouped[date].map((a) => (
-                  <ItemAgenda key={a.id} a={a} imovel={imovelDe(a)} />
-                ))}
-              </div>
-            ))
+              );
+            })
           )}
           {futurosOcultos > 0 && (
             <div className="agenda-future-hint" onClick={() => setFiltro("todas")}>

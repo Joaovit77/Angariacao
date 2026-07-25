@@ -20,6 +20,7 @@ import type { AbordagemDesempenho, ResumoTentativas } from "./abordagens";
 import type { KpisDashboard } from "./dashboard";
 import type { PlanoDoDia } from "./planoDia";
 import { daysInCurrentStatus, isStale } from "./motor";
+import { ORIGENS_IMOVEL, TIPOS_IMOVEL } from "../constantes";
 import { daysBetween, todayISO } from "../datas";
 import type { AgendaItem, Imovel } from "../tipos";
 
@@ -453,6 +454,10 @@ export const MAX_TEXTO_CLASSIFICACAO = 600;
 export interface RespostaClassificada {
   resultado: string;
   retomarEm?: string | null;
+  /** Hora combinada ("HH:MM", 24h), quando a mensagem marcar uma. É o que
+      separa "te ligo quinta" de "quinta às 10h": só com hora o compromisso
+      entra na faixa de horários da agenda em vez da lista solta do dia. */
+  horaRetomar?: string | null;
   resumo: string;
   motivoPerda?: string | null;
 }
@@ -496,6 +501,11 @@ export const ESQUEMA_CLASSIFICACAO = {
       description:
         "Data sugerida para retomar o contato, no formato YYYY-MM-DD. null quando a mensagem não indica prazo.",
     },
+    horaRetomar: {
+      type: ["string", "null"],
+      description:
+        "Hora combinada no formato HH:MM (24h). null quando a mensagem não marca horário.",
+    },
     resumo: {
       type: "string",
       description: "Uma linha em português do Brasil sobre o que o proprietário disse",
@@ -507,7 +517,7 @@ export const ESQUEMA_CLASSIFICACAO = {
         "Só quando a mensagem encerra o assunto de forma explícita e sem ambiguidade. null em qualquer outro caso.",
     },
   },
-  required: ["resultado", "retomarEm", "resumo", "motivoPerda"],
+  required: ["resultado", "retomarEm", "horaRetomar", "resumo", "motivoPerda"],
   additionalProperties: false,
 } as const;
 
@@ -531,7 +541,8 @@ O que cada desfecho significa:
 
 Regras:
 - Na dúvida entre dois, escolha o MENOS otimista. Marcar "agendou" o que foi só interesse infla a medição de fechamento do corretor e ele passa a confiar num número errado.
-- "retomarEm": só preencha se a mensagem indicar prazo, mesmo que vago ("semana que vem", "depois do dia 10", "mês que vem"). Converta para uma data real a partir de hoje. Se ele não deu prazo, devolva null — não invente um.
+- "retomarEm": só preencha se a mensagem indicar prazo, mesmo que vago ("semana que vem", "depois do dia 10", "mês que vem"). Converta para uma data real a partir de hoje. Se ele não deu prazo, devolva null — não invente um. Esta data VIRA UM COMPROMISSO NA AGENDA do corretor, então uma data errada o faz ligar no dia errado: na dúvida entre duas, devolva null.
+- "horaRetomar": só quando a mensagem marcar horário ("às 10h", "10:30", "de manhã" NÃO é horário — é período, devolva null). Formato HH:MM em 24 horas: "3 da tarde" é "15:00". Sem hora explícita, null.
 - "resumo": uma linha curta, factual, sobre o que ELE disse. Nada de conselho ao corretor e nada de repetir a mensagem inteira. Exemplo: "Vai avaliar com a esposa e retorna na semana que vem."
 - Não deduza nada que não esteja na mensagem.
 
@@ -546,6 +557,176 @@ Sobre "motivoPerda" — leia com atenção, porque preenchê-lo ENCERRA o imóve
 - Se ele disser que ESTE imóvel já está resolvido e mencionar OUTRO imóvel que tem ("esse já aluguei, mas tenho outro na mesma rua"), encerre este mesmo assim: o outro é um cadastro novo, não um motivo para manter este aberto. Cite o outro imóvel no resumo, para o corretor saber que existe uma oportunidade nova ali.
 - Se a mensagem falar SÓ de um imóvel que você não consegue identificar como o do contato, devolva null.
 - Na dúvida, null. Errar para null custa um clique ao corretor; errar preenchendo tira um imóvel bom da carteira dele sem ninguém perceber.`;
+}
+
+/* ----------------------------------------------------------------
+   EXTRAÇÃO DE ANÚNCIO / PLACA — o garimpo em 1 toque
+
+   O corretor fotografa a placa de "aluga-se", printa o anúncio do
+   marketplace ou cola o texto, e os campos do pré-cadastro se
+   preenchem. O ganho é de VELOCIDADE: o gargalo do garimpo nunca foi
+   achar o imóvel, foi o tempo entre ver o anúncio e mandar a mensagem
+   — e o telefone, que a placa mostra e o portal esconde.
+
+   ATENÇÃO — esta é a única chamada em que o browser manda CONTEÚDO
+   (a imagem ou o texto), e não só um contexto curto e tipado. É um
+   desvio consciente da regra do cabeçalho, e o que o segura é:
+
+   - o prompt e o esquema continuam sendo montados aqui, no servidor;
+   - a saída é um objeto FECHADO (enums + additionalProperties: false),
+     não texto livre — não dá para usar como proxy de LLM;
+   - o acesso já passa pela allowlist por conta (`ia_permissoes`);
+   - MAX_TEXTO_ANUNCIO e MAX_IMAGEM_BYTES limitam o custo por chamada.
+
+   E o resultado é SUGESTÃO: preenche o formulário, o corretor confere
+   e salva. Mesma regra do webhook — modelo de visão troca dígito, e um
+   telefone errado gravado sozinho vira mensagem para um estranho.
+   ---------------------------------------------------------------- */
+
+/** Teto do texto colado. Anúncio inteiro de portal vem com menu, rodapé e
+    "anúncios parecidos"; o que interessa está sempre no começo. */
+export const MAX_TEXTO_ANUNCIO = 2000;
+
+/** Teto da imagem, em bytes do arquivo original. Foto de celular moderno
+    passa disso com folga — quem chama reduz antes de mandar. */
+export const MAX_IMAGEM_BYTES = 4 * 1024 * 1024;
+
+/** Quanto o modelo confia no que leu. Não é enfeite: uma foto de placa
+    tirada de longe, na chuva, devolve dígito trocado com a mesma
+    naturalidade de uma nítida — e a UI precisa poder avisar o corretor
+    para conferir antes de mandar mensagem. */
+export type ConfiancaExtracao = "alta" | "media" | "baixa";
+
+export interface AnuncioExtraido {
+  proprietarioNome: string | null;
+  proprietarioTelefone: string | null;
+  endereco: string | null;
+  /** Número do apartamento/sala. Faz parte da IDENTIDADE do imóvel — no mesmo
+      prédio, o 101 e o 202 são imóveis diferentes, de donos diferentes. Sem
+      ele, a checagem de duplicidade acusa falso a cada unidade nova. */
+  unidade: string | null;
+  bloco: string | null;
+  edificio: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  cep: string | null;
+  tipo: string | null;
+  quartos: number | null;
+  vagas: number | null;
+  valorAluguel: number | null;
+  /** Um de ORIGENS_IMOVEL, deduzido do que a imagem/texto é (placa na rua,
+      print de portal, post de rede social). Vira o padrão do seletor — que o
+      corretor pode trocar. */
+  origemSugerida: string | null;
+  confianca: ConfiancaExtracao;
+}
+
+/** Tamanho aproximado, em bytes, do arquivo por trás de um base64 — cada 4
+    caracteres carregam 3 bytes, descontado o padding. Serve para recusar a
+    imagem ANTES de mandá-la para a OpenAI (é lá que ela custaria). */
+export function bytesDeBase64(base64: string): number {
+  const limpo = base64.replace(/^data:[^,]*,/, "").trim();
+  if (!limpo) return 0;
+  const padding = limpo.endsWith("==") ? 2 : limpo.endsWith("=") ? 1 : 0;
+  return Math.floor((limpo.length * 3) / 4) - padding;
+}
+
+/** Origens que a IA pode DEDUZIR do material lido — `ORIGENS_IMOVEL` menos
+    "Outro".
+
+    "Outro" é opção legítima para o corretor escolher de propósito, mas é a
+    saída fácil de um modelo em dúvida: no teste com o mesmo anúncio ele
+    alternou entre `null` e "Outro" de uma execução para a outra. E "Outro"
+    é pior que `null` — não nomeia portal nenhum, mas passa por dado
+    preenchido: viraria um balde no ranking de canais e um "portal" dividindo
+    o ritmo no Foco do dia. Fora do enum, o modelo precisa nomear um portal
+    de verdade ou assumir que não sabe. */
+const ORIGENS_ADIVINHAVEIS = ORIGENS_IMOVEL.filter((o) => o !== "Outro");
+
+/** Esquema fechado: os `enum` são o que impede o modelo de inventar um tipo
+    de imóvel ou uma origem que os seletores da tela não conhecem — e que
+    entraria no ranking de canais como categoria fantasma. */
+export const ESQUEMA_ANUNCIO = {
+  type: "object",
+  properties: {
+    proprietarioNome: {
+      type: ["string", "null"],
+      description: "Nome de quem anuncia, se aparecer. null quando não houver.",
+    },
+    proprietarioTelefone: {
+      type: ["string", "null"],
+      description: "Telefone só com dígitos, incluindo o DDD. null quando não houver.",
+    },
+    endereco: { type: ["string", "null"], description: "Rua e número, quando houver." },
+    unidade: {
+      type: ["string", "null"],
+      description: "Número do apartamento/sala (ex.: \"806\"). null quando o anúncio não disser.",
+    },
+    bloco: { type: ["string", "null"], description: "Bloco ou torre (ex.: \"B\", \"2\")." },
+    edificio: { type: ["string", "null"], description: "Nome do edifício/condomínio." },
+    bairro: { type: ["string", "null"] },
+    cidade: { type: ["string", "null"] },
+    cep: { type: ["string", "null"], description: "Só dígitos." },
+    tipo: { type: ["string", "null"], enum: [...TIPOS_IMOVEL, null] },
+    quartos: { type: ["integer", "null"] },
+    vagas: { type: ["integer", "null"] },
+    valorAluguel: {
+      type: ["number", "null"],
+      description: "Valor mensal do aluguel em reais, só o número.",
+    },
+    origemSugerida: { type: ["string", "null"], enum: [...ORIGENS_ADIVINHAVEIS, null] },
+    confianca: {
+      type: "string",
+      enum: ["alta", "media", "baixa"],
+      description: "Quão legível estava o material lido.",
+    },
+  },
+  required: [
+    "proprietarioNome",
+    "proprietarioTelefone",
+    "endereco",
+    "unidade",
+    "bloco",
+    "edificio",
+    "bairro",
+    "cidade",
+    "cep",
+    "tipo",
+    "quartos",
+    "vagas",
+    "valorAluguel",
+    "origemSugerida",
+    "confianca",
+  ],
+  additionalProperties: false,
+} as const;
+
+/**
+ * Prompt da extração. `texto` é o material colado (já truncado aqui); quando a
+ * entrada é uma imagem ele vem vazio e a foto viaja como segunda parte da
+ * mensagem — o prompt é o mesmo nos dois casos, porque a tarefa é a mesma.
+ */
+export function promptExtrairAnuncio(texto?: string | null): string {
+  const colado = (texto || "").trim().slice(0, MAX_TEXTO_ANUNCIO);
+  const material = colado
+    ? `Leia este anúncio de imóvel:\n\n"""\n${colado}\n"""`
+    : `Leia a imagem enviada. Ela é uma foto de placa de "aluga-se" na rua, um print de anúncio de portal/marketplace ou um post de rede social.`;
+
+  return `${PAPEL}
+
+${material}
+
+Extraia os dados do imóvel e de quem anuncia, para preencher um cadastro. Devolva null em todo campo que não estiver ali.
+
+Regras:
+- NÃO INVENTE NADA. Um campo vazio custa uma digitação ao corretor; um campo inventado vira mensagem mandada para a pessoa errada, ou visita marcada num endereço que não existe. Na dúvida, null.
+- Telefone: devolva só os dígitos, com DDD e sem o +55 (ex.: "43999998888"). Anúncio de portal costuma ofuscar o número para driblar o filtro — "43 9 nove oito sete..." , "quatro três", "43 9.9999-8888" — então reconstitua os dígitos por extenso. Se não der para ter certeza de TODOS os dígitos, devolva null: número quase certo é pior que número nenhum.
+- Se aparecer mais de um telefone, use o que estiver identificado como contato do proprietário/anunciante. Havendo só números de imobiliária, devolva null — o alvo aqui é o proprietário.
+- Endereço: só o que estiver escrito. Placa costuma não ter endereço nenhum (quem fotografou sabe onde está) — nesse caso, null.
+- "unidade", "bloco" e "edificio" importam mais do que parecem: no mesmo prédio, o apartamento 101 e o 202 são imóveis DIFERENTES, de proprietários diferentes. Separe-os do endereço — em "Rua X, 250, ap 806, bloco B, Ed. Solar", o endereço é "Rua X, 250", a unidade é "806", o bloco é "B" e o edifício é "Ed. Solar". Não repita a unidade dentro do endereço.
+- valorAluguel: o aluguel MENSAL. Ignore condomínio, IPTU e valor de venda. Se o anúncio for de venda e não de locação, devolva null aqui.
+- origemSugerida: "Placa no imóvel" quando for foto de uma placa/faixa no imóvel; "OLX / Canal Pro" quando for print da OLX; "Redes sociais" quando for post ou print de Facebook, Marketplace ou Instagram; "Garimpo em site de imobiliária" quando for o site de uma imobiliária. Só preencha quando o material mostrar de onde ele veio (a moldura do app, o logo, o formato do anúncio); texto solto, sem essa pista, é null. Não tente adivinhar pelo conteúdo do anúncio — o mesmo texto circula em todos os portais.
+- confianca: "baixa" quando o material estiver borrado, cortado ou ambíguo, mesmo que você tenha conseguido ler alguma coisa. O corretor usa isso para saber se confere antes de mandar mensagem.`;
 }
 
 export function promptAnalisarAbordagens(

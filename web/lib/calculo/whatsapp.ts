@@ -22,17 +22,55 @@ function saudacao(imovel: Imovel): string {
   return nome ? `Olá, ${nome}! Tudo bem?` : "Olá! Tudo bem?";
 }
 
+/** Palavras que já identificam a unidade. Se o corretor digitou "ap 806" ou
+    "sala 12" no campo, prefixar de novo daria "ap ap 806". */
+const UNIDADE_JA_NOMEADA = /^(ap|apto|apart|apartamento|sala|casa|loja|conj|conjunto|unidade)\b/i;
+
+/** Como chamar a unidade deste imóvel: sala comercial não é "ap". */
+function rotuloUnidade(imovel: Imovel): string {
+  const tipo = (imovel.tipo || "").toLowerCase();
+  if (tipo.includes("sala") || tipo.includes("galpão") || tipo.includes("galpao")) return "sala";
+  return "ap";
+}
+
+/**
+ * Rua e número MAIS a unidade e o bloco, que é o que identifica o imóvel para
+ * o proprietário. Sem eles, quem tem apartamento recebe uma mensagem sobre "o
+ * imóvel na Rua X, 250" — o endereço do PRÉDIO, que não diz nada a quem mora
+ * no 806 e menos ainda a quem tem duas unidades ali. É a fonte única: a
+ * referência curta, o marcador {endereco} e a confirmação de endereço passam
+ * todas por aqui, para as três não divergirem.
+ *
+ * Devolve "" quando não há endereço — quem chama decide o texto de fallback.
+ */
+export function enderecoComUnidade(imovel: Imovel): string {
+  const endereco = (imovel.endereco || "").trim();
+  if (!endereco) return "";
+  const unidade = (imovel.unidade || "").trim();
+  const bloco = (imovel.bloco || "").trim();
+  const partes = [endereco];
+  if (unidade) {
+    partes.push(UNIDADE_JA_NOMEADA.test(unidade) ? unidade : `${rotuloUnidade(imovel)} ${unidade}`);
+  }
+  if (bloco) partes.push(/^(bl|bloco|torre)\b/i.test(bloco) ? bloco : `bloco ${bloco}`);
+  return partes.join(", ");
+}
+
 /** Sem artigo, para o modelo escrever "o/ao/do seu imóvel (…)". */
 function referenciaImovel(imovel: Imovel): string {
-  const endereco = (imovel.endereco || "").trim();
+  const endereco = enderecoComUnidade(imovel);
   if (!endereco) return "seu imóvel";
   const bairro = (imovel.bairro || "").trim();
   return `seu imóvel (${endereco}${bairro ? `, ${bairro}` : ""})`;
 }
 
-/** Endereço "cru" (rua, bairro, cidade) para a mensagem de confirmação. */
+/** Endereço "cru" para a mensagem de confirmação. Aqui entra também o nome do
+    edifício: é a mensagem em que o proprietário confere o cadastro, e quanto
+    mais completo, mais fácil ele corrigir o que estiver errado. */
 function enderecoCompletoTexto(imovel: Imovel): string {
-  const partes = [imovel.endereco, imovel.bairro, imovel.cidade].map((s) => (s || "").trim()).filter(Boolean);
+  const partes = [enderecoComUnidade(imovel), imovel.edificio, imovel.bairro, imovel.cidade]
+    .map((s) => (s || "").trim())
+    .filter(Boolean);
   return partes.join(", ") || "seu imóvel";
 }
 
@@ -207,13 +245,15 @@ export function mensagemWhatsapp(modeloId: string, imovel: Imovel, nomeCaptador?
 /** Marcadores oferecidos ao usuário na UI (botões de inserir). */
 export const MARCADORES_MODELO = [
   { token: "{nome}", rotulo: "Nome do proprietário" },
-  { token: "{endereco}", rotulo: "Endereço (rua/número)" },
+  { token: "{endereco}", rotulo: "Endereço (com ap/bloco)" },
 ] as const;
 
 /** Preenche os marcadores de um modelo com os dados do imóvel. */
 export function aplicarModeloUsuario(texto: string, imovel: Imovel): string {
   const nome = (imovel.proprietarioNome || "").trim();
-  const endereco = (imovel.endereco || "").trim();
+  // Com unidade/bloco: o modelo do corretor diz "sobre o imóvel na {endereco}",
+  // e o proprietário de apartamento precisa saber de QUAL unidade se trata.
+  const endereco = enderecoComUnidade(imovel);
   let out = texto
     .replace(/\{nome\}/g, nome)
     .replace(/\{endereco\}/g, endereco)
@@ -226,6 +266,12 @@ export function aplicarModeloUsuario(texto: string, imovel: Imovel): string {
 /** Troca o nome e o endereço do imóvel atual pelos marcadores ao salvar. */
 export function tokenizarModeloUsuario(texto: string, imovel: Imovel): string {
   let out = texto;
+  // O COMPOSTO primeiro (rua + ap + bloco), depois a rua sozinha. A ordem é o
+  // que importa: trocando só a rua, "Rua X, 250, ap 806" viraria
+  // "{endereco}, ap 806" e o modelo salvo carregaria o apartamento DAQUELE
+  // proprietário para todos os próximos contatos.
+  const completo = enderecoComUnidade(imovel);
+  if (completo.length >= 3) out = out.split(completo).join("{endereco}");
   const endereco = (imovel.endereco || "").trim();
   if (endereco.length >= 3) out = out.split(endereco).join("{endereco}");
   const nome = (imovel.proprietarioNome || "").trim();

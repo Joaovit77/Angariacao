@@ -127,7 +127,10 @@ export default function ModalResultadosPendentes() {
                     {p.tentativa.sugestaoIa.retomarEm && (
                       <span className="pendente-meta">
                         {" "}
-                        · sugere retomar em {fmtDate(p.tentativa.sugestaoIa.retomarEm)}
+                        · já agendado para {fmtDate(p.tentativa.sugestaoIa.retomarEm)}
+                        {p.tentativa.sugestaoIa.horaRetomar
+                          ? ` às ${p.tentativa.sugestaoIa.horaRetomar}`
+                          : ""}
                       </span>
                     )}
                   </div>

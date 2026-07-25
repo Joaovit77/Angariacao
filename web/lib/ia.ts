@@ -6,7 +6,7 @@
    Nunca lança: devolve o resultado ou o motivo da falha, e a UI
    decide entre avisar e seguir sem a sugestão.
    ================================================================ */
-import type { ContextoRoteiro, FalhaIa, RoteiroSugerido } from "./calculo/ia";
+import type { AnuncioExtraido, ContextoRoteiro, FalhaIa, RoteiroSugerido } from "./calculo/ia";
 import { getSupabase } from "./persistencia/supabase";
 
 export interface ResultadoRoteiros {
@@ -21,6 +21,13 @@ export interface ResultadoAnalise {
   falha?: FalhaIa;
   mensagem?: string;
   texto?: string;
+}
+
+export interface ResultadoExtracao {
+  ok: boolean;
+  falha?: FalhaIa;
+  mensagem?: string;
+  anuncio?: AnuncioExtraido;
 }
 
 async function chamar<T>(corpo: unknown): Promise<T | { ok: false; falha: FalhaIa }> {
@@ -80,6 +87,16 @@ export async function iaDisponivelParaUsuario(): Promise<boolean> {
 /** Pede 3 roteiros de abordagem para o cenário informado. */
 export function sugerirRoteiros(contexto: ContextoRoteiro): Promise<ResultadoRoteiros> {
   return chamar<ResultadoRoteiros>({ tipo: "sugerir-roteiros", contexto });
+}
+
+/** Lê uma foto de placa, um print de anúncio ou um texto colado e devolve os
+    campos do imóvel para PREENCHER o cadastro — nunca para salvar sozinho.
+    `imagemBase64` é uma data URI (`data:image/jpeg;base64,...`). */
+export function extrairAnuncio(entrada: {
+  texto?: string;
+  imagemBase64?: string;
+}): Promise<ResultadoExtracao> {
+  return chamar<ResultadoExtracao>({ tipo: "extrair-anuncio", ...entrada });
 }
 
 /* As três leituras abaixo não recebem parâmetro de propósito: os números

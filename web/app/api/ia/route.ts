@@ -31,7 +31,10 @@ import { kpisDashboard } from "@/lib/calculo/dashboard";
 import { planoDoDia } from "@/lib/calculo/planoDia";
 import { todayISO } from "@/lib/datas";
 import {
+  ESQUEMA_ANUNCIO,
   ESQUEMA_ROTEIROS,
+  MAX_IMAGEM_BYTES,
+  bytesDeBase64,
   contagemPorStatus,
   corrigirMarcadores,
   mensagemFalhaIa,
@@ -39,8 +42,10 @@ import {
   promptAnalisarAbordagens,
   promptAnalisarDashboard,
   promptExplicarFoco,
+  promptExtrairAnuncio,
   promptResumoDia,
   promptSugerirRoteiros,
+  type AnuncioExtraido,
   type ContextoRoteiro,
   type FalhaIa,
   type RoteiroSugerido,
@@ -74,6 +79,8 @@ interface Resposta {
   roteiros?: RoteiroSugerido[];
   /** tipo "analisar-abordagens" */
   texto?: string;
+  /** tipo "extrair-anuncio" */
+  anuncio?: AnuncioExtraido;
 }
 
 function erro(falha: FalhaIa, status: number): Response {
@@ -200,13 +207,13 @@ export async function POST(request: Request): Promise<Response> {
   if (!(await podeUsarIa(supabase, sessao.user.id))) return erro("sem-permissao", 403);
 
   // 3. Corpo — só os tipos conhecidos.
-  let corpo: { tipo?: unknown; contexto?: unknown };
+  let corpo: { tipo?: unknown; contexto?: unknown; texto?: unknown; imagemBase64?: unknown };
   try {
     corpo = await request.json();
   } catch {
     return erro("requisicao-invalida", 400);
   }
-  const TIPOS = ["sugerir-roteiros", "analisar-abordagens", "analisar-dashboard", "resumo-dia", "explicar-foco"] as const;
+  const TIPOS = ["sugerir-roteiros", "analisar-abordagens", "analisar-dashboard", "resumo-dia", "explicar-foco", "extrair-anuncio"] as const;
   type Tipo = (typeof TIPOS)[number];
   const tipo = typeof corpo.tipo === "string" ? corpo.tipo : "";
   if (!(TIPOS as readonly string[]).includes(tipo)) return erro("requisicao-invalida", 400);
@@ -277,6 +284,60 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json(resposta);
     } catch (e) {
       console.error("IA: resposta de roteiros não veio parseável:", e);
+      return erro("falha-ia", 502);
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // 3a-bis. Extrair anúncio/placa — a captura em 1 toque do garimpo.
+  //
+  //   É a ÚNICA chamada em que o browser manda conteúdo (a foto ou o
+  //   texto colado) em vez de um contexto curto e tipado, então vale
+  //   repetir o que a segura (ver o bloco em lib/calculo/ia.ts): o
+  //   prompt e o esquema saem daqui, a resposta é um objeto fechado —
+  //   não texto livre —, a conta já passou pela allowlist de IA, e os
+  //   tetos abaixo limitam o custo. O que ela devolve preenche um
+  //   formulário; quem salva é o corretor, depois de conferir.
+  // ---------------------------------------------------------------
+  if (pedido === "extrair-anuncio") {
+    const texto = typeof corpo.texto === "string" ? corpo.texto : "";
+    const imagem = typeof corpo.imagemBase64 === "string" ? corpo.imagemBase64.trim() : "";
+
+    // Sem material não há o que ler. E imagem que não é imagem também não:
+    // uma data URI de outro tipo seria conteúdo arbitrário indo para a OpenAI.
+    if (!texto.trim() && !imagem) return erro("requisicao-invalida", 400);
+    if (imagem && !imagem.startsWith("data:image/")) return erro("requisicao-invalida", 400);
+    if (imagem && bytesDeBase64(imagem) > MAX_IMAGEM_BYTES) return erro("requisicao-invalida", 413);
+
+    // O prompt trunca o texto; a imagem já foi medida acima.
+    const conteudo: OpenAI.Chat.ChatCompletionContentPart[] = [
+      { type: "text", text: promptExtrairAnuncio(texto) },
+    ];
+    if (imagem) conteudo.push({ type: "image_url", image_url: { url: imagem } });
+
+    let conclusao: OpenAI.Chat.ChatCompletion;
+    try {
+      conclusao = await openai.chat.completions.create({
+        model: MODELO,
+        max_completion_tokens: MAX_TOKENS,
+        reasoning_effort: "medium",
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: "anuncio", strict: true, schema: ESQUEMA_ANUNCIO },
+        },
+        messages: [{ role: "user", content: conteudo }],
+      });
+    } catch (e) {
+      console.error("IA: falha ao extrair o anúncio:", e);
+      return erro(classificarErroIa(e), 502);
+    }
+
+    try {
+      const anuncio = JSON.parse(textoDaResposta(conclusao)) as AnuncioExtraido;
+      const resposta: Resposta = { ok: true, anuncio };
+      return Response.json(resposta);
+    } catch (e) {
+      console.error("IA: resposta da extração não veio parseável:", e);
       return erro("falha-ia", 502);
     }
   }

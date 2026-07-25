@@ -24,6 +24,24 @@ export function compararAgenda(a: AgendaItem, b: AgendaItem): number {
   return a.date.localeCompare(b.date) || (a.hora || "").localeCompare(b.hora || "");
 }
 
+/** Um dia partido em duas listas: o que tem hora marcada e o que é só "hoje".
+    São dois modos de trabalho diferentes e misturá-los apaga os dois — a visita
+    das 10h vira mais uma linha no meio de sete follow-ups, e a lista de tarefas
+    ganha uma ordem que não significa nada. */
+export interface DiaAgenda {
+  /** Com hora, em ordem cronológica — é a faixa de horários do dia. */
+  comHora: AgendaItem[];
+  /** Sem hora: resolve quando der. Mantém a ordem em que já vieram. */
+  semHora: AgendaItem[];
+}
+
+export function separarPorHorario(itens: AgendaItem[]): DiaAgenda {
+  const comHora = itens.filter((i) => !!(i.hora || "").trim());
+  const semHora = itens.filter((i) => !(i.hora || "").trim());
+  comHora.sort((a, b) => (a.hora || "").localeCompare(b.hora || ""));
+  return { comHora, semHora };
+}
+
 // Janela de "perto o suficiente" para aparecer na aba Pendentes — atrasados,
 // hoje, e o que vence nos próximos 15 dias. O resto (não concluído, mas
 // distante) fica escondido dessa aba para não afogar o que precisa de ação
