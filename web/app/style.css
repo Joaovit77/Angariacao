@@ -458,6 +458,30 @@ img.brand-mark{
 .ia-chip svg{ width:14px; height:14px; flex-shrink:0; }
 .ia-chip strong{ color: var(--text); }
 
+/* Agenda: o dia partido em dois blocos, como na AgendaView */
+.dia-agenda{ display:grid; gap:14px; max-width:420px; }
+.dia-bloco-label{
+  display:block; font-size:9.5px; font-weight:700; letter-spacing:1.1px;
+  text-transform:uppercase; color: var(--text-faint); margin-bottom:7px;
+}
+.dia-item{
+  display:flex; align-items:center; gap:11px;
+  background: var(--bg-elev-1); border:1px solid var(--border-soft);
+  border-radius:10px; padding:10px 12px;
+}
+.dia-hora{
+  font-size:12.5px; font-weight:700; color: var(--accent-strong);
+  font-variant-numeric: tabular-nums; flex-shrink:0;
+}
+.dia-ic{
+  flex-shrink:0; width:26px; height:26px; border-radius:8px;
+  display:inline-flex; align-items:center; justify-content:center;
+  background: var(--bg-elev-3); color: var(--text-faint);
+}
+.dia-ic svg{ width:14px; height:14px; }
+.dia-txt{ font-size:11.5px; color: var(--text-faint); line-height:1.45; min-width:0; }
+.dia-txt strong{ display:block; font-size:12.5px; font-weight:700; color: var(--text); }
+
 /* Ranking de abordagens / barra de meta */
 .rank{ display:grid; gap:13px; max-width:430px; }
 .rank-topo{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; gap:12px; }

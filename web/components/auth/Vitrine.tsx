@@ -105,6 +105,47 @@ const VisualResposta = (
   </>
 );
 
+/* O dia da agenda em dois blocos — a mesma leitura da AgendaView
+   (separarPorHorario): os horários marcados e o que se resolve quando der. */
+const VisualAgenda = (
+  <>
+    <div className="dia-agenda">
+      <div className="dia-bloco">
+        <span className="dia-bloco-label">Com horário</span>
+        <div className="dia-item">
+          <span className="dia-hora">10:00</span>
+          <span className="dia-txt">
+            <strong>Visita ao Sr. Antônio</strong>Gleba Palhano — apartamento, 3 quartos
+          </span>
+        </div>
+      </div>
+      <div className="dia-bloco">
+        <span className="dia-bloco-label">Sem hora marcada</span>
+        <div className="dia-item">
+          <span className="dia-ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />
+            </svg>
+          </span>
+          <span className="dia-txt">
+            <strong>Verificar disponibilidade</strong>Anunciado há 60 dias — ainda está de pé?
+          </span>
+        </div>
+      </div>
+    </div>
+    <div className="ia-chip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" />
+      </svg>
+      Criado por <strong>“pode ser quinta às 10h”</strong>
+    </div>
+    <p className="visual-nota">
+      A nota do compromisso guarda a frase que o gerou — nada aparece na agenda sem se explicar.
+    </p>
+  </>
+);
+
 const RANKING = [
   { nome: "Avaliação gratuita", pct: 62 },
   { nome: "Já tenho cliente para a região", pct: 48 },
@@ -175,19 +216,32 @@ const VisualExtras = (
         </svg>
       </span>
       <span className="showcase-feature-txt">
-        <strong>Mapa da carteira</strong>Seus imóveis distribuídos por bairro e região.
+        <strong>Mapa da carteira</strong>Seus imóveis por bairro, com a legenda filtrando o que já
+        foi angariado.
       </span>
     </li>
     <li className="showcase-feature">
       <span className="showcase-feature-ic">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="3" y="4" width="18" height="18" rx="2" />
-          <path d="M16 2v4M8 2v4M3 10h18" />
+          <path d="M3 8h3l2-3h8l2 3h3v11H3z" />
+          <circle cx="12" cy="13" r="3.5" />
         </svg>
       </span>
       <span className="showcase-feature-txt">
-        <strong>Agenda inteligente</strong>Lembrete de retorno e de verificar disponibilidade, criado
-        sozinho.
+        <strong>Garimpo em 1 toque</strong>Foto da placa ou print do anúncio: os campos vêm
+        preenchidos e o WhatsApp já abre.
+      </span>
+    </li>
+    <li className="showcase-feature">
+      <span className="showcase-feature-ic">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0z" />
+          <path d="M12 9v6" />
+        </svg>
+      </span>
+      <span className="showcase-feature-txt">
+        <strong>Termômetro do proprietário</strong>Quem chamar hoje, na ordem do sinal que cada um
+        deu — com o motivo escrito.
       </span>
     </li>
     <li className="showcase-feature">
@@ -247,6 +301,13 @@ const CENAS: Cena[] = [
     visual: VisualResposta,
   },
   {
+    rotulo: "Agenda",
+    titulo: "O horário que o proprietário marcou já entra na sua agenda.",
+    texto:
+      "Quando ele responde “pode ser quinta às 10h”, o compromisso nasce no dia certo — com a frase que o gerou anotada junto. O dia se lê em dois blocos: os horários marcados e o que dá para resolver quando der. E o lembrete de confirmar se o imóvel ainda está disponível volta sozinho a cada 60 dias.",
+    visual: VisualAgenda,
+  },
+  {
     rotulo: "Abordagens",
     titulo: "Descubra qual conversa faz o proprietário responder.",
     texto:
@@ -269,7 +330,7 @@ const CENAS: Cena[] = [
   },
   {
     rotulo: "E ainda",
-    titulo: "Mapa, agenda, relatórios e insights.",
+    titulo: "Mapa, garimpo, relatórios e insights.",
     texto: "O resto do dia a dia, no mesmo lugar e com os mesmos números das outras telas.",
     visual: VisualExtras,
   },
