@@ -23,6 +23,17 @@ const CAMINHOS: Record<string, ReactNode> = {
       <path d="M22 4 12 14.01l-3-3" />
     </>
   ),
+  // Aperto de mão: a angariação, que é o desfecho que este painel persegue.
+  // O "alvo" já nomeia a conversão em LOCAÇÃO, e as duas taxas convivem na
+  // mesma seção — ícone repetido faria uma passar pela outra na leitura.
+  aperto: (
+    <>
+      <path d="M11 17 8.5 14.5a2.12 2.12 0 0 1 3-3l1.5 1.5" />
+      <path d="M13 7l3 3 5-5-4-4-5 3-4-1-5 5 4 4" />
+      <path d="M14 14l2 2" />
+      <path d="M11.5 16.5 13 18" />
+    </>
+  ),
   alerta: (
     <>
       <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />

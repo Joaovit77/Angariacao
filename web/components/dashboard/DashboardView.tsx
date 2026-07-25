@@ -341,6 +341,21 @@ export default function DashboardView() {
         <KpiCard label="Novos contatos no mês" value={<Contador valor={kpis.contatosThisMonth} />} delta={kpis.deltaContatos} unit="un." description="Imóveis que entraram no funil este mês" />
         <KpiCard label="Angariações no mês" value={<Contador valor={kpis.angariacoesThisMonth} />} delta={kpis.deltaAngariacoes} unit="un." description="Só conta ao chegar na etapa Angariado" />
         <KpiCard label="Imóveis locados no mês" value={<Contador valor={kpis.locadosThisMonth} />} delta={kpis.deltaLocados} unit="un." />
+        {/* As duas taxas, lado a lado de propósito: a de angariação mede o
+            trabalho deste painel (o sim do proprietário), a de conversão mede o
+            dinheiro. Ver o bloco sobre captação vs. locação em motor.ts. */}
+        <KpiCard
+          label="Taxa de angariação"
+          value={
+            kpis.captacao.taxa != null ? (
+              <Contador valor={kpis.captacao.taxa} formatar={(n) => Math.round(n) + "%"} />
+            ) : (
+              "—"
+            )
+          }
+          hint="Angariado ÷ captações com desfecho"
+          description={`${kpis.captacao.angariados} de ${kpis.captacao.decididos} decididas · ${kpis.captacao.emAberto} em disputa`}
+        />
         <KpiCard label="Taxa de conversão" value={<Contador valor={overall.conversaoFechados} formatar={(n) => Math.round(n) + "%"} />} hint="Locado ÷ processos fechados" />
         <KpiCard label="Tempo médio até locação" value={overall.tempoMedio != null ? <Contador valor={overall.tempoMedio} /> : "—"} unit="dias" />
         <KpiCard label="Em andamento agora" value={<Contador valor={kpis.emAndamento} />} unit="imóveis" />

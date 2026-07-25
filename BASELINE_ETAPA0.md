@@ -108,6 +108,27 @@ Histórico: Julho/26 → 5|1, 2|1, R$ 5.000|R$ 1.800 · Junho/26 → 4|**3**, 2|
 8. 🔍 Principal motivo de perda: "Optou por outra imobiliária" — **1 de 3 (33%)**.
 9. 🎯 Taxa de conversão geral: **33%** (6 processos encerrados).
 
+> 🔁 **Divergência intencional pós-baseline (eixo de captação, 2026-07-25).** Os rankings de
+> tipo/bairro/canal mediam conversão em **locação** — o fim de um funil longo — num painel cujo
+> trabalho medido é a **angariação**. Com isso a amostra ficava minúscula (no fixture, 6 processos
+> encerrados contra 9 captações decididas; na carteira real do usuário, 2 locações contra 15
+> angariações) e a atribuição ficava errada: um imóvel captado que não aluga por causa do preço não
+> diz nada sobre a qualidade daquele canal de captação. O eixo primário desses cards passou a ser a
+> taxa de angariação (`conversaoCaptacao` em `web/lib/calculo/motor.ts`), com a locação como leitura
+> secundária. A conversão em locação **não** foi removida: segue com card próprio e com o KPI do
+> Dashboard.
+>
+> Efeitos neste baseline:
+> - **entra** 🤝 "Taxa de angariação: **56%**" (5 angariadas × 4 perdidas antes do sim, 5 em disputa);
+> - o card **2** passa a ler angariação: Apartamento **50%** (**2 de 4** decididas), não 33%;
+> - o card **1** ganha o contraponto de retorno: em Pinheiros, **33%** de angariação (1 de 3);
+> - **sai** o card **3** ("Ligação telefônica"): a amostra mínima agora é de captações **decididas**,
+>   e nenhum canal do fixture chega a 3 — o card antigo se sustentava em 3 imóveis apenas
+>   cadastrados, exatamente o tipo de afirmação sem lastro que `MIN_SAMPLE` existe para barrar.
+>
+> A contagem interna do `buildInsights` segue em **11** por coincidência (um entrou, um saiu). O
+> teste executável já reflete os valores novos.
+
 ## Mapa
 
 - **8 imóveis localizados** (8 marcadores Leaflet) · aviso: "**6** imóvel(is) sem localização definida".

@@ -17,6 +17,7 @@
    disse", e o ranking passaria a medir ficção.
    ================================================================ */
 import { useMemo, useState } from "react";
+import { abordagensParaEnvio } from "@/lib/calculo/abordagens";
 import {
   avisoTextoLote,
   FOLLOWUP_DIAS_DESDE_ULTIMO,
@@ -52,6 +53,10 @@ export default function ModalFollowUpLote() {
   const hoje = todayISO();
   const selecao = useMemo(() => selecionarFollowUp(imoveis, hoje), [imoveis, hoje]);
   const ativas = abordagens.filter((a) => !a.arquivada);
+  // O público do lote é quem já foi contatado e não respondeu — logo, sempre
+  // "seguimento". Passar "abertura" aqui subiria roteiros de primeiro contato
+  // para gente que já ouviu um.
+  const sugestoes = useMemo(() => abordagensParaEnvio(ativas, imoveis, "seguimento"), [ativas, imoveis]);
 
   const [abordagemId, setAbordagemId] = useState("");
   const [base, setBase] = useState(() => textoBaseFollowUp(null));
@@ -129,11 +134,18 @@ export default function ModalFollowUpLote() {
 
         <div className="field-group">
           <label>Abordagem usada</label>
+          {/* Ordenadas por desempenho, com o selo no próprio rótulo — o <select>
+              não aceita marcação, e o número precisa estar onde a escolha é
+              feita. O lote NÃO pré-seleciona a recomendada de propósito: quem
+              escolhe o roteiro é o corretor, e um padrão que se autoaplica faria
+              o ranking se autoconfirmar (o sugerido é usado, o usado sobe). */}
           <select value={abordagemId} onChange={(e) => trocarAbordagem(e.target.value)}>
             <option value="">Sem roteiro (usa a mensagem padrão de retomada)</option>
-            {ativas.map((a) => (
+            {sugestoes.map(({ abordagem: a, selo, recomendada }) => (
               <option key={a.id} value={a.id}>
+                {recomendada ? "★ " : ""}
                 {a.nome}
+                {selo ? ` — ${selo}` : ""}
               </option>
             ))}
           </select>

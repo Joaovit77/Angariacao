@@ -272,6 +272,125 @@ export function desempenhoPorAbordagem(imoveis: Imovel[], abordagens: Abordagem[
   });
 }
 
+/* ----------------------------------------------------------------
+   A RECOMENDAÇÃO — o ranking no momento da escolha
+
+   O ranking acima era só RELATÓRIO: vivia na view de Relatórios e no
+   resumo da IA. Na hora que importa — o seletor de modelo do
+   ModalWhatsapp, o seletor do follow-up em lote — a lista saía na
+   ordem do CATÁLOGO, isto é, na ordem em que o corretor cadastrou os
+   roteiros. O sistema sabia qual roteiro fecha mais e não dizia nada
+   onde a decisão acontece; para usar o que sabia, o corretor tinha que
+   sair do envio, abrir Relatórios, ler o ranking e voltar.
+
+   Duas regras que mantêm a sugestão honesta:
+
+   - **Sem amostra não há recomendação.** Abordagem com menos de
+     `MIN_TENTATIVAS` não recebe selo nem sobe na lista, e nenhuma
+     abordagem é marcada como recomendada se a melhor não tiver
+     amostra. Destacar "100% de angariação" de uma tentativa única
+     ensinaria o corretor a repetir um acidente — e, pior, faria o
+     ranking se autoconfirmar: o que é sugerido é usado, e o que é
+     usado sobe.
+   - **Abertura e seguimento não disputam o mesmo lugar.** O primeiro
+     contato e a retomada de quem não respondeu são conversas
+     diferentes, e a mesma lista serve as duas. O momento entra como
+     desempate — entre abordagens igualmente comprovadas, sobe a que
+     já foi usada NAQUELE momento — e não como filtro: filtrar
+     esconderia roteiro bom por falta de histórico numa das pontas.
+
+   A ordem do catálogo é preservada entre as abordagens sem amostra:
+   elas não têm nada que as ordene, e reordená-las por ruído faria a
+   lista dançar a cada envio.
+   ---------------------------------------------------------------- */
+
+/** Em que ponto da conversa o roteiro vai ser usado. */
+export type MomentoContato = "abertura" | "seguimento";
+
+/** O momento em que este imóvel está: nunca contatado = abertura. Lê o mesmo
+    histórico do ranking, então não há campo novo nem chance de divergir. */
+export function momentoDoContato(imovel: Imovel): MomentoContato {
+  return tentativasOrdenadas(imovel).some((t) => !foraDoRanking(t)) ? "seguimento" : "abertura";
+}
+
+export interface AbordagemComDesempenho {
+  abordagem: Abordagem;
+  /** null quando a abordagem ainda não tem tentativa registrada. */
+  desempenho: AbordagemDesempenho | null;
+  /** Selo curto para a UI (ex.: "62% de angariação · 8 usos"); null sem amostra. */
+  selo: string | null;
+  /** true só na melhor abordagem COM amostra suficiente. No máximo uma. */
+  recomendada: boolean;
+}
+
+/**
+ * As abordagens na ordem em que devem ser oferecidas no envio: as comprovadas
+ * primeiro (na ordem do ranking), as sem amostra depois (na ordem do catálogo).
+ *
+ * `momento` desempata entre as comprovadas — passe `momentoDoContato(imovel)`
+ * quando o envio é para um imóvel específico. No lote, em que os imóveis estão
+ * todos em "Sem resposta", o momento é sempre `"seguimento"`.
+ */
+export function abordagensParaEnvio(
+  abordagens: Abordagem[],
+  imoveis: Imovel[],
+  momento: MomentoContato,
+): AbordagemComDesempenho[] {
+  const ranking = desempenhoPorAbordagem(imoveis, abordagens);
+  const porId = new Map(ranking.map((d) => [d.abordagemId, d]));
+  const posicao = new Map(ranking.map((d, n) => [d.abordagemId, n]));
+
+  /** Só para ordenar: o que a UI recebe é o AbordagemComDesempenho limpo. */
+  interface Candidata {
+    abordagem: Abordagem;
+    desempenho: AbordagemDesempenho | null;
+    comAmostra: boolean;
+    /** Usos desta abordagem no momento pedido (abertura ou seguimento). */
+    usosNoMomento: number;
+    ordemCatalogo: number;
+  }
+
+  const candidatas: Candidata[] = abordagens.map((abordagem, ordemCatalogo) => {
+    const desempenho = porId.get(abordagem.id) ?? null;
+    return {
+      abordagem,
+      desempenho,
+      comAmostra: !!desempenho?.amostraSuficiente,
+      usosNoMomento: desempenho ? (momento === "abertura" ? desempenho.aberturas : desempenho.seguimentos) : 0,
+      ordemCatalogo,
+    };
+  });
+
+  candidatas.sort((x, y) => {
+    // 1. Comprovadas antes das sem amostra.
+    if (x.comAmostra !== y.comAmostra) return x.comAmostra ? -1 : 1;
+    // 2. Sem amostra: ordem do catálogo, porque não há nada que as ordene.
+    if (!x.comAmostra) return x.ordemCatalogo - y.ordemCatalogo;
+    // 3. Entre comprovadas: quem já foi usada neste momento da conversa sobe.
+    const usoX = x.usosNoMomento > 0;
+    const usoY = y.usosNoMomento > 0;
+    if (usoX !== usoY) return usoX ? -1 : 1;
+    // 4. Por fim, a ordem do ranking (taxa de angariação, destravou, resposta).
+    return (posicao.get(x.abordagem.id) ?? 0) - (posicao.get(y.abordagem.id) ?? 0);
+  });
+
+  // A recomendada é a primeira COM amostra — e só se ela de fato angaria. Um
+  // "recomendada" em cima de 0% de angariação seria sugerir repetir o que não
+  // funcionou.
+  const lider = candidatas[0];
+  const idRecomendada =
+    lider?.comAmostra && (lider.desempenho?.taxaAngariacao ?? 0) > 0 ? lider.abordagem.id : null;
+
+  return candidatas.map(({ abordagem, desempenho, comAmostra }) => ({
+    abordagem,
+    desempenho,
+    selo: comAmostra && desempenho
+      ? `${desempenho.taxaAngariacao.toFixed(0)}% de angariação · ${desempenho.tentativas} usos`
+      : null,
+    recomendada: abordagem.id === idRecomendada,
+  }));
+}
+
 export interface ResumoTentativas {
   /** Todas as tentativas registradas na carteira. */
   total: number;

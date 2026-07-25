@@ -93,9 +93,38 @@ o torna testável puro.
   `StatusHistoryEntry`.
 - **`calculo/motor.ts`** — o motor: `dateEnteredStatus`, `currentStatusSince`, `isStale`,
   `foiAngariado`, `metricsForRange`, coortes mensais, tempo médio, etc.
+- **`calculo/motor.ts` → `conversaoCaptacao`** — as **duas taxas do painel**, e por que são duas.
+  `metricsForRange` mede LOCAÇÃO (locados ÷ processos fechados): é a régua do dinheiro, e continua
+  valendo. Só que o trabalho medido aqui termina uma etapa antes — no "sim" do proprietário —, e
+  medir só locação num painel de captação erra duas vezes: a amostra fica minúscula (locação é o fim
+  de um funil longo; na carteira real, 0 locações contra 8 angariações) e a atribuição fica errada
+  (imóvel captado que não aluga por causa do preço não diz nada sobre a qualidade da captação). Por
+  isso `conversaoCaptacao` tem a **mesma forma** da outra — taxa sobre desfechos DECIDIDOS, nunca
+  sobre a carteira toda —, senão as duas não seriam comparáveis e esta despencaria a cada dia de
+  prospecção bem-feita, já que lead em aberto não é derrota. Três regras que caem do invariante do
+  `statusHistory`: **angariado-e-depois-perdido conta como angariado** (a captação foi ganha; a perda
+  veio em outra etapa); **quem está em jogo fica fora da taxa** (é pendência, não fracasso); e é o
+  **único lugar do motor que não pergunta só ao `foiAngariado`** — "Locado" conta como captação ganha
+  mesmo sem a etapa no histórico, porque não se aluga o que não se captou, e sem a ressalva o
+  desfecho mais positivo que existe cairia em "ainda em disputa". `imoveisAngariadosNoMes` segue
+  exigindo a entrada no histórico, e deve: lá a pergunta é em que MÊS, e sem data não há resposta.
+- **`calculo/projecao.ts`** — o eixo do **TEMPO** na meta. O card de meta sabia dividir e subtrair,
+  mas não sabia que existe calendário: no dia 3 do mês dizia o mesmo que no dia 28, e "faltam 4" é
+  tranquilidade no começo e emergência no fim. Responde as duas perguntas reais ("no meu ritmo, dá?"
+  e "quanto por dia?"). O ritmo é medido em dias **úteis**, não corridos — captação é trabalho de
+  horário comercial, e dividir por dias corridos mandaria o corretor trabalhar sábado. **Sem meta
+  não há projeção** (projetar contra zero acusaria "meta atingida" em todo card vazio), e mês
+  encerrado não projeta. Não conhece feriado, de propósito: feriado municipal varia por cidade e
+  inventar um calendário seria pior que ignorá-lo — a consequência (projeção levemente otimista em
+  semana de feriado) está assumida. Na UI, o total da projeção usa **piso, não arredondamento**:
+  9,6 contra meta 10 viraria "o mês fecha em 10" num card marcado em amarelo por não bater a meta,
+  com o texto contradizendo a cor.
 - **`calculo/filtros.ts`** — filtro/ordenação do Pipeline (parte pura).
 - **`calculo/dashboard.ts` · `insights.ts` · `relatorios.ts` · `agenda.ts`** — as métricas de cada
-  view, extraídas da montagem de HTML antiga sem alterar nenhuma fórmula.
+  view, extraídas da montagem de HTML antiga sem alterar nenhuma fórmula. **Duas exceções assinadas**
+  no [BASELINE_ETAPA0.md](BASELINE_ETAPA0.md): a conversão do relatório (achado A3) e os rankings dos
+  Insights, que passaram a medir angariação em vez de locação (ver `conversaoCaptacao` acima).
+  Ao mexer em fórmula aqui, a divergência tem que ficar registrada lá **e** no teste do baseline.
 - **`calculo/agenda.ts` → `separarPorHorario`** — parte o dia em **dois modos de trabalho**:
   `comHora` (faixa cronológica) e `semHora` (checklist do dia). Misturados, a visita das 10h vira
   mais uma linha no meio de sete follow-ups, e a lista de tarefas ganha uma ordem que não significa
@@ -249,6 +278,31 @@ Duas regras ao mexer nisso:
   deixaria o histórico órfão e o ranking perderia a leitura do que já foi feito.
 - **Amostra mínima é parte do contrato.** Abaixo de `MIN_TENTATIVAS` a linha é marcada e vai para o
   fim do ranking — com 1 tentativa, "100% de conversão" só significa que aconteceu uma vez.
+
+#### O ranking no momento da escolha (`abordagensParaEnvio`)
+
+O ranking era só **relatório**: vivia na view de Relatórios e no resumo da IA. No seletor do
+ModalWhatsapp e no do follow-up em lote — onde a decisão acontece — a lista saía na ordem do
+CATÁLOGO, isto é, na ordem em que o corretor cadastrou os roteiros. O sistema sabia qual roteiro
+fecha mais e não dizia nada ali; para usar o que sabia, era preciso sair do envio, abrir Relatórios,
+ler o ranking e voltar. `abordagensParaEnvio` leva o ranking para o seletor: comprovadas primeiro,
+com selo de desempenho, e no máximo **uma** marcada como recomendada.
+
+Três regras que impedem a sugestão de virar palpite:
+
+- **Sem amostra não há recomendação nem selo**, e nenhuma abordagem é recomendada se a líder tiver
+  0% de angariação — sugerir a "melhor" de uma carteira que não converte é sugerir repetir o que não
+  funcionou. Na carteira real isso já acontece: os dois roteiros com amostra estão em 0%, e o app
+  corretamente não recomenda nenhum.
+- **Abertura e seguimento não disputam o mesmo lugar.** Primeiro contato e retomada de quem não
+  respondeu são conversas diferentes, e o mesmo seletor serve as duas. O momento (`momentoDoContato`,
+  derivado do próprio histórico de tentativas) entra como **desempate**, não como filtro — filtrar
+  esconderia roteiro bom por falta de histórico numa das pontas. No lote o momento é sempre
+  `"seguimento"`: o público é quem já foi contatado.
+- **O lote NÃO pré-seleciona a recomendada.** Um padrão que se autoaplica faria o ranking se
+  autoconfirmar — o sugerido é usado, o usado sobe —, e mudaria em silêncio o que fica registrado na
+  tentativa. Quem escolhe o roteiro continua sendo o corretor, mesma regra do "a IA sugere, o
+  corretor confirma".
 
 #### De onde vêm as tentativas (e por que isso quase matou o ranking)
 

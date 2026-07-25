@@ -230,6 +230,80 @@ export function comissaoRecebidaNoMes(imoveis: Imovel[], key: string, comissaoPe
   );
 }
 
+/* ----------------------------------------------------------------
+   CONVERSÃO DE CAPTAÇÃO — o eixo que faltava
+
+   `metricsForRange` mede LOCAÇÃO: locados ÷ processos fechados. É o
+   funil inteiro, e é a régua certa para dinheiro. Só que este painel
+   é de ANGARIAÇÃO, e o trabalho do corretor termina uma etapa antes:
+   o "sim" do proprietário. Medir só locação num painel de captação
+   tem dois efeitos ruins ao mesmo tempo —
+
+   - a amostra fica pequena demais para dizer qualquer coisa (locação
+     é o fim de um funil longo, então há poucas), e
+   - o que o corretor controla desaparece da leitura: se um imóvel
+     angariado não aluga por causa do preço, isso não diz nada sobre a
+     qualidade da captação.
+
+   Daí esta função, com a MESMA forma da conversão de locação (uma
+   taxa sobre desfechos decididos, não sobre a carteira toda) para as
+   duas serem comparáveis e para nenhuma delas inflar sozinha quando
+   entram leads novos.
+
+   Duas regras que caem do invariante do statusHistory:
+
+   - **Angariado-e-depois-perdido conta como angariado.** A captação
+     foi ganha; a perda veio depois, em outra etapa. Quem lê o campo
+     `status` atual em vez do histórico contaria a mesma conversa como
+     derrota e apagaria o trabalho que deu certo.
+   - **Quem ainda está em jogo não entra na taxa.** Um lead em "Novo
+     contato" não é fracasso, é pendência — e como a maioria da
+     carteira vive aí, incluí-lo faria a taxa despencar a cada dia de
+     prospecção bem-feita, exatamente ao contrário do que deveria.
+   - **"Locado" conta como captação ganha mesmo sem a etapa no
+     histórico.** É o ÚNICO lugar do motor que não pergunta só ao
+     `foiAngariado`, e o motivo é lógico: não se aluga o que não se
+     captou. Quando o corretor arrasta o imóvel direto para Locado (ou
+     em dado legado que pulou a etapa), o histórico não registra a
+     passagem por "Angariado" — e sem esta ressalva o caso mais
+     positivo que existe cairia em "ainda em disputa", diluindo a taxa
+     justamente com os melhores desfechos. `imoveisAngariadosNoMes`
+     segue exigindo a entrada no histórico, e deve: lá a pergunta é
+     "em que MÊS isso aconteceu", e sem a data não há resposta.
+   ---------------------------------------------------------------- */
+
+export interface ConversaoCaptacao {
+  /** Captações com desfecho: angariadas + encerradas sem angariar. */
+  decididos: number;
+  angariados: number;
+  /** Encerradas (terminal negativo) sem nunca ter chegado em "Angariado". */
+  perdidosAntesDeAngariar: number;
+  /** Nem angariadas nem encerradas — ainda em disputa. Fora da taxa. */
+  emAberto: number;
+  /** angariados ÷ decididos × 100; null quando nada foi decidido ainda. */
+  taxa: number | null;
+}
+
+export function conversaoCaptacao(imoveis: Imovel[]): ConversaoCaptacao {
+  const captacoes = imoveisDeCaptacao(imoveis);
+  let angariados = 0;
+  let perdidosAntesDeAngariar = 0;
+  let emAberto = 0;
+  for (const imovel of captacoes) {
+    if (foiAngariado(imovel) || imovel.status === "Locado") angariados++;
+    else if ((STATUS_TERMINAL_NEGATIVE as readonly string[]).includes(imovel.status)) perdidosAntesDeAngariar++;
+    else emAberto++;
+  }
+  const decididos = angariados + perdidosAntesDeAngariar;
+  return {
+    decididos,
+    angariados,
+    perdidosAntesDeAngariar,
+    emAberto,
+    taxa: decididos ? (angariados / decididos) * 100 : null,
+  };
+}
+
 export function groupCount(imoveis: Imovel[], keyFn: (i: Imovel) => string | null | undefined): Record<string, number> {
   const map: Record<string, number> = {};
   imoveis.forEach((i) => {

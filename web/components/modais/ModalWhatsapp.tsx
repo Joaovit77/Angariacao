@@ -32,6 +32,7 @@
    ================================================================ */
 import { useRef, useState } from "react";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
+import { abordagensParaEnvio, momentoDoContato } from "@/lib/calculo/abordagens";
 import { telefoneWhatsapp } from "@/lib/calculo/agenda";
 import {
   aplicarModeloUsuario,
@@ -65,6 +66,16 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
   const modelosUsuario = config.whatsappModelos || [];
   // Sem roteiro não há o que enviar; arquivada saiu de circulação.
   const abordagensUsaveis = abordagens.filter((a) => !a.arquivada && (a.roteiro || "").trim());
+  // O ranking entra AQUI, no momento da escolha: comprovadas primeiro, com o
+  // selo de desempenho e uma marcada como recomendada. Antes a lista saía na
+  // ordem do catálogo, e para usar o que o sistema já sabia o corretor tinha
+  // que sair do envio e abrir Relatórios. O momento (abertura × seguimento)
+  // desempata — retomar quem não respondeu é outra conversa que o 1º contato.
+  const sugestoes = abordagensParaEnvio(
+    abordagensUsaveis,
+    imoveis,
+    imovel ? momentoDoContato(imovel) : "abertura",
+  );
 
   // Modelo inicial: o pedido pela abertura (ex.: confirmação de endereço no
   // pré-cadastro), desde que exista; senão, a renovação de angariação.
@@ -367,17 +378,28 @@ export default function ModalWhatsapp({ imovelId, modeloInicial }: { imovelId: s
                       </button>
                     </p>
                   ) : (
-                    abordagensUsaveis.map((a) => (
+                    sugestoes.map(({ abordagem: a, selo, recomendada }) => (
                       <div
                         key={a.id}
                         className={`wpp-opt${tipoSel === "abordagem" && modeloId === a.id ? " ativa" : ""}`}
                       >
                         <button
                           type="button"
-                          className="wpp-opt-sel"
+                          className={`wpp-opt-sel${selo || recomendada ? " com-selo" : ""}`}
                           onClick={() => trocarModelo("abordagem", a.id)}
                         >
-                          {a.nome}
+                          <span className="wpp-opt-nome">
+                            {a.nome}
+                            {recomendada && (
+                              <span className="wpp-opt-tag" title="Melhor desempenho no seu histórico">
+                                ★ recomendada
+                              </span>
+                            )}
+                          </span>
+                          {/* O selo só existe com amostra suficiente — ver
+                              abordagensParaEnvio: número de uma tentativa só
+                              ensinaria a repetir um acidente. */}
+                          {selo && <span className="wpp-opt-selo">{selo}</span>}
                         </button>
                       </div>
                     ))

@@ -11,11 +11,12 @@
    atrás de angariar), não uma rival disputando o proprietário. Os
    insights de garimpo tratam isso como canal de prospecção.
    ================================================================ */
-import { ORIGEM_GARIMPO_SITE, STATUS_TERMINAL_NEGATIVE } from "../constantes";
+import { ORIGEM_GARIMPO_SITE } from "../constantes";
 import { monthKey, monthLabelLong, shiftMonthKey } from "../datas";
 import type { Imovel } from "../tipos";
 import type { PipelineCol } from "./filtros";
 import {
+  conversaoCaptacao,
   dateEnteredStatus,
   daysInCurrentStatus,
   groupCount,
@@ -28,7 +29,27 @@ import {
 /** mínimo de imóveis para uma métrica ser considerada confiável */
 export const MIN_SAMPLE = 3;
 
-const TERMINAIS: readonly string[] = STATUS_TERMINAL_NEGATIVE;
+/* ----------------------------------------------------------------
+   POR QUE OS RANKINGS OLHAM ANGARIAÇÃO, NÃO LOCAÇÃO
+
+   Os rankings de tipo/bairro/canal já foram medidos por conversão em
+   LOCAÇÃO, e na carteira real isso os deixava mudos ou mentirosos: com
+   dezenas de captações e poucas locações, a taxa saía de uma amostra
+   de dois ou três imóveis, e "Apartamento é o tipo que mais converte"
+   podia significar literalmente "um apartamento alugou".
+
+   Além da amostra, havia um erro de atribuição: se um imóvel angariado
+   não aluga porque o proprietário insiste num preço fora do mercado,
+   isso não diz nada sobre a qualidade daquele canal de captação — e o
+   ranking creditava a falha ao canal.
+
+   Então o eixo primário destes cards passou a ser a taxa de
+   ANGARIAÇÃO (o "sim" do proprietário, que é o trabalho medido por
+   este painel), com a locação como leitura secundária quando há
+   amostra para ela. A conversão em locação continua tendo card
+   próprio: ela é a régua do dinheiro e não foi removida de lugar
+   nenhum.
+   ---------------------------------------------------------------- */
 
 /** Um imóvel foi garimpado quando registra a imobiliária-fonte onde foi achado. */
 const ehGarimpado = (i: Imovel) => !!(i.imobiliariaConcorrente && i.imobiliariaConcorrente.trim());
@@ -66,11 +87,54 @@ export interface Insight {
   action?: InsightAction;
 }
 
-/** Taxa de conversão em locação entre os imóveis que já tiveram desfecho. */
-function taxaConversao(imoveis: Imovel[]): { taxa: number | null; fechados: number; locados: number } {
-  const locados = imoveis.filter((i) => i.status === "Locado").length;
-  const fechados = imoveis.filter((i) => i.status === "Locado" || TERMINAIS.includes(i.status)).length;
-  return { taxa: fechados ? (locados / fechados) * 100 : null, fechados, locados };
+/**
+ * Ranking por taxa de ANGARIAÇÃO de um recorte da carteira (tipo, bairro,
+ * canal…). Só entram recortes com `MIN_SAMPLE` captações **decididas** — a
+ * amostra é de desfechos, não de linhas cadastradas, senão um bairro com dez
+ * leads todos em aberto apareceria no ranking sem nunca ter produzido nada.
+ *
+ * A cauda ("o que menos converte") sai da mesma lista ordenada, e não de um
+ * cálculo próprio: duas contas para o topo e a base é o caminho mais curto
+ * para os dois cards se contradizerem.
+ */
+interface RankingCaptacao {
+  rotulo: string;
+  taxa: number;
+  angariados: number;
+  decididos: number;
+  /** Locações vindas desse recorte — leitura secundária, quando houver. */
+  locados: number;
+}
+
+function rankingPorAngariacao(
+  imoveis: Imovel[],
+  chave: (i: Imovel) => string | null | undefined,
+): RankingCaptacao[] {
+  const grupos = new Map<string, Imovel[]>();
+  for (const imovel of imoveis) {
+    const k = (chave(imovel) || "").trim();
+    if (!k || k === "Não informado") continue;
+    const lista = grupos.get(k);
+    if (lista) lista.push(imovel);
+    else grupos.set(k, [imovel]);
+  }
+  const linhas: RankingCaptacao[] = [];
+  for (const [rotulo, lista] of grupos) {
+    const c = conversaoCaptacao(lista);
+    if (c.decididos < MIN_SAMPLE || c.taxa == null) continue;
+    linhas.push({
+      rotulo,
+      taxa: c.taxa,
+      angariados: c.angariados,
+      decididos: c.decididos,
+      locados: lista.filter((i) => i.status === "Locado").length,
+    });
+  }
+  // Maior taxa primeiro; empate pela amostra maior (mais confiável) e, por fim,
+  // pelo rótulo — para a ordem ser estável entre renders.
+  return linhas.sort(
+    (a, b) => b.taxa - a.taxa || b.decididos - a.decididos || a.rotulo.localeCompare(b.rotulo),
+  );
 }
 
 export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insight[] {
@@ -85,92 +149,95 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
   if (bairroEntries.length > 0 && bairroEntries[0][1] >= 2) {
     const [bairro, count] = bairroEntries[0];
     const pct = ((count / imoveis.length) * 100).toFixed(0);
+    // Concentração de esforço + o retorno dela. Volume sozinho não diz se o
+    // bairro merece o esforço: é onde ele bate mais, não onde ele fecha mais.
+    const cBairro = conversaoCaptacao(imoveis.filter((i) => (i.bairro || "").trim() === bairro));
+    const leituraTaxa =
+      cBairro.taxa != null && cBairro.decididos >= MIN_SAMPLE
+        ? ` Lá você angaria ${cBairro.taxa.toFixed(0)}% do que chega a um desfecho (${cBairro.angariados} de ${cBairro.decididos}).`
+        : "";
     list.push({
       tone: "info",
       icon: "local",
       title: `${bairro} é seu bairro mais trabalhado`,
-      text: `${count} de ${imoveis.length} imóveis (${pct}%) do pipeline estão nesse bairro — sua maior concentração de esforço.`,
+      text: `${count} de ${imoveis.length} imóveis (${pct}%) do pipeline estão nesse bairro — sua maior concentração de esforço.${leituraTaxa}`,
       group: "padroes",
       priority: 50,
       action: { tipo: "coluna", col: "bairro", valor: bairro },
     });
   }
 
-  // 2. Tipo de imóvel com maior/menor conversão (entre tipos com amostra mínima)
-  const tipos = [...new Set(imoveis.map((i) => i.tipo))];
-  const tipoConv = tipos
-    .map((t) => {
-      const doTipo = imoveis.filter((i) => i.tipo === t);
-      const { taxa } = taxaConversao(doTipo);
-      return { tipo: t, total: doTipo.length, taxa };
-    })
-    .filter((t) => t.total >= MIN_SAMPLE && t.taxa != null)
-    .sort((a, b) => (b.taxa as number) - (a.taxa as number));
-  // Só destaca "o tipo que mais converte" se ele de fato converte (> 0%); caso
+  // 2. Tipo de imóvel que mais/menos rende ANGARIAÇÃO (ver o bloco de cabeçalho
+  //    sobre por que o eixo é captação, e não locação).
+  const tipoRank = rankingPorAngariacao(imoveis, (i) => i.tipo);
+  // Só destaca "o tipo que mais angaria" se ele de fato angaria (> 0%); caso
   // contrário o card seria contraditório ("0% é o que mais converte").
-  if (tipoConv.length > 0 && (tipoConv[0].taxa as number) > 0) {
-    const best = tipoConv[0];
+  if (tipoRank.length > 0 && tipoRank[0].taxa > 0) {
+    const best = tipoRank[0];
+    const leituraLocacao =
+      best.locados > 0
+        ? ` Desses, ${best.locados} já ${best.locados === 1 ? "virou" : "viraram"} locação.`
+        : "";
     list.push({
       tone: "pos",
       icon: "check",
-      title: `${best.tipo} é o tipo que mais converte`,
-      text: `${(best.taxa as number).toFixed(0)}% dos "${best.tipo}" com desfecho viraram locação (${best.total} na carteira). Priorizar esse perfil tende a render mais rápido.`,
+      title: `${best.rotulo} é o tipo que você mais angaria`,
+      text: `Você fecha ${best.taxa.toFixed(0)}% das captações de "${best.rotulo}" que já tiveram desfecho (${best.angariados} de ${best.decididos}).${leituraLocacao} Priorizar esse perfil tende a render mais angariações pelo mesmo esforço.`,
       group: "desempenho",
       priority: 60,
-      action: { tipo: "coluna", col: "tipo", valor: best.tipo as string },
+      action: { tipo: "coluna", col: "tipo", valor: best.rotulo },
     });
-    if (tipoConv.length > 1) {
-      const worst = tipoConv[tipoConv.length - 1];
-      if ((worst.taxa as number) < 40 && worst.tipo !== best.tipo) {
+    if (tipoRank.length > 1) {
+      const worst = tipoRank[tipoRank.length - 1];
+      if (worst.taxa < 40 && worst.rotulo !== best.rotulo) {
         list.push({
           tone: "warn",
           icon: "alerta",
-          title: `${worst.tipo} converte pouco`,
-          text: `Só ${(worst.taxa as number).toFixed(0)}% dos "${worst.tipo}" com desfecho viraram locação. Vale revisar preço, demanda ou anúncio antes de investir mais tempo.`,
+          title: `${worst.rotulo} custa caro para angariar`,
+          text: `Só ${worst.taxa.toFixed(0)}% das captações de "${worst.rotulo}" com desfecho terminaram em angariação (${worst.angariados} de ${worst.decididos}). Vale rever a abordagem para esse perfil antes de investir mais tempo nele.`,
           group: "acao",
           priority: 70,
-          action: { tipo: "coluna", col: "tipo", valor: worst.tipo as string },
+          action: { tipo: "coluna", col: "tipo", valor: worst.rotulo },
         });
       }
     }
   }
 
-  // 2b. Forma de abordagem com melhor conversão (entre formas com amostra mínima)
-  const abordagens = [...new Set(imoveis.map((i) => i.formaAbordagem).filter(Boolean))];
-  const abordagemConv = abordagens
-    .map((a) => {
-      const doAbordagem = imoveis.filter((i) => i.formaAbordagem === a);
-      const { taxa } = taxaConversao(doAbordagem);
-      return { abordagem: a as string, total: doAbordagem.length, taxa };
-    })
-    .filter((a) => a.total >= MIN_SAMPLE && a.taxa != null)
-    .sort((a, b) => (b.taxa as number) - (a.taxa as number));
-  // Mesma regra do tipo: só faz sentido eleger "a abordagem mais eficaz" se ela
-  // tiver conversão real (> 0%).
-  if (abordagemConv.length > 1 && (abordagemConv[0].taxa as number) > 0) {
-    const best = abordagemConv[0];
+  // 2b. Canal de contato que mais rende angariação. `formaAbordagem` é o CANAL
+  //     (WhatsApp, ligação, visita), não o roteiro — o ranking de roteiros mora
+  //     em calculo/abordagens.ts, que lê o histórico de tentativas.
+  const canalRank = rankingPorAngariacao(imoveis, (i) => i.formaAbordagem);
+  if (canalRank.length > 1 && canalRank[0].taxa > 0) {
+    const best = canalRank[0];
     list.push({
       tone: "pos",
       icon: "telefone",
-      title: `"${best.abordagem}" é sua abordagem mais eficaz`,
-      text: `${(best.taxa as number).toFixed(0)}% de conversão em locação (${best.total} contatos) — a melhor entre as abordagens com ao menos ${MIN_SAMPLE} usos.`,
+      title: `"${best.rotulo}" é seu canal mais eficaz`,
+      text: `${best.taxa.toFixed(0)}% das captações abordadas por aí terminaram em angariação (${best.angariados} de ${best.decididos}) — o melhor entre os canais com ao menos ${MIN_SAMPLE} desfechos.`,
       group: "desempenho",
       priority: 55,
     });
   }
 
-  // 2c. Origem de imóvel mais comum
+  // 2c. Origem de imóvel mais comum — volume, com a taxa de angariação como
+  //     contraponto: a porta que mais ENTRA não é sempre a que mais FECHA, e
+  //     mostrar só o volume já fez o corretor perseguir o canal mais barulhento.
   const origemCounts = groupCount(imoveis, (i) => i.origemImovel);
   const origemEntries = Object.entries(origemCounts)
     .filter(([o]) => o !== "Não informado")
     .sort((a, b) => b[1] - a[1]);
   if (origemEntries.length > 0 && origemEntries[0][1] >= MIN_SAMPLE) {
     const [origem, count] = origemEntries[0];
+    const cOrigem = conversaoCaptacao(imoveis.filter((i) => (i.origemImovel || "").trim() === origem));
+    const leituraTaxa =
+      cOrigem.taxa != null && cOrigem.decididos >= MIN_SAMPLE
+        ? ` Dos que já tiveram desfecho, você angariou ${cOrigem.taxa.toFixed(0)}% (${cOrigem.angariados} de ${cOrigem.decididos}).`
+        : "";
     list.push({
       tone: "info",
       icon: "entrada",
       title: `${origem} traz mais oportunidades`,
-      text: `${count} imóveis vieram dessa origem — sua principal porta de entrada de novas angariações.`,
+      text: `${count} imóveis vieram dessa origem — sua principal porta de entrada de novas angariações.${leituraTaxa}`,
       group: "padroes",
       priority: 45,
       action: { tipo: "coluna", col: "origem", valor: origem },
@@ -341,6 +408,27 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
       text: `${count} de ${comMotivo.length} perdas registradas (${pct}%) foram por esse motivo. Se for recorrente (ex.: alugado por fora), reduzir o tempo até a visita ajuda a chegar antes.`,
       group: "padroes",
       priority: 40,
+    });
+  }
+
+  // 6b. Taxa de ANGARIAÇÃO geral — a régua do trabalho deste painel, e por isso
+  //     com prioridade acima da conversão em locação. As duas convivem de
+  //     propósito: esta mede o "sim" do proprietário (o que o corretor
+  //     controla), a outra mede o dinheiro (que depende de preço e demanda).
+  const cap = conversaoCaptacao(imoveis);
+  if (cap.decididos >= MIN_SAMPLE && cap.taxa != null) {
+    const tone = cap.taxa >= 50 ? "pos" : cap.taxa >= 25 ? "info" : "warn";
+    const emJogo =
+      cap.emAberto > 0
+        ? ` Outras ${cap.emAberto} captações seguem em disputa e ainda não entram nessa conta.`
+        : "";
+    list.push({
+      tone,
+      icon: "aperto",
+      title: `Taxa de angariação: ${cap.taxa.toFixed(0)}%`,
+      text: `Você fecha ${cap.taxa.toFixed(0)}% das captações que chegam a um desfecho — ${cap.angariados} angariações contra ${cap.perdidosAntesDeAngariar} perdidas antes do sim.${emJogo}`,
+      group: "desempenho",
+      priority: 85,
     });
   }
 

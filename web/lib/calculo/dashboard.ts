@@ -11,11 +11,13 @@ import type { Imovel } from "../tipos";
 import {
   comissaoEstimada,
   comissaoRecebidaValor,
+  conversaoCaptacao,
   groupCount,
   imoveisAngariadosNoMes,
   imoveisContatadosNoMes,
   imoveisLocadosNoMes,
   metricsForRange,
+  type ConversaoCaptacao,
   type MetricsForRange,
 } from "./motor";
 
@@ -33,6 +35,10 @@ export interface KpisDashboard {
   comissaoRecMes: number;
   emAndamento: number;
   overall: MetricsForRange;
+  /** O eixo de captação: quanto do que teve desfecho virou angariação. Anda ao
+      lado de `overall` (que mede locação) porque as duas respondem perguntas
+      diferentes — ver o bloco em motor.ts. */
+  captacao: ConversaoCaptacao;
 }
 
 export function kpisDashboard(imoveis: Imovel[], comissaoPercent: number): KpisDashboard {
@@ -65,6 +71,7 @@ export function kpisDashboard(imoveis: Imovel[], comissaoPercent: number): KpisD
     comissaoRecMes,
     emAndamento: imoveis.filter((i) => STATUS_FUNIL.includes(i.status) && i.status !== "Locado").length,
     overall: metricsForRange(imoveis, comissaoPercent),
+    captacao: conversaoCaptacao(imoveis),
   };
 }
 

@@ -143,10 +143,21 @@ describe("Insights", () => {
 
   // Com a regra nova de "parado", só 2 imóveis ficam estagnados (< 3), então o
   // card "estagnado" (que exige ao menos 3) não é gerado — 11 cards, não 12.
+  //
+  // DIVERGÊNCIA INTENCIONAL (eixo de captação, 2026-07-25): os rankings de
+  // tipo/bairro/canal passaram a medir ANGARIAÇÃO em vez de LOCAÇÃO — ver o
+  // bloco de cabeçalho em lib/calculo/insights.ts. Dois efeitos no fixture:
+  //  - entra o card "aperto" (Taxa de angariação), com amostra de 9 desfechos
+  //    contra os 6 da taxa de locação;
+  //  - sai o card "telefone" (canal mais eficaz): a amostra mínima agora é de
+  //    captações DECIDIDAS, e nenhum canal do fixture chega a 3. O card antigo
+  //    aparecia com 3 imóveis apenas cadastrados, o que é justamente o tipo de
+  //    afirmação sem lastro que MIN_SAMPLE existe para barrar.
+  // O total segue em 11 por coincidência (um entrou, um saiu).
   it("gera os 11 cards do baseline, na ordem agrupada por seção", () => {
     expect(insights).toHaveLength(11);
     expect(insights.map((i) => i.icon)).toEqual([
-      "funil", "ampulheta", "escopo", "alvo", "alta", "check", "telefone", "grafico", "local", "entrada", "busca",
+      "funil", "ampulheta", "escopo", "aperto", "alvo", "alta", "check", "grafico", "local", "entrada", "busca",
     ]);
     // As seções saem em blocos, na ordem de INSIGHT_GROUP_ORDER.
     expect(insights.map((i) => i.group)).toEqual([
@@ -160,12 +171,19 @@ describe("Insights", () => {
   it("os números de cada card batem com o baseline", () => {
     expect(porIcone("local").title).toContain("Pinheiros");
     expect(porIcone("local").text).toContain("4 de 14 imóveis (29%)");
+    // Bairro ganhou o contraponto de retorno: volume + taxa de angariação.
+    expect(porIcone("local").text).toContain("angaria 33% do que chega a um desfecho (1 de 3)");
+    // Tipo agora mede ANGARIAÇÃO: 2 de 4 captações decididas de Apartamento
+    // fecharam (50%), contra os 33% de conversão em locação de antes.
     expect(porIcone("check").title).toContain("Apartamento");
-    expect(porIcone("check").text).toContain("33%");
-    expect(porIcone("check").text).toContain("(7 na carteira)");
-    expect(porIcone("telefone").title).toContain("Ligação telefônica");
-    expect(porIcone("telefone").text).toContain("50%");
-    expect(porIcone("telefone").text).toContain("(3 contatos)");
+    expect(porIcone("check").text).toContain("50%");
+    expect(porIcone("check").text).toContain("(2 de 4)");
+    expect(porIcone("check").text).toContain("1 já virou locação");
+    // A taxa de angariação: 5 angariadas e 4 perdidas antes do sim, com 5 ainda
+    // em disputa (fora da conta, porque lead em aberto não é derrota).
+    expect(porIcone("aperto").title).toBe("Taxa de angariação: 56%");
+    expect(porIcone("aperto").text).toContain("5 angariações contra 4 perdidas antes do sim");
+    expect(porIcone("aperto").text).toContain("Outras 5 captações seguem em disputa");
     expect(porIcone("entrada").title).toContain("Prospecção ativa");
     expect(porIcone("entrada").text).toContain("3 imóveis vieram dessa origem");
     expect(porIcone("grafico").title).toContain("Julho de 2026");
@@ -200,7 +218,7 @@ describe("Insights", () => {
     // O card por-imóvel busca pelo código do imóvel específico.
     expect(porIcone("ampulheta").action).toEqual({ tipo: "busca", termo: "CA-002", rotulo: "Ver imóvel →" });
     // Cards sem recorte equivalente não oferecem atalho.
-    expect(porIcone("telefone").action).toBeUndefined();
+    expect(porIcone("aperto").action).toBeUndefined();
     expect(porIcone("alvo").action).toBeUndefined();
     expect(porIcone("escopo").action).toBeUndefined();
   });

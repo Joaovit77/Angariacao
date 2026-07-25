@@ -99,6 +99,42 @@ export function shiftMonthKey(key: string, delta: number): string {
   return d.toISOString().slice(0, 7);
 }
 
+/** Primeiro e último dia (ISO) do mês "YYYY-MM". */
+export function primeiroDiaDoMes(key: string): string {
+  return `${key}-01`;
+}
+
+export function ultimoDiaDoMes(key: string): string {
+  const [y, m] = key.split("-").map(Number);
+  // Dia 0 do mês seguinte = último dia deste mês (resolve 28/29/30/31 sozinho).
+  const d = new Date(y, m, 0);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/**
+ * Dias ÚTEIS (segunda a sexta) entre duas datas ISO, **inclusive** nas duas
+ * pontas. Devolve 0 quando o intervalo é vazio (`isoA` depois de `isoB`).
+ *
+ * Não conhece feriado: não há calendário de feriados no app, e inventar um
+ * seria pior que ignorá-los — feriado municipal varia por cidade, e o corretor
+ * é quem sabe quais valem para ele. A consequência é conhecida e aceita: numa
+ * semana com feriado a projeção fica levemente otimista.
+ */
+export function diasUteisEntre(isoA: string | null | undefined, isoB: string | null | undefined): number {
+  const a = parseDate(isoA);
+  const b = parseDate(isoB);
+  if (!a || !b || a.getTime() > b.getTime()) return 0;
+  let uteis = 0;
+  const cursor = new Date(a);
+  while (cursor.getTime() <= b.getTime()) {
+    const dia = cursor.getDay(); // 0 = domingo, 6 = sábado
+    if (dia !== 0 && dia !== 6) uteis++;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return uteis;
+}
+
 export function last6MonthKeys(): string[] {
   const keys: string[] = [];
   let k = currentMonthKey();

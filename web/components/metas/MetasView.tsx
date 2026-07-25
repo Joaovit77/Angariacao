@@ -15,7 +15,8 @@ import {
   imoveisAngariadosNoMes,
   imoveisLocadosNoMes,
 } from "@/lib/calculo/motor";
-import { currentMonthKey, monthLabelLong } from "@/lib/datas";
+import { projetarMeta, textoProjecao, tomProjecao } from "@/lib/calculo/projecao";
+import { currentMonthKey, monthLabelLong, todayISO } from "@/lib/datas";
 import { fmtMoney } from "@/lib/formatadores";
 import { useAppStore } from "@/lib/store";
 import { useUiModal } from "@/lib/uiModal";
@@ -28,12 +29,18 @@ function GoalCard({
   target,
   unit,
   note,
+  mKey,
+  hoje,
 }: {
   label: string;
   current: number;
   target: number;
   unit: string;
   note?: string;
+  /** Mês da meta ("YYYY-MM") e o dia de referência — o que dá o eixo do tempo
+      à projeção. Sem eles o card volta a ser só divisão e subtração. */
+  mKey: string;
+  hoje: string;
 }) {
   const pct = target > 0 ? Math.min(100, (current / target) * 100) : 0;
   const remaining = Math.max(0, target - current);
@@ -42,6 +49,20 @@ function GoalCard({
   // 90% ganha o pulso/brilho discreto (.pulsante).
   const pulsante = pct >= 90;
   const fmt = (v: number) => (unit === "money" ? fmtMoney(v) : `${v}${unit ? " " + unit : ""}`);
+  // Totais são inteiros (meio imóvel não existe); taxas mantêm uma decimal,
+  // porque arredondar 0,8/dia para 1 diria que o ritmo está em dia.
+  //
+  // O total usa FLOOR, não round, e isso não é detalhe: uma projeção de 9,6
+  // contra meta 10 arredondaria para "o mês fecha em 10" no mesmo card que está
+  // marcado em amarelo por não bater a meta — o texto contradizendo a cor. Piso
+  // é também a leitura honesta de uma projeção ("você chega a pelo menos N").
+  const fmtTotal = (v: number) => (unit === "money" ? fmtMoney(v) : fmt(Math.floor(v)));
+  const fmtTaxa = (v: number) =>
+    unit === "money" ? fmtMoney(v) : `${v.toFixed(1).replace(".", ",")}${unit ? " " + unit : ""}`;
+
+  const proj = projetarMeta(current, target, mKey, hoje);
+  const textoProj = textoProjecao(proj, fmtTotal, fmtTaxa);
+  const tom = tomProjecao(proj.situacao);
 
   return (
     <div className="card goal-card">
@@ -67,9 +88,21 @@ function GoalCard({
       </div>
       <div className="goal-foot">
         <span>{target > 0 ? (pct >= 100 ? "Meta atingida 🎉" : `Faltam ${fmt(remaining)}`) : "—"}</span>
+        {/* O esforço diário do que falta — a leitura que "Faltam 4" não dá:
+            4 no dia 3 do mês e 4 no dia 28 são situações opostas. */}
+        {proj.porDiaUtil != null && (
+          <span style={{ color: `var(--${tom === "neutro" ? "text-dim" : tom === "pos" ? "good" : tom})` }}>
+            {fmtTaxa(proj.porDiaUtil)}/dia útil
+          </span>
+        )}
       </div>
-      {note && (
+      {textoProj && (
         <div className="kpi-desc" style={{ marginTop: "8px" }}>
+          {textoProj}
+        </div>
+      )}
+      {note && (
+        <div className="kpi-desc" style={{ marginTop: textoProj ? "4px" : "8px" }}>
           {note}
         </div>
       )}
@@ -84,6 +117,7 @@ export default function MetasView() {
   const abrirModal = useUiModal((s) => s.abrirModal);
 
   const mKey = currentMonthKey();
+  const hoje = todayISO();
   const meta: Meta = metas[mKey] || { angariacoes: 0, locados: 0, comissao: 0, faturamento: 0 };
   const thisMonth = imoveisAngariadosNoMes(imoveis, mKey);
   const locadosThisMonth = imoveisLocadosNoMes(imoveis, mKey);
@@ -127,15 +161,33 @@ export default function MetasView() {
             target={meta.angariacoes}
             unit="un."
             note="Conta ao chegar na etapa Angariado"
+            mKey={mKey}
+            hoje={hoje}
           />
-          <GoalCard label="Imóveis locados" current={locadosThisMonth.length} target={meta.locados} unit="un." />
-          <GoalCard label="Comissão recebida" current={comissaoRecMes} target={meta.comissao} unit="money" />
+          <GoalCard
+            label="Imóveis locados"
+            current={locadosThisMonth.length}
+            target={meta.locados}
+            unit="un."
+            mKey={mKey}
+            hoje={hoje}
+          />
+          <GoalCard
+            label="Comissão recebida"
+            current={comissaoRecMes}
+            target={meta.comissao}
+            unit="money"
+            mKey={mKey}
+            hoje={hoje}
+          />
           <GoalCard
             label="Faturamento em contratos"
             current={faturamentoMes}
             target={meta.faturamento}
             unit="money"
             note="Soma dos aluguéis dos imóveis locados no mês"
+            mKey={mKey}
+            hoje={hoje}
           />
         </div>
       )}
