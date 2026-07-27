@@ -440,8 +440,8 @@ export default function PipelineView() {
   const cidades = pipelineUniqueSorted(imoveis.map((i) => i.cidade));
   const responsaveis = pipelineUniqueSorted(imoveis.map((i) => i.responsavel));
   const filtrados = filtrarImoveis(imoveis, filters, viewMode, colFilters);
-  // Quantos "Sem resposta" estão prontos para uma cutucada. O botão só
-  // aparece quando há alguém — com a fila vazia ele seria só ruído.
+  // Quantos proprietários sem retorno estão prontos para uma cutucada. O botão
+  // só aparece quando há alguém — com a fila vazia ele seria só ruído.
   const prontosFollowUp = useMemo(
     () => selecionarFollowUp(imoveis, todayISO()).elegiveis.length,
     [imoveis],

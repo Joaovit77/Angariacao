@@ -9,7 +9,8 @@ import {
   enviadosFollowUpHoje,
   falhaEhDoNumero,
   falhaEncerraLote,
-  FOLLOWUP_DIAS_DESDE_ULTIMO,
+  diasDesdeUltimoContato,
+  FOLLOWUP_DIAS_POR_TENTATIVA,
   FOLLOWUP_INTERVALO_MAX_MS,
   FOLLOWUP_INTERVALO_MIN_MS,
   FOLLOWUP_LOTE_MAX,
@@ -68,7 +69,7 @@ function imovel(over: Partial<Imovel> = {}): Imovel {
 }
 
 describe("selecionarFollowUp — quem entra", () => {
-  it("pega os 'Sem resposta' e ignora o resto do funil", () => {
+  it("pega quem não respondeu e ignora quem já avançou no funil", () => {
     const lista = [
       imovel({ id: "a" }),
       imovel({ id: "b", status: "Novo contato" }),
@@ -76,7 +77,36 @@ describe("selecionarFollowUp — quem entra", () => {
       imovel({ id: "d", status: "Locado" }),
     ];
     const { elegiveis } = selecionarFollowUp(lista, HOJE);
-    expect(elegiveis.map((i) => i.id)).toEqual(["a"]);
+    expect(elegiveis.map((i) => i.id).sort()).toEqual(["a", "b"]);
+  });
+
+  /* O beco que motivou incluir "Novo contato" no público do lote: nada move
+     esse status sozinho — confirmar o resultado da tentativa não toca no
+     imóvel —, então o primeiro contato sem retorno ficava ali para sempre,
+     fora do alcance da única ferramenta feita para ele. */
+  it("pega 'Novo contato' parado: primeira mensagem enviada e silêncio", () => {
+    const lista = [
+      imovel({
+        id: "primeiro-contato-mudo",
+        status: "Novo contato",
+        tentativas: [tentativa("2026-05-01")],
+      }),
+    ];
+    const { elegiveis } = selecionarFollowUp(lista, HOJE);
+    expect(elegiveis.map((i) => i.id)).toEqual(["primeiro-contato-mudo"]);
+  });
+
+  it("mas 'Novo contato' recém-cadastrado não é cutucado — o corte de dias vale igual", () => {
+    const lista = [
+      imovel({
+        id: "cadastrado-hoje",
+        status: "Novo contato",
+        tentativas: [tentativa(HOJE)],
+      }),
+    ];
+    const { elegiveis, excluidos } = selecionarFollowUp(lista, HOJE);
+    expect(elegiveis).toHaveLength(0);
+    expect(excluidos[0]?.motivo).toBe("contato-recente");
   });
 
   it("não pega 'Perdido' nem 'Cancelado' — são saídas deliberadas", () => {
@@ -110,7 +140,7 @@ describe("selecionarFollowUp — quem fica de fora", () => {
     expect(excluidos[0].motivo).toBe("numero-invalido");
   });
 
-  it(`exclui quem falou com o corretor há menos de ${FOLLOWUP_DIAS_DESDE_ULTIMO} dias`, () => {
+  it("exclui quem falou com o corretor há pouco", () => {
     const ontem = "2026-07-20";
     const { elegiveis, excluidos } = selecionarFollowUp([imovel({ tentativas: [tentativa(ontem)] })], HOJE);
     expect(elegiveis).toHaveLength(0);
@@ -125,9 +155,41 @@ describe("selecionarFollowUp — quem fica de fora", () => {
   });
 
   it("libera exatamente no limite de dias", () => {
-    const limite = "2026-07-07"; // 14 dias antes de HOJE
+    const limite = "2026-07-14"; // 7 dias antes de HOJE — a espera da 2ª tentativa
     const { elegiveis } = selecionarFollowUp([imovel({ tentativas: [tentativa(limite)] })], HOJE);
     expect(elegiveis).toHaveLength(1);
+  });
+
+  /* A espera CRESCE a cada tentativa: a segunda mensagem vem rápido (é a que
+     converte), a quarta espera bem mais (ali a pressa vira insistência). Com
+     intervalo fixo os dois casos eram tratados igual. */
+  it("a espera cresce a cada tentativa acumulada", () => {
+    const [primeira, segunda, terceira] = FOLLOWUP_DIAS_POR_TENTATIVA;
+    expect(diasDesdeUltimoContato(1)).toBe(primeira);
+    expect(diasDesdeUltimoContato(2)).toBe(segunda);
+    expect(diasDesdeUltimoContato(3)).toBe(terceira);
+    expect(primeira).toBeLessThan(segunda);
+    expect(segunda).toBeLessThan(terceira);
+  });
+
+  it("sem tentativa registrada não há espera — é o caso mais esquecido de todos", () => {
+    const { elegiveis } = selecionarFollowUp([imovel({ tentativas: [] })], HOJE);
+    expect(elegiveis).toHaveLength(1);
+  });
+
+  it("os mesmos dias liberam a 2ª tentativa e seguram a 3ª", () => {
+    const dezDias = "2026-07-11"; // 10 dias antes de HOJE: passa de 7, não chega a 14
+    const umaTentativa = imovel({ id: "com-uma", tentativas: [tentativa(dezDias)] });
+    const duasTentativas = imovel({
+      id: "com-duas",
+      tentativas: [tentativa("2026-05-01"), tentativa(dezDias)],
+    });
+
+    expect(selecionarFollowUp([umaTentativa], HOJE).elegiveis).toHaveLength(1);
+
+    const { elegiveis, excluidos } = selecionarFollowUp([duasTentativas], HOJE);
+    expect(elegiveis).toHaveLength(0);
+    expect(excluidos[0].motivo).toBe("contato-recente");
   });
 
   it(`exclui quem já acumulou ${FOLLOWUP_MAX_TENTATIVAS} tentativas`, () => {

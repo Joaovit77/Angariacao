@@ -2,7 +2,8 @@
 
 /* ================================================================
    MODAL: FOLLOW-UP EM LOTE
-   Cutuca de uma vez os proprietários em "Sem resposta". O modal só
+   Cutuca de uma vez os proprietários que não responderam — "Sem
+   resposta" e "Novo contato" (ver FOLLOWUP_STATUS_ALVO). O modal só
    MONTA o lote — quem envia é a fila em lib/filaFollowUp.ts, que
    sobrevive ao fechamento daqui para o corretor seguir prospectando
    enquanto as mensagens saem.
@@ -20,7 +21,7 @@ import { useMemo, useState } from "react";
 import { abordagensParaEnvio } from "@/lib/calculo/abordagens";
 import {
   avisoTextoLote,
-  FOLLOWUP_DIAS_DESDE_ULTIMO,
+  FOLLOWUP_DIAS_POR_TENTATIVA,
   FOLLOWUP_LOTE_MAX,
   FOLLOWUP_MAX_TENTATIVAS,
   FOLLOWUP_TETO_DIA,
@@ -119,7 +120,7 @@ export default function ModalFollowUpLote() {
 
       <div className="modal-body">
         <p className="section-note" style={{ marginBottom: "14px" }}>
-          Uma mensagem para cada proprietário em <strong>Sem resposta</strong>. As mensagens saem uma a
+          Uma mensagem para cada proprietário que <strong>ainda não respondeu</strong>. As mensagens saem uma a
           uma, com intervalo de alguns minutos entre elas — é o que evita que o WhatsApp trate o envio
           como spam e bloqueie o número da imobiliária. Você pode fechar esta janela e continuar
           trabalhando; o envio segue em segundo plano.
@@ -195,7 +196,7 @@ export default function ModalFollowUpLote() {
           </label>
           {selecao.elegiveis.length === 0 ? (
             <p className="section-note">
-              Nenhum proprietário em “Sem resposta” está pronto para follow-up agora.
+              Nenhum proprietário está pronto para follow-up agora.
             </p>
           ) : selecao.limite === 0 ? (
             <p className="section-note">
@@ -249,8 +250,9 @@ export default function ModalFollowUpLote() {
               ))}
             </div>
             <div className="field-hint">
-              Ficam de fora quem não tem celular válido, quem falou com você nos últimos{" "}
-              {FOLLOWUP_DIAS_DESDE_ULTIMO} dias e quem já acumulou {FOLLOWUP_MAX_TENTATIVAS} tentativas
+              Ficam de fora quem não tem celular válido, quem falou com você há pouco (
+              {FOLLOWUP_DIAS_POR_TENTATIVA.join(", ")} dias — a espera cresce a cada tentativa) e
+              quem já acumulou {FOLLOWUP_MAX_TENTATIVAS} tentativas
               — insistir além disso costuma render bloqueio, não resposta. Também sai o imóvel cujo
               proprietário já está no lote por outro: o lote manda{" "}
               <strong>uma mensagem por pessoa</strong>, não uma por imóvel. Os que sobraram voltam na

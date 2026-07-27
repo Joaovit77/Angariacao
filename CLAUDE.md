@@ -377,13 +377,23 @@ da coluna.
 
 ### Follow-up em lote
 
-Uma mensagem para cada proprietário parado em "Sem resposta", de uma vez. As partes puras
+Uma mensagem para cada proprietário que não respondeu, de uma vez. As partes puras
 (elegibilidade, texto, intervalo, resumo) ficam em `calculo/followup.ts`; a execução em
 `filaFollowUp.ts`, um store Zustand que roda a fila em background chamando a rota de WhatsApp já
 existente uma vez por imóvel. Entrada pelo Pipeline; UI em `ModalFollowUpLote` +
 `painel/IndicadorFollowUp`.
 
-**São DOIS lotes, uma máquina só.** Além do seguimento de "Sem resposta", há a **confirmação de
+**O público são DOIS status, e o segundo entrou por medição** (`FOLLOWUP_STATUS_ALVO`): "Sem
+resposta" **e "Novo contato"**. O lote atendia só o primeiro, partindo de que um contato sem
+retorno viraria "Sem resposta" em algum momento. **Não vira** — nada move esse status sozinho:
+`confirmarResultadoTentativa` marca o desfecho da TENTATIVA e não toca no imóvel, então confirmar
+"não respondeu" no nudge deixa o imóvel exatamente onde estava. Na carteira real de 27/07/2026 isso
+prendia **68 imóveis** num beco (primeira mensagem enviada, silêncio, invisíveis para a única
+ferramenta feita para esse caso), com 28 deles cruzando os 14 dias na semana seguinte. "Perdido" e
+"Cancelado" seguem de fora e por outro motivo: são saídas DELIBERADAS, o proprietário disse não.
+"Novo contato" não é saída de ninguém — é silêncio.
+
+**São DOIS lotes, uma máquina só.** Além do seguimento acima, há a **confirmação de
 disponibilidade** (`selecionarVerificacaoDisponibilidade` + `ModalConfirmarDisponibilidade`):
 imóveis já **angariados/publicados** há tempo, perguntando se ainda estão disponíveis — a versão
 em LOTE do lembrete individual de "verificar disponibilidade" (ver `ModalVerificacao` / a agenda).
@@ -411,6 +421,13 @@ de spam — gente que já não respondeu. Os freios não são preferência de UX
 - **O lote nunca vira rajada.** 10 por rodada, 20 por dia, envio sequencial com intervalo
   **sorteado** entre 30 e 60s (cadência exata de N em N segundos é assinatura de bot). Mexer nesses
   números é mexer na chance de o número ser banido, não em conforto.
+- **A espera entre cutucadas CRESCE** (`FOLLOWUP_DIAS_POR_TENTATIVA` = 7, 14, 30 —
+  `diasDesdeUltimoContato`). Era 14 fixo, e o defeito não era o 14: era o "sempre". A **segunda**
+  tentativa e a **quarta** são conversas diferentes, e o intervalo único tratava as duas igual —
+  tarde demais para a que converte (o lote de 21–23/07/2026 teve ~15% de resposta na segunda) e
+  cedo demais para a que já beira a insistência. Repare que isto **não** é um freio anti-banimento:
+  encurtar o começo não aumenta o volume diário, que é travado pelo teto e pelo intervalo acima —
+  só faz a fila se reabastecer. O que a escala protege é a paciência do proprietário.
 - **Os cortes saem das tentativas, não de campo novo.** "Falou há menos de 14 dias" e "já acumulou
   4 tentativas" são lidos do histórico que já existe — mesma leitura do ranking de abordagens.
   Nenhuma coluna, nenhuma migração, nenhuma política RLS a mais.

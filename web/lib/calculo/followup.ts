@@ -40,17 +40,42 @@ import { aplicarModeloUsuario, type FalhaEnvio, mensagemWhatsapp, numeroEvolutio
     abaixo: pouco tempo de aba aberta e longe do padrão de rajada. */
 export const FOLLOWUP_LOTE_MAX = 10;
 
-/** Teto por dia. O corte de {@link FOLLOWUP_DIAS_DESDE_ULTIMO} já impede
+/** Teto por dia. O corte de {@link diasDesdeUltimoContato} já impede
     reenviar para o MESMO proprietário, mas nada impediria rodar o lote de
     novo pegando "os próximos 10" a cada rodada — em uma tarde de faxina no
     pipeline isso vira 40 mensagens. Duas rodadas por dia é o limite. */
 export const FOLLOWUP_TETO_DIA = 20;
 
 /** Dias desde o último contato registrado (de QUALQUER canal) para o
-    proprietário voltar a ser elegível. Vale para qualquer tentativa, não
-    só as do lote: se você ligou para ele anteontem, um "não consegui
-    retorno" automático hoje soa como robô — porque é. */
-export const FOLLOWUP_DIAS_DESDE_ULTIMO = 14;
+    proprietário voltar a ser elegível — **por posição na cadência**, não um
+    número fixo. Vale para qualquer tentativa, não só as do lote: se você
+    ligou para ele anteontem, um "não consegui retorno" automático hoje soa
+    como robô — porque é.
+
+    Era 14 dias, sempre. O problema não era o 14 — era o "sempre": a espera
+    tratava igual a SEGUNDA tentativa e a QUARTA, que são conversas
+    diferentes. Duas semanas depois, "te mandei uma mensagem" já perdeu o
+    contexto, e os motivos de perda da carteira real dizem que a decisão do
+    proprietário acontece antes disso (em 27/07/2026, 30 das 49 perdas eram
+    "já alugou", "já vendeu" ou "foi para outra imobiliária" — chegar em 14
+    dias é chegar depois). Já a quarta mensagem para quem nunca respondeu é o
+    oposto: ali a pressa é que custa caro.
+
+    Encurtar o começo **não** aumenta o volume diário de envio — quem segura
+    isso é {@link FOLLOWUP_TETO_DIA}, {@link FOLLOWUP_LOTE_MAX} e o intervalo
+    sorteado entre mensagens. O que muda é a fila se reabastecer. O risco de
+    encurtar é incomodar o proprietário, não queimar o número; a escala
+    acelera onde a resposta acontece e desacelera onde vira insistência. */
+export const FOLLOWUP_DIAS_POR_TENTATIVA = [7, 14, 30] as const;
+
+/** A espera antes da PRÓXIMA cutucada, dado quantas tentativas o imóvel já
+    acumulou. Sem tentativa registrada não há o que esperar (o caso mais
+    esquecido de todos entra na hora); da última faixa em diante o intervalo
+    para de crescer, mas {@link FOLLOWUP_MAX_TENTATIVAS} já encerra antes. */
+export function diasDesdeUltimoContato(tentativasFeitas: number): number {
+  const i = Math.max(0, tentativasFeitas - 1);
+  return FOLLOWUP_DIAS_POR_TENTATIVA[Math.min(i, FOLLOWUP_DIAS_POR_TENTATIVA.length - 1)];
+}
 
 /** Tentativas acumuladas que encerram a insistência. Da quinta em diante
     não é follow-up, é perseguição — e o proprietário bloqueia, o que
@@ -66,11 +91,23 @@ export const FOLLOWUP_INTERVALO_MAX_MS = 60_000;
 /** Canal registrado nas tentativas criadas pelo lote (um de FORMAS_ABORDAGEM). */
 export const FOLLOWUP_CANAL = "WhatsApp";
 
-/** Status que o lote de SEGUIMENTO atende. Só "Sem resposta": "Perdido" e
-    "Cancelado" também são terminais, mas são saídas DELIBERADAS — o
-    proprietário disse não, ou o negócio caiu. Cutucar quem recusou é outro
-    produto. */
-export const FOLLOWUP_STATUS_ALVO = "Sem resposta";
+/** Status que o lote de SEGUIMENTO atende — os dois em que o proprietário
+    simplesmente não respondeu.
+
+    "Perdido" e "Cancelado" também são terminais e ficam de fora: são saídas
+    DELIBERADAS — o proprietário disse não, ou o negócio caiu. Cutucar quem
+    recusou é outro produto.
+
+    **"Novo contato" entrou depois, e a razão é medida.** O lote atendia só
+    "Sem resposta", partindo de que o primeiro contato sem retorno viraria
+    "Sem resposta" em algum momento. Não vira: nada move esse status sozinho —
+    `confirmarResultadoTentativa` marca o desfecho da TENTATIVA e não toca no
+    imóvel, então confirmar "não respondeu" no nudge o deixa exatamente onde
+    estava. Na carteira real de 27/07/2026 isso prendia 68 imóveis num beco:
+    primeira mensagem enviada, silêncio, e invisíveis para a única ferramenta
+    que existe para esse caso — 28 deles cruzando os 14 dias na semana
+    seguinte. "Novo contato" não é saída de ninguém; é silêncio. */
+export const FOLLOWUP_STATUS_ALVO = ["Sem resposta", "Novo contato"] as const;
 
 /** Público do lote de DISPONIBILIDADE: imóveis já captados que seguem sem
     locar. Mesmos valores de STATUS_STALE_LENTO, com nome próprio porque a
@@ -199,7 +236,7 @@ export function selecionarFollowUp(imoveis: Imovel[], hoje: string): SelecaoFoll
   const excluidos: ExcluidoFollowUp[] = [];
 
   for (const imovel of imoveis) {
-    if (imovel.status !== FOLLOWUP_STATUS_ALVO) continue;
+    if (!(FOLLOWUP_STATUS_ALVO as readonly string[]).includes(imovel.status)) continue;
 
     // Telefone: os dois testes são de FORMA e rodam aqui de propósito, para
     // a tela já mostrar o problema. Se o número existe mesmo no WhatsApp,
@@ -226,7 +263,7 @@ export function selecionarFollowUp(imoveis: Imovel[], hoje: string): SelecaoFoll
 
     const ultimo = ultimoContatoISO(imovel);
     const dias = ultimo ? daysBetween(ultimo, hoje) : null;
-    if (dias !== null && dias < FOLLOWUP_DIAS_DESDE_ULTIMO) {
+    if (dias !== null && dias < diasDesdeUltimoContato(tentativas.length)) {
       excluidos.push({
         imovel,
         motivo: "contato-recente",
@@ -390,7 +427,7 @@ const IMOVEL_MOLDE: Imovel = {
   endereco: "{endereco}",
   bairro: "",
   proprietarioNome: "{nome}",
-  status: FOLLOWUP_STATUS_ALVO,
+  status: FOLLOWUP_STATUS_ALVO[0],
 };
 
 /** Texto base do lote a partir da abordagem — um MOLDE, com marcadores, não
