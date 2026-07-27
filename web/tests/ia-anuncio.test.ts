@@ -1,16 +1,13 @@
-/* Contrato da extração de anúncio/placa (lib/calculo/ia).
+/* Contrato da extração de anúncio COLADO (lib/calculo/ia).
    Esta é a única chamada em que o browser manda CONTEÚDO, então o que
    se testa aqui são exatamente as travas que compensam isso: o texto é
-   truncado, o esquema é fechado (enums + additionalProperties: false) e
-   a imagem é medida antes de sair da nossa máquina. */
+   truncado e o esquema é fechado (enums + additionalProperties: false).
+
+   A leitura de IMAGEM foi removida em 25/07/2026 — junto com ela saíram
+   `bytesDeBase64`/`MAX_IMAGEM_BYTES` e os testes deles. O porquê está no
+   bloco de cabeçalho da extração, em lib/calculo/ia.ts. */
 import { describe, expect, it } from "vitest";
-import {
-  bytesDeBase64,
-  ESQUEMA_ANUNCIO,
-  MAX_IMAGEM_BYTES,
-  MAX_TEXTO_ANUNCIO,
-  promptExtrairAnuncio,
-} from "@/lib/calculo/ia";
+import { ESQUEMA_ANUNCIO, MAX_TEXTO_ANUNCIO, promptExtrairAnuncio } from "@/lib/calculo/ia";
 import { ORIGENS_IMOVEL, TIPOS_IMOVEL } from "@/lib/constantes";
 
 describe("promptExtrairAnuncio", () => {
@@ -21,14 +18,9 @@ describe("promptExtrairAnuncio", () => {
     expect(prompt).not.toContain("x".repeat(MAX_TEXTO_ANUNCIO + 1));
   });
 
-  it("sem texto, instrui a ler a imagem enviada", () => {
-    const prompt = promptExtrairAnuncio();
-    expect(prompt).toContain("imagem");
-    expect(prompt).not.toContain('"""');
-  });
-
-  it("com texto, delimita o material colado", () => {
+  it("delimita o material colado", () => {
     expect(promptExtrairAnuncio("Alugo casa 2 quartos")).toContain('"""');
+    expect(promptExtrairAnuncio("Alugo casa 2 quartos")).toContain("Alugo casa 2 quartos");
   });
 
   it("manda devolver null em vez de inventar — inclusive telefone incompleto", () => {
@@ -80,25 +72,14 @@ describe("ESQUEMA_ANUNCIO", () => {
   });
 });
 
-describe("bytesDeBase64", () => {
-  it("mede o arquivo por trás da data URI, ignorando o cabeçalho", () => {
-    // "AAAA" em base64 = 3 bytes.
-    expect(bytesDeBase64("data:image/jpeg;base64,AAAA")).toBe(3);
-    expect(bytesDeBase64("AAAA")).toBe(3);
-  });
-
-  it("desconta o padding", () => {
-    expect(bytesDeBase64("AAA=")).toBe(2);
-    expect(bytesDeBase64("AA==")).toBe(1);
-  });
-
-  it("vazio é zero — não estoura nem vira NaN", () => {
-    expect(bytesDeBase64("")).toBe(0);
-    expect(bytesDeBase64("data:image/png;base64,")).toBe(0);
-  });
-
-  it("reprova uma imagem acima do teto antes de ela custar na OpenAI", () => {
-    const grande = "A".repeat(Math.ceil(((MAX_IMAGEM_BYTES + 1024) * 4) / 3));
-    expect(bytesDeBase64(`data:image/jpeg;base64,${grande}`)).toBeGreaterThan(MAX_IMAGEM_BYTES);
+describe("o prompt não fala mais de foto", () => {
+  it("não instrui o modelo a olhar imagem nenhuma", () => {
+    // Guarda contra reintroduzir o caminho de visão pela porta dos fundos: o
+    // prompt sobreviveu à remoção e é onde a menção mais fácil de esquecer
+    // estava (a regra de origem citava "foto de uma placa/faixa").
+    const prompt = promptExtrairAnuncio("Alugo casa, tratar com o proprietário").toLowerCase();
+    expect(prompt).not.toContain("imagem");
+    expect(prompt).not.toContain("foto");
+    expect(prompt).not.toContain("print");
   });
 });

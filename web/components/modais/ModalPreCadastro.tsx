@@ -19,7 +19,6 @@ import { mensagemFalhaIa, type AnuncioExtraido } from "@/lib/calculo/ia";
 import { fmtMoney } from "@/lib/formatadores";
 import { buscarCep, geocodeEndereco, maskCEP } from "@/lib/geo";
 import { extrairAnuncio } from "@/lib/ia";
-import { prepararImagemParaIa } from "@/lib/imagem";
 import { salvarImovel, uid } from "@/lib/mutacoes";
 import { nomeProprio } from "@/lib/normalizacao";
 import { useAppStore } from "@/lib/store";
@@ -119,26 +118,6 @@ export default function ModalPreCadastro() {
     }
   }
 
-  async function lerImagem(arquivo: File) {
-    setLendo(true);
-    setIaStatus({ msg: "Lendo a imagem...", tone: "" });
-    let imagemBase64: string;
-    try {
-      imagemBase64 = await prepararImagemParaIa(arquivo);
-    } catch {
-      setLendo(false);
-      setIaStatus({ msg: "Não consegui abrir essa imagem. Tente outra foto.", tone: "err" });
-      return;
-    }
-    const r = await extrairAnuncio({ imagemBase64 });
-    setLendo(false);
-    if (!r.ok || !r.anuncio) {
-      setIaStatus({ msg: r.mensagem || mensagemFalhaIa(r.falha || "falha-ia"), tone: "err" });
-      return;
-    }
-    aplicarExtracao(r.anuncio);
-  }
-
   async function lerTexto() {
     if (!textoAnuncio.trim()) {
       setIaStatus({ msg: "Cole o texto do anúncio primeiro.", tone: "err" });
@@ -146,7 +125,7 @@ export default function ModalPreCadastro() {
     }
     setLendo(true);
     setIaStatus({ msg: "Lendo o anúncio...", tone: "" });
-    const r = await extrairAnuncio({ texto: textoAnuncio });
+    const r = await extrairAnuncio(textoAnuncio);
     setLendo(false);
     if (!r.ok || !r.anuncio) {
       setIaStatus({ msg: r.mensagem || mensagemFalhaIa(r.falha || "falha-ia"), tone: "err" });
@@ -305,31 +284,16 @@ export default function ModalPreCadastro() {
             aparece — e o pré-cadastro segue sendo o cadastro manual de sempre. */}
         {iaDisponivel && (
           <fieldset>
-            <legend>Capturar de foto ou anúncio</legend>
+            <legend>Capturar de um anúncio</legend>
             <div className="field-hint" style={{ marginBottom: "10px" }}>
-              Fotografe a placa de &quot;aluga-se&quot;, mande o print do anúncio ou cole o texto. Os
-              campos abaixo se preenchem — confira antes de salvar.
+              Cole o texto do anúncio e os campos abaixo se preenchem — confira antes de salvar.
             </div>
+            {/* Já houve captura por FOTO aqui (placa de "aluga-se", print do
+                anúncio). Saiu em 25/07/2026: reprovada no uso real justamente
+                no telefone, que era o que a justificava. O porquê inteiro está
+                em lib/calculo/ia.ts — leia antes de cogitar reabrir. */}
             <div className="field-group">
-              <label>Foto da placa ou print do anúncio</label>
-              {/* capture="environment" faz o celular abrir a câmera traseira
-                  direto, que é o caminho de quem está na rua vendo a placa. */}
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                disabled={lendo}
-                onChange={(e) => {
-                  const arquivo = e.target.files?.[0];
-                  // Zera o input para que escolher a MESMA foto de novo (depois
-                  // de uma leitura ruim) dispare o onChange outra vez.
-                  e.target.value = "";
-                  if (arquivo) lerImagem(arquivo);
-                }}
-              />
-            </div>
-            <div className="field-group">
-              <label>Ou cole o texto do anúncio</label>
+              <label>Texto do anúncio</label>
               <textarea
                 rows={3}
                 value={textoAnuncio}

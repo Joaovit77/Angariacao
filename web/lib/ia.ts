@@ -89,14 +89,11 @@ export function sugerirRoteiros(contexto: ContextoRoteiro): Promise<ResultadoRot
   return chamar<ResultadoRoteiros>({ tipo: "sugerir-roteiros", contexto });
 }
 
-/** Lê uma foto de placa, um print de anúncio ou um texto colado e devolve os
-    campos do imóvel para PREENCHER o cadastro — nunca para salvar sozinho.
-    `imagemBase64` é uma data URI (`data:image/jpeg;base64,...`). */
-export function extrairAnuncio(entrada: {
-  texto?: string;
-  imagemBase64?: string;
-}): Promise<ResultadoExtracao> {
-  return chamar<ResultadoExtracao>({ tipo: "extrair-anuncio", ...entrada });
+/** Lê o texto de um anúncio COLADO e devolve os campos do imóvel para
+    PREENCHER o cadastro — nunca para salvar sozinho. Já leu foto também; ver
+    em lib/calculo/ia.ts por que a imagem saiu. */
+export function extrairAnuncio(texto: string): Promise<ResultadoExtracao> {
+  return chamar<ResultadoExtracao>({ tipo: "extrair-anuncio", texto });
 }
 
 /* As três leituras abaixo não recebem parâmetro de propósito: os números

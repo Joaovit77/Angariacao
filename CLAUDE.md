@@ -602,31 +602,33 @@ Três regras ao mexer nela:
 - **A IA não calcula métrica.** Ela recebe os números prontos e só interpreta. Trocar isso por "pede
   pra IA analisar os dados crus" devolveria número inventado com cara de relatório.
 
-##### A captura em 1 toque (`tipo: "extrair-anuncio"`)
+##### A captura de anúncio colado (`tipo: "extrair-anuncio"`)
 
-O garimpo do corretor. Foto da placa de "aluga-se", print do anúncio ou texto colado entram no
-`ModalPreCadastro` e saem como campos preenchidos — daí ele confere, salva, e o WhatsApp já abre.
-O gargalo do garimpo nunca foi *achar* o imóvel: foi o telefone (que a placa mostra e o portal
-esconde, às vezes ofuscado por extenso) e o tempo entre ver o anúncio e mandar a mensagem.
+O garimpo do corretor. O texto do anúncio entra no `ModalPreCadastro` e sai como campos
+preenchidos — daí ele confere, salva, e o WhatsApp já abre. O gargalo do garimpo nunca foi *achar*
+o imóvel: foi o telefone (que o portal esconde, às vezes ofuscado por extenso) e o tempo entre ver
+o anúncio e mandar a mensagem.
 
 > Isto **não** reabre o scraping de portais, descartado em 2026-07-10 (`RADAR_CAPTACAO.md`): não há
-> busca automatizada, não há chat automatizado, e quem aponta a câmera ou cola o texto é a pessoa.
+> busca automatizada, não há chat automatizado, e quem cola o texto é a pessoa.
 
-Três coisas a saber ao mexer:
+**A leitura de IMAGEM foi removida em 2026-07-25** — ver "Garimpo automatizado" acima. Junto com ela
+saíram `lib/imagem.ts`, `MAX_IMAGEM_BYTES`/`bytesDeBase64` e o caminho de visão da rota. O prompt
+não menciona mais foto, e há teste guardando isso (a menção mais fácil de esquecer estava na regra
+de `origemSugerida`, que citava "foto de uma placa/faixa").
 
-- **É a única chamada em que o browser manda CONTEÚDO** (a imagem/texto), e não um contexto curto e
+Duas coisas a saber ao mexer:
+
+- **É a única chamada em que o browser manda CONTEÚDO** (o texto colado), e não um contexto curto e
   tipado — desvio consciente da regra "o prompt é montado no servidor". O que o segura: prompt e
   esquema continuam do servidor, a saída é objeto **fechado** (enums de `TIPOS_IMOVEL`/
   `ORIGENS_IMOVEL` + `additionalProperties: false`, não texto livre), o acesso já passa por
-  `podeUsarIa`, e `MAX_TEXTO_ANUNCIO`/`MAX_IMAGEM_BYTES` limitam o custo por chamada. Não é proxy
-  de LLM aberto — é um extrator de campos.
-- **A IA preenche, o corretor confirma** — nada salva sozinho, mesma regra do webhook. Modelo de
-  visão troca dígito com naturalidade, e um telefone errado gravado sem revisão vira mensagem para
-  um estranho. Por isso o prompt manda devolver `null` em vez de telefone "quase certo", e a
-  `confianca` existe para a UI pedir conferência quando a foto sai ruim.
-- **`lib/imagem.ts` reduz a foto antes de enviar.** Não é otimização: foto de celular atual sai com
-  3–8 MB, acima do teto — sem reduzir, o caminho principal da feature (apontar a câmera para a
-  placa) falharia quase sempre, e o corretor não tem como "mandar uma foto menor".
+  `podeUsarIa`, e `MAX_TEXTO_ANUNCIO` limita o custo por chamada. Não é proxy de LLM aberto — é um
+  extrator de campos.
+- **A IA preenche, o corretor confirma** — nada salva sozinho, mesma regra do webhook. Um telefone
+  errado gravado sem revisão vira mensagem para um estranho. Por isso o prompt manda devolver `null`
+  em vez de telefone "quase certo", e a `confianca` existe para a UI pedir conferência quando o
+  texto vem cortado ou misturado com outro anúncio.
 
 **A unidade é identidade, e a mensagem precisa dela.** `enderecoComUnidade()` em
 `calculo/whatsapp.ts` é a fonte única que compõe "rua, número, ap X, bloco Y" — usada pela
@@ -686,6 +688,16 @@ garimpo dentro do WhatsApp; os grupos dele são internos da imobiliária.
   canais (acima) exige o denominador, mas é dado que se precisa **uma vez**, não para sempre; e em
   multiusuário um campo manual sem retorno visível decai, com cada corretor contando de um jeito.
   A correção certa, se um dia importar, é o contato passar pelo painel.
+- **Ler a placa/print por FOTO (IA de visão)** — construída, usada e **removida em 2026-07-25**.
+  Reprovou no uso real exatamente no campo que a justificava: em duas tentativas seguidas, com o
+  número **bem visível** na imagem, não devolveu o telefone. O raciocínio da remoção: o que a foto
+  tinha de melhor que o texto colado era só o telefone — a placa mostra, o portal esconde. Sem
+  acertar isso, sobra preencher endereço e valor, que o texto colado faz melhor, sem OCR e por uma
+  fração dos tokens. Era também o caminho mais caro do app na nossa conta da OpenAI, disparado pelo
+  botão mais fácil de tocar sem querer (a câmera). **A captura por texto colado continua** — o que
+  saiu foi a imagem. Se for reaberto, precisa de MEDIÇÃO antes, como se fez com a busca de endereço:
+  N placas reais, o telefone certo como gabarito, taxa de acerto anotada. Trocar de modelo e torcer
+  não conta.
 
 **O fio solto**, para quem retomar: a busca por **texto exato do anúncio** em outro portal (onde o
 número às vezes aparece) nunca foi testada — só a busca por rua e por nome de empreendimento.

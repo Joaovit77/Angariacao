@@ -33,8 +33,6 @@ import { todayISO } from "@/lib/datas";
 import {
   ESQUEMA_ANUNCIO,
   ESQUEMA_ROTEIROS,
-  MAX_IMAGEM_BYTES,
-  bytesDeBase64,
   contagemPorStatus,
   corrigirMarcadores,
   mensagemFalhaIa,
@@ -207,7 +205,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!(await podeUsarIa(supabase, sessao.user.id))) return erro("sem-permissao", 403);
 
   // 3. Corpo — só os tipos conhecidos.
-  let corpo: { tipo?: unknown; contexto?: unknown; texto?: unknown; imagemBase64?: unknown };
+  let corpo: { tipo?: unknown; contexto?: unknown; texto?: unknown };
   try {
     corpo = await request.json();
   } catch {
@@ -289,31 +287,29 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   // ---------------------------------------------------------------
-  // 3a-bis. Extrair anúncio/placa — a captura em 1 toque do garimpo.
+  // 3a-bis. Extrair anúncio COLADO — a captura rápida do garimpo.
   //
-  //   É a ÚNICA chamada em que o browser manda conteúdo (a foto ou o
-  //   texto colado) em vez de um contexto curto e tipado, então vale
+  //   É a ÚNICA chamada em que o browser manda conteúdo (o texto do
+  //   anúncio) em vez de um contexto curto e tipado, então vale
   //   repetir o que a segura (ver o bloco em lib/calculo/ia.ts): o
   //   prompt e o esquema saem daqui, a resposta é um objeto fechado —
-  //   não texto livre —, a conta já passou pela allowlist de IA, e os
-  //   tetos abaixo limitam o custo. O que ela devolve preenche um
+  //   não texto livre —, a conta já passou pela allowlist de IA, e o
+  //   teto do texto limita o custo. O que ela devolve preenche um
   //   formulário; quem salva é o corretor, depois de conferir.
+  //
+  //   Não aceita imagem, e isso foi uma decisão tomada com o recurso
+  //   já pronto: ver o bloco em lib/calculo/ia.ts.
   // ---------------------------------------------------------------
   if (pedido === "extrair-anuncio") {
     const texto = typeof corpo.texto === "string" ? corpo.texto : "";
-    const imagem = typeof corpo.imagemBase64 === "string" ? corpo.imagemBase64.trim() : "";
 
-    // Sem material não há o que ler. E imagem que não é imagem também não:
-    // uma data URI de outro tipo seria conteúdo arbitrário indo para a OpenAI.
-    if (!texto.trim() && !imagem) return erro("requisicao-invalida", 400);
-    if (imagem && !imagem.startsWith("data:image/")) return erro("requisicao-invalida", 400);
-    if (imagem && bytesDeBase64(imagem) > MAX_IMAGEM_BYTES) return erro("requisicao-invalida", 413);
+    // Sem material não há o que ler.
+    if (!texto.trim()) return erro("requisicao-invalida", 400);
 
-    // O prompt trunca o texto; a imagem já foi medida acima.
+    // O prompt trunca o texto.
     const conteudo: OpenAI.Chat.ChatCompletionContentPart[] = [
       { type: "text", text: promptExtrairAnuncio(texto) },
     ];
-    if (imagem) conteudo.push({ type: "image_url", image_url: { url: imagem } });
 
     let conclusao: OpenAI.Chat.ChatCompletion;
     try {

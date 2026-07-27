@@ -560,41 +560,62 @@ Sobre "motivoPerda" — leia com atenção, porque preenchê-lo ENCERRA o imóve
 }
 
 /* ----------------------------------------------------------------
-   EXTRAÇÃO DE ANÚNCIO / PLACA — o garimpo em 1 toque
+   EXTRAÇÃO DE ANÚNCIO COLADO — a captura rápida do garimpo
 
-   O corretor fotografa a placa de "aluga-se", printa o anúncio do
-   marketplace ou cola o texto, e os campos do pré-cadastro se
+   O corretor cola o texto do anúncio e os campos do pré-cadastro se
    preenchem. O ganho é de VELOCIDADE: o gargalo do garimpo nunca foi
-   achar o imóvel, foi o tempo entre ver o anúncio e mandar a mensagem
-   — e o telefone, que a placa mostra e o portal esconde.
+   achar o imóvel, foi o tempo entre ver o anúncio e mandar a mensagem.
 
-   ATENÇÃO — esta é a única chamada em que o browser manda CONTEÚDO
-   (a imagem ou o texto), e não só um contexto curto e tipado. É um
+   ── A LEITURA DE IMAGEM FOI REMOVIDA (2026-07-25), e não é para
+   voltar sem dado novo. ───────────────────────────────────────────
+
+   O recurso existiu: foto da placa de "aluga-se" ou print do anúncio
+   entravam pela câmera e saíam como campos preenchidos. Foi testado
+   pelo corretor no uso real e **reprovado no único campo que o
+   justificava**: em duas tentativas seguidas, com o número BEM VISÍVEL
+   na imagem, não devolveu o telefone.
+
+   Isso não é ajuste de prompt, é o custo/benefício invertido. O que a
+   foto tinha de melhor que o texto era exatamente o telefone — a placa
+   mostra, o portal esconde. Sem acertar o telefone sobra preencher
+   endereço e valor, que o texto colado faz melhor, sem OCR e por uma
+   fração dos tokens (imagem custa muito mais que 2.000 caracteres).
+   E o modo de falhar é ruim: o prompt manda devolver null quando não
+   tem certeza, então o resultado típico é o corretor gastar a chamada,
+   esperar, e digitar o número à mão de qualquer jeito.
+
+   Some a isso que era o caminho mais caro do app inteiro rodando na
+   nossa conta da OpenAI, disparado por uma câmera — o botão mais fácil
+   de tocar sem querer.
+
+   Se um dia for reaberto, o que precisa existir antes é MEDIÇÃO, como
+   se fez com a busca de endereço (ver "Garimpo automatizado" no
+   CLAUDE.md): N placas reais, o telefone certo como gabarito, e a taxa
+   de acerto anotada. Sem isso é só trocar de modelo e torcer.
+
+   ATENÇÃO — esta continua sendo a única chamada em que o browser manda
+   CONTEÚDO (o texto colado), e não só um contexto curto e tipado. É um
    desvio consciente da regra do cabeçalho, e o que o segura é:
 
    - o prompt e o esquema continuam sendo montados aqui, no servidor;
    - a saída é um objeto FECHADO (enums + additionalProperties: false),
      não texto livre — não dá para usar como proxy de LLM;
    - o acesso já passa pela allowlist por conta (`ia_permissoes`);
-   - MAX_TEXTO_ANUNCIO e MAX_IMAGEM_BYTES limitam o custo por chamada.
+   - MAX_TEXTO_ANUNCIO limita o custo por chamada.
 
    E o resultado é SUGESTÃO: preenche o formulário, o corretor confere
-   e salva. Mesma regra do webhook — modelo de visão troca dígito, e um
-   telefone errado gravado sozinho vira mensagem para um estranho.
+   e salva. Mesma regra do webhook — um telefone errado gravado sozinho
+   vira mensagem para um estranho.
    ---------------------------------------------------------------- */
 
 /** Teto do texto colado. Anúncio inteiro de portal vem com menu, rodapé e
     "anúncios parecidos"; o que interessa está sempre no começo. */
 export const MAX_TEXTO_ANUNCIO = 2000;
 
-/** Teto da imagem, em bytes do arquivo original. Foto de celular moderno
-    passa disso com folga — quem chama reduz antes de mandar. */
-export const MAX_IMAGEM_BYTES = 4 * 1024 * 1024;
-
-/** Quanto o modelo confia no que leu. Não é enfeite: uma foto de placa
-    tirada de longe, na chuva, devolve dígito trocado com a mesma
-    naturalidade de uma nítida — e a UI precisa poder avisar o corretor
-    para conferir antes de mandar mensagem. */
+/** Quanto o modelo confia no que leu. Não é enfeite: anúncio de portal vem
+    com número ofuscado, endereço pela metade e texto de outro imóvel no
+    rodapé — e a UI precisa poder avisar o corretor para conferir antes de
+    mandar mensagem. */
 export type ConfiancaExtracao = "alta" | "media" | "baixa";
 
 export interface AnuncioExtraido {
@@ -614,21 +635,11 @@ export interface AnuncioExtraido {
   quartos: number | null;
   vagas: number | null;
   valorAluguel: number | null;
-  /** Um de ORIGENS_IMOVEL, deduzido do que a imagem/texto é (placa na rua,
-      print de portal, post de rede social). Vira o padrão do seletor — que o
-      corretor pode trocar. */
+  /** Um de ORIGENS_IMOVEL, deduzido do que o texto colado revela sobre a
+      própria procedência (nome do portal, cabeçalho, rodapé). Vira o padrão
+      do seletor — que o corretor pode trocar. */
   origemSugerida: string | null;
   confianca: ConfiancaExtracao;
-}
-
-/** Tamanho aproximado, em bytes, do arquivo por trás de um base64 — cada 4
-    caracteres carregam 3 bytes, descontado o padding. Serve para recusar a
-    imagem ANTES de mandá-la para a OpenAI (é lá que ela custaria). */
-export function bytesDeBase64(base64: string): number {
-  const limpo = base64.replace(/^data:[^,]*,/, "").trim();
-  if (!limpo) return 0;
-  const padding = limpo.endsWith("==") ? 2 : limpo.endsWith("=") ? 1 : 0;
-  return Math.floor((limpo.length * 3) / 4) - padding;
 }
 
 /** Origens que a IA pode DEDUZIR do material lido — `ORIGENS_IMOVEL` menos
@@ -701,20 +712,17 @@ export const ESQUEMA_ANUNCIO = {
   additionalProperties: false,
 } as const;
 
-/**
- * Prompt da extração. `texto` é o material colado (já truncado aqui); quando a
- * entrada é uma imagem ele vem vazio e a foto viaja como segunda parte da
- * mensagem — o prompt é o mesmo nos dois casos, porque a tarefa é a mesma.
- */
+/** Prompt da extração. `texto` é o material colado, truncado aqui. */
 export function promptExtrairAnuncio(texto?: string | null): string {
   const colado = (texto || "").trim().slice(0, MAX_TEXTO_ANUNCIO);
-  const material = colado
-    ? `Leia este anúncio de imóvel:\n\n"""\n${colado}\n"""`
-    : `Leia a imagem enviada. Ela é uma foto de placa de "aluga-se" na rua, um print de anúncio de portal/marketplace ou um post de rede social.`;
 
   return `${PAPEL}
 
-${material}
+Leia este anúncio de imóvel:
+
+"""
+${colado}
+"""
 
 Extraia os dados do imóvel e de quem anuncia, para preencher um cadastro. Devolva null em todo campo que não estiver ali.
 
@@ -722,11 +730,11 @@ Regras:
 - NÃO INVENTE NADA. Um campo vazio custa uma digitação ao corretor; um campo inventado vira mensagem mandada para a pessoa errada, ou visita marcada num endereço que não existe. Na dúvida, null.
 - Telefone: devolva só os dígitos, com DDD e sem o +55 (ex.: "43999998888"). Anúncio de portal costuma ofuscar o número para driblar o filtro — "43 9 nove oito sete..." , "quatro três", "43 9.9999-8888" — então reconstitua os dígitos por extenso. Se não der para ter certeza de TODOS os dígitos, devolva null: número quase certo é pior que número nenhum.
 - Se aparecer mais de um telefone, use o que estiver identificado como contato do proprietário/anunciante. Havendo só números de imobiliária, devolva null — o alvo aqui é o proprietário.
-- Endereço: só o que estiver escrito. Placa costuma não ter endereço nenhum (quem fotografou sabe onde está) — nesse caso, null.
+- Endereço: só o que estiver escrito. Anúncio de portal costuma dar só a rua e o bairro, sem número — nesse caso devolva o que tem e não complete o número.
 - "unidade", "bloco" e "edificio" importam mais do que parecem: no mesmo prédio, o apartamento 101 e o 202 são imóveis DIFERENTES, de proprietários diferentes. Separe-os do endereço — em "Rua X, 250, ap 806, bloco B, Ed. Solar", o endereço é "Rua X, 250", a unidade é "806", o bloco é "B" e o edifício é "Ed. Solar". Não repita a unidade dentro do endereço.
 - valorAluguel: o aluguel MENSAL. Ignore condomínio, IPTU e valor de venda. Se o anúncio for de venda e não de locação, devolva null aqui.
-- origemSugerida: "Placa no imóvel" quando for foto de uma placa/faixa no imóvel; "OLX / Canal Pro" quando for print da OLX; "Redes sociais" quando for post ou print de Facebook, Marketplace ou Instagram; "Garimpo em site de imobiliária" quando for o site de uma imobiliária. Só preencha quando o material mostrar de onde ele veio (a moldura do app, o logo, o formato do anúncio); texto solto, sem essa pista, é null. Não tente adivinhar pelo conteúdo do anúncio — o mesmo texto circula em todos os portais.
-- confianca: "baixa" quando o material estiver borrado, cortado ou ambíguo, mesmo que você tenha conseguido ler alguma coisa. O corretor usa isso para saber se confere antes de mandar mensagem.`;
+- origemSugerida: só preencha quando o próprio texto trouxer a pista de onde ele veio — o nome do portal, o cabeçalho colado junto, o "publicado em", o rodapé. Ex.: "OLX / Canal Pro" quando o texto for da OLX; "Redes sociais" quando vier de Facebook, Marketplace ou Instagram; "Garimpo em site de imobiliária" quando for o site de uma imobiliária. Texto solto, sem essa pista, é null. Não tente adivinhar pelo CONTEÚDO do anúncio — o mesmo texto circula em todos os portais.
+- confianca: "baixa" quando o texto estiver cortado, truncado no meio ou misturado com outro anúncio, mesmo que você tenha conseguido ler alguma coisa. O corretor usa isso para saber se confere antes de mandar mensagem.`;
 }
 
 export function promptAnalisarAbordagens(
