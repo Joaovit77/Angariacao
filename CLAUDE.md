@@ -135,6 +135,16 @@ o torna testável puro.
   os **dois eixos da captação**: `canais` mede a ORIGEM do imóvel (onde a oportunidade foi achada);
   `abordagens` mede o ROTEIRO usado no contato (o que se diz). Não confundir com a
   `formaAbordagem` do imóvel, que é o CANAL. Ver "Abordagens e tentativas" abaixo.
+  **Ressalva que o cálculo não tem como corrigir: as taxas de `canais` NÃO são comparáveis entre
+  canais**, porque o momento do cadastro muda por canal. Onde o corretor aborda pelo chat do portal
+  (OLX, Marketplace, redes sociais) ele só cadastra depois que o proprietário responde e passa o
+  telefone — os ignorados e os que recusaram nunca entram na base. Onde é preciso cadastrar ANTES
+  para trabalhar o lead (garimpo em site, Copel, placa, porta a porta), os fracassos entram todos.
+  A tela acaba comparando finalistas com populações inteiras. Medido em 27/07/2026: a tela dizia
+  60% para OLX contra 5% para garimpo em site; com o denominador real (76 abordagens de OLX em três
+  meses, contadas na mão) dá **3,9% contra 3,2% — praticamente iguais**. Ao mexer aqui, ou ao usar
+  esses números para recomendar qualquer coisa, **confira primeiro se o canal cadastra antes ou
+  depois do contato**. Taxa boa demais é sintoma disso, não de canal bom.
 - **`calculo/followup.ts`** — elegibilidade e texto do follow-up em lote (os freios que impedem
   o disparo em rajada). A fila que executa é `filaFollowUp.ts`. Ver "Follow-up em lote" abaixo.
 - **`calculo/gamificacao.ts` · `celebracao.ts`** — o reconhecimento do progresso, em dois recortes
@@ -443,6 +453,14 @@ leitura/escrita, e o isolamento por usuário é 100% das políticas RLS (`auth.u
 políticas RLS no mesmo padrão + o par `toDb*`/`fromDb*` em `web/lib/persistencia/mapeadores.ts` +
 o tipo em `web/lib/tipos.ts`.
 
+**Ao consultar o banco por fora do app — SQL editor, MCP do Supabase, service role — a RLS não
+vale, e o banco tem mais de uma conta**: a real do corretor, a de teste do `seed-teste.mjs` e
+sobras de experimentos. **Toda consulta administrativa leva `where user_id = '...'`.** Não é
+zelo: em 27/07/2026 uma análise de conversão por origem foi montada sem esse filtro, misturou as
+contas e foi apresentada ao corretor com números de seed dentro — inclusive imóveis "Locado" numa
+carteira que nunca locou nenhum. Quem pegou o erro foi ele. Número estranho na análise (locação
+onde não devia haver, angariação demais) é sintoma disto antes de ser sintoma de bug no cálculo.
+
 ### As rotas de servidor: `api/whatsapp/enviar`, `api/whatsapp/webhook` e `api/ia`
 
 São as **três** exceções ao "sem servidor", e existem pelo mesmo motivo: guardam um segredo que não
@@ -613,6 +631,53 @@ que entrava pelo cadastro rápido ficava invisível no Foco do dia e no ranking 
 para quem só trabalha por garimpo). E checa **duplicidade de endereço** (checava só código repetido;
 garimpo produz duplicata o tempo todo — a mesma placa fotografada duas vezes, o mesmo anúncio visto
 na OLX e no Marketplace). Como no `ModalImovel`, o aviso de duplicata **avisa, não bloqueia**.
+
+## Garimpo automatizado: o que já foi medido e descartado
+
+O garimpo — achar o imóvel antes de ele virar cliente de outra imobiliária — é a parte do trabalho
+que mais parece pedir automação, e é onde mais se gastou esforço à toa. O que segue foi **medido**,
+não estimado. Cada item existe para não ser reaberto sem dado novo.
+
+**As fontes reais são três, e são dois problemas diferentes.** Marketplace e OLX (anúncio de
+proprietário, contato pelo chat do próprio portal) de um lado; sites de imobiliária, ZAP, Chaves na
+Mão e Wimóveis/ImovelWeb do outro (anúncio de imobiliária, o dono não aparece). Note que "grupo
+zap" na fala do corretor é o **Grupo ZAP**, os portais — não grupo de WhatsApp. Não há fonte de
+garimpo dentro do WhatsApp; os grupos dele são internos da imobiliária.
+
+- **Raspagem de portal / Central de Angariação com Playwright** — descartada em 2026-07-10, ver
+  [RADAR_CAPTACAO.md](RADAR_CAPTACAO.md). Segue descartada.
+- **Extensão de navegador que lê a página aberta** — avaliada e descartada em 2026-07-27. O ganho
+  que a justificava era parar de reler a lista todo dia, e isso o corretor já resolve com um
+  favorito: na OLX o filtro "direto do proprietário" e a ordem por recente vivem na URL
+  (`?sf=1&f=p`), e a data sai em cada card. Sobrava construir um artefato fora do Next, com três
+  adaptadores de DOM para manter, em troca de um marcador de páginas. Some a isso que captura em
+  massa encheria a base de registro sem endereço — que não geolocaliza, fica fora do mapa, é
+  invisível para a duplicidade e ainda assim ocupa linha no pipeline disparando `isStale`.
+- **Descobrir o NÚMERO do endereço por IA + busca na web** — testado e **reprovado** em 2026-07-27,
+  com 16 casas reais da carteira e o número que o corretor já havia achado como gabarito:
+  **1 acerto, 8 erros, 7 "não achei" — 11% de precisão quando arriscou responder.** Não é ajuste de
+  prompt. Para PRÉDIO funciona (o empreendimento tem nome e a construtora publica o endereço), mas
+  para **CASA o dado não existe na internet**: nada publicado diz qual casa daquela rua está
+  anunciada. A busca então acha *alguma* casa da rua — em Jornal Oficial da Prefeitura, em PDF do
+  Detran — e devolve com **confiança alta**. Erro com procedência verificável é pior que erro
+  óbvio, e o custo dele não é a consulta: é o eemovel devolver o proprietário errado e a mensagem
+  ir para um estranho. **O eemovel não tem API** (já verificado), então não há atalho por ali.
+- **Geocodificar pelo nome do empreendimento (Nominatim/OSM)** — descartado no mesmo dia: 1 acerto
+  em 4 prédios de Londrina, e nem um endereço sabidamente correto resolveu. O OSM não tem
+  numeração de Londrina. O `lib/geo.ts` continua servindo para CEP, não para descobrir número.
+- **Tela para o corretor contar as abordagens não cadastradas** — descartada. Corrigir o viés dos
+  canais (acima) exige o denominador, mas é dado que se precisa **uma vez**, não para sempre; e em
+  multiusuário um campo manual sem retorno visível decai, com cada corretor contando de um jeito.
+  A correção certa, se um dia importar, é o contato passar pelo painel.
+
+**O fio solto**, para quem retomar: a busca por **texto exato do anúncio** em outro portal (onde o
+número às vezes aparece) nunca foi testada — só a busca por rua e por nome de empreendimento.
+Exigiria textos de anúncio reais, não endereços reconstruídos.
+
+**E a conclusão que vale mais que qualquer uma dessas features:** OLX e garimpo em site convertem
+quase igual (~3,5%), mas **custam muito diferente por tentativa** — abordar na OLX é escrever uma
+mensagem; no garimpo é achar endereço, rodar o eemovel e cadastrar. A vantagem da OLX é custo por
+tentativa, não conversão.
 
 ## Convenções e regras (o que sempre / nunca fazer)
 
