@@ -16,6 +16,21 @@
    marca, porque ali o "sem resposta" é afirmação do corretor.
    E só cobra por DIAS_COBRANCA_RESULTADO dias — depois disso "não
    respondeu" é quase certamente verdade, e insistir seria implicância.
+
+   O TOM É PARTE DA FUNÇÃO, e foi corrigido em 27/07/2026. A lista já
+   está CERTA quando ninguém a toca: `resultado` nasce "sem-resposta" e
+   é isso que os cálculos leem — a marca `aguardandoResultado` só serve
+   para este nudge e para o webhook. Ou seja, o corretor não deve
+   confirmação nenhuma; ele só ganha algo confirmando o que SABE, e
+   sempre que a resposta chega por WhatsApp o webhook já fecha sozinho.
+   Com 43 linhas na tela e a abertura falando em "fazer o ranking medir
+   o que aconteceu", isso lia como 43 tarefas atrasadas — e a saída que
+   o corretor imaginou foi uma varredura que marcasse tudo de uma vez.
+   Ela teria custado caro: limpar a marca antes do prazo tira do
+   webhook a única tentativa em que ele pode registrar a resposta
+   (`alvoPendente` exige a marca), justamente o dado mais valioso da
+   feature. O conserto certo era de TEXTO — dispensar primeiro, cobrar
+   depois. Se for mexer aqui, não desfaça essa ordem.
    ================================================================ */
 import { useState } from "react";
 import { DIAS_COBRANCA_RESULTADO, resultadosPendentes } from "@/lib/calculo/abordagens";
@@ -99,10 +114,22 @@ export default function ModalResultadosPendentes() {
       </div>
 
       <div className="modal-body">
+        {/* O enquadramento importa mais que a informação. A versão anterior
+            abria com "confirmar agora é o que faz o ranking medir o que
+            aconteceu" e só explicava lá embaixo, em letra pequena, que a
+            pendência se resolve sozinha. Lido de cima para baixo, virava uma
+            lista de dever: 43 itens cobrando ação, quando a ação devida era
+            zero. Agora a dispensa vem primeiro e a exceção depois. */}
         <p className="section-note" style={{ marginBottom: "14px" }}>
-          Estas mensagens foram enviadas por você e a tentativa já ficou registrada — mas o desfecho
-          entrou como “sem resposta” porque, na hora do envio, ainda não dava para saber. Confirmar
-          agora é o que faz o ranking de abordagens medir o que realmente aconteceu.
+          <strong>Você não precisa confirmar todas.</strong> Estas mensagens saíram por você e já
+          estão registradas como “sem resposta” — entraram assim porque, na hora do envio, não dava
+          para saber o desfecho. E na maioria das vezes é isso mesmo.
+        </p>
+        <p className="section-note" style={{ marginBottom: "14px" }}>
+          Confirme só as que <strong>você sabe</strong> como terminaram: o proprietário te ligou,
+          falou com você pessoalmente ou respondeu por outro canal. Quem responder pelo WhatsApp o
+          sistema registra sozinho. As demais já estão corretas do jeito que estão e somem daqui em{" "}
+          {DIAS_COBRANCA_RESULTADO} dias, sem você fazer nada.
         </p>
 
         {pendentes.length === 0 ? (
@@ -157,10 +184,10 @@ export default function ModalResultadosPendentes() {
           </div>
         )}
 
-        <p className="field-hint" style={{ marginTop: "12px" }}>
-          Depois de {DIAS_COBRANCA_RESULTADO} dias sem confirmação, a tentativa fica como “sem
-          resposta” e para de aparecer aqui — a essa altura é quase certo que seja isso mesmo.
-        </p>
+        {/* Antes havia aqui um lembrete de que a pendência expira em
+            DIAS_COBRANCA_RESULTADO dias. Subiu para a abertura: dito só no pé,
+            depois de 43 linhas de lista, chegava tarde demais para desfazer a
+            sensação de dívida que a lista já tinha criado. */}
       </div>
 
       <div className="modal-foot">
