@@ -42,10 +42,9 @@ export const DIAS_LEAD_ESQUECIDO = 3;
 export const LIMITE_TERMOMETRO = 8;
 
 /** Etapas em que o imóvel JÁ foi captado: a captação acabou e o que se espera
-    é inquilino, não o sim do proprietário. Ficam de fora da faixa de
-    esquecimento — a cobrança dessa fase é o lembrete de disponibilidade
-    (60 dias), não esta lista. Uma reação ou um compromisso explícito continuam
-    valendo, porque promessa marcada é promessa. */
+    é inquilino, não o sim do proprietário. A cobrança dessa fase é o lembrete
+    de disponibilidade (60 dias), não esta lista — ver
+    `FAIXA_MINIMA_JA_CAPTADO` para o que ainda passa. */
 const STATUS_JA_CAPTADO = ["Angariado", "Publicado", "Locado"] as const;
 
 /** As faixas, do mais quente para o mais frio. O número é só a ordem —
@@ -70,6 +69,30 @@ export const FAIXA = {
   respondeu: 70,
   leadEsquecido: 60,
 } as const;
+
+/* --- Imóvel já captado não entra aqui, por NENHUMA faixa --------------------
+   **É a mesma armadilha da faixa de "imóvel parado", por outra porta.** Depois
+   de angariar, o proprietário fala MUITO mais: documentação, fotos, metragem,
+   dúvidas de contrato. Então o captado ganha no volume e enterra o lead que
+   ainda precisa do "sim" — que é a pergunta inteira deste card. Medido em
+   28/07/2026: 5 das 8 linhas eram imóveis já angariados, e NENHUMA tinha
+   compromisso marcado; todas entraram pela faixa mais fraca. Uma delas
+   (LD-156) tinha 64 respostas — CPF, e-mail, fotos, "Já Assinei". Isso é
+   execução de um contrato ganho, não calor de captação.
+
+   **Nem "agendou" passa, e essa foi a parte contraintuitiva.** A primeira
+   versão do corte abria exceção para promessa marcada, com o argumento de que
+   hora combinada é hora combinada. Só que num imóvel já captado a visita
+   marcada é com o INQUILINO — o corretor acompanhando quem quer ver o imóvel.
+   É trabalho de locação, e quem cobra hora marcada é a AGENDA, que já existe e
+   já tem data e horário. Foi o corretor que apontou, sobre o LD-123: a
+   exceção teria mantido no card justamente a linha que não é captação.
+
+   O que sobra para essa fase já tem dono, e são três telas: a **agenda** (hora
+   marcada), o **lembrete de disponibilidade** de 60 dias (o imóvel ainda está
+   disponível?) e o **nudge de resultados pendentes** (o desfecho da conversa).
+   Quatro das cinco linhas de 28/07 diziam "desfecho ainda não confirmado" —
+   este card estava repetindo o nudge. */
 
 export interface LinhaTemperatura {
   imovelId: string;
@@ -231,7 +254,12 @@ export function linhaTemperatura(imovel: Imovel, hoje: string): LinhaTemperatura
   // alguém com quem o corretor tinha acabado de falar.
   if (diasDesdeTentativa === 0) return null;
 
-  const jaCaptado = (STATUS_JA_CAPTADO as readonly string[]).includes(imovel.status);
+  // Já captado sai ANTES das faixas. O corte vinha DEPOIS delas, e por isso
+  // qualquer reação do proprietário o trazia de volta — ver o bloco sobre
+  // STATUS_JA_CAPTADO acima. A cobrança dessa fase é a agenda, o lembrete de
+  // disponibilidade e o nudge de resultados; nenhuma delas é este card.
+  if ((STATUS_JA_CAPTADO as readonly string[]).includes(imovel.status)) return null;
+
   const linha = (score: number, motivo: string, dias: number): LinhaTemperatura => ({
     imovelId: imovel.id,
     score,
@@ -241,13 +269,11 @@ export function linhaTemperatura(imovel: Imovel, hoje: string): LinhaTemperatura
 
   // 1 e 2. O que o proprietário sinalizou — compromisso marcado que venceu,
   //    ou a reação dele, na ordem de quanto se comprometeu. A escada mora em
-  //    `sinalDoProprietario` porque a fila do follow-up usa a MESMA.
+  //    `sinalDoProprietario` porque a fila do follow-up usa a MESMA — e é por
+  //    isso que o corte de status é aqui e não lá dentro: no lote o público já
+  //    vem filtrado por status, e a régua é outra.
   const sinal = sinalDoProprietario(imovel, hoje);
   if (sinal) return linha(sinal.faixa, sinal.motivo, sinal.dias);
-
-  // Daqui para baixo, só o que ainda está em captação: quem já foi captado
-  // tem a cobrança própria de disponibilidade.
-  if (jaCaptado) return null;
 
   // 3. Cadastrado e nunca tocado — o lead que entrou no garimpo e a semana
   //    passou por cima. Última faixa: é a única cobrança daqui que não nasce de

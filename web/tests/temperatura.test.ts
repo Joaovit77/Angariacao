@@ -199,11 +199,30 @@ describe("faixas", () => {
     expect(linhaTemperatura(i, HOJE)).toBeNull();
   });
 
-  it("mas um compromisso marcado vale mesmo já captado", () => {
-    const i = imovel({
+  /* Depois de angariar o proprietário fala MUITO mais — documentação, fotos,
+     metragem, dúvidas de contrato —, então o captado ganha no volume e enterra
+     o lead que ainda precisa do "sim". Em 28/07/2026 eram 5 das 8 linhas.
+
+     Este bloco já garantiu o CONTRÁRIO ("um compromisso marcado vale mesmo já
+     captado"). Mudou por observação do campo: em imóvel captado, a visita
+     marcada é com o INQUILINO, e quem cobra hora marcada é a agenda. */
+  it("captado não entra por NENHUMA faixa, nem promessa marcada", () => {
+    const base = {
       id: "1",
-      status: "Publicado",
-      statusHistory: [{ status: "Publicado", date: "2026-01-01" }],
+      status: "Angariado" as const,
+      statusHistory: [{ status: "Angariado", date: "2026-06-01" }],
+    };
+    const fora = (over: Partial<Imovel>) =>
+      expect(linhaTemperatura(imovel({ ...base, ...over }), HOJE)).toBeNull();
+
+    // "respondeu" registrado na tentativa (o caso LD-163).
+    fora({ tentativas: [tentativa({ data: "2026-07-05T10:00", resultado: "respondeu" })] });
+    // "vai-retornar" — reação sem hora combinada.
+    fora({ tentativas: [tentativa({ data: "2026-07-05T10:00", resultado: "vai-retornar" })] });
+    // "agendou": visita com o inquilino, não captação (o caso LD-123).
+    fora({ tentativas: [tentativa({ data: "2026-07-05T10:00", resultado: "agendou" })] });
+    // Compromisso vencido marcado pelo próprio proprietário.
+    fora({
       tentativas: [
         tentativa({
           data: "2026-07-01T10:00",
@@ -213,7 +232,18 @@ describe("faixas", () => {
         }),
       ],
     });
-    expect(linhaTemperatura(i, HOJE)?.score).toBe(FAIXA.compromissoVencido);
+    // Resposta lida direto das notas do webhook (o caso LD-156, com 64
+    // mensagens de CPF, fotos e "Já Assinei").
+    fora({ notas: [{ id: "wa:MSG1", texto: "Resposta pelo WhatsApp: Já Assinei", data: "2026-07-08T10:00" }] });
+  });
+
+  it("o corte é só para captado: em captação, reação solta continua entrando", () => {
+    const i = imovel({
+      id: "1",
+      status: "Novo contato",
+      tentativas: [tentativa({ data: "2026-07-05T10:00", resultado: "respondeu" })],
+    });
+    expect(linhaTemperatura(i, HOJE)?.score).toBe(FAIXA.respondeu);
   });
 });
 

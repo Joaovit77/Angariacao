@@ -193,8 +193,18 @@ o torna testável puro.
   Duas regras que caem daí: **quem foi contatado hoje sai inteiro** (a lista não manda cutucar de
   novo alguém com quem você acabou de falar — e o corte tem que vir antes das faixas, senão quem
   respondeu hoje reaparece como "parado há 8 dias", já que o status não muda quando o proprietário
-  responde); e **quem já foi captado** (Angariado/Publicado) só entra por compromisso marcado, porque
-  a cobrança dessa fase é o lembrete de disponibilidade, não esta lista.
+  responde); e **quem já foi captado** (Angariado/Publicado/Locado) **não entra por faixa nenhuma**,
+  porque a cobrança dessa fase são outras três telas — a agenda, o lembrete de disponibilidade e o
+  nudge de resultados.
+  Esse segundo corte é a **reincidência exata** da faixa de "imóvel parado", por outra porta, e
+  levou duas correções. A primeira: o corte existia mas rodava **depois** das faixas, então qualquer
+  reação do proprietário trazia o captado de volta — em 28/07/2026, 5 das 8 linhas eram imóveis já
+  angariados, nenhuma com compromisso marcado, uma delas (LD-156) com 64 respostas de CPF, fotos e
+  "Já Assinei". A causa é a de sempre: depois de angariar o proprietário fala muito mais, então essa
+  categoria vence no volume. A segunda: a versão inicial do corte abria exceção para **promessa
+  marcada** ("hora combinada é hora combinada"), e foi o corretor que mostrou o furo — em imóvel
+  captado, a visita marcada é com o **inquilino**, e quem cobra hora marcada é a agenda. A exceção
+  teria preservado justamente a linha que não era captação.
   O sinal mais forte já estava no banco e ninguém consumia: quando o proprietário diz "me chama
   semana que vem", o webhook grava em `sugestaoIa.retomarEm` — e até aqui isso só era *exibido* na
   lista de pendências, sem nada avisar no dia marcado.
