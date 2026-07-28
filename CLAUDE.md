@@ -603,6 +603,18 @@ Regras ao mexer nela:
   aparece sozinho e não se explica é compromisso que o corretor apaga por desconfiança.
   A `horaRetomar` entrou junto no esquema da classificação — é ela que separa "te ligo quinta"
   de "quinta às 10h", e só com hora o item cai na faixa de horários da agenda.
+- **As três escritas são INDEPENDENTES — nenhuma é pré-condição da outra.** A sugestão na
+  tentativa, o encerramento e o compromisso derivam todos do que o proprietário ESCREVEU, não um
+  do outro. A rota já teve um `return` quando não achava tentativa pendente, e ele levava junto o
+  encerramento e a agenda. **Não ter tentativa pendente é comum e não diz nada sobre a conversa:**
+  o registro automático de envio nasceu depois de boa parte dos contatos (imóvel antigo não tem
+  tentativa); backfill e tentativa manual não levam `aguardandoResultado` de propósito; e passados
+  `DIAS_COBRANCA_RESULTADO` dias o palpite deixa de ser cobrado. Medido em 28/07/2026: dos 14
+  imóveis que já haviam respondido, **2 não tinham tentativa alguma e somavam 65 das 110
+  respostas** — o LD-156 sozinho tinha 64, todas descartadas ali, com a chamada da IA já paga.
+  O sintoma que abriu a investigação foi um compromisso perdido (LD-123, hora marcada por escrito
+  que nunca chegou à agenda); o efeito grave era outro — **um "já aluguei" nesses imóveis não
+  encerrava o registro**.
 - **A exceção:** encerramento automático. Quando a resposta não deixa nada a fazer ("já aluguei",
   "já estou com outra imobiliária"), o imóvel vai para **Perdido** com o motivo, sem clique. O que
   segura isso é o motivo sair de uma lista fechada e **menor** que `MOTIVOS_PERDA`
