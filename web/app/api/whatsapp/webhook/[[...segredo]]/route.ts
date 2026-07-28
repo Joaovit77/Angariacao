@@ -10,13 +10,18 @@
    depende de alguém lembrar de anotar. Recebendo o evento, "o
    proprietário respondeu" vira fato observado.
 
-   ---------------------------------------------------------------
-   ESTA VERSÃO AINDA NÃO ESCREVE. Ela já identifica de quem é a
-   conversa e a qual imóvel pertence — e DESCARTA todo o resto. A
-   gravação (nota + fechamento da tentativa) é o passo seguinte, e a
-   decisão do que gravar já está pronta e testada em
-   lib/calculo/webhookWhatsapp.ts.
-   ---------------------------------------------------------------
+   O QUE ELA ESCREVE, em ordem, e cada coisa com sua própria trava:
+   a NOTA da resposta (sempre, e é ela que dá a idempotência), a
+   SUGESTÃO na tentativa pendente (quando existe uma), o ENCERRAMENTO
+   automático (só com recusa explícita e motivo de lista fechada) e o
+   COMPROMISSO na agenda (só com data válida no futuro). As decisões
+   são puras e testadas em lib/calculo/webhookWhatsapp.ts; aqui fica
+   só o efeito.
+
+   As três últimas são INDEPENDENTES entre si — nenhuma é pré-condição
+   da outra. Ver o bloco no passo 5 sobre por que não há `return` ali:
+   já houve, e ele derrubava o encerramento e a agenda por um motivo
+   que não era deles.
 
    O FILTRO É O CORAÇÃO DESTA ROTA. O número é o da imobiliária: por
    ele passa proprietário, mas também colega, cliente e grupo. O evento
@@ -297,24 +302,47 @@ export async function POST(
   const fechamento = sugestao
     ? sugerirNaTentativaPendente(imovel.tentativas, sugestao, hoje)
     : fecharTentativaPendente(imovel.tentativas, hoje);
-  if (!fechamento) {
-    console.log(`Webhook do WhatsApp: nota gravada — imóvel ${rotulo}, sem tentativa pendente${ambiguo}.`);
-    return Response.json({ ok: true });
-  }
 
-  // Update PARCIAL da coluna: nunca a linha inteira. O upsert do app grava
-  // todas as colunas jsonb de uma vez, e usá-lo aqui apagaria uma nota que o
-  // corretor tivesse acabado de escrever na tela.
-  const { error: erroTentativa } = await supabase
-    .from("imoveis")
-    .update({ tentativas: fechamento.tentativas })
-    .eq("id", imovel.id)
-    .eq("user_id", userId);
-  if (erroTentativa) {
-    // A nota já está gravada; perder só o fechamento é degradação aceitável
-    // (o nudge volta a cobrar), e não vale desfazer o que deu certo.
-    console.error("Webhook do WhatsApp: nota gravada, mas falhou ao fechar a tentativa:", erroTentativa.message);
-    return Response.json({ ok: true });
+  /* NÃO HÁ RETURN AQUI, e a ausência dele é o conserto de um bug real.
+     Antes, "sem tentativa pendente" encerrava a requisição — e levava junto o
+     encerramento automático (passo 6) e o compromisso da agenda (passo 7), que
+     não dependem de tentativa nenhuma: dependem do que o proprietário
+     ESCREVEU. Estavam atrás de uma porta que não era deles.
+
+     Não ter tentativa pendente é comum e não diz nada sobre a conversa:
+     - o registro automático de envio nasceu DEPOIS de boa parte dos contatos,
+       então imóvel antigo simplesmente não tem tentativa;
+     - as tentativas de backfill e as anotadas à mão não levam
+       `aguardandoResultado` de propósito (são afirmação, não palpite);
+     - e passados DIAS_COBRANCA_RESULTADO dias o palpite deixa de ser cobrado.
+
+     Medido em 28/07/2026: dos 14 imóveis que já haviam respondido, 2 não
+     tinham tentativa alguma e somavam 65 das 110 respostas — o LD-156 sozinho
+     tinha 64. Todas passaram por aqui e saíram no return, com a chamada da IA
+     já paga na linha acima. O caso que abriu a investigação foi o LD-123, em
+     que o proprietário marcou hora por escrito e nada foi para a agenda; o
+     efeito mais grave, porém, era outro: um "já aluguei" nesses imóveis não
+     encerrava o registro. */
+  if (fechamento) {
+    // Update PARCIAL da coluna: nunca a linha inteira. O upsert do app grava
+    // todas as colunas jsonb de uma vez, e usá-lo aqui apagaria uma nota que o
+    // corretor tivesse acabado de escrever na tela.
+    const { error: erroTentativa } = await supabase
+      .from("imoveis")
+      .update({ tentativas: fechamento.tentativas })
+      .eq("id", imovel.id)
+      .eq("user_id", userId);
+    if (erroTentativa) {
+      // A nota já está gravada; perder só o fechamento é degradação aceitável
+      // (o nudge volta a cobrar), e não vale desfazer o que deu certo — nem
+      // parar aqui, pela mesma razão do bloco acima.
+      console.error("Webhook do WhatsApp: nota gravada, mas falhou ao fechar a tentativa:", erroTentativa.message);
+    }
+  } else {
+    console.log(
+      `Webhook do WhatsApp: nota gravada — imóvel ${rotulo}, sem tentativa pendente${ambiguo}; ` +
+        `segue para encerramento e agenda.`,
+    );
   }
 
   // 6. Encerra o imóvel quando a resposta não deixou nada a fazer ("já
@@ -411,8 +439,12 @@ export async function POST(
   }
 
   console.log(
-    `Webhook do WhatsApp: resposta registrada — imóvel ${rotulo}, tentativa marcada como ` +
-      `"${fechamento.fechada.resultado}"${sugestao ? " (sugestão da IA, aguardando confirmação)" : ""}${ambiguo}.`,
+    `Webhook do WhatsApp: resposta registrada — imóvel ${rotulo}, ` +
+      (fechamento
+        ? `tentativa marcada como "${fechamento.fechada.resultado}"` +
+          `${sugestao ? " (sugestão da IA, aguardando confirmação)" : ""}`
+        : "sem tentativa a marcar") +
+      `${ambiguo}.`,
   );
   // Sempre 200 para quem se autenticou. Webhook que responde erro é webhook
   // reentregue em loop — e, em algumas versões da Evolution, desativado depois
