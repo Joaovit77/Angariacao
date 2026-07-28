@@ -30,7 +30,7 @@ import { daysBetween } from "../datas";
 import { fmtDate } from "../formatadores";
 import type { Imovel, Tentativa } from "../tipos";
 import { daysInCurrentStatus, imoveisDeCaptacao, isPausado } from "./motor";
-import { ehNotaDeResposta } from "./webhookWhatsapp";
+import { dataUltimaResposta } from "./notas";
 
 /** Dias que um lead pode ficar cadastrado sem NENHUMA tentativa antes de
     virar cobrança. Três dias é o intervalo em que "vou falar com ele depois"
@@ -100,16 +100,10 @@ function compromissoVencido(t: Tentativa | null, hoje: string): string | null {
 }
 
 /** Data (YYYY-MM-DD) da mensagem mais recente que o PROPRIETÁRIO mandou, lida
-    das notas gravadas pelo webhook. null quando ele nunca escreveu. */
+    das notas gravadas pelo webhook. null quando ele nunca escreveu.
+    A leitura mora em `calculo/notas.ts` — o motor usa a mesma. */
 function ultimaRespostaRecebida(imovel: Imovel): string | null {
-  let maior: string | null = null;
-  for (const nota of imovel.notas || []) {
-    if (!ehNotaDeResposta(nota)) continue;
-    const dia = (nota.data || "").slice(0, 10);
-    if (!dia) continue;
-    if (!maior || dia > maior) maior = dia;
-  }
-  return maior;
+  return dataUltimaResposta(imovel.notas);
 }
 
 /* ----------------------------------------------------------------
@@ -257,8 +251,8 @@ export function linhaTemperatura(imovel: Imovel, hoje: string): LinhaTemperatura
 
   // 3. Cadastrado e nunca tocado — o lead que entrou no garimpo e a semana
   //    passou por cima. Última faixa: é a única cobrança daqui que não nasce de
-  //    uma reação do proprietário, e entra porque ninguém mais a faz (o card de
-  //    parados só olha tempo no status, não a ausência de tentativa).
+  //    uma reação do proprietário, e entra porque chega ANTES de qualquer
+  //    outra — DIAS_LEAD_ESQUECIDO é 3, e o card de parados só marca aos 7.
   const noStatus = daysInCurrentStatus(imovel);
   if (!ultima && noStatus !== null && noStatus >= DIAS_LEAD_ESQUECIDO) {
     return linha(

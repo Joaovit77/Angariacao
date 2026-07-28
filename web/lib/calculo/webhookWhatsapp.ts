@@ -20,6 +20,7 @@
    ================================================================ */
 import { DIAS_COBRANCA_RESULTADO } from "./abordagens";
 import { historicoComStatus } from "./motor";
+import { SUFIXO_ID_ENCERRAMENTO, idNotaDaMensagem } from "./notas";
 import { daysBetween } from "../datas";
 import type { NotaImovel, StatusHistoryEntry, Tentativa } from "../tipos";
 
@@ -180,31 +181,10 @@ export function interpretarEvento(corpo: unknown): MensagemRecebida | null {
 
 /** Prefixo do id da nota criada pelo webhook. Também serve para distinguir,
     na tela, o que veio automático do que o corretor escreveu. */
-export const PREFIXO_ID_NOTA = "wa:";
-
-export function idNotaDaMensagem(mensagemId: string): string {
-  return `${PREFIXO_ID_NOTA}${mensagemId}`;
-}
-
-/** Sufixo do id da nota que explica um encerramento automático. */
-const SUFIXO_ID_ENCERRAMENTO = ":encerrado";
-
-/**
- * A nota é uma MENSAGEM DO PROPRIETÁRIO (e não algo que o sistema escreveu)?
- *
- * Existe porque `notaDoEncerramento` também nasce com o prefixo `wa:` — ela é
- * `wa:<id>:encerrado` —, então um `startsWith("wa:")` ingênuo contaria a
- * explicação do próprio app como se fosse resposta de alguém. Quem lê isso
- * como SINAL (a fila do follow-up, o termômetro) passaria a promover um imóvel
- * por causa de um texto que nós mesmos gravamos.
- *
- * A convenção mora aqui, junto de quem a cria, para não ser reconstruída a
- * dedo em cada consumidor.
- */
-export function ehNotaDeResposta(nota: { id?: string | null }): boolean {
-  const id = nota.id || "";
-  return id.startsWith(PREFIXO_ID_NOTA) && !id.endsWith(SUFIXO_ID_ENCERRAMENTO);
-}
+/* A convenção de id — `PREFIXO_ID_NOTA`, `idNotaDaMensagem`,
+   `ehNotaDeResposta` — mudou para `calculo/notas.ts`. Não foi arrumação: o
+   motor precisa dela (resposta do proprietário é movimento, e `isStale` conta
+   movimento), e este módulo já importa `historicoComStatus` do motor. */
 
 /** Rótulo do que chegou quando não há texto para mostrar. Áudio e foto são
     respostas de verdade — registrar "(vazio)" faria o corretor achar que o
@@ -262,7 +242,7 @@ export function notaDoEncerramento(
   agora: string,
 ): NotaImovel {
   return {
-    id: `${idNotaDaMensagem(mensagemId)}:encerrado`,
+    id: `${idNotaDaMensagem(mensagemId)}${SUFIXO_ID_ENCERRAMENTO}`,
     texto:
       `Imóvel marcado como ${encerrou.status} automaticamente a partir da resposta acima ` +
       `(motivo: ${encerrou.motivoPerda}). Se não foi isso, altere o status no cadastro.`,

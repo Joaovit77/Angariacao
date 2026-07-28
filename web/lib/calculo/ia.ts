@@ -19,7 +19,7 @@
 import type { AbordagemDesempenho, ResumoTentativas } from "./abordagens";
 import type { KpisDashboard } from "./dashboard";
 import type { PlanoDoDia } from "./planoDia";
-import { daysInCurrentStatus, isStale } from "./motor";
+import { diasSemMovimento, isStale } from "./motor";
 import { ORIGENS_IMOVEL, TIPOS_IMOVEL } from "../constantes";
 import { daysBetween, todayISO } from "../datas";
 import type { AgendaItem, Imovel } from "../tipos";
@@ -374,7 +374,9 @@ export function panoramaDoDia(imoveis: Imovel[], agenda: AgendaItem[]): Panorama
     .filter(isStale)
     .map((i) => ({
       descricao: `${rotuloImovel(i)} — parado em "${i.status}"`,
-      dias: daysInCurrentStatus(i) ?? 0,
+      // Tempo sem movimento, o mesmo que o `isStale` mediu. Dias no status
+      // faria a IA escrever "parado há 20 dias" sobre quem respondeu ontem.
+      dias: diasSemMovimento(i) ?? 0,
     }));
 
   atrasados.sort((a, b) => b.dias - a.dias);

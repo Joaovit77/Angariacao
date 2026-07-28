@@ -197,7 +197,12 @@ describe("Insights", () => {
     // Card por-imóvel: o mais parado da carteira, nominal. Com a regra nova,
     // Angariado/Publicado não entram, então o topo passa a ser CA-002.
     expect(porIcone("ampulheta").title).toBe("CA-002 é o mais parado: 12 dias");
-    expect(porIcone("ampulheta").text).toContain('há 12 dias em "Novo contato"');
+    // O NÚMERO do baseline não mudou (12 dias): estas fixtures não têm
+    // tentativas nem notas, então "sem movimento" é o mesmo que "no status".
+    // A frase é que passou a dizer movimento em vez de etapa — ver
+    // `diasSemMovimento` no motor.
+    expect(porIcone("ampulheta").text).toContain("há 12 dias sem nenhum movimento");
+    expect(porIcone("ampulheta").text).toContain('segue em "Novo contato"');
     // Tendência mês a mês (Julho/2026 = 1 vs Junho/2026 = 0).
     expect(porIcone("alta").title).toContain("Julho de 2026");
     expect(porIcone("alta").text).toContain("contra 0 em Junho de 2026");

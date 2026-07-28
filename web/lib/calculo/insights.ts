@@ -18,7 +18,7 @@ import type { PipelineCol } from "./filtros";
 import {
   conversaoCaptacao,
   dateEnteredStatus,
-  daysInCurrentStatus,
+  diasSemMovimento,
   groupCount,
   isStale,
   limiteStaleParaStatus,
@@ -359,9 +359,11 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
   }
 
   // 5b. O imóvel específico parado há mais tempo — ação concreta e nominal.
+  // `diasSemMovimento`, e não dias no status: é o número que o `isStale` usou
+  // para eleger estes imóveis, e o texto abaixo afirma que nada aconteceu.
   const parados = imoveis
     .filter(isStale)
-    .map((i) => ({ i, dias: daysInCurrentStatus(i) ?? 0 }))
+    .map((i) => ({ i, dias: diasSemMovimento(i) ?? 0 }))
     .sort((a, b) => b.dias - a.dias);
   if (parados.length > 0) {
     const { i, dias } = parados[0];
@@ -370,7 +372,7 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
       tone: "bad",
       icon: "ampulheta",
       title: `${rotuloImovel} é o mais parado: ${dias} dias`,
-      text: `Está há ${dias} dias em "${i.status}" sem avançar — o maior tempo parado da carteira. Priorize retomar esse contato.`,
+      text: `Está há ${dias} dias sem nenhum movimento — segue em "${i.status}", e é o maior tempo parado da carteira. Priorize retomar esse contato.`,
       group: "acao",
       priority: 95,
       action:

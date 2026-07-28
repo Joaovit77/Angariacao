@@ -25,6 +25,7 @@ import {
 import {
   comissaoRecebidaNoMes,
   daysInCurrentStatus,
+  diasSemMovimento,
   faturamentoContratosNoMes,
   imoveisAngariadosNoMes,
   imoveisLocadosNoMes,
@@ -89,11 +90,14 @@ export default function HomeView() {
     .sort(compararAgenda);
   const atrasados = agenda.filter((a) => !a.done && a.date < hoje).length;
 
-  // Imóveis parados: os que o motor marca como estagnados, os mais antigos
-  // no status atual primeiro.
+  // Imóveis parados: os que o motor marca como estagnados, os há mais tempo
+  // sem movimento primeiro. Ordena (e exibe) por `diasSemMovimento`, que é o
+  // mesmo número que o motor usou para marcar — por dias no status, a lista
+  // diria "20 dias" num imóvel cujo prazo foi contado desde a mensagem de
+  // ontem.
   const parados = imoveis
     .filter(isStale)
-    .sort((a, b) => (daysInCurrentStatus(b) ?? 0) - (daysInCurrentStatus(a) ?? 0));
+    .sort((a, b) => (diasSemMovimento(b) ?? 0) - (diasSemMovimento(a) ?? 0));
 
   // Imóveis em negociação: a etapa mais quente do funil (mais perto de fechar).
   // Mostra todos nesse status, os que estão há mais tempo parados primeiro —
@@ -180,7 +184,7 @@ export default function HomeView() {
       ) : (
         <div className="home-list home-list-parados">
           {parados.slice(0, LIMITE_LISTA).map((i) => {
-            const dias = daysInCurrentStatus(i);
+            const dias = diasSemMovimento(i);
             return (
               <div
                 key={i.id}
