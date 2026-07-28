@@ -38,6 +38,7 @@ export interface DbImovelRow {
   proprietario_telefone: string | null;
   forma_abordagem: string | null;
   origem_imovel: string | null;
+  anuncio_idade_dias: number | null;
   imobiliaria_concorrente: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -130,6 +131,7 @@ export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "create
     proprietario_telefone: i.proprietarioTelefone || null,
     forma_abordagem: i.formaAbordagem || null,
     origem_imovel: i.origemImovel || null,
+    anuncio_idade_dias: i.anuncioIdadeDias ?? null,
     imobiliaria_concorrente: i.imobiliariaConcorrente || null,
     latitude: i.latitude ?? null,
     longitude: i.longitude ?? null,
@@ -176,6 +178,7 @@ export function fromDbImovel(r: DbImovelRow): Imovel {
     formaAbordagem: r.forma_abordagem || "",
     // Normaliza rótulos de origem renomeados (ex.: "Site da imobiliária").
     origemImovel: (r.origem_imovel && ORIGENS_LEGADAS[r.origem_imovel]) || r.origem_imovel || "",
+    anuncioIdadeDias: r.anuncio_idade_dias ?? null,
     // Nome da imobiliária em cuja vitrine/site a oportunidade foi garimpada —
     // é a FONTE da angariação, não um rival disputando o proprietário. O nome
     // da coluna (imobiliaria_concorrente) foi mantido para evitar migração de

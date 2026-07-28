@@ -131,6 +131,19 @@ export interface Imovel {
   proprietarioTelefone?: string | null;
   formaAbordagem?: string | null;
   origemImovel?: string | null;
+  /** Há quantos dias o ANÚNCIO estava publicado quando você o encontrou.
+      Não é a idade de hoje: é a idade no momento do garimpo, congelada — é
+      isso que se cruza com o desfecho para saber se anúncio velho vale a pena.
+
+      Existe porque o maior balde de perdas da carteira é "chegamos tarde"
+      (30 dos 50 encerramentos: já alugado, já vendido, foi para outra
+      imobiliária) e, medido, o corretor NÃO é lento depois de achar o anúncio
+      — a mediana entre cadastrar e mandar a primeira mensagem é 0 dia. O
+      atraso está em ACHAR, e essa variável não existia em lugar nenhum:
+      `dataAngariacao` é a data do cadastro, não a da publicação.
+
+      null quando o anúncio não disse (a maioria dos casos antigos). */
+  anuncioIdadeDias?: number | null;
   imobiliariaConcorrente?: string | null;
   latitude?: number | null;
   longitude?: number | null;

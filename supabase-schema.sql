@@ -44,6 +44,10 @@ create table if not exists imoveis (
   proprietario_telefone text,
   forma_abordagem text,
   origem_imovel text,
+  -- Idade do ANÚNCIO (em dias) no momento em que o imóvel foi garimpado.
+  -- Congelada de propósito: a pergunta é se anúncio velho converte, e para
+  -- isso vale a idade na descoberta, não a de hoje.
+  anuncio_idade_dias integer,
   imobiliaria_concorrente text,
   latitude double precision,
   longitude double precision,

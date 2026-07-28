@@ -639,6 +639,10 @@ export interface AnuncioExtraido {
       própria procedência (nome do portal, cabeçalho, rodapé). Vira o padrão
       do seletor — que o corretor pode trocar. */
   origemSugerida: string | null;
+  /** Há quantos dias o anúncio estava publicado, segundo o próprio texto
+      ("publicado há 3 dias", "anunciado ontem"). null quando o anúncio não
+      informa — que é o caso mais comum e não é erro. */
+  anuncioIdadeDias: number | null;
   confianca: ConfiancaExtracao;
 }
 
@@ -686,6 +690,10 @@ export const ESQUEMA_ANUNCIO = {
       description: "Valor mensal do aluguel em reais, só o número.",
     },
     origemSugerida: { type: ["string", "null"], enum: [...ORIGENS_ADIVINHAVEIS, null] },
+    anuncioIdadeDias: {
+      type: ["integer", "null"],
+      description: "Há quantos dias o anúncio foi publicado, segundo o texto. null se não disser.",
+    },
     confianca: {
       type: "string",
       enum: ["alta", "media", "baixa"],
@@ -707,13 +715,14 @@ export const ESQUEMA_ANUNCIO = {
     "vagas",
     "valorAluguel",
     "origemSugerida",
+    "anuncioIdadeDias",
     "confianca",
   ],
   additionalProperties: false,
 } as const;
 
 /** Prompt da extração. `texto` é o material colado, truncado aqui. */
-export function promptExtrairAnuncio(texto?: string | null): string {
+export function promptExtrairAnuncio(texto?: string | null, hoje?: string | null): string {
   const colado = (texto || "").trim().slice(0, MAX_TEXTO_ANUNCIO);
 
   return `${PAPEL}
@@ -734,6 +743,7 @@ Regras:
 - "unidade", "bloco" e "edificio" importam mais do que parecem: no mesmo prédio, o apartamento 101 e o 202 são imóveis DIFERENTES, de proprietários diferentes. Separe-os do endereço — em "Rua X, 250, ap 806, bloco B, Ed. Solar", o endereço é "Rua X, 250", a unidade é "806", o bloco é "B" e o edifício é "Ed. Solar". Não repita a unidade dentro do endereço.
 - valorAluguel: o aluguel MENSAL. Ignore condomínio, IPTU e valor de venda. Se o anúncio for de venda e não de locação, devolva null aqui.
 - origemSugerida: só preencha quando o próprio texto trouxer a pista de onde ele veio — o nome do portal, o cabeçalho colado junto, o "publicado em", o rodapé. Ex.: "OLX / Canal Pro" quando o texto for da OLX; "Redes sociais" quando vier de Facebook, Marketplace ou Instagram; "Garimpo em site de imobiliária" quando for o site de uma imobiliária. Texto solto, sem essa pista, é null. Não tente adivinhar pelo CONTEÚDO do anúncio — o mesmo texto circula em todos os portais.
+- anuncioIdadeDias: há quantos DIAS o anúncio está no ar, segundo o próprio texto. "Publicado há 3 dias" é 3; "ontem" é 1; "hoje"/"agora" é 0.${hoje ? ` Se o texto trouxer uma DATA absoluta de publicação, calcule a diferença para hoje, ${hoje}.` : " Se o texto trouxer apenas uma data absoluta e você não tiver como calcular, devolva null."} Se não houver nenhuma indicação de quando foi publicado, devolva null — não estime pela aparência do anúncio.
 - confianca: "baixa" quando o texto estiver cortado, truncado no meio ou misturado com outro anúncio, mesmo que você tenha conseguido ler alguma coisa. O corretor usa isso para saber se confere antes de mandar mensagem.`;
 }
 

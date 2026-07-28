@@ -308,7 +308,10 @@ export async function POST(request: Request): Promise<Response> {
 
     // O prompt trunca o texto.
     const conteudo: OpenAI.Chat.ChatCompletionContentPart[] = [
-      { type: "text", text: promptExtrairAnuncio(texto) },
+      // A data de hoje entra para o modelo conseguir converter "publicado em
+      // 10/07" na idade do anúncio. Vem do servidor, não do browser: é o mesmo
+      // princípio do resto da rota — o cliente manda conteúdo, não contexto.
+      { type: "text", text: promptExtrairAnuncio(texto, todayISO()) },
     ];
 
     let conclusao: OpenAI.Chat.ChatCompletion;

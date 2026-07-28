@@ -14,6 +14,7 @@ import {
   type Insight,
   type InsightAction,
 } from "@/lib/calculo/insights";
+import { analisarIdadeAnuncio } from "@/lib/calculo/idadeAnuncio";
 import { useAppStore } from "@/lib/store";
 import { usePipelineUi } from "@/lib/uiPipeline";
 import { IconeInsight } from "./icones";
@@ -34,6 +35,97 @@ function CartaoInsight({ i, aoAbrirNoPipeline }: { i: Insight; aoAbrirNoPipeline
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Conversão por idade do anúncio no momento do garimpo.
+ *
+ * Responde a pergunta que o maior balde de perdas levanta ("chegamos tarde" é
+ * 30 dos 50 encerramentos) e que nenhum outro número do painel alcança: a
+ * partir de quantos dias de anúncio o garimpo deixa de compensar.
+ *
+ * Só aparece quando existe o que mostrar — enquanto a coleta não acumular, um
+ * card de zeros só ocuparia espaço e ensinaria a ignorar a seção.
+ */
+function IdadeDoAnuncio() {
+  const imoveis = useAppStore((s) => s.imoveis);
+  const analise = analisarIdadeAnuncio(imoveis);
+  if (analise.comIdade === 0) return null;
+
+  const comAlgumDesfecho = analise.faixas.some((f) => f.decididos > 0);
+
+  return (
+    <section className="insight-group">
+      <div className="insight-group-head">
+        <span className="insight-group-icon">
+          <IconeInsight nome="relogio" />
+        </span>
+        <div className="insight-group-headtext">
+          <h2 className="insight-group-title">Idade do anúncio</h2>
+          <p className="insight-group-sub">
+            Quanto tempo o anúncio já estava no ar quando você o encontrou, cruzado com o desfecho
+          </p>
+        </div>
+        <span className="insight-group-count">{analise.comIdade}</span>
+      </div>
+
+      {!comAlgumDesfecho ? (
+        <p className="section-note">
+          Nenhum dos {analise.comIdade} imóveis com idade registrada teve desfecho ainda. A leitura
+          aparece conforme eles forem angariados ou encerrados.
+        </p>
+      ) : (
+        <div className="card table-scroll" style={{ padding: 0 }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Idade do anúncio</th>
+                <th>Decididos</th>
+                <th>Angariados</th>
+                <th>Conversão</th>
+                <th>Em aberto</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analise.faixas.map((f) => (
+                <tr key={f.id}>
+                  <td className="cell-strong">{f.rotulo}</td>
+                  <td className="cell-dim">{f.decididos}</td>
+                  <td className="cell-dim">{f.angariados}</td>
+                  <td>
+                    {f.taxa == null ? (
+                      <span className="cell-dim">—</span>
+                    ) : (
+                      <>
+                        {f.taxa.toFixed(0)}%
+                        {/* Amostra pequena mente com cara de número: 1 de 3 vira
+                            "33%". A marca é parte do contrato da medida. */}
+                        {!f.amostraSuficiente && (
+                          <span className="cell-dim"> · amostra baixa</span>
+                        )}
+                      </>
+                    )}
+                  </td>
+                  <td className="cell-dim">{f.emAberto}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <p className="section-note" style={{ marginTop: "10px" }}>
+        {analise.semIdade > 0 && (
+          <>
+            {analise.semIdade} imóveis não têm a idade registrada e ficam fora desta conta — a coleta
+            começou depois deles.{" "}
+          </>
+        )}
+        Compare faixas dentro do mesmo canal: OLX e garimpo em site cadastram o lead em momentos
+        diferentes, e misturá-los compara populações distintas.
+      </p>
+    </section>
   );
 }
 
@@ -94,6 +186,8 @@ export default function InsightsView() {
           );
         })
       )}
+
+      <IdadeDoAnuncio />
     </>
   );
 }

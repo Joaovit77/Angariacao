@@ -69,7 +69,8 @@
       "notas": [],
       "tentativas": [],
       "pre_cadastro": false,
-      "imovel_principal_id": null
+      "imovel_principal_id": null,
+      "anuncio_idade_dias": null
     },
     "f02": {
       "id": "f02",
@@ -110,7 +111,8 @@
       "notas": [],
       "tentativas": [],
       "pre_cadastro": false,
-      "imovel_principal_id": null
+      "imovel_principal_id": null,
+      "anuncio_idade_dias": null
     },
     "f03": {
       "id": "f03",
@@ -151,7 +153,8 @@
       "notas": [],
       "tentativas": [],
       "pre_cadastro": false,
-      "imovel_principal_id": null
+      "imovel_principal_id": null,
+      "anuncio_idade_dias": null
     },
     "f04": {
       "id": "f04",
@@ -197,7 +200,8 @@
       "notas": [],
       "tentativas": [],
       "pre_cadastro": false,
-      "imovel_principal_id": null
+      "imovel_principal_id": null,
+      "anuncio_idade_dias": null
     },
     "f05": {
       "id": "f05",
@@ -251,7 +255,8 @@
       "notas": [],
       "tentativas": [],
       "pre_cadastro": false,
-      "imovel_principal_id": null
+      "imovel_principal_id": null,
+      "anuncio_idade_dias": null
     },
     "f06": {
       "id": "f06",
@@ -301,7 +306,8 @@
       "notas": [],
       "tentativas": [],
       "pre_cadastro": false,
-      "imovel_principal_id": null
+      "imovel_principal_id": null,
+      "anuncio_idade_dias": null
     },
     "f07": {
       "id": "f07",
@@ -351,7 +357,8 @@
       "notas": [],
       "tentativas": [],
       "pre_cadastro": false,
-      "imovel_principal_id": null
+      "imovel_principal_id": null,
+      "anuncio_idade_dias": null
     },
     "f08": {
       "id": "f08",
@@ -401,7 +408,8 @@
       "notas": [],
       "tentativas": [],
       "pre_cadastro": false,
-      "imovel_principal_id": null
+      "imovel_principal_id": null,
+      "anuncio_idade_dias": null
     },
     "f09": {
       "id": "f09",
@@ -447,7 +455,8 @@
       "notas": [],
       "tentativas": [],
       "pre_cadastro": false,
-      "imovel_principal_id": null
+      "imovel_principal_id": null,
+      "anuncio_idade_dias": null
     },
     "f10": {
       "id": "f10",
@@ -493,7 +502,8 @@
       "notas": [],
       "tentativas": [],
       "pre_cadastro": false,
-      "imovel_principal_id": null
+      "imovel_principal_id": null,
+      "anuncio_idade_dias": null
     },
     "f11": {
       "id": "f11",
@@ -547,7 +557,8 @@
       "notas": [],
       "tentativas": [],
       "pre_cadastro": false,
-      "imovel_principal_id": null
+      "imovel_principal_id": null,
+      "anuncio_idade_dias": null
     },
     "f12": {
       "id": "f12",
@@ -601,7 +612,8 @@
       "notas": [],
       "tentativas": [],
       "pre_cadastro": false,
-      "imovel_principal_id": null
+      "imovel_principal_id": null,
+      "anuncio_idade_dias": null
     },
     "f13": {
       "id": "f13",
@@ -655,7 +667,8 @@
       "notas": [],
       "tentativas": [],
       "pre_cadastro": false,
-      "imovel_principal_id": null
+      "imovel_principal_id": null,
+      "anuncio_idade_dias": null
     },
     "f14": {
       "id": "f14",
@@ -701,7 +714,8 @@
       "notas": [],
       "tentativas": [],
       "pre_cadastro": false,
-      "imovel_principal_id": null
+      "imovel_principal_id": null,
+      "anuncio_idade_dias": null
     },
     "f15": {
       "id": "f15",
@@ -747,7 +761,8 @@
       "notas": [],
       "tentativas": [],
       "pre_cadastro": false,
-      "imovel_principal_id": null
+      "imovel_principal_id": null,
+      "anuncio_idade_dias": null
     },
     "f16": {
       "id": "f16",
@@ -801,7 +816,8 @@
       "notas": [],
       "tentativas": [],
       "pre_cadastro": false,
-      "imovel_principal_id": null
+      "imovel_principal_id": null,
+      "anuncio_idade_dias": null
     },
     "f17": {
       "id": "f17",
@@ -851,7 +867,8 @@
       "notas": [],
       "tentativas": [],
       "pre_cadastro": false,
-      "imovel_principal_id": null
+      "imovel_principal_id": null,
+      "anuncio_idade_dias": null
     }
   },
   "roundTripImovel": {
@@ -922,7 +939,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "f02": {
       "id": "f02",
@@ -962,7 +980,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "f03": {
       "id": "f03",
@@ -1002,7 +1021,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "f04": {
       "id": "f04",
@@ -1047,7 +1067,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "f05": {
       "id": "f05",
@@ -1100,7 +1121,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "f06": {
       "id": "f06",
@@ -1149,7 +1171,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "f07": {
       "id": "f07",
@@ -1198,7 +1221,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "f08": {
       "id": "f08",
@@ -1247,7 +1271,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "f09": {
       "id": "f09",
@@ -1292,7 +1317,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "f10": {
       "id": "f10",
@@ -1337,7 +1363,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "f11": {
       "id": "f11",
@@ -1390,7 +1417,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "f12": {
       "id": "f12",
@@ -1443,7 +1471,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "f13": {
       "id": "f13",
@@ -1496,7 +1525,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "f14": {
       "id": "f14",
@@ -1541,7 +1571,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "f15": {
       "id": "f15",
@@ -1586,7 +1617,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "f16": {
       "id": "f16",
@@ -1639,7 +1671,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "f17": {
       "id": "f17",
@@ -1688,7 +1721,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     }
   },
   "fromDbImovel": {
@@ -1743,7 +1777,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "r2": {
       "id": "r2",
@@ -1783,7 +1818,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     },
     "r3": {
       "id": "r3",
@@ -1832,7 +1868,8 @@
       "notas": [],
       "tentativas": [],
       "preCadastro": false,
-      "imovelPrincipalId": null
+      "imovelPrincipalId": null,
+      "anuncioIdadeDias": null
     }
   },
   "fromDbAgenda": {

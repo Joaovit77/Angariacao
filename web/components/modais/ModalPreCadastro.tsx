@@ -19,7 +19,7 @@ import { mensagemFalhaIa, type AnuncioExtraido } from "@/lib/calculo/ia";
 import { fmtMoney } from "@/lib/formatadores";
 import { buscarCep, geocodeEndereco, maskCEP } from "@/lib/geo";
 import { extrairAnuncio } from "@/lib/ia";
-import { salvarImovel, uid } from "@/lib/mutacoes";
+import { numOrNull, salvarImovel, uid } from "@/lib/mutacoes";
 import { nomeProprio } from "@/lib/normalizacao";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
@@ -61,6 +61,9 @@ export default function ModalPreCadastro() {
   // item da lista. Antes este modal não gravava origem NENHUMA, e todo imóvel
   // capturado rápido ficava invisível no Foco do dia e no ranking de canais.
   const [origemImovel, setOrigemImovel] = useState("");
+  // Idade do anúncio no momento do garimpo. String porque é campo de input; o
+  // salvamento converte. Ver calculo/idadeAnuncio.ts para o porquê.
+  const [anuncioIdadeDias, setAnuncioIdadeDias] = useState("");
   const [cepStatus, setCepStatus] = useState<Status>({ msg: "", tone: "" });
   const [salvando, setSalvando] = useState(false);
 
@@ -100,6 +103,8 @@ export default function ModalPreCadastro() {
     if (a.cidade) setCidade(a.cidade);
     if (a.cep) setCep(maskCEP(a.cep));
     if (a.origemSugerida) setOrigemImovel(a.origemSugerida);
+    // A IA lê "publicado há 3 dias" do texto colado — nenhuma digitação a mais.
+    if (a.anuncioIdadeDias != null) setAnuncioIdadeDias(String(a.anuncioIdadeDias));
     setExtras({ tipo: a.tipo, quartos: a.quartos, vagas: a.vagas, valorAluguel: a.valorAluguel });
 
     const achouTelefone = !!a.proprietarioTelefone;
@@ -240,6 +245,7 @@ export default function ModalPreCadastro() {
       proprietarioTelefone: proprietarioTelefone.trim(),
       cep: cep.trim(),
       origemImovel,
+      anuncioIdadeDias: numOrNull(anuncioIdadeDias),
       // O que a IA leu além dos campos do formulário. Já foi mostrado no resumo
       // antes de salvar, e é editável depois no cadastro completo.
       tipo: extras?.tipo ?? null,
@@ -417,6 +423,23 @@ export default function ModalPreCadastro() {
                 ),
               )}
             </select>
+          </div>
+          <div className="field-group">
+            <label>Anúncio publicado há (dias)</label>
+            <input
+              type="number"
+              min="0"
+              value={anuncioIdadeDias}
+              onChange={(e) => setAnuncioIdadeDias(e.target.value)}
+              placeholder="ex.: 3"
+            />
+            {/* Congelado na descoberta, de propósito: a pergunta é se anúncio
+                velho compensa garimpar, e para isso vale a idade de quando você
+                achou — não a de hoje. Ver calculo/idadeAnuncio.ts. */}
+            <div className="field-hint">
+              Quanto tempo o anúncio já estava no ar quando você o encontrou. É o que vai dizer se
+              vale garimpar anúncio antigo. Em branco quando o anúncio não informa.
+            </div>
           </div>
         </fieldset>
         <fieldset>
