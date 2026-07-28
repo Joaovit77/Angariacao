@@ -27,6 +27,7 @@ import {
 } from "../constantes";
 import { daysBetween, monthKey, todayISO } from "../datas";
 import type { Imovel, StatusHistoryEntry } from "../tipos";
+import { dataUltimaResposta } from "./notas";
 
 /**
  * O histórico depois de uma mudança de status — a REGRA, num só lugar.
@@ -82,11 +83,60 @@ export function limiteStaleParaStatus(status: string): number {
     : STALE_DAYS_THRESHOLD;
 }
 
+/* --- "Parado" é ausência de MOVIMENTO, não de mudança de status -------------
+   `isStale` contava dias desde a última mudança de status, e só. Enquanto o
+   app era cego para o que acontecia entre uma etapa e outra, dava no mesmo.
+   Deixou de dar quando passaram a existir tentativas registradas e respostas
+   chegando pelo webhook: o status não se move sozinho — nada o move —, então
+   um imóvel podia levar follow-up ontem, ter o proprietário respondendo hoje,
+   e ainda assim aparecer como "parado há 14 dias".
+
+   Foi um caso real (LD-55, 28/07/2026): o filho respondeu passando o telefone
+   do pai, o pai respondeu confirmando ser o proprietário, e o card continuava
+   cobrando estagnação. Na carteira daquele dia, 11 dos 46 imóveis marcados
+   como parados tinham tido contato depois da última mudança de status, e 2
+   tinham resposta do próprio proprietário.
+
+   Movimento é qualquer uma das três coisas que o app sabe datar: mudança de
+   status, tentativa enviada e resposta recebida. As três, e não só a última,
+   porque cada uma cobre um buraco das outras — o corretor que trabalha o lead
+   sem mexer na etapa, e o proprietário que reage sem ninguém confirmar nada.
+
+   O que isto NÃO é: um jeito de esconder imóvel que não anda. Quem não avança
+   continua parado assim que passa o prazo sem NADA acontecer — só que agora
+   "nada acontecer" quer dizer o que a frase diz. E o funil continua medido por
+   status: `daysInCurrentStatus`, coortes e tempo médio não mudam, porque ali a
+   pergunta é mesmo sobre a etapa. */
+
+/** A mais recente entre duas datas ISO, ignorando as ausentes. */
+function maisRecente(a: string | null, b: string | null): string | null {
+  if (!a) return b;
+  if (!b) return a;
+  return a > b ? a : b;
+}
+
+/** Dia (YYYY-MM-DD) do último movimento do imóvel: mudança de status,
+    tentativa de contato ou resposta do proprietário — o que veio por último. */
+export function ultimoMovimentoISO(imovel: Imovel): string | null {
+  let ultimo = currentStatusSince(imovel);
+  for (const t of imovel.tentativas || []) {
+    const dia = (t.data || "").slice(0, 10);
+    if (dia) ultimo = maisRecente(ultimo, dia);
+  }
+  return maisRecente(ultimo, dataUltimaResposta(imovel.notas));
+}
+
+/** Dias desde o último movimento. É o número que acompanha a palavra "parado"
+    na tela — mostrar `daysInCurrentStatus` ao lado do selo diria "parado há 20
+    dias" para um imóvel cujo prazo foi contado a partir de ontem. */
+export function diasSemMovimento(imovel: Imovel): number | null {
+  return daysBetween(ultimoMovimentoISO(imovel), todayISO());
+}
+
 export function isStale(imovel: Imovel): boolean {
   if ((STATUS_TERMINAL_NEGATIVE as readonly string[]).includes(imovel.status) || imovel.status === "Locado") return false;
   if (isPausado(imovel)) return false;
-  const since = currentStatusSince(imovel);
-  const d = daysBetween(since, todayISO());
+  const d = diasSemMovimento(imovel);
   return d !== null && d >= limiteStaleParaStatus(imovel.status);
 }
 

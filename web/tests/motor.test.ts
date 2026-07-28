@@ -11,6 +11,7 @@ import {
   imoveisAngariadosNoMes, imoveisAngariadosNoPeriodo,
   imoveisContatadosNoMes, imoveisContatadosNoPeriodo,
   imoveisLocadosNoMes, groupCount,
+  ultimoMovimentoISO, diasSemMovimento,
 } from "@/lib/calculo/motor";
 import type { Imovel } from "@/lib/tipos";
 import { congelaRelogio } from "./setup-relogio";
@@ -77,6 +78,115 @@ describe("semânticas críticas do domínio (specs explícitas)", () => {
   it("histórico com status repetido: primeira entrada vale para dateEnteredStatus, última para currentStatusSince (f16)", () => {
     expect(dateEnteredStatus(porId("f16"), "Novo contato")).toBe("2026-06-01");
     expect(currentStatusSince(porId("f16"))).toBe("2026-06-20");
+  });
+});
+
+/* ------------------------------------------------------------------
+   "PARADO" É AUSÊNCIA DE MOVIMENTO
+
+   O oráculo acima continua verde porque as fixtures do app antigo não
+   têm `tentativas` nem `notas` — sem elas, movimento é exatamente a
+   mudança de status, e nada mudou. Estes testes cobrem o que só passou
+   a existir depois: tentativa registrada e resposta do proprietário
+   chegando pelo webhook.
+
+   Hoje congelado em 2026-07-09 (ver setup-relogio).
+   ------------------------------------------------------------------ */
+describe("isStale conta movimento, não mudança de status", () => {
+  const HA_20_DIAS = "2026-06-19";
+
+  function imovel(over: Partial<Imovel> = {}): Imovel {
+    return {
+      id: "m1",
+      status: "Novo contato",
+      statusHistory: [{ status: "Novo contato", date: HA_20_DIAS }],
+      ...over,
+    } as Imovel;
+  }
+
+  const tentativaEm = (dia: string) => [{ id: "t1", data: `${dia}T10:00` }] as Imovel["tentativas"];
+  const respostaEm = (dia: string) =>
+    [{ id: "wa:MSG1", texto: "Resposta pelo WhatsApp: oi", data: `${dia}T10:00` }] as Imovel["notas"];
+
+  it("sem tentativa e sem nota, segue valendo o tempo no status (comportamento antigo)", () => {
+    const i = imovel();
+    expect(ultimoMovimentoISO(i)).toBe(HA_20_DIAS);
+    expect(diasSemMovimento(i)).toBe(20);
+    expect(isStale(i)).toBe(true);
+  });
+
+  it("tentativa recente tira o selo mesmo com o status parado há 20 dias", () => {
+    const i = imovel({ tentativas: tentativaEm("2026-07-07") });
+    expect(diasSemMovimento(i)).toBe(2);
+    expect(isStale(i)).toBe(false);
+    // O funil continua medido por status — este número NÃO muda.
+    expect(daysInCurrentStatus(i)).toBe(20);
+  });
+
+  it("tentativa antiga: segue parado, mas contado desde ela (10 dias, não 20)", () => {
+    const i = imovel({ tentativas: tentativaEm("2026-06-29") });
+    expect(diasSemMovimento(i)).toBe(10);
+    expect(isStale(i)).toBe(true);
+  });
+
+  it("resposta do proprietário é movimento — o caso LD-55", () => {
+    // Follow-up há 10 dias, o proprietário respondeu ontem: o app sabia dos
+    // dois e ainda assim cobrava "parado há 20 dias".
+    const i = imovel({
+      tentativas: tentativaEm("2026-06-29"),
+      notas: respostaEm("2026-07-08"),
+    });
+    expect(ultimoMovimentoISO(i)).toBe("2026-07-08");
+    expect(isStale(i)).toBe(false);
+  });
+
+  it("a nota do ENCERRAMENTO automático não é movimento — é o app falando", () => {
+    const i = imovel({
+      notas: [
+        { id: "wa:MSG1:encerrado", texto: "Imóvel marcado como Perdido…", data: `${"2026-07-08"}T10:00` },
+      ],
+    });
+    expect(diasSemMovimento(i)).toBe(20);
+    expect(isStale(i)).toBe(true);
+  });
+
+  it("nota escrita à mão pelo corretor não é movimento (não distingue ação de lembrete)", () => {
+    const i = imovel({
+      notas: [{ id: "n1", texto: "checar o IPTU depois", data: "2026-07-08T10:00" }],
+    });
+    expect(diasSemMovimento(i)).toBe(20);
+    expect(isStale(i)).toBe(true);
+  });
+
+  it("pausado e terminal continuam fora, por mais movimento que tenham", () => {
+    expect(isStale(imovel({ status: "Perdido" }))).toBe(false);
+    expect(isStale(imovel({ status: "Locado" }))).toBe(false);
+    expect(isStale(imovel({ pausadoAte: "2026-07-20" }))).toBe(false);
+  });
+
+  it("Angariado mantém o prazo longo: 20 dias sem movimento ainda não é parado", () => {
+    const i = imovel({
+      status: "Angariado",
+      statusHistory: [{ status: "Angariado", date: HA_20_DIAS }],
+    });
+    expect(diasSemMovimento(i)).toBe(20);
+    expect(isStale(i)).toBe(false);
+  });
+
+  it("sem data nenhuma não há movimento nem selo", () => {
+    const i = imovel({ statusHistory: [], dataAngariacao: null });
+    expect(ultimoMovimentoISO(i)).toBeNull();
+    expect(diasSemMovimento(i)).toBeNull();
+    expect(isStale(i)).toBe(false);
+  });
+
+  it("o último movimento é o mais recente entre as três fontes", () => {
+    const i = imovel({
+      statusHistory: [{ status: "Em negociação", date: "2026-07-01" }],
+      tentativas: tentativaEm("2026-06-20"),
+      notas: respostaEm("2026-06-25"),
+    });
+    expect(ultimoMovimentoISO(i)).toBe("2026-07-01");
   });
 });
 

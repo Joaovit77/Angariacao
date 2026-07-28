@@ -93,6 +93,24 @@ o torna testável puro.
   `StatusHistoryEntry`.
 - **`calculo/motor.ts`** — o motor: `dateEnteredStatus`, `currentStatusSince`, `isStale`,
   `foiAngariado`, `metricsForRange`, coortes mensais, tempo médio, etc.
+- **`calculo/motor.ts` → `isStale` / `diasSemMovimento`** — **"parado" é ausência de MOVIMENTO,
+  não de mudança de status.** `isStale` contava dias desde a última transição do funil, e isso
+  bastava enquanto o app era cego para o que acontecia entre uma etapa e outra. Deixou de bastar
+  com as tentativas registradas e as respostas chegando pelo webhook: **nada move o status
+  sozinho** (a mesma causa que levou "Novo contato" para `FOLLOWUP_STATUS_ALVO`), então um imóvel
+  levava follow-up ontem, o proprietário respondia hoje, e o card seguia cobrando "parado há 14
+  dias". Foi caso real — o LD-55 em 28/07/2026, em que o filho passou o telefone do pai e o pai
+  confirmou ser o proprietário, tudo gravado, e a tela ignorando os dois. Na carteira daquele dia,
+  **11 dos 46 marcados como parados tinham tido contato** depois da última mudança de status; 2
+  tinham resposta do próprio proprietário. Movimento são as **três** coisas que o app sabe datar —
+  mudança de status, tentativa e resposta —, porque cada uma tapa o buraco das outras: o corretor
+  que trabalha o lead sem mexer na etapa, e o proprietário que reage sem ninguém confirmar nada.
+  Fora ficam a nota escrita à mão (não distingue ação de lembrete — quem registra ação é a
+  tentativa) e a nota do **encerramento automático**, que nasce com o mesmo prefixo `wa:` e é o app
+  falando, não o proprietário. **O funil não mudou**: `daysInCurrentStatus`, coortes e tempo médio
+  seguem medindo etapa, que é a pergunta deles. Quem exibe a palavra "parado" tem que exibir
+  `diasSemMovimento` junto — o número que marcou o selo; com dias no status, a linha diria "parado
+  há 20 dias" sobre quem respondeu ontem.
 - **`calculo/motor.ts` → `conversaoCaptacao`** — as **duas taxas do painel**, e por que são duas.
   `metricsForRange` mede LOCAÇÃO (locados ÷ processos fechados): é a régua do dinheiro, e continua
   valendo. Só que o trabalho medido aqui termina uma etapa antes — no "sim" do proprietário —, e
@@ -180,6 +198,13 @@ o torna testável puro.
   O sinal mais forte já estava no banco e ninguém consumia: quando o proprietário diz "me chama
   semana que vem", o webhook grava em `sugestaoIa.retomarEm` — e até aqui isso só era *exibido* na
   lista de pendências, sem nada avisar no dia marcado.
+- **`calculo/notas.ts`** — a convenção de id das notas automáticas (`wa:<id da mensagem>`, e
+  `wa:<id>:encerrado` para a explicação do encerramento) e a leitura dela. Quem **cria** essas
+  notas é o webhook; a convenção mora à parte porque tem três leitores, e um deles é o **motor**
+  (resposta é movimento, ver `isStale`) — que não pode importar de `webhookWhatsapp.ts`, já que
+  aquele importa `historicoComStatus` daqui e o ciclo se fecharia. Módulo sem dependência nenhuma,
+  de propósito. `ehNotaDeResposta` existe para ninguém refazer o `startsWith("wa:")` a dedo e
+  acabar contando a fala do próprio app como se fosse resposta de alguém.
 - **`calculo/mapa.ts`** — em qual dos quatro baldes de cor cada imóvel cai no mapa
   (`categoriaMapa`: locado / angariado / andamento / sem-sucesso) e as cores/rótulos da legenda
   (`CATEGORIAS_MAPA`). Fonte única: o pino (`MapaLeaflet`) e a legenda-filtro (`MapaView`) leem

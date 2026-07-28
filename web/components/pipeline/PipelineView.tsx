@@ -20,7 +20,7 @@ import {
   pipelineUniqueSorted,
   type PipelineCol,
 } from "@/lib/calculo/filtros";
-import { daysInCurrentStatus, isPausado, isStale } from "@/lib/calculo/motor";
+import { daysInCurrentStatus, diasSemMovimento, isPausado, isStale } from "@/lib/calculo/motor";
 import { MODELOS_WHATSAPP, modeloPadraoWhatsapp } from "@/lib/calculo/whatsapp";
 import { STATUS_ALL, STATUS_COLORS, TIPOS_IMOVEL } from "@/lib/constantes";
 import { todayISO } from "@/lib/datas";
@@ -51,7 +51,10 @@ function rotuloModelo(id: string): string {
 function CartaoKanban({ i, color, aoAbrir }: { i: Imovel; color: string; aoAbrir: (id: string) => void }) {
   const stale = isStale(i);
   const paused = isPausado(i);
-  const dias = daysInCurrentStatus(i);
+  // Dois números para duas perguntas: sem o selo, o badge diz há quanto tempo
+  // o imóvel está NESTA ETAPA; com o selo, tem que dizer o que o selo mediu —
+  // tempo sem movimento nenhum. Ver `diasSemMovimento` no motor.
+  const dias = stale ? diasSemMovimento(i) : daysInCurrentStatus(i);
 
   let metaBadge: React.ReactNode = null;
   if (paused) {
