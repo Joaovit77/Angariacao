@@ -122,6 +122,16 @@ export default function ModalConfirmarDisponibilidade() {
           </p>
         )}
 
+        {/* Mesmo aviso do outro lote: os dois dividem a instância, e o volume
+            que conta para o WhatsApp é o do NÚMERO, não o da tela. */}
+        {selecao.enviosTotaisHoje >= FOLLOWUP_TETO_DIA && (
+          <p className="section-note followup-aviso" role="alert">
+            ⚠️ Você já mandou {selecao.enviosTotaisHoje} mensagens hoje por este número, somando os
+            lotes e os envios avulsos. O que pesa para o WhatsApp é esse total, não de qual tela cada
+            uma saiu — vale espaçar o resto para amanhã.
+          </p>
+        )}
+
         <div className="field-group">
           <label>Mensagem</label>
           <textarea

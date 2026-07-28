@@ -186,6 +186,9 @@ export async function dispararLote(
           // depois. Sem isso, um lote de 10 empurraria dez "sem-resposta"
           // definitivos para o ranking sem ninguém ter observado nada.
           aguardandoResultado: true,
+          // Foi a FILA que mandou. É por esta marca que o teto do dia conta
+          // só o que o lote gastou, e não o que saiu pelo envio avulso.
+          viaLote: true,
         },
         true,
       );

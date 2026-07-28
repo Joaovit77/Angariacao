@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   avisoTextoLote,
   enviadosFollowUpHoje,
+  enviosWhatsappHoje,
   falhaEhDoNumero,
   falhaEncerraLote,
   diasDesdeUltimoContato,
@@ -32,6 +33,12 @@ const HOJE = "2026-07-21";
 
 function tentativa(data: string, canal = "WhatsApp"): Tentativa {
   return { id: `t-${data}-${canal}`, data: `${data}T10:00`, canal, resultado: "sem-resposta" };
+}
+
+/** Tentativa criada pela FILA do lote. O teto diário conta só estas — envio
+    avulso pelo botão 💬 não gasta a cota de uma ferramenta que não foi usada. */
+function tentativaDoLote(data: string, canal = "WhatsApp"): Tentativa {
+  return { ...tentativa(data, canal), id: `lote-${data}-${canal}`, viaLote: true };
 }
 
 /* Telefone distinto por imóvel, derivado do id.
@@ -291,8 +298,8 @@ describe("selecionarFollowUp — tetos", () => {
   it("desconta do teto diário o que já saiu hoje", () => {
     const jaEnviados = muitos(FOLLOWUP_TETO_DIA - 3).map((i) => ({
       ...i,
-      // Já receberam follow-up hoje: contam para o teto e saem da fila.
-      tentativas: [tentativa(HOJE)],
+      // Já receberam follow-up DO LOTE hoje: contam para o teto e saem da fila.
+      tentativas: [tentativaDoLote(HOJE)],
     }));
     const { limite, enviadosHoje } = selecionarFollowUp([...jaEnviados, ...muitos(10)], HOJE);
     expect(enviadosHoje).toBe(FOLLOWUP_TETO_DIA - 3);
@@ -300,15 +307,15 @@ describe("selecionarFollowUp — tetos", () => {
   });
 
   it("teto batido zera o limite", () => {
-    const jaEnviados = muitos(FOLLOWUP_TETO_DIA).map((i) => ({ ...i, tentativas: [tentativa(HOJE)] }));
+    const jaEnviados = muitos(FOLLOWUP_TETO_DIA).map((i) => ({ ...i, tentativas: [tentativaDoLote(HOJE)] }));
     const { limite } = selecionarFollowUp([...jaEnviados, ...muitos(5)], HOJE);
     expect(limite).toBe(0);
   });
 
   it("só o canal do lote conta para o teto do dia", () => {
     const lista = [
-      imovel({ id: "a", tentativas: [tentativa(HOJE, "WhatsApp")] }),
-      imovel({ id: "b", tentativas: [tentativa(HOJE, "Visita presencial")] }),
+      imovel({ id: "a", tentativas: [tentativaDoLote(HOJE, "WhatsApp")] }),
+      imovel({ id: "b", tentativas: [tentativaDoLote(HOJE, "Visita presencial")] }),
     ];
     expect(enviadosFollowUpHoje(lista, HOJE)).toBe(1);
   });
@@ -547,7 +554,7 @@ describe("selecionarVerificacaoDisponibilidade — freios", () => {
     const jaEnviou = imovelAngariado({
       id: "hoje",
       status: "Publicado",
-      tentativas: Array.from({ length: FOLLOWUP_TETO_DIA }, () => tentativa(HOJE)),
+      tentativas: Array.from({ length: FOLLOWUP_TETO_DIA }, () => tentativaDoLote(HOJE)),
     });
     // esse mesmo imóvel foi contatado hoje, então ele próprio sai por recência;
     // outro elegível prova que o limite caiu a zero.
@@ -730,5 +737,53 @@ describe("selecionarFollowUp — quem nunca foi contatado", () => {
       HOJE,
     );
     expect(elegiveis.map((i) => i.id)).toEqual(["preso"]);
+  });
+});
+
+/* --- O teto conta o que o LOTE gastou, não a prospecção do dia ------------- */
+describe("teto diário por origem do envio", () => {
+  it("primeiro contato avulso NÃO consome a cota do lote", () => {
+    // O caso real: em 23/07/2026 o corretor mandou 20 primeiros contatos um a
+    // um pelo botão 💬. Na conta antiga isso zerava o teto de uma ferramenta
+    // que ele nem tinha aberto.
+    const avulsos = Array.from({ length: FOLLOWUP_TETO_DIA }, (_, k) =>
+      imovel({ id: `av-${k}`, tentativas: [tentativa(HOJE)] }),
+    );
+    expect(enviadosFollowUpHoje(avulsos, HOJE)).toBe(0);
+
+    const alvo = imovel({ id: "alvo", tentativas: [tentativa("2026-05-01")] });
+    const sel = selecionarFollowUp([...avulsos, alvo], HOJE);
+    expect(sel.limite).toBe(FOLLOWUP_LOTE_MAX);
+  });
+
+  it("mas o envio do próprio lote continua consumindo", () => {
+    const doLoteHoje = Array.from({ length: 15 }, (_, k) =>
+      imovel({ id: `lt-${k}`, tentativas: [tentativaDoLote(HOJE)] }),
+    );
+    expect(enviadosFollowUpHoje(doLoteHoje, HOJE)).toBe(15);
+    const sel = selecionarFollowUp(doLoteHoje, HOJE);
+    expect(sel.limite).toBe(FOLLOWUP_TETO_DIA - 15);
+  });
+
+  it("o volume TOTAL do dia soma os dois — é o que o WhatsApp enxerga", () => {
+    const lista = [
+      imovel({ id: "a", tentativas: [tentativaDoLote(HOJE)] }),
+      imovel({ id: "b", tentativas: [tentativa(HOJE)] }),
+      imovel({ id: "c", tentativas: [tentativa(HOJE)] }),
+    ];
+    expect(enviosWhatsappHoje(lista, HOJE)).toBe(3);
+    expect(enviadosFollowUpHoje(lista, HOJE)).toBe(1);
+    expect(selecionarFollowUp(lista, HOJE).enviosTotaisHoje).toBe(3);
+  });
+
+  it("tentativa de ontem não conta em nenhuma das duas", () => {
+    const ontem = [imovel({ id: "o", tentativas: [tentativaDoLote("2026-07-20")] })];
+    expect(enviadosFollowUpHoje(ontem, HOJE)).toBe(0);
+    expect(enviosWhatsappHoje(ontem, HOJE)).toBe(0);
+  });
+
+  it("ligação telefônica não entra: o teto é do canal do lote", () => {
+    const porTelefone = [imovel({ id: "tel", tentativas: [tentativa(HOJE, "Ligação telefônica")] })];
+    expect(enviosWhatsappHoje(porTelefone, HOJE)).toBe(0);
   });
 });

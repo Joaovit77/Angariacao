@@ -152,8 +152,12 @@ export interface SelecaoFollowUp {
   excluidos: ExcluidoFollowUp[];
   /** Quantos ainda cabem hoje: o menor entre o lote e o que sobrou do teto. */
   limite: number;
-  /** Envios do lote já feitos hoje (0 quando o teto está intacto). */
+  /** Envios do LOTE já feitos hoje (0 quando o teto está intacto). */
   enviadosHoje: number;
+  /** Mensagens de WhatsApp de hoje somando lote + avulso. Não entra no teto;
+      é o que o modal usa para avisar sobre o volume total do dia, que é o que
+      o WhatsApp de fato enxerga. */
+  enviosTotaisHoje: number;
 }
 
 const TEXTO_MOTIVO: Record<MotivoExclusao, string> = {
@@ -189,13 +193,45 @@ export function ultimoContatoISO(imovel: Imovel): string | null {
   return maior;
 }
 
-/** Quantos follow-ups do lote já saíram hoje.
-    Contamos as tentativas de HOJE no canal do lote — é o rastro que ele
-    deixa. Uma tentativa por WhatsApp registrada à mão entra na conta junto,
-    e tudo bem: o erro cai para o lado de enviar de menos, que é o lado
-    seguro. Precisão maior exigiria marcar a tentativa com um campo novo,
-    e o teto não merece uma migração de schema. */
+/**
+ * Quantos envios do LOTE já saíram hoje — o que o teto diário gasta.
+ *
+ * Conta só a tentativa marcada com `viaLote`. Antes contava toda tentativa de
+ * WhatsApp do dia, "porque o erro cairia para o lado de enviar de menos, que é
+ * o lado seguro". Medido na carteira real, não era: em 21, 22, 23 e 27/07/2026
+ * o corretor disparou 16, 2, 20 e 8 primeiros contatos um a um pelo botão 💬 —
+ * e cada um deles descontava da cota de uma ferramenta que ele nem tinha
+ * aberto. Em 23/07 o avulso sozinho consumiu o teto inteiro.
+ *
+ * Só não doeu porque ele roda o lote de manhã cedo, antes de prospectar. Com a
+ * fila crescendo (100 imóveis no público e 20 vagas por dia), depender do
+ * horário em que a ferramenta é aberta deixa de ser aceitável.
+ *
+ * O ponto mais sério é a inversão: o teto estrangulava o único caminho que TEM
+ * pacing sorteado entre mensagens, enquanto o envio avulso — sem freio nenhum —
+ * passava livre. Quem protege o número contra o volume total é
+ * {@link enviosWhatsappHoje}, que agora avisa.
+ */
 export function enviadosFollowUpHoje(imoveis: Imovel[], hoje: string): number {
+  let total = 0;
+  for (const imovel of imoveis) {
+    for (const t of imovel.tentativas || []) {
+      if (diaDaTentativa(t) === hoje && t.canal === FOLLOWUP_CANAL && t.viaLote) total++;
+    }
+  }
+  return total;
+}
+
+/**
+ * TODAS as mensagens de WhatsApp registradas hoje, venham do lote ou do envio
+ * avulso. Não é teto — é o número que descreve o risco real para a instância,
+ * porque o WhatsApp não distingue por qual tela a mensagem saiu.
+ *
+ * Serve para AVISAR, não para bloquear: travar o envio avulso impediria o
+ * corretor de responder a um proprietário que acabou de escrever, que é o
+ * oposto do que se quer.
+ */
+export function enviosWhatsappHoje(imoveis: Imovel[], hoje: string): number {
   let total = 0;
   for (const imovel of imoveis) {
     for (const t of imovel.tentativas || []) {
@@ -382,6 +418,7 @@ export function selecionarFollowUp(imoveis: Imovel[], hoje: string): SelecaoFoll
   }
 
   const enviadosHoje = enviadosFollowUpHoje(imoveis, hoje);
+  const enviosTotaisHoje = enviosWhatsappHoje(imoveis, hoje);
   const restante = Math.max(0, FOLLOWUP_TETO_DIA - enviadosHoje);
   return {
     elegiveis: unicos,
@@ -389,6 +426,7 @@ export function selecionarFollowUp(imoveis: Imovel[], hoje: string): SelecaoFoll
     excluidos,
     limite: Math.min(FOLLOWUP_LOTE_MAX, restante),
     enviadosHoje,
+    enviosTotaisHoje,
   };
 }
 
@@ -481,6 +519,7 @@ export function selecionarVerificacaoDisponibilidade(imoveis: Imovel[], hoje: st
   // Teto do dia COMPARTILHADO com o outro lote: é a mesma instância e a mesma
   // conta, então o que protege o número é o total de envios do dia, não o tipo.
   const enviadosHoje = enviadosFollowUpHoje(imoveis, hoje);
+  const enviosTotaisHoje = enviosWhatsappHoje(imoveis, hoje);
   const restante = Math.max(0, FOLLOWUP_TETO_DIA - enviadosHoje);
   return {
     elegiveis: unicos,
@@ -492,6 +531,7 @@ export function selecionarVerificacaoDisponibilidade(imoveis: Imovel[], hoje: st
     excluidos,
     limite: Math.min(FOLLOWUP_LOTE_MAX, restante),
     enviadosHoje,
+    enviosTotaisHoje,
   };
 }
 

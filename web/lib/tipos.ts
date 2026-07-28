@@ -91,6 +91,19 @@ export interface Tentativa {
       à mão é uma afirmação sua, e o nudge não deve cobrar você por ela.
       Some quando o resultado é atualizado. */
   aguardandoResultado?: boolean;
+
+  /** A tentativa saiu da FILA do envio em lote (e não de um envio avulso).
+      Só existe para o teto diário do lote contar o que ele mesmo mandou.
+
+      O teto é o freio anti-banimento do lote, mas ele lia toda tentativa de
+      WhatsApp do dia — inclusive os primeiros contatos disparados um a um pelo
+      botão 💬. Numa manhã de prospecção o corretor gastava a cota do lote sem
+      nunca tê-lo aberto, e a ferramenta amanhecia fechada. Pior, o freio
+      estrangulava justamente o caminho que TEM pacing sorteado entre mensagens,
+      enquanto o envio avulso — que não tem freio nenhum — passava livre.
+
+      Não precisou de migração: `tentativas` é jsonb. */
+  viaLote?: boolean;
 }
 
 export interface Imovel {

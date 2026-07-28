@@ -133,6 +133,18 @@ export default function ModalFollowUpLote() {
           </p>
         )}
 
+        {/* O teto do lote conta só o que o LOTE mandou. Quem olha o volume total
+            do dia é este aviso — para o WhatsApp não existe "veio da tela X",
+            existe quantas mensagens saíram daquele número. Avisa e não bloqueia:
+            travar aqui impediria você de responder a quem acabou de escrever. */}
+        {selecao.enviosTotaisHoje >= FOLLOWUP_TETO_DIA && (
+          <p className="section-note followup-aviso" role="alert">
+            ⚠️ Você já mandou {selecao.enviosTotaisHoje} mensagens hoje por este número, somando o lote
+            e os envios avulsos. O que pesa para o WhatsApp é esse total, não de qual tela cada uma
+            saiu — vale espaçar o resto para amanhã.
+          </p>
+        )}
+
         <div className="field-group">
           <label>Abordagem usada</label>
           {/* Ordenadas por desempenho, com o selo no próprio rótulo — o <select>

@@ -322,6 +322,8 @@ export async function registrarTentativa(
     // Só grava a marca quando ela é verdadeira: a tentativa anotada à mão não
     // carrega a chave, e o nudge não cobra resultado de quem já o afirmou.
     ...(dados.aguardandoResultado ? { aguardandoResultado: true } : {}),
+    // Idem: só a fila do lote carrega esta, e é ela que o teto diário conta.
+    ...(dados.viaLote ? { viaLote: true } : {}),
   };
   const novasTentativas = [...(imovel.tentativas || []), tentativa];
 
