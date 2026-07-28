@@ -108,12 +108,48 @@ describe("projetarMeta", () => {
     expect(p.porDiaUtil).toBeCloseTo(10 / 23, 4);
   });
 
-  it("o texto diz o esforço que falta, não probabilidade", () => {
+  it("em dinheiro o esforço é uma taxa diária — R$ por dia útil é perseguível", () => {
     const p = projetarMeta(2, 20, "2026-07", "2026-07-10");
-    const texto = textoProjecao(p, fmtTotal, fmtTaxa);
+    const texto = textoProjecao(p, fmtTotal, fmtTaxa, true);
     expect(texto).toContain("No seu ritmo (0,3/dia útil)");
     expect(texto).toContain("o mês fecha em 6");
-    expect(texto).toContain("Para bater: 1,1/dia útil nos 16 que faltam");
+    expect(texto).toContain("Para bater: 1,1/dia útil nos 16 dias úteis que faltam");
     expect(texto).not.toContain("%");
+  });
+
+  it("em unidades NÃO aparece taxa nenhuma — meio imóvel não se capta", () => {
+    // O caso real que motivou a mudança: meta 5, feitos 2, 4 dias úteis
+    // restantes. O texto antigo dizia "0,8 un./dia útil", que ninguém executa.
+    const p = projetarMeta(2, 5, "2026-07", "2026-07-28");
+    const texto = textoProjecao(p, fmtTotal, fmtTaxa);
+    expect(texto).toContain("Para bater: 3 nos 4 dias úteis que faltam");
+    expect(texto).not.toContain("/dia útil");
+    expect(texto).not.toContain("0,8");
+    // O "no seu ritmo" perde o parêntese da taxa, mas mantém a projeção — que
+    // era o que a taxa existia para justificar.
+    expect(texto).toContain("No seu ritmo, o mês fecha em");
+  });
+
+  it("não duplica o ponto final quando o total já termina em ponto", () => {
+    // O formatador de unidades devolve "2 un."; concatenar "." dava "2 un..".
+    const p = projetarMeta(2, 5, "2026-07", "2026-07-28");
+    const texto = textoProjecao(p, (v) => `${Math.round(v)} un.`, fmtTaxa);
+    expect(texto).not.toContain("..");
+  });
+
+  it("singular do prazo não sai como 'dia(s) útil(eis)'", () => {
+    // 31/07/2026 é sexta: é o último dia útil, então resta 1.
+    const p = projetarMeta(2, 5, "2026-07", "2026-07-31");
+    expect(p.diasUteisRestantes).toBe(1);
+    const texto = textoProjecao(p, fmtTotal, fmtTaxa);
+    expect(texto).toContain("1 dia útil");
+    expect(texto).not.toContain("dia(s)");
+  });
+
+  it("a frase de meta batida também usa o plural correto", () => {
+    const p = projetarMeta(12, 10, "2026-07", "2026-07-28");
+    const texto = textoProjecao(p, fmtTotal, fmtTaxa);
+    expect(texto).toContain("dias úteis de sobra");
+    expect(texto).not.toContain("útil(eis)");
   });
 });

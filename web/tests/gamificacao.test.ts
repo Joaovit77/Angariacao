@@ -179,3 +179,79 @@ describe("calcularBadges", () => {
     expect(ferro.detalhe).toBe("3 meses consecutivos");
   });
 });
+
+/* --- As TRILHAS: conquistar um degrau revela o próximo ------------------- */
+describe("trilhas de conquista", () => {
+  const nAngariados = (n: number) =>
+    Array.from({ length: n }, (_, k) => angariadoEm(`2026-0${(k % 9) + 1}-1${k % 9}`));
+
+  it("conta zerada mostra um card por trilha, todos travados (como antes)", () => {
+    const badges = calcularBadges([], {});
+    expect(badges).toHaveLength(6);
+    expect(badges.every((b) => !b.conquistada)).toBe(true);
+    // Só o PRIMEIRO degrau de cada trilha aparece — a escada inteira de longe
+    // transformaria "100 angariações" num alvo desanimador no dia zero.
+    expect(badges.find((b) => b.id === "angariacoes-5")).toBeUndefined();
+    expect(badges.find((b) => b.id === "angariacoes-100")).toBeUndefined();
+  });
+
+  it("bater um degrau revela o seguinte, e só ele", () => {
+    const badges = calcularBadges(nAngariados(1), {});
+    const trilha = badges.filter((b) => b.id.startsWith("angariacoes-") || b.id === "primeira-angariacao");
+    expect(trilha.map((b) => b.id)).toEqual(["primeira-angariacao", "angariacoes-5"]);
+    expect(trilha[0].conquistada).toBe(true);
+    expect(trilha[1].conquistada).toBe(false);
+    // O degrau depois do próximo continua escondido.
+    expect(badges.find((b) => b.id === "angariacoes-10")).toBeUndefined();
+  });
+
+  it("os conquistados PERMANECEM na grade — é a prateleira de troféus", () => {
+    const badges = calcularBadges(nAngariados(10), {});
+    const trilha = badges.filter((b) => b.id.startsWith("angariacoes-") || b.id === "primeira-angariacao");
+    expect(trilha.map((b) => b.id)).toEqual([
+      "primeira-angariacao",
+      "angariacoes-5",
+      "angariacoes-10",
+      "angariacoes-25",
+    ]);
+    expect(trilha.filter((b) => b.conquistada)).toHaveLength(3);
+    expect(trilha[3].conquistada).toBe(false);
+  });
+
+  it("o card travado mostra o quanto falta, não só 'você não conseguiu'", () => {
+    const badges = calcularBadges(nAngariados(6), {});
+    const proximo = badges.find((b) => b.id === "angariacoes-10")!;
+    expect(proximo.progressoTexto).toBe("6 de 10");
+    expect(proximo.progresso).toBeCloseTo(0.6);
+    // Conquistado não carrega progresso — ele já acabou.
+    const feito = badges.find((b) => b.id === "angariacoes-5")!;
+    expect(feito.progressoTexto).toBeUndefined();
+    expect(feito.progresso).toBeUndefined();
+  });
+
+  it("trilha inteira conquistada não inventa um próximo degrau", () => {
+    const badges = calcularBadges(nAngariados(100), {});
+    const trilha = badges.filter((b) => b.id.startsWith("angariacoes-") || b.id === "primeira-angariacao");
+    expect(trilha).toHaveLength(6);
+    expect(trilha.every((b) => b.conquistada)).toBe(true);
+  });
+
+  it("velocidade desce em vez de subir, e não tem barra de progresso", () => {
+    // Recorde de 1 dia conquista o degrau de "até 2 dias" E o de "até 1 dia".
+    const badges = calcularBadges([angariadoEm("2026-03-10", "2026-03-09")], {});
+    expect(badges.find((b) => b.id === "sem-tempo-a-perder")!.conquistada).toBe(true);
+    expect(badges.find((b) => b.id === "velocidade-1")!.conquistada).toBe(true);
+    const proximo = badges.find((b) => b.id === "velocidade-0")!;
+    expect(proximo.conquistada).toBe(false);
+    // "40% do caminho até angariar no mesmo dia" não quer dizer nada.
+    expect(proximo.progresso).toBeUndefined();
+    expect(proximo.progressoTexto).toContain("1 dia");
+  });
+
+  it("sem angariação nenhuma, a trilha de velocidade não trava por engano", () => {
+    const badges = calcularBadges([], {});
+    const veloc = badges.find((b) => b.id === "sem-tempo-a-perder")!;
+    expect(veloc.conquistada).toBe(false);
+    expect(veloc.progressoTexto).toBe("sem angariação para medir");
+  });
+});

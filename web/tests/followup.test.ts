@@ -588,3 +588,147 @@ describe("textoBaseDisponibilidade", () => {
     expect(elegiveis.map((i) => i.id)).toEqual(["prazo"]);
   });
 });
+
+/* --- A ORDEM DA FILA: sinal na frente, antiguidade dentro da faixa ---------
+   Com o teto diário e uma fila que só cresce, as vagas do dia viraram recurso
+   escasso — e antiguidade pura mandava a mensagem para quem nunca deu sinal,
+   enterrando quem acabou de demonstrar interesse (que é, por ter interagido,
+   justamente o mais RECENTE da fila). */
+describe("selecionarFollowUp — ordem por sinal", () => {
+  it("quem reagiu passa na frente de quem só espera há mais tempo", () => {
+    const antigo = imovel({ id: "antigo", tentativas: [tentativa("2026-01-01")] });
+    const quente = imovel({
+      id: "quente",
+      // Mais recente que o antigo: na ordem velha, iria para o fim da fila.
+      tentativas: [{ ...tentativa("2026-07-01"), resultado: "vai-retornar" }],
+    });
+
+    const sel = selecionarFollowUp([antigo, quente], HOJE);
+    expect(sel.elegiveis.map((i) => i.id)).toEqual(["quente", "antigo"]);
+    expect(sel.sinais["quente"]).toContain("ia retornar");
+    // Quem entrou por espera não recebe motivo — ele não sinalizou nada.
+    expect(sel.sinais["antigo"]).toBeUndefined();
+  });
+
+  it("respeita a escada do compromisso: data marcada > agendou > vai retornar", () => {
+    const marcou = imovel({
+      id: "marcou",
+      tentativas: [
+        {
+          ...tentativa("2026-07-05"),
+          resultado: "respondeu",
+          sugestaoIa: { resultado: "vai-retornar", retomarEm: "2026-07-18", resumo: "me chama dia 18" },
+        },
+      ],
+    });
+    const agendou = imovel({ id: "agendou", tentativas: [{ ...tentativa("2026-07-02"), resultado: "agendou" }] });
+    const vaiRetornar = imovel({ id: "vai", tentativas: [{ ...tentativa("2026-07-01"), resultado: "vai-retornar" }] });
+
+    const sel = selecionarFollowUp([vaiRetornar, agendou, marcou], HOJE);
+    expect(sel.elegiveis.map((i) => i.id)).toEqual(["marcou", "agendou", "vai"]);
+  });
+
+  it("dentro da MESMA faixa a antiguidade continua mandando", () => {
+    const a = imovel({ id: "a", tentativas: [{ ...tentativa("2026-06-10"), resultado: "respondeu" }] });
+    const b = imovel({ id: "b", tentativas: [{ ...tentativa("2026-05-10"), resultado: "respondeu" }] });
+    const sel = selecionarFollowUp([a, b], HOJE);
+    expect(sel.elegiveis.map((i) => i.id)).toEqual(["b", "a"]);
+  });
+
+  it("o silêncio NÃO passa fome: a faixa sem sinal segue drenando por antiguidade", () => {
+    const quente = imovel({ id: "quente", tentativas: [{ ...tentativa("2026-07-01"), resultado: "respondeu" }] });
+    const velho = imovel({ id: "velho", tentativas: [tentativa("2026-01-01")] });
+    const meio = imovel({ id: "meio", tentativas: [tentativa("2026-03-01")] });
+    const novo = imovel({ id: "novo", tentativas: [tentativa("2026-05-01")] });
+
+    const sel = selecionarFollowUp([novo, velho, meio, quente], HOJE);
+    // O quente toma a 1ª vaga; os mudos mantêm exatamente a ordem de antes.
+    expect(sel.elegiveis.map((i) => i.id)).toEqual(["quente", "velho", "meio", "novo"]);
+  });
+
+  it("quem recusou não é promovido — reagir negando não é sinal de compra", () => {
+    const recusou = imovel({ id: "recusou", tentativas: [{ ...tentativa("2026-07-01"), resultado: "recusou" }] });
+    const antigo = imovel({ id: "antigo", tentativas: [tentativa("2026-01-01")] });
+    const sel = selecionarFollowUp([recusou, antigo], HOJE);
+    expect(sel.elegiveis.map((i) => i.id)).toEqual(["antigo", "recusou"]);
+    expect(sel.sinais["recusou"]).toBeUndefined();
+  });
+
+  it("resposta que chegou pelo webhook conta, mesmo com a tentativa ainda chutada", () => {
+    // O caso que mais aparece na carteira real: o proprietário respondeu, o
+    // webhook gravou a nota, e ninguém confirmou o desfecho no nudge — então a
+    // tentativa segue em "sem-resposta" e a fila o tratava como silêncio.
+    const respondeuDeVerdade = imovel({
+      id: "escreveu",
+      tentativas: [{ ...tentativa("2026-07-05"), aguardandoResultado: true }],
+      notas: [{ id: "wa:ABC123", texto: "Resposta pelo WhatsApp: pode me mandar mais detalhes?", data: "2026-07-06T09:00" }],
+    });
+    const antigo = imovel({ id: "antigo", tentativas: [tentativa("2026-01-01")] });
+
+    const sel = selecionarFollowUp([antigo, respondeuDeVerdade], HOJE);
+    expect(sel.elegiveis.map((i) => i.id)).toEqual(["escreveu", "antigo"]);
+    expect(sel.sinais["escreveu"]).toContain("não confirmado");
+  });
+
+  it("a nota de ENCERRAMENTO do próprio sistema não vira sinal de proprietário", () => {
+    // `notaDoEncerramento` também nasce com o prefixo "wa:" — contá-la
+    // promoveria o imóvel por causa de um texto que nós mesmos escrevemos.
+    const soEncerramento = imovel({
+      id: "sistema",
+      tentativas: [tentativa("2026-07-05")],
+      notas: [{ id: "wa:ABC123:encerrado", texto: "Imóvel marcado como Perdido automaticamente...", data: "2026-07-06T09:00" }],
+    });
+    const antigo = imovel({ id: "antigo", tentativas: [tentativa("2026-01-01")] });
+
+    const sel = selecionarFollowUp([antigo, soEncerramento], HOJE);
+    expect(sel.elegiveis.map((i) => i.id)).toEqual(["antigo", "sistema"]);
+    expect(sel.sinais["sistema"]).toBeUndefined();
+  });
+
+  it("o lote de disponibilidade não ordena por sinal — a pergunta dele é outra", () => {
+    const base = {
+      status: "Angariado",
+      statusHistory: [{ status: "Angariado", date: "2026-01-01" }],
+      tentativas: [],
+    };
+    const a = imovel({ id: "d-a", ...base });
+    const b = imovel({ id: "d-b", ...base });
+    const sel = selecionarVerificacaoDisponibilidade([a, b], HOJE);
+    expect(sel.sinais).toEqual({});
+    expect(sel.elegiveis).toHaveLength(2);
+  });
+});
+
+/* --- Achado 2: o lote não pode afirmar um contato que não houve ------------ */
+describe("selecionarFollowUp — quem nunca foi contatado", () => {
+  it("'Novo contato' sem nenhuma tentativa fica de fora do lote de retomada", () => {
+    // O texto padrão do lote diz "tentei falar com você há alguns dias, mas não
+    // consegui retorno". Para um lead de garimpo que ninguém tocou isso é falso
+    // — e falso logo na primeira frase que ele lê da imobiliária.
+    const { elegiveis, excluidos } = selecionarFollowUp(
+      [imovel({ id: "garimpo", status: "Novo contato", tentativas: [] })],
+      HOJE,
+    );
+    expect(elegiveis).toHaveLength(0);
+    expect(excluidos[0].motivo).toBe("sem-contato-anterior");
+  });
+
+  it("mas 'Sem resposta' sem tentativa CONTINUA no lote — o status já afirma o contato", () => {
+    // Era o caso da era cega: o envio saiu pelo wa.me e não foi registrado.
+    // Aqui "tentei falar com você" é verdade, só não está no histórico.
+    const { elegiveis, excluidos } = selecionarFollowUp(
+      [imovel({ id: "era-cega", status: "Sem resposta", tentativas: [] })],
+      HOJE,
+    );
+    expect(elegiveis.map((i) => i.id)).toEqual(["era-cega"]);
+    expect(excluidos).toHaveLength(0);
+  });
+
+  it("'Novo contato' JÁ contatado segue no lote — é exatamente quem o lote foi buscar", () => {
+    const { elegiveis } = selecionarFollowUp(
+      [imovel({ id: "preso", status: "Novo contato", tentativas: [tentativa("2026-05-01")] })],
+      HOJE,
+    );
+    expect(elegiveis.map((i) => i.id)).toEqual(["preso"]);
+  });
+});

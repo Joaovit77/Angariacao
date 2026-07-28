@@ -119,22 +119,45 @@ export function tomProjecao(situacao: SituacaoMeta): "pos" | "warn" | "bad" | "n
   }
 }
 
+/** Ponto final sem duplicar quando o valor formatado já termina em ponto.
+    "2 un." + "." saía na tela como "2 un..". */
+function ponto(frase: string): string {
+  return frase.endsWith(".") ? frase : `${frase}.`;
+}
+
+/** "4 dias úteis" / "1 dia útil" — em vez do "dia(s) útil(eis)" de formulário. */
+export function diasUteisTexto(n: number): string {
+  return n === 1 ? "1 dia útil" : `${n} dias úteis`;
+}
+
 /**
  * A frase do rodapé do card, em pt-BR e pronta para a tela.
  *
  * Dois formatadores, e não um, porque total e taxa não têm a mesma precisão
  * natural: o mês fecha em "13 imóveis" (inteiro — meio imóvel não existe), mas
- * o ritmo é "0,8 por dia útil" e arredondá-lo para 1 diria que ele está em dia
- * quando não está.
+ * R$ 90,50 por dia útil é um valor legítimo.
  *
- * O texto diz o ESFORÇO, não a probabilidade: "precisa de 2 por dia útil" é
+ * O texto diz o ESFORÇO, não a probabilidade: "faltam 3 em 4 dias úteis" é
  * acionável; "68% de chance de bater" seria um número que ninguém consegue
  * conferir nem usar.
+ *
+ * **`divisivel` decide COMO o esforço é dito, e não é escolha cosmética.**
+ * Numa meta contável a taxa por dia é uma instrução impossível: "0,8 un./dia
+ * útil" manda captar oito décimos de um imóvel, e quem lê precisa refazer a
+ * conta de cabeça para chegar em "3 nos 4 dias que faltam" — que era a
+ * pergunta. E ela não podia ser arredondada para 1 sem mentir que o ritmo está
+ * em dia, que foi por que a decimal existia. A saída não era arredondar melhor:
+ * era não usar taxa. O que se conta em unidades inteiras se cobra em números
+ * absolutos.
+ *
+ * Em dinheiro a taxa fica, porque dinheiro é divisível de verdade — "R$ 800/dia
+ * útil" é um alvo diário que dá para perseguir.
  */
 export function textoProjecao(
   p: ProjecaoMeta,
   formatarTotal: (v: number) => string,
   formatarTaxa: (v: number) => string,
+  divisivel = false,
 ): string | null {
   switch (p.situacao) {
     case "sem-meta":
@@ -142,15 +165,23 @@ export function textoProjecao(
       return null;
     case "atingida":
       return p.diasUteisRestantes > 0
-        ? `Batida com ${p.diasUteisRestantes} dia(s) útil(eis) de sobra.`
+        ? `Batida com ${diasUteisTexto(p.diasUteisRestantes)} de sobra.`
         : "Batida no último dia útil do mês.";
     default: {
       if (p.porDiaUtil == null) {
-        return `Não há mais dia útil no mês — faltaram ${formatarTotal(p.falta)}.`;
+        return ponto(`Não há mais dia útil no mês — faltaram ${formatarTotal(p.falta)}`);
       }
-      const ritmo = `No seu ritmo (${formatarTaxa(p.ritmoDiario)}/dia útil) o mês fecha em ${formatarTotal(p.projecao)}.`;
-      const preciso = `Para bater: ${formatarTaxa(p.porDiaUtil)}/dia útil nos ${p.diasUteisRestantes} que faltam.`;
-      return `${ritmo} ${preciso}`;
+      const restam = diasUteisTexto(p.diasUteisRestantes);
+      if (divisivel) {
+        const ritmo = ponto(
+          `No seu ritmo (${formatarTaxa(p.ritmoDiario)}/dia útil) o mês fecha em ${formatarTotal(p.projecao)}`,
+        );
+        return `${ritmo} Para bater: ${formatarTaxa(p.porDiaUtil)}/dia útil nos ${restam} que faltam.`;
+      }
+      // Contável: nenhuma taxa. O "no seu ritmo" vira a própria projeção, que é
+      // o que a taxa existia para justificar.
+      const ritmo = ponto(`No seu ritmo, o mês fecha em ${formatarTotal(p.projecao)}`);
+      return `${ritmo} Para bater: ${formatarTotal(p.falta)} nos ${restam} que faltam.`;
     }
   }
 }

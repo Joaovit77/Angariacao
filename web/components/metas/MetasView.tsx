@@ -15,12 +15,18 @@ import {
   imoveisAngariadosNoMes,
   imoveisLocadosNoMes,
 } from "@/lib/calculo/motor";
-import { projetarMeta, textoProjecao, tomProjecao } from "@/lib/calculo/projecao";
+import {
+  mesAnteriorComMeta,
+  metaDoMes,
+  precisaDefinirMeta,
+  resumoMetaCurto,
+  temMeta,
+} from "@/lib/calculo/metaMes";
+import { diasUteisTexto, projetarMeta, textoProjecao, tomProjecao } from "@/lib/calculo/projecao";
 import { currentMonthKey, monthLabelLong, todayISO } from "@/lib/datas";
 import { fmtMoney } from "@/lib/formatadores";
 import { useAppStore } from "@/lib/store";
 import { useUiModal } from "@/lib/uiModal";
-import type { Meta } from "@/lib/tipos";
 import BadgesConquistas from "./BadgesConquistas";
 
 function GoalCard({
@@ -60,8 +66,11 @@ function GoalCard({
   const fmtTaxa = (v: number) =>
     unit === "money" ? fmtMoney(v) : `${v.toFixed(1).replace(".", ",")}${unit ? " " + unit : ""}`;
 
+  // Dinheiro é divisível e aceita alvo diário ("R$ 800/dia útil"); imóvel não —
+  // ali o esforço é dito em números inteiros. Ver textoProjecao.
+  const divisivel = unit === "money";
   const proj = projetarMeta(current, target, mKey, hoje);
-  const textoProj = textoProjecao(proj, fmtTotal, fmtTaxa);
+  const textoProj = textoProjecao(proj, fmtTotal, fmtTaxa, divisivel);
   const tom = tomProjecao(proj.situacao);
 
   return (
@@ -88,11 +97,13 @@ function GoalCard({
       </div>
       <div className="goal-foot">
         <span>{target > 0 ? (pct >= 100 ? "Meta atingida 🎉" : `Faltam ${fmt(remaining)}`) : "—"}</span>
-        {/* O esforço diário do que falta — a leitura que "Faltam 4" não dá:
-            4 no dia 3 do mês e 4 no dia 28 são situações opostas. */}
+        {/* O prazo do que falta — a leitura que "Faltam 4" não dá sozinho:
+            4 no dia 3 do mês e 4 no dia 28 são situações opostas. Em dinheiro
+            cabe o alvo diário; em unidades, o que informa é quanto tempo resta
+            (0,8 imóvel por dia não é instrução que alguém consiga seguir). */}
         {proj.porDiaUtil != null && (
           <span style={{ color: `var(--${tom === "neutro" ? "text-dim" : tom === "pos" ? "good" : tom})` }}>
-            {fmtTaxa(proj.porDiaUtil)}/dia útil
+            {divisivel ? `${fmtTaxa(proj.porDiaUtil)}/dia útil` : `em ${diasUteisTexto(proj.diasUteisRestantes)}`}
           </span>
         )}
       </div>
@@ -118,13 +129,15 @@ export default function MetasView() {
 
   const mKey = currentMonthKey();
   const hoje = todayISO();
-  const meta: Meta = metas[mKey] || { angariacoes: 0, locados: 0, comissao: 0, faturamento: 0 };
+  const meta = metaDoMes(metas, mKey);
   const thisMonth = imoveisAngariadosNoMes(imoveis, mKey);
   const locadosThisMonth = imoveisLocadosNoMes(imoveis, mKey);
   const comissaoRecMes = comissaoRecebidaNoMes(imoveis, mKey, comissaoPercent);
   const faturamentoMes = faturamentoContratosNoMes(imoveis, mKey);
 
-  const hasGoals = meta.angariacoes > 0 || meta.locados > 0 || meta.comissao > 0 || meta.faturamento > 0;
+  const hasGoals = temMeta(meta);
+  // Virada de mês: quem já vinha definindo metas e ainda não definiu a deste.
+  const mesDaUltimaMeta = precisaDefinirMeta(metas, mKey) ? mesAnteriorComMeta(metas, mKey) : null;
   const historico = Object.keys(metas).sort().reverse().slice(0, 6);
 
   return (
@@ -142,10 +155,22 @@ export default function MetasView() {
 
       {!hasGoals ? (
         <div className="empty-state card">
-          <h3>Nenhuma meta definida para este mês</h3>
+          <h3>
+            {mesDaUltimaMeta
+              ? `${monthLabelLong(mKey)} ainda está sem meta`
+              : "Nenhuma meta definida para este mês"}
+          </h3>
           <p>
-            Defina metas de angariação, locação e comissão para acompanhar seu progresso ao longo do
-            mês.
+            {mesDaUltimaMeta ? (
+              <>
+                Sua última meta foi a de {monthLabelLong(mesDaUltimaMeta)}:{" "}
+                {resumoMetaCurto(metas[mesDaUltimaMeta])}. O formulário já abre com esses números —
+                confira e salve. Enquanto o mês ficar sem meta, ele não entra na contagem da medalha
+                de constância, e isso não dá para acertar depois que o mês fechar.
+              </>
+            ) : (
+              "Defina metas de angariação, locação e comissão para acompanhar seu progresso ao longo do mês."
+            )}
           </p>
           <div style={{ marginTop: "16px" }}>
             <button type="button" className="btn btn-primary" onClick={() => abrirModal("meta")}>

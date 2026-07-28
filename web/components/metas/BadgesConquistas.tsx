@@ -27,10 +27,23 @@ export default function BadgesConquistas() {
         {badges.map((b) => (
           <div className={`badge-card${b.conquistada ? "" : " bloqueada"}`} key={b.id} title={b.descricao}>
             <div className="badge-icone">{b.icone}</div>
-            <div>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <div className="badge-nome">{b.nome}</div>
               <div className="badge-desc">{b.descricao}</div>
               {b.conquistada && b.detalhe && <div className="badge-detalhe">{b.detalhe}</div>}
+              {/* O degrau a perseguir: quanto falta. É o que diferencia "ainda
+                  não" de "faltam 4" — a trilha só motiva se o próximo passo
+                  tiver tamanho visível. */}
+              {!b.conquistada && b.progressoTexto && (
+                <div className="badge-progresso">
+                  {b.progresso != null && (
+                    <div className="badge-progresso-track">
+                      <div className="badge-progresso-fill" style={{ width: `${b.progresso * 100}%` }}></div>
+                    </div>
+                  )}
+                  <span className="badge-progresso-texto">{b.progressoTexto}</span>
+                </div>
+              )}
             </div>
           </div>
         ))}

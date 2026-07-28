@@ -208,6 +208,7 @@ export default function ModalFollowUpLote() {
             <div className="followup-lista">
               {selecao.elegiveis.map((imovel) => {
                 const marcado = marcados.has(imovel.id);
+                const sinal = selecao.sinais[imovel.id];
                 return (
                   <label
                     key={imovel.id}
@@ -219,7 +220,13 @@ export default function ModalFollowUpLote() {
                       disabled={!marcado && noLimite}
                       onChange={() => alternar(imovel.id)}
                     />
-                    <span className="followup-item-nome">{rotuloImovel(imovel)}</span>
+                    <span className="followup-item-nome">
+                      <span className="followup-item-rotulo">{rotuloImovel(imovel)}</span>
+                      {/* Por que este subiu na fila. Sem o motivo escrito, uma
+                          ordem que não é a de espera parece bug — e o corretor
+                          volta a escolher no olho. */}
+                      {sinal && <span className="followup-item-sinal">🔥 {sinal}</span>}
+                    </span>
                     <span className="followup-item-espera">{esperaTexto(imovel)}</span>
                   </label>
                 );

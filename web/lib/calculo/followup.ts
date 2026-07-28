@@ -33,6 +33,7 @@ import { VERIFICACAO_DISPONIBILIDADE_DIAS } from "../constantes";
 import { daysBetween } from "../datas";
 import type { Abordagem, Imovel, Tentativa } from "../tipos";
 import { dataAngariadoEfetiva, isPausado } from "./motor";
+import { sinalDoProprietario } from "./temperatura";
 import { telefoneCanonico } from "./webhookWhatsapp";
 import { aplicarModeloUsuario, type FalhaEnvio, mensagemWhatsapp, numeroEvolution } from "./whatsapp";
 
@@ -124,6 +125,8 @@ export type MotivoExclusao =
   | "numero-invalido"
   | "contato-recente"
   | "tentativas-demais"
+  // Está em "Novo contato" e nunca foi contatado: não há retomada a fazer.
+  | "sem-contato-anterior"
   // Só do lote de disponibilidade: já perguntamos há pouco (dentro da mesma
   // cadência do lembrete). Distinto de "contato-recente" só na redação.
   | "confirmado-recente"
@@ -137,10 +140,13 @@ export interface ExcluidoFollowUp {
 }
 
 export interface SelecaoFollowUp {
-  /** Elegíveis, do contato mais antigo para o mais recente — quem está
-      esperando há mais tempo aparece primeiro. Pode passar do limite; a UI
-      pré-marca só até `limite`. */
+  /** Elegíveis na ordem de quem deve receber a mensagem primeiro: quem deu
+      SINAL na frente e, entre iguais, quem espera há mais tempo (ver
+      `ordenarPorSinal`). Pode passar do limite; a UI pré-marca só até `limite`. */
   elegiveis: Imovel[];
+  /** Por imóvel que tem sinal: o motivo já escrito, para a linha da tela
+      explicar por que ele subiu. Ausente = entrou pela ordem de espera. */
+  sinais: Record<string, string>;
   /** Quem ficou de fora e por quê. Aparece na tela: um lote que "achou 3"
       sem explicar os outros 40 parece quebrado. */
   excluidos: ExcluidoFollowUp[];
@@ -155,6 +161,7 @@ const TEXTO_MOTIVO: Record<MotivoExclusao, string> = {
   "numero-invalido": "Telefone fora do formato de celular",
   "contato-recente": "Falou com você há pouco tempo",
   "tentativas-demais": "Já recebeu tentativas demais",
+  "sem-contato-anterior": "Ainda não foi contatado — este lote é de retomada",
   "confirmado-recente": "Você já falou com este proprietário há pouco",
   "mesmo-proprietario": "Mesmo proprietário de outro imóvel do lote",
 };
@@ -230,6 +237,57 @@ function rotuloCurto(imovel: Imovel): string {
   return (imovel.codigo || "").trim() || (imovel.endereco || "").trim() || "outro imóvel";
 }
 
+/* --- A ordem da fila --------------------------------------------------------
+   Era só antiguidade: quem esperava há mais tempo ia na frente, fim. Isso
+   bastava enquanto o lote era um mutirão ocasional. Deixou de bastar quando a
+   capacidade virou a restrição — com o teto de {@link FOLLOWUP_TETO_DIA}
+   mensagens por dia e uma fila que cresce a cada dia de prospecção, as vagas do
+   dia são um recurso escasso, e a pergunta passou a ser QUAIS delas.
+
+   Antiguidade pura responde essa pergunta do pior jeito possível: trata igual
+   o proprietário que respondeu "me manda mais detalhes" e o que nunca deu
+   sinal de vida. O primeiro é o mais perto de virar angariação e, se for mais
+   recente que os outros — e ele costuma ser, porque acabou de interagir —,
+   afunda no fim da fila justamente por ter reagido.
+
+   A ordem agora é: SINAL primeiro, antiguidade dentro da mesma faixa.
+
+   **Não há reserva de vagas para os antigos, e isso é medido, não descuido.**
+   A ideia inicial era reservar uma fatia da cota para a antiguidade, com medo
+   de o silêncio nunca mais ser tocado. Ela é desnecessária: a faixa sem sinal
+   continua ordenada por antiguidade internamente, então ela drena na mesma
+   ordem de sempre — só cede as primeiras vagas a quem reagiu. E a faixa com
+   sinal é pequena por natureza (em captação a maioria não responde: na
+   carteira real de 28/07/2026, 96 dos 100 imóveis da fila eram silêncio puro),
+   logo não tem tamanho para monopolizar o dia. Reservar cota seria complexidade
+   protegendo contra um cenário que os dados dizem não existir. */
+
+/** Ordena a fila: quem deu sinal primeiro; entre iguais, quem espera há mais
+    tempo; o id desempata para a ordem não dançar entre renders. */
+function ordenarPorSinal(imoveis: Imovel[], hoje: string): { ordenados: Imovel[]; sinais: Record<string, string> } {
+  const faixaDe = new Map<string, number>();
+  const sinais: Record<string, string> = {};
+
+  for (const imovel of imoveis) {
+    const sinal = sinalDoProprietario(imovel, hoje);
+    if (!sinal) continue;
+    faixaDe.set(imovel.id, sinal.faixa);
+    sinais[imovel.id] = sinal.motivo;
+  }
+
+  const ordenados = [...imoveis].sort((a, b) => {
+    const fa = faixaDe.get(a.id) ?? 0;
+    const fb = faixaDe.get(b.id) ?? 0;
+    if (fa !== fb) return fb - fa;
+    const ua = ultimoContatoISO(a) || "";
+    const ub = ultimoContatoISO(b) || "";
+    if (ua !== ub) return ua < ub ? -1 : 1;
+    return a.id.localeCompare(b.id);
+  });
+
+  return { ordenados, sinais };
+}
+
 /** Monta o público do lote: quem entra, quem fica de fora e por quê. */
 export function selecionarFollowUp(imoveis: Imovel[], hoje: string): SelecaoFollowUp {
   const elegiveis: Imovel[] = [];
@@ -252,6 +310,31 @@ export function selecionarFollowUp(imoveis: Imovel[], hoje: string): SelecaoFoll
     }
 
     const tentativas = imovel.tentativas || [];
+
+    // Nunca contatado E ainda em "Novo contato": o lote não tem o que retomar.
+    //
+    // O texto padrão do lote é o modelo `retomada-contato` — "tentei falar com
+    // você há alguns dias, mas não consegui retorno". Para quem nunca recebeu
+    // nada isso é FALSO, e é falso na primeira frase que aquele proprietário
+    // lê da imobiliária. Pior: a fila mandava esses primeiro, porque sem
+    // tentativa não há data de espera para ordenar.
+    //
+    // O corte é por STATUS, não só por "tem tentativa", e a diferença é o
+    // ponto todo. Em "Sem resposta" a ausência de tentativa não quer dizer que
+    // ninguém falou com ele: quer dizer que o contato foi feito na época em que
+    // o app não registrava envio (ver o backfill de 24/07/2026) — e ali o
+    // status é a própria afirmação de que houve tentativa. Esse caso continua
+    // no lote, e continua indo na frente, como sempre foi.
+    //
+    // Já "Novo contato" não afirma nada: entrou no público do lote depois, para
+    // resgatar quem ficou preso após o primeiro envio. Sem nenhuma tentativa,
+    // ele é um lead de garimpo que ninguém tocou — o lugar dele é o primeiro
+    // contato individual (que já usa o modelo certo), não a retomada em massa.
+    if (tentativas.length === 0 && imovel.status === "Novo contato") {
+      excluidos.push({ imovel, motivo: "sem-contato-anterior", detalhe: "" });
+      continue;
+    }
+
     if (tentativas.length >= FOLLOWUP_MAX_TENTATIVAS) {
       excluidos.push({
         imovel,
@@ -275,20 +358,15 @@ export function selecionarFollowUp(imoveis: Imovel[], hoje: string): SelecaoFoll
     elegiveis.push(imovel);
   }
 
-  // Quem espera há mais tempo primeiro. Sem contato registrado vai na
-  // frente (o caso mais esquecido de todos).
-  elegiveis.sort((a, b) => {
-    const ua = ultimoContatoISO(a) || "";
-    const ub = ultimoContatoISO(b) || "";
-    if (ua === ub) return 0;
-    return ua < ub ? -1 : 1;
-  });
+  // Sinal na frente; dentro da faixa, quem espera há mais tempo (e sem contato
+  // registrado vai antes de todos — o caso mais esquecido).
+  const { ordenados, sinais } = ordenarPorSinal(elegiveis, hoje);
 
   // Um proprietário, uma mensagem (ver o bloco acima). Depois da ordenação:
-  // fica quem espera há mais tempo, os demais viram exclusão explicada.
+  // fica quem está mais perto de fechar, os demais viram exclusão explicada.
   const porProprietario = new Map<string, Imovel>();
   const unicos: Imovel[] = [];
-  for (const imovel of elegiveis) {
+  for (const imovel of ordenados) {
     const chave = chaveProprietario(imovel.proprietarioTelefone || "");
     const jaTem = porProprietario.get(chave);
     if (jaTem) {
@@ -307,6 +385,7 @@ export function selecionarFollowUp(imoveis: Imovel[], hoje: string): SelecaoFoll
   const restante = Math.max(0, FOLLOWUP_TETO_DIA - enviadosHoje);
   return {
     elegiveis: unicos,
+    sinais,
     excluidos,
     limite: Math.min(FOLLOWUP_LOTE_MAX, restante),
     enviadosHoje,
@@ -405,6 +484,11 @@ export function selecionarVerificacaoDisponibilidade(imoveis: Imovel[], hoje: st
   const restante = Math.max(0, FOLLOWUP_TETO_DIA - enviadosHoje);
   return {
     elegiveis: unicos,
+    // Sem ordenação por sinal aqui, de propósito: o público já foi captado, e a
+    // pergunta deste lote ("ainda está disponível?") é de ciclo longo — quem
+    // está anunciado há mais tempo é quem mais precisa ser conferido. Sinal de
+    // interesse é o critério do OUTRO lote, onde ainda se disputa o sim.
+    sinais: {},
     excluidos,
     limite: Math.min(FOLLOWUP_LOTE_MAX, restante),
     enviadosHoje,

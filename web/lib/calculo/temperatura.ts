@@ -30,6 +30,7 @@ import { daysBetween } from "../datas";
 import { fmtDate } from "../formatadores";
 import type { Imovel, Tentativa } from "../tipos";
 import { daysInCurrentStatus, imoveisDeCaptacao, isPausado } from "./motor";
+import { ehNotaDeResposta } from "./webhookWhatsapp";
 
 /** Dias que um lead pode ficar cadastrado sem NENHUMA tentativa antes de
     virar cobrança. Três dias é o intervalo em que "vou falar com ele depois"
@@ -98,6 +99,117 @@ function compromissoVencido(t: Tentativa | null, hoje: string): string | null {
   return marcada.slice(0, 10) <= hoje ? marcada.slice(0, 10) : null;
 }
 
+/** Data (YYYY-MM-DD) da mensagem mais recente que o PROPRIETÁRIO mandou, lida
+    das notas gravadas pelo webhook. null quando ele nunca escreveu. */
+function ultimaRespostaRecebida(imovel: Imovel): string | null {
+  let maior: string | null = null;
+  for (const nota of imovel.notas || []) {
+    if (!ehNotaDeResposta(nota)) continue;
+    const dia = (nota.data || "").slice(0, 10);
+    if (!dia) continue;
+    if (!maior || dia > maior) maior = dia;
+  }
+  return maior;
+}
+
+/* ----------------------------------------------------------------
+   O SINAL DO PROPRIETÁRIO — a parte compartilhada
+
+   Isto é só "o que ELE fez", sem nenhuma regra de quem pergunta. Mora
+   aqui, num lugar só, porque há DOIS consumidores com perguntas
+   diferentes: o termômetro ("de quem eu corro atrás hoje, na carteira
+   toda") e a fila do follow-up em lote ("dentro do público do lote,
+   quem vai na frente"). Duas cópias da escada de sinal divergiriam na
+   primeira vez que alguém acrescentasse um desfecho.
+
+   Cada consumidor aplica os PRÓPRIOS filtros por fora: o termômetro
+   descarta terminal negativo, pausado e quem foi tocado hoje; o lote
+   já chega com o público filtrado por status, telefone e recência.
+   ---------------------------------------------------------------- */
+
+export interface SinalProprietario {
+  /** Faixa de FAIXA — ordena, não é nota a exibir. */
+  faixa: number;
+  /** Por que este imóvel tem sinal, em pt-BR e pronto para a tela. */
+  motivo: string;
+  /** Dias desde o sinal — desempata dentro da faixa. */
+  dias: number;
+}
+
+/**
+ * O que o proprietário sinalizou, ou null quando não sinalizou nada.
+ *
+ * A ordem das faixas é o quanto ele se comprometeu: marcou dia > agendou >
+ * disse que retorna > respondeu.
+ *
+ * **A última fonte é a que faltava.** As faixas acima leem o `resultado` da
+ * tentativa, que é uma AFIRMAÇÃO DO CORRETOR — e a tentativa nasce chutada como
+ * "sem-resposta", esperando confirmação no nudge. Enquanto ninguém confirma, um
+ * proprietário que respondeu de verdade fica indistinguível de um que sumiu. Só
+ * que o webhook já gravou a mensagem dele em `notas`, e ninguém lia: era o
+ * sinal mais duro que existe (ele escreveu) parado no banco. Por isso a nota de
+ * resposta vale a faixa `respondeu` mesmo com a tentativa ainda em
+ * "sem-resposta" — e o motivo diz que o desfecho segue por confirmar, para o
+ * corretor não achar que o sistema decidiu por ele.
+ */
+export function sinalDoProprietario(imovel: Imovel, hoje: string): SinalProprietario | null {
+  const ultima = ultimaTentativa(imovel);
+
+  // Reagiu negando, ou o número nem era dele: não há sinal POSITIVO a promover.
+  // Vale para quem chama sem pré-filtrar (o lote) — o termômetro já corta antes.
+  if (ultima?.resultado === "recusou" || ultima?.resultado === "numero-errado") return null;
+
+  const marcada = compromissoVencido(ultima, hoje);
+  if (marcada) {
+    const atraso = daysBetween(marcada, hoje) ?? 0;
+    return {
+      faixa: FAIXA.compromissoVencido,
+      motivo:
+        atraso > 0
+          ? `Pediu para retomar em ${fmtDate(marcada)} — ${atraso} dia(s) atrás.`
+          : `Pediu para retomar hoje.`,
+      dias: Math.max(0, atraso),
+    };
+  }
+
+  const diasDesdeTentativa = ultima ? (daysBetween(ultima.data.slice(0, 10), hoje) ?? 0) : null;
+  if (ultima && diasDesdeTentativa !== null) {
+    if (ultima.resultado === "agendou") {
+      return {
+        faixa: FAIXA.agendou,
+        motivo: `Agendou com você há ${diasDesdeTentativa} dia(s).`,
+        dias: Math.max(0, diasDesdeTentativa),
+      };
+    }
+    if (ultima.resultado === "vai-retornar") {
+      return {
+        faixa: FAIXA.vaiRetornar,
+        motivo: `Disse que ia retornar há ${diasDesdeTentativa} dia(s) — sem prazo marcado.`,
+        dias: Math.max(0, diasDesdeTentativa),
+      };
+    }
+    if (ultima.resultado === "respondeu") {
+      return {
+        faixa: FAIXA.respondeu,
+        motivo: `Respondeu há ${diasDesdeTentativa} dia(s).`,
+        dias: Math.max(0, diasDesdeTentativa),
+      };
+    }
+  }
+
+  const escreveuEm = ultimaRespostaRecebida(imovel);
+  if (escreveuEm) {
+    const dias = daysBetween(escreveuEm, hoje) ?? 0;
+    return {
+      faixa: FAIXA.respondeu,
+      motivo: `Respondeu no WhatsApp há ${dias} dia(s) — desfecho ainda não confirmado.`,
+      dias: Math.max(0, dias),
+    };
+  }
+
+  return null;
+}
+
 /**
  * A linha do termômetro para um imóvel, ou null quando ele não deve aparecer.
  *
@@ -133,36 +245,11 @@ export function linhaTemperatura(imovel: Imovel, hoje: string): LinhaTemperatura
     dias: Math.max(0, dias),
   });
 
-  // 1. O proprietário marcou o dia, e o dia chegou. Nada supera isso: quem
-  //    pediu para ser chamado está esperando a ligação.
-  const marcada = compromissoVencido(ultima, hoje);
-  if (marcada) {
-    const atraso = daysBetween(marcada, hoje) ?? 0;
-    return linha(
-      FAIXA.compromissoVencido,
-      atraso > 0
-        ? `Pediu para retomar em ${fmtDate(marcada)} — ${atraso} dia(s) atrás.`
-        : `Pediu para retomar hoje.`,
-      atraso,
-    );
-  }
-
-  // 2. Reagiu. Ordem entre os desfechos = quanto ele se comprometeu.
-  if (ultima && diasDesdeTentativa !== null && diasDesdeTentativa > 0) {
-    if (ultima.resultado === "agendou") {
-      return linha(FAIXA.agendou, `Agendou com você há ${diasDesdeTentativa} dia(s).`, diasDesdeTentativa);
-    }
-    if (ultima.resultado === "vai-retornar") {
-      return linha(
-        FAIXA.vaiRetornar,
-        `Disse que ia retornar há ${diasDesdeTentativa} dia(s) — sem prazo marcado.`,
-        diasDesdeTentativa,
-      );
-    }
-    if (ultima.resultado === "respondeu") {
-      return linha(FAIXA.respondeu, `Respondeu há ${diasDesdeTentativa} dia(s).`, diasDesdeTentativa);
-    }
-  }
+  // 1 e 2. O que o proprietário sinalizou — compromisso marcado que venceu,
+  //    ou a reação dele, na ordem de quanto se comprometeu. A escada mora em
+  //    `sinalDoProprietario` porque a fila do follow-up usa a MESMA.
+  const sinal = sinalDoProprietario(imovel, hoje);
+  if (sinal) return linha(sinal.faixa, sinal.motivo, sinal.dias);
 
   // Daqui para baixo, só o que ainda está em captação: quem já foi captado
   // tem a cobrança própria de disponibilidade.

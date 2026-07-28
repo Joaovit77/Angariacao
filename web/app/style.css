@@ -1456,11 +1456,26 @@ legend{
   border-radius: var(--radius);
 }
 .badge-card:not(.bloqueada){ border-color:#cca24a66; background: linear-gradient(180deg, var(--accent-soft), var(--bg-elev-1) 60%); }
-.badge-card.bloqueada{ opacity:.5; filter: grayscale(1); }
+/* Com as conquistas em trilha, o único card travado visível é sempre o PRÓXIMO
+   degrau — o alvo da vez, não uma medalha distante. Por isso ele deixou de
+   sumir atrás de `opacity:.5 + grayscale(1)`: o progresso ("6 de 10") precisa
+   ser legível, senão o card volta a dizer apenas "você ainda não conseguiu".
+   O apagado fica só no ícone, que é o que marca a diferença de estado. */
+.badge-card.bloqueada{ border-style: dashed; }
+.badge-card.bloqueada .badge-icone{ opacity:.4; filter: grayscale(1); }
+.badge-card.bloqueada .badge-nome{ color: var(--text-dim); }
 .badge-icone{ font-size:24px; line-height:1.2; }
 .badge-nome{ font-family: var(--font-display); font-size:13.5px; font-weight:600; }
 .badge-desc{ font-size:11.5px; color: var(--text-dim); line-height:1.4; }
 .badge-detalhe{ font-size:11px; color: var(--good); margin-top:4px; }
+
+.badge-progresso{ margin-top:6px; }
+.badge-progresso-track{
+  height:4px; border-radius:2px; background: var(--bg-elev-3);
+  overflow:hidden; margin-bottom:4px;
+}
+.badge-progresso-fill{ height:100%; background: var(--accent); border-radius:2px; }
+.badge-progresso-texto{ font-size:11px; color: var(--text-dim); }
 
 /* ============================================================
    AGENDA
@@ -2406,6 +2421,11 @@ legend{
   cursor: pointer;
 }
 
+/* Aviso, não erro: a meta do mês que ainda não foi definida é uma pendência
+   do corretor, não uma falha. Em vermelho competiria com "compromisso
+   atrasado", que é a única coisa nesta tela que já deu errado. */
+.home-alert.aviso{ background: var(--warn-soft); color: var(--warn); }
+
 /* Título das metas: a legenda em caixa-alta e, abaixo, o mês em caixa normal
    e discreto — evita o mês "espremido" dentro da legenda uppercase. */
 .home-metas-title{ display: flex; flex-direction: column; gap: 2px; }
@@ -2506,11 +2526,16 @@ legend{
 .followup-item.ativa{ background: var(--bg-elev-2); }
 .followup-item input[type="checkbox"]{ flex: none; margin: 0; }
 .followup-item input[type="checkbox"]:disabled{ cursor: not-allowed; opacity: .4; }
-/* O nome empurra a espera para a direita e trunca em vez de quebrar a linha. */
+/* O nome empurra a espera para a direita e trunca em vez de quebrar a linha.
+   Vira coluna para caber o motivo do sinal embaixo: a fila deixou de ser só
+   ordem de espera, e uma ordem que o corretor não consegue explicar é uma
+   ordem em que ele para de confiar. */
 .followup-item-nome{
   flex: 1; min-width: 0; color: var(--text);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: flex; flex-direction: column; gap: 2px;
 }
+.followup-item-rotulo{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.followup-item-sinal{ font-size: 11px; color: var(--warn); line-height: 1.35; }
 .followup-item-espera{ flex: none; font-size: 11.5px; color: var(--text-faint); }
 /* Os excluídos são leitura, não escolha — ficam apagados. */
 .followup-lista-fora .followup-item-nome{ color: var(--text-dim); }

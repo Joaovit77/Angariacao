@@ -6,6 +6,7 @@
    ================================================================ */
 import { useState } from "react";
 import { useSessao } from "@/components/SessaoProvider";
+import { metaDoMes, metaSugerida } from "@/lib/calculo/metaMes";
 import { currentMonthKey, monthLabelLong } from "@/lib/datas";
 import { numOrNull, salvarMeta } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
@@ -17,7 +18,11 @@ export default function ModalMeta() {
   const metas = useAppStore((s) => s.metas);
 
   const mKey = currentMonthKey();
-  const meta = metas[mKey] || { angariacoes: 0, locados: 0, comissao: 0, faturamento: 0 };
+  // No mês que ainda não tem meta, os campos abrem com os números do último mês
+  // que teve — pré-preenchidos, não aplicados: o mês só passa a ter meta quando
+  // o corretor salvar. Ver o cabeçalho de calculo/metaMes.ts.
+  const sugestao = metaSugerida(metas, mKey);
+  const meta = sugestao ? sugestao.meta : metaDoMes(metas, mKey);
 
   const [angariacoes, setAngariacoes] = useState(meta.angariacoes ? String(meta.angariacoes) : "");
   const [locados, setLocados] = useState(meta.locados ? String(meta.locados) : "");
@@ -51,6 +56,12 @@ export default function ModalMeta() {
         </button>
       </div>
       <div className="modal-body">
+        {sugestao && (
+          <div className="field-hint" style={{ marginBottom: "14px" }}>
+            Pré-preenchido com a meta de {monthLabelLong(sugestao.mesOrigem)}. Confira os números e
+            salve para valer em {monthLabelLong(mKey)}.
+          </div>
+        )}
         <div className="field-group">
           <label>Meta mensal de angariações</label>
           <input type="number" min="0" value={angariacoes} onChange={(e) => setAngariacoes(e.target.value)} />

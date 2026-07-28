@@ -16,6 +16,13 @@ import ItemAgenda from "@/components/agenda/ItemAgenda";
 import QuemEstaQuente from "@/components/home/QuemEstaQuente";
 import { AGENDA_PENDENTES_JANELA_DIAS, compararAgenda } from "@/lib/calculo/agenda";
 import {
+  mesAnteriorComMeta,
+  metaDoMes,
+  precisaDefinirMeta,
+  resumoMetaCurto,
+  temMeta,
+} from "@/lib/calculo/metaMes";
+import {
   comissaoRecebidaNoMes,
   daysInCurrentStatus,
   faturamentoContratosNoMes,
@@ -27,7 +34,7 @@ import { modeloPadraoWhatsapp } from "@/lib/calculo/whatsapp";
 import { addDaysISO, currentMonthKey, monthLabelLong, todayISO } from "@/lib/datas";
 import { fmtDateLong, fmtMoney } from "@/lib/formatadores";
 import { useAppStore } from "@/lib/store";
-import type { AgendaItem, Meta } from "@/lib/tipos";
+import type { AgendaItem } from "@/lib/tipos";
 import { useUiModal } from "@/lib/uiModal";
 
 // Quantos itens de cada lista de resumo mostrar antes do "ver tudo".
@@ -97,8 +104,12 @@ export default function HomeView() {
 
   // Metas do mês (mesma leitura da view Metas).
   const mKey = currentMonthKey();
-  const meta: Meta = metas[mKey] || { angariacoes: 0, locados: 0, comissao: 0, faturamento: 0 };
-  const temMetas = meta.angariacoes > 0 || meta.locados > 0 || meta.comissao > 0 || meta.faturamento > 0;
+  const meta = metaDoMes(metas, mKey);
+  const temMetas = temMeta(meta);
+  // Virada de mês: já usava metas e ainda não definiu a deste mês. Sem isso o
+  // card ficava "0 de 0" o mês inteiro sem nada pedir a meta nova.
+  const metaPendente = precisaDefinirMeta(metas, mKey);
+  const mesDaUltimaMeta = metaPendente ? mesAnteriorComMeta(metas, mKey) : null;
   const angariacoesMes = imoveisAngariadosNoMes(imoveis, mKey).length;
   const locadosMes = imoveisLocadosNoMes(imoveis, mKey).length;
   const comissaoMes = comissaoRecebidaNoMes(imoveis, mKey, comissaoPercent);
@@ -332,12 +343,26 @@ export default function HomeView() {
         </button>
       </div>
       {!temMetas ? (
-        <div className="home-metas-empty">
-          <p className="section-note">Nenhuma meta definida para este mês.</p>
-          <button type="button" className="btn btn-sm btn-primary" onClick={() => abrirModal("meta")}>
-            + Definir metas
-          </button>
-        </div>
+        <>
+          <div className="home-metas-empty">
+            <p className="section-note">
+              {mesDaUltimaMeta
+                ? `${monthLabelLong(mKey)} começou sem meta. A última foi a de ${monthLabelLong(mesDaUltimaMeta)}: ${resumoMetaCurto(metas[mesDaUltimaMeta])}.`
+                : "Nenhuma meta definida para este mês."}
+            </p>
+            <button type="button" className="btn btn-sm btn-primary" onClick={() => abrirModal("meta")}>
+              + Definir metas
+            </button>
+          </div>
+          {/* Só para quem já vinha usando metas: mês sem meta não entra na
+              contagem da medalha de constância, e isso não dá para recuperar
+              depois — o mês fecha e a sequência quebra. */}
+          {metaPendente && (
+            <div className="home-alert aviso" onClick={() => abrirModal("meta")}>
+              Sem meta, o mês não conta para a sequência de metas batidas.
+            </div>
+          )}
+        </>
       ) : (
         <div className="home-meta-list">
           <MiniMeta label="Angariações" atual={angariacoesMes} alvo={meta.angariacoes} />
@@ -359,7 +384,10 @@ export default function HomeView() {
   // Se algum resumo ficou vazio (desceu para a lateral), a coluna principal fica
   // curta; as metas sobem para ela para equilibrar as colunas. Caso contrário,
   // ficam na lateral, ao lado das ações.
-  const metasNaPrincipal = laterais.length > 0;
+  //
+  // A virada de mês também as promove: o aviso de meta não definida na lateral
+  // é exatamente onde ele passa despercebido, e ele só aparece uma vez por mês.
+  const metasNaPrincipal = laterais.length > 0 || metaPendente;
   if (metasNaPrincipal) principais.push(cardMetas);
 
   return (
