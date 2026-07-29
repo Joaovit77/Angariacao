@@ -1,0 +1,288 @@
+"use client";
+
+/* ================================================================
+   VIEW: CAIXA DE RESPOSTAS
+   O que o proprietário escreveu, num lugar só. Toda a regra (o que é
+   "pendente", a ordem, o agrupamento por imóvel) vem do cálculo puro
+   em calculo/respostas.ts — aqui só há montagem e as ações.
+
+   A unidade da lista é o IMÓVEL, não a mensagem: no WhatsApp as
+   pessoas mandam três mensagens curtas seguidas, e uma linha por
+   mensagem faria um proprietário empurrar todos os outros para fora
+   da tela.
+
+   O botão "Atualizar" não é enfeite: a resposta entra pelo webhook,
+   no servidor, e o painel carrega o estado uma vez por sessão — numa
+   aba aberta desde cedo, a caixa está congelada na hora do login.
+   ================================================================ */
+import { useMemo, useState } from "react";
+import type { LinhaResposta } from "@/lib/calculo/respostas";
+import { caixaDeRespostas } from "@/lib/calculo/respostas";
+import { corpoDaResposta } from "@/lib/calculo/notas";
+import { modeloPadraoWhatsapp } from "@/lib/calculo/whatsapp";
+import { todayISO } from "@/lib/datas";
+import { marcarRespostasLidas, marcarTodasRespostasLidas, recarregarEstado } from "@/lib/mutacoes";
+import { toast } from "@/lib/toast";
+import { useAppStore } from "@/lib/store";
+import type { Imovel } from "@/lib/tipos";
+import { useUiModal } from "@/lib/uiModal";
+
+type Filtro = "pendentes" | "todas";
+
+/** "há 2 dias" / "hoje" — o mesmo vocabulário curto do resto do painel. */
+function rotuloDias(dias: number): string {
+  if (dias <= 0) return "hoje";
+  if (dias === 1) return "ontem";
+  return `há ${dias} dias`;
+}
+
+/** Hora da mensagem ("14:30"), quando o webhook a gravou. */
+function hora(data: string): string {
+  return data.length >= 16 ? data.slice(11, 16) : "";
+}
+
+function Conversa({ linha, expandida }: { linha: LinhaResposta; expandida: boolean }) {
+  // Fechada, mostra só a prévia — a última mensagem COM TEXTO. As anteriores
+  // existem para reler o contexto, não para varrer a tela.
+  const visiveis = expandida ? linha.mensagens : [linha.previa];
+  return (
+    <div className="resp-conversa">
+      {visiveis.map((m) => (
+        <div
+          key={m.id}
+          className={`resp-msg${m.tratada ? " tratada" : ""}${m.soMidia ? " midia" : ""}`}
+        >
+          {/* Sem o prefixo do webhook: "Resposta pelo WhatsApp:" em cada balão,
+              numa tela chamada Respostas, é uma linha de ruído por mensagem. */}
+          <div className="resp-msg-txt">{corpoDaResposta(m.texto) || "(mensagem sem texto)"}</div>
+          <div className="resp-msg-meta">
+            {m.dia.split("-").reverse().join("/")}
+            {hora(m.data) && ` · ${hora(m.data)}`}
+            {m.tratada && " · tratada"}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Linha({ linha, imovel }: { linha: LinhaResposta; imovel: Imovel }) {
+  const abrirModal = useUiModal((s) => s.abrirModal);
+  const [expandida, setExpandida] = useState(false);
+  const [marcando, setMarcando] = useState(false);
+
+  const anteriores = linha.total - 1;
+
+  async function marcarLida() {
+    if (marcando) return;
+    setMarcando(true);
+    await marcarRespostasLidas(linha.imovelId, true);
+    setMarcando(false);
+  }
+
+  return (
+    <div className={`resp-linha${linha.pendente ? " pendente" : ""}`}>
+      <div className="resp-top">
+        <button
+          type="button"
+          className="resp-codigo"
+          title="Abrir o imóvel"
+          onClick={() => abrirModal("imovel", imovel.id)}
+        >
+          {imovel.codigo || imovel.referenciaCrm || "Sem código"}
+        </button>
+        <span className="resp-top-dir">
+          {linha.pendente && (
+            <span className="home-list-chip bad">
+              {linha.naoTratadas > 1 ? `${linha.naoTratadas} novas` : "nova"}
+            </span>
+          )}
+          <span className="home-list-chip">{rotuloDias(linha.dias)}</span>
+          <span className="resp-status">{imovel.status}</span>
+        </span>
+      </div>
+
+      <div className="resp-row" title={imovel.endereco}>
+        <span className="resp-ic">📍</span>
+        <span className="resp-val">{imovel.endereco || "Sem endereço"}</span>
+      </div>
+      <div className="resp-row">
+        <span className="resp-ic">👤</span>
+        <span className={`resp-val${imovel.proprietarioNome ? "" : " vazio"}`}>
+          {imovel.proprietarioNome || "Sem proprietário"}
+        </span>
+      </div>
+
+      {/* Escrita automática tem que se explicar na tela: sem esta linha, a
+          caixa mostraria um "Perdido" sem dizer que foi o app que o marcou,
+          a partir de uma destas mensagens. */}
+      {linha.encerradoAutomaticamente && (
+        <div className="resp-auto">
+          ⚠ Este imóvel foi encerrado automaticamente a partir de uma destas respostas.
+        </div>
+      )}
+
+      {/* O que chegou sem texto. Não cobra ação porque não há ação possível
+          por aqui — mas dizer que existe importa: nove áudios são um
+          proprietário muito ativo, e a linha ficaria mentindo sem isso. */}
+      {linha.midiaPendentes > 0 && (
+        <div className="resp-midia">
+          🎧 {linha.midiaPendentes}{" "}
+          {linha.midiaPendentes > 1 ? "mensagens sem texto" : "mensagem sem texto"} (áudio, foto) —
+          só dá para ouvir no WhatsApp
+        </div>
+      )}
+
+      <Conversa linha={linha} expandida={expandida} />
+
+      {anteriores > 0 && (
+        <button type="button" className="resp-mais" onClick={() => setExpandida((v) => !v)}>
+          {expandida
+            ? "ocultar as anteriores"
+            : `+ ${anteriores} ${anteriores > 1 ? "mensagens anteriores" : "mensagem anterior"}`}
+        </button>
+      )}
+
+      <div className="resp-acoes">
+        {imovel.proprietarioTelefone && (
+          <button
+            type="button"
+            className="btn btn-sm btn-primary"
+            onClick={() => abrirModal("whatsapp", imovel.id, modeloPadraoWhatsapp(imovel.status))}
+          >
+            💬 Responder
+          </button>
+        )}
+        <button type="button" className="btn btn-sm" onClick={() => abrirModal("tentativas", imovel.id)}>
+          Registrar contato
+        </button>
+        <button type="button" className="btn btn-sm" onClick={() => abrirModal("imovel", imovel.id)}>
+          Abrir imóvel
+        </button>
+        {linha.pendente && (
+          <button type="button" className="btn btn-sm resp-lida" onClick={marcarLida} disabled={marcando}>
+            ✓ Marcar como lida
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function RespostasView() {
+  const imoveis = useAppStore((s) => s.imoveis);
+  const [filtro, setFiltro] = useState<Filtro>("pendentes");
+  const [atualizando, setAtualizando] = useState(false);
+  const [limpando, setLimpando] = useState(false);
+
+  const linhas = useMemo(() => caixaDeRespostas(imoveis, todayISO()), [imoveis]);
+  const pendentes = linhas.filter((l) => l.pendente);
+  const visiveis = filtro === "pendentes" ? pendentes : linhas;
+
+  const imovelDe = (id: string) => imoveis.find((i) => i.id === id) || null;
+
+  async function atualizar() {
+    if (atualizando) return;
+    setAtualizando(true);
+    await recarregarEstado();
+    setAtualizando(false);
+  }
+
+  // Zerar o backlog. Pergunta antes porque é irreversível pela tela: não há
+  // "marcar como não lida", e o que sai daqui só volta pelo banco.
+  async function limparTudo() {
+    if (limpando || pendentes.length === 0) return;
+    if (
+      !confirm(
+        `Marcar como lidas as respostas de ${pendentes.length} imóve${pendentes.length > 1 ? "is" : "l"}? ` +
+          "Elas saem da caixa e não há como desmarcar por aqui.",
+      )
+    )
+      return;
+    setLimpando(true);
+    const n = await marcarTodasRespostasLidas(pendentes.map((l) => l.imovelId));
+    setLimpando(false);
+    if (n > 0) toast(n === 1 ? "1 imóvel marcado como lido." : `${n} imóveis marcados como lidos.`);
+  }
+
+  return (
+    <>
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Respostas</h1>
+          <p className="page-sub">O que os proprietários escreveram, e o que ainda não foi tratado</p>
+        </div>
+        <div className="resp-head-acoes">
+          <button type="button" className="btn btn-sm" onClick={atualizar} disabled={atualizando}>
+            {atualizando ? "Atualizando..." : "↻ Atualizar"}
+          </button>
+          {pendentes.length > 0 && (
+            <button type="button" className="btn btn-sm" onClick={limparTudo} disabled={limpando}>
+              {limpando ? "Marcando..." : `✓ Marcar todas como lidas (${pendentes.length})`}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="resp-filtros">
+        <button
+          type="button"
+          className={`resp-filtro${filtro === "pendentes" ? " active" : ""}`}
+          onClick={() => setFiltro("pendentes")}
+        >
+          Pendentes ({pendentes.length})
+        </button>
+        <button
+          type="button"
+          className={`resp-filtro${filtro === "todas" ? " active" : ""}`}
+          onClick={() => setFiltro("todas")}
+        >
+          Todas ({linhas.length})
+        </button>
+      </div>
+
+      {visiveis.length === 0 ? (
+        <div className="card">
+          <p className="section-note">
+            {linhas.length === 0
+              ? "Nenhuma resposta recebida ainda. Quando um proprietário responder no WhatsApp, a mensagem aparece aqui automaticamente."
+              : "Tudo tratado — nenhuma resposta pendente. 🎉"}
+          </p>
+        </div>
+      ) : (
+        // Dois blocos, nesta ordem: a captação é a conversa que ainda pode ser
+        // perdida. Misturadas, a carteira afundaria o lead — ela produz muito
+        // mais mensagem (documento, visita do inquilino, contrato) e venceria
+        // sempre no volume, que é como o termômetro já morreu uma vez.
+        <div className="anim-stagger">
+          {(["captacao", "carteira"] as const).map((fase) => {
+            const doBloco = visiveis.filter((l) => l.fase === fase);
+            if (doBloco.length === 0) return null;
+            return (
+              <section className="resp-bloco" key={fase}>
+                <div className="resp-bloco-head">
+                  <h2 className="resp-bloco-titulo">
+                    {fase === "captacao" ? "Captação" : "Carteira"}
+                  </h2>
+                  <span className="section-note">
+                    {fase === "captacao"
+                      ? "proprietários que ainda podem virar (ou perder) uma angariação"
+                      : "imóveis já captados — assunto operacional, não disputa"}
+                  </span>
+                  <span className="resp-bloco-n">{doBloco.length}</span>
+                </div>
+                <div className="resp-lista">
+                  {doBloco.map((linha) => {
+                    const imovel = imovelDe(linha.imovelId);
+                    if (!imovel) return null;
+                    return <Linha key={linha.imovelId} linha={linha} imovel={imovel} />;
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+}

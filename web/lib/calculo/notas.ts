@@ -30,6 +30,37 @@ export const PREFIXO_ID_NOTA = "wa:";
 /** Sufixo do id da nota que explica um encerramento automático. */
 export const SUFIXO_ID_ENCERRAMENTO = ":encerrado";
 
+/** Prefixo do TEXTO da nota criada pelo webhook. Mora aqui, e não em
+    `webhookWhatsapp.ts`, pela mesma razão do prefixo de id: quem escreve é o
+    webhook, mas quem lê são outros — e uma cópia solta do literal em cada
+    leitor é exatamente como duas funções gêmeas divergem em silêncio. */
+export const PREFIXO_TEXTO_RESPOSTA = "Resposta pelo WhatsApp: ";
+
+/** O que o proprietário realmente escreveu, sem o prefixo do webhook. */
+export function corpoDaResposta(texto: string | null | undefined): string {
+  const t = (texto || "").trim();
+  return t.startsWith(PREFIXO_TEXTO_RESPOSTA) ? t.slice(PREFIXO_TEXTO_RESPOSTA.length).trim() : t;
+}
+
+/**
+ * A mensagem é só um marcador de mídia (`[áudio]`, `[imagem]`, `[contato]`…)?
+ *
+ * Quando não há texto, o webhook grava o TIPO entre colchetes — e faz certo:
+ * "(vazio)" faria o corretor achar que o sistema falhou quando o proprietário
+ * mandou um áudio. Mas num painel de texto essa nota não tem o que ser lido:
+ * o conteúdo está no WhatsApp, e é lá que ele vai ter que abrir de qualquer
+ * jeito. Por isso ela aparece na conversa mas não COBRA ação — medido na
+ * carteira real em 29/07/2026, marcador de mídia era 27 das 80 pendências,
+ * e 18 de um imóvel só.
+ *
+ * O teste é a forma (`[algo]`), não a lista de tipos: pega os rótulos de hoje,
+ * o "[mensagem sem texto]" do caso desconhecido e qualquer tipo novo que a
+ * Evolution passe a mandar, sem precisar voltar aqui.
+ */
+export function ehSoMidia(texto: string | null | undefined): boolean {
+  return /^\[[^\]]+\]$/.test(corpoDaResposta(texto));
+}
+
 export function idNotaDaMensagem(mensagemId: string): string {
   return `${PREFIXO_ID_NOTA}${mensagemId}`;
 }

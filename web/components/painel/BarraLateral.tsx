@@ -8,15 +8,17 @@
    virou uma rota (§4 do MIGRATION_NEXT.md).
    ================================================================ */
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
+import { contarRespostasPendentes } from "@/lib/calculo/respostas";
 import { STATUS_FLOW } from "@/lib/constantes";
+import { todayISO } from "@/lib/datas";
 import { useAppStore } from "@/lib/store";
 
 const STATUS_FUNIL: readonly string[] = STATUS_FLOW;
 
-type Badge = "pipeline" | "agenda";
+type Badge = "pipeline" | "agenda" | "respostas";
 
 interface ItemNav {
   rota: string;
@@ -55,6 +57,16 @@ const ITENS: ItemNav[] = [
     icone: (
       <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M3 3h18v4H3zM3 10h12v4H3zM3 17h7v4H3z" />
+      </svg>
+    ),
+  },
+  {
+    rota: "/respostas",
+    texto: "Respostas",
+    badge: "respostas",
+    icone: (
+      <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M21 11.5a8.38 8.38 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 20l1.9-4.1A8.38 8.38 0 0 1 4 11.5a8.5 8.5 0 0 1 8.5-8.5 8.38 8.38 0 0 1 8.5 8.5z" />
       </svg>
     ),
   },
@@ -140,11 +152,18 @@ export default function BarraLateral({
     for (const item of ITENS) router.prefetch(item.rota);
   }, [router]);
 
+  // A caixa varre as notas de todos os imóveis; ao contrário dos outros dois
+  // badges (um filter simples), vale memoizar — a barra re-renderiza a cada
+  // navegação.
+  const respostasPendentes = useMemo(() => contarRespostasPendentes(imoveis, todayISO()), [imoveis]);
+
   // updateNavBadges(): pipeline = imóveis no funil ainda não locados;
-  // agenda = compromissos pendentes.
+  // agenda = compromissos pendentes; respostas = imóveis com mensagem do
+  // proprietário ainda não tratada.
   const badges: Record<Badge, number> = {
     pipeline: imoveis.filter((i) => STATUS_FUNIL.includes(i.status) && i.status !== "Locado").length,
     agenda: agenda.filter((a) => !a.done).length,
+    respostas: respostasPendentes,
   };
 
   function navegar(rota: string) {

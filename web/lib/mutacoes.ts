@@ -27,8 +27,10 @@ import {
   unidadeDesdobrada,
 } from "./calculo/desdobramento";
 import { dataAngariadoEfetiva, foiAngariado, historicoComStatus } from "./calculo/motor";
+import { ehNotaDeResposta } from "./calculo/notas";
 import { useCelebracao } from "./celebracao";
 import { toDbAbordagem, toDbAgenda, toDbImovel } from "./persistencia/mapeadores";
+import { sincronizarCompromisso } from "./googleAgenda";
 import { getSupabase } from "./persistencia/supabase";
 import { useAppStore } from "./store";
 import { toast } from "./toast";
@@ -264,6 +266,117 @@ export async function desdobrarImovel(
   ]);
   toast(novas.length === 1 ? "1 unidade criada." : `${novas.length} unidades criadas.`);
   return true;
+}
+
+/**
+ * Rebusca as 5 tabelas e repopula o store — o mesmo carregamento do login.
+ *
+ * Existe pela Caixa de respostas: as respostas entram pelo WEBHOOK, no
+ * servidor, e o app carrega o estado uma vez por sessão. Sem isto, uma caixa
+ * vazia significaria "nada chegou desde que você abriu o painel" enquanto
+ * parece dizer "nada chegou" — e o corretor que deixa a aba aberta o dia
+ * inteiro nunca veria mensagem nenhuma.
+ *
+ * Não é realtime: é o botão de atualizar, explícito, no lugar em que a
+ * defasagem importa.
+ */
+export async function recarregarEstado(): Promise<boolean> {
+  const { carregarEstado } = await import("./persistencia/carregarEstado");
+  try {
+    useAppStore.getState().setEstado(await carregarEstado());
+    return true;
+  } catch (e) {
+    toast("Não foi possível atualizar: " + (e instanceof Error ? e.message : String(e)), "error");
+    return false;
+  }
+}
+
+/**
+ * Marca como lidas as respostas do proprietário que ainda estão pendentes na
+ * Caixa de respostas (calculo/respostas.ts).
+ *
+ * É a saída MANUAL da caixa, para a mensagem que não vai gerar ação nenhuma
+ * ("obrigado", "combinado"). Quem age pelo painel não passa por aqui: a
+ * tentativa ou a mudança de status já tiram a resposta da caixa sozinhas.
+ *
+ * Update PARCIAL da coluna `notas`, como as outras mutações de nota — um
+ * upsert da linha inteira apagaria o que estivesse sendo editado em paralelo,
+ * e aqui o risco é concreto: o webhook escreve nessa mesma coluna quando a
+ * próxima mensagem chega.
+ *
+ * Silencioso por opção: marcar linha a linha na caixa dispararia um toast por
+ * clique. Quem confirma é a linha sumindo da lista.
+ */
+export async function marcarRespostasLidas(imovelId: string, silencioso = false): Promise<boolean> {
+  const { imoveis, setImoveis } = useAppStore.getState();
+  const imovel = imoveis.find((i) => i.id === imovelId);
+  if (!imovel) return false;
+
+  // Só as notas do webhook, e só as que ainda não estavam marcadas: a nota
+  // escrita à mão pelo corretor e a do encerramento automático não são
+  // respostas de ninguém e não têm o que "ler".
+  const pendentes = (imovel.notas || []).filter((n) => ehNotaDeResposta(n) && n.lida !== true);
+  if (pendentes.length === 0) return true;
+
+  const alvos = new Set(pendentes.map((n) => n.id));
+  const novasNotas = (imovel.notas || []).map((n) => (alvos.has(n.id) ? { ...n, lida: true } : n));
+
+  const { error } = await getSupabase().from("imoveis").update({ notas: novasNotas }).eq("id", imovelId);
+  if (error) {
+    toast("Não foi possível marcar como lida: " + error.message, "error");
+    return false;
+  }
+  setImoveis(imoveis.map((i) => (i.id === imovelId ? { ...i, notas: novasNotas } : i)));
+  if (!silencioso) toast("Resposta marcada como lida.");
+  return true;
+}
+
+/**
+ * Marca como lidas as respostas pendentes de VÁRIOS imóveis de uma vez —
+ * o "limpar a caixa" da view de Respostas.
+ *
+ * Existe por causa do primeiro uso, e isso não é conveniência: a caixa nasce
+ * sobre um backlog que nunca teve tela (na carteira real, 13 imóveis e ~90
+ * mensagens no dia em que a feature entrou). Sem uma saída em massa, a
+ * primeira abertura mostra tudo, o corretor não consegue distinguir o que
+ * chegou HOJE do que está parado há um mês, e a tela morre na estreia — o
+ * mesmo fim da faixa de "imóvel parado" no termômetro.
+ *
+ * Uma requisição por imóvel, sequencial: cada linha tem um `notas` diferente,
+ * e o update é PARCIAL da coluna (não dá para empacotar num upsert sem
+ * reescrever a linha inteira, que é justamente o que apagaria o histórico).
+ * São dezenas de imóveis no pior caso, não milhares.
+ *
+ * Aplica no estado local só o que o banco aceitou: um erro no meio deixa os
+ * anteriores marcados, e é assim que tem que ser — reverter os que deram
+ * certo faria a tela discordar do banco.
+ */
+export async function marcarTodasRespostasLidas(imovelIds: string[]): Promise<number> {
+  const { imoveis, setImoveis } = useAppStore.getState();
+  const supabase = getSupabase();
+  const porImovel = new Map<string, NotaImovel[]>();
+
+  for (const id of imovelIds) {
+    const imovel = imoveis.find((i) => i.id === id);
+    if (!imovel) continue;
+    const alvos = new Set(
+      (imovel.notas || []).filter((n) => ehNotaDeResposta(n) && n.lida !== true).map((n) => n.id),
+    );
+    if (alvos.size === 0) continue;
+
+    const novasNotas = (imovel.notas || []).map((n) => (alvos.has(n.id) ? { ...n, lida: true } : n));
+    const { error } = await supabase.from("imoveis").update({ notas: novasNotas }).eq("id", id);
+    if (error) {
+      toast("Não foi possível marcar tudo: " + error.message, "error");
+      break;
+    }
+    porImovel.set(id, novasNotas);
+  }
+
+  if (porImovel.size > 0) {
+    setImoveis(imoveis.map((i) => (porImovel.has(i.id) ? { ...i, notas: porImovel.get(i.id)! } : i)));
+  }
+  return porImovel.size;
 }
 
 export async function excluirNotaImovel(imovelId: string, notaId: string): Promise<boolean> {
@@ -545,6 +658,29 @@ export async function salvarMeta(monthKey: string, meta: Meta, userId: string): 
   return true;
 }
 
+/**
+ * Espelha o compromisso na Agenda do Google, quando há conta conectada.
+ *
+ * Dispara e não espera, e isso é deliberado: a cópia no Google é
+ * CONVENIÊNCIA, o compromisso já está salvo. Fazer o salvamento esperar uma
+ * ida ao Google (refresh do token + API) deixaria o botão "Salvar" lento por
+ * causa de um serviço de terceiro — inclusive para quem nunca conectou conta
+ * nenhuma.
+ *
+ * Silenciosa pelo mesmo motivo: "não consegui falar com o Google" a cada
+ * salvamento seria ruído sobre algo que o corretor não pediu naquele
+ * instante. Quem não conectou nem chega a ver — `sem-conexao-google` e
+ * `nao-configurado` são o caso NORMAL, não erro. O que sobra vai para o
+ * console, e o estado da conexão se resolve em Configurações.
+ */
+function espelharNoGoogle(agendaId: string): void {
+  void sincronizarCompromisso(agendaId).then((r) => {
+    if (!r.ok && r.falha !== "sem-conexao-google" && r.falha !== "nao-configurado") {
+      console.warn("Google Agenda: não foi possível espelhar o compromisso —", r.falha);
+    }
+  });
+}
+
 export async function salvarAgenda(data: AgendaItem, userId: string): Promise<boolean> {
   const { agenda, setAgenda } = useAppStore.getState();
   const existing = agenda.find((a) => a.id === data.id) || null;
@@ -556,10 +692,24 @@ export async function salvarAgenda(data: AgendaItem, userId: string): Promise<bo
   }
   setAgenda(existing ? agenda.map((a) => (a.id === data.id ? data : a)) : [...agenda, data]);
   toast(existing ? "Compromisso atualizado." : "Compromisso adicionado.");
+  espelharNoGoogle(data.id);
   return true;
 }
 
 export async function excluirAgenda(id: string): Promise<boolean> {
+  // A remoção no Google vem ANTES, e esta é a única sincronização que se
+  // espera: a rota lê o `google_event_id` da própria linha, então depois do
+  // delete não haveria mais como saber qual evento apagar. Invertida a ordem,
+  // o id do evento teria que vir do browser — e aí o cliente poderia pedir a
+  // exclusão de qualquer evento da agenda pessoal do corretor.
+  //
+  // Falhar aqui NÃO cancela a exclusão: o que ele pediu foi remover o
+  // compromisso. Sobra um evento órfão no Google, que ele apaga pelo celular.
+  const google = await sincronizarCompromisso(id, "remover");
+  if (!google.ok && google.falha !== "sem-conexao-google" && google.falha !== "nao-configurado") {
+    console.warn("Google Agenda: o evento pode ter ficado na agenda —", google.falha);
+  }
+
   const { error } = await getSupabase().from("agenda").delete().eq("id", id);
   if (error) {
     toast("Não foi possível excluir: " + error.message, "error");
@@ -582,6 +732,8 @@ export async function alternarAgendaDone(id: string): Promise<void> {
     return;
   }
   setAgenda(agenda.map((x) => (x.id === id ? { ...x, done: novoValor } : x)));
+  // Concluir muda o título no Google (ganha "✓"), então vale re-espelhar.
+  espelharNoGoogle(id);
 }
 
 /**

@@ -2714,3 +2714,105 @@ legend{
 }
 .foco-ia p{ margin:0 0 6px; }
 .foco-ia .rotulo{ font-size:11px; text-transform:uppercase; letter-spacing:.5px; color: var(--text-faint); margin-bottom:6px; }
+
+/* ================================================================
+   CAIXA DE RESPOSTAS (/respostas)
+   Reusa os tokens das listas da Início; o que é próprio daqui é o
+   balão da mensagem — texto do proprietário, que quebra em várias
+   linhas e não pode virar ellipsis como o endereço.
+   ================================================================ */
+.resp-filtros{ display:flex; gap:8px; margin-bottom:16px; }
+.resp-filtro{
+  border:1px solid var(--border); background: var(--bg-elev-2); color: var(--text-dim);
+  padding:6px 14px; border-radius:999px; cursor:pointer;
+  font-size:12.5px; font-weight:600;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.resp-filtro:hover{ color: var(--text); }
+.resp-filtro.active{ background: var(--accent-soft); color: var(--accent-strong); border-color:transparent; }
+
+.resp-lista{ display:flex; flex-direction:column; gap:12px; }
+
+.resp-linha{
+  display:flex; flex-direction:column; gap:7px;
+  padding:14px 16px;
+  background: var(--bg-elev-1);
+  border:1px solid var(--border-soft);
+  border-radius: var(--radius);
+}
+/* A pendente é a única que precisa saltar: a tratada fica na lista só para
+   reler o contexto. */
+.resp-linha.pendente{ border-left:3px solid var(--accent); }
+
+.resp-top{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.resp-codigo{
+  background:none; border:none; padding:0; cursor:pointer;
+  font-family: var(--font-mono); font-size:12.5px; font-weight:700;
+  color: var(--accent-strong);
+}
+.resp-codigo:hover{ text-decoration:underline; }
+.resp-top-dir{ margin-left:auto; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.resp-status{ font-size:11.5px; color: var(--text-dim); }
+
+.resp-row{ display:flex; align-items:center; gap:7px; font-size:12.5px; min-width:0; }
+.resp-ic{ flex:0 0 auto; opacity:.7; font-size:11.5px; }
+.resp-val{ color: var(--text); min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.resp-val.vazio{ color: var(--text-faint); font-style:italic; }
+
+.resp-auto{
+  padding:7px 10px; border-radius: var(--radius-sm);
+  background: var(--bad-soft); color: var(--bad);
+  font-size:12px; font-weight:600;
+}
+
+.resp-conversa{ display:flex; flex-direction:column; gap:8px; margin-top:4px; }
+.resp-msg{
+  padding:10px 12px;
+  background: var(--bg-elev-3);
+  border-radius: var(--radius-sm);
+  border-left:2px solid var(--good);
+}
+.resp-msg.tratada{ border-left-color: var(--border); opacity:.62; }
+/* Mensagem de gente: quebra de linha preservada e sem ellipsis. */
+.resp-msg-txt{ font-size:13px; color: var(--text); line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; }
+.resp-msg-meta{ margin-top:5px; font-size:11px; color: var(--text-faint); }
+
+.resp-mais{
+  align-self:flex-start;
+  background:none; border:none; cursor:pointer; padding:2px 0;
+  font-size:12px; font-weight:600; color: var(--text-dim);
+}
+.resp-mais:hover{ color: var(--text); }
+
+.resp-acoes{ display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+.resp-lida{ margin-left:auto; }
+.resp-head-acoes{ display:flex; gap:8px; flex-wrap:wrap; }
+
+/* Blocos da caixa: Captação antes de Carteira. */
+.resp-bloco{ margin-bottom:22px; }
+.resp-bloco-head{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+.resp-bloco-titulo{
+  font-family: var(--font-display); font-size:16px; font-weight:600; color: var(--text);
+}
+.resp-bloco-n{
+  margin-left:auto; flex:0 0 auto;
+  font-size:11.5px; font-weight:700; color: var(--text-dim);
+  background: var(--bg-elev-3); padding:2px 9px; border-radius:999px;
+}
+/* Mensagem sem texto: presente na conversa, mas visivelmente sem conteúdo
+   para ler — não pode parecer que o corretor deixou de ler algo legível. */
+.resp-msg.midia{ border-left-color: var(--border); background: transparent; border:1px dashed var(--border); }
+.resp-msg.midia .resp-msg-txt{ color: var(--text-faint); font-style:italic; }
+.resp-midia{
+  padding:7px 10px; border-radius: var(--radius-sm);
+  background: var(--bg-elev-3); color: var(--text-dim);
+  font-size:12px;
+}
+
+/* Conexão com o Google Agenda (Configurações). */
+.google-conectado{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+.google-ok{ font-size:12.5px; font-weight:700; color: var(--good); }
+.google-email{
+  font-size:12px; color: var(--text-dim);
+  background: var(--bg-elev-3); padding:2px 9px; border-radius:999px;
+}

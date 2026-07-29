@@ -366,6 +366,49 @@ create table if not exists whatsapp_instancias (
 alter table whatsapp_instancias enable row level security;
 
 -- ------------------------------------------------------------
+-- GOOGLE AGENDA (conexão OAuth por corretor)
+-- ------------------------------------------------------------
+-- Guarda o refresh token que permite ao servidor criar eventos na
+-- Agenda do Google DO CORRETOR. Uma linha por conta, então `user_id`
+-- é a chave primária — mesma decisão de `whatsapp_instancias`.
+--
+-- RLS ligada e NENHUMA política, pela mesma razão daquela tabela e com
+-- um agravante: o refresh token não expira sozinho e vale para SEMPRE
+-- até ser revogado. Com uma política de select, o dono leria o próprio
+-- token pelo DevTools com a anon key; vazado, ele dá acesso contínuo à
+-- agenda pessoal da pessoa — bem além do que este app precisa. Segredo
+-- não chega ao browser.
+--
+-- Diferente da tabela do WhatsApp num ponto: esta é preenchida pelo
+-- PRÓPRIO APP (a rota /api/google/callback, com service role), e não à
+-- mão no Table Editor. O user_id vem sempre de uma sessão já verificada,
+-- nunca da requisição.
+create table if not exists google_contas (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  -- O que realmente importa: troca-se por access tokens indefinidamente.
+  refresh_token text not null,
+  -- Qual conta do Google foi conectada. Só para a UI dizer "conectado como
+  -- fulano@gmail.com" — sem isto, quem tem duas contas não sabe em qual
+  -- os compromissos estão caindo.
+  email text,
+  -- Agenda de destino. "primary" é a principal da conta; fica configurável
+  -- para quem quiser uma agenda separada só de trabalho.
+  calendar_id text not null default 'primary',
+  criado_em timestamptz not null default now()
+);
+
+alter table google_contas enable row level security;
+
+-- Liga o compromisso do painel ao evento criado no Google. Sem isto, cada
+-- salvamento criaria um evento NOVO em vez de atualizar o que já existe, e
+-- uma visita remarcada três vezes viraria três eventos no celular.
+--
+-- Vive na própria linha da agenda (e não em tabela à parte) porque some
+-- junto com ela: excluído o compromisso, não sobra ponteiro órfão. Herda o
+-- RLS de `agenda` — e pode, porque id de evento não é segredo.
+alter table agenda add column if not exists google_event_id text;
+
+-- ------------------------------------------------------------
 -- TELEFONE EM FORMA CANÔNICA (para casar a resposta com o imóvel)
 --
 -- O evento traz o jid ("554398024316@s.whatsapp.net"); o banco guarda o

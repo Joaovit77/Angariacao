@@ -6,6 +6,7 @@
    resetAllData() (app.js, seções 7 e 8).
    ================================================================ */
 import { useState } from "react";
+import ConexaoGoogle from "@/components/modais/ConexaoGoogle";
 import { useSessao } from "@/components/SessaoProvider";
 import { AGENDA_TYPES, ORIGENS_IMOVEL } from "@/lib/constantes";
 import { apagarTodosOsDados, carregarDadosDemo, numOrNull, salvarConfig } from "@/lib/mutacoes";
@@ -123,6 +124,8 @@ export default function ModalConfig() {
             Entra na apresentação das abordagens sugeridas por IA (&quot;meu nome é X e falo da Y&quot;).
           </div>
         </div>
+        <div className="divider"></div>
+        <ConexaoGoogle />
         <div className="divider"></div>
         <div className="field-group">
           <label>Tipos de compromisso da agenda</label>
