@@ -20,7 +20,7 @@
    ================================================================ */
 import { DIAS_COBRANCA_RESULTADO } from "./abordagens";
 import { historicoComStatus } from "./motor";
-import { SUFIXO_ID_ENCERRAMENTO, idNotaDaMensagem } from "./notas";
+import { PREFIXO_TEXTO_RESPOSTA, SUFIXO_ID_ENCERRAMENTO, idNotaDaMensagem } from "./notas";
 import { daysBetween } from "../datas";
 import type { NotaImovel, StatusHistoryEntry, Tentativa } from "../tipos";
 
@@ -215,7 +215,7 @@ export function notaDaResposta(mensagem: MensagemRecebida, agora: string): NotaI
     : `[${SEM_TEXTO[mensagem.tipo] || "mensagem sem texto"}]`;
   return {
     id: idNotaDaMensagem(mensagem.mensagemId),
-    texto: `Resposta pelo WhatsApp: ${corpo}`,
+    texto: `${PREFIXO_TEXTO_RESPOSTA}${corpo}`,
     data: agora,
   };
 }

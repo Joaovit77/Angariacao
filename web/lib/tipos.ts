@@ -19,6 +19,16 @@ export interface NotaImovel {
   texto: string;
   /** Datetime local "YYYY-MM-DDTHH:mm" — lexicograficamente ordenável. */
   data: string;
+  /** Resposta do proprietário já tratada na Caixa de respostas, sem que
+      nenhuma ação a tenha encerrado sozinha.
+
+      Só faz sentido na nota do webhook (`wa:<id>`). Existe porque "obrigado"
+      e "combinado" não vão gerar tentativa nem mudar status nunca: sem uma
+      saída manual, ficariam pendentes para sempre e a caixa encheria de
+      ruído até o corretor parar de abri-la. Ausente = não lida — a coluna é
+      jsonb, então nota antiga simplesmente não tem o campo.
+      Ver calculo/respostas.ts. */
+  lida?: boolean;
 }
 
 /** Roteiro de captação cadastrado pelo usuário — o QUE se diz ao proprietário.

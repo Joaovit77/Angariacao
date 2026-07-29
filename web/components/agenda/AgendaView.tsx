@@ -10,8 +10,11 @@
    que registra o novo contato e encadeia o próximo lembrete; os
    demais compromissos alternam done direto.
    ================================================================ */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import ItemAgenda from "@/components/agenda/ItemAgenda";
+import { mensagemFalhaGoogle, type FalhaGoogle } from "@/lib/calculo/googleAgenda";
+import { toast } from "@/lib/toast";
 import { AGENDA_PENDENTES_JANELA_DIAS, compararAgenda, separarPorHorario } from "@/lib/calculo/agenda";
 import { AGENDA_TYPES } from "@/lib/constantes";
 import { addDaysISO, todayISO } from "@/lib/datas";
@@ -29,6 +32,22 @@ export default function AgendaView() {
   const [filtro, setFiltro] = useState<FiltroAgenda>("pendentes");
   const [filtroTipo, setFiltroTipo] = useState("");
   const [filtroImovel, setFiltroImovel] = useState("");
+
+  // A volta do Google. O callback é um redirect de navegação e não tem como
+  // dar um toast — ele devolve o resultado na query, e a tradução é aqui.
+  // A URL é limpa em seguida: sem isso, um F5 repetiria o aviso, e um link
+  // copiado carregaria um "conectado!" que não aconteceu naquela sessão.
+  const router = useRouter();
+  const params = useSearchParams();
+  const resultadoGoogle = params.get("google");
+  const jaAvisou = useRef(false);
+  useEffect(() => {
+    if (!resultadoGoogle || jaAvisou.current) return;
+    jaAvisou.current = true;
+    if (resultadoGoogle === "ok") toast("Google Agenda conectado. Os próximos compromissos vão para lá.");
+    else toast(mensagemFalhaGoogle(resultadoGoogle as FalhaGoogle) || "Não foi possível conectar.", "error");
+    router.replace("/agenda");
+  }, [resultadoGoogle, router]);
 
   const hoje = todayISO();
   const limitePendentes = addDaysISO(hoje, AGENDA_PENDENTES_JANELA_DIAS) as string;

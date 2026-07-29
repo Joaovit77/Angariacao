@@ -215,6 +215,64 @@ o torna testável puro.
   aquele importa `historicoComStatus` daqui e o ciclo se fecharia. Módulo sem dependência nenhuma,
   de propósito. `ehNotaDeResposta` existe para ninguém refazer o `startsWith("wa:")` a dedo e
   acabar contando a fala do próprio app como se fosse resposta de alguém.
+- **`calculo/respostas.ts`** — a **caixa de respostas** (view `/respostas`): o que o proprietário
+  ESCREVEU, num lugar só. O webhook já gravava tudo, e três consumidores já liam esse dado — mas
+  nenhum mostrava o texto: `isStale` usa só a data (resposta é movimento), o termômetro usa a data
+  e escreve um `motivo`, e a IA guarda um resumo de uma linha na tentativa. Para ler o que a pessoa
+  disse era preciso abrir imóvel por imóvel no modal de notas; com 110 respostas na carteira — 64
+  num imóvel só — isso é o mesmo que não ter o dado.
+  **Não é o termômetro de novo, e a diferença é o corte.** `temperatura.ts` responde "de QUEM eu
+  corro atrás agora" e por isso exclui o já captado (a cobrança dessa fase é a agenda) e quem foi
+  contatado hoje. É justamente ali que está o volume: depois de angariar o proprietário fala muito
+  mais (CPF, fotos, "já assinei"), nada disso é captação e tudo isso é trabalho que se perde se
+  ninguém ler. A caixa **não corta o captado** — sem ela, esse material não tem leitor nenhum.
+  Manter o captado foi **medido**, não suposto, quando o corretor questionou a decisão. Em
+  29/07/2026 ele respondia por 59 das 80 pendências — e também por **11 dos 17 conteúdos que
+  importavam**: "Bloco 10 / Ap 701 / Garagem n° 299", "o valor cheio seria com o condomínio", "Já
+  Assinei", "caso confirme a visita ligue pro meu esposo" e o aviso, no LD-163, de que outra
+  imobiliária estava falando com o proprietário. Cortar por status jogaria fora as duas coisas
+  juntas. A separação é por **bloco** (`fase`): "Captação" antes de "Carteira", para o operacional
+  nunca enterrar um lead sem que nada se perca. O **badge do menu conta só captação** — somar as
+  duas o deixaria permanentemente alto por causa de documentação e visita de inquilino, e badge que
+  nunca baixa ninguém olha.
+  **O ruído não tem status, e é ele que enche a caixa.** Na mesma medição, 63 das 80 pendências
+  eram marcador de mídia ou mensagem de até 20 caracteres — e isso valia igual na captação (15 de
+  21). Só o **marcador de mídia** deixa de cobrar (`ehSoMidia` em `calculo/notas.ts`): `[áudio]`,
+  `[imagem]` e afins não têm o que ser lido no painel, e a única saída deles é abrir o WhatsApp, que
+  é o que a linha já oferece. Eles continuam visíveis, e a linha diz quantos são — nove áudios são
+  um proprietário muito ativo, e escondê-los faria a linha mentir. As mensagens **curtas continuam
+  cobrando**, contra a intuição: "Ok" é ruído, mas "Pode sim" tem 8 caracteres e "Já Assinei" tem
+  10 — nenhuma regra de tamanho separa uma da outra, e errar aí é perder o "sim". Pelo mesmo
+  motivo a linha fechada mostra a `previa` (a última mensagem COM TEXTO) e não a `ultima`: com um
+  áudio encerrando a conversa, a prévia seria "[áudio]" e não diria nada sobre o assunto.
+  A unidade da lista é o **imóvel**, não a mensagem: no WhatsApp as pessoas mandam três mensagens
+  curtas seguidas, e uma linha por mensagem faria um proprietário empurrar todos os outros da tela
+  (mesmo motivo do "uma mensagem por PROPRIETÁRIO" no follow-up).
+  **"Pendente" tem regra DUPLA, e nenhuma metade funciona sozinha.** Sai da caixa por **ação** —
+  tentativa registrada ou status mudado depois da mensagem, então quem trabalha pelo painel nunca
+  marca nada, igual ao `aguardandoResultado` que morre na confirmação — **ou** pelo flag `lida`
+  (`NotaImovel.lida`, jsonb, sem migração). O flag existe porque "obrigado" e "combinado" não vão
+  gerar tentativa nem mudar status nunca: só com a regra derivada essas mensagens ficariam
+  pendentes para sempre, a caixa encheria de ruído e o corretor pararia de abri-la — que é
+  exatamente como a faixa de "imóvel parado" matou o termômetro. Só com o flag, viraria burocracia
+  diária. O empate de mesmo dia entre `statusHistory` (guarda DIA) e a nota (guarda datetime) cai
+  para o lado de **continuar pendente**: dar por tratada uma resposta que ninguém leu é o único
+  erro que esta tela não pode cometer, porque é a tela inteira.
+  Há **saída em massa** (`marcarTodasRespostasLidas`) porque a caixa nasce sobre um backlog que
+  nunca teve tela: medido em 29/07/2026, na estreia ela abria com **13 dos 14 imóveis pendentes e
+  ~90 mensagens**, várias com tudo por tratar (LD-123 com 18 de 18). Sem um "limpar", a primeira
+  abertura não deixa distinguir o que chegou hoje do que está parado há um mês — e a tela morreria
+  na estreia, do mesmo jeito que a faixa de "imóvel parado" morreu no termômetro. Repare que a
+  regra derivada não é o problema e está funcionando: no mesmo dia, o LD-156 tinha 64 mensagens e
+  só 24 pendentes (tentativas e mudanças de status limparam 40).
+  A view tem botão **Atualizar** (`recarregarEstado`) por um motivo estrutural: a resposta entra
+  pelo **webhook, no servidor**, e o painel carrega o estado uma vez por sessão — numa aba aberta
+  desde cedo, uma caixa vazia diria "nada chegou" quando significa "nada chegou desde o login".
+  Não há realtime; é o botão explícito no único lugar em que a defasagem engana.
+- **`calculo/googleAgenda.ts`** — as partes puras do espelhamento no Google Agenda: a tradução de
+  um `AgendaItem` em evento (dia inteiro vs. cronometrado, fuso, o "✓" do concluído), o vocabulário
+  de falhas e a URL de autorização. Mesmo papel de `calculo/whatsapp.ts` no envio. Ver
+  "As rotas de servidor → `api/google/*`".
 - **`calculo/mapa.ts`** — em qual dos quatro baldes de cor cada imóvel cai no mapa
   (`categoriaMapa`: locado / angariado / andamento / sem-sucesso) e as cores/rótulos da legenda
   (`CATEGORIAS_MAPA`). Fonte única: o pino (`MapaLeaflet`) e a legenda-filtro (`MapaView`) leem
@@ -513,9 +571,9 @@ contas e foi apresentada ao corretor com números de seed dentro — inclusive i
 carteira que nunca locou nenhum. Quem pegou o erro foi ele. Número estranho na análise (locação
 onde não devia haver, angariação demais) é sintoma disto antes de ser sintoma de bug no cálculo.
 
-### As rotas de servidor: `api/whatsapp/enviar`, `api/whatsapp/webhook` e `api/ia`
+### As rotas de servidor: `api/whatsapp/*`, `api/ia` e `api/google/*`
 
-São as **três** exceções ao "sem servidor", e existem pelo mesmo motivo: guardam um segredo que não
+São as exceções ao "sem servidor", e existem todas pelo mesmo motivo: guardam um segredo que não
 pode chegar ao browser. Toda rota nova aqui precisa justificar-se por esse critério — se não guarda
 segredo, é código de cliente.
 
@@ -697,6 +755,59 @@ que entrava pelo cadastro rápido ficava invisível no Foco do dia e no ranking 
 para quem só trabalha por garimpo). E checa **duplicidade de endereço** (checava só código repetido;
 garimpo produz duplicata o tempo todo — a mesma placa fotografada duas vezes, o mesmo anúncio visto
 na OLX e no Marketplace). Como no `ModalImovel`, o aviso de duplicata **avisa, não bloqueia**.
+
+#### `api/google/*` — espelhar a agenda no Google Agenda
+
+Quatro rotas (`conectar`, `callback`, `sincronizar`, `conta`) e um módulo `_comum.ts` que não é
+rota (o `_` o mantém fora do roteamento). O segredo que as justifica é o `GOOGLE_CLIENT_SECRET` e,
+mais ainda, o **refresh token** de cada corretor: ele não expira sozinho e dá acesso contínuo à
+agenda pessoal da pessoa. Mora em `google_contas`, tabela com RLS ligada e **nenhuma política** —
+o mesmo desenho de `whatsapp_instancias`, pelo mesmo motivo (uma política de select entregaria o
+token ao browser com a anon key).
+
+**A sincronização é de UMA VIA: painel → Google.** Não há reconciliação porque não há conflito
+possível. É escolha, não falta de tempo: o bidirecional exige detectar mudança do lado do Google
+(canais push que expiram toda semana, ou varredura periódica), decidir quem vence quando os dois
+mudam, e distinguir "apagado no Google" de "nunca sincronizado" — é onde essa integração costuma
+quebrar, e o problema real do corretor era outro (receber o lembrete no celular). Consequência
+assumida: evento editado no Google é sobrescrito no próximo salvamento daqui.
+
+Quatro coisas que caem disso e não são detalhe:
+
+- **O `state` do OAuth é ASSINADO, e precisava ser.** O callback do Google é um redirect de
+  navegação: chega sem sessão, porque a sessão do Supabase neste app vive em `localStorage` e
+  servidor nenhum enxerga isso. Mandar o access token na query também não serve — query string
+  entra em log, histórico e `Referer`. Então vai só o `user_id`, com HMAC. Sem a assinatura,
+  qualquer um montaria um `state` com o id de outro corretor e plantaria a **própria** conta do
+  Google na conta dele, passando a receber os compromissos do outro. A chave do HMAC é o
+  `GOOGLE_CLIENT_SECRET` — reúso consciente, para não criar mais uma variável de ambiente para
+  configurar errado.
+- **`access_type=offline` + `prompt=consent`.** Sem o primeiro não vem refresh token e tudo morre
+  em uma hora; sem o segundo, RECONECTAR não devolve refresh token nenhum (o Google só o manda na
+  primeira autorização de cada conta) e o corretor fica preso num "conectado" que não funciona. O
+  callback recusa gravar uma conexão sem refresh token, em vez de deixá-la morrer em silêncio.
+- **O conteúdo do evento sai do BANCO**, nunca do corpo da requisição — mesma regra do "destinatário
+  sai do banco" no envio de WhatsApp. Aqui o risco é que a rota viraria um "escreva o que eu quiser
+  na agenda do usuário", e um bug de UI passaria a corromper a agenda pessoal dele. Pelo mesmo
+  motivo a **remoção acontece ANTES** da exclusão local, com a linha ainda no banco: é assim que o
+  `google_event_id` continua vindo do banco em vez de o cliente poder pedir a exclusão de qualquer
+  evento da agenda da pessoa.
+- **Falhar no Google não derruba o salvamento.** O compromisso é do corretor; a cópia lá é
+  conveniência. `espelharNoGoogle` dispara e não espera (o botão Salvar não pode ficar lento por
+  causa de serviço de terceiro), e é silenciosa: `sem-conexao-google` e `nao-configurado` são o caso
+  NORMAL de quem nunca conectou, não erro. Só a exclusão espera, e mesmo assim segue em frente se o
+  Google recusar — sobra um evento órfão, que é melhor que não conseguir apagar o compromisso.
+
+Compromisso **sem hora vira evento de DIA INTEIRO** (a mesma distinção do `separarPorHorario`):
+como evento cronometrado ele apareceria de madrugada e dispararia lembrete na hora errada. Com
+hora, o `timeZone` é obrigatório — sem ele o Google assume UTC e a visita das 10h chega às 7h no
+celular. Concluir **não apaga** o evento, põe "✓" no título: a agenda também é registro do que foi
+feito, e uma visita que some depois de realizada apaga a prova de que aconteceu.
+
+> **A armadilha que não é do código:** enquanto a tela de consentimento estiver em modo **Teste** no
+> Google Cloud, o refresh token expira em **7 dias**. A sincronização funciona a semana inteira e
+> quebra sozinha, sem erro visível — o sintoma é `invalid_grant`, que a rota traduz para
+> `autorizacao-expirada` e a UI pede reconexão. Para uso real, publicar em "Em produção".
 
 ## Garimpo automatizado: o que já foi medido e descartado
 
