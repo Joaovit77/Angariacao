@@ -8,7 +8,7 @@
    da Agenda (mensagemRenovacaoAngariacao) para não haver duas
    redações do mesmo aviso.
    ================================================================ */
-import type { Imovel } from "../tipos";
+import type { Imovel, Tentativa } from "../tipos";
 import { mensagemRenovacaoAngariacao, telefoneWhatsapp } from "./agenda";
 
 export interface ModeloWhatsapp {
@@ -20,6 +20,13 @@ export interface ModeloWhatsapp {
 function saudacao(imovel: Imovel): string {
   const nome = imovel.proprietarioNome ? imovel.proprietarioNome.trim() : "";
   return nome ? `Olá, ${nome}! Tudo bem?` : "Olá! Tudo bem?";
+}
+
+/** "Olá, Fulano!" — sem o "Tudo bem?", para responder a uma conversa que já
+    está aberta (os modelos de resposta ao proprietário). */
+function olaBreve(imovel: Imovel): string {
+  const nome = imovel.proprietarioNome ? imovel.proprietarioNome.trim() : "";
+  return nome ? `Olá, ${nome}!` : "Olá!";
 }
 
 /** Palavras que já identificam a unidade. Se o corretor digitou "ap 806" ou
@@ -151,6 +158,37 @@ Ainda tem interesse em conversar sobre a locação? Fico à disposição.`,
 
   "renovacao-angariacao": (i) => mensagemRenovacaoAngariacao(i),
 
+  /* --- Respostas ao proprietário -----------------------------------------
+     Réplicas curtas para o que o proprietário ESCREVEU, sugeridas na caixa
+     de respostas conforme a classificação da mensagem (ver
+     `sugestaoRespostaModelo`). Não são contato de captação — fecham ou dão
+     sequência a uma conversa já respondida —, então ficam FORA de
+     MODELOS_CAPTACAO e não registram tentativa. Saudação leve (sem o "Tudo
+     bem?"), porque a conversa já está aberta. */
+
+  // Terminal: ele disse que não há mais o que fazer (encerrou, recusou, não é
+  // mais dono). O tom é de agradecimento e porta aberta, não de insistência.
+  "resposta-encerramento": (i) => `${olaBreve(i)} Entendido, muito obrigado pelo retorno e pela atenção!
+
+Fico à disposição caso precise de algo no futuro. Desejo tudo de bom. 🙏`,
+
+  // "Vai retornar / vai pensar": ele pediu tempo. Confirma que ficamos no
+  // aguardo, sem cobrar — a cobrança é o follow-up, no tempo dele.
+  "resposta-aguardo": (i) => `${olaBreve(i)} Combinado, fico no aguardo do seu retorno então.
+
+Qualquer dúvida nesse meio-tempo, é só me chamar por aqui. 😊`,
+
+  // "Agendou": ficou marcada visita/reunião. Confirma o combinado.
+  "resposta-agendamento": (i) => `${olaBreve(i)} Perfeito, fica combinado então!
+
+Vou me organizar por aqui e, qualquer imprevisto, a gente se avisa. Até lá!`,
+
+  // "Número errado": quem respondeu não é o proprietário. Sem nome (não é ele)
+  // e sem falar do imóvel — só um pedido de desculpas pelo engano.
+  "resposta-engano": () => `Olá! Peço desculpas pelo engano, vou corrigir aqui no meu cadastro.
+
+Obrigado pela atenção e tenha um ótimo dia!`,
+
   // Confirmação de endereço: disparada no pré-cadastro rápido. Repete o
   // endereço que temos para o proprietário conferir/corrigir na conversa.
   "confirmacao-endereco": (i, nome) => `${saudacao(i)}
@@ -176,7 +214,17 @@ export const MODELOS_WHATSAPP: ModeloWhatsapp[] = [
   { id: "imovel-locado", rotulo: "Imóvel locado" },
   { id: "retomada-contato", rotulo: "Retomada de contato" },
   { id: "renovacao-angariacao", rotulo: "Renovação de angariação" },
+  // Respostas ao que o proprietário escreveu (ver sugestaoRespostaModelo).
+  { id: "resposta-encerramento", rotulo: "Resposta: encerramento cordial" },
+  { id: "resposta-aguardo", rotulo: "Resposta: aguardar retorno" },
+  { id: "resposta-agendamento", rotulo: "Resposta: confirmar agendamento" },
+  { id: "resposta-engano", rotulo: "Resposta: desculpar engano" },
 ];
+
+/** Rótulo de um modelo do sistema pelo id ("" quando não existe). */
+export function rotuloModeloWhatsapp(id: string): string {
+  return MODELOS_WHATSAPP.find((m) => m.id === id)?.rotulo || "";
+}
 
 /**
  * Modelos do sistema que SÃO contato de captação: os que abrem ou reabrem a
@@ -228,6 +276,49 @@ const MODELO_PADRAO_POR_STATUS: Record<string, string> = {
 /** Modelo pré-selecionado conforme a etapa atual do imóvel no funil. */
 export function modeloPadraoWhatsapp(status: string | null | undefined): string {
   return MODELO_PADRAO_POR_STATUS[status || ""] || "retomada-contato";
+}
+
+/* --- Sugestão de resposta conforme o que o proprietário disse ---------------
+   CAMADA 1 (sem IA): a resposta certa depende do desfecho da última mensagem,
+   e o webhook JÁ classificou isso — a classificação viaja em `sugestaoIa` da
+   tentativa que a resposta fechou. Aqui só traduzimos aquele desfecho no
+   modelo de réplica adequado, sem nenhuma chamada nova de IA.
+
+   Fica de fora o "respondeu" genérico (dúvida, pedido de informação): não há
+   réplica pronta que sirva, e responder isso exige LER a mensagem — é a
+   camada 2 (rascunho por IA), ainda não implementada. Aí devolvemos null e a
+   caixa cai no modelo por etapa do funil, como antes.
+
+   Lê a classificação MAIS RECENTE (a última tentativa que a IA anotou), não a
+   última tentativa: um follow-up manual posterior não tem `sugestaoIa` e não
+   deve apagar a leitura da resposta que veio antes dele. */
+export function sugestaoRespostaModelo(imovel: Imovel): string | null {
+  let sug: NonNullable<Tentativa["sugestaoIa"]> | null = null;
+  let quando = "";
+  for (const t of imovel.tentativas || []) {
+    if (t.sugestaoIa && (t.data || "") >= quando) {
+      sug = t.sugestaoIa;
+      quando = t.data || "";
+    }
+  }
+  if (!sug) return null;
+
+  // Motivo de perda tem prioridade: a mensagem encerrou o assunto, qualquer que
+  // tenha sido o `resultado` que a IA marcou junto.
+  if (sug.motivoPerda) return "resposta-encerramento";
+
+  switch (sug.resultado) {
+    case "agendou":
+      return "resposta-agendamento";
+    case "vai-retornar":
+      return "resposta-aguardo";
+    case "recusou":
+      return "resposta-encerramento";
+    case "numero-errado":
+      return "resposta-engano";
+    default:
+      return null; // "respondeu"/"sem-resposta" — sem réplica pronta (camada 2)
+  }
 }
 
 export function mensagemWhatsapp(modeloId: string, imovel: Imovel, nomeCaptador?: string): string {

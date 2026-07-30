@@ -2809,6 +2809,14 @@ legend{
   font-size:12px;
 }
 
+/* Sugestão de resposta pronta (camada 1): tom de destaque, não de alerta. */
+.resp-sugestao{
+  margin-top:6px; padding:7px 10px; border-radius: var(--radius-sm);
+  background: var(--accent-soft); color: var(--text-dim);
+  font-size:12px;
+}
+.resp-sugestao strong{ color: var(--accent-strong); }
+
 /* Conexão com o Google Agenda (Configurações). */
 .google-conectado{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
 .google-ok{ font-size:12.5px; font-weight:700; color: var(--good); }
