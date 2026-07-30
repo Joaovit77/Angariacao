@@ -478,13 +478,18 @@ export interface RespostaClassificada {
  *   não encerrar — some do pipeline e não alimenta o gráfico de perdas.
  *
  * Os dois primeiros são os casos reais que apareceram no teste de follow-up:
- * "já aluguei" e "já trabalho com outra imobiliária".
+ * "já aluguei" e "já trabalho com outra imobiliária". "Não é mais o
+ * proprietário" entrou depois, do caso real do LD-170 ("não é mais de minha
+ * propriedade", 30/07/2026): é terminal e explícito, mas NÃO é "vendido" — ele
+ * pode ter passado o imóvel adiante de mil formas, e a IA (corretamente)
+ * recusava supor a venda, deixando um lead morto preso em "Novo contato".
  */
 export const MOTIVOS_PERDA_IA = [
   "Imóvel já alugado por conta própria",
   "Optou por outra imobiliária",
   "Imóvel já vendido",
   "Proprietário desistiu de alugar",
+  "Não é mais o proprietário",
 ] as const;
 
 /** Esquema fechado: o `enum` é o que impede o modelo de inventar desfecho.
@@ -554,6 +559,7 @@ Sobre "motivoPerda" — leia com atenção, porque preenchê-lo ENCERRA o imóve
 - "Optou por outra imobiliária" — já está com outra imobiliária, ou já foi alugado por ela.
 - "Imóvel já vendido" — vendeu, então não há locação a fazer.
 - "Proprietário desistiu de alugar" — desistiu de alugar (vai morar, deixar vazio, reformar por tempo indefinido).
+- "Não é mais o proprietário" — o imóvel deixou de ser dele ("não é mais de minha propriedade", "passei para outra pessoa", "não sou mais o dono"). Use SEM precisar saber se foi venda, herança ou transferência: basta ele dizer que o imóvel não é mais dele. Se ele disser expressamente que VENDEU, prefira "Imóvel já vendido".
 - Devolva null quando houver qualquer porta aberta para ESTE imóvel: "por enquanto não", "ainda não aluguei", "estou vendo com outra imobiliária ainda", "depois eu vejo". Recusa mole NÃO é encerramento.
 - Atenção à negação: "ainda NÃO foi alugado" e "não quero alugar agora" são coisas diferentes. A primeira é null.
 - Se ele disser que ESTE imóvel já está resolvido e mencionar OUTRO imóvel que tem ("esse já aluguei, mas tenho outro na mesma rua"), encerre este mesmo assim: o outro é um cadastro novo, não um motivo para manter este aberto. Cite o outro imóvel no resumo, para o corretor saber que existe uma oportunidade nova ali.

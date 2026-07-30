@@ -105,8 +105,8 @@ export const MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO = "Número não encontrado";
 
 export const MOTIVOS_PERDA = [
   "Imóvel já vendido", "Imóvel já alugado por conta própria", "Proprietário desistiu de alugar",
-  "Valor pedido incompatível com mercado", "Optou por outra imobiliária", "Perda de contato definitiva",
-  MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO, "Outro",
+  "Não é mais o proprietário", "Valor pedido incompatível com mercado", "Optou por outra imobiliária",
+  "Perda de contato definitiva", MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO, "Outro",
 ] as const;
 
 // Cores de identidade visual por status (kanban).
