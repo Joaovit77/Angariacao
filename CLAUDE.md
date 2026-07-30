@@ -682,7 +682,7 @@ Regras ao mexer nela:
   PERDA, e marcá-lo como ganho somaria à conversão, à comissão e à meta do mês um negócio que não
   existiu.
 
-#### `api/ia` — sugestão de roteiros, leitura do ranking e captura de anúncio (OpenAI)
+#### `api/ia` — sugestão de roteiros, leitura do ranking, captura de anúncio e rascunho de resposta (OpenAI)
 
 Duas funções, ambas escrevendo **texto**: sugerir roteiros de abordagem e interpretar o ranking.
 O fluxo espelha o do WhatsApp — `lib/ia.ts` (browser) → a rota (servidor) → OpenAI —, e as
@@ -755,6 +755,37 @@ que entrava pelo cadastro rápido ficava invisível no Foco do dia e no ranking 
 para quem só trabalha por garimpo). E checa **duplicidade de endereço** (checava só código repetido;
 garimpo produz duplicata o tempo todo — a mesma placa fotografada duas vezes, o mesmo anúncio visto
 na OLX e no Marketplace). Como no `ModalImovel`, o aviso de duplicata **avisa, não bloqueia**.
+
+##### Responder o proprietário: réplica pronta (camada 1) e rascunho por IA (camada 2)
+
+A caixa de respostas (`/respostas`) mostra o que o proprietário escreveu; o passo seguinte é
+**responder**, e ele tem DUAS camadas — a divisão é entre o que dá para saber sem ler a mensagem e
+o que não dá.
+
+- **Camada 1 — réplica pronta, SEM IA** (`sugestaoRespostaModelo` em `calculo/whatsapp.ts`). O
+  webhook já classificou a resposta e guardou o desfecho em `tentativa.sugestaoIa`; a camada 1 só
+  traduz aquele desfecho num modelo de réplica: `motivoPerda`/`recusou` → encerramento cordial;
+  `agendou` → confirmar; `vai-retornar` → aguardar; `numero-errado` → desculpar engano. São 4
+  modelos do sistema NOVOS, **fora de `MODELOS_CAPTACAO`** (não são pitch — não registram tentativa
+  nem entram no ranking). O botão "Responder (sugestão)" abre o `ModalWhatsapp` já preenchido. O
+  `"respondeu"` genérico (uma dúvida, uma pergunta, "não entendi", "sou o proprietário") devolve
+  `null` de propósito: não há réplica fixa que sirva sem LER a mensagem — é a camada 2.
+
+- **Camada 2 — rascunho por IA** (`tipo: "rascunhar-resposta"`). Para o `"respondeu"` genérico, o
+  botão "✨ Rascunhar resposta (IA)" chama a rota, que **relê a última mensagem do proprietário do
+  BANCO** (a nota do webhook, com o token de quem chamou) — o browser manda só o `imovelId`, nem o
+  alvo do rascunho ele escolhe. É a forma mais forte da regra "o conteúdo sai do banco": mais rígida
+  que a extração de anúncio, que aceita texto colado. A saída é objeto **fechado** (um campo
+  `mensagem`) e cai no `ModalWhatsapp` **editável** (prop `textoInicial` + `abrirWhatsappRascunho`
+  no `uiModal`), sem modelo associado — logo não credita tentativa. **A IA sugere, o corretor
+  confirma:** nada sai sozinho.
+
+  A trava que dá forma ao `promptRascunharResposta`: **a IA não sabe nada do imóvel além do
+  endereço.** Se o proprietário pergunta "tem garagem?", responder "sim, duas vagas" seria promessa
+  falsa a uma pessoa real. Por isso o prompt proíbe inventar fato do imóvel e manda reconhecer a
+  pergunta levando a um próximo passo (ligação/visita em que o corretor dá o detalhe) — o análogo
+  exato do "não invente" da extração. Gated por `podeUsarIa` (a UI usa o flag `iaDisponivel`), com
+  `MAX_TEXTO_RASCUNHO` limitando o custo.
 
 #### `api/google/*` — espelhar a agenda no Google Agenda
 

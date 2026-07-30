@@ -32,6 +32,7 @@ import { planoDoDia } from "@/lib/calculo/planoDia";
 import { todayISO } from "@/lib/datas";
 import {
   ESQUEMA_ANUNCIO,
+  ESQUEMA_RASCUNHO,
   ESQUEMA_ROTEIROS,
   contagemPorStatus,
   corrigirMarcadores,
@@ -41,6 +42,7 @@ import {
   promptAnalisarDashboard,
   promptExplicarFoco,
   promptExtrairAnuncio,
+  promptRascunharResposta,
   promptResumoDia,
   promptSugerirRoteiros,
   type AnuncioExtraido,
@@ -48,6 +50,8 @@ import {
   type FalhaIa,
   type RoteiroSugerido,
 } from "@/lib/calculo/ia";
+import { corpoDaResposta, ehSoMidia } from "@/lib/calculo/notas";
+import { respostasDoImovel } from "@/lib/calculo/respostas";
 import {
   fromDbAbordagem,
   fromDbAgenda,
@@ -79,6 +83,8 @@ interface Resposta {
   texto?: string;
   /** tipo "extrair-anuncio" */
   anuncio?: AnuncioExtraido;
+  /** tipo "rascunhar-resposta" */
+  rascunho?: string;
 }
 
 function erro(falha: FalhaIa, status: number): Response {
@@ -205,13 +211,13 @@ export async function POST(request: Request): Promise<Response> {
   if (!(await podeUsarIa(supabase, sessao.user.id))) return erro("sem-permissao", 403);
 
   // 3. Corpo — só os tipos conhecidos.
-  let corpo: { tipo?: unknown; contexto?: unknown; texto?: unknown };
+  let corpo: { tipo?: unknown; contexto?: unknown; texto?: unknown; imovelId?: unknown };
   try {
     corpo = await request.json();
   } catch {
     return erro("requisicao-invalida", 400);
   }
-  const TIPOS = ["sugerir-roteiros", "analisar-abordagens", "analisar-dashboard", "resumo-dia", "explicar-foco", "extrair-anuncio"] as const;
+  const TIPOS = ["sugerir-roteiros", "analisar-abordagens", "analisar-dashboard", "resumo-dia", "explicar-foco", "extrair-anuncio", "rascunhar-resposta"] as const;
   type Tipo = (typeof TIPOS)[number];
   const tipo = typeof corpo.tipo === "string" ? corpo.tipo : "";
   if (!(TIPOS as readonly string[]).includes(tipo)) return erro("requisicao-invalida", 400);
@@ -337,6 +343,72 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json(resposta);
     } catch (e) {
       console.error("IA: resposta da extração não veio parseável:", e);
+      return erro("falha-ia", 502);
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // 3a-ter. Rascunhar a resposta ao proprietário (camada 2 da caixa de
+  //   respostas). O "respondeu" genérico não tem réplica pronta porque
+  //   depende de LER a mensagem — a IA lê e devolve um rascunho editável.
+  //
+  //   O texto da mensagem NÃO vem do browser: relemos a nota que o webhook
+  //   gravou, com o token de quem chamou (RLS escopa ao dono). É a forma
+  //   mais forte da regra "o conteúdo sai do banco" — o cliente manda só o
+  //   imovelId, e nem o alvo do rascunho ele escolhe.
+  // ---------------------------------------------------------------
+  if (pedido === "rascunhar-resposta") {
+    const imovelId = typeof corpo.imovelId === "string" ? corpo.imovelId : "";
+    if (!imovelId) return erro("requisicao-invalida", 400);
+
+    const { data: imRow, error: imErr } = await supabase
+      .from("imoveis")
+      .select("*")
+      .eq("id", imovelId)
+      .maybeSingle();
+    if (imErr) {
+      console.error("IA: falha ao ler o imóvel para rascunho:", imErr.message);
+      return erro("falha-ia", 500);
+    }
+    // Sem imóvel (id inválido ou de outro dono, barrado pelo RLS) ou sem
+    // mensagem com texto para responder: não há o que rascunhar.
+    if (!imRow) return erro("sem-dados", 422);
+    const imovel = fromDbImovel(imRow as DbImovelRow);
+
+    const comTexto = respostasDoImovel(imovel).filter((n) => !ehSoMidia(n.texto));
+    const ultima = comTexto[comTexto.length - 1];
+    const mensagemProp = ultima ? corpoDaResposta(ultima.texto) : "";
+    if (!mensagemProp.trim()) return erro("sem-dados", 422);
+
+    const ref = [imovel.endereco, imovel.bairro].map((s) => (s || "").trim()).filter(Boolean).join(", ");
+
+    let conclusao: OpenAI.Chat.ChatCompletion;
+    try {
+      conclusao = await openai.chat.completions.create({
+        model: MODELO,
+        max_completion_tokens: MAX_TOKENS,
+        reasoning_effort: "low",
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: "rascunho", strict: true, schema: ESQUEMA_RASCUNHO },
+        },
+        messages: [
+          { role: "user", content: promptRascunharResposta(mensagemProp, imovel.proprietarioNome, ref) },
+        ],
+      });
+    } catch (e) {
+      console.error("IA: falha ao rascunhar a resposta:", e);
+      return erro(classificarErroIa(e), 502);
+    }
+
+    try {
+      const dados = JSON.parse(textoDaResposta(conclusao)) as { mensagem?: unknown };
+      const rascunho = typeof dados.mensagem === "string" ? dados.mensagem.trim() : "";
+      if (!rascunho) return erro("falha-ia", 502);
+      const resposta: Resposta = { ok: true, rascunho };
+      return Response.json(resposta);
+    } catch (e) {
+      console.error("IA: rascunho não veio parseável:", e);
       return erro("falha-ia", 502);
     }
   }

@@ -21,6 +21,7 @@ import { caixaDeRespostas } from "@/lib/calculo/respostas";
 import { corpoDaResposta } from "@/lib/calculo/notas";
 import { modeloPadraoWhatsapp, rotuloModeloWhatsapp, sugestaoRespostaModelo } from "@/lib/calculo/whatsapp";
 import { todayISO } from "@/lib/datas";
+import { rascunharResposta } from "@/lib/ia";
 import { marcarRespostasLidas, marcarTodasRespostasLidas, recarregarEstado } from "@/lib/mutacoes";
 import { toast } from "@/lib/toast";
 import { useAppStore } from "@/lib/store";
@@ -68,8 +69,11 @@ function Conversa({ linha, expandida }: { linha: LinhaResposta; expandida: boole
 
 function Linha({ linha, imovel }: { linha: LinhaResposta; imovel: Imovel }) {
   const abrirModal = useUiModal((s) => s.abrirModal);
+  const abrirWhatsappRascunho = useUiModal((s) => s.abrirWhatsappRascunho);
+  const iaDisponivel = useAppStore((s) => s.iaDisponivel);
   const [expandida, setExpandida] = useState(false);
   const [marcando, setMarcando] = useState(false);
+  const [rascunhando, setRascunhando] = useState(false);
 
   const anteriores = linha.total - 1;
 
@@ -81,6 +85,25 @@ function Linha({ linha, imovel }: { linha: LinhaResposta; imovel: Imovel }) {
   const rotuloSugerido = modeloSugerido
     ? rotuloModeloWhatsapp(modeloSugerido).replace(/^Resposta:\s*/, "")
     : "";
+
+  // Camada 2: sem réplica pronta (o "respondeu" genérico — uma dúvida, uma
+  // pergunta), a IA lê a última mensagem e rascunha a resposta. Só faz sentido
+  // com IA liberada, telefone e ao menos uma mensagem COM texto para ler.
+  const podeRascunhar = iaDisponivel && !modeloSugerido && !!imovel.proprietarioTelefone && !linha.previa.soMidia;
+
+  async function rascunhar() {
+    if (rascunhando) return;
+    setRascunhando(true);
+    const r = await rascunharResposta(imovel.id);
+    setRascunhando(false);
+    if (r.ok && r.rascunho) {
+      // Abre o WhatsApp já com o rascunho — visível e editável, o corretor
+      // confere e envia. Nada sai sozinho.
+      abrirWhatsappRascunho(imovel.id, r.rascunho);
+    } else {
+      toast(r.mensagem || "A IA não conseguiu rascunhar a resposta agora.", "error");
+    }
+  }
 
   async function marcarLida() {
     if (marcando) return;
@@ -170,6 +193,17 @@ function Linha({ linha, imovel }: { linha: LinhaResposta; imovel: Imovel }) {
             }
           >
             {modeloSugerido ? "💬 Responder (sugestão)" : "💬 Responder"}
+          </button>
+        )}
+        {podeRascunhar && (
+          <button
+            type="button"
+            className="btn btn-sm"
+            title="A IA lê a última mensagem e escreve um rascunho de resposta para você conferir"
+            onClick={rascunhar}
+            disabled={rascunhando}
+          >
+            {rascunhando ? "Rascunhando..." : "✨ Rascunhar resposta (IA)"}
           </button>
         )}
         <button type="button" className="btn btn-sm" onClick={() => abrirModal("tentativas", imovel.id)}>

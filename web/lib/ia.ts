@@ -30,6 +30,15 @@ export interface ResultadoExtracao {
   anuncio?: AnuncioExtraido;
 }
 
+export interface ResultadoRascunho {
+  ok: boolean;
+  falha?: FalhaIa;
+  /** Mensagem de erro pronta (quando ok=false). */
+  mensagem?: string;
+  /** O texto sugerido para responder ao proprietário (quando ok=true). */
+  rascunho?: string;
+}
+
 async function chamar<T>(corpo: unknown): Promise<T | { ok: false; falha: FalhaIa }> {
   const {
     data: { session },
@@ -94,6 +103,15 @@ export function sugerirRoteiros(contexto: ContextoRoteiro): Promise<ResultadoRot
     em lib/calculo/ia.ts por que a imagem saiu. */
 export function extrairAnuncio(texto: string): Promise<ResultadoExtracao> {
   return chamar<ResultadoExtracao>({ tipo: "extrair-anuncio", texto });
+}
+
+/** Rascunha a resposta ao proprietário a partir da ÚLTIMA mensagem dele.
+    Só passa o `imovelId`: a rota relê a mensagem do banco (a nota do webhook),
+    não confia no texto do browser — mesma regra do "o conteúdo sai do banco".
+    O resultado é sugestão: cai no ModalWhatsapp editável, quem envia é o
+    corretor. */
+export function rascunharResposta(imovelId: string): Promise<ResultadoRascunho> {
+  return chamar<ResultadoRascunho>({ tipo: "rascunhar-resposta", imovelId });
 }
 
 /* As três leituras abaixo não recebem parâmetro de propósito: os números
