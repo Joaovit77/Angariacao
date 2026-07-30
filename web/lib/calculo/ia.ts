@@ -778,3 +778,75 @@ Escreva no máximo 3 parágrafos curtos, em português do Brasil, dirigindo-se a
 
 Se os dados forem escassos demais para sustentar uma leitura, diga isso com franqueza em vez de forçar uma conclusão. Não use bullet points, títulos nem markdown.`;
 }
+
+/* ----------------------------------------------------------------
+   RASCUNHAR A RESPOSTA AO PROPRIETÁRIO — a camada 2 da caixa de respostas
+
+   A camada 1 (sugestaoRespostaModelo em calculo/whatsapp.ts) cobre os
+   desfechos CONHECIDOS com réplica pronta (encerrou, agendou, vai
+   retornar, número errado) sem gastar IA. Sobra o "respondeu" genérico —
+   uma dúvida, uma pergunta, um "quanto está?" —, que não tem modelo
+   porque exige LER a mensagem. É o que esta função monta.
+
+   Como a extração de anúncio, a saída é um objeto FECHADO (um campo só,
+   `mensagem`), e é SUGESTÃO: cai no ModalWhatsapp editável, o corretor
+   confere e envia. Nada sai sozinho — a mesma regra do webhook.
+
+   A trava que dá forma ao prompt: a IA NÃO SABE nada sobre o imóvel além
+   do endereço. Se o proprietário pergunta "tem garagem?", responder "sim,
+   duas vagas" seria uma promessa falsa a uma pessoa real. Por isso a regra
+   central é: nunca inventar fato do imóvel — reconhecer a pergunta e levar
+   a um próximo passo (uma ligação, uma visita) em que o corretor dá o
+   detalhe. É o análogo do "não invente" da extração.
+
+   ATENÇÃO: diferente da extração, o texto NÃO vem do browser — a rota o
+   relê do banco (a nota que o webhook gravou), com o token de quem chamou.
+   É a forma mais forte da regra "o conteúdo sai do banco". */
+
+/** Teto da mensagem do proprietário levada ao prompt. Ela é curta por
+    natureza; o teto só protege contra uma mensagem encaminhada gigante. */
+export const MAX_TEXTO_RASCUNHO = 600;
+
+/** Esquema fechado: um campo só. `strict: true` + additionalProperties:false
+    impede o modelo de devolver explicação, alternativas ou markdown junto. */
+export const ESQUEMA_RASCUNHO = {
+  type: "object",
+  properties: {
+    mensagem: {
+      type: "string",
+      description:
+        "A resposta pronta para o corretor enviar ao proprietário no WhatsApp, em português do Brasil.",
+    },
+  },
+  required: ["mensagem"],
+  additionalProperties: false,
+} as const;
+
+/** Prompt do rascunho. `mensagem` é o que o proprietário escreveu (truncado
+    aqui); `nome` e `imovelRef` dão contexto para a réplica soar natural. */
+export function promptRascunharResposta(
+  mensagem: string,
+  nome?: string | null,
+  imovelRef?: string | null,
+): string {
+  const texto = (mensagem || "").trim().slice(0, MAX_TEXTO_RASCUNHO);
+  const primeiroNome = (nome || "").trim().split(/\s+/)[0] || "";
+  const ref = (imovelRef || "").trim().slice(0, MAX_CONTEXTO);
+
+  return `${PAPEL}
+
+Você já está em conversa com um proprietário sobre a captação do imóvel dele para locação${ref ? ` (${ref})` : ""}. Ele acabou de responder isto no WhatsApp:
+
+"""
+${texto}
+"""
+
+Escreva a resposta que o corretor deve mandar de volta.${primeiroNome ? ` O proprietário se chama ${primeiroNome} — trate-o pelo primeiro nome.` : ""}
+
+Regras:
+- NUNCA invente fato sobre o imóvel. Você NÃO sabe se tem garagem, se aceita pet, qual o valor exato, se ainda está disponível, nem nenhuma característica. Se a mensagem perguntar algo assim, NÃO responda como se soubesse: reconheça a pergunta e leve para um próximo passo concreto — uma ligação rápida ou uma visita em que o corretor passa os detalhes —, ou peça o dado que falta. Um fato inventado vira uma promessa falsa a uma pessoa real.
+- Nada de promessa de valor, prazo ou resultado ("alugo em 30 dias", "consigo mais"). Você não tem como saber.
+- Tom de WhatsApp: curto, cordial e direto — no máximo um parágrafo de 2 a 4 frases. Termine com uma pergunta ou um convite a um próximo passo, para a conversa andar.
+- Português do Brasil, sem jargão de marketing. No máximo um emoji, e só se combinar com o tom.
+- Escreva SÓ a mensagem: sem aspas em volta, sem "Prezado", sem assinatura formal, sem markdown.`;
+}

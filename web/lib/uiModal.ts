@@ -31,6 +31,11 @@ export interface ModalAtivo {
   id?: string;
   /** Modelo de WhatsApp pré-selecionado ao abrir o modal "whatsapp". */
   modeloWhatsapp?: string;
+  /** Texto já preenchido ao abrir o modal "whatsapp" (rascunho da IA). Ao
+      contrário do `modeloWhatsapp`, não é um id de modelo: é a mensagem em si,
+      livre e editável. Quando presente, o modal não credita tentativa (é
+      resposta a uma conversa aberta, não contato de captação). */
+  textoWhatsapp?: string;
   /** Imóvel pré-vinculado ao abrir o modal "agenda" em modo criação
       (ex.: "agendar próximo passo" na Início). Ignorado ao editar. */
   imovelIdRelacionado?: string;
@@ -44,6 +49,10 @@ interface UiModal {
     modeloWhatsapp?: string,
     imovelIdRelacionado?: string,
   ) => void;
+  /** Abre o modal de WhatsApp já com um rascunho (ex.: a resposta sugerida
+      pela IA na caixa de respostas). Ação própria em vez de mais um parâmetro
+      posicional no `abrirModal` — o texto é whatsapp-específico. */
+  abrirWhatsappRascunho: (imovelId: string, texto: string) => void;
   fecharModal: () => void;
 }
 
@@ -51,5 +60,7 @@ export const useUiModal = create<UiModal>((set) => ({
   modal: null,
   abrirModal: (tipo, id, modeloWhatsapp, imovelIdRelacionado) =>
     set({ modal: { tipo, id, modeloWhatsapp, imovelIdRelacionado } }),
+  abrirWhatsappRascunho: (imovelId, texto) =>
+    set({ modal: { tipo: "whatsapp", id: imovelId, textoWhatsapp: texto } }),
   fecharModal: () => set({ modal: null }),
 }));

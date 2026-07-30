@@ -52,7 +52,11 @@ export default function ModalOverlay() {
         {modal?.tipo === "verificacao" && modal.id && <ModalVerificacao id={modal.id} />}
         {modal?.tipo === "config" && <ModalConfig />}
         {modal?.tipo === "whatsapp" && modal.id && (
-          <ModalWhatsapp imovelId={modal.id} modeloInicial={modal.modeloWhatsapp} />
+          <ModalWhatsapp
+            imovelId={modal.id}
+            modeloInicial={modal.modeloWhatsapp}
+            textoInicial={modal.textoWhatsapp}
+          />
         )}
         {modal?.tipo === "notas" && modal.id && <ModalNotas imovelId={modal.id} />}
         {modal?.tipo === "tentativas" && modal.id && <ModalTentativas imovelId={modal.id} />}
