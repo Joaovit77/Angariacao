@@ -92,6 +92,13 @@ export interface Tentativa {
     /** Uma linha sobre o que a pessoa disse, para o corretor decidir sem
         reler a conversa inteira. */
     resumo: string;
+    /** Motivo de perda que a mensagem estabelece SOZINHA (um de MOTIVOS_PERDA_IA),
+        quando ela encerra o assunto — é o que dispara o encerramento automático.
+        O webhook grava o `RespostaClassificada` inteiro aqui, então este campo
+        chega junto; a caixa de respostas o lê para sugerir a resposta certa
+        ("encerramento cordial" quando o proprietário disse que não há mais o que
+        fazer). null na esmagadora maioria das mensagens. */
+    motivoPerda?: string | null;
   } | null;
 
   /** Tentativa criada AUTOMATICAMENTE ao enviar a mensagem, cujo `resultado`

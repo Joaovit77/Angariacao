@@ -17,6 +17,8 @@ import {
   MODELOS_WHATSAPP,
   modeloPadraoWhatsapp,
   numeroEvolution,
+  rotuloModeloWhatsapp,
+  sugestaoRespostaModelo,
   tokenizarModeloUsuario,
 } from "@/lib/calculo/whatsapp";
 import { STATUS_ALL } from "@/lib/constantes";
@@ -124,6 +126,98 @@ describe("mensagemWhatsapp", () => {
 
   it("renovação de angariação reaproveita a mensagem da Agenda", () => {
     expect(mensagemWhatsapp("renovacao-angariacao", base)).toBe(mensagemRenovacaoAngariacao(base));
+  });
+});
+
+describe("sugestaoRespostaModelo", () => {
+  const comSugestao = (
+    sugestaoIa: NonNullable<Imovel["tentativas"]>[number]["sugestaoIa"],
+    data = "2026-07-30T14:55",
+  ): Imovel => ({
+    ...base,
+    tentativas: [{ id: "t1", data, canal: "WhatsApp", resultado: "respondeu", sugestaoIa }],
+  });
+
+  it("sem tentativas ou sem classificação, não sugere nada", () => {
+    expect(sugestaoRespostaModelo(base)).toBeNull();
+    expect(
+      sugestaoRespostaModelo({
+        ...base,
+        tentativas: [{ id: "t1", data: "2026-07-30T14:55", canal: "WhatsApp", resultado: "respondeu" }],
+      }),
+    ).toBeNull();
+  });
+
+  it("motivo de perda encerra: sugere resposta de encerramento, mesmo com resultado 'respondeu'", () => {
+    const imovel = comSugestao({
+      resultado: "respondeu",
+      resumo: "Não é mais dono.",
+      motivoPerda: "Não é mais o proprietário",
+    });
+    expect(sugestaoRespostaModelo(imovel)).toBe("resposta-encerramento");
+  });
+
+  it("mapeia cada desfecho para a réplica adequada", () => {
+    expect(sugestaoRespostaModelo(comSugestao({ resultado: "agendou", resumo: "" }))).toBe(
+      "resposta-agendamento",
+    );
+    expect(sugestaoRespostaModelo(comSugestao({ resultado: "vai-retornar", resumo: "" }))).toBe(
+      "resposta-aguardo",
+    );
+    expect(sugestaoRespostaModelo(comSugestao({ resultado: "recusou", resumo: "" }))).toBe(
+      "resposta-encerramento",
+    );
+    expect(sugestaoRespostaModelo(comSugestao({ resultado: "numero-errado", resumo: "" }))).toBe(
+      "resposta-engano",
+    );
+  });
+
+  it("'respondeu' genérico (sem motivo) não tem réplica pronta — fica para a camada 2", () => {
+    expect(sugestaoRespostaModelo(comSugestao({ resultado: "respondeu", resumo: "Tem estacionamento?" }))).toBeNull();
+  });
+
+  it("usa a classificação MAIS RECENTE, e um follow-up manual posterior não a apaga", () => {
+    const imovel: Imovel = {
+      ...base,
+      tentativas: [
+        {
+          id: "t1",
+          data: "2026-07-20T10:00",
+          canal: "WhatsApp",
+          resultado: "agendou",
+          sugestaoIa: { resultado: "agendou", resumo: "Marcou visita." },
+        },
+        {
+          id: "t2",
+          data: "2026-07-28T09:00",
+          canal: "WhatsApp",
+          resultado: "recusou",
+          sugestaoIa: { resultado: "recusou", resumo: "Desistiu." },
+        },
+        // Follow-up manual depois, sem sugestaoIa: não deve zerar a leitura acima.
+        { id: "t3", data: "2026-07-29T08:00", canal: "WhatsApp", resultado: "sem-resposta" },
+      ],
+    };
+    expect(sugestaoRespostaModelo(imovel)).toBe("resposta-encerramento");
+  });
+
+  it("todos os modelos de resposta existem no seletor e geram texto", () => {
+    for (const id of ["resposta-encerramento", "resposta-aguardo", "resposta-agendamento", "resposta-engano"]) {
+      expect(rotuloModeloWhatsapp(id)).not.toBe("");
+      expect(mensagemWhatsapp(id, base).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("réplicas ao proprietário não são contato de captação (não registram tentativa)", () => {
+    for (const id of ["resposta-encerramento", "resposta-aguardo", "resposta-agendamento", "resposta-engano"]) {
+      expect(ehContatoDeCaptacao(id)).toBe(false);
+    }
+  });
+
+  it("a réplica de engano não cita o proprietário nem o imóvel", () => {
+    const msg = mensagemWhatsapp("resposta-engano", base);
+    expect(msg).not.toContain("Marta");
+    expect(msg).not.toContain("Haddock");
   });
 });
 

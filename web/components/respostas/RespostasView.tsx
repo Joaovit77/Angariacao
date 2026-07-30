@@ -19,7 +19,7 @@ import { useMemo, useState } from "react";
 import type { LinhaResposta } from "@/lib/calculo/respostas";
 import { caixaDeRespostas } from "@/lib/calculo/respostas";
 import { corpoDaResposta } from "@/lib/calculo/notas";
-import { modeloPadraoWhatsapp } from "@/lib/calculo/whatsapp";
+import { modeloPadraoWhatsapp, rotuloModeloWhatsapp, sugestaoRespostaModelo } from "@/lib/calculo/whatsapp";
 import { todayISO } from "@/lib/datas";
 import { marcarRespostasLidas, marcarTodasRespostasLidas, recarregarEstado } from "@/lib/mutacoes";
 import { toast } from "@/lib/toast";
@@ -72,6 +72,15 @@ function Linha({ linha, imovel }: { linha: LinhaResposta; imovel: Imovel }) {
   const [marcando, setMarcando] = useState(false);
 
   const anteriores = linha.total - 1;
+
+  // Sugestão de resposta conforme a última mensagem classificada (camada 1, sem
+  // IA nova): quando existe, o botão abre o WhatsApp já com a réplica escrita —
+  // o corretor só confere e envia. Sem classificação (ou "respondeu" genérico),
+  // cai no modelo por etapa do funil, como antes.
+  const modeloSugerido = sugestaoRespostaModelo(imovel);
+  const rotuloSugerido = modeloSugerido
+    ? rotuloModeloWhatsapp(modeloSugerido).replace(/^Resposta:\s*/, "")
+    : "";
 
   async function marcarLida() {
     if (marcando) return;
@@ -143,14 +152,24 @@ function Linha({ linha, imovel }: { linha: LinhaResposta; imovel: Imovel }) {
         </button>
       )}
 
+      {modeloSugerido && imovel.proprietarioTelefone && (
+        <div className="resp-sugestao">
+          💡 Sugestão de resposta pronta: <strong>{rotuloSugerido}</strong> — clique em Responder para
+          conferir e enviar.
+        </div>
+      )}
+
       <div className="resp-acoes">
         {imovel.proprietarioTelefone && (
           <button
             type="button"
             className="btn btn-sm btn-primary"
-            onClick={() => abrirModal("whatsapp", imovel.id, modeloPadraoWhatsapp(imovel.status))}
+            title={modeloSugerido ? `Abre a resposta já escrita: ${rotuloSugerido}` : undefined}
+            onClick={() =>
+              abrirModal("whatsapp", imovel.id, modeloSugerido || modeloPadraoWhatsapp(imovel.status))
+            }
           >
-            💬 Responder
+            {modeloSugerido ? "💬 Responder (sugestão)" : "💬 Responder"}
           </button>
         )}
         <button type="button" className="btn btn-sm" onClick={() => abrirModal("tentativas", imovel.id)}>
