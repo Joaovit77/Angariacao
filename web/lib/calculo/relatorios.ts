@@ -11,7 +11,6 @@
    relatório de período deve permanecer do período. Esta é uma divergência
    INTENCIONAL do comportamento do app antigo.
    ================================================================ */
-import { STATUS_TERMINAL_NEGATIVE } from "../constantes";
 import { monthKey, monthLabelLong, shiftMonthKey, weekRange } from "../datas";
 import { fmtDate } from "../formatadores";
 import type { Imovel } from "../tipos";
@@ -19,6 +18,7 @@ import {
   comissaoEstimada,
   comissaoRecebidaValor,
   dateEnteredStatus,
+  ehPerdaDecidida,
   imoveisAngariadosNoMes,
   imoveisAngariadosNoPeriodo,
   imoveisContatadosNoMes,
@@ -26,17 +26,16 @@ import {
   imoveisLocadosNoMes,
 } from "./motor";
 
-const TERMINAIS: readonly string[] = STATUS_TERMINAL_NEGATIVE;
-
-// Imóveis que ENTRARAM num status terminal negativo (Perdido/Cancelado/Sem
-// resposta) dentro do período — a outra metade dos "processos fechados", ao
-// lado dos locados no período.
+// Imóveis cujo processo foi DECIDIDO contra nós dentro do período — a outra
+// metade dos "processos fechados", ao lado dos locados. Usa `ehPerdaDecidida`
+// e não a lista de terminais: "Sem resposta" que o follow-up ainda trabalha é
+// pendência, não derrota (ver o motor).
 function terminaisNoMes(imoveis: Imovel[], key: string): number {
-  return imoveis.filter((i) => TERMINAIS.includes(i.status) && monthKey(dateEnteredStatus(i, i.status)) === key).length;
+  return imoveis.filter((i) => ehPerdaDecidida(i) && monthKey(dateEnteredStatus(i, i.status)) === key).length;
 }
 function terminaisNoPeriodo(imoveis: Imovel[], start: string, end: string): number {
   return imoveis.filter((i) => {
-    if (!TERMINAIS.includes(i.status)) return false;
+    if (!ehPerdaDecidida(i)) return false;
     const d = dateEnteredStatus(i, i.status);
     return d != null && d >= start && d <= end;
   }).length;

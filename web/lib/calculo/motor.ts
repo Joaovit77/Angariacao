@@ -20,6 +20,8 @@
    histórico divergir dependendo de quem mexeu no status.
    ================================================================ */
 import {
+  MAX_TENTATIVAS_SEM_RETORNO,
+  STATUS_PERDA_DECIDIDA,
   STATUS_TERMINAL_NEGATIVE,
   STALE_DAYS_THRESHOLD,
   STALE_DAYS_THRESHOLD_POS_ANGARIACAO,
@@ -171,10 +173,43 @@ export interface MetricsForRange {
   valorMedioAluguel: number;
 }
 
+/**
+ * Este processo foi DECIDIDO contra nós?
+ *
+ * Não confundir com "está fechado?", que é `STATUS_TERMINAL_NEGATIVE`. O app
+ * respondia as duas perguntas com a mesma lista, e o preço aparecia na
+ * conversão: em 31/07/2026 a captação marcava 13,7% porque 29 imóveis em "Sem
+ * resposta" contavam como derrota no denominador. Sem eles, 19,7%.
+ *
+ * "Sem resposta" é silêncio, e silêncio não é decisão de ninguém — é
+ * literalmente o público que o follow-up em lote trabalha
+ * (`FOLLOWUP_STATUS_ALVO`). Dar por perdido quem a outra metade do app manda
+ * cutucar hoje é o mesmo erro que a seção "Onde perdemos" do relatório
+ * cometia, onde diluía "chegamos tarde" de 58% para 37%.
+ *
+ * **Mas o silêncio não fica em aberto para sempre**, e essa ressalva é o que
+ * impede a taxa de virar otimismo silencioso. Passadas
+ * `MAX_TENTATIVAS_SEM_RETORNO` tentativas sem retorno, o próprio app desistiu
+ * de cutucar (é o corte do lote), e aí o silêncio É a resposta. O limite é o
+ * mesmo dos dois lados de propósito: a conversão passa a considerar perdido
+ * exatamente quem o follow-up parou de trabalhar, então não há um imóvel que
+ * seja "em disputa" para uma tela e "perdido" para a outra.
+ *
+ * Medido em 31/07/2026: nenhum dos 29 silêncios tinha sequer 2 tentativas
+ * (vieram de backfill e marcação manual), então a ressalva não mudou nenhum
+ * número no dia em que nasceu. Ela passa a valer conforme a fila roda.
+ */
+export function ehPerdaDecidida(imovel: Imovel): boolean {
+  if ((STATUS_PERDA_DECIDIDA as readonly string[]).includes(imovel.status)) return true;
+  if (imovel.status !== "Sem resposta") return false;
+  return (imovel.tentativas || []).length >= MAX_TENTATIVAS_SEM_RETORNO;
+}
+
 export function metricsForRange(imoveis: Imovel[], comissaoPercent: number): MetricsForRange {
   const total = imoveis.length;
   const locados = imoveis.filter((i) => i.status === "Locado");
-  const perdidosCancelados = imoveis.filter((i) => (STATUS_TERMINAL_NEGATIVE as readonly string[]).includes(i.status));
+  // Processos DECIDIDOS, não apenas fechados — ver `ehPerdaDecidida`.
+  const perdidosCancelados = imoveis.filter(ehPerdaDecidida);
   const fechados = locados.length + perdidosCancelados.length;
   const conversaoGeral = total ? (locados.length / total) * 100 : 0;
   const conversaoFechados = fechados ? (locados.length / fechados) * 100 : 0;
@@ -341,7 +376,9 @@ export function conversaoCaptacao(imoveis: Imovel[]): ConversaoCaptacao {
   let emAberto = 0;
   for (const imovel of captacoes) {
     if (foiAngariado(imovel) || imovel.status === "Locado") angariados++;
-    else if ((STATUS_TERMINAL_NEGATIVE as readonly string[]).includes(imovel.status)) perdidosAntesDeAngariar++;
+    // Decidido, não apenas fechado: o silêncio que o follow-up ainda trabalha
+    // é pendência, e cai em `emAberto` junto com quem está no meio do funil.
+    else if (ehPerdaDecidida(imovel)) perdidosAntesDeAngariar++;
     else emAberto++;
   }
   const decididos = angariados + perdidosAntesDeAngariar;

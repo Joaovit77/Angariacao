@@ -227,10 +227,11 @@ export default function RelatorioCompletoDoc({
             />
           </div>
           <p className="section-note" style={{ marginBottom: "14px" }}>
-            &quot;Sem resposta&quot; fica FORA das taxas acima de propósito: não é decisão de
-            ninguém, é silêncio — e são exatamente os imóveis que o follow-up ainda trabalha (veja a
-            seção 4). Somá-los daria por perdido quem segue em jogo, e como eles não têm motivo
-            preenchido, virariam o maior balde da tela diluindo todo o resto.
+            &quot;Sem resposta&quot; fica FORA das taxas acima enquanto o follow-up ainda o trabalha
+            (veja a seção 4): silêncio não é decisão de ninguém, e dá-lo por perdido condenaria quem
+            segue em jogo. Quando o proprietário esgota a cadência de tentativas sem retornar, aí sim
+            ele entra nas perdas decididas, com o motivo &quot;sem retorno&quot;: é o ponto em que o
+            próprio sistema para de insistir.
           </p>
           <p className="section-note" style={{ marginBottom: "14px" }}>
             &quot;Chegamos tarde&quot; soma já alugado por conta própria, já vendido e optou por

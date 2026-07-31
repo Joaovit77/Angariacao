@@ -29,7 +29,7 @@
    mesma leitura que o ranking de abordagens faz — a verdade está no
    histórico, não num campo único do imóvel.
    ================================================================ */
-import { VERIFICACAO_DISPONIBILIDADE_DIAS } from "../constantes";
+import { MAX_TENTATIVAS_SEM_RETORNO, VERIFICACAO_DISPONIBILIDADE_DIAS } from "../constantes";
 import { daysBetween } from "../datas";
 import type { Abordagem, Imovel, Tentativa } from "../tipos";
 import { dataAngariadoEfetiva, isPausado } from "./motor";
@@ -80,8 +80,13 @@ export function diasDesdeUltimoContato(tentativasFeitas: number): number {
 
 /** Tentativas acumuladas que encerram a insistência. Da quinta em diante
     não é follow-up, é perseguição — e o proprietário bloqueia, o que
-    machuca a reputação do número muito mais do que a mensagem ajudaria. */
-export const FOLLOWUP_MAX_TENTATIVAS = 4;
+    machuca a reputação do número muito mais do que a mensagem ajudaria.
+
+    O número mora em `constantes.ts` porque o MOTOR também depende dele: é
+    aqui que o app desiste, e é por isso que `ehPerdaDecidida` usa este mesmo
+    limite para dar um silêncio por decidido. O motor não pode importar deste
+    módulo (ele já importa o motor). */
+export const FOLLOWUP_MAX_TENTATIVAS = MAX_TENTATIVAS_SEM_RETORNO;
 
 /** Intervalo entre um envio e o próximo, sorteado nesta faixa. O sorteio
     importa tanto quanto a espera: cadência exata de N em N segundos é

@@ -47,7 +47,13 @@ describe("Dashboard (Julho de 2026)", () => {
     expect(kpis.deltaAngariacoes).toBe(-2);
     expect(kpis.locadosThisMonth).toBe(1);
     expect(kpis.deltaLocados).toBe(1);
-    expect(kpis.overall.conversaoFechados.toFixed(0)).toBe("33");
+    /* Era "33" no baseline original. Divergência INTENCIONAL de 31/07/2026
+       (a terceira, registrada no BASELINE_ETAPA0.md): "Sem resposta" deixou de
+       contar como processo DECIDIDO, porque é silêncio e é o público que o
+       follow-up em lote trabalha. Nas fixtures são 2 locados e 4 terminais, um
+       deles "Sem resposta" — antes 2÷6 = 33%, agora 2÷5 = 40%. Ver
+       `ehPerdaDecidida` no motor. */
+    expect(kpis.overall.conversaoFechados.toFixed(0)).toBe("40");
     expect(Math.round(kpis.overall.tempoMedio as number)).toBe(23);
     expect(kpis.emAndamento).toBe(8);
     // Comparado por valor: fmtMoney usa espaço não-quebrável entre "R$" e o número.
@@ -171,19 +177,29 @@ describe("Insights", () => {
   it("os números de cada card batem com o baseline", () => {
     expect(porIcone("local").title).toContain("Pinheiros");
     expect(porIcone("local").text).toContain("4 de 14 imóveis (29%)");
-    // Bairro ganhou o contraponto de retorno: volume + taxa de angariação.
-    expect(porIcone("local").text).toContain("angaria 33% do que chega a um desfecho (1 de 3)");
-    // Tipo agora mede ANGARIAÇÃO: 2 de 4 captações decididas de Apartamento
-    // fecharam (50%), contra os 33% de conversão em locação de antes.
+    /* O contraponto de retorno do bairro SUMIU, e isso é a rede de segurança
+       funcionando. Com "Sem resposta" fora dos desfechos decididos (ver o KPI
+       acima), Pinheiros caiu de 3 para 2 captações decididas e ficou abaixo da
+       amostra mínima — então o app parou de afirmar uma taxa que não sustenta,
+       em vez de exibir "50% (1 de 2)". Denominador menor é a contrapartida
+       conhecida desta mudança. */
+    expect(porIcone("local").text).not.toContain("angaria");
+    /* Tipo mede ANGARIAÇÃO (não locação, como no app antigo). Era "2 de 4
+       captações decididas (50%)"; virou 2 de 3 (67%) pelo mesmo motivo do KPI
+       acima — um daqueles 4 era "Sem resposta", que deixou de ser desfecho
+       decidido em 31/07/2026. Ver `ehPerdaDecidida`. */
     expect(porIcone("check").title).toContain("Apartamento");
-    expect(porIcone("check").text).toContain("50%");
-    expect(porIcone("check").text).toContain("(2 de 4)");
+    expect(porIcone("check").text).toContain("67%");
+    expect(porIcone("check").text).toContain("(2 de 3)");
     expect(porIcone("check").text).toContain("1 já virou locação");
-    // A taxa de angariação: 5 angariadas e 4 perdidas antes do sim, com 5 ainda
-    // em disputa (fora da conta, porque lead em aberto não é derrota).
-    expect(porIcone("aperto").title).toBe("Taxa de angariação: 56%");
-    expect(porIcone("aperto").text).toContain("5 angariações contra 4 perdidas antes do sim");
-    expect(porIcone("aperto").text).toContain("Outras 5 captações seguem em disputa");
+    /* A taxa de angariação: 5 angariadas contra 3 perdidas antes do sim, com 6
+       ainda em disputa (fora da conta, porque lead em aberto não é derrota).
+       Era 56% (5 de 9) no baseline: uma das 4 "perdidas" era "Sem resposta",
+       que em 31/07/2026 passou para "em disputa" — ela é silêncio, e o
+       follow-up ainda a trabalha. Ver `ehPerdaDecidida` no motor. */
+    expect(porIcone("aperto").title).toBe("Taxa de angariação: 63%");
+    expect(porIcone("aperto").text).toContain("5 angariações contra 3 perdidas antes do sim");
+    expect(porIcone("aperto").text).toContain("Outras 6 captações seguem em disputa");
     expect(porIcone("entrada").title).toContain("Prospecção ativa");
     expect(porIcone("entrada").text).toContain("3 imóveis vieram dessa origem");
     expect(porIcone("grafico").title).toContain("Julho de 2026");
@@ -192,8 +208,12 @@ describe("Insights", () => {
     expect(porIcone("funil").text).toContain("1 imóvel(is)");
     expect(porIcone("busca").title).toBe("Principal motivo de perda: Optou por outra imobiliária");
     expect(porIcone("busca").text).toContain("1 de 3 perdas registradas (33%)");
-    expect(porIcone("alvo").title).toBe("Taxa de conversão geral: 33%");
-    expect(porIcone("alvo").text).toContain("os 6 processos já encerrados");
+    /* Mesma divergência do KPI do Dashboard, e propositalmente igual a ele: os
+       "processos já encerrados" caíram de 6 para 5 porque "Sem resposta" saiu
+       da conta (31/07/2026). Se estes dois números voltarem a divergir entre
+       si, é bug — não recorte novo. */
+    expect(porIcone("alvo").title).toBe("Taxa de conversão geral: 40%");
+    expect(porIcone("alvo").text).toContain("os 5 processos já encerrados");
     // Card por-imóvel: o mais parado da carteira, nominal. Com a regra nova,
     // Angariado/Publicado não entram, então o topo passa a ser CA-002.
     expect(porIcone("ampulheta").title).toBe("CA-002 é o mais parado: 12 dias");
