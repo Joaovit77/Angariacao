@@ -17,6 +17,7 @@ import Topbar from "@/components/painel/Topbar";
 import EsqueletoPainel from "@/components/painel/EsqueletoPainel";
 import Celebracao from "@/components/painel/Celebracao";
 import IndicadorFollowUp from "@/components/painel/IndicadorFollowUp";
+import SincronizacaoRespostas from "@/components/painel/SincronizacaoRespostas";
 import ModalOverlay from "@/components/modais/ModalOverlay";
 import RodapeApp from "@/components/RodapeApp";
 import { useAppStore } from "@/lib/store";
@@ -136,6 +137,9 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
     {/* Também fora do <main>: a comemoração nasce no fim de um salvamento que
         fecha o modal, e precisa sobreviver a esse fechamento. */}
     <Celebracao />
+    {/* Idem: a assinatura do Realtime não pode ser derrubada e reaberta a cada
+        navegação. Não renderiza nada — só mantém o store em dia com o banco. */}
+    <SincronizacaoRespostas />
     </>
   );
 }

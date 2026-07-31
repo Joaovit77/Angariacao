@@ -278,8 +278,10 @@ export async function desdobrarImovel(
  * parece dizer "nada chegou" — e o corretor que deixa a aba aberta o dia
  * inteiro nunca veria mensagem nenhuma.
  *
- * Não é realtime: é o botão de atualizar, explícito, no lugar em que a
- * defasagem importa.
+ * Continua existindo depois do Realtime (ver calculo/chegadaResposta.ts), e
+ * não por inércia: o socket cai, a aba dorme, a assinatura perde um evento —
+ * e recarregar tudo é a única saída que não depende de nada ter dado certo
+ * antes. O Realtime tirou dele o papel de ÚNICO caminho, não o de rede.
  */
 export async function recarregarEstado(): Promise<boolean> {
   const { carregarEstado } = await import("./persistencia/carregarEstado");

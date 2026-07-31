@@ -3,15 +3,35 @@
 /* ================================================================
    SINO DE NOTIFICAÇÕES (topbar)
    Reúne o que precisa de ação AGORA, reusando o núcleo (sem recalcular):
+   - respostas do proprietário ainda não tratadas;
    - compromissos da agenda não concluídos e vencidos/hoje;
    - imóveis parados (isStale) há mais de STALE_DAYS_THRESHOLD dias.
-   O contador soma os dois; o dropdown lista e leva à tela certa.
+   O contador soma os três; o dropdown lista e leva à tela certa.
+
+   A ordem não é arbitrária, é a mesma da `rodadaDia`: primeiro o que o
+   OUTRO LADO fez (alguém está esperando resposta), depois a hora
+   marcada, por último o que só depende de nós. Ordenar por volume
+   inverteria isso todo dia — em captação o silêncio é sempre a
+   categoria mais populosa, que foi o que matou a faixa de "imóvel
+   parado" no termômetro.
+
+   A contagem de respostas sai de `contarRespostasPendentes`, a MESMA
+   do badge da barra lateral. Dois contadores da mesma coisa na mesma
+   tela discordando é bug, não detalhe.
    ================================================================ */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { isStale } from "@/lib/calculo/motor";
+import { contarRespostasPendentes } from "@/lib/calculo/respostas";
 import { todayISO } from "@/lib/datas";
+import {
+  assinarPermissao,
+  lerPermissao,
+  pedirPermissaoAviso,
+  PERMISSAO_NO_SERVIDOR,
+} from "@/lib/notificacaoSistema";
 import { useAppStore } from "@/lib/store";
+import { toast } from "@/lib/toast";
 
 export default function SinoNotificacoes() {
   const router = useRouter();
@@ -19,11 +39,20 @@ export default function SinoNotificacoes() {
   const agenda = useAppStore((s) => s.agenda);
   const [aberto, setAberto] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  // Store externo em vez de useState: `Notification.permission` não existe no
+  // SSR, e lê-lo no render daria mismatch de hidratação (mesmo padrão da
+  // preferência de barra recolhida no layout do painel).
+  const permissao = useSyncExternalStore(
+    assinarPermissao,
+    lerPermissao,
+    () => PERMISSAO_NO_SERVIDOR,
+  );
 
   const hoje = todayISO();
+  const respostas = contarRespostasPendentes(imoveis, hoje);
   const pendentes = agenda.filter((a) => !a.done && a.date <= hoje);
   const parados = imoveis.filter(isStale);
-  const total = pendentes.length + parados.length;
+  const total = respostas + pendentes.length + parados.length;
 
   // Fecha ao clicar fora. O listener só existe enquanto está aberto.
   useEffect(() => {
@@ -38,6 +67,14 @@ export default function SinoNotificacoes() {
   function irPara(rota: string) {
     setAberto(false);
     router.push(rota);
+  }
+
+  // Só a partir de um clique: navegador ignora (ou nega de vez) pedido
+  // automático, e "negado" é caro de desfazer.
+  async function ativarAvisos() {
+    const r = await pedirPermissaoAviso();
+    if (r === "granted") toast("Pronto — os avisos vão aparecer mesmo com a aba em segundo plano.");
+    else if (r === "denied") toast("O navegador bloqueou os avisos. Dá para liberar no cadeado da barra de endereço.", "warning");
   }
 
   return (
@@ -61,6 +98,18 @@ export default function SinoNotificacoes() {
 
           {total === 0 && <div className="topbar-pop-empty">Tudo em dia — nada pendente. ✓</div>}
 
+          {respostas > 0 && (
+            <button type="button" className="topbar-pop-item" onClick={() => irPara("/respostas")}>
+              <span className="topbar-pop-ic">💬</span>
+              <span className="topbar-pop-txt">
+                <strong>
+                  {respostas} proprietário(s) responderam
+                </strong>
+                <span>Mensagem ainda não tratada</span>
+              </span>
+            </button>
+          )}
+
           {pendentes.slice(0, 6).map((a) => (
             <button key={a.id} type="button" className="topbar-pop-item" onClick={() => irPara("/agenda")}>
               <span className="topbar-pop-ic">☎</span>
@@ -79,6 +128,19 @@ export default function SinoNotificacoes() {
                   {parados.length} imóvel(is) parado(s)
                 </strong>
                 <span>Sem avançar há mais de 7 dias</span>
+              </span>
+            </button>
+          )}
+
+          {/* Só quando ainda dá para pedir: concedida não tem o que oferecer,
+              negada não adianta reperguntar (o navegador nem mostra o diálogo)
+              e insistir viraria um botão que não faz nada. */}
+          {permissao === "default" && (
+            <button type="button" className="topbar-pop-item" onClick={ativarAvisos}>
+              <span className="topbar-pop-ic">🔔</span>
+              <span className="topbar-pop-txt">
+                <strong>Ativar avisos no computador</strong>
+                <span>Receber mesmo com a aba em segundo plano</span>
               </span>
             </button>
           )}

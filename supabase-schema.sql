@@ -129,6 +129,33 @@ create policy "delete_own_imoveis" on imoveis
 
 create index if not exists imoveis_user_id_idx on imoveis(user_id);
 
+-- Realtime: o banco AVISA o painel quando esta tabela muda, em vez de o painel
+-- ficar perguntando. É o que faz a resposta do proprietário aparecer na hora.
+--
+-- Sem isto, quem escreve é o webhook (no servidor) e quem lê é o painel, que
+-- carregava o estado uma vez por sessão: numa aba aberta desde cedo, a caixa
+-- de respostas marcava zero enquanto as mensagens se acumulavam no banco.
+--
+-- A RLS continua valendo — o Realtime respeita as políticas de select acima, e
+-- cada corretor só recebe as próprias linhas. Publicar a tabela NÃO abre nada:
+-- sem uma sessão válida não chega evento nenhum.
+--
+-- Só `imoveis` porque só ela recebe escrita de fora do painel (o webhook do
+-- WhatsApp). As outras quatro só mudam pelas mãos do próprio usuário, na
+-- própria aba — publicá-las seria tráfego para reenviar ao painel o que ele
+-- acabou de mandar.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'imoveis'
+  ) then
+    alter publication supabase_realtime add table public.imoveis;
+  end if;
+end $$;
+
 -- ------------------------------------------------------------
 -- METAS (uma linha por usuário + mês)
 -- ------------------------------------------------------------
