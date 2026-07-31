@@ -129,6 +129,40 @@ Histórico: Julho/26 → 5|1, 2|1, R$ 5.000|R$ 1.800 · Junho/26 → 4|**3**, 2|
 > A contagem interna do `buildInsights` segue em **11** por coincidência (um entrou, um saiu). O
 > teste executável já reflete os valores novos.
 
+> 🔁 **Divergência intencional pós-baseline (silêncio não é derrota, 2026-07-31).** O app usava
+> `STATUS_TERMINAL_NEGATIVE` para responder **duas perguntas diferentes**: "este registro está
+> fechado?" (que `isStale`, o termômetro, o mapa e o desdobramento precisam saber) e "este processo
+> foi **decidido**?", que é o que as taxas de conversão precisam. "Sem resposta" é sim terminal para
+> o funil, mas não é decisão de ninguém: é silêncio, e é exatamente o público que o follow-up em
+> lote trabalha (`FOLLOWUP_STATUS_ALVO`). O app dava por perdido quem a outra metade dele mandava
+> cutucar hoje.
+>
+> Na carteira real de 31/07/2026 isso custava caro: a conversão de captação marcava **13,7%** porque
+> 29 silêncios estavam no denominador como derrota; sem eles, **19,7%**. A mesma incoerência já havia
+> aparecido na seção "Onde perdemos" do relatório completo, onde diluía "chegamos tarde" de **58%
+> para 37%**.
+>
+> Nasce `STATUS_PERDA_DECIDIDA` (só Perdido/Cancelado) e `ehPerdaDecidida` no motor, usados por
+> `conversaoCaptacao`, `metricsForRange`, `relatorios.ts`, `idadeAnuncio.ts` e `relatorioCompleto.ts`.
+> `STATUS_TERMINAL_NEGATIVE` fica intacto para quem pergunta "está fechado?".
+>
+> **O silêncio não fica em aberto para sempre**, e essa ressalva é o que impede a taxa de virar
+> otimismo silencioso: passadas `MAX_TENTATIVAS_SEM_RETORNO` (4) tentativas sem retorno, o próprio
+> app desistiu de cutucar e o silêncio **é** a resposta. O limite é o mesmo dos dois lados de
+> propósito — a conversão passa a dar por perdido exatamente quem o follow-up parou de trabalhar.
+>
+> Efeitos neste baseline (as fixtures têm 2 locados e 4 terminais, um deles "Sem resposta"):
+> - KPI do Dashboard: conversão **33% → 40%** (2÷6 vira 2÷5), e o card 🎯 acompanha, de 6 para
+>   **5 processos encerrados**;
+> - 🤝 taxa de angariação **56% → 63%** (5 angariadas × **3** perdidas antes do sim, **6** em disputa);
+> - card **2**: Apartamento **50% → 67%** (**2 de 3** decididas);
+> - card **1**: o contraponto de retorno de Pinheiros **some** — com 2 captações decididas em vez de
+>   3, o bairro caiu abaixo de `MIN_SAMPLE`. É a rede de segurança funcionando: denominador menor é a
+>   contrapartida conhecida desta mudança, e o app prefere calar a afirmar taxa sem lastro.
+>
+> Os relatórios mensal e semanal do fixture não mudaram de número (não há terminal "Sem resposta"
+> dentro dos períodos medidos).
+
 ## Mapa
 
 - **8 imóveis localizados** (8 marcadores Leaflet) · aviso: "**6** imóvel(is) sem localização definida".

@@ -35,7 +35,7 @@
    Puro: só tipos e o motor. Sem React/Next/Supabase/store.
    ================================================================ */
 import type { Imovel } from "../tipos";
-import { foiAngariado, imoveisDeCaptacao } from "./motor";
+import { ehPerdaDecidida, foiAngariado, imoveisDeCaptacao } from "./motor";
 
 /** Abaixo disto a faixa é indício, nunca conclusão — mesma disciplina do
     MIN_TENTATIVAS do ranking de abordagens. */
@@ -109,7 +109,10 @@ export function analisarIdadeAnuncio(imoveis: Imovel[]): AnaliseIdadeAnuncio {
     // Mesma regra do motor: "Locado" conta como captação ganha mesmo sem a
     // etapa no histórico — não se aluga o que não se captou.
     const ganhou = foiAngariado(imovel) || imovel.status === "Locado";
-    const encerrado = ["Sem resposta", "Perdido", "Cancelado"].includes(imovel.status);
+    // Mesma régua do motor: DECIDIDO, não apenas fechado. O silêncio que o
+    // follow-up ainda trabalha é pendência e cai em `emAberto` — senão a taxa
+    // de cada faixa carregaria no denominador quem ainda pode virar captação.
+    const encerrado = ehPerdaDecidida(imovel);
 
     if (ganhou) {
       a.angariados++;

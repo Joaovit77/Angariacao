@@ -19,6 +19,37 @@ export const STATUS_FLOW = [
 
 export const STATUS_TERMINAL_NEGATIVE = ["Sem resposta", "Perdido", "Cancelado"] as const;
 
+/**
+ * As saídas em que ALGUÉM DECIDIU: o proprietário disse não, ou o negócio caiu.
+ *
+ * Note o que fica de fora: "Sem resposta". Ele é terminal para o FUNIL (o
+ * registro está fechado, e é isso que `isStale`, o termômetro, o mapa e o
+ * desdobramento precisam saber), mas não é derrota decidida — é silêncio, e o
+ * follow-up em lote trabalha exatamente esse público (`FOLLOWUP_STATUS_ALVO`).
+ *
+ * O app respondia duas perguntas diferentes com a mesma lista, e o preço
+ * aparecia na conversão de captação: em 31/07/2026 ela dizia 13,7% porque 29
+ * silêncios estavam no denominador como derrota. Sem eles, 19,7%. A mesma
+ * incoerência tinha aparecido na seção "Onde perdemos" do relatório completo,
+ * onde diluía "chegamos tarde" de 58% para 37%.
+ *
+ * Quem quer saber "está fechado?" usa {@link STATUS_TERMINAL_NEGATIVE}.
+ * Quem quer saber "foi decidido?" usa `ehPerdaDecidida` no motor, que aplica
+ * esta lista MAIS a regra da cadência esgotada (ver lá).
+ */
+export const STATUS_PERDA_DECIDIDA = ["Perdido", "Cancelado"] as const;
+
+/**
+ * Tentativas acumuladas que encerram a insistência do follow-up.
+ *
+ * Mora aqui, e não em `calculo/followup.ts`, porque tem DOIS donos: o lote usa
+ * para parar de cutucar, e o motor usa para decidir que um silêncio virou
+ * perda (`ehPerdaDecidida`). O motor não pode importar de `followup.ts` —
+ * aquele já importa o motor, e o ciclo se fecharia. É o mesmo motivo pelo qual
+ * `calculo/notas.ts` existe.
+ */
+export const MAX_TENTATIVAS_SEM_RETORNO = 4;
+
 export const STATUS_ALL = [...STATUS_FLOW, ...STATUS_TERMINAL_NEGATIVE] as const;
 
 export type StatusFunil = (typeof STATUS_FLOW)[number];

@@ -47,7 +47,7 @@ import { MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO, STATUS_TERMINAL_NEGATIVE } from "..
 import { daysBetween } from "../datas";
 import type { Abordagem, AgendaItem, Imovel, Tentativa } from "../tipos";
 import { tentativasOrdenadas } from "./abordagens";
-import { dateEnteredStatus, foiAngariado } from "./motor";
+import { dateEnteredStatus, ehPerdaDecidida, foiAngariado } from "./motor";
 import { ehNotaDeResposta } from "./notas";
 import { rodadaDoDia, type RodadaDia } from "./rodadaDia";
 
@@ -287,7 +287,11 @@ export function respostasDoPeriodo(imoveis: Imovel[], start: string, end: string
  * ainda está em jogo é pendência, não fracasso. "Perdido" e "Cancelado" são
  * saídas deliberadas — alguém disse não. "Sem resposta" é silêncio.
  */
-const STATUS_DECIDIDOS: readonly string[] = TERMINAIS.filter((s) => s !== "Sem resposta");
+/** Rótulo dos que o app já desistiu de cutucar. Eles CONTAM como perda
+    decidida (ver `ehPerdaDecidida`), mas nunca têm `motivoPerda` — sem um
+    rótulo próprio cairiam em "sem motivo informado" e voltariam a ser o maior
+    balde da tela, que é justamente o que esta seção evita. */
+export const MOTIVO_SEM_RETORNO = "Sem retorno após a última tentativa";
 
 export interface PerdasPeriodo {
   /** Encerramentos DECIDIDOS no período (Perdido/Cancelado). É o denominador
@@ -322,13 +326,19 @@ export function perdasDoPeriodo(imoveis: Imovel[], start: string, end: string): 
     const quando = dateEnteredStatus(imovel, imovel.status);
     if (!quando || quando < start || quando > end) continue;
 
-    if (!STATUS_DECIDIDOS.includes(imovel.status)) {
+    // A mesma régua do motor, para relatório e Dashboard não discordarem sobre
+    // o que é derrota: silêncio que o follow-up ainda trabalha fica de fora;
+    // silêncio que esgotou a cadência entra, com rótulo próprio.
+    if (!ehPerdaDecidida(imovel)) {
       semResposta++;
       continue;
     }
 
     decididos++;
-    const motivo = (imovel.motivoPerda || "").trim() || MOTIVO_NAO_INFORMADO;
+    const motivo =
+      imovel.status === "Sem resposta"
+        ? MOTIVO_SEM_RETORNO
+        : (imovel.motivoPerda || "").trim() || MOTIVO_NAO_INFORMADO;
     porMotivo.set(motivo, (porMotivo.get(motivo) || 0) + 1);
     if (MOTIVOS_CHEGAMOS_TARDE.includes(motivo)) chegamosTarde++;
     else if (MOTIVOS_DADO_RUIM.includes(motivo)) dadoRuim++;
