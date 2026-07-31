@@ -74,6 +74,32 @@ export function tentativasOrdenadas(imovel: Imovel): Tentativa[] {
   return [...(imovel.tentativas || [])].sort((a, b) => a.data.localeCompare(b.data));
 }
 
+/**
+ * Selo do card do Pipeline: "3ª tentativa". `null` quando não vale mostrar.
+ *
+ * Existe porque o funil estava descrevendo errado um quarto de uma coluna. Na
+ * carteira real de 31/07/2026, **24 dos 84 imóveis em "Novo contato" já tinham
+ * recebido 2 ou mais mensagens** — não é contato novo nenhum. A causa é
+ * conhecida e deliberada: nada move o status sozinho neste app
+ * (`confirmarResultadoTentativa` marca o desfecho da TENTATIVA e não toca no
+ * imóvel), e por isso "Novo contato" entrou em `FOLLOWUP_STATUS_ALVO`.
+ *
+ * A correção óbvia — migrar o status automaticamente depois de N tentativas —
+ * foi MEDIDA e descartada: levaria 20 imóveis para "Sem resposta", que
+ * `conversaoCaptacao` conta como derrota DECIDIDA, e a conversão de captação
+ * cairia de 12,9% para 10,6% sem nada ter mudado na realidade. Pior, daria por
+ * perdidos justamente os imóveis que o follow-up vai cutucar amanhã. O
+ * problema é de LEITURA, e a correção também.
+ *
+ * **A partir da 2ª**, de propósito: "1ª tentativa" apareceria em 153 dos 171
+ * imóveis com contato e viraria ruído — o selo só informa quando contradiz o
+ * que a coluna diz.
+ */
+export function seloTentativas(imovel: Imovel): string | null {
+  const n = (imovel.tentativas || []).length;
+  return n >= 2 ? `${n}ª tentativa` : null;
+}
+
 /* --- Resultados pendentes (o nudge) -----------------------------------------
    Enviar uma mensagem por uma abordagem registra a tentativa na hora — é o que
    liga o que o corretor FAZ ao ranking, em vez de depender de ele lembrar de
