@@ -11,7 +11,7 @@
    string; com input controlado do React o foco nunca se perde.
    ================================================================ */
 import { useEffect, useMemo } from "react";
-import { resultadosPendentes } from "@/lib/calculo/abordagens";
+import { resultadosPendentes, seloTentativas } from "@/lib/calculo/abordagens";
 import { selecionarFollowUp, selecionarVerificacaoDisponibilidade } from "@/lib/calculo/followup";
 import {
   filtrarImoveis,
@@ -55,6 +55,7 @@ function CartaoKanban({ i, color, aoAbrir }: { i: Imovel; color: string; aoAbrir
   // o imóvel está NESTA ETAPA; com o selo, tem que dizer o que o selo mediu —
   // tempo sem movimento nenhum. Ver `diasSemMovimento` no motor.
   const dias = stale ? diasSemMovimento(i) : daysInCurrentStatus(i);
+  const selo = seloTentativas(i);
 
   let metaBadge: React.ReactNode = null;
   if (paused) {
@@ -94,6 +95,14 @@ function CartaoKanban({ i, color, aoAbrir }: { i: Imovel; color: string; aoAbrir
       </div>
       <div className="kanban-card-meta">
         <span className="kanban-card-rent">{fmtMoney(i.valorAluguel)}</span>
+        {/* Quantas vezes já falamos com ele. Só a partir da 2ª — é aí que o
+            selo contradiz a coluna ("Novo contato" com 3 mensagens enviadas) e
+            deixa de ser ruído. Ver `seloTentativas`. */}
+        {selo && (
+          <span className="kanban-card-days kanban-card-tentativas" title="Mensagens já enviadas a este proprietário">
+            {selo}
+          </span>
+        )}
         {metaBadge}
       </div>
       {i.imobiliariaConcorrente && (
@@ -226,6 +235,10 @@ function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
                   {i.status || "-"}
                 </span>{" "}
                 {isStale(i) && <span className="stale-flag">parado</span>}
+                {/* Ao lado do status, e não em coluna própria: é exatamente
+                    aqui que a contradição aparece — "Novo contato" com a 3ª
+                    mensagem enviada. Ver `seloTentativas`. */}
+                {seloTentativas(i) && <span className="tentativas-flag">{seloTentativas(i)}</span>}
               </td>
               <td className="cell-dim">{fmtDate(i.dataAngariacao)}</td>
               <td className="cell-dim">{i.responsavel || "-"}</td>

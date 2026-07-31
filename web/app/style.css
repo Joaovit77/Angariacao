@@ -1355,6 +1355,10 @@ th.th-filter{ position:relative; }
 }
 .kanban-card-stale{ color: var(--bad); font-weight:700; background: var(--bad-soft); }
 .kanban-card-paused{ color: var(--info); font-weight:700; background: var(--info-soft); }
+/* Quantas mensagens já saíram para este proprietário. Discreto de propósito:
+   informa que a etapa não conta a história toda, sem competir com o selo de
+   "parado", que é o que pede ação. */
+.kanban-card-tentativas{ color: var(--accent); background: var(--accent-soft); }
 .kanban-card-motivo{
   margin-top:2px; font-size:10.5px; color: var(--text-faint); font-style:italic;
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
@@ -1819,6 +1823,13 @@ legend{
 .stale-flag{
   display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:700; color: var(--bad);
   background: var(--bad-soft); padding:2px 7px; border-radius:20px;
+}
+/* Mesma forma do selo de "parado", cor de acento em vez de alerta: informa que
+   a etapa não conta a história toda, sem disputar atenção com o que pede ação. */
+.tentativas-flag{
+  display:inline-flex; align-items:center; font-size:10.5px; font-weight:600; color: var(--accent);
+  background: var(--accent-soft); padding:2px 7px; border-radius:20px; margin-left:6px;
+  white-space:nowrap;
 }
 
 .pre-cadastro-flag{

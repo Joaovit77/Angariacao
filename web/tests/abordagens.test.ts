@@ -10,6 +10,7 @@ import {
   canalObservado,
   desempenhoPorAbordagem,
   resultadosPendentes,
+  seloTentativas,
   resumoTentativas,
   tentativasOrdenadas,
 } from "@/lib/calculo/abordagens";
@@ -492,5 +493,36 @@ describe("tentativa vinda de modelo próprio", () => {
     const resumo = resumoTentativas([imovel({ id: "i1", tentativas: [doModelo] })]);
     expect(resumo.total).toBe(1);
     expect(resumo.semAbordagem).toBe(1);
+  });
+});
+
+/* O selo de tentativas no card do Pipeline. Nasceu de o funil descrever errado
+   um quarto de uma coluna: 24 dos 84 "Novo contato" da carteira real já tinham
+   levado 2+ mensagens. A correção é de LEITURA — migrar o status
+   automaticamente foi medido e descartado (derrubaria a conversão de captação
+   de 12,9% para 10,6% sem nada ter mudado na realidade). */
+describe("seloTentativas", () => {
+  const comTentativas = (n: number): Imovel =>
+    imovel({
+      id: `s${n}`,
+      tentativas: Array.from({ length: n }, (_, k) =>
+        tentativa(`2026-07-${String(k + 1).padStart(2, "0")}T10:00`, "a1", "sem-resposta"),
+      ),
+    });
+
+  /* "1ª tentativa" apareceria em 153 dos 171 imóveis com contato — o selo só
+     informa quando contradiz o que a coluna diz. */
+  it("não aparece antes da segunda tentativa", () => {
+    expect(seloTentativas(comTentativas(0))).toBeNull();
+    expect(seloTentativas(comTentativas(1))).toBeNull();
+  });
+
+  it("aparece da segunda em diante, dizendo em qual vai", () => {
+    expect(seloTentativas(comTentativas(2))).toBe("2ª tentativa");
+    expect(seloTentativas(comTentativas(4))).toBe("4ª tentativa");
+  });
+
+  it("tolera imóvel sem o campo de tentativas", () => {
+    expect(seloTentativas({ id: "x", endereco: "Rua X", status: "Novo contato" })).toBeNull();
   });
 });
