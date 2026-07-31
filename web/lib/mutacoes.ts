@@ -19,6 +19,7 @@ import {
   VERIFICACAO_DISPONIBILIDADE_DIAS,
 } from "./constantes";
 import { addDaysISO, agoraISOComHora, currentMonthKey, todayISO } from "./datas";
+import { ehTentativaDuplicada } from "./calculo/abordagens";
 import { celebracaoAoSalvar } from "./calculo/celebracao";
 import {
   type EspecificacaoUnidade,
@@ -423,9 +424,24 @@ export async function registrarTentativa(
   const imovel = imoveis.find((i) => i.id === imovelId);
   if (!imovel) return false;
 
+  const agora = agoraISOComHora();
+
+  /* Mesmo contato registrado duas vezes. O app tem DOIS caminhos de envio — o
+     direto pela Evolution e a saída pelo wa.me com "Sim, mandei" — e nada
+     impedia que o mesmo contato passasse pelos dois. Foi o caso do LD-176
+     (31/07/2026): uma única mensagem enviada, duas tentativas gravadas.
+
+     Devolve `true` de propósito: para quem chamou, registrar já estava feito.
+     Devolver `false` faria o ModalWhatsapp tratar como erro e a fila do lote
+     contar uma falha que não houve. Ver `ehTentativaDuplicada`. */
+  if (ehTentativaDuplicada(imovel, dados, agora)) {
+    if (!silencioso) toast("Esta tentativa já estava registrada.");
+    return true;
+  }
+
   const tentativa: Tentativa = {
     id: uid(),
-    data: agoraISOComHora(),
+    data: agora,
     abordagemId: dados.abordagemId || null,
     // Só grava quando existe: tentativa por abordagem não carrega o campo.
     ...(dados.modeloNome ? { modeloNome: dados.modeloNome } : {}),

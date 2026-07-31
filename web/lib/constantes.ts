@@ -53,9 +53,33 @@ export const RESULTADOS_TENTATIVA = [
   { valor: "vai-retornar", rotulo: "Vai retornar / vai pensar", respondeu: true },
   { valor: "agendou", rotulo: "Agendou visita/reunião", respondeu: true },
   { valor: "recusou", rotulo: "Recusou", respondeu: true },
-  // "numero-errado" não é desfecho da conversa: a mensagem foi parar em outra
-  // pessoa, ou em ninguém. Fica fora do ranking (ver RESULTADOS_FORA_DO_RANKING)
-  // porque não diz nada sobre o roteiro — só sobre o cadastro do telefone.
+  /* "Quem atendeu não é o dono, MAS sabe quem é" — parente, cônjuge, inquilino.
+     Nasceu de um erro caro: esse caso estava dentro de "numero-errado", cuja
+     descrição no prompt dizia "quem respondeu não é o proprietário". A IA
+     seguia a especificação corretamente e o app respondia "desculpe o engano" a
+     quem tinha acabado de entregar o caminho para o dono.
+
+     Medido em 31/07/2026 — das 4 classificações que a IA fez como
+     "numero-errado", METADE estava errada: o LD-55 ("Alexandre Marcos é meu PAI"
+     e passou o telefone dele) e o LD-90 ("sou a esposa do Hércules, a casa é da
+     Hernane Neves, que está na Inglaterra"). O LD-174 e o LD-172 eram engano de
+     verdade — e o LD-172 é um aviso para quem for medir isto de novo: o resumo
+     da IA dizia só "não entendeu a mensagem recebida", que lido de fora parece
+     dúvida, mas o corretor, que viu a conversa, confirmou que era engano. O
+     resumo não substitui a conversa.
+
+     A própria IA já se contradizia: no LD-180, "o imóvel é da minha mãe" saiu
+     como "respondeu", que é o rótulo certo pelo prompt antigo.
+
+     Isto é RESPOSTA (respondeu: true) e fica DENTRO do ranking: o roteiro fez
+     alguém do outro lado reagir e revelar o caminho, que é exatamente o que ele
+     deveria fazer. Só não é o dono quem falou. */
+  { valor: "outro-contato", rotulo: "Outra pessoa atendeu", respondeu: true },
+  // "numero-errado" não é desfecho da conversa: a mensagem foi parar em quem não
+  // tem nada a ver com o imóvel. Fica fora do ranking (ver
+  // RESULTADOS_FORA_DO_RANKING) porque não diz nada sobre o roteiro — só sobre o
+  // cadastro do telefone. NÃO use para quem conhece o imóvel ou o dono: isso é
+  // "outro-contato", acima.
   { valor: "numero-errado", rotulo: "Número errado", respondeu: false },
 ] as const;
 

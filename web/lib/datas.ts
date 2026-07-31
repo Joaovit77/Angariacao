@@ -56,6 +56,25 @@ export function parseDate(iso: string | null | undefined): Date | null {
   return new Date(y, m - 1, d);
 }
 
+/** Minutos entre dois datetimes "YYYY-MM-DDTHH:mm" (sempre positivo).
+    `null` quando algum deles não tem hora. Comparar as strings resolveria
+    dentro do mesmo dia e falharia justo na virada da meia-noite, que é quando
+    o erro passa despercebido. */
+export function minutosEntre(isoA: string | null | undefined, isoB: string | null | undefined): number | null {
+  const paraData = (iso: string | null | undefined): Date | null => {
+    if (!iso || iso.length < 16) return null;
+    const [dia, hora] = iso.split("T");
+    const [y, m, d] = dia.split("-").map(Number);
+    const [hh, mm] = hora.split(":").map(Number);
+    if ([y, m, d, hh, mm].some((n) => Number.isNaN(n))) return null;
+    return new Date(y, m - 1, d, hh, mm);
+  };
+  const a = paraData(isoA);
+  const b = paraData(isoB);
+  if (!a || !b) return null;
+  return Math.abs(Math.round((b.getTime() - a.getTime()) / 60000));
+}
+
 export function daysBetween(isoA: string | null | undefined, isoB: string | null | undefined): number | null {
   const a = parseDate(isoA), b = parseDate(isoB);
   if (!a || !b) return null;

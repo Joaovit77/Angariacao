@@ -499,3 +499,46 @@ describe("unidade nas mensagens", () => {
     expect(salvo).not.toContain("806");
   });
 });
+
+/* A réplica de "outra pessoa atendeu". Antes este caso caía em
+   "resposta-engano" junto com o engano de verdade, e o app pedia desculpas a
+   quem tinha acabado de entregar o caminho para o proprietário — foi o LD-55
+   ("Alexandre Marcos é meu pai" + telefone) e o LD-90. */
+describe("sugestaoRespostaModelo — outro contato", () => {
+  const comSugestao = (resultado: string): Imovel => ({
+    id: "oc1",
+    endereco: "Rua A",
+    status: "Novo contato",
+    tentativas: [
+      {
+        id: "t1",
+        data: "2026-07-31T15:55",
+        canal: "WhatsApp",
+        resultado: "sem-resposta",
+        aguardandoResultado: true,
+        sugestaoIa: {
+          resultado: resultado as never,
+          resumo: "quem atendeu não é o dono",
+          retomarEm: null,
+          horaRetomar: null,
+          motivoPerda: null,
+        },
+      },
+    ],
+  });
+
+  it("pede o contato do dono em vez de desculpar engano", () => {
+    expect(sugestaoRespostaModelo(comSugestao("outro-contato"))).toBe("resposta-outro-contato");
+  });
+
+  it("engano de verdade continua desculpando", () => {
+    expect(sugestaoRespostaModelo(comSugestao("numero-errado"))).toBe("resposta-engano");
+  });
+
+  it("o texto agradece e pede o contato, sem repetir endereço nem nome", () => {
+    const texto = mensagemWhatsapp("resposta-outro-contato", comSugestao("outro-contato"));
+    expect(texto).toMatch(/obrigado/i);
+    expect(texto).toMatch(/contato de quem cuida/i);
+    expect(texto).not.toMatch(/Rua A/);
+  });
+});

@@ -500,7 +500,7 @@ export const ESQUEMA_CLASSIFICACAO = {
   properties: {
     resultado: {
       type: "string",
-      enum: ["respondeu", "vai-retornar", "agendou", "recusou", "numero-errado"],
+      enum: ["respondeu", "vai-retornar", "agendou", "recusou", "outro-contato", "numero-errado"],
       description: "Desfecho da conversa, um dos valores permitidos",
     },
     retomarEm: {
@@ -543,7 +543,8 @@ O que cada desfecho significa:
 - "agendou" — ficou marcada uma visita, reunião ou ligação. Só use quando houver compromisso, não quando houver intenção.
 - "vai-retornar" — ele não decidiu agora e vai pensar, consultar alguém ou responder depois. É o caso de "vou ver e te falo", "preciso conversar com minha esposa", "me liga semana que vem".
 - "recusou" — não tem interesse, já resolveu por outro caminho, ou não quer alugar. Recusa educada continua sendo recusa.
-- "numero-errado" — quem respondeu não é o proprietário, ou não sabe do que se trata.
+- "outro-contato" — quem respondeu NÃO é o proprietário, mas tem ligação com o imóvel ou com o dono: é parente, cônjuge, filho, inquilino ou conhecido. Use sempre que a pessoa souber de quem é o imóvel, mesmo que não passe o contato. Exemplos: "o imóvel é da minha mãe", "sou a esposa do fulano, a casa é da irmã dele", "meu pai é o dono, o telefone dele é...".
+- "numero-errado" — a mensagem chegou em quem NÃO TEM NADA A VER com o imóvel: não conhece o endereço, não sabe do que se trata, diz que é engano. Não use quando a pessoa conhece o imóvel ou o dono — isso é "outro-contato".
 - "respondeu" — reagiu, mas não se encaixa em nenhum acima (uma dúvida, um "oi", um pedido de informação).
 
 Regras:

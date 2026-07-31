@@ -26,7 +26,7 @@
    React/Next/Supabase/store.
    ================================================================ */
 import { RESULTADOS_COM_RESPOSTA, RESULTADOS_FORA_DO_RANKING } from "../constantes";
-import { daysBetween } from "../datas";
+import { daysBetween, minutosEntre } from "../datas";
 import type { Abordagem, Imovel, Tentativa } from "../tipos";
 import { dateEnteredStatus, foiAngariado } from "./motor";
 import { resultadoEfetivo } from "./resultadoObservado";
@@ -72,6 +72,48 @@ export interface AbordagemDesempenho {
 /** Tentativas do imóvel em ordem cronológica (a `data` é ordenável como string). */
 export function tentativasOrdenadas(imovel: Imovel): Tentativa[] {
   return [...(imovel.tentativas || [])].sort((a, b) => a.data.localeCompare(b.data));
+}
+
+/**
+ * Janela em que dois registros idênticos são o MESMO contato, não dois.
+ *
+ * Cinco minutos cobre o caso real sem engolir trabalho de verdade: mandar dois
+ * roteiros diferentes para o mesmo proprietário em menos de cinco minutos não
+ * acontece, e mandar o MESMO roteiro duas vezes não é uma segunda tentativa —
+ * é o mesmo contato registrado duas vezes.
+ */
+export const JANELA_DUPLICATA_MIN = 5;
+
+/**
+ * Este registro é a repetição de um que acabou de acontecer?
+ *
+ * Nasceu do LD-176 (31/07/2026): a Evolution mostrava **uma única mensagem**
+ * enviada para o proprietário, e o imóvel tinha **duas tentativas**, com um
+ * minuto de diferença, mesmo canal e mesma abordagem. O app oferece dois
+ * caminhos de envio e contou os dois — o direto (que só registra com `r.ok` da
+ * Evolution) e o `wa.me` (que registra com o "Sim, mandei" do corretor, e cujo
+ * botão só aparece depois de um envio direto FALHAR). Bastava o primeiro envio
+ * falhar, o corretor cair na saída manual e depois mandar pelo painel.
+ *
+ * **Só vale para registro AUTOMÁTICO** (`aguardandoResultado`), que é o que o
+ * envio cria. Tentativa anotada à mão no ModalTentativas é afirmação do
+ * corretor, e afirmação não se descarta em silêncio — é a mesma regra que faz
+ * `resultadoEfetivo` respeitar o que foi confirmado por gente.
+ */
+export function ehTentativaDuplicada(
+  imovel: Imovel,
+  nova: Pick<Tentativa, "canal" | "abordagemId" | "modeloNome" | "aguardandoResultado">,
+  agora: string,
+): boolean {
+  if (!nova.aguardandoResultado) return false;
+
+  return (imovel.tentativas || []).some((t) => {
+    if ((t.canal || null) !== (nova.canal || null)) return false;
+    if ((t.abordagemId || null) !== (nova.abordagemId || null)) return false;
+    if ((t.modeloNome || null) !== (nova.modeloNome || null)) return false;
+    const minutos = minutosEntre(t.data, agora);
+    return minutos !== null && minutos <= JANELA_DUPLICATA_MIN;
+  });
 }
 
 /**
@@ -287,14 +329,20 @@ export function desempenhoPorAbordagem(
       // Número errado: o roteiro não chegou a ser lido por ninguém. Fica fora
       // dos dois lados da conta — contá-lo como "sem resposta" faria uma
       // abordagem boa parecer ruim por causa de um telefone mal cadastrado.
-      if (foraDoRanking(t)) return;
+      // Lê o desfecho DERIVADO nos dois testes, e não o gravado. Ler só aqui e
+      // não no `foraDoRanking` abaixo era uma incoerência com custo real: uma
+      // tentativa marcada "numero-errado" por engano (foi o caso do LD-90, em
+      // que a IA rotulou assim quem só não era o dono) sumia do ranking inteiro
+      // — e sumia justamente por ter feito alguém responder.
+      const efetivo = resultadoEfetivo(imovel, t, hoje).resultado;
+      if (FORA.includes(efetivo)) return;
       const a = pegar(t.abordagemId);
       a.tentativas++;
       // O desfecho DERIVADO, não o gravado: enquanto ninguém confirmava, toda
       // tentativa enviada valia "sem-resposta" e a taxa de todo roteiro saía
       // subestimada — o ranking media a disciplina de anotação do corretor, e
       // não o roteiro. Ver calculo/resultadoObservado.ts.
-      if (RESPONDEU.includes(resultadoEfetivo(imovel, t, hoje).resultado)) a.respostas++;
+      if (RESPONDEU.includes(efetivo)) a.respostas++;
       if (indice === 0) a.aberturas++;
       else a.seguimentos++;
       a.imoveis.add(imovel.id);
