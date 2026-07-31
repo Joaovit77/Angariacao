@@ -137,6 +137,24 @@ o torna testável puro.
   semana de feriado) está assumida. Na UI, o total da projeção usa **piso, não arredondamento**:
   9,6 contra meta 10 viraria "o mês fecha em 10" num card marcado em amarelo por não bater a meta,
   com o texto contradizendo a cor.
+- **`calculo/transcricao.ts`** (+ `app/api/whatsapp/_transcricao.ts`, que não é rota) — o áudio do
+  proprietário vira TEXTO. O webhook gravava `[áudio]`, e `ehSoMidia` ainda os tirava das pendências
+  da caixa — honesto (não havia o que ler) e cego: eram **43 das 149 respostas** da carteira em
+  31/07/2026, 20 num imóvel só. **Foi MEDIDO antes de construído**, como o próprio projeto exige
+  desde o fiasco da leitura de placa por foto: os 43 áudios reais transcritos primeiro, com 41
+  acertos, 43/43 ainda disponíveis na Evolution e ~1,1 s cada. O conteúdo decidia negócio — um
+  "Novo contato" cujo áudio dizia "vai desocupar esse mês, está disponível", uma negociação inteira
+  de contrato, e um "não dá exclusividade, já está com outra imobiliária". Duas decisões que a
+  medição tomou: **transcreve ANTES de gravar a nota** (a intenção era `after()`; com ele, um "já
+  aluguei" em áudio não encerraria o registro e um "pode quinta às 10h" não viraria compromisso,
+  porque classificação, encerramento e agenda já teriam rodado sobre `[áudio]` — e a demora é
+  segura, já que reentrega da Evolution esbarra na duplicata de `registrar_nota_whatsapp`); e
+  **retry é requisito, não polimento** — 11 das 43 falharam com HTTP 403 `model_not_found` e 9
+  passaram na segunda tentativa, mesma chave e mesmo modelo (é limite de taxa disfarçado, por isso
+  403 é retentável aqui). Falhar grava `[áudio]`, que é o comportamento de antes: nada interrompe a
+  rota. Não transcreve foto nem vídeo — isso é o caminho de VISÃO, já medido e reprovado. O
+  backfill dos que já estavam no banco é `scripts/backfill-transcricao.mjs` (idempotente, só toca
+  nota cujo texto ainda é o marcador; rodado em 31/07/2026: 43/43).
 - **`calculo/resultadoObservado.ts`** — o desfecho de uma tentativa **derivado do que o app viu**,
   em vez de perguntado. A tentativa criada no envio nasce `"sem-resposta"` marcada com
   `aguardandoResultado`, e a resposta a essa pergunta era sempre "o corretor, clicando". A conta
