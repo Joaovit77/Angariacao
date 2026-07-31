@@ -9,6 +9,7 @@ import {
   abordagemQueDestravou,
   canalObservado,
   desempenhoPorAbordagem,
+  ehTentativaDuplicada,
   resultadosPendentes,
   seloTentativas,
   resumoTentativas,
@@ -524,5 +525,52 @@ describe("seloTentativas", () => {
 
   it("tolera imóvel sem o campo de tentativas", () => {
     expect(seloTentativas({ id: "x", endereco: "Rua X", status: "Novo contato" })).toBeNull();
+  });
+});
+
+/* Guarda de duplicata. Nasceu do LD-176 (31/07/2026): a Evolution mostrava UMA
+   mensagem enviada e o imóvel tinha DUAS tentativas, com um minuto de
+   diferença, mesmo canal e mesma abordagem — o app tem dois caminhos de envio
+   e contou os dois. */
+describe("ehTentativaDuplicada", () => {
+  const AGORA = "2026-07-30T16:48";
+  const enviada = { canal: "WhatsApp", abordagemId: "a1", aguardandoResultado: true };
+  const comTentativaEm = (data: string, over: Partial<Tentativa> = {}): Imovel =>
+    imovel({
+      id: "d1",
+      tentativas: [{ ...tentativa(data, "a1", "sem-resposta"), aguardandoResultado: true, ...over }],
+    });
+
+  it("pega o mesmo registro dentro da janela", () => {
+    expect(ehTentativaDuplicada(comTentativaEm("2026-07-30T16:47"), enviada, AGORA)).toBe(true);
+    expect(ehTentativaDuplicada(comTentativaEm("2026-07-30T16:48"), enviada, AGORA)).toBe(true);
+  });
+
+  it("deixa passar depois da janela — aí é follow-up de verdade", () => {
+    expect(ehTentativaDuplicada(comTentativaEm("2026-07-30T16:42"), enviada, AGORA)).toBe(false);
+    expect(ehTentativaDuplicada(comTentativaEm("2026-07-23T16:47"), enviada, AGORA)).toBe(false);
+  });
+
+  it("roteiro diferente no mesmo minuto não é duplicata", () => {
+    const outra = { ...enviada, abordagemId: "a2" };
+    expect(ehTentativaDuplicada(comTentativaEm("2026-07-30T16:47"), outra, AGORA)).toBe(false);
+  });
+
+  it("canal diferente não é duplicata", () => {
+    const porLigacao = { ...enviada, canal: "Ligação telefônica" };
+    expect(ehTentativaDuplicada(comTentativaEm("2026-07-30T16:47"), porLigacao, AGORA)).toBe(false);
+  });
+
+  /* Afirmação do corretor não se descarta em silêncio — mesma regra que faz
+     resultadoEfetivo respeitar o que foi confirmado por gente. */
+  it("não vale para registro manual: aquilo é afirmação, não automação", () => {
+    const manual = { ...enviada, aguardandoResultado: undefined };
+    expect(ehTentativaDuplicada(comTentativaEm("2026-07-30T16:47"), manual, AGORA)).toBe(false);
+  });
+
+  it("a janela cruza a meia-noite sem se perder", () => {
+    const i = comTentativaEm("2026-07-30T23:58");
+    expect(ehTentativaDuplicada(i, enviada, "2026-07-31T00:01")).toBe(true);
+    expect(ehTentativaDuplicada(i, enviada, "2026-07-31T00:30")).toBe(false);
   });
 });

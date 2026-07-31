@@ -183,11 +183,24 @@ Qualquer dúvida nesse meio-tempo, é só me chamar por aqui. 😊`,
 
 Vou me organizar por aqui e, qualquer imprevisto, a gente se avisa. Até lá!`,
 
-  // "Número errado": quem respondeu não é o proprietário. Sem nome (não é ele)
-  // e sem falar do imóvel — só um pedido de desculpas pelo engano.
+  // "Número errado": a mensagem chegou em quem não tem nada a ver com o imóvel.
+  // Sem nome (não é ele) e sem falar do imóvel — só um pedido de desculpas.
   "resposta-engano": () => `Olá! Peço desculpas pelo engano, vou corrigir aqui no meu cadastro.
 
 Obrigado pela atenção e tenha um ótimo dia!`,
+
+  /* "Outra pessoa atendeu": quem respondeu não é o dono, mas SABE quem é.
+     Este modelo existe porque o caso caía em "resposta-engano" — e pedir
+     desculpas a quem acabou de dizer "meu pai é o dono, o telefone dele é..."
+     encerra a conversa exatamente onde ela ficou útil.
+
+     Sem nome, porque o nome que temos é o do PROPRIETÁRIO e não o de quem
+     está do outro lado — chamá-lo pelo nome errado é pior que não chamar. E
+     sem repetir o endereço: quem atendeu já demonstrou saber de qual imóvel
+     se trata, e reapresentar o cadastro soa a robô. */
+  "resposta-outro-contato": () => `Olá! Muito obrigado pelo retorno e por esclarecer. 🙏
+
+Você poderia me passar o contato de quem cuida do imóvel? Assim eu falo diretamente com a pessoa certa e não te incomodo mais por aqui.`,
 
   // Confirmação de endereço: disparada no pré-cadastro rápido. Repete o
   // endereço que temos para o proprietário conferir/corrigir na conversa.
@@ -219,6 +232,7 @@ export const MODELOS_WHATSAPP: ModeloWhatsapp[] = [
   { id: "resposta-aguardo", rotulo: "Resposta: aguardar retorno" },
   { id: "resposta-agendamento", rotulo: "Resposta: confirmar agendamento" },
   { id: "resposta-engano", rotulo: "Resposta: desculpar engano" },
+  { id: "resposta-outro-contato", rotulo: "Resposta: pedir o contato do dono" },
 ];
 
 /** Rótulo de um modelo do sistema pelo id ("" quando não existe). */
@@ -314,6 +328,12 @@ export function sugestaoRespostaModelo(imovel: Imovel): string | null {
       return "resposta-aguardo";
     case "recusou":
       return "resposta-encerramento";
+    // Quem atendeu não é o dono mas sabe quem é: agradece e PEDE O CONTATO.
+    // Antes isto caía em "resposta-engano" junto com o engano de verdade, e o
+    // app pedia desculpas a quem tinha acabado de entregar o caminho para o
+    // proprietário (ver `outro-contato` em constantes.ts).
+    case "outro-contato":
+      return "resposta-outro-contato";
     case "numero-errado":
       return "resposta-engano";
     default:

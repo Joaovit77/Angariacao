@@ -353,9 +353,11 @@ img.brand-mark{
 
 /* ---- Abertura: ocupa a primeira tela e convida a rolar ---- */
 .vitrine-hero{
-  min-height: min(78vh, 620px);
+  /* Menor que a tela de propósito: a maquete cresceu o conteúdo, e uma
+     abertura que enche a janela sozinha esconderia que há mais abaixo. */
+  min-height: min(62vh, 520px);
   display:flex; flex-direction:column; justify-content:center; align-items:center;
-  text-align:center; padding-bottom: 12px;
+  text-align:center; padding: 18px 0 12px;
 }
 .vitrine-selo{
   display:inline-block; margin-bottom:18px;
@@ -373,8 +375,77 @@ img.brand-mark{
   color: var(--text-dim); font-size:15.5px; line-height:1.6;
   max-width:620px; margin: 0 auto 30px auto;
 }
-.vitrine-ctas{ display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-bottom:34px; }
+.vitrine-ctas{ display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-bottom:22px; }
 .vitrine-ctas .btn{ padding: 11px 20px; font-size:13.5px; }
+
+/* Três garantias sob os CTAs: respondem as objeções que aparecem antes
+   de qualquer feature ("preciso instalar?", "é o meu número?", "vai
+   mandar mensagem sozinho?"). Sem número inventado — só o que o app faz. */
+.vitrine-garantias{
+  list-style:none; display:flex; flex-wrap:wrap; justify-content:center;
+  gap: 8px 22px; margin:0 0 38px 0; max-width:760px;
+}
+.vitrine-garantias li{
+  display:inline-flex; align-items:center; gap:7px;
+  font-size:12px; color: var(--text-faint);
+}
+.vitrine-garantias svg{ width:13px; height:13px; color: var(--good); flex-shrink:0; }
+
+/* ---- Maquete do produto na abertura ----
+   Uma landing que nunca mostra a tela pede confiança sem dar nada em
+   troca. É ilustração (números de exemplo), mas a forma é a da Início. */
+.hero-mock{
+  width:100%; max-width:760px; margin: 0 auto 34px auto;
+  background: var(--bg-elev-1);
+  border:1px solid var(--border-soft); border-radius:12px;
+  box-shadow: 0 30px 70px -30px rgba(0,0,0,.8);
+  overflow:hidden; text-align:left;
+  transform: perspective(1400px) rotateX(3deg);
+}
+.hm-topo{
+  display:flex; align-items:center; gap:12px;
+  padding:9px 12px; background: var(--bg-elev-2);
+  border-bottom:1px solid var(--border-soft);
+}
+.hm-bolinhas{ display:inline-flex; gap:5px; flex-shrink:0; }
+.hm-bolinhas i{ width:8px; height:8px; border-radius:50%; background: var(--bg-elev-3); }
+.hm-url{
+  flex:1; text-align:center; font-size:10.5px; color: var(--text-faint);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.hm-corpo{ display:grid; grid-template-columns: 46px 1fr; min-height:190px; }
+.hm-nav{
+  display:flex; flex-direction:column; gap:9px; padding:14px 10px;
+  border-right:1px solid var(--border-soft); background: var(--bg);
+}
+.hm-nav-item{ height:8px; border-radius:3px; background: var(--bg-elev-3); }
+.hm-nav-item.ativo{ background: var(--accent); opacity:.75; }
+.hm-tela{ padding:16px; display:grid; gap:14px; align-content:start; }
+.hm-kpis{ display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; }
+.hm-kpi{
+  background: var(--bg-elev-2); border:1px solid var(--border-soft);
+  border-radius:9px; padding:10px 12px; display:grid; gap:3px;
+}
+.hm-kpi-rot{ font-size:9.5px; text-transform:uppercase; letter-spacing:.7px; color: var(--text-faint); }
+.hm-kpi-num{
+  font-family: var(--font-display); font-size:22px; line-height:1;
+  color: var(--text); font-variant-numeric: tabular-nums;
+}
+.hm-bloco{
+  background: var(--bg-elev-2); border:1px solid var(--border-soft);
+  border-radius:9px; padding:12px 13px; display:grid; gap:8px;
+}
+.hm-bloco-tit{ font-size:11px; font-weight:700; color: var(--text-dim); }
+.hm-linha{
+  display:flex; align-items:center; gap:9px;
+  font-size:11.5px; color: var(--text-faint);
+}
+.hm-ponto{ width:6px; height:6px; border-radius:50%; background: var(--accent); flex-shrink:0; }
+.hm-linha b{
+  margin-left:auto; color: var(--accent-strong); font-size:12px;
+  font-variant-numeric: tabular-nums;
+}
+
 .vitrine-cue{
   display:inline-flex; align-items:center; gap:8px;
   font-size:11px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase;
@@ -384,6 +455,26 @@ img.brand-mark{
 @keyframes cue-desce{
   0%, 100%{ transform: translateY(0); opacity:.55; }
   50%{ transform: translateY(5px); opacity:1; }
+}
+
+/* ---- Partes: a espinha da leitura ----
+   Onze capítulos equivalentes viram rolagem sem forma. O cabeçalho de
+   parte dá o respiro e diz em que trecho da história o leitor está.
+   O rótulo é o ASSUNTO ("O seu dia"), nunca uma numeração: já foi
+   "Ato um / Ato dois" e o corretor leu e não entendeu. */
+.parte-cabeca{
+  text-align:center; max-width:720px; margin: 0 auto;
+  padding: 74px 0 6px 0;
+}
+.parte-rotulo{
+  display:inline-block; margin-bottom:12px;
+  font-size:10px; font-weight:700; letter-spacing:1.8px; text-transform:uppercase;
+  color: var(--accent-strong); background: var(--accent-soft);
+  border:1px solid #cca24a2e; border-radius:20px; padding:5px 13px;
+}
+.parte-titulo{
+  font-family: var(--font-display); font-weight:700;
+  font-size: clamp(21px, 2.6vw, 29px); line-height:1.2; color: var(--text);
 }
 
 /* ---- Capítulos: escondidos até o scroll trazer cada um ---- */
@@ -397,13 +488,21 @@ img.brand-mark{
   transition: opacity .6s ease, transform .6s cubic-bezier(.2,.8,.2,1);
 }
 .cena.visivel{ opacity:1; transform:none; }
+/* A primeira cena de cada parte vem logo abaixo do cabeçalho dela: o
+   risco de topo ali separaria o título do que ele apresenta. */
+.cena.abre-parte{ border-top:none; padding-top:34px; }
 /* Ímpares invertem o lado do visual — o olho desce em ziguezague em vez
    de descer por uma coluna só. */
 .cena.invertida .cena-visual{ order:-1; }
+/* O número e o rótulo separados por espaço, não por pontuação: aqui
+   já houve um travessão, e um sinal gráfico a mais em cada capítulo
+   vira tique de escrita quando são onze. */
 .cena-num{
-  display:block; font-size:10.5px; font-weight:700;
+  display:flex; align-items:center; gap:10px;
+  font-size:10.5px; font-weight:700;
   letter-spacing:1.4px; text-transform:uppercase; color: var(--accent-strong);
 }
+.cena-num b{ font-size:12px; opacity:.55; font-variant-numeric: tabular-nums; }
 .cena-titulo{
   font-family: var(--font-display); font-weight:700;
   font-size:26px; line-height:1.2; color: var(--text);
@@ -412,6 +511,29 @@ img.brand-mark{
 .cena-texto{ font-size:14px; color: var(--text-dim); line-height:1.7; max-width:520px; }
 .cena-visual{ min-width:0; }
 .visual-nota{ font-size:11.5px; color: var(--text-faint); line-height:1.5; margin-top:10px; }
+
+/* A rodada de hoje: frentes com fila, coloridas pela urgência.
+   As mesmas três faixas do cálculo (agora / hoje / quando-der). */
+.rodada-demo{ display:grid; gap:9px; max-width:440px; }
+.rd-item{
+  display:flex; align-items:center; gap:11px;
+  background: var(--bg-elev-1); border:1px solid var(--border-soft);
+  border-left:3px solid var(--border); border-radius:10px; padding:10px 13px;
+}
+.rd-item.agora{ border-left-color: var(--bad); }
+.rd-item.hoje{ border-left-color: var(--accent); }
+.rd-item.quando-der{ border-left-color: var(--text-faint); }
+.rd-ic{ font-size:15px; flex-shrink:0; line-height:1; }
+.rd-txt{ font-size:11px; color: var(--text-faint); line-height:1.45; min-width:0; }
+.rd-txt strong{
+  display:flex; align-items:center; gap:8px;
+  font-size:12.5px; font-weight:700; color: var(--text); margin-bottom:1px;
+}
+.rd-qtd{
+  font-size:11px; font-weight:700; color: var(--accent-strong);
+  background: var(--accent-soft); border-radius:20px; padding:1px 8px;
+  font-variant-numeric: tabular-nums;
+}
 
 /* Mini funil */
 .mini-kanban{ display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; max-width:480px; }
@@ -450,6 +572,53 @@ img.brand-mark{
   background: var(--bg-elev-2); color: var(--text-dim);
   border-bottom-left-radius:4px;
 }
+/* Áudio transcrito: a bolha de mídia e, logo abaixo, o texto que o
+   sistema escreveu a partir dela. */
+.zap-bolha.audio{
+  display:inline-flex; align-items:center; gap:11px; padding:11px 14px;
+}
+.audio-onda{ display:inline-flex; align-items:center; gap:2.5px; }
+.audio-onda i{
+  width:2.5px; border-radius:2px; background: var(--text-faint); display:block;
+}
+.audio-tempo{
+  font-size:10.5px; color: var(--text-faint); font-variant-numeric: tabular-nums;
+}
+.zap-bolha.transcrito{
+  max-width:100%; background: var(--bg-elev-1);
+  border:1px solid var(--border-soft); border-left:3px solid var(--info);
+  color: var(--text-dim);
+}
+.transcrito-selo{
+  display:block; font-size:9px; font-weight:700; letter-spacing:1.1px;
+  text-transform:uppercase; color: var(--info); margin-bottom:5px;
+}
+
+/* Caixa de respostas: uma linha por proprietário, agrupada por fase */
+.caixa-demo{ display:grid; gap:7px; max-width:430px; }
+.caixa-fase{
+  display:block; font-size:9.5px; font-weight:700; letter-spacing:1.1px;
+  text-transform:uppercase; color: var(--text-faint); margin:7px 0 6px;
+}
+.caixa-linha{
+  display:flex; align-items:center; gap:11px;
+  background: var(--bg-elev-1); border:1px solid var(--border-soft);
+  border-radius:10px; padding:9px 12px;
+}
+.caixa-linha.nova{ border-color: #cca24a33; background: var(--bg-elev-2); }
+.caixa-cod{
+  font-family: var(--font-mono); font-size:10px; color: var(--text-faint); flex-shrink:0;
+}
+.caixa-txt{ font-size:11.5px; color: var(--text-faint); line-height:1.4; min-width:0; flex:1; }
+.caixa-txt strong{ display:block; font-size:12.5px; color: var(--text); font-weight:700; }
+.caixa-qtd{
+  flex-shrink:0; min-width:20px; text-align:center;
+  font-size:10.5px; font-weight:700; color: var(--text-faint);
+  background: var(--bg-elev-3); border-radius:20px; padding:2px 7px;
+  font-variant-numeric: tabular-nums;
+}
+.caixa-linha.nova .caixa-qtd{ color: var(--accent-strong); background: var(--accent-soft); }
+
 .ia-chip{
   display:inline-flex; align-items:center; gap:7px; margin-top:12px;
   font-size:11.5px; color: var(--info);
@@ -507,8 +676,39 @@ img.brand-mark{
 }
 .ia-card p{ font-size:13px; line-height:1.6; color: var(--text-dim); }
 
+/* Captura do anúncio colado: texto de um lado, campos do outro */
+.colagem{
+  display:flex; align-items:center; gap:12px; margin-top:14px;
+  max-width:450px; flex-wrap:wrap;
+}
+.colagem-de{
+  flex:1; min-width:160px;
+  background: var(--bg-elev-2); border:1px solid var(--border-soft);
+  border-radius:10px; padding:9px 11px;
+  font-size:9.5px; font-weight:700; letter-spacing:1px; text-transform:uppercase;
+  color: var(--text-faint);
+}
+.colagem-de em{
+  display:block; margin-top:5px; font-style:normal;
+  font-size:11px; font-weight:400; letter-spacing:0; text-transform:none;
+  color: var(--text-dim); line-height:1.45;
+}
+.colagem-seta{ color: var(--accent); flex-shrink:0; display:flex; }
+.colagem-seta svg{ width:18px; height:18px; }
+.colagem-para{ display:grid; gap:5px; flex-shrink:0; }
+.colagem-para b{
+  font-size:10.5px; font-weight:700; color: var(--accent-strong);
+  background: var(--accent-soft); border:1px solid #cca24a2e;
+  border-radius:6px; padding:3px 10px; text-align:center;
+}
+
 /* Metas e medalhas */
 .meta-demo{ max-width:430px; margin-bottom:16px; }
+/* A projeção: o eixo do tempo que o card de meta ganhou. */
+.meta-projecao{ display:grid; gap:5px; margin-top:11px; }
+.meta-proj-linha{ font-size:11.5px; color: var(--text-faint); line-height:1.45; }
+.meta-proj-linha b{ color: var(--accent-strong); font-variant-numeric: tabular-nums; }
+
 .meta-demo-topo{
   display:flex; justify-content:space-between; align-items:baseline;
   margin-bottom:7px; font-size:12.5px; color: var(--text-dim);
@@ -522,17 +722,58 @@ img.brand-mark{
 }
 .medalha svg{ width:18px; height:18px; }
 
-.showcase-features{ list-style:none; display:grid; gap:15px; margin:0; }
-.showcase-feature{ display:flex; gap:13px; align-items:flex-start; }
-.showcase-feature-ic{
-  flex-shrink:0; width:38px; height:38px; border-radius:10px;
+/* Relatório completo: as quatro seções, numeradas */
+.rel-demo{
+  max-width:430px; background: var(--bg-elev-1);
+  border:1px solid var(--border-soft); border-radius:12px; padding:15px 16px;
+  display:grid; gap:11px;
+}
+.rel-tit{
+  font-family: var(--font-display); font-size:14px; font-weight:700; color: var(--text);
+  padding-bottom:10px; border-bottom:1px solid var(--border-soft);
+}
+.rel-linha{ display:flex; align-items:center; gap:11px; }
+.rel-num{
+  flex-shrink:0; width:22px; height:22px; border-radius:50%;
+  display:inline-flex; align-items:center; justify-content:center;
+  background: var(--accent-soft); color: var(--accent-strong);
+  font-size:10.5px; font-weight:700;
+}
+.rel-txt{ font-size:11px; color: var(--text-faint); line-height:1.4; min-width:0; }
+.rel-txt strong{ display:block; font-size:12.5px; color: var(--text); font-weight:700; }
+
+/* ---- "E ainda": o resto em GRADE, não em capítulos ----
+   O que não merece uma cena inteira também não merece virar uma lista
+   de nove itens no fim de um capítulo. Em grade, o leitor varre em vez
+   de ler — que é o comportamento certo para uma lista de recursos. */
+.extras{ padding: 74px 0 10px 0; border-top:1px solid var(--border-soft); }
+.extras-titulo{
+  font-family: var(--font-display); font-weight:700;
+  font-size: clamp(21px, 2.6vw, 29px); line-height:1.2; color: var(--text);
+  text-align:center; margin-bottom:34px;
+}
+.extras-grade{
+  list-style:none; display:grid; gap:16px;
+  /* 290px e não 250: com seis itens, 250 dava quatro colunas e deixava
+     uma fila órfã de dois no fim. Aqui a largura máxima cai em três
+     colunas — 3×2 fecha a grade. */
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+}
+.extra{
+  background: var(--bg-elev-1); border:1px solid var(--border-soft);
+  border-radius:12px; padding:18px 18px 20px;
+  display:grid; gap:6px; align-content:start;
+}
+.extra-ic{
+  width:38px; height:38px; border-radius:10px; margin-bottom:6px;
   display:inline-flex; align-items:center; justify-content:center;
   background: var(--accent-soft); color: var(--accent-strong);
   border:1px solid #cca24a2e;
 }
-.showcase-feature-ic svg{ width:19px; height:19px; }
-.showcase-feature-txt{ font-size:13px; color: var(--text-dim); line-height:1.5; }
-.showcase-feature-txt strong{ display:block; color: var(--text); font-size:13.5px; font-weight:700; margin-bottom:2px; }
+.extra-ic svg{ width:19px; height:19px; }
+.extra strong{ color: var(--text); font-size:13.5px; font-weight:700; }
+.extra span{ font-size:12.5px; color: var(--text-dim); line-height:1.55; }
+
 .showcase-foot{ display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap; padding-top:26px; margin-top:26px; border-top:1px solid var(--border-soft); }
 .showcase-badge{
   display:inline-flex; align-items:center; gap:7px;
@@ -568,20 +809,28 @@ img.brand-mark{
   background: var(--border); cursor:pointer;
   transition: background .25s ease, transform .25s ease;
 }
+/* O vão marca a troca de parte, o mesmo agrupamento do conteúdo,
+   para a régua não virar uma coluna de onze pontos iguais. */
+.vitrine-ponto.abre-parte{ margin-top:12px; }
 .vitrine-ponto:hover{ background: var(--text-faint); }
 .vitrine-ponto.ativo{ background: var(--accent-strong); transform: scale(1.5); }
 @media (max-width: 1220px){ .vitrine-regua{ display:none; } }
 
 @media (max-width: 900px){
-  .vitrine-hero{ min-height: min(70vh, 480px); }
+  .vitrine-hero{ min-height:0; padding-top:34px; }
   .showcase-sub{ font-size:14.5px; margin-bottom:24px; }
   /* Uma coluna só: o visual vira ilustração ABAIXO do texto — e o
      ziguezague do desktop é desfeito, senão metade dos capítulos
      apareceria com a figura antes do que ela ilustra. */
   .cena{ grid-template-columns:1fr; gap:22px; padding:44px 0; }
   .cena.invertida .cena-visual{ order:0; }
+  .cena.abre-parte{ padding-top:26px; }
   .cena-titulo{ font-size:21px; }
+  .parte-cabeca{ padding-top:56px; }
+  .extras{ padding-top:56px; }
   .vitrine-fecho{ padding-top:50px; }
+  /* A inclinação da maquete só faz sentido com folga em volta. */
+  .hero-mock{ transform:none; }
 }
 @media (max-width: 560px){
   /* No estreito fica só o "Fazer login" — a especificidade precisa vencer
@@ -590,6 +839,13 @@ img.brand-mark{
   .vitrine-topo-marca .brand-sub{ display:none; }
   .mini-kanban{ grid-template-columns: repeat(2, 1fr); }
   .vitrine-ctas .btn{ width:100%; justify-content:center; }
+  /* A maquete vira faixa: com 46px de trilho e três KPIs lado a lado
+     ela ficaria ilegível — some o trilho e os KPIs empilham em dois. */
+  .hm-corpo{ grid-template-columns:1fr; }
+  .hm-nav{ display:none; }
+  .hm-kpis{ grid-template-columns: repeat(2, 1fr); }
+  .hm-kpis .hm-kpi:last-child{ display:none; }
+  .vitrine-garantias{ gap:7px 16px; }
 }
 
 /* Movimento é enfeite: sem ele, tudo nasce visível e no lugar. */

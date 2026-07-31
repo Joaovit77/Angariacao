@@ -348,7 +348,7 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
                 {avisoSignup.texto}
               </div>
               <div className="auth-hint">
-                Cada conta é isolada — você só vê os imóveis que cadastrar com esse login.
+                Cada conta é isolada: você só vê os imóveis que cadastrar com esse login.
               </div>
             </form>
           )}
