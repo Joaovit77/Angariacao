@@ -76,6 +76,8 @@ import {
   notaDoEncerramento,
   sugerirNaTentativaPendente,
 } from "@/lib/calculo/webhookWhatsapp";
+import { transcreverAudio } from "../../_transcricao";
+import { ehAudio } from "@/lib/calculo/transcricao";
 import { classificarResposta } from "@/lib/servidor/ia";
 import { agoraISOComHora, todayISO } from "@/lib/datas";
 import type { StatusHistoryEntry, Tentativa } from "@/lib/tipos";
@@ -215,7 +217,8 @@ export async function POST(
 
   // 1. É uma mensagem de texto recebida de um número individual? (Descarta
   //    o que nós mesmos enviamos, grupo, status e evento de conexão.)
-  const mensagem = interpretarEvento(corpo);
+  // `let` por causa do passo 3.5: áudio transcrito substitui o texto vazio.
+  let mensagem = interpretarEvento(corpo);
   if (!mensagem) {
     console.log("Webhook do WhatsApp: descartado —", resumirEvento(corpo));
     return Response.json({ ok: true });
@@ -228,7 +231,10 @@ export async function POST(
   //    de algo que veio na requisição.
   const { data: dono, error: erroDono } = await supabase
     .from("whatsapp_instancias")
-    .select("user_id")
+    // O `token` entra aqui pela transcrição de áudio (passo 3.5): baixar a
+    // mídia é uma chamada à Evolution como qualquer outra, e o token é o da
+    // INSTÂNCIA, não uma env var global — mesma regra do envio.
+    .select("user_id, token")
     .eq("instancia", mensagem.instancia)
     .maybeSingle();
   if (erroDono) {
@@ -273,6 +279,38 @@ export async function POST(
   };
   const ambiguo = imoveis.length > 1 ? " (o proprietário tem mais de um imóvel; usando o mais recente)" : "";
   const rotulo = imovel.codigo || imovel.id;
+
+  /* 3.5. ÁUDIO VIRA TEXTO — e acontece AQUI, antes de tudo o que lê o texto.
+     O proprietário responde por áudio o tempo todo: 43 das 149 respostas da
+     carteira em 31/07/2026. Até aqui isso virava a nota `[áudio]`, ilegível no
+     painel e invisível para a classificação da IA, para o encerramento
+     automático e para o compromisso da agenda — os três passos abaixo liam um
+     texto vazio.
+
+     Transcrever antes de gravar a nota (e não depois, num `after()`) é o que
+     faz o resto da rota enxergar o conteúdo real. O preço é ~1,1 s a mais na
+     resposta — medido nos 43 áudios, com 2,7 s no pior caso. É seguro porque a
+     demora, no limite, faz a Evolution reentregar o evento, e reentrega já
+     esbarra na duplicata de `registrar_nota_whatsapp`. O oposto não é seguro:
+     um "já aluguei" gravado em áudio não encerraria o registro.
+
+     Falhar aqui é o comportamento de ANTES, não um erro: a nota sai `[áudio]`
+     como sempre saiu. Por isso nada interrompe a rota. */
+  if (ehAudio(mensagem.tipo) && !mensagem.texto.trim()) {
+    const r = await transcreverAudio({
+      serverUrl: process.env.EVOLUTION_SERVER_URL || "",
+      instancia: mensagem.instancia,
+      token: (dono.token as string) || "",
+      mensagemId: mensagem.mensagemId,
+      chaveOpenai: process.env.OPENAI_API_KEY || "",
+    });
+    if (r.ok) {
+      mensagem = { ...mensagem, texto: r.texto };
+      console.log(`Webhook do WhatsApp: áudio transcrito — imóvel ${rotulo} (${r.texto.length} chars).`);
+    } else {
+      console.log(`Webhook do WhatsApp: áudio não transcrito (${r.falha}) — imóvel ${rotulo}, segue como [áudio].`);
+    }
+  }
 
   // 4. Grava a nota. A função do banco faz a verificação de duplicata e a
   //    escrita numa instrução só — ver registrar_nota_whatsapp no schema.
