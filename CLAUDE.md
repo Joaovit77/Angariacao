@@ -137,6 +137,53 @@ o torna testável puro.
   semana de feriado) está assumida. Na UI, o total da projeção usa **piso, não arredondamento**:
   9,6 contra meta 10 viraria "o mês fecha em 10" num card marcado em amarelo por não bater a meta,
   com o texto contradizendo a cor.
+- **`calculo/resultadoObservado.ts`** — o desfecho de uma tentativa **derivado do que o app viu**,
+  em vez de perguntado. A tentativa criada no envio nasce `"sem-resposta"` marcada com
+  `aguardandoResultado`, e a resposta a essa pergunta era sempre "o corretor, clicando". A conta
+  disso apareceu em 31/07/2026: **77 conversas esperando confirmação, das quais 73 eram silêncio
+  puro** — nenhuma mensagem do proprietário. Setenta e três cliques para afirmar à mão o que o app
+  já observa (ele está ouvindo o webhook, e nada chegou); e como ninguém faz, o dado ficava
+  eternamente "chute" e o ranking subestimava a resposta de **todos** os roteiros. Isto **não**
+  afrouxa "a IA sugere, o corretor confirma": não há IA opinando. Chegou nota `wa:` depois da
+  tentativa é FATO; não ter chegado nada é igualmente observável. O que continua sendo pergunta é a
+  **categoria** de quem respondeu (agendou / vai retornar / recusou) — isso a conversa diz e o app
+  não vê, e é só ali que o clique tem valor. Eram 4. Duas regras: **silêncio nunca é pendência**
+  (cobrar "não respondeu" foi o que encheu o nudge), e **nada é gravado** — a derivação roda na
+  leitura, então as ~200 tentativas antigas ficam resolvidas sem migração, um bug se conserta
+  editando uma função, e a resposta que chegar amanhã muda o desfecho de ontem sozinha. O flag
+  `aguardandoResultado` continua intocado no banco de propósito: `alvoPendente`, no webhook, precisa
+  dele para saber em qual tentativa registrar a resposta que chega.
+- **`calculo/rodadaDia.ts`** — o índice executável do dia, no topo da Início. Toda a maquinaria de
+  lote já existia e morava no **Pipeline**, atrás de um clique, numa tela que se abre para procurar
+  imóvel e não para começar o dia. Medido em 31/07/2026: **82 proprietários com uma única tentativa,
+  parados há 7+ dias** — todos elegíveis para a segunda cutucada, contra 18 que já a haviam recebido
+  na história inteira. Não é falta de ferramenta nem de disciplina: nada nunca disse quantos eram. E
+  custa caro porque **a segunda mensagem converte melhor que a primeira** (~15% no lote de 21–23/07
+  contra ~12,5% da abertura) — é a fonte de lead mais barata que existe aqui, sem garimpo nenhum.
+  O número que faltava não é "82": é **"82, e cabem 20 por dia"** — os freios anti-spam fazem a fila
+  DRENAR, e dia pulado é vaga que não volta. `diasParaVazar` fala da fila de HOJE e ignora quem entra
+  amanhã, de propósito: não é previsão, e a decisão que informa ("vale abrir o lote hoje?") não muda
+  com isso. A ordem é **de quem é a vez**, não quem tem mais fila — `agora` (o outro lado já agiu:
+  resposta sem leitura, hora marcada) > `hoje` (iniciativa nossa com vaga limitada) > `quando-der`
+  (o que arruma registro). Ordenar por volume inverteria isso todo dia, porque em captação o
+  silêncio é sempre a categoria mais populosa — a armadilha que matou a faixa de "imóvel parado" no
+  termômetro. Não é o termômetro: aquele lista PESSOAS por sinal, este lista FRENTES com fila.
+  Nenhuma contagem daqui pode divergir da tela que a origina (há teste fixando isso contra o badge).
+- **`calculo/relatorioCompleto.ts`** — o terceiro relatório, que mede o **TRABALHO** e não o
+  desfecho. `relatorios.ts` (mensal/semanal) segue intacto: é a régua do dinheiro. O problema é que
+  em captação o desfecho é raro e lento — em 31/07/2026, 177 imóveis, 12 angariados e **zero
+  locados**, ou seja, o documento imprimia zeros enquanto 200 tentativas saíam e 20 proprietários
+  respondiam. Quatro seções: esforço, respostas, perdas e fila. Três decisões de medição: a taxa de
+  resposta é por **COORTE** (dos imóveis cuja PRIMEIRA tentativa caiu no período, quantos já
+  responderam — inclusive depois do fim dele; a fotografia jogaria no denominador quem foi abordado
+  dia 30 e não teve tempo); o desfecho é o de **HOJE**, com "ainda em disputa" como categoria
+  exibida e não zero escondido; e **"Sem resposta" não é perda decidida**. Esta última nasceu de um
+  erro real: contando os três terminais juntos, a seção 3 dava por perdidos os 29 imóveis que a
+  seção 4 mandava trabalhar hoje, e diluía "chegamos tarde" de **58% para 37%**, porque silêncio não
+  tem `motivoPerda` e virava o maior balde da tela. A seção 4 reusa `rodadaDia` — relatório e Início
+  não podem discordar sobre quantos esperam — e é sempre a fila de HOJE, mesmo com mês passado
+  selecionado: a elegibilidade do follow-up conta a partir da data atual, e reconstruí-la exigiria o
+  estado do banco naquele dia. A tela avisa quando o mês não é o corrente.
 - **`calculo/filtros.ts`** — filtro/ordenação do Pipeline (parte pura).
 - **`calculo/dashboard.ts` · `insights.ts` · `relatorios.ts` · `agenda.ts`** — as métricas de cada
   view, extraídas da montagem de HTML antiga sem alterar nenhuma fórmula. **Duas exceções assinadas**

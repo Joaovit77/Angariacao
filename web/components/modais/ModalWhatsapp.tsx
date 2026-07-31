@@ -46,6 +46,7 @@ import {
   numeroEvolution,
   tokenizarModeloUsuario,
 } from "@/lib/calculo/whatsapp";
+import { todayISO } from "@/lib/datas";
 import { enviarWhatsapp } from "@/lib/envioWhatsapp";
 import { adicionarModeloWhatsapp, registrarTentativa, removerModeloWhatsapp } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
@@ -85,6 +86,7 @@ export default function ModalWhatsapp({
     abordagensUsaveis,
     imoveis,
     imovel ? momentoDoContato(imovel) : "abertura",
+    todayISO(),
   );
 
   // Modelo inicial: o pedido pela abertura (ex.: confirmação de endereço no

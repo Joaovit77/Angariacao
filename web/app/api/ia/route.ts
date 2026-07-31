@@ -444,7 +444,7 @@ export async function POST(request: Request): Promise<Response> {
 
   if (pedido === "analisar-abordagens") {
     const abordagens = ((abRes.data || []) as DbAbordagemRow[]).map(fromDbAbordagem);
-    const ranking = desempenhoPorAbordagem(imoveis, abordagens);
+    const ranking = desempenhoPorAbordagem(imoveis, abordagens, todayISO());
     // Sem tentativa com roteiro não há o que interpretar — e pedir análise de
     // uma tabela vazia só produziria texto genérico convincente.
     if (ranking.length === 0) return erro("sem-dados", 422);

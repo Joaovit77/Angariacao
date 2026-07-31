@@ -29,6 +29,7 @@ import { RESULTADOS_COM_RESPOSTA, RESULTADOS_FORA_DO_RANKING } from "../constant
 import { daysBetween } from "../datas";
 import type { Abordagem, Imovel, Tentativa } from "../tipos";
 import { dateEnteredStatus, foiAngariado } from "./motor";
+import { resultadoEfetivo } from "./resultadoObservado";
 
 /**
  * Mínimo de tentativas para uma abordagem entrar no ranking com número
@@ -86,7 +87,12 @@ export function tentativasOrdenadas(imovel: Imovel): Tentativa[] {
 
 /** Dias após os quais o palpite deixa de ser cobrado. Passado esse prazo,
     "não respondeu" é quase certamente verdade — continuar perguntando seria
-    implicância, e o dado já está certo do jeito que está. */
+    implicância, e o dado já está certo do jeito que está.
+
+    Hoje isto praticamente não morde: o nudge passou a cobrar SÓ quem
+    respondeu (ver abaixo), e resposta costuma chegar em poucos dias. Continua
+    de pé como corte final — conversa que ficou meses sem classificação não é
+    mais trabalho pendente, é arquivo. */
 export const DIAS_COBRANCA_RESULTADO = 14;
 
 export interface ResultadoPendente {
@@ -98,10 +104,25 @@ export interface ResultadoPendente {
   abordagemNome: string;
   /** Há quantos dias a mensagem saiu. */
   dias: number;
+  /** Dia da mensagem do proprietário que colocou esta conversa na fila. */
+  respondeuEm?: string;
 }
 
-/** Tentativas criadas no envio que ainda esperam confirmação de desfecho,
-    da mais antiga para a mais recente (quem esperou mais pergunta primeiro). */
+/**
+ * Conversas que ainda valem uma pergunta ao corretor.
+ *
+ * **Só entram as que o proprietário RESPONDEU.** Antes entrava toda tentativa
+ * marcada, e o resultado, medido na carteira real em 31/07/2026, foi um nudge
+ * de 77 linhas — das quais 73 eram silêncio puro. Pedir que a pessoa confirme
+ * 73 vezes "não respondeu" é pedir que ela transcreva à mão o que o app já
+ * observou: ele está ouvindo o webhook, e nada chegou. Isso agora se resolve
+ * sozinho em `resultadoEfetivo`.
+ *
+ * O que sobra é o único caso em que o corretor sabe algo que o app não vê: a
+ * categoria de quem reagiu (agendou? vai retornar? recusou?). Eram 4.
+ *
+ * Da mais antiga para a mais recente — quem esperou mais pergunta primeiro.
+ */
 export function resultadosPendentes(
   imoveis: Imovel[],
   abordagens: Abordagem[],
@@ -112,7 +133,8 @@ export function resultadosPendentes(
 
   for (const imovel of imoveis) {
     for (const t of imovel.tentativas || []) {
-      if (!t.aguardandoResultado) continue;
+      const efetivo = resultadoEfetivo(imovel, t, hoje);
+      if (!efetivo.pendente) continue;
       const dias = daysBetween(t.data.slice(0, 10), hoje);
       if (dias === null || dias > DIAS_COBRANCA_RESULTADO) continue;
       pendentes.push({
@@ -125,6 +147,7 @@ export function resultadosPendentes(
         abordagemNome:
           (t.abordagemId && nomePorId.get(t.abordagemId)) || t.modeloNome || ABORDAGEM_NAO_INFORMADA,
         dias: Math.max(0, dias),
+        respondeuEm: efetivo.respondeuEm,
       });
     }
   }
@@ -200,7 +223,11 @@ export function abordagemQueDestravou(imovel: Imovel): string | null {
  * para o fim, independentemente da taxa (é o que evita que um 100% de uma
  * tentativa só encabece o ranking).
  */
-export function desempenhoPorAbordagem(imoveis: Imovel[], abordagens: Abordagem[]): AbordagemDesempenho[] {
+export function desempenhoPorAbordagem(
+  imoveis: Imovel[],
+  abordagens: Abordagem[],
+  hoje: string,
+): AbordagemDesempenho[] {
   const nomePorId = new Map(abordagens.map((a) => [a.id, a.nome]));
 
   interface Acumulador {
@@ -237,7 +264,11 @@ export function desempenhoPorAbordagem(imoveis: Imovel[], abordagens: Abordagem[
       if (foraDoRanking(t)) return;
       const a = pegar(t.abordagemId);
       a.tentativas++;
-      if (RESPONDEU.includes(t.resultado)) a.respostas++;
+      // O desfecho DERIVADO, não o gravado: enquanto ninguém confirmava, toda
+      // tentativa enviada valia "sem-resposta" e a taxa de todo roteiro saía
+      // subestimada — o ranking media a disciplina de anotação do corretor, e
+      // não o roteiro. Ver calculo/resultadoObservado.ts.
+      if (RESPONDEU.includes(resultadoEfetivo(imovel, t, hoje).resultado)) a.respostas++;
       if (indice === 0) a.aberturas++;
       else a.seguimentos++;
       a.imoveis.add(imovel.id);
@@ -335,8 +366,9 @@ export function abordagensParaEnvio(
   abordagens: Abordagem[],
   imoveis: Imovel[],
   momento: MomentoContato,
+  hoje: string,
 ): AbordagemComDesempenho[] {
-  const ranking = desempenhoPorAbordagem(imoveis, abordagens);
+  const ranking = desempenhoPorAbordagem(imoveis, abordagens, hoje);
   const porId = new Map(ranking.map((d) => [d.abordagemId, d]));
   const posicao = new Map(ranking.map((d, n) => [d.abordagemId, n]));
 

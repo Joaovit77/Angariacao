@@ -373,7 +373,7 @@ export default function RelatoriosView() {
   // Análise por canal: carteira inteira, independente do período selecionado.
   const canais = desempenhoPorCanal(imoveis);
   // Ranking de roteiros — mesma base (carteira inteira), eixo diferente.
-  const rankingAbordagens = desempenhoPorAbordagem(imoveis, abordagens);
+  const rankingAbordagens = desempenhoPorAbordagem(imoveis, abordagens, hoje);
   const resumo = resumoTentativas(imoveis);
 
   // Exporta os imóveis angariados no período (o que a tabela do relatório

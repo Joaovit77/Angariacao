@@ -13,8 +13,15 @@ import {
   resumoTentativas,
   tentativasOrdenadas,
 } from "@/lib/calculo/abordagens";
-import type { Abordagem, Imovel, Tentativa } from "@/lib/tipos";
+import type { Abordagem, Imovel, NotaImovel, Tentativa } from "@/lib/tipos";
 import type { ResultadoTentativa } from "@/lib/constantes";
+
+/* O ranking passou a DERIVAR o desfecho de cada tentativa a partir do que o
+   app observou (ver calculo/resultadoObservado.ts), então precisa saber que
+   dia é hoje. Data bem posterior às tentativas dos fixtures de propósito: o
+   silêncio delas já é definitivo, e o ranking não muda de valor conforme o
+   dia em que a suíte roda. */
+const HOJE_RANKING = "2026-12-31";
 
 const CATALOGO: Abordagem[] = [
   { id: "a1", nome: "Avaliação gratuita", arquivada: false },
@@ -26,8 +33,19 @@ function tentativa(data: string, abordagemId: string | null, resultado: Resultad
   return { id: `t-${data}-${abordagemId}`, data, abordagemId, canal: "WhatsApp", resultado };
 }
 
+/** Nota de resposta do proprietário — é o FATO que o app observa para dar a
+    tentativa por respondida sem perguntar nada (ver resultadoObservado.ts). */
+function respostaEm(data: string): NotaImovel {
+  return { id: `wa:${data}`, data, texto: "Resposta pelo WhatsApp: pode ser sim" };
+}
+
 /** Imóvel com tentativas; `angariadoEm` empurra a entrada de Angariado no histórico. */
-function imovel(over: { id: string; tentativas: Tentativa[]; angariadoEm?: string }): Imovel {
+function imovel(over: {
+  id: string;
+  tentativas: Tentativa[];
+  angariadoEm?: string;
+  notas?: NotaImovel[];
+}): Imovel {
   const hist = [{ status: "Novo contato", date: "2026-01-01" }];
   if (over.angariadoEm) hist.push({ status: "Angariado", date: over.angariadoEm });
   return {
@@ -36,6 +54,7 @@ function imovel(over: { id: string; tentativas: Tentativa[]; angariadoEm?: strin
     status: over.angariadoEm ? "Angariado" : "Novo contato",
     statusHistory: hist,
     tentativas: over.tentativas,
+    notas: over.notas,
   };
 }
 
@@ -153,7 +172,7 @@ describe("desempenhoPorAbordagem", () => {
         ],
       }),
     ];
-    const r = desempenhoPorAbordagem(imoveis, CATALOGO);
+    const r = desempenhoPorAbordagem(imoveis, CATALOGO, HOJE_RANKING);
     const a1 = r.find((x) => x.abordagemId === "a1")!;
     const a2 = r.find((x) => x.abordagemId === "a2")!;
 
@@ -188,7 +207,7 @@ describe("desempenhoPorAbordagem", () => {
         ],
       }),
     ];
-    const [a1] = desempenhoPorAbordagem(imoveis, CATALOGO);
+    const [a1] = desempenhoPorAbordagem(imoveis, CATALOGO, HOJE_RANKING);
     expect(a1.taxaResposta).toBe(100);
     expect(a1.angariados).toBe(0);
     expect(a1.taxaAngariacao).toBe(0);
@@ -205,7 +224,7 @@ describe("desempenhoPorAbordagem", () => {
         ],
       }),
     ];
-    const [a1] = desempenhoPorAbordagem(imoveis, CATALOGO);
+    const [a1] = desempenhoPorAbordagem(imoveis, CATALOGO, HOJE_RANKING);
     expect(a1.tentativas).toBe(2);
     expect(a1.imoveis).toBe(1);
     expect(a1.angariados).toBe(1);
@@ -221,7 +240,7 @@ describe("desempenhoPorAbordagem", () => {
       imovel({ id: "i3", tentativas: [tentativa("2026-02-03T10:00", "a1", "sem-resposta")] }),
       imovel({ id: "i4", tentativas: [tentativa("2026-02-04T10:00", "a1", "sem-resposta")] }),
     ];
-    const r = desempenhoPorAbordagem(imoveis, CATALOGO);
+    const r = desempenhoPorAbordagem(imoveis, CATALOGO, HOJE_RANKING);
     expect(r.map((x) => x.abordagemId)).toEqual(["a1", "a3"]);
     expect(r[0].amostraSuficiente).toBe(true);
     expect(r[1]).toMatchObject({ amostraSuficiente: false, taxaAngariacao: 100 });
@@ -232,19 +251,19 @@ describe("desempenhoPorAbordagem", () => {
       imovel({ id: "i1", tentativas: [tentativa("2026-01-01T10:00", null, "respondeu")] }),
       imovel({ id: "i2", tentativas: [] }),
     ];
-    expect(desempenhoPorAbordagem(imoveis, CATALOGO)).toEqual([]);
+    expect(desempenhoPorAbordagem(imoveis, CATALOGO, HOJE_RANKING)).toEqual([]);
   });
 
   it("usa rótulo de fallback quando a abordagem não está mais no catálogo", () => {
     const imoveis = [imovel({ id: "i1", tentativas: [tentativa("2026-01-01T10:00", "sumiu", "respondeu")] })];
-    const [r] = desempenhoPorAbordagem(imoveis, []);
+    const [r] = desempenhoPorAbordagem(imoveis, [], HOJE_RANKING);
     expect(r.nome).toBe(ABORDAGEM_NAO_INFORMADA);
   });
 
   it("inclui abordagem arquivada que tem histórico (arquivar não apaga o passado)", () => {
     const catalogo: Abordagem[] = [{ id: "a1", nome: "Avaliação gratuita", arquivada: true }];
     const imoveis = [imovel({ id: "i1", tentativas: [tentativa("2026-01-01T10:00", "a1", "respondeu")] })];
-    const [r] = desempenhoPorAbordagem(imoveis, catalogo);
+    const [r] = desempenhoPorAbordagem(imoveis, catalogo, HOJE_RANKING);
     expect(r.nome).toBe("Avaliação gratuita");
   });
 });
@@ -293,7 +312,7 @@ describe("número errado fica fora do ranking", () => {
         ],
       }),
     ];
-    const [linha] = desempenhoPorAbordagem(imoveis, CATALOGO);
+    const [linha] = desempenhoPorAbordagem(imoveis, CATALOGO, HOJE_RANKING);
     // Duas tentativas registradas, mas só uma testou o roteiro.
     expect(linha.tentativas).toBe(1);
     expect(linha.respostas).toBe(1);
@@ -304,7 +323,7 @@ describe("número errado fica fora do ranking", () => {
     const imoveis = [
       imovel({ id: "i1", tentativas: [tentativa("2026-02-01T10:00", "a2", "numero-errado")] }),
     ];
-    expect(desempenhoPorAbordagem(imoveis, CATALOGO)).toHaveLength(0);
+    expect(desempenhoPorAbordagem(imoveis, CATALOGO, HOJE_RANKING)).toHaveLength(0);
   });
 
   it("não rouba o crédito de quem destravou a angariação", () => {
@@ -342,27 +361,72 @@ describe("resultadosPendentes (o nudge)", () => {
     return { ...tentativa(data, abordagemId, "sem-resposta"), aguardandoResultado: true };
   }
 
-  it("cobra só o que o sistema chutou, nunca o que foi anotado à mão", () => {
-    const imoveis = [
-      imovel({ id: "i1", tentativas: [palpite("2026-07-20T10:00", "a1")] }),
-      // Mesmo resultado, mas afirmado pelo corretor — não se cobra.
-      imovel({ id: "i2", tentativas: [tentativa("2026-07-20T10:00", "a1", "sem-resposta")] }),
-    ];
-    const pend = resultadosPendentes(imoveis, CATALOGO, HOJE);
-    expect(pend.map((p) => p.imovelId)).toEqual(["i1"]);
+  /* A mudança de contrato de 31/07/2026. O nudge cobrava TODA tentativa
+     marcada, e na carteira real isso deu 77 linhas — 73 delas silêncio puro.
+     Confirmar "não respondeu" 73 vezes é transcrever à mão o que o app já
+     observou. Agora ele só pergunta o que o app não tem como ver: a categoria
+     de quem de fato respondeu. */
+  it("NÃO cobra silêncio: sem resposta do proprietário, o app resolve sozinho", () => {
+    const silencio = imovel({ id: "i1", tentativas: [palpite("2026-07-20T10:00", "a1")] });
+    expect(resultadosPendentes([silencio], CATALOGO, HOJE)).toEqual([]);
   });
 
-  it("para de cobrar depois do prazo — a essa altura 'não respondeu' é verdade", () => {
-    const dentro = imovel({ id: "dentro", tentativas: [palpite("2026-07-07T10:00", "a1")] }); // 14 dias
-    const fora = imovel({ id: "fora", tentativas: [palpite("2026-07-06T10:00", "a1")] }); // 15 dias
+  it("cobra quando o proprietário respondeu — é a categoria que só ele sabe", () => {
+    const respondeu = imovel({
+      id: "i1",
+      tentativas: [palpite("2026-07-20T10:00", "a1")],
+      notas: [respostaEm("2026-07-20T15:00")],
+    });
+    const pend = resultadosPendentes([respondeu], CATALOGO, HOJE);
+    expect(pend.map((p) => p.imovelId)).toEqual(["i1"]);
+    expect(pend[0].respondeuEm).toBe("2026-07-20T15:00");
+  });
+
+  it("nunca cobra o que foi anotado à mão, mesmo com resposta depois", () => {
+    const manual = imovel({
+      id: "i2",
+      tentativas: [tentativa("2026-07-20T10:00", "a1", "sem-resposta")],
+      notas: [respostaEm("2026-07-20T15:00")],
+    });
+    expect(resultadosPendentes([manual], CATALOGO, HOJE)).toEqual([]);
+  });
+
+  it("resposta ANTERIOR à tentativa não conta — ela não é desfecho desta", () => {
+    const antes = imovel({
+      id: "i1",
+      tentativas: [palpite("2026-07-20T10:00", "a1")],
+      notas: [respostaEm("2026-07-19T15:00")],
+    });
+    expect(resultadosPendentes([antes], CATALOGO, HOJE)).toEqual([]);
+  });
+
+  it("para de cobrar depois do prazo — conversa velha sem classificar é arquivo", () => {
+    const dentro = imovel({
+      id: "dentro",
+      tentativas: [palpite("2026-07-07T10:00", "a1")],
+      notas: [respostaEm("2026-07-07T15:00")],
+    });
+    const fora = imovel({
+      id: "fora",
+      tentativas: [palpite("2026-07-06T10:00", "a1")],
+      notas: [respostaEm("2026-07-06T15:00")],
+    });
     const pend = resultadosPendentes([dentro, fora], CATALOGO, HOJE);
     expect(pend.map((p) => p.imovelId)).toEqual(["dentro"]);
   });
 
   it("pergunta primeiro por quem espera há mais tempo", () => {
     const imoveis = [
-      imovel({ id: "novo", tentativas: [palpite("2026-07-20T10:00", "a1")] }),
-      imovel({ id: "velho", tentativas: [palpite("2026-07-12T10:00", "a2")] }),
+      imovel({
+        id: "novo",
+        tentativas: [palpite("2026-07-20T10:00", "a1")],
+        notas: [respostaEm("2026-07-20T15:00")],
+      }),
+      imovel({
+        id: "velho",
+        tentativas: [palpite("2026-07-12T10:00", "a2")],
+        notas: [respostaEm("2026-07-12T15:00")],
+      }),
     ];
     const pend = resultadosPendentes(imoveis, CATALOGO, HOJE);
     expect(pend.map((p) => p.imovelId)).toEqual(["velho", "novo"]);
@@ -372,7 +436,13 @@ describe("resultadosPendentes (o nudge)", () => {
 
   it("nomeia a tentativa sem roteiro em vez de deixar o rótulo vazio", () => {
     const pend = resultadosPendentes(
-      [imovel({ id: "i1", tentativas: [palpite("2026-07-20T10:00", null)] })],
+      [
+        imovel({
+          id: "i1",
+          tentativas: [palpite("2026-07-20T10:00", null)],
+          notas: [respostaEm("2026-07-20T15:00")],
+        }),
+      ],
       CATALOGO,
       HOJE,
     );
@@ -396,7 +466,13 @@ describe("tentativa vinda de modelo próprio", () => {
 
   it("o nudge mostra o nome do modelo, não 'não informada'", () => {
     const pendentes = resultadosPendentes(
-      [imovel({ id: "i1", tentativas: [doModelo] })],
+      [
+        imovel({
+          id: "i1",
+          tentativas: [doModelo],
+          notas: [respostaEm("2026-07-20T15:00")],
+        }),
+      ],
       CATALOGO,
       "2026-07-22",
     );
@@ -404,7 +480,11 @@ describe("tentativa vinda de modelo próprio", () => {
   });
 
   it("não entra no ranking de abordagens", () => {
-    const ranking = desempenhoPorAbordagem([imovel({ id: "i1", tentativas: [doModelo] })], CATALOGO);
+    const ranking = desempenhoPorAbordagem(
+      [imovel({ id: "i1", tentativas: [doModelo] })],
+      CATALOGO,
+      HOJE_RANKING,
+    );
     expect(ranking.every((a) => a.tentativas === 0)).toBe(true);
   });
 

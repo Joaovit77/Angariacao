@@ -17,6 +17,19 @@
    E só cobra por DIAS_COBRANCA_RESULTADO dias — depois disso "não
    respondeu" é quase certamente verdade, e insistir seria implicância.
 
+   **31/07/2026 — a lista deixou de cobrar SILÊNCIO.** O texto abaixo
+   pedia desculpa por uma lista que não deveria existir: das 77 linhas
+   da carteira real, 73 eram tentativas sem nenhuma resposta, e o app
+   já sabia disso (está ouvindo o webhook). Isso agora se resolve na
+   leitura, em `calculo/resultadoObservado.ts`, e o nudge ficou com o
+   único caso em que o corretor sabe algo que o app não vê: a CATEGORIA
+   de quem respondeu. Eram 4.
+
+   A marca `aguardandoResultado` continua no banco intocada — e tem que
+   continuar: `alvoPendente`, no webhook, exige ela para saber em qual
+   tentativa registrar a resposta que chega. A derivação não grava nada,
+   justamente para não tirar esse chão de baixo do webhook.
+
    O TOM É PARTE DA FUNÇÃO, e foi corrigido em 27/07/2026. A lista já
    está CERTA quando ninguém a toca: `resultado` nasce "sem-resposta" e
    é isso que os cálculos leem — a marca `aguardandoResultado` só serve
@@ -120,16 +133,19 @@ export default function ModalResultadosPendentes() {
             pendência se resolve sozinha. Lido de cima para baixo, virava uma
             lista de dever: 43 itens cobrando ação, quando a ação devida era
             zero. Agora a dispensa vem primeiro e a exceção depois. */}
+        {/* O enquadramento mudou de novo em 31/07/2026, e desta vez porque o
+            CÁLCULO mudou: a lista deixou de cobrar silêncio (73 das 77 linhas
+            que ela tinha). Agora toda linha aqui é alguém que RESPONDEU, então
+            o texto pode parar de pedir desculpa pela lista e dizer o que ela é:
+            conversas vivas esperando um rótulo. */}
         <p className="section-note" style={{ marginBottom: "14px" }}>
-          <strong>Você não precisa confirmar todas.</strong> Estas mensagens saíram por você e já
-          estão registradas como “sem resposta” — entraram assim porque, na hora do envio, não dava
-          para saber o desfecho. E na maioria das vezes é isso mesmo.
+          <strong>Todos aqui responderam você.</strong> O que falta é dizer como terminou — isso o
+          sistema não tem como saber sozinho, porque está na conversa.
         </p>
         <p className="section-note" style={{ marginBottom: "14px" }}>
-          Confirme só as que <strong>você sabe</strong> como terminaram: o proprietário te ligou,
-          falou com você pessoalmente ou respondeu por outro canal. Quem responder pelo WhatsApp o
-          sistema registra sozinho. As demais já estão corretas do jeito que estão e somem daqui em{" "}
-          {DIAS_COBRANCA_RESULTADO} dias, sem você fazer nada.
+          Quem <strong>não</strong> respondeu não aparece nesta lista: o sistema registra o silêncio
+          sozinho, sem pedir nada a você. E o que ficar aqui sem classificar por{" "}
+          {DIAS_COBRANCA_RESULTADO} dias some por conta própria.
         </p>
 
         {pendentes.length === 0 ? (
