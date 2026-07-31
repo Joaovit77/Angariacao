@@ -2260,6 +2260,57 @@ legend{
 .home-list-chip.today{ color: var(--accent-strong); background: var(--accent-soft); }
 .home-list-chip.bad{ color: var(--bad); background: var(--bad-soft); }
 
+/* A RODADA DE HOJE — o índice executável do dia (components/home/RodadaDoDia).
+   Uma linha por frente de trabalho: ícone, o que é, quantos esperam e o botão
+   que resolve. Denso de propósito — ele fica acima de tudo na Início, e quatro
+   linhas altas empurrariam o resto da tela para fora do primeiro olhar. */
+.rodada-lista{ display: flex; flex-direction: column; }
+.rodada-item{
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 6px;
+  border-top: 1px solid var(--border-soft);
+}
+.rodada-item:first-child{ border-top: none; }
+.rodada-ic{
+  flex: 0 0 auto;
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  font-size: 15px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev-3);
+}
+/* A urgência colore o ícone, não a linha inteira: em captação a maioria das
+   frentes tem fila, e quatro faixas coloridas viram um semáforo sem hierarquia
+   nenhuma — o mesmo ruído que enterrou a faixa de "imóvel parado" no
+   termômetro. Cor só onde há hora marcada do outro lado. */
+.rodada-item.agora .rodada-ic{ background: var(--bad-soft); }
+.rodada-item.hoje .rodada-ic{ background: var(--accent-soft); }
+.rodada-texto{ display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.rodada-rotulo{
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13.5px; font-weight: 600; color: var(--text);
+}
+.rodada-contagem{
+  font-size: 11.5px; font-weight: 700;
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--bg-elev-3); color: var(--text-dim);
+}
+.rodada-item.agora .rodada-contagem{ background: var(--bad-soft); color: var(--bad); }
+.rodada-detalhe{
+  font-size: 12px; color: var(--text-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rodada-btn{ flex: 0 0 auto; white-space: nowrap; }
+.rodada-btn:disabled{ opacity: .5; cursor: not-allowed; }
+
+/* No mobile a linha quebra: o botão desce para baixo do texto em vez de
+   espremer o detalhe até virar reticências. */
+@media (max-width: 560px){
+  .rodada-item{ flex-wrap: wrap; }
+  .rodada-detalhe{ white-space: normal; }
+  .rodada-btn{ margin-left: 42px; }
+}
+
 /* "Próximos compromissos" na Início reusa os itens ricos da Agenda; só
    remove a margem sobrando do último grupo dentro do card. */
 .home-agenda .agenda-day-group:last-child{ margin-bottom: 0; }

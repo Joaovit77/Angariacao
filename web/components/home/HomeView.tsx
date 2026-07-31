@@ -14,6 +14,7 @@
 import { useRouter } from "next/navigation";
 import ItemAgenda from "@/components/agenda/ItemAgenda";
 import QuemEstaQuente from "@/components/home/QuemEstaQuente";
+import RodadaDoDia from "@/components/home/RodadaDoDia";
 import { AGENDA_PENDENTES_JANELA_DIAS, compararAgenda } from "@/lib/calculo/agenda";
 import {
   mesAnteriorComMeta,
@@ -429,10 +430,16 @@ export default function HomeView() {
           </button>
         </div>
 
-        {/* COLUNA PRINCIPAL — o que precisa de ação hoje. O termômetro vem
-            primeiro: é a única lista que responde "quem eu chamo AGORA", e o
-            resto da coluna é resumo. Ele mesmo se esconde quando não há sinal. */}
+        {/* COLUNA PRINCIPAL — o que precisa de ação hoje.
+
+            A rodada vem primeiro: ela é o índice do dia (frentes com fila e o
+            botão que resolve cada uma), curta por natureza, e é a única que
+            cobra as duas coisas que têm hora — resposta sem leitura e
+            compromisso marcado. Logo abaixo o termômetro, que responde a outra
+            pergunta, nominal e mais longa: "quem eu chamo AGORA". Depois o
+            resumo. As duas primeiras se escondem sozinhas quando não há nada. */}
         <div className="home-main">
+          <RodadaDoDia />
           <QuemEstaQuente />
           {principais}
         </div>
