@@ -5,8 +5,9 @@
    Port de viewRelatorios() + reportDoc() + reportStat() (app.js, 5F).
    Os números vêm de lib/calculo/relatorios.ts.
    ================================================================ */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
+import RelatorioCompletoDoc from "@/components/relatorios/RelatorioCompletoDoc";
 import {
   desempenhoPorAbordagem,
   resumoTentativas,
@@ -16,11 +17,19 @@ import {
 } from "@/lib/calculo/abordagens";
 import { desempenhoPorCanal, type CanalDesempenho } from "@/lib/calculo/canais";
 import { dateEnteredStatus } from "@/lib/calculo/motor";
+import { relatorioCompleto } from "@/lib/calculo/relatorioCompleto";
 import { relatorioMensal, relatorioSemanal, weekRangeLabel, type DadosRelatorio } from "@/lib/calculo/relatorios";
 import { gerarCsv } from "@/lib/csv";
 import { analisarAbordagens } from "@/lib/ia";
 import { toast } from "@/lib/toast";
-import { currentMonthKey, monthLabelLong, shiftMonthKey, todayISO } from "@/lib/datas";
+import {
+  currentMonthKey,
+  monthLabelLong,
+  primeiroDiaDoMes,
+  shiftMonthKey,
+  todayISO,
+  ultimoDiaDoMes,
+} from "@/lib/datas";
 import { fmtDate, fmtMoney } from "@/lib/formatadores";
 import { useAppStore } from "@/lib/store";
 import { useUiModal } from "@/lib/uiModal";
@@ -326,18 +335,40 @@ function baixarCsv(nomeArquivo: string, conteudo: string) {
 export default function RelatoriosView() {
   const imoveis = useAppStore((s) => s.imoveis);
   const abordagens = useAppStore((s) => s.abordagens);
+  // A agenda entra só pela seção 4 do relatório completo (compromissos de hoje
+  // e atrasados são uma das frentes da fila).
+  const agenda = useAppStore((s) => s.agenda);
   const comissaoPercent = useAppStore((s) => s.config.comissaoPercent);
   const abrirModal = useUiModal((s) => s.abrirModal);
   const { usuario } = useSessao();
 
-  const [modo, setModo] = useState<"mensal" | "semanal">("mensal");
+  const [modo, setModo] = useState<"mensal" | "semanal" | "completo">("mensal");
   const [mesKey, setMesKey] = useState(() => currentMonthKey());
   const [semanaOffset, setSemanaOffset] = useState(0);
 
+  // O relatório completo é MENSAL: usa o mesmo seletor de mês, e o "semanal"
+  // segue sendo só do documento de desfecho. Semana é recorte curto demais para
+  // as coortes da seção 2 — com 5 ou 6 abordados, a taxa de resposta vira ruído.
   const dados =
-    modo === "mensal"
-      ? relatorioMensal(imoveis, comissaoPercent, mesKey)
-      : relatorioSemanal(imoveis, comissaoPercent, semanaOffset);
+    modo === "semanal"
+      ? relatorioSemanal(imoveis, comissaoPercent, semanaOffset)
+      : relatorioMensal(imoveis, comissaoPercent, mesKey);
+
+  const hoje = todayISO();
+  const completo = useMemo(
+    () =>
+      modo === "completo"
+        ? relatorioCompleto(
+            imoveis,
+            agenda,
+            abordagens,
+            primeiroDiaDoMes(mesKey),
+            ultimoDiaDoMes(mesKey),
+            hoje,
+          )
+        : null,
+    [modo, imoveis, agenda, abordagens, mesKey, hoje],
+  );
 
   // Análise por canal: carteira inteira, independente do período selecionado.
   const canais = desempenhoPorCanal(imoveis);
@@ -436,9 +467,12 @@ export default function RelatoriosView() {
           <button type="button" className={modo === "semanal" ? "active" : ""} onClick={() => setModo("semanal")}>
             Semanal
           </button>
+          <button type="button" className={modo === "completo" ? "active" : ""} onClick={() => setModo("completo")}>
+            Completo
+          </button>
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          {modo === "mensal" ? (
+          {modo !== "semanal" ? (
             <>
               <button type="button" className="icon-btn" onClick={() => setMesKey((k) => shiftMonthKey(k, -1))}>
                 ‹
@@ -472,7 +506,17 @@ export default function RelatoriosView() {
       </div>
 
       <div id="report-doc">
-        <ReportDoc d={dados} responsavel={rotuloUsuario(usuario) || "-"} />
+        {completo ? (
+          <RelatorioCompletoDoc
+            r={completo}
+            responsavel={rotuloUsuario(usuario) || "-"}
+            periodo={monthLabelLong(mesKey)}
+            periodoCorrente={mesKey === currentMonthKey()}
+            hoje={hoje}
+          />
+        ) : (
+          <ReportDoc d={dados} responsavel={rotuloUsuario(usuario) || "-"} />
+        )}
         <DesempenhoCanais canais={canais} />
         <DesempenhoAbordagens
           abordagens={rankingAbordagens}

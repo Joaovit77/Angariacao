@@ -1740,6 +1740,53 @@ legend{
 .report-section-title{ font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--text-faint); margin: 22px 0 10px 0; }
 
 /* ============================================================
+   RELATÓRIO COMPLETO (components/relatorios/RelatorioCompletoDoc)
+   Mede o trabalho de captação, não o desfecho — por isso vive ao lado
+   do documento mensal/semanal em vez de substituí-lo.
+   ============================================================ */
+/* Número de indicadores varia por seção (e a seção 4 varia com a fila do
+   dia): auto-fit em vez das 5 colunas fixas do relatório de desfecho. */
+.rc-doc .report-stat-row{ grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.rc-doc .report-stat-cmp{ color: var(--text-faint); font-weight: 500; }
+.rc-sub{
+  font-size: 12px; font-weight: 700; color: var(--text-dim);
+  margin: 4px 0 8px 0;
+}
+
+/* Barras horizontais: <div> com largura percentual, não canvas — o documento
+   é feito para ser impresso, e canvas sai serrilhado ou some no PDF. */
+.rc-barras{ display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.rc-barra-linha{ display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+.rc-barra-rotulo{
+  flex: 0 0 40%; max-width: 40%;
+  color: var(--text-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rc-barra-trilho{
+  flex: 1 1 auto; height: 8px;
+  background: var(--bg-elev-3); border-radius: 999px; overflow: hidden;
+}
+.rc-barra-fill{
+  display: block; height: 100%;
+  background: var(--accent); border-radius: 999px;
+  /* Largura mínima para o item de valor 1 não virar uma barra invisível ao
+     lado de um de valor 40 — a linha ainda precisa ser legível como linha. */
+  min-width: 2px;
+}
+.rc-barra-valor{ flex: 0 0 auto; font-weight: 600; color: var(--text); white-space: nowrap; }
+.rc-barra-pct{ font-weight: 500; color: var(--text-faint); }
+
+@media (max-width: 700px){
+  .rc-barra-rotulo{ flex-basis: 50%; max-width: 50%; }
+}
+
+@media print{
+  .rc-barra-trilho{ background: #eee !important; }
+  .rc-barra-fill{ background: #666 !important; }
+  .rc-barras{ break-inside: avoid; }
+}
+
+/* ============================================================
    ROADMAP
    ============================================================ */
 .roadmap-col-head{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
