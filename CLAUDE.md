@@ -333,7 +333,34 @@ o torna testável puro.
   A view tem botão **Atualizar** (`recarregarEstado`) por um motivo estrutural: a resposta entra
   pelo **webhook, no servidor**, e o painel carrega o estado uma vez por sessão — numa aba aberta
   desde cedo, uma caixa vazia diria "nada chegou" quando significa "nada chegou desde o login".
-  Não há realtime; é o botão explícito no único lugar em que a defasagem engana.
+  O botão continua ali como rede (ver `chegadaResposta.ts` abaixo: hoje o Realtime empurra a
+  mudança, mas socket cai, aba dorme, e o botão é a saída que não depende de nada disso).
+- **`calculo/chegadaResposta.ts`** — a resposta do proprietário aparecendo **na hora**, sem F5.
+  O buraco era estrutural e a caixa o contornava com um botão: quem escreve é o **webhook, no
+  servidor**, e o painel lia o banco **uma vez por sessão**. Numa aba aberta desde cedo o badge
+  marcava zero e o sino dizia "tudo em dia" enquanto as mensagens se empilhavam. Agora `imoveis`
+  está publicada no **Realtime** (única tabela publicada — é a única que recebe escrita de fora do
+  painel; as outras quatro só mudam pelas mãos do próprio usuário, na própria aba, e publicá-las
+  seria devolver ao painel o que ele acabou de mandar). A RLS continua sendo o isolamento: sem
+  sessão válida não chega evento. Quem assina é `components/painel/SincronizacaoRespostas`, montado
+  no layout **fora do `<main>`** como o `IndicadorFollowUp` — navegar não pode reabrir o canal.
+  O módulo daqui é só o **diff**, e ele é a peça que impede o aviso errado. Três regras:
+  **sem retrato anterior não há aviso** (imóvel que o painel nunca viu chega com o histórico
+  inteiro — o LD-156 real tem 64 respostas, e "tudo que existe é novo" seriam 64 caixinhas de uma
+  vez); **compara por ID de nota, nunca por quantidade** (o encerramento automático ACRESCENTA uma
+  nota `wa:<id>:encerrado` escrita pelo próprio app, e um contador anunciaria como "resposta do
+  proprietário" um texto nosso — é para isso que `ehNotaDeResposta` existe); e por tabela **a nossa
+  própria escrita não avisa**, que é o caso de todo dia, já que cada tentativa registrada devolve um
+  evento com as mesmas notas. A **rajada vira UM aviso** ("(3 mensagens)", prévia da mais recente):
+  no WhatsApp três mensagens curtas seguidas são a regra, e três interrupções pelo mesmo assunto
+  são o caminho mais curto para a pessoa desligar a permissão — mesmo raciocínio do "uma mensagem
+  por PROPRIETÁRIO" no follow-up. Onde o aviso sai depende da aba: **visível → toast**; **oculta →
+  notificação do sistema** (`lib/notificacaoSistema.ts`), porque ali o toast nasceria e morreria
+  sem ninguém ver. Isso exige o painel ABERTO em alguma aba — Web Push (service worker + VAPID +
+  tabela de inscrições) ficou de fora por ser outro tamanho de obra e em boa parte redundante: a
+  mensagem já faz o celular apitar pelo WhatsApp, e o que o painel acrescenta é o CONTEXTO.
+  A permissão do navegador é a **única** preferência, sem toggle nosso em localStorage — duas
+  fontes de verdade viram o clássico "desliguei e continua chegando".
 - **`calculo/googleAgenda.ts`** — as partes puras do espelhamento no Google Agenda: a tradução de
   um `AgendaItem` em evento (dia inteiro vs. cronometrado, fuso, o "✓" do concluído), o vocabulário
   de falhas e a URL de autorização. Mesmo papel de `calculo/whatsapp.ts` no envio. Ver
@@ -361,8 +388,10 @@ o torna testável puro.
 - **`uiPipeline.ts` / `uiModal.ts`** — estado de UI (filtros/drawer do Pipeline; modal ativo).
 - **`filaFollowUp.ts`** — a fila do follow-up em lote (estado + orquestração dos envios). Como o
   `mutacoes.ts`, é exceção consciente à regra abaixo: orquestra efeitos, não calcula.
-- **`toast.ts` / `geo.ts` / `dadosDemo.ts` / `auth/`** — notificações; CEP (ViaCEP) + geocoding
-  (Nominatim); seed de exemplo; força de senha e tradução de erros do Supabase Auth.
+- **`toast.ts` / `notificacaoSistema.ts` / `geo.ts` / `dadosDemo.ts` / `auth/`** — aviso dentro da
+  tela; aviso do SISTEMA operacional (a caixinha do Windows, para quando a aba está oculta — ver
+  `calculo/chegadaResposta.ts`); CEP (ViaCEP) + geocoding (Nominatim); seed de exemplo; força de
+  senha e tradução de erros do Supabase Auth.
 
 ### `web/components/` — UI
 
