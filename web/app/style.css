@@ -1740,6 +1740,53 @@ legend{
 .report-section-title{ font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--text-faint); margin: 22px 0 10px 0; }
 
 /* ============================================================
+   RELATÓRIO COMPLETO (components/relatorios/RelatorioCompletoDoc)
+   Mede o trabalho de captação, não o desfecho — por isso vive ao lado
+   do documento mensal/semanal em vez de substituí-lo.
+   ============================================================ */
+/* Número de indicadores varia por seção (e a seção 4 varia com a fila do
+   dia): auto-fit em vez das 5 colunas fixas do relatório de desfecho. */
+.rc-doc .report-stat-row{ grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.rc-doc .report-stat-cmp{ color: var(--text-faint); font-weight: 500; }
+.rc-sub{
+  font-size: 12px; font-weight: 700; color: var(--text-dim);
+  margin: 4px 0 8px 0;
+}
+
+/* Barras horizontais: <div> com largura percentual, não canvas — o documento
+   é feito para ser impresso, e canvas sai serrilhado ou some no PDF. */
+.rc-barras{ display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.rc-barra-linha{ display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+.rc-barra-rotulo{
+  flex: 0 0 40%; max-width: 40%;
+  color: var(--text-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rc-barra-trilho{
+  flex: 1 1 auto; height: 8px;
+  background: var(--bg-elev-3); border-radius: 999px; overflow: hidden;
+}
+.rc-barra-fill{
+  display: block; height: 100%;
+  background: var(--accent); border-radius: 999px;
+  /* Largura mínima para o item de valor 1 não virar uma barra invisível ao
+     lado de um de valor 40 — a linha ainda precisa ser legível como linha. */
+  min-width: 2px;
+}
+.rc-barra-valor{ flex: 0 0 auto; font-weight: 600; color: var(--text); white-space: nowrap; }
+.rc-barra-pct{ font-weight: 500; color: var(--text-faint); }
+
+@media (max-width: 700px){
+  .rc-barra-rotulo{ flex-basis: 50%; max-width: 50%; }
+}
+
+@media print{
+  .rc-barra-trilho{ background: #eee !important; }
+  .rc-barra-fill{ background: #666 !important; }
+  .rc-barras{ break-inside: avoid; }
+}
+
+/* ============================================================
    ROADMAP
    ============================================================ */
 .roadmap-col-head{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
@@ -2259,6 +2306,57 @@ legend{
 }
 .home-list-chip.today{ color: var(--accent-strong); background: var(--accent-soft); }
 .home-list-chip.bad{ color: var(--bad); background: var(--bad-soft); }
+
+/* A RODADA DE HOJE — o índice executável do dia (components/home/RodadaDoDia).
+   Uma linha por frente de trabalho: ícone, o que é, quantos esperam e o botão
+   que resolve. Denso de propósito — ele fica acima de tudo na Início, e quatro
+   linhas altas empurrariam o resto da tela para fora do primeiro olhar. */
+.rodada-lista{ display: flex; flex-direction: column; }
+.rodada-item{
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 6px;
+  border-top: 1px solid var(--border-soft);
+}
+.rodada-item:first-child{ border-top: none; }
+.rodada-ic{
+  flex: 0 0 auto;
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  font-size: 15px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev-3);
+}
+/* A urgência colore o ícone, não a linha inteira: em captação a maioria das
+   frentes tem fila, e quatro faixas coloridas viram um semáforo sem hierarquia
+   nenhuma — o mesmo ruído que enterrou a faixa de "imóvel parado" no
+   termômetro. Cor só onde há hora marcada do outro lado. */
+.rodada-item.agora .rodada-ic{ background: var(--bad-soft); }
+.rodada-item.hoje .rodada-ic{ background: var(--accent-soft); }
+.rodada-texto{ display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.rodada-rotulo{
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13.5px; font-weight: 600; color: var(--text);
+}
+.rodada-contagem{
+  font-size: 11.5px; font-weight: 700;
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--bg-elev-3); color: var(--text-dim);
+}
+.rodada-item.agora .rodada-contagem{ background: var(--bad-soft); color: var(--bad); }
+.rodada-detalhe{
+  font-size: 12px; color: var(--text-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rodada-btn{ flex: 0 0 auto; white-space: nowrap; }
+.rodada-btn:disabled{ opacity: .5; cursor: not-allowed; }
+
+/* No mobile a linha quebra: o botão desce para baixo do texto em vez de
+   espremer o detalhe até virar reticências. */
+@media (max-width: 560px){
+  .rodada-item{ flex-wrap: wrap; }
+  .rodada-detalhe{ white-space: normal; }
+  .rodada-btn{ margin-left: 42px; }
+}
 
 /* "Próximos compromissos" na Início reusa os itens ricos da Agenda; só
    remove a margem sobrando do último grupo dentro do card. */

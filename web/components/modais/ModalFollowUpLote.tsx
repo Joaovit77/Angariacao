@@ -57,7 +57,10 @@ export default function ModalFollowUpLote() {
   // O público do lote é quem já foi contatado e não respondeu — logo, sempre
   // "seguimento". Passar "abertura" aqui subiria roteiros de primeiro contato
   // para gente que já ouviu um.
-  const sugestoes = useMemo(() => abordagensParaEnvio(ativas, imoveis, "seguimento"), [ativas, imoveis]);
+  const sugestoes = useMemo(
+    () => abordagensParaEnvio(ativas, imoveis, "seguimento", hoje),
+    [ativas, imoveis, hoje],
+  );
 
   const [abordagemId, setAbordagemId] = useState("");
   const [base, setBase] = useState(() => textoBaseFollowUp(null));

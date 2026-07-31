@@ -9,6 +9,10 @@ import { congelaRelogio } from "./setup-relogio";
 
 congelaRelogio();
 
+/* O ranking passou a derivar o desfecho de cada tentativa (ver
+   calculo/resultadoObservado.ts), então precisa saber que dia é hoje. */
+const HOJE = "2026-07-31";
+
 const abordagem = (id: string, nome: string): Abordagem => ({ id, nome, roteiro: `Roteiro ${nome}`, arquivada: false });
 
 function tentativa(abordagemId: string | null, dia: number, resultado: Tentativa["resultado"] = "sem-resposta"): Tentativa {
@@ -52,7 +56,7 @@ describe("abordagensParaEnvio", () => {
   const nova = abordagem("nova", "Recém-cadastrada");
 
   it("sem histórico nenhum, preserva a ordem do catálogo e não recomenda nada", () => {
-    const r = abordagensParaEnvio([boa, fraca, nova], [], "abertura");
+    const r = abordagensParaEnvio([boa, fraca, nova], [], "abertura", HOJE);
     expect(r.map((l) => l.abordagem.id)).toEqual(["boa", "fraca", "nova"]);
     expect(r.every((l) => l.selo === null)).toBe(true);
     expect(r.some((l) => l.recomendada)).toBe(false);
@@ -62,7 +66,7 @@ describe("abordagensParaEnvio", () => {
     // 100% de uma vez é acidente, não desempenho — e recomendá-lo faria o
     // ranking se autoconfirmar.
     const imoveis = [imovel("i1", true, [tentativa("boa", 2)])];
-    const r = abordagensParaEnvio([boa, fraca], imoveis, "abertura");
+    const r = abordagensParaEnvio([boa, fraca], imoveis, "abertura", HOJE);
     expect(r.some((l) => l.recomendada)).toBe(false);
     expect(r.find((l) => l.abordagem.id === "boa")?.selo).toBeNull();
   });
@@ -79,7 +83,7 @@ describe("abordagensParaEnvio", () => {
       imovel("i6", false, [tentativa("fraca", 4)]),
     ];
     // No catálogo, "fraca" vem antes — o ranking tem que inverter isso.
-    const r = abordagensParaEnvio([fraca, boa, nova], imoveis, "abertura");
+    const r = abordagensParaEnvio([fraca, boa, nova], imoveis, "abertura", HOJE);
     expect(r.map((l) => l.abordagem.id)).toEqual(["boa", "fraca", "nova"]);
     expect(r[0].recomendada).toBe(true);
     expect(r[0].selo).toBe(`100% de angariação · ${MIN_TENTATIVAS} usos`);
@@ -98,7 +102,7 @@ describe("abordagensParaEnvio", () => {
       imovel("i2", false, [tentativa("fraca", 3)]),
       imovel("i3", false, [tentativa("fraca", 4)]),
     ];
-    const r = abordagensParaEnvio([fraca, boa], imoveis, "abertura");
+    const r = abordagensParaEnvio([fraca, boa], imoveis, "abertura", HOJE);
     expect(r[0].abordagem.id).toBe("fraca");
     expect(r[0].selo).toBe("0% de angariação · 3 usos");
     expect(r.some((l) => l.recomendada)).toBe(false);
@@ -117,13 +121,13 @@ describe("abordagensParaEnvio", () => {
       imovel("i5", true, [tentativa("outra", 3), tentativa("segu", 6)]),
       imovel("i6", true, [tentativa("outra", 4), tentativa("segu", 7)]),
     ];
-    expect(abordagensParaEnvio([segu, aber], imoveis, "abertura")[0].abordagem.id).toBe("aber");
-    expect(abordagensParaEnvio([aber, segu], imoveis, "seguimento")[0].abordagem.id).toBe("segu");
+    expect(abordagensParaEnvio([segu, aber], imoveis, "abertura", HOJE)[0].abordagem.id).toBe("aber");
+    expect(abordagensParaEnvio([aber, segu], imoveis, "seguimento", HOJE)[0].abordagem.id).toBe("segu");
   });
 
   it("não perde nem duplica abordagem do catálogo", () => {
     const imoveis = [imovel("i1", true, [tentativa("boa", 2)])];
-    const r = abordagensParaEnvio([boa, fraca, nova], imoveis, "seguimento");
+    const r = abordagensParaEnvio([boa, fraca, nova], imoveis, "seguimento", HOJE);
     expect(r).toHaveLength(3);
     expect(new Set(r.map((l) => l.abordagem.id)).size).toBe(3);
   });
