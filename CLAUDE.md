@@ -208,6 +208,13 @@ o torna testável puro.
   não podem discordar sobre quantos esperam — e é sempre a fila de HOJE, mesmo com mês passado
   selecionado: a elegibilidade do follow-up conta a partir da data atual, e reconstruí-la exigiria o
   estado do banco naquele dia. A tela avisa quando o mês não é o corrente.
+  **A seção 3 também separa a fase da perda**, e pelo mesmo motivo: perder a locação de um imóvel
+  que JÁ foi angariado (o não exclusivo que a concorrente alugou, ou o proprietário fechando direto)
+  não é "chegamos tarde" — chegamos, e ganhamos. É o motivo `MOTIVO_PERDA_LOCADO_FORA` e o balde
+  `MOTIVOS_PERDA_POS_CAPTACAO`; sem ele, cada captação perdida piorava o número que existe para
+  diagnosticar o GARIMPO, e o documento se contradizia com a `conversaoCaptacao`, que já lê esse
+  imóvel como angariado. A ponta automática disso é `motivoPerdaPelaFase`, no webhook: "já aluguei"
+  é a mesma frase nas duas situações e a IA só vê a frase, então quem decide é o `statusHistory`.
 - **`calculo/importacao.ts`** — trazer a carteira de uma planilha. O `csv.ts` só EXPORTA; isto é o
   caminho de volta, para o corretor que chega com 200 imóveis numa planilha e hoje digitaria um a
   um. **O risco que dá forma ao módulo não é o parse** — é o que uma importação em massa faz com o

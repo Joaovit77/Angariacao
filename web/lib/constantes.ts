@@ -158,9 +158,34 @@ export const ORIGENS_LEGADAS: Record<string, string> = {
 // mágica ali e no filtro do relatório sairiam do ar em silêncio.
 export const MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO = "Número não encontrado";
 
+/**
+ * A perda que acontece DEPOIS da captação: o imóvel foi angariado, e a locação
+ * fechou fora — com outra imobiliária que já anunciava o mesmo imóvel (o caso
+ * comum do não exclusivo), ou direto entre proprietário e inquilino.
+ *
+ * Existe separado de "Imóvel já alugado por conta própria" e de "Optou por
+ * outra imobiliária", que parecem o mesmo fato e não são: aqueles dois dizem
+ * que o proprietário já tinha resolvido a vida ANTES de a gente aparecer — é o
+ * balde "chegamos tarde" do relatório completo, o diagnóstico do garimpo. Aqui
+ * não chegamos tarde: a captação foi GANHA (o proprietário disse sim, e o
+ * `statusHistory` registra a passagem por "Angariado"), e o que se perdeu foi a
+ * locação. Com os três no mesmo balde, o mesmo número responderia "o garimpo
+ * está lento?" e "a carteira não gira?", que são perguntas diferentes e pedem
+ * ações diferentes — e cada imóvel captado e perdido pioraria, sozinho, a
+ * leitura de um trabalho que deu certo.
+ *
+ * Tem constante própria pelo motivo do MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO: são
+ * três módulos referenciando o mesmo rótulo (o seletor do cadastro, o balde do
+ * relatório e a correção de fase do webhook), e string mágica em três lugares
+ * diverge em silêncio.
+ */
+export const MOTIVO_PERDA_LOCADO_FORA =
+  "Angariado, mas locado por outra imobiliária ou pelo proprietário";
+
 export const MOTIVOS_PERDA = [
   "Imóvel já vendido", "Imóvel já alugado por conta própria", "Proprietário desistiu de alugar",
   "Não é mais o proprietário", "Valor pedido incompatível com mercado", "Optou por outra imobiliária",
+  MOTIVO_PERDA_LOCADO_FORA,
   "Perda de contato definitiva", MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO, "Outro",
 ] as const;
 

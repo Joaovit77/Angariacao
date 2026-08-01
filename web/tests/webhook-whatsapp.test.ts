@@ -12,12 +12,14 @@ import {
   fecharTentativaPendente,
   interpretarEvento,
   encerramentoPorResposta,
+  motivoPerdaPelaFase,
   notaDaResposta,
   notaDoEncerramento,
   sugerirNaTentativaPendente,
   telefoneCanonico,
   textoDaMensagem,
 } from "@/lib/calculo/webhookWhatsapp";
+import { MOTIVO_PERDA_LOCADO_FORA, MOTIVOS_PERDA } from "@/lib/constantes";
 import type { Tentativa } from "@/lib/tipos";
 
 /* --- telefoneCanonico -------------------------------------------------------
@@ -390,6 +392,51 @@ describe("encerramentoPorResposta", () => {
     // Lá já existe um motivo escrito, possivelmente melhor que este.
     expect(encerramentoPorResposta({ status: "Perdido", statusHistory: [] }, MOTIVO, HOJE)).toBeNull();
     expect(encerramentoPorResposta({ status: "Cancelado", statusHistory: [] }, MOTIVO, HOJE)).toBeNull();
+  });
+});
+
+/* --- motivoPerdaPelaFase ---------------------------------------------------
+   "Já aluguei" é a MESMA frase em duas situações opostas, e a IA só vê a
+   frase. Quem sabe a diferença é o statusHistory. */
+describe("motivoPerdaPelaFase", () => {
+  const HIST_CAPTADO = [
+    { status: "Novo contato", date: "2026-06-01" },
+    { status: "Angariado", date: "2026-06-20" },
+  ];
+
+  it("imóvel já angariado: a perda é da LOCAÇÃO, não da captação", () => {
+    // Sem isto, todo encerramento automático de imóvel captado ia para o balde
+    // "chegamos tarde" do relatório — e o garimpo levaria a culpa por uma
+    // perda que só existiu porque a captação deu certo.
+    for (const motivo of ["Imóvel já alugado por conta própria", "Optou por outra imobiliária"]) {
+      expect(motivoPerdaPelaFase(HIST_CAPTADO, motivo)).toBe(MOTIVO_PERDA_LOCADO_FORA);
+    }
+  });
+
+  it("lead que nunca foi captado mantém o motivo lido da mensagem", () => {
+    const hist = [{ status: "Novo contato", date: "2026-06-01" }];
+    expect(motivoPerdaPelaFase(hist, "Optou por outra imobiliária")).toBe("Optou por outra imobiliária");
+    expect(motivoPerdaPelaFase(null, "Optou por outra imobiliária")).toBe("Optou por outra imobiliária");
+  });
+
+  it("venda é venda em qualquer fase", () => {
+    expect(motivoPerdaPelaFase(HIST_CAPTADO, "Imóvel já vendido")).toBe("Imóvel já vendido");
+  });
+
+  it("o encerramento automático aplica a correção", () => {
+    const r = encerramentoPorResposta(
+      { status: "Angariado", statusHistory: HIST_CAPTADO },
+      "Optou por outra imobiliária",
+      HOJE,
+    );
+    expect(r?.motivoPerda).toBe(MOTIVO_PERDA_LOCADO_FORA);
+  });
+
+  it("o motivo corrigido existe no seletor do cadastro", () => {
+    // O webhook grava direto no banco, sem passar pelo formulário. Fora de
+    // MOTIVOS_PERDA, o <select> do ModalImovel abriria sem a opção
+    // correspondente e a primeira edição do imóvel salvaria vazio.
+    expect(MOTIVOS_PERDA).toContain(MOTIVO_PERDA_LOCADO_FORA);
   });
 });
 

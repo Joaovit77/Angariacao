@@ -43,7 +43,11 @@
    Puro: só tipos, datas, constantes e outros módulos de cálculo. Sem
    React/Next/Supabase/store.
    ================================================================ */
-import { MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO, STATUS_TERMINAL_NEGATIVE } from "../constantes";
+import {
+  MOTIVO_PERDA_LOCADO_FORA,
+  MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO,
+  STATUS_TERMINAL_NEGATIVE,
+} from "../constantes";
 import { daysBetween } from "../datas";
 import type { Abordagem, AgendaItem, Imovel, Tentativa } from "../tipos";
 import { tentativasOrdenadas } from "./abordagens";
@@ -62,12 +66,33 @@ import { rodadaDoDia, type RodadaDia } from "./rodadaDia";
  *
  * "Optou por outra imobiliária" entra: não é o proprietário recusando o
  * serviço, é ele já tendo escolhido antes de a gente aparecer.
+ *
+ * O que NÃO entra, e é o vizinho fácil de confundir: perder a locação de um
+ * imóvel que já tinha sido captado (ver {@link MOTIVOS_PERDA_POS_CAPTACAO}).
+ * Ali não chegamos tarde — chegamos, e ganhamos.
  */
 export const MOTIVOS_CHEGAMOS_TARDE: readonly string[] = [
   "Imóvel já alugado por conta própria",
   "Imóvel já vendido",
   "Optou por outra imobiliária",
 ];
+
+/**
+ * Perda de quem JÁ TINHA SIDO CAPTADO: angariamos, e a locação fechou fora —
+ * com a imobiliária concorrente que anunciava o mesmo imóvel, ou direto entre
+ * proprietário e inquilino.
+ *
+ * Balde próprio por eliminação, e as duas exclusões dizem a mesma coisa por
+ * ângulos opostos. Não é "chegamos tarde": lá a captação nunca aconteceu, e é
+ * dali que sai o diagnóstico do garimpo — jogar esta perda naquele número faria
+ * o trabalho que deu certo piorar a leitura do trabalho que não deu. E não é
+ * "demais motivos", onde estão as recusas: aqui o proprietário disse SIM.
+ *
+ * A conversão de captação já trata este imóvel como ganho (`conversaoCaptacao`,
+ * no motor: "angariado-e-depois-perdido conta como angariado"). Esta seção é o
+ * único lugar do documento que ainda o lia pelo campo `status`.
+ */
+export const MOTIVOS_PERDA_POS_CAPTACAO: readonly string[] = [MOTIVO_PERDA_LOCADO_FORA];
 
 /**
  * Perda que fala do nosso CADASTRO, não do mercado.
@@ -306,6 +331,8 @@ export interface PerdasPeriodo {
   chegamosTarde: number;
   /** Ver {@link MOTIVOS_DADO_RUIM}. */
   dadoRuim: number;
+  /** Ver {@link MOTIVOS_PERDA_POS_CAPTACAO}: captamos e perdemos a locação. */
+  posCaptacao: number;
   /** O resto: recusa de verdade, desistência, valor, "Outro". */
   demais: number;
   /** `chegamosTarde ÷ decididos × 100`; null sem encerramento decidido. */
@@ -318,6 +345,7 @@ export function perdasDoPeriodo(imoveis: Imovel[], start: string, end: string): 
   let semResposta = 0;
   let chegamosTarde = 0;
   let dadoRuim = 0;
+  let posCaptacao = 0;
 
   for (const imovel of imoveis) {
     if (!TERMINAIS.includes(imovel.status)) continue;
@@ -342,6 +370,7 @@ export function perdasDoPeriodo(imoveis: Imovel[], start: string, end: string): 
     porMotivo.set(motivo, (porMotivo.get(motivo) || 0) + 1);
     if (MOTIVOS_CHEGAMOS_TARDE.includes(motivo)) chegamosTarde++;
     else if (MOTIVOS_DADO_RUIM.includes(motivo)) dadoRuim++;
+    else if (MOTIVOS_PERDA_POS_CAPTACAO.includes(motivo)) posCaptacao++;
   }
 
   return {
@@ -350,7 +379,8 @@ export function perdasDoPeriodo(imoveis: Imovel[], start: string, end: string): 
     porMotivo: ordenarContagem(porMotivo),
     chegamosTarde,
     dadoRuim,
-    demais: decididos - chegamosTarde - dadoRuim,
+    posCaptacao,
+    demais: decididos - chegamosTarde - dadoRuim - posCaptacao,
     pctChegamosTarde: decididos > 0 ? (chegamosTarde / decididos) * 100 : null,
   };
 }

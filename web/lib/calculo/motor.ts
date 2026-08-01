@@ -223,11 +223,21 @@ export function metricsForRange(imoveis: Imovel[], comissaoPercent: number): Met
   return { total, locados: locados.length, perdidosCancelados: perdidosCancelados.length, conversaoGeral, conversaoFechados, tempoMedio, comissaoEst, comissaoRec, valorMedioAluguel };
 }
 
+/** A mesma pergunta de `foiAngariado`, feita ao HISTÓRICO sozinho.
+ *
+ *  Existe para quem não tem o imóvel montado em mãos — hoje só o webhook, que
+ *  trabalha sobre a linha crua do banco. Sem ela aquele arquivo escreveria o
+ *  seu próprio `some(h => h.status === "Angariado")`, e duas leituras soltas da
+ *  mesma regra divergem em silêncio (a lição das gêmeas `telefoneCanonico`). */
+export function passouPorAngariado(historico: StatusHistoryEntry[] | null | undefined): boolean {
+  return (historico || []).some((h) => h.status === "Angariado");
+}
+
 // Um imóvel só conta como "angariado" quando o funil realmente marca
 // a passagem pela etapa "Angariado" — simplesmente cadastrar o imóvel
 // ou fazer o primeiro contato NÃO conta como angariação concluída.
 export function foiAngariado(imovel: Imovel): boolean {
-  return dateEnteredStatus(imovel, "Angariado") != null;
+  return passouPorAngariado(imovel.statusHistory);
 }
 
 export function dataAngariadoEfetiva(imovel: Imovel): string | null {

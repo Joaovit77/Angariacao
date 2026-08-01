@@ -8,12 +8,14 @@ import { describe, expect, it } from "vitest";
 import {
   esforcoDoPeriodo,
   MOTIVOS_CHEGAMOS_TARDE,
+  MOTIVOS_PERDA_POS_CAPTACAO,
   perdasDoPeriodo,
   relatorioCompleto,
   respostasDoPeriodo,
   CANAL_NAO_INFORMADO,
   MOTIVO_NAO_INFORMADO,
 } from "@/lib/calculo/relatorioCompleto";
+import { MOTIVO_PERDA_LOCADO_FORA } from "@/lib/constantes";
 import type { Imovel, NotaImovel, Tentativa } from "@/lib/tipos";
 
 const INICIO = "2026-07-01";
@@ -218,6 +220,26 @@ describe("perdasDoPeriodo", () => {
     expect(p.demais).toBe(1);
     expect(p.decididos).toBe(MOTIVOS_CHEGAMOS_TARDE.length + 1);
     expect(p.pctChegamosTarde).toBeCloseTo(75);
+  });
+
+  /* A captação foi GANHA e a perda veio uma etapa depois — `conversaoCaptacao`
+     já lê esse imóvel como angariado. Se esta seção o somasse a "chegamos
+     tarde", o mesmo documento diria que o garimpo chegou atrasado num imóvel
+     que ele captou, e cada captação perdida pioraria o diagnóstico do garimpo. */
+  it("perda depois de captado tem balde próprio, fora de 'chegamos tarde'", () => {
+    const p = perdasDoPeriodo([perdido(MOTIVO_PERDA_LOCADO_FORA, "2026-07-10")], INICIO, FIM);
+    expect(p.posCaptacao).toBe(1);
+    expect(p.chegamosTarde).toBe(0);
+    expect(p.pctChegamosTarde).toBe(0);
+    // Nem em "demais motivos", onde estão as recusas: aqui o proprietário disse sim.
+    expect(p.demais).toBe(0);
+  });
+
+  it("os baldes não se sobrepõem", () => {
+    // Com o motivo nas duas listas, ele seria contado uma vez e sumiria da
+    // outra em silêncio — `demais` acusaria negativo antes de alguém notar.
+    expect(MOTIVOS_CHEGAMOS_TARDE).not.toContain(MOTIVO_PERDA_LOCADO_FORA);
+    expect(MOTIVOS_PERDA_POS_CAPTACAO).not.toContain(MOTIVOS_CHEGAMOS_TARDE[0]);
   });
 
   it("telefone errado é problema de cadastro e fica em balde próprio", () => {

@@ -219,6 +219,11 @@ export default function RelatorioCompletoDoc({
               nota={`${perdas.chegamosTarde} de ${perdas.decididos}`}
             />
             <Stat label="Telefone errado" value={perdas.dadoRuim} nota="problema de cadastro" />
+            <Stat
+              label="Locação perdida"
+              value={perdas.posCaptacao}
+              nota="captamos, fechou fora"
+            />
             <Stat label="Demais motivos" value={perdas.demais} />
             <Stat
               label="Foram para sem resposta"
@@ -238,6 +243,12 @@ export default function RelatorioCompletoDoc({
             outra imobiliária: o proprietário tinha resolvido a vida antes de a gente aparecer — não
             é recusa ao serviço. &quot;Telefone errado&quot; fica separado porque fala do nosso
             cadastro, não do mercado, e a ação que ele pede é outra.
+          </p>
+          <p className="section-note" style={{ marginBottom: "14px" }}>
+            &quot;Locação perdida&quot; é o imóvel que foi angariado e acabou alugado por outra
+            imobiliária ou pelo próprio proprietário. Não entra em &quot;chegamos tarde&quot;: a
+            captação foi ganha, e é a locação que se perdeu — somar as duas faria o trabalho que deu
+            certo piorar o diagnóstico do garimpo.
           </p>
           {perdas.decididos > 0 && (
             <>

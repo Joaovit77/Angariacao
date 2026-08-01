@@ -718,7 +718,10 @@ export default function ModalImovel({ id }: { id?: string }) {
         <fieldset style={pedeMotivo(status) ? undefined : { display: "none" }}>
           <legend>Motivo</legend>
           <div className="field-group">
-            <label>Por que não avançou</label>
+            {/* "Por que não avançou" deixou de servir quando entrou o motivo de
+                perda PÓS-captação: ali o imóvel avançou — foi angariado — e o
+                que se perdeu foi a locação. */}
+            <label>Por que encerrou</label>
             <select value={motivoPerda ?? ""} onChange={(e) => setMotivoPerda(e.target.value)}>
               <option value="">Não informado</option>
               {MOTIVOS_PERDA.map((m) => (
