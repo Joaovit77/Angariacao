@@ -3637,3 +3637,57 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
   color: var(--text-faint) !important;
   margin-bottom: 16px !important;
 }
+
+/* ================================================================
+   CONEXÃO DO WHATSAPP (modal)
+   ================================================================ */
+.conexao-estado{
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.conexao-bolinha{
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.conexao-numero{
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* O fundo branco é LITERAL, e não um token: o leitor do WhatsApp
+   depende do contraste entre os módulos escuros e o fundo claro do
+   código. Sobre o fundo do tema escuro, o QR simplesmente não é lido.
+   Mesma exceção do que fica por cima das telhas do mapa. */
+.conexao-qr{
+  background: #fff;
+  border-radius: 10px;
+  padding: 12px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+}
+.conexao-qr img{
+  width: 100%;
+  max-width: 250px;
+  height: auto;
+  display: block;
+  /* O QR é arte de traço: suavizar na escala borra os módulos e há
+     leitor que desiste. */
+  image-rendering: pixelated;
+}
+
+.conexao-passos{
+  margin: 0 0 12px;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-dim);
+}
+.conexao-passos strong{ color: var(--text); font-weight: 650; }

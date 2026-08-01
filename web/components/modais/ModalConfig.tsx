@@ -218,6 +218,23 @@ export default function ModalConfig() {
         </div>
         <div className="divider"></div>
         <div className="field-group">
+          <label>WhatsApp</label>
+          <div className="field-hint" style={{ marginBottom: "10px" }}>
+            Estado do número que envia suas mensagens. Se ele cair, nenhum envio sai — e é aqui que
+            você reconecta, lendo o código com o celular.
+          </div>
+          <button
+            type="button"
+            className="btn"
+            style={{ width: "100%" }}
+            onClick={() => abrirModal("conexaoWhatsapp")}
+          >
+            Ver conexão do WhatsApp
+          </button>
+        </div>
+
+        <div className="divider"></div>
+        <div className="field-group">
           <label>Conta</label>
           <div className="field-hint" style={{ marginBottom: "10px" }}>
             Logado como <strong>{usuario?.email}</strong>

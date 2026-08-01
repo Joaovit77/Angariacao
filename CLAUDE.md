@@ -752,6 +752,39 @@ canônico** que volta. Isso resolve duas coisas que regex nenhuma resolve:
   então `+1 415 555 2671` vira `5514155552671` — que passa por qualquer teste de forma. Só a
   consulta revela que não existe, evitando mandar mensagem para um estranho.
 
+#### `api/whatsapp/conexao` — o corretor reconecta o próprio número
+
+O número cai — a sessão do WhatsApp Web expira, o celular fica dias sem internet, alguém
+desconecta o aparelho pareado. Até aqui o corretor **não sabia**, descobria pelo toast de falha no
+meio de um lote, e a única saída era alguém com acesso ao painel da Evolution ler o QR Code por
+ele. Esse último passo é o que trava a operação com mais de um corretor: aquele painel tem as
+instâncias de todo mundo.
+
+**A decisão que dá forma à rota: ver e reconectar o próprio número não precisa da global api key.**
+Criar e apagar instância precisa — e isso continua fora do app, com quem opera. Perguntar o estado
+e pedir o QR funcionam com o **token daquela instância**, que já vive em `whatsapp_instancias` e já
+é lido pela rota de envio. Nenhum poder novo entra no sistema por causa de uma tela de
+conveniência. O token, claro, não volta ao browser: a rota o usa e devolve só estado e QR.
+
+Três coisas medidas contra a Evolution real em 01/08/2026, e não deduzidas da documentação:
+
+- `connectionState` devolve `{instance:{state}}` — **sem `owner`, sem número**. O campo "conectado
+  como…" teria ficado eternamente vazio, sem erro nenhum. O número sai de `fetchInstances`, e por
+  isso ele só é consultado quando o estado JÁ é "conectado" (a única hora em que a tela o exibe, e
+  quando o intervalo de consulta é o longo).
+- A resposta de `fetchInstances` **inclui o token da instância**. Só `ownerJid` sai de lá — é a
+  razão de `identidadeConectada` devolver uma string, e não o objeto para o chamador escolher.
+- O QR aparece em formatos diferentes conforme a versão (`base64`, `qrcode.base64`, `code`), daí
+  os três serem tentados. `qrParaImagem` normaliza o prefixo `data:`, senão a imagem quebrada só
+  apareceria em produção.
+
+Duas regras no cliente (`calculo/conexaoWhatsapp.ts`, puro e testado): **QR não aparece em
+"conectando"** — ali ele já foi lido e a sessão está subindo; mostrar outro faz o corretor escanear
+de novo, e o segundo pareamento derruba o primeiro, prendendo-o num laço. E **o intervalo de
+consulta depende do estado**: rápido só enquanto algo muda, zero quando insistir não muda nada
+(sem instância, sem ambiente) — cada consulta ocupa a mesma instância que precisa estar livre para
+enviar.
+
 #### `api/whatsapp/webhook` — a resposta do proprietário chegando
 
 A única rota que inverte o sentido: as outras o app chama, esta a **Evolution** chama quando uma
