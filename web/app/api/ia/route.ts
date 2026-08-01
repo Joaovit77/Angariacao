@@ -26,6 +26,7 @@
    ================================================================ */
 import OpenAI from "openai";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { registrarEvento, registrarUsoDaResposta } from "@/lib/servidor/registro";
 import { desempenhoPorAbordagem, resumoTentativas } from "@/lib/calculo/abordagens";
 import { kpisDashboard } from "@/lib/calculo/dashboard";
 import { planoDoDia } from "@/lib/calculo/planoDia";
@@ -208,7 +209,20 @@ export async function POST(request: Request): Promise<Response> {
   // 2. Esta conta pode usar a IA? A checagem mora AQUI, não na UI: o botão
   //    escondido é conveniência, e quem souber o endereço chama a rota
   //    direto. Sem isto, qualquer usuário autenticado gastaria tokens.
-  if (!(await podeUsarIa(supabase, sessao.user.id))) return erro("sem-permissao", 403);
+  if (!(await podeUsarIa(supabase, sessao.user.id))) {
+    // Vale registrar: uma conta que TENTA usar a IA e não pode é quase
+    // sempre alguém esperando liberação — o admin vê no log de quem é,
+    // em vez de esperar a reclamação chegar por fora.
+    registrarEvento({
+      userId: sessao.user.id,
+      categoria: "ia",
+      nivel: "aviso",
+      evento: "ia-sem-permissao",
+      detalhe: null,
+    });
+    return erro("sem-permissao", 403);
+  }
+  const donoDaChamada = sessao.user.id;
 
   // 3. Corpo — só os tipos conhecidos.
   let corpo: { tipo?: unknown; contexto?: unknown; texto?: unknown; imovelId?: unknown };
@@ -271,8 +285,16 @@ export async function POST(request: Request): Promise<Response> {
       });
     } catch (e) {
       console.error("IA: falha ao sugerir roteiros:", e);
-      return erro(classificarErroIa(e), 502);
+      const falha = classificarErroIa(e);
+      registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
+      return erro(falha, 502);
     }
+    // O gasto é registrado assim que a chamada volta, ANTES de a resposta
+    // ser validada: token consumido é token cobrado, mesmo quando o JSON
+    // vem quebrado e a rota devolve erro. Registrar só no caminho feliz
+    // faria o painel mostrar menos que a fatura — justo nas contas que
+    // mais falham, que são as que mais interessa olhar.
+    registrarUsoDaResposta(donoDaChamada, pedido, MODELO, conclusao.usage);
 
     // Segurança de exibição: o structured output garante o formato, mas se a
     // resposta vier truncada (max_tokens) o JSON quebra — melhor um erro
@@ -334,8 +356,11 @@ export async function POST(request: Request): Promise<Response> {
       });
     } catch (e) {
       console.error("IA: falha ao extrair o anúncio:", e);
-      return erro(classificarErroIa(e), 502);
+      const falha = classificarErroIa(e);
+      registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
+      return erro(falha, 502);
     }
+    registrarUsoDaResposta(donoDaChamada, pedido, MODELO, conclusao.usage);
 
     try {
       const anuncio = JSON.parse(textoDaResposta(conclusao)) as AnuncioExtraido;
@@ -398,8 +423,11 @@ export async function POST(request: Request): Promise<Response> {
       });
     } catch (e) {
       console.error("IA: falha ao rascunhar a resposta:", e);
-      return erro(classificarErroIa(e), 502);
+      const falha = classificarErroIa(e);
+      registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
+      return erro(falha, 502);
     }
+    registrarUsoDaResposta(donoDaChamada, pedido, MODELO, conclusao.usage);
 
     try {
       const dados = JSON.parse(textoDaResposta(conclusao)) as { mensagem?: unknown };
@@ -479,8 +507,11 @@ export async function POST(request: Request): Promise<Response> {
     });
   } catch (e) {
     console.error(`IA: falha em ${pedido}:`, e);
-    return erro(classificarErroIa(e), 502);
+    const falha = classificarErroIa(e);
+    registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
+    return erro(falha, 502);
   }
+  registrarUsoDaResposta(donoDaChamada, pedido, MODELO, conclusao.usage);
 
   const texto = textoDaResposta(conclusao);
   if (!texto) return erro("falha-ia", 502);

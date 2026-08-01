@@ -79,6 +79,7 @@ import {
 import { transcreverAudio } from "../../_transcricao";
 import { ehAudio } from "@/lib/calculo/transcricao";
 import { classificarResposta } from "@/lib/servidor/ia";
+import { registrarEvento } from "@/lib/servidor/registro";
 import { agoraISOComHora, todayISO } from "@/lib/datas";
 import type { StatusHistoryEntry, Tentativa } from "@/lib/tipos";
 
@@ -243,6 +244,18 @@ export async function POST(
   }
   if (!dono) {
     console.log(`Webhook do WhatsApp: instância desconhecida (${mensagem.instancia}) — descartado.`);
+    /* Fica sem `user_id` (não há dono a atribuir) — e é justamente por
+       isso que precisa existir: uma instância que dispara webhook sem
+       estar cadastrada é configuração pela metade, o corretor manda
+       mensagem e nenhuma resposta volta para a carteira dele. Não gera
+       reclamação, gera silêncio; sem esta linha, ninguém descobre. */
+    registrarEvento({
+      userId: null,
+      categoria: "webhook",
+      nivel: "erro",
+      evento: "webhook-instancia-desconhecida",
+      detalhe: mensagem.instancia,
+    });
     return Response.json({ ok: true });
   }
   const userId = dono.user_id as string;
@@ -303,12 +316,26 @@ export async function POST(
       token: (dono.token as string) || "",
       mensagemId: mensagem.mensagemId,
       chaveOpenai: process.env.OPENAI_API_KEY || "",
+      // Só para o gasto da transcrição ter dono no painel de admin. Sai
+      // da instância, como todo o resto desta rota — nunca da requisição.
+      userId,
     });
     if (r.ok) {
       mensagem = { ...mensagem, texto: r.texto };
       console.log(`Webhook do WhatsApp: áudio transcrito — imóvel ${rotulo} (${r.texto.length} chars).`);
     } else {
       console.log(`Webhook do WhatsApp: áudio não transcrito (${r.falha}) — imóvel ${rotulo}, segue como [áudio].`);
+      // "aviso", não "erro": a nota sai como `[áudio]`, que é exatamente
+      // o comportamento de antes desta feature existir. O que interessa
+      // no painel é a REPETIÇÃO — uma falha é ruído, vinte são um
+      // problema de chave ou de modelo.
+      registrarEvento({
+        userId,
+        categoria: "webhook",
+        nivel: "aviso",
+        evento: "transcricao-falhou",
+        detalhe: r.falha,
+      });
     }
   }
 
@@ -336,7 +363,7 @@ export async function POST(
   //    OpenAI (ou em qualquer falha) `sugestao` vem null e o comportamento cai
   //    no anterior: fecha como "respondeu", que é o que dá para afirmar sem ler.
   const hoje = todayISO();
-  const sugestao = await classificarResposta(mensagem.texto, hoje);
+  const sugestao = await classificarResposta(mensagem.texto, hoje, userId);
   const fechamento = sugestao
     ? sugerirNaTentativaPendente(imovel.tentativas, sugestao, hoje)
     : fecharTentativaPendente(imovel.tentativas, hoje);

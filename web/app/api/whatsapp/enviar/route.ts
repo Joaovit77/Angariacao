@@ -28,6 +28,7 @@
    ================================================================ */
 import { createClient } from "@supabase/supabase-js";
 import { mensagemFalhaEnvio, numeroEvolution, type FalhaEnvio } from "@/lib/calculo/whatsapp";
+import { registrarEvento } from "@/lib/servidor/registro";
 
 /** Corpo de resposta — espelha o que lib/envioWhatsapp espera. */
 interface Resposta {
@@ -158,7 +159,19 @@ export async function POST(request: Request): Promise<Response> {
   //    enviar — e o certo é recusar, nunca cair num número padrão: com vários
   //    corretores, o padrão seria mandar pelo número de outra pessoa.
   const minha = await instanciaDoUsuario(supabaseUrl, sessao.user.id);
-  if (!minha) return erro("sem-instancia", 422);
+  if (!minha) {
+    // O evento que mais importa no painel de admin: alguém tentando
+    // trabalhar numa conta que ninguém terminou de configurar. Sem isto,
+    // o único sinal é o corretor reclamando — se ele reclamar.
+    registrarEvento({
+      userId: sessao.user.id,
+      categoria: "whatsapp",
+      nivel: "erro",
+      evento: "sem-instancia",
+      detalhe: null,
+    });
+    return erro("sem-instancia", 422);
+  }
   const { instancia, token } = minha;
 
   // 3. Corpo da requisição.
@@ -193,7 +206,20 @@ export async function POST(request: Request): Promise<Response> {
   // 5. O número existe no WhatsApp? Também é aqui que o nono dígito se resolve.
   const base = serverUrl.replace(/\/+$/, "");
   const jid = await resolverJid(base, instancia, token, numero);
-  if (jid === null) return erro("sem-whatsapp", 422);
+  if (jid === null) {
+    // "aviso", não "erro": é um fato sobre o contato (telefone fixo,
+    // número errado no cadastro), não sobre o sistema. É também o que
+    // explica, no painel, uma taxa de falha alta num lote sem nada
+    // quebrado — e o dono da carteira vê isso no relatório do lote.
+    registrarEvento({
+      userId: sessao.user.id,
+      categoria: "whatsapp",
+      nivel: "aviso",
+      evento: "sem-whatsapp",
+      detalhe: null,
+    });
+    return erro("sem-whatsapp", 422);
+  }
   const destino = jid ?? numero;
 
   // 6. Envia. Usamos o token DA INSTÂNCIA (não a global key): ele basta para
@@ -216,8 +242,33 @@ export async function POST(request: Request): Promise<Response> {
     // O detalhe fica no log do servidor (pode citar número/instância) — o
     // browser recebe só o motivo classificado.
     console.error(`Envio de WhatsApp: Evolution respondeu ${resposta.status}:`, detalhe.slice(0, 500));
-    return erro(classificarErroEvolution(resposta.status, detalhe), 502);
+    const falha = classificarErroEvolution(resposta.status, detalhe);
+    /* No log do admin vai só o motivo CLASSIFICADO, nunca o corpo da
+       resposta da Evolution — ele cita número de proprietário, e o log é
+       lido por quem opera o sistema, que não é o dono daquela carteira
+       (a regra 3 de `_registro.ts`).
+
+       Instância caída é "erro" (alguém precisa reler o QR); número sem
+       WhatsApp é "aviso", porque é um fato sobre o contato e não sobre o
+       sistema — misturar os dois faria o painel acusar problema técnico
+       toda vez que um proprietário tivesse telefone fixo. */
+    registrarEvento({
+      userId: sessao.user.id,
+      categoria: "whatsapp",
+      nivel: falha === "sem-whatsapp" || falha === "numero-invalido" ? "aviso" : "erro",
+      evento: falha === "instancia-desconectada" ? "instancia-desconectada" : "envio-falhou",
+      detalhe: falha,
+    });
+    return erro(falha, 502);
   }
+
+  registrarEvento({
+    userId: sessao.user.id,
+    categoria: "whatsapp",
+    nivel: "info",
+    evento: "envio-ok",
+    detalhe: null,
+  });
 
   const okCorpo: Resposta = { ok: true };
   return Response.json(okCorpo);

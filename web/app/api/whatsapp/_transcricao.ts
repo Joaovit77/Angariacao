@@ -18,6 +18,7 @@
    throw aqui derrubaria a gravação da nota, que é o dado mais valioso
    da rota e o que garante a idempotência.
    ================================================================ */
+import { registrarUsoIa } from "@/lib/servidor/registro";
 import {
   esperaTranscricaoMs,
   type FalhaTranscricao,
@@ -79,6 +80,7 @@ async function baixarAudio(
 async function transcreverUmaVez(
   bytes: Uint8Array,
   chave: string,
+  userId: string | null,
 ): Promise<ResultadoTranscricao | { retentar: FalhaTranscricao }> {
   const form = new FormData();
   // A EXTENSÃO IMPORTA: a OpenAI escolhe o decoder por ela, e o WhatsApp manda
@@ -114,7 +116,28 @@ async function transcreverUmaVez(
     return { ok: false, falha: "falha-openai" };
   }
 
-  const corpo = (await resposta.json().catch(() => null)) as { text?: string } | null;
+  const corpo = (await resposta.json().catch(() => null)) as
+    | { text?: string; usage?: { input_tokens?: number; output_tokens?: number } }
+    | null;
+
+  /* O gasto. Repare que os nomes dos campos são OUTROS aqui: a API de
+     transcrição devolve `input_tokens`/`output_tokens`, enquanto a de
+     chat devolve `prompt_tokens`/`completion_tokens` — daí este registro
+     ser feito à mão em vez de pelo `registrarUsoDaResposta`.
+
+     Registrado ANTES de julgar se o texto ficou útil, e de propósito: a
+     transcrição vazia foi cobrada igual. Ela é justamente o caso que o
+     painel precisa mostrar, porque é dinheiro saindo sem nada em troca. */
+  if (corpo?.usage) {
+    registrarUsoIa({
+      userId,
+      tipo: "transcricao",
+      modelo: MODELO_TRANSCRICAO,
+      tokensEntrada: corpo.usage.input_tokens ?? 0,
+      tokensSaida: corpo.usage.output_tokens ?? 0,
+    });
+  }
+
   const texto = normalizarTranscricao(corpo?.text || "");
   if (!transcricaoUtil(texto)) return { ok: false, falha: "vazio" };
   return { ok: true, texto };
@@ -127,6 +150,9 @@ export interface PedidoTranscricao {
   token: string;
   mensagemId: string;
   chaveOpenai: string;
+  /** Dono da carteira, descoberto pela instância no webhook — nunca vindo
+      da requisição. Serve só para o gasto ter dono no painel de admin. */
+  userId?: string | null;
 }
 
 /**
@@ -146,7 +172,7 @@ export async function transcreverAudio(p: PedidoTranscricao): Promise<ResultadoT
     const espera = esperaTranscricaoMs(tentativa);
     if (espera > 0) await dormir(espera);
 
-    const r = await transcreverUmaVez(audio.bytes, p.chaveOpenai);
+    const r = await transcreverUmaVez(audio.bytes, p.chaveOpenai, p.userId ?? null);
     if ("retentar" in r) {
       ultima = r.retentar;
       continue;

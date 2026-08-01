@@ -20,7 +20,8 @@ do Brasil**.
 O que fica na **raiz** do repositório:
 
 - [supabase-schema.sql](supabase-schema.sql) — schema completo do banco (tabelas `imoveis`, `metas`,
-  `agenda`, `abordagens`, `user_config`) com as políticas RLS que escopam cada linha a
+  `agenda`, `abordagens`, `user_config`, mais as de operação `admins`, `ia_uso` e `log_eventos` —
+  ver "O super admin" adiante) com as políticas RLS que escopam cada linha a
   `auth.uid() = user_id`.
   Idempotente — pode ser re-rodado no SQL editor do Supabase. **É a fonte de verdade do schema.**
 - [DEPLOY.md](DEPLOY.md) — passo a passo de deploy (Supabase + Vercel com Root Directory `web`),
@@ -414,6 +415,9 @@ o torna testável puro.
   `inscreverTema` existe para quem pinta **fora do CSS**: hoje só o Chart.js, que desenha em canvas
   e guarda a cor que recebeu — token nenhum chega lá sozinho (ver `components/graficos/Grafico.tsx`
   e o `corToken`).
+- **`calculo/custoIa.ts` · `calculo/admin.ts`** — o painel de quem OPERA o sistema (não de quem usa):
+  tokens virando dinheiro e o estado de cada corretor. Ver "O super admin" adiante — inclusive a
+  regra de que modelo sem preço devolve `null`, nunca zero.
 - **`toast.ts` / `notificacaoSistema.ts` / `geo.ts` / `dadosDemo.ts` / `auth/`** — aviso dentro da
   tela; aviso do SISTEMA operacional (a caixinha do Windows, para quando a aba está oculta — ver
   `calculo/chegadaResposta.ts`); CEP (ViaCEP) + geocoding (Nominatim); seed de exemplo; força de
@@ -707,7 +711,7 @@ contas e foi apresentada ao corretor com números de seed dentro — inclusive i
 carteira que nunca locou nenhum. Quem pegou o erro foi ele. Número estranho na análise (locação
 onde não devia haver, angariação demais) é sintoma disto antes de ser sintoma de bug no cálculo.
 
-### As rotas de servidor: `api/whatsapp/*`, `api/ia` e `api/google/*`
+### As rotas de servidor: `api/whatsapp/*`, `api/ia`, `api/google/*` e `api/admin/*`
 
 São as exceções ao "sem servidor", e existem todas pelo mesmo motivo: guardam um segredo que não
 pode chegar ao browser. Toda rota nova aqui precisa justificar-se por esse critério — se não guarda
@@ -976,6 +980,35 @@ feito, e uma visita que some depois de realizada apaga a prova de que aconteceu.
 > quebra sozinha, sem erro visível — o sintoma é `invalid_grant`, que a rota traduz para
 > `autorizacao-expirada` e a UI pede reconexão. Para uso real, publicar em "Em produção".
 
+#### `api/admin/*` — o painel de quem opera
+
+Cinco rotas (`eu`, `corretores`, `logs`, `ia`, `instancia`) e um `_comum.ts` que não é rota. O
+segredo que as justifica é a própria **service role** — e aqui ela é mais perigosa do que em
+qualquer outro lugar do projeto: nas outras (webhook, envio, Google) ela ignora a RLS para
+trabalhar dentro de UMA conta já identificada; aqui, para olhar TODAS. É exatamente o poder que o
+cargo precisa ter, e por isso o que não pode escapar por descuido.
+
+- **A identidade de quem pede nunca vem da requisição.** Sai de `auth.getUser()` sobre o Bearer, e
+  só então é conferida contra `admins` com service role. Um `userId` no corpo é aceito só como
+  **alvo** de uma ação ("libere a IA de fulano"), jamais como quem pede. `exigirAdmin` devolve a
+  `Response` de erro em vez de um booleano de propósito: um `if` esquecido não compila em silêncio.
+- **Toda rota reconfere.** Esconder o menu é conveniência — quem souber o endereço chama a rota
+  direto, o mesmo raciocínio que já valia para `podeUsarIa`.
+- **Nenhuma tabela foi afrouxada para o painel existir.** `ia_permissoes` e `whatsapp_instancias`
+  continuam sem política de escrita; quem escreve é o servidor. Se um dia alguém "simplificar" isto
+  criando uma política de update, o controle inteiro cai — qualquer usuário se autolibera com a
+  anon key.
+- `GET /api/admin/eu` responde `{admin:false}` em vez de 403, por duas razões: o boot da UI não
+  pode quebrar por causa dele (igual ao `GET /api/ia`), e um 403 seria um oráculo dizendo "este
+  endereço existe e você quase chegou".
+
+As métricas de uso são calculadas em **TypeScript**, sobre as colunas jsonb, e não por função SQL —
+somar no banco seria mais barato, mas exigiria reescrever em PL/pgSQL a regra de "o que é resposta
+do proprietário" (`ehNotaDeResposta`, com a sutileza da nota de encerramento que também começa com
+`wa:`). Este projeto já tem um par de gêmeas TS/SQL, o `telefoneCanonico`, e o aviso dele vale:
+divergir faz o casamento falhar **em silêncio**. Não vale criar o segundo par para economizar bytes
+num painel que uma pessoa abre por dia.
+
 ## Garimpo automatizado: o que já foi medido e descartado
 
 O garimpo — achar o imóvel antes de ele virar cliente de outra imobiliária — é a parte do trabalho
@@ -1032,6 +1065,76 @@ Exigiria textos de anúncio reais, não endereços reconstruídos.
 quase igual (~3,5%), mas **custam muito diferente por tentativa** — abordar na OLX é escrever uma
 mensagem; no garimpo é achar endereço, rodar o eemovel e cadastrar. A vantagem da OLX é custo por
 tentativa, não conversão.
+
+## O super admin: operar o sistema ≠ usar o sistema
+
+Tudo acima é o painel do **corretor**, e cada linha do banco pertence a um `user_id`. O que faltava
+era a outra cadeira — a de quem **opera** o sistema para vários corretores. Ela nasceu de um
+levantamento de "o que falta para começar a oferecer", em 2026-08-01, e ataca as duas coisas que
+travavam a resposta: **conta nova não se destrava sozinha** e **quando quebra, ninguém fica sabendo**.
+
+Antes disto, liberar a IA de alguém era inserir linha em `ia_permissoes` pelo Table Editor, e
+cadastrar o número era inserir em `whatsapp_instancias` do mesmo jeito. Com um usuário isso
+funciona. Com dez, o corretor novo entra, aperta "Enviar agora" e lê *"fale com o responsável pelo
+sistema"* — uma frase que só faz sentido se o responsável tiver por onde responder. E o que quebra
+(instância caída, token do Google expirado, transcrição falhando) ia para o `console.error` da
+Vercel: um fluxo único, sem dono, que ninguém lê.
+
+Três tabelas novas em [supabase-schema.sql](supabase-schema.sql), a view `/admin`, o núcleo puro em
+`lib/calculo/admin.ts` + `lib/calculo/custoIa.ts`, e `lib/servidor/registro.ts` escrevendo de dentro
+das rotas que já existiam.
+
+- **`admins`** — quem tem o cargo. RLS ligada e **nenhuma política, nem de select** — e essa é a
+  diferença para `ia_permissoes`, que deixa o dono ler o próprio flag. Lá é inofensivo (saber que
+  você tem IA não dá IA a ninguém). Aqui, uma política de select devolveria ao browser a LISTA de
+  quem manda no sistema, que é reconhecimento gratuito para quem quiser atacar a conta certa; e uma
+  de escrita, ainda que "só na própria linha", seria autopromoção a administrador com a anon key.
+  A UI pergunta ao servidor (`GET /api/admin/eu`). **O primeiro admin entra à mão** pelo Table
+  Editor — não há admin para promovê-lo (ver [DEPLOY.md](DEPLOY.md)).
+- **`ia_uso`** — o gasto, chamada a chamada. Grava o FATO (modelo + tokens, como a API devolveu) e
+  **nunca o preço**: preço muda por decisão da OpenAI, e gravá-lo congelaria as linhas antigas em
+  valores de meses atrás. A conta é feita na LEITURA, em `custoIa.ts` — mesma disciplina de
+  `resultadoObservado.ts`, e é o que faz corrigir um preço errado ser a edição de uma constante,
+  sem migração. `on delete set null`: conta encerrada não apaga a contabilidade do mês em que ela
+  existiu.
+- **`log_eventos`** — o que quebrou e na conta de quem. **Não** é trilha de auditoria: só o que
+  alguém precisaria AGIR para consertar, mais os envios (o volume que explica a fatura). Registrar
+  tudo encheria a tabela de ruído, e log que ninguém consegue ler é o mesmo que não ter log — o
+  erro exato que matou a faixa de "imóvel parado" no termômetro.
+
+Quatro regras ao mexer nisto:
+
+- **`prompt_tokens` da OpenAI JÁ INCLUI os tokens cacheados.** O cache de entrada custa dez vezes
+  menos ($0,075 contra $0,75 no `gpt-5.4-mini`), então `ia_uso` guarda as duas colunas — o total e
+  a parte cacheada — e `custoDaChamada` **subtrai** uma da outra. Quem somar as duas parcelas
+  fatura o mesmo token duas vezes, e o resultado continua parecendo plausível. Medido em
+  01/08/2026 com duas extrações idênticas: a segunda chamada veio com **1.280 dos 1.814 tokens de
+  entrada servidos do cache**, e ignorar isso inflaria aquela chamada em 55%. Guardar o total (e
+  não um valor já líquido) é o que preserva o que a API disse e deixa a correção de preço ser a
+  edição de uma constante.
+- **`custoDaChamada` devolve `null` para modelo sem preço, nunca zero.** Zero somaria em silêncio e
+  a tela exibiria um custo menor que o real com cara de exato. É a mesma lição da busca de endereço
+  por IA: número com procedência aparente, e errado, é pior que a ausência do número — e aqui ele
+  apareceria numa tela de dinheiro, que é onde menos se confere. Pelo mesmo motivo cada preço tem
+  `conferidoEm`, e a tela avisa enquanto for `null`: sem isso a tabela envelhece sem ninguém notar,
+  porque os números continuam plausíveis e a diferença só aparece na fatura.
+- **A lista abre por quem PRECISA de você**, nunca por volume (`ordenarCorretores`). Ordenar por
+  qualquer outra coisa deixa a maioria — que está bem — enterrar as duas linhas que pedem ação. É a
+  armadilha da `rodadaDia` e do termômetro, de novo.
+- **Nunca gravar no log o conteúdo da conversa nem o telefone do proprietário.** O log é lido por
+  quem opera o sistema, que **não é o dono daquela carteira**. Motivo classificado
+  (`sem-whatsapp`, `instancia-desconectada`) basta para agir e não expõe dado pessoal de terceiro
+  que nunca aceitou nada. Pelo mesmo motivo o **token da instância nunca volta** ao browser — nem
+  mascarado —, e salvar com o campo em branco MANTÉM o que já está gravado (limpar o token ao
+  corrigir só o nome da instância deixaria a conta sem poder enviar, em silêncio).
+- **O registro nunca lança e nunca atrasa.** `lib/servidor/registro.ts` escreve por `after()`,
+  depois da resposta ir embora, e engole a própria falha. O chamador está sempre no meio de algo
+  mais importante — mandar a mensagem, gravar a nota do proprietário —, e o mesmo contrato da
+  transcrição vale aqui: log é o que se perde primeiro.
+
+`lib/servidor/registro.ts` mora junto de `servidor/ia.ts` e **não** em `lib/calculo/`: lê a service
+role e importa `next/server`, então é só-de-servidor por contrato. Nunca importe dele em componente
+ou store.
 
 ## Convenções e regras (o que sempre / nunca fazer)
 
