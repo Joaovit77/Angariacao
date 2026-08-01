@@ -4,8 +4,22 @@
    (casa com o logo: casa/prédios em verde escuro com traço dourado)
    Tipografia: display condensada para números grandes (KPIs),
    corpo em sans neutra para leitura de tabelas longas.
+
+   DOIS TEMAS, UM CONJUNTO DE TOKENS. O escuro é o padrão (fica no
+   `:root`); o claro é o mesmo conjunto redefinido em
+   `:root[data-tema="claro"]`, lá embaixo. Nenhuma regra de componente
+   pergunta qual tema está ativo — é por isso que o app inteiro trocou
+   de cor sem redesenhar tela nenhuma. Ao criar componente novo:
+   **cor literal só se ela for igual nos dois temas** (ex.: o que fica
+   por cima do mapa, que é sempre claro); todo o resto sai de token.
+   Quem pinta fora do CSS (Chart.js, em canvas) lê o token computado —
+   ver `lib/tema.ts` e `components/graficos/Grafico.tsx`.
    ============================================================ */
 :root{
+  /* Diz ao navegador em que tema desenhar o que é DELE: barra de
+     rolagem, seletor de data, autofill. Sem isto o tema claro ganha
+     campos de formulário escuros do próprio sistema. */
+  color-scheme: dark;
   --bg: #121613;
   --bg-elev-1: #171e19;
   --bg-elev-2: #1e2721;
@@ -18,6 +32,12 @@
   --accent: #cca24a;
   --accent-soft: #cca24a26;
   --accent-strong: #e3c368;
+  /* Fim escuro do gradiente da marca (logo, avatar, botão dourado). */
+  --accent-fundo: #8f6f2a;
+  /* Bordas de acento: o dourado rebaixado a linha. Duas forças, porque
+     o mesmo traço precisa aparecer sobre fundo escuro e sobre branco. */
+  --accent-borda: #cca24a2e;
+  --accent-borda-forte: #cca24a66;
   --good: #5fb896;
   --good-soft: #5fb89622;
   --warn: #e0b458;
@@ -26,11 +46,189 @@
   --bad-soft: #d9787822;
   --info: #6fa8c9;
   --info-soft: #6fa8c922;
+  /* Texto/ícone POR CIMA de um preenchimento saturado (dourado, verde).
+     No escuro é quase preto; no claro, branco — porque lá as cores
+     cheias escurecem para caber sobre papel. */
+  --sobre-cor: #141a15;
+  /* Cor das sombras, em componentes RGB para o alfa continuar sendo
+     escolhido em cada declaração (a elevação é do componente, não do
+     tema). No claro a sombra é um verde-acinzentado, não preto puro. */
+  --sombra-rgb: 0 0 0;
+  /* Anel sutil em cima de arte (pino do mapa, faixa de gradiente). */
+  --anel-sutil: rgba(255,255,255,.15);
+  /* Fundo translúcido do cabeçalho grudado da vitrine. */
+  --bg-blur: rgba(18, 22, 19, .82);
+  /* Cores de STATUS. Só a cor do TEXTO é declarada: o fundo da pílula
+     sai dela por color-mix (ver .badge), então o tema claro troca dez
+     valores em vez de vinte — e nenhuma pílula pode ficar com fundo de
+     um status e texto de outro. */
+  --st-contato: #8ec2df;
+  --st-visita: #b3a8ea;
+  --st-negociacao: #e0b458;
+  --st-documentacao: #e0a35e;
+  --st-angariado: #e3c368;
+  --st-publicado: #7bd4b2;
+  --st-locado: #5fb896;
+  --st-sem-resposta: #b8b8b8;
+  --st-perdido: #e08f8f;
+  --st-cancelado: #a3a3a3;
   --radius: 10px;
   --radius-sm: 6px;
   --font-display: 'Zilla Slab', Georgia, 'Times New Roman', serif;
   --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
   --font-mono: 'SF Mono', 'Roboto Mono', Consolas, monospace;
+}
+
+/* ============================================================
+   TEMA CLARO
+   Mesma identidade (verde + dourado), invertida: o papel é quase
+   branco e as cores CHEIAS escurecem. Não é o escuro com os valores
+   trocados de lado — dourado e verde-menta legíveis sobre preto viram
+   ilegíveis sobre branco, então cada acento tem aqui a sua versão
+   escura. As escalas de elevação seguem a mesma direção de sempre
+   (elev-1 é o cartão, elev-2/3 são estados e realces), o que mantém
+   `:hover`/`:active` funcionando sem uma regra sequer.
+   ============================================================ */
+/* Os VALORES do tema claro, num lugar só. Ficam guardados sob outro nome
+   porque entram em vigor por DOIS caminhos (os blocos gêmeos abaixo), e
+   escrever a paleta duas vezes é o jeito mais fácil de os caminhos
+   divergirem sem ninguém notar. */
+:root{
+  --claro-bg: #f1f4f0;
+  --claro-bg-elev-1: #ffffff;
+  --claro-bg-elev-2: #e9eee8;
+  --claro-bg-elev-3: #dde4db;
+  --claro-border: #c7d1c5;
+  --claro-border-soft: #dce3da;
+  --claro-text: #17201a;
+  --claro-text-dim: #54605a;
+  --claro-text-faint: #77837a;
+  /* O dourado escurece bastante aqui, e não é gosto: ele é FUNDO de
+     botão com texto branco (.btn-primary, avatar). No tom do tema
+     escuro daria 3,8:1 de contraste — abaixo do mínimo legível para
+     texto de 13px. */
+  --claro-accent: #8f6a16;
+  --claro-accent-soft: #8f6a161f;
+  --claro-accent-strong: #7a5a12;
+  --claro-accent-fundo: #7a5a12;
+  --claro-accent-borda: #8f6a164d;
+  --claro-accent-borda-forte: #8f6a1699;
+  --claro-good: #2c7f60;
+  --claro-good-soft: #2c7f6019;
+  --claro-warn: #8a6212;
+  --claro-warn-soft: #8a621219;
+  --claro-bad: #b3423c;
+  --claro-bad-soft: #b3423c19;
+  --claro-info: #2a6a8a;
+  --claro-info-soft: #2a6a8a19;
+  --claro-sobre-cor: #ffffff;
+  --claro-sombra-rgb: 32 46 38;
+  --claro-anel-sutil: rgba(23,32,26,.14);
+  --claro-bg-blur: rgba(241, 244, 240, .86);
+  --claro-st-contato: #23617f;
+  --claro-st-visita: #524399;
+  --claro-st-negociacao: #7f5a10;
+  --claro-st-documentacao: #8a5416;
+  --claro-st-angariado: #7a5a12;
+  --claro-st-publicado: #1c6f52;
+  --claro-st-locado: #1f6349;
+  --claro-st-sem-resposta: #5c665f;
+  --claro-st-perdido: #a53c37;
+  --claro-st-cancelado: #6a736c;
+}
+
+/* Os dois caminhos para o tema claro. São BLOCOS GÊMEOS: token novo
+   entra nos dois, senão um dos caminhos fica servindo cor do outro tema.
+
+   1) `[data-tema]` é a escolha do corretor, escrita pelo script do <head>
+      (lib/tema.ts) a partir do localStorage.
+   2) Sem escolha, quem manda é o sistema — e essa metade PRECISA ser CSS
+      puro. O script do Next entra junto com o corpo da página, tarde
+      demais: quem usa o Windows em claro veria a tela nascer escura e se
+      corrigir, a cada entrada no app. O `:not([data-tema="escuro"])`
+      garante que escolher escuro num sistema claro continue valendo. */
+:root[data-tema="claro"]{
+  color-scheme: light;
+  --bg: var(--claro-bg);
+  --bg-elev-1: var(--claro-bg-elev-1);
+  --bg-elev-2: var(--claro-bg-elev-2);
+  --bg-elev-3: var(--claro-bg-elev-3);
+  --border: var(--claro-border);
+  --border-soft: var(--claro-border-soft);
+  --text: var(--claro-text);
+  --text-dim: var(--claro-text-dim);
+  --text-faint: var(--claro-text-faint);
+  --accent: var(--claro-accent);
+  --accent-soft: var(--claro-accent-soft);
+  --accent-strong: var(--claro-accent-strong);
+  --accent-fundo: var(--claro-accent-fundo);
+  --accent-borda: var(--claro-accent-borda);
+  --accent-borda-forte: var(--claro-accent-borda-forte);
+  --good: var(--claro-good);
+  --good-soft: var(--claro-good-soft);
+  --warn: var(--claro-warn);
+  --warn-soft: var(--claro-warn-soft);
+  --bad: var(--claro-bad);
+  --bad-soft: var(--claro-bad-soft);
+  --info: var(--claro-info);
+  --info-soft: var(--claro-info-soft);
+  --sobre-cor: var(--claro-sobre-cor);
+  --sombra-rgb: var(--claro-sombra-rgb);
+  --anel-sutil: var(--claro-anel-sutil);
+  --bg-blur: var(--claro-bg-blur);
+  --st-contato: var(--claro-st-contato);
+  --st-visita: var(--claro-st-visita);
+  --st-negociacao: var(--claro-st-negociacao);
+  --st-documentacao: var(--claro-st-documentacao);
+  --st-angariado: var(--claro-st-angariado);
+  --st-publicado: var(--claro-st-publicado);
+  --st-locado: var(--claro-st-locado);
+  --st-sem-resposta: var(--claro-st-sem-resposta);
+  --st-perdido: var(--claro-st-perdido);
+  --st-cancelado: var(--claro-st-cancelado);
+}
+
+@media (prefers-color-scheme: light){
+  :root:not([data-tema="escuro"]){
+    color-scheme: light;
+    --bg: var(--claro-bg);
+    --bg-elev-1: var(--claro-bg-elev-1);
+    --bg-elev-2: var(--claro-bg-elev-2);
+    --bg-elev-3: var(--claro-bg-elev-3);
+    --border: var(--claro-border);
+    --border-soft: var(--claro-border-soft);
+    --text: var(--claro-text);
+    --text-dim: var(--claro-text-dim);
+    --text-faint: var(--claro-text-faint);
+    --accent: var(--claro-accent);
+    --accent-soft: var(--claro-accent-soft);
+    --accent-strong: var(--claro-accent-strong);
+    --accent-fundo: var(--claro-accent-fundo);
+    --accent-borda: var(--claro-accent-borda);
+    --accent-borda-forte: var(--claro-accent-borda-forte);
+    --good: var(--claro-good);
+    --good-soft: var(--claro-good-soft);
+    --warn: var(--claro-warn);
+    --warn-soft: var(--claro-warn-soft);
+    --bad: var(--claro-bad);
+    --bad-soft: var(--claro-bad-soft);
+    --info: var(--claro-info);
+    --info-soft: var(--claro-info-soft);
+    --sobre-cor: var(--claro-sobre-cor);
+    --sombra-rgb: var(--claro-sombra-rgb);
+    --anel-sutil: var(--claro-anel-sutil);
+    --bg-blur: var(--claro-bg-blur);
+    --st-contato: var(--claro-st-contato);
+    --st-visita: var(--claro-st-visita);
+    --st-negociacao: var(--claro-st-negociacao);
+    --st-documentacao: var(--claro-st-documentacao);
+    --st-angariado: var(--claro-st-angariado);
+    --st-publicado: var(--claro-st-publicado);
+    --st-locado: var(--claro-st-locado);
+    --st-sem-resposta: var(--claro-st-sem-resposta);
+    --st-perdido: var(--claro-st-perdido);
+    --st-cancelado: var(--claro-st-cancelado);
+  }
 }
 
 *{box-sizing:border-box; margin:0; padding:0;}
@@ -94,12 +292,12 @@ input, select, textarea{ font-family: inherit; font-size: 14px; }
 .brand-mark{
   width: 44px; height: 44px;
   border-radius: 7px;
-  background: linear-gradient(155deg, var(--accent), #8f6f2a);
+  background: linear-gradient(155deg, var(--accent), var(--accent-fundo));
   display:flex; align-items:center; justify-content:center;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 15px;
-  color: #1a1207;
+  color: var(--sobre-cor);
   flex-shrink:0;
 }
 /* Quando a marca é a imagem do logo (arquivo em /public), não usa o quadrado
@@ -176,7 +374,7 @@ img.brand-mark{
   .sidebar{
     width: 240px;
     z-index: 2000;
-    box-shadow: 8px 0 30px rgba(0, 0, 0, .28);
+    box-shadow: 8px 0 30px rgb(var(--sombra-rgb) / .28);
     /* topo = 0: a faixa .sidebar-head (63px) faz o topo, alinhada à topbar. */
     padding: 0 14px 22px 14px;
     transition:
@@ -248,7 +446,7 @@ img.brand-mark{
     border-radius: 6px;
     font-size: 12.5px; font-weight: 500;
     white-space: nowrap;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, .28);
+    box-shadow: 0 6px 20px rgb(var(--sombra-rgb) / .28);
     opacity: 0; pointer-events: none;
     transition: opacity .14s ease, transform .14s ease;
     z-index: 2400;
@@ -286,7 +484,7 @@ img.brand-mark{
   border-radius: 14px;
   padding: 36px 34px;
   position: relative;
-  box-shadow: 0 24px 60px -20px rgba(0,0,0,.5);
+  box-shadow: 0 24px 60px -20px rgb(var(--sombra-rgb) / .5);
   animation: authboxin .35s ease;
 }
 @keyframes authboxin{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
@@ -332,7 +530,7 @@ img.brand-mark{
   border-bottom: 1px solid transparent;
 }
 .vitrine-topo.fixado{
-  background: rgba(18, 22, 19, .82);
+  background: var(--bg-blur);
   backdrop-filter: blur(10px);
   border-bottom-color: var(--border-soft);
 }
@@ -363,7 +561,7 @@ img.brand-mark{
   display:inline-block; margin-bottom:18px;
   font-size:10.5px; font-weight:700; letter-spacing:1.6px; text-transform:uppercase;
   color: var(--accent-strong); background: var(--accent-soft);
-  border:1px solid #cca24a2e; border-radius:20px; padding:6px 14px;
+  border:1px solid var(--accent-borda); border-radius:20px; padding:6px 14px;
 }
 .showcase-headline{
   font-family: var(--font-display); font-weight:700;
@@ -398,7 +596,7 @@ img.brand-mark{
   width:100%; max-width:760px; margin: 0 auto 34px auto;
   background: var(--bg-elev-1);
   border:1px solid var(--border-soft); border-radius:12px;
-  box-shadow: 0 30px 70px -30px rgba(0,0,0,.8);
+  box-shadow: 0 30px 70px -30px rgb(var(--sombra-rgb) / .8);
   overflow:hidden; text-align:left;
   transform: perspective(1400px) rotateX(3deg);
 }
@@ -470,7 +668,7 @@ img.brand-mark{
   display:inline-block; margin-bottom:12px;
   font-size:10px; font-weight:700; letter-spacing:1.8px; text-transform:uppercase;
   color: var(--accent-strong); background: var(--accent-soft);
-  border:1px solid #cca24a2e; border-radius:20px; padding:5px 13px;
+  border:1px solid var(--accent-borda); border-radius:20px; padding:5px 13px;
 }
 .parte-titulo{
   font-family: var(--font-display); font-weight:700;
@@ -605,7 +803,7 @@ img.brand-mark{
   background: var(--bg-elev-1); border:1px solid var(--border-soft);
   border-radius:10px; padding:9px 12px;
 }
-.caixa-linha.nova{ border-color: #cca24a33; background: var(--bg-elev-2); }
+.caixa-linha.nova{ border-color: var(--accent-borda); background: var(--bg-elev-2); }
 .caixa-cod{
   font-family: var(--font-mono); font-size:10px; color: var(--text-faint); flex-shrink:0;
 }
@@ -698,7 +896,7 @@ img.brand-mark{
 .colagem-para{ display:grid; gap:5px; flex-shrink:0; }
 .colagem-para b{
   font-size:10.5px; font-weight:700; color: var(--accent-strong);
-  background: var(--accent-soft); border:1px solid #cca24a2e;
+  background: var(--accent-soft); border:1px solid var(--accent-borda);
   border-radius:6px; padding:3px 10px; text-align:center;
 }
 
@@ -718,7 +916,7 @@ img.brand-mark{
 .medalha{
   width:38px; height:38px; border-radius:50%;
   display:inline-flex; align-items:center; justify-content:center;
-  background: var(--accent-soft); border:1px solid #cca24a2e; color: var(--accent-strong);
+  background: var(--accent-soft); border:1px solid var(--accent-borda); color: var(--accent-strong);
 }
 .medalha svg{ width:18px; height:18px; }
 
@@ -768,7 +966,7 @@ img.brand-mark{
   width:38px; height:38px; border-radius:10px; margin-bottom:6px;
   display:inline-flex; align-items:center; justify-content:center;
   background: var(--accent-soft); color: var(--accent-strong);
-  border:1px solid #cca24a2e;
+  border:1px solid var(--accent-borda);
 }
 .extra-ic svg{ width:19px; height:19px; }
 .extra strong{ color: var(--text); font-size:13.5px; font-weight:700; }
@@ -1097,15 +1295,28 @@ img.brand-mark{
   border-color: var(--text-faint);
 }
 .topbar-icon-btn{ position: relative; }
+
+/* ---- Alternador de tema ----
+   Os dois ícones estão sempre no HTML; quem escolhe qual aparece é o
+   `data-tema` do <html>, não o React (ver components/BotaoTema.tsx).
+   O botão mostra o tema de DESTINO — no escuro oferece o sol. */
+.tema-toggle{ font-size: 15px; line-height: 1; }
+.tema-toggle .tema-ic{ display: none; }
+.tema-toggle .tema-ic-claro{ display: inline; }
+:root[data-tema="claro"] .tema-toggle .tema-ic-claro{ display: none; }
+:root[data-tema="claro"] .tema-toggle .tema-ic-escuro{ display: inline; }
+/* Na vitrine ele acompanha os botões de acesso, sem moldura de ícone. */
+.vitrine-topo-acoes .tema-toggle{ width: 34px; height: 34px; padding: 0; }
+
 .topbar-avatar{
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 15px;
-  color: #1a1207;
+  color: var(--sobre-cor);
   border: none;
-  background: linear-gradient(155deg, var(--accent), #8f6f2a);
+  background: linear-gradient(155deg, var(--accent), var(--accent-fundo));
 }
-.topbar-avatar:hover{ filter: brightness(1.06); color: #1a1207; }
+.topbar-avatar:hover{ filter: brightness(1.06); color: var(--sobre-cor); }
 
 .topbar-badge{
   position: absolute; top: -5px; right: -5px;
@@ -1126,7 +1337,7 @@ img.brand-mark{
   background: var(--bg-elev-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 14px 34px rgba(0,0,0,.45);
+  box-shadow: 0 14px 34px rgb(var(--sombra-rgb) / .45);
   padding: 6px;
   z-index: 2200;
   transform-origin: top right;
@@ -1206,7 +1417,7 @@ img.brand-mark{
 .btn-primary{
   background: var(--accent);
   border-color: var(--accent);
-  color: #1a1207;
+  color: var(--sobre-cor);
 }
 .btn-primary:hover{ background: var(--accent-strong); border-color: var(--accent-strong); }
 .btn-ghost{ background: transparent; border-color: transparent; color: var(--text-dim); }
@@ -1295,20 +1506,24 @@ tbody tr:last-child td{ border-bottom:none; }
   font-size: 11px; font-weight:700; letter-spacing:.2px;
   padding: 4px 9px; border-radius: 20px;
   white-space:nowrap;
+  background: color-mix(in srgb, currentColor 14%, transparent);
 }
 .dot{ width:6px; height:6px; border-radius:50%; background:currentColor; }
 
-/* status color mapping via data attribute */
-.badge[data-status="Novo contato"]{ background:#6fa8c922; color:#8ec2df; }
-.badge[data-status="Visita agendada"]{ background:#9b8fd922; color:#b3a8ea; }
-.badge[data-status="Em negociação"]{ background:#e0b45822; color:#e0b458; }
-.badge[data-status="Documentação"]{ background:#d9a45f22; color:#e0a35e; }
-.badge[data-status="Angariado"]{ background:#cca24a26; color:#e3c368; }
-.badge[data-status="Publicado"]{ background:#6fc9a822; color:#7bd4b2; }
-.badge[data-status="Locado"]{ background:#5fb89622; color:#5fb896; }
-.badge[data-status="Sem resposta"]{ background:#8a8a8a22; color:#b8b8b8; }
-.badge[data-status="Perdido"]{ background:#d9787822; color:#e08f8f; }
-.badge[data-status="Cancelado"]{ background:#8a8a8a22; color:#a3a3a3; }
+/* status color mapping via data attribute
+   Cada status declara só a COR; o fundo é um véu dela mesma
+   (currentColor), o que impede pílula com fundo de um status e texto de
+   outro e deixa o tema claro trocar dez valores em vez de vinte. */
+.badge[data-status="Novo contato"]{ color: var(--st-contato); }
+.badge[data-status="Visita agendada"]{ color: var(--st-visita); }
+.badge[data-status="Em negociação"]{ color: var(--st-negociacao); }
+.badge[data-status="Documentação"]{ color: var(--st-documentacao); }
+.badge[data-status="Angariado"]{ color: var(--st-angariado); }
+.badge[data-status="Publicado"]{ color: var(--st-publicado); }
+.badge[data-status="Locado"]{ color: var(--st-locado); }
+.badge[data-status="Sem resposta"]{ color: var(--st-sem-resposta); }
+.badge[data-status="Perdido"]{ color: var(--st-perdido); }
+.badge[data-status="Cancelado"]{ color: var(--st-cancelado); }
 
 /* ============================================================
    PIPELINE / KANBAN
@@ -1394,7 +1609,7 @@ th.th-filter{ position:relative; }
   background: var(--bg-elev-2);
   border:1px solid var(--border);
   border-radius: var(--radius-sm);
-  box-shadow: 0 14px 34px rgba(0,0,0,.42);
+  box-shadow: 0 14px 34px rgb(var(--sombra-rgb) / .42);
   padding:8px;
   text-transform:none; letter-spacing:normal;
   animation: fadein .12s ease;
@@ -1442,7 +1657,7 @@ th.th-filter{ position:relative; }
   height:100vh;
   background: var(--bg-elev-1);
   border-left:1px solid var(--border);
-  box-shadow: -18px 0 44px rgba(0,0,0,.42);
+  box-shadow: -18px 0 44px rgb(var(--sombra-rgb) / .42);
   display:flex;
   flex-direction:column;
   animation: drawerin .2s ease;
@@ -1599,7 +1814,7 @@ th.th-filter{ position:relative; }
   border-left-color: var(--col-color, var(--text-faint));
   background: var(--bg-elev-3);
   transform: translateY(-2px);
-  box-shadow: 0 8px 18px rgba(0,0,0,.28);
+  box-shadow: 0 8px 18px rgb(var(--sombra-rgb) / .28);
 }
 .kanban-card-code{ font-family: var(--font-mono); font-size:10.5px; color:var(--text-faint); letter-spacing:.2px; }
 .kanban-card-addr{ font-size:12.5px; font-weight:600; line-height:1.35; }
@@ -1684,8 +1899,8 @@ legend{
   height: 9px; background: var(--bg-elev-3); border-radius: 20px; overflow:hidden; margin-bottom:10px;
 }
 .progress-fill{ height:100%; border-radius:20px; background: linear-gradient(90deg, var(--accent), var(--accent-strong)); transition: width .4s ease; }
-.progress-fill.good{ background: linear-gradient(90deg, #4a9b78, var(--good)); }
-.progress-fill.warn{ background: linear-gradient(90deg, #c99a3f, var(--warn)); }
+.progress-fill.good{ background: linear-gradient(90deg, color-mix(in srgb, var(--good) 76%, #000), var(--good)); }
+.progress-fill.warn{ background: linear-gradient(90deg, color-mix(in srgb, var(--warn) 80%, #000), var(--warn)); }
 /* Termômetro: o gradiente laranja→verde tem o comprimento do track inteiro
    (background-size = 100% / pct) e é recortado pelo width do fill — a cor da
    ponta acompanha o progresso: começa laranja e chega ao verde nos 100%. */
@@ -1696,8 +1911,8 @@ legend{
 /* Pulso/brilho discreto quando a meta passa de 90%. */
 .progress-fill.pulsante{ animation: metapulse 1.8s ease-in-out infinite; }
 @keyframes metapulse{
-  0%, 100%{ box-shadow: 0 0 0 0 rgba(95, 184, 150, 0); filter: brightness(1); }
-  50%{ box-shadow: 0 0 10px 1px rgba(95, 184, 150, .5); filter: brightness(1.12); }
+  0%, 100%{ box-shadow: 0 0 0 0 transparent; filter: brightness(1); }
+  50%{ box-shadow: 0 0 10px 1px color-mix(in srgb, var(--good) 50%, transparent); filter: brightness(1.12); }
 }
 @media (prefers-reduced-motion: reduce){
   .progress-fill.pulsante{ animation: none; }
@@ -1715,7 +1930,7 @@ legend{
   border:1px solid var(--border);
   border-radius: var(--radius);
 }
-.badge-card:not(.bloqueada){ border-color:#cca24a66; background: linear-gradient(180deg, var(--accent-soft), var(--bg-elev-1) 60%); }
+.badge-card:not(.bloqueada){ border-color:var(--accent-borda-forte); background: linear-gradient(180deg, var(--accent-soft), var(--bg-elev-1) 60%); }
 /* Com as conquistas em trilha, o único card travado visível é sempre o PRÓXIMO
    degrau — o alvo da vez, não uma medalha distante. Por isso ele deixou de
    sumir atrás de `opacity:.5 + grayscale(1)`: o progresso ("6 de 10") precisa
@@ -1748,7 +1963,7 @@ legend{
   color: var(--text-faint); margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid var(--border-soft);
   display:flex; align-items:center; gap:8px;
 }
-.agenda-day-label.today{ color: var(--accent-strong); border-bottom-color:#cca24a55; }
+.agenda-day-label.today{ color: var(--accent-strong); border-bottom-color:var(--accent-borda-forte); }
 /* "Hoje" era texto solto antes da data; como pílula, o dia corrente se acha
    de relance ao rolar uma lista de várias semanas. */
 .agenda-day-hoje{
@@ -1775,19 +1990,19 @@ legend{
   background: var(--bg-elev-2);
   border-color: var(--border);
   transform: translateY(-1px);
-  box-shadow: 0 8px 18px rgba(0,0,0,.18);
+  box-shadow: 0 8px 18px rgb(var(--sombra-rgb) / .18);
 }
 .agenda-item.done{ opacity:.45; }
-.agenda-item.overdue{ border-color: #d9787855; box-shadow: inset 3px 0 0 var(--bad); }
-.agenda-item.today{ border-color:#cca24a66; box-shadow: inset 3px 0 0 var(--accent); }
-.agenda-item.future{ box-shadow: inset 3px 0 0 #6fa8c955; }
+.agenda-item.overdue{ border-color: color-mix(in srgb, var(--bad) 34%, transparent); box-shadow: inset 3px 0 0 var(--bad); }
+.agenda-item.today{ border-color:var(--accent-borda-forte); box-shadow: inset 3px 0 0 var(--accent); }
+.agenda-item.future{ box-shadow: inset 3px 0 0 color-mix(in srgb, var(--info) 34%, transparent); }
 .agenda-check{
   width:18px; height:18px; border-radius:5px; border:1.5px solid var(--border);
   flex-shrink:0; margin-top:2px; display:flex; align-items:center; justify-content:center;
   background: var(--bg-elev-2);
   cursor:pointer;
 }
-.agenda-check.checked{ background: var(--good); border-color: var(--good); color:#0c1512; }
+.agenda-check.checked{ background: var(--good); border-color: var(--good); color:var(--sobre-cor); }
 .agenda-item-body{ flex:1; min-width:0; }
 .agenda-item-title{ font-size:14px; font-weight:600; margin-bottom:7px; line-height:1.35; display:flex; align-items:center; gap:8px; }
 .agenda-item-meta{ font-size:11.5px; color: var(--text-faint); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
@@ -1798,11 +2013,18 @@ legend{
   /* Fundo neutro padrão — tipos personalizados (sem cor própria) caem aqui. */
   background: var(--bg-elev-3); color: var(--text-dim);
 }
-.agenda-type-tag[data-type="Retorno ao proprietário"]{ background:#6fa8c922; color:#8ec2df; }
-.agenda-type-tag[data-type="Visita"]{ background:#9b8fd922; color:#b3a8ea; }
-.agenda-type-tag[data-type="Pendência"]{ background:#d9787822; color:#e08f8f; }
-.agenda-type-tag[data-type="Documentação"]{ background:#e0b45822; color:#e0b458; }
-.agenda-type-tag[data-type="Follow-up"]{ background:#5fb89622; color:#5fb896; }
+/* Mesmo véu de currentColor das pílulas de status (ver .badge): o tipo
+   declara a cor, o fundo cai dela. */
+.agenda-type-tag[data-type="Retorno ao proprietário"],
+.agenda-type-tag[data-type="Visita"],
+.agenda-type-tag[data-type="Pendência"],
+.agenda-type-tag[data-type="Documentação"],
+.agenda-type-tag[data-type="Follow-up"]{ background: color-mix(in srgb, currentColor 14%, transparent); }
+.agenda-type-tag[data-type="Retorno ao proprietário"]{ color: var(--st-contato); }
+.agenda-type-tag[data-type="Visita"]{ color: var(--st-visita); }
+.agenda-type-tag[data-type="Pendência"]{ color: var(--st-perdido); }
+.agenda-type-tag[data-type="Documentação"]{ color: var(--st-negociacao); }
+.agenda-type-tag[data-type="Follow-up"]{ color: var(--st-locado); }
 .agenda-type-icon{
   width:24px; height:24px; flex-shrink:0;
   display:inline-flex; align-items:center; justify-content:center;
@@ -1813,7 +2035,7 @@ legend{
   font-size:13px;
 }
 .agenda-actions{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
-.agenda-whatsapp-btn{ white-space:nowrap; color:var(--good); border-color:#5fb89655; }
+.agenda-whatsapp-btn{ white-space:nowrap; color:var(--good); border-color:color-mix(in srgb, var(--good) 34%, transparent); }
 .agenda-whatsapp-btn:hover{ background:var(--good-soft); color:var(--good); }
 .agenda-due-chip{
   display:inline-flex; align-items:center; gap:5px;
@@ -1946,7 +2168,7 @@ legend{
 .insight-card:hover{
   background: var(--bg-elev-2);
   border-color: var(--border);
-  box-shadow: 0 14px 32px -20px rgba(0,0,0,.7);
+  box-shadow: 0 14px 32px -20px rgb(var(--sombra-rgb) / .7);
   transform: translateY(-1px);
 }
 
@@ -2064,13 +2286,74 @@ legend{
 .toast{
   background: var(--bg-elev-3); border:1px solid var(--border); color:var(--text);
   padding: 12px 16px; border-radius: var(--radius-sm); font-size:13px; font-weight:600;
-  box-shadow: 0 6px 22px rgba(0,0,0,.35); display:flex; align-items:center; gap:8px;
+  box-shadow: 0 6px 22px rgb(var(--sombra-rgb) / .35); display:flex; align-items:center; gap:8px;
   animation: toastin .2s ease;
 }
-.toast.success{ border-color: #5fb89655; }
-.toast.error{ border-color: #d9787855; }
+.toast.success{ border-color: color-mix(in srgb, var(--good) 34%, transparent); }
+.toast.error{ border-color: color-mix(in srgb, var(--bad) 34%, transparent); }
 .toast.warning{ border-color: var(--warn); }
 @keyframes toastin{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+
+/* ---- Cartão: a mensagem que CHEGA (ver lib/toast.ts) ----
+   O toast comum é uma frase de negrito confirmando o que o corretor acabou
+   de fazer. Este traz notícia de fora, com três pesos diferentes — quem
+   falou, de qual imóvel, o que disse. Numa linha só de negrito e sem largura
+   máxima, virava uma faixa atravessando a tela em que nada se destacava. */
+/* `.toast.toast-cartao` (e não só `.toast-cartao`) para vencer o
+   `.toast.success`, que pinta as quatro bordas com o verde esmaecido. */
+.toast.toast-cartao{
+  display: block; padding: 0; position: relative;
+  width: min(360px, calc(100vw - 44px));
+  font-weight: 400;
+  /* A faixa verde na lateral é o mesmo verde do WhatsApp no resto do app
+     (--good, o dos botões de conversa): o cartão se identifica antes de ser
+     lido, e a borda esmaecida do `.toast.success` faria isso mal — ela
+     circunda a caixa toda e diz "deu certo", não "chegou mensagem". */
+  border-left: 3px solid var(--good);
+  overflow: hidden;
+}
+.toast-cartao-corpo{
+  display: grid; grid-template-columns: 30px 1fr; gap: 0 10px;
+  align-items: start;
+  width: 100%; padding: 11px 34px 12px 12px;
+  background: none; border: none; color: inherit; font: inherit;
+  text-align: left;
+}
+button.toast-cartao-corpo{ cursor: pointer; }
+button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%, transparent); }
+.toast-cartao-ic{
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--good-soft); font-size: 15px; line-height: 1;
+}
+.toast-cartao-texto{ display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.toast-cartao-topo{ display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.toast-cartao-titulo{ font-size: 13px; font-weight: 700; color: var(--text); }
+.toast-cartao-selo{
+  font-size: 10px; font-weight: 700; letter-spacing: .2px;
+  padding: 1px 7px; border-radius: 20px;
+  background: var(--good-soft); color: var(--good);
+}
+.toast-cartao-detalhe{
+  font-size: 11px; color: var(--text-faint);
+  /* O endereço é contexto, não manchete: uma linha só, cortada no fim. */
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.toast-cartao-msg{
+  margin-top: 5px; font-size: 12.5px; line-height: 1.45; color: var(--text-dim);
+  /* Até três linhas. A prévia vem cortada em 120 caracteres (MAX_PREVIA_AVISO),
+     e sem teto de altura um áudio transcrito esticaria o cartão pela tela. */
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.toast-cartao-fechar{
+  position: absolute; top: 6px; right: 6px;
+  width: 22px; height: 22px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: none; color: var(--text-faint);
+  font-size: 15px; line-height: 1;
+}
+.toast-cartao-fechar:hover{ background: var(--bg-elev-2); color: var(--text); }
 
 .empty-state{ text-align:center; padding: 60px 20px; color: var(--text-faint); }
 .empty-state h3{ font-family: var(--font-display); font-size:17px; color: var(--text-dim); margin-bottom:6px; }
@@ -2111,11 +2394,11 @@ legend{
    CRM — ações rápidas da listagem e histórico de interações
    ============================================================ */
 .row-actions{ display:flex; gap:6px; justify-content:flex-end; align-items:center; }
-.icon-btn.whatsapp{ color: var(--good); border-color:#5fb89644; }
+.icon-btn.whatsapp{ color: var(--good); border-color:color-mix(in srgb, var(--good) 27%, transparent); }
 .icon-btn.whatsapp:hover{ color: var(--good); border-color: var(--good); background: var(--good-soft); }
-.icon-btn.retomar{ color: var(--warn); border-color:#e0b45844; font-size:15px; }
+.icon-btn.retomar{ color: var(--warn); border-color:color-mix(in srgb, var(--warn) 27%, transparent); font-size:15px; }
 .icon-btn.retomar:hover{ color: var(--warn); border-color: var(--warn); background: var(--warn-soft); }
-.kanban-retomar{ margin-top:8px; width:100%; color: var(--warn); border-color:#e0b45844; }
+.kanban-retomar{ margin-top:8px; width:100%; color: var(--warn); border-color:color-mix(in srgb, var(--warn) 27%, transparent); }
 .kanban-retomar:hover{ border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
 
 .drawer-notas-resumo{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
@@ -2218,7 +2501,7 @@ legend{
 .map-legend{
   position:absolute; bottom:16px; left:16px; z-index:1000;
   background: var(--bg-elev-1); border:1px solid var(--border); border-radius: var(--radius-sm);
-  padding: 12px 14px; font-size:12px; box-shadow: 0 6px 20px rgba(0,0,0,.4);
+  padding: 12px 14px; font-size:12px; box-shadow: 0 6px 20px rgb(var(--sombra-rgb) / .4);
 }
 .map-legend-title{
   font-weight:700; margin-bottom:8px; font-size:11px; text-transform:uppercase;
@@ -2232,7 +2515,7 @@ legend{
 .map-legend-clear:hover{ text-decoration:underline; }
 .map-legend-row{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
 .map-legend-row:last-child{ margin-bottom:0; }
-.map-legend-dot{ width:11px; height:11px; border-radius:50%; flex-shrink:0; border:2px solid rgba(255,255,255,.15); }
+.map-legend-dot{ width:11px; height:11px; border-radius:50%; flex-shrink:0; border:2px solid var(--anel-sutil); }
 /* Linhas da legenda que filtram: viram botões. Clicar isola a categoria. */
 .map-legend-filtro{
   width:100%; border:none; background:transparent; color:var(--text); cursor:pointer;
@@ -2248,7 +2531,7 @@ legend{
 .map-legend-count{ color:var(--text-faint); font-variant-numeric: tabular-nums; }
 .map-unlocated-note{
   position:absolute; top:16px; right:16px; z-index:1000;
-  background: var(--warn-soft); color: var(--warn); border:1px solid #e0b45855;
+  background: var(--warn-soft); color: var(--warn); border:1px solid color-mix(in srgb, var(--warn) 34%, transparent);
   padding: 8px 13px; border-radius: var(--radius-sm); font-size:12px; font-weight:600; max-width:240px;
 }
 /* Seletor de modo do mapa: pinos / agrupado / calor. Fica no cabeçalho, ao lado
@@ -2257,7 +2540,7 @@ legend{
 .map-mode-switch{
   display:inline-flex; gap:2px; align-items:center;
   background: var(--bg-elev-1); border:1px solid var(--border); border-radius: var(--radius-sm);
-  padding:3px; box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  padding:3px; box-shadow: 0 2px 8px rgb(var(--sombra-rgb) / .25);
 }
 .map-mode-btn{
   border:none; background:transparent; color:var(--text-faint); cursor:pointer;
@@ -2265,15 +2548,15 @@ legend{
   transition: background .15s, color .15s;
 }
 .map-mode-btn:hover{ color:var(--text); }
-.map-mode-btn.active{ background: var(--accent, #e0b458); color:#12151a; }
+.map-mode-btn.active{ background: var(--accent, #e0b458); color: var(--sobre-cor); }
 /* Ícone do cluster (montado por divIcon em MapaLeaflet). */
 .map-cluster-icon{
   border-radius:50%; background: rgba(224,180,88,.92); border:2px solid #12151a;
-  box-shadow:0 2px 6px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center;
+  box-shadow:0 2px 6px rgb(var(--sombra-rgb) / .5); display:flex; align-items:center; justify-content:center;
   color:#12151a; font-weight:700; font-size:13px;
 }
 /* Barra de gradiente da legenda no modo calor. */
-.map-legend-gradient{ width:160px; height:12px; border-radius:6px; border:1px solid rgba(255,255,255,.12); }
+.map-legend-gradient{ width:160px; height:12px; border-radius:6px; border:1px solid var(--anel-sutil); }
 .map-legend-scale{ display:flex; justify-content:space-between; margin-top:5px; font-size:10.5px; color:var(--text-faint); }
 .leaflet-popup-content-wrapper{ background: var(--bg-elev-2); color: var(--text); border-radius: var(--radius-sm); }
 .leaflet-popup-tip{ background: var(--bg-elev-2); }
@@ -2336,7 +2619,7 @@ legend{
     transform: translateX(-100%);
     /* Easing mais macio na entrada/saída da gaveta (menos "seco" que ease). */
     transition: transform .28s cubic-bezier(.32, .72, 0, 1);
-    box-shadow: 8px 0 30px rgba(0,0,0,.4);
+    box-shadow: 8px 0 30px rgb(var(--sombra-rgb) / .4);
   }
   .sidebar.open{ transform: translateX(0); }
 
@@ -2440,7 +2723,7 @@ legend{
 .card{ transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease; }
 .kpi-card:hover, .insight-card:hover, .report-stat:hover{
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0,0,0,.22);
+  box-shadow: 0 6px 20px rgb(var(--sombra-rgb) / .22);
 }
 .btn:active{ transform: translateY(1px) scale(.985); }
 .icon-btn:active{ transform: scale(.9); }
@@ -2873,7 +3156,7 @@ legend{
 
 .followup-aviso{
   background: var(--warn-soft); color: var(--warn);
-  border:1px solid #e0b45855; border-radius: var(--radius-sm);
+  border:1px solid color-mix(in srgb, var(--warn) 34%, transparent); border-radius: var(--radius-sm);
   padding: 8px 12px; margin-bottom: 14px; font-weight: 600;
 }
 
@@ -2912,7 +3195,7 @@ legend{
   width: min(320px, calc(100vw - 44px));
   background: var(--bg-elev-3); border:1px solid var(--border);
   border-radius: var(--radius-sm); padding: 12px 14px;
-  box-shadow: 0 6px 22px rgba(0,0,0,.35);
+  box-shadow: 0 6px 22px rgb(var(--sombra-rgb) / .35);
   animation: toastin .2s ease;
 }
 .followup-indicador-topo{
@@ -2959,7 +3242,7 @@ legend{
 
 /* Pede atenção sem gritar: é lembrete, não erro. */
 .btn-nudge{
-  border-color: #e0b45855;
+  border-color: color-mix(in srgb, var(--warn) 34%, transparent);
   background: var(--warn-soft);
   color: var(--warn);
 }
@@ -3018,7 +3301,7 @@ legend{
   background: var(--bg-elev-1);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
-  box-shadow: 0 18px 50px rgba(0,0,0,.5);
+  box-shadow: 0 18px 50px rgb(var(--sombra-rgb) / .5);
   padding: 30px 32px 26px;
   width: 100%; max-width: 380px;
   text-align: center;

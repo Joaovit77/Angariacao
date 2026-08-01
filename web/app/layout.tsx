@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import Script from "next/script";
+import AplicadorTema from "@/components/AplicadorTema";
 import SessaoProvider from "@/components/SessaoProvider";
 import Toasts from "@/components/Toasts";
+import { SCRIPT_TEMA } from "@/lib/tema";
 // O app antigo carregava o CSS do Leaflet por <link> no index.html; aqui ele
 // entra pelo bundle, na mesma ordem (antes do style.css do projeto).
 import "leaflet/dist/leaflet.css";
@@ -25,8 +28,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    // suppressHydrationWarning: o SCRIPT_TEMA escreve `data-tema` no <html>
+    // antes da hidratação, então o servidor (que não sabe a preferência do
+    // aparelho) sempre entrega a tag sem o atributo. É a única diferença
+    // esperada — sem isto o React avisaria de uma "divergência" que É o
+    // recurso funcionando.
+    <html lang="pt-BR" suppressHydrationWarning>
       <body>
+        {/* Antes de qualquer módulo do Next: pinta a tela já no tema certo,
+            em vez de piscar o escuro e corrigir depois. */}
+        <Script id="tema-inicial" strategy="beforeInteractive">
+          {SCRIPT_TEMA}
+        </Script>
+        <AplicadorTema />
         <SessaoProvider>{children}</SessaoProvider>
         <Toasts />
       </body>
