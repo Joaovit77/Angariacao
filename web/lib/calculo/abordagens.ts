@@ -29,6 +29,7 @@ import { RESULTADOS_COM_RESPOSTA, RESULTADOS_FORA_DO_RANKING } from "../constant
 import { daysBetween, minutosEntre } from "../datas";
 import type { Abordagem, Imovel, Tentativa } from "../tipos";
 import { dateEnteredStatus, foiAngariado } from "./motor";
+import { dataPrimeiraResposta } from "./notas";
 import { resultadoEfetivo } from "./resultadoObservado";
 
 /**
@@ -117,6 +118,40 @@ export function ehTentativaDuplicada(
 }
 
 /**
+ * As tentativas que foram esforço para ALCANÇAR o proprietário — as que
+ * aconteceram antes de ele responder pela primeira vez.
+ *
+ * Tentativa quer dizer "tentei chegar nessa pessoa". Depois que ela responde,
+ * a conversa está aberta e o que sai daqui deixa de ser tentativa de alcance:
+ * é réplica. O app registra as duas coisas na mesma lista de propósito (o
+ * webhook precisa de uma tentativa em aberto para pendurar a classificação da
+ * resposta que chega — ver "Registrar ≠ creditar" no CLAUDE.md), então quem
+ * quer contar ESFORÇO tem que separar aqui, na leitura.
+ *
+ * Nasceu do LD-178 (31/07/2026): uma abordagem enviada, a proprietária
+ * respondeu, o corretor treplicou duas vezes pelo painel e o card anunciava
+ * "3ª tentativa" — a leitura exata oposta da realidade, porque ali ninguém
+ * estava sendo perseguido, estava-se conversando. As réplicas saíram como
+ * "Primeiro contato" porque é o modelo que o modal pré-seleciona para o status
+ * "Novo contato", e ele está em `MODELOS_CAPTACAO`.
+ *
+ * Medido na carteira real no mesmo dia: dos 34 imóveis com 2+ tentativas, só
+ * 2 mudam (LD-178 e LD-140). Os 32 restantes são silêncio de verdade e seguem
+ * contando igual — inclusive o LD-55, com 3 tentativas TODAS anteriores à
+ * primeira resposta, que continua dizendo "3ª tentativa" porque ali é verdade.
+ *
+ * Empate de minuto conta como alcance (`<=`): a nota do webhook e a tentativa
+ * guardam o mesmo formato até o minuto, e mensagem nossa no mesmo minuto da
+ * resposta quase certamente saiu ANTES dela — é o que a pessoa respondeu.
+ */
+export function tentativasDeAlcance(imovel: Imovel): Tentativa[] {
+  const tentativas = imovel.tentativas || [];
+  const primeiraResposta = dataPrimeiraResposta(imovel.notas);
+  if (!primeiraResposta) return tentativas;
+  return tentativas.filter((t) => (t.data || "") <= primeiraResposta);
+}
+
+/**
  * Selo do card do Pipeline: "3ª tentativa". `null` quando não vale mostrar.
  *
  * Existe porque o funil estava descrevendo errado um quarto de uma coluna. Na
@@ -133,12 +168,17 @@ export function ehTentativaDuplicada(
  * perdidos justamente os imóveis que o follow-up vai cutucar amanhã. O
  * problema é de LEITURA, e a correção também.
  *
+ * Conta `tentativasDeAlcance`, não a lista inteira: o selo fala de insistência
+ * sem retorno, e réplica dentro de conversa aberta não é insistência. Contar
+ * tudo fazia o card mais BEM-SUCEDIDO da carteira — o que respondeu e virou
+ * visita — exibir o número mais alto de "tentativas".
+ *
  * **A partir da 2ª**, de propósito: "1ª tentativa" apareceria em 153 dos 171
  * imóveis com contato e viraria ruído — o selo só informa quando contradiz o
  * que a coluna diz.
  */
 export function seloTentativas(imovel: Imovel): string | null {
-  const n = (imovel.tentativas || []).length;
+  const n = tentativasDeAlcance(imovel).length;
   return n >= 2 ? `${n}ª tentativa` : null;
 }
 

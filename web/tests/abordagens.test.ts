@@ -12,6 +12,7 @@ import {
   ehTentativaDuplicada,
   resultadosPendentes,
   seloTentativas,
+  tentativasDeAlcance,
   resumoTentativas,
   tentativasOrdenadas,
 } from "@/lib/calculo/abordagens";
@@ -525,6 +526,66 @@ describe("seloTentativas", () => {
 
   it("tolera imóvel sem o campo de tentativas", () => {
     expect(seloTentativas({ id: "x", endereco: "Rua X", status: "Novo contato" })).toBeNull();
+  });
+
+  /* O caso LD-178 (31/07/2026): uma abordagem, a proprietária respondeu, o
+     corretor treplicou duas vezes pelo painel — e o card dizia "3ª tentativa"
+     sobre a conversa mais bem-sucedida da carteira. Réplica não é insistência. */
+  it("não conta a mensagem enviada DEPOIS de o proprietário responder", () => {
+    const i = imovel({
+      id: "ld178",
+      tentativas: [
+        tentativa("2026-07-30T16:58", "a1", "respondeu"),
+        tentativa("2026-07-31T19:05", "a1", "respondeu"),
+        tentativa("2026-07-31T20:09", "a1", "agendou"),
+      ],
+      notas: [{ id: "wa:m1", texto: "Resposta pelo WhatsApp: Proprietária", data: "2026-07-31T02:30" }],
+    });
+    expect(tentativasDeAlcance(i)).toHaveLength(1);
+    expect(seloTentativas(i)).toBeNull();
+  });
+
+  /* O oposto, e é por isso que o corte não é "respondeu → esconde o selo":
+     quem só respondeu na 3ª cutucada levou 3 cutucadas mesmo. (LD-55 real.) */
+  it("conta todas quando as tentativas vieram ANTES da primeira resposta", () => {
+    const i = imovel({
+      id: "ld55",
+      tentativas: [
+        tentativa("2026-07-20T10:00", "a1", "sem-resposta"),
+        tentativa("2026-07-24T10:00", "a1", "sem-resposta"),
+        tentativa("2026-07-28T10:00", "a1", "respondeu"),
+      ],
+      notas: [{ id: "wa:m1", texto: "Resposta pelo WhatsApp: oi", data: "2026-07-28T19:47" }],
+    });
+    expect(seloTentativas(i)).toBe("3ª tentativa");
+  });
+
+  /* Precisão de MINUTO, não de dia: abordar, ser respondido e treplicar no
+     mesmo dia é o caso comum, e com dia as três coisas se confundiriam. */
+  it("separa por hora quando tudo aconteceu no mesmo dia", () => {
+    const i = imovel({
+      id: "mesmodia",
+      tentativas: [
+        tentativa("2026-07-30T10:00", "a1", "respondeu"),
+        tentativa("2026-07-30T12:00", "a1", "respondeu"),
+      ],
+      notas: [{ id: "wa:m1", texto: "Resposta pelo WhatsApp: oi", data: "2026-07-30T11:00" }],
+    });
+    expect(tentativasDeAlcance(i)).toHaveLength(1);
+  });
+
+  /* A nota do encerramento automático é o app falando, não o proprietário —
+     ela não pode "fechar" a janela de alcance. */
+  it("só a mensagem do proprietário fecha a contagem", () => {
+    const i = imovel({
+      id: "enc",
+      tentativas: [
+        tentativa("2026-07-30T10:00", "a1", "sem-resposta"),
+        tentativa("2026-07-31T10:00", "a1", "sem-resposta"),
+      ],
+      notas: [{ id: "wa:m1:encerrado", texto: "Encerrado automaticamente", data: "2026-07-30T09:00" }],
+    });
+    expect(seloTentativas(i)).toBe("2ª tentativa");
   });
 });
 
