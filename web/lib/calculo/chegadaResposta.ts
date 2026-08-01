@@ -29,12 +29,27 @@ import { corpoDaResposta, ehNotaDeResposta } from "./notas";
     deixa o texto igual nos dois lugares (toast e notificação). */
 export const MAX_PREVIA_AVISO = 120;
 
-/** Um aviso pronto para virar toast ou notificação do sistema. */
+/**
+ * Um aviso pronto para virar toast ou notificação do sistema.
+ *
+ * As partes vêm **soltas** (`quem`, `imovel`, `mensagem`) e também já
+ * compostas (`titulo`, `corpo`), porque os dois destinos aceitam coisas
+ * diferentes: a caixinha do sistema é do SO e só recebe duas linhas de texto
+ * puro, enquanto o toast é HTML nosso e monta um cartão com hierarquia — nome
+ * em destaque, imóvel fino, mensagem em citação. Compor no módulo, e não em
+ * cada um deles, é o que mantém os dois avisos dizendo a mesma coisa.
+ */
 export interface AvisoResposta {
   imovelId: string;
-  /** Linha de cima: quem falou. */
+  /** Quem falou, sem enfeite: o nome do proprietário quando existe. */
+  quem: string;
+  /** De qual imóvel é (código · endereço). */
+  imovel: string;
+  /** O que a pessoa disse, já cortado. */
+  mensagem: string;
+  /** Linha de cima da notificação do sistema (`quem` + o que aconteceu). */
   titulo: string;
-  /** Linha de baixo: qual imóvel e o que a pessoa disse. */
+  /** Linha de baixo da notificação do sistema (`imovel` — `mensagem`). */
   corpo: string;
   /** Quantas chegaram de uma vez — no WhatsApp a rajada de três mensagens
       curtas é a regra, e três avisos empilhados seriam três interrupções
@@ -96,10 +111,16 @@ export function avisoDeResposta(imovel: Imovel, novas: NotaImovel[]): AvisoRespo
   const ultima = ordenadas[ordenadas.length - 1];
   const nome = (imovel.proprietarioNome || "").trim();
   const sufixo = novas.length > 1 ? ` (${novas.length} mensagens)` : "";
+  const quem = nome || "Resposta no WhatsApp";
+  const rotulo = rotuloDoImovel(imovel);
+  const mensagem = previaDaMensagem(ultima);
   return {
     imovelId: imovel.id,
+    quem,
+    imovel: rotulo,
+    mensagem,
     titulo: nome ? `${nome} respondeu${sufixo}` : `Resposta no WhatsApp${sufixo}`,
-    corpo: `${rotuloDoImovel(imovel)} — ${previaDaMensagem(ultima)}`,
+    corpo: `${rotulo} — ${mensagem}`,
     quantidade: novas.length,
   };
 }

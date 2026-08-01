@@ -361,7 +361,14 @@ o torna testável puro.
   são o caminho mais curto para a pessoa desligar a permissão — mesmo raciocínio do "uma mensagem
   por PROPRIETÁRIO" no follow-up. Onde o aviso sai depende da aba: **visível → toast**; **oculta →
   notificação do sistema** (`lib/notificacaoSistema.ts`), porque ali o toast nasceria e morreria
-  sem ninguém ver. Isso exige o painel ABERTO em alguma aba — Web Push (service worker + VAPID +
+  sem ninguém ver. Por isso o aviso sai daqui em partes SOLTAS (`quem`/`imovel`/`mensagem`) **e**
+  já compostas (`titulo`/`corpo`): a caixinha do sistema é do SO e só aceita duas linhas de texto
+  puro, enquanto o toast é HTML nosso e vira **cartão** (`toastCartao` + `.toast-cartao`) — nome em
+  destaque, imóvel fino, mensagem em citação, e um clique que leva à caixa, igual ao clique na
+  notificação do sistema. Compor as duas formas no mesmo lugar é o que impede os dois avisos de
+  contarem histórias diferentes da mesma mensagem. O cartão também fica mais tempo na tela que um
+  toast comum: 2,6s é o tempo de reconhecer "Imóvel salvo", não o de LER o que o proprietário
+  escreveu. Isso exige o painel ABERTO em alguma aba — Web Push (service worker + VAPID +
   tabela de inscrições) ficou de fora por ser outro tamanho de obra e em boa parte redundante: a
   mensagem já faz o celular apitar pelo WhatsApp, e o que o painel acrescenta é o CONTEXTO.
   A permissão do navegador é a **única** preferência, sem toggle nosso em localStorage — duas

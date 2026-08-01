@@ -2294,6 +2294,67 @@ legend{
 .toast.warning{ border-color: var(--warn); }
 @keyframes toastin{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
 
+/* ---- Cartão: a mensagem que CHEGA (ver lib/toast.ts) ----
+   O toast comum é uma frase de negrito confirmando o que o corretor acabou
+   de fazer. Este traz notícia de fora, com três pesos diferentes — quem
+   falou, de qual imóvel, o que disse. Numa linha só de negrito e sem largura
+   máxima, virava uma faixa atravessando a tela em que nada se destacava. */
+/* `.toast.toast-cartao` (e não só `.toast-cartao`) para vencer o
+   `.toast.success`, que pinta as quatro bordas com o verde esmaecido. */
+.toast.toast-cartao{
+  display: block; padding: 0; position: relative;
+  width: min(360px, calc(100vw - 44px));
+  font-weight: 400;
+  /* A faixa verde na lateral é o mesmo verde do WhatsApp no resto do app
+     (--good, o dos botões de conversa): o cartão se identifica antes de ser
+     lido, e a borda esmaecida do `.toast.success` faria isso mal — ela
+     circunda a caixa toda e diz "deu certo", não "chegou mensagem". */
+  border-left: 3px solid var(--good);
+  overflow: hidden;
+}
+.toast-cartao-corpo{
+  display: grid; grid-template-columns: 30px 1fr; gap: 0 10px;
+  align-items: start;
+  width: 100%; padding: 11px 34px 12px 12px;
+  background: none; border: none; color: inherit; font: inherit;
+  text-align: left;
+}
+button.toast-cartao-corpo{ cursor: pointer; }
+button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%, transparent); }
+.toast-cartao-ic{
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--good-soft); font-size: 15px; line-height: 1;
+}
+.toast-cartao-texto{ display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.toast-cartao-topo{ display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.toast-cartao-titulo{ font-size: 13px; font-weight: 700; color: var(--text); }
+.toast-cartao-selo{
+  font-size: 10px; font-weight: 700; letter-spacing: .2px;
+  padding: 1px 7px; border-radius: 20px;
+  background: var(--good-soft); color: var(--good);
+}
+.toast-cartao-detalhe{
+  font-size: 11px; color: var(--text-faint);
+  /* O endereço é contexto, não manchete: uma linha só, cortada no fim. */
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.toast-cartao-msg{
+  margin-top: 5px; font-size: 12.5px; line-height: 1.45; color: var(--text-dim);
+  /* Até três linhas. A prévia vem cortada em 120 caracteres (MAX_PREVIA_AVISO),
+     e sem teto de altura um áudio transcrito esticaria o cartão pela tela. */
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.toast-cartao-fechar{
+  position: absolute; top: 6px; right: 6px;
+  width: 22px; height: 22px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: none; color: var(--text-faint);
+  font-size: 15px; line-height: 1;
+}
+.toast-cartao-fechar:hover{ background: var(--bg-elev-2); color: var(--text); }
+
 .empty-state{ text-align:center; padding: 60px 20px; color: var(--text-faint); }
 .empty-state h3{ font-family: var(--font-display); font-size:17px; color: var(--text-dim); margin-bottom:6px; }
 .empty-state p{ font-size:13px; max-width:360px; margin: 0 auto; }

@@ -32,7 +32,7 @@ import { notificarSistema } from "@/lib/notificacaoSistema";
 import { fromDbImovel, type DbImovelRow } from "@/lib/persistencia/mapeadores";
 import { getSupabase } from "@/lib/persistencia/supabase";
 import { useAppStore } from "@/lib/store";
-import { toast } from "@/lib/toast";
+import { toastCartao } from "@/lib/toast";
 
 export default function SincronizacaoRespostas() {
   const router = useRouter();
@@ -65,8 +65,19 @@ export default function SincronizacaoRespostas() {
       // sistema por cima seria interrupção dupla pelo mesmo assunto.
       // Aba oculta = o toast nasceria e morreria sem ninguém ver.
       const irParaCaixa = () => router.push("/respostas");
+      // Em cartão, não em faixa de texto: quem falou, de qual imóvel e o que
+      // disse têm pesos diferentes, e o clique leva ao mesmo lugar que o
+      // clique na notificação do sistema (ver lib/toast.ts).
+      const mostrarCartao = () =>
+        toastCartao({
+          titulo: aviso.quem,
+          detalhe: aviso.imovel,
+          mensagem: aviso.mensagem,
+          selo: aviso.quantidade > 1 ? `${aviso.quantidade} mensagens` : undefined,
+          aoClicar: irParaCaixa,
+        });
       if (document.visibilityState === "visible") {
-        toast(`${aviso.titulo} — ${aviso.corpo}`);
+        mostrarCartao();
         return;
       }
       const mostrou = notificarSistema({
@@ -78,7 +89,7 @@ export default function SincronizacaoRespostas() {
       // Sem permissão concedida sobra o toast: ele estará lá quando a pessoa
       // voltar para a aba — o badge e o sino, que não expiram, é que contam
       // a história inteira.
-      if (!mostrou) toast(`${aviso.titulo} — ${aviso.corpo}`);
+      if (!mostrou) mostrarCartao();
     }
 
     function assinar() {

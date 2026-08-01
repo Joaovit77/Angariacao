@@ -143,4 +143,22 @@ describe("avisoDeResposta", () => {
     expect(a?.titulo).toBe("Ana respondeu (3 mensagens)");
     expect(a?.corpo.endsWith("— combinado")).toBe(true);
   });
+
+  // As partes soltas alimentam o CARTÃO do toast; as compostas, a caixinha do
+  // sistema, que só aceita texto puro. Divergir faria os dois avisos contarem
+  // histórias diferentes da mesma mensagem.
+  it("as partes soltas são as mesmas do texto composto", () => {
+    const i = imovel({ codigo: "LD-176", proprietarioNome: "João Silva" });
+    const a = avisoDeResposta(i, [resposta("a", "2026-07-30T10:00", "Pode sim")]);
+    expect(a?.quem).toBe("João Silva");
+    expect(a?.imovel).toBe("LD-176 · Rua A, 100");
+    expect(a?.mensagem).toBe("Pode sim");
+    expect(a?.corpo).toBe(`${a?.imovel} — ${a?.mensagem}`);
+    expect(a?.titulo.startsWith(a?.quem ?? "")).toBe(true);
+  });
+
+  it("sem nome, o cartão ainda tem quem mostrar", () => {
+    const a = avisoDeResposta(imovel(), [resposta("a", "2026-07-30T10:00")]);
+    expect(a?.quem).toBe("Resposta no WhatsApp");
+  });
 });
