@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation";
 import type { ChartConfiguration } from "chart.js/auto";
 import Contador from "@/components/Contador";
 import FocoDoDia from "@/components/dashboard/FocoDoDia";
-import Grafico, { baseBarOptions, CHART_COLORS } from "@/components/graficos/Grafico";
+import Grafico, { baseBarOptions, CHART_COLORS, corToken } from "@/components/graficos/Grafico";
 import { kpisDashboard, seriesDashboard } from "@/lib/calculo/dashboard";
 import { STATUS_FLOW } from "@/lib/constantes";
 import { monthLabelLong } from "@/lib/datas";
@@ -195,7 +195,10 @@ export default function DashboardView() {
         {
           label: "Angariações",
           data: series.angariacoesPorMes,
-          backgroundColor: "#cca24a",
+          // Função, e não a cor: assim o Chart.js relê o token no tema novo
+          // (ver corToken). Vale para toda cor de gráfico que precisa
+          // contrastar com o fundo.
+          backgroundColor: () => corToken("--accent", "#cca24a"),
           borderRadius: 5,
           maxBarThickness: 34,
         },
@@ -212,14 +215,14 @@ export default function DashboardView() {
         {
           label: "Angariados",
           data: series.angariacoesPorMes,
-          backgroundColor: "#3a453a",
+          backgroundColor: () => corToken("--bg-elev-3", "#3a453a"),
           borderRadius: 5,
           maxBarThickness: 26,
         },
         {
           label: "Locados",
           data: series.locadosPorMes,
-          backgroundColor: "#5fb896",
+          backgroundColor: () => corToken("--good", "#5fb896"),
           borderRadius: 5,
           maxBarThickness: 26,
         },
@@ -244,7 +247,12 @@ export default function DashboardView() {
     data: {
       labels: bairroSorted.map((x) => x[0]),
       datasets: [
-        { data: bairroSorted.map((x) => x[1]), backgroundColor: "#cca24a", borderRadius: 5, maxBarThickness: 22 },
+        {
+          data: bairroSorted.map((x) => x[1]),
+          backgroundColor: () => corToken("--accent", "#cca24a"),
+          borderRadius: 5,
+          maxBarThickness: 22,
+        },
       ],
     },
     options: { ...baseBarOptions(), indexAxis: "y" },
@@ -256,7 +264,14 @@ export default function DashboardView() {
     data: {
       labels: tipoSorted.map((x) => x[0]),
       datasets: [
-        { data: tipoSorted.map((x) => x[1]), backgroundColor: CHART_COLORS, borderColor: "#171e19", borderWidth: 2 },
+        {
+          data: tipoSorted.map((x) => x[1]),
+          backgroundColor: CHART_COLORS,
+          // A borda entre fatias é o FUNDO do cartão, não uma cor própria:
+          // é ela que abre o vão entre elas.
+          borderColor: () => corToken("--bg-elev-1", "#171e19"),
+          borderWidth: 2,
+        },
       ],
     },
     options: {
@@ -279,8 +294,22 @@ export default function DashboardView() {
     data: {
       labels,
       datasets: [
-        { label: "Estimada", data: comEst, borderColor: "#cca24a", backgroundColor: "#cca24a22", tension: 0.35, fill: true },
-        { label: "Recebida", data: comRec, borderColor: "#5fb896", backgroundColor: "#5fb89622", tension: 0.35, fill: true },
+        {
+          label: "Estimada",
+          data: comEst,
+          borderColor: () => corToken("--accent", "#cca24a"),
+          backgroundColor: () => corToken("--accent-soft", "#cca24a26"),
+          tension: 0.35,
+          fill: true,
+        },
+        {
+          label: "Recebida",
+          data: comRec,
+          borderColor: () => corToken("--good", "#5fb896"),
+          backgroundColor: () => corToken("--good-soft", "#5fb89622"),
+          tension: 0.35,
+          fill: true,
+        },
       ],
     },
     options: {

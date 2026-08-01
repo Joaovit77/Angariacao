@@ -14,6 +14,7 @@
    ================================================================ */
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import BotaoTema from "@/components/BotaoTema";
 
 interface Props {
   aoEntrar: () => void;
@@ -49,6 +50,9 @@ export default function CabecalhoAuth({ aoEntrar, aoCriarConta }: Props) {
           </div>
 
           <div className="vitrine-topo-acoes">
+            {/* Também aqui, e não só no painel: quem prefere claro não deve
+                precisar entrar para deixar de ver a tela escura. */}
+            <BotaoTema />
             <button type="button" className="btn btn-ghost btn-sm vitrine-so-largo" onClick={aoCriarConta}>
               Criar conta
             </button>

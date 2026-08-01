@@ -33,14 +33,19 @@ O que fica na **raiz** do repositório:
 
 O aplicativo vive em **[`web/`](web/)** — Next 16 (App Router, Turbopack), TypeScript, sem Tailwind:
 
-- **`web/app/`** — App Router. `layout.tsx` (raiz: monta `SessaoProvider` + `Toasts`, importa o CSS
+- **`web/app/`** — App Router. `layout.tsx` (raiz: monta `SessaoProvider` + `Toasts` + o
+  `AplicadorTema` e o script inline do tema, importa o CSS
   do Leaflet e o `style.css`), `page.tsx` (tela de acesso e queda do link de recuperação de senha),
   e o grupo **`(painel)/`** com o shell autenticado (`layout.tsx`) e uma rota por view
   (`dashboard`, `pipeline`, `metas`, `agenda`, `insights`, `mapa`, `relatorios`, `roadmap`).
   **`app/api/whatsapp/enviar/route.ts`** e **`app/api/ia/route.ts`** são as duas rotas de servidor
   do projeto — ambas existem só porque guardam um segredo (ver abaixo).
-- **`web/app/style.css`** — o CSS do app antigo copiado **sem alterações**, dirigido por custom
-  properties em `:root`. Não há redesign; classes e tokens são os mesmos.
+- **`web/app/style.css`** — o CSS do app antigo, dirigido por custom properties em `:root`. Não
+  houve redesign: classes e paleta escura seguem as do app estático. As duas mudanças estruturais
+  vieram com o **tema claro** — a paleta ganhou um segundo conjunto de valores e as cores que
+  estavam escritas à mão no meio das regras (sombra, borda de acento, cor de status) viraram
+  token, porque literal no meio da folha só serve a um tema. Ver "Cor sempre por token" nas
+  convenções.
 - **`web/lib/`** — todo o núcleo sem UI (ver "Arquitetura" abaixo). Não importa React/Next.
 - **`web/components/`** — os componentes React por view e os modais.
 - **`web/tests/`** — Vitest. Testes de caracterização + o baseline como teste executável.
@@ -388,6 +393,20 @@ o torna testável puro.
 - **`uiPipeline.ts` / `uiModal.ts`** — estado de UI (filtros/drawer do Pipeline; modal ativo).
 - **`filaFollowUp.ts`** — a fila do follow-up em lote (estado + orquestração dos envios). Como o
   `mutacoes.ts`, é exceção consciente à regra abaixo: orquestra efeitos, não calcula.
+- **`tema.ts`** — a troca entre **escuro** (padrão, a identidade do app) e **claro**. Nada aqui
+  sabe de cor: a paleta inteira vive nos tokens do `app/style.css`, e este módulo só decide QUAL
+  conjunto vale e escreve `data-tema` no `<html>`. A decisão tem duas metades de propósito, e
+  separá-las é o que evita a tela piscar: **a preferência do SISTEMA é resolvida em CSS puro**
+  (`@media (prefers-color-scheme: light)`), que pinta certo já no primeiro quadro; o `SCRIPT_TEMA`
+  — inline, antes do React — aplica só a **escolha explícita** do corretor, que mora no
+  localStorage. O script do Next entra junto com o corpo da página, tarde demais para ser a única
+  defesa. A escolha é do **dispositivo**, não da conta (não vai para `user_config`): tema é
+  preferência de tela — escuro no monitor da imobiliária, claro no celular sob o sol —, e
+  sincronizar pelo banco significaria esperar o login para saber com que cor pintar a tela de
+  login. Sem escolha salva, a janela segue o sistema ao vivo (`sincronizarTema`).
+  `inscreverTema` existe para quem pinta **fora do CSS**: hoje só o Chart.js, que desenha em canvas
+  e guarda a cor que recebeu — token nenhum chega lá sozinho (ver `components/graficos/Grafico.tsx`
+  e o `corToken`).
 - **`toast.ts` / `notificacaoSistema.ts` / `geo.ts` / `dadosDemo.ts` / `auth/`** — aviso dentro da
   tela; aviso do SISTEMA operacional (a caixinha do Windows, para quando a aba está oculta — ver
   `calculo/chegadaResposta.ts`); CEP (ViaCEP) + geocoding (Nominatim); seed de exemplo; força de
@@ -1003,6 +1022,20 @@ tentativa, não conversão.
   é o otimismo com rollback que versões antigas da doc descreviam — ver achado A1 na §15 do
   MIGRATION_NEXT.) Toda mutação passa por `web/lib/mutacoes.ts`.
 - **Novo dado user-scoped = RLS + mapper + tipo** (ver "Modelo de RLS").
+- **Cor sempre por token, nunca literal** — são DOIS temas dividindo o mesmo CSS (ver `lib/tema.ts`).
+  Literal só quando a cor é a mesma nos dois: o que fica por cima do mapa (as telhas do OSM são
+  claras sempre), o véu escuro atrás dos modais e o bloco `@media print`. Três consequências
+  práticas ao mexer no `app/style.css`:
+  - **Token novo entra em TRÊS lugares**: o valor escuro no `:root`, o valor claro no
+    `--claro-*` e o mapeamento nos **blocos gêmeos** (o de `[data-tema="claro"]` e o do
+    `@media (prefers-color-scheme: light)`). Esquecer um dos gêmeos deixa metade dos usuários com
+    a cor do outro tema, e é invisível para quem testa só um caminho.
+  - **Cor derivada de outra sai por `color-mix`/`currentColor`**, não por hex com alfa: as pílulas
+    de status declaram só a cor do texto e o fundo cai dela (ver `.badge`), então não existe pílula
+    com fundo de um status e texto de outro.
+  - **O que não contrasta com fundo branco tem versão própria no claro.** O dourado da marca é o
+    caso: como FUNDO de botão com texto branco ele precisou escurecer (o tom do tema escuro dá
+    3,8:1, abaixo do legível). Ao criar acento novo, confira o contraste nos dois temas.
 - **Núcleo sem dependências** — `web/lib/` (fora de `persistencia/` e `mutacoes.ts`) não importa
   React/Next/Supabase/store. É o que mantém as 4 views concordando e permite testar puro.
 - **Chart.js / Leaflet** — instanciar em `useEffect` com cleanup; testar navegação repetida (sem

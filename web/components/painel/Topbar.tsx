@@ -14,6 +14,7 @@
    ================================================================ */
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import BotaoTema from "@/components/BotaoTema";
 import SinoNotificacoes from "./SinoNotificacoes";
 import MenuUsuario from "./MenuUsuario";
 
@@ -61,6 +62,7 @@ export default function Topbar({
       <Image className="topbar-logo" src="/logo.png" alt="" width={28} height={28} />
       <h1 className="topbar-title">{titulo}</h1>
       <div className="topbar-actions">
+        <BotaoTema />
         <SinoNotificacoes />
         <MenuUsuario />
       </div>
