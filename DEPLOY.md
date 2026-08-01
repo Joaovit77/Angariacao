@@ -96,6 +96,41 @@ Recarregue o painel: o item **Administração** aparece no menu. Para revogar, a
 > A tabela não tem política de RLS nenhuma — nem de leitura. Isso é proposital: quem consulta é o
 > servidor, com a service role. Não crie políticas ali "por simetria" com as outras tabelas.
 
+### Termos de uso e política de privacidade — antes de oferecer a terceiros
+
+As páginas `/termos` e `/privacidade` já existem, com o texto escrito sobre o que o sistema
+realmente faz — quais dados trata, para onde eles vão, quem responde por eles.
+
+**Elas estão em stand by, e ligam sozinhas.** Enquanto faltar identificação do responsável, a
+camada legal fica inerte: o portão de aceite **não** bloqueia ninguém, a caixa não aparece no
+cadastro e os links somem do rodapé. As páginas continuam acessíveis por URL direta (para revisão),
+exibindo um aviso amarelo de "documento ainda não publicável".
+
+Não há interruptor separado: **preencher os três campos abaixo é o que ativa tudo.** A razão é que
+exigir aceite de um documento que não identifica quem responde, nem oferece canal para o titular
+reclamar, é colher um "eu aceito" que não vale nada.
+
+Os três dados que faltam:
+
+Abra `web/lib/legal/identidade.ts` e substitua os `PENDENTE`:
+
+- `cnpj` — CNPJ (ou CPF, se você ainda opera como pessoa física).
+- `endereco` — endereço para correspondência.
+- `emailEncarregado` — o e-mail do encarregado de dados (art. 41 da LGPD). Não precisa ser alguém
+  contratado para isso; precisa ser um endereço que alguém realmente leia.
+
+> **Revisão jurídica.** Os textos descrevem o produto com precisão, que é a parte que um advogado
+> não teria como escrever sozinho. Mas descrever o produto não é responder pela adequação à LGPD —
+> passe os dois documentos por um advogado antes de assinar contrato com cliente pagante.
+
+**Quando mudar o texto, suba a `VERSAO_TERMOS`** no mesmo arquivo. É ela que faz o aceite valer:
+todo usuário reencontra a tela de aceite no próximo acesso, e fica registrada em `aceites_termos`
+uma linha nova, sem apagar a anterior.
+
+**No dia em que você preencher**, contas que já existiam — inclusive a sua — vão encontrar a tela
+de aceite no próximo acesso ao painel. É o esperado: ninguém tinha aceitado nada até então. Vale
+avisar seus usuários antes, para a tela não parecer um erro.
+
 ### Limpeza de log e histórico de uso — opcional
 
 `log_eventos` e `ia_uso` crescem para sempre. A função `limpar_registros_antigos(180)` apaga o que
