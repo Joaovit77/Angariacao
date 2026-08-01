@@ -743,3 +743,46 @@ begin
   return query select n_logs, n_usos;
 end;
 $$;
+
+-- ------------------------------------------------------------
+-- ACEITE DOS TERMOS
+--
+-- O que esta tabela guarda não é "fulano aceitou", e sim "fulano
+-- aceitou ESTA VERSÃO, nesta data". Sem a versão, a afirmação não
+-- significa nada: o texto pode ter mudado três vezes desde então, e
+-- não haveria como saber ao que a pessoa disse sim — que é justamente
+-- a pergunta que se faz quando o aceite importa.
+--
+-- Uma linha POR VERSÃO (e não uma por usuário, atualizada no lugar):
+-- o histórico é o registro. Sobrescrever apagaria a prova de que a
+-- pessoa aceitou a versão anterior enquanto ela valia.
+--
+-- RLS no padrão das tabelas do corretor — `auth.uid() = user_id` —,
+-- mas repare: há select e insert, e NÃO há update nem delete. Aceite
+-- não se edita nem se apaga; se os termos mudam, nasce outra linha.
+--
+-- Sem IP e sem user agent de propósito. Eles são o reflexo de guardar
+-- "prova" e viram mais dado pessoal para proteger, num sistema cujo
+-- problema é justamente ter dado pessoal demais. A data e a versão
+-- respondem o que precisa ser respondido.
+-- ------------------------------------------------------------
+create table if not exists aceites_termos (
+  id bigserial primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  -- A `VERSAO_TERMOS` de web/lib/legal/identidade.ts no momento do aceite.
+  versao text not null,
+  aceito_em timestamptz not null default now(),
+  unique (user_id, versao)
+);
+
+alter table aceites_termos enable row level security;
+
+drop policy if exists "select_own_aceite" on aceites_termos;
+create policy "select_own_aceite" on aceites_termos
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "insert_own_aceite" on aceites_termos;
+create policy "insert_own_aceite" on aceites_termos
+  for insert with check (auth.uid() = user_id);
+
+create index if not exists idx_aceites_user on aceites_termos (user_id, aceito_em desc);

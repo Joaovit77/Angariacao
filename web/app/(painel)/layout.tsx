@@ -19,6 +19,7 @@ import Celebracao from "@/components/painel/Celebracao";
 import IndicadorFollowUp from "@/components/painel/IndicadorFollowUp";
 import SincronizacaoRespostas from "@/components/painel/SincronizacaoRespostas";
 import ModalOverlay from "@/components/modais/ModalOverlay";
+import PortaoTermos from "@/components/legal/PortaoTermos";
 import RodapeApp from "@/components/RodapeApp";
 import { useAppStore } from "@/lib/store";
 
@@ -98,7 +99,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
   const menuAtivo = ehDesktop ? !recolhida : gavetaAberta;
 
   return (
-    <>
+    <PortaoTermos>
     <div className={`app-shell${recolhida ? " recolhida" : ""}`} id="app-shell">
       {/* BARRA DE TOPO (nome da tela + notificações + usuário) */}
       <Topbar aoAlternar={alternarMenu} menuAtivo={menuAtivo} />
@@ -140,6 +141,6 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
     {/* Idem: a assinatura do Realtime não pode ser derrubada e reaberta a cada
         navegação. Não renderiza nada — só mantém o store em dia com o banco. */}
     <SincronizacaoRespostas />
-    </>
+    </PortaoTermos>
   );
 }

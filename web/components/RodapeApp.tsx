@@ -8,7 +8,9 @@
    Só marca, oferecimento e versão — nada que dependa de sessão, pra
    poder viver dos dois lados do login.
    ================================================================ */
+import Link from "next/link";
 import { todayISO } from "@/lib/datas";
+import { legalPublicavel } from "@/lib/legal/identidade";
 import { VERSAO_APP } from "@/lib/versao";
 
 export default function RodapeApp({ variante }: { variante?: "auth" }) {
@@ -24,6 +26,21 @@ export default function RodapeApp({ variante }: { variante?: "auth" }) {
       <div className="rodape-assinatura" suppressHydrationWarning>
         Painel de Angariações © {ano} · <span className="rodape-versao">v{VERSAO_APP}</span>
       </div>
+      {/* Os documentos ficam no rodapé, que é onde as pessoas os procuram
+          — e este rodapé vive dos DOIS lados do login, então valem tanto
+          para quem já usa quanto para quem está decidindo se cria conta.
+
+          Só aparecem quando publicáveis: link de rodapé para um documento
+          que se abre dizendo "ainda não publicável" é pior que link
+          nenhum. As páginas seguem acessíveis por URL direta para
+          revisão. Ver `legalPublicavel`. */}
+      {legalPublicavel() && (
+        <div className="rodape-legal">
+          <Link href="/termos">Termos de Uso</Link>
+          <span aria-hidden="true"> · </span>
+          <Link href="/privacidade">Privacidade</Link>
+        </div>
+      )}
     </footer>
   );
 }

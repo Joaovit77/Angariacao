@@ -17,6 +17,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useSessao } from "@/components/SessaoProvider";
 import { traduzErroAuth } from "@/lib/auth/erros";
+import { legalPublicavel, VERSAO_TERMOS } from "@/lib/legal/identidade";
 import { getSupabase } from "@/lib/persistencia/supabase";
 import { toast } from "@/lib/toast";
 import RodapeApp from "@/components/RodapeApp";
@@ -132,6 +133,7 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
   const [signupNome, setSignupNome] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupSenha, setSignupSenha] = useState("");
+  const [signupAceite, setSignupAceite] = useState(false);
   const [avisoSignup, setAvisoSignup] = useState<Aviso>(SEM_AVISO);
 
   const [forgotEmail, setForgotEmail] = useState("");
@@ -156,7 +158,25 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
     const { error } = await getSupabase().auth.signUp({
       email: signupEmail.trim(),
       password: signupSenha,
-      options: { data: { name: signupNome.trim() } },
+      /* A versão aceita viaja no metadata da conta, e não numa inserção
+         em `aceites_termos` aqui, por uma limitação real: quando a
+         confirmação por e-mail está ligada, `signUp` não devolve sessão
+         — e sem sessão o RLS daquela tabela (auth.uid() = user_id)
+         barraria o insert. O metadata é gravado pelo próprio Supabase
+         no cadastro, sem depender de sessão.
+
+         A linha durável nasce no primeiro acesso autenticado: o
+         `PortaoTermos` vê o metadata, grava a linha e NÃO mostra tela
+         nenhuma — quem acabou de marcar a caixa não precisa aceitar de
+         novo. Ver components/legal/PortaoTermos.tsx. */
+      options: {
+        data: legalPublicavel()
+          ? { name: signupNome.trim(), termos_versao: VERSAO_TERMOS }
+          : // Sem documentos publicáveis não houve caixa para marcar, e
+            // gravar a versão aqui seria registrar um aceite que não
+            // aconteceu. Ver `legalPublicavel`.
+            { name: signupNome.trim() },
+      },
     });
     if (error) {
       setAvisoSignup({ texto: traduzErroAuth(error), cor: "var(--bad)" });
@@ -341,7 +361,37 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
                   comForca
                 />
               </div>
-              <button type="submit" className="btn btn-primary" style={ESTILO_BOTAO_SUBMIT}>
+              {/* Caixa DESMARCADA por padrão, e o botão só habilita com
+                  ela marcada. Aceite pré-marcado não é aceite — é o
+                  usuário não ter percebido, e é justamente o que um dia
+                  seria questionado. Os links abrem em aba nova para não
+                  levar embora o formulário já preenchido. */}
+              {legalPublicavel() && (
+                <label className="auth-aceite">
+                  <input
+                    type="checkbox"
+                    checked={signupAceite}
+                    onChange={(e) => setSignupAceite(e.target.checked)}
+                  />
+                  <span>
+                    Li e aceito os{" "}
+                    <a href="/termos" target="_blank" rel="noopener noreferrer">
+                      Termos de Uso
+                    </a>{" "}
+                    e a{" "}
+                    <a href="/privacidade" target="_blank" rel="noopener noreferrer">
+                      Política de Privacidade
+                    </a>
+                    .
+                  </span>
+                </label>
+              )}
+              <button
+                type="submit"
+                className="btn btn-primary"
+                style={ESTILO_BOTAO_SUBMIT}
+                disabled={legalPublicavel() && !signupAceite}
+              >
                 Criar conta
               </button>
               <div className="auth-error" style={{ color: avisoSignup.cor }}>

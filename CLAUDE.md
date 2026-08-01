@@ -1136,6 +1136,59 @@ Quatro regras ao mexer nisto:
 role e importa `next/server`, então é só-de-servidor por contrato. Nunca importe dele em componente
 ou store.
 
+## Termos, privacidade e o aceite
+
+O sistema guarda dado pessoal de **terceiros que nunca aceitaram nada**: nome, telefone e endereço
+do proprietário, mais o conteúdo das conversas de WhatsApp — inclusive áudios que saem da nossa
+infra e vão para a OpenAI ser transcritos. Enquanto era uma pessoa usando o próprio sistema, isso
+era um detalhe. Vendendo para outra imobiliária, deixa de ser.
+
+Vivem em `web/lib/legal/`: `identidade.ts` (quem responde, e a `VERSAO_TERMOS`), `conteudo.ts` (o
+texto dos dois documentos, estruturado) e `aceite.ts` (leitura e gravação). As páginas
+`/termos` e `/privacidade` ficam **fora do grupo `(painel)`** — precisam ser lidas antes de existir
+conta, e um proprietário que queira saber quem trata seus dados não tem (nem deve ter) login aqui.
+
+> **Os textos precisam de revisão jurídica antes de contrato com cliente pagante.** Eles descrevem
+> com precisão o que o sistema faz — a parte que um advogado não escreveria sozinho —, mas descrever
+> o produto não é responder pela adequação à LGPD.
+
+**A camada inteira está em STAND BY, e liga sozinha** (`legalPublicavel`). Enquanto faltar CNPJ,
+endereço ou contato do encarregado, o portão não bloqueia, a caixa não aparece no cadastro e os
+links somem do rodapé — as páginas seguem legíveis por URL direta, com o aviso de "não publicável".
+O gatilho é derivado da própria identidade de propósito, e não um `LEGAL_ATIVO = false` que alguém
+precisa lembrar de virar: a precondição e o interruptor são a mesma coisa. Exigir aceite de um texto
+que não identifica quem responde é colher um "eu aceito" que não vale — e ainda trancaria o corretor
+no meio do expediente por causa disso.
+
+**A decisão que dá forma a tudo: são DOIS papéis, não um.** Os dados da conta do corretor (nome,
+e-mail, senha, acessos, consumo de IA) têm a plataforma como **controladora**. Os dados do
+proprietário têm o **corretor** como controlador e a plataforma como **operadora** — porque foi ele
+quem obteve o contato e decidiu abordar aquela pessoa. Escrever os dois como se fossem um só é o
+erro que faria a responsabilidade padrão sobrar para quem hospeda; por isso os termos atribuem
+explicitamente ao corretor a base legal do dado que ele cadastra.
+
+Quatro regras ao mexer:
+
+- **Ligou integração nova que recebe dados? Declare na política.** Há teste falhando até que
+  Supabase, Vercel, Evolution, OpenAI e Google apareçam nomeados — política que esquece um
+  fornecedor não é texto incompleto, é informação errada ao titular.
+- **Mudou o que se faz com os dados? Suba a `VERSAO_TERMOS`.** É ela que faz o aceite significar
+  algo: sem versão, "o usuário aceitou" é uma afirmação sobre um texto que pode ter mudado três
+  vezes. Subir a versão faz todo mundo reencontrar o `PortaoTermos` no próximo acesso.
+- **O aceite não se edita nem se apaga.** `aceites_termos` tem select e insert, e **nem update nem
+  delete**; uma linha POR VERSÃO, porque sobrescrever apagaria a prova de que a pessoa aceitou a
+  anterior enquanto ela valia. Sem IP nem user agent de propósito — seriam mais dado pessoal para
+  proteger num sistema cujo problema já é ter dado pessoal demais.
+- **Falha ao CONSULTAR o aceite libera o app** (`aceitouVersaoAtual` devolve `true` em erro). É o
+  oposto de `podeUsarIa`, que nega na dúvida, e a diferença é o que está em jogo: lá o erro
+  permissivo gasta token de quem não devia; aqui o erro restritivo trancaria do lado de fora, no
+  meio do expediente, um corretor que já aceitou — por causa de uma falha de rede nossa.
+
+O aceite do **cadastro** viaja em `user_metadata.termos_versao`, e não numa inserção direta, por uma
+limitação real: com confirmação por e-mail ligada, `signUp` não devolve sessão, e sem sessão o RLS
+barra o insert. A linha durável nasce no primeiro acesso autenticado, em silêncio — quem marcou a
+caixa há trinta segundos não pode ser recebido com um pedido para aceitar de novo.
+
 ## Convenções e regras (o que sempre / nunca fazer)
 
 - **Tudo em pt-BR** — strings de UI, comentários, toasts, labels, mensagens de validação.
