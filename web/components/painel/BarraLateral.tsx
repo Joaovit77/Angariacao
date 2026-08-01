@@ -126,6 +126,21 @@ const ITENS: ItemNav[] = [
   // entrarem: basta devolver este item ao array.
 ];
 
+/** Fora do array acima porque não é do corretor: só aparece para quem tem
+    o cargo (`ehAdmin`, confirmado pelo servidor). Esconder é conveniência
+    — quem souber o endereço chega na página, e lá toda consulta volta 403
+    sem o cargo. */
+const ITEM_ADMIN: ItemNav = {
+  rota: "/admin",
+  texto: "Administração",
+  icone: (
+    <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 2l8 4v6c0 5-3.4 8.7-8 10-4.6-1.3-8-5-8-10V6z" />
+      <path d="M9 12l2 2 4-4" />
+    </svg>
+  ),
+};
+
 export default function BarraLateral({
   aberta,
   aoFechar,
@@ -142,6 +157,9 @@ export default function BarraLateral({
   const { usuario } = useSessao();
   const imoveis = useAppStore((s) => s.imoveis);
   const agenda = useAppStore((s) => s.agenda);
+  const ehAdmin = useAppStore((s) => s.ehAdmin);
+
+  const itens = useMemo(() => (ehAdmin ? [...ITENS, ITEM_ADMIN] : ITENS), [ehAdmin]);
 
   // Prefetch das rotas: os itens são <button> com router.push (não <Link>),
   // então o Next não faz o prefetch automático. Sem isto, cada clique só
@@ -149,8 +167,8 @@ export default function BarraLateral({
   // (INP alto). Aquece o cache no mount. (No dev o prefetch é no-op — a
   // lentidão ao navegar em localhost é a compilação sob demanda, não isto.)
   useEffect(() => {
-    for (const item of ITENS) router.prefetch(item.rota);
-  }, [router]);
+    for (const item of itens) router.prefetch(item.rota);
+  }, [router, itens]);
 
   // A caixa varre as notas de todos os imóveis; ao contrário dos outros dois
   // badges (um filter simples), vale memoizar — a barra re-renderiza a cada
@@ -201,7 +219,7 @@ export default function BarraLateral({
       </div>
 
       <div className="nav-group">
-        {ITENS.map((item) => (
+        {itens.map((item) => (
           <button
             key={item.rota}
             type="button"

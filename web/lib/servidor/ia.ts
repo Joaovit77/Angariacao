@@ -24,6 +24,7 @@ import {
   type RespostaClassificada,
 } from "../calculo/ia";
 import { RESULTADOS_TENTATIVA, type ResultadoTentativa } from "../constantes";
+import { registrarUsoDaResposta } from "./registro";
 
 /** Mesmo modelo da rota /api/ia — ver o comentário de MODELO lá. */
 const MODELO = "gpt-5.4-mini";
@@ -66,6 +67,11 @@ function horaValida(valor: unknown): string | null {
 export async function classificarResposta(
   texto: string,
   hoje: string,
+  /** Dono da carteira, para o gasto ter dono no painel de admin. Vem da
+      instância em `whatsapp_instancias`, nunca da requisição — o webhook
+      não tem sessão de usuário. Opcional porque a classificação funciona
+      sem ele; o que se perde é só a atribuição do custo. */
+  userId: string | null = null,
 ): Promise<{
   resultado: ResultadoTentativa;
   retomarEm: string | null;
@@ -91,6 +97,13 @@ export async function classificarResposta(
       },
       messages: [{ role: "user", content: promptClassificarResposta(texto, hoje) }],
     });
+
+    /* O gasto, registrado antes de qualquer validação do conteúdo.
+       Esta é a chamada de IA mais frequente do sistema — roda a CADA
+       mensagem que um proprietário manda, sem ninguém pedir —, então é
+       provavelmente a maior linha da fatura, e era a mais invisível de
+       todas: as outras pelo menos nascem de um clique. */
+    registrarUsoDaResposta(userId, "classificar-resposta", MODELO, conclusao.usage);
 
     const escolha = conclusao.choices[0];
     if (!escolha || escolha.message.refusal || escolha.finish_reason === "length") {

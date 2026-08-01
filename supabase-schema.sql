@@ -576,3 +576,170 @@ drop trigger if exists trg_imoveis_updated_at on imoveis;
 create trigger trg_imoveis_updated_at
   before update on imoveis
   for each row execute function set_updated_at();
+
+-- ============================================================
+-- SUPER ADMIN — quem opera o sistema, e não a carteira
+--
+-- As tabelas acima são todas do CORRETOR: cada linha pertence a um
+-- `user_id` e a RLS a escopa. As três seguintes são de quem OPERA o
+-- sistema — quem libera uma conta nova, vê quanto cada corretor está
+-- custando em IA e descobre que o webhook de alguém parou.
+--
+-- Elas existem porque, até aqui, isso era feito abrindo o Table Editor
+-- do Supabase à mão: liberar IA é inserir linha em `ia_permissoes`,
+-- cadastrar o número é inserir em `whatsapp_instancias`. Com um usuário
+-- isso funciona. Com dez, o cliente novo entra e lê "fale com o
+-- responsável pelo sistema" enquanto espera alguém abrir o banco.
+-- ============================================================
+
+-- ------------------------------------------------------------
+-- ADMINS (quem tem o cargo)
+--
+-- REPARE NO QUE ESTÁ FALTANDO, de novo: RLS ligada e NENHUMA política
+-- — nem de select. É a diferença desta tabela para `ia_permissoes`,
+-- que deixa o dono ler o próprio flag.
+--
+-- Lá isso é inofensivo: saber que você tem IA não dá IA a ninguém, e a
+-- rota confere de novo antes de gastar token. Aqui, uma política de
+-- select devolveria ao browser a LISTA de quem manda no sistema — que
+-- é reconhecimento gratuito para quem quiser atacar a conta certa. E
+-- uma política de escrita, ainda que "só na própria linha", seria a
+-- autopromoção a administrador com a anon key, que é pública por
+-- design.
+--
+-- Então como a UI sabe se mostra o menu Admin? Perguntando ao servidor
+-- (`GET /api/admin/eu`), que confere com a service role. O browser
+-- nunca decide — ele só recebe um sim/não que a rota já decidiu, e
+-- toda rota de admin reconfere por conta própria. Esconder o menu é
+-- conveniência; a trava está no servidor.
+--
+-- O PRIMEIRO ADMIN entra à mão, pelo Table Editor (é o único jeito:
+-- não há admin para promovê-lo). Ver DEPLOY.md.
+-- ------------------------------------------------------------
+create table if not exists admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  observacao text,
+  criado_em timestamptz not null default now()
+);
+
+alter table admins enable row level security;
+
+-- ------------------------------------------------------------
+-- USO DE IA (o gasto, chamada a chamada)
+--
+-- Cada chamada à OpenAI é cobrada por token na NOSSA conta, e até aqui
+-- ninguém sabia de quem era o gasto. `ia_permissoes` é um booleano:
+-- liga e desliga, sem cota e sem conta. Um corretor entusiasmado
+-- transcrevendo 40 áudios por dia aparecia só na fatura, no fim do mês,
+-- misturado com todos os outros.
+--
+-- O que se GRAVA aqui é o fato observado — o modelo e os tokens que a
+-- própria API devolveu. O preço não fica no banco de propósito: ele
+-- muda por decisão da OpenAI, e um preço gravado em linha antiga
+-- congelaria a tabela inteira em valores de meses atrás. O custo é
+-- calculado na LEITURA, por `lib/calculo/custoIa.ts` — mesma disciplina
+-- de `resultadoObservado.ts`: derivar em vez de gravar deixa a correção
+-- de um preço errado ser a edição de uma constante, sem migração.
+--
+-- `on delete set null` (não cascade): conta encerrada não pode apagar a
+-- contabilidade do mês em que ela existiu. O painel mostra os órfãos
+-- como "(conta removida)".
+-- ------------------------------------------------------------
+create table if not exists ia_uso (
+  id bigserial primary key,
+  user_id uuid references auth.users(id) on delete set null,
+  -- O `tipo` da chamada ("resumo-dia", "transcricao", "classificar-resposta"
+  -- …). É o que responde "o gasto foi em quê", e não só "quanto".
+  tipo text not null,
+  modelo text not null,
+  tokens_entrada integer not null default 0,
+  -- Quantos dos `tokens_entrada` vieram do CACHE da OpenAI. Ela cobra
+  -- dez vezes menos por eles, e cacheia sozinha prompts longos que se
+  -- repetem. Coluna separada (e não um `tokens_entrada` já líquido)
+  -- porque `prompt_tokens` da API JÁ INCLUI os cacheados: guardar o
+  -- total e a parte cacheada preserva o que a API disse, e deixa a
+  -- subtração para a leitura — se o preço do cache mudar, corrige-se a
+  -- constante e todo o histórico se corrige junto.
+  tokens_entrada_cache integer not null default 0,
+  tokens_saida integer not null default 0,
+  criado_em timestamptz not null default now()
+);
+
+alter table ia_uso enable row level security;
+
+-- O painel sempre pergunta por período, e quase sempre por corretor.
+create index if not exists idx_ia_uso_user_data on ia_uso (user_id, criado_em desc);
+create index if not exists idx_ia_uso_data on ia_uso (criado_em desc);
+
+-- ------------------------------------------------------------
+-- LOG DE EVENTOS (o que quebrou, e na conta de quem)
+--
+-- O buraco que esta tabela tapa: hoje, quando a instância de WhatsApp
+-- de um corretor cai, quando o refresh token do Google dele expira ou
+-- quando a transcrição falha, isso vai para o `console.error` do
+-- servidor — que na Vercel é um fluxo único, sem dono, que ninguém lê.
+-- O corretor descobre pelo toast de falha no meio de um lote, e quem
+-- opera o sistema descobre pelo corretor reclamando.
+--
+-- NÃO é log de auditoria nem trilha de tudo que acontece: só o que
+-- alguém precisaria AGIR para consertar, mais os envios (que são o
+-- volume que justifica a fatura). Registrar cada leitura encheria a
+-- tabela de ruído, e log que ninguém consegue ler é o mesmo que não ter
+-- log — o erro que matou a faixa de "imóvel parado" no termômetro.
+--
+-- `detalhe` é texto, não jsonb: é para uma pessoa LER na tela. E é onde
+-- mora a regra que não dá para relaxar depois — **nunca gravar aqui o
+-- conteúdo da conversa nem o telefone do proprietário**. O log é lido
+-- por quem opera o sistema, que não é o dono daquela carteira; motivo
+-- classificado ("sem-whatsapp", "instancia-desconectada") basta para
+-- agir e não expõe dado pessoal de terceiro que nunca aceitou nada.
+-- ------------------------------------------------------------
+create table if not exists log_eventos (
+  id bigserial primary key,
+  -- Nulo quando o evento não é de ninguém em particular (ou a conta
+  -- foi removida depois).
+  user_id uuid references auth.users(id) on delete set null,
+  -- "whatsapp" | "ia" | "webhook" | "google" | "admin"
+  categoria text not null,
+  -- "erro" | "aviso" | "info"
+  nivel text not null default 'info',
+  -- O que aconteceu, em vocabulário fechado ("envio-ok", "sem-whatsapp").
+  evento text not null,
+  detalhe text,
+  criado_em timestamptz not null default now()
+);
+
+alter table log_eventos enable row level security;
+
+create index if not exists idx_log_user_data on log_eventos (user_id, criado_em desc);
+create index if not exists idx_log_nivel_data on log_eventos (nivel, criado_em desc);
+create index if not exists idx_log_data on log_eventos (criado_em desc);
+
+-- ------------------------------------------------------------
+-- Limpeza. Log e uso crescem para sempre se ninguém apagar — e o
+-- volume vem do envio, que é justamente o que mais se registra.
+--
+-- Não roda sozinho de propósito: agendamento exige pg_cron ligado no
+-- projeto, e uma instalação que não o tenha ficaria com uma função
+-- silenciosamente morta. O painel de admin mostra o tamanho das duas
+-- tabelas e oferece o botão; para automatizar, ver DEPLOY.md.
+--
+-- 180 dias mantém o ano fiscal pela metade e duas temporadas de
+-- captação — o suficiente para comparar "este mês contra o mesmo mês".
+-- ------------------------------------------------------------
+create or replace function limpar_registros_antigos(p_dias int default 180)
+returns table (logs_apagados bigint, usos_apagados bigint)
+language plpgsql
+as $$
+declare
+  corte timestamptz := now() - make_interval(days => p_dias);
+  n_logs bigint;
+  n_usos bigint;
+begin
+  delete from log_eventos where criado_em < corte;
+  get diagnostics n_logs = row_count;
+  delete from ia_uso where criado_em < corte;
+  get diagnostics n_usos = row_count;
+  return query select n_logs, n_usos;
+end;
+$$;

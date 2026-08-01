@@ -24,6 +24,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { eventoDoCompromisso, GOOGLE_API_BASE, mensagemFalhaGoogle, type FalhaGoogle } from "@/lib/calculo/googleAgenda";
 import { fromDbAgenda, fromDbImovel } from "@/lib/persistencia/mapeadores";
+import { registrarEvento } from "@/lib/servidor/registro";
 import { accessToken, admin, ambiente, contaDoUsuario, usuarioDaRequisicao } from "../_comum";
 
 function erro(falha: FalhaGoogle, status: number): Response {
@@ -76,7 +77,25 @@ export async function POST(request: Request): Promise<Response> {
   if (remover && !eventoId) return Response.json({ ok: true });
 
   const token = await accessToken(env, conta.refreshToken);
-  if ("falha" in token) return erro(token.falha, token.falha === "autorizacao-expirada" ? 422 : 502);
+  if ("falha" in token) {
+    /* A armadilha documentada no CLAUDE.md, agora com um lugar onde ela
+       aparece: enquanto a tela de consentimento estiver em modo "Teste"
+       no Google Cloud, o refresh token expira em 7 DIAS. A sincronização
+       funciona a semana inteira e quebra sozinha — sem erro visível para
+       quem opera, porque o espelhamento é silencioso por design (falhar
+       no Google não pode derrubar o salvamento do compromisso).
+
+       É o exemplo perfeito do que o log existe para pegar: quebra em
+       silêncio, na conta de um corretor só, e ninguém fica sabendo. */
+    registrarEvento({
+      userId: usuario.id,
+      categoria: "google",
+      nivel: "erro",
+      evento: token.falha === "autorizacao-expirada" ? "google-expirado" : "google-falhou",
+      detalhe: token.falha,
+    });
+    return erro(token.falha, token.falha === "autorizacao-expirada" ? 422 : 502);
+  }
 
   const base = `${GOOGLE_API_BASE}/calendars/${encodeURIComponent(conta.calendarId)}/events`;
   const cabecalho = {

@@ -56,6 +56,62 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-anon-key
 Os valores são os que você copiou no passo 5 da Parte 1 (ou os que já estão em `supabase-config.js`,
 na raiz, do deploy antigo — são os mesmos).
 
+### Service role (obrigatória a partir do painel de administração)
+
+```
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+```
+
+Copie em **Project Settings → API → service_role**. Ela já era usada pelo envio de WhatsApp e pelo
+webhook; com o painel de administração ela passou a ser necessária também para `/api/admin/*`.
+
+- **Nunca** prefixe com `NEXT_PUBLIC_`. Esta chave **ignora a Row Level Security por completo** —
+  quem a tiver lê e escreve a carteira de todos os corretores. É o segredo mais perigoso do
+  projeto.
+- **Se você não configurar:** o envio direto e o painel de administração respondem "não
+  configurado". O resto do app funciona.
+
+### Super admin — liberando o primeiro
+
+O painel `/admin` mostra todos os corretores, quanto cada um consumiu de IA no mês e o log do que
+quebrou; é também de lá que se libera a IA de uma conta e se cadastra o número de WhatsApp dela
+(o que antes se fazia à mão no Table Editor).
+
+Quem entra é quem tem linha na tabela `admins`. **O primeiro precisa ser inserido à mão** — não há
+administrador para promovê-lo:
+
+1. Supabase → **Table Editor** → `auth.users` → copie o `id` (uuid) da sua conta.
+2. Table Editor → `admins` → **Insert row** → cole o uuid em `user_id` → Save.
+
+Ou pelo SQL editor:
+
+```sql
+insert into admins (user_id, observacao)
+select id, 'primeiro admin' from auth.users where email = 'voce@exemplo.com'
+on conflict (user_id) do nothing;
+```
+
+Recarregue o painel: o item **Administração** aparece no menu. Para revogar, apague a linha.
+
+> A tabela não tem política de RLS nenhuma — nem de leitura. Isso é proposital: quem consulta é o
+> servidor, com a service role. Não crie políticas ali "por simetria" com as outras tabelas.
+
+### Limpeza de log e histórico de uso — opcional
+
+`log_eventos` e `ia_uso` crescem para sempre. A função `limpar_registros_antigos(180)` apaga o que
+passou de 180 dias:
+
+```sql
+select * from limpar_registros_antigos(180);
+```
+
+Ela não roda sozinha porque agendar exige a extensão **pg_cron** ligada no projeto. Se você a
+tiver, agende uma vez por mês:
+
+```sql
+select cron.schedule('limpeza-logs', '0 4 1 * *', $$select limpar_registros_antigos(180)$$);
+```
+
 ### Evolution API (envio direto de WhatsApp) — opcional
 
 O botão **"Enviar agora"** do modal de WhatsApp dispara a mensagem pela Evolution sem abrir o
@@ -170,8 +226,9 @@ O app novo já tem "Esqueci minha senha" na tela de login — ele recebe um link
 e-mail. Confira a **Site URL** no Supabase (Parte 1, passo 7) para o link cair no lugar certo.
 
 **Quero ver os dados de todo mundo, sou o gestor.**
-O jeito mais simples é o painel do Supabase (Table Editor). Um "modo gestor" dentro do sistema dá
-para construir — é uma melhoria futura.
+Existe: o painel **Administração** (`/admin`), com a lista de corretores, o consumo de IA de cada um
+e o log de falhas — ver "Super admin" na Parte 2. Ele mostra números agregados por conta (imóveis,
+envios, respostas), não a carteira imóvel a imóvel; para isso continua valendo o Table Editor.
 
 **Posso usar o sistema sem internet?**
 Não nessa versão — os dados ficam na nuvem para sincronizar entre dispositivos e logins.

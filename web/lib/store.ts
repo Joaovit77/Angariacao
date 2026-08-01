@@ -31,6 +31,12 @@ interface AppStore {
       controle de acesso: quem barra de fato é a rota /api/ia.
       Começa false: sem confirmação, não oferecemos o que não funciona. */
   iaDisponivel: boolean;
+  /** Esta conta é super admin? Decide se o item "Administração" aparece
+      no menu — é UX, não controle de acesso: quem barra de fato é o
+      `exigirAdmin` de cada rota /api/admin/*. Começa false pelo mesmo
+      motivo do `iaDisponivel`: sem confirmação do servidor, não se
+      oferece o que pode não funcionar. */
+  ehAdmin: boolean;
   /** Grava o resultado de carregarEstado() (login/boot). */
   setEstado: (estado: EstadoApp) => void;
   /** Volta ao estado inicial (logout). */
@@ -40,6 +46,7 @@ interface AppStore {
   setAgenda: (agenda: AgendaItem[]) => void;
   setAbordagens: (abordagens: Abordagem[]) => void;
   setIaDisponivel: (disponivel: boolean) => void;
+  setEhAdmin: (ehAdmin: boolean) => void;
   setMetas: (metas: Metas) => void;
   setConfig: (config: UserConfig) => void;
 }
@@ -52,6 +59,7 @@ const ESTADO_INICIAL = {
   config: { comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [] } as UserConfig, // % sobre 1 aluguel (100 = 1 mês)
   carregado: false,
   iaDisponivel: false,
+  ehAdmin: false,
 };
 
 export const useAppStore = create<AppStore>((set) => ({
@@ -62,6 +70,7 @@ export const useAppStore = create<AppStore>((set) => ({
   setAgenda: (agenda) => set({ agenda }),
   setAbordagens: (abordagens) => set({ abordagens }),
   setIaDisponivel: (iaDisponivel) => set({ iaDisponivel }),
+  setEhAdmin: (ehAdmin) => set({ ehAdmin }),
   setMetas: (metas) => set({ metas }),
   setConfig: (config) => set({ config }),
 }));
