@@ -165,11 +165,17 @@ EVOLUTION_TOKEN=token-da-instancia
   poder para criar/apagar instâncias.
 - **Se você não configurar:** nada quebra. O modal cai no `wa.me` (abrir o WhatsApp Web com a
   mensagem pronta), que é como o app funcionava antes.
-- Para conferir se a instância está no ar (`state` deve ser `open`):
-  ```bash
-  curl -H "apikey: $EVOLUTION_TOKEN" "$EVOLUTION_SERVER_URL/instance/connectionState/$EVOLUTION_INSTANCE"
-  ```
-  Se voltar `close`, releia o QR Code no painel da Evolution — o app avisa isso no toast.
+- **Para conferir se a instância está no ar, use o próprio painel:** Configurações → *Ver conexão do
+  WhatsApp*. Ela mostra o estado, o número pareado e — se tiver caído — o QR Code para reconectar,
+  sem ninguém precisar abrir o painel da Evolution (onde estão as instâncias de todos os
+  corretores).
+
+> **Atenção às variáveis legadas.** Se o seu `.env.local` ainda tem `EVOLUTION_INSTANCE` e
+> `EVOLUTION_TOKEN`, elas **não são mais usadas** — o nome e o token da instância saem da tabela
+> `whatsapp_instancias`, uma linha por corretor. Valores antigos ali confundem: em 01/08/2026 o
+> `EVOLUTION_INSTANCE` do ambiente local apontava para uma instância que já não existia, e um
+> `curl` de diagnóstico com ele voltava 404 sem que houvesse nada errado com o sistema. Pode
+> apagar as duas linhas.
 
 ### OpenAI (sugestão de roteiros e leitura do ranking) — opcional
 
