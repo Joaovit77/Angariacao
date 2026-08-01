@@ -14,6 +14,7 @@ import ModalAbordagens from "./ModalAbordagens";
 import ModalAgenda from "./ModalAgenda";
 import ModalConfig from "./ModalConfig";
 import ModalConexaoWhatsapp from "./ModalConexaoWhatsapp";
+import ModalImportar from "./ModalImportar";
 import ModalConfirmarDisponibilidade from "./ModalConfirmarDisponibilidade";
 import ModalDesdobrar from "./ModalDesdobrar";
 import ModalFollowUpLote from "./ModalFollowUpLote";
@@ -53,6 +54,7 @@ export default function ModalOverlay() {
         {modal?.tipo === "verificacao" && modal.id && <ModalVerificacao id={modal.id} />}
         {modal?.tipo === "config" && <ModalConfig />}
         {modal?.tipo === "conexaoWhatsapp" && <ModalConexaoWhatsapp />}
+        {modal?.tipo === "importar" && <ModalImportar />}
         {modal?.tipo === "whatsapp" && modal.id && (
           <ModalWhatsapp
             imovelId={modal.id}

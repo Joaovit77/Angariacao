@@ -241,6 +241,21 @@ export default function ModalConfig() {
           </div>
         </div>
         <div className="field-group">
+          <label>Importar carteira</label>
+          <div className="field-hint" style={{ marginBottom: "10px" }}>
+            Já tem os imóveis numa planilha? Traga de uma vez, em vez de digitar um a um.
+          </div>
+          <button
+            type="button"
+            className="btn"
+            style={{ width: "100%" }}
+            onClick={() => abrirModal("importar")}
+          >
+            Importar de uma planilha (CSV)
+          </button>
+        </div>
+
+        <div className="field-group">
           <label>Dados</label>
           <button
             type="button"

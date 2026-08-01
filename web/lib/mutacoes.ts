@@ -963,3 +963,45 @@ export async function apagarTodosOsDados(userId: string): Promise<boolean> {
   toast("Todos os dados foram apagados.");
   return true;
 }
+
+/* ----------------------------------------------------------------
+   IMPORTAÇÃO EM LOTE
+
+   Escreve de uma vez os candidatos que `calculo/importacao.ts` já
+   validou. Não valida de novo, e não deve: a validação é pura e roda
+   antes, para o corretor VER o que entra na prévia. Importar 200
+   imóveis é irreversível na prática — desfazer é apagar 200 registros
+   à mão —, então a decisão acontece na tela, não aqui.
+
+   Um único insert, e não 200 chamadas: além de ser mais rápido, é o
+   que evita a importação pela metade quando a conexão cai no meio.
+   ---------------------------------------------------------------- */
+export interface ResultadoImportacao {
+  ok: boolean;
+  gravados: number;
+  mensagem?: string;
+}
+
+export async function importarImoveis(
+  candidatos: Omit<Imovel, "id">[],
+  userId: string,
+): Promise<ResultadoImportacao> {
+  if (candidatos.length === 0) return { ok: true, gravados: 0 };
+
+  const novos: Imovel[] = candidatos.map((c) => ({ ...c, id: uid() }) as Imovel);
+
+  const { error } = await getSupabase()
+    .from("imoveis")
+    .insert(novos.map((i) => toDbImovel(i, userId)));
+
+  if (error) {
+    console.error("Importação: falha ao gravar:", error.message);
+    return { ok: false, gravados: 0, mensagem: "Não foi possível gravar. Nada foi importado." };
+  }
+
+  // Escrita primeiro no Supabase, estado local depois — a regra do
+  // projeto. Em falha, o store não muda e a tela diz o que houve.
+  const { imoveis } = useAppStore.getState();
+  useAppStore.getState().setImoveis([...imoveis, ...novos]);
+  return { ok: true, gravados: novos.length };
+}

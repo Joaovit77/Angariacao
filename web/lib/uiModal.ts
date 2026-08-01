@@ -17,6 +17,7 @@ export type TipoModal =
   | "verificacao"
   | "config"
   | "conexaoWhatsapp"
+  | "importar"
   | "whatsapp"
   | "notas"
   | "tentativas"
