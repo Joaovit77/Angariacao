@@ -208,6 +208,23 @@ o torna testável puro.
   não podem discordar sobre quantos esperam — e é sempre a fila de HOJE, mesmo com mês passado
   selecionado: a elegibilidade do follow-up conta a partir da data atual, e reconstruí-la exigiria o
   estado do banco naquele dia. A tela avisa quando o mês não é o corrente.
+- **`calculo/importacao.ts`** — trazer a carteira de uma planilha. O `csv.ts` só EXPORTA; isto é o
+  caminho de volta, para o corretor que chega com 200 imóveis numa planilha e hoje digitaria um a
+  um. **O risco que dá forma ao módulo não é o parse** — é o que uma importação em massa faz com o
+  resto do sistema, que é exatamente o motivo de a extensão de navegador ter sido descartada em
+  27/07/2026: registro sem endereço não geocodifica, some do mapa, é invisível para a duplicidade e
+  **mesmo assim** ocupa linha no pipeline disparando `isStale` todo dia. Daí endereço ser
+  obrigatório e a linha sem ele ser recusada, em vez de entrar pela metade. Quatro regras:
+  **tudo entra como "Novo contato"** (um "Locado" importado somaria à conversão, à comissão e à meta
+  um negócio que nunca aconteceu aqui — mesma regra da unidade desdobrada); **o `statusHistory`
+  nasce VAZIO**, porque importar não é transição e o motor já cai em `dataAngariacao` quando o
+  histórico está vazio; **a data vem da planilha quando existe**, senão `imoveisContatadosNoMes`
+  (que conta por `dataAngariacao`) anunciaria "200 contatados este mês" sobre imóveis de meses
+  atrás; e **telefone ilegível não derruba a linha, mas não entra** — imóvel sem telefone é
+  trabalhável, com telefone errado manda mensagem para um estranho. A duplicata é checada duas
+  vezes, contra a carteira **e dentro do próprio arquivo**, porque planilha de verdade tem linha
+  repetida. Datas são lidas por manipulação de string (nunca `new Date`): `new Date("10/07/2026")`
+  entende mês/dia e joga um imóvel de julho para outubro, silenciosa e plausivelmente.
 - **`calculo/filtros.ts`** — filtro/ordenação do Pipeline (parte pura).
 - **`calculo/dashboard.ts` · `insights.ts` · `relatorios.ts` · `agenda.ts`** — as métricas de cada
   view, extraídas da montagem de HTML antiga sem alterar nenhuma fórmula. **Duas exceções assinadas**
