@@ -495,6 +495,22 @@ que deram certo. Por isso `calculo/abordagens.ts` mede três coisas **separadas*
 (o proprietário reagiu; recusa conta, porque reagir ≠ aceitar), `taxaAngariacao` (participação, sem
 atribuir causa) e `destravou` (foi a última tentativa antes da entrada em "Angariado").
 
+**Tentativa registrada ≠ tentativa de ALCANCE, e contar tudo junto mente.** A lista guarda duas
+coisas diferentes: o esforço para conseguir falar com o proprietário e as réplicas de uma conversa
+já aberta. Elas moram juntas de propósito — o webhook precisa de uma tentativa em aberto para
+pendurar a classificação da resposta que chega —, então quem conta ESFORÇO separa na leitura, com
+`tentativasDeAlcance` (as anteriores à primeira mensagem do proprietário). Nasceu do LD-178
+(31/07/2026): uma abordagem enviada, a proprietária respondeu, o corretor treplicou duas vezes pelo
+painel e o card anunciava **"3ª tentativa"** — a leitura exata oposta da realidade, e justamente
+sobre a conversa mais bem-sucedida da carteira. As réplicas saíram como "Primeiro contato" porque é
+o modelo que o modal pré-seleciona para o status "Novo contato", e ele está em `MODELOS_CAPTACAO`.
+Medido no mesmo dia: dos 34 imóveis com 2+ tentativas, só 2 mudam — os outros 32 são silêncio de
+verdade, inclusive o LD-55, com 3 tentativas TODAS anteriores à resposta, que segue dizendo "3ª".
+O corte **não** é "respondeu → esconde o selo": quem só respondeu na 3ª cutucada levou 3 cutucadas.
+Quem exibe contagem de registros (o drawer do Pipeline diz "3 tentativa(s) registrada(s)", ao lado
+do botão que abre a lista das 3) **não** usa esta função — ali filtrar faria a linha contradizer a
+lista que ela mesma abre.
+
 Duas regras ao mexer nisso:
 
 - **Abordagem se arquiva, não se exclui** (`arquivada`). As tentativas apontam para o `id`; apagar

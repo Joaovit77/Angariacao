@@ -71,6 +71,29 @@ export function ehNotaDeResposta(nota: { id?: string | null }): boolean {
   return id.startsWith(PREFIXO_ID_NOTA) && !id.endsWith(SUFIXO_ID_ENCERRAMENTO);
 }
 
+/**
+ * Datetime (YYYY-MM-DDTHH:mm) da PRIMEIRA mensagem que o proprietário mandou.
+ * null quando ele nunca escreveu.
+ *
+ * Devolve o datetime inteiro, e não o dia como a `dataUltimaResposta` logo
+ * abaixo — a diferença não é descuido. Quem pergunta pela ÚLTIMA resposta
+ * quer saber "faz quantos dias", e dia basta. Quem pergunta pela primeira
+ * está separando o que veio ANTES dela do que veio DEPOIS (ver
+ * `tentativasDeAlcance`), e aí o dia não serve: abordar às 10h, o
+ * proprietário responder às 11h e o corretor treplicar às 12h é tudo no
+ * mesmo dia, e com precisão de dia as três coisas ficariam indistinguíveis.
+ */
+export function dataPrimeiraResposta(notas: NotaImovel[] | null | undefined): string | null {
+  let menor: string | null = null;
+  for (const nota of notas || []) {
+    if (!ehNotaDeResposta(nota)) continue;
+    const quando = nota.data || "";
+    if (!quando) continue;
+    if (!menor || quando < menor) menor = quando;
+  }
+  return menor;
+}
+
 /** Dia (YYYY-MM-DD) da mensagem mais recente que o PROPRIETÁRIO mandou, lido
     das notas gravadas pelo webhook. null quando ele nunca escreveu.
 
