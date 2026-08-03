@@ -921,6 +921,23 @@ Regras ao mexer nela:
   três mensagens curtas, e um read-modify-write perderia notas sem dar erro).
 - **A IA sugere o desfecho, o corretor confirma** (`sugerirNaTentativaPendente` mantém a marca de
   pendente). Ela lê uma frase solta, sem o resto da conversa.
+- **Ela classifica a CONVERSA, não a frase** (`MAX_MENSAGENS_CONTEXTO`). Cada mensagem do WhatsApp é
+  um evento próprio, então uma classificação por evento é uma classificação por pedaço de recado. No
+  LD-110 (03/08/2026) o proprietário mandou "Boa tarde", "Por hora, não tenho interesse" e "Já está
+  em negociação para venda" em três mensagens: nenhuma delas encerra o imóvel sozinha — a segunda é
+  recusa mole pelo próprio prompt, e a terceira, isolada, é um fato sobre o imóvel e não uma resposta
+  ao corretor —, e o imóvel ficou em "Novo contato" com a recusa escrita no histórico. Partir um
+  recado em três mensagens curtas é o normal do WhatsApp, a mesma observação que fez a chegada de
+  resposta virar UM aviso e o compromisso automático ter trava de um por imóvel/dia. As anteriores
+  vão ao prompt como CONTEXTO, nunca como alvo: quem se classifica é sempre a mais recente, e
+  encerrar por causa de uma mensagem antiga que a última não confirme é proibido no texto do prompt.
+  Elas saem das notas lidas antes de a nota desta mensagem ser gravada, filtradas por
+  `ehNotaDeResposta` + `ehSoMidia` — marcador de mídia não desambigua nada, e a nota de encerramento
+  é fala nossa.
+  O mesmo caso mostrou uma lacuna de VOCABULÁRIO: nenhum `MOTIVOS_PERDA_IA` cobria "vai vender em vez
+  de alugar", e "Imóvel já vendido" seria falso enquanto a venda não fecha. Hoje isso é
+  "Proprietário desistiu de alugar" — o fato que interessa é a locação que não vai acontecer, não a
+  venda que aconteceu.
 - **A agenda inteligente.** "Pode ser quinta às 10h" É um compromisso, e o webhook o cria
   (`compromissoDaResposta` + a inserção na rota). Antes a data ficava só em
   `sugestaoIa.retomarEm`, exibida numa lista de pendências que ninguém abre — o corretor tinha
@@ -1055,6 +1072,14 @@ o que não dá.
   no `uiModal`), sem modelo associado — logo não credita tentativa. **A IA sugere, o corretor
   confirma:** nada sai sozinho.
 
+  **O rascunho continua a conversa, não a recomeça.** Ele nascia sem saber o que já tinha sido dito,
+  e sugeria "Olá, Fulano! Falo em nome da equipe de locação…" para quem acabava de responder à
+  abordagem — apontado pelo corretor em 03/08/2026. O prompt agora recebe o que ELE já escreveu antes
+  e o roteiro que o corretor já mandou, e proíbe saudação, reapresentação e repetição da oferta. O
+  texto enviado não está no banco (o webhook descarta `fromMe`), mas o roteiro está: a tentativa
+  guarda o `abordagemId` e o catálogo guarda o texto; por modelo, sobra o `modeloNome`, que é só
+  rótulo e ainda assim basta. Nada disso é pré-condição — sem tentativa nenhuma a proibição continua
+  valendo, porque a mensagem dele já prova que a conversa está aberta.
   A trava que dá forma ao `promptRascunharResposta`: **a IA não sabe nada do imóvel além do
   endereço.** Se o proprietário pergunta "tem garagem?", responder "sim, duas vagas" seria promessa
   falsa a uma pessoa real. Por isso o prompt proíbe inventar fato do imóvel e manda reconhecer a

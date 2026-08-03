@@ -407,6 +407,40 @@ export async function POST(request: Request): Promise<Response> {
 
     const ref = [imovel.endereco, imovel.bairro].map((s) => (s || "").trim()).filter(Boolean).join(", ");
 
+    /* O QUE JÁ FOI DITO. Sem isto o rascunho recomeça a conversa do zero —
+       "Olá, Fulano! Falo em nome da equipe de locação..." — para quem acabou
+       de responder à mensagem de abertura. Foi o que o corretor apontou em
+       03/08/2026: ele já tinha dito olá, e a sugestão dizia olá de novo.
+
+       O texto que ele enviou não está no banco (o webhook descarta `fromMe`),
+       mas o ROTEIRO está: a tentativa guarda `abordagemId`, e o catálogo
+       guarda o texto. Quando o envio foi por modelo, sobra o `modeloNome` —
+       só o rótulo, e ainda assim basta para a IA saber que a conversa começou.
+       Nada disto é pré-condição: sem tentativa nenhuma, o prompt continua
+       proibindo a saudação, porque a mensagem DELE já prova que a conversa
+       está aberta. */
+    const ultimaTentativa = [...(imovel.tentativas || [])]
+      .sort((a, b) => (a.data || "").localeCompare(b.data || ""))
+      .at(-1);
+    let enviada: { rotulo?: string | null; texto?: string | null } | null = null;
+    if (ultimaTentativa?.abordagemId) {
+      const { data: abRow } = await supabase
+        .from("abordagens")
+        .select("*")
+        .eq("id", ultimaTentativa.abordagemId)
+        .maybeSingle();
+      if (abRow) {
+        const ab = fromDbAbordagem(abRow as DbAbordagemRow);
+        enviada = { rotulo: ab.nome, texto: ab.roteiro };
+      }
+    } else if (ultimaTentativa?.modeloNome) {
+      enviada = { rotulo: ultimaTentativa.modeloNome, texto: null };
+    }
+
+    // As anteriores à que estamos respondendo — mesmo recorte do webhook: só
+    // as dele, só as que têm o que ler.
+    const anteriores = comTexto.slice(0, -1).map((n) => corpoDaResposta(n.texto));
+
     let conclusao: OpenAI.Chat.ChatCompletion;
     try {
       conclusao = await openai.chat.completions.create({
@@ -418,7 +452,13 @@ export async function POST(request: Request): Promise<Response> {
           json_schema: { name: "rascunho", strict: true, schema: ESQUEMA_RASCUNHO },
         },
         messages: [
-          { role: "user", content: promptRascunharResposta(mensagemProp, imovel.proprietarioNome, ref) },
+          {
+            role: "user",
+            content: promptRascunharResposta(mensagemProp, imovel.proprietarioNome, ref, {
+              anteriores,
+              enviada,
+            }),
+          },
         ],
       });
     } catch (e) {
