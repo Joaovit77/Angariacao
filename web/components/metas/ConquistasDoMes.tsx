@@ -28,10 +28,13 @@ export default function ConquistasDoMes() {
           {concluidos} de {desafios.length}
         </span>
       </div>
+      {/* `em-andamento`, nunca `bloqueada`: um desafio do mês que ainda não
+          fechou não é medalha travada, é o que está acontecendo agora. Com a
+          classe das medalhas o bloco inteiro nascia cinza no dia 1º. */}
       <div className="badges-grid">
         {desafios.map((d) => (
           <div
-            className={`badge-card${d.concluido ? "" : " bloqueada"}`}
+            className={`badge-card${d.concluido ? "" : " em-andamento"}`}
             key={d.id}
             title={d.descricao}
           >
