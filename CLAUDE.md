@@ -213,8 +213,20 @@ o torna testável puro.
   não é "chegamos tarde" — chegamos, e ganhamos. É o motivo `MOTIVO_PERDA_LOCADO_FORA` e o balde
   `MOTIVOS_PERDA_POS_CAPTACAO`; sem ele, cada captação perdida piorava o número que existe para
   diagnosticar o GARIMPO, e o documento se contradizia com a `conversaoCaptacao`, que já lê esse
-  imóvel como angariado. A ponta automática disso é `motivoPerdaPelaFase`, no webhook: "já aluguei"
-  é a mesma frase nas duas situações e a IA só vê a frase, então quem decide é o `statusHistory`.
+  imóvel como angariado. Quem separa as duas é `motivoPerdaPelaFase`, no **motor**: "já aluguei" é a
+  mesma frase nas duas situações, e quem sabe a diferença é o `statusHistory`.
+  **Ela roda na LEITURA, e é aí que ganha o caso real.** Nasceu no webhook (a IA lê uma frase solta
+  e não sabe onde o imóvel está no funil), mas o caminho que a carteira usou foi o outro: o LD-123
+  foi encerrado À MÃO, no seletor do cadastro, onde os dois rótulos de "chegamos tarde" continuam
+  disponíveis e são os que mais se parecem com o que o proprietário escreveu. Corrigindo só na
+  escrita, o relatório erraria pelo caminho mais comum e o que já está gravado exigiria migração;
+  derivando na leitura, o clique errado de ontem sai certo no documento de hoje — a disciplina de
+  `resultadoObservado.ts`. O webhook segue corrigindo também na escrita, e deve: lá o motivo vai
+  para o banco e aparece no cadastro, e gravar "chegamos tarde" num imóvel captado mostraria ao
+  corretor um rótulo que contradiz a própria tela.
+  A regra vive de **três listas concordando sobre a mesma string** e nenhuma importa a outra
+  (`MOTIVOS_QUE_DEPENDEM_DA_FASE`, `MOTIVOS_PERDA_IA`, `MOTIVOS_CHEGAMOS_TARDE`): reescrever um
+  rótulo desligaria a correção sem erro de compilação, então há teste amarrando as três.
 - **`calculo/importacao.ts`** — trazer a carteira de uma planilha. O `csv.ts` só EXPORTA; isto é o
   caminho de volta, para o corretor que chega com 200 imóveis numa planilha e hoje digitaria um a
   um. **O risco que dá forma ao módulo não é o parse** — é o que uma importação em massa faz com o

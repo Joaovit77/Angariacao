@@ -19,8 +19,7 @@
    processada, não é gravada e não é registrada em log.
    ================================================================ */
 import { DIAS_COBRANCA_RESULTADO } from "./abordagens";
-import { historicoComStatus, passouPorAngariado } from "./motor";
-import { MOTIVO_PERDA_LOCADO_FORA } from "../constantes";
+import { historicoComStatus, motivoPerdaPelaFase } from "./motor";
 import { PREFIXO_TEXTO_RESPOSTA, SUFIXO_ID_ENCERRAMENTO, idNotaDaMensagem } from "./notas";
 import { daysBetween } from "../datas";
 import type { NotaImovel, StatusHistoryEntry, Tentativa } from "../tipos";
@@ -365,37 +364,6 @@ export interface EncerramentoAutomatico {
 }
 
 /**
- * Os motivos que mudam de significado conforme a FASE em que a perda acontece.
- *
- * A IA lê uma frase solta e não tem como saber onde aquele imóvel está no
- * funil. "Já aluguei" e "estou com outra imobiliária" são, palavra por palavra,
- * a mesma mensagem em duas situações opostas: de um lead que nunca foi captado,
- * é "chegamos tarde"; de um imóvel JÁ ANGARIADO, é a locação que perdemos
- * depois de ter ganhado a captação.
- *
- * Quem sabe a diferença é o `statusHistory`, que é nosso e não da IA — por isso
- * a correção é feita aqui, deterministicamente, e não pedindo ao modelo que
- * adivinhe. Sem ela, todo encerramento automático de imóvel captado ia parar no
- * balde "chegamos tarde" do relatório, piorando o diagnóstico do garimpo com
- * uma perda que só existiu porque a captação deu certo.
- *
- * "Imóvel já vendido" fica de fora: venda é venda em qualquer fase.
- */
-const MOTIVOS_QUE_DEPENDEM_DA_FASE: readonly string[] = [
-  "Imóvel já alugado por conta própria",
-  "Optou por outra imobiliária",
-];
-
-/** O motivo da IA, corrigido pela fase do imóvel. Ver acima. */
-export function motivoPerdaPelaFase(
-  historico: StatusHistoryEntry[] | null | undefined,
-  motivoPerda: string,
-): string {
-  if (!passouPorAngariado(historico)) return motivoPerda;
-  return MOTIVOS_QUE_DEPENDEM_DA_FASE.includes(motivoPerda) ? MOTIVO_PERDA_LOCADO_FORA : motivoPerda;
-}
-
-/**
  * O imóvel deve ser encerrado por causa desta resposta?
  *
  * `null` quando não — e "não" é o caso normal. Também devolve `null` quando o
@@ -415,6 +383,10 @@ export function encerramentoPorResposta(
   if (imovel.status === "Perdido" || imovel.status === "Cancelado") return null;
   return {
     status: STATUS_ENCERRAMENTO_IA,
+    // A IA lê uma frase solta e não sabe onde o imóvel está no funil; o
+    // statusHistory sabe. Ver `motivoPerdaPelaFase`, no motor — o relatório
+    // aplica a MESMA regra na leitura, para o encerramento feito à mão no
+    // cadastro não cair no balde errado.
     motivoPerda: motivoPerdaPelaFase(imovel.statusHistory, motivoPerda),
     statusHistory: historicoComStatus(imovel.statusHistory, STATUS_ENCERRAMENTO_IA, imovel.status, hoje),
   };

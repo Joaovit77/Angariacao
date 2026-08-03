@@ -21,6 +21,7 @@
    ================================================================ */
 import {
   MAX_TENTATIVAS_SEM_RETORNO,
+  MOTIVO_PERDA_LOCADO_FORA,
   STATUS_PERDA_DECIDIDA,
   STATUS_TERMINAL_NEGATIVE,
   STALE_DAYS_THRESHOLD,
@@ -231,6 +232,55 @@ export function metricsForRange(imoveis: Imovel[], comissaoPercent: number): Met
  *  mesma regra divergem em silêncio (a lição das gêmeas `telefoneCanonico`). */
 export function passouPorAngariado(historico: StatusHistoryEntry[] | null | undefined): boolean {
   return (historico || []).some((h) => h.status === "Angariado");
+}
+
+/**
+ * Os motivos de perda que mudam de significado conforme a FASE em que a perda
+ * acontece. Ver {@link motivoPerdaPelaFase}.
+ *
+ * "Imóvel já vendido" fica de fora: venda é venda em qualquer fase.
+ *
+ * A lista é EXPORTADA porque a correção só funciona enquanto estes rótulos
+ * forem os mesmos de `MOTIVOS_PERDA_IA` (senão o webhook nunca dispara) e de
+ * `MOTIVOS_CHEGAMOS_TARDE` (senão ela move um imóvel de um balde onde ele nem
+ * estava). São três listas que precisam concordar sobre uma string, exatamente
+ * o arranjo que `MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO` documenta como o caminho
+ * mais curto para divergir sem ninguém notar — e é por isso que há teste
+ * amarrando as três.
+ */
+export const MOTIVOS_QUE_DEPENDEM_DA_FASE: readonly string[] = [
+  "Imóvel já alugado por conta própria",
+  "Optou por outra imobiliária",
+];
+
+/**
+ * O motivo da perda, corrigido pela fase do imóvel.
+ *
+ * "Já aluguei" e "estou com outra imobiliária" são, palavra por palavra, a
+ * mesma mensagem em duas situações opostas: de um lead que nunca foi captado,
+ * é "chegamos tarde"; de um imóvel JÁ ANGARIADO, é a locação que perdemos
+ * depois de ter ganhado a captação. Quem sabe a diferença é o `statusHistory`.
+ *
+ * **Roda na LEITURA, e é aí que ela vale de verdade.** Nasceu no webhook, onde
+ * a IA lê uma frase solta e não tem como saber onde o imóvel está no funil —
+ * mas o caminho que a carteira real usou foi o outro: o LD-123 foi encerrado à
+ * MÃO, no seletor do cadastro, onde os dois rótulos antigos continuam
+ * disponíveis e são os que mais se parecem com o que o proprietário escreveu.
+ * Corrigir só na escrita deixaria o relatório errado pelo caminho mais comum, e
+ * ainda exigiria migração para consertar o que já está gravado. Derivando na
+ * leitura, um clique errado de ontem sai certo no documento de hoje — a mesma
+ * disciplina de `resultadoObservado.ts`.
+ *
+ * O webhook continua chamando na escrita de propósito: lá o motivo vai para o
+ * banco e aparece no cadastro, e gravar "chegamos tarde" num imóvel captado
+ * mostraria ao corretor um rótulo que contradiz a própria tela.
+ */
+export function motivoPerdaPelaFase(
+  historico: StatusHistoryEntry[] | null | undefined,
+  motivoPerda: string,
+): string {
+  if (!passouPorAngariado(historico)) return motivoPerda;
+  return MOTIVOS_QUE_DEPENDEM_DA_FASE.includes(motivoPerda) ? MOTIVO_PERDA_LOCADO_FORA : motivoPerda;
 }
 
 // Um imóvel só conta como "angariado" quando o funil realmente marca
