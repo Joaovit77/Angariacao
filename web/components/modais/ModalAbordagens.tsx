@@ -13,7 +13,7 @@
    ================================================================ */
 import { useState } from "react";
 import { captadorPadrao, useSessao } from "@/components/SessaoProvider";
-import { FORMAS_ABORDAGEM, TIPOS_IMOVEL } from "@/lib/constantes";
+import { FORMAS_ABORDAGEM, TIPOS_IMOVEL, universoOrigens } from "@/lib/constantes";
 import type { RoteiroSugerido } from "@/lib/calculo/ia";
 import { sugerirRoteiros } from "@/lib/ia";
 import { alternarArquivamentoAbordagem, salvarAbordagem, uid } from "@/lib/mutacoes";
@@ -68,9 +68,24 @@ export default function ModalAbordagens() {
     setSugestoes(r.roteiros);
   }
 
+  /** As origens que os checkboxes oferecem: as fixas mais as que o corretor
+      criou em Configurações. É a mesma lista do seletor "Onde encontrou o
+      imóvel", e tem que ser: declaração que não casa com o rótulo gravado no
+      imóvel não agrupa nada, e falha calada. */
+  const origensDisponiveis = universoOrigens(config.origensExtras ?? []);
+
+  function alternarOrigem(origem: string) {
+    if (!edicao) return;
+    const atuais = edicao.origens ?? [];
+    setEdicao({
+      ...edicao,
+      origens: atuais.includes(origem) ? atuais.filter((o) => o !== origem) : [...atuais, origem],
+    });
+  }
+
   /** Leva a sugestão para o formulário de cadastro — ainda não salva nada. */
   function usarSugestao(s: RoteiroSugerido) {
-    setEdicao({ id: uid(), nome: s.nome, roteiro: s.roteiro, canalSugerido: "", arquivada: false });
+    setEdicao({ id: uid(), nome: s.nome, roteiro: s.roteiro, canalSugerido: "", origens: [], arquivada: false });
     setPainelIa(false);
     setSugestoes([]);
   }
@@ -79,7 +94,7 @@ export default function ModalAbordagens() {
   const totalArquivadas = abordagens.filter((a) => a.arquivada).length;
 
   function novaAbordagem() {
-    setEdicao({ id: uid(), nome: "", roteiro: "", canalSugerido: "", arquivada: false });
+    setEdicao({ id: uid(), nome: "", roteiro: "", canalSugerido: "", origens: [], arquivada: false });
   }
 
   async function salvar() {
@@ -141,6 +156,32 @@ export default function ModalAbordagens() {
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="field-group">
+              <label>Serve para imóveis achados em (opcional)</label>
+              <div className="field-hint" style={{ marginBottom: "8px" }}>
+                O follow-up em lote usa isto para mandar o texto certo a cada pedaço da fila. Um imóvel
+                anunciado por outra imobiliária está declaradamente para locação; um que apareceu como
+                desocupado no Copel, não, e a mesma frase não serve aos dois. Marque as origens que
+                este roteiro atende e elas passam a vir preenchidas no lote, juntas num bloco só.
+              </div>
+              <div className="followup-lista">
+                {origensDisponiveis.map((o) => (
+                  <label className="followup-item" key={o}>
+                    <input
+                      type="checkbox"
+                      checked={(edicao.origens ?? []).includes(o)}
+                      onChange={() => alternarOrigem(o)}
+                    />
+                    <span className="followup-item-nome">{o}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="field-hint">
+                Sem nenhuma marcada, o roteiro continua disponível em todos os envios: ele só não vira
+                o padrão de nenhuma origem. Duas abordagens marcando a mesma origem também não viram
+                padrão, porque aí a escolha volta a ser sua na hora do envio.
+              </div>
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
               <button type="button" className="btn btn-sm" onClick={() => setEdicao(null)}>
@@ -298,6 +339,12 @@ export default function ModalAbordagens() {
                   </span>
                 </div>
                 {a.roteiro && <div className="nota-texto">{a.roteiro}</div>}
+                {/* Visível sem abrir a edição: é a declaração que decide o texto
+                    de cada bloco do lote, e uma origem marcada por engano só
+                    aparece na tela de envio se estiver escrita aqui. */}
+                {(a.origens ?? []).length > 0 && (
+                  <div className="field-hint">Origens: {(a.origens ?? []).join(", ")}</div>
+                )}
               </div>
             ))}
           </div>

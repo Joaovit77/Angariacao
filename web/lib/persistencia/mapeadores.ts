@@ -83,6 +83,7 @@ export interface DbAbordagemRow {
   nome: string;
   roteiro: string | null;
   canal_sugerido: string | null;
+  origens: string[] | null;
   arquivada: boolean | null;
   created_at?: string;
 }
@@ -213,6 +214,10 @@ export function toDbAbordagem(a: Abordagem, userId: string): Omit<DbAbordagemRow
     nome: a.nome,
     roteiro: a.roteiro || null,
     canal_sugerido: a.canalSugerido || null,
+    // Só origem com texto: rótulo vazio na lista nunca casaria com imóvel
+    // nenhum e ainda contaria como declaração, tornando o roteiro o padrão
+    // de uma origem que não existe.
+    origens: (a.origens || []).map((o) => o.trim()).filter(Boolean),
     arquivada: !!a.arquivada,
   };
 }
@@ -223,6 +228,10 @@ export function fromDbAbordagem(r: DbAbordagemRow): Abordagem {
     nome: r.nome,
     roteiro: r.roteiro || "",
     canalSugerido: r.canal_sugerido || "",
+    // Array sempre, nunca undefined: quem lê isto varre a lista para achar o
+    // roteiro de uma origem, e um `undefined` no meio da varredura derrubaria
+    // o agrupamento do lote inteiro.
+    origens: Array.isArray(r.origens) ? r.origens : [],
     arquivada: !!r.arquivada,
   };
 }
