@@ -66,7 +66,7 @@
      https://angariacao.vercel.app/api/whatsapp/webhook/<segredo>  (path)
    ================================================================ */
 import { createHash, timingSafeEqual } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   compromissoDaResposta,
   encerramentoPorResposta,
@@ -76,6 +76,9 @@ import {
   notaDoEncerramento,
   sugerirNaTentativaPendente,
 } from "@/lib/calculo/webhookWhatsapp";
+import { after } from "next/server";
+import { espelharCompromisso } from "../../../google/_espelho";
+import { ambiente as ambienteGoogle } from "../../../google/_comum";
 import { transcreverAudio } from "../../_transcricao";
 import { ehAudio } from "@/lib/calculo/transcricao";
 import { classificarResposta } from "@/lib/servidor/ia";
@@ -176,6 +179,41 @@ function clienteServico() {
     return null;
   }
   return createClient(url, chave, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
+/**
+ * Leva ao Google Agenda o compromisso que a agenda inteligente acabou de criar.
+ *
+ * Roda em `after()`, depois da resposta ir embora, pelo mesmo contrato do
+ * `registrarEvento`: quem está esperando é a **Evolution**, e ela não pode ficar
+ * presa numa conversa nossa com o Google. Espelhar é a última coisa da cadeia e
+ * a primeira que se pode perder — a nota, a tentativa e o encerramento já estão
+ * gravados quando isto começa.
+ *
+ * Silenciosa pelo mesmo motivo da gêmea no `mutacoes.ts`: `sem-conexao-google` e
+ * ambiente ausente são o caso NORMAL de quem nunca conectou, não erro. O que
+ * sobra vai para o log de eventos por dentro do `_espelho` (o refresh recusado
+ * é justamente o que quebra em silêncio depois de 7 dias em modo Teste).
+ */
+function espelharCompromissoDoWebhook(
+  supabase: SupabaseClient,
+  userId: string,
+  agendaId: string,
+  rotulo: string,
+): void {
+  const env = ambienteGoogle();
+  if (!env) return;
+  after(async () => {
+    const r = await espelharCompromisso(env, supabase, userId, agendaId);
+    if (r.ok) {
+      console.log(`Webhook do WhatsApp: compromisso do imóvel ${rotulo} espelhado no Google Agenda.`);
+    } else if (r.falha !== "sem-conexao-google") {
+      console.warn(
+        `Webhook do WhatsApp: compromisso do imóvel ${rotulo} não foi ao Google Agenda —`,
+        r.falha,
+      );
+    }
+  });
 }
 
 /** Teste de vida, para quem administra a Evolution conferir a URL antes de
@@ -478,8 +516,9 @@ export async function POST(
     } else if (jaTem && jaTem.length > 0) {
       console.log(`Webhook do WhatsApp: imóvel ${rotulo} já tem compromisso em ${compromisso.data}.`);
     } else {
+      const agendaId = crypto.randomUUID();
       const { error: erroAgenda } = await supabase.from("agenda").insert({
-        id: crypto.randomUUID(),
+        id: agendaId,
         user_id: userId,
         title: compromisso.titulo,
         type: compromisso.tipo,
@@ -499,6 +538,12 @@ export async function POST(
           `Webhook do WhatsApp: compromisso criado — ${compromisso.tipo} em ${compromisso.data}` +
             `${compromisso.hora ? ` às ${compromisso.hora}` : ""} para o imóvel ${rotulo}.`,
         );
+        // E leva para o Google Agenda, que é onde o lembrete toca. Este é o
+        // compromisso mais valioso que o app cria — hora que o PRÓPRIO
+        // proprietário combinou por escrito — e era o único que nunca chegava
+        // lá: `espelharNoGoogle` vive em `mutacoes.ts`, que roda no browser, e
+        // aqui não há browser nenhum.
+        espelharCompromissoDoWebhook(supabase, userId, agendaId, rotulo);
       }
     }
   }

@@ -155,13 +155,11 @@ export async function salvarImovel(
   }
 
   let novaAgenda = agenda;
-  if (novoLembrete) {
-    const { error: agErr } = await supabase.from("agenda").insert(toDbAgenda(novoLembrete, userId));
-    if (!agErr) novaAgenda = [...novaAgenda, novoLembrete];
+  if (novoLembrete && (await inserirCompromisso(supabase, novoLembrete, userId))) {
+    novaAgenda = [...novaAgenda, novoLembrete];
   }
-  if (novaVerificacao) {
-    const { error: verErr } = await supabase.from("agenda").insert(toDbAgenda(novaVerificacao, userId));
-    if (!verErr) novaAgenda = [...novaAgenda, novaVerificacao];
+  if (novaVerificacao && (await inserirCompromisso(supabase, novaVerificacao, userId))) {
+    novaAgenda = [...novaAgenda, novaVerificacao];
   }
   if (verificacoesACancelar.length > 0) {
     const ids = verificacoesACancelar.map((a) => a.id);
@@ -690,6 +688,22 @@ export async function salvarMeta(monthKey: string, meta: Meta, userId: string): 
  * instante. Quem não conectou nem chega a ver — `sem-conexao-google` e
  * `nao-configurado` são o caso NORMAL, não erro. O que sobra vai para o
  * console, e o estado da conexão se resolve em Configurações.
+ *
+ * **Chamar isto é obrigação de TODO caminho que cria compromisso**, e não
+ * lembrar disso foi um bug real: por muito tempo só `salvarAgenda` e
+ * `alternarAgendaDone` chamavam, e os compromissos que o app cria SOZINHO
+ * (os dois lembretes do salvamento de imóvel, o encadeado da verificação, o
+ * do lote de disponibilidade e o da agenda inteligente no webhook) ficavam
+ * fora do Google. Ninguém percebia porque a falha é silenciosa por design e o
+ * compromisso aparece normalmente no painel; o que faltava era só o lembrete
+ * tocar no celular, que é a razão inteira da integração existir. Medido em
+ * 03/08/2026: dos compromissos criados desde a conexão da conta, NENHUM tinha
+ * `google_event_id`.
+ *
+ * A exceção deliberada são os DADOS DEMO: eles são exemplo descartável, e
+ * despejar visitas fictícias na agenda pessoal de quem só quis ver o app
+ * funcionando seria invasivo — ainda mais porque `limparDados` apaga a linha
+ * daqui sem ter como apagar o evento de lá.
  */
 function espelharNoGoogle(agendaId: string): void {
   void sincronizarCompromisso(agendaId).then((r) => {
@@ -697,6 +711,30 @@ function espelharNoGoogle(agendaId: string): void {
       console.warn("Google Agenda: não foi possível espelhar o compromisso —", r.falha);
     }
   });
+}
+
+/**
+ * Cria um compromisso E o espelha. Devolve se a gravação deu certo.
+ *
+ * As duas coisas moram juntas de propósito. A versão anterior deixava cada
+ * chamador lembrar de espelhar depois de inserir, e quatro dos cinco não
+ * lembraram — o resultado é o bug descrito acima. Com um caminho só, esquecer
+ * deixa de ser possível: não há insert de compromisso sem espelhamento porque
+ * não há outro lugar que insira.
+ *
+ * A ordem importa: espelha só DEPOIS de a linha existir no banco, porque a
+ * rota do Google relê o compromisso de lá (o conteúdo do evento sai do banco,
+ * nunca do cliente). Espelhar antes acharia uma linha que ainda não existe.
+ */
+async function inserirCompromisso(
+  supabase: ReturnType<typeof getSupabase>,
+  item: AgendaItem,
+  userId: string,
+): Promise<boolean> {
+  const { error } = await supabase.from("agenda").insert(toDbAgenda(item, userId));
+  if (error) return false;
+  espelharNoGoogle(item.id);
+  return true;
 }
 
 export async function salvarAgenda(data: AgendaItem, userId: string): Promise<boolean> {
@@ -788,8 +826,7 @@ export async function confirmarConclusaoVerificacao(
       done: false,
       isVerificacaoDisponibilidade: true,
     };
-    const { error: proxErr } = await supabase.from("agenda").insert(toDbAgenda(proximo, userId));
-    if (!proxErr) novaAgenda = [...novaAgenda, proximo];
+    if (await inserirCompromisso(supabase, proximo, userId)) novaAgenda = [...novaAgenda, proximo];
   }
 
   useAppStore.getState().setAgenda(novaAgenda);
@@ -853,8 +890,7 @@ export async function registrarConfirmacaoDisponibilidade(
         done: false,
         isVerificacaoDisponibilidade: true,
       };
-      const { error } = await supabase.from("agenda").insert(toDbAgenda(proximo, userId));
-      if (!error) novaAgenda = [...novaAgenda, proximo];
+      if (await inserirCompromisso(supabase, proximo, userId)) novaAgenda = [...novaAgenda, proximo];
     }
   }
 

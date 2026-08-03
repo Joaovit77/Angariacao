@@ -4,6 +4,9 @@
    alguém: fuso ausente (evento 3h fora do lugar), dia inteiro montado
    com fim errado (a API recusa), e os dois parâmetros de OAuth sem os
    quais a integração morre em uma hora ou na reconexão. */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   DURACAO_PADRAO_MIN,
@@ -160,5 +163,62 @@ describe("urlDeAutorizacao", () => {
   it("leva o state e o redirect_uri exatos", () => {
     expect(url.searchParams.get("state")).toBe("st4te");
     expect(url.searchParams.get("redirect_uri")).toBe("https://exemplo.app/api/google/callback");
+  });
+});
+
+/* --- Todo compromisso criado chega ao Google --------------------------------
+
+   Estes testes não exercitam lógica: leem o CÓDIGO-FONTE e guardam um
+   invariante estrutural. Existem porque o bug que eles previnem é invisível de
+   todas as outras formas — o compromisso aparece normal no painel, nada falha,
+   nenhum toast, e o único sintoma é o lembrete não tocar no celular, que só se
+   descobre perdendo a visita.
+
+   Foi assim durante semanas: `espelharNoGoogle` era chamado só ao salvar um
+   compromisso à mão e ao concluí-lo, e os CINCO caminhos em que o app cria
+   compromisso sozinho ficavam de fora. Medido em 03/08/2026 na carteira real:
+   dos compromissos criados desde a conexão da conta, nenhum tinha
+   `google_event_id` — incluindo uma visita cuja hora a própria proprietária
+   havia combinado por escrito.
+
+   A correção não foi espalhar chamadas: foi deixar UM caminho de inserção. O
+   que estes testes protegem é isso — que ninguém abra um segundo. */
+describe("nenhum compromisso é criado fora do caminho que espelha", () => {
+  // fileURLToPath, e não `.pathname`: no Windows aquele devolve "/C:/..." e o
+  // join monta "C:\C:\..." — o teste quebraria só na máquina do corretor.
+  const raiz = fileURLToPath(new URL("..", import.meta.url));
+  const mutacoes = readFileSync(join(raiz, "lib/mutacoes.ts"), "utf8");
+  const linhasMutacoes = mutacoes.split("\n");
+  const inserts = linhasMutacoes
+    .map((texto, i) => ({ texto, i }))
+    .filter((l) => l.texto.includes('from("agenda").insert('));
+
+  it("no cliente há exatamente dois inserts: o caminho único e os dados demo", () => {
+    expect(inserts).toHaveLength(2);
+  });
+
+  it("o insert de uso real mora dentro de inserirCompromisso", () => {
+    const real = inserts.find((l) => !l.texto.includes("agendaDemo"));
+    expect(real).toBeDefined();
+    const acima = linhasMutacoes.slice(Math.max(0, real!.i - 12), real!.i).join("\n");
+    expect(acima).toContain("function inserirCompromisso");
+  });
+
+  it("os dados demo seguem de fora, e de propósito", () => {
+    // Exemplo descartável não vai para a agenda pessoal de ninguém: `limpar
+    // Dados` apaga a linha daqui sem ter como apagar o evento de lá.
+    expect(inserts.some((l) => l.texto.includes("agendaDemo"))).toBe(true);
+  });
+
+  it("o webhook espelha o compromisso que a agenda inteligente cria", () => {
+    // O caminho mais valioso e o que estava quebrado: hora que o PRÓPRIO
+    // proprietário combinou por escrito. Ele não passa por mutacoes.ts (roda
+    // no servidor, sem browser), então precisa do seu próprio espelhamento.
+    const rota = readFileSync(
+      join(raiz, "app/api/whatsapp/webhook/[[...segredo]]/route.ts"),
+      "utf8",
+    );
+    expect(rota).toContain("espelharCompromissoDoWebhook(");
+    expect(rota).toContain("espelharCompromisso(env, supabase, userId, agendaId)");
   });
 });

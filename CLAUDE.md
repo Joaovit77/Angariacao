@@ -998,8 +998,8 @@ o que não dá.
 
 #### `api/google/*` — espelhar a agenda no Google Agenda
 
-Quatro rotas (`conectar`, `callback`, `sincronizar`, `conta`) e um módulo `_comum.ts` que não é
-rota (o `_` o mantém fora do roteamento). O segredo que as justifica é o `GOOGLE_CLIENT_SECRET` e,
+Quatro rotas (`conectar`, `callback`, `sincronizar`, `conta`) e dois módulos que não são rota (o `_`
+os mantém fora do roteamento): `_comum.ts` e `_espelho.ts`. O segredo que as justifica é o `GOOGLE_CLIENT_SECRET` e,
 mais ainda, o **refresh token** de cada corretor: ele não expira sozinho e dá acesso contínuo à
 agenda pessoal da pessoa. Mora em `google_contas`, tabela com RLS ligada e **nenhuma política** —
 o mesmo desenho de `whatsapp_instancias`, pelo mesmo motivo (uma política de select entregaria o
@@ -1037,6 +1037,32 @@ Quatro coisas que caem disso e não são detalhe:
   causa de serviço de terceiro), e é silenciosa: `sem-conexao-google` e `nao-configurado` são o caso
   NORMAL de quem nunca conectou, não erro. Só a exclusão espera, e mesmo assim segue em frente se o
   Google recusar — sobra um evento órfão, que é melhor que não conseguir apagar o compromisso.
+
+**Todo caminho que CRIA compromisso precisa espelhar, e esquecer disso é invisível.** O espelhamento
+morava só em `salvarAgenda` e `alternarAgendaDone`, e os **cinco** caminhos em que o app cria
+compromisso sozinho ficavam de fora: os dois lembretes do salvamento de imóvel, o encadeado da
+verificação, o do lote de disponibilidade e o da **agenda inteligente no webhook**. Nada falha
+quando isso acontece: o compromisso aparece normal no painel, sem erro e sem toast, e o único
+sintoma é o lembrete não tocar no celular — que só se descobre perdendo a visita. Medido em
+03/08/2026 na carteira real: dos compromissos criados desde a conexão da conta, **nenhum** tinha
+`google_event_id`, inclusive uma visita cuja hora a própria proprietária havia combinado por escrito.
+A correção não foi espalhar chamadas e sim deixar **um caminho só** — `inserirCompromisso`, em
+`mutacoes.ts`, que insere e espelha juntos —, com teste estrutural guardando que ninguém abra um
+segundo. O webhook não passa por ali (roda no servidor, sem browser), então tem o seu:
+`_espelho.ts` é o miolo que os dois chamadores compartilham, recebendo o cliente do Supabase e o
+`userId` em vez de deduzi-los. Como o webhook lhe passa a **service role**, toda consulta lá dentro
+filtra por `user_id` explicitamente, mesmo onde o RLS já faria isso: sob a service role esse filtro
+é a única barreira entre um corretor e a agenda do outro. No webhook o espelhamento roda em
+`after()`, pelo contrato do `registrarEvento` — quem espera a resposta é a Evolution, e ela não pode
+ficar presa numa conversa nossa com o Google.
+Os **dados demo** são a exceção deliberada: exemplo descartável não vai para a agenda pessoal de
+ninguém, ainda mais porque `limparDados` apaga a linha daqui sem ter como apagar o evento de lá.
+O que já estava no banco é `scripts/backfill-google-agenda.ts` (idempotente, só toca linha com
+`google_event_id` nulo; rodado em 03/08/2026: 14/14). Ele cobre **só compromisso futuro e em
+aberto** — evento com "✓" numa data que já passou é arqueologia, não lembrete. E importa
+`eventoDoCompromisso` de `web/lib` em vez de reescrevê-lo (o Node 24 executa TypeScript direto):
+com um construtor próprio, os compromissos antigos sairiam com formato diferente dos novos e a
+divergência só apareceria olhando o celular.
 
 Compromisso **sem hora vira evento de DIA INTEIRO** (a mesma distinção do `separarPorHorario`):
 como evento cronometrado ele apareceria de madrugada e dispararia lembrete na hora errada. Com
