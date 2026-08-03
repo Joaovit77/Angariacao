@@ -453,6 +453,29 @@ Escreva um resumo curto em português do Brasil, dirigindo-se ao corretor por "v
     milhares de caracteres e o que decide o desfecho está sempre no começo. */
 export const MAX_TEXTO_CLASSIFICACAO = 600;
 
+/**
+ * Quantas mensagens ANTERIORES do proprietário entram no prompt como contexto.
+ *
+ * Elas existem por um caso real e caro, o LD-110 (03/08/2026): o proprietário
+ * escreveu três mensagens em sequência — "Boa tarde", "Por hora, não tenho
+ * interesse", "Já está em negociação para venda" —, o webhook processou cada uma
+ * como um evento separado (que é o que ela é, na Evolution) e a IA classificou
+ * três frases soltas. Nenhuma delas, sozinha, encerra o imóvel: "não tenho
+ * interesse" com "por hora" é recusa mole, e "em negociação para venda" sem o
+ * resto é um fato sobre o imóvel, não uma resposta ao corretor. Juntas são
+ * inequívocas — e o imóvel ficou em "Novo contato" com a recusa escrita no
+ * histórico.
+ *
+ * Partir um recado em três mensagens curtas é o normal do WhatsApp, não a borda:
+ * é a mesma observação que fez a chegada de resposta virar UM aviso e o
+ * compromisso automático ter trava de um por imóvel/dia.
+ *
+ * Cinco é o teto porque o contexto serve para desambiguar a última mensagem, não
+ * para reabrir a conversa inteira: quanto mais texto antigo, maior a chance de a
+ * IA classificar o que ele disse semana passada.
+ */
+export const MAX_MENSAGENS_CONTEXTO = 5;
+
 export interface RespostaClassificada {
   resultado: string;
   retomarEm?: string | null;
@@ -528,7 +551,20 @@ export const ESQUEMA_CLASSIFICACAO = {
   additionalProperties: false,
 } as const;
 
-export function promptClassificarResposta(texto: string, hoje: string): string {
+export function promptClassificarResposta(
+  texto: string,
+  hoje: string,
+  /** Mensagens que ele mandou ANTES desta, da mais antiga para a mais recente.
+      Contexto para desambiguar — nunca o alvo da classificação. */
+  anteriores: string[] = [],
+): string {
+  const contexto = anteriores
+    .map((m) => (m || "").trim())
+    .filter(Boolean)
+    .slice(-MAX_MENSAGENS_CONTEXTO)
+    .map((m) => `- ${m.slice(0, MAX_TEXTO_CLASSIFICACAO)}`)
+    .join("\n");
+
   return `${PAPEL}
 
 Você mandou uma mensagem para um proprietário sobre a locação do imóvel dele, e ele respondeu isto:
@@ -536,7 +572,17 @@ Você mandou uma mensagem para um proprietário sobre a locação do imóvel del
 """
 ${texto.trim().slice(0, MAX_TEXTO_CLASSIFICACAO)}
 """
+${
+  contexto
+    ? `
+Antes desta, o MESMO proprietário já tinha escrito, da mais antiga para a mais recente:
 
+${contexto}
+
+Leia o conjunto antes de decidir. No WhatsApp as pessoas partem um recado em várias mensagens curtas ("Boa tarde" / "Por hora, não tenho interesse" / "Já está em negociação para venda"), e cada pedaço sozinho diz menos que o todo. Mas classifique a mensagem do bloco de cima, que é a mais recente: as anteriores servem para tirar a ambiguidade dela, não para serem classificadas de novo. E não encerre o imóvel por causa de uma mensagem antiga que a mais recente não confirme.
+`
+    : ""
+}
 Hoje é ${hoje}. Classifique o desfecho desta conversa.
 
 O que cada desfecho significa:
@@ -558,10 +604,10 @@ Sobre "motivoPerda" — leia com atenção, porque preenchê-lo ENCERRA o imóve
 - Preencha SOMENTE quando a mensagem disser, de forma explícita e sem ambiguidade, que não há mais o que fazer com este imóvel. O texto tem que bastar por si: se você precisa supor qualquer coisa para chegar lá, devolva null.
 - "Imóvel já alugado por conta própria" — ele já alugou, sozinho ou com inquilino próprio.
 - "Optou por outra imobiliária" — já está com outra imobiliária, ou já foi alugado por ela.
-- "Imóvel já vendido" — vendeu, então não há locação a fazer.
-- "Proprietário desistiu de alugar" — desistiu de alugar (vai morar, deixar vazio, reformar por tempo indefinido).
+- "Imóvel já vendido" — a venda JÁ ESTÁ FECHADA, então não há locação a fazer.
+- "Proprietário desistiu de alugar" — desistiu de alugar (vai morar, deixar vazio, reformar por tempo indefinido) OU vai VENDER em vez de alugar, mesmo que a venda ainda não tenha fechado: "está em negociação para venda", "resolvi vender", "só estou vendendo". Enquanto ele não disser que a venda fechou, é este motivo e não "Imóvel já vendido" — o fato dele é a locação que não vai acontecer, não a venda que aconteceu.
 - "Não é mais o proprietário" — o imóvel deixou de ser dele ("não é mais de minha propriedade", "passei para outra pessoa", "não sou mais o dono"). Use SEM precisar saber se foi venda, herança ou transferência: basta ele dizer que o imóvel não é mais dele. Se ele disser expressamente que VENDEU, prefira "Imóvel já vendido".
-- Devolva null quando houver qualquer porta aberta para ESTE imóvel: "por enquanto não", "ainda não aluguei", "estou vendo com outra imobiliária ainda", "depois eu vejo". Recusa mole NÃO é encerramento.
+- Devolva null quando houver qualquer porta aberta para ESTE imóvel: "por enquanto não", "ainda não aluguei", "estou vendo com outra imobiliária ainda", "depois eu vejo", "estou tentando vender, mas se não vender penso em alugar". Recusa mole NÃO é encerramento.
 - Atenção à negação: "ainda NÃO foi alugado" e "não quero alugar agora" são coisas diferentes. A primeira é null.
 - Se ele disser que ESTE imóvel já está resolvido e mencionar OUTRO imóvel que tem ("esse já aluguei, mas tenho outro na mesma rua"), encerre este mesmo assim: o outro é um cadastro novo, não um motivo para manter este aberto. Cite o outro imóvel no resumo, para o corretor saber que existe uma oportunidade nova ali.
 - Se a mensagem falar SÓ de um imóvel que você não consegue identificar como o do contato, devolva null.
@@ -823,16 +869,47 @@ export const ESQUEMA_RASCUNHO = {
   additionalProperties: false,
 } as const;
 
+/** O que já foi dito nesta conversa, para o rascunho não recomeçá-la. */
+export interface ConversaAnterior {
+  /** Mensagens anteriores DELE, da mais antiga para a mais recente. */
+  anteriores?: string[];
+  /** A última mensagem que o CORRETOR mandou — o roteiro da abordagem usada,
+      ou só o rótulo do modelo quando o texto não ficou registrado. */
+  enviada?: { rotulo?: string | null; texto?: string | null } | null;
+}
+
 /** Prompt do rascunho. `mensagem` é o que o proprietário escreveu (truncado
-    aqui); `nome` e `imovelRef` dão contexto para a réplica soar natural. */
+    aqui); `nome` e `imovelRef` dão contexto para a réplica soar natural, e
+    `conversa` é o que já foi dito — ver a regra da abertura, abaixo. */
 export function promptRascunharResposta(
   mensagem: string,
   nome?: string | null,
   imovelRef?: string | null,
+  conversa?: ConversaAnterior,
 ): string {
   const texto = (mensagem || "").trim().slice(0, MAX_TEXTO_RASCUNHO);
   const primeiroNome = (nome || "").trim().split(/\s+/)[0] || "";
   const ref = (imovelRef || "").trim().slice(0, MAX_CONTEXTO);
+
+  const enviadaTexto = (conversa?.enviada?.texto || "").trim().slice(0, MAX_TEXTO_RASCUNHO);
+  const enviadaRotulo = (conversa?.enviada?.rotulo || "").trim().slice(0, MAX_CONTEXTO);
+  const anteriores = (conversa?.anteriores || [])
+    .map((m) => (m || "").trim())
+    .filter(Boolean)
+    .slice(-MAX_MENSAGENS_CONTEXTO)
+    .map((m) => `- ${m.slice(0, MAX_TEXTO_RASCUNHO)}`)
+    .join("\n");
+
+  const jaDito = [
+    enviadaTexto
+      ? `A última mensagem que VOCÊ mandou a ele foi${enviadaRotulo ? ` (roteiro "${enviadaRotulo}")` : ""}:\n\n"""\n${enviadaTexto}\n"""`
+      : enviadaRotulo
+        ? `Você já abriu a conversa com ele usando o roteiro "${enviadaRotulo}".`
+        : "",
+    anteriores ? `Antes da mensagem de cima, ele também tinha escrito:\n\n${anteriores}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   return `${PAPEL}
 
@@ -841,10 +918,11 @@ Você já está em conversa com um proprietário sobre a captação do imóvel d
 """
 ${texto}
 """
-
+${jaDito ? `\n${jaDito}\n` : ""}
 Escreva a resposta que o corretor deve mandar de volta.${primeiroNome ? ` O proprietário se chama ${primeiroNome} — trate-o pelo primeiro nome.` : ""}
 
 Regras:
+- A CONVERSA JÁ ESTÁ ABERTA: você já cumprimentou e já se apresentou, e ele acabou de responder. NÃO comece com saudação ("Olá", "Oi", "Bom dia", "Tudo bem?"), não se apresente de novo, não repita o endereço do imóvel e não refaça a oferta que já foi feita. Emende no que ele disse, como quem continua a conversa. Recomeçar do "olá" faz a mensagem parecer robô e apaga o que já foi conquistado.
 - NUNCA invente fato sobre o imóvel. Você NÃO sabe se tem garagem, se aceita pet, qual o valor exato, se ainda está disponível, nem nenhuma característica. Se a mensagem perguntar algo assim, NÃO responda como se soubesse: reconheça a pergunta e leve para um próximo passo concreto — uma ligação rápida ou uma visita em que o corretor passa os detalhes —, ou peça o dado que falta. Um fato inventado vira uma promessa falsa a uma pessoa real.
 - Nada de promessa de valor, prazo ou resultado ("alugo em 30 dias", "consigo mais"). Você não tem como saber.
 - Tom de WhatsApp: curto, cordial e direto — no máximo um parágrafo de 2 a 4 frases. Termine com uma pergunta ou um convite a um próximo passo, para a conversa andar.

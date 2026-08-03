@@ -72,6 +72,10 @@ export async function classificarResposta(
       não tem sessão de usuário. Opcional porque a classificação funciona
       sem ele; o que se perde é só a atribuição do custo. */
   userId: string | null = null,
+  /** As mensagens que o MESMO proprietário mandou antes desta, da mais antiga
+      para a mais recente. Sem elas a IA lê um pedaço de recado como se fosse o
+      recado inteiro — ver MAX_MENSAGENS_CONTEXTO e o caso do LD-110. */
+  anteriores: string[] = [],
 ): Promise<{
   resultado: ResultadoTentativa;
   retomarEm: string | null;
@@ -95,7 +99,7 @@ export async function classificarResposta(
         type: "json_schema",
         json_schema: { name: "classificacao", strict: true, schema: ESQUEMA_CLASSIFICACAO },
       },
-      messages: [{ role: "user", content: promptClassificarResposta(texto, hoje) }],
+      messages: [{ role: "user", content: promptClassificarResposta(texto, hoje, anteriores) }],
     });
 
     /* O gasto, registrado antes de qualquer validação do conteúdo.

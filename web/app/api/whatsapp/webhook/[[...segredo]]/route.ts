@@ -81,10 +81,12 @@ import { espelharCompromisso } from "../../../google/_espelho";
 import { ambiente as ambienteGoogle } from "../../../google/_comum";
 import { transcreverAudio } from "../../_transcricao";
 import { ehAudio } from "@/lib/calculo/transcricao";
+import { corpoDaResposta, ehNotaDeResposta, ehSoMidia } from "@/lib/calculo/notas";
+import { MAX_MENSAGENS_CONTEXTO } from "@/lib/calculo/ia";
 import { classificarResposta } from "@/lib/servidor/ia";
 import { registrarEvento } from "@/lib/servidor/registro";
 import { agoraISOComHora, todayISO } from "@/lib/datas";
-import type { StatusHistoryEntry, Tentativa } from "@/lib/tipos";
+import type { NotaImovel, StatusHistoryEntry, Tentativa } from "@/lib/tipos";
 
 /* --- Log sem conteúdo -------------------------------------------------------
    A primeira versão desta rota registrava o payload inteiro, para descobrirmos
@@ -303,7 +305,10 @@ export async function POST(
   //    está na carteira simplesmente não existe para esta rota.
   const { data: imoveis, error: erroImovel } = await supabase
     .from("imoveis")
-    .select("id, codigo, endereco, tentativas, status, status_history")
+    // `notas` entra pelo contexto da classificação (passo 5): esta leitura
+    // acontece ANTES de a nota desta mensagem ser gravada, então o que vem
+    // aqui é exatamente o que ele já tinha dito antes — que é o recorte certo.
+    .select("id, codigo, endereco, tentativas, status, status_history, notas")
     .eq("user_id", userId)
     .eq("proprietario_telefone_canonico", mensagem.telefone)
     // Mais de um imóvel do mesmo proprietário é normal (investidor com vários).
@@ -327,6 +332,7 @@ export async function POST(
     tentativas: Tentativa[] | null;
     status: string;
     status_history: StatusHistoryEntry[] | null;
+    notas: NotaImovel[] | null;
   };
   const ambiguo = imoveis.length > 1 ? " (o proprietário tem mais de um imóvel; usando o mais recente)" : "";
   const rotulo = imovel.codigo || imovel.id;
@@ -400,8 +406,25 @@ export async function POST(
   //    agora com a resposta na frente e o provável já escolhido. Sem chave da
   //    OpenAI (ou em qualquer falha) `sugestao` vem null e o comportamento cai
   //    no anterior: fecha como "respondeu", que é o que dá para afirmar sem ler.
+  //
+  //    E ela lê a CONVERSA, não a frase. Cada mensagem do WhatsApp é um evento
+  //    separado, então uma classificação por evento é uma classificação por
+  //    pedaço de recado — no LD-110 (03/08/2026) o proprietário escreveu "Boa
+  //    tarde", "Por hora, não tenho interesse" e "Já está em negociação para
+  //    venda" em três mensagens, e nenhuma delas, sozinha, encerra o imóvel.
+  //    O imóvel ficou em "Novo contato" com a recusa escrita no histórico.
+  //    As anteriores saem das notas lidas no passo 3 — antes, portanto, de a
+  //    desta mensagem ser gravada — e só as do PROPRIETÁRIO com texto para ler:
+  //    marcador de mídia não desambigua nada e a nota de encerramento é fala
+  //    nossa (é o que `ehNotaDeResposta` e `ehSoMidia` separam).
   const hoje = todayISO();
-  const sugestao = await classificarResposta(mensagem.texto, hoje, userId);
+  const anteriores = (imovel.notas || [])
+    .filter((n) => ehNotaDeResposta(n) && !ehSoMidia(n.texto))
+    .sort((a, b) => (a.data || "").localeCompare(b.data || ""))
+    .map((n) => corpoDaResposta(n.texto))
+    .filter(Boolean)
+    .slice(-MAX_MENSAGENS_CONTEXTO);
+  const sugestao = await classificarResposta(mensagem.texto, hoje, userId, anteriores);
   const fechamento = sugestao
     ? sugerirNaTentativaPendente(imovel.tentativas, sugestao, hoje)
     : fecharTentativaPendente(imovel.tentativas, hoje);
