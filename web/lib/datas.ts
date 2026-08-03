@@ -154,6 +154,16 @@ export function diasUteisEntre(isoA: string | null | undefined, isoB: string | n
   return uteis;
 }
 
+/** Segunda a sexta? Mesma régua (e a mesma cegueira a feriado) de
+    {@link diasUteisEntre}, para um dia só — quem anda o calendário de trás
+    para frente precisa perguntar por dia, não por intervalo. */
+export function ehDiaUtil(iso: string | null | undefined): boolean {
+  const d = parseDate(iso);
+  if (!d) return false;
+  const dia = d.getDay(); // 0 = domingo, 6 = sábado
+  return dia !== 0 && dia !== 6;
+}
+
 export function last6MonthKeys(): string[] {
   const keys: string[] = [];
   let k = currentMonthKey();

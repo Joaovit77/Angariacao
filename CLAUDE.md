@@ -213,8 +213,20 @@ o torna testável puro.
   não é "chegamos tarde" — chegamos, e ganhamos. É o motivo `MOTIVO_PERDA_LOCADO_FORA` e o balde
   `MOTIVOS_PERDA_POS_CAPTACAO`; sem ele, cada captação perdida piorava o número que existe para
   diagnosticar o GARIMPO, e o documento se contradizia com a `conversaoCaptacao`, que já lê esse
-  imóvel como angariado. A ponta automática disso é `motivoPerdaPelaFase`, no webhook: "já aluguei"
-  é a mesma frase nas duas situações e a IA só vê a frase, então quem decide é o `statusHistory`.
+  imóvel como angariado. Quem separa as duas é `motivoPerdaPelaFase`, no **motor**: "já aluguei" é a
+  mesma frase nas duas situações, e quem sabe a diferença é o `statusHistory`.
+  **Ela roda na LEITURA, e é aí que ganha o caso real.** Nasceu no webhook (a IA lê uma frase solta
+  e não sabe onde o imóvel está no funil), mas o caminho que a carteira usou foi o outro: o LD-123
+  foi encerrado À MÃO, no seletor do cadastro, onde os dois rótulos de "chegamos tarde" continuam
+  disponíveis e são os que mais se parecem com o que o proprietário escreveu. Corrigindo só na
+  escrita, o relatório erraria pelo caminho mais comum e o que já está gravado exigiria migração;
+  derivando na leitura, o clique errado de ontem sai certo no documento de hoje — a disciplina de
+  `resultadoObservado.ts`. O webhook segue corrigindo também na escrita, e deve: lá o motivo vai
+  para o banco e aparece no cadastro, e gravar "chegamos tarde" num imóvel captado mostraria ao
+  corretor um rótulo que contradiz a própria tela.
+  A regra vive de **três listas concordando sobre a mesma string** e nenhuma importa a outra
+  (`MOTIVOS_QUE_DEPENDEM_DA_FASE`, `MOTIVOS_PERDA_IA`, `MOTIVOS_CHEGAMOS_TARDE`): reescrever um
+  rótulo desligaria a correção sem erro de compilação, então há teste amarrando as três.
 - **`calculo/importacao.ts`** — trazer a carteira de uma planilha. O `csv.ts` só EXPORTA; isto é o
   caminho de volta, para o corretor que chega com 200 imóveis numa planilha e hoje digitaria um a
   um. **O risco que dá forma ao módulo não é o parse** — é o que uma importação em massa faz com o
@@ -260,6 +272,29 @@ o torna testável puro.
   depois do contato**. Taxa boa demais é sintoma disso, não de canal bom.
 - **`calculo/followup.ts`** — elegibilidade e texto do follow-up em lote (os freios que impedem
   o disparo em rajada). A fila que executa é `filaFollowUp.ts`. Ver "Follow-up em lote" abaixo.
+- **`calculo/conquistasDoMes.ts`** — o que se move ENQUANTO o mês corre, e o terceiro recorte do
+  reconhecimento. Nasceu de um sintoma que o corretor descreveu melhor que qualquer métrica: "quando
+  o mês vira, as conquistas não viram junto". Ele tinha razão — em 03/08/2026 a grade de medalhas
+  estava congelada (13 angariações no total, todas de julho, próximo degrau em 25, locação parada em
+  "0 de 1"), e entre 31/07 e 01/08 não mudava um pixel. Tela de progresso que não se move deixa de
+  ser lida, que é o mesmo fim da faixa de "imóvel parado" no termômetro.
+  **Mede ESFORÇO, não desfecho**, e isso não é preferência: fazer os desafios do mês medirem
+  angariação os deixaria quase tão parados quanto as medalhas (13 em julho INTEIRO), porque em
+  captação o desfecho é raro e lento — a mesma razão de `relatorioCompleto.ts` ter uma seção só para
+  esforço. O que anda todo dia é tentativa enviada, proprietário respondendo e dia útil trabalhado.
+  **Os alvos saíram da MEDIÇÃO** (julho/2026: 209 tentativas, 26 proprietários distintos
+  respondendo, 16 dias úteis seguidos com atividade): cada escada tem o primeiro degrau caindo na
+  primeira semana e o topo pouco acima do melhor mês observado. Alvo inventado erra dos dois lados —
+  alto demais nunca acende, baixo demais acende no dia 2 e a tela volta a ficar parada, que é o
+  problema que o módulo existe para resolver. Foi por isso que o topo da constância subiu de 15 para
+  21 ao ser conferido contra a carteira: com 15 ele **nasceria conquistado**.
+  Três regras: **respostas conta PROPRIETÁRIOS, não mensagens** (um dono mandou 64 sozinho em julho;
+  contar mensagem encheria a barra por causa de uma conversa — a mesma unidade da caixa de
+  respostas); **a constância ATRAVESSA o mês**, sozinha entre as quatro, porque zerar dia 1º diria
+  "1" a quem trabalhou vinte dias seguidos, e constância medida em pedaços de calendário não é
+  constância; e **o dia de hoje não conta contra** até somar, senão às 9h da manhã a sequência de
+  dezesseis dias morreria por o corretor ter acordado cedo. Sem meta definida o desafio de meta não
+  aparece, pela razão de `projecao.ts` (contra meta zero, todo card nasce "concluído").
 - **`calculo/gamificacao.ts` · `celebracao.ts`** — o reconhecimento do progresso, em dois recortes
   que não se misturam: `gamificacao` são as **medalhas** (o acumulado, consultável a qualquer hora
   na view de Metas); `celebracao` é o **instante** — o card de parabéns que aparece quando um imóvel
@@ -670,6 +705,15 @@ que muda no lote de disponibilidade:
   (via o `aposEnvioOk` da fila): marca como feito qualquer lembrete "Verificar disponibilidade"
   pendente do imóvel e agenda o próximo para +60 dias. Sem isso, o lote e o lembrete da agenda
   cutucariam o mesmo proprietário pelos dois caminhos.
+- **`DISPONIBILIDADE_STATUS_ALVO` é a régua dos DOIS lados** (`deveTerVerificacaoAberta`): quem entra
+  na fila do lote é exatamente quem tem lembrete em aberto, e `salvarImovel` cria ou cancela por ela.
+  Antes eram dois critérios diferentes, e ambos erravam para o mesmo lado: cancelava só em "Locado",
+  então imóvel dado como **Perdido ficava com o lembrete aberto** (o LD-123 real, encerrado em
+  01/08/2026 e ainda cobrando "confirme se segue disponível" em 20/09 — com direito a evento no
+  Google Agenda); e criava por `foiAngariado()`, que lê o HISTÓRICO e **nunca deixa de ser verdade**,
+  então encerrar um imóvel captado podia AGENDAR um lembrete novo pedindo a disponibilidade de algo
+  que acabara de sair da carteira. Ler o status ATUAL é o que faz a regra se corrigir sozinha nos
+  dois sentidos.
 
 O desenho é governado por um risco que **não é de software**: disparar mensagens em rajada pela
 mesma instância derruba o número da imobiliária, e o público aqui é o pior possível para o detector
@@ -986,8 +1030,8 @@ o que não dá.
 
 #### `api/google/*` — espelhar a agenda no Google Agenda
 
-Quatro rotas (`conectar`, `callback`, `sincronizar`, `conta`) e um módulo `_comum.ts` que não é
-rota (o `_` o mantém fora do roteamento). O segredo que as justifica é o `GOOGLE_CLIENT_SECRET` e,
+Quatro rotas (`conectar`, `callback`, `sincronizar`, `conta`) e dois módulos que não são rota (o `_`
+os mantém fora do roteamento): `_comum.ts` e `_espelho.ts`. O segredo que as justifica é o `GOOGLE_CLIENT_SECRET` e,
 mais ainda, o **refresh token** de cada corretor: ele não expira sozinho e dá acesso contínuo à
 agenda pessoal da pessoa. Mora em `google_contas`, tabela com RLS ligada e **nenhuma política** —
 o mesmo desenho de `whatsapp_instancias`, pelo mesmo motivo (uma política de select entregaria o
@@ -1025,6 +1069,32 @@ Quatro coisas que caem disso e não são detalhe:
   causa de serviço de terceiro), e é silenciosa: `sem-conexao-google` e `nao-configurado` são o caso
   NORMAL de quem nunca conectou, não erro. Só a exclusão espera, e mesmo assim segue em frente se o
   Google recusar — sobra um evento órfão, que é melhor que não conseguir apagar o compromisso.
+
+**Todo caminho que CRIA compromisso precisa espelhar, e esquecer disso é invisível.** O espelhamento
+morava só em `salvarAgenda` e `alternarAgendaDone`, e os **cinco** caminhos em que o app cria
+compromisso sozinho ficavam de fora: os dois lembretes do salvamento de imóvel, o encadeado da
+verificação, o do lote de disponibilidade e o da **agenda inteligente no webhook**. Nada falha
+quando isso acontece: o compromisso aparece normal no painel, sem erro e sem toast, e o único
+sintoma é o lembrete não tocar no celular — que só se descobre perdendo a visita. Medido em
+03/08/2026 na carteira real: dos compromissos criados desde a conexão da conta, **nenhum** tinha
+`google_event_id`, inclusive uma visita cuja hora a própria proprietária havia combinado por escrito.
+A correção não foi espalhar chamadas e sim deixar **um caminho só** — `inserirCompromisso`, em
+`mutacoes.ts`, que insere e espelha juntos —, com teste estrutural guardando que ninguém abra um
+segundo. O webhook não passa por ali (roda no servidor, sem browser), então tem o seu:
+`_espelho.ts` é o miolo que os dois chamadores compartilham, recebendo o cliente do Supabase e o
+`userId` em vez de deduzi-los. Como o webhook lhe passa a **service role**, toda consulta lá dentro
+filtra por `user_id` explicitamente, mesmo onde o RLS já faria isso: sob a service role esse filtro
+é a única barreira entre um corretor e a agenda do outro. No webhook o espelhamento roda em
+`after()`, pelo contrato do `registrarEvento` — quem espera a resposta é a Evolution, e ela não pode
+ficar presa numa conversa nossa com o Google.
+Os **dados demo** são a exceção deliberada: exemplo descartável não vai para a agenda pessoal de
+ninguém, ainda mais porque `limparDados` apaga a linha daqui sem ter como apagar o evento de lá.
+O que já estava no banco é `scripts/backfill-google-agenda.ts` (idempotente, só toca linha com
+`google_event_id` nulo; rodado em 03/08/2026: 14/14). Ele cobre **só compromisso futuro e em
+aberto** — evento com "✓" numa data que já passou é arqueologia, não lembrete. E importa
+`eventoDoCompromisso` de `web/lib` em vez de reescrevê-lo (o Node 24 executa TypeScript direto):
+com um construtor próprio, os compromissos antigos sairiam com formato diferente dos novos e a
+divergência só apareceria olhando o celular.
 
 Compromisso **sem hora vira evento de DIA INTEIRO** (a mesma distinção do `separarPorHorario`):
 como evento cronometrado ele apareceria de madrugada e dispararia lembrete na hora errada. Com

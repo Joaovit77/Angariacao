@@ -8,6 +8,8 @@ import {
   avisoTextoLote,
   enviadosFollowUpHoje,
   enviosWhatsappHoje,
+  deveTerVerificacaoAberta,
+  DISPONIBILIDADE_STATUS_ALVO,
   falhaEhDoNumero,
   falhaEncerraLote,
   diasDesdeUltimoContato,
@@ -785,5 +787,59 @@ describe("teto diário por origem do envio", () => {
   it("ligação telefônica não entra: o teto é do canal do lote", () => {
     const porTelefone = [imovel({ id: "tel", tentativas: [tentativa(HOJE, "Ligação telefônica")] })];
     expect(enviosWhatsappHoje(porTelefone, HOJE)).toBe(0);
+  });
+});
+
+/* --- deveTerVerificacaoAberta -----------------------------------------------
+   A pergunta do lembrete é "ainda está disponível para alugar CONOSCO?", e ela
+   só existe enquanto o imóvel está captado e sem locar.
+
+   O caso real que expôs a regra: o LD-123 foi encerrado à mão em 01/08/2026
+   como perdido (a locação fechou fora) e seguiu com o lembrete aberto para
+   20/09, cobrando a confirmação de disponibilidade de um imóvel que já tinha
+   saído da carteira. O `salvarImovel` cancelava só em "Locado". */
+describe("deveTerVerificacaoAberta", () => {
+  it("captado e sem locar: sim", () => {
+    for (const s of DISPONIBILIDADE_STATUS_ALVO) {
+      expect(deveTerVerificacaoAberta(s)).toBe(true);
+    }
+  });
+
+  it("locado: não, o lembrete perdeu a pergunta", () => {
+    expect(deveTerVerificacaoAberta("Locado")).toBe(false);
+  });
+
+  it("encerrado: não — foi o furo do LD-123", () => {
+    // Os dois terminais negativos, que a versão anterior ignorava por tratar
+    // apenas "Locado".
+    expect(deveTerVerificacaoAberta("Perdido")).toBe(false);
+    expect(deveTerVerificacaoAberta("Cancelado")).toBe(false);
+  });
+
+  /* A metade menos óbvia do mesmo bug: a criação olhava `foiAngariado()`, que
+     lê o HISTÓRICO e nunca deixa de ser verdade. Um imóvel que passou por
+     Angariado e depois foi perdido continuava elegível, então encerrá-lo podia
+     AGENDAR um lembrete novo pedindo para confirmar a disponibilidade de um
+     imóvel que acabava de sair da carteira. */
+  it("olha o status ATUAL, não a passagem por Angariado", () => {
+    // Mesma carteira, mesmo histórico: só o status de hoje decide.
+    expect(deveTerVerificacaoAberta("Angariado")).toBe(true);
+    expect(deveTerVerificacaoAberta("Perdido")).toBe(false);
+  });
+
+  it("etapa anterior à captação: não", () => {
+    for (const s of ["Novo contato", "Em negociação", "Sem resposta"]) {
+      expect(deveTerVerificacaoAberta(s)).toBe(false);
+    }
+  });
+
+  /* A régua é a MESMA dos dois lados: quem entra na fila do lote é quem tem
+     lembrete. Divergir faria o lote cutucar quem a agenda não cobra, ou o
+     contrário. */
+  it("é a mesma régua do público do lote", () => {
+    const alvo: readonly string[] = DISPONIBILIDADE_STATUS_ALVO;
+    for (const s of ["Angariado", "Publicado", "Locado", "Perdido", "Cancelado", "Novo contato"]) {
+      expect(deveTerVerificacaoAberta(s)).toBe(alvo.includes(s));
+    }
   });
 });

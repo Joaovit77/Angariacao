@@ -238,8 +238,43 @@ describe("perdasDoPeriodo", () => {
   it("os baldes não se sobrepõem", () => {
     // Com o motivo nas duas listas, ele seria contado uma vez e sumiria da
     // outra em silêncio — `demais` acusaria negativo antes de alguém notar.
-    expect(MOTIVOS_CHEGAMOS_TARDE).not.toContain(MOTIVO_PERDA_LOCADO_FORA);
-    expect(MOTIVOS_PERDA_POS_CAPTACAO).not.toContain(MOTIVOS_CHEGAMOS_TARDE[0]);
+    // Cada rótulo é conferido: checar só o primeiro deixaria os outros passarem.
+    for (const m of MOTIVOS_PERDA_POS_CAPTACAO) expect(MOTIVOS_CHEGAMOS_TARDE).not.toContain(m);
+    for (const m of MOTIVOS_CHEGAMOS_TARDE) expect(MOTIVOS_PERDA_POS_CAPTACAO).not.toContain(m);
+  });
+
+  /* O caminho que a carteira real usou. O LD-123 foi angariado em 22/07 e
+     encerrado À MÃO em 01/08 (nenhuma nota de encerramento automático): o
+     seletor do cadastro oferece "Imóvel já alugado por conta própria" e o
+     rótulo pós-captação lado a lado, e o primeiro é o que mais se parece com o
+     que o proprietário escreveu. Corrigir só no webhook deixaria o relatório
+     errado justamente pelo caminho mais usado. */
+  it("imóvel captado cai no balde pós-captação mesmo com o motivo antigo gravado", () => {
+    const captado = imovel({
+      status: "Perdido",
+      motivoPerda: MOTIVOS_CHEGAMOS_TARDE[0],
+      statusHistory: [
+        { status: "Novo contato", date: "2026-06-01" },
+        { status: "Angariado", date: "2026-06-20" },
+        { status: "Perdido", date: "2026-07-10" },
+      ],
+    });
+    const p = perdasDoPeriodo([captado], INICIO, FIM);
+    expect(p.posCaptacao).toBe(1);
+    expect(p.chegamosTarde).toBe(0);
+    expect(p.demais).toBe(0);
+    // A tabela por motivo mostra o rótulo corrigido: com o antigo, ela
+    // contradiria os números logo acima dela na mesma seção.
+    expect(p.porMotivo).toEqual([{ rotulo: MOTIVO_PERDA_LOCADO_FORA, n: 1 }]);
+  });
+
+  /* O outro lado da mesma regra: sem passagem por "Angariado", o motivo fica
+     como está. Senão a correção comeria o balde que existe para diagnosticar o
+     garimpo — que é o maior da carteira. */
+  it("lead que nunca foi captado continua em 'chegamos tarde'", () => {
+    const p = perdasDoPeriodo([perdido(MOTIVOS_CHEGAMOS_TARDE[0], "2026-07-10")], INICIO, FIM);
+    expect(p.chegamosTarde).toBe(1);
+    expect(p.posCaptacao).toBe(0);
   });
 
   it("telefone errado é problema de cadastro e fica em balde próprio", () => {

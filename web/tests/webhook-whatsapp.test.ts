@@ -12,13 +12,15 @@ import {
   fecharTentativaPendente,
   interpretarEvento,
   encerramentoPorResposta,
-  motivoPerdaPelaFase,
   notaDaResposta,
   notaDoEncerramento,
   sugerirNaTentativaPendente,
   telefoneCanonico,
   textoDaMensagem,
 } from "@/lib/calculo/webhookWhatsapp";
+import { motivoPerdaPelaFase, MOTIVOS_QUE_DEPENDEM_DA_FASE } from "@/lib/calculo/motor";
+import { MOTIVOS_PERDA_IA } from "@/lib/calculo/ia";
+import { MOTIVOS_CHEGAMOS_TARDE } from "@/lib/calculo/relatorioCompleto";
 import { MOTIVO_PERDA_LOCADO_FORA, MOTIVOS_PERDA } from "@/lib/constantes";
 import type { Tentativa } from "@/lib/tipos";
 
@@ -437,6 +439,27 @@ describe("motivoPerdaPelaFase", () => {
     // MOTIVOS_PERDA, o <select> do ModalImovel abriria sem a opção
     // correspondente e a primeira edição do imóvel salvaria vazio.
     expect(MOTIVOS_PERDA).toContain(MOTIVO_PERDA_LOCADO_FORA);
+  });
+
+  /* A regra vive de três listas concordarem sobre a mesma string, e nenhuma
+     delas importa a outra. Reescrever um rótulo em constantes.ts (ajustar a
+     redação, tirar um acento) desligaria a correção SEM erro de compilação e
+     sem teste vermelho — é o risco que o comentário do
+     MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO descreve. Estas duas asserções são o
+     alarme. */
+  describe("as listas que a regra atravessa continuam de acordo", () => {
+    it("todo motivo dependente de fase é um que a IA pode preencher", () => {
+      // Fora de MOTIVOS_PERDA_IA, o encerramento automático nunca produz esse
+      // motivo e a correção do webhook vira código morto.
+      for (const m of MOTIVOS_QUE_DEPENDEM_DA_FASE) expect(MOTIVOS_PERDA_IA).toContain(m);
+    });
+
+    it("todo motivo dependente de fase está no balde 'chegamos tarde'", () => {
+      // É de lá que a correção tira o imóvel. Se um rótulo sair daquela lista,
+      // a correção passa a mover um imóvel de um balde onde ele não estava, e o
+      // relatório perde a única razão de ela existir.
+      for (const m of MOTIVOS_QUE_DEPENDEM_DA_FASE) expect(MOTIVOS_CHEGAMOS_TARDE).toContain(m);
+    });
   });
 });
 

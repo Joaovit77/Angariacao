@@ -51,7 +51,7 @@ import {
 import { daysBetween } from "../datas";
 import type { Abordagem, AgendaItem, Imovel, Tentativa } from "../tipos";
 import { tentativasOrdenadas } from "./abordagens";
-import { dateEnteredStatus, ehPerdaDecidida, foiAngariado } from "./motor";
+import { dateEnteredStatus, ehPerdaDecidida, foiAngariado, motivoPerdaPelaFase } from "./motor";
 import { ehNotaDeResposta } from "./notas";
 import { rodadaDoDia, type RodadaDia } from "./rodadaDia";
 
@@ -91,6 +91,11 @@ export const MOTIVOS_CHEGAMOS_TARDE: readonly string[] = [
  * A conversão de captação já trata este imóvel como ganho (`conversaoCaptacao`,
  * no motor: "angariado-e-depois-perdido conta como angariado"). Esta seção é o
  * único lugar do documento que ainda o lia pelo campo `status`.
+ *
+ * O balde tem um rótulo só, mas não depende de o corretor tê-lo escolhido:
+ * `perdasDoPeriodo` passa todo motivo por `motivoPerdaPelaFase` antes de
+ * classificar, então o imóvel captado que foi encerrado com um dos rótulos de
+ * "chegamos tarde" cai aqui do mesmo jeito. Ver o comentário lá.
  */
 export const MOTIVOS_PERDA_POS_CAPTACAO: readonly string[] = [MOTIVO_PERDA_LOCADO_FORA];
 
@@ -363,10 +368,21 @@ export function perdasDoPeriodo(imoveis: Imovel[], start: string, end: string): 
     }
 
     decididos++;
+    // O motivo passa pela FASE antes de ser classificado. "Já aluguei" dito por
+    // quem nunca foi captado é "chegamos tarde"; dito por um imóvel angariado, é
+    // a locação que se perdeu depois de a captação ter dado certo — e o seletor
+    // do cadastro oferece os dois rótulos lado a lado, então o clique errado é
+    // esperado. Derivar aqui, em vez de confiar no que está gravado, é o que faz
+    // o encerramento manual e os registros antigos saírem certos sem migração
+    // (mesma disciplina de `resultadoObservado.ts`). O rótulo corrigido vale
+    // também para `porMotivo`, senão a tabela contradiria os números acima dela.
     const motivo =
       imovel.status === "Sem resposta"
         ? MOTIVO_SEM_RETORNO
-        : (imovel.motivoPerda || "").trim() || MOTIVO_NAO_INFORMADO;
+        : motivoPerdaPelaFase(
+            imovel.statusHistory,
+            (imovel.motivoPerda || "").trim() || MOTIVO_NAO_INFORMADO,
+          );
     porMotivo.set(motivo, (porMotivo.get(motivo) || 0) + 1);
     if (MOTIVOS_CHEGAMOS_TARDE.includes(motivo)) chegamosTarde++;
     else if (MOTIVOS_DADO_RUIM.includes(motivo)) dadoRuim++;

@@ -120,6 +120,32 @@ export const FOLLOWUP_STATUS_ALVO = ["Sem resposta", "Novo contato"] as const;
     intenção aqui é outra — confirmar disponibilidade, não medir "parado". */
 export const DISPONIBILIDADE_STATUS_ALVO = ["Angariado", "Publicado"] as const;
 
+/**
+ * O imóvel deve ter um lembrete de "verificar disponibilidade" em aberto?
+ *
+ * A pergunta que o lembrete faz é "ainda está disponível para alugar CONOSCO?",
+ * e ela só existe enquanto o imóvel está captado e sem locar — exatamente o
+ * público do lote (`DISPONIBILIDADE_STATUS_ALVO`), que passa a ser a régua dos
+ * dois lados: quem entra na fila é quem tem lembrete.
+ *
+ * Antes o `salvarImovel` decidia por outro par de critérios, e os dois erravam
+ * na mesma direção. Cancelava só em **"Locado"**, então um imóvel dado como
+ * Perdido ficava com o lembrete aberto — foi o caso real do LD-123, encerrado
+ * em 01/08/2026 e ainda cobrando "confirme se segue disponível" em 20/09. E
+ * criava por **`foiAngariado()`**, que lê o HISTÓRICO e nunca deixa de ser
+ * verdade: marcar como Perdido um imóvel que passou por Angariado podia AGENDAR
+ * um lembrete novo, pedindo para confirmar a disponibilidade de um imóvel que
+ * acabou de sair da carteira.
+ *
+ * Ler o status atual, e não o histórico, é o que faz a regra se corrigir
+ * sozinha nos dois sentidos: quem sai de Angariado/Publicado perde o lembrete,
+ * quem volta ganha outro.
+ */
+export function deveTerVerificacaoAberta(status: string): boolean {
+  const alvo: readonly string[] = DISPONIBILIDADE_STATUS_ALVO;
+  return alvo.includes(status);
+}
+
 /** Modelo do sistema usado quando a abordagem escolhida não tem roteiro.
     É o texto escrito exatamente para este caso ("tentei falar com você há
     alguns dias, mas não consegui retorno"). */
