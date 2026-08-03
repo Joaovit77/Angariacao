@@ -17,8 +17,11 @@ export default function BadgesConquistas() {
 
   return (
     <>
+      {/* "de sempre" para separar do bloco do mês, que fica logo acima e zera
+          no dia 1º. Sem o rótulo, dois blocos chamados "Conquistas" na mesma
+          tela fariam parecer que um deles perdeu o que o outro tem. */}
       <div className="card-title" style={{ marginBottom: "14px" }}>
-        Conquistas{" "}
+        Conquistas de sempre{" "}
         <span className="badges-contador">
           {conquistadas} de {badges.length}
         </span>

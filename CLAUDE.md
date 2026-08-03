@@ -272,6 +272,29 @@ o torna testável puro.
   depois do contato**. Taxa boa demais é sintoma disso, não de canal bom.
 - **`calculo/followup.ts`** — elegibilidade e texto do follow-up em lote (os freios que impedem
   o disparo em rajada). A fila que executa é `filaFollowUp.ts`. Ver "Follow-up em lote" abaixo.
+- **`calculo/conquistasDoMes.ts`** — o que se move ENQUANTO o mês corre, e o terceiro recorte do
+  reconhecimento. Nasceu de um sintoma que o corretor descreveu melhor que qualquer métrica: "quando
+  o mês vira, as conquistas não viram junto". Ele tinha razão — em 03/08/2026 a grade de medalhas
+  estava congelada (13 angariações no total, todas de julho, próximo degrau em 25, locação parada em
+  "0 de 1"), e entre 31/07 e 01/08 não mudava um pixel. Tela de progresso que não se move deixa de
+  ser lida, que é o mesmo fim da faixa de "imóvel parado" no termômetro.
+  **Mede ESFORÇO, não desfecho**, e isso não é preferência: fazer os desafios do mês medirem
+  angariação os deixaria quase tão parados quanto as medalhas (13 em julho INTEIRO), porque em
+  captação o desfecho é raro e lento — a mesma razão de `relatorioCompleto.ts` ter uma seção só para
+  esforço. O que anda todo dia é tentativa enviada, proprietário respondendo e dia útil trabalhado.
+  **Os alvos saíram da MEDIÇÃO** (julho/2026: 209 tentativas, 26 proprietários distintos
+  respondendo, 16 dias úteis seguidos com atividade): cada escada tem o primeiro degrau caindo na
+  primeira semana e o topo pouco acima do melhor mês observado. Alvo inventado erra dos dois lados —
+  alto demais nunca acende, baixo demais acende no dia 2 e a tela volta a ficar parada, que é o
+  problema que o módulo existe para resolver. Foi por isso que o topo da constância subiu de 15 para
+  21 ao ser conferido contra a carteira: com 15 ele **nasceria conquistado**.
+  Três regras: **respostas conta PROPRIETÁRIOS, não mensagens** (um dono mandou 64 sozinho em julho;
+  contar mensagem encheria a barra por causa de uma conversa — a mesma unidade da caixa de
+  respostas); **a constância ATRAVESSA o mês**, sozinha entre as quatro, porque zerar dia 1º diria
+  "1" a quem trabalhou vinte dias seguidos, e constância medida em pedaços de calendário não é
+  constância; e **o dia de hoje não conta contra** até somar, senão às 9h da manhã a sequência de
+  dezesseis dias morreria por o corretor ter acordado cedo. Sem meta definida o desafio de meta não
+  aparece, pela razão de `projecao.ts` (contra meta zero, todo card nasce "concluído").
 - **`calculo/gamificacao.ts` · `celebracao.ts`** — o reconhecimento do progresso, em dois recortes
   que não se misturam: `gamificacao` são as **medalhas** (o acumulado, consultável a qualquer hora
   na view de Metas); `celebracao` é o **instante** — o card de parabéns que aparece quando um imóvel

@@ -28,6 +28,7 @@ import { fmtMoney } from "@/lib/formatadores";
 import { useAppStore } from "@/lib/store";
 import { useUiModal } from "@/lib/uiModal";
 import BadgesConquistas from "./BadgesConquistas";
+import ConquistasDoMes from "./ConquistasDoMes";
 
 function GoalCard({
   label,
@@ -216,6 +217,9 @@ export default function MetasView() {
           />
         </div>
       )}
+
+      <div className="divider"></div>
+      <ConquistasDoMes />
 
       <div className="divider"></div>
       <BadgesConquistas />
