@@ -705,6 +705,15 @@ que muda no lote de disponibilidade:
   (via o `aposEnvioOk` da fila): marca como feito qualquer lembrete "Verificar disponibilidade"
   pendente do imóvel e agenda o próximo para +60 dias. Sem isso, o lote e o lembrete da agenda
   cutucariam o mesmo proprietário pelos dois caminhos.
+- **`DISPONIBILIDADE_STATUS_ALVO` é a régua dos DOIS lados** (`deveTerVerificacaoAberta`): quem entra
+  na fila do lote é exatamente quem tem lembrete em aberto, e `salvarImovel` cria ou cancela por ela.
+  Antes eram dois critérios diferentes, e ambos erravam para o mesmo lado: cancelava só em "Locado",
+  então imóvel dado como **Perdido ficava com o lembrete aberto** (o LD-123 real, encerrado em
+  01/08/2026 e ainda cobrando "confirme se segue disponível" em 20/09 — com direito a evento no
+  Google Agenda); e criava por `foiAngariado()`, que lê o HISTÓRICO e **nunca deixa de ser verdade**,
+  então encerrar um imóvel captado podia AGENDAR um lembrete novo pedindo a disponibilidade de algo
+  que acabara de sair da carteira. Ler o status ATUAL é o que faz a regra se corrigir sozinha nos
+  dois sentidos.
 
 O desenho é governado por um risco que **não é de software**: disparar mensagens em rajada pela
 mesma instância derruba o número da imobiliária, e o público aqui é o pior possível para o detector

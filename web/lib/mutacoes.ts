@@ -27,7 +27,8 @@ import {
   textoNotaDesdobramento,
   unidadeDesdobrada,
 } from "./calculo/desdobramento";
-import { dataAngariadoEfetiva, foiAngariado, historicoComStatus } from "./calculo/motor";
+import { deveTerVerificacaoAberta } from "./calculo/followup";
+import { dataAngariadoEfetiva, historicoComStatus } from "./calculo/motor";
 import { ehNotaDeResposta } from "./calculo/notas";
 import { useCelebracao } from "./celebracao";
 import { toDbAbordagem, toDbAgenda, toDbImovel } from "./persistencia/mapeadores";
@@ -116,31 +117,35 @@ export async function salvarImovel(
     }
   }
 
-  // Lembrete automático de "verificar disponibilidade": ao chegar em
-  // Angariado, agenda um lembrete VERIFICACAO_DISPONIBILIDADE_DIAS dias depois
-  // da angariação, enquanto não for Locado. Ao ser marcado como Locado,
-  // qualquer lembrete desse tipo ainda em aberto é cancelado.
+  // Lembrete automático de "verificar disponibilidade": enquanto o imóvel está
+  // captado e sem locar, agenda um lembrete VERIFICACAO_DISPONIBILIDADE_DIAS
+  // dias depois da angariação. Saiu desse estado — locou, foi perdido,
+  // cancelado —, qualquer lembrete em aberto é cancelado.
+  //
+  // Quem decide é `deveTerVerificacaoAberta`, sobre o status ATUAL. Ver o
+  // comentário dela: a versão anterior cancelava só em "Locado" e criava por
+  // `foiAngariado()`, que lê o histórico e nunca deixa de ser verdade — a
+  // combinação que deixou o LD-123 cobrando disponibilidade depois de ter sido
+  // dado como perdido, e que podia agendar lembrete NOVO ao encerrar um imóvel.
   let novaVerificacao: AgendaItem | null = null;
   let verificacoesACancelar: AgendaItem[] = [];
-  if (data.status === "Locado") {
-    verificacoesACancelar = agenda.filter((a) => a.imovelId === data.id && a.isVerificacaoDisponibilidade && !a.done);
-  } else if (foiAngariado(data)) {
-    const jaTemVerificacaoAberta = agenda.some(
-      (a) => a.imovelId === data.id && a.isVerificacaoDisponibilidade && !a.done,
-    );
-    if (!jaTemVerificacaoAberta) {
-      const dataBase = dataAngariadoEfetiva(data) || todayISO();
-      novaVerificacao = {
-        id: uid(),
-        title: `Verificar disponibilidade — ${data.codigo || data.endereco}`,
-        type: "Follow-up",
-        date: addDaysISO(dataBase, VERIFICACAO_DISPONIBILIDADE_DIAS) as string,
-        imovelId: data.id,
-        notes: "Lembrete automático: imóvel angariado sem locação após 60 dias. Confirme com o proprietário se ainda está disponível.",
-        done: false,
-        isVerificacaoDisponibilidade: true,
-      };
-    }
+  const verificacoesAbertas = agenda.filter(
+    (a) => a.imovelId === data.id && a.isVerificacaoDisponibilidade && !a.done,
+  );
+  if (!deveTerVerificacaoAberta(data.status)) {
+    verificacoesACancelar = verificacoesAbertas;
+  } else if (verificacoesAbertas.length === 0) {
+    const dataBase = dataAngariadoEfetiva(data) || todayISO();
+    novaVerificacao = {
+      id: uid(),
+      title: `Verificar disponibilidade — ${data.codigo || data.endereco}`,
+      type: "Follow-up",
+      date: addDaysISO(dataBase, VERIFICACAO_DISPONIBILIDADE_DIAS) as string,
+      imovelId: data.id,
+      notes: "Lembrete automático: imóvel angariado sem locação após 60 dias. Confirme com o proprietário se ainda está disponível.",
+      done: false,
+      isVerificacaoDisponibilidade: true,
+    };
   }
 
   // Atenção: o upsert grava a linha inteira, incluindo as colunas jsonb
