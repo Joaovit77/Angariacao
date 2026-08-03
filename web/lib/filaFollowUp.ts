@@ -35,6 +35,14 @@ export interface ItemFila {
   rotulo: string;
   /** Texto já personalizado para este proprietário. */
   texto: string;
+  /** Abordagem creditada na tentativa DESTE envio.
+
+      Por item, e não por lote, porque um lote não é uma conversa só: o texto
+      muda conforme a origem do imóvel (ver calculo/lotePorOrigem.ts), e o
+      roteiro registrado tem que ser o que realmente saiu. Com um id só para os
+      dez, metade das tentativas creditaria um roteiro que aquele proprietário
+      nunca leu, e o ranking passaria a medir ficção. */
+  abordagemId: string | null;
 }
 
 export interface FalhaFila {
@@ -64,10 +72,8 @@ interface FilaFollowUp {
    * imóvel voltava para a fila do dia seguinte com o mesmo número.
    */
   resumoAberto: boolean;
-  /** Abordagem creditada nas tentativas deste lote. */
-  abordagemId: string | null;
 
-  iniciar: (itens: ItemFila[], abordagemId: string | null) => void;
+  iniciar: (itens: ItemFila[]) => void;
   cancelar: () => void;
   registrarEnvio: (falha?: FalhaFila) => void;
   encerrar: () => void;
@@ -81,13 +87,12 @@ const VAZIO = {
   falhas: [] as FalhaFila[],
   rodando: false,
   resumoAberto: false,
-  abordagemId: null as string | null,
 };
 
 export const useFilaFollowUp = create<FilaFollowUp>((set) => ({
   ...VAZIO,
 
-  iniciar: (itens, abordagemId) => set({ ...VAZIO, itens, abordagemId, rodando: true }),
+  iniciar: (itens) => set({ ...VAZIO, itens, rodando: true }),
 
   cancelar: () => {
     set({ rodando: false });
@@ -151,14 +156,10 @@ export interface OpcoesLote {
 
 /** Dispara o lote. Não lança: cada falha entra no resumo e a fila segue —
     um número sem WhatsApp no meio da lista não pode abortar os outros nove. */
-export async function dispararLote(
-  itens: ItemFila[],
-  abordagemId: string | null,
-  opcoes: OpcoesLote = {},
-): Promise<void> {
+export async function dispararLote(itens: ItemFila[], opcoes: OpcoesLote = {}): Promise<void> {
   const store = useFilaFollowUp.getState();
   if (store.rodando || itens.length === 0) return;
-  store.iniciar(itens, abordagemId);
+  store.iniciar(itens);
 
   let interrompido = false;
 
@@ -174,10 +175,13 @@ export async function dispararLote(
       // "falou há pouco tempo" e o teto do dia na próxima rodada — e é ela
       // que credita a abordagem no ranking. Silenciosa, senão viram dez
       // toasts por cima do que o corretor está fazendo.
+      //
+      // A abordagem vem do ITEM: no mesmo lote saem textos diferentes por
+      // origem do imóvel, e o crédito tem que acompanhar o que saiu.
       await registrarTentativa(
         item.imovelId,
         {
-          abordagemId,
+          abordagemId: item.abordagemId,
           modeloNome: opcoes.modeloNome ?? null,
           canal: FOLLOWUP_CANAL,
           resultado: "sem-resposta",

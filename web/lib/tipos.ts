@@ -39,6 +39,16 @@ export interface Abordagem {
   roteiro?: string | null;
   /** Canal em que a abordagem costuma ser usada (um de FORMAS_ABORDAGEM). */
   canalSugerido?: string | null;
+  /** Origens do imóvel que este roteiro atende (valores de ORIGENS_IMOVEL ou
+      das origens que o corretor criou em user_config).
+
+      É o que permite ao follow-up em lote mandar o texto certo para cada
+      pedaço da fila: um lote mistura imóvel achado em site de imobiliária com
+      imóvel que o Copel diz estar desocupado, e a abertura de conversa não
+      pode ser a mesma (ver calculo/lotePorOrigem.ts). Vazio significa "serve a
+      qualquer origem, mas não sou o padrão de nenhuma": o roteiro continua
+      escolhível em todo seletor, só não se aplica sozinho. */
+  origens?: string[];
   /** Arquivada: some dos seletores, mas segue nomeando as tentativas antigas. */
   arquivada: boolean;
 }

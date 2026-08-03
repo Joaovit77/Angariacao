@@ -8,7 +8,9 @@
 
    Etapa 5 é somente-leitura: o modal de metas chega na Etapa 6.
    ================================================================ */
+import { useState } from "react";
 import Contador from "@/components/Contador";
+import { useSessao } from "@/components/SessaoProvider";
 import {
   comissaoRecebidaNoMes,
   faturamentoContratosNoMes,
@@ -16,8 +18,10 @@ import {
   imoveisLocadosNoMes,
 } from "@/lib/calculo/motor";
 import {
+  ajustarAlvoMeta,
   mesAnteriorComMeta,
   metaDoMes,
+  passoDaMeta,
   precisaDefinirMeta,
   resumoMetaCurto,
   temMeta,
@@ -25,7 +29,9 @@ import {
 import { diasUteisTexto, projetarMeta, textoProjecao, tomProjecao } from "@/lib/calculo/projecao";
 import { currentMonthKey, monthLabelLong, todayISO } from "@/lib/datas";
 import { fmtMoney } from "@/lib/formatadores";
+import { salvarMeta } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
+import type { Meta } from "@/lib/tipos";
 import { useUiModal } from "@/lib/uiModal";
 import BadgesConquistas from "./BadgesConquistas";
 import ConquistasDoMes from "./ConquistasDoMes";
@@ -38,6 +44,8 @@ function GoalCard({
   note,
   mKey,
   hoje,
+  onAjustar,
+  ajustando,
 }: {
   label: string;
   current: number;
@@ -48,6 +56,11 @@ function GoalCard({
       à projeção. Sem eles o card volta a ser só divisão e subtração. */
   mKey: string;
   hoje: string;
+  /** Sobe ou desce o alvo em um passo. Quem grava é a VIEW, não o card: com um
+      estado de salvamento por card, dois cliques em cards diferentes gravariam
+      metas concorrentes e o último sobrescreveria o outro. */
+  onAjustar: (passo: number) => void;
+  ajustando: boolean;
 }) {
   const pct = target > 0 ? Math.min(100, (current / target) * 100) : 0;
   const remaining = Math.max(0, target - current);
@@ -70,6 +83,7 @@ function GoalCard({
   // Dinheiro é divisível e aceita alvo diário ("R$ 800/dia útil"); imóvel não —
   // ali o esforço é dito em números inteiros. Ver textoProjecao.
   const divisivel = unit === "money";
+  const passo = passoDaMeta(unit);
   const proj = projetarMeta(current, target, mKey, hoje);
   const textoProj = textoProjecao(proj, fmtTotal, fmtTaxa, divisivel);
   const tom = tomProjecao(proj.situacao);
@@ -89,6 +103,35 @@ function GoalCard({
           <Contador valor={current} formatar={fmt} />
         </div>
         <div className="goal-target">/ {target > 0 ? fmt(target) : "sem meta"}</div>
+        {/* Ajuste do alvo sem passar pelo modal. Fica colado no número que ele
+            muda, e não no cabeçalho do card, porque é o alvo que se edita e não
+            o realizado (aquele é medido, não digitado).
+            Desabilitado durante a gravação: dois cliques rápidos leriam o mesmo
+            valor do store, que só é atualizado quando a escrita volta, e o
+            segundo clique se perderia em silêncio. Botão travado por meio
+            segundo é honesto; clique que some, não. */}
+        <div className="goal-ajuste">
+          <button
+            type="button"
+            className="goal-ajuste-btn"
+            onClick={() => onAjustar(-passo)}
+            disabled={ajustando || target <= 0}
+            aria-label={`Diminuir a meta de ${label}`}
+            title={`Diminuir a meta de ${label}`}
+          >
+            −
+          </button>
+          <button
+            type="button"
+            className="goal-ajuste-btn"
+            onClick={() => onAjustar(passo)}
+            disabled={ajustando}
+            aria-label={`Aumentar a meta de ${label}`}
+            title={`Aumentar a meta de ${label}`}
+          >
+            +
+          </button>
+        </div>
       </div>
       <div className="progress-track">
         <div
@@ -127,6 +170,8 @@ export default function MetasView() {
   const metas = useAppStore((s) => s.metas);
   const comissaoPercent = useAppStore((s) => s.config.comissaoPercent);
   const abrirModal = useUiModal((s) => s.abrirModal);
+  const { usuario } = useSessao();
+  const [ajustando, setAjustando] = useState(false);
 
   const mKey = currentMonthKey();
   const hoje = todayISO();
@@ -137,6 +182,18 @@ export default function MetasView() {
   const faturamentoMes = faturamentoContratosNoMes(imoveis, mKey);
 
   const hasGoals = temMeta(meta);
+
+  /* Grava o mês INTEIRO a cada clique, e não só o campo tocado, porque a linha
+     de `metas` é uma só — `salvarMeta` faz upsert dos quatro valores. Partir de
+     `metaDoMes` (e não de `metas[mKey]`) é o que faz o primeiro clique
+     funcionar num mês ainda sem meta: ali a base é a META_VAZIA. */
+  async function ajustarMeta(campo: keyof Meta, passo: number) {
+    if (ajustando || !usuario) return;
+    setAjustando(true);
+    const base = metaDoMes(metas, mKey);
+    await salvarMeta(mKey, { ...base, [campo]: ajustarAlvoMeta(base[campo], passo) }, usuario.id, true);
+    setAjustando(false);
+  }
   // Virada de mês: quem já vinha definindo metas e ainda não definiu a deste.
   const mesDaUltimaMeta = precisaDefinirMeta(metas, mKey) ? mesAnteriorComMeta(metas, mKey) : null;
   const historico = Object.keys(metas).sort().reverse().slice(0, 6);
@@ -189,6 +246,8 @@ export default function MetasView() {
             note="Conta ao chegar na etapa Angariado"
             mKey={mKey}
             hoje={hoje}
+            onAjustar={(passo) => ajustarMeta("angariacoes", passo)}
+            ajustando={ajustando}
           />
           <GoalCard
             label="Imóveis locados"
@@ -197,6 +256,8 @@ export default function MetasView() {
             unit="un."
             mKey={mKey}
             hoje={hoje}
+            onAjustar={(passo) => ajustarMeta("locados", passo)}
+            ajustando={ajustando}
           />
           <GoalCard
             label="Comissão recebida"
@@ -205,6 +266,8 @@ export default function MetasView() {
             unit="money"
             mKey={mKey}
             hoje={hoje}
+            onAjustar={(passo) => ajustarMeta("comissao", passo)}
+            ajustando={ajustando}
           />
           <GoalCard
             label="Faturamento em contratos"
@@ -214,6 +277,8 @@ export default function MetasView() {
             note="Soma dos aluguéis dos imóveis locados no mês"
             mKey={mKey}
             hoje={hoje}
+            onAjustar={(passo) => ajustarMeta("faturamento", passo)}
+            ajustando={ajustando}
           />
         </div>
       )}

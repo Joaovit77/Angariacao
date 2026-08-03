@@ -117,9 +117,13 @@ describe("carregarEstado", () => {
       },
       user_config: { data: null, error: null },
     }));
+    // `origens: []` nas duas, e as linhas de cima nem trazem a coluna: é o
+    // rollout de verdade (código no ar antes do schema aplicado). Array vazio e
+    // não `undefined` porque o agrupamento do lote varre esta lista, e um
+    // `undefined` no meio da varredura derrubaria a tela de envio.
     expect(estado.abordagens).toEqual([
-      { id: "ab1", nome: "Avaliação gratuita", roteiro: "Ofereço avaliação sem custo", canalSugerido: "WhatsApp", arquivada: false },
-      { id: "ab2", nome: "Imóvel parado?", roteiro: "", canalSugerido: "", arquivada: true },
+      { id: "ab1", nome: "Avaliação gratuita", roteiro: "Ofereço avaliação sem custo", canalSugerido: "WhatsApp", origens: [], arquivada: false },
+      { id: "ab2", nome: "Imóvel parado?", roteiro: "", canalSugerido: "", origens: [], arquivada: true },
     ]);
   });
 

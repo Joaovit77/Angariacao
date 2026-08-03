@@ -662,7 +662,20 @@ export async function excluirImovel(id: string): Promise<boolean> {
   return true;
 }
 
-export async function salvarMeta(monthKey: string, meta: Meta, userId: string): Promise<boolean> {
+/**
+ * `silencioso` existe para o ajuste rápido no card da meta: ali cada clique é
+ * um salvamento, e um toast "Metas salvas." por clique afogaria a tela em cima
+ * de uma ação que já se explica sozinha (o número muda na frente do corretor).
+ * Mesma razão do `silencioso` da tentativa no follow-up em lote. O toast de
+ * ERRO continua saindo nos dois modos: falha silenciosa deixaria o corretor
+ * achando que mudou a meta quando não mudou.
+ */
+export async function salvarMeta(
+  monthKey: string,
+  meta: Meta,
+  userId: string,
+  silencioso = false,
+): Promise<boolean> {
   const { error } = await getSupabase()
     .from("metas")
     .upsert(
@@ -675,7 +688,7 @@ export async function salvarMeta(monthKey: string, meta: Meta, userId: string): 
   }
   const { metas, setMetas } = useAppStore.getState();
   setMetas({ ...metas, [monthKey]: meta });
-  toast("Metas salvas.");
+  if (!silencioso) toast("Metas salvas.");
   return true;
 }
 

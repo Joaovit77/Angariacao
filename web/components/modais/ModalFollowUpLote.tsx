@@ -12,13 +12,22 @@
    "achou 3" sem explicar os outros 40 parece quebrado, e os motivos
    (sem telefone, número torto) são justamente o que dá para corrigir.
 
-   Um seletor só, o de abordagem: ela é ao mesmo tempo o texto que sai
-   (o roteiro) e o que fica registrado na tentativa. Dois seletores
-   permitiriam divergir "o que eu disse" de "o que eu anotei que
-   disse", e o ranking passaria a medir ficção.
+   UM SELETOR POR GRUPO DE ORIGEM, e não um para o lote todo. O que se
+   pode afirmar ao proprietário depende de como o imóvel foi achado:
+   anúncio em site de outra imobiliária está declaradamente para
+   locação, e do Copel só se sabe que o imóvel está desocupado. Com um
+   texto só, o lote de 03/08/2026 disse "vi que o imóvel está
+   disponível para locação" a quatro proprietários de imóvel apenas
+   desocupado. Quem forma os grupos é calculo/lotePorOrigem.ts.
+
+   Dentro do grupo continua valendo a regra antiga: o seletor de
+   abordagem é ao mesmo tempo o texto que sai e o que fica registrado
+   na tentativa. Dois seletores permitiriam divergir "o que eu disse"
+   de "o que eu anotei que disse", e o ranking mediria ficção.
    ================================================================ */
 import { useMemo, useState } from "react";
 import { abordagensParaEnvio } from "@/lib/calculo/abordagens";
+import { agruparLotePorOrigem, type GrupoLote, origensSemRoteiro } from "@/lib/calculo/lotePorOrigem";
 import {
   avisoTextoLote,
   FOLLOWUP_DIAS_POR_TENTATIVA,
@@ -62,8 +71,13 @@ export default function ModalFollowUpLote() {
     [ativas, imoveis, hoje],
   );
 
-  const [abordagemId, setAbordagemId] = useState("");
-  const [base, setBase] = useState(() => textoBaseFollowUp(null));
+  /** O que o corretor escolheu para um grupo. Fica por GRUPO porque o texto
+      também é por grupo; a chave é o `id` do grupo, estável entre renders. */
+  interface EscolhaGrupo {
+    abordagemId: string;
+    base: string;
+  }
+  const [escolhas, setEscolhas] = useState<Record<string, EscolhaGrupo>>({});
   // Pré-marca só até o limite do dia; o resto da fila fica visível, mas
   // desmarcado — o corretor escolhe quem troca por quem.
   const [marcados, setMarcados] = useState<Set<string>>(
@@ -71,15 +85,44 @@ export default function ModalFollowUpLote() {
   );
 
   const escolhidos = selecao.elegiveis.filter((i) => marcados.has(i.id));
-  const aviso = avisoTextoLote(base);
-  const previa = escolhidos[0] ? textoFollowUp(base, escolhidos[0]) : "";
   const noLimite = escolhidos.length >= selecao.limite;
+
+  // Os grupos saem de quem está MARCADO: desmarcar o último imóvel de uma
+  // origem tem que fazer o bloco dela sair da tela, senão o corretor edita um
+  // texto que não vai para ninguém. Sem useMemo de propósito: são no máximo
+  // dez imóveis, e memoizar aqui só criaria uma lista de dependências para
+  // esquecer de atualizar.
+  const grupos = agruparLotePorOrigem(escolhidos, ativas);
+  const semRoteiro = origensSemRoteiro(grupos);
+
+  /** A escolha vigente de um grupo: o que o corretor mexeu, ou o padrão que a
+      DECLARAÇÃO da abordagem indica para aquelas origens.
+
+      Derivado na leitura, sem efeito nenhum: um `useEffect` semeando este
+      estado brigaria com a regra do React Compiler ("não chamar setState em
+      efeito") e ainda apagaria a edição do corretor a cada re-render da lista.
+
+      Pré-selecionar aqui não contradiz "o lote não pré-seleciona a
+      recomendada": ali quem escolheria era o ranking, e a sugestão se
+      autoconfirmaria (o sugerido é usado, o usado sobe). Aqui quem escolheu
+      foi o corretor, uma vez, ao dizer que este roteiro serve esta origem. */
+  function escolhaDoGrupo(g: GrupoLote): EscolhaGrupo {
+    const salva = escolhas[g.id];
+    if (salva) return salva;
+    const declarada = ativas.find((a) => a.id === g.abordagemId) || null;
+    return { abordagemId: declarada?.id ?? "", base: textoBaseFollowUp(declarada) };
+  }
 
   /** Trocar a abordagem reescreve o texto — mesmo gesto do ModalWhatsapp:
       o estado derivado é atualizado no handler, não num efeito. */
-  function trocarAbordagem(id: string) {
-    setAbordagemId(id);
-    setBase(textoBaseFollowUp(ativas.find((a) => a.id === id) || null));
+  function trocarAbordagem(g: GrupoLote, id: string) {
+    const abordagem = ativas.find((a) => a.id === id) || null;
+    setEscolhas((atual) => ({ ...atual, [g.id]: { abordagemId: id, base: textoBaseFollowUp(abordagem) } }));
+  }
+
+  function trocarTexto(g: GrupoLote, base: string) {
+    const atualDoGrupo = escolhaDoGrupo(g);
+    setEscolhas((atual) => ({ ...atual, [g.id]: { ...atualDoGrupo, base } }));
   }
 
   function alternar(id: string) {
@@ -91,15 +134,32 @@ export default function ModalFollowUpLote() {
     });
   }
 
+  /** Grupo vazio de texto trava o envio: a mensagem em branco sairia para o
+      grupo inteiro, e o botão único não deixa ver qual bloco falta. */
+  const faltaTexto = grupos.some((g) => !escolhaDoGrupo(g).base.trim());
+
   function enviar() {
-    const itens: ItemFila[] = escolhidos.map((imovel) => ({
-      imovelId: imovel.id,
-      rotulo: rotuloImovel(imovel),
-      texto: textoFollowUp(base, imovel),
-    }));
+    const porImovel = new Map<string, EscolhaGrupo>();
+    for (const g of grupos) {
+      const escolha = escolhaDoGrupo(g);
+      for (const imovel of g.imoveis) porImovel.set(imovel.id, escolha);
+    }
+    // A fila sai na ordem de `escolhidos`, não na dos grupos: quem a fila pôs
+    // na frente (sinal do proprietário, depois antiguidade) tem que ser o
+    // primeiro a receber, senão um lote interrompido no meio teria mandado
+    // para o grupo que por acaso ficou em cima.
+    const itens: ItemFila[] = escolhidos.map((imovel) => {
+      const escolha = porImovel.get(imovel.id);
+      return {
+        imovelId: imovel.id,
+        rotulo: rotuloImovel(imovel),
+        texto: textoFollowUp(escolha?.base ?? "", imovel),
+        abordagemId: escolha?.abordagemId || null,
+      };
+    });
     // Sem await de propósito: a fila roda em background e o corretor volta
     // ao painel. O progresso aparece no indicador do shell.
-    void dispararLote(itens, abordagemId || null);
+    void dispararLote(itens);
     fecharModal();
   }
 
@@ -148,60 +208,118 @@ export default function ModalFollowUpLote() {
           </p>
         )}
 
-        <div className="field-group">
-          <label>Abordagem usada</label>
-          {/* Ordenadas por desempenho, com o selo no próprio rótulo — o <select>
-              não aceita marcação, e o número precisa estar onde a escolha é
-              feita. O lote NÃO pré-seleciona a recomendada de propósito: quem
-              escolhe o roteiro é o corretor, e um padrão que se autoaplica faria
-              o ranking se autoconfirmar (o sugerido é usado, o usado sobe). */}
-          <select value={abordagemId} onChange={(e) => trocarAbordagem(e.target.value)}>
-            <option value="">Sem roteiro (usa a mensagem padrão de retomada)</option>
-            {sugestoes.map(({ abordagem: a, selo, recomendada }) => (
-              <option key={a.id} value={a.id}>
-                {recomendada ? "★ " : ""}
-                {a.nome}
-                {selo ? ` — ${selo}` : ""}
-              </option>
-            ))}
-          </select>
-          <div className="field-hint">
-            O roteiro escolhido vira o texto abaixo e fica registrado na tentativa de cada imóvel — é
-            assim que este lote aparece no ranking de abordagens.{" "}
-            <button
-              type="button"
-              className="insight-action"
-              style={{ padding: 0 }}
-              onClick={() => abrirModal("abordagens")}
-            >
-              Gerenciar abordagens
-            </button>
-          </div>
-        </div>
-
-        <div className="field-group">
-          <label>Mensagem</label>
-          <textarea
-            value={base}
-            onChange={(e) => setBase(e.target.value)}
-            style={{ width: "100%", minHeight: "130px" }}
-          />
-          <div className="field-hint">
-            Vale só para este lote — o roteiro da abordagem não é alterado. Use <strong>{"{nome}"}</strong>{" "}
-            e <strong>{"{endereco}"}</strong> para o texto se adaptar a cada proprietário.
-          </div>
-        </div>
-
-        {aviso && (
-          <p className="section-note followup-aviso" role="alert">
-            ⚠️ {aviso}
-          </p>
-        )}
-
-        {previa && (
+        {grupos.length > 0 && (
           <div className="field-group">
-            <label>Prévia — como chega para {escolhidos[0].proprietarioNome || "o primeiro da lista"}</label>
-            <div className="followup-previa">{previa}</div>
+            <label>
+              Mensagem por origem ({grupos.length}{" "}
+              {grupos.length === 1 ? "grupo" : "grupos"})
+            </label>
+            <div className="field-hint" style={{ marginBottom: "10px" }}>
+              O lote separa os proprietários pela origem do imóvel, porque o que dá para afirmar na
+              abertura muda: um imóvel anunciado por outra imobiliária está declaradamente para
+              locação, e um imóvel que apareceu como desocupado no Copel não está. Cada bloco leva o
+              seu próprio texto.
+            </div>
+
+            {grupos.map((g) => {
+              const escolha = escolhaDoGrupo(g);
+              const aviso = avisoTextoLote(escolha.base);
+              const primeiro = g.imoveis[0];
+              return (
+                <div className="card" style={{ padding: "12px", marginBottom: "12px" }} key={g.id}>
+                  <div className="nota-data" style={{ marginBottom: "10px" }}>
+                    <span>
+                      <strong>{g.rotulo}</strong>
+                      {` · ${g.imoveis.length} ${g.imoveis.length === 1 ? "proprietário" : "proprietários"}`}
+                    </span>
+                  </div>
+
+                  {/* O que o app juntou por conta da declaração. Sem esta linha
+                      o corretor não tem como saber que três origens caíram no
+                      mesmo texto, e a checagem de "faz sentido?" fica cega. */}
+                  {(g.abordagemId || g.origens.length > 1) && (
+                    <div className="field-hint" style={{ marginBottom: "8px" }}>
+                      Origens neste bloco: {g.origens.join(", ")}.
+                    </div>
+                  )}
+
+                  {g.ambiguo && (
+                    <p className="section-note followup-aviso" role="alert" style={{ marginBottom: "8px" }}>
+                      ⚠️ Mais de uma abordagem declara esta origem, então o app não escolhe por você.
+                      Selecione o roteiro desta rodada abaixo.
+                    </p>
+                  )}
+
+                  {/* Ordenadas por desempenho, com o selo no próprio rótulo: o
+                      <select> não aceita marcação, e o número precisa estar
+                      onde a escolha é feita. A pré-seleção, quando existe, vem
+                      da DECLARAÇÃO do corretor, nunca do ranking (ver
+                      escolhaDoGrupo). */}
+                  <select
+                    value={escolha.abordagemId}
+                    onChange={(e) => trocarAbordagem(g, e.target.value)}
+                  >
+                    <option value="">Sem roteiro (usa a mensagem padrão de retomada)</option>
+                    {sugestoes.map(({ abordagem: a, selo, recomendada }) => (
+                      <option key={a.id} value={a.id}>
+                        {recomendada ? "★ " : ""}
+                        {a.nome}
+                        {selo ? ` · ${selo}` : ""}
+                      </option>
+                    ))}
+                  </select>
+
+                  <textarea
+                    value={escolha.base}
+                    onChange={(e) => trocarTexto(g, e.target.value)}
+                    style={{ width: "100%", minHeight: "120px", marginTop: "10px" }}
+                  />
+                  <div className="field-hint">
+                    Vale só para este lote: o roteiro da abordagem não é alterado. Use{" "}
+                    <strong>{"{nome}"}</strong> e <strong>{"{endereco}"}</strong> para o texto se
+                    adaptar a cada proprietário.
+                  </div>
+
+                  {aviso && (
+                    <p className="section-note followup-aviso" role="alert">
+                      ⚠️ {aviso}
+                    </p>
+                  )}
+
+                  {primeiro && escolha.base.trim() && (
+                    <div className="field-group" style={{ marginTop: "10px", marginBottom: 0 }}>
+                      <label>
+                        Prévia: como chega para {primeiro.proprietarioNome || "o primeiro do bloco"}
+                      </label>
+                      <div className="followup-previa">{textoFollowUp(escolha.base, primeiro)}</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            <div className="field-hint">
+              {semRoteiro.length > 0 ? (
+                <>
+                  Sem roteiro definido para: {semRoteiro.join(", ")}. Marque em cada abordagem quais
+                  origens ela atende e o lote passa a vir preenchido, com as origens de mesma conversa
+                  num bloco só.{" "}
+                </>
+              ) : (
+                <>
+                  Os roteiros vieram das origens que você marcou em cada abordagem, e o que sair fica
+                  registrado na tentativa de cada imóvel: é assim que este lote aparece no ranking.{" "}
+                </>
+              )}
+              <button
+                type="button"
+                className="insight-action"
+                style={{ padding: 0 }}
+                onClick={() => abrirModal("abordagens")}
+              >
+                Gerenciar abordagens
+              </button>
+            </div>
           </div>
         )}
 
@@ -294,7 +412,7 @@ export default function ModalFollowUpLote() {
             type="button"
             className="btn btn-primary"
             onClick={enviar}
-            disabled={rodando || escolhidos.length === 0 || !base.trim()}
+            disabled={rodando || escolhidos.length === 0 || faltaTexto}
           >
             {escolhidos.length === 1
               ? "Enviar para 1 proprietário"

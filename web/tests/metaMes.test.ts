@@ -3,8 +3,12 @@
    em 01/08, o painel ficava mudo sem nada pedir a meta nova. */
 import { describe, expect, it } from "vitest";
 import {
+  ajustarAlvoMeta,
   META_VAZIA,
   MESES_BUSCA_META_ANTERIOR,
+  PASSO_META_DINHEIRO,
+  PASSO_META_UNIDADE,
+  passoDaMeta,
   mesAnteriorComMeta,
   metaDoMes,
   metaSugerida,
@@ -146,5 +150,50 @@ describe("precisaDefinirMeta — a cobrança na tela", () => {
   it("para de cobrar assim que a meta do mês é salva", () => {
     const metas: Metas = { "2026-07": meta(10), "2026-08": meta(12) };
     expect(precisaDefinirMeta(metas, "2026-08")).toBe(false);
+  });
+});
+
+/* --- Ajuste rápido do alvo no card -----------------------------------------
+   O botão existe porque mexer num número da meta exigia abrir o modal e
+   preencher quatro campos. Ele vale para a META (número declarado pelo
+   corretor) e NÃO para os degraus das conquistas do mês (número alcançado):
+   poder escolher o degrau esvaziaria o "completo". */
+describe("ajustarAlvoMeta", () => {
+  it("sobe e desce pelo passo", () => {
+    expect(ajustarAlvoMeta(15, 1)).toBe(16);
+    expect(ajustarAlvoMeta(15, -1)).toBe(14);
+    expect(ajustarAlvoMeta(1200, 100)).toBe(1300);
+  });
+
+  /* Meta negativa não significa nada e estragaria as duas contas que dependem
+     do alvo: a barra de progresso e a projeção. */
+  it("nunca desce abaixo de zero", () => {
+    expect(ajustarAlvoMeta(1, -1)).toBe(0);
+    expect(ajustarAlvoMeta(0, -1)).toBe(0);
+    expect(ajustarAlvoMeta(50, -100)).toBe(0);
+  });
+
+  it("zero é destino válido: é como se apaga uma meta sem abrir o modal", () => {
+    expect(ajustarAlvoMeta(1, -1)).toBe(0);
+  });
+
+  it("mês ainda sem meta parte do zero em vez de quebrar", () => {
+    // O primeiro clique de um mês novo lê a META_VAZIA, não `undefined`.
+    expect(ajustarAlvoMeta(META_VAZIA.angariacoes, 1)).toBe(1);
+    expect(ajustarAlvoMeta(undefined as unknown as number, 1)).toBe(1);
+  });
+});
+
+describe("passoDaMeta", () => {
+  /* Subir uma comissão de R$ 1 em R$ 1 seriam 1.200 cliques até um alvo comum;
+     um passo de 100 em unidades pularia de 10 imóveis para 110. */
+  it("dinheiro anda de 100 em 100, unidade de 1 em 1", () => {
+    expect(passoDaMeta("money")).toBe(PASSO_META_DINHEIRO);
+    expect(passoDaMeta("un.")).toBe(PASSO_META_UNIDADE);
+    expect(PASSO_META_DINHEIRO).toBeGreaterThan(PASSO_META_UNIDADE);
+  });
+
+  it("meia angariação não existe: o passo de unidade é inteiro", () => {
+    expect(Number.isInteger(PASSO_META_UNIDADE)).toBe(true);
   });
 });

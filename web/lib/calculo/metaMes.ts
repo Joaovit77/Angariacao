@@ -130,3 +130,41 @@ export function precisaDefinirMeta(metas: Metas, mKey: string): boolean {
   if (temMeta(metas[mKey])) return false;
   return mesAnteriorComMeta(metas, mKey) !== null;
 }
+
+/* --- Ajuste rápido do alvo, no próprio card --------------------------------
+   Mexer num número da meta exigia abrir o modal, preencher quatro campos e
+   salvar. Para "estou perto de bater, quero subir de 15 para 16" isso é caro
+   demais, e o resultado prático é que a meta fica onde está mesmo quando já
+   não descreve o mês.
+
+   O passo depende do que se mede, e não é detalhe: subir a comissão de R$ 1 em
+   R$ 1 seriam 1.200 cliques até um alvo comum, e um passo de 100 em unidades
+   pularia de "10 imóveis" para "110". Meia angariação não existe, então
+   unidade anda de 1 em 1.
+
+   Isto NÃO vale para os desafios do mês (`conquistasDoMes`), e a diferença é o
+   que mantém os dois honestos: a meta é um número que o corretor DECLARA, e
+   deve ser fácil de mudar; o degrau da conquista é um número que ele ALCANÇA,
+   e poder escolhê-lo esvaziaria o "completo" — a mesma razão de o lote de
+   follow-up não pré-selecionar a abordagem recomendada. */
+
+/** Quanto anda um clique, por tipo de meta. */
+export const PASSO_META_UNIDADE = 1;
+export const PASSO_META_DINHEIRO = 100;
+
+export function passoDaMeta(unidade: string): number {
+  return unidade === "money" ? PASSO_META_DINHEIRO : PASSO_META_UNIDADE;
+}
+
+/**
+ * O novo alvo depois de um clique. Nunca abaixo de ZERO: meta negativa não
+ * significa nada, faria a barra de progresso e a projeção dividirem por um
+ * número sem sentido, e "sem meta" (zero) já é o estado que o card sabe
+ * exibir.
+ *
+ * Desce até zero em vez de parar em 1 de propósito: zerar é como se apaga uma
+ * meta que não faz mais sentido, sem precisar do modal.
+ */
+export function ajustarAlvoMeta(atual: number, passo: number): number {
+  return Math.max(0, (atual || 0) + passo);
+}

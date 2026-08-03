@@ -539,7 +539,11 @@ Mesma ideia do `statusHistory`, aplicada à captação: a verdade mora no **hist
 não num campo único do imóvel.
 
 - **Abordagem** é o **roteiro** — o que se diz ao proprietário ("ofereço avaliação gratuita").
-  Vive na tabela `abordagens` (catálogo por usuário). **Não confundir** com `imovel.formaAbordagem`,
+  Vive na tabela `abordagens` (catálogo por usuário) e pode declarar as **origens** de imóvel que
+  atende (`origens`, jsonb), que é como o follow-up em lote sabe qual texto mandar para cada pedaço
+  da fila (ver "Um lote não é uma conversa só"). Arquivada não declara nada: ela sai dos seletores,
+  e pré-selecionar um roteiro que o corretor não consegue trocar seria pior que não sugerir.
+  **Não confundir** com `imovel.formaAbordagem`,
   que é o **canal** (WhatsApp, ligação, visita). São eixos independentes: o mesmo roteiro roda em
   canais diferentes.
 - **Tentativa** é um contato feito. Fica em `imoveis.tentativas` (`jsonb`, como `notas` e
@@ -715,6 +719,33 @@ que muda no lote de disponibilidade:
   que acabara de sair da carteira. Ler o status ATUAL é o que faz a regra se corrigir sozinha nos
   dois sentidos.
 
+**Um lote não é uma conversa só** (`calculo/lotePorOrigem.ts`). O que se pode AFIRMAR ao proprietário
+depende de como o imóvel foi achado: anúncio em site de outra imobiliária está declaradamente para
+locação, e do Copel só se sabe que o imóvel está **desocupado** (pode ser para venda, pode ser o dono
+voltando a morar). O lote tinha um seletor para as dez mensagens, e a fila ordena por sinal e
+antiguidade, que não sabem nada de origem: em 03/08/2026, entre 12:31 e 12:36, quatro proprietários
+de imóvel apenas desocupado receberam "vi que o imóvel está disponível para locação", que é uma frase
+falsa na primeira linha que aquela pessoa lê da imobiliária. No mesmo dia o envio individual
+acertava (22 das 26 tentativas em imóveis do Copel usavam o roteiro escrito para imóvel vazio) — quem
+misturava era só o lote. A regra é uma: **um texto nunca cobre duas origens diferentes, a menos que
+uma abordagem declare que serve as duas.** Três consequências:
+
+- **Quem junta origem com roteiro é a DECLARAÇÃO do corretor** (`Abordagem.origens`), não uma tabela
+  de premissas no código. Foi medido: das 61 pessoas elegíveis naquele dia, 22 estavam em origens que
+  ele mesmo criou (Copel desocupado, Chaves na mão, Wimoveis) — Copel inclusive, que é o caso que deu
+  origem a tudo. Constante nossa nenhuma conhece esses rótulos, então uma tabela fixa erraria
+  justamente onde importa. Como as origens que compartilham um roteiro declarado viram **um** grupo, a
+  declaração é também o que transforma oito origens em três conversas.
+- **Sem declaração, um grupo por origem.** É o pior caso aceitável: mais escolhas para o corretor e
+  nenhuma mistura silenciosa. Nunca um texto só para todos, que era o comportamento antigo.
+- **Pré-selecionar aqui não contradiz "o lote não pré-seleciona a recomendada".** Lá quem escolheria
+  era o ranking, e a sugestão se autoconfirmaria (o sugerido é usado, o usado sobe). Aqui quem
+  escolheu foi o corretor, uma vez, ao dizer que aquele roteiro serve aquela origem — e por isso
+  **duas** abordagens declarando a mesma origem também não pré-selecionam nada: aí o app voltaria a
+  estar adivinhando. O lote de **disponibilidade** segue com texto único de propósito: "seu imóvel
+  ainda está disponível?" vale igual para todo imóvel já captado, e a origem só muda o que se pode
+  afirmar na ABERTURA da conversa.
+
 O desenho é governado por um risco que **não é de software**: disparar mensagens em rajada pela
 mesma instância derruba o número da imobiliária, e o público aqui é o pior possível para o detector
 de spam — gente que já não respondeu. Os freios não são preferência de UX:
@@ -740,9 +771,12 @@ de spam — gente que já não respondeu. Os freios não são preferência de UX
   ordenação (fica quem espera há mais tempo), casa os telefones pela forma canônica de
   `telefoneCanonico` — a mesma do webhook, senão o mesmo número com e sem o nono dígito passaria
   por duas pessoas — e os demais voltam na rodada seguinte.
-- **Um seletor só, o de abordagem.** Ela é ao mesmo tempo o texto que sai (o `roteiro`) e o
-  `abordagemId` que fica registrado na tentativa. Dois seletores permitiriam divergir "o que eu
-  disse" de "o que eu anotei que disse", e o ranking passaria a medir ficção.
+- **Um seletor por GRUPO DE ORIGEM, e um só dentro do grupo** (`calculo/lotePorOrigem.ts`). Dentro
+  do grupo vale a regra antiga: a abordagem é ao mesmo tempo o texto que sai (o `roteiro`) e o
+  `abordagemId` que fica registrado na tentativa, e dois seletores permitiriam divergir "o que eu
+  disse" de "o que eu anotei que disse", fazendo o ranking medir ficção. Por isso o
+  `ItemFila.abordagemId` é **por item**: com um id só para os dez, metade das tentativas creditaria
+  um roteiro que aquele proprietário nunca leu.
 - **O texto base é um MOLDE**, com `{nome}`/`{endereco}` — nunca a mensagem já preenchida de um
   proprietário, senão as outras nove sairiam com o nome errado. Sem `{nome}` o modal avisa: as
   mensagens sairiam idênticas, que é a assinatura de spam mais forte que existe.

@@ -143,6 +143,23 @@ export const ORIGENS_IMOVEL = [
   "OLX / Canal Pro", "Redes sociais", ORIGEM_GARIMPO_SITE, "Ex-cliente", "Outro",
 ] as const;
 
+/**
+ * Todas as origens que o corretor tem para escolher: as fixas mais as que ele
+ * criou em `user_config.origens_extras`.
+ *
+ * Existe para a declaração de origens da abordagem oferecer exatamente os
+ * mesmos rótulos que o cadastro do imóvel grava. Declaração que não casa com o
+ * valor gravado não agrupa nada no lote, e falha calada: nenhum erro, só um
+ * texto genérico saindo para quem devia receber o específico.
+ *
+ * Os seletores do cadastro (ModalImovel, ModalPreCadastro) montam a lista por
+ * conta própria porque precisam incluir também a origem JÁ gravada naquele
+ * registro, mesmo que ela tenha saído da configuração desde então.
+ */
+export function universoOrigens(extras: string[]): string[] {
+  return [...new Set([...ORIGENS_IMOVEL, ...extras].map((o) => o.trim()).filter(Boolean))];
+}
+
 // Rótulos de origem que já foram gravados no banco e hoje têm nome novo.
 // O fromDbImovel normaliza para o valor atual, sem migração destrutiva —
 // registros antigos passam a exibir/filtrar pelo texto novo, e são regravados

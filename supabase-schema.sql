@@ -254,6 +254,22 @@ create table if not exists abordagens (
   created_at timestamptz default now()
 );
 
+-- Origens de imóvel que este roteiro atende (rótulos de ORIGENS_IMOVEL ou os
+-- que o corretor criou em user_config.origens_extras).
+--
+-- Existe porque o follow-up em lote manda uma mensagem só para dez
+-- proprietários, e a abertura da conversa depende de COMO o imóvel foi
+-- encontrado: anúncio em site de outra imobiliária está declaradamente para
+-- locação, enquanto do Copel só se sabe que o imóvel está desocupado. Sem
+-- isto, o lote de 03/08/2026 mandou "vi que o imóvel está disponível para
+-- locação" a quatro proprietários de imóvel apenas desocupado.
+--
+-- É a DECLARAÇÃO do corretor, e não uma tabela de premissas no código, porque
+-- as origens que mais importam são as que ele mesmo criou (Copel desocupado,
+-- Chaves na mão, Wimoveis) e nenhuma constante nossa as conhece. Ver
+-- web/lib/calculo/lotePorOrigem.ts.
+alter table abordagens add column if not exists origens jsonb not null default '[]'::jsonb;
+
 alter table abordagens enable row level security;
 
 drop policy if exists "select_own_abordagens" on abordagens;

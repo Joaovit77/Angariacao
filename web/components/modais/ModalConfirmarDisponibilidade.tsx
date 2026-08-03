@@ -77,11 +77,19 @@ export default function ModalConfirmarDisponibilidade() {
       imovelId: imovel.id,
       rotulo: rotuloImovel(imovel),
       texto: textoFollowUp(base, imovel),
+      // Sem abordagem: não é roteiro de captação e não entra no ranking. Quem
+      // nomeia o envio no histórico é o `modeloNome` abaixo.
+      //
+      // Aqui o texto é um só para o lote inteiro de propósito, e não por
+      // esquecimento do agrupamento por origem que o seguimento faz: a pergunta
+      // "seu imóvel ainda está disponível?" vale igual para todo imóvel já
+      // captado, qualquer que tenha sido a origem dele. Onde a origem muda o
+      // que se pode AFIRMAR é na abertura da conversa, que é o outro lote.
+      abordagemId: null,
     }));
-    // Sem abordagem (abordagemId null). O aposEnvioOk dá baixa no lembrete de
-    // disponibilidade e reagenda o próximo, imóvel a imóvel, conforme a fila
-    // confirma cada envio.
-    void dispararLote(itens, null, {
+    // O aposEnvioOk dá baixa no lembrete de disponibilidade e reagenda o
+    // próximo, imóvel a imóvel, conforme a fila confirma cada envio.
+    void dispararLote(itens, {
       observacao: "Confirmação de disponibilidade em lote",
       modeloNome: "Confirmar disponibilidade",
       aposEnvioOk: (imovelId) => registrarConfirmacaoDisponibilidade(imovelId, hoje, usuario.id),
