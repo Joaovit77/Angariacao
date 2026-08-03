@@ -380,6 +380,26 @@ function Drawer({ imovel }: { imovel: Imovel }) {
               </button>
             </div>
           </div>
+          {/* Só em "Locado": a solicitação cobra a comissão de um contrato
+              assinado, e oferecê-la antes convidaria a pedir pagamento de uma
+              locação que ainda não existe. */}
+          {imovel.status === "Locado" && (
+            <div className="drawer-section">
+              <div className="drawer-section-title">Comissão da angariação</div>
+              <div className="drawer-notas-resumo">
+                <span className="drawer-notes">
+                  Documento de cobrança para o financeiro da imobiliária.
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={() => abrirModal("solicitacaoAngariacao", imovel.id)}
+                >
+                  Gerar solicitação
+                </button>
+              </div>
+            </div>
+          )}
           {/* A seção "Fotos" do app antigo lia imovel.fotos, campo que nenhum
               mapeador produz — sempre mostrava "Sem fotos cadastradas.". Removida
               na pós-migração (achado A2) por ser bloco morto. */}

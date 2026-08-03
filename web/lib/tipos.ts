@@ -250,4 +250,15 @@ export interface UserConfig {
   /** Portais de prospecção criados pelo usuário, além dos fixos (ORIGENS_IMOVEL).
       Aparecem no seletor "Onde encontrou o imóvel" e no "Foco do dia". */
   origensExtras: string[];
+  /** Conta bancária ou chave PIX para onde o financeiro transfere a comissão.
+
+      Só a solicitação de angariação usa (ver calculo/solicitacaoAngariacao.ts).
+      Mora na config, e não no imóvel, porque é dado do CORRETOR e não do
+      negócio: é o mesmo em toda solicitação, e redigitá-lo a cada contrato é
+      justamente o retrabalho que o gerador existe para tirar — com o agravante
+      de que um dígito errado aqui manda o dinheiro para a conta de outra
+      pessoa. Texto livre de propósito: o documento aceita "conta Caixa",
+      "Sicredi ag/cc" ou chave PIX, e validar formato de chave (CPF, e-mail,
+      telefone, aleatória) daria falso negativo em cima de dado certo. */
+  dadosPagamento: string;
 }

@@ -25,7 +25,8 @@ export type TipoModal =
   | "followUpLote"
   | "confirmarDisponibilidade"
   | "resultadosPendentes"
-  | "desdobrar";
+  | "desdobrar"
+  | "solicitacaoAngariacao";
 
 export interface ModalAtivo {
   tipo: TipoModal;

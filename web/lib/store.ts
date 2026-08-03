@@ -56,7 +56,7 @@ const ESTADO_INICIAL = {
   metas: {} as Metas,
   agenda: [] as AgendaItem[],
   abordagens: [] as Abordagem[],
-  config: { comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [] } as UserConfig, // % sobre 1 aluguel (100 = 1 mês)
+  config: { comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "" } as UserConfig, // % sobre 1 aluguel (100 = 1 mês)
   carregado: false,
   iaDisponivel: false,
   ehAdmin: false,

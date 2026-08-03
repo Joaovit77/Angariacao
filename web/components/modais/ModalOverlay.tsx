@@ -23,6 +23,7 @@ import ModalMeta from "./ModalMeta";
 import ModalNotas from "./ModalNotas";
 import ModalPreCadastro from "./ModalPreCadastro";
 import ModalResultadosPendentes from "./ModalResultadosPendentes";
+import ModalSolicitacaoAngariacao from "./ModalSolicitacaoAngariacao";
 import ModalTentativas from "./ModalTentativas";
 import ModalVerificacao from "./ModalVerificacao";
 import ModalWhatsapp from "./ModalWhatsapp";
@@ -69,6 +70,9 @@ export default function ModalOverlay() {
         {modal?.tipo === "confirmarDisponibilidade" && <ModalConfirmarDisponibilidade />}
         {modal?.tipo === "resultadosPendentes" && <ModalResultadosPendentes />}
         {modal?.tipo === "desdobrar" && modal.id && <ModalDesdobrar imovelId={modal.id} />}
+        {modal?.tipo === "solicitacaoAngariacao" && modal.id && (
+          <ModalSolicitacaoAngariacao imovelId={modal.id} />
+        )}
       </div>
     </div>
   );

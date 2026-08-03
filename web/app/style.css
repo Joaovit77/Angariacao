@@ -3175,6 +3175,28 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
   }
 }
 
+/* ===== SOLICITAÇÃO DE ANGARIAÇÃO =====
+   A prévia imita o formulário que o financeiro recebe: caixa de borda
+   simples, rótulos em caixa alta e negrito. Não é enfeite — é para o
+   corretor reconhecer na tela o documento que vai sair no .docx e
+   conferir de relance, em vez de reler campo a campo. */
+
+.solicitacao-previa{
+  margin-top: 16px;
+  background: var(--bg-elev-2); border:1px solid var(--border-soft);
+  border-radius: var(--radius-sm); padding: 14px 16px;
+  font-size: 12.5px; color: var(--text-dim); line-height: 1.7;
+}
+.solicitacao-previa-titulo{
+  font-weight: 800; text-decoration: underline; color: var(--text);
+  text-transform: uppercase; letter-spacing: .2px;
+}
+.solicitacao-previa-sub{ font-weight: 700; color: var(--text); margin-bottom: 6px; }
+/* Endereço e chave PIX são longos e não têm espaço onde quebrar; sem isto a
+   prévia empurra a largura do modal. */
+.solicitacao-previa-linha{ overflow-wrap: anywhere; }
+.solicitacao-previa-linha strong{ color: var(--text); }
+
 /* ===== FOLLOW-UP EM LOTE ===== */
 
 .followup-previa{

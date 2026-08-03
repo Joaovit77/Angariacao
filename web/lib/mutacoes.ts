@@ -928,6 +928,7 @@ export async function salvarConfig(
     whatsapp_modelos: config.whatsappModelos,
     empresa: config.empresa || null,
     origens_extras: config.origensExtras,
+    dados_pagamento: config.dadosPagamento || null,
   });
   if (error) {
     toast("Não foi possível salvar: " + error.message, "error");

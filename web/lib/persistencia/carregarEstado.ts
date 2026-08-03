@@ -84,6 +84,7 @@ export async function carregarEstado(client: SupabaseClient = getSupabase()): Pr
       whatsappModelos,
       empresa: typeof cfData?.empresa === "string" ? cfData.empresa : "",
       origensExtras,
+      dadosPagamento: typeof cfData?.dados_pagamento === "string" ? cfData.dados_pagamento : "",
     },
   };
 }

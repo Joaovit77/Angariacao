@@ -186,6 +186,16 @@ export default function ModalImovel({ id }: { id?: string }) {
     abrirModal("desdobrar", imovel.id);
   }
 
+  /** Mesma troca de modal do desdobramento, e a mesma pergunta: o gerador lê o
+      imóvel do STORE, então o que estiver digitado aqui e não salvo não entra
+      no documento — e um valor de aluguel novo é exatamente o que muda a
+      comissão pedida. */
+  function irParaSolicitacao() {
+    if (!imovel) return;
+    if (!confirm("Alterações não salvas neste formulário serão perdidas. Continuar?")) return;
+    abrirModal("solicitacaoAngariacao", imovel.id);
+  }
+
   async function aoBuscarCep() {
     const raw = cep.replace(/\D/g, "");
     if (raw.length !== 8) {
@@ -772,6 +782,16 @@ export default function ModalImovel({ id }: { id?: string }) {
               <input type="date" value={comissaoRecebidaData ?? ""} onChange={(e) => setComissaoRecebidaData(e.target.value)} />
             </div>
           </div>
+          {imovel && (
+            <div className="field-group">
+              <button type="button" className="btn btn-sm" onClick={irParaSolicitacao}>
+                Gerar solicitação de angariação
+              </button>
+              <div className="field-hint">
+                O documento de cobrança da comissão, para o financeiro da imobiliária.
+              </div>
+            </div>
+          )}
         </fieldset>
       </div>
       <div className="modal-foot">

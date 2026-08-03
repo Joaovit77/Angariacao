@@ -314,6 +314,16 @@ alter table user_config add column if not exists empresa text;
 -- da tabela já escopam a linha inteira ao dono).
 alter table user_config add column if not exists origens_extras jsonb not null default '[]'::jsonb;
 
+-- Conta bancária ou chave PIX do corretor, para onde o financeiro da
+-- imobiliária transfere a comissão da angariação. Entra na "Solicitação de
+-- recebimento de angariação de locação" (web/lib/calculo/solicitacaoAngariacao.ts).
+--
+-- Fica na config, e não no imóvel, porque é dado do CORRETOR: é o mesmo em toda
+-- solicitação, e um dígito errado manda o dinheiro para a conta de outra pessoa
+-- — o tipo de campo que não se deve redigitar a cada contrato. Texto livre: o
+-- documento aceita conta, agência/conta ou chave PIX em qualquer formato.
+alter table user_config add column if not exists dados_pagamento text;
+
 alter table user_config enable row level security;
 
 drop policy if exists "select_own_config" on user_config;

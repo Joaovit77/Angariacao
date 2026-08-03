@@ -107,6 +107,7 @@ export interface DbUserConfigRow {
   whatsapp_modelos: unknown[] | null;
   empresa: string | null;
   origens_extras: string[] | null;
+  dados_pagamento: string | null;
 }
 
 export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "created_at" | "updated_at"> {

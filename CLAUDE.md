@@ -244,6 +244,30 @@ o torna testável puro.
   vezes, contra a carteira **e dentro do próprio arquivo**, porque planilha de verdade tem linha
   repetida. Datas são lidas por manipulação de string (nunca `new Date`): `new Date("10/07/2026")`
   entende mês/dia e joga um imóvel de julho para outubro, silenciosa e plausivelmente.
+- **`calculo/solicitacaoAngariacao.ts`** (+ `lib/documentoDocx.ts`, que zipa) — o documento que
+  COBRA a comissão, gerado no fim do funil. Quando a captação vira contrato, o corretor manda ao
+  financeiro da imobiliária uma "Solicitação de recebimento de angariação de locação", e até aqui
+  ela era digitada à mão no Word, uma por locação, recopiando do painel o endereço, as referências
+  e o valor. O erro que o gerador evita não é a digitação em geral: é o **endereço sem a unidade**
+  (num edifício, "Rua X, 150" não identifica contrato nenhum) e o valor recopiado errado — os dois
+  campos que decidem para qual contrato o dinheiro vai. Sai em `.docx` de verdade (o formato que o
+  financeiro já recebe) e em texto puro, para colar no WhatsApp.
+  Três decisões: a **REF INQUILINO é derivada, e o número tem significado** — ela é
+  `<REF PROP>.<NN>`, onde NN é a vez em que o imóvel foi locado (01 = primeiro locatário, 02 =
+  segundo), coisa que o `statusHistory` sabe contar, com piso de 1 porque histórico vazio é locação
+  fora do app e não ausência de locação; **nada é gravado** (o documento se monta na leitura, a
+  disciplina de `resultadoObservado.ts`, então a solicitação de um contrato antigo sai igual à de
+  hoje e um acerto de formatação é a edição de uma função); e **uma estrutura só alimenta as três
+  saídas** (`linhasSolicitacao` gera o .docx, o texto e a prévia da tela, senão o que o corretor
+  confere divergiria do que o financeiro abre, e a divergência só apareceria numa cobrança errada).
+  O `.docx` é montado como OOXML à mão porque a fidelidade ao formulário que o financeiro reconhece
+  é o ponto; o XML é texto puro e testável, e só o zip (JSZip, por import dinâmico) toca o browser.
+  A conta/PIX mora em `user_config.dados_pagamento`, e não no imóvel: é dado do CORRETOR, igual em
+  toda solicitação, e um dígito errado manda o dinheiro para outra pessoa. A entrada é o imóvel
+  **Locado** (drawer do Pipeline e bloco Comissão do cadastro) — oferecê-la antes convidaria a
+  pedir pagamento de uma locação que ainda não existe. A observação padrão diz "via <origem>" e não
+  "pelo <origem>": nenhum dado do painel sabe o gênero de um rótulo que o próprio corretor
+  cadastrou, e o artigo fixo produzia "pelo Redes sociais".
 - **`calculo/filtros.ts`** — filtro/ordenação do Pipeline (parte pura).
 - **`calculo/dashboard.ts` · `insights.ts` · `relatorios.ts` · `agenda.ts`** — as métricas de cada
   view, extraídas da montagem de HTML antiga sem alterar nenhuma fórmula. **Duas exceções assinadas**

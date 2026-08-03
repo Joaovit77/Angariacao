@@ -68,6 +68,8 @@ describe("carregarEstado", () => {
       empresa: "",
       // Nem `origens_extras` — mesma blindagem do agenda_tipos, cobre com [].
       origensExtras: [],
+      // Nem `dados_pagamento` (a conta/PIX da solicitacao de angariacao).
+      dadosPagamento: "",
     });
   });
 
@@ -78,7 +80,7 @@ describe("carregarEstado", () => {
       agenda: { data: [], error: null },
       user_config: { data: null, error: null },
     }));
-    expect(estado.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [] });
+    expect(estado.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "" });
     expect(estado.imoveis).toEqual([]);
     expect(estado.metas).toEqual({});
     expect(estado.agenda).toEqual([]);
@@ -100,7 +102,7 @@ describe("carregarEstado", () => {
       agenda: { data: [], error: null },
       user_config: { data: null, error: new Error("config indisponível") },
     }));
-    expect(estado.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [] });
+    expect(estado.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "" });
   });
 
   it("mapeia o catálogo de abordagens", async () => {
