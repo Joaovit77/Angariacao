@@ -99,12 +99,19 @@ export default function ModalWhatsapp({
   // selecionado é uma abordagem (que credita tentativa) ou um modelo comum
   // (que não credita), e ids de modelo e de abordagem são ambos uuid.
   const [tipoSel, setTipoSel] = useState<"sistema" | "usuario" | "abordagem">("sistema");
-  // Com rascunho da IA, nasce sem modelo (`""`): o texto é livre, e `modeloId`
-  // vazio mantém `registraTentativa` falso — responder a uma conversa aberta
-  // não é contato de captação nem entra no ranking.
-  const [modeloId, setModeloId] = useState(textoInicial ? "" : padraoInicial);
+  /* Com rascunho da IA, nasce sem modelo (`""`): o texto é livre, e `modeloId`
+     vazio mantém `registraTentativa` falso — responder a uma conversa aberta
+     não é contato de captação nem entra no ranking.
+
+     O teste é `!== undefined`, e não a verdade do texto: a caixa de respostas
+     abre daqui com texto VAZIO quando não há réplica classificada, justamente
+     para não pré-selecionar um modelo de ABERTURA no meio de uma conversa em
+     andamento (ver RespostasView). Com `textoInicial ? …`, a string vazia caía
+     no padrão e trazia de volta o "Olá, Fulano! Tudo bem?" que ela quer evitar. */
+  const textoLivre = textoInicial !== undefined;
+  const [modeloId, setModeloId] = useState(textoLivre ? "" : padraoInicial);
   const [mensagem, setMensagem] = useState(() =>
-    textoInicial ? textoInicial : imovel ? mensagemWhatsapp(padraoInicial, imovel, nomeCaptador) : "",
+    textoLivre ? textoInicial : imovel ? mensagemWhatsapp(padraoInicial, imovel, nomeCaptador) : "",
   );
   const [salvarAberto, setSalvarAberto] = useState(false);
   const [nomeNovo, setNomeNovo] = useState("");
@@ -137,7 +144,7 @@ export default function ModalWhatsapp({
     abordagemSel?.nome ||
     modeloCustomSel?.nome ||
     MODELOS_WHATSAPP.find((m) => m.id === modeloId)?.rotulo ||
-    (textoInicial ? "Rascunho da IA" : "Modelo");
+    (textoInicial ? "Rascunho da IA" : textoLivre ? "Mensagem livre" : "Modelo");
   // Nome guardado na tentativa quando não há abordagem do catálogo (por VALOR:
   // modelo não tem id estável no banco — o do corretor pode ser apagado).
   const nomeSemCatalogo = modeloCustomSel?.nome || modeloSistemaSel?.rotulo || null;

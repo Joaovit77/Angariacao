@@ -22,11 +22,31 @@ function saudacao(imovel: Imovel): string {
   return nome ? `Olá, ${nome}! Tudo bem?` : "Olá! Tudo bem?";
 }
 
-/** "Olá, Fulano!" — sem o "Tudo bem?", para responder a uma conversa que já
-    está aberta (os modelos de resposta ao proprietário). */
-function olaBreve(imovel: Imovel): string {
-  const nome = imovel.proprietarioNome ? imovel.proprietarioNome.trim() : "";
-  return nome ? `Olá, ${nome}!` : "Olá!";
+/* --- Responder é EMENDAR, não recomeçar -------------------------------------
+   Os modelos de resposta abaixo já abriram com "Olá, Fulano!" — a ideia era
+   uma saudação leve, sem o "Tudo bem?", por a conversa já estar aberta. Não
+   bastou, e quem mostrou foi o corretor no LD-185 (04/08/2026): depois de
+   cinco mensagens trocadas no mesmo dia — inventário, casa sem móveis, ele
+   perguntando onde estava o anúncio —, a réplica sugerida começava com "Olá,
+   Johann Diego Lima dos Santos!". Cumprimentar de novo no meio de uma conversa
+   viva é a marca do robô que não leu nada do que veio antes.
+
+   A regra passa a ser a mesma do rascunho por IA: quem responde EMENDA no que
+   a pessoa disse. O nome continua, mas como vocativo dentro da frase e só o
+   PRIMEIRO — o cadastro guarda o nome inteiro, e "Olá, Johann Diego Lima dos
+   Santos!" não é como ninguém fala com alguém que acabou de escrever. */
+
+/** Só o primeiro nome, para o vocativo soar como conversa e não como cadastro.
+    "" quando não há nome — e aí quem chama escreve a frase sem vocativo. */
+function primeiroNome(imovel: Imovel): string {
+  const nome = (imovel.proprietarioNome || "").trim();
+  return nome ? nome.split(/\s+/)[0] : "";
+}
+
+/** ", Fulano" para encaixar no meio da frase; "" quando não há nome. */
+function vocativo(imovel: Imovel): string {
+  const nome = primeiroNome(imovel);
+  return nome ? `, ${nome}` : "";
 }
 
 /** Palavras que já identificam a unidade. Se o corretor digitou "ap 806" ou
@@ -163,29 +183,29 @@ Ainda tem interesse em conversar sobre a locação? Fico à disposição.`,
      de respostas conforme a classificação da mensagem (ver
      `sugestaoRespostaModelo`). Não são contato de captação — fecham ou dão
      sequência a uma conversa já respondida —, então ficam FORA de
-     MODELOS_CAPTACAO e não registram tentativa. Saudação leve (sem o "Tudo
-     bem?"), porque a conversa já está aberta. */
+     MODELOS_CAPTACAO e não registram tentativa. Nenhum deles cumprimenta: ver
+     "Responder é EMENDAR, não recomeçar", acima. */
 
   // Terminal: ele disse que não há mais o que fazer (encerrou, recusou, não é
   // mais dono). O tom é de agradecimento e porta aberta, não de insistência.
-  "resposta-encerramento": (i) => `${olaBreve(i)} Entendido, muito obrigado pelo retorno e pela atenção!
+  "resposta-encerramento": (i) => `Entendido${vocativo(i)}! Muito obrigado pelo retorno e pela atenção.
 
 Fico à disposição caso precise de algo no futuro. Desejo tudo de bom. 🙏`,
 
   // "Vai retornar / vai pensar": ele pediu tempo. Confirma que ficamos no
   // aguardo, sem cobrar — a cobrança é o follow-up, no tempo dele.
-  "resposta-aguardo": (i) => `${olaBreve(i)} Combinado, fico no aguardo do seu retorno então.
+  "resposta-aguardo": (i) => `Combinado${vocativo(i)}! Fico no aguardo do seu retorno então.
 
 Qualquer dúvida nesse meio-tempo, é só me chamar por aqui. 😊`,
 
   // "Agendou": ficou marcada visita/reunião. Confirma o combinado.
-  "resposta-agendamento": (i) => `${olaBreve(i)} Perfeito, fica combinado então!
+  "resposta-agendamento": (i) => `Perfeito${vocativo(i)}! Fica combinado então.
 
 Vou me organizar por aqui e, qualquer imprevisto, a gente se avisa. Até lá!`,
 
   // "Número errado": a mensagem chegou em quem não tem nada a ver com o imóvel.
   // Sem nome (não é ele) e sem falar do imóvel — só um pedido de desculpas.
-  "resposta-engano": () => `Olá! Peço desculpas pelo engano, vou corrigir aqui no meu cadastro.
+  "resposta-engano": () => `Peço desculpas pelo engano, vou corrigir aqui no meu cadastro.
 
 Obrigado pela atenção e tenha um ótimo dia!`,
 
@@ -198,7 +218,7 @@ Obrigado pela atenção e tenha um ótimo dia!`,
      está do outro lado — chamá-lo pelo nome errado é pior que não chamar. E
      sem repetir o endereço: quem atendeu já demonstrou saber de qual imóvel
      se trata, e reapresentar o cadastro soa a robô. */
-  "resposta-outro-contato": () => `Olá! Muito obrigado pelo retorno e por esclarecer. 🙏
+  "resposta-outro-contato": () => `Muito obrigado pelo retorno e por esclarecer. 🙏
 
 Você poderia me passar o contato de quem cuida do imóvel? Assim eu falo diretamente com a pessoa certa e não te incomodo mais por aqui.`,
 

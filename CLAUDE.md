@@ -1078,6 +1078,19 @@ A caixa de respostas (`/respostas`) mostra o que o proprietário escreveu; o pas
 **responder**, e ele tem DUAS camadas — a divisão é entre o que dá para saber sem ler a mensagem e
 o que não dá.
 
+**Responder é EMENDAR, não recomeçar** — e isso vale nas duas camadas e no que a tela
+pré-seleciona. Nenhuma réplica cumprimenta: elas abriam com "Olá, Fulano!" (saudação leve, já sem o
+"Tudo bem?"), e não bastou. No LD-185 (04/08/2026), depois de cinco mensagens trocadas no mesmo dia,
+a sugestão saía "Olá, Johann Diego Lima dos Santos!" — cumprimento no meio de conversa viva, com o
+nome do cadastro inteiro. Hoje o nome entra como vocativo dentro da frase e só o PRIMEIRO. Pela
+mesma razão a caixa **não cai mais no modelo por etapa do funil** quando não há classificação: aquele
+padrão vem do Pipeline, onde a conversa pode nem ter começado, e ali ela sempre começou — a linha só
+existe porque a pessoa escreveu. Ele propunha abertura no meio de conversa aberta ("Olá, Fulano! Tudo
+bem?" mais o início da divulgação no LD-156, que tem 74 mensagens) e, em "Perdido"/"Sem resposta",
+afirmava o falso: "não consegui retorno" para quem tinha acabado de responder. Eram 9 dos 32 imóveis
+com resposta. O botão abre **em branco** (sem modelo, logo sem creditar tentativa) e o seletor segue
+ali para quem quiser um modelo.
+
 - **Camada 1 — réplica pronta, SEM IA** (`sugestaoRespostaModelo` em `calculo/whatsapp.ts`). O
   webhook já classificou a resposta e guardou o desfecho em `tentativa.sugestaoIa`; a camada 1 só
   traduz aquele desfecho num modelo de réplica: `motivoPerda`/`recusou` → encerramento cordial;
