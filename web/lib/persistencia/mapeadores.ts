@@ -56,6 +56,7 @@ export interface DbImovelRow {
   comissao_recebida_valor: number | string | null;
   comissao_recebida_data: string | null;
   pre_cadastro: boolean | null;
+  importado: boolean | null;
   imovel_principal_id: string | null;
   created_at?: string;
   updated_at?: string;
@@ -162,6 +163,7 @@ export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "create
     comissao_recebida_valor: i.comissaoRecebidaValor ?? null,
     comissao_recebida_data: i.comissaoRecebidaData || null,
     pre_cadastro: !!i.preCadastro,
+    importado: !!i.importado,
     // Vínculo de unidade desdobrada. `|| null` e não `?? null`: string vazia
     // aqui viraria uma FK inválida, e o Postgres recusaria a linha inteira.
     imovel_principal_id: i.imovelPrincipalId || null,
@@ -213,6 +215,7 @@ export function fromDbImovel(r: DbImovelRow): Imovel {
     comissaoRecebidaValor: r.comissao_recebida_valor as number | null,
     comissaoRecebidaData: r.comissao_recebida_data,
     preCadastro: !!r.pre_cadastro,
+    importado: !!r.importado,
     // null, nunca "": o resto do app testa este campo por verdade/falsidade
     // para decidir se o imóvel é uma unidade desdobrada.
     imovelPrincipalId: r.imovel_principal_id || null,

@@ -117,6 +117,18 @@ o torna testável puro.
   seguem medindo etapa, que é a pergunta deles. Quem exibe a palavra "parado" tem que exibir
   `diasSemMovimento` junto — o número que marcou o selo; com dias no status, a linha diria "parado
   há 20 dias" sobre quem respondeu ontem.
+  **Imóvel IMPORTADO não é imóvel parado** (`Imovel.importado` + `teveAtividadeAposImportacao`).
+  Uma planilha traz datas de meses ou anos atrás, e elas são história, não inatividade: ninguém
+  deixou o lead parado no painel, o painel é que acabou de conhecê-lo. Sem a marca, a carteira
+  importada abre com tudo acusado — medido em 04/08/2026, quando a conta da supervisora recebeu
+  583 captações de 2023 a 2026 e o Pipeline exibiu **581 selos de estagnação no primeiro acesso**.
+  Card que nasce cheio ninguém lê, e é assim que a faixa de "imóvel parado" morreu no termômetro.
+  A marca **não esconde para sempre**, e essa é a metade que importa: vale só até a primeira ação
+  de verdade — tentativa registrada, resposta do proprietário ou mudança de status —, e aí o prazo
+  religa. Senão ela viraria um jeito de esconder imóvel que não anda, que é o oposto do que o selo
+  existe para fazer. A distinção usa a **data** da entrada de status, não a existência dela: a
+  importação carimba o histórico com a data antiga da planilha e `aplicarMudancaDeStatus` carimba
+  hoje, então comparar com `dataAngariacao` separa as duas sem guardar quando a importação rodou.
 - **`calculo/motor.ts` → `conversaoCaptacao`** — as **duas taxas do painel**, e por que são duas.
   `metricsForRange` mede LOCAÇÃO (locados ÷ processos fechados): é a régua do dinheiro, e continua
   valendo. Só que o trabalho medido aqui termina uma etapa antes — no "sim" do proprietário —, e

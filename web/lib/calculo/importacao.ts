@@ -362,6 +362,11 @@ export function lerImportacao(texto: string, carteira: Imovel[], hoje: string): 
       observacoes: celula(bruta, "observacoes") || null,
       // Ver a regra 1 no topo: importação não escolhe status.
       status: "Novo contato",
+      /* A marca que impede o painel de cobrar estagnação de um histórico.
+         A planilha traz datas antigas, e sem ela a carteira importada abre
+         com tudo em "parado" — ver `isStale` no motor. Sai sozinha assim que
+         o corretor faz a primeira tentativa ou move o status. */
+      importado: true,
       // Sem data na planilha, cai em hoje — é o melhor que se pode
       // afirmar. Quando ela existe, é ela que manda: ver o comentário
       // de `dataAngariacao` nos sinônimos.
