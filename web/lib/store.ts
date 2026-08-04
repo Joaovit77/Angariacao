@@ -14,7 +14,7 @@
    ================================================================ */
 import { create } from "zustand";
 import type { EstadoApp } from "./persistencia/carregarEstado";
-import type { Abordagem, AgendaItem, Imovel, Metas, UserConfig } from "./tipos";
+import type { Abordagem, AgendaItem, Imovel, Metas, Protocolo, UserConfig } from "./tipos";
 
 interface AppStore {
   imoveis: Imovel[];
@@ -22,6 +22,10 @@ interface AppStore {
   agenda: AgendaItem[];
   /** Catálogo de roteiros de captação (o QUE se diz), não o canal. */
   abordagens: Abordagem[];
+  /** As regras da imobiliária que a IA consulta para poder afirmar algo ao
+      responder o proprietário. Aqui só para alimentar a TELA de protocolos: o
+      prompt é montado no servidor, que relê do banco (ver calculo/ia.ts). */
+  protocolos: Protocolo[];
   config: UserConfig;
   /** true depois que carregarEstado() populou o store nesta sessão. */
   carregado: boolean;
@@ -45,6 +49,7 @@ interface AppStore {
   setImoveis: (imoveis: Imovel[]) => void;
   setAgenda: (agenda: AgendaItem[]) => void;
   setAbordagens: (abordagens: Abordagem[]) => void;
+  setProtocolos: (protocolos: Protocolo[]) => void;
   setIaDisponivel: (disponivel: boolean) => void;
   setEhAdmin: (ehAdmin: boolean) => void;
   setMetas: (metas: Metas) => void;
@@ -56,6 +61,7 @@ const ESTADO_INICIAL = {
   metas: {} as Metas,
   agenda: [] as AgendaItem[],
   abordagens: [] as Abordagem[],
+  protocolos: [] as Protocolo[],
   config: { comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "" } as UserConfig, // % sobre 1 aluguel (100 = 1 mês)
   carregado: false,
   iaDisponivel: false,
@@ -69,6 +75,7 @@ export const useAppStore = create<AppStore>((set) => ({
   setImoveis: (imoveis) => set({ imoveis }),
   setAgenda: (agenda) => set({ agenda }),
   setAbordagens: (abordagens) => set({ abordagens }),
+  setProtocolos: (protocolos) => set({ protocolos }),
   setIaDisponivel: (iaDisponivel) => set({ iaDisponivel }),
   setEhAdmin: (ehAdmin) => set({ ehAdmin }),
   setMetas: (metas) => set({ metas }),

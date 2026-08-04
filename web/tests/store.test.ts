@@ -7,6 +7,7 @@ const estadoExemplo = {
   metas: { "2026-07": { angariacoes: 5, locados: 2, comissao: 5000, faturamento: 12000 } },
   agenda: [{ id: "a1", title: "t", type: "Visita", date: "2026-07-10", done: false, isVerificacaoDisponibilidade: false }],
   abordagens: [{ id: "ab1", nome: "Avaliação gratuita", arquivada: false }],
+  protocolos: [{ id: "pr1", titulo: "Taxa de administração", conteudo: "10% sobre o aluguel.", arquivado: false }],
   config: { comissaoPercent: 50, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "" },
 };
 
@@ -39,6 +40,7 @@ describe("useAppStore", () => {
     const s = useAppStore.getState();
     expect(s.imoveis).toHaveLength(1);
     expect(s.abordagens).toHaveLength(1);
+    expect(s.protocolos).toHaveLength(1);
     expect(s.config.comissaoPercent).toBe(50);
     expect(s.carregado).toBe(true);
   });
@@ -49,6 +51,7 @@ describe("useAppStore", () => {
     const s = useAppStore.getState();
     expect(s.imoveis).toEqual([]);
     expect(s.abordagens).toEqual([]);
+    expect(s.protocolos).toEqual([]);
     expect(s.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "" });
     expect(s.carregado).toBe(false);
   });

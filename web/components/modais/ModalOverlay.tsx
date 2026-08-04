@@ -61,6 +61,7 @@ export default function ModalOverlay() {
             imovelId={modal.id}
             modeloInicial={modal.modeloWhatsapp}
             textoInicial={modal.textoWhatsapp}
+            protocolosUsados={modal.protocolosWhatsapp}
           />
         )}
         {modal?.tipo === "notas" && modal.id && <ModalNotas imovelId={modal.id} />}

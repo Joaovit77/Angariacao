@@ -812,3 +812,62 @@ create policy "insert_own_aceite" on aceites_termos
   for insert with check (auth.uid() = user_id);
 
 create index if not exists idx_aceites_user on aceites_termos (user_id, aceito_em desc);
+
+-- ------------------------------------------------------------
+-- PROTOCOLOS DA IMOBILIÁRIA
+--
+-- As regras da EMPRESA, escritas pelo corretor: taxa de administração,
+-- prazo de contrato, multa de rescisão, quem paga condomínio e IPTU,
+-- exclusividade, horário de atendimento. Estáveis, iguais para todo
+-- proprietário, e repetidas na conversa toda vez.
+--
+-- Existem porque o rascunho de resposta por IA é PROIBIDO de afirmar
+-- qualquer coisa (ver promptRascunharResposta em web/lib/calculo/ia.ts):
+-- sem uma fonte de verdade ele só sabe empurrar para uma ligação. Medido
+-- na carteira real em 04/08/2026: das 49 respostas de proprietário com
+-- pergunta, ~18 eram sobre a empresa e não sobre o imóvel, e 12 delas
+-- estavam no LD-156 — o único imóvel que chegou a assinar contrato. Não
+-- é pergunta rara: é pergunta da fase que fecha o negócio.
+--
+-- O que NÃO entra aqui é fato do IMÓVEL (tem garagem, aceita pet, qual o
+-- condomínio daquele apartamento). Isso varia por imóvel, o painel não
+-- tem o dado, e a trava do prompt contra inventar fato continua inteira.
+--
+-- Por usuário, como `abordagens` e `user_config`. Protocolo é da
+-- imobiliária, não do corretor, mas não existe conceito de organização no
+-- schema; quando existir, esta é a tabela que vira compartilhada.
+-- ------------------------------------------------------------
+create table if not exists protocolos (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  -- O assunto, como o proprietário perguntaria ("Taxa de administração").
+  titulo text not null,
+  -- A resposta, em linguagem que pode ir para o WhatsApp.
+  conteudo text not null,
+  -- Arquivar em vez de excluir, pelo motivo de `abordagens.arquivada`: a
+  -- taxa que mudou este ano ainda descreve o contrato assinado no ano
+  -- passado. Arquivado sai do prompt e da tela, sem perder o texto.
+  arquivado boolean not null default false,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table protocolos enable row level security;
+
+drop policy if exists "select_own_protocolos" on protocolos;
+create policy "select_own_protocolos" on protocolos
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "insert_own_protocolos" on protocolos;
+create policy "insert_own_protocolos" on protocolos
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "update_own_protocolos" on protocolos;
+create policy "update_own_protocolos" on protocolos
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "delete_own_protocolos" on protocolos;
+create policy "delete_own_protocolos" on protocolos
+  for delete using (auth.uid() = user_id);
+
+create index if not exists idx_protocolos_user on protocolos (user_id, created_at);

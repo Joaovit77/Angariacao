@@ -57,9 +57,11 @@ import {
   fromDbAbordagem,
   fromDbAgenda,
   fromDbImovel,
+  fromDbProtocolo,
   type DbAbordagemRow,
   type DbAgendaRow,
   type DbImovelRow,
+  type DbProtocoloRow,
   type DbUserConfigRow,
 } from "@/lib/persistencia/mapeadores";
 
@@ -86,6 +88,9 @@ interface Resposta {
   anuncio?: AnuncioExtraido;
   /** tipo "rascunhar-resposta" */
   rascunho?: string;
+  /** tipo "rascunhar-resposta": títulos dos protocolos em que o rascunho se
+      apoiou, para a tela mostrar em que ele se baseou. */
+  protocolosUsados?: string[];
 }
 
 function erro(falha: FalhaIa, status: number): Response {
@@ -441,6 +446,25 @@ export async function POST(request: Request): Promise<Response> {
     // as dele, só as que têm o que ler.
     const anteriores = comTexto.slice(0, -1).map((n) => corpoDaResposta(n.texto));
 
+    /* AS REGRAS DA IMOBILIÁRIA. Vêm do BANCO, com o token de quem chamou (o
+       RLS escopa ao dono), nunca do browser: é o mesmo princípio que faz o
+       texto da mensagem ser relido aqui em vez de aceito da requisição. Se o
+       cliente pudesse mandar os protocolos, ele escolheria o que a IA está
+       autorizada a AFIRMAR a um proprietário real.
+
+       Erro na leitura não derruba o rascunho: sem protocolos ele volta a ser
+       o de antes desta feature, que é um comportamento válido. Mesma
+       tolerância do carregarEstado. */
+    const { data: ptData, error: ptErro } = await supabase
+      .from("protocolos")
+      .select("*")
+      .order("created_at", { ascending: true });
+    if (ptErro) console.error("IA: falha ao ler os protocolos:", ptErro.message);
+    const protocolos = ((ptData || []) as DbProtocoloRow[])
+      .map(fromDbProtocolo)
+      .filter((p) => !p.arquivado)
+      .map((p) => ({ titulo: p.titulo, conteudo: p.conteudo }));
+
     let conclusao: OpenAI.Chat.ChatCompletion;
     try {
       conclusao = await openai.chat.completions.create({
@@ -454,10 +478,13 @@ export async function POST(request: Request): Promise<Response> {
         messages: [
           {
             role: "user",
-            content: promptRascunharResposta(mensagemProp, imovel.proprietarioNome, ref, {
-              anteriores,
-              enviada,
-            }),
+            content: promptRascunharResposta(
+              mensagemProp,
+              imovel.proprietarioNome,
+              ref,
+              { anteriores, enviada },
+              protocolos,
+            ),
           },
         ],
       });
@@ -470,10 +497,21 @@ export async function POST(request: Request): Promise<Response> {
     registrarUsoDaResposta(donoDaChamada, pedido, MODELO, conclusao.usage);
 
     try {
-      const dados = JSON.parse(textoDaResposta(conclusao)) as { mensagem?: unknown };
+      const dados = JSON.parse(textoDaResposta(conclusao)) as {
+        mensagem?: unknown;
+        protocolosUsados?: unknown;
+      };
       const rascunho = typeof dados.mensagem === "string" ? dados.mensagem.trim() : "";
       if (!rascunho) return erro("falha-ia", 502);
-      const resposta: Resposta = { ok: true, rascunho };
+      /* Só títulos que EXISTEM na lista que mandamos. O modelo pode devolver um
+         título aproximado ou inventado, e a tela usa isto para o corretor
+         conferir a fonte num olhar — um rótulo que não corresponde a protocolo
+         nenhum transformaria a conferência em desinformação. */
+      const titulosValidos = new Set(protocolos.map((p) => p.titulo));
+      const protocolosUsados = Array.isArray(dados.protocolosUsados)
+        ? dados.protocolosUsados.filter((t): t is string => typeof t === "string" && titulosValidos.has(t))
+        : [];
+      const resposta: Resposta = { ok: true, rascunho, protocolosUsados };
       return Response.json(resposta);
     } catch (e) {
       console.error("IA: rascunho não veio parseável:", e);

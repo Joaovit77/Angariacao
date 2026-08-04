@@ -108,8 +108,10 @@ function Linha({ linha, imovel }: { linha: LinhaResposta; imovel: Imovel }) {
     setRascunhando(false);
     if (r.ok && r.rascunho) {
       // Abre o WhatsApp já com o rascunho — visível e editável, o corretor
-      // confere e envia. Nada sai sozinho.
-      abrirWhatsappRascunho(imovel.id, r.rascunho);
+      // confere e envia. Nada sai sozinho. Os protocolos usados viajam junto:
+      // quando a IA AFIRMA algo (taxa, prazo, multa), o corretor precisa ver de
+      // onde saiu sem ter que reler a base inteira.
+      abrirWhatsappRascunho(imovel.id, r.rascunho, r.protocolosUsados);
     } else {
       toast(r.mensagem || "A IA não conseguiu rascunhar a resposta agora.", "error");
     }

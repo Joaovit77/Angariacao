@@ -13,7 +13,7 @@
    currentUser do app antigo.
    ================================================================ */
 import { ORIGENS_LEGADAS } from "../constantes";
-import type { Abordagem, AgendaItem, Imovel, NotaImovel, StatusHistoryEntry, Tentativa } from "../tipos";
+import type { Abordagem, AgendaItem, Imovel, NotaImovel, Protocolo, StatusHistoryEntry, Tentativa } from "../tipos";
 
 /** Linha da tabela `imoveis` como o Supabase retorna/aceita. */
 export interface DbImovelRow {
@@ -86,6 +86,17 @@ export interface DbAbordagemRow {
   origens: string[] | null;
   arquivada: boolean | null;
   created_at?: string;
+}
+
+/** Linha da tabela `protocolos` (as regras da imobiliária). */
+export interface DbProtocoloRow {
+  id: string;
+  user_id: string;
+  titulo: string;
+  conteudo: string;
+  arquivado: boolean | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 /** Linha da tabela `metas`. */
@@ -234,6 +245,25 @@ export function fromDbAbordagem(r: DbAbordagemRow): Abordagem {
     // o agrupamento do lote inteiro.
     origens: Array.isArray(r.origens) ? r.origens : [],
     arquivada: !!r.arquivada,
+  };
+}
+
+export function toDbProtocolo(p: Protocolo, userId: string): Omit<DbProtocoloRow, "created_at" | "updated_at"> {
+  return {
+    id: p.id,
+    user_id: userId,
+    titulo: p.titulo.trim(),
+    conteudo: p.conteudo.trim(),
+    arquivado: !!p.arquivado,
+  };
+}
+
+export function fromDbProtocolo(r: DbProtocoloRow): Protocolo {
+  return {
+    id: r.id,
+    titulo: r.titulo || "",
+    conteudo: r.conteudo || "",
+    arquivado: !!r.arquivado,
   };
 }
 

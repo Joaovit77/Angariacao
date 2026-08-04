@@ -121,6 +121,20 @@ const ITENS: ItemNav[] = [
       </svg>
     ),
   },
+  {
+    // Perto do fim de propósito: é tela de referência, aberta para escrever uma
+    // vez e revisar de vez em quando, não trabalho do dia. Sem badge pelo mesmo
+    // motivo — não há nada aqui que se acumule cobrando atenção.
+    rota: "/protocolos",
+    texto: "Protocolos",
+    icone: (
+      <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        <path d="M9 7h7M9 11h7" />
+      </svg>
+    ),
+  },
   // "Integrações & IA" (/roadmap) fica fora do menu por ora — a página segue
   // no código (app/(painel)/roadmap) para reativar quando as integrações
   // entrarem: basta devolver este item ao array.

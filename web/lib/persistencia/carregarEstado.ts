@@ -17,10 +17,10 @@
    comissaoPercent = 100.
    ================================================================ */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Abordagem, AgendaItem, Imovel, Metas, UserConfig, WhatsappModelo } from "../tipos";
+import type { Abordagem, AgendaItem, Imovel, Metas, Protocolo, UserConfig, WhatsappModelo } from "../tipos";
 import {
-  fromDbAbordagem, fromDbAgenda, fromDbImovel,
-  type DbAbordagemRow, type DbAgendaRow, type DbImovelRow, type DbMetaRow, type DbUserConfigRow,
+  fromDbAbordagem, fromDbAgenda, fromDbImovel, fromDbProtocolo,
+  type DbAbordagemRow, type DbAgendaRow, type DbImovelRow, type DbMetaRow, type DbProtocoloRow, type DbUserConfigRow,
 } from "./mapeadores";
 import { getSupabase } from "./supabase";
 
@@ -29,15 +29,17 @@ export interface EstadoApp {
   metas: Metas;
   agenda: AgendaItem[];
   abordagens: Abordagem[];
+  protocolos: Protocolo[];
   config: UserConfig;
 }
 
 export async function carregarEstado(client: SupabaseClient = getSupabase()): Promise<EstadoApp> {
-  const [imRes, mtRes, agRes, abRes, cfRes] = await Promise.all([
+  const [imRes, mtRes, agRes, abRes, ptRes, cfRes] = await Promise.all([
     client.from("imoveis").select("*"),
     client.from("metas").select("*"),
     client.from("agenda").select("*"),
     client.from("abordagens").select("*"),
+    client.from("protocolos").select("*"),
     client.from("user_config").select("*").maybeSingle(),
   ]);
   if (imRes.error) throw imRes.error;
@@ -46,6 +48,8 @@ export async function carregarEstado(client: SupabaseClient = getSupabase()): Pr
   // Mesma tolerância deliberada aplicada a user_config: um erro no catálogo de
   // abordagens (ex.: schema ainda não atualizado) NÃO derruba o carregamento —
   // o app funciona inteiro sem ele, só sem o ranking de abordagens.
+  // Vale igual para `protocolos`: sem eles o rascunho de resposta volta a ser o
+  // de antes (sem afirmar nada), e o resto do painel não muda.
 
   const metas: Metas = {};
   ((mtRes.data || []) as DbMetaRow[]).forEach((m) => {
@@ -77,6 +81,7 @@ export async function carregarEstado(client: SupabaseClient = getSupabase()): Pr
     imoveis: ((imRes.data || []) as DbImovelRow[]).map(fromDbImovel),
     agenda: ((agRes.data || []) as DbAgendaRow[]).map(fromDbAgenda),
     abordagens: abRes.error ? [] : ((abRes.data || []) as DbAbordagemRow[]).map(fromDbAbordagem),
+    protocolos: ptRes.error ? [] : ((ptRes.data || []) as DbProtocoloRow[]).map(fromDbProtocolo),
     metas,
     config: {
       comissaoPercent: cfData ? Number(cfData.comissao_percent) : 100,

@@ -20,7 +20,7 @@ do Brasil**.
 O que fica na **raiz** do repositório:
 
 - [supabase-schema.sql](supabase-schema.sql) — schema completo do banco (tabelas `imoveis`, `metas`,
-  `agenda`, `abordagens`, `user_config`, mais as de operação `admins`, `ia_uso` e `log_eventos` —
+  `agenda`, `abordagens`, `protocolos`, `user_config`, mais as de operação `admins`, `ia_uso` e `log_eventos` —
   ver "O super admin" adiante) com as políticas RLS que escopam cada linha a
   `auth.uid() = user_id`.
   Idempotente — pode ser re-rodado no SQL editor do Supabase. **É a fonte de verdade do schema.**
@@ -474,10 +474,11 @@ o torna testável puro.
 - **`persistencia/mapeadores.ts`** — `toDb*`/`fromDb*` que traduzem entre o camelCase do app e o
   snake_case do Supabase. Definem o contrato de dados.
 - **`persistencia/supabase.ts`** — cliente singleton do browser. **`persistencia/carregarEstado.ts`**
-  — o `loadState()`: busca as 5 tabelas em paralelo no login. Erro em `user_config` ou `abordagens`
-  **não** derruba o carregamento (o app inteiro funciona sem eles); erro nas outras três propaga.
-- **`store.ts`** — store Zustand espelhando o `STATE` legado, mais o catálogo de abordagens
-  (`{ imoveis, metas, agenda, abordagens, config }`).
+  — o `loadState()`: busca as 6 tabelas em paralelo no login. Erro em `user_config`, `abordagens` ou
+  `protocolos` **não** derruba o carregamento (o app inteiro funciona sem eles); erro nas outras
+  três propaga.
+- **`store.ts`** — store Zustand espelhando o `STATE` legado, mais o catálogo de abordagens e os
+  protocolos da imobiliária (`{ imoveis, metas, agenda, abordagens, protocolos, config }`).
 - **`mutacoes.ts`** — **todas as escritas no Supabase** num só lugar (criar/editar/excluir imóvel,
   metas, agenda, abordagens, tentativas, verificação, config, dados demo).
   `aplicarMudancaDeStatus()` é o **único** ponto que empurra no `statusHistory`.
@@ -1123,6 +1124,34 @@ ali para quem quiser um modelo.
   pergunta levando a um próximo passo (ligação/visita em que o corretor dá o detalhe) — o análogo
   exato do "não invente" da extração. Gated por `podeUsarIa` (a UI usa o flag `iaDisponivel`), com
   `MAX_TEXTO_RASCUNHO` limitando o custo.
+
+  **Os protocolos da imobiliária são a exceção a essa trava, e a única.** Não saber nada está certo
+  para fato do IMÓVEL, que o painel não tem; está errado para regra da EMPRESA, que o corretor
+  repete em toda conversa. Medido em 04/08/2026: das 49 respostas de proprietário com pergunta, ~18
+  eram sobre a empresa (taxa, repasse, prazo, multa, quem paga o quê, exclusividade, horário, se
+  trabalha com venda), e **12 delas no LD-156** — o único imóvel da carteira que chegou a assinar
+  contrato. A pergunta não é rara: é a da fase que fecha o negócio, e por isso poucos chegam nela.
+  Sem fonte de verdade o rascunho só sabia sugerir "vamos marcar uma ligação", doze vezes seguidas,
+  enquanto o corretor respondia tudo por escrito.
+  A tabela é `protocolos` (por usuário, no molde de `abordagens`), a tela é `/protocolos` e a parte
+  pura é `blocoProtocolos` em `calculo/ia.ts`. Cinco decisões:
+  **o conteúdo sai do BANCO** (a rota relê com o token de quem chamou; se o browser mandasse os
+  protocolos, ele escolheria o que a IA está autorizada a afirmar a um proprietário real);
+  **proibido deduzir e combinar** — assunto não coberto por um item volta à regra de sempre, e
+  juntar "a taxa é 10%" com "o contrato é de 3 anos" para concluir o que acontece na renovação é o
+  erro que um modelo comete com naturalidade; **a trava do fato do imóvel fica intacta** (protocolo
+  é sobre a empresa, e há teste amarrando as duas regras ao mesmo prompt); **o bloco entra logo
+  depois do `PAPEL`, antes da parte variável**, para o começo do prompt ser idêntico em toda chamada
+  daquele corretor e o cache de entrada valer (a parte cacheada custa dez vezes menos — ver
+  `custoIa.ts`; há teste fixando a ordem, porque um refactor inocente triplicaria o custo sem
+  quebrar nada visível); e **o rascunho declara em que se apoiou** (`protocolosUsados` no esquema,
+  filtrado na rota contra os títulos que existem de verdade, exibido no ModalWhatsapp) — "a IA
+  sugere, o corretor confirma" não significa nada se conferir exigir reler a base inteira.
+  O que decide se isso funciona não é o prompt e sim o **estado vazio da tela**: base vazia não muda
+  nada, e tela que não muda nada ninguém reabre. Por isso ele lista os assuntos medidos acima, cada
+  um a um clique de virar protocolo, e **sem conteúdo pré-preenchido** — um texto padrão sobre taxa
+  de administração seria a IA afirmando um número que esta imobiliária nunca disse, com o corretor
+  confirmando sem ler porque já estava escrito.
 
 #### `api/google/*` — espelhar a agenda no Google Agenda
 
