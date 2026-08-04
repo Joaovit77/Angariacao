@@ -31,12 +31,13 @@ import { deveTerVerificacaoAberta } from "./calculo/followup";
 import { dataAngariadoEfetiva, historicoComStatus } from "./calculo/motor";
 import { ehNotaDeResposta } from "./calculo/notas";
 import { useCelebracao } from "./celebracao";
-import { toDbAbordagem, toDbAgenda, toDbImovel } from "./persistencia/mapeadores";
+import { MAX_PROTOCOLO_CHARS } from "./calculo/ia";
+import { toDbAbordagem, toDbAgenda, toDbImovel, toDbProtocolo } from "./persistencia/mapeadores";
 import { sincronizarCompromisso } from "./googleAgenda";
 import { getSupabase } from "./persistencia/supabase";
 import { useAppStore } from "./store";
 import { toast } from "./toast";
-import type { Abordagem, AgendaItem, Imovel, Meta, NotaImovel, Tentativa, UserConfig, WhatsappModelo } from "./tipos";
+import type { Abordagem, AgendaItem, Imovel, Meta, NotaImovel, Protocolo, Tentativa, UserConfig, WhatsappModelo } from "./tipos";
 
 export function uid(): string {
   return crypto.randomUUID();
@@ -639,6 +640,88 @@ export async function alternarArquivamentoAbordagem(id: string): Promise<boolean
   }
   setAbordagens(abordagens.map((a) => (a.id === id ? { ...a, arquivada } : a)));
   toast(arquivada ? "Abordagem arquivada." : "Abordagem reativada.");
+  return true;
+}
+
+/**
+ * Cria ou atualiza um protocolo da imobiliária.
+ *
+ * O corte de tamanho não é capricho de UI: o conteúdo daqui entra no prompt de
+ * TODO rascunho de resposta, e um protocolo com o contrato inteiro colado
+ * dentro passaria a ser cobrado em cada chamada, para sempre. Mesmo freio do
+ * MAX_TEXTO_ANUNCIO — e por isso ele mora junto dos outros limites de prompt,
+ * em calculo/ia.ts, não aqui.
+ */
+export async function salvarProtocolo(data: Protocolo, userId: string): Promise<boolean> {
+  const { protocolos, setProtocolos } = useAppStore.getState();
+  const titulo = data.titulo.trim();
+  const conteudo = data.conteudo.trim();
+  if (!titulo) {
+    toast("Dê um título ao protocolo.", "error");
+    return false;
+  }
+  if (!conteudo) {
+    toast("Escreva o conteúdo do protocolo.", "error");
+    return false;
+  }
+  if (conteudo.length > MAX_PROTOCOLO_CHARS) {
+    toast(`O protocolo passa de ${MAX_PROTOCOLO_CHARS} caracteres. Resuma ou divida em dois.`, "error");
+    return false;
+  }
+  const existente = protocolos.find((p) => p.id === data.id) || null;
+  const protocolo: Protocolo = { ...data, titulo, conteudo };
+
+  const { error } = await getSupabase().from("protocolos").upsert(toDbProtocolo(protocolo, userId));
+  if (error) {
+    toast("Não foi possível salvar o protocolo: " + error.message, "error");
+    return false;
+  }
+  setProtocolos(
+    existente ? protocolos.map((p) => (p.id === protocolo.id ? protocolo : p)) : [...protocolos, protocolo],
+  );
+  toast(existente ? "Protocolo atualizado." : "Protocolo cadastrado.");
+  return true;
+}
+
+/**
+ * Arquiva\desarquiva um protocolo. Arquivado sai do prompt e da tela sem perder
+ * o texto: a taxa que mudou este ano ainda descreve o contrato assinado no ano
+ * passado, e o corretor pode precisar consultá-la.
+ */
+export async function alternarArquivamentoProtocolo(id: string): Promise<boolean> {
+  const { protocolos, setProtocolos } = useAppStore.getState();
+  const protocolo = protocolos.find((p) => p.id === id);
+  if (!protocolo) return false;
+
+  const arquivado = !protocolo.arquivado;
+  const { error } = await getSupabase().from("protocolos").update({ arquivado }).eq("id", id);
+  if (error) {
+    toast("Não foi possível arquivar: " + error.message, "error");
+    return false;
+  }
+  setProtocolos(protocolos.map((p) => (p.id === id ? { ...p, arquivado } : p)));
+  toast(arquivado ? "Protocolo arquivado." : "Protocolo reativado.");
+  return true;
+}
+
+/**
+ * Exclui de vez. Existe (ao contrário das abordagens, que só se arquivam)
+ * porque nada aponta para o id de um protocolo: nenhuma tentativa, nenhum
+ * histórico. Apagar um protocolo escrito errado não deixa registro órfão.
+ */
+export async function excluirProtocolo(id: string): Promise<boolean> {
+  const { protocolos, setProtocolos } = useAppStore.getState();
+  const protocolo = protocolos.find((p) => p.id === id);
+  if (!protocolo) return false;
+  if (!confirm(`Excluir o protocolo "${protocolo.titulo}"? Essa ação não pode ser desfeita.`)) return false;
+
+  const { error } = await getSupabase().from("protocolos").delete().eq("id", id);
+  if (error) {
+    toast("Não foi possível excluir: " + error.message, "error");
+    return false;
+  }
+  setProtocolos(protocolos.filter((p) => p.id !== id));
+  toast("Protocolo excluído.");
   return true;
 }
 

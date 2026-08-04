@@ -854,8 +854,76 @@ Se os dados forem escassos demais para sustentar uma leitura, diga isso com fran
     natureza; o teto só protege contra uma mensagem encaminhada gigante. */
 export const MAX_TEXTO_RASCUNHO = 600;
 
-/** Esquema fechado: um campo só. `strict: true` + additionalProperties:false
-    impede o modelo de devolver explicação, alternativas ou markdown junto. */
+/* ----------------------------------------------------------------
+   PROTOCOLOS DA IMOBILIÁRIA no prompt do rascunho.
+
+   O rascunho é proibido de afirmar qualquer coisa (ver as regras do
+   promptRascunharResposta), e sem uma fonte de verdade ele só sabe
+   empurrar para uma ligação. Isso está certo para fato do IMÓVEL, que o
+   painel não conhece, e está errado para regra da EMPRESA, que o corretor
+   repete em toda conversa.
+
+   Medido na carteira em 04/08/2026: das 49 respostas de proprietário com
+   pergunta, ~18 eram sobre a empresa (taxa, prazo, multa, quem paga o quê,
+   exclusividade, horário, se trabalha com venda). Doze delas no LD-156 —
+   o único imóvel que assinou contrato. A pergunta não é rara, é da fase
+   que fecha o negócio, e por isso poucos chegam nela.
+
+   Os limites abaixo existem porque este bloco entra em TODA chamada de
+   rascunho: sem teto, um protocolo com o contrato colado dentro vira custo
+   permanente. Mesmo papel do MAX_TEXTO_ANUNCIO.
+   ---------------------------------------------------------------- */
+
+/** Quantos protocolos vão ao prompt. Acima disso, os mais recentes ficam de
+    fora — e a tela avisa, em vez de truncar em silêncio. */
+export const MAX_PROTOCOLOS = 40;
+
+/** Teto por protocolo. Protocolo é resposta de WhatsApp, não cláusula: o que
+    não cabe aqui provavelmente são dois protocolos. */
+export const MAX_PROTOCOLO_CHARS = 600;
+
+/** O que o prompt precisa de um protocolo. Tipo próprio (em vez do `Protocolo`
+    inteiro) para deixar explícito que nem id nem estado de arquivamento vão
+    para a IA: quem filtra arquivado é esta função. */
+export interface ProtocoloPrompt {
+  titulo: string;
+  conteudo: string;
+}
+
+/**
+ * Monta o bloco de protocolos do prompt. Devolve "" quando não há nenhum
+ * utilizável — e nesse caso o prompt sai IDÊNTICO ao de antes desta feature,
+ * que é o comportamento que o teste de não regressão fixa.
+ */
+export function blocoProtocolos(protocolos: readonly ProtocoloPrompt[] = []): string {
+  const itens = protocolos
+    .map((p) => ({ titulo: (p?.titulo || "").trim(), conteudo: (p?.conteudo || "").trim() }))
+    .filter((p) => p.titulo && p.conteudo)
+    .slice(0, MAX_PROTOCOLOS)
+    .map((p) => `- ${p.titulo.slice(0, MAX_CONTEXTO)}: ${p.conteudo.slice(0, MAX_PROTOCOLO_CHARS)}`)
+    .join("\n");
+  if (!itens) return "";
+
+  return `REGRAS DA IMOBILIÁRIA. O corretor escreveu isto, e é a única coisa que você pode AFIRMAR ao proprietário:
+
+${itens}
+
+Como usar:
+- Se a pergunta dele for respondida por um destes itens, responda de verdade, com a informação, em vez de empurrar para uma ligação. É por isso que a lista existe.
+- Use as palavras dele quando puder, mas não cole o item inteiro: escreva como quem responde no WhatsApp.
+- NÃO DEDUZA e NÃO COMBINE. Se a resposta exige juntar dois itens, ou concluir algo que nenhum deles diz, você NÃO sabe — trate como assunto não coberto.
+- Assunto não coberto por esta lista volta à regra geral: reconheça a pergunta e leve a um próximo passo, sem inventar.
+- Estas regras são sobre a IMOBILIÁRIA. Elas não dizem nada sobre o imóvel específico dele, e a proibição de inventar fato do imóvel continua valendo inteira.
+- OBRIGATÓRIO: todo item desta lista que você usar na resposta tem que aparecer em "protocolosUsados", com o título copiado exatamente como está escrito aqui. É por ali que o corretor confere se você afirmou o certo antes de mandar a mensagem — uma resposta que cita valores sem declarar a fonte é uma resposta que ele não tem como conferir. Não usou nenhum, devolva lista vazia.`;
+}
+
+/** Esquema fechado. `strict: true` + additionalProperties:false impede o modelo
+    de devolver explicação, alternativas ou markdown junto.
+
+    `protocolosUsados` não vai para o WhatsApp: é para a TELA mostrar em que o
+    rascunho se apoiou ("baseado em: Taxa de administração"). Sem isso, conferir
+    se a IA afirmou o certo exige reler a base inteira a cada rascunho — e o que
+    não se confere num olhar deixa de ser conferido. */
 export const ESQUEMA_RASCUNHO = {
   type: "object",
   properties: {
@@ -864,8 +932,14 @@ export const ESQUEMA_RASCUNHO = {
       description:
         "A resposta pronta para o corretor enviar ao proprietário no WhatsApp, em português do Brasil.",
     },
+    protocolosUsados: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "Títulos, exatamente como aparecem na lista de regras da imobiliária, dos itens em que esta resposta se apoiou. Lista vazia se a resposta não usou nenhum.",
+    },
   },
-  required: ["mensagem"],
+  required: ["mensagem", "protocolosUsados"],
   additionalProperties: false,
 } as const;
 
@@ -886,6 +960,13 @@ export function promptRascunharResposta(
   nome?: string | null,
   imovelRef?: string | null,
   conversa?: ConversaAnterior,
+  /** As regras da imobiliária. Entram logo depois do PAPEL, e não no fim, de
+      propósito: assim o começo do prompt é IDÊNTICO em toda chamada deste
+      corretor e o cache de entrada da OpenAI pega (a parte cacheada custa dez
+      vezes menos, e `prompt_tokens` já a inclui — ver calculo/custoIa.ts).
+      Intercalado com a mensagem, que muda sempre, o cache não pega e o bloco
+      vira custo cheio em cada rascunho. Há teste fixando esta ordem. */
+  protocolos?: readonly ProtocoloPrompt[],
 ): string {
   const texto = (mensagem || "").trim().slice(0, MAX_TEXTO_RASCUNHO);
   const primeiroNome = (nome || "").trim().split(/\s+/)[0] || "";
@@ -911,8 +992,10 @@ export function promptRascunharResposta(
     .filter(Boolean)
     .join("\n\n");
 
-  return `${PAPEL}
+  const regras = blocoProtocolos(protocolos);
 
+  return `${PAPEL}
+${regras ? `\n${regras}\n` : ""}
 Você já está em conversa com um proprietário sobre a captação do imóvel dele para locação${ref ? ` (${ref})` : ""}. Ele acabou de responder isto no WhatsApp:
 
 """
@@ -924,7 +1007,7 @@ Escreva a resposta que o corretor deve mandar de volta.${primeiroNome ? ` O prop
 Regras:
 - A CONVERSA JÁ ESTÁ ABERTA: você já cumprimentou e já se apresentou, e ele acabou de responder. NÃO comece com saudação ("Olá", "Oi", "Bom dia", "Tudo bem?"), não se apresente de novo, não repita o endereço do imóvel e não refaça a oferta que já foi feita. Emende no que ele disse, como quem continua a conversa. Recomeçar do "olá" faz a mensagem parecer robô e apaga o que já foi conquistado.
 - NUNCA invente fato sobre o imóvel. Você NÃO sabe se tem garagem, se aceita pet, qual o valor exato, se ainda está disponível, nem nenhuma característica. Se a mensagem perguntar algo assim, NÃO responda como se soubesse: reconheça a pergunta e leve para um próximo passo concreto — uma ligação rápida ou uma visita em que o corretor passa os detalhes —, ou peça o dado que falta. Um fato inventado vira uma promessa falsa a uma pessoa real.
-- Nada de promessa de valor, prazo ou resultado ("alugo em 30 dias", "consigo mais"). Você não tem como saber.
+- Nada de promessa de valor, prazo ou resultado ("alugo em 30 dias", "consigo mais"). Você não tem como saber.${regras ? " Regra da imobiliária escrita na lista acima não é promessa: é informação, e pode ser dita." : ""}
 - Tom de WhatsApp: curto, cordial e direto — no máximo um parágrafo de 2 a 4 frases. Termine com uma pergunta ou um convite a um próximo passo, para a conversa andar.
 - Português do Brasil, sem jargão de marketing. No máximo um emoji, e só se combinar com o tom.
 - Escreva SÓ a mensagem: sem aspas em volta, sem "Prezado", sem assinatura formal, sem markdown.`;

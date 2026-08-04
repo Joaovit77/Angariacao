@@ -59,12 +59,18 @@ export default function ModalWhatsapp({
   imovelId,
   modeloInicial,
   textoInicial,
+  protocolosUsados,
 }: {
   imovelId: string;
   modeloInicial?: string;
   /** Mensagem já escrita ao abrir (rascunho da IA). Vira o conteúdo inicial do
       textarea, sem modelo associado — logo, não credita tentativa. */
   textoInicial?: string;
+  /** Títulos dos protocolos da imobiliária em que o rascunho se apoiou. Quando
+      a IA AFIRMA algo (taxa, prazo, multa), é aqui que o corretor confere a
+      fonte antes de enviar — a regra continua sendo "a IA sugere, o corretor
+      confirma", e confirmar sem saber de onde saiu não é confirmar. */
+  protocolosUsados?: string[];
 }) {
   const fecharModal = useUiModal((s) => s.fecharModal);
   const abrirModal = useUiModal((s) => s.abrirModal);
@@ -509,6 +515,20 @@ export default function ModalWhatsapp({
             {abordagemSel && " · o envio entra no ranking desta abordagem"}
           </p>
         </div>
+
+        {/* A FONTE do que a IA afirmou. Só aparece quando ela se apoiou em
+            algum protocolo — sem isso, o rascunho não afirmou nada sobre a
+            imobiliária e não há o que conferir. */}
+        {protocolosUsados && protocolosUsados.length > 0 && (
+          <p className="wpp-selecionado">
+            {/* Separador " · " e não vírgula: título de protocolo tem vírgula
+                dentro ("Avaliação, fotos e divulgação"), e a lista virava uma
+                frase só — exatamente onde o corretor precisa contar quantas
+                fontes a IA usou. */}
+            A IA respondeu usando seus protocolos:{" "}
+            <strong>{protocolosUsados.join(" · ")}</strong> — confira antes de enviar
+          </p>
+        )}
 
         <textarea
           ref={textareaRef}

@@ -3742,3 +3742,50 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
   color: var(--text-dim);
 }
 .conexao-passos strong{ color: var(--text); font-weight: 650; }
+
+/* ============================================================
+   PROTOCOLOS — a grade de assuntos sugeridos
+
+   Classes próprias em vez de reusar `.followup-lista`: aquela é
+   uma lista de seleção dentro de modal, com altura travada em
+   220px e rolagem. Numa página inteira ela escondia metade das
+   sugestões atrás de um scroll — e essa grade É o estado vazio,
+   o único lugar de onde a tela sai do zero. O que precisa
+   convidar não pode estar cortado.
+   ============================================================ */
+.proto-sugestoes{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+}
+.proto-sugestao{
+  display: flex; flex-direction: column; gap: 3px;
+  text-align: left; cursor: pointer;
+  padding: 10px 12px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  transition: border-color .15s ease, background .15s ease;
+}
+.proto-sugestao:hover{
+  background: var(--bg-elev-3);
+  border-color: var(--accent);
+}
+.proto-sugestao-titulo{ font-size: 13px; font-weight: 600; color: var(--text); }
+/* `--text-dim` e não `--text-faint`: medido no tema escuro, o faint dá 3,27:1
+   sobre o fundo do cartão, abaixo do legível. Ele serve para metadado que se
+   ignora (a espera de um item de fila); aqui a linha é a instrução do que
+   escrever naquele protocolo, e é para ela ser lida. O dim dá 5,91:1. */
+.proto-sugestao-ajuda{ font-size: 11.5px; color: var(--text-dim); line-height: 1.4; }
+
+/* Cabeçalho do cartão: assunto à esquerda, ações à direita. */
+.proto-card-topo{
+  display: flex; justify-content: space-between;
+  align-items: baseline; gap: 10px; margin-bottom: 6px;
+}
+.proto-card-acoes{ display: flex; gap: 6px; flex-shrink: 0; }
+.proto-card-texto{ white-space: pre-wrap; }
+/* Arquivado é leitura, não escolha — apagado, como os excluídos do lote. */
+.proto-card.arquivado .proto-card-titulo,
+.proto-card.arquivado .proto-card-texto{ color: var(--text-dim); }

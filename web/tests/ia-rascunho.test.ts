@@ -4,8 +4,11 @@
    garagem, qual o valor, se está disponível. Ver o cabeçalho da seção. */
 import { describe, expect, it } from "vitest";
 import {
+  blocoProtocolos,
   ESQUEMA_RASCUNHO,
   MAX_MENSAGENS_CONTEXTO,
+  MAX_PROTOCOLOS,
+  MAX_PROTOCOLO_CHARS,
   MAX_TEXTO_RASCUNHO,
   promptRascunharResposta,
 } from "@/lib/calculo/ia";
@@ -87,9 +90,101 @@ describe("promptRascunharResposta", () => {
 });
 
 describe("ESQUEMA_RASCUNHO", () => {
-  it("é fechado: um campo só, obrigatório, sem extras", () => {
+  it("é fechado: sem extras, e tudo obrigatório (exigência do strict)", () => {
     expect(ESQUEMA_RASCUNHO.additionalProperties).toBe(false);
-    expect(ESQUEMA_RASCUNHO.required).toEqual(["mensagem"]);
-    expect(Object.keys(ESQUEMA_RASCUNHO.properties)).toEqual(["mensagem"]);
+    expect(ESQUEMA_RASCUNHO.required).toEqual(["mensagem", "protocolosUsados"]);
+    expect(Object.keys(ESQUEMA_RASCUNHO.properties)).toEqual(["mensagem", "protocolosUsados"]);
+  });
+});
+
+/* ==========================================================================
+   PROTOCOLOS DA IMOBILIÁRIA no prompt
+
+   A única fonte que autoriza a IA a AFIRMAR alguma coisa. O que os testes
+   guardam aqui não é formatação: é (a) que sem protocolo nada muda, (b) que a
+   trava contra inventar fato do IMÓVEL sobrevive à chegada deles, e (c) a
+   ORDEM, que é dinheiro — o bloco tem que vir antes da parte variável para o
+   cache de entrada da OpenAI pegar.
+   ========================================================================== */
+describe("promptRascunharResposta com protocolos", () => {
+  const TAXA = { titulo: "Taxa de administração", conteudo: "10% sobre o valor do aluguel." };
+  const PRAZO = { titulo: "Prazo de contrato", conteudo: "Padrão de 30 meses." };
+
+  it("sem protocolo, o prompt sai IDÊNTICO ao de antes da feature", () => {
+    const semNada = promptRascunharResposta("Quanto vocês cobram?", "Marta", "Rua A, 1");
+    expect(promptRascunharResposta("Quanto vocês cobram?", "Marta", "Rua A, 1", undefined, [])).toBe(semNada);
+    expect(semNada).not.toContain("REGRAS DA IMOBILIÁRIA");
+  });
+
+  it("inclui título e conteúdo dos protocolos informados", () => {
+    const prompt = promptRascunharResposta("Quanto é a taxa?", null, null, undefined, [TAXA, PRAZO]);
+    expect(prompt).toContain("Taxa de administração");
+    expect(prompt).toContain("10% sobre o valor do aluguel.");
+    expect(prompt).toContain("Prazo de contrato");
+  });
+
+  it("descarta protocolo sem título ou sem conteúdo", () => {
+    const prompt = promptRascunharResposta("Oi", null, null, undefined, [
+      { titulo: "Sem resposta escrita", conteudo: "   " },
+      { titulo: "  ", conteudo: "órfão de título" },
+      TAXA,
+    ]);
+    expect(prompt).not.toContain("Sem resposta escrita");
+    expect(prompt).not.toContain("órfão de título");
+    expect(prompt).toContain("Taxa de administração");
+  });
+
+  it("trunca por quantidade e por tamanho", () => {
+    const muitos = Array.from({ length: MAX_PROTOCOLOS + 3 }, (_, i) => ({
+      titulo: `P${i}`,
+      conteudo: "x".repeat(MAX_PROTOCOLO_CHARS + 50),
+    }));
+    const prompt = promptRascunharResposta("Oi", null, null, undefined, muitos);
+    expect(prompt).toContain("P0");
+    expect(prompt).not.toContain(`P${MAX_PROTOCOLOS}`);
+    expect(prompt).not.toContain("x".repeat(MAX_PROTOCOLO_CHARS + 1));
+  });
+
+  /* A regra que impede a base de virar licença para inventar. Protocolo é sobre
+     a EMPRESA; garagem, pet e o condomínio daquele apartamento continuam fora
+     do que a IA pode afirmar, e nada disso é derivável dos protocolos. */
+  it("mantém a proibição de inventar fato do imóvel mesmo com protocolos", () => {
+    const prompt = promptRascunharResposta("Tem garagem?", null, null, undefined, [TAXA]);
+    expect(prompt).toContain("NUNCA invente fato sobre o imóvel");
+    expect(prompt).toContain("NÃO DEDUZA e NÃO COMBINE");
+  });
+
+  /* Ordem = custo. O começo do prompt precisa ser idêntico em toda chamada
+     deste corretor para o cache de entrada valer (a parte cacheada custa dez
+     vezes menos). Com o bloco depois da mensagem, que muda sempre, o cache não
+     pega e ele vira custo cheio em cada rascunho. */
+  it("põe os protocolos ANTES da mensagem do proprietário", () => {
+    const prompt = promptRascunharResposta("Quanto é a taxa?", null, null, undefined, [TAXA]);
+    expect(prompt.indexOf("REGRAS DA IMOBILIÁRIA")).toBeLessThan(prompt.indexOf("Quanto é a taxa?"));
+  });
+});
+
+describe("blocoProtocolos", () => {
+  it("devolve vazio quando não há nada utilizável", () => {
+    expect(blocoProtocolos()).toBe("");
+    expect(blocoProtocolos([])).toBe("");
+    expect(blocoProtocolos([{ titulo: " ", conteudo: " " }])).toBe("");
+  });
+
+  it("manda responder de verdade em vez de empurrar para ligação", () => {
+    const bloco = blocoProtocolos([{ titulo: "Exclusividade", conteudo: "Não exigimos." }]);
+    expect(bloco).toContain("responda de verdade");
+  });
+
+  /* A declaração da fonte precisa estar no PROMPT, não só na descrição do
+     esquema. Testado contra a carteira real em 04/08/2026: com a instrução
+     apenas no esquema, o modelo devolveu `protocolosUsados` vazio numa resposta
+     que citava três protocolos (LD-161) — o corretor via um rascunho afirmando
+     "10%" e "sem exclusividade" sem nenhuma fonte na tela, que é pior do que
+     não ter atribuição, porque parece invenção da IA. */
+  it("manda declarar em protocolosUsados o que foi usado", () => {
+    const bloco = blocoProtocolos([{ titulo: "Exclusividade", conteudo: "Não exigimos." }]);
+    expect(bloco).toContain("protocolosUsados");
+    expect(bloco).toContain("OBRIGATÓRIO");
   });
 });

@@ -37,6 +37,10 @@ export interface ResultadoRascunho {
   mensagem?: string;
   /** O texto sugerido para responder ao proprietário (quando ok=true). */
   rascunho?: string;
+  /** Títulos dos protocolos da imobiliária em que o rascunho se apoiou, já
+      filtrados pela rota contra os que existem de verdade. Serve para o
+      corretor conferir a FONTE do que a IA afirmou sem reler a base inteira. */
+  protocolosUsados?: string[];
 }
 
 async function chamar<T>(corpo: unknown): Promise<T | { ok: false; falha: FalhaIa }> {

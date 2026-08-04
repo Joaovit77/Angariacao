@@ -53,6 +53,28 @@ export interface Abordagem {
   arquivada: boolean;
 }
 
+/** Uma regra da IMOBILIÁRIA, escrita pelo corretor: taxa de administração,
+    prazo de contrato, multa de rescisão, quem paga o quê, exclusividade.
+
+    É a fonte de verdade que o rascunho de resposta por IA consulta para poder
+    AFIRMAR alguma coisa. Sem ela o rascunho só sabe empurrar para uma ligação,
+    porque o prompt o proíbe de afirmar qualquer fato (ver
+    promptRascunharResposta em calculo/ia.ts).
+
+    Não confundir com fato do IMÓVEL (garagem, pet, o condomínio daquele
+    apartamento): aquilo varia por imóvel, o painel não tem o dado, e continua
+    proibido à IA. Protocolo é o que vale igual para todo proprietário. */
+export interface Protocolo {
+  id: string;
+  /** O assunto, como o proprietário perguntaria ("Taxa de administração"). */
+  titulo: string;
+  /** A resposta, em linguagem que pode ir para o WhatsApp. */
+  conteudo: string;
+  /** Arquivado: sai do prompt e da tela, sem perder o texto — a taxa que mudou
+      este ano ainda descreve o contrato assinado no ano passado. */
+  arquivado: boolean;
+}
+
 /** Uma tentativa de contato com o proprietário de um imóvel. */
 export interface Tentativa {
   id: string;

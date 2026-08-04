@@ -39,6 +39,11 @@ export interface ModalAtivo {
       livre e editável. Quando presente, o modal não credita tentativa (é
       resposta a uma conversa aberta, não contato de captação). */
   textoWhatsapp?: string;
+  /** Títulos dos protocolos da imobiliária em que o rascunho da IA se apoiou.
+      Fica na tela, junto do texto, para o corretor conferir a FONTE do que a
+      IA afirmou antes de mandar — o que não se confere num olhar deixa de ser
+      conferido. Vazio quando o rascunho não usou nenhum. */
+  protocolosWhatsapp?: string[];
   /** Imóvel pré-vinculado ao abrir o modal "agenda" em modo criação
       (ex.: "agendar próximo passo" na Início). Ignorado ao editar. */
   imovelIdRelacionado?: string;
@@ -55,7 +60,7 @@ interface UiModal {
   /** Abre o modal de WhatsApp já com um rascunho (ex.: a resposta sugerida
       pela IA na caixa de respostas). Ação própria em vez de mais um parâmetro
       posicional no `abrirModal` — o texto é whatsapp-específico. */
-  abrirWhatsappRascunho: (imovelId: string, texto: string) => void;
+  abrirWhatsappRascunho: (imovelId: string, texto: string, protocolos?: string[]) => void;
   fecharModal: () => void;
 }
 
@@ -63,7 +68,7 @@ export const useUiModal = create<UiModal>((set) => ({
   modal: null,
   abrirModal: (tipo, id, modeloWhatsapp, imovelIdRelacionado) =>
     set({ modal: { tipo, id, modeloWhatsapp, imovelIdRelacionado } }),
-  abrirWhatsappRascunho: (imovelId, texto) =>
-    set({ modal: { tipo: "whatsapp", id: imovelId, textoWhatsapp: texto } }),
+  abrirWhatsappRascunho: (imovelId, texto, protocolos) =>
+    set({ modal: { tipo: "whatsapp", id: imovelId, textoWhatsapp: texto, protocolosWhatsapp: protocolos } }),
   fecharModal: () => set({ modal: null }),
 }));
