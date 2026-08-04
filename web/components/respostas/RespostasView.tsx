@@ -19,7 +19,7 @@ import { useMemo, useState } from "react";
 import type { LinhaResposta } from "@/lib/calculo/respostas";
 import { caixaDeRespostas } from "@/lib/calculo/respostas";
 import { corpoDaResposta } from "@/lib/calculo/notas";
-import { modeloPadraoWhatsapp, rotuloModeloWhatsapp, sugestaoRespostaModelo } from "@/lib/calculo/whatsapp";
+import { rotuloModeloWhatsapp, sugestaoRespostaModelo } from "@/lib/calculo/whatsapp";
 import { todayISO } from "@/lib/datas";
 import { rascunharResposta } from "@/lib/ia";
 import { marcarRespostasLidas, marcarTodasRespostasLidas, recarregarEstado } from "@/lib/mutacoes";
@@ -77,10 +77,20 @@ function Linha({ linha, imovel }: { linha: LinhaResposta; imovel: Imovel }) {
 
   const anteriores = linha.total - 1;
 
-  // Sugestão de resposta conforme a última mensagem classificada (camada 1, sem
-  // IA nova): quando existe, o botão abre o WhatsApp já com a réplica escrita —
-  // o corretor só confere e envia. Sem classificação (ou "respondeu" genérico),
-  // cai no modelo por etapa do funil, como antes.
+  /* Sugestão de resposta conforme a última mensagem classificada (camada 1, sem
+     IA nova): quando existe, o botão abre o WhatsApp já com a réplica escrita —
+     o corretor só confere e envia.
+
+     Sem classificação, ele abre EM BRANCO — e não mais no modelo por etapa do
+     funil. Aquele padrão vinha do Pipeline, onde a conversa pode nem ter
+     começado; aqui ela sempre começou, porque a linha só existe porque a pessoa
+     escreveu. O resultado era o app propondo abertura no meio de conversa viva:
+     em "Angariado" saía "Olá, Fulano! Tudo bem?" seguido do início da
+     divulgação (no LD-156, com 74 mensagens trocadas), e em "Perdido"/"Sem
+     resposta" saía "Tentei falar com você há alguns dias, mas não consegui
+     retorno" para quem tinha acabado de responder. Medido em 04/08/2026: 9 dos
+     32 imóveis com resposta caíam nisso. O seletor continua ali dentro para
+     quem quiser um modelo — o que sai é o palpite errado por padrão. */
   const modeloSugerido = sugestaoRespostaModelo(imovel);
   const rotuloSugerido = modeloSugerido
     ? rotuloModeloWhatsapp(modeloSugerido).replace(/^Resposta:\s*/, "")
@@ -189,7 +199,11 @@ function Linha({ linha, imovel }: { linha: LinhaResposta; imovel: Imovel }) {
             className="btn btn-sm btn-primary"
             title={modeloSugerido ? `Abre a resposta já escrita: ${rotuloSugerido}` : undefined}
             onClick={() =>
-              abrirModal("whatsapp", imovel.id, modeloSugerido || modeloPadraoWhatsapp(imovel.status))
+              modeloSugerido
+                ? abrirModal("whatsapp", imovel.id, modeloSugerido)
+                : // Em branco: o texto livre nasce sem modelo, então também não
+                  // credita tentativa — responder não é contato de captação.
+                  abrirWhatsappRascunho(imovel.id, "")
             }
           >
             {modeloSugerido ? "💬 Responder (sugestão)" : "💬 Responder"}

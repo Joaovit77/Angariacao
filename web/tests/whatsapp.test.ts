@@ -219,6 +219,44 @@ describe("sugestaoRespostaModelo", () => {
     expect(msg).not.toContain("Marta");
     expect(msg).not.toContain("Haddock");
   });
+
+  /* --- Nenhuma réplica cumprimenta ----------------------------------------
+     O corretor apontou no LD-185 (04/08/2026): depois de cinco mensagens
+     trocadas no mesmo dia, a réplica sugerida abria com "Olá, Johann Diego
+     Lima dos Santos!". Quem responde emenda no que a pessoa disse — saudação
+     no meio de conversa viva é a marca do robô que não leu nada. */
+  const REPLICAS = [
+    "resposta-encerramento",
+    "resposta-aguardo",
+    "resposta-agendamento",
+    "resposta-engano",
+    "resposta-outro-contato",
+  ];
+
+  it("nenhuma réplica começa com saudação", () => {
+    for (const id of REPLICAS) {
+      const msg = mensagemWhatsapp(id, base);
+      expect(msg).not.toMatch(/^(Olá|Oi|Bom dia|Boa tarde|Boa noite)/i);
+      expect(msg).not.toContain("Tudo bem?");
+    }
+  });
+
+  it("o vocativo usa só o PRIMEIRO nome, não o nome do cadastro inteiro", () => {
+    const nomeInteiro = { ...base, proprietarioNome: "Johann Diego Lima dos Santos" };
+    const msg = mensagemWhatsapp("resposta-aguardo", nomeInteiro);
+    expect(msg).toContain("Johann");
+    expect(msg).not.toContain("Johann Diego Lima dos Santos");
+  });
+
+  it("sem nome cadastrado, a frase fecha sem vocativo solto", () => {
+    const semNome = { ...base, proprietarioNome: "" };
+    for (const id of REPLICAS) {
+      const msg = mensagemWhatsapp(id, semNome);
+      // O bug clássico do vocativo opcional: "Combinado, , fico no aguardo".
+      expect(msg).not.toContain(", ,");
+      expect(msg).not.toMatch(/,\s*!/);
+    }
+  });
 });
 
 describe("modelos personalizados do usuário", () => {
