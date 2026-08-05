@@ -94,6 +94,15 @@ alter table imoveis add column if not exists importado boolean not null default 
 -- importação e sai do Pipeline ativo — ver PipelineViewMode "retirados".
 alter table imoveis add column if not exists retirado boolean not null default false;
 
+-- Valor cobrado quando o aluguel ATRASA: o anunciado mais o acréscimo da
+-- campanha. Não substitui `valor_aluguel`, que é o que o proprietário quer
+-- receber e o que vai ao anúncio — o CRM exporta o valor cheio e foi assim
+-- que 147 imóveis entraram com o valor errado na coluna errada.
+-- É guardado, e não derivado por ×1,2, porque o percentual varia (medido:
+-- 20% em 278 de 279, e 21,6% em um). Só a solicitação de recebimento de
+-- angariação usa este valor.
+alter table imoveis add column if not exists valor_aluguel_atraso numeric;
+
 -- Tentativas de abordagem: cada contato feito com o proprietário, com o roteiro
 -- usado (abordagem_id -> tabela `abordagens`), o canal e o resultado. Mesmo
 -- padrão de `notas`: jsonb na própria linha, herdando o RLS do imóvel.

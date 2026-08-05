@@ -18,6 +18,7 @@ import {
   ordenarPipelineLista,
   pipelineColDistinct,
   pipelineUniqueSorted,
+  temTelefone,
   type PipelineCol,
 } from "@/lib/calculo/filtros";
 import { daysInCurrentStatus, diasSemMovimento, isPausado, isStale } from "@/lib/calculo/motor";
@@ -38,6 +39,23 @@ import ColunaFiltro from "./ColunaFiltro";
     (a ref do CRM) ficaria escondida no cadastro. */
 function codigoExibido(i: Imovel): string {
   return (i.codigo || "").trim() || (i.referenciaCrm || "").trim();
+}
+
+/** Diz, de relance, se dá para falar com o proprietário deste imóvel.
+    Sem número não há WhatsApp, follow-up nem lote de disponibilidade — o
+    imóvel ocupa linha e não pode ser tocado —, e até aqui isso só se
+    descobria abrindo o cadastro. O título leva o número quando existe,
+    para conferir sem abrir nada. */
+function SeloTelefone({ imovel }: { imovel: Imovel }) {
+  const tem = temTelefone(imovel);
+  return (
+    <span
+      className={`selo-telefone ${tem ? "tem" : "nao-tem"}`}
+      title={tem ? `Telefone cadastrado: ${imovel.proprietarioTelefone}` : "Sem telefone do proprietário"}
+    >
+      {tem ? "✆ cadastrado" : "sem número"}
+    </span>
+  );
 }
 
 /** Abre o compositor de WhatsApp do imóvel já no modelo pedido. É o
@@ -96,6 +114,7 @@ function CartaoKanban({ i, color, aoAbrir }: { i: Imovel; color: string; aoAbrir
       <div className="kanban-card-code">
         {codigoExibido(i) || "s/ código"}
         {i.preCadastro && <span className="pre-cadastro-flag">pré-cadastro</span>}
+        <SeloTelefone imovel={i} />
       </div>
       <div className="kanban-card-addr">
         {i.endereco}
@@ -211,10 +230,13 @@ function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
           <tr>
             <HeaderCodigo />
             <th>Endereço</th>
+            <ColunaFiltro col="unidade" distintos={distintos("unidade")} />
+            <ColunaFiltro col="bloco" distintos={distintos("bloco")} />
             <ColunaFiltro col="bairro" distintos={distintos("bairro")} />
             <ColunaFiltro col="tipo" distintos={distintos("tipo")} />
             <ColunaFiltro col="origem" distintos={distintos("origem")} />
-            <th>Aluguel</th>
+            <ColunaFiltro col="telefone" distintos={distintos("telefone")} />
+            <th className="col-aluguel">Aluguel</th>
             <ColunaFiltro col="status" distintos={distintos("status")} />
             <th>Cadastro</th>
             <ColunaFiltro col="captador" distintos={distintos("captador")} />
@@ -233,10 +255,15 @@ function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
                 {i.preCadastro && <span className="pre-cadastro-flag">pré-cadastro</span>}
               </td>
               <td>{i.endereco || "-"}</td>
+              <td className="cell-unidade">{i.unidade || "-"}</td>
+              <td className="cell-unidade">{i.bloco || "-"}</td>
               <td className="cell-dim">{i.bairro || "-"}</td>
               <td className="cell-dim">{i.tipo || "-"}</td>
               <td className="cell-dim">{i.origemImovel || "-"}</td>
-              <td>{fmtMoney(i.valorAluguel)}</td>
+              <td className="cell-telefone">
+                <SeloTelefone imovel={i} />
+              </td>
+              <td className="col-aluguel">{fmtMoney(i.valorAluguel)}</td>
               <td>
                 <span className="badge" data-status={i.status}>
                   <span className="dot"></span>

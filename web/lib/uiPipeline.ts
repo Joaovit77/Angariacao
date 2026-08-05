@@ -81,6 +81,9 @@ export const usePipelineUi = create<PipelineUi>((set, get) => ({
         origem: [...s.colFilters.origem],
         status: [...s.colFilters.status],
         captador: [...s.colFilters.captador],
+        telefone: [...s.colFilters.telefone],
+        unidade: [...s.colFilters.unidade],
+        bloco: [...s.colFilters.bloco],
       };
       for (const [campo, col] of mapa) {
         const valor = (filters[campo] || "").trim();

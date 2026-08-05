@@ -5,7 +5,8 @@
 import { describe, it, expect } from "vitest";
 import {
   filtrarImoveis, filtrosPipelineVazios, ordenarPipelineLista, pipelineColFiltersVazios,
-  pipelineColDistinct, pipelineUniqueSorted,
+  pipelineColDistinct, pipelineUniqueSorted, temTelefone, semAcento, PIPELINE_COL_EMPTY,
+  PIPELINE_COL_ACCESSOR, TELEFONE_COM, TELEFONE_SEM,
   type FiltrosPipeline, type PipelineColFilters, type PipelineViewMode,
 } from "@/lib/calculo/filtros";
 import type { Imovel } from "@/lib/tipos";
@@ -132,5 +133,113 @@ describe("aba Retirados", () => {
       pipelineColFiltersVazios(),
     );
     expect(r.map((i) => i.id)).toEqual(["ou"]);
+  });
+});
+
+/* ---------------------------------------------------------------
+   COLUNA TELEFONE
+   Sem número não há WhatsApp, follow-up nem lote de disponibilidade — o
+   imóvel ocupa linha e não pode ser tocado. A coluna existe para isso
+   aparecer sem abrir o cadastro, e para dar pra filtrar por ele.
+   --------------------------------------------------------------- */
+describe("coluna Telefone", () => {
+  const com = { id: "c", endereco: "Rua A, 1", status: "Angariado", proprietarioTelefone: "(43) 99999-0000" } as Imovel;
+  const sem = { id: "s", endereco: "Rua B, 2", status: "Angariado" } as Imovel;
+  const branco = { id: "b", endereco: "Rua C, 3", status: "Angariado", proprietarioTelefone: "   " } as Imovel;
+
+  it("classifica pelos dois rótulos, nunca em branco", () => {
+    const acc = PIPELINE_COL_ACCESSOR.telefone;
+    expect(acc(com)).toBe(TELEFONE_COM);
+    expect(acc(sem)).toBe(TELEFONE_SEM);
+    // string só de espaços é ausência, não número
+    expect(acc(branco)).toBe(TELEFONE_SEM);
+  });
+
+  it("filtra por ter ou não ter", () => {
+    const filtra = (valores: string[]) =>
+      filtrarImoveis(
+        [com, sem, branco],
+        filtrosPipelineVazios(),
+        "lista",
+        { ...pipelineColFiltersVazios(), telefone: valores },
+      ).map((i) => i.id);
+
+    expect(filtra([TELEFONE_COM])).toEqual(["c"]);
+    expect(filtra([TELEFONE_SEM])).toEqual(["s", "b"]);
+    expect(filtra([])).toEqual(["c", "s", "b"]);
+  });
+
+  it("temTelefone não confunde espaço com número", () => {
+    expect(temTelefone(com)).toBe(true);
+    expect(temTelefone(sem)).toBe(false);
+    expect(temTelefone(branco)).toBe(false);
+  });
+});
+
+
+/* ---------------------------------------------------------------
+   BUSCA INSENSÍVEL A ACENTO
+   "Jose" tem que achar "José". A normalização é só da PESQUISA — o
+   cadastro continua guardando e exibindo "Rua José Francisco Pereira".
+   --------------------------------------------------------------- */
+describe("busca sem acento", () => {
+  const jose = { id: "j", endereco: "Rua José Francisco Pereira, 800", status: "Angariado" } as Imovel;
+  const joao = { id: "a", endereco: "Avenida João Miguel Caram, 1250", status: "Angariado",
+                 proprietarioNome: "Júlia Andrade" } as Imovel;
+  const busca = (termo: string) =>
+    filtrarImoveis([jose, joao], { ...filtrosPipelineVazios(), search: termo }, "lista",
+      pipelineColFiltersVazios()).map((i) => i.id);
+
+  it("acha com e sem acento", () => {
+    expect(busca("José")).toEqual(["j"]);
+    expect(busca("Jose")).toEqual(["j"]);
+    expect(busca("João")).toEqual(["a"]);
+    expect(busca("Joao")).toEqual(["a"]);
+    expect(busca("Júlia")).toEqual(["a"]);
+    expect(busca("Julia")).toEqual(["a"]);
+  });
+
+  it("continua ignorando maiúscula/minúscula", () => {
+    for (const t of ["JOSE", "jose", "JoSe", "JOSÉ"]) expect(busca(t)).toEqual(["j"]);
+  });
+
+  it("não altera o dado cadastrado — só a pesquisa normaliza", () => {
+    expect(jose.endereco).toBe("Rua José Francisco Pereira, 800");
+    expect(semAcento("Rua José Francisco Pereira")).toBe("rua jose francisco pereira");
+  });
+});
+
+/* ---------------------------------------------------------------
+   FILTROS DE APARTAMENTO E BLOCO
+   A carteira dela é cheia de apartamento: sem estes filtros a Lista
+   mostra dezenas de linhas iguais do mesmo prédio.
+   --------------------------------------------------------------- */
+describe("filtros de apartamento e bloco", () => {
+  const ap101 = { id: "a1", endereco: "Rua André Gallo, 101", unidade: "101", bloco: "04", status: "Angariado" } as Imovel;
+  const ap202 = { id: "a2", endereco: "Rua André Gallo, 101", unidade: "202", bloco: "04", status: "Angariado" } as Imovel;
+  const casa = { id: "c", endereco: "Rua Butiá, 77", status: "Angariado" } as Imovel;
+  const todos = [ap101, ap202, casa];
+  const filtra = (col: "unidade" | "bloco", valores: string[]) =>
+    filtrarImoveis(todos, filtrosPipelineVazios(), "lista",
+      { ...pipelineColFiltersVazios(), [col]: valores }).map((i) => i.id);
+
+  it("reusa os campos que já existem no cadastro", () => {
+    expect(PIPELINE_COL_ACCESSOR.unidade(ap101)).toBe("101");
+    expect(PIPELINE_COL_ACCESSOR.bloco(ap101)).toBe("04");
+  });
+
+  it("filtra por apartamento", () => {
+    expect(filtra("unidade", ["202"])).toEqual(["a2"]);
+  });
+
+  it("filtra por bloco", () => {
+    expect(filtra("bloco", ["04"])).toEqual(["a1", "a2"]);
+  });
+
+  it("quem não tem unidade dá para filtrar pelo vazio", () => {
+    // O valor do filtro é "" — `PIPELINE_COL_EMPTY` é só o rótulo que a tela
+    // exibe no menu. Mesma convenção da coluna Bairro.
+    expect(filtra("unidade", [""])).toEqual(["c"]);
+    expect(PIPELINE_COL_EMPTY).toBe("(vazio)");
   });
 });

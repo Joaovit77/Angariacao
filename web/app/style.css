@@ -1544,6 +1544,58 @@ tbody tr:last-child td{ border-bottom:none; }
 .view-toggle{ display:flex; border:1px solid var(--border); border-radius: var(--radius-sm); overflow:hidden; }
 .view-toggle button{ border:none; background:var(--bg-elev-2); color:var(--text-dim); padding:7px 12px; font-size:12px; font-weight:600; }
 .view-toggle button.active{ background: var(--accent-soft); color: var(--accent-strong); }
+/* LARGURAS DA LISTA DO PIPELINE
+   O problema que isto resolve: com a tabela distribuindo espaço sozinha, o
+   selo de telefone (curto) recebia a mesma faixa larga do Aluguel e o valor
+   parecia pertencer à coluna errada. Fixar o que tem tamanho previsível —
+   código, ap., bloco, telefone, aluguel, cadastro — e deixar a sobra para
+   endereço e bairro, que é onde o texto varia. */
+.pipeline-list-card table{ table-layout: fixed; width:100%; min-width: 1180px; }
+.pipeline-list-card th, .pipeline-list-card td{ overflow:hidden; text-overflow:ellipsis; }
+/* O `min-width` acima com o `auto` do Endereço é o par que importa: as demais
+   somam ~940px, então o endereço fica com toda a sobra e nunca abaixo de
+   ~240px. Sem o min-width, numa janela estreita a soma das fixas engolia a
+   coluna inteira e o endereço saía com 86px — mais estreito que o Bairro,
+   sendo o texto mais longo da linha. Abaixo disso a tabela rola na
+   horizontal (`.table-scroll`), que é melhor que truncar o endereço. */
+.pipeline-list-card th:nth-child(1),  .pipeline-list-card td:nth-child(1){ width: 84px; }   /* Código */
+.pipeline-list-card th:nth-child(2),  .pipeline-list-card td:nth-child(2){ width: auto; }   /* Endereço */
+.pipeline-list-card th:nth-child(3),  .pipeline-list-card td:nth-child(3){ width: 56px; }   /* Ap. */
+.pipeline-list-card th:nth-child(4),  .pipeline-list-card td:nth-child(4){ width: 58px; }   /* Bloco */
+.pipeline-list-card th:nth-child(5),  .pipeline-list-card td:nth-child(5){ width: 128px; }  /* Bairro */
+.pipeline-list-card th:nth-child(6),  .pipeline-list-card td:nth-child(6){ width: 96px; }   /* Tipo */
+.pipeline-list-card th:nth-child(7),  .pipeline-list-card td:nth-child(7){ width: 96px; }   /* Origem */
+.pipeline-list-card th:nth-child(8),  .pipeline-list-card td:nth-child(8){ width: 112px; }  /* Telefone */
+.pipeline-list-card th:nth-child(9),  .pipeline-list-card td:nth-child(9){ width: 100px; }  /* Aluguel */
+.pipeline-list-card th:nth-child(10), .pipeline-list-card td:nth-child(10){ width: 132px; } /* Status */
+.pipeline-list-card th:nth-child(11), .pipeline-list-card td:nth-child(11){ width: 92px; }  /* Cadastro */
+.pipeline-list-card th:nth-child(12), .pipeline-list-card td:nth-child(12){ width: 96px; }  /* Captador */
+.pipeline-list-card th:nth-child(13), .pipeline-list-card td:nth-child(13){ width: 78px; }  /* ações */
+
+/* Dinheiro à direita: alinhado à esquerda, "R$ 960" e "R$ 1.920" não formam
+   coluna e o olho não compara. O cabeçalho acompanha, senão o título fica
+   de um lado e o número do outro — que é a queixa. */
+.pipeline-list-card th.col-aluguel, .pipeline-list-card td.col-aluguel{ text-align:right; }
+.pipeline-list-card th.col-aluguel .th-filter-inner{ justify-content:flex-end; }
+.cell-unidade{ text-align:center; color: var(--text-dim); }
+.cell-telefone{ white-space:nowrap; }
+
+/* Selo "tem telefone?" na Lista e no card do Kanban. Cor por token e fundo
+   derivado por color-mix — nenhum literal, para os dois temas (ver "Cor
+   sempre por token" no CLAUDE.md). */
+.selo-telefone{
+  display:inline-block;
+  padding:2px 7px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:600;
+  white-space:nowrap;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+.selo-telefone.tem{ color: var(--good); }
+.selo-telefone.nao-tem{ color: var(--text-dim); }
+.kanban-card-code .selo-telefone{ margin-left:6px; font-weight:500; }
+
 /* Contador da aba Retirados. Cor por currentColor para acompanhar o estado
    ativo do botão sem declarar a paleta duas vezes (ver "Cor sempre por
    token" no CLAUDE.md). */

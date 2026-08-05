@@ -58,6 +58,7 @@ export interface DbImovelRow {
   pre_cadastro: boolean | null;
   importado: boolean | null;
   retirado: boolean | null;
+  valor_aluguel_atraso: number | null;
   imovel_principal_id: string | null;
   created_at?: string;
   updated_at?: string;
@@ -142,6 +143,10 @@ export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "create
     vagas: i.vagas ?? null,
     valor_aluguel: i.valorAluguel || 0,
     valor_condominio: i.valorCondominio || 0,
+    // `?? null` e não `|| null`: sem valor de atraso é ausência de dado, e o
+    // 0 do `valor_aluguel` acima existe por herança do app antigo. Aqui um
+    // zero significaria "cobra zero no atraso", que é diferente de "não sei".
+    valor_aluguel_atraso: i.valorAluguelAtraso ?? null,
     proprietario_nome: i.proprietarioNome || null,
     proprietario_telefone: i.proprietarioTelefone || null,
     forma_abordagem: i.formaAbordagem || null,
@@ -190,6 +195,8 @@ export function fromDbImovel(r: DbImovelRow): Imovel {
     vagas: r.vagas,
     valorAluguel: Number(r.valor_aluguel) || 0,
     valorCondominio: Number(r.valor_condominio) || 0,
+    // Preserva o null: "não informado" e "zero" são coisas diferentes aqui.
+    valorAluguelAtraso: r.valor_aluguel_atraso == null ? null : Number(r.valor_aluguel_atraso),
     proprietarioNome: r.proprietario_nome || "",
     proprietarioTelefone: r.proprietario_telefone || "",
     formaAbordagem: r.forma_abordagem || "",

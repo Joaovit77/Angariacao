@@ -103,6 +103,9 @@ export default function ModalImovel({ id }: { id?: string }) {
   const [valorCondominio, setValorCondominio] = useState(
     imovel?.valorCondominio != null ? String(imovel.valorCondominio) : "",
   );
+  const [valorAluguelAtraso, setValorAluguelAtraso] = useState(
+    imovel?.valorAluguelAtraso != null ? String(imovel.valorAluguelAtraso) : "",
+  );
   // Sem padrão: um imóvel novo nasce SEM origem, e não "Placa no imóvel" só por
   // ser o primeiro item da lista. O ranking de canais lê este campo — chutar a
   // origem enche a leitura de imóveis que ninguém disse de onde vieram, e o
@@ -344,6 +347,9 @@ export default function ModalImovel({ id }: { id?: string }) {
       vagas: numOrNull(vagas),
       valorAluguel: numOrNull(valorAluguel) || 0,
       valorCondominio: numOrNull(valorCondominio) || 0,
+      // Sem `|| 0`: campo em branco é "não informado", e a solicitação de
+      // angariação precisa distinguir isso de "cobra zero no atraso".
+      valorAluguelAtraso: numOrNull(valorAluguelAtraso),
       // Rede: o blur cobre o caminho normal, mas salvar sem tirar o foco do
       // campo (Enter) o pularia. Idempotente, então não desfaz correção manual.
       proprietarioNome: nomeProprio(proprietarioNome),
@@ -538,10 +544,22 @@ export default function ModalImovel({ id }: { id?: string }) {
             <div className="field-group">
               <label>Valor do aluguel (R$)</label>
               <input type="number" min="0" step="0.01" value={valorAluguel} onChange={(e) => setValorAluguel(e.target.value)} />
+              <div className="field-hint">O que o proprietário quer receber — é este que vai ao anúncio.</div>
             </div>
             <div className="field-group">
               <label>Valor do condomínio (R$)</label>
               <input type="number" min="0" step="0.01" value={valorCondominio} onChange={(e) => setValorCondominio(e.target.value)} />
+            </div>
+          </div>
+          <div className="field-group">
+            <label>Valor em caso de atraso (R$)</label>
+            <input type="number" min="0" step="0.01" value={valorAluguelAtraso} onChange={(e) => setValorAluguelAtraso(e.target.value)} />
+            {/* Existe porque é a base da SOLICITAÇÃO de angariação, não do
+                anúncio. Deixar em branco não quebra nada: a solicitação cai
+                no valor do aluguel. */}
+            <div className="field-hint">
+              Aluguel mais o acréscimo da campanha. É sobre ele que a solicitação de angariação
+              calcula a comissão. Em branco, ela usa o valor do aluguel.
             </div>
           </div>
           <div className="field-group">

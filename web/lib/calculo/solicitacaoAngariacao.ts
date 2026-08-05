@@ -70,7 +70,21 @@ export interface CamposSolicitacao {
   corretor: string;
   /** Endereço com unidade e bloco (`enderecoComUnidade`). */
   endereco: string;
-  valorAluguel: number | null;
+  /**
+   * O valor sobre o qual a angariação é calculada — e ele NÃO é o aluguel
+   * anunciado.
+   *
+   * A imobiliária cobra a angariação sobre o valor COM o acréscimo de atraso
+   * (`valorAluguelAtraso`), não sobre o que o proprietário recebe. No imóvel
+   * da Rua José Francisco Pereira, 800, o anúncio é R$ 1.600,00 e a
+   * solicitação diz "R$ 1.920,00 – 20% R$ 384,00". São duas contas
+   * diferentes sobre o mesmo contrato, e confundi-las erra o pedido de
+   * pagamento em 20%.
+   *
+   * Cai no aluguel anunciado quando não há valor de atraso gravado — imóvel
+   * cadastrado à mão, fora da campanha, em que os dois valores são o mesmo.
+   */
+  valorBase: number | null;
   /** % sobre um aluguel (40 = 40% de um mês). */
   comissaoPercent: number;
   /** Data ISO em que a imobiliária recebe o 1º aluguel. */
@@ -114,8 +128,17 @@ export function referenciaInquilino(refProprietario: string, n: number): string 
 /** Comissão em reais. null quando não há aluguel — o documento mostra o campo
     vazio em vez de "R$ 0,00", que num pedido de pagamento é um valor afirmado. */
 export function comissaoDaSolicitacao(campos: CamposSolicitacao): number | null {
-  if (campos.valorAluguel == null || isNaN(campos.valorAluguel)) return null;
-  return campos.valorAluguel * (campos.comissaoPercent / 100);
+  if (campos.valorBase == null || isNaN(campos.valorBase)) return null;
+  return campos.valorBase * (campos.comissaoPercent / 100);
+}
+
+/** O valor que a solicitação usa: o de atraso quando existe, senão o
+    anunciado. Fica numa função só para o documento, a prévia da tela e o
+    .docx não poderem discordar sobre qual dos dois é. */
+export function valorBaseDaSolicitacao(imovel: Imovel): number | null {
+  const atraso = imovel.valorAluguelAtraso;
+  if (atraso != null && !isNaN(atraso) && atraso > 0) return atraso;
+  return imovel.valorAluguel ?? null;
 }
 
 /** "2026-08-15" → "15/08". Manipulação de string, nunca `new Date` (ver
@@ -144,7 +167,7 @@ export function solicitacaoInicial(
     refInquilino: referenciaInquilino(refProprietario, numeroLocacao(imovel)),
     corretor: (imovel.responsavel || corretorPadrao || "").trim(),
     endereco: enderecoComUnidade(imovel),
-    valorAluguel: imovel.valorAluguel ?? null,
+    valorBase: valorBaseDaSolicitacao(imovel),
     comissaoPercent: config.comissaoPercent,
     dataPrimeiroAluguel: "",
     dadosPagamento: (config.dadosPagamento || "").trim(),
@@ -166,9 +189,9 @@ export function solicitacaoInicial(
 export function linhasSolicitacao(campos: CamposSolicitacao): LinhaSolicitacao[] {
   const comissao = comissaoDaSolicitacao(campos);
   const valor =
-    campos.valorAluguel == null
+    campos.valorBase == null
       ? ""
-      : `${fmtMoneyFull(campos.valorAluguel)} – ${campos.comissaoPercent}%${
+      : `${fmtMoneyFull(campos.valorBase)} – ${campos.comissaoPercent}%${
           comissao == null ? "" : ` ${fmtMoneyFull(comissao)}`
         }`;
 
@@ -200,7 +223,7 @@ export function pendenciasSolicitacao(campos: CamposSolicitacao): string[] {
   if (!campos.refProprietario.trim()) faltando.push("REF PROP");
   if (!campos.refInquilino.trim()) faltando.push("REF INQUILINO");
   if (!campos.endereco.trim()) faltando.push("ENDEREÇO");
-  if (campos.valorAluguel == null) faltando.push("VALOR");
+  if (campos.valorBase == null) faltando.push("VALOR");
   if (!campos.dataPrimeiroAluguel) faltando.push("DATA DE RECEBIMENTO DO 1° ALUGUEL");
   if (!campos.dadosPagamento.trim()) faltando.push("CONTA / PIX");
   return faltando;

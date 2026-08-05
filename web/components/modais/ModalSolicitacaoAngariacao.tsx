@@ -60,8 +60,8 @@ export default function ModalSolicitacaoAngariacao({ imovelId }: { imovelId: str
   const [refProprietario, setRefProprietario] = useState(inicial?.refProprietario ?? "");
   const [locacaoN, setLocacaoN] = useState(() => String(imovel ? numeroLocacao(imovel) : 1));
   const [endereco, setEndereco] = useState(inicial?.endereco ?? "");
-  const [valorAluguel, setValorAluguel] = useState(
-    inicial?.valorAluguel != null ? String(inicial.valorAluguel) : "",
+  const [valorBase, setValorBase] = useState(
+    inicial?.valorBase != null ? String(inicial.valorBase) : "",
   );
   const [percent, setPercent] = useState(String(inicial?.comissaoPercent ?? 100));
   const [dataPrimeiroAluguel, setDataPrimeiroAluguel] = useState("");
@@ -91,7 +91,7 @@ export default function ModalSolicitacaoAngariacao({ imovelId }: { imovelId: str
     refProprietario: refProprietario.trim(),
     refInquilino: referenciaInquilino(refProprietario, n),
     endereco: endereco.trim(),
-    valorAluguel: numOrNull(valorAluguel),
+    valorBase: numOrNull(valorBase),
     comissaoPercent: numOrNull(percent) || 0,
     dataPrimeiroAluguel,
     dadosPagamento: dadosPagamento.trim(),
@@ -222,14 +222,21 @@ export default function ModalSolicitacaoAngariacao({ imovelId }: { imovelId: str
           </div>
           <div className="field-row">
             <div className="field-group">
-              <label>Valor do aluguel (R$)</label>
+              {/* Deixa explícito que NÃO é o aluguel anunciado: a angariação
+                  é calculada sobre o valor com o acréscimo de atraso, e o
+                  campo vinha rotulado como "Valor do aluguel" — o mesmo nome
+                  do outro valor, que é 20% menor. */}
+              <label>Valor da angariação (R$)</label>
               <input
                 type="number"
                 min="0"
                 step="0.01"
-                value={valorAluguel}
-                onChange={(e) => setValorAluguel(e.target.value)}
+                value={valorBase}
+                onChange={(e) => setValorBase(e.target.value)}
               />
+              <div className="field-hint">
+                Valor com o acréscimo de atraso, não o do anúncio.
+              </div>
             </div>
             <div className="field-group">
               <label>Comissão (%)</label>

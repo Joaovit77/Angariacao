@@ -221,6 +221,14 @@ export interface Imovel {
       captação falhou, aqui ela foi ganha e depois encerrada, e o motivo nem
       sempre é conhecido. Sai do Pipeline ativo e vive na aba Retirados. */
   retirado?: boolean | null;
+  /** Valor cobrado quando o aluguel ATRASA — o anunciado mais o acréscimo da
+      campanha (na carteira medida, 20% em 278 de 279 casos, mas 21,6% em um).
+      NÃO é o aluguel do imóvel: `valorAluguel` é o que o proprietário quer
+      receber e o que vai ao anúncio. Guardado, e não derivado por ×1,2,
+      justamente porque o percentual varia e derivar inventaria valor.
+      Quem usa: a solicitação de recebimento de angariação, que por regra da
+      imobiliária calcula a comissão sobre ELE. Ver `calculo/solicitacaoAngariacao.ts`. */
+  valorAluguelAtraso?: number | null;
   /** Este imóvel é uma UNIDADE de um espaço já captado — aponta para o imóvel
       que registrou a captação. null (o caso normal) = captação própria.
 

@@ -29,6 +29,7 @@ import {
   solicitacaoInicial,
   textoSolicitacao,
   type CamposSolicitacao,
+  valorBaseDaSolicitacao,
 } from "@/lib/calculo/solicitacaoAngariacao";
 import type { Imovel, UserConfig } from "@/lib/tipos";
 
@@ -110,7 +111,7 @@ describe("os padrões que o painel já sabe responder", () => {
     expect(c.refProprietario).toBe("03280.001");
     expect(c.refInquilino).toBe("03280.001.01");
     expect(c.corretor).toBe("João Vitor");
-    expect(c.valorAluguel).toBe(3300);
+    expect(c.valorBase).toBe(3300);
     expect(c.comissaoPercent).toBe(40);
     expect(c.dadosPagamento).toBe("pix 125.856.399-16");
     expect(c.observacao).toBe("Angariação feita via OLX");
@@ -168,9 +169,9 @@ describe("as linhas do documento", () => {
 
   it("sem aluguel o campo fica em branco, nunca R$ 0,00", () => {
     // Num pedido de pagamento, zero é um valor AFIRMADO.
-    const linha = linhasSolicitacao({ ...campos(), valorAluguel: null }).find((l) => l.rotulo === "VALOR")!;
+    const linha = linhasSolicitacao({ ...campos(), valorBase: null }).find((l) => l.rotulo === "VALOR")!;
     expect(linha.valor).toBe("");
-    expect(comissaoDaSolicitacao({ ...campos(), valorAluguel: null })).toBeNull();
+    expect(comissaoDaSolicitacao({ ...campos(), valorBase: null })).toBeNull();
   });
 
   it("o texto para colar tem o mesmo conteúdo do documento", () => {
@@ -199,7 +200,7 @@ describe("o que ainda falta preencher", () => {
       refInquilino: "",
       corretor: "",
       endereco: "",
-      valorAluguel: null,
+      valorBase: null,
       comissaoPercent: 40,
       dataPrimeiroAluguel: "",
       dadosPagamento: "",
@@ -293,12 +294,61 @@ describe("o nome do arquivo", () => {
       refInquilino: "",
       corretor: "",
       endereco: "",
-      valorAluguel: null,
+      valorBase: null,
       comissaoPercent: 40,
       dataPrimeiroAluguel: "",
       dadosPagamento: "",
       observacao: "",
     });
     expect(nome).toBe("Solicitacao-angariacao.docx");
+  });
+});
+
+
+/* ---------------------------------------------------------------
+   O VALOR DA SOLICITAÇÃO NÃO É O ALUGUEL ANUNCIADO
+
+   Campanha da imobiliária: o proprietário quer receber X, e quem atrasa
+   paga X + acréscimo. O anúncio mostra X; a solicitação de angariação
+   cobra sobre X + acréscimo. São duas contas sobre o mesmo contrato, e
+   trocá-las erra o pedido de pagamento em ~20%.
+
+   Caso real (Rua José Francisco Pereira, 800): anúncio R$ 1.600,00 e
+   solicitação "R$ 1.920,00 – 20% R$ 384,00".
+   --------------------------------------------------------------- */
+describe("valor de atraso x valor anunciado", () => {
+  const comAtraso = imovelLocado({ valorAluguel: 1600, valorAluguelAtraso: 1920 });
+
+  it("a solicitação usa o valor de ATRASO, não o do anúncio", () => {
+    expect(valorBaseDaSolicitacao(comAtraso)).toBe(1920);
+    expect(solicitacaoInicial(comAtraso, CONFIG).valorBase).toBe(1920);
+  });
+
+  it("a comissão sai sobre o valor de atraso", () => {
+    const c = { ...solicitacaoInicial(comAtraso, CONFIG), comissaoPercent: 20 };
+    // 1920 × 20% = 384 — e não 1600 × 20% = 320
+    expect(comissaoDaSolicitacao(c)).toBe(384);
+    const linha = linhasSolicitacao(c).find((l) => l.rotulo === "VALOR")!;
+    expect(linha.valor).toContain("1.920,00");
+    expect(linha.valor).toContain("384,00");
+    expect(linha.valor).not.toContain("1.600,00");
+  });
+
+  it("sem valor de atraso cai no aluguel — imóvel fora da campanha", () => {
+    const semAtraso = imovelLocado({ valorAluguel: 2000, valorAluguelAtraso: null });
+    expect(valorBaseDaSolicitacao(semAtraso)).toBe(2000);
+  });
+
+  it("zero não conta como valor de atraso", () => {
+    // 0 gravado é "não informado" vindo de formulário, não "cobra zero".
+    const zerado = imovelLocado({ valorAluguel: 2000, valorAluguelAtraso: 0 });
+    expect(valorBaseDaSolicitacao(zerado)).toBe(2000);
+  });
+
+  it("o aluguel do imóvel continua sendo o anunciado", () => {
+    // A trava que impede alguém de "consertar" isto sobrescrevendo o
+    // valorAluguel com o de atraso: o anúncio, a comissão estimada e o
+    // faturamento leem este campo.
+    expect(comAtraso.valorAluguel).toBe(1600);
   });
 });

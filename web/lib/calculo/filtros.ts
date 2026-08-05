@@ -22,7 +22,35 @@ export interface FiltrosPipeline {
     e o que já saiu. Ver `filtrarImoveis`. */
 export type PipelineViewMode = "kanban" | "lista" | "retirados";
 
-export type PipelineCol = "bairro" | "tipo" | "origem" | "status" | "captador";
+export type PipelineCol =
+  | "bairro" | "tipo" | "origem" | "status" | "captador" | "telefone" | "unidade" | "bloco";
+
+/**
+ * Minúsculo e SEM ACENTO — a forma em que "José" e "Jose" finalmente são a
+ * mesma coisa para a busca.
+ *
+ * Só o mecanismo de pesquisa passa por aqui: o cadastro continua guardando e
+ * exibindo "Rua José Francisco Pereira". Normalizar o dado gravado seria
+ * corromper o endereço para resolver um problema de digitação.
+ *
+ * A faixa dos diacríticos vai por escape (`̀-ͯ`) e não pelos
+ * caracteres em si — eles são invisíveis no editor, e um arquivo salvo noutra
+ * codificação os perderia sem ninguém ver, fazendo a busca voltar a
+ * diferenciar acento em silêncio. Mesma razão do `normalizarCabecalho` da
+ * importação.
+ */
+export function semAcento(texto: string): string {
+  return (texto || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
+/** Os dois estados da coluna Telefone. São rótulo de exibição E valor de
+    filtro ao mesmo tempo — a coluna reusa o menu de filtro das outras, e o
+    que aparece no cabeçalho tem que ser o que casa na linha. */
+export const TELEFONE_COM = "Cadastrado";
+export const TELEFONE_SEM = "Sem número";
 
 /** Arrays vazios = coluna sem filtro; valores marcados combinam em OR
     dentro da coluna, e colunas diferentes combinam em AND. */
@@ -33,7 +61,14 @@ export function filtrosPipelineVazios(): FiltrosPipeline {
 }
 
 export function pipelineColFiltersVazios(): PipelineColFilters {
-  return { bairro: [], tipo: [], origem: [], status: [], captador: [] };
+  return { bairro: [], tipo: [], origem: [], status: [], captador: [], telefone: [], unidade: [], bloco: [] };
+}
+
+/** Tem número para contatar? É a pergunta que decide se o imóvel dá para
+    trabalhar hoje: sem telefone não há WhatsApp, não há follow-up e não há
+    lote de disponibilidade — o imóvel ocupa linha e não pode ser tocado. */
+export function temTelefone(i: Imovel): boolean {
+  return !!(i.proprietarioTelefone || "").trim();
 }
 
 // Cada coluna filtrável -> campo no imóvel e rótulo do cabeçalho.
@@ -43,8 +78,19 @@ export const PIPELINE_COL_ACCESSOR: Record<PipelineCol, (i: Imovel) => string | 
   origem: (i) => i.origemImovel,
   status: (i) => i.status,
   captador: (i) => i.responsavel,
+  // Sempre devolve um dos dois rótulos, nunca vazio: "sem número" é um
+  // estado que se filtra, não a ausência de dado que vira "(vazio)".
+  telefone: (i) => (temTelefone(i) ? TELEFONE_COM : TELEFONE_SEM),
+  /* Apartamento e bloco reusam os campos que já existem no cadastro
+     (`unidade`/`bloco`) — não há campo novo aqui. Eles são a identidade do
+     imóvel num prédio: sem eles a Lista mostra dezenas de linhas iguais de
+     "Rua André Gallo, 101", que é a carteira de quem trabalha com
+     apartamento. Vazio cai em `PIPELINE_COL_EMPTY`, e é assim que se filtra
+     "o que ainda não tem unidade informada". */
+  unidade: (i) => i.unidade,
+  bloco: (i) => i.bloco,
 };
-export const PIPELINE_COL_LABEL: Record<PipelineCol, string> = { bairro: "Bairro", tipo: "Tipo", origem: "Origem", status: "Status", captador: "Captador" };
+export const PIPELINE_COL_LABEL: Record<PipelineCol, string> = { bairro: "Bairro", tipo: "Tipo", origem: "Origem", status: "Status", captador: "Captador", telefone: "Telefone", unidade: "Ap.", bloco: "Bloco" };
 export const PIPELINE_COL_EMPTY = "(vazio)"; // rótulo exibido para valores em branco (mapeado ao "" real)
 
 export function filtrarImoveis(
@@ -53,7 +99,9 @@ export function filtrarImoveis(
   viewMode: PipelineViewMode,
   colFilters: PipelineColFilters,
 ): Imovel[] {
-  const s = (filters.search || "").toLowerCase().trim();
+  // Os DOIS lados passam por `semAcento`: normalizar só o que o usuário
+  // digita não resolve nada — "Jose" continuaria não achando "José".
+  const s = semAcento(filters.search || "").trim();
   return imoveis.filter((i) => {
     /* Retirado sai do Pipeline ATIVO e só aparece na própria aba.
        Deixá-lo nas outras duas transformaria a aba num filtro decorativo: a
@@ -70,10 +118,11 @@ export function filtrarImoveis(
     // Filtros de coluna (estilo Explorer) só atuam na Lista — no Kanban são
     // ignorados, para não alterar o comportamento existente do quadro.
     if (viewMode !== "kanban" && !matchesPipelineColFilters(i, colFilters)) return false;
-    const haystack = [
+    const haystack = semAcento([
       i.codigo, i.proprietarioNome, i.endereco, i.bairro, i.cidade,
       i.proprietarioTelefone, i.tipo, i.unidade, i.bloco, i.edificio,
-    ].join(" ").toLowerCase();
+      i.referenciaCrm,
+    ].join(" "));
     if (s && !haystack.includes(s)) return false;
     return true;
   });
