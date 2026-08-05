@@ -65,7 +65,9 @@ export const usePipelineUi = create<PipelineUi>((set, get) => ({
   setViewMode: (mode) => {
     const s = get();
     if (mode === s.viewMode) return;
-    if (mode === "lista") {
+    // "retirados" usa a mesma tabela da Lista, então herda a mesma migração
+    // dos selects do topo para os filtros de coluna.
+    if (mode === "lista" || mode === "retirados") {
       const mapa: Array<[keyof FiltrosPipeline, PipelineCol]> = [
         ["tipo", "tipo"],
         ["bairro", "bairro"],

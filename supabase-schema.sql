@@ -88,6 +88,12 @@ alter table imoveis add column if not exists pre_cadastro boolean not null defau
 -- Ver `isStale` em web/lib/calculo/motor.ts.
 alter table imoveis add column if not exists importado boolean not null default false;
 
+-- O proprietário retirou o imóvel da carteira (locou por conta própria,
+-- desistiu, tirou da imobiliária). Não é "Perdido": ali a captação falhou,
+-- aqui ela foi GANHA e depois encerrada. Vem da coluna RECEBIMENTO do CRM na
+-- importação e sai do Pipeline ativo — ver PipelineViewMode "retirados".
+alter table imoveis add column if not exists retirado boolean not null default false;
+
 -- Tentativas de abordagem: cada contato feito com o proprietário, com o roteiro
 -- usado (abordagem_id -> tabela `abordagens`), o canal e o resultado. Mesmo
 -- padrão de `notas`: jsonb na própria linha, herdando o RLS do imóvel.

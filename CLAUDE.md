@@ -280,7 +280,20 @@ o torna testável puro.
   pedir pagamento de uma locação que ainda não existe. A observação padrão diz "via <origem>" e não
   "pelo <origem>": nenhum dado do painel sabe o gênero de um rótulo que o próprio corretor
   cadastrou, e o artigo fixo produzia "pelo Redes sociais".
-- **`calculo/filtros.ts`** — filtro/ordenação do Pipeline (parte pura).
+- **`calculo/filtros.ts`** — filtro/ordenação do Pipeline (parte pura), e o corte entre a carteira
+  ATIVA e o que saiu dela. `PipelineViewMode` tem três modos, não dois: além de Lista e Kanban,
+  **`retirados`** — o imóvel que o proprietário tirou (`Imovel.retirado`). Não é "Perdido", e a
+  diferença importa: ali a captação falhou, aqui ela foi **ganha e depois encerrada**, e o motivo
+  nem sempre é conhecido — o CRM da imobiliária registra só "RETIROU", que tanto cobre "locou por
+  conta própria" quanto "tirou da imobiliária". Forçá-lo em "Locado" somaria comissão e faturamento
+  de um contrato que não é nosso; em "Perdido", diria que a captação falhou.
+  O corte mora **no filtro, não na tela**: retirado sai de Lista e Kanban e só aparece na própria
+  aba, para o contador "X de Y", o quadro e a tabela concordarem sem cada um lembrar da regra.
+  Deixá-lo nas três abas transformaria a aba num filtro decorativo — a carteira continuaria
+  anunciando como em jogo o que já saiu (na conta da supervisora, 189 de 640 em 05/08/2026).
+  A marca é **campo**, não texto: ela nasce da coluna RECEBIMENTO do CRM na importação, e uma
+  busca por "RETIROU" dentro de `observacoes` morreria na primeira edição da observação — além de
+  nunca poder marcar imóvel novo.
 - **`calculo/dashboard.ts` · `insights.ts` · `relatorios.ts` · `agenda.ts`** — as métricas de cada
   view, extraídas da montagem de HTML antiga sem alterar nenhuma fórmula. **Duas exceções assinadas**
   no [BASELINE_ETAPA0.md](BASELINE_ETAPA0.md): a conversão do relatório (achado A3) e os rankings dos

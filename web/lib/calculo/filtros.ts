@@ -17,7 +17,10 @@ export interface FiltrosPipeline {
   cidade: string;
 }
 
-export type PipelineViewMode = "kanban" | "lista";
+/** "retirados" é o terceiro modo: os imóveis que o proprietário tirou da
+    carteira. Não é um filtro a mais — é a separação entre o que está em jogo
+    e o que já saiu. Ver `filtrarImoveis`. */
+export type PipelineViewMode = "kanban" | "lista" | "retirados";
 
 export type PipelineCol = "bairro" | "tipo" | "origem" | "status" | "captador";
 
@@ -52,6 +55,13 @@ export function filtrarImoveis(
 ): Imovel[] {
   const s = (filters.search || "").toLowerCase().trim();
   return imoveis.filter((i) => {
+    /* Retirado sai do Pipeline ATIVO e só aparece na própria aba.
+       Deixá-lo nas outras duas transformaria a aba num filtro decorativo: a
+       carteira continuaria anunciando como em jogo um imóvel que o
+       proprietário já tirou — na conta da supervisora, 189 de 640. O
+       corte é aqui, e não na tela, para o contador "X de Y", o Kanban e a
+       Lista concordarem sem cada um ter que lembrar da regra. */
+    if (viewMode === "retirados" ? !i.retirado : !!i.retirado) return false;
     if (filters.tipo && i.tipo !== filters.tipo) return false;
     if (filters.bairro && i.bairro !== filters.bairro) return false;
     if (filters.status && i.status !== filters.status) return false;
@@ -59,7 +69,7 @@ export function filtrarImoveis(
     if (filters.cidade && i.cidade !== filters.cidade) return false;
     // Filtros de coluna (estilo Explorer) só atuam na Lista — no Kanban são
     // ignorados, para não alterar o comportamento existente do quadro.
-    if (viewMode === "lista" && !matchesPipelineColFilters(i, colFilters)) return false;
+    if (viewMode !== "kanban" && !matchesPipelineColFilters(i, colFilters)) return false;
     const haystack = [
       i.codigo, i.proprietarioNome, i.endereco, i.bairro, i.cidade,
       i.proprietarioTelefone, i.tipo, i.unidade, i.bloco, i.edificio,

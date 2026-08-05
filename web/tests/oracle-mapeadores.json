@@ -70,6 +70,7 @@
       "tentativas": [],
       "pre_cadastro": false,
       "importado": false,
+      "retirado": false,
       "imovel_principal_id": null,
       "anuncio_idade_dias": null
     },
@@ -113,6 +114,7 @@
       "tentativas": [],
       "pre_cadastro": false,
       "importado": false,
+      "retirado": false,
       "imovel_principal_id": null,
       "anuncio_idade_dias": null
     },
@@ -156,6 +158,7 @@
       "tentativas": [],
       "pre_cadastro": false,
       "importado": false,
+      "retirado": false,
       "imovel_principal_id": null,
       "anuncio_idade_dias": null
     },
@@ -204,6 +207,7 @@
       "tentativas": [],
       "pre_cadastro": false,
       "importado": false,
+      "retirado": false,
       "imovel_principal_id": null,
       "anuncio_idade_dias": null
     },
@@ -260,6 +264,7 @@
       "tentativas": [],
       "pre_cadastro": false,
       "importado": false,
+      "retirado": false,
       "imovel_principal_id": null,
       "anuncio_idade_dias": null
     },
@@ -312,6 +317,7 @@
       "tentativas": [],
       "pre_cadastro": false,
       "importado": false,
+      "retirado": false,
       "imovel_principal_id": null,
       "anuncio_idade_dias": null
     },
@@ -364,6 +370,7 @@
       "tentativas": [],
       "pre_cadastro": false,
       "importado": false,
+      "retirado": false,
       "imovel_principal_id": null,
       "anuncio_idade_dias": null
     },
@@ -416,6 +423,7 @@
       "tentativas": [],
       "pre_cadastro": false,
       "importado": false,
+      "retirado": false,
       "imovel_principal_id": null,
       "anuncio_idade_dias": null
     },
@@ -464,6 +472,7 @@
       "tentativas": [],
       "pre_cadastro": false,
       "importado": false,
+      "retirado": false,
       "imovel_principal_id": null,
       "anuncio_idade_dias": null
     },
@@ -512,6 +521,7 @@
       "tentativas": [],
       "pre_cadastro": false,
       "importado": false,
+      "retirado": false,
       "imovel_principal_id": null,
       "anuncio_idade_dias": null
     },
@@ -568,6 +578,7 @@
       "tentativas": [],
       "pre_cadastro": false,
       "importado": false,
+      "retirado": false,
       "imovel_principal_id": null,
       "anuncio_idade_dias": null
     },
@@ -624,6 +635,7 @@
       "tentativas": [],
       "pre_cadastro": false,
       "importado": false,
+      "retirado": false,
       "imovel_principal_id": null,
       "anuncio_idade_dias": null
     },
@@ -680,6 +692,7 @@
       "tentativas": [],
       "pre_cadastro": false,
       "importado": false,
+      "retirado": false,
       "imovel_principal_id": null,
       "anuncio_idade_dias": null
     },
@@ -728,6 +741,7 @@
       "tentativas": [],
       "pre_cadastro": false,
       "importado": false,
+      "retirado": false,
       "imovel_principal_id": null,
       "anuncio_idade_dias": null
     },
@@ -776,6 +790,7 @@
       "tentativas": [],
       "pre_cadastro": false,
       "importado": false,
+      "retirado": false,
       "imovel_principal_id": null,
       "anuncio_idade_dias": null
     },
@@ -832,6 +847,7 @@
       "tentativas": [],
       "pre_cadastro": false,
       "importado": false,
+      "retirado": false,
       "imovel_principal_id": null,
       "anuncio_idade_dias": null
     },
@@ -884,6 +900,7 @@
       "tentativas": [],
       "pre_cadastro": false,
       "importado": false,
+      "retirado": false,
       "imovel_principal_id": null,
       "anuncio_idade_dias": null
     }
@@ -957,6 +974,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -999,6 +1017,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -1041,6 +1060,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -1088,6 +1108,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -1143,6 +1164,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -1194,6 +1216,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -1245,6 +1268,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -1296,6 +1320,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -1343,6 +1368,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -1390,6 +1416,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -1445,6 +1472,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -1500,6 +1528,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -1555,6 +1584,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -1602,6 +1632,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -1649,6 +1680,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -1704,6 +1736,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -1755,6 +1788,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     }
@@ -1812,6 +1846,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -1854,6 +1889,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     },
@@ -1905,6 +1941,7 @@
       "tentativas": [],
       "preCadastro": false,
       "importado": false,
+      "retirado": false,
       "imovelPrincipalId": null,
       "anuncioIdadeDias": null
     }

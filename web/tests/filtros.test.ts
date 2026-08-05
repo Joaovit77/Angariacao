@@ -95,3 +95,42 @@ describe("ordenarPipelineLista — ordenação por código (pós-migração)", (
     expect(padrao).toEqual(esperado);
   });
 });
+
+/* ---------------------------------------------------------------
+   ABA RETIRADOS
+   O imóvel que o proprietário tirou da carteira sai do Pipeline ativo.
+   Sem esse corte a aba seria decorativa: a Lista e o Kanban continuariam
+   contando como em jogo algo que já saiu — na carteira da supervisora,
+   189 de 640.
+   --------------------------------------------------------------- */
+describe("aba Retirados", () => {
+  const ativo = { id: "at", endereco: "Rua A, 1", status: "Angariado" } as Imovel;
+  const saiu = { id: "sa", endereco: "Rua B, 2", status: "Angariado", retirado: true } as Imovel;
+  const filtra = (mode: PipelineViewMode, lista: Imovel[] = [ativo, saiu]) =>
+    filtrarImoveis(lista, filtrosPipelineVazios(), mode, pipelineColFiltersVazios()).map((i) => i.id);
+
+  it("some da Lista e do Kanban", () => {
+    expect(filtra("lista")).toEqual(["at"]);
+    expect(filtra("kanban")).toEqual(["at"]);
+  });
+
+  it("a aba mostra só os retirados", () => {
+    expect(filtra("retirados")).toEqual(["sa"]);
+  });
+
+  it("carteira sem nenhum retirado não muda de comportamento", () => {
+    expect(filtra("lista", [ativo])).toEqual(["at"]);
+    expect(filtra("retirados", [ativo])).toEqual([]);
+  });
+
+  it("os filtros normais continuam valendo dentro da aba", () => {
+    const outro = { id: "ou", endereco: "Rua C, 3", status: "Angariado", retirado: true, bairro: "Centro" } as Imovel;
+    const r = filtrarImoveis(
+      [ativo, saiu, outro],
+      { ...filtrosPipelineVazios(), bairro: "Centro" },
+      "retirados",
+      pipelineColFiltersVazios(),
+    );
+    expect(r.map((i) => i.id)).toEqual(["ou"]);
+  });
+});

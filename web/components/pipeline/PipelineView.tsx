@@ -32,6 +32,14 @@ import { useUiModal } from "@/lib/uiModal";
 import { usePipelineUi } from "@/lib/uiPipeline";
 import ColunaFiltro from "./ColunaFiltro";
 
+/** O código que a tela mostra: o do corretor, e na falta dele a referência do
+    CRM da imobiliária. Carteira importada não tem código próprio — sem esta
+    queda a coluna inteira exibiria "-" e a única identificação que existe
+    (a ref do CRM) ficaria escondida no cadastro. */
+function codigoExibido(i: Imovel): string {
+  return (i.codigo || "").trim() || (i.referenciaCrm || "").trim();
+}
+
 /** Abre o compositor de WhatsApp do imóvel já no modelo pedido. É o
     ModalWhatsapp quem envia — direto pela Evolution, com o wa.me como
     saída — e quem trata o imóvel sem telefone (só copiar). */
@@ -86,7 +94,7 @@ function CartaoKanban({ i, color, aoAbrir }: { i: Imovel; color: string; aoAbrir
       onClick={() => aoAbrir(i.id)}
     >
       <div className="kanban-card-code">
-        {i.codigo || "s/ código"}
+        {codigoExibido(i) || "s/ código"}
         {i.preCadastro && <span className="pre-cadastro-flag">pré-cadastro</span>}
       </div>
       <div className="kanban-card-addr">
@@ -221,7 +229,7 @@ function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
               onClick={() => abrirDrawer(i.id)}
             >
               <td className="cell-strong">
-                {i.codigo || "-"}
+                {codigoExibido(i) || "-"}
                 {i.preCadastro && <span className="pre-cadastro-flag">pré-cadastro</span>}
               </td>
               <td>{i.endereco || "-"}</td>
@@ -476,6 +484,7 @@ export default function PipelineView() {
   const cidades = pipelineUniqueSorted(imoveis.map((i) => i.cidade));
   const responsaveis = pipelineUniqueSorted(imoveis.map((i) => i.responsavel));
   const filtrados = filtrarImoveis(imoveis, filters, viewMode, colFilters);
+  const totalRetirados = useMemo(() => imoveis.filter((i) => i.retirado).length, [imoveis]);
   // Quantos proprietários sem retorno estão prontos para uma cutucada. O botão
   // só aparece quando há alguém — com a fila vazia ele seria só ruído.
   const prontosFollowUp = useMemo(
@@ -496,13 +505,16 @@ export default function PipelineView() {
     [imoveis, abordagens],
   );
   const drawerImovel =
-    viewMode === "lista" && drawerImovelId ? imoveis.find((i) => i.id === drawerImovelId) : null;
+    viewMode !== "kanban" && drawerImovelId ? imoveis.find((i) => i.id === drawerImovelId) : null;
 
   return (
     <>
       <div className="page-head">
         <div>
-          <p className="page-sub">{imoveis.length} imóveis cadastrados</p>
+          <p className="page-sub">
+            {imoveis.length - totalRetirados} imóveis na carteira
+            {totalRetirados > 0 && ` · ${totalRetirados} retirados`}
+          </p>
         </div>
         <div className="page-actions">
           {aguardandoResultado > 0 && (
@@ -545,7 +557,7 @@ export default function PipelineView() {
       </div>
 
       <div className="pipeline-toolbar pipeline-toolbar-enhanced">
-        <div className={`pipeline-filterbar ${viewMode === "lista" ? "lista" : ""}`}>
+        <div className={`pipeline-filterbar ${viewMode !== "kanban" ? "lista" : ""}`}>
           <input
             type="text"
             className="search-input pipeline-search"
@@ -620,7 +632,7 @@ export default function PipelineView() {
         </div>
         <div className="pipeline-toolbar-side">
           <span className="pipeline-result-count" id="pipeline-result-count">
-            {filtrados.length} de {imoveis.length}
+            {filtrados.length} de {viewMode === "retirados" ? totalRetirados : imoveis.length - totalRetirados}
           </span>
           <div className="view-toggle">
             <button
@@ -637,6 +649,18 @@ export default function PipelineView() {
             >
               Kanban
             </button>
+            {/* Só aparece quando existe algum retirado: numa carteira que
+                nunca teve, o botão seria uma aba permanentemente vazia. */}
+            {totalRetirados > 0 && (
+              <button
+                type="button"
+                className={viewMode === "retirados" ? "active" : ""}
+                onClick={() => setViewMode("retirados")}
+                title="Imóveis que o proprietário retirou da carteira"
+              >
+                Retirados <span className="view-toggle-contador">{totalRetirados}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
