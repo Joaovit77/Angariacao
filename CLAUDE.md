@@ -280,6 +280,21 @@ o torna testável puro.
   pedir pagamento de uma locação que ainda não existe. A observação padrão diz "via <origem>" e não
   "pelo <origem>": nenhum dado do painel sabe o gênero de um rótulo que o próprio corretor
   cadastrou, e o artigo fixo produzia "pelo Redes sociais".
+  **O valor da solicitação NÃO é o aluguel anunciado, e essa é a regra mais fácil de errar aqui.**
+  A imobiliária roda uma campanha em que o proprietário define o que quer receber (`valorAluguel`,
+  o que vai ao anúncio) e quem paga atrasado paga um acréscimo (`valorAluguelAtraso`). A angariação
+  é cobrada sobre o valor **com** o acréscimo: no imóvel da Rua José Francisco Pereira, 800, o
+  anúncio é R$ 1.600,00 e a solicitação diz "R$ 1.920,00 – 20% R$ 384,00". São duas contas sobre o
+  mesmo contrato, e trocá-las erra o pedido de pagamento em ~20%. Por isso o campo em
+  `CamposSolicitacao` chama-se `valorBase` e não `valorAluguel` — o nome antigo era o do OUTRO
+  valor, e alimentá-lo por baixo deixaria tudo compilando com o documento errado; quem resolve qual
+  dos dois é `valorBaseDaSolicitacao`, num lugar só, para o .docx, o texto e a prévia não poderem
+  divergir. Sem valor de atraso gravado cai no aluguel, que é o caso do imóvel fora da campanha.
+  **O acréscimo é GUARDADO, nunca derivado por ×1,2**: medido na carteira real, ele é 20% em 278 de
+  279 imóveis e **21,6% em um** (ref 02256.001) — derivar poria R$ 1.266,67 onde o certo é
+  R$ 1.250,00. E o CRM exporta o valor CHEIO na coluna "Valor do Aluguel", o que já fez 147 imóveis
+  entrarem com o valor de atraso no campo do anúncio, inflando a carteira em R$ 47 mil: ao importar
+  de lá, o que vale como aluguel é o "Aluguel Líquido".
 - **`calculo/filtros.ts`** — filtro/ordenação do Pipeline (parte pura), e o corte entre a carteira
   ATIVA e o que saiu dela. `PipelineViewMode` tem três modos, não dois: além de Lista e Kanban,
   **`retirados`** — o imóvel que o proprietário tirou (`Imovel.retirado`). Não é "Perdido", e a
@@ -294,6 +309,21 @@ o torna testável puro.
   A marca é **campo**, não texto: ela nasce da coluna RECEBIMENTO do CRM na importação, e uma
   busca por "RETIROU" dentro de `observacoes` morreria na primeira edição da observação — além de
   nunca poder marcar imóvel novo.
+  **A busca é insensível a ACENTO** (`semAcento`), e os dois lados passam por ela — normalizar só o
+  que o usuário digita não resolveria: "Jose" tem que achar "José" no dado gravado. A normalização
+  vale só para PESQUISAR; o cadastro continua guardando e exibindo "Rua José Francisco Pereira",
+  porque corrigir digitação corrompendo o endereço é pior que o problema. A faixa dos diacríticos
+  vai por escape, e não pelos caracteres em si, pelo motivo do `normalizarCabecalho` da importação:
+  eles são invisíveis no editor e um salvamento noutra codificação os perderia sem ninguém ver.
+  As colunas filtráveis incluem **`unidade`, `bloco` e `telefone`**. As duas primeiras reusam os
+  campos que já existem no cadastro — sem elas a Lista mostra dezenas de linhas idênticas de "Rua
+  André Gallo, 101", que é a carteira de quem trabalha com apartamento. A de telefone é derivada
+  (`temTelefone`) e devolve sempre um dos dois rótulos, nunca vazio: "sem número" é um estado que
+  se filtra, não a ausência de dado que viraria "(vazio)". Ao acrescentar coluna aqui, lembre que
+  `setViewMode` (em `uiPipeline.ts`) copia os filtros campo a campo — esquecer a nova ali faz o
+  filtro sumir ao trocar de aba, sem erro — e que as larguras da Lista são fixadas por `nth-child`
+  no `style.css`, então inserir coluna no meio desloca todas as seguintes. `pipeline-colunas.test.ts`
+  falha quando cabeçalho, linha e CSS discordam sobre quantas colunas existem.
 - **`calculo/dashboard.ts` · `insights.ts` · `relatorios.ts` · `agenda.ts`** — as métricas de cada
   view, extraídas da montagem de HTML antiga sem alterar nenhuma fórmula. **Duas exceções assinadas**
   no [BASELINE_ETAPA0.md](BASELINE_ETAPA0.md): a conversão do relatório (achado A3) e os rankings dos
