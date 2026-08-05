@@ -212,6 +212,15 @@ export interface Imovel {
   /** Pré-cadastro pendente de confirmação: criado no disparo rápido, some
       quando o imóvel é editado/salvo pelo modal completo (§ pré-cadastro). */
   preCadastro?: boolean | null;
+  /** Veio de uma planilha importada, e não de trabalho feito aqui dentro.
+      É o que impede o painel de cobrar estagnação de um histórico: ver
+      `isStale` em `calculo/motor.ts`. */
+  importado?: boolean | null;
+  /** O proprietário RETIROU o imóvel da carteira — locou por conta própria,
+      desistiu ou tirou da imobiliária. Não é o mesmo que "Perdido": ali a
+      captação falhou, aqui ela foi ganha e depois encerrada, e o motivo nem
+      sempre é conhecido. Sai do Pipeline ativo e vive na aba Retirados. */
+  retirado?: boolean | null;
   /** Este imóvel é uma UNIDADE de um espaço já captado — aponta para o imóvel
       que registrou a captação. null (o caso normal) = captação própria.
 

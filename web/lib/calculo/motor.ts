@@ -136,9 +136,36 @@ export function diasSemMovimento(imovel: Imovel): number | null {
   return daysBetween(ultimoMovimentoISO(imovel), todayISO());
 }
 
+/**
+ * O imóvel já foi TRABALHADO aqui dentro, em vez de só ter sido importado?
+ *
+ * Importar uma planilha traz datas de meses ou anos atrás. Elas são história,
+ * não inatividade: ninguém deixou o lead parado no painel, o painel é que
+ * acabou de conhecê-lo. Sem esta distinção uma carteira importada abre com
+ * tudo marcado como parado — foi o caso real da conta que recebeu 583
+ * captações de 2023 a 2026 e viu 581 selos de estagnação no primeiro acesso.
+ * Card que nasce cheio ninguém lê, e é assim que a faixa de "imóvel parado"
+ * morreu no termômetro.
+ *
+ * Atividade é o que aconteceu DEPOIS da importação, e as três formas são as
+ * mesmas de `ultimoMovimentoISO`. A entrada de status conta pela DATA e não
+ * pela existência: a importação escreve o histórico carimbado com a data
+ * antiga da planilha, enquanto `aplicarMudancaDeStatus` carimba hoje — então
+ * comparar com `dataAngariacao` separa as duas sem precisar guardar quando a
+ * importação rodou.
+ */
+export function teveAtividadeAposImportacao(imovel: Imovel): boolean {
+  if ((imovel.tentativas || []).length > 0) return true;
+  if (dataUltimaResposta(imovel.notas) !== null) return true;
+  return (imovel.statusHistory || []).some((h) => h.date > (imovel.dataAngariacao || ""));
+}
+
 export function isStale(imovel: Imovel): boolean {
   if ((STATUS_TERMINAL_NEGATIVE as readonly string[]).includes(imovel.status) || imovel.status === "Locado") return false;
   if (isPausado(imovel)) return false;
+  // Importado e ainda não trabalhado: não há estagnação a cobrar de quem
+  // nunca teve a primeira ação neste sistema.
+  if (imovel.importado && !teveAtividadeAposImportacao(imovel)) return false;
   const d = diasSemMovimento(imovel);
   return d !== null && d >= limiteStaleParaStatus(imovel.status);
 }

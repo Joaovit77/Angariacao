@@ -16,6 +16,7 @@ import {
   normalizarCabecalho,
   resumirImportacao,
 } from "@/lib/calculo/importacao";
+import { isStale, teveAtividadeAposImportacao } from "@/lib/calculo/motor";
 import type { Imovel } from "@/lib/tipos";
 
 const CARTEIRA: Imovel[] = [
@@ -233,5 +234,63 @@ describe("data de angariação — a coluna que salva a coorte", () => {
        não aconteceu. O motor já trata histórico vazio caindo em
        `dataAngariacao` (ver `currentStatusSince`). */
     expect(imp(csv("endereco", "Rua J")).linhas[0].imovel?.statusHistory).toEqual([]);
+  });
+});
+
+/* ---------------------------------------------------------------
+   IMPORTADO x SELO DE PARADO
+   Uma carteira importada traz datas antigas. Elas são história, não
+   inatividade — e sem a marca o painel abre acusando estagnação em tudo.
+   --------------------------------------------------------------- */
+describe("importado não conta como parado", () => {
+  const base = (extra: Partial<Imovel> = {}): Imovel =>
+    ({
+      id: "x",
+      endereco: "Rua X, 1",
+      status: "Novo contato",
+      dataAngariacao: "2024-01-01",
+      statusHistory: [],
+      notas: [],
+      tentativas: [],
+      ...extra,
+    }) as Imovel;
+
+  it("a importação marca os imóveis", () => {
+    const r = lerImportacao("endereco\nRua Nova, 10", [], "2026-08-04");
+    expect(r.linhas[0].imovel?.importado).toBe(true);
+  });
+
+  it("imóvel importado e nunca trabalhado não fica parado", () => {
+    expect(isStale(base({ importado: true }))).toBe(false);
+    // o mesmo imóvel SEM a marca ficaria parado — é a marca que muda
+    expect(isStale(base({ importado: false }))).toBe(true);
+  });
+
+  it("a marca não esconde para sempre: a primeira tentativa religa o prazo", () => {
+    const comTentativa = base({
+      importado: true,
+      tentativas: [{ id: "t", data: "2024-02-01", canal: "WhatsApp", resultado: "sem-resposta" }],
+    } as Partial<Imovel>);
+    expect(teveAtividadeAposImportacao(comTentativa)).toBe(true);
+    expect(isStale(comTentativa)).toBe(true);
+  });
+
+  it("mudar o status depois da importação também religa o prazo", () => {
+    const movido = base({
+      importado: true,
+      // carimbo posterior à dataAngariacao = transição feita no app
+      statusHistory: [{ status: "Em negociação", date: "2024-03-01" }],
+    });
+    expect(teveAtividadeAposImportacao(movido)).toBe(true);
+    expect(isStale(movido)).toBe(true);
+  });
+
+  it("histórico carimbado com a própria data da planilha NÃO é atividade", () => {
+    const soImportado = base({
+      importado: true,
+      statusHistory: [{ status: "Angariado", date: "2024-01-01" }],
+    });
+    expect(teveAtividadeAposImportacao(soImportado)).toBe(false);
+    expect(isStale(soImportado)).toBe(false);
   });
 });

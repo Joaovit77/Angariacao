@@ -1544,6 +1544,17 @@ tbody tr:last-child td{ border-bottom:none; }
 .view-toggle{ display:flex; border:1px solid var(--border); border-radius: var(--radius-sm); overflow:hidden; }
 .view-toggle button{ border:none; background:var(--bg-elev-2); color:var(--text-dim); padding:7px 12px; font-size:12px; font-weight:600; }
 .view-toggle button.active{ background: var(--accent-soft); color: var(--accent-strong); }
+/* Contador da aba Retirados. Cor por currentColor para acompanhar o estado
+   ativo do botão sem declarar a paleta duas vezes (ver "Cor sempre por
+   token" no CLAUDE.md). */
+.view-toggle-contador{
+  display:inline-block;
+  margin-left:5px;
+  padding:1px 5px;
+  border-radius:999px;
+  font-size:11px;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+}
 
 .pipeline-toolbar-enhanced{ align-items:flex-start; }
 .pipeline-filterbar{
