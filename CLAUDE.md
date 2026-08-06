@@ -974,6 +974,15 @@ e pedir o QR funcionam com o **token daquela instância**, que já vive em `what
 é lido pela rota de envio. Nenhum poder novo entra no sistema por causa de uma tela de
 conveniência. O token, claro, não volta ao browser: a rota o usa e devolve só estado e QR.
 
+**O que fala com a Evolution mora em `api/whatsapp/_conexao.ts`** (o `_` o mantém fora do
+roteamento), compartilhado com `api/admin/conexao` — mesmo papel de `_espelho.ts` no Google. A
+duplicação seria especialmente traiçoeira aqui porque as três sutilezas abaixo foram **medidas**,
+não lidas na documentação: uma segunda cópia escrita a partir dos docs nasceria com o campo
+"conectado como…" eternamente vazio, sem erro nenhum. Há teste estrutural fixando que os três
+endpoints da Evolution são chamados de um arquivo só. O `pedirQr` é parâmetro porque pedir o QR faz
+a Evolution **começar a parear**: faz sentido na tela de um corretor reconectando, e seria
+disparar pareamento em série numa varredura de todas as contas.
+
 Três coisas medidas contra a Evolution real em 01/08/2026, e não deduzidas da documentação:
 
 - `connectionState` devolve `{instance:{state}}` — **sem `owner`, sem número**. O campo "conectado
@@ -1422,7 +1431,8 @@ feito, e uma visita que some depois de realizada apaga a prova de que aconteceu.
 
 #### `api/admin/*` — o painel de quem opera
 
-Cinco rotas (`eu`, `corretores`, `logs`, `ia`, `instancia`) e um `_comum.ts` que não é rota. O
+Oito rotas (`eu`, `corretores`, `logs`, `ia`, `instancia`, `cargo`, `conexao`, `ambiente`) e um
+`_comum.ts` que não é rota. O
 segredo que as justifica é a própria **service role** — e aqui ela é mais perigosa do que em
 qualquer outro lugar do projeto: nas outras (webhook, envio, Google) ela ignora a RLS para
 trabalhar dentro de UMA conta já identificada; aqui, para olhar TODAS. É exatamente o poder que o
@@ -1440,7 +1450,43 @@ cargo precisa ter, e por isso o que não pode escapar por descuido.
   anon key.
 - `GET /api/admin/eu` responde `{admin:false}` em vez de 403, por duas razões: o boot da UI não
   pode quebrar por causa dele (igual ao `GET /api/ia`), e um 403 seria um oráculo dizendo "este
-  endereço existe e você quase chegou".
+  endereço existe e você quase chegou". Ele devolve **dois** flags, e eles erram para lados
+  OPOSTOS: `admin` é falso em toda dúvida (nega), `operaCarteira` é verdadeiro (libera). A
+  assimetria é a de `aceitouVersaoAtual` — errar para `false` ali trancaria um corretor fora do
+  próprio trabalho por causa de uma falha de rede nossa, enquanto errar para `true` só mostra um
+  menu a mais a quem não ia usá-lo.
+- **`cargo` é a única rota que muda quem manda no sistema**, e a trava dela é uma só: **ninguém
+  remove o próprio cargo**. Não é paternalismo — é o que torna inalcançável o estado "sistema sem
+  nenhum admin", sem precisar de uma contagem à parte: um admin só some por decisão de OUTRO, e
+  para o último sumir alguém teria de removê-lo. Sem isso, um clique distraído deixaria o sistema
+  num estado que só se conserta abrindo o banco, que é o que esta tela veio eliminar.
+- **`conexao` tem duas formas, e a diferença não é conveniência**: sem `userId` varre todas SEM
+  pedir QR; com `userId` devolve uma COM QR. Pedir o QR manda a Evolution começar a parear, então
+  a varredura dispararia pareamento nas instâncias de todo mundo por causa de uma tela aberta.
+  Ela também **não registra no log**, ao contrário da rota do corretor: lá o registro avisa que um
+  número caiu sem esperar a reclamação; aqui quem olha é justamente quem leria o aviso, e N linhas
+  por clique encheriam de ruído a tabela que este painel existe para deixar legível.
+  A consulta é **sob demanda** (botão), nunca a cada abertura da tela — cada consulta ocupa a mesma
+  instância que precisa estar livre para enviar.
+- **`ambiente` devolve só booleanos.** Nunca o valor de uma variável, nunca um pedaço dele, nem
+  mascarado — mesma regra do token da instância. A pergunta que a tela responde é "está lá?", não
+  "qual é". Ela existe porque variável esquecida não falha no build e não aparece em log nenhum
+  até alguém USAR aquilo: o sintoma chegava pela pessoa errada (o corretor), depois de o trabalho
+  ser interrompido, e chegava igual para "faltou a variável" e "o serviço caiu".
+
+**O teto de IA (`ia_permissoes.teto_usd`) AVISA, não bloqueia.** Cortar a IA no meio do mês
+transformaria um estouro de conta num incidente para o corretor, que não escolheu o teto e não pode
+mudá-lo; o painel acende a linha e quem decide é quem opera. Ele entra em `saudeDoCorretor` **depois
+do erro e antes da inatividade**: erro é algo quebrado e pede mais rápido; e quem gasta acima do
+teto obviamente não está parado.
+
+**A conexão entra na saúde, e foi o buraco mais caro do painel.** `saudeDoCorretor` só conhecia a
+falta de CADASTRO, então instância cadastrada com o WhatsApp caído — o efeito é idêntico, nenhuma
+mensagem sai — aparecia como "Ok". Hoje `desconectado` é **bloqueado**, no mesmo degrau de não ter
+número, e vence erro recente (o erro no log é quase sempre a consequência da queda; mostrar a
+consequência esconderia a causa). Duas ressalvas que caem daí: sem varredura o estado é `undefined`
+e **ninguém é acusado** — não saber não é o mesmo que estar quebrado —, e `conectando` não acusa
+nada, porque é o estado de quem acabou de ler o QR e "consertar" isso derrubaria o pareamento.
 
 As métricas de uso são calculadas em **TypeScript**, sobre as colunas jsonb, e não por função SQL —
 somar no banco seria mais barato, mas exigiria reescrever em PL/pgSQL a regra de "o que é resposta
@@ -1530,7 +1576,8 @@ das rotas que já existiam.
   quem manda no sistema, que é reconhecimento gratuito para quem quiser atacar a conta certa; e uma
   de escrita, ainda que "só na própria linha", seria autopromoção a administrador com a anon key.
   A UI pergunta ao servidor (`GET /api/admin/eu`). **O primeiro admin entra à mão** pelo Table
-  Editor — não há admin para promovê-lo (ver [DEPLOY.md](DEPLOY.md)).
+  Editor — não há admin para promovê-lo (ver [DEPLOY.md](DEPLOY.md)); do segundo em diante quem
+  promove é a tela (`POST /api/admin/cargo`).
 - **`ia_uso`** — o gasto, chamada a chamada. Grava o FATO (modelo + tokens, como a API devolveu) e
   **nunca o preço**: preço muda por decisão da OpenAI, e gravá-lo congelaria as linhas antigas em
   valores de meses atrás. A conta é feita na LEITURA, em `custoIa.ts` — mesma disciplina de
@@ -1541,6 +1588,33 @@ das rotas que já existiam.
   alguém precisaria AGIR para consertar, mais os envios (o volume que explica a fatura). Registrar
   tudo encheria a tabela de ruído, e log que ninguém consegue ler é o mesmo que não ter log — o
   erro exato que matou a faixa de "imóvel parado" no termômetro.
+
+### Cargo ≠ carteira (`admins.opera_carteira`)
+
+O cargo e a carteira eram tratados como a mesma coisa, e o custo apareceu em 2026-08-06, quando a
+conta de operação foi olhada por dentro: **1 imóvel, 0 tentativas, 0 abordagens, 0 protocolos e
+nenhuma instância de WhatsApp**, com as dez telas do corretor no menu. Elas não abriam só vazias —
+elas **mentiam**: uma caixa de respostas em branco diz "nada chegou" quando o que há é uma conta
+que, por construção, nunca vai receber mensagem nenhuma. É a mesma morte da faixa de "imóvel
+parado" no termômetro, aplicada ao app inteiro.
+
+**A regra oposta ("admin não vê o painel do corretor") também está errada**, e é o erro fácil de
+cometer: na mesma medição, o outro admin era o corretor real, com 201 imóveis — cortar por cargo
+tiraria o Pipeline de quem trabalha a própria carteira. São dois eixos independentes, e por isso
+duas colunas de significado e não uma.
+
+- **Default `true`.** Quem já era admin quando a coluna nasceu estava usando o painel inteiro, e um
+  default `false` o trancaria fora do próprio trabalho no primeiro deploy. A exceção se declara.
+- **Quem não é admin opera carteira por definição** — o painel do corretor é o app inteiro para
+  ele, e só a linha de `admins` pode dizer o contrário. Por isso mexer nisto para um não-admin é
+  pedido inválido, e não um no-op silencioso que criaria a linha de admin como efeito colateral.
+- **Os dois flags entram no store JUNTOS** (`setCargo`). Separados, um render pegaria `ehAdmin` já
+  verdadeiro com `operaCarteira` ainda no padrão, e o menu do operador nasceria com as dez telas do
+  corretor antes de se corrigir sozinho.
+- **O corte tem três camadas, e nenhuma é controle de acesso**: a `BarraLateral` esconde os itens, o
+  layout do painel redireciona a URL digitada para `/admin`, e a Topbar tira o sino (que contaria
+  resposta de proprietário e evento do Sistema Principal — as duas coisas chegam a uma CARTEIRA).
+  Não há o que proteger: as views do corretor são a carteira DELE, vazia.
 
 Quatro regras ao mexer nisto:
 

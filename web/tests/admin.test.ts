@@ -32,7 +32,10 @@ function corretor(over: Partial<CorretorAdmin> = {}): CorretorAdmin {
     ultimoAcesso: "2026-07-31T09:00:00Z",
     instancia: "instancia-1",
     iaLiberada: true,
+    tetoUsd: null,
     googleConectado: false,
+    ehAdmin: false,
+    operaCarteira: true,
     imoveis: 40,
     tentativas30d: 25,
     respostas30d: 4,
@@ -96,6 +99,88 @@ describe("saudeDoCorretor", () => {
   it("data ilegível não promove ninguém a bloqueado", () => {
     const s = saudeDoCorretor(corretor({ instancia: null, criadoEm: "sem-data" }), HOJE);
     expect(s.nivel).toBe("atencao");
+  });
+
+  /* ------------------------------------------------------------------
+     A CONEXÃO
+
+     O buraco que esta parte tapa: instância CADASTRADA com o WhatsApp
+     caído tem exatamente o mesmo efeito de não ter número — nenhuma
+     mensagem sai —, e a tela dava "Ok". Só entra na conta quando alguém
+     rodou a varredura; sem consulta, a saúde volta a ser a de antes.
+     ------------------------------------------------------------------ */
+  it("WhatsApp desconectado é BLOQUEADO, no mesmo degrau de não ter número", () => {
+    const s = saudeDoCorretor(corretor(), HOJE, "desconectado");
+    expect(s.nivel).toBe("bloqueado");
+    expect(s.motivo).toContain("desconectado");
+  });
+
+  it("sem varredura, ninguém é acusado de estar caído", () => {
+    // Não saber não é o mesmo que estar quebrado. Acusar por falta de
+    // informação encheria a tela de vermelho toda vez que ela abrisse.
+    expect(saudeDoCorretor(corretor(), HOJE, undefined).nivel).toBe("ok");
+  });
+
+  it("'conectando' não acusa nada — é o estado de quem acabou de ler o QR", () => {
+    // Marcar isso mandaria alguém consertar uma conexão que está subindo
+    // sozinha, e o conserto (mostrar outro QR) derrubaria o pareamento.
+    expect(saudeDoCorretor(corretor(), HOJE, "conectando").nivel).toBe("ok");
+  });
+
+  it("Evolution sem responder é atenção, não bloqueio", () => {
+    // Não foi o corretor que quebrou; mas não saber também pede olhar.
+    const s = saudeDoCorretor(corretor(), HOJE, "falha");
+    expect(s.nivel).toBe("atencao");
+  });
+
+  it("conexão caída vence erro recente", () => {
+    // O erro no log é quase sempre CONSEQUÊNCIA da queda; mostrar a
+    // consequência esconderia a causa.
+    const s = saudeDoCorretor(corretor({ errosRecentes: 5 }), HOJE, "desconectado");
+    expect(s.nivel).toBe("bloqueado");
+  });
+
+  /* ------------------------------------------------------------------
+     O TETO DE IA
+     ------------------------------------------------------------------ */
+  it("acima do teto é atenção, com os dois valores na frase", () => {
+    const s = saudeDoCorretor(
+      corretor({ tetoUsd: 1, gasto: { ...somarGasto([]), custoUsd: 2.5 } }),
+      HOJE,
+    );
+    expect(s.nivel).toBe("atencao");
+    expect(s.motivo).toContain("acima do teto");
+  });
+
+  it("sem teto definido, gasto nenhum acusa", () => {
+    // `null` é "sem teto", e não "teto zero" — que acusaria todo mundo.
+    const s = saudeDoCorretor(
+      corretor({ tetoUsd: null, gasto: { ...somarGasto([]), custoUsd: 999 } }),
+      HOJE,
+    );
+    expect(s.nivel).toBe("ok");
+  });
+
+  it("erro recente vence o teto estourado", () => {
+    // Erro é algo quebrado; teto é dinheiro correndo. As duas pedem
+    // ação, a primeira pede mais rápido.
+    const s = saudeDoCorretor(
+      corretor({ errosRecentes: 1, tetoUsd: 1, gasto: { ...somarGasto([]), custoUsd: 2 } }),
+      HOJE,
+    );
+    expect(s.motivo).toContain("erro(s)");
+  });
+
+  it("o teto vence a inatividade — quem gasta acima do teto não está parado", () => {
+    const s = saudeDoCorretor(
+      corretor({
+        ultimoAcesso: "2026-06-01T09:00:00Z",
+        tetoUsd: 1,
+        gasto: { ...somarGasto([]), custoUsd: 2 },
+      }),
+      HOJE,
+    );
+    expect(s.motivo).toContain("acima do teto");
   });
 });
 

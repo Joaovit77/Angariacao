@@ -18,7 +18,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminView from "@/components/admin/AdminView";
-import { souAdmin } from "@/lib/admin";
+import { meuCargo } from "@/lib/admin";
 
 export default function Pagina() {
   const [permitido, setPermitido] = useState<boolean | null>(null);
@@ -26,10 +26,10 @@ export default function Pagina() {
 
   useEffect(() => {
     let cancelado = false;
-    souAdmin().then((ok) => {
+    meuCargo().then(({ admin }) => {
       if (cancelado) return;
-      setPermitido(ok);
-      if (!ok) router.replace("/home");
+      setPermitido(admin);
+      if (!admin) router.replace("/home");
     });
     return () => {
       cancelado = true;

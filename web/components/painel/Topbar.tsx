@@ -17,6 +17,7 @@ import { usePathname } from "next/navigation";
 import BotaoTema from "@/components/BotaoTema";
 import SinoNotificacoes from "./SinoNotificacoes";
 import MenuUsuario from "./MenuUsuario";
+import { useAppStore } from "@/lib/store";
 
 const TITULOS: Record<string, string> = {
   "/home": "Início",
@@ -27,6 +28,9 @@ const TITULOS: Record<string, string> = {
   "/insights": "Insights",
   "/mapa": "Mapa",
   "/relatorios": "Relatórios",
+  "/respostas": "Respostas",
+  "/protocolos": "Protocolos",
+  "/admin": "Administração",
   "/roadmap": "Integrações & IA",
 };
 
@@ -39,6 +43,12 @@ export default function Topbar({
 }) {
   const pathname = usePathname();
   const titulo = TITULOS[pathname] ?? "Angariações";
+  /* O sino conta resposta de proprietário e evento do Sistema Principal
+     — as duas coisas chegam a uma CARTEIRA. Numa conta que só opera o
+     sistema ele ficaria permanentemente em zero, que é o tipo de
+     elemento que ensina a não olhar para o lugar onde um dia vai
+     aparecer um número. */
+  const operaCarteira = useAppStore((s) => s.operaCarteira);
 
   return (
     // A barra ocupa a largura toda: título junto ao menu, à esquerda, e o sino
@@ -63,7 +73,7 @@ export default function Topbar({
       <h1 className="topbar-title">{titulo}</h1>
       <div className="topbar-actions">
         <BotaoTema />
-        <SinoNotificacoes />
+        {operaCarteira && <SinoNotificacoes />}
         <MenuUsuario />
       </div>
     </header>

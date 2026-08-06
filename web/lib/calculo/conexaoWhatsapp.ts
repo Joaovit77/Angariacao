@@ -86,6 +86,40 @@ export function mensagemConexao(estado: EstadoConexao): string {
   return MENSAGENS[estado];
 }
 
+/**
+ * As mesmas seis situações, ditas para quem olha o número de OUTRA
+ * pessoa — o painel de admin.
+ *
+ * Não é preciosismo de redação: as frases acima estão na primeira
+ * pessoa ("Seu WhatsApp", "Sua conta", "Leia o código abaixo com o
+ * celular"), e reusá-las no admin produzia "Seu WhatsApp está
+ * conectado" embaixo do número de um corretor — o que, numa tela cujo
+ * trabalho inteiro é distinguir a conta de um da conta do outro, é
+ * exatamente o erro que não se pode cometer. Pior no estado
+ * `desconectado`, em que a instrução manda LER o QR com o celular:
+ * quem está olhando a tela não pode fazer isso, o celular é o do
+ * corretor, e seguir a frase ao pé da letra parearia a instância dele
+ * com o aparelho errado.
+ *
+ * Ficam no mesmo módulo, e não espalhadas na view, pela razão de sempre:
+ * é aqui que mora o vocabulário. Há teste exigindo que os dois mapas
+ * cubram os mesmos estados — um estado novo tem que ganhar as duas
+ * vozes, senão a que faltar volta a ser `undefined` na tela.
+ */
+const MENSAGENS_DE_TERCEIRO: Record<EstadoConexao, string> = {
+  conectado: "Conectado e pronto para enviar.",
+  desconectado:
+    "Desconectado — nenhuma mensagem sai desta conta. O código abaixo precisa ser lido no celular DESTE corretor.",
+  conectando: "Conectando… a sessão está subindo, não é preciso fazer nada.",
+  "sem-instancia": "Esta conta ainda não tem número cadastrado — use os campos ao lado.",
+  "nao-configurado": "O envio direto de WhatsApp não está configurado neste ambiente.",
+  falha: "Não foi possível falar com o servidor de WhatsApp agora. Tente de novo em instantes.",
+};
+
+export function mensagemConexaoDeTerceiro(estado: EstadoConexao): string {
+  return MENSAGENS_DE_TERCEIRO[estado];
+}
+
 /** Vale mostrar QR? Só faz sentido desconectado — e só se ele veio.
 
     Em `conectando` o QR já foi lido: exibir outro faria o corretor

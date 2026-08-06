@@ -7,7 +7,8 @@
    Nunca lança: devolve o resultado ou o motivo da falha.
    ================================================================ */
 import type { CorretorAdmin, EventoLog } from "./calculo/admin";
-import type { GastoIa } from "./calculo/custoIa";
+import type { Conexao, EstadoConexao } from "./calculo/conexaoWhatsapp";
+import type { GastoIa, MesDeGasto } from "./calculo/custoIa";
 import { getSupabase } from "./persistencia/supabase";
 
 async function autorizacao(): Promise<Record<string, string> | null> {
@@ -18,22 +19,38 @@ async function autorizacao(): Promise<Record<string, string> | null> {
   return { Authorization: `Bearer ${session.access_token}` };
 }
 
+export interface Cargo {
+  /** Tem o cargo de administrador? */
+  admin: boolean;
+  /** Esta conta trabalha angariação, ou só opera o sistema? */
+  operaCarteira: boolean;
+}
+
+/** O que se assume enquanto não se sabe: sem cargo, com o painel do
+    corretor inteiro. Os dois lados erram para o lado seguro — ver o
+    comentário de `api/admin/eu`. */
+const NEUTRO: Cargo = { admin: false, operaCarteira: true };
+
 /**
- * Esta conta é administradora?
+ * O cargo desta conta.
  *
- * Falso em qualquer dúvida (sem sessão, rota fora do ar, resposta
+ * Neutro em qualquer dúvida (sem sessão, rota fora do ar, resposta
  * estranha). Esconder o menu é conveniência — a trava está no
  * servidor, e toda rota de admin reconfere.
  */
-export async function souAdmin(): Promise<boolean> {
+export async function meuCargo(): Promise<Cargo> {
   const headers = await autorizacao();
-  if (!headers) return false;
+  if (!headers) return NEUTRO;
   try {
     const r = await fetch("/api/admin/eu", { headers });
-    const dados = (await r.json().catch(() => null)) as { admin?: unknown } | null;
-    return dados?.admin === true;
+    const dados = (await r.json().catch(() => null)) as {
+      admin?: unknown;
+      operaCarteira?: unknown;
+    } | null;
+    if (dados?.admin !== true) return NEUTRO;
+    return { admin: true, operaCarteira: dados.operaCarteira !== false };
   } catch {
-    return false;
+    return NEUTRO;
   }
 }
 
@@ -109,6 +126,120 @@ async function acao(rota: string, corpo: unknown): Promise<RespostaAcao> {
 
 export function definirIa(userId: string, liberado: boolean): Promise<RespostaAcao> {
   return acao("/api/admin/ia", { userId, liberado });
+}
+
+/** `null` remove o teto. Ausente seria "não mexa" — por isso o
+    parâmetro é obrigatório aqui: quem chama esta função está mexendo. */
+export function definirTetoIa(userId: string, tetoUsd: number | null): Promise<RespostaAcao> {
+  return acao("/api/admin/ia", { userId, tetoUsd });
+}
+
+/** Os dois eixos do cargo, cada um opcional. Mandar os dois juntos é
+    legítimo (promover alguém já dizendo que ele não opera carteira);
+    mandar nenhum é pedido inválido, e a rota recusa. */
+export function definirCargo(
+  userId: string,
+  mudanca: { admin?: boolean; operaCarteira?: boolean },
+): Promise<RespostaAcao> {
+  return acao("/api/admin/cargo", { userId, ...mudanca });
+}
+
+/* ----------------------------------------------------------------
+   CONEXÃO DO WHATSAPP
+   ---------------------------------------------------------------- */
+
+export interface ConexaoDeCorretor extends Conexao {
+  userId: string;
+  instancia: string;
+}
+
+export interface RespostaConexoes {
+  ok: boolean;
+  mensagem?: string;
+  conexoes?: ConexaoDeCorretor[];
+  /** O ambiente não tem Evolution — a lista vazia não significa
+      "todo mundo bem". */
+  naoConfigurado?: boolean;
+}
+
+/** Varre TODAS as instâncias de uma vez, sem pedir QR (ver a rota). */
+export async function verificarConexoes(): Promise<RespostaConexoes> {
+  const headers = await autorizacao();
+  if (!headers) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
+  try {
+    const r = await fetch("/api/admin/conexao", { headers });
+    const dados = (await r.json().catch(() => null)) as RespostaConexoes | null;
+    return dados ?? { ok: false, mensagem: "Não foi possível consultar as conexões." };
+  } catch {
+    return { ok: false, mensagem: "Não foi possível consultar as conexões." };
+  }
+}
+
+/** Uma instância só, COM QR — é a tela em que alguém está reconectando
+    aquele número. */
+export async function conexaoDoCorretor(userId: string): Promise<Conexao> {
+  const headers = await autorizacao();
+  if (!headers) return { estado: "falha" };
+  try {
+    const r = await fetch(`/api/admin/conexao?userId=${encodeURIComponent(userId)}`, { headers });
+    const dados = (await r.json().catch(() => null)) as (Conexao & { ok?: boolean }) | null;
+    if (!dados?.estado) return { estado: "falha" };
+    return { estado: dados.estado as EstadoConexao, qr: dados.qr ?? null, numero: dados.numero ?? null };
+  } catch {
+    return { estado: "falha" };
+  }
+}
+
+/* ----------------------------------------------------------------
+   SÉRIE MENSAL DE IA E AMBIENTE
+   ---------------------------------------------------------------- */
+
+export interface RespostaHistoricoIa {
+  ok: boolean;
+  mensagem?: string;
+  meses?: number;
+  total?: MesDeGasto[];
+  historico?: { userId: string; serie: MesDeGasto[] }[];
+}
+
+export async function carregarHistoricoIa(meses?: number): Promise<RespostaHistoricoIa> {
+  const headers = await autorizacao();
+  if (!headers) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
+  try {
+    const q = meses ? `?meses=${meses}` : "";
+    const r = await fetch(`/api/admin/ia${q}`, { headers });
+    const dados = (await r.json().catch(() => null)) as RespostaHistoricoIa | null;
+    return dados ?? { ok: false, mensagem: "Não foi possível carregar o histórico." };
+  } catch {
+    return { ok: false, mensagem: "Não foi possível carregar o histórico." };
+  }
+}
+
+export interface CapacidadeAmbiente {
+  chave: string;
+  nome: string;
+  variavel: string;
+  configurado: boolean;
+  semEla: string;
+  essencial: boolean;
+}
+
+export interface RespostaAmbiente {
+  ok: boolean;
+  mensagem?: string;
+  capacidades?: CapacidadeAmbiente[];
+}
+
+export async function carregarAmbiente(): Promise<RespostaAmbiente> {
+  const headers = await autorizacao();
+  if (!headers) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
+  try {
+    const r = await fetch("/api/admin/ambiente", { headers });
+    const dados = (await r.json().catch(() => null)) as RespostaAmbiente | null;
+    return dados ?? { ok: false, mensagem: "Não foi possível ler a configuração." };
+  } catch {
+    return { ok: false, mensagem: "Não foi possível ler a configuração." };
+  }
 }
 
 /** Token em branco mantém o que já está gravado (a rota trata isso) —

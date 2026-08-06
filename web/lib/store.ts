@@ -41,6 +41,13 @@ interface AppStore {
       motivo do `iaDisponivel`: sem confirmação do servidor, não se
       oferece o que pode não funcionar. */
   ehAdmin: boolean;
+  /** Esta conta trabalha angariação? Falso só para o admin que apenas
+      OPERA o sistema — e aí as dez telas do corretor saem do menu, que
+      nele abririam numa parede de zeros. Começa `true`, ao contrário do
+      `ehAdmin`: aqui o valor "ainda não sei" tem que ser o que serve à
+      esmagadora maioria, senão todo corretor veria o menu piscar vazio
+      no primeiro quadro. */
+  operaCarteira: boolean;
   /** Grava o resultado de carregarEstado() (login/boot). */
   setEstado: (estado: EstadoApp) => void;
   /** Volta ao estado inicial (logout). */
@@ -51,7 +58,11 @@ interface AppStore {
   setAbordagens: (abordagens: Abordagem[]) => void;
   setProtocolos: (protocolos: Protocolo[]) => void;
   setIaDisponivel: (disponivel: boolean) => void;
-  setEhAdmin: (ehAdmin: boolean) => void;
+  /** Os dois flags do cargo entram JUNTOS de propósito: separados, um
+      render pegaria `ehAdmin` já verdadeiro com `operaCarteira` ainda
+      no padrão, e o menu do operador nasceria com as dez telas do
+      corretor antes de se corrigir sozinho. */
+  setCargo: (cargo: { admin: boolean; operaCarteira: boolean }) => void;
   setMetas: (metas: Metas) => void;
   setConfig: (config: UserConfig) => void;
 }
@@ -66,6 +77,7 @@ const ESTADO_INICIAL = {
   carregado: false,
   iaDisponivel: false,
   ehAdmin: false,
+  operaCarteira: true,
 };
 
 export const useAppStore = create<AppStore>((set) => ({
@@ -77,7 +89,7 @@ export const useAppStore = create<AppStore>((set) => ({
   setAbordagens: (abordagens) => set({ abordagens }),
   setProtocolos: (protocolos) => set({ protocolos }),
   setIaDisponivel: (iaDisponivel) => set({ iaDisponivel }),
-  setEhAdmin: (ehAdmin) => set({ ehAdmin }),
+  setCargo: ({ admin, operaCarteira }) => set({ ehAdmin: admin, operaCarteira }),
   setMetas: (metas) => set({ metas }),
   setConfig: (config) => set({ config }),
 }));

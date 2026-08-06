@@ -15,7 +15,8 @@
    bem é uma tela que se para de abrir.
    ================================================================ */
 import { daysBetween } from "../datas";
-import type { GastoIa } from "./custoIa";
+import type { EstadoConexao } from "./conexaoWhatsapp";
+import { fmtUsd, type GastoIa } from "./custoIa";
 
 /** Os fatos de um corretor, como as rotas de admin os montam. */
 export interface CorretorAdmin {
@@ -29,7 +30,17 @@ export interface CorretorAdmin {
   /** Nome da instância na Evolution, ou null se ninguém cadastrou ainda. */
   instancia: string | null;
   iaLiberada: boolean;
+  /** Teto de gasto de IA no mês, em dólares, ou null para "sem teto".
+      Ele AVISA, não bloqueia — ver o comentário de `ia_permissoes` em
+      supabase-schema.sql. */
+  tetoUsd: number | null;
   googleConectado: boolean;
+  /** Tem o cargo de administrador. */
+  ehAdmin: boolean;
+  /** Trabalha angariação nesta conta. Sempre `true` para quem não é
+      admin: o painel do corretor é o app inteiro para ele, e só a linha
+      de `admins` pode dizer o contrário. */
+  operaCarteira: boolean;
   imoveis: number;
   /** Tentativas registradas nos últimos 30 dias — o pulso do uso real. */
   tentativas30d: number;
@@ -74,7 +85,11 @@ export const DIAS_CONTA_NOVA = 2;
  * conserto — e tratar os dois igual manda a pessoa errada receber uma
  * ligação de "está tudo bem por aí?".
  */
-export function saudeDoCorretor(c: CorretorAdmin, hoje: string): Saude {
+export function saudeDoCorretor(
+  c: CorretorAdmin,
+  hoje: string,
+  conexao?: EstadoConexao,
+): Saude {
   if (!c.instancia) {
     // `daysBetween` devolve null quando a data não parseia. Cair em 0
     // (e não em "muito tempo") mantém a regra do lado seguro: uma data
@@ -91,10 +106,41 @@ export function saudeDoCorretor(c: CorretorAdmin, hoje: string): Saude {
     };
   }
 
+  /* Instância cadastrada mas WhatsApp caído: bloqueado, e no mesmo
+     degrau do "sem número". O efeito para o corretor é idêntico —
+     nenhuma mensagem sai —, e era o buraco que fazia esta tela dar "Ok"
+     para quem não conseguia enviar nada. Só entra na conta quando
+     alguém rodou a varredura: sem consulta, `conexao` é `undefined` e a
+     saúde volta a ser a de antes, em vez de acusar todo mundo de estar
+     caído por falta de informação.
+
+     `conectando` não conta: é o estado de quem acabou de ler o QR, e
+     acusar isso mandaria alguém "consertar" uma conexão que está
+     subindo sozinha. `falha` também não é do corretor — foi a Evolution
+     que não respondeu —, mas vira atenção logo abaixo, porque não saber
+     também é um estado que pede olhar. */
+  if (conexao === "desconectado") {
+    return { nivel: "bloqueado", motivo: "WhatsApp desconectado — precisa ler o QR de novo" };
+  }
+  if (conexao === "falha") {
+    return { nivel: "atencao", motivo: "Não foi possível falar com a Evolution sobre esta instância" };
+  }
+
   if (c.errosRecentes > 0) {
     return {
       nivel: "atencao",
       motivo: `${c.errosRecentes} erro(s) nos últimos 7 dias — ver o log`,
+    };
+  }
+
+  /* O teto vem depois do erro e antes da inatividade: erro é algo
+     quebrado, isto é dinheiro correndo — as duas pedem ação, e a
+     primeira pede mais rápido. Vem ANTES da inatividade porque uma
+     conta que gasta acima do teto obviamente não está parada. */
+  if (c.tetoUsd !== null && c.gasto.custoUsd > c.tetoUsd) {
+    return {
+      nivel: "atencao",
+      motivo: `IA em ${fmtUsd(c.gasto.custoUsd)} no mês — acima do teto de ${fmtUsd(c.tetoUsd)}`,
     };
   }
 
@@ -130,9 +176,13 @@ const PESO: Record<NivelSaude, number> = { bloqueado: 0, atencao: 1, ok: 2 };
 export function ordenarCorretores(
   lista: CorretorAdmin[],
   hoje: string,
+  conexoes?: Map<string, EstadoConexao>,
 ): { corretor: CorretorAdmin; saude: Saude }[] {
   return lista
-    .map((corretor) => ({ corretor, saude: saudeDoCorretor(corretor, hoje) }))
+    .map((corretor) => ({
+      corretor,
+      saude: saudeDoCorretor(corretor, hoje, conexoes?.get(corretor.id)),
+    }))
     .sort(
       (a, b) =>
         PESO[a.saude.nivel] - PESO[b.saude.nivel] ||
@@ -150,9 +200,15 @@ export interface TotaisAdmin {
   chamadas: number;
   /** Algum corretor usou modelo com preço não conferido (ou sem preço). */
   precoNaoConferido: boolean;
+  /** Quantos passaram do próprio teto de IA no mês. */
+  acimaDoTeto: number;
 }
 
-export function totaisDoPainel(lista: CorretorAdmin[], hoje: string): TotaisAdmin {
+export function totaisDoPainel(
+  lista: CorretorAdmin[],
+  hoje: string,
+  conexoes?: Map<string, EstadoConexao>,
+): TotaisAdmin {
   const t: TotaisAdmin = {
     corretores: lista.length,
     bloqueados: 0,
@@ -160,14 +216,19 @@ export function totaisDoPainel(lista: CorretorAdmin[], hoje: string): TotaisAdmi
     custoUsd: 0,
     chamadas: 0,
     precoNaoConferido: false,
+    acimaDoTeto: 0,
   };
   for (const c of lista) {
-    const nivel = saudeDoCorretor(c, hoje).nivel;
+    const nivel = saudeDoCorretor(c, hoje, conexoes?.get(c.id)).nivel;
     if (nivel === "bloqueado") t.bloqueados++;
     else if (nivel === "atencao") t.emAtencao++;
     t.custoUsd += c.gasto.custoUsd;
     t.chamadas += c.gasto.chamadas;
     if (c.gasto.temPrecoNaoConferido) t.precoNaoConferido = true;
+    // Contado à parte da saúde de propósito: um corretor com erro
+    // recente E acima do teto aparece uma vez só em "Em atenção", mas
+    // o estouro continua sendo um fato sobre a fatura.
+    if (c.tetoUsd !== null && c.gasto.custoUsd > c.tetoUsd) t.acimaDoTeto++;
   }
   return t;
 }
@@ -214,7 +275,11 @@ export const EVENTOS: Record<string, string> = {
   "google-falhou": "Falha ao sincronizar com o Google Agenda",
   "admin-ia-liberada": "IA liberada por um administrador",
   "admin-ia-revogada": "IA revogada por um administrador",
+  "admin-teto-ia": "Teto de gasto de IA alterado por um administrador",
   "admin-instancia-salva": "Número de WhatsApp cadastrado por um administrador",
+  "admin-cargo-concedido": "Cargo de administrador concedido",
+  "admin-cargo-removido": "Cargo de administrador removido",
+  "admin-carteira-alterada": "Acesso ao painel do corretor alterado",
   /* Integração com o Sistema Principal. Os dois primeiros são a razão de a
      categoria existir: um evento que não acha a angariação, ou que acha duas,
      não gera reclamação nenhuma — gera SILÊNCIO. O corretor simplesmente

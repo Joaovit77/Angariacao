@@ -19,7 +19,7 @@
    ================================================================ */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
-import { souAdmin } from "@/lib/admin";
+import { meuCargo } from "@/lib/admin";
 import { iaDisponivelParaUsuario } from "@/lib/ia";
 import { valorMaisUsado } from "@/lib/normalizacao";
 import { carregarEstado } from "@/lib/persistencia/carregarEstado";
@@ -85,7 +85,7 @@ export default function SessaoProvider({ children }: { children: React.ReactNode
   const setEstado = useAppStore((s) => s.setEstado);
   const limparEstado = useAppStore((s) => s.limparEstado);
   const setIaDisponivel = useAppStore((s) => s.setIaDisponivel);
-  const setEhAdmin = useAppStore((s) => s.setEhAdmin);
+  const setCargo = useAppStore((s) => s.setCargo);
 
   useEffect(() => {
     const { data } = getSupabase().auth.onAuthStateChange((event, session) => {
@@ -140,20 +140,20 @@ export default function SessaoProvider({ children }: { children: React.ReactNode
     };
   }, [sessao.estado, usuarioId, setIaDisponivel]);
 
-  // Esta conta é super admin? Mesma forma da consulta acima, e pelo mesmo
+  // Qual é o cargo desta conta? Mesma forma da consulta acima, e pelo mesmo
   // motivo de depender do usuarioId: trocar de conta na mesma aba não pode
-  // herdar o cargo da anterior. `souAdmin` nunca lança — em qualquer dúvida
-  // devolve false, e o menu simplesmente não aparece.
+  // herdar o cargo da anterior. `meuCargo` nunca lança — em qualquer dúvida
+  // devolve o neutro (sem cargo, com o painel do corretor inteiro).
   useEffect(() => {
     if (sessao.estado !== "auth" || !usuarioId) return;
     let cancelado = false;
-    souAdmin().then((admin) => {
-      if (!cancelado) setEhAdmin(admin);
+    meuCargo().then((cargo) => {
+      if (!cancelado) setCargo(cargo);
     });
     return () => {
       cancelado = true;
     };
-  }, [sessao.estado, usuarioId, setEhAdmin]);
+  }, [sessao.estado, usuarioId, setCargo]);
 
   // Logout: zera o store (o app antigo perdia o STATE ao recarregar a página).
   useEffect(() => {

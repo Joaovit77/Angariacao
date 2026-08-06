@@ -97,16 +97,24 @@ export async function GET(request: Request): Promise<Response> {
     if (data.users.length < 200) break;
   }
 
-  const [instRes, iaRes, googleRes, imoveisRes, usoRes, logRes] = await Promise.all([
+  const [instRes, iaRes, googleRes, imoveisRes, usoRes, logRes, adminRes] = await Promise.all([
     sb.from("whatsapp_instancias").select("user_id, instancia"),
-    sb.from("ia_permissoes").select("user_id, liberado"),
+    sb.from("ia_permissoes").select("user_id, liberado, teto_usd"),
     sb.from("google_contas").select("user_id"),
     sb.from("imoveis").select("user_id, tentativas, notas"),
     sb.from("ia_uso").select("user_id, tipo, modelo, tokens_entrada, tokens_entrada_cache, tokens_saida, criado_em").gte("criado_em", desde),
     sb.from("log_eventos").select("id, user_id, categoria, nivel, evento, detalhe, criado_em").eq("nivel", "erro").gte("criado_em", corteErro),
+    sb.from("admins").select("user_id, opera_carteira"),
   ]);
 
-  const falhou = instRes.error || iaRes.error || googleRes.error || imoveisRes.error || usoRes.error || logRes.error;
+  const falhou =
+    instRes.error ||
+    iaRes.error ||
+    googleRes.error ||
+    imoveisRes.error ||
+    usoRes.error ||
+    logRes.error ||
+    adminRes.error;
   if (falhou) {
     console.error("Admin: falha ao montar o painel:", falhou.message);
     return erro("falha", 500);
@@ -116,7 +124,24 @@ export async function GET(request: Request): Promise<Response> {
   for (const r of instRes.data || []) if (r.user_id) instancias.set(r.user_id as string, r.instancia as string);
 
   const iaLiberada = new Set<string>();
-  for (const r of iaRes.data || []) if (r.user_id && r.liberado) iaLiberada.add(r.user_id as string);
+  const tetos = new Map<string, number>();
+  for (const r of iaRes.data || []) {
+    if (!r.user_id) continue;
+    if (r.liberado) iaLiberada.add(r.user_id as string);
+    // `Number(null)` é 0, e um teto de zero significaria "toda chamada
+    // estoura". Só entra o que é número de verdade — a mesma cautela do
+    // `lerValor` da integração, pelo mesmo motivo: aqui é tela de
+    // dinheiro, e o valor ilegível não pode virar um número exato.
+    const teto = r.teto_usd === null || r.teto_usd === undefined ? null : Number(r.teto_usd);
+    if (teto !== null && Number.isFinite(teto) && teto > 0) tetos.set(r.user_id as string, teto);
+  }
+
+  // Quem tem o cargo, e quem entre eles trabalha carteira. Ausência da
+  // linha = não é admin = opera carteira, que é o padrão de todo mundo.
+  const adminCarteira = new Map<string, boolean>();
+  for (const r of adminRes.data || []) {
+    if (r.user_id) adminCarteira.set(r.user_id as string, r.opera_carteira !== false);
+  }
 
   const google = new Set<string>();
   for (const r of googleRes.data || []) if (r.user_id) google.add(r.user_id as string);
@@ -167,7 +192,10 @@ export async function GET(request: Request): Promise<Response> {
       ultimoAcesso: c.ultimoAcesso,
       instancia: instancias.get(c.id) || null,
       iaLiberada: iaLiberada.has(c.id),
+      tetoUsd: tetos.get(c.id) ?? null,
       googleConectado: google.has(c.id),
+      ehAdmin: adminCarteira.has(c.id),
+      operaCarteira: adminCarteira.get(c.id) ?? true,
       imoveis: uso.imoveis,
       tentativas30d: uso.tentativas,
       respostas30d: uso.respostas,

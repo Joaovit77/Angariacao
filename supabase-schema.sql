@@ -419,8 +419,17 @@ create policy "update_own_config" on user_config
 -- design. Se um dia alguém acrescentar "update_own_ia" por simetria com
 -- as outras tabelas, o controle inteiro cai.
 --
--- Para liberar/revogar: Table Editor do Supabase (usa a service role,
--- que passa por cima da RLS). Sem deploy, sem mexer em código.
+-- Para liberar/revogar: a tela `/admin` (ou o Table Editor do Supabase,
+-- que usa a service role e passa por cima da RLS). Sem deploy, sem
+-- mexer em código.
+--
+-- `teto_usd` é o alerta de gasto, e mora AQUI e não numa tabela nova
+-- pela mesma razão que o `liberado`: é decisão do dono do sistema sobre
+-- aquela conta, e esta já é a tabela dessa decisão. Ele **não bloqueia**
+-- — avisa. Cortar a IA no meio do mês transformaria um estouro de conta
+-- num incidente para o corretor, que não escolheu o teto e não pode
+-- mudá-lo; o painel acende a linha e quem decide é quem opera. Nulo =
+-- sem teto, que é o padrão.
 -- ------------------------------------------------------------
 create table if not exists ia_permissoes (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -428,6 +437,8 @@ create table if not exists ia_permissoes (
   observacao text,
   criado_em timestamptz not null default now()
 );
+
+alter table ia_permissoes add column if not exists teto_usd numeric;
 
 alter table ia_permissoes enable row level security;
 
@@ -729,13 +740,31 @@ create trigger trg_imoveis_updated_at
 -- conveniência; a trava está no servidor.
 --
 -- O PRIMEIRO ADMIN entra à mão, pelo Table Editor (é o único jeito:
--- não há admin para promovê-lo). Ver DEPLOY.md.
+-- não há admin para promovê-lo). Ver DEPLOY.md. Do segundo em diante,
+-- quem promove é a própria tela (`POST /api/admin/cargo`).
+--
+-- `opera_carteira` SEPARA DUAS COISAS que o app tratava como uma só:
+-- ter o cargo e trabalhar angariação. São eixos independentes, e
+-- confundi-los erra dos dois lados. Um operador puro via as dez telas
+-- do corretor abrirem numa parede de zeros — pior que inútil, porque
+-- uma caixa de respostas vazia diz "nada chegou" quando significa "esta
+-- conta não tem número de WhatsApp e nunca vai receber nada". E a regra
+-- oposta ("admin não vê o painel") tiraria o Pipeline de quem
+-- administra o sistema E trabalha a própria carteira, que é o caso
+-- normal numa imobiliária pequena.
+--
+-- Default `true` de propósito: quem já era admin quando a coluna nasceu
+-- estava usando o painel inteiro, e um default `false` os trancaria
+-- fora do próprio trabalho no primeiro deploy. Quem só opera é marcado
+-- à mão (ou pela tela) — a exceção se declara, a regra não.
 -- ------------------------------------------------------------
 create table if not exists admins (
   user_id uuid primary key references auth.users(id) on delete cascade,
   observacao text,
   criado_em timestamptz not null default now()
 );
+
+alter table admins add column if not exists opera_carteira boolean not null default true;
 
 alter table admins enable row level security;
 

@@ -3892,3 +3892,180 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
    tema escuro, e aqui a linha carrega número de contrato e valor pago. */
 .timeline-detalhe{ font-size: 11.5px; color: var(--text-dim); margin-top: 1px; }
 .timeline-valor{ color: var(--good); font-weight: 600; }
+
+/* ==================================================================
+   ADMINISTRAÇÃO (super admin)
+
+   O painel nasceu montado com estilo inline — rápido de escrever e o
+   jeito mais fácil de acabar com cor literal no meio da folha, que num
+   app de DOIS temas é o defeito que só metade dos usuários vê. Aqui as
+   regras vivem por classe e toda cor sai de token.
+
+   A gramática visual da tela é uma só: **o que precisa de você fica
+   colorido, o resto fica cinza.** É a mesma decisão de
+   `ordenarCorretores` — ordenar por quem precisa, não por volume —
+   levada para a cor, porque uma tela de operação em que tudo grita não
+   ordena nada.
+   ================================================================== */
+
+/* ---- Ambiente: uma fita de chips, sempre visível ----
+   A versão anterior escondia o cartão quando estava tudo certo, com um
+   bom motivo (verde permanente ocupando o topo não informa nada). O
+   chip resolve melhor os dois lados: ocupa uma linha, confirma de
+   relance o que está de pé, e o que falta salta em vermelho sem
+   precisar de tabela. */
+/* As seções respiram igual. Sem isto cada cartão carrega o próprio
+   margin-bottom inline, e um deles acaba diferente dos outros. */
+.admin-card-ambiente,
+.admin-card-corretores{ margin-bottom:16px; }
+.admin-ambiente{ display:flex; flex-wrap:wrap; gap:8px; }
+.admin-cap{
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:12px; font-weight:600;
+  padding:6px 11px; border-radius:20px;
+  border:1px solid color-mix(in srgb, currentColor 28%, transparent);
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  white-space:nowrap;
+}
+.admin-cap.ok{ color: var(--good); }
+.admin-cap.falta{ color: var(--bad); }
+/* Faltando algo OPCIONAL não é vermelho: Google Agenda desconectado é
+   uma escolha legítima de deploy, e pintá-la de erro ensina a ignorar a
+   cor justamente onde ela precisa funcionar. */
+.admin-cap.opcional{ color: var(--text-faint); }
+
+.admin-cap-lista{ margin-top:14px; display:flex; flex-direction:column; gap:10px; }
+.admin-cap-item{
+  display:flex; gap:10px; align-items:flex-start;
+  font-size:12.5px; line-height:1.45;
+  padding-left:11px;
+  border-left:2px solid currentColor;
+}
+.admin-cap-item.essencial{ color: var(--bad); }
+.admin-cap-item.opcional{ color: var(--warn); }
+.admin-cap-item strong{ color: var(--text); font-weight:600; }
+.admin-cap-item span{ color: var(--text-dim); }
+.admin-cap-item code{
+  font-family: var(--font-mono); font-size:11px;
+  color: var(--text-dim); background: var(--bg-elev-2);
+  padding:1px 5px; border-radius:4px;
+}
+
+/* ---- Avisos no topo ---- */
+.admin-aviso{ margin-bottom:16px; border-color: currentColor; }
+.admin-aviso.erro{ color: var(--bad); }
+.admin-aviso.atencao{ color: var(--warn); }
+.admin-aviso-corpo{ font-size:13px; color: var(--text); }
+.admin-aviso strong{ color: currentColor; }
+
+.admin-kpis{ margin-bottom:16px; }
+.admin-kpi-alerta{ color: var(--warn); }
+
+/* A grade do detalhe alinha as duas colunas pelo TOPO. Sem isso o
+   `grid` estica a coluna curta para a altura da outra e o formulário
+   fica boiando no meio de espaço vazio. */
+.admin-detalhe-grid{ align-items:start; }
+
+/* ---- Células repetidas das três tabelas ----
+   Existiam como estilo inline idêntico copiado dez vezes; a primeira
+   consequência de mexer numa delas era as outras nove ficarem para trás. */
+.admin-vazio{ color: var(--text-faint); padding:18px 0; }
+.admin-nulo{ color: var(--text-faint); }
+.admin-cel-data{ white-space:nowrap; font-size:12px; font-variant-numeric: tabular-nums; }
+.admin-cel-min{ font-size:12px; }
+.admin-cel-detalhe{ font-size:12px; color: var(--text-dim); }
+.admin-filtro{ font-size:12px; padding:4px 8px; }
+
+/* ---- A linha do corretor ---- */
+.admin-conta-nome{ font-weight:600; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.admin-conta-sub{ font-size:11px; color: var(--text-faint); margin-top:2px; }
+/* O motivo da situação, embaixo da pílula. Já vem escrito pelo cálculo
+   (`Saude.motivo`) — uma lista em que não dá para concordar com o
+   critério vira lista que ninguém lê. */
+.admin-motivo{ font-size:11px; color: var(--text-dim); margin-top:4px; max-width:34ch; }
+.admin-num{ text-align:right; font-variant-numeric: tabular-nums; }
+/* Números que se comparam de coluna a coluna precisam de largura fixa
+   por dígito; sem isso "1.204" e "999" desalinham a vírgula e a coluna
+   deixa de ser lida como escala. */
+.admin-teto{ font-size:11px; color: var(--text-faint); }
+.admin-teto.estourado{ color: var(--warn); }
+.admin-instancia{ font-size:12px; }
+.admin-instancia .ausente{ color: var(--bad); }
+.admin-conexao{ font-size:11px; font-weight:600; display:flex; align-items:center; gap:5px; margin-top:3px; }
+
+/* ---- O detalhe ----
+   Borda de acento à esquerda: ele é a expansão da linha de cima, não
+   mais um cartão solto no meio da página. */
+.admin-detalhe{
+  margin-bottom:16px;
+  border-left:3px solid var(--accent);
+  box-shadow: 0 6px 20px rgb(var(--sombra-rgb) / .16);
+}
+.admin-detalhe-head{
+  display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+  margin-bottom:16px; padding-bottom:12px;
+  border-bottom:1px solid var(--border-soft);
+}
+.admin-detalhe-nome{ font-family: var(--font-display); font-size:18px; font-weight:700; }
+.admin-detalhe-email{ font-size:12px; color: var(--text-faint); }
+
+/* ---- Conexão ---- */
+.admin-conexao-estado{ font-weight:600; font-size:13px; display:flex; align-items:center; gap:6px; }
+.admin-qr{
+  /* Literal, e é uma das exceções previstas na convenção: o QR precisa
+     de fundo BRANCO para a câmera separar os módulos, nos dois temas.
+     Um `--bg-elev-1` aqui deixaria o código inescaneável no escuro. */
+  background:#fff;
+  width:190px; height:190px;
+  margin-top:10px; padding:9px;
+  border-radius:8px;
+  display:block;
+}
+
+/* ---- Série mensal de IA ----
+   As barras vivem sobre um TRILHO. Sem ele, mês sem gasto não desenha
+   nada e volta a se ler como "não tenho esse dado" — que é justamente a
+   distinção que `gastoPorMes` existe para preservar ao devolver zero em
+   vez de omitir o mês. */
+.admin-serie{ display:flex; gap:6px; align-items:flex-end; }
+.admin-serie-col{ flex:1; text-align:center; min-width:0; }
+.admin-serie-trilho{
+  height:46px; border-radius:4px 4px 0 0;
+  background: var(--bg-elev-2);
+  display:flex; align-items:flex-end;
+  overflow:hidden;
+}
+.admin-serie-barra{
+  width:100%; background: var(--accent);
+  border-radius:3px 3px 0 0;
+  transition: height .18s ease;
+}
+/* Mês corrente em destaque: é o único ainda correndo, e o que a
+   pergunta "está subindo?" quer comparar contra os anteriores. */
+.admin-serie-col.atual .admin-serie-barra{ background: var(--accent-strong); }
+.admin-serie-mes{ font-size:10px; color: var(--text-faint); margin-top:5px; }
+.admin-serie-valor{ font-size:10px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.admin-serie-col.atual .admin-serie-valor{ color: var(--accent-strong); font-weight:600; }
+
+/* ---- Consumo por tipo ---- */
+.admin-tipos{ display:flex; flex-direction:column; gap:7px; }
+.admin-tipo{
+  display:flex; align-items:center; gap:10px;
+  font-size:12px;
+}
+.admin-tipo-nome{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.admin-tipo-qtd{ color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.admin-tipo-custo{ font-variant-numeric: tabular-nums; font-weight:600; min-width:62px; text-align:right; }
+
+/* ---- Teto e cargo ---- */
+.admin-linha-campo{ display:flex; gap:8px; }
+.admin-linha-campo input{ flex:1; min-width:0; }
+.admin-acoes{ display:flex; gap:8px; flex-wrap:wrap; }
+
+@media (max-width: 720px){
+  /* A série encolhe antes de tudo: seis colunas de dez pixels não são
+     gráfico, são ruído. Some, e os números ao lado continuam contando a
+     mesma história. */
+  .admin-serie{ display:none; }
+  .admin-motivo{ max-width:none; }
+}

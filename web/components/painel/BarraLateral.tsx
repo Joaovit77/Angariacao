@@ -172,8 +172,20 @@ export default function BarraLateral({
   const imoveis = useAppStore((s) => s.imoveis);
   const agenda = useAppStore((s) => s.agenda);
   const ehAdmin = useAppStore((s) => s.ehAdmin);
+  const operaCarteira = useAppStore((s) => s.operaCarteira);
 
-  const itens = useMemo(() => (ehAdmin ? [...ITENS, ITEM_ADMIN] : ITENS), [ehAdmin]);
+  /* Três menus, não dois. Quem opera o sistema sem trabalhar carteira
+     vê SÓ a Administração: as dez telas de corretor abririam numa
+     parede de zeros — e pior que vazias, elas mentem, porque uma caixa
+     de respostas em branco diz "nada chegou" quando o que houve é que
+     a conta não tem número de WhatsApp e nunca vai receber nada.
+     Continua sendo conveniência: as rotas do corretor não recusam
+     ninguém (são a carteira dele, vazia), e quem chegar por URL cai no
+     redirecionamento do shell. */
+  const itens = useMemo(() => {
+    if (!ehAdmin) return ITENS;
+    return operaCarteira ? [...ITENS, ITEM_ADMIN] : [ITEM_ADMIN];
+  }, [ehAdmin, operaCarteira]);
 
   // Prefetch das rotas: os itens são <button> com router.push (não <Link>),
   // então o Next não faz o prefetch automático. Sem isto, cada clique só

@@ -224,6 +224,98 @@ export function gastoPorCorretor(usos: UsoIa[]): Map<string, GastoIa> {
   return saida;
 }
 
+/* ----------------------------------------------------------------
+   A SÉRIE MENSAL
+
+   O painel só sabia dizer o mês corrente, e um número sozinho não
+   responde a pergunta que se faz olhando para uma conta: **está
+   subindo?** US$ 3 no mês são baratos se o mês passado foi US$ 2,80 e
+   são um alarme se foi US$ 0,40 — e é o segundo caso que se descobre
+   tarde, pela fatura.
+   ---------------------------------------------------------------- */
+
+/** Um mês da série. `mes` é "YYYY-MM". */
+export interface MesDeGasto {
+  mes: string;
+  chamadas: number;
+  custoUsd: number;
+  /** Chamadas cujo modelo não tem preço — o `custoUsd` as ignora. */
+  chamadasSemPreco: number;
+}
+
+/**
+ * Os últimos `quantos` meses até `hoje`, em ordem cronológica.
+ *
+ * Aritmética de string, e não `Date`: este módulo está em
+ * `lib/calculo/`, onde `new Date` é proibido por regra de ESLint (ver
+ * `lib/datas.ts`). Aqui isso é mais que formalidade — `new Date` sobre
+ * uma data ISO a interpreta como UTC, e no fim do mês em fuso negativo
+ * a série começaria um mês antes do que a tela diz.
+ */
+export function ultimosMeses(hoje: string, quantos: number): string[] {
+  let ano = Number(hoje.slice(0, 4));
+  let mes = Number(hoje.slice(5, 7));
+  const saida: string[] = [];
+  for (let i = 0; i < quantos; i++) {
+    saida.push(`${ano}-${String(mes).padStart(2, "0")}`);
+    mes--;
+    if (mes === 0) {
+      mes = 12;
+      ano--;
+    }
+  }
+  return saida.reverse();
+}
+
+/**
+ * O gasto mês a mês de uma lista de chamadas.
+ *
+ * **Mês sem chamada nenhuma entra como zero, e não sai da série.** Um
+ * buraco na sequência se lê como "não tenho esse dado"; um zero se lê
+ * como "não gastou nada", que é a verdade — e a diferença entre as duas
+ * leituras é justamente o que se está tentando ver ao olhar a série.
+ */
+export function gastoPorMes(usos: UsoIa[], hoje: string, quantos: number): MesDeGasto[] {
+  const porMes = new Map<string, MesDeGasto>();
+  for (const mes of ultimosMeses(hoje, quantos)) {
+    porMes.set(mes, { mes, chamadas: 0, custoUsd: 0, chamadasSemPreco: 0 });
+  }
+
+  for (const uso of usos) {
+    // A coluna guarda timestamp ISO; os 7 primeiros caracteres são o mês.
+    const alvo = porMes.get(uso.criadoEm.slice(0, 7));
+    // Fora da janela pedida: ignora em vez de criar um mês solto, senão
+    // a série ganharia pontas que a tela não sabe desenhar.
+    if (!alvo) continue;
+    alvo.chamadas++;
+    const custo = custoDaChamada(uso);
+    if (custo === null) alvo.chamadasSemPreco++;
+    else alvo.custoUsd += custo;
+  }
+
+  return [...porMes.values()];
+}
+
+/** A série mensal por corretor. A chave "" são as contas já removidas,
+    pela mesma razão de `gastoPorCorretor`. */
+export function gastoMensalPorCorretor(
+  usos: UsoIa[],
+  hoje: string,
+  quantos: number,
+): Map<string, MesDeGasto[]> {
+  const porUsuario = new Map<string, UsoIa[]>();
+  for (const uso of usos) {
+    const chave = uso.userId ?? "";
+    const lista = porUsuario.get(chave);
+    if (lista) lista.push(uso);
+    else porUsuario.set(chave, [uso]);
+  }
+
+  const saida = new Map<string, MesDeGasto[]>();
+  for (const [chave, lista] of porUsuario) saida.set(chave, gastoPorMes(lista, hoje, quantos));
+  return saida;
+}
+
 /**
  * Dólar com casas suficientes para o valor não virar "US$ 0,00".
  *

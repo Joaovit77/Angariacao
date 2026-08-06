@@ -68,6 +68,8 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
   const router = useRouter();
   const pathname = usePathname();
   const carregado = useAppStore((s) => s.carregado);
+  const ehAdmin = useAppStore((s) => s.ehAdmin);
+  const operaCarteira = useAppStore((s) => s.operaCarteira);
   // gaveta = drawer do mobile; recolhida = trilha de ícones do desktop.
   const [gavetaAberta, setGavetaAberta] = useState(false);
   const ehDesktop = useSyncExternalStore(assinarViewport, ehDesktopAgora, () => true);
@@ -76,6 +78,18 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (estado === "anon" || estado === "recuperacao") router.replace("/");
   }, [estado, router]);
+
+  /* Quem só OPERA o sistema não tem carteira, e por isso não tem view de
+     corretor: a barra já esconde os itens, e isto fecha a porta da URL
+     digitada — inclusive a de /roadmap, que não está no menu de ninguém.
+
+     Não há risco de expulsar quem não devia: `ehAdmin` começa `false` e
+     `operaCarteira` começa `true`, então a condição só se torna
+     verdadeira depois de o servidor responder. É a mesma razão de a
+     página /admin não usar o store para decidir o contrário. */
+  useEffect(() => {
+    if (ehAdmin && !operaCarteira && pathname !== "/admin") router.replace("/admin");
+  }, [ehAdmin, operaCarteira, pathname, router]);
 
   if (estado !== "auth") return null;
 

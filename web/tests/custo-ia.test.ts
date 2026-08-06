@@ -9,10 +9,13 @@ import { describe, expect, it } from "vitest";
 import {
   custoDaChamada,
   fmtUsd,
+  gastoMensalPorCorretor,
   gastoPorCorretor,
+  gastoPorMes,
   PRECOS,
   precoConferido,
   somarGasto,
+  ultimosMeses,
   type UsoIa,
 } from "@/lib/calculo/custoIa";
 
@@ -175,6 +178,70 @@ describe("gastoPorCorretor", () => {
     const mapa = gastoPorCorretor([uso({ userId: null })]);
     expect(mapa.get("")?.chamadas).toBe(1);
     expect(mapa.get("")?.userId).toBeNull();
+  });
+});
+
+describe("ultimosMeses", () => {
+  it("atravessa a virada do ano para trás", () => {
+    // O caso que a aritmética ingênua erra: mês 1 menos 1 não é mês 0.
+    expect(ultimosMeses("2026-02-15", 4)).toEqual(["2025-11", "2025-12", "2026-01", "2026-02"]);
+  });
+
+  it("devolve em ordem cronológica, terminando no mês de hoje", () => {
+    const meses = ultimosMeses("2026-08-06", 6);
+    expect(meses).toHaveLength(6);
+    expect(meses[5]).toBe("2026-08");
+    expect(meses[0]).toBe("2026-03");
+  });
+});
+
+describe("gastoPorMes", () => {
+  it("mês sem chamada nenhuma entra como ZERO, e não some da série", () => {
+    /* A regra que dá forma à função. Um buraco na sequência se lê como
+       "não tenho esse dado"; um zero se lê como "não gastou nada" — e a
+       diferença entre as duas leituras é exatamente o que se está
+       tentando ver ao olhar para a série. */
+    const serie = gastoPorMes([uso({ criadoEm: "2026-08-02T10:00:00Z" })], "2026-08-06", 3);
+    expect(serie.map((m) => m.mes)).toEqual(["2026-06", "2026-07", "2026-08"]);
+    expect(serie[0].chamadas).toBe(0);
+    expect(serie[0].custoUsd).toBe(0);
+    expect(serie[2].chamadas).toBe(1);
+  });
+
+  it("ignora chamada fora da janela em vez de criar um mês solto", () => {
+    // Uma ponta a mais na série é um ponto que a tela não sabe desenhar.
+    const serie = gastoPorMes([uso({ criadoEm: "2025-01-02T10:00:00Z" })], "2026-08-06", 3);
+    expect(serie).toHaveLength(3);
+    expect(serie.every((m) => m.chamadas === 0)).toBe(true);
+  });
+
+  it("conta a chamada sem preço à parte, sem somá-la ao custo", () => {
+    // Mesma regra do `somarGasto`: modelo sem preço não vira número
+    // inventado numa tela de dinheiro.
+    const serie = gastoPorMes(
+      [uso({ modelo: "modelo-que-nao-existe", criadoEm: "2026-08-02T10:00:00Z" })],
+      "2026-08-06",
+      1,
+    );
+    expect(serie[0].chamadas).toBe(1);
+    expect(serie[0].chamadasSemPreco).toBe(1);
+    expect(serie[0].custoUsd).toBe(0);
+  });
+});
+
+describe("gastoMensalPorCorretor", () => {
+  it("separa por conta e guarda as removidas na chave vazia", () => {
+    const mapa = gastoMensalPorCorretor(
+      [
+        uso({ userId: "a", criadoEm: "2026-08-02T10:00:00Z" }),
+        uso({ userId: null, criadoEm: "2026-08-03T10:00:00Z" }),
+      ],
+      "2026-08-06",
+      2,
+    );
+    expect(mapa.get("a")?.at(-1)?.chamadas).toBe(1);
+    // `on delete set null`: a conta sumiu, o dinheiro foi gasto.
+    expect(mapa.get("")?.at(-1)?.chamadas).toBe(1);
   });
 });
 

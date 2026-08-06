@@ -73,12 +73,15 @@ webhook; com o painel de administração ela passou a ser necessária também pa
 
 ### Super admin — liberando o primeiro
 
-O painel `/admin` mostra todos os corretores, quanto cada um consumiu de IA no mês e o log do que
-quebrou; é também de lá que se libera a IA de uma conta e se cadastra o número de WhatsApp dela
-(o que antes se fazia à mão no Table Editor).
+O painel `/admin` mostra todos os corretores, o estado da conexão de WhatsApp de cada um, quanto
+consumiram de IA (no mês e nos últimos seis), o que está configurado neste deploy e o log do que
+quebrou; é também de lá que se libera a IA de uma conta, se cadastra o número de WhatsApp dela, se
+põe um teto de gasto e se promove alguém a administrador (tudo o que antes se fazia à mão no Table
+Editor).
 
 Quem entra é quem tem linha na tabela `admins`. **O primeiro precisa ser inserido à mão** — não há
-administrador para promovê-lo:
+administrador para promovê-lo. Do segundo em diante, use o botão **Tornar admin** no detalhe do
+corretor.
 
 1. Supabase → **Table Editor** → `auth.users` → copie o `id` (uuid) da sua conta.
 2. Table Editor → `admins` → **Insert row** → cole o uuid em `user_id` → Save.
@@ -91,10 +94,24 @@ select id, 'primeiro admin' from auth.users where email = 'voce@exemplo.com'
 on conflict (user_id) do nothing;
 ```
 
-Recarregue o painel: o item **Administração** aparece no menu. Para revogar, apague a linha.
+Recarregue o painel: o item **Administração** aparece no menu. Para revogar, apague a linha (ou use
+**Remover admin** na tela — que recusa fazê-lo com a sua própria conta, para o sistema não ficar sem
+nenhum administrador).
 
 > A tabela não tem política de RLS nenhuma — nem de leitura. Isso é proposital: quem consulta é o
 > servidor, com a service role. Não crie políticas ali "por simetria" com as outras tabelas.
+
+**Conta que só OPERA o sistema** (sem carteira própria): a coluna `admins.opera_carteira` decide se
+aquele admin também vê as dez telas do corretor. O padrão é `true` — o caso comum é o dono da
+imobiliária administrar o sistema *e* trabalhar a própria carteira. Marque `false` (pelo botão
+**Deixar só operação**, ou pelo SQL abaixo) para as contas de operação pura: nelas o painel do
+corretor abriria numa parede de zeros, e uma caixa de respostas vazia diria "nada chegou" quando o
+que há é uma conta que nunca vai receber mensagem.
+
+```sql
+update admins set opera_carteira = false
+where user_id = (select id from auth.users where email = 'operacao@exemplo.com');
+```
 
 ### Termos de uso e política de privacidade — antes de oferecer a terceiros
 
