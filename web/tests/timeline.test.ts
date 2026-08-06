@@ -172,6 +172,32 @@ describe("timelineDaAngariacao", () => {
     expect(m?.valor).toBeNull();
   });
 
+  it("a criação é a data MAIS ANTIGA, e sempre abre a lista", () => {
+    /* Bug real, achado olhando a tela e não rodando teste: no AP-009 da conta
+       de teste o `dataAngariacao` é posterior à primeira transição do funil, e
+       "Angariação criada" caía no meio da lista, depois de "Documentação em
+       andamento". Uma angariação não pode ter sido criada depois da própria
+       primeira transição — se o histórico marca 20/05, o registro existia lá. */
+    const t = timelineDaAngariacao(
+      imovel({
+        dataAngariacao: "2026-06-08",
+        statusHistory: [
+          { status: "Novo contato", date: "2026-05-20" },
+          { status: "Documentação", date: "2026-06-02" },
+          { status: "Angariado", date: "2026-06-08" },
+        ],
+      }),
+    );
+    expect(t[0].titulo).toBe("Angariação criada");
+    expect(t[0].data).toBe("2026-05-20");
+    // E o "Novo contato" de 20/05 não vira linha própria: é o mesmo dia.
+    expect(t.map((m) => m.titulo)).toEqual([
+      "Angariação criada",
+      "Documentação em andamento",
+      "Imóvel angariado",
+    ]);
+  });
+
   it("imóvel sem data nenhuma devolve lista vazia em vez de inventar hoje", () => {
     expect(timelineDaAngariacao(imovel({ dataAngariacao: null, statusHistory: [] }))).toEqual([]);
   });

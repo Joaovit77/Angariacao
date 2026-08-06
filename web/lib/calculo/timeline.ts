@@ -134,12 +134,28 @@ export function timelineDaAngariacao(imovel: Imovel): MarcoTimeline[] {
   const marcos: MarcoTimeline[] = [];
   const historico = imovel.statusHistory || [];
 
-  /* O nascimento. `dataAngariacao` é a data do cadastro; sem ela (dado antigo
-     ou importado sem data) cai na primeira transição registrada, que é o mais
-     próximo que existe de "quando isto começou". Sem nenhuma das duas, não há
-     linha do tempo a montar — devolver lista vazia é mais honesto que inventar
-     "hoje" para um imóvel que existe há um ano. */
-  const criacao = texto(imovel.dataAngariacao) || (historico[0]?.date ?? "");
+  /* O nascimento, e ele é a MAIS ANTIGA das duas datas conhecidas — não o
+     `dataAngariacao` sozinho.
+
+     A razão é lógica antes de ser estética: uma angariação não pode ter sido
+     criada DEPOIS da própria primeira transição de funil. Se o histórico
+     registra "Novo contato" em 20/05, o registro existia em 20/05, qualquer
+     coisa que o campo diga.
+
+     E as duas divergem na prática. No AP-009 da conta de teste, o
+     `dataAngariacao` é 08/06 e o histórico começa em 20/05 — ordenando só por
+     data, "Angariação criada" caía no MEIO da lista, depois de "Documentação
+     em andamento", e uma linha do tempo que não começa pela criação lê como
+     defeito mesmo quando cada linha está certa. Foi assim que este bug
+     apareceu: olhando a tela, não rodando o teste.
+
+     Sem nenhuma das duas datas não há linha do tempo a montar — devolver lista
+     vazia é mais honesto que inventar "hoje" para um imóvel que existe há um
+     ano. */
+  const doCampo = texto(imovel.dataAngariacao);
+  const doHistorico = historico[0]?.date ?? "";
+  const criacao =
+    doCampo && doHistorico ? (doCampo < doHistorico ? doCampo : doHistorico) : doCampo || doHistorico;
   if (!criacao) return [];
   marcos.push({
     data: criacao,
