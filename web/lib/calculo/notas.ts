@@ -30,6 +30,51 @@ export const PREFIXO_ID_NOTA = "wa:";
 /** Sufixo do id da nota que explica um encerramento automático. */
 export const SUFIXO_ID_ENCERRAMENTO = ":encerrado";
 
+/**
+ * Prefixo do id da nota criada por um evento do Sistema Principal (Sophia):
+ * `sophia:<id do evento>`.
+ *
+ * Prefixo SEPARADO do `wa:`, e essa é a decisão que importa. Estas notas são
+ * a NOTIFICAÇÃO do corretor — é por elas que o sino conta, que o Realtime
+ * avisa e que a caixinha do sistema aparece —, mas elas não são fala de
+ * proprietário nenhum: quem escreveu foi o outro sistema. Caíssem no `wa:` e
+ * três coisas passariam a mentir de uma vez, todas em silêncio: `isStale`
+ * trataria a assinatura como "o proprietário se manifestou", a caixa de
+ * respostas cobraria leitura de um recado que ninguém mandou, e
+ * `dataUltimaResposta` diria que a pessoa respondeu no dia em que, na verdade,
+ * o financeiro pagou uma comissão.
+ *
+ * `ehNotaDeResposta` já separa as duas sem precisar saber que esta existe —
+ * ela testa o prefixo `wa:`, e é justamente por isso que a convenção mora
+ * toda neste arquivo em vez de espalhada em `startsWith` pelos leitores.
+ */
+export const PREFIXO_ID_NOTA_SISTEMA = "sophia:";
+
+export function idNotaDoEvento(eventoId: string): string {
+  return `${PREFIXO_ID_NOTA_SISTEMA}${eventoId}`;
+}
+
+/** A nota veio de um evento do Sistema Principal? */
+export function ehNotaDeEvento(nota: { id?: string | null }): boolean {
+  return (nota.id || "").startsWith(PREFIXO_ID_NOTA_SISTEMA);
+}
+
+/**
+ * Os eventos do Sistema Principal que o corretor ainda não leu.
+ *
+ * Não lida é a AUSÊNCIA do campo, e não `lida === false`: a coluna é jsonb, a
+ * nota nasce sem o campo, e testar por `false` deixaria toda notificação nova
+ * fora da contagem — o sino marcaria zero para sempre.
+ *
+ * Diferente da caixa de respostas, aqui não existe a regra derivada de "saiu
+ * por ação do corretor". Lá ela é essencial (quem trabalha pelo painel nunca
+ * marca nada à mão); aqui não haveria o que derivar — registrar uma tentativa
+ * não é sinal de que o corretor viu que a comissão caiu na conta dele.
+ */
+export function eventosNaoLidos(notas: NotaImovel[] | null | undefined): NotaImovel[] {
+  return (notas || []).filter((n) => ehNotaDeEvento(n) && n.lida !== true);
+}
+
 /** Prefixo do TEXTO da nota criada pelo webhook. Mora aqui, e não em
     `webhookWhatsapp.ts`, pela mesma razão do prefixo de id: quem escreve é o
     webhook, mas quem lê são outros — e uma cópia solta do literal em cada

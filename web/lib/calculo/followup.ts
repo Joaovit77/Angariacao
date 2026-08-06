@@ -29,7 +29,11 @@
    mesma leitura que o ranking de abordagens faz — a verdade está no
    histórico, não num campo único do imóvel.
    ================================================================ */
-import { MAX_TENTATIVAS_SEM_RETORNO, VERIFICACAO_DISPONIBILIDADE_DIAS } from "../constantes";
+import {
+  MAX_TENTATIVAS_SEM_RETORNO,
+  STATUS_AUTORIZACAO_ASSINADA,
+  VERIFICACAO_DISPONIBILIDADE_DIAS,
+} from "../constantes";
 import { daysBetween } from "../datas";
 import type { Abordagem, Imovel, Tentativa } from "../tipos";
 import { dataAngariadoEfetiva, isPausado } from "./motor";
@@ -117,8 +121,19 @@ export const FOLLOWUP_STATUS_ALVO = ["Sem resposta", "Novo contato"] as const;
 
 /** Público do lote de DISPONIBILIDADE: imóveis já captados que seguem sem
     locar. Mesmos valores de STATUS_STALE_LENTO, com nome próprio porque a
-    intenção aqui é outra — confirmar disponibilidade, não medir "parado". */
-export const DISPONIBILIDADE_STATUS_ALVO = ["Angariado", "Publicado"] as const;
+    intenção aqui é outra — confirmar disponibilidade, não medir "parado".
+
+    "Autorização assinada" entra pela mesma razão que entrou naquela lista: é
+    imóvel captado esperando inquilino, e é onde ele passa a maior parte da
+    vida. Ficar de fora daqui teria o efeito inverso do da estagnação e igual
+    de silencioso — o imóvel sairia da fila de confirmação de disponibilidade
+    no exato momento em que a captação foi formalizada, e ninguém mais
+    perguntaria ao proprietário se ele segue conosco. */
+export const DISPONIBILIDADE_STATUS_ALVO = [
+  "Angariado",
+  STATUS_AUTORIZACAO_ASSINADA,
+  "Publicado",
+] as const;
 
 /**
  * O imóvel deve ter um lembrete de "verificar disponibilidade" em aberto?

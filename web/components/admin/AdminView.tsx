@@ -25,6 +25,7 @@ import {
   type NivelSaude,
 } from "@/lib/calculo/admin";
 import { fmtUsd, type GastoIa } from "@/lib/calculo/custoIa";
+import { linhaDoHistorico } from "@/lib/calculo/sistemaPrincipal";
 import {
   carregarLogs,
   carregarPainelAdmin,
@@ -81,6 +82,8 @@ export default function AdminView() {
   const [eventos, setEventos] = useState<EventoLog[]>([]);
   const [nivelLog, setNivelLog] = useState<string>("erro");
   const [carregandoLog, setCarregandoLog] = useState(true);
+  const [eventosSophia, setEventosSophia] = useState<EventoLog[]>([]);
+  const [carregandoSophia, setCarregandoSophia] = useState(true);
 
   const hoje = todayISO();
 
@@ -127,6 +130,25 @@ export default function AdminView() {
       cancelado = true;
     };
   }, [nivelLog]);
+
+  /* O histórico da integração é uma consulta PRÓPRIA, e não um recorte da
+     lista acima: aquela abre filtrada por erros (é o que o operador precisa
+     ver primeiro), e aqui o desfecho mais comum — e o que mais se audita — é
+     "aplicado", que é `info`. Reusar a mesma busca deixaria esta tabela vazia
+     justamente quando a integração está funcionando. */
+  useEffect(() => {
+    let cancelado = false;
+    carregarLogs({ categoria: "sophia", limite: 50 }).then((r) => {
+      if (cancelado) return;
+      setCarregandoSophia(false);
+      if (r.ok) setEventosSophia(r.eventos || []);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  const historicoSophia = useMemo(() => eventosSophia.map(linhaDoHistorico), [eventosSophia]);
 
   const linhas = useMemo(() => ordenarCorretores(corretores, hoje), [corretores, hoje]);
   const totais = useMemo(() => totaisDoPainel(corretores, hoje), [corretores, hoje]);
@@ -307,6 +329,79 @@ export default function AdminView() {
           aoSalvar={() => recarregar()}
         />
       )}
+
+      {/* ------------------------------------------------------------------
+          HISTÓRICO DA INTEGRAÇÃO (Sistema Principal)
+
+          Fica no painel de ADMIN, e não numa tela do corretor, por uma razão
+          de dado: as linhas mais valiosas para depurar — "angariação não
+          encontrada" e "mais de uma angariação" — não têm dono. É justamente
+          o `user_id` que faltou descobrir, e uma tela escopada por corretor
+          jamais as mostraria, escondendo exatamente os eventos que se perderam.
+
+          Vem ANTES do log geral porque o log geral abre filtrado por erro; a
+          pergunta "os eventos estão chegando?" precisa de uma tela em que a
+          resposta normal — "sim, aplicado" — apareça.
+          ------------------------------------------------------------------ */}
+      <div className="card">
+        <div className="card-title">
+          Integração com o Sistema Principal{" "}
+          <span className="section-note">últimos 50 eventos recebidos</span>
+        </div>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left" }}>Data</th>
+                <th style={{ textAlign: "left" }}>Evento</th>
+                <th style={{ textAlign: "left" }}>Resultado</th>
+                <th style={{ textAlign: "left" }}>Conta</th>
+                <th style={{ textAlign: "left" }}>Detalhe</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historicoSophia.map((l) => (
+                <tr key={l.id}>
+                  <td style={{ whiteSpace: "nowrap", fontSize: 12 }}>
+                    {l.quando.slice(0, 16).replace("T", " ")}
+                  </td>
+                  <td style={{ fontSize: 12 }}>
+                    {l.evento || <span style={{ color: "var(--text-faint)" }}>—</span>}
+                  </td>
+                  <td>
+                    <span
+                      className="badge"
+                      style={{
+                        color:
+                          l.tom === "ok"
+                            ? "var(--good)"
+                            : l.tom === "aviso"
+                              ? "var(--warn)"
+                              : "var(--bad)",
+                      }}
+                    >
+                      {l.tom === "ok" ? "✅" : l.tom === "aviso" ? "⚠️" : "❌"} {l.resultado}
+                    </span>
+                  </td>
+                  <td style={{ fontSize: 12 }}>
+                    {corretores.find((c) => c.id === l.userId)?.email || (
+                      <span style={{ color: "var(--text-faint)" }}>—</span>
+                    )}
+                  </td>
+                  <td style={{ fontSize: 12, color: "var(--text-dim)" }}>{l.contexto}</td>
+                </tr>
+              ))}
+              {historicoSophia.length === 0 && !carregandoSophia && (
+                <tr>
+                  <td colSpan={5} style={{ color: "var(--text-faint)", padding: "18px 0" }}>
+                    Nenhum evento recebido do Sistema Principal ainda.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <div className="card">
         <div

@@ -6,6 +6,18 @@
    Perdido/Cancelado são saídas laterais.
    ================================================================ */
 
+/**
+ * A etapa em que o proprietário ASSINOU a Autorização de Locação.
+ *
+ * Tem constante própria pelo motivo do MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO: são
+ * vários módulos referenciando o mesmo rótulo (o funil, o balde do mapa, a
+ * régua de estagnação, o alvo do lote de disponibilidade e a rota que recebe o
+ * evento do Sistema Principal), e string mágica em cinco lugares diverge em
+ * silêncio — aqui com o agravante de que o valor chega de FORA, escrito por
+ * outro sistema.
+ */
+export const STATUS_AUTORIZACAO_ASSINADA = "Autorização assinada";
+
 // Ordem oficial do funil.
 export const STATUS_FLOW = [
   "Novo contato",
@@ -13,6 +25,19 @@ export const STATUS_FLOW = [
   "Em negociação",
   "Documentação",
   "Angariado",
+  // "Autorização assinada" é a formalização da captação, e entrou junto com a
+  // integração com o Sistema Principal (ver calculo/sistemaPrincipal.ts): lá é
+  // que o proprietário assina a Autorização de Locação, e é esse evento que
+  // move o imóvel para cá. Fica DEPOIS de "Angariado" porque aquele é o "sim"
+  // falado e este é o "sim" assinado — a diferença que separa o proprietário
+  // que concordou por telefone do contrato que a imobiliária pode cumprir.
+  //
+  // Medido antes de criar: na conta da supervisora, 101 de 101 imóveis
+  // "Locado" e 42 de 42 "Publicado" têm `referencia_crm`, contra 3 de 497
+  // "Angariado". A referência do CRM NASCE na assinatura — é ali que o imóvel
+  // passa a existir no Sistema Principal —, e era justamente essa etapa que o
+  // funil daqui não sabia nomear.
+  STATUS_AUTORIZACAO_ASSINADA,
   "Publicado",
   "Locado",
 ] as const;
@@ -213,6 +238,9 @@ export const STATUS_COLORS: Record<string, string> = {
   "Em negociação": "#e0b458",
   "Documentação": "#e0a35e",
   "Angariado": "#f0a868",
+  // Entre o âmbar do "Angariado" e o verde do "Publicado": a assinatura é o
+  // ponto em que a captação deixa de ser promessa e vira contrato.
+  [STATUS_AUTORIZACAO_ASSINADA]: "#a8cf8e",
   "Publicado": "#7bd4b2",
   "Locado": "#5fb896",
   "Sem resposta": "#b0b0b0",
@@ -226,10 +254,17 @@ export const AGENDA_TYPES = ["Retorno ao proprietário", "Visita", "Pendência",
 export const STALE_DAYS_THRESHOLD = 7;
 
 // Etapas onde o imóvel já foi captado e está aguardando locação
-// (Angariado, Publicado): ficam naturalmente semanas/meses no mesmo status,
-// então só contam como "parado" depois de um prazo bem mais longo — a
-// cobrança dessa fase é o lembrete de disponibilidade (60 dias), não o funil.
-export const STATUS_STALE_LENTO = ["Angariado", "Publicado"] as const;
+// (Angariado, Autorização assinada, Publicado): ficam naturalmente
+// semanas/meses no mesmo status, então só contam como "parado" depois de um
+// prazo bem mais longo — a cobrança dessa fase é o lembrete de
+// disponibilidade (60 dias), não o funil.
+//
+// "Autorização assinada" precisou entrar aqui no mesmo commit que a criou, e
+// não é detalhe: o imóvel fica nessa etapa até alguém alugá-lo, o que leva
+// meses. Sem esta linha, todo imóvel autorizado nasceria com selo de
+// estagnação em 7 dias — a repetição exata do que matou a faixa de "imóvel
+// parado" no termômetro, agora pela porta de um evento que vem de fora.
+export const STATUS_STALE_LENTO = ["Angariado", STATUS_AUTORIZACAO_ASSINADA, "Publicado"] as const;
 export const STALE_DAYS_THRESHOLD_POS_ANGARIACAO = 60;
 
 // Dias após a angariação (sem locação) para gerar o lembrete automático

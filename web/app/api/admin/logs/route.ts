@@ -19,6 +19,12 @@ const LIMITE_PADRAO = 100;
 
 const NIVEIS = ["erro", "aviso", "info"];
 
+/** Categorias aceitas no filtro. Lista fechada, e não repasse do que vier na
+    query: sem ela, um parâmetro qualquer viraria um `eq` arbitrário na tabela
+    — inofensivo hoje, mas é a porta que se deixa aberta. Espelha
+    `CategoriaEvento` em calculo/admin.ts. */
+const CATEGORIAS = ["whatsapp", "ia", "webhook", "google", "admin", "sophia"];
+
 export async function GET(request: Request): Promise<Response> {
   const guarda = await exigirAdmin(request);
   if ("resposta" in guarda) return guarda.resposta;
@@ -26,6 +32,7 @@ export async function GET(request: Request): Promise<Response> {
 
   const url = new URL(request.url);
   const nivel = url.searchParams.get("nivel") || "";
+  const categoria = url.searchParams.get("categoria") || "";
   const alvo = alvoValido(url.searchParams.get("userId"));
   const pedido = Number(url.searchParams.get("limite"));
   const limite = Number.isFinite(pedido) && pedido > 0 ? Math.min(pedido, LIMITE_MAX) : LIMITE_PADRAO;
@@ -37,6 +44,7 @@ export async function GET(request: Request): Promise<Response> {
     .limit(limite);
 
   if (NIVEIS.includes(nivel)) consulta = consulta.eq("nivel", nivel);
+  if (CATEGORIAS.includes(categoria)) consulta = consulta.eq("categoria", categoria);
   if (alvo) consulta = consulta.eq("user_id", alvo);
 
   const { data, error } = await consulta;

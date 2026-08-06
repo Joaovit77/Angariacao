@@ -199,6 +199,77 @@ OPENAI_API_KEY=sk-...
   curl -H "Authorization: Bearer $OPENAI_API_KEY" https://api.openai.com/v1/models
   ```
 
+### Sistema Principal / Sophia (eventos da locação) — opcional
+
+O Sistema Principal da imobiliária avisa o painel quando o proprietário assina a Autorização de
+Locação, quando o imóvel é locado e quando o financeiro paga a comissão. Uma variável, **segredo**:
+
+```
+SOPHIA_WEBHOOK_SECRET=<valor longo e aleatório>
+```
+
+Gere assim:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+- Exige também a `SUPABASE_SERVICE_ROLE_KEY` (a mesma do webhook do WhatsApp), porque a rota
+  precisa achar o imóvel sem haver corretor logado.
+- **Nunca** prefixe com `NEXT_PUBLIC_`. O segredo protege o sentido contrário do usual: ele não
+  esconde nada de quem opera o Sophia — aqueles dados são dele —, e sim impede que qualquer um na
+  internet forje "a comissão foi paga" ou "o imóvel foi locado", o que mexeria no funil, na
+  conversão e no faturamento do corretor.
+- **Se você não configurar:** a rota responde 503 e o resto do app segue exatamente igual.
+
+> 📄 **Mande [INTEGRACAO_SOPHIA.md](INTEGRACAO_SOPHIA.md) para a equipe do outro sistema.** Aquele
+> documento é autossuficiente — payloads, casamento, códigos de resposta, idempotência, exemplos e
+> checklist de homologação — e foi escrito para quem não tem acesso a este repositório. O resumo
+> abaixo é só para quem está configurando o deploy.
+
+**O que informar a quem vai integrar do outro lado:**
+
+| | |
+|---|---|
+| URL | `https://SEU-DOMINIO/api/sophia/eventos` |
+| Método | `POST`, corpo JSON |
+| Autenticação | header `x-webhook-secret: <o segredo>` **ou** o segredo como último segmento da URL (`/api/sophia/eventos/<segredo>`), para o caso de o cliente não permitir header |
+| Teste de vida | `GET` na mesma URL responde `{"ok":true,"pronto":true}` quando o segredo bate |
+
+Os três eventos, com os campos que importam (o resto é opcional; nomes aceitos em camelCase ou
+snake_case, datas em ISO ou `dd/mm/aaaa`):
+
+```jsonc
+// 1. Autorização de locação assinada
+{ "evento": "autorizacao-assinada", "id": "evt-1029",
+  "referencia": "02256.001",           // a referência DO SISTEMA PRINCIPAL
+  "telefone": "43998024316",           // essencial no PRIMEIRO evento (ver abaixo)
+  "data": "2026-08-04", "responsavel": "Marina" }
+
+// 2. Imóvel locado
+{ "evento": "imovel-locado", "id": "evt-1104",
+  "referencia": "02256.001", "data": "2026-08-20", "contrato": "C-9912" }
+
+// 3. Comissão paga
+{ "evento": "comissao-paga", "id": "evt-1211",
+  "referencia": "02256.001", "data": "2026-09-05",
+  "valor": 1920.00, "formaPagamento": "PIX", "observacao": "fechamento de agosto" }
+```
+
+Três coisas que evitam a maior parte dos problemas de integração aqui:
+
+1. **O `id` é obrigatório e tem que ser estável.** É ele que torna o reenvio inofensivo: mandar o
+   mesmo evento duas vezes não aplica nada duas vezes. Sem `id`, a rota recusa com 400.
+2. **No primeiro evento, mande o `telefone` do proprietário** (ou o `codigo` da angariação). A
+   `referencia` costuma NASCER no Sophia junto com a assinatura, então nesse momento o painel
+   ainda não a conhece — e é justamente o Evento 1 que a grava, passando a usá-la como id
+   compartilhado nos eventos seguintes.
+3. **Leia o código de resposta.** `404` = nenhuma angariação bate com essa chave. `409` = bateu com
+   mais de uma (proprietário com vários imóveis) — mande a `referencia`, ou o `endereco` e a
+   `unidade`, para desempatar. Nos dois casos **nada foi aplicado**, de propósito: aplicar no
+   imóvel errado não daria erro em lugar nenhum e creditaria uma comissão à angariação errada.
+   Os dois casos também entram no log de eventos, visíveis em `/admin`.
+
 ---
 
 ## Parte 3 — Colocar no ar na Vercel

@@ -12,6 +12,7 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { captadorPadrao, useSessao } from "@/components/SessaoProvider";
+import TimelineImovel from "@/components/modais/TimelineImovel";
 import {
   FORMAS_ABORDAGEM,
   MOTIVOS_PERDA,
@@ -22,7 +23,7 @@ import {
 } from "@/lib/constantes";
 import { sugerirCodigoImovel } from "@/lib/codigoImovel";
 import { todayISO } from "@/lib/datas";
-import { fmtMoney } from "@/lib/formatadores";
+import { fmtDate, fmtMoney } from "@/lib/formatadores";
 import { buscarCep, geocodeEndereco, maskCEP } from "@/lib/geo";
 import { canonizarValor, distintosCanonizados, nomeProprio } from "@/lib/normalizacao";
 import { canalObservado } from "@/lib/calculo/abordagens";
@@ -769,6 +770,47 @@ export default function ModalImovel({ id }: { id?: string }) {
             />
           </div>
         </fieldset>
+
+        {/* A linha do tempo vem do imóvel JÁ SALVO (`imovel`), e não do estado
+            do formulário: ela conta o que aconteceu, não o que está sendo
+            digitado. Recalculá-la a cada tecla faria a data de um marco mudar
+            no meio da edição, antes de qualquer coisa ter sido gravada. */}
+        {imovel && <TimelineImovel imovel={imovel} />}
+
+        {/* O que o Sistema Principal informou — só leitura, e é o ponto.
+            Estes fatos não se editam aqui porque a fonte oficial deles é o
+            outro sistema: um campo editável convidaria o corretor a "corrigir"
+            a data da assinatura no painel, e aí os dois sistemas passariam a
+            discordar sobre o mesmo contrato — exatamente o que a integração
+            existe para acabar. Aparece só quando há algo a mostrar. */}
+        {imovel && (imovel.autorizacaoAssinadaEm || imovel.locadoEm || imovel.contratoNumero) && (
+          <fieldset>
+            <legend>Sistema Principal</legend>
+            <div className="field-row">
+              {imovel.autorizacaoAssinadaEm && (
+                <div className="field-group">
+                  <label>Autorização assinada em</label>
+                  <div className="field-hint" style={{ fontSize: "13px" }}>
+                    {fmtDate(imovel.autorizacaoAssinadaEm)}
+                    {imovel.autorizacaoResponsavel ? ` · ${imovel.autorizacaoResponsavel}` : ""}
+                  </div>
+                </div>
+              )}
+              {imovel.locadoEm && (
+                <div className="field-group">
+                  <label>Locado em</label>
+                  <div className="field-hint" style={{ fontSize: "13px" }}>{fmtDate(imovel.locadoEm)}</div>
+                </div>
+              )}
+              {imovel.contratoNumero && (
+                <div className="field-group">
+                  <label>Contrato</label>
+                  <div className="field-hint" style={{ fontSize: "13px" }}>{imovel.contratoNumero}</div>
+                </div>
+              )}
+            </div>
+          </fieldset>
+        )}
 
         <fieldset style={status === "Locado" ? undefined : { display: "none" }}>
           <legend>Comissão</legend>

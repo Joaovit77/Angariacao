@@ -23,6 +23,25 @@
 > executável [`web/tests/baseline-etapa0.test.ts`](web/tests/baseline-etapa0.test.ts) já reflete
 > os valores novos.
 
+> 🔁 **Divergência intencional pós-baseline (etapa "Autorização assinada", 2026-08-05).** O funil
+> ganhou uma etapa entre **Angariado** e **Publicado**, com a integração com o Sistema Principal
+> (Sophia): é lá que o proprietário assina a Autorização de Locação, e é o evento dessa assinatura
+> que move o imóvel para a etapa nova. Ver o bloco em [`web/lib/constantes.ts`](web/lib/constantes.ts)
+> e a seção "Integração com o Sistema Principal" do [CLAUDE.md](CLAUDE.md).
+>
+> Efeito no baseline: **um só, e ele é estrutural, não numérico**. A série do gráfico de funil passa
+> de **7 para 8 posições**, com **zero** na nova (`[2, 1, 1, 1, 2, 0, 1, 2]`) — o seed é anterior à
+> integração, então nenhum imóvel dele passou por essa etapa. Nenhum outro número deste documento
+> muda: KPIs, conversões, coortes, tempo médio e stale continuam idênticos, porque a etapa nova
+> entrou junto em `STATUS_STALE_LENTO` (senão todo imóvel autorizado nasceria com selo de
+> estagnação em 7 dias) e em `DISPONIBILIDADE_STATUS_ALVO`.
+>
+> Uma mudança de leitura que não aparece em número nenhum aqui, mas vale registrar: `conversaoCaptacao`
+> e o balde do mapa passaram a usar `captacaoGanha` em vez de `foiAngariado`. A ressalva que já valia
+> para "Locado" (contar como captação ganha mesmo sem a etapa no histórico) agora vale também para
+> "Autorização assinada" — necessária porque o Sistema Principal escreve esse status sem saber se o
+> corretor chegou a marcar "Angariado" aqui.
+
 ## Dataset de referência (resumo do seed)
 
 | # | Código | Status atual | Particularidade |

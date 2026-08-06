@@ -3,10 +3,11 @@
 /* ================================================================
    SINO DE NOTIFICAÇÕES (topbar)
    Reúne o que precisa de ação AGORA, reusando o núcleo (sem recalcular):
+   - eventos do Sistema Principal ainda não lidos;
    - respostas do proprietário ainda não tratadas;
    - compromissos da agenda não concluídos e vencidos/hoje;
    - imóveis parados (isStale) há mais de STALE_DAYS_THRESHOLD dias.
-   O contador soma os três; o dropdown lista e leva à tela certa.
+   O contador soma os quatro; o dropdown lista e leva à tela certa.
 
    A ordem não é arbitrária, é a mesma da `rodadaDia`: primeiro o que o
    OUTRO LADO fez (alguém está esperando resposta), depois a hora
@@ -14,6 +15,14 @@
    inverteria isso todo dia — em captação o silêncio é sempre a
    categoria mais populosa, que foi o que matou a faixa de "imóvel
    parado" no termômetro.
+
+   Os eventos do Sistema Principal vêm ANTES até das respostas, e são
+   a única coisa aqui que não pede ação nenhuma. Estão no topo porque
+   são raros e caros de perder: o corretor recebe um punhado por mês, e
+   um deles é a comissão dele caindo na conta. Enterrá-los sob quarenta
+   linhas de estagnação seria repetir, na tela do sino, o erro que a
+   faixa de "imóvel parado" cometeu no termômetro — só que com a notícia
+   mais importante que este painel tem a dar.
 
    A contagem de respostas sai de `contarRespostasPendentes`, a MESMA
    do badge da barra lateral. Dois contadores da mesma coisa na mesma
@@ -23,6 +32,9 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { isStale } from "@/lib/calculo/motor";
 import { contarRespostasPendentes } from "@/lib/calculo/respostas";
+import { notificacoesPendentes } from "@/lib/calculo/sistemaPrincipal";
+import { marcarEventosLidos } from "@/lib/mutacoes";
+import { useUiModal } from "@/lib/uiModal";
 import { todayISO } from "@/lib/datas";
 import {
   assinarPermissao,
@@ -37,6 +49,7 @@ export default function SinoNotificacoes() {
   const router = useRouter();
   const imoveis = useAppStore((s) => s.imoveis);
   const agenda = useAppStore((s) => s.agenda);
+  const abrirModal = useUiModal((s) => s.abrirModal);
   const [aberto, setAberto] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   // Store externo em vez de useState: `Notification.permission` não existe no
@@ -49,10 +62,11 @@ export default function SinoNotificacoes() {
   );
 
   const hoje = todayISO();
+  const eventos = notificacoesPendentes(imoveis);
   const respostas = contarRespostasPendentes(imoveis, hoje);
   const pendentes = agenda.filter((a) => !a.done && a.date <= hoje);
   const parados = imoveis.filter(isStale);
-  const total = respostas + pendentes.length + parados.length;
+  const total = eventos.length + respostas + pendentes.length + parados.length;
 
   // Fecha ao clicar fora. O listener só existe enquanto está aberto.
   useEffect(() => {
@@ -97,6 +111,52 @@ export default function SinoNotificacoes() {
           <div className="topbar-pop-head">Notificações</div>
 
           {total === 0 && <div className="topbar-pop-empty">Tudo em dia — nada pendente. ✓</div>}
+
+          {/* Cada evento é uma linha própria, e não um contador como as
+              respostas: são poucos e cada um diz uma coisa diferente
+              ("autorização assinada" e "comissão paga" não se resumem em
+              "3 atualizações"). O clique leva ao imóvel e dá a notificação
+              por lida — ler é a única ação que ela pede. */}
+          {eventos.slice(0, 5).map((e) => (
+            <button
+              key={e.id}
+              type="button"
+              className="topbar-pop-item"
+              onClick={() => {
+                void marcarEventosLidos(e.imovelId);
+                setAberto(false);
+                // O modal do imóvel, e não uma rota: ele abre de qualquer
+                // view (o ModalOverlay vive no layout do painel) e mostra os
+                // campos que o evento acabou de gravar. Uma rota teria que
+                // acertar também o modo do Pipeline — em Kanban não há
+                // drawer, e o imóvel retirado nem aparece na lista.
+                abrirModal("imovel", e.imovelId);
+              }}
+            >
+              <span className="topbar-pop-ic">🏷️</span>
+              <span className="topbar-pop-txt">
+                <strong>{e.texto}</strong>
+                <span>{e.rotulo}</span>
+              </span>
+            </button>
+          ))}
+
+          {eventos.length > 5 && (
+            <button
+              type="button"
+              className="topbar-pop-item"
+              onClick={() => {
+                void marcarEventosLidos(null);
+                setAberto(false);
+              }}
+            >
+              <span className="topbar-pop-ic">✓</span>
+              <span className="topbar-pop-txt">
+                <strong>Marcar as {eventos.length} atualizações como lidas</strong>
+                <span>Os fatos seguem no histórico de cada imóvel</span>
+              </span>
+            </button>
+          )}
 
           {respostas > 0 && (
             <button type="button" className="topbar-pop-item" onClick={() => irPara("/respostas")}>

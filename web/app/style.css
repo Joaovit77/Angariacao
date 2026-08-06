@@ -3852,3 +3852,43 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
 /* Arquivado é leitura, não escolha — apagado, como os excluídos do lote. */
 .proto-card.arquivado .proto-card-titulo,
 .proto-card.arquivado .proto-card-texto{ color: var(--text-dim); }
+
+/* ==================================================================
+   LINHA DO TEMPO DA ANGARIAÇÃO (calculo/timeline.ts)
+   Lista de marcos com um trilho vertical à esquerda. Sem biblioteca:
+   o trilho é uma borda no item, e a bolinha um ::before posicionado
+   em cima dela — desenho que sobrevive a item de altura variável,
+   que é o caso (uns marcos têm linha de detalhe, outros não).
+   ================================================================== */
+.timeline{ list-style: none; margin: 0; padding: 0; }
+.timeline-item{
+  position: relative;
+  padding: 0 0 14px 26px;
+  /* O trilho. No ÚLTIMO item ele some (regra abaixo), senão a linha
+     continuaria descendo depois do último marco, sugerindo que falta
+     alguma coisa que ainda vai acontecer. */
+  border-left: 1px solid var(--border);
+  margin-left: 5px;
+}
+.timeline-item:last-child{ border-left-color: transparent; padding-bottom: 0; }
+.timeline-item::before{
+  content: "";
+  position: absolute; left: -4.5px; top: 5px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--border);
+}
+/* O marco que veio do Sistema Principal ganha a bolinha de acento: numa
+   lista em que quase tudo é clique do corretor, o que veio de FORA é a
+   informação que ele não tinha — e é a que ele abriu a tela para ver. */
+.timeline-item.do-sistema::before{ background: var(--accent); }
+.timeline-data{
+  font-size: 11px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.timeline-titulo{ font-size: 13px; color: var(--text); margin-top: 1px; }
+.timeline-icone{ margin-right: 6px; }
+/* `--text-dim` e não `--text-faint`, pelo motivo já medido em
+   `.proto-sugestao-ajuda`: o faint fica abaixo do contraste legível no
+   tema escuro, e aqui a linha carrega número de contrato e valor pago. */
+.timeline-detalhe{ font-size: 11.5px; color: var(--text-dim); margin-top: 1px; }
+.timeline-valor{ color: var(--good); font-weight: 600; }

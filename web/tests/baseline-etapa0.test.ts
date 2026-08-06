@@ -91,9 +91,22 @@ describe("Dashboard (Julho de 2026)", () => {
     ]);
     expect(series.comissaoEstimadaPorMes).toEqual([0, 0, 0, 1500, 0, 1800]);
     expect(series.comissaoRecebidaPorMes).toEqual([0, 0, 0, 0, 1500, 1800]);
-    // Funil atual: Novo contato 2, Visita agendada 1, Em negociação 1,
-    // Documentação 1, Angariado 2, Publicado 1, Locado 2.
-    expect(series.funil).toEqual([2, 1, 1, 1, 2, 1, 2]);
+    /* Funil atual: Novo contato 2, Visita agendada 1, Em negociação 1,
+       Documentação 1, Angariado 2, Autorização assinada 0, Publicado 1,
+       Locado 2.
+
+       DIVERGÊNCIA ASSINADA vs. o baseline de 09/07/2026: a série tinha SETE
+       posições e passou a ter OITO, com um zero na sexta. "Autorização
+       assinada" entrou no `STATUS_FLOW` com a integração com o Sistema
+       Principal — ver a nota no BASELINE_ETAPA0.md e o bloco em
+       `lib/constantes.ts`.
+
+       Nenhum número existente mudou, e é isso que o zero prova: o seed é
+       anterior à integração, então nenhum imóvel dele passou por essa etapa.
+       O dia em que este valor deixar de ser zero sem alguém ter mexido no
+       seed é o dia em que um evento externo entrou no cálculo — que é
+       justamente o que este teste existe para denunciar. */
+    expect(series.funil).toEqual([2, 1, 1, 1, 2, 0, 1, 2]);
   });
 });
 

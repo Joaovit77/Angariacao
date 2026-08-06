@@ -209,6 +209,38 @@ export interface Imovel {
   comissaoRecebida?: boolean | null;
   comissaoRecebidaValor?: number | null;
   comissaoRecebidaData?: string | null; // ISO YYYY-MM-DD
+  /** Como o financeiro pagou a comissão (PIX, transferência, folha).
+      Chega pelo evento de comissão do Sistema Principal, que é quem sabe —
+      opcional lá e opcional aqui. */
+  comissaoFormaPagamento?: string | null;
+  /** Observação que o financeiro anexou ao pagamento ("pago junto ao
+      fechamento de julho"). Texto livre, e é dele que sai a explicação quando
+      o valor pago difere do estimado. */
+  comissaoObservacao?: string | null;
+
+  /* --- O que o Sistema Principal (Sophia) carimba ------------------------
+     Estes quatro campos são os FATOS da locação, e a fonte deles é sempre o
+     outro sistema — ver `calculo/sistemaPrincipal.ts`. O painel os exibe e
+     nunca os inventa: quem assina autorização, fecha contrato e paga comissão
+     é a imobiliária, não o CRM de captação.
+
+     Ficam em colunas próprias, e não numa nota, porque são consultáveis: o
+     dashboard soma comissão pendente por eles, e texto dentro de `observacoes`
+     morreria na primeira edição — a mesma razão de `Imovel.retirado` ser campo
+     em vez de uma busca por "RETIROU". */
+
+  /** Dia em que o proprietário assinou a Autorização de Locação (ISO). */
+  autorizacaoAssinadaEm?: string | null;
+  /** Quem, no Sistema Principal, registrou a assinatura. Opcional porque o
+      evento nem sempre traz — e um nome inventado é pior que nenhum. */
+  autorizacaoResponsavel?: string | null;
+  /** Dia em que o imóvel foi efetivamente locado, segundo o Sistema Principal
+      (ISO). Não é `dateEnteredStatus(imovel, "Locado")`: aquele é o dia em que
+      o PAINEL soube, e os dois divergem sempre que o evento chega atrasado. */
+  locadoEm?: string | null;
+  /** Número do contrato de locação, quando existe. É o que liga esta linha ao
+      documento que o financeiro abre. */
+  contratoNumero?: string | null;
   /** Pré-cadastro pendente de confirmação: criado no disparo rápido, some
       quando o imóvel é editado/salvo pelo modal completo (§ pré-cadastro). */
   preCadastro?: boolean | null;

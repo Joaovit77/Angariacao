@@ -27,11 +27,17 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSessao } from "@/components/SessaoProvider";
-import { avisoDeResposta, respostasQueChegaram } from "@/lib/calculo/chegadaResposta";
+import {
+  avisoDeEvento,
+  avisoDeResposta,
+  eventosQueChegaram,
+  respostasQueChegaram,
+} from "@/lib/calculo/chegadaResposta";
 import { notificarSistema } from "@/lib/notificacaoSistema";
 import { fromDbImovel, type DbImovelRow } from "@/lib/persistencia/mapeadores";
 import { getSupabase } from "@/lib/persistencia/supabase";
 import { useAppStore } from "@/lib/store";
+import { useUiModal } from "@/lib/uiModal";
 import { toastCartao } from "@/lib/toast";
 
 export default function SincronizacaoRespostas() {
@@ -58,13 +64,28 @@ export default function SincronizacaoRespostas() {
       // A comparação é contra o retrato ANTERIOR, então a nossa própria
       // escrita (registrar tentativa, mudar status) não vira aviso: os ids
       // das notas já eram conhecidos. Ver `respostasQueChegaram`.
-      const aviso = avisoDeResposta(novo, respostasQueChegaram(anterior, novo));
+      avisar(avisoDeResposta(novo, respostasQueChegaram(anterior, novo)), "resposta", () =>
+        router.push("/respostas"),
+      );
+      // A MESMA linha do banco carrega as duas coisas: o Realtime empurra o
+      // imóvel inteiro, e nele podem ter chegado uma resposta de proprietário
+      // e um evento do Sistema Principal. São avisos separados porque levam a
+      // lugares diferentes — um pede resposta, o outro é o desfecho do negócio.
+      avisar(avisoDeEvento(novo, eventosQueChegaram(anterior, novo)), "evento", () =>
+        useUiModal.getState().abrirModal("imovel", novo.id),
+      );
+    }
+
+    function avisar(
+      aviso: ReturnType<typeof avisoDeResposta>,
+      assunto: string,
+      ir: () => void,
+    ) {
       if (!aviso) return;
 
       // Aba visível = ele está olhando: o toast basta, e a caixinha do
       // sistema por cima seria interrupção dupla pelo mesmo assunto.
       // Aba oculta = o toast nasceria e morreria sem ninguém ver.
-      const irParaCaixa = () => router.push("/respostas");
       // Em cartão, não em faixa de texto: quem falou, de qual imóvel e o que
       // disse têm pesos diferentes, e o clique leva ao mesmo lugar que o
       // clique na notificação do sistema (ver lib/toast.ts).
@@ -74,7 +95,7 @@ export default function SincronizacaoRespostas() {
           detalhe: aviso.imovel,
           mensagem: aviso.mensagem,
           selo: aviso.quantidade > 1 ? `${aviso.quantidade} mensagens` : undefined,
-          aoClicar: irParaCaixa,
+          aoClicar: ir,
         });
       if (document.visibilityState === "visible") {
         mostrarCartao();
@@ -83,8 +104,11 @@ export default function SincronizacaoRespostas() {
       const mostrou = notificarSistema({
         titulo: aviso.titulo,
         corpo: aviso.corpo,
-        tag: aviso.imovelId,
-        aoClicar: irParaCaixa,
+        // A tag agrupa por imóvel E por assunto: só pelo imóvel, o aviso da
+        // comissão substituiria na bandeja o aviso da resposta que chegou
+        // junto, e um dos dois sumiria sem nunca ter sido visto.
+        tag: `${aviso.imovelId}:${assunto}`,
+        aoClicar: ir,
       });
       // Sem permissão concedida sobra o toast: ele estará lá quando a pessoa
       // voltar para a aba — o badge e o sino, que não expiram, é que contam

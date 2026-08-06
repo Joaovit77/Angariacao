@@ -33,8 +33,17 @@ const ABREVIACOES: [RegExp, string][] = [
  * `chaveNormalizada`), sem pontuação, com as abreviações de logradouro
  * uniformizadas. "R. Souza Naves, 100" e "Rua Souza Naves 100" caem na
  * mesma chave.
+ *
+ * Exportada porque ganhou um segundo consumidor: o desempate de
+ * `localizarAngariacao` (calculo/sistemaPrincipal.ts), onde o endereço vem
+ * escrito pelo Sistema Principal e não tem por que coincidir letra a letra
+ * com o que foi digitado aqui. A primeira versão daquele módulo tinha uma
+ * cópia reduzida desta função, SEM a tabela de abreviações — e ela falhava
+ * justamente no caso mais comum ("R." contra "Rua"), que é a divergência
+ * silenciosa entre funções gêmeas de que este projeto já tem um exemplar
+ * (telefoneCanonico/telefone_canonico).
  */
-function chaveEndereco(valor: string | null | undefined): string {
+export function chaveEndereco(valor: string | null | undefined): string {
   const base = chaveNormalizada(valor)
     .replace(/[.,;/\\-]/g, " ")
     .replace(/\s+/g, " ")

@@ -73,7 +73,13 @@
       "importado": false,
       "retirado": false,
       "imovel_principal_id": null,
-      "anuncio_idade_dias": null
+      "anuncio_idade_dias": null,
+      "comissao_forma_pagamento": null,
+      "comissao_observacao": null,
+      "autorizacao_assinada_em": null,
+      "autorizacao_responsavel": null,
+      "locado_em": null,
+      "contrato_numero": null
     },
     "f02": {
       "id": "f02",
@@ -118,7 +124,13 @@
       "importado": false,
       "retirado": false,
       "imovel_principal_id": null,
-      "anuncio_idade_dias": null
+      "anuncio_idade_dias": null,
+      "comissao_forma_pagamento": null,
+      "comissao_observacao": null,
+      "autorizacao_assinada_em": null,
+      "autorizacao_responsavel": null,
+      "locado_em": null,
+      "contrato_numero": null
     },
     "f03": {
       "id": "f03",
@@ -163,7 +175,13 @@
       "importado": false,
       "retirado": false,
       "imovel_principal_id": null,
-      "anuncio_idade_dias": null
+      "anuncio_idade_dias": null,
+      "comissao_forma_pagamento": null,
+      "comissao_observacao": null,
+      "autorizacao_assinada_em": null,
+      "autorizacao_responsavel": null,
+      "locado_em": null,
+      "contrato_numero": null
     },
     "f04": {
       "id": "f04",
@@ -213,7 +231,13 @@
       "importado": false,
       "retirado": false,
       "imovel_principal_id": null,
-      "anuncio_idade_dias": null
+      "anuncio_idade_dias": null,
+      "comissao_forma_pagamento": null,
+      "comissao_observacao": null,
+      "autorizacao_assinada_em": null,
+      "autorizacao_responsavel": null,
+      "locado_em": null,
+      "contrato_numero": null
     },
     "f05": {
       "id": "f05",
@@ -271,7 +295,13 @@
       "importado": false,
       "retirado": false,
       "imovel_principal_id": null,
-      "anuncio_idade_dias": null
+      "anuncio_idade_dias": null,
+      "comissao_forma_pagamento": null,
+      "comissao_observacao": null,
+      "autorizacao_assinada_em": null,
+      "autorizacao_responsavel": null,
+      "locado_em": null,
+      "contrato_numero": null
     },
     "f06": {
       "id": "f06",
@@ -325,7 +355,13 @@
       "importado": false,
       "retirado": false,
       "imovel_principal_id": null,
-      "anuncio_idade_dias": null
+      "anuncio_idade_dias": null,
+      "comissao_forma_pagamento": null,
+      "comissao_observacao": null,
+      "autorizacao_assinada_em": null,
+      "autorizacao_responsavel": null,
+      "locado_em": null,
+      "contrato_numero": null
     },
     "f07": {
       "id": "f07",
@@ -379,7 +415,13 @@
       "importado": false,
       "retirado": false,
       "imovel_principal_id": null,
-      "anuncio_idade_dias": null
+      "anuncio_idade_dias": null,
+      "comissao_forma_pagamento": null,
+      "comissao_observacao": null,
+      "autorizacao_assinada_em": null,
+      "autorizacao_responsavel": null,
+      "locado_em": null,
+      "contrato_numero": null
     },
     "f08": {
       "id": "f08",
@@ -433,7 +475,13 @@
       "importado": false,
       "retirado": false,
       "imovel_principal_id": null,
-      "anuncio_idade_dias": null
+      "anuncio_idade_dias": null,
+      "comissao_forma_pagamento": null,
+      "comissao_observacao": null,
+      "autorizacao_assinada_em": null,
+      "autorizacao_responsavel": null,
+      "locado_em": null,
+      "contrato_numero": null
     },
     "f09": {
       "id": "f09",
@@ -483,7 +531,13 @@
       "importado": false,
       "retirado": false,
       "imovel_principal_id": null,
-      "anuncio_idade_dias": null
+      "anuncio_idade_dias": null,
+      "comissao_forma_pagamento": null,
+      "comissao_observacao": null,
+      "autorizacao_assinada_em": null,
+      "autorizacao_responsavel": null,
+      "locado_em": null,
+      "contrato_numero": null
     },
     "f10": {
       "id": "f10",
@@ -533,7 +587,13 @@
       "importado": false,
       "retirado": false,
       "imovel_principal_id": null,
-      "anuncio_idade_dias": null
+      "anuncio_idade_dias": null,
+      "comissao_forma_pagamento": null,
+      "comissao_observacao": null,
+      "autorizacao_assinada_em": null,
+      "autorizacao_responsavel": null,
+      "locado_em": null,
+      "contrato_numero": null
     },
     "f11": {
       "id": "f11",
@@ -591,7 +651,13 @@
       "importado": false,
       "retirado": false,
       "imovel_principal_id": null,
-      "anuncio_idade_dias": null
+      "anuncio_idade_dias": null,
+      "comissao_forma_pagamento": null,
+      "comissao_observacao": null,
+      "autorizacao_assinada_em": null,
+      "autorizacao_responsavel": null,
+      "locado_em": null,
+      "contrato_numero": null
     },
     "f12": {
       "id": "f12",
@@ -649,7 +715,13 @@
       "importado": false,
       "retirado": false,
       "imovel_principal_id": null,
-      "anuncio_idade_dias": null
+      "anuncio_idade_dias": null,
+      "comissao_forma_pagamento": null,
+      "comissao_observacao": null,
+      "autorizacao_assinada_em": null,
+      "autorizacao_responsavel": null,
+      "locado_em": null,
+      "contrato_numero": null
     },
     "f13": {
       "id": "f13",
@@ -707,7 +779,13 @@
       "importado": false,
       "retirado": false,
       "imovel_principal_id": null,
-      "anuncio_idade_dias": null
+      "anuncio_idade_dias": null,
+      "comissao_forma_pagamento": null,
+      "comissao_observacao": null,
+      "autorizacao_assinada_em": null,
+      "autorizacao_responsavel": null,
+      "locado_em": null,
+      "contrato_numero": null
     },
     "f14": {
       "id": "f14",
@@ -757,7 +835,13 @@
       "importado": false,
       "retirado": false,
       "imovel_principal_id": null,
-      "anuncio_idade_dias": null
+      "anuncio_idade_dias": null,
+      "comissao_forma_pagamento": null,
+      "comissao_observacao": null,
+      "autorizacao_assinada_em": null,
+      "autorizacao_responsavel": null,
+      "locado_em": null,
+      "contrato_numero": null
     },
     "f15": {
       "id": "f15",
@@ -807,7 +891,13 @@
       "importado": false,
       "retirado": false,
       "imovel_principal_id": null,
-      "anuncio_idade_dias": null
+      "anuncio_idade_dias": null,
+      "comissao_forma_pagamento": null,
+      "comissao_observacao": null,
+      "autorizacao_assinada_em": null,
+      "autorizacao_responsavel": null,
+      "locado_em": null,
+      "contrato_numero": null
     },
     "f16": {
       "id": "f16",
@@ -865,7 +955,13 @@
       "importado": false,
       "retirado": false,
       "imovel_principal_id": null,
-      "anuncio_idade_dias": null
+      "anuncio_idade_dias": null,
+      "comissao_forma_pagamento": null,
+      "comissao_observacao": null,
+      "autorizacao_assinada_em": null,
+      "autorizacao_responsavel": null,
+      "locado_em": null,
+      "contrato_numero": null
     },
     "f17": {
       "id": "f17",
@@ -919,7 +1015,13 @@
       "importado": false,
       "retirado": false,
       "imovel_principal_id": null,
-      "anuncio_idade_dias": null
+      "anuncio_idade_dias": null,
+      "comissao_forma_pagamento": null,
+      "comissao_observacao": null,
+      "autorizacao_assinada_em": null,
+      "autorizacao_responsavel": null,
+      "locado_em": null,
+      "contrato_numero": null
     }
   },
   "roundTripImovel": {
@@ -994,7 +1096,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "f02": {
       "id": "f02",
@@ -1038,7 +1146,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "f03": {
       "id": "f03",
@@ -1082,7 +1196,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "f04": {
       "id": "f04",
@@ -1131,7 +1251,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "f05": {
       "id": "f05",
@@ -1188,7 +1314,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "f06": {
       "id": "f06",
@@ -1241,7 +1373,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "f07": {
       "id": "f07",
@@ -1294,7 +1432,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "f08": {
       "id": "f08",
@@ -1347,7 +1491,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "f09": {
       "id": "f09",
@@ -1396,7 +1546,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "f10": {
       "id": "f10",
@@ -1445,7 +1601,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "f11": {
       "id": "f11",
@@ -1502,7 +1664,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "f12": {
       "id": "f12",
@@ -1559,7 +1727,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "f13": {
       "id": "f13",
@@ -1616,7 +1790,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "f14": {
       "id": "f14",
@@ -1665,7 +1845,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "f15": {
       "id": "f15",
@@ -1714,7 +1900,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "f16": {
       "id": "f16",
@@ -1771,7 +1963,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "f17": {
       "id": "f17",
@@ -1824,7 +2022,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     }
   },
   "fromDbImovel": {
@@ -1883,7 +2087,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "r2": {
       "id": "r2",
@@ -1927,7 +2137,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     },
     "r3": {
       "id": "r3",
@@ -1980,7 +2196,13 @@
       "importado": false,
       "retirado": false,
       "imovelPrincipalId": null,
-      "anuncioIdadeDias": null
+      "anuncioIdadeDias": null,
+      "comissaoFormaPagamento": null,
+      "comissaoObservacao": null,
+      "autorizacaoAssinadaEm": null,
+      "autorizacaoResponsavel": null,
+      "locadoEm": null,
+      "contratoNumero": null
     }
   },
   "fromDbAgenda": {

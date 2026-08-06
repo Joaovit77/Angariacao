@@ -55,6 +55,12 @@ export interface DbImovelRow {
   comissao_recebida: boolean | null;
   comissao_recebida_valor: number | string | null;
   comissao_recebida_data: string | null;
+  comissao_forma_pagamento: string | null;
+  comissao_observacao: string | null;
+  autorizacao_assinada_em: string | null;
+  autorizacao_responsavel: string | null;
+  locado_em: string | null;
+  contrato_numero: string | null;
   pre_cadastro: boolean | null;
   importado: boolean | null;
   retirado: boolean | null;
@@ -168,6 +174,12 @@ export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "create
     comissao_recebida: !!i.comissaoRecebida,
     comissao_recebida_valor: i.comissaoRecebidaValor ?? null,
     comissao_recebida_data: i.comissaoRecebidaData || null,
+    comissao_forma_pagamento: i.comissaoFormaPagamento || null,
+    comissao_observacao: i.comissaoObservacao || null,
+    autorizacao_assinada_em: i.autorizacaoAssinadaEm || null,
+    autorizacao_responsavel: i.autorizacaoResponsavel || null,
+    locado_em: i.locadoEm || null,
+    contrato_numero: i.contratoNumero || null,
     pre_cadastro: !!i.preCadastro,
     importado: !!i.importado,
     retirado: !!i.retirado,
@@ -223,6 +235,12 @@ export function fromDbImovel(r: DbImovelRow): Imovel {
     comissaoRecebida: !!r.comissao_recebida,
     comissaoRecebidaValor: r.comissao_recebida_valor as number | null,
     comissaoRecebidaData: r.comissao_recebida_data,
+    comissaoFormaPagamento: r.comissao_forma_pagamento || null,
+    comissaoObservacao: r.comissao_observacao || null,
+    autorizacaoAssinadaEm: r.autorizacao_assinada_em || null,
+    autorizacaoResponsavel: r.autorizacao_responsavel || null,
+    locadoEm: r.locado_em || null,
+    contratoNumero: r.contrato_numero || null,
     preCadastro: !!r.pre_cadastro,
     importado: !!r.importado,
     retirado: !!r.retirado,

@@ -177,7 +177,7 @@ export function totaisDoPainel(lista: CorretorAdmin[], hoje: string): TotaisAdmi
    ---------------------------------------------------------------- */
 
 export type NivelEvento = "erro" | "aviso" | "info";
-export type CategoriaEvento = "whatsapp" | "ia" | "webhook" | "google" | "admin";
+export type CategoriaEvento = "whatsapp" | "ia" | "webhook" | "google" | "admin" | "sophia";
 
 export interface EventoLog {
   id: number;
@@ -215,6 +215,18 @@ export const EVENTOS: Record<string, string> = {
   "admin-ia-liberada": "IA liberada por um administrador",
   "admin-ia-revogada": "IA revogada por um administrador",
   "admin-instancia-salva": "Número de WhatsApp cadastrado por um administrador",
+  /* Integração com o Sistema Principal. Os dois primeiros são a razão de a
+     categoria existir: um evento que não acha a angariação, ou que acha duas,
+     não gera reclamação nenhuma — gera SILÊNCIO. O corretor simplesmente
+     nunca vê a comissão dele cair na tela, e ninguém liga uma coisa à outra.
+     É o mesmo raciocínio de "webhook-instancia-desconhecida". */
+  "sophia-sem-angariacao": "Evento do Sistema Principal sem angariação correspondente",
+  "sophia-ambiguo": "Evento do Sistema Principal casou com mais de uma angariação",
+  "sophia-invalido": "Evento do Sistema Principal em formato desconhecido",
+  "sophia-aplicado": "Evento do Sistema Principal aplicado",
+  "sophia-falhou": "Falha ao aplicar evento do Sistema Principal",
+  "sophia-duplicado": "Evento do Sistema Principal reenviado (ignorado)",
+  "sophia-ja-constava": "Evento do Sistema Principal sem novidade (ignorado)",
 };
 
 export function rotuloEvento(evento: string): string {

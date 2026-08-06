@@ -22,6 +22,7 @@
 import {
   MAX_TENTATIVAS_SEM_RETORNO,
   MOTIVO_PERDA_LOCADO_FORA,
+  STATUS_AUTORIZACAO_ASSINADA,
   STATUS_PERDA_DECIDIDA,
   STATUS_TERMINAL_NEGATIVE,
   STALE_DAYS_THRESHOLD,
@@ -321,6 +322,40 @@ export function dataAngariadoEfetiva(imovel: Imovel): string | null {
   return dateEnteredStatus(imovel, "Angariado");
 }
 
+/**
+ * Os status que PROVAM a captação ganha mesmo sem a etapa "Angariado" no
+ * histórico — a ressalva que antes valia só para "Locado", agora nomeada.
+ *
+ * A lógica é a mesma nos dois: não se aluga o que não se captou, e não se
+ * assina a Autorização de Locação de um imóvel que o proprietário não
+ * entregou. Sem isso o desfecho mais positivo que existe cairia em "ainda em
+ * disputa".
+ *
+ * Com a integração isso deixou de ser um caso de borda e virou o caminho
+ * comum: quem escreve "Autorização assinada" é o Sistema Principal, e ele não
+ * sabe nem se importa se o corretor chegou a arrastar o card para "Angariado"
+ * antes. O painel vê a assinatura de um imóvel que, para ele, ainda estava em
+ * "Documentação" — e sem esta lista a conversão de captação contaria como
+ * pendência um negócio já formalizado em cartório alheio.
+ *
+ * "Publicado" fica de FORA de propósito: nenhum evento externo o escreve, e
+ * chegar lá pelo painel exige passar por "Angariado", que já entra no
+ * histórico. Incluí-lo mudaria a leitura de dado antigo sem nada em troca.
+ */
+export const STATUS_POS_CAPTACAO = [STATUS_AUTORIZACAO_ASSINADA, "Locado"] as const;
+
+/**
+ * A captação deste imóvel foi ganha?
+ *
+ * Fonte única de `conversaoCaptacao` e do balde do mapa. Existiam duas
+ * escritas da mesma regra — uma com a ressalva do "Locado", outra sem —, e a
+ * do mapa era a que estava errada.
+ */
+export function captacaoGanha(imovel: Imovel): boolean {
+  const pos: readonly string[] = STATUS_POS_CAPTACAO;
+  return foiAngariado(imovel) || pos.includes(imovel.status);
+}
+
 /* ----------------------------------------------------------------
    CAPTAÇÃO vs. CARTEIRA — as unidades desdobradas
 
@@ -432,13 +467,15 @@ export function comissaoRecebidaNoMes(imoveis: Imovel[], key: string, comissaoPe
      contato" não é fracasso, é pendência — e como a maioria da
      carteira vive aí, incluí-lo faria a taxa despencar a cada dia de
      prospecção bem-feita, exatamente ao contrário do que deveria.
-   - **"Locado" conta como captação ganha mesmo sem a etapa no
-     histórico.** É o ÚNICO lugar do motor que não pergunta só ao
-     `foiAngariado`, e o motivo é lógico: não se aluga o que não se
-     captou. Quando o corretor arrasta o imóvel direto para Locado (ou
-     em dado legado que pulou a etapa), o histórico não registra a
-     passagem por "Angariado" — e sem esta ressalva o caso mais
-     positivo que existe cairia em "ainda em disputa", diluindo a taxa
+   - **Os status pós-captação contam como captação ganha mesmo sem a
+     etapa no histórico** (`STATUS_POS_CAPTACAO`, via `captacaoGanha`).
+     Não se aluga o que não se captou, nem se assina a autorização de
+     um imóvel que o proprietário não entregou. Quando o corretor
+     arrasta o imóvel direto para Locado — ou quando o Sistema
+     Principal escreve "Autorização assinada" sobre um imóvel que aqui
+     ainda estava em "Documentação" — o histórico não registra a
+     passagem por "Angariado", e sem esta ressalva o caso mais positivo
+     que existe cairia em "ainda em disputa", diluindo a taxa
      justamente com os melhores desfechos. `imoveisAngariadosNoMes`
      segue exigindo a entrada no histórico, e deve: lá a pergunta é
      "em que MÊS isso aconteceu", e sem a data não há resposta.
@@ -462,7 +499,7 @@ export function conversaoCaptacao(imoveis: Imovel[]): ConversaoCaptacao {
   let perdidosAntesDeAngariar = 0;
   let emAberto = 0;
   for (const imovel of captacoes) {
-    if (foiAngariado(imovel) || imovel.status === "Locado") angariados++;
+    if (captacaoGanha(imovel)) angariados++;
     // Decidido, não apenas fechado: o silêncio que o follow-up ainda trabalha
     // é pendência, e cai em `emAberto` junto com quem está no meio do funil.
     else if (ehPerdaDecidida(imovel)) perdidosAntesDeAngariar++;

@@ -28,6 +28,10 @@ O que fica na **raiz** do repositório:
   runbook de cutover e rollback.
 - [MIGRATION_NEXT.md](MIGRATION_NEXT.md) / [BASELINE_ETAPA0.md](BASELINE_ETAPA0.md) — guia da
   migração e o baseline numérico de paridade (contrato de aceitação das views).
+- [INTEGRACAO_SOPHIA.md](INTEGRACAO_SOPHIA.md) — o contrato da integração com o Sistema Principal,
+  escrito para a equipe do OUTRO sistema (não pressupõe acesso a este repositório). É documento
+  voltado para fora: mudou payload, chave de casamento ou código de resposta em
+  `api/sophia/eventos`, muda aqui junto.
 - [scripts/seed-teste.mjs](scripts/seed-teste.mjs) — semeia a conta de teste no Supabase
   (idempotente; credenciais via `SEED_EMAIL`/`SEED_PASSWORD`). Ver §15 do MIGRATION_NEXT para um
   bug conhecido do re-seed em `user_config`.
@@ -39,8 +43,8 @@ O aplicativo vive em **[`web/`](web/)** — Next 16 (App Router, Turbopack), Typ
   do Leaflet e o `style.css`), `page.tsx` (tela de acesso e queda do link de recuperação de senha),
   e o grupo **`(painel)/`** com o shell autenticado (`layout.tsx`) e uma rota por view
   (`dashboard`, `pipeline`, `metas`, `agenda`, `insights`, `mapa`, `relatorios`, `roadmap`).
-  **`app/api/whatsapp/enviar/route.ts`** e **`app/api/ia/route.ts`** são as duas rotas de servidor
-  do projeto — ambas existem só porque guardam um segredo (ver abaixo).
+  As rotas de servidor vivem em **`app/api/`** (`whatsapp/*`, `ia`, `google/*`, `admin/*` e
+  `sophia/eventos`) e existem todas pelo mesmo motivo: guardam um segredo (ver adiante).
 - **`web/app/style.css`** — o CSS do app antigo, dirigido por custom properties em `:root`. Não
   houve redesign: classes e paleta escura seguem as do app estático. As duas mudanças estruturais
   vieram com o **tema claro** — a paleta ganhou um segundo conjunto de valores e as cores que
@@ -386,6 +390,28 @@ o torna testável puro.
   mesmo store esse `fecharModal()` apagaria a festa no instante em que ela nasce.
 - **`calculo/desdobramento.ts`** — um espaço captado que vira várias unidades (o galpão que o
   proprietário aceita dividir em salas). Ver "Desdobramento" abaixo.
+- **`calculo/sistemaPrincipal.ts`** — a ponte com o **Sistema Principal (Sophia)**: ler o evento,
+  achar a angariação, aplicar. Também os sete indicadores "da assinatura ao pagamento" do
+  Dashboard, que contam a CARTEIRA e não a captação (uma sala desdobrada não é angariação nova, mas
+  tem contrato e comissão próprios — e é dinheiro que esta seção mede), e a leitura do log para a
+  tela de auditoria (`linhaDoHistorico`). Ver "As rotas de servidor → `api/sophia/eventos`"
+  adiante, que é onde estão as decisões. O contrato para quem integra do outro lado está em
+  [INTEGRACAO_SOPHIA.md](INTEGRACAO_SOPHIA.md) — **ao mexer em payload, casamento ou código de
+  resposta, aquele documento tem que mudar junto**: ele é escrito para quem não lê este código, e
+  desatualizado ele não é incompleto, é errado.
+- **`calculo/timeline.ts`** — a evolução do imóvel numa lista só, do cadastro ao pagamento da
+  comissão. **Nenhum dado novo**: deriva de `dataAngariacao`, do `statusHistory` e dos campos que a
+  integração carimba, na LEITURA — a disciplina de `resultadoObservado.ts`. Três decisões:
+  **tentativa e resposta ficam de FORA** (na carteira real há imóvel com 74 mensagens e outro com 3
+  tentativas; misturar isso com os quatro marcos faria o marco virar agulha em palheiro — a
+  reincidência exata do que matou a faixa de "imóvel parado" no termômetro, e por isso a lista é de
+  MARCOS, coisas que aconteceram uma vez e mudaram o estado do negócio); **a data do FATO vence a
+  data em que o painel soube** (o `statusHistory` guarda quando o evento chegou, `autorizacaoAssinadaEm`
+  guarda quando o proprietário assinou, e as duas divergem sempre que a integração é religada
+  depois do fim de semana — uma linha do tempo com a data do nosso servidor conta a história errada);
+  e **a assinatura aparece UMA vez**, embora exista em três lugares ao mesmo tempo (etapa do funil,
+  campo e nota `sophia:`) — daí a nota nem ser consultada ali, e o campo entrar só como correção da
+  data da etapa que já existe.
 - **`calculo/temperatura.ts`** — o **termômetro do proprietário**: de quem correr atrás hoje,
   do que já está na carteira. É a outra metade da manhã que o `planoDia` não responde (aquele diz
   ONDE prospectar; este, QUEM chamar). Ordena por **faixa** de sinal — compromisso vencido >
@@ -893,7 +919,7 @@ contas e foi apresentada ao corretor com números de seed dentro — inclusive i
 carteira que nunca locou nenhum. Quem pegou o erro foi ele. Número estranho na análise (locação
 onde não devia haver, angariação demais) é sintoma disto antes de ser sintoma de bug no cálculo.
 
-### As rotas de servidor: `api/whatsapp/*`, `api/ia`, `api/google/*` e `api/admin/*`
+### As rotas de servidor: `api/whatsapp/*`, `api/ia`, `api/google/*`, `api/admin/*` e `api/sophia/*`
 
 São as exceções ao "sem servidor", e existem todas pelo mesmo motivo: guardam um segredo que não
 pode chegar ao browser. Toda rota nova aqui precisa justificar-se por esse critério — se não guarda
@@ -1207,6 +1233,113 @@ ali para quem quiser um modelo.
   um a um clique de virar protocolo, e **sem conteúdo pré-preenchido** — um texto padrão sobre taxa
   de administração seria a IA afirmando um número que esta imobiliária nunca disse, com o corretor
   confirmando sem ler porque já estava escrito.
+
+#### `api/sophia/eventos` — os fatos da locação chegando do Sistema Principal
+
+A segunda rota que **inverte o sentido** (a outra é o webhook do WhatsApp): quem chama é o
+**Sistema Principal da imobiliária (Sophia)**, quando o proprietário assina a Autorização de
+Locação, quando o imóvel é locado e quando o financeiro paga a comissão. As partes puras vivem em
+`lib/calculo/sistemaPrincipal.ts`; a rota só aplica.
+
+Ela existe porque o painel acompanha a **captação** e, depois do "sim" do proprietário, ficava
+cego: o corretor descobria que a própria comissão tinha sido paga perguntando para alguém. A regra
+que dá forma a tudo é **só se recebe** — nenhuma função daqui decide que uma comissão foi paga, e
+toda regra de negócio (quem assina, quando loca, quanto paga) continua lá. É isso que evita a pior
+coisa que uma integração cria: dois sistemas achando que mandam no mesmo dado.
+
+- **O `user_id` nasce do IMÓVEL, e essa é a única novidade estrutural.** No webhook do WhatsApp o
+  dono sai do nome da instância; aqui não dá — o Sistema Principal não sabe (nem deve saber) a qual
+  corretor a angariação pertence, porque quem angariou é informação daqui. Então acha-se a
+  angariação por uma chave forte e o dono é o da linha encontrada. Continua **não vindo da
+  requisição**: vem do banco. É o único lugar do projeto onde uma consulta com service role roda
+  sem filtro de `user_id` — porque é ela que o descobre. Da seguinte em diante, tudo é filtrado.
+- **A chave de casamento foi MEDIDA, e a óbvia estava errada.** Em 05/08/2026, na conta da
+  supervisora: `referencia_crm` presente em **101 de 101 "Locado"**, 42 de 42 "Publicado" e **3 de
+  497 "Angariado"** — e, em toda a base, **zero** referências repetidas. Ou seja, a referência é
+  chave excelente e **nasce tarde**: ela é criada no Sistema Principal no momento do Evento 1.
+  Casar só por ela funcionaria nos eventos 2 e 3 e falharia justo no primeiro, o que na prática é
+  falhar em todos. Daí a cascata **referência → código → telefone canônico** (a mesma
+  `telefoneCanonico` do webhook, de propósito: duas normalizações diferentes fariam o casamento
+  falhar sem erro nenhum) e, sobretudo, daí o **Evento 1 GRAVAR a referência recebida** — é assim
+  que ela vira o id compartilhado entre os dois sistemas.
+- **`localizarAngariacao` recusa em vez de chutar.** Casar por telefone traz todos os imóveis de um
+  proprietário com vários, e o evento é sobre um. A escada de desempate é endereço (o único
+  critério que fala do imóvel; usa a `chaveEndereco` de `duplicidade.ts`, **não** uma cópia — a
+  primeira versão tinha uma gêmea sem a tabela de abreviações e falhava em "R." contra "Rua"),
+  depois "ainda vivo", depois "mais avançado no funil". Sobrando empate, devolve `ambigua` e nada é
+  aplicado. Escolher um dos dois acertaria na maioria das vezes e erraria **em silêncio** no resto,
+  que é o pior desfecho possível quando o evento é o pagamento de uma comissão.
+- **A nota vem antes das colunas, e a ordem é a idempotência.** `registrar_nota_imovel` faz
+  checagem de duplicata e append numa instrução só — gravando as colunas primeiro, uma reentrega
+  reescreveria status e comissão a cada retentativa. (Essa função é a antiga
+  `registrar_nota_whatsapp` renomeada; o nome velho ficou como **casca que delega**, nunca como
+  segunda cópia do corpo, e não foi apagado porque o schema é aplicado à mão e o código sai na
+  Vercel, sem ordem garantida entre os dois.)
+- **O status só ANDA, mas o fato é gravado sempre.** Eventos chegam fora de ordem (fila
+  reprocessada, integração religada), e desfazer um "Locado" com uma assinatura antiga é pior que
+  perder o evento. A exceção deliberada: imóvel **fora** do funil (Perdido, Cancelado, Sem resposta)
+  sempre avança — se de lá vem que o contrato foi assinado, o "Perdido" registrado aqui era o
+  corretor tendo desistido de um negócio que a imobiliária fechou, e recusar a correção manteria na
+  carteira uma derrota que não aconteceu.
+- **Campo ausente não apaga nada.** Só o que vem preenchido sobrescreve — um evento magro não pode
+  zerar o número do contrato que um evento anterior trouxe. Pelo mesmo motivo, **sem valor no evento
+  a comissão fica `null`** e o app segue exibindo a estimativa pelo fallback do motor: gravar a
+  estimativa transformaria um palpite nosso num número do financeiro. E `lerValor` devolve `null`
+  para o ilegível, **nunca zero** — `Number("")` é 0, e um evento com `valor: "a combinar"` gravaria
+  R$ 0,00 como valor pago, com cara de exato, numa tela de dinheiro (foi um teste que pegou isso).
+- **A rota responde 4xx, ao contrário do webhook do WhatsApp.** Lá o 200 sempre é para não ser
+  reentregue em loop (a Evolution desativa webhook que falha demais). Aqui quem chama é um sistema
+  da própria casa, e formato errado ou imóvel não encontrado precisam aparecer para quem está
+  integrando — 404 para "não achei", 409 para "achei mais de um, mande a referência".
+
+**A etapa nova no funil.** `STATUS_AUTORIZACAO_ASSINADA` entrou no `STATUS_FLOW` entre "Angariado" e
+"Publicado": aquele é o "sim" falado, este é o "sim" assinado. Ao mexer nisso, saiba que a etapa
+atravessa **quatro** réguas, e três delas quebram em silêncio se esquecidas:
+`STATUS_STALE_LENTO` (sem ela, todo imóvel autorizado nasce com selo de estagnação em 7 dias — a
+reincidência exata do que matou a faixa de "imóvel parado" no termômetro), `DISPONIBILIDADE_STATUS_ALVO`
+(sem ela, o imóvel sai da fila de confirmação de disponibilidade no momento em que a captação é
+formalizada), `STATUS_POS_CAPTACAO`/`captacaoGanha` no motor e o balde do mapa. Este último ponto
+é o mais fácil de não ver: o Sistema Principal escreve "Autorização assinada" **sem saber** se o
+corretor chegou a marcar "Angariado" aqui, então a ressalva que já valia para "Locado" (contar como
+captação ganha mesmo sem a etapa no histórico) precisou virar lista e valer para as duas. A
+divergência de baseline está assinada no [BASELINE_ETAPA0.md](BASELINE_ETAPA0.md): a série do funil
+passou de 7 para 8 posições, e **nenhum número existente mudou**.
+
+**A auditoria é o log que já existia**, filtrado por `categoria = "sophia"` e exibido na `/admin`
+(`linhaDoHistorico` faz a leitura). Duas decisões: ela mora no painel de quem OPERA e não numa tela
+do corretor, porque as linhas mais valiosas para depurar — "angariação não encontrada" e "mais de
+uma angariação" — **não têm dono** (é justamente o `user_id` que faltou descobrir), e uma tela
+escopada por corretor esconderia exatamente os eventos que se perderam; e a consulta é própria, e
+não um recorte da lista geral, porque aquela abre filtrada por erro enquanto aqui o desfecho normal
+— "aplicado" — é `info`. **A reentrega passou a ser REGISTRADA** (`sophia-duplicado`, nível info):
+ela é o único caso em que tudo funcionou e ainda assim nada mudou, e sem a linha o integrador vê a
+rota responder `ok:true`, o painel não mexer um pixel e nenhum lugar onde ler o porquê — concluindo
+que está quebrado o que está fazendo exatamente o que deve. O `detalhe` começa **sempre** com o
+tipo do evento (`detalheDoLog`), e é dali que a coluna "Evento" sai: escrita e leitura moram no
+mesmo arquivo porque uma divergência aqui não daria erro, só deixaria a coluna vazia.
+
+**As notificações são NOTAS, não uma tabela.** Cada evento aplicado vira uma nota `sophia:<id do
+evento>` no imóvel, e ela é a notificação: nasce sem `lida`, o sino a conta, o Realtime a empurra
+para a tela na hora e o clique abre o imóvel. Uma tabela nova exigiria RLS própria, mapeadores, mais
+uma publicação de Realtime e uma regra de expiração — para guardar um texto que pertence ao
+histórico daquele imóvel de qualquer forma. A nota dá tudo isso de graça: idempotência (pelo id do
+evento, na função do banco), estado de leitura (o `lida` que a caixa de respostas inaugurou) e o
+vínculo com a angariação. **O prefixo é separado do `wa:` de propósito**: caísse lá, três coisas
+passariam a mentir juntas e caladas — `isStale` trataria a assinatura como manifestação do
+proprietário, a caixa de respostas cobraria leitura de um recado que ninguém mandou, e
+`dataUltimaResposta` diria que a pessoa respondeu no dia em que o financeiro pagou.
+`marcarEventosLidos` é separada de `marcarRespostasLidas` pela mesma razão: uma função só com
+parâmetro de prefixo faria o "limpar" de uma tela apagar o pendente da outra.
+
+**Os campos novos precisaram entrar na rede de segurança do `salvarImovel`.** `autorizacaoAssinadaEm`,
+`autorizacaoResponsavel`, `locadoEm`, `contratoNumero`, `comissaoFormaPagamento` e
+`comissaoObservacao` não são digitados em formulário nenhum — chegam pela rota. Como o `salvarImovel`
+faz **upsert da linha inteira**, e nenhum modal os monta, abrir um imóvel para corrigir um telefone
+os gravaria como `null`: o painel perderia a data da assinatura e o número do contrato em silêncio, e
+a única recuperação seria pedir o reenvio do evento. É o mesmo bug que já apagou as tentativas, agora
+com dado que este sistema **não consegue recriar sozinho**. No cadastro eles aparecem em bloco de
+**só leitura**: campo editável convidaria a "corrigir" a data da assinatura aqui, e aí os dois
+sistemas voltariam a discordar sobre o mesmo contrato.
 
 #### `api/google/*` — espelhar a agenda no Google Agenda
 
@@ -1535,11 +1668,14 @@ caixa há trinta segundos não pode ser recebido com um pedido para aceitar de n
   `SUPABASE_SERVICE_ROLE_KEY`); código que chega ao browser, nunca. Na prática: variável com
   `NEXT_PUBLIC_` é pública — se é segredo, não leva o prefixo.
 - **A service role é a exceção mais perigosa do projeto.** Ela ignora a RLS por completo, e por
-  isso só existe em duas rotas de servidor (`api/whatsapp/webhook` e `api/whatsapp/enviar`), lida
-  dentro do próprio arquivo e nunca exportada de módulo compartilhado — de onde vazaria para outra
-  rota por descuido. A regra que a segura: **o `user_id` nunca vem da requisição**. No webhook ele
-  nasce do nome da instância em `whatsapp_instancias`; no envio, de `auth.getUser()`. Toda consulta
-  feita com ela é filtrada por esse id.
+  isso só existe em rotas de servidor (`api/whatsapp/webhook`, `api/whatsapp/enviar`,
+  `api/sophia/eventos`, mais `api/google/*`, `api/admin/*` e `lib/servidor/`), lida dentro do
+  próprio arquivo e nunca exportada de módulo compartilhado — de onde vazaria para outra rota por
+  descuido. A regra que a segura: **o `user_id` nunca vem da requisição**. No webhook do WhatsApp
+  ele nasce do nome da instância em `whatsapp_instancias`; no envio, de `auth.getUser()`; nos
+  eventos do Sistema Principal, da linha do imóvel que a chave forte encontrou. Toda consulta feita
+  com ela é filtrada por esse id — a única que roda sem o filtro é justamente a que o descobre, na
+  rota do Sophia.
 
 ## Ao trabalhar aqui
 

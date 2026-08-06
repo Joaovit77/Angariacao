@@ -29,7 +29,7 @@ import {
 } from "./calculo/desdobramento";
 import { deveTerVerificacaoAberta } from "./calculo/followup";
 import { dataAngariadoEfetiva, historicoComStatus } from "./calculo/motor";
-import { ehNotaDeResposta } from "./calculo/notas";
+import { ehNotaDeResposta, eventosNaoLidos } from "./calculo/notas";
 import { useCelebracao } from "./celebracao";
 import { MAX_PROTOCOLO_CHARS } from "./calculo/ia";
 import { toDbAbordagem, toDbAgenda, toDbImovel, toDbProtocolo } from "./persistencia/mapeadores";
@@ -94,6 +94,25 @@ export async function salvarImovel(
   if (existing) {
     if (data.notas === undefined) data.notas = existing.notas || [];
     if (data.tentativas === undefined) data.tentativas = existing.tentativas || [];
+
+    /* A MESMA rede, agora para os fatos que vêm do Sistema Principal.
+       O risco é idêntico e o estrago é pior. Estes campos não são digitados
+       em formulário nenhum — chegam pela rota `/api/sophia/eventos` —, então
+       nenhum modal os monta, e o upsert acima os gravaria como null a cada
+       vez que o corretor abrisse o imóvel para corrigir um telefone. O painel
+       perderia a data da assinatura e o número do contrato em silêncio, e a
+       única forma de recuperá-los seria pedir o reenvio do evento ao outro
+       sistema.
+
+       `undefined` só, como acima: quem passa null está dizendo "apaga", e
+       isso é legítimo (o corretor desmarcando a comissão recebida à mão).
+       Quem simplesmente não conhece o campo é reposto. */
+    if (data.autorizacaoAssinadaEm === undefined) data.autorizacaoAssinadaEm = existing.autorizacaoAssinadaEm;
+    if (data.autorizacaoResponsavel === undefined) data.autorizacaoResponsavel = existing.autorizacaoResponsavel;
+    if (data.locadoEm === undefined) data.locadoEm = existing.locadoEm;
+    if (data.contratoNumero === undefined) data.contratoNumero = existing.contratoNumero;
+    if (data.comissaoFormaPagamento === undefined) data.comissaoFormaPagamento = existing.comissaoFormaPagamento;
+    if (data.comissaoObservacao === undefined) data.comissaoObservacao = existing.comissaoObservacao;
   }
 
   // Se foi definida uma data de retomada e a pessoa pediu lembrete,
@@ -378,6 +397,50 @@ export async function marcarTodasRespostasLidas(imovelIds: string[]): Promise<nu
       break;
     }
     porImovel.set(id, novasNotas);
+  }
+
+  if (porImovel.size > 0) {
+    setImoveis(imoveis.map((i) => (porImovel.has(i.id) ? { ...i, notas: porImovel.get(i.id)! } : i)));
+  }
+  return porImovel.size;
+}
+
+/**
+ * Marca como lidas as notificações do Sistema Principal — de um imóvel, ou de
+ * todos quando `imovelId` é null (o "limpar" do sino).
+ *
+ * Separada de `marcarRespostasLidas` de propósito, apesar da forma parecida:
+ * aquela filtra por `ehNotaDeResposta` e esta por `ehNotaDeEvento`, e uma
+ * função só com um parâmetro de prefixo faria o "limpar" de uma tela apagar o
+ * pendente da outra — o corretor limparia o sino e perderia a marca das
+ * respostas que ainda não leu.
+ *
+ * Sem `confirm` e sem toast por item: diferente da caixa de respostas, aqui
+ * marcar como lido não descarta trabalho a fazer. O fato continua no
+ * histórico do imóvel, nas colunas e no dashboard — o que se apaga é só o
+ * aviso.
+ */
+export async function marcarEventosLidos(imovelId: string | null): Promise<number> {
+  const { imoveis, setImoveis } = useAppStore.getState();
+  const supabase = getSupabase();
+  const alvos = imovelId ? imoveis.filter((i) => i.id === imovelId) : imoveis;
+  const porImovel = new Map<string, NotaImovel[]>();
+
+  for (const imovel of alvos) {
+    const pendentes = new Set(eventosNaoLidos(imovel.notas).map((n) => n.id));
+    if (pendentes.size === 0) continue;
+
+    const novasNotas = (imovel.notas || []).map((n) =>
+      pendentes.has(n.id) ? { ...n, lida: true } : n,
+    );
+    // Update PARCIAL da coluna, nunca a linha inteira: o upsert grava todos os
+    // jsonb de uma vez e apagaria tentativas e histórico (ver salvarImovel).
+    const { error } = await supabase.from("imoveis").update({ notas: novasNotas }).eq("id", imovel.id);
+    if (error) {
+      toast("Não foi possível marcar como lida: " + error.message, "error");
+      break;
+    }
+    porImovel.set(imovel.id, novasNotas);
   }
 
   if (porImovel.size > 0) {

@@ -134,6 +134,52 @@ create index if not exists imoveis_principal_idx
   on imoveis(user_id, imovel_principal_id)
   where imovel_principal_id is not null;
 
+-- ------------------------------------------------------------
+-- OS FATOS QUE VÊM DO SISTEMA PRINCIPAL (Sophia)
+--
+-- Assinatura da Autorização de Locação, locação efetivada e pagamento
+-- da comissão acontecem LÁ. Aqui eles só chegam, pela rota
+-- /api/sophia/eventos, e o painel nunca os inventa — ver
+-- web/lib/calculo/sistemaPrincipal.ts.
+--
+-- São colunas, e não texto dentro de `observacoes`, porque o dashboard
+-- soma comissão pendente e valor recebido a partir delas. É a mesma
+-- decisão de `retirado`: dado que a tela consulta não pode viver numa
+-- string que a próxima edição apaga.
+--
+-- Todas anuláveis: o evento do Sistema Principal declara o número do
+-- contrato e a forma de pagamento como opcionais, e inventar valor para
+-- não deixar nulo é como se grava um contrato que não existe.
+-- ------------------------------------------------------------
+alter table imoveis add column if not exists autorizacao_assinada_em date;
+alter table imoveis add column if not exists autorizacao_responsavel text;
+alter table imoveis add column if not exists locado_em date;
+alter table imoveis add column if not exists contrato_numero text;
+alter table imoveis add column if not exists comissao_forma_pagamento text;
+alter table imoveis add column if not exists comissao_observacao text;
+
+-- A chave de casamento dos eventos. `referencia_crm` já existia como campo
+-- digitado à mão; com a integração ela vira o ID COMPARTILHADO entre os dois
+-- sistemas, e é o evento de assinatura que a carimba (medido: a referência
+-- nasce no Sistema Principal na hora da assinatura — 101 de 101 "Locado" da
+-- carteira real têm uma, contra 3 de 497 "Angariado").
+--
+-- O índice é por user_id + referência, e não único: a unicidade real é do
+-- Sistema Principal, e uma constraint aqui recusaria a linha inteira num
+-- cadastro manual repetido, transformando um aviso de duplicidade em erro de
+-- gravação. Quem trata ambiguidade é `localizarAngariacao`, que prefere não
+-- agir a agir no imóvel errado.
+create index if not exists imoveis_referencia_crm_idx
+  on imoveis(user_id, referencia_crm)
+  where referencia_crm is not null and referencia_crm <> '';
+
+-- Busca da referência SEM user_id: é por ela que a rota descobre de quem é o
+-- imóvel, já que o evento do Sistema Principal não diz (e não deve dizer) a
+-- qual corretor pertence — o `user_id` nunca vem da requisição.
+create index if not exists imoveis_referencia_crm_global_idx
+  on imoveis(referencia_crm)
+  where referencia_crm is not null and referencia_crm <> '';
+
 alter table imoveis enable row level security;
 
 drop policy if exists "select_own_imoveis" on imoveis;
@@ -584,7 +630,11 @@ create index if not exists imoveis_telefone_canonico_idx
 -- da rota, onde toda consulta é filtrada pelo dono descoberto a partir
 -- da instância. Um id de imóvel trocado não atravessa para outra conta.
 -- ------------------------------------------------------------
-create or replace function registrar_nota_whatsapp(
+-- O nome genérico é o CANÔNICO: a mesma primitiva passou a ter um segundo
+-- chamador — a rota que recebe os eventos do Sistema Principal, cuja nota
+-- (`sophia:<id do evento>`) precisa exatamente da mesma idempotência, porque
+-- um webhook que reentrega é a regra e não a exceção.
+create or replace function registrar_nota_imovel(
   p_imovel_id uuid,
   p_user_id uuid,
   p_nota jsonb
@@ -607,6 +657,23 @@ begin
   get diagnostics afetadas = row_count;
   return afetadas > 0;
 end;
+$$;
+
+-- O nome antigo, mantido como CASCA que delega — nunca como segunda cópia do
+-- corpo. Duas funções com a mesma regra é o par que diverge em silêncio (o
+-- aviso vale aqui tanto quanto para `telefone_canonico`/`telefoneCanonico`), e
+-- apagá-la de vez quebraria a rota do WhatsApp na janela entre rodar este
+-- schema e o deploy do código novo — o schema é aplicado à mão, o código sai
+-- na Vercel, e a ordem não é garantida.
+create or replace function registrar_nota_whatsapp(
+  p_imovel_id uuid,
+  p_user_id uuid,
+  p_nota jsonb
+)
+returns boolean
+language sql
+as $$
+  select registrar_nota_imovel(p_imovel_id, p_user_id, p_nota);
 $$;
 
 -- ------------------------------------------------------------

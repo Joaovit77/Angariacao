@@ -67,11 +67,14 @@ export interface RespostaLogs {
   eventos?: EventoLog[];
 }
 
-export async function carregarLogs(filtro: { nivel?: string; userId?: string; limite?: number } = {}): Promise<RespostaLogs> {
+export async function carregarLogs(
+  filtro: { nivel?: string; categoria?: string; userId?: string; limite?: number } = {},
+): Promise<RespostaLogs> {
   const headers = await autorizacao();
   if (!headers) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
   const q = new URLSearchParams();
   if (filtro.nivel) q.set("nivel", filtro.nivel);
+  if (filtro.categoria) q.set("categoria", filtro.categoria);
   if (filtro.userId) q.set("userId", filtro.userId);
   if (filtro.limite) q.set("limite", String(filtro.limite));
   try {

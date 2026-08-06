@@ -9,7 +9,7 @@
    ================================================================ */
 import { STATUS_TERMINAL_NEGATIVE } from "../constantes";
 import type { Imovel } from "../tipos";
-import { foiAngariado } from "./motor";
+import { captacaoGanha } from "./motor";
 
 export type CategoriaMapa = "locado" | "angariado" | "andamento" | "sem-sucesso";
 
@@ -22,12 +22,18 @@ const TERMINAIS: readonly string[] = STATUS_TERMINAL_NEGATIVE;
  * propósito. Um imóvel foi angariado e depois perdido conta como "tentado, sem
  * sucesso" — é o estado final que vale, igual à cor por status que já existia.
  * Sobra para "angariado" o que foi captado e segue na carteira sem locar
- * (Angariado/Publicado). "andamento" é o pipeline antes da captação.
+ * (Angariado, Autorização assinada, Publicado). "andamento" é o pipeline antes
+ * da captação.
+ *
+ * Quem decide se a captação foi ganha é `captacaoGanha`, e não `foiAngariado`:
+ * o imóvel cuja autorização o Sistema Principal marcou como assinada pode não
+ * ter a etapa "Angariado" no histórico daqui, e pintá-lo de "em andamento"
+ * diria no mapa que ainda estamos atrás de um proprietário que já assinou.
  */
 export function categoriaMapa(i: Imovel): CategoriaMapa {
   if (i.status === "Locado") return "locado";
   if (TERMINAIS.includes(i.status)) return "sem-sucesso";
-  if (foiAngariado(i)) return "angariado";
+  if (captacaoGanha(i)) return "angariado";
   return "andamento";
 }
 

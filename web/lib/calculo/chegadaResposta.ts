@@ -22,7 +22,7 @@
    já sabe distinguir as duas — é para isso que ele existe.
    ================================================================ */
 import type { Imovel, NotaImovel } from "../tipos";
-import { corpoDaResposta, ehNotaDeResposta } from "./notas";
+import { corpoDaResposta, ehNotaDeEvento, ehNotaDeResposta } from "./notas";
 
 /** Quanto da mensagem cabe no aviso antes de cortar. Notificação do sistema
     trunca sozinha e sem reticências, o que corta palavra no meio; cortar aqui
@@ -77,6 +77,55 @@ export function respostasQueChegaram(
     (anterior.notas || []).filter(ehNotaDeResposta).map((n) => n.id),
   );
   return (novo.notas || []).filter((n) => ehNotaDeResposta(n) && !conhecidas.has(n.id));
+}
+
+/**
+ * Os eventos do Sistema Principal que chegaram entre dois retratos do imóvel.
+ *
+ * Gêmea da função acima, e a duplicação é o ponto: as duas comparam por id e
+ * exigem retrato anterior pela mesma razão, mas filtram por prefixos
+ * DIFERENTES, e é isso que mantém "o proprietário respondeu" separado de "o
+ * financeiro pagou sua comissão". Fundidas num filtro só, o cartão do toast
+ * anunciaria uma assinatura de contrato como mensagem de WhatsApp.
+ *
+ * Vale o mesmo motivo do `anterior` vazio: um imóvel que o painel nunca viu
+ * chega com todo o histórico, e "tudo que existe é novo" transformaria uma
+ * carteira recém-carregada numa fila de caixinhas do sistema.
+ */
+export function eventosQueChegaram(
+  anterior: Imovel | null | undefined,
+  novo: Imovel,
+): NotaImovel[] {
+  if (!anterior) return [];
+  const conhecidos = new Set((anterior.notas || []).filter(ehNotaDeEvento).map((n) => n.id));
+  return (novo.notas || []).filter((n) => ehNotaDeEvento(n) && !conhecidos.has(n.id));
+}
+
+/**
+ * UM aviso para os eventos que acabaram de chegar de um imóvel.
+ *
+ * Um só, pela razão do `avisoDeResposta`: assinatura e locação podem chegar
+ * quase juntas quando o Sistema Principal reprocessa uma fila, e duas
+ * caixinhas seguidas sobre o mesmo imóvel são duas interrupções pelo mesmo
+ * assunto. A prévia é a do evento MAIS RECENTE, que é o estado atual do
+ * negócio — dos dois, é o que o corretor precisa saber.
+ */
+export function avisoDeEvento(imovel: Imovel, novos: NotaImovel[]): AvisoResposta | null {
+  if (novos.length === 0) return null;
+  const ordenados = [...novos].sort((a, b) => (a.data || "").localeCompare(b.data || ""));
+  const ultimo = ordenados[ordenados.length - 1];
+  const rotulo = rotuloDoImovel(imovel);
+  const mensagem = previaDaMensagem(ultimo);
+  const sufixo = novos.length > 1 ? ` (${novos.length} atualizações)` : "";
+  return {
+    imovelId: imovel.id,
+    quem: `Sistema Principal${sufixo}`,
+    imovel: rotulo,
+    mensagem,
+    titulo: `Atualização da locação${sufixo}`,
+    corpo: `${rotulo} — ${mensagem}`,
+    quantidade: novos.length,
+  };
 }
 
 /** Como o imóvel se apresenta no aviso: o código é o que o corretor usa para
