@@ -3927,12 +3927,24 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
   background: color-mix(in srgb, currentColor 10%, transparent);
   white-space:nowrap;
 }
-.admin-cap.ok{ color: var(--good); }
+/* Configurado é NEUTRO, e isto é a regra do cabeçalho aplicada a si
+   mesma: o que precisa de você fica colorido, o resto fica cinza. A
+   primeira versão pintava configurado de verde, e verde ao lado do nome
+   de uma integração se lê como "conectada" — coisa que a rota não tem
+   como saber, porque ela olha variável de ambiente, não tráfego. Foi
+   assim que o Sistema Principal apareceu com selo de saúde antes de ter
+   mandado o primeiro evento. */
+.admin-cap.ok{ color: var(--text-dim); }
 .admin-cap.falta{ color: var(--bad); }
 /* Faltando algo OPCIONAL não é vermelho: Google Agenda desconectado é
    uma escolha legítima de deploy, e pintá-la de erro ensina a ignorar a
    cor justamente onde ela precisa funcionar. */
 .admin-cap.opcional{ color: var(--text-faint); }
+/* Configurado e ainda sem uso. `--info` de propósito: não é erro (nada a
+   consertar) nem sucesso (nada aconteceu ainda) — é o estado de quem
+   está esperando o outro lado. */
+.admin-cap.espera{ color: var(--info); }
+.admin-cap-ressalva{ margin-top:10px; }
 
 .admin-cap-lista{ margin-top:14px; display:flex; flex-direction:column; gap:10px; }
 .admin-cap-item{

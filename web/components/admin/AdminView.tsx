@@ -257,6 +257,19 @@ export default function AdminView() {
 
   const faltando = ambiente.filter((c) => !c.configurado);
 
+  /* O Sophia é o único caso em que a tela sabe mais que a variável: o log
+     abaixo já responde "chegou algum evento?", e é a diferença entre "a
+     chave está lá" e "a integração está viva". Depende do carregamento
+     ter terminado — senão o chip anuncia "sem eventos" no primeiro quadro,
+     para todo mundo, e volta atrás sozinho.
+
+     As outras integrações ficam só com a leitura de configuração: dá para
+     inferir vida delas por outros sinais (chamadas de IA no mês, a
+     varredura de conexões, contas do Google), mas cada inferência dessas
+     é uma regra a mais para errar, e a ressalva abaixo do cartão já
+     impede a leitura otimista. */
+  const semEventosSophia = !carregandoSophia && eventosSophia.length === 0;
+
   async function alternarIa(c: CorretorAdmin) {
     const r = await definirIa(c.id, !c.iaLiberada);
     if (!r.ok) {
@@ -369,8 +382,8 @@ export default function AdminView() {
             {ambiente.length === 0
               ? "consultando…"
               : faltando.length === 0
-                ? "tudo configurado"
-                : `${faltando.length} item(ns) faltando`}
+                ? "todas as chaves preenchidas"
+                : `${faltando.length} chave(s) faltando`}
           </span>
         </div>
 
@@ -381,15 +394,38 @@ export default function AdminView() {
             linha — confirma de relance o que existe, e o que falta salta
             sem precisar de tabela. */}
         <div className="admin-ambiente">
-          {ambiente.map((c) => (
-            <span
-              key={c.chave}
-              className={`admin-cap ${c.configurado ? "ok" : c.essencial ? "falta" : "opcional"}`}
-              title={c.variavel}
-            >
-              {c.configurado ? "✓" : "✕"} {c.nome}
-            </span>
-          ))}
+          {ambiente.map((c) => {
+            /* Configurado é NEUTRO, não verde. Chave preenchida não é
+               conquista, é ausência de problema — e verde ao lado do nome
+               de uma integração lê-se como "conectada", que é coisa que
+               esta rota não tem como saber: ela olha variável de
+               ambiente, não tráfego. Pintar de verde fez exatamente esse
+               estrago com o Sophia, que apareceu "✓" antes de o outro
+               sistema ter mandado o primeiro evento. */
+            const espera = c.chave === "sophia" && c.configurado && semEventosSophia;
+            const estado = !c.configurado
+              ? c.essencial
+                ? "falta"
+                : "opcional"
+              : espera
+                ? "espera"
+                : "ok";
+            return (
+              <span key={c.chave} className={`admin-cap ${estado}`} title={c.variavel}>
+                {c.configurado ? (espera ? "◷" : "•") : "✕"} {c.nome}
+                {espera && " · sem eventos"}
+              </span>
+            );
+          })}
+        </div>
+
+        {/* A ressalva existia na versão anterior e se perdeu quando o
+            cartão virou fita de chips — bem na hora em que o visual ficou
+            mais afirmativo. Ela é o que impede "configurado" de ser lido
+            como "funcionando". */}
+        <div className="field-hint admin-cap-ressalva">
+          Diz que a chave está preenchida neste deploy — não que o serviço esteja no ar nem que
+          alguém já o tenha usado.
         </div>
 
         {faltando.length > 0 && (
