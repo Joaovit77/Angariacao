@@ -14,8 +14,10 @@
    ponto que empurra {status, date} no histórico.
    ================================================================ */
 import {
+  ABORDAGEM_ANALISE_ANUNCIO,
   MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO,
   type ResultadoTentativa,
+  ROTEIRO_ANALISE_ANUNCIO,
   VERIFICACAO_DISPONIBILIDADE_DIAS,
 } from "./constantes";
 import { addDaysISO, agoraISOComHora, currentMonthKey, todayISO } from "./datas";
@@ -113,6 +115,14 @@ export async function salvarImovel(
     if (data.contratoNumero === undefined) data.contratoNumero = existing.contratoNumero;
     if (data.comissaoFormaPagamento === undefined) data.comissaoFormaPagamento = existing.comissaoFormaPagamento;
     if (data.comissaoObservacao === undefined) data.comissaoObservacao = existing.comissaoObservacao;
+
+    /* E a mesma rede para o texto do anúncio garimpado. Ele é gravado UMA vez,
+       no pré-cadastro, e nunca mais aparece em formulário nenhum — o
+       ModalImovel não o monta. Sem esta linha, confirmar o pré-cadastro no
+       modal completo (que é o passo seguinte do fluxo, não um caso raro)
+       apagaria o texto no mesmo minuto em que ele foi capturado, e com ele os
+       m², o andar e a mobília que o gerador de anúncio usa. */
+    if (data.textoAnuncio === undefined) data.textoAnuncio = existing.textoAnuncio;
   }
 
   // Se foi definida uma data de retomada e a pessoa pediu lembrete,
@@ -683,6 +693,38 @@ export async function salvarAbordagem(data: Abordagem, userId: string): Promise<
   );
   toast(existente ? "Abordagem atualizada." : "Abordagem cadastrada.");
   return true;
+}
+
+/**
+ * Devolve a abordagem que registra as mensagens geradas a partir do anúncio do
+ * proprietário, criando-a no catálogo se ainda não existir.
+ *
+ * Ela precisa existir de verdade porque o ranking só mede `Abordagem` com id
+ * estável — sem isso a feature nasceria fora da medição, que era o motivo dela.
+ * Criar na primeira geração (e não pedir ao corretor que cadastre antes) é o
+ * que faz o ranking ter série desde o primeiro envio.
+ *
+ * Uma ARQUIVADA serve e é reusada: arquivar tira dos seletores, não invalida o
+ * histórico, e criar uma segunda partiria a série em duas justamente para quem
+ * arquivou a primeira de propósito.
+ */
+export async function garantirAbordagemDoAnuncio(userId: string): Promise<Abordagem | null> {
+  const { abordagens } = useAppStore.getState();
+  const existente = abordagens.find((a) => a.nome.trim() === ABORDAGEM_ANALISE_ANUNCIO);
+  if (existente) return existente;
+
+  const nova: Abordagem = {
+    id: uid(),
+    nome: ABORDAGEM_ANALISE_ANUNCIO,
+    roteiro: ROTEIRO_ANALISE_ANUNCIO,
+    canalSugerido: "WhatsApp",
+    // Vazio: serve a qualquer origem, mas não é o padrão de nenhuma — não pode
+    // se autoaplicar no follow-up em lote (ver Abordagem.origens).
+    origens: [],
+    arquivada: false,
+  };
+  const ok = await salvarAbordagem(nova, userId);
+  return ok ? nova : null;
 }
 
 /**

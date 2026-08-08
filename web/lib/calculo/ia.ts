@@ -1012,3 +1012,292 @@ Regras:
 - Português do Brasil, sem jargão de marketing. No máximo um emoji, e só se combinar com o tom.
 - Escreva SÓ a mensagem: sem aspas em volta, sem "Prezado", sem assinatura formal, sem markdown.`;
 }
+
+/* ----------------------------------------------------------------
+   TÍTULO E DESCRIÇÃO PARA O PORTAL
+
+   O imóvel foi captado, e agora vira anúncio. A FICHA de lançamento é
+   montada no Sistema Principal (Sophia) e quem publica é outra pessoa
+   da imobiliária — este gerador não recria a ficha, e é decisão: os
+   campos dela aqui fariam digitar duas vezes e criariam duas fontes de
+   verdade sobre o mesmo imóvel, que é o que a integração inteira
+   existe para evitar. O que a Sophia NÃO faz é escrever o texto, e é
+   só isso que sai daqui — para o corretor colar lá.
+
+   Três coisas separam este prompt de todos os outros do arquivo:
+
+   1. O leitor é o INQUILINO, não o proprietário. Por isso ele não usa
+      o PAPEL: aquele descreve quem convence um dono a entregar o
+      imóvel, e escreveria um anúncio dirigido à pessoa errada.
+
+   2. Um anúncio é OFERTA PÚBLICA, com o nome da imobiliária junto.
+      Inventar "armários planejados" numa mensagem de WhatsApp custa um
+      constrangimento; num portal é propaganda enganosa, e quem
+      responde por ela não é quem escreveu. Daí a trava ser mais dura
+      que a do rascunho: sem fonte, OMITE.
+
+   3. A fonte com procedência inclui o texto do anúncio ORIGINAL, o que
+      cria um risco que nenhuma outra chamada tem: aquele texto é o
+      anúncio de um proprietário, e vem com o TELEFONE dele dentro.
+      Copiado para a descrição, o painel publicaria o número pessoal de
+      um terceiro num portal — dado de quem nunca aceitou nada. É a
+      regra mais importante do prompt, e há teste sobre ela.
+   ---------------------------------------------------------------- */
+
+/** Teto das características coladas da Sophia. Bem maior que o contexto
+    normal porque aqui o corretor cola uma ficha inteira, e o que interessa
+    (área, andar, mobília, condomínio) costuma estar espalhado nela. */
+export const MAX_CARACTERISTICAS = 1500;
+
+/** Teto do título. Portais cortam títulos longos em lugares diferentes, e um
+    título cortado no meio de uma palavra é pior que um curto.
+
+    90 é um teto CONSERVADOR, não o limite medido da OLX — ninguém aqui
+    conferiu qual é. Se o número real aparecer, é esta linha que muda. */
+export const MAX_TITULO_ANUNCIO = 90;
+
+/** O que a descrição pode declarar como FALTANDO.
+ *
+ * Lista fechada pelo motivo de `ORIGENS_ADIVINHAVEIS`: em texto livre o
+ * modelo escreveria a mesma ausência de cinco jeitos e a tela não teria como
+ * exibir isso de forma estável. E ela existe por uma razão de produto, não de
+ * formato — a caixa de colar nasce vazia, e sem alguém dizer o que falta o
+ * corretor não tem como saber que colar a ficha melhoraria o texto. É o
+ * mesmo papel do `protocolosUsados`: tornar visível em que o texto se apoiou,
+ * e onde ele teve que se calar.
+ */
+export const CARACTERISTICAS_AUSENTES = [
+  "área em m²",
+  "andar",
+  "mobília",
+  "itens do condomínio",
+  "vagas de garagem",
+  "banheiros",
+  "valor do condomínio",
+  "aceita pet",
+  "estado de conservação",
+] as const;
+
+export interface AnuncioGerado {
+  titulo: string;
+  descricao: string;
+  /** O que faltou fonte para dizer. Vira a dica da tela: "cole a ficha da
+      Sophia para incluir área e andar". */
+  faltando: string[];
+}
+
+export const ESQUEMA_ANUNCIO_GERADO = {
+  type: "object",
+  properties: {
+    titulo: {
+      type: "string",
+      description: `Título do anúncio, uma linha, no máximo ${MAX_TITULO_ANUNCIO} caracteres.`,
+    },
+    descricao: {
+      type: "string",
+      description: "Descrição do imóvel para o portal, em português do Brasil.",
+    },
+    faltando: {
+      type: "array",
+      items: { type: "string", enum: [...CARACTERISTICAS_AUSENTES] },
+      description:
+        "Características que deixariam o anúncio melhor e que NÃO estavam em nenhuma fonte. Lista vazia se não faltou nada.",
+    },
+  },
+  required: ["titulo", "descricao", "faltando"],
+  additionalProperties: false,
+} as const;
+
+const PAPEL_ANUNCIO = `Você escreve anúncios de imóveis para LOCAÇÃO em portais brasileiros (ZAP, VivaReal, OLX). Quem vai ler é o candidato a INQUILINO procurando onde morar. Escreva em português do Brasil, no tom de quem conhece o mercado: concreto e direto, sem jargão de marketing e sem exagero.`;
+
+/**
+ * Os fatos que saem do CADASTRO, já rotulados para o prompt.
+ *
+ * Existe como função à parte, e não inline no prompt, por causa do valor:
+ * aqui entra `valorAluguel` — o que o proprietário quer receber e o que vai
+ * ao anúncio — e NUNCA `valorAluguelAtraso`, que é o valor com o acréscimo da
+ * campanha e serve só à cobrança da comissão (ver `solicitacaoAngariacao.ts`,
+ * que deliberadamente escolhe o outro). Reusar aquela regra aqui publicaria
+ * todo anúncio ~20% acima do que o dono pediu, e há precedente na carteira:
+ * 147 imóveis já entraram com o valor de atraso na coluna do anunciado.
+ *
+ * Ficam de fora, também de propósito: número do endereço, unidade e bloco
+ * (identificam onde uma pessoa mora, e o portal já tem campo estruturado
+ * para localização) e qualquer dado do proprietário.
+ */
+export function fatosDoCadastro(im: Imovel): string[] {
+  const fatos: string[] = [];
+  const add = (rotulo: string, valor: unknown) => {
+    if (valor === null || valor === undefined || valor === "") return;
+    fatos.push(`- ${rotulo}: ${valor}`);
+  };
+
+  add("tipo de imóvel", im.tipo);
+  add("quartos", im.quartos);
+  add("banheiros", im.banheiros);
+  add("vagas de garagem", im.vagas);
+  add("bairro", im.bairro);
+  add("cidade", im.cidade);
+  add("edifício/condomínio", im.edificio);
+  // `> 0` e não apenas "existe": o `valor_aluguel` tem default 0 no banco por
+  // herança do app antigo, então zero aqui é "não informado", e um anúncio
+  // anunciando "R$ 0,00" é pior que um sem valor.
+  if (im.valorAluguel && im.valorAluguel > 0) add("aluguel mensal (R$)", im.valorAluguel);
+  if (im.valorCondominio && im.valorCondominio > 0) add("condomínio (R$)", im.valorCondominio);
+
+  return fatos;
+}
+
+/**
+ * Prompt do gerador. `caracteristicas` é o que o corretor colou da ficha da
+ * Sophia (opcional) e `im.textoAnuncio` é o anúncio original do proprietário,
+ * guardado no garimpo — as duas fontes que trazem o que o cadastro não tem.
+ */
+export function promptGerarAnuncio(im: Imovel, caracteristicas?: string | null): string {
+  const fatos = fatosDoCadastro(im);
+  const colado = (caracteristicas || "").trim().slice(0, MAX_CARACTERISTICAS);
+  const original = (im.textoAnuncio || "").trim().slice(0, MAX_TEXTO_ANUNCIO);
+
+  const fontes = [
+    fatos.length ? `CADASTRO (conferido pelo corretor):\n${fatos.join("\n")}` : "",
+    colado ? `FICHA DO IMÓVEL, colada pelo corretor:\n\n"""\n${colado}\n"""` : "",
+    original
+      ? `ANÚNCIO ORIGINAL do proprietário, de onde este imóvel foi captado. Use os FATOS daqui (área, andar, mobília, o que há no condomínio). Não copie as frases — o texto é de outra pessoa:\n\n"""\n${original}\n"""`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  return `${PAPEL_ANUNCIO}
+
+Escreva o título e a descrição do anúncio deste imóvel, usando SOMENTE as fontes abaixo.
+
+${fontes}
+
+Regras:
+- SÓ AFIRME O QUE ESTÁ NAS FONTES ACIMA. Isto aqui é oferta pública, publicada com o nome da imobiliária: um detalhe inventado não é exagero de vendedor, é propaganda enganosa. Nada de "amplo", "arejado", "recém-reformado", "excelente localização", "pertinho de tudo" ou qualquer elogio que nenhuma fonte sustente. Não invente metragem, andar, mobília, item de condomínio, proximidade de comércio, escola ou transporte.
+- Na dúvida, OMITA. Descrição curta e verdadeira vende; descrição inflada gera visita frustrada e o inquilino desiste na porta.
+- NUNCA inclua telefone, e-mail, nome de pessoa ou link. O anúncio original acima é de um proprietário e traz o telefone DELE — publicá-lo exporia o número pessoal de alguém que não pediu isso. O contato do anúncio é da imobiliária e é preenchido fora daqui.
+- Não escreva o número do endereço, o apartamento nem o bloco. Bairro e cidade bastam no texto; a localização exata é campo próprio do portal.
+- Não invente regra de locação: se as fontes não disserem se aceita pet, se exige fiador, se pode criança ou qual a profissão do inquilino, não fale disso. Regra inventada nessa área não é só errada — pode ser discriminatória.
+- Título: uma linha, no máximo ${MAX_TITULO_ANUNCIO} caracteres, em SEGMENTOS separados por " | ". Ele é lido numa lista, ao lado de dezenas de outros, e é ELE que decide se a pessoa abre o anúncio. Os segmentos existem para ser varridos com o olho, não lidos como frase.
+- FORMATO, nesta ordem: "Tipo N quartos Bairro | Edifício | diferencial | diferencial".
+  Exemplo do padrão: "Apartamento 3 quartos Gleba Palhano | Vivere Palhano | 1 suíte | 2 vagas".
+- O PRIMEIRO segmento é sempre tipo do imóvel por extenso ("Apartamento", não "Apto"), número de quartos e bairro. É por ele que se decide abrir, e os primeiros caracteres são os únicos garantidos: a lista corta o resto.
+- O nome do EDIFÍCIO vem logo depois, quando houver — em locação muita gente procura pelo empreendimento, e ele identifica o imóvel melhor que qualquer adjetivo.
+- Depois, até DOIS diferenciais, os mais fortes que alguma fonte sustentar, sempre quantificados: "1 suíte", "2 vagas", "mobiliado", "condomínio incluso", "aceita pet", "sacada", "andar alto". Sem fonte, o segmento simplesmente não existe — título curto e verdadeiro é melhor que completo e inventado.
+- SEJA ESPECÍFICO EM VEZ DE ELOGIOSO — é o que separa o título que funciona do que é pulado. "1 suíte" diz mais que "amplo"; "2 vagas" diz mais que "ótima garagem"; "condomínio incluso" diz mais que "excelente custo-benefício". O dado concreto é ao mesmo tempo o que atrai o clique e o único que você tem fonte para afirmar.
+- Fora do título: adjetivo de vendedor sem fato atrás ("ótimo", "excelente", "maravilhoso", "oportunidade única"), CAIXA ALTA, pontuação repetida, emoji, o que o portal já mostra em campo próprio (preço, cidade) e palavra que não filtra nada ("para alugar", "imóvel", "confira").
+- No máximo quatro segmentos. Além disso o título vira amontoado de palavras-chave e deixa de ser varrido.
+- Descrição: 2 a 4 parágrafos curtos, ou um parágrafo mais uma lista de itens. Comece pelo que a pessoa procura primeiro, termine com um convite a agendar visita. Sem markdown.
+- "faltando": liste o que deixaria o anúncio melhor e não estava em fonte nenhuma. É por ali que o corretor sabe que vale colar a ficha da Sophia. Não liste o que você conseguiu dizer.`;
+}
+
+/* ----------------------------------------------------------------
+   ABORDAGEM A PARTIR DO ANÚNCIO DO PROPRIETÁRIO
+
+   O outro lado do gerador acima: lá o imóvel já é nosso e o texto vai
+   ao portal; aqui ele ainda é de um proprietário anunciando sozinho, e
+   o texto vai para o WhatsApp DELE. O leitor volta a ser o
+   proprietário, então este prompt usa o PAPEL.
+
+   A matéria-prima é o `textoAnuncio` retido no garimpo, que até então
+   era descartado — é ela que permite abrir a conversa falando do
+   anúncio REAL da pessoa em vez de um roteiro genérico.
+
+   Três coisas que dão forma ao prompt:
+
+   1. **A idade do anúncio é o argumento mais forte, e é FATO.** Sai de
+      `anuncioIdadeDias`, campo do cadastro, não de leitura da IA — e
+      "há 45 dias no ar" é verificável pelo próprio dono. Os outros
+      pontos são leitura de um texto; este é dado.
+
+   2. **A IA não vê as fotos.** O texto colado não as traz, então os
+      defeitos mais óbvios de anúncio de proprietário — poucas fotos,
+      foto escura — são justamente os que ela NÃO pode apontar. Apontar
+      assim mesmo faz o corretor abrir a conversa com uma acusação
+      falsa, e o proprietário conferir em dois segundos.
+
+   3. **Não é uma crítica, é uma oferta.** Abrir a primeira conversa
+      dizendo "seu anúncio está ruim" é aposta de tom com o público
+      mais frio que existe. O prompt manda apontar no máximo dois
+      pontos, sem adjetivo de julgamento, e sempre ligados ao que o
+      proprietário quer (alugar mais rápido) — não ao que ele errou.
+   ---------------------------------------------------------------- */
+
+/** O que o anúncio de um proprietário costuma deixar de fora, e que dá para
+    VER no texto. Lista fechada pela razão de `CARACTERISTICAS_AUSENTES`: a
+    tela exibe isto ao lado da mensagem, para o corretor conferir em que a
+    abordagem se apoiou antes de mandar.
+
+    Note o que NÃO está aqui: qualidade e quantidade de FOTO. É o defeito mais
+    comum de anúncio de proprietário e o mais fácil de citar — e a IA não tem
+    como sabê-lo, porque o que ela recebe é só o texto. */
+export const PONTOS_ANUNCIO_PROPRIETARIO = [
+  "anúncio antigo no ar",
+  "sem valor de condomínio",
+  "sem valor de IPTU",
+  "sem informação de garagem",
+  "sem política de pet",
+  "sem menção a mobília",
+  "descrição muito curta",
+  "sem referência de localização",
+] as const;
+
+export interface AbordagemDoAnuncio {
+  /** A mensagem pronta para mandar ao proprietário. */
+  mensagem: string;
+  /** Em que ela se apoiou, para o corretor conferir num olhar. */
+  pontos: string[];
+}
+
+export const ESQUEMA_ABORDAGEM_ANUNCIO = {
+  type: "object",
+  properties: {
+    mensagem: {
+      type: "string",
+      description:
+        "Mensagem de primeiro contato para mandar ao proprietário no WhatsApp, em português do Brasil.",
+    },
+    pontos: {
+      type: "array",
+      items: { type: "string", enum: [...PONTOS_ANUNCIO_PROPRIETARIO] },
+      description:
+        "No máximo dois pontos do anúncio em que a mensagem se apoiou. Lista vazia se ela não citou nenhum.",
+    },
+  },
+  required: ["mensagem", "pontos"],
+  additionalProperties: false,
+} as const;
+
+/**
+ * Prompt da abordagem por análise do anúncio.
+ *
+ * Sem `textoAnuncio` não há o que analisar, e o chamador deve nem oferecer o
+ * botão — mas o prompt continua válido, apoiado só na idade do anúncio.
+ */
+export function promptAbordagemDoAnuncio(im: Imovel): string {
+  const original = (im.textoAnuncio || "").trim().slice(0, MAX_TEXTO_ANUNCIO);
+  const primeiroNome = (im.proprietarioNome || "").trim().split(/\s+/)[0] || "";
+  const ref = [im.endereco, im.bairro].map((s) => (s || "").trim()).filter(Boolean).join(", ");
+  const idade = im.anuncioIdadeDias;
+
+  return `${PAPEL}
+
+Você vai escrever a PRIMEIRA mensagem a um proprietário que anunciou o imóvel dele por conta própria${ref ? ` (${ref})` : ""}. O objetivo é que ele coloque o imóvel com a nossa imobiliária.
+
+${original ? `O ANÚNCIO que ele escreveu:\n\n"""\n${original}\n"""` : "O texto do anúncio dele não está disponível."}
+${idade != null ? `\nEste anúncio está no ar há ${idade} dias — dado do nosso cadastro, e é um fato que ele mesmo confere.` : ""}
+
+Escreva a mensagem que abre essa conversa.${primeiroNome ? ` Ele se chama ${primeiroNome} — trate-o pelo primeiro nome, dentro da frase.` : ""}
+
+Regras:
+- NÃO É CRÍTICA, É OFERTA. Você está pedindo o negócio dele, não corrigindo a lição de casa. Nada de "seu anúncio está fraco", "faltou informação", "está mal feito". Aponte no máximo DOIS pontos, sem adjetivo de julgamento, e sempre ligados ao que ELE quer — alugar mais rápido e falar com menos curioso —, nunca ao que ele errou.
+- SÓ CITE O QUE ESTÁ NO TEXTO ACIMA. Se o anúncio não fala de condomínio, isso é um ponto; se fala, não invente que falta. E NUNCA fale das FOTOS: você não as recebeu, não sabe quantas são nem como estão, e um palpite ali é uma acusação falsa que ele confere em dois segundos.
+- O tempo no ar é o argumento mais forte quando existe, porque é fato verificável. Use-o com naturalidade ("vi que está anunciado há um tempo"), sem transformar em cobrança.
+- Não prometa resultado: nada de "alugo em 30 dias", "consigo mais", "tenho inquilino certo". Você não tem como saber, e promessa na primeira mensagem é o que faz o proprietário desconfiar.
+- Não invente fato do imóvel nem condição da imobiliária (taxa, prazo, exclusividade). Se for útil citar como trabalhamos, fale em termos gerais e proponha uma conversa.
+- Tom de WhatsApp: curto, cordial e direto, no máximo um parágrafo de 2 a 4 frases. Pode cumprimentar — aqui a conversa está começando de verdade. Termine com uma pergunta simples, fácil de responder com uma linha.
+- Português do Brasil, sem jargão de marketing. No máximo um emoji, e só se combinar. Escreva SÓ a mensagem: sem aspas em volta, sem assinatura, sem markdown.
+- "pontos": os do anúncio em que você se apoiou, no máximo dois. Vazio se a mensagem não citou nenhum.`;
+}

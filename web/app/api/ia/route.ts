@@ -32,21 +32,30 @@ import { kpisDashboard } from "@/lib/calculo/dashboard";
 import { planoDoDia } from "@/lib/calculo/planoDia";
 import { todayISO } from "@/lib/datas";
 import {
+  CARACTERISTICAS_AUSENTES,
+  ESQUEMA_ABORDAGEM_ANUNCIO,
   ESQUEMA_ANUNCIO,
+  ESQUEMA_ANUNCIO_GERADO,
   ESQUEMA_RASCUNHO,
   ESQUEMA_ROTEIROS,
+  MAX_CARACTERISTICAS,
+  PONTOS_ANUNCIO_PROPRIETARIO,
   contagemPorStatus,
   corrigirMarcadores,
   mensagemFalhaIa,
   panoramaDoDia,
   promptAnalisarAbordagens,
   promptAnalisarDashboard,
+  promptAbordagemDoAnuncio,
   promptExplicarFoco,
   promptExtrairAnuncio,
+  promptGerarAnuncio,
   promptRascunharResposta,
   promptResumoDia,
   promptSugerirRoteiros,
+  type AbordagemDoAnuncio,
   type AnuncioExtraido,
+  type AnuncioGerado,
   type ContextoRoteiro,
   type FalhaIa,
   type RoteiroSugerido,
@@ -91,6 +100,10 @@ interface Resposta {
   /** tipo "rascunhar-resposta": títulos dos protocolos em que o rascunho se
       apoiou, para a tela mostrar em que ele se baseou. */
   protocolosUsados?: string[];
+  /** tipo "gerar-anuncio" */
+  anuncioGerado?: AnuncioGerado;
+  /** tipo "abordagem-anuncio" */
+  abordagem?: AbordagemDoAnuncio;
 }
 
 function erro(falha: FalhaIa, status: number): Response {
@@ -230,13 +243,19 @@ export async function POST(request: Request): Promise<Response> {
   const donoDaChamada = sessao.user.id;
 
   // 3. Corpo — só os tipos conhecidos.
-  let corpo: { tipo?: unknown; contexto?: unknown; texto?: unknown; imovelId?: unknown };
+  let corpo: {
+    tipo?: unknown;
+    contexto?: unknown;
+    texto?: unknown;
+    imovelId?: unknown;
+    caracteristicas?: unknown;
+  };
   try {
     corpo = await request.json();
   } catch {
     return erro("requisicao-invalida", 400);
   }
-  const TIPOS = ["sugerir-roteiros", "analisar-abordagens", "analisar-dashboard", "resumo-dia", "explicar-foco", "extrair-anuncio", "rascunhar-resposta"] as const;
+  const TIPOS = ["sugerir-roteiros", "analisar-abordagens", "analisar-dashboard", "resumo-dia", "explicar-foco", "extrair-anuncio", "rascunhar-resposta", "gerar-anuncio", "abordagem-anuncio"] as const;
   type Tipo = (typeof TIPOS)[number];
   const tipo = typeof corpo.tipo === "string" ? corpo.tipo : "";
   if (!(TIPOS as readonly string[]).includes(tipo)) return erro("requisicao-invalida", 400);
@@ -515,6 +534,163 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json(resposta);
     } catch (e) {
       console.error("IA: rascunho não veio parseável:", e);
+      return erro("falha-ia", 502);
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // 3a-ter. Gerar título e descrição para o portal.
+  //
+  //   O imóvel sai do BANCO pelo id, com o token de quem chamou — o
+  //   browser não manda característica nenhuma do cadastro, pelo mesmo
+  //   motivo de o destinatário do WhatsApp sair do banco: aqui o texto
+  //   gerado vira anúncio público, e um valor forjado pelo cliente
+  //   publicaria o aluguel errado com o nome da imobiliária junto.
+  //
+  //   `caracteristicas` é a exceção, e é consciente: é a ficha que o
+  //   corretor colou da Sophia, que este sistema não tem como ler
+  //   (a integração é só de entrada — ver INTEGRACAO_SOPHIA.md). Mesmo
+  //   desvio da extração de anúncio, seguro pelas mesmas travas: prompt
+  //   e esquema montados aqui, saída FECHADA, `podeUsarIa` na porta e
+  //   MAX_CARACTERISTICAS limitando o custo por chamada.
+  // ---------------------------------------------------------------
+  if (pedido === "gerar-anuncio") {
+    const imovelId = typeof corpo.imovelId === "string" ? corpo.imovelId : "";
+    if (!imovelId) return erro("requisicao-invalida", 400);
+    const caracteristicas =
+      typeof corpo.caracteristicas === "string"
+        ? corpo.caracteristicas.slice(0, MAX_CARACTERISTICAS)
+        : "";
+
+    const { data: imRow, error: imErr } = await supabase
+      .from("imoveis")
+      .select("*")
+      .eq("id", imovelId)
+      .maybeSingle();
+    if (imErr) {
+      console.error("IA: falha ao ler o imóvel para o anúncio:", imErr.message);
+      return erro("falha-ia", 500);
+    }
+    // Id inválido ou imóvel de outro dono (barrado pelo RLS).
+    if (!imRow) return erro("sem-dados", 422);
+    const imovel = fromDbImovel(imRow as DbImovelRow);
+
+    let conclusao: OpenAI.Chat.ChatCompletion;
+    try {
+      conclusao = await openai.chat.completions.create({
+        model: MODELO,
+        max_completion_tokens: MAX_TOKENS,
+        reasoning_effort: "medium",
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: "anuncio_gerado", strict: true, schema: ESQUEMA_ANUNCIO_GERADO },
+        },
+        messages: [{ role: "user", content: promptGerarAnuncio(imovel, caracteristicas) }],
+      });
+    } catch (e) {
+      console.error("IA: falha ao gerar o anúncio:", e);
+      const falha = classificarErroIa(e);
+      registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
+      return erro(falha, 502);
+    }
+    registrarUsoDaResposta(donoDaChamada, pedido, MODELO, conclusao.usage);
+
+    try {
+      const dados = JSON.parse(textoDaResposta(conclusao)) as {
+        titulo?: unknown;
+        descricao?: unknown;
+        faltando?: unknown;
+      };
+      const titulo = typeof dados.titulo === "string" ? dados.titulo.trim() : "";
+      const descricao = typeof dados.descricao === "string" ? dados.descricao.trim() : "";
+      // Título sozinho não serve para nada, e descrição sozinha o corretor
+      // teria que completar à mão — nos dois casos é melhor errar claro.
+      if (!titulo || !descricao) return erro("falha-ia", 502);
+      /* Mesma desconfiança do `protocolosUsados`: o enum do esquema já deveria
+         bastar, mas a tela transforma esta lista numa instrução ao corretor
+         ("cole a ficha para incluir X"). Um rótulo fora da lista viraria um
+         pedido que ele não tem como atender. */
+      const permitidos = new Set<string>(CARACTERISTICAS_AUSENTES);
+      const faltando = Array.isArray(dados.faltando)
+        ? dados.faltando.filter((f): f is string => typeof f === "string" && permitidos.has(f))
+        : [];
+      const resposta: Resposta = { ok: true, anuncioGerado: { titulo, descricao, faltando } };
+      return Response.json(resposta);
+    } catch (e) {
+      console.error("IA: anúncio gerado não veio parseável:", e);
+      return erro("falha-ia", 502);
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // 3a-quater. Abordagem escrita a partir do anúncio do proprietário.
+  //
+  //   O inverso do gerar-anuncio: lá o imóvel já é nosso; aqui ele é de
+  //   alguém anunciando sozinho, e o texto vai para o WhatsApp DELE.
+  //   Nada vem do browser além do id — o anúncio e a idade saem do
+  //   banco, com o token de quem chamou. É primeira mensagem a uma
+  //   pessoa real: conteúdo vindo do cliente escolheria o que a IA
+  //   afirma a um proprietário, que é a regra do rascunho de resposta.
+  // ---------------------------------------------------------------
+  if (pedido === "abordagem-anuncio") {
+    const imovelId = typeof corpo.imovelId === "string" ? corpo.imovelId : "";
+    if (!imovelId) return erro("requisicao-invalida", 400);
+
+    const { data: imRow, error: imErr } = await supabase
+      .from("imoveis")
+      .select("*")
+      .eq("id", imovelId)
+      .maybeSingle();
+    if (imErr) {
+      console.error("IA: falha ao ler o imóvel para a abordagem:", imErr.message);
+      return erro("falha-ia", 500);
+    }
+    if (!imRow) return erro("sem-dados", 422);
+    const imovel = fromDbImovel(imRow as DbImovelRow);
+
+    let conclusao: OpenAI.Chat.ChatCompletion;
+    try {
+      conclusao = await openai.chat.completions.create({
+        model: MODELO,
+        max_completion_tokens: MAX_TOKENS,
+        reasoning_effort: "medium",
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "abordagem_anuncio",
+            strict: true,
+            schema: ESQUEMA_ABORDAGEM_ANUNCIO,
+          },
+        },
+        messages: [{ role: "user", content: promptAbordagemDoAnuncio(imovel) }],
+      });
+    } catch (e) {
+      console.error("IA: falha ao escrever a abordagem do anúncio:", e);
+      const falha = classificarErroIa(e);
+      registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
+      return erro(falha, 502);
+    }
+    registrarUsoDaResposta(donoDaChamada, pedido, MODELO, conclusao.usage);
+
+    try {
+      const dados = JSON.parse(textoDaResposta(conclusao)) as {
+        mensagem?: unknown;
+        pontos?: unknown;
+      };
+      const mensagem = typeof dados.mensagem === "string" ? dados.mensagem.trim() : "";
+      if (!mensagem) return erro("falha-ia", 502);
+      /* Mesma desconfiança do `protocolosUsados`: a tela exibe estes rótulos
+         como "em que a mensagem se apoiou", e um fora da lista viraria uma
+         justificativa que o corretor não tem como conferir. Dois é o teto que
+         o prompt pede — cortar aqui evita a tela crescer se o modelo exagerar. */
+      const permitidos = new Set<string>(PONTOS_ANUNCIO_PROPRIETARIO);
+      const pontos = Array.isArray(dados.pontos)
+        ? dados.pontos.filter((p): p is string => typeof p === "string" && permitidos.has(p)).slice(0, 2)
+        : [];
+      const resposta: Resposta = { ok: true, abordagem: { mensagem, pontos } };
+      return Response.json(resposta);
+    } catch (e) {
+      console.error("IA: abordagem do anúncio não veio parseável:", e);
       return erro("falha-ia", 502);
     }
   }

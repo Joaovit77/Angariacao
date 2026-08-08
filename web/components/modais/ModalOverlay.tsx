@@ -17,6 +17,7 @@ import ModalConexaoWhatsapp from "./ModalConexaoWhatsapp";
 import ModalImportar from "./ModalImportar";
 import ModalConfirmarDisponibilidade from "./ModalConfirmarDisponibilidade";
 import ModalDesdobrar from "./ModalDesdobrar";
+import ModalGerarAnuncio from "./ModalGerarAnuncio";
 import ModalFollowUpLote from "./ModalFollowUpLote";
 import ModalImovel from "./ModalImovel";
 import ModalMeta from "./ModalMeta";
@@ -61,6 +62,7 @@ export default function ModalOverlay() {
             imovelId={modal.id}
             modeloInicial={modal.modeloWhatsapp}
             textoInicial={modal.textoWhatsapp}
+            abordagemInicial={modal.abordagemWhatsapp}
             protocolosUsados={modal.protocolosWhatsapp}
           />
         )}
@@ -74,6 +76,7 @@ export default function ModalOverlay() {
         {modal?.tipo === "solicitacaoAngariacao" && modal.id && (
           <ModalSolicitacaoAngariacao imovelId={modal.id} />
         )}
+        {modal?.tipo === "gerarAnuncio" && modal.id && <ModalGerarAnuncio imovelId={modal.id} />}
       </div>
     </div>
   );

@@ -11,6 +11,7 @@
    string; com input controlado do React o foco nunca se perde.
    ================================================================ */
 import { useEffect, useMemo } from "react";
+import BotaoAbordagemAnuncio from "./BotaoAbordagemAnuncio";
 import { resultadosPendentes, seloTentativas } from "@/lib/calculo/abordagens";
 import { selecionarFollowUp, selecionarVerificacaoDisponibilidade } from "@/lib/calculo/followup";
 import {
@@ -23,7 +24,7 @@ import {
 } from "@/lib/calculo/filtros";
 import { daysInCurrentStatus, diasSemMovimento, isPausado, isStale } from "@/lib/calculo/motor";
 import { MODELOS_WHATSAPP, modeloPadraoWhatsapp } from "@/lib/calculo/whatsapp";
-import { STATUS_ALL, STATUS_COLORS, TIPOS_IMOVEL } from "@/lib/constantes";
+import { STATUS_ALL, STATUS_COLORS, STATUS_COM_ANUNCIO, TIPOS_IMOVEL } from "@/lib/constantes";
 import { todayISO } from "@/lib/datas";
 import { fmtDate, fmtMoney } from "@/lib/formatadores";
 import { excluirImovel } from "@/lib/mutacoes";
@@ -431,6 +432,39 @@ function Drawer({ imovel }: { imovel: Imovel }) {
                   onClick={() => abrirModal("solicitacaoAngariacao", imovel.id)}
                 >
                   Gerar solicitação
+                </button>
+              </div>
+            </div>
+          )}
+          {/* O inverso do bloco abaixo: aqui o imóvel AINDA NÃO é nosso, e o
+              texto vai para o WhatsApp do proprietário. Fora "Perdido" e
+              "Cancelado", que são saídas deliberadas — ele disse não, e
+              reabordar por anúncio seria insistência. "Sem resposta" fica,
+              porque silêncio não é recusa (mesma regra do follow-up em lote).
+              Sem o anúncio retido não há o que analisar, e a mensagem sairia
+              genérica — que é o que os roteiros dele já fazem. */}
+          {!!(imovel.textoAnuncio || "").trim() &&
+            !(STATUS_COM_ANUNCIO as readonly string[]).includes(imovel.status) &&
+            imovel.status !== "Locado" &&
+            imovel.status !== "Perdido" &&
+            imovel.status !== "Cancelado" && <BotaoAbordagemAnuncio imovel={imovel} />}
+          {/* Só depois de captado: escrever o anúncio de um imóvel que ainda
+              não é nosso é trabalhar de graça para a concorrência. E o gatilho
+              é STATUS_COM_ANUNCIO, não "Publicado" — este corretor não marca
+              aquela etapa, e um botão preso a ela nunca apareceria. */}
+          {(STATUS_COM_ANUNCIO as readonly string[]).includes(imovel.status) && (
+            <div className="drawer-section">
+              <div className="drawer-section-title">Anúncio do imóvel</div>
+              <div className="drawer-notas-resumo">
+                <span className="drawer-notes">
+                  Título e descrição para colar na ficha do Sistema Principal.
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={() => abrirModal("gerarAnuncio", imovel.id)}
+                >
+                  Gerar texto
                 </button>
               </div>
             </div>

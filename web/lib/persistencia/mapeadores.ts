@@ -65,6 +65,7 @@ export interface DbImovelRow {
   importado: boolean | null;
   retirado: boolean | null;
   valor_aluguel_atraso: number | null;
+  texto_anuncio: string | null;
   imovel_principal_id: string | null;
   created_at?: string;
   updated_at?: string;
@@ -153,6 +154,10 @@ export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "create
     // 0 do `valor_aluguel` acima existe por herança do app antigo. Aqui um
     // zero significaria "cobra zero no atraso", que é diferente de "não sei".
     valor_aluguel_atraso: i.valorAluguelAtraso ?? null,
+    // `|| null`: string vazia é ausência de texto colado, não um anúncio em
+    // branco. Quem nunca passou pelo pré-cadastro simplesmente não tem este
+    // dado, e é assim que o gerador sabe que precisa da caixa de colar.
+    texto_anuncio: i.textoAnuncio || null,
     proprietario_nome: i.proprietarioNome || null,
     proprietario_telefone: i.proprietarioTelefone || null,
     forma_abordagem: i.formaAbordagem || null,
@@ -209,6 +214,7 @@ export function fromDbImovel(r: DbImovelRow): Imovel {
     valorCondominio: Number(r.valor_condominio) || 0,
     // Preserva o null: "não informado" e "zero" são coisas diferentes aqui.
     valorAluguelAtraso: r.valor_aluguel_atraso == null ? null : Number(r.valor_aluguel_atraso),
+    textoAnuncio: r.texto_anuncio || null,
     proprietarioNome: r.proprietario_nome || "",
     proprietarioTelefone: r.proprietario_telefone || "",
     formaAbordagem: r.forma_abordagem || "",

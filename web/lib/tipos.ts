@@ -261,6 +261,18 @@ export interface Imovel {
       Quem usa: a solicitação de recebimento de angariação, que por regra da
       imobiliária calcula a comissão sobre ELE. Ver `calculo/solicitacaoAngariacao.ts`. */
   valorAluguelAtraso?: number | null;
+  /** O texto do anúncio como o proprietário o escreveu, colado no pré-cadastro
+      durante o garimpo.
+
+      Guardado porque é a ÚNICA fonte com procedência para o que o cadastro não
+      tem — área em m², andar, mobília, o que há no condomínio. Esses campos não
+      existem aqui de propósito: a ficha do imóvel captado é montada no Sistema
+      Principal (Sophia), e recriá-los faria digitar duas vezes e criaria duas
+      fontes de verdade sobre o mesmo imóvel.
+
+      Quem usa: o gerador de título e descrição (`promptGerarAnuncio` em
+      `calculo/ia.ts`), que só pode afirmar o que saiu do cadastro ou daqui. */
+  textoAnuncio?: string | null;
   /** Este imóvel é uma UNIDADE de um espaço já captado — aponta para o imóvel
       que registrou a captação. null (o caso normal) = captação própria.
 

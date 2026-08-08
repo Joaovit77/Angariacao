@@ -262,6 +262,13 @@ export default function ModalPreCadastro() {
       responsavel: captadorPadrao(usuario, imoveis),
       statusHistory: historico,
       preCadastro: true,
+      // O texto colado, guardado como veio. A extração acima só aproveita os
+      // campos do formulário e joga o resto fora — e o resto é o que o cadastro
+      // não tem: área em m², andar, mobília, o que há no condomínio. É a fonte
+      // com procedência do gerador de título e descrição.
+      // `|| null` porque o pré-cadastro também é preenchido à mão, sem colar
+      // nada, e string vazia aqui não é um anúncio em branco: é a ausência dele.
+      textoAnuncio: textoAnuncio.trim() || null,
     };
 
     const { ok } = await salvarImovel(data, usuario.id, false);

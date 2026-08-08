@@ -26,7 +26,8 @@ export type TipoModal =
   | "confirmarDisponibilidade"
   | "resultadosPendentes"
   | "desdobrar"
-  | "solicitacaoAngariacao";
+  | "solicitacaoAngariacao"
+  | "gerarAnuncio";
 
 export interface ModalAtivo {
   tipo: TipoModal;
@@ -44,6 +45,16 @@ export interface ModalAtivo {
       IA afirmou antes de mandar — o que não se confere num olhar deixa de ser
       conferido. Vazio quando o rascunho não usou nenhum. */
   protocolosWhatsapp?: string[];
+  /** Abordagem do catálogo a CREDITAR no envio, quando o texto foi gerado a
+      partir do anúncio do proprietário.
+
+      Existe separada do `textoWhatsapp` porque as duas aberturas com texto
+      pronto querem coisas opostas: o rascunho de resposta é mensagem livre e
+      NÃO credita ninguém (responder conversa aberta não é contato de
+      captação), enquanto esta É primeiro contato e precisa entrar no ranking —
+      era o motivo inteiro da feature. Sem este campo, o `textoWhatsapp`
+      sozinho zeraria o modelo selecionado e a tentativa nasceria sem crédito. */
+  abordagemWhatsapp?: string;
   /** Imóvel pré-vinculado ao abrir o modal "agenda" em modo criação
       (ex.: "agendar próximo passo" na Início). Ignorado ao editar. */
   imovelIdRelacionado?: string;
@@ -61,6 +72,10 @@ interface UiModal {
       pela IA na caixa de respostas). Ação própria em vez de mais um parâmetro
       posicional no `abrirModal` — o texto é whatsapp-específico. */
   abrirWhatsappRascunho: (imovelId: string, texto: string, protocolos?: string[]) => void;
+  /** Abre o WhatsApp com a mensagem gerada a partir do anúncio do proprietário,
+      já creditando a abordagem do catálogo — é o que põe a estratégia no
+      ranking. Separada do rascunho porque aquele, de propósito, não credita. */
+  abrirWhatsappAbordagem: (imovelId: string, texto: string, abordagemId: string) => void;
   fecharModal: () => void;
 }
 
@@ -70,5 +85,7 @@ export const useUiModal = create<UiModal>((set) => ({
     set({ modal: { tipo, id, modeloWhatsapp, imovelIdRelacionado } }),
   abrirWhatsappRascunho: (imovelId, texto, protocolos) =>
     set({ modal: { tipo: "whatsapp", id: imovelId, textoWhatsapp: texto, protocolosWhatsapp: protocolos } }),
+  abrirWhatsappAbordagem: (imovelId, texto, abordagemId) =>
+    set({ modal: { tipo: "whatsapp", id: imovelId, textoWhatsapp: texto, abordagemWhatsapp: abordagemId } }),
   fecharModal: () => set({ modal: null }),
 }));

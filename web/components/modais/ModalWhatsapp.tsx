@@ -59,13 +59,20 @@ export default function ModalWhatsapp({
   imovelId,
   modeloInicial,
   textoInicial,
+  abordagemInicial,
   protocolosUsados,
 }: {
   imovelId: string;
   modeloInicial?: string;
   /** Mensagem já escrita ao abrir (rascunho da IA). Vira o conteúdo inicial do
-      textarea, sem modelo associado — logo, não credita tentativa. */
+      textarea, sem modelo associado — logo, não credita tentativa, A MENOS que
+      venha com `abordagemInicial`. */
   textoInicial?: string;
+  /** Abordagem do catálogo a creditar, quando o texto pronto É contato de
+      captação — hoje só a mensagem escrita a partir do anúncio do proprietário.
+      Sem isto, `textoInicial` zera o modelo selecionado e a tentativa nasceria
+      sem crédito nenhum, deixando a estratégia fora do ranking. */
+  abordagemInicial?: string;
   /** Títulos dos protocolos da imobiliária em que o rascunho se apoiou. Quando
       a IA AFIRMA algo (taxa, prazo, multa), é aqui que o corretor confere a
       fonte antes de enviar — a regra continua sendo "a IA sugere, o corretor
@@ -104,7 +111,9 @@ export default function ModalWhatsapp({
   // A origem do texto anda junto com o id: sem ela não daria para saber se o
   // selecionado é uma abordagem (que credita tentativa) ou um modelo comum
   // (que não credita), e ids de modelo e de abordagem são ambos uuid.
-  const [tipoSel, setTipoSel] = useState<"sistema" | "usuario" | "abordagem">("sistema");
+  const [tipoSel, setTipoSel] = useState<"sistema" | "usuario" | "abordagem">(
+    abordagemInicial ? "abordagem" : "sistema",
+  );
   /* Com rascunho da IA, nasce sem modelo (`""`): o texto é livre, e `modeloId`
      vazio mantém `registraTentativa` falso — responder a uma conversa aberta
      não é contato de captação nem entra no ranking.
@@ -115,7 +124,13 @@ export default function ModalWhatsapp({
      andamento (ver RespostasView). Com `textoInicial ? …`, a string vazia caía
      no padrão e trazia de volta o "Olá, Fulano! Tudo bem?" que ela quer evitar. */
   const textoLivre = textoInicial !== undefined;
-  const [modeloId, setModeloId] = useState(textoLivre ? "" : padraoInicial);
+  /* Com abordagem a creditar, o id dela vence o "" do texto livre — é o que
+     mantém `registraTentativa` verdadeiro. A MENSAGEM continua sendo a gerada,
+     e não o roteiro do catálogo: aquele descreve a estratégia, este é o texto
+     escrito para o anúncio DAQUELE proprietário. */
+  const [modeloId, setModeloId] = useState(
+    abordagemInicial || (textoLivre ? "" : padraoInicial),
+  );
   const [mensagem, setMensagem] = useState(() =>
     textoLivre ? textoInicial : imovel ? mensagemWhatsapp(padraoInicial, imovel, nomeCaptador) : "",
   );
@@ -138,7 +153,19 @@ export default function ModalWhatsapp({
   const temTelefone = !!telefoneWhatsapp(imovel.proprietarioTelefone);
   const podeEnviarDireto = !!numeroEvolution(imovel.proprietarioTelefone);
   const modeloCustomSel = tipoSel === "usuario" ? modelosUsuario.find((m) => m.id === modeloId) || null : null;
-  const abordagemSel = tipoSel === "abordagem" ? abordagensUsaveis.find((a) => a.id === modeloId) || null : null;
+  /* A busca cai para a lista COMPLETA quando o id veio do gerador (e não do
+     seletor): arquivar tira dos seletores, não descredita um envio que o
+     corretor acabou de disparar de propósito. Sem esta segunda tentativa, uma
+     abordagem arquivada faria a mensagem sair sem crédito EM SILÊNCIO — e
+     seria justamente a feature que só existe para ser medida saindo da
+     medição, sem erro e sem toast. */
+  const abordagemSel =
+    tipoSel !== "abordagem"
+      ? null
+      : abordagensUsaveis.find((a) => a.id === modeloId) ||
+        (abordagemInicial && modeloId === abordagemInicial
+          ? abordagens.find((a) => a.id === modeloId) || null
+          : null);
   // Modelo do sistema que é contato de captação (primeiro contato, retomada...):
   // registra tentativa como o modelo próprio, e pelo mesmo motivo — é algo que
   // ele disse a um proprietário para conquistar o imóvel.

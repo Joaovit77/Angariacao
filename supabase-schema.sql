@@ -103,6 +103,26 @@ alter table imoveis add column if not exists retirado boolean not null default f
 -- angariação usa este valor.
 alter table imoveis add column if not exists valor_aluguel_atraso numeric;
 
+-- O texto do anúncio, como o proprietário (ou a imobiliária concorrente) o
+-- escreveu, colado no pré-cadastro durante o garimpo.
+--
+-- Ele já passava pelo sistema todos os dias e era JOGADO FORA: o
+-- ModalPreCadastro o mandava para a IA extrair os campos e o descartava num
+-- `useState`. O que se perdia é justamente o que o cadastro não tem — área em
+-- m², andar, mobília, o que há no condomínio —, e é disso que um anúncio
+-- decente é feito.
+--
+-- Guardar aqui, e não virar campos de cadastro, é decisão: a FICHA do imóvel
+-- captado é montada no Sistema Principal (Sophia), e recriar os campos dela
+-- aqui faria digitar tudo duas vezes e criaria duas fontes de verdade sobre o
+-- mesmo imóvel — o que a integração inteira existe para evitar.
+--
+-- É a fonte com PROCEDÊNCIA do gerador de título e descrição: ali a IA só pode
+-- afirmar o que saiu do cadastro ou deste texto. Sem ele, ela preencheria o
+-- vazio com "amplo" e "recém-reformado" — invenção que, num anúncio de portal,
+-- é oferta pública com o nome da imobiliária junto.
+alter table imoveis add column if not exists texto_anuncio text;
+
 -- Tentativas de abordagem: cada contato feito com o proprietário, com o roteiro
 -- usado (abordagem_id -> tabela `abordagens`), o canal e o resultado. Mesmo
 -- padrão de `notas`: jsonb na própria linha, herdando o RLS do imóvel.

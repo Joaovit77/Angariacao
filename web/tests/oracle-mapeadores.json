@@ -79,7 +79,8 @@
       "autorizacao_assinada_em": null,
       "autorizacao_responsavel": null,
       "locado_em": null,
-      "contrato_numero": null
+      "contrato_numero": null,
+      "texto_anuncio": null
     },
     "f02": {
       "id": "f02",
@@ -130,7 +131,8 @@
       "autorizacao_assinada_em": null,
       "autorizacao_responsavel": null,
       "locado_em": null,
-      "contrato_numero": null
+      "contrato_numero": null,
+      "texto_anuncio": null
     },
     "f03": {
       "id": "f03",
@@ -181,7 +183,8 @@
       "autorizacao_assinada_em": null,
       "autorizacao_responsavel": null,
       "locado_em": null,
-      "contrato_numero": null
+      "contrato_numero": null,
+      "texto_anuncio": null
     },
     "f04": {
       "id": "f04",
@@ -237,7 +240,8 @@
       "autorizacao_assinada_em": null,
       "autorizacao_responsavel": null,
       "locado_em": null,
-      "contrato_numero": null
+      "contrato_numero": null,
+      "texto_anuncio": null
     },
     "f05": {
       "id": "f05",
@@ -301,7 +305,8 @@
       "autorizacao_assinada_em": null,
       "autorizacao_responsavel": null,
       "locado_em": null,
-      "contrato_numero": null
+      "contrato_numero": null,
+      "texto_anuncio": null
     },
     "f06": {
       "id": "f06",
@@ -361,7 +366,8 @@
       "autorizacao_assinada_em": null,
       "autorizacao_responsavel": null,
       "locado_em": null,
-      "contrato_numero": null
+      "contrato_numero": null,
+      "texto_anuncio": null
     },
     "f07": {
       "id": "f07",
@@ -421,7 +427,8 @@
       "autorizacao_assinada_em": null,
       "autorizacao_responsavel": null,
       "locado_em": null,
-      "contrato_numero": null
+      "contrato_numero": null,
+      "texto_anuncio": null
     },
     "f08": {
       "id": "f08",
@@ -481,7 +488,8 @@
       "autorizacao_assinada_em": null,
       "autorizacao_responsavel": null,
       "locado_em": null,
-      "contrato_numero": null
+      "contrato_numero": null,
+      "texto_anuncio": null
     },
     "f09": {
       "id": "f09",
@@ -537,7 +545,8 @@
       "autorizacao_assinada_em": null,
       "autorizacao_responsavel": null,
       "locado_em": null,
-      "contrato_numero": null
+      "contrato_numero": null,
+      "texto_anuncio": null
     },
     "f10": {
       "id": "f10",
@@ -593,7 +602,8 @@
       "autorizacao_assinada_em": null,
       "autorizacao_responsavel": null,
       "locado_em": null,
-      "contrato_numero": null
+      "contrato_numero": null,
+      "texto_anuncio": null
     },
     "f11": {
       "id": "f11",
@@ -657,7 +667,8 @@
       "autorizacao_assinada_em": null,
       "autorizacao_responsavel": null,
       "locado_em": null,
-      "contrato_numero": null
+      "contrato_numero": null,
+      "texto_anuncio": null
     },
     "f12": {
       "id": "f12",
@@ -721,7 +732,8 @@
       "autorizacao_assinada_em": null,
       "autorizacao_responsavel": null,
       "locado_em": null,
-      "contrato_numero": null
+      "contrato_numero": null,
+      "texto_anuncio": null
     },
     "f13": {
       "id": "f13",
@@ -785,7 +797,8 @@
       "autorizacao_assinada_em": null,
       "autorizacao_responsavel": null,
       "locado_em": null,
-      "contrato_numero": null
+      "contrato_numero": null,
+      "texto_anuncio": null
     },
     "f14": {
       "id": "f14",
@@ -841,7 +854,8 @@
       "autorizacao_assinada_em": null,
       "autorizacao_responsavel": null,
       "locado_em": null,
-      "contrato_numero": null
+      "contrato_numero": null,
+      "texto_anuncio": null
     },
     "f15": {
       "id": "f15",
@@ -897,7 +911,8 @@
       "autorizacao_assinada_em": null,
       "autorizacao_responsavel": null,
       "locado_em": null,
-      "contrato_numero": null
+      "contrato_numero": null,
+      "texto_anuncio": null
     },
     "f16": {
       "id": "f16",
@@ -961,7 +976,8 @@
       "autorizacao_assinada_em": null,
       "autorizacao_responsavel": null,
       "locado_em": null,
-      "contrato_numero": null
+      "contrato_numero": null,
+      "texto_anuncio": null
     },
     "f17": {
       "id": "f17",
@@ -1021,7 +1037,8 @@
       "autorizacao_assinada_em": null,
       "autorizacao_responsavel": null,
       "locado_em": null,
-      "contrato_numero": null
+      "contrato_numero": null,
+      "texto_anuncio": null
     }
   },
   "roundTripImovel": {
@@ -1102,7 +1119,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "f02": {
       "id": "f02",
@@ -1152,7 +1170,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "f03": {
       "id": "f03",
@@ -1202,7 +1221,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "f04": {
       "id": "f04",
@@ -1257,7 +1277,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "f05": {
       "id": "f05",
@@ -1320,7 +1341,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "f06": {
       "id": "f06",
@@ -1379,7 +1401,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "f07": {
       "id": "f07",
@@ -1438,7 +1461,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "f08": {
       "id": "f08",
@@ -1497,7 +1521,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "f09": {
       "id": "f09",
@@ -1552,7 +1577,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "f10": {
       "id": "f10",
@@ -1607,7 +1633,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "f11": {
       "id": "f11",
@@ -1670,7 +1697,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "f12": {
       "id": "f12",
@@ -1733,7 +1761,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "f13": {
       "id": "f13",
@@ -1796,7 +1825,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "f14": {
       "id": "f14",
@@ -1851,7 +1881,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "f15": {
       "id": "f15",
@@ -1906,7 +1937,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "f16": {
       "id": "f16",
@@ -1969,7 +2001,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "f17": {
       "id": "f17",
@@ -2028,7 +2061,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     }
   },
   "fromDbImovel": {
@@ -2093,7 +2127,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "r2": {
       "id": "r2",
@@ -2143,7 +2178,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     },
     "r3": {
       "id": "r3",
@@ -2202,7 +2238,8 @@
       "autorizacaoAssinadaEm": null,
       "autorizacaoResponsavel": null,
       "locadoEm": null,
-      "contratoNumero": null
+      "contratoNumero": null,
+      "textoAnuncio": null
     }
   },
   "fromDbAgenda": {

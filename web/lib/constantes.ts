@@ -265,6 +265,49 @@ export const STALE_DAYS_THRESHOLD = 7;
 // estagnação em 7 dias — a repetição exata do que matou a faixa de "imóvel
 // parado" no termômetro, agora pela porta de um evento que vem de fora.
 export const STATUS_STALE_LENTO = ["Angariado", STATUS_AUTORIZACAO_ASSINADA, "Publicado"] as const;
+
+/** Onde faz sentido escrever o anúncio: o imóvel já é nosso e ainda procura
+    inquilino. Mesmos valores de STATUS_STALE_LENTO e de
+    DISPONIBILIDADE_STATUS_ALVO, com nome próprio pela razão daquela: a
+    pergunta aqui é outra, e amarrá-las faria mexer numa mudar as três.
+
+    "Locado" fica de fora — imóvel alugado não precisa de anúncio, e oferecer
+    o gerador ali convidaria a republicar o que acabou de sair do mercado.
+    Quando ele desocupar, volta para uma das etapas acima e o botão reaparece.
+
+    NÃO use "Publicado" como gatilho sozinho: na carteira real o corretor não
+    marca essa etapa (medido em 08/08/2026 — zero imóveis nela, com os 17
+    captados anunciados de verdade), e um botão presente só ali nunca
+    apareceria para ninguém. */
+/** A abordagem do catálogo que registra as mensagens geradas a partir do
+    anúncio do proprietário.
+
+    Existe uma só, fixa, porque o ranking (`calculo/abordagens.ts`) mede
+    `Abordagem` por id estável — e a pergunta que esta feature faz é sobre a
+    ESTRATÉGIA ("abrir a conversa falando do anúncio dele funciona?"), não
+    sobre um texto específico. Cada mensagem é personalizada pelo anúncio
+    daquele imóvel, do mesmo jeito que os roteiros já se personalizam por
+    `{nome}`/`{endereco}` — aqui em grau maior.
+
+    A abordagem é achada por NOME e criada na primeira geração. Se o corretor
+    renomear a dele, a próxima geração cria outra: o ranking passa a mostrar
+    duas linhas, o que é chato mas VISÍVEL — e o modal diz em qual está
+    registrando, justamente para isso não acontecer calado. */
+export const ABORDAGEM_ANALISE_ANUNCIO = "Análise do anúncio (IA)";
+
+/** O roteiro guardado no catálogo. Descreve a estratégia, e não o texto que
+    sai — este é escrito na hora, a partir do anúncio de cada proprietário. */
+export const ROTEIRO_ANALISE_ANUNCIO =
+  "Primeiro contato escrito a partir do anúncio que o próprio proprietário " +
+  "publicou: cita até dois pontos do texto dele (e o tempo no ar, quando " +
+  "conhecido) e oferece ajuda para alugar mais rápido. A mensagem é gerada " +
+  "por IA a cada imóvel — este texto descreve a estratégia, não o que é enviado.";
+
+export const STATUS_COM_ANUNCIO = [
+  "Angariado",
+  STATUS_AUTORIZACAO_ASSINADA,
+  "Publicado",
+] as const;
 export const STALE_DAYS_THRESHOLD_POS_ANGARIACAO = 60;
 
 // Dias após a angariação (sem locação) para gerar o lembrete automático
