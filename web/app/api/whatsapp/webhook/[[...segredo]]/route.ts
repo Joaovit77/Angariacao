@@ -222,7 +222,7 @@ function espelharCompromissoDoWebhook(
     apontar o webhook — sem isso a primeira validação vira adivinhação. */
 export async function GET(
   request: Request,
-  context: RouteContext<"/api/whatsapp/webhook/[[...segredo]]">,
+  context: { params: Promise<{ segredo?: string[] }> },
 ): Promise<Response> {
   const { segredo } = await context.params;
   const ok = autorizar(request, segredo);
@@ -233,7 +233,7 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  context: RouteContext<"/api/whatsapp/webhook/[[...segredo]]">,
+  context: { params: Promise<{ segredo?: string[] }> },
 ): Promise<Response> {
   const { segredo } = await context.params;
   const ok = autorizar(request, segredo);

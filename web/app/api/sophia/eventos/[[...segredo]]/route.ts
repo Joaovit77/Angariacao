@@ -203,7 +203,7 @@ async function comissaoDoCorretor(supabase: SupabaseClient, userId: string): Pro
     URL e o segredo antes de disparar evento de verdade. */
 export async function GET(
   request: Request,
-  context: RouteContext<"/api/sophia/eventos/[[...segredo]]">,
+  context: { params: Promise<{ segredo?: string[] }> },
 ): Promise<Response> {
   const { segredo } = await context.params;
   const ok = autorizar(request, segredo);
@@ -214,7 +214,7 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  context: RouteContext<"/api/sophia/eventos/[[...segredo]]">,
+  context: { params: Promise<{ segredo?: string[] }> },
 ): Promise<Response> {
   const { segredo } = await context.params;
   const ok = autorizar(request, segredo);
