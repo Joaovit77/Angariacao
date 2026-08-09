@@ -2353,6 +2353,39 @@ input[type=text], input[type=number], input[type=date], input[type=tel], select,
 input:focus, select:focus, textarea:focus{ outline:none; border-color: var(--accent); }
 textarea{ resize:vertical; min-height:60px; }
 .field-hint{ font-size:11px; color:var(--text-faint); margin-top:5px; }
+
+/* Autocomplete de endereço. A lista pertence ao input (não ao modal), fica
+   sobre os campos seguintes e usa somente tokens para acompanhar os temas. */
+.endereco-autocomplete{ position:relative; }
+.endereco-sugestoes{
+  position:absolute; z-index:20; top:calc(100% + 5px); left:0; right:0;
+  overflow:hidden; background:var(--bg-elev-1); border:1px solid var(--border);
+  border-radius:var(--radius-sm); box-shadow:0 12px 28px rgb(var(--sombra-rgb) / .28);
+}
+.endereco-sugestoes ul{ list-style:none; margin:0; padding:0; }
+.endereco-sugestoes li + li{ border-top:1px solid var(--border-soft); }
+.endereco-sugestoes button{
+  display:block; width:100%; padding:9px 11px; text-align:left;
+  color:var(--text); background:transparent; border:0;
+}
+.endereco-sugestoes button:hover,
+.endereco-sugestoes button.ativo{ background:var(--bg-elev-2); }
+.endereco-sugestoes button:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; }
+.endereco-sugestoes button strong{ display:block; font-size:12.5px; font-weight:650; }
+.endereco-sugestoes button span{
+  display:block; margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  color:var(--text-faint); font-size:10.5px;
+}
+.endereco-sugestoes-status{ padding:12px; color:var(--text-faint); font-size:11.5px; }
+.endereco-viacep-atribuicao{
+  padding:5px 10px 6px; border-top:1px solid var(--border-soft);
+  color:var(--text-faint); font-size:10.5px; text-align:right;
+}
+.endereco-viacep-atribuicao a{
+  color:var(--accent); font-weight:600; text-decoration:none;
+}
+.endereco-viacep-atribuicao a:hover{ text-decoration:underline; }
+.endereco-autocomplete-mensagem{ line-height:1.4; }
 fieldset{ border:none; margin-bottom: 18px; }
 legend{
   font-family: var(--font-display); font-size:13.5px; font-weight:600; color: var(--accent-strong);

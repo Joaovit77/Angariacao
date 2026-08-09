@@ -163,6 +163,9 @@ export interface Imovel {
   endereco: string;
   bairro?: string | null;
   cidade?: string | null;
+  /** Unidade federativa em sigla (ex.: "PR"). Opcional para manter
+      compatibilidade com imóveis gravados antes do autocomplete. */
+  estado?: string | null;
   /** Número do apartamento/unidade (ex.: "101"). Junto com `bloco`, é o que
       distingue dois imóveis no MESMO endereço — ver calculo/duplicidade.ts. */
   unidade?: string | null;

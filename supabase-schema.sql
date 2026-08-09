@@ -34,6 +34,7 @@ create table if not exists imoveis (
   endereco text not null,
   bairro text,
   cidade text,
+  estado text,
   tipo text,
   quartos int,
   banheiros int,
@@ -72,6 +73,11 @@ create table if not exists imoveis (
 -- (referência gerada pelo CRM da imobiliária). "add column if not exists" é
 -- seguro de rodar várias vezes.
 alter table imoveis add column if not exists referencia_crm text;
+
+-- UF do endereço ("PR", "SP", ...). Rua e número continuam juntos em
+-- `endereco`; esta coluna existe porque o formulário passou a receber os
+-- dados estruturados do ViaCEP e a UF não tinha onde persistir.
+alter table imoveis add column if not exists estado text;
 
 -- Histórico de interações (notas) com o proprietário — mesmo padrão do
 -- status_history: jsonb na própria linha, herdando as políticas de RLS.

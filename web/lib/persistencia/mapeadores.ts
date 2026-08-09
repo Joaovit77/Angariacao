@@ -25,6 +25,8 @@ export interface DbImovelRow {
   endereco: string;
   bairro: string | null;
   cidade: string | null;
+  /** Opcional no tipo para os fixtures/linhas anteriores à migração. */
+  estado?: string | null;
   unidade: string | null;
   bloco: string | null;
   edificio: string | null;
@@ -141,6 +143,9 @@ export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "create
     endereco: i.endereco,
     bairro: i.bairro || null,
     cidade: i.cidade || null,
+    // `in` distingue um chamador antigo, que desconhece a coluna, de um
+    // formulário atual que apagou a UF e precisa gravar null de propósito.
+    ...("estado" in i ? { estado: i.estado || null } : {}),
     unidade: i.unidade || null,
     bloco: i.bloco || null,
     edificio: i.edificio || null,
@@ -203,6 +208,7 @@ export function fromDbImovel(r: DbImovelRow): Imovel {
     endereco: r.endereco,
     bairro: r.bairro || "",
     cidade: r.cidade || "",
+    ...("estado" in r ? { estado: r.estado || "" } : {}),
     unidade: r.unidade || "",
     bloco: r.bloco || "",
     edificio: r.edificio || "",

@@ -12,6 +12,9 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { captadorPadrao, useSessao } from "@/components/SessaoProvider";
+import EnderecoAutocompleteViaCep, {
+  type EnderecoViaCepSelecionado,
+} from "@/components/formularios/EnderecoAutocompleteViaCep";
 import TimelineImovel from "@/components/modais/TimelineImovel";
 import {
   FORMAS_ABORDAGEM,
@@ -94,6 +97,7 @@ export default function ModalImovel({ id }: { id?: string }) {
   const [endereco, setEndereco] = useState(imovel?.endereco ?? "");
   const [bairro, setBairro] = useState(imovel?.bairro ?? "");
   const [cidade, setCidade] = useState(imovel?.cidade ?? "Londrina");
+  const [estado, setEstado] = useState(imovel?.estado ?? "PR");
   const [unidade, setUnidade] = useState(imovel?.unidade ?? "");
   const [bloco, setBloco] = useState(imovel?.bloco ?? "");
   const [edificio, setEdificio] = useState(imovel?.edificio ?? "");
@@ -207,7 +211,7 @@ export default function ModalImovel({ id }: { id?: string }) {
       return;
     }
     setCepStatus({ msg: "Buscando...", tone: "" });
-    let dadosEndereco: { logradouro?: string; bairro?: string; localidade?: string };
+    let dadosEndereco: { logradouro?: string; bairro?: string; localidade?: string; uf?: string };
     try {
       const data = await buscarCep(raw);
       if (data.erro) {
@@ -231,12 +235,29 @@ export default function ModalImovel({ id }: { id?: string }) {
     const novaCidade = dadosEndereco.localidade || cidade;
     if (dadosEndereco.bairro) setBairro(dadosEndereco.bairro);
     if (dadosEndereco.localidade) setCidade(dadosEndereco.localidade);
+    if (dadosEndereco.uf) setEstado(dadosEndereco.uf.toUpperCase());
 
     setCepStatus({ msg: "Endereço preenchido a partir do CEP.", tone: "ok" });
     toast("Endereço preenchido pelo CEP.");
 
     // Já aproveita para localizar no mapa automaticamente
     await localizarNoMapa(novoEndereco, novoBairro, novaCidade);
+  }
+
+  /** Complementa o formulário somente com componentes que o ViaCEP devolveu.
+      A ausência de CEP/bairro/etc. nunca apaga o que já estava digitado. */
+  function aplicarEnderecoViaCep(selecionado: EnderecoViaCepSelecionado) {
+    if (selecionado.endereco) setEndereco(selecionado.endereco);
+    if (selecionado.bairro) setBairro(selecionado.bairro);
+    if (selecionado.cidade) setCidade(selecionado.cidade);
+    if (selecionado.estado) setEstado(selecionado.estado);
+    if (selecionado.cep) setCep(maskCEP(selecionado.cep));
+    setCepStatus({ msg: "CEP preenchido a partir do endereço.", tone: "ok" });
+    void localizarNoMapa(
+      selecionado.endereco || endereco,
+      selecionado.bairro || bairro,
+      selecionado.cidade || cidade,
+    );
   }
 
   async function localizarNoMapa(end = endereco, bai = bairro, cid = cidade) {
@@ -339,6 +360,7 @@ export default function ModalImovel({ id }: { id?: string }) {
       endereco: enderecoLimpo,
       bairro: bairro.trim(),
       cidade: cidade.trim(),
+      estado: estado.trim().toUpperCase(),
       unidade: unidade.trim(),
       bloco: bloco.trim(),
       edificio: edificio.trim(),
@@ -480,14 +502,20 @@ export default function ModalImovel({ id }: { id?: string }) {
           </div>
           <div className="field-group">
             <label>Endereço</label>
-            <input type="text" value={endereco} onChange={(e) => setEndereco(e.target.value)} placeholder="Rua, número" />
+            <EnderecoAutocompleteViaCep
+              value={endereco}
+              cidade={cidade}
+              estado={estado}
+              onChange={setEndereco}
+              onSelecionar={aplicarEnderecoViaCep}
+            />
             {duplicados.length > 0 && (
               <div className="field-hint" style={{ color: "var(--danger, #d64545)", fontWeight: 600 }}>
                 ⚠️ {descreverDuplicados(duplicados)} Confira antes de cadastrar de novo.
               </div>
             )}
           </div>
-          <div className="field-row">
+          <div className="field-row-3">
             <div className="field-group">
               <label>Bairro</label>
               <input type="text" value={bairro ?? ""} onChange={(e) => setBairro(e.target.value)} />
@@ -495,6 +523,16 @@ export default function ModalImovel({ id }: { id?: string }) {
             <div className="field-group">
               <label>Cidade</label>
               <input type="text" value={cidade ?? ""} onChange={(e) => setCidade(e.target.value)} />
+            </div>
+            <div className="field-group">
+              <label>Estado / UF</label>
+              <input
+                type="text"
+                value={estado}
+                maxLength={2}
+                onChange={(e) => setEstado(e.target.value.toUpperCase())}
+                placeholder="PR"
+              />
             </div>
           </div>
           <div className="field-row-3">

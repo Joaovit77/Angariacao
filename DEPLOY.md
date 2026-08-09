@@ -56,6 +56,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-anon-key
 Os valores são os que você copiou no passo 5 da Parte 1 (ou os que já estão em `supabase-config.js`,
 na raiz, do deploy antigo — são os mesmos).
 
+### Endereço e CEP — gratuito, sem chave
+
+Os cadastros consultam o ViaCEP diretamente no navegador. Digitar um CEP preenche rua, bairro,
+cidade e UF; digitar uma rua mostra CEPs da cidade/UF preenchidas no formulário. A pesquisa por rua
+usa debounce, cancelamento e cache local para respeitar o serviço público. Não há variável de
+ambiente, projeto Google ou faturamento para configurar. O mapa continua usando OpenStreetMap.
+
+Depois de publicar esta versão, rode novamente o `supabase-schema.sql` no SQL Editor. O script é
+idempotente e acrescenta somente a coluna `imoveis.estado`, necessária para persistir a UF que o
+ViaCEP devolve; as políticas RLS não mudam.
+
 ### Service role (obrigatória a partir do painel de administração)
 
 ```
@@ -303,9 +314,9 @@ que a **raiz do projeto é `web`**. O resto ela detecta sozinha (é um projeto N
 4. **Framework Preset:** deve aparecer **Next.js** automaticamente. Build Command, Output e Install
    ficam nos padrões — não precisa mexer.
 5. **Environment Variables:** adicione as duas da Parte 2
-   (`NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`) e, se for usar o envio direto de
-   WhatsApp, as três da Evolution (`EVOLUTION_SERVER_URL`, `EVOLUTION_INSTANCE`, `EVOLUTION_TOKEN`).
-   Se for usar os botões de IA, some a `OPENAI_API_KEY`.
+   (`NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`). Se for usar o envio direto de
+   WhatsApp, adicione as variáveis da Evolution descritas na Parte 2. Se for usar os botões de IA,
+   some a `OPENAI_API_KEY`.
 6. Clique em **Deploy**. Em 1–2 minutos a Vercel te dá um link
    (ex.: `https://angariacoes-web.vercel.app`).
 7. Volte no Supabase (Parte 1, passo 7) e confirme que a **Site URL** aponta para esse endereço.

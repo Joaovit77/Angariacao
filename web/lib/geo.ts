@@ -16,6 +16,7 @@ export interface EnderecoViaCep {
   logradouro?: string;
   bairro?: string;
   localidade?: string;
+  uf?: string;
   erro?: boolean;
 }
 

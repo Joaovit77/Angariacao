@@ -11,6 +11,9 @@
    ================================================================ */
 import { useState } from "react";
 import { captadorPadrao, useSessao } from "@/components/SessaoProvider";
+import EnderecoAutocompleteViaCep, {
+  type EnderecoViaCepSelecionado,
+} from "@/components/formularios/EnderecoAutocompleteViaCep";
 import { ORIGENS_IMOVEL } from "@/lib/constantes";
 import { sugerirCodigoImovel } from "@/lib/codigoImovel";
 import { todayISO } from "@/lib/datas";
@@ -52,6 +55,7 @@ export default function ModalPreCadastro() {
   const [edificio, setEdificio] = useState("");
   const [bairro, setBairro] = useState("");
   const [cidade, setCidade] = useState("Londrina");
+  const [estado, setEstado] = useState("PR");
   const [proprietarioNome, setProprietarioNome] = useState("");
   const [proprietarioTelefone, setProprietarioTelefone] = useState("");
   // Sem padrão, pela mesma razão do ModalImovel: chutar a origem envenena o
@@ -167,6 +171,7 @@ export default function ModalPreCadastro() {
     const novaCidade = data.localidade || cidade;
     if (data.bairro) setBairro(data.bairro);
     if (data.localidade) setCidade(data.localidade);
+    if (data.uf) setEstado(data.uf.toUpperCase());
     setCepStatus({ msg: "Endereço preenchido a partir do CEP.", tone: "ok" });
 
     // Geocodifica em segundo plano e guarda as coordenadas. Assim, quando o
@@ -182,6 +187,27 @@ export default function ModalPreCadastro() {
     } catch {
       /* silencioso — coordenadas são opcionais aqui */
     }
+  }
+
+  function aplicarEnderecoViaCep(selecionado: EnderecoViaCepSelecionado) {
+    if (selecionado.endereco) setEndereco(selecionado.endereco);
+    if (selecionado.bairro) setBairro(selecionado.bairro);
+    if (selecionado.cidade) setCidade(selecionado.cidade);
+    if (selecionado.estado) setEstado(selecionado.estado);
+    if (selecionado.cep) setCep(maskCEP(selecionado.cep));
+    setCepStatus({ msg: "CEP preenchido a partir do endereço.", tone: "ok" });
+
+    void geocodeEndereco(
+      selecionado.endereco || endereco,
+      selecionado.bairro || bairro,
+      selecionado.cidade || cidade,
+    ).then((found) => {
+      if (!found) return;
+      setLatitude(found.lat);
+      setLongitude(found.lon);
+    }).catch(() => {
+      /* silencioso — coordenadas são opcionais no pré-cadastro */
+    });
   }
 
   async function salvar() {
@@ -241,6 +267,7 @@ export default function ModalPreCadastro() {
       edificio: edificio.trim(),
       bairro: bairro.trim(),
       cidade: cidade.trim(),
+      estado: estado.trim().toUpperCase(),
       proprietarioNome: nomeProprio(proprietarioNome),
       proprietarioTelefone: proprietarioTelefone.trim(),
       cep: cep.trim(),
@@ -366,11 +393,12 @@ export default function ModalPreCadastro() {
           <span className={`geocode-status ${cepStatus.tone}`}>{cepStatus.msg}</span>
           <div className="field-group">
             <label>Endereço</label>
-            <input
-              type="text"
+            <EnderecoAutocompleteViaCep
               value={endereco}
-              onChange={(e) => setEndereco(e.target.value)}
-              placeholder="Rua, número"
+              cidade={cidade}
+              estado={estado}
+              onChange={setEndereco}
+              onSelecionar={aplicarEnderecoViaCep}
             />
             {duplicados.length > 0 && (
               <div className="field-hint" style={{ color: "var(--danger, #d64545)", fontWeight: 600 }}>
@@ -406,7 +434,7 @@ export default function ModalPreCadastro() {
             <label>Edifício / condomínio</label>
             <input type="text" value={edificio} onChange={(e) => setEdificio(e.target.value)} />
           </div>
-          <div className="field-row">
+          <div className="field-row-3">
             <div className="field-group">
               <label>Bairro</label>
               <input type="text" value={bairro} onChange={(e) => setBairro(e.target.value)} />
@@ -414,6 +442,16 @@ export default function ModalPreCadastro() {
             <div className="field-group">
               <label>Cidade</label>
               <input type="text" value={cidade} onChange={(e) => setCidade(e.target.value)} />
+            </div>
+            <div className="field-group">
+              <label>Estado / UF</label>
+              <input
+                type="text"
+                value={estado}
+                maxLength={2}
+                onChange={(e) => setEstado(e.target.value.toUpperCase())}
+                placeholder="PR"
+              />
             </div>
           </div>
           <div className="field-group">

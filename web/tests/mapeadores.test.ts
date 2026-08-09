@@ -86,6 +86,19 @@ describe("ida-e-volta imóvel: fromDb(toDb(x)) reproduz o app antigo", () => {
     expect(fromDbImovel(semColuna).imovelPrincipalId).toBeNull();
   });
 
+  it("estado faz ida-e-volta; vazio atualiza para null e linha antiga continua compatível", () => {
+    const comUf = { ...imoveisCamel[0], estado: "PR" };
+    expect(toDbImovel(comUf, USER_ID).estado).toBe("PR");
+    expect(fromDbImovel(toDbImovel(comUf, USER_ID) as DbImovelRow).estado).toBe("PR");
+
+    const vazio = { ...imoveisCamel[0], estado: "" };
+    expect(toDbImovel(vazio, USER_ID).estado).toBeNull();
+
+    const linhaAntiga = { ...imoveisRows[0] } as Partial<DbImovelRow>;
+    delete linhaAntiga.estado;
+    expect("estado" in fromDbImovel(linhaAntiga as DbImovelRow)).toBe(false);
+  });
+
   it("notas fazem ida-e-volta preservando id/texto/data", () => {
     const notas = [
       { id: "n1", texto: "Liguei, ficou de responder.", data: "2026-07-10T09:15" },

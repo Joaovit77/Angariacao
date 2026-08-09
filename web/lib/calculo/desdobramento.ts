@@ -124,6 +124,7 @@ export function unidadeDesdobrada(
     endereco: principal.endereco,
     bairro: principal.bairro ?? "",
     cidade: principal.cidade ?? "",
+    estado: principal.estado ?? "",
     bloco: principal.bloco ?? "",
     edificio: principal.edificio ?? "",
     latitude: principal.latitude ?? null,
