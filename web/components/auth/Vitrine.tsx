@@ -62,6 +62,7 @@ interface Parte {
   numero: number;
   rotulo: string;
   titulo: string;
+  texto: string;
 }
 
 interface Props {
@@ -74,16 +75,19 @@ const PARTES: Parte[] = [
     numero: 1,
     rotulo: "O seu dia",
     titulo: "Você abre o painel e ele já sabe o que fazer hoje.",
+    texto: "A carteira deixa de ser uma lista parada e vira uma fila de trabalho com ordem, contexto e próxima ação.",
   },
   {
     numero: 2,
     rotulo: "A conversa",
     titulo: "A conversa com o proprietário acontece dentro do sistema.",
+    texto: "Mensagem, resposta, áudio e compromisso ficam ligados ao imóvel, sem perder o fio da negociação.",
   },
   {
     numero: 3,
     rotulo: "Os números",
     titulo: "E os números dizem o que fazer diferente amanhã.",
+    texto: "O painel transforma o trabalho registrado em metas, comparações e decisões que ajudam a próxima captação.",
   },
 ];
 
@@ -622,7 +626,6 @@ const GARANTIAS = [
 export default function Vitrine({ aoEntrar, aoCriarConta }: Props) {
   const cenasRef = useRef<(HTMLElement | null)[]>([]);
   const [vistas, setVistas] = useState<boolean[]>(() => CENAS.map(() => false));
-  const [ativa, setAtiva] = useState(0);
 
   useEffect(() => {
     const elementos = cenasRef.current.filter((el): el is HTMLElement => el !== null);
@@ -646,111 +649,134 @@ export default function Vitrine({ aoEntrar, aoCriarConta }: Props) {
       { threshold: 0.15, rootMargin: "0px 0px -8% 0px" },
     );
 
-    // Foco: só a faixa central da tela conta como "estou lendo isto agora".
-    const focador = new IntersectionObserver(
-      (entradas) => {
-        for (const entrada of entradas) {
-          if (entrada.isIntersecting) setAtiva(Number((entrada.target as HTMLElement).dataset.cena));
-        }
-      },
-      { rootMargin: "-45% 0px -45% 0px" },
-    );
-
-    for (const el of elementos) {
-      revelador.observe(el);
-      focador.observe(el);
-    }
-    return () => {
-      revelador.disconnect();
-      focador.disconnect();
-    };
+    for (const el of elementos) revelador.observe(el);
+    return () => revelador.disconnect();
   }, []);
-
-  function irPara(i: number) {
-    cenasRef.current[i]?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
 
   return (
     <section className="auth-showcase">
       <div className="vitrine-hero">
-        <span className="vitrine-selo">Painel de Angariações</span>
-        <h1 className="showcase-headline">
-          Toda a sua angariação de locação <span className="hl">em um só lugar.</span>
-        </h1>
-        <p className="showcase-sub">
-          Do primeiro contato com o proprietário até o imóvel locado: o funil, o WhatsApp, as metas
-          e o que cada conversa rendeu, sem perder nenhum follow-up.
-        </p>
+        <div className="vitrine-hero-copy">
+          <span className="vitrine-selo">CRM de captação para locação</span>
+          <h1 className="showcase-headline">
+            Sua carteira não precisa de mais contatos. Precisa de <span className="hl">movimento.</span>
+          </h1>
+          <p className="showcase-sub">
+            Organize cada imóvel, converse com proprietários pelo seu WhatsApp e saiba exatamente
+            quem responder, quem retomar e onde está cada negociação.
+          </p>
 
-        <div className="vitrine-ctas">
-          <button type="button" className="btn btn-primary" onClick={aoCriarConta}>
-            Criar minha conta
-          </button>
-          <button type="button" className="btn" onClick={aoEntrar}>
-            Já tenho conta
-          </button>
+          <div className="vitrine-ctas">
+            <button type="button" className="btn btn-primary" onClick={aoCriarConta}>
+              Começar agora <span aria-hidden="true">→</span>
+            </button>
+            <button type="button" className="btn" onClick={aoEntrar}>
+              Entrar no painel
+            </button>
+          </div>
+
+          <ul className="vitrine-garantias">
+            {GARANTIAS.map((g) => (
+              <li key={g}>
+                <span aria-hidden="true">✓</span>
+                {g}
+              </li>
+            ))}
+          </ul>
         </div>
 
-        <ul className="vitrine-garantias">
-          {GARANTIAS.map((g) => (
-            <li key={g}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                <path d="m5 13 4 4L19 7" />
-              </svg>
-              {g}
-            </li>
-          ))}
-        </ul>
-
-        {HeroMock}
-
-        <span className="vitrine-cue">
-          Role para conhecer
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 5v14M19 12l-7 7-7-7" />
-          </svg>
-        </span>
+        <div className="vitrine-hero-produto">
+          <div className="vitrine-hero-status" aria-hidden="true">
+            <span>PAINEL / VISÃO DO DIA</span>
+            <b><i /> operação ativa</b>
+          </div>
+          {HeroMock}
+          <div className="vitrine-hero-destaque" aria-hidden="true">
+            <span>PRÓXIMA AÇÃO</span>
+            <strong>3 respostas esperando você</strong>
+            <small>O outro lado já fez a parte dele.</small>
+          </div>
+        </div>
       </div>
 
-      {CENAS.map((cena, i) => {
-        const abreParte = i === 0 || CENAS[i - 1].parte !== cena.parte;
-        const parte = PARTES[cena.parte - 1];
-        return (
-          <div key={cena.rotulo}>
-            {abreParte && (
-              <header className="parte-cabeca">
-                <span className="parte-rotulo">{parte.rotulo}</span>
-                <h2 className="parte-titulo">{parte.titulo}</h2>
-              </header>
-            )}
-            <article
-              data-cena={i}
-              ref={(el) => {
-                cenasRef.current[i] = el;
-              }}
-              className={`cena${i % 2 === 1 ? " invertida" : ""}${vistas[i] ? " visivel" : ""}${
-                abreParte ? " abre-parte" : ""
-              }`}
-            >
-              <div className="cena-texto-col">
-                <span className="cena-num">
-                  <b>{String(i + 1).padStart(2, "0")}</b>
-                  {cena.rotulo}
-                </span>
-                <h3 className="cena-titulo">{cena.titulo}</h3>
-                <p className="cena-texto">{cena.texto}</p>
-              </div>
-              <div className="cena-visual">{cena.visual}</div>
-            </article>
+      <section className="vitrine-faixa" aria-label="Diferenciais do painel">
+        {[
+          ["01 / ROTINA", "A próxima ação aparece primeiro"],
+          ["02 / CONVERSA", "Seu WhatsApp continua sendo seu"],
+          ["03 / DECISÃO", "Seus dados mostram o que funciona"],
+        ].map(([rotulo, texto]) => (
+          <div key={rotulo}>
+            <span>{rotulo}</span>
+            <strong>{texto}</strong>
           </div>
-        );
-      })}
+        ))}
+      </section>
 
-      <section className="extras">
-        <h2 className="extras-titulo">Também no painel</h2>
+      <section className="vitrine-manifesto" id="como-funciona">
+        <span>OPERAÇÃO DE CAPTAÇÃO, CONECTADA</span>
+        <h2>Não é uma planilha com mais campos. É uma forma mais clara de trabalhar a carteira.</h2>
+        <p>
+          Da primeira abordagem ao imóvel locado, cada ação alimenta a próxima. O corretor cuida
+          da relação; o painel cuida para nenhuma oportunidade desaparecer no caminho.
+        </p>
+      </section>
+
+      <div id="recursos">
+        {PARTES.map((parte) => {
+          const cenasDaParte = CENAS.map((cena, i) => ({ cena, i })).filter(
+            ({ cena }) => cena.parte === parte.numero,
+          );
+
+          return (
+            <section className="vitrine-parte" key={parte.numero} data-parte={parte.numero}>
+              <header className="vitrine-parte-cabecalho">
+                <span className="vitrine-parte-numero">0{parte.numero}</span>
+                <div>
+                  <span className="vitrine-parte-rotulo">{parte.rotulo}</span>
+                  <h2>{parte.titulo}</h2>
+                </div>
+                <p>{parte.texto}</p>
+              </header>
+
+              <div className="vitrine-produtos-grid">
+                {cenasDaParte.map(({ cena, i }, indiceNaParte) => (
+                  <article
+                    data-cena={i}
+                    ref={(el) => {
+                      cenasRef.current[i] = el;
+                    }}
+                    className={`produto-card${indiceNaParte === 0 ? " destaque" : ""}${
+                      vistas[i] ? " visivel" : ""
+                    }`}
+                    key={cena.rotulo}
+                  >
+                    <div className="produto-card-topo">
+                      <span>[{String(i + 1).padStart(2, "0")}]</span>
+                      <strong>{cena.rotulo}</strong>
+                    </div>
+                    <div className="produto-card-visual">{cena.visual}</div>
+                    <div className="produto-card-texto">
+                      <h3>{cena.titulo}</h3>
+                      <p>{cena.texto}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+
+      <section className="extras" id="seguranca">
+        <span className="extras-rotulo">MAIS CONTROLE, MENOS PONTAS SOLTAS</span>
+        <h2 className="extras-titulo">Os detalhes que sustentam a operação.</h2>
+        <p className="extras-subtitulo">
+          Recursos discretos, mas decisivos para trabalhar uma carteira grande sem perder contexto.
+        </p>
         <ul className="extras-grade">
-          {EXTRAS.map((e) => (
+          {EXTRAS.map((e, i) => (
             <li className="extra" key={e.titulo}>
+              <span className="extra-numero">0{i + 1}</span>
               <span className="extra-ic">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   {e.icone}
@@ -764,14 +790,14 @@ export default function Vitrine({ aoEntrar, aoCriarConta }: Props) {
       </section>
 
       <div className="vitrine-fecho">
-        <h2 className="vitrine-fecho-titulo">Comece pela sua carteira de hoje.</h2>
+        <span className="vitrine-fecho-rotulo">SUA CARTEIRA, EM MOVIMENTO</span>
+        <h2 className="vitrine-fecho-titulo">A próxima angariação começa no contato que você não vai esquecer.</h2>
         <p className="vitrine-fecho-texto">
-          Cadastre os imóveis que já está trabalhando e o sistema começa a medir a partir do primeiro
-          contato, sem instalar nada.
+          Traga os imóveis que já está trabalhando e transforme cada conversa em uma próxima ação clara.
         </p>
         <div className="vitrine-ctas">
           <button type="button" className="btn btn-primary" onClick={aoCriarConta}>
-            Criar minha conta
+            Criar minha conta <span aria-hidden="true">→</span>
           </button>
           <button type="button" className="btn" onClick={aoEntrar}>
             Fazer login
@@ -779,32 +805,12 @@ export default function Vitrine({ aoEntrar, aoCriarConta }: Props) {
         </div>
         <div className="showcase-foot">
           <span className="showcase-badge">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
+            <span aria-hidden="true">✓</span>
             Dados isolados por conta
           </span>
           <span className="showcase-foot-note">Feito para corretores e imobiliárias.</span>
         </div>
       </div>
-
-      {/* Régua de capítulos: só orienta, nunca é o único caminho. Some
-          nas telas estreitas, onde roubaria espaço do conteúdo. O vão
-          entre grupos é o mesmo agrupamento das partes. */}
-      <nav className="vitrine-regua" aria-label="Capítulos da apresentação">
-        {CENAS.map((cena, i) => (
-          <button
-            key={cena.rotulo}
-            type="button"
-            className={`vitrine-ponto${ativa === i ? " ativo" : ""}${
-              i > 0 && CENAS[i - 1].parte !== cena.parte ? " abre-parte" : ""
-            }`}
-            aria-label={cena.rotulo}
-            title={cena.rotulo}
-            onClick={() => irPara(i)}
-          />
-        ))}
-      </nav>
     </section>
   );
 }

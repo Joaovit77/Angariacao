@@ -49,6 +49,12 @@ export default function CabecalhoAuth({ aoEntrar, aoCriarConta }: Props) {
             </div>
           </div>
 
+          <nav className="vitrine-topo-nav" aria-label="Apresentação">
+            <a href="#como-funciona">Como funciona</a>
+            <a href="#recursos">Recursos</a>
+            <a href="#seguranca">Segurança</a>
+          </nav>
+
           <div className="vitrine-topo-acoes">
             {/* Também aqui, e não só no painel: quem prefere claro não deve
                 precisar entrar para deixar de ver a tela escura. */}

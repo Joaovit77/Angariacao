@@ -35,7 +35,28 @@ interface Aviso {
 
 const SEM_AVISO: Aviso = { texto: "", cor: "var(--bad)" };
 
-const ESTILO_BOTAO_SUBMIT = { width: "100%", justifyContent: "center", padding: "11px" };
+const APRESENTACAO_ABA: Record<AbaAuth, { rotulo: string; titulo: string; texto: string }> = {
+  login: {
+    rotulo: "Acesso ao painel",
+    titulo: "Bem-vindo de volta",
+    texto: "Entre para continuar sua rodada e acompanhar cada oportunidade.",
+  },
+  signup: {
+    rotulo: "Nova conta",
+    titulo: "Comece sua carteira organizada",
+    texto: "Crie seu acesso e acompanhe a angariação do primeiro contato ao fechamento.",
+  },
+  forgot: {
+    rotulo: "Recuperar acesso",
+    titulo: "Esqueceu sua senha?",
+    texto: "Informe seu e-mail e enviaremos um link seguro para você voltar ao painel.",
+  },
+  reset: {
+    rotulo: "Segurança da conta",
+    titulo: "Defina uma nova senha",
+    texto: "Escolha uma senha segura para concluir a recuperação do seu acesso.",
+  },
+};
 
 function IconeEmail() {
   return (
@@ -217,6 +238,7 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
   }
 
   const abasVisiveis = aba !== "forgot" && aba !== "reset";
+  const apresentacao = APRESENTACAO_ABA[aba];
 
   return (
     <div className="auth-screen" id="auth-screen">
@@ -227,49 +249,85 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
       <RodapeApp variante="auth" />
 
       {/* FORMULÁRIO DE ACESSO — modal sobre a apresentação */}
-      <div className={`auth-modal-overlay${modalAberto ? " open" : ""}`}>
+      <div className={`auth-modal-overlay${modalAberto ? " open" : ""}`} aria-hidden={!modalAberto}>
         <div
           className="auth-box"
           role="dialog"
           aria-modal="true"
-          aria-label="Acesso à conta"
+          aria-labelledby="auth-dialog-titulo"
+          aria-describedby="auth-dialog-descricao"
           ref={dialogoRef}
         >
-          <button type="button" className="auth-box-fechar" onClick={fechar} aria-label="Fechar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
-          </button>
-          <div
-            className="brand auth-box-brand"
-            style={{ border: "none", padding: 0, marginBottom: "8px", justifyContent: "center" }}
-          >
-            <Image className="brand-mark" src="/logo.png" alt="Angariações" width={52} height={52} />
-            <div className="brand-text">
-              <span className="brand-title">Angariações</span>
-              <span className="brand-sub">Controle de Locação</span>
+          <aside className="auth-contexto" aria-hidden="true">
+            <div className="brand auth-contexto-marca">
+              <Image className="brand-mark" src="/logo.png" alt="" width={52} height={52} />
+              <div className="brand-text">
+                <span className="brand-title">Angariações</span>
+                <span className="brand-sub">Controle de Locação</span>
+              </div>
             </div>
-          </div>
-          <p className="auth-tagline">Cada login vê só os próprios imóveis.</p>
+            <div className="auth-contexto-corpo">
+              <span className="auth-contexto-selo">Seu trabalho, em movimento</span>
+              <h2>Da primeira conversa ao imóvel locado.</h2>
+              <p>
+                Prioridades claras, histórico completo e os números da sua captação em um só lugar.
+              </p>
+              <div className="auth-contexto-fluxo">
+                <span className="concluido">Contato</span>
+                <i />
+                <span className="atual">Visita</span>
+                <i />
+                <span>Angariado</span>
+              </div>
+            </div>
+            <p className="auth-contexto-seguranca">
+              <span>✓</span> Cada conta acessa somente a própria carteira.
+            </p>
+          </aside>
 
-          {abasVisiveis && (
-            <div className="auth-tabs">
-              <button
-                type="button"
-                className={`auth-tab${aba === "login" ? " active" : ""}`}
-                onClick={() => setAba("login")}
-              >
-                Entrar
-              </button>
-              <button
-                type="button"
-                className={`auth-tab${aba === "signup" ? " active" : ""}`}
-                onClick={() => setAba("signup")}
-              >
-                Criar conta
-              </button>
+          <div className="auth-box-conteudo">
+            <button type="button" className="auth-box-fechar" onClick={fechar} aria-label="Fechar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className="brand auth-box-brand">
+              <Image className="brand-mark" src="/logo.png" alt="Angariações" width={48} height={48} />
+              <div className="brand-text">
+                <span className="brand-title">Angariações</span>
+                <span className="brand-sub">Controle de Locação</span>
+              </div>
             </div>
-          )}
+
+            <header className="auth-form-cabecalho">
+              <span>{apresentacao.rotulo}</span>
+              <h2 id="auth-dialog-titulo">{apresentacao.titulo}</h2>
+              <p id="auth-dialog-descricao">{apresentacao.texto}</p>
+            </header>
+
+            {abasVisiveis && (
+              <div className="auth-tabs" role="tablist" aria-label="Tipo de acesso">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={aba === "login"}
+                  className={`auth-tab${aba === "login" ? " active" : ""}`}
+                  onClick={() => setAba("login")}
+                >
+                  Entrar
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={aba === "signup"}
+                  className={`auth-tab${aba === "signup" ? " active" : ""}`}
+                  onClick={() => setAba("signup")}
+                >
+                  Criar conta
+                </button>
+              </div>
+            )}
 
           {aba === "login" && (
             <form className="auth-form" onSubmit={enviarLogin}>
@@ -308,8 +366,8 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
                   autoComplete="current-password"
                 />
               </div>
-              <button type="submit" className="btn btn-primary" style={ESTILO_BOTAO_SUBMIT}>
-                Entrar
+              <button type="submit" className="btn btn-primary auth-submit">
+                Entrar no painel
               </button>
               <div className="auth-error" style={{ color: avisoLogin.cor }}>
                 {avisoLogin.texto}
@@ -388,8 +446,7 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
               )}
               <button
                 type="submit"
-                className="btn btn-primary"
-                style={ESTILO_BOTAO_SUBMIT}
+                className="btn btn-primary auth-submit"
                 disabled={legalPublicavel() && !signupAceite}
               >
                 Criar conta
@@ -405,9 +462,6 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
 
           {aba === "forgot" && (
             <form className="auth-form" onSubmit={enviarForgot}>
-              <p className="auth-tagline" style={{ margin: "0 0 16px 0" }}>
-                Enviamos um link de recuperação para o seu e-mail.
-              </p>
               <div className="field-group">
                 <label>E-mail</label>
                 <div className="input-icon-wrap">
@@ -422,7 +476,7 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
                   />
                 </div>
               </div>
-              <button type="submit" className="btn btn-primary" style={ESTILO_BOTAO_SUBMIT}>
+              <button type="submit" className="btn btn-primary auth-submit">
                 Enviar link de recuperação
               </button>
               <div className="auth-error" style={{ color: avisoForgot.cor }}>
@@ -445,9 +499,6 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
 
           {aba === "reset" && (
             <form className="auth-form" onSubmit={enviarReset}>
-              <p className="auth-tagline" style={{ margin: "0 0 16px 0" }}>
-                Defina sua nova senha.
-              </p>
               <div className="field-group">
                 <label>Nova senha</label>
                 <CampoSenha
@@ -459,7 +510,7 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
                   comForca
                 />
               </div>
-              <button type="submit" className="btn btn-primary" style={ESTILO_BOTAO_SUBMIT}>
+              <button type="submit" className="btn btn-primary auth-submit">
                 Salvar nova senha
               </button>
               <div className="auth-error" style={{ color: avisoReset.cor }}>
@@ -467,6 +518,7 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
               </div>
             </form>
           )}
+          </div>
         </div>
       </div>
     </div>
