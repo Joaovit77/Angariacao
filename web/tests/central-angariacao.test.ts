@@ -163,4 +163,49 @@ describe("Central de Angariação", () => {
       endereco: "Rua Sergipe",
     })]);
   });
+
+  it("transforma os cards renderizados do Chaves na Mão pelo Firecrawl", () => {
+    const html = `<a href="https://www.chavesnamao.com.br/imovel/casa-para-alugar-pr-londrina-centro/id-35106344/">
+      <h2>Casa para alugar no Centro</h2>
+      <p>Rua Pará, 100</p><p>Centro, Londrina/PR</p><p>80 m²</p><p>R$ 2.700</p>
+      <img src="https://cdn.chavesnamao.com.br/a.jpg">
+    </a>`;
+
+    expect(extrairAnunciosFirecrawl(html, {
+      portal: "chaves-na-mao",
+      cidade: "Londrina",
+      estado: "PR",
+    })).toEqual([expect.objectContaining({
+      idExterno: "35106344",
+      preco: 2700,
+      cidade: "Londrina",
+      bairro: "Centro",
+      endereco: "Rua Pará, 100",
+      imagem: "https://cdn.chavesnamao.com.br/a.jpg",
+    })]);
+  });
+
+  it("transforma os cards renderizados do Wimoveis pelo Firecrawl", () => {
+    const html = `<article data-qa="posting PROPERTY" data-id="3018468881" data-to-posting="/propriedades/apartamento-centro-3018468881.html">
+      <div data-qa="POSTING_CARD_GALLERY"><img alt="Apartamento para alugar no Centro" src="https://img.wimoveis.com.br/a.jpg"></div>
+      <div data-qa="POSTING_CARD_PRICE">R$ 1.900</div>
+      <div data-qa="POSTING_CARD_FEATURES">2 quartos, 70 m²</div>
+      <div class="location-address">Rua Goiás, 20</div>
+      <div data-qa="POSTING_CARD_LOCATION">Centro, Londrina</div>
+    </article>`;
+
+    expect(extrairAnunciosFirecrawl(html, {
+      portal: "wimoveis",
+      cidade: "Londrina",
+      estado: "PR",
+      dormitorios: 2,
+    })).toEqual([expect.objectContaining({
+      idExterno: "3018468881",
+      preco: 1900,
+      cidade: "Londrina",
+      bairro: "Centro",
+      endereco: "Rua Goiás, 20",
+      imagem: "https://img.wimoveis.com.br/a.jpg",
+    })]);
+  });
 });

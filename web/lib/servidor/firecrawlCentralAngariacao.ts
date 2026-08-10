@@ -44,6 +44,14 @@ function cidadeBairro(valor: string): { cidade: string | null; bairro: string | 
   return { cidade: partes[0], bairro: partes.slice(1).join(", ") };
 }
 
+function cidadeBairroWimoveis(valor: string): { cidade: string | null; bairro: string | null } {
+  const partes = valor.split(",").map((parte) => parte.trim()).filter(Boolean);
+  if (partes.length < 2) return { cidade: partes[0] || null, bairro: null };
+  const ultimo = partes.at(-1)?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (ultimo === "parana" || ultimo === "pr") return { cidade: partes[0], bairro: null };
+  return { cidade: partes.at(-1) || null, bairro: partes.slice(0, -1).join(", ") || null };
+}
+
 function extrairOlx($: CheerioAPI, filtros: FiltrosCentralAngariacao): AnuncioCentralAngariacao[] {
   return $("section.olx-adcard").slice(0, LIMITE_RESULTADOS).toArray().flatMap((elemento, indice) => {
     const card = $(elemento);
@@ -106,6 +114,68 @@ function extrairVivaReal($: CheerioAPI, filtros: FiltrosCentralAngariacao): Anun
     });
 }
 
+function extrairChaves($: CheerioAPI): AnuncioCentralAngariacao[] {
+  const vistos = new Set<string>();
+  return $('a[href*="/imovel/"][href*="/id-"]').slice(0, LIMITE_RESULTADOS).toArray()
+    .flatMap((elemento, indice) => {
+      const link = $(elemento);
+      const url = link.attr("href") || "";
+      const titulo = texto(link.find("h2").first()) || link.attr("title") || "";
+      if (!url || !titulo || vistos.has(url)) return [];
+      vistos.add(url);
+      const textos = link.find("p").toArray().map((p) => texto($(p))).filter(Boolean);
+      const precoTexto = [...textos].reverse().find((valor) => /R\$\s*[\d.]+/.test(valor));
+      const localidade = textos.find((valor) => /,\s*[^/]+\/PR/i.test(valor));
+      const endereco = textos.find((valor) => valor !== localidade
+        && !/R\$|m²|^\d+$|Endereço indisponível/i.test(valor));
+      const local = cidadeBairro(localidade?.replace(/\/PR.*$/, "").split(",").reverse().join(", ") || "");
+      return [{
+        idExterno: idDoAnuncio("chaves-na-mao", url, indice),
+        portal: "chaves-na-mao" as const,
+        titulo,
+        preco: dinheiro(precoTexto),
+        cidade: local.cidade,
+        bairro: local.bairro,
+        endereco: endereco || null,
+        imagem: imagemDe(link),
+        url,
+        descricao: null,
+        anunciante: "incerto" as const,
+      }];
+    });
+}
+
+function extrairWimoveis($: CheerioAPI, filtros: FiltrosCentralAngariacao): AnuncioCentralAngariacao[] {
+  return $('[data-qa="posting PROPERTY"], [data-to-posting*="/propriedades/"]')
+    .slice(0, LIMITE_RESULTADOS).toArray().flatMap((elemento, indice) => {
+      const card = $(elemento);
+      const urlParcial = card.attr("data-to-posting") || "";
+      const titulo = card.find('img[alt]:not([alt=""])').first().attr("alt") || "";
+      if (!urlParcial || !titulo) return [];
+      const preco = dinheiro(texto(card.find('[data-qa="POSTING_CARD_PRICE"]').first()));
+      const caracteristicas = texto(card.find('[data-qa="POSTING_CARD_FEATURES"]').first());
+      if (filtros.valorMin != null && (preco == null || preco < filtros.valorMin)) return [];
+      if (filtros.valorMax != null && (preco == null || preco > filtros.valorMax)) return [];
+      const quartos = Number(caracteristicas.match(/(\d+)\s+quartos?/i)?.[1]);
+      if (filtros.dormitorios != null && (!Number.isFinite(quartos) || quartos < filtros.dormitorios)) return [];
+      const local = cidadeBairroWimoveis(texto(card.find('[data-qa="POSTING_CARD_LOCATION"]').first()));
+      const url = new URL(urlParcial, "https://www.wimoveis.com.br").toString();
+      return [{
+        idExterno: card.attr("data-id") || idDoAnuncio("wimoveis", url, indice),
+        portal: "wimoveis" as const,
+        titulo,
+        preco,
+        cidade: local.cidade,
+        bairro: local.bairro,
+        endereco: texto(card.find('[class*="location-address"]').first()) || null,
+        imagem: imagemDe(card.find('[data-qa="POSTING_CARD_GALLERY"]').first()),
+        url,
+        descricao: caracteristicas || null,
+        anunciante: filtros.somenteProprietario ? "proprietario" as const : "incerto" as const,
+      }];
+    });
+}
+
 export function extrairAnunciosFirecrawl(
   html: string,
   filtros: FiltrosCentralAngariacao,
@@ -113,8 +183,9 @@ export function extrairAnunciosFirecrawl(
   const $ = load(html);
   switch (filtros.portal) {
     case "olx": return extrairOlx($, filtros);
+    case "chaves-na-mao": return extrairChaves($);
+    case "wimoveis": return extrairWimoveis($, filtros);
     case "viva-real": return extrairVivaReal($, filtros);
-    default: return [];
   }
 }
 
@@ -124,10 +195,6 @@ export async function buscarComFirecrawl(
 ): Promise<AnuncioCentralAngariacao[]> {
   const apiKey = process.env.FIRECRAWL_API_KEY?.trim();
   if (!apiKey) throw new FirecrawlIndisponivel("FIRECRAWL_API_KEY não configurada.");
-  if (filtros.portal !== "olx" && filtros.portal !== "viva-real") {
-    throw new FirecrawlIndisponivel("Portal ainda não habilitado no Firecrawl.");
-  }
-
   const resposta = await fetch("https://api.firecrawl.dev/v2/scrape", {
     method: "POST",
     headers: {

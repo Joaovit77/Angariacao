@@ -65,7 +65,7 @@ export async function POST(request: Request) {
   };
   const urlPesquisa = urlDaPesquisa(seguros);
 
-  if (process.env.FIRECRAWL_API_KEY && (seguros.portal === "olx" || seguros.portal === "viva-real")) {
+  if (process.env.FIRECRAWL_API_KEY) {
     try {
       const coletados = await buscarComFirecrawl(seguros, urlPesquisa);
       return resposta(resultadoColeta(coletados, seguros, urlPesquisa));
