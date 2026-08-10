@@ -7,10 +7,6 @@
    rota, a UI nem o contrato de AnuncioCentralAngariacao.
    ================================================================ */
 import { existsSync } from "node:fs";
-import { rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { randomUUID } from "node:crypto";
 import type { Browser, Page } from "playwright-core";
 import { dataPublicacaoOlx, dentroDoPeriodo } from "@/lib/datas";
 import {
@@ -304,7 +300,6 @@ export async function buscarComNavegador(
 
   const { chromium } = await import("playwright-core");
   let browser: Browser | null = null;
-  const userDataDir = join(tmpdir(), `central-angariacao-${randomUUID()}`);
   try {
     browser = await chromium.launch({
       executablePath: configuracao.executablePath,
@@ -312,7 +307,6 @@ export async function buscarComNavegador(
       ignoreDefaultArgs: ["--enable-automation"],
       args: [
         ...configuracao.args,
-        `--user-data-dir=${userDataDir}`,
         "--no-sandbox",
         "--disable-dev-shm-usage",
         "--disable-gpu",
@@ -348,6 +342,5 @@ export async function buscarComNavegador(
     throw new Error("Portal não suportado pelo coletor.");
   } finally {
     await browser?.close().catch(() => undefined);
-    await rm(userDataDir, { recursive: true, force: true }).catch(() => undefined);
   }
 }
