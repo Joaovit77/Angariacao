@@ -1,0 +1,103 @@
+import { createClient } from "@supabase/supabase-js";
+import { anuncioPertenceACidade, PERIODOS_PUBLICACAO, PORTAIS_ANGARIACAO, rotuloPortal, type FiltrosCentralAngariacao, type ResultadoBuscaCentral } from "@/lib/calculo/centralAngariacao";
+import { dentroDoPeriodo } from "@/lib/datas";
+import { extrairJsonLd, urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
+import { buscarComNavegador, NavegadorIndisponivel } from "@/lib/servidor/scraperCentralAngariacao";
+
+export const runtime = "nodejs";
+
+function resposta(corpo: ResultadoBuscaCentral, status = 200) {
+  return Response.json(corpo, { status, headers: { "Cache-Control": "no-store" } });
+}
+
+async function autenticado(request: Request): Promise<boolean> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const auth = request.headers.get("authorization") || "";
+  const token = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
+  if (!url || !key || !token) return false;
+  const supabase = createClient(url, key, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data, error } = await supabase.auth.getUser();
+  return !error && !!data.user;
+}
+
+export async function POST(request: Request) {
+  if (!(await autenticado(request))) {
+    return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: "Sessão inválida." }, 401);
+  }
+
+  const filtros = (await request.json().catch(() => null)) as FiltrosCentralAngariacao | null;
+  if (!filtros || !PORTAIS_ANGARIACAO.includes(filtros.portal) || !filtros.cidade?.trim()) {
+    return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: "Informe portal e cidade." }, 400);
+  }
+  const seguros: FiltrosCentralAngariacao = {
+    ...filtros,
+    cidade: filtros.cidade.trim().slice(0, 80),
+    estado: (filtros.estado || "PR").trim().slice(0, 2).toUpperCase(),
+    bairro: filtros.bairro?.trim().slice(0, 80),
+    diasPublicacao: filtros.portal === "olx" && PERIODOS_PUBLICACAO.includes(filtros.diasPublicacao as 1 | 7 | 30)
+      ? filtros.diasPublicacao
+      : null,
+  };
+  const urlPesquisa = urlDaPesquisa(seguros);
+
+  try {
+    const coletados = await buscarComNavegador(seguros, urlPesquisa);
+    const anuncios = coletados.filter((anuncio) => anuncioPertenceACidade(anuncio, seguros.cidade));
+    const filtroSemConfirmacao = (seguros.portal === "olx" || seguros.portal === "wimoveis")
+      && seguros.somenteProprietario
+      && anuncios.some((anuncio) => anuncio.anunciante !== "proprietario");
+    return resposta({
+      ok: true,
+      anuncios,
+      urlPesquisa,
+      aviso: anuncios.length
+        ? (filtroSemConfirmacao ? `O ${rotuloPortal(seguros.portal)} não confirmou o filtro de proprietário; revise os anúncios antes de importar.` : undefined)
+        : "O portal não apresentou resultados para estes filtros.",
+    });
+  } catch (erro) {
+    // Sem Chrome no host (ex.: deploy ainda sem runtime de navegador), conserva
+    // o fallback HTTP e o link pronto. No local e em hosts configurados, o
+    // Playwright é sempre o caminho principal.
+    if (!(erro instanceof NavegadorIndisponivel)) {
+      console.warn("Central de Angariação: navegador não concluiu a consulta:", erro);
+    }
+  }
+
+  try {
+    const r = await fetch(urlPesquisa, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; CentralAngariacao/1.0)",
+        Accept: "text/html,application/xhtml+xml",
+      },
+      redirect: "follow",
+      signal: AbortSignal.timeout(15000),
+      cache: "no-store",
+    });
+    if (!r.ok) throw new Error(`portal respondeu ${r.status}`);
+    const html = await r.text();
+    const anuncios = extrairJsonLd(html, seguros.portal, urlPesquisa).filter((a) => {
+      if (!anuncioPertenceACidade(a, seguros.cidade)) return false;
+      if (seguros.diasPublicacao && !dentroDoPeriodo(a.publicadoEm, seguros.diasPublicacao)) return false;
+      if (!seguros.somenteProprietario) return true;
+      return a.anunciante !== "imobiliaria";
+    });
+    return resposta({
+      ok: true,
+      anuncios,
+      urlPesquisa,
+      aviso: anuncios.length ? undefined : "O portal não disponibilizou resultados para leitura. Abra a pesquisa pronta para continuar.",
+    });
+  } catch (erro) {
+    console.warn("Central de Angariação: consulta indisponível:", erro);
+    return resposta({
+      ok: false,
+      anuncios: [],
+      urlPesquisa,
+      aviso: "O portal bloqueou ou não respondeu à consulta. A pesquisa pronta ainda pode ser aberta.",
+    });
+  }
+}

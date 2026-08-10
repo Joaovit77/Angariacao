@@ -48,6 +48,8 @@ interface AppStore {
       esmagadora maioria, senão todo corretor veria o menu piscar vazio
       no primeiro quadro. */
   operaCarteira: boolean;
+  /** Anúncios ainda não vistos encontrados pelas buscas salvas do Radar. */
+  radarNovos: number;
   /** Grava o resultado de carregarEstado() (login/boot). */
   setEstado: (estado: EstadoApp) => void;
   /** Volta ao estado inicial (logout). */
@@ -63,6 +65,7 @@ interface AppStore {
       no padrão, e o menu do operador nasceria com as dez telas do
       corretor antes de se corrigir sozinho. */
   setCargo: (cargo: { admin: boolean; operaCarteira: boolean }) => void;
+  setRadarNovos: (quantidade: number) => void;
   setMetas: (metas: Metas) => void;
   setConfig: (config: UserConfig) => void;
 }
@@ -78,6 +81,7 @@ const ESTADO_INICIAL = {
   iaDisponivel: false,
   ehAdmin: false,
   operaCarteira: true,
+  radarNovos: 0,
 };
 
 export const useAppStore = create<AppStore>((set) => ({
@@ -90,6 +94,7 @@ export const useAppStore = create<AppStore>((set) => ({
   setProtocolos: (protocolos) => set({ protocolos }),
   setIaDisponivel: (iaDisponivel) => set({ iaDisponivel }),
   setCargo: ({ admin, operaCarteira }) => set({ ehAdmin: admin, operaCarteira }),
+  setRadarNovos: (radarNovos) => set({ radarNovos }),
   setMetas: (metas) => set({ metas }),
   setConfig: (config) => set({ config }),
 }));

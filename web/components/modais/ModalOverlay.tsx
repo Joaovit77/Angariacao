@@ -48,7 +48,7 @@ export default function ModalOverlay() {
     <div className={`modal-overlay${modal ? " open" : ""}`} id="modal-overlay">
       <div className="modal" id="modal-box">
         {modal?.tipo === "imovel" && <ModalImovel id={modal.id} />}
-        {modal?.tipo === "preCadastro" && <ModalPreCadastro />}
+        {modal?.tipo === "preCadastro" && <ModalPreCadastro inicial={modal.preCadastroInicial} />}
         {modal?.tipo === "meta" && <ModalMeta />}
         {modal?.tipo === "agenda" && (
           <ModalAgenda id={modal.id} imovelIdRelacionado={modal.imovelIdRelacionado} />
