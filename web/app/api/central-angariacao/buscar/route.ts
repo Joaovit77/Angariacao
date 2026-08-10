@@ -5,6 +5,7 @@ import { extrairJsonLd, urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
 import { buscarComNavegador, NavegadorIndisponivel } from "@/lib/servidor/scraperCentralAngariacao";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 function resposta(corpo: ResultadoBuscaCentral, status = 200) {
   return Response.json(corpo, { status, headers: { "Cache-Control": "no-store" } });

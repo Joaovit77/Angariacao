@@ -12,6 +12,7 @@
     "gera-oraculo": "node scripts/gera-oraculo.mjs"
   },
   "dependencies": {
+    "@sparticuz/chromium": "^149.0.0",
     "@supabase/supabase-js": "^2.110.2",
     "chart.js": "^4.4.1",
     "jszip": "^3.10.1",

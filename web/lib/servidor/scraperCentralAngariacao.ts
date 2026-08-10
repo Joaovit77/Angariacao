@@ -7,6 +7,10 @@
    rota, a UI nem o contrato de AnuncioCentralAngariacao.
    ================================================================ */
 import { existsSync } from "node:fs";
+import { rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 import type { Browser, Page } from "playwright-core";
 import { dataPublicacaoOlx, dentroDoPeriodo } from "@/lib/datas";
 import {
@@ -19,7 +23,12 @@ const LIMITE_RESULTADOS = 50;
 const TIMEOUT_NAVEGACAO_MS = 25_000;
 const TIMEOUT_CARDS_MS = 15_000;
 
-function executavelChrome(): string | null {
+interface ConfiguracaoNavegador {
+  executablePath: string;
+  args: string[];
+}
+
+async function configuracaoNavegador(): Promise<ConfiguracaoNavegador | null> {
   const candidatos = [
     process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
     process.env.PROGRAMFILES ? `${process.env.PROGRAMFILES}\\Google\\Chrome\\Application\\chrome.exe` : null,
@@ -28,7 +37,20 @@ function executavelChrome(): string | null {
     "/usr/bin/google-chrome",
     "/usr/bin/chromium",
   ].filter((p): p is string => !!p);
-  return candidatos.find((p) => existsSync(p)) || null;
+  const local = candidatos.find((p) => existsSync(p));
+  if (local) return { executablePath: local, args: [] };
+
+  // A imagem Linux da Vercel não traz Chrome. O pacote contém o headless
+  // shell e as bibliotecas necessárias, extraídos para /tmp no cold start.
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    const chromiumServerless = (await import("@sparticuz/chromium")).default;
+    chromiumServerless.setGraphicsMode = false;
+    return {
+      executablePath: await chromiumServerless.executablePath(),
+      args: chromiumServerless.args,
+    };
+  }
+  return null;
 }
 
 function dinheiro(texto: string | null | undefined): number | null {
@@ -277,17 +299,20 @@ export async function buscarComNavegador(
   filtros: FiltrosCentralAngariacao,
   urlPesquisa: string,
 ): Promise<AnuncioCentralAngariacao[]> {
-  const executablePath = executavelChrome();
-  if (!executablePath) throw new NavegadorIndisponivel("Chrome não encontrado no servidor.");
+  const configuracao = await configuracaoNavegador();
+  if (!configuracao) throw new NavegadorIndisponivel("Chrome não encontrado no servidor.");
 
   const { chromium } = await import("playwright-core");
   let browser: Browser | null = null;
+  const userDataDir = join(tmpdir(), `central-angariacao-${randomUUID()}`);
   try {
     browser = await chromium.launch({
-      executablePath,
+      executablePath: configuracao.executablePath,
       headless: true,
       ignoreDefaultArgs: ["--enable-automation"],
       args: [
+        ...configuracao.args,
+        `--user-data-dir=${userDataDir}`,
         "--no-sandbox",
         "--disable-dev-shm-usage",
         "--disable-gpu",
@@ -323,5 +348,6 @@ export async function buscarComNavegador(
     throw new Error("Portal não suportado pelo coletor.");
   } finally {
     await browser?.close().catch(() => undefined);
+    await rm(userDataDir, { recursive: true, force: true }).catch(() => undefined);
   }
 }
