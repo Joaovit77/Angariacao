@@ -13,7 +13,8 @@
    currentUser do app antigo.
    ================================================================ */
 import { ORIGENS_LEGADAS } from "../constantes";
-import type { Abordagem, AgendaItem, Imovel, NotaImovel, Protocolo, StatusHistoryEntry, Tentativa } from "../tipos";
+import type { Abordagem, AgendaItem, AnuncioCentralVisualizado, Imovel, NotaImovel, Protocolo, StatusHistoryEntry, Tentativa } from "../tipos";
+import type { PortalAngariacao } from "../calculo/centralAngariacao";
 
 /** Linha da tabela `imoveis` como o Supabase retorna/aceita. */
 export interface DbImovelRow {
@@ -131,6 +132,36 @@ export interface DbUserConfigRow {
   empresa: string | null;
   origens_extras: string[] | null;
   dados_pagamento: string | null;
+}
+
+/** Linha do histórico de anúncios abertos na Central. */
+export interface DbAnuncioCentralVisualizadoRow {
+  user_id: string;
+  portal: PortalAngariacao;
+  id_externo: string;
+  url: string;
+  visualizado_em: string;
+}
+
+export function toDbAnuncioCentralVisualizado(
+  anuncio: Pick<AnuncioCentralVisualizado, "portal" | "idExterno" | "url">,
+  userId: string,
+): Omit<DbAnuncioCentralVisualizadoRow, "visualizado_em"> {
+  return {
+    user_id: userId,
+    portal: anuncio.portal,
+    id_externo: anuncio.idExterno,
+    url: anuncio.url,
+  };
+}
+
+export function fromDbAnuncioCentralVisualizado(r: DbAnuncioCentralVisualizadoRow): AnuncioCentralVisualizado {
+  return {
+    portal: r.portal,
+    idExterno: r.id_externo,
+    url: r.url,
+    visualizadoEm: r.visualizado_em,
+  };
 }
 
 export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "created_at" | "updated_at"> {

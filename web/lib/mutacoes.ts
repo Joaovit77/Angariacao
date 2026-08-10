@@ -34,12 +34,12 @@ import { dataAngariadoEfetiva, historicoComStatus } from "./calculo/motor";
 import { ehNotaDeResposta, eventosNaoLidos } from "./calculo/notas";
 import { useCelebracao } from "./celebracao";
 import { MAX_PROTOCOLO_CHARS } from "./calculo/ia";
-import { toDbAbordagem, toDbAgenda, toDbImovel, toDbProtocolo } from "./persistencia/mapeadores";
+import { toDbAbordagem, toDbAgenda, toDbAnuncioCentralVisualizado, toDbImovel, toDbProtocolo } from "./persistencia/mapeadores";
 import { sincronizarCompromisso } from "./googleAgenda";
 import { getSupabase } from "./persistencia/supabase";
 import { useAppStore } from "./store";
 import { toast } from "./toast";
-import type { Abordagem, AgendaItem, Imovel, Meta, NotaImovel, Protocolo, Tentativa, UserConfig, WhatsappModelo } from "./tipos";
+import type { Abordagem, AgendaItem, AnuncioCentralVisualizado, Imovel, Meta, NotaImovel, Protocolo, Tentativa, UserConfig, WhatsappModelo } from "./tipos";
 
 export function uid(): string {
   return crypto.randomUUID();
@@ -49,6 +49,16 @@ export function numOrNull(v: string | number | null | undefined): number | null 
   if (v === "" || v === undefined || v === null) return null;
   const n = Number(v);
   return isNaN(n) ? null : n;
+}
+
+export async function marcarAnuncioCentralComoVisualizado(
+  anuncio: Pick<AnuncioCentralVisualizado, "portal" | "idExterno" | "url">,
+  userId: string,
+): Promise<void> {
+  const { error } = await getSupabase()
+    .from("central_anuncios_visualizados")
+    .upsert(toDbAnuncioCentralVisualizado(anuncio, userId), { onConflict: "user_id,portal,id_externo" });
+  if (error) throw error;
 }
 
 /**

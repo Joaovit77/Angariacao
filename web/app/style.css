@@ -140,6 +140,8 @@
 .central-card-tags{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:9px; }
 .central-card-tags span{ padding:4px 7px; border-radius:999px; background:var(--accent-soft); color:var(--accent-strong); font-size:10px; font-weight:800; text-transform:uppercase; }
 .central-card-tags .duplicado{ color:var(--warn); background:var(--warn-soft); }
+.central-card-tags .visualizado{ color:var(--text-dim); background:var(--bg-elev-3); }
+.central-card-tags .endereco-pipeline{ color:var(--warn); background:var(--warn-soft); }
 .central-card-tags .radar-novo{ color:var(--good); background:var(--good-soft); }
 .central-card-tags .radar-score.alta{ color:var(--good); background:var(--good-soft); }
 .central-card-tags .radar-score.media{ color:var(--warn); background:var(--warn-soft); }
@@ -172,6 +174,7 @@
 .central-radar-lista-head span{ color:var(--text-dim); font-size:12px; }
 .central-radar-motivos{ display:flex; flex-direction:column; gap:3px; min-height:54px; margin:-5px 0 12px; color:var(--text-dim); font-size:11px; }
 .card.central-card.radar-nao-visto{ box-shadow:inset 0 0 0 1px var(--good); }
+.card.central-card.central-card-visualizado{ opacity:.72; }
 
 @media (max-width:1100px){
   .central-portal-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); }

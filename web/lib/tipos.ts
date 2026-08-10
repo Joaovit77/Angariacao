@@ -7,6 +7,15 @@
    restringe além do que o código antigo garantia.
    ================================================================ */
 import type { ResultadoTentativa } from "./constantes";
+import type { PortalAngariacao } from "./calculo/centralAngariacao";
+
+/** Anúncio que o corretor já abriu na Central de Angariação. */
+export interface AnuncioCentralVisualizado {
+  portal: PortalAngariacao;
+  idExterno: string;
+  url: string;
+  visualizadoEm: string;
+}
 
 export interface StatusHistoryEntry {
   status: string;

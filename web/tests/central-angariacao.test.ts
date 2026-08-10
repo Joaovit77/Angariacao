@@ -10,8 +10,35 @@ import {
 import { dataPublicacaoOlx, dentroDoPeriodo } from "@/lib/datas";
 import { extrairJsonLd, urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
 import { extrairAnunciosFirecrawl } from "@/lib/servidor/firecrawlCentralAngariacao";
+import {
+  enderecoTemNumero,
+  situacaoRepeticaoCentral,
+  tipoDoAnuncio,
+  urlCanonicaAnuncio,
+} from "@/lib/calculo/repeticaoCentralAngariacao";
+import type { Imovel } from "@/lib/tipos";
 
 describe("Central de Angariação", () => {
+  const imovelPipeline = (parcial: Partial<Imovel> = {}): Imovel => ({
+    id: "pipeline-1",
+    endereco: "Rua Pará, 100",
+    cidade: "Londrina",
+    tipo: "Casa",
+    status: "Novo contato",
+    ...parcial,
+  });
+
+  const anuncio = (parcial: Partial<AnuncioCentralAngariacao> = {}): AnuncioCentralAngariacao => ({
+    idExterno: "123456",
+    portal: "chaves-na-mao",
+    titulo: "Casa para alugar",
+    endereco: "Rua Pará, 100",
+    cidade: "Londrina",
+    url: "https://portal.test/imovel/123456",
+    anunciante: "incerto",
+    ...parcial,
+  });
+
   it("normaliza cidade e valores dos filtros", () => {
     expect(slugPortal("São José dos Pinhais")).toBe("sao-jose-dos-pinhais");
     expect(numeroOpcional("R$ 2.500")).toBe(2500);
@@ -116,6 +143,36 @@ describe("Central de Angariação", () => {
     expect(anuncioPertenceACidade({ cidade: "Cornélio Procópio" }, "Londrina")).toBe(false);
     expect(anuncioPertenceACidade({ cidade: "Jacarezinho" }, "Londrina")).toBe(false);
     expect(anuncioPertenceACidade({ cidade: null }, "Londrina")).toBe(false);
+  });
+
+  it("oculta casa com endereço completo já existente no pipeline", () => {
+    expect(situacaoRepeticaoCentral(anuncio(), [imovelPipeline()])).toEqual({
+      motivo: "casa-no-pipeline",
+      ocultar: true,
+    });
+  });
+
+  it("não oculta apartamento apenas porque o prédio já está no pipeline", () => {
+    expect(situacaoRepeticaoCentral(
+      anuncio({ titulo: "Apartamento para alugar" }),
+      [imovelPipeline({ tipo: "Apartamento", unidade: "101" })],
+    )).toEqual({ motivo: "apartamento-no-endereco", ocultar: false });
+  });
+
+  it("não afirma duplicidade de casa sem número ou com tipo indefinido", () => {
+    expect(enderecoTemNumero("Rua 10 de Dezembro")).toBe(false);
+    expect(tipoDoAnuncio(anuncio({ titulo: "Imóvel residencial" }))).toBe("indefinido");
+    expect(situacaoRepeticaoCentral(
+      anuncio({ endereco: "Rua Pará" }),
+      [imovelPipeline({ endereco: "Rua Pará" })],
+    )).toEqual({ motivo: null, ocultar: false });
+  });
+
+  it("reconhece URL da carteira mesmo quando o portal acrescenta parâmetros", () => {
+    const atual = anuncio({ url: "https://portal.test/imovel/123456?utm_source=radar#foto" });
+    expect(urlCanonicaAnuncio(atual.url)).toBe("https://portal.test/imovel/123456");
+    expect(situacaoRepeticaoCentral(atual, [imovelPipeline()], new Set(["https://portal.test/imovel/123456"])))
+      .toEqual({ motivo: "url-na-carteira", ocultar: true });
   });
 
   it("transforma os cards renderizados da OLX pelo Firecrawl", () => {

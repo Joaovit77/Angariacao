@@ -1094,3 +1094,37 @@ create index if not exists idx_radar_anuncios_user_visto
   on radar_anuncios (user_id, visto, encontrado_em desc);
 create index if not exists idx_radar_anuncios_busca
   on radar_anuncios (busca_id, encontrado_em desc);
+
+-- ------------------------------------------------------------
+-- HISTÓRICO DE ANÚNCIOS VISUALIZADOS NA CENTRAL
+--
+-- A identidade é portal + id externo por usuário. A URL fica guardada para
+-- auditoria e pode mudar sem criar uma segunda visualização do mesmo anúncio.
+-- ------------------------------------------------------------
+create table if not exists central_anuncios_visualizados (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  portal text not null check (portal in ('olx', 'chaves-na-mao', 'wimoveis', 'viva-real')),
+  id_externo text not null,
+  url text not null,
+  visualizado_em timestamptz not null default now(),
+  primary key (user_id, portal, id_externo)
+);
+
+alter table central_anuncios_visualizados enable row level security;
+
+drop policy if exists "select_own_central_anuncios_visualizados" on central_anuncios_visualizados;
+create policy "select_own_central_anuncios_visualizados" on central_anuncios_visualizados
+  for select to authenticated using ((select auth.uid()) = user_id);
+drop policy if exists "insert_own_central_anuncios_visualizados" on central_anuncios_visualizados;
+create policy "insert_own_central_anuncios_visualizados" on central_anuncios_visualizados
+  for insert to authenticated with check ((select auth.uid()) = user_id);
+drop policy if exists "update_own_central_anuncios_visualizados" on central_anuncios_visualizados;
+create policy "update_own_central_anuncios_visualizados" on central_anuncios_visualizados
+  for update to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
+grant select, insert, update on central_anuncios_visualizados to authenticated;
+
+create index if not exists idx_central_anuncios_visualizados_user_data
+  on central_anuncios_visualizados (user_id, visualizado_em desc);

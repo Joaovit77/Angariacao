@@ -16,8 +16,15 @@ import {
   type ResultadoBuscaCentral,
 } from "@/lib/calculo/centralAngariacao";
 import { nomePadraoBuscaRadar, type EstadoRadar } from "@/lib/calculo/radarAngariacao";
+import {
+  chaveAnuncio,
+  situacaoRepeticaoCentral,
+  urlsDosImoveis,
+} from "@/lib/calculo/repeticaoCentralAngariacao";
 import { fmtMoney } from "@/lib/formatadores";
 import { fmtDataHoraIso } from "@/lib/datas";
+import { carregarChavesAnunciosCentralVisualizados } from "@/lib/persistencia/historicoCentralAngariacao";
+import { marcarAnuncioCentralComoVisualizado } from "@/lib/mutacoes";
 import {
   carregarRadar,
   definirBuscaRadarAtiva,
@@ -61,6 +68,8 @@ export default function CentralAngariacaoView() {
   const [preparandoRadar, setPreparandoRadar] = useState(false);
   const [nomeBuscaRadar, setNomeBuscaRadar] = useState("");
   const [verificandoRadar, setVerificandoRadar] = useState<string | null>(null);
+  const [anunciosVisualizados, setAnunciosVisualizados] = useState<Set<string>>(() => new Set());
+  const [mostrarOcultos, setMostrarOcultos] = useState(false);
   const radarNovos = useAppStore((s) => s.radarNovos);
   const setRadarNovos = useAppStore((s) => s.setRadarNovos);
 
@@ -91,14 +100,23 @@ export default function CentralAngariacaoView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!usuario?.id) return;
+    let cancelado = false;
+    carregarChavesAnunciosCentralVisualizados()
+      .then((chaves) => {
+        if (!cancelado) setAnunciosVisualizados(chaves);
+      })
+      .catch(() => {
+        if (!cancelado) toast("Não foi possível carregar o histórico de anúncios visualizados.", "error");
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [usuario?.id]);
+
   const urlsNaCarteira = useMemo(() => {
-    const urls = new Set<string>();
-    for (const imovel of imoveis) {
-      for (const match of (imovel.textoAnuncio || "").matchAll(/https?:\/\/\S+/g)) {
-        urls.add(match[0].replace(/[),.;]+$/, ""));
-      }
-    }
-    return urls;
+    return urlsDosImoveis(imoveis);
   }, [imoveis]);
 
   const novosPorBusca = useMemo(() => {
@@ -210,6 +228,7 @@ export default function CentralAngariacaoView() {
   }
 
   function importar(anuncio: AnuncioCentralAngariacao) {
+    void registrarVisualizacao(anuncio);
     abrirPreCadastro({
       endereco: anuncio.endereco || "",
       bairro: anuncio.bairro || "",
@@ -221,7 +240,25 @@ export default function CentralAngariacaoView() {
     });
   }
 
+  async function registrarVisualizacao(anuncio: AnuncioCentralAngariacao) {
+    if (!usuario) return;
+    const chave = chaveAnuncio(anuncio);
+    if (anunciosVisualizados.has(chave)) return;
+    try {
+      await marcarAnuncioCentralComoVisualizado(anuncio, usuario.id);
+      setAnunciosVisualizados((atuais) => new Set(atuais).add(chave));
+    } catch {
+      toast("Não foi possível marcar o anúncio como visualizado.", "error");
+    }
+  }
+
   const lista = aba === "selecionados" ? selecionados : (resultado?.anuncios || []);
+  const repeticaoDo = (anuncio: AnuncioCentralAngariacao) => situacaoRepeticaoCentral(anuncio, imoveis, urlsNaCarteira);
+  const estaOculto = (anuncio: AnuncioCentralAngariacao) => anunciosVisualizados.has(chaveAnuncio(anuncio)) || repeticaoDo(anuncio).ocultar;
+  const listaOculta = aba === "selecionados" ? [] : lista.filter(estaOculto);
+  const listaVisivel = aba === "selecionados" || mostrarOcultos ? lista : lista.filter((anuncio) => !estaOculto(anuncio));
+  const anunciosRadarOcultos = radar.anuncios.filter((item) => estaOculto(item.anuncio));
+  const anunciosRadarVisiveis = mostrarOcultos ? radar.anuncios : radar.anuncios.filter((item) => !estaOculto(item.anuncio));
 
   return (
     <>
@@ -294,24 +331,29 @@ export default function CentralAngariacaoView() {
 
               <div className="central-radar-lista-head">
                 <div><h3>Anúncios encontrados</h3><span>Priorizados por sinais objetivos do anúncio</span></div>
-                {radarNovos > 0 && <button className="btn btn-ghost" type="button" onClick={() => void marcarTodosVistos()}>Marcar todos como vistos</button>}
+                <div className="central-result-actions">
+                  {anunciosRadarOcultos.length > 0 && <button className="btn btn-ghost" type="button" onClick={() => setMostrarOcultos((atual) => !atual)}>{mostrarOcultos ? "Ocultar repetidos" : `Mostrar ${anunciosRadarOcultos.length} visualizado${anunciosRadarOcultos.length === 1 ? "" : "s"}/repetido${anunciosRadarOcultos.length === 1 ? "" : "s"}`}</button>}
+                  {radarNovos > 0 && <button className="btn btn-ghost" type="button" onClick={() => void marcarTodosVistos()}>Marcar todos como vistos</button>}
+                </div>
               </div>
-              {!radar.anuncios.length ? <div className="card central-empty">O histórico começará a aparecer quando o Radar encontrar anúncios novos.</div> : (
+              {!anunciosRadarVisiveis.length ? <div className="card central-empty">{radar.anuncios.length ? "Todos os anúncios encontrados já foram visualizados ou estão no pipeline." : "O histórico começará a aparecer quando o Radar encontrar anúncios novos."}</div> : (
                 <div className="central-result-grid">
-                  {radar.anuncios.map((item) => {
+                  {anunciosRadarVisiveis.map((item) => {
                     const anuncio = item.anuncio;
                     const avaliacao = avaliarOportunidade(anuncio);
-                    const duplicado = urlsNaCarteira.has(anuncio.url);
+                    const repeticao = repeticaoDo(anuncio);
+                    const visualizado = anunciosVisualizados.has(chaveAnuncio(anuncio));
+                    const duplicado = repeticao.ocultar;
                     return (
-                      <article className={`card central-card${item.visto ? "" : " radar-nao-visto"}`} key={item.id}>
+                      <article className={`card central-card${item.visto ? "" : " radar-nao-visto"}${visualizado ? " central-card-visualizado" : ""}`} key={item.id}>
                         <div className="central-card-media">{anuncio.imagem ? <Image loader={carregarImagemPortal} unoptimized src={`/api/central-angariacao/imagem?url=${encodeURIComponent(anuncio.imagem)}`} alt="" fill sizes="(max-width: 720px) 100vw, 33vw" /> : <span>Sem foto disponibilizada</span>}</div>
                         <div className="central-card-body">
-                          <div className="central-card-tags"><span>{rotuloPortal(anuncio.portal)}</span><span className={`radar-score ${avaliacao.faixa}`}>{avaliacao.nota}/100</span>{!item.visto && <span className="radar-novo">Novo</span>}{duplicado && <span className="duplicado">Já está na carteira</span>}</div>
+                          <div className="central-card-tags"><span>{rotuloPortal(anuncio.portal)}</span><span className={`radar-score ${avaliacao.faixa}`}>{avaliacao.nota}/100</span>{!item.visto && <span className="radar-novo">Novo</span>}{visualizado && <span className="visualizado">Visualizado</span>}{repeticao.motivo === "url-na-carteira" && <span className="duplicado">Já está na carteira</span>}{repeticao.motivo === "casa-no-pipeline" && <span className="duplicado">Casa já no pipeline</span>}{repeticao.motivo === "apartamento-no-endereco" && <span className="endereco-pipeline">Endereço no pipeline</span>}</div>
                           <h3>{anuncio.titulo}</h3>
                           <strong className="central-price">{anuncio.preco ? fmtMoney(anuncio.preco) : "Preço não informado"}</strong>
                           <p>{[anuncio.endereco, anuncio.bairro, anuncio.cidade].filter(Boolean).join(" · ") || "Localização não informada"}</p>
                           <div className="central-radar-motivos">{avaliacao.motivos.slice(0, 3).map((motivo) => <span key={motivo}>✓ {motivo}</span>)}</div>
-                          <div className="central-card-actions"><a className="btn btn-ghost" href={anuncio.url} target="_blank" rel="noreferrer">Ver anúncio ↗</a><button className="btn btn-primary" type="button" disabled={duplicado} onClick={() => importar(anuncio)}>Revisar e importar</button></div>
+                          <div className="central-card-actions"><a className="btn btn-ghost" href={anuncio.url} target="_blank" rel="noreferrer" onClick={() => void registrarVisualizacao(anuncio)}>Ver anúncio ↗</a><button className="btn btn-primary" type="button" disabled={duplicado} onClick={() => importar(anuncio)}>Revisar e importar</button></div>
                         </div>
                       </article>
                     );
@@ -385,8 +427,9 @@ export default function CentralAngariacaoView() {
           {resultado?.aviso && aba === "resultados" && <div className="central-aviso">{resultado.aviso}</div>}
           {aba === "resultados" && resultado?.urlPesquisa && (
             <div className="central-result-head">
-              <span>{resultado.anuncios.length} resultado{resultado.anuncios.length === 1 ? "" : "s"} lido{resultado.anuncios.length === 1 ? "" : "s"}</span>
+              <span>{listaVisivel.length} de {resultado.anuncios.length} resultado{resultado.anuncios.length === 1 ? "" : "s"} exibido{listaVisivel.length === 1 ? "" : "s"}</span>
               <div className="central-result-actions">
+                {listaOculta.length > 0 && <button className="btn btn-ghost" type="button" onClick={() => setMostrarOcultos((atual) => !atual)}>{mostrarOcultos ? "Ocultar visualizados e repetidos" : `Mostrar ${listaOculta.length} visualizado${listaOculta.length === 1 ? "" : "s"}/repetido${listaOculta.length === 1 ? "" : "s"}`}</button>}
                 {preparandoRadar ? (
                   <div className="central-radar-nome">
                     <input aria-label="Nome da busca no Radar" value={nomeBuscaRadar} maxLength={120} onChange={(e) => setNomeBuscaRadar(e.target.value)} autoFocus />
@@ -398,20 +441,22 @@ export default function CentralAngariacaoView() {
               </div>
             </div>
           )}
-          {!lista.length ? (
+          {!listaVisivel.length ? (
             <div className="card empty-state central-empty">
               <div className="empty-icon">⌕</div>
-              <div className="empty-title">{aba === "selecionados" ? "Nenhum anúncio selecionado" : "Nenhum resultado disponível"}</div>
-              <div className="empty-sub">{aba === "selecionados" ? "Marque resultados interessantes para comparar antes de importar." : "Ajuste os filtros ou abra a pesquisa diretamente no portal."}</div>
+              <div className="empty-title">{aba === "selecionados" ? "Nenhum anúncio selecionado" : lista.length ? "Todos os resultados já foram tratados" : "Nenhum resultado disponível"}</div>
+              <div className="empty-sub">{aba === "selecionados" ? "Marque resultados interessantes para comparar antes de importar." : lista.length ? "Use “Mostrar visualizados e repetidos” para revisar os anúncios ocultados." : "Ajuste os filtros ou abra a pesquisa diretamente no portal."}</div>
             </div>
           ) : (
             <div className="central-result-grid">
-              {lista.map((anuncio) => {
+              {listaVisivel.map((anuncio) => {
                 const escolhido = selecionados.some((a) => a.url === anuncio.url);
-                const duplicado = urlsNaCarteira.has(anuncio.url);
+                const repeticao = repeticaoDo(anuncio);
+                const visualizado = anunciosVisualizados.has(chaveAnuncio(anuncio));
+                const duplicado = repeticao.ocultar;
                 const avaliacao = avaliarOportunidade(anuncio);
                 return (
-                  <article className="card central-card" key={`${anuncio.portal}:${anuncio.idExterno}`}>
+                  <article className={`card central-card${visualizado ? " central-card-visualizado" : ""}`} key={`${anuncio.portal}:${anuncio.idExterno}`}>
                     <div className="central-card-media">
                       {anuncio.imagem ? (
                         <Image
@@ -429,13 +474,16 @@ export default function CentralAngariacaoView() {
                         <span>{rotuloPortal(anuncio.portal)}</span>
                         <span className={`radar-score ${avaliacao.faixa}`}>Oportunidade {avaliacao.nota}/100</span>
                         {anuncio.publicadoTexto && <span>{anuncio.publicadoTexto}</span>}
-                        {duplicado && <span className="duplicado">Já está na carteira</span>}
+                        {visualizado && <span className="visualizado">Visualizado</span>}
+                        {repeticao.motivo === "url-na-carteira" && <span className="duplicado">Já está na carteira</span>}
+                        {repeticao.motivo === "casa-no-pipeline" && <span className="duplicado">Casa já no pipeline</span>}
+                        {repeticao.motivo === "apartamento-no-endereco" && <span className="endereco-pipeline">Endereço no pipeline</span>}
                       </div>
                       <h3>{anuncio.titulo}</h3>
                       <strong className="central-price">{anuncio.preco ? fmtMoney(anuncio.preco) : "Preço não informado"}</strong>
                       <p>{[anuncio.endereco, anuncio.bairro, anuncio.cidade].filter(Boolean).join(" · ") || "Localização não informada"}</p>
                       <div className="central-card-actions">
-                        <a className="btn btn-ghost" href={anuncio.url} target="_blank" rel="noreferrer">Ver anúncio ↗</a>
+                        <a className="btn btn-ghost" href={anuncio.url} target="_blank" rel="noreferrer" onClick={() => void registrarVisualizacao(anuncio)}>Ver anúncio ↗</a>
                         <button className="btn btn-ghost" type="button" onClick={() => alternarSelecionado(anuncio)}>{escolhido ? "Remover" : "Selecionar"}</button>
                         <button className="btn btn-primary" type="button" disabled={duplicado} onClick={() => importar(anuncio)}>Revisar e importar</button>
                       </div>
