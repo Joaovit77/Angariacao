@@ -27,6 +27,7 @@ import { nomeProprio } from "@/lib/normalizacao";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
+import type { PreCadastroInicial } from "@/lib/uiModal";
 import type { Imovel, StatusHistoryEntry } from "@/lib/tipos";
 
 interface Status {
@@ -34,7 +35,7 @@ interface Status {
   tone: "" | "ok" | "warn" | "err";
 }
 
-export default function ModalPreCadastro() {
+export default function ModalPreCadastro({ inicial }: { inicial?: PreCadastroInicial }) {
   const abrirModal = useUiModal((s) => s.abrirModal);
   const fecharModal = useUiModal((s) => s.fecharModal);
   const { usuario } = useSessao();
@@ -44,7 +45,7 @@ export default function ModalPreCadastro() {
 
   const [codigo, setCodigo] = useState(() => sugerirCodigoImovel(imoveis));
   const [cep, setCep] = useState("");
-  const [endereco, setEndereco] = useState("");
+  const [endereco, setEndereco] = useState(inicial?.endereco || "");
   // Unidade e bloco são IDENTIDADE, não detalhe: no mesmo prédio o ap 101 e o
   // 202 são imóveis diferentes, de donos diferentes. Estão aqui, no modal de
   // cadastro mínimo, porque sem eles a checagem de duplicidade compara dois
@@ -53,9 +54,9 @@ export default function ModalPreCadastro() {
   const [unidade, setUnidade] = useState("");
   const [bloco, setBloco] = useState("");
   const [edificio, setEdificio] = useState("");
-  const [bairro, setBairro] = useState("");
-  const [cidade, setCidade] = useState("Londrina");
-  const [estado, setEstado] = useState("PR");
+  const [bairro, setBairro] = useState(inicial?.bairro || "");
+  const [cidade, setCidade] = useState(inicial?.cidade || "Londrina");
+  const [estado, setEstado] = useState(inicial?.estado || "PR");
   const [proprietarioNome, setProprietarioNome] = useState("");
   const [proprietarioTelefone, setProprietarioTelefone] = useState("");
   // Sem padrão, pela mesma razão do ModalImovel: chutar a origem envenena o
@@ -64,7 +65,7 @@ export default function ModalPreCadastro() {
   // é "OLX / Canal Pro") — dedução a partir do que foi visto, não do primeiro
   // item da lista. Antes este modal não gravava origem NENHUMA, e todo imóvel
   // capturado rápido ficava invisível no Foco do dia e no ranking de canais.
-  const [origemImovel, setOrigemImovel] = useState("");
+  const [origemImovel, setOrigemImovel] = useState(inicial?.origemImovel || "");
   // Idade do anúncio no momento do garimpo. String porque é campo de input; o
   // salvamento converte. Ver calculo/idadeAnuncio.ts para o porquê.
   const [anuncioIdadeDias, setAnuncioIdadeDias] = useState("");
@@ -72,7 +73,7 @@ export default function ModalPreCadastro() {
   const [salvando, setSalvando] = useState(false);
 
   // --- captura por foto/texto ---
-  const [textoAnuncio, setTextoAnuncio] = useState("");
+  const [textoAnuncio, setTextoAnuncio] = useState(inicial?.textoAnuncio || "");
   const [lendo, setLendo] = useState(false);
   const [iaStatus, setIaStatus] = useState<Status>({ msg: "", tone: "" });
   // O que a IA leu além dos campos do formulário. Fica visível no resumo antes
@@ -81,7 +82,9 @@ export default function ModalPreCadastro() {
   const [extras, setExtras] = useState<Pick<
     AnuncioExtraido,
     "tipo" | "quartos" | "vagas" | "valorAluguel"
-  > | null>(null);
+  > | null>(() => inicial?.valorAluguel != null
+    ? { tipo: null, quartos: null, vagas: null, valorAluguel: inicial.valorAluguel }
+    : null);
   // Coordenadas geocodificadas a partir do CEP: gravadas junto do imóvel para
   // que a edição posterior já abra o mapa no ponto certo (sem rebuscar o CEP).
   const [latitude, setLatitude] = useState<number | null>(null);

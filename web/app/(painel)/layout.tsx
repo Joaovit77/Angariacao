@@ -18,6 +18,7 @@ import EsqueletoPainel from "@/components/painel/EsqueletoPainel";
 import Celebracao from "@/components/painel/Celebracao";
 import IndicadorFollowUp from "@/components/painel/IndicadorFollowUp";
 import SincronizacaoRespostas from "@/components/painel/SincronizacaoRespostas";
+import MonitorRadarAngariacao from "@/components/central/MonitorRadarAngariacao";
 import ModalOverlay from "@/components/modais/ModalOverlay";
 import PortaoTermos from "@/components/legal/PortaoTermos";
 import RodapeApp from "@/components/RodapeApp";
@@ -155,6 +156,8 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
     {/* Idem: a assinatura do Realtime não pode ser derrubada e reaberta a cada
         navegação. Não renderiza nada — só mantém o store em dia com o banco. */}
     <SincronizacaoRespostas />
+    {/* Busca no máximo um radar vencido por rodada e só enquanto o painel está aberto. */}
+    <MonitorRadarAngariacao />
     </PortaoTermos>
   );
 }

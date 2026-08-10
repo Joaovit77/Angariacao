@@ -79,6 +79,120 @@
   --font-mono: 'SF Mono', 'Roboto Mono', Consolas, monospace;
 }
 
+/* ================================================================
+   CENTRAL DE ANGARIAÇÃO
+   Resultados de portal ficam visualmente fora do Pipeline: só o botão
+   "Revisar e importar" abre o pré-cadastro que pode criar uma oportunidade.
+   ================================================================ */
+.central-head{ align-items:center; }
+.central-badge{
+  padding:7px 11px; border:1px solid var(--border); border-radius:999px;
+  color:var(--text-dim); background:var(--bg-elev-1); font-size:12px; font-weight:700;
+}
+.central-tabs{
+  display:flex; gap:6px; margin:0 0 18px; padding:5px; width:max-content;
+  max-width:100%; overflow-x:auto; border:1px solid var(--border); border-radius:12px;
+  background:var(--bg-elev-1);
+}
+.central-tabs button{
+  border:0; border-radius:8px; background:transparent; color:var(--text-dim);
+  padding:9px 13px; white-space:nowrap; cursor:pointer; font:inherit; font-size:13px; font-weight:700;
+}
+.central-tabs button.active{ background:var(--accent-soft); color:var(--accent-strong); }
+.card.central-filtros{ padding:22px; }
+.central-intro{ display:flex; flex-direction:column; gap:4px; margin-bottom:16px; }
+.central-intro span{ color:var(--text-dim); font-size:13px; }
+.central-portal-grid{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-bottom:18px; }
+.central-portal{
+  display:flex; flex-direction:column; align-items:flex-start; gap:4px; padding:15px;
+  border:1px solid var(--border); border-radius:12px; color:var(--text); background:var(--bg-elev-2);
+  cursor:pointer; text-align:left; font:inherit;
+}
+.central-portal:hover,.central-portal.active{ border-color:var(--accent); }
+.central-portal.active{ box-shadow:inset 0 0 0 1px var(--accent); background:var(--accent-soft); }
+.central-portal span{ font-weight:800; }
+.central-portal small{ color:var(--text-dim); }
+.central-form-grid{ display:grid; grid-template-columns:2fr .65fr 1.4fr 1.4fr 1fr 1fr 1fr 1.25fr; gap:12px; }
+.central-form-grid label{ color:var(--text-dim); font-size:12px; font-weight:700; }
+.central-form-grid input,.central-form-grid select{
+  width:100%; margin-top:6px; border:1px solid var(--border); border-radius:9px;
+  padding:10px 11px; background:var(--bg-elev-1); color:var(--text); font:inherit;
+}
+.central-form-grid input:focus,.central-form-grid select:focus{ outline:2px solid var(--accent-soft); border-color:var(--accent); }
+.central-form-grid select:disabled{ opacity:.55; cursor:not-allowed; }
+.central-hint{ margin-top:10px; color:var(--text-faint); font-size:12px; line-height:1.4; }
+.central-check{ display:flex; align-items:center; gap:8px; margin-top:16px; color:var(--text-dim); font-size:13px; }
+.central-check input{ accent-color:var(--accent); }
+.central-actions{ display:flex; justify-content:flex-end; margin-top:20px; }
+.central-aviso{
+  margin-bottom:12px; padding:12px 14px; border:1px solid var(--warn); border-radius:10px;
+  color:var(--warn); background:var(--warn-soft); font-size:13px;
+}
+.central-result-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; color:var(--text-dim); font-size:13px; }
+.central-result-actions{ display:flex; flex-wrap:wrap; gap:8px; }
+.central-radar-nome{ display:flex; flex-wrap:wrap; gap:7px; }
+.central-radar-nome input{ min-width:240px; border:1px solid var(--accent); border-radius:8px; padding:8px 10px; background:var(--bg-elev-1); color:var(--text); font:inherit; font-size:12px; }
+.central-result-grid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+.card.central-card{ padding:0; overflow:hidden; content-visibility:auto; contain-intrinsic-size:auto 470px; }
+.central-card-media{ position:relative; aspect-ratio:16/9; display:grid; place-items:center; overflow:hidden; background:var(--bg-elev-2); color:var(--text-faint); font-size:12px; }
+.central-card-media img{ object-fit:cover; }
+.central-card-body{ padding:15px; }
+.central-card-tags{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:9px; }
+.central-card-tags span{ padding:4px 7px; border-radius:999px; background:var(--accent-soft); color:var(--accent-strong); font-size:10px; font-weight:800; text-transform:uppercase; }
+.central-card-tags .duplicado{ color:var(--warn); background:var(--warn-soft); }
+.central-card-tags .radar-novo{ color:var(--good); background:var(--good-soft); }
+.central-card-tags .radar-score.alta{ color:var(--good); background:var(--good-soft); }
+.central-card-tags .radar-score.media{ color:var(--warn); background:var(--warn-soft); }
+.central-card-tags .radar-score.baixa{ color:var(--text-dim); background:var(--bg-elev-3); }
+.central-card h3{ margin:0 0 9px; font-size:15px; line-height:1.35; }
+.central-price{ display:block; margin-bottom:7px; color:var(--good); font-size:17px; }
+.central-card p{ min-height:34px; margin:0 0 14px; color:var(--text-dim); font-size:12px; line-height:1.45; }
+.central-card-actions{ display:flex; flex-wrap:wrap; gap:7px; }
+.central-card-actions .btn{ flex:1 1 auto; font-size:11px; padding:8px 9px; }
+.central-empty{ margin-top:12px; }
+.central-radar{ display:flex; flex-direction:column; gap:16px; }
+.central-radar-hero{ display:flex; align-items:center; justify-content:space-between; gap:28px; padding:22px; }
+.central-radar-hero h3{ margin:4px 0 6px; font-size:20px; }
+.central-radar-hero p{ max-width:680px; margin:0; color:var(--text-dim); font-size:13px; line-height:1.55; }
+.central-radar-kicker{ color:var(--accent-strong); font-size:11px; font-weight:900; letter-spacing:.09em; text-transform:uppercase; }
+.central-radar-metricas{ display:flex; gap:10px; flex-shrink:0; }
+.central-radar-metricas strong{ min-width:105px; padding:13px; border:1px solid var(--border); border-radius:10px; background:var(--bg-elev-2); color:var(--accent-strong); font:800 24px var(--font-display); text-align:center; }
+.central-radar-metricas small{ display:block; margin-top:3px; color:var(--text-dim); font:600 10px var(--font-body); text-transform:uppercase; }
+.central-radar-buscas{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.card.central-radar-busca{ display:flex; justify-content:space-between; gap:18px; padding:17px; }
+.central-radar-busca h3{ margin:0 0 5px; font-size:15px; }
+.central-radar-busca p{ margin:0 0 8px; color:var(--text-dim); font-size:12px; }
+.central-radar-busca small{ color:var(--text-faint); font-size:10px; }
+.central-radar-actions{ display:flex; flex-direction:column; align-items:stretch; gap:7px; min-width:132px; }
+.central-radar-actions .btn{ padding:7px 9px; font-size:10px; }
+.central-radar-toggle{ display:flex; align-items:center; justify-content:flex-end; gap:6px; color:var(--text-dim); font-size:11px; font-weight:700; }
+.central-radar-toggle input{ accent-color:var(--accent); }
+.central-radar-lista-head{ display:flex; align-items:end; justify-content:space-between; gap:12px; margin-top:4px; }
+.central-radar-lista-head h3{ margin:0 0 3px; font-size:17px; }
+.central-radar-lista-head span{ color:var(--text-dim); font-size:12px; }
+.central-radar-motivos{ display:flex; flex-direction:column; gap:3px; min-height:54px; margin:-5px 0 12px; color:var(--text-dim); font-size:11px; }
+.card.central-card.radar-nao-visto{ box-shadow:inset 0 0 0 1px var(--good); }
+
+@media (max-width:1100px){
+  .central-portal-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .central-form-grid{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .central-result-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .central-radar-buscas{ grid-template-columns:1fr; }
+}
+@media (max-width:720px){
+  .central-head{ align-items:flex-start; }
+  .central-badge{ display:none; }
+  .card.central-filtros{ padding:15px; }
+  .central-portal-grid,.central-form-grid,.central-result-grid{ grid-template-columns:1fr; }
+  .central-result-head{ align-items:flex-start; flex-direction:column; }
+  .central-radar-hero,.central-radar-lista-head{ align-items:flex-start; flex-direction:column; }
+  .central-radar-metricas{ width:100%; }
+  .central-radar-metricas strong{ flex:1; min-width:0; }
+  .card.central-radar-busca{ flex-direction:column; }
+  .central-radar-actions{ flex-direction:row; flex-wrap:wrap; }
+  .central-actions .btn{ width:100%; }
+}
+
 /* ============================================================
    TEMA CLARO
    Mesma identidade (verde + dourado), invertida: o papel é quase

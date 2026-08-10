@@ -1,5 +1,10 @@
 # Nova funcionalidade: Central de Angariação
 
+> **Estado em 10/08/2026:** primeira versão implementada no Next.js como
+> `/central-angariacao`, com OLX e Chaves na Mão, busca sob demanda, seleção
+> fora da carteira e revisão no pré-cadastro antes de entrar no Pipeline.
+> Wimóveis e pesquisas salvas permanecem como evoluções posteriores.
+
 
 ## Objetivo
 
@@ -44,7 +49,12 @@ Criar uma tela chamada:
 
 Essa tela permitirá pesquisar imóveis diretamente em portais imobiliários.
 
-Nesta primeira versão, o suporte será apenas para **OLX**.
+Nesta primeira versão, o suporte será para **OLX** e **Chaves na Mão**.
+
+A OLX prioriza a descoberta de anúncios diretos com proprietários. O Chaves
+na Mão complementa o garimpo quando o anúncio publica uma localização mais
+detalhada. Endereço continua opcional: resultado sem endereço pode ser
+revisado e completado durante o contato.
 
 ---
 

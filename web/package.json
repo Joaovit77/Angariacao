@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "browser": "set \"HOME=%USERPROFILE%\"&& set \"AGENT_BROWSER_EXECUTABLE_PATH=C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\"&& set \"AGENT_BROWSER_ARGS=--no-sandbox,--disable-gpu\"&& agent-browser",
     "gera-oraculo": "node scripts/gera-oraculo.mjs"
   },
   "dependencies": {
@@ -19,6 +20,7 @@
     "leaflet.markercluster": "^1.5.3",
     "next": "16.2.10",
     "openai": "^6.48.0",
+    "playwright-core": "^1.62.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "zustand": "^5.0.14"
@@ -30,9 +32,13 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "agent-browser": "^0.33.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "typescript": "^5",
     "vitest": "^4.1.10"
+  },
+  "allowScripts": {
+    "agent-browser@0.33.2": true
   }
 }

@@ -11,6 +11,29 @@ export function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Relógio centralizado para regras que trabalham em milissegundos. */
+export function agoraTimestamp(): number {
+  return Date.now();
+}
+
+/** Instante atual completo, pronto para colunas timestamptz. */
+export function agoraISOString(): string {
+  return new Date().toISOString();
+}
+
+/** Converte um datetime ISO em milissegundos, sem espalhar Date pelo app. */
+export function timestampDeIso(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const valor = new Date(iso).getTime();
+  return Number.isFinite(valor) ? valor : null;
+}
+
+export function fmtDataHoraIso(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const data = new Date(iso);
+  return Number.isNaN(data.getTime()) ? "" : data.toLocaleString("pt-BR");
+}
+
 export interface IntervaloSemana {
   start: string;
   end: string;
@@ -79,6 +102,45 @@ export function daysBetween(isoA: string | null | undefined, isoB: string | null
   const a = parseDate(isoA), b = parseDate(isoB);
   if (!a || !b) return null;
   return Math.round((b.getTime() - a.getTime()) / 86400000);
+}
+
+const MESES_PT: Record<string, number> = {
+  jan: 0, fev: 1, mar: 2, abr: 3, mai: 4, jun: 5,
+  jul: 6, ago: 7, set: 8, out: 9, nov: 10, dez: 11,
+};
+
+/** Converte os rótulos publicados pela OLX sem atribuir uma data quando
+    o portal usar um formato desconhecido. */
+export function dataPublicacaoOlx(texto: string, agora = new Date()): Date | null {
+  const hora = texto.match(/(\d{1,2}):(\d{2})/);
+  if (!hora) return null;
+  const horas = Number(hora[1]);
+  const minutos = Number(hora[2]);
+
+  if (/^hoje\b/i.test(texto)) {
+    return new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), horas, minutos);
+  }
+  if (/^ontem\b/i.test(texto)) {
+    return new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() - 1, horas, minutos);
+  }
+
+  const data = texto.toLowerCase().match(/^(\d{1,2})\s+de\s+([a-zç]{3})/i);
+  const mes = data ? MESES_PT[data[2]] : undefined;
+  if (!data || mes == null) return null;
+  let ano = agora.getFullYear();
+  let resultado = new Date(ano, mes, Number(data[1]), horas, minutos);
+  if (resultado.getTime() > agora.getTime() + 24 * 60 * 60 * 1000) {
+    resultado = new Date(--ano, mes, Number(data[1]), horas, minutos);
+  }
+  return Number.isNaN(resultado.getTime()) ? null : resultado;
+}
+
+export function dentroDoPeriodo(publicadoEm: string | null | undefined, dias: number, agora = new Date()): boolean {
+  if (!publicadoEm) return false;
+  const data = new Date(publicadoEm);
+  if (Number.isNaN(data.getTime())) return false;
+  const idade = agora.getTime() - data.getTime();
+  return idade >= 0 && idade <= dias * 24 * 60 * 60 * 1000;
 }
 
 // Soma dias a uma data ISO — usado para calcular a data do próximo

@@ -18,7 +18,7 @@ import { useAppStore } from "@/lib/store";
 
 const STATUS_FUNIL: readonly string[] = STATUS_FLOW;
 
-type Badge = "pipeline" | "agenda" | "respostas";
+type Badge = "pipeline" | "agenda" | "respostas" | "radar";
 
 interface ItemNav {
   rota: string;
@@ -57,6 +57,17 @@ const ITENS: ItemNav[] = [
     icone: (
       <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M3 3h18v4H3zM3 10h12v4H3zM3 17h7v4H3z" />
+      </svg>
+    ),
+  },
+  {
+    rota: "/central-angariacao",
+    texto: "Central de Angariação",
+    badge: "radar",
+    icone: (
+      <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="11" cy="11" r="7" />
+        <path d="m16 16 5 5M11 7v8M7 11h8" />
       </svg>
     ),
   },
@@ -173,6 +184,7 @@ export default function BarraLateral({
   const agenda = useAppStore((s) => s.agenda);
   const ehAdmin = useAppStore((s) => s.ehAdmin);
   const operaCarteira = useAppStore((s) => s.operaCarteira);
+  const radarNovos = useAppStore((s) => s.radarNovos);
 
   /* Três menus, não dois. Quem opera o sistema sem trabalhar carteira
      vê SÓ a Administração: as dez telas de corretor abririam numa
@@ -208,6 +220,7 @@ export default function BarraLateral({
     pipeline: imoveis.filter((i) => STATUS_FUNIL.includes(i.status) && i.status !== "Locado").length,
     agenda: agenda.filter((a) => !a.done).length,
     respostas: respostasPendentes,
+    radar: radarNovos,
   };
 
   function navegar(rota: string) {
