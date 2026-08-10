@@ -15,6 +15,7 @@
     "@sparticuz/chromium": "^149.0.0",
     "@supabase/supabase-js": "^2.110.2",
     "chart.js": "^4.4.1",
+    "cheerio": "^1.2.0",
     "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
     "leaflet.heat": "^0.2.0",

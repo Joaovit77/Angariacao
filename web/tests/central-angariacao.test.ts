@@ -9,6 +9,7 @@ import {
 } from "@/lib/calculo/centralAngariacao";
 import { dataPublicacaoOlx, dentroDoPeriodo } from "@/lib/datas";
 import { extrairJsonLd, urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
+import { extrairAnunciosFirecrawl } from "@/lib/servidor/firecrawlCentralAngariacao";
 
 describe("Central de Angariação", () => {
   it("normaliza cidade e valores dos filtros", () => {
@@ -115,5 +116,51 @@ describe("Central de Angariação", () => {
     expect(anuncioPertenceACidade({ cidade: "Cornélio Procópio" }, "Londrina")).toBe(false);
     expect(anuncioPertenceACidade({ cidade: "Jacarezinho" }, "Londrina")).toBe(false);
     expect(anuncioPertenceACidade({ cidade: null }, "Londrina")).toBe(false);
+  });
+
+  it("transforma os cards renderizados da OLX pelo Firecrawl", () => {
+    const html = `<section class="olx-adcard">
+      <a data-testid="adcard-link" title="Casa direto com proprietário" href="https://pr.olx.com.br/imoveis/casa-1525177784">Casa direto com proprietário</a>
+      <span class="olx-adcard__price">R$ 2.500</span>
+      <span class="olx-adcard__location">Londrina, Centro</span>
+      <span class="olx-adcard__details">2 quartos, 70 m²</span>
+      <span class="olx-adcard__date">Hoje, 08:30</span>
+      <img src="https://img.olx.com.br/a.jpg">
+    </section>`;
+
+    expect(extrairAnunciosFirecrawl(html, {
+      portal: "olx",
+      cidade: "Londrina",
+      estado: "PR",
+      somenteProprietario: true,
+    })).toEqual([expect.objectContaining({
+      idExterno: "1525177784",
+      titulo: "Casa direto com proprietário",
+      preco: 2500,
+      cidade: "Londrina",
+      bairro: "Centro",
+      imagem: "https://img.olx.com.br/a.jpg",
+    })]);
+  });
+
+  it("transforma os cards renderizados do Viva Real pelo Firecrawl", () => {
+    const html = `<a href="https://www.vivareal.com.br/imovel/apartamento-3-quartos-centro-londrina-id-2904079401/">
+      <h2>Apartamento para alugar com 90 m², 3 quartos em Centro, Londrina</h2>
+      <p>Rua Sergipe</p><p>R$ 3.200 / mês</p>
+      <img src="https://resizedimgs.vivareal.com/a.jpg">
+    </a>`;
+
+    expect(extrairAnunciosFirecrawl(html, {
+      portal: "viva-real",
+      cidade: "Londrina",
+      estado: "PR",
+      dormitorios: 3,
+    })).toEqual([expect.objectContaining({
+      idExterno: "2904079401",
+      preco: 3200,
+      cidade: "Londrina",
+      bairro: "Centro",
+      endereco: "Rua Sergipe",
+    })]);
   });
 });

@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { anuncioPertenceACidade, PERIODOS_PUBLICACAO, PORTAIS_ANGARIACAO, rotuloPortal, type FiltrosCentralAngariacao, type ResultadoBuscaCentral } from "@/lib/calculo/centralAngariacao";
 import { dentroDoPeriodo } from "@/lib/datas";
 import { extrairJsonLd, urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
+import { buscarComFirecrawl, FirecrawlIndisponivel } from "@/lib/servidor/firecrawlCentralAngariacao";
 import { buscarComNavegador, NavegadorIndisponivel } from "@/lib/servidor/scraperCentralAngariacao";
 
 export const runtime = "nodejs";
@@ -9,6 +10,25 @@ export const maxDuration = 60;
 
 function resposta(corpo: ResultadoBuscaCentral, status = 200) {
   return Response.json(corpo, { status, headers: { "Cache-Control": "no-store" } });
+}
+
+function resultadoColeta(
+  coletados: ResultadoBuscaCentral["anuncios"],
+  seguros: FiltrosCentralAngariacao,
+  urlPesquisa: string,
+): ResultadoBuscaCentral {
+  const anuncios = coletados.filter((anuncio) => anuncioPertenceACidade(anuncio, seguros.cidade));
+  const filtroSemConfirmacao = (seguros.portal === "olx" || seguros.portal === "wimoveis")
+    && seguros.somenteProprietario
+    && anuncios.some((anuncio) => anuncio.anunciante !== "proprietario");
+  return {
+    ok: true,
+    anuncios,
+    urlPesquisa,
+    aviso: anuncios.length
+      ? (filtroSemConfirmacao ? `O ${rotuloPortal(seguros.portal)} não confirmou o filtro de proprietário; revise os anúncios antes de importar.` : undefined)
+      : "O portal não apresentou resultados para estes filtros.",
+  };
 }
 
 async function autenticado(request: Request): Promise<boolean> {
@@ -45,20 +65,27 @@ export async function POST(request: Request) {
   };
   const urlPesquisa = urlDaPesquisa(seguros);
 
+  if (process.env.FIRECRAWL_API_KEY && (seguros.portal === "olx" || seguros.portal === "viva-real")) {
+    try {
+      const coletados = await buscarComFirecrawl(seguros, urlPesquisa);
+      return resposta(resultadoColeta(coletados, seguros, urlPesquisa));
+    } catch (erro) {
+      console.warn("Central de Angariação: Firecrawl não concluiu a consulta:",
+        erro instanceof FirecrawlIndisponivel ? erro.message : erro);
+      if (process.env.VERCEL) {
+        return resposta({
+          ok: false,
+          anuncios: [],
+          urlPesquisa,
+          aviso: "O serviço de consulta não respondeu agora. A pesquisa pronta ainda pode ser aberta.",
+        });
+      }
+    }
+  }
+
   try {
     const coletados = await buscarComNavegador(seguros, urlPesquisa);
-    const anuncios = coletados.filter((anuncio) => anuncioPertenceACidade(anuncio, seguros.cidade));
-    const filtroSemConfirmacao = (seguros.portal === "olx" || seguros.portal === "wimoveis")
-      && seguros.somenteProprietario
-      && anuncios.some((anuncio) => anuncio.anunciante !== "proprietario");
-    return resposta({
-      ok: true,
-      anuncios,
-      urlPesquisa,
-      aviso: anuncios.length
-        ? (filtroSemConfirmacao ? `O ${rotuloPortal(seguros.portal)} não confirmou o filtro de proprietário; revise os anúncios antes de importar.` : undefined)
-        : "O portal não apresentou resultados para estes filtros.",
-    });
+    return resposta(resultadoColeta(coletados, seguros, urlPesquisa));
   } catch (erro) {
     // Sem Chrome no host (ex.: deploy ainda sem runtime de navegador), conserva
     // o fallback HTTP e o link pronto. No local e em hosts configurados, o
