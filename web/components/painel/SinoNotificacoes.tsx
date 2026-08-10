@@ -49,6 +49,7 @@ export default function SinoNotificacoes() {
   const router = useRouter();
   const imoveis = useAppStore((s) => s.imoveis);
   const agenda = useAppStore((s) => s.agenda);
+  const radarNovos = useAppStore((s) => s.radarNovos);
   const abrirModal = useUiModal((s) => s.abrirModal);
   const [aberto, setAberto] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -66,7 +67,7 @@ export default function SinoNotificacoes() {
   const respostas = contarRespostasPendentes(imoveis, hoje);
   const pendentes = agenda.filter((a) => !a.done && a.date <= hoje);
   const parados = imoveis.filter(isStale);
-  const total = eventos.length + respostas + pendentes.length + parados.length;
+  const total = eventos.length + respostas + pendentes.length + parados.length + radarNovos;
 
   // Fecha ao clicar fora. O listener só existe enquanto está aberto.
   useEffect(() => {
@@ -166,6 +167,16 @@ export default function SinoNotificacoes() {
                   {respostas} proprietário(s) responderam
                 </strong>
                 <span>Mensagem ainda não tratada</span>
+              </span>
+            </button>
+          )}
+
+          {radarNovos > 0 && (
+            <button type="button" className="topbar-pop-item" onClick={() => irPara("/central-angariacao?aba=radar")}>
+              <span className="topbar-pop-ic">📡</span>
+              <span className="topbar-pop-txt">
+                <strong>{radarNovos} anúncio{radarNovos === 1 ? " novo" : "s novos"} no Radar</strong>
+                <span>Abrir oportunidades encontradas automaticamente</span>
               </span>
             </button>
           )}

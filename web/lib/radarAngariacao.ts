@@ -2,7 +2,7 @@
 
 import { buscarNaCentral } from "./centralAngariacao";
 import { anuncioPertenceACidade, type AnuncioCentralAngariacao, type FiltrosCentralAngariacao } from "./calculo/centralAngariacao";
-import type { AnuncioRadar, BuscaRadar, EstadoRadar } from "./calculo/radarAngariacao";
+import { selecionarAnunciosNovosRadar, type AnuncioRadar, type BuscaRadar, type EstadoRadar } from "./calculo/radarAngariacao";
 import { getSupabase } from "./persistencia/supabase";
 import { agoraISOString } from "./datas";
 
@@ -128,8 +128,7 @@ export async function verificarBuscaRadar(userId: string, busca: BuscaRadar) {
     .select("portal,id_externo")
     .eq("busca_id", busca.id);
   if (erroExistentes) throw erroExistentes;
-  const chaves = new Set((existentes || []).map((item) => `${item.portal}:${item.id_externo}`));
-  const novos = resultado.anuncios.filter((anuncio) => !chaves.has(`${anuncio.portal}:${anuncio.idExterno}`));
+  const novos = selecionarAnunciosNovosRadar(resultado.anuncios, existentes || []);
 
   let inseridos: DbAnuncioRadar[] = [];
   if (novos.length) {

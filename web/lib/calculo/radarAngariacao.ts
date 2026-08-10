@@ -31,6 +31,19 @@ export interface EstadoRadar {
   anuncios: AnuncioRadar[];
 }
 
+/**
+ * Compara a coleta atual com o histórico da busca. A chave composta é a
+ * mesma da restrição UNIQUE do banco, portanto uma rodada do navegador e uma
+ * rodada agendada podem acontecer juntas sem criarem dois alertas.
+ */
+export function selecionarAnunciosNovosRadar(
+  anuncios: AnuncioCentralAngariacao[],
+  existentes: Array<{ portal: string; id_externo: string }>,
+): AnuncioCentralAngariacao[] {
+  const chaves = new Set(existentes.map((item) => `${item.portal}:${item.id_externo}`));
+  return anuncios.filter((anuncio) => !chaves.has(`${anuncio.portal}:${anuncio.idExterno}`));
+}
+
 export function nomePadraoBuscaRadar(filtros: FiltrosCentralAngariacao): string {
   const local = [filtros.bairro, filtros.cidade].filter(Boolean).join(", ");
   return `${local || "Minha busca"} · ${rotuloPortal(filtros.portal)}`;

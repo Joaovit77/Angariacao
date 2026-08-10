@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { avaliarOportunidade, type AnuncioCentralAngariacao } from "@/lib/calculo/centralAngariacao";
-import { buscaRadarEstaVencida, nomePadraoBuscaRadar, type BuscaRadar } from "@/lib/calculo/radarAngariacao";
+import {
+  buscaRadarEstaVencida,
+  nomePadraoBuscaRadar,
+  selecionarAnunciosNovosRadar,
+  type BuscaRadar,
+} from "@/lib/calculo/radarAngariacao";
 
 const anuncioBase: AnuncioCentralAngariacao = {
   idExterno: "123",
@@ -16,6 +21,16 @@ const anuncioBase: AnuncioCentralAngariacao = {
 };
 
 describe("Radar de Angariação", () => {
+  it("mantém somente anúncios que ainda não pertencem ao histórico da busca", () => {
+    const novo = { ...anuncioBase, idExterno: "novo", url: "https://www.olx.com.br/anuncio-novo" };
+    const resultado = selecionarAnunciosNovosRadar(
+      [anuncioBase, novo],
+      [{ portal: "olx", id_externo: anuncioBase.idExterno }],
+    );
+
+    expect(resultado).toEqual([novo]);
+  });
+
   it("prioriza anúncio direto, com endereço e valor sem inventar sinais", () => {
     const avaliacao = avaliarOportunidade(anuncioBase);
     expect(avaliacao.nota).toBe(80);
