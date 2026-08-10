@@ -90,6 +90,14 @@ export async function GET(request: Request): Promise<Response> {
       essencial: false,
     },
     {
+      chave: "firecrawl",
+      nome: "Busca de anúncios (Firecrawl)",
+      variavel: "FIRECRAWL_API_KEY",
+      configurado: tem("FIRECRAWL_API_KEY"),
+      semEla: "Os portais que bloqueiam consultas do servidor deixam de retornar anúncios.",
+      essencial: false,
+    },
+    {
       chave: "google",
       nome: "Google Agenda",
       variavel: "GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET",

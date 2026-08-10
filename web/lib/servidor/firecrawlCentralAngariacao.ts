@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { getCache } from "@vercel/functions";
 import { load, type CheerioAPI, type Cheerio } from "cheerio";
 import type { AnyNode } from "domhandler";
 import { dataPublicacaoOlx, dentroDoPeriodo } from "@/lib/datas";
@@ -9,6 +11,9 @@ import {
 
 const LIMITE_RESULTADOS = 50;
 const TIMEOUT_FIRECRAWL_MS = 55_000;
+export const CACHE_FIRECRAWL_TTL_SEGUNDOS = 20 * 60;
+const CACHE_FIRECRAWL_TTL_MS = CACHE_FIRECRAWL_TTL_SEGUNDOS * 1000;
+const consultasEmAndamento = new Map<string, Promise<AnuncioCentralAngariacao[]>>();
 
 interface RespostaFirecrawl {
   success?: boolean;
@@ -189,7 +194,24 @@ export function extrairAnunciosFirecrawl(
   }
 }
 
-export async function buscarComFirecrawl(
+function chaveCacheFirecrawl(filtros: FiltrosCentralAngariacao, urlPesquisa: string): string {
+  const dados = JSON.stringify([
+    urlPesquisa,
+    filtros.portal,
+    filtros.cidade,
+    filtros.estado,
+    filtros.bairro || "",
+    filtros.tipo || "",
+    filtros.valorMin ?? null,
+    filtros.valorMax ?? null,
+    filtros.dormitorios ?? null,
+    !!filtros.somenteProprietario,
+    filtros.diasPublicacao ?? null,
+  ]);
+  return createHash("sha256").update(dados).digest("hex");
+}
+
+async function buscarComFirecrawlAoVivo(
   filtros: FiltrosCentralAngariacao,
   urlPesquisa: string,
 ): Promise<AnuncioCentralAngariacao[]> {
@@ -207,7 +229,10 @@ export async function buscarComFirecrawl(
       proxy: "auto",
       location: { country: "BR", languages: ["pt-BR"] },
       timeout: TIMEOUT_FIRECRAWL_MS,
-      storeInCache: false,
+      // O cache do Firecrawl ainda custa 1 crédito, mas evita o proxy reforçado
+      // de até 5 créditos. O cache regional abaixo evita inclusive esse crédito.
+      storeInCache: true,
+      maxAge: CACHE_FIRECRAWL_TTL_MS,
     }),
     cache: "no-store",
     signal: AbortSignal.timeout(TIMEOUT_FIRECRAWL_MS + 5_000),
@@ -226,4 +251,49 @@ export async function buscarComFirecrawl(
     warning: corpo.warning || undefined,
   });
   return anuncios;
+}
+
+/**
+ * Evita pagar novamente por cliques duplos, recargas e abas que repetem os
+ * mesmos filtros. O Runtime Cache é regional e compartilhado pelas Functions;
+ * o Map cobre requisições simultâneas dentro da mesma instância.
+ */
+export async function buscarComFirecrawl(
+  filtros: FiltrosCentralAngariacao,
+  urlPesquisa: string,
+): Promise<AnuncioCentralAngariacao[]> {
+  const chave = chaveCacheFirecrawl(filtros, urlPesquisa);
+  const existente = consultasEmAndamento.get(chave);
+  if (existente) return existente;
+
+  const consulta = (async () => {
+    const cache = getCache({ namespace: "central-firecrawl-v1" });
+    try {
+      const armazenado = await cache.get(chave);
+      if (Array.isArray(armazenado)) {
+        console.info("[central-angariacao] consulta atendida pelo cache regional", {
+          portal: filtros.portal,
+          anuncios: armazenado.length,
+        });
+        return armazenado as AnuncioCentralAngariacao[];
+      }
+    } catch (erro) {
+      console.warn("[central-angariacao] cache regional indisponível; consultando ao vivo", erro);
+    }
+
+    const anuncios = await buscarComFirecrawlAoVivo(filtros, urlPesquisa);
+    try {
+      await cache.set(chave, anuncios, {
+        ttl: CACHE_FIRECRAWL_TTL_SEGUNDOS,
+        tags: ["central-firecrawl", `central-firecrawl:${filtros.portal}`],
+        name: `Central: ${filtros.portal}`,
+      });
+    } catch (erro) {
+      console.warn("[central-angariacao] não foi possível guardar a consulta no cache regional", erro);
+    }
+    return anuncios;
+  })().finally(() => consultasEmAndamento.delete(chave));
+
+  consultasEmAndamento.set(chave, consulta);
+  return consulta;
 }

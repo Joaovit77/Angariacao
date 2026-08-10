@@ -3,39 +3,32 @@
 /* ================================================================
    ROTA: /admin
 
-   A verificação é feita AQUI, e não pelo `ehAdmin` do store, por causa
-   de um detalhe de tempo: aquele flag começa `false` e só vira `true`
-   quando a consulta ao servidor volta. Usá-lo direto expulsaria o
-   administrador da própria página no primeiro quadro, antes de a
-   resposta chegar. Daí o estado de três valores — "ainda não sei" é
-   diferente de "não é".
+   O cargo vem do boot único do `SessaoProvider`. `cargoUsuarioId` forma o
+   terceiro estado que um booleano sozinho não oferece: antes da resposta,
+   esta página não decide nem renderiza; depois dela, `ehAdmin` pode negar ou
+   liberar sem fazer o perfil errado piscar.
 
    Isto continua sendo conveniência, não controle de acesso: quem barra
    de verdade é o `exigirAdmin` em cada rota /api/admin/*. Uma página
    que carregasse sem permissão não mostraria nada, porque toda consulta
    dela voltaria 403.
    ================================================================ */
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AdminView from "@/components/admin/AdminView";
-import { meuCargo } from "@/lib/admin";
+import { useSessao } from "@/components/SessaoProvider";
+import { useAppStore } from "@/lib/store";
 
 export default function Pagina() {
-  const [permitido, setPermitido] = useState<boolean | null>(null);
   const router = useRouter();
+  const { usuario } = useSessao();
+  const ehAdmin = useAppStore((s) => s.ehAdmin);
+  const cargoConfirmado = useAppStore((s) => s.cargoUsuarioId === usuario?.id);
 
   useEffect(() => {
-    let cancelado = false;
-    meuCargo().then(({ admin }) => {
-      if (cancelado) return;
-      setPermitido(admin);
-      if (!admin) router.replace("/home");
-    });
-    return () => {
-      cancelado = true;
-    };
-  }, [router]);
+    if (cargoConfirmado && !ehAdmin) router.replace("/home");
+  }, [cargoConfirmado, ehAdmin, router]);
 
-  if (permitido !== true) return null;
+  if (!cargoConfirmado || !ehAdmin) return null;
   return <AdminView />;
 }

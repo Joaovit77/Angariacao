@@ -45,6 +45,7 @@ import {
   carregarHistoricoIa,
   carregarLogs,
   carregarPainelAdmin,
+  carregarUsoFirecrawl,
   conexaoDoCorretor,
   definirCargo,
   definirIa,
@@ -54,6 +55,7 @@ import {
   type CapacidadeAmbiente,
   type ConexaoDeCorretor,
   type PainelAdmin,
+  type RespostaUsoFirecrawlAdmin,
 } from "@/lib/admin";
 import { useSessao } from "@/components/SessaoProvider";
 import { fmtDate } from "@/lib/formatadores";
@@ -133,6 +135,7 @@ export default function AdminView() {
   const [aberto, setAberto] = useState<string | null>(null);
 
   const [ambiente, setAmbiente] = useState<CapacidadeAmbiente[]>([]);
+  const [firecrawl, setFirecrawl] = useState<RespostaUsoFirecrawlAdmin | null>(null);
   const [conexoes, setConexoes] = useState<Map<string, ConexaoDeCorretor> | null>(null);
   const [verificando, setVerificando] = useState(false);
   const [serieIa, setSerieIa] = useState<Map<string, MesDeGasto[]>>(new Map());
@@ -165,6 +168,8 @@ export default function AdminView() {
 
   const recarregar = useCallback(() => {
     carregarPainelAdmin().then(aplicarPainel);
+    setFirecrawl(null);
+    carregarUsoFirecrawl().then(setFirecrawl);
   }, [aplicarPainel]);
 
   useEffect(() => {
@@ -183,6 +188,18 @@ export default function AdminView() {
     let cancelado = false;
     carregarAmbiente().then((r) => {
       if (!cancelado && r.ok) setAmbiente(r.capacidades || []);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  // O saldo vem da conta Firecrawl e é global para o deploy. Consultá-lo
+  // não executa raspagem nem gasta créditos; só lê a cobrança do ciclo.
+  useEffect(() => {
+    let cancelado = false;
+    carregarUsoFirecrawl().then((r) => {
+      if (!cancelado) setFirecrawl(r);
     });
     return () => {
       cancelado = true;
@@ -256,6 +273,7 @@ export default function AdminView() {
   const custoTotal = totais.custoUsd + (orfao?.custoUsd || 0);
 
   const faltando = ambiente.filter((c) => !c.configurado);
+  const usoFirecrawl = firecrawl?.ok ? firecrawl.uso : undefined;
 
   /* O Sophia é o único caso em que a tela sabe mais que a variável: o log
      abaixo já responde "chegou algum evento?", e é a diferença entre "a
@@ -304,21 +322,34 @@ export default function AdminView() {
   }
 
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1 className="page-title">Administração</h1>
-          <p className="page-sub">Contas, consumo de IA e o que quebrou — em todo o sistema</p>
+    <div className="admin-view">
+      <div className="page-head admin-page-head">
+        <div className="admin-page-identidade">
+          <div className="admin-page-icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M12 2l8 4v6c0 5-3.4 8.7-8 10-4.6-1.3-8-5-8-10V6z" />
+              <path d="M8.5 12.5l2.2 2.2 4.8-5" />
+            </svg>
+          </div>
+          <div>
+            <div className="admin-page-sobretitulo">Central de operações</div>
+            <h1 className="page-title">Administração</h1>
+            <p className="page-sub">Contas, consumo de IA e o que quebrou — em todo o sistema</p>
+          </div>
         </div>
         <button
           type="button"
-          className="btn"
+          className="btn admin-atualizar"
           onClick={() => {
             setCarregando(true);
             recarregar();
           }}
           disabled={carregando}
         >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M20 11a8 8 0 1 0-2.3 5.7" />
+            <path d="M20 4v7h-7" />
+          </svg>
           {carregando ? "Atualizando…" : "Atualizar"}
         </button>
       </div>
@@ -330,11 +361,11 @@ export default function AdminView() {
       )}
 
       <div className="grid grid-4 admin-kpis">
-        <div className="card kpi-card">
+        <div className="card kpi-card admin-kpi-card admin-kpi-contas">
           <div className="kpi-label">Corretores</div>
           <div className="kpi-value">{totais.corretores}</div>
         </div>
-        <div className="card kpi-card">
+        <div className="card kpi-card admin-kpi-card admin-kpi-travados">
           <div className="kpi-label">Travados</div>
           <div className="kpi-value" style={{ color: totais.bloqueados ? "var(--bad)" : undefined }}>
             {totais.bloqueados}
@@ -345,13 +376,13 @@ export default function AdminView() {
             {conexoes ? "sem número ou desconectados" : "sem número de WhatsApp"}
           </div>
         </div>
-        <div className="card kpi-card">
+        <div className="card kpi-card admin-kpi-card admin-kpi-atencao">
           <div className="kpi-label">Em atenção</div>
           <div className="kpi-value" style={{ color: totais.emAtencao ? "var(--warn)" : undefined }}>
             {totais.emAtencao}
           </div>
         </div>
-        <div className="card kpi-card">
+        <div className="card kpi-card admin-kpi-card admin-kpi-ia">
           <div className="kpi-label">IA no mês</div>
           <div className="kpi-value">{fmtUsd(custoTotal)}</div>
           <div className="kpi-delta flat">
@@ -361,6 +392,66 @@ export default function AdminView() {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="card admin-card-firecrawl">
+        <div className="card-title">
+          Firecrawl{" "}
+          <span className="section-note">consumo global da busca de anúncios</span>
+        </div>
+
+        {!firecrawl && <div className="admin-vazio">Consultando créditos…</div>}
+
+        {firecrawl && !usoFirecrawl && (
+          <div className="admin-firecrawl-falha">
+            {firecrawl.mensagem || "Não foi possível consultar o consumo agora."}
+          </div>
+        )}
+
+        {usoFirecrawl && (
+          <>
+            <div className="grid grid-3 admin-firecrawl-kpis">
+              <div>
+                <div className="kpi-label">Consumidos no ciclo</div>
+                <div className="admin-firecrawl-valor">
+                  {Intl.NumberFormat("pt-BR").format(usoFirecrawl.creditosConsumidos)}
+                </div>
+              </div>
+              <div>
+                <div className="kpi-label">Disponíveis</div>
+                <div className="admin-firecrawl-valor">
+                  {Intl.NumberFormat("pt-BR").format(usoFirecrawl.creditosDisponiveis)}
+                </div>
+              </div>
+              <div>
+                <div className="kpi-label">Plano do ciclo</div>
+                <div className="admin-firecrawl-valor">
+                  {Intl.NumberFormat("pt-BR").format(usoFirecrawl.creditosDoPlano)}
+                </div>
+              </div>
+            </div>
+            <div
+              className="admin-firecrawl-trilho"
+              role="progressbar"
+              aria-label="Créditos Firecrawl consumidos"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(usoFirecrawl.percentualConsumido)}
+            >
+              <div
+                className="admin-firecrawl-preenchido"
+                style={{ width: `${usoFirecrawl.percentualConsumido}%` }}
+              />
+            </div>
+            <div className="field-hint admin-firecrawl-periodo">
+              {usoFirecrawl.percentualConsumido.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% usado
+              {usoFirecrawl.inicioCiclo && usoFirecrawl.fimCiclo
+                ? ` · ciclo de ${dia(usoFirecrawl.inicioCiclo)} a ${dia(usoFirecrawl.fimCiclo)}`
+                : ""}
+              . O Firecrawl cobra em créditos; o valor em dinheiro depende do plano contratado.
+            </div>
+          </>
+        )}
       </div>
 
       {/* ------------------------------------------------------------------
@@ -731,7 +822,7 @@ export default function AdminView() {
           </table>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

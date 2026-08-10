@@ -289,7 +289,7 @@ export default function CentralAngariacaoView() {
             <div>
               <span className="central-radar-kicker">Radar Inteligente</span>
               <h3>Novas oportunidades, sem repetir anúncio</h3>
-              <p>As buscas ativas são verificadas a cada 30 minutos enquanto o painel estiver aberto. O primeiro resultado vira a referência e não gera alerta.</p>
+              <p>As buscas ativas são verificadas a cada 2 horas enquanto o painel estiver aberto, economizando créditos sem deixar o Radar desatualizado. O primeiro resultado vira a referência e não gera alerta.</p>
             </div>
             <div className="central-radar-metricas">
               <strong>{radar.buscas.filter((item) => item.ativo).length}<small>buscas ativas</small></strong>

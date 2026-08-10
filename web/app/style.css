@@ -4476,8 +4476,124 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
    precisar de tabela. */
 /* As seções respiram igual. Sem isto cada cartão carrega o próprio
    margin-bottom inline, e um deles acaba diferente dos outros. */
+/* A confirmação de cargo acontece antes do shell. Esta passagem neutra
+   impede menu, carteira ou notificações do perfil errado de piscarem. */
+.perfil-gate{
+  min-height:100dvh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:24px;
+  color:var(--text);
+  background:
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 34%),
+    var(--bg);
+}
+.perfil-gate-marca{
+  width:58px; height:58px;
+  display:grid; place-items:center;
+  margin-bottom:8px;
+  border:1px solid color-mix(in srgb, var(--accent) 34%, var(--border));
+  border-radius:18px;
+  color:var(--accent-strong);
+  background:color-mix(in srgb, var(--accent) 10%, var(--bg-elev-1));
+  box-shadow:0 16px 40px rgb(var(--sombra-rgb) / .15);
+}
+.perfil-gate-marca svg{ width:29px; height:29px; }
+.perfil-gate strong{ font-family:var(--font-display); font-size:20px; }
+.perfil-gate span{ color:var(--text-faint); font-size:12px; }
+.perfil-gate-linha{
+  width:150px; height:3px; overflow:hidden;
+  margin-top:10px; border-radius:10px;
+  background:var(--bg-elev-2);
+}
+.perfil-gate-linha i{
+  display:block; width:45%; height:100%; border-radius:inherit;
+  background:var(--accent-strong);
+  animation:perfil-gate 1s ease-in-out infinite alternate;
+}
+@keyframes perfil-gate{ from{ transform:translateX(0); } to{ transform:translateX(122%); } }
+@media (prefers-reduced-motion:reduce){ .perfil-gate-linha i{ animation:none; width:100%; opacity:.55; } }
+
+.admin-view{ --admin-realce:var(--accent-strong); }
+.admin-page-head{
+  position:relative;
+  overflow:hidden;
+  padding:22px 24px;
+  border:1px solid color-mix(in srgb, var(--admin-realce) 22%, var(--border-soft));
+  border-radius:calc(var(--radius) + 4px);
+  background:
+    radial-gradient(circle at 92% 10%, color-mix(in srgb, var(--admin-realce) 14%, transparent), transparent 34%),
+    linear-gradient(135deg, var(--bg-elev-1), color-mix(in srgb, var(--admin-realce) 5%, var(--bg-elev-1)));
+  box-shadow:0 14px 38px rgb(var(--sombra-rgb) / .1);
+}
+.admin-page-identidade{ display:flex; align-items:center; gap:15px; min-width:0; }
+.admin-page-icone{
+  width:48px; height:48px; flex:0 0 48px;
+  display:grid; place-items:center;
+  border-radius:14px;
+  color:var(--admin-realce);
+  border:1px solid color-mix(in srgb, var(--admin-realce) 28%, var(--border));
+  background:color-mix(in srgb, var(--admin-realce) 11%, var(--bg-elev-1));
+}
+.admin-page-icone svg{ width:25px; height:25px; }
+.admin-page-sobretitulo{
+  margin-bottom:3px;
+  color:var(--admin-realce);
+  font-size:10px; font-weight:800; letter-spacing:1.3px; text-transform:uppercase;
+}
+.admin-atualizar{ display:inline-flex; align-items:center; gap:7px; }
+.admin-atualizar svg{ width:15px; height:15px; }
+
+.admin-kpi-card{
+  isolation:isolate;
+  border-top:2px solid var(--admin-kpi-cor, var(--admin-realce));
+  box-shadow:0 8px 24px rgb(var(--sombra-rgb) / .07);
+}
+.admin-kpi-card::after{
+  content:""; position:absolute; z-index:-1;
+  width:90px; height:90px; right:-34px; top:-42px; border-radius:50%;
+  background:color-mix(in srgb, var(--admin-kpi-cor, var(--admin-realce)) 10%, transparent);
+}
+.admin-kpi-contas{ --admin-kpi-cor:var(--info); }
+.admin-kpi-travados{ --admin-kpi-cor:var(--bad); }
+.admin-kpi-atencao{ --admin-kpi-cor:var(--warn); }
+.admin-kpi-ia{ --admin-kpi-cor:var(--good); }
+.admin-card-firecrawl{
+  border-color:color-mix(in srgb, var(--admin-realce) 20%, var(--border-soft));
+  background:linear-gradient(120deg, var(--bg-elev-1), color-mix(in srgb, var(--admin-realce) 4%, var(--bg-elev-1)));
+}
+.admin-view > .card{ box-shadow:0 8px 26px rgb(var(--sombra-rgb) / .055); }
+
 .admin-card-ambiente,
+.admin-card-firecrawl,
 .admin-card-corretores{ margin-bottom:16px; }
+.admin-firecrawl-kpis{ margin-top:4px; }
+.admin-firecrawl-valor{
+  margin-top:4px;
+  font-family:var(--font-display);
+  font-size:24px;
+  line-height:1.1;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+.admin-firecrawl-trilho{
+  height:7px;
+  margin-top:16px;
+  overflow:hidden;
+  border-radius:20px;
+  background:var(--bg-elev-2);
+}
+.admin-firecrawl-preenchido{
+  height:100%;
+  border-radius:inherit;
+  background:linear-gradient(90deg, var(--accent), var(--accent-strong));
+  transition:width .18s ease;
+}
+.admin-firecrawl-periodo{ margin-top:8px; }
+.admin-firecrawl-falha{ color:var(--warn); font-size:13px; }
 .admin-ambiente{ display:flex; flex-wrap:wrap; gap:8px; }
 .admin-cap{
   display:inline-flex; align-items:center; gap:6px;
@@ -4640,4 +4756,9 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
      mesma história. */
   .admin-serie{ display:none; }
   .admin-motivo{ max-width:none; }
+  .admin-page-head{ padding:18px; }
+  .admin-page-identidade{ align-items:flex-start; }
+  .admin-page-icone{ width:40px; height:40px; flex-basis:40px; border-radius:12px; }
+  .admin-page-icone svg{ width:21px; height:21px; }
+  .admin-atualizar{ width:100%; justify-content:center; }
 }

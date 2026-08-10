@@ -230,6 +230,35 @@ export interface RespostaAmbiente {
   capacidades?: CapacidadeAmbiente[];
 }
 
+export interface UsoFirecrawlAdmin {
+  creditosDisponiveis: number;
+  creditosDoPlano: number;
+  creditosConsumidos: number;
+  percentualConsumido: number;
+  inicioCiclo: string | null;
+  fimCiclo: string | null;
+}
+
+export interface RespostaUsoFirecrawlAdmin {
+  ok: boolean;
+  configurado?: boolean;
+  mensagem?: string;
+  uso?: UsoFirecrawlAdmin;
+}
+
+/** Saldo global da chave Firecrawl do deploy, disponível apenas para admins. */
+export async function carregarUsoFirecrawl(): Promise<RespostaUsoFirecrawlAdmin> {
+  const headers = await autorizacao();
+  if (!headers) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
+  try {
+    const r = await fetch("/api/admin/firecrawl", { headers, cache: "no-store" });
+    const dados = (await r.json().catch(() => null)) as RespostaUsoFirecrawlAdmin | null;
+    return dados ?? { ok: false, mensagem: "Não foi possível consultar o Firecrawl." };
+  } catch {
+    return { ok: false, mensagem: "Não foi possível consultar o Firecrawl." };
+  }
+}
+
 export async function carregarAmbiente(): Promise<RespostaAmbiente> {
   const headers = await autorizacao();
   if (!headers) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };

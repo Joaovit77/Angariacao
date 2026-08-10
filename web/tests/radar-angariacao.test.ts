@@ -37,18 +37,18 @@ describe("Radar de Angariação", () => {
     expect(avaliacao.faixa).toBe("baixa");
   });
 
-  it("só vence uma busca ativa após trinta minutos", () => {
+  it("só vence uma busca ativa após duas horas", () => {
     const agora = Date.parse("2026-08-10T15:00:00.000Z");
     const busca: BuscaRadar = {
       id: "busca-1",
       nome: "Centro",
       filtros: { portal: "olx", cidade: "Londrina", estado: "PR" },
       ativo: true,
-      ultimoCheck: "2026-08-10T14:31:00.000Z",
+      ultimoCheck: "2026-08-10T13:01:00.000Z",
       criadoEm: "2026-08-10T14:00:00.000Z",
     };
     expect(buscaRadarEstaVencida(busca, agora)).toBe(false);
-    expect(buscaRadarEstaVencida({ ...busca, ultimoCheck: "2026-08-10T14:30:00.000Z" }, agora)).toBe(true);
+    expect(buscaRadarEstaVencida({ ...busca, ultimoCheck: "2026-08-10T13:00:00.000Z" }, agora)).toBe(true);
     expect(buscaRadarEstaVencida({ ...busca, ativo: false, ultimoCheck: null }, agora)).toBe(false);
   });
 

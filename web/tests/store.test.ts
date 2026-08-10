@@ -27,6 +27,15 @@ describe("useAppStore", () => {
     // Começa false de propósito: sem confirmação do servidor, a UI não
     // oferece os botões de IA.
     expect(s.iaDisponivel).toBe(false);
+    expect(s.cargoUsuarioId).toBeNull();
+  });
+
+  it("amarra o cargo à sessão que o servidor confirmou", () => {
+    useAppStore.getState().setCargo("usuario-1", { admin: true, operaCarteira: false });
+    const s = useAppStore.getState();
+    expect(s.cargoUsuarioId).toBe("usuario-1");
+    expect(s.ehAdmin).toBe(true);
+    expect(s.operaCarteira).toBe(false);
   });
 
   it("limparEstado (logout) também desliga a IA", () => {

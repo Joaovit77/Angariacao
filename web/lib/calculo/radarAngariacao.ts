@@ -5,7 +5,9 @@ import {
 } from "./centralAngariacao";
 import { agoraTimestamp, timestampDeIso } from "../datas";
 
-export const INTERVALO_RADAR_MS = 30 * 60 * 1000;
+// Duas horas preservam alertas no mesmo turno e reduzem em 75% as consultas
+// automáticas em comparação com o intervalo anterior de 30 minutos.
+export const INTERVALO_RADAR_MS = 2 * 60 * 60 * 1000;
 
 export interface BuscaRadar {
   id: string;

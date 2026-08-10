@@ -148,7 +148,7 @@ export default function SessaoProvider({ children }: { children: React.ReactNode
     if (sessao.estado !== "auth" || !usuarioId) return;
     let cancelado = false;
     meuCargo().then((cargo) => {
-      if (!cancelado) setCargo(cargo);
+      if (!cancelado) setCargo(usuarioId, cargo);
     });
     return () => {
       cancelado = true;

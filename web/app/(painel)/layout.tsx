@@ -65,12 +65,13 @@ function definirRecolhida(valor: boolean) {
 }
 
 export default function PainelLayout({ children }: { children: React.ReactNode }) {
-  const { estado } = useSessao();
+  const { estado, usuario } = useSessao();
   const router = useRouter();
   const pathname = usePathname();
   const carregado = useAppStore((s) => s.carregado);
   const ehAdmin = useAppStore((s) => s.ehAdmin);
   const operaCarteira = useAppStore((s) => s.operaCarteira);
+  const cargoConfirmado = useAppStore((s) => s.cargoUsuarioId === usuario?.id);
   // gaveta = drawer do mobile; recolhida = trilha de ícones do desktop.
   const [gavetaAberta, setGavetaAberta] = useState(false);
   const ehDesktop = useSyncExternalStore(assinarViewport, ehDesktopAgora, () => true);
@@ -84,15 +85,33 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
      corretor: a barra já esconde os itens, e isto fecha a porta da URL
      digitada — inclusive a de /roadmap, que não está no menu de ninguém.
 
-     Não há risco de expulsar quem não devia: `ehAdmin` começa `false` e
-     `operaCarteira` começa `true`, então a condição só se torna
-     verdadeira depois de o servidor responder. É a mesma razão de a
-     página /admin não usar o store para decidir o contrário. */
+     `cargoConfirmado` inclui o id da sessão atual: além de esperar a
+     resposta, impede o cargo de uma conta anterior de decidir a nova. */
   useEffect(() => {
-    if (ehAdmin && !operaCarteira && pathname !== "/admin") router.replace("/admin");
-  }, [ehAdmin, operaCarteira, pathname, router]);
+    if (cargoConfirmado && ehAdmin && !operaCarteira && pathname !== "/admin") {
+      router.replace("/admin");
+    }
+  }, [cargoConfirmado, ehAdmin, operaCarteira, pathname, router]);
 
   if (estado !== "auth") return null;
+
+  /* Nunca monta o shell com o perfil provisório. Antes, os valores seguros
+     iniciais faziam a conta de operação parecer corretor durante a consulta. */
+  if (!cargoConfirmado || (ehAdmin && !operaCarteira && pathname !== "/admin")) {
+    return (
+      <div className="perfil-gate" role="status" aria-live="polite">
+        <div className="perfil-gate-marca" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M12 2l8 4v6c0 5-3.4 8.7-8 10-4.6-1.3-8-5-8-10V6z" />
+            <path d="M8.5 12.5l2.2 2.2 4.8-5" />
+          </svg>
+        </div>
+        <strong>{cargoConfirmado ? "Abrindo a Administração" : "Confirmando seu perfil"}</strong>
+        <span>Aguarde só um instante.</span>
+        <div className="perfil-gate-linha" aria-hidden="true"><i /></div>
+      </div>
+    );
+  }
 
   // Um só hambúrguer: no desktop recolhe/expande a trilha; no mobile
   // abre/fecha a gaveta.
@@ -134,7 +153,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
       />
 
       <main className="main" id="main-content">
-        {carregado ? (
+        {carregado || pathname === "/admin" ? (
           <div key={pathname} className="view-anim">
             {children}
           </div>

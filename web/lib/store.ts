@@ -41,12 +41,13 @@ interface AppStore {
       motivo do `iaDisponivel`: sem confirmação do servidor, não se
       oferece o que pode não funcionar. */
   ehAdmin: boolean;
+  /** Id da sessão cujo cargo já foi confirmado pelo servidor. */
+  cargoUsuarioId: string | null;
   /** Esta conta trabalha angariação? Falso só para o admin que apenas
       OPERA o sistema — e aí as dez telas do corretor saem do menu, que
       nele abririam numa parede de zeros. Começa `true`, ao contrário do
-      `ehAdmin`: aqui o valor "ainda não sei" tem que ser o que serve à
-      esmagadora maioria, senão todo corretor veria o menu piscar vazio
-      no primeiro quadro. */
+      `ehAdmin`. O layout não interpreta este padrão até `cargoUsuarioId`
+      confirmar que a resposta pertence à sessão atual. */
   operaCarteira: boolean;
   /** Anúncios ainda não vistos encontrados pelas buscas salvas do Radar. */
   radarNovos: number;
@@ -64,7 +65,7 @@ interface AppStore {
       render pegaria `ehAdmin` já verdadeiro com `operaCarteira` ainda
       no padrão, e o menu do operador nasceria com as dez telas do
       corretor antes de se corrigir sozinho. */
-  setCargo: (cargo: { admin: boolean; operaCarteira: boolean }) => void;
+  setCargo: (userId: string, cargo: { admin: boolean; operaCarteira: boolean }) => void;
   setRadarNovos: (quantidade: number) => void;
   setMetas: (metas: Metas) => void;
   setConfig: (config: UserConfig) => void;
@@ -80,6 +81,7 @@ const ESTADO_INICIAL = {
   carregado: false,
   iaDisponivel: false,
   ehAdmin: false,
+  cargoUsuarioId: null,
   operaCarteira: true,
   radarNovos: 0,
 };
@@ -93,7 +95,11 @@ export const useAppStore = create<AppStore>((set) => ({
   setAbordagens: (abordagens) => set({ abordagens }),
   setProtocolos: (protocolos) => set({ protocolos }),
   setIaDisponivel: (iaDisponivel) => set({ iaDisponivel }),
-  setCargo: ({ admin, operaCarteira }) => set({ ehAdmin: admin, operaCarteira }),
+  setCargo: (cargoUsuarioId, { admin, operaCarteira }) => set({
+    cargoUsuarioId,
+    ehAdmin: admin,
+    operaCarteira,
+  }),
   setRadarNovos: (radarNovos) => set({ radarNovos }),
   setMetas: (metas) => set({ metas }),
   setConfig: (config) => set({ config }),
