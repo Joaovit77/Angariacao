@@ -73,7 +73,7 @@ const ITENS: ItemNav[] = [
   },
   {
     rota: "/respostas",
-    texto: "Respostas",
+    texto: "Conversas",
     badge: "respostas",
     icone: (
       <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

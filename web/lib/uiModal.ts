@@ -27,7 +27,8 @@ export type TipoModal =
   | "resultadosPendentes"
   | "desdobrar"
   | "solicitacaoAngariacao"
-  | "gerarAnuncio";
+  | "gerarAnuncio"
+  | "mensagemAgendada";
 
 /** Dados trazidos por uma fonte externa. São apenas valores iniciais do
     formulário: o corretor continua vendo, corrigindo e salvando tudo. */

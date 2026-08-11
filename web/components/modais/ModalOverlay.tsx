@@ -28,6 +28,7 @@ import ModalSolicitacaoAngariacao from "./ModalSolicitacaoAngariacao";
 import ModalTentativas from "./ModalTentativas";
 import ModalVerificacao from "./ModalVerificacao";
 import ModalWhatsapp from "./ModalWhatsapp";
+import ModalMensagemAgendada from "./ModalMensagemAgendada";
 
 export default function ModalOverlay() {
   const { modal, fecharModal } = useUiModal();
@@ -77,6 +78,9 @@ export default function ModalOverlay() {
           <ModalSolicitacaoAngariacao imovelId={modal.id} />
         )}
         {modal?.tipo === "gerarAnuncio" && modal.id && <ModalGerarAnuncio imovelId={modal.id} />}
+        {modal?.tipo === "mensagemAgendada" && (
+          <ModalMensagemAgendada id={modal.id} imovelIdRelacionado={modal.imovelIdRelacionado} />
+        )}
       </div>
     </div>
   );
