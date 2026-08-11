@@ -895,6 +895,11 @@ export default function ModalImovel({ id }: { id?: string }) {
       <div className="modal-foot">
         <div style={{ display: "flex", gap: "10px" }}>
           {imovel && (
+            <button type="button" className="btn btn-ghost" onClick={() => abrirModal("mensagemAgendada", undefined, undefined, imovel.id)}>
+              Agendar mensagem
+            </button>
+          )}
+          {imovel && (
             <button type="button" className="btn btn-ghost btn-danger" onClick={excluir}>
               Excluir imóvel
             </button>

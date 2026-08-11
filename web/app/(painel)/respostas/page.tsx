@@ -1,5 +1,5 @@
-import RespostasView from "@/components/respostas/RespostasView";
+import ConversasView from "@/components/respostas/ConversasView";
 
 export default function Pagina() {
-  return <RespostasView />;
+  return <ConversasView />;
 }

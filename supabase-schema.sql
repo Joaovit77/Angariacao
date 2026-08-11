@@ -223,6 +223,124 @@ create policy "delete_own_imoveis" on imoveis
 
 create index if not exists imoveis_user_id_idx on imoveis(user_id);
 
+-- ------------------------------------------------------------
+-- MENSAGENS AGENDADAS
+-- O destinatário é sempre um imóvel da carteira do usuário. Nome e telefone
+-- são fotografados no agendamento para que o histórico continue fiel mesmo
+-- se o cadastro mudar depois. O worker usa `claim_mensagens_agendadas`: o
+-- UPDATE com SKIP LOCKED torna duas execuções simultâneas incapazes de obter
+-- a mesma mensagem.
+-- ------------------------------------------------------------
+create table if not exists mensagens_agendadas (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  imovel_id uuid references imoveis(id) on delete set null,
+  nome_proprietario text not null,
+  telefone text not null,
+  mensagem text not null check (char_length(trim(mensagem)) > 0),
+  data_envio timestamptz not null,
+  status text not null default 'agendada'
+    check (status in ('agendada', 'processando', 'enviada', 'erro', 'cancelada')),
+  enviado_em timestamptz,
+  erro text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table mensagens_agendadas enable row level security;
+
+drop policy if exists "select_own_mensagens_agendadas" on mensagens_agendadas;
+create policy "select_own_mensagens_agendadas" on mensagens_agendadas
+  for select to authenticated using ((select auth.uid()) = user_id);
+drop policy if exists "insert_own_mensagens_agendadas" on mensagens_agendadas;
+create policy "insert_own_mensagens_agendadas" on mensagens_agendadas
+  for insert to authenticated with check (
+    (select auth.uid()) = user_id and status = 'agendada' and data_envio > now()
+    and (imovel_id is null or exists (select 1 from imoveis i where i.id = imovel_id and i.user_id = (select auth.uid())))
+  );
+drop policy if exists "update_own_mensagens_agendadas" on mensagens_agendadas;
+create policy "update_own_mensagens_agendadas" on mensagens_agendadas
+  for update to authenticated
+  using ((select auth.uid()) = user_id and status = 'agendada')
+  with check (
+    (select auth.uid()) = user_id and status in ('agendada', 'cancelada')
+    and (status = 'cancelada' or data_envio > now())
+    and (imovel_id is null or exists (select 1 from imoveis i where i.id = imovel_id and i.user_id = (select auth.uid())))
+  );
+
+create index if not exists mensagens_agendadas_pendentes_idx
+  on mensagens_agendadas (data_envio, id) where status = 'agendada';
+create index if not exists mensagens_agendadas_usuario_idx
+  on mensagens_agendadas (user_id, data_envio desc);
+create index if not exists mensagens_agendadas_imovel_idx
+  on mensagens_agendadas (imovel_id);
+
+-- O browser escolhe somente `imovel_id`; o destinatário nunca é confiado ao
+-- payload do cliente. Mesmo uma chamada manual à Data API tem nome/telefone
+-- substituídos pelos valores do imóvel que pertence ao mesmo usuário.
+create or replace function preencher_destinatario_mensagem_agendada()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  dono uuid;
+  nome text;
+  fone text;
+begin
+  if new.imovel_id is null then
+    new.nome_proprietario := nullif(trim(new.nome_proprietario), '');
+    new.telefone := nullif(trim(new.telefone), '');
+    if new.nome_proprietario is null then raise exception 'Informe o nome do proprietário.'; end if;
+    if new.telefone is null or char_length(regexp_replace(new.telefone, '[^0-9]', '', 'g')) not between 10 and 13 then
+      raise exception 'Telefone inválido.';
+    end if;
+    new.updated_at := now();
+    return new;
+  end if;
+  select i.user_id, nullif(trim(i.proprietario_nome), ''), nullif(trim(i.proprietario_telefone), '')
+    into dono, nome, fone from imoveis i where i.id = new.imovel_id;
+  if dono is null or dono <> new.user_id then
+    raise exception 'Imóvel não pertence ao usuário.';
+  end if;
+  if fone is null then raise exception 'Proprietário sem telefone.'; end if;
+  new.nome_proprietario := coalesce(nome, 'Proprietário');
+  new.telefone := fone;
+  new.updated_at := now();
+  return new;
+end;
+$$;
+revoke all on function preencher_destinatario_mensagem_agendada() from public, anon, authenticated;
+drop trigger if exists trg_destinatario_mensagem_agendada on mensagens_agendadas;
+create trigger trg_destinatario_mensagem_agendada
+before insert or update of user_id, imovel_id, nome_proprietario, telefone
+on mensagens_agendadas for each row execute function preencher_destinatario_mensagem_agendada();
+
+create or replace function claim_mensagens_agendadas(p_limite integer default 20)
+returns setof mensagens_agendadas
+language sql
+security definer
+set search_path = public, pg_temp
+as $$
+  with candidatas as (
+    select id
+      from mensagens_agendadas
+     where status = 'agendada' and data_envio <= now()
+     order by data_envio, id
+     for update skip locked
+     limit greatest(1, least(coalesce(p_limite, 20), 100))
+  )
+  update mensagens_agendadas m
+     set status = 'processando', updated_at = now(), erro = null
+    from candidatas c
+   where m.id = c.id
+  returning m.*;
+$$;
+
+revoke all on function claim_mensagens_agendadas(integer) from public, anon, authenticated;
+grant execute on function claim_mensagens_agendadas(integer) to service_role;
+
 -- Realtime: o banco AVISA o painel quando esta tabela muda, em vez de o painel
 -- ficar perguntando. É o que faz a resposta do proprietário aparecer na hora.
 --

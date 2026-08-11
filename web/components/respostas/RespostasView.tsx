@@ -278,7 +278,7 @@ export default function RespostasView() {
     <>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Respostas</h1>
+          <h2 className="page-title">Respostas recebidas</h2>
           <p className="page-sub">O que os proprietários escreveram, e o que ainda não foi tratado</p>
         </div>
         <div className="resp-head-acoes">

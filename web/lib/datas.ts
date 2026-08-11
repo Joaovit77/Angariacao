@@ -34,6 +34,19 @@ export function fmtDataHoraIso(iso: string | null | undefined): string {
   return Number.isNaN(data.getTime()) ? "" : data.toLocaleString("pt-BR");
 }
 
+/** Converte data/hora digitadas no fuso local para um instante UTC. */
+export function dataHoraLocalParaIso(data: string, hora: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data) || !/^\d{2}:\d{2}$/.test(hora)) return null;
+  const valor = new Date(`${data}T${hora}:00`);
+  return Number.isNaN(valor.getTime()) ? null : valor.toISOString();
+}
+
+export function partesDataHoraLocal(iso?: string, deslocamentoMs = 0): { data: string; hora: string } {
+  const d = iso ? new Date(iso) : new Date(Date.now() + deslocamentoMs);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return { data: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, hora: `${pad(d.getHours())}:${pad(d.getMinutes())}` };
+}
+
 export interface IntervaloSemana {
   start: string;
   end: string;

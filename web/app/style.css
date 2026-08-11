@@ -2022,6 +2022,38 @@ tbody td{ padding: 11px 12px; border-bottom: 1px solid var(--border-soft); verti
 tbody tr:hover{ background: var(--bg-elev-2); }
 tbody tr:last-child td{ border-bottom:none; }
 .table-scroll{ overflow-x:auto; }
+.mensagens-table{ width:100%; border-collapse:collapse; }
+.mensagens-table th,.mensagens-table td{ padding:12px; text-align:left; border-bottom:1px solid var(--border); vertical-align:top; }
+.mensagens-table th{ color:var(--text-dim); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+.mensagem-trecho{ max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mensagem-status{ display:inline-flex; align-items:center; gap:6px; padding:4px 9px; border-radius:999px; font-size:12px; font-weight:700; }
+.mensagem-status::before{ content:""; width:7px; height:7px; border-radius:50%; background:currentColor; }
+.mensagem-status[data-status="agendada"]{ color:var(--warn); background:var(--warn-soft); }
+.mensagem-status[data-status="processando"]{ color:var(--info); background:var(--info-soft); }
+.mensagem-status[data-status="enviada"]{ color:var(--good); background:var(--good-soft); }
+.mensagem-status[data-status="erro"]{ color:var(--bad); background:var(--bad-soft); }
+.mensagem-status[data-status="cancelada"]{ color:var(--text-dim); background:var(--bg-elev-2); }
+.mensagens-table small{ display:block; margin-top:5px; color:var(--text-dim); max-width:220px; overflow:hidden; text-overflow:ellipsis; }
+.mensagem-acoes{ display:flex; gap:6px; }
+.conversas-cabecalho{ margin-bottom:20px; }
+.conversas-abas{ margin-top:14px; }
+.mensagem-destinatario-modos{ margin-bottom:16px; }
+.mensagem-destinatario-modos .resp-filtro{ flex:1; text-align:center; padding:9px 14px; }
+.mensagem-destinatario-card{ padding:15px; border:1px solid var(--border-soft); border-radius:var(--radius-md); background:color-mix(in srgb,var(--bg-elev-2) 62%,transparent); }
+.mensagem-destinatario-titulo{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+.mensagem-destinatario-titulo label{ margin:0; }
+.mensagem-destinatario-titulo > span{ color:var(--text-faint); font-size:10.5px; }
+.mensagem-busca-wrap{ position:relative; margin-bottom:9px; }
+.mensagem-busca-wrap svg{ position:absolute; left:11px; top:50%; width:16px; height:16px; color:var(--text-faint); transform:translateY(-50%); pointer-events:none; }
+.mensagem-busca-wrap input[type="search"]{ padding-left:36px; background:var(--bg-elev-1); }
+.mensagem-destinatario-card select{ background:var(--bg-elev-1); }
+.mensagem-destinatario-selecionado{ display:flex; align-items:center; gap:10px; margin-top:10px; padding:10px; border:1px solid color-mix(in srgb,var(--good) 30%,var(--border)); border-radius:var(--radius-sm); background:var(--good-soft); }
+.mensagem-destinatario-avatar{ display:grid; place-items:center; flex:0 0 34px; height:34px; border-radius:50%; background:var(--good); color:var(--sobre-cor); font-weight:750; }
+.mensagem-destinatario-selecionado > div{ min-width:0; flex:1; }
+.mensagem-destinatario-selecionado strong,.mensagem-destinatario-selecionado small{ display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mensagem-destinatario-selecionado strong{ font-size:13px; }
+.mensagem-destinatario-selecionado small{ margin-top:2px; color:var(--text-dim); font-size:10.5px; }
+.mensagem-destinatario-ok{ flex:none; color:var(--good); font-size:10.5px; font-weight:700; }
 .cell-strong{ font-weight:600; }
 .cell-dim{ color: var(--text-dim); }
 
@@ -2463,7 +2495,7 @@ th.th-filter{ position:relative; }
 .field-row{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
 .field-row-3{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; }
 label{ display:block; font-size:11.5px; font-weight:600; color: var(--text-dim); margin-bottom:6px; text-transform:uppercase; letter-spacing:.3px; }
-input[type=text], input[type=number], input[type=date], input[type=tel], select, textarea{
+input[type=text], input[type=number], input[type=date], input[type=tel], input[type=search], input[type=time], select, textarea{
   width:100%; background: var(--bg-elev-2); border:1px solid var(--border); color: var(--text);
   padding: 9px 11px; border-radius: var(--radius-sm); font-size:13.5px;
 }
