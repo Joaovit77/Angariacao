@@ -88,7 +88,9 @@ export default function RodadaDoDia() {
       </div>
 
       <div className="rodada-lista">
-        {rodada.itens.map((item) => (
+        {rodada.itens.map((item) => {
+          const [detalhePrincipal, detalheRitmo] = item.detalhe.split(" · ", 2);
+          return (
           <div className={`rodada-item ${item.urgencia}`} key={item.frente}>
             <span className="rodada-ic" aria-hidden>
               {ICONE[item.frente]}
@@ -98,7 +100,10 @@ export default function RodadaDoDia() {
                 {item.rotulo}
                 <span className="rodada-contagem">{item.quantos}</span>
               </span>
-              <span className="rodada-detalhe">{item.detalhe}</span>
+              <span className="rodada-detalhe">
+                <span className="rodada-detalhe-principal">{detalhePrincipal}</span>
+                {detalheRitmo && <span className="rodada-ritmo"> ({detalheRitmo})</span>}
+              </span>
             </span>
             <button
               type="button"
@@ -116,7 +121,8 @@ export default function RodadaDoDia() {
               {item.cabemHoje === 0 ? "Sem vaga hoje" : ACAO[item.frente]}
             </button>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

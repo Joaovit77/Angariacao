@@ -19,7 +19,15 @@ import { alternarAgendaDone, excluirAgenda } from "@/lib/mutacoes";
 import type { AgendaItem, Imovel } from "@/lib/tipos";
 import { useUiModal } from "@/lib/uiModal";
 
-export default function ItemAgenda({ a, imovel }: { a: AgendaItem; imovel: Imovel | null }) {
+export default function ItemAgenda({
+  a,
+  imovel,
+  compact = false,
+}: {
+  a: AgendaItem;
+  imovel: Imovel | null;
+  compact?: boolean;
+}) {
   const abrirModal = useUiModal((s) => s.abrirModal);
   const hoje = todayISO();
   const overdue = !a.done && a.date < hoje;
@@ -52,7 +60,7 @@ export default function ItemAgenda({ a, imovel }: { a: AgendaItem; imovel: Imove
 
   return (
     <div
-      className={`agenda-item agenda-item-enhanced ${a.done ? "done" : ""} ${overdue ? "overdue" : ""} ${today ? "today" : ""} ${future ? "future" : ""}`}
+      className={`agenda-item agenda-item-enhanced${compact ? " compact" : ""} ${a.done ? "done" : ""} ${overdue ? "overdue" : ""} ${today ? "today" : ""} ${future ? "future" : ""}`}
     >
       {/* Faixa de hora à esquerda: é o que faz a lista se ler como agenda.
           Some quando o compromisso não tem hora, e aí o item ocupa a linha
