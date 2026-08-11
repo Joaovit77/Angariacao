@@ -20,8 +20,12 @@ import { modeloPadraoWhatsapp } from "@/lib/calculo/whatsapp";
 import { todayISO } from "@/lib/datas";
 import { useAppStore } from "@/lib/store";
 import { useUiModal } from "@/lib/uiModal";
+import { useRouter } from "next/navigation";
+
+const LIMITE_PRIORITARIOS = 3;
 
 export default function QuemEstaQuente() {
+  const router = useRouter();
   const imoveis = useAppStore((s) => s.imoveis);
   const abrirModal = useUiModal((s) => s.abrirModal);
 
@@ -31,11 +35,16 @@ export default function QuemEstaQuente() {
   return (
     <div className="card">
       <div className="home-card-head">
-        <div className="card-title">Quem está quente agora</div>
-        <span className="section-note">na ordem de quem esperar mais custa caro</span>
+        <div>
+          <div className="card-title">Quem está quente agora</div>
+          <span className="section-note">Prioridade de contato</span>
+        </div>
+        <button type="button" className="home-link" onClick={() => router.push("/pipeline")}>
+          Ver todos →
+        </button>
       </div>
       <div className="home-list home-list-parados">
-        {linhas.map((linha) => {
+        {linhas.slice(0, LIMITE_PRIORITARIOS).map((linha) => {
           const imovel = imoveis.find((i) => i.id === linha.imovelId);
           if (!imovel) return null;
           return (

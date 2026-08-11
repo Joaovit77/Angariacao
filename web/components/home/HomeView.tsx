@@ -39,8 +39,8 @@ import { useAppStore } from "@/lib/store";
 import type { AgendaItem } from "@/lib/tipos";
 import { useUiModal } from "@/lib/uiModal";
 
-// Quantos itens de cada lista de resumo mostrar antes do "ver tudo".
-const LIMITE_LISTA = 5;
+// A Home mostra só os próximos passos; a lista completa permanece na Agenda.
+const LIMITE_COMPROMISSOS = 3;
 
 function MiniMeta({
   label,
@@ -122,9 +122,9 @@ export default function HomeView() {
 
   // Card "Próximos compromissos": mesma janela da aba Pendentes, mas agora com
   // o item rico e acionável da Agenda (concluir, WhatsApp), agrupado por dia.
-  // Limita ao total de LIMITE_LISTA e agrupa só o recorte visível.
+  // Limita a três e agrupa só o recorte visível.
   const amanha = addDaysISO(hoje, 1) as string;
-  const pendentesVisiveis = pendentes.slice(0, LIMITE_LISTA);
+  const pendentesVisiveis = pendentes.slice(0, LIMITE_COMPROMISSOS);
   const gruposPendentes: Record<string, AgendaItem[]> = {};
   pendentesVisiveis.forEach((a) => {
     (gruposPendentes[a.date] = gruposPendentes[a.date] || []).push(a);
@@ -152,14 +152,14 @@ export default function HomeView() {
             <div className="agenda-day-group" key={date}>
               <div className={`agenda-day-label ${date === hoje ? "today" : ""}`}>{rotuloDia(date)}</div>
               {gruposPendentes[date].map((a) => (
-                <ItemAgenda key={a.id} a={a} imovel={imovelDe(a.imovelId)} />
+                <ItemAgenda key={a.id} a={a} imovel={imovelDe(a.imovelId)} compact />
               ))}
             </div>
           ))}
-          {pendentes.length > LIMITE_LISTA && (
+          {pendentes.length > LIMITE_COMPROMISSOS && (
             <button type="button" className="home-more" onClick={() => router.push("/agenda")}>
-              + {pendentes.length - LIMITE_LISTA} compromisso
-              {pendentes.length - LIMITE_LISTA > 1 ? "s" : ""}
+              + {pendentes.length - LIMITE_COMPROMISSOS} compromisso
+              {pendentes.length - LIMITE_COMPROMISSOS > 1 ? "s" : ""}
             </button>
           )}
         </div>
@@ -181,10 +181,16 @@ export default function HomeView() {
         </button>
       </div>
       {parados.length === 0 ? (
-        <p className="section-note">Nenhum imóvel parado no funil. 🎉</p>
+        <div className="home-compact-count vazio">
+          <strong>0</strong><span>imóveis parados no funil 🎉</span>
+        </div>
       ) : (
-        <div className="home-list home-list-parados">
-          {parados.slice(0, LIMITE_LISTA).map((i) => {
+        <div className="home-compact-body">
+          <div className="home-compact-count">
+            <strong>{parados.length}</strong>
+            <span>{parados.length === 1 ? "imóvel parado" : "imóveis parados"}</span>
+          </div>
+          {parados.slice(0, 1).map((i) => {
             const dias = diasSemMovimento(i);
             return (
               <div
@@ -240,12 +246,6 @@ export default function HomeView() {
               </div>
             );
           })}
-          {parados.length > LIMITE_LISTA && (
-            <button type="button" className="home-more" onClick={() => router.push("/pipeline")}>
-              + {parados.length - LIMITE_LISTA}{" "}
-              {parados.length - LIMITE_LISTA > 1 ? "imóveis parados" : "imóvel parado"}
-            </button>
-          )}
         </div>
       )}
     </div>
@@ -260,10 +260,16 @@ export default function HomeView() {
         </button>
       </div>
       {emNegociacao.length === 0 ? (
-        <p className="section-note">Nenhum imóvel em negociação no momento.</p>
+        <div className="home-compact-count vazio">
+          <strong>0</strong><span>imóveis em negociação no momento</span>
+        </div>
       ) : (
-        <div className="home-list home-list-parados">
-          {emNegociacao.slice(0, LIMITE_LISTA).map((i) => {
+        <div className="home-compact-body">
+          <div className="home-compact-count">
+            <strong>{emNegociacao.length}</strong>
+            <span>em negociação</span>
+          </div>
+          {emNegociacao.slice(0, 1).map((i) => {
             const dias = daysInCurrentStatus(i);
             return (
               <div key={i.id} className="home-parado" onClick={() => abrirModal("imovel", i.id)}>
@@ -324,12 +330,6 @@ export default function HomeView() {
               </div>
             );
           })}
-          {emNegociacao.length > LIMITE_LISTA && (
-            <button type="button" className="home-more" onClick={() => router.push("/pipeline")}>
-              + {emNegociacao.length - LIMITE_LISTA}{" "}
-              {emNegociacao.length - LIMITE_LISTA > 1 ? "imóveis em negociação" : "imóvel em negociação"}
-            </button>
-          )}
         </div>
       )}
     </div>
@@ -344,7 +344,7 @@ export default function HomeView() {
           <span className="home-metas-mes">{monthLabelLong(mKey)}</span>
         </div>
         <button type="button" className="home-link" onClick={() => router.push("/metas")}>
-          Ver →
+          Ver metas →
         </button>
       </div>
       {!temMetas ? (
@@ -379,27 +379,12 @@ export default function HomeView() {
     </div>
   );
 
-  // Com conteúdo → coluna principal (larga); vazio → lateral (compacto).
-  const principais: React.ReactNode[] = [];
-  const laterais: React.ReactNode[] = [];
-  (pendentes.length ? principais : laterais).push(cardCompromissos);
-  (parados.length ? principais : laterais).push(cardParados);
-  (emNegociacao.length ? principais : laterais).push(cardEmNegociacao);
-
-  // Se algum resumo ficou vazio (desceu para a lateral), a coluna principal fica
-  // curta; as metas sobem para ela para equilibrar as colunas. Caso contrário,
-  // ficam na lateral, ao lado das ações.
-  //
-  // A virada de mês também as promove: o aviso de meta não definida na lateral
-  // é exatamente onde ele passa despercebido, e ele só aparece uma vez por mês.
-  const metasNaPrincipal = laterais.length > 0 || metaPendente;
-  if (metasNaPrincipal) principais.push(cardMetas);
-
   return (
     <>
       <div className="page-head">
         <div>
-          <p className="page-sub">Seu dia em um olhar</p>
+          <h1 className="home-question">O que preciso fazer agora?</h1>
+          <p className="page-sub">Prioridades e atalhos para seguir com o dia.</p>
         </div>
       </div>
 
@@ -430,30 +415,18 @@ export default function HomeView() {
           </button>
         </div>
 
-        {/* COLUNA PRINCIPAL — o que precisa de ação hoje.
-
-            A rodada vem primeiro: ela é o índice do dia (frentes com fila e o
-            botão que resolve cada uma), curta por natureza, e é a única que
-            cobra as duas coisas que têm hora — resposta sem leitura e
-            compromisso marcado. Logo abaixo o termômetro, que responde a outra
-            pergunta, nominal e mais longa: "quem eu chamo AGORA". Depois o
-            resumo. As duas primeiras se escondem sozinhas quando não há nada. */}
-        <div className="home-main">
+        <div className="home-priority">
           <RodadaDoDia />
-          <QuemEstaQuente />
-          {principais}
         </div>
-
-        {/* COLUNA LATERAL — resumos vazios e metas. Sem nada para mostrar, não
-            renderiza: um elemento vazio no grid só somaria gap. */}
-        {(laterais.length > 0 || !metasNaPrincipal) && (
-          <aside className="home-aside">
-            {laterais}
-
-            {/* Metas do mês — só aqui quando não subiram para a coluna principal. */}
-            {!metasNaPrincipal && cardMetas}
-          </aside>
-        )}
+        <div className="home-focus-grid">
+          <QuemEstaQuente />
+          {cardCompromissos}
+        </div>
+        <div className="home-summary-grid">
+          {cardParados}
+          {cardEmNegociacao}
+        </div>
+        <div className="home-goals">{cardMetas}</div>
       </div>
     </>
   );
