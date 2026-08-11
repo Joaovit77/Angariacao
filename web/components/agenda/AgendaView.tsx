@@ -51,6 +51,9 @@ export default function AgendaView() {
 
   const hoje = todayISO();
   const limitePendentes = addDaysISO(hoje, AGENDA_PENDENTES_JANELA_DIAS) as string;
+  const verificacoesDisponibilidade = agenda.filter(
+    (a) => a.isVerificacaoDisponibilidade && !a.done && a.imovelId && a.date >= hoje,
+  ).length;
 
   // Opções de refino: só os tipos e imóveis que realmente aparecem na agenda.
   const tiposPresentes = Array.from(new Set(agenda.map((a) => a.type).filter(Boolean))).sort();
@@ -99,6 +102,15 @@ export default function AgendaView() {
           <p className="page-sub">Retornos, visitas, pendências e follow-ups</p>
         </div>
         <div className="page-actions">
+          {verificacoesDisponibilidade > 0 && (
+            <button
+              type="button"
+              className="btn"
+              onClick={() => abrirModal("mensagemDisponibilidadeLote")}
+            >
+              Agendar em lote ({verificacoesDisponibilidade})
+            </button>
+          )}
           <button type="button" className="btn btn-primary" onClick={() => abrirModal("agenda")}>
             + Novo compromisso
           </button>

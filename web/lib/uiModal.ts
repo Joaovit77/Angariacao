@@ -28,7 +28,8 @@ export type TipoModal =
   | "desdobrar"
   | "solicitacaoAngariacao"
   | "gerarAnuncio"
-  | "mensagemAgendada";
+  | "mensagemAgendada"
+  | "mensagemDisponibilidadeLote";
 
 /** Dados trazidos por uma fonte externa. São apenas valores iniciais do
     formulário: o corretor continua vendo, corrigindo e salvando tudo. */
@@ -71,6 +72,10 @@ export interface ModalAtivo {
   /** Imóvel pré-vinculado ao abrir o modal "agenda" em modo criação
       (ex.: "agendar próximo passo" na Início). Ignorado ao editar. */
   imovelIdRelacionado?: string;
+  /** Valores iniciais ao transformar um compromisso de verificação de
+      disponibilidade em uma mensagem automática. */
+  dataMensagemAgendada?: string;
+  textoMensagemAgendada?: string;
   /** Resultado escolhido na Central de Angariação. */
   preCadastroInicial?: PreCadastroInicial;
 }
@@ -91,6 +96,7 @@ interface UiModal {
       já creditando a abordagem do catálogo — é o que põe a estratégia no
       ranking. Separada do rascunho porque aquele, de propósito, não credita. */
   abrirWhatsappAbordagem: (imovelId: string, texto: string, abordagemId: string) => void;
+  abrirMensagemAgendadaDisponibilidade: (imovelId: string, data: string, texto: string) => void;
   abrirPreCadastro: (inicial: PreCadastroInicial) => void;
   fecharModal: () => void;
 }
@@ -103,6 +109,15 @@ export const useUiModal = create<UiModal>((set) => ({
     set({ modal: { tipo: "whatsapp", id: imovelId, textoWhatsapp: texto, protocolosWhatsapp: protocolos } }),
   abrirWhatsappAbordagem: (imovelId, texto, abordagemId) =>
     set({ modal: { tipo: "whatsapp", id: imovelId, textoWhatsapp: texto, abordagemWhatsapp: abordagemId } }),
+  abrirMensagemAgendadaDisponibilidade: (imovelId, data, texto) =>
+    set({
+      modal: {
+        tipo: "mensagemAgendada",
+        imovelIdRelacionado: imovelId,
+        dataMensagemAgendada: data,
+        textoMensagemAgendada: texto,
+      },
+    }),
   abrirPreCadastro: (preCadastroInicial) =>
     set({ modal: { tipo: "preCadastro", preCadastroInicial } }),
   fecharModal: () => set({ modal: null }),

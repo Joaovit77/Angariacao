@@ -13,6 +13,7 @@
    próximo lembrete; os demais alternam done direto.
    ================================================================ */
 import { agendaTypeIcon, agendaVencimentoInfo, isAgendaAngariacaoVencida } from "@/lib/calculo/agenda";
+import { textoBaseDisponibilidade, textoFollowUp } from "@/lib/calculo/followup";
 import { enderecoComUnidade } from "@/lib/calculo/whatsapp";
 import { todayISO } from "@/lib/datas";
 import { alternarAgendaDone, excluirAgenda } from "@/lib/mutacoes";
@@ -29,6 +30,7 @@ export default function ItemAgenda({
   compact?: boolean;
 }) {
   const abrirModal = useUiModal((s) => s.abrirModal);
+  const abrirMensagemAgendadaDisponibilidade = useUiModal((s) => s.abrirMensagemAgendadaDisponibilidade);
   const hoje = todayISO();
   const overdue = !a.done && a.date < hoje;
   const today = !a.done && a.date === hoje;
@@ -50,6 +52,15 @@ export default function ItemAgenda({
   function enviarWhatsapp() {
     if (!imovel) return;
     abrirModal("whatsapp", imovel.id);
+  }
+
+  function agendarMensagemDisponibilidade() {
+    if (!imovel) return;
+    abrirMensagemAgendadaDisponibilidade(
+      imovel.id,
+      a.date,
+      textoFollowUp(textoBaseDisponibilidade(), imovel),
+    );
   }
 
   // Quem e onde — o que faltava na linha. "Retomar contato — LD-140" obrigava
@@ -102,6 +113,19 @@ export default function ItemAgenda({
         )}
       </div>
       <div className="agenda-actions">
+        {a.isVerificacaoDisponibilidade && !a.done && imovel && (
+          <button
+            type="button"
+            className="btn btn-sm btn-primary"
+            title="Agendar mensagem de verificação de disponibilidade"
+            onClick={(e) => {
+              e.stopPropagation();
+              agendarMensagemDisponibilidade();
+            }}
+          >
+            Agendar mensagem
+          </button>
+        )}
         {canSendWhatsapp && (
           <button
             type="button"

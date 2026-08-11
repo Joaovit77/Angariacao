@@ -9,7 +9,17 @@ import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
 
-export default function ModalMensagemAgendada({ id, imovelIdRelacionado }: { id?: string; imovelIdRelacionado?: string }) {
+export default function ModalMensagemAgendada({
+  id,
+  imovelIdRelacionado,
+  dataInicial,
+  mensagemInicial,
+}: {
+  id?: string;
+  imovelIdRelacionado?: string;
+  dataInicial?: string;
+  mensagemInicial?: string;
+}) {
   const { usuario } = useSessao();
   const fecharModal = useUiModal((s) => s.fecharModal);
   const imoveis = useAppStore((s) => s.imoveis);
@@ -18,9 +28,9 @@ export default function ModalMensagemAgendada({ id, imovelIdRelacionado }: { id?
   const [buscaImovel, setBuscaImovel] = useState("");
   const [nomeManual, setNomeManual] = useState("");
   const [telefoneManual, setTelefoneManual] = useState("");
-  const [mensagem, setMensagem] = useState("");
+  const [mensagem, setMensagem] = useState(mensagemInicial || "");
   const inicial = partesDataHoraLocal(undefined, 60 * 60 * 1000);
-  const [data, setData] = useState(inicial.data);
+  const [data, setData] = useState(dataInicial || inicial.data);
   const [hora, setHora] = useState(inicial.hora);
   const [carregando, setCarregando] = useState(!!id);
   const [salvando, setSalvando] = useState(false);
