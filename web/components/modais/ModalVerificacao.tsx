@@ -12,11 +12,13 @@ import { useSessao } from "@/components/SessaoProvider";
 import { VERIFICACAO_DISPONIBILIDADE_DIAS } from "@/lib/constantes";
 import { todayISO } from "@/lib/datas";
 import { confirmarConclusaoVerificacao } from "@/lib/mutacoes";
+import { textoBaseDisponibilidade, textoFollowUp } from "@/lib/calculo/followup";
 import { useAppStore } from "@/lib/store";
 import { useUiModal } from "@/lib/uiModal";
 
 export default function ModalVerificacao({ id }: { id: string }) {
   const fecharModal = useUiModal((s) => s.fecharModal);
+  const abrirMensagemAgendadaDisponibilidade = useUiModal((s) => s.abrirMensagemAgendadaDisponibilidade);
   const { usuario } = useSessao();
   const agenda = useAppStore((s) => s.agenda);
   const imoveis = useAppStore((s) => s.imoveis);
@@ -33,6 +35,15 @@ export default function ModalVerificacao({ id }: { id: string }) {
     const ok = await confirmarConclusaoVerificacao(id, dataContato || todayISO(), usuario.id);
     setSalvando(false);
     if (ok) fecharModal();
+  }
+
+  function agendarMensagem() {
+    if (!item?.imovelId || !imovel) return;
+    abrirMensagemAgendadaDisponibilidade(
+      item.imovelId,
+      item.date,
+      textoFollowUp(textoBaseDisponibilidade(), imovel),
+    );
   }
 
   return (
@@ -60,7 +71,14 @@ export default function ModalVerificacao({ id }: { id: string }) {
         </div>
       </div>
       <div className="modal-foot">
-        <div></div>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={agendarMensagem}
+          disabled={!item?.imovelId || !imovel}
+        >
+          Agendar mensagem automática
+        </button>
         <div style={{ display: "flex", gap: "10px" }}>
           <button type="button" className="btn" onClick={fecharModal}>
             Cancelar
