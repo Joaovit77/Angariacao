@@ -41,3 +41,9 @@ node_modules/
 # ============================================================
 *.log
 npm-debug.log*
+
+# ============================================================
+# Protótipo experimental de identificação de fachadas
+# Mantido apenas localmente; inclui ambiente, token e índice.
+# ============================================================
+mapillary-facade-test/
