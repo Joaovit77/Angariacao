@@ -16,7 +16,6 @@ import { useRouter } from "next/navigation";
 import type { ChartConfiguration } from "chart.js/auto";
 import Contador from "@/components/Contador";
 import FocoDoDia from "@/components/dashboard/FocoDoDia";
-import IntegracaoSistemaPrincipal from "@/components/dashboard/IntegracaoSistemaPrincipal";
 import Grafico, { baseBarOptions, CHART_COLORS, corToken } from "@/components/graficos/Grafico";
 import { kpisDashboard, seriesDashboard } from "@/lib/calculo/dashboard";
 import { estatisticasPerdaPosCaptacao } from "@/lib/calculo/perdasPosCaptacao";
@@ -412,8 +411,6 @@ export default function DashboardView() {
         <KpiCard label="Comissão recebida (mês)" value={<Contador valor={kpis.comissaoRecMes} formatar={fmtMoney} />} />
         <KpiCard label="Valor médio de aluguel" value={<Contador valor={overall.valorMedioAluguel} formatar={fmtMoney} />} />
       </div>
-
-      <IntegracaoSistemaPrincipal />
 
       <div className="card" style={{ marginBottom: "16px" }}>
         <div className="card-title">
