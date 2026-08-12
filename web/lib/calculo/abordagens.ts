@@ -70,6 +70,17 @@ export interface AbordagemDesempenho {
   amostraSuficiente: boolean;
 }
 
+export interface PeriodoTentativas {
+  inicio: string;
+  fim: string;
+}
+
+function tentativaNoPeriodo(tentativa: Tentativa, periodo?: PeriodoTentativas): boolean {
+  if (!periodo) return true;
+  const data = tentativa.data.slice(0, 10);
+  return data >= periodo.inicio && data <= periodo.fim;
+}
+
 /** Tentativas do imóvel em ordem cronológica (a `data` é ordenável como string). */
 export function tentativasOrdenadas(imovel: Imovel): Tentativa[] {
   return [...(imovel.tentativas || [])].sort((a, b) => a.data.localeCompare(b.data));
@@ -335,6 +346,7 @@ export function desempenhoPorAbordagem(
   imoveis: Imovel[],
   abordagens: Abordagem[],
   hoje: string,
+  periodo?: PeriodoTentativas,
 ): AbordagemDesempenho[] {
   const nomePorId = new Map(abordagens.map((a) => [a.id, a.nome]));
 
@@ -363,6 +375,7 @@ export function desempenhoPorAbordagem(
     const angariado = foiAngariado(imovel);
 
     tentativas.forEach((t, indice) => {
+      if (!tentativaNoPeriodo(t, periodo)) return;
       // Tentativa sem roteiro não entra no ranking: não há o que ranquear.
       // Ela continua contando no resumo geral (resumoTentativas).
       if (!t.abordagemId) return;
@@ -390,7 +403,15 @@ export function desempenhoPorAbordagem(
     });
 
     const destravador = abordagemQueDestravou(imovel);
-    if (destravador) pegar(destravador).destravou++;
+    if (destravador) {
+      const dataAngariado = dateEnteredStatus(imovel, "Angariado");
+      const tentativaDestravadora = dataAngariado
+        ? [...tentativas].reverse().find((t) => t.data.slice(0, 10) <= dataAngariado && t.abordagemId === destravador)
+        : undefined;
+      if (tentativaDestravadora && tentativaNoPeriodo(tentativaDestravadora, periodo)) {
+        pegar(destravador).destravou++;
+      }
+    }
   }
 
   const lista: AbordagemDesempenho[] = [...acc.entries()].map(([abordagemId, a]) => ({
@@ -551,14 +572,14 @@ export interface ResumoTentativas {
   mediaTentativasAteAngariar: number | null;
 }
 
-export function resumoTentativas(imoveis: Imovel[]): ResumoTentativas {
+export function resumoTentativas(imoveis: Imovel[], periodo?: PeriodoTentativas): ResumoTentativas {
   let total = 0;
   let semAbordagem = 0;
   let imoveisComTentativa = 0;
   const contagensAteAngariar: number[] = [];
 
   for (const imovel of imoveis) {
-    const tentativas = tentativasOrdenadas(imovel);
+    const tentativas = tentativasOrdenadas(imovel).filter((t) => tentativaNoPeriodo(t, periodo));
     if (tentativas.length === 0) continue;
     imoveisComTentativa++;
     total += tentativas.length;

@@ -13,19 +13,31 @@ import {
   INSIGHT_GROUP_ORDER,
   type Insight,
   type InsightAction,
+  resumoExecutivoInsights,
 } from "@/lib/calculo/insights";
+import Contador from "@/components/Contador";
 import { analisarIdadeAnuncio } from "@/lib/calculo/idadeAnuncio";
 import { useAppStore } from "@/lib/store";
 import { usePipelineUi } from "@/lib/uiPipeline";
 import { IconeInsight } from "./icones";
 
-function CartaoInsight({ i, aoAbrirNoPipeline }: { i: Insight; aoAbrirNoPipeline: (a: InsightAction) => void }) {
+function CartaoInsight({ i, aoAbrirNoPipeline, destaque }: {
+  i: Insight;
+  aoAbrirNoPipeline: (a: InsightAction) => void;
+  destaque?: boolean;
+}) {
   return (
-    <div className={`insight-card ${i.tone}`}>
+    <div className={`insight-card ${i.tone}${destaque ? " insight-card-attention" : ""}`}>
       <div className={`insight-icon ${i.tone}`}>
         <IconeInsight nome={i.icon} />
       </div>
       <div className="insight-body">
+        {destaque && (
+          <div className="insight-urgency">
+            <span className="insight-urgency-dot" />
+            {i.tone === "bad" ? "Ação prioritária" : "Acompanhar"}
+          </div>
+        )}
         <div className="insight-title">{i.title}</div>
         <div className="insight-text">{i.text}</div>
         {i.action && (
@@ -136,6 +148,7 @@ export default function InsightsView() {
   const aplicarBusca = usePipelineUi((s) => s.aplicarBusca);
   const router = useRouter();
   const insights = buildInsights(imoveis, comissaoPercent);
+  const resumo = resumoExecutivoInsights(imoveis, comissaoPercent);
 
   function abrirNoPipeline(action: InsightAction) {
     if (action.tipo === "coluna") aplicarFiltroColuna(action.col, action.valor);
@@ -147,9 +160,85 @@ export default function InsightsView() {
     <>
       <div className="page-head">
         <div>
-          <p className="page-sub">Leitura automática dos seus dados de angariação</p>
+          <p className="page-sub">O que merece sua atenção e o que está funcionando na carteira</p>
         </div>
       </div>
+      <section className="insight-overview" aria-label="Resumo executivo">
+        <div className="insight-overview-head">
+          <div>
+            <span className="insight-eyebrow">Visão executiva</span>
+            <h2>Saúde da carteira</h2>
+          </div>
+          <span className={resumo.precisamAtencao > 0 ? "insight-health warn" : "insight-health pos"}>
+            {resumo.precisamAtencao > 0 ? `${resumo.precisamAtencao} pedem atenção` : "Carteira em dia"}
+          </span>
+        </div>
+        <div className="insight-kpi-grid">
+          <div className="insight-kpi bad">
+            <span>Precisam de atenção</span>
+            <strong><Contador valor={resumo.precisamAtencao} /></strong>
+            <small>sem movimento além do prazo</small>
+          </div>
+          <div className="insight-kpi pos">
+            <span>Taxa de angariação</span>
+            <strong>{resumo.taxaAngariacao != null ? `${Math.round(resumo.taxaAngariacao)}%` : "—"}</strong>
+            <small>entre captações com desfecho</small>
+          </div>
+          <div className="insight-kpi info">
+            <span>Conversão em locação</span>
+            <strong>{resumo.conversaoLocacao != null ? `${Math.round(resumo.conversaoLocacao)}%` : "—"}</strong>
+            <small>entre processos encerrados</small>
+          </div>
+          <div className="insight-kpi neutral">
+            <span>Em andamento</span>
+            <strong><Contador valor={resumo.emAndamento} /></strong>
+            <small>imóveis ainda ativos</small>
+          </div>
+        </div>
+      </section>
+
+      {resumo.prioridades.length > 0 && (
+        <section className="insight-priorities">
+          <div className="insight-priorities-head">
+            <div>
+              <span className="insight-eyebrow">Próximas ações</span>
+              <h2>Comece por estes imóveis</h2>
+            </div>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => {
+                aplicarFiltroColuna("status", resumo.prioridades[0].status);
+                router.push("/pipeline");
+              }}
+            >
+              Ver carteira
+            </button>
+          </div>
+          <div className="insight-priority-list">
+            {resumo.prioridades.map((item, indice) => (
+              <button
+                type="button"
+                className="insight-priority-row"
+                key={item.id}
+                onClick={() => abrirNoPipeline({ tipo: "busca", termo: item.busca })}
+              >
+                <span className="insight-priority-rank">{indice + 1}</span>
+                <span className="insight-priority-main">
+                  <strong>{item.identificador}</strong>
+                  <small>{item.endereco}</small>
+                </span>
+                <span className="badge" data-status={item.status}>{item.status}</span>
+                <span className="insight-priority-days">
+                  <strong>{item.diasParado}</strong>
+                  <small>dias parado</small>
+                </span>
+                <span className="insight-priority-arrow">→</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
       {insights.length === 0 ? (
         <div className="insight-empty card">
           <h3 style={{ fontFamily: "var(--font-display)", color: "var(--text-dim)", marginBottom: "8px" }}>
@@ -166,7 +255,7 @@ export default function InsightsView() {
           if (doGrupo.length === 0) return null;
           const meta = INSIGHT_GROUP_META[grupo];
           return (
-            <section className="insight-group" key={grupo}>
+            <section className={`insight-group${grupo === "acao" ? " insight-group-attention" : ""}`} key={grupo}>
               <div className="insight-group-head">
                 <span className="insight-group-icon">
                   <IconeInsight nome={meta.icon} />
@@ -175,11 +264,12 @@ export default function InsightsView() {
                   <h2 className="insight-group-title">{meta.label}</h2>
                   <p className="insight-group-sub">{meta.sub}</p>
                 </div>
+                {grupo === "acao" && <span className="insight-attention-label">Prioridade</span>}
                 <span className="insight-group-count">{doGrupo.length}</span>
               </div>
               <div className="insight-grid anim-stagger">
                 {doGrupo.map((i, idx) => (
-                  <CartaoInsight key={idx} i={i} aoAbrirNoPipeline={abrirNoPipeline} />
+                  <CartaoInsight key={idx} i={i} destaque={grupo === "acao"} aoAbrirNoPipeline={abrirNoPipeline} />
                 ))}
               </div>
             </section>

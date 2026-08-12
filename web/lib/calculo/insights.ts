@@ -24,6 +24,7 @@ import {
   limiteStaleParaStatus,
   metricsForRange,
   tempoAteLocacao,
+  foiAngariado,
 } from "./motor";
 
 /** mínimo de imóveis para uma métrica ser considerada confiável */
@@ -85,6 +86,59 @@ export interface Insight {
   priority: number;
   /** Se presente, o card abre o Pipeline já recortado nesses imóveis. */
   action?: InsightAction;
+}
+
+export interface PrioridadeInsight {
+  id: string;
+  identificador: string;
+  endereco: string;
+  status: string;
+  diasParado: number;
+  busca: string;
+}
+
+export interface ResumoExecutivoInsights {
+  precisamAtencao: number;
+  taxaAngariacao: number | null;
+  conversaoLocacao: number | null;
+  emAndamento: number;
+  prioridades: PrioridadeInsight[];
+}
+
+/** Resumo compacto da carteira para abrir a página com decisão, não texto. */
+export function resumoExecutivoInsights(imoveis: Imovel[], comissaoPercent: number): ResumoExecutivoInsights {
+  const estagnados = imoveis
+    .filter(isStale)
+    .map((imovel) => ({ imovel, dias: diasSemMovimento(imovel) ?? 0 }))
+    .sort((a, b) => b.dias - a.dias);
+  const captacao = conversaoCaptacao(imoveis);
+  const locacao = metricsForRange(imoveis, comissaoPercent);
+
+  return {
+    precisamAtencao: estagnados.length,
+    taxaAngariacao: captacao.taxa,
+    conversaoLocacao:
+      locacao.locados + locacao.perdidosCancelados > 0 ? locacao.conversaoFechados : null,
+    emAndamento: imoveis.filter((imovel) =>
+      !["Locado", "Perdido", "Cancelado"].includes(imovel.status),
+    ).length,
+    prioridades: estagnados.slice(0, 3).map(({ imovel, dias }) => {
+      const crmDisponivel = foiAngariado(imovel) && !!imovel.referenciaCrm?.trim();
+      const identificador = crmDisponivel
+        ? `CRM ${imovel.referenciaCrm!.trim()}`
+        : imovel.codigo?.trim() || "Sem código";
+      return {
+        id: imovel.id,
+        identificador,
+        endereco: imovel.endereco || "Endereço não informado",
+        status: imovel.status,
+        diasParado: dias,
+        busca: crmDisponivel
+          ? imovel.referenciaCrm!.trim()
+          : imovel.codigo?.trim() || imovel.endereco || imovel.id,
+      };
+    }),
+  };
 }
 
 /**
@@ -203,41 +257,29 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
     }
   }
 
-  // 2b. Canal de contato que mais rende angariação. `formaAbordagem` é o CANAL
-  //     (WhatsApp, ligação, visita), não o roteiro — o ranking de roteiros mora
-  //     em calculo/abordagens.ts, que lê o histórico de tentativas.
-  const canalRank = rankingPorAngariacao(imoveis, (i) => i.formaAbordagem);
-  if (canalRank.length > 1 && canalRank[0].taxa > 0) {
-    const best = canalRank[0];
-    list.push({
-      tone: "pos",
-      icon: "telefone",
-      title: `"${best.rotulo}" é seu canal mais eficaz`,
-      text: `${best.taxa.toFixed(0)}% das captações abordadas por aí terminaram em angariação (${best.angariados} de ${best.decididos}) — o melhor entre os canais com ao menos ${MIN_SAMPLE} desfechos.`,
-      group: "desempenho",
-      priority: 55,
-    });
-  }
+  // Não existe ranking de eficácia por `formaAbordagem`. Esse campo registra
+  // uma classificação do imóvel, não o universo real de tentativas. Em Rede
+  // social/OLX, sobretudo, o painel não vê as mensagens feitas dentro do
+  // portal; 6 imóveis angariados cadastrados poderiam aparecer como 6 de 6
+  // (100%) mesmo depois de dezenas de abordagens invisíveis. Eficiência de
+  // contato só pode vir do histórico `tentativas`, exibido em Relatórios.
 
-  // 2c. Origem de imóvel mais comum — volume, com a taxa de angariação como
-  //     contraponto: a porta que mais ENTRA não é sempre a que mais FECHA, e
-  //     mostrar só o volume já fez o corretor perseguir o canal mais barulhento.
+  // 2c. Origem de imóvel mais comum. Isto mede REGISTROS que chegaram ao
+  //     sistema, nunca tentativas feitas fora dele: redes sociais e OLX não
+  //     expõem ao painel todas as mensagens enviadas pelo corretor. Portanto,
+  //     6 imóveis de Redes sociais significam 6 oportunidades CADASTRADAS, e
+  //     não 6 contatos nem uma taxa de produtividade daquele canal.
   const origemCounts = groupCount(imoveis, (i) => i.origemImovel);
   const origemEntries = Object.entries(origemCounts)
     .filter(([o]) => o !== "Não informado")
     .sort((a, b) => b[1] - a[1]);
   if (origemEntries.length > 0 && origemEntries[0][1] >= MIN_SAMPLE) {
     const [origem, count] = origemEntries[0];
-    const cOrigem = conversaoCaptacao(imoveis.filter((i) => (i.origemImovel || "").trim() === origem));
-    const leituraTaxa =
-      cOrigem.taxa != null && cOrigem.decididos >= MIN_SAMPLE
-        ? ` Dos que já tiveram desfecho, você angariou ${cOrigem.taxa.toFixed(0)}% (${cOrigem.angariados} de ${cOrigem.decididos}).`
-        : "";
     list.push({
       tone: "info",
       icon: "entrada",
-      title: `${origem} traz mais oportunidades`,
-      text: `${count} imóveis vieram dessa origem — sua principal porta de entrada de novas angariações.${leituraTaxa}`,
+      title: `${origem}: ${count} oportunidades cadastradas`,
+      text: `${count} imóveis do pipeline estão identificados com essa origem. Este número não representa tentativas ou mensagens feitas no canal — o sistema não monitora contatos realizados dentro de redes sociais, OLX ou outros portais externos.`,
       group: "padroes",
       priority: 45,
       action: { tipo: "coluna", col: "origem", valor: origem },

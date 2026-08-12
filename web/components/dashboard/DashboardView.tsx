@@ -19,9 +19,10 @@ import FocoDoDia from "@/components/dashboard/FocoDoDia";
 import IntegracaoSistemaPrincipal from "@/components/dashboard/IntegracaoSistemaPrincipal";
 import Grafico, { baseBarOptions, CHART_COLORS, corToken } from "@/components/graficos/Grafico";
 import { kpisDashboard, seriesDashboard } from "@/lib/calculo/dashboard";
+import { estatisticasPerdaPosCaptacao } from "@/lib/calculo/perdasPosCaptacao";
 import { STATUS_FLOW } from "@/lib/constantes";
 import { monthLabelLong } from "@/lib/datas";
-import { fmtMoney } from "@/lib/formatadores";
+import { fmtDate, fmtMoney } from "@/lib/formatadores";
 import { analisarDashboard, resumoDoDia } from "@/lib/ia";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
@@ -186,7 +187,25 @@ export default function DashboardView() {
   }
 
   const series = seriesDashboard(imoveis, comissaoPercent);
+  const perdasPosCaptacao = estatisticasPerdaPosCaptacao(imoveis);
   const labels = series.labels;
+
+  const tempoAnunciadoPerdas: ChartConfiguration = {
+    type: "bar",
+    data: {
+      labels: perdasPosCaptacao.faixas.map((faixa) => faixa.rotulo),
+      datasets: [
+        {
+          label: "Imóveis",
+          data: perdasPosCaptacao.faixas.map((faixa) => faixa.quantidade),
+          backgroundColor: () => corToken("--st-perdido", "#e08f8f"),
+          borderRadius: 5,
+          maxBarThickness: 34,
+        },
+      ],
+    },
+    options: baseBarOptions(),
+  };
 
   const angariacoesMes: ChartConfiguration = {
     type: "bar",
@@ -395,6 +414,68 @@ export default function DashboardView() {
       </div>
 
       <IntegracaoSistemaPrincipal />
+
+      <div className="card" style={{ marginBottom: "16px" }}>
+        <div className="card-title">
+          Imóveis angariados e locados fora
+          <span className="section-note">outra imobiliária ou direto pelo proprietário</span>
+        </div>
+        <p className="section-note" style={{ marginBottom: "14px" }}>
+          O tempo anunciado vai da entrada em Angariado até o encerramento do imóvel.
+        </p>
+        <div className="grid grid-3 anim-stagger" style={{ marginBottom: "16px" }}>
+          <KpiCard label="Locados fora" value={<Contador valor={perdasPosCaptacao.total} />} unit="imóveis" />
+          <KpiCard
+            label="Tempo médio anunciado"
+            value={perdasPosCaptacao.tempoMedioDias != null ? <Contador valor={perdasPosCaptacao.tempoMedioDias} /> : "—"}
+            unit="dias"
+            description={`${perdasPosCaptacao.comTempoCalculavel} com histórico completo`}
+          />
+          <KpiCard
+            label="Perda da carteira"
+            value={perdasPosCaptacao.taxaPerdaCarteira != null
+              ? <Contador valor={perdasPosCaptacao.taxaPerdaCarteira} formatar={(n) => Math.round(n) + "%"} />
+              : "—"}
+            hint="Locados fora ÷ desfechos após angariação"
+            description={perdasPosCaptacao.tempoMedianoDias != null
+              ? `Mediana de ${Math.round(perdasPosCaptacao.tempoMedianoDias)} dias anunciados`
+              : undefined}
+          />
+        </div>
+        {perdasPosCaptacao.comTempoCalculavel > 0 && (
+          <div className="chart-wrap">
+            <Grafico id="chart-tempo-anunciado-perdas" config={tempoAnunciadoPerdas} />
+          </div>
+        )}
+        {perdasPosCaptacao.imoveis.length > 0 && (
+          <div className="table-scroll" style={{ marginTop: "16px" }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Ref. CRM</th>
+                  <th>Imóvel</th>
+                  <th>Anunciado desde</th>
+                  <th>Encerrado em</th>
+                  <th>Tempo anunciado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {perdasPosCaptacao.imoveis.map((imovel) => (
+                  <tr key={imovel.id}>
+                    <td className="cell-strong">{imovel.referenciaCrm || "—"}</td>
+                    <td>{imovel.endereco}</td>
+                    <td className="cell-dim">{fmtDate(imovel.anunciadoDesde) || "—"}</td>
+                    <td className="cell-dim">{fmtDate(imovel.encerradoEm) || "—"}</td>
+                    <td>
+                      {imovel.diasAnunciado != null ? `${imovel.diasAnunciado} dias` : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-2 anim-stagger" style={{ marginBottom: "16px" }}>
         <div className="card chart-card">

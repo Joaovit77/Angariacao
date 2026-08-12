@@ -65,4 +65,21 @@ describe("Insights — supressão de taxas em 0%", () => {
     expect(comInsights.some((i) => i.icon === "check")).toBe(true);
     expect(comInsights.some((i) => i.icon === "alvo")).toBe(true);
   });
+
+  it("não inventa eficácia para Rede social sem observar as tentativas externas", () => {
+    const redeSocial = Array.from({ length: 6 }, (_, indice) =>
+      imovel({
+        id: `rede-${indice}`,
+        status: "Angariado",
+        formaAbordagem: "Rede social",
+        statusHistory: [
+          { status: "Novo contato", date: "2026-06-01" },
+          { status: "Angariado", date: "2026-07-01" },
+        ],
+      }),
+    );
+    const comInsights = buildInsights(redeSocial, 100);
+    expect(comInsights.some((i) => i.title.includes("canal mais eficaz"))).toBe(false);
+    expect(comInsights.some((i) => i.icon === "telefone")).toBe(false);
+  });
 });

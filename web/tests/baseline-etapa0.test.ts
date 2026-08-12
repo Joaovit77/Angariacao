@@ -214,7 +214,8 @@ describe("Insights", () => {
     expect(porIcone("aperto").text).toContain("5 angariações contra 3 perdidas antes do sim");
     expect(porIcone("aperto").text).toContain("Outras 6 captações seguem em disputa");
     expect(porIcone("entrada").title).toContain("Prospecção ativa");
-    expect(porIcone("entrada").text).toContain("3 imóveis vieram dessa origem");
+    expect(porIcone("entrada").text).toContain("3 imóveis do pipeline");
+    expect(porIcone("entrada").text).toContain("não representa tentativas ou mensagens");
     expect(porIcone("grafico").title).toContain("Julho de 2026");
     expect(porIcone("grafico").text).toContain("1 imóveis locados");
     expect(porIcone("funil").title).toBe('Gargalo em "Novo contato"');

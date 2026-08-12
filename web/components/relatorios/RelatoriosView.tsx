@@ -20,8 +20,6 @@ import { dateEnteredStatus } from "@/lib/calculo/motor";
 import { relatorioCompleto } from "@/lib/calculo/relatorioCompleto";
 import { relatorioMensal, relatorioSemanal, weekRangeLabel, type DadosRelatorio } from "@/lib/calculo/relatorios";
 import { gerarCsv } from "@/lib/csv";
-import { analisarAbordagens } from "@/lib/ia";
-import { toast } from "@/lib/toast";
 import {
   currentMonthKey,
   monthLabelLong,
@@ -29,6 +27,7 @@ import {
   shiftMonthKey,
   todayISO,
   ultimoDiaDoMes,
+  weekRange,
 } from "@/lib/datas";
 import { fmtDate, fmtMoney } from "@/lib/formatadores";
 import { useAppStore } from "@/lib/store";
@@ -69,6 +68,7 @@ function ReportDoc({ d, responsavel }: { d: DadosRelatorio; responsavel: string 
   const deltaTotal = d.totalAtual - d.totalAnterior;
   const deltaLocados = d.locadosAtual - d.locadosAnterior;
   const deltaComissao = d.comissaoRec - d.comissaoRecAnterior;
+  const perdasPosCaptacao = d.perdasPosCaptacao;
 
   return (
     <div className="report-doc">
@@ -95,6 +95,56 @@ function ReportDoc({ d, responsavel }: { d: DadosRelatorio; responsavel: string 
         &quot;Angariações&quot; conta apenas imóveis que chegaram na etapa Angariado no período — não
         os contatos ainda em andamento.
       </p>
+
+      {perdasPosCaptacao && (
+        <>
+          <div className="report-section-title">Perdas pós-angariação</div>
+          <div className="grid grid-2" style={{ marginBottom: "10px" }}>
+            <ReportStat
+              label="Locados fora no período"
+              value={perdasPosCaptacao.length}
+              delta={perdasPosCaptacao.length - (d.perdasPosCaptacaoAnterior || 0)}
+            />
+            <ReportStat
+              label="Tempo médio anunciado"
+              value={perdasPosCaptacao.some((imovel) => imovel.diasAnunciado != null)
+                ? `${Math.round(
+                    perdasPosCaptacao.reduce((soma, imovel) => soma + (imovel.diasAnunciado || 0), 0) /
+                      perdasPosCaptacao.filter((imovel) => imovel.diasAnunciado != null).length,
+                  )} dias`
+                : "—"}
+            />
+          </div>
+          {perdasPosCaptacao.length === 0 ? (
+            <p className="section-note">Nenhuma perda pós-angariação foi encerrada neste mês.</p>
+          ) : (
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ref. CRM</th>
+                    <th>Imóvel</th>
+                    <th>Anunciado desde</th>
+                    <th>Encerrado em</th>
+                    <th>Tempo anunciado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {perdasPosCaptacao.map((imovel) => (
+                    <tr key={imovel.id}>
+                      <td className="cell-strong">{imovel.referenciaCrm || "—"}</td>
+                      <td>{imovel.endereco}</td>
+                      <td className="cell-dim">{fmtDate(imovel.anunciadoDesde) || "—"}</td>
+                      <td className="cell-dim">{fmtDate(imovel.encerradoEm) || "—"}</td>
+                      <td>{imovel.diasAnunciado != null ? `${imovel.diasAnunciado} dias` : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
 
       <div className="report-section-title">Comissão</div>
       <div className="grid grid-2" style={{ marginBottom: "10px" }}>
@@ -147,15 +197,14 @@ function ReportDoc({ d, responsavel }: { d: DadosRelatorio; responsavel: string 
   );
 }
 
-function DesempenhoCanais({ canais }: { canais: CanalDesempenho[] }) {
+function DesempenhoCanais({ canais, periodo }: { canais: CanalDesempenho[]; periodo: string }) {
   return (
     <div className="report-doc" style={{ marginTop: "22px" }}>
       <div className="report-section-title" style={{ marginTop: 0 }}>
         Desempenho por canal de captação
       </div>
       <p className="section-note" style={{ marginBottom: "14px" }}>
-        Carteira completa (não recortada pelo período). Considera apenas imóveis que chegaram na
-        etapa Angariado. Conversão = locados ÷ angariados do canal.
+        Imóveis que chegaram à etapa Angariado em {periodo}. Conversão = locados ÷ angariados do canal.
       </p>
       {canais.length === 0 ? (
         <p className="section-note">Nenhum imóvel angariado ainda para analisar por canal.</p>
@@ -196,31 +245,14 @@ function DesempenhoCanais({ canais }: { canais: CanalDesempenho[] }) {
 function DesempenhoAbordagens({
   abordagens,
   resumo,
+  periodo,
   aoGerenciar,
 }: {
   abordagens: AbordagemDesempenho[];
   resumo: ResumoTentativas;
+  periodo: string;
   aoGerenciar: () => void;
 }) {
-  // Leitura por IA: interpreta a tabela acima. Os números NÃO vêm daqui —
-  // o servidor os recalcula do banco (ver app/api/ia), então o texto nunca
-  // descreve um ranking diferente do que está na tela.
-  const [lendo, setLendo] = useState(false);
-  const [leitura, setLeitura] = useState("");
-  const iaDisponivel = useAppStore((s) => s.iaDisponivel);
-
-  async function lerComIa() {
-    if (lendo) return;
-    setLendo(true);
-    const r = await analisarAbordagens();
-    setLendo(false);
-    if (!r.ok || !r.texto) {
-      toast(r.mensagem || "A IA não respondeu agora.", "error");
-      return;
-    }
-    setLeitura(r.texto);
-  }
-
   return (
     <div className="report-doc" style={{ marginTop: "22px" }}>
       <div
@@ -229,19 +261,13 @@ function DesempenhoAbordagens({
       >
         <span>Desempenho por abordagem</span>
         <span style={{ display: "flex", gap: "8px" }}>
-          {/* Precisa das duas coisas: ranking para ler e chave no servidor. */}
-          {iaDisponivel && abordagens.length > 0 && (
-            <button type="button" className="btn btn-sm" onClick={lerComIa} disabled={lendo}>
-              {lendo ? "Lendo..." : "Ler com IA"}
-            </button>
-          )}
           <button type="button" className="btn btn-sm" onClick={aoGerenciar}>
             Gerenciar abordagens
           </button>
         </span>
       </div>
       <p className="section-note" style={{ marginBottom: "14px" }}>
-        Carteira completa (não recortada pelo período). Roteiro usado no contato — o que se diz —,
+        Tentativas realizadas em {periodo}. Roteiro usado no contato — o que se diz —,
         diferente do canal acima. Resposta = o proprietário reagiu (inclui recusa). Angariação = dos
         imóveis que receberam o roteiro, quantos chegaram a Angariado. Destravou = foi a última
         tentativa antes da angariação.
@@ -299,20 +325,6 @@ function DesempenhoAbordagens({
             {" "}Abordagens com menos de {MIN_TENTATIVAS} tentativas aparecem marcadas como amostra
             baixa e vão para o fim — abaixo disso, uma taxa alta significa só que aconteceu uma vez.
           </p>
-          {leitura && (
-            <div className="card" style={{ padding: "14px", marginTop: "14px" }}>
-              <div className="card-title" style={{ marginBottom: "8px" }}>
-                Leitura por IA <span className="section-note">interpretação dos números acima</span>
-              </div>
-              {/* Sem dangerouslySetInnerHTML: o texto vem de fora, e o escape do
-                  JSX é a defesa. Quebras de linha viram parágrafos. */}
-              {leitura.split(/\n{2,}/).map((paragrafo, i) => (
-                <p key={i} className="drawer-notes" style={{ marginBottom: "8px" }}>
-                  {paragrafo}
-                </p>
-              ))}
-            </div>
-          )}
         </>
       )}
     </div>
@@ -370,11 +382,16 @@ export default function RelatoriosView() {
     [modo, imoveis, agenda, abordagens, mesKey, hoje],
   );
 
-  // Análise por canal: carteira inteira, independente do período selecionado.
-  const canais = desempenhoPorCanal(imoveis);
-  // Ranking de roteiros — mesma base (carteira inteira), eixo diferente.
-  const rankingAbordagens = desempenhoPorAbordagem(imoveis, abordagens, hoje);
-  const resumo = resumoTentativas(imoveis);
+  // A tabela mora dentro de um relatório de período e usa a mesma coorte dele:
+  // imóveis que chegaram a Angariado no mês/semana selecionado. Usar `imoveis`
+  // aqui fazia trocar o mês sem mudar uma linha sequer da tabela.
+  const canais = desempenhoPorCanal(dados.imoveisAtual);
+  const intervaloAbordagens = modo === "semanal"
+    ? weekRange(semanaOffset)
+    : { start: primeiroDiaDoMes(mesKey), end: ultimoDiaDoMes(mesKey) };
+  const periodoTentativas = { inicio: intervaloAbordagens.start, fim: intervaloAbordagens.end };
+  const rankingAbordagens = desempenhoPorAbordagem(imoveis, abordagens, hoje, periodoTentativas);
+  const resumo = resumoTentativas(imoveis, periodoTentativas);
 
   // Exporta os imóveis angariados no período (o que a tabela do relatório
   // mostra), com colunas mais ricas do que a versão de tela — o CSV serve para
@@ -395,7 +412,7 @@ export default function RelatoriosView() {
     baixarCsv(`imoveis-angariados-${modo}-${todayISO()}.csv`, gerarCsv(cabecalho, linhas));
   }
 
-  // Exporta a tabela de desempenho por canal (carteira completa).
+  // Exporta exatamente a tabela de desempenho por canal exibida no período.
   function exportarCanais() {
     const cabecalho = ["Origem", "Angariados", "Locados", "Conversão (%)", "Tempo médio (dias)"];
     const linhas = canais.map((c) => [
@@ -517,10 +534,11 @@ export default function RelatoriosView() {
         ) : (
           <ReportDoc d={dados} responsavel={rotuloUsuario(usuario) || "-"} />
         )}
-        <DesempenhoCanais canais={canais} />
+        <DesempenhoCanais canais={canais} periodo={dados.period} />
         <DesempenhoAbordagens
           abordagens={rankingAbordagens}
           resumo={resumo}
+          periodo={dados.period}
           aoGerenciar={() => abrirModal("abordagens")}
         />
       </div>

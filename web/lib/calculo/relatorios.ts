@@ -25,6 +25,7 @@ import {
   imoveisContatadosNoPeriodo,
   imoveisLocadosNoMes,
 } from "./motor";
+import { perdasPosCaptacaoNoMes, type ImovelPerdidoPosCaptacao } from "./perdasPosCaptacao";
 
 // Imóveis cujo processo foi DECIDIDO contra nós dentro do período — a outra
 // metade dos "processos fechados", ao lado dos locados. Usa `ehPerdaDecidida`
@@ -61,6 +62,10 @@ export interface DadosRelatorio {
   comissaoRec: number;
   comissaoRecAnterior: number;
   imoveisAtual: Imovel[];
+  /** Só existe no mensal: imóveis já angariados que foram locados fora e
+      encerrados dentro do mês do relatório. */
+  perdasPosCaptacao?: ImovelPerdidoPosCaptacao[];
+  perdasPosCaptacaoAnterior?: number;
 }
 
 export function weekRangeLabel(offset: number): string {
@@ -108,6 +113,8 @@ export function relatorioMensal(imoveis: Imovel[], comissaoPercent: number, key:
     comissaoRec,
     comissaoRecAnterior: comissaoRecPrev,
     imoveisAtual: cur,
+    perdasPosCaptacao: perdasPosCaptacaoNoMes(imoveis, key),
+    perdasPosCaptacaoAnterior: perdasPosCaptacaoNoMes(imoveis, prevKey).length,
   };
 }
 

@@ -257,6 +257,25 @@ describe("desempenhoPorAbordagem", () => {
     expect(desempenhoPorAbordagem(imoveis, CATALOGO, HOJE_RANKING)).toEqual([]);
   });
 
+  it("recorta o ranking e o resumo pela data das tentativas", () => {
+    const imoveis = [
+      imovel({
+        id: "i1",
+        angariadoEm: "2026-03-20",
+        tentativas: [
+          tentativa("2026-01-10T10:00", "a1", "sem-resposta"),
+          tentativa("2026-03-15T10:00", "a2", "agendou"),
+        ],
+      }),
+    ];
+    const periodo = { inicio: "2026-03-01", fim: "2026-03-31" };
+    const ranking = desempenhoPorAbordagem(imoveis, CATALOGO, HOJE_RANKING, periodo);
+
+    expect(ranking.map((item) => item.abordagemId)).toEqual(["a2"]);
+    expect(ranking[0]).toMatchObject({ tentativas: 1, destravou: 1, aberturas: 0, seguimentos: 1 });
+    expect(resumoTentativas(imoveis, periodo)).toMatchObject({ total: 1, imoveisComTentativa: 1 });
+  });
+
   it("usa rótulo de fallback quando a abordagem não está mais no catálogo", () => {
     const imoveis = [imovel({ id: "i1", tentativas: [tentativa("2026-01-01T10:00", "sumiu", "respondeu")] })];
     const [r] = desempenhoPorAbordagem(imoveis, [], HOJE_RANKING);
