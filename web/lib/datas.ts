@@ -78,12 +78,23 @@ export function inicioDaSemana(iso: string | null | undefined): string | null {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** Agora, como datetime local "YYYY-MM-DDTHH:mm" — carimbo das notas do
-    histórico de interações. Lexicograficamente ordenável. */
+/** Fuso operacional explícito: funções da Vercel rodam em UTC. */
+export const FUSO_OPERACIONAL = "America/Sao_Paulo";
+
+/** Agora em São Paulo, como "YYYY-MM-DDTHH:mm". Não depende do fuso da máquina. */
 export function agoraISOComHora(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: FUSO_OPERACIONAL,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const valor = (tipo: Intl.DateTimeFormatPartTypes) =>
+    partes.find((parte) => parte.type === tipo)?.value || "";
+  return `${valor("year")}-${valor("month")}-${valor("day")}T${valor("hour")}:${valor("minute")}`;
 }
 
 export function parseDate(iso: string | null | undefined): Date | null {

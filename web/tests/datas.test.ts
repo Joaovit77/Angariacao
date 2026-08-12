@@ -2,7 +2,7 @@
    Os valores esperados vêm de tests/oracle-expected.json, gerado
    executando o app.js ANTIGO com relógio congelado. O port precisa
    reproduzir exatamente o comportamento legado. */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   todayISO, parseDate, daysBetween, addDaysISO, monthKey,
   monthLabel, monthLabelLong, currentMonthKey, shiftMonthKey, last6MonthKeys,
@@ -75,10 +75,15 @@ describe("inicioDaSemana", () => {
 describe("agoraISOComHora (relógio congelado)", () => {
   it("carimbo local YYYY-MM-DDTHH:mm, ordenável e compatível com fmtDate via slice", () => {
     const agora = agoraISOComHora();
-    expect(agora).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+    expect(agora).toBe("2026-07-09T12:00");
     // no instante do oráculo (2026-07-09 12:00 em São Paulo) a data local
     // coincide com o todayISO() legado
     expect(agora.slice(0, 10)).toBe(todayISO());
+  });
+
+  it("usa São Paulo mesmo quando o processo está em UTC", () => {
+    vi.setSystemTime(new Date("2026-08-12T20:26:00.000Z"));
+    expect(agoraISOComHora()).toBe("2026-08-12T17:26");
   });
 });
 
