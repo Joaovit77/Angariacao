@@ -3419,6 +3419,28 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
   .pipeline-toolbar-side{ flex-wrap:wrap; }
   .search-input{ width:100%; min-width:0; }
   .view-toggle{ align-self:flex-start; }
+  /* A lista desktop tem 13 colunas. No celular, mantê-las todas só comprime o
+     endereço até virar uma palavra por linha. A linha inteira abre o drawer,
+     então a visão rápida prioriza identidade, localização e etapa atual. */
+  .pipeline-list-card{ overflow:hidden; }
+  .pipeline-list-card table{ min-width:0; width:100%; table-layout:fixed; }
+  .pipeline-list-card th:nth-child(3), .pipeline-list-card td:nth-child(3),
+  .pipeline-list-card th:nth-child(4), .pipeline-list-card td:nth-child(4),
+  .pipeline-list-card th:nth-child(6), .pipeline-list-card td:nth-child(6),
+  .pipeline-list-card th:nth-child(7), .pipeline-list-card td:nth-child(7),
+  .pipeline-list-card th:nth-child(8), .pipeline-list-card td:nth-child(8),
+  .pipeline-list-card th:nth-child(9), .pipeline-list-card td:nth-child(9),
+  .pipeline-list-card th:nth-child(11), .pipeline-list-card td:nth-child(11),
+  .pipeline-list-card th:nth-child(12), .pipeline-list-card td:nth-child(12),
+  .pipeline-list-card th:nth-child(13), .pipeline-list-card td:nth-child(13){ display:none; }
+  .pipeline-list-card th:nth-child(1), .pipeline-list-card td:nth-child(1){ width:76px; }
+  .pipeline-list-card th:nth-child(2), .pipeline-list-card td:nth-child(2){ width:auto; }
+  .pipeline-list-card th:nth-child(5), .pipeline-list-card td:nth-child(5){ width:118px; }
+  .pipeline-list-card th:nth-child(10), .pipeline-list-card td:nth-child(10){ width:126px; }
+  .pipeline-list-card td:nth-child(2){
+    overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.45;
+  }
+  .pipeline-list-card th, .pipeline-list-card td{ padding-left:10px; padding-right:10px; }
   .pipeline-drawer{ width:100vw; }
   .pipeline-drawer-foot{ flex-wrap:wrap; justify-content:stretch; }
   .pipeline-drawer-foot .btn{ flex:1; }
@@ -3429,6 +3451,15 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
   .agenda-actions{ width:100%; justify-content:flex-end; padding-left:30px; }
   .agenda-whatsapp-btn{ flex:1; }
   .agenda-item-title{ align-items:flex-start; }
+}
+
+@media (max-width: 480px){
+  /* Em telas realmente estreitas, Bairro também sai: ele continua no drawer e
+     liberar esta faixa mantém o endereço legível sem esconder o Status. */
+  .pipeline-list-card th:nth-child(5), .pipeline-list-card td:nth-child(5){ display:none; }
+  .pipeline-list-card th:nth-child(1), .pipeline-list-card td:nth-child(1){ width:70px; }
+  .pipeline-list-card th:nth-child(10), .pipeline-list-card td:nth-child(10){ width:116px; }
+  .pipeline-list-card th, .pipeline-list-card td{ padding-left:8px; padding-right:8px; }
 }
 
 /* ============================================================

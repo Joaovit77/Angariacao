@@ -47,7 +47,9 @@ describe("colunas da Lista do Pipeline", () => {
     );
     expect(posicoes.length).toBeGreaterThan(0);
     // Cobertura completa: 1..N, sem buraco e sem sobra.
-    expect([...posicoes].sort((a, b) => a - b)).toEqual(
+    // Regras responsivas podem repetir uma posição para redefinir/ocultar a
+    // coluna no mobile; a trava é de COBERTURA das posições, não unicidade.
+    expect([...new Set(posicoes)].sort((a, b) => a - b)).toEqual(
       Array.from({ length: cabecalhos }, (_, n) => n + 1),
     );
   });
@@ -59,5 +61,14 @@ describe("colunas da Lista do Pipeline", () => {
     expect(lista).toContain('<th className="col-aluguel">Aluguel</th>');
     expect(lista).toContain('className="col-aluguel"');
     expect(CSS).toContain(".pipeline-list-card th.col-aluguel");
+  });
+
+  it("no mobile preserva espaço para Endereço e mantém Status visível", () => {
+    expect(CSS).toContain(".pipeline-list-card table{ min-width:0; width:100%; table-layout:fixed; }");
+    expect(CSS).toContain(".pipeline-list-card th:nth-child(2), .pipeline-list-card td:nth-child(2){ width:auto; }");
+    expect(CSS).not.toContain(
+      ".pipeline-list-card th:nth-child(10), .pipeline-list-card td:nth-child(10){ display:none; }",
+    );
+    expect(CSS).toContain(".pipeline-list-card th:nth-child(5), .pipeline-list-card td:nth-child(5){ display:none; }");
   });
 });
