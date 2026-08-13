@@ -24,6 +24,7 @@ import { diasSemMovimento, isStale } from "./motor";
 import { ORIGENS_IMOVEL, TIPOS_IMOVEL } from "../constantes";
 import { daysBetween, todayISO } from "../datas";
 import type { AgendaItem, Imovel } from "../tipos";
+import type { LeituraTerritorialMapa } from "./mapa";
 
 export type FalhaIa =
   | "nao-configurado"
@@ -344,6 +345,22 @@ Explique em 2 a 4 frases curtas por que os primeiros itens vem antes dos demais 
 - Os portais sao divididos igualmente; nao diga que um converte melhor.
 - Se nao houver acao pendente, diga que o dia esta em ordem e indique manter a prospeccao.
 - Sem introducao motivacional, titulos ou markdown.`;
+}
+
+export interface AcaoTerritorialIa { acao: string }
+
+export const ESQUEMA_ACAO_TERRITORIAL = {
+  type: "object",
+  properties: { acao: { type: "string", description: "Uma ação prática, curta e baseada somente nos números fornecidos" } },
+  required: ["acao"],
+  additionalProperties: false,
+} as const;
+
+export function promptAcaoTerritorial(leitura: LeituraTerritorialMapa): string {
+  const linha = (nome: string, item: LeituraTerritorialMapa["oportunidade"]) => item
+    ? `${nome}: ${item.bairro}, ${item.total} registro(s), ${item.ganhas} captação(ões), ${item.conversao.toFixed(1)}% de conversão.`
+    : `${nome}: sem amostra suficiente.`;
+  return `${PAPEL}\n\nEstes números territoriais já foram calculados pelo sistema. Não recalcule nem invente dados.\n${linha("Melhor oportunidade", leitura.oportunidade)}\n${linha("Ponto de atenção", leitura.atencao)}\n${linha("Maior concentração", leitura.concentracao)}\nMédia do recorte: ${leitura.mediaConversao.toFixed(1)}%.\n\nEscreva UMA próxima ação, com no máximo 150 caracteres, específica e executável. Não repita todos os números e não use markdown.`;
 }
 
 /** Um compromisso ou imóvel que pede ação. O texto já vem pronto do

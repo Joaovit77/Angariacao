@@ -30,10 +30,11 @@ import { registrarEvento, registrarUsoDaResposta } from "@/lib/servidor/registro
 import { desempenhoPorAbordagem, resumoTentativas } from "@/lib/calculo/abordagens";
 import { kpisDashboard } from "@/lib/calculo/dashboard";
 import { focoInteligenteDoDia } from "@/lib/calculo/focoDia";
-import { todayISO } from "@/lib/datas";
+import { addDaysISO, todayISO } from "@/lib/datas";
 import {
   CARACTERISTICAS_AUSENTES,
   ESQUEMA_ABORDAGEM_ANUNCIO,
+  ESQUEMA_ACAO_TERRITORIAL,
   ESQUEMA_ANUNCIO,
   ESQUEMA_ANUNCIO_GERADO,
   ESQUEMA_RASCUNHO,
@@ -47,6 +48,7 @@ import {
   promptAnalisarAbordagens,
   promptAnalisarDashboard,
   promptAbordagemDoAnuncio,
+  promptAcaoTerritorial,
   promptExplicarFocoInteligente,
   promptExtrairAnuncio,
   promptGerarAnuncio,
@@ -54,12 +56,14 @@ import {
   promptResumoDia,
   promptSugerirRoteiros,
   type AbordagemDoAnuncio,
+  type AcaoTerritorialIa,
   type AnuncioExtraido,
   type AnuncioGerado,
   type ContextoRoteiro,
   type FalhaIa,
   type RoteiroSugerido,
 } from "@/lib/calculo/ia";
+import { filtrarImoveisMapa, leituraTerritorialMapa } from "@/lib/calculo/mapa";
 import { corpoDaResposta, ehSoMidia } from "@/lib/calculo/notas";
 import { respostasDoImovel } from "@/lib/calculo/respostas";
 import {
@@ -104,6 +108,8 @@ interface Resposta {
   anuncioGerado?: AnuncioGerado;
   /** tipo "abordagem-anuncio" */
   abordagem?: AbordagemDoAnuncio;
+  /** tipo "analisar-mapa" */
+  leitura?: AcaoTerritorialIa;
 }
 
 function erro(falha: FalhaIa, status: number): Response {
@@ -249,13 +255,14 @@ export async function POST(request: Request): Promise<Response> {
     texto?: unknown;
     imovelId?: unknown;
     caracteristicas?: unknown;
+    filtros?: unknown;
   };
   try {
     corpo = await request.json();
   } catch {
     return erro("requisicao-invalida", 400);
   }
-  const TIPOS = ["sugerir-roteiros", "analisar-abordagens", "analisar-dashboard", "resumo-dia", "explicar-foco", "extrair-anuncio", "rascunhar-resposta", "gerar-anuncio", "abordagem-anuncio"] as const;
+  const TIPOS = ["sugerir-roteiros", "analisar-abordagens", "analisar-dashboard", "analisar-mapa", "resumo-dia", "explicar-foco", "extrair-anuncio", "rascunhar-resposta", "gerar-anuncio", "abordagem-anuncio"] as const;
   type Tipo = (typeof TIPOS)[number];
   const tipo = typeof corpo.tipo === "string" ? corpo.tipo : "";
   if (!(TIPOS as readonly string[]).includes(tipo)) return erro("requisicao-invalida", 400);
@@ -721,6 +728,50 @@ export async function POST(request: Request): Promise<Response> {
   // outro padrão aqui faria a comissão da análise divergir da tela.
   const cfg = cfgRes.data as DbUserConfigRow | null;
   const comissaoPercent = cfg ? Number(cfg.comissao_percent) : 100;
+
+  if (pedido === "analisar-mapa") {
+    const bruto = corpo.filtros && typeof corpo.filtros === "object" ? corpo.filtros as Record<string, unknown> : {};
+    const texto = (chave: string) => typeof bruto[chave] === "string" ? (bruto[chave] as string).trim().slice(0, 120) : "";
+    const periodoDias = [30, 90, 180].includes(Number(bruto.periodoDias)) ? Number(bruto.periodoDias) : 0;
+    const recorte = filtrarImoveisMapa(imoveis, {
+      busca: texto("busca"),
+      bairro: texto("bairro"),
+      status: texto("status"),
+      responsavel: texto("responsavel"),
+      origem: texto("origem"),
+      desde: periodoDias ? addDaysISO(todayISO(), -periodoDias) : null,
+    });
+    const leitura = leituraTerritorialMapa(recorte);
+    if (!leitura.concentracao) return erro("sem-dados", 422);
+    let conclusao: OpenAI.Chat.ChatCompletion;
+    try {
+      conclusao = await openai.chat.completions.create({
+        model: MODELO,
+        max_completion_tokens: 1000,
+        reasoning_effort: "low",
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: "acao_territorial", strict: true, schema: ESQUEMA_ACAO_TERRITORIAL },
+        },
+        messages: [{ role: "user", content: promptAcaoTerritorial(leitura) }],
+      });
+    } catch (e) {
+      console.error("IA: falha ao analisar o mapa:", e);
+      const falha = classificarErroIa(e);
+      registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
+      return erro(falha, 502);
+    }
+    registrarUsoDaResposta(donoDaChamada, pedido, MODELO, conclusao.usage);
+    try {
+      const dados = JSON.parse(textoDaResposta(conclusao)) as { acao?: unknown };
+      const acao = typeof dados.acao === "string" ? dados.acao.trim().slice(0, 180) : "";
+      if (!acao) return erro("falha-ia", 502);
+      return Response.json({ ok: true, leitura: { acao } } satisfies Resposta);
+    } catch (e) {
+      console.error("IA: leitura territorial não veio parseável:", e);
+      return erro("falha-ia", 502);
+    }
+  }
 
   let prompt: string;
 

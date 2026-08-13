@@ -13,7 +13,9 @@ import type {
   ContextoRoteiro,
   FalhaIa,
   RoteiroSugerido,
+  AcaoTerritorialIa,
 } from "./calculo/ia";
+import type { FiltrosMapa } from "./calculo/mapa";
 import { getSupabase } from "./persistencia/supabase";
 
 export interface ResultadoRoteiros {
@@ -28,6 +30,13 @@ export interface ResultadoAnalise {
   falha?: FalhaIa;
   mensagem?: string;
   texto?: string;
+}
+
+export interface ResultadoAcaoTerritorial {
+  ok: boolean;
+  falha?: FalhaIa;
+  mensagem?: string;
+  leitura?: AcaoTerritorialIa;
 }
 
 export interface ResultadoExtracao {
@@ -185,6 +194,10 @@ export function analisarAbordagens(): Promise<ResultadoAnalise> {
 /** Pede a leitura dos KPIs do Dashboard. */
 export function analisarDashboard(): Promise<ResultadoAnalise> {
   return chamar<ResultadoAnalise>({ tipo: "analisar-dashboard" });
+}
+
+export function analisarMapa(filtros: Omit<FiltrosMapa, "desde"> & { periodoDias?: number }): Promise<ResultadoAcaoTerritorial> {
+  return chamar<ResultadoAcaoTerritorial>({ tipo: "analisar-mapa", filtros });
 }
 
 /** Pede a lista priorizada do que fazer hoje. */

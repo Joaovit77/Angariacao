@@ -27,8 +27,7 @@ import L from "leaflet";
 // layout.tsx; o heat não tem CSS.
 import "leaflet.markercluster";
 import "leaflet.heat";
-import { type CategoriaMapa, categoriaMapa, corDaCategoria } from "@/lib/calculo/mapa";
-import { foiAngariado } from "@/lib/calculo/motor";
+import { type CategoriaMapa, categoriaMapa, corDaCategoria, entraNoCalorMapa } from "@/lib/calculo/mapa";
 import { fmtMoney } from "@/lib/formatadores";
 import type { Imovel } from "@/lib/tipos";
 
@@ -156,7 +155,7 @@ export default function MapaLeaflet({
 
     // Pontos usados para enquadrar: no calor, só os angariados (é o que aparece);
     // nos outros modos, os que estão de fato visíveis com o filtro atual.
-    const usados = modo === "calor" ? comLocalizacao.filter(foiAngariado) : visiveis;
+    const usados = modo === "calor" ? comLocalizacao.filter(entraNoCalorMapa) : visiveis;
 
     if (modo === "calor") {
       const pontos: [number, number, number][] = usados.map((i) => [

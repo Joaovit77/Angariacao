@@ -118,6 +118,8 @@ export default function ModalImovel({ id }: { id?: string }) {
   // seletor. O cálculo já sabe lidar com o vazio ("Não informado").
   const [origemImovel, setOrigemImovel] = useState(imovel?.origemImovel ?? "");
   const [imobiliariaConcorrente, setImobiliariaConcorrente] = useState(imovel?.imobiliariaConcorrente ?? "");
+  const [concorrentesAberto, setConcorrentesAberto] = useState(false);
+  const [concorrenteTermo, setConcorrenteTermo] = useState("");
   const [proprietarioNome, setProprietarioNome] = useState(imovel?.proprietarioNome ?? "");
   const [proprietarioTelefone, setProprietarioTelefone] = useState(imovel?.proprietarioTelefone ?? "");
   // A forma de abordagem não é chute: quando o imóvel já tem tentativa
@@ -163,10 +165,10 @@ export default function ModalImovel({ id }: { id?: string }) {
 
   // Sugestões sem duplicata por acento/caixa/espaço: uma grafia por
   // imobiliária/captador já usado (ver lib/normalizacao.ts).
-  const concorrentes = distintosCanonizados([
-    ...imoveis.map((i) => i.imobiliariaConcorrente),
-    imobiliariaConcorrente,
-  ]);
+  const concorrentes = distintosCanonizados(imoveis.map((i) => i.imobiliariaConcorrente));
+  const concorrentesSugeridos = concorrentes.filter(
+    (nome) => !concorrenteTermo.trim() || nome.toLocaleLowerCase("pt-BR").includes(concorrenteTermo.trim().toLocaleLowerCase("pt-BR")),
+  );
   const responsaveis = distintosCanonizados([...imoveis.map((i) => i.responsavel), responsavel]);
   const edificios = distintosCanonizados([...imoveis.map((i) => i.edificio), edificio]);
 
@@ -614,20 +616,69 @@ export default function ModalImovel({ id }: { id?: string }) {
               ))}
             </select>
           </div>
-          <div className="field-group">
+          <div
+            className="field-group field-autocomplete"
+            onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setConcorrentesAberto(false); }}
+          >
             <label>Garimpado no site de qual imobiliária?</label>
             <input
               type="text"
-              list="imobiliarias-concorrentes-list"
-              value={imobiliariaConcorrente ?? ""}
-              onChange={(e) => setImobiliariaConcorrente(e.target.value)}
+              value={concorrentesAberto ? concorrenteTermo : imobiliariaConcorrente}
+              onChange={(e) => {
+                setConcorrenteTermo(e.target.value);
+                setImobiliariaConcorrente(e.target.value);
+                setConcorrentesAberto(true);
+              }}
+              onFocus={() => { setConcorrenteTermo(""); setConcorrentesAberto(true); }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setConcorrentesAberto(false);
+                if (e.key === "Enter" && concorrentesSugeridos[0]) {
+                  e.preventDefault();
+                  setImobiliariaConcorrente(concorrentesSugeridos[0]);
+                  setConcorrenteTermo(concorrentesSugeridos[0]);
+                  setConcorrentesAberto(false);
+                }
+              }}
               placeholder="Se achou o anúncio no site de outra imobiliária, informe qual"
+              role="combobox"
+              aria-expanded={concorrentesAberto}
+              aria-controls="imobiliarias-concorrentes-sugestoes"
+              aria-autocomplete="list"
             />
-            <datalist id="imobiliarias-concorrentes-list">
-              {concorrentes.map((nome) => (
-                <option key={nome} value={nome}></option>
-              ))}
-            </datalist>
+            {concorrentesAberto && (
+              <div id="imobiliarias-concorrentes-sugestoes" className="modal-suggestion-options" role="listbox">
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={!imobiliariaConcorrente}
+                  onClick={() => {
+                    setImobiliariaConcorrente("");
+                    setConcorrenteTermo("");
+                    setConcorrentesAberto(false);
+                  }}
+                >
+                  Nenhuma imobiliária
+                </button>
+                {concorrentesSugeridos.map((nome) => (
+                  <button
+                    key={nome}
+                    type="button"
+                    role="option"
+                    aria-selected={imobiliariaConcorrente === nome}
+                    onClick={() => {
+                      setImobiliariaConcorrente(nome);
+                      setConcorrenteTermo(nome);
+                      setConcorrentesAberto(false);
+                    }}
+                  >
+                    {nome}
+                  </button>
+                ))}
+                {concorrenteTermo.trim() && concorrentesSugeridos.length === 0 && (
+                  <div className="modal-suggestion-new">O novo nome será salvo ao confirmar o imóvel.</div>
+                )}
+              </div>
+            )}
             <div className="field-hint">
               Preencha quando você encontrou este imóvel no site/vitrine de outra imobiliária e foi
               atrás de angariar. É a fonte do garimpo — deixe em branco se a oportunidade não veio

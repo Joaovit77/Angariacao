@@ -9,7 +9,7 @@
    ================================================================ */
 import { STATUS_TERMINAL_NEGATIVE } from "../constantes";
 import type { Imovel } from "../tipos";
-import { captacaoGanha } from "./motor";
+import { captacaoGanha, ehUnidadeDesdobrada } from "./motor";
 
 export type CategoriaMapa = "locado" | "angariado" | "andamento" | "sem-sucesso";
 
@@ -35,6 +35,96 @@ export function categoriaMapa(i: Imovel): CategoriaMapa {
   if (TERMINAIS.includes(i.status)) return "sem-sucesso";
   if (captacaoGanha(i)) return "angariado";
   return "andamento";
+}
+
+/** Fonte única dos pontos e do contador do mapa de calor. */
+export function entraNoCalorMapa(i: Imovel): boolean {
+  return captacaoGanha(i);
+}
+
+/** O período do mapa usa a data em que o imóvel entrou na captação. */
+export function dentroPeriodoMapa(i: Imovel, desde: string | null): boolean {
+  return desde == null || !!i.dataAngariacao && i.dataAngariacao >= desde;
+}
+
+export interface ResumoMapa {
+  total: number;
+  localizados: number;
+  ganhas: number;
+  emAndamento: number;
+  conversao: number;
+}
+
+export interface FiltrosMapa {
+  busca?: string;
+  bairro?: string;
+  status?: string;
+  responsavel?: string;
+  origem?: string;
+  desde?: string | null;
+}
+
+export function filtrarImoveisMapa(imoveis: Imovel[], filtros: FiltrosMapa): Imovel[] {
+  const normalizar = (v: string | null | undefined) => (v || "").trim().toLocaleLowerCase("pt-BR");
+  const termo = normalizar(filtros.busca);
+  const bairro = normalizar(filtros.bairro);
+  return imoveis.filter((i) => {
+    if (!dentroPeriodoMapa(i, filtros.desde || null)) return false;
+    if (bairro && !normalizar(i.bairro).includes(bairro)) return false;
+    if (filtros.status && i.status !== filtros.status) return false;
+    if (filtros.responsavel && i.responsavel !== filtros.responsavel) return false;
+    if (filtros.origem && i.origemImovel !== filtros.origem) return false;
+    return !termo || [i.codigo, i.endereco, i.bairro, i.edificio, i.proprietarioNome].some((v) => normalizar(v).includes(termo));
+  });
+}
+
+export interface DesempenhoBairroMapa {
+  bairro: string;
+  total: number;
+  ganhas: number;
+  conversao: number;
+}
+
+export interface LeituraTerritorialMapa {
+  oportunidade: DesempenhoBairroMapa | null;
+  atencao: DesempenhoBairroMapa | null;
+  concentracao: DesempenhoBairroMapa | null;
+  mediaConversao: number;
+}
+
+/** Números que alimentam os cards; a IA recebe somente este resumo pronto. */
+export function leituraTerritorialMapa(imoveis: Imovel[]): LeituraTerritorialMapa {
+  const captacoes = imoveis.filter((i) => !ehUnidadeDesdobrada(i) && !!i.bairro?.trim());
+  const grupos = new Map<string, Imovel[]>();
+  for (const i of captacoes) {
+    const nome = i.bairro!.trim();
+    grupos.set(nome, [...(grupos.get(nome) || []), i]);
+  }
+  const bairros = [...grupos.entries()].map(([bairro, itens]) => {
+    const ganhas = itens.filter(captacaoGanha).length;
+    return { bairro, total: itens.length, ganhas, conversao: ganhas / itens.length * 100 };
+  });
+  const mediaConversao = captacoes.length ? captacoes.filter(captacaoGanha).length / captacoes.length * 100 : 0;
+  const comAmostra = bairros.filter((b) => b.total >= 3);
+  const oportunidade = [...comAmostra].sort((a, b) => b.conversao - a.conversao || b.total - a.total)[0] || null;
+  const atencao = [...comAmostra]
+    .filter((b) => b.conversao < mediaConversao)
+    .sort((a, b) => b.total - a.total || a.conversao - b.conversao)[0] || null;
+  const concentracao = [...bairros].sort((a, b) => b.total - a.total || b.ganhas - a.ganhas)[0] || null;
+  return { oportunidade, atencao, concentracao, mediaConversao };
+}
+
+/** Resumo operacional sem inflar captações com unidades desdobradas. */
+export function resumoMapa(imoveis: Imovel[]): ResumoMapa {
+  const captacoes = imoveis.filter((i) => !ehUnidadeDesdobrada(i));
+  const ganhas = captacoes.filter(captacaoGanha).length;
+  return {
+    total: captacoes.length,
+    localizados: imoveis.filter((i) => i.latitude != null && i.longitude != null).length,
+    ganhas,
+    emAndamento: captacoes.filter((i) => categoriaMapa(i) === "andamento").length,
+    conversao: captacoes.length ? ganhas / captacoes.length * 100 : 0,
+  };
 }
 
 export interface CategoriaMapaInfo {
