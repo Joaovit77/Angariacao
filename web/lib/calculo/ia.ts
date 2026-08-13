@@ -19,6 +19,7 @@
 import type { AbordagemDesempenho, ResumoTentativas } from "./abordagens";
 import type { KpisDashboard } from "./dashboard";
 import type { PlanoDoDia } from "./planoDia";
+import type { FocoInteligente } from "./focoDia";
 import { diasSemMovimento, isStale } from "./motor";
 import { ORIGENS_IMOVEL, TIPOS_IMOVEL } from "../constantes";
 import { daysBetween, todayISO } from "../datas";
@@ -316,6 +317,33 @@ Escreva 2 a 3 frases curtas em português do Brasil, dirigindo-se ao corretor po
 - NÃO eleja um portal como melhor nem sugira concentrar num só — a divisão é igual de propósito.
 - Se ainda não há ritmo estimado, diga que falta histórico para montar a meta e sugira só manter a prospecção nos canais de sempre.
 - Sem introdução nem fechamento motivacional, sem bullet points, títulos ou markdown.`;
+}
+
+/** A fila ja foi calculada por regras auditaveis. O modelo recebe apenas o
+    necessario para explicar a sequencia, sem poder substituir o ranking. */
+export function promptExplicarFocoInteligente(foco: FocoInteligente): string {
+  const acoes = foco.acoes.slice(0, 12).map(
+    (acao, indice) =>
+      `${indice + 1}. [${acao.nivel}] ${acao.titulo} — ${acao.contexto}. Motivo calculado: ${acao.motivo}`,
+  );
+  const plano = resumirFocoParaPrompt(foco.planoProspeccao);
+
+  return `${PAPEL}
+
+Este e o foco de HOJE deste corretor, ja calculado e ordenado pelo sistema. Interprete sem reordenar, recalcular ou inventar dados.
+
+Fila de acoes:
+${acoes.length > 0 ? acoes.join("\n") : "Nenhuma acao pendente."}
+
+Contexto de prospeccao:
+${plano}
+
+Explique em 2 a 4 frases curtas por que os primeiros itens vem antes dos demais e qual sequencia executar. Regras:
+- Respeite exatamente a ordem calculada.
+- Nao afirme interesse, urgencia ou qualidade que nao estejam no texto.
+- Os portais sao divididos igualmente; nao diga que um converte melhor.
+- Se nao houver acao pendente, diga que o dia esta em ordem e indique manter a prospeccao.
+- Sem introducao motivacional, titulos ou markdown.`;
 }
 
 /** Um compromisso ou imóvel que pede ação. O texto já vem pronto do

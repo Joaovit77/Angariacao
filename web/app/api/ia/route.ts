@@ -29,7 +29,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { registrarEvento, registrarUsoDaResposta } from "@/lib/servidor/registro";
 import { desempenhoPorAbordagem, resumoTentativas } from "@/lib/calculo/abordagens";
 import { kpisDashboard } from "@/lib/calculo/dashboard";
-import { planoDoDia } from "@/lib/calculo/planoDia";
+import { focoInteligenteDoDia } from "@/lib/calculo/focoDia";
 import { todayISO } from "@/lib/datas";
 import {
   CARACTERISTICAS_AUSENTES,
@@ -47,7 +47,7 @@ import {
   promptAnalisarAbordagens,
   promptAnalisarDashboard,
   promptAbordagemDoAnuncio,
-  promptExplicarFoco,
+  promptExplicarFocoInteligente,
   promptExtrairAnuncio,
   promptGerarAnuncio,
   promptRascunharResposta,
@@ -741,9 +741,9 @@ export async function POST(request: Request): Promise<Response> {
     const origensExtras = Array.isArray(cfg?.origens_extras)
       ? cfg.origens_extras.filter((o): o is string => typeof o === "string" && o.trim() !== "")
       : [];
-    const plano = planoDoDia(imoveis, origensExtras, todayISO());
-    if (plano.portais.length === 0) return erro("sem-dados", 422);
-    prompt = promptExplicarFoco(plano);
+    const agenda = ((agRes.data || []) as DbAgendaRow[]).map(fromDbAgenda);
+    const foco = focoInteligenteDoDia(imoveis, agenda, origensExtras, todayISO());
+    prompt = promptExplicarFocoInteligente(foco);
   } else {
     const agenda = ((agRes.data || []) as DbAgendaRow[]).map(fromDbAgenda);
     // Aqui NÃO há "sem-dados": nada pendente é uma resposta legítima e útil
