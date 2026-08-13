@@ -10,7 +10,8 @@
    para o input não ser recriado a cada tecla pela montagem de HTML por
    string; com input controlado do React o foco nunca se perde.
    ================================================================ */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useSessao } from "@/components/SessaoProvider";
 import BotaoAbordagemAnuncio from "./BotaoAbordagemAnuncio";
 import { resultadosPendentes, seloTentativas } from "@/lib/calculo/abordagens";
@@ -23,6 +24,7 @@ import {
   pipelineUniqueSorted,
   temTelefone,
   type PipelineCol,
+  type PipelineViewMode,
 } from "@/lib/calculo/filtros";
 import { daysInCurrentStatus, diasSemMovimento, isPausado, isStale } from "@/lib/calculo/motor";
 import { MODELOS_WHATSAPP, modeloPadraoWhatsapp } from "@/lib/calculo/whatsapp";
@@ -205,6 +207,7 @@ function CartaoKanban({
 
 function Kanban({ imoveis, aoAbrir }: { imoveis: Imovel[]; aoAbrir: (id: string) => void }) {
   const { usuario } = useSessao();
+  const kanbanRef = useRef<HTMLDivElement>(null);
   const [arrastandoId, setArrastandoId] = useState<string | null>(null);
   const [statusAlvo, setStatusAlvo] = useState<string | null>(null);
   const [movendoId, setMovendoId] = useState<string | null>(null);
@@ -229,6 +232,13 @@ function Kanban({ imoveis, aoAbrir }: { imoveis: Imovel[]; aoAbrir: (id: string)
     if (!chavePreferencia || !preferenciaCarregada) return;
     localStorage.setItem(chavePreferencia, JSON.stringify(preferencia));
   }, [chavePreferencia, preferencia, preferenciaCarregada]);
+
+  useLayoutEffect(() => {
+    if (!preferenciaCarregada || !kanbanRef.current) return;
+    // A ordem salva entra logo depois da montagem. Sem reposicionar aqui, o
+    // navegador preserva a âncora horizontal e o Kanban abre no meio das colunas.
+    kanbanRef.current.scrollLeft = 0;
+  }, [preferenciaCarregada]);
 
   const statusOrdenados = ordenarStatusKanban(STATUS_ALL, imoveis, modoOrdem, ordemPersonalizada);
 
@@ -283,7 +293,7 @@ function Kanban({ imoveis, aoAbrir }: { imoveis: Imovel[]; aoAbrir: (id: string)
           {modoOrdem === "personalizada" ? "Arraste o cabeçalho para reorganizar" : "Arraste um card para atualizar a etapa"}
         </span>
       </div>
-      <div className="kanban">
+      <div className="kanban" ref={kanbanRef}>
         {statusOrdenados.map((status) => {
         const items = imoveis
           .filter((i) => i.status === status)
@@ -776,6 +786,20 @@ export default function PipelineView() {
   const drawerImovel =
     viewMode !== "kanban" && drawerImovelId ? imoveis.find((i) => i.id === drawerImovelId) : null;
 
+  function trocarVisualizacao(novoModo: PipelineViewMode) {
+    if (novoModo === viewMode) return;
+    const doc = document as Document & {
+      startViewTransition?: (atualizar: () => void) => { finished: Promise<void> };
+    };
+    if (!doc.startViewTransition || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setViewMode(novoModo);
+      return;
+    }
+    doc.startViewTransition(() => {
+      flushSync(() => setViewMode(novoModo));
+    });
+  }
+
   return (
     <>
       <div className="page-head">
@@ -907,14 +931,14 @@ export default function PipelineView() {
             <button
               type="button"
               className={viewMode === "lista" ? "active" : ""}
-              onClick={() => setViewMode("lista")}
+              onClick={() => trocarVisualizacao("lista")}
             >
               Lista
             </button>
             <button
               type="button"
               className={viewMode === "kanban" ? "active" : ""}
-              onClick={() => setViewMode("kanban")}
+              onClick={() => trocarVisualizacao("kanban")}
             >
               Kanban
             </button>
@@ -924,7 +948,7 @@ export default function PipelineView() {
               <button
                 type="button"
                 className={viewMode === "retirados" ? "active" : ""}
-                onClick={() => setViewMode("retirados")}
+                onClick={() => trocarVisualizacao("retirados")}
                 title="Imóveis que o proprietário retirou da carteira"
               >
                 Retirados <span className="view-toggle-contador">{totalRetirados}</span>
@@ -935,11 +959,16 @@ export default function PipelineView() {
       </div>
 
       <div id="pipeline-results">
-        {viewMode === "kanban" ? (
-          <Kanban imoveis={filtrados} aoAbrir={(id) => abrirModal("imovel", id)} />
-        ) : (
-          <Lista imoveis={ordenarPipelineLista(filtrados, colSort)} todos={imoveis} />
-        )}
+        <div
+          key={viewMode}
+          className={`pipeline-view-transition pipeline-view-${viewMode}`}
+        >
+          {viewMode === "kanban" ? (
+            <Kanban imoveis={filtrados} aoAbrir={(id) => abrirModal("imovel", id)} />
+          ) : (
+            <Lista imoveis={ordenarPipelineLista(filtrados, colSort)} todos={imoveis} />
+          )}
+        </div>
       </div>
       {drawerImovel && <Drawer imovel={drawerImovel} />}
     </>
