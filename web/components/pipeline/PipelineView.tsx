@@ -10,10 +10,12 @@
    para o input não ser recriado a cada tecla pela montagem de HTML por
    string; com input controlado do React o foco nunca se perde.
    ================================================================ */
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSessao } from "@/components/SessaoProvider";
 import BotaoAbordagemAnuncio from "./BotaoAbordagemAnuncio";
 import { resultadosPendentes, seloTentativas } from "@/lib/calculo/abordagens";
 import { selecionarFollowUp, selecionarVerificacaoDisponibilidade } from "@/lib/calculo/followup";
+import { deslocarStatusKanban, moverStatusKanban, ordenarStatusKanban, type OrdemKanban } from "@/lib/calculo/kanban";
 import {
   filtrarImoveis,
   ordenarPipelineLista,
@@ -27,7 +29,7 @@ import { MODELOS_WHATSAPP, modeloPadraoWhatsapp } from "@/lib/calculo/whatsapp";
 import { STATUS_ALL, STATUS_COLORS, STATUS_COM_ANUNCIO, TIPOS_IMOVEL } from "@/lib/constantes";
 import { todayISO } from "@/lib/datas";
 import { fmtDate, fmtMoney } from "@/lib/formatadores";
-import { excluirImovel } from "@/lib/mutacoes";
+import { aplicarMudancaDeStatus, excluirImovel, salvarImovel } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import type { Imovel } from "@/lib/tipos";
 import { useUiModal } from "@/lib/uiModal";
@@ -75,7 +77,45 @@ function rotuloModelo(id: string): string {
   return MODELOS_WHATSAPP.find((m) => m.id === id)?.rotulo || id;
 }
 
-function CartaoKanban({ i, color, aoAbrir }: { i: Imovel; color: string; aoAbrir: (id: string) => void }) {
+interface PreferenciaKanban {
+  modo: OrdemKanban;
+  ordem: string[];
+}
+
+function lerPreferenciaKanban(userId?: string): PreferenciaKanban {
+  const padrao: PreferenciaKanban = { modo: "funil", ordem: [...STATUS_ALL] };
+  if (!userId || typeof window === "undefined") return padrao;
+  try {
+    const salva = JSON.parse(localStorage.getItem(`kanban-order:${userId}`) || "null") as
+      | Partial<PreferenciaKanban>
+      | null;
+    const modo = salva?.modo;
+    return {
+      modo: modo === "funil" || modo === "mais-usados" || modo === "personalizada" ? modo : "funil",
+      ordem: Array.isArray(salva?.ordem) ? salva.ordem : [...STATUS_ALL],
+    };
+  } catch {
+    return padrao;
+  }
+}
+
+function CartaoKanban({
+  i,
+  color,
+  aoAbrir,
+  arrastando,
+  movendo,
+  aoIniciarArrasto,
+  aoTerminarArrasto,
+}: {
+  i: Imovel;
+  color: string;
+  aoAbrir: (id: string) => void;
+  arrastando: boolean;
+  movendo: boolean;
+  aoIniciarArrasto: (id: string) => void;
+  aoTerminarArrasto: () => void;
+}) {
   const stale = isStale(i);
   const paused = isPausado(i);
   // Dois números para duas perguntas: sem o selo, o badge diz há quanto tempo
@@ -108,9 +148,18 @@ function CartaoKanban({ i, color, aoAbrir }: { i: Imovel; color: string; aoAbrir
 
   return (
     <div
-      className="kanban-card"
+      className={`kanban-card${arrastando ? " arrastando" : ""}${movendo ? " movendo" : ""}`}
       style={{ "--col-color": color } as React.CSSProperties}
       onClick={() => aoAbrir(i.id)}
+      draggable={!movendo}
+      aria-busy={movendo}
+      title={movendo ? "Salvando novo status…" : "Arraste para mudar o status ou clique para abrir"}
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", i.id);
+        aoIniciarArrasto(i.id);
+      }}
+      onDragEnd={aoTerminarArrasto}
     >
       <div className="kanban-card-code">
         {codigoExibido(i) || "s/ código"}
@@ -155,36 +204,195 @@ function CartaoKanban({ i, color, aoAbrir }: { i: Imovel; color: string; aoAbrir
 }
 
 function Kanban({ imoveis, aoAbrir }: { imoveis: Imovel[]; aoAbrir: (id: string) => void }) {
+  const { usuario } = useSessao();
+  const [arrastandoId, setArrastandoId] = useState<string | null>(null);
+  const [statusAlvo, setStatusAlvo] = useState<string | null>(null);
+  const [movendoId, setMovendoId] = useState<string | null>(null);
+  const [preferencia, setPreferencia] = useState<PreferenciaKanban>({ modo: "funil", ordem: [...STATUS_ALL] });
+  const [preferenciaCarregada, setPreferenciaCarregada] = useState(false);
+  const [colunaArrastando, setColunaArrastando] = useState<string | null>(null);
+  const chavePreferencia = usuario ? `kanban-order:${usuario.id}` : null;
+  const { modo: modoOrdem, ordem: ordemPersonalizada } = preferencia;
+
+  useEffect(() => {
+    if (!usuario) return;
+    // Depois da hidratação: localStorage não existe no servidor. O callback
+    // também evita render em cascata dentro do próprio efeito.
+    const timer = window.setTimeout(() => {
+      setPreferencia(lerPreferenciaKanban(usuario.id));
+      setPreferenciaCarregada(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [usuario]);
+
+  useEffect(() => {
+    if (!chavePreferencia || !preferenciaCarregada) return;
+    localStorage.setItem(chavePreferencia, JSON.stringify(preferencia));
+  }, [chavePreferencia, preferencia, preferenciaCarregada]);
+
+  const statusOrdenados = ordenarStatusKanban(STATUS_ALL, imoveis, modoOrdem, ordemPersonalizada);
+
+  function deslocarColuna(status: string, direcao: -1 | 1) {
+    setPreferencia((atual) => ({
+      ...atual,
+      ordem: deslocarStatusKanban(
+        ordenarStatusKanban(STATUS_ALL, imoveis, "personalizada", atual.ordem),
+        status,
+        direcao,
+      ),
+    }));
+  }
+
+  async function moverParaStatus(imovelId: string, novoStatus: string) {
+    const imovel = imoveis.find((item) => item.id === imovelId);
+    setArrastandoId(null);
+    setStatusAlvo(null);
+    if (!imovel || !usuario || imovel.status === novoStatus || movendoId) return;
+
+    const atualizado: Imovel = {
+      ...imovel,
+      status: novoStatus,
+      statusHistory: [...(imovel.statusHistory || [])],
+    };
+    aplicarMudancaDeStatus(atualizado, novoStatus, imovel.status);
+
+    setMovendoId(imovelId);
+    try {
+      await salvarImovel(atualizado, usuario.id, false);
+    } finally {
+      setMovendoId(null);
+    }
+  }
+
   return (
-    <div className="kanban">
-      {STATUS_ALL.map((status) => {
+    <div className="kanban-wrap">
+      <div className="kanban-guide">
+        <label className="kanban-order-control">
+          <span>Ordenar colunas</span>
+          <select
+            value={modoOrdem}
+            onChange={(e) => setPreferencia((atual) => ({ ...atual, modo: e.target.value as OrdemKanban }))}
+          >
+            <option value="funil">Ordem do funil</option>
+            <option value="mais-usados">Mais usados primeiro</option>
+            <option value="personalizada">Personalizada</option>
+          </select>
+        </label>
+        <span className="kanban-guide-dica">
+          <span className="kanban-guide-grip"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          {modoOrdem === "personalizada" ? "Arraste o cabeçalho para reorganizar" : "Arraste um card para atualizar a etapa"}
+        </span>
+      </div>
+      <div className="kanban">
+        {statusOrdenados.map((status) => {
         const items = imoveis
           .filter((i) => i.status === status)
           .sort((a, b) => (b.dataAngariacao || "").localeCompare(a.dataAngariacao || ""));
         const color = STATUS_COLORS[status] || "#3a4150";
-        return (
-          <div
-            className="kanban-col"
+          return (
+            <div
+            className={`kanban-col${statusAlvo === status && arrastandoId ? " destino-arrasto" : ""}${colunaArrastando === status ? " coluna-arrastando" : ""}`}
             key={status}
             style={{ "--col-color": color } as React.CSSProperties}
+            onDragOver={(e) => {
+              if (colunaArrastando && modoOrdem === "personalizada") {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                return;
+              }
+              if (!arrastandoId || movendoId) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              if (statusAlvo !== status) setStatusAlvo(status);
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setStatusAlvo(null);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (colunaArrastando && modoOrdem === "personalizada") {
+                setPreferencia((atual) => ({
+                  ...atual,
+                  ordem: moverStatusKanban(
+                    ordenarStatusKanban(STATUS_ALL, imoveis, "personalizada", atual.ordem),
+                    colunaArrastando,
+                    status,
+                  ),
+                }));
+                setColunaArrastando(null);
+                return;
+              }
+              const imovelId = arrastandoId || e.dataTransfer.getData("text/plain");
+              if (imovelId) void moverParaStatus(imovelId, status);
+            }}
           >
-            <div className="kanban-col-head" style={{ "--col-bg": `${color}12` } as React.CSSProperties}>
+            <div
+              className={`kanban-col-head${modoOrdem === "personalizada" ? " reordenavel" : ""}`}
+              style={{ "--col-bg": `${color}12` } as React.CSSProperties}
+              draggable={modoOrdem === "personalizada"}
+              title={modoOrdem === "personalizada" ? "Arraste para mudar a posição desta coluna" : undefined}
+              onDragStart={(e) => {
+                if (modoOrdem !== "personalizada") return;
+                e.stopPropagation();
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("application/x-kanban-column", status);
+                setColunaArrastando(status);
+              }}
+              onDragEnd={() => setColunaArrastando(null)}
+            >
               <span className="badge" data-status={status}>
                 <span className="dot"></span>
                 {status}
               </span>
-              <span className="kanban-col-count">{items.length}</span>
+              <span className="kanban-col-actions">
+                {modoOrdem === "personalizada" && (
+                  <span className="kanban-col-move">
+                    <button
+                      type="button"
+                      aria-label={`Mover ${status} para a esquerda`}
+                      title="Mover coluna para a esquerda"
+                      disabled={statusOrdenados[0] === status}
+                      onClick={(e) => { e.stopPropagation(); deslocarColuna(status, -1); }}
+                      onDragStart={(e) => e.preventDefault()}
+                    >‹</button>
+                    <button
+                      type="button"
+                      aria-label={`Mover ${status} para a direita`}
+                      title="Mover coluna para a direita"
+                      disabled={statusOrdenados.at(-1) === status}
+                      onClick={(e) => { e.stopPropagation(); deslocarColuna(status, 1); }}
+                      onDragStart={(e) => e.preventDefault()}
+                    >›</button>
+                  </span>
+                )}
+                <span className="kanban-col-count">{items.length}</span>
+              </span>
             </div>
             <div className="kanban-col-body">
               {items.length === 0 ? (
                 <div className="kanban-empty">Nenhum imóvel</div>
               ) : (
-                items.map((i) => <CartaoKanban key={i.id} i={i} color={color} aoAbrir={aoAbrir} />)
+                items.map((i) => (
+                  <CartaoKanban
+                    key={i.id}
+                    i={i}
+                    color={color}
+                    aoAbrir={aoAbrir}
+                    arrastando={arrastandoId === i.id}
+                    movendo={movendoId === i.id}
+                    aoIniciarArrasto={setArrastandoId}
+                    aoTerminarArrasto={() => {
+                      setArrastandoId(null);
+                      setStatusAlvo(null);
+                    }}
+                  />
+                ))
               )}
             </div>
-          </div>
-        );
-      })}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
