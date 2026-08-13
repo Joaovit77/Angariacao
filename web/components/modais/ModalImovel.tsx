@@ -893,7 +893,7 @@ export default function ModalImovel({ id }: { id?: string }) {
         </fieldset>
       </div>
       <div className="modal-foot">
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div className="modal-foot-secondary">
           {imovel && (
             <button type="button" className="btn btn-ghost" onClick={() => abrirModal("mensagemAgendada", undefined, undefined, imovel.id)}>
               Agendar mensagem
@@ -911,7 +911,7 @@ export default function ModalImovel({ id }: { id?: string }) {
             </button>
           )}
         </div>
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div className="modal-foot-primary">
           <button type="button" className="btn" onClick={fecharModal}>
             Cancelar
           </button>

@@ -2667,8 +2667,12 @@ th.th-filter{ position:relative; }
 .modal-body{ padding: 20px 22px; max-height: 62vh; overflow-y:auto; }
 .modal-foot{
   padding: 16px 22px; border-top:1px solid var(--border-soft);
-  display:flex; justify-content:space-between; align-items:center; gap:10px;
+  display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-end; gap:10px;
 }
+.modal-foot-secondary,
+.modal-foot-primary{ display:flex; align-items:center; gap:10px; min-width:0; }
+.modal-foot-secondary{ flex:1 1 360px; flex-wrap:wrap; gap:6px; }
+.modal-foot-primary{ flex:0 0 auto; margin-left:auto; }
 
 .field-group{ margin-bottom:16px; }
 .field-row{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
@@ -2714,7 +2718,7 @@ textarea{ resize:vertical; min-height:60px; }
 }
 .endereco-viacep-atribuicao a:hover{ text-decoration:underline; }
 .endereco-autocomplete-mensagem{ line-height:1.4; }
-fieldset{ border:none; margin-bottom: 18px; }
+fieldset{ border:none; min-width:0; margin-bottom: 18px; }
 legend{
   font-family: var(--font-display); font-size:13.5px; font-weight:600; color: var(--accent-strong);
   padding-bottom:8px; margin-bottom:12px; border-bottom:1px solid var(--border-soft); width:100%;
@@ -3508,13 +3512,13 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
 .map-popup-link{ display:inline-block; margin-top:6px; font-size:11.5px; font-weight:700; color: var(--accent-strong); cursor:pointer; }
 
 .geocode-box{
-  display:flex; gap:8px; align-items:center; margin-bottom:10px;
+  display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px;
 }
-.geocode-status{ font-size:11.5px; color: var(--text-faint); }
+.geocode-status{ min-width:0; overflow-wrap:anywhere; font-size:11.5px; color: var(--text-faint); }
 .geocode-status.ok{ color: var(--good); }
 .geocode-status.warn{ color: var(--warn); }
 .geocode-status.err{ color: var(--bad); }
-#map-mini{ height: 320px; border-radius: var(--radius-sm); border:1px solid var(--border); display:none; margin-top:10px; cursor: crosshair; }
+#map-mini{ height: 320px; overflow:hidden; border-radius: var(--radius-sm); border:1px solid var(--border); display:none; margin-top:10px; cursor: crosshair; }
 #map-mini.visible{ display:block; }
 .map-mini-hint{ font-size:11px; color:var(--text-faint); margin-top:6px; }
 
@@ -3586,6 +3590,16 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
   .modal-overlay{ padding:0; align-items:stretch; }
   .modal{ max-width:100%; min-height:100vh; border-radius:0; display:flex; flex-direction:column; }
   .modal-body{ max-height:none; flex:1; }
+  .modal-foot{ flex-wrap:wrap; padding:12px 16px; }
+  .modal-foot-secondary{
+    flex:1 1 100%;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .modal-foot-primary{
+    flex:1 1 100%;
+    justify-content:flex-end;
+  }
 
   /* Kanban: uma coluna ocupa quase a tela toda, com espiada da próxima */
   .kanban{ grid-auto-columns: 82vw; }
