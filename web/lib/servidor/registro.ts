@@ -172,3 +172,28 @@ export function registrarUsoDaResposta(
     tokensSaida: usage.completion_tokens ?? 0,
   });
 }
+
+/** Variante para a Responses API, sem alterar o contrato usado por /api/ia. */
+export function registrarUsoDaResponsesApi(
+  userId: string | null,
+  tipo: string,
+  modelo: string,
+  usage:
+    | {
+        input_tokens?: number;
+        output_tokens?: number;
+        input_tokens_details?: { cached_tokens?: number } | null;
+      }
+    | null
+    | undefined,
+): void {
+  if (!usage) return;
+  registrarUsoIa({
+    userId,
+    tipo,
+    modelo,
+    tokensEntrada: usage.input_tokens ?? 0,
+    tokensEntradaCache: usage.input_tokens_details?.cached_tokens ?? 0,
+    tokensSaida: usage.output_tokens ?? 0,
+  });
+}

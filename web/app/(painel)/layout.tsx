@@ -22,6 +22,7 @@ import MonitorRadarAngariacao from "@/components/central/MonitorRadarAngariacao"
 import ModalOverlay from "@/components/modais/ModalOverlay";
 import PortaoTermos from "@/components/legal/PortaoTermos";
 import RodapeApp from "@/components/RodapeApp";
+import Assistente from "@/components/assistente/Assistente";
 import { useAppStore } from "@/lib/store";
 
 const CHAVE_RECOLHIDA = "sidebar-recolhida";
@@ -177,6 +178,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
     <SincronizacaoRespostas />
     {/* Busca no máximo um radar vencido por rodada e só enquanto o painel está aberto. */}
     <MonitorRadarAngariacao />
+    <Assistente />
     </PortaoTermos>
   );
 }

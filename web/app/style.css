@@ -77,6 +77,16 @@
   --font-display: 'Zilla Slab', Georgia, 'Times New Roman', serif;
   --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
   --font-mono: 'SF Mono', 'Roboto Mono', Consolas, monospace;
+  /* Camadas globais. Drawer e modal pertencem ao conteudo consultado; o
+     Assistente precisa continuar utilizavel por cima deles. Acoes persistentes,
+     toasts e celebracao seguem acima por serem feedback global do sistema. */
+  --layer-pipeline-backdrop: 4300;
+  --layer-pipeline-drawer: 4400;
+  --layer-modal: 5000;
+  --layer-assistente: 5050;
+  --layer-acao-persistente: 5100;
+  --layer-toast: 5200;
+  --layer-celebracao: 5300;
 }
 
 /* ================================================================
@@ -1564,7 +1574,7 @@ img.brand-mark{
 
 /* ---- O formulário como modal sobre a apresentação ---- */
 .auth-modal-overlay{
-  position: fixed; inset:0; z-index: 5000;
+  position: fixed; inset:0; z-index: var(--layer-modal);
   display:none; align-items:flex-start; justify-content:center;
   padding: 32px 18px; overflow-y:auto;
   background:rgb(var(--sombra-rgb) / .72); backdrop-filter: blur(9px) saturate(.85);
@@ -2284,14 +2294,14 @@ th.th-filter{ position:relative; }
 .pipeline-drawer-backdrop{
   position:fixed;
   inset:0;
-  z-index:4300;
+  z-index:var(--layer-pipeline-backdrop);
   background: rgba(8,10,13,.35);
 }
 .pipeline-drawer{
   position:fixed;
   top:0;
   right:0;
-  z-index:4400;
+  z-index:var(--layer-pipeline-drawer);
   width:min(460px, 92vw);
   height:100vh;
   background: var(--bg-elev-1);
@@ -2682,7 +2692,7 @@ th.th-filter{ position:relative; }
 .modal-overlay{
   position: fixed; inset:0; background: rgba(8,10,13,.65);
   display:none; align-items:flex-start; justify-content:center;
-  z-index: 5000; padding: 40px 16px; overflow-y:auto;
+  z-index: var(--layer-modal); padding: 40px 16px; overflow-y:auto;
   backdrop-filter: blur(2px);
 }
 .modal-overlay.open{ display:flex; }
@@ -3280,7 +3290,7 @@ legend{
 /* ============================================================
    TOAST / EMPTY STATES / MISC
    ============================================================ */
-.toast-container{ position:fixed; bottom:22px; right:22px; z-index:5200; display:flex; flex-direction:column; gap:8px; }
+.toast-container{ position:fixed; bottom:22px; right:22px; z-index:var(--layer-toast); display:flex; flex-direction:column; gap:8px; }
 .toast{
   background: var(--bg-elev-3); border:1px solid var(--border); color:var(--text);
   padding: 12px 16px; border-radius: var(--radius-sm); font-size:13px; font-weight:600;
@@ -3860,6 +3870,62 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
       .view-anim é remontado por pathname no shell do painel). -- */
 .view-anim{ animation: fadein .24s ease; }
 
+/* O Assistente e filho direto do shell autenticado, sem portal. Em desktop,
+   quando o drawer ocupa a direita, ele nasce no espaco restante e pode ser
+   arrastado pela cabecalho. A posicao manual e limitada pela logica do
+   componente; no mobile a janela volta a ocupar a viewport inteira. */
+.assistente-cabecalho-arraste{ cursor:grab; touch-action:none; user-select:none; }
+.assistente-cabecalho-arraste:active{ cursor:grabbing; }
+.assistente-identidade{ flex-direction:row !important; align-items:center; gap:9px; }
+.assistente-identidade > span:last-child{ display:flex; flex-direction:column; }
+.assistente-alca{ color:var(--text-faint); font-size:18px; line-height:1; }
+@media (min-width:960px){
+  aside.assistente-com-drawer{
+    left:8px;
+    right:auto;
+    width:min(410px, calc(100vw - min(460px, 92vw) - 24px));
+  }
+  button.assistente-acionador-com-drawer{
+    left:8px;
+    right:auto;
+  }
+}
+/* Entre 1024 e 1319px, o modal usa a faixa direita e o Assistente a esquerda.
+   A largura do chat so cai ate 320px quando isso e matematicamente necessario;
+   ao arrastar o painel, a classe de encaixe sai e o modal volta ao centro. */
+@media (min-width:1024px) and (max-width:1319px){
+  aside.assistente-com-modal{
+    left:8px;
+    right:auto;
+    width:clamp(320px, calc(100vw - 712px), 410px);
+  }
+  .app-shell:has(~ aside.assistente-com-modal) + .modal-overlay.open{
+    justify-content:flex-end;
+    padding-left:calc(clamp(320px, calc(100vw - 712px), 410px) + 32px);
+    padding-right:16px;
+  }
+}
+/* Em telas largas, o modal permanece central e o Assistente usa a faixa
+   lateral natural, preservando a composicao original. */
+@media (min-width:1320px){
+  aside.assistente-com-modal{
+    left:8px;
+    right:auto;
+    width:min(410px, calc((100vw - min(680px, calc(100vw - 32px))) / 2 - 24px));
+  }
+}
+@media (max-width:720px){
+  .assistente-painel-global{
+    inset:0 !important;
+    width:100vw !important;
+    height:100dvh !important;
+    max-height:none !important;
+    border-radius:0 !important;
+  }
+  .assistente-cabecalho-arraste{ cursor:default; touch-action:auto; }
+  .assistente-alca{ display:none; }
+}
+
 /* -- Entrada de cards em sequência (stagger). Aplicado em
       contêineres de grid via a classe .anim-stagger; cada filho
       sobe com um atraso incremental. -- */
@@ -4426,7 +4492,7 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
 /* Indicador da fila: fixo, acima do conteúdo e abaixo dos toasts (5200),
    para o resumo do fim aparecer por cima quando a fila termina. */
 .followup-indicador{
-  position: fixed; bottom: 22px; left: 22px; z-index: 5100;
+  position: fixed; bottom: 22px; left: 22px; z-index: var(--layer-acao-persistente);
   width: min(320px, calc(100vw - 44px));
   background: var(--bg-elev-3); border:1px solid var(--border);
   border-radius: var(--radius-sm); padding: 12px 14px;
@@ -4508,7 +4574,7 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
    escondida atrás dele por um quadro sequer.
    ============================================================ */
 .celebracao-fundo{
-  position: fixed; inset: 0; z-index: 5300;
+  position: fixed; inset: 0; z-index: var(--layer-celebracao);
   display: flex; align-items: center; justify-content: center;
   padding: 24px;
   background: rgba(8,10,13,.62);

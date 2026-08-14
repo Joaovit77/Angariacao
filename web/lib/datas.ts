@@ -81,6 +81,26 @@ export function inicioDaSemana(iso: string | null | undefined): string | null {
 /** Fuso operacional explícito: funções da Vercel rodam em UTC. */
 export const FUSO_OPERACIONAL = "America/Sao_Paulo";
 
+/** Inicio de um dia civil no fuso operacional, convertido para timestamptz. */
+export function inicioDoDiaOperacionalISO(iso: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const [ano, mes, dia] = iso.split("-").map(Number);
+  const validacao = parseDate(iso);
+  if (!validacao || validacao.getFullYear() !== ano || validacao.getMonth() !== mes - 1 || validacao.getDate() !== dia) return null;
+  const meiaNoiteComoUtc = Date.UTC(ano, mes - 1, dia);
+  const deslocamento = (instante: number) => {
+    const partes = new Intl.DateTimeFormat("en-CA", {
+      timeZone: FUSO_OPERACIONAL,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+    }).formatToParts(new Date(instante));
+    const valor = (tipo: Intl.DateTimeFormatPartTypes) => Number(partes.find((parte) => parte.type === tipo)?.value || 0);
+    return Date.UTC(valor("year"), valor("month") - 1, valor("day"), valor("hour"), valor("minute"), valor("second")) - instante;
+  };
+  const primeiraTentativa = meiaNoiteComoUtc - deslocamento(meiaNoiteComoUtc);
+  return new Date(meiaNoiteComoUtc - deslocamento(primeiraTentativa)).toISOString();
+}
+
 /** Agora em São Paulo, como "YYYY-MM-DDTHH:mm". Não depende do fuso da máquina. */
 export function agoraISOComHora(): string {
   const partes = new Intl.DateTimeFormat("en-CA", {
