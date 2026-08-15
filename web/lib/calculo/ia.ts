@@ -25,6 +25,17 @@ import { ORIGENS_IMOVEL, TIPOS_IMOVEL } from "../constantes";
 import { daysBetween, todayISO } from "../datas";
 import type { AgendaItem, Imovel } from "../tipos";
 import type { LeituraTerritorialMapa } from "./mapa";
+import {
+  MAX_PROTOCOLO_CHARS,
+  MAX_PROTOCOLOS,
+  MAX_TEXTO_RASCUNHO,
+  type ConversaAnterior,
+  type ProtocoloPrompt,
+} from "../ia/atendimento/contratos";
+
+// Fachada temporária: consumidores atuais continuam importando daqui enquanto
+// o domínio de atendimento passa a morar em lib/ia/atendimento.
+export * from "../ia/atendimento";
 
 export type FalhaIa =
   | "nao-configurado"
@@ -32,6 +43,7 @@ export type FalhaIa =
   | "sessao-expirada"
   | "requisicao-invalida"
   | "sem-dados"
+  | "intervencao-humana"
   | "limite-excedido"
   | "falha-ia";
 
@@ -50,6 +62,8 @@ export function mensagemFalhaIa(falha: FalhaIa): string {
       return "Não foi possível entender o pedido enviado à IA.";
     case "sem-dados":
       return "Ainda não há tentativas registradas suficientes para analisar.";
+    case "intervencao-humana":
+      return "N\u00e3o h\u00e1 informa\u00e7\u00e3o segura para sugerir esta resposta. Revise a conversa antes de responder.";
     case "limite-excedido":
       return "Muitos pedidos à IA em pouco tempo. Tente de novo em instantes.";
     case "falha-ia":
@@ -895,9 +909,6 @@ Se os dados forem escassos demais para sustentar uma leitura, diga isso com fran
    relê do banco (a nota que o webhook gravou), com o token de quem chamou.
    É a forma mais forte da regra "o conteúdo sai do banco". */
 
-/** Teto da mensagem do proprietário levada ao prompt. Ela é curta por
-    natureza; o teto só protege contra uma mensagem encaminhada gigante. */
-export const MAX_TEXTO_RASCUNHO = 600;
 
 /* ----------------------------------------------------------------
    PROTOCOLOS DA IMOBILIÁRIA no prompt do rascunho.
@@ -919,21 +930,6 @@ export const MAX_TEXTO_RASCUNHO = 600;
    permanente. Mesmo papel do MAX_TEXTO_ANUNCIO.
    ---------------------------------------------------------------- */
 
-/** Quantos protocolos vão ao prompt. Acima disso, os mais recentes ficam de
-    fora — e a tela avisa, em vez de truncar em silêncio. */
-export const MAX_PROTOCOLOS = 40;
-
-/** Teto por protocolo. Protocolo é resposta de WhatsApp, não cláusula: o que
-    não cabe aqui provavelmente são dois protocolos. */
-export const MAX_PROTOCOLO_CHARS = 600;
-
-/** O que o prompt precisa de um protocolo. Tipo próprio (em vez do `Protocolo`
-    inteiro) para deixar explícito que nem id nem estado de arquivamento vão
-    para a IA: quem filtra arquivado é esta função. */
-export interface ProtocoloPrompt {
-  titulo: string;
-  conteudo: string;
-}
 
 /**
  * Monta o bloco de protocolos do prompt. Devolve "" quando não há nenhum
@@ -969,33 +965,6 @@ Como usar:
     rascunho se apoiou ("baseado em: Taxa de administração"). Sem isso, conferir
     se a IA afirmou o certo exige reler a base inteira a cada rascunho — e o que
     não se confere num olhar deixa de ser conferido. */
-export const ESQUEMA_RASCUNHO = {
-  type: "object",
-  properties: {
-    mensagem: {
-      type: "string",
-      description:
-        "A resposta pronta para o corretor enviar ao proprietário no WhatsApp, em português do Brasil.",
-    },
-    protocolosUsados: {
-      type: "array",
-      items: { type: "string" },
-      description:
-        "Títulos, exatamente como aparecem na lista de regras da imobiliária, dos itens em que esta resposta se apoiou. Lista vazia se a resposta não usou nenhum.",
-    },
-  },
-  required: ["mensagem", "protocolosUsados"],
-  additionalProperties: false,
-} as const;
-
-/** O que já foi dito nesta conversa, para o rascunho não recomeçá-la. */
-export interface ConversaAnterior {
-  /** Mensagens anteriores DELE, da mais antiga para a mais recente. */
-  anteriores?: string[];
-  /** A última mensagem que o CORRETOR mandou — o roteiro da abordagem usada,
-      ou só o rótulo do modelo quando o texto não ficou registrado. */
-  enviada?: { rotulo?: string | null; texto?: string | null } | null;
-}
 
 /** Prompt do rascunho. `mensagem` é o que o proprietário escreveu (truncado
     aqui); `nome` e `imovelRef` dão contexto para a réplica soar natural, e

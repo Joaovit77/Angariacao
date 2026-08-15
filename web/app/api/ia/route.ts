@@ -37,13 +37,11 @@ import {
   ESQUEMA_ACAO_TERRITORIAL,
   ESQUEMA_ANUNCIO,
   ESQUEMA_ANUNCIO_GERADO,
-  ESQUEMA_RASCUNHO,
   ESQUEMA_ROTEIROS,
   MAX_CARACTERISTICAS,
   PONTOS_ANUNCIO_PROPRIETARIO,
   contagemPorStatus,
   corrigirMarcadores,
-  mensagemFalhaIa,
   panoramaDoDia,
   promptAnalisarAbordagens,
   promptAnalisarDashboard,
@@ -52,7 +50,6 @@ import {
   promptExplicarFocoInteligente,
   promptExtrairAnuncio,
   promptGerarAnuncio,
-  promptRascunharResposta,
   promptResumoDia,
   promptSugerirRoteiros,
   type AbordagemDoAnuncio,
@@ -64,30 +61,29 @@ import {
   type RoteiroSugerido,
 } from "@/lib/calculo/ia";
 import { filtrarImoveisMapa, leituraTerritorialMapa } from "@/lib/calculo/mapa";
-import { corpoDaResposta, ehSoMidia } from "@/lib/calculo/notas";
-import { respostasDoImovel } from "@/lib/calculo/respostas";
 import {
   fromDbAbordagem,
   fromDbAgenda,
   fromDbImovel,
-  fromDbProtocolo,
   type DbAbordagemRow,
   type DbAgendaRow,
   type DbImovelRow,
-  type DbProtocoloRow,
   type DbUserConfigRow,
 } from "@/lib/persistencia/mapeadores";
-
-/** Modelo da OpenAI. A linha "-mini" é o meio-termo custo/qualidade:
-    sobe para "gpt-5.4" se a análise sair rasa, desce para "gpt-5.4-nano"
-    se o volume crescer e o custo pesar. É a ÚNICA linha a mudar para isso
-    — confira o preço atual em platform.openai.com/docs/pricing. */
-const MODELO = "gpt-5.4-mini";
-
-/** Teto de tokens da resposta. Nos modelos de raciocínio o orçamento é
-    compartilhado entre raciocínio e texto visível, por isso a folga: um
-    teto curto demais consome tudo pensando e devolve conteúdo vazio. */
-const MAX_TOKENS = 4000;
+import { MAX_TOKENS_IA as MAX_TOKENS, MODELO_TEXTO_IA as MODELO } from "@/lib/servidor/ia/config";
+import {
+  classificarErroIa,
+  criarExecutorOpenAI,
+  textoDaResposta,
+} from "@/lib/servidor/ia/executor-openai";
+import {
+  despacharPedidoIa,
+  ehTipoPedidoIa,
+  type CorpoPedidoIa,
+  type RegistroHandlersIa,
+} from "@/lib/servidor/ia/dispatcher";
+import { atenderProprietario } from "@/lib/servidor/ia/handlers/atendimento";
+import { respostaErroIa as erro } from "@/lib/servidor/ia/respostas";
 
 interface Resposta {
   ok: boolean;
@@ -110,44 +106,6 @@ interface Resposta {
   abordagem?: AbordagemDoAnuncio;
   /** tipo "analisar-mapa" */
   leitura?: AcaoTerritorialIa;
-}
-
-function erro(falha: FalhaIa, status: number): Response {
-  const corpo: Resposta = { ok: false, falha, mensagem: mensagemFalhaIa(falha) };
-  return Response.json(corpo, { status });
-}
-
-/** Traduz a falha do SDK para o nosso vocabulário. O detalhe fica no log
-    do servidor; o browser recebe só o motivo classificado.
-    Cota esgotada chega como 429 igual a rate limit — daí o "limite
-    excedido" cobrir os dois casos; a mensagem pt-BR serve para ambos. */
-function classificarErroIa(e: unknown): FalhaIa {
-  if (e instanceof OpenAI.RateLimitError) return "limite-excedido";
-  if (e instanceof OpenAI.AuthenticationError || e instanceof OpenAI.PermissionDeniedError)
-    return "nao-configurado";
-  return "falha-ia";
-}
-
-/** Extrai o texto da resposta.
-    Dois casos que não são "deu certo" e precisam virar erro em vez de
-    string vazia silenciosa:
-    - `refusal`: o modelo se recusou a responder (campo próprio, separado
-      do content — ignorá-lo devolveria vazio sem explicação no log).
-    - `finish_reason: "length"`: bateu no MAX_TOKENS e o texto veio pela
-      metade — no caso dos roteiros o JSON quebra, no da análise sai um
-      parágrafo cortado no meio da frase. */
-function textoDaResposta(conclusao: OpenAI.Chat.ChatCompletion): string {
-  const escolha = conclusao.choices[0];
-  if (!escolha) return "";
-  if (escolha.message.refusal) {
-    console.error("IA: o modelo recusou responder:", escolha.message.refusal);
-    return "";
-  }
-  if (escolha.finish_reason === "length") {
-    console.error("IA: resposta truncada em MAX_TOKENS.");
-    return "";
-  }
-  return (escolha.message.content || "").trim();
 }
 
 /** Cliente do Supabase com a identidade de QUEM CHAMOU — o RLS escopa
@@ -249,26 +207,30 @@ export async function POST(request: Request): Promise<Response> {
   const donoDaChamada = sessao.user.id;
 
   // 3. Corpo — só os tipos conhecidos.
-  let corpo: {
-    tipo?: unknown;
-    contexto?: unknown;
-    texto?: unknown;
-    imovelId?: unknown;
-    caracteristicas?: unknown;
-    filtros?: unknown;
-  };
+  let corpo: CorpoPedidoIa;
   try {
     corpo = await request.json();
   } catch {
     return erro("requisicao-invalida", 400);
   }
-  const TIPOS = ["sugerir-roteiros", "analisar-abordagens", "analisar-dashboard", "analisar-mapa", "resumo-dia", "explicar-foco", "extrair-anuncio", "rascunhar-resposta", "gerar-anuncio", "abordagem-anuncio"] as const;
-  type Tipo = (typeof TIPOS)[number];
-  const tipo = typeof corpo.tipo === "string" ? corpo.tipo : "";
-  if (!(TIPOS as readonly string[]).includes(tipo)) return erro("requisicao-invalida", 400);
-  const pedido = tipo as Tipo;
+  if (!ehTipoPedidoIa(corpo.tipo)) return erro("requisicao-invalida", 400);
+  const pedido = corpo.tipo;
 
   const openai = new OpenAI({ apiKey });
+  const handlers = {
+    "rascunhar-resposta": atenderProprietario,
+  } satisfies RegistroHandlersIa;
+  const respostaEspecializada = await despacharPedidoIa(
+    pedido,
+    {
+      corpo,
+      supabase,
+      userId: donoDaChamada,
+      executor: criarExecutorOpenAI(openai, donoDaChamada),
+    },
+    handlers,
+  );
+  if (respostaEspecializada) return respostaEspecializada;
 
   // ---------------------------------------------------------------
   // 3a. Sugerir roteiros — o contexto vem do browser, mas só os campos
@@ -399,148 +361,6 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json(resposta);
     } catch (e) {
       console.error("IA: resposta da extração não veio parseável:", e);
-      return erro("falha-ia", 502);
-    }
-  }
-
-  // ---------------------------------------------------------------
-  // 3a-ter. Rascunhar a resposta ao proprietário (camada 2 da caixa de
-  //   respostas). O "respondeu" genérico não tem réplica pronta porque
-  //   depende de LER a mensagem — a IA lê e devolve um rascunho editável.
-  //
-  //   O texto da mensagem NÃO vem do browser: relemos a nota que o webhook
-  //   gravou, com o token de quem chamou (RLS escopa ao dono). É a forma
-  //   mais forte da regra "o conteúdo sai do banco" — o cliente manda só o
-  //   imovelId, e nem o alvo do rascunho ele escolhe.
-  // ---------------------------------------------------------------
-  if (pedido === "rascunhar-resposta") {
-    const imovelId = typeof corpo.imovelId === "string" ? corpo.imovelId : "";
-    if (!imovelId) return erro("requisicao-invalida", 400);
-
-    const { data: imRow, error: imErr } = await supabase
-      .from("imoveis")
-      .select("*")
-      .eq("id", imovelId)
-      .maybeSingle();
-    if (imErr) {
-      console.error("IA: falha ao ler o imóvel para rascunho:", imErr.message);
-      return erro("falha-ia", 500);
-    }
-    // Sem imóvel (id inválido ou de outro dono, barrado pelo RLS) ou sem
-    // mensagem com texto para responder: não há o que rascunhar.
-    if (!imRow) return erro("sem-dados", 422);
-    const imovel = fromDbImovel(imRow as DbImovelRow);
-
-    const comTexto = respostasDoImovel(imovel).filter((n) => !ehSoMidia(n.texto));
-    const ultima = comTexto[comTexto.length - 1];
-    const mensagemProp = ultima ? corpoDaResposta(ultima.texto) : "";
-    if (!mensagemProp.trim()) return erro("sem-dados", 422);
-
-    const ref = [imovel.endereco, imovel.bairro].map((s) => (s || "").trim()).filter(Boolean).join(", ");
-
-    /* O QUE JÁ FOI DITO. Sem isto o rascunho recomeça a conversa do zero —
-       "Olá, Fulano! Falo em nome da equipe de locação..." — para quem acabou
-       de responder à mensagem de abertura. Foi o que o corretor apontou em
-       03/08/2026: ele já tinha dito olá, e a sugestão dizia olá de novo.
-
-       O texto que ele enviou não está no banco (o webhook descarta `fromMe`),
-       mas o ROTEIRO está: a tentativa guarda `abordagemId`, e o catálogo
-       guarda o texto. Quando o envio foi por modelo, sobra o `modeloNome` —
-       só o rótulo, e ainda assim basta para a IA saber que a conversa começou.
-       Nada disto é pré-condição: sem tentativa nenhuma, o prompt continua
-       proibindo a saudação, porque a mensagem DELE já prova que a conversa
-       está aberta. */
-    const ultimaTentativa = [...(imovel.tentativas || [])]
-      .sort((a, b) => (a.data || "").localeCompare(b.data || ""))
-      .at(-1);
-    let enviada: { rotulo?: string | null; texto?: string | null } | null = null;
-    if (ultimaTentativa?.abordagemId) {
-      const { data: abRow } = await supabase
-        .from("abordagens")
-        .select("*")
-        .eq("id", ultimaTentativa.abordagemId)
-        .maybeSingle();
-      if (abRow) {
-        const ab = fromDbAbordagem(abRow as DbAbordagemRow);
-        enviada = { rotulo: ab.nome, texto: ab.roteiro };
-      }
-    } else if (ultimaTentativa?.modeloNome) {
-      enviada = { rotulo: ultimaTentativa.modeloNome, texto: null };
-    }
-
-    // As anteriores à que estamos respondendo — mesmo recorte do webhook: só
-    // as dele, só as que têm o que ler.
-    const anteriores = comTexto.slice(0, -1).map((n) => corpoDaResposta(n.texto));
-
-    /* AS REGRAS DA IMOBILIÁRIA. Vêm do BANCO, com o token de quem chamou (o
-       RLS escopa ao dono), nunca do browser: é o mesmo princípio que faz o
-       texto da mensagem ser relido aqui em vez de aceito da requisição. Se o
-       cliente pudesse mandar os protocolos, ele escolheria o que a IA está
-       autorizada a AFIRMAR a um proprietário real.
-
-       Erro na leitura não derruba o rascunho: sem protocolos ele volta a ser
-       o de antes desta feature, que é um comportamento válido. Mesma
-       tolerância do carregarEstado. */
-    const { data: ptData, error: ptErro } = await supabase
-      .from("protocolos")
-      .select("*")
-      .order("created_at", { ascending: true });
-    if (ptErro) console.error("IA: falha ao ler os protocolos:", ptErro.message);
-    const protocolos = ((ptData || []) as DbProtocoloRow[])
-      .map(fromDbProtocolo)
-      .filter((p) => !p.arquivado)
-      .map((p) => ({ titulo: p.titulo, conteudo: p.conteudo }));
-
-    let conclusao: OpenAI.Chat.ChatCompletion;
-    try {
-      conclusao = await openai.chat.completions.create({
-        model: MODELO,
-        max_completion_tokens: MAX_TOKENS,
-        reasoning_effort: "low",
-        response_format: {
-          type: "json_schema",
-          json_schema: { name: "rascunho", strict: true, schema: ESQUEMA_RASCUNHO },
-        },
-        messages: [
-          {
-            role: "user",
-            content: promptRascunharResposta(
-              mensagemProp,
-              imovel.proprietarioNome,
-              ref,
-              { anteriores, enviada },
-              protocolos,
-            ),
-          },
-        ],
-      });
-    } catch (e) {
-      console.error("IA: falha ao rascunhar a resposta:", e);
-      const falha = classificarErroIa(e);
-      registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
-      return erro(falha, 502);
-    }
-    registrarUsoDaResposta(donoDaChamada, pedido, MODELO, conclusao.usage);
-
-    try {
-      const dados = JSON.parse(textoDaResposta(conclusao)) as {
-        mensagem?: unknown;
-        protocolosUsados?: unknown;
-      };
-      const rascunho = typeof dados.mensagem === "string" ? dados.mensagem.trim() : "";
-      if (!rascunho) return erro("falha-ia", 502);
-      /* Só títulos que EXISTEM na lista que mandamos. O modelo pode devolver um
-         título aproximado ou inventado, e a tela usa isto para o corretor
-         conferir a fonte num olhar — um rótulo que não corresponde a protocolo
-         nenhum transformaria a conferência em desinformação. */
-      const titulosValidos = new Set(protocolos.map((p) => p.titulo));
-      const protocolosUsados = Array.isArray(dados.protocolosUsados)
-        ? dados.protocolosUsados.filter((t): t is string => typeof t === "string" && titulosValidos.has(t))
-        : [];
-      const resposta: Resposta = { ok: true, rascunho, protocolosUsados };
-      return Response.json(resposta);
-    } catch (e) {
-      console.error("IA: rascunho não veio parseável:", e);
       return erro("falha-ia", 502);
     }
   }

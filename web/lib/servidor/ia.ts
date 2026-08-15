@@ -25,13 +25,10 @@ import {
 } from "../calculo/ia";
 import { RESULTADOS_TENTATIVA, type ResultadoTentativa } from "../constantes";
 import { registrarUsoDaResposta } from "./registro";
-
-/** Mesmo modelo da rota /api/ia — ver o comentário de MODELO lá. */
-const MODELO = "gpt-5.4-mini";
-
-/** Bem menor que o das análises: a saída aqui são três campos curtos, não
-    parágrafos. Continua com folga para o raciocínio, que divide o mesmo teto. */
-const MAX_TOKENS = 1200;
+import {
+  MAX_TOKENS_CLASSIFICACAO_IA as MAX_TOKENS,
+  MODELO_TEXTO_IA as MODELO,
+} from "./ia/config";
 
 const VALIDOS: readonly string[] = RESULTADOS_TENTATIVA.map((r) => r.valor);
 
