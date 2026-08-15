@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { dataHoraLocalParaIso, timestampDeIso } from "@/lib/datas";
 import { fromDbMensagem, telefoneValido } from "@/lib/mensagensAgendadas";
@@ -23,5 +24,31 @@ describe("mensagens agendadas", () => {
       enviado_em: "2026-08-15T12:00:02.000Z", erro: null });
     expect(item).toMatchObject({ id: "m1", userId: "u1", imovelId: "i1", status: "enviada" });
     expect(item.enviadoEm).toBe("2026-08-15T12:00:02.000Z");
+  });
+});
+const SCHEMA = readFileSync(new URL("../../supabase-schema.sql", import.meta.url), "utf8");
+const VERCEL = readFileSync(new URL("../vercel.json", import.meta.url), "utf8");
+
+describe("executor de mensagens agendadas", () => {
+  it("vence mensagens antigas antes de obter o lote", () => {
+    expect(SCHEMA).toContain("erro = 'janela-expirada'");
+    expect(SCHEMA).toContain("data_envio < now() - interval '10 minutes'");
+    expect(SCHEMA).toContain("data_envio >= now() - interval '10 minutes'");
+  });
+
+  it("usa o relogio do Supabase sem recolocar o Cron incompativel na Vercel Hobby", () => {
+    expect(SCHEMA).toContain("'processar-mensagens-agendadas'");
+    expect(SCHEMA).toContain("'* * * * *'");
+    expect(SCHEMA).toContain("mensagens_cron_secret");
+    expect(VERCEL).not.toContain("/api/cron/mensagens");
+  });
+
+  it("nao expoe a configuracao do Cron a usuarios do Data API", () => {
+    expect(SCHEMA).toContain(
+      "revoke all on function configurar_cron_mensagens(text, text) from public, anon, authenticated",
+    );
+    expect(SCHEMA).toContain(
+      "grant execute on function configurar_cron_mensagens(text, text) to service_role",
+    );
   });
 });

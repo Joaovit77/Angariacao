@@ -22,6 +22,12 @@
 
 create extension if not exists "pgcrypto";
 
+-- O plano Hobby da Vercel so aceita Cron diario, mas mensagens podem ser
+-- marcadas para qualquer minuto. O relogio fica no Supabase: pg_cron dispara
+-- e pg_net chama a rota protegida que ja processa a fila na Vercel.
+create extension if not exists pg_cron with schema pg_catalog;
+create extension if not exists pg_net;
+
 -- ------------------------------------------------------------
 -- IMÓVEIS
 -- ------------------------------------------------------------
@@ -323,10 +329,23 @@ language sql
 security definer
 set search_path = public, pg_temp
 as $$
-  with candidatas as (
+  -- Uma indisponibilidade nunca pode transformar uma mensagem de ontem em
+  -- um disparo surpresa hoje. Antes de obter o lote, vence o que perdeu a
+  -- janela operacional. Dez minutos cobrem atraso do scheduler/deploy sem
+  -- fingir que uma mensagem antiga ainda saiu no horario combinado.
+  with expiradas as (
+    update mensagens_agendadas
+       set status = 'erro', erro = 'janela-expirada', updated_at = now()
+     where status = 'agendada'
+       and data_envio < now() - interval '10 minutes'
+    returning id
+  ),
+  candidatas as (
     select id
       from mensagens_agendadas
-     where status = 'agendada' and data_envio <= now()
+     where status = 'agendada'
+       and data_envio >= now() - interval '10 minutes'
+       and data_envio <= now()
      order by data_envio, id
      for update skip locked
      limit greatest(1, least(coalesce(p_limite, 20), 100))
@@ -340,6 +359,113 @@ $$;
 
 revoke all on function claim_mensagens_agendadas(integer) from public, anon, authenticated;
 grant execute on function claim_mensagens_agendadas(integer) to service_role;
+
+-- O job nasce somente depois que o deploy cadastrar os dois valores no Vault:
+--   mensagens_cron_url    = https://<dominio>/api/cron/mensagens
+--   mensagens_cron_secret = o mesmo CRON_SECRET da Vercel
+-- Assim o schema continua reexecutavel sem colocar segredo no Git. Reexecutar
+-- substitui a definicao anterior, em vez de acumular jobs duplicados.
+-- Configuracao chamada apenas por service_role. Recebe o segredo pelo backend,
+-- grava no Vault e devolve somente o id do job; o valor nunca aparece em log.
+create or replace function configurar_cron_mensagens(p_url text, p_segredo text)
+returns bigint
+language plpgsql
+security definer
+set search_path = public, vault, cron, net, pg_temp
+as $$
+declare
+  url_id uuid;
+  segredo_id uuid;
+  job_id bigint;
+begin
+  if p_url is null or p_url !~ '^https://[A-Za-z0-9.-]+/api/cron/mensagens$' then
+    raise exception 'URL do cron invalida.';
+  end if;
+  if p_segredo is null or char_length(p_segredo) < 16 then
+    raise exception 'Segredo do cron invalido.';
+  end if;
+
+  select id into url_id from vault.secrets where name = 'mensagens_cron_url';
+  if url_id is null then
+    select vault.create_secret(p_url, 'mensagens_cron_url', 'Endpoint do worker de mensagens')
+      into url_id;
+  else
+    perform vault.update_secret(url_id, p_url, 'mensagens_cron_url', 'Endpoint do worker de mensagens');
+  end if;
+
+  select id into segredo_id from vault.secrets where name = 'mensagens_cron_secret';
+  if segredo_id is null then
+    select vault.create_secret(p_segredo, 'mensagens_cron_secret', 'CRON_SECRET compartilhado com a Vercel')
+      into segredo_id;
+  else
+    perform vault.update_secret(
+      segredo_id,
+      p_segredo,
+      'mensagens_cron_secret',
+      'CRON_SECRET compartilhado com a Vercel'
+    );
+  end if;
+
+  if exists (select 1 from cron.job where jobname = 'processar-mensagens-agendadas') then
+    perform cron.unschedule('processar-mensagens-agendadas');
+  end if;
+
+  select cron.schedule(
+    'processar-mensagens-agendadas',
+    '* * * * *',
+    $job$
+      select net.http_get(
+        url := (
+          select decrypted_secret from vault.decrypted_secrets
+           where name = 'mensagens_cron_url'
+        ),
+        headers := jsonb_build_object(
+          'Authorization', 'Bearer ' || (
+            select decrypted_secret from vault.decrypted_secrets
+             where name = 'mensagens_cron_secret'
+          )
+        ),
+        timeout_milliseconds := 120000
+      );
+    $job$
+  ) into job_id;
+
+  return job_id;
+end;
+$$;
+
+revoke all on function configurar_cron_mensagens(text, text) from public, anon, authenticated;
+grant execute on function configurar_cron_mensagens(text, text) to service_role;
+do $$
+begin
+  if exists (select 1 from vault.secrets where name = 'mensagens_cron_url')
+     and exists (select 1 from vault.secrets where name = 'mensagens_cron_secret') then
+    if exists (select 1 from cron.job where jobname = 'processar-mensagens-agendadas') then
+      perform cron.unschedule('processar-mensagens-agendadas');
+    end if;
+
+    perform cron.schedule(
+      'processar-mensagens-agendadas',
+      '* * * * *',
+      $job$
+        select net.http_get(
+          url := (
+            select decrypted_secret from vault.decrypted_secrets
+             where name = 'mensagens_cron_url'
+          ),
+          headers := jsonb_build_object(
+            'Authorization', 'Bearer ' || (
+              select decrypted_secret from vault.decrypted_secrets
+               where name = 'mensagens_cron_secret'
+            )
+          ),
+          timeout_milliseconds := 120000
+        );
+      $job$
+    );
+  end if;
+end;
+$$;
 
 -- Realtime: o banco AVISA o painel quando esta tabela muda, em vez de o painel
 -- ficar perguntando. É o que faz a resposta do proprietário aparecer na hora.

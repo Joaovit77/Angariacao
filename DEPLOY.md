@@ -175,6 +175,45 @@ tiver, agende uma vez por mês:
 select cron.schedule('limpeza-logs', '0 4 1 * *', $$select limpar_registros_antigos(180)$$);
 ```
 
+### Mensagens agendadas - executor por minuto
+
+A Vercel Hobby nao aceita Cron a cada minuto. Por isso a rota
+`/api/cron/mensagens` continua na Vercel, mas o relogio fica no Supabase:
+
+1. Rode `supabase-schema.sql` para habilitar `pg_cron`, `pg_net` e as funcoes.
+2. Defina `CRON_SECRET` em Production na Vercel.
+3. Com o mesmo valor disponivel apenas no ambiente do terminal, execute:
+
+```powershell
+$env:CRON_SECRET = "<mesmo valor configurado na Vercel>"
+node --env-file=web/.env.local scripts/configurar-cron-mensagens.mjs
+Remove-Item Env:CRON_SECRET
+```
+
+O script grava URL e segredo no Supabase Vault e cria um unico job chamado
+`processar-mensagens-agendadas`, com frequencia de um minuto. Reexecuta-lo
+rotaciona os valores e substitui o job anterior.
+
+Mensagens com mais de dez minutos de atraso viram `erro / janela-expirada`.
+Isso impede que uma indisponibilidade mande, horas depois, um texto que prometia
+outro horario.
+
+Verificacao operacional:
+
+```sql
+select jobid, jobname, schedule, active
+from cron.job
+where jobname = 'processar-mensagens-agendadas';
+
+select id, status_code, timed_out, error_msg, created
+from net._http_response
+order by created desc
+limit 10;
+```
+
+Uma execucao saudavel devolve HTTP 200. O corpo da resposta informa quantas
+mensagens foram processadas, enviadas e quantas falharam.
+
 ### Evolution API (envio direto de WhatsApp) — opcional
 
 O botão **"Enviar agora"** do modal de WhatsApp dispara a mensagem pela Evolution sem abrir o
