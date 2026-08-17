@@ -6,7 +6,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   todayISO, parseDate, daysBetween, addDaysISO, monthKey,
   monthLabel, monthLabelLong, currentMonthKey, shiftMonthKey, last6MonthKeys,
-  agoraISOComHora, inicioDaSemana,
+  agoraISOComHora, agoraISOComSegundos, inicioDaSemana,
 } from "@/lib/datas";
 import { congelaRelogio } from "./setup-relogio";
 import oracle from "./oracle-expected.json";
@@ -84,6 +84,13 @@ describe("agoraISOComHora (relógio congelado)", () => {
   it("usa São Paulo mesmo quando o processo está em UTC", () => {
     vi.setSystemTime(new Date("2026-08-12T20:26:00.000Z"));
     expect(agoraISOComHora()).toBe("2026-08-12T17:26");
+  });
+});
+
+describe("agoraISOComSegundos (relógio congelado)", () => {
+  it("mantém o fuso operacional e precisão para ordenar a conversa", () => {
+    vi.setSystemTime(new Date("2026-08-12T20:26:37.000Z"));
+    expect(agoraISOComSegundos()).toBe("2026-08-12T17:26:37");
   });
 });
 

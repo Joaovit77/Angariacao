@@ -26,7 +26,7 @@ export interface StatusHistoryEntry {
 export interface NotaImovel {
   id: string;
   texto: string;
-  /** Datetime local "YYYY-MM-DDTHH:mm" — lexicograficamente ordenável. */
+  /** Datetime local ISO, com minuto ou segundos — lexicograficamente ordenável. */
   data: string;
   /** Resposta do proprietário já tratada na Caixa de respostas, sem que
       nenhuma ação a tenha encerrado sozinha.
@@ -38,6 +38,13 @@ export interface NotaImovel {
       jsonb, então nota antiga simplesmente não tem o campo.
       Ver calculo/respostas.ts. */
   lida?: boolean;
+  /** Metadados opcionais das mensagens de WhatsApp mais novas. Notas antigas
+      continuam válidas: a direção recebida ainda pode ser inferida do id
+      `wa:<id>`, sem migração inventando dados que nunca foram guardados. */
+  direcao?: "recebida" | "enviada";
+  autor?: "proprietario" | "corretor";
+  tipo?: string;
+  origem?: "webhook-evolution" | "api-evolution" | "agendamento" | "confirmacao-manual";
 }
 
 /** Roteiro de captação cadastrado pelo usuário — o QUE se diz ao proprietário.

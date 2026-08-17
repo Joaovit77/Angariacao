@@ -117,6 +117,24 @@ export function agoraISOComHora(): string {
   return `${valor("year")}-${valor("month")}-${valor("day")}T${valor("hour")}:${valor("minute")}`;
 }
 
+/** Agora operacional com segundos. Usado na conversa do WhatsApp, em que uma
+    entrada e uma saída no mesmo minuto precisam conservar a ordem. */
+export function agoraISOComSegundos(): string {
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: FUSO_OPERACIONAL,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const valor = (tipo: Intl.DateTimeFormatPartTypes) =>
+    partes.find((parte) => parte.type === tipo)?.value || "";
+  return `${valor("year")}-${valor("month")}-${valor("day")}T${valor("hour")}:${valor("minute")}:${valor("second")}`;
+}
+
 export function parseDate(iso: string | null | undefined): Date | null {
   if (!iso) return null;
   const [y, m, d] = iso.split("-").map(Number);

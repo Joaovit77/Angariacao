@@ -85,7 +85,8 @@ import { corpoDaResposta, ehNotaDeResposta, ehSoMidia } from "@/lib/calculo/nota
 import { MAX_MENSAGENS_CONTEXTO } from "@/lib/calculo/ia";
 import { classificarResposta } from "@/lib/servidor/ia";
 import { registrarEvento } from "@/lib/servidor/registro";
-import { agoraISOComHora, todayISO } from "@/lib/datas";
+import { registrarMensagemEnviada } from "@/lib/servidor/historicoWhatsapp";
+import { agoraISOComHora, agoraISOComSegundos, todayISO } from "@/lib/datas";
 import type { NotaImovel, StatusHistoryEntry, Tentativa } from "@/lib/tipos";
 
 /* --- Log sem conteúdo -------------------------------------------------------
@@ -256,8 +257,9 @@ export async function POST(
   // não interessa — e sair cedo é o que garante que conversa de colega não
   // chegue nem perto do banco.
 
-  // 1. É uma mensagem de texto recebida de um número individual? (Descarta
-  //    o que nós mesmos enviamos, grupo, status e evento de conexão.)
+  // 1. É uma mensagem de um número individual? Entradas continuam o fluxo;
+  //    saídas `fromMe` são persistidas e encerradas depois do casamento com
+  //    o imóvel. Grupo, status e evento de conexão são descartados.
   // `let` por causa do passo 3.5: áudio transcrito substitui o texto vazio.
   let mensagem = interpretarEvento(corpo);
   if (!mensagem) {
@@ -337,6 +339,35 @@ export async function POST(
   const ambiguo = imoveis.length > 1 ? " (o proprietário tem mais de um imóvel; usando o mais recente)" : "";
   const rotulo = imovel.codigo || imovel.id;
 
+  // Uma saída `fromMe` é confirmação do integrador, inclusive quando o
+  // corretor enviou pelo celular/WhatsApp Web fora do painel. Ela entra no
+  // mesmo JSONB e termina aqui: transcrição, classificação, encerramento e
+  // agenda são efeitos exclusivos de mensagens recebidas do proprietário.
+  if (mensagem.direcao === "enviada") {
+    const historico = await registrarMensagemEnviada(supabase, {
+      imovelId: imovel.id,
+      userId,
+      mensagemId: mensagem.mensagemId,
+      texto: mensagem.texto,
+      data: agoraISOComSegundos(),
+      origem: "webhook-evolution",
+      tipo: mensagem.tipo,
+    });
+    if (historico.erro) {
+      console.error("Webhook do WhatsApp: falha ao gravar mensagem enviada:", historico.erro);
+      registrarEvento({
+        userId,
+        categoria: "webhook",
+        nivel: "erro",
+        evento: "historico-envio-falhou",
+        detalhe: "webhook-evolution",
+      });
+    } else if (!historico.gravou) {
+      console.log(`Webhook do WhatsApp: saída já registrada — imóvel ${rotulo}, ignorada.`);
+    }
+    return Response.json({ ok: true });
+  }
+
   /* 3.5. ÁUDIO VIRA TEXTO — e acontece AQUI, antes de tudo o que lê o texto.
      O proprietário responde por áudio o tempo todo: 43 das 149 respostas da
      carteira em 31/07/2026. Até aqui isso virava a nota `[áudio]`, ilegível no
@@ -390,7 +421,7 @@ export async function POST(
   const { data: gravou, error: erroNota } = await supabase.rpc("registrar_nota_whatsapp", {
     p_imovel_id: imovel.id,
     p_user_id: userId,
-    p_nota: notaDaResposta(mensagem, agoraISOComHora()),
+    p_nota: notaDaResposta(mensagem, agoraISOComSegundos()),
   });
   if (erroNota) {
     console.error("Webhook do WhatsApp: falha ao gravar a nota:", erroNota.message);

@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { ExecutorOpenAI } from "@/lib/servidor/ia/executor-openai";
 
 vi.mock("@/lib/calculo/notas", () => ({
+  corpoDaMensagemEnviada: () => "",
   corpoDaResposta: () => "Qual é a taxa?",
+  ehNotaDeMensagemEnviada: () => false,
+  ehNotaDeResposta: () => true,
   ehSoMidia: () => false,
 }));
 
@@ -18,6 +21,7 @@ vi.mock("@/lib/persistencia/mapeadores", () => ({
     proprietarioNome: "Marta",
     endereco: "Rua A, 10",
     tentativas: [],
+    notas: [{ id: "wa:1", texto: "Resposta pelo WhatsApp: Qual é a taxa?", data: "2026-08-17T09:00" }],
   }),
   fromDbAbordagem: (valor: unknown) => valor,
   fromDbProtocolo: (valor: unknown) => valor,

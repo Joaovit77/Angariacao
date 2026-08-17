@@ -48,7 +48,12 @@ import {
 } from "@/lib/calculo/whatsapp";
 import { todayISO } from "@/lib/datas";
 import { enviarWhatsapp } from "@/lib/envioWhatsapp";
-import { adicionarModeloWhatsapp, registrarTentativa, removerModeloWhatsapp } from "@/lib/mutacoes";
+import {
+  adicionarModeloWhatsapp,
+  registrarMensagemEnviadaManual,
+  registrarTentativa,
+  removerModeloWhatsapp,
+} from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
@@ -323,14 +328,10 @@ export default function ModalWhatsapp({
     // afirmação, do mesmo tipo da tentativa anotada à mão no ModalTentativas —
     // a diferença é só o momento em que se pergunta.
     //
-    // Só pergunta quando há o que registrar: com modelo operacional do sistema
-    // ("imóvel locado", "confirmação de visita") nada seria gravado de todo
-    // jeito, e a pergunta viraria só um clique a mais no caminho.
-    if (registraTentativa) {
-      setPerguntandoEnvio(true);
-      return;
-    }
-    fecharModal();
+    // Toda mensagem precisa da confirmação, mesmo quando não é uma abordagem:
+    // o histórico da conversa guarda falas reais; `Tentativa` continua sendo
+    // apenas a métrica de captação para os modelos que se aplicam.
+    setPerguntandoEnvio(true);
   }
 
   /**
@@ -342,28 +343,40 @@ export default function ModalWhatsapp({
    * sobre o envio — é o envio que ele está confirmando aqui.
    */
   async function confirmarEnvioManual(enviou: boolean) {
-    if (!imovel) return;
+    if (!imovel || !usuario) return;
     if (!enviou) {
       setPerguntandoEnvio(false);
       fecharModal();
       return;
     }
-    const ok = await registrarTentativa(imovel.id, {
-      abordagemId: abordagemSel ? abordagemSel.id : null,
-      modeloNome: abordagemSel ? null : nomeSemCatalogo,
-      canal: "WhatsApp",
-      resultado: "sem-resposta",
-      observacao: null,
-      aguardandoResultado: true,
-    });
-    // Em falha a pergunta continua de pé (o registrarTentativa já avisou do
-    // erro): fechar aqui perderia a confirmação que ele acabou de dar.
-    if (!ok) return;
-    toast(
-      abordagemSel
-        ? `Tentativa registrada em “${abordagemSel.nome}”.`
-        : `Tentativa registrada com o modelo “${nomeSemCatalogo}”.`,
+    const historicoOk = await registrarMensagemEnviadaManual(
+      imovel.id,
+      usuario.id,
+      mensagem,
     );
+    // Em falha a pergunta continua: fechar perderia a confirmação humana que
+    // ainda é a única prova disponível neste caminho.
+    if (!historicoOk) return;
+    let tentativaOk = true;
+    if (registraTentativa) {
+      tentativaOk = await registrarTentativa(imovel.id, {
+        abordagemId: abordagemSel ? abordagemSel.id : null,
+        modeloNome: abordagemSel ? null : nomeSemCatalogo,
+        canal: "WhatsApp",
+        resultado: "sem-resposta",
+        observacao: null,
+        aguardandoResultado: true,
+      });
+    }
+    if (tentativaOk) {
+      toast(
+        abordagemSel
+          ? `Mensagem e tentativa registradas em “${abordagemSel.nome}”.`
+          : nomeSemCatalogo
+            ? `Mensagem e tentativa registradas com o modelo “${nomeSemCatalogo}”.`
+            : "Mensagem enviada registrada no histórico.",
+      );
+    }
     setPerguntandoEnvio(false);
     fecharModal();
   }

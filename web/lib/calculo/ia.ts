@@ -1010,10 +1010,11 @@ export function promptRascunharResposta(
   const enviadaTexto = (conversa?.enviada?.texto || "").trim().slice(0, MAX_TEXTO_RASCUNHO);
   const enviadaRotulo = (conversa?.enviada?.rotulo || "").trim().slice(0, MAX_CONTEXTO);
   const anteriores = (conversa?.anteriores || [])
-    .map((m) => (m || "").trim())
-    .filter(Boolean)
+    .map((m) => (typeof m === "string" ? { autor: "proprietario" as const, texto: m } : m))
+    .map((m) => ({ ...m, texto: (m.texto || "").trim() }))
+    .filter((m) => m.texto)
     .slice(-MAX_MENSAGENS_CONTEXTO)
-    .map((m) => `- ${m.slice(0, MAX_TEXTO_RASCUNHO)}`)
+    .map((m) => `- ${m.autor === "corretor" ? "Corretor" : "Proprietário"}: ${m.texto.slice(0, MAX_TEXTO_RASCUNHO)}`)
     .join("\n");
 
   const jaDito = [
@@ -1022,7 +1023,7 @@ export function promptRascunharResposta(
       : enviadaRotulo
         ? `Você já abriu a conversa com ele usando o roteiro "${enviadaRotulo}".`
         : "",
-    anteriores ? `Antes da mensagem de cima, ele também tinha escrito:\n\n${anteriores}` : "",
+    anteriores ? `Histórico anterior, em ordem:\n\n${anteriores}` : "",
   ]
     .filter(Boolean)
     .join("\n\n");

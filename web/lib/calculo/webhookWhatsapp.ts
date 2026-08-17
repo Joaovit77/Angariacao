@@ -13,9 +13,9 @@
    ele passa conversa com proprietário, mas também com colega, cliente,
    entregador e grupo. O evento não diz quem é quem — quem diz é a
    carteira do corretor. Por isso `interpretarEvento` é deliberadamente
-   avarento: devolve `null` para tudo que não é uma mensagem de texto
-   recebida de um número individual, e o casamento com o imóvel (feito
-   pela rota, no banco) descarta o resto. Mensagem de colega não é
+   avarento: devolve `null` para tudo que não é uma mensagem de um número
+   individual. A direção separa entrada de saída, e o casamento com o imóvel
+   (feito pela rota, no banco) descarta o resto. Mensagem de colega não é
    processada, não é gravada e não é registrada em log.
    ================================================================ */
 import { DIAS_COBRANCA_RESULTADO } from "./abordagens";
@@ -66,7 +66,7 @@ export function telefoneCanonico(telefone: string | null | undefined): string | 
    ---------------------------------------------------------------- */
 
 /** O que sobra de um evento depois de descartar o que não interessa. */
-export interface MensagemRecebida {
+export interface MensagemWhatsappWebhook {
   /** Nome da instância na Evolution — é o que diz de QUAL corretor é a
       conversa (ver a tabela `whatsapp_instancias`). */
   instancia: string;
@@ -80,6 +80,15 @@ export interface MensagemRecebida {
   texto: string;
   /** messageType cru da Evolution, para o log e para decisões futuras. */
   tipo: string;
+  /** `fromMe` é a confirmação mais forte de que a fala saiu pelo número
+      conectado, inclusive quando foi enviada fora do painel. */
+  direcao: "recebida" | "enviada";
+}
+
+/** Nome antigo preservado para fixtures/chamadores que só constroem entradas;
+    antes da captura de saídas não existia campo de direção. */
+export interface MensagemRecebida extends Omit<MensagemWhatsappWebhook, "direcao"> {
+  direcao?: "recebida" | "enviada";
 }
 
 function texto(v: unknown): string {
@@ -134,10 +143,9 @@ function telefoneDaConversa(chave: Record<string, unknown>): string | null {
 
     Devolve `null` — sem log, sem processamento — para:
     - evento que não é `messages.upsert`;
-    - mensagem enviada por nós (`fromMe`), que é a nossa própria fala;
     - grupo e status;
     - qualquer coisa sem instância, sem id ou sem telefone utilizável. */
-export function interpretarEvento(corpo: unknown): MensagemRecebida | null {
+export function interpretarEvento(corpo: unknown): MensagemWhatsappWebhook | null {
   const raiz = objeto(corpo);
   if (texto(raiz.event).toLowerCase() !== "messages.upsert") return null;
 
@@ -146,8 +154,6 @@ export function interpretarEvento(corpo: unknown): MensagemRecebida | null {
 
   const dados = objeto(raiz.data);
   const chave = objeto(dados.key);
-  if (chave.fromMe === true) return null;
-
   const mensagemId = texto(chave.id).trim();
   if (!mensagemId) return null;
 
@@ -160,6 +166,7 @@ export function interpretarEvento(corpo: unknown): MensagemRecebida | null {
     telefone,
     texto: textoDaMensagem(dados.message),
     tipo: texto(dados.messageType) || "desconhecido",
+    direcao: chave.fromMe === true ? "enviada" : "recebida",
   };
 }
 
@@ -217,6 +224,10 @@ export function notaDaResposta(mensagem: MensagemRecebida, agora: string): NotaI
     id: idNotaDaMensagem(mensagem.mensagemId),
     texto: `${PREFIXO_TEXTO_RESPOSTA}${corpo}`,
     data: agora,
+    direcao: "recebida",
+    autor: "proprietario",
+    tipo: mensagem.tipo,
+    origem: "webhook-evolution",
   };
 }
 

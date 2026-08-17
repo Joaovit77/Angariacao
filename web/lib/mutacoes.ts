@@ -20,7 +20,7 @@ import {
   ROTEIRO_ANALISE_ANUNCIO,
   VERIFICACAO_DISPONIBILIDADE_DIAS,
 } from "./constantes";
-import { addDaysISO, agoraISOComHora, currentMonthKey, todayISO } from "./datas";
+import { addDaysISO, agoraISOComHora, agoraISOComSegundos, currentMonthKey, todayISO } from "./datas";
 import { ehTentativaDuplicada } from "./calculo/abordagens";
 import { celebracaoAoSalvar } from "./calculo/celebracao";
 import {
@@ -31,7 +31,7 @@ import {
 } from "./calculo/desdobramento";
 import { deveTerVerificacaoAberta } from "./calculo/followup";
 import { dataAngariadoEfetiva, historicoComStatus } from "./calculo/motor";
-import { ehNotaDeResposta, eventosNaoLidos } from "./calculo/notas";
+import { ehNotaDeResposta, eventosNaoLidos, notaDaMensagemEnviada } from "./calculo/notas";
 import { useCelebracao } from "./celebracao";
 import { MAX_PROTOCOLO_CHARS } from "./calculo/ia";
 import { toDbAbordagem, toDbAgenda, toDbAnuncioCentralVisualizado, toDbImovel, toDbProtocolo } from "./persistencia/mapeadores";
@@ -251,6 +251,38 @@ export async function adicionarNotaImovel(imovelId: string, texto: string): Prom
   }
   setImoveis(imoveis.map((i) => (i.id === imovelId ? { ...i, notas: novasNotas } : i)));
   toast("Nota adicionada.");
+  return true;
+}
+
+/** Registra a saída aberta por wa.me somente depois de o corretor afirmar que
+    apertou Enviar. Copiar ou apenas abrir a conversa nunca chama esta função. */
+export async function registrarMensagemEnviadaManual(
+  imovelId: string,
+  userId: string,
+  texto: string,
+): Promise<boolean> {
+  const { imoveis, setImoveis } = useAppStore.getState();
+  const imovel = imoveis.find((i) => i.id === imovelId);
+  const textoLimpo = texto.trim();
+  if (!imovel || !textoLimpo) return false;
+
+  const nota = notaDaMensagemEnviada(
+    `manual:${uid()}`,
+    textoLimpo,
+    agoraISOComSegundos(),
+    "confirmacao-manual",
+  );
+  const { data: gravou, error } = await getSupabase().rpc("registrar_nota_imovel", {
+    p_imovel_id: imovelId,
+    p_user_id: userId,
+    p_nota: nota,
+  });
+  if (error || gravou !== true) {
+    toast("Não foi possível registrar a mensagem enviada." + (error ? ` ${error.message}` : ""), "error");
+    return false;
+  }
+  const novasNotas = [...(imovel.notas || []), nota];
+  setImoveis(imoveis.map((i) => (i.id === imovelId ? { ...i, notas: novasNotas } : i)));
   return true;
 }
 

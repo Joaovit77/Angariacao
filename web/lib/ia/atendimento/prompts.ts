@@ -27,10 +27,11 @@ Regras permanentes:
 
 function conversaParaPrompt(conversa?: ConversaAnterior): string {
   const linhas = (conversa?.anteriores || [])
-    .map((m) => (m || "").trim())
-    .filter(Boolean)
+    .map((m) => (typeof m === "string" ? { autor: "proprietario" as const, texto: m } : m))
+    .map((m) => ({ ...m, texto: (m.texto || "").trim() }))
+    .filter((m) => m.texto)
     .slice(-MAX_MENSAGENS_ATENDIMENTO)
-    .map((m) => `PROPRIETARIO: ${m.slice(0, MAX_TEXTO_RASCUNHO)}`);
+    .map((m) => `${m.autor === "corretor" ? "CORRETOR" : "PROPRIETARIO"}: ${m.texto.slice(0, MAX_TEXTO_RASCUNHO)}`);
   const enviada = (conversa?.enviada?.texto || "").trim().slice(0, MAX_TEXTO_RASCUNHO);
   const rotulo = (conversa?.enviada?.rotulo || "").trim().slice(0, MAX_CONTEXTO_ATENDIMENTO);
   if (enviada) linhas.push(`CORRETOR${rotulo ? ` (${rotulo})` : ""}: ${enviada}`);

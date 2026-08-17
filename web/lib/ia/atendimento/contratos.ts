@@ -15,8 +15,13 @@ export interface ProtocoloPrompt {
 }
 
 export interface ConversaAnterior {
-  anteriores?: string[];
+  anteriores?: Array<string | MensagemAnteriorAtendimento>;
   enviada?: { rotulo?: string | null; texto?: string | null } | null;
+}
+
+export interface MensagemAnteriorAtendimento {
+  autor: "proprietario" | "corretor";
+  texto: string;
 }
 
 export interface ContextoAtendimento {

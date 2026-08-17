@@ -102,11 +102,12 @@ describe("interpretarEvento", () => {
       telefone: "4398024316",
       texto: "Pode me mandar mais detalhes?",
       tipo: "conversation",
+      direcao: "recebida",
     });
   });
 
-  it("ignora a nossa própria mensagem (fromMe)", () => {
-    expect(interpretarEvento(evento({ fromMe: true }))).toBeNull();
+  it("lê a nossa própria mensagem como saída confirmada (fromMe)", () => {
+    expect(interpretarEvento(evento({ fromMe: true }))?.direcao).toBe("enviada");
   });
 
   it("ignora evento que não é messages.upsert", () => {

@@ -1,7 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import type { DbMensagemAgendada } from "@/lib/mensagensAgendadas";
 import { enviarMensagemAgendada } from "@/lib/servidor/envioMensagemAgendada";
-import { agoraISOString } from "@/lib/datas";
+import { agoraISOComSegundos, agoraISOString } from "@/lib/datas";
+import { registrarMensagemEnviada } from "@/lib/servidor/historicoWhatsapp";
+import { registrarEvento } from "@/lib/servidor/registro";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -26,9 +28,30 @@ export async function GET(request: Request) {
       .eq("user_id", item.user_id).maybeSingle();
     try {
       if (!instancia?.instancia || !instancia?.token) throw new Error("sem-instancia");
-      await enviarMensagemAgendada(item.telefone, item.mensagem,
+      const envio = await enviarMensagemAgendada(item.telefone, item.mensagem,
         { serverUrl, instancia: instancia.instancia as string, token: instancia.token as string });
       const agora = agoraISOString();
+      if (item.imovel_id) {
+        const historico = await registrarMensagemEnviada(admin, {
+          imovelId: item.imovel_id,
+          userId: item.user_id,
+          mensagemId: envio.mensagemId,
+          texto: item.mensagem,
+          data: agoraISOComSegundos(),
+          origem: "agendamento",
+        });
+        if (historico.erro) {
+          // O envio já aconteceu. Não devolver o item para a fila evita uma
+          // segunda mensagem real; o webhook de saída ainda pode recuperar a nota.
+          registrarEvento({
+            userId: item.user_id,
+            categoria: "whatsapp",
+            nivel: "erro",
+            evento: "historico-envio-falhou",
+            detalhe: "agendamento",
+          });
+        }
+      }
       await admin.from("mensagens_agendadas").update({ status: "enviada", enviado_em: agora, updated_at: agora, erro: null }).eq("id", item.id).eq("status", "processando");
       enviadas++;
     } catch (e) {

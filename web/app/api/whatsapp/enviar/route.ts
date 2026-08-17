@@ -28,6 +28,8 @@
    ================================================================ */
 import { createClient } from "@supabase/supabase-js";
 import { mensagemFalhaEnvio, numeroEvolution, type FalhaEnvio } from "@/lib/calculo/whatsapp";
+import { agoraISOComSegundos } from "@/lib/datas";
+import { idMensagemEvolution, registrarMensagemEnviada } from "@/lib/servidor/historicoWhatsapp";
 import { registrarEvento } from "@/lib/servidor/registro";
 
 /** Corpo de resposta — espelha o que lib/envioWhatsapp espera. */
@@ -35,6 +37,7 @@ interface Resposta {
   ok: boolean;
   falha?: FalhaEnvio;
   mensagem?: string;
+  historicoPersistido?: boolean;
 }
 
 function erro(falha: FalhaEnvio, status: number): Response {
@@ -262,6 +265,30 @@ export async function POST(request: Request): Promise<Response> {
     return erro(falha, 502);
   }
 
+  const respostaEvolution = await resposta.json().catch(() => null);
+  const mensagemId = idMensagemEvolution(respostaEvolution) || `api:${crypto.randomUUID()}`;
+  const historico = await registrarMensagemEnviada(supabase, {
+    imovelId,
+    userId: sessao.user.id,
+    mensagemId,
+    texto: mensagem,
+    data: agoraISOComSegundos(),
+    origem: "api-evolution",
+  });
+  if (historico.erro) {
+    // A Evolution já aceitou a mensagem: responder falha faria a interface
+    // sugerir reenvio e poderia duplicá-la. O webhook `fromMe` ainda pode
+    // recuperar o histórico; registramos apenas metadados, nunca o texto.
+    console.error("Envio de WhatsApp: mensagem enviada, mas histórico não foi persistido:", historico.erro);
+    registrarEvento({
+      userId: sessao.user.id,
+      categoria: "whatsapp",
+      nivel: "erro",
+      evento: "historico-envio-falhou",
+      detalhe: "api-evolution",
+    });
+  }
+
   registrarEvento({
     userId: sessao.user.id,
     categoria: "whatsapp",
@@ -270,6 +297,6 @@ export async function POST(request: Request): Promise<Response> {
     detalhe: null,
   });
 
-  const okCorpo: Resposta = { ok: true };
+  const okCorpo: Resposta = { ok: true, historicoPersistido: !historico.erro };
   return Response.json(okCorpo);
 }

@@ -12,6 +12,9 @@ import { getSupabase } from "./persistencia/supabase";
 export interface ResultadoEnvio {
   ok: boolean;
   falha?: FalhaEnvio;
+  /** A mensagem já saiu mesmo quando esta escrita auxiliar falha; o servidor
+      registra o incidente e o webhook pode recuperar a nota depois. */
+  historicoPersistido?: boolean;
   /** Texto pt-BR já pronto para o toast (vem da rota). */
   mensagem?: string;
 }

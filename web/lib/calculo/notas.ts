@@ -27,6 +27,11 @@ import type { NotaImovel } from "../tipos";
     na tela, o que veio automático do que o corretor escreveu. */
 export const PREFIXO_ID_NOTA = "wa:";
 
+/** Saídas confirmadas usam outro prefixo para nunca serem confundidas com
+    respostas do proprietário pelos leitores legados de `wa:`. */
+export const PREFIXO_ID_NOTA_ENVIADA = "wa-enviada:";
+export const PREFIXO_TEXTO_ENVIADA = "Mensagem enviada pelo WhatsApp: ";
+
 /** Sufixo do id da nota que explica um encerramento automático. */
 export const SUFIXO_ID_ENCERRAMENTO = ":encerrado";
 
@@ -83,8 +88,14 @@ export const PREFIXO_TEXTO_RESPOSTA = "Resposta pelo WhatsApp: ";
 
 /** O que o proprietário realmente escreveu, sem o prefixo do webhook. */
 export function corpoDaResposta(texto: string | null | undefined): string {
-  const t = (texto || "").trim();
+  const t = typeof texto === "string" ? texto.trim() : "";
   return t.startsWith(PREFIXO_TEXTO_RESPOSTA) ? t.slice(PREFIXO_TEXTO_RESPOSTA.length).trim() : t;
+}
+
+/** O texto realmente enviado, sem o rótulo usado na tela de histórico. */
+export function corpoDaMensagemEnviada(texto: string | null | undefined): string {
+  const t = typeof texto === "string" ? texto.trim() : "";
+  return t.startsWith(PREFIXO_TEXTO_ENVIADA) ? t.slice(PREFIXO_TEXTO_ENVIADA.length).trim() : t;
 }
 
 /**
@@ -108,6 +119,41 @@ export function ehSoMidia(texto: string | null | undefined): boolean {
 
 export function idNotaDaMensagem(mensagemId: string): string {
   return `${PREFIXO_ID_NOTA}${mensagemId}`;
+}
+
+export function idNotaDaMensagemEnviada(mensagemId: string): string {
+  return `${PREFIXO_ID_NOTA_ENVIADA}${mensagemId}`;
+}
+
+export function ehNotaDeMensagemEnviada(nota: Pick<NotaImovel, "id" | "direcao">): boolean {
+  return nota.direcao === "enviada" || (nota.id || "").startsWith(PREFIXO_ID_NOTA_ENVIADA);
+}
+
+export type OrigemMensagemEnviada =
+  | "webhook-evolution"
+  | "api-evolution"
+  | "agendamento"
+  | "confirmacao-manual";
+
+/** Cria a nota de uma saída confirmada. O id externo da Evolution dá
+    idempotência ao envio direto, agendado e ao webhook. Na confirmação manual
+    o chamador fornece um UUID: ali a confirmação é humana, não do integrador. */
+export function notaDaMensagemEnviada(
+  mensagemId: string,
+  mensagem: string,
+  agora: string,
+  origem: OrigemMensagemEnviada,
+  tipo = "conversation",
+): NotaImovel {
+  return {
+    id: idNotaDaMensagemEnviada(mensagemId),
+    texto: `${PREFIXO_TEXTO_ENVIADA}${mensagem.trim()}`,
+    data: agora,
+    direcao: "enviada",
+    autor: "corretor",
+    tipo,
+    origem,
+  };
 }
 
 /** A nota é uma MENSAGEM DO PROPRIETÁRIO (e não algo que o sistema escreveu)? */

@@ -1,62 +1,120 @@
 import type { Imovel } from "@/lib/tipos";
-import { corpoDaResposta, ehSoMidia } from "@/lib/calculo/notas";
-import { respostasDoImovel } from "@/lib/calculo/respostas";
+import {
+  corpoDaMensagemEnviada,
+  corpoDaResposta,
+  ehNotaDeMensagemEnviada,
+  ehNotaDeResposta,
+  ehSoMidia,
+} from "@/lib/calculo/notas";
 import {
   MAX_MENSAGENS_ATENDIMENTO,
   type ContextoAtendimento,
   type ConversaAnterior,
+  type MensagemAnteriorAtendimento,
 } from "./contratos";
 
 export interface SelecaoMensagensAtendimento {
   /** Todas as notas de WhatsApp do proprietario, inclusive midia e vazias. */
   mensagensRecebidas: number;
+  mensagensEnviadas: number;
   /** Mensagens com texto que podem ser usadas pelo agente. */
   mensagensDisponiveis: number;
+  mensagensRecebidasDisponiveis: number;
+  mensagensEnviadasDisponiveis: number;
   mensagensDescartadasComoMidia: number;
   mensagensDescartadasVazias: number;
   /** A mensagem atual mais as anteriores que efetivamente entram no prompt. */
   mensagensSelecionadas: number;
+  recebidasSelecionadas: number;
+  enviadasSelecionadas: number;
+  historicoBidirecional: boolean;
+  classificacaoHistorico:
+    | "historico_completo"
+    | "historico_parcial"
+    | "somente_recebidas"
+    | "legado_sem_conversa";
+  origemHistorico:
+    | "notas-bidirecionais"
+    | "notas-recebidas-legadas"
+    | "notas-enviadas"
+    | "sem-notas-whatsapp";
   mensagemAtual: string;
   mensagemAtualEm: string | null;
-  anteriores: string[];
+  anteriores: MensagemAnteriorAtendimento[];
 }
 
 /**
- * Seleciona, de forma pura e deterministica, as falas do proprietario usadas
+ * Seleciona, de forma pura e deterministica, a conversa bidirecional usada
  * pelo atendimento. A consulta do Supabase entrega o array JSONB inteiro; o
  * corte acontece somente aqui, depois da ordenacao cronologica.
  */
 export function selecionarMensagensAtendimento(imovel: Imovel): SelecaoMensagensAtendimento {
-  const recebidas = respostasDoImovel(imovel);
+  const todas = [...(imovel.notas || [])]
+    .filter((nota) => ehNotaDeResposta(nota) || ehNotaDeMensagemEnviada(nota))
+    .sort((a, b) => (a.data || "").localeCompare(b.data || "") || (a.id || "").localeCompare(b.id || ""));
+  const recebidas = todas.filter(ehNotaDeResposta);
+  const enviadas = todas.filter(ehNotaDeMensagemEnviada);
   let mensagensDescartadasComoMidia = 0;
   let mensagensDescartadasVazias = 0;
-  const legiveis: Array<{ texto: string; data: string }> = [];
+  const legiveis: Array<MensagemAnteriorAtendimento & { data: string; id: string }> = [];
 
-  for (const nota of recebidas) {
-    if (ehSoMidia(nota.texto)) {
+  for (const nota of todas) {
+    const autor = ehNotaDeMensagemEnviada(nota) ? "corretor" : "proprietario";
+    const texto = (autor === "corretor" ? corpoDaMensagemEnviada(nota.texto) : corpoDaResposta(nota.texto)).trim();
+    if (ehSoMidia(texto)) {
       mensagensDescartadasComoMidia += 1;
       continue;
     }
-    const texto = corpoDaResposta(nota.texto).trim();
     if (!texto) {
       mensagensDescartadasVazias += 1;
       continue;
     }
-    legiveis.push({ texto, data: nota.data || "" });
+    legiveis.push({ autor, texto, data: nota.data || "", id: nota.id || "" });
   }
 
-  const atual = legiveis.at(-1);
+  // Se a fala legível mais recente é do corretor, a última entrada já foi
+  // respondida: não a reapresentamos ao agente como uma pendência atual.
+  const indiceAtual = legiveis.at(-1)?.autor === "proprietario" ? legiveis.length - 1 : -1;
+  const atual = indiceAtual >= 0 ? legiveis[indiceAtual] : undefined;
   const anteriores = legiveis
-    .slice(0, -1)
+    .slice(0, indiceAtual < 0 ? 0 : indiceAtual)
     .slice(-MAX_MENSAGENS_ATENDIMENTO)
-    .map((mensagem) => mensagem.texto);
+    .map(({ autor, texto }) => ({ autor, texto }));
+  const recebidasDisponiveis = legiveis.filter((m) => m.autor === "proprietario").length;
+  const enviadasDisponiveis = legiveis.filter((m) => m.autor === "corretor").length;
+  const recebidasSelecionadas = anteriores.filter((m) => m.autor === "proprietario").length + (atual ? 1 : 0);
+  const enviadasSelecionadas = anteriores.filter((m) => m.autor === "corretor").length;
+  const historicoBidirecional = recebidasDisponiveis > 0 && enviadasDisponiveis > 0;
+  const classificacaoHistorico = historicoBidirecional
+    ? todas.every((nota) => nota.direcao === "recebida" || nota.direcao === "enviada")
+      ? "historico_completo"
+      : "historico_parcial"
+    : recebidasDisponiveis > 0
+      ? "somente_recebidas"
+      : enviadasDisponiveis > 0
+        ? "historico_parcial"
+        : "legado_sem_conversa";
 
   return {
     mensagensRecebidas: recebidas.length,
+    mensagensEnviadas: enviadas.length,
     mensagensDisponiveis: legiveis.length,
+    mensagensRecebidasDisponiveis: recebidasDisponiveis,
+    mensagensEnviadasDisponiveis: enviadasDisponiveis,
     mensagensDescartadasComoMidia,
     mensagensDescartadasVazias,
     mensagensSelecionadas: anteriores.length + (atual ? 1 : 0),
+    recebidasSelecionadas,
+    enviadasSelecionadas,
+    historicoBidirecional,
+    classificacaoHistorico,
+    origemHistorico: historicoBidirecional
+      ? "notas-bidirecionais"
+      : recebidas.length
+        ? "notas-recebidas-legadas"
+        : enviadas.length
+          ? "notas-enviadas"
+          : "sem-notas-whatsapp",
     mensagemAtual: atual?.texto || "",
     mensagemAtualEm: atual?.data || null,
     anteriores,
@@ -67,7 +125,12 @@ export function conversaAtendimento(
   selecao: SelecaoMensagensAtendimento,
   enviada: ConversaAnterior["enviada"],
 ): ConversaAnterior {
-  return { anteriores: selecao.anteriores, enviada };
+  return {
+    anteriores: selecao.anteriores,
+    // A abordagem é apenas a ponte para registros antigos. Assim que existe
+    // uma saída textual persistida, ela deixa de ser sintetizada no prompt.
+    enviada: selecao.mensagensEnviadasDisponiveis > 0 ? null : enviada,
+  };
 }
 
 /** Somente fatos tipados. Observações e anúncio ficam fora porque são texto livre. */

@@ -169,7 +169,10 @@ describe("contratos e barreiras", () => {
       mensagemAtual: "mensagem-93",
     });
     expect(primeira.selecao.anteriores).toEqual(
-      Array.from({ length: MAX_MENSAGENS_ATENDIMENTO }, (_, indice) => `mensagem-${indice + 81}`),
+      Array.from({ length: MAX_MENSAGENS_ATENDIMENTO }, (_, indice) => ({
+        autor: "proprietario",
+        texto: `mensagem-${indice + 81}`,
+      })),
     );
     expect(primeira.conversa.enviada).toEqual(enviada);
     expect(primeira.contextoTipado.fatosImovel).toContain("endereco: Rua B");

@@ -296,5 +296,8 @@ describe("log", () => {
     // o que ninguém previu — que é o único log que importa de verdade.
     expect(rotuloEvento("evento-que-ainda-nao-existe")).toBe("evento-que-ainda-nao-existe");
     expect(rotuloEvento("envio-ok")).toBe("Mensagem enviada");
+    expect(rotuloEvento("historico-envio-falhou")).toBe(
+      "Mensagem enviada sem registro no histórico",
+    );
   });
 });

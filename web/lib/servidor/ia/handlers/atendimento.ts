@@ -38,6 +38,7 @@ interface DiagnosticoAtendimento {
   protocolosDisponiveis?: number;
   protocolosSelecionados?: number;
   abordagemCorretorDisponivel?: boolean;
+  origemHistorico?: string;
   contextoFingerprint?: string;
   confianca?: "alta" | "media" | "baixa";
   informacoesFaltantes?: number;
@@ -60,8 +61,16 @@ function registrarDiagnosticoAtendimento(
       tarefa: "rascunhar-resposta",
       imovelId: base.imovelId,
       mensagensRecebidas: base.selecao?.mensagensRecebidas ?? null,
+      mensagensEnviadas: base.selecao?.mensagensEnviadas ?? null,
       mensagensDisponiveis: base.selecao?.mensagensDisponiveis ?? null,
+      mensagensRecebidasDisponiveis: base.selecao?.mensagensRecebidasDisponiveis ?? null,
+      mensagensEnviadasDisponiveis: base.selecao?.mensagensEnviadasDisponiveis ?? null,
       mensagensSelecionadas: base.selecao?.mensagensSelecionadas ?? null,
+      recebidasSelecionadas: base.selecao?.recebidasSelecionadas ?? null,
+      enviadasSelecionadas: base.selecao?.enviadasSelecionadas ?? null,
+      historicoBidirecional: base.selecao?.historicoBidirecional ?? null,
+      classificacaoHistorico: base.selecao?.classificacaoHistorico ?? null,
+      origemHistorico: base.origemHistorico ?? base.selecao?.origemHistorico ?? null,
       descartadasComoMidia: base.selecao?.mensagensDescartadasComoMidia ?? null,
       descartadasVazias: base.selecao?.mensagensDescartadasVazias ?? null,
       protocolosDisponiveis: base.protocolosDisponiveis ?? null,
@@ -142,9 +151,12 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
     return respostaErroIa("historico-insuficiente", 422);
   }
 
-  const ultimaTentativa = [...(imovel.tentativas || [])]
-    .sort((a, b) => (a.data || "").localeCompare(b.data || ""))
-    .at(-1);
+  const ultimaTentativa =
+    selecao.mensagensEnviadasDisponiveis === 0
+      ? [...(imovel.tentativas || [])]
+          .sort((a, b) => (a.data || "").localeCompare(b.data || ""))
+          .at(-1)
+      : undefined;
   let enviada: { rotulo?: string | null; texto?: string | null } | null = null;
   if (ultimaTentativa?.abordagemId) {
     const { data: abRow, error: abErro } = await supabase
@@ -154,16 +166,9 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
       .maybeSingle();
     if (abErro) {
       console.error("IA: falha ao ler a abordagem para rascunho:", abErro.message);
-      registrarDiagnosticoAtendimento(
-        userId,
-        diagnostico,
-        "contexto",
-        "erro",
-        "falha-carregamento-abordagem",
-      );
-      return respostaErroIa("falha-carregamento-contexto", 502);
-    }
-    if (abRow) {
+      // É somente fallback de legado. Uma indisponibilidade parcial do
+      // catálogo não deve derrubar o histórico real já carregado.
+    } else if (abRow) {
       const abordagem = fromDbAbordagem(abRow as DbAbordagemRow);
       enviada = { rotulo: abordagem.nome, texto: abordagem.roteiro };
     }
@@ -171,6 +176,10 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
     enviada = { rotulo: ultimaTentativa.modeloNome, texto: null };
   }
   diagnostico.abordagemCorretorDisponivel = !!enviada;
+  diagnostico.origemHistorico =
+    selecao.mensagensEnviadasDisponiveis === 0 && enviada
+      ? `${selecao.origemHistorico}+ultima-abordagem-legada`
+      : selecao.origemHistorico;
 
   const { data: ptData, error: ptErro } = await supabase
     .from("protocolos")
