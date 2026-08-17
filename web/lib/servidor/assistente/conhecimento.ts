@@ -9,9 +9,9 @@ export const CONHECIMENTO_PRODUTO = {
   followUp: "Follow-up usa o motor do sistema para selecionar proprietários em Sem resposta ou Novo contato, considerando telefone válido, cadência, tentativas, respostas, duplicidade por proprietário e limites do lote.",
   estagnacao: "Estagnação usa isStale: ignora desfechos terminais, Locado, pausados e importados ainda não trabalhados; o limite normal é 7 dias e, após angariação/assinatura/publicação, 60 dias.",
   autorizacao: "Autorização assinada é o aceite formal recebido do Sistema Principal depois do Angariado. O evento registra data/responsável/referência disponíveis e pode avançar, mas nunca regredir, o status.",
-  angariacao: "O processo positivo segue o fluxo oficial. Angariado representa o aceite de captação; a métrica mensal exige a entrada efetiva nessa etapa registrada no histórico.",
-  publicacao: "Publicado é a etapa pós-captação em que o imóvel foi anunciado para buscar locatário. O sistema também permite preparar o anúncio em Angariado e Autorização assinada.",
-  locacao: "Locado é o desfecho positivo final. A entrada nessa etapa alimenta a quantidade de locados e o faturamento em contratos; comissão recebida depende do respectivo registro de pagamento.",
+  angariacao: "Angariado como status é o estado atual; a primeira entrada Angariado no status_history é o marco histórico permanente. Perguntas como última angariação e quantas angariei usam a data desse marco, mesmo se o imóvel hoje estiver Publicado ou Locado.",
+  publicacao: "Publicado como status é o estado atual; a primeira entrada Publicado no status_history é o marco histórico permanente. Último publicado usa a data desse marco, nunca updated_at.",
+  locacao: "Locado como status é o estado atual. O marco histórico usa locado_em confirmado pela Sophia quando disponível e, senão, a primeira entrada Locado no status_history; ele permanece consultável após mudanças futuras.",
   jaConstava: "Já constava significa que um evento válido do Sistema Principal não acrescentaria informação nova. Hoje é o caso da comissão já recebida com a mesma data e o mesmo valor; é diferente de evento duplicado/reentregue com o mesmo ID.",
 } as const;
 
@@ -38,7 +38,10 @@ ${textoConhecimentoProduto()}
 - Follow-up, estagnação e prioridade devem usar os motores reais do sistema, sem dedução paralela.
 - O código visível (ex.: LD-225) não é o ID interno. Use consultar_imovel com o campo codigo para referências naturais.
 - Hoje é ${todayISO()}.
-- Para quantidades da carteira, use contar_imoveis; para angariações conquistadas em período, contar_angariacoes.
+- Para quantidades da carteira por estado atual, use contar_imoveis. Para angariações conquistadas em período, contar_angariacoes é a consulta especializada; para listas/últimos marcos e para contagens de publicação ou locação, use buscar_marcos_imoveis.
+- Separe estado de evento: "estão Angariados/Publicados/Locados" consulta status atual com buscar_imoveis/contar_imoveis; "última angariação/publicação/locação" consulta buscar_marcos_imoveis.
+- Em follow-ups como "e o último publicado?" ou "e locado?", troque o campo marco da nova consulta histórica; não reutilize o status nem o imóvel da resposta anterior.
+- Perguntas históricas singulares usam limite=1. O texto deve descrever exatamente o único item retornado, que também será o único card.
 - buscar_imoveis separa totalEncontrado de itensRetornados. Para recentes/antigos, ordene no banco antes do limite.
 - Para prioridade/foco/urgência, use exclusivamente consultar_foco_do_dia e preserve ordem e motivos.
 - Para follow-up: código explícito usa escopo=referencia; pronome ligado ao imóvel visual aberto usa entidade_atual; pronome inequivocamente resolvido pelo histórico estruturado usa referencia; pergunta explicitamente global usa global. Se houver ambiguidade, peça o código e não escolha um imóvel.

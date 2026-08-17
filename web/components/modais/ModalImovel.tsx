@@ -352,7 +352,7 @@ export default function ModalImovel({ id }: { id?: string }) {
 
     const historico: StatusHistoryEntry[] = imovel
       ? [...(imovel.statusHistory || [])]
-      : [{ status: "Novo contato", date: dataAngariacao }];
+      : [{ status: "Novo contato", date: dataAngariacao, userId: usuario.id, source: "usuario" }];
 
     const data: Imovel = {
       id: imovel ? imovel.id : uid(),
@@ -407,7 +407,7 @@ export default function ModalImovel({ id }: { id?: string }) {
       preCadastro: false,
     };
 
-    aplicarMudancaDeStatus(data, status, imovel ? imovel.status : null);
+    aplicarMudancaDeStatus(data, status, imovel ? imovel.status : null, usuario.id);
 
     setSalvando(true);
     const { ok } = await salvarImovel(data, usuario.id, !!data.pausadoAte && criarLembretePausa);

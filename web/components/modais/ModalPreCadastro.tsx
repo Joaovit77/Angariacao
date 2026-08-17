@@ -260,7 +260,9 @@ export default function ModalPreCadastro({ inicial }: { inicial?: PreCadastroIni
     }
 
     const hoje = todayISO();
-    const historico: StatusHistoryEntry[] = [{ status: "Novo contato", date: hoje }];
+    const historico: StatusHistoryEntry[] = [
+      { status: "Novo contato", date: hoje, userId: usuario.id, source: "usuario" },
+    ];
     const data: Imovel = {
       id: uid(),
       codigo: codigoLimpo,

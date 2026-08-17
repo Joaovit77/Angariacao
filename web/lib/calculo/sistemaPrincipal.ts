@@ -434,7 +434,12 @@ export function aplicarEvento(
   }
 
   if (evento.tipo === "imovel-locado") {
-    const campos: Partial<Imovel> = { locadoEm: data };
+    const campos: Partial<Imovel> = {};
+    // `locadoEm` é o PRIMEIRO marco real confirmado pela Sophia. Uma
+    // reentrega com outro id ou uma relocação posterior não reescreve a
+    // locação original; as reentradas continuam pertencendo à trilha de
+    // status. Sem valor anterior, o evento é uma fonte confiável e preenche.
+    if (!imovel.locadoEm) campos.locadoEm = data;
     if (evento.contrato) campos.contratoNumero = evento.contrato;
     if (evento.referencia && !(imovel.referenciaCrm || "").trim()) {
       campos.referenciaCrm = evento.referencia;

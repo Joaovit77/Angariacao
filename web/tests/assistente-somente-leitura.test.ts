@@ -6,7 +6,7 @@ import { DEFINICOES_FERRAMENTAS } from "@/lib/servidor/assistente/ferramentas";
 describe("ferramentas somente leitura", () => {
   it("nao expoe ferramenta de mutacao", () => {
     expect(DEFINICOES_FERRAMENTAS.map((x) => x.name)).toEqual([
-      "buscar_imoveis", "contar_imoveis", "contar_angariacoes", "consultar_imovel", "consultar_entidade_atual", "buscar_agenda", "consultar_mensagens_agendadas", "buscar_followups", "buscar_estagnados", "consultar_foco_do_dia", "obter_metricas",
+      "buscar_imoveis", "contar_imoveis", "contar_angariacoes", "buscar_marcos_imoveis", "consultar_imovel", "consultar_entidade_atual", "buscar_agenda", "consultar_mensagens_agendadas", "buscar_followups", "buscar_estagnados", "consultar_foco_do_dia", "obter_metricas",
     ]);
   });
 

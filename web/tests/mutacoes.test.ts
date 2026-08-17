@@ -53,6 +53,17 @@ describe("aplicarMudancaDeStatus", () => {
     aplicarMudancaDeStatus(i, "Publicado", "Angariado");
     expect(i.statusHistory).toEqual([{ status: "Publicado", date: HOJE }]);
   });
+
+  it("registra o usuario autenticado como autor de um marco novo", () => {
+    const i = imovelBase([{ status: "Documentação", date: "2026-06-01" }], "Angariado");
+    aplicarMudancaDeStatus(i, "Angariado", "Documentação", "user-1");
+    expect(i.statusHistory?.at(-1)).toEqual({
+      status: "Angariado",
+      date: HOJE,
+      userId: "user-1",
+      source: "usuario",
+    });
+  });
 });
 
 describe("motivo de perda aplicado pelo nudge", () => {

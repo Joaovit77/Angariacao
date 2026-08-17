@@ -69,8 +69,19 @@ export async function marcarAnuncioCentralComoVisualizado(
  * webhook do WhatsApp também encerra imóvel e não pode importar este arquivo
  * (store + cliente do Supabase). Aqui fica só o açúcar que os modais usam.
  */
-export function aplicarMudancaDeStatus(imovel: Imovel, novoStatus: string, statusAnterior: string | null): void {
-  imovel.statusHistory = historicoComStatus(imovel.statusHistory, novoStatus, statusAnterior, todayISO());
+export function aplicarMudancaDeStatus(
+  imovel: Imovel,
+  novoStatus: string,
+  statusAnterior: string | null,
+  userId?: string,
+): void {
+  imovel.statusHistory = historicoComStatus(
+    imovel.statusHistory,
+    novoStatus,
+    statusAnterior,
+    todayISO(),
+    userId ? { userId, source: "usuario" } : {},
+  );
 }
 
 interface ResultadoSalvarImovel {

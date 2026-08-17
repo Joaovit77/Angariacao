@@ -29,4 +29,13 @@ describe("conhecimento do assistente", () => {
     expect(texto).toContain("consulta global superlativa");
     expect(texto).toContain("Nunca os cite, reproduza ou mostre ao usuário");
   });
+
+  it("distingue estado atual de marco e orienta follow-up temporal", () => {
+    const texto = instrucoesDoAssistente({ rota: "/pipeline", pagina: "Pipeline", superficie: "pagina" });
+    expect(texto).toContain("Separe estado de evento");
+    expect(texto).toContain("buscar_marcos_imoveis");
+    expect(texto).toContain('"e o último publicado?"');
+    expect(texto).toContain("único card");
+    expect(texto).toContain("nunca updated_at");
+  });
 });

@@ -20,6 +20,15 @@ export interface AnuncioCentralVisualizado {
 export interface StatusHistoryEntry {
   status: string;
   date: string; // ISO YYYY-MM-DD
+  /** Usuário autenticado que realizou a transição no painel. Ausente em
+      entradas antigas e em eventos externos que não trazem uma identidade
+      compatível com auth.users. */
+  userId?: string | null;
+  /** Nome informado por um sistema externo quando não existe userId
+      autenticado confiável. Nunca substitui um id disponível. */
+  authorName?: string | null;
+  /** Procedência do marco. Entradas legadas não possuem este campo. */
+  source?: "usuario" | "sophia" | "automacao";
 }
 
 /** Nota do histórico de interações com o proprietário (CRM). */

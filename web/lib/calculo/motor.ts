@@ -49,11 +49,18 @@ export function historicoComStatus(
   novoStatus: string,
   statusAnterior: string | null,
   hoje: string,
+  autoria: Pick<StatusHistoryEntry, "userId" | "authorName" | "source"> = {},
 ): StatusHistoryEntry[] {
   const hist = [...(historico || [])];
   if (statusAnterior !== null && statusAnterior === novoStatus) return hist;
   if (hist.length === 0 || hist[hist.length - 1].status !== novoStatus) {
-    hist.push({ status: novoStatus, date: hoje });
+    hist.push({
+      status: novoStatus,
+      date: hoje,
+      ...(autoria.userId ? { userId: autoria.userId } : {}),
+      ...(autoria.authorName ? { authorName: autoria.authorName } : {}),
+      ...(autoria.source ? { source: autoria.source } : {}),
+    });
   }
   return hist;
 }
@@ -65,6 +72,31 @@ export function dateEnteredStatus(imovel: Imovel, status: string): string | null
   const hist = imovel.statusHistory || [];
   const entry = hist.find((h) => h.status === status);
   return entry ? entry.date : (status === "Novo contato" ? imovel.dataAngariacao ?? null : null);
+}
+
+/** Primeiro marco permanente de uma etapa. O histórico completo continua
+    guardando reentradas; consultas de "primeiro/último imóvel que atingiu a
+    etapa" usam esta ocorrência inicial e nunca o status atual. */
+export function marcoDoStatus(imovel: Imovel, status: string): StatusHistoryEntry | null {
+  return (imovel.statusHistory || []).find((entrada) => entrada.status === status) || null;
+}
+
+/** Publicação ainda nasce no funil do painel; não há evento equivalente na
+    integração Sophia. Sem uma entrada confiável, o legado permanece nulo. */
+export function dataPublicadoEfetiva(imovel: Imovel): string | null {
+  return marcoDoStatus(imovel, "Publicado")?.date || null;
+}
+
+/** A Sophia conhece a data real da locação. Quando ela não existe (transição
+    manual), a primeira entrada em Locado é a melhor fonte disponível. */
+export function dataLocadoEfetiva(imovel: Imovel): string | null {
+  return imovel.locadoEm || marcoDoStatus(imovel, "Locado")?.date || null;
+}
+
+/** Para totais sem período, o estado atual Locado ainda prova o acontecimento
+    em legados sem data. Consultas temporais continuam exigindo uma data real. */
+export function foiLocado(imovel: Imovel): boolean {
+  return dataLocadoEfetiva(imovel) !== null || imovel.status === "Locado";
 }
 
 export function currentStatusSince(imovel: Imovel): string | null {
@@ -181,12 +213,12 @@ export function comissaoEstimada(imovel: Imovel, comissaoPercent: number): numbe
 }
 
 export function comissaoRecebidaValor(imovel: Imovel, comissaoPercent: number): number {
-  return imovel.status === "Locado" && imovel.comissaoRecebida ? (imovel.comissaoRecebidaValor ?? comissaoEstimada(imovel, comissaoPercent)) : 0;
+  return foiLocado(imovel) && imovel.comissaoRecebida ? (imovel.comissaoRecebidaValor ?? comissaoEstimada(imovel, comissaoPercent)) : 0;
 }
 
 export function tempoAteLocacao(imovel: Imovel): number | null {
-  if (imovel.status !== "Locado") return null;
-  const dLocado = dateEnteredStatus(imovel, "Locado");
+  const dLocado = dataLocadoEfetiva(imovel);
+  if (!dLocado) return null;
   return daysBetween(imovel.dataAngariacao, dLocado);
 }
 
@@ -236,7 +268,7 @@ export function ehPerdaDecidida(imovel: Imovel): boolean {
 
 export function metricsForRange(imoveis: Imovel[], comissaoPercent: number): MetricsForRange {
   const total = imoveis.length;
-  const locados = imoveis.filter((i) => i.status === "Locado");
+  const locados = imoveis.filter(foiLocado);
   // Processos DECIDIDOS, não apenas fechados — ver `ehPerdaDecidida`.
   const perdidosCancelados = imoveis.filter(ehPerdaDecidida);
   const fechados = locados.length + perdidosCancelados.length;
@@ -319,7 +351,7 @@ export function foiAngariado(imovel: Imovel): boolean {
 }
 
 export function dataAngariadoEfetiva(imovel: Imovel): string | null {
-  return dateEnteredStatus(imovel, "Angariado");
+  return marcoDoStatus(imovel, "Angariado")?.date || null;
 }
 
 /**
@@ -416,7 +448,7 @@ export function imoveisContatadosNoPeriodo(imoveis: Imovel[], start: string, end
 }
 
 export function imoveisLocadosNoMes(imoveis: Imovel[], key: string): Imovel[] {
-  return imoveis.filter((i) => i.status === "Locado" && monthKey(dateEnteredStatus(i, "Locado")) === key);
+  return imoveis.filter((i) => monthKey(dataLocadoEfetiva(i)) === key);
 }
 
 // "Faturamento em contratos": soma dos aluguéis dos imóveis que entraram em

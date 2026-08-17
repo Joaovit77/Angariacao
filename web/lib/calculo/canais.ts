@@ -13,7 +13,7 @@
    tempoAteLocacao), sem React/Next/Supabase/store.
    ================================================================ */
 import type { Imovel } from "../tipos";
-import { foiAngariado, tempoAteLocacao } from "./motor";
+import { foiAngariado, foiLocado, tempoAteLocacao } from "./motor";
 
 /** Rótulo de origem quando o imóvel não registra o canal. */
 export const ORIGEM_NAO_INFORMADA = "Não informado";
@@ -43,7 +43,7 @@ export function desempenhoPorCanal(imoveis: Imovel[]): CanalDesempenho[] {
 
   const linhas: CanalDesempenho[] = [];
   for (const [origem, lista] of porOrigem) {
-    const locadosLista = lista.filter((i) => i.status === "Locado");
+    const locadosLista = lista.filter(foiLocado);
     const tempos = locadosLista.map(tempoAteLocacao).filter((t): t is number => t != null && t >= 0);
     linhas.push({
       origem,

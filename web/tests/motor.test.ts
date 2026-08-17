@@ -5,12 +5,12 @@
    fallback, tempo negativo etc.). */
 import { describe, it, expect, vi } from "vitest";
 import {
-  dateEnteredStatus, currentStatusSince, isPausado, isStale,
+  dataLocadoEfetiva, dataPublicadoEfetiva, dateEnteredStatus, currentStatusSince, isPausado, isStale,
   daysInCurrentStatus, comissaoEstimada, comissaoRecebidaValor,
   tempoAteLocacao, metricsForRange, foiAngariado, dataAngariadoEfetiva,
   imoveisAngariadosNoMes, imoveisAngariadosNoPeriodo,
   imoveisContatadosNoMes, imoveisContatadosNoPeriodo,
-  imoveisLocadosNoMes, groupCount,
+  imoveisLocadosNoMes, groupCount, historicoComStatus, marcoDoStatus,
   ultimoMovimentoISO, diasSemMovimento,
 } from "@/lib/calculo/motor";
 import type { Imovel } from "@/lib/tipos";
@@ -263,6 +263,56 @@ describe("coortes mensais e períodos", () => {
     expect(ids(imoveisLocadosNoMes(imoveis, "2026-05"))).toEqual(oracle.porMes.locadosNoMes["2026-05"]);
     expect(ids(imoveisLocadosNoMes(imoveis, "2026-06"))).toEqual(oracle.porMes.locadosNoMes["2026-06"]);
     expect(ids(imoveisLocadosNoMes(imoveis, "2026-07"))).toEqual(oracle.porMes.locadosNoMes["2026-07"]);
+  });
+});
+
+describe("marcos históricos permanentes", () => {
+  it("preserva Angariado ao avançar para Publicado e Locado", () => {
+    let historico = historicoComStatus([], "Angariado", "Documentação", "2026-08-10", { userId: "u1", source: "usuario" });
+    historico = historicoComStatus(historico, "Publicado", "Angariado", "2026-08-12", { userId: "u2", source: "usuario" });
+    historico = historicoComStatus(historico, "Locado", "Publicado", "2026-08-15", { userId: "u3", source: "usuario" });
+    const i = { id: "marcos", endereco: "Rua", status: "Locado", statusHistory: historico } as Imovel;
+    expect(marcoDoStatus(i, "Angariado")).toEqual({ status: "Angariado", date: "2026-08-10", userId: "u1", source: "usuario" });
+    expect(dataPublicadoEfetiva(i)).toBe("2026-08-12");
+    expect(dataLocadoEfetiva(i)).toBe("2026-08-15");
+  });
+
+  it("uma edição comum e uma reentrada não sobrescrevem o primeiro marco", () => {
+    let historico = historicoComStatus([], "Publicado", "Angariado", "2026-08-01");
+    historico = historicoComStatus(historico, "Publicado", "Publicado", "2026-08-02");
+    historico = historicoComStatus(historico, "Angariado", "Publicado", "2026-08-03");
+    historico = historicoComStatus(historico, "Publicado", "Angariado", "2026-08-04");
+    const i = { id: "reaberto", endereco: "Rua", status: "Publicado", statusHistory: historico } as Imovel;
+    expect(dataPublicadoEfetiva(i)).toBe("2026-08-01");
+    expect(historico.filter((entrada) => entrada.status === "Publicado").map((entrada) => entrada.date)).toEqual(["2026-08-01", "2026-08-04"]);
+  });
+
+  it("prefere locadoEm real da Sophia e não usa updated_at", () => {
+    const i = {
+      id: "sophia",
+      endereco: "Rua",
+      status: "Publicado",
+      locadoEm: "2026-08-05",
+      statusHistory: [{ status: "Locado", date: "2026-08-07" }],
+      updated_at: "2099-01-01",
+    } as Imovel & { updated_at: string };
+    expect(dataLocadoEfetiva(i)).toBe("2026-08-05");
+  });
+
+  it("legado sem fonte confiável permanece sem data de marco", () => {
+    const i = { id: "legado", endereco: "Rua", status: "Locado", statusHistory: [] } as Imovel;
+    expect(dataLocadoEfetiva(i)).toBeNull();
+    expect(imoveisLocadosNoMes([i], "2026-08")).toEqual([]);
+  });
+
+  it("conta locação pelo evento mesmo após o status atual mudar", () => {
+    const i = {
+      id: "pago",
+      endereco: "Rua",
+      status: "Pago",
+      statusHistory: [{ status: "Locado", date: "2026-08-09" }],
+    } as Imovel;
+    expect(imoveisLocadosNoMes([i], "2026-08")).toEqual([i]);
   });
 });
 

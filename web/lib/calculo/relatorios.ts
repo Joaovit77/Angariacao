@@ -17,6 +17,7 @@ import type { Imovel } from "../tipos";
 import {
   comissaoEstimada,
   comissaoRecebidaValor,
+  dataLocadoEfetiva,
   dateEnteredStatus,
   ehPerdaDecidida,
   imoveisAngariadosNoMes,
@@ -126,11 +127,11 @@ export function relatorioSemanal(imoveis: Imovel[], comissaoPercent: number, off
   const cur = imoveisAngariadosNoPeriodo(imoveis, start, end);
   const prev = imoveisAngariadosNoPeriodo(imoveis, prevStart, prevEnd);
   const noIntervalo = (i: Imovel, a: string, b: string) => {
-    const d = dateEnteredStatus(i, "Locado");
+    const d = dataLocadoEfetiva(i);
     return d != null && d >= a && d <= b;
   };
-  const curLocados = imoveis.filter((i) => i.status === "Locado" && noIntervalo(i, start, end));
-  const prevLocados = imoveis.filter((i) => i.status === "Locado" && noIntervalo(i, prevStart, prevEnd));
+  const curLocados = imoveis.filter((i) => noIntervalo(i, start, end));
+  const prevLocados = imoveis.filter((i) => noIntervalo(i, prevStart, prevEnd));
   // Comissão estimada considera só os imóveis locados no período — a comissão
   // só é recebida quando o imóvel é locado.
   const comissaoEst = curLocados.reduce((s, i) => s + comissaoEstimada(i, comissaoPercent), 0);

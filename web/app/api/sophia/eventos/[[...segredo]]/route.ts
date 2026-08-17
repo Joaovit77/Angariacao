@@ -111,7 +111,7 @@ function clienteServico(): SupabaseClient | null {
 const COLUNAS =
   "id, user_id, codigo, referencia_crm, endereco, cidade, unidade, bloco, status, " +
   "status_history, valor_aluguel, retirado, comissao_recebida, comissao_recebida_valor, " +
-  "comissao_recebida_data, autorizacao_assinada_em";
+  "comissao_recebida_data, autorizacao_assinada_em, locado_em";
 
 type LinhaCandidata = Partial<DbImovelRow> & { id: string; user_id: string; status: string };
 
@@ -394,6 +394,10 @@ export async function POST(
       mudanca.status,
       imovel.status,
       hoje,
+      {
+        authorName: evento.responsavel || null,
+        source: "sophia",
+      },
     );
   }
 

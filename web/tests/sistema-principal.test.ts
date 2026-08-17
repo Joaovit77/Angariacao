@@ -261,6 +261,16 @@ describe("aplicarEvento — imóvel locado", () => {
     const m = aplicarEvento(imovel({ contratoNumero: "C-1" }), { id: "e3", tipo: "imovel-locado" }, HOJE, 100);
     expect(m?.campos.contratoNumero).toBeUndefined();
   });
+
+  it("não sobrescreve a primeira data real de locação", () => {
+    const m = aplicarEvento(
+      imovel({ status: "Locado", locadoEm: "2026-07-20" }),
+      { id: "e-reentrada", tipo: "imovel-locado", data: "2026-08-05" },
+      HOJE,
+      100,
+    );
+    expect(m?.campos.locadoEm).toBeUndefined();
+  });
 });
 
 describe("aplicarEvento — comissão paga", () => {

@@ -20,6 +20,10 @@ export interface ItemImovelAssistente {
   status: string;
   responsavel: string;
   diasSemMovimento?: number | null;
+  /** Preenchidos apenas em consultas históricas de marco. O status acima
+      continua sendo o estado atual exibido no card. */
+  marco?: "angariado" | "publicado" | "locado";
+  marcoEm?: string | null;
 }
 
 export interface ItemAgendaAssistente {

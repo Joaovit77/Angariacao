@@ -30,6 +30,7 @@ import { fmtDate } from "../formatadores";
 import type { Imovel, Metas } from "../tipos";
 import {
   dataAngariadoEfetiva,
+  dataLocadoEfetiva,
   dateEnteredStatus,
   foiAngariado,
   imoveisAngariadosNoMes,
@@ -135,7 +136,7 @@ function quantosDe(valor: number | null, alvo: number): string {
 
 function construirTrilhas(imoveis: Imovel[], metas: Metas): Trilha[] {
   const angariados = imoveis.filter(foiAngariado).length;
-  const locados = imoveis.filter((i) => dateEnteredStatus(i, "Locado") != null).length;
+  const locados = imoveis.filter((i) => dataLocadoEfetiva(i) != null).length;
   const melhorSemana = melhorSemanaDeAngariacao(imoveis);
   const maisRapida = angariacaoMaisRapidaDias(imoveis);
   const mesesBatidos = mesesComMetaDeAngariacaoBatida(imoveis, metas);

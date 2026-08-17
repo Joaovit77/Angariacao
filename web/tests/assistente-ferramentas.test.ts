@@ -419,3 +419,127 @@ describe("follow-up global e limites de cards", () => {
     expect(resultado.bloco?.itens[0]).toMatchObject({ id: "antigo-0" });
   });
 });
+
+describe("estado atual versus marcos historicos", () => {
+  const ldA = imovel("ld-a", "user-1", "LD-A", {
+    status: "Angariado",
+    status_history: [{ status: "Angariado", date: "2026-08-10", userId: "user-1", source: "usuario" }],
+    updated_at: "2026-08-17T23:59:00Z",
+  });
+  const ldB = imovel("ld-b", "user-1", "LD-B", {
+    status: "Publicado",
+    status_history: [
+      { status: "Angariado", date: "2026-08-17", userId: "user-1", source: "usuario" },
+      { status: "Publicado", date: "2026-08-17", userId: "user-1", source: "usuario" },
+    ],
+    updated_at: "2026-08-01T00:00:00Z",
+  });
+  const ldC = imovel("ld-c", "user-1", "LD-C", {
+    status: "Locado",
+    status_history: [
+      { status: "Angariado", date: "2026-08-12" },
+      { status: "Publicado", date: "2026-08-13" },
+      { status: "Locado", date: "2026-08-16", authorName: "Marina", source: "sophia" },
+    ],
+    locado_em: "2026-08-15",
+  });
+  const ldD = imovel("ld-d", "user-1", "LD-D", {
+    status: "Pago",
+    status_history: [{ status: "Locado", date: "2026-08-02" }],
+    locado_em: "2026-08-01",
+  });
+  const legadoIncompleto = imovel("legado", "user-1", "LD-LEGADO", { status: "Publicado", status_history: [] });
+  const outroUsuario = imovel("outro", "user-2", "LD-OUTRO", {
+    status: "Publicado",
+    status_history: [{ status: "Angariado", date: "2026-08-20" }],
+  });
+  const rows = [ldA, ldB, ldC, ldD, legadoIncompleto, outroUsuario] as unknown as Linha[];
+  const args = { data_inicio: null, data_fim: null, somente_contagem: false, limite: 20 };
+
+  it("caso LD-A/LD-B: ultima angariacao retorna LD-B, embora esteja Publicado", async () => {
+    const resultado = await executarFerramenta(
+      "buscar_marcos_imoveis",
+      { ...args, marco: "angariado" },
+      new SupabaseFake({ imoveis: rows }) as unknown as SupabaseClient,
+      "user-1",
+      contexto,
+      "Qual foi minha ultima angariacao?",
+    );
+    expect(resultado.dados).toMatchObject({
+      totalEncontrado: 3,
+      itensRetornados: 1,
+      itens: [{ id: "ld-b", codigo: "LD-B", status: "Publicado", marco: "angariado", marcoEm: "2026-08-17", marcoPorUserId: "user-1" }],
+    });
+    expect(resultado.bloco?.itens).toHaveLength(1);
+    expect(resultado.bloco?.itens[0]).toMatchObject({ id: "ld-b", codigo: "LD-B" });
+    expect(resultado.bloco?.itens).toEqual((resultado.dados as { itens: unknown[] }).itens);
+  });
+
+  it("consulta de estado atual retorna somente quem esta Angariado", async () => {
+    const resultado = await executarFerramenta(
+      "buscar_imoveis",
+      { codigo: null, status: "Angariado", bairro: null, responsavel: null, termo_endereco: null, data_inicio: null, data_fim: null, ordenar_por: null, direcao: null, limite: 20 },
+      new SupabaseFake({ imoveis: rows }) as unknown as SupabaseClient,
+      "user-1",
+      contexto,
+      "Quais imoveis estao Angariados?",
+    );
+    expect(resultado.dados).toMatchObject({ totalEncontrado: 1, itens: [{ codigo: "LD-A" }] });
+  });
+
+  it("troca a dimensao no follow-up entre publicado e locado", async () => {
+    const fake = () => new SupabaseFake({ imoveis: rows }) as unknown as SupabaseClient;
+    const publicado = await executarFerramenta("buscar_marcos_imoveis", { ...args, marco: "publicado" }, fake(), "user-1", contexto, "e o ultimo publicado?");
+    const historicoMultiTurno: ItemHistoricoAssistente[] = [
+      { papel: "usuario", texto: "Qual foi minha ultima angariacao?" },
+      { papel: "assistente", texto: "LD-B." },
+      { papel: "usuario", texto: "e o ultimo publicado?" },
+      { papel: "assistente", texto: "LD-B." },
+    ];
+    const locado = await executarFerramenta("buscar_marcos_imoveis", { ...args, marco: "locado" }, fake(), "user-1", contexto, "e locado?", historicoMultiTurno);
+    expect(publicado.dados).toMatchObject({ itensRetornados: 1, itens: [{ codigo: "LD-B", marcoEm: "2026-08-17" }] });
+    expect(locado.dados).toMatchObject({ itensRetornados: 1, itens: [{ codigo: "LD-C", marcoEm: "2026-08-15", marcoPorNome: "Marina" }] });
+  });
+
+  it("conta pelo periodo do evento, sem cards", async () => {
+    const resultado = await executarFerramenta(
+      "buscar_marcos_imoveis",
+      { marco: "angariado", data_inicio: "2026-08-17", data_fim: "2026-08-17", somente_contagem: true, limite: 20 },
+      new SupabaseFake({ imoveis: rows }) as unknown as SupabaseClient,
+      "user-1",
+      contexto,
+      "Quantos imoveis angariei em 17 de agosto?",
+    );
+    expect(resultado.dados).toMatchObject({ totalEncontrado: 1, itensRetornados: 0, itens: [] });
+    expect(resultado.bloco).toBeUndefined();
+  });
+
+  it("conta locacoes do mes pelo marco, inclusive quem hoje esta Pago", async () => {
+    const resultado = await executarFerramenta(
+      "buscar_marcos_imoveis",
+      { marco: "locado", data_inicio: "2026-08-01", data_fim: "2026-08-31", somente_contagem: true, limite: 20 },
+      new SupabaseFake({ imoveis: rows }) as unknown as SupabaseClient,
+      "user-1",
+      contexto,
+      "Quantos imoveis loquei em agosto?",
+    );
+    expect(resultado.dados).toMatchObject({ totalEncontrado: 2, itensRetornados: 0 });
+    expect(resultado.bloco).toBeUndefined();
+  });
+
+  it("isola usuarios, ignora updated_at e nao inventa marco para legado", async () => {
+    const fake = new SupabaseFake({ imoveis: rows });
+    const resultado = await executarFerramenta(
+      "buscar_marcos_imoveis",
+      { ...args, marco: "angariado" },
+      fake as unknown as SupabaseClient,
+      "user-1",
+      contexto,
+      "Liste minhas angariacoes.",
+    );
+    expect(resultado.dados).toMatchObject({ totalEncontrado: 3 });
+    expect(JSON.stringify(resultado.dados)).not.toContain("LD-OUTRO");
+    expect(JSON.stringify(resultado.dados)).not.toContain("LD-LEGADO");
+    expect(fake.consultas[0].query.filtros[0]).toEqual({ metodo: "eq", coluna: "user_id", valor: "user-1" });
+  });
+});

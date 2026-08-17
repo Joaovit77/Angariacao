@@ -1,6 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fromDbAgenda, fromDbImovel, type DbAgendaRow, type DbImovelRow } from "@/lib/persistencia/mapeadores";
-import { diasSemMovimento, imoveisAngariadosNoPeriodo, isStale } from "@/lib/calculo/motor";
+import {
+  dataAngariadoEfetiva,
+  dataLocadoEfetiva,
+  dataPublicadoEfetiva,
+  diasSemMovimento,
+  imoveisAngariadosNoPeriodo,
+  isStale,
+  marcoDoStatus,
+} from "@/lib/calculo/motor";
 import { selecionarFollowUp, textoMotivoExclusao } from "@/lib/calculo/followup";
 import { kpisDashboard } from "@/lib/calculo/dashboard";
 import { addDaysISO, agoraISOString, currentMonthKey, inicioDoDiaOperacionalISO, primeiroDiaDoMes, todayISO, ultimoDiaDoMes } from "@/lib/datas";
@@ -65,6 +73,24 @@ export const DEFINICOES_FERRAMENTAS = [
         data_fim: { type: ["string", "null"], description: "Obrigatoria somente para intervalo, ISO YYYY-MM-DD." },
       },
       required: ["periodo", "data_inicio", "data_fim"],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: "function" as const,
+    name: "buscar_marcos_imoveis",
+    description: "Consulta fatos historicos permanentes, independentemente do status atual. Use para ultima angariacao, ultimo publicado, ultimo locado e contagens por data do acontecimento. Nao use para perguntas sobre quem esta em um status agora.",
+    strict: true,
+    parameters: {
+      type: "object",
+      properties: {
+        marco: { type: "string", enum: ["angariado", "publicado", "locado"] },
+        data_inicio: { type: ["string", "null"], description: "Data inicial inclusiva do marco, ISO YYYY-MM-DD." },
+        data_fim: { type: ["string", "null"], description: "Data final inclusiva do marco, ISO YYYY-MM-DD." },
+        somente_contagem: { type: "boolean", description: "true para perguntas quantitativas; nesse caso nao retorna cards." },
+        limite: { type: "integer", minimum: 1, maximum: 20 },
+      },
+      required: ["marco", "data_inicio", "data_fim", "somente_contagem", "limite"],
       additionalProperties: false,
     },
   },
@@ -238,14 +264,16 @@ export function intencaoGlobalFollowUp(pergunta: string): "quantidade_hoje" | "f
 export function limiteConformeIntencao(
   pergunta: string,
   solicitado: unknown,
-  tipo: "imoveis" | "agenda" | "mensagens" | "estagnados" | "foco",
+  tipo: "imoveis" | "marcos" | "agenda" | "mensagens" | "estagnados" | "foco",
 ): number {
   const informado = pergunta.match(/\b([1-9]|1\d|20)\b/)?.[1];
   if (informado) return Math.min(limite(solicitado), Number(informado));
   const valor = pergunta.toLocaleLowerCase("pt-BR");
   const singular = tipo === "agenda"
     ? /\b(pr[oó]ximo|primeiro)\b.*\b(compromisso|agenda)\b|\bqual\b.*\bcompromisso\b/.test(valor)
-    : tipo === "mensagens"
+      : tipo === "marcos"
+        ? /\b([uú]ltim[ao]|mais recent[ei])\b/.test(valor)
+      : tipo === "mensagens"
       ? /\b(pr[oó]xim[ao]|primeir[ao])\b.*\bmensagem\b|\bqual\b.*\bmensagem\b/.test(valor)
       : tipo === "estagnados"
         ? /\bqual\b.*\bim[oó]vel\b|\bmais tempo sem (contato|movimento)\b/.test(valor)
@@ -253,6 +281,18 @@ export function limiteConformeIntencao(
           ? /\b(primeir[oa]|agora)\b/.test(valor) && /\b(quem|qual)\b/.test(valor)
           : /\bqual\b.*\b(mais recente|mais antigo)\b/.test(valor);
   return singular ? 1 : limite(solicitado);
+}
+
+function limiteDeMarcoComContexto(
+  pergunta: string,
+  solicitado: unknown,
+  historico: ItemHistoricoAssistente[],
+): number {
+  const direto = limiteConformeIntencao(pergunta, solicitado, "marcos");
+  if (direto === 1) return 1;
+  const elipse = /^\s*e\b/i.test(pergunta);
+  const perguntaAnterior = [...historico].reverse().find((item) => item.papel === "usuario")?.texto || "";
+  return elipse && /\b([uú]ltim[ao]|mais recent[ei])\b/i.test(perguntaAnterior) ? 1 : direto;
 }
 
 /** Codigo humano curto, nao uma expressao livre do PostgREST. */
@@ -271,6 +311,35 @@ function itemImovel(row: DbImovelRow): ItemImovelAssistente {
     status: imovel.status,
     responsavel: imovel.responsavel || "",
     diasSemMovimento: diasSemMovimento(imovel),
+  };
+}
+
+type MarcoImovel = "angariado" | "publicado" | "locado";
+
+const STATUS_DO_MARCO: Record<MarcoImovel, string> = {
+  angariado: "Angariado",
+  publicado: "Publicado",
+  locado: "Locado",
+};
+
+function marcoValido(valor: unknown): MarcoImovel | null {
+  return valor === "angariado" || valor === "publicado" || valor === "locado" ? valor : null;
+}
+
+function dadosDoMarco(row: DbImovelRow, marco: MarcoImovel) {
+  const imovel = fromDbImovel(row);
+  const status = STATUS_DO_MARCO[marco];
+  const entrada = marcoDoStatus(imovel, status);
+  const data = marco === "angariado"
+    ? dataAngariadoEfetiva(imovel)
+    : marco === "publicado"
+      ? dataPublicadoEfetiva(imovel)
+      : dataLocadoEfetiva(imovel);
+  return {
+    data,
+    userId: entrada?.userId || null,
+    authorName: entrada?.authorName || null,
+    source: entrada?.source || null,
   };
 }
 
@@ -372,6 +441,52 @@ export async function executarFerramenta(
     if (!inicio || !fim) return { dados: { totalEncontrado: 0, itensRetornados: 0, erro: "Intervalo de datas invalido." } };
     const totalEncontrado = imoveisAngariadosNoPeriodo((await todosImoveis(supabase, userId)).map(fromDbImovel), inicio, fim).length;
     return { dados: { totalEncontrado, itensRetornados: 0, dataInicio: inicio, dataFim: fim } };
+  }
+
+  if (nome === "buscar_marcos_imoveis") {
+    const marco = marcoValido(args.marco);
+    if (!marco) {
+      return { dados: { totalEncontrado: 0, itensRetornados: 0, itens: [], erro: "Marco historico invalido." } };
+    }
+    const inicio = texto(args.data_inicio);
+    const fim = texto(args.data_fim);
+    const encontrados = (await todosImoveis(supabase, userId))
+      .map((row) => ({ row, marco: dadosDoMarco(row, marco) }))
+      .filter((item) => item.marco.data != null)
+      .filter((item) => !inicio || item.marco.data! >= inicio)
+      .filter((item) => !fim || item.marco.data! <= fim)
+      .sort((a, b) => {
+        const porData = b.marco.data!.localeCompare(a.marco.data!);
+        return porData || String(a.row.codigo || a.row.id).localeCompare(String(b.row.codigo || b.row.id));
+      });
+    const perguntaQuantitativa = /\b(quantos?|quantidade|total)\b/i.test(perguntaUsuario);
+    const semCards = args.somente_contagem === true || perguntaQuantitativa;
+    const selecionados = semCards
+      ? []
+      : encontrados.slice(0, limiteDeMarcoComContexto(perguntaUsuario, args.limite, historico));
+    const itens = selecionados.map(({ row, marco: fato }) => ({
+      ...itemImovel(row),
+      marco,
+      marcoEm: fato.data,
+      marcoPorUserId: fato.userId,
+      marcoPorNome: fato.authorName,
+      fonteMarco: fato.source,
+    }));
+    return {
+      dados: {
+        marco,
+        totalEncontrado: encontrados.length,
+        itensRetornados: itens.length,
+        dataInicio: inicio,
+        dataFim: fim,
+        itens,
+      },
+      bloco: itens.length ? {
+        tipo: "imoveis",
+        titulo: marco === "angariado" ? "Angariacoes" : marco === "publicado" ? "Publicacoes" : "Locacoes",
+        itens,
+      } : undefined,
+    };
   }
 
   if (nome === "consultar_imovel") {

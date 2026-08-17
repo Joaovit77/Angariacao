@@ -264,7 +264,7 @@ function Kanban({ imoveis, aoAbrir }: { imoveis: Imovel[]; aoAbrir: (id: string)
       status: novoStatus,
       statusHistory: [...(imovel.statusHistory || [])],
     };
-    aplicarMudancaDeStatus(atualizado, novoStatus, imovel.status);
+    aplicarMudancaDeStatus(atualizado, novoStatus, imovel.status, usuario.id);
 
     setMovendoId(imovelId);
     try {
