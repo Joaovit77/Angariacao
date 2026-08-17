@@ -73,8 +73,8 @@ export function currentStatusSince(imovel: Imovel): string | null {
   return hist[hist.length - 1].date;
 }
 
-export function isPausado(imovel: Imovel): boolean {
-  return !!(imovel.pausadoAte && imovel.pausadoAte >= todayISO());
+export function isPausado(imovel: Imovel, referencia = todayISO()): boolean {
+  return !!(imovel.pausadoAte && imovel.pausadoAte >= referencia);
 }
 
 // Prazo (em dias) até um imóvel nesse status contar como "parado".
@@ -133,8 +133,8 @@ export function ultimoMovimentoISO(imovel: Imovel): string | null {
 /** Dias desde o último movimento. É o número que acompanha a palavra "parado"
     na tela — mostrar `daysInCurrentStatus` ao lado do selo diria "parado há 20
     dias" para um imóvel cujo prazo foi contado a partir de ontem. */
-export function diasSemMovimento(imovel: Imovel): number | null {
-  return daysBetween(ultimoMovimentoISO(imovel), todayISO());
+export function diasSemMovimento(imovel: Imovel, referencia = todayISO()): number | null {
+  return daysBetween(ultimoMovimentoISO(imovel), referencia);
 }
 
 /**
@@ -161,13 +161,13 @@ export function teveAtividadeAposImportacao(imovel: Imovel): boolean {
   return (imovel.statusHistory || []).some((h) => h.date > (imovel.dataAngariacao || ""));
 }
 
-export function isStale(imovel: Imovel): boolean {
+export function isStale(imovel: Imovel, referencia = todayISO()): boolean {
   if ((STATUS_TERMINAL_NEGATIVE as readonly string[]).includes(imovel.status) || imovel.status === "Locado") return false;
-  if (isPausado(imovel)) return false;
+  if (isPausado(imovel, referencia)) return false;
   // Importado e ainda não trabalhado: não há estagnação a cobrar de quem
   // nunca teve a primeira ação neste sistema.
   if (imovel.importado && !teveAtividadeAposImportacao(imovel)) return false;
-  const d = diasSemMovimento(imovel);
+  const d = diasSemMovimento(imovel, referencia);
   return d !== null && d >= limiteStaleParaStatus(imovel.status);
 }
 

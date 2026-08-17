@@ -109,9 +109,9 @@ export function focoInteligenteDoDia(
     });
   }
 
-  const parados = imoveis.filter(isStale);
+  const parados = imoveis.filter((imovel) => isStale(imovel, hoje));
   for (const imovel of parados) {
-    const dias = diasSemMovimento(imovel) ?? 0;
+    const dias = diasSemMovimento(imovel, hoje) ?? 0;
     const pontuacao = 500 + Math.min(dias, 60);
     candidatas.push({
       id: `parado:${imovel.id}`,

@@ -3,7 +3,7 @@
    sobre as fixtures; o port precisa reproduzi-la exatamente,
    inclusive nos comportamentos de borda (limiar de stale, comissão
    fallback, tempo negativo etc.). */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   dateEnteredStatus, currentStatusSince, isPausado, isStale,
   daysInCurrentStatus, comissaoEstimada, comissaoRecebidaValor,
@@ -14,7 +14,7 @@ import {
   ultimoMovimentoISO, diasSemMovimento,
 } from "@/lib/calculo/motor";
 import type { Imovel } from "@/lib/tipos";
-import { congelaRelogio } from "./setup-relogio";
+import { congelaRelogio, INSTANTE_ORACULO } from "./setup-relogio";
 import fixturesJson from "./fixtures.json";
 import oracle from "./oracle-expected.json";
 
@@ -187,6 +187,44 @@ describe("isStale conta movimento, não mudança de status", () => {
       notas: respostaEm("2026-06-25"),
     });
     expect(ultimoMovimentoISO(i)).toBe("2026-07-01");
+  });
+});
+
+describe("isStale com referência temporal explícita", () => {
+  function imovelComUltimoMovimentoEm(data: string): Imovel {
+    return {
+      id: `stale-${data}`,
+      status: "Novo contato",
+      statusHistory: [{ status: "Novo contato", date: data }],
+    } as Imovel;
+  }
+
+  it("mantém o resultado quando recebe explicitamente a mesma referência temporal", () => {
+    const imovel = imovelComUltimoMovimentoEm("2026-07-02");
+
+    expect(isStale(imovel)).toBe(isStale(imovel, "2026-07-09"));
+  });
+
+  it("não depende do relógio real quando a referência é explícita", () => {
+    const imovel = {
+      ...imovelComUltimoMovimentoEm("2026-08-01"),
+      pausadoAte: "2026-08-14",
+    };
+
+    try {
+      vi.setSystemTime(new Date("2030-01-01T12:00:00.000Z"));
+      expect(isStale(imovel, "2026-08-13")).toBe(false);
+    } finally {
+      vi.setSystemTime(new Date(INSTANTE_ORACULO));
+    }
+  });
+
+  it.each([
+    ["abaixo do limite", "2026-08-07", false],
+    ["exatamente no limite", "2026-08-06", true],
+    ["acima do limite", "2026-08-05", true],
+  ])("%s segue a regra atual", (_caso, ultimoMovimento, esperado) => {
+    expect(isStale(imovelComUltimoMovimentoEm(ultimoMovimento), "2026-08-13")).toBe(esperado);
   });
 });
 

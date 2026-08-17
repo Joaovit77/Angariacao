@@ -108,7 +108,7 @@ export interface ResumoExecutivoInsights {
 /** Resumo compacto da carteira para abrir a página com decisão, não texto. */
 export function resumoExecutivoInsights(imoveis: Imovel[], comissaoPercent: number): ResumoExecutivoInsights {
   const estagnados = imoveis
-    .filter(isStale)
+    .filter((imovel) => isStale(imovel))
     .map((imovel) => ({ imovel, dias: diasSemMovimento(imovel) ?? 0 }))
     .sort((a, b) => b.dias - a.dias);
   const captacao = conversaoCaptacao(imoveis);
@@ -404,7 +404,7 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
   // `diasSemMovimento`, e não dias no status: é o número que o `isStale` usou
   // para eleger estes imóveis, e o texto abaixo afirma que nada aconteceu.
   const parados = imoveis
-    .filter(isStale)
+    .filter((imovel) => isStale(imovel))
     .map((i) => ({ i, dias: diasSemMovimento(i) ?? 0 }))
     .sort((a, b) => b.dias - a.dias);
   if (parados.length > 0) {
@@ -425,7 +425,7 @@ export function buildInsights(imoveis: Imovel[], comissaoPercent: number): Insig
   }
 
   // 5c. Total de estagnados no pipeline
-  const totalStale = imoveis.filter(isStale).length;
+  const totalStale = imoveis.filter((imovel) => isStale(imovel)).length;
   if (totalStale >= 3) {
     list.push({
       tone: "warn",

@@ -451,7 +451,7 @@ export function panoramaDoDia(imoveis: Imovel[], agenda: AgendaItem[]): Panorama
   }
 
   const parados: ItemDoDia[] = imoveis
-    .filter(isStale)
+    .filter((imovel) => isStale(imovel))
     .map((i) => ({
       descricao: `${rotuloImovel(i)} — parado em "${i.status}"`,
       // Tempo sem movimento, o mesmo que o `isStale` mediu. Dias no status

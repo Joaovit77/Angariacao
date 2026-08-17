@@ -66,7 +66,7 @@ export default function SinoNotificacoes() {
   const eventos = notificacoesPendentes(imoveis);
   const respostas = contarRespostasPendentes(imoveis, hoje);
   const pendentes = agenda.filter((a) => !a.done && a.date <= hoje);
-  const parados = imoveis.filter(isStale);
+  const parados = imoveis.filter((imovel) => isStale(imovel));
   const total = eventos.length + respostas + pendentes.length + parados.length + radarNovos;
 
   // Fecha ao clicar fora. O listener só existe enquanto está aberto.

@@ -97,7 +97,7 @@ export default function HomeView() {
   // diria "20 dias" num imóvel cujo prazo foi contado desde a mensagem de
   // ontem.
   const parados = imoveis
-    .filter(isStale)
+    .filter((imovel) => isStale(imovel))
     .sort((a, b) => (diasSemMovimento(b) ?? 0) - (diasSemMovimento(a) ?? 0));
 
   // Imóveis em negociação: a etapa mais quente do funil (mais perto de fechar).

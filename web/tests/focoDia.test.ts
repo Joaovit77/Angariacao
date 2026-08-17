@@ -62,6 +62,7 @@ describe("focoInteligenteDoDia", () => {
     const foco = focoInteligenteDoDia([historico], [], ["Marketplace"], HOJE);
 
     expect(foco.acoes[0]).toMatchObject({ tipo: "prospeccao", titulo: "Prospectar no Marketplace" });
+    expect(foco.imoveisParados).toBe(0);
     expect(foco.planoProspeccao.ritmo).toBe(1);
   });
 

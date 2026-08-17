@@ -116,7 +116,7 @@ describe("Pipeline", () => {
   // aguardando locação. Isso tira do baseline o AP-008 (Publicado, 24d) e o
   // CA-007 (Angariado, 29d) — restam só as etapas de perseguição ativa.
   it("badges de stale só nas etapas de perseguição ativa", () => {
-    const parados = imoveis.filter(isStale).map((i) => i.codigo).sort();
+    const parados = imoveis.filter((imovel) => isStale(imovel)).map((i) => i.codigo).sort();
     expect(parados).toEqual(["CA-002", "SO-004"]);
   });
 });
