@@ -14,8 +14,11 @@
   font: inherit;
   font-weight: 700;
   box-shadow: 0 12px 32px #0003;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
 }
+.acionador:active { cursor: grabbing; }
 .acionador span:first-child { font-size: 20px; }
 .painel {
   position: fixed;
