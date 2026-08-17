@@ -5,6 +5,12 @@ import type { ResponseInputItem } from "openai/resources/responses/responses";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BlocoAssistente, ContextoAssistente, MensagemAssistente, PedidoAssistente } from "@/lib/assistente/tipos";
 import { normalizarResultadosHistorico } from "@/lib/assistente/historico";
+import {
+  compararEntidadeComResultadoAtual,
+  continuidadeParaModelo,
+  respostaNaturalDaContinuidade,
+  type ContinuidadeEntidade,
+} from "@/lib/assistente/continuidade";
 import { registrarUsoDaResponsesApi } from "@/lib/servidor/registro";
 import { instrucoesDoAssistente } from "./conhecimento";
 import { DEFINICOES_FERRAMENTAS, executarFerramenta } from "./ferramentas";
@@ -58,6 +64,31 @@ export function sanitizarTextoAssistente(texto: string): string {
     .trim();
 }
 
+/** Enriquece somente a saída entregue ao modelo. O bloco/card permanece o
+    resultado literal da ferramenta e a comparação só existe depois dela. */
+export function prepararResultadoFerramentaParaModelo(
+  dados: unknown,
+  bloco: BlocoAssistente | undefined,
+  pedido: PedidoAssistente,
+): { output: string; continuidade: ContinuidadeEntidade | null } {
+  const continuidade = compararEntidadeComResultadoAtual(
+    pedido.contexto,
+    pedido.historico,
+    bloco,
+  );
+  if (!continuidade) return { output: JSON.stringify(dados), continuidade: null };
+  const base = dados && typeof dados === "object" && !Array.isArray(dados)
+    ? dados as Record<string, unknown>
+    : { resultado: dados };
+  return {
+    output: JSON.stringify({
+      ...base,
+      continuidadeConversacional: continuidadeParaModelo(continuidade),
+    }),
+    continuidade,
+  };
+}
+
 export async function responderComAssistente(pedido: PedidoAssistente, supabase: SupabaseClient, userId: string): Promise<{ mensagem: MensagemAssistente; modelo: string }> {
   const modelo = process.env.OPENAI_ASSISTENTE_MODEL?.trim() || MODELO_ASSISTENTE_PADRAO;
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -67,6 +98,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
   }));
   entrada.push({ role: "user", content: pedido.mensagem });
   const blocos: BlocoAssistente[] = [];
+  let continuidadeResposta: ContinuidadeEntidade | null = null;
   const parametros = () => ({
     model: modelo,
     instructions: instrucoesDoAssistente(pedido.contexto),
@@ -91,12 +123,21 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
       try { args = JSON.parse(chamada.arguments) as Record<string, unknown>; } catch { /* validacao estrita ainda pode falhar */ }
       const resultado = await executarFerramenta(chamada.name, args, supabase, userId, pedido.contexto, pedido.mensagem, pedido.historico);
       if (resultado.bloco?.itens.length) blocos.push(resultado.bloco);
-      entrada.push({ type: "function_call_output", call_id: chamada.call_id, output: JSON.stringify(resultado.dados) });
+      const preparado = prepararResultadoFerramentaParaModelo(
+        resultado.dados,
+        resultado.bloco,
+        pedido,
+      );
+      if (preparado.continuidade) continuidadeResposta = preparado.continuidade;
+      entrada.push({ type: "function_call_output", call_id: chamada.call_id, output: preparado.output });
     }
     resposta = await openai.responses.create(parametros());
     registrarUsoDaResponsesApi(userId, "assistente-chat", modelo, resposta.usage);
   }
 
-  const texto = sanitizarTextoAssistente(resposta.output_text);
+  const textoGerado = sanitizarTextoAssistente(resposta.output_text);
+  const texto = continuidadeResposta
+    ? respostaNaturalDaContinuidade(continuidadeResposta)
+    : textoGerado;
   return { modelo, mensagem: { id: randomUUID(), papel: "assistente", texto: texto || "Nao consegui formular uma resposta. Tente reformular a pergunta.", blocos: blocos.length ? blocos : undefined } };
 }

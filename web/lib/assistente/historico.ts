@@ -7,6 +7,9 @@ const MAX_TEXTO = 120;
 const textoSeguro = (valor: unknown, max = MAX_TEXTO) =>
   typeof valor === "string" ? valor.trim().slice(0, max) : "";
 
+const marcoSeguro = (valor: unknown): "angariado" | "publicado" | "locado" | undefined =>
+  valor === "angariado" || valor === "publicado" || valor === "locado" ? valor : undefined;
+
 export function blocosComItens(blocos: BlocoAssistente[]): BlocoAssistente[] {
   return blocos.filter((bloco) => bloco.itens.length > 0);
 }
@@ -16,6 +19,8 @@ export function compactarBlocosParaHistorico(blocos: BlocoAssistente[] | undefin
   return blocosComItens(blocos).slice(0, MAX_BLOCOS).flatMap((bloco): ResultadoHistoricoAssistente[] => {
     if (bloco.tipo === "imoveis") return [{ tipo: bloco.tipo, itens: bloco.itens.slice(0, MAX_ITENS_POR_BLOCO).map((item) => ({
       id: textoSeguro(item.id, 100), codigo: textoSeguro(item.codigo, 40), bairro: textoSeguro(item.bairro), status: textoSeguro(item.status, 80),
+      ...(item.marco ? { marco: item.marco } : {}),
+      ...(item.marcoEm ? { marcoEm: textoSeguro(item.marcoEm, 30) } : {}),
     })) }];
     if (bloco.tipo === "agenda") return [{ tipo: bloco.tipo, itens: bloco.itens.slice(0, MAX_ITENS_POR_BLOCO).map((item) => ({
       id: textoSeguro(item.id, 100), titulo: textoSeguro(item.titulo), data: textoSeguro(item.data, 30), imovelId: item.imovelId ? textoSeguro(item.imovelId, 100) : null,
@@ -36,7 +41,18 @@ export function normalizarResultadosHistorico(valor: unknown): ResultadoHistoric
     const bloco = bruto as Record<string, unknown>;
     if (!Array.isArray(bloco.itens)) return [];
     const itens = bloco.itens.slice(0, MAX_ITENS_POR_BLOCO).filter((item): item is Record<string, unknown> => !!item && typeof item === "object");
-    if (bloco.tipo === "imoveis") return [{ tipo: "imoveis", itens: itens.map((item) => ({ id: textoSeguro(item.id, 100), codigo: textoSeguro(item.codigo, 40), bairro: textoSeguro(item.bairro), status: textoSeguro(item.status, 80) })).filter((item) => item.id) }];
+    if (bloco.tipo === "imoveis") return [{ tipo: "imoveis", itens: itens.map((item) => {
+      const marco = marcoSeguro(item.marco);
+      const marcoEm = textoSeguro(item.marcoEm, 30);
+      return {
+        id: textoSeguro(item.id, 100),
+        codigo: textoSeguro(item.codigo, 40),
+        bairro: textoSeguro(item.bairro),
+        status: textoSeguro(item.status, 80),
+        ...(marco ? { marco } : {}),
+        ...(marcoEm ? { marcoEm } : {}),
+      };
+    }).filter((item) => item.id) }];
     if (bloco.tipo === "agenda") return [{ tipo: "agenda", itens: itens.map((item) => ({ id: textoSeguro(item.id, 100), titulo: textoSeguro(item.titulo), data: textoSeguro(item.data, 30), imovelId: textoSeguro(item.imovelId, 100) || null })).filter((item) => item.id) }];
     if (bloco.tipo === "mensagens_agendadas") return [{ tipo: "mensagens_agendadas", itens: itens.map((item) => ({ id: textoSeguro(item.id, 100), nomeProprietario: textoSeguro(item.nomeProprietario), dataEnvio: textoSeguro(item.dataEnvio, 40), status: textoSeguro(item.status, 30), imovelId: textoSeguro(item.imovelId, 100) || null })).filter((item) => item.id) }];
     if (bloco.tipo === "metricas") return [{ tipo: "metricas", itens: itens.map((item) => ({ rotulo: textoSeguro(item.rotulo), valor: textoSeguro(item.valor) })).filter((item) => item.rotulo) }];

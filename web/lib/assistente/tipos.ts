@@ -60,7 +60,14 @@ export interface MensagemAssistente {
 }
 
 export type ResultadoHistoricoAssistente =
-  | { tipo: "imoveis"; itens: Array<{ id: string; codigo: string; bairro: string; status: string }> }
+  | { tipo: "imoveis"; itens: Array<{
+      id: string;
+      codigo: string;
+      bairro: string;
+      status: string;
+      marco?: "angariado" | "publicado" | "locado";
+      marcoEm?: string | null;
+    }> }
   | { tipo: "agenda"; itens: Array<{ id: string; titulo: string; data: string; imovelId?: string | null }> }
   | { tipo: "mensagens_agendadas"; itens: Array<{ id: string; nomeProprietario: string; dataEnvio: string; status: string; imovelId?: string | null }> }
   | { tipo: "metricas"; itens: Array<{ rotulo: string; valor: string }> };

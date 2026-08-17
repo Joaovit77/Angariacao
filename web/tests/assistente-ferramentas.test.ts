@@ -4,7 +4,9 @@ import { fromDbAgenda, fromDbImovel, type DbAgendaRow, type DbImovelRow } from "
 import { focoInteligenteDoDia } from "@/lib/calculo/focoDia";
 import { addDaysISO, todayISO } from "@/lib/datas";
 import { executarFerramenta, limiteConformeIntencao, normalizarCodigoImovel, resolverEscopoFollowUp } from "@/lib/servidor/assistente/ferramentas";
-import type { ItemHistoricoAssistente } from "@/lib/assistente/tipos";
+import { compactarBlocosParaHistorico } from "@/lib/assistente/historico";
+import { prepararResultadoFerramentaParaModelo } from "@/lib/servidor/assistente/orquestrador";
+import type { ItemHistoricoAssistente, PedidoAssistente } from "@/lib/assistente/tipos";
 
 type Linha = Record<string, unknown>;
 type Filtro = { metodo: "eq" | "ilike" | "gte" | "lte" | "lt"; coluna: string; valor: unknown };
@@ -499,6 +501,48 @@ describe("estado atual versus marcos historicos", () => {
     const locado = await executarFerramenta("buscar_marcos_imoveis", { ...args, marco: "locado" }, fake(), "user-1", contexto, "e locado?", historicoMultiTurno);
     expect(publicado.dados).toMatchObject({ itensRetornados: 1, itens: [{ codigo: "LD-B", marcoEm: "2026-08-17" }] });
     expect(locado.dados).toMatchObject({ itensRetornados: 1, itens: [{ codigo: "LD-C", marcoEm: "2026-08-15", marcoPorNome: "Marina" }] });
+  });
+
+  it("reconsulta a fonte real no follow-up antes de comparar a entidade", async () => {
+    const supabase = new SupabaseFake({ imoveis: rows });
+    const primeira = await executarFerramenta(
+      "buscar_marcos_imoveis",
+      { ...args, marco: "angariado" },
+      supabase as unknown as SupabaseClient,
+      "user-1",
+      contexto,
+      "Qual foi minha ultima angariacao?",
+    );
+    const historico: ItemHistoricoAssistente[] = [
+      { papel: "usuario", texto: "Qual foi minha ultima angariacao?" },
+      {
+        papel: "assistente",
+        texto: "O ultimo foi o LD-B.",
+        resultados: compactarBlocosParaHistorico(primeira.bloco ? [primeira.bloco] : []),
+      },
+    ];
+    const segunda = await executarFerramenta(
+      "buscar_marcos_imoveis",
+      { ...args, marco: "publicado" },
+      supabase as unknown as SupabaseClient,
+      "user-1",
+      contexto,
+      "E o ultimo publicado?",
+      historico,
+    );
+    expect(supabase.consultas).toHaveLength(2);
+
+    const pedido: PedidoAssistente = {
+      mensagem: "E o ultimo publicado?",
+      contexto,
+      historico,
+    };
+    const preparado = prepararResultadoFerramentaParaModelo(segunda.dados, segunda.bloco, pedido);
+    expect(preparado.continuidade).toMatchObject({
+      relacao: "mesma_entidade",
+      anterior: { id: "ld-b", marco: "angariado" },
+      atual: { id: "ld-b", marco: "publicado" },
+    });
   });
 
   it("conta pelo periodo do evento, sem cards", async () => {
