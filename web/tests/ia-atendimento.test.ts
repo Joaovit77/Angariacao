@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   ESQUEMA_DECISAO_ATENDIMENTO, ESQUEMA_GERACAO_ATENDIMENTO, ESQUEMA_VALIDACAO_ATENDIMENTO,
   MAX_MENSAGENS_ATENDIMENTO, PROMPT_BASE_ATENDIMENTO, contextoAtendimentoDoImovel,
-  mensagemFalhaIa, normalizarDecisaoAtendimento, promptDecidirAtendimento,
-  promptGerarAtendimento, promptValidarAtendimento, validacaoAprovaAtendimento,
+  conversaAtendimento, mensagemFalhaIa, motivoReprovacaoValidacaoAtendimento,
+  normalizarDecisaoAtendimento, promptDecidirAtendimento, promptGerarAtendimento,
+  promptValidarAtendimento, selecionarMensagensAtendimento, validacaoAprovaAtendimento,
   type ContextoAtendimento, type DecisaoAtendimento, type ProtocoloPrompt,
 } from "@/lib/calculo/ia";
 import type { Imovel } from "@/lib/tipos";
@@ -108,5 +109,80 @@ describe("contratos e barreiras", () => {
     const i = { id: "i", endereco: "Rua B", status: "Novo contato", proprietarioNome: "Ana Maria", vagas: 2, observacoes: "INVENTE" } as Imovel;
     const c = contextoAtendimentoDoImovel(i);
     expect(c.proprietario).toBe("Ana"); expect(c.fatosImovel).toContain("vagas: 2"); expect(c.fatosImovel.join(" ")).not.toContain("INVENTE");
+  });
+
+  it("repete o mesmo contexto estrutural para uma conversa com mais de 90 mensagens", () => {
+    const notas = Array.from({ length: 94 }, (_, indice) => {
+      const data = new Date(Date.UTC(2026, 0, 1, 0, indice)).toISOString().slice(0, 16);
+      return {
+        id: `wa:${indice.toString().padStart(3, "0")}`,
+        texto: `Resposta pelo WhatsApp: mensagem-${indice}`,
+        data,
+      };
+    });
+    const longo = {
+      id: "longo",
+      endereco: "Rua B",
+      status: "Em negociação",
+      proprietarioNome: "Ana",
+      // A origem pode chegar fora de ordem; a selecao deve ser cronologica.
+      notas: [
+        { id: "wa:midia", texto: "Resposta pelo WhatsApp: [imagem]", data: "2026-01-01T02:00" },
+        { id: "wa:vazia", texto: "", data: "2026-01-01T02:01" },
+        ...notas.reverse(),
+      ],
+    } as Imovel;
+    const enviada = { rotulo: "Captação", texto: "Podemos conversar sobre a locação?" };
+
+    const montar = () => {
+      const selecao = selecionarMensagensAtendimento(longo);
+      const conversa = conversaAtendimento(selecao, enviada);
+      const contextoTipado = contextoAtendimentoDoImovel(longo);
+      const candidatos = protocolos.map((protocolo) => ({ ...protocolo }));
+      const payloadDecisao = {
+        tipo: "rascunhar-resposta-decisao",
+        mensagens: [
+          { role: "system", content: PROMPT_BASE_ATENDIMENTO },
+          {
+            role: "user",
+            content: promptDecidirAtendimento(
+              selecao.mensagemAtual,
+              contextoTipado,
+              conversa,
+              candidatos,
+            ),
+          },
+        ],
+      };
+      return { selecao, conversa, contextoTipado, candidatos, payloadDecisao };
+    };
+
+    const primeira = montar();
+    const segunda = montar();
+    expect(primeira).toEqual(segunda);
+    expect(primeira.selecao).toMatchObject({
+      mensagensRecebidas: 96,
+      mensagensDisponiveis: 94,
+      mensagensDescartadasComoMidia: 1,
+      mensagensDescartadasVazias: 1,
+      mensagensSelecionadas: MAX_MENSAGENS_ATENDIMENTO + 1,
+      mensagemAtual: "mensagem-93",
+    });
+    expect(primeira.selecao.anteriores).toEqual(
+      Array.from({ length: MAX_MENSAGENS_ATENDIMENTO }, (_, indice) => `mensagem-${indice + 81}`),
+    );
+    expect(primeira.conversa.enviada).toEqual(enviada);
+    expect(primeira.contextoTipado.fatosImovel).toContain("endereco: Rua B");
+    expect(primeira.candidatos).toEqual(protocolos);
+  });
+
+  it("preserva o motivo especifico de uma reprovacao do validador", () => {
+    const v = {
+      aprovada: false, respondeAMensagem: true, coerenteComHistorico: true,
+      semProtocoloDesnecessario: true, somenteFatosComFonte: false,
+      semDesvioDeAssunto: true, informacaoSuficienteParaEstaResposta: true,
+      seguraParaSugerir: false,
+    };
+    expect(motivoReprovacaoValidacaoAtendimento(v)).toBe("informacao-sem-fonte");
   });
 });

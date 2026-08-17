@@ -44,6 +44,13 @@ export type FalhaIa =
   | "requisicao-invalida"
   | "sem-dados"
   | "intervencao-humana"
+  | "historico-insuficiente"
+  | "contexto-incompleto"
+  | "baixa-confianca"
+  | "geracao-reprovada"
+  | "protocolo-inadequado"
+  | "falha-carregamento-contexto"
+  | "falha-modelo"
   | "limite-excedido"
   | "falha-ia";
 
@@ -64,6 +71,20 @@ export function mensagemFalhaIa(falha: FalhaIa): string {
       return "Ainda não há tentativas registradas suficientes para analisar.";
     case "intervencao-humana":
       return "N\u00e3o h\u00e1 informa\u00e7\u00e3o segura para sugerir esta resposta. Revise a conversa antes de responder.";
+    case "historico-insuficiente":
+      return "Não encontrei uma mensagem textual do proprietário para responder.";
+    case "contexto-incompleto":
+      return "Falta contexto para sugerir esta resposta com segurança. Revise a conversa antes de responder.";
+    case "baixa-confianca":
+      return "A IA não teve confiança suficiente para sugerir esta resposta. Revise a conversa antes de responder.";
+    case "geracao-reprovada":
+      return "A sugestão gerada não passou pelas verificações de segurança. Revise a conversa antes de responder.";
+    case "protocolo-inadequado":
+      return "A sugestão tentou usar uma informação sem fonte autorizada. Revise antes de responder.";
+    case "falha-carregamento-contexto":
+      return "Não foi possível carregar todo o contexto da conversa. Tente novamente em instantes.";
+    case "falha-modelo":
+      return "A IA devolveu uma resposta inválida. Tente novamente em alguns instantes.";
     case "limite-excedido":
       return "Muitos pedidos à IA em pouco tempo. Tente de novo em instantes.";
     case "falha-ia":

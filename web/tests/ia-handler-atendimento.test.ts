@@ -23,7 +23,12 @@ vi.mock("@/lib/persistencia/mapeadores", () => ({
   fromDbProtocolo: (valor: unknown) => valor,
 }));
 
+vi.mock("@/lib/servidor/registro", () => ({
+  registrarEvento: vi.fn(),
+}));
+
 import { atenderProprietario } from "@/lib/servidor/ia/handlers/atendimento";
+import { registrarEvento } from "@/lib/servidor/registro";
 
 function supabaseFalso(): SupabaseClient {
   return {
@@ -109,5 +114,72 @@ describe("handler especializado de atendimento", () => {
       "rascunhar-resposta-geracao",
       "rascunhar-resposta-validacao",
     ]);
+  });
+
+  it("classifica a falha da geracao e repete o mesmo payload de decisao na nova tentativa", async () => {
+    const decisao = {
+      intencao: "taxa",
+      contextoRelevante: "pergunta direta",
+      protocolosAplicaveis: ["Taxa"],
+      informacoesFaltantes: [],
+      nivelConfianca: "alta",
+      precisaIntervencaoHumana: false,
+      podeResponderComSeguranca: true,
+    };
+    const validacao = {
+      aprovada: true,
+      respondeAMensagem: true,
+      coerenteComHistorico: true,
+      semProtocoloDesnecessario: true,
+      somenteFatosComFonte: true,
+      semDesvioDeAssunto: true,
+      informacaoSuficienteParaEstaResposta: true,
+      seguraParaSugerir: true,
+    };
+    const executar = vi
+      .fn<ExecutorOpenAI["executar"]>()
+      // Primeira tentativa: a geracao cita um protocolo que nao foi autorizado.
+      .mockResolvedValueOnce({ conclusao: {} as never, texto: JSON.stringify(decisao) })
+      .mockResolvedValueOnce({
+        conclusao: {} as never,
+        texto: JSON.stringify({ mensagem: "A taxa é de 10%.", protocolosUsados: ["Inventado"] }),
+      })
+      // Segunda tentativa, com a mesma fonte: caminho feliz.
+      .mockResolvedValueOnce({ conclusao: {} as never, texto: JSON.stringify(decisao) })
+      .mockResolvedValueOnce({
+        conclusao: {} as never,
+        texto: JSON.stringify({ mensagem: "A taxa é de 10%.", protocolosUsados: ["Taxa"] }),
+      })
+      .mockResolvedValueOnce({ conclusao: {} as never, texto: JSON.stringify(validacao) });
+    const entrada = {
+      tipo: "rascunhar-resposta" as const,
+      corpo: { tipo: "rascunhar-resposta", imovelId: "imovel-1" },
+      supabase: supabaseFalso(),
+      userId: "usuario-1",
+      executor: { executar },
+    };
+
+    const primeira = await atenderProprietario(entrada);
+    const segunda = await atenderProprietario(entrada);
+
+    expect(primeira.status).toBe(422);
+    expect(await primeira.json()).toMatchObject({ ok: false, falha: "protocolo-inadequado" });
+    expect(segunda.status).toBe(200);
+    expect(executar.mock.calls[0][0]).toEqual(executar.mock.calls[2][0]);
+    expect(registrarEvento).toHaveBeenCalledWith(
+      expect.objectContaining({
+        evento: "ia-atendimento-bloqueado",
+        detalhe: expect.stringContaining('"etapaFinal":"geracao"'),
+      }),
+    );
+    expect(registrarEvento).toHaveBeenCalledWith(
+      expect.objectContaining({
+        evento: "ia-atendimento-bloqueado",
+        detalhe: expect.stringContaining('"motivo":"protocolo-inadequado"'),
+      }),
+    );
+    expect(vi.mocked(registrarEvento).mock.calls.at(-1)?.[0].detalhe).toContain(
+      '"contextoFingerprint":"',
+    );
   });
 });

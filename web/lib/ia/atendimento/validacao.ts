@@ -8,6 +8,15 @@ import {
 
 const MAX_CONTEXTO_ATENDIMENTO = 200;
 
+export type MotivoBloqueioAtendimento =
+  | "baixa-confianca"
+  | "contexto-incompleto"
+  | "decisao-bloqueada"
+  | "geracao-reprovada"
+  | "protocolo-inadequado"
+  | "informacao-sem-fonte"
+  | "desvio-de-assunto";
+
 export function normalizarDecisaoAtendimento(
   valor: unknown,
   protocolos: readonly ProtocoloPrompt[],
@@ -48,9 +57,29 @@ export function normalizarDecisaoAtendimento(
 }
 
 export function validacaoAprovaAtendimento(valor: unknown): valor is ValidacaoAtendimento {
-  if (!valor || typeof valor !== "object") return false;
+  return motivoReprovacaoValidacaoAtendimento(valor) === null;
+}
+
+export function motivoBloqueioDecisaoAtendimento(
+  decisao: DecisaoAtendimento,
+): MotivoBloqueioAtendimento | null {
+  if (!decisao.precisaIntervencaoHumana && decisao.podeResponderComSeguranca) return null;
+  if (decisao.nivelConfianca === "baixa") return "baixa-confianca";
+  if (decisao.informacoesFaltantes.length > 0) return "contexto-incompleto";
+  return "decisao-bloqueada";
+}
+
+/**
+ * Traduz os campos objetivos do validador no motivo interno da reprova.
+ * `undefined` significa resposta estruturalmente invalida do modelo; `null`,
+ * aprovacao. Nenhum texto da conversa ou raciocinio do modelo e retornado.
+ */
+export function motivoReprovacaoValidacaoAtendimento(
+  valor: unknown,
+): MotivoBloqueioAtendimento | null | undefined {
+  if (!valor || typeof valor !== "object") return undefined;
   const v = valor as Record<keyof ValidacaoAtendimento, unknown>;
-  return [
+  const campos = [
     "aprovada",
     "respondeAMensagem",
     "coerenteComHistorico",
@@ -59,5 +88,13 @@ export function validacaoAprovaAtendimento(valor: unknown): valor is ValidacaoAt
     "semDesvioDeAssunto",
     "informacaoSuficienteParaEstaResposta",
     "seguraParaSugerir",
-  ].every((campo) => v[campo as keyof ValidacaoAtendimento] === true);
+  ] as const;
+  if (campos.some((campo) => typeof v[campo] !== "boolean")) return undefined;
+  if (campos.every((campo) => v[campo] === true)) return null;
+  if (v.semProtocoloDesnecessario === false) return "protocolo-inadequado";
+  if (v.somenteFatosComFonte === false) return "informacao-sem-fonte";
+  if (v.semDesvioDeAssunto === false) return "desvio-de-assunto";
+  if (v.informacaoSuficienteParaEstaResposta === false) return "contexto-incompleto";
+  if (v.seguraParaSugerir === false) return "baixa-confianca";
+  return "geracao-reprovada";
 }

@@ -3,7 +3,9 @@ export const MAX_TEXTO_RASCUNHO = 600;
 export const MAX_PROTOCOLOS = 40;
 export const MAX_PROTOCOLO_CHARS = 600;
 
-/** Limites do fluxo especializado de decisão, geração e validação. */
+/** Limites do fluxo especializado de decisão, geração e validação.
+ *  A mensagem atual vai em bloco separado; portanto entram no máximo
+ *  12 mensagens anteriores + a atual do proprietário. */
 export const MAX_MENSAGENS_ATENDIMENTO = 12;
 export const MAX_PROTOCOLOS_APLICAVEIS = 5;
 
