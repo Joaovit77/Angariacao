@@ -244,6 +244,22 @@ EVOLUTION_TOKEN=token-da-instancia
 > `curl` de diagnóstico com ele voltava 404 sem que houvesse nada errado com o sistema. Pode
 > apagar as duas linhas.
 
+#### Histórico anterior ao cadastro
+
+O botão **“Importar conversa recente”** depende de a própria Evolution persistir mensagens. No
+ambiente em que a Evolution API roda (não na Vercel), mantenha o banco habilitado e, no mínimo:
+
+```env
+DATABASE_ENABLED=true
+DATABASE_SAVE_DATA_NEW_MESSAGE=true
+DATABASE_SAVE_DATA_HISTORIC=true
+```
+
+Sem essa retenção, envio e webhook em tempo real continuam funcionando, mas
+`POST /chat/findMessages/{instancia}` não terá conversa antiga para oferecer na prévia. A importação
+é limitada às 30 mensagens recentes encontradas e grava somente o que o corretor selecionar; áudio
+e outras mídias antigas entram como marcador (`[áudio]`, `[imagem]`), sem inventar transcrição.
+
 ### OpenAI (sugestão de roteiros e leitura do ranking) — opcional
 
 Os botões de IA — sugerir roteiros de abordagem e interpretar o ranking — exigem mais uma

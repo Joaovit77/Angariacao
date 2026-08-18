@@ -490,6 +490,17 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   carregam `direcao`, `autor`, `tipo` e `origem`. Mensagens recebidas antigas continuam reconhecíveis
   por `wa:<id>`; não há migração que invente saídas que nunca foram armazenadas. Envios diretos,
   agendados e confirmações `fromMe` usam o mesmo append idempotente no banco.
+  Conversas que aconteceram **antes do cadastro do imóvel** podem ser trazidas manualmente em
+  Histórico de interações → *Importar conversa recente*. A tela primeiro pede uma prévia à rota
+  `api/whatsapp/importar-conversa`; o servidor autentica o usuário, relê telefone e instância de
+  fontes confiáveis, consulta `chat/findMessages` e filtra de novo pelo telefone canônico — não se
+  confia no filtro da Evolution, que já foi ignorado por algumas versões. Somente depois da seleção
+  a rota relê o histórico e grava até 30 mensagens por `registrar_nota_imovel`; texto vindo do
+  browser nunca é persistido como fala do proprietário. Entradas retroativas usam os prefixos
+  `wa-contexto-recebida:`/`wa-contexto-enviada:` e origem `importacao-evolution`: o agente de
+  atendimento as lê, mas `ehNotaDeResposta` deliberadamente não. Portanto elas **não** criam
+  pendência, status, agenda, tentativa nem efeito retroativo no ranking. Mensagem LID só entra se
+  houver `remoteJidAlt` numérico que confirme o contato; sem vínculo verificável, é descartada.
 - **`calculo/respostas.ts`** — a **caixa de respostas** (view `/respostas`): o que o proprietário
   ESCREVEU, num lugar só. O webhook já gravava tudo, e três consumidores já liam esse dado — mas
   nenhum mostrava o texto: `isStale` usa só a data (resposta é movimento), o termômetro usa a data

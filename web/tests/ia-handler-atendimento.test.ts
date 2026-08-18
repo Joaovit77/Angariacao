@@ -6,6 +6,7 @@ vi.mock("@/lib/calculo/notas", () => ({
   corpoDaMensagemEnviada: () => "",
   corpoDaResposta: () => "Qual é a taxa?",
   ehNotaDeMensagemEnviada: () => false,
+  ehNotaRecebidaNaConversa: () => true,
   ehNotaDeResposta: () => true,
   ehSoMidia: () => false,
 }));

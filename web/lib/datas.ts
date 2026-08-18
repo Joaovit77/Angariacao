@@ -135,6 +135,33 @@ export function agoraISOComSegundos(): string {
   return `${valor("year")}-${valor("month")}-${valor("day")}T${valor("hour")}:${valor("minute")}:${valor("second")}`;
 }
 
+/** Converte um instante externo para o datetime civil do fuso operacional.
+    Aceita epoch em segundos/milissegundos e ISO com timezone. A Evolution já
+    usou as três formas em respostas diferentes; centralizar aqui evita que
+    cada integração espalhe `new Date` e, principalmente, que a Vercel grave
+    a hora UTC como se fosse a hora vista pelo corretor. */
+export function instanteParaISOOperacional(valor: string | number | null | undefined): string | null {
+  if (valor === null || valor === undefined || valor === "") return null;
+  const numerico = typeof valor === "number" ? valor : /^\d+$/.test(valor.trim()) ? Number(valor) : null;
+  const milissegundos = numerico === null ? new Date(valor).getTime() : numerico < 10_000_000_000 ? numerico * 1000 : numerico;
+  if (!Number.isFinite(milissegundos)) return null;
+  const data = new Date(milissegundos);
+  if (Number.isNaN(data.getTime())) return null;
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: FUSO_OPERACIONAL,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(data);
+  const parte = (tipo: Intl.DateTimeFormatPartTypes) =>
+    partes.find((item) => item.type === tipo)?.value || "";
+  return `${parte("year")}-${parte("month")}-${parte("day")}T${parte("hour")}:${parte("minute")}:${parte("second")}`;
+}
+
 export function parseDate(iso: string | null | undefined): Date | null {
   if (!iso) return null;
   const [y, m, d] = iso.split("-").map(Number);

@@ -3,7 +3,7 @@ import {
   corpoDaMensagemEnviada,
   corpoDaResposta,
   ehNotaDeMensagemEnviada,
-  ehNotaDeResposta,
+  ehNotaRecebidaNaConversa,
   ehSoMidia,
 } from "@/lib/calculo/notas";
 import {
@@ -50,9 +50,9 @@ export interface SelecaoMensagensAtendimento {
  */
 export function selecionarMensagensAtendimento(imovel: Imovel): SelecaoMensagensAtendimento {
   const todas = [...(imovel.notas || [])]
-    .filter((nota) => ehNotaDeResposta(nota) || ehNotaDeMensagemEnviada(nota))
+    .filter((nota) => ehNotaRecebidaNaConversa(nota) || ehNotaDeMensagemEnviada(nota))
     .sort((a, b) => (a.data || "").localeCompare(b.data || "") || (a.id || "").localeCompare(b.id || ""));
-  const recebidas = todas.filter(ehNotaDeResposta);
+  const recebidas = todas.filter(ehNotaRecebidaNaConversa);
   const enviadas = todas.filter(ehNotaDeMensagemEnviada);
   let mensagensDescartadasComoMidia = 0;
   let mensagensDescartadasVazias = 0;

@@ -32,6 +32,13 @@ export const PREFIXO_ID_NOTA = "wa:";
 export const PREFIXO_ID_NOTA_ENVIADA = "wa-enviada:";
 export const PREFIXO_TEXTO_ENVIADA = "Mensagem enviada pelo WhatsApp: ";
 
+/** Histórico anterior ao cadastro, trazido sob confirmação do corretor.
+    Prefixos próprios são a trava que o mantém como CONTEXTO: uma entrada
+    importada não pode virar resposta nova, mexer no ranking nem cobrar ação
+    retroativamente na Caixa de respostas. */
+export const PREFIXO_ID_NOTA_IMPORTADA_RECEBIDA = "wa-contexto-recebida:";
+export const PREFIXO_ID_NOTA_IMPORTADA_ENVIADA = "wa-contexto-enviada:";
+
 /** Sufixo do id da nota que explica um encerramento automático. */
 export const SUFIXO_ID_ENCERRAMENTO = ":encerrado";
 
@@ -133,7 +140,8 @@ export type OrigemMensagemEnviada =
   | "webhook-evolution"
   | "api-evolution"
   | "agendamento"
-  | "confirmacao-manual";
+  | "confirmacao-manual"
+  | "importacao-evolution";
 
 /** Cria a nota de uma saída confirmada. O id externo da Evolution dá
     idempotência ao envio direto, agendado e ao webhook. Na confirmação manual
@@ -162,6 +170,22 @@ export function notaDaMensagemEnviada(
 export function ehNotaDeResposta(nota: { id?: string | null }): boolean {
   const id = nota.id || "";
   return id.startsWith(PREFIXO_ID_NOTA) && !id.endsWith(SUFIXO_ID_ENCERRAMENTO);
+}
+
+/** Entrada antiga importada apenas para reconstruir o contexto da conversa. */
+export function ehNotaImportadaRecebida(nota: Pick<NotaImovel, "id" | "direcao" | "origem">): boolean {
+  return (
+    nota.origem === "importacao-evolution" &&
+    nota.direcao === "recebida" &&
+    (nota.id || "").startsWith(PREFIXO_ID_NOTA_IMPORTADA_RECEBIDA)
+  );
+}
+
+/** Qualquer fala recebida que o agente de atendimento pode ler. Não substitui
+    `ehNotaDeResposta`: os demais motores precisam continuar ignorando o
+    contexto retroativo. */
+export function ehNotaRecebidaNaConversa(nota: NotaImovel): boolean {
+  return ehNotaDeResposta(nota) || ehNotaImportadaRecebida(nota);
 }
 
 /**

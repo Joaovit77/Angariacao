@@ -3415,6 +3415,40 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
 .nota-data .icon-btn{ width:22px; height:22px; }
 .nota-texto{ font-size:13px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
 
+/* Importação retroativa: fica no histórico, onde o corretor já procura o que
+   foi conversado. A direção usa só uma faixa de cor; o checkbox continua a
+   ser o controle principal e não depende da cor para se explicar. */
+.importacao-conversa{
+  border:1px solid var(--border-soft); border-radius:var(--radius);
+  background:var(--bg-elev-2); padding:13px; margin-bottom:18px;
+}
+.importacao-conversa-topo{
+  display:flex; align-items:flex-start; justify-content:space-between; gap:14px;
+}
+.importacao-conversa-topo strong{ font-size:13px; color:var(--text); }
+.importacao-conversa-topo p{ margin:4px 0 0; max-width:520px; font-size:12px; line-height:1.45; color:var(--text-faint); }
+.importacao-conversa-lista{
+  display:flex; flex-direction:column; gap:7px; max-height:280px; overflow-y:auto;
+  margin-top:12px; padding-right:3px;
+}
+label.importacao-conversa-item{
+  display:flex; align-items:flex-start; gap:9px; margin:0; padding:9px 10px;
+  border:1px solid var(--border-soft); border-left:3px solid var(--good);
+  border-radius:var(--radius-sm); background:var(--bg-elev-1);
+  color:var(--text); text-transform:none; letter-spacing:0; cursor:pointer;
+}
+label.importacao-conversa-item.enviada{ border-left-color:var(--accent); }
+label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72; }
+.importacao-conversa-item input{ flex:0 0 auto; margin-top:3px; }
+.importacao-conversa-conteudo{ display:flex; min-width:0; flex:1; flex-direction:column; gap:4px; font-size:12.5px; line-height:1.4; }
+.importacao-conversa-meta{ display:flex; align-items:center; flex-wrap:wrap; gap:7px; font-size:10.5px; color:var(--text-faint); }
+.importacao-conversa-meta strong{ color:var(--text-dim); }
+.importacao-conversa-acoes{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:11px; }
+@media (max-width:640px){
+  .importacao-conversa-topo, .importacao-conversa-acoes{ align-items:stretch; flex-direction:column; }
+  .importacao-conversa-topo .btn, .importacao-conversa-acoes .btn{ width:100%; }
+}
+
 /* ============================================================
    IMPRESSÃO / PDF DO RELATÓRIO
    Na tela o app é escuro e cheio de cromo (sidebar, toolbars). Ao
@@ -3874,6 +3908,8 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
     right:auto;
     width:min(410px, calc(100vw - min(460px, 92vw) - 24px));
   }
+  .importacao-conversa-topo, .importacao-conversa-acoes{ align-items:stretch; flex-direction:column; }
+  .importacao-conversa-topo .btn, .importacao-conversa-acoes .btn{ width:100%; }
   button.assistente-acionador-com-drawer{
     left:8px;
     right:auto;
