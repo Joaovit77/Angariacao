@@ -8,6 +8,7 @@
    ================================================================ */
 import type { FalhaEnvio } from "./calculo/whatsapp";
 import { getSupabase } from "./persistencia/supabase";
+import type { ConfirmacaoVisitaPendente } from "./calculo/confirmacaoVisita";
 
 export interface ResultadoEnvio {
   ok: boolean;
@@ -21,7 +22,11 @@ export interface ResultadoEnvio {
 
 /** Envia a mensagem ao proprietário do imóvel pelo WhatsApp da imobiliária.
     O destinatário é resolvido no servidor a partir do imovelId (RLS). */
-export async function enviarWhatsapp(imovelId: string, mensagem: string): Promise<ResultadoEnvio> {
+export async function enviarWhatsapp(
+  imovelId: string,
+  mensagem: string,
+  confirmacaoVisita?: ConfirmacaoVisitaPendente,
+): Promise<ResultadoEnvio> {
   const {
     data: { session },
   } = await getSupabase().auth.getSession();
@@ -34,7 +39,7 @@ export async function enviarWhatsapp(imovelId: string, mensagem: string): Promis
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ imovelId, mensagem }),
+      body: JSON.stringify({ imovelId, mensagem, ...(confirmacaoVisita ? { confirmacaoVisita } : {}) }),
     });
     const corpo = (await resposta.json().catch(() => null)) as ResultadoEnvio | null;
     if (!corpo) return { ok: false, falha: "falha-evolution" };

@@ -10,6 +10,7 @@
    ================================================================ */
 import type { Imovel, Tentativa } from "../tipos";
 import { mensagemRenovacaoAngariacao, telefoneWhatsapp } from "./agenda";
+import { fmtDate, fmtDiaSemana } from "../formatadores";
 
 export interface ModeloWhatsapp {
   id: string;
@@ -364,6 +365,20 @@ export function sugestaoRespostaModelo(imovel: Imovel): string | null {
 export function mensagemWhatsapp(modeloId: string, imovel: Imovel, nomeCaptador?: string): string {
   const gerar = GERADORES[modeloId] || GERADORES["retomada-contato"];
   return gerar(imovel, nomeCaptador);
+}
+
+/** Texto do fluxo monitorado. Data e hora ficam também em metadados da nota;
+    o webhook nunca tenta reconstruí-las lendo esta mensagem editável. */
+export function mensagemConfirmacaoVisita(imovel: Imovel, data: string, hora: string): string {
+  const diaSemana = fmtDiaSemana(data);
+  const quando = `${diaSemana ? `${diaSemana}, ` : ""}${fmtDate(data)}, às ${hora}`;
+  return `${saudacao(imovel)}
+
+Passando para confirmar a nossa visita ao ${referenciaImovel(imovel)}.
+
+Ficou combinado para ${quando}.
+
+Pode me confirmar se continua tudo certo? Qualquer imprevisto, é só me avisar por aqui.`;
 }
 
 /* --- Modelos personalizados do usuário -------------------------------------

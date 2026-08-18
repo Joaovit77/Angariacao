@@ -54,6 +54,12 @@ export interface NotaImovel {
   autor?: "proprietario" | "corretor";
   tipo?: string;
   origem?: "webhook-evolution" | "api-evolution" | "agendamento" | "confirmacao-manual";
+  /** Intenção estruturada de visita enviada pelo corretor. Só a resposta
+      afirmativa imediatamente posterior pode promovê-la para a Agenda. */
+  confirmacaoVisita?: {
+    data: string;
+    hora: string;
+  };
 }
 
 /** Roteiro de captação cadastrado pelo usuário — o QUE se diz ao proprietário.

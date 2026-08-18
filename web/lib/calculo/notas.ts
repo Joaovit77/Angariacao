@@ -144,6 +144,7 @@ export function notaDaMensagemEnviada(
   agora: string,
   origem: OrigemMensagemEnviada,
   tipo = "conversation",
+  confirmacaoVisita?: NotaImovel["confirmacaoVisita"],
 ): NotaImovel {
   return {
     id: idNotaDaMensagemEnviada(mensagemId),
@@ -153,6 +154,7 @@ export function notaDaMensagemEnviada(
     autor: "corretor",
     tipo,
     origem,
+    ...(confirmacaoVisita ? { confirmacaoVisita } : {}),
   };
 }
 

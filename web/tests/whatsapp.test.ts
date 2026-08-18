@@ -13,6 +13,7 @@ import {
   MODELOS_CAPTACAO,
   linkWhatsapp,
   mensagemFalhaEnvio,
+  mensagemConfirmacaoVisita,
   mensagemWhatsapp,
   MODELOS_WHATSAPP,
   modeloPadraoWhatsapp,
@@ -126,6 +127,14 @@ describe("mensagemWhatsapp", () => {
 
   it("renovação de angariação reaproveita a mensagem da Agenda", () => {
     expect(mensagemWhatsapp("renovacao-angariacao", base)).toBe(mensagemRenovacaoAngariacao(base));
+  });
+});
+
+describe("mensagemConfirmacaoVisita", () => {
+  it("explicita dia, data e hora informados pelo corretor", () => {
+    const msg = mensagemConfirmacaoVisita(base, "2026-08-22", "10:00");
+    expect(msg).toContain("sábado, 22/08/2026, às 10:00");
+    expect(msg).toContain("Pode me confirmar se continua tudo certo?");
   });
 });
 

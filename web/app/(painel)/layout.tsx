@@ -84,7 +84,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
 
   /* Quem só OPERA o sistema não tem carteira, e por isso não tem view de
      corretor: a barra já esconde os itens, e isto fecha a porta da URL
-     digitada — inclusive a de /roadmap, que não está no menu de ninguém.
+     digitada para qualquer tela operacional da carteira.
 
      `cargoConfirmado` inclui o id da sessão atual: além de esperar a
      resposta, impede o cargo de uma conta anterior de decidir a nova. */

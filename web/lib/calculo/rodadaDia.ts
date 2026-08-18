@@ -78,9 +78,16 @@
 import type { Abordagem, AgendaItem, Imovel } from "../tipos";
 import { resultadosPendentes } from "./abordagens";
 import {
+  etapasCadenciaFollowUp,
+  FOLLOWUP_LOTE_MAX,
   FOLLOWUP_TETO_DIA,
+  progressoCadenciaFollowUp,
+  resultadoCadenciaFollowUp,
   selecionarFollowUp,
   selecionarVerificacaoDisponibilidade,
+  type EtapasCadenciaFollowUp,
+  type ProgressoCadenciaFollowUp,
+  type ResultadoCadenciaFollowUp,
 } from "./followup";
 import { contarRespostasPendentes } from "./respostas";
 
@@ -141,6 +148,14 @@ export interface RodadaDia {
    * amanhã (ver o cabeçalho).
    */
   diasParaVazar: number | null;
+  /** Leitura operacional do follow-up: em qual das duas rodadas o dia está,
+      qual passo da cadência vence agora e o retorno histórico já observado. */
+  cadenciaFollowUp: {
+    progresso: ProgressoCadenciaFollowUp;
+    etapas: EtapasCadenciaFollowUp;
+    resultado: ResultadoCadenciaFollowUp;
+    limitePorRodada: number;
+  };
 }
 
 function plural(n: number, singular: string, plural_: string): string {
@@ -212,6 +227,12 @@ export function rodadaDoDia(
   const esperando = seguimento.elegiveis.length;
   const vagasRestantes = Math.max(0, FOLLOWUP_TETO_DIA - seguimento.enviadosHoje);
   const diasParaVazar = esperando > 0 ? Math.ceil(esperando / FOLLOWUP_TETO_DIA) : null;
+  const cadenciaFollowUp = {
+    progresso: progressoCadenciaFollowUp(seguimento.enviadosHoje, esperando),
+    etapas: etapasCadenciaFollowUp(seguimento.elegiveis),
+    resultado: resultadoCadenciaFollowUp(imoveis),
+    limitePorRodada: FOLLOWUP_LOTE_MAX,
+  };
 
   if (esperando > 0) {
     // A frase muda com a capacidade porque as três situações pedem decisões
@@ -285,5 +306,6 @@ export function rodadaDoDia(
     enviadosHoje: seguimento.enviadosHoje,
     vagasRestantes,
     diasParaVazar,
+    cadenciaFollowUp,
   };
 }

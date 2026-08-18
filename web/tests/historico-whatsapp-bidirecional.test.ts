@@ -103,6 +103,7 @@ describe("histórico bidirecional do atendimento", () => {
       texto: "Mensagem realmente enviada",
       data: "2026-08-17T09:01",
       origem: "api-evolution",
+      confirmacaoVisita: { data: "2026-08-22", hora: "10:00" },
     });
     expect(resultado).toEqual({ gravou: true, erro: null });
     expect(rpc.mock.calls[0][1].p_nota).toMatchObject({
@@ -111,6 +112,7 @@ describe("histórico bidirecional do atendimento", () => {
       autor: "corretor",
       origem: "api-evolution",
       texto: "Mensagem enviada pelo WhatsApp: Mensagem realmente enviada",
+      confirmacaoVisita: { data: "2026-08-22", hora: "10:00" },
     });
   });
 

@@ -32,7 +32,6 @@ const TITULOS: Record<string, string> = {
   "/respostas": "Respostas",
   "/protocolos": "Protocolos",
   "/admin": "Administração",
-  "/roadmap": "Integrações & IA",
 };
 
 export default function Topbar({

@@ -8,6 +8,7 @@ import {
   avisoTextoLote,
   enviadosFollowUpHoje,
   enviosWhatsappHoje,
+  etapasCadenciaFollowUp,
   deveTerVerificacaoAberta,
   DISPONIBILIDADE_STATUS_ALVO,
   falhaEhDoNumero,
@@ -18,8 +19,11 @@ import {
   FOLLOWUP_INTERVALO_MIN_MS,
   FOLLOWUP_LOTE_MAX,
   FOLLOWUP_MAX_TENTATIVAS,
+  FOLLOWUP_OBSERVACAO,
   FOLLOWUP_TETO_DIA,
   intervaloFollowUpMs,
+  progressoCadenciaFollowUp,
+  resultadoCadenciaFollowUp,
   resumoLote,
   selecionarFollowUp,
   selecionarVerificacaoDisponibilidade,
@@ -40,7 +44,12 @@ function tentativa(data: string, canal = "WhatsApp"): Tentativa {
 /** Tentativa criada pela FILA do lote. O teto diário conta só estas — envio
     avulso pelo botão 💬 não gasta a cota de uma ferramenta que não foi usada. */
 function tentativaDoLote(data: string, canal = "WhatsApp"): Tentativa {
-  return { ...tentativa(data, canal), id: `lote-${data}-${canal}`, viaLote: true };
+  return {
+    ...tentativa(data, canal),
+    id: `lote-${data}-${canal}`,
+    observacao: FOLLOWUP_OBSERVACAO,
+    viaLote: true,
+  };
 }
 
 /* Telefone distinto por imóvel, derivado do id.
@@ -76,6 +85,61 @@ function imovel(over: Partial<Imovel> = {}): Imovel {
     ...over,
   };
 }
+
+describe("cadência diária assistida", () => {
+  it("divide o teto em duas rodadas e oferece só o que ainda cabe", () => {
+    expect(progressoCadenciaFollowUp(0, 42)).toEqual({
+      rodadaAtual: 1,
+      totalRodadas: 2,
+      enviadosNaRodada: 0,
+      enviadosHoje: 0,
+      proximos: 10,
+    });
+    expect(progressoCadenciaFollowUp(10, 42)).toEqual({
+      rodadaAtual: 2,
+      totalRodadas: 2,
+      enviadosNaRodada: 0,
+      enviadosHoje: 10,
+      proximos: 10,
+    });
+    expect(progressoCadenciaFollowUp(17, 42).proximos).toBe(3);
+    expect(progressoCadenciaFollowUp(20, 42).proximos).toBe(0);
+  });
+
+  it("explica quantos estão prontos para a 2ª, 3ª e 4ª tentativas", () => {
+    const etapas = etapasCadenciaFollowUp([
+      imovel({ id: "e-2", tentativas: [tentativa("2026-05-01")] }),
+      imovel({ id: "e-3", tentativas: [tentativa("2026-05-01"), tentativa("2026-05-10")] }),
+      imovel({
+        id: "e-4",
+        tentativas: [tentativa("2026-04-01"), tentativa("2026-04-10"), tentativa("2026-05-01")],
+      }),
+      // Legado em "Sem resposta": houve contato, mas ele não foi registrado.
+      imovel({ id: "e-legado", tentativas: [] }),
+    ]);
+    expect(etapas).toEqual({ segunda: 2, terceira: 1, quarta: 1 });
+  });
+
+  it("resume respostas e angariações posteriores ao lote sem duplicar proprietário", () => {
+    const respondeuEAngariou = imovel({
+      id: "resultado-1",
+      tentativas: [tentativaDoLote("2026-07-01"), tentativaDoLote("2026-07-10")],
+      notas: [{ id: "wa:resposta-1", data: "2026-07-02T09:00", texto: "Tenho interesse" }],
+      statusHistory: [{ status: "Angariado", date: "2026-07-05" }],
+    });
+    const respostaAnterior = imovel({
+      id: "resultado-2",
+      tentativas: [tentativaDoLote("2026-07-10")],
+      notas: [{ id: "wa:resposta-2", data: "2026-07-01T09:00", texto: "Oi" }],
+    });
+
+    expect(resultadoCadenciaFollowUp([respondeuEAngariou, respostaAnterior])).toEqual({
+      mensagensEnviadas: 3,
+      proprietariosQueResponderam: 1,
+      imoveisAngariados: 1,
+    });
+  });
+});
 
 describe("selecionarFollowUp — quem entra", () => {
   it("pega quem não respondeu e ignora quem já avançou no funil", () => {

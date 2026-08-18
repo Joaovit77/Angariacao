@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { notaDaMensagemEnviada, type OrigemMensagemEnviada } from "@/lib/calculo/notas";
+import type { ConfirmacaoVisitaPendente } from "@/lib/calculo/confirmacaoVisita";
 
 function objeto(valor: unknown): Record<string, unknown> {
   return valor && typeof valor === "object" ? (valor as Record<string, unknown>) : {};
@@ -29,6 +30,7 @@ export interface RegistroMensagemEnviada {
   data: string;
   origem: OrigemMensagemEnviada;
   tipo?: string;
+  confirmacaoVisita?: ConfirmacaoVisitaPendente;
 }
 
 /** Persiste por RPC em vez de regravar o array JSONB inteiro. A função do
@@ -47,6 +49,7 @@ export async function registrarMensagemEnviada(
       registro.data,
       registro.origem,
       registro.tipo,
+      registro.confirmacaoVisita,
     ),
   });
   return { gravou: data === true, erro: error?.message || null };

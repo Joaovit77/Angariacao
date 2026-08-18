@@ -271,6 +271,7 @@ export async function registrarMensagemEnviadaManual(
   imovelId: string,
   userId: string,
   texto: string,
+  confirmacaoVisita?: NotaImovel["confirmacaoVisita"],
 ): Promise<boolean> {
   const { imoveis, setImoveis } = useAppStore.getState();
   const imovel = imoveis.find((i) => i.id === imovelId);
@@ -282,6 +283,8 @@ export async function registrarMensagemEnviadaManual(
     textoLimpo,
     agoraISOComSegundos(),
     "confirmacao-manual",
+    "conversation",
+    confirmacaoVisita,
   );
   const { data: gravou, error } = await getSupabase().rpc("registrar_nota_imovel", {
     p_imovel_id: imovelId,

@@ -82,6 +82,7 @@ import { ambiente as ambienteGoogle } from "../../../google/_comum";
 import { transcreverAudio } from "../../_transcricao";
 import { ehAudio } from "@/lib/calculo/transcricao";
 import { corpoDaResposta, ehNotaDeResposta, ehSoMidia } from "@/lib/calculo/notas";
+import { compromissoDaConfirmacaoDeVisita } from "@/lib/calculo/confirmacaoVisita";
 import { MAX_MENSAGENS_CONTEXTO } from "@/lib/calculo/ia";
 import { classificarResposta } from "@/lib/servidor/ia";
 import { registrarEvento } from "@/lib/servidor/registro";
@@ -549,7 +550,15 @@ export async function POST(
   // no id quando o imóvel não tem código, e "Visita — 3f7a…" não diz nada na
   // lista da agenda.
   const rotuloVisivel = imovel.codigo?.trim() || imovel.endereco?.trim() || rotulo;
-  const compromisso = encerramento ? null : compromissoDaResposta(sugestao, rotuloVisivel, hoje);
+  const visitaConfirmada = compromissoDaConfirmacaoDeVisita(
+    imovel.notas,
+    mensagem.texto,
+    rotuloVisivel,
+    hoje,
+  );
+  const compromisso = encerramento
+    ? null
+    : visitaConfirmada || compromissoDaResposta(sugestao, rotuloVisivel, hoje);
   if (compromisso) {
     // Trava contra a rajada: no WhatsApp as pessoas mandam três mensagens
     // curtas ("pode quinta", "às 10h", "combinado"), e cada uma passaria por

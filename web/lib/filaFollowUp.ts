@@ -21,6 +21,7 @@ import {
   falhaEncerraLote,
   type FimDeLote,
   FOLLOWUP_CANAL,
+  FOLLOWUP_OBSERVACAO,
   intervaloFollowUpMs,
   resumoLote,
 } from "./calculo/followup";
@@ -185,7 +186,7 @@ export async function dispararLote(itens: ItemFila[], opcoes: OpcoesLote = {}): 
           modeloNome: opcoes.modeloNome ?? null,
           canal: FOLLOWUP_CANAL,
           resultado: "sem-resposta",
-          observacao: opcoes.observacao ?? "Follow-up em lote",
+          observacao: opcoes.observacao ?? FOLLOWUP_OBSERVACAO,
           // Palpite, como em qualquer envio: o nudge cobra a confirmação
           // depois. Sem isso, um lote de 10 empurraria dez "sem-resposta"
           // definitivos para o ranking sem ninguém ter observado nada.

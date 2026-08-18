@@ -37,6 +37,7 @@ import {
 import { daysBetween } from "../datas";
 import type { Abordagem, Imovel, Tentativa } from "../tipos";
 import { dataAngariadoEfetiva, isPausado } from "./motor";
+import { ehNotaDeResposta } from "./notas";
 import { sinalDoProprietario } from "./temperatura";
 import { telefoneCanonico } from "./webhookWhatsapp";
 import { aplicarModeloUsuario, type FalhaEnvio, mensagemWhatsapp, numeroEvolution } from "./whatsapp";
@@ -50,6 +51,109 @@ export const FOLLOWUP_LOTE_MAX = 10;
     novo pegando "os próximos 10" a cada rodada — em uma tarde de faxina no
     pipeline isso vira 40 mensagens. Duas rodadas por dia é o limite. */
 export const FOLLOWUP_TETO_DIA = 20;
+
+export interface EtapasCadenciaFollowUp {
+  segunda: number;
+  terceira: number;
+  quarta: number;
+}
+
+export interface ProgressoCadenciaFollowUp {
+  /** O teto diário é deliberadamente dividido em duas rodadas de dez. */
+  rodadaAtual: 1 | 2;
+  totalRodadas: 2;
+  enviadosNaRodada: number;
+  enviadosHoje: number;
+  proximos: number;
+}
+
+export interface ResultadoCadenciaFollowUp {
+  mensagensEnviadas: number;
+  proprietariosQueResponderam: number;
+  imoveisAngariados: number;
+}
+
+/** Progresso operacional das duas rodadas diárias, sem alterar nenhum freio. */
+export function progressoCadenciaFollowUp(
+  enviadosHoje: number,
+  elegiveisAgora: number,
+): ProgressoCadenciaFollowUp {
+  const enviados = Math.max(0, Math.min(FOLLOWUP_TETO_DIA, enviadosHoje));
+  const rodadaAtual: 1 | 2 = enviados < FOLLOWUP_LOTE_MAX ? 1 : 2;
+  const enviadosNaRodada =
+    rodadaAtual === 1 ? enviados : Math.min(FOLLOWUP_LOTE_MAX, enviados - FOLLOWUP_LOTE_MAX);
+  return {
+    rodadaAtual,
+    totalRodadas: 2,
+    enviadosNaRodada,
+    enviadosHoje: enviados,
+    proximos: Math.min(
+      FOLLOWUP_LOTE_MAX,
+      Math.max(0, FOLLOWUP_TETO_DIA - enviados),
+      Math.max(0, elegiveisAgora),
+    ),
+  };
+}
+
+/** Quantos proprietários estão prontos para cada próximo passo da cadência.
+    O legado "Sem resposta" sem tentativa registrada já afirma que houve um
+    contato; por isso ele entra como segunda tentativa, não como abertura. */
+export function etapasCadenciaFollowUp(elegiveis: Imovel[]): EtapasCadenciaFollowUp {
+  const etapas: EtapasCadenciaFollowUp = { segunda: 0, terceira: 0, quarta: 0 };
+  for (const imovel of elegiveis) {
+    const proxima = Math.max(2, (imovel.tentativas || []).length + 1);
+    if (proxima <= 2) etapas.segunda++;
+    else if (proxima === 3) etapas.terceira++;
+    else etapas.quarta++;
+  }
+  return etapas;
+}
+
+/** Resultado acumulado observado depois de envios do lote. Não atribui uma
+    resposta ao roteiro nem grava dado novo: só resume fatos que já existem no
+    histórico para a operação enxergar se a cadência está produzindo retorno. */
+export function resultadoCadenciaFollowUp(imoveis: Imovel[]): ResultadoCadenciaFollowUp {
+  const resultado: ResultadoCadenciaFollowUp = {
+    mensagensEnviadas: 0,
+    proprietariosQueResponderam: 0,
+    imoveisAngariados: 0,
+  };
+
+  for (const imovel of imoveis) {
+    const envios = (imovel.tentativas || [])
+      .filter(
+        (tentativa) =>
+          tentativa.viaLote &&
+          tentativa.canal === FOLLOWUP_CANAL &&
+          tentativa.observacao === FOLLOWUP_OBSERVACAO,
+      )
+      .map((tentativa) => tentativa.data || "")
+      .filter(Boolean)
+      .sort();
+    resultado.mensagensEnviadas += envios.length;
+    const primeiroEnvio = envios[0];
+    if (!primeiroEnvio) continue;
+
+    if (
+      (imovel.notas || []).some(
+        (nota) => ehNotaDeResposta(nota) && Boolean(nota.data) && nota.data > primeiroEnvio,
+      )
+    ) {
+      resultado.proprietariosQueResponderam++;
+    }
+
+    const primeiroDia = primeiroEnvio.slice(0, 10);
+    if (
+      (imovel.statusHistory || []).some(
+        (entrada) => entrada.status === "Angariado" && Boolean(entrada.date) && entrada.date >= primeiroDia,
+      )
+    ) {
+      resultado.imoveisAngariados++;
+    }
+  }
+
+  return resultado;
+}
 
 /** Dias desde o último contato registrado (de QUALQUER canal) para o
     proprietário voltar a ser elegível — **por posição na cadência**, não um
@@ -100,6 +204,10 @@ export const FOLLOWUP_INTERVALO_MAX_MS = 60_000;
 
 /** Canal registrado nas tentativas criadas pelo lote (um de FORMAS_ABORDAGEM). */
 export const FOLLOWUP_CANAL = "WhatsApp";
+
+/** Identifica no histórico o lote de seguimento, separando-o do lote de
+    confirmação de disponibilidade, que usa a mesma fila e o mesmo teto. */
+export const FOLLOWUP_OBSERVACAO = "Follow-up em lote";
 
 /** Status que o lote de SEGUIMENTO atende — os dois em que o proprietário
     simplesmente não respondeu.

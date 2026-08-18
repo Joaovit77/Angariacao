@@ -41,6 +41,7 @@ import {
   linkWhatsapp,
   MARCADORES_MODELO,
   mensagemFalhaEnvio,
+  mensagemConfirmacaoVisita,
   mensagemWhatsapp,
   MODELOS_WHATSAPP,
   numeroEvolution,
@@ -48,6 +49,7 @@ import {
 } from "@/lib/calculo/whatsapp";
 import { todayISO } from "@/lib/datas";
 import { enviarWhatsapp } from "@/lib/envioWhatsapp";
+import type { ConfirmacaoVisitaPendente } from "@/lib/calculo/confirmacaoVisita";
 import {
   adicionarModeloWhatsapp,
   registrarMensagemEnviadaManual,
@@ -153,10 +155,13 @@ export default function ModalWhatsapp({
   // O wa.me foi aberto e agora esperamos o corretor dizer se mandou. Ver
   // abrirWhatsappWeb() para o porquê de perguntar.
   const [perguntandoEnvio, setPerguntandoEnvio] = useState(false);
+  const [dataVisita, setDataVisita] = useState("");
+  const [horaVisita, setHoraVisita] = useState("");
 
   if (!imovel) return null;
   const temTelefone = !!telefoneWhatsapp(imovel.proprietarioTelefone);
   const podeEnviarDireto = !!numeroEvolution(imovel.proprietarioTelefone);
+  const ehConfirmacaoVisita = tipoSel === "sistema" && modeloId === "confirmacao-visita";
   const modeloCustomSel = tipoSel === "usuario" ? modelosUsuario.find((m) => m.id === modeloId) || null : null;
   /* A busca cai para a lista COMPLETA quando o id veio do gerador (e não do
      seletor): arquivar tira dos seletores, não descredita um envio que o
@@ -190,6 +195,32 @@ export default function ModalWhatsapp({
   // para o histórico não depender de por onde a mensagem saiu.
   const registraTentativa = !!(abordagemSel || nomeSemCatalogo);
 
+  function dadosConfirmacaoVisita(): ConfirmacaoVisitaPendente | undefined {
+    return ehConfirmacaoVisita && dataVisita && horaVisita
+      ? { data: dataVisita, hora: horaVisita }
+      : undefined;
+  }
+
+  function validarConfirmacaoVisita(): ConfirmacaoVisitaPendente | undefined {
+    if (!ehConfirmacaoVisita) return undefined;
+    const dados = dadosConfirmacaoVisita();
+    if (!dados) {
+      toast("Informe o dia e o horário da visita antes de enviar.", "error");
+      return undefined;
+    }
+    if (dados.data < todayISO()) {
+      toast("A data da visita não pode estar no passado.", "error");
+      return undefined;
+    }
+    return dados;
+  }
+
+  function atualizarQuandoVisita(data: string, hora: string) {
+    setDataVisita(data);
+    setHoraVisita(hora);
+    if (data && hora && imovel) setMensagem(mensagemConfirmacaoVisita(imovel, data, hora));
+  }
+
   function trocarModelo(tipo: "sistema" | "usuario" | "abordagem", id: string) {
     if (!imovel) return;
     setTipoSel(tipo);
@@ -204,7 +235,11 @@ export default function ModalWhatsapp({
       setMensagem(custom ? aplicarModeloUsuario(custom.texto, imovel) : "");
       return;
     }
-    setMensagem(mensagemWhatsapp(id, imovel, nomeCaptador));
+    setMensagem(
+      id === "confirmacao-visita" && dataVisita && horaVisita
+        ? mensagemConfirmacaoVisita(imovel, dataVisita, horaVisita)
+        : mensagemWhatsapp(id, imovel, nomeCaptador),
+    );
   }
 
   async function salvarModelo() {
@@ -264,8 +299,10 @@ export default function ModalWhatsapp({
       toast("Escreva a mensagem antes de enviar.", "error");
       return;
     }
+    const confirmacaoVisita = validarConfirmacaoVisita();
+    if (ehConfirmacaoVisita && !confirmacaoVisita) return;
     setEnviando(true);
-    const r = await enviarWhatsapp(imovel.id, texto);
+    const r = await enviarWhatsapp(imovel.id, texto, confirmacaoVisita);
     // Registra tanto a abordagem do catálogo quanto o modelo PRÓPRIO do
     // corretor: os dois são coisas que ele disse a um proprietário, e sem
     // registro o webhook não teria tentativa nenhuma para fechar quando a
@@ -297,6 +334,11 @@ export default function ModalWhatsapp({
     }
     setEnviando(false);
     if (r.ok) {
+      if (confirmacaoVisita && r.historicoPersistido === false) {
+        toast("Mensagem enviada, mas o monitoramento da confirmação não pôde ser ativado.", "warning");
+        fecharModal();
+        return;
+      }
       toast(
         abordagemSel
           ? `Mensagem enviada. Tentativa registrada em “${abordagemSel.nome}”.`
@@ -315,6 +357,7 @@ export default function ModalWhatsapp({
   /** Saída antiga (click-to-chat): abre a conversa com o texto pronto. */
   function abrirWhatsappWeb() {
     if (!imovel) return;
+    if (ehConfirmacaoVisita && !validarConfirmacaoVisita()) return;
     const link = linkWhatsapp(imovel, mensagem);
     if (!link) return;
     window.open(link, "_blank", "noopener");
@@ -353,6 +396,7 @@ export default function ModalWhatsapp({
       imovel.id,
       usuario.id,
       mensagem,
+      dadosConfirmacaoVisita(),
     );
     // Em falha a pergunta continua: fechar perderia a confirmação humana que
     // ainda é a única prova disponível neste caminho.
@@ -568,6 +612,35 @@ export default function ModalWhatsapp({
             A IA respondeu usando seus protocolos:{" "}
             <strong>{protocolosUsados.join(" · ")}</strong> — confira antes de enviar
           </p>
+        )}
+
+        {ehConfirmacaoVisita && (
+          <div className="field-group">
+            <div className="field-row">
+              <div className="field-group">
+                <label htmlFor="data-confirmacao-visita">Dia da visita</label>
+                <input
+                  id="data-confirmacao-visita"
+                  type="date"
+                  min={todayISO()}
+                  value={dataVisita}
+                  onChange={(e) => atualizarQuandoVisita(e.target.value, horaVisita)}
+                />
+              </div>
+              <div className="field-group">
+                <label htmlFor="hora-confirmacao-visita">Horário</label>
+                <input
+                  id="hora-confirmacao-visita"
+                  type="time"
+                  value={horaVisita}
+                  onChange={(e) => atualizarQuandoVisita(dataVisita, e.target.value)}
+                />
+              </div>
+            </div>
+            <p className="field-hint">
+              Quando o proprietário confirmar a próxima mensagem, a visita entrará automaticamente na Agenda e no Google Agenda conectado.
+            </p>
+          </div>
         )}
 
         <textarea

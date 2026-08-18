@@ -64,7 +64,9 @@ O aplicativo vive em **[`web/`](web/)** — Next 16 (App Router, Turbopack), Typ
   do Leaflet e o `style.css`), `page.tsx` (tela de acesso e queda do link de recuperação de senha),
   páginas públicas de termos/privacidade e o grupo **`(painel)/`** com o shell autenticado. As views
   atuais incluem `home`, `dashboard`, `pipeline`, `metas`, `agenda`, `mensagens`, `respostas`,
-  `insights`, `mapa`, `relatorios`, `protocolos`, `central-angariacao`, `roadmap` e `admin`.
+  `insights`, `mapa`, `relatorios`, `protocolos`, `central-angariacao` e `admin`. A antiga rota
+  `roadmap` redireciona para o Início: integrações e IA não formam uma frente de trabalho do
+  corretor; configuração e saúde técnica pertencem à Administração.
   As rotas de servidor vivem em **`app/api/`**: `whatsapp/*`, `ia`, `assistente`, `google/*`,
   `admin/*`, `sophia/eventos`, `central-angariacao/*` e `cron/*`. Elas protegem secrets, executam
   integrações externas ou realizam trabalho privilegiado que não pode ficar no browser.
@@ -236,6 +238,13 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   silêncio é sempre a categoria mais populosa — a armadilha que matou a faixa de "imóvel parado" no
   termômetro. Não é o termômetro: aquele lista PESSOAS por sinal, este lista FRENTES com fila.
   Nenhuma contagem daqui pode divergir da tela que a origina (há teste fixando isso contra o badge).
+  A cota aparece como **duas rodadas assistidas de 10**, e não como um saldo abstrato de 20: no uso
+  real até 18/08/2026, 7 dos 10 dias com lote pararam em dez envios ou menos, apesar de ainda haver
+  fila e cota. A Início mostra rodada/progresso, quantos estão prontos para a 2ª/3ª/4ª tentativa e o
+  retorno acumulado observado depois dos lotes. Ao abrir a segunda rodada, o modal reaproveita na
+  mesma aba os roteiros e textos revisados naquele dia; o rascunho expira na virada do dia e nunca
+  altera a Abordagem permanente. Continuar segue exigindo confirmação humana — não há envio
+  automático nem mudança nos freios anti-spam.
 - **`calculo/relatorioCompleto.ts`** — o terceiro relatório, que mede o **TRABALHO** e não o
   desfecho. `relatorios.ts` (mensal/semanal) segue intacto: é a régua do dinheiro. O problema é que
   em captação o desfecho é raro e lento — em 31/07/2026, 177 imóveis, 12 angariados e **zero
@@ -609,6 +618,8 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
 - **`uiPipeline.ts` / `uiModal.ts`** — estado de UI (filtros/drawer do Pipeline; modal ativo).
 - **`filaFollowUp.ts`** — a fila do follow-up em lote (estado + orquestração dos envios). Como o
   `mutacoes.ts`, é exceção consciente à regra abaixo: orquestra efeitos, não calcula.
+- **`rascunhoFollowUp.ts`** — escolhas de roteiro/texto das duas rodadas do dia. Vive só na aba,
+  separado da fila e do Supabase, e descarta o dia anterior ao receber a primeira escolha nova.
 - **`tema.ts`** — a troca entre **escuro** (padrão, a identidade do app) e **claro**. Nada aqui
   sabe de cor: a paleta inteira vive nos tokens do `app/style.css`, e este módulo só decide QUAL
   conjunto vale e escreve `data-tema` no `<html>`. A decisão tem duas metades de propósito, e
@@ -1157,6 +1168,15 @@ Regras ao mexer nela:
   aparece sozinho e não se explica é compromisso que o corretor apaga por desconfiança.
   A `horaRetomar` entrou junto no esquema da classificação — é ela que separa "te ligo quinta"
   de "quinta às 10h", e só com hora o item cai na faixa de horários da agenda.
+
+  A **confirmação de visita** tem também um caminho determinístico, sem depender de a IA extrair
+  uma data de um “ok”. Ao escolher esse modelo, o corretor informa dia e horário; os dois viajam
+  como `confirmacaoVisita` na nota da mensagem efetivamente enviada. Somente uma confirmação curta
+  e inequívoca na resposta imediatamente posterior promove a intenção para a Agenda. Uma saudação
+  isolada pode precedê-la, porque “Bom dia” + “ok” costuma chegar em dois eventos; pergunta, recusa,
+  remarcação, resposta ambígua, data passada, nova mensagem do corretor ou “ok” sem esse metadado
+  não criam compromisso. A criação continua usando a mesma trava por imóvel/dia e o mesmo
+  espelhamento painel → Google Agenda dos demais compromissos automáticos.
 - **As três escritas são INDEPENDENTES — nenhuma é pré-condição da outra.** A sugestão na
   tentativa, o encerramento e o compromisso derivam todos do que o proprietário ESCREVEU, não um
   do outro. A rota já teve um `return` quando não achava tentativa pendente, e ele levava junto o

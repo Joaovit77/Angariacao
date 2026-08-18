@@ -28,7 +28,8 @@
    ================================================================ */
 import { createClient } from "@supabase/supabase-js";
 import { mensagemFalhaEnvio, numeroEvolution, type FalhaEnvio } from "@/lib/calculo/whatsapp";
-import { agoraISOComSegundos } from "@/lib/datas";
+import { confirmacaoVisitaValida } from "@/lib/calculo/confirmacaoVisita";
+import { agoraISOComSegundos, todayISO } from "@/lib/datas";
 import { idMensagemEvolution, registrarMensagemEnviada } from "@/lib/servidor/historicoWhatsapp";
 import { registrarEvento } from "@/lib/servidor/registro";
 
@@ -178,7 +179,7 @@ export async function POST(request: Request): Promise<Response> {
   const { instancia, token } = minha;
 
   // 3. Corpo da requisição.
-  let corpo: { imovelId?: unknown; mensagem?: unknown };
+  let corpo: { imovelId?: unknown; mensagem?: unknown; confirmacaoVisita?: unknown };
   try {
     corpo = await request.json();
   } catch {
@@ -187,6 +188,16 @@ export async function POST(request: Request): Promise<Response> {
   const imovelId = typeof corpo.imovelId === "string" ? corpo.imovelId : "";
   const mensagem = typeof corpo.mensagem === "string" ? corpo.mensagem.trim() : "";
   if (!imovelId || !mensagem) return erro("imovel-nao-encontrado", 400);
+  const confirmacaoVisita =
+    corpo.confirmacaoVisita === undefined
+      ? undefined
+      : confirmacaoVisitaValida(corpo.confirmacaoVisita, todayISO()) || null;
+  if (confirmacaoVisita === null) {
+    return Response.json(
+      { ok: false, falha: "falha-evolution", mensagem: "Informe uma data e um horário válidos para a visita." } satisfies Resposta,
+      { status: 400 },
+    );
+  }
 
   // 4. O telefone vem do banco, nunca do browser. O RLS garante que o
   //    imóvel é de quem chamou — de outro dono, isto volta vazio.
@@ -274,6 +285,7 @@ export async function POST(request: Request): Promise<Response> {
     texto: mensagem,
     data: agoraISOComSegundos(),
     origem: "api-evolution",
+    confirmacaoVisita,
   });
   if (historico.erro) {
     // A Evolution já aceitou a mensagem: responder falha faria a interface

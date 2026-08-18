@@ -46,6 +46,12 @@ const ACAO: Record<FrenteRodada, string> = {
   resultados: "Confirmar",
 };
 
+function acaoFollowUp(enviadosHoje: number, rodadaAtual: 1 | 2, proximos: number): string {
+  if (enviadosHoje === 0) return "Começar 1ª rodada";
+  if (rodadaAtual === 1) return "Continuar 1ª rodada";
+  return `Continuar com os próximos ${proximos}`;
+}
+
 export default function RodadaDoDia() {
   const router = useRouter();
   const imoveis = useAppStore((s) => s.imoveis);
@@ -64,6 +70,9 @@ export default function RodadaDoDia() {
 
   if (rodada.vazia) return null;
 
+  const itemFollowUp = rodada.itens.find((item) => item.frente === "followup");
+  const cadencia = rodada.cadenciaFollowUp;
+
   const executar = (frente: FrenteRodada) => {
     if (frente === "respostas") return router.push("/respostas");
     if (frente === "compromissos") return router.push("/agenda");
@@ -79,11 +88,22 @@ export default function RodadaDoDia() {
         {/* O que já saiu hoje. Este número só existia dentro do modal do
             lote, ou seja: só depois de abrir a ferramenta para descobrir
             que a cota já tinha acabado. */}
-        {rodada.enviadosHoje > 0 && (
-          <span className="section-note">
-            {rodada.enviadosHoje} já {rodada.enviadosHoje === 1 ? "enviada" : "enviadas"} hoje ·{" "}
-            {rodada.vagasRestantes} {rodada.vagasRestantes === 1 ? "vaga" : "vagas"}
-          </span>
+        {itemFollowUp && (
+          <div className="rodada-progresso" aria-label={`Rodada ${cadencia.progresso.rodadaAtual} de 2`}>
+            <span>
+              Rodada {cadencia.progresso.rodadaAtual} de {cadencia.progresso.totalRodadas}
+            </span>
+            <strong>
+              {cadencia.progresso.enviadosHoje} de {cadencia.limitePorRodada * 2}
+            </strong>
+            <span className="rodada-progresso-barra" aria-hidden>
+              <span
+                style={{
+                  width: `${(cadencia.progresso.enviadosHoje / (cadencia.limitePorRodada * 2)) * 100}%`,
+                }}
+              />
+            </span>
+          </div>
         )}
       </div>
 
@@ -91,7 +111,7 @@ export default function RodadaDoDia() {
         {rodada.itens.map((item) => {
           const [detalhePrincipal, detalheRitmo] = item.detalhe.split(" · ", 2);
           return (
-          <div className={`rodada-item ${item.urgencia}`} key={item.frente}>
+          <div className={`rodada-item ${item.urgencia} ${item.frente}`} key={item.frente}>
             <span className="rodada-ic" aria-hidden>
               {ICONE[item.frente]}
             </span>
@@ -104,6 +124,25 @@ export default function RodadaDoDia() {
                 <span className="rodada-detalhe-principal">{detalhePrincipal}</span>
                 {detalheRitmo && <span className="rodada-ritmo"> ({detalheRitmo})</span>}
               </span>
+              {item.frente === "followup" && (
+                <>
+                  <span className="rodada-etapas" aria-label="Etapas da cadência prontas agora">
+                    {cadencia.etapas.segunda > 0 && <span>{cadencia.etapas.segunda} para 2ª tentativa</span>}
+                    {cadencia.etapas.terceira > 0 && <span>{cadencia.etapas.terceira} para 3ª tentativa</span>}
+                    {cadencia.etapas.quarta > 0 && <span>{cadencia.etapas.quarta} para 4ª tentativa</span>}
+                  </span>
+                  {cadencia.resultado.mensagensEnviadas > 0 && (
+                    <span className="rodada-resultado">
+                      A cadência já acumulou {cadencia.resultado.proprietariosQueResponderam}{" "}
+                      {cadencia.resultado.proprietariosQueResponderam === 1 ? "resposta" : "respostas"}
+                      {cadencia.resultado.imoveisAngariados > 0 &&
+                        ` e ${cadencia.resultado.imoveisAngariados} ${
+                          cadencia.resultado.imoveisAngariados === 1 ? "angariação" : "angariações"
+                        }`}
+                    </span>
+                  )}
+                </>
+              )}
             </span>
             <button
               type="button"
@@ -118,7 +157,15 @@ export default function RodadaDoDia() {
               }
               onClick={() => executar(item.frente)}
             >
-              {item.cabemHoje === 0 ? "Sem vaga hoje" : ACAO[item.frente]}
+              {item.cabemHoje === 0
+                ? "Sem vaga hoje"
+                : item.frente === "followup"
+                  ? acaoFollowUp(
+                      cadencia.progresso.enviadosHoje,
+                      cadencia.progresso.rodadaAtual,
+                      cadencia.progresso.proximos,
+                    )
+                  : ACAO[item.frente]}
             </button>
           </div>
           );

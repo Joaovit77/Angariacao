@@ -34,6 +34,7 @@ import {
   FOLLOWUP_LOTE_MAX,
   FOLLOWUP_MAX_TENTATIVAS,
   FOLLOWUP_TETO_DIA,
+  progressoCadenciaFollowUp,
   selecionarFollowUp,
   textoBaseFollowUp,
   textoFollowUp,
@@ -42,6 +43,11 @@ import {
 } from "@/lib/calculo/followup";
 import { daysBetween, todayISO } from "@/lib/datas";
 import { dispararLote, type ItemFila, useFilaFollowUp } from "@/lib/filaFollowUp";
+import {
+  ESCOLHAS_FOLLOWUP_VAZIAS,
+  type EscolhaGrupoFollowUp,
+  useRascunhoFollowUp,
+} from "@/lib/rascunhoFollowUp";
 import { useAppStore } from "@/lib/store";
 import type { Imovel } from "@/lib/tipos";
 import { useUiModal } from "@/lib/uiModal";
@@ -62,6 +68,11 @@ export default function ModalFollowUpLote() {
 
   const hoje = todayISO();
   const selecao = useMemo(() => selecionarFollowUp(imoveis, hoje), [imoveis, hoje]);
+  const progresso = progressoCadenciaFollowUp(selecao.enviadosHoje, selecao.elegiveis.length);
+  const escolhas = useRascunhoFollowUp((s) =>
+    s.dia === hoje ? s.escolhas : ESCOLHAS_FOLLOWUP_VAZIAS,
+  );
+  const salvarEscolha = useRascunhoFollowUp((s) => s.salvarEscolha);
   const ativas = abordagens.filter((a) => !a.arquivada);
   // O público do lote é quem já foi contatado e não respondeu — logo, sempre
   // "seguimento". Passar "abertura" aqui subiria roteiros de primeiro contato
@@ -73,11 +84,6 @@ export default function ModalFollowUpLote() {
 
   /** O que o corretor escolheu para um grupo. Fica por GRUPO porque o texto
       também é por grupo; a chave é o `id` do grupo, estável entre renders. */
-  interface EscolhaGrupo {
-    abordagemId: string;
-    base: string;
-  }
-  const [escolhas, setEscolhas] = useState<Record<string, EscolhaGrupo>>({});
   // Pré-marca só até o limite do dia; o resto da fila fica visível, mas
   // desmarcado — o corretor escolhe quem troca por quem.
   const [marcados, setMarcados] = useState<Set<string>>(
@@ -106,7 +112,7 @@ export default function ModalFollowUpLote() {
       recomendada": ali quem escolheria era o ranking, e a sugestão se
       autoconfirmaria (o sugerido é usado, o usado sobe). Aqui quem escolheu
       foi o corretor, uma vez, ao dizer que este roteiro serve esta origem. */
-  function escolhaDoGrupo(g: GrupoLote): EscolhaGrupo {
+  function escolhaDoGrupo(g: GrupoLote): EscolhaGrupoFollowUp {
     const salva = escolhas[g.id];
     if (salva) return salva;
     const declarada = ativas.find((a) => a.id === g.abordagemId) || null;
@@ -117,12 +123,12 @@ export default function ModalFollowUpLote() {
       o estado derivado é atualizado no handler, não num efeito. */
   function trocarAbordagem(g: GrupoLote, id: string) {
     const abordagem = ativas.find((a) => a.id === id) || null;
-    setEscolhas((atual) => ({ ...atual, [g.id]: { abordagemId: id, base: textoBaseFollowUp(abordagem) } }));
+    salvarEscolha(hoje, g.id, { abordagemId: id, base: textoBaseFollowUp(abordagem) });
   }
 
   function trocarTexto(g: GrupoLote, base: string) {
     const atualDoGrupo = escolhaDoGrupo(g);
-    setEscolhas((atual) => ({ ...atual, [g.id]: { ...atualDoGrupo, base } }));
+    salvarEscolha(hoje, g.id, { ...atualDoGrupo, base });
   }
 
   function alternar(id: string) {
@@ -139,7 +145,7 @@ export default function ModalFollowUpLote() {
   const faltaTexto = grupos.some((g) => !escolhaDoGrupo(g).base.trim());
 
   function enviar() {
-    const porImovel = new Map<string, EscolhaGrupo>();
+    const porImovel = new Map<string, EscolhaGrupoFollowUp>();
     for (const g of grupos) {
       const escolha = escolhaDoGrupo(g);
       for (const imovel of g.imoveis) porImovel.set(imovel.id, escolha);
@@ -175,7 +181,12 @@ export default function ModalFollowUpLote() {
   return (
     <>
       <div className="modal-head">
-        <div className="modal-title">Follow-up em lote</div>
+        <div>
+          <div className="modal-title">Follow-up · {progresso.rodadaAtual}ª rodada</div>
+          <div className="field-hint">
+            {progresso.enviadosHoje} de {FOLLOWUP_TETO_DIA} enviados hoje
+          </div>
+        </div>
         <button type="button" className="icon-btn" onClick={fecharModal}>
           ✕
         </button>
@@ -188,6 +199,13 @@ export default function ModalFollowUpLote() {
           como spam e bloqueie o número da imobiliária. Você pode fechar esta janela e continuar
           trabalhando; o envio segue em segundo plano.
         </p>
+
+        {progresso.rodadaAtual === 2 && progresso.enviadosHoje < FOLLOWUP_TETO_DIA && (
+          <p className="section-note followup-continuacao" style={{ marginBottom: "14px" }}>
+            Segunda rodada pronta. Os roteiros e textos revisados na primeira continuam preenchidos;
+            confirme os próximos proprietários e siga de onde parou.
+          </p>
+        )}
 
         {rodando && (
           <p className="section-note" style={{ marginBottom: "14px" }}>
@@ -275,7 +293,7 @@ export default function ModalFollowUpLote() {
                     style={{ width: "100%", minHeight: "120px", marginTop: "10px" }}
                   />
                   <div className="field-hint">
-                    Vale só para este lote: o roteiro da abordagem não é alterado. Use{" "}
+                    Vale para as rodadas de hoje; o roteiro permanente da abordagem não é alterado. Use{" "}
                     <strong>{"{nome}"}</strong> e <strong>{"{endereco}"}</strong> para o texto se
                     adaptar a cada proprietário.
                   </div>
