@@ -500,7 +500,10 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   `wa-contexto-recebida:`/`wa-contexto-enviada:` e origem `importacao-evolution`: o agente de
   atendimento as lê, mas `ehNotaDeResposta` deliberadamente não. Portanto elas **não** criam
   pendência, status, agenda, tentativa nem efeito retroativo no ranking. Mensagem LID só entra se
-  houver `remoteJidAlt` numérico que confirme o contato; sem vínculo verificável, é descartada.
+  houver `remoteJidAlt` numérico que confirme o contato ou se o id de uma mensagem que o webhook já
+  vinculou àquele imóvel servir de âncora para o LID. Essa segunda ponte cobre a troca de identidade
+  que ocorre quando o contato é salvo depois do início da conversa; um LID global sem âncora
+  verificável continua descartado.
 - **`calculo/respostas.ts`** — a **caixa de respostas** (view `/respostas`): o que o proprietário
   ESCREVEU, num lugar só. O webhook já gravava tudo, e três consumidores já liam esse dado — mas
   nenhum mostrava o texto: `isStale` usa só a data (resposta é movimento), o termômetro usa a data

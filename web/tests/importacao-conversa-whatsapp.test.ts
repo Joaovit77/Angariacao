@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   LIMITE_IMPORTACAO_CONVERSA,
   idExternoDaNotaWhatsapp,
+  jidsDaEvolutionPorIdsConhecidos,
   mesclarMensagensRecentesDaEvolution,
   mensagensRecentesDaEvolution,
   notaDaMensagemImportada,
@@ -73,6 +74,27 @@ describe("importação de conversa recente", () => {
   it("não confia em LID sem número alternativo, mesmo que a Evolution o devolva", () => {
     const corpo = [linha("lid", "Sem vínculo verificável", 1_768_473_600, { jid: "123456789012345@lid" })];
     expect(mensagensRecentesDaEvolution(corpo, "43998024316", [])).toEqual([]);
+  });
+
+  it("usa uma mensagem já vinculada para recuperar a conversa anterior em LID", () => {
+    const jidAntigo = "123456789012345@lid";
+    const corpo = {
+      messages: {
+        records: [
+          linha("antiga", "Conversa antes de salvar o contato", 1_768_473_500, { jid: jidAntigo }),
+          linha("ancora", "Mensagem já capturada pelo webhook", 1_768_473_600, { jid: jidAntigo }),
+          linha("outra", "Conversa de outra pessoa", 1_768_473_700, { jid: "987654321098765@lid" }),
+        ],
+      },
+    };
+    const notas = [{ id: "wa:ancora", texto: "x", data: "2026-01-01T10:00" }] as NotaImovel[];
+
+    const jids = jidsDaEvolutionPorIdsConhecidos([corpo], ["ancora"]);
+    expect(jids).toEqual([jidAntigo]);
+    expect(mensagensRecentesDaEvolution(corpo, "43998024316", notas, 30, jids).map((m) => m.id)).toEqual([
+      "antiga",
+      "ancora",
+    ]);
   });
 
   it("reconhece mensagens já registradas por webhook, envio e importação", () => {

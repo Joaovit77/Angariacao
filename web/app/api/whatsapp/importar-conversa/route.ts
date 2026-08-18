@@ -12,6 +12,8 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   LIMITE_IMPORTACAO_CONVERSA,
+  idExternoDaNotaWhatsapp,
+  jidsDaEvolutionPorIdsConhecidos,
   mesclarMensagensRecentesDaEvolution,
   notaDaMensagemImportada,
   type MensagemRecenteWhatsapp,
@@ -120,7 +122,7 @@ async function buscarConversa(
   telefone: string,
   notas: NotaImovel[],
 ): Promise<{ ok: boolean; mensagens: MensagemRecenteWhatsapp[] }> {
-  const tentativas = [
+  const tentativasIniciais = [
     {
       where: { key: { remoteJid: jid } },
       take: 100,
@@ -133,23 +135,90 @@ async function buscarConversa(
       offset: 100,
     },
     {
+      where: { key: { remoteJidAlt: jid } },
+      take: 100,
+      skip: 0,
+      orderBy: { messageTimestamp: "desc" },
+    },
+    {
+      where: { key: { remoteJidAlt: jid } },
+      page: 1,
+      offset: 100,
+    },
+    {
       where: {},
       take: 200,
       skip: 0,
       orderBy: { messageTimestamp: "desc" },
     },
+    {
+      where: {},
+      page: 1,
+      offset: 100,
+    },
   ];
-  const consultas = await Promise.all(
-    tentativas.map((corpo) => consultarEvolution(base, instancia, token, corpo)),
+  const consultasIniciais = await Promise.all(
+    tentativasIniciais.map((corpo) => consultarEvolution(base, instancia, token, corpo)),
   );
-  const respondidas = consultas.filter((consulta) => consulta.ok);
+  const respondidas = consultasIniciais.filter((consulta) => consulta.ok);
+  const corpos = respondidas.map((consulta) => consulta.corpo);
+
+  // Quando o contato é salvo depois do começo da conversa, o WhatsApp pode
+  // trocar o remoteJid numérico por um LID (ou o inverso). Os ids das notas
+  // já registradas pelo webhook são a ponte segura entre as duas identidades.
+  const idsConhecidos = notas.map(idExternoDaNotaWhatsapp).filter((id): id is string => !!id);
+  const jidAtual = jid.trim();
+  let jidsVinculados = jidsDaEvolutionPorIdsConhecidos(corpos, idsConhecidos);
+  const temIdentificadorAnterior = () => jidsVinculados.some((item) => item !== jidAtual);
+
+  // O contrato legado pagina globalmente. Procuramos a âncora em pequenos
+  // lotes e paramos assim que aparece um identificador anterior confiável.
+  if (idsConhecidos.length > 0 && !temIdentificadorAnterior()) {
+    for (let primeiraPagina = 2; primeiraPagina <= 8; primeiraPagina += 2) {
+      const paginas = [primeiraPagina, primeiraPagina + 1];
+      const lote = await Promise.all(
+        paginas.map((page) =>
+          consultarEvolution(base, instancia, token, { where: {}, page, offset: 100 }),
+        ),
+      );
+      const validas = lote.filter((consulta) => consulta.ok);
+      respondidas.push(...validas);
+      corpos.push(...validas.map((consulta) => consulta.corpo));
+      jidsVinculados = jidsDaEvolutionPorIdsConhecidos(corpos, idsConhecidos);
+      if (temIdentificadorAnterior()) break;
+    }
+  }
+
+  const jidsParaBuscar = [...new Set(jidsVinculados)].filter((item) => item !== jidAtual);
+  if (jidsParaBuscar.length > 0) {
+    const consultasAnteriores = await Promise.all(
+      jidsParaBuscar.flatMap((jidAnterior) => [
+        consultarEvolution(base, instancia, token, {
+          where: { key: { remoteJid: jidAnterior } },
+          take: 100,
+          skip: 0,
+          orderBy: { messageTimestamp: "desc" },
+        }),
+        consultarEvolution(base, instancia, token, {
+          where: { key: { remoteJid: jidAnterior } },
+          page: 1,
+          offset: 100,
+        }),
+      ]),
+    );
+    const validas = consultasAnteriores.filter((consulta) => consulta.ok);
+    respondidas.push(...validas);
+    corpos.push(...validas.map((consulta) => consulta.corpo));
+  }
+
   return {
     ok: respondidas.length > 0,
     mensagens: mesclarMensagensRecentesDaEvolution(
-      respondidas.map((consulta) => consulta.corpo),
+      corpos,
       telefone,
       notas,
       LIMITE_IMPORTACAO_CONVERSA,
+      jidsVinculados,
     ),
   };
 }

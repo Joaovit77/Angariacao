@@ -73,6 +73,17 @@ function telefoneDaLinha(linha: Record<string, unknown>): string | null {
   return null;
 }
 
+function jidsDaLinha(linha: Record<string, unknown>): string[] {
+  const chave = objeto(linha.key);
+  const unicos = new Set<string>();
+  for (const candidato of [chave.remoteJid, chave.remoteJidAlt, linha.remoteJid, linha.remoteJidAlt]) {
+    const jid = texto(candidato).trim();
+    if (!jid || jid.includes("@g.us") || jid.startsWith("status@")) continue;
+    unicos.add(jid);
+  }
+  return [...unicos];
+}
+
 function idDaLinha(linha: Record<string, unknown>): string {
   const chave = objeto(linha.key);
   const candidatos = [chave.id, linha.messageId, linha.id];
@@ -120,21 +131,48 @@ export function idExternoDaNotaWhatsapp(nota: Pick<NotaImovel, "id">): string | 
   return null;
 }
 
+/** Descobre identificadores antigos da conversa por mensagens que o webhook
+    já vinculou ao imóvel. O id externo é a âncora confiável: ele permite
+    reconhecer o LID usado antes de o contato ser salvo sem aceitar qualquer
+    conversa LID que apareça numa consulta global. */
+export function jidsDaEvolutionPorIdsConhecidos(
+  corpos: unknown[],
+  idsConhecidos: Iterable<string>,
+): string[] {
+  const ids = new Set(idsConhecidos);
+  if (ids.size === 0) return [];
+  const jids = new Set<string>();
+
+  for (const corpo of corpos) {
+    for (const bruto of registrosDoEnvelope(corpo)) {
+      const linha = objeto(bruto);
+      if (!ids.has(idDaLinha(linha))) continue;
+      for (const jid of jidsDaLinha(linha)) jids.add(jid);
+    }
+  }
+
+  return [...jids];
+}
+
 /** Traduz a resposta da Evolution em uma prévia cronológica e segura. */
 export function mensagensRecentesDaEvolution(
   corpo: unknown,
   telefone: string,
   notasExistentes: NotaImovel[] | null | undefined,
   limite = LIMITE_IMPORTACAO_CONVERSA,
+  jidsConfiaveis: Iterable<string> = [],
 ): MensagemRecenteWhatsapp[] {
   const alvo = telefoneCanonico(telefone);
   if (!alvo) return [];
   const existentes = new Set((notasExistentes || []).map(idExternoDaNotaWhatsapp).filter(Boolean));
+  const jidsVinculados = new Set(jidsConfiaveis);
   const unicas = new Map<string, MensagemRecenteWhatsapp>();
 
   for (const bruto of registrosDoEnvelope(corpo)) {
     const linha = objeto(bruto);
-    if (telefoneDaLinha(linha) !== alvo) continue;
+    const pertenceAoTelefone = telefoneDaLinha(linha) === alvo;
+    const pertenceAoJidVinculado = jidsDaLinha(linha).some((jid) => jidsVinculados.has(jid));
+    if (!pertenceAoTelefone && !pertenceAoJidVinculado) continue;
     const id = idDaLinha(linha);
     const data = dataDaLinha(linha);
     if (!id || !data) continue;
@@ -165,12 +203,19 @@ export function mesclarMensagensRecentesDaEvolution(
   telefone: string,
   notasExistentes: NotaImovel[] | null | undefined,
   limite = LIMITE_IMPORTACAO_CONVERSA,
+  jidsConfiaveis: Iterable<string> = [],
 ): MensagemRecenteWhatsapp[] {
   const maximo = Math.max(1, Math.min(limite, LIMITE_IMPORTACAO_CONVERSA));
   const unicas = new Map<string, MensagemRecenteWhatsapp>();
 
   for (const corpo of corpos) {
-    for (const mensagem of mensagensRecentesDaEvolution(corpo, telefone, notasExistentes, maximo)) {
+    for (const mensagem of mensagensRecentesDaEvolution(
+      corpo,
+      telefone,
+      notasExistentes,
+      maximo,
+      jidsConfiaveis,
+    )) {
       unicas.set(mensagem.id, mensagem);
     }
   }
