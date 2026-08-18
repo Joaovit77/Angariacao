@@ -156,6 +156,30 @@ export function mensagensRecentesDaEvolution(
     .slice(-Math.max(1, Math.min(limite, LIMITE_IMPORTACAO_CONVERSA)));
 }
 
+/** Reúne respostas de contratos diferentes da Evolution. Algumas versões
+    aceitam `take/skip`, outras `page/offset`, e o fallback global pode conter
+    só uma parte da conversa. O limite entra apenas depois da união para uma
+    resposta parcial não esconder o histórico encontrado pela seguinte. */
+export function mesclarMensagensRecentesDaEvolution(
+  corpos: unknown[],
+  telefone: string,
+  notasExistentes: NotaImovel[] | null | undefined,
+  limite = LIMITE_IMPORTACAO_CONVERSA,
+): MensagemRecenteWhatsapp[] {
+  const maximo = Math.max(1, Math.min(limite, LIMITE_IMPORTACAO_CONVERSA));
+  const unicas = new Map<string, MensagemRecenteWhatsapp>();
+
+  for (const corpo of corpos) {
+    for (const mensagem of mensagensRecentesDaEvolution(corpo, telefone, notasExistentes, maximo)) {
+      unicas.set(mensagem.id, mensagem);
+    }
+  }
+
+  return [...unicas.values()]
+    .sort((a, b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id))
+    .slice(-maximo);
+}
+
 /** Nota de contexto. `lida` reforça que a entrada retroativa não deve cobrar
     ação mesmo se um leitor futuro passar a reconhecer a origem importada. */
 export function notaDaMensagemImportada(mensagem: MensagemRecenteWhatsapp): NotaImovel {

@@ -12,7 +12,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   LIMITE_IMPORTACAO_CONVERSA,
-  mensagensRecentesDaEvolution,
+  mesclarMensagensRecentesDaEvolution,
   notaDaMensagemImportada,
   type MensagemRecenteWhatsapp,
 } from "@/lib/calculo/importacaoConversaWhatsapp";
@@ -108,9 +108,10 @@ async function consultarEvolution(
   }
 }
 
-/** Tenta o filtro atual, o contrato legado e, por último, uma janela global
-    curta. Mesmo nas respostas filtradas, `mensagensRecentesDaEvolution`
-    confere de novo o telefone: a Evolution 2.3.0 já teve filtro ignorado. */
+/** Consulta os contratos atual e legado e também uma janela global curta.
+    As respostas precisam ser reunidas: uma versão da Evolution pode aceitar
+    a consulta, ignorar parte do filtro e devolver apenas mensagens recentes.
+    Mesmo depois da união, o núcleo confere de novo o telefone. */
 async function buscarConversa(
   base: string,
   instancia: string,
@@ -121,7 +122,7 @@ async function buscarConversa(
 ): Promise<{ ok: boolean; mensagens: MensagemRecenteWhatsapp[] }> {
   const tentativas = [
     {
-      where: { key: { path: ["remoteJid"], equals: jid } },
+      where: { key: { remoteJid: jid } },
       take: 100,
       skip: 0,
       orderBy: { messageTimestamp: "desc" },
@@ -138,20 +139,19 @@ async function buscarConversa(
       orderBy: { messageTimestamp: "desc" },
     },
   ];
-  let respondeu = false;
-  for (const corpo of tentativas) {
-    const consulta = await consultarEvolution(base, instancia, token, corpo);
-    respondeu ||= consulta.ok;
-    if (!consulta.ok) continue;
-    const mensagens = mensagensRecentesDaEvolution(
-      consulta.corpo,
+  const consultas = await Promise.all(
+    tentativas.map((corpo) => consultarEvolution(base, instancia, token, corpo)),
+  );
+  const respondidas = consultas.filter((consulta) => consulta.ok);
+  return {
+    ok: respondidas.length > 0,
+    mensagens: mesclarMensagensRecentesDaEvolution(
+      respondidas.map((consulta) => consulta.corpo),
       telefone,
       notas,
       LIMITE_IMPORTACAO_CONVERSA,
-    );
-    if (mensagens.length > 0) return { ok: true, mensagens };
-  }
-  return { ok: respondeu, mensagens: [] };
+    ),
+  };
 }
 
 async function registrarNotas(

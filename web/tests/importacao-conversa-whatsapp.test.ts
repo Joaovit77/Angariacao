@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   LIMITE_IMPORTACAO_CONVERSA,
   idExternoDaNotaWhatsapp,
+  mesclarMensagensRecentesDaEvolution,
   mensagensRecentesDaEvolution,
   notaDaMensagemImportada,
   type MensagemRecenteWhatsapp,
@@ -101,6 +102,31 @@ describe("importação de conversa recente", () => {
     const resultado = mensagensRecentesDaEvolution({ messages: { records } }, "43998024316", []);
     expect(resultado).toHaveLength(LIMITE_IMPORTACAO_CONVERSA);
     expect(resultado[0].id).toBe("5");
+  });
+
+  it("reúne respostas parciais sem deixar as mensagens recentes esconderem o histórico", () => {
+    const notas = [{ id: "wa:recente", texto: "x", data: "2026-08-18T16:41" }] as NotaImovel[];
+    const respostaParcial = {
+      messages: { records: [linha("recente", "Ah entendi", 1_776_527_660)] },
+    };
+    const respostaFiltrada = {
+      messages: {
+        records: [
+          linha("antiga-1", "Mensagem anterior", 1_776_441_200, { fromMe: true }),
+          linha("antiga-2", "Resposta anterior", 1_776_441_260),
+          linha("recente", "Ah entendi", 1_776_527_660),
+        ],
+      },
+    };
+
+    const resultado = mesclarMensagensRecentesDaEvolution(
+      [respostaParcial, respostaFiltrada],
+      "43998024316",
+      notas,
+    );
+
+    expect(resultado.map((item) => item.id)).toEqual(["antiga-1", "antiga-2", "recente"]);
+    expect(resultado.find((item) => item.id === "recente")?.jaImportada).toBe(true);
   });
 
   it("a mensagem importada entra no contexto da IA, mas não vira resposta operacional", () => {
