@@ -3279,13 +3279,23 @@ legend{
 /* ============================================================
    ROADMAP
    ============================================================ */
+.roadmap-intro{
+  margin-bottom:20px; padding:14px 16px; border:1px solid var(--border-soft);
+  border-left:3px solid var(--accent); border-radius:var(--radius-sm);
+  background:var(--bg-elev-1); color:var(--text-dim); font-size:13px; line-height:1.6;
+}
+.roadmap-grid{ gap:16px; }
 .roadmap-col-head{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.roadmap-col-head h2{ margin:0; font-size:14px; }
 .roadmap-tag{ font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.3px; }
+.roadmap-tag.available{ background:var(--good-soft); color:var(--good); }
 .roadmap-tag.planned{ background: var(--info-soft); color: var(--info); }
 .roadmap-tag.future{ background: var(--warn-soft); color: var(--warn); }
-.roadmap-item{ padding: 14px 16px; border:1px solid var(--border-soft); border-radius: var(--radius-sm); margin-bottom:10px; background: var(--bg-elev-1); }
+.roadmap-item{ padding:14px 16px; border:1px solid var(--border-soft); border-radius:var(--radius-sm); margin-bottom:10px; background:var(--bg-elev-1); }
+.roadmap-grid > .roadmap-item{ margin-bottom:0; }
 .roadmap-item-title{ font-size:13.5px; font-weight:700; margin-bottom:5px; }
 .roadmap-item-desc{ font-size:12.5px; color:var(--text-dim); line-height:1.5; }
+.roadmap-note{ margin:0; font-size:13px; color:var(--text-dim); line-height:1.6; }
 
 /* ============================================================
    TOAST / EMPTY STATES / MISC
@@ -3712,7 +3722,7 @@ button.toast-cartao-corpo:hover{ background: color-mix(in srgb, var(--good) 10%,
   /* Uma coluna: a topbar (largura total) em cima e o conteúdo embaixo. Sem
      definir as linhas, o grid (min-height:100vh) estica a linha da .topbar
      quando a página tem pouco conteúdo, inflando a barra. */
-  .app-shell{ grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .app-shell{ grid-template-columns:minmax(0, 1fr); grid-template-rows:auto 1fr; }
 
   /* No mobile a topbar ganha o hambúrguer e o logo; a sidebar vira gaveta.
      Os DOIS botões existem, e só um fica visível de cada vez: com a gaveta

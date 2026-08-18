@@ -146,9 +146,22 @@ const ITENS: ItemNav[] = [
       </svg>
     ),
   },
-  // "Integrações & IA" (/roadmap) fica fora do menu por ora — a página segue
-  // no código (app/(painel)/roadmap) para reativar quando as integrações
-  // entrarem: basta devolver este item ao array.
+  {
+    // Tela de referência, não de trabalho diário. Volta ao menu agora que
+    // WhatsApp, Google, Sophia e IA já são capacidades reais do produto.
+    rota: "/roadmap",
+    texto: "Integrações & IA",
+    icone: (
+      <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="3" />
+        <circle cx="5" cy="6" r="2" />
+        <circle cx="19" cy="6" r="2" />
+        <circle cx="5" cy="18" r="2" />
+        <circle cx="19" cy="18" r="2" />
+        <path d="m7 7.5 3 2.5M17 7.5 14 10M7 16.5l3-2.5M17 16.5 14 14" />
+      </svg>
+    ),
+  },
 ];
 
 /** Fora do array acima porque não é do corretor: só aparece para quem tem

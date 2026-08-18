@@ -1,11 +1,16 @@
 /* ================================================================
-   VIEW: ROADMAP (Integrações & IA)
-   Port literal de viewRoadmap() (app.js, seção 5G). Não são
-   integrações funcionais — é o painel de planejamento que documenta
-   a visão de produto para essas frentes. Página estática.
+   VIEW: INTEGRAÇÕES & IA
+   Retrato do que o produto oferece hoje e das próximas evoluções.
+   A página é estática: os estados abaixo só mudam quando uma entrega
+   entra ou sai do sistema, nunca a partir de disponibilidade momentânea.
    ================================================================ */
 
-function ItemRoadmap({ titulo, desc }: { titulo: string; desc: string }) {
+interface ItemRoadmapProps {
+  titulo: string;
+  desc: string;
+}
+
+function ItemRoadmap({ titulo, desc }: ItemRoadmapProps) {
   return (
     <div className="roadmap-item">
       <div className="roadmap-item-title">{titulo}</div>
@@ -20,73 +25,93 @@ export default function Pagina() {
       <div className="page-head">
         <div>
           <h1 className="page-title">Integrações &amp; IA</h1>
-          <p className="page-sub">Visão de produto para as próximas etapas do sistema</p>
+          <p className="page-sub">O que já funciona no sistema e para onde o produto evolui</p>
         </div>
       </div>
 
-      <div className="grid grid-2" style={{ alignItems: "start" }}>
-        <div>
+      <div className="roadmap-intro">
+        O painel já conecta a rotina de captação ao WhatsApp, ao Google Agenda e ao Sistema
+        Principal. A IA atua com os dados reais da carteira, sem substituir as regras e os
+        cálculos do sistema.
+      </div>
+
+      <div className="grid grid-2 roadmap-grid" style={{ alignItems: "start" }}>
+        <section aria-labelledby="roadmap-integracoes-disponiveis">
           <div className="roadmap-col-head">
-            <span className="roadmap-tag planned">Integrações planejadas</span>
+            <span className="roadmap-tag available">Disponível agora</span>
+            <h2 id="roadmap-integracoes-disponiveis">Integrações</h2>
           </div>
 
           <ItemRoadmap
-            titulo="CRM da imobiliária"
-            desc="Sincronização bidirecional de imóveis e proprietários, evitando cadastro duplicado entre este painel e o sistema oficial da imobiliária. Prioridade alta por ser a fonte de verdade da empresa."
-          />
-          <ItemRoadmap
-            titulo="OLX Pro / Canal Pro"
-            desc="Importação automática de leads e status de anúncio (ativo, pausado, expirado) direto da plataforma, alimentando o pipeline sem digitação manual e cruzando com os dados de slot/demanda que você já acompanha no trabalho."
-          />
-          <ItemRoadmap
-            titulo="WhatsApp"
-            desc="Envio de lembretes de follow-up e retorno ao proprietário diretamente pelo WhatsApp, com modelos de mensagem por etapa do funil (ex: confirmação de visita, cobrança de documentação)."
+            titulo="WhatsApp conectado"
+            desc="Envia mensagens individuais, follow-ups em lote e mensagens agendadas. As respostas voltam para o histórico do imóvel, podem ser transcritas quando chegam em áudio e alimentam a fila diária de trabalho."
           />
           <ItemRoadmap
             titulo="Google Agenda"
-            desc="Sincronização de visitas e retornos cadastrados na Agenda deste painel com o Google Agenda, incluindo lembretes automáticos no celular."
+            desc="Espelha visitas, retornos e compromissos do painel no calendário conectado, mantendo os lembretes no celular. O painel continua sendo a fonte de verdade da agenda."
           />
-        </div>
+          <ItemRoadmap
+            titulo="Sistema Principal (Sophia)"
+            desc="Recebe autorização assinada, publicação, locação e pagamento de comissão. Cada evento atualiza o imóvel, preserva o histórico e avisa o corretor dentro do painel."
+          />
+        </section>
 
-        <div>
+        <section aria-labelledby="roadmap-ia-disponivel">
           <div className="roadmap-col-head">
-            <span className="roadmap-tag future">Assistente de IA (futuro)</span>
+            <span className="roadmap-tag available">Disponível agora</span>
+            <h2 id="roadmap-ia-disponivel">Inteligência artificial</h2>
           </div>
 
           <ItemRoadmap
-            titulo="Lembrar follow-ups"
-            desc="A assistente identificaria compromissos próximos do vencimento e enviaria um resumo diário priorizado, em vez de depender de revisão manual da agenda."
+            titulo="Assistente da carteira"
+            desc="Consulta imóveis, agenda, mensagens, follow-ups, métricas e marcos históricos em conversa. É somente leitura: responde com os dados atuais sem alterar ou enviar nada sozinho."
           />
           <ItemRoadmap
-            titulo="Identificar imóveis parados"
-            desc="Análise automática do tempo em cada status (já calculada hoje pelas regras deste painel) evoluindo para sugestões específicas: qual ação tomar, e não apenas o alerta de que o imóvel está parado."
+            titulo="Foco e resumo do dia"
+            desc="Cruza respostas pendentes, compromissos, imóveis sem movimento, follow-ups e metas para ordenar o trabalho. A IA explica a prioridade calculada pelo sistema."
           />
           <ItemRoadmap
-            titulo="Sugerir prioridades do dia"
-            desc="Cruzando agenda, imóveis estagnados e metas do mês, a assistente sugeriria por onde começar o dia para ter o maior impacto nos resultados."
+            titulo="Análises de desempenho"
+            desc="Interpreta os números do Dashboard, compara abordagens e sugere uma ação territorial a partir do Mapa, sempre usando indicadores calculados pelo próprio painel."
           />
           <ItemRoadmap
-            titulo="Gerar relatórios automaticamente"
-            desc="Os relatórios semanais e mensais já estruturados hoje passariam a ser redigidos em linguagem natural, com destaques automáticos do que mais mudou."
+            titulo="Apoio à comunicação"
+            desc="Extrai dados de anúncios colados, sugere roteiros, cria abordagens contextualizadas e classifica respostas do proprietário para organizar o próximo passo."
           />
-          <ItemRoadmap
-            titulo="Resumir produtividade"
-            desc="Um resumo em texto corrido do desempenho do período, complementando os números do dashboard com uma leitura qualitativa."
-          />
-          <ItemRoadmap
-            titulo="Sugestões de melhoria"
-            desc="Recomendações baseadas em padrões históricos — por exemplo, indicar o melhor dia da semana para agendar visitas com base na taxa de conversão observada."
-          />
-        </div>
+        </section>
       </div>
 
-      <div className="divider"></div>
+      <div className="divider" />
+
+      <section aria-labelledby="roadmap-proximas-etapas">
+        <div className="roadmap-col-head">
+          <span className="roadmap-tag future">Próximas etapas</span>
+          <h2 id="roadmap-proximas-etapas">Evoluções em avaliação</h2>
+        </div>
+
+        <div className="grid grid-3 roadmap-grid">
+          <ItemRoadmap
+            titulo="CRM bidirecional"
+            desc="Evoluir a entrada de eventos da Sophia para sincronizar também imóveis e proprietários, reduzindo cadastros repetidos entre os dois sistemas."
+          />
+          <ItemRoadmap
+            titulo="OLX Pro / Canal Pro"
+            desc="Importar leads e situação dos anúncios diretamente da plataforma, quando houver um contrato de integração confiável e mensurável."
+          />
+          <ItemRoadmap
+            titulo="Acompanhamento proativo"
+            desc="Entregar resumos e relatórios narrados no momento certo, sem depender de o corretor abrir uma tela e pedir a análise manualmente."
+          />
+        </div>
+      </section>
+
+      <div className="divider" />
       <div className="card">
-        <div className="card-title">Como pedir novas funcionalidades</div>
-        <p style={{ fontSize: "13px", color: "var(--text-dim)", lineHeight: 1.6 }}>
-          Sempre que quiser evoluir o sistema, descreva o que precisa e será avaliado como uma
-          melhoria de produto: o que resolve, para quem, e como se encaixa no fluxo diário de
-          angariação — antes de qualquer decisão de implementação.
+        <div className="card-title">Como priorizamos uma evolução</div>
+        <p className="roadmap-note">
+          Cada ideia é avaliada pelo problema que resolve, por quem será beneficiado e pelo impacto
+          no fluxo diário de angariação. Uma integração só entra quando a fonte dos dados, a
+          segurança e o comportamento em caso de falha estiverem claros.
         </p>
       </div>
     </>
