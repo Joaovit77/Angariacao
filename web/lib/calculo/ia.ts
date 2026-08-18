@@ -21,7 +21,7 @@ import type { KpisDashboard } from "./dashboard";
 import type { PlanoDoDia } from "./planoDia";
 import type { FocoInteligente } from "./focoDia";
 import { diasSemMovimento, isStale } from "./motor";
-import { ORIGENS_IMOVEL, TIPOS_IMOVEL } from "../constantes";
+import { MOTIVO_PERDA_IMOVEL_INDISPONIVEL, ORIGENS_IMOVEL, TIPOS_IMOVEL } from "../constantes";
 import { daysBetween, todayISO } from "../datas";
 import type { AgendaItem, Imovel } from "../tipos";
 import type { LeituraTerritorialMapa } from "./mapa";
@@ -586,6 +586,10 @@ export interface RespostaClassificada {
  * propriedade", 30/07/2026): é terminal e explícito, mas NÃO é "vendido" — ele
  * pode ter passado o imóvel adiante de mil formas, e a IA (corretamente)
  * recusava supor a venda, deixando um lead morto preso em "Novo contato".
+ * "Imóvel não está mais disponível" veio do LD-179 (17/08/2026): a frase
+ * encerra o imóvel sem ambiguidade, mas não revela QUAL dos motivos específicos
+ * aconteceu. O rótulo genérico registra exatamente o que foi dito em vez de
+ * obrigar a IA a inventar a causa ou deixar um lead encerrado no funil.
  */
 export const MOTIVOS_PERDA_IA = [
   "Imóvel já alugado por conta própria",
@@ -593,7 +597,48 @@ export const MOTIVOS_PERDA_IA = [
   "Imóvel já vendido",
   "Proprietário desistiu de alugar",
   "Não é mais o proprietário",
+  MOTIVO_PERDA_IMOVEL_INDISPONIVEL,
 ] as const;
+
+/**
+ * Valida o motivo de perda devolvido pela classificação e cobre a frase
+ * genérica que originou o LD-179.
+ *
+ * O fallback só atua quando a própria IA já chamou o desfecho de `recusou`:
+ * ele não tenta interpretar a conversa inteira. Também exige “não está MAIS
+ * disponível” (ou “já não está disponível”) referida ao imóvel e rejeita
+ * marcas de provisoriedade, para “ainda não está disponível” e “por enquanto”
+ * continuarem na carteira. Exigir o substantivo evita confundir, por exemplo,
+ * um horário que deixou de estar disponível com o imóvel inteiro.
+ */
+export function motivoPerdaSeguro(
+  classificacao: Pick<RespostaClassificada, "resultado" | "motivoPerda">,
+  texto: string,
+): string | null {
+  if (classificacao.resultado !== "recusou") return null;
+
+  if (
+    typeof classificacao.motivoPerda === "string" &&
+    (MOTIVOS_PERDA_IA as readonly string[]).includes(classificacao.motivoPerda)
+  ) {
+    return classificacao.motivoPerda;
+  }
+
+  const normalizado = texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+  const indisponibilidadeExplicita =
+    /\b(?:(?:o|a|este|esta|esse|essa) )?(?:imovel|casa|apartamento|apto|sobrado)\b.{0,80}\b(?:nao (?:esta|se encontra) mais|ja nao (?:esta|se encontra)) disponivel\b/.test(
+      normalizado,
+    );
+  const portaAberta =
+    /\b(?:ainda|agora|no momento|por enquanto|por ora|temporariamente|talvez)\b/.test(normalizado);
+
+  return indisponibilidadeExplicita && !portaAberta ? MOTIVO_PERDA_IMOVEL_INDISPONIVEL : null;
+}
 
 /** Esquema fechado: o `enum` é o que impede o modelo de inventar desfecho.
     Os valores espelham RESULTADOS_TENTATIVA — se um for acrescentado lá sem
@@ -687,6 +732,7 @@ Sobre "motivoPerda" — leia com atenção, porque preenchê-lo ENCERRA o imóve
 - "Imóvel já vendido" — a venda JÁ ESTÁ FECHADA, então não há locação a fazer.
 - "Proprietário desistiu de alugar" — desistiu de alugar (vai morar, deixar vazio, reformar por tempo indefinido) OU vai VENDER em vez de alugar, mesmo que a venda ainda não tenha fechado: "está em negociação para venda", "resolvi vender", "só estou vendendo". Enquanto ele não disser que a venda fechou, é este motivo e não "Imóvel já vendido" — o fato dele é a locação que não vai acontecer, não a venda que aconteceu.
 - "Não é mais o proprietário" — o imóvel deixou de ser dele ("não é mais de minha propriedade", "passei para outra pessoa", "não sou mais o dono"). Use SEM precisar saber se foi venda, herança ou transferência: basta ele dizer que o imóvel não é mais dele. Se ele disser expressamente que VENDEU, prefira "Imóvel já vendido".
+- "${MOTIVO_PERDA_IMOVEL_INDISPONIVEL}" — ele afirmou que ESTE imóvel “não está mais disponível”, mas não explicou se alugou, vendeu, desistiu ou escolheu outra imobiliária. Use este motivo genérico em vez de inventar a causa ou devolver null: a indisponibilidade definitiva está explícita, mesmo que a causa não esteja.
 - Devolva null quando houver qualquer porta aberta para ESTE imóvel: "por enquanto não", "ainda não aluguei", "estou vendo com outra imobiliária ainda", "depois eu vejo", "estou tentando vender, mas se não vender penso em alugar". Recusa mole NÃO é encerramento.
 - Atenção à negação: "ainda NÃO foi alugado" e "não quero alugar agora" são coisas diferentes. A primeira é null.
 - Se ele disser que ESTE imóvel já está resolvido e mencionar OUTRO imóvel que tem ("esse já aluguei, mas tenho outro na mesma rua"), encerre este mesmo assim: o outro é um cadastro novo, não um motivo para manter este aberto. Cite o outro imóvel no resumo, para o corretor saber que existe uma oportunidade nova ali.

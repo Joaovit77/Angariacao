@@ -1174,7 +1174,10 @@ Regras ao mexer nela:
   segura isso é o motivo sair de uma lista fechada e **menor** que `MOTIVOS_PERDA`
   (`MOTIVOS_PERDA_IA`, sem os que exigem julgamento), só valer junto de `recusou`, e uma segunda
   nota explicar na tela por que o status mudou — senão o imóvel sairia da carteira e a única
-  explicação estaria no log do servidor. **Nunca vira "Locado":** "já aluguei por conta própria" é
+  explicação estaria no log do servidor. “O imóvel não está mais disponível” também encerra, mas
+  com um motivo genérico próprio: a frase prova o encerramento, não se ele foi alugado, vendido ou
+  retirado. Marcas de provisoriedade (“por enquanto”, “no momento”, “talvez”) mantêm o imóvel aberto.
+  **Nunca vira "Locado":** "já aluguei por conta própria" é
   PERDA, e marcá-lo como ganho somaria à conversão, à comissão e à meta do mês um negócio que não
   existiu.
 

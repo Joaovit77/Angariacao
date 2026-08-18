@@ -224,8 +224,19 @@ export const MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO = "Número não encontrado";
 export const MOTIVO_PERDA_LOCADO_FORA =
   "Angariado, mas locado por outra imobiliária ou pelo proprietário";
 
+/**
+ * Encerramento explícito em que o proprietário não informa a causa.
+ *
+ * “O imóvel não está mais disponível” basta para tirar o lead da carteira,
+ * mas não autoriza concluir que ele foi alugado, vendido ou entregue a outra
+ * imobiliária. Guardar a frase como motivo próprio preserva o fato sem
+ * transformar uma inferência em dado do funil.
+ */
+export const MOTIVO_PERDA_IMOVEL_INDISPONIVEL = "Imóvel não está mais disponível";
+
 export const MOTIVOS_PERDA = [
-  "Imóvel já vendido", "Imóvel já alugado por conta própria", "Proprietário desistiu de alugar",
+  "Imóvel já vendido", "Imóvel já alugado por conta própria", MOTIVO_PERDA_IMOVEL_INDISPONIVEL,
+  "Proprietário desistiu de alugar",
   "Não é mais o proprietário", "Valor pedido incompatível com mercado", "Optou por outra imobiliária",
   MOTIVO_PERDA_LOCADO_FORA,
   "Perda de contato definitiva", MOTIVO_PERDA_NUMERO_NAO_ENCONTRADO, "Outro",

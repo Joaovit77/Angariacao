@@ -19,7 +19,7 @@
 import OpenAI from "openai";
 import {
   ESQUEMA_CLASSIFICACAO,
-  MOTIVOS_PERDA_IA,
+  motivoPerdaSeguro,
   promptClassificarResposta,
   type RespostaClassificada,
 } from "../calculo/ia";
@@ -124,13 +124,10 @@ export async function classificarResposta(
     // Encerramento só vale junto de uma recusa. O modelo às vezes preenche o
     // motivo e classifica como "respondeu" ou "vai-retornar" — e aí as duas
     // leituras se contradizem. Diante da contradição, fica a menos destrutiva:
-    // o imóvel continua na carteira e o corretor decide.
-    const motivo =
-      typeof dados.motivoPerda === "string" &&
-      (MOTIVOS_PERDA_IA as readonly string[]).includes(dados.motivoPerda) &&
-      dados.resultado === "recusou"
-        ? dados.motivoPerda
-        : null;
+    // o imóvel continua na carteira e o corretor decide. O helper também cobre
+    // o caso LD-179: recusa + "o imóvel não está mais disponível" ganha o
+    // motivo genérico sem inventar se houve aluguel, venda ou desistência.
+    const motivo = motivoPerdaSeguro(dados, texto);
 
     // Hora sem data não agenda nada ("às 10h" de que dia?), e sozinha só
     // poluiria a sugestão — por isso depende da data ter passado no filtro.

@@ -6,16 +6,19 @@
    O caso que originou isto é o LD-110 (03/08/2026): "Boa tarde" / "Por hora,
    não tenho interesse" / "Já está em negociação para venda" em três mensagens.
    Nenhuma encerra o imóvel sozinha, e o imóvel ficou em "Novo contato" com a
-   recusa escrita no histórico. */
+   recusa escrita no histórico. Também prende o LD-179 (17/08/2026), em que
+   “o imóvel não está mais disponível” virou recusa, mas ficou sem motivo e não
+   acionou o encerramento automático. */
 import { describe, expect, it } from "vitest";
 import {
   ESQUEMA_CLASSIFICACAO,
   MAX_MENSAGENS_CONTEXTO,
   MAX_TEXTO_CLASSIFICACAO,
   MOTIVOS_PERDA_IA,
+  motivoPerdaSeguro,
   promptClassificarResposta,
 } from "@/lib/calculo/ia";
-import { MOTIVOS_PERDA } from "@/lib/constantes";
+import { MOTIVO_PERDA_IMOVEL_INDISPONIVEL, MOTIVOS_PERDA } from "@/lib/constantes";
 
 const HOJE = "2026-08-03";
 
@@ -79,6 +82,41 @@ describe("promptClassificarResposta", () => {
     const prompt = promptClassificarResposta("qualquer coisa", HOJE);
     expect(prompt).toContain("se não vender penso em alugar");
     expect(prompt).toContain("Na dúvida, null.");
+  });
+
+  it("manda encerrar indisponibilidade definitiva sem inventar a causa — o caso LD-179", () => {
+    const prompt = promptClassificarResposta("O imóvel não está mais disponível.", HOJE);
+    expect(prompt).toContain(MOTIVO_PERDA_IMOVEL_INDISPONIVEL);
+    expect(prompt).toContain("Use este motivo genérico em vez de inventar a causa");
+  });
+});
+
+describe("motivoPerdaSeguro", () => {
+  it("transforma a recusa explícita do LD-179 no motivo genérico", () => {
+    expect(
+      motivoPerdaSeguro(
+        { resultado: "recusou", motivoPerda: null },
+        "Bom dia. O imóvel não está mais disponível. Agradeço o interesse.",
+      ),
+    ).toBe(MOTIVO_PERDA_IMOVEL_INDISPONIVEL);
+  });
+
+  it("preserva um motivo específico válido devolvido pela IA", () => {
+    expect(
+      motivoPerdaSeguro(
+        { resultado: "recusou", motivoPerda: "Imóvel já vendido" },
+        "O imóvel não está mais disponível.",
+      ),
+    ).toBe("Imóvel já vendido");
+  });
+
+  it.each([
+    ["respondeu", "O imóvel não está mais disponível."],
+    ["recusou", "O imóvel não está mais disponível por enquanto."],
+    ["recusou", "O imóvel ainda não está disponível."],
+    ["recusou", "Esse horário não está mais disponível."],
+  ])("não encerra quando o desfecho ou a frase deixam dúvida (%s)", (resultado, texto) => {
+    expect(motivoPerdaSeguro({ resultado, motivoPerda: null }, texto)).toBeNull();
   });
 });
 
