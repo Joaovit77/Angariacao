@@ -567,6 +567,82 @@ create policy "delete_own_agenda" on agenda
 
 create index if not exists agenda_user_id_idx on agenda(user_id);
 
+-- Excluir o imóvel, seus compromissos e a possibilidade de disparos futuros
+-- é uma única transação. A função é SECURITY DEFINER somente para poder
+-- serializar com uma mensagem que o worker já marcou como `processando`;
+-- o dono nunca vem do cliente e todas as escritas repetem o user_id validado.
+create or replace function excluir_imovel_com_dependencias(p_imovel_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  usuario_atual uuid := (select auth.uid());
+  dono_imovel uuid;
+  mensagens_excluidas integer := 0;
+  compromissos_excluidos integer := 0;
+begin
+  if usuario_atual is null then
+    raise exception 'Sessão inválida.' using errcode = '42501';
+  end if;
+
+  select i.user_id
+    into dono_imovel
+    from public.imoveis i
+   where i.id = p_imovel_id
+   for update;
+
+  if dono_imovel is null or dono_imovel <> usuario_atual then
+    raise exception 'Imóvel não encontrado.' using errcode = 'P0002';
+  end if;
+
+  -- Serializa a exclusão com o claim do worker. Se ele ganhou a corrida e
+  -- já iniciou um envio, falhar a exclusão inteira é a única resposta que
+  -- garante que ela nunca conclua enquanto o efeito externo ainda pode sair.
+  perform 1
+    from public.mensagens_agendadas
+   where imovel_id = p_imovel_id
+     and user_id = usuario_atual
+     and status in ('agendada', 'processando')
+   for update;
+
+  if exists (
+    select 1
+      from public.mensagens_agendadas
+     where imovel_id = p_imovel_id
+       and user_id = usuario_atual
+       and status = 'processando'
+  ) then
+    raise exception 'Há uma mensagem em processamento. Aguarde o envio terminar e tente novamente.'
+      using errcode = '55000';
+  end if;
+
+  delete from public.mensagens_agendadas
+   where imovel_id = p_imovel_id
+     and user_id = usuario_atual
+     and status = 'agendada';
+  get diagnostics mensagens_excluidas = row_count;
+
+  delete from public.agenda
+   where imovel_id = p_imovel_id
+     and user_id = usuario_atual;
+  get diagnostics compromissos_excluidos = row_count;
+
+  delete from public.imoveis
+   where id = p_imovel_id
+     and user_id = usuario_atual;
+
+  return jsonb_build_object(
+    'mensagens_excluidas', mensagens_excluidas,
+    'compromissos_excluidos', compromissos_excluidos
+  );
+end;
+$$;
+
+revoke all on function excluir_imovel_com_dependencias(uuid) from public, anon, authenticated, service_role;
+grant execute on function excluir_imovel_com_dependencias(uuid) to authenticated;
+
 -- ------------------------------------------------------------
 -- ABORDAGENS (catálogo de roteiros de captação do usuário)
 -- ------------------------------------------------------------
@@ -1467,3 +1543,39 @@ grant select, insert, update on central_anuncios_visualizados to authenticated;
 
 create index if not exists idx_central_anuncios_visualizados_user_data
   on central_anuncios_visualizados (user_id, visualizado_em desc);
+
+-- ------------------------------------------------------------
+-- PRIVILÉGIOS EXPLÍCITOS DA DATA API
+--
+-- Projetos novos não podem depender dos grants implícitos/históricos do
+-- Supabase. RLS continua sendo a segunda barreira e restringe cada linha;
+-- estes grants dizem somente quais operações cada papel pode tentar.
+-- ------------------------------------------------------------
+revoke all on table
+  imoveis, mensagens_agendadas, metas, agenda, abordagens, user_config,
+  ia_permissoes, whatsapp_instancias, google_contas, admins, ia_uso,
+  log_eventos, aceites_termos, protocolos, radar_buscas, radar_anuncios,
+  central_anuncios_visualizados
+from public, anon, authenticated, service_role;
+
+grant select, insert, update, delete on table imoveis to authenticated;
+grant select, insert, update on table mensagens_agendadas to authenticated;
+grant select, insert, update, delete on table metas to authenticated;
+grant select, insert, update, delete on table agenda to authenticated;
+grant select, insert, update, delete on table abordagens to authenticated;
+grant select, insert, update on table user_config to authenticated;
+grant select on table ia_permissoes to authenticated;
+grant select, insert on table aceites_termos to authenticated;
+grant select, insert, update, delete on table protocolos to authenticated;
+grant select, insert, update, delete on table radar_buscas to authenticated;
+grant select, insert, update, delete on table radar_anuncios to authenticated;
+grant select, insert, update on table central_anuncios_visualizados to authenticated;
+
+-- Somente código server-side possui a service role. Não concedemos
+-- TRUNCATE, REFERENCES ou TRIGGER, que o aplicativo não utiliza.
+grant select, insert, update, delete on table
+  imoveis, mensagens_agendadas, metas, agenda, abordagens, user_config,
+  ia_permissoes, whatsapp_instancias, google_contas, admins, ia_uso,
+  log_eventos, aceites_termos, protocolos, radar_buscas, radar_anuncios,
+  central_anuncios_visualizados
+to service_role;

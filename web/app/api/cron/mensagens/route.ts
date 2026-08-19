@@ -28,6 +28,16 @@ export async function GET(request: Request) {
       .eq("user_id", item.user_id).maybeSingle();
     try {
       if (!instancia?.instancia || !instancia?.token) throw new Error("sem-instancia");
+      // O lote foi reclamado antes do loop. Nesse intervalo o imóvel pode ter
+      // sido excluído e a transação ter removido esta mensagem. Relê-la
+      // imediatamente antes do efeito externo evita usar o item em memória.
+      const { data: mensagemAtual } = await admin.from("mensagens_agendadas")
+        .select("status, imovel_id")
+        .eq("id", item.id)
+        .eq("user_id", item.user_id)
+        .maybeSingle();
+      if (mensagemAtual?.status !== "processando" || (item.imovel_id && mensagemAtual.imovel_id !== item.imovel_id)) continue;
+
       const envio = await enviarMensagemAgendada(item.telefone, item.mensagem,
         { serverUrl, instancia: instancia.instancia as string, token: instancia.token as string });
       const agora = agoraISOString();

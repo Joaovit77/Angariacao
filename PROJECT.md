@@ -1001,6 +1001,11 @@ Regras permanentes:
   service role, busca a instância do próprio `user_id`, envia sequencialmente e persiste a saída no
   histórico bidirecional;
 - falha de persistência após envio não recoloca a mensagem na fila, evitando duplicidade real.
+- excluir um imóvel chama `excluir_imovel_com_dependencias`: na mesma transação bloqueia a fila,
+  remove mensagens `agendada`, exclui a agenda vinculada e só então exclui o imóvel. Se um envio
+  já está `processando`, a exclusão inteira falha para nunca concluir em paralelo ao efeito externo.
+  Mensagens concluídas permanecem como histórico, com a fotografia do destinatário; o worker ainda
+  relê o estado imediatamente antes do envio para descartar um item removido do lote em memória.
 
 Configuração e verificação do job ficam em [DEPLOY.md](DEPLOY.md); não presuma que aplicar o schema
 sozinho cadastrou URL e segredo no Vault.
@@ -1010,7 +1015,10 @@ sozinho cadastrou URL e segredo no Vault.
 Supabase (Postgres + Auth) é o backend dos **dados**. O CRUD normal do painel usa o cliente
 autenticado diretamente; rotas participam quando há secret, integração externa ou trabalho
 privilegiado. O isolamento do acesso de usuário é definido pelas políticas RLS
-(`auth.uid() = user_id`) em `supabase-schema.sql`. Ao adicionar dado user-scoped, ele precisa de políticas RLS no mesmo padrão,
+(`auth.uid() = user_id`) em `supabase-schema.sql`. O schema também declara os grants da Data API:
+`anon` não acessa tabelas; `authenticated` recebe apenas as operações usadas pelo browser; tabelas
+de credenciais, administração e auditoria ficam exclusivas da service role no servidor. Grants não
+substituem RLS. Ao adicionar dado user-scoped, ele precisa de políticas RLS no mesmo padrão,
 tipo explícito e tradução consistente entre banco e domínio — nos dados centrais, pelo par
 `toDb*`/`fromDb*` em `web/lib/persistencia/mapeadores.ts`; features isoladas podem ter adaptadores
 tipados próprios. Tabelas que guardam secrets (`whatsapp_instancias`, `google_contas`, `admins`) não

@@ -888,21 +888,49 @@ export async function excluirProtocolo(id: string): Promise<boolean> {
 
 export async function excluirImovel(id: string): Promise<boolean> {
   const supabase = getSupabase();
-  const { imoveis, agenda } = useAppStore.getState();
+  const { imoveis } = useAppStore.getState();
   const imovel = imoveis.find((i) => i.id === id);
   if (!imovel) return false;
   if (!confirm(`Excluir o imóvel "${imovel.codigo || imovel.endereco}"? Essa ação não pode ser desfeita.`)) return false;
 
-  const { error } = await supabase.from("imoveis").delete().eq("id", id);
+  // A rota do Google precisa ler o google_event_id enquanto o compromisso
+  // ainda existe. Guardamos quais remoções deram certo para recriá-las se a
+  // transação local falhar; assim os dois lados não ficam pela metade. A
+  // lista vem do banco, não do store, que pode estar anterior a um lembrete
+  // criado no servidor.
+  const { data: compromissos, error: erroAgenda } = await supabase
+    .from("agenda")
+    .select("id")
+    .eq("imovel_id", id);
+  if (erroAgenda) {
+    toast("Não foi possível consultar os compromissos: " + erroAgenda.message, "error");
+    return false;
+  }
+  const resultadosGoogle = await Promise.all(
+    (compromissos || []).map(async (item) => ({ id: item.id, resultado: await sincronizarCompromisso(item.id, "remover") })),
+  );
+  const removidosDoGoogle = resultadosGoogle.filter(({ resultado }) => resultado.ok).map(({ id: agendaId }) => agendaId);
+
+  const { error } = await supabase.rpc("excluir_imovel_com_dependencias", { p_imovel_id: id });
   if (error) {
+    // A linha da agenda continua no banco porque a função é transacional.
+    // A sincronização normal recria o evento removido no Google.
+    await Promise.all(removidosDoGoogle.map((agendaId) => sincronizarCompromisso(agendaId)));
     toast("Não foi possível excluir: " + error.message, "error");
     return false;
   }
-  await supabase.from("agenda").delete().eq("imovel_id", id);
 
-  useAppStore.getState().setImoveis(imoveis.filter((i) => i.id !== id));
-  useAppStore.getState().setAgenda(agenda.filter((a) => a.imovelId !== id));
-  toast("Imóvel excluído.");
+  // Leia novamente para não descartar alterações que tenham chegado ao
+  // store enquanto as integrações externas estavam sendo resolvidas.
+  const estadoAtual = useAppStore.getState();
+  estadoAtual.setImoveis(estadoAtual.imoveis.filter((i) => i.id !== id));
+  estadoAtual.setAgenda(estadoAtual.agenda.filter((a) => a.imovelId !== id));
+  const falhasGoogle = resultadosGoogle.filter(({ resultado }) =>
+    !resultado.ok && resultado.falha !== "sem-conexao-google" && resultado.falha !== "nao-configurado",
+  ).length;
+  toast(falhasGoogle > 0
+    ? `Imóvel excluído. ${falhasGoogle} evento(s) não puderam ser removidos do Google.`
+    : "Imóvel excluído.");
   return true;
 }
 
