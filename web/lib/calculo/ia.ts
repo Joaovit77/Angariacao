@@ -715,6 +715,7 @@ O que cada desfecho significa:
 - "vai-retornar" — ele não decidiu agora e vai pensar, consultar alguém ou responder depois. É o caso de "vou ver e te falo", "preciso conversar com minha esposa", "me liga semana que vem".
 - "recusou" — não tem interesse, já resolveu por outro caminho, ou não quer alugar. Recusa educada continua sendo recusa.
 - "outro-contato" — quem respondeu NÃO é o proprietário, mas tem ligação com o imóvel ou com o dono: é parente, cônjuge, filho, inquilino ou conhecido. Use sempre que a pessoa souber de quem é o imóvel, mesmo que não passe o contato. Exemplos: "o imóvel é da minha mãe", "sou a esposa do fulano, a casa é da irmã dele", "meu pai é o dono, o telefone dele é...".
+- Se a pessoa disser que ELA PRÓPRIA é responsável pelo imóvel ("sou a responsável", "eu cuido do imóvel", "sou a proprietária"), NÃO use "outro-contato": ela já é a pessoa certa, ainda que não seja a proprietária formal. Nesse caso use "respondeu", salvo se outro desfecho mais específico tiver sido combinado.
 - "numero-errado" — a mensagem chegou em quem NÃO TEM NADA A VER com o imóvel: não conhece o endereço, não sabe do que se trata, diz que é engano. Não use quando a pessoa conhece o imóvel ou o dono — isso é "outro-contato".
 - "respondeu" — reagiu, mas não se encaixa em nenhum acima (uma dúvida, um "oi", um pedido de informação).
 
@@ -722,6 +723,7 @@ Regras:
 - Na dúvida entre dois, escolha o MENOS otimista. Marcar "agendou" o que foi só interesse infla a medição de fechamento do corretor e ele passa a confiar num número errado.
 - "retomarEm": só preencha se a mensagem indicar prazo, mesmo que vago ("semana que vem", "depois do dia 10", "mês que vem"). Converta para uma data real a partir de hoje. Se ele não deu prazo, devolva null — não invente um. Esta data VIRA UM COMPROMISSO NA AGENDA do corretor, então uma data errada o faz ligar no dia errado: na dúvida entre duas, devolva null.
 - "horaRetomar": só quando a mensagem marcar horário ("às 10h", "10:30", "de manhã" NÃO é horário — é período, devolva null). Formato HH:MM em 24 horas: "3 da tarde" é "15:00". Sem hora explícita, null.
+- Quando a pessoa dividir o combinado em mensagens curtas (por exemplo, antes escreveu "pode ser quinta" e agora escreveu "às 10h"), use o conjunto recente para devolver a MESMA data e a hora do compromisso. As anteriores não autorizam reclassificar um assunto velho, mas completam data e hora de um único combinado fragmentado.
 - "resumo": uma linha curta, factual, sobre o que ELE disse. Nada de conselho ao corretor e nada de repetir a mensagem inteira. Exemplo: "Vai avaliar com a esposa e retorna na semana que vem."
 - Não deduza nada que não esteja na mensagem.
 

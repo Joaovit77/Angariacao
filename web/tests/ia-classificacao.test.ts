@@ -84,6 +84,18 @@ describe("promptClassificarResposta", () => {
     expect(prompt).toContain("Na dúvida, null.");
   });
 
+  it("não trata a própria responsável como outro contato — o caso LD-247", () => {
+    const prompt = promptClassificarResposta("Tenho sim", HOJE, ["Bom dia, sou a responsável"]);
+    expect(prompt).toContain("ELA PRÓPRIA é responsável");
+    expect(prompt).toContain('NÃO use "outro-contato"');
+  });
+
+  it("manda juntar data e hora quando o agendamento veio em mensagens separadas", () => {
+    const prompt = promptClassificarResposta("Às 10h", HOJE, ["Pode ser quinta"]);
+    expect(prompt).toContain("dividir o combinado em mensagens curtas");
+    expect(prompt).toContain("MESMA data e a hora");
+  });
+
   it("manda encerrar indisponibilidade definitiva sem inventar a causa — o caso LD-179", () => {
     const prompt = promptClassificarResposta("O imóvel não está mais disponível.", HOJE);
     expect(prompt).toContain(MOTIVO_PERDA_IMOVEL_INDISPONIVEL);

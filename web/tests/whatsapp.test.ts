@@ -582,6 +582,15 @@ describe("sugestaoRespostaModelo — outro contato", () => {
     expect(sugestaoRespostaModelo(comSugestao("numero-errado"))).toBe("resposta-engano");
   });
 
+  it("suprime a sugestão antiga quando a conversa diz que ela é a responsável — LD-247", () => {
+    const imovel = comSugestao("outro-contato");
+    imovel.notas = [
+      { id: "wa:1", data: "2026-08-20T09:12", texto: "Resposta no WhatsApp: Bom dia, sou a responsável" },
+      { id: "wa:2", data: "2026-08-20T09:21", texto: "Resposta no WhatsApp: Tenho sim" },
+    ];
+    expect(sugestaoRespostaModelo(imovel)).toBeNull();
+  });
+
   it("o texto agradece e pede o contato, sem repetir endereço nem nome", () => {
     const texto = mensagemWhatsapp("resposta-outro-contato", comSugestao("outro-contato"));
     expect(texto).toMatch(/obrigado/i);

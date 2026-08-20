@@ -11,6 +11,8 @@
 import type { Imovel, Tentativa } from "../tipos";
 import { mensagemRenovacaoAngariacao, telefoneWhatsapp } from "./agenda";
 import { fmtDate, fmtDiaSemana } from "../formatadores";
+import { corpoDaResposta, ehNotaDeResposta } from "./notas";
+import { interlocutorSeDeclarouResponsavel } from "./webhookWhatsapp";
 
 export interface ModeloWhatsapp {
   id: string;
@@ -354,7 +356,18 @@ export function sugestaoRespostaModelo(imovel: Imovel): string | null {
     // app pedia desculpas a quem tinha acabado de entregar o caminho para o
     // proprietário (ver `outro-contato` em constantes.ts).
     case "outro-contato":
-      return "resposta-outro-contato";
+      // Defesa também na leitura: corrige imediatamente classificações antigas
+      // já persistidas, como "sou a responsável" / "tenho sim" da LD-247.
+      // Sem isto, só mensagens recebidas depois do deploy seriam corrigidas.
+      return interlocutorSeDeclarouResponsavel(
+        (imovel.notas || [])
+          .filter(ehNotaDeResposta)
+          .sort((a, b) => (a.data || "").localeCompare(b.data || ""))
+          .slice(-3)
+          .map((nota) => corpoDaResposta(nota.texto)),
+      )
+        ? null
+        : "resposta-outro-contato";
     case "numero-errado":
       return "resposta-engano";
     default:

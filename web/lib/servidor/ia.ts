@@ -23,6 +23,7 @@ import {
   promptClassificarResposta,
   type RespostaClassificada,
 } from "../calculo/ia";
+import { horaExplicitaDaMensagem, interlocutorSeDeclarouResponsavel } from "../calculo/webhookWhatsapp";
 import { RESULTADOS_TENTATIVA, type ResultadoTentativa } from "../constantes";
 import { registrarUsoDaResposta } from "./registro";
 import {
@@ -127,15 +128,20 @@ export async function classificarResposta(
     // o imóvel continua na carteira e o corretor decide. O helper também cobre
     // o caso LD-179: recusa + "o imóvel não está mais disponível" ganha o
     // motivo genérico sem inventar se houve aluguel, venda ou desistência.
-    const motivo = motivoPerdaSeguro(dados, texto);
+    const resultado =
+      dados.resultado === "outro-contato" && interlocutorSeDeclarouResponsavel([...anteriores, texto])
+        ? "respondeu"
+        : dados.resultado;
+    const motivo = motivoPerdaSeguro({ ...dados, resultado }, texto);
 
     // Hora sem data não agenda nada ("às 10h" de que dia?), e sozinha só
     // poluiria a sugestão — por isso depende da data ter passado no filtro.
     const data = dataValida(dados.retomarEm, hoje);
+    const horaDoTexto = horaExplicitaDaMensagem(texto);
     return {
-      resultado: dados.resultado as ResultadoTentativa,
+      resultado: resultado as ResultadoTentativa,
       retomarEm: data,
-      horaRetomar: data ? horaValida(dados.horaRetomar) : null,
+      horaRetomar: data ? horaDoTexto || horaValida(dados.horaRetomar) : null,
       resumo: typeof dados.resumo === "string" ? dados.resumo.trim().slice(0, 300) : "",
       motivoPerda: motivo,
     };

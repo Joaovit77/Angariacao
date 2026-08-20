@@ -71,6 +71,7 @@ import {
   compromissoDaResposta,
   encerramentoPorResposta,
   fecharTentativaPendente,
+  horaParaAtualizarCompromisso,
   interpretarEvento,
   notaDaResposta,
   notaDoEncerramento,
@@ -567,7 +568,7 @@ export async function POST(
     // marcam o mesmo dia — um compromisso pendente por imóvel/dia basta.
     const { data: jaTem, error: erroBusca } = await supabase
       .from("agenda")
-      .select("id")
+      .select("id, hora")
       .eq("user_id", userId)
       .eq("imovel_id", imovel.id)
       .eq("date", compromisso.data)
@@ -577,7 +578,31 @@ export async function POST(
     if (erroBusca) {
       console.error("Webhook do WhatsApp: falha ao checar a agenda:", erroBusca.message);
     } else if (jaTem && jaTem.length > 0) {
-      console.log(`Webhook do WhatsApp: imóvel ${rotulo} já tem compromisso em ${compromisso.data}.`);
+      const existente = jaTem[0] as { id: string; hora: string | null };
+      const horaNova = horaParaAtualizarCompromisso(existente.hora, compromisso.hora);
+      if (!horaNova) {
+        console.log(`Webhook do WhatsApp: imóvel ${rotulo} já tem compromisso em ${compromisso.data}.`);
+      } else {
+        // A service role ignora RLS: id, user_id E imóvel ficam presos à linha
+        // descoberta dentro desta mesma carteira antes de qualquer atualização.
+        const { error: erroHora } = await supabase
+          .from("agenda")
+          .update({ hora: horaNova })
+          .eq("id", existente.id)
+          .eq("user_id", userId)
+          .eq("imovel_id", imovel.id);
+        if (erroHora) {
+          console.error("Webhook do WhatsApp: falha ao completar o horário da visita:", erroHora.message);
+        } else {
+          console.log(
+            `Webhook do WhatsApp: horário do compromisso atualizado — ${compromisso.data} às ${horaNova} ` +
+              `para o imóvel ${rotulo}.`,
+          );
+          // Se o evento já era de dia inteiro no Google, o mesmo espelho faz
+          // PATCH e o transforma em compromisso com hora.
+          espelharCompromissoDoWebhook(supabase, userId, existente.id, rotulo);
+        }
+      }
     } else {
       const agendaId = crypto.randomUUID();
       const { error: erroAgenda } = await supabase.from("agenda").insert({

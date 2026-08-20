@@ -11,6 +11,9 @@ import {
   compromissoDaResposta,
   fecharTentativaPendente,
   interpretarEvento,
+  horaExplicitaDaMensagem,
+  horaParaAtualizarCompromisso,
+  interlocutorSeDeclarouResponsavel,
   encerramentoPorResposta,
   notaDaResposta,
   notaDoEncerramento,
@@ -531,5 +534,37 @@ describe("compromissoDaResposta — a agenda inteligente", () => {
   it("a nota sempre diz de onde veio — compromisso órfão o corretor apaga", () => {
     const c = compromissoDaResposta({ resultado: "agendou", retomarEm: "2026-08-02", resumo: "" }, "LD-5", HOJE);
     expect(c?.notas).toContain("resposta do proprietário no WhatsApp");
+  });
+});
+
+describe("contexto fragmentado da resposta", () => {
+  it("reconhece que a própria pessoa é responsável — LD-247", () => {
+    expect(interlocutorSeDeclarouResponsavel(["Bom dia, sou a responsável", "Tenho sim"])).toBe(true);
+    expect(interlocutorSeDeclarouResponsavel(["Eu cuido do imóvel"])).toBe(true);
+  });
+
+  it("não confunde parente do dono nem uma negação com o responsável", () => {
+    expect(interlocutorSeDeclarouResponsavel(["Meu pai é o dono"])).toBe(false);
+    expect(interlocutorSeDeclarouResponsavel(["Não sou a responsável"])).toBe(false);
+    expect(interlocutorSeDeclarouResponsavel(["Eu era a responsável", "Agora minha mãe é a responsável"])).toBe(
+      false,
+    );
+  });
+
+  it("preserva uma hora explícita que a IA tenha omitido", () => {
+    expect(horaExplicitaDaMensagem("Pode ser às 9h30")).toBe("09:30");
+    expect(horaExplicitaDaMensagem("Combinado pelas 14")).toBe("14:00");
+    expect(horaExplicitaDaMensagem("de manhã")).toBeNull();
+  });
+
+  it("não escolhe por regex quando há duas horas diferentes", () => {
+    expect(horaExplicitaDaMensagem("Não às 10h; pode ser às 11h")).toBeNull();
+  });
+
+  it("completa ou corrige a hora do compromisso já criado no mesmo dia", () => {
+    expect(horaParaAtualizarCompromisso(null, "10:00")).toBe("10:00");
+    expect(horaParaAtualizarCompromisso("09:00", "10:00")).toBe("10:00");
+    expect(horaParaAtualizarCompromisso("10:00", "10:00")).toBeNull();
+    expect(horaParaAtualizarCompromisso(null, null)).toBeNull();
   });
 });

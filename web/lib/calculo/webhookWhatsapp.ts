@@ -440,6 +440,83 @@ export interface CompromissoAutomatico {
 }
 
 /**
+ * Reconhece quando quem está do outro lado se apresentou como a própria pessoa
+ * responsável pelo imóvel. Isso é uma trava determinística para a classificação
+ * "outro-contato": pedir o telefone do dono depois de "sou a responsável" é
+ * contradizer o que acabou de ser dito.
+ *
+ * Só as três mensagens mais recentes entram. Uma apresentação antiga não pode
+ * vencer para sempre uma mudança posterior de responsável, e rajadas do
+ * WhatsApp normalmente dividem a mesma fala em dois ou três eventos.
+ */
+export function interlocutorSeDeclarouResponsavel(mensagens: string[]): boolean {
+  const recentes = mensagens
+    .map((mensagem) => (mensagem || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase())
+    .filter(Boolean)
+    .slice(-3);
+
+  let declaracaoMaisRecente = false;
+  for (const mensagem of recentes) {
+    const negouSerResponsavel =
+      /\bnao\s+(?:sou|cuido|tomo conta)\b/.test(mensagem) ||
+      /\b(?:responsavel|proprietari[oa]|don[oa])\s+nao\s+sou\s+eu\b/.test(mensagem);
+    const indicouTerceiro =
+      /\b(?:meu|minha)\s+\w+(?:\s+\w+){0,2}\s+(?:e|eh)\s+(?:(?:o|a)\s+)?(?:responsavel|proprietari[oa]|don[oa])\b/.test(
+        mensagem,
+      ) ||
+      /\b(?:(?:o|a)\s+)?(?:responsavel|proprietari[oa]|don[oa])\s+(?:e|eh)\s+(?:ele|ela|meu|minha)\b/.test(
+        mensagem,
+      );
+    const declarouAPropriaResponsabilidade =
+      /\b(?:eu\s+)?sou\s+(?:(?:a|o)\s+)?(?:responsavel|proprietari[oa]|don[oa])\b/.test(mensagem) ||
+      /\b(?:eu\s+)?(?:cuido|tomo conta)\s+(?:do|da|desse|dessa|deste|desta)\s+(?:imovel|casa|apartamento|apto|sobrado)\b/.test(
+        mensagem,
+      ) ||
+      /\bquem\s+(?:cuida|toma conta)\s+(?:sou eu|e eu)\b/.test(mensagem);
+
+    if (negouSerResponsavel || indicouTerceiro) declaracaoMaisRecente = false;
+    else if (declarouAPropriaResponsabilidade) declaracaoMaisRecente = true;
+  }
+  return declaracaoMaisRecente;
+}
+
+/**
+ * Extrai uma hora explícita e inequívoca da mensagem atual. A IA continua
+ * responsável por entender a data e o compromisso; este helper apenas impede
+ * que um "às 14h" claro desapareça do campo `horaRetomar`.
+ *
+ * Com duas horas diferentes, devolve null: "não às 10h, pode às 11h" exige
+ * interpretação, e escolher a primeira ou a última por regex seria arriscado.
+ */
+export function horaExplicitaDaMensagem(texto: string): string | null {
+  const normalizado = (texto || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  const encontradas: string[] = [];
+
+  for (const m of normalizado.matchAll(/\b([01]?\d|2[0-3])(?:h|:)([0-5]\d)?\b/g)) {
+    encontradas.push(`${String(Number(m[1])).padStart(2, "0")}:${m[2] || "00"}`);
+  }
+  for (const m of normalizado.matchAll(/\b(?:as|pelas)\s+([01]?\d|2[0-3])\b(?!\s*(?:h|:))/g)) {
+    encontradas.push(`${String(Number(m[1])).padStart(2, "0")}:00`);
+  }
+
+  const unicas = Array.from(new Set(encontradas));
+  return unicas.length === 1 ? unicas[0] : null;
+}
+
+/** Hora nova que deve completar/corrigir um compromisso já criado no dia. */
+export function horaParaAtualizarCompromisso(
+  horaAtual: string | null | undefined,
+  horaNova: string | null | undefined,
+): string | null {
+  const nova = (horaNova || "").trim();
+  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(nova)) return null;
+  return (horaAtual || "").trim() === nova ? null : nova;
+}
+
+/**
  * O compromisso que esta resposta marca, ou `null` quando ela não marca nada.
  *
  * `rotulo` é o código ou endereço do imóvel, só para o título ser legível na
