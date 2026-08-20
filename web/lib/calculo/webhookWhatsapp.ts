@@ -495,8 +495,20 @@ export function horaExplicitaDaMensagem(texto: string): string | null {
     .toLowerCase();
   const encontradas: string[] = [];
 
-  for (const m of normalizado.matchAll(/\b([01]?\d|2[0-3])(?:h|:)([0-5]\d)?\b/g)) {
-    encontradas.push(`${String(Number(m[1])).padStart(2, "0")}:${m[2] || "00"}`);
+  // Minutos escritos depois do "h" podem vir colados ou separados, com ou
+  // sem unidade: "10h30", "10h 30m", "10 h 30 min", "10h e 30".
+  // Esta forma precisa ser lida ANTES da hora cheia; do contrário "10h 30m"
+  // seria aceito parcialmente como 10:00 e os minutos desapareceriam.
+  for (const m of normalizado.matchAll(/\b([01]?\d|2[0-3])\s*h\s*(?:e\s*)?([0-5]\d)\s*(?:min(?:uto)?s?|m)?\b/g)) {
+    encontradas.push(`${String(Number(m[1])).padStart(2, "0")}:${m[2]}`);
+  }
+  for (const m of normalizado.matchAll(/\b([01]?\d|2[0-3]):([0-5]\d)\b/g)) {
+    encontradas.push(`${String(Number(m[1])).padStart(2, "0")}:${m[2]}`);
+  }
+  // Hora sem minutos continua válida, mas nunca quando há um número depois
+  // do "h": isso impede que "10h 70m" também seja reduzido a 10:00.
+  for (const m of normalizado.matchAll(/\b([01]?\d|2[0-3])\s*h\b(?!\s*(?:e\s*)?\d)/g)) {
+    encontradas.push(`${String(Number(m[1])).padStart(2, "0")}:00`);
   }
   for (const m of normalizado.matchAll(/\b(?:as|pelas)\s+([01]?\d|2[0-3])\b(?!\s*(?:h|:))/g)) {
     encontradas.push(`${String(Number(m[1])).padStart(2, "0")}:00`);

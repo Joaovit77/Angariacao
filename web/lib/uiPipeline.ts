@@ -15,6 +15,7 @@ import {
   type PipelineCol,
   type PipelineColFilters,
   type PipelineColSort,
+  type PipelineIdentificacao,
   type PipelineSortKey,
   type PipelineViewMode,
 } from "./calculo/filtros";
@@ -26,6 +27,7 @@ interface PosicaoMenu {
 
 interface PipelineUi {
   filters: FiltrosPipeline;
+  identificacao: PipelineIdentificacao;
   viewMode: PipelineViewMode;
   colFilters: PipelineColFilters;
   colSort: PipelineColSort;
@@ -34,6 +36,7 @@ interface PipelineUi {
   drawerImovelId: string | null;
 
   setFiltro: (campo: keyof FiltrosPipeline, valor: string) => void;
+  setIdentificacao: (identificacao: PipelineIdentificacao) => void;
   setViewMode: (mode: PipelineViewMode) => void;
   setColSort: (key: PipelineSortKey, dir: "asc" | "desc") => void;
   limparColSort: () => void;
@@ -50,6 +53,7 @@ interface PipelineUi {
 
 export const usePipelineUi = create<PipelineUi>((set, get) => ({
   filters: filtrosPipelineVazios(),
+  identificacao: "codigo",
   viewMode: "lista",
   colFilters: pipelineColFiltersVazios(),
   colSort: { key: null, dir: null },
@@ -58,6 +62,16 @@ export const usePipelineUi = create<PipelineUi>((set, get) => ({
   drawerImovelId: null,
 
   setFiltro: (campo, valor) => set((s) => ({ filters: { ...s.filters, [campo]: valor } })),
+  setIdentificacao: (identificacao) =>
+    set((s) => ({
+      identificacao,
+      // Se a primeira coluna já estava ordenada, mantém a direção e passa a
+      // ordenar pelo identificador que acabou de entrar na tela.
+      colSort:
+        s.colSort.key === "codigo" || s.colSort.key === "referenciaCrm"
+          ? { ...s.colSort, key: identificacao }
+          : s.colSort,
+    })),
 
   // Ao entrar na Lista, os selects single-value do topo ficam ocultos; migramos
   // seus valores ativos para os arrays de coluna equivalentes, para nenhum filtro

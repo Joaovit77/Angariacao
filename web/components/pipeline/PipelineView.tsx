@@ -19,11 +19,13 @@ import { selecionarFollowUp, selecionarVerificacaoDisponibilidade } from "@/lib/
 import { deslocarStatusKanban, moverStatusKanban, ordenarStatusKanban, type OrdemKanban } from "@/lib/calculo/kanban";
 import {
   filtrarImoveis,
+  identificacaoExibidaNoPipeline,
   ordenarPipelineLista,
   pipelineColDistinct,
   pipelineUniqueSorted,
   temTelefone,
   type PipelineCol,
+  type PipelineIdentificacao,
   type PipelineViewMode,
 } from "@/lib/calculo/filtros";
 import { daysInCurrentStatus, diasSemMovimento, isPausado, isStale } from "@/lib/calculo/motor";
@@ -37,14 +39,6 @@ import type { Imovel } from "@/lib/tipos";
 import { useUiModal } from "@/lib/uiModal";
 import { usePipelineUi } from "@/lib/uiPipeline";
 import ColunaFiltro from "./ColunaFiltro";
-
-/** O código que a tela mostra: o do corretor, e na falta dele a referência do
-    CRM da imobiliária. Carteira importada não tem código próprio — sem esta
-    queda a coluna inteira exibiria "-" e a única identificação que existe
-    (a ref do CRM) ficaria escondida no cadastro. */
-function codigoExibido(i: Imovel): string {
-  return (i.codigo || "").trim() || (i.referenciaCrm || "").trim();
-}
 
 /** Diz, de relance, se dá para falar com o proprietário deste imóvel.
     Sem número não há WhatsApp, follow-up nem lote de disponibilidade — o
@@ -109,6 +103,7 @@ function CartaoKanban({
   movendo,
   aoIniciarArrasto,
   aoTerminarArrasto,
+  identificacao,
 }: {
   i: Imovel;
   color: string;
@@ -117,6 +112,7 @@ function CartaoKanban({
   movendo: boolean;
   aoIniciarArrasto: (id: string) => void;
   aoTerminarArrasto: () => void;
+  identificacao: PipelineIdentificacao;
 }) {
   const stale = isStale(i);
   const paused = isPausado(i);
@@ -164,7 +160,7 @@ function CartaoKanban({
       onDragEnd={aoTerminarArrasto}
     >
       <div className="kanban-card-code">
-        {codigoExibido(i) || "s/ código"}
+        {identificacaoExibidaNoPipeline(i, identificacao) || "s/ identificação"}
         {i.preCadastro && <span className="pre-cadastro-flag">pré-cadastro</span>}
         <SeloTelefone imovel={i} />
       </div>
@@ -205,7 +201,15 @@ function CartaoKanban({
   );
 }
 
-function Kanban({ imoveis, aoAbrir }: { imoveis: Imovel[]; aoAbrir: (id: string) => void }) {
+function Kanban({
+  imoveis,
+  aoAbrir,
+  identificacao,
+}: {
+  imoveis: Imovel[];
+  aoAbrir: (id: string) => void;
+  identificacao: PipelineIdentificacao;
+}) {
   const { usuario } = useSessao();
   const kanbanRef = useRef<HTMLDivElement>(null);
   const [arrastandoId, setArrastandoId] = useState<string | null>(null);
@@ -395,6 +399,7 @@ function Kanban({ imoveis, aoAbrir }: { imoveis: Imovel[]; aoAbrir: (id: string)
                       setArrastandoId(null);
                       setStatusAlvo(null);
                     }}
+                    identificacao={identificacao}
                   />
                 ))
               )}
@@ -407,29 +412,30 @@ function Kanban({ imoveis, aoAbrir }: { imoveis: Imovel[]; aoAbrir: (id: string)
   );
 }
 
-// Cabeçalho "Código" clicável: ordena crescente → decrescente → sem ordenação.
-function HeaderCodigo() {
+// Cabeçalho da identificação clicável: ordena crescente → decrescente → sem ordenação.
+function HeaderIdentificacao({ identificacao }: { identificacao: PipelineIdentificacao }) {
   const { colSort, setColSort, limparColSort } = usePipelineUi();
-  const ativo = colSort.key === "codigo";
+  const ativo = colSort.key === identificacao;
   const seta = ativo ? (colSort.dir === "desc" ? " ▾" : " ▴") : "";
   function alternar() {
-    if (!ativo) setColSort("codigo", "asc");
-    else if (colSort.dir === "asc") setColSort("codigo", "desc");
+    if (!ativo) setColSort(identificacao, "asc");
+    else if (colSort.dir === "asc") setColSort(identificacao, "desc");
     else limparColSort();
   }
+  const rotulo = identificacao === "referenciaCrm" ? "Referência CRM" : "Código";
   return (
     <th
       onClick={alternar}
-      title="Ordenar por código"
+      title={`Ordenar por ${rotulo.toLowerCase()}`}
       style={{ cursor: "pointer", userSelect: "none" }}
     >
-      Código{seta}
+      {rotulo}{seta}
     </th>
   );
 }
 
 function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
-  const { drawerImovelId, abrirDrawer } = usePipelineUi();
+  const { drawerImovelId, abrirDrawer, identificacao } = usePipelineUi();
 
   if (imoveis.length === 0) {
     return (
@@ -447,7 +453,7 @@ function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
       <table>
         <thead>
           <tr>
-            <HeaderCodigo />
+            <HeaderIdentificacao identificacao={identificacao} />
             <th>Endereço</th>
             <ColunaFiltro col="unidade" distintos={distintos("unidade")} />
             <ColunaFiltro col="bloco" distintos={distintos("bloco")} />
@@ -470,7 +476,7 @@ function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
               onClick={() => abrirDrawer(i.id)}
             >
               <td className="cell-strong">
-                {codigoExibido(i) || "-"}
+                {identificacaoExibidaNoPipeline(i, identificacao) || "-"}
                 {i.preCadastro && <span className="pre-cadastro-flag">pré-cadastro</span>}
               </td>
               <td>{i.endereco || "-"}</td>
@@ -556,6 +562,7 @@ function InfoDrawer({ label, value }: { label: string; value: string }) {
 
 function Drawer({ imovel }: { imovel: Imovel }) {
   const fecharDrawer = usePipelineUi((s) => s.fecharDrawer);
+  const identificacao = usePipelineUi((s) => s.identificacao);
   const abrirModal = useUiModal((s) => s.abrirModal);
   const enderecoCompleto = [imovel.endereco, imovel.bairro, imovel.cidade].filter(Boolean).join(", ");
   const totalNotas = (imovel.notas || []).length;
@@ -568,7 +575,7 @@ function Drawer({ imovel }: { imovel: Imovel }) {
         <div className="pipeline-drawer-head">
           <div>
             <div className="pipeline-drawer-kicker">Imóvel selecionado</div>
-            <h2>{imovel.codigo || "Sem codigo"}</h2>
+            <h2>{identificacaoExibidaNoPipeline(imovel, identificacao) || "Sem identificação"}</h2>
           </div>
           <button type="button" className="icon-btn" onClick={fecharDrawer} title="Fechar painel">
             ×
@@ -736,8 +743,19 @@ export default function PipelineView() {
   const imoveis = useAppStore((s) => s.imoveis);
   const abordagens = useAppStore((s) => s.abordagens);
   const abrirModal = useUiModal((s) => s.abrirModal);
-  const { filters, viewMode, colFilters, colSort, openCol, drawerImovelId, setFiltro, setViewMode, fecharColMenu } =
-    usePipelineUi();
+  const {
+    filters,
+    identificacao,
+    viewMode,
+    colFilters,
+    colSort,
+    openCol,
+    drawerImovelId,
+    setFiltro,
+    setIdentificacao,
+    setViewMode,
+    fecharColMenu,
+  } = usePipelineUi();
 
   // Um único listener de documento fecha o dropdown de coluna aberto ao clicar
   // fora ou apertar Esc (equivale ao afterRenderPipeline() do app antigo; o
@@ -851,10 +869,20 @@ export default function PipelineView() {
 
       <div className="pipeline-toolbar pipeline-toolbar-enhanced">
         <div className={`pipeline-filterbar ${viewMode !== "kanban" ? "lista" : ""}`}>
+          <select
+            className="filter-select"
+            aria-label="Identificação dos imóveis"
+            title="Escolher a identificação exibida nos cards e na Lista"
+            value={identificacao}
+            onChange={(e) => setIdentificacao(e.target.value as PipelineIdentificacao)}
+          >
+            <option value="codigo">Código do sistema</option>
+            <option value="referenciaCrm">Referência do CRM</option>
+          </select>
           <input
             type="text"
             className="search-input pipeline-search"
-            placeholder="Buscar por código, proprietário, endereço, bairro, cidade, telefone ou tipo..."
+            placeholder="Buscar por código, referência CRM, proprietário, endereço, bairro, cidade, telefone ou tipo..."
             value={filters.search}
             onChange={(e) => setFiltro("search", e.target.value)}
           />
@@ -964,7 +992,11 @@ export default function PipelineView() {
           className={`pipeline-view-transition pipeline-view-${viewMode}`}
         >
           {viewMode === "kanban" ? (
-            <Kanban imoveis={filtrados} aoAbrir={(id) => abrirModal("imovel", id)} />
+            <Kanban
+              imoveis={filtrados}
+              aoAbrir={(id) => abrirModal("imovel", id)}
+              identificacao={identificacao}
+            />
           ) : (
             <Lista imoveis={ordenarPipelineLista(filtrados, colSort)} todos={imoveis} />
           )}

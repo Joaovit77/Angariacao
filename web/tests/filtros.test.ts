@@ -6,7 +6,8 @@ import { describe, it, expect } from "vitest";
 import {
   filtrarImoveis, filtrosPipelineVazios, ordenarPipelineLista, pipelineColFiltersVazios,
   pipelineColDistinct, pipelineUniqueSorted, temTelefone, semAcento, PIPELINE_COL_EMPTY,
-  PIPELINE_COL_ACCESSOR, TELEFONE_COM, TELEFONE_SEM,
+  PIPELINE_COL_ACCESSOR, TELEFONE_COM, TELEFONE_SEM, identificacaoExibidaNoPipeline,
+  referenciaCrmDisponivelNoPipeline,
   type FiltrosPipeline, type PipelineColFilters, type PipelineViewMode,
 } from "@/lib/calculo/filtros";
 import type { Imovel } from "@/lib/tipos";
@@ -38,6 +39,53 @@ describe("filtrarImoveis (port de filteredImoveisEnhanced)", () => {
   it("filtro de status", () => expect(cenario({ status: "Locado" })).toEqual(oracle.filtros.status_locado));
   it("filtro de captador", () => expect(cenario({ responsavel: "Maria" })).toEqual(oracle.filtros.responsavel_maria));
   it("busca + tipo combinados (AND)", () => expect(cenario({ search: "rua", tipo: "Casa" })).toEqual(oracle.filtros.busca_e_tipo));
+});
+
+describe("identificação exibida no Pipeline", () => {
+  const interno = (over: Partial<Imovel>): Imovel => ({
+    id: "id",
+    codigo: "LD-247",
+    endereco: "Rua A, 1",
+    status: "Novo contato",
+    referenciaCrm: "03280.001",
+    ...over,
+  }) as Imovel;
+
+  it("o modo Código do sistema prioriza o código interno", () => {
+    expect(identificacaoExibidaNoPipeline(interno({ status: "Publicado" }), "codigo")).toBe("LD-247");
+  });
+
+  it("o modo CRM usa a referência somente depois da captação", () => {
+    expect(identificacaoExibidaNoPipeline(interno({ status: "Publicado" }), "referenciaCrm")).toBe(
+      "03280.001",
+    );
+    expect(identificacaoExibidaNoPipeline(interno({ status: "Angariado" }), "referenciaCrm")).toBe(
+      "03280.001",
+    );
+  });
+
+  it("lead ainda não angariado ignora referência indevida e mantém o código", () => {
+    const lead = interno({ status: "Novo contato" });
+    expect(referenciaCrmDisponivelNoPipeline(lead)).toBe("");
+    expect(identificacaoExibidaNoPipeline(lead, "referenciaCrm")).toBe("LD-247");
+    expect(
+      filtrarImoveis(
+        [lead],
+        { ...filtrosPipelineVazios(), search: "03280.001" },
+        "lista",
+        pipelineColFiltersVazios(),
+      ),
+    ).toEqual([]);
+  });
+
+  it("sem a identificação preferida, usa a outra para a linha não ficar anônima", () => {
+    expect(
+      identificacaoExibidaNoPipeline(interno({ status: "Publicado", referenciaCrm: "" }), "referenciaCrm"),
+    ).toBe("LD-247");
+    expect(identificacaoExibidaNoPipeline(interno({ status: "Publicado", codigo: "" }), "codigo")).toBe(
+      "03280.001",
+    );
+  });
 });
 
 describe("filtros de coluna (estilo Explorer)", () => {

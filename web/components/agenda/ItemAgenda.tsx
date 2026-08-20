@@ -68,6 +68,9 @@ export default function ItemAgenda({
   // proprietário e o endereço (com ap/bloco) ficam na própria linha.
   const proprietario = imovel?.proprietarioNome?.trim() || "";
   const onde = imovel ? enderecoComUnidade(imovel) : "";
+  const codigo = imovel?.codigo?.trim() || "";
+  const tituloJaTemCodigo =
+    codigo !== "" && a.title.toLocaleUpperCase("pt-BR").includes(codigo.toLocaleUpperCase("pt-BR"));
 
   return (
     <div
@@ -104,7 +107,7 @@ export default function ItemAgenda({
         <span className="agenda-type-tag" data-type={a.type}>
           {a.type}
         </span>
-        {imovel?.codigo && <span className="agenda-item-cod">{imovel.codigo}</span>}
+        {codigo && !tituloJaTemCodigo && <span className="agenda-item-cod">{codigo}</span>}
         {dueInfo && (
           <span className={`agenda-due-chip ${dueInfo.tone}`}>
             <span className="agenda-due-dot"></span>

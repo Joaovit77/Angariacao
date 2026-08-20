@@ -364,6 +364,11 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   filtro sumir ao trocar de aba, sem erro — e que as larguras da Lista são fixadas por `nth-child`
   no `style.css`, então inserir coluna no meio desloca todas as seguintes. `pipeline-colunas.test.ts`
   falha quando cabeçalho, linha e CSS discordam sobre quantas colunas existem.
+  O filtro **Identificação dos imóveis** escolhe o rótulo destacado nos cards, na primeira coluna e
+  no drawer: código interno ou referência do CRM. A referência só é elegível depois da captação
+  (`Angariado`/etapas posteriores ou histórico equivalente); antes disso o código interno permanece
+  como fallback, porque o imóvel ainda não existe no CRM da imobiliária. Se o identificador escolhido
+  estiver vazio, o outro é exibido para nenhuma linha ficar anônima.
 - **`calculo/dashboard.ts` · `insights.ts` · `relatorios.ts` · `agenda.ts`** — as métricas de cada
   view, extraídas da montagem de HTML antiga sem alterar nenhuma fórmula. **Duas exceções assinadas**
   no [BASELINE_ETAPA0.md](BASELINE_ETAPA0.md): a conversão do relatório (achado A3) e os rankings dos

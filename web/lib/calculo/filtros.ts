@@ -7,6 +7,7 @@
    parâmetro (mesma lógica, forma pura).
    ================================================================ */
 import type { Imovel } from "../tipos";
+import { captacaoGanha } from "./motor";
 
 export interface FiltrosPipeline {
   search: string;
@@ -21,6 +22,35 @@ export interface FiltrosPipeline {
     carteira. Não é um filtro a mais — é a separação entre o que está em jogo
     e o que já saiu. Ver `filtrarImoveis`. */
 export type PipelineViewMode = "kanban" | "lista" | "retirados";
+
+/** Qual identificação ganha destaque nos cards e na primeira coluna da Lista. */
+export type PipelineIdentificacao = "codigo" | "referenciaCrm";
+
+/**
+ * A referência do CRM só existe depois que o imóvel entrou na carteira da
+ * imobiliária. O histórico é a fonte principal, mas status atuais posteriores
+ * também provam a captação em dados importados que não trouxeram o histórico.
+ * Uma referência preenchida por engano num lead inicial nunca aparece aqui.
+ */
+export function referenciaCrmDisponivelNoPipeline(imovel: Imovel): string {
+  const etapaPermite =
+    captacaoGanha(imovel) || imovel.status === "Angariado" || imovel.status === "Publicado";
+  return etapaPermite ? (imovel.referenciaCrm || "").trim() : "";
+}
+
+/**
+ * Identificação exibida conforme a escolha do corretor. O outro identificador
+ * é fallback para a linha não ficar anônima — especialmente antes da captação,
+ * quando ainda não existe referência do CRM.
+ */
+export function identificacaoExibidaNoPipeline(
+  imovel: Imovel,
+  identificacao: PipelineIdentificacao,
+): string {
+  const codigo = (imovel.codigo || "").trim();
+  const referencia = referenciaCrmDisponivelNoPipeline(imovel);
+  return identificacao === "referenciaCrm" ? referencia || codigo : codigo || referencia;
+}
 
 export type PipelineCol =
   | "bairro" | "tipo" | "origem" | "status" | "captador" | "telefone" | "unidade" | "bloco";
@@ -121,7 +151,7 @@ export function filtrarImoveis(
     const haystack = semAcento([
       i.codigo, i.proprietarioNome, i.endereco, i.bairro, i.cidade,
       i.proprietarioTelefone, i.tipo, i.unidade, i.bloco, i.edificio,
-      i.referenciaCrm,
+      referenciaCrmDisponivelNoPipeline(i),
     ].join(" "));
     if (s && !haystack.includes(s)) return false;
     return true;
@@ -148,12 +178,14 @@ export function pipelineColDistinct(imoveis: Imovel[], col: PipelineCol): string
   return [...new Set(valores)].sort((a, b) => a.localeCompare(b, "pt-BR"));
 }
 
-// Colunas ordenáveis: as filtráveis + "codigo" (que não é filtro, só ordena).
-export type PipelineSortKey = PipelineCol | "codigo";
+// Colunas ordenáveis: as filtráveis + as duas identificações (não são filtros
+// de coluna; a escolha fica no topo e só muda qual identificação é destacada).
+export type PipelineSortKey = PipelineCol | PipelineIdentificacao;
 
 export const PIPELINE_SORT_ACCESSOR: Record<PipelineSortKey, (i: Imovel) => string | null | undefined> = {
   ...PIPELINE_COL_ACCESSOR,
   codigo: (i) => i.codigo,
+  referenciaCrm: (i) => identificacaoExibidaNoPipeline(i, "referenciaCrm"),
 };
 
 export interface PipelineColSort {

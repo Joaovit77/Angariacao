@@ -553,7 +553,12 @@ describe("contexto fragmentado da resposta", () => {
 
   it("preserva uma hora explícita que a IA tenha omitido", () => {
     expect(horaExplicitaDaMensagem("Pode ser às 9h30")).toBe("09:30");
+    expect(horaExplicitaDaMensagem("Amanhã às 10h 30m")).toBe("10:30");
+    expect(horaExplicitaDaMensagem("Pode ser às 10 h 30 min")).toBe("10:30");
+    expect(horaExplicitaDaMensagem("Combinado às 10h e 30")).toBe("10:30");
+    expect(horaExplicitaDaMensagem("Pode ser às 10:30")).toBe("10:30");
     expect(horaExplicitaDaMensagem("Combinado pelas 14")).toBe("14:00");
+    expect(horaExplicitaDaMensagem("Pode ser às 10h 70m")).toBeNull();
     expect(horaExplicitaDaMensagem("de manhã")).toBeNull();
   });
 

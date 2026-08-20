@@ -30,11 +30,11 @@ describe("colunas da Lista do Pipeline", () => {
 
   // Três formas de escrever um cabeçalho aqui, e as três contam: o <th>
   // literal, o <ColunaFiltro> (que renderiza um <th> com menu de filtro) e o
-  // <HeaderCodigo>, que é um <th> com a ordenação por código.
+  // <HeaderIdentificacao>, que é um <th> com a ordenação pelo identificador escolhido.
   const cabecalhos =
     (lista.match(/<th[\s>]/g) || []).length +
     (lista.match(/<ColunaFiltro\b/g) || []).length +
-    (lista.match(/<HeaderCodigo\b/g) || []).length;
+    (lista.match(/<HeaderIdentificacao\b/g) || []).length;
   const celulas = (lista.match(/<td[\s>]/g) || []).length;
 
   it("cabeçalho e linha têm o mesmo número de colunas", () => {

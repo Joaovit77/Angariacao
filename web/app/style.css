@@ -2197,7 +2197,7 @@ tbody tr:last-child td{ border-bottom:none; }
 }
 .pipeline-filterbar{
   display:grid;
-  grid-template-columns: minmax(280px, 2fr) repeat(5, minmax(130px, 1fr));
+  grid-template-columns: minmax(150px, 190px) minmax(280px, 2fr) repeat(5, minmax(130px, 1fr));
   gap:10px;
   flex:1;
   min-width:0;
@@ -2226,11 +2226,11 @@ tbody tr:last-child td{ border-bottom:none; }
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
-/* No modo Lista, o topo mostra só busca + Cidade (os demais viram funis de
-   coluna). Mantém o grid, mas com exatamente 2 colunas — sem tracks vazios que
-   apareceriam se o grid de 6 colunas do Kanban fosse reutilizado aqui. */
+/* No modo Lista, o topo mostra identificação + busca + Cidade (os demais viram
+   funis de coluna). Mantém o grid com exatamente 3 colunas — sem tracks vazios que
+   apareceriam se o grid completo do Kanban fosse reutilizado aqui. */
 .pipeline-filterbar.lista{
-  grid-template-columns: minmax(240px, 1fr) minmax(130px, 200px);
+  grid-template-columns: minmax(150px, 190px) minmax(240px, 1fr) minmax(130px, 200px);
 }
 
 /* ============================================================
@@ -4180,6 +4180,10 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
 
 /* Na Home, o item rico da Agenda ganha uma apresentação curta: as mesmas
    informações e ações, sem transformar cada compromisso em outro card. */
+.home-agenda{
+  container-name:home-agenda;
+  container-type:inline-size;
+}
 .home-agenda .agenda-day-group{ margin-bottom: 14px; }
 .home-agenda .agenda-day-group:last-child{ margin-bottom: 0; }
 .home-agenda .agenda-day-label{
@@ -4236,6 +4240,58 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
 .home-agenda .agenda-item.compact .agenda-item-tags{ gap: 5px; }
 .home-agenda .agenda-item.compact .agenda-actions{ width: auto; gap: 4px; padding-left: 0; }
 .home-agenda .agenda-item.compact .agenda-whatsapp-btn{ flex: 0 0 auto; padding: 5px 8px; font-size: 11px; }
+
+/* Quando o CARD fica estreito, o item compacto precisa de linhas próprias. A
+   largura da janela não basta: na Home em duas colunas o card pode ter menos
+   de 560px mesmo em um monitor largo. */
+@container home-agenda (max-width: 560px){
+  .home-agenda .agenda-item.compact{
+    display:grid;
+    grid-template-columns:16px minmax(0, 1fr);
+    column-gap:8px;
+    row-gap:6px;
+    align-items:start;
+  }
+  .home-agenda .agenda-item.compact .agenda-check{
+    grid-column:1;
+    grid-row:1;
+    margin-top:2px;
+  }
+  .home-agenda .agenda-item.compact .agenda-item-body{
+    grid-column:2;
+    grid-row:1;
+    width:100%;
+  }
+  .home-agenda .agenda-item.compact .agenda-item-quem{ flex-wrap:wrap; }
+  .home-agenda .agenda-item.compact .agenda-item-tags{
+    grid-column:2;
+    grid-row:2;
+    width:auto;
+    margin:0;
+    padding:0;
+    justify-content:flex-start;
+  }
+  .home-agenda .agenda-item.compact .agenda-actions{
+    grid-column:2;
+    grid-row:3;
+    width:100%;
+    padding:0;
+    justify-content:flex-start;
+  }
+  .home-agenda .agenda-item.compact .agenda-item-hora{
+    grid-column:1;
+    grid-row:1;
+    width:42px;
+    text-align:right;
+  }
+  .home-agenda .agenda-item.compact:has(.agenda-item-hora){
+    grid-template-columns:42px 16px minmax(0, 1fr);
+  }
+  .home-agenda .agenda-item.compact:has(.agenda-item-hora) .agenda-check{ grid-column:2; }
+  .home-agenda .agenda-item.compact:has(.agenda-item-hora) .agenda-item-body,
+  .home-agenda .agenda-item.compact:has(.agenda-item-hora) .agenda-item-tags,
+  .home-agenda .agenda-item.compact:has(.agenda-item-hora) .agenda-actions{ grid-column:3; }
+}
 
 /* Cartão de imóvel parado — layout do desenho: código + motivo na 1ª linha e,
    abaixo, endereço, proprietário e telefone empilhados (cada um com ícone). */
