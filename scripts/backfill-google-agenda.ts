@@ -21,6 +21,8 @@
 
      node scripts/backfill-google-agenda.ts              # simulação
      node scripts/backfill-google-agenda.ts --aplicar    # grava
+     node scripts/backfill-google-agenda.ts --agenda-id=<uuid> --aplicar
+                                                       # grava só um item
 
    Lê as credenciais de web/.env.local (ou das variáveis de ambiente).
    Precisa da SUPABASE_SERVICE_ROLE_KEY: o script roda fora do app, sem
@@ -43,6 +45,13 @@ import { eventoDoCompromisso } from "../web/lib/calculo/googleAgenda.ts";
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const APLICAR = process.argv.includes("--aplicar");
+const ARGUMENTO_AGENDA_ID = process.argv.find((arg) => arg.startsWith("--agenda-id="));
+const AGENDA_ID = ARGUMENTO_AGENDA_ID?.slice("--agenda-id=".length) || null;
+
+if (AGENDA_ID && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(AGENDA_ID)) {
+  console.error("O valor de --agenda-id precisa ser um UUID válido.");
+  process.exit(1);
+}
 
 /* --- Configuração ---------------------------------------------------- */
 
@@ -214,6 +223,7 @@ async function main(): Promise<void> {
     const pendentes = await sbGet<LinhaAgenda[]>(
       `agenda?select=id,title,type,date,hora,done,notes,imovel_id,is_verificacao_disponibilidade` +
         `&user_id=eq.${conta.user_id}&google_event_id=is.null&done=is.false&date=gte.${hoje}` +
+        (AGENDA_ID ? `&id=eq.${AGENDA_ID}` : "") +
         `&order=date.asc`,
     );
     if (pendentes.length === 0) {
