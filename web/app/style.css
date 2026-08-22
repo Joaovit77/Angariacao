@@ -427,12 +427,32 @@ input, select, textarea{ font-family: inherit; font-size: 14px; }
   color: var(--sobre-cor);
   flex-shrink:0;
 }
-/* Quando a marca é a imagem do logo (arquivo em /public), não usa o quadrado
-   de gradiente: mostra a arte com fundo transparente, contida no mesmo box. */
-img.brand-mark{
+/* A marca nova preserva o mesmo box do layout anterior, mas deixa as duas
+   imagens sobrepostas para o CSS trocar o tema antes da hidratação. */
+.marca-app{
+  position:relative;
   background: none;
   border-radius: 0;
-  object-fit: contain;
+  overflow:visible;
+}
+.marca-app-imagem{
+  position:absolute; inset:0;
+  width:100%; height:100%; object-fit:contain;
+  transform-origin:center;
+}
+.marca-app-imagem-escuro{ display:block; }
+/* As duas artes têm o mesmo canvas, mas a versão clara ocupa menos área
+   útil dentro dele. A compensação iguala a caixa VISUAL e evita o salto
+   ao trocar de tema sem deformar o box usado pelo cabeçalho/sidebar. */
+.marca-app-imagem-claro{
+  display:none;
+  transform:translate(-.7px,.3px) scale(1.067,1.174);
+}
+:root[data-tema="claro"] .marca-app-imagem-escuro{ display:none; }
+:root[data-tema="claro"] .marca-app-imagem-claro{ display:block; }
+@media (prefers-color-scheme: light){
+  :root:not([data-tema="escuro"]) .marca-app-imagem-escuro{ display:none; }
+  :root:not([data-tema="escuro"]) .marca-app-imagem-claro{ display:block; }
 }
 .brand-text{ display:flex; flex-direction:column; line-height:1.15; }
 .brand-title{ font-family: Arial, Helvetica, sans-serif; font-size: 19px; font-weight:400; letter-spacing:.2px; margin: 5px;}
@@ -734,10 +754,11 @@ img.brand-mark{
   width:100%; max-width:1100px;
   display:flex; align-items:center; justify-content:space-between; gap:16px;
 }
-.vitrine-topo-marca{ border:none; padding:0; background:none; }
+.vitrine-topo-marca{ border:none; padding:0; background:none; gap:12px; }
 .vitrine-topo-marca .brand-mark{ width:40px; height:40px; border-radius:8px; }
-.vitrine-topo-marca .brand-title{ font-size:15px; }
-.vitrine-topo-marca .brand-sub{ font-size:10.5px; }
+.vitrine-topo-marca .brand-text{ gap:2px; }
+.vitrine-topo-marca .brand-title{ margin:0 0 3px; font-size:17px; font-weight:500; line-height:1; }
+.vitrine-topo-marca .brand-sub{ font-size:11px; line-height:1.15; }
 .vitrine-topo-acoes{ display:flex; align-items:center; gap:8px; }
 
 .auth-showcase{
@@ -852,7 +873,7 @@ img.brand-mark{
 }
 
 /* ---- Partes: a espinha da leitura ----
-   Onze capítulos equivalentes viram rolagem sem forma. O cabeçalho de
+   Doze capítulos equivalentes viram rolagem sem forma. O cabeçalho de
    parte dá o respiro e diz em que trecho da história o leitor está.
    O rótulo é o ASSUNTO ("O seu dia"), nunca uma numeração: já foi
    "Ato um / Ato dois" e o corretor leu e não entendeu. */
@@ -890,7 +911,7 @@ img.brand-mark{
 .cena.invertida .cena-visual{ order:-1; }
 /* O número e o rótulo separados por espaço, não por pontuação: aqui
    já houve um travessão, e um sinal gráfico a mais em cada capítulo
-   vira tique de escrita quando são onze. */
+   vira tique de escrita quando são doze. */
 .cena-num{
   display:flex; align-items:center; gap:10px;
   font-size:10.5px; font-weight:700;
@@ -928,6 +949,91 @@ img.brand-mark{
   background: var(--accent-soft); border-radius:20px; padding:1px 8px;
   font-variant-numeric: tabular-nums;
 }
+
+/* Central e Radar: a busca fica quieta até o card entrar na tela. O feixe
+   completa uma volta e os anúncios surgem na sequência — movimento que
+   explica a comparação com o baseline, não uma animação solta. */
+.radar-vitrine{
+  max-width:500px; overflow:hidden;
+  background:var(--bg-elev-1); border:1px solid var(--border-soft); border-radius:12px;
+}
+.radar-vitrine-topo{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:10px 12px; border-bottom:1px solid var(--border-soft);
+  font-size:10px; color:var(--text-dim);
+}
+.radar-vitrine-topo span{ display:flex; align-items:center; gap:7px; }
+.radar-vitrine-topo i{
+  width:6px; height:6px; border-radius:50%; background:var(--good);
+  box-shadow:0 0 0 4px var(--good-soft);
+}
+.radar-vitrine-topo b{
+  color:var(--good); background:var(--good-soft); border-radius:999px;
+  padding:3px 8px; font-size:9px; font-variant-numeric:tabular-nums;
+}
+.radar-vitrine-corpo{
+  display:grid; grid-template-columns:118px minmax(0,1fr); gap:14px;
+  align-items:center; padding:14px;
+}
+.radar-vitrine-orbita{
+  position:relative; width:118px; aspect-ratio:1; overflow:hidden; border-radius:50%;
+  border:1px solid var(--border); isolation:isolate;
+  background:
+    linear-gradient(var(--border-soft),var(--border-soft)) center / 100% 1px no-repeat,
+    linear-gradient(90deg,var(--border-soft),var(--border-soft)) center / 1px 100% no-repeat,
+    repeating-radial-gradient(circle at center,transparent 0 20px,var(--border-soft) 21px 22px),
+    var(--bg-elev-2);
+}
+.radar-vitrine-feixe{
+  position:absolute; left:50%; top:calc(50% - 1px); width:46%; height:2px;
+  transform-origin:left center; opacity:0;
+  background:linear-gradient(90deg,var(--good),transparent);
+  box-shadow:0 0 10px var(--good-soft);
+}
+.radar-vitrine-centro{
+  position:absolute; left:50%; top:50%; z-index:2; transform:translate(-50%,-50%);
+  width:22px; height:22px; display:grid; place-items:center; border-radius:50%;
+  color:var(--good); background:var(--bg-elev-1); border:1px solid var(--good);
+  font-size:12px; font-weight:800;
+}
+.radar-vitrine-ponto{
+  position:absolute; z-index:3; width:7px; height:7px; border-radius:50%;
+  background:var(--accent-strong); box-shadow:0 0 0 4px var(--accent-soft);
+  opacity:0; transform:scale(.3);
+}
+.radar-vitrine-ponto.ponto-a{ left:67%; top:24%; --radar-atraso:.55s; }
+.radar-vitrine-ponto.ponto-b{ left:27%; top:68%; --radar-atraso:.88s; }
+.radar-vitrine-ponto.ponto-c{ left:74%; top:61%; --radar-atraso:1.12s; }
+.radar-vitrine-lista{ display:grid; gap:6px; min-width:0; }
+.radar-vitrine-achado{
+  min-width:0; padding:7px 9px; display:grid; grid-template-columns:auto 1fr; gap:2px 7px;
+  border:1px solid var(--border-soft); border-radius:8px; background:var(--bg-elev-2);
+  opacity:0; transform:translateX(10px);
+}
+.radar-vitrine-achado span{
+  grid-row:1 / 3; align-self:center; color:var(--accent-strong); font-family:var(--font-mono);
+  font-size:7.5px; font-weight:700; letter-spacing:.35px; text-transform:uppercase;
+}
+.radar-vitrine-achado strong{
+  min-width:0; overflow:hidden; color:var(--text); font-size:9.5px;
+  text-overflow:ellipsis; white-space:nowrap;
+}
+.radar-vitrine-achado small{ color:var(--text-faint); font-size:8.5px; }
+.produto-card.visivel .radar-vitrine-feixe{ animation:radar-varredura 1.55s cubic-bezier(.4,0,.2,1) both; }
+.produto-card.visivel .radar-vitrine-ponto{ animation:radar-ponto .48s ease-out var(--radar-atraso) both; }
+.produto-card.visivel .radar-vitrine-achado{ animation:radar-achado .48s ease-out var(--radar-atraso) both; }
+@keyframes radar-varredura{
+  0%{ opacity:0; transform:rotate(-70deg); }
+  10%{ opacity:1; }
+  88%{ opacity:1; }
+  100%{ opacity:0; transform:rotate(290deg); }
+}
+@keyframes radar-ponto{
+  0%{ opacity:0; transform:scale(.3); }
+  65%{ opacity:1; transform:scale(1.35); }
+  100%{ opacity:1; transform:scale(1); }
+}
+@keyframes radar-achado{ to{ opacity:1; transform:none; } }
 
 /* Mini funil */
 .mini-kanban{ display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; max-width:480px; }
@@ -1204,7 +1310,7 @@ img.brand-mark{
   transition: background .25s ease, transform .25s ease;
 }
 /* O vão marca a troca de parte, o mesmo agrupamento do conteúdo,
-   para a régua não virar uma coluna de onze pontos iguais. */
+   para a régua não virar uma coluna de doze pontos iguais. */
 .vitrine-ponto.abre-parte{ margin-top:12px; }
 .vitrine-ponto:hover{ background: var(--text-faint); }
 .vitrine-ponto.ativo{ background: var(--accent-strong); transform: scale(1.5); }
@@ -1561,6 +1667,9 @@ img.brand-mark{
   .extras{ padding-top:78px; }
   .extras-grade{ grid-template-columns:1fr; }
   .extra{ min-height:0; }
+  .radar-vitrine-corpo{ grid-template-columns:88px minmax(0,1fr); gap:10px; padding:10px; }
+  .radar-vitrine-orbita{ width:88px; }
+  .radar-vitrine-achado{ padding:6px 7px; }
   .vitrine-fecho{ margin-top:70px; padding:45px 24px; border-radius:18px; }
   .vitrine-fecho-titulo{ font-size:37px; }
   .vitrine-fecho .vitrine-ctas{ display:grid; }
@@ -1570,6 +1679,9 @@ img.brand-mark{
 @media (prefers-reduced-motion: reduce){
   .produto-card{ opacity:1; transform:none; transition:none; }
   .extra{ transition:none; }
+  .radar-vitrine-feixe{ display:none; }
+  .radar-vitrine-ponto,
+  .radar-vitrine-achado{ opacity:1; transform:none; animation:none; }
 }
 
 /* ---- O formulário como modal sobre a apresentação ---- */
@@ -1695,11 +1807,21 @@ img.brand-mark{
   margin-bottom: 6px;
 }
 .rodape-oferecimento{
-  font-family: var(--font-display);
-  font-size: 19px;
-  line-height: 1.2;
-  color: var(--accent-strong);
-  letter-spacing: .3px;
+  width: 190px;
+  min-height: 64px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rodape-oferecimento img{ width:190px; height:auto; }
+.rodape-logo-digimob-escuro{ display:block; }
+.rodape-logo-digimob-claro{ display:none; }
+:root[data-tema="claro"] .rodape-logo-digimob-escuro{ display:none; }
+:root[data-tema="claro"] .rodape-logo-digimob-claro{ display:block; }
+@media (prefers-color-scheme: light){
+  :root:not([data-tema="escuro"]) .rodape-logo-digimob-escuro{ display:none; }
+  :root:not([data-tema="escuro"]) .rodape-logo-digimob-claro{ display:block; }
 }
 .rodape-risco{
   width: 34px;
@@ -1744,7 +1866,7 @@ img.brand-mark{
   top: 0;
   z-index: 2100;
 }
-.topbar-logo{ display:none; }   /* logo: só no mobile (no desktop a sidebar já tem) */
+.topbar-logo{ display:none; width:28px; height:28px; flex-shrink:0; } /* logo: só no mobile */
 
 /* --- Botão hambúrguer que vira X (.menu-toggle) ---
    Um só estilo para os dois lugares onde ele aparece: no DESKTOP vive na barra

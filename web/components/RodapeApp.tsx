@@ -8,6 +8,7 @@
    Só marca, oferecimento e versão — nada que dependa de sessão, pra
    poder viver dos dois lados do login.
    ================================================================ */
+import Image from "next/image";
 import Link from "next/link";
 import { todayISO } from "@/lib/datas";
 import { legalPublicavel } from "@/lib/legal/identidade";
@@ -19,7 +20,22 @@ export default function RodapeApp({ variante }: { variante?: "auth" }) {
   return (
     <footer className={`rodape-app${variante === "auth" ? " rodape-app-auth" : ""}`}>
       <div className="rodape-rotulo">Um oferecimento</div>
-      <div className="rodape-oferecimento">Grupo SophiaHub</div>
+      <div className="rodape-oferecimento">
+        <Image
+          className="rodape-logo-digimob-escuro"
+          src="/logo-digimob-escuro.png"
+          alt="Digimob"
+          width={2172}
+          height={724}
+        />
+        <Image
+          className="rodape-logo-digimob-claro"
+          src="/logo-digimob-claro.png"
+          alt="Digimob"
+          width={2172}
+          height={724}
+        />
+      </div>
       <div className="rodape-risco" aria-hidden="true" />
       {/* O ano vem do relógio de quem renderiza: no virar do ano o servidor
           (UTC) e o browser (BRT) podem discordar por algumas horas. */}

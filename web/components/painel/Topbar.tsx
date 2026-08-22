@@ -12,9 +12,9 @@
    O título aqui substitui o <h1 class="page-title"> que cada view
    renderizava — agora vive num só lugar.
    ================================================================ */
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import BotaoTema from "@/components/BotaoTema";
+import MarcaApp from "@/components/MarcaApp";
 import SinoNotificacoes from "./SinoNotificacoes";
 import MenuUsuario from "./MenuUsuario";
 import { useAppStore } from "@/lib/store";
@@ -69,7 +69,7 @@ export default function Topbar({
           <span></span>
         </span>
       </button>
-      <Image className="topbar-logo" src="/logo.png" alt="" width={28} height={28} />
+      <MarcaApp className="topbar-logo" />
       <h1 className="topbar-title">{titulo}</h1>
       <div className="topbar-actions">
         <BotaoTema />

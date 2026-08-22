@@ -7,9 +7,9 @@
    reseta o sublinhado de <a>), mas agora navegam por URL — cada view
    virou uma rota (§4 do MIGRATION_NEXT.md).
    ================================================================ */
-import Image from "next/image";
 import { useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import MarcaApp from "@/components/MarcaApp";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
 import { contarRespostasPendentes } from "@/lib/calculo/respostas";
 import { STATUS_FLOW } from "@/lib/constantes";
@@ -247,7 +247,7 @@ export default function BarraLateral({
       </div>
 
       <div className="brand">
-        <Image className="brand-mark" src="/logo.png" alt="Angariações" width={52} height={52} />
+        <MarcaApp className="brand-mark" alt="Angariações" />
         <div className="brand-text">
           <span className="brand-title">Angariações</span>
           <span className="brand-sub">Controle de Locação</span>

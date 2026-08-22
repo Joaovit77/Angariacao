@@ -12,9 +12,9 @@
    listener de scroll. Assim o navegador decide quando avaliar, em vez
    de rodar código nosso a cada quadro de rolagem.
    ================================================================ */
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import BotaoTema from "@/components/BotaoTema";
+import MarcaApp from "@/components/MarcaApp";
 
 interface Props {
   aoEntrar: () => void;
@@ -42,7 +42,7 @@ export default function CabecalhoAuth({ aoEntrar, aoCriarConta }: Props) {
       <header className={`vitrine-topo${fixado ? " fixado" : ""}`}>
         <div className="vitrine-topo-fita">
           <div className="brand vitrine-topo-marca">
-            <Image className="brand-mark" src="/logo.png" alt="Angariações" width={40} height={40} />
+            <MarcaApp className="brand-mark" alt="Angariações" />
             <div className="brand-text">
               <span className="brand-title">Angariações</span>
               <span className="brand-sub">Controle de Locação</span>

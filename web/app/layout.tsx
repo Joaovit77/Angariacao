@@ -20,6 +20,10 @@ import "./style.css";
 
 export const metadata: Metadata = {
   title: "Painel de Angariações — Controle de Locação",
+  icons: {
+    icon: "/logo-angariacao-claro.png",
+    apple: "/logo-angariacao-claro.png",
+  },
 };
 
 export default function RootLayout({

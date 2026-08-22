@@ -23,7 +23,7 @@
 
    ## As TRÊS PARTES (e por que existem)
 
-   A lista de capítulos cresceu junto com o app, e uma fila de onze
+   A lista de capítulos cresceu junto com o app, e uma fila de doze
    cenas equivalentes vira rolagem sem forma: o leitor não sabe onde
    está nem quanto falta. As partes dão espinha à leitura e respondem,
    nesta ordem, as três perguntas de quem avalia a ferramenta: "como
@@ -85,7 +85,7 @@ const PARTES: Parte[] = [
   },
   {
     numero: 3,
-    rotulo: "Os números",
+    rotulo: "Dashboard e insights",
     titulo: "E os números dizem o que fazer diferente amanhã.",
     texto: "O painel transforma o trabalho registrado em metas, comparações e decisões que ajudam a próxima captação.",
   },
@@ -171,6 +171,54 @@ const VisualRodada = (
     <p className="visual-nota">
       A ordem é de quem é a vez: quem já fez a parte dele vem antes de quem ainda não sabe que você
       existe.
+    </p>
+  </>
+);
+
+/* Central e Radar: a varredura é a animação própria desta apresentação.
+   Os anúncios aparecem depois do feixe, como acontece no produto: primeiro a
+   busca é salva, depois só o que surgiu desde o baseline vira novidade. */
+const ACHADOS_RADAR = [
+  { portal: "OLX", titulo: "Apartamento · Gleba Palhano", detalhe: "2 quartos · R$ 2.100" },
+  { portal: "Viva Real", titulo: "Casa · Jardim Quebec", detalhe: "3 quartos · R$ 3.400" },
+  { portal: "Chaves na Mão", titulo: "Studio · Centro", detalhe: "1 quarto · R$ 1.350" },
+];
+
+const VisualRadar = (
+  <>
+    <div className="radar-vitrine">
+      <div className="radar-vitrine-topo">
+        <span>
+          <i /> Radar · Londrina
+        </span>
+        <b>3 novos</b>
+      </div>
+      <div className="radar-vitrine-corpo">
+        <div className="radar-vitrine-orbita" aria-hidden="true">
+          <span className="radar-vitrine-feixe" />
+          <span className="radar-vitrine-centro">⌁</span>
+          <i className="radar-vitrine-ponto ponto-a" />
+          <i className="radar-vitrine-ponto ponto-b" />
+          <i className="radar-vitrine-ponto ponto-c" />
+        </div>
+        <div className="radar-vitrine-lista">
+          {ACHADOS_RADAR.map((achado, i) => (
+            <div
+              className="radar-vitrine-achado"
+              style={{ "--radar-atraso": `${1.05 + i * 0.22}s` } as React.CSSProperties}
+              key={`${achado.portal}-${achado.titulo}`}
+            >
+              <span>{achado.portal}</span>
+              <strong>{achado.titulo}</strong>
+              <small>{achado.detalhe}</small>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+    <p className="visual-nota">
+      O primeiro resultado vira referência. Depois, o Radar avisa somente sobre anúncio novo e
+      mantém a revisão humana antes de qualquer imóvel entrar no Pipeline.
     </p>
   </>
 );
@@ -480,6 +528,14 @@ const CENAS: Cena[] = [
     visual: VisualFunil,
   },
   {
+    rotulo: "Central e Radar",
+    parte: 1,
+    titulo: "Novas oportunidades chegam sem você repetir a mesma busca.",
+    texto:
+      "Pesquise imóveis nos portais por cidade, bairro, tipo e faixa de valor. Uma busca revisada pode virar Radar: ele compara os resultados, separa somente os anúncios novos e leva cada oportunidade a um pré-cadastro antes do Pipeline.",
+    visual: VisualRadar,
+  },
+  {
     rotulo: "WhatsApp",
     parte: 2,
     titulo: "A mensagem sai do seu próprio número.",
@@ -504,7 +560,7 @@ const CENAS: Cena[] = [
     visual: VisualAudio,
   },
   {
-    rotulo: "Caixa de respostas",
+    rotulo: "Conversas e respostas",
     parte: 2,
     titulo: "Tudo que escreveram para você, em uma tela só.",
     texto:
@@ -612,6 +668,67 @@ const EXTRAS = [
       <>
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         <path d="m9 12 2 2 4-4" />
+      </>
+    ),
+  },
+  {
+    titulo: "Assistente em contexto",
+    texto: "Consulte carteira, agenda, follow-ups e indicadores sem risco de alterar ou enviar nada.",
+    icone: (
+      <>
+        <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" />
+        <circle cx="12" cy="12" r="3.2" />
+      </>
+    ),
+  },
+  {
+    titulo: "Mensagens agendadas",
+    texto: "Deixe o WhatsApp preparado para a data e a hora certas, com edição, cancelamento e status do envio.",
+    icone: (
+      <>
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M8 3v4M16 3v4M3 10h18M12 14v3l2 1" />
+      </>
+    ),
+  },
+  {
+    titulo: "Protocolos da imobiliária",
+    texto: "Registre taxa, prazo e regras da empresa para a IA responder somente o que você autorizou.",
+    icone: (
+      <>
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        <path d="M9 7h7M9 11h7" />
+      </>
+    ),
+  },
+  {
+    titulo: "Entrada e saída por planilha",
+    texto: "Importe a carteira de um CSV com revisão prévia e exporte imóveis, canais e abordagens para análise.",
+    icone: (
+      <>
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6M8 13h8M8 17h8M10 9H8" />
+      </>
+    ),
+  },
+  {
+    titulo: "Anúncios e documentos",
+    texto: "Gere o texto de publicação do imóvel captado e a solicitação de comissão quando a locação fechar.",
+    icone: (
+      <>
+        <path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5" />
+        <path d="m16 16 2 2 3-4" />
+      </>
+    ),
+  },
+  {
+    titulo: "Histórico de interações",
+    texto: "Veja etapas, notas e conversas na mesma linha do tempo, inclusive mensagens anteriores ao cadastro.",
+    icone: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2M7 3.8 4.5 6" />
       </>
     ),
   },
@@ -776,7 +893,7 @@ export default function Vitrine({ aoEntrar, aoCriarConta }: Props) {
         <ul className="extras-grade">
           {EXTRAS.map((e, i) => (
             <li className="extra" key={e.titulo}>
-              <span className="extra-numero">0{i + 1}</span>
+              <span className="extra-numero">{String(i + 1).padStart(2, "0")}</span>
               <span className="extra-ic">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   {e.icone}

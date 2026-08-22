@@ -13,8 +13,8 @@
    pacote de quem ainda nem entrou. O que se reaproveita são as
    classes CSS, para o visual não divergir.
    ================================================================ */
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import MarcaApp from "@/components/MarcaApp";
 import { useSessao } from "@/components/SessaoProvider";
 import { traduzErroAuth } from "@/lib/auth/erros";
 import { legalPublicavel, VERSAO_TERMOS } from "@/lib/legal/identidade";
@@ -260,7 +260,7 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
         >
           <aside className="auth-contexto" aria-hidden="true">
             <div className="brand auth-contexto-marca">
-              <Image className="brand-mark" src="/logo.png" alt="" width={52} height={52} />
+              <MarcaApp className="brand-mark" />
               <div className="brand-text">
                 <span className="brand-title">Angariações</span>
                 <span className="brand-sub">Controle de Locação</span>
@@ -293,7 +293,7 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
             </button>
 
             <div className="brand auth-box-brand">
-              <Image className="brand-mark" src="/logo.png" alt="Angariações" width={48} height={48} />
+              <MarcaApp className="brand-mark" alt="Angariações" />
               <div className="brand-text">
                 <span className="brand-title">Angariações</span>
                 <span className="brand-sub">Controle de Locação</span>
