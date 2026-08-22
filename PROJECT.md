@@ -38,8 +38,9 @@ do Brasil**.
 O que fica na **raiz** do repositório:
 
 - [supabase-schema.sql](supabase-schema.sql) — schema completo do banco. Inclui dados da carteira
-  (`imoveis`, `metas`, `agenda`, `abordagens`, `protocolos`, `user_config`), mensagens agendadas,
-  Central/Radar, integrações protegidas e tabelas operacionais. As tabelas acessíveis pelo usuário
+  (`imoveis`, `metas`, `agenda`, `abordagens`, `protocolos`, `user_config`), avaliações de imóveis,
+  mensagens agendadas, Central/Radar, integrações protegidas e tabelas operacionais. As tabelas
+  acessíveis pelo usuário
   têm RLS por `auth.uid() = user_id`; secrets e dados globais de operação permanecem sem políticas
   de cliente.
   Idempotente — pode ser re-rodado no SQL editor do Supabase. **É a fonte de verdade do schema.**
@@ -64,7 +65,7 @@ O aplicativo vive em **[`web/`](web/)** — Next 16 (App Router, Turbopack), Typ
   do Leaflet e o `style.css`), `page.tsx` (tela de acesso e queda do link de recuperação de senha),
   páginas públicas de termos/privacidade e o grupo **`(painel)/`** com o shell autenticado. As views
   atuais incluem `home`, `dashboard`, `pipeline`, `metas`, `agenda`, `mensagens`, `respostas`,
-  `insights`, `mapa`, `relatorios`, `protocolos`, `central-angariacao` e `admin`. A antiga rota
+  `insights`, `mapa`, `relatorios`, `protocolos`, `avaliacao`, `central-angariacao` e `admin`. A antiga rota
   `roadmap` redireciona para o Início: integrações e IA não formam uma frente de trabalho do
   corretor; configuração e saúde técnica pertencem à Administração.
   As rotas de servidor vivem em **`app/api/`**: `whatsapp/*`, `ia`, `assistente`, `google/*`,
@@ -612,6 +613,16 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
 - **`calculo/focoDia.ts`** — fila determinística das próximas ações: respostas pendentes,
   compromissos vencidos/de hoje, imóveis estagnados e prospecção. A pontuação e a ordem são do motor,
   com no máximo uma ação por imóvel; a IA pode explicar a fila, mas não inventá-la nem reordená-la.
+- **`calculo/avaliacao.ts`** — motor determinístico da **Avaliação Rápida** (`/avaliacao`). A V2
+  combina a carteira com a base durável `comparaveis_mercado` e exige compatibilidade mínima de
+  cidade, família de tipo, área, quartos e localização; quando há ao menos três opções na mesma rua,
+  elas prevalecem sobre as demais do bairro. Depois ajusta parcialmente por área, remove outliers e
+  usa mediana ponderada por similaridade, recência, estágio e origem para produzir faixa,
+  recomendação e confiança. Preço externo é valor pedido, recebe peso menor e sozinho nunca produz
+  confiança alta. A expectativa do proprietário é comparada somente depois e nunca entra no preço.
+  Como `imoveis` e a base externa só têm locação, venda responde dados insuficientes. Área ausente
+  não é inventada. Cada execução grava em `avaliacoes_imoveis` uma fotografia imutável da entrada,
+  versão da metodologia e comparáveis utilizados.
 - **`calculo/centralAngariacao.ts` · `radarAngariacao.ts`** — contratos e regras da Central/Radar.
   Resultado de portal não é `Imovel` e só chega à carteira após revisão humana. As buscas cobrem
   OLX, Chaves na Mão, Wimoveis e Viva Real; o Radar persiste filtros e anúncios novos em tabelas
@@ -627,6 +638,9 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   — o `loadState()`: busca as 6 tabelas em paralelo no login. Erro em `user_config`, `abordagens` ou
   `protocolos` **não** derruba o carregamento (o app inteiro funciona sem eles); erro nas outras
   três propaga.
+- **`persistencia/avaliacoes.ts`** — fronteira tipada e isolada do histórico de avaliações. Faz
+  somente `select`/`insert`; a UI aguarda a gravação antes de publicar o resultado, e a RLS também
+  valida que o `imovel_id` opcional pertence ao mesmo usuário.
 - **`store.ts`** — store Zustand espelhando o `STATE` legado, mais o catálogo de abordagens e os
   protocolos da imobiliária (`{ imoveis, metas, agenda, abordagens, protocolos, config }`).
 - **`mutacoes.ts`** — escritas do estado central no Supabase num só lugar (criar/editar/excluir
@@ -1611,6 +1625,11 @@ arbitrária. Em produção, usa Firecrawl quando configurado. Fora da Vercel pod
 Chromium e, por último, extração HTTP/JSON-LD. Falha conserva o link de pesquisa pronto para a pessoa
 continuar manualmente. Resultado coletado é oportunidade para revisão, não gravação automática no
 Pipeline; cidade é conferida exatamente para não misturar região metropolitana.
+
+Cada resultado válido também faz upsert em `comparaveis_mercado`, sempre sob o `user_id` autenticado.
+A Avaliação Rápida reutiliza essa base sem chamar o coletor a cada cálculo. No Firecrawl, a consulta
+usa proxy básico e cache para manter o custo previsível; o fallback local preserva os mesmos campos
+estruturados quando o portal os disponibiliza.
 
 O Radar salva buscas e o baseline visto em `radar_buscas`/`radar_anuncios`. A chave única
 `busca_id + portal + id_externo` impede duplicatas entre consulta manual e monitor. O cron diário da

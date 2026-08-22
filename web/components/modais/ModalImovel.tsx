@@ -11,6 +11,7 @@
    ================================================================ */
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { captadorPadrao, useSessao } from "@/components/SessaoProvider";
 import EnderecoAutocompleteViaCep, {
   type EnderecoViaCepSelecionado,
@@ -79,6 +80,7 @@ function IconeDesdobrar() {
 }
 
 export default function ModalImovel({ id }: { id?: string }) {
+  const router = useRouter();
   const fecharModal = useUiModal((s) => s.fecharModal);
   const abrirModal = useUiModal((s) => s.abrirModal);
   const { usuario } = useSessao();
@@ -204,6 +206,16 @@ export default function ModalImovel({ id }: { id?: string }) {
     if (!imovel) return;
     if (!confirm("Alterações não salvas neste formulário serão perdidas. Continuar?")) return;
     abrirModal("solicitacaoAngariacao", imovel.id);
+  }
+
+  /** A avaliação lê o imóvel já salvo no store. Por isso a troca de tela
+      avisa sobre alterações ainda não gravadas, como os outros atalhos que
+      deixam este modal. */
+  function irParaAvaliacao() {
+    if (!imovel) return;
+    if (!confirm("Alterações não salvas neste formulário serão perdidas. Continuar?")) return;
+    fecharModal();
+    router.push(`/avaliacao?imovel=${encodeURIComponent(imovel.id)}`);
   }
 
   async function aoBuscarCep() {
@@ -945,6 +957,11 @@ export default function ModalImovel({ id }: { id?: string }) {
       </div>
       <div className="modal-foot">
         <div className="modal-foot-secondary">
+          {imovel && (
+            <button type="button" className="btn btn-ghost" onClick={irParaAvaliacao}>
+              Avaliar imóvel
+            </button>
+          )}
           {imovel && (
             <button type="button" className="btn btn-ghost" onClick={() => abrirModal("mensagemAgendada", undefined, undefined, imovel.id)}>
               Agendar mensagem

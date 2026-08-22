@@ -49,14 +49,22 @@ describe("Central de Angariação", () => {
   it("gera URL somente nos hosts fixos dos portais", () => {
     const olx = urlDaPesquisa({ portal: "olx", cidade: "Londrina", estado: "PR", valorMax: 2500 });
     const chaves = urlDaPesquisa({ portal: "chaves-na-mao", cidade: "Londrina", estado: "PR" });
+    const chaves1 = urlDaPesquisa({ portal: "chaves-na-mao", cidade: "Londrina", estado: "PR", tipo: "Apartamento", dormitorios: 1 });
+    const chaves3 = urlDaPesquisa({ portal: "chaves-na-mao", cidade: "Londrina", estado: "PR", tipo: "Apartamento", dormitorios: 3 });
+    const chavesBairro = urlDaPesquisa({ portal: "chaves-na-mao", cidade: "Londrina", estado: "PR", bairro: "Jardim Piza", tipo: "Apartamento", dormitorios: 1 });
     const wimoveis = urlDaPesquisa({ portal: "wimoveis", cidade: "Londrina", estado: "PR", somenteProprietario: true });
+    const wimoveis3 = urlDaPesquisa({ portal: "wimoveis", cidade: "Londrina", estado: "PR", tipo: "Apartamento", dormitorios: 3 });
     const vivaReal = urlDaPesquisa({ portal: "viva-real", cidade: "Londrina", estado: "PR", valorMin: 1000 });
     expect(new URL(olx).hostname).toBe("www.olx.com.br");
     expect(new URL(chaves).hostname).toBe("www.chavesnamao.com.br");
     expect(new URL(wimoveis).hostname).toBe("www.wimoveis.com.br");
     expect(new URL(vivaReal).hostname).toBe("www.vivareal.com.br");
     expect(olx).toContain("ps=2500");
+    expect(chaves1).toContain("/apartamentos-para-alugar/pr-londrina/1-quarto/");
+    expect(chaves3).toContain("/apartamentos-para-alugar/pr-londrina/3-quartos/");
+    expect(chavesBairro).toContain("/apartamentos-para-alugar/pr-londrina/jardim-piza/1-quarto/");
     expect(wimoveis).toContain("tipoanunciante-particular");
+    expect(wimoveis3).toContain("/apartamentos/pr/londrina/3-quartos");
     expect(vivaReal).toContain("precoMinimo=1000");
   });
 
@@ -197,6 +205,9 @@ describe("Central de Angariação", () => {
       cidade: "Londrina",
       bairro: "Centro",
       imagem: "https://img.olx.com.br/a.jpg",
+      tipo: "Casa",
+      areaM2: 70,
+      quartos: 2,
     })]);
   });
 
@@ -218,6 +229,9 @@ describe("Central de Angariação", () => {
       cidade: "Londrina",
       bairro: "Centro",
       endereco: "Rua Sergipe",
+      tipo: "Apartamento",
+      areaM2: 90,
+      quartos: 3,
     })]);
   });
 
@@ -239,6 +253,8 @@ describe("Central de Angariação", () => {
       bairro: "Centro",
       endereco: "Rua Pará, 100",
       imagem: "https://cdn.chavesnamao.com.br/a.jpg",
+      tipo: "Casa",
+      areaM2: 80,
     })]);
   });
 
@@ -263,6 +279,9 @@ describe("Central de Angariação", () => {
       bairro: "Centro",
       endereco: "Rua Goiás, 20",
       imagem: "https://img.wimoveis.com.br/a.jpg",
+      tipo: "Apartamento",
+      areaM2: 70,
+      quartos: 2,
     })]);
   });
 });

@@ -771,7 +771,7 @@ export default function Vitrine({ aoEntrar, aoCriarConta }: Props) {
   }, []);
 
   return (
-    <section className="auth-showcase">
+    <section className="auth-showcase" id="conheca-o-sistema">
       <div className="vitrine-hero">
         <div className="vitrine-hero-copy">
           <span className="vitrine-selo">CRM de captação para locação</span>
@@ -785,7 +785,7 @@ export default function Vitrine({ aoEntrar, aoCriarConta }: Props) {
 
           <div className="vitrine-ctas">
             <button type="button" className="btn btn-primary" onClick={aoCriarConta}>
-              Começar agora <span aria-hidden="true">→</span>
+              Começar agora
             </button>
             <button type="button" className="btn" onClick={aoEntrar}>
               Entrar no painel

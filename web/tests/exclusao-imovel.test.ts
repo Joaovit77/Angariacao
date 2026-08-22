@@ -164,7 +164,7 @@ describe("contrato SQL e worker", () => {
     expect(SCHEMA).toContain("from public, anon, authenticated, service_role");
     expect(SCHEMA).toContain("grant select, insert, update on table mensagens_agendadas to authenticated");
     expect(SCHEMA).not.toContain("grant select, insert, update, delete on table mensagens_agendadas to authenticated");
-    expect(SCHEMA).toContain("grant select, insert, update, delete on table\n  imoveis, mensagens_agendadas");
+    expect(SCHEMA).toMatch(/grant select, insert, update, delete on table\r?\n  imoveis, mensagens_agendadas/);
     expect(SCHEMA).not.toMatch(/grant\s+(?:all|truncate|references|trigger)\b[^;]*\bto service_role/);
     for (const tabela of ["whatsapp_instancias", "google_contas", "admins", "ia_uso", "log_eventos"]) {
       expect(SCHEMA).not.toContain(`on table ${tabela} to authenticated`);

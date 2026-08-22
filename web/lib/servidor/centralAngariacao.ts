@@ -24,11 +24,19 @@ function urlOlx(f: FiltrosCentralAngariacao): string {
 function urlChaves(f: FiltrosCentralAngariacao): string {
   const uf = slugPortal(f.estado || "PR");
   const cidade = slugPortal(f.cidade);
-  const tipo = f.tipo ? `${slugPortal(f.tipo)}-` : "imoveis-";
-  const url = new URL(`https://www.chavesnamao.com.br/${tipo}para-alugar/${uf}-${cidade}/`);
+  const tipoNormalizado = slugPortal(f.tipo || "");
+  const categoria = tipoNormalizado.includes("apartamento")
+    ? "apartamentos"
+    : (tipoNormalizado.includes("casa") ? "casas" : "imoveis");
+  const dormitorios = f.dormitorios != null
+    ? `/${f.dormitorios}-quarto${f.dormitorios === 1 ? "" : "s"}`
+    : "";
+  const bairro = f.bairro ? `/${slugPortal(f.bairro)}` : "";
+  const url = new URL(
+    `https://www.chavesnamao.com.br/${categoria}-para-alugar/${uf}-${cidade}${bairro}${dormitorios}/`,
+  );
   if (f.valorMin != null) url.searchParams.set("valor_min", String(f.valorMin));
   if (f.valorMax != null) url.searchParams.set("valor_max", String(f.valorMax));
-  if (f.dormitorios != null) url.searchParams.set("dormitorios", String(f.dormitorios));
   return url.toString();
 }
 
@@ -46,6 +54,7 @@ function urlWimoveis(f: FiltrosCentralAngariacao): string {
     slugPortal(f.estado || "PR"),
     slugPortal(f.cidade),
     f.bairro ? slugPortal(f.bairro) : null,
+    f.dormitorios != null ? `${f.dormitorios}-quarto${f.dormitorios === 1 ? "" : "s"}` : null,
     f.somenteProprietario ? "tipoanunciante-particular" : null,
   ].filter(Boolean);
   return partes.join("/");

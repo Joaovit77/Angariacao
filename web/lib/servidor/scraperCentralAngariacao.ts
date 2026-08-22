@@ -196,7 +196,7 @@ async function coletarChaves(page: Page): Promise<AnuncioCentralAngariacao[]> {
       endereco: endereco || null,
       imagem: item.imagem || null,
       url: item.url,
-      descricao: null,
+      descricao: item.textos.join(" · ") || null,
       anunciante: "incerto" as const,
     }];
   });

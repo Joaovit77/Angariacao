@@ -5,6 +5,7 @@ import type { AnyNode } from "domhandler";
 import { dataPublicacaoOlx, dentroDoPeriodo } from "@/lib/datas";
 import {
   idDoAnuncio,
+  comCaracteristicasDoAnuncio,
   type AnuncioCentralAngariacao,
   type FiltrosCentralAngariacao,
 } from "@/lib/calculo/centralAngariacao";
@@ -113,7 +114,7 @@ function extrairVivaReal($: CheerioAPI, filtros: FiltrosCentralAngariacao): Anun
         endereco: endereco || null,
         imagem: imagemDe(link),
         url,
-        descricao: null,
+        descricao: paragrafos.join(" · ") || null,
         anunciante: "incerto" as const,
       }];
     });
@@ -144,7 +145,7 @@ function extrairChaves($: CheerioAPI): AnuncioCentralAngariacao[] {
         endereco: endereco || null,
         imagem: imagemDe(link),
         url,
-        descricao: null,
+        descricao: textos.join(" · ") || null,
         anunciante: "incerto" as const,
       }];
     });
@@ -187,10 +188,14 @@ export function extrairAnunciosFirecrawl(
 ): AnuncioCentralAngariacao[] {
   const $ = load(html);
   switch (filtros.portal) {
-    case "olx": return extrairOlx($, filtros);
-    case "chaves-na-mao": return extrairChaves($);
-    case "wimoveis": return extrairWimoveis($, filtros);
-    case "viva-real": return extrairVivaReal($, filtros);
+    case "olx": return extrairOlx($, filtros)
+      .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
+    case "chaves-na-mao": return extrairChaves($)
+      .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
+    case "wimoveis": return extrairWimoveis($, filtros)
+      .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
+    case "viva-real": return extrairVivaReal($, filtros)
+      .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
   }
 }
 
@@ -226,7 +231,10 @@ async function buscarComFirecrawlAoVivo(
     body: JSON.stringify({
       url: urlPesquisa,
       formats: ["rawHtml"],
-      proxy: "auto",
+      // O modo básico mantém o custo previsível em 1 crédito por página.
+      // Se o portal o bloquear, a rota conserva o link e não escala para o
+      // proxy reforçado de 5 créditos sem uma decisão explícita.
+      proxy: "basic",
       location: { country: "BR", languages: ["pt-BR"] },
       timeout: TIMEOUT_FIRECRAWL_MS,
       // O cache do Firecrawl ainda custa 1 crédito, mas evita o proxy reforçado

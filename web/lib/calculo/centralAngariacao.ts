@@ -1,4 +1,5 @@
 import { agoraTimestamp, timestampDeIso } from "../datas";
+import { extrairCaracteristicasImovel } from "./caracteristicasImovel";
 
 /* ================================================================
    CENTRAL DE ANGARIAÇÃO — contratos e regras puras
@@ -37,9 +38,33 @@ export interface AnuncioCentralAngariacao {
   imagem?: string | null;
   url: string;
   descricao?: string | null;
+  tipo?: string | null;
+  areaM2?: number | null;
+  quartos?: number | null;
+  banheiros?: number | null;
+  vagas?: number | null;
   publicadoEm?: string | null;
   publicadoTexto?: string | null;
   anunciante: "proprietario" | "imobiliaria" | "incerto";
+}
+
+/** Acrescenta somente características declaradas no card do portal. */
+export function comCaracteristicasDoAnuncio(
+  anuncio: AnuncioCentralAngariacao,
+  tipoPreferido?: string | null,
+): AnuncioCentralAngariacao {
+  const extraidas = extrairCaracteristicasImovel(
+    [anuncio.titulo, anuncio.descricao].filter(Boolean).join(" · "),
+    anuncio.tipo || tipoPreferido,
+  );
+  return {
+    ...anuncio,
+    tipo: anuncio.tipo ?? extraidas.tipo,
+    areaM2: anuncio.areaM2 ?? extraidas.areaM2,
+    quartos: anuncio.quartos ?? extraidas.quartos,
+    banheiros: anuncio.banheiros ?? extraidas.banheiros,
+    vagas: anuncio.vagas ?? extraidas.vagas,
+  };
 }
 
 export interface ResultadoBuscaCentral {

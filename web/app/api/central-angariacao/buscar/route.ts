@@ -1,6 +1,15 @@
-import { createClient } from "@supabase/supabase-js";
-import { anuncioPertenceACidade, PERIODOS_PUBLICACAO, PORTAIS_ANGARIACAO, rotuloPortal, type FiltrosCentralAngariacao, type ResultadoBuscaCentral } from "@/lib/calculo/centralAngariacao";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  anuncioPertenceACidade,
+  comCaracteristicasDoAnuncio,
+  PERIODOS_PUBLICACAO,
+  PORTAIS_ANGARIACAO,
+  rotuloPortal,
+  type FiltrosCentralAngariacao,
+  type ResultadoBuscaCentral,
+} from "@/lib/calculo/centralAngariacao";
 import { dentroDoPeriodo } from "@/lib/datas";
+import { salvarComparaveisMercado } from "@/lib/persistencia/comparaveisMercado";
 import { extrairJsonLd, urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
 import { buscarComFirecrawl, FirecrawlIndisponivel } from "@/lib/servidor/firecrawlCentralAngariacao";
 import { buscarComNavegador, NavegadorIndisponivel } from "@/lib/servidor/scraperCentralAngariacao";
@@ -31,22 +40,55 @@ function resultadoColeta(
   };
 }
 
-async function autenticado(request: Request): Promise<boolean> {
+async function finalizarColeta(
+  supabase: SupabaseClient,
+  userId: string,
+  coletados: ResultadoBuscaCentral["anuncios"],
+  seguros: FiltrosCentralAngariacao,
+  urlPesquisa: string,
+): Promise<ResultadoBuscaCentral> {
+  const normalizados = coletados.map((anuncio) =>
+    comCaracteristicasDoAnuncio(anuncio, seguros.tipo)
+  );
+  const resultado = resultadoColeta(normalizados, seguros, urlPesquisa);
+  try {
+    const salvos = await salvarComparaveisMercado(supabase, userId, resultado.anuncios, seguros);
+    console.info("[central-angariacao] comparáveis atualizados", {
+      portal: seguros.portal,
+      salvos,
+    });
+  } catch (erro) {
+    console.error("[central-angariacao] falha ao atualizar a base de comparáveis", erro);
+    resultado.aviso = [
+      resultado.aviso,
+      "Os resultados apareceram, mas não foi possível atualizar a base histórica agora.",
+    ].filter(Boolean).join(" ");
+  }
+  return resultado;
+}
+
+interface SessaoAutenticada {
+  supabase: SupabaseClient;
+  userId: string;
+}
+
+async function autenticado(request: Request): Promise<SessaoAutenticada | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const auth = request.headers.get("authorization") || "";
   const token = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
-  if (!url || !key || !token) return false;
+  if (!url || !key || !token) return null;
   const supabase = createClient(url, key, {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data, error } = await supabase.auth.getUser();
-  return !error && !!data.user;
+  return !error && data.user ? { supabase, userId: data.user.id } : null;
 }
 
 export async function POST(request: Request) {
-  if (!(await autenticado(request))) {
+  const sessao = await autenticado(request);
+  if (!sessao) {
     return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: "Sessão inválida." }, 401);
   }
 
@@ -68,7 +110,13 @@ export async function POST(request: Request) {
   if (process.env.FIRECRAWL_API_KEY) {
     try {
       const coletados = await buscarComFirecrawl(seguros, urlPesquisa);
-      return resposta(resultadoColeta(coletados, seguros, urlPesquisa));
+      return resposta(await finalizarColeta(
+        sessao.supabase,
+        sessao.userId,
+        coletados,
+        seguros,
+        urlPesquisa,
+      ));
     } catch (erro) {
       console.warn("Central de Angariação: Firecrawl não concluiu a consulta:",
         erro instanceof FirecrawlIndisponivel ? erro.message : erro);
@@ -85,7 +133,13 @@ export async function POST(request: Request) {
 
   try {
     const coletados = await buscarComNavegador(seguros, urlPesquisa);
-    return resposta(resultadoColeta(coletados, seguros, urlPesquisa));
+    return resposta(await finalizarColeta(
+      sessao.supabase,
+      sessao.userId,
+      coletados,
+      seguros,
+      urlPesquisa,
+    ));
   } catch (erro) {
     // Sem Chrome no host (ex.: deploy ainda sem runtime de navegador), conserva
     // o fallback HTTP e o link pronto. No local e em hosts configurados, o
@@ -113,12 +167,17 @@ export async function POST(request: Request) {
       if (!seguros.somenteProprietario) return true;
       return a.anunciante !== "imobiliaria";
     });
-    return resposta({
-      ok: true,
+    const resultado = await finalizarColeta(
+      sessao.supabase,
+      sessao.userId,
       anuncios,
+      seguros,
       urlPesquisa,
-      aviso: anuncios.length ? undefined : "O portal não disponibilizou resultados para leitura. Abra a pesquisa pronta para continuar.",
-    });
+    );
+    if (!anuncios.length) {
+      resultado.aviso = "O portal não disponibilizou resultados para leitura. Abra a pesquisa pronta para continuar.";
+    }
+    return resposta(resultado);
   } catch (erro) {
     console.warn("Central de Angariação: consulta indisponível:", erro);
     return resposta({

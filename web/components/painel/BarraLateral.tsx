@@ -61,6 +61,16 @@ const ITENS: ItemNav[] = [
     ),
   },
   {
+    rota: "/avaliacao",
+    texto: "Avaliação Rápida",
+    icone: (
+      <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M4 19V9M10 19V5M16 19v-7M22 19H2" />
+        <path d="m3 6 5-3 5 4 7-5" />
+      </svg>
+    ),
+  },
+  {
     rota: "/central-angariacao",
     texto: "Central de Angariação",
     badge: "radar",

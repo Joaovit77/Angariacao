@@ -12,6 +12,7 @@ import "leaflet/dist/leaflet.css";
 // os clusters ganham ícone próprio na paleta via iconCreateFunction (MapaLeaflet).
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "./style.css";
+import "./apresentacao.css";
 
 // O style.css é uma cópia fiel do app estático original — a migração
 // (MIGRATION_NEXT.md) importa os estilos como estão, sem redesign.

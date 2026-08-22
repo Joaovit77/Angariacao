@@ -2,7 +2,7 @@
 
 /* ================================================================
    TELA DE ACESSO
-   A página é a APRESENTAÇÃO (Vitrine, largura toda); o formulário
+   A página é a apresentação fotográfica em tela cheia; o formulário
    com as 4 abas — login, cadastro, "esqueci a senha" e a nova senha —
    vive num MODAL, chamado pelo cabeçalho ou pelos CTAs da página.
    Antes ele dividia a tela com a vitrine e roubava o palco dela.
@@ -20,8 +20,8 @@ import { traduzErroAuth } from "@/lib/auth/erros";
 import { legalPublicavel, VERSAO_TERMOS } from "@/lib/legal/identidade";
 import { getSupabase } from "@/lib/persistencia/supabase";
 import { toast } from "@/lib/toast";
-import RodapeApp from "@/components/RodapeApp";
-import CabecalhoAuth from "./CabecalhoAuth";
+import Apresentacao from "./Apresentacao";
+import CabecalhoApresentacao from "./CabecalhoApresentacao";
 import CampoSenha from "./CampoSenha";
 import Vitrine from "./Vitrine";
 
@@ -242,11 +242,17 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
 
   return (
     <div className="auth-screen" id="auth-screen">
-      <CabecalhoAuth aoEntrar={() => abrir("login")} aoCriarConta={() => abrir("signup")} />
+      <CabecalhoApresentacao
+        aoEntrar={() => abrir("login")}
+        aoCriarConta={() => abrir("signup")}
+      />
 
-      <Vitrine aoEntrar={() => abrir("login")} aoCriarConta={() => abrir("signup")} />
+      <Apresentacao aoEntrar={() => abrir("login")} pausadaExternamente={modalAberto} />
 
-      <RodapeApp variante="auth" />
+      <Vitrine
+        aoEntrar={() => abrir("login")}
+        aoCriarConta={() => abrir("signup")}
+      />
 
       {/* FORMULÁRIO DE ACESSO — modal sobre a apresentação */}
       <div className={`auth-modal-overlay${modalAberto ? " open" : ""}`} aria-hidden={!modalAberto}>
