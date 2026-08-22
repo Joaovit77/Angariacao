@@ -86,6 +86,7 @@ describe("apresentação pública", () => {
   it("explica o sistema após a apresentação fotográfica sem alterar o acesso", () => {
     expect(TELA_AUTH).toContain("<Vitrine");
     expect(VITRINE).toContain('id="conheca-o-sistema"');
+    expect(ESTILO).toMatch(/#conheca-o-sistema\{[^}]*margin-inline:auto/);
     expect(VITRINE).toContain("Sua carteira não precisa de mais contatos.");
     expect(VITRINE).toContain("O sistema abre dizendo o que está esperando você.");
     expect(VITRINE).toContain("Tudo que escreveram para você, em uma tela só.");

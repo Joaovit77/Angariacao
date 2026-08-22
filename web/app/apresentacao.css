@@ -262,7 +262,7 @@
 }
 /* O primeiro painel do “Conheça” deve parecer uma demonstração do produto,
    e não uma maquete solta sobre o fundo da página. */
-#conheca-o-sistema{ position:relative; }
+#conheca-o-sistema{ position:relative; margin-inline:auto; }
 #conheca-o-sistema .vitrine-hero-produto{
   isolation:isolate; padding:34px 28px 42px;
   border:1px solid var(--border-soft); border-radius:26px;
