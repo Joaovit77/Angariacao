@@ -13,6 +13,7 @@ interface Props {
 
 const TEMPO_AUTOPLAY_MS = 6500;
 const CONSULTA_MOVIMENTO_REDUZIDO = "(prefers-reduced-motion: reduce)";
+const CONSULTA_FOTO_UNICA_MOBILE = "(max-width: 720px)";
 
 function indiceCircular(indice: number): number {
   const total = SLIDES_APRESENTACAO.length;
@@ -27,6 +28,15 @@ function assinarMovimentoReduzido(aoMudar: () => void) {
 
 function prefereMovimentoReduzido() {
   return window.matchMedia(CONSULTA_MOVIMENTO_REDUZIDO).matches;
+}
+function assinarFotoUnicaMobile(aoMudar: () => void) {
+  const consulta = window.matchMedia(CONSULTA_FOTO_UNICA_MOBILE);
+  consulta.addEventListener("change", aoMudar);
+  return () => consulta.removeEventListener("change", aoMudar);
+}
+
+function usaFotoUnicaMobile() {
+  return window.matchMedia(CONSULTA_FOTO_UNICA_MOBILE).matches;
 }
 
 export default function Apresentacao({ aoEntrar, pausadaExternamente = false }: Props) {
@@ -43,12 +53,20 @@ export default function Apresentacao({ aoEntrar, pausadaExternamente = false }: 
     prefereMovimentoReduzido,
     () => false,
   );
+  const fotoUnicaMobile = useSyncExternalStore(
+    assinarFotoUnicaMobile,
+    usaFotoUnicaMobile,
+    // O HTML inicial mais economico serve so a abertura. No desktop, o
+    // snapshot real monta as demais fotos logo depois da hidratacao.
+    () => true,
+  );
+
 
   const navegarPara = useCallback((novoIndice: number, reiniciarContador = true) => {
     const indice = indiceCircular(novoIndice);
     if (reiniciarContador) setCicloContador((ciclo) => ciclo + 1);
 
-    if (carregadosRef.current.has(indice)) {
+    if (usaFotoUnicaMobile() || carregadosRef.current.has(indice)) {
       solicitadoRef.current = null;
       setIndiceSolicitado(null);
       setIndiceAtivo(indice);
@@ -71,7 +89,9 @@ export default function Apresentacao({ aoEntrar, pausadaExternamente = false }: 
     setIndiceAtivo(indice);
   }
 
-  const imagemAtivaCarregada = indicesCarregados.includes(indiceAtivo);
+  const imagemAtivaCarregada = fotoUnicaMobile
+    ? indicesCarregados.includes(0)
+    : indicesCarregados.includes(indiceAtivo);
   const autoplayPausado =
     movimentoReduzido ||
     pausado ||
@@ -131,7 +151,21 @@ export default function Apresentacao({ aoEntrar, pausadaExternamente = false }: 
       onTouchEnd={aoEncerrarToque}
     >
       <div className="apresentacao-imagens" aria-live="off">
-        {SLIDES_APRESENTACAO.map((slide, indice) => {
+        {fotoUnicaMobile ? (
+          <div className="apresentacao-foto ativo" aria-hidden={false}>
+            <Image
+              className="apresentacao-imagem enquadramento-abertura"
+              src={SLIDES_APRESENTACAO[0].imagem}
+              alt={SLIDES_APRESENTACAO[0].alt}
+              fill
+              sizes="100vw"
+              preload
+              onLoad={() => registrarImagemCarregada(0)}
+              draggable={false}
+            />
+          </div>
+        ) : (
+          SLIDES_APRESENTACAO.map((slide, indice) => {
           const montada =
             indice === indiceAtivo ||
             indice === indiceSolicitado ||
@@ -157,7 +191,7 @@ export default function Apresentacao({ aoEntrar, pausadaExternamente = false }: 
               />
             </div>
           );
-        })}
+        }))}
       </div>
 
       <div className="apresentacao-contraste" aria-hidden="true" />

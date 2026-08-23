@@ -15,6 +15,7 @@
    ================================================================ */
 import { useEffect, useRef, useState } from "react";
 import MarcaApp from "@/components/MarcaApp";
+import RodapeApp from "@/components/RodapeApp";
 import { useSessao } from "@/components/SessaoProvider";
 import { traduzErroAuth } from "@/lib/auth/erros";
 import { legalPublicavel, VERSAO_TERMOS } from "@/lib/legal/identidade";
@@ -253,6 +254,7 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
         aoEntrar={() => abrir("login")}
         aoCriarConta={() => abrir("signup")}
       />
+      <RodapeApp variante="auth" />
 
       {/* FORMULÁRIO DE ACESSO — modal sobre a apresentação */}
       <div className={`auth-modal-overlay${modalAberto ? " open" : ""}`} aria-hidden={!modalAberto}>

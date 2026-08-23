@@ -11,6 +11,7 @@ const CONTROLES = readFileSync(
   "utf8",
 );
 const ESTILO = readFileSync(new URL("../app/apresentacao.css", import.meta.url), "utf8");
+const ESTILO_BASE = readFileSync(new URL("../app/style.css", import.meta.url), "utf8");
 const VITRINE = readFileSync(
   new URL("../components/auth/Vitrine.tsx", import.meta.url),
   "utf8",
@@ -73,6 +74,9 @@ describe("apresentação pública", () => {
     expect(APRESENTACAO).toContain("{ preload: true }");
     expect(APRESENTACAO).toContain('{ loading: "lazy" as const }');
     expect(APRESENTACAO).toContain("proximoPrecarregamento");
+    expect(APRESENTACAO).toContain('CONSULTA_FOTO_UNICA_MOBILE = "(max-width: 720px)"');
+    expect(APRESENTACAO).toContain("fotoUnicaMobile ?");
+    expect(APRESENTACAO).toContain("SLIDES_APRESENTACAO[0].imagem");
   });
 
   it("remove movimento e autoplay quando essa preferência está ativa", () => {
@@ -86,6 +90,9 @@ describe("apresentação pública", () => {
   it("explica o sistema após a apresentação fotográfica sem alterar o acesso", () => {
     expect(TELA_AUTH).toContain("<Vitrine");
     expect(VITRINE).toContain('id="conheca-o-sistema"');
+    expect(TELA_AUTH).toContain('import RodapeApp from "@/components/RodapeApp"');
+    expect(TELA_AUTH).toContain('<RodapeApp variante="auth" />');
+    expect(ESTILO_BASE).toMatch(/\.rodape-app-auth\{[^}]*margin-inline:\s*auto/);
     expect(ESTILO).toMatch(/#conheca-o-sistema\{[^}]*margin-inline:auto/);
     expect(VITRINE).toContain("Sua carteira não precisa de mais contatos.");
     expect(VITRINE).toContain("O sistema abre dizendo o que está esperando você.");

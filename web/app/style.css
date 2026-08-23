@@ -1834,6 +1834,7 @@ input, select, textarea{ font-family: inherit; font-size: 14px; }
    faixa dela. Sem borda: ali o rodapé não fecha um bloco de conteúdo. */
 .rodape-app-auth{
   margin-top: 36px;
+  margin-inline: auto;
   padding-top: 0;
   border-top: none;
   width: 100%;
