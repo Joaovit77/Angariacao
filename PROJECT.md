@@ -241,9 +241,10 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   Nenhuma contagem daqui pode divergir da tela que a origina (há teste fixando isso contra o badge).
   A cota aparece como **duas rodadas assistidas de 10**, e não como um saldo abstrato de 20: no uso
   real até 18/08/2026, 7 dos 10 dias com lote pararam em dez envios ou menos, apesar de ainda haver
-  fila e cota. A Início mostra rodada/progresso, quantos estão prontos para a 2ª/3ª/4ª tentativa e o
-  retorno acumulado observado depois dos lotes. Ao abrir a segunda rodada, o modal reaproveita na
-  mesma aba os roteiros e textos revisados naquele dia; o rascunho expira na virada do dia e nunca
+  fila e cota. A Início mostra somente a fila, a capacidade, o progresso e o botão da rodada; etapas
+  da cadência, retorno acumulado e listas completas ficam nas ferramentas próprias para não
+  transformar o começo do dia em relatório. Ao abrir a segunda rodada, o modal reaproveita na mesma
+  aba os roteiros e textos revisados naquele dia; o rascunho expira na virada do dia e nunca
   altera a Abordagem permanente. Continuar segue exigindo confirmação humana — não há envio
   automático nem mudança nos freios anti-spam.
 - **`calculo/relatorioCompleto.ts`** — o terceiro relatório, que mede o **TRABALHO** e não o
@@ -610,9 +611,14 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   O mesmo módulo filtra busca/bairro/status/responsável/origem/período, evita inflar captações com
   unidades desdobradas e produz a leitura territorial que a IA apenas interpreta; ela não calcula
   nem escolhe bairros sobre os dados crus.
-- **`calculo/focoDia.ts`** — fila determinística das próximas ações: respostas pendentes,
+- **`calculo/focoDia.ts`** — fila determinística das próximas ações; a **Início exibe somente a
+  primeira**, porque mostrar a fila inteira transforma prioridade em backlog: respostas pendentes,
   compromissos vencidos/de hoje, imóveis estagnados e prospecção. A pontuação e a ordem são do motor,
   com no máximo uma ação por imóvel; a IA pode explicar a fila, mas não inventá-la nem reordená-la.
+  Quando a ação já identifica um imóvel estagnado, a Início abre o caso diretamente; respostas e
+  agenda continuam nas filas próprias. O Dashboard permanece como leitura analítica, sem duplicar o
+  plano operacional. Abaixo da ação e da rodada, a Início mantém apenas um panorama compacto e
+  clicável de Conversas, Agenda, Pipeline e meta de angariações; não repete listas nem relatórios.
 - **`calculo/avaliacao.ts`** — motor determinístico da **Avaliação Rápida** (`/avaliacao`). A V2
   combina a carteira com a base durável `comparaveis_mercado` e exige compatibilidade mínima de
   cidade, família de tipo, área, quartos e localização; quando há ao menos três opções na mesma rua,

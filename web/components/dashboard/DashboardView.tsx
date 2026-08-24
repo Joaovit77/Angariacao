@@ -15,7 +15,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ChartConfiguration } from "chart.js/auto";
 import Contador from "@/components/Contador";
-import FocoDoDia from "@/components/dashboard/FocoDoDia";
 import Grafico, { baseBarOptions, CHART_COLORS, corToken } from "@/components/graficos/Grafico";
 import { kpisDashboard, seriesDashboard } from "@/lib/calculo/dashboard";
 import { estatisticasPerdaPosCaptacao } from "@/lib/calculo/perdasPosCaptacao";
@@ -382,8 +381,6 @@ export default function DashboardView() {
       </div>
 
       <LeituraIa />
-
-      <FocoDoDia />
 
       <div className="grid grid-3 anim-stagger" style={{ marginBottom: "16px" }}>
         <KpiCard label="Novos contatos no mês" value={<Contador valor={kpis.contatosThisMonth} />} delta={kpis.deltaContatos} unit="un." description="Imóveis que entraram no funil este mês" />

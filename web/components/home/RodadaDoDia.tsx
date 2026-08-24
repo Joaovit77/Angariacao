@@ -68,9 +68,16 @@ export default function RodadaDoDia() {
     [imoveis, agenda, abordagens, hoje],
   );
 
-  if (rodada.vazia) return null;
+  // Respostas e compromissos já entram, caso a caso, no Plano de execução
+  // acima deste card. Aqui ficam apenas as ferramentas assistidas de lote e
+  // conferência; repetir as duas filas faria a Home mandar fazer a mesma coisa
+  // duas vezes com rótulos diferentes.
+  const itensAssistidos = rodada.itens.filter(
+    (item) => item.frente !== "respostas" && item.frente !== "compromissos",
+  );
+  if (itensAssistidos.length === 0) return null;
 
-  const itemFollowUp = rodada.itens.find((item) => item.frente === "followup");
+  const itemFollowUp = itensAssistidos.find((item) => item.frente === "followup");
   const cadencia = rodada.cadenciaFollowUp;
 
   const executar = (frente: FrenteRodada) => {
@@ -84,7 +91,7 @@ export default function RodadaDoDia() {
   return (
     <div className="card rodada">
       <div className="home-card-head">
-        <div className="card-title">A rodada de hoje</div>
+        <div className="card-title">Rodada do dia</div>
         {/* O que já saiu hoje. Este número só existia dentro do modal do
             lote, ou seja: só depois de abrir a ferramenta para descobrir
             que a cota já tinha acabado. */}
@@ -108,7 +115,7 @@ export default function RodadaDoDia() {
       </div>
 
       <div className="rodada-lista">
-        {rodada.itens.map((item) => {
+        {itensAssistidos.map((item) => {
           const [detalhePrincipal, detalheRitmo] = item.detalhe.split(" · ", 2);
           return (
           <div className={`rodada-item ${item.urgencia} ${item.frente}`} key={item.frente}>
@@ -124,25 +131,6 @@ export default function RodadaDoDia() {
                 <span className="rodada-detalhe-principal">{detalhePrincipal}</span>
                 {detalheRitmo && <span className="rodada-ritmo"> ({detalheRitmo})</span>}
               </span>
-              {item.frente === "followup" && (
-                <>
-                  <span className="rodada-etapas" aria-label="Etapas da cadência prontas agora">
-                    {cadencia.etapas.segunda > 0 && <span>{cadencia.etapas.segunda} para 2ª tentativa</span>}
-                    {cadencia.etapas.terceira > 0 && <span>{cadencia.etapas.terceira} para 3ª tentativa</span>}
-                    {cadencia.etapas.quarta > 0 && <span>{cadencia.etapas.quarta} para 4ª tentativa</span>}
-                  </span>
-                  {cadencia.resultado.mensagensEnviadas > 0 && (
-                    <span className="rodada-resultado">
-                      A cadência já acumulou {cadencia.resultado.proprietariosQueResponderam}{" "}
-                      {cadencia.resultado.proprietariosQueResponderam === 1 ? "resposta" : "respostas"}
-                      {cadencia.resultado.imoveisAngariados > 0 &&
-                        ` e ${cadencia.resultado.imoveisAngariados} ${
-                          cadencia.resultado.imoveisAngariados === 1 ? "angariação" : "angariações"
-                        }`}
-                    </span>
-                  )}
-                </>
-              )}
             </span>
             <button
               type="button"

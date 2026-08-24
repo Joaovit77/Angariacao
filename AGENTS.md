@@ -40,6 +40,16 @@ Documentos de domínio continuam canônicos em seus próprios escopos:
   `lib/datas.ts`, núcleo de cálculo compartilhado e escrita no Supabase antes do estado local.
 - Toda UI, mensagem e comentário novo deve usar português do Brasil.
 
+## Qualidade visual do frontend
+
+- Priorize boa aparência, legibilidade, hierarquia visual, consistência e responsividade em todas as
+  telas do frontend.
+- Ao identificar durante o trabalho um problema visual claro e semelhante ao que está sendo tratado,
+  corrija-o proativamente quando o ajuste for seguro, localizado e não alterar o fluxo do produto.
+- Sempre informe ao usuário os ajustes visuais feitos, inclusive os encontrados e corrigidos de forma
+  incidental. Para mudanças amplas de UX, comportamento ou identidade visual, peça direção antes de
+  implementar.
+
 ## Validação
 
 Execute testes proporcionais ao risco e ao domínio alterado. Para mudanças de código em `web/`,
