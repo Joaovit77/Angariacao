@@ -42,7 +42,7 @@ export default function Topbar({
   menuAtivo: boolean;
 }) {
   const pathname = usePathname();
-  const titulo = TITULOS[pathname] ?? "Angariações";
+  const titulo = TITULOS[pathname] ?? "Angario";
   /* O sino conta resposta de proprietário e evento do Sistema Principal
      — as duas coisas chegam a uma CARTEIRA. Numa conta que só opera o
      sistema ele ficaria permanentemente em zero, que é o tipo de

@@ -37,7 +37,7 @@ describe("apresentação pública", () => {
   it("mantém as quatro cenas, textos e fotos definidos para Londrina", () => {
     expect(SLIDES_APRESENTACAO).toHaveLength(4);
     expect(SLIDES_APRESENTACAO.map((slide) => slide.titulo)).toEqual([
-      "ANGARIAÇÃO",
+      "ANGARIO",
       "Conheça o mercado. Antecipe oportunidades.",
       "Da prospecção à publicação.",
       "Sua operação imobiliária, mais inteligente.",

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import PaginaInicial from "@/components/auth/PaginaInicial";
 import { DESCRICAO_SITE, NOME_SITE } from "@/lib/site";
 
-const TITULO = "Angariação — CRM de captação imobiliária";
+const TITULO = "Angario — CRM de captação imobiliária";
 
 export const metadata: Metadata = {
   title: TITULO,

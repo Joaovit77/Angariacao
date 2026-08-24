@@ -22,10 +22,10 @@ import "./apresentacao.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(URL_SITE),
-  title: "Painel de Angariações — Controle de Locação",
+  title: "Angario — CRM de captação imobiliária",
   icons: {
-    icon: "/logo-angariacao-claro.png",
-    apple: "/logo-angariacao-claro.png",
+    icon: "/angario-favicon.png",
+    apple: "/angario-favicon.png",
   },
 };
 

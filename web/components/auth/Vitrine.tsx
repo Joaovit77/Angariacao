@@ -104,7 +104,7 @@ const HeroMock = (
         <i />
         <i />
       </span>
-      <span className="hm-url">Painel de Angariações · Início</span>
+      <span className="hm-url">Angario · Início</span>
     </div>
     <div className="hm-corpo">
       <div className="hm-nav">

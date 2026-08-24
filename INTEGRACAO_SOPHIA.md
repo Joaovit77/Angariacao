@@ -1,7 +1,7 @@
-# Integração Sistema Principal (Sophia) → Painel de Angariações
+# Integração Sistema Principal (Sophia) → Angario
 
 > **Para quem é este documento:** a pessoa que vai escrever o código do **Sistema Principal** que
-> notifica o Painel de Angariações. Ele é autossuficiente — não é preciso ler o código do painel
+> notifica o Angario. Ele é autossuficiente — não é preciso ler o código do painel
 > para implementar a integração.
 >
 > **Versão da API:** 1 · **Última revisão:** 2026-08-06
@@ -10,7 +10,7 @@
 
 ## 1. Objetivo
 
-O Painel de Angariações é o CRM que o corretor usa para **captar** imóveis para locação: do
+O Angario é o CRM que o corretor usa para **captar** imóveis para locação: do
 primeiro contato com o proprietário até o "sim". O que acontece **depois** do sim — a Autorização
 de Locação assinada, o contrato de locação e o pagamento da comissão — acontece no **Sistema
 Principal**, e o painel ficava cego a isso. Na prática, o corretor descobria que a própria comissão
@@ -18,7 +18,7 @@ tinha sido paga perguntando para alguém.
 
 Esta integração fecha esse buraco com uma regra única:
 
-> **O Sistema Principal é a fonte oficial dos três fatos. O Painel de Angariações apenas RECEBE.**
+> **O Sistema Principal é a fonte oficial dos três fatos. O Angario apenas RECEBE.**
 
 O painel não decide que uma comissão foi paga, não devolve nada ao Sistema Principal e não tem
 nenhum caminho de escrita no sentido contrário. Toda regra de negócio (quem assina, quando loca,
@@ -450,7 +450,7 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     participant S as Sistema Principal
-    participant P as Painel de Angariações
+    participant P as Angario
     participant C as Corretor
 
     Note over P: Imóvel em "Angariado"

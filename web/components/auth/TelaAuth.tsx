@@ -270,8 +270,8 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
             <div className="brand auth-contexto-marca">
               <MarcaApp className="brand-mark" />
               <div className="brand-text">
-                <span className="brand-title">Angariações</span>
-                <span className="brand-sub">Controle de Locação</span>
+                <span className="brand-title">Angario</span>
+                <span className="brand-sub">CRM imobiliário</span>
               </div>
             </div>
             <div className="auth-contexto-corpo">
@@ -301,10 +301,10 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
             </button>
 
             <div className="brand auth-box-brand">
-              <MarcaApp className="brand-mark" alt="Angariações" />
+              <MarcaApp className="brand-mark" alt="Angario" />
               <div className="brand-text">
-                <span className="brand-title">Angariações</span>
-                <span className="brand-sub">Controle de Locação</span>
+                <span className="brand-title">Angario</span>
+                <span className="brand-sub">CRM imobiliário</span>
               </div>
             </div>
 

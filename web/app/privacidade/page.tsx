@@ -7,7 +7,7 @@ import DocumentoLegal from "@/components/legal/DocumentoLegal";
 import { PRIVACIDADE } from "@/lib/legal/conteudo";
 
 export const metadata: Metadata = {
-  title: "Política de Privacidade — Painel de Angariações",
+  title: "Política de Privacidade — Angario",
 };
 
 export default function Pagina() {

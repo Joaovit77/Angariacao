@@ -257,10 +257,10 @@ export default function BarraLateral({
       </div>
 
       <div className="brand">
-        <MarcaApp className="brand-mark" alt="Angariações" />
+        <MarcaApp className="brand-mark" alt="Angario" />
         <div className="brand-text">
-          <span className="brand-title">Angariações</span>
-          <span className="brand-sub">Controle de Locação</span>
+          <span className="brand-title">Angario</span>
+          <span className="brand-sub">CRM imobiliário</span>
         </div>
       </div>
 

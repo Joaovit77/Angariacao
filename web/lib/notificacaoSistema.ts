@@ -96,7 +96,7 @@ export function notificarSistema(aviso: AvisoSistema): boolean {
     const n = new Notification(aviso.titulo, {
       body: aviso.corpo,
       tag: aviso.tag,
-      icon: "/logo-angariacao-claro.png",
+      icon: "/angario-favicon.png",
     });
     n.onclick = () => {
       window.focus();

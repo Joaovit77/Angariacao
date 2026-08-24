@@ -455,8 +455,8 @@ input, select, textarea{ font-family: inherit; font-size: 14px; }
   :root:not([data-tema="escuro"]) .marca-app-imagem-claro{ display:block; }
 }
 .brand-text{ display:flex; flex-direction:column; line-height:1.15; }
-.brand-title{ font-family: Arial, Helvetica, sans-serif; font-size: 19px; font-weight:400; letter-spacing:.2px; margin: 5px;}
-.brand-sub{ font-size: 12px; color: var(--text-faint); letter-spacing:.3px; text-transform:uppercase; }
+.brand-title{ font-family: Arial, Helvetica, sans-serif; font-size: 19px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; margin:5px; }
+.brand-sub{ font-size:12px; color:var(--text-faint); letter-spacing:.16em; text-transform:uppercase; }
 
 .nav-group{ margin-top: 14px; }
 .nav-group-label{

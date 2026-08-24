@@ -1,5 +1,5 @@
 -- ============================================================
--- SCHEMA: Painel de Angariações — Supabase
+-- SCHEMA: Angario — Supabase
 -- ============================================================
 -- Como usar:
 -- 1. Crie um projeto gratuito em https://supabase.com

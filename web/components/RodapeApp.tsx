@@ -40,7 +40,7 @@ export default function RodapeApp({ variante }: { variante?: "auth" }) {
       {/* O ano vem do relógio de quem renderiza: no virar do ano o servidor
           (UTC) e o browser (BRT) podem discordar por algumas horas. */}
       <div className="rodape-assinatura" suppressHydrationWarning>
-        Painel de Angariações © {ano} · <span className="rodape-versao">v{VERSAO_APP}</span>
+        Angario CRM © {ano} · <span className="rodape-versao">v{VERSAO_APP}</span>
       </div>
       {/* Os documentos ficam no rodapé, que é onde as pessoas os procuram
           — e este rodapé vive dos DOIS lados do login, então valem tanto

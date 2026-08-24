@@ -40,7 +40,7 @@ describe("SEO da página pública", () => {
       expect(rota).toContain("width: 1200");
       expect(rota).toContain("height: 630");
       expect(rota).toContain('contentType = "image/png"');
-      expect(rota).toContain("Angariação — sua carteira imobiliária em movimento");
+      expect(rota).toContain("Angario — sua carteira imobiliária em movimento");
     }
     expect(IMAGEM_SOCIAL).toContain("Sua carteira,");
     expect(IMAGEM_SOCIAL).toContain("em movimento.");

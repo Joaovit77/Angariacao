@@ -31,10 +31,10 @@ export default function CabecalhoApresentacao({ aoEntrar, aoCriarConta }: Props)
     >
       <div className="vitrine-topo-fita">
         <div className="brand vitrine-topo-marca">
-          <MarcaApp className="brand-mark" alt="Angariação" />
+          <MarcaApp className="brand-mark" alt="Angario" />
           <div className="brand-text">
-            <span className="brand-title">Angariação</span>
-            <span className="brand-sub">Inteligência imobiliária</span>
+            <span className="brand-title">Angario</span>
+            <span className="brand-sub">CRM imobiliário</span>
           </div>
         </div>
 

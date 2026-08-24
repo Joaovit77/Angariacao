@@ -7,7 +7,7 @@ import DocumentoLegal from "@/components/legal/DocumentoLegal";
 import { TERMOS } from "@/lib/legal/conteudo";
 
 export const metadata: Metadata = {
-  title: "Termos de Uso — Painel de Angariações",
+  title: "Termos de Uso — Angario",
 };
 
 export default function Pagina() {

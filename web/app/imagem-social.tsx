@@ -70,7 +70,7 @@ export function criarImagemSocial() {
             A
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: -0.4 }}>Angariação</span>
+            <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: 3.2 }}>ANGARIO</span>
             <span
               style={{
                 marginTop: 4,
@@ -80,7 +80,7 @@ export function criarImagemSocial() {
                 letterSpacing: 2.1,
               }}
             >
-              INTELIGÊNCIA IMOBILIÁRIA
+              CRM IMOBILIÁRIO
             </span>
           </div>
         </div>

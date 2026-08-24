@@ -76,7 +76,7 @@ export default function RelatorioCompletoDoc({
     <div className="report-doc rc-doc">
       <div className="report-print-header">
         <div className="rph-brand">
-          Painel de Angariações<span className="rph-brand-sub">Relatório completo de captação</span>
+          Angario<span className="rph-brand-sub">Relatório completo de captação</span>
         </div>
         <div className="rph-meta">
           <span>Responsável: {responsavel}</span>

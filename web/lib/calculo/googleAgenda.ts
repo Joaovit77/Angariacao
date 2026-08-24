@@ -167,7 +167,7 @@ export function eventoDoCompromisso(item: AgendaItem, imovel: Imovel | null): Ev
     if (imovel.proprietarioTelefone) linhas.push(`Telefone: ${imovel.proprietarioTelefone}`);
   }
   if (item.notes && item.notes.trim()) linhas.push("", item.notes.trim());
-  linhas.push("", "Criado pelo Painel de Angariações.");
+  linhas.push("", "Criado pelo Angario.");
 
   const hora = horaUtil(item.hora);
   const evento: EventoGoogle = {

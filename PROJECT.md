@@ -22,7 +22,7 @@ triviais devem ficar no histórico do Git.
 
 ## O que é
 
-"Painel de Angariações" — um CRM/dashboard single-tenant-por-login para corretores de imóveis
+"Angario" — um CRM/dashboard single-tenant-por-login para corretores de imóveis
 acompanharem a **angariação (captação) de imóveis para locação**, do primeiro contato com o
 proprietário até o imóvel locado. Toda a UI, strings, comentários e mensagens são em **português
 do Brasil**.

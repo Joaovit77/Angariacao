@@ -11,7 +11,7 @@ export interface SlideApresentacao {
 
 export const SLIDES_APRESENTACAO: readonly SlideApresentacao[] = [
   {
-    titulo: "ANGARIAÇÃO",
+    titulo: "ANGARIO",
     descricao:
       "Inteligência e organização para transformar oportunidades em imóveis angariados.",
     imagem: "/apresentacao/londrina-lago-igapo-poster.jpg",

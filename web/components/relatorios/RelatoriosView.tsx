@@ -74,7 +74,7 @@ function ReportDoc({ d, responsavel }: { d: DadosRelatorio; responsavel: string 
     <div className="report-doc">
       <div className="report-print-header">
         <div className="rph-brand">
-          Painel de Angariações<span className="rph-brand-sub">Relatório de produtividade</span>
+          Angario<span className="rph-brand-sub">Relatório de produtividade</span>
         </div>
         <div className="rph-meta">
           <span>Responsável: {responsavel}</span>

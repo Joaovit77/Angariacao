@@ -21,14 +21,14 @@ export default function MarcaApp({ className = "", alt = "" }: Props) {
     >
       <Image
         className="marca-app-imagem marca-app-imagem-escuro"
-        src="/logo-angariacao-escuro.png"
+        src="/logo-angario-escuro.png"
         alt=""
         width={1254}
         height={1254}
       />
       <Image
         className="marca-app-imagem marca-app-imagem-claro"
-        src="/logo-angariacao-claro.png"
+        src="/logo-angario-claro.png"
         alt=""
         width={1254}
         height={1254}

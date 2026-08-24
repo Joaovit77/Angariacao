@@ -42,7 +42,7 @@ export const IDENTIDADE = {
    */
   emailEncarregado: "PENDENTE",
   /** Nome comercial do produto, como aparece para o usuário. */
-  produto: "Painel de Angariações",
+  produto: "Angario",
 } as const;
 
 /** Um campo ainda não preenchido? A UI usa isto para avisar em vez de
