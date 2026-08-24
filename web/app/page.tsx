@@ -1,26 +1,29 @@
-"use client";
+import type { Metadata } from "next";
+import PaginaInicial from "@/components/auth/PaginaInicial";
+import { DESCRICAO_SITE, NOME_SITE } from "@/lib/site";
 
-/* ================================================================
-   RAIZ — tela de acesso.
-   É também onde cai o link de recuperação de senha do e-mail
-   (resetPasswordForEmail usa window.location.origin como redirectTo),
-   por isso o evento PASSWORD_RECOVERY do onAuthStateChange abre aqui
-   o formulário "Defina sua nova senha", como no app antigo.
-   Com sessão válida, segue para o app (/dashboard).
-   ================================================================ */
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import TelaAuth from "@/components/auth/TelaAuth";
-import { useSessao } from "@/components/SessaoProvider";
+const TITULO = "Angariação — CRM de captação imobiliária";
+
+export const metadata: Metadata = {
+  title: TITULO,
+  description: DESCRICAO_SITE,
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    url: "/",
+    siteName: NOME_SITE,
+    title: TITULO,
+    description: DESCRICAO_SITE,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITULO,
+    description: DESCRICAO_SITE,
+  },
+  robots: { index: true, follow: true },
+};
 
 export default function Raiz() {
-  const { estado } = useSessao();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (estado === "auth") router.replace("/home");
-  }, [estado, router]);
-
-  if (estado === "auth") return null;
-  return <TelaAuth recuperacao={estado === "recuperacao"} />;
+  return <PaginaInicial />;
 }

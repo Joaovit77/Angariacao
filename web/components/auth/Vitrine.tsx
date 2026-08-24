@@ -775,9 +775,9 @@ export default function Vitrine({ aoEntrar, aoCriarConta }: Props) {
       <div className="vitrine-hero">
         <div className="vitrine-hero-copy">
           <span className="vitrine-selo">CRM de captação para locação</span>
-          <h1 className="showcase-headline">
+          <h2 className="showcase-headline">
             Sua carteira não precisa de mais contatos. Precisa de <span className="hl">movimento.</span>
-          </h1>
+          </h2>
           <p className="showcase-sub">
             Organize cada imóvel, converse com proprietários pelo seu WhatsApp e saiba exatamente
             quem responder, quem retomar e onde está cada negociação.

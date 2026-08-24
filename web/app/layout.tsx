@@ -3,6 +3,7 @@ import Script from "next/script";
 import AplicadorTema from "@/components/AplicadorTema";
 import SessaoProvider from "@/components/SessaoProvider";
 import Toasts from "@/components/Toasts";
+import { URL_SITE } from "@/lib/site";
 import { SCRIPT_TEMA } from "@/lib/tema";
 // O app antigo carregava o CSS do Leaflet por <link> no index.html; aqui ele
 // entra pelo bundle, na mesma ordem (antes do style.css do projeto).
@@ -20,6 +21,7 @@ import "./apresentacao.css";
 // exatamente como no app original, que não carrega webfonts.
 
 export const metadata: Metadata = {
+  metadataBase: new URL(URL_SITE),
   title: "Painel de Angariações — Controle de Locação",
   icons: {
     icon: "/logo-angariacao-claro.png",
