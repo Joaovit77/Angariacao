@@ -14,9 +14,9 @@ export const SLIDES_APRESENTACAO: readonly SlideApresentacao[] = [
     titulo: "ANGARIAÇÃO",
     descricao:
       "Inteligência e organização para transformar oportunidades em imóveis angariados.",
-    imagem: "/apresentacao/pexels-japy-35391295.jpg",
-    video: "/apresentacao/pexels-japy-35391295.mp4",
-    alt: "Vista noturna de Londrina sob o céu colorido do pôr do sol.",
+    imagem: "/apresentacao/londrina-lago-igapo-poster.jpg",
+    video: "/apresentacao/londrina-lago-igapo.mp4",
+    alt: "Vista aérea de Londrina e do Lago Igapó durante o dia.",
     enquadramento: "abertura",
     cta: "Entrar no sistema",
   },
@@ -24,17 +24,17 @@ export const SLIDES_APRESENTACAO: readonly SlideApresentacao[] = [
     titulo: "Conheça o mercado. Antecipe oportunidades.",
     descricao:
       "Centralize imóveis, proprietários, negociações e informações estratégicas em um único lugar.",
-    imagem: "/apresentacao/pexels-gaion-17204341.jpg",
-    alt: "Vista aérea do centro de Londrina, com a Catedral Metropolitana entre os edifícios.",
+    imagem: "/apresentacao/londrina-entardecer.jpg",
+    alt: "Vista panorâmica de Londrina ao entardecer, sob nuvens alaranjadas.",
     enquadramento: "mercado",
   },
   {
     titulo: "Da prospecção à publicação.",
     descricao:
       "Acompanhe cada etapa da angariação com histórico, agenda, follow-ups e prioridades bem definidas.",
-    imagem: "/apresentacao/pexels-oliveiratp-8602177.jpg",
-    alt: "Horizonte urbano de Londrina sob nuvens iluminadas no fim da tarde.",
-    enquadramento: "operacao",
+    imagem: "/apresentacao/pexels-gaion-17204341.jpg",
+    alt: "Vista aérea do centro de Londrina, com a Catedral Metropolitana entre os edifícios.",
+    enquadramento: "mercado",
     fluxo: ["Prospecção", "Contato", "Negociação", "Angariado", "Publicado"],
   },
   {

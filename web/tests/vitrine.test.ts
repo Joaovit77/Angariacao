@@ -43,9 +43,9 @@ describe("apresentação pública", () => {
       "Sua operação imobiliária, mais inteligente.",
     ]);
     expect(SLIDES_APRESENTACAO.map((slide) => slide.imagem)).toEqual([
-      "/apresentacao/pexels-japy-35391295.jpg",
+      "/apresentacao/londrina-lago-igapo-poster.jpg",
+      "/apresentacao/londrina-entardecer.jpg",
       "/apresentacao/pexels-gaion-17204341.jpg",
-      "/apresentacao/pexels-oliveiratp-8602177.jpg",
       "/apresentacao/pexels-gaion-30893717.jpg",
     ]);
     expect(SLIDES_APRESENTACAO[2].fluxo).toEqual([
@@ -83,8 +83,10 @@ describe("apresentação pública", () => {
     expect(APRESENTACAO.match(/<VideoAbertura/g)).toHaveLength(1);
     expect(APRESENTACAO).toContain("SLIDES_APRESENTACAO.slice(1)");
     expect(SLIDES_APRESENTACAO[0].video).toBe(
-      "/apresentacao/pexels-japy-35391295.mp4",
+      "/apresentacao/londrina-lago-igapo.mp4",
     );
+    expect(VIDEO_ABERTURA).toContain("src={poster}");
+    expect(VIDEO_ABERTURA).toContain("src={video}");
     expect(VIDEO_ABERTURA).toContain('className="apresentacao-video-poster"');
     expect(VIDEO_ABERTURA).toContain("{falhaVideo && (");
     expect(VIDEO_ABERTURA).toContain("onError={registrarFalha}");
@@ -141,5 +143,16 @@ describe("apresentação pública", () => {
     expect(ESTILO).toContain(".apresentacao-topo.fora-da-foto");
     expect(ESTILO).toContain("background:var(--bg-blur)");
     expect(ESTILO).toContain("color:var(--text); background:var(--bg)");
+    expect(ESTILO).toContain("--apresentacao-acento:#e3c368");
+    expect(ESTILO).toMatch(
+      /\.apresentacao-sobrelinha\{[^}]*color:var\(--apresentacao-acento\)/,
+    );
+    expect(ESTILO).toMatch(
+      /\.apresentacao-conhecer-topo\{[^}]*text-decoration:none/,
+    );
+    expect(APRESENTACAO).toContain("Imagens disponibilizadas pelo Pexels");
+    expect(ESTILO).toMatch(
+      /#conheca-o-sistema::before\{[\s\S]*?rgb\(var\(--sombra-rgb\) \/ \.14\)[\s\S]*?var\(--bg\) 100%/,
+    );
   });
 });

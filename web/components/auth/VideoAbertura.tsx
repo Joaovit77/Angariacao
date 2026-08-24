@@ -6,6 +6,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const DURACAO_TRANSICAO_LOOP_SEGUNDOS = 0.85;
 
 interface Props {
+  poster: string;
+  video: string;
   ativo: boolean;
   repetir: boolean;
   movimentoReduzido: boolean;
@@ -14,6 +16,8 @@ interface Props {
 }
 
 export default function VideoAbertura({
+  poster,
+  video,
   ativo,
   repetir,
   movimentoReduzido,
@@ -78,7 +82,7 @@ export default function VideoAbertura({
       {falhaVideo && (
         <Image
           className="apresentacao-video-poster"
-          src="/apresentacao/pexels-japy-35391295.jpg"
+          src={poster}
           alt=""
           fill
           sizes="100vw"
@@ -103,7 +107,7 @@ export default function VideoAbertura({
         onEnded={aoFinalizar}
         onError={registrarFalha}
       >
-        <source src="/apresentacao/pexels-japy-35391295.mp4" type="video/mp4" />
+        <source src={video} type="video/mp4" />
       </video>
     </>
   );

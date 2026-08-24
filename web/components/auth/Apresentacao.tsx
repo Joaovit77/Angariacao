@@ -41,6 +41,7 @@ function usaFotoUnicaMobile() {
 }
 
 export default function Apresentacao({ aoEntrar, pausadaExternamente = false }: Props) {
+  const slideAbertura = SLIDES_APRESENTACAO[0];
   const [indiceAtivo, setIndiceAtivo] = useState(0);
   const [indiceSolicitado, setIndiceSolicitado] = useState<number | null>(null);
   const [indicesCarregados, setIndicesCarregados] = useState<number[]>([]);
@@ -168,6 +169,8 @@ export default function Apresentacao({ aoEntrar, pausadaExternamente = false }: 
           aria-hidden={!fotoUnicaMobile && indiceAtivo !== 0}
         >
           <VideoAbertura
+            poster={slideAbertura.imagem}
+            video={slideAbertura.video ?? ""}
             ativo={
               (fotoUnicaMobile || indiceAtivo === 0) && !pausado && !pausadaExternamente
             }

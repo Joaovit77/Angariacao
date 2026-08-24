@@ -69,7 +69,7 @@
   :root:not([data-tema="escuro"]) .apresentacao-topo.fora-da-foto .marca-app-imagem-claro{ display:block !important; }
 }
 .apresentacao-conhecer-topo{
-  gap:9px; border-color:rgba(227,195,104,.48) !important;
+  gap:9px; text-decoration:none; border-color:rgba(227,195,104,.48) !important;
   background:rgba(12,20,19,.54) !important;
   box-shadow:0 10px 28px -21px rgba(0,0,0,.95),inset 0 1px 0 rgba(255,255,255,.08);
 }
@@ -84,6 +84,7 @@
 .apresentacao-conhecer-topo .curto{ display:none; }
 
 .auth-showcase.apresentacao{
+  --apresentacao-acento:#e3c368;
   position:relative; isolation:isolate; width:100%; max-width:none;
   height:100dvh; min-height:100dvh; padding:0; overflow:hidden;
   color:#fff; background:#07100c; touch-action:pan-y;
@@ -179,7 +180,7 @@
   from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)}
 }
 .apresentacao-sobrelinha{
-  display:block; margin-bottom:20px; color:var(--accent-strong);
+  display:block; margin-bottom:20px; color:var(--apresentacao-acento);
   font-family:var(--font-mono); font-size:10px; font-weight:750; letter-spacing:.18em;
   text-shadow:0 2px 16px rgba(0,0,0,.55);
 }
@@ -232,7 +233,7 @@
 .apresentacao-link-conhecer:focus-visible{
   outline:2px solid #fff; outline-offset:5px; border-radius:3px;
 }
-.apresentacao-link-conhecer span{ color:var(--accent-strong); font-size:16px; }
+.apresentacao-link-conhecer span{ color:var(--apresentacao-acento); font-size:16px; }
 .apresentacao-fluxo{
   max-width:720px; margin:31px 0 0; padding:17px 0 0;
   display:flex; align-items:center; gap:10px; border-top:1px solid rgba(255,255,255,.2);
@@ -241,7 +242,7 @@
   text-shadow:0 2px 14px rgba(0,0,0,.48);
 }
 .apresentacao-fluxo li{ display:flex; align-items:center; gap:10px; white-space:nowrap; }
-.apresentacao-fluxo i{ color:var(--accent-strong); font-style:normal; opacity:.75; }
+.apresentacao-fluxo i{ color:var(--apresentacao-acento); font-style:normal; opacity:.75; }
 
 .apresentacao-controles{
   position:absolute; right:clamp(28px,5vw,88px); bottom:clamp(26px,5vh,54px);
@@ -284,12 +285,12 @@
 .apresentacao-indicadores button:hover span{ background:#fff; }
 .apresentacao-indicadores button.ativo span{ width:28px; background:rgba(255,255,255,.3); }
 .apresentacao-indicadores button.ativo span::after{
-  content:""; position:absolute; inset:0; border-radius:inherit; background:var(--accent-strong);
+  content:""; position:absolute; inset:0; border-radius:inherit; background:var(--apresentacao-acento);
   transform:scaleX(0); transform-origin:left center;
   animation:apresentacao-progresso var(--duracao-autoplay,6500ms) linear both;
 }
 .apresentacao-controles.pausada .apresentacao-indicadores button.ativo span{
-  background:var(--accent-strong);
+  background:var(--apresentacao-acento);
 }
 .apresentacao-controles.pausada .apresentacao-indicadores button.ativo span::after{ animation:none; }
 @keyframes apresentacao-progresso{ to{transform:scaleX(1)} }
@@ -300,7 +301,19 @@
 }
 /* O primeiro painel do “Conheça” deve parecer uma demonstração do produto,
    e não uma maquete solta sobre o fundo da página. */
-#conheca-o-sistema{ position:relative; margin-inline:auto; }
+#conheca-o-sistema{ position:relative; isolation:isolate; margin-inline:auto; }
+#conheca-o-sistema::before{
+  content:""; position:absolute; z-index:0; top:-48px; left:50%;
+  width:100vw; height:96px; transform:translateX(-50%); pointer-events:none;
+  background:linear-gradient(
+    180deg,
+    transparent 0%,
+    rgb(var(--sombra-rgb) / .14) 38%,
+    var(--bg) 100%
+  );
+  box-shadow:0 -16px 34px -28px rgb(var(--sombra-rgb) / .62);
+}
+#conheca-o-sistema > *{ position:relative; z-index:1; }
 #conheca-o-sistema .vitrine-hero-produto{
   isolation:isolate; padding:34px 28px 42px;
   border:1px solid var(--border-soft); border-radius:26px;
