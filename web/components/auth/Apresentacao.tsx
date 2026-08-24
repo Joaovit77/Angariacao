@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import ControlesApresentacao from "./ControlesApresentacao";
 import SlideApresentacao from "./SlideApresentacao";
+import VideoAbertura from "./VideoAbertura";
 import { SLIDES_APRESENTACAO } from "./dadosApresentacao";
 
 interface Props {
@@ -56,11 +57,10 @@ export default function Apresentacao({ aoEntrar, pausadaExternamente = false }: 
   const fotoUnicaMobile = useSyncExternalStore(
     assinarFotoUnicaMobile,
     usaFotoUnicaMobile,
-    // O HTML inicial mais economico serve so a abertura. No desktop, o
-    // snapshot real monta as demais fotos logo depois da hidratacao.
+    // O HTML inicial mais econômico serve só a abertura. No desktop, o
+    // snapshot real monta as demais fotos logo depois da hidratação.
     () => true,
   );
-
 
   const navegarPara = useCallback((novoIndice: number, reiniciarContador = true) => {
     const indice = indiceCircular(novoIndice);
@@ -137,6 +137,16 @@ export default function Apresentacao({ aoEntrar, pausadaExternamente = false }: 
     navegarPara(indiceAtivo + (deltaX < 0 ? 1 : -1));
   }
 
+  function aoFinalizarVideoAbertura() {
+    if (
+      usaFotoUnicaMobile() ||
+      indiceAtivo !== 0 ||
+      pausado ||
+      pausadaExternamente ||
+      solicitadoRef.current !== null
+    ) return;
+    navegarPara(1, false);
+  }
   const proximoPrecarregamento = indiceCircular(indiceAtivo + 1);
 
   return (
@@ -151,47 +161,52 @@ export default function Apresentacao({ aoEntrar, pausadaExternamente = false }: 
       onTouchEnd={aoEncerrarToque}
     >
       <div className="apresentacao-imagens" aria-live="off">
-        {fotoUnicaMobile ? (
-          <div className="apresentacao-foto ativo" aria-hidden={false}>
-            <Image
-              className="apresentacao-imagem enquadramento-abertura"
-              src={SLIDES_APRESENTACAO[0].imagem}
-              alt={SLIDES_APRESENTACAO[0].alt}
-              fill
-              sizes="100vw"
-              preload
-              onLoad={() => registrarImagemCarregada(0)}
-              draggable={false}
-            />
-          </div>
-        ) : (
-          SLIDES_APRESENTACAO.map((slide, indice) => {
-          const montada =
-            indice === indiceAtivo ||
-            indice === indiceSolicitado ||
-            indice === proximoPrecarregamento ||
-            indicesCarregados.includes(indice);
-          if (!montada) return null;
+        <div
+          className={`apresentacao-foto${
+            fotoUnicaMobile || indiceAtivo === 0 ? " ativo" : ""
+          }`}
+          aria-hidden={!fotoUnicaMobile && indiceAtivo !== 0}
+        >
+          <VideoAbertura
+            ativo={
+              (fotoUnicaMobile || indiceAtivo === 0) && !pausado && !pausadaExternamente
+            }
+            repetir={fotoUnicaMobile}
+            movimentoReduzido={movimentoReduzido}
+            aoCarregar={() => registrarImagemCarregada(0)}
+            aoFinalizar={aoFinalizarVideoAbertura}
+          />
+        </div>
 
-          return (
-            <div
-              className={`apresentacao-foto${indice === indiceAtivo ? " ativo" : ""}`}
-              aria-hidden={indice !== indiceAtivo}
-              key={slide.imagem}
-            >
-              <Image
-                className={`apresentacao-imagem enquadramento-${slide.enquadramento}`}
-                src={slide.imagem}
-                alt={indice === indiceAtivo ? slide.alt : ""}
-                fill
-                sizes="100vw"
-                {...(indice === 0 ? { preload: true } : { loading: "lazy" as const })}
-                onLoad={() => registrarImagemCarregada(indice)}
-                draggable={false}
-              />
-            </div>
-          );
-        }))}
+        {!fotoUnicaMobile &&
+          SLIDES_APRESENTACAO.slice(1).map((slide, deslocamento) => {
+            const indice = deslocamento + 1;
+            const montada =
+              indice === indiceAtivo ||
+              indice === indiceSolicitado ||
+              indice === proximoPrecarregamento ||
+              indicesCarregados.includes(indice);
+            if (!montada) return null;
+
+            return (
+              <div
+                className={`apresentacao-foto${indice === indiceAtivo ? " ativo" : ""}`}
+                aria-hidden={indice !== indiceAtivo}
+                key={slide.imagem}
+              >
+                <Image
+                  className={`apresentacao-imagem enquadramento-${slide.enquadramento}`}
+                  src={slide.imagem}
+                  alt={indice === indiceAtivo ? slide.alt : ""}
+                  fill
+                  sizes="100vw"
+                  loading="lazy"
+                  onLoad={() => registrarImagemCarregada(indice)}
+                  draggable={false}
+                />
+              </div>
+            );
+          })}
       </div>
 
       <div className="apresentacao-contraste" aria-hidden="true" />
@@ -206,7 +221,7 @@ export default function Apresentacao({ aoEntrar, pausadaExternamente = false }: 
         />
       </div>
 
-      <p className="apresentacao-creditos">Fotografias disponibilizadas pelo Pexels</p>
+      <p className="apresentacao-creditos">Imagens disponibilizadas pelo Pexels</p>
 
       <ControlesApresentacao
         slides={SLIDES_APRESENTACAO}

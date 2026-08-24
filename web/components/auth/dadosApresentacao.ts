@@ -2,6 +2,7 @@ export interface SlideApresentacao {
   titulo: string;
   descricao: string;
   imagem: string;
+  video?: string;
   alt: string;
   enquadramento: "abertura" | "mercado" | "operacao" | "inteligencia";
   cta?: string;
@@ -14,6 +15,7 @@ export const SLIDES_APRESENTACAO: readonly SlideApresentacao[] = [
     descricao:
       "Inteligência e organização para transformar oportunidades em imóveis angariados.",
     imagem: "/apresentacao/pexels-japy-35391295.jpg",
+    video: "/apresentacao/pexels-japy-35391295.mp4",
     alt: "Vista noturna de Londrina sob o céu colorido do pôr do sol.",
     enquadramento: "abertura",
     cta: "Entrar no sistema",

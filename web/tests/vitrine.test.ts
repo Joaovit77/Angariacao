@@ -28,6 +28,10 @@ const SLIDE = readFileSync(
   new URL("../components/auth/SlideApresentacao.tsx", import.meta.url),
   "utf8",
 );
+const VIDEO_ABERTURA = readFileSync(
+  new URL("../components/auth/VideoAbertura.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("apresentação pública", () => {
   it("mantém as quatro cenas, textos e fotos definidos para Londrina", () => {
@@ -68,19 +72,48 @@ describe("apresentação pública", () => {
     expect(CONTROLES).toContain("aria-current=");
   });
 
-  it("usa a otimização atual do Next e antecipa somente a primeira foto", () => {
+  it("usa vídeo na abertura e otimiza as demais fotos com o Next", () => {
     expect(APRESENTACAO).toContain('import Image from "next/image"');
     expect(APRESENTACAO).toContain('sizes="100vw"');
-    expect(APRESENTACAO).toContain("{ preload: true }");
-    expect(APRESENTACAO).toContain('{ loading: "lazy" as const }');
+    expect(APRESENTACAO).toContain('loading="lazy"');
     expect(APRESENTACAO).toContain("proximoPrecarregamento");
     expect(APRESENTACAO).toContain('CONSULTA_FOTO_UNICA_MOBILE = "(max-width: 720px)"');
-    expect(APRESENTACAO).toContain("fotoUnicaMobile ?");
-    expect(APRESENTACAO).toContain("SLIDES_APRESENTACAO[0].imagem");
+    expect(APRESENTACAO).toContain("fotoUnicaMobile || indiceAtivo === 0");
+    expect(APRESENTACAO).toContain("<VideoAbertura");
+    expect(APRESENTACAO.match(/<VideoAbertura/g)).toHaveLength(1);
+    expect(APRESENTACAO).toContain("SLIDES_APRESENTACAO.slice(1)");
+    expect(SLIDES_APRESENTACAO[0].video).toBe(
+      "/apresentacao/pexels-japy-35391295.mp4",
+    );
+    expect(VIDEO_ABERTURA).toContain('className="apresentacao-video-poster"');
+    expect(VIDEO_ABERTURA).toContain("{falhaVideo && (");
+    expect(VIDEO_ABERTURA).toContain("onError={registrarFalha}");
+    expect(VIDEO_ABERTURA).toContain("DURACAO_TRANSICAO_LOOP_SEGUNDOS = 0.85");
+    expect(VIDEO_ABERTURA).toContain("autoPlay=");
+    expect(VIDEO_ABERTURA).toContain("muted");
+    expect(VIDEO_ABERTURA).toContain("loop={repetir}");
+    expect(VIDEO_ABERTURA).toContain("playsInline");
+    expect(VIDEO_ABERTURA).toContain('type="video/mp4"');
+    expect(VIDEO_ABERTURA).toContain("onTimeUpdate={acompanharLoop}");
+    expect(VIDEO_ABERTURA).toContain("onEnded={aoFinalizar}");
+    expect(VIDEO_ABERTURA).toContain("carregamentoConfirmadoRef");
+    expect(VIDEO_ABERTURA).toContain("video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA");
+    expect(VIDEO_ABERTURA).toContain("onCanPlay={confirmarCarregamento}");
+    expect(VIDEO_ABERTURA).toContain("movimentoReduzido || !repetir");
+    expect(VIDEO_ABERTURA).toContain('carregado && (!repetir || !finalizandoLoop)');
+    expect(APRESENTACAO).toContain("repetir={fotoUnicaMobile}");
+    expect(APRESENTACAO).toContain("aoFinalizar={aoFinalizarVideoAbertura}");
+    expect(APRESENTACAO).toContain("navegarPara(1, false)");
+    expect(APRESENTACAO).toContain("solicitadoRef.current !== null");
+    expect(ESTILO).toContain(".enquadramento-abertura:not(.apresentacao-video)");
+    expect(ESTILO).toMatch(/\.apresentacao-video\{[^}]*transition:opacity \.78s/);
+    expect(ESTILO).toContain(".apresentacao-video.visivel{ opacity:1; }");
   });
 
   it("remove movimento e autoplay quando essa preferência está ativa", () => {
     expect(APRESENTACAO).toContain("prefers-reduced-motion: reduce");
+    expect(VIDEO_ABERTURA).toContain("video.pause()");
+    expect(VIDEO_ABERTURA).toContain('movimentoReduzido ? "metadata" : "auto"');
     expect(APRESENTACAO).toContain("movimentoReduzido ||");
     expect(ESTILO).toMatch(
       /@media \(prefers-reduced-motion:reduce\)[\s\S]*?\.apresentacao-foto\.ativo \.apresentacao-imagem/,
