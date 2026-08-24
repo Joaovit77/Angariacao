@@ -29,7 +29,6 @@ export default function VideoAbertura({
   const carregamentoConfirmadoRef = useRef(false);
   const [carregado, setCarregado] = useState(false);
   const [finalizandoLoop, setFinalizandoLoop] = useState(false);
-  const [falhaVideo, setFalhaVideo] = useState(false);
 
   const confirmarCarregamento = useCallback(() => {
     if (carregamentoConfirmadoRef.current) return;
@@ -38,7 +37,6 @@ export default function VideoAbertura({
     aoCarregarRef.current();
   }, []);
   const registrarFalha = useCallback(() => {
-    setFalhaVideo(true);
     aoCarregarRef.current();
   }, []);
 
@@ -79,17 +77,16 @@ export default function VideoAbertura({
 
   return (
     <>
-      {falhaVideo && (
-        <Image
-          className="apresentacao-video-poster"
-          src={poster}
-          alt=""
-          fill
-          sizes="100vw"
-          draggable={false}
-          aria-hidden="true"
-        />
-      )}
+      <Image
+        className="apresentacao-video-poster"
+        src={poster}
+        alt=""
+        fill
+        sizes="100vw"
+        priority
+        draggable={false}
+        aria-hidden="true"
+      />
       <video
         ref={videoRef}
         className={`apresentacao-imagem apresentacao-video enquadramento-abertura${

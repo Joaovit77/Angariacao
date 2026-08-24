@@ -88,7 +88,8 @@ describe("apresentação pública", () => {
     expect(VIDEO_ABERTURA).toContain("src={poster}");
     expect(VIDEO_ABERTURA).toContain("src={video}");
     expect(VIDEO_ABERTURA).toContain('className="apresentacao-video-poster"');
-    expect(VIDEO_ABERTURA).toContain("{falhaVideo && (");
+    expect(VIDEO_ABERTURA).toContain("priority");
+    expect(VIDEO_ABERTURA).not.toContain("{falhaVideo && (");
     expect(VIDEO_ABERTURA).toContain("onError={registrarFalha}");
     expect(VIDEO_ABERTURA).toContain("DURACAO_TRANSICAO_LOOP_SEGUNDOS = 0.85");
     expect(VIDEO_ABERTURA).toContain("autoPlay=");
@@ -108,7 +109,7 @@ describe("apresentação pública", () => {
     expect(APRESENTACAO).toContain("navegarPara(1, false)");
     expect(APRESENTACAO).toContain("solicitadoRef.current !== null");
     expect(ESTILO).toContain(".enquadramento-abertura:not(.apresentacao-video)");
-    expect(ESTILO).toMatch(/\.apresentacao-video\{[^}]*transition:opacity \.78s/);
+    expect(ESTILO).toMatch(/\.apresentacao-video\{[^}]*transition:opacity \.28s/);
     expect(ESTILO).toContain(".apresentacao-video.visivel{ opacity:1; }");
   });
 
