@@ -13,6 +13,7 @@
    fique dessincronizada do banco.
    ================================================================ */
 import { create } from "zustand";
+import { configuracaoPadrao } from "./configuracaoUsuario";
 import type { EstadoApp } from "./persistencia/carregarEstado";
 import type { Abordagem, AgendaItem, Imovel, Metas, Protocolo, UserConfig } from "./tipos";
 
@@ -77,7 +78,7 @@ const ESTADO_INICIAL = {
   agenda: [] as AgendaItem[],
   abordagens: [] as Abordagem[],
   protocolos: [] as Protocolo[],
-  config: { comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "" } as UserConfig, // % sobre 1 aluguel (100 = 1 mês)
+  config: configuracaoPadrao(),
   carregado: false,
   iaDisponivel: false,
   ehAdmin: false,
@@ -89,7 +90,7 @@ const ESTADO_INICIAL = {
 export const useAppStore = create<AppStore>((set) => ({
   ...ESTADO_INICIAL,
   setEstado: (estado) => set({ ...estado, carregado: true }),
-  limparEstado: () => set({ ...ESTADO_INICIAL }),
+  limparEstado: () => set({ ...ESTADO_INICIAL, config: configuracaoPadrao() }),
   setImoveis: (imoveis) => set({ imoveis }),
   setAgenda: (agenda) => set({ agenda }),
   setAbordagens: (abordagens) => set({ abordagens }),

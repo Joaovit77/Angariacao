@@ -11,10 +11,10 @@
    ================================================================ */
 import { useState } from "react";
 import { captadorPadrao, useSessao } from "@/components/SessaoProvider";
+import { origensDoUsuario } from "@/lib/configuracaoUsuario";
 import EnderecoAutocompleteViaCep, {
   type EnderecoViaCepSelecionado,
 } from "@/components/formularios/EnderecoAutocompleteViaCep";
-import { ORIGENS_IMOVEL } from "@/lib/constantes";
 import { sugerirCodigoImovel } from "@/lib/codigoImovel";
 import { todayISO } from "@/lib/datas";
 import { descreverDuplicados, imoveisDuplicados } from "@/lib/calculo/duplicidade";
@@ -42,6 +42,7 @@ export default function ModalPreCadastro({ inicial }: { inicial?: PreCadastroIni
   const imoveis = useAppStore((s) => s.imoveis);
   const origensExtras = useAppStore((s) => s.config.origensExtras);
   const iaDisponivel = useAppStore((s) => s.iaDisponivel);
+  const origensDisponiveis = origensDoUsuario(origensExtras, imoveis);
 
   const [codigo, setCodigo] = useState(() => sugerirCodigoImovel(imoveis));
   const [cep, setCep] = useState("");
@@ -461,11 +462,10 @@ export default function ModalPreCadastro({ inicial }: { inicial?: PreCadastroIni
           </div>
           <div className="field-group">
             <label>Onde encontrou o imóvel</label>
-            {/* Fixos + portais cadastrados pelo corretor, como no ModalImovel.
-                Sem isto o imóvel some do Foco do dia e do ranking de canais. */}
+            {/* Padrões + preferências + portais aprendidos da própria carteira. */}
             <select value={origemImovel} onChange={(e) => setOrigemImovel(e.target.value)}>
               <option value="">Não informado</option>
-              {[...new Set([...ORIGENS_IMOVEL, ...origensExtras, ...(origemImovel ? [origemImovel] : [])])].map(
+              {[...new Set([...origensDisponiveis, ...(origemImovel ? [origemImovel] : [])])].map(
                 (o) => (
                   <option key={o} value={o}>
                     {o}

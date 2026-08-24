@@ -62,6 +62,17 @@ describe("desempenhoPorCanal", () => {
     expect(r[0].origem).toBe(ORIGEM_NAO_INFORMADA);
   });
 
+  it("une variações de caixa, acento e espaços do mesmo portal", () => {
+    const r = desempenhoPorCanal([
+      angariado({ id: "a", origem: "Marketplace", angariadoEm: "2026-01-01" }),
+      angariado({ id: "b", origem: " marketplace ", angariadoEm: "2026-02-01" }),
+      angariado({ id: "c", origem: "MÁRKETPLACE", angariadoEm: "2026-03-01" }),
+    ]);
+
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({ origem: "Marketplace", angariados: 3 });
+  });
+
   it("canal sem nenhuma locação tem conversão 0 e tempo médio null", () => {
     const r = desempenhoPorCanal([angariado({ id: "a", origem: "OLX / Canal Pro", angariadoEm: "2026-01-01" })]);
     expect(r[0]).toMatchObject({ angariados: 1, locados: 0, conversao: 0, tempoMedio: null });

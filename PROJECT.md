@@ -131,6 +131,12 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
 - **`formatadores.ts`** — `fmtMoney`, `fmtDate`, etc.
 - **`tipos.ts`** — `Imovel`, `Meta`, `AgendaItem`, `Abordagem`, `Tentativa`, `UserConfig`,
   `StatusHistoryEntry`.
+- **`configuracaoUsuario.ts`** — separa padrão do produto, preferências explícitas de `user_config`
+  e catálogos inferidos dos dados da própria conta. Origens já presentes em `imoveis` e tipos já
+  presentes em `agenda` reaparecem automaticamente nos seletores e no Foco do dia, mesmo quando
+  vieram de importação; a inferência fica em memória e não transforma um dado histórico em
+  preferência permanente. Dados sensíveis ou contratuais (`dados_pagamento`, empresa e percentual
+  de comissão) nunca são inferidos.
 - **`calculo/motor.ts`** — o motor: `dateEnteredStatus`, `currentStatusSince`, `isStale`,
   `foiAngariado`, `metricsForRange`, coortes mensais, tempo médio, etc.
 - **`calculo/motor.ts` → `isStale` / `diasSemMovimento`** — **"parado" é ausência de MOVIMENTO,
@@ -396,6 +402,10 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   meses, contadas na mão) dá **3,9% contra 3,2% — praticamente iguais**. Ao mexer aqui, ou ao usar
   esses números para recomendar qualquer coisa, **confira primeiro se o canal cadastra antes ou
   depois do contato**. Taxa boa demais é sintoma disso, não de canal bom.
+  Por isso o Dashboard não mostra uma taxa para escolher portal: o ranking "Portais que mais geram
+  angariações" usa somente a contagem absoluta de imóveis da carteira que chegaram a `Angariado`,
+  sem dividir por leads, tentativas ou abordagens. A série mensal duplicada saiu dali porque o
+  gráfico vizinho já exibe angariados junto dos locados.
 - **`calculo/followup.ts`** — elegibilidade e texto do follow-up em lote (os freios que impedem
   o disparo em rajada). A fila que executa é `filaFollowUp.ts`. Ver "Follow-up em lote" abaixo.
 - **`calculo/conquistasDoMes.ts`** — o que se move ENQUANTO o mês corre, e o terceiro recorte do

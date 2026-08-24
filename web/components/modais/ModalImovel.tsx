@@ -13,6 +13,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { captadorPadrao, useSessao } from "@/components/SessaoProvider";
+import { origensDoUsuario } from "@/lib/configuracaoUsuario";
 import EnderecoAutocompleteViaCep, {
   type EnderecoViaCepSelecionado,
 } from "@/components/formularios/EnderecoAutocompleteViaCep";
@@ -20,7 +21,6 @@ import TimelineImovel from "@/components/modais/TimelineImovel";
 import {
   FORMAS_ABORDAGEM,
   MOTIVOS_PERDA,
-  ORIGENS_IMOVEL,
   STATUS_ALL,
   STATUS_TERMINAL_NEGATIVE,
   TIPOS_IMOVEL,
@@ -89,6 +89,7 @@ export default function ModalImovel({ id }: { id?: string }) {
   const origensExtras = useAppStore((s) => s.config.origensExtras);
 
   const imovel = id ? imoveis.find((i) => i.id === id) || null : null;
+  const origensDisponiveis = origensDoUsuario(origensExtras, imoveis);
 
   // Nova angariação já vem com o próximo código sugerido (ex.: LD-0235);
   // na edição, mantém o código do próprio imóvel.
@@ -619,9 +620,9 @@ export default function ModalImovel({ id }: { id?: string }) {
             <label>Onde encontrou o imóvel</label>
             <select value={origemImovel ?? ""} onChange={(e) => setOrigemImovel(e.target.value)}>
               <option value="">Não informado</option>
-              {/* Fixos + portais cadastrados pelo corretor. Preserva a origem
-                  atual do imóvel mesmo se o portal extra foi removido depois. */}
-              {[...new Set([...ORIGENS_IMOVEL, ...origensExtras, ...(origemImovel ? [origemImovel] : [])])].map((o) => (
+              {/* Padrões + preferências + portais aprendidos da própria carteira.
+                  Preserva ainda a origem atual durante a edição. */}
+              {[...new Set([...origensDisponiveis, ...(origemImovel ? [origemImovel] : [])])].map((o) => (
                 <option key={o} value={o}>
                   {o}
                 </option>

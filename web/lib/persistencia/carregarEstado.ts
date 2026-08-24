@@ -17,6 +17,7 @@
    comissaoPercent = 100.
    ================================================================ */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { configuracaoPadrao } from "../configuracaoUsuario";
 import type { Abordagem, AgendaItem, Imovel, Metas, Protocolo, UserConfig, WhatsappModelo } from "../tipos";
 import {
   fromDbAbordagem, fromDbAgenda, fromDbImovel, fromDbProtocolo,
@@ -34,6 +35,7 @@ export interface EstadoApp {
 }
 
 export async function carregarEstado(client: SupabaseClient = getSupabase()): Promise<EstadoApp> {
+  const padrao = configuracaoPadrao();
   const [imRes, mtRes, agRes, abRes, ptRes, cfRes] = await Promise.all([
     client.from("imoveis").select("*"),
     client.from("metas").select("*"),
@@ -84,7 +86,7 @@ export async function carregarEstado(client: SupabaseClient = getSupabase()): Pr
     protocolos: ptRes.error ? [] : ((ptRes.data || []) as DbProtocoloRow[]).map(fromDbProtocolo),
     metas,
     config: {
-      comissaoPercent: cfData ? Number(cfData.comissao_percent) : 100,
+      comissaoPercent: cfData ? Number(cfData.comissao_percent) : padrao.comissaoPercent,
       agendaTipos,
       whatsappModelos,
       empresa: typeof cfData?.empresa === "string" ? cfData.empresa : "",

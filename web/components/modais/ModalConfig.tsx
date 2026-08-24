@@ -8,8 +8,16 @@
 import { useState } from "react";
 import ConexaoGoogle from "@/components/modais/ConexaoGoogle";
 import { useSessao } from "@/components/SessaoProvider";
+import {
+  COMISSAO_PERCENT_PADRAO,
+  origensAprendidas,
+  origensDoUsuario,
+  tiposAgendaAprendidos,
+  tiposAgendaDoUsuario,
+} from "@/lib/configuracaoUsuario";
 import { AGENDA_TYPES, ORIGENS_IMOVEL } from "@/lib/constantes";
 import { apagarTodosOsDados, carregarDadosDemo, numOrNull, salvarConfig } from "@/lib/mutacoes";
+import { chaveNormalizada } from "@/lib/normalizacao";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
@@ -19,6 +27,8 @@ export default function ModalConfig() {
   const abrirModal = useUiModal((s) => s.abrirModal);
   const { usuario } = useSessao();
   const config = useAppStore((s) => s.config);
+  const agenda = useAppStore((s) => s.agenda);
+  const imoveis = useAppStore((s) => s.imoveis);
   const totalAbordagens = useAppStore((s) => s.abordagens.length);
 
   const [comissao, setComissao] = useState(String(config.comissaoPercent));
@@ -29,14 +39,14 @@ export default function ModalConfig() {
   const [portais, setPortais] = useState<string[]>(config.origensExtras ?? []);
   const [novoPortal, setNovoPortal] = useState("");
   const [ocupado, setOcupado] = useState(false);
+  const tiposAprendidos = tiposAgendaAprendidos(agenda, tipos);
+  const portaisAprendidos = origensAprendidas(imoveis, portais);
 
   function adicionarTipo() {
     const t = novoTipo.trim();
     if (!t) return;
-    // Não duplica um fixo nem um já existente (ignorando maiúsc./minúsc.).
-    const jaExiste =
-      AGENDA_TYPES.some((f) => f.toLowerCase() === t.toLowerCase()) ||
-      tipos.some((x) => x.toLowerCase() === t.toLowerCase());
+    const jaExiste = tiposAgendaDoUsuario(tipos, agenda)
+      .some((x) => chaveNormalizada(x) === chaveNormalizada(t));
     if (jaExiste) {
       toast("Esse tipo já existe.", "error");
       return;
@@ -52,10 +62,8 @@ export default function ModalConfig() {
   function adicionarPortal() {
     const p = novoPortal.trim();
     if (!p) return;
-    // Não duplica um portal fixo nem um já cadastrado (ignorando maiúsc./minúsc.).
-    const jaExiste =
-      ORIGENS_IMOVEL.some((f) => f.toLowerCase() === p.toLowerCase()) ||
-      portais.some((x) => x.toLowerCase() === p.toLowerCase());
+    const jaExiste = origensDoUsuario(portais, imoveis)
+      .some((x) => chaveNormalizada(x) === chaveNormalizada(p));
     if (jaExiste) {
       toast("Esse portal já existe.", "error");
       return;
@@ -74,7 +82,7 @@ export default function ModalConfig() {
     const ok = await salvarConfig(
       {
         ...config,
-        comissaoPercent: numOrNull(comissao) || 100,
+        comissaoPercent: numOrNull(comissao) ?? COMISSAO_PERCENT_PADRAO,
         agendaTipos: tipos,
         empresa: empresa.trim(),
         origensExtras: portais,
@@ -152,8 +160,8 @@ export default function ModalConfig() {
         <div className="field-group">
           <label>Tipos de compromisso da agenda</label>
           <div className="field-hint" style={{ marginBottom: "10px" }}>
-            Além dos tipos fixos ({AGENDA_TYPES.join(", ")}), crie os seus próprios (ex.: Avaliação,
-            Sessão de fotos, Vistoria) para escolher ao marcar um compromisso.
+            O sistema reconhece os tipos já usados na sua agenda. Se quiser deixar um disponível antes
+            do primeiro uso, cadastre-o aqui. Tipos padrão: {AGENDA_TYPES.join(", ")}.
           </div>
           {tipos.length > 0 && (
             <div className="config-tipos-lista">
@@ -163,6 +171,15 @@ export default function ModalConfig() {
                   <button type="button" aria-label={`Remover ${t}`} onClick={() => removerTipo(t)}>
                     ×
                   </button>
+                </span>
+              ))}
+            </div>
+          )}
+          {tiposAprendidos.length > 0 && (
+            <div className="config-tipos-lista" aria-label="Tipos reconhecidos automaticamente">
+              {tiposAprendidos.map((t) => (
+                <span key={t} className="config-tipo-chip config-tipo-chip-automatico" title="Reconhecido da sua agenda">
+                  {t}<small>automático</small>
                 </span>
               ))}
             </div>
@@ -190,9 +207,9 @@ export default function ModalConfig() {
         <div className="field-group">
           <label>Portais de prospecção</label>
           <div className="field-hint" style={{ marginBottom: "10px" }}>
-            Onde você garimpa imóveis. Além dos fixos ({ORIGENS_IMOVEL.join(", ")}), cadastre os seus
-            (ex.: Marketplace, Grupo de Zap, Site de imobiliária) para escolher em &quot;Onde encontrou o
-            imóvel&quot; e para o &quot;Foco do dia&quot; sugerir quantos contatos fazer em cada um.
+            O sistema reconhece os portais já usados na sua carteira e os inclui no cadastro e no Foco
+            do dia. Cadastre aqui apenas um canal que queira preparar antes do primeiro imóvel. Padrões:
+            {` ${ORIGENS_IMOVEL.join(", ")}`}.
           </div>
           {portais.length > 0 && (
             <div className="config-tipos-lista">
@@ -202,6 +219,15 @@ export default function ModalConfig() {
                   <button type="button" aria-label={`Remover ${p}`} onClick={() => removerPortal(p)}>
                     ×
                   </button>
+                </span>
+              ))}
+            </div>
+          )}
+          {portaisAprendidos.length > 0 && (
+            <div className="config-tipos-lista" aria-label="Portais reconhecidos automaticamente">
+              {portaisAprendidos.map((p) => (
+                <span key={p} className="config-tipo-chip config-tipo-chip-automatico" title="Reconhecido da sua carteira">
+                  {p}<small>automático</small>
                 </span>
               ))}
             </div>

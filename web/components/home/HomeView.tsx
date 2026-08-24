@@ -17,7 +17,7 @@ export default function HomeView() {
   const abrirModal = useUiModal((s) => s.abrirModal);
 
   return (
-    <>
+    <div className="home-enxuta">
       <div className="page-head">
         <div>
           <h1 className="home-question">O que preciso fazer agora?</h1>
@@ -60,6 +60,6 @@ export default function HomeView() {
           </button>
         </div>
       </div>
-    </>
+    </div>
   );
 }

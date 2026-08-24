@@ -20,6 +20,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { meuCargo } from "@/lib/admin";
+import { configuracaoPadrao } from "@/lib/configuracaoUsuario";
 import { iaDisponivelParaUsuario } from "@/lib/ia";
 import { valorMaisUsado } from "@/lib/normalizacao";
 import { carregarEstado } from "@/lib/persistencia/carregarEstado";
@@ -75,7 +76,14 @@ export function captadorPadrao(usuario: User | null, imoveis: Imovel[]): string 
   return nomeCaptador(usuario) || valorMaisUsado(imoveis.map((i) => i.responsavel));
 }
 
-const ESTADO_VAZIO = { imoveis: [], metas: {}, agenda: [], abordagens: [], protocolos: [], config: { comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "" } };
+const ESTADO_VAZIO = {
+  imoveis: [],
+  metas: {},
+  agenda: [],
+  abordagens: [],
+  protocolos: [],
+  config: configuracaoPadrao(),
+};
 
 export default function SessaoProvider({ children }: { children: React.ReactNode }) {
   const [sessao, setSessao] = useState<{ estado: EstadoSessao; usuario: User | null }>({

@@ -13,7 +13,8 @@
    ================================================================ */
 import { useState } from "react";
 import { captadorPadrao, useSessao } from "@/components/SessaoProvider";
-import { FORMAS_ABORDAGEM, TIPOS_IMOVEL, universoOrigens } from "@/lib/constantes";
+import { FORMAS_ABORDAGEM, TIPOS_IMOVEL } from "@/lib/constantes";
+import { origensDoUsuario } from "@/lib/configuracaoUsuario";
 import type { RoteiroSugerido } from "@/lib/calculo/ia";
 import { sugerirRoteiros } from "@/lib/ia";
 import { alternarArquivamentoAbordagem, salvarAbordagem, uid } from "@/lib/mutacoes";
@@ -68,11 +69,9 @@ export default function ModalAbordagens() {
     setSugestoes(r.roteiros);
   }
 
-  /** As origens que os checkboxes oferecem: as fixas mais as que o corretor
-      criou em Configurações. É a mesma lista do seletor "Onde encontrou o
-      imóvel", e tem que ser: declaração que não casa com o rótulo gravado no
-      imóvel não agrupa nada, e falha calada. */
-  const origensDisponiveis = universoOrigens(config.origensExtras ?? []);
+  /** Mesma lista autoaprendida do cadastro do imóvel. Declaração que não casa
+      com o rótulo gravado não agrupa nada, e falha calada. */
+  const origensDisponiveis = origensDoUsuario(config.origensExtras, imoveis);
 
   function alternarOrigem(origem: string) {
     if (!edicao) return;

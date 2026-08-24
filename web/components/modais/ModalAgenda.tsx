@@ -6,7 +6,7 @@
    ================================================================ */
 import { useState } from "react";
 import { useSessao } from "@/components/SessaoProvider";
-import { tiposAgendaDisponiveis } from "@/lib/calculo/agenda";
+import { tiposAgendaDoUsuario } from "@/lib/configuracaoUsuario";
 import { todayISO } from "@/lib/datas";
 import { excluirAgenda, salvarAgenda, salvarConfig, uid } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
@@ -38,9 +38,9 @@ export default function ModalAgenda({
   const [novoTipoAberto, setNovoTipoAberto] = useState(false);
   const [novoTipo, setNovoTipo] = useState("");
 
-  // Fixos + personalizados; garante que o tipo atual apareça mesmo se ele
-  // tiver sido removido da lista personalizada depois de já usado.
-  const tiposBase = tiposAgendaDisponiveis(config.agendaTipos);
+  // Padrões + preferências + tipos aprendidos da agenda. Garante ainda que o
+  // tipo atual apareça durante a edição de qualquer registro legado.
+  const tiposBase = tiposAgendaDoUsuario(config.agendaTipos, agenda);
   const tipos = tiposBase.includes(type) ? tiposBase : [type, ...tiposBase];
 
   const imoveisOptions = imoveis

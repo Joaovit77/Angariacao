@@ -4004,6 +4004,16 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
   display:inline-flex; align-items:center; justify-content:center;
 }
 .config-tipo-chip button:hover{ background: var(--bad); color:#fff; }
+.config-tipo-chip-automatico{
+  padding-right:10px;
+  border-style:dashed;
+}
+.config-tipo-chip-automatico small{
+  color:var(--text-faint);
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
 
 /* ============================================================
    MICROANIMAÇÕES
@@ -5375,6 +5385,11 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
 }
 
 /* Home enxuta: uma sequência única orientada à próxima ação. */
+.home-enxuta{
+  width:100%;
+  max-width:920px;
+  margin-inline:auto;
+}
 .home-question{
   margin: 0 0 4px;
   font-size: clamp(22px, 2.4vw, 30px);

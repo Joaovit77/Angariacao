@@ -13,9 +13,10 @@
    ================================================================ */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { ChartConfiguration } from "chart.js/auto";
+import type { ChartConfiguration, ScriptableContext } from "chart.js/auto";
 import Contador from "@/components/Contador";
 import Grafico, { baseBarOptions, CHART_COLORS, corToken } from "@/components/graficos/Grafico";
+import { desempenhoPorCanal, ORIGEM_NAO_INFORMADA } from "@/lib/calculo/canais";
 import { kpisDashboard, seriesDashboard } from "@/lib/calculo/dashboard";
 import { estatisticasPerdaPosCaptacao } from "@/lib/calculo/perdasPosCaptacao";
 import { STATUS_FLOW } from "@/lib/constantes";
@@ -186,6 +187,9 @@ export default function DashboardView() {
 
   const series = seriesDashboard(imoveis, comissaoPercent);
   const perdasPosCaptacao = estatisticasPerdaPosCaptacao(imoveis);
+  const canais = desempenhoPorCanal(imoveis);
+  const angariacoesSemOrigem = canais.find((canal) => canal.origem === ORIGEM_NAO_INFORMADA)?.angariados ?? 0;
+  const portaisTop = canais.filter((canal) => canal.origem !== ORIGEM_NAO_INFORMADA).slice(0, 8);
   const labels = series.labels;
 
   const tempoAnunciadoPerdas: ChartConfiguration = {
@@ -205,24 +209,42 @@ export default function DashboardView() {
     options: baseBarOptions(),
   };
 
-  const angariacoesMes: ChartConfiguration = {
+  const angariacoesPorPortal: ChartConfiguration = {
     type: "bar",
     data: {
-      labels,
+      labels: portaisTop.map((canal) => canal.origem),
       datasets: [
         {
           label: "Angariações",
-          data: series.angariacoesPorMes,
-          // Função, e não a cor: assim o Chart.js relê o token no tema novo
-          // (ver corToken). Vale para toda cor de gráfico que precisa
-          // contrastar com o fundo.
-          backgroundColor: () => corToken("--accent", "#cca24a"),
+          data: portaisTop.map((canal) => canal.angariados),
+          backgroundColor: (contexto: ScriptableContext<"bar">) => contexto.dataIndex === 0
+            ? corToken("--accent-strong", "#d4aa50")
+            : corToken("--accent", "#cca24a"),
           borderRadius: 5,
-          maxBarThickness: 34,
+          maxBarThickness: 24,
         },
       ],
     },
-    options: baseBarOptions(),
+    options: {
+      ...baseBarOptions(),
+      indexAxis: "y",
+      scales: {
+        ...baseBarOptions().scales,
+        y: {
+          ...baseBarOptions().scales.y,
+          ticks: {
+            ...baseBarOptions().scales.y.ticks,
+            callback: (_value: string | number, index: number) => {
+              const portal = portaisTop[index]?.origem ?? "";
+              if (typeof window === "undefined" || window.innerWidth > 600 || portal.length <= 22) {
+                return portal;
+              }
+              return `${portal.slice(0, 21).trimEnd()}…`;
+            },
+          },
+        },
+      },
+    },
   };
 
   const locadosMes: ChartConfiguration = {
@@ -474,11 +496,25 @@ export default function DashboardView() {
       <div className="grid grid-2 anim-stagger" style={{ marginBottom: "16px" }}>
         <div className="card chart-card">
           <div className="card-title">
-            Angariações por mês <span className="section-note">últimos 6 meses</span>
+            Portais que mais geram angariações <span className="section-note">carteira completa · top 8</span>
           </div>
-          <div className="chart-wrap">
-            <Grafico id="chart-angariacoes-mes" config={angariacoesMes} />
-          </div>
+          <p className="section-note" style={{ marginBottom: "10px" }}>
+            Contagem de imóveis que chegaram à etapa Angariado. Não usa número de abordagens.
+          </p>
+          {portaisTop.length > 0 ? (
+            <div className="chart-wrap">
+              <Grafico id="chart-angariacoes-portais" config={angariacoesPorPortal} />
+            </div>
+          ) : (
+            <div className="empty-state" style={{ padding: "54px 20px" }}>
+              <p>Nenhuma angariação com portal informado ainda.</p>
+            </div>
+          )}
+          {angariacoesSemOrigem > 0 && (
+            <p className="section-note">
+              {angariacoesSemOrigem} {angariacoesSemOrigem === 1 ? "angariação está" : "angariações estão"} sem portal informado.
+            </p>
+          )}
         </div>
         <div className="card chart-card">
           <div className="card-title">Locados vs. angariados por mês</div>

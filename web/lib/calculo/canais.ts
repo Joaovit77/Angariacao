@@ -13,6 +13,7 @@
    tempoAteLocacao), sem React/Next/Supabase/store.
    ================================================================ */
 import type { Imovel } from "../tipos";
+import { chaveNormalizada, valorMaisUsado } from "../normalizacao";
 import { foiAngariado, foiLocado, tempoAteLocacao } from "./motor";
 
 /** Rótulo de origem quando o imóvel não registra o canal. */
@@ -31,22 +32,29 @@ export interface CanalDesempenho {
 }
 
 export function desempenhoPorCanal(imoveis: Imovel[]): CanalDesempenho[] {
-  // Agrupa por origem apenas os imóveis efetivamente angariados.
-  const porOrigem = new Map<string, Imovel[]>();
+  // Agrupa por origem normalizada apenas os imóveis efetivamente angariados.
+  // A grafia dominante vira o rótulo: "Marketplace" e " marketplace " não
+  // podem dividir um mesmo portal em duas barras no Dashboard.
+  const porOrigem = new Map<string, { grafias: string[]; imoveis: Imovel[] }>();
   for (const i of imoveis) {
     if (!foiAngariado(i)) continue;
     const origem = (i.origemImovel && i.origemImovel.trim()) || ORIGEM_NAO_INFORMADA;
-    const lista = porOrigem.get(origem);
-    if (lista) lista.push(i);
-    else porOrigem.set(origem, [i]);
+    const chave = chaveNormalizada(origem);
+    const grupo = porOrigem.get(chave);
+    if (grupo) {
+      grupo.grafias.push(origem);
+      grupo.imoveis.push(i);
+    } else {
+      porOrigem.set(chave, { grafias: [origem], imoveis: [i] });
+    }
   }
 
   const linhas: CanalDesempenho[] = [];
-  for (const [origem, lista] of porOrigem) {
+  for (const { grafias, imoveis: lista } of porOrigem.values()) {
     const locadosLista = lista.filter(foiLocado);
     const tempos = locadosLista.map(tempoAteLocacao).filter((t): t is number => t != null && t >= 0);
     linhas.push({
-      origem,
+      origem: valorMaisUsado(grafias),
       angariados: lista.length,
       locados: locadosLista.length,
       conversao: (locadosLista.length / lista.length) * 100,

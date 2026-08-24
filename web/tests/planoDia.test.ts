@@ -103,6 +103,14 @@ describe("planoDoDia", () => {
     expect(plano.portais[0].feitos).toBe(0);
   });
 
+  it("portal já usado pela carteira é configurado automaticamente", () => {
+    const plano = planoDoDia([
+      imovel({ id: "m1", origem: "Marketplace", entrouEm: "2026-01-10" }),
+    ], [], HOJE);
+
+    expect(plano.portais.map((p) => p.origem)).toEqual(["Marketplace"]);
+  });
+
   it("fixo sem histórico e sem contato hoje NÃO aparece", () => {
     expect(planoDoDia([], [], HOJE).portais).toEqual([]);
   });

@@ -32,6 +32,7 @@
    sem React/Next/Supabase/store.
    ================================================================ */
 import { ORIGENS_IMOVEL } from "../constantes";
+import { origensAprendidas } from "../configuracaoUsuario";
 import { addDaysISO } from "../datas";
 import type { Imovel } from "../tipos";
 import { foiAngariado } from "./motor";
@@ -133,14 +134,16 @@ export interface PlanoDoDia {
 }
 
 /**
- * Monta o plano do dia. `portaisExtras` são os portais que o corretor cadastrou
- * além dos fixos (user_config). Entram na lista: os portais cadastrados (sempre)
- * e os que já produziram angariação OU receberam um contato hoje. Assim o card
- * não vira uma lista de dezenas de zeros, mas um portal recém-cadastrado aparece
- * na hora.
+ * Monta o plano do dia. `portaisExtras` são preferências explícitas do corretor.
+ * O sistema soma as origens observadas na carteira: uma importação com um canal
+ * próprio já configura o plano, sem exigir a redigitação em Configurações.
  */
 export function planoDoDia(imoveis: Imovel[], portaisExtras: string[], hoje: string): PlanoDoDia {
-  const extras = new Set(portaisExtras.map((p) => p.trim()).filter(Boolean));
+  const extras = new Set(
+    [...portaisExtras, ...origensAprendidas(imoveis, portaisExtras)]
+      .map((p) => p.trim())
+      .filter(Boolean),
+  );
   const universo = new Set<string>([...ORIGENS_IMOVEL, ...extras]);
   const ang = angariacaoPorPortal(imoveis);
   const feitosPorPortal = contatosNovosHojePorPortal(imoveis, hoje);
