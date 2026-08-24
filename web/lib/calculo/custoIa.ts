@@ -49,11 +49,9 @@ export interface PrecoModelo {
 }
 
 /**
- * Os modelos que este app realmente chama. Dois, hoje: o das rotas de
- * texto (`MODELO` em app/api/ia/route.ts, também usado pela
- * classificação em lib/servidor/ia.ts) e o da transcrição de áudio
- * (`MODELO_TRANSCRICAO` em app/api/whatsapp/_transcricao.ts). São
- * exatamente os dois liberados no projeto da OpenAI.
+ * Os modelos que este app realmente chama: texto, transcrição de áudio e
+ * embeddings da base de comparáveis. São os modelos que precisam estar
+ * liberados no projeto da OpenAI.
  *
  * Ao trocar de modelo lá, acrescente a linha aqui — o modelo antigo
  * FICA, senão o histórico daquele mês perde o custo.
@@ -71,6 +69,11 @@ export interface PrecoModelo {
  * dinheiro que ninguém confere.
  */
 export const PRECOS: Record<string, PrecoModelo> = {
+  "text-embedding-3-small": {
+    entradaPor1M: 0.02,
+    saidaPor1M: 0,
+    conferidoEm: "2026-08-24",
+  },
   "gpt-5.4-mini": {
     entradaPor1M: 0.75,
     entradaCachePor1M: 0.075,

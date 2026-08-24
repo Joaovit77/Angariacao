@@ -33,6 +33,7 @@ export interface EntradaAvaliacao {
   banheiros?: number | null;
   vagas: number;
   conservacao: ConservacaoAvaliacao;
+  descricaoSemantica?: string | null;
   latitude?: number | null;
   longitude?: number | null;
 }
@@ -57,6 +58,7 @@ export interface ComparavelAvaliacao {
   dataInformacao?: string | null;
   url?: string | null;
   status?: string | null;
+  similaridadeVetorial?: number | null;
 }
 
 export interface ComponentesSimilaridade {
@@ -74,6 +76,8 @@ export interface ComparavelAvaliado extends ComparavelAvaliacao {
   distanciaKm: number | null;
   valorM2: number | null;
   valorAjustado: number;
+  similaridadeEstrutural: number;
+  comparabilidadeFinal: number;
   similaridade: number;
   componentes: ComponentesSimilaridade;
   pesoCalculo: number;
@@ -91,10 +95,13 @@ export interface MetodologiaAvaliacao {
   scoreMinimo: number;
   comparaveisCandidatos: number;
   comparaveisAprovados: number;
+  comparaveisComEmbedding: number;
   outliersRemovidos: number;
   medianaPonderada: number | null;
+  medianaValorM2: number | null;
   dispersao: number | null;
   pesos: typeof CONFIGURACAO_AVALIACAO.pesos;
+  pesosComparabilidade: typeof CONFIGURACAO_AVALIACAO.pesosComparabilidade;
 }
 
 export interface ResultadoAvaliacao {
@@ -116,7 +123,7 @@ export interface ComparaveisProvider<Contexto = unknown> {
 }
 
 export const CONFIGURACAO_AVALIACAO = {
-  versao: "avaliacao-rapida-v2",
+  versao: "avaliacao-rapida-v3-hibrida",
   scoreMinimo: 55,
   minimoComparaveis: 3,
   maximoComparaveis: 12,
@@ -130,6 +137,12 @@ export const CONFIGURACAO_AVALIACAO = {
     vagas: 7,
     conservacao: 5,
     recencia: 6,
+  },
+  // O bloco objetivo continua dominante. O vetor apenas reordena candidatos
+  // que já passaram pelos filtros e pelo score estrutural explicável.
+  pesosComparabilidade: {
+    estrutural: 80,
+    vetorial: 20,
   },
 } as const;
 
@@ -340,12 +353,22 @@ export function calcularSimilaridade(
     recencia: scoreRecencia(comparavel.dataInformacao, hoje),
   };
   const pesos = CONFIGURACAO_AVALIACAO.pesos;
-  const similaridade = Math.round(
+  const similaridadeEstrutural = Math.round(
     Object.entries(pesos).reduce(
       (total, [chave, peso]) => total + componentes[chave as keyof ComponentesSimilaridade] * peso,
       0,
     ) / 100,
   );
+  const similaridadeVetorial = comparavel.similaridadeVetorial == null
+    ? null
+    : Math.round(limitar(comparavel.similaridadeVetorial, 0, 1) * 100);
+  const pesosComparabilidade = CONFIGURACAO_AVALIACAO.pesosComparabilidade;
+  const comparabilidadeFinal = similaridadeVetorial == null
+    ? similaridadeEstrutural
+    : Math.round(
+      (similaridadeEstrutural * pesosComparabilidade.estrutural
+        + similaridadeVetorial * pesosComparabilidade.vetorial) / 100,
+    );
   const areaComparavel = comparavel.areaM2 && comparavel.areaM2 > 0 ? comparavel.areaM2 : null;
   const valorM2 = areaComparavel ? comparavel.valorAnunciado / areaComparavel : null;
   const proporcaoArea = areaComparavel
@@ -354,7 +377,9 @@ export function calcularSimilaridade(
   // Ajuste parcial: preço/m² corrige porte, mas 35% do valor bruto preserva
   // economias de escala (um imóvel duas vezes maior raramente custa 2x).
   const valorAjustado = comparavel.valorAnunciado * (0.35 + 0.65 * proporcaoArea);
-  const pesoCalculo = Math.max(0.01, (similaridade / 100) ** 2)
+  // O vetor não entra no preço. O peso estatístico usa somente a qualidade
+  // estrutural, a recência, o estágio observado e a origem do dado.
+  const pesoCalculo = Math.max(0.01, (similaridadeEstrutural / 100) ** 2)
     * (0.65 + componentes.recencia / 100 * 0.35)
     * fatorStatus(comparavel.status)
     * fatorOrigem(comparavel.origem);
@@ -363,7 +388,10 @@ export function calcularSimilaridade(
     distanciaKm: distanciaKm == null ? null : Math.round(distanciaKm * 10) / 10,
     valorM2: valorM2 == null ? null : Math.round(valorM2),
     valorAjustado,
-    similaridade,
+    similaridadeEstrutural,
+    similaridadeVetorial: similaridadeVetorial == null ? null : similaridadeVetorial / 100,
+    comparabilidadeFinal,
+    similaridade: comparabilidadeFinal,
     componentes,
     pesoCalculo,
   };
@@ -497,8 +525,10 @@ export function avaliarImovel(
     scoreMinimo: CONFIGURACAO_AVALIACAO.scoreMinimo,
     comparaveisCandidatos: candidatos.length,
     comparaveisAprovados: filtrados.length,
+    comparaveisComEmbedding: filtrados.filter((item) => item.similaridadeVetorial != null).length,
     outliersRemovidos: avaliados.length - filtrados.length,
     pesos: CONFIGURACAO_AVALIACAO.pesos,
+    pesosComparabilidade: CONFIGURACAO_AVALIACAO.pesosComparabilidade,
   };
 
   if (filtrados.length < CONFIGURACAO_AVALIACAO.minimoComparaveis) {
@@ -515,12 +545,23 @@ export function avaliarImovel(
         "A avaliação não inventa um valor quando a base mínima de três comparáveis não é atingida.",
       ],
       estrategias: [],
-      metodologia: { ...metodologiaBase, medianaPonderada: null, dispersao: null },
+      metodologia: {
+        ...metodologiaBase,
+        medianaPonderada: null,
+        medianaValorM2: null,
+        dispersao: null,
+      },
     };
   }
 
   const itensPonderados = filtrados.map((item) => ({ valor: item.valorAjustado, peso: item.pesoCalculo }));
   const medianaPonderada = quantilPonderado(itensPonderados, 0.5);
+  const medianaValorM2 = quantilPonderado(
+    filtrados
+      .filter((item) => item.valorM2 != null)
+      .map((item) => ({ valor: item.valorM2!, peso: item.pesoCalculo })),
+    0.5,
+  );
   const q25 = quantilPonderado(itensPonderados, 0.25);
   const q75 = quantilPonderado(itensPonderados, 0.75);
   const dispersao = medianaPonderada > 0 ? (q75 - q25) / medianaPonderada : 1;
@@ -565,6 +606,7 @@ export function avaliarImovel(
     metodologia: {
       ...metodologiaBase,
       medianaPonderada: Math.round(medianaPonderada),
+      medianaValorM2: medianaValorM2 > 0 ? Math.round(medianaValorM2) : null,
       dispersao: Math.round(dispersao * 1000) / 1000,
     },
   };

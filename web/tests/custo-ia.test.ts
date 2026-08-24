@@ -19,7 +19,7 @@ import {
   type UsoIa,
 } from "@/lib/calculo/custoIa";
 
-const MODELO = Object.keys(PRECOS)[0];
+const MODELO = "gpt-5.4-mini";
 
 function uso(over: Partial<UsoIa> = {}): UsoIa {
   return {
@@ -142,7 +142,7 @@ describe("somarGasto", () => {
     for (const [modelo, preco] of Object.entries(PRECOS)) {
       expect(preco.conferidoEm, `${modelo} sem conferidoEm`).toBeTruthy();
       expect(preco.entradaPor1M).toBeGreaterThan(0);
-      expect(preco.saidaPor1M).toBeGreaterThan(0);
+      expect(preco.saidaPor1M).toBeGreaterThanOrEqual(0);
     }
   });
 

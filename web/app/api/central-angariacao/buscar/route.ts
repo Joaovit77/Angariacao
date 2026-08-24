@@ -9,7 +9,7 @@ import {
   type ResultadoBuscaCentral,
 } from "@/lib/calculo/centralAngariacao";
 import { dentroDoPeriodo } from "@/lib/datas";
-import { salvarComparaveisMercado } from "@/lib/persistencia/comparaveisMercado";
+import { salvarComparaveisMercado } from "@/lib/servidor/comparaveisMercado";
 import { extrairJsonLd, urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
 import { buscarComFirecrawl, FirecrawlIndisponivel } from "@/lib/servidor/firecrawlCentralAngariacao";
 import { buscarComNavegador, NavegadorIndisponivel } from "@/lib/servidor/scraperCentralAngariacao";

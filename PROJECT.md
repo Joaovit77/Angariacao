@@ -629,16 +629,29 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   agenda continuam nas filas próprias. O Dashboard permanece como leitura analítica, sem duplicar o
   plano operacional. Abaixo da ação e da rodada, a Início mantém apenas um panorama compacto e
   clicável de Conversas, Agenda, Pipeline e meta de angariações; não repete listas nem relatórios.
-- **`calculo/avaliacao.ts`** — motor determinístico da **Avaliação Rápida** (`/avaliacao`). A V2
-  combina a carteira com a base durável `comparaveis_mercado` e exige compatibilidade mínima de
-  cidade, família de tipo, área, quartos e localização; quando há ao menos três opções na mesma rua,
-  elas prevalecem sobre as demais do bairro. Depois ajusta parcialmente por área, remove outliers e
-  usa mediana ponderada por similaridade, recência, estágio e origem para produzir faixa,
+- **`calculo/avaliacao.ts`** — motor determinístico da **Avaliação Rápida** (`/avaliacao`). A V3
+  combina a carteira com a base durável `comparaveis_mercado`. Na base externa, filtros de usuário,
+  finalidade, cidade, família de tipo, área e quartos são aplicados no Postgres antes da ordenação
+  vetorial; durante o preenchimento gradual, resultados estruturados complementam uma amostra
+  vetorial pequena. O score expõe separadamente similaridade estrutural, semântica e
+  comparabilidade final. O embedding só seleciona/reordena comparáveis: o peso do preço continua
+  estrutural. Quando há ao menos três opções na mesma rua, elas prevalecem sobre as demais do
+  bairro. Depois o motor ajusta parcialmente por área, remove outliers por mediana/desvio absoluto
+  e usa mediana ponderada por estrutura, recência, estágio e origem para produzir faixa,
   recomendação e confiança. Preço externo é valor pedido, recebe peso menor e sozinho nunca produz
   confiança alta. A expectativa do proprietário é comparada somente depois e nunca entra no preço.
   Como `imoveis` e a base externa só têm locação, venda responde dados insuficientes. Área ausente
   não é inventada. Cada execução grava em `avaliacoes_imoveis` uma fotografia imutável da entrada,
   versão da metodologia e comparáveis utilizados.
+- **`calculo/comparaveisMercado.ts` · `servidor/comparaveisMercado.ts` ·
+  `api/avaliacao/comparaveis`** — identidade, representação semântica, ingestão e busca híbrida dos
+  anúncios observados. A identidade aceita, em ordem, portal+código, URL canônica ou fingerprint
+  forte; preço não faz parte dela. `observacoes_comparaveis_mercado` é append-only e conserva
+  anúncio novo, mudança de preço/status, reaparecimento e confirmação diária. Ausência nunca prova
+  locação ou venda. O texto do embedding tem ordem e versão fixas; seu SHA-256, modelo e dimensão
+  impedem geração repetida e comparação entre modelos diferentes. A V3 usa pgvector/HNSW com 512
+  dimensões. Sem `OPENAI_API_KEY`, falha de geração ou RPC ainda não aplicada, a busca estruturada
+  da V2 continua funcionando.
 - **`calculo/centralAngariacao.ts` · `radarAngariacao.ts`** — contratos e regras da Central/Radar.
   Resultado de portal não é `Imovel` e só chega à carteira após revisão humana. As buscas cobrem
   OLX, Chaves na Mão, Wimoveis e Viva Real; o Radar persiste filtros e anúncios novos em tabelas
@@ -1642,10 +1655,13 @@ Chromium e, por último, extração HTTP/JSON-LD. Falha conserva o link de pesqu
 continuar manualmente. Resultado coletado é oportunidade para revisão, não gravação automática no
 Pipeline; cidade é conferida exatamente para não misturar região metropolitana.
 
-Cada resultado válido também faz upsert em `comparaveis_mercado`, sempre sob o `user_id` autenticado.
-A Avaliação Rápida reutiliza essa base sem chamar o coletor a cada cálculo. No Firecrawl, a consulta
-usa proxy básico e cache para manter o custo previsível; o fallback local preserva os mesmos campos
-estruturados quando o portal os disponibiliza.
+Cada resultado válido também registra ou atualiza `comparaveis_mercado`, sempre sob o `user_id`
+autenticado. A deduplicação combina código externo, URL canônica e fingerprint forte; o trigger de
+observações conserva preço e status ao longo do tempo. Campos objetivos declarados continuam em
+colunas e a descrição normalizada recebe embedding somente quando seu SHA-256/modelo/dimensão
+mudam. A Avaliação Rápida reutiliza essa base sem chamar o coletor a cada cálculo. No Firecrawl, a
+consulta usa proxy básico e cache para manter o custo previsível; o fallback local preserva os
+mesmos campos estruturados quando o portal os disponibiliza.
 
 O Radar salva buscas e o baseline visto em `radar_buscas`/`radar_anuncios`. A chave única
 `busca_id + portal + id_externo` impede duplicatas entre consulta manual e monitor. O cron diário da

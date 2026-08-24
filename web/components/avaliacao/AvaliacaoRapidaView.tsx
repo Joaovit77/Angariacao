@@ -24,7 +24,7 @@ import {
   registrarAvaliacao,
   type HistoricoAvaliacao,
 } from "@/lib/persistencia/avaliacoes";
-import { carregarComparaveisMercado } from "@/lib/persistencia/comparaveisMercado";
+import { buscarComparaveisMercado } from "@/lib/persistencia/comparaveisMercado";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import type { Imovel } from "@/lib/tipos";
@@ -226,6 +226,7 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
       banheiros: refinamentoAberto ? formulario.banheiros : null,
       vagas: formulario.vagas,
       conservacao: formulario.conservacao,
+      descricaoSemantica: imoveis.find((item) => item.id === formulario.imovelId)?.textoAnuncio || null,
       latitude,
       longitude,
     };
@@ -235,7 +236,7 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
       setFase("Analisando valores e consistência…");
       const [internos, externos] = await Promise.all([
         internalComparablesProvider.buscar(entrada, { imoveis }),
-        carregarComparaveisMercado(usuario.id, entrada),
+        buscarComparaveisMercado(usuario.id, entrada),
       ]);
       const resultado = avaliarImovel(entrada, [...internos, ...externos], todayISO());
       const registro = await registrarAvaliacao(usuario.id, entrada, valorProprietario, resultado);
@@ -299,7 +300,7 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
         <div>
           <span className="avaliacao-sobretitulo">Apoio à angariação</span>
           <h1>Avaliação Rápida de Imóvel</h1>
-          <p>Uma faixa objetiva baseada nos imóveis semelhantes da sua carteira.</p>
+          <p>Uma faixa objetiva baseada na sua carteira e no histórico observado do mercado.</p>
         </div>
       </header>
 
@@ -480,7 +481,7 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
                   <div><strong>{comparavel.codigo || comparavel.endereco}</strong><span>{[comparavel.bairro, comparavel.cidade].filter(Boolean).join(" · ")}</span></div>
                   <div className="avaliacao-comparavel-dados"><span>{comparavel.origem === "interno" ? "Fonte: carteira interna" : "Fonte externa"}</span><span>{comparavel.tipo}</span><span>{comparavel.areaM2 ? `${comparavel.areaM2} m²` : "Área não informada"}</span><span>{comparavel.quartos ?? "—"} quartos</span><span>{comparavel.vagas ?? "—"} vagas</span><span>{comparavel.distanciaKm == null ? "Distância aproximada" : `${comparavel.distanciaKm} km`}</span><span>Referência em {fmtDate(comparavel.dataInformacao)}</span></div>
                   <div className="avaliacao-comparavel-valor"><strong>{fmtMoney(comparavel.valorAnunciado)}</strong><span>{comparavel.valorM2 ? `${fmtMoney(comparavel.valorM2)}/m²` : "Sem preço/m²"}</span></div>
-                  <div className="avaliacao-similaridade"><span style={{ width: `${comparavel.similaridade}%` }} /><strong>{comparavel.similaridade}% semelhante</strong></div>
+                  <div className="avaliacao-similaridade"><span style={{ width: `${comparavel.comparabilidadeFinal}%` }} /><strong>{comparavel.comparabilidadeFinal}% comparável · estrutural {comparavel.similaridadeEstrutural}%{comparavel.similaridadeVetorial == null ? "" : ` · semântica ${Math.round(comparavel.similaridadeVetorial * 100)}%`}</strong></div>
                 </article>
               )) : <p>Nenhum comparável atingiu o corte mínimo de similaridade.</p>}
             </div>
@@ -490,7 +491,8 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
             <div className="avaliacao-detalhes">
               <h3>Como chegamos a este resultado</h3>
               <ol>{resultado?.explicacao.map((linha) => <li key={linha}>{linha}</li>)}</ol>
-              <p className="avaliacao-metodo">Localização tem o maior peso. Depois entram tipo, área, quartos, banheiros, vagas, conservação e recência. Valores extremos são removidos antes da mediana ponderada.</p>
+              <p className="avaliacao-metodo">{resultado?.metodologia.comparaveisCandidatos ?? 0} candidatos encontrados · {resultado?.metodologia.comparaveisAprovados ?? 0} utilizados · {resultado?.metodologia.outliersRemovidos ?? 0} outliers removidos · {resultado?.metodologia.comparaveisComEmbedding ?? 0} com similaridade semântica{resultado?.metodologia.medianaValorM2 ? ` · mediana de ${fmtMoney(resultado.metodologia.medianaValorM2)}/m²` : ""}.</p>
+              <p className="avaliacao-metodo">Os filtros objetivos vêm primeiro. Localização, tipo, área, quartos, banheiros, vagas, conservação e recência formam o score estrutural; quando disponível, a semântica apenas reordena os comparáveis. O preço usa o peso estrutural e valores extremos são removidos antes da mediana ponderada.</p>
             </div>
           )}
 

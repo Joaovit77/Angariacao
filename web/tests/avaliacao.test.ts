@@ -261,7 +261,7 @@ describe("segurança e integração estrutural", () => {
     expect(schema).toContain('create policy "update_own_comparaveis_mercado"');
     expect(schema).toContain("grant select, insert, update on table comparaveis_mercado to authenticated");
     expect(schema).not.toContain("grant select, insert, update, delete on table comparaveis_mercado");
-    expect(tela).toContain("carregarComparaveisMercado");
+    expect(tela).toContain("buscarComparaveisMercado");
   });
 
 

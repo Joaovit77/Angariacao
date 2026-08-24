@@ -20,7 +20,9 @@
 -- políticas são removidas e recriadas a cada execução.
 -- ============================================================
 
+create schema if not exists extensions;
 create extension if not exists "pgcrypto";
+create extension if not exists vector with schema extensions;
 
 -- O plano Hobby da Vercel so aceita Cron diario, mas mensagens podem ser
 -- marcadas para qualquer minuto. O relogio fica no Supabase: pg_cron dispara
@@ -1521,6 +1523,69 @@ create table if not exists comparaveis_mercado (
   unique (user_id, portal, id_externo)
 );
 
+-- A tabela nasceu na V2 com o conjunto mínimo usado pela Central. As colunas
+-- abaixo preservam essa mesma entidade e acrescentam identidade composta,
+-- dados objetivos, estado temporal e a representação vetorial da V3.
+alter table comparaveis_mercado add column if not exists url_canonica text;
+alter table comparaveis_mercado add column if not exists anuncio_fingerprint text;
+alter table comparaveis_mercado add column if not exists fingerprint_forte boolean not null default false;
+alter table comparaveis_mercado add column if not exists descricao text;
+alter table comparaveis_mercado add column if not exists tipo_familia text;
+alter table comparaveis_mercado add column if not exists regiao text;
+alter table comparaveis_mercado add column if not exists endereco_chave text;
+alter table comparaveis_mercado add column if not exists logradouro text;
+alter table comparaveis_mercado add column if not exists numero text;
+alter table comparaveis_mercado add column if not exists latitude double precision;
+alter table comparaveis_mercado add column if not exists longitude double precision;
+alter table comparaveis_mercado add column if not exists area_privativa_m2 numeric
+  check (area_privativa_m2 is null or area_privativa_m2 between 10 and 10000);
+alter table comparaveis_mercado add column if not exists area_total_m2 numeric
+  check (area_total_m2 is null or area_total_m2 between 10 and 100000);
+alter table comparaveis_mercado add column if not exists area_terreno_m2 numeric
+  check (area_terreno_m2 is null or area_terreno_m2 between 10 and 1000000);
+alter table comparaveis_mercado add column if not exists suites smallint
+  check (suites is null or suites between 0 and 30);
+alter table comparaveis_mercado add column if not exists andar smallint
+  check (andar is null or andar between -10 and 300);
+alter table comparaveis_mercado add column if not exists pavimentos smallint
+  check (pavimentos is null or pavimentos between 1 and 300);
+alter table comparaveis_mercado add column if not exists mobiliado boolean;
+alter table comparaveis_mercado add column if not exists valor_condominio numeric
+  check (valor_condominio is null or valor_condominio >= 0);
+alter table comparaveis_mercado add column if not exists valor_iptu numeric
+  check (valor_iptu is null or valor_iptu >= 0);
+alter table comparaveis_mercado add column if not exists anunciante_tipo text
+  check (anunciante_tipo is null or anunciante_tipo in ('proprietario', 'imobiliaria', 'incerto'));
+alter table comparaveis_mercado add column if not exists anunciante_nome text;
+alter table comparaveis_mercado add column if not exists status_anuncio text not null default 'ativo'
+  check (status_anuncio in (
+    'ativo', 'nao_encontrado', 'removido', 'historico',
+    'possivel_negociado', 'desconhecido'
+  ));
+alter table comparaveis_mercado add column if not exists status_atualizado_em timestamptz not null default now();
+alter table comparaveis_mercado add column if not exists embedding_texto text;
+alter table comparaveis_mercado add column if not exists embedding_hash text;
+alter table comparaveis_mercado add column if not exists embedding_modelo text;
+alter table comparaveis_mercado add column if not exists embedding_dimensoes smallint
+  check (embedding_dimensoes is null or embedding_dimensoes = 512);
+alter table comparaveis_mercado add column if not exists embedding extensions.vector(512);
+alter table comparaveis_mercado add column if not exists embedding_gerado_em timestamptz;
+
+-- Backfill sem inferir o que a V2 não conhecia. A URL original continua sendo
+-- uma identidade válida e area_m2 já representava a área privativa disponível.
+update comparaveis_mercado set url_canonica = url where url_canonica is null;
+update comparaveis_mercado
+set area_privativa_m2 = area_m2
+where area_privativa_m2 is null and area_m2 is not null;
+update comparaveis_mercado
+set tipo_familia = case
+  when lower(tipo) in ('apartamento', 'kitnet/studio') then 'apartamento'
+  when lower(tipo) in ('casa', 'casa de condomínio', 'casa de condominio', 'sobrado') then 'casa'
+  when lower(tipo) in ('sala comercial', 'galpão', 'galpao') then 'comercial'
+  else lower(trim(tipo))
+end
+where tipo_familia is null and tipo is not null;
+
 alter table comparaveis_mercado enable row level security;
 
 drop policy if exists "select_own_comparaveis_mercado" on comparaveis_mercado;
@@ -1541,6 +1606,337 @@ create index if not exists idx_comparaveis_mercado_busca
   on comparaveis_mercado (user_id, cidade_chave, finalidade, ultimo_visto_em desc);
 create index if not exists idx_comparaveis_mercado_bairro_tipo
   on comparaveis_mercado (user_id, cidade_chave, bairro_chave, tipo);
+create index if not exists idx_comparaveis_mercado_identidade_url
+  on comparaveis_mercado (user_id, url_canonica)
+  where url_canonica is not null;
+create index if not exists idx_comparaveis_mercado_identidade_fingerprint
+  on comparaveis_mercado (user_id, anuncio_fingerprint)
+  where fingerprint_forte and anuncio_fingerprint is not null;
+create index if not exists idx_comparaveis_mercado_filtros_vetor
+  on comparaveis_mercado (
+    user_id, embedding_modelo, finalidade, cidade_chave, tipo_familia, area_privativa_m2
+  );
+create index if not exists idx_comparaveis_mercado_status_recencia
+  on comparaveis_mercado (user_id, status_anuncio, ultimo_visto_em desc);
+create index if not exists idx_comparaveis_mercado_embedding_hnsw
+  on comparaveis_mercado using hnsw (embedding extensions.vector_cosine_ops)
+  where embedding is not null;
+
+-- Uma única transação escolhe a identidade existente e a atualiza. A função
+-- é invoker: a RLS e os privilégios do chamador continuam valendo, e o user_id
+-- autenticado nunca é aceito do corpo da requisição.
+create or replace function registrar_comparavel_mercado(p_dados jsonb)
+returns table (id uuid, criado boolean, precisa_embedding boolean)
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_user_id uuid := (select auth.uid());
+  v_id uuid;
+  v_criado boolean := false;
+  v_precisa_embedding boolean := true;
+  v_url_canonica text := nullif(trim(p_dados->>'url_canonica'), '');
+  v_fingerprint text := nullif(trim(p_dados->>'anuncio_fingerprint'), '');
+  v_fingerprint_forte boolean := coalesce((p_dados->>'fingerprint_forte')::boolean, false);
+  v_observado_em timestamptz := coalesce((p_dados->>'observado_em')::timestamptz, now());
+  v_embedding_hash text := nullif(p_dados->>'embedding_hash', '');
+  v_embedding_modelo text := nullif(p_dados->>'embedding_modelo', '');
+  v_embedding_dimensoes smallint := (p_dados->>'embedding_dimensoes')::smallint;
+begin
+  if v_user_id is null and current_user = 'service_role' then
+    v_user_id := nullif(p_dados->>'user_id', '')::uuid;
+  end if;
+  if v_user_id is null then
+    raise exception 'Sessão autenticada obrigatória.' using errcode = '42501';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
+    v_user_id::text || '|' || coalesce(
+      v_fingerprint,
+      v_url_canonica,
+      (p_dados->>'portal') || ':' || (p_dados->>'id_externo')
+    ),
+    0
+  ));
+
+  select
+    c.id,
+    c.embedding is null
+      or c.embedding_hash is distinct from v_embedding_hash
+      or c.embedding_modelo is distinct from v_embedding_modelo
+      or c.embedding_dimensoes is distinct from v_embedding_dimensoes
+  into v_id, v_precisa_embedding
+  from public.comparaveis_mercado c
+  where c.user_id = v_user_id
+    and (
+      (c.portal = p_dados->>'portal' and c.id_externo = p_dados->>'id_externo')
+      or (v_url_canonica is not null and c.url_canonica = v_url_canonica)
+      or (
+        v_fingerprint_forte and c.fingerprint_forte and v_fingerprint is not null
+        and c.anuncio_fingerprint = v_fingerprint
+      )
+    )
+  order by
+    case
+      when c.portal = p_dados->>'portal' and c.id_externo = p_dados->>'id_externo' then 0
+      when v_url_canonica is not null and c.url_canonica = v_url_canonica then 1
+      else 2
+    end,
+    c.ultimo_visto_em desc
+  limit 1
+  for update;
+
+  if v_id is null then
+    insert into public.comparaveis_mercado as inserido (
+      user_id, portal, id_externo, url, url_canonica, anuncio_fingerprint,
+      fingerprint_forte, finalidade, titulo, descricao, tipo, tipo_familia,
+      endereco, endereco_chave, logradouro, numero, bairro, cidade, estado,
+      cidade_chave, bairro_chave, area_m2, area_privativa_m2, area_total_m2,
+      area_terreno_m2, quartos, suites, banheiros, vagas, andar, pavimentos,
+      mobiliado, valor_anunciado, valor_condominio, valor_iptu, publicado_em,
+      primeiro_visto_em, ultimo_visto_em, anunciante_tipo, anunciante_nome,
+      status_anuncio, status_atualizado_em, embedding_texto, embedding_hash,
+      embedding_modelo, embedding_dimensoes, dados_originais
+    ) values (
+      v_user_id, p_dados->>'portal', p_dados->>'id_externo', p_dados->>'url',
+      v_url_canonica, v_fingerprint, v_fingerprint_forte,
+      coalesce(p_dados->>'finalidade', 'locacao'), p_dados->>'titulo',
+      nullif(p_dados->>'descricao', ''), nullif(p_dados->>'tipo', ''),
+      nullif(p_dados->>'tipo_familia', ''), nullif(p_dados->>'endereco', ''),
+      nullif(p_dados->>'endereco_chave', ''), nullif(p_dados->>'logradouro', ''),
+      nullif(p_dados->>'numero', ''), nullif(p_dados->>'bairro', ''),
+      p_dados->>'cidade', nullif(p_dados->>'estado', ''), p_dados->>'cidade_chave',
+      nullif(p_dados->>'bairro_chave', ''), nullif(p_dados->>'area_m2', '')::numeric,
+      nullif(p_dados->>'area_privativa_m2', '')::numeric,
+      nullif(p_dados->>'area_total_m2', '')::numeric,
+      nullif(p_dados->>'area_terreno_m2', '')::numeric,
+      nullif(p_dados->>'quartos', '')::smallint, nullif(p_dados->>'suites', '')::smallint,
+      nullif(p_dados->>'banheiros', '')::smallint, nullif(p_dados->>'vagas', '')::smallint,
+      nullif(p_dados->>'andar', '')::smallint, nullif(p_dados->>'pavimentos', '')::smallint,
+      nullif(p_dados->>'mobiliado', '')::boolean, (p_dados->>'valor_anunciado')::numeric,
+      nullif(p_dados->>'valor_condominio', '')::numeric,
+      nullif(p_dados->>'valor_iptu', '')::numeric,
+      nullif(p_dados->>'publicado_em', '')::timestamptz, v_observado_em, v_observado_em,
+      nullif(p_dados->>'anunciante_tipo', ''), nullif(p_dados->>'anunciante_nome', ''),
+      coalesce(p_dados->>'status_anuncio', 'ativo'), v_observado_em,
+      nullif(p_dados->>'embedding_texto', ''), v_embedding_hash, v_embedding_modelo,
+      v_embedding_dimensoes, coalesce(p_dados->'dados_originais', '{}'::jsonb)
+    )
+    returning inserido.id into v_id;
+    v_criado := true;
+    v_precisa_embedding := true;
+  else
+    update public.comparaveis_mercado c
+    set
+      url = p_dados->>'url',
+      url_canonica = coalesce(v_url_canonica, c.url_canonica),
+      anuncio_fingerprint = coalesce(v_fingerprint, c.anuncio_fingerprint),
+      fingerprint_forte = c.fingerprint_forte or v_fingerprint_forte,
+      finalidade = coalesce(p_dados->>'finalidade', c.finalidade),
+      titulo = p_dados->>'titulo',
+      descricao = coalesce(nullif(p_dados->>'descricao', ''), c.descricao),
+      tipo = coalesce(nullif(p_dados->>'tipo', ''), c.tipo),
+      tipo_familia = coalesce(nullif(p_dados->>'tipo_familia', ''), c.tipo_familia),
+      endereco = coalesce(nullif(p_dados->>'endereco', ''), c.endereco),
+      endereco_chave = coalesce(nullif(p_dados->>'endereco_chave', ''), c.endereco_chave),
+      logradouro = coalesce(nullif(p_dados->>'logradouro', ''), c.logradouro),
+      numero = coalesce(nullif(p_dados->>'numero', ''), c.numero),
+      bairro = coalesce(nullif(p_dados->>'bairro', ''), c.bairro),
+      cidade = p_dados->>'cidade',
+      estado = coalesce(nullif(p_dados->>'estado', ''), c.estado),
+      cidade_chave = p_dados->>'cidade_chave',
+      bairro_chave = coalesce(nullif(p_dados->>'bairro_chave', ''), c.bairro_chave),
+      area_m2 = coalesce(nullif(p_dados->>'area_m2', '')::numeric, c.area_m2),
+      area_privativa_m2 = coalesce(nullif(p_dados->>'area_privativa_m2', '')::numeric, c.area_privativa_m2),
+      area_total_m2 = coalesce(nullif(p_dados->>'area_total_m2', '')::numeric, c.area_total_m2),
+      area_terreno_m2 = coalesce(nullif(p_dados->>'area_terreno_m2', '')::numeric, c.area_terreno_m2),
+      quartos = coalesce(nullif(p_dados->>'quartos', '')::smallint, c.quartos),
+      suites = coalesce(nullif(p_dados->>'suites', '')::smallint, c.suites),
+      banheiros = coalesce(nullif(p_dados->>'banheiros', '')::smallint, c.banheiros),
+      vagas = coalesce(nullif(p_dados->>'vagas', '')::smallint, c.vagas),
+      andar = coalesce(nullif(p_dados->>'andar', '')::smallint, c.andar),
+      pavimentos = coalesce(nullif(p_dados->>'pavimentos', '')::smallint, c.pavimentos),
+      mobiliado = coalesce(nullif(p_dados->>'mobiliado', '')::boolean, c.mobiliado),
+      valor_anunciado = (p_dados->>'valor_anunciado')::numeric,
+      valor_condominio = coalesce(nullif(p_dados->>'valor_condominio', '')::numeric, c.valor_condominio),
+      valor_iptu = coalesce(nullif(p_dados->>'valor_iptu', '')::numeric, c.valor_iptu),
+      publicado_em = coalesce(nullif(p_dados->>'publicado_em', '')::timestamptz, c.publicado_em),
+      ultimo_visto_em = v_observado_em,
+      anunciante_tipo = coalesce(nullif(p_dados->>'anunciante_tipo', ''), c.anunciante_tipo),
+      anunciante_nome = coalesce(nullif(p_dados->>'anunciante_nome', ''), c.anunciante_nome),
+      status_anuncio = coalesce(p_dados->>'status_anuncio', 'ativo'),
+      status_atualizado_em = case
+        when c.status_anuncio is distinct from coalesce(p_dados->>'status_anuncio', 'ativo')
+          then v_observado_em
+        else c.status_atualizado_em
+      end,
+      embedding_texto = nullif(p_dados->>'embedding_texto', ''),
+      embedding_hash = v_embedding_hash,
+      embedding_modelo = v_embedding_modelo,
+      embedding_dimensoes = v_embedding_dimensoes,
+      embedding = case when v_precisa_embedding then null else c.embedding end,
+      embedding_gerado_em = case when v_precisa_embedding then null else c.embedding_gerado_em end,
+      dados_originais = coalesce(p_dados->'dados_originais', c.dados_originais)
+    where c.id = v_id and c.user_id = v_user_id;
+  end if;
+
+  return query select v_id, v_criado, v_precisa_embedding;
+end;
+$$;
+
+revoke all on function registrar_comparavel_mercado(jsonb) from public;
+grant execute on function registrar_comparavel_mercado(jsonb) to authenticated, service_role;
+
+-- Histórico append-only de observações. A linha corrente permite busca
+-- eficiente; esta tabela conserva mudanças de preço/status e confirmações
+-- diárias sem transformar ausência em negócio concluído.
+create table if not exists observacoes_comparaveis_mercado (
+  id bigint generated always as identity primary key,
+  comparavel_id uuid not null references comparaveis_mercado(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  observado_em timestamptz not null,
+  tipo_evento text not null check (tipo_evento in (
+    'novo', 'reobservado', 'preco_alterado', 'status_alterado',
+    'preco_e_status_alterados', 'reapareceu'
+  )),
+  valor_anunciado numeric not null check (valor_anunciado > 0),
+  valor_condominio numeric check (valor_condominio is null or valor_condominio >= 0),
+  valor_iptu numeric check (valor_iptu is null or valor_iptu >= 0),
+  status_anuncio text not null,
+  dados_snapshot jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+alter table observacoes_comparaveis_mercado enable row level security;
+
+drop policy if exists "select_own_observacoes_comparaveis_mercado" on observacoes_comparaveis_mercado;
+create policy "select_own_observacoes_comparaveis_mercado" on observacoes_comparaveis_mercado
+  for select to authenticated using ((select auth.uid()) = user_id);
+
+create index if not exists idx_observacoes_comparavel_data
+  on observacoes_comparaveis_mercado (comparavel_id, observado_em desc);
+create index if not exists idx_observacoes_user_data
+  on observacoes_comparaveis_mercado (user_id, observado_em desc);
+
+create schema if not exists private;
+revoke all on schema private from public, anon, authenticated;
+
+create or replace function private.registrar_observacao_comparavel()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_evento text;
+begin
+  if tg_op = 'INSERT' then
+    v_evento := 'novo';
+  elsif old.valor_anunciado is distinct from new.valor_anunciado
+    and old.status_anuncio is distinct from new.status_anuncio then
+    v_evento := case
+      when new.status_anuncio = 'ativo' and old.status_anuncio <> 'ativo' then 'reapareceu'
+      else 'preco_e_status_alterados'
+    end;
+  elsif old.valor_anunciado is distinct from new.valor_anunciado then
+    v_evento := 'preco_alterado';
+  elsif old.status_anuncio is distinct from new.status_anuncio then
+    v_evento := case
+      when new.status_anuncio = 'ativo' and old.status_anuncio <> 'ativo' then 'reapareceu'
+      else 'status_alterado'
+    end;
+  elsif old.ultimo_visto_em::date < new.ultimo_visto_em::date then
+    v_evento := 'reobservado';
+  else
+    return new;
+  end if;
+
+  insert into public.observacoes_comparaveis_mercado (
+    comparavel_id, user_id, observado_em, tipo_evento, valor_anunciado,
+    valor_condominio, valor_iptu, status_anuncio, dados_snapshot
+  ) values (
+    new.id, new.user_id, new.ultimo_visto_em, v_evento, new.valor_anunciado,
+    new.valor_condominio, new.valor_iptu, new.status_anuncio,
+    jsonb_build_object(
+      'url', new.url, 'titulo', new.titulo, 'tipo', new.tipo,
+      'endereco', new.endereco, 'bairro', new.bairro, 'cidade', new.cidade,
+      'areaPrivativaM2', new.area_privativa_m2, 'quartos', new.quartos,
+      'banheiros', new.banheiros, 'vagas', new.vagas,
+      'valorAnterior', case when tg_op = 'UPDATE' then old.valor_anunciado else null end,
+      'statusAnterior', case when tg_op = 'UPDATE' then old.status_anuncio else null end
+    )
+  );
+  return new;
+end;
+$$;
+
+revoke all on function private.registrar_observacao_comparavel() from public;
+drop trigger if exists trg_observar_comparavel_mercado on comparaveis_mercado;
+create trigger trg_observar_comparavel_mercado
+after insert or update on comparaveis_mercado
+for each row execute function private.registrar_observacao_comparavel();
+
+-- Os filtros objetivos estão dentro da função, antes do ORDER BY vetorial.
+-- SECURITY INVOKER + filtro explícito por auth.uid() mantém a RLS ativa.
+drop function if exists buscar_comparaveis_mercado_hibridos(
+  extensions.vector, text, text, text, numeric, numeric, integer, integer, integer
+);
+create or replace function buscar_comparaveis_mercado_hibridos(
+  p_query_embedding extensions.vector(512),
+  p_embedding_modelo text,
+  p_embedding_dimensoes integer,
+  p_finalidade text,
+  p_cidade_chave text,
+  p_tipo_familia text,
+  p_area_min numeric,
+  p_area_max numeric,
+  p_quartos_min integer,
+  p_quartos_max integer,
+  p_limite integer default 80
+)
+returns table (
+  id uuid, portal text, id_externo text, url text, titulo text, tipo text,
+  endereco text, bairro text, cidade text, area_m2 numeric, quartos smallint,
+  banheiros smallint, vagas smallint, latitude double precision,
+  longitude double precision, valor_anunciado numeric, publicado_em timestamptz,
+  ultimo_visto_em timestamptz, status_anuncio text,
+  similaridade_vetorial double precision
+)
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select
+    c.id, c.portal, c.id_externo, c.url, c.titulo, c.tipo, c.endereco,
+    c.bairro, c.cidade, coalesce(c.area_privativa_m2, c.area_m2),
+    c.quartos, c.banheiros, c.vagas, c.latitude, c.longitude,
+    c.valor_anunciado, c.publicado_em, c.ultimo_visto_em, c.status_anuncio,
+    greatest(-1::double precision, least(
+      1::double precision,
+      1 - (c.embedding OPERATOR(extensions.<=>) p_query_embedding)
+    )) as similaridade_vetorial
+  from public.comparaveis_mercado c
+  where c.user_id = (select auth.uid())
+    and c.finalidade = p_finalidade
+    and c.embedding_modelo = p_embedding_modelo
+    and c.embedding_dimensoes = p_embedding_dimensoes
+    and c.cidade_chave = p_cidade_chave
+    and c.tipo_familia = p_tipo_familia
+    and coalesce(c.area_privativa_m2, c.area_m2) between p_area_min and p_area_max
+    and c.quartos between p_quartos_min and p_quartos_max
+    and c.embedding is not null
+  order by c.embedding OPERATOR(extensions.<=>) p_query_embedding
+  limit least(greatest(p_limite, 1), 200);
+$$;
+
+revoke all on function buscar_comparaveis_mercado_hibridos(
+  extensions.vector, text, integer, text, text, text, numeric, numeric, integer, integer, integer
+) from public;
+grant execute on function buscar_comparaveis_mercado_hibridos(
+  extensions.vector, text, integer, text, text, text, numeric, numeric, integer, integer, integer
+) to authenticated, service_role;
 
 -- ------------------------------------------------------------
 -- RADAR DE ANGARIAÇÃO
@@ -1666,7 +2062,8 @@ revoke all on table
   imoveis, mensagens_agendadas, metas, agenda, abordagens, user_config,
   ia_permissoes, whatsapp_instancias, google_contas, admins, ia_uso,
   log_eventos, aceites_termos, protocolos, radar_buscas, radar_anuncios,
-  central_anuncios_visualizados, avaliacoes_imoveis, comparaveis_mercado
+  central_anuncios_visualizados, avaliacoes_imoveis, comparaveis_mercado,
+  observacoes_comparaveis_mercado
 from public, anon, authenticated, service_role;
 
 grant select, insert, update, delete on table imoveis to authenticated;
@@ -1683,6 +2080,7 @@ grant select, insert, update, delete on table radar_anuncios to authenticated;
 grant select, insert, update on table central_anuncios_visualizados to authenticated;
 grant select, insert on table avaliacoes_imoveis to authenticated;
 grant select, insert, update on table comparaveis_mercado to authenticated;
+grant select on table observacoes_comparaveis_mercado to authenticated;
 
 -- Somente código server-side possui a service role. Não concedemos
 -- TRUNCATE, REFERENCES ou TRIGGER, que o aplicativo não utiliza.
@@ -1694,3 +2092,4 @@ grant select, insert, update, delete on table
 to service_role;
 grant select, insert on table avaliacoes_imoveis to service_role;
 grant select, insert, update on table comparaveis_mercado to service_role;
+grant select, insert on table observacoes_comparaveis_mercado to service_role;

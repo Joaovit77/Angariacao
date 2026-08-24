@@ -268,13 +268,14 @@ Sem essa retenção, envio e webhook em tempo real continuam funcionando, mas
 é limitada às 30 mensagens recentes encontradas e grava somente o que o corretor selecionar; áudio
 e outras mídias antigas entram como marcador (`[áudio]`, `[imagem]`), sem inventar transcrição.
 
-### OpenAI (sugestão de roteiros e leitura do ranking) — opcional
+### OpenAI (IA textual e embeddings da Avaliação) — opcional
 
 Os botões de IA — sugerir roteiros de abordagem e interpretar o ranking — exigem mais uma
 variável, também **segredo**:
 
 ```
 OPENAI_API_KEY=sk-...
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 ```
 
 - Crie a chave em <https://platform.openai.com/api-keys>. A cobrança é **por token consumido**,
@@ -283,7 +284,11 @@ OPENAI_API_KEY=sk-...
 - **Nunca** prefixe com `NEXT_PUBLIC_`: qualquer visitante leria a chave no DevTools e gastaria
   na sua conta. Sem o prefixo, ela só existe no servidor (a rota `web/app/api/ia`).
 - **Se você não configurar:** nada quebra. Os botões de IA simplesmente não aparecem — o app
-  pergunta ao servidor se há chave (`GET /api/ia`) e esconde o que não funcionaria.
+  pergunta ao servidor se há chave (`GET /api/ia`) e esconde o que não funcionaria. A Avaliação
+  continua com filtros e score estruturais; apenas a seleção semântica de comparáveis fica ausente.
+- `OPENAI_EMBEDDING_MODEL` é opcional e deve produzir vetores com a dimensão pedida pela aplicação
+  (512). Ao trocar o modelo, anúncios antigos ficam fora da busca vetorial até serem reobservados e
+  reprocessados; vetores de modelos diferentes nunca são comparados.
 - O modelo usado é a constante `MODELO` no topo de `web/app/api/ia/route.ts`. Para conferir se a
   chave está válida:
   ```bash

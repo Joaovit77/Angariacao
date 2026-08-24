@@ -40,9 +40,17 @@ export interface AnuncioCentralAngariacao {
   descricao?: string | null;
   tipo?: string | null;
   areaM2?: number | null;
+  areaTotalM2?: number | null;
+  areaTerrenoM2?: number | null;
   quartos?: number | null;
+  suites?: number | null;
   banheiros?: number | null;
   vagas?: number | null;
+  andar?: number | null;
+  pavimentos?: number | null;
+  mobiliado?: boolean | null;
+  valorCondominio?: number | null;
+  valorIptu?: number | null;
   publicadoEm?: string | null;
   publicadoTexto?: string | null;
   anunciante: "proprietario" | "imobiliaria" | "incerto";
@@ -61,9 +69,17 @@ export function comCaracteristicasDoAnuncio(
     ...anuncio,
     tipo: anuncio.tipo ?? extraidas.tipo,
     areaM2: anuncio.areaM2 ?? extraidas.areaM2,
+    areaTotalM2: anuncio.areaTotalM2 ?? extraidas.areaTotalM2,
+    areaTerrenoM2: anuncio.areaTerrenoM2 ?? extraidas.areaTerrenoM2,
     quartos: anuncio.quartos ?? extraidas.quartos,
+    suites: anuncio.suites ?? extraidas.suites,
     banheiros: anuncio.banheiros ?? extraidas.banheiros,
     vagas: anuncio.vagas ?? extraidas.vagas,
+    andar: anuncio.andar ?? extraidas.andar,
+    pavimentos: anuncio.pavimentos ?? extraidas.pavimentos,
+    mobiliado: anuncio.mobiliado ?? extraidas.mobiliado,
+    valorCondominio: anuncio.valorCondominio ?? extraidas.valorCondominio,
+    valorIptu: anuncio.valorIptu ?? extraidas.valorIptu,
   };
 }
 

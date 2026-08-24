@@ -5,18 +5,13 @@
    portais são atualizados por usuário e depois reutilizados sem nova
    chamada ao coletor externo.
    ================================================================ */
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { chaveNormalizada } from "@/lib/normalizacao";
-import { agoraISOString } from "@/lib/datas";
 import type { EntradaAvaliacao, ComparavelAvaliacao } from "@/lib/calculo/avaliacao";
-import {
-  comCaracteristicasDoAnuncio,
-  type AnuncioCentralAngariacao,
-  type FiltrosCentralAngariacao,
-} from "@/lib/calculo/centralAngariacao";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabase } from "./supabase";
 
 interface LinhaComparavelMercado {
+  id?: string;
   portal: string;
   id_externo: string;
   url: string;
@@ -32,9 +27,13 @@ interface LinhaComparavelMercado {
   valor_anunciado: number | string;
   publicado_em: string | null;
   ultimo_visto_em: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  status_anuncio?: string | null;
+  similaridade_vetorial?: number | string | null;
 }
 
-function numero(valor: number | string | null): number | null {
+function numero(valor: number | string | null | undefined): number | null {
   if (valor == null) return null;
   const convertido = Number(valor);
   return Number.isFinite(convertido) ? convertido : null;
@@ -54,52 +53,44 @@ function tiposCompativeis(tipo: string): string[] {
   return [tipo.trim()];
 }
 
-export async function salvarComparaveisMercado(
-  supabase: SupabaseClient,
-  userId: string,
-  anuncios: AnuncioCentralAngariacao[],
-  filtros: FiltrosCentralAngariacao,
-): Promise<number> {
-  const vistosEm = agoraISOString();
-  const linhas = anuncios.flatMap((original) => {
-    const anuncio = comCaracteristicasDoAnuncio(original, filtros.tipo);
-    const valor = numero(anuncio.preco ?? null);
-    const cidadeChave = chaveNormalizada(anuncio.cidade);
-    if (!valor || valor <= 0 || !cidadeChave || !anuncio.url || !anuncio.titulo) return [];
-    return [{
-      user_id: userId,
-      portal: anuncio.portal,
-      id_externo: anuncio.idExterno,
-      url: anuncio.url,
-      finalidade: "locacao",
-      titulo: anuncio.titulo,
-      tipo: anuncio.tipo || null,
-      endereco: anuncio.endereco || null,
-      bairro: anuncio.bairro || null,
-      cidade: anuncio.cidade?.trim() || filtros.cidade,
-      estado: filtros.estado,
-      cidade_chave: cidadeChave,
-      bairro_chave: chaveNormalizada(anuncio.bairro) || null,
-      area_m2: anuncio.areaM2 ?? null,
-      quartos: anuncio.quartos ?? null,
-      banheiros: anuncio.banheiros ?? null,
-      vagas: anuncio.vagas ?? null,
-      valor_anunciado: valor,
-      publicado_em: anuncio.publicadoEm || null,
-      ultimo_visto_em: vistosEm,
-      dados_originais: anuncio,
-    }];
-  });
-  if (!linhas.length) return 0;
-
-  const { error } = await supabase
-    .from("comparaveis_mercado")
-    .upsert(linhas, { onConflict: "user_id,portal,id_externo" });
-  if (error) throw error;
-  return linhas.length;
+function rotuloStatus(status: string | null | undefined): string {
+  if (status === "ativo") return "Anunciado";
+  if (status === "nao_encontrado") return "Não encontrado";
+  if (status === "removido") return "Removido";
+  if (status === "historico") return "Histórico";
+  if (status === "possivel_negociado") return "Possível negociação";
+  return status || "Anunciado";
 }
 
-export async function carregarComparaveisMercado(
+export function mapearComparaveisMercado(
+  linhas: LinhaComparavelMercado[],
+): ComparavelAvaliacao[] {
+  return linhas.map((linha) => ({
+    origem: "externo",
+    id: linha.id || `${linha.portal}:${linha.id_externo}`,
+    codigo: linha.portal,
+    endereco: linha.endereco || linha.titulo,
+    bairro: linha.bairro,
+    cidade: linha.cidade,
+    edificio: null,
+    tipo: linha.tipo || "Outro",
+    areaM2: numero(linha.area_m2),
+    quartos: linha.quartos,
+    banheiros: linha.banheiros,
+    vagas: linha.vagas,
+    conservacao: null,
+    latitude: linha.latitude ?? null,
+    longitude: linha.longitude ?? null,
+    valorAnunciado: numero(linha.valor_anunciado) || 0,
+    dataInformacao: linha.publicado_em || linha.ultimo_visto_em,
+    url: linha.url,
+    status: rotuloStatus(linha.status_anuncio),
+    similaridadeVetorial: numero(linha.similaridade_vetorial),
+  }));
+}
+
+export async function carregarComparaveisMercadoComCliente(
+  supabase: SupabaseClient,
   userId: string,
   entrada: EntradaAvaliacao,
 ): Promise<ComparavelAvaliacao[]> {
@@ -107,9 +98,9 @@ export async function carregarComparaveisMercado(
   const cidadeChave = chaveNormalizada(entrada.cidade);
   if (!cidadeChave) return [];
 
-  const { data, error } = await getSupabase()
+  const { data, error } = await supabase
     .from("comparaveis_mercado")
-    .select("portal, id_externo, url, titulo, tipo, endereco, bairro, cidade, area_m2, quartos, banheiros, vagas, valor_anunciado, publicado_em, ultimo_visto_em")
+    .select("id, portal, id_externo, url, titulo, tipo, endereco, bairro, cidade, area_m2, quartos, banheiros, vagas, valor_anunciado, publicado_em, ultimo_visto_em")
     .eq("user_id", userId)
     .eq("finalidade", entrada.finalidade)
     .eq("cidade_chave", cidadeChave)
@@ -124,25 +115,38 @@ export async function carregarComparaveisMercado(
     .limit(1_000);
   if (error) throw error;
 
-  return ((data || []) as LinhaComparavelMercado[]).map((linha) => ({
-    origem: "externo",
-    id: `${linha.portal}:${linha.id_externo}`,
-    codigo: linha.portal,
-    endereco: linha.endereco || linha.titulo,
-    bairro: linha.bairro,
-    cidade: linha.cidade,
-    edificio: null,
-    tipo: linha.tipo || "Outro",
-    areaM2: numero(linha.area_m2),
-    quartos: linha.quartos,
-    banheiros: linha.banheiros,
-    vagas: linha.vagas,
-    conservacao: null,
-    latitude: null,
-    longitude: null,
-    valorAnunciado: numero(linha.valor_anunciado) || 0,
-    dataInformacao: linha.publicado_em || linha.ultimo_visto_em,
-    url: linha.url,
-    status: "Anunciado",
-  }));
+  return mapearComparaveisMercado((data || []) as LinhaComparavelMercado[]);
+}
+
+export async function carregarComparaveisMercado(
+  userId: string,
+  entrada: EntradaAvaliacao,
+): Promise<ComparavelAvaliacao[]> {
+  return carregarComparaveisMercadoComCliente(getSupabase(), userId, entrada);
+}
+
+export async function buscarComparaveisMercado(
+  userId: string,
+  entrada: EntradaAvaliacao,
+): Promise<ComparavelAvaliacao[]> {
+  const supabase = getSupabase();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return carregarComparaveisMercadoComCliente(supabase, userId, entrada);
+  try {
+    const resposta = await fetch("/api/avaliacao/comparaveis", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(entrada),
+    });
+    if (resposta.ok) {
+      const dados = await resposta.json() as { comparaveis?: ComparavelAvaliacao[] };
+      if (Array.isArray(dados.comparaveis)) return dados.comparaveis;
+    }
+  } catch {
+    // A busca estruturada abaixo preserva a V2 quando a rota/modelo falha.
+  }
+  return carregarComparaveisMercadoComCliente(supabase, userId, entrada);
 }
