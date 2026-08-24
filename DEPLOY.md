@@ -217,21 +217,29 @@ mensagens foram processadas, enviadas e quantas falharam.
 ### Evolution API (envio direto de WhatsApp) — opcional
 
 O botão **"Enviar agora"** do modal de WhatsApp dispara a mensagem pela Evolution sem abrir o
-WhatsApp Web. Ele exige mais três variáveis — e estas são **segredos**:
+WhatsApp Web. A URL é global; os tokens de envio são por corretor e ficam no banco. Para a
+instância fixa `corretora`, a criação e a recuperação automáticas também exigem a *global api key*:
 
 ```
 EVOLUTION_SERVER_URL=https://sua-evolution.exemplo.com
-EVOLUTION_INSTANCE=nome-da-sua-instancia
-EVOLUTION_TOKEN=token-da-instancia
+AUTHENTICATION_API_KEY=global-api-key-da-evolution
+EVOLUTION_WEBHOOK_SECRET=segredo-do-webhook-de-recebimento
 ```
 
-- **Nunca** prefixe com `NEXT_PUBLIC_`. Isso publicaria o token no navegador e qualquer visitante
-  passaria a mandar WhatsApp pela sua instância. Sem o prefixo, elas só existem no servidor
-  (a rota `web/app/api/whatsapp/enviar`) — é ela, e só ela, que fala com a Evolution.
-- Use o **token da instância**, não a *global api key*: a rota só envia mensagem e não precisa de
-  poder para criar/apagar instâncias.
+- **Nunca** prefixe com `NEXT_PUBLIC_`. Isso publicaria credenciais no navegador.
+- A `AUTHENTICATION_API_KEY` só consulta/cria a instância fixa. Envio, histórico e QR usam o token da
+  própria instância, persistido em `whatsapp_instancias`; a chave global nunca volta ao browser.
+- O cadastro da corretora é feito em **Admin → conta da corretora → Gerar QR da corretora**. O
+  nome é sempre `corretora`; o número informado `43 9653-4523` fica preservado em `observacao`, e
+  o vínculo real ocorre quando o aparelho lê o QR Code.
+- Instância existente e desconectada é reconectada no mesmo nome. Só uma listagem global HTTP 200
+  sem `corretora` autoriza recriá-la; timeout, 401 ou 5xx nunca são tratados como exclusão.
+- A recriação reutiliza o **webhook global já configurado na Evolution**. Mantenha-o apontando para
+  `/api/whatsapp/webhook/<EVOLUTION_WEBHOOK_SECRET>` com o evento `MESSAGES_UPSERT`; o app não cria
+  um segundo webhook por instância.
 - **Se você não configurar:** nada quebra. O modal cai no `wa.me` (abrir o WhatsApp Web com a
-  mensagem pronta), que é como o app funcionava antes.
+  mensagem pronta), que é como o app funcionava antes. Sem `AUTHENTICATION_API_KEY`, instâncias já
+  cadastradas continuam no fluxo legado, mas `corretora` não pode ser provisionada/recuperada.
 - **Para conferir se a instância está no ar, use o próprio painel:** Configurações → *Ver conexão do
   WhatsApp*. Ela mostra o estado, o número pareado e — se tiver caído — o QR Code para reconectar,
   sem ninguém precisar abrir o painel da Evolution (onde estão as instâncias de todos os

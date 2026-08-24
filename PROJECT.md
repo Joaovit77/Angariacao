@@ -1680,6 +1680,15 @@ cargo precisa ter, e por isso o que não pode escapar por descuido.
   por clique encheriam de ruído a tabela que este painel existe para deixar legível.
   A consulta é **sob demanda** (botão), nunca a cada abertura da tela — cada consulta ocupa a mesma
   instância que precisa estar livre para enviar.
+- **A corretora fixa é a exceção administrativa mínima:** número-fonte `43 9653-4523`, forma
+  normalizada `554396534523` (somente DDI 55, sem inventar dígito) e nome imutável `corretora`.
+  `lib/servidor/evolution.ts` é o único cliente de ciclo de vida da Evolution 2.3.7. Antes de usar
+  essa instância, ele faz `fetchInstances`; `open` reutiliza, `close` pede conexão/QR na mesma,
+  lista vazia permite `POST /instance/create` com o mesmo nome. Qualquer erro de comunicação
+  encerra a tentativa sem criar. Chamadas concorrentes compartilham a mesma promessa no processo;
+  entre processos, a unicidade do nome na Evolution faz só uma criação vencer e as demais
+  reconsultarem `corretora`. A linha e o token continuam na tabela existente
+  `whatsapp_instancias`; `observacao` preserva número original e normalizado, sem migration nova.
 - **`ambiente` devolve só booleanos.** Nunca o valor de uma variável, nunca um pedaço dele, nem
   mascarado — mesma regra do token da instância. A pergunta que a tela responde é "está lá?", não
   "qual é". Ela existe porque variável esquecida não falha no build e não aparece em log nenhum

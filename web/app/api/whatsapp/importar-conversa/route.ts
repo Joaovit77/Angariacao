@@ -20,6 +20,7 @@ import {
 } from "@/lib/calculo/importacaoConversaWhatsapp";
 import { numeroEvolution } from "@/lib/calculo/whatsapp";
 import type { NotaImovel } from "@/lib/tipos";
+import { instanciaWhatsappDoUsuario } from "@/lib/servidor/instanciaWhatsapp";
 
 type FalhaImportacao =
   | "sessao-expirada"
@@ -47,23 +48,13 @@ function erro(falha: FalhaImportacao, mensagem: string, status: number): Respons
 async function instanciaDoUsuario(
   supabaseUrl: string,
   userId: string,
-): Promise<{ instancia: string; token: string } | null> {
+): Promise<Awaited<ReturnType<typeof instanciaWhatsappDoUsuario>>> {
   const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceRole) return null;
+  if (!serviceRole) return { ok: false, falha: "persistencia" };
   const admin = createClient(supabaseUrl, serviceRole, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data, error: falha } = await admin
-    .from("whatsapp_instancias")
-    .select("instancia, token")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (falha) {
-    console.error("Importação de conversa: falha ao resolver instância:", falha.message);
-    return null;
-  }
-  if (!data?.instancia || !data?.token) return null;
-  return { instancia: data.instancia as string, token: data.token as string };
+  return instanciaWhatsappDoUsuario(admin, userId);
 }
 
 async function jidDoNumero(
@@ -295,7 +286,15 @@ export async function POST(request: Request): Promise<Response> {
   const notas = Array.isArray(imovel.notas) ? (imovel.notas as NotaImovel[]) : [];
 
   const minha = await instanciaDoUsuario(supabaseUrl, sessao.user.id);
-  if (!minha) return erro("sem-instancia", "Sua conta ainda não tem um WhatsApp configurado.", 422);
+  if (!minha.ok) {
+    if (minha.falha === "sem-instancia") {
+      return erro("sem-instancia", "Sua conta ainda não tem um WhatsApp configurado.", 422);
+    }
+    if (minha.falha === "nao-configurado") {
+      return erro("nao-configurado", "A recuperação automática do WhatsApp não está configurada.", 503);
+    }
+    return erro("falha-evolution", "Não foi possível verificar o WhatsApp agora.", 502);
+  }
   const base = serverUrl.replace(/\/+$/, "");
   const jid = await jidDoNumero(base, minha.instancia, minha.token, numero);
   const conversa = await buscarConversa(base, minha.instancia, minha.token, jid, telefone, notas);

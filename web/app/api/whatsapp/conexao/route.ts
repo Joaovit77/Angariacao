@@ -18,6 +18,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Conexao, EstadoConexao } from "@/lib/calculo/conexaoWhatsapp";
 import { registrarEvento } from "@/lib/servidor/registro";
+import { instanciaWhatsappDoUsuario } from "@/lib/servidor/instanciaWhatsapp";
 import { consultarConexao } from "../_conexao";
 
 function responder(estado: EstadoConexao, extra: Partial<Conexao> = {}): Response {
@@ -31,23 +32,13 @@ function responder(estado: EstadoConexao, extra: Partial<Conexao> = {}): Respons
 async function instanciaDoUsuario(
   supabaseUrl: string,
   userId: string,
-): Promise<{ instancia: string; token: string } | null> {
+): Promise<Awaited<ReturnType<typeof instanciaWhatsappDoUsuario>>> {
   const servico = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!servico) return null;
+  if (!servico) return { ok: false, falha: "persistencia" };
   const admin = createClient(supabaseUrl, servico, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data, error } = await admin
-    .from("whatsapp_instancias")
-    .select("instancia, token")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (error) {
-    console.error("Conexão do WhatsApp: falha ao ler a instância:", error.message);
-    return null;
-  }
-  if (!data?.instancia || !data?.token) return null;
-  return { instancia: data.instancia as string, token: data.token as string };
+  return instanciaWhatsappDoUsuario(admin, userId);
 }
 
 export async function GET(request: Request): Promise<Response> {
@@ -70,7 +61,11 @@ export async function GET(request: Request): Promise<Response> {
   if (erroAuth || !sessao.user) return responder("falha");
 
   const minha = await instanciaDoUsuario(supabaseUrl, sessao.user.id);
-  if (!minha) return responder("sem-instancia");
+  if (!minha.ok) {
+    if (minha.falha === "sem-instancia") return responder("sem-instancia");
+    if (minha.falha === "nao-configurado") return responder("nao-configurado");
+    return responder("falha");
+  }
 
   // 2. O estado, com QR: esta é a tela em que o corretor está com o
   //    celular na mão para reconectar.

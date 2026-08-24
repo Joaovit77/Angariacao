@@ -32,6 +32,7 @@ import { confirmacaoVisitaValida } from "@/lib/calculo/confirmacaoVisita";
 import { agoraISOComSegundos, todayISO } from "@/lib/datas";
 import { idMensagemEvolution, registrarMensagemEnviada } from "@/lib/servidor/historicoWhatsapp";
 import { registrarEvento } from "@/lib/servidor/registro";
+import { instanciaWhatsappDoUsuario } from "@/lib/servidor/instanciaWhatsapp";
 
 /** Corpo de resposta — espelha o que lib/envioWhatsapp espera. */
 interface Resposta {
@@ -115,26 +116,16 @@ function classificarErroEvolution(status: number, corpo: string): FalhaEnvio {
 async function instanciaDoUsuario(
   supabaseUrl: string,
   userId: string,
-): Promise<{ instancia: string; token: string } | null> {
+): Promise<Awaited<ReturnType<typeof instanciaWhatsappDoUsuario>>> {
   const servico = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!servico) {
     console.error("Envio de WhatsApp: SUPABASE_SERVICE_ROLE_KEY ausente (ver web/.env.example).");
-    return null;
+    return { ok: false, falha: "persistencia" };
   }
   const admin = createClient(supabaseUrl, servico, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data, error } = await admin
-    .from("whatsapp_instancias")
-    .select("instancia, token")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (error) {
-    console.error("Envio de WhatsApp: falha ao ler a instância do usuário:", error.message);
-    return null;
-  }
-  if (!data?.instancia || !data?.token) return null;
-  return { instancia: data.instancia as string, token: data.token as string };
+  return instanciaWhatsappDoUsuario(admin, userId);
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -163,7 +154,7 @@ export async function POST(request: Request): Promise<Response> {
   //    enviar — e o certo é recusar, nunca cair num número padrão: com vários
   //    corretores, o padrão seria mandar pelo número de outra pessoa.
   const minha = await instanciaDoUsuario(supabaseUrl, sessao.user.id);
-  if (!minha) {
+  if (!minha.ok) {
     // O evento que mais importa no painel de admin: alguém tentando
     // trabalhar numa conta que ninguém terminou de configurar. Sem isto,
     // o único sinal é o corretor reclamando — se ele reclamar.
@@ -171,10 +162,14 @@ export async function POST(request: Request): Promise<Response> {
       userId: sessao.user.id,
       categoria: "whatsapp",
       nivel: "erro",
-      evento: "sem-instancia",
-      detalhe: null,
+      evento: minha.falha === "sem-instancia" ? "sem-instancia" : "recuperacao-instancia-falhou",
+      detalhe: minha.falha === "sem-instancia" ? null : minha.falha,
     });
-    return erro("sem-instancia", 422);
+    return minha.falha === "sem-instancia"
+      ? erro("sem-instancia", 422)
+      : minha.falha === "nao-configurado"
+        ? erro("nao-configurado", 503)
+        : erro("falha-evolution", 502);
   }
   const { instancia, token } = minha;
 

@@ -24,6 +24,7 @@
       jsonb que o `salvarImovel` teve que aprender a repor.
    ================================================================ */
 import { registrarEvento } from "@/lib/servidor/registro";
+import { provisionarInstanciaCorretora } from "@/lib/servidor/instanciaWhatsapp";
 import { alvoValido, erro, exigirAdmin } from "../_comum";
 
 /** Violação de unique no Postgres. `instancia` é unique porque é a
@@ -36,7 +37,7 @@ export async function POST(request: Request): Promise<Response> {
   if ("resposta" in guarda) return guarda.resposta;
   const { sb, userId: quemPediu } = guarda;
 
-  let corpo: { userId?: unknown; instancia?: unknown; token?: unknown };
+  let corpo: { userId?: unknown; instancia?: unknown; token?: unknown; modo?: unknown };
   try {
     corpo = await request.json();
   } catch {
@@ -44,9 +45,64 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const alvo = alvoValido(corpo.userId);
+  if (!alvo) return erro("requisicao-invalida", 400);
+
+  if (corpo.modo === "corretora") {
+    const resultado = await provisionarInstanciaCorretora(sb, alvo);
+    if (!resultado.ok) {
+      const mensagens = {
+        "nao-configurado": "Configure AUTHENTICATION_API_KEY no servidor antes de gerar o QR Code.",
+        indisponivel: "A Evolution não respondeu. Nenhuma instância foi criada; tente novamente.",
+        "sem-token": "A Evolution não devolveu o token da instância fixa.",
+        persistencia: "Não foi possível salvar o cadastro da corretora.",
+        "instancia-em-uso": "A instância \"corretora\" já pertence a outra conta.",
+        "usuario-ja-configurado":
+          "Esta conta já possui outra instância. Nada foi substituído automaticamente.",
+        "sem-instancia": "Não foi possível preparar a instância fixa.",
+      } satisfies Record<typeof resultado.falha, string>;
+      const conflito =
+        resultado.falha === "instancia-em-uso" || resultado.falha === "usuario-ja-configurado";
+      return Response.json(
+        { ok: false, falha: resultado.falha, mensagem: mensagens[resultado.falha] },
+        { status: conflito ? 409 : resultado.falha === "nao-configurado" ? 503 : 502 },
+      );
+    }
+
+    registrarEvento({
+      userId: alvo,
+      categoria: "admin",
+      nivel: "info",
+      evento: resultado.criada ? "admin-instancia-criada" : "admin-instancia-recuperada",
+      detalhe: `corretora — por ${quemPediu}`,
+    });
+    return Response.json({
+      ok: true,
+      instancia: resultado.instancia,
+      criada: resultado.criada,
+      qr: resultado.qr,
+    });
+  }
+
   const instancia = typeof corpo.instancia === "string" ? corpo.instancia.trim() : "";
   const token = typeof corpo.token === "string" ? corpo.token.trim() : "";
-  if (!alvo || !instancia) return erro("requisicao-invalida", 400);
+  if (!instancia) return erro("requisicao-invalida", 400);
+
+  const { data: existente, error: erroLeitura } = await sb
+    .from("whatsapp_instancias")
+    .select("instancia")
+    .eq("user_id", alvo)
+    .maybeSingle();
+  if (erroLeitura) return erro("falha", 500);
+  if (existente?.instancia === "corretora" && instancia !== "corretora") {
+    return Response.json(
+      {
+        ok: false,
+        falha: "requisicao-invalida",
+        mensagem: "A instância fixa da corretora não pode ser renomeada.",
+      },
+      { status: 409 },
+    );
+  }
 
   // Token em branco = "não mexa no que já está lá" (ver a regra 2 no
   // topo). Só entra no update quando veio preenchido.

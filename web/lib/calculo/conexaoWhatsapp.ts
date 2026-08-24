@@ -39,6 +39,11 @@ export type EstadoConexao =
   // sessão). Distinto de "desconectado" porque aqui a ação certa é
   // ESPERAR, não ler outro QR.
   | "conectando"
+  // A linha local existe, mas a consulta à Evolution confirmou HTTP 404.
+  // Para a instância fixa, o ciclo de vida tenta recriá-la antes de este
+  // estado chegar à tela; ele continua explícito para não confundir 404
+  // com indisponibilidade do servidor.
+  | "instancia-ausente"
   // Nenhuma linha em `whatsapp_instancias`: conta nova que ninguém
   // terminou de configurar. Quem resolve é o admin, não o corretor —
   // por isso a mensagem manda falar com o responsável em vez de
@@ -76,6 +81,8 @@ const MENSAGENS: Record<EstadoConexao, string> = {
   desconectado:
     "Seu WhatsApp está desconectado. Leia o código abaixo com o celular para reconectar — nenhuma mensagem sai enquanto isso.",
   conectando: "Conectando… aguarde alguns segundos sem fechar esta janela.",
+  "instancia-ausente":
+    "A instância não existe mais no servidor de WhatsApp. Tente novamente para recuperá-la.",
   "sem-instancia":
     "Sua conta ainda não tem um número de WhatsApp configurado. Fale com o responsável pelo sistema.",
   "nao-configurado": "O envio direto de WhatsApp não está configurado neste ambiente.",
@@ -111,6 +118,8 @@ const MENSAGENS_DE_TERCEIRO: Record<EstadoConexao, string> = {
   desconectado:
     "Desconectado — nenhuma mensagem sai desta conta. O código abaixo precisa ser lido no celular DESTE corretor.",
   conectando: "Conectando… a sessão está subindo, não é preciso fazer nada.",
+  "instancia-ausente":
+    "A instância não existe mais na Evolution e precisa ser recuperada com o mesmo nome.",
   "sem-instancia": "Esta conta ainda não tem número cadastrado — use os campos ao lado.",
   "nao-configurado": "O envio direto de WhatsApp não está configurado neste ambiente.",
   falha: "Não foi possível falar com o servidor de WhatsApp agora. Tente de novo em instantes.",

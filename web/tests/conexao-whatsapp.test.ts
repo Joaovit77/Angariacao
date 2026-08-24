@@ -55,7 +55,7 @@ describe("deveMostrarQr", () => {
   });
 
   it("não mostra nos estados em que QR não resolve nada", () => {
-    for (const e of ["conectado", "sem-instancia", "nao-configurado", "falha"] as EstadoConexao[]) {
+    for (const e of ["conectado", "instancia-ausente", "sem-instancia", "nao-configurado", "falha"] as EstadoConexao[]) {
       expect(deveMostrarQr(e, "abc"), e).toBe(false);
     }
   });
@@ -105,6 +105,7 @@ describe("mensagemConexao", () => {
       "conectado",
       "desconectado",
       "conectando",
+      "instancia-ausente",
       "sem-instancia",
       "nao-configurado",
       "falha",
@@ -122,7 +123,7 @@ describe("mensagemConexao", () => {
 /* ------------------------------------------------------------------
    UM CAMINHO SÓ ATÉ A EVOLUTION
 
-   As três sutilezas de `_conexao.ts` foram MEDIDAS contra a Evolution
+   As três sutilezas de `lib/servidor/evolution.ts` foram MEDIDAS contra a Evolution
    real em 01/08/2026, não deduzidas da documentação: o número só vem de
    `fetchInstances` (o `connectionState` não traz `owner`), a resposta
    daquele endpoint INCLUI o token da instância, e o QR aparece em três
@@ -142,12 +143,14 @@ describe("nenhuma rota fala com a Evolution por fora do miolo compartilhado", ()
      pasta E com o separador do sistema. A troca por "/" usa `sep`, e não
      uma regex com barra invertida: no Windows o teste compararia
      "whatsapp\_conexao.ts" com "whatsapp/_conexao.ts" e falharia só lá. */
-  const fontes = readdirSync(join(raiz, "app/api"), { recursive: true, encoding: "utf8" })
-    .filter((nome) => nome.endsWith(".ts"))
-    .map((nome) => ({
-      rota: nome.split(sep).join("/"),
-      texto: readFileSync(join(raiz, "app/api", nome), "utf8"),
-    }));
+  const fontes = ["app/api", "lib/servidor"].flatMap((pasta) =>
+    readdirSync(join(raiz, pasta), { recursive: true, encoding: "utf8" })
+      .filter((nome) => nome.endsWith(".ts"))
+      .map((nome) => ({
+        rota: `${pasta}/${nome.split(sep).join("/")}`,
+        texto: readFileSync(join(raiz, pasta, nome), "utf8"),
+      })),
+  );
 
   /** Quais rotas mencionam um endpoint da Evolution. */
   function quemChama(endpoint: string): string[] {
@@ -155,18 +158,22 @@ describe("nenhuma rota fala com a Evolution por fora do miolo compartilhado", ()
   }
 
   it("só `_conexao.ts` consulta o estado da instância", () => {
-    expect(quemChama("instance/connectionState")).toEqual(["whatsapp/_conexao.ts"]);
+    expect(quemChama("instance/connectionState")).toEqual(["lib/servidor/evolution.ts"]);
   });
 
   it("só `_conexao.ts` pede o QR", () => {
     // Pedir o QR faz a Evolution COMEÇAR a parear. Um segundo lugar que
     // chamasse isso poderia dispará-lo numa varredura, derrubando a
     // sessão de quem estava conectado.
-    expect(quemChama("instance/connect/")).toEqual(["whatsapp/_conexao.ts"]);
+    expect(quemChama("instance/connect/")).toEqual(["lib/servidor/evolution.ts"]);
   });
 
   it("o endpoint que devolve o token da instância é consultado num lugar só", () => {
-    expect(quemChama("instance/fetchInstances")).toEqual(["whatsapp/_conexao.ts"]);
+    expect(quemChama("instance/fetchInstances")).toEqual(["lib/servidor/evolution.ts"]);
+  });
+
+  it("só o cliente global cria instâncias", () => {
+    expect(quemChama("instance/create")).toEqual(["lib/servidor/evolution.ts"]);
   });
 });
 
@@ -184,6 +191,7 @@ describe("mensagemConexaoDeTerceiro", () => {
     "conectado",
     "desconectado",
     "conectando",
+    "instancia-ausente",
     "sem-instancia",
     "nao-configurado",
     "falha",

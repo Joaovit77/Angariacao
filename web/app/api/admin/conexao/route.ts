@@ -29,6 +29,7 @@
    legível.
    ================================================================ */
 import type { Conexao } from "@/lib/calculo/conexaoWhatsapp";
+import { garantirRegistroInstanciaWhatsapp } from "@/lib/servidor/instanciaWhatsapp";
 import { consultarConexao } from "../../whatsapp/_conexao";
 import { alvoValido, erro, exigirAdmin } from "../_comum";
 
@@ -55,19 +56,29 @@ export async function GET(request: Request): Promise<Response> {
 
     const { data, error } = await sb
       .from("whatsapp_instancias")
-      .select("instancia, token")
+      .select("instancia, token, observacao")
       .eq("user_id", userId)
       .maybeSingle();
     if (error) {
       console.error("Admin: falha ao ler a instância:", error.message);
       return erro("falha", 500);
     }
-    if (!data?.instancia || !data?.token) return Response.json({ ok: true, estado: "sem-instancia" });
+    if (!data?.instancia) return Response.json({ ok: true, estado: "sem-instancia" });
+
+    const pronta = await garantirRegistroInstanciaWhatsapp(sb, userId, {
+      instancia: data.instancia as string,
+      token: (data.token as string | null) ?? null,
+      observacao: (data.observacao as string | null) ?? null,
+    });
+    if (!pronta.ok) {
+      const estado = pronta.falha === "nao-configurado" ? "nao-configurado" : "falha";
+      return Response.json({ ok: true, estado });
+    }
 
     const conexao = await consultarConexao(
       serverUrl,
-      data.instancia as string,
-      data.token as string,
+      pronta.instancia,
+      pronta.token,
       true,
     );
     return Response.json({ ok: true, ...conexao });
@@ -77,7 +88,9 @@ export async function GET(request: Request): Promise<Response> {
   // devolver a lista vazia faria a tela dizer "todo mundo bem".
   if (!serverUrl) return Response.json({ ok: true, conexoes: [], naoConfigurado: true });
 
-  const { data, error } = await sb.from("whatsapp_instancias").select("user_id, instancia, token");
+  const { data, error } = await sb
+    .from("whatsapp_instancias")
+    .select("user_id, instancia, token, observacao");
   if (error) {
     console.error("Admin: falha ao listar as instâncias:", error.message);
     return erro("falha", 500);
@@ -90,15 +103,27 @@ export async function GET(request: Request): Promise<Response> {
      consulta em série, que faria a varredura levar minutos. */
   const conexoes = await Promise.all(
     (data || [])
-      .filter((r) => r.user_id && r.instancia && r.token)
+      .filter((r) => r.user_id && r.instancia)
       .map(async (r): Promise<ConexaoDeCorretor> => {
+        const pronta = await garantirRegistroInstanciaWhatsapp(sb, r.user_id as string, {
+          instancia: r.instancia as string,
+          token: (r.token as string | null) ?? null,
+          observacao: (r.observacao as string | null) ?? null,
+        });
+        if (!pronta.ok) {
+          return {
+            userId: r.user_id as string,
+            instancia: r.instancia as string,
+            estado: pronta.falha === "nao-configurado" ? "nao-configurado" : "falha",
+          };
+        }
         const conexao = await consultarConexao(
           serverUrl,
-          r.instancia as string,
-          r.token as string,
+          pronta.instancia,
+          pronta.token,
           false,
         );
-        return { userId: r.user_id as string, instancia: r.instancia as string, ...conexao };
+        return { userId: r.user_id as string, instancia: pronta.instancia, ...conexao };
       }),
   );
 

@@ -276,3 +276,9 @@ export async function carregarAmbiente(): Promise<RespostaAmbiente> {
 export function salvarInstancia(userId: string, instancia: string, token: string): Promise<RespostaAcao> {
   return acao("/api/admin/instancia", { userId, instancia, token });
 }
+
+/** Cria/recupera somente a instância fixa `corretora`; o servidor é
+    quem conhece nome, número original e credenciais globais. */
+export function provisionarWhatsappCorretora(userId: string): Promise<RespostaAcao> {
+  return acao("/api/admin/instancia", { userId, modo: "corretora" });
+}

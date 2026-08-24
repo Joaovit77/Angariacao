@@ -4,6 +4,7 @@ import { enviarMensagemAgendada } from "@/lib/servidor/envioMensagemAgendada";
 import { agoraISOComSegundos, agoraISOString } from "@/lib/datas";
 import { registrarMensagemEnviada } from "@/lib/servidor/historicoWhatsapp";
 import { registrarEvento } from "@/lib/servidor/registro";
+import { garantirRegistroInstanciaWhatsapp } from "@/lib/servidor/instanciaWhatsapp";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -24,10 +25,16 @@ export async function GET(request: Request) {
   if (error) return Response.json({ ok: false, erro: error.message }, { status: 500 });
   let enviadas = 0, falhas = 0;
   for (const item of (data || []) as DbMensagemAgendada[]) {
-    const { data: instancia } = await admin.from("whatsapp_instancias").select("instancia, token")
+    const { data: instancia } = await admin.from("whatsapp_instancias").select("instancia, token, observacao")
       .eq("user_id", item.user_id).maybeSingle();
     try {
-      if (!instancia?.instancia || !instancia?.token) throw new Error("sem-instancia");
+      if (!instancia?.instancia) throw new Error("sem-instancia");
+      const pronta = await garantirRegistroInstanciaWhatsapp(admin, item.user_id, {
+        instancia: instancia.instancia as string,
+        token: (instancia.token as string | null) ?? null,
+        observacao: (instancia.observacao as string | null) ?? null,
+      });
+      if (!pronta.ok) throw new Error(`instancia-${pronta.falha}`);
       // O lote foi reclamado antes do loop. Nesse intervalo o imóvel pode ter
       // sido excluído e a transação ter removido esta mensagem. Relê-la
       // imediatamente antes do efeito externo evita usar o item em memória.
@@ -39,7 +46,7 @@ export async function GET(request: Request) {
       if (mensagemAtual?.status !== "processando" || (item.imovel_id && mensagemAtual.imovel_id !== item.imovel_id)) continue;
 
       const envio = await enviarMensagemAgendada(item.telefone, item.mensagem,
-        { serverUrl, instancia: instancia.instancia as string, token: instancia.token as string });
+        { serverUrl, instancia: pronta.instancia, token: pronta.token });
       const agora = agoraISOString();
       if (item.imovel_id) {
         const historico = await registrarMensagemEnviada(admin, {

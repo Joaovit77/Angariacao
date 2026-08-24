@@ -74,6 +74,14 @@ export async function GET(request: Request): Promise<Response> {
       essencial: true,
     },
     {
+      chave: "evolution-admin",
+      nome: "Administração da Evolution",
+      variavel: "AUTHENTICATION_API_KEY",
+      configurado: tem("AUTHENTICATION_API_KEY"),
+      semEla: "A instância fixa da corretora não pode ser criada nem recuperada automaticamente.",
+      essencial: false,
+    },
+    {
       chave: "webhook",
       nome: "Segredo do webhook",
       variavel: "EVOLUTION_WEBHOOK_SECRET",

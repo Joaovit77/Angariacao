@@ -50,6 +50,7 @@ import {
   definirCargo,
   definirIa,
   definirTetoIa,
+  provisionarWhatsappCorretora,
   salvarInstancia,
   verificarConexoes,
   type CapacidadeAmbiente,
@@ -81,6 +82,7 @@ const ROTULO_CONEXAO: Record<EstadoConexao, string> = {
   conectado: "Conectado",
   desconectado: "Caiu",
   conectando: "Conectando",
+  "instancia-ausente": "Instância ausente",
   "sem-instancia": "Sem número",
   "nao-configurado": "Sem Evolution",
   falha: "Sem resposta",
@@ -90,6 +92,7 @@ const COR_CONEXAO: Record<EstadoConexao, string> = {
   conectado: "var(--good)",
   desconectado: "var(--bad)",
   conectando: "var(--warn)",
+  "instancia-ausente": "var(--bad)",
   "sem-instancia": "var(--bad)",
   "nao-configurado": "var(--text-faint)",
   falha: "var(--warn)",
@@ -836,7 +839,7 @@ export default function AdminView() {
    em vez de ocupar para sempre a instância que precisa estar livre para
    enviar mensagem.
    ---------------------------------------------------------------- */
-function useConexaoAoVivo(userId: string) {
+function useConexaoAoVivo(userId: string, revisao = 0) {
   const [conexao, setConexao] = useState<Conexao | null>(null);
 
   useEffect(() => {
@@ -857,7 +860,7 @@ function useConexaoAoVivo(userId: string) {
       vivo = false;
       if (timer) clearTimeout(timer);
     };
-  }, [userId]);
+  }, [userId, revisao]);
 
   return conexao;
 }
@@ -886,8 +889,9 @@ function Detalhe({
   const [instancia, setInstancia] = useState(corretor.instancia || "");
   const [token, setToken] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const [revisaoConexao, setRevisaoConexao] = useState(0);
   const [teto, setTeto] = useState(corretor.tetoUsd === null ? "" : String(corretor.tetoUsd));
-  const conexao = useConexaoAoVivo(corretor.id);
+  const conexao = useConexaoAoVivo(corretor.id, revisaoConexao);
 
   // Quem garante que reabrir para OUTRO corretor não herda o que estava
   // digitado aqui é o `key` no elemento, lá em cima — ver o comentário
@@ -898,6 +902,7 @@ function Detalhe({
      TETO de gasto logo abaixo — dois "tetos" na mesma tela, um deles
      puramente visual. */
   const maiorDoPeriodo = useMemo(() => Math.max(...serie.map((m) => m.custoUsd), 0), [serie]);
+  const instanciaFixa = instancia === "corretora" || corretor.instancia === "corretora";
 
   async function salvar() {
     if (!instancia.trim()) {
@@ -912,7 +917,23 @@ function Detalhe({
       return;
     }
     setToken("");
+    setRevisaoConexao((atual) => atual + 1);
     toast("Número cadastrado.", "success");
+    aoSalvar();
+  }
+
+  async function provisionarCorretora() {
+    setSalvando(true);
+    const r = await provisionarWhatsappCorretora(corretor.id);
+    setSalvando(false);
+    if (!r.ok) {
+      toast(r.mensagem || "Não foi possível preparar o WhatsApp da corretora.", "error");
+      return;
+    }
+    setInstancia("corretora");
+    setToken("");
+    setRevisaoConexao((atual) => atual + 1);
+    toast("Instância corretora pronta. Se precisar parear, o QR Code aparecerá abaixo.", "success");
     aoSalvar();
   }
 
@@ -959,11 +980,33 @@ function Detalhe({
       <div className="grid grid-2 admin-detalhe-grid">
         <div>
           <div className="field-group">
+            <label>WhatsApp fixo da corretora</label>
+            <div className="field-hint">
+              Número informado: <strong>43 9653-4523</strong> · instância permanente: <code>corretora</code>.
+              O vínculo é feito exclusivamente pelo QR Code e nunca cria nomes com sufixo.
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void provisionarCorretora()}
+              disabled={salvando || (!!corretor.instancia && corretor.instancia !== "corretora")}
+            >
+              {salvando ? "Preparando…" : "Gerar QR da corretora"}
+            </button>
+            {corretor.instancia && corretor.instancia !== "corretora" && (
+              <div className="field-hint">
+                Esta conta já usa outra instância. Ela não será substituída automaticamente.
+              </div>
+            )}
+          </div>
+
+          <div className="field-group">
             <label>Instância na Evolution</label>
             <input
               value={instancia}
               onChange={(e) => setInstancia(e.target.value)}
               placeholder="nome-da-instancia"
+              disabled={instanciaFixa}
             />
             <div className="field-hint">
               Exatamente como aparece no campo <code>instance</code> do evento — é por ele que a
@@ -979,6 +1022,7 @@ function Detalhe({
               onChange={(e) => setToken(e.target.value)}
               placeholder={corretor.instancia ? "(deixe em branco para manter o atual)" : ""}
               autoComplete="new-password"
+              disabled={instanciaFixa}
             />
             {/* O token nunca volta do servidor — nem mascarado. Ele manda
                 mensagem pela instância, e o browser do admin não é mais
@@ -988,9 +1032,14 @@ function Detalhe({
             </div>
           </div>
 
-          <button type="button" className="btn btn-primary" onClick={() => void salvar()} disabled={salvando}>
+          <button type="button" className="btn btn-primary" onClick={() => void salvar()} disabled={salvando || instanciaFixa}>
             {salvando ? "Salvando…" : "Salvar número"}
           </button>
+          {instanciaFixa && (
+            <div className="field-hint">
+              Nome e token são gerenciados automaticamente para esta instância fixa.
+            </div>
+          )}
 
           {/* ----------------------------------------------------------
               CONEXÃO — o estado que faltava
