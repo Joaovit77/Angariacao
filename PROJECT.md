@@ -629,6 +629,12 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   agenda continuam nas filas próprias. O Dashboard permanece como leitura analítica, sem duplicar o
   plano operacional. Abaixo da ação e da rodada, a Início mantém apenas um panorama compacto e
   clicável de Conversas, Agenda, Pipeline e meta de angariações; não repete listas nem relatórios.
+- **`calculo/ativacao.ts`** — a jornada **Comece por aqui** da Início. Conta sem imóvel recebe
+  acesso direto à importação, ao pré-cadastro e à Central de Angariação, sem indicadores zerados.
+  Depois do primeiro imóvel, a Home normal volta e um checklist compacto acompanha primeiro contato
+  (tentativa registrada), próxima ação pendente vinculada à carteira e meta do mês. Tudo é derivado
+  dos dados escopados pela sessão; não existe flag, preferência ou coluna de ativação, e o bloco some
+  quando as quatro etapas estão concluídas.
 - **`calculo/avaliacao.ts`** — motor determinístico da **Avaliação Rápida** (`/avaliacao`). A V3
   combina a carteira com a base durável `comparaveis_mercado`. Na base externa, filtros de usuário,
   finalidade, cidade, família de tipo, área e quartos são aplicados no Postgres antes da ordenação
