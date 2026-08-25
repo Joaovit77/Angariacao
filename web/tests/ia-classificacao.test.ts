@@ -15,6 +15,7 @@ import {
   MAX_MENSAGENS_CONTEXTO,
   MAX_TEXTO_CLASSIFICACAO,
   MOTIVOS_PERDA_IA,
+  desistenciaAluguelExplicita,
   exclusividadeVigenteExplicita,
   motivoPerdaSeguro,
   promptClassificarResposta,
@@ -66,16 +67,12 @@ describe("promptClassificarResposta", () => {
     expect(prompt).not.toContain("já tinha escrito");
   });
 
-  it("cobre 'vai vender em vez de alugar', que não tinha rótulo nenhum", () => {
-    /* A segunda metade do LD-110: mesmo lendo a conversa inteira, a IA não
-       tinha em que balde pôr "está em negociação para venda" — "Imóvel já
-       vendido" é falso (não vendeu) e os outros não falam de venda. Sem rótulo,
-       motivoPerda saía null e o imóvel não encerrava. */
+  it("não confunde informação de venda com retirada da locação", () => {
     const prompt = promptClassificarResposta("Já está em negociação para venda", HOJE);
-    expect(prompt).toContain("negociação para venda");
+    expect(prompt).toContain("informar um preço de venda");
+    expect(prompt).toContain("venda e locação podem coexistir");
     expect(prompt).toContain("Proprietário desistiu de alugar");
-    // E a distinção com "Imóvel já vendido" precisa estar escrita: senão a IA
-    // marca venda fechada onde há só negociação.
+    expect(prompt).toContain("venda um milhão e meio");
     expect(prompt).toContain("a venda JÁ ESTÁ FECHADA");
   });
 
@@ -105,6 +102,40 @@ describe("promptClassificarResposta", () => {
 });
 
 describe("motivoPerdaSeguro", () => {
+  it("mantém o LD-152 aberto quando a proprietária informa apenas o preço de venda", () => {
+    const classificacao = { resultado: "recusou", motivoPerda: "Proprietário desistiu de alugar" };
+
+    expect(motivoPerdaSeguro(classificacao, "Venda hum milhão e meio")).toBeNull();
+    expect(motivoPerdaSeguro(classificacao, "Venda por R$ 1.500.000")).toBeNull();
+    expect(motivoPerdaSeguro(classificacao, "Também aceito proposta para venda")).toBeNull();
+  });
+
+  it.each([
+    "Desisti de alugar o imóvel.",
+    "Não vou mais alugar a casa.",
+    "Somente venda.",
+    "Vou morar neste imóvel.",
+  ])("aceita desistência explícita da locação: %s", (texto) => {
+    expect(desistenciaAluguelExplicita(texto)).toBe(true);
+    expect(
+      motivoPerdaSeguro(
+        { resultado: "recusou", motivoPerda: "Proprietário desistiu de alugar" },
+        texto,
+      ),
+    ).toBe("Proprietário desistiu de alugar");
+  });
+
+  it("não encerra uma recusa provisória mesmo quando ela menciona venda", () => {
+    const texto = "Por enquanto não quero alugar, estou tentando vender.";
+    expect(desistenciaAluguelExplicita(texto)).toBe(false);
+    expect(
+      motivoPerdaSeguro(
+        { resultado: "recusou", motivoPerda: "Proprietário desistiu de alugar" },
+        texto,
+      ),
+    ).toBeNull();
+  });
+
   it("não encerra por outra imobiliária sem exclusividade", () => {
     expect(
       motivoPerdaSeguro(

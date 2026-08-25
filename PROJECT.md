@@ -1270,7 +1270,10 @@ Regras ao mexer nela:
   nota explicar na tela por que o status mudou — senão o imóvel sairia da carteira e a única
   explicação estaria no log do servidor. “O imóvel não está mais disponível” também encerra, mas
   com um motivo genérico próprio: a frase prova o encerramento, não se ele foi alugado, vendido ou
-  retirado. Marcas de provisoriedade (“por enquanto”, “no momento”, “talvez”) mantêm o imóvel aberto.
+  retirado. Mencionar venda, informar seu preço ou aceitar propostas **não prova desistência da
+  locação**: as duas modalidades podem coexistir, e `Proprietário desistiu de alugar` exige uma
+  retirada inequívoca no próprio texto (“não vou mais alugar”, “somente venda”). Marcas de
+  provisoriedade (“por enquanto”, “no momento”, “talvez”) mantêm o imóvel aberto.
   **Nunca vira "Locado":** "já aluguei por conta própria" é
   PERDA, e marcá-lo como ganho somaria à conversão, à comissão e à meta do mês um negócio que não
   existiu.

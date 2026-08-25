@@ -620,6 +620,62 @@ export function exclusividadeVigenteExplicita(texto: string): boolean {
   return /\b(?:tenho|temos|assinei|contrato|contratei|vigente|ate|até)\b/.test(normalizado);
 }
 
+/**
+ * Confirma, no próprio texto que dispararia a escrita destrutiva, que o
+ * proprietário realmente retirou o imóvel da locação.
+ *
+ * A IA continua lendo a conversa para entender respostas fragmentadas, mas
+ * mencionar venda não prova exclusão da locação: o proprietário pode anunciar
+ * nas duas modalidades e até informar os dois preços na mesma conversa. Foi o
+ * que aconteceu no LD-152 (25/08/2026): depois de informar o aluguel, a frase
+ * "Venda um milhão e meio" foi interpretada como desistência e tirou uma
+ * angariação ganha da carteira.
+ *
+ * Por isso a trava exige linguagem de retirada inequívoca. Em dúvida, mantém o
+ * imóvel aberto; confirmar um caso terminal custa um clique, recuperar uma
+ * angariação removida automaticamente custa confiança no sistema.
+ */
+export function desistenciaAluguelExplicita(texto: string): boolean {
+  const normalizado = texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Recusas provisórias não autorizam retirar o imóvel da carteira, mesmo
+  // quando a mesma frase também menciona venda.
+  if (/\b(?:ainda|agora|no momento|por enquanto|por ora|temporariamente|talvez)\b/.test(normalizado)) {
+    return false;
+  }
+
+  const renunciaDireta =
+    /\b(?:desisti|desistimos|abri mao|abrimos mao|retirei|retiramos|tirei|tiramos)\b.{0,40}\b(?:alug|loca)\w*/.test(
+      normalizado,
+    ) ||
+    /\b(?:nao|nunca)\s+(?:(?:vou|vamos|quero|queremos|pretendo|pretendemos|desejo|desejamos)\s+)(?:mais\s+)?(?:alug|loca)\w*/.test(
+      normalizado,
+    ) ||
+    /\bnao\s+(?:esta|fica|vai ficar)\s+mais\s+(?:disponivel\s+)?(?:para\s+)?(?:alug|loca)\w*/.test(
+      normalizado,
+    );
+
+  const vendaExclusiva =
+    /\b(?:so|somente|apenas)\b.{0,24}\b(?:vend|venda)\w*/.test(normalizado) ||
+    /\b(?:vend|venda)\w*\b.{0,24}\b(?:somente|apenas)\b/.test(normalizado) ||
+    /\b(?:vend|venda)\w*\b.{0,30}\bem vez de\b.{0,20}\b(?:alug|loca)\w*/.test(normalizado);
+
+  const usoProprio =
+    /\b(?:vou|vamos|iremos?)\s+morar\s+(?:neste|nesse|nesta|nessa|no|na)\s+(?:imovel|casa|apartamento|apto|sobrado)\b/.test(
+      normalizado,
+    ) ||
+    /\b(?:vou|vamos|iremos?)\s+(?:deixar|manter)\b.{0,30}\b(?:imovel|casa|apartamento|apto|sobrado)?\b.{0,12}\b(?:vazi|fechad)\w*/.test(
+      normalizado,
+    );
+
+  return renunciaDireta || vendaExclusiva || usoProprio;
+}
+
 function imovelAlugadoPorOutraImobiliaria(texto: string): boolean {
   const normalizado = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   return /\b(?:ja\s+)?(?:foi|esta|ta)\s+alugad[oa]\b/.test(normalizado) && /\bimobiliaria\b/.test(normalizado);
@@ -650,6 +706,11 @@ export function motivoPerdaSeguro(
       classificacao.motivoPerda === "Optou por outra imobiliária" &&
       !exclusividadeVigenteExplicita(texto) &&
       !imovelAlugadoPorOutraImobiliaria(texto)
+    )
+      return null;
+    if (
+      classificacao.motivoPerda === "Proprietário desistiu de alugar" &&
+      !desistenciaAluguelExplicita(texto)
     )
       return null;
     return classificacao.motivoPerda;
@@ -763,7 +824,7 @@ Sobre "motivoPerda" — leia com atenção, porque preenchê-lo ENCERRA o imóve
 - "Imóvel já alugado por conta própria" — ele já alugou, sozinho ou com inquilino próprio.
 - "Optou por outra imobiliária" — use somente se a mensagem trouxer evidência explícita de exclusividade vigente que impeça o trabalho, ou disser que o imóvel já foi alugado pela outra imobiliária. A simples existência de outra imobiliária, com ou sem negociação em andamento, NUNCA basta: nesse caso devolva null.
 - "Imóvel já vendido" — a venda JÁ ESTÁ FECHADA, então não há locação a fazer.
-- "Proprietário desistiu de alugar" — desistiu de alugar (vai morar, deixar vazio, reformar por tempo indefinido) OU vai VENDER em vez de alugar, mesmo que a venda ainda não tenha fechado: "está em negociação para venda", "resolvi vender", "só estou vendendo". Enquanto ele não disser que a venda fechou, é este motivo e não "Imóvel já vendido" — o fato dele é a locação que não vai acontecer, não a venda que aconteceu.
+- "Proprietário desistiu de alugar" — somente quando ele disser explicitamente que retirou ESTE imóvel da locação: "desisti de alugar", "não vou mais alugar", "vou morar na casa", "somente venda". Falar em venda, informar um preço de venda, aceitar propostas ou dizer que está negociando a venda NÃO prova desistência: venda e locação podem coexistir. Se ele informou aluguel e depois escreveu apenas "venda um milhão e meio", devolva null. Sem uma rejeição inequívoca da locação, devolva null.
 - "Não é mais o proprietário" — o imóvel deixou de ser dele ("não é mais de minha propriedade", "passei para outra pessoa", "não sou mais o dono"). Use SEM precisar saber se foi venda, herança ou transferência: basta ele dizer que o imóvel não é mais dele. Se ele disser expressamente que VENDEU, prefira "Imóvel já vendido".
 - "${MOTIVO_PERDA_IMOVEL_INDISPONIVEL}" — ele afirmou que ESTE imóvel “não está mais disponível”, mas não explicou se alugou, vendeu, desistiu ou escolheu outra imobiliária. Use este motivo genérico em vez de inventar a causa ou devolver null: a indisponibilidade definitiva está explícita, mesmo que a causa não esteja.
 - Devolva null quando houver qualquer porta aberta para ESTE imóvel: "por enquanto não", "ainda não aluguei", "estou vendo com outra imobiliária ainda", "depois eu vejo", "estou tentando vender, mas se não vender penso em alugar". Recusa mole NÃO é encerramento.
