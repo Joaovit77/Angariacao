@@ -19,8 +19,10 @@
 import OpenAI from "openai";
 import {
   ESQUEMA_CLASSIFICACAO,
+  dataContextualDaResposta,
   motivoPerdaSeguro,
   promptClassificarResposta,
+  type MensagemContextoClassificacao,
   type RespostaClassificada,
 } from "../calculo/ia";
 import { horaExplicitaDaMensagem, interlocutorSeDeclarouResponsavel } from "../calculo/webhookWhatsapp";
@@ -70,10 +72,10 @@ export async function classificarResposta(
       não tem sessão de usuário. Opcional porque a classificação funciona
       sem ele; o que se perde é só a atribuição do custo. */
   userId: string | null = null,
-  /** As mensagens que o MESMO proprietário mandou antes desta, da mais antiga
-      para a mais recente. Sem elas a IA lê um pedaço de recado como se fosse o
-      recado inteiro — ver MAX_MENSAGENS_CONTEXTO e o caso do LD-110. */
-  anteriores: string[] = [],
+  /** As mensagens trocadas antes desta, da mais antiga para a mais recente.
+      A autoria mantém tanto os pedaços do recado do proprietário quanto a
+      pergunta/data do corretor que a resposta atual está referenciando. */
+  anteriores: readonly MensagemContextoClassificacao[] = [],
 ): Promise<{
   resultado: ResultadoTentativa;
   retomarEm: string | null;
@@ -128,15 +130,19 @@ export async function classificarResposta(
     // o imóvel continua na carteira e o corretor decide. O helper também cobre
     // o caso LD-179: recusa + "o imóvel não está mais disponível" ganha o
     // motivo genérico sem inventar se houve aluguel, venda ou desistência.
+    const anterioresDoProprietario = anteriores.flatMap((mensagem) => {
+      if (typeof mensagem === "string") return [mensagem];
+      return mensagem.autor === "proprietario" ? [mensagem.texto] : [];
+    });
     const resultado =
-      dados.resultado === "outro-contato" && interlocutorSeDeclarouResponsavel([...anteriores, texto])
+      dados.resultado === "outro-contato" && interlocutorSeDeclarouResponsavel([...anterioresDoProprietario, texto])
         ? "respondeu"
         : dados.resultado;
     const motivo = motivoPerdaSeguro({ ...dados, resultado }, texto);
 
     // Hora sem data não agenda nada ("às 10h" de que dia?), e sozinha só
     // poluiria a sugestão — por isso depende da data ter passado no filtro.
-    const data = dataValida(dados.retomarEm, hoje);
+    const data = dataContextualDaResposta(texto, hoje, anteriores) || dataValida(dados.retomarEm, hoje);
     const horaDoTexto = horaExplicitaDaMensagem(texto);
     return {
       resultado: resultado as ResultadoTentativa,

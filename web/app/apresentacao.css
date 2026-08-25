@@ -481,6 +481,11 @@
   .conheca-fecho{ align-items:flex-start; flex-direction:column; }
 }
 @media (max-width:720px){
+  /* No celular, `dvh` acompanha a abertura e o recolhimento das barras do
+     navegador. Isso redimensionava a primeira seção durante o gesto e
+     deslocava todo o conteúdo abaixo. `svh` mantém a altura estável e a
+     rolagem exatamente na posição em que o usuário a interrompeu. */
+  .auth-showcase.apresentacao{ height:100svh; min-height:100svh; }
   .apresentacao-topo{ padding:14px 17px; }
   .apresentacao-topo .vitrine-topo-marca{ gap:8px; }
 .apresentacao-topo.fora-da-foto{ padding-top:10px; padding-bottom:10px; }

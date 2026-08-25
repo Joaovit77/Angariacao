@@ -1216,9 +1216,11 @@ Regras ao mexer nela:
   resposta virar UM aviso e o compromisso automático ter trava de um por imóvel/dia. As anteriores
   vão ao prompt como CONTEXTO, nunca como alvo: quem se classifica é sempre a mais recente, e
   encerrar por causa de uma mensagem antiga que a última não confirme é proibido no texto do prompt.
-  Elas saem das notas lidas antes de a nota desta mensagem ser gravada, filtradas por
-  `ehNotaDeResposta` + `ehSoMidia` — marcador de mídia não desambigua nada, e a nota de encerramento
-  é fala nossa.
+  O contexto é **bidirecional**: preserva a autoria das falas recentes do proprietário e do corretor.
+  Sem a saída imediatamente anterior, uma resposta como “na quinta a gente se fala” perde a pergunta
+  e a data concreta às quais está respondendo. As mensagens saem das notas lidas antes de a nota desta
+  resposta ser gravada, filtradas por `ehNotaDeResposta`/`ehNotaDeMensagemEnviada` + `ehSoMidia` —
+  marcador de mídia não desambigua nada, e a nota de encerramento é fala do sistema.
   O mesmo caso mostrou uma lacuna de VOCABULÁRIO: nenhum `MOTIVOS_PERDA_IA` cobria "vai vender em vez
   de alugar", e "Imóvel já vendido" seria falso enquanto a venda não fecha. Hoje isso é
   "Proprietário desistiu de alugar" — o fato que interessa é a locação que não vai acontecer, não a
@@ -1238,6 +1240,12 @@ Regras ao mexer nela:
   aparece sozinho e não se explica é compromisso que o corretor apaga por desconfiança.
   A `horaRetomar` entrou junto no esquema da classificação — é ela que separa "te ligo quinta"
   de "quinta às 10h", e só com hora o item cai na faixa de horários da agenda.
+  Referência curta a dia da semana recebe ainda uma trava determinística: quando a mensagem recente
+  do corretor contém uma única data futura confirmada, a resposta afirmativa é resolvida na semana
+  dessa data, não automaticamente na semana de hoje. Assim, depois de “confirmado para 04/09; posso
+  falar um dia antes”, “na quinta a gente se fala” aponta para 03/09; se já houver compromisso
+  pendente do imóvel nesse dia, a trava de imóvel/dia impede a duplicação. Negação, dúvida, mais de
+  um dia ou mais de uma data deixam a decisão para a classificação sem forçar calendário.
 
   A **confirmação de visita** tem também um caminho determinístico, sem depender de a IA extrair
   uma data de um “ok”. Ao escolher esse modelo, o corretor informa dia e horário; os dois viajam

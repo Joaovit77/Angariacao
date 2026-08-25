@@ -39,6 +39,20 @@ describe("modo de execução da Início", () => {
     expect(PLANO).toContain('abrirModal("imovel", acao.imovelId)');
   });
 
+  it("identifica proprietário e endereço no card quando a ação aponta um imóvel", () => {
+    expect(PLANO).toContain("proprietarioNome");
+    expect(PLANO).toContain("enderecoComUnidade");
+    expect(PLANO).toContain("Proprietário");
+    expect(PLANO).toContain("Endereço");
+  });
+
+  it("explica há quanto tempo o imóvel está parado e desde quando", () => {
+    expect(PLANO).toContain("diasSemMovimento");
+    expect(PLANO).toContain("ultimoMovimentoISO");
+    expect(PLANO).toContain("Sem movimentação desde");
+    expect(PLANO).toContain("Retomar imóvel");
+  });
+
   it("não repete respostas e agenda nas rodadas assistidas", () => {
     expect(RODADA).toContain('item.frente !== "respostas"');
     expect(RODADA).toContain('item.frente !== "compromissos"');

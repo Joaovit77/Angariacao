@@ -123,6 +123,12 @@ describe("apresentação pública", () => {
     );
   });
 
+  it("mantém a altura da apresentação estável durante a rolagem mobile", () => {
+    expect(ESTILO).toMatch(
+      /@media \(max-width:720px\)[\s\S]*?\.auth-showcase\.apresentacao\{[^}]*height:100svh; min-height:100svh;/,
+    );
+  });
+
   it("explica o sistema após a apresentação fotográfica sem alterar o acesso", () => {
     expect(TELA_AUTH).toContain("<Vitrine");
     expect(VITRINE).toContain('id="conheca-o-sistema"');

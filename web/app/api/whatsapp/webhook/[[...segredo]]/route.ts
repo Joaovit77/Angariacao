@@ -83,7 +83,13 @@ import { espelharCompromisso } from "../../../google/_espelho";
 import { ambiente as ambienteGoogle } from "../../../google/_comum";
 import { transcreverAudio } from "../../_transcricao";
 import { ehAudio } from "@/lib/calculo/transcricao";
-import { corpoDaResposta, ehNotaDeResposta, ehSoMidia } from "@/lib/calculo/notas";
+import {
+  corpoDaMensagemEnviada,
+  corpoDaResposta,
+  ehNotaDeMensagemEnviada,
+  ehNotaDeResposta,
+  ehSoMidia,
+} from "@/lib/calculo/notas";
 import { compromissoDaConfirmacaoDeVisita } from "@/lib/calculo/confirmacaoVisita";
 import { MAX_MENSAGENS_CONTEXTO } from "@/lib/calculo/ia";
 import { classificarResposta } from "@/lib/servidor/ia";
@@ -310,9 +316,9 @@ export async function POST(
   //    está na carteira simplesmente não existe para esta rota.
   const { data: imoveis, error: erroImovel } = await supabase
     .from("imoveis")
-    // `notas` entra pelo contexto da classificação (passo 5): esta leitura
-    // acontece ANTES de a nota desta mensagem ser gravada, então o que vem
-    // aqui é exatamente o que ele já tinha dito antes — que é o recorte certo.
+    // `notas` entra pelo contexto bidirecional da classificação (passo 5):
+    // esta leitura acontece ANTES de a nota desta mensagem ser gravada, então
+    // traz exatamente a conversa que a resposta atual está continuando.
     .select("id, codigo, endereco, tentativas, status, status_history, notas")
     .eq("user_id", userId)
     .eq("proprietario_telefone_canonico", mensagem.telefone)
@@ -448,15 +454,22 @@ export async function POST(
   //    venda" em três mensagens, e nenhuma delas, sozinha, encerra o imóvel.
   //    O imóvel ficou em "Novo contato" com a recusa escrita no histórico.
   //    As anteriores saem das notas lidas no passo 3 — antes, portanto, de a
-  //    desta mensagem ser gravada — e só as do PROPRIETÁRIO com texto para ler:
-  //    marcador de mídia não desambigua nada e a nota de encerramento é fala
-  //    nossa (é o que `ehNotaDeResposta` e `ehSoMidia` separam).
+  //    desta mensagem ser gravada — e preservam quem falou. A última saída do
+  //    CORRETOR é indispensável quando a resposta aponta para a pergunta ou
+  //    para a data que ele acabou de propor. Marcador de mídia não desambigua
+  //    nada e a nota de encerramento é fala do sistema.
   const hoje = todayISO();
   const anteriores = (imovel.notas || [])
-    .filter((n) => ehNotaDeResposta(n) && !ehSoMidia(n.texto))
+    .filter((n) => ehNotaDeResposta(n) || ehNotaDeMensagemEnviada(n))
     .sort((a, b) => (a.data || "").localeCompare(b.data || ""))
-    .map((n) => corpoDaResposta(n.texto))
-    .filter(Boolean)
+    .map((n) => {
+      const enviada = ehNotaDeMensagemEnviada(n);
+      return {
+        autor: enviada ? "corretor" as const : "proprietario" as const,
+        texto: enviada ? corpoDaMensagemEnviada(n.texto) : corpoDaResposta(n.texto),
+      };
+    })
+    .filter((n) => n.texto && !ehSoMidia(n.texto))
     .slice(-MAX_MENSAGENS_CONTEXTO);
   const sugestao = await classificarResposta(mensagem.texto, hoje, userId, anteriores);
   const fechamento = sugestao
@@ -563,7 +576,12 @@ export async function POST(
     ? null
     : visitaConfirmada ||
       compromissoDaResposta(sugestao, rotuloVisivel, hoje) ||
-      compromissoDePrazoExplicito(mensagem.texto, anteriores, rotuloVisivel, hoje);
+      compromissoDePrazoExplicito(
+        mensagem.texto,
+        anteriores.filter((item) => item.autor === "proprietario").map((item) => item.texto),
+        rotuloVisivel,
+        hoje,
+      );
   if (compromisso) {
     // Trava contra a rajada: no WhatsApp as pessoas mandam três mensagens
     // curtas ("pode quinta", "às 10h", "combinado"), e cada uma passaria por

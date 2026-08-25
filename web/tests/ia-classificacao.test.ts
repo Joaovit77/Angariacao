@@ -15,6 +15,7 @@ import {
   MAX_MENSAGENS_CONTEXTO,
   MAX_TEXTO_CLASSIFICACAO,
   MOTIVOS_PERDA_IA,
+  dataContextualDaResposta,
   desistenciaAluguelExplicita,
   exclusividadeVigenteExplicita,
   motivoPerdaSeguro,
@@ -45,6 +46,16 @@ describe("promptClassificarResposta", () => {
     ]);
     expect(prompt).toContain("Por hora, não tenho interesse");
     expect(prompt).toContain("Já está em negociação para venda");
+  });
+
+  it("preserva a autoria e lê a mensagem do corretor que a resposta está continuando", () => {
+    const prompt = promptClassificarResposta("Na quinta a gente se fala", HOJE, [
+      { autor: "corretor", texto: "Fica confirmado para 04/09. Posso falar um dia antes." },
+    ]);
+
+    expect(prompt).toContain("Corretor: Fica confirmado para 04/09");
+    expect(prompt).toContain("a pergunta respondida, uma data já confirmada");
+    expect(prompt).toContain("pode apontar para a semana DESSA DATA");
   });
 
   it("manda classificar a MAIS RECENTE, com as anteriores só desambiguando", () => {
@@ -98,6 +109,34 @@ describe("promptClassificarResposta", () => {
     const prompt = promptClassificarResposta("O imóvel não está mais disponível.", HOJE);
     expect(prompt).toContain(MOTIVO_PERDA_IMOVEL_INDISPONIVEL);
     expect(prompt).toContain("Use este motivo genérico em vez de inventar a causa");
+  });
+});
+
+describe("dataContextualDaResposta", () => {
+  it("ancora a quinta na semana da data confirmada pelo corretor — LD-152", () => {
+    expect(
+      dataContextualDaResposta("Na quinta a gente se fala", "2026-08-25", [
+        {
+          autor: "corretor",
+          texto: "Perfeito, Silvia. Então fica confirmado para 04/09. Me fala o melhor horário para a visita, ou se preferir entro em contato um dia antes.",
+        },
+      ]),
+    ).toBe("2026-09-03");
+  });
+
+  it("não força data quando a resposta nega, relativiza ou traz duas referências", () => {
+    const contexto = [{ autor: "corretor" as const, texto: "Visita confirmada para 04/09." }];
+    expect(dataContextualDaResposta("Na quinta não consigo", "2026-08-25", contexto)).toBeNull();
+    expect(dataContextualDaResposta("Talvez na quinta a gente se fale", "2026-08-25", contexto)).toBeNull();
+    expect(dataContextualDaResposta("Quinta ou sexta a gente se fala", "2026-08-25", contexto)).toBeNull();
+  });
+
+  it("ignora uma data citada apenas pelo proprietário, sem proposta do corretor", () => {
+    expect(
+      dataContextualDaResposta("Na quinta a gente se fala", "2026-08-25", [
+        { autor: "proprietario", texto: "Talvez depois de 04/09." },
+      ]),
+    ).toBeNull();
   });
 });
 

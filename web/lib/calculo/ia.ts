@@ -22,7 +22,7 @@ import type { PlanoDoDia } from "./planoDia";
 import type { FocoInteligente } from "./focoDia";
 import { diasSemMovimento, isStale } from "./motor";
 import { MOTIVO_PERDA_IMOVEL_INDISPONIVEL, ORIGENS_IMOVEL, TIPOS_IMOVEL } from "../constantes";
-import { daysBetween, todayISO } from "../datas";
+import { addDaysISO, daysBetween, inicioDaSemana, parseDate, todayISO } from "../datas";
 import type { AgendaItem, Imovel } from "../tipos";
 import type { LeituraTerritorialMapa } from "./mapa";
 import {
@@ -30,6 +30,7 @@ import {
   MAX_PROTOCOLOS,
   MAX_TEXTO_RASCUNHO,
   type ConversaAnterior,
+  type MensagemAnteriorAtendimento,
   type ProtocoloPrompt,
 } from "../ia/atendimento/contratos";
 
@@ -556,6 +557,112 @@ export const MAX_TEXTO_CLASSIFICACAO = 600;
  */
 export const MAX_MENSAGENS_CONTEXTO = 5;
 
+/** Uma fala recente usada apenas para interpretar a mensagem atual. Strings
+    legadas continuam sendo tratadas como falas do proprietário. */
+export type MensagemContextoClassificacao =
+  | string
+  | Pick<MensagemAnteriorAtendimento, "autor" | "texto">;
+
+function contextoClassificacao(
+  anteriores: readonly MensagemContextoClassificacao[],
+): Array<{ autor: "proprietario" | "corretor"; texto: string }> {
+  return anteriores
+    .map((mensagem) =>
+      typeof mensagem === "string"
+        ? { autor: "proprietario" as const, texto: mensagem.trim() }
+        : { autor: mensagem.autor, texto: (mensagem.texto || "").trim() },
+    )
+    .filter((mensagem) => Boolean(mensagem.texto))
+    .slice(-MAX_MENSAGENS_CONTEXTO);
+}
+
+const DIA_DA_SEMANA: Record<string, number> = {
+  domingo: 0,
+  segunda: 1,
+  terca: 2,
+  quarta: 3,
+  quinta: 4,
+  sexta: 5,
+  sabado: 6,
+};
+
+function normalizarParaRegra(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function datasNumericasFuturas(texto: string, hoje: string): string[] {
+  const anoAtual = Number(hoje.slice(0, 4));
+  const datas = new Set<string>();
+  for (const ocorrencia of texto.matchAll(/\b([0-3]?\d)[/.\-]([01]?\d)(?:[/.\-](\d{2,4}))?\b/g)) {
+    const dia = Number(ocorrencia[1]);
+    const mes = Number(ocorrencia[2]);
+    const anoInformado = ocorrencia[3];
+    let ano = anoInformado
+      ? Number(anoInformado.length === 2 ? `20${anoInformado}` : anoInformado)
+      : anoAtual;
+    const montar = () => `${String(ano).padStart(4, "0")}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+    let iso = montar();
+    if (!anoInformado && iso < hoje) {
+      ano += 1;
+      iso = montar();
+    }
+    const validacao = parseDate(iso);
+    if (
+      validacao &&
+      validacao.getFullYear() === ano &&
+      validacao.getMonth() === mes - 1 &&
+      validacao.getDate() === dia &&
+      iso >= hoje
+    ) {
+      datas.add(iso);
+    }
+  }
+  return [...datas];
+}
+
+/**
+ * Resolve uma referência curta a dia da semana pela data concreta que o
+ * corretor acabou de propor. Ex.: depois de "confirmado para 04/09; posso
+ * falar um dia antes", "na quinta a gente se fala" aponta para 03/09, não
+ * para a quinta-feira mais próxima de hoje.
+ *
+ * A regra é deliberadamente estreita: uma data futura única na fala do
+ * corretor, uma única semana mencionada na resposta e linguagem afirmativa de
+ * contato. Fora disso, a IA continua responsável e a trava não inventa nada.
+ */
+export function dataContextualDaResposta(
+  textoAtual: string,
+  hoje: string,
+  anteriores: readonly MensagemContextoClassificacao[] = [],
+): string | null {
+  const atual = normalizarParaRegra(textoAtual);
+  if (!atual || /\b\d{1,2}[/.\-]\d{1,2}(?:[/.\-]\d{2,4})?\b/.test(atual)) return null;
+  if (/\b(?:proxim[oa]|que vem|talvez|acho|nao)\b/.test(atual)) return null;
+  if (!/\b(?:fal|convers|lig|retorn|visit|encontr|ver|combin)\w*\b/.test(atual)) return null;
+
+  const dias = [...new Set(Object.keys(DIA_DA_SEMANA).filter((dia) => new RegExp(`\\b${dia}(?:-feira)?\\b`).test(atual)))];
+  if (dias.length !== 1) return null;
+
+  const ultimaDoCorretor = contextoClassificacao(anteriores)
+    .filter((mensagem) => mensagem.autor === "corretor")
+    .at(-1);
+  if (!ultimaDoCorretor) return null;
+  const enviada = normalizarParaRegra(ultimaDoCorretor.texto);
+  if (!/\b(?:confirm|marcad|agend|visita|retorn|contato|data|dia antes)\w*\b/.test(enviada)) return null;
+  const datas = datasNumericasFuturas(enviada, hoje);
+  if (datas.length !== 1) return null;
+
+  const inicio = inicioDaSemana(datas[0]);
+  const indiceSegunda = DIA_DA_SEMANA[dias[0]] === 0 ? 6 : DIA_DA_SEMANA[dias[0]] - 1;
+  const contextual = inicio ? addDaysISO(inicio, indiceSegunda) : null;
+  return contextual && contextual >= hoje ? contextual : null;
+}
+
 export interface RespostaClassificada {
   resultado: string;
   retomarEm?: string | null;
@@ -771,15 +878,14 @@ export const ESQUEMA_CLASSIFICACAO = {
 export function promptClassificarResposta(
   texto: string,
   hoje: string,
-  /** Mensagens que ele mandou ANTES desta, da mais antiga para a mais recente.
+  /** Mensagens trocadas ANTES desta, da mais antiga para a mais recente.
       Contexto para desambiguar — nunca o alvo da classificação. */
-  anteriores: string[] = [],
+  anteriores: readonly MensagemContextoClassificacao[] = [],
 ): string {
-  const contexto = anteriores
-    .map((m) => (m || "").trim())
-    .filter(Boolean)
-    .slice(-MAX_MENSAGENS_CONTEXTO)
-    .map((m) => `- ${m.slice(0, MAX_TEXTO_CLASSIFICACAO)}`)
+  const contexto = contextoClassificacao(anteriores)
+    .map((mensagem) =>
+      `- ${mensagem.autor === "corretor" ? "Corretor" : "Proprietário"}: ${mensagem.texto.slice(0, MAX_TEXTO_CLASSIFICACAO)}`,
+    )
     .join("\n");
 
   return `${PAPEL}
@@ -792,11 +898,11 @@ ${texto.trim().slice(0, MAX_TEXTO_CLASSIFICACAO)}
 ${
   contexto
     ? `
-Antes desta, o MESMO proprietário já tinha escrito, da mais antiga para a mais recente:
+Antes desta resposta, estas eram as mensagens recentes da conversa, da mais antiga para a mais recente:
 
 ${contexto}
 
-Leia o conjunto antes de decidir. No WhatsApp as pessoas partem um recado em várias mensagens curtas ("Boa tarde" / "Por hora, não tenho interesse" / "Já está em negociação para venda"), e cada pedaço sozinho diz menos que o todo. Mas classifique a mensagem do bloco de cima, que é a mais recente: as anteriores servem para tirar a ambiguidade dela, não para serem classificadas de novo. E não encerre o imóvel por causa de uma mensagem antiga que a mais recente não confirme.
+Leia o conjunto antes de decidir. No WhatsApp as pessoas partem um recado em várias mensagens curtas ("Boa tarde" / "Por hora, não tenho interesse" / "Já está em negociação para venda"), e cada pedaço sozinho diz menos que o todo. A fala do corretor também é contexto: ela pode conter a pergunta respondida, uma data já confirmada ou duas alternativas entre as quais o proprietário escolheu. Mas classifique a mensagem do bloco de cima, que é a mais recente: as anteriores servem para tirar a ambiguidade dela, não para serem classificadas de novo. E não encerre o imóvel por causa de uma mensagem antiga que a mais recente não confirme.
 `
     : ""
 }
@@ -814,6 +920,7 @@ O que cada desfecho significa:
 Regras:
 - Na dúvida entre dois, escolha o MENOS otimista. Marcar "agendou" o que foi só interesse infla a medição de fechamento do corretor e ele passa a confiar num número errado.
 - "retomarEm": só preencha se a mensagem indicar prazo, mesmo que vago ("semana que vem", "depois do dia 10", "mês que vem"). Converta para uma data real a partir de hoje. Se ele não deu prazo, devolva null — não invente um. Esta data VIRA UM COMPROMISSO NA AGENDA do corretor, então uma data errada o faz ligar no dia errado: na dúvida entre duas, devolva null.
+- Se o corretor acabou de confirmar uma data concreta e ofereceu falar antes, uma resposta curta com apenas o dia da semana pode apontar para a semana DESSA DATA, não para o dia da semana mais próximo de hoje. Exemplo: depois de "confirmado para 04/09; se preferir falo um dia antes", "na quinta a gente se fala" significa 03/09. Use a mensagem do corretor para resolver a referência temporal.
 - "horaRetomar": só quando a mensagem marcar horário ("às 10h", "10:30", "de manhã" NÃO é horário — é período, devolva null). Formato HH:MM em 24 horas: "3 da tarde" é "15:00". Sem hora explícita, null.
 - Quando a pessoa dividir o combinado em mensagens curtas (por exemplo, antes escreveu "pode ser quinta" e agora escreveu "às 10h"), use o conjunto recente para devolver a MESMA data e a hora do compromisso. As anteriores não autorizam reclassificar um assunto velho, mas completam data e hora de um único combinado fragmentado.
 - "resumo": uma linha curta, factual, sobre o que ELE disse. Nada de conselho ao corretor e nada de repetir a mensagem inteira. Exemplo: "Vai avaliar com a esposa e retorna na semana que vem."
