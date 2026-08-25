@@ -2,7 +2,6 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { createPortal } from "react-dom";
 
 type Icone =
   | "dashboard"
@@ -32,9 +31,16 @@ interface Props {
   aoCriarConta: () => void;
 }
 
-const assinarCliente = () => () => {};
-const lerCliente = () => true;
-const lerServidor = () => false;
+const CONSULTA_MOBILE = "(max-width: 720px)";
+
+function assinarLarguraMobile(notificar: () => void) {
+  const consulta = window.matchMedia(CONSULTA_MOBILE);
+  consulta.addEventListener("change", notificar);
+  return () => consulta.removeEventListener("change", notificar);
+}
+
+const lerLarguraMobile = () => window.matchMedia(CONSULTA_MOBILE).matches;
+const lerLarguraServidor = () => false;
 
 const FUNCIONALIDADES: Funcionalidade[] = [
   {
@@ -267,13 +273,17 @@ function MockupFuncionalidade({ nome }: { nome: Icone }) {
 
 export default function Vitrine({ aoEntrar, aoCriarConta }: Props) {
   const [ativa, setAtiva] = useState(FUNCIONALIDADES[0].id);
-  const [menuMobileAberto, setMenuMobileAberto] = useState(false);
   const secoesRef = useRef<Record<string, HTMLElement | null>>({});
-  const botaoMenuRef = useRef<HTMLButtonElement | null>(null);
   const movimentoReduzido = useReducedMotion();
-  const portalDisponivel = useSyncExternalStore(assinarCliente, lerCliente, lerServidor);
-  const funcionalidadeAtiva =
-    FUNCIONALIDADES.find((funcionalidade) => funcionalidade.id === ativa) ?? FUNCIONALIDADES[0];
+  const ehMobile = useSyncExternalStore(
+    assinarLarguraMobile,
+    lerLarguraMobile,
+    lerLarguraServidor,
+  );
+  /* No celular, revelar um bloco só depois de ele cruzar o limiar da viewport
+     faz o conteúdo já visível recuar e reaparecer durante o gesto. Mantemos a
+     entrada editorial no desktop, onde não disputa com a rolagem por toque. */
+  const semAnimacaoDeEntrada = movimentoReduzido || ehMobile;
 
   useEffect(() => {
     const secoes = FUNCIONALIDADES.map(({ id }) => secoesRef.current[id]).filter(
@@ -296,35 +306,8 @@ export default function Vitrine({ aoEntrar, aoCriarConta }: Props) {
     return () => observador.disconnect();
   }, []);
 
-  useEffect(() => {
-    if (!menuMobileAberto) return;
-
-    const consultaMobile = window.matchMedia("(max-width: 720px)");
-
-    function fecharAoTeclar(evento: KeyboardEvent) {
-      if (evento.key !== "Escape") return;
-      setMenuMobileAberto(false);
-      botaoMenuRef.current?.focus();
-    }
-
-    function fecharAoSairDoMobile(evento: MediaQueryListEvent) {
-      if (!evento.matches) setMenuMobileAberto(false);
-    }
-
-    const overflowAnterior = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.addEventListener("keydown", fecharAoTeclar);
-    consultaMobile.addEventListener("change", fecharAoSairDoMobile);
-    return () => {
-      document.body.style.overflow = overflowAnterior;
-      document.removeEventListener("keydown", fecharAoTeclar);
-      consultaMobile.removeEventListener("change", fecharAoSairDoMobile);
-    };
-  }, [menuMobileAberto]);
-
   function navegarPara(id: string) {
     setAtiva(id);
-    setMenuMobileAberto(false);
     window.history.replaceState(null, "", `#${id}`);
     window.requestAnimationFrame(() => {
       secoesRef.current[id]?.scrollIntoView({ behavior: movimentoReduzido ? "auto" : "smooth", block: "start" });
@@ -340,23 +323,8 @@ export default function Vitrine({ aoEntrar, aoCriarConta }: Props) {
   return (
     <>
     <section className="auth-showcase explore-angario" id="conheca-o-sistema">
-      <div className={`explore-menu-wrap${menuMobileAberto ? " menu-aberto" : ""}`}>
+      <div className="explore-menu-wrap">
         <nav className="explore-menu" aria-label="Navegação pelas funcionalidades">
-          <button
-            type="button"
-            className="explore-menu-mobile-toggle"
-            aria-label={menuMobileAberto ? "Fechar menu de funcionalidades" : "Abrir menu de funcionalidades"}
-            aria-expanded={menuMobileAberto}
-            aria-controls="explore-menu-opcoes"
-            onClick={() => setMenuMobileAberto((aberto) => !aberto)}
-            ref={botaoMenuRef}
-          >
-            <span className="explore-menu-mobile-atual">
-              <span><IconeFuncionalidade nome={funcionalidadeAtiva.icone} /></span>
-              <span><small>Explorando</small><strong>{funcionalidadeAtiva.titulo}</strong></span>
-            </span>
-            <span className="explore-menu-hamburguer" aria-hidden="true"><i /><i /><i /></span>
-          </button>
           <div className="explore-menu-desktop">
             <div className="explore-menu-rolagem">
               {itensDoMenu()}
@@ -366,7 +334,7 @@ export default function Vitrine({ aoEntrar, aoCriarConta }: Props) {
       </div>
 
       <header className="explore-intro">
-        <motion.div initial={false} whileInView={movimentoReduzido ? {} : { opacity: [0, 1], y: [22, 0] }} viewport={{ once: true, amount: 0.4 }} transition={{ duration: 0.55 }}>
+        <motion.div initial={false} whileInView={semAnimacaoDeEntrada ? {} : { opacity: [0, 1], y: [22, 0] }} viewport={{ once: true, amount: 0.4 }} transition={{ duration: 0.55 }}>
           <span className="explore-sobrelinha">Explore o produto</span>
           <h2>Explore o Angario CRM</h2>
           <p>Uma operação imobiliária completa, conectada do primeiro contato à decisão. Escolha uma funcionalidade e veja como ela transforma o trabalho da equipe.</p>
@@ -377,7 +345,7 @@ export default function Vitrine({ aoEntrar, aoCriarConta }: Props) {
       <div className="explore-funcionalidades">
         {FUNCIONALIDADES.map((funcionalidade, indice) => (
           <section className={`explore-feature${indice % 2 ? " invertida" : ""}${funcionalidade.icone === "ia" ? " principal" : ""}`} id={funcionalidade.id} ref={(elemento) => { secoesRef.current[funcionalidade.id] = elemento; }} key={funcionalidade.id}>
-            <motion.div className="explore-feature-copy" initial={false} whileInView={movimentoReduzido ? {} : { opacity: [0, 1], x: [indice % 2 ? 28 : -28, 0] }} viewport={{ once: true, amount: 0.22 }} transition={{ duration: 0.58, ease: [0.22, 1, 0.36, 1] }}>
+            <motion.div className="explore-feature-copy" initial={false} whileInView={semAnimacaoDeEntrada ? {} : { opacity: [0, 1], x: [indice % 2 ? 28 : -28, 0] }} viewport={{ once: true, amount: 0.22 }} transition={{ duration: 0.58, ease: [0.22, 1, 0.36, 1] }}>
               <span className="explore-feature-numero">{String(indice + 1).padStart(2, "0")} / {funcionalidade.sobrelinha}</span>
               <div className="explore-feature-icone"><IconeFuncionalidade nome={funcionalidade.icone} /></div>
               <h2>{funcionalidade.headline}</h2><p className="explore-feature-frase">{funcionalidade.frase}</p>
@@ -385,45 +353,17 @@ export default function Vitrine({ aoEntrar, aoCriarConta }: Props) {
               <div className="explore-solucao"><span>Como o Angario resolve</span><ul>{funcionalidade.solucoes.map((solucao) => <li key={solucao}>{solucao}</li>)}</ul></div>
               <div className="explore-resultado"><span>Resultado</span><strong>{funcionalidade.resultado}</strong></div>
             </motion.div>
-            <motion.div className="explore-feature-visual" initial={false} whileInView={movimentoReduzido ? {} : { opacity: [0, 1], y: [30, 0], scale: [0.985, 1] }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.66, delay: movimentoReduzido ? 0 : 0.08, ease: [0.22, 1, 0.36, 1] }}><div className="explore-visual-aura" aria-hidden="true" /><MockupFuncionalidade nome={funcionalidade.icone} /></motion.div>
+            <motion.div className="explore-feature-visual" initial={false} whileInView={semAnimacaoDeEntrada ? {} : { opacity: [0, 1], y: [30, 0], scale: [0.985, 1] }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.66, delay: semAnimacaoDeEntrada ? 0 : 0.08, ease: [0.22, 1, 0.36, 1] }}><div className="explore-visual-aura" aria-hidden="true" /><MockupFuncionalidade nome={funcionalidade.icone} /></motion.div>
           </section>
         ))}
       </div>
 
-      <motion.section className="explore-fecho" initial={false} whileInView={movimentoReduzido ? {} : { opacity: [0, 1], y: [24, 0] }} viewport={{ once: true, amount: 0.3 }}>
+      <motion.section className="explore-fecho" initial={false} whileInView={semAnimacaoDeEntrada ? {} : { opacity: [0, 1], y: [24, 0] }} viewport={{ once: true, amount: 0.3 }}>
         <span>Veja o Angario em ação</span><h2>Sua próxima angariação pode começar com uma operação mais clara.</h2><p>Descubra como o Angario se adapta à rotina da sua imobiliária e transforma cada oportunidade em uma próxima ação.</p>
         <div><button type="button" className="btn btn-primary" onClick={aoCriarConta}>Solicitar demonstração <span aria-hidden="true">→</span></button><button type="button" className="btn" onClick={aoEntrar}>Entrar no painel</button></div>
         <small><i>✓</i> Seus dados isolados por conta <i>✓</i> Funciona no navegador e no celular <i>✓</i> Revisão humana antes dos envios</small>
       </motion.section>
     </section>
-    {portalDisponivel && createPortal(
-      <>
-        <button
-          type="button"
-          className={`explore-menu-backdrop${menuMobileAberto ? " aberto" : ""}`}
-          aria-label="Fechar menu de funcionalidades"
-          tabIndex={menuMobileAberto ? 0 : -1}
-          onClick={() => setMenuMobileAberto(false)}
-        />
-        <aside
-          className={`explore-menu-drawer${menuMobileAberto ? " aberto" : ""}`}
-          id="explore-menu-opcoes"
-          aria-label="Funcionalidades do Angario CRM"
-          aria-hidden={!menuMobileAberto}
-        >
-          <div className="explore-menu-drawer-head">
-            <span><small>Explore o Angario CRM</small><strong>Funcionalidades</strong></span>
-            <button type="button" className="explore-menu-drawer-fechar" aria-label="Fechar menu de funcionalidades" onClick={() => setMenuMobileAberto(false)}>
-              <span className="explore-menu-hamburguer" aria-hidden="true"><i /><i /><i /></span>
-            </button>
-          </div>
-          <div className="explore-menu-rolagem">
-            {itensDoMenu()}
-          </div>
-        </aside>
-      </>,
-      document.body,
-    )}
     </>
   );
 }

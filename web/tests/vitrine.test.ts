@@ -129,6 +129,13 @@ describe("apresentação pública", () => {
     );
   });
 
+  it("não reposiciona conteúdo quando os blocos entram na viewport mobile", () => {
+    expect(VITRINE).toContain('CONSULTA_MOBILE = "(max-width: 720px)"');
+    expect(VITRINE).toContain("movimentoReduzido || ehMobile");
+    expect(VITRINE.match(/whileInView=\{semAnimacaoDeEntrada \? \{\}/g)).toHaveLength(4);
+    expect(VITRINE).toContain("delay: semAnimacaoDeEntrada ? 0 : 0.08");
+  });
+
   it("explica o sistema após a apresentação fotográfica sem alterar o acesso", () => {
     expect(TELA_AUTH).toContain("<Vitrine");
     expect(VITRINE).toContain('id="conheca-o-sistema"');
@@ -154,30 +161,17 @@ describe("apresentação pública", () => {
       expect(VITRINE).toContain(`id: "${id}"`);
     }
     expect(VITRINE).toContain("explore-menu-wrap");
-    expect(VITRINE).toContain('className="explore-menu-mobile-toggle"');
-    expect(VITRINE).toContain('aria-controls="explore-menu-opcoes"');
-    expect(VITRINE).toContain("Abrir menu de funcionalidades");
-    expect(VITRINE).toContain("explore-menu-backdrop");
-    expect(VITRINE).toContain("explore-menu-drawer");
-    expect(VITRINE).toContain("createPortal");
+    expect(VITRINE).not.toContain('className="explore-menu-mobile-toggle"');
+    expect(VITRINE).not.toContain("explore-menu-drawer");
     expect(VITRINE.indexOf("explore-menu-wrap")).toBeLessThan(VITRINE.indexOf("explore-intro"));
-    expect(VITRINE).toContain("menuMobileAberto");
     expect(VITRINE).toContain("scrollIntoView");
     expect(VITRINE).toContain("window.requestAnimationFrame");
     expect(VITRINE).toContain("window.history.replaceState");
     expect(VITRINE).toContain('from "framer-motion"');
     expect(ESTILO_BASE).toMatch(/\.explore-menu-wrap\{[\s\S]*?position:sticky/);
     expect(ESTILO_BASE).toMatch(
-      /@media \(max-width:720px\)[\s\S]*?\.explore-menu-mobile-toggle\{[\s\S]*?display:grid/,
+      /@media \(max-width:720px\)[\s\S]*?\.explore-menu-wrap\{ display:none; \}/,
     );
-    expect(ESTILO_BASE).toMatch(
-      /@media \(max-width:720px\)[\s\S]*?\.explore-menu-wrap\{[\s\S]*?height:0[\s\S]*?backdrop-filter:none/,
-    );
-    expect(ESTILO_BASE).toMatch(
-      /@media \(max-width:720px\)[\s\S]*?\.explore-menu-mobile-atual\{ display:none; \}/,
-    );
-    expect(ESTILO_BASE).toContain(".explore-menu-drawer.aberto");
-    expect(ESTILO_BASE).toMatch(/\.explore-menu-drawer\{[\s\S]*?transform:translateX\(-100%\)/);
     expect(ESTILO_BASE).toMatch(
       /\.explore-feature\{[\s\S]*?grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/,
     );
@@ -185,6 +179,31 @@ describe("apresentação pública", () => {
     expect(CABECALHO).toContain('href="#conheca-o-sistema"');
     expect(SLIDE).toContain('href="#conheca-o-sistema"');
     expect(SLIDE).toContain("aoSolicitarDemonstracao");
+  });
+
+  it("mantém o menu mobile dentro do header e abre a gaveta pelo mesmo lado", () => {
+    expect(CABECALHO).toContain('className="apresentacao-menu-toggle"');
+    expect(CABECALHO).toContain('aria-controls="apresentacao-menu-mobile"');
+    expect(CABECALHO).toContain('id="apresentacao-menu-mobile"');
+    expect(CABECALHO).toContain('aria-label="Navegação da página pública"');
+    expect(CABECALHO).toContain('href="#auth-screen"');
+    expect(CABECALHO).toContain('href="#conheca-o-sistema"');
+    expect(CABECALHO).toContain('className="apresentacao-menu-tema-toggle"');
+    expect(CABECALHO).toContain("Entrar no sistema");
+    expect(CABECALHO).toContain("createPortal");
+    expect(ESTILO).toMatch(
+      /@media \(max-width:720px\)[\s\S]*?\.apresentacao-topo \.vitrine-topo-fita\{[\s\S]*?grid-template-columns:72px minmax\(0,1fr\) 72px/,
+    );
+    expect(ESTILO).toMatch(
+      /@media \(max-width:720px\)[\s\S]*?\.apresentacao-topo \.apresentacao-conhecer-topo,[\s\S]*?display:none/,
+    );
+    expect(ESTILO).toMatch(
+      /\.apresentacao-menu-toggle\{[\s\S]*?justify-self:start/,
+    );
+    expect(ESTILO).toMatch(
+      /\.apresentacao-menu-drawer\{[\s\S]*?inset:0 auto 0 0[\s\S]*?transform:translateX\(-100%\)/,
+    );
+    expect(ESTILO).toContain(".apresentacao-menu-drawer.aberto{ transform:translateX(0)");
   });
 
   it("troca o cabeçalho transparente por uma barra compatível com os dois temas", () => {
