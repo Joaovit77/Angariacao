@@ -48,8 +48,8 @@ describe("SEO da página pública", () => {
 
   it("mantém uma única hierarquia principal de título", () => {
     expect(SLIDE).toContain("<h1");
-    expect(VITRINE).toContain('<h2 className="showcase-headline">');
-    expect(VITRINE).not.toContain('<h1 className="showcase-headline">');
+    expect(VITRINE).toContain("<h2>Explore o Angario CRM</h2>");
+    expect(VITRINE).not.toContain("<h1");
   });
 
   it("expõe somente a página pública no sitemap e protege rotas internas dos robôs", () => {

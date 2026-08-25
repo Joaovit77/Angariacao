@@ -248,7 +248,10 @@ export default function TelaAuth({ recuperacao = false }: { recuperacao?: boolea
         aoCriarConta={() => abrir("signup")}
       />
 
-      <Apresentacao aoEntrar={() => abrir("login")} pausadaExternamente={modalAberto} />
+      <Apresentacao
+        aoSolicitarDemonstracao={() => abrir("signup")}
+        pausadaExternamente={modalAberto}
+      />
 
       <Vitrine
         aoEntrar={() => abrir("login")}

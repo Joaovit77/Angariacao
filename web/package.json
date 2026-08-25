@@ -17,6 +17,7 @@
     "@vercel/functions": "3.9.2",
     "chart.js": "^4.4.1",
     "cheerio": "^1.2.0",
+    "framer-motion": "^12.43.0",
     "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
     "leaflet.heat": "^0.2.0",

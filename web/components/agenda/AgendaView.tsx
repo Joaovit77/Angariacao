@@ -12,6 +12,7 @@
    ================================================================ */
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import CalendarioAgenda from "@/components/agenda/CalendarioAgenda";
 import ItemAgenda from "@/components/agenda/ItemAgenda";
 import { mensagemFalhaGoogle, type FalhaGoogle } from "@/lib/calculo/googleAgenda";
 import { toast } from "@/lib/toast";
@@ -24,12 +25,14 @@ import type { AgendaItem } from "@/lib/tipos";
 import { useUiModal } from "@/lib/uiModal";
 
 type FiltroAgenda = "pendentes" | "todas" | "atrasadas" | "concluidas";
+type VisualizacaoAgenda = "lista" | "calendario";
 
 export default function AgendaView() {
   const agenda = useAppStore((s) => s.agenda);
   const imoveis = useAppStore((s) => s.imoveis);
   const abrirModal = useUiModal((s) => s.abrirModal);
   const [filtro, setFiltro] = useState<FiltroAgenda>("pendentes");
+  const [visualizacao, setVisualizacao] = useState<VisualizacaoAgenda>("lista");
   const [filtroTipo, setFiltroTipo] = useState("");
   const [filtroImovel, setFiltroImovel] = useState("");
 
@@ -62,6 +65,10 @@ export default function AgendaView() {
     .filter((i) => imovelIdsUsados.has(i.id))
     .sort((a, b) => (a.codigo || a.endereco).localeCompare(b.codigo || b.endereco));
 
+  const refinarItem = (a: AgendaItem) =>
+    (filtroTipo ? a.type === filtroTipo : true) &&
+    (filtroImovel ? a.imovelId === filtroImovel : true);
+
   const items = agenda
     .filter((a) => {
       if (filtro === "pendentes") return !a.done && a.date <= limitePendentes;
@@ -69,8 +76,19 @@ export default function AgendaView() {
       if (filtro === "concluidas") return a.done;
       return true;
     })
-    .filter((a) => (filtroTipo ? a.type === filtroTipo : true))
-    .filter((a) => (filtroImovel ? a.imovelId === filtroImovel : true))
+    .filter(refinarItem)
+    .sort(compararAgenda);
+
+  // Na grade mensal, "Pendentes" inclui todo o futuro. A janela de 15 dias
+  // continua exclusiva da lista operacional, onde evita uma rolagem longa.
+  const itemsCalendario = agenda
+    .filter((a) => {
+      if (filtro === "pendentes") return !a.done;
+      if (filtro === "atrasadas") return !a.done && a.date < hoje;
+      if (filtro === "concluidas") return a.done;
+      return true;
+    })
+    .filter(refinarItem)
     .sort(compararAgenda);
 
   const grouped: Record<string, AgendaItem[]> = {};
@@ -119,8 +137,25 @@ export default function AgendaView() {
 
       <div className="agenda-layout">
         <div>
-          <div className="pipeline-toolbar" style={{ marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
-            <div className="view-toggle">
+          <div className="pipeline-toolbar agenda-toolbar">
+            <div className="agenda-toolbar-toggles">
+              <div className="view-toggle" aria-label="Visualização da agenda">
+                <button
+                  type="button"
+                  className={visualizacao === "lista" ? "active" : ""}
+                  onClick={() => setVisualizacao("lista")}
+                >
+                  Lista
+                </button>
+                <button
+                  type="button"
+                  className={visualizacao === "calendario" ? "active" : ""}
+                  onClick={() => setVisualizacao("calendario")}
+                >
+                  Calendário
+                </button>
+              </div>
+              <div className="view-toggle" aria-label="Situação dos compromissos">
               <button
                 type="button"
                 className={filtro === "pendentes" ? "active" : ""}
@@ -149,8 +184,9 @@ export default function AgendaView() {
               >
                 Todas
               </button>
+              </div>
             </div>
-            <div style={{ display: "flex", gap: "8px", marginLeft: "auto", flexWrap: "wrap" }}>
+            <div className="agenda-toolbar-filtros">
               <select
                 className="filter-select"
                 value={filtroTipo}
@@ -180,7 +216,9 @@ export default function AgendaView() {
             </div>
           </div>
 
-          {dateKeys.length === 0 ? (
+          {visualizacao === "calendario" ? (
+            <CalendarioAgenda items={itemsCalendario} imoveis={imoveis} />
+          ) : dateKeys.length === 0 ? (
             filtro === "pendentes" && futurosOcultos > 0 ? (
               <div className="empty-state card">
                 <h3>Nada para os próximos 15 dias</h3>
@@ -238,7 +276,7 @@ export default function AgendaView() {
               );
             })
           )}
-          {futurosOcultos > 0 && (
+          {visualizacao === "lista" && futurosOcultos > 0 && (
             <div className="agenda-future-hint" onClick={() => setFiltro("todas")}>
               + {futurosOcultos} compromisso{futurosOcultos > 1 ? "s" : ""} futuro
               {futurosOcultos > 1 ? "s" : ""}

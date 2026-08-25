@@ -7,6 +7,7 @@ import {
   todayISO, parseDate, daysBetween, addDaysISO, monthKey,
   monthLabel, monthLabelLong, currentMonthKey, shiftMonthKey, last6MonthKeys,
   agoraISOComHora, agoraISOComSegundos, inicioDaSemana,
+  gradeCalendarioMes,
 } from "@/lib/datas";
 import { congelaRelogio } from "./setup-relogio";
 import oracle from "./oracle-expected.json";
@@ -113,5 +114,26 @@ describe("monthKey / monthLabel / monthLabelLong / shiftMonthKey", () => {
     expect(shiftMonthKey("2026-12", 1)).toBe(oracle.datas.shiftMonthKey["2026-12_mais1"]);
     expect(shiftMonthKey("2026-07", -6)).toBe(oracle.datas.shiftMonthKey["2026-07_menos6"]);
     expect(shiftMonthKey("2026-07", 0)).toBe(oracle.datas.shiftMonthKey["2026-07_mais0"]);
+  });
+});
+
+describe("gradeCalendarioMes", () => {
+  it("começa na segunda e completa a última semana", () => {
+    const grade = gradeCalendarioMes("2026-08");
+    expect(grade).toHaveLength(42);
+    expect(grade.slice(0, 5)).toEqual([null, null, null, null, null]);
+    expect(grade[5]).toBe("2026-08-01");
+    expect(grade[35]).toBe("2026-08-31");
+    expect(grade.slice(36)).toEqual([null, null, null, null, null, null]);
+  });
+
+  it("respeita fevereiro bissexto e pode ocupar quatro semanas exatas", () => {
+    const fevereiro = gradeCalendarioMes("2024-02");
+    expect(fevereiro.filter(Boolean)).toHaveLength(29);
+
+    const fevereiroExato = gradeCalendarioMes("2021-02");
+    expect(fevereiroExato).toHaveLength(28);
+    expect(fevereiroExato[0]).toBe("2021-02-01");
+    expect(fevereiroExato[27]).toBe("2021-02-28");
   });
 });

@@ -1,68 +1,30 @@
 "use client";
 
-/* ================================================================
-   VITRINE / APRESENTAÇÃO DO SISTEMA
-   Deixou de ser uma lista estática de features e virou uma
-   APRESENTAÇÃO QUE ANDA COM O SCROLL: uma abertura e, abaixo dela,
-   capítulos que se revelam conforme entram na tela. Ela ocupa a tela
-   inteira porque o formulário saiu daqui: virou modal, chamado pelo
-   botão do cabeçalho (CabecalhoAuth) ou pelos CTAs desta página.
+import { motion, useReducedMotion } from "framer-motion";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 
-   Quem revela é um IntersectionObserver, não uma animação por tempo:
-   o gatilho é o próprio scroll do leitor. São DOIS observadores de
-   propósito, com recortes diferentes:
-   - o de ENTRADA (limiar baixo) marca a cena como vista e para de
-     observá-la. Revelar é mutirão de mão única; re-esconder ao subir
-     faria a página piscar a cada rolagem para cima;
-   - o de FOCO (faixa estreita no meio da tela) diz qual capítulo está
-     sendo lido agora, e é só isso que acende o ponto na régua lateral.
+type Icone =
+  | "dashboard"
+  | "pipeline"
+  | "agenda"
+  | "ia"
+  | "avaliacao"
+  | "whatsapp"
+  | "mapa"
+  | "relatorios"
+  | "integracoes";
 
-   Movimento é enfeite, então some com `prefers-reduced-motion`: o
-   CSS neutraliza ali o estado inicial das cenas, e nada depende mais
-   do observador para ser lido.
-
-   ## As TRÊS PARTES (e por que existem)
-
-   A lista de capítulos cresceu junto com o app, e uma fila de doze
-   cenas equivalentes vira rolagem sem forma: o leitor não sabe onde
-   está nem quanto falta. As partes dão espinha à leitura e respondem,
-   nesta ordem, as três perguntas de quem avalia a ferramenta: "como
-   começa o meu dia?", "o que acontece na conversa?" e "o que eu
-   descubro depois?". A régua lateral abre um vão entre elas, para o
-   agrupamento se ver também na navegação.
-
-   O rótulo de cada parte é o ASSUNTO dela ("O seu dia", "A conversa",
-   "Os números"), e não uma numeração. Já foi "Ato um / Ato dois /
-   Ato três", e o corretor leu e não entendeu: numerar não informa
-   nada a quem chegou agora, e "ato" é palavra de teatro. O número da
-   cena já cumpre o papel de dizer onde se está.
-
-   ## O que a página promete tem que EXISTIR
-
-   Esta tela é a única do projeto que fala com quem ainda não entrou,
-   e por isso é a mais fácil de deixar mentir: ela não quebra quando
-   descreve um recurso que saiu. Já aconteceu: a vitrine anunciou
-   "foto da placa: os campos vêm preenchidos" por meses depois de a
-   leitura por imagem ser removida (2026-07-25, reprovada em campo).
-   Ao mexer em feature, passe por aqui.
-   ================================================================ */
-import { useEffect, useRef, useState } from "react";
-
-interface Cena {
-  /** Rótulo curto do capítulo. Vira o `title` do ponto na régua. */
-  rotulo: string;
-  /** Parte a que pertence; muda de valor = começa uma parte nova. */
-  parte: number;
+interface Funcionalidade {
+  id: string;
   titulo: string;
-  texto: string;
-  visual: React.ReactNode;
-}
-
-interface Parte {
-  numero: number;
-  rotulo: string;
-  titulo: string;
-  texto: string;
+  icone: Icone;
+  sobrelinha: string;
+  headline: string;
+  frase: string;
+  problema: string;
+  solucoes: string[];
+  resultado: string;
 }
 
 interface Props {
@@ -70,864 +32,398 @@ interface Props {
   aoCriarConta: () => void;
 }
 
-const PARTES: Parte[] = [
+const assinarCliente = () => () => {};
+const lerCliente = () => true;
+const lerServidor = () => false;
+
+const FUNCIONALIDADES: Funcionalidade[] = [
   {
-    numero: 1,
-    rotulo: "O seu dia",
-    titulo: "Você abre o painel e ele já sabe o que fazer hoje.",
-    texto: "A carteira deixa de ser uma lista parada e vira uma fila de trabalho com ordem, contexto e próxima ação.",
+    id: "dashboard",
+    titulo: "Dashboard",
+    icone: "dashboard",
+    sobrelinha: "Visão do dia",
+    headline: "Tenha sua operação inteira em uma única tela.",
+    frase: "Comece o dia sabendo exatamente onde sua atenção gera mais resultado.",
+    problema:
+      "Quando números, tarefas e negociações vivem em lugares diferentes, o gestor descobre os gargalos tarde demais.",
+    solucoes: [
+      "Métricas da operação atualizadas em tempo real",
+      "Foco do dia ordenado pela próxima ação",
+      "Imóveis angariados e evolução da carteira",
+      "Produtividade da equipe em uma leitura rápida",
+    ],
+    resultado: "Tomada de decisão imediata, sem procurar dados em várias telas.",
   },
   {
-    numero: 2,
-    rotulo: "A conversa",
-    titulo: "A conversa com o proprietário acontece dentro do sistema.",
-    texto: "Mensagem, resposta, áudio e compromisso ficam ligados ao imóvel, sem perder o fio da negociação.",
+    id: "pipeline",
+    titulo: "Pipeline",
+    icone: "pipeline",
+    sobrelinha: "Controle da operação",
+    headline: "Nunca mais perca uma oportunidade de angariar.",
+    frase: "Cada imóvel avança com contexto, responsável e próxima ação visíveis.",
+    problema:
+      "Oportunidades se perdem quando o acompanhamento depende da memória do corretor ou de planilhas que ninguém atualiza.",
+    solucoes: [
+      "Etapas claras da prospecção ao imóvel angariado",
+      "Responsáveis e histórico preservados em cada card",
+      "Sinalização de imóveis sem movimento",
+      "Follow-up visual, no ponto certo da negociação",
+    ],
+    resultado: "Uma carteira em movimento, com menos oportunidades esquecidas.",
   },
   {
-    numero: 3,
-    rotulo: "Dashboard e insights",
-    titulo: "E os números dizem o que fazer diferente amanhã.",
-    texto: "O painel transforma o trabalho registrado em metas, comparações e decisões que ajudam a próxima captação.",
+    id: "agenda",
+    titulo: "Agenda",
+    icone: "agenda",
+    sobrelinha: "Rotina organizada",
+    headline: "Organize visitas, retornos e prioridades automaticamente.",
+    frase: "Compromissos e pendências deixam de disputar espaço na sua memória.",
+    problema:
+      "Visitas, retornos e confirmações espalhados entre conversas e calendários criam atrasos e retrabalho.",
+    solucoes: [
+      "Calendário com compromissos ligados ao imóvel",
+      "Lembretes para visitas e retornos importantes",
+      "Prioridades com e sem horário na mesma visão",
+      "Follow-ups integrados à rotina do corretor",
+    ],
+    resultado: "Mais pontualidade e uma rotina organizada mesmo nos dias cheios.",
+  },
+  {
+    id: "inteligencia-artificial",
+    titulo: "Inteligência Artificial",
+    icone: "ia",
+    sobrelinha: "Copiloto imobiliário",
+    headline: "Uma IA treinada para trabalhar como corretor.",
+    frase: "Contexto do seu negócio para transformar tarefas longas em decisões simples.",
+    problema:
+      "A equipe perde tempo produzindo textos, procurando informações e interpretando dados que já existem dentro da operação.",
+    solucoes: [
+      "Gera anúncios e abordagens adequados ao imóvel",
+      "Analisa proprietários e sugere respostas",
+      "Responde dúvidas com os protocolos da imobiliária",
+      "Avalia imóveis e consulta dados internos",
+      "Mantém a revisão humana antes de qualquer ação",
+    ],
+    resultado: "Mais capacidade operacional sem perder contexto, controle ou a voz da equipe.",
+  },
+  {
+    id: "avaliacao-de-imoveis",
+    titulo: "Avaliação de Imóveis",
+    icone: "avaliacao",
+    sobrelinha: "Inteligência de mercado",
+    headline: "Precifique com muito mais precisão.",
+    frase: "Transforme referências de mercado em uma recomendação clara para o proprietário.",
+    problema:
+      "Uma avaliação sem comparáveis e critérios claros fragiliza a negociação e pode deixar o imóvel parado.",
+    solucoes: [
+      "Imóveis comparáveis reunidos em uma análise",
+      "Fatores de valorização considerados no contexto",
+      "Sugestão de faixa de preço, não um número solto",
+      "Apoio da IA para explicar a recomendação",
+    ],
+    resultado: "Mais segurança para defender o preço e conquistar a confiança do proprietário.",
+  },
+  {
+    id: "whatsapp",
+    titulo: "WhatsApp",
+    icone: "whatsapp",
+    sobrelinha: "Relacionamento centralizado",
+    headline: "Centralize o relacionamento com proprietários.",
+    frase: "A conversa continua humana; o histórico e a próxima ação ficam organizados.",
+    problema:
+      "Quando as conversas ficam isoladas no celular, a equipe perde contexto, timing e continuidade no atendimento.",
+    solucoes: [
+      "Histórico de mensagens ligado ao imóvel",
+      "Respostas e áudios organizados em uma linha do tempo",
+      "Follow-ups preparados no momento certo",
+      "Automações com confirmação antes do envio",
+    ],
+    resultado: "Relacionamentos consistentes usando o número que o corretor já conhece.",
+  },
+  {
+    id: "mapa-inteligente",
+    titulo: "Mapa Inteligente",
+    icone: "mapa",
+    sobrelinha: "Visão territorial",
+    headline: "Visualize oportunidades pela cidade inteira.",
+    frase: "Leia a carteira pela geografia e encontre regiões que merecem atenção.",
+    problema:
+      "Listas escondem padrões de localização e dificultam perceber concentração, cobertura e novas frentes de prospecção.",
+    solucoes: [
+      "Mapa de Londrina com a carteira distribuída por região",
+      "Imóveis e status identificados visualmente",
+      "Regiões estratégicas evidenciadas no território",
+      "Prospecção geográfica com mais contexto",
+    ],
+    resultado: "Uma visão espacial da operação para prospectar com mais intenção.",
+  },
+  {
+    id: "relatorios",
+    titulo: "Relatórios",
+    icone: "relatorios",
+    sobrelinha: "Gestão baseada em dados",
+    headline: "Transforme dados em decisões.",
+    frase: "Entenda o esforço, a conversão e o que precisa mudar na próxima rodada.",
+    problema:
+      "Sem indicadores confiáveis, volume de atividade parece resultado e decisões importantes viram opinião.",
+    solucoes: [
+      "Gráficos claros para acompanhar a evolução",
+      "Produtividade por período e frente de trabalho",
+      "Conversão e motivos de perda visíveis",
+      "Exportação pronta para reuniões e prestação de contas",
+    ],
+    resultado: "Decisões sustentadas pelo trabalho real registrado na operação.",
+  },
+  {
+    id: "integracoes",
+    titulo: "Integrações",
+    icone: "integracoes",
+    sobrelinha: "Ecossistema conectado",
+    headline: "O Angario conversa com todo o seu ecossistema.",
+    frase: "Conecte os canais da operação sem fragmentar o trabalho da equipe.",
+    problema:
+      "Ferramentas desconectadas criam cadastros duplicados, perda de contexto e processos que param na troca de sistema.",
+    solucoes: [
+      "Integração com o CRM e a rotina imobiliária",
+      "WhatsApp conectado pela Evolution API",
+      "Inteligência artificial aplicada aos dados da operação",
+      "Supabase como base segura e isolada por conta",
+    ],
+    resultado: "Um fluxo contínuo de informação, da prospecção à gestão.",
   },
 ];
 
-/* ---------- ilustrações de cada capítulo (estáticas) ---------- */
+const CAMINHOS_ICONES: Record<Icone, React.ReactNode> = {
+  dashboard: <><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>,
+  pipeline: <><rect x="3" y="4" width="5" height="16" rx="1.5" /><rect x="9.5" y="4" width="5" height="11" rx="1.5" /><rect x="16" y="4" width="5" height="7" rx="1.5" /><path d="M5.5 8h.01M12 8h.01M18.5 8h.01" /></>,
+  agenda: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" /></>,
+  ia: <><path d="m12 3 1.45 4.05L17.5 8.5l-4.05 1.45L12 14l-1.45-4.05L6.5 8.5l4.05-1.45z" /><path d="m18.5 14.5.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8zM5 15l.65 1.85L7.5 17.5l-1.85.65L5 20l-.65-1.85-1.85-.65 1.85-.65z" /></>,
+  avaliacao: <><path d="M3 20h18M5.5 17V9.5L12 4l6.5 5.5V17" /><path d="M9 17v-4h6v4M16 7.5l3-2.5" /><circle cx="19" cy="5" r="2" /></>,
+  whatsapp: <><path d="M20.5 11.7a8.45 8.45 0 0 1-12.3 7.5L3.5 20.5 4.8 16A8.45 8.45 0 1 1 20.5 11.7Z" /><path d="M8.2 7.8c.25-.48.5-.49.73-.49h.55c.18 0 .37.07.48.34l.83 2.02c.1.23.05.42-.08.6l-.64.74a.5.5 0 0 0-.08.56c.68 1.32 1.73 2.37 3.05 3.05a.5.5 0 0 0 .56-.08l.74-.64c.18-.13.37-.18.6-.08l2.02.83c.27.11.34.3.34.48v.55c0 .23-.01.48-.49.73-.48.24-1.58.61-2.75.23-1.17-.38-2.64-1.07-4.16-2.59-1.52-1.52-2.21-2.99-2.59-4.16-.38-1.17-.01-2.27.23-2.75Z" /></>,
+  mapa: <><path d="m3 6 5-3 8 3 5-3v15l-5 3-8-3-5 3zM8 3v15M16 6v15" /><path d="M12 7.5a2.5 2.5 0 0 0-2.5 2.5c0 2 2.5 4.5 2.5 4.5s2.5-2.5 2.5-4.5A2.5 2.5 0 0 0 12 7.5Z" /></>,
+  relatorios: <><path d="M4 20V10M10 20V5M16 20v-7M22 20H2" /><path d="m4 7 6-4 6 6 5-4" /></>,
+  integracoes: <><circle cx="12" cy="12" r="3" /><circle cx="12" cy="3" r="1.5" /><circle cx="21" cy="12" r="1.5" /><circle cx="12" cy="21" r="1.5" /><circle cx="3" cy="12" r="1.5" /><path d="M12 4.5V9M19.5 12H15M12 15v4.5M9 12H4.5" /></>,
+};
 
-/* A abertura mostra o PRODUTO, não um desenho abstrato: quem avalia uma
-   ferramenta quer ver a tela. É uma maquete, e os números são de exemplo,
-   mas a forma é a da Início de verdade (KPIs mais a rodada do dia). */
-const HeroMock = (
-  <div className="hero-mock" aria-hidden="true">
-    <div className="hm-topo">
-      <span className="hm-bolinhas">
-        <i />
-        <i />
-        <i />
-      </span>
-      <span className="hm-url">Angario · Início</span>
+function IconeFuncionalidade({ nome }: { nome: Icone }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{CAMINHOS_ICONES[nome]}</svg>;
+}
+
+function MolduraMockup({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div className="mockup-app" aria-label={`Prévia da funcionalidade ${titulo}`}>
+      <div className="mockup-barra"><span className="mockup-pontos"><i /><i /><i /></span><span>Angario · {titulo}</span><b><i /> ao vivo</b></div>
+      <div className="mockup-corpo"><aside aria-hidden="true"><span className="ativo" /><span /><span /><span /><span /><span /></aside><div className="mockup-tela">{children}</div></div>
     </div>
-    <div className="hm-corpo">
-      <div className="hm-nav">
-        {Array.from({ length: 7 }, (_, i) => (
-          <span className={`hm-nav-item${i === 0 ? " ativo" : ""}`} key={i} />
-        ))}
-      </div>
-      <div className="hm-tela">
-        <div className="hm-kpis">
-          {[
-            ["Na carteira", "177"],
-            ["Angariados no mês", "12"],
-            ["Respostas novas", "8"],
-          ].map(([rotulo, valor]) => (
-            <div className="hm-kpi" key={rotulo}>
-              <span className="hm-kpi-rot">{rotulo}</span>
-              <strong className="hm-kpi-num">{valor}</strong>
-            </div>
-          ))}
-        </div>
-        <div className="hm-bloco">
-          <span className="hm-bloco-tit">A rodada de hoje</span>
-          {[
-            ["Respostas sem leitura", "3"],
-            ["Follow-up esperando", "20"],
-            ["Compromissos de hoje", "2"],
-          ].map(([nome, qtd]) => (
-            <span className="hm-linha" key={nome}>
-              <i className="hm-ponto" />
-              {nome}
-              <b>{qtd}</b>
-            </span>
-          ))}
-        </div>
-      </div>
-    </div>
-  </div>
-);
+  );
+}
 
-/* A rodada do dia: frentes com fila, na ordem de quem é a vez. */
-const FRENTES = [
-  { ic: "💬", nome: "Responder quem escreveu", qtd: 3, urg: "agora", nota: "sem leitura" },
-  { ic: "📅", nome: "Compromissos de hoje", qtd: 2, urg: "agora", nota: "hora marcada" },
-  { ic: "📣", nome: "Follow-up de quem não respondeu", qtd: 20, urg: "hoje", nota: "82 na fila" },
-  { ic: "🏠", nome: "Confirmar disponibilidade", qtd: 4, urg: "quando-der", nota: "60+ dias" },
-];
+function MockupDashboard() {
+  return <MolduraMockup titulo="Dashboard"><div className="mock-kpis">{[["Na carteira", "177"], ["Angariados", "12"], ["Respostas", "08"]].map(([r, v]) => <div key={r}><span>{r}</span><strong>{v}</strong><small>↗ este mês</small></div>)}</div><div className="mock-duplo"><div className="mock-lista"><b>Foco do dia</b>{[["Responder proprietários", "3"], ["Follow-ups pendentes", "20"], ["Visitas hoje", "2"]].map(([r, v]) => <span key={r}>{r}<strong>{v}</strong></span>)}</div><div className="mock-grafico"><b>Produtividade</b><div>{[42, 68, 51, 82, 63, 92, 76].map((v, i) => <i key={i} style={{ height: `${v}%` }} />)}</div></div></div></MolduraMockup>;
+}
 
-const VisualRodada = (
-  <>
-    <div className="rodada-demo">
-      {FRENTES.map((f) => (
-        <div className={`rd-item ${f.urg}`} key={f.nome}>
-          <span className="rd-ic">{f.ic}</span>
-          <span className="rd-txt">
-            <strong>
-              {f.nome}
-              <span className="rd-qtd">{f.qtd}</span>
-            </strong>
-            {f.nota}
-          </span>
-        </div>
-      ))}
-    </div>
-    <p className="visual-nota">
-      A ordem é de quem é a vez: quem já fez a parte dele vem antes de quem ainda não sabe que você
-      existe.
-    </p>
-  </>
-);
+function MockupPipeline() {
+  const colunas = [["NOVO CONTATO", ["Apto · Palhano", "Casa · Quebec"]], ["CONTATO FEITO", ["Studio · Centro", "Apto · Aurora"]], ["VISITA", ["Casa · Canadá"]], ["ANGARIADO", ["Apto · Gleba"]]] as const;
+  return <MolduraMockup titulo="Pipeline"><div className="mock-kanban">{colunas.map(([titulo, cards], i) => <div key={titulo}><b><i />{titulo}<small>{cards.length}</small></b>{cards.map((card, j) => <span className={i === 1 && j === 1 ? "parado" : ""} key={card}><strong>{card}</strong><small>{i === 1 && j === 1 ? "6 dias sem movimento" : "Próxima ação definida"}</small><em>{["MR", "LA", "CS", "AV"][(i + j) % 4]}</em></span>)}</div>)}</div></MolduraMockup>;
+}
 
-/* Central e Radar: a varredura é a animação própria desta apresentação.
-   Os anúncios aparecem depois do feixe, como acontece no produto: primeiro a
-   busca é salva, depois só o que surgiu desde o baseline vira novidade. */
-const ACHADOS_RADAR = [
-  { portal: "OLX", titulo: "Apartamento · Gleba Palhano", detalhe: "2 quartos · R$ 2.100" },
-  { portal: "Viva Real", titulo: "Casa · Jardim Quebec", detalhe: "3 quartos · R$ 3.400" },
-  { portal: "Chaves na Mão", titulo: "Studio · Centro", detalhe: "1 quarto · R$ 1.350" },
-];
+function MockupAgenda() {
+  return <MolduraMockup titulo="Agenda"><div className="mock-agenda-topo"><b>Agosto 2026</b><span>Hoje</span></div><div className="mock-agenda"><div className="mock-calendario">{["S", "T", "Q", "Q", "S", "S", "D"].map((d, i) => <b key={`${d}-${i}`}>{d}</b>)}{Array.from({ length: 28 }, (_, i) => <span className={i === 11 ? "hoje" : i === 15 || i === 17 ? "evento" : ""} key={i}>{i + 1}</span>)}</div><div className="mock-compromissos"><b>Próximos</b><span><i>10:00</i><strong>Visita · Gleba Palhano</strong><small>Sr. Antônio</small></span><span><i>14:30</i><strong>Retorno de avaliação</strong><small>Imóvel LD-142</small></span><span><i>16:00</i><strong>Follow-up proprietário</strong><small>Lembrete automático</small></span></div></div></MolduraMockup>;
+}
 
-const VisualRadar = (
-  <>
-    <div className="radar-vitrine">
-      <div className="radar-vitrine-topo">
-        <span>
-          <i /> Radar · Londrina
-        </span>
-        <b>3 novos</b>
-      </div>
-      <div className="radar-vitrine-corpo">
-        <div className="radar-vitrine-orbita" aria-hidden="true">
-          <span className="radar-vitrine-feixe" />
-          <span className="radar-vitrine-centro">⌁</span>
-          <i className="radar-vitrine-ponto ponto-a" />
-          <i className="radar-vitrine-ponto ponto-b" />
-          <i className="radar-vitrine-ponto ponto-c" />
-        </div>
-        <div className="radar-vitrine-lista">
-          {ACHADOS_RADAR.map((achado, i) => (
-            <div
-              className="radar-vitrine-achado"
-              style={{ "--radar-atraso": `${1.05 + i * 0.22}s` } as React.CSSProperties}
-              key={`${achado.portal}-${achado.titulo}`}
-            >
-              <span>{achado.portal}</span>
-              <strong>{achado.titulo}</strong>
-              <small>{achado.detalhe}</small>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-    <p className="visual-nota">
-      O primeiro resultado vira referência. Depois, o Radar avisa somente sobre anúncio novo e
-      mantém a revisão humana antes de qualquer imóvel entrar no Pipeline.
-    </p>
-  </>
-);
+function MockupIa() {
+  return <MolduraMockup titulo="Assistente IA"><div className="mock-ia"><div className="mock-ia-selo"><IconeFuncionalidade nome="ia" /><span><b>Assistente Angario</b><small>Contexto da sua operação</small></span></div><div className="mock-ia-pergunta">Prepare uma abordagem para o proprietário deste apartamento na Gleba Palhano.</div><div className="mock-ia-resposta"><span>✦</span><p><b>Abordagem sugerida</b>Olá, Sr. Antônio. Analisei imóveis semelhantes na região e preparei uma avaliação atualizada, sem compromisso. Posso compartilhar a faixa de valor com você?</p></div><div className="mock-ia-acoes">{["Gerar anúncio", "Avaliar imóvel", "Analisar resposta", "Consultar carteira"].map((a) => <span key={a}>{a}</span>)}</div></div></MolduraMockup>;
+}
 
-const COLUNAS_FUNIL = [
-  { nome: "Novo contato", cards: 3, cor: "var(--text-faint)" },
-  { nome: "Contato feito", cards: 2, cor: "var(--accent)" },
-  { nome: "Visita", cards: 2, cor: "var(--warn)" },
-  { nome: "Angariado", cards: 1, cor: "var(--good)" },
-];
+function MockupAvaliacao() {
+  return <MolduraMockup titulo="Avaliação"><div className="mock-avaliacao"><div className="mock-faixa"><span>Faixa recomendada</span><strong>R$ 2.350 — R$ 2.620</strong><small>Confiança alta · 8 comparáveis</small><div><i /><i /><b /></div></div><div className="mock-comparaveis"><b>Imóveis comparáveis</b>{[["Gleba Palhano", "R$ 2.480", "+3%"], ["Jardim Petrópolis", "R$ 2.390", "−1%"], ["Aurora", "R$ 2.570", "+5%"]].map(([l, v, d]) => <span key={l}><i /><strong>{l}<small>2 quartos · 68 m²</small></strong><b>{v}<small>{d}</small></b></span>)}</div></div></MolduraMockup>;
+}
 
-const VisualFunil = (
-  <>
-    <div className="mini-kanban">
-      {COLUNAS_FUNIL.map((col) => (
-        <div className="mk-col" key={col.nome}>
-          <div className="mk-tit">{col.nome}</div>
-          {Array.from({ length: col.cards }, (_, i) => (
-            <div className="mk-card" key={i} style={{ borderLeftColor: col.cor }} />
-          ))}
-        </div>
-      ))}
-    </div>
-    <p className="visual-nota">
-      “Parado” conta movimento de verdade: mudança de etapa, mensagem enviada ou resposta recebida.
-      Quem falou com você ontem não aparece como esquecido.
-    </p>
-  </>
-);
+function MockupWhatsapp() {
+  return <MolduraMockup titulo="WhatsApp"><div className="mock-whatsapp"><div className="mock-conversas"><b>Conversas</b>{[["Sr. Antônio", "Pode mandar sim", "2"], ["Marina R.", "Quanto vocês cobram?", "1"], ["Dona Célia", "Pode ser quinta", ""]].map(([n, m, q], i) => <span className={i === 0 ? "ativo" : ""} key={n}><i>{n.split(" ").map((p) => p[0]).join("").slice(0, 2)}</i><strong>{n}<small>{m}</small></strong>{q && <b>{q}</b>}</span>)}</div><div className="mock-chat"><b>Sr. Antônio <small>LD-142 · Gleba Palhano</small></b><span className="sai">Preparei uma avaliação atualizada da região. Posso enviar?</span><span className="entra">Pode mandar sim</span><em>IA sugeriu uma resposta · revisar antes de enviar</em></div></div></MolduraMockup>;
+}
 
-const VisualZap = (
-  <>
-    <div className="zap">
-      <span className="zap-bolha sai">
-        Bom dia, Sr. Antônio! Vi seu apartamento na Gleba Palhano e faço uma avaliação de aluguel
-        sem compromisso. Posso mandar os valores da região?
-      </span>
-      <span className="zap-bolha entra">Pode mandar sim</span>
-    </div>
-    <p className="visual-nota">
-      Follow-up em lote: 10 por rodada, com 30 a 60s sorteados entre um envio e outro. E uma
-      mensagem por proprietário, mesmo que ele tenha quatro imóveis com você.
-    </p>
-  </>
-);
+function MockupMapa() {
+  return <MolduraMockup titulo="Mapa"><div className="mock-mapa"><div className="mock-mapa-filtros"><b>Londrina</b><span>● 177 imóveis</span><span>● 12 angariados</span></div><div className="mock-ruas"><i className="r1" /><i className="r2" /><i className="r3" /><i className="r4" /><i className="r5" /><i className="r6" /><span className="lago" /><b className="ponto p1">12</b><b className="ponto p2">8</b><b className="ponto p3">24</b><b className="ponto p4">5</b><em className="regiao">GLEBA PALHANO</em><em className="centro">CENTRO</em></div><div className="mock-mapa-card"><span>Região em destaque</span><b>Gleba Palhano</b><small>24 oportunidades · 6 em follow-up</small></div></div></MolduraMockup>;
+}
 
-const VisualResposta = (
-  <>
-    <div className="zap">
-      <span className="zap-bolha entra">Obrigado, mas já aluguei o apartamento semana passada.</span>
-    </div>
-    <div className="ia-chip">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" />
-        <circle cx="12" cy="12" r="3.2" />
-      </svg>
-      Leitura da IA: <strong>recusou</strong>, alugou por conta própria
-    </div>
-    <p className="visual-nota">O imóvel sai da carteira com o motivo certo, e a nota explica na tela por quê.</p>
-  </>
-);
+function MockupRelatorios() {
+  return <MolduraMockup titulo="Relatórios"><div className="mock-relatorio-topo"><span>Relatório de captação · Agosto</span><b>Exportar PDF ↗</b></div><div className="mock-relatorio"><div className="mock-relatorio-grafico"><b>Conversão por semana</b><div>{[32, 48, 43, 67, 58, 76, 84].map((v, i) => <span key={i}><i style={{ height: `${v}%` }} /></span>)}</div><small><i /> Contatos <i /> Angariações</small></div><div className="mock-relatorio-metricas">{[["Conversão", "18,4%", "+2,1%"], ["Respostas", "64", "+12"], ["Angariados", "12", "+4"]].map(([r, v, d]) => <span key={r}><small>{r}</small><strong>{v}</strong><b>{d}</b></span>)}</div></div></MolduraMockup>;
+}
 
-/* Transcrição: a bolha de áudio deixa de ser um marcador e vira texto. */
-const VisualAudio = (
-  <>
-    <div className="zap">
-      <span className="zap-bolha entra audio">
-        <span className="audio-onda" aria-hidden="true">
-          {[6, 11, 16, 9, 14, 7, 12, 17, 8, 13, 6, 10].map((h, i) => (
-            <i key={i} style={{ height: `${h}px` }} />
-          ))}
-        </span>
-        <span className="audio-tempo">0:23</span>
-      </span>
-      <span className="zap-bolha entra transcrito">
-        <span className="transcrito-selo">Transcrição automática</span>
-        “Olha, esse aí vai desocupar esse mês. Se quiser pode passar pra ver, tá disponível sim.”
-      </span>
-    </div>
-    <p className="visual-nota">
-      O texto entra antes de qualquer decisão automática. Um “já aluguei” falado encerra o registro
-      igual a um escrito.
-    </p>
-  </>
-);
+function MockupIntegracoes() {
+  const nomes = ["WhatsApp", "Evolution API", "Supabase", "IA", "CRM"];
+  return <MolduraMockup titulo="Integrações"><div className="mock-integracoes"><div className="mock-orbita"><div className="mock-orbita-centro"><IconeFuncionalidade nome="integracoes" /><b>ANGARIO</b></div>{nomes.map((n, i) => <span className={`i${i + 1}`} key={n}>{n}</span>)}</div><div className="mock-integracoes-status"><b>Ecossistema conectado</b>{nomes.slice(0, 4).map((n) => <span key={n}><i />{n}<small>Operacional</small></span>)}</div></div></MolduraMockup>;
+}
 
-/* A caixa de respostas: uma linha por imóvel, separada por fase. */
-const CAIXA = [
-  { fase: "Captação", cod: "LD-142", nome: "Sr. Antônio", qtd: 3, previa: "Pode mandar sim", nova: true },
-  { fase: "Captação", cod: "LD-155", nome: "Marina R.", qtd: 1, previa: "Quanto vocês cobram?", nova: true },
-  { fase: "Carteira", cod: "LD-156", nome: "Dona Célia", qtd: 2, previa: "Já Assinei", nova: false },
-];
-
-const VisualCaixa = (
-  <>
-    <div className="caixa-demo">
-      {CAIXA.map((c, i) => (
-        <div key={c.cod}>
-          {(i === 0 || CAIXA[i - 1].fase !== c.fase) && (
-            <span className="caixa-fase">{c.fase}</span>
-          )}
-          <div className={`caixa-linha${c.nova ? " nova" : ""}`}>
-            <span className="caixa-cod">{c.cod}</span>
-            <span className="caixa-txt">
-              <strong>{c.nome}</strong>
-              {c.previa}
-            </span>
-            <span className="caixa-qtd">{c.qtd}</span>
-          </div>
-        </div>
-      ))}
-    </div>
-    <div className="ia-chip">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="m3 21 1.6-4.8A8.4 8.4 0 1 1 8 19.4z" />
-      </svg>
-      Botão <strong>Rascunhar resposta</strong>: a IA lê a última mensagem e escreve, você revisa
-    </div>
-    <p className="visual-nota">
-      A mensagem sai da caixa quando você age: registrou o contato, mudou a etapa ou marcou como
-      lida. Nada exige burocracia diária.
-    </p>
-  </>
-);
-
-/* O dia da agenda em dois blocos, a mesma leitura da AgendaView
-   (separarPorHorario): os horários marcados e o que se resolve quando der. */
-const VisualAgenda = (
-  <>
-    <div className="dia-agenda">
-      <div className="dia-bloco">
-        <span className="dia-bloco-label">Com horário</span>
-        <div className="dia-item">
-          <span className="dia-hora">10:00</span>
-          <span className="dia-txt">
-            <strong>Visita ao Sr. Antônio</strong>Gleba Palhano, apartamento de 3 quartos
-          </span>
-        </div>
-      </div>
-      <div className="dia-bloco">
-        <span className="dia-bloco-label">Sem hora marcada</span>
-        <div className="dia-item">
-          <span className="dia-ic">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />
-            </svg>
-          </span>
-          <span className="dia-txt">
-            <strong>Verificar disponibilidade</strong>Anunciado há 60 dias. Ainda está de pé?
-          </span>
-        </div>
-      </div>
-    </div>
-    <div className="ia-chip">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 7v5l3 2" />
-      </svg>
-      Criado por <strong>“pode ser quinta às 10h”</strong>
-    </div>
-    <p className="visual-nota">
-      Se você conectar o Google Agenda, o compromisso aparece também no celular, com o lembrete que
-      você já usa.
-    </p>
-  </>
-);
-
-const RANKING = [
-  { nome: "Avaliação gratuita", pct: 62 },
-  { nome: "Já tenho cliente para a região", pct: 48 },
-  { nome: "Apresentação da imobiliária", pct: 24 },
-];
-
-const VisualRanking = (
-  <>
-    <div className="rank">
-      {RANKING.map((r) => (
-        <div className="rank-linha" key={r.nome}>
-          <div className="rank-topo">
-            <span className="rank-nome">{r.nome}</span>
-            <span className="rank-pct">{r.pct}%</span>
-          </div>
-          <div className="rank-track">
-            <div className="rank-fill" style={{ "--w": `${r.pct}%` } as React.CSSProperties} />
-          </div>
-        </div>
-      ))}
-    </div>
-    <p className="visual-nota">
-      Na hora de escolher o que dizer, o seletor já vem ordenado pelo que funciona, sem precisar
-      abrir o relatório para lembrar.
-    </p>
-  </>
-);
-
-const VisualIa = (
-  <>
-    <div className="ia-card">
-      <span className="ia-selo">Leitura do ranking</span>
-      <p>
-        “Seus melhores resultados vêm de abrir com avaliação gratuita: responde quase o dobro do que
-        a apresentação institucional. O roteiro de fechamento aparece pouco, só 3 tentativas, ainda
-        é cedo para tirar conclusão.”
-      </p>
-    </div>
-    <div className="colagem">
-      <span className="colagem-de">
-        Texto colado do anúncio
-        <em>“Alugo apartamento 2 quartos, Gleba Palhano, R$ 1.800 + cond…”</em>
-      </span>
-      <span className="colagem-seta" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M5 12h14M13 6l6 6-6 6" />
-        </svg>
-      </span>
-      <span className="colagem-para">
-        {["Endereço", "Tipo", "Valor", "Telefone"].map((c) => (
-          <b key={c}>{c}</b>
-        ))}
-      </span>
-    </div>
-    <p className="visual-nota">
-      As contas saem do seu banco de dados. A IA interpreta e preenche, nunca inventa número nem
-      salva nada sozinha.
-    </p>
-  </>
-);
-
-const VisualMetas = (
-  <>
-    <div className="meta-demo">
-      <div className="meta-demo-topo">
-        <span>Angariações do mês</span>
-        <strong>8 / 10</strong>
-      </div>
-      <div className="rank-track">
-        <div className="rank-fill" style={{ "--w": "80%" } as React.CSSProperties} />
-      </div>
-      <div className="meta-projecao">
-        <span className="meta-proj-linha">
-          No seu ritmo, o mês fecha em <b>9</b>
-        </span>
-        <span className="meta-proj-linha">
-          Faltam <b>2</b> em <b>6</b> dias úteis, cerca de 1 a cada 3 dias
-        </span>
-      </div>
-    </div>
-    <div className="medalhas">
-      {[
-        <path key="a" d="M12 2l2.6 5.6 6.4.9-4.6 4.4 1.1 6.1L12 16.1 6.5 19l1.1-6.1L3 8.5l6.4-.9z" />,
-        <path key="b" d="M6 3h12v5a6 6 0 0 1-12 0zM9 21h6M12 14v7" />,
-        <path key="c" d="M12 3s5 4.5 5 9a5 5 0 0 1-10 0c0-1.7.7-3.3 1.6-4.6.5 1.4 1.4 2.1 2.4 2.1 0-2.6-1-4.4 1-6.5z" />,
-      ].map((d, i) => (
-        <span className="medalha" key={i}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            {d}
-          </svg>
-        </span>
-      ))}
-    </div>
-  </>
-);
-
-const SECOES_RELATORIO = [
-  { nome: "Esforço", detalhe: "200 mensagens · 48 imóveis novos" },
-  { nome: "Respostas", detalhe: "20 responderam · 12,5% da coorte" },
-  { nome: "Perdas", detalhe: "58% “já está com outra imobiliária”" },
-  { nome: "Fila de hoje", detalhe: "29 esperando follow-up" },
-];
-
-const VisualRelatorio = (
-  <>
-    <div className="rel-demo">
-      <span className="rel-tit">Relatório completo de julho</span>
-      {SECOES_RELATORIO.map((s, i) => (
-        <div className="rel-linha" key={s.nome}>
-          <span className="rel-num">{i + 1}</span>
-          <span className="rel-txt">
-            <strong>{s.nome}</strong>
-            {s.detalhe}
-          </span>
-        </div>
-      ))}
-    </div>
-    <p className="visual-nota">
-      Angariação é lenta: um mês pode fechar com poucos desfechos e muito trabalho feito. Este
-      relatório mostra o trabalho. Os de resultado, semanal e mensal, continuam onde estavam.
-    </p>
-  </>
-);
-
-const CENAS: Cena[] = [
-  {
-    rotulo: "A rodada de hoje",
-    parte: 1,
-    titulo: "O sistema abre dizendo o que está esperando você.",
-    texto:
-      "Quem escreveu e ainda não foi lido, quem tem hora marcada, quem está há dias sem retorno. Cada frente vem com o tamanho da fila e o botão que a resolve, mais quantas mensagens ainda cabem hoje: o envio tem ritmo seguro, e vaga não usada não volta.",
-    visual: VisualRodada,
-  },
-  {
-    rotulo: "O funil",
-    parte: 1,
-    titulo: "Nada some no meio do caminho.",
-    texto:
-      "Cada imóvel caminha do primeiro contato até o “Locado”, e o sistema guarda a data de cada passo. Quem ficou parado tempo demais aparece marcado, então você não precisa lembrar de ninguém.",
-    visual: VisualFunil,
-  },
-  {
-    rotulo: "Central e Radar",
-    parte: 1,
-    titulo: "Novas oportunidades chegam sem você repetir a mesma busca.",
-    texto:
-      "Pesquise imóveis nos portais por cidade, bairro, tipo e faixa de valor. Uma busca revisada pode virar Radar: ele compara os resultados, separa somente os anúncios novos e leva cada oportunidade a um pré-cadastro antes do Pipeline.",
-    visual: VisualRadar,
-  },
-  {
-    rotulo: "WhatsApp",
-    parte: 2,
-    titulo: "A mensagem sai do seu próprio número.",
-    texto:
-      "Escolha a abordagem e envie sem sair da tela. Dá para disparar o follow-up de todo mundo que ficou sem resposta de uma vez, em ritmo seguro, para não queimar o número da imobiliária.",
-    visual: VisualZap,
-  },
-  {
-    rotulo: "A resposta volta",
-    parte: 2,
-    titulo: "O que o proprietário responde entra no sistema.",
-    texto:
-      "A resposta vira nota no imóvel assim que chega, e a IA sugere o desfecho para você confirmar. Quando não há mais nada a fazer, como “já aluguei” ou uma exclusividade vigente explicitamente informada, o imóvel se fecha com o motivo certo. Ter outra imobiliária sem exclusividade mantém a conversa aberta. E o silêncio o sistema enxerga sozinho: ninguém precisa clicar para dizer que não houve resposta.",
-    visual: VisualResposta,
-  },
-  {
-    rotulo: "Áudio vira texto",
-    parte: 2,
-    titulo: "O áudio de meio minuto você lê em três segundos.",
-    texto:
-      "Boa parte dos proprietários responde falando, e é aí que costuma estar o que decide o negócio: o “vai desocupar esse mês”, a negociação inteira do contrato. Cada áudio recebido é transcrito automaticamente e fica escrito no imóvel, pesquisável como qualquer outra nota.",
-    visual: VisualAudio,
-  },
-  {
-    rotulo: "Conversas e respostas",
-    parte: 2,
-    titulo: "Tudo que escreveram para você, em uma tela só.",
-    texto:
-      "Uma linha por proprietário, os leads de captação antes do operacional da carteira. E responder é um clique: para as respostas que o sistema já entendeu, a réplica vem pronta; para as outras, a IA rascunha lendo a mensagem. Quem envia é sempre você.",
-    visual: VisualCaixa,
-  },
-  {
-    rotulo: "Agenda",
-    parte: 2,
-    titulo: "O horário que o proprietário marcou já entra na sua agenda.",
-    texto:
-      "Quando ele responde “pode ser quinta às 10h”, o compromisso nasce no dia certo, com a frase que o gerou anotada junto. O dia se lê em dois blocos: os horários marcados e o que dá para resolver quando der. E tudo pode ser espelhado no seu Google Agenda, para o lembrete tocar no celular.",
-    visual: VisualAgenda,
-  },
-  {
-    rotulo: "Abordagens",
-    parte: 3,
-    titulo: "Descubra qual conversa faz o proprietário responder.",
-    texto:
-      "Cada roteiro é medido separado: quantos responderam, quantos viraram angariação e quantas vezes ele foi o contato que destravou o negócio. Com poucos casos, o sistema avisa em vez de fingir certeza.",
-    visual: VisualRanking,
-  },
-  {
-    rotulo: "Inteligência",
-    parte: 3,
-    titulo: "Uma IA que lê os seus números e cadastra por você.",
-    texto:
-      "Peça sugestões de roteiro e uma leitura em português do que os seus números dizem. No garimpo, cole o texto do anúncio e os campos voltam preenchidos, endereço, tipo, valor e telefone, com o WhatsApp já pronto para abrir.",
-    visual: VisualIa,
-  },
-  {
-    rotulo: "Metas",
-    parte: 3,
-    titulo: "Meta do mês com o calendário dentro da conta.",
-    texto:
-      "“Faltam 2” é tranquilidade no dia 3 e emergência no dia 28. O painel projeta o fechamento no seu ritmo de dias úteis e diz o quanto por dia falta. E comemora quando um imóvel entra em “Angariado” ou a meta fecha.",
-    visual: VisualMetas,
-  },
-  {
-    rotulo: "Relatórios",
-    parte: 3,
-    titulo: "Prestação de contas que mostra o trabalho feito.",
-    texto:
-      "Semanal, mensal e o relatório completo de captação: esforço, taxa de resposta por coorte, motivos de perda e a fila que sobrou. Tudo em PDF, com cara de documento, pronto para levar à reunião.",
-    visual: VisualRelatorio,
-  },
-];
-
-const EXTRAS = [
-  {
-    titulo: "Mapa da carteira",
-    texto: "Seus imóveis por bairro, com a legenda filtrando o que já foi angariado.",
-    icone: (
-      <>
-        <path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z" />
-        <circle cx="12" cy="10" r="2.5" />
-      </>
-    ),
-  },
-  {
-    titulo: "Termômetro do proprietário",
-    texto: "Quem chamar hoje, na ordem do sinal que cada um deu, com o motivo escrito.",
-    icone: (
-      <>
-        <path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0z" />
-        <path d="M12 9v6" />
-      </>
-    ),
-  },
-  {
-    titulo: "Foco do dia",
-    texto: "Quantos contatos novos fazer hoje e em quais portais, lido do seu próprio ritmo.",
-    icone: (
-      <>
-        <circle cx="12" cy="12" r="9" />
-        <circle cx="12" cy="12" r="4.5" />
-        <circle cx="12" cy="12" r="1" />
-      </>
-    ),
-  },
-  {
-    titulo: "Aviso de duplicidade",
-    texto: "O sistema reconhece o imóvel já cadastrado antes de você repetir o contato.",
-    icone: (
-      <>
-        <path d="M12 9v4M12 17h.01" />
-        <path d="M10.3 3.9 2.4 17a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
-      </>
-    ),
-  },
-  {
-    titulo: "Um espaço, várias unidades",
-    texto: "O galpão que vira quatro salas rende quatro contratos e continua sendo uma captação.",
-    icone: (
-      <>
-        <path d="M3 21h18M5 21V8l7-5 7 5v13" />
-        <path d="M12 3v18M5 13h14" />
-      </>
-    ),
-  },
-  {
-    titulo: "Dados isolados por conta",
-    texto: "Cada login enxerga só os próprios imóveis. A separação é do banco, não da tela.",
-    icone: (
-      <>
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-        <path d="m9 12 2 2 4-4" />
-      </>
-    ),
-  },
-  {
-    titulo: "Assistente em contexto",
-    texto: "Consulte carteira, agenda, follow-ups e indicadores sem risco de alterar ou enviar nada.",
-    icone: (
-      <>
-        <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" />
-        <circle cx="12" cy="12" r="3.2" />
-      </>
-    ),
-  },
-  {
-    titulo: "Mensagens agendadas",
-    texto: "Deixe o WhatsApp preparado para a data e a hora certas, com edição, cancelamento e status do envio.",
-    icone: (
-      <>
-        <rect x="3" y="5" width="18" height="16" rx="2" />
-        <path d="M8 3v4M16 3v4M3 10h18M12 14v3l2 1" />
-      </>
-    ),
-  },
-  {
-    titulo: "Protocolos da imobiliária",
-    texto: "Registre taxa, prazo e regras da empresa para a IA responder somente o que você autorizou.",
-    icone: (
-      <>
-        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-        <path d="M9 7h7M9 11h7" />
-      </>
-    ),
-  },
-  {
-    titulo: "Entrada e saída por planilha",
-    texto: "Importe a carteira de um CSV com revisão prévia e exporte imóveis, canais e abordagens para análise.",
-    icone: (
-      <>
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <path d="M14 2v6h6M8 13h8M8 17h8M10 9H8" />
-      </>
-    ),
-  },
-  {
-    titulo: "Anúncios e documentos",
-    texto: "Gere o texto de publicação do imóvel captado e a solicitação de comissão quando a locação fechar.",
-    icone: (
-      <>
-        <path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5" />
-        <path d="m16 16 2 2 3-4" />
-      </>
-    ),
-  },
-  {
-    titulo: "Histórico de interações",
-    texto: "Veja etapas, notas e conversas na mesma linha do tempo, inclusive mensagens anteriores ao cadastro.",
-    icone: (
-      <>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 7v5l3 2M7 3.8 4.5 6" />
-      </>
-    ),
-  },
-];
-
-const GARANTIAS = [
-  "Nada para instalar: abre no navegador e no celular",
-  "Seu próprio número de WhatsApp",
-  "Você confirma antes de qualquer mensagem sair",
-];
+function MockupFuncionalidade({ nome }: { nome: Icone }) {
+  const mockups: Record<Icone, React.ReactNode> = {
+    dashboard: <MockupDashboard />, pipeline: <MockupPipeline />, agenda: <MockupAgenda />,
+    ia: <MockupIa />, avaliacao: <MockupAvaliacao />, whatsapp: <MockupWhatsapp />,
+    mapa: <MockupMapa />, relatorios: <MockupRelatorios />, integracoes: <MockupIntegracoes />,
+  };
+  return mockups[nome];
+}
 
 export default function Vitrine({ aoEntrar, aoCriarConta }: Props) {
-  const cenasRef = useRef<(HTMLElement | null)[]>([]);
-  const [vistas, setVistas] = useState<boolean[]>(() => CENAS.map(() => false));
+  const [ativa, setAtiva] = useState(FUNCIONALIDADES[0].id);
+  const [menuMobileAberto, setMenuMobileAberto] = useState(false);
+  const secoesRef = useRef<Record<string, HTMLElement | null>>({});
+  const botaoMenuRef = useRef<HTMLButtonElement | null>(null);
+  const movimentoReduzido = useReducedMotion();
+  const portalDisponivel = useSyncExternalStore(assinarCliente, lerCliente, lerServidor);
+  const funcionalidadeAtiva =
+    FUNCIONALIDADES.find((funcionalidade) => funcionalidade.id === ativa) ?? FUNCIONALIDADES[0];
 
   useEffect(() => {
-    const elementos = cenasRef.current.filter((el): el is HTMLElement => el !== null);
-    if (elementos.length === 0) return;
-
-    // Entrada: revela e larga a cena. Revelou, revelou.
-    const revelador = new IntersectionObserver(
-      (entradas) => {
-        for (const entrada of entradas) {
-          if (!entrada.isIntersecting) continue;
-          const i = Number((entrada.target as HTMLElement).dataset.cena);
-          setVistas((prev) => {
-            if (prev[i]) return prev;
-            const proximo = [...prev];
-            proximo[i] = true;
-            return proximo;
-          });
-          revelador.unobserve(entrada.target);
-        }
-      },
-      { threshold: 0.15, rootMargin: "0px 0px -8% 0px" },
+    const secoes = FUNCIONALIDADES.map(({ id }) => secoesRef.current[id]).filter(
+      (secao): secao is HTMLElement => secao !== null,
     );
-
-    for (const el of elementos) revelador.observe(el);
-    return () => revelador.disconnect();
+    if (secoes.length === 0) return;
+    const visiveis = new Map<string, number>();
+    const observador = new IntersectionObserver(
+      (entradas) => {
+        entradas.forEach((entrada) => {
+          if (entrada.isIntersecting) visiveis.set(entrada.target.id, entrada.intersectionRatio);
+          else visiveis.delete(entrada.target.id);
+        });
+        const proxima = [...visiveis.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+        if (proxima) setAtiva(proxima);
+      },
+      { rootMargin: "-24% 0px -48% 0px", threshold: [0.08, 0.2, 0.4, 0.65] },
+    );
+    secoes.forEach((secao) => observador.observe(secao));
+    return () => observador.disconnect();
   }, []);
 
+  useEffect(() => {
+    if (!menuMobileAberto) return;
+
+    const consultaMobile = window.matchMedia("(max-width: 720px)");
+
+    function fecharAoTeclar(evento: KeyboardEvent) {
+      if (evento.key !== "Escape") return;
+      setMenuMobileAberto(false);
+      botaoMenuRef.current?.focus();
+    }
+
+    function fecharAoSairDoMobile(evento: MediaQueryListEvent) {
+      if (!evento.matches) setMenuMobileAberto(false);
+    }
+
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", fecharAoTeclar);
+    consultaMobile.addEventListener("change", fecharAoSairDoMobile);
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+      document.removeEventListener("keydown", fecharAoTeclar);
+      consultaMobile.removeEventListener("change", fecharAoSairDoMobile);
+    };
+  }, [menuMobileAberto]);
+
+  function navegarPara(id: string) {
+    setAtiva(id);
+    setMenuMobileAberto(false);
+    window.history.replaceState(null, "", `#${id}`);
+    window.requestAnimationFrame(() => {
+      secoesRef.current[id]?.scrollIntoView({ behavior: movimentoReduzido ? "auto" : "smooth", block: "start" });
+    });
+  }
+
+  function itensDoMenu() {
+    return FUNCIONALIDADES.map((funcionalidade) => (
+      <button type="button" className={`explore-menu-item${ativa === funcionalidade.id ? " ativo" : ""}`} aria-current={ativa === funcionalidade.id ? "true" : undefined} onClick={() => navegarPara(funcionalidade.id)} key={funcionalidade.id}><span><IconeFuncionalidade nome={funcionalidade.icone} /></span>{funcionalidade.titulo}</button>
+    ));
+  }
+
   return (
-    <section className="auth-showcase" id="conheca-o-sistema">
-      <div className="vitrine-hero">
-        <div className="vitrine-hero-copy">
-          <span className="vitrine-selo">CRM de captação para locação</span>
-          <h2 className="showcase-headline">
-            Sua carteira não precisa de mais contatos. Precisa de <span className="hl">movimento.</span>
-          </h2>
-          <p className="showcase-sub">
-            Organize cada imóvel, converse com proprietários pelo seu WhatsApp e saiba exatamente
-            quem responder, quem retomar e onde está cada negociação.
-          </p>
-
-          <div className="vitrine-ctas">
-            <button type="button" className="btn btn-primary" onClick={aoCriarConta}>
-              Começar agora
-            </button>
-            <button type="button" className="btn" onClick={aoEntrar}>
-              Entrar no painel
-            </button>
+    <>
+    <section className="auth-showcase explore-angario" id="conheca-o-sistema">
+      <div className={`explore-menu-wrap${menuMobileAberto ? " menu-aberto" : ""}`}>
+        <nav className="explore-menu" aria-label="Navegação pelas funcionalidades">
+          <button
+            type="button"
+            className="explore-menu-mobile-toggle"
+            aria-label={menuMobileAberto ? "Fechar menu de funcionalidades" : "Abrir menu de funcionalidades"}
+            aria-expanded={menuMobileAberto}
+            aria-controls="explore-menu-opcoes"
+            onClick={() => setMenuMobileAberto((aberto) => !aberto)}
+            ref={botaoMenuRef}
+          >
+            <span className="explore-menu-mobile-atual">
+              <span><IconeFuncionalidade nome={funcionalidadeAtiva.icone} /></span>
+              <span><small>Explorando</small><strong>{funcionalidadeAtiva.titulo}</strong></span>
+            </span>
+            <span className="explore-menu-hamburguer" aria-hidden="true"><i /><i /><i /></span>
+          </button>
+          <div className="explore-menu-desktop">
+            <div className="explore-menu-rolagem">
+              {itensDoMenu()}
+            </div>
           </div>
-
-          <ul className="vitrine-garantias">
-            {GARANTIAS.map((g) => (
-              <li key={g}>
-                <span aria-hidden="true">✓</span>
-                {g}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="vitrine-hero-produto">
-          <div className="vitrine-hero-status" aria-hidden="true">
-            <span>PAINEL / VISÃO DO DIA</span>
-            <b><i /> operação ativa</b>
-          </div>
-          {HeroMock}
-          <div className="vitrine-hero-destaque" aria-hidden="true">
-            <span>PRÓXIMA AÇÃO</span>
-            <strong>3 respostas esperando você</strong>
-            <small>O outro lado já fez a parte dele.</small>
-          </div>
-        </div>
+        </nav>
       </div>
 
-      <section className="vitrine-faixa" aria-label="Diferenciais do painel">
-        {[
-          ["01 / ROTINA", "A próxima ação aparece primeiro"],
-          ["02 / CONVERSA", "Seu WhatsApp continua sendo seu"],
-          ["03 / DECISÃO", "Seus dados mostram o que funciona"],
-        ].map(([rotulo, texto]) => (
-          <div key={rotulo}>
-            <span>{rotulo}</span>
-            <strong>{texto}</strong>
-          </div>
+      <header className="explore-intro">
+        <motion.div initial={false} whileInView={movimentoReduzido ? {} : { opacity: [0, 1], y: [22, 0] }} viewport={{ once: true, amount: 0.4 }} transition={{ duration: 0.55 }}>
+          <span className="explore-sobrelinha">Explore o produto</span>
+          <h2>Explore o Angario CRM</h2>
+          <p>Uma operação imobiliária completa, conectada do primeiro contato à decisão. Escolha uma funcionalidade e veja como ela transforma o trabalho da equipe.</p>
+        </motion.div>
+        <div className="explore-intro-indicadores" aria-label="Resumo do produto"><span><strong>09</strong> frentes conectadas</span><span><strong>01</strong> fonte de verdade</span><span><strong>24/7</strong> operação organizada</span></div>
+      </header>
+
+      <div className="explore-funcionalidades">
+        {FUNCIONALIDADES.map((funcionalidade, indice) => (
+          <section className={`explore-feature${indice % 2 ? " invertida" : ""}${funcionalidade.icone === "ia" ? " principal" : ""}`} id={funcionalidade.id} ref={(elemento) => { secoesRef.current[funcionalidade.id] = elemento; }} key={funcionalidade.id}>
+            <motion.div className="explore-feature-copy" initial={false} whileInView={movimentoReduzido ? {} : { opacity: [0, 1], x: [indice % 2 ? 28 : -28, 0] }} viewport={{ once: true, amount: 0.22 }} transition={{ duration: 0.58, ease: [0.22, 1, 0.36, 1] }}>
+              <span className="explore-feature-numero">{String(indice + 1).padStart(2, "0")} / {funcionalidade.sobrelinha}</span>
+              <div className="explore-feature-icone"><IconeFuncionalidade nome={funcionalidade.icone} /></div>
+              <h2>{funcionalidade.headline}</h2><p className="explore-feature-frase">{funcionalidade.frase}</p>
+              <div className="explore-problema"><span>O problema</span><p>{funcionalidade.problema}</p></div>
+              <div className="explore-solucao"><span>Como o Angario resolve</span><ul>{funcionalidade.solucoes.map((solucao) => <li key={solucao}>{solucao}</li>)}</ul></div>
+              <div className="explore-resultado"><span>Resultado</span><strong>{funcionalidade.resultado}</strong></div>
+            </motion.div>
+            <motion.div className="explore-feature-visual" initial={false} whileInView={movimentoReduzido ? {} : { opacity: [0, 1], y: [30, 0], scale: [0.985, 1] }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.66, delay: movimentoReduzido ? 0 : 0.08, ease: [0.22, 1, 0.36, 1] }}><div className="explore-visual-aura" aria-hidden="true" /><MockupFuncionalidade nome={funcionalidade.icone} /></motion.div>
+          </section>
         ))}
-      </section>
-
-      <section className="vitrine-manifesto" id="como-funciona">
-        <span>OPERAÇÃO DE CAPTAÇÃO, CONECTADA</span>
-        <h2>Não é uma planilha com mais campos. É uma forma mais clara de trabalhar a carteira.</h2>
-        <p>
-          Da primeira abordagem ao imóvel locado, cada ação alimenta a próxima. O corretor cuida
-          da relação; o painel cuida para nenhuma oportunidade desaparecer no caminho.
-        </p>
-      </section>
-
-      <div id="recursos">
-        {PARTES.map((parte) => {
-          const cenasDaParte = CENAS.map((cena, i) => ({ cena, i })).filter(
-            ({ cena }) => cena.parte === parte.numero,
-          );
-
-          return (
-            <section className="vitrine-parte" key={parte.numero} data-parte={parte.numero}>
-              <header className="vitrine-parte-cabecalho">
-                <span className="vitrine-parte-numero">0{parte.numero}</span>
-                <div>
-                  <span className="vitrine-parte-rotulo">{parte.rotulo}</span>
-                  <h2>{parte.titulo}</h2>
-                </div>
-                <p>{parte.texto}</p>
-              </header>
-
-              <div className="vitrine-produtos-grid">
-                {cenasDaParte.map(({ cena, i }, indiceNaParte) => (
-                  <article
-                    data-cena={i}
-                    ref={(el) => {
-                      cenasRef.current[i] = el;
-                    }}
-                    className={`produto-card${indiceNaParte === 0 ? " destaque" : ""}${
-                      vistas[i] ? " visivel" : ""
-                    }`}
-                    key={cena.rotulo}
-                  >
-                    <div className="produto-card-topo">
-                      <span>[{String(i + 1).padStart(2, "0")}]</span>
-                      <strong>{cena.rotulo}</strong>
-                    </div>
-                    <div className="produto-card-visual">{cena.visual}</div>
-                    <div className="produto-card-texto">
-                      <h3>{cena.titulo}</h3>
-                      <p>{cena.texto}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          );
-        })}
       </div>
 
-      <section className="extras" id="seguranca">
-        <span className="extras-rotulo">MAIS CONTROLE, MENOS PONTAS SOLTAS</span>
-        <h2 className="extras-titulo">Os detalhes que sustentam a operação.</h2>
-        <p className="extras-subtitulo">
-          Recursos discretos, mas decisivos para trabalhar uma carteira grande sem perder contexto.
-        </p>
-        <ul className="extras-grade">
-          {EXTRAS.map((e, i) => (
-            <li className="extra" key={e.titulo}>
-              <span className="extra-numero">{String(i + 1).padStart(2, "0")}</span>
-              <span className="extra-ic">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  {e.icone}
-                </svg>
-              </span>
-              <strong>{e.titulo}</strong>
-              <span>{e.texto}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <div className="vitrine-fecho">
-        <span className="vitrine-fecho-rotulo">SUA CARTEIRA, EM MOVIMENTO</span>
-        <h2 className="vitrine-fecho-titulo">A próxima angariação começa no contato que você não vai esquecer.</h2>
-        <p className="vitrine-fecho-texto">
-          Traga os imóveis que já está trabalhando e transforme cada conversa em uma próxima ação clara.
-        </p>
-        <div className="vitrine-ctas">
-          <button type="button" className="btn btn-primary" onClick={aoCriarConta}>
-            Criar minha conta <span aria-hidden="true">→</span>
-          </button>
-          <button type="button" className="btn" onClick={aoEntrar}>
-            Fazer login
-          </button>
-        </div>
-        <div className="showcase-foot">
-          <span className="showcase-badge">
-            <span aria-hidden="true">✓</span>
-            Dados isolados por conta
-          </span>
-          <span className="showcase-foot-note">Feito para corretores e imobiliárias.</span>
-        </div>
-      </div>
+      <motion.section className="explore-fecho" initial={false} whileInView={movimentoReduzido ? {} : { opacity: [0, 1], y: [24, 0] }} viewport={{ once: true, amount: 0.3 }}>
+        <span>Veja o Angario em ação</span><h2>Sua próxima angariação pode começar com uma operação mais clara.</h2><p>Descubra como o Angario se adapta à rotina da sua imobiliária e transforma cada oportunidade em uma próxima ação.</p>
+        <div><button type="button" className="btn btn-primary" onClick={aoCriarConta}>Solicitar demonstração <span aria-hidden="true">→</span></button><button type="button" className="btn" onClick={aoEntrar}>Entrar no painel</button></div>
+        <small><i>✓</i> Seus dados isolados por conta <i>✓</i> Funciona no navegador e no celular <i>✓</i> Revisão humana antes dos envios</small>
+      </motion.section>
     </section>
+    {portalDisponivel && createPortal(
+      <>
+        <button
+          type="button"
+          className={`explore-menu-backdrop${menuMobileAberto ? " aberto" : ""}`}
+          aria-label="Fechar menu de funcionalidades"
+          tabIndex={menuMobileAberto ? 0 : -1}
+          onClick={() => setMenuMobileAberto(false)}
+        />
+        <aside
+          className={`explore-menu-drawer${menuMobileAberto ? " aberto" : ""}`}
+          id="explore-menu-opcoes"
+          aria-label="Funcionalidades do Angario CRM"
+          aria-hidden={!menuMobileAberto}
+        >
+          <div className="explore-menu-drawer-head">
+            <span><small>Explore o Angario CRM</small><strong>Funcionalidades</strong></span>
+            <button type="button" className="explore-menu-drawer-fechar" aria-label="Fechar menu de funcionalidades" onClick={() => setMenuMobileAberto(false)}>
+              <span className="explore-menu-hamburguer" aria-hidden="true"><i /><i /><i /></span>
+            </button>
+          </div>
+          <div className="explore-menu-rolagem">
+            {itensDoMenu()}
+          </div>
+        </aside>
+      </>,
+      document.body,
+    )}
+    </>
   );
 }

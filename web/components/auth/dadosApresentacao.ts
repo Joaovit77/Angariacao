@@ -18,7 +18,7 @@ export const SLIDES_APRESENTACAO: readonly SlideApresentacao[] = [
     video: "/apresentacao/londrina-lago-igapo.mp4",
     alt: "Vista aérea de Londrina e do Lago Igapó durante o dia.",
     enquadramento: "abertura",
-    cta: "Entrar no sistema",
+    cta: "Solicitar demonstração",
   },
   {
     titulo: "Conheça o mercado. Antecipe oportunidades.",
@@ -44,6 +44,6 @@ export const SLIDES_APRESENTACAO: readonly SlideApresentacao[] = [
     imagem: "/apresentacao/pexels-gaion-30893717.jpg",
     alt: "Panorama do centro de Londrina sob grandes nuvens, com uma avenida em primeiro plano.",
     enquadramento: "inteligencia",
-    cta: "Acessar sistema",
+    cta: "Solicitar demonstração",
   },
 ];

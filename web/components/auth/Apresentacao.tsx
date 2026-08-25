@@ -8,7 +8,7 @@ import VideoAbertura from "./VideoAbertura";
 import { SLIDES_APRESENTACAO } from "./dadosApresentacao";
 
 interface Props {
-  aoEntrar: () => void;
+  aoSolicitarDemonstracao: () => void;
   pausadaExternamente?: boolean;
 }
 
@@ -40,7 +40,7 @@ function usaFotoUnicaMobile() {
   return window.matchMedia(CONSULTA_FOTO_UNICA_MOBILE).matches;
 }
 
-export default function Apresentacao({ aoEntrar, pausadaExternamente = false }: Props) {
+export default function Apresentacao({ aoSolicitarDemonstracao, pausadaExternamente = false }: Props) {
   const slideAbertura = SLIDES_APRESENTACAO[0];
   const [indiceAtivo, setIndiceAtivo] = useState(0);
   const [indiceSolicitado, setIndiceSolicitado] = useState<number | null>(null);
@@ -220,7 +220,7 @@ export default function Apresentacao({ aoEntrar, pausadaExternamente = false }: 
           slide={SLIDES_APRESENTACAO[indiceAtivo]}
           indice={indiceAtivo}
           total={SLIDES_APRESENTACAO.length}
-          aoEntrar={aoEntrar}
+          aoSolicitarDemonstracao={aoSolicitarDemonstracao}
         />
       </div>
 

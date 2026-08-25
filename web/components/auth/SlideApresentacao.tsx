@@ -4,10 +4,10 @@ interface Props {
   slide: DadosSlide;
   indice: number;
   total: number;
-  aoEntrar: () => void;
+  aoSolicitarDemonstracao: () => void;
 }
 
-export default function SlideApresentacao({ slide, indice, total, aoEntrar }: Props) {
+export default function SlideApresentacao({ slide, indice, total, aoSolicitarDemonstracao }: Props) {
   const fluxo = slide.fluxo;
 
   return (
@@ -34,13 +34,13 @@ export default function SlideApresentacao({ slide, indice, total, aoEntrar }: Pr
 
       {slide.cta ? (
         <div className="apresentacao-acoes-slide">
-          <button type="button" className="apresentacao-cta" onClick={aoEntrar}>
+          <button type="button" className="apresentacao-cta" onClick={aoSolicitarDemonstracao}>
             {slide.cta}
             <span aria-hidden="true">{"\u2192"}</span>
           </button>
           {indice === 0 ? (
             <a className="apresentacao-link-conhecer" href="#conheca-o-sistema">
-              Conheça o sistema <span aria-hidden="true">{"\u2193"}</span>
+              Explore o produto <span aria-hidden="true">{"\u2193"}</span>
             </a>
           ) : null}
         </div>

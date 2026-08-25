@@ -282,6 +282,24 @@ export function ultimoDiaDoMes(key: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** Grade de um calendário mensal com semana de segunda a domingo.
+    Os espaços antes/depois do mês são `null`, para a UI manter sete
+    colunas sem inventar dias clicáveis de meses vizinhos. */
+export function gradeCalendarioMes(key: string): Array<string | null> {
+  const [ano, mes] = key.split("-").map(Number);
+  const primeiro = new Date(ano, mes - 1, 1);
+  const quantidadeDias = new Date(ano, mes, 0).getDate();
+  const vaziosAntes = (primeiro.getDay() + 6) % 7;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const grade: Array<string | null> = Array.from({ length: vaziosAntes }, () => null);
+
+  for (let dia = 1; dia <= quantidadeDias; dia++) {
+    grade.push(`${ano}-${pad(mes)}-${pad(dia)}`);
+  }
+  while (grade.length % 7 !== 0) grade.push(null);
+  return grade;
+}
+
 /**
  * Dias ÚTEIS (segunda a sexta) entre duas datas ISO, **inclusive** nas duas
  * pontas. Devolve 0 quando o intervalo é vazio (`isoA` depois de `isoB`).

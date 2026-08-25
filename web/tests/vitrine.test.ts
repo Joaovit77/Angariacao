@@ -130,12 +130,55 @@ describe("apresentação pública", () => {
     expect(TELA_AUTH).toContain('<RodapeApp variante="auth" />');
     expect(ESTILO_BASE).toMatch(/\.rodape-app-auth\{[^}]*margin-inline:\s*auto/);
     expect(ESTILO).toMatch(/#conheca-o-sistema\{[^}]*margin-inline:auto/);
-    expect(VITRINE).toContain("Sua carteira não precisa de mais contatos.");
-    expect(VITRINE).toContain("O sistema abre dizendo o que está esperando você.");
-    expect(VITRINE).toContain("Tudo que escreveram para você, em uma tela só.");
-    expect(VITRINE).toContain("Prestação de contas que mostra o trabalho feito.");
+    expect(VITRINE).toContain("Explore o Angario CRM");
+    expect(VITRINE).toContain("Tenha sua operação inteira em uma única tela.");
+    expect(VITRINE).toContain("Uma IA treinada para trabalhar como corretor.");
+    expect(VITRINE).toContain("O Angario conversa com todo o seu ecossistema.");
+    for (const id of [
+      "dashboard",
+      "pipeline",
+      "agenda",
+      "inteligencia-artificial",
+      "avaliacao-de-imoveis",
+      "whatsapp",
+      "mapa-inteligente",
+      "relatorios",
+      "integracoes",
+    ]) {
+      expect(VITRINE).toContain(`id: "${id}"`);
+    }
+    expect(VITRINE).toContain("explore-menu-wrap");
+    expect(VITRINE).toContain('className="explore-menu-mobile-toggle"');
+    expect(VITRINE).toContain('aria-controls="explore-menu-opcoes"');
+    expect(VITRINE).toContain("Abrir menu de funcionalidades");
+    expect(VITRINE).toContain("explore-menu-backdrop");
+    expect(VITRINE).toContain("explore-menu-drawer");
+    expect(VITRINE).toContain("createPortal");
+    expect(VITRINE.indexOf("explore-menu-wrap")).toBeLessThan(VITRINE.indexOf("explore-intro"));
+    expect(VITRINE).toContain("menuMobileAberto");
+    expect(VITRINE).toContain("scrollIntoView");
+    expect(VITRINE).toContain("window.requestAnimationFrame");
+    expect(VITRINE).toContain("window.history.replaceState");
+    expect(VITRINE).toContain('from "framer-motion"');
+    expect(ESTILO_BASE).toMatch(/\.explore-menu-wrap\{[\s\S]*?position:sticky/);
+    expect(ESTILO_BASE).toMatch(
+      /@media \(max-width:720px\)[\s\S]*?\.explore-menu-mobile-toggle\{[\s\S]*?display:grid/,
+    );
+    expect(ESTILO_BASE).toMatch(
+      /@media \(max-width:720px\)[\s\S]*?\.explore-menu-wrap\{[\s\S]*?height:0[\s\S]*?backdrop-filter:none/,
+    );
+    expect(ESTILO_BASE).toMatch(
+      /@media \(max-width:720px\)[\s\S]*?\.explore-menu-mobile-atual\{ display:none; \}/,
+    );
+    expect(ESTILO_BASE).toContain(".explore-menu-drawer.aberto");
+    expect(ESTILO_BASE).toMatch(/\.explore-menu-drawer\{[\s\S]*?transform:translateX\(-100%\)/);
+    expect(ESTILO_BASE).toMatch(
+      /\.explore-feature\{[\s\S]*?grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/,
+    );
+    expect(ESTILO_BASE).toContain("width:calc(var(--explore-gap) / 2)");
     expect(CABECALHO).toContain('href="#conheca-o-sistema"');
     expect(SLIDE).toContain('href="#conheca-o-sistema"');
+    expect(SLIDE).toContain("aoSolicitarDemonstracao");
   });
 
   it("troca o cabeçalho transparente por uma barra compatível com os dois temas", () => {
