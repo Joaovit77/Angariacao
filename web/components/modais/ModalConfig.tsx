@@ -18,6 +18,7 @@ import {
 import { AGENDA_TYPES, ORIGENS_IMOVEL } from "@/lib/constantes";
 import { apagarTodosOsDados, carregarDadosDemo, numOrNull, salvarConfig } from "@/lib/mutacoes";
 import { chaveNormalizada } from "@/lib/normalizacao";
+import { textoParaExpressoes, type PerfilComunicacao } from "@/lib/perfilComunicacao";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
@@ -34,6 +35,13 @@ export default function ModalConfig() {
   const [comissao, setComissao] = useState(String(config.comissaoPercent));
   const [empresa, setEmpresa] = useState(config.empresa || "");
   const [dadosPagamento, setDadosPagamento] = useState(config.dadosPagamento || "");
+  const [perfil, setPerfil] = useState<PerfilComunicacao>(config.perfilComunicacao);
+  const [expressoesPreferidas, setExpressoesPreferidas] = useState(
+    config.perfilComunicacao.expressoesPreferidas.join("\n"),
+  );
+  const [expressoesEvitar, setExpressoesEvitar] = useState(
+    config.perfilComunicacao.expressoesEvitar.join("\n"),
+  );
   const [tipos, setTipos] = useState<string[]>(config.agendaTipos ?? []);
   const [novoTipo, setNovoTipo] = useState("");
   const [portais, setPortais] = useState<string[]>(config.origensExtras ?? []);
@@ -87,6 +95,11 @@ export default function ModalConfig() {
         empresa: empresa.trim(),
         origensExtras: portais,
         dadosPagamento: dadosPagamento.trim(),
+        perfilComunicacao: {
+          ...perfil,
+          expressoesPreferidas: textoParaExpressoes(expressoesPreferidas),
+          expressoesEvitar: textoParaExpressoes(expressoesEvitar),
+        },
       },
       usuario.id,
     );
@@ -139,6 +152,78 @@ export default function ModalConfig() {
           <div className="field-hint">
             Entra na apresentação das abordagens sugeridas por IA (&quot;meu nome é X e falo da Y&quot;).
           </div>
+        </div>
+        <div className="divider"></div>
+        <div className="field-group">
+          <label>Jeito de escrever das sugestões</label>
+          <div className="field-hint" style={{ marginBottom: "10px" }}>
+            Preferências pessoais de redação. Regras, taxas e condições da imobiliária continuam nos
+            Protocolos.
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "10px" }}>
+            <label>
+              <span>Tom</span>
+              <select
+                value={perfil.formalidade}
+                onChange={(e) => setPerfil({ ...perfil, formalidade: e.target.value as PerfilComunicacao["formalidade"] })}
+              >
+                <option value="natural">Natural</option>
+                <option value="profissional">Profissional</option>
+                <option value="informal">Informal</option>
+                <option value="consultivo">Consultivo</option>
+              </select>
+            </label>
+            <label>
+              <span>Tamanho</span>
+              <select
+                value={perfil.tamanho}
+                onChange={(e) => setPerfil({ ...perfil, tamanho: e.target.value as PerfilComunicacao["tamanho"] })}
+              >
+                <option value="curto">Curto</option>
+                <option value="medio">Médio</option>
+              </select>
+            </label>
+            <label>
+              <span>Emojis</span>
+              <select
+                value={perfil.emojis}
+                onChange={(e) => setPerfil({ ...perfil, emojis: e.target.value as PerfilComunicacao["emojis"] })}
+              >
+                <option value="nenhum">Nenhum</option>
+                <option value="poucos">Poucos</option>
+                <option value="moderados">Moderados</option>
+              </select>
+            </label>
+            <label>
+              <span>Tratamento</span>
+              <select
+                value={perfil.tratamento}
+                onChange={(e) => setPerfil({ ...perfil, tratamento: e.target.value as PerfilComunicacao["tratamento"] })}
+              >
+                <option value="voce">Você</option>
+                <option value="senhor-senhora">Senhor/Senhora</option>
+                <option value="automatico">Automático</option>
+              </select>
+            </label>
+          </div>
+          <label style={{ marginTop: "10px" }}>
+            Expressões preferidas
+            <textarea
+              rows={3}
+              value={expressoesPreferidas}
+              onChange={(e) => setExpressoesPreferidas(e.target.value)}
+              placeholder={"Uma por linha. Ex.:\nPerfeito!\nEntendi!"}
+            />
+          </label>
+          <label style={{ marginTop: "10px" }}>
+            Expressões a evitar
+            <textarea
+              rows={3}
+              value={expressoesEvitar}
+              onChange={(e) => setExpressoesEvitar(e.target.value)}
+              placeholder={"Uma por linha. Ex.:\nColoco-me à disposição"}
+            />
+          </label>
         </div>
         <div className="divider"></div>
         <div className="field-group">

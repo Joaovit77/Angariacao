@@ -1260,7 +1260,11 @@ Regras ao mexer nela:
   que nunca chegou à agenda); o efeito grave era outro — **um "já aluguei" nesses imóveis não
   encerrava o registro**.
 - **A exceção:** encerramento automático. Quando a resposta não deixa nada a fazer ("já aluguei",
-  "já estou com outra imobiliária"), o imóvel vai para **Perdido** com o motivo, sem clique. O que
+  indisponibilidade definitiva, recusa terminal ou exclusividade vigente explicitamente informada),
+  o imóvel vai para **Perdido** com o motivo, sem clique. **Outra imobiliária, sozinha, não é
+  perda:** a classificação permanece aberta e uma trava determinística descarta o motivo
+  `Optou por outra imobiliária` sem evidência textual de exclusividade vigente (ou de locação já
+  concluída pela outra empresa). O que
   segura isso é o motivo sair de uma lista fechada e **menor** que `MOTIVOS_PERDA`
   (`MOTIVOS_PERDA_IA`, sem os que exigem julgamento), só valer junto de `recusou`, e uma segunda
   nota explicar na tela por que o status mudou — senão o imóvel sairia da carteira e a única
@@ -1270,6 +1274,9 @@ Regras ao mexer nela:
   **Nunca vira "Locado":** "já aluguei por conta própria" é
   PERDA, e marcá-lo como ganho somaria à conversão, à comissão e à meta do mês um negócio que não
   existiu.
+  Prazo relativo curto que completa uma conversa sobre disponibilidade ou visita (por exemplo,
+  "daqui 10 dias") tem fallback determinístico: se a classificação não trouxer data, cria um
+  compromisso de **retorno** no dia calculado, sem fingir que uma visita ou horário já foi combinado.
 
 #### `api/ia` — operações especializadas de IA (OpenAI)
 
@@ -1373,35 +1380,51 @@ ali para quem quiser um modelo.
   modelos do sistema NOVOS, **fora de `MODELOS_CAPTACAO`** (não são pitch — não registram tentativa
   nem entram no ranking). O botão "Responder (sugestão)" abre o `ModalWhatsapp` já preenchido. O
   `"respondeu"` genérico (uma dúvida, uma pergunta, "não entendi", "sou o proprietário") devolve
-  `null` de propósito: não há réplica fixa que sirva sem LER a mensagem — é a camada 2.
+  `null` de propósito. Quando a IA está disponível e há texto, a camada 2 tem prioridade também
+  sobre réplicas de recusa, retorno e agendamento; elas continuam visíveis como fallback. Número
+  errado permanece determinístico.
 
 - **Camada 2 — rascunho por IA** (`tipo: "rascunhar-resposta"`). Para o `"respondeu"` genérico, o
   botão "✨ Rascunhar resposta (IA)" chama a rota, que **relê a última mensagem do proprietário do
   BANCO** (a nota do webhook, com o token de quem chamou) — o browser manda só o `imovelId`, nem o
   alvo do rascunho ele escolhe. É a forma mais forte da regra "o conteúdo sai do banco": mais rígida
-  que a extração de anúncio, que aceita texto colado. A saída é objeto **fechado** (um campo
-  `mensagem`) e cai no `ModalWhatsapp` **editável** (prop `textoInicial` + `abrirWhatsappRascunho`
+  que a extração de anúncio, que aceita texto colado. A saída é objeto **fechado** (`mensagem` e
+  `protocolosUsados`) e cai no `ModalWhatsapp` **editável** (prop `textoInicial` + `abrirWhatsappRascunho`
   no `uiModal`), sem modelo associado — logo não credita tentativa. **A IA sugere, o corretor
   confirma:** nada sai sozinho.
 
   **O rascunho continua a conversa, não a recomeça.** O histórico bidirecional fornece mensagens do
   proprietário e do corretor em ordem; são selecionadas até 12 anteriores mais a mensagem atual.
+  Fora dessa janela, uma seleção pura e auditável recupera até quatro mensagens antigas por
+  sobreposição de termos e marcos de negociação (taxa, exclusividade, reparos, ocupação, visita,
+  autorização), sem embeddings nem memória persistida. IDs acompanham as mensagens para a decisão
+  poder declarar evidências; mensagens recentes prevalecem em contradições.
   Somente no legado sem saída textual persistida o handler reconstrói a última abordagem/modelo a
   partir da tentativa. Saudação, reapresentação e repetição da oferta no meio da conversa continuam
   proibidas.
 
   Desde 2026-08-15, esse fluxo é o primeiro **agente especializado** da rota `/api/ia`. O domínio
   puro vive em `lib/ia/atendimento/`; o handler em `lib/servidor/ia/handlers/atendimento.ts` executa
-  três etapas separadas: decisão (intenção, contexto, protocolos aplicáveis, lacunas e confiança),
+  três etapas separadas: decisão (intenção, objeção, estado conversacional, informação já explicada,
+  ação esperada, próximo passo permitido, ações proibidas, evidências, protocolos, lacunas e confiança),
   geração e validação independente. Confiança baixa, falta de informação, protocolo inadequado ou
   validação reprovada bloqueiam o rascunho e pedem intervenção humana. Diagnósticos operacionais
   registram apenas contagens, classificações e fingerprint — nunca conversa, prompt ou raciocínio.
 
   A IA recebe somente fatos tipados do imóvel (endereço/unidade/localização, tipo, quartos,
-  banheiros, vagas e valores quando cadastrados), estágio, conversa selecionada e protocolos
+  banheiros, vagas, valores, autorização, pausa, responsável, origem e histórico de estágio quando
+  cadastrados), estágio, conversa selecionada e protocolos
   aplicáveis. Observações livres e texto de anúncio ficam fora. Fato ausente não pode ser inventado;
   o próximo passo deve reconhecer a lacuna. O acesso continua gated por `podeUsarIa`, e nada é
   enviado sem revisão do corretor.
+
+  O jeito pessoal de escrever vem de `user_config.perfil_comunicacao` (tom, tamanho, emojis,
+  tratamento e listas curtas de expressões preferidas/a evitar), normalizado com default seguro para
+  contas existentes. Ele não contém regra comercial nem nome hardcoded de corretor/empresa. O texto
+  final é rejeitado antes da validação se vazio, maior que 360 caracteres no perfil curto ou 600 no
+  médio, incompatível com emojis desativados, fizer afirmação comercial sem protocolo declarado,
+  insistir após recusa, executar ação proibida ou repetir apresentação de forma óbvia. A validação
+  por modelo recebe o rascunho inteiro e os títulos de `protocolosUsados`.
 
   **Os protocolos da imobiliária são a exceção a essa trava, e a única.** Não saber nada está certo
   para fato do IMÓVEL, que o painel não tem; está errado para regra da EMPRESA, que o corretor
@@ -1428,6 +1451,8 @@ ali para quem quiser um modelo.
   um a um clique de virar protocolo, e **sem conteúdo pré-preenchido** — um texto padrão sobre taxa
   de administração seria a IA afirmando um número que esta imobiliária nunca disse, com o corretor
   confirmando sem ler porque já estava escrito.
+  Protocolos registram **regras e fatos objetivos da imobiliária**, não saudações, textos prontos ou
+  preferências pessoais; estas pertencem ao perfil de comunicação.
 
 #### `api/assistente` — Assistente geral somente leitura
 

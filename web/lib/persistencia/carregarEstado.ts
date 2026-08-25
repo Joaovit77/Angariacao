@@ -18,6 +18,7 @@
    ================================================================ */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { configuracaoPadrao } from "../configuracaoUsuario";
+import { normalizarPerfilComunicacao } from "../perfilComunicacao";
 import type { Abordagem, AgendaItem, Imovel, Metas, Protocolo, UserConfig, WhatsappModelo } from "../tipos";
 import {
   fromDbAbordagem, fromDbAgenda, fromDbImovel, fromDbProtocolo,
@@ -92,6 +93,7 @@ export async function carregarEstado(client: SupabaseClient = getSupabase()): Pr
       empresa: typeof cfData?.empresa === "string" ? cfData.empresa : "",
       origensExtras,
       dadosPagamento: typeof cfData?.dados_pagamento === "string" ? cfData.dados_pagamento : "",
+      perfilComunicacao: normalizarPerfilComunicacao(cfData?.perfil_comunicacao),
     },
   };
 }

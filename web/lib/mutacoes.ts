@@ -1201,6 +1201,7 @@ export async function salvarConfig(
     empresa: config.empresa || null,
     origens_extras: config.origensExtras,
     dados_pagamento: config.dadosPagamento || null,
+    perfil_comunicacao: config.perfilComunicacao,
   });
   if (error) {
     toast("Não foi possível salvar: " + error.message, "error");

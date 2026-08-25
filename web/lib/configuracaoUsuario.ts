@@ -13,6 +13,7 @@
 import { AGENDA_TYPES, ORIGENS_IMOVEL } from "./constantes";
 import { chaveNormalizada, distintosCanonizados } from "./normalizacao";
 import type { AgendaItem, Imovel, UserConfig } from "./tipos";
+import { normalizarPerfilComunicacao } from "./perfilComunicacao";
 
 export const COMISSAO_PERCENT_PADRAO = 100;
 
@@ -25,6 +26,7 @@ export function configuracaoPadrao(): UserConfig {
     empresa: "",
     origensExtras: [],
     dadosPagamento: "",
+    perfilComunicacao: normalizarPerfilComunicacao(null),
   };
 }
 

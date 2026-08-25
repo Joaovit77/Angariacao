@@ -1,6 +1,7 @@
 /* Testes do store global (Etapa 3) — espelho do STATE legado. */
 import { describe, it, expect, beforeEach } from "vitest";
 import { useAppStore } from "@/lib/store";
+import { PERFIL_COMUNICACAO_PADRAO } from "@/lib/perfilComunicacao";
 
 const estadoExemplo = {
   imoveis: [{ id: "x1", endereco: "Rua A, 1", status: "Novo contato" }],
@@ -8,7 +9,7 @@ const estadoExemplo = {
   agenda: [{ id: "a1", title: "t", type: "Visita", date: "2026-07-10", done: false, isVerificacaoDisponibilidade: false }],
   abordagens: [{ id: "ab1", nome: "Avaliação gratuita", arquivada: false }],
   protocolos: [{ id: "pr1", titulo: "Taxa de administração", conteudo: "10% sobre o aluguel.", arquivado: false }],
-  config: { comissaoPercent: 50, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "" },
+  config: { comissaoPercent: 50, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "", perfilComunicacao: { ...PERFIL_COMUNICACAO_PADRAO } },
 };
 
 beforeEach(() => {
@@ -22,7 +23,7 @@ describe("useAppStore", () => {
     expect(s.metas).toEqual({});
     expect(s.agenda).toEqual([]);
     expect(s.abordagens).toEqual([]);
-    expect(s.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "" });
+    expect(s.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "", perfilComunicacao: { ...PERFIL_COMUNICACAO_PADRAO } });
     expect(s.carregado).toBe(false);
     // Começa false de propósito: sem confirmação do servidor, a UI não
     // oferece os botões de IA.
@@ -61,7 +62,7 @@ describe("useAppStore", () => {
     expect(s.imoveis).toEqual([]);
     expect(s.abordagens).toEqual([]);
     expect(s.protocolos).toEqual([]);
-    expect(s.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "" });
+    expect(s.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "", perfilComunicacao: { ...PERFIL_COMUNICACAO_PADRAO } });
     expect(s.carregado).toBe(false);
   });
 });

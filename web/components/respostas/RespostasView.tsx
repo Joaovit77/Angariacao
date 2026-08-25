@@ -96,10 +96,14 @@ function Linha({ linha, imovel }: { linha: LinhaResposta; imovel: Imovel }) {
     ? rotuloModeloWhatsapp(modeloSugerido).replace(/^Resposta:\s*/, "")
     : "";
 
-  // Camada 2: sem réplica pronta (o "respondeu" genérico — uma dúvida, uma
-  // pergunta), a IA lê a última mensagem e rascunha a resposta. Só faz sentido
-  // com IA liberada, telefone e ao menos uma mensagem COM texto para ler.
-  const podeRascunhar = iaDisponivel && !modeloSugerido && !!imovel.proprietarioTelefone && !linha.previa.soMidia;
+  // A resposta contextual tem prioridade quando há texto. A réplica pronta
+  // permanece como fallback; número errado continua determinístico e não
+  // consome uma chamada de IA.
+  const podeRascunhar =
+    iaDisponivel &&
+    modeloSugerido !== "resposta-engano" &&
+    !!imovel.proprietarioTelefone &&
+    !linha.previa.soMidia;
 
   async function rascunhar() {
     if (rascunhando) return;
@@ -189,16 +193,26 @@ function Linha({ linha, imovel }: { linha: LinhaResposta; imovel: Imovel }) {
 
       {modeloSugerido && imovel.proprietarioTelefone && (
         <div className="resp-sugestao">
-          💡 Sugestão de resposta pronta: <strong>{rotuloSugerido}</strong> — clique em Responder para
-          conferir e enviar.
+          💡 Resposta pronta disponível como alternativa: <strong>{rotuloSugerido}</strong>.
         </div>
       )}
 
       <div className="resp-acoes">
-        {imovel.proprietarioTelefone && (
+        {podeRascunhar && (
           <button
             type="button"
             className="btn btn-sm btn-primary"
+            title="A IA lê a conversa e escreve um rascunho para você conferir"
+            onClick={rascunhar}
+            disabled={rascunhando}
+          >
+            {rascunhando ? "Rascunhando..." : "✨ Rascunhar resposta (IA)"}
+          </button>
+        )}
+        {imovel.proprietarioTelefone && (
+          <button
+            type="button"
+            className={`btn btn-sm${podeRascunhar ? "" : " btn-primary"}`}
             title={modeloSugerido ? `Abre a resposta já escrita: ${rotuloSugerido}` : undefined}
             onClick={() =>
               modeloSugerido
@@ -208,18 +222,7 @@ function Linha({ linha, imovel }: { linha: LinhaResposta; imovel: Imovel }) {
                   abrirWhatsappRascunho(imovel.id, "")
             }
           >
-            {modeloSugerido ? "💬 Responder (sugestão)" : "💬 Responder"}
-          </button>
-        )}
-        {podeRascunhar && (
-          <button
-            type="button"
-            className="btn btn-sm"
-            title="A IA lê a última mensagem e escreve um rascunho de resposta para você conferir"
-            onClick={rascunhar}
-            disabled={rascunhando}
-          >
-            {rascunhando ? "Rascunhando..." : "✨ Rascunhar resposta (IA)"}
+            {modeloSugerido ? "💬 Usar resposta pronta" : "💬 Responder sem sugestão"}
           </button>
         )}
         <button type="button" className="btn btn-sm" onClick={() => abrirModal("tentativas", imovel.id)}>

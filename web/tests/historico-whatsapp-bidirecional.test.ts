@@ -39,7 +39,7 @@ describe("histórico bidirecional do atendimento", () => {
       enviada("2", "A administração é de 10%.", "2026-08-17T09:01"),
       recebida("3", "E esse valor é sobre o aluguel?", "2026-08-17T09:02"),
     ]));
-    expect(selecao.anteriores).toEqual([
+    expect(selecao.anteriores.map(({ autor, texto }) => ({ autor, texto }))).toEqual([
       { autor: "proprietario", texto: "Qual é a taxa?" },
       { autor: "corretor", texto: "A administração é de 10%." },
     ]);
@@ -53,7 +53,7 @@ describe("histórico bidirecional do atendimento", () => {
       recebida("1", "Boa tarde", "2026-08-17T09:00"),
       recebida("2", "Qual é a taxa?", "2026-08-17T09:01"),
     ]));
-    expect(s.anteriores).toEqual([{ autor: "proprietario", texto: "Boa tarde" }]);
+    expect(s.anteriores.map(({ autor, texto }) => ({ autor, texto }))).toEqual([{ autor: "proprietario", texto: "Boa tarde" }]);
     expect(s.mensagemAtual).toBe("Qual é a taxa?");
   });
 
@@ -64,7 +64,7 @@ describe("histórico bidirecional do atendimento", () => {
       enviada("3", "A taxa é de 10%.", "2026-08-17T09:02"),
       recebida("4", "Sobre qual valor?", "2026-08-17T09:03"),
     ]));
-    expect(s.anteriores.slice(-2)).toEqual([
+    expect(s.anteriores.slice(-2).map(({ autor, texto }) => ({ autor, texto }))).toEqual([
       { autor: "corretor", texto: "Cuidamos da administração." },
       { autor: "corretor", texto: "A taxa é de 10%." },
     ]);
@@ -167,8 +167,8 @@ describe("histórico bidirecional do atendimento", () => {
       conversaAtendimento(s, null),
       [],
     );
-    expect(prompt).toContain("CORRETOR: A administração é de 10%.");
-    expect(prompt.indexOf("CORRETOR:")).toBeLessThan(prompt.indexOf("E esse valor"));
+    expect(prompt).toContain('"autor":"corretor","texto":"A administração é de 10%."');
+    expect(prompt.indexOf("A administração é de 10%.")).toBeLessThan(prompt.indexOf("E esse valor"));
   });
 
   it("11. usa a última abordagem somente como fallback de registro legado", () => {

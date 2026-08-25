@@ -383,4 +383,6 @@ export interface UserConfig {
       "Sicredi ag/cc" ou chave PIX, e validar formato de chave (CPF, e-mail,
       telefone, aleatória) daria falso negativo em cima de dado certo. */
   dadosPagamento: string;
+  /** Preferências pessoais usadas apenas na redação de sugestões assistidas. */
+  perfilComunicacao: import("./perfilComunicacao").PerfilComunicacao;
 }

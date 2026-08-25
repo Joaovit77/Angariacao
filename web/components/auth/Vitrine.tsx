@@ -548,7 +548,7 @@ const CENAS: Cena[] = [
     parte: 2,
     titulo: "O que o proprietário responde entra no sistema.",
     texto:
-      "A resposta vira nota no imóvel assim que chega, e a IA sugere o desfecho para você confirmar. Quando não há mais nada a fazer, como “já aluguei” ou “já estou com outra imobiliária”, o imóvel se fecha com o motivo certo. E o silêncio o sistema enxerga sozinho: ninguém precisa clicar para dizer que não houve resposta.",
+      "A resposta vira nota no imóvel assim que chega, e a IA sugere o desfecho para você confirmar. Quando não há mais nada a fazer, como “já aluguei” ou uma exclusividade vigente explicitamente informada, o imóvel se fecha com o motivo certo. Ter outra imobiliária sem exclusividade mantém a conversa aberta. E o silêncio o sistema enxerga sozinho: ninguém precisa clicar para dizer que não houve resposta.",
     visual: VisualResposta,
   },
   {

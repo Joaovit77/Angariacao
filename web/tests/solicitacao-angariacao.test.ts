@@ -32,6 +32,7 @@ import {
   valorBaseDaSolicitacao,
 } from "@/lib/calculo/solicitacaoAngariacao";
 import type { Imovel, UserConfig } from "@/lib/tipos";
+import { PERFIL_COMUNICACAO_PADRAO } from "@/lib/perfilComunicacao";
 
 const CONFIG: UserConfig = {
   comissaoPercent: 40,
@@ -40,6 +41,7 @@ const CONFIG: UserConfig = {
   empresa: "Imobiliária Atual",
   origensExtras: [],
   dadosPagamento: "pix 125.856.399-16",
+  perfilComunicacao: { ...PERFIL_COMUNICACAO_PADRAO },
 };
 
 /** O imóvel do documento real de 03/08/2026. */

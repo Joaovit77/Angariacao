@@ -57,6 +57,13 @@ function supabaseFalso(): SupabaseClient {
           }),
         };
       }
+      if (tabela === "user_config") {
+        return {
+          select: () => ({
+            maybeSingle: async () => ({ data: null, error: null }),
+          }),
+        };
+      }
       throw new Error(`Tabela inesperada: ${tabela}`);
     }),
   } as unknown as SupabaseClient;

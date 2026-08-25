@@ -132,7 +132,7 @@ export default function ProtocolosView() {
             </div>
           </div>
           <div className="field-group">
-            <label>A resposta</label>
+            <label>Regra ou fato da imobiliária</label>
             <textarea
               value={edicao.conteudo}
               onChange={(e) => setEdicao({ ...edicao, conteudo: e.target.value })}
@@ -140,9 +140,9 @@ export default function ProtocolosView() {
               style={{ width: "100%", minHeight: "110px" }}
             />
             <div className="field-hint">
-              {edicao.conteudo.trim().length} de {MAX_PROTOCOLO_CHARS} caracteres. Escreva como você
-              responderia no WhatsApp: é daqui que a IA tira as palavras. O que não couber
-              provavelmente são dois protocolos.
+              {edicao.conteudo.trim().length} de {MAX_PROTOCOLO_CHARS} caracteres. Registre a regra
+              de forma objetiva, sem saudação, frase pronta ou jeito pessoal de escrever. O que não
+              couber provavelmente são dois protocolos.
             </div>
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>

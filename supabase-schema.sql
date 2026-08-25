@@ -710,7 +710,8 @@ create table if not exists user_config (
   user_id uuid primary key references auth.users(id) on delete cascade,
   comissao_percent numeric default 100,
   agenda_tipos jsonb not null default '[]'::jsonb,
-  whatsapp_modelos jsonb not null default '[]'::jsonb
+  whatsapp_modelos jsonb not null default '[]'::jsonb,
+  perfil_comunicacao jsonb not null default '{"formalidade":"natural","tamanho":"curto","emojis":"poucos","tratamento":"voce","expressoesPreferidas":[],"expressoesEvitar":[]}'::jsonb
 );
 
 -- Tipos de compromisso personalizados do usuário (além dos fixos do app).
@@ -739,6 +740,11 @@ alter table user_config add column if not exists origens_extras jsonb not null d
 -- — o tipo de campo que não se deve redigitar a cada contrato. Texto livre: o
 -- documento aceita conta, agência/conta ou chave PIX em qualquer formato.
 alter table user_config add column if not exists dados_pagamento text;
+
+-- Preferências pessoais de redação do rascunho assistido. Regras e fatos da
+-- imobiliária continuam em protocolos; este JSONB não é um editor de prompt.
+alter table user_config add column if not exists perfil_comunicacao jsonb not null
+  default '{"formalidade":"natural","tamanho":"curto","emojis":"poucos","tratamento":"voce","expressoesPreferidas":[],"expressoesEvitar":[]}'::jsonb;
 
 alter table user_config enable row level security;
 

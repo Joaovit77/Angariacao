@@ -7,6 +7,7 @@ import { describe, it, expect } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { carregarEstado } from "@/lib/persistencia/carregarEstado";
 import dbJson from "./fixtures-db.json";
+import { PERFIL_COMUNICACAO_PADRAO } from "@/lib/perfilComunicacao";
 
 type Resultado = { data: unknown; error: unknown };
 
@@ -70,6 +71,7 @@ describe("carregarEstado", () => {
       origensExtras: [],
       // Nem `dados_pagamento` (a conta/PIX da solicitacao de angariacao).
       dadosPagamento: "",
+      perfilComunicacao: { ...PERFIL_COMUNICACAO_PADRAO },
     });
   });
 
@@ -80,7 +82,7 @@ describe("carregarEstado", () => {
       agenda: { data: [], error: null },
       user_config: { data: null, error: null },
     }));
-    expect(estado.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "" });
+    expect(estado.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "", perfilComunicacao: { ...PERFIL_COMUNICACAO_PADRAO } });
     expect(estado.imoveis).toEqual([]);
     expect(estado.metas).toEqual({});
     expect(estado.agenda).toEqual([]);
@@ -102,7 +104,7 @@ describe("carregarEstado", () => {
       agenda: { data: [], error: null },
       user_config: { data: null, error: new Error("config indisponível") },
     }));
-    expect(estado.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "" });
+    expect(estado.config).toEqual({ comissaoPercent: 100, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "", perfilComunicacao: { ...PERFIL_COMUNICACAO_PADRAO } });
   });
 
   it("mapeia o catálogo de abordagens", async () => {

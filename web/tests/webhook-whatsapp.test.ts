@@ -9,6 +9,7 @@ import {
   TIPO_AGENDA_RETORNO,
   TIPO_AGENDA_VISITA,
   compromissoDaResposta,
+  compromissoDePrazoExplicito,
   fecharTentativaPendente,
   interpretarEvento,
   horaExplicitaDaMensagem,
@@ -534,6 +535,32 @@ describe("compromissoDaResposta — a agenda inteligente", () => {
   it("a nota sempre diz de onde veio — compromisso órfão o corretor apaga", () => {
     const c = compromissoDaResposta({ resultado: "agendou", retomarEm: "2026-08-02", resumo: "" }, "LD-5", HOJE);
     expect(c?.notas).toContain("resposta do proprietário no WhatsApp");
+  });
+});
+
+describe("compromissoDePrazoExplicito", () => {
+  it("cria retorno em dez dias quando o prazo completa a conversa sobre visita", () => {
+    expect(
+      compromissoDePrazoExplicito(
+        "Daqui 10 dias",
+        [
+          "Tudo. Só tem um problema: antes de 10 dias não consigo ir mostrar a casa.",
+          "Mas a primeira visita tenho que estar presente.",
+        ],
+        "LD-152",
+        "2026-08-24",
+      ),
+    ).toMatchObject({
+      titulo: "Retorno — LD-152",
+      tipo: "Retorno ao proprietário",
+      data: "2026-09-03",
+      hora: null,
+    });
+  });
+
+  it("não agenda número solto sem contexto de próximo contato", () => {
+    expect(compromissoDePrazoExplicito("Daqui 10 dias", ["O contrato foi assinado."], "LD-1", "2026-08-24"))
+      .toBeNull();
   });
 });
 

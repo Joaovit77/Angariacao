@@ -132,6 +132,7 @@ export interface DbUserConfigRow {
   empresa: string | null;
   origens_extras: string[] | null;
   dados_pagamento: string | null;
+  perfil_comunicacao?: unknown;
 }
 
 /** Linha do histórico de anúncios abertos na Central. */

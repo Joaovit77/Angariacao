@@ -157,7 +157,7 @@ describe("importação de conversa recente", () => {
     const imovel = { id: "i", status: "Novo contato", notas: [enviada, recebida] } as Imovel;
 
     const selecao = selecionarMensagensAtendimento(imovel);
-    expect(selecao.anteriores).toEqual([
+    expect(selecao.anteriores.map(({ autor, texto }) => ({ autor, texto }))).toEqual([
       { autor: "corretor", texto: "Tenho interesse em administrar seu imóvel." },
     ]);
     expect(selecao.mensagemAtual).toBe("Qual é a taxa de administração?");

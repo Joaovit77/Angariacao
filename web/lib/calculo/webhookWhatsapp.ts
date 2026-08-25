@@ -21,7 +21,7 @@
 import { DIAS_COBRANCA_RESULTADO } from "./abordagens";
 import { historicoComStatus, motivoPerdaPelaFase } from "./motor";
 import { PREFIXO_TEXTO_RESPOSTA, SUFIXO_ID_ENCERRAMENTO, idNotaDaMensagem } from "./notas";
-import { daysBetween } from "../datas";
+import { addDaysISO, daysBetween } from "../datas";
 import type { NotaImovel, StatusHistoryEntry, Tentativa } from "../tipos";
 
 /* ----------------------------------------------------------------
@@ -345,7 +345,8 @@ export function fecharTentativaPendente(
 /* --- Encerramento automático ----------------------------------------------
    A única coisa aqui que a IA muda SEM confirmação do corretor, e a exceção
    existe porque a mensagem já disse tudo: "já aluguei", "já estou com outra
-   imobiliária". Pedir um clique para transcrever o que está escrito é o
+   imobiliária com exclusividade vigente". A simples existência de outra
+   imobiliária não encerra o imóvel. Pedir um clique para transcrever o que está escrito é o
    atrito que esta feature toda existe para eliminar.
 
    O que mantém a exceção segura são três coisas:
@@ -437,6 +438,47 @@ export interface CompromissoAutomatico {
   data: string;
   hora: string | null;
   notas: string;
+}
+
+/**
+ * Fallback determinístico para um prazo curto que completa uma conversa
+ * fragmentada ("só consigo mostrar depois" / "daqui 10 dias"). Não inventa
+ * visita: sem dia e hora combinados, cria um retorno para acertar a visita.
+ */
+export function compromissoDePrazoExplicito(
+  mensagemAtual: string,
+  anteriores: readonly string[],
+  rotulo: string,
+  hoje: string,
+): CompromissoAutomatico | null {
+  const atual = (mensagemAtual || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+  const ocorrencias = [...atual.matchAll(/\b(?:daqui(?: a)?|em)\s+(\d{1,3})\s+dias?\b/g)];
+  if (ocorrencias.length !== 1) return null;
+  const dias = Number(ocorrencias[0][1]);
+  if (!Number.isInteger(dias) || dias < 1 || dias > 365) return null;
+
+  const contexto = [...anteriores.slice(-4), mensagemAtual]
+    .join(" ")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  if (!/\b(?:visita|mostrar|presente|retorn|ligar|conversar|reparo|reforma|disponivel)\w*\b/.test(contexto))
+    return null;
+
+  const data = addDaysISO(hoje, dias);
+  if (!data) return null;
+  return {
+    titulo: `Retorno — ${rotulo}`,
+    tipo: TIPO_AGENDA_RETORNO,
+    data,
+    hora: null,
+    notas: `Criado a partir do prazo explícito do proprietário no WhatsApp: "${mensagemAtual.trim().slice(0, 160)}".`,
+  };
 }
 
 /**

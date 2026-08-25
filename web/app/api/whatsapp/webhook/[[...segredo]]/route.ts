@@ -69,6 +69,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   compromissoDaResposta,
+  compromissoDePrazoExplicito,
   encerramentoPorResposta,
   fecharTentativaPendente,
   horaParaAtualizarCompromisso,
@@ -505,7 +506,8 @@ export async function POST(
   }
 
   // 6. Encerra o imóvel quando a resposta não deixou nada a fazer ("já
-  //    aluguei", "já estou com outra imobiliária"). É a ÚNICA coisa aqui que
+  //    aluguei", exclusividade vigente explícita, indisponibilidade terminal).
+  //    Outra imobiliária sem exclusividade não encerra. É a ÚNICA coisa aqui que
   //    a IA muda sem confirmação, e o que a segura é o motivo vir de lista
   //    fechada — ver encerramentoPorResposta. Nunca vira "Locado": alugado
   //    por conta própria é perda, e marcá-lo como ganho inflaria a comissão
@@ -559,7 +561,9 @@ export async function POST(
   );
   const compromisso = encerramento
     ? null
-    : visitaConfirmada || compromissoDaResposta(sugestao, rotuloVisivel, hoje);
+    : visitaConfirmada ||
+      compromissoDaResposta(sugestao, rotuloVisivel, hoje) ||
+      compromissoDePrazoExplicito(mensagem.texto, anteriores, rotuloVisivel, hoje);
   if (compromisso) {
     // Trava contra a rajada: no WhatsApp as pessoas mandam três mensagens
     // curtas ("pode quinta", "às 10h", "combinado"), e cada uma passaria por

@@ -581,7 +581,7 @@ export interface RespostaClassificada {
  *   não encerrar — some do pipeline e não alimenta o gráfico de perdas.
  *
  * Os dois primeiros são os casos reais que apareceram no teste de follow-up:
- * "já aluguei" e "já trabalho com outra imobiliária". "Não é mais o
+ * "já aluguei" e "tenho exclusividade vigente com outra imobiliária". "Não é mais o
  * proprietário" entrou depois, do caso real do LD-170 ("não é mais de minha
  * propriedade", 30/07/2026): é terminal e explícito, mas NÃO é "vendido" — ele
  * pode ter passado o imóvel adiante de mil formas, e a IA (corretamente)
@@ -599,6 +599,31 @@ export const MOTIVOS_PERDA_IA = [
   "Não é mais o proprietário",
   MOTIVO_PERDA_IMOVEL_INDISPONIVEL,
 ] as const;
+
+/** Outra imobiliária só é terminal quando a própria mensagem comprova uma
+ * exclusividade vigente. A simples concorrência nunca basta para encerrar. */
+export function exclusividadeVigenteExplicita(texto: string): boolean {
+  const normalizado = texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!/\bexclusiv\w*\b/.test(normalizado)) return false;
+  if (
+    /\b(?:sem|nao (?:ha|tem|tenho|e|eh|assinei|existe)|nunca (?:assinei|tive))\b.{0,24}\bexclusiv\w*\b/.test(
+      normalizado,
+    ) ||
+    /\bexclusiv\w*\b.{0,30}\b(?:acabou|venceu|encerrou|terminou|expirou|cancelad[oa])\b/.test(normalizado)
+  )
+    return false;
+  return /\b(?:tenho|temos|assinei|contrato|contratei|vigente|ate|até)\b/.test(normalizado);
+}
+
+function imovelAlugadoPorOutraImobiliaria(texto: string): boolean {
+  const normalizado = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return /\b(?:ja\s+)?(?:foi|esta|ta)\s+alugad[oa]\b/.test(normalizado) && /\bimobiliaria\b/.test(normalizado);
+}
 
 /**
  * Valida o motivo de perda devolvido pela classificação e cobre a frase
@@ -621,6 +646,12 @@ export function motivoPerdaSeguro(
     typeof classificacao.motivoPerda === "string" &&
     (MOTIVOS_PERDA_IA as readonly string[]).includes(classificacao.motivoPerda)
   ) {
+    if (
+      classificacao.motivoPerda === "Optou por outra imobiliária" &&
+      !exclusividadeVigenteExplicita(texto) &&
+      !imovelAlugadoPorOutraImobiliaria(texto)
+    )
+      return null;
     return classificacao.motivoPerda;
   }
 
@@ -713,7 +744,7 @@ Hoje é ${hoje}. Classifique o desfecho desta conversa.
 O que cada desfecho significa:
 - "agendou" — ficou marcada uma visita, reunião ou ligação. Só use quando houver compromisso, não quando houver intenção.
 - "vai-retornar" — ele não decidiu agora e vai pensar, consultar alguém ou responder depois. É o caso de "vou ver e te falo", "preciso conversar com minha esposa", "me liga semana que vem".
-- "recusou" — não tem interesse, já resolveu por outro caminho, ou não quer alugar. Recusa educada continua sendo recusa.
+- "recusou" — não tem interesse, já resolveu por outro caminho, ou não quer alugar. Recusa educada continua sendo recusa. Dizer apenas que trabalha com outra imobiliária NÃO é recusa: use "respondeu" e mantenha a conversa aberta.
 - "outro-contato" — quem respondeu NÃO é o proprietário, mas tem ligação com o imóvel ou com o dono: é parente, cônjuge, filho, inquilino ou conhecido. Use sempre que a pessoa souber de quem é o imóvel, mesmo que não passe o contato. Exemplos: "o imóvel é da minha mãe", "sou a esposa do fulano, a casa é da irmã dele", "meu pai é o dono, o telefone dele é...".
 - Se a pessoa disser que ELA PRÓPRIA é responsável pelo imóvel ("sou a responsável", "eu cuido do imóvel", "sou a proprietária"), NÃO use "outro-contato": ela já é a pessoa certa, ainda que não seja a proprietária formal. Nesse caso use "respondeu", salvo se outro desfecho mais específico tiver sido combinado.
 - "numero-errado" — a mensagem chegou em quem NÃO TEM NADA A VER com o imóvel: não conhece o endereço, não sabe do que se trata, diz que é engano. Não use quando a pessoa conhece o imóvel ou o dono — isso é "outro-contato".
@@ -730,7 +761,7 @@ Regras:
 Sobre "motivoPerda" — leia com atenção, porque preenchê-lo ENCERRA o imóvel automaticamente e o tira da carteira ativa do corretor:
 - Preencha SOMENTE quando a mensagem disser, de forma explícita e sem ambiguidade, que não há mais o que fazer com este imóvel. O texto tem que bastar por si: se você precisa supor qualquer coisa para chegar lá, devolva null.
 - "Imóvel já alugado por conta própria" — ele já alugou, sozinho ou com inquilino próprio.
-- "Optou por outra imobiliária" — já está com outra imobiliária, ou já foi alugado por ela.
+- "Optou por outra imobiliária" — use somente se a mensagem trouxer evidência explícita de exclusividade vigente que impeça o trabalho, ou disser que o imóvel já foi alugado pela outra imobiliária. A simples existência de outra imobiliária, com ou sem negociação em andamento, NUNCA basta: nesse caso devolva null.
 - "Imóvel já vendido" — a venda JÁ ESTÁ FECHADA, então não há locação a fazer.
 - "Proprietário desistiu de alugar" — desistiu de alugar (vai morar, deixar vazio, reformar por tempo indefinido) OU vai VENDER em vez de alugar, mesmo que a venda ainda não tenha fechado: "está em negociação para venda", "resolvi vender", "só estou vendendo". Enquanto ele não disser que a venda fechou, é este motivo e não "Imóvel já vendido" — o fato dele é a locação que não vai acontecer, não a venda que aconteceu.
 - "Não é mais o proprietário" — o imóvel deixou de ser dele ("não é mais de minha propriedade", "passei para outra pessoa", "não sou mais o dono"). Use SEM precisar saber se foi venda, herança ou transferência: basta ele dizer que o imóvel não é mais dele. Se ele disser expressamente que VENDEU, prefira "Imóvel já vendido".

@@ -7,6 +7,7 @@ import {
   conversaAtendimento,
   contextoAtendimentoDoImovel,
   motivoBloqueioDecisaoAtendimento,
+  motivoBloqueioRascunhoDeterministico,
   motivoReprovacaoValidacaoAtendimento,
   normalizarDecisaoAtendimento,
   promptDecidirAtendimento,
@@ -24,7 +25,9 @@ import {
   type DbAbordagemRow,
   type DbImovelRow,
   type DbProtocoloRow,
+  type DbUserConfigRow,
 } from "@/lib/persistencia/mapeadores";
+import { normalizarPerfilComunicacao } from "@/lib/perfilComunicacao";
 import { registrarEvento } from "@/lib/servidor/registro";
 import type { HandlerIa } from "../dispatcher";
 import { classificarErroIa } from "../executor-openai";
@@ -75,6 +78,7 @@ function registrarDiagnosticoAtendimento(
       descartadasVazias: base.selecao?.mensagensDescartadasVazias ?? null,
       protocolosDisponiveis: base.protocolosDisponiveis ?? null,
       protocolosSelecionados: base.protocolosSelecionados ?? null,
+      mensagensAntigasRelevantes: base.selecao?.antigasRelevantes.length ?? null,
       abordagemCorretorDisponivel: base.abordagemCorretorDisponivel ?? null,
       contextoFingerprint: base.contextoFingerprint ?? null,
       confianca: base.confianca ?? null,
@@ -93,7 +97,11 @@ function falhaDoBloqueio(motivo: MotivoBloqueioAtendimento): FalhaIa {
   if (
     motivo === "geracao-reprovada" ||
     motivo === "informacao-sem-fonte" ||
-    motivo === "desvio-de-assunto"
+    motivo === "desvio-de-assunto" ||
+    motivo === "resposta-longa" ||
+    motivo === "perfil-incompativel" ||
+    motivo === "acao-incompativel" ||
+    motivo === "apresentacao-repetida"
   )
     return "geracao-reprovada";
   return "intervencao-humana";
@@ -201,11 +209,22 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
     .filter((p) => !p.arquivado)
     .map((p) => ({ titulo: p.titulo, conteudo: p.conteudo }));
 
+  const { data: cfData, error: cfErro } = await supabase
+    .from("user_config")
+    .select("perfil_comunicacao")
+    .maybeSingle();
+  if (cfErro) {
+    // Compatibilidade durante a aplicação do schema: o perfil seguro mantém o
+    // rascunho disponível, sem importar configuração de outra conta.
+    console.error("IA: falha ao ler o perfil de comunicação; usando padrão seguro:", cfErro.message);
+  }
+  const perfil = normalizarPerfilComunicacao((cfData as Pick<DbUserConfigRow, "perfil_comunicacao"> | null)?.perfil_comunicacao);
+
   diagnostico.protocolosDisponiveis = protocolos.length;
   const conversa = conversaAtendimento(selecao, enviada);
   const contexto = contextoAtendimentoDoImovel(imovel);
   diagnostico.contextoFingerprint = createHash("sha256")
-    .update(JSON.stringify({ mensagemProp, contexto, conversa, protocolos }))
+    .update(JSON.stringify({ mensagemProp, contexto, conversa, protocolos, perfil }))
     .digest("hex")
     .slice(0, 16);
 
@@ -222,7 +241,13 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
         { role: "system", content: PROMPT_BASE_ATENDIMENTO },
         {
           role: "user",
-          content: promptDecidirAtendimento(mensagemProp, contexto, conversa, protocolos),
+          content: promptDecidirAtendimento(
+            mensagemProp,
+            contexto,
+            conversa,
+            protocolos,
+            selecao.mensagemAtualId,
+          ),
         },
       ],
     }));
@@ -235,7 +260,12 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
 
   let decisao;
   try {
-    decisao = normalizarDecisaoAtendimento(JSON.parse(textoDecisao), protocolos);
+    const idsMensagens = [
+      selecao.mensagemAtualId,
+      ...selecao.anteriores.map((m) => m.id),
+      ...selecao.antigasRelevantes.map((m) => m.id),
+    ].filter((id): id is string => !!id);
+    decisao = normalizarDecisaoAtendimento(JSON.parse(textoDecisao), protocolos, idsMensagens);
   } catch {
     decisao = null;
   }
@@ -287,6 +317,8 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
             conversa,
             decisao,
             protocolosSelecionados,
+            perfil,
+            selecao.mensagemAtualId,
           ),
         },
       ],
@@ -338,6 +370,22 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
     return respostaErroIa("protocolo-inadequado", 422);
   }
   const protocolosUsados = [...new Set(usadosBrutos)];
+  const motivoDeterministico = motivoBloqueioRascunhoDeterministico(
+    rascunho,
+    protocolosUsados,
+    decisao,
+    perfil,
+  );
+  if (motivoDeterministico) {
+    registrarDiagnosticoAtendimento(
+      userId,
+      diagnostico,
+      "geracao",
+      "bloqueado",
+      motivoDeterministico,
+    );
+    return respostaErroIa(falhaDoBloqueio(motivoDeterministico), 422);
+  }
 
   let textoValidacao: string;
   try {
@@ -358,6 +406,10 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
             conversa,
             protocolosSelecionados,
             rascunho,
+            decisao,
+            protocolosUsados,
+            perfil,
+            selecao.mensagemAtualId,
           ),
         },
       ],

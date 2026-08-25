@@ -15,6 +15,7 @@ import {
   MAX_MENSAGENS_CONTEXTO,
   MAX_TEXTO_CLASSIFICACAO,
   MOTIVOS_PERDA_IA,
+  exclusividadeVigenteExplicita,
   motivoPerdaSeguro,
   promptClassificarResposta,
 } from "@/lib/calculo/ia";
@@ -104,6 +105,24 @@ describe("promptClassificarResposta", () => {
 });
 
 describe("motivoPerdaSeguro", () => {
+  it("não encerra por outra imobiliária sem exclusividade", () => {
+    expect(
+      motivoPerdaSeguro(
+        { resultado: "recusou", motivoPerda: "Optou por outra imobiliária" },
+        "Já estou trabalhando com outra imobiliária.",
+      ),
+    ).toBeNull();
+    expect(promptClassificarResposta("Já estou trabalhando com outra imobiliária.", HOJE))
+      .toContain("NÃO é recusa");
+  });
+
+  it("reconhece exclusividade vigente explícita sem orientar quebra", () => {
+    const texto = "Tenho contrato de exclusividade com eles até novembro.";
+    expect(exclusividadeVigenteExplicita(texto)).toBe(true);
+    expect(motivoPerdaSeguro({ resultado: "recusou", motivoPerda: "Optou por outra imobiliária" }, texto))
+      .toBe("Optou por outra imobiliária");
+    expect(promptClassificarResposta(texto, HOJE)).toContain("exclusividade vigente");
+  });
   it("transforma a recusa explícita do LD-179 no motivo genérico", () => {
     expect(
       motivoPerdaSeguro(

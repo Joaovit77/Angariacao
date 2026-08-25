@@ -185,6 +185,14 @@ describe("sugestaoRespostaModelo", () => {
     expect(sugestaoRespostaModelo(comSugestao({ resultado: "respondeu", resumo: "Tem estacionamento?" }))).toBeNull();
   });
 
+  it("outra imobiliária sem exclusividade não recebe despedida automática", () => {
+    expect(
+      sugestaoRespostaModelo(
+        comSugestao({ resultado: "respondeu", resumo: "Já trabalha com outra imobiliária.", motivoPerda: null }),
+      ),
+    ).toBeNull();
+  });
+
   it("usa a classificação MAIS RECENTE, e um follow-up manual posterior não a apaga", () => {
     const imovel: Imovel = {
       ...base,
