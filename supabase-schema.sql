@@ -1540,10 +1540,9 @@ create index if not exists idx_aceites_user on aceites_termos (user_id, aceito_e
 -- ------------------------------------------------------------
 -- PROTOCOLOS DA IMOBILIÁRIA
 --
--- As regras da EMPRESA, escritas pelo corretor: taxa de administração,
--- prazo de contrato, multa de rescisão, quem paga condomínio e IPTU,
--- exclusividade, horário de atendimento. Estáveis, iguais para todo
--- proprietário, e repetidas na conversa toda vez.
+-- Há duas categorias com contratos diferentes. Informações comerciais são
+-- fatos oficiais recuperados conforme o assunto. Regras de conduta controlam
+-- permanentemente como a IA conversa e nunca são apresentadas como fatos.
 --
 -- Existem porque o rascunho de resposta por IA é PROIBIDO de afirmar
 -- qualquer coisa (ver promptRascunharResposta em web/lib/calculo/ia.ts):
@@ -1564,9 +1563,11 @@ create index if not exists idx_aceites_user on aceites_termos (user_id, aceito_e
 create table if not exists protocolos (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  -- O assunto, como o proprietário perguntaria ("Taxa de administração").
+  tipo text not null default 'informacao_comercial'
+    constraint protocolos_tipo_check check (tipo in ('informacao_comercial', 'regra_conduta')),
+  -- Assunto comercial ou nome interno curto da regra de conduta.
   titulo text not null,
-  -- A resposta, em linguagem que pode ir para o WhatsApp.
+  -- Fato oficial ou instrução obrigatória, conforme a categoria.
   conteudo text not null,
   -- Arquivar em vez de excluir, pelo motivo de `abordagens.arquivada`: a
   -- taxa que mudou este ano ainda descreve o contrato assinado no ano
@@ -1575,6 +1576,84 @@ create table if not exists protocolos (
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+-- Compatibilidade com bases anteriores à classificação. A coluna nasce
+-- nullable para permitir classificar os registros antes de exigir o contrato.
+alter table protocolos add column if not exists tipo text;
+
+-- O registro atual de visita mistura um serviço oferecido com a regra de
+-- quando sugeri-lo. Só dividimos a variante conhecida, por título E conteúdo;
+-- textos personalizados de outras contas nunca são sobrescritos por suposição.
+insert into protocolos (
+  id, user_id, tipo, titulo, conteudo, arquivado, created_at, updated_at
+)
+select
+  gen_random_uuid(),
+  protocolo.user_id,
+  'informacao_comercial',
+  'Visita ao imóvel para divulgação',
+  'A Imobiliária pode visitar o imóvel, conhecê-lo e produzir fotos e vídeos para divulgação.',
+  protocolo.arquivado,
+  protocolo.created_at,
+  now()
+from protocolos protocolo
+where protocolo.tipo is null
+  and lower(btrim(protocolo.titulo)) = 'agendamento de visita'
+  and btrim(protocolo.conteudo) = 'Quando houver autorização para divulgação, a IA pode sugerir o agendamento de uma visita ao imóvel para conhecer o imóvel, tirar fotos e vídeos e preparar a divulgação.'
+  and not exists (
+    select 1
+    from protocolos existente
+    where existente.user_id = protocolo.user_id
+      and lower(btrim(existente.titulo)) = 'visita ao imóvel para divulgação'
+  );
+
+update protocolos
+set
+  tipo = 'regra_conduta',
+  conteudo = 'Quando houver autorização para divulgação, a IA pode conduzir a conversa para o agendamento da visita.',
+  updated_at = now()
+where tipo is null
+  and lower(btrim(titulo)) = 'agendamento de visita'
+  and btrim(conteudo) = 'Quando houver autorização para divulgação, a IA pode sugerir o agendamento de uma visita ao imóvel para conhecer o imóvel, tirar fotos e vídeos e preparar a divulgação.';
+
+-- Classificação conservadora dos títulos de conduta já existentes. Qualquer
+-- título desconhecido mantém a semântica anterior de informação oficial.
+update protocolos
+set tipo = 'regra_conduta'
+where tipo is null
+  and lower(btrim(titulo)) in (
+    'não repetir informações',
+    'proprietário interessado',
+    'outra imobiliária',
+    'outra imobiliária com contrato de exclusividade',
+    'outra imobiliaria contrato de exclusividade',
+    'sem interesse',
+    'imóvel com reparos',
+    'informação não cadastrada',
+    'estilo de resposta',
+    'agendamento de visita'
+  );
+
+update protocolos
+set tipo = 'informacao_comercial'
+where tipo is null;
+
+alter table protocolos alter column tipo set default 'informacao_comercial';
+alter table protocolos alter column tipo set not null;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'protocolos_tipo_check'
+      and conrelid = 'protocolos'::regclass
+  ) then
+    alter table protocolos
+      add constraint protocolos_tipo_check
+      check (tipo in ('informacao_comercial', 'regra_conduta'));
+  end if;
+end $$;
 
 alter table protocolos enable row level security;
 
@@ -1595,6 +1674,9 @@ create policy "delete_own_protocolos" on protocolos
   for delete using (auth.uid() = user_id);
 
 create index if not exists idx_protocolos_user on protocolos (user_id, created_at);
+create index if not exists idx_protocolos_ativos_tipo
+  on protocolos (user_id, tipo, created_at)
+  where arquivado = false;
 
 -- ------------------------------------------------------------
 -- AVALIAÇÕES RÁPIDAS DE IMÓVEIS

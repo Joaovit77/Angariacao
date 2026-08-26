@@ -91,7 +91,7 @@ export const ESQUEMA_RASCUNHO = {
       type: "array",
       items: { type: "string" },
       description:
-        "Títulos, exatamente como aparecem na lista de regras da imobiliária, dos itens em que esta resposta se apoiou. Lista vazia se a resposta não usou nenhum.",
+        "Títulos, exatamente como aparecem nas informações comerciais autorizadas, dos fatos oficiais em que esta resposta se apoiou. Nunca inclua regras de conduta. Lista vazia se a resposta não usou informação comercial.",
     },
   },
   required: ["mensagem", "protocolosUsados"],

@@ -1,23 +1,5 @@
 "use client";
 
-/* ================================================================
-   VIEW: PROTOCOLOS DA IMOBILIÁRIA
-   As regras da EMPRESA, escritas pelo corretor: taxa, prazo, multa,
-   quem paga o quê, exclusividade, horário. É a única coisa que o
-   rascunho de resposta por IA está autorizado a AFIRMAR.
-
-   O que decide se esta tela vive ou morre é o ESTADO VAZIO. Base
-   vazia não muda nada no rascunho, e uma tela que não muda nada é
-   uma tela que ninguém volta a abrir — foi assim que a faixa de
-   "imóvel parado" morreu no termômetro. Por isso o vazio não é um
-   "nenhum protocolo cadastrado": é a lista dos assuntos que os
-   proprietários DELE perguntaram, cada um a um clique de virar
-   protocolo.
-
-   Não confundir com fato do IMÓVEL (garagem, pet, o condomínio
-   daquele apartamento): aquilo varia por imóvel, o painel não tem o
-   dado, e continua proibido à IA.
-   ================================================================ */
 import { useState } from "react";
 import { useSessao } from "@/components/SessaoProvider";
 import { MAX_PROTOCOLOS, MAX_PROTOCOLO_CHARS } from "@/lib/calculo/ia";
@@ -27,18 +9,29 @@ import {
   salvarProtocolo,
   uid,
 } from "@/lib/mutacoes";
+import type { TipoProtocolo } from "@/lib/protocolos";
 import { useAppStore } from "@/lib/store";
 import type { Protocolo } from "@/lib/tipos";
 
-/* Os assuntos que os proprietários realmente perguntaram, medidos na carteira
-   em 04/08/2026 (49 respostas com pergunta; ~18 sobre a empresa). Cada um saiu
-   de uma mensagem real: taxa, repasse, prazo, multa e contas do LD-156; o
-   horário do LD-178; a venda do LD-55; a exclusividade do LD-161.
+const CATEGORIAS: Array<{
+  tipo: TipoProtocolo;
+  titulo: string;
+  descricao: string;
+}> = [
+  {
+    tipo: "informacao_comercial",
+    titulo: "Informações comerciais",
+    descricao:
+      "Fatos oficiais sobre taxas, serviços, contratos e funcionamento da Imobiliária. A IA pode usar essas informações para responder aos proprietários.",
+  },
+  {
+    tipo: "regra_conduta",
+    titulo: "Regras de conduta da IA",
+    descricao:
+      "Instruções que controlam como a IA conversa, conduz o atendimento e lida com situações específicas. Essas regras não são apresentadas como informações comerciais.",
+  },
+];
 
-   Não vêm preenchidos com conteúdo de propósito. Um texto padrão sobre taxa de
-   administração seria a IA afirmando a um proprietário real um número que esta
-   imobiliária nunca disse — e o corretor confirmaria sem ler, porque já estava
-   escrito. O título é a pergunta; a resposta é dele. */
 const SUGESTOES: { titulo: string; ajuda: string }[] = [
   { titulo: "Taxa de administração", ajuda: "Quanto é, e o que está incluso" },
   { titulo: "Como funciona o repasse", ajuda: "Quem recebe o primeiro mês, quando cai o aluguel" },
@@ -52,43 +45,68 @@ const SUGESTOES: { titulo: string; ajuda: string }[] = [
   { titulo: "Como funciona a avaliação", ajuda: "Se é gratuita, quanto demora, o que é preciso" },
 ];
 
+function rotuloTipo(tipo: TipoProtocolo): string {
+  return tipo === "informacao_comercial" ? "Informação comercial" : "Regra de conduta";
+}
+
 export default function ProtocolosView() {
   const { usuario } = useSessao();
-  const protocolos = useAppStore((s) => s.protocolos);
+  const protocolos = useAppStore((estado) => estado.protocolos);
 
+  const [categoriaAtiva, setCategoriaAtiva] = useState<TipoProtocolo>("informacao_comercial");
   const [edicao, setEdicao] = useState<Protocolo | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [mostrarArquivados, setMostrarArquivados] = useState(false);
 
-  const ativos = protocolos.filter((p) => !p.arquivado);
-  const visiveis = protocolos.filter((p) => mostrarArquivados || !p.arquivado);
-  const totalArquivados = protocolos.length - ativos.length;
+  const protocolosDaCategoria = protocolos.filter((protocolo) => protocolo.tipo === categoriaAtiva);
+  const ativos = protocolosDaCategoria.filter((protocolo) => !protocolo.arquivado);
+  const visiveis = protocolosDaCategoria.filter(
+    (protocolo) => mostrarArquivados || !protocolo.arquivado,
+  );
+  const totalArquivados = protocolosDaCategoria.length - ativos.length;
+  const categoria = CATEGORIAS.find((item) => item.tipo === categoriaAtiva) || CATEGORIAS[0];
 
-  // Títulos já usados: a sugestão some da grade depois de virar protocolo, para
-  // o vazio não continuar oferecendo o que já está cadastrado.
-  const jaCadastrados = new Set(protocolos.map((p) => p.titulo.trim().toLowerCase()));
-  const sugestoesRestantes = SUGESTOES.filter((s) => !jaCadastrados.has(s.titulo.toLowerCase()));
+  const jaCadastrados = new Set(
+    protocolos
+      .filter((protocolo) => protocolo.tipo === "informacao_comercial")
+      .map((protocolo) => protocolo.titulo.trim().toLowerCase()),
+  );
+  const sugestoesRestantes = SUGESTOES.filter(
+    (sugestao) => !jaCadastrados.has(sugestao.titulo.toLowerCase()),
+  );
+
+  function selecionarCategoria(tipo: TipoProtocolo) {
+    setCategoriaAtiva(tipo);
+    setEdicao(null);
+    setMostrarArquivados(false);
+  }
 
   function novo(titulo = "") {
-    setEdicao({ id: uid(), titulo, conteudo: "", arquivado: false });
+    setEdicao({ id: uid(), tipo: categoriaAtiva, titulo, conteudo: "", arquivado: false });
   }
 
   async function salvar() {
     if (!edicao || !usuario || salvando) return;
     setSalvando(true);
-    const ok = await salvarProtocolo(edicao, usuario.id);
+    const protocoloSalvo = edicao;
+    const ok = await salvarProtocolo(protocoloSalvo, usuario.id);
     setSalvando(false);
-    if (ok) setEdicao(null);
+    if (ok) {
+      setCategoriaAtiva(protocoloSalvo.tipo);
+      setEdicao(null);
+    }
   }
 
-  const excedente = ativos.length - MAX_PROTOCOLOS;
+  const excedente =
+    categoriaAtiva === "informacao_comercial" ? ativos.length - MAX_PROTOCOLOS : 0;
+  const ehInformacaoComercial = edicao?.tipo === "informacao_comercial";
 
   return (
     <>
       <div className="page-head">
         <div>
           <h1 className="page-title">Protocolos</h1>
-          <p className="page-sub">As regras da imobiliária que a IA consulta para responder</p>
+          <p className="page-sub">Fontes oficiais e regras que orientam o atendimento por IA</p>
         </div>
         {!edicao && (
           <button type="button" className="btn btn-primary btn-sm" onClick={() => novo()}>
@@ -97,55 +115,111 @@ export default function ProtocolosView() {
         )}
       </div>
 
-      <p className="section-note" style={{ marginBottom: "14px" }}>
-        Quando o proprietário pergunta sobre a <strong>imobiliária</strong> (taxa, prazo de contrato,
-        quem paga o condomínio), a IA só consegue responder o que estiver escrito aqui. Sem um
-        protocolo sobre o assunto, ela reconhece a pergunta e sugere marcar uma ligação, em vez de
-        arriscar um número.
-      </p>
-      <p className="section-note" style={{ marginBottom: "18px" }}>
-        <strong>O que você escrever aqui a IA pode afirmar a um proprietário real.</strong> Sobre o
-        imóvel em si (garagem, pet, valor daquele apartamento) ela continua proibida de afirmar
-        qualquer coisa, porque o painel não tem esse dado.
-      </p>
+      <div className="proto-categorias" role="tablist" aria-label="Categorias de protocolos">
+        {CATEGORIAS.map((item) => {
+          const quantidade = protocolos.filter(
+            (protocolo) => protocolo.tipo === item.tipo && !protocolo.arquivado,
+          ).length;
+          const ativa = categoriaAtiva === item.tipo;
+          return (
+            <button
+              key={item.tipo}
+              type="button"
+              role="tab"
+              aria-selected={ativa}
+              className={`proto-categoria${ativa ? " ativa" : ""}`}
+              onClick={() => selecionarCategoria(item.tipo)}
+            >
+              <span className="proto-categoria-topo">
+                <strong>{item.titulo}</strong>
+                <b>{quantidade}</b>
+              </span>
+              <span>{item.descricao}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="proto-categoria-resumo" role="tabpanel">
+        <strong>{categoria.titulo}</strong>
+        <span>
+          {categoriaAtiva === "informacao_comercial"
+            ? "A IA recupera somente os fatos relacionados à pergunta atual. Se a informação não estiver cadastrada, ela deve oferecer confirmação em vez de inventar."
+            : "Todas as regras ativas são aplicadas em cada geração, independentemente do assunto da pergunta."}
+        </span>
+      </div>
 
       {excedente > 0 && (
-        <p className="section-note" style={{ marginBottom: "14px" }}>
-          Você tem {ativos.length} protocolos ativos e só os {MAX_PROTOCOLOS} primeiros vão para a
-          IA. Arquive {excedente === 1 ? "um" : `${excedente}`} que não use mais, ou junte os
-          parecidos.
+        <p className="section-note proto-aviso-limite">
+          Você tem {ativos.length} informações comerciais ativas e somente as {MAX_PROTOCOLOS}{" "}
+          primeiras entram no catálogo de recuperação. Arquive {excedente === 1 ? "uma" : excedente}{" "}
+          que não use mais, ou divida os assuntos de forma mais objetiva.
         </p>
       )}
 
       {edicao && (
-        <div className="card" style={{ padding: "14px", marginBottom: "16px" }}>
+        <div className="card proto-editor">
+          <fieldset className="proto-tipo-campo">
+            <legend>Tipo do protocolo</legend>
+            <div className="proto-tipo-opcoes">
+              {CATEGORIAS.map((item) => (
+                <label
+                  key={item.tipo}
+                  className={`proto-tipo-opcao${edicao.tipo === item.tipo ? " selecionada" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="tipo-protocolo"
+                    value={item.tipo}
+                    checked={edicao.tipo === item.tipo}
+                    onChange={() => setEdicao({ ...edicao, tipo: item.tipo })}
+                  />
+                  <span>
+                    <strong>{item.titulo}</strong>
+                    <small>{item.descricao}</small>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
           <div className="field-group">
             <label>Assunto</label>
             <input
               type="text"
               value={edicao.titulo}
-              onChange={(e) => setEdicao({ ...edicao, titulo: e.target.value })}
-              placeholder="Ex.: Taxa de administração"
+              onChange={(evento) => setEdicao({ ...edicao, titulo: evento.target.value })}
+              placeholder={
+                ehInformacaoComercial ? "Ex.: Taxa de administração" : "Ex.: Não repetir informações"
+              }
             />
             <div className="field-hint">
-              Escreva como o proprietário perguntaria. É por este título que a IA acha o assunto.
+              {ehInformacaoComercial
+                ? "Escreva como o proprietário perguntaria. Esse título ajuda a IA a localizar o fato relevante."
+                : "Use um nome interno curto. O título organiza a regra no painel e não deve aparecer na resposta ao proprietário."}
             </div>
           </div>
+
           <div className="field-group">
-            <label>Regra ou fato da imobiliária</label>
+            <label>{ehInformacaoComercial ? "Informação oficial da imobiliária" : "Regra obrigatória de conduta"}</label>
             <textarea
               value={edicao.conteudo}
-              onChange={(e) => setEdicao({ ...edicao, conteudo: e.target.value })}
-              placeholder="Ex.: A taxa de administração é de 10% sobre o valor do aluguel, e cobre a cobrança mensal, o repasse até o dia 10 e a vistoria de entrada e saída."
-              style={{ width: "100%", minHeight: "110px" }}
+              onChange={(evento) => setEdicao({ ...edicao, conteudo: evento.target.value })}
+              placeholder={
+                ehInformacaoComercial
+                  ? "Ex.: A taxa de administração é de 10% sobre o valor do aluguel."
+                  : "Ex.: Se a informação não estiver cadastrada, a IA não deve inventar nem estimar."
+              }
             />
             <div className="field-hint">
-              {edicao.conteudo.trim().length} de {MAX_PROTOCOLO_CHARS} caracteres. Registre a regra
-              de forma objetiva, sem saudação, frase pronta ou jeito pessoal de escrever. O que não
-              couber provavelmente são dois protocolos.
+              {edicao.conteudo.trim().length} de {MAX_PROTOCOLO_CHARS} caracteres. {" "}
+              {ehInformacaoComercial
+                ? "Registre somente fatos confirmados, sem saudação ou texto pronto."
+                : "Descreva a conduta esperada sem incluir taxas, serviços ou condições comerciais novas."}
             </div>
           </div>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+
+          <div className="proto-editor-acoes">
             <button type="button" className="btn btn-sm" onClick={() => setEdicao(null)}>
               Cancelar
             </button>
@@ -154,6 +228,7 @@ export default function ProtocolosView() {
               className="btn btn-primary btn-sm"
               onClick={salvar}
               disabled={
+                !edicao.tipo ||
                 !edicao.titulo.trim() ||
                 !edicao.conteudo.trim() ||
                 edicao.conteudo.trim().length > MAX_PROTOCOLO_CHARS ||
@@ -167,89 +242,101 @@ export default function ProtocolosView() {
       )}
 
       {visiveis.length === 0 && !edicao && (
-        <div className="card" style={{ padding: "16px", marginBottom: "16px" }}>
-          <p className="section-note" style={{ marginBottom: "12px" }}>
-            Ainda não há protocolo nenhum, então a IA não pode afirmar nada. Estes são os assuntos
-            que seus proprietários já perguntaram por escrito. Clique em um para escrever a sua
-            resposta.
+        <div className="card proto-vazio">
+          <p className="section-note">
+            {categoriaAtiva === "informacao_comercial"
+              ? "Ainda não há informações comerciais nesta categoria. Use os assuntos abaixo como ponto de partida e preencha apenas o que a Imobiliária confirmou."
+              : "Ainda não há regras de conduta. Crie uma regra para orientar permanentemente como a IA deve lidar com uma situação de atendimento."}
           </p>
-          <div className="proto-sugestoes">
-            {SUGESTOES.map((s) => (
-              <button
-                key={s.titulo}
-                type="button"
-                className="proto-sugestao"
-                onClick={() => novo(s.titulo)}
-              >
-                <span className="proto-sugestao-titulo">{s.titulo}</span>
-                <span className="proto-sugestao-ajuda">{s.ajuda}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {visiveis.map((p) => (
-        <div
-          key={p.id}
-          className={`card proto-card${p.arquivado ? " arquivado" : ""}`}
-          style={{ padding: "14px", marginBottom: "10px" }}
-        >
-          <div className="proto-card-topo">
-            <strong className="proto-card-titulo">{p.titulo}</strong>
-            <span className="proto-card-acoes">
-              {!p.arquivado && (
-                <button type="button" className="btn btn-sm" onClick={() => setEdicao(p)}>
-                  Editar
+          {categoriaAtiva === "informacao_comercial" && (
+            <div className="proto-sugestoes">
+              {SUGESTOES.map((sugestao) => (
+                <button
+                  key={sugestao.titulo}
+                  type="button"
+                  className="proto-sugestao"
+                  onClick={() => novo(sugestao.titulo)}
+                >
+                  <span className="proto-sugestao-titulo">{sugestao.titulo}</span>
+                  <span className="proto-sugestao-ajuda">{sugestao.ajuda}</span>
                 </button>
-              )}
-              <button
-                type="button"
-                className="btn btn-sm"
-                onClick={() => alternarArquivamentoProtocolo(p.id)}
-              >
-                {p.arquivado ? "Reativar" : "Arquivar"}
-              </button>
-              <button type="button" className="btn btn-sm" onClick={() => excluirProtocolo(p.id)}>
-                Excluir
-              </button>
-            </span>
-          </div>
-          <div className="section-note proto-card-texto">{p.conteudo}</div>
-          {p.arquivado && <div className="field-hint">Arquivado: não vai para a IA.</div>}
-        </div>
-      ))}
-
-      {/* As sugestões que sobraram continuam à mão depois do primeiro cadastro:
-          uma base com dois protocolos ainda deixa a IA muda na maioria das
-          perguntas, e é justamente aí que o corretor para de preencher. */}
-      {visiveis.length > 0 && sugestoesRestantes.length > 0 && !edicao && (
-        <div className="card" style={{ padding: "14px", marginTop: "16px" }}>
-          <p className="section-note" style={{ marginBottom: "10px" }}>
-            Assuntos que seus proprietários já perguntaram e ainda não têm protocolo:
-          </p>
-          <div className="proto-sugestoes">
-            {sugestoesRestantes.map((s) => (
-              <button
-                key={s.titulo}
-                type="button"
-                className="proto-sugestao"
-                onClick={() => novo(s.titulo)}
-              >
-                <span className="proto-sugestao-titulo">{s.titulo}</span>
-                <span className="proto-sugestao-ajuda">{s.ajuda}</span>
-              </button>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
+
+      <div className="proto-lista">
+        {visiveis.map((protocolo) => (
+          <div
+            key={protocolo.id}
+            className={`card proto-card${protocolo.arquivado ? " arquivado" : ""}`}
+          >
+            <div className="proto-card-topo">
+              <div className="proto-card-identidade">
+                <strong className="proto-card-titulo">{protocolo.titulo}</strong>
+                <span className={`proto-tipo-badge ${protocolo.tipo}`}>
+                  {rotuloTipo(protocolo.tipo)}
+                </span>
+              </div>
+              <span className="proto-card-acoes">
+                {!protocolo.arquivado && (
+                  <button type="button" className="btn btn-sm" onClick={() => setEdicao(protocolo)}>
+                    Editar
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={() => alternarArquivamentoProtocolo(protocolo.id)}
+                >
+                  {protocolo.arquivado ? "Reativar" : "Arquivar"}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={() => excluirProtocolo(protocolo.id)}
+                >
+                  Excluir
+                </button>
+              </span>
+            </div>
+            <div className="section-note proto-card-texto">{protocolo.conteudo}</div>
+            {protocolo.arquivado && <div className="field-hint">Arquivado: não é utilizado pela IA.</div>}
+          </div>
+        ))}
+      </div>
+
+      {categoriaAtiva === "informacao_comercial" &&
+        visiveis.length > 0 &&
+        sugestoesRestantes.length > 0 &&
+        !edicao && (
+          <div className="card proto-sugestoes-bloco">
+            <p className="section-note">
+              Assuntos que seus proprietários já perguntaram e ainda não têm informação cadastrada:
+            </p>
+            <div className="proto-sugestoes">
+              {sugestoesRestantes.map((sugestao) => (
+                <button
+                  key={sugestao.titulo}
+                  type="button"
+                  className="proto-sugestao"
+                  onClick={() => novo(sugestao.titulo)}
+                >
+                  <span className="proto-sugestao-titulo">{sugestao.titulo}</span>
+                  <span className="proto-sugestao-ajuda">{sugestao.ajuda}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
       {totalArquivados > 0 && (
-        <div style={{ marginTop: "14px" }}>
+        <div className="proto-arquivados-acao">
           <button
             type="button"
             className="btn btn-sm"
-            onClick={() => setMostrarArquivados((v) => !v)}
+            onClick={() => setMostrarArquivados((valor) => !valor)}
           >
             {mostrarArquivados
               ? "Esconder arquivados"

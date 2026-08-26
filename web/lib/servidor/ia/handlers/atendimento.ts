@@ -28,6 +28,7 @@ import {
   type DbUserConfigRow,
 } from "@/lib/persistencia/mapeadores";
 import { normalizarPerfilComunicacao } from "@/lib/perfilComunicacao";
+import { separarProtocolosAtivos } from "@/lib/protocolos";
 import { registrarEvento } from "@/lib/servidor/registro";
 import type { HandlerIa } from "../dispatcher";
 import { classificarErroIa } from "../executor-openai";
@@ -40,6 +41,7 @@ interface DiagnosticoAtendimento {
   selecao?: SelecaoMensagensAtendimento;
   protocolosDisponiveis?: number;
   protocolosSelecionados?: number;
+  regrasCondutaDisponiveis?: number;
   abordagemCorretorDisponivel?: boolean;
   origemHistorico?: string;
   contextoFingerprint?: string;
@@ -78,6 +80,7 @@ function registrarDiagnosticoAtendimento(
       descartadasVazias: base.selecao?.mensagensDescartadasVazias ?? null,
       protocolosDisponiveis: base.protocolosDisponiveis ?? null,
       protocolosSelecionados: base.protocolosSelecionados ?? null,
+      regrasCondutaDisponiveis: base.regrasCondutaDisponiveis ?? null,
       mensagensAntigasRelevantes: base.selecao?.antigasRelevantes.length ?? null,
       abordagemCorretorDisponivel: base.abordagemCorretorDisponivel ?? null,
       contextoFingerprint: base.contextoFingerprint ?? null,
@@ -205,10 +208,16 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
     );
     return respostaErroIa("falha-carregamento-contexto", 502);
   }
-  const protocolos = ((ptData || []) as DbProtocoloRow[])
-    .map(fromDbProtocolo)
-    .filter((p) => !p.arquivado)
-    .map((p) => ({ titulo: p.titulo, conteudo: p.conteudo }));
+  const protocolos = ((ptData || []) as DbProtocoloRow[]).map(fromDbProtocolo);
+  const { informacoesComerciais, regrasConduta } = separarProtocolosAtivos(protocolos);
+  const informacoesComerciaisPrompt = informacoesComerciais.map((protocolo) => ({
+    titulo: protocolo.titulo,
+    conteudo: protocolo.conteudo,
+  }));
+  const regrasCondutaPrompt = regrasConduta.map((protocolo) => ({
+    titulo: protocolo.titulo,
+    conteudo: protocolo.conteudo,
+  }));
 
   const { data: cfData, error: cfErro } = await supabase
     .from("user_config")
@@ -221,12 +230,25 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   }
   const perfil = normalizarPerfilComunicacao((cfData as Pick<DbUserConfigRow, "perfil_comunicacao"> | null)?.perfil_comunicacao);
 
-  diagnostico.protocolosDisponiveis = protocolos.length;
-  const promptSistema = promptBaseAtendimento(configuracao?.instrucaoAtendimento);
+  diagnostico.protocolosDisponiveis = informacoesComerciaisPrompt.length;
+  diagnostico.regrasCondutaDisponiveis = regrasCondutaPrompt.length;
+  const promptSistema = promptBaseAtendimento(
+    configuracao?.instrucaoAtendimento,
+    regrasCondutaPrompt,
+  );
   const conversa = conversaAtendimento(selecao, enviada);
   const contexto = contextoAtendimentoDoImovel(imovel);
   diagnostico.contextoFingerprint = createHash("sha256")
-    .update(JSON.stringify({ mensagemProp, contexto, conversa, protocolos, perfil }))
+    .update(
+      JSON.stringify({
+        mensagemProp,
+        contexto,
+        conversa,
+        informacoesComerciais: informacoesComerciaisPrompt,
+        regrasConduta: regrasCondutaPrompt,
+        perfil,
+      }),
+    )
     .digest("hex")
     .slice(0, 16);
 
@@ -247,7 +269,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
             mensagemProp,
             contexto,
             conversa,
-            protocolos,
+            informacoesComerciaisPrompt,
             selecao.mensagemAtualId,
           ),
         },
@@ -267,7 +289,11 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
       ...selecao.anteriores.map((m) => m.id),
       ...selecao.antigasRelevantes.map((m) => m.id),
     ].filter((id): id is string => !!id);
-    decisao = normalizarDecisaoAtendimento(JSON.parse(textoDecisao), protocolos, idsMensagens);
+    decisao = normalizarDecisaoAtendimento(
+      JSON.parse(textoDecisao),
+      informacoesComerciaisPrompt,
+      idsMensagens,
+    );
   } catch {
     decisao = null;
   }
@@ -297,7 +323,9 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   }
 
   const titulosSelecionados = new Set(decisao.protocolosAplicaveis);
-  const protocolosSelecionados = protocolos.filter((p) => titulosSelecionados.has(p.titulo));
+  const protocolosSelecionados = informacoesComerciaisPrompt.filter((protocolo) =>
+    titulosSelecionados.has(protocolo.titulo),
+  );
   diagnostico.protocolosSelecionados = protocolosSelecionados.length;
 
   let textoGeracao: string;

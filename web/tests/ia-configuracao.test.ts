@@ -30,8 +30,11 @@ describe("configuração operacional da IA", () => {
 });
 
 describe("orientação complementar do atendimento", () => {
-  it("não muda o prompt quando o campo está vazio", () => {
-    expect(promptBaseAtendimento("   ")).toBe(PROMPT_BASE_ATENDIMENTO);
+  it("mantém as regras permanentes e a seção obrigatória quando o campo está vazio", () => {
+    const prompt = promptBaseAtendimento("   ");
+    expect(prompt).toContain(PROMPT_BASE_ATENDIMENTO);
+    expect(prompt).toContain("REGRAS OBRIGATÓRIAS DE CONDUTA:");
+    expect(prompt).not.toContain("Orientação complementar do administrador:");
   });
 
   it("mantém as travas permanentes depois da orientação do ADM", () => {
@@ -40,6 +43,7 @@ describe("orientação complementar do atendimento", () => {
     expect(prompt).toContain("Nunca invente valor");
     expect(prompt).toContain("não autoriza fatos comerciais");
     expect(prompt.indexOf("Regras permanentes")).toBeLessThan(prompt.indexOf("Orientação complementar"));
+    expect(prompt.indexOf("Orientação complementar")).toBeLessThan(prompt.indexOf("REGRAS OBRIGATÓRIAS DE CONDUTA"));
   });
 
   it("trunca chamadas internas no mesmo limite aceito pelo ADM", () => {

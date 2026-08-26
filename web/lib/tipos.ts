@@ -8,6 +8,7 @@
    ================================================================ */
 import type { ResultadoTentativa } from "./constantes";
 import type { PortalAngariacao } from "./calculo/centralAngariacao";
+import type { TipoProtocolo } from "./protocolos";
 
 /** Anúncio que o corretor já abriu na Central de Angariação. */
 export interface AnuncioCentralVisualizado {
@@ -89,22 +90,22 @@ export interface Abordagem {
   arquivada: boolean;
 }
 
-/** Uma regra da IMOBILIÁRIA, escrita pelo corretor: taxa de administração,
-    prazo de contrato, multa de rescisão, quem paga o quê, exclusividade.
+/** Um protocolo da imobiliária, classificado como informação comercial ou
+    regra obrigatória de conduta da IA.
 
-    É a fonte de verdade que o rascunho de resposta por IA consulta para poder
-    AFIRMAR alguma coisa. Sem ela o rascunho só sabe empurrar para uma ligação,
-    porque o pipeline especializado exige fonte explícita em
-    `lib/ia/atendimento`.
+    Informações comerciais são a fonte de verdade que autoriza o rascunho a
+    AFIRMAR fatos oficiais. Regras de conduta controlam permanentemente como a
+    conversa é conduzida e nunca são apresentadas como fatos ao proprietário.
 
     Não confundir com fato do IMÓVEL (garagem, pet, o condomínio daquele
     apartamento): aquilo varia por imóvel, o painel não tem o dado, e continua
     proibido à IA. Protocolo é o que vale igual para todo proprietário. */
 export interface Protocolo {
   id: string;
+  tipo: TipoProtocolo;
   /** O assunto, como o proprietário perguntaria ("Taxa de administração"). */
   titulo: string;
-  /** A resposta, em linguagem que pode ir para o WhatsApp. */
+  /** Fato oficial ou instrução de conduta, conforme `tipo`. */
   conteudo: string;
   /** Arquivado: sai do prompt e da tela, sem perder o texto — a taxa que mudou
       este ano ainda descreve o contrato assinado no ano passado. */

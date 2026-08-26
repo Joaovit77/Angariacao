@@ -1476,10 +1476,10 @@ ali para quem quiser um modelo.
 
   A IA recebe somente fatos tipados do imóvel (endereço/unidade/localização, tipo, quartos,
   banheiros, vagas, valores, autorização, pausa, responsável, origem e histórico de estágio quando
-  cadastrados), estágio, conversa selecionada e protocolos
-  aplicáveis. Observações livres e texto de anúncio ficam fora. Fato ausente não pode ser inventado;
-  o próximo passo deve reconhecer a lacuna. O acesso continua gated por `podeUsarIa`, e nada é
-  enviado sem revisão do corretor.
+  cadastrados), estágio, conversa selecionada, informações comerciais aplicáveis e todas as regras
+  de conduta ativas. Observações livres e texto de anúncio ficam fora. Fato ausente não pode ser
+  inventado; o próximo passo deve reconhecer a lacuna. O acesso continua gated por `podeUsarIa`, e
+  nada é enviado sem revisão do corretor.
 
   O jeito pessoal de escrever vem de `user_config.perfil_comunicacao` (tom, tamanho, emojis,
   tratamento e listas curtas de expressões preferidas/a evitar), normalizado com default seguro para
@@ -1489,7 +1489,7 @@ ali para quem quiser um modelo.
   insistir após recusa, executar ação proibida ou repetir apresentação de forma óbvia. A validação
   por modelo recebe o rascunho inteiro e os títulos de `protocolosUsados`.
 
-  **Os protocolos da imobiliária são a exceção a essa trava, e a única.** Não saber nada está certo
+  **As informações comerciais da imobiliária são a exceção a essa trava, e a única.** Não saber nada está certo
   para fato do IMÓVEL, que o painel não tem; está errado para regra da EMPRESA, que o corretor
   repete em toda conversa. Medido em 04/08/2026: das 49 respostas de proprietário com pergunta, ~18
   eram sobre a empresa (taxa, repasse, prazo, multa, quem paga o quê, exclusividade, horário, se
@@ -1504,9 +1504,9 @@ ali para quem quiser um modelo.
   **proibido deduzir e combinar** — assunto não coberto por um item volta à regra de sempre, e
   juntar "a taxa é 10%" com "o contrato é de 3 anos" para concluir o que acontece na renovação é o
   erro que um modelo comete com naturalidade; **a trava do fato do imóvel fica intacta** (protocolo
-  é sobre a empresa, e há teste amarrando as duas regras); **protocolos são selecionados na decisão,
-  antes da geração**, e no máximo cinco podem ser aplicados; e **o rascunho declara em que se apoiou**
-  (`protocolosUsados` no esquema,
+  é sobre a empresa, e há teste amarrando as duas regras); **informações comerciais são selecionadas
+  na decisão, antes da geração**, e no máximo cinco podem ser aplicadas; e **o rascunho declara em que
+  se apoiou** (`protocolosUsados` no esquema,
   filtrado na rota contra os títulos que existem de verdade, exibido no ModalWhatsapp) — "a IA
   sugere, o corretor confirma" não significa nada se conferir exigir reler a base inteira.
   O que decide se isso funciona não é o prompt e sim o **estado vazio da tela**: base vazia não muda
@@ -1514,8 +1514,13 @@ ali para quem quiser um modelo.
   um a um clique de virar protocolo, e **sem conteúdo pré-preenchido** — um texto padrão sobre taxa
   de administração seria a IA afirmando um número que esta imobiliária nunca disse, com o corretor
   confirmando sem ler porque já estava escrito.
-  Protocolos registram **regras e fatos objetivos da imobiliária**, não saudações, textos prontos ou
-  preferências pessoais; estas pertencem ao perfil de comunicação.
+  Cada protocolo tem uma categoria obrigatória. **Informações comerciais** registram fatos objetivos
+  da imobiliária e só entram na geração quando a decisão as considera relevantes. **Regras de
+  conduta** definem como a IA deve agir e todas as regras ativas são incorporadas, sem seus títulos
+  internos, ao prompt de sistema das etapas de decisão, geração e validação. Regras arquivadas não
+  participam; regras de conduta nunca aparecem em `protocolosUsados` nem são apresentadas como fatos
+  comerciais. Protocolos não são saudações nem preferências pessoais de escrita; estas pertencem ao
+  perfil de comunicação.
 
 #### `api/assistente` — Assistente geral somente leitura
 

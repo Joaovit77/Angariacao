@@ -51,7 +51,26 @@ function supabaseFalso(): SupabaseClient {
         return {
           select: () => ({
             order: async () => ({
-              data: [{ titulo: "Taxa", conteudo: "A taxa é de 10%.", arquivado: false }],
+              data: [
+                {
+                  tipo: "informacao_comercial",
+                  titulo: "Taxa",
+                  conteudo: "A taxa é de 10%.",
+                  arquivado: false,
+                },
+                {
+                  tipo: "regra_conduta",
+                  titulo: "Não repetir informações",
+                  conteudo: "Analise o histórico e não repita informações já explicadas.",
+                  arquivado: false,
+                },
+                {
+                  tipo: "regra_conduta",
+                  titulo: "Regra arquivada",
+                  conteudo: "CONTEÚDO ARQUIVADO NÃO PODE SER USADO.",
+                  arquivado: true,
+                },
+              ],
               error: null,
             }),
           }),
@@ -126,6 +145,17 @@ describe("handler especializado de atendimento", () => {
       "rascunhar-resposta-geracao",
       "rascunhar-resposta-validacao",
     ]);
+    for (const [pedido] of executar.mock.calls) {
+      expect(pedido.mensagens[0].content).toContain("REGRAS OBRIGATÓRIAS DE CONDUTA");
+      expect(pedido.mensagens[0].content).toContain("não repita informações já explicadas");
+      expect(pedido.mensagens[0].content).not.toContain("Não repetir informações");
+      expect(pedido.mensagens[0].content).not.toContain("CONTEÚDO ARQUIVADO");
+    }
+    expect(executar.mock.calls[0][0].mensagens[1].content).toContain(
+      "INFORMAÇÕES OFICIAIS DA IMOBILIÁRIA",
+    );
+    expect(executar.mock.calls[0][0].mensagens[1].content).toContain("A taxa é de 10%.");
+    expect(executar.mock.calls[0][0].mensagens[1].content).not.toContain("não repita informações");
   });
 
   it("classifica a falha da geracao e repete o mesmo payload de decisao na nova tentativa", async () => {

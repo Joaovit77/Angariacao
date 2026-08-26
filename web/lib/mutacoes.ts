@@ -34,6 +34,7 @@ import { dataAngariadoEfetiva, historicoComStatus } from "./calculo/motor";
 import { eventosNaoLidos, notaDaMensagemEnviada } from "./calculo/notas";
 import { useCelebracao } from "./celebracao";
 import { MAX_PROTOCOLO_CHARS } from "./calculo/ia";
+import { ehTipoProtocolo } from "./protocolos";
 import { toDbAbordagem, toDbAgenda, toDbAnuncioCentralVisualizado, toDbImovel, toDbProtocolo } from "./persistencia/mapeadores";
 import { sincronizarCompromisso } from "./googleAgenda";
 import { getSupabase } from "./persistencia/supabase";
@@ -818,6 +819,10 @@ export async function salvarProtocolo(data: Protocolo, userId: string): Promise<
   const { protocolos, setProtocolos } = useAppStore.getState();
   const titulo = data.titulo.trim();
   const conteudo = data.conteudo.trim();
+  if (!ehTipoProtocolo(data.tipo)) {
+    toast("Selecione uma categoria válida para o protocolo.", "error");
+    return false;
+  }
   if (!titulo) {
     toast("Dê um título ao protocolo.", "error");
     return false;

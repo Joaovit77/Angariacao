@@ -8,7 +8,7 @@ const estadoExemplo = {
   metas: { "2026-07": { angariacoes: 5, locados: 2, comissao: 5000, faturamento: 12000 } },
   agenda: [{ id: "a1", title: "t", type: "Visita", date: "2026-07-10", done: false, isVerificacaoDisponibilidade: false }],
   abordagens: [{ id: "ab1", nome: "Avaliação gratuita", arquivada: false }],
-  protocolos: [{ id: "pr1", titulo: "Taxa de administração", conteudo: "10% sobre o aluguel.", arquivado: false }],
+  protocolos: [{ id: "pr1", tipo: "informacao_comercial" as const, titulo: "Taxa de administração", conteudo: "10% sobre o aluguel.", arquivado: false }],
   config: { comissaoPercent: 50, agendaTipos: [], whatsappModelos: [], empresa: "", origensExtras: [], dadosPagamento: "", perfilComunicacao: { ...PERFIL_COMUNICACAO_PADRAO } },
 };
 

@@ -14,6 +14,7 @@
    ================================================================ */
 import { ORIGENS_LEGADAS } from "../constantes";
 import type { Abordagem, AgendaItem, AnuncioCentralVisualizado, Imovel, NotaImovel, Protocolo, StatusHistoryEntry, Tentativa } from "../tipos";
+import { ehTipoProtocolo, tipoProtocoloOuPadrao, type TipoProtocolo } from "../protocolos";
 import type { PortalAngariacao } from "../calculo/centralAngariacao";
 
 /** Linha da tabela `imoveis` como o Supabase retorna/aceita. */
@@ -101,10 +102,11 @@ export interface DbAbordagemRow {
   created_at?: string;
 }
 
-/** Linha da tabela `protocolos` (as regras da imobiliária). */
+/** Linha da tabela `protocolos` (informações comerciais e regras de conduta). */
 export interface DbProtocoloRow {
   id: string;
   user_id: string;
+  tipo?: TipoProtocolo | string | null;
   titulo: string;
   conteudo: string;
   arquivado: boolean | null;
@@ -324,9 +326,11 @@ export function fromDbAbordagem(r: DbAbordagemRow): Abordagem {
 }
 
 export function toDbProtocolo(p: Protocolo, userId: string): Omit<DbProtocoloRow, "created_at" | "updated_at"> {
+  if (!ehTipoProtocolo(p.tipo)) throw new Error("Tipo de protocolo inválido.");
   return {
     id: p.id,
     user_id: userId,
+    tipo: p.tipo,
     titulo: p.titulo.trim(),
     conteudo: p.conteudo.trim(),
     arquivado: !!p.arquivado,
@@ -336,6 +340,7 @@ export function toDbProtocolo(p: Protocolo, userId: string): Omit<DbProtocoloRow
 export function fromDbProtocolo(r: DbProtocoloRow): Protocolo {
   return {
     id: r.id,
+    tipo: tipoProtocoloOuPadrao(r.tipo),
     titulo: r.titulo || "",
     conteudo: r.conteudo || "",
     arquivado: !!r.arquivado,

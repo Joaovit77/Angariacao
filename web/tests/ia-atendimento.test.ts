@@ -4,7 +4,7 @@ import {
   MAX_MENSAGENS_ATENDIMENTO, PROMPT_BASE_ATENDIMENTO, contextoAtendimentoDoImovel,
   conversaAtendimento, mensagemFalhaIa, motivoReprovacaoValidacaoAtendimento,
   motivoBloqueioRascunhoDeterministico,
-  normalizarDecisaoAtendimento, promptDecidirAtendimento, promptGerarAtendimento,
+  normalizarDecisaoAtendimento, promptBaseAtendimento, promptDecidirAtendimento, promptGerarAtendimento,
   promptValidarAtendimento, selecionarMensagensAtendimento, validacaoAprovaAtendimento,
   type ContextoAtendimento, type DecisaoAtendimento, type ProtocoloPrompt,
 } from "@/lib/calculo/ia";
@@ -19,6 +19,16 @@ const protocolos: ProtocoloPrompt[] = [
   { titulo: "Taxa", conteudo: "A taxa e de 10% sobre o aluguel." },
   { titulo: "IPTU", conteudo: "O IPTU e definido no contrato." },
   { titulo: "Vistoria", conteudo: "A vistoria registra o estado do imovel." },
+];
+const regrasConduta: ProtocoloPrompt[] = [
+  {
+    titulo: "Não repetir informações",
+    conteudo: "Analise o histórico e não repita informações que já foram explicadas.",
+  },
+  {
+    titulo: "Informação não cadastrada",
+    conteudo: "Quando faltar informação comercial, não invente nem estime.",
+  },
 ];
 const base: DecisaoAtendimento = {
   intencao: "geral", objecao: "", estadoConversacional: "entendimento",
@@ -37,7 +47,7 @@ describe("assistente de atendimento - 12 cenarios", () => {
   });
   it("2. pergunta sem protocolo correspondente", () => {
     const p = promptGerarAtendimento("Quando posso ligar?", contexto, undefined, base, []);
-    expect(p).toContain('"protocolosAutorizados":[]'); expect(p).not.toContain("10%");
+    expect(p).toContain("INFORMAÇÕES OFICIAIS DA IMOBILIÁRIA:\n[]"); expect(p).not.toContain("10%");
   });
   it("3. pergunta curta depende do historico", () => {
     const p = promptDecidirAtendimento("E ele?", contexto, { anteriores: ["Falamos do IPTU."] }, protocolos);
@@ -89,6 +99,35 @@ describe("assistente de atendimento - 12 cenarios", () => {
 });
 
 describe("contratos e barreiras", () => {
+  it("aplica regras de conduta sempre, sem tratá-las como informação comercial", () => {
+    const sistema = promptBaseAtendimento("", regrasConduta);
+    const decisao = promptDecidirAtendimento(
+      "Qual é a taxa?",
+      contexto,
+      undefined,
+      [protocolos[0]],
+    );
+    expect(sistema).toContain("REGRAS OBRIGATÓRIAS DE CONDUTA");
+    expect(sistema).toContain("não repita informações que já foram explicadas");
+    expect(sistema).toContain("não invente nem estime");
+    expect(sistema).not.toContain("Não repetir informações");
+    expect(decisao).toContain("INFORMAÇÕES OFICIAIS DA IMOBILIÁRIA");
+    expect(decisao).toContain("10%");
+    expect(decisao).not.toContain("não repita informações");
+  });
+
+  it("mantém a regra obrigatória mesmo quando ela não corresponde à pergunta", () => {
+    const sistema = promptBaseAtendimento("", regrasConduta);
+    const perguntaSemCorrespondencia = promptDecidirAtendimento(
+      "Você atende aos sábados?",
+      contexto,
+      undefined,
+      [],
+    );
+    expect(sistema).toContain("não repita informações");
+    expect(perguntaSemCorrespondencia).toContain("INFORMAÇÕES OFICIAIS DA IMOBILIÁRIA:\n[]");
+  });
+
   it("os tres structured outputs sao fechados", () => {
     for (const s of [ESQUEMA_DECISAO_ATENDIMENTO, ESQUEMA_GERACAO_ATENDIMENTO, ESQUEMA_VALIDACAO_ATENDIMENTO]) {
       expect(s.additionalProperties).toBe(false); expect(s.required).toEqual(Object.keys(s.properties));
