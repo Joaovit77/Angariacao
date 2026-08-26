@@ -143,6 +143,17 @@ const ITENS: ItemNav[] = [
     ),
   },
   {
+    rota: "/assistente",
+    texto: "Assistente",
+    icone: (
+      <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M12 3l1.4 4.1L17.5 8.5l-4.1 1.4L12 14l-1.4-4.1L6.5 8.5l4.1-1.4z" />
+        <path d="M18.5 14l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" />
+        <path d="M6 15l.7 1.8 1.8.7-1.8.7L6 20l-.7-1.8-1.8-.7 1.8-.7z" />
+      </svg>
+    ),
+  },
+  {
     // Perto do fim de propósito: é tela de referência, aberta para escrever uma
     // vez e revisar de vez em quando, não trabalho do dia. Sem badge pelo mesmo
     // motivo — não há nada aqui que se acumule cobrando atenção.

@@ -1,45 +1,38 @@
 "use client";
 
-import { type CSSProperties, type FormEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
-import { perguntarAoAssistente } from "@/lib/assistente/cliente";
-import { montarContextoAssistente } from "@/lib/assistente/contexto";
-import { compactarBlocosParaHistorico } from "@/lib/assistente/historico";
-import type { MensagemAssistente } from "@/lib/assistente/tipos";
+import {
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { limitarPosicaoAssistente, type PosicaoAssistente } from "@/lib/assistente/posicao";
+import { useAssistenteFlutuanteAtivo } from "@/lib/assistente/preferenciaFlutuante";
 import { useAppStore } from "@/lib/store";
-import { usePipelineUi } from "@/lib/uiPipeline";
-import { useUiModal } from "@/lib/uiModal";
-import RespostaEstruturada from "./RespostaEstruturada";
-import TextoMarkdownSeguro from "./TextoMarkdownSeguro";
+import ConversaAssistente from "./ConversaAssistente";
+import { useEstadoAssistente } from "./AssistenteProvider";
+import { useContextoAssistenteAtual } from "./useContextoAssistenteAtual";
 import styles from "./Assistente.module.css";
 
-const BOAS_VINDAS: MensagemAssistente = { id: "boas-vindas", papel: "assistente", texto: "Olá! Posso consultar sua carteira, agenda, follow-ups e indicadores. Estou em modo somente leitura." };
 const CHAVE_POSICAO_ACIONADOR = "angariacao:assistente:posicao-acionador";
 const LIMIAR_ARRASTE = 5;
 
 export default function Assistente() {
-  const permitido = useAppStore((s) => s.iaDisponivel);
-  const pathname = usePathname();
-  const drawerId = usePipelineUi((s) => s.drawerImovelId);
-  const modal = useUiModal((s) => s.modal);
+  const permitido = useAppStore((estado) => estado.iaDisponivel);
+  const [flutuanteAtivo] = useAssistenteFlutuanteAtivo();
+  const { cancelarConsulta, limparConversa } = useEstadoAssistente();
+  const { contexto, modalAtivo } = useContextoAssistenteAtual();
   const [aberto, setAberto] = useState(false);
-  const [texto, setTexto] = useState("");
-  const [mensagens, setMensagens] = useState<MensagemAssistente[]>([BOAS_VINDAS]);
-  const [carregando, setCarregando] = useState(false);
-  const fim = useRef<HTMLDivElement>(null);
   const painelRef = useRef<HTMLElement>(null);
   const acionadorRef = useRef<HTMLButtonElement>(null);
   const limparArrasteRef = useRef<() => void>(() => undefined);
   const limparArrasteAcionadorRef = useRef<() => void>(() => undefined);
   const acionadorFoiArrastadoRef = useRef(false);
-  const requisicaoRef = useRef<AbortController | null>(null);
-  const montadoRef = useRef(true);
   const [posicao, setPosicao] = useState<PosicaoAssistente | null>(null);
   const [posicaoAcionador, setPosicaoAcionador] = useState<PosicaoAssistente | null>(null);
-  const contexto = useMemo(() => montarContextoAssistente(pathname, drawerId, modal), [pathname, drawerId, modal]);
   const drawerAtivo = contexto.superficie === "drawer";
-  const modalAtivo = modal !== null;
   const estiloPainel: CSSProperties = posicao
     ? { zIndex: "var(--layer-assistente)", left: posicao.x, top: posicao.y, right: "auto", bottom: "auto" }
     : { zIndex: "var(--layer-assistente)" };
@@ -47,18 +40,13 @@ export default function Assistente() {
     ? { zIndex: "var(--layer-assistente)", left: posicaoAcionador.x, top: posicaoAcionador.y, right: "auto", bottom: "auto" }
     : { zIndex: "var(--layer-assistente)" };
 
-  useEffect(() => { if (aberto) fim.current?.scrollIntoView({ behavior: "smooth" }); }, [aberto, mensagens, carregando]);
-  useEffect(() => {
-    montadoRef.current = true;
-    return () => {
-      montadoRef.current = false;
-      requisicaoRef.current?.abort();
-      limparArrasteRef.current();
-      limparArrasteAcionadorRef.current();
-    };
+  useEffect(() => () => {
+    limparArrasteRef.current();
+    limparArrasteAcionadorRef.current();
   }, []);
+
   useEffect(() => {
-    if (!permitido) return;
+    if (!permitido || !flutuanteAtivo) return;
     const acionador = acionadorRef.current;
     if (!acionador) return;
     try {
@@ -73,14 +61,20 @@ export default function Assistente() {
           window.innerHeight,
         ));
       }
-    } catch { /* Armazenamento indisponível ou valor antigo inválido. */ }
-  }, [permitido]);
+    } catch {
+      /* Armazenamento indisponível ou valor antigo inválido. */
+    }
+  }, [permitido, flutuanteAtivo]);
+
   useEffect(() => {
     if (!posicaoAcionador) return;
     try {
       localStorage.setItem(CHAVE_POSICAO_ACIONADOR, JSON.stringify(posicaoAcionador));
-    } catch { /* O arraste continua funcional mesmo sem persistência local. */ }
+    } catch {
+      /* O arraste continua funcional mesmo sem persistência local. */
+    }
   }, [posicaoAcionador]);
+
   useEffect(() => {
     function ajustarAoViewport() {
       if (window.innerWidth <= 720) {
@@ -103,22 +97,12 @@ export default function Assistente() {
     window.addEventListener("resize", ajustarAoViewport);
     return () => window.removeEventListener("resize", ajustarAoViewport);
   }, []);
-  if (!permitido) return null;
 
-  function cancelarConsulta() {
-    requisicaoRef.current?.abort();
-    requisicaoRef.current = null;
-    setCarregando(false);
-  }
+  if (!permitido || !flutuanteAtivo) return null;
 
   function fecharAssistente() {
     cancelarConsulta();
     setAberto(false);
-  }
-
-  function limparConversa() {
-    cancelarConsulta();
-    setMensagens([BOAS_VINDAS]);
   }
 
   function iniciarArraste(event: ReactPointerEvent<HTMLElement>) {
@@ -129,10 +113,10 @@ export default function Assistente() {
     const rect = painel.getBoundingClientRect();
     const deslocamentoX = event.clientX - rect.left;
     const deslocamentoY = event.clientY - rect.top;
-    const mover = (e: PointerEvent) => {
+    const mover = (evento: PointerEvent) => {
       setPosicao(limitarPosicaoAssistente(
-        e.clientX - deslocamentoX,
-        e.clientY - deslocamentoY,
+        evento.clientX - deslocamentoX,
+        evento.clientY - deslocamentoY,
         painel.offsetWidth,
         painel.offsetHeight,
         window.innerWidth,
@@ -162,21 +146,21 @@ export default function Assistente() {
     const pointerId = event.pointerId;
     acionadorFoiArrastadoRef.current = false;
 
-    const mover = (e: PointerEvent) => {
-      if (e.pointerId !== pointerId) return;
-      if (!acionadorFoiArrastadoRef.current && Math.hypot(e.clientX - inicioX, e.clientY - inicioY) < LIMIAR_ARRASTE) return;
+    const mover = (evento: PointerEvent) => {
+      if (evento.pointerId !== pointerId) return;
+      if (!acionadorFoiArrastadoRef.current && Math.hypot(evento.clientX - inicioX, evento.clientY - inicioY) < LIMIAR_ARRASTE) return;
       acionadorFoiArrastadoRef.current = true;
       setPosicaoAcionador(limitarPosicaoAssistente(
-        e.clientX - deslocamentoX,
-        e.clientY - deslocamentoY,
+        evento.clientX - deslocamentoX,
+        evento.clientY - deslocamentoY,
         acionador.offsetWidth,
         acionador.offsetHeight,
         window.innerWidth,
         window.innerHeight,
       ));
     };
-    const encerrar = (e: PointerEvent) => {
-      if (e.pointerId !== pointerId) return;
+    const encerrar = (evento: PointerEvent) => {
+      if (evento.pointerId !== pointerId) return;
       window.removeEventListener("pointermove", mover);
       window.removeEventListener("pointerup", encerrar);
       window.removeEventListener("pointercancel", encerrar);
@@ -203,45 +187,54 @@ export default function Assistente() {
     else setAberto(true);
   }
 
-  async function enviar(event: FormEvent) {
-    event.preventDefault();
-    const pergunta = texto.trim();
-    if (!pergunta || carregando) return;
-    const usuario: MensagemAssistente = { id: crypto.randomUUID(), papel: "usuario", texto: pergunta };
-    const anteriores = mensagens;
-    setMensagens((atuais) => [...atuais, usuario]);
-    setTexto("");
-    setCarregando(true);
-    const controller = new AbortController();
-    requisicaoRef.current = controller;
-    try {
-      const resposta = await perguntarAoAssistente({
-        mensagem: pergunta,
-        contexto,
-        historico: anteriores.filter((m) => m.id !== "boas-vindas").map(({ papel, texto: textoAnterior, blocos }) => ({
-          papel,
-          texto: textoAnterior,
-          ...(blocos?.length ? { resultados: compactarBlocosParaHistorico(blocos) } : {}),
-        })),
-      }, { signal: controller.signal });
-      if (resposta.ok === false && resposta.codigo === "cancelado") return;
-      setMensagens((atuais) => [...atuais, resposta.ok ? resposta.mensagem : { id: crypto.randomUUID(), papel: "assistente", texto: resposta.erro }]);
-    } finally {
-      if (requisicaoRef.current === controller) requisicaoRef.current = null;
-      if (montadoRef.current && !requisicaoRef.current) setCarregando(false);
-    }
-  }
-
-  return <>
-    <button ref={acionadorRef} className={`${styles.acionador} assistente-acionador-global${drawerAtivo ? " assistente-acionador-com-drawer" : ""}`} style={estiloAcionador} type="button" onPointerDown={iniciarArrasteAcionador} onClick={acionarAssistente} aria-label={aberto ? "Fechar assistente" : "Abrir assistente"} aria-expanded={aberto} title="Clique para abrir ou arraste para mover"><span aria-hidden="true">✦</span><span>Assistente</span></button>
-    {aberto && <aside ref={painelRef} className={`${styles.painel} assistente-painel-global${drawerAtivo && !posicao ? " assistente-com-drawer" : ""}${modalAtivo && !posicao ? " assistente-com-modal" : ""}${posicao ? " assistente-posicionado" : ""}`} style={estiloPainel} aria-label="Assistente de IA">
-      <header className={`${styles.cabecalho} assistente-cabecalho-arraste`} onPointerDown={iniciarArraste} title="Arraste para mover o Assistente"><div className="assistente-identidade"><span className="assistente-alca" aria-hidden="true">⠿</span><span><strong>Assistente</strong><small>Somente leitura · {contexto.pagina}</small></span></div><div>{posicao && <button type="button" onClick={() => setPosicao(null)} title="Restaurar posição">⌂</button>}<button type="button" onClick={limparConversa} title="Limpar conversa">↻</button><button type="button" onClick={fecharAssistente} aria-label="Fechar Assistente">×</button></div></header>
-      <div className={styles.mensagens} aria-live="polite">
-        {mensagens.map((mensagem) => <article className={`${styles.mensagem} ${mensagem.papel === "usuario" ? styles.usuario : styles.assistente}`} key={mensagem.id}>{mensagem.papel === "assistente" ? <TextoMarkdownSeguro texto={mensagem.texto} /> : <p>{mensagem.texto}</p>}{mensagem.blocos && <RespostaEstruturada blocos={mensagem.blocos} />}</article>)}
-        {carregando && <div className={styles.digitando} role="status">Consultando dados com segurança…</div>}<div ref={fim} />
-      </div>
-      <form className={styles.formulario} onSubmit={enviar}><textarea value={texto} onChange={(e) => setTexto(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); } }} placeholder="Pergunte sobre sua carteira…" aria-label="Pergunta ao Assistente" rows={2} maxLength={4000} disabled={carregando} /><button type="submit" disabled={carregando || !texto.trim()} aria-label="Enviar pergunta">➜</button></form>
-      <small className={styles.rodape}>O histórico existe apenas nesta sessão do painel.</small>
-    </aside>}
-  </>;
+  return (
+    <>
+      <button
+        ref={acionadorRef}
+        className={`${styles.acionador} assistente-acionador-global${drawerAtivo ? " assistente-acionador-com-drawer" : ""}`}
+        style={estiloAcionador}
+        type="button"
+        onPointerDown={iniciarArrasteAcionador}
+        onClick={acionarAssistente}
+        aria-label={aberto ? "Fechar assistente" : "Abrir assistente"}
+        aria-expanded={aberto}
+        title="Clique para abrir ou arraste para mover"
+      >
+        <span aria-hidden="true">✦</span>
+        <span>Assistente</span>
+      </button>
+      {aberto && (
+        <aside
+          ref={painelRef}
+          className={`${styles.painel} assistente-painel-global${drawerAtivo && !posicao ? " assistente-com-drawer" : ""}${modalAtivo && !posicao ? " assistente-com-modal" : ""}${posicao ? " assistente-posicionado" : ""}`}
+          style={estiloPainel}
+          aria-label="Assistente de IA"
+        >
+          <header
+            className={`${styles.cabecalho} assistente-cabecalho-arraste`}
+            onPointerDown={iniciarArraste}
+            title="Arraste para mover o Assistente"
+          >
+            <div className="assistente-identidade">
+              <span className="assistente-alca" aria-hidden="true">⠿</span>
+              <span>
+                <strong>Assistente</strong>
+                <small>Somente leitura · {contexto.pagina}</small>
+              </span>
+            </div>
+            <div>
+              {posicao && (
+                <button type="button" onClick={() => setPosicao(null)} title="Restaurar posição">
+                  ⌂
+                </button>
+              )}
+              <button type="button" onClick={limparConversa} title="Limpar conversa">↻</button>
+              <button type="button" onClick={fecharAssistente} aria-label="Fechar Assistente">×</button>
+            </div>
+          </header>
+          <ConversaAssistente />
+        </aside>
+      )}
+    </>
+  );
 }

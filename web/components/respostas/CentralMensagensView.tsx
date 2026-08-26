@@ -230,8 +230,13 @@ function ListaConversas({
           >
             <span>Agendadas</span><b>{contagens.agendadas}</b>
           </button>
-          <button type="button" className="mensagens-gerenciar" onClick={aoAbrirAgendadas}>
-            Gerenciar
+          <button
+            type="button"
+            className="mensagens-gerenciar"
+            onClick={aoAbrirAgendadas}
+            title="Abrir agendamentos e programar uma mensagem"
+          >
+            Agendar
           </button>
         </div>
 

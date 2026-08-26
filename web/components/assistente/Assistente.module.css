@@ -89,6 +89,100 @@ button.item:hover { border-color: #438477; }
 .historico { display: flex; flex-direction: column; border-left: 2px solid #8db8ad; padding-left: 8px; gap: 2px; }
 .historico span { font-size: 13px; }
 
+.paginaLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 18px;
+  align-items: start;
+}
+.paginaPainel {
+  height: min(710px, calc(100dvh - 174px));
+  min-height: 520px;
+  border: 1px solid #d8dfdc;
+  border-radius: 18px;
+  background: #fff;
+  color: #17231f;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.paginaCabecalho {
+  min-height: 67px;
+  padding: 14px 17px;
+  background: #f3f7f5;
+  border-bottom: 1px solid #e0e7e4;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex: 0 0 auto;
+}
+.paginaCabecalho > span:last-child { display: flex; flex-direction: column; gap: 2px; }
+.paginaCabecalho small { color: #65736e; }
+.paginaMarca {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: #145c50;
+  color: #fff;
+  font-size: 20px;
+}
+.preferencia,
+.indisponivel {
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  padding: 18px;
+  background: var(--bg-elev-1);
+  box-shadow: var(--shadow-sm);
+}
+.preferencia h2 { margin: 6px 0 8px; font-size: 17px; color: var(--text); }
+.preferencia p,
+.indisponivel p { margin: 0; color: var(--text-dim); font-size: 13px; line-height: 1.5; }
+.preferencia > small { display: block; margin-top: 10px; color: var(--text-faint); font-size: 11px; }
+.preferenciaRotulo {
+  color: var(--accent-strong);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.preferenciaOpcoes {
+  margin-top: 16px;
+  padding: 3px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  border: 1px solid var(--border-soft);
+  border-radius: 11px;
+  background: var(--bg-elev-2);
+}
+.preferenciaOpcoes button {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 9px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.preferenciaOpcoes button:hover { color: var(--text); }
+.preferenciaOpcoes button.preferenciaAtiva {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 3px 10px #0002;
+}
+.indisponivel { max-width: 620px; }
+.indisponivel strong { display: block; margin-bottom: 5px; color: var(--text); }
+
+@media (max-width: 960px) {
+  .paginaLayout { grid-template-columns: 1fr; }
+  .preferencia { order: -1; }
+}
+
 @media (max-width: 720px) {
   .acionador { right: 12px; bottom: calc(14px + env(safe-area-inset-bottom)); }
   .painel { right: 0; bottom: 0; width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
@@ -96,11 +190,12 @@ button.item:hover { border-color: #438477; }
   .cabecalho { padding-top: calc(14px + env(safe-area-inset-top)); }
   .formulario { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
   .rodape { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+  .paginaPainel { height: calc(100dvh - 198px); min-height: 480px; border-radius: 14px; }
 }
 
 @media (prefers-color-scheme: dark) {
-  .painel { background: #17201d; color: #eef5f2; border-color: #33423d; }
-  .cabecalho, .formulario { background: #1e2a26; border-color: #33423d; }
+  .painel, .paginaPainel { background: #17201d; color: #eef5f2; border-color: #33423d; }
+  .cabecalho, .paginaCabecalho, .formulario { background: #1e2a26; border-color: #33423d; }
   .mensagens { background: #141c19; }
   .mensagem { background: #24332e; }
   .usuario { background: #2b7567; }

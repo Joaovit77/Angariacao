@@ -1529,6 +1529,11 @@ follow-ups, estagnação, Foco do dia, métricas e marcos históricos. Ele é de
 leitura**: não cria, altera, envia nem exclui. A rota exige sessão válida e permissão de IA; consulta
 o Supabase com o token do chamador, portanto a RLS continua sendo a fronteira de dados.
 
+A conversa pode ser usada tanto na página `/assistente`, acessível pela navegação, quanto no atalho
+flutuante. As duas superfícies consomem o mesmo estado de sessão e o mesmo cliente da API; não há um
+segundo agente. A preferência **Assistente flutuante** controla somente o atalho e é local ao
+navegador, como sua posição arrastável. Desativá-la não afeta a página nem os demais recursos de IA.
+
 Arquitetura:
 
 - `lib/assistente/`: contratos cliente-servidor, contexto visual, histórico compacto, referências,

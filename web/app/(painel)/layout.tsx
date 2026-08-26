@@ -23,6 +23,7 @@ import ModalOverlay from "@/components/modais/ModalOverlay";
 import PortaoTermos from "@/components/legal/PortaoTermos";
 import RodapeApp from "@/components/RodapeApp";
 import Assistente from "@/components/assistente/Assistente";
+import { AssistenteProvider } from "@/components/assistente/AssistenteProvider";
 import { useAppStore } from "@/lib/store";
 
 const CHAVE_RECOLHIDA = "sidebar-recolhida";
@@ -136,6 +137,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
 
   return (
     <PortaoTermos>
+    <AssistenteProvider>
     <div className={`app-shell${recolhida ? " recolhida" : ""}`} id="app-shell">
       {/* BARRA DE TOPO (nome da tela + notificações + usuário) */}
       <Topbar aoAlternar={alternarMenu} menuAtivo={menuAtivo} />
@@ -180,6 +182,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
     {/* Busca no máximo um radar vencido por rodada e só enquanto o painel está aberto. */}
     <MonitorRadarAngariacao />
     {ocultarAssistente ? null : <Assistente />}
+    </AssistenteProvider>
     </PortaoTermos>
   );
 }

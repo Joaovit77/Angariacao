@@ -39,6 +39,12 @@ describe("contexto do assistente", () => {
     });
   });
 
+  it("identifica a pagina dedicada sem ampliar o contexto enviado", () => {
+    expect(montarContextoAssistente("/assistente", null, null)).toEqual({
+      rota: "/assistente", pagina: "Assistente", superficie: "pagina",
+    });
+  });
+
   it("reconhece outro imovel ao voltar ao Pipeline", () => {
     const fora = montarContextoAssistente("/agenda", "uuid-interno-1", null);
     const volta = montarContextoAssistente("/pipeline", "uuid-interno-2", null);

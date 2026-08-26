@@ -8,6 +8,7 @@ const PAGINAS: Record<string, string> = {
   "/insights": "Insights",
   "/configuracoes": "Configuracoes",
   "/central-angariacao": "Central de Angariacao",
+  "/assistente": "Assistente",
   "/admin": "Administracao",
 };
 

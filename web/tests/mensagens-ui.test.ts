@@ -23,12 +23,26 @@ describe("acabamento da central de mensagens", () => {
 
   it("expõe filtros combináveis, contagens e estados legíveis", () => {
     const central = fonte("components/respostas/CentralMensagensView.tsx");
+    const css = fonte("app/style.css");
     for (const texto of ["Todas", "Em andamento", "Não respondidas", "Não lidas", "Agendadas"]) {
       expect(central).toContain(texto);
     }
+    expect(central).toContain("Abrir agendamentos e programar uma mensagem");
+    expect(css).toContain("font-variant-numeric:tabular-nums");
+    expect(css).toContain(".mensagens-filtros.principais button{ gap:3px");
     expect(central).toContain("Carregando agendamentos…");
     expect(central).toContain("Tentar novamente");
     expect(central).toContain("mensagens-lista-total");
+  });
+
+  it("mantém criação e gestão de mensagens agendadas acessíveis pela Central", () => {
+    const central = fonte("components/respostas/CentralMensagensView.tsx");
+    const conversas = fonte("components/respostas/ConversasView.tsx");
+    const agendadas = fonte("components/mensagens/MensagensAgendadasView.tsx");
+    expect(central).toContain("aoAbrirAgendadas");
+    expect(conversas).toContain('setAba("agendadas")');
+    expect(agendadas).toContain('abrirModal("mensagemAgendada")');
+    expect(agendadas).toContain("Agendar mensagem");
   });
 
   it("não inventa texto para mídia indisponível e preserva saída pelo WhatsApp", () => {
