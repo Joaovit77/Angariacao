@@ -42,6 +42,15 @@ describe("superficies compartilhadas do Assistente", () => {
     expect(cliente).not.toContain("flutuanteAtivo");
   });
 
+  it("acompanha o tema selecionado no Angario sem depender do tema do sistema", () => {
+    const css = fonte("components/assistente/Assistente.module.css");
+    expect(css).toContain("background: var(--bg-elev-1)");
+    expect(css).toContain("color: var(--text)");
+    expect(css).toContain("border: 1px solid var(--border)");
+    expect(css).toContain("background: var(--bg)");
+    expect(css).not.toContain("@media (prefers-color-scheme: dark)");
+  });
+
   it("nao cria outro agente ou outra rota de API", () => {
     const provider = fonte("components/assistente/AssistenteProvider.tsx");
     expect(provider).toContain('from "@/lib/assistente/cliente"');

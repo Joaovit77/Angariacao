@@ -50,6 +50,7 @@ describe("acabamento da central de mensagens", () => {
     const icones = fonte("components/Icone.tsx");
     const central = fonte("components/respostas/CentralMensagensView.tsx");
     expect(css).toContain("grid-template-columns:minmax(330px, 360px)");
+    expect(css).toContain(".main:has(.mensagens-central){ max-width:1720px; padding-inline:24px; }");
     expect(css).toContain("grid-template-columns:44px minmax(0,1fr)");
     expect(css).toContain("min-height:80px");
     expect(css).toContain("@media (max-width:1320px)");
