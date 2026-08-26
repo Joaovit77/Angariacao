@@ -65,9 +65,10 @@ O aplicativo vive em **[`web/`](web/)** — Next 16 (App Router, Turbopack), Typ
   do Leaflet e o `style.css`), `page.tsx` (tela de acesso e queda do link de recuperação de senha),
   páginas públicas de termos/privacidade e o grupo **`(painel)/`** com o shell autenticado. As views
   atuais incluem `home`, `dashboard`, `pipeline`, `metas`, `agenda`, `mensagens`, `respostas`,
-  `insights`, `mapa`, `relatorios`, `protocolos`, `avaliacao`, `central-angariacao` e `admin`. A antiga rota
-  `roadmap` redireciona para o Início: integrações e IA não formam uma frente de trabalho do
-  corretor; configuração e saúde técnica pertencem à Administração.
+  `insights`, `mapa`, `relatorios`, `protocolos`, `cerebro-ia`, `avaliacao`, `central-angariacao` e
+  `admin`. A antiga rota `roadmap` redireciona para o Início: configuração e saúde técnica das
+  integrações e da IA pertencem à Administração; o `Cérebro da IA` é uma explicação visual do
+  produto, não uma superfície operacional.
   As rotas de servidor vivem em **`app/api/`**: `whatsapp/*`, `ia`, `assistente`, `google/*`,
   `admin/*`, `sophia/eventos`, `central-angariacao/*` e `cron/*`. Elas protegem secrets, executam
   integrações externas ou realizam trabalho privilegiado que não pode ficar no browser.
@@ -1560,6 +1561,22 @@ Angariado, Publicado e Locado, texto e card nascem do mesmo resultado determiní
 é a mesma, reconhece a continuidade; se mudou, deixa a troca explícita. Essa camada melhora a
 redação, mas nunca substitui a ferramenta nem a consulta ao banco.
 
+#### `Cérebro da IA` — explicação visual para todos os usuários
+
+A página `/cerebro-ia` mostra, em linguagem de produto, como a IA interpreta contexto, consulta os
+dados permitidos, aplica protocolos e valida a resposta. Ela não chama rotas privilegiadas, não
+expõe logs ou detalhes internos e não concede acesso à carteira: a fronteira continua sendo a sessão
+e a RLS das consultas reais. O resumo lateral deriva apenas contagens do estado user-scoped já
+carregado na sessão: imóveis visíveis e protocolos não arquivados. Não consulta automaticamente o
+estado do WhatsApp, porque essa rota também participa da reconexão, nem apresenta disponibilidade de
+ferramentas ou validações sem fonte própria. Enquanto não houver um histórico de execuções confiável
+e acessível ao usuário, o card de atividade permanece em estado vazio e o fluxo é identificado como
+explicativo, sem promessa de atualização em tempo real. Os componentes recebem fontes e atividades
+por tipos próprios para aceitar dados reais no futuro sem alterar a composição da tela.
+
+Como a explicação não depende de carteira, a rota e seu item de menu também ficam disponíveis para
+o administrador com `opera_carteira = false`. Essa exceção não libera as demais telas do corretor.
+
 #### `api/sophia/eventos` — os fatos da locação chegando do Sistema Principal
 
 É a outra entrada de integração de negócio: quem chama é o
@@ -1971,7 +1988,8 @@ duas colunas de significado e não uma.
 - **O corte tem três camadas, e nenhuma é controle de acesso**: a `BarraLateral` esconde os itens, o
   layout do painel redireciona a URL digitada para `/admin`, e a Topbar tira o sino (que contaria
   resposta de proprietário e evento do Sistema Principal — as duas coisas chegam a uma CARTEIRA).
-  Não há o que proteger: as views do corretor são a carteira DELE, vazia.
+  A única tela comum é `/cerebro-ia`, porque explica o produto sem consultar a carteira. Não há o
+  que proteger: as views do corretor são a carteira DELE, vazia.
 
 Quatro regras ao mexer nisto:
 

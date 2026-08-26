@@ -27,6 +27,18 @@ interface ItemNav {
   badge?: Badge;
 }
 
+const ITEM_CEREBRO_IA: ItemNav = {
+  rota: "/cerebro-ia",
+  texto: "Cérebro da IA",
+  icone: (
+    <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M9.5 4.5A3 3 0 0 0 4 6v2a3 3 0 0 0-1 5.5A3.5 3.5 0 0 0 6.5 19H10V5.5a2 2 0 0 0-.5-1Z" />
+      <path d="M14.5 4.5A3 3 0 0 1 20 6v2a3 3 0 0 1 1 5.5 3.5 3.5 0 0 1-3.5 5.5H14V5.5a2 2 0 0 1 .5-1Z" />
+      <path d="M7 9h3M14 9h3M6 14h4M14 14h4" />
+    </svg>
+  ),
+};
+
 const ITENS: ItemNav[] = [
   {
     rota: "/home",
@@ -167,6 +179,7 @@ const ITENS: ItemNav[] = [
       </svg>
     ),
   },
+  ITEM_CEREBRO_IA,
 ];
 
 /** Fora do array acima porque não é do corretor: só aparece para quem tem
@@ -205,7 +218,7 @@ export default function BarraLateral({
   const radarNovos = useAppStore((s) => s.radarNovos);
 
   /* Três menus, não dois. Quem opera o sistema sem trabalhar carteira
-     vê SÓ a Administração: as dez telas de corretor abririam numa
+     vê a Administração e a explicação comum do Cérebro da IA: as telas de corretor abririam numa
      parede de zeros — e pior que vazias, elas mentem, porque uma caixa
      de respostas em branco diz "nada chegou" quando o que houve é que
      a conta não tem número de WhatsApp e nunca vai receber nada.
@@ -214,7 +227,7 @@ export default function BarraLateral({
      redirecionamento do shell. */
   const itens = useMemo(() => {
     if (!ehAdmin) return ITENS;
-    return operaCarteira ? [...ITENS, ITEM_ADMIN] : [ITEM_ADMIN];
+    return operaCarteira ? [...ITENS, ITEM_ADMIN] : [ITEM_CEREBRO_IA, ITEM_ADMIN];
   }, [ehAdmin, operaCarteira]);
 
   // Prefetch das rotas: os itens são <button> com router.push (não <Link>),

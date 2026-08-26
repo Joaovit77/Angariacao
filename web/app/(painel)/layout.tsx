@@ -27,6 +27,7 @@ import { AssistenteProvider } from "@/components/assistente/AssistenteProvider";
 import { useAppStore } from "@/lib/store";
 
 const CHAVE_RECOLHIDA = "sidebar-recolhida";
+const ROTAS_SEM_CARTEIRA = new Set(["/admin", "/cerebro-ia"]);
 
 // Desktop = acima do breakpoint mobile (720px). Lido como store externo
 // (useSyncExternalStore) em vez de setState num efeito, pra não esbarrar na
@@ -90,7 +91,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
      `cargoConfirmado` inclui o id da sessão atual: além de esperar a
      resposta, impede o cargo de uma conta anterior de decidir a nova. */
   useEffect(() => {
-    if (cargoConfirmado && ehAdmin && !operaCarteira && pathname !== "/admin") {
+    if (cargoConfirmado && ehAdmin && !operaCarteira && !ROTAS_SEM_CARTEIRA.has(pathname)) {
       router.replace("/admin");
     }
   }, [cargoConfirmado, ehAdmin, operaCarteira, pathname, router]);
@@ -99,7 +100,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
 
   /* Nunca monta o shell com o perfil provisório. Antes, os valores seguros
      iniciais faziam a conta de operação parecer corretor durante a consulta. */
-  if (!cargoConfirmado || (ehAdmin && !operaCarteira && pathname !== "/admin")) {
+  if (!cargoConfirmado || (ehAdmin && !operaCarteira && !ROTAS_SEM_CARTEIRA.has(pathname))) {
     return (
       <div className="perfil-gate" role="status" aria-live="polite">
         <div className="perfil-gate-marca" aria-hidden="true">

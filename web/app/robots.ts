@@ -7,6 +7,7 @@ const ROTAS_PRIVADAS = [
   "/api/",
   "/avaliacao",
   "/central-angariacao",
+  "/cerebro-ia",
   "/dashboard",
   "/home",
   "/insights",
