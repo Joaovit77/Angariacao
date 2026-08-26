@@ -3,7 +3,7 @@ import {
   ESQUEMA_DECISAO_ATENDIMENTO,
   ESQUEMA_GERACAO_ATENDIMENTO,
   ESQUEMA_VALIDACAO_ATENDIMENTO,
-  PROMPT_BASE_ATENDIMENTO,
+  promptBaseAtendimento,
   conversaAtendimento,
   contextoAtendimentoDoImovel,
   motivoBloqueioDecisaoAtendimento,
@@ -113,6 +113,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   userId,
   executor,
   tipo,
+  configuracao,
 }) => {
   const imovelId = typeof corpo.imovelId === "string" ? corpo.imovelId : "";
   if (!imovelId) return respostaErroIa("requisicao-invalida", 400);
@@ -221,6 +222,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   const perfil = normalizarPerfilComunicacao((cfData as Pick<DbUserConfigRow, "perfil_comunicacao"> | null)?.perfil_comunicacao);
 
   diagnostico.protocolosDisponiveis = protocolos.length;
+  const promptSistema = promptBaseAtendimento(configuracao?.instrucaoAtendimento);
   const conversa = conversaAtendimento(selecao, enviada);
   const contexto = contextoAtendimentoDoImovel(imovel);
   diagnostico.contextoFingerprint = createHash("sha256")
@@ -238,7 +240,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
         esquema: ESQUEMA_DECISAO_ATENDIMENTO,
       },
       mensagens: [
-        { role: "system", content: PROMPT_BASE_ATENDIMENTO },
+        { role: "system", content: promptSistema },
         {
           role: "user",
           content: promptDecidirAtendimento(
@@ -308,7 +310,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
         esquema: ESQUEMA_GERACAO_ATENDIMENTO,
       },
       mensagens: [
-        { role: "system", content: PROMPT_BASE_ATENDIMENTO },
+        { role: "system", content: promptSistema },
         {
           role: "user",
           content: promptGerarAtendimento(
@@ -397,7 +399,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
         esquema: ESQUEMA_VALIDACAO_ATENDIMENTO,
       },
       mensagens: [
-        { role: "system", content: PROMPT_BASE_ATENDIMENTO },
+        { role: "system", content: promptSistema },
         {
           role: "user",
           content: promptValidarAtendimento(

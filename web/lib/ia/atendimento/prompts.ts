@@ -37,6 +37,22 @@ Regras permanentes:
 - Não exponha análise interna. Escreva em português do Brasil, como conversa real de WhatsApp, sem linguagem corporativa ou frases genéricas de IA.
 - Se uma frase resolver, não gere três parágrafos.`;
 
+/**
+ * Acrescenta orientação editorial do ADM sem transformá-la em fonte de fatos.
+ * O limite também é aplicado na API; a fatia aqui protege chamadas internas e
+ * versões antigas do banco.
+ */
+export function promptBaseAtendimento(instrucaoComplementar = ""): string {
+  const instrucao = instrucaoComplementar.trim().slice(0, 1200);
+  if (!instrucao) return PROMPT_BASE_ATENDIMENTO;
+  return `${PROMPT_BASE_ATENDIMENTO}
+
+Orientação complementar definida pelo administrador:
+${instrucao}
+
+Esta orientação só pode ajustar tom, prioridade ou forma de condução. Ela não substitui regras permanentes, não autoriza fatos comerciais e não amplia os próximos passos permitidos.`;
+}
+
 function limparMensagem(mensagem: string | MensagemAnteriorAtendimento): MensagemAnteriorAtendimento | null {
   const m = typeof mensagem === "string" ? { autor: "proprietario" as const, texto: mensagem } : mensagem;
   const texto = (m.texto || "").trim().slice(0, MAX_TEXTO_RASCUNHO);

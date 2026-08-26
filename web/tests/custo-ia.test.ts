@@ -102,6 +102,23 @@ describe("custoDaChamada — cache de entrada", () => {
     const semCampo = { modelo: MODELO, tokensEntrada: 1000, tokensSaida: 500 };
     expect(custoDaChamada(semCampo)).toBeCloseTo(custoDaChamada(uso()) as number, 10);
   });
+
+  it("cobra gravação de cache do GPT-5.6 a 1,25x sem duplicar tokens", () => {
+    const modelo = "gpt-5.6-terra";
+    const preco56 = PRECOS[modelo];
+    const custo = custoDaChamada(uso({
+      modelo,
+      tokensEntrada: 1000,
+      tokensEntradaCache: 200,
+      tokensEntradaCacheGravacao: 300,
+      tokensSaida: 0,
+    })) as number;
+    const esperado =
+      (500 / 1e6) * preco56.entradaPor1M +
+      (200 / 1e6) * (preco56.entradaCachePor1M as number) +
+      (300 / 1e6) * (preco56.entradaCacheGravacaoPor1M as number);
+    expect(custo).toBeCloseTo(esperado, 10);
+  });
 });
 
 describe("somarGasto", () => {

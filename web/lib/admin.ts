@@ -10,6 +10,7 @@ import type { CorretorAdmin, EventoLog } from "./calculo/admin";
 import type { Conexao, EstadoConexao } from "./calculo/conexaoWhatsapp";
 import type { GastoIa, MesDeGasto } from "./calculo/custoIa";
 import { getSupabase } from "./persistencia/supabase";
+import type { ConfiguracaoIa, VersaoConfiguracaoIa } from "./ia/configuracao";
 
 async function autorizacao(): Promise<Record<string, string> | null> {
   const {
@@ -132,6 +133,49 @@ export function definirIa(userId: string, liberado: boolean): Promise<RespostaAc
     parâmetro é obrigatório aqui: quem chama esta função está mexendo. */
 export function definirTetoIa(userId: string, tetoUsd: number | null): Promise<RespostaAcao> {
   return acao("/api/admin/ia", { userId, tetoUsd });
+}
+
+export interface RespostaConfiguracaoIaAdmin {
+  ok: boolean;
+  mensagem?: string;
+  configuracao?: VersaoConfiguracaoIa;
+  historico?: VersaoConfiguracaoIa[];
+  persistenciaDisponivel?: boolean;
+}
+
+/** Configuração global; toda leitura e escrita é revalidada como admin no servidor. */
+export async function carregarConfiguracaoIaAdmin(): Promise<RespostaConfiguracaoIaAdmin> {
+  const headers = await autorizacao();
+  if (!headers) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
+  try {
+    const r = await fetch("/api/admin/ia/configuracao", { headers, cache: "no-store" });
+    return (await r.json().catch(() => null)) as RespostaConfiguracaoIaAdmin || {
+      ok: false,
+      mensagem: "Não foi possível carregar o Centro de IA.",
+    };
+  } catch {
+    return { ok: false, mensagem: "Não foi possível carregar o Centro de IA." };
+  }
+}
+
+export async function salvarConfiguracaoIaAdmin(
+  configuracao: ConfiguracaoIa,
+): Promise<RespostaConfiguracaoIaAdmin> {
+  const headers = await autorizacao();
+  if (!headers) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
+  try {
+    const r = await fetch("/api/admin/ia/configuracao", {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify(configuracao),
+    });
+    return (await r.json().catch(() => null)) as RespostaConfiguracaoIaAdmin || {
+      ok: false,
+      mensagem: "Não foi possível salvar a configuração.",
+    };
+  } catch {
+    return { ok: false, mensagem: "Não foi possível salvar a configuração." };
+  }
 }
 
 /** Os dois eixos do cargo, cada um opcional. Mandar os dois juntos é

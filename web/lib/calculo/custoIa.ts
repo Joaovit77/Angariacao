@@ -35,6 +35,8 @@ export interface PrecoModelo {
    * dinheiro.
    */
   entradaCachePor1M?: number;
+  /** Preço de gravação do cache; GPT-5.6 cobra 1,25x a entrada comum. */
+  entradaCacheGravacaoPor1M?: number;
   /**
    * Data (ISO) em que alguém abriu a página de preços e conferiu, ou
    * null para "ainda não conferido".
@@ -80,6 +82,33 @@ export const PRECOS: Record<string, PrecoModelo> = {
     saidaPor1M: 4.5,
     conferidoEm: "2026-08-01",
   },
+  "gpt-5.4-nano": {
+    entradaPor1M: 0.2,
+    entradaCachePor1M: 0.02,
+    saidaPor1M: 1.25,
+    conferidoEm: "2026-08-26",
+  },
+  "gpt-5.6-luna": {
+    entradaPor1M: 0.2,
+    entradaCachePor1M: 0.02,
+    entradaCacheGravacaoPor1M: 0.25,
+    saidaPor1M: 1.2,
+    conferidoEm: "2026-08-26",
+  },
+  "gpt-5.6-terra": {
+    entradaPor1M: 2,
+    entradaCachePor1M: 0.2,
+    entradaCacheGravacaoPor1M: 2.5,
+    saidaPor1M: 12,
+    conferidoEm: "2026-08-26",
+  },
+  "gpt-5.6-sol": {
+    entradaPor1M: 4,
+    entradaCachePor1M: 0.4,
+    entradaCacheGravacaoPor1M: 5,
+    saidaPor1M: 20,
+    conferidoEm: "2026-08-26",
+  },
   // A API de transcrição não publica preço de cache (e não cacheia
   // áudio): sem `entradaCachePor1M`, token cacheado — se algum dia vier —
   // é cobrado como entrada normal.
@@ -100,6 +129,8 @@ export interface UsoIa {
   tokensEntrada: number;
   /** Quantos dos `tokensEntrada` vieram do cache. */
   tokensEntradaCache: number;
+  /** Parte da entrada gravada no cache, cobrada em faixa própria. */
+  tokensEntradaCacheGravacao?: number;
   tokensSaida: number;
   criadoEm: string;
 }
@@ -118,7 +149,10 @@ export interface UsoIa {
  * abatendo o custo do resto da conta.
  */
 export function custoDaChamada(
-  uso: Pick<UsoIa, "modelo" | "tokensEntrada" | "tokensSaida"> & { tokensEntradaCache?: number },
+  uso: Pick<UsoIa, "modelo" | "tokensEntrada" | "tokensSaida"> & {
+    tokensEntradaCache?: number;
+    tokensEntradaCacheGravacao?: number;
+  },
 ): number | null {
   const preco = PRECOS[uso.modelo];
   if (!preco) return null;
@@ -126,11 +160,15 @@ export function custoDaChamada(
   // Sem preço de cache publicado, o cacheado é cobrado como entrada
   // normal — o que equivale a tratar o cache como zero.
   const cache = preco.entradaCachePor1M === undefined ? 0 : uso.tokensEntradaCache ?? 0;
-  const cheios = Math.max(0, uso.tokensEntrada - cache);
+  const gravacao = preco.entradaCacheGravacaoPor1M === undefined
+    ? 0
+    : uso.tokensEntradaCacheGravacao ?? 0;
+  const cheios = Math.max(0, uso.tokensEntrada - cache - gravacao);
 
   return (
     (cheios / 1_000_000) * preco.entradaPor1M +
     (cache / 1_000_000) * (preco.entradaCachePor1M ?? preco.entradaPor1M) +
+    (gravacao / 1_000_000) * (preco.entradaCacheGravacaoPor1M ?? preco.entradaPor1M) +
     (uso.tokensSaida / 1_000_000) * preco.saidaPor1M
   );
 }

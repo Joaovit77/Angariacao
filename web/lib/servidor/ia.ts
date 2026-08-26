@@ -30,8 +30,8 @@ import { RESULTADOS_TENTATIVA, type ResultadoTentativa } from "../constantes";
 import { registrarUsoDaResposta } from "./registro";
 import {
   MAX_TOKENS_CLASSIFICACAO_IA as MAX_TOKENS,
-  MODELO_TEXTO_IA as MODELO,
 } from "./ia/config";
+import { carregarConfiguracaoIa } from "./ia/configuracao";
 
 const VALIDOS: readonly string[] = RESULTADOS_TENTATIVA.map((r) => r.valor);
 
@@ -90,11 +90,13 @@ export async function classificarResposta(
   if (!texto.trim()) return null;
 
   try {
+    const configuracaoIa = await carregarConfiguracaoIa();
+    const MODELO = configuracaoIa.classificacao.modelo;
     const openai = new OpenAI({ apiKey });
     const conclusao = await openai.chat.completions.create({
       model: MODELO,
       max_completion_tokens: MAX_TOKENS,
-      reasoning_effort: "low",
+      reasoning_effort: configuracaoIa.classificacao.esforco,
       response_format: {
         type: "json_schema",
         json_schema: { name: "classificacao", strict: true, schema: ESQUEMA_CLASSIFICACAO },

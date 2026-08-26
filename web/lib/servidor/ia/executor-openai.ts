@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import type { FalhaIa } from "@/lib/calculo/ia";
 import { registrarUsoDaResposta } from "@/lib/servidor/registro";
 import { MAX_TOKENS_IA, MODELO_TEXTO_IA } from "./config";
+import type { EsforcoIaPermitido, ModeloIaPermitido } from "@/lib/ia/configuracao";
 
 export interface FormatoEstruturadoOpenAI {
   nome: string;
@@ -60,13 +61,15 @@ export function textoDaResposta(conclusao: OpenAI.Chat.ChatCompletion): string {
 export function criarExecutorOpenAI(
   openai: OpenAI,
   userId: string | null,
+  rota?: { modelo: ModeloIaPermitido; esforco: EsforcoIaPermitido },
 ): ExecutorOpenAI {
   return {
     async executar(pedido) {
+      const modelo = rota?.modelo || MODELO_TEXTO_IA;
       const conclusao = await openai.chat.completions.create({
-        model: MODELO_TEXTO_IA,
+        model: modelo,
         max_completion_tokens: pedido.maxCompletionTokens ?? MAX_TOKENS_IA,
-        reasoning_effort: pedido.reasoningEffort,
+        reasoning_effort: rota?.esforco || pedido.reasoningEffort,
         ...(pedido.formato
           ? {
               response_format: {
@@ -82,7 +85,7 @@ export function criarExecutorOpenAI(
         messages: pedido.mensagens,
       });
 
-      registrarUsoDaResposta(userId, pedido.tipo, MODELO_TEXTO_IA, conclusao.usage);
+      registrarUsoDaResposta(userId, pedido.tipo, modelo, conclusao.usage);
       return { conclusao, texto: textoDaResposta(conclusao) };
     },
   };

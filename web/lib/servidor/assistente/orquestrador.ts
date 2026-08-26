@@ -12,6 +12,7 @@ import {
   type ContinuidadeEntidade,
 } from "@/lib/assistente/continuidade";
 import { registrarUsoDaResponsesApi } from "@/lib/servidor/registro";
+import { carregarConfiguracaoIa } from "@/lib/servidor/ia/configuracao";
 import { instrucoesDoAssistente } from "./conhecimento";
 import { DEFINICOES_FERRAMENTAS, executarFerramenta } from "./ferramentas";
 
@@ -90,7 +91,8 @@ export function prepararResultadoFerramentaParaModelo(
 }
 
 export async function responderComAssistente(pedido: PedidoAssistente, supabase: SupabaseClient, userId: string): Promise<{ mensagem: MensagemAssistente; modelo: string }> {
-  const modelo = process.env.OPENAI_ASSISTENTE_MODEL?.trim() || MODELO_ASSISTENTE_PADRAO;
+  const configuracaoIa = await carregarConfiguracaoIa();
+  const modelo = configuracaoIa.assistente.modelo;
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const entrada: ResponseInputItem[] = pedido.historico.map((m) => ({
     role: m.papel === "usuario" ? "user" : "assistant",
@@ -107,7 +109,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
     tool_choice: "auto" as const,
     parallel_tool_calls: false,
     max_output_tokens: 2500,
-    reasoning: { effort: "low" as const },
+    reasoning: { effort: configuracaoIa.assistente.esforco },
     safety_identifier: idSeguro(userId),
     store: false,
   });

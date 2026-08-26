@@ -62,6 +62,7 @@ import { useSessao } from "@/components/SessaoProvider";
 import { fmtDate } from "@/lib/formatadores";
 import { todayISO } from "@/lib/datas";
 import { toast } from "@/lib/toast";
+import CentroIaAdmin from "./CentroIaAdmin";
 
 const CORES: Record<NivelSaude, string> = {
   bloqueado: "var(--bad)",
@@ -396,6 +397,8 @@ export default function AdminView() {
           </div>
         </div>
       </div>
+
+      <CentroIaAdmin />
 
       <div className="card admin-card-firecrawl">
         <div className="card-title">

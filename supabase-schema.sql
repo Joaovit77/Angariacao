@@ -801,6 +801,43 @@ create policy "select_own_ia" on ia_permissoes
   for select using (auth.uid() = user_id);
 
 -- ------------------------------------------------------------
+-- CONFIGURAÇÃO GLOBAL DA IA (versões imutáveis)
+--
+-- Cada alteração feita no Centro de IA do ADM cria uma linha nova. A
+-- maior `id` é a versão ativa; linhas antigas formam o histórico e
+-- permitem reconstruir exatamente qual roteamento estava em vigor.
+--
+-- Não existe política para anon/authenticated e os privilégios são
+-- revogados explicitamente. Esta configuração pode mudar o comportamento
+-- do sistema inteiro, portanto só rotas de servidor, após `exigirAdmin`,
+-- leem ou gravam com a service role. A instrução complementar não substitui
+-- as regras permanentes do prompt nem os protocolos da imobiliária.
+-- ------------------------------------------------------------
+create table if not exists ia_configuracoes (
+  id bigserial primary key,
+  modelo_operacoes text not null,
+  esforco_operacoes text not null check (esforco_operacoes in ('none', 'low', 'medium', 'high', 'xhigh')),
+  modelo_classificacao text not null,
+  esforco_classificacao text not null check (esforco_classificacao in ('none', 'low', 'medium', 'high', 'xhigh')),
+  modelo_atendimento text not null,
+  esforco_atendimento text not null check (esforco_atendimento in ('none', 'low', 'medium', 'high', 'xhigh')),
+  modelo_assistente text not null,
+  esforco_assistente text not null check (esforco_assistente in ('none', 'low', 'medium', 'high', 'xhigh')),
+  instrucao_atendimento text not null default '' check (char_length(instrucao_atendimento) <= 1200),
+  alterado_por uuid references auth.users(id) on delete set null,
+  criado_em timestamptz not null default now()
+);
+
+alter table ia_configuracoes enable row level security;
+revoke all on table ia_configuracoes from anon, authenticated;
+revoke all on sequence ia_configuracoes_id_seq from anon, authenticated;
+grant select, insert on table ia_configuracoes to service_role;
+grant usage, select on sequence ia_configuracoes_id_seq to service_role;
+
+create index if not exists idx_ia_configuracoes_alterado_por
+  on ia_configuracoes (alterado_por);
+
+-- ------------------------------------------------------------
 -- INSTÂNCIAS DE WHATSAPP (uma linha por corretor)
 --
 -- De quem é esta conversa? Quando o proprietário responde, a Evolution
@@ -1254,9 +1291,14 @@ create table if not exists ia_uso (
   -- subtração para a leitura — se o preço do cache mudar, corrige-se a
   -- constante e todo o histórico se corrige junto.
   tokens_entrada_cache integer not null default 0,
+  -- GPT-5.6 também reporta tokens gravados no cache; eles custam 1,25x
+  -- a entrada comum e precisam ficar separados para a conta não subestimar.
+  tokens_entrada_cache_gravacao integer not null default 0,
   tokens_saida integer not null default 0,
   criado_em timestamptz not null default now()
 );
+
+alter table ia_uso add column if not exists tokens_entrada_cache_gravacao integer not null default 0;
 
 alter table ia_uso enable row level security;
 

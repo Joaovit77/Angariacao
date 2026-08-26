@@ -1326,8 +1326,30 @@ A chave (`OPENAI_API_KEY`, **sem** `NEXT_PUBLIC_`) é cobrada por token consumid
 não quebra: os botões respondem "não configurado" e o resto segue igual.
 
 O executor OpenAI está isolado em `lib/servidor/ia/executor-openai.ts`; prompts, esquemas e contratos
-de domínio não importam o SDK. O modelo textual único é `MODELO_TEXTO_IA` em
-`lib/servidor/ia/config.ts`, atualmente `gpt-5.4-mini`. O modelo de transcrição é independente.
+de domínio não importam o SDK. Na ausência de uma configuração publicada, o padrão seguro continua
+em `lib/servidor/ia/config.ts`/`lib/ia/configuracao.ts`, atualmente `gpt-5.4-mini`. Transcrição e
+embeddings são independentes porque têm contratos próprios.
+
+##### Centro de IA no ADM
+
+O cartão **Centro de IA** em `/admin` é o mapa operacional e o roteador dos modelos. A configuração
+é separada por responsabilidade — classificação do webhook, atendimento em três etapas, operações
+do painel e Assistente global — com modelo e esforço próprios. O botão de recomendação apenas monta
+uma proposta; nada muda em produção até o admin salvar.
+
+Cada salvamento insere uma linha imutável em `ia_configuracoes`; a maior `id` é a versão ativa e as
+anteriores formam o histórico. A tabela tem RLS ligada, privilégios de `anon`/`authenticated`
+revogados e nenhuma policy: somente rotas de servidor, depois de `exigirAdmin`, acessam com service
+role. Se a tabela ou a configuração estiver indisponível/inválida, os fluxos voltam ao padrão de
+código e nunca aceitam um nome de modelo arbitrário.
+
+O campo editável de prompt é deliberadamente uma **orientação complementar de atendimento**, com
+1.200 caracteres. Ele pode ajustar tom e prioridade, mas o prompt reafirma depois do conteúdo que a
+orientação não substitui regras permanentes, não autoriza fatos comerciais e não amplia ações. Fatos
+e procedimentos continuam em Protocolos; preferências pessoais continuam no perfil de comunicação;
+contratos JSON e validações determinísticas continuam no código. Não transformar o Centro em editor
+do prompt-base: uma edição aparentemente visual poderia retirar a trava contra invenção em todos os
+corretores de uma vez.
 
 Três regras ao mexer nela:
 
@@ -1508,7 +1530,8 @@ Arquitetura:
   prompt.
 - `lib/servidor/assistente/orquestrador.ts`: OpenAI Responses API com tool calling sequencial, até
   quatro rodadas, `store: false`, identificador de segurança derivado por hash e registro de custo.
-  O modelo padrão é `gpt-5.4-mini`, substituível por `OPENAI_ASSISTENTE_MODEL`.
+  O modelo padrão é `gpt-5.4-mini`; a ausência de versão no banco ainda respeita um
+  `OPENAI_ASSISTENTE_MODEL` válido. Com versão publicada, o Centro de IA é a fonte ativa.
 
 O cliente envia rota/página/superfície e, quando há drawer ou modal compatível, apenas tipo e ID da
 entidade. O backend reconsulta o objeto; nenhum dado do card é aceito como verdade. Até 12 turnos são
@@ -1945,6 +1968,11 @@ Quatro regras ao mexer nisto:
   entrada servidos do cache**, e ignorar isso inflaria aquela chamada em 55%. Guardar o total (e
   não um valor já líquido) é o que preserva o que a API disse e deixa a correção de preço ser a
   edição de uma constante.
+- **GPT-5.6 separa também a gravação do cache.** `tokens_entrada_cache_gravacao` guarda essa parte
+  observada da resposta e `custoDaChamada` a subtrai da entrada cheia antes de cobrar a faixa de
+  1,25x. Sem a terceira parcela, habilitar um GPT-5.6 pelo ADM subestimaria justamente as chamadas
+  que aquecem o cache. Leitura e gravação de cache nunca são somadas por cima do total: ambas já
+  pertencem aos tokens de entrada reportados.
 - **`custoDaChamada` devolve `null` para modelo sem preço, nunca zero.** Zero somaria em silêncio e
   a tela exibiria um custo menor que o real com cara de exato. É a mesma lição da busca de endereço
   por IA: número com procedência aparente, e errado, é pior que a ausência do número — e aqui ele

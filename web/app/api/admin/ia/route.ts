@@ -50,7 +50,7 @@ export async function GET(request: Request): Promise<Response> {
 
   const { data, error } = await sb
     .from("ia_uso")
-    .select("user_id, tipo, modelo, tokens_entrada, tokens_entrada_cache, tokens_saida, criado_em")
+    .select("user_id, tipo, modelo, tokens_entrada, tokens_entrada_cache, tokens_entrada_cache_gravacao, tokens_saida, criado_em")
     .gte("criado_em", desde);
   if (error) {
     console.error("Admin: falha ao ler o histórico de IA:", error.message);
@@ -63,6 +63,7 @@ export async function GET(request: Request): Promise<Response> {
     modelo: r.modelo as string,
     tokensEntrada: Number(r.tokens_entrada) || 0,
     tokensEntradaCache: Number(r.tokens_entrada_cache) || 0,
+    tokensEntradaCacheGravacao: Number(r.tokens_entrada_cache_gravacao) || 0,
     tokensSaida: Number(r.tokens_saida) || 0,
     criadoEm: r.criado_em as string,
   }));

@@ -113,6 +113,8 @@ export interface EntradaUso {
   /** Quantos dos `tokensEntrada` a OpenAI serviu do cache. Cobrados dez
       vezes menos; a subtração é feita na leitura, em `custoIa.ts`. */
   tokensEntradaCache?: number;
+  /** Tokens gravados no cache. Na família GPT-5.6 custam 1,25x a entrada. */
+  tokensEntradaCacheGravacao?: number;
   tokensSaida: number;
 }
 
@@ -139,6 +141,7 @@ export function registrarUsoIa(entrada: EntradaUso): void {
       modelo: entrada.modelo,
       tokens_entrada: entrada.tokensEntrada,
       tokens_entrada_cache: entrada.tokensEntradaCache ?? 0,
+      tokens_entrada_cache_gravacao: entrada.tokensEntradaCacheGravacao ?? 0,
       tokens_saida: entrada.tokensSaida,
     });
     if (error) console.error("Registro: uso de IA recusado:", error.message);
@@ -157,7 +160,7 @@ export function registrarUsoDaResposta(
         completion_tokens?: number;
         /** Onde a OpenAI reporta a parte cacheada da entrada. Note que
             `prompt_tokens` JÁ a inclui — quem desconta é `custoIa.ts`. */
-        prompt_tokens_details?: { cached_tokens?: number } | null;
+        prompt_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number } | null;
       }
     | null
     | undefined,
@@ -169,6 +172,7 @@ export function registrarUsoDaResposta(
     modelo,
     tokensEntrada: usage.prompt_tokens ?? 0,
     tokensEntradaCache: usage.prompt_tokens_details?.cached_tokens ?? 0,
+    tokensEntradaCacheGravacao: usage.prompt_tokens_details?.cache_write_tokens ?? 0,
     tokensSaida: usage.completion_tokens ?? 0,
   });
 }
@@ -182,7 +186,7 @@ export function registrarUsoDaResponsesApi(
     | {
         input_tokens?: number;
         output_tokens?: number;
-        input_tokens_details?: { cached_tokens?: number } | null;
+        input_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number } | null;
       }
     | null
     | undefined,
@@ -194,6 +198,7 @@ export function registrarUsoDaResponsesApi(
     modelo,
     tokensEntrada: usage.input_tokens ?? 0,
     tokensEntradaCache: usage.input_tokens_details?.cached_tokens ?? 0,
+    tokensEntradaCacheGravacao: usage.input_tokens_details?.cache_write_tokens ?? 0,
     tokensSaida: usage.output_tokens ?? 0,
   });
 }

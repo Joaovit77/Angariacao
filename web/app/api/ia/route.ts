@@ -70,7 +70,8 @@ import {
   type DbImovelRow,
   type DbUserConfigRow,
 } from "@/lib/persistencia/mapeadores";
-import { MAX_TOKENS_IA as MAX_TOKENS, MODELO_TEXTO_IA as MODELO } from "@/lib/servidor/ia/config";
+import { MAX_TOKENS_IA as MAX_TOKENS } from "@/lib/servidor/ia/config";
+import { carregarConfiguracaoIa } from "@/lib/servidor/ia/configuracao";
 import {
   classificarErroIa,
   criarExecutorOpenAI,
@@ -217,6 +218,9 @@ export async function POST(request: Request): Promise<Response> {
   const pedido = corpo.tipo;
 
   const openai = new OpenAI({ apiKey });
+  const configuracaoIa = await carregarConfiguracaoIa();
+  const MODELO = configuracaoIa.operacoes.modelo;
+  const ESFORCO = configuracaoIa.operacoes.esforco;
   const handlers = {
     "rascunhar-resposta": atenderProprietario,
   } satisfies RegistroHandlersIa;
@@ -226,7 +230,8 @@ export async function POST(request: Request): Promise<Response> {
       corpo,
       supabase,
       userId: donoDaChamada,
-      executor: criarExecutorOpenAI(openai, donoDaChamada),
+      executor: criarExecutorOpenAI(openai, donoDaChamada, configuracaoIa.atendimento),
+      configuracao: configuracaoIa,
     },
     handlers,
   );
@@ -266,7 +271,7 @@ export async function POST(request: Request): Promise<Response> {
       conclusao = await openai.chat.completions.create({
         model: MODELO,
         max_completion_tokens: MAX_TOKENS,
-        reasoning_effort: "medium",
+        reasoning_effort: ESFORCO,
         // strict: true faz o modelo aderir ao esquema, em vez de "tentar".
         // Exige que todo objeto liste tudo em `required` e traga
         // additionalProperties: false — o ESQUEMA_ROTEIROS já atende.
@@ -340,7 +345,7 @@ export async function POST(request: Request): Promise<Response> {
       conclusao = await openai.chat.completions.create({
         model: MODELO,
         max_completion_tokens: MAX_TOKENS,
-        reasoning_effort: "medium",
+        reasoning_effort: ESFORCO,
         response_format: {
           type: "json_schema",
           json_schema: { name: "anuncio", strict: true, schema: ESQUEMA_ANUNCIO },
@@ -407,7 +412,7 @@ export async function POST(request: Request): Promise<Response> {
       conclusao = await openai.chat.completions.create({
         model: MODELO,
         max_completion_tokens: MAX_TOKENS,
-        reasoning_effort: "medium",
+        reasoning_effort: ESFORCO,
         response_format: {
           type: "json_schema",
           json_schema: { name: "anuncio_gerado", strict: true, schema: ESQUEMA_ANUNCIO_GERADO },
@@ -480,7 +485,7 @@ export async function POST(request: Request): Promise<Response> {
       conclusao = await openai.chat.completions.create({
         model: MODELO,
         max_completion_tokens: MAX_TOKENS,
-        reasoning_effort: "medium",
+        reasoning_effort: ESFORCO,
         response_format: {
           type: "json_schema",
           json_schema: {
@@ -568,7 +573,7 @@ export async function POST(request: Request): Promise<Response> {
       conclusao = await openai.chat.completions.create({
         model: MODELO,
         max_completion_tokens: 1000,
-        reasoning_effort: "low",
+        reasoning_effort: ESFORCO,
         response_format: {
           type: "json_schema",
           json_schema: { name: "acao_territorial", strict: true, schema: ESQUEMA_ACAO_TERRITORIAL },
@@ -627,7 +632,7 @@ export async function POST(request: Request): Promise<Response> {
     conclusao = await openai.chat.completions.create({
       model: MODELO,
       max_completion_tokens: MAX_TOKENS,
-      reasoning_effort: "medium",
+      reasoning_effort: ESFORCO,
       messages: [{ role: "user", content: prompt }],
     });
   } catch (e) {

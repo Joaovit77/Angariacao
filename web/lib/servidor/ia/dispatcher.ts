@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ExecutorOpenAI } from "./executor-openai";
+import type { VersaoConfiguracaoIa } from "@/lib/ia/configuracao";
 
 export const TIPOS_PEDIDO_IA = [
   "sugerir-roteiros",
@@ -31,6 +32,8 @@ export interface ContextoHandlerIa<T extends TipoPedidoIa = TipoPedidoIa> {
   supabase: SupabaseClient;
   userId: string;
   executor: ExecutorOpenAI;
+  /** Opcional para adaptadores e testes antigos; produção sempre injeta a versão ativa. */
+  configuracao?: VersaoConfiguracaoIa;
 }
 
 export type HandlerIa<T extends TipoPedidoIa = TipoPedidoIa> = (

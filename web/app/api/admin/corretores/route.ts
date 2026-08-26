@@ -102,7 +102,7 @@ export async function GET(request: Request): Promise<Response> {
     sb.from("ia_permissoes").select("user_id, liberado, teto_usd"),
     sb.from("google_contas").select("user_id"),
     sb.from("imoveis").select("user_id, tentativas, notas"),
-    sb.from("ia_uso").select("user_id, tipo, modelo, tokens_entrada, tokens_entrada_cache, tokens_saida, criado_em").gte("criado_em", desde),
+    sb.from("ia_uso").select("user_id, tipo, modelo, tokens_entrada, tokens_entrada_cache, tokens_entrada_cache_gravacao, tokens_saida, criado_em").gte("criado_em", desde),
     sb.from("log_eventos").select("id, user_id, categoria, nivel, evento, detalhe, criado_em").eq("nivel", "erro").gte("criado_em", corteErro),
     sb.from("admins").select("user_id, opera_carteira"),
   ]);
@@ -165,6 +165,7 @@ export async function GET(request: Request): Promise<Response> {
     modelo: r.modelo as string,
     tokensEntrada: Number(r.tokens_entrada) || 0,
     tokensEntradaCache: Number(r.tokens_entrada_cache) || 0,
+    tokensEntradaCacheGravacao: Number(r.tokens_entrada_cache_gravacao) || 0,
     tokensSaida: Number(r.tokens_saida) || 0,
     criadoEm: r.criado_em as string,
   }));

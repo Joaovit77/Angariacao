@@ -94,8 +94,8 @@ export interface Abordagem {
 
     É a fonte de verdade que o rascunho de resposta por IA consulta para poder
     AFIRMAR alguma coisa. Sem ela o rascunho só sabe empurrar para uma ligação,
-    porque o prompt o proíbe de afirmar qualquer fato (ver
-    promptRascunharResposta em calculo/ia.ts).
+    porque o pipeline especializado exige fonte explícita em
+    `lib/ia/atendimento`.
 
     Não confundir com fato do IMÓVEL (garagem, pet, o condomínio daquele
     apartamento): aquilo varia por imóvel, o painel não tem o dado, e continua
