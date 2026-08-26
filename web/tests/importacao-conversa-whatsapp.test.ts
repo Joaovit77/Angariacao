@@ -180,4 +180,21 @@ describe("importação de conversa recente", () => {
     };
     expect(mensagensRecentesDaEvolution(corpo, "43998024316", [])[0].texto).toBe("[áudio]");
   });
+
+  it("não importa reações como mensagens vazias", () => {
+    const corpo = {
+      messages: {
+        records: [
+          {
+            ...linha("reacao", "", 1_768_473_600, { fromMe: true }),
+            messageType: "reactionMessage",
+            message: { reactionMessage: { text: "👍", key: { id: "original" } } },
+          },
+          linha("texto", "Mensagem real", 1_768_473_601),
+        ],
+      },
+    };
+
+    expect(mensagensRecentesDaEvolution(corpo, "43998024316", []).map((item) => item.id)).toEqual(["texto"]);
+  });
 });

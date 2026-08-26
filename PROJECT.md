@@ -527,6 +527,22 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   e escreve um `motivo`, e a IA guarda um resumo de uma linha na tentativa. Para ler o que a pessoa
   disse era preciso abrir imóvel por imóvel no modal de notas; com 110 respostas na carteira — 64
   num imóvel só — isso é o mesmo que não ter o dado.
+  A view é uma central de mensagens: lista e busca conversas por imóvel, mostra o histórico
+  bidirecional no centro e o contexto textual do proprietário, imóvel, negociação e próxima ação à
+  direita. No tablet o contexto vira painel recolhível; no celular a lista abre primeiro e a conversa
+  ocupa a tela após a seleção. O compositor envia texto pela mesma rota protegida da Evolution,
+  mantém respostas salvas e o rascunho da IA sob revisão humana e marca as respostas como lidas só
+  depois do envio confirmado. Notas internas ficam fora enquanto não houver domínio e persistência
+  próprios; anexos sem URL persistida continuam como marcadores honestos com saída para o WhatsApp.
+  Os filtros operacionais são calculados por imóvel e podem ser combinados com a busca: **Todas**,
+  **Em andamento** e **Não respondidas** são mutuamente exclusivos; **Não lidas** e **Agendadas**
+  são refinamentos independentes. Em andamento exige negociação não terminal e ao menos uma mensagem
+  real recebida, inclusive mídia ou conteúdo técnico sem texto disponível. Não respondida exige
+  negociação não terminal, ao menos um envio confirmado e nenhuma mensagem recebida. Reações,
+  notas internas, eventos de sistema, agendamentos ainda não enviados e falhas de envio não contam
+  como resposta nem como envio confirmado. Status de encerramento vêm das constantes do domínio;
+  imóvel retirado e `Locado` também não entram nos filtros operacionais. As contagens são facetadas:
+  acompanham a busca e os outros refinamentos sem zerar a própria opção.
   **Não é o termômetro de novo, e a diferença é o corte.** `temperatura.ts` responde "de QUEM eu
   corro atrás agora" e por isso exclui o já captado (a cobrança dessa fase é a agenda) e quem foi
   contatado hoje. É justamente ali que está o volume: depois de angariar o proprietário fala muito
@@ -1047,6 +1063,9 @@ Regras permanentes:
   `user_id`; payload de cliente não escolhe arbitrariamente o destinatário;
 - nome e telefone são fotografados no agendamento, preservando o que seria enviado mesmo se o
   cadastro mudar depois;
+- a central de mensagens lista agendamentos ativos (`agendada` ou `processando`) por `imovel_id`
+  e sempre filtra a leitura pelo `user_id` autenticado; Realtime atualiza a lista e uma releitura
+  periódica cobre ambientes em que a tabela ainda não foi publicada no canal;
 - `claim_mensagens_agendadas` usa `FOR UPDATE SKIP LOCKED`, de modo que execuções concorrentes não
   obtêm a mesma mensagem;
 - o worker aceita no máximo a janela de dez minutos. Atraso maior vira `janela-expirada`; nunca envia

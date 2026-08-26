@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { dataHoraLocalParaIso, timestampDeIso } from "@/lib/datas";
-import { fromDbMensagem, telefoneValido } from "@/lib/mensagensAgendadas";
+import {
+  fromDbMensagem,
+  imoveisComAgendamentoAtivo,
+  telefoneValido,
+  type MensagemAgendada,
+} from "@/lib/mensagensAgendadas";
 
 describe("mensagens agendadas", () => {
   it("aceita celulares e fixos brasileiros formatados", () => {
@@ -24,6 +29,32 @@ describe("mensagens agendadas", () => {
       enviado_em: "2026-08-15T12:00:02.000Z", erro: null });
     expect(item).toMatchObject({ id: "m1", userId: "u1", imovelId: "i1", status: "enviada" });
     expect(item.enviadoEm).toBe("2026-08-15T12:00:02.000Z");
+  });
+});
+
+describe("imoveisComAgendamentoAtivo", () => {
+  const base: MensagemAgendada = {
+    id: "m1",
+    userId: "u1",
+    imovelId: "i1",
+    nomeProprietario: "Ana",
+    telefone: "43999999999",
+    mensagem: "Olá",
+    dataEnvio: "2026-08-26T10:00:00",
+    status: "agendada",
+    enviadoEm: null,
+    erro: null,
+  };
+
+  it("conta conversas únicas com itens agendados ou processando", () => {
+    const ids = imoveisComAgendamentoAtivo([
+      base,
+      { ...base, id: "m2" },
+      { ...base, id: "m3", imovelId: "i2", status: "processando" },
+      { ...base, id: "m4", imovelId: "i3", status: "erro" },
+      { ...base, id: "m5", imovelId: null },
+    ]);
+    expect([...ids]).toEqual(["i1", "i2"]);
   });
 });
 const SCHEMA = readFileSync(new URL("../../supabase-schema.sql", import.meta.url), "utf8");

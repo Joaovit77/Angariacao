@@ -132,6 +132,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
 
   // Ícone vira X quando o menu está "expandido/aberto" no contexto atual.
   const menuAtivo = ehDesktop ? !recolhida : gavetaAberta;
+  const ocultarAssistente = pathname === "/respostas" || pathname === "/mensagens";
 
   return (
     <PortaoTermos>
@@ -178,7 +179,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
     <SincronizacaoRespostas />
     {/* Busca no máximo um radar vencido por rodada e só enquanto o painel está aberto. */}
     <MonitorRadarAngariacao />
-    <Assistente />
+    {ocultarAssistente ? null : <Assistente />}
     </PortaoTermos>
   );
 }

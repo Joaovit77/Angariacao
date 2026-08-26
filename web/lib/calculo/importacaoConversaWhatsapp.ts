@@ -20,7 +20,11 @@ import {
   PREFIXO_TEXTO_RESPOSTA,
   SUFIXO_ID_ENCERRAMENTO,
 } from "@/lib/calculo/notas";
-import { telefoneCanonico, textoDaMensagem } from "@/lib/calculo/webhookWhatsapp";
+import {
+  ehMensagemDeReacaoWhatsapp,
+  telefoneCanonico,
+  textoDaMensagem,
+} from "@/lib/calculo/webhookWhatsapp";
 import type { NotaImovel } from "@/lib/tipos";
 
 export const LIMITE_IMPORTACAO_CONVERSA = 30;
@@ -179,6 +183,8 @@ export function mensagensRecentesDaEvolution(
     const chave = objeto(linha.key);
     const direcao = chave.fromMe === true || linha.fromMe === true ? "enviada" : "recebida";
     const tipo = texto(linha.messageType) || "desconhecido";
+    const mensagem = linha.message ?? objeto(linha.data).message;
+    if (ehMensagemDeReacaoWhatsapp(tipo, mensagem)) continue;
     unicas.set(id, {
       id,
       direcao,

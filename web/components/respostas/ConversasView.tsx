@@ -2,19 +2,20 @@
 
 import { useState } from "react";
 import MensagensAgendadasView from "@/components/mensagens/MensagensAgendadasView";
-import RespostasView from "@/components/respostas/RespostasView";
+import CentralMensagensView from "@/components/respostas/CentralMensagensView";
 
 export default function ConversasView() {
-  const [aba, setAba] = useState<"respostas" | "agendadas">("respostas");
-  return <>
-    <div className="conversas-cabecalho">
-      <h1 className="page-title">Conversas</h1>
-      <p className="page-sub">Respostas recebidas e mensagens programadas para proprietários</p>
-      <div className="resp-filtros conversas-abas">
-        <button type="button" className={`resp-filtro${aba === "respostas" ? " active" : ""}`} onClick={() => setAba("respostas")}>Respostas recebidas</button>
-        <button type="button" className={`resp-filtro${aba === "agendadas" ? " active" : ""}`} onClick={() => setAba("agendadas")}>Mensagens agendadas</button>
-      </div>
+  const [aba, setAba] = useState<"conversas" | "agendadas">("conversas");
+  if (aba === "conversas") {
+    return <CentralMensagensView aoAbrirAgendadas={() => setAba("agendadas")} />;
+  }
+
+  return (
+    <div className="mensagens-agendadas-pagina">
+      <button type="button" className="btn btn-sm" onClick={() => setAba("conversas")}>
+        ← Voltar para mensagens
+      </button>
+      <MensagensAgendadasView incorporada />
     </div>
-    {aba === "respostas" ? <RespostasView /> : <MensagensAgendadasView incorporada />}
-  </>;
+  );
 }

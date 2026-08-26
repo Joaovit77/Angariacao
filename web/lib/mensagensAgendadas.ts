@@ -36,3 +36,18 @@ export function telefoneValido(telefone: string): boolean {
   const digitos = telefone.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
   return digitos.length === 10 || digitos.length === 11;
 }
+
+export function mensagemAgendadaAtiva(mensagem: MensagemAgendada): boolean {
+  return mensagem.status === "agendada" || mensagem.status === "processando";
+}
+
+/** O filtro opera por conversa, portanto duas mensagens pendentes do mesmo
+ * imóvel continuam contando uma única conversa. Itens sem imóvel permanecem
+ * acessíveis na gestão completa, mas não podem ser ligados a uma conversa. */
+export function imoveisComAgendamentoAtivo(mensagens: MensagemAgendada[]): Set<string> {
+  return new Set(
+    mensagens
+      .filter((mensagem) => mensagem.imovelId && mensagemAgendadaAtiva(mensagem))
+      .map((mensagem) => mensagem.imovelId as string),
+  );
+}

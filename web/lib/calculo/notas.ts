@@ -124,6 +124,16 @@ export function ehSoMidia(texto: string | null | undefined): boolean {
   return /^\[[^\]]+\]$/.test(corpoDaResposta(texto));
 }
 
+/** Reações são atualizações sobre outra mensagem, não uma nova fala da
+    conversa. A Evolution costuma identificá-las como `reactionMessage`. */
+export function ehTipoDeReacaoWhatsapp(tipo: string | null | undefined): boolean {
+  const normalizado = String(tipo || "")
+    .trim()
+    .toLocaleLowerCase("pt-BR")
+    .replace(/[\s._-]/g, "");
+  return normalizado === "reaction" || normalizado === "reactionmessage";
+}
+
 export function idNotaDaMensagem(mensagemId: string): string {
   return `${PREFIXO_ID_NOTA}${mensagemId}`;
 }
@@ -167,9 +177,13 @@ export function notaDaMensagemEnviada(
 }
 
 /** A nota é uma MENSAGEM DO PROPRIETÁRIO (e não algo que o sistema escreveu)? */
-export function ehNotaDeResposta(nota: { id?: string | null }): boolean {
+export function ehNotaDeResposta(nota: { id?: string | null; tipo?: string | null }): boolean {
   const id = nota.id || "";
-  return id.startsWith(PREFIXO_ID_NOTA) && !id.endsWith(SUFIXO_ID_ENCERRAMENTO);
+  return (
+    id.startsWith(PREFIXO_ID_NOTA) &&
+    !id.endsWith(SUFIXO_ID_ENCERRAMENTO) &&
+    !ehTipoDeReacaoWhatsapp(nota.tipo)
+  );
 }
 
 /** Entrada antiga importada apenas para reconstruir o contexto da conversa. */
@@ -185,6 +199,7 @@ export function ehNotaImportadaRecebida(nota: Pick<NotaImovel, "id" | "direcao" 
     `ehNotaDeResposta`: os demais motores precisam continuar ignorando o
     contexto retroativo. */
 export function ehNotaRecebidaNaConversa(nota: NotaImovel): boolean {
+  if (ehTipoDeReacaoWhatsapp(nota.tipo)) return false;
   return ehNotaDeResposta(nota) || ehNotaImportadaRecebida(nota);
 }
 

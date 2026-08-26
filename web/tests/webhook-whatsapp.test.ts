@@ -161,6 +161,23 @@ describe("interpretarEvento", () => {
     expect(lido?.texto).toBe("");
     expect(lido?.tipo).toBe("audioMessage");
   });
+
+  it("ignora reação recebida ou enviada, pois ela não é uma nova mensagem", () => {
+    const reactionMessage = { reactionMessage: { text: "👍", key: { id: "original" } } };
+    expect(interpretarEvento(evento({ message: reactionMessage, messageType: "reactionMessage" }))).toBeNull();
+    expect(
+      interpretarEvento(evento({ fromMe: true, message: reactionMessage, messageType: "reactionMessage" })),
+    ).toBeNull();
+  });
+
+  it("reconhece reação pelo payload quando a Evolution omite o messageType", () => {
+    expect(
+      interpretarEvento(evento({
+        message: { reactionMessage: { text: "❤️", key: { id: "original" } } },
+        messageType: "",
+      })),
+    ).toBeNull();
+  });
 });
 
 describe("textoDaMensagem", () => {

@@ -20,7 +20,12 @@
    ================================================================ */
 import { DIAS_COBRANCA_RESULTADO } from "./abordagens";
 import { historicoComStatus, motivoPerdaPelaFase } from "./motor";
-import { PREFIXO_TEXTO_RESPOSTA, SUFIXO_ID_ENCERRAMENTO, idNotaDaMensagem } from "./notas";
+import {
+  PREFIXO_TEXTO_RESPOSTA,
+  SUFIXO_ID_ENCERRAMENTO,
+  ehTipoDeReacaoWhatsapp,
+  idNotaDaMensagem,
+} from "./notas";
 import { addDaysISO, daysBetween } from "../datas";
 import type { NotaImovel, StatusHistoryEntry, Tentativa } from "../tipos";
 
@@ -118,6 +123,14 @@ export function textoDaMensagem(message: unknown): string {
   return "";
 }
 
+/** A reação altera uma mensagem existente e não deve virar uma nova bolha ou
+    resposta pendente. O payload também é conferido porque algumas versões da
+    Evolution não preenchem `messageType`. */
+export function ehMensagemDeReacaoWhatsapp(tipo: string | null | undefined, message: unknown): boolean {
+  if (ehTipoDeReacaoWhatsapp(tipo)) return true;
+  return Object.prototype.hasOwnProperty.call(objeto(message), "reactionMessage");
+}
+
 /** O número de quem está do outro lado da conversa.
 
     Duas armadilhas do WhatsApp novo:
@@ -160,12 +173,15 @@ export function interpretarEvento(corpo: unknown): MensagemWhatsappWebhook | nul
   const telefone = telefoneDaConversa(chave);
   if (!telefone) return null;
 
+  const tipo = texto(dados.messageType) || "desconhecido";
+  if (ehMensagemDeReacaoWhatsapp(tipo, dados.message)) return null;
+
   return {
     instancia,
     mensagemId,
     telefone,
     texto: textoDaMensagem(dados.message),
-    tipo: texto(dados.messageType) || "desconhecido",
+    tipo,
     direcao: chave.fromMe === true ? "enviada" : "recebida",
   };
 }
