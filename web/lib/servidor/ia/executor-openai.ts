@@ -3,6 +3,7 @@ import type { FalhaIa } from "@/lib/calculo/ia";
 import { registrarUsoDaResposta } from "@/lib/servidor/registro";
 import { MAX_TOKENS_IA, MODELO_TEXTO_IA } from "./config";
 import type { EsforcoIaPermitido, ModeloIaPermitido } from "@/lib/ia/configuracao";
+import { aplicarSystemPromptAngario } from "@/lib/ia/system-prompt";
 
 export interface FormatoEstruturadoOpenAI {
   nome: string;
@@ -82,7 +83,7 @@ export function criarExecutorOpenAI(
               },
             }
           : {}),
-        messages: pedido.mensagens,
+        messages: aplicarSystemPromptAngario(pedido.mensagens),
       });
 
       registrarUsoDaResposta(userId, pedido.tipo, modelo, conclusao.usage);

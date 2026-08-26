@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   criarResposta: vi.fn(),
   executarFerramenta: vi.fn(),
   registrarUso: vi.fn(),
+  registrarEvento: vi.fn(),
 }));
 
 vi.mock("openai", () => ({
@@ -21,6 +22,7 @@ vi.mock("@/lib/servidor/assistente/ferramentas", () => ({
 
 vi.mock("@/lib/servidor/registro", () => ({
   registrarUsoDaResponsesApi: mocks.registrarUso,
+  registrarEvento: mocks.registrarEvento,
 }));
 
 import { responderComAssistente } from "@/lib/servidor/assistente/orquestrador";
@@ -132,6 +134,16 @@ describe("orquestrador com continuidade de entidade", () => {
       "Foi o mesmo imóvel que mencionei acima: o LD-211. Ele foi publicado em 17/08/2026.",
     );
     expect(resposta.mensagem.blocos).toEqual([bloco]);
+    expect(mocks.registrarEvento).toHaveBeenCalledWith(expect.objectContaining({
+      evento: "ia-assistente-respondido",
+      detalhe: expect.stringContaining('"ferramentasChamadas":["buscar_marcos_imoveis"]'),
+    }));
+    expect(mocks.registrarEvento.mock.calls.at(-1)?.[0].detalhe).toContain(
+      '"entidadesUtilizadas":["id-211"]',
+    );
+    expect(mocks.registrarEvento.mock.calls.at(-1)?.[0].detalhe).not.toContain(
+      "E o último publicado?",
+    );
   });
 
   it("formula mudança de entidade a partir do novo retorno, não do texto anterior", async () => {

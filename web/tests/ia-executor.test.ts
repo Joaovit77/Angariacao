@@ -10,6 +10,7 @@ import {
   criarExecutorOpenAI,
   textoDaResposta,
 } from "@/lib/servidor/ia/executor-openai";
+import { SYSTEM_PROMPT_CENTRAL_ANGARIO } from "@/lib/ia/system-prompt";
 
 function conclusao(
   content: string,
@@ -65,7 +66,10 @@ describe("executor OpenAI compartilhado", () => {
           schema: { type: "object" },
         },
       },
-      messages: [{ role: "user", content: "teste" }],
+      messages: [
+        { role: "developer", content: SYSTEM_PROMPT_CENTRAL_ANGARIO },
+        { role: "user", content: "teste" },
+      ],
     });
     expect(resultado.texto).toBe('{"ok":true}');
     expect(registrarUsoDaResposta).toHaveBeenCalledWith(

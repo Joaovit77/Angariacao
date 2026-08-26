@@ -53,18 +53,21 @@ function supabaseFalso(): SupabaseClient {
             order: async () => ({
               data: [
                 {
+                  id: "protocolo-taxa",
                   tipo: "informacao_comercial",
                   titulo: "Taxa",
                   conteudo: "A taxa é de 10%.",
                   arquivado: false,
                 },
                 {
+                  id: "conduta-nao-repetir",
                   tipo: "regra_conduta",
                   titulo: "Não repetir informações",
                   conteudo: "Analise o histórico e não repita informações já explicadas.",
                   arquivado: false,
                 },
                 {
+                  id: "conduta-arquivada",
                   tipo: "regra_conduta",
                   titulo: "Regra arquivada",
                   conteudo: "CONTEÚDO ARQUIVADO NÃO PODE SER USADO.",
@@ -222,6 +225,18 @@ describe("handler especializado de atendimento", () => {
     );
     expect(vi.mocked(registrarEvento).mock.calls.at(-1)?.[0].detalhe).toContain(
       '"contextoFingerprint":"',
+    );
+    expect(vi.mocked(registrarEvento).mock.calls.at(-1)?.[0].detalhe).toContain(
+      '"protocolosAplicados":["protocolo-taxa"]',
+    );
+    expect(vi.mocked(registrarEvento).mock.calls.at(-1)?.[0].detalhe).toContain(
+      '"protocolosConsiderados":["protocolo-taxa"]',
+    );
+    expect(vi.mocked(registrarEvento).mock.calls.at(-1)?.[0].detalhe).not.toContain(
+      "conduta-arquivada",
+    );
+    expect(vi.mocked(registrarEvento).mock.calls.at(-1)?.[0].detalhe).not.toContain(
+      "Qual é a taxa?",
     );
   });
 });

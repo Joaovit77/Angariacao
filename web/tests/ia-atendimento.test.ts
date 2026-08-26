@@ -107,6 +107,8 @@ describe("contratos e barreiras", () => {
       undefined,
       [protocolos[0]],
     );
+    expect(sistema).toContain("HIERARQUIA DE AUTORIDADE");
+    expect(sistema).toContain("INSTRUÇÕES ESPECÍFICAS DA OPERAÇÃO");
     expect(sistema).toContain("REGRAS OBRIGATÓRIAS DE CONDUTA");
     expect(sistema).toContain("não repita informações que já foram explicadas");
     expect(sistema).toContain("não invente nem estime");

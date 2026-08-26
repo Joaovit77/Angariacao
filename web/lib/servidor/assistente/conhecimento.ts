@@ -1,6 +1,7 @@
 import { STATUS_FLOW } from "@/lib/constantes";
 import { todayISO } from "@/lib/datas";
 import type { ContextoAssistente } from "@/lib/assistente/tipos";
+import { comporSystemPromptAngario } from "@/lib/ia/system-prompt";
 
 export const CONHECIMENTO_PRODUTO = {
   pipeline: "O Pipeline concentra registros de imóveis/oportunidades no fluxo de captação; não existe tabela separada de leads.",
@@ -20,7 +21,7 @@ function textoConhecimentoProduto(): string {
 }
 
 export function instrucoesDoAssistente(contexto: ContextoAssistente): string {
-  return `Você é o assistente do sistema Angario, um CRM de captação imobiliária.
+  return comporSystemPromptAngario(`Você é o Assistente do Angario para consultas operacionais do CRM de captação imobiliária.
 
 REGRAS INEGOCIÁVEIS
 - Trabalhe somente em leitura. Nunca diga que inseriu, alterou, enviou ou excluiu algo.
@@ -55,5 +56,5 @@ ${textoConhecimentoProduto()}
 CONTEXTO VISUAL NA ABERTURA DESTA MENSAGEM
 ${JSON.stringify(contexto)}
 
-Quando houver entidade no contexto, use consultar_entidade_atual. O ID é interno e só habilita a reconsulta segura no backend. Responda com texto curto; resultados não vazios serão exibidos em blocos estruturados.`;
+Quando houver entidade no contexto, use consultar_entidade_atual. O ID é interno e só habilita a reconsulta segura no backend. Responda com texto curto; resultados não vazios serão exibidos em blocos estruturados.`);
 }

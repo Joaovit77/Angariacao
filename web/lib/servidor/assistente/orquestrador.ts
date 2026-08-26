@@ -11,8 +11,9 @@ import {
   respostaNaturalDaContinuidade,
   type ContinuidadeEntidade,
 } from "@/lib/assistente/continuidade";
-import { registrarUsoDaResponsesApi } from "@/lib/servidor/registro";
+import { registrarEvento, registrarUsoDaResponsesApi } from "@/lib/servidor/registro";
 import { carregarConfiguracaoIa } from "@/lib/servidor/ia/configuracao";
+import { metadadosExecucaoIa } from "@/lib/ia/observabilidade";
 import { instrucoesDoAssistente } from "./conhecimento";
 import { DEFINICOES_FERRAMENTAS, executarFerramenta } from "./ferramentas";
 
@@ -100,6 +101,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
   }));
   entrada.push({ role: "user", content: pedido.mensagem });
   const blocos: BlocoAssistente[] = [];
+  const ferramentasChamadas: string[] = [];
   let continuidadeResposta: ContinuidadeEntidade | null = null;
   const parametros = () => ({
     model: modelo,
@@ -121,6 +123,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
     if (!chamadas.length) break;
     entrada.push(...toResponseInputItems(resposta.output));
     for (const chamada of chamadas) {
+      ferramentasChamadas.push(chamada.name);
       let args: Record<string, unknown> = {};
       try { args = JSON.parse(chamada.arguments) as Record<string, unknown>; } catch { /* validacao estrita ainda pode falhar */ }
       const resultado = await executarFerramenta(chamada.name, args, supabase, userId, pedido.contexto, pedido.mensagem, pedido.historico);
@@ -141,5 +144,32 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
   const texto = continuidadeResposta
     ? respostaNaturalDaContinuidade(continuidadeResposta)
     : textoGerado;
+  registrarEvento({
+    userId,
+    categoria: "ia",
+    nivel: "info",
+    evento: "ia-assistente-respondido",
+    detalhe: JSON.stringify(metadadosExecucaoIa({
+      operacao: "assistente-chat",
+      ferramentasChamadas,
+      entidadesUtilizadas: [
+        pedido.contexto.entidade?.id,
+        ...blocos.flatMap((bloco) =>
+          bloco.tipo === "imoveis" || bloco.tipo === "agenda" || bloco.tipo === "mensagens_agendadas"
+            ? bloco.itens.map((item) => item.id)
+            : [],
+        ),
+      ],
+      fontesDeDados: ferramentasChamadas.map((nome) => `ferramenta:${nome}`),
+      validacoesAplicadas: [
+        "normalizacao-do-pedido",
+        "limites-do-historico",
+        "sanitizacao-da-saida",
+        ...(continuidadeResposta ? ["continuidade-estruturada"] : []),
+      ],
+      resultado: "respondido",
+      motivo: texto ? "resposta-gerada" : "resposta-vazia-com-fallback",
+    })),
+  });
   return { modelo, mensagem: { id: randomUUID(), papel: "assistente", texto: texto || "Nao consegui formular uma resposta. Tente reformular a pergunta.", blocos: blocos.length ? blocos : undefined } };
 }

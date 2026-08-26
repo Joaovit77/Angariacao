@@ -32,6 +32,7 @@ import {
   MAX_TOKENS_CLASSIFICACAO_IA as MAX_TOKENS,
 } from "./ia/config";
 import { carregarConfiguracaoIa } from "./ia/configuracao";
+import { aplicarSystemPromptAngario } from "../ia/system-prompt";
 
 const VALIDOS: readonly string[] = RESULTADOS_TENTATIVA.map((r) => r.valor);
 
@@ -101,7 +102,9 @@ export async function classificarResposta(
         type: "json_schema",
         json_schema: { name: "classificacao", strict: true, schema: ESQUEMA_CLASSIFICACAO },
       },
-      messages: [{ role: "user", content: promptClassificarResposta(texto, hoje, anteriores) }],
+      messages: aplicarSystemPromptAngario([
+        { role: "user", content: promptClassificarResposta(texto, hoje, anteriores) },
+      ]),
     });
 
     /* O gasto, registrado antes de qualquer validação do conteúdo.

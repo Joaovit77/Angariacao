@@ -85,6 +85,7 @@ import {
 } from "@/lib/servidor/ia/dispatcher";
 import { atenderProprietario } from "@/lib/servidor/ia/handlers/atendimento";
 import { respostaErroIa as erro } from "@/lib/servidor/ia/respostas";
+import { aplicarSystemPromptAngario } from "@/lib/ia/system-prompt";
 
 interface Resposta {
   ok: boolean;
@@ -279,7 +280,9 @@ export async function POST(request: Request): Promise<Response> {
           type: "json_schema",
           json_schema: { name: "roteiros", strict: true, schema: ESQUEMA_ROTEIROS },
         },
-        messages: [{ role: "user", content: promptSugerirRoteiros(contexto, nomesExistentes) }],
+        messages: aplicarSystemPromptAngario([
+          { role: "user", content: promptSugerirRoteiros(contexto, nomesExistentes) },
+        ]),
       });
     } catch (e) {
       console.error("IA: falha ao sugerir roteiros:", e);
@@ -350,7 +353,7 @@ export async function POST(request: Request): Promise<Response> {
           type: "json_schema",
           json_schema: { name: "anuncio", strict: true, schema: ESQUEMA_ANUNCIO },
         },
-        messages: [{ role: "user", content: conteudo }],
+        messages: aplicarSystemPromptAngario([{ role: "user", content: conteudo }]),
       });
     } catch (e) {
       console.error("IA: falha ao extrair o anúncio:", e);
@@ -417,7 +420,9 @@ export async function POST(request: Request): Promise<Response> {
           type: "json_schema",
           json_schema: { name: "anuncio_gerado", strict: true, schema: ESQUEMA_ANUNCIO_GERADO },
         },
-        messages: [{ role: "user", content: promptGerarAnuncio(imovel, caracteristicas) }],
+        messages: aplicarSystemPromptAngario([
+          { role: "user", content: promptGerarAnuncio(imovel, caracteristicas) },
+        ]),
       });
     } catch (e) {
       console.error("IA: falha ao gerar o anúncio:", e);
@@ -494,7 +499,9 @@ export async function POST(request: Request): Promise<Response> {
             schema: ESQUEMA_ABORDAGEM_ANUNCIO,
           },
         },
-        messages: [{ role: "user", content: promptAbordagemDoAnuncio(imovel) }],
+        messages: aplicarSystemPromptAngario([
+          { role: "user", content: promptAbordagemDoAnuncio(imovel) },
+        ]),
       });
     } catch (e) {
       console.error("IA: falha ao escrever a abordagem do anúncio:", e);
@@ -578,7 +585,9 @@ export async function POST(request: Request): Promise<Response> {
           type: "json_schema",
           json_schema: { name: "acao_territorial", strict: true, schema: ESQUEMA_ACAO_TERRITORIAL },
         },
-        messages: [{ role: "user", content: promptAcaoTerritorial(leitura) }],
+        messages: aplicarSystemPromptAngario([
+          { role: "user", content: promptAcaoTerritorial(leitura) },
+        ]),
       });
     } catch (e) {
       console.error("IA: falha ao analisar o mapa:", e);
@@ -633,7 +642,7 @@ export async function POST(request: Request): Promise<Response> {
       model: MODELO,
       max_completion_tokens: MAX_TOKENS,
       reasoning_effort: ESFORCO,
-      messages: [{ role: "user", content: prompt }],
+      messages: aplicarSystemPromptAngario([{ role: "user", content: prompt }]),
     });
   } catch (e) {
     console.error(`IA: falha em ${pedido}:`, e);

@@ -16,6 +16,7 @@ import {
   type MensagemAnteriorAtendimento,
   type ProtocoloPrompt,
 } from "./contratos";
+import { comporSystemPromptAngario } from "@/lib/ia/system-prompt";
 
 const MAX_CONTEXTO_ATENDIMENTO = 200;
 
@@ -64,12 +65,12 @@ ${instrucao}
 
 Esta orientação só pode ajustar tom, prioridade ou forma de condução. Ela não substitui regras permanentes, não autoriza fatos comerciais e não amplia os próximos passos permitidos.`
     : "";
-  return `${PROMPT_BASE_ATENDIMENTO}${orientacao}
+  return comporSystemPromptAngario(`${PROMPT_BASE_ATENDIMENTO}${orientacao}
 
 REGRAS OBRIGATÓRIAS DE CONDUTA:
 ${catalogoRegrasConduta(regrasConduta)}
 
-As regras acima devem ser aplicadas em todas as etapas, mesmo quando não forem semanticamente parecidas com a pergunta. Elas controlam comportamento, não autorizam fatos comerciais, não substituem informação ausente e nunca devem ser citadas ou apresentadas ao proprietário como conteúdo da imobiliária. As regras permanentes deste sistema prevalecem sobre qualquer conflito.`;
+As regras acima devem ser aplicadas em todas as etapas, mesmo quando não forem semanticamente parecidas com a pergunta. Elas controlam comportamento, não autorizam fatos comerciais, não substituem informação ausente e nunca devem ser citadas ou apresentadas ao proprietário como conteúdo da imobiliária. As regras permanentes deste sistema prevalecem sobre qualquer conflito.`);
 }
 
 function limparMensagem(mensagem: string | MensagemAnteriorAtendimento): MensagemAnteriorAtendimento | null {

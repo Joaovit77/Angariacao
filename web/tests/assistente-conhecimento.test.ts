@@ -4,6 +4,8 @@ import { CONHECIMENTO_PRODUTO, instrucoesDoAssistente } from "@/lib/servidor/ass
 describe("conhecimento do assistente", () => {
   it("explicita leitura, consulta e sem tabela separada de leads", () => {
     const texto = instrucoesDoAssistente({ rota: "/pipeline", pagina: "Pipeline", superficie: "pagina" });
+    expect(texto).toContain("angario-governanca-v1");
+    expect(texto).toContain("HIERARQUIA DE EVIDÊNCIA");
     expect(texto).toContain("somente em leitura");
     expect(texto).toContain("Consulte as ferramentas");
     expect(texto).toContain("não existe tabela separada de leads");

@@ -3,6 +3,7 @@ import {
   ESQUEMA_DECISAO_ATENDIMENTO,
   ESQUEMA_GERACAO_ATENDIMENTO,
   ESQUEMA_VALIDACAO_ATENDIMENTO,
+  MAX_PROTOCOLOS,
   promptBaseAtendimento,
   conversaAtendimento,
   contextoAtendimentoDoImovel,
@@ -33,6 +34,10 @@ import { registrarEvento } from "@/lib/servidor/registro";
 import type { HandlerIa } from "../dispatcher";
 import { classificarErroIa } from "../executor-openai";
 import { respostaErroIa } from "../respostas";
+import {
+  idsProtocolosDeclaradosSemAmbiguidade,
+  metadadosExecucaoIa,
+} from "@/lib/ia/observabilidade";
 
 type EtapaAtendimento = "contexto" | "decisao" | "geracao" | "validacao" | "sugestao";
 
@@ -47,6 +52,12 @@ interface DiagnosticoAtendimento {
   contextoFingerprint?: string;
   confianca?: "alta" | "media" | "baixa";
   informacoesFaltantes?: number;
+  /** IDs comerciais presentes no catálogo da etapa de decisão. */
+  protocolosConsiderados?: string[];
+  /** IDs comerciais declarados pela geração e associados sem ambiguidade. */
+  protocolosAplicados?: string[];
+  fontesDeDados?: string[];
+  validacoesAplicadas?: string[];
 }
 
 /** Metadados operacionais apenas: nunca inclui mensagem, prompt ou chain-of-thought. */
@@ -89,6 +100,17 @@ function registrarDiagnosticoAtendimento(
       etapaFinal,
       resultado,
       motivo,
+      execucao: metadadosExecucaoIa({
+        operacao: "rascunhar-resposta",
+        protocolosConsiderados: base.protocolosConsiderados,
+        protocolosAplicados: base.protocolosAplicados,
+        ferramentasChamadas: [],
+        entidadesUtilizadas: [base.imovelId],
+        fontesDeDados: base.fontesDeDados,
+        validacoesAplicadas: base.validacoesAplicadas,
+        resultado: resultado === "sugerido" ? "sugerido" : resultado,
+        motivo,
+      }),
     }),
   });
 }
@@ -150,7 +172,12 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   const imovel = fromDbImovel(imRow as DbImovelRow);
 
   const selecao = selecionarMensagensAtendimento(imovel);
-  const diagnostico: DiagnosticoAtendimento = { imovelId, selecao };
+  const diagnostico: DiagnosticoAtendimento = {
+    imovelId,
+    selecao,
+    fontesDeDados: ["imoveis", "notas-whatsapp"],
+    validacoesAplicadas: ["selecao-deterministica-de-contexto"],
+  };
   const mensagemProp = selecao.mensagemAtual;
   if (!mensagemProp) {
     registrarDiagnosticoAtendimento(
@@ -210,7 +237,12 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   }
   const protocolos = ((ptData || []) as DbProtocoloRow[]).map(fromDbProtocolo);
   const { informacoesComerciais, regrasConduta } = separarProtocolosAtivos(protocolos);
-  const informacoesComerciaisPrompt = informacoesComerciais.map((protocolo) => ({
+  const informacoesComerciaisConsideradas = informacoesComerciais.slice(0, MAX_PROTOCOLOS);
+  (diagnostico.fontesDeDados ??= []).push("protocolos");
+  diagnostico.protocolosConsiderados = informacoesComerciaisConsideradas
+    .map((protocolo) => protocolo.id)
+    .filter((id): id is string => typeof id === "string" && id !== "");
+  const informacoesComerciaisPrompt = informacoesComerciaisConsideradas.map((protocolo) => ({
     titulo: protocolo.titulo,
     conteudo: protocolo.conteudo,
   }));
@@ -229,8 +261,9 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
     console.error("IA: falha ao ler o perfil de comunicação; usando padrão seguro:", cfErro.message);
   }
   const perfil = normalizarPerfilComunicacao((cfData as Pick<DbUserConfigRow, "perfil_comunicacao"> | null)?.perfil_comunicacao);
+  if (!cfErro) (diagnostico.fontesDeDados ??= []).push("user_config");
 
-  diagnostico.protocolosDisponiveis = informacoesComerciaisPrompt.length;
+  diagnostico.protocolosDisponiveis = informacoesComerciais.length;
   diagnostico.regrasCondutaDisponiveis = regrasCondutaPrompt.length;
   const promptSistema = promptBaseAtendimento(
     configuracao?.instrucaoAtendimento,
@@ -297,6 +330,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   } catch {
     decisao = null;
   }
+  (diagnostico.validacoesAplicadas ??= []).push("normalizacao-estrita-da-decisao");
   if (!decisao) {
     registrarDiagnosticoAtendimento(
       userId,
@@ -307,6 +341,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
     );
     return respostaErroIa("falha-modelo", 502);
   }
+  (diagnostico.validacoesAplicadas ??= []).push("bloqueio-de-seguranca-da-decisao");
   diagnostico.confianca = decisao.nivelConfianca;
   diagnostico.informacoesFaltantes = decisao.informacoesFaltantes.length;
   const motivoDecisao = motivoBloqueioDecisaoAtendimento(decisao);
@@ -379,6 +414,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
     ? dadosGeracao.protocolosUsados.filter((t): t is string => typeof t === "string")
     : [];
   const titulosPermitidos = new Set(protocolosSelecionados.map((p) => p.titulo));
+  (diagnostico.validacoesAplicadas ??= []).push("protocolos-declarados-contra-catalogo");
   if (!rascunho) {
     registrarDiagnosticoAtendimento(
       userId,
@@ -400,6 +436,11 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
     return respostaErroIa("protocolo-inadequado", 422);
   }
   const protocolosUsados = [...new Set(usadosBrutos)];
+  diagnostico.protocolosAplicados = idsProtocolosDeclaradosSemAmbiguidade(
+    informacoesComerciaisConsideradas,
+    protocolosUsados,
+  );
+  (diagnostico.validacoesAplicadas ??= []).push("bloqueios-deterministicos-do-rascunho");
   const motivoDeterministico = motivoBloqueioRascunhoDeterministico(
     rascunho,
     protocolosUsados,
@@ -458,6 +499,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
     validacao = null;
   }
   const motivoValidacao = motivoReprovacaoValidacaoAtendimento(validacao);
+  (diagnostico.validacoesAplicadas ??= []).push("validacao-independente-da-resposta");
   if (motivoValidacao === undefined) {
     registrarDiagnosticoAtendimento(
       userId,

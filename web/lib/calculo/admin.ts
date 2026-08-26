@@ -273,6 +273,7 @@ export const EVENTOS: Record<string, string> = {
   "ia-falhou": "Falha na chamada de IA",
   "ia-atendimento-bloqueado": "Sugestão de atendimento bloqueada",
   "ia-atendimento-sugerido": "Sugestão de atendimento gerada",
+  "ia-assistente-respondido": "Resposta do Assistente gerada",
   "ia-sem-permissao": "Tentou usar IA sem liberação",
   "google-expirado": "Autorização do Google Agenda expirou",
   "google-falhou": "Falha ao sincronizar com o Google Agenda",

@@ -1336,6 +1336,45 @@ de domínio não importam o SDK. Na ausência de uma configuração publicada, o
 em `lib/servidor/ia/config.ts`/`lib/ia/configuracao.ts`, atualmente `gpt-5.4-mini`. Transcrição e
 embeddings são independentes porque têm contratos próprios.
 
+##### Governança central da IA
+
+`lib/ia/system-prompt.ts` contém o **System Prompt central** das operações textuais. Ele define
+somente regras permanentes: identidade e função da IA, limites de afirmação, uso de ferramentas e
+protocolos, tratamento de contexto e conflitos, ausência de informação, proteção contra invenção e
+proibição de expor raciocínio interno. O executor compartilhado garante essa camada aos handlers;
+as chamadas textuais legadas de `/api/ia`, a classificação do webhook e o Assistente também a
+compõem explicitamente. Na Chat Completions ele é enviado com o papel `developer`, equivalente
+moderno da instrução de sistema; na Responses API ocupa `instructions`. Transcrição e embeddings
+não recebem esse prompt porque não geram respostas de negócio e têm contratos próprios.
+
+Há duas ordens diferentes, que não devem ser confundidas:
+
+- **Autoridade** determina como a IA pode agir: código/permissões/bloqueios determinísticos → System
+  Prompt central → protocolos ativos → prompt específico da operação → solicitação do usuário.
+- **Evidência** determina o que sustenta uma afirmação: dados estruturados atuais → resultado real de
+  ferramenta → protocolo ativo aplicável → contexto autorizado → conhecimento geral apenas para
+  explicações genéricas. Uma fala no histórico ajuda a entender a conversa, mas não transforma um
+  fato ausente em dado confirmado.
+
+A ordem geral de uma execução textual é: governança central → protocolos relevantes, quando o fluxo
+os utiliza → contexto autorizado e dados recuperados → objetivo específico da operação → modelo →
+validações determinísticas e/ou validação independente já prevista pelo domínio → resposta. O
+System Prompt não contém taxas, condições comerciais, conhecimento detalhado do produto nem regras
+editáveis: esses conteúdos permanecem, respectivamente, em Protocolos, no conhecimento específico
+do Assistente e nos prompts de operação.
+
+`lib/ia/observabilidade.ts` define metadados seguros e factuais de execução: operação, IDs de
+protocolos considerados/aplicados, ferramentas chamadas, entidades, fontes, validações, resultado e
+motivo. No atendimento, "aplicado" significa que o título foi declarado na saída estruturada da
+geração, corresponde inequivocamente a um protocolo selecionado e passou pelas validações
+disponíveis; não é uma tentativa de inferir o raciocínio interno do modelo. Títulos duplicados não
+são convertidos em IDs aplicados. Esses dois campos de IDs representam a seleção comercial; as
+regras de conduta, fornecidas integralmente como restrições obrigatórias, permanecem identificadas
+pela contagem operacional já existente. Atendimento e Assistente preenchem gradualmente esse
+contrato usando o `log_eventos` já existente; não há segundo sistema de logs. Nunca entram conversa,
+resposta completa, prompt ou chain-of-thought. Fluxos que ainda não produzem um fato não preenchem o
+campo como se produzissem.
+
 ##### Centro de IA no ADM
 
 O cartão **Centro de IA** em `/admin` é o mapa operacional e o roteador dos modelos. A configuração
@@ -1473,7 +1512,9 @@ ali para quem quiser um modelo.
   ação esperada, próximo passo permitido, ações proibidas, evidências, protocolos, lacunas e confiança),
   geração e validação independente. Confiança baixa, falta de informação, protocolo inadequado ou
   validação reprovada bloqueiam o rascunho e pedem intervenção humana. Diagnósticos operacionais
-  registram apenas contagens, classificações e fingerprint — nunca conversa, prompt ou raciocínio.
+  registram contagens, classificações, fingerprint e metadados estruturados reais da execução —
+  incluindo IDs de protocolos considerados/aplicados, fontes e validações executadas —, nunca
+  conversa, resposta completa, prompt ou raciocínio.
 
   A IA recebe somente fatos tipados do imóvel (endereço/unidade/localização, tipo, quartos,
   banheiros, vagas, valores, autorização, pausa, responsável, origem e histórico de estágio quando
@@ -1546,6 +1587,9 @@ Arquitetura:
   prompt.
 - `lib/servidor/assistente/orquestrador.ts`: OpenAI Responses API com tool calling sequencial, até
   quatro rodadas, `store: false`, identificador de segurança derivado por hash e registro de custo.
+  Ao concluir, registra no log existente somente metadados seguros: nomes das ferramentas realmente
+  chamadas, IDs de entidades retornadas, fontes e validações aplicadas; não registra a pergunta nem
+  a resposta.
   O modelo padrão é `gpt-5.4-mini`; a ausência de versão no banco ainda respeita um
   `OPENAI_ASSISTENTE_MODEL` válido. Com versão publicada, o Centro de IA é a fonte ativa.
 
@@ -1573,6 +1617,11 @@ ferramentas ou validações sem fonte própria. Enquanto não houver um históri
 e acessível ao usuário, o card de atividade permanece em estado vazio e o fluxo é identificado como
 explicativo, sem promessa de atualização em tempo real. Os componentes recebem fontes e atividades
 por tipos próprios para aceitar dados reais no futuro sem alterar a composição da tela.
+
+Os metadados seguros já gravados por atendimento e Assistente são uma preparação incremental, não
+uma fonte de conhecimento para o modelo nem um tracing completo. Como `log_eventos` é operacional e
+administrativo, esses registros não são exibidos automaticamente no Cérebro da IA: fazê-lo exigirá
+uma leitura user-scoped confiável e autorização própria, sem expor dados de outras carteiras.
 
 Como a explicação não depende de carteira, a rota e seu item de menu também ficam disponíveis para
 o administrador com `opera_carteira = false`. Essa exceção não libera as demais telas do corretor.
