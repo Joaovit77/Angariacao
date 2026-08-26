@@ -592,6 +592,11 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   desde cedo, uma caixa vazia diria "nada chegou" quando significa "nada chegou desde o login".
   O botão continua ali como rede (ver `chegadaResposta.ts` abaixo: hoje o Realtime empurra a
   mudança, mas socket cai, aba dorme, e o botão é a saída que não depende de nada disso).
+  Marcar respostas ou eventos como lidos passa por `marcar_notas_imovel_lidas`: a função autentica
+  pelo `auth.uid()`, bloqueia somente a linha do imóvel e transforma o JSONB que está no banco. O
+  browser nunca devolve seu snapshot de `notas`; por isso um append simultâneo da rota de envio ou
+  do webhook não pode ser perdido. A RPC devolve o histórico confirmado para reconciliar o store,
+  preservando também uma nota mais nova que o Realtime já tenha entregue durante a chamada.
 - **`calculo/chegadaResposta.ts`** — a resposta do proprietário aparecendo **na hora**, sem F5.
   O buraco era estrutural e a caixa o contornava com um botão: quem escreve é o **webhook, no
   servidor**, e o painel lia o banco **uma vez por sessão**. Numa aba aberta desde cedo o badge

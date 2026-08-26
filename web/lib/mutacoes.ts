@@ -31,7 +31,7 @@ import {
 } from "./calculo/desdobramento";
 import { deveTerVerificacaoAberta } from "./calculo/followup";
 import { dataAngariadoEfetiva, historicoComStatus } from "./calculo/motor";
-import { ehNotaDeResposta, eventosNaoLidos, notaDaMensagemEnviada } from "./calculo/notas";
+import { eventosNaoLidos, notaDaMensagemEnviada } from "./calculo/notas";
 import { useCelebracao } from "./celebracao";
 import { MAX_PROTOCOLO_CHARS } from "./calculo/ia";
 import { toDbAbordagem, toDbAgenda, toDbAnuncioCentralVisualizado, toDbImovel, toDbProtocolo } from "./persistencia/mapeadores";
@@ -383,6 +383,57 @@ export async function recarregarEstado(): Promise<boolean> {
   }
 }
 
+type ClasseNotaLida = "resposta" | "evento";
+
+interface ResultadoMarcacaoNotas {
+  encontrado: boolean;
+  alteradas: number;
+  notas: NotaImovel[] | null;
+}
+
+function resultadoMarcacaoNotas(valor: unknown): ResultadoMarcacaoNotas | null {
+  if (!valor || typeof valor !== "object") return null;
+  const resultado = valor as Record<string, unknown>;
+  if (
+    typeof resultado.encontrado !== "boolean" ||
+    typeof resultado.alteradas !== "number" ||
+    (resultado.notas !== null && !Array.isArray(resultado.notas))
+  ) return null;
+  return resultado as unknown as ResultadoMarcacaoNotas;
+}
+
+/** Une o retrato confirmado pela RPC com uma eventual nota mais nova que o
+    Realtime já entregou enquanto a resposta HTTP ainda estava em trânsito.
+    Para ids comuns, o banco vence — é ele que contém o novo `lida: true`. */
+function aplicarNotasConfirmadas(imovelId: string, notasBanco: NotaImovel[]): void {
+  const { imoveis, setImoveis } = useAppStore.getState();
+  const atual = imoveis.find((imovel) => imovel.id === imovelId);
+  if (!atual) return;
+
+  const idsBanco = new Set(notasBanco.map((nota) => nota.id));
+  const notasConcorrentes = (atual.notas || []).filter((nota) => !idsBanco.has(nota.id));
+  const notas = notasConcorrentes.length > 0 ? [...notasBanco, ...notasConcorrentes] : notasBanco;
+  setImoveis(imoveis.map((imovel) => (imovel.id === imovelId ? { ...imovel, notas } : imovel)));
+}
+
+async function marcarNotasLidasNoBanco(
+  imovelId: string,
+  classe: ClasseNotaLida,
+): Promise<ResultadoMarcacaoNotas | null> {
+  const { data, error } = await getSupabase().rpc("marcar_notas_imovel_lidas", {
+    p_imovel_id: imovelId,
+    p_classe: classe,
+  });
+  const resultado = resultadoMarcacaoNotas(data);
+  if (error || !resultado || !resultado.encontrado || !resultado.notas) {
+    toast("Não foi possível marcar como lida: " + (error?.message || "imóvel não encontrado."), "error");
+    return null;
+  }
+
+  aplicarNotasConfirmadas(imovelId, resultado.notas);
+  return resultado;
+}
+
 /**
  * Marca como lidas as respostas do proprietário que ainda estão pendentes na
  * Caixa de respostas (calculo/respostas.ts).
@@ -391,34 +442,16 @@ export async function recarregarEstado(): Promise<boolean> {
  * ("obrigado", "combinado"). Quem age pelo painel não passa por aqui: a
  * tentativa ou a mudança de status já tiram a resposta da caixa sozinhas.
  *
- * Update PARCIAL da coluna `notas`, como as outras mutações de nota — um
- * upsert da linha inteira apagaria o que estivesse sendo editado em paralelo,
- * e aqui o risco é concreto: o webhook escreve nessa mesma coluna quando a
- * próxima mensagem chega.
+ * A RPC bloqueia a linha e transforma o JSONB corrente dentro do banco. Ela
+ * nunca recebe as notas do store: assim, uma saída registrada pela rota ou uma
+ * nova entrada do webhook não pode ser sobrescrita por um retrato antigo.
  *
  * Silencioso por opção: marcar linha a linha na caixa dispararia um toast por
  * clique. Quem confirma é a linha sumindo da lista.
  */
 export async function marcarRespostasLidas(imovelId: string, silencioso = false): Promise<boolean> {
-  const { imoveis, setImoveis } = useAppStore.getState();
-  const imovel = imoveis.find((i) => i.id === imovelId);
-  if (!imovel) return false;
-
-  // Só as notas do webhook, e só as que ainda não estavam marcadas: a nota
-  // escrita à mão pelo corretor e a do encerramento automático não são
-  // respostas de ninguém e não têm o que "ler".
-  const pendentes = (imovel.notas || []).filter((n) => ehNotaDeResposta(n) && n.lida !== true);
-  if (pendentes.length === 0) return true;
-
-  const alvos = new Set(pendentes.map((n) => n.id));
-  const novasNotas = (imovel.notas || []).map((n) => (alvos.has(n.id) ? { ...n, lida: true } : n));
-
-  const { error } = await getSupabase().from("imoveis").update({ notas: novasNotas }).eq("id", imovelId);
-  if (error) {
-    toast("Não foi possível marcar como lida: " + error.message, "error");
-    return false;
-  }
-  setImoveis(imoveis.map((i) => (i.id === imovelId ? { ...i, notas: novasNotas } : i)));
+  const resultado = await marcarNotasLidasNoBanco(imovelId, "resposta");
+  if (!resultado) return false;
   if (!silencioso) toast("Resposta marcada como lida.");
   return true;
 }
@@ -434,41 +467,23 @@ export async function marcarRespostasLidas(imovelId: string, silencioso = false)
  * chegou HOJE do que está parado há um mês, e a tela morre na estreia — o
  * mesmo fim da faixa de "imóvel parado" no termômetro.
  *
- * Uma requisição por imóvel, sequencial: cada linha tem um `notas` diferente,
- * e o update é PARCIAL da coluna (não dá para empacotar num upsert sem
- * reescrever a linha inteira, que é justamente o que apagaria o histórico).
- * São dezenas de imóveis no pior caso, não milhares.
+ * Uma RPC por imóvel, sequencial: cada chamada bloqueia somente sua linha e
+ * transforma o JSONB corrente. São dezenas de imóveis no pior caso, não
+ * milhares.
  *
  * Aplica no estado local só o que o banco aceitou: um erro no meio deixa os
  * anteriores marcados, e é assim que tem que ser — reverter os que deram
  * certo faria a tela discordar do banco.
  */
 export async function marcarTodasRespostasLidas(imovelIds: string[]): Promise<number> {
-  const { imoveis, setImoveis } = useAppStore.getState();
-  const supabase = getSupabase();
-  const porImovel = new Map<string, NotaImovel[]>();
+  let marcados = 0;
 
   for (const id of imovelIds) {
-    const imovel = imoveis.find((i) => i.id === id);
-    if (!imovel) continue;
-    const alvos = new Set(
-      (imovel.notas || []).filter((n) => ehNotaDeResposta(n) && n.lida !== true).map((n) => n.id),
-    );
-    if (alvos.size === 0) continue;
-
-    const novasNotas = (imovel.notas || []).map((n) => (alvos.has(n.id) ? { ...n, lida: true } : n));
-    const { error } = await supabase.from("imoveis").update({ notas: novasNotas }).eq("id", id);
-    if (error) {
-      toast("Não foi possível marcar tudo: " + error.message, "error");
-      break;
-    }
-    porImovel.set(id, novasNotas);
+    const resultado = await marcarNotasLidasNoBanco(id, "resposta");
+    if (!resultado) break;
+    if (resultado.alteradas > 0) marcados += 1;
   }
-
-  if (porImovel.size > 0) {
-    setImoveis(imoveis.map((i) => (porImovel.has(i.id) ? { ...i, notas: porImovel.get(i.id)! } : i)));
-  }
-  return porImovel.size;
+  return marcados;
 }
 
 /**
@@ -487,32 +502,18 @@ export async function marcarTodasRespostasLidas(imovelIds: string[]): Promise<nu
  * aviso.
  */
 export async function marcarEventosLidos(imovelId: string | null): Promise<number> {
-  const { imoveis, setImoveis } = useAppStore.getState();
-  const supabase = getSupabase();
-  const alvos = imovelId ? imoveis.filter((i) => i.id === imovelId) : imoveis;
-  const porImovel = new Map<string, NotaImovel[]>();
+  const { imoveis } = useAppStore.getState();
+  const alvos = imovelId
+    ? imoveis.filter((imovel) => imovel.id === imovelId)
+    : imoveis.filter((imovel) => eventosNaoLidos(imovel.notas).length > 0);
+  let marcados = 0;
 
   for (const imovel of alvos) {
-    const pendentes = new Set(eventosNaoLidos(imovel.notas).map((n) => n.id));
-    if (pendentes.size === 0) continue;
-
-    const novasNotas = (imovel.notas || []).map((n) =>
-      pendentes.has(n.id) ? { ...n, lida: true } : n,
-    );
-    // Update PARCIAL da coluna, nunca a linha inteira: o upsert grava todos os
-    // jsonb de uma vez e apagaria tentativas e histórico (ver salvarImovel).
-    const { error } = await supabase.from("imoveis").update({ notas: novasNotas }).eq("id", imovel.id);
-    if (error) {
-      toast("Não foi possível marcar como lida: " + error.message, "error");
-      break;
-    }
-    porImovel.set(imovel.id, novasNotas);
+    const resultado = await marcarNotasLidasNoBanco(imovel.id, "evento");
+    if (!resultado) break;
+    if (resultado.alteradas > 0) marcados += 1;
   }
-
-  if (porImovel.size > 0) {
-    setImoveis(imoveis.map((i) => (porImovel.has(i.id) ? { ...i, notas: porImovel.get(i.id)! } : i)));
-  }
-  return porImovel.size;
+  return marcados;
 }
 
 export async function excluirNotaImovel(imovelId: string, notaId: string): Promise<boolean> {

@@ -1078,6 +1078,121 @@ as $$
   select registrar_nota_imovel(p_imovel_id, p_user_id, p_nota);
 $$;
 
+-- Marca notas como lidas sem transportar o array pelo browser. O lock da linha
+-- serializa esta transformação com os appends de `registrar_nota_imovel`: se a
+-- mensagem chegou antes do lock, ela participa do valor corrente; se chegou
+-- depois, o append parte do histórico já marcado. Em nenhum dos dois casos uma
+-- escrita recompõe `notas` a partir de um snapshot antigo.
+--
+-- `p_classe` é deliberadamente fechado. Respostas e eventos compartilham a
+-- primitiva atômica, mas continuam com critérios separados para limpar uma
+-- caixa nunca apagar a pendência da outra.
+create or replace function marcar_notas_imovel_lidas(
+  p_imovel_id uuid,
+  p_classe text
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_notas_atuais jsonb;
+  v_notas_novas jsonb;
+  v_alteradas integer;
+begin
+  if p_classe not in ('resposta', 'evento') then
+    raise exception 'Classe de nota inválida';
+  end if;
+
+  select coalesce(i.notas, '[]'::jsonb)
+    into v_notas_atuais
+    from public.imoveis as i
+   where i.id = p_imovel_id
+     and i.user_id = (select auth.uid())
+   for update;
+
+  if not found then
+    return jsonb_build_object(
+      'encontrado', false,
+      'alteradas', 0,
+      'notas', null
+    );
+  end if;
+
+  select count(*)::integer
+    into v_alteradas
+    from jsonb_array_elements(v_notas_atuais) as item(nota)
+   where item.nota->'lida' is distinct from 'true'::jsonb
+     and (
+       (
+         p_classe = 'resposta'
+         and coalesce(item.nota->>'id', '') like 'wa:%'
+         and coalesce(item.nota->>'id', '') not like '%:encerrado'
+         and regexp_replace(
+           lower(trim(coalesce(item.nota->>'tipo', ''))),
+           '[[:space:]._-]',
+           '',
+           'g'
+         ) not in ('reaction', 'reactionmessage')
+       )
+       or (
+         p_classe = 'evento'
+         and coalesce(item.nota->>'id', '') like 'sophia:%'
+       )
+     );
+
+  if v_alteradas > 0 then
+    select coalesce(
+      jsonb_agg(
+        case
+          when item.nota->'lida' is distinct from 'true'::jsonb
+            and (
+              (
+                p_classe = 'resposta'
+                and coalesce(item.nota->>'id', '') like 'wa:%'
+                and coalesce(item.nota->>'id', '') not like '%:encerrado'
+                and regexp_replace(
+                  lower(trim(coalesce(item.nota->>'tipo', ''))),
+                  '[[:space:]._-]',
+                  '',
+                  'g'
+                ) not in ('reaction', 'reactionmessage')
+              )
+              or (
+                p_classe = 'evento'
+                and coalesce(item.nota->>'id', '') like 'sophia:%'
+              )
+            )
+            then jsonb_set(item.nota, '{lida}', 'true'::jsonb, true)
+          else item.nota
+        end
+        order by item.ordem
+      ),
+      '[]'::jsonb
+    )
+      into v_notas_novas
+      from jsonb_array_elements(v_notas_atuais) with ordinality as item(nota, ordem);
+
+    update public.imoveis as i
+       set notas = v_notas_novas
+     where i.id = p_imovel_id
+       and i.user_id = (select auth.uid());
+
+    v_notas_atuais := v_notas_novas;
+  end if;
+
+  return jsonb_build_object(
+    'encontrado', true,
+    'alteradas', v_alteradas,
+    'notas', v_notas_atuais
+  );
+end;
+$$;
+
+revoke all on function marcar_notas_imovel_lidas(uuid, text) from public, anon, authenticated, service_role;
+grant execute on function marcar_notas_imovel_lidas(uuid, text) to authenticated;
+
 -- ------------------------------------------------------------
 -- MARCOS PERMANENTES DO FUNIL
 --
