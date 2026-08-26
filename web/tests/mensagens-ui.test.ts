@@ -45,6 +45,25 @@ describe("acabamento da central de mensagens", () => {
     expect(agendadas).toContain("Agendar mensagem");
   });
 
+  it("usa cards mais confortáveis e ícones legíveis sem ampliar o texto das mensagens", () => {
+    const css = fonte("app/style.css");
+    const icones = fonte("components/Icone.tsx");
+    const central = fonte("components/respostas/CentralMensagensView.tsx");
+    expect(css).toContain("grid-template-columns:minmax(330px, 360px)");
+    expect(css).toContain("grid-template-columns:44px minmax(0,1fr)");
+    expect(css).toContain("min-height:80px");
+    expect(css).toContain("@media (max-width:1320px)");
+    expect(css).toContain(".mensagens-responsavel{ display:none; }");
+    expect(css).toContain(".mensagens-item-topo strong");
+    expect(css).toContain("font-size:14px");
+    expect(css).toContain(".mensagens-balao-texto{ color:var(--text); font-size:12.5px");
+    expect(css).toContain(".mensagens-compositor textarea{ display:block; width:100%; min-height:72px");
+    expect(css).toContain("font-size:12.5px; line-height:1.45");
+    expect(icones).toContain('fillRule="evenodd"');
+    expect(icones).toContain('M21 12a9 9 0 0 0-15.2-6.5L3 8');
+    expect(central.match(/className="mensagens-whatsapp-btn"/g)).toHaveLength(2);
+  });
+
   it("não inventa texto para mídia indisponível e preserva saída pelo WhatsApp", () => {
     const central = fonte("components/respostas/CentralMensagensView.tsx");
     expect(central).not.toContain("Mensagem sem texto");

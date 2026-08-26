@@ -184,7 +184,7 @@ function ListaConversas({
             aria-label="Atualizar conversas"
           >
             <span className={atualizando ? "mensagens-girando" : ""}>
-              <Icone nome="atualizar" tamanho={17} />
+              <Icone nome="atualizar" tamanho={19} />
             </span>
           </button>
         </div>
@@ -515,7 +515,7 @@ function Contexto({
                 <a href={`tel:${imovel.proprietarioTelefone}`} title="Ligar"><Icone nome="telefone" tamanho={17} /></a>
               ) : null}
               {whatsapp ? (
-                <a href={whatsapp} target="_blank" rel="noreferrer" title="Abrir WhatsApp"><Icone nome="whatsapp" tamanho={18} /></a>
+                <a className="mensagens-whatsapp-btn" href={whatsapp} target="_blank" rel="noreferrer" title="Abrir WhatsApp"><Icone nome="whatsapp" tamanho={20} /></a>
               ) : null}
             </div>
           </div>
@@ -617,8 +617,8 @@ function ConversaSelecionada({
         </button>
         <div className="mensagens-head-menu">
           {whatsapp ? (
-            <a href={whatsapp} target="_blank" rel="noreferrer" title="Abrir conversa no WhatsApp">
-              <Icone nome="whatsapp" tamanho={18} />
+            <a className="mensagens-whatsapp-btn" href={whatsapp} target="_blank" rel="noreferrer" title="Abrir conversa no WhatsApp">
+              <Icone nome="whatsapp" tamanho={20} />
             </a>
           ) : null}
           <button type="button" onClick={() => abrirModal("imovel", conversa.imovel.id)} title="Abrir imóvel">
