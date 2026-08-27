@@ -146,6 +146,87 @@ describe("referencias de imovel do assistente", () => {
   });
 });
 
+describe("conversas respondidas do assistente", () => {
+  const resposta = (id: string, texto: string, data: string) => ({
+    id: `wa:${id}`,
+    texto: `Resposta pelo WhatsApp: ${texto}`,
+    data,
+    direcao: "recebida" as const,
+    tipo: "conversation",
+    origem: "webhook-evolution" as const,
+  });
+  const envio = (id: string, texto: string, data: string) => ({
+    id: `wa-enviada:${id}`,
+    texto: `Mensagem enviada pelo WhatsApp: ${texto}`,
+    data,
+    direcao: "enviada" as const,
+    tipo: "conversation",
+    origem: "api-evolution" as const,
+  });
+
+  it("usa a classificação da Central de Mensagens, ordena pela atividade e isola o usuário", async () => {
+    const aguardando = imovel("id-1", "user-1", "LD-301", {
+      status: "Em negociação",
+      proprietario_nome: "Marina",
+      proprietario_telefone: "43999999999",
+      notas: [resposta("1", "Podemos conversar amanhã?", "2026-08-27T11:00:00")],
+    });
+    const respondidaPeloCorretor = imovel("id-2", "user-1", "LD-302", {
+      status: "Em negociação",
+      proprietario_nome: "Carlos",
+      notas: [
+        resposta("2", "Qual é a proposta?", "2026-08-27T09:00:00"),
+        envio("2", "Vou detalhar.", "2026-08-27T10:00:00"),
+      ],
+    });
+    const semResposta = imovel("id-3", "user-1", "LD-303", {
+      notas: [envio("3", "Olá!", "2026-08-27T08:00:00")],
+    });
+    const outroUsuario = imovel("id-4", "user-2", "LD-304", {
+      status: "Em negociação",
+      notas: [resposta("4", "Dado privado", "2026-08-27T12:00:00")],
+    });
+    const fake = new SupabaseFake({
+      imoveis: [aguardando, respondidaPeloCorretor, semResposta, outroUsuario] as unknown as Linha[],
+    });
+
+    const resultado = await executarFerramenta(
+      "buscar_conversas_respondidas",
+      { somente_aguardando_corretor: false, limite: 10 },
+      fake as unknown as SupabaseClient,
+      "user-1",
+      contexto,
+    );
+
+    expect(resultado.dados).toMatchObject({
+      totalEncontrado: 2,
+      itensRetornados: 2,
+      itens: [
+        { imovelId: "id-1", codigo: "LD-301", proprietario: "Marina", aguardandoCorretor: true, ultimaResposta: "Podemos conversar amanhã?" },
+        { imovelId: "id-2", codigo: "LD-302", proprietario: "Carlos", aguardandoCorretor: false, ultimaResposta: "Qual é a proposta?" },
+      ],
+    });
+    expect(JSON.stringify(resultado.dados)).not.toContain("43999999999");
+    expect(JSON.stringify(resultado.dados)).not.toContain("Dado privado");
+    expect(fake.consultas[0].query.filtros).toContainEqual({ metodo: "eq", coluna: "user_id", valor: "user-1" });
+  });
+
+  it("filtra quem está aguardando a resposta do corretor", async () => {
+    const rows = [
+      imovel("id-1", "user-1", "LD-301", { status: "Em negociação", notas: [resposta("1", "Tenho interesse", "2026-08-27T11:00:00")] }),
+      imovel("id-2", "user-1", "LD-302", { status: "Em negociação", notas: [resposta("2", "Olá", "2026-08-27T09:00:00"), envio("2", "Oi!", "2026-08-27T10:00:00")] }),
+    ];
+    const resultado = await executarFerramenta(
+      "buscar_conversas_respondidas",
+      { somente_aguardando_corretor: true, limite: 10 },
+      new SupabaseFake({ imoveis: rows as unknown as Linha[] }) as unknown as SupabaseClient,
+      "user-1",
+      contexto,
+    );
+    expect(resultado.dados).toMatchObject({ totalEncontrado: 1, itens: [{ codigo: "LD-301" }] });
+  });
+});
+
 describe("contagem e ordenacao de imoveis", () => {
   const argsBase = { codigo: null, status: null, bairro: null, responsavel: null, termo_endereco: null, data_inicio: null, data_fim: null };
 

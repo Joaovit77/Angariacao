@@ -13,7 +13,8 @@ import { selecionarFollowUp, textoMotivoExclusao } from "@/lib/calculo/followup"
 import { kpisDashboard } from "@/lib/calculo/dashboard";
 import { addDaysISO, agoraISOString, currentMonthKey, inicioDoDiaOperacionalISO, primeiroDiaDoMes, todayISO, ultimoDiaDoMes } from "@/lib/datas";
 import { focoInteligenteDoDia } from "@/lib/calculo/focoDia";
-import type { BlocoAssistente, ContextoAssistente, ItemHistoricoAssistente, ItemImovelAssistente } from "@/lib/assistente/tipos";
+import { conversasDosImoveis } from "@/lib/calculo/conversas";
+import type { BlocoAssistente, ContextoAssistente, ItemConversaRespondidaAssistente, ItemHistoricoAssistente, ItemImovelAssistente } from "@/lib/assistente/tipos";
 import { resolverReferenciaImovelHistorico, type ReferenciaImovelResolvida } from "@/lib/assistente/referencias";
 
 export const DEFINICOES_FERRAMENTAS = [
@@ -164,6 +165,21 @@ export const DEFINICOES_FERRAMENTAS = [
         limite: { type: "integer", minimum: 1, maximum: 20 },
       },
       required: ["escopo", "limite"],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: "function" as const,
+    name: "buscar_conversas_respondidas",
+    description: "Identifica proprietarios que responderam e suas conversas em andamento. Use para saber quem respondeu, quem aguarda retorno do corretor e qual foi a ultima resposta recebida. Nao gera nem envia mensagem.",
+    strict: true,
+    parameters: {
+      type: "object",
+      properties: {
+        somente_aguardando_corretor: { type: "boolean", description: "true quando o usuario pedir apenas conversas em que a ultima fala foi do proprietario." },
+        limite: { type: "integer", minimum: 1, maximum: 20 },
+      },
+      required: ["somente_aguardando_corretor", "limite"],
       additionalProperties: false,
     },
   },
@@ -643,6 +659,49 @@ export async function executarFerramenta(
       bloco: itens.length ? {
         tipo: "imoveis",
         titulo: intencao === "elegiveis" ? "Imoveis elegiveis para follow-up" : "Fila de follow-up de hoje",
+        itens,
+      } : undefined,
+    };
+  }
+
+  if (nome === "buscar_conversas_respondidas") {
+    const conversas = conversasDosImoveis(
+      (await todosImoveis(supabase, userId)).map(fromDbImovel),
+      todayISO(),
+    ).filter((conversa) => conversa.emAndamento);
+    const aguardando = args.somente_aguardando_corretor === true;
+    const candidatas = aguardando
+      ? conversas.filter((conversa) => conversa.ultima.direcao === "recebida")
+      : conversas;
+    const itens: ItemConversaRespondidaAssistente[] = candidatas
+      .slice(0, limite(args.limite))
+      .flatMap((conversa) => {
+        const ultimaResposta = [...conversa.mensagens]
+          .reverse()
+          .find((mensagem) => mensagem.direcao === "recebida");
+        if (!ultimaResposta) return [];
+        return [{
+          imovelId: conversa.imovel.id,
+          codigo: conversa.imovel.codigo || "Sem código",
+          proprietario: conversa.imovel.proprietarioNome || "Proprietário não informado",
+          status: conversa.imovel.status,
+          ultimaResposta: ultimaResposta.texto.trim().slice(0, 200) || "Conteúdo sem texto",
+          ultimaRespostaEm: ultimaResposta.data,
+          aguardandoCorretor: conversa.ultima.direcao === "recebida",
+          naoLidas: conversa.naoLidas,
+          rascunhoDisponivel: !ultimaResposta.soMidia && !!ultimaResposta.texto.trim(),
+        }];
+      });
+    return {
+      dados: {
+        totalEncontrado: candidatas.length,
+        itensRetornados: itens.length,
+        somenteAguardandoCorretor: aguardando,
+        itens,
+      },
+      bloco: itens.length ? {
+        tipo: "conversas_respondidas",
+        titulo: aguardando ? "Proprietários aguardando sua resposta" : "Proprietários que responderam",
         itens,
       } : undefined,
     };

@@ -28,6 +28,9 @@ export function compactarBlocosParaHistorico(blocos: BlocoAssistente[] | undefin
     if (bloco.tipo === "mensagens_agendadas") return [{ tipo: bloco.tipo, itens: bloco.itens.slice(0, MAX_ITENS_POR_BLOCO).map((item) => ({
       id: textoSeguro(item.id, 100), nomeProprietario: textoSeguro(item.nomeProprietario), dataEnvio: textoSeguro(item.dataEnvio, 40), status: textoSeguro(item.status, 30), imovelId: item.imovelId ? textoSeguro(item.imovelId, 100) : null,
     })) }];
+    if (bloco.tipo === "conversas_respondidas") return [{ tipo: bloco.tipo, itens: bloco.itens.slice(0, MAX_ITENS_POR_BLOCO).map((item) => ({
+      imovelId: textoSeguro(item.imovelId, 100), codigo: textoSeguro(item.codigo, 40), proprietario: textoSeguro(item.proprietario), ultimaRespostaEm: textoSeguro(item.ultimaRespostaEm, 40), aguardandoCorretor: item.aguardandoCorretor,
+    })) }];
     if (bloco.tipo === "metricas") return [{ tipo: bloco.tipo, itens: bloco.itens.slice(0, MAX_ITENS_POR_BLOCO).map((item) => ({ rotulo: textoSeguro(item.rotulo), valor: textoSeguro(item.valor) })) }];
     // Historico detalhado pode conter notas livres e nao e necessario para resolver "desses".
     return [];
@@ -55,6 +58,7 @@ export function normalizarResultadosHistorico(valor: unknown): ResultadoHistoric
     }).filter((item) => item.id) }];
     if (bloco.tipo === "agenda") return [{ tipo: "agenda", itens: itens.map((item) => ({ id: textoSeguro(item.id, 100), titulo: textoSeguro(item.titulo), data: textoSeguro(item.data, 30), imovelId: textoSeguro(item.imovelId, 100) || null })).filter((item) => item.id) }];
     if (bloco.tipo === "mensagens_agendadas") return [{ tipo: "mensagens_agendadas", itens: itens.map((item) => ({ id: textoSeguro(item.id, 100), nomeProprietario: textoSeguro(item.nomeProprietario), dataEnvio: textoSeguro(item.dataEnvio, 40), status: textoSeguro(item.status, 30), imovelId: textoSeguro(item.imovelId, 100) || null })).filter((item) => item.id) }];
+    if (bloco.tipo === "conversas_respondidas") return [{ tipo: "conversas_respondidas", itens: itens.map((item) => ({ imovelId: textoSeguro(item.imovelId, 100), codigo: textoSeguro(item.codigo, 40), proprietario: textoSeguro(item.proprietario), ultimaRespostaEm: textoSeguro(item.ultimaRespostaEm, 40), aguardandoCorretor: item.aguardandoCorretor === true })).filter((item) => item.imovelId) }];
     if (bloco.tipo === "metricas") return [{ tipo: "metricas", itens: itens.map((item) => ({ rotulo: textoSeguro(item.rotulo), valor: textoSeguro(item.valor) })).filter((item) => item.rotulo) }];
     return [];
   });

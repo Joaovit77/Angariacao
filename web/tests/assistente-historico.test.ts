@@ -10,6 +10,22 @@ const blocoImoveis: BlocoAssistente = {
   itens: [{ id: "uuid-1", codigo: "LD-226", endereco: "Rua que nao precisa ir ao historico", bairro: "California", status: "Novo contato", responsavel: "Dado desnecessario" }],
 };
 
+const blocoConversas: BlocoAssistente = {
+  tipo: "conversas_respondidas",
+  titulo: "Proprietários que responderam",
+  itens: [{
+    imovelId: "uuid-conversa-1",
+    codigo: "LD-310",
+    proprietario: "Marina",
+    status: "Em negociação",
+    ultimaResposta: "Pode me explicar como funciona?",
+    ultimaRespostaEm: "2026-08-27T09:00:00",
+    aguardandoCorretor: true,
+    naoLidas: 1,
+    rascunhoDisponivel: true,
+  }],
+};
+
 describe("historico estruturado da sessao", () => {
   it("nao mantem bloco vazio para renderizacao", () => {
     expect(blocosComItens([{ tipo: "imoveis", titulo: "Vazio", itens: [] }, blocoImoveis])).toEqual([blocoImoveis]);
@@ -34,6 +50,18 @@ describe("historico estruturado da sessao", () => {
     expect(conteudo).toContain("LD-226");
     expect(conteudo).not.toContain("segredo");
     expect(conteudo).not.toContain("<div");
+  });
+
+  it("mantém a referência da conversa sem copiar o conteúdo privado para o histórico do chat", () => {
+    const resultado = compactarBlocosParaHistorico([blocoConversas]);
+    expect(resultado).toEqual([{ tipo: "conversas_respondidas", itens: [{
+      imovelId: "uuid-conversa-1",
+      codigo: "LD-310",
+      proprietario: "Marina",
+      ultimaRespostaEm: "2026-08-27T09:00:00",
+      aguardandoCorretor: true,
+    }] }]);
+    expect(JSON.stringify(resultado)).not.toContain("Pode me explicar");
   });
 
   it("remove referencias estruturadas internas se o modelo tentar reproduzi-las", () => {
@@ -72,6 +100,20 @@ describe("referencia conversacional de imovel", () => {
   it("resolve ordinal e permite trocar a referencia por codigo explicito", () => {
     expect(resolverReferenciaImovelHistorico("O segundo precisa de follow-up?", [lista])).toMatchObject({ id: "id-227", codigo: "LD-227", origem: "ordinal" });
     expect(resolverReferenciaImovelHistorico("LD-224 precisa de follow-up?", [lista])).toEqual({ estado: "resolvida", codigo: "LD-224", origem: "explicita" });
+  });
+
+  it("resolve o primeiro proprietário de uma lista de conversas respondidas", () => {
+    const historico: ItemHistoricoAssistente[] = [{
+      papel: "assistente",
+      texto: "Marina respondeu no LD-310.",
+      resultados: compactarBlocosParaHistorico([blocoConversas]),
+    }];
+    expect(resolverReferenciaImovelHistorico("Prepare uma resposta para a primeira", historico)).toEqual({
+      estado: "resolvida",
+      id: "uuid-conversa-1",
+      codigo: "LD-310",
+      origem: "ordinal",
+    });
   });
 
   it("nao escolhe aleatoriamente quando a lista continua ambigua", () => {

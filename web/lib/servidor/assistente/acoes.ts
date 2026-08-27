@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 import { todayISO } from "@/lib/datas";
+import { selecionarMensagensAtendimento } from "@/lib/ia/atendimento";
+import { fromDbImovel, type DbImovelRow } from "@/lib/persistencia/mapeadores";
 import type {
   AcaoAssistente,
   BlocoAssistente,
@@ -13,6 +15,7 @@ import { executarFerramenta } from "./ferramentas";
 
 export const FERRAMENTA_PREPARAR_AGENDAMENTO_VISITA = "preparar_agendamento_visita";
 export const FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE = "abrir_revisao_followup_lote";
+export const FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA = "preparar_rascunho_resposta";
 
 export const DEFINICAO_FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE = {
   type: "function" as const,
@@ -41,6 +44,22 @@ export const DEFINICAO_FERRAMENTA_AGENDAR_VISITA = {
       hora: { type: "string", description: "Horario de 24 horas no formato HH:MM." },
     },
     required: ["imovel_codigo", "imovel_id", "data", "hora"],
+    additionalProperties: false,
+  },
+} as const;
+
+export const DEFINICAO_FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA = {
+  type: "function" as const,
+  name: FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA,
+  description: "Prepara um rascunho de resposta personalizado a uma conversa existente e abre a revisao humana. Use somente quando o usuario pedir uma abordagem/resposta para um proprietario especifico, identificado por codigo ou por ID vindo de ferramenta/contexto. Nunca envia a mensagem.",
+  strict: true,
+  parameters: {
+    type: "object",
+    properties: {
+      imovel_codigo: { type: ["string", "null"], description: "Codigo visivel exato, por exemplo LD-152." },
+      imovel_id: { type: ["string", "null"], description: "ID interno somente quando veio do contexto visual ou de uma ferramenta anterior." },
+    },
+    required: ["imovel_codigo", "imovel_id"],
     additionalProperties: false,
   },
 } as const;
@@ -276,5 +295,71 @@ export async function prepararRevisaoFollowUpLote(
     ...(totalFilaHoje > 0
       ? { comandoUi: { tipo: "abrir_followup_lote" } as const }
       : {}),
+  };
+}
+
+export async function prepararRascunhoResposta(
+  args: Record<string, unknown>,
+  supabase: SupabaseClient,
+  userId: string,
+  contexto: ContextoAssistente,
+): Promise<{
+  dados: unknown;
+  bloco?: undefined;
+  comandoUi?: ComandoUiAssistente;
+}> {
+  const codigo = texto(args.imovel_codigo);
+  const idInformado = texto(args.imovel_id);
+  const idContexto = contexto.entidade?.tipo === "imovel" ? contexto.entidade.id : "";
+  const id = UUID.test(idInformado) ? idInformado : !codigo && UUID.test(idContexto) ? idContexto : "";
+  if (!codigo && !id) {
+    return {
+      dados: {
+        preparada: false,
+        motivo: "Informe o código exato do imóvel ou escolha uma conversa identificada antes de preparar a resposta.",
+      },
+    };
+  }
+
+  let consulta = supabase
+    .from("imoveis")
+    .select("*")
+    .eq("user_id", userId);
+  consulta = id ? consulta.eq("id", id) : consulta.ilike("codigo", codigo);
+  const { data, error } = await consulta.maybeSingle();
+  if (error) {
+    return { dados: { preparada: false, motivo: "Não foi possível consultar essa conversa com segurança." } };
+  }
+  if (!data) {
+    return { dados: { preparada: false, motivo: "Não encontrei esse imóvel na sua carteira." } };
+  }
+
+  const imovel = fromDbImovel(data as DbImovelRow);
+  const selecao = selecionarMensagensAtendimento(imovel);
+  if (!selecao.mensagemAtual) {
+    return {
+      dados: {
+        preparada: false,
+        imovel: imovel.codigo || "Sem código",
+        motivo: "A conversa não possui uma resposta textual suficiente para montar um rascunho seguro.",
+      },
+    };
+  }
+
+  return {
+    dados: {
+      preparada: true,
+      imovel: imovel.codigo || "Sem código",
+      proprietario: imovel.proprietarioNome || "Proprietário não informado",
+      historicoRelidoNoServidor: true,
+      envioExecutado: false,
+      exigeRevisaoHumana: true,
+    },
+    comandoUi: {
+      tipo: "rascunhar_resposta",
+      imovelId: imovel.id,
+      codigo: imovel.codigo || "Sem código",
+      proprietario: imovel.proprietarioNome || "Proprietário não informado",
+    },
   };
 }

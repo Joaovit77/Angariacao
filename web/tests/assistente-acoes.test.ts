@@ -5,6 +5,7 @@ import {
   cancelarAcaoAssistente,
   confirmarAcaoAssistente,
   prepararAgendamentoVisita,
+  prepararRascunhoResposta,
   validarParametrosAgendarVisita,
 } from "@/lib/servidor/assistente/acoes";
 
@@ -77,6 +78,69 @@ describe("ações tipadas do Assistente", () => {
     expect(validarParametrosAgendarVisita({ imovelId: IMOVEL_ID, data: "2099-08-28", hora: "25:00", sessaoId: SESSAO_ID })).toMatchObject({ ok: false, codigo: "hora_invalida" });
     expect(validarParametrosAgendarVisita({ imovelId: "outro", data: "2099-08-28", hora: "15:00", sessaoId: SESSAO_ID })).toMatchObject({ ok: false, codigo: "imovel_invalido" });
   });
+
+  it("prepara um rascunho somente após reler uma conversa do usuário", async () => {
+    const filtros: Array<[string, unknown]> = [];
+    const query = {
+      select: vi.fn(() => query),
+      eq: vi.fn((campo: string, valor: unknown) => { filtros.push([campo, valor]); return query; }),
+      ilike: vi.fn(() => query),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: {
+          id: IMOVEL_ID,
+          user_id: "user-1",
+          codigo: "LD-152",
+          endereco: "Rua São Caetano do Sul, 67",
+          status: "Em negociação",
+          proprietario_nome: "Marina",
+          notas: [{
+            id: "wa:1",
+            texto: "Resposta pelo WhatsApp: Quero entender melhor a proposta.",
+            data: "2026-08-27T10:00:00",
+            direcao: "recebida",
+            tipo: "conversation",
+          }],
+          tentativas: [],
+          status_history: [],
+        },
+        error: null,
+      }),
+    };
+    const cliente = { from: vi.fn(() => query) } as never;
+
+    const resultado = await prepararRascunhoResposta(
+      { imovel_codigo: null, imovel_id: IMOVEL_ID },
+      cliente,
+      "user-1",
+      { rota: "/assistente", pagina: "Assistente", superficie: "pagina" },
+    );
+
+    expect(resultado).toMatchObject({
+      dados: { preparada: true, envioExecutado: false, exigeRevisaoHumana: true },
+      comandoUi: { tipo: "rascunhar_resposta", imovelId: IMOVEL_ID, codigo: "LD-152", proprietario: "Marina" },
+    });
+    expect(filtros).toEqual([["user_id", "user-1"], ["id", IMOVEL_ID]]);
+  });
+
+  it("não prepara resposta sem mensagem textual recebida", async () => {
+    const query = {
+      select: vi.fn(() => query),
+      eq: vi.fn(() => query),
+      ilike: vi.fn(() => query),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: { id: IMOVEL_ID, user_id: "user-1", codigo: "LD-152", status: "Em negociação", notas: [], tentativas: [], status_history: [] },
+        error: null,
+      }),
+    };
+    const resultado = await prepararRascunhoResposta(
+      { imovel_codigo: null, imovel_id: IMOVEL_ID },
+      { from: vi.fn(() => query) } as never,
+      "user-1",
+      { rota: "/assistente", pagina: "Assistente", superficie: "pagina" },
+    );
+    expect(resultado).toMatchObject({ dados: { preparada: false } });
+    expect(resultado.comandoUi).toBeUndefined();
+  });
 });
 
 describe("garantias estruturais no banco", () => {
@@ -144,6 +208,8 @@ describe("uma arquitetura para chat e menu", () => {
     expect(acoes).toContain("Criar follow-up");
     expect(acoes).toContain('abrirModal("followUpLote")');
     expect(acoes).toContain("Ver agenda de hoje");
+    expect(acoes).toContain("Ver respostas");
+    expect(acoes).toContain("Quais proprietários responderam e estão aguardando minha resposta?");
     expect(acoes).not.toContain("Agendar mensagem");
     expect(acoes).not.toContain("Atualizar status");
   });
@@ -161,5 +227,18 @@ describe("uma arquitetura para chat e menu", () => {
     expect(orquestrador).toContain("FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE");
     expect(cliente).toContain('abrirModal("followUpLote")');
     expect(conhecimento).toContain("Nunca afirme que o follow-up foi enviado");
+  });
+
+  it("reaproveita o atendimento contextual e abre somente um rascunho editável", () => {
+    const operacoes = fonte("lib/servidor/assistente/acoes.ts");
+    const orquestrador = fonte("lib/servidor/assistente/orquestrador.ts");
+    const cliente = fonte("components/assistente/AssistenteProvider.tsx");
+
+    expect(operacoes).toContain("selecionarMensagensAtendimento");
+    expect(operacoes).toContain("envioExecutado: false");
+    expect(orquestrador).toContain("FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA");
+    expect(cliente).toContain("rascunharResposta(comando.imovelId)");
+    expect(cliente).toContain("abrirWhatsappRascunho");
+    expect(cliente).not.toContain("enviarWhatsapp");
   });
 });

@@ -63,6 +63,15 @@ export default function AcoesRapidasAssistente({ modo = "atalhos" }: { modo?: "a
           <strong>Ver agenda de hoje</strong>
           {modo === "lateral" && <small>Consulta direta, sem alteração</small>}
         </button>
+        <button
+          type="button"
+          onClick={() => void enviar(contexto, "Quais proprietários responderam e estão aguardando minha resposta?")}
+          disabled={indisponivel}
+        >
+          <span aria-hidden="true">✦</span>
+          <strong>Ver respostas</strong>
+          {modo === "lateral" && <small>Identifique quem aguarda retorno</small>}
+        </button>
       </div>
 
       {formularioAberto && (

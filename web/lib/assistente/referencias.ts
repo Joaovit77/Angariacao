@@ -22,10 +22,11 @@ function referenciasEstruturadas(historico: ItemHistoricoAssistente[]) {
   for (const mensagem of historico) {
     if (mensagem.papel !== "assistente") continue;
     for (const bloco of mensagem.resultados || []) {
-      if (bloco.tipo !== "imoveis") continue;
+      if (bloco.tipo !== "imoveis" && bloco.tipo !== "conversas_respondidas") continue;
       for (const item of bloco.itens) {
         const codigo = normalizarCodigo(item.codigo);
-        if (codigo && item.id) referencias.set(codigo, { id: item.id, codigo });
+        const id = "id" in item ? item.id : item.imovelId;
+        if (codigo && id) referencias.set(codigo, { id, codigo });
       }
     }
   }
@@ -36,11 +37,14 @@ function ultimaListaEstruturada(historico: ItemHistoricoAssistente[]) {
   for (let indice = historico.length - 1; indice >= 0; indice -= 1) {
     const mensagem = historico[indice];
     if (mensagem.papel !== "assistente") continue;
-    const bloco = [...(mensagem.resultados || [])].reverse().find((resultado) => resultado.tipo === "imoveis");
-    if (bloco?.tipo === "imoveis") {
+    const bloco = [...(mensagem.resultados || [])].reverse().find((resultado) =>
+      resultado.tipo === "imoveis" || resultado.tipo === "conversas_respondidas",
+    );
+    if (bloco?.tipo === "imoveis" || bloco?.tipo === "conversas_respondidas") {
       return bloco.itens.flatMap((item) => {
         const codigo = normalizarCodigo(item.codigo);
-        return codigo && item.id ? [{ id: item.id, codigo }] : [];
+        const id = "id" in item ? item.id : item.imovelId;
+        return codigo && id ? [{ id, codigo }] : [];
       });
     }
   }

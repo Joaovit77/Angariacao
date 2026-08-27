@@ -40,4 +40,13 @@ describe("conhecimento do assistente", () => {
     expect(texto).toContain("único card");
     expect(texto).toContain("nunca updated_at");
   });
+
+  it("orienta identificar respostas e preparar somente um rascunho revisável", () => {
+    const texto = instrucoesDoAssistente({ rota: "/assistente", pagina: "Assistente", superficie: "pagina" });
+    expect(texto).toContain("buscar_conversas_respondidas");
+    expect(texto).toContain("preparar_rascunho_resposta");
+    expect(texto).toContain("continuação contextual");
+    expect(texto).toContain("nunca envia a mensagem");
+    expect(texto).toContain("peça o código");
+  });
 });
