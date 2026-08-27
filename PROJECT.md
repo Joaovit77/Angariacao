@@ -65,8 +65,8 @@ O aplicativo vive em **[`web/`](web/)** — Next 16 (App Router, Turbopack), Typ
   do Leaflet e o `style.css`), `page.tsx` (tela de acesso e queda do link de recuperação de senha),
   páginas públicas de termos/privacidade e o grupo **`(painel)/`** com o shell autenticado. As views
   atuais incluem `home`, `dashboard`, `pipeline`, `metas`, `agenda`, `mensagens`, `respostas`,
-  `insights`, `mapa`, `relatorios`, `protocolos`, `cerebro-ia`, `avaliacao`, `central-angariacao` e
-  `admin`. A antiga rota `roadmap` redireciona para o Início: configuração e saúde técnica das
+  `insights`, `mapa`, `relatorios`, `protocolos`, `configuracoes`, `cerebro-ia`, `avaliacao`,
+  `central-angariacao` e `admin`. A antiga rota `roadmap` redireciona para o Início: configuração e saúde técnica das
   integrações e da IA pertencem à Administração; o `Cérebro da IA` é uma explicação visual do
   produto, não uma superfície operacional.
   As rotas de servidor vivem em **`app/api/`**: `whatsapp/*`, `ia`, `assistente`, `google/*`,
@@ -742,6 +742,9 @@ são instanciados em `useEffect` **com cleanup** (`chart.destroy()` / `map.remov
 substitui o destroy que o `renderCurrentView()` fazia no app antigo; sem isso, vazam. Leaflet entra
 por `dynamic(..., { ssr: false })`. Os modais vivem em `components/modais/`, orquestrados por
 `ModalOverlay` (um modal ativo por vez, via `uiModal.ts`).
+Configurações é uma página própria (`/configuracoes`), com navegação interna responsiva e salvamento
+por seção. Ela reutiliza os modais apenas para fluxos autocontidos que já existiam (conexão do
+WhatsApp, abordagens e importação CSV); preferências continuam persistidas juntas em `user_config`.
 O `components/assistente/Assistente.tsx` é montado no layout autenticado e sobrevive à navegação.
 Seu acionador e painel podem ser arrastados; apenas a posição do acionador é preferência local do
 dispositivo. Resultados do Assistente são renderizados em blocos estruturados e Markdown seguro.
@@ -1776,6 +1779,13 @@ proprietário, a caixa de respostas cobraria leitura de um recado que ninguém m
 `dataUltimaResposta` diria que a pessoa respondeu no dia em que o financeiro pagou.
 `marcarEventosLidos` é separada de `marcarRespostasLidas` pela mesma razão: uma função só com
 parâmetro de prefixo faria o "limpar" de uma tela apagar o pendente da outra.
+
+O sino agrega também as respostas de proprietário ainda não tratadas (notas `wa:`) e os anúncios
+do Radar com `radar_anuncios.visto = false`; os dois estados de leitura já são persistidos nas suas
+fontes de domínio. Respostas e Radar aparecem agrupados, embora o badge conte os itens não lidos.
+Compromissos vencidos e imóveis parados ficam fora do sino: são estados correntes da operação e
+continuam nas superfícies de Agenda, Início e Insights, onde podem ser trabalhados sem transformar o
+badge numa contagem permanente.
 
 **Os campos novos precisaram entrar na rede de segurança do `salvarImovel`.** `autorizacaoAssinadaEm`,
 `autorizacaoResponsavel`, `locadoEm`, `contratoNumero`, `comissaoFormaPagamento` e

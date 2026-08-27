@@ -2,40 +2,23 @@
 
 /* ================================================================
    SINO DE NOTIFICAÇÕES (topbar)
-   Reúne o que precisa de ação AGORA, reusando o núcleo (sem recalcular):
+   O sino representa somente acontecimentos novos e persistidos:
    - eventos do Sistema Principal ainda não lidos;
    - respostas do proprietário ainda não tratadas;
-   - compromissos da agenda não concluídos e vencidos/hoje;
-   - imóveis parados (isStale) há mais de STALE_DAYS_THRESHOLD dias.
-   O contador soma os quatro; o dropdown lista e leva à tela certa.
+   - oportunidades do Radar ainda não vistas.
 
-   A ordem não é arbitrária, é a mesma da `rodadaDia`: primeiro o que o
-   OUTRO LADO fez (alguém está esperando resposta), depois a hora
-   marcada, por último o que só depende de nós. Ordenar por volume
-   inverteria isso todo dia — em captação o silêncio é sempre a
-   categoria mais populosa, que foi o que matou a faixa de "imóvel
-   parado" no termômetro.
-
-   Os eventos do Sistema Principal vêm ANTES até das respostas, e são
-   a única coisa aqui que não pede ação nenhuma. Estão no topo porque
-   são raros e caros de perder: o corretor recebe um punhado por mês, e
-   um deles é a comissão dele caindo na conta. Enterrá-los sob quarenta
-   linhas de estagnação seria repetir, na tela do sino, o erro que a
-   faixa de "imóvel parado" cometeu no termômetro — só que com a notícia
-   mais importante que este painel tem a dar.
-
-   A contagem de respostas sai de `contarRespostasPendentes`, a MESMA
-   do badge da barra lateral. Dois contadores da mesma coisa na mesma
-   tela discordando é bug, não detalhe.
+   Compromissos vencidos e imóveis parados continuam nas telas de trabalho,
+   mas não entram aqui: são estados correntes, não eventos recentes. Itens do
+   mesmo tipo são agrupados para uma carteira grande não gerar dezenas de
+   linhas iguais.
    ================================================================ */
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { isStale } from "@/lib/calculo/motor";
-import { contarRespostasPendentes } from "@/lib/calculo/respostas";
-import { notificacoesPendentes } from "@/lib/calculo/sistemaPrincipal";
+import { caixaDeRespostas } from "@/lib/calculo/respostas";
+import { notificacoesPendentes, rotuloDoImovel } from "@/lib/calculo/sistemaPrincipal";
 import { marcarEventosLidos } from "@/lib/mutacoes";
 import { useUiModal } from "@/lib/uiModal";
-import { todayISO } from "@/lib/datas";
+import { tempoRelativoIso, todayISO } from "@/lib/datas";
 import {
   assinarPermissao,
   lerPermissao,
@@ -48,7 +31,6 @@ import { toast } from "@/lib/toast";
 export default function SinoNotificacoes() {
   const router = useRouter();
   const imoveis = useAppStore((s) => s.imoveis);
-  const agenda = useAppStore((s) => s.agenda);
   const radarNovos = useAppStore((s) => s.radarNovos);
   const abrirModal = useUiModal((s) => s.abrirModal);
   const [aberto, setAberto] = useState(false);
@@ -64,10 +46,14 @@ export default function SinoNotificacoes() {
 
   const hoje = todayISO();
   const eventos = notificacoesPendentes(imoveis);
-  const respostas = contarRespostasPendentes(imoveis, hoje);
-  const pendentes = agenda.filter((a) => !a.done && a.date <= hoje);
-  const parados = imoveis.filter((imovel) => isStale(imovel));
-  const total = eventos.length + respostas + pendentes.length + parados.length + radarNovos;
+  const respostas = caixaDeRespostas(imoveis, hoje).filter(
+    (linha) => linha.pendente && linha.fase === "captacao",
+  );
+  const ultimaResposta = respostas[0];
+  const imovelUltimaResposta = ultimaResposta
+    ? imoveis.find((imovel) => imovel.id === ultimaResposta.imovelId)
+    : null;
+  const total = eventos.length + respostas.length + radarNovos;
 
   // Fecha ao clicar fora. O listener só existe enquanto está aberto.
   useEffect(() => {
@@ -97,7 +83,7 @@ export default function SinoNotificacoes() {
       <button
         type="button"
         className="topbar-icon-btn"
-        aria-label={total > 0 ? `Notificações: ${total} pendência(s)` : "Notificações"}
+        aria-label={total > 0 ? `Notificações: ${total} não lida(s)` : "Notificações"}
         onClick={() => setAberto((v) => !v)}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18 }}>
@@ -108,10 +94,21 @@ export default function SinoNotificacoes() {
       </button>
 
       {aberto && (
-        <div className="topbar-pop">
-          <div className="topbar-pop-head">Notificações</div>
+        <div className="topbar-pop topbar-pop-notificacoes">
+          <div className="topbar-pop-head notificacoes-head">
+            <strong>Notificações</strong>
+            {total > 0 && <span>{total} nova{total === 1 ? "" : "s"}</span>}
+          </div>
 
-          {total === 0 && <div className="topbar-pop-empty">Tudo em dia — nada pendente. ✓</div>}
+          {total === 0 && (
+            <div className="topbar-pop-empty notificacoes-vazio">
+              <span aria-hidden="true">✓</span>
+              <strong>Tudo em dia</strong>
+              <small>Nenhuma novidade exige sua atenção.</small>
+            </div>
+          )}
+
+          {total > 0 && <div className="notificacoes-grupo">Novas</div>}
 
           {/* Cada evento é uma linha própria, e não um contador como as
               respostas: são poucos e cada um diz uma coisa diferente
@@ -122,7 +119,7 @@ export default function SinoNotificacoes() {
             <button
               key={e.id}
               type="button"
-              className="topbar-pop-item"
+              className="topbar-pop-item notificacao-item nao-lida"
               onClick={() => {
                 void marcarEventosLidos(e.imovelId);
                 setAberto(false);
@@ -134,10 +131,13 @@ export default function SinoNotificacoes() {
                 abrirModal("imovel", e.imovelId);
               }}
             >
-              <span className="topbar-pop-ic">🏷️</span>
+              <span className="notificacao-indicador" aria-label="Não lida" />
+              <span className="topbar-pop-ic evento" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 5h16v14H4zM8 9h8M8 13h5" /></svg>
+              </span>
               <span className="topbar-pop-txt">
                 <strong>{e.texto}</strong>
-                <span>{e.rotulo}</span>
+                <span>{e.rotulo} · {tempoRelativoIso(e.data)}</span>
               </span>
             </button>
           ))}
@@ -145,13 +145,13 @@ export default function SinoNotificacoes() {
           {eventos.length > 5 && (
             <button
               type="button"
-              className="topbar-pop-item"
+              className="topbar-pop-item notificacao-item"
               onClick={() => {
                 void marcarEventosLidos(null);
                 setAberto(false);
               }}
             >
-              <span className="topbar-pop-ic">✓</span>
+              <span className="topbar-pop-ic" aria-hidden="true">✓</span>
               <span className="topbar-pop-txt">
                 <strong>Marcar as {eventos.length} atualizações como lidas</strong>
                 <span>Os fatos seguem no histórico de cada imóvel</span>
@@ -159,46 +159,35 @@ export default function SinoNotificacoes() {
             </button>
           )}
 
-          {respostas > 0 && (
-            <button type="button" className="topbar-pop-item" onClick={() => irPara("/respostas")}>
-              <span className="topbar-pop-ic">💬</span>
+          {respostas.length > 0 && (
+            <button type="button" className="topbar-pop-item notificacao-item nao-lida" onClick={() => irPara("/respostas")}>
+              <span className="notificacao-indicador" aria-label="Não lida" />
+              <span className="topbar-pop-ic resposta" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 11.5a8.5 8.5 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 20l1.9-4.1A8.5 8.5 0 1 1 21 11.5Z" /></svg>
+              </span>
               <span className="topbar-pop-txt">
                 <strong>
-                  {respostas} proprietário(s) responderam
+                  {respostas.length === 1
+                    ? "Proprietário respondeu"
+                    : `${respostas.length} proprietários responderam`}
                 </strong>
-                <span>Mensagem ainda não tratada</span>
+                <span>
+                  {imovelUltimaResposta ? rotuloDoImovel(imovelUltimaResposta) : "Mensagem não tratada"}
+                  {ultimaResposta ? ` · ${tempoRelativoIso(ultimaResposta.ultima.data)}` : ""}
+                </span>
               </span>
             </button>
           )}
 
           {radarNovos > 0 && (
-            <button type="button" className="topbar-pop-item" onClick={() => irPara("/central-angariacao?aba=radar")}>
-              <span className="topbar-pop-ic">📡</span>
-              <span className="topbar-pop-txt">
-                <strong>{radarNovos} anúncio{radarNovos === 1 ? " novo" : "s novos"} no Radar</strong>
-                <span>Abrir oportunidades encontradas automaticamente</span>
+            <button type="button" className="topbar-pop-item notificacao-item nao-lida" onClick={() => irPara("/central-angariacao?aba=radar")}>
+              <span className="notificacao-indicador" aria-label="Não lida" />
+              <span className="topbar-pop-ic radar" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="2" /><path d="M7.8 16.2a6 6 0 0 1 0-8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 19.1a10 10 0 0 1 0-14.2M19.1 4.9a10 10 0 0 1 0 14.2" /></svg>
               </span>
-            </button>
-          )}
-
-          {pendentes.slice(0, 6).map((a) => (
-            <button key={a.id} type="button" className="topbar-pop-item" onClick={() => irPara("/agenda")}>
-              <span className="topbar-pop-ic">☎</span>
               <span className="topbar-pop-txt">
-                <strong>{a.title}</strong>
-                <span>{a.date < hoje ? "Atrasado" : "Vence hoje"}</span>
-              </span>
-            </button>
-          ))}
-
-          {parados.length > 0 && (
-            <button type="button" className="topbar-pop-item" onClick={() => irPara("/insights")}>
-              <span className="topbar-pop-ic">⏳</span>
-              <span className="topbar-pop-txt">
-                <strong>
-                  {parados.length} imóvel(is) parado(s)
-                </strong>
-                <span>Sem avançar há mais de 7 dias</span>
+                <strong>{radarNovos} nova{radarNovos === 1 ? " oportunidade encontrada" : "s oportunidades encontradas"}</strong>
+                <span>Radar · revisar resultados</span>
               </span>
             </button>
           )}
@@ -207,8 +196,10 @@ export default function SinoNotificacoes() {
               negada não adianta reperguntar (o navegador nem mostra o diálogo)
               e insistir viraria um botão que não faz nada. */}
           {permissao === "default" && (
-            <button type="button" className="topbar-pop-item" onClick={ativarAvisos}>
-              <span className="topbar-pop-ic">🔔</span>
+            <button type="button" className="topbar-pop-item notificacoes-permissao" onClick={ativarAvisos}>
+              <span className="topbar-pop-ic" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M14 21h-4" /></svg>
+              </span>
               <span className="topbar-pop-txt">
                 <strong>Ativar avisos no computador</strong>
                 <span>Receber mesmo com a aba em segundo plano</span>

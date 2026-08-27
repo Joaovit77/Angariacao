@@ -7,13 +7,13 @@
    da barra lateral (enterrado no mobile).
    ================================================================ */
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
 import { getSupabase } from "@/lib/persistencia/supabase";
-import { useUiModal } from "@/lib/uiModal";
 
 export default function MenuUsuario() {
   const { usuario } = useSessao();
-  const abrirModal = useUiModal((s) => s.abrirModal);
+  const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -49,7 +49,7 @@ export default function MenuUsuario() {
             className="topbar-pop-item"
             onClick={() => {
               setAberto(false);
-              abrirModal("config");
+              router.push("/configuracoes");
             }}
           >
             <span className="topbar-pop-ic">⚙</span>
