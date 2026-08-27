@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import IconeSistema from "@/components/Icone";
+import type { AtividadeIa } from "@/lib/calculo/atividadeIa";
+import { carregarAtividadesIa, type RespostaAtividadesIa } from "@/lib/ia/atividades";
 import { useAppStore } from "@/lib/store";
 import styles from "./CerebroIaView.module.css";
 
@@ -40,17 +42,12 @@ interface FonteIa {
   classificacao: ClassificacaoDado;
 }
 
-interface AtividadeIa {
-  id: string;
-  titulo: string;
-  fluxo: string[];
-  concluidaEm: string;
-  icone: NomeIcone;
-}
-
 interface DadosCerebroIa {
   fontes: FonteIa[];
   atividades: AtividadeIa[];
+  carregandoAtividades: boolean;
+  erroAtividades: string | null;
+  recarregarAtividades: () => Promise<void>;
 }
 
 const NOS: NoCerebro[] = [
@@ -168,16 +165,34 @@ function quantidadeComRotulo(quantidade: number, singular: string, plural: strin
   return `${quantidade} ${quantidade === 1 ? singular : plural}`;
 }
 
-/**
- * Adapta apenas fontes já autorizadas e carregadas pelo estado da sessão.
- * O histórico permanece vazio enquanto não houver uma fonte user-scoped que
- * registre execuções reais do Assistente com o detalhe necessário para o card.
- */
 function useDadosCerebroIa(): DadosCerebroIa {
   const carregado = useAppStore((estado) => estado.carregado);
   const imoveis = useAppStore((estado) => estado.imoveis);
   const protocolos = useAppStore((estado) => estado.protocolos);
   const protocolosAtivos = protocolos.filter((protocolo) => !protocolo.arquivado).length;
+  const [atividades, setAtividades] = useState<AtividadeIa[]>([]);
+  const [carregandoAtividades, setCarregandoAtividades] = useState(true);
+  const [erroAtividades, setErroAtividades] = useState<string | null>(null);
+
+  const aplicarAtividades = useCallback((resultado: RespostaAtividadesIa) => {
+    setAtividades(resultado.atividades);
+    setErroAtividades(resultado.ok ? null : resultado.mensagem || "Não foi possível carregar o histórico.");
+    setCarregandoAtividades(false);
+  }, []);
+
+  const recarregarAtividades = useCallback(async () => {
+    setCarregandoAtividades(true);
+    const resultado = await carregarAtividadesIa();
+    aplicarAtividades(resultado);
+  }, [aplicarAtividades]);
+
+  useEffect(() => {
+    let ativo = true;
+    void carregarAtividadesIa().then((resultado) => {
+      if (ativo) aplicarAtividades(resultado);
+    });
+    return () => { ativo = false; };
+  }, [aplicarAtividades]);
 
   return {
     fontes: [
@@ -198,7 +213,10 @@ function useDadosCerebroIa(): DadosCerebroIa {
         classificacao: "DERIVÁVEL",
       },
     ],
-    atividades: [],
+    atividades,
+    carregandoAtividades,
+    erroAtividades,
+    recarregarAtividades,
   };
 }
 
@@ -337,13 +355,28 @@ function formatarConclusao(valor: string): string {
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(data);
 }
 
-function UltimaAtividade({ atividades }: { atividades: AtividadeIa[] }) {
+function UltimaAtividade({
+  atividades,
+  carregando,
+  erro,
+  aoAtualizar,
+}: {
+  atividades: AtividadeIa[];
+  carregando: boolean;
+  erro: string | null;
+  aoAtualizar: () => Promise<void>;
+}) {
   return (
     <section className={`${styles.card} ${styles.cardLateral}`} aria-labelledby="titulo-atividade-ia">
-      <TituloCard icone="analise"><span id="titulo-atividade-ia">Atividade recente</span></TituloCard>
+      <div className={styles.cabecalhoAtividade}>
+        <TituloCard icone="analise"><span id="titulo-atividade-ia">Atividade recente</span></TituloCard>
+        <button type="button" onClick={() => void aoAtualizar()} disabled={carregando}>
+          {carregando ? "Atualizando…" : "Atualizar"}
+        </button>
+      </div>
       {atividades.length > 0 ? (
-        <div className={styles.listaAtividades}>
-          {atividades.slice(0, 3).map((atividade) => (
+        <div className={styles.listaAtividades} aria-live="polite">
+          {atividades.map((atividade) => (
             <article className={styles.atividade} key={atividade.id}>
               <span className={styles.atividadeIcone}><Icone nome={atividade.icone} tamanho={17} /></span>
               <div>
@@ -354,12 +387,20 @@ function UltimaAtividade({ atividades }: { atividades: AtividadeIa[] }) {
             </article>
           ))}
         </div>
+      ) : carregando ? (
+        <div className={styles.atividadeVazia} aria-live="polite">
+          <span className={styles.atividadeIcone}><Icone nome="analise" tamanho={18} /></span>
+          <div>
+            <strong>Carregando atividade…</strong>
+            <p>Buscando suas interações recentes com a IA.</p>
+          </div>
+        </div>
       ) : (
         <div className={styles.atividadeVazia}>
           <span className={styles.atividadeIcone}><Icone nome="analise" tamanho={18} /></span>
           <div>
-            <strong>Histórico ainda não disponível</strong>
-            <p>Esta página ainda não recebe registros confiáveis das execuções da IA.</p>
+            <strong>{erro ? "Histórico indisponível" : "Nenhuma interação com IA ainda"}</strong>
+            <p>{erro || "Quando você usar um recurso de IA do Angario, a atividade aparecerá aqui."}</p>
           </div>
         </div>
       )}
@@ -431,7 +472,12 @@ export default function CerebroIaView() {
         </div>
         <aside className={styles.colunaLateral} aria-label="Resumo do funcionamento da IA">
           <StatusDaIa fontes={dados.fontes} />
-          <UltimaAtividade atividades={dados.atividades} />
+          <UltimaAtividade
+            atividades={dados.atividades}
+            carregando={dados.carregandoAtividades}
+            erro={dados.erroAtividades}
+            aoAtualizar={dados.recarregarAtividades}
+          />
           <ComoFunciona />
         </aside>
       </div>

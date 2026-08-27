@@ -1640,20 +1640,24 @@ redação, mas nunca substitui a ferramenta nem a consulta ao banco.
 #### `Cérebro da IA` — explicação visual para todos os usuários
 
 A página `/cerebro-ia` mostra, em linguagem de produto, como a IA interpreta contexto, consulta os
-dados permitidos, aplica protocolos e valida a resposta. Ela não chama rotas privilegiadas, não
-expõe logs ou detalhes internos e não concede acesso à carteira: a fronteira continua sendo a sessão
-e a RLS das consultas reais. O resumo lateral deriva apenas contagens do estado user-scoped já
+dados permitidos, aplica protocolos e valida a resposta. Ela não expõe logs operacionais ou detalhes
+internos e não concede acesso à carteira: a fronteira continua sendo a sessão e a RLS das consultas
+reais. O resumo lateral deriva apenas contagens do estado user-scoped já
 carregado na sessão: imóveis visíveis e protocolos não arquivados. Não consulta automaticamente o
 estado do WhatsApp, porque essa rota também participa da reconexão, nem apresenta disponibilidade de
-ferramentas ou validações sem fonte própria. Enquanto não houver um histórico de execuções confiável
-e acessível ao usuário, o card de atividade permanece em estado vazio e o fluxo é identificado como
-explicativo, sem promessa de atualização em tempo real. Os componentes recebem fontes e atividades
-por tipos próprios para aceitar dados reais no futuro sem alterar a composição da tela.
+ferramentas ou validações sem fonte própria.
 
-Os metadados seguros já gravados por atendimento e Assistente são uma preparação incremental, não
-uma fonte de conhecimento para o modelo nem um tracing completo. Como `log_eventos` é operacional e
-administrativo, esses registros não são exibidos automaticamente no Cérebro da IA: fazê-lo exigirá
-uma leitura user-scoped confiável e autorização própria, sem expor dados de outras carteiras.
+O card de atividade consulta `/api/ia/atividades` com a sessão atual. A rota deriva a identidade por
+`auth.getUser()`, usa a service role somente no servidor e filtra `ia_uso` explicitamente pelo
+`user_id` autenticado. A resposta pública contém apenas tipo traduzido para linguagem de produto,
+fluxo resumido e horário; modelo, tokens, custo, prompt, resposta e dados pessoais nunca saem da
+rota. Etapas técnicas próximas de uma mesma operação são consolidadas em uma atividade para que um
+rascunho validado, por exemplo, não apareça como várias interações. O histórico é carregado ao abrir
+a página e pode ser atualizado manualmente, sem promessa de tempo real.
+
+Os metadados seguros gravados por atendimento e Assistente não são uma fonte de conhecimento para o
+modelo nem um tracing completo. `log_eventos` continua operacional e administrativo; o Cérebro da IA
+não o expõe e usa somente a projeção sanitizada do registro contábil de chamadas reais.
 
 Como a explicação não depende de carteira, a rota e seu item de menu também ficam disponíveis para
 o administrador com `opera_carteira = false`. Essa exceção não libera as demais telas do corretor.
