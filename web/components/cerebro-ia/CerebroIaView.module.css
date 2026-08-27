@@ -351,6 +351,43 @@
 
 .listaAtividades {
   margin-inline: -17px;
+  max-height: 365px;
+  overflow-y: auto;
+  scrollbar-color: var(--border) transparent;
+}
+
+.cabecalhoAtividade {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cabecalhoAtividade button {
+  padding: 5px 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 7px;
+  background: var(--bg-elev-2);
+  color: var(--accent-strong);
+  cursor: pointer;
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+.cabecalhoAtividade button:hover:not(:disabled) {
+  border-color: var(--accent-borda-forte);
+  background: var(--accent-soft);
+}
+
+.cabecalhoAtividade button:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.cabecalhoAtividade button:disabled {
+  cursor: wait;
+  opacity: .65;
 }
 
 .atividade {

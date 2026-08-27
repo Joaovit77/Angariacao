@@ -36,12 +36,19 @@ describe("Cérebro da IA", () => {
     expect(tela).not.toContain("supabase");
   });
 
-  it("usa somente dados autorizados da sessão e não apresenta mocks como atividade real", () => {
+  it("usa dados autorizados da sessão e carrega somente atividades reais da IA", () => {
     const tela = fonte("components/cerebro-ia/CerebroIaView.tsx");
+    const cliente = fonte("lib/ia/atividades.ts");
+    const rota = fonte("app/api/ia/atividades/route.ts");
     expect(tela).toContain("useAppStore");
     expect(tela).toContain("protocolos.filter((protocolo) => !protocolo.arquivado)");
     expect(tela).toContain("imoveis.length");
-    expect(tela).toContain("Histórico ainda não disponível");
+    expect(tela).toContain("carregarAtividadesIa");
+    expect(tela).toContain("Nenhuma interação com IA ainda");
+    expect(cliente).toContain('fetch("/api/ia/atividades"');
+    expect(rota).toContain('.select("id,tipo,criado_em")');
+    expect(rota).toContain('.eq("user_id", auth.user.id)');
+    expect(rota).not.toContain("tokens_entrada");
     expect(tela).not.toContain('valor: "Online"');
     expect(tela).not.toContain('valor: "12 ativos"');
     expect(tela).not.toContain('valor: "Conectado"');
