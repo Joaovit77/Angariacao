@@ -1575,6 +1575,14 @@ mantém seleção, textos por origem, teto diário e confirmação final; abrir 
 nenhuma mensagem. A rota exige sessão válida e permissão de IA; consultas e operações usam o token
 do chamador, preservando a identidade e o isolamento da RLS.
 
+O Assistente também pode identificar **proprietários que responderam** pela mesma classificação da
+Central de Mensagens: uma conversa em andamento exige negociação ativa e ao menos uma mensagem real
+recebida. A consulta pode restringir a lista às conversas cuja última fala foi do proprietário e
+mostra a última resposta, sem telefone. Quando o usuário escolhe inequivocamente um imóvel, o
+Assistente aciona o `rascunhar-resposta` já existente: a rota relê o histórico bidirecional sob RLS,
+aplica perfil e protocolos e abre o WhatsApp com texto editável. O rascunho nunca é tratado como
+envio; áudio, imagem ou documento sem texto suficiente exigem consulta manual.
+
 Escrita segue uma regra única: **a IA propõe, o backend valida, o usuário confirma e o código
 executa**. Ao preparar uma visita, uma função tipada resolve o imóvel da própria carteira, valida
 data/hora, gera previamente o ID do compromisso e grava o payload em `assistente_acoes` por 15
@@ -1601,7 +1609,8 @@ Arquitetura:
   prompt.
 - `lib/servidor/assistente/acoes.ts`: contratos e adaptações das operações liberadas. Chat e menu
   guiado convergem para a mesma preparação tipada; follow-up em lote converge para o modal real de
-  revisão, sem duplicar a fila nem seu envio; o modelo nunca recebe acesso genérico ao Supabase.
+  revisão, sem duplicar a fila nem seu envio; respostas contextuais convergem para o atendimento e o
+  compositor já existentes; o modelo nunca recebe acesso genérico ao Supabase.
 - `lib/servidor/assistente/orquestrador.ts`: OpenAI Responses API com tool calling sequencial, até
   quatro rodadas, `store: false`, identificador de segurança derivado por hash e registro de custo.
   Antes da geração, relê pelo cliente do chamador até 40 protocolos comerciais ativos, filtrados

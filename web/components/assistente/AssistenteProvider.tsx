@@ -18,13 +18,14 @@ import {
 } from "@/lib/assistente/cliente";
 import { compactarBlocosParaHistorico } from "@/lib/assistente/historico";
 import type { ContextoAssistente, MensagemAssistente } from "@/lib/assistente/tipos";
+import { rascunharResposta } from "@/lib/ia";
 import { useAppStore } from "@/lib/store";
 import { useUiModal } from "@/lib/uiModal";
 
 const BOAS_VINDAS: MensagemAssistente = {
   id: "boas-vindas",
   papel: "assistente",
-  texto: "Olá! Posso consultar sua operação e preparar visitas e follow-ups. Toda alteração exige sua confirmação antes de ser executada.",
+  texto: "Olá! Posso consultar sua operação e preparar visitas, follow-ups e respostas baseadas nas conversas. Nada é enviado sem sua revisão e confirmação.",
 };
 
 interface ParametrosVisitaGuiada {
@@ -116,14 +117,39 @@ export function AssistenteProvider({ children }: { children: ReactNode }) {
           })),
       }, { signal: controller.signal });
       if (resposta.ok === false && resposta.codigo === "cancelado") return;
-      if (resposta.ok && resposta.mensagem.comandoUi?.tipo === "abrir_followup_lote") {
+      let mensagemResposta: MensagemAssistente;
+      if (!resposta.ok) {
+        mensagemResposta = { id: crypto.randomUUID(), papel: "assistente", texto: resposta.erro };
+      } else if (resposta.mensagem.comandoUi?.tipo === "abrir_followup_lote") {
         useUiModal.getState().abrirModal("followUpLote");
+        mensagemResposta = resposta.mensagem;
+      } else if (resposta.mensagem.comandoUi?.tipo === "rascunhar_resposta") {
+        const comando = resposta.mensagem.comandoUi;
+        const resultado = await rascunharResposta(comando.imovelId);
+        if (controller.signal.aborted) return;
+        if (resultado.ok && resultado.rascunho) {
+          useUiModal.getState().abrirWhatsappRascunho(
+            comando.imovelId,
+            resultado.rascunho,
+            resultado.protocolosUsados,
+          );
+          mensagemResposta = {
+            ...resposta.mensagem,
+            texto: `Preparei um rascunho para ${comando.proprietario} (${comando.codigo}) com base na conversa. Ele está aberto para sua revisão; nada foi enviado.`,
+          };
+        } else {
+          mensagemResposta = {
+            ...resposta.mensagem,
+            texto: resultado.mensagem || `Identifiquei a conversa de ${comando.proprietario} (${comando.codigo}), mas não consegui preparar um rascunho seguro. Nenhuma mensagem foi enviada.`,
+            comandoUi: undefined,
+          };
+        }
+      } else {
+        mensagemResposta = resposta.mensagem;
       }
       setMensagens((atuais) => [
         ...atuais,
-        resposta.ok
-          ? resposta.mensagem
-          : { id: crypto.randomUUID(), papel: "assistente", texto: resposta.erro },
+        mensagemResposta,
       ]);
     } finally {
       if (requisicaoRef.current === controller) requisicaoRef.current = null;

@@ -9,6 +9,7 @@ export const CONHECIMENTO_PRODUTO = {
   agenda: "A Agenda guarda compromissos, inclusive verificações de disponibilidade, vinculados ou não a um imóvel. Mensagens programadas são outra função e ficam em mensagens_agendadas.",
   metas: "As quatro metas mensais reais são angariações, imóveis locados, comissão recebida e faturamento em contratos. Faturamento soma os aluguéis dos imóveis que entraram em Locado no mês.",
   followUp: "Follow-up usa o motor do sistema para selecionar proprietários em Sem resposta ou Novo contato, considerando telefone válido, cadência, tentativas, respostas, duplicidade por proprietário e limites do lote.",
+  conversas: "Conversa respondida usa a Central de Mensagens: há uma conversa por imóvel, formada somente por mensagens reais recebidas e enviadas. Em andamento exige negociação ativa e ao menos uma resposta recebida do proprietário.",
   estagnacao: "Estagnação usa isStale: ignora desfechos terminais, Locado, pausados e importados ainda não trabalhados; o limite normal é 7 dias e, após angariação/assinatura/publicação, 60 dias.",
   autorizacao: "Autorização assinada é o aceite formal recebido do Sistema Principal depois do Angariado. O evento registra data/responsável/referência disponíveis e pode avançar, mas nunca regredir, o status.",
   angariacao: "Angariado como status é o estado atual; a primeira entrada Angariado no status_history é o marco histórico permanente. Perguntas como última angariação e quantas angariei usam a data desse marco, mesmo se o imóvel hoje estiver Publicado ou Locado.",
@@ -40,6 +41,11 @@ REGRAS INEGOCIÁVEIS
 - Use preparar_agendamento_visita somente quando o usuário pedir explicitamente uma visita e imóvel, data e horário estiverem definidos. Se faltar algo, faça uma pergunta curta e não chame a ferramenta.
 - Depois de preparar, diga que a visita está aguardando confirmação no card. Nunca diga "feito", "agendado" ou equivalente antes de o backend devolver sucesso após o clique em Confirmar.
 - Quando o usuário pedir explicitamente para criar ou enviar follow-ups em lote, use abrir_revisao_followup_lote. Ela consulta a fila e abre o fluxo real do Angario; não envia mensagem. Oriente a revisar destinatários e textos e a clicar em Enviar follow-ups nessa tela.
+- Para identificar proprietários que responderam, use buscar_conversas_respondidas. Use somente_aguardando_corretor=true quando a intenção for descobrir quem está esperando uma resposta do corretor.
+- Quando o usuário pedir uma abordagem ou resposta baseada na conversa de um proprietário específico, use preparar_rascunho_resposta. Numa conversa já iniciada, trate isso como continuação contextual, não como uma nova apresentação ou primeiro contato.
+- preparar_rascunho_resposta só pode receber código explícito, imóvel aberto ou ID devolvido por uma ferramenta. Se houver mais de uma conversa possível e nenhuma referência inequívoca, mostre as opções e peça o código; nunca escolha um proprietário por conta própria.
+- O rascunho relê no servidor o histórico bidirecional, o perfil de comunicação e os protocolos autorizados. Ele abre editável para revisão humana e nunca envia a mensagem. Não diga que respondeu ou enviou.
+- Se a conversa não tiver conteúdo textual suficiente, explique que ela precisa ser consultada manualmente; não invente o conteúdo de áudio, imagem ou documento.
 - Não simule ações indisponíveis. Agendar mensagem, atualizar status, excluir ou cancelar continuam fora das ferramentas desta etapa. Nunca afirme que o follow-up foi enviado apenas porque a revisão foi aberta.
 - Se o usuário mudar imóvel, data ou horário depois de um preview, prepare uma nova ação. Nunca trate a alteração como confirmação e nunca reutilize silenciosamente o preview anterior.
 - Confirmações textuais como "sim", "pode fazer" ou "confirmo" não executam a ação. Oriente o usuário a usar o botão Confirmar do card específico.

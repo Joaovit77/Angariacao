@@ -19,10 +19,13 @@ import { DEFINICOES_FERRAMENTAS, executarFerramenta } from "./ferramentas";
 import {
   DEFINICAO_FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE,
   DEFINICAO_FERRAMENTA_AGENDAR_VISITA,
+  DEFINICAO_FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA,
   executarPreparacaoAgendamentoVisita,
   FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE,
   FERRAMENTA_PREPARAR_AGENDAMENTO_VISITA,
+  FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA,
   prepararRevisaoFollowUpLote,
+  prepararRascunhoResposta,
 } from "./acoes";
 import {
   carregarCatalogoProtocolosAssistente,
@@ -167,6 +170,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
       ...DEFINICOES_FERRAMENTAS,
       DEFINICAO_FERRAMENTA_AGENDAR_VISITA,
       DEFINICAO_FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE,
+      DEFINICAO_FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA,
       ...(ferramentaProtocolos ? [ferramentaProtocolos] : []),
     ],
     tool_choice: "auto" as const,
@@ -209,6 +213,13 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
               pedido.mensagem,
               pedido.historico,
             )
+        : chamada.name === FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA
+          ? await prepararRascunhoResposta(
+              args,
+              supabase,
+              userId,
+              pedido.contexto,
+            )
         : await executarFerramenta(chamada.name, args, supabase, userId, pedido.contexto, pedido.mensagem, pedido.historico);
       if (resultado.acao) acaoPendente = resultado.acao;
       if (resultado.comandoUi) comandoUi = resultado.comandoUi;
@@ -230,6 +241,8 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
     ? "Preparei a visita. Revise os dados abaixo e confirme somente se estiver tudo certo."
     : comandoUi?.tipo === "abrir_followup_lote"
     ? "Abri a revisão do lote de follow-ups. Confira os proprietários selecionados e as mensagens; o envio só começa quando você clicar em Enviar follow-ups."
+    : comandoUi?.tipo === "rascunhar_resposta"
+    ? `Identifiquei a conversa de ${comandoUi.proprietario} (${comandoUi.codigo}) e vou preparar um rascunho baseado no histórico para sua revisão.`
     : continuidadeResposta
     ? respostaNaturalDaContinuidade(continuidadeResposta)
     : textoGerado;
@@ -248,6 +261,8 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
         ...blocos.flatMap((bloco) =>
           bloco.tipo === "imoveis" || bloco.tipo === "agenda" || bloco.tipo === "mensagens_agendadas"
             ? bloco.itens.map((item) => item.id)
+            : bloco.tipo === "conversas_respondidas"
+              ? bloco.itens.map((item) => item.imovelId)
             : [],
         ),
       ],
@@ -266,6 +281,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
         ...(continuidadeResposta ? ["continuidade-estruturada"] : []),
         ...(acaoPendente ? ["acao-tipificada", "payload-congelado-no-backend", "confirmacao-visual-obrigatoria"] : []),
         ...(comandoUi?.tipo === "abrir_followup_lote" ? ["fila-followup-user-scoped", "revisao-visual-obrigatoria", "envio-nao-executado-pelo-assistente"] : []),
+        ...(comandoUi?.tipo === "rascunhar_resposta" ? ["conversa-user-scoped", "historico-relido-no-servidor", "rascunho-editavel", "envio-nao-executado-pelo-assistente"] : []),
       ],
       resultado: "respondido",
       motivo: texto ? "resposta-gerada" : "resposta-vazia-com-fallback",

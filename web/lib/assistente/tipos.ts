@@ -77,10 +77,23 @@ export interface ItemMensagemAgendadaAssistente {
   status: string;
 }
 
+export interface ItemConversaRespondidaAssistente {
+  imovelId: string;
+  codigo: string;
+  proprietario: string;
+  status: string;
+  ultimaResposta: string;
+  ultimaRespostaEm: string;
+  aguardandoCorretor: boolean;
+  naoLidas: number;
+  rascunhoDisponivel: boolean;
+}
+
 export type BlocoAssistente =
   | { tipo: "imoveis"; titulo: string; itens: ItemImovelAssistente[] }
   | { tipo: "agenda"; titulo: string; itens: ItemAgendaAssistente[] }
   | { tipo: "mensagens_agendadas"; titulo: string; itens: ItemMensagemAgendadaAssistente[] }
+  | { tipo: "conversas_respondidas"; titulo: string; itens: ItemConversaRespondidaAssistente[] }
   | { tipo: "metricas"; titulo: string; itens: Array<{ rotulo: string; valor: string; detalhe?: string }> }
   | { tipo: "historico"; titulo: string; itens: Array<{ data: string; tipo: string; texto: string }> };
 
@@ -93,7 +106,14 @@ export interface MensagemAssistente {
   comandoUi?: ComandoUiAssistente;
 }
 
-export type ComandoUiAssistente = { tipo: "abrir_followup_lote" };
+export type ComandoUiAssistente =
+  | { tipo: "abrir_followup_lote" }
+  | {
+      tipo: "rascunhar_resposta";
+      imovelId: string;
+      codigo: string;
+      proprietario: string;
+    };
 
 export type ResultadoHistoricoAssistente =
   | { tipo: "imoveis"; itens: Array<{
@@ -106,6 +126,7 @@ export type ResultadoHistoricoAssistente =
     }> }
   | { tipo: "agenda"; itens: Array<{ id: string; titulo: string; data: string; imovelId?: string | null }> }
   | { tipo: "mensagens_agendadas"; itens: Array<{ id: string; nomeProprietario: string; dataEnvio: string; status: string; imovelId?: string | null }> }
+  | { tipo: "conversas_respondidas"; itens: Array<{ imovelId: string; codigo: string; proprietario: string; ultimaRespostaEm: string; aguardandoCorretor: boolean }> }
   | { tipo: "metricas"; itens: Array<{ rotulo: string; valor: string }> };
 
 export interface ItemHistoricoAssistente {
