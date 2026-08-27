@@ -110,4 +110,28 @@ describe("atividade da IA", () => {
       estado: "aguardando",
     });
   });
+
+  it("mostra a criação de compromisso no Cérebro IA sem expor conteúdo", () => {
+    const [atividade] = criarAtividadesIa([], 8, [{
+      id: 12,
+      evento: "ia-assistente-acao-executada",
+      criado_em: "2026-08-27T12:05:00.000Z",
+      detalhe: JSON.stringify({
+        operacao: "criar_compromisso",
+        fontesDeDados: ["assistente_acoes", "agenda"],
+        validacoesAplicadas: ["sessao-da-conversa", "payload-congelado"],
+        resultado: "respondido",
+        motivo: "succeeded",
+      }),
+    }]);
+
+    expect(atividade).toMatchObject({
+      titulo: "Compromisso criado pelo Assistente",
+      tipo: "criar_compromisso",
+      estado: "concluido",
+      detalhesObservados: true,
+    });
+    expect(atividade.etapas.map((etapa) => etapa.titulo)).toContain("Preparou operação na Agenda");
+    expect(JSON.stringify(atividade)).not.toContain("Reunião de alinhamento");
+  });
 });

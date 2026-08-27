@@ -77,14 +77,16 @@ export function prepararAcaoAssistente(
 
 export function confirmarAcaoDoAssistente(
   acaoId: string,
+  sessaoId: string,
   opcoes: OpcoesPerguntaAssistente = {},
 ): Promise<RespostaAssistente> {
-  return chamarAssistente({ tipo: "confirmar_acao", acaoId }, opcoes);
+  return chamarAssistente({ tipo: "confirmar_acao", acaoId, sessaoId }, opcoes);
 }
 
 export function cancelarAcaoDoAssistente(
   acaoId: string,
+  sessaoId: string,
   opcoes: OpcoesPerguntaAssistente = {},
 ): Promise<RespostaAssistente> {
-  return chamarAssistente({ tipo: "cancelar_acao", acaoId }, opcoes);
+  return chamarAssistente({ tipo: "cancelar_acao", acaoId, sessaoId }, opcoes);
 }

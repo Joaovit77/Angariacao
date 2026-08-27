@@ -172,6 +172,7 @@ describe("protocolos comerciais no Assistente", () => {
     expect(chamada.instructions).toContain("não possui ferramenta para navegar nessas áreas");
     expect(chamada.tools.map((ferramenta: { name: string }) => ferramenta.name)).toEqual([
       "preparar_agendamento_visita",
+      "preparar_criacao_compromisso",
       "abrir_revisao_followup_lote",
       "preparar_rascunho_resposta",
     ]);

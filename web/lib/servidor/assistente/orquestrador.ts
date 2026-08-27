@@ -19,9 +19,12 @@ import { DEFINICOES_FERRAMENTAS, executarFerramenta } from "./ferramentas";
 import {
   DEFINICAO_FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE,
   DEFINICAO_FERRAMENTA_AGENDAR_VISITA,
+  DEFINICAO_FERRAMENTA_CRIAR_COMPROMISSO,
   DEFINICAO_FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA,
+  executarPreparacaoCriacaoCompromisso,
   executarPreparacaoAgendamentoVisita,
   FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE,
+  FERRAMENTA_PREPARAR_CRIACAO_COMPROMISSO,
   FERRAMENTA_PREPARAR_AGENDAMENTO_VISITA,
   FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA,
   prepararRevisaoFollowUpLote,
@@ -67,7 +70,7 @@ export function normalizarPedidoAssistente(valor: unknown): PedidoAssistente | n
     const a = m.acao && typeof m.acao === "object" ? m.acao as Record<string, unknown> : null;
     const entidade = a?.entidade && typeof a.entidade === "object" ? a.entidade as Record<string, unknown> : null;
     const dados = a?.dados && typeof a.dados === "object" ? a.dados as Record<string, unknown> : null;
-    const acao = a
+    const acaoVisita = a
       && a.tipo === "agendar_visita"
       && typeof a.estado === "string"
       && ESTADOS_ACAO.has(a.estado)
@@ -90,6 +93,44 @@ export function normalizarPedidoAssistente(valor: unknown): PedidoAssistente | n
           dados: { data: dados.data, hora: dados.hora },
         }
       : undefined;
+    const horaCompromisso = dados && typeof dados.hora === "string" ? dados.hora : null;
+    const imovelIdCompromisso = entidade && typeof entidade.imovelId === "string" && UUID.test(entidade.imovelId)
+      ? entidade.imovelId
+      : null;
+    const acaoCompromisso = a
+      && a.tipo === "criar_compromisso"
+      && typeof a.estado === "string"
+      && ESTADOS_ACAO.has(a.estado)
+      && UUID.test(String(a.id || ""))
+      && entidade
+      && dados
+      && typeof dados.titulo === "string"
+      && dados.titulo.trim() !== ""
+      && typeof dados.tipo === "string"
+      && dados.tipo.trim() !== ""
+      && typeof dados.data === "string"
+      && /^\d{4}-\d{2}-\d{2}$/.test(dados.data)
+      && (horaCompromisso === null || /^([01]\d|2[0-3]):[0-5]\d$/.test(horaCompromisso))
+      ? {
+          id: String(a.id),
+          tipo: "criar_compromisso" as const,
+          estado: a.estado as NonNullable<PedidoAssistente["historico"][number]["acao"]>["estado"],
+          entidade: {
+            imovelId: imovelIdCompromisso,
+            codigo: typeof entidade.codigo === "string" ? entidade.codigo : null,
+            endereco: typeof entidade.endereco === "string" ? entidade.endereco : null,
+            responsavel: typeof entidade.responsavel === "string" ? entidade.responsavel : null,
+          },
+          dados: {
+            titulo: dados.titulo.trim().slice(0, 160),
+            tipo: dados.tipo.trim().slice(0, 80),
+            data: dados.data,
+            hora: horaCompromisso,
+            observacao: typeof dados.observacao === "string" ? dados.observacao.slice(0, 2_000) : null,
+          },
+        }
+      : undefined;
+    const acao = acaoVisita || acaoCompromisso;
     return texto ? [{ papel: m.papel, texto, ...(resultados.length ? { resultados } : {}), ...(acao ? { acao } : {}) }] : [];
   });
   const sessaoId = typeof bruto.sessaoId === "string" && UUID.test(bruto.sessaoId) ? bruto.sessaoId : undefined;
@@ -169,6 +210,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
     tools: [
       ...DEFINICOES_FERRAMENTAS,
       DEFINICAO_FERRAMENTA_AGENDAR_VISITA,
+      DEFINICAO_FERRAMENTA_CRIAR_COMPROMISSO,
       DEFINICAO_FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE,
       DEFINICAO_FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA,
       ...(ferramentaProtocolos ? [ferramentaProtocolos] : []),
@@ -199,6 +241,14 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
           })()
         : chamada.name === FERRAMENTA_PREPARAR_AGENDAMENTO_VISITA
           ? await executarPreparacaoAgendamentoVisita(
+              args,
+              supabase,
+              userId,
+              pedido.contexto,
+              pedido.sessaoId,
+            )
+        : chamada.name === FERRAMENTA_PREPARAR_CRIACAO_COMPROMISSO
+          ? await executarPreparacaoCriacaoCompromisso(
               args,
               supabase,
               userId,
@@ -238,7 +288,9 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
 
   const textoGerado = sanitizarTextoAssistente(resposta.output_text);
   const texto = acaoPendente
-    ? "Preparei a visita. Revise os dados abaixo e confirme somente se estiver tudo certo."
+    ? acaoPendente.tipo === "agendar_visita"
+      ? "Preparei a visita. Revise os dados abaixo e confirme somente se estiver tudo certo."
+      : "Preparei o compromisso. Revise os dados abaixo e confirme somente se estiver tudo certo."
     : comandoUi?.tipo === "abrir_followup_lote"
     ? "Abri a revisão do lote de follow-ups. Confira os proprietários selecionados e as mensagens; o envio só começa quando você clicar em Enviar follow-ups."
     : comandoUi?.tipo === "rascunhar_resposta"
@@ -279,7 +331,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
         ...(catalogoProtocolos.fonteDisponivel ? ["catalogo-protocolos-user-scoped"] : []),
         ...(protocolosAplicados.length ? ["ids-protocolos-validados"] : []),
         ...(continuidadeResposta ? ["continuidade-estruturada"] : []),
-        ...(acaoPendente ? ["acao-tipificada", "payload-congelado-no-backend", "confirmacao-visual-obrigatoria"] : []),
+        ...(acaoPendente ? ["acao-tipificada", "payload-congelado-no-backend", "confirmacao-explicita-obrigatoria"] : []),
         ...(comandoUi?.tipo === "abrir_followup_lote" ? ["fila-followup-user-scoped", "revisao-visual-obrigatoria", "envio-nao-executado-pelo-assistente"] : []),
         ...(comandoUi?.tipo === "rascunhar_resposta" ? ["conversa-user-scoped", "historico-relido-no-servidor", "rascunho-editavel", "envio-nao-executado-pelo-assistente"] : []),
       ],

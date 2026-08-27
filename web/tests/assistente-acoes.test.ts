@@ -4,10 +4,15 @@ import { describe, expect, it, vi } from "vitest";
 import {
   cancelarAcaoAssistente,
   confirmarAcaoAssistente,
+  executarPreparacaoCriacaoCompromisso,
+  normalizarAcao,
   prepararAgendamentoVisita,
+  prepararCriacaoCompromisso,
   prepararRascunhoResposta,
   validarParametrosAgendarVisita,
+  validarParametrosCriarCompromisso,
 } from "@/lib/servidor/assistente/acoes";
+import { acaoPendenteMaisRecente, classificarDecisaoTextual } from "@/lib/assistente/confirmacao";
 
 const ACAO_ID = "11111111-1111-4111-8111-111111111111";
 const IMOVEL_ID = "22222222-2222-4222-8222-222222222222";
@@ -29,6 +34,26 @@ function acao(estado = "ready_for_confirmation") {
       responsavel: "João",
     },
     dados: { data: "2099-08-28", hora: "15:00" },
+    resultado: estado === "succeeded" ? { agendaId: AGENDA_ID } : null,
+  };
+}
+
+function compromisso(estado = "ready_for_confirmation") {
+  return {
+    id: ACAO_ID,
+    tipo: "criar_compromisso",
+    estado,
+    expiraEm: "2099-08-27T15:15:00.000Z",
+    operacao: "Criar compromisso",
+    impacto: "Será criado um compromisso real na agenda.",
+    entidade: { imovelId: null, codigo: null, endereco: null, responsavel: null },
+    dados: {
+      titulo: "Reunião de alinhamento",
+      tipo: "Reunião",
+      data: "2099-08-31",
+      hora: "11:00",
+      observacao: null,
+    },
     resultado: estado === "succeeded" ? { agendaId: AGENDA_ID } : null,
   };
 }
@@ -57,20 +82,86 @@ describe("ações tipadas do Assistente", () => {
     });
   });
 
-  it("confirma e cancela enviando somente o id da ação congelada", async () => {
+  it("confirma e cancela enviando somente o id da ação congelada e da sessão atual", async () => {
     const confirmacao = clienteRpc({ ok: true, acao: acao("succeeded") });
-    await expect(confirmarAcaoAssistente(confirmacao.cliente, ACAO_ID)).resolves.toMatchObject({
+    await expect(confirmarAcaoAssistente(confirmacao.cliente, ACAO_ID, SESSAO_ID)).resolves.toMatchObject({
       ok: true,
       acao: { estado: "succeeded", resultado: { agendaId: AGENDA_ID } },
     });
-    expect(confirmacao.rpc).toHaveBeenCalledWith("confirmar_acao_assistente", { p_acao_id: ACAO_ID });
+    expect(confirmacao.rpc).toHaveBeenCalledWith("confirmar_acao_assistente", { p_acao_id: ACAO_ID, p_sessao_id: SESSAO_ID });
 
     const cancelamento = clienteRpc({ ok: true, acao: acao("cancelled") });
-    await expect(cancelarAcaoAssistente(cancelamento.cliente, ACAO_ID)).resolves.toMatchObject({
+    await expect(cancelarAcaoAssistente(cancelamento.cliente, ACAO_ID, SESSAO_ID)).resolves.toMatchObject({
       ok: true,
       acao: { estado: "cancelled" },
     });
-    expect(cancelamento.rpc).toHaveBeenCalledWith("cancelar_acao_assistente", { p_acao_id: ACAO_ID });
+    expect(cancelamento.rpc).toHaveBeenCalledWith("cancelar_acao_assistente", { p_acao_id: ACAO_ID, p_sessao_id: SESSAO_ID });
+  });
+
+  it("prepara compromisso genérico sem inventar vínculo ou observação", async () => {
+    const { cliente, rpc } = clienteRpc({ ok: true, acao: compromisso() });
+    const resultado = await prepararCriacaoCompromisso(cliente, {
+      titulo: " Reunião de alinhamento ",
+      tipo: "Reunião",
+      data: "2099-08-31",
+      hora: "11:00",
+      imovelId: null,
+      observacao: null,
+      sessaoId: SESSAO_ID,
+    });
+
+    expect(resultado).toMatchObject({
+      ok: true,
+      acao: { tipo: "criar_compromisso", dados: { titulo: "Reunião de alinhamento", hora: "11:00" } },
+    });
+    expect(rpc).toHaveBeenCalledWith("preparar_acao_assistente_criar_compromisso", {
+      p_titulo: "Reunião de alinhamento",
+      p_tipo: "Reunião",
+      p_data: "2099-08-31",
+      p_hora: "11:00",
+      p_imovel_id: null,
+      p_observacao: null,
+      p_sessao_id: SESSAO_ID,
+    });
+  });
+
+  it("aceita horário opcional e rejeita obrigatórios ausentes ou data passada", () => {
+    const base = { titulo: "Ligação", tipo: "Contato", data: "2099-08-31", hora: null, imovelId: null, observacao: null, sessaoId: SESSAO_ID };
+    expect(validarParametrosCriarCompromisso(base)).toEqual({ ok: true });
+    expect(validarParametrosCriarCompromisso({ ...base, titulo: "" })).toMatchObject({ ok: false, codigo: "titulo_invalido" });
+    expect(validarParametrosCriarCompromisso({ ...base, tipo: "" })).toMatchObject({ ok: false, codigo: "tipo_invalido" });
+    expect(validarParametrosCriarCompromisso({ ...base, data: "2020-01-01" })).toMatchObject({ ok: false, codigo: "data_invalida" });
+    expect(validarParametrosCriarCompromisso({ ...base, data: "2099-02-31" })).toMatchObject({ ok: false, codigo: "data_invalida" });
+  });
+
+  it("não vincula automaticamente o imóvel visual a um compromisso genérico", async () => {
+    const { cliente, rpc } = clienteRpc({ ok: true, acao: compromisso() });
+    const resultado = await executarPreparacaoCriacaoCompromisso(
+      {
+        titulo: "Reunião de alinhamento",
+        tipo_compromisso: "Reunião",
+        data: "2099-08-31",
+        hora: "11:00",
+        imovel_codigo: null,
+        imovel_id: null,
+        observacao: null,
+      },
+      cliente,
+      "user-1",
+      { rota: "/pipeline", pagina: "Pipeline", superficie: "drawer", entidade: { tipo: "imovel", id: IMOVEL_ID } },
+      SESSAO_ID,
+    );
+
+    expect(resultado).toMatchObject({ acao: { tipo: "criar_compromisso", entidade: { imovelId: null } } });
+    expect(rpc).toHaveBeenCalledWith("preparar_acao_assistente_criar_compromisso", expect.objectContaining({ p_imovel_id: null }));
+  });
+
+  it("normaliza o compromisso tipado com imóvel opcional", () => {
+    expect(normalizarAcao(compromisso())).toMatchObject({
+      tipo: "criar_compromisso",
+      entidade: { imovelId: null },
+      dados: { titulo: "Reunião de alinhamento", tipo: "Reunião", hora: "11:00" },
+    });
   });
 
   it("rejeita data passada, horário e ids inválidos antes de chamar o banco", () => {
@@ -151,7 +242,7 @@ describe("garantias estruturais no banco", () => {
   );
 
   it("bloqueia a ação por usuário e serializa confirmações concorrentes", () => {
-    expect(confirmacao).toContain("a.id = p_acao_id and a.user_id = v_user");
+    expect(confirmacao).toContain("a.id = p_acao_id and a.user_id = v_user and a.sessao_id = p_sessao_id");
     expect(confirmacao).toContain("for update");
     expect(confirmacao).toContain("v_acao.status = 'succeeded'");
     expect(confirmacao).toContain("'repetida', true");
@@ -177,7 +268,7 @@ describe("garantias estruturais no banco", () => {
       schema.indexOf("-- Somente código server-side possui a service role"),
     );
     expect(grantsAuthenticated).not.toContain("assistente_acoes to authenticated");
-    expect(schema).toContain("grant execute on function confirmar_acao_assistente(uuid) to authenticated");
+    expect(schema).toContain("grant execute on function confirmar_acao_assistente(uuid, uuid) to authenticated");
   });
 
   it("substitui o preview anterior da mesma conversa", () => {
@@ -190,6 +281,49 @@ describe("garantias estruturais no banco", () => {
     expect(preparacao).toContain("status = 'ready_for_confirmation'");
     expect(preparacao).toContain("pg_advisory_xact_lock");
     expect(schema).toContain("create unique index if not exists assistente_acoes_pendente_sessao_idx");
+  });
+
+  it("permite compromisso sem imóvel, mantendo a validação user-scoped quando houver vínculo", () => {
+    const preparacao = schema.slice(
+      schema.indexOf("create or replace function preparar_acao_assistente_criar_compromisso"),
+      schema.indexOf("create or replace function preparar_acao_assistente_agendar_visita"),
+    );
+    expect(preparacao).toContain("p_imovel_id is not null");
+    expect(preparacao).toContain("i.id = p_imovel_id and i.user_id = v_user");
+    expect(preparacao).toContain("'criar_compromisso'");
+    expect(preparacao).toContain("status = 'cancelled'");
+    expect(confirmacao).toContain("v_imovel_id is not null and not exists");
+  });
+});
+
+describe("confirmação textual determinística", () => {
+  it.each(["confirmar", "Confirmo!", "pode criar", "pode fazer", "pode agendar", "claro, pode criar", "sim, crie"])(
+    "aceita a frase inequívoca %s",
+    (texto) => expect(classificarDecisaoTextual(texto)).toBe("confirmar"),
+  );
+
+  it.each(["cancelar", "não crie", "deixa pra lá"])(
+    "aceita o cancelamento inequívoco %s",
+    (texto) => expect(classificarDecisaoTextual(texto)).toBe("cancelar"),
+  );
+
+  it.each(["sim", "pode", "pode criar e mude para meio-dia", "acho que sim"])(
+    "não executa texto ambíguo: %s",
+    (texto) => expect(classificarDecisaoTextual(texto)).toBeNull(),
+  );
+
+  it("usa somente a ação pendente mais recente do histórico", () => {
+    const antiga = { ...compromisso("cancelled"), tipo: "criar_compromisso" as const, estado: "cancelled" as const };
+    const atualId = "55555555-5555-4555-8555-555555555555";
+    const atual = { ...compromisso(), id: atualId, tipo: "criar_compromisso" as const, estado: "ready_for_confirmation" as const };
+    expect(acaoPendenteMaisRecente([
+      { papel: "assistente", texto: "anterior", acao: antiga },
+      { papel: "assistente", texto: "atual", acao: atual },
+    ])?.id).toBe(atualId);
+    expect(acaoPendenteMaisRecente([
+      { papel: "assistente", texto: "pendente", acao: atual },
+      { papel: "assistente", texto: "cancelada", acao: antiga },
+    ])).toBeNull();
   });
 });
 

@@ -49,4 +49,13 @@ describe("conhecimento do assistente", () => {
     expect(texto).toContain("nunca envia a mensagem");
     expect(texto).toContain("peça o código");
   });
+
+  it("define compromisso genérico, campos obrigatórios e confirmação inequívoca", () => {
+    const texto = instrucoesDoAssistente({ rota: "/assistente", pagina: "Assistente", superficie: "pagina" });
+    expect(texto).toContain("preparar_criacao_compromisso");
+    expect(texto).toContain("Título, tipo e data são obrigatórios");
+    expect(texto).toContain("nunca invente título, tipo, imóvel, observação ou horário");
+    expect(texto).toContain("Um \"sim\" isolado");
+    expect(texto).toContain("America/Sao_Paulo");
+  });
 });

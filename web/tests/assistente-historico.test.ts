@@ -67,6 +67,31 @@ describe("historico estruturado da sessao", () => {
   it("remove referencias estruturadas internas se o modelo tentar reproduzi-las", () => {
     expect(sanitizarTextoAssistente('A próxima mensagem é para Susan.\n\nRESULTADOS ESTRUTURADOS DESTA RESPOSTA: [{"tipo":"mensagem_agendada"}]')).toBe("A próxima mensagem é para Susan.");
   });
+
+  it("preserva de forma tipada os campos de um compromisso entre turnos", () => {
+    const pedido = normalizarPedidoAssistente({
+      mensagem: "Mude para 11:30",
+      contexto: { rota: "/assistente", pagina: "Assistente", superficie: "pagina" },
+      sessaoId: "44444444-4444-4444-8444-444444444444",
+      historico: [{
+        papel: "assistente",
+        texto: "Revise o compromisso.",
+        acao: {
+          id: "11111111-1111-4111-8111-111111111111",
+          tipo: "criar_compromisso",
+          estado: "ready_for_confirmation",
+          entidade: { imovelId: null, codigo: null, endereco: null, responsavel: null },
+          dados: { titulo: "Reunião", tipo: "Compromisso", data: "2099-08-31", hora: "11:00", observacao: null },
+        },
+      }],
+    });
+
+    expect(pedido?.historico[0].acao).toMatchObject({
+      tipo: "criar_compromisso",
+      dados: { titulo: "Reunião", data: "2099-08-31", hora: "11:00" },
+    });
+    expect(conteudoMensagemHistorico(pedido!.historico[0])).toContain("qualquer mudanca exige novo preview");
+  });
 });
 
 describe("referencia conversacional de imovel", () => {

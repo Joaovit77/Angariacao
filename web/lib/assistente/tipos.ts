@@ -30,7 +30,33 @@ export interface AcaoAgendarVisitaAssistente {
   erro?: string;
 }
 
-export type AcaoAssistente = AcaoAgendarVisitaAssistente;
+export interface AcaoCriarCompromissoAssistente {
+  id: string;
+  tipo: "criar_compromisso";
+  estado: EstadoAcaoAssistente;
+  expiraEm: string;
+  operacao: "Criar compromisso";
+  impacto: string;
+  entidade: {
+    imovelId: string | null;
+    codigo: string | null;
+    endereco: string | null;
+    responsavel: string | null;
+  };
+  dados: {
+    titulo: string;
+    tipo: string;
+    data: string;
+    hora: string | null;
+    observacao: string | null;
+  };
+  resultado?: {
+    agendaId: string;
+  };
+  erro?: string;
+}
+
+export type AcaoAssistente = AcaoAgendarVisitaAssistente | AcaoCriarCompromissoAssistente;
 
 export interface ContextoEntidade {
   tipo: "imovel" | "agenda";
@@ -133,7 +159,9 @@ export interface ItemHistoricoAssistente {
   papel: PapelAssistente;
   texto: string;
   resultados?: ResultadoHistoricoAssistente[];
-  acao?: Pick<AcaoAgendarVisitaAssistente, "id" | "tipo" | "estado" | "entidade" | "dados">;
+  acao?:
+    | Pick<AcaoAgendarVisitaAssistente, "id" | "tipo" | "estado" | "entidade" | "dados">
+    | Pick<AcaoCriarCompromissoAssistente, "id" | "tipo" | "estado" | "entidade" | "dados">;
 }
 
 export interface PedidoAssistente {
@@ -159,11 +187,13 @@ export interface PedidoPrepararAcaoAssistente {
 export interface PedidoConfirmarAcaoAssistente {
   tipo: "confirmar_acao";
   acaoId: string;
+  sessaoId: string;
 }
 
 export interface PedidoCancelarAcaoAssistente {
   tipo: "cancelar_acao";
   acaoId: string;
+  sessaoId: string;
 }
 
 export type RespostaAssistente =

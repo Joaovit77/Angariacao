@@ -17,7 +17,7 @@ import {
   prepararAcaoAssistente,
 } from "@/lib/assistente/cliente";
 import { compactarBlocosParaHistorico } from "@/lib/assistente/historico";
-import type { ContextoAssistente, MensagemAssistente } from "@/lib/assistente/tipos";
+import type { AcaoAssistente, ContextoAssistente, MensagemAssistente } from "@/lib/assistente/tipos";
 import { rascunharResposta } from "@/lib/ia";
 import { useAppStore } from "@/lib/store";
 import { useUiModal } from "@/lib/uiModal";
@@ -25,7 +25,7 @@ import { useUiModal } from "@/lib/uiModal";
 const BOAS_VINDAS: MensagemAssistente = {
   id: "boas-vindas",
   papel: "assistente",
-  texto: "Olá! Posso consultar sua operação e preparar visitas, follow-ups e respostas baseadas nas conversas. Nada é enviado sem sua revisão e confirmação.",
+  texto: "Olá! Posso consultar sua operação e preparar compromissos, visitas, follow-ups e respostas baseadas nas conversas. Toda alteração exige sua confirmação antes de ser executada.",
 };
 
 interface ParametrosVisitaGuiada {
@@ -50,6 +50,54 @@ interface EstadoAssistente {
 }
 
 const ContextoEstadoAssistente = createContext<EstadoAssistente | null>(null);
+
+function sincronizarAgendaDaAcao(acao: AcaoAssistente | undefined): void {
+  if (acao?.estado !== "succeeded" || !acao.resultado?.agendaId) return;
+  const { agenda, setAgenda } = useAppStore.getState();
+  if (agenda.some((item) => item.id === acao.resultado?.agendaId)) return;
+  const item = acao.tipo === "agendar_visita"
+    ? {
+        id: acao.resultado.agendaId,
+        title: `Visita ao imóvel ${acao.entidade.codigo}`,
+        type: "Visita",
+        date: acao.dados.data,
+        hora: acao.dados.hora,
+        imovelId: acao.entidade.imovelId,
+        notes: "Agendada pelo Assistente após confirmação explícita do usuário.",
+        done: false,
+        isVerificacaoDisponibilidade: false,
+      }
+    : {
+        id: acao.resultado.agendaId,
+        title: acao.dados.titulo,
+        type: acao.dados.tipo,
+        date: acao.dados.data,
+        hora: acao.dados.hora,
+        imovelId: acao.entidade.imovelId,
+        notes: acao.dados.observacao,
+        done: false,
+        isVerificacaoDisponibilidade: false,
+      };
+  setAgenda([...agenda, item]);
+}
+
+function incorporarRespostaNaConversa(
+  atuais: MensagemAssistente[],
+  resposta: MensagemAssistente,
+): MensagemAssistente[] {
+  const acaoResposta = resposta.acao;
+  if (!acaoResposta) return [...atuais, resposta];
+  if (acaoResposta.estado !== "ready_for_confirmation") {
+    const atualizadas = atuais.map((mensagem) => mensagem.acao?.id === acaoResposta.id
+      ? { ...mensagem, acao: acaoResposta }
+      : mensagem);
+    return [...atualizadas, { ...resposta, acao: undefined }];
+  }
+  const atualizadas = atuais.map((mensagem) => mensagem.acao?.estado === "ready_for_confirmation"
+    ? { ...mensagem, acao: { ...mensagem.acao, estado: "cancelled" as const, erro: "Substituída por uma nova versão." } }
+    : mensagem);
+  return [...atualizadas, resposta];
+}
 
 export function AssistenteProvider({ children }: { children: ReactNode }) {
   const [texto, setTexto] = useState("");
@@ -106,13 +154,9 @@ export function AssistenteProvider({ children }: { children: ReactNode }) {
             texto: textoAnterior,
             ...(blocos?.length ? { resultados: compactarBlocosParaHistorico(blocos) } : {}),
             ...(acao ? {
-              acao: {
-                id: acao.id,
-                tipo: acao.tipo,
-                estado: acao.estado,
-                entidade: acao.entidade,
-                dados: acao.dados,
-              },
+              acao: acao.tipo === "agendar_visita"
+                ? { id: acao.id, tipo: acao.tipo, estado: acao.estado, entidade: acao.entidade, dados: acao.dados }
+                : { id: acao.id, tipo: acao.tipo, estado: acao.estado, entidade: acao.entidade, dados: acao.dados },
             } : {}),
           })),
       }, { signal: controller.signal });
@@ -147,10 +191,8 @@ export function AssistenteProvider({ children }: { children: ReactNode }) {
       } else {
         mensagemResposta = resposta.mensagem;
       }
-      setMensagens((atuais) => [
-        ...atuais,
-        mensagemResposta,
-      ]);
+      sincronizarAgendaDaAcao(mensagemResposta.acao);
+      setMensagens((atuais) => incorporarRespostaNaConversa(atuais, mensagemResposta));
     } finally {
       if (requisicaoRef.current === controller) requisicaoRef.current = null;
       if (montadoRef.current && !requisicaoRef.current) setCarregando(false);
@@ -177,12 +219,10 @@ export function AssistenteProvider({ children }: { children: ReactNode }) {
           hora: parametros.hora,
         },
       });
-      setMensagens((atuais) => [
-        ...atuais,
-        resposta.ok
-          ? resposta.mensagem
-          : { id: crypto.randomUUID(), papel: "assistente", texto: resposta.erro },
-      ]);
+      const mensagemResposta: MensagemAssistente = resposta.ok
+        ? resposta.mensagem
+        : { id: crypto.randomUUID(), papel: "assistente", texto: resposta.erro };
+      setMensagens((atuais) => incorporarRespostaNaConversa(atuais, mensagemResposta));
     } finally {
       if (montadoRef.current) setCarregando(false);
     }
@@ -191,22 +231,7 @@ export function AssistenteProvider({ children }: { children: ReactNode }) {
   const aplicarRespostaAcao = useCallback((mensagemId: string, resposta: Awaited<ReturnType<typeof confirmarAcaoDoAssistente>>) => {
     if (resposta.ok) {
       const acao = resposta.mensagem.acao;
-      if (acao?.estado === "succeeded" && acao.resultado?.agendaId) {
-        const { agenda, setAgenda } = useAppStore.getState();
-        if (!agenda.some((item) => item.id === acao.resultado!.agendaId)) {
-          setAgenda([...agenda, {
-            id: acao.resultado.agendaId,
-            title: `Visita ao imóvel ${acao.entidade.codigo}`,
-            type: "Visita",
-            date: acao.dados.data,
-            hora: acao.dados.hora,
-            imovelId: acao.entidade.imovelId,
-            notes: "Agendada pelo Assistente após confirmação explícita do usuário.",
-            done: false,
-            isVerificacaoDisponibilidade: false,
-          }]);
-        }
-      }
+      sincronizarAgendaDaAcao(acao);
       setMensagens((atuais) => atuais.map((mensagem) =>
         mensagem.id === mensagemId ? { ...resposta.mensagem, id: mensagemId } : mensagem));
       return;
@@ -221,21 +246,21 @@ export function AssistenteProvider({ children }: { children: ReactNode }) {
     if (processandoAcaoId) return;
     setProcessandoAcaoId(acaoId);
     try {
-      aplicarRespostaAcao(mensagemId, await confirmarAcaoDoAssistente(acaoId));
+      aplicarRespostaAcao(mensagemId, await confirmarAcaoDoAssistente(acaoId, sessaoId));
     } finally {
       if (montadoRef.current) setProcessandoAcaoId(null);
     }
-  }, [aplicarRespostaAcao, processandoAcaoId]);
+  }, [aplicarRespostaAcao, processandoAcaoId, sessaoId]);
 
   const cancelarAcao = useCallback(async (mensagemId: string, acaoId: string) => {
     if (processandoAcaoId) return;
     setProcessandoAcaoId(acaoId);
     try {
-      aplicarRespostaAcao(mensagemId, await cancelarAcaoDoAssistente(acaoId));
+      aplicarRespostaAcao(mensagemId, await cancelarAcaoDoAssistente(acaoId, sessaoId));
     } finally {
       if (montadoRef.current) setProcessandoAcaoId(null);
     }
-  }, [aplicarRespostaAcao, processandoAcaoId]);
+  }, [aplicarRespostaAcao, processandoAcaoId, sessaoId]);
 
   const valor = useMemo<EstadoAssistente>(() => ({
     mensagens,
