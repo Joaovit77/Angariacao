@@ -78,7 +78,13 @@
    ================================================================ */
 import { daysBetween } from "../datas";
 import type { Imovel, NotaImovel } from "../tipos";
-import { SUFIXO_ID_ENCERRAMENTO, ehNotaDeResposta, ehSoMidia, PREFIXO_ID_NOTA } from "./notas";
+import {
+  SUFIXO_ID_ENCERRAMENTO,
+  ehNotaDeMensagemEnviada,
+  ehNotaDeResposta,
+  ehSoMidia,
+  PREFIXO_ID_NOTA,
+} from "./notas";
 
 /** Status em que a captação já foi GANHA — o imóvel está na carteira, e a
     conversa com o proprietário passou a ser operacional (documento, visita
@@ -157,6 +163,11 @@ function temNotaDeEncerramento(imovel: Imovel): boolean {
 /**
  * Houve ação do corretor DEPOIS desta mensagem?
  *
+ * A saída confirmada do WhatsApp também é ação. Isso cobre o caminho em que
+ * o corretor responde pelo celular ou WhatsApp Web: o webhook persiste a
+ * saída, mas não tem sessão do painel para chamar a RPC de leitura. Sem olhar
+ * essa nota, a conversa exibia ao mesmo tempo "Você: ..." e "não lida".
+ *
  * Compara string com string, e isso não é preguiça: os dois formatos são
  * lexicograficamente ordenáveis e o empate cai para o lado certo sozinho.
  * `"2026-07-28"` contra `"2026-07-28T14:30"` — o mais curto termina antes e
@@ -172,6 +183,13 @@ function houveAcaoDepois(imovel: Imovel, mensagem: NotaImovel): boolean {
   }
   for (const h of imovel.statusHistory || []) {
     if ((h.date || "") > quando) return true;
+  }
+  for (const nota of imovel.notas || []) {
+    if (
+      ehNotaDeMensagemEnviada(nota) &&
+      nota.origem === "webhook-evolution" &&
+      (nota.data || "") > quando
+    ) return true;
   }
   return false;
 }

@@ -56,9 +56,13 @@ describe("Cérebro da IA", () => {
     expect(tela).not.toContain("Assistente consultou imóveis sem movimento");
   });
 
-  it("não promete atualização em tempo real enquanto o fluxo é explicativo", () => {
+  it("representa execuções observadas sem prometer atualização em tempo real", () => {
     const tela = fonte("components/cerebro-ia/CerebroIaView.tsx");
-    expect(tela).toContain("Como a IA processa uma solicitação");
+    expect(tela).toContain("VISÃO DA EXECUÇÃO");
+    expect(tela).toContain("Ver histórico de execuções");
+    expect(tela).toContain("O texto da solicitação e a resposta não são guardados aqui");
+    expect(tela).toContain("aoSobreporNo");
+    expect(tela).not.toContain("Como a IA processa uma solicitação");
     expect(tela).not.toContain("Visão em tempo real");
     expect(tela).not.toContain("Fluxo em tempo real");
     expect(tela).not.toContain("AO VIVO");

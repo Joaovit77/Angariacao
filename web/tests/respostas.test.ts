@@ -30,6 +30,21 @@ function resposta(id: string, data: string, texto = "oi", lida?: boolean) {
   return { id: `wa:${id}`, texto, data, ...(lida === undefined ? {} : { lida }) };
 }
 
+function enviada(
+  id: string,
+  data: string,
+  texto = "respondi",
+  origem: "webhook-evolution" | "agendamento" = "webhook-evolution",
+) {
+  return {
+    id: `wa-enviada:${id}`,
+    texto: `Mensagem enviada pelo WhatsApp: ${texto}`,
+    data,
+    direcao: "enviada" as const,
+    origem,
+  };
+}
+
 describe("respostasDoImovel", () => {
   it("pega só as notas do webhook, em ordem cronológica crescente", () => {
     const i = imovel({
@@ -103,6 +118,29 @@ describe("caixaDeRespostas — a regra dupla de pendente", () => {
     const i = imovel({
       notas: [resposta("a", "2026-07-28T10:00")],
       tentativas: [{ id: "t1", data: "2026-07-27T09:00", resultado: "sem-resposta" }],
+    });
+    expect(caixaDeRespostas([i], HOJE)[0].pendente).toBe(true);
+  });
+
+  it("envio externo posterior trata só as mensagens que vieram antes dele", () => {
+    const i = imovel({
+      notas: [
+        resposta("a", "2026-07-28T10:00", "primeira resposta"),
+        enviada("b", "2026-07-28T10:05", "resposta pelo celular"),
+        resposta("c", "2026-07-28T10:10", "nova mensagem"),
+      ],
+    });
+    const [linha] = caixaDeRespostas([i], HOJE);
+    expect(linha.mensagens.map((mensagem) => mensagem.tratada)).toEqual([true, false]);
+    expect(linha.naoTratadas).toBe(1);
+  });
+
+  it("mensagem agendada não finge que o corretor leu uma resposta anterior", () => {
+    const i = imovel({
+      notas: [
+        resposta("a", "2026-07-28T10:00", "preciso falar com você"),
+        enviada("b", "2026-07-28T10:05", "lembrete automático", "agendamento"),
+      ],
     });
     expect(caixaDeRespostas([i], HOJE)[0].pendente).toBe(true);
   });

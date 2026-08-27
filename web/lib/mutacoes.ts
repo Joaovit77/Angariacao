@@ -439,9 +439,11 @@ async function marcarNotasLidasNoBanco(
  * Marca como lidas as respostas do proprietário que ainda estão pendentes na
  * Caixa de respostas (calculo/respostas.ts).
  *
- * É a saída MANUAL da caixa, para a mensagem que não vai gerar ação nenhuma
- * ("obrigado", "combinado"). Quem age pelo painel não passa por aqui: a
- * tentativa ou a mudança de status já tiram a resposta da caixa sozinhas.
+ * É a saída persistida da caixa para o que foi realmente visto. A Central de
+ * Mensagens chama silenciosamente quando a conversa fica visível; a tela
+ * antiga também oferece a ação manual para "obrigado" e "combinado". Ações
+ * deriváveis — tentativa, mudança de status ou resposta externa — dispensam
+ * essa gravação.
  *
  * A RPC bloqueia a linha e transforma o JSONB corrente dentro do banco. Ela
  * nunca recebe as notas do store: assim, uma saída registrada pela rota ou uma

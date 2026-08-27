@@ -531,10 +531,12 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   A view é uma central de mensagens: lista e busca conversas por imóvel, mostra o histórico
   bidirecional no centro e o contexto textual do proprietário, imóvel, negociação e próxima ação à
   direita. No tablet o contexto vira painel recolhível; no celular a lista abre primeiro e a conversa
-  ocupa a tela após a seleção. O compositor envia texto pela mesma rota protegida da Evolution,
-  mantém respostas salvas e o rascunho da IA sob revisão humana e marca as respostas como lidas só
-  depois do envio confirmado. Notas internas ficam fora enquanto não houver domínio e persistência
-  próprios; anexos sem URL persistida continuam como marcadores honestos com saída para o WhatsApp.
+  ocupa a tela após a seleção. Uma conversa é marcada como lida quando fica realmente visível — ao
+  selecioná-la no celular ou ao aparecer no painel central do desktop. O compositor envia texto pela
+  mesma rota protegida da Evolution, mantém respostas salvas e o rascunho da IA sob revisão humana e
+  também marca as respostas como lidas só depois do envio confirmado. Notas internas ficam fora
+  enquanto não houver domínio e persistência próprios; anexos sem URL persistida continuam como
+  marcadores honestos com saída para o WhatsApp.
   Os filtros operacionais são calculados por imóvel e podem ser combinados com a busca: **Todas**,
   **Em andamento** e **Não respondidas** são mutuamente exclusivos; **Não lidas** e **Agendadas**
   são refinamentos independentes. Em andamento exige negociação não terminal e ao menos uma mensagem
@@ -572,8 +574,9 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   curtas seguidas, e uma linha por mensagem faria um proprietário empurrar todos os outros da tela
   (mesmo motivo do "uma mensagem por PROPRIETÁRIO" no follow-up).
   **"Pendente" tem regra DUPLA, e nenhuma metade funciona sozinha.** Sai da caixa por **ação** —
-  tentativa registrada ou status mudado depois da mensagem, então quem trabalha pelo painel nunca
-  marca nada, igual ao `aguardandoResultado` que morre na confirmação — **ou** pelo flag `lida`
+  tentativa registrada, status mudado ou saída externa confirmada pelo webhook depois da resposta,
+  então quem trabalha pelo painel não precisa marcar manualmente, igual ao `aguardandoResultado` que
+  morre na confirmação — **ou** pelo flag `lida`
   (`NotaImovel.lida`, jsonb, sem migração). O flag existe porque "obrigado" e "combinado" não vão
   gerar tentativa nem mudar status nunca: só com a regra derivada essas mensagens ficariam
   pendentes para sempre, a caixa encheria de ruído e o corretor pararia de abri-la — que é
@@ -1637,27 +1640,36 @@ Angariado, Publicado e Locado, texto e card nascem do mesmo resultado determiní
 é a mesma, reconhece a continuidade; se mudou, deixa a troca explícita. Essa camada melhora a
 redação, mas nunca substitui a ferramenta nem a consulta ao banco.
 
-#### `Cérebro da IA` — explicação visual para todos os usuários
+#### `Cérebro da IA` — caminho operacional para todos os usuários
 
-A página `/cerebro-ia` mostra, em linguagem de produto, como a IA interpreta contexto, consulta os
-dados permitidos, aplica protocolos e valida a resposta. Ela não expõe logs operacionais ou detalhes
-internos e não concede acesso à carteira: a fronteira continua sendo a sessão e a RLS das consultas
-reais. O resumo lateral deriva apenas contagens do estado user-scoped já
-carregado na sessão: imóveis visíveis e protocolos não arquivados. Não consulta automaticamente o
-estado do WhatsApp, porque essa rota também participa da reconexão, nem apresenta disponibilidade de
-ferramentas ou validações sem fonte própria.
+A página `/cerebro-ia` mantém uma visão geral de como a IA interpreta contexto, consulta dados
+permitidos, aplica protocolos, valida e responde. Ao selecionar uma execução real, o mesmo mapa
+destaca somente os núcleos observados, numera a sequência e sincroniza os nós com um painel de etapas
+em linguagem de produto. Consultas, processamento, regras, validações, ações e resultados são
+diferenciados; uma ação preparada para confirmação não aparece como alteração já executada. A página
+não mostra chain-of-thought, prompt ou texto de resposta e não concede acesso à carteira: a fronteira
+continua sendo a sessão e a RLS das consultas reais.
 
-O card de atividade consulta `/api/ia/atividades` com a sessão atual. A rota deriva a identidade por
-`auth.getUser()`, usa a service role somente no servidor e filtra `ia_uso` explicitamente pelo
-`user_id` autenticado. A resposta pública contém apenas tipo traduzido para linguagem de produto,
-fluxo resumido e horário; modelo, tokens, custo, prompt, resposta e dados pessoais nunca saem da
-rota. Etapas técnicas próximas de uma mesma operação são consolidadas em uma atividade para que um
-rascunho validado, por exemplo, não apareça como várias interações. O histórico é carregado ao abrir
-a página e pode ser atualizado manualmente, sem promessa de tempo real.
+O resumo de fontes disponíveis deriva apenas contagens do estado user-scoped já carregado na sessão:
+imóveis visíveis e protocolos não arquivados. Não consulta automaticamente o estado do WhatsApp,
+porque essa rota também participa da reconexão, nem apresenta disponibilidade de ferramentas ou
+validações sem fonte própria.
 
-Os metadados seguros gravados por atendimento e Assistente não são uma fonte de conhecimento para o
-modelo nem um tracing completo. `log_eventos` continua operacional e administrativo; o Cérebro da IA
-não o expõe e usa somente a projeção sanitizada do registro contábil de chamadas reais.
+O painel de execuções consulta `/api/ia/atividades` com a sessão atual. A rota deriva a identidade por
+`auth.getUser()`, usa a service role somente no servidor e filtra explicitamente por `user_id` tanto
+`ia_uso` quanto os eventos da categoria `ia` em `log_eventos`. O primeiro fornece a existência, o
+tipo e o horário de todas as chamadas reais; os eventos estruturados do Assistente e do atendimento
+acrescentam fontes, ferramentas, contagens de protocolos, validações, resultado e estados de ação.
+`detalhe` é interpretado e descartado no servidor: IDs de entidades e protocolos, nomes técnicos de
+validações, modelo, tokens, custo, prompt, resposta e dados pessoais nunca saem da rota. Quando uma
+chamada não possui metadados estruturados, a interface declara que o percurso detalhado está
+indisponível e destaca somente solicitação, operação e conclusão confirmáveis.
+
+Etapas técnicas próximas de uma mesma operação são consolidadas para que um rascunho validado, por
+exemplo, não apareça como várias execuções. O histórico é carregado ao abrir a página e pode ser
+atualizado manualmente, sem promessa de tempo real. `log_eventos` continua sendo uma tabela
+operacional e administrativa; a página não a expõe, apenas consome no servidor a projeção sanitizada
+dos eventos de execução da própria conta.
 
 Como a explicação não depende de carteira, a rota e seu item de menu também ficam disponíveis para
 o administrador com `opera_carteira = false`. Essa exceção não libera as demais telas do corretor.
