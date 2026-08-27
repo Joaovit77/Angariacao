@@ -1571,8 +1571,10 @@ ali para quem quiser um modelo.
 
 O Assistente é uma superfície global do painel para consultar carteira, agenda, mensagens agendadas,
 follow-ups, estagnação, Foco do dia, métricas e marcos históricos. Consultas continuam somente
-leitura. A primeira ação de escrita liberada é **agendar visita**; mensagens, mudanças de status,
-exclusões e demais efeitos sensíveis não são executados diretamente. Pedidos explícitos de
+leitura. As ações de escrita liberadas na Agenda são **agendar visita** e **criar compromisso**;
+mensagens, mudanças de status, exclusões e demais efeitos sensíveis não são executados diretamente.
+O compromisso genérico exige título, tipo e data declarados pelo usuário; horário, observação e
+vínculo com imóvel são opcionais e nunca são inventados. Pedidos explícitos de
 **follow-up em lote** consultam a fila user-scoped e abrem a revisão já existente do Angario, que
 mantém seleção, textos por origem, teto diário e confirmação final; abrir essa revisão não envia
 nenhuma mensagem. A rota exige sessão válida e permissão de IA; consultas e operações usam o token
@@ -1587,11 +1589,13 @@ aplica perfil e protocolos e abre o WhatsApp com texto editável. O rascunho nun
 envio; áudio, imagem ou documento sem texto suficiente exigem consulta manual.
 
 Escrita segue uma regra única: **a IA propõe, o backend valida, o usuário confirma e o código
-executa**. Ao preparar uma visita, uma função tipada resolve o imóvel da própria carteira, valida
-data/hora, gera previamente o ID do compromisso e grava o payload em `assistente_acoes` por 15
+executa**. Ao preparar uma visita ou compromisso, uma função tipada valida os campos e o eventual
+imóvel da própria carteira, gera previamente o ID da Agenda e grava o payload em
+`assistente_acoes` por 15
 minutos. A tabela tem RLS e nenhuma política/grant de escrita para o browser; somente as funções
-fechadas podem preparar, confirmar ou cancelar. A confirmação recebe apenas o ID da ação, bloqueia
-a linha com `FOR UPDATE` e insere na Agenda exatamente os campos congelados. A mesma transação marca
+fechadas podem preparar, confirmar ou cancelar. A confirmação recebe apenas o ID da ação e da
+sessão atual, bloqueia a linha com `FOR UPDATE` e insere na Agenda exatamente os campos congelados.
+A mesma transação marca
 sucesso, impedindo duplo clique, retry ou refresh de criar duplicata. Ações substituídas, canceladas,
 expiradas ou concluídas não voltam a executar. Depois da criação local, o espelhamento existente do
 Google Agenda é acionado como conveniência, sem transformar falha externa em rollback do compromisso.
@@ -1631,7 +1635,9 @@ entidade. O backend reconsulta o objeto; nenhum dado do card é aceito como verd
 enviados com limites de tamanho. Resultados estruturados anteriores são compactados só para resolver
 referências como “desses”, “dele” e “o último”; fatos atuais são sempre reconsultados.
 Previews anteriores também entram no histórico apenas como referência estruturada compacta. Se um
-parâmetro muda, a preparação nova cancela a anterior da mesma sessão e exige outro clique no card.
+parâmetro muda, a preparação nova cancela a anterior da mesma sessão e exige nova confirmação. A
+confirmação pode ocorrer no card ou por uma frase completa de intenção inequívoca reconhecida por
+regras determinísticas; texto ambíguo nunca executa a ação.
 
 A continuidade multi-turno compara ID (ou código canônico como fallback) do resultado singular novo
 com a entidade visual ou com o único card de imóvel da resposta imediatamente anterior. Não procura

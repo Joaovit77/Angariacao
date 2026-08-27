@@ -177,6 +177,12 @@ const APRESENTACOES: Record<string, ApresentacaoAtividade> = {
     interpretacao: "Preparar ou executar o agendamento conforme a confirmação do usuário.",
     icone: "atendimento",
   },
+  criar_compromisso: {
+    titulo: "Compromisso na Agenda",
+    pedido: "Foi solicitada a criação de um compromisso na Agenda.",
+    interpretacao: "Preparar ou criar o compromisso conforme a confirmação do usuário.",
+    icone: "atendimento",
+  },
 };
 
 const APRESENTACAO_GENERICA: ApresentacaoAtividade = {
@@ -198,6 +204,7 @@ const EVENTOS_EXECUCAO = new Set([
 
 const FERRAMENTAS_DE_ACAO = new Set([
   "preparar_agendamento_visita",
+  "preparar_criacao_compromisso",
   "abrir_revisao_followup_lote",
   "preparar_rascunho_resposta",
 ]);
@@ -224,7 +231,7 @@ const ROTULOS_FONTES: Record<string, { titulo: string; no: NoExecucaoIa }> = {
   imoveis: { titulo: "Consultou dados do imóvel", no: "imoveis" },
   "notas-whatsapp": { titulo: "Consultou a conversa do WhatsApp", no: "whatsapp" },
   user_config: { titulo: "Consultou preferências de comunicação", no: "contexto" },
-  agenda: { titulo: "Consultou a agenda", no: "contexto" },
+  agenda: { titulo: "Preparou operação na Agenda", no: "contexto" },
   assistente_acoes: { titulo: "Consultou a ação preparada", no: "ferramentas" },
 };
 
@@ -333,13 +340,21 @@ function etapaDeFonte(etapas: EtapaAtividadeIa[], fonte: string): void {
   }
   const dados = ROTULOS_FONTES[fonte];
   if (!dados) return;
-  etapa(etapas, dados.no, fonte === "protocolos" ? "regra" : "consulta", dados.titulo, "Fonte consultada nesta execução.");
+  etapa(
+    etapas,
+    dados.no,
+    fonte === "protocolos" ? "regra" : fonte === "agenda" ? "acao" : "consulta",
+    dados.titulo,
+    fonte === "agenda" ? "A Agenda foi identificada como destino da operação." : "Fonte consultada nesta execução.",
+  );
 }
 
 function etapaDeFerramenta(etapas: EtapaAtividadeIa[], ferramenta: string): void {
   if (FERRAMENTAS_DE_ACAO.has(ferramenta)) {
     const titulo = ferramenta === "preparar_agendamento_visita"
-      ? "Preparou um agendamento"
+      ? "Preparou um agendamento de visita"
+      : ferramenta === "preparar_criacao_compromisso"
+        ? "Preparou um compromisso"
       : ferramenta === "abrir_revisao_followup_lote"
         ? "Preparou a revisão de follow-ups"
         : "Preparou um rascunho para revisão";
@@ -427,9 +442,13 @@ function atividadeDoEvento(linha: LinhaEventoExecucaoIa): AtividadeIa | null {
   }
 
   const titulo = linha.evento === "ia-assistente-acao-preparada"
-    ? "Visita preparada para confirmação"
+    ? metadados.operacao === "criar_compromisso"
+      ? "Compromisso preparado para confirmação"
+      : "Visita preparada para confirmação"
     : linha.evento === "ia-assistente-acao-executada"
-      ? "Visita agendada pelo Assistente"
+      ? metadados.operacao === "criar_compromisso"
+        ? "Compromisso criado pelo Assistente"
+        : "Visita agendada pelo Assistente"
       : linha.evento === "ia-assistente-acao-cancelada"
         ? "Ação do Assistente cancelada"
         : linha.evento === "ia-assistente-acao-bloqueada"
