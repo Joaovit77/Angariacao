@@ -1587,9 +1587,13 @@ Arquitetura:
   prompt.
 - `lib/servidor/assistente/orquestrador.ts`: OpenAI Responses API com tool calling sequencial, até
   quatro rodadas, `store: false`, identificador de segurança derivado por hash e registro de custo.
+  Antes da geração, relê pelo cliente do chamador até 40 protocolos comerciais ativos, filtrados
+  explicitamente por usuário. O modelo recebe apenas IDs/títulos candidatos e pode selecionar zero
+  ou até cinco por argumentos estruturados; o backend valida os IDs e só então devolve o conteúdo
+  real à geração. Protocolos arquivados e regras de conduta não entram nesse catálogo.
   Ao concluir, registra no log existente somente metadados seguros: nomes das ferramentas realmente
-  chamadas, IDs de entidades retornadas, fontes e validações aplicadas; não registra a pergunta nem
-  a resposta.
+  chamadas, IDs de protocolos considerados/aplicados e de entidades retornadas, fontes e validações
+  aplicadas; não registra a pergunta, o conteúdo do protocolo nem a resposta.
   O modelo padrão é `gpt-5.4-mini`; a ausência de versão no banco ainda respeita um
   `OPENAI_ASSISTENTE_MODEL` válido. Com versão publicada, o Centro de IA é a fonte ativa.
 

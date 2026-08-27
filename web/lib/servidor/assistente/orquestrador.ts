@@ -16,6 +16,12 @@ import { carregarConfiguracaoIa } from "@/lib/servidor/ia/configuracao";
 import { metadadosExecucaoIa } from "@/lib/ia/observabilidade";
 import { instrucoesDoAssistente } from "./conhecimento";
 import { DEFINICOES_FERRAMENTAS, executarFerramenta } from "./ferramentas";
+import {
+  carregarCatalogoProtocolosAssistente,
+  definicaoFerramentaProtocolosAssistente,
+  FERRAMENTA_PROTOCOLOS_COMERCIAIS,
+  protocolosSelecionadosParaAssistente,
+} from "./protocolos";
 
 export const MODELO_ASSISTENTE_PADRAO = "gpt-5.4-mini";
 const MAX_HISTORICO = 12;
@@ -92,7 +98,10 @@ export function prepararResultadoFerramentaParaModelo(
 }
 
 export async function responderComAssistente(pedido: PedidoAssistente, supabase: SupabaseClient, userId: string): Promise<{ mensagem: MensagemAssistente; modelo: string }> {
-  const configuracaoIa = await carregarConfiguracaoIa();
+  const [configuracaoIa, catalogoProtocolos] = await Promise.all([
+    carregarConfiguracaoIa(),
+    carregarCatalogoProtocolosAssistente(supabase, userId),
+  ]);
   const modelo = configuracaoIa.assistente.modelo;
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const entrada: ResponseInputItem[] = pedido.historico.map((m) => ({
@@ -102,12 +111,14 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
   entrada.push({ role: "user", content: pedido.mensagem });
   const blocos: BlocoAssistente[] = [];
   const ferramentasChamadas: string[] = [];
+  const protocolosAplicados: string[] = [];
   let continuidadeResposta: ContinuidadeEntidade | null = null;
+  const ferramentaProtocolos = definicaoFerramentaProtocolosAssistente(catalogoProtocolos.protocolos);
   const parametros = () => ({
     model: modelo,
-    instructions: instrucoesDoAssistente(pedido.contexto),
+    instructions: instrucoesDoAssistente(pedido.contexto, catalogoProtocolos.protocolos),
     input: entrada,
-    tools: [...DEFINICOES_FERRAMENTAS],
+    tools: [...DEFINICOES_FERRAMENTAS, ...(ferramentaProtocolos ? [ferramentaProtocolos] : [])],
     tool_choice: "auto" as const,
     parallel_tool_calls: false,
     max_output_tokens: 2500,
@@ -126,7 +137,13 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
       ferramentasChamadas.push(chamada.name);
       let args: Record<string, unknown> = {};
       try { args = JSON.parse(chamada.arguments) as Record<string, unknown>; } catch { /* validacao estrita ainda pode falhar */ }
-      const resultado = await executarFerramenta(chamada.name, args, supabase, userId, pedido.contexto, pedido.mensagem, pedido.historico);
+      const resultado = chamada.name === FERRAMENTA_PROTOCOLOS_COMERCIAIS
+        ? (() => {
+            const selecionados = protocolosSelecionadosParaAssistente(args, catalogoProtocolos.protocolos);
+            protocolosAplicados.push(...selecionados.map((protocolo) => protocolo.id));
+            return { dados: { protocolos: selecionados }, bloco: undefined };
+          })()
+        : await executarFerramenta(chamada.name, args, supabase, userId, pedido.contexto, pedido.mensagem, pedido.historico);
       if (resultado.bloco?.itens.length) blocos.push(resultado.bloco);
       const preparado = prepararResultadoFerramentaParaModelo(
         resultado.dados,
@@ -151,6 +168,8 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
     evento: "ia-assistente-respondido",
     detalhe: JSON.stringify(metadadosExecucaoIa({
       operacao: "assistente-chat",
+      protocolosConsiderados: catalogoProtocolos.protocolos.map((protocolo) => protocolo.id),
+      protocolosAplicados,
       ferramentasChamadas,
       entidadesUtilizadas: [
         pedido.contexto.entidade?.id,
@@ -160,11 +179,18 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
             : [],
         ),
       ],
-      fontesDeDados: ferramentasChamadas.map((nome) => `ferramenta:${nome}`),
+      fontesDeDados: [
+        ...(catalogoProtocolos.fonteDisponivel ? ["protocolos"] : []),
+        ...ferramentasChamadas
+          .filter((nome) => nome !== FERRAMENTA_PROTOCOLOS_COMERCIAIS)
+          .map((nome) => `ferramenta:${nome}`),
+      ],
       validacoesAplicadas: [
         "normalizacao-do-pedido",
         "limites-do-historico",
         "sanitizacao-da-saida",
+        ...(catalogoProtocolos.fonteDisponivel ? ["catalogo-protocolos-user-scoped"] : []),
+        ...(protocolosAplicados.length ? ["ids-protocolos-validados"] : []),
         ...(continuidadeResposta ? ["continuidade-estruturada"] : []),
       ],
       resultado: "respondido",
