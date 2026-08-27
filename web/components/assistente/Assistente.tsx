@@ -219,7 +219,7 @@ export default function Assistente() {
               <span className="assistente-alca" aria-hidden="true">⠿</span>
               <span>
                 <strong>Assistente</strong>
-                <small>Somente leitura · {contexto.pagina}</small>
+                <small>Leitura + ações com confirmação · {contexto.pagina}</small>
               </span>
             </div>
             <div>

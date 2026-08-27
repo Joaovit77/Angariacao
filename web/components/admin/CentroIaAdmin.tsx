@@ -24,7 +24,7 @@ const ROTAS: { chave: keyof Pick<ConfiguracaoIa, "operacoes" | "classificacao" |
   { chave: "classificacao", titulo: "Classificação do WhatsApp", descricao: "Interpreta cada resposta recebida e sugere desfecho.", sugestao: "Luna · baixo volume de saída" },
   { chave: "atendimento", titulo: "Sugestão de mensagem", descricao: "Decide, escreve e valida o rascunho da aba Mensagens.", sugestao: "Terra · equilíbrio de qualidade" },
   { chave: "operacoes", titulo: "Operações do painel", descricao: "Análises, anúncios, roteiros, mapa e resumo do dia.", sugestao: "Terra · raciocínio low" },
-  { chave: "assistente", titulo: "Assistente global", descricao: "Consulta a carteira com ferramentas somente de leitura.", sugestao: "Terra · Responses API" },
+  { chave: "assistente", titulo: "Assistente global", descricao: "Consulta a carteira e prepara ações que exigem confirmação.", sugestao: "Terra · Responses API" },
 ];
 
 const ARQUITETURA = [

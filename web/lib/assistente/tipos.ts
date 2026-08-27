@@ -1,5 +1,37 @@
 export type PapelAssistente = "usuario" | "assistente";
 
+export type EstadoAcaoAssistente =
+  | "ready_for_confirmation"
+  | "succeeded"
+  | "cancelled"
+  | "expired"
+  | "failed";
+
+export interface AcaoAgendarVisitaAssistente {
+  id: string;
+  tipo: "agendar_visita";
+  estado: EstadoAcaoAssistente;
+  expiraEm: string;
+  operacao: "Agendar visita";
+  impacto: string;
+  entidade: {
+    imovelId: string;
+    codigo: string;
+    endereco: string;
+    responsavel: string;
+  };
+  dados: {
+    data: string;
+    hora: string;
+  };
+  resultado?: {
+    agendaId: string;
+  };
+  erro?: string;
+}
+
+export type AcaoAssistente = AcaoAgendarVisitaAssistente;
+
 export interface ContextoEntidade {
   tipo: "imovel" | "agenda";
   id: string;
@@ -57,6 +89,7 @@ export interface MensagemAssistente {
   papel: PapelAssistente;
   texto: string;
   blocos?: BlocoAssistente[];
+  acao?: AcaoAssistente;
 }
 
 export type ResultadoHistoricoAssistente =
@@ -76,12 +109,37 @@ export interface ItemHistoricoAssistente {
   papel: PapelAssistente;
   texto: string;
   resultados?: ResultadoHistoricoAssistente[];
+  acao?: Pick<AcaoAgendarVisitaAssistente, "id" | "tipo" | "estado" | "entidade" | "dados">;
 }
 
 export interface PedidoAssistente {
   mensagem: string;
   contexto: ContextoAssistente;
   historico: ItemHistoricoAssistente[];
+  /** Identifica apenas a conversa aberta neste navegador. Serve para
+      substituir previews anteriores sem criar memória permanente. */
+  sessaoId?: string;
+}
+
+export interface PedidoPrepararAcaoAssistente {
+  tipo: "preparar_acao";
+  acao: "agendar_visita";
+  sessaoId: string;
+  parametros: {
+    imovelId: string;
+    data: string;
+    hora: string;
+  };
+}
+
+export interface PedidoConfirmarAcaoAssistente {
+  tipo: "confirmar_acao";
+  acaoId: string;
+}
+
+export interface PedidoCancelarAcaoAssistente {
+  tipo: "cancelar_acao";
+  acaoId: string;
 }
 
 export type RespostaAssistente =

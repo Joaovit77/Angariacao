@@ -3,6 +3,7 @@
 import { useAppStore } from "@/lib/store";
 import { useAssistenteFlutuanteAtivo } from "@/lib/assistente/preferenciaFlutuante";
 import ConversaAssistente from "./ConversaAssistente";
+import AcoesRapidasAssistente from "./AcoesRapidasAssistente";
 import { useEstadoAssistente } from "./AssistenteProvider";
 import styles from "./Assistente.module.css";
 
@@ -16,7 +17,7 @@ export default function AssistenteView() {
       <div className="page-head">
         <div>
           <h1 className="page-title">Assistente</h1>
-          <p className="page-sub">Consulte sua operação com os mesmos dados e recursos do atalho flutuante</p>
+          <p className="page-sub">Consulte sua operação e prepare ações com confirmação explícita</p>
         </div>
         {permitido && (
           <button type="button" className="btn btn-ghost btn-sm" onClick={limparConversa}>
@@ -31,46 +32,60 @@ export default function AssistenteView() {
           <p>Esta conta não tem permissão para usar os recursos de IA.</p>
         </section>
       ) : (
-        <div className={styles.paginaLayout}>
-          <section className={styles.paginaPainel} aria-label="Conversa com o Assistente">
-            <header className={styles.paginaCabecalho}>
-              <span className={styles.paginaMarca} aria-hidden="true">✦</span>
-              <span>
-                <strong>Assistente</strong>
-                <small>Somente leitura</small>
-              </span>
-            </header>
-            <ConversaAssistente />
-          </section>
+        <>
+          <p className={styles.avisoAcoes}>ⓘ O Assistente pode preparar ações operacionais, mas sempre pede confirmação antes de executar alterações.</p>
+          <div className={styles.paginaLayout}>
+            <section className={styles.paginaPainel} aria-label="Conversa com o Assistente">
+              <header className={styles.paginaCabecalho}>
+                <span className={styles.paginaMarca} aria-hidden="true">✦</span>
+                <span>
+                  <strong>Assistente</strong>
+                  <small>Leitura + ações com confirmação</small>
+                </span>
+              </header>
+              <ConversaAssistente />
+            </section>
 
-          <aside className={styles.preferencia} aria-labelledby="assistente-flutuante-titulo">
-            <span className={styles.preferenciaRotulo}>Preferência da interface</span>
-            <h2 id="assistente-flutuante-titulo">Assistente flutuante</h2>
-            <p>
-              Escolha se o atalho móvel deve aparecer nas outras telas do painel.
-              Esta opção não desativa o Assistente nem os demais recursos de IA.
-            </p>
-            <div className={styles.preferenciaOpcoes} role="group" aria-label="Exibição do Assistente flutuante">
-              <button
-                type="button"
-                className={flutuanteAtivo ? styles.preferenciaAtiva : undefined}
-                aria-pressed={flutuanteAtivo}
-                onClick={() => definirFlutuanteAtivo(true)}
-              >
-                Ativado
-              </button>
-              <button
-                type="button"
-                className={!flutuanteAtivo ? styles.preferenciaAtiva : undefined}
-                aria-pressed={!flutuanteAtivo}
-                onClick={() => definirFlutuanteAtivo(false)}
-              >
-                Desativado
-              </button>
+            <div className={styles.paginaLateral}>
+              <AcoesRapidasAssistente modo="lateral" />
+              <aside className={styles.comoFunciona} aria-labelledby="como-funciona-assistente">
+                <h2 id="como-funciona-assistente">Como funciona</h2>
+                <ol>
+                  <li><span>1</span><p><strong>A IA entende o pedido</strong><small>Você fala em linguagem natural ou usa o menu.</small></p></li>
+                  <li><span>2</span><p><strong>Monta a ação com segurança</strong><small>O backend valida e congela os dados.</small></p></li>
+                  <li><span>3</span><p><strong>Você confirma antes de executar</strong><small>Nada é alterado sem sua aprovação.</small></p></li>
+                </ol>
+              </aside>
+              <aside className={styles.preferencia} aria-labelledby="assistente-flutuante-titulo">
+                <span className={styles.preferenciaRotulo}>Preferência da interface</span>
+                <h2 id="assistente-flutuante-titulo">Assistente flutuante</h2>
+                <p>
+                  Escolha se o atalho móvel deve aparecer nas outras telas do painel.
+                  Esta opção não desativa o Assistente nem os demais recursos de IA.
+                </p>
+                <div className={styles.preferenciaOpcoes} role="group" aria-label="Exibição do Assistente flutuante">
+                  <button
+                    type="button"
+                    className={flutuanteAtivo ? styles.preferenciaAtiva : undefined}
+                    aria-pressed={flutuanteAtivo}
+                    onClick={() => definirFlutuanteAtivo(true)}
+                  >
+                    Ativado
+                  </button>
+                  <button
+                    type="button"
+                    className={!flutuanteAtivo ? styles.preferenciaAtiva : undefined}
+                    aria-pressed={!flutuanteAtivo}
+                    onClick={() => definirFlutuanteAtivo(false)}
+                  >
+                    Desativado
+                  </button>
+                </div>
+                <small>A escolha fica salva neste navegador.</small>
+              </aside>
             </div>
-            <small>A escolha fica salva neste navegador.</small>
-          </aside>
-        </div>
+          </div>
+        </>
       )}
     </>
   );

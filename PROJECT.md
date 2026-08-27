@@ -1564,12 +1564,23 @@ ali para quem quiser um modelo.
   comerciais. Protocolos não são saudações nem preferências pessoais de escrita; estas pertencem ao
   perfil de comunicação.
 
-#### `api/assistente` — Assistente geral somente leitura
+#### `api/assistente` — consultas e ações com confirmação
 
 O Assistente é uma superfície global do painel para consultar carteira, agenda, mensagens agendadas,
-follow-ups, estagnação, Foco do dia, métricas e marcos históricos. Ele é deliberadamente **somente
-leitura**: não cria, altera, envia nem exclui. A rota exige sessão válida e permissão de IA; consulta
-o Supabase com o token do chamador, portanto a RLS continua sendo a fronteira de dados.
+follow-ups, estagnação, Foco do dia, métricas e marcos históricos. Consultas continuam somente
+leitura. A primeira ação de escrita liberada é **agendar visita**; mensagens, mudanças de status,
+exclusões e demais efeitos sensíveis não são oferecidos. A rota exige sessão válida e permissão de
+IA; consultas e operações usam o token do chamador, preservando a identidade e o isolamento da RLS.
+
+Escrita segue uma regra única: **a IA propõe, o backend valida, o usuário confirma e o código
+executa**. Ao preparar uma visita, uma função tipada resolve o imóvel da própria carteira, valida
+data/hora, gera previamente o ID do compromisso e grava o payload em `assistente_acoes` por 15
+minutos. A tabela tem RLS e nenhuma política/grant de escrita para o browser; somente as funções
+fechadas podem preparar, confirmar ou cancelar. A confirmação recebe apenas o ID da ação, bloqueia
+a linha com `FOR UPDATE` e insere na Agenda exatamente os campos congelados. A mesma transação marca
+sucesso, impedindo duplo clique, retry ou refresh de criar duplicata. Ações substituídas, canceladas,
+expiradas ou concluídas não voltam a executar. Depois da criação local, o espelhamento existente do
+Google Agenda é acionado como conveniência, sem transformar falha externa em rollback do compromisso.
 
 A conversa pode ser usada tanto na página `/assistente`, acessível pela navegação, quanto no atalho
 flutuante. As duas superfícies consomem o mesmo estado de sessão e o mesmo cliente da API; não há um
@@ -1585,6 +1596,8 @@ Arquitetura:
 - `lib/servidor/assistente/ferramentas.ts`: ferramentas de leitura com argumentos estritos. Elas
   reutilizam motores reais para foco, follow-up, estagnação e métricas, em vez de duplicar regras no
   prompt.
+- `lib/servidor/assistente/acoes.ts`: contrato e adaptação da única ação liberada. Chat e menu guiado
+  convergem para a mesma preparação tipada; o modelo nunca recebe acesso genérico ao Supabase.
 - `lib/servidor/assistente/orquestrador.ts`: OpenAI Responses API com tool calling sequencial, até
   quatro rodadas, `store: false`, identificador de segurança derivado por hash e registro de custo.
   Antes da geração, relê pelo cliente do chamador até 40 protocolos comerciais ativos, filtrados
@@ -1601,6 +1614,8 @@ O cliente envia rota/página/superfície e, quando há drawer ou modal compatív
 entidade. O backend reconsulta o objeto; nenhum dado do card é aceito como verdade. Até 12 turnos são
 enviados com limites de tamanho. Resultados estruturados anteriores são compactados só para resolver
 referências como “desses”, “dele” e “o último”; fatos atuais são sempre reconsultados.
+Previews anteriores também entram no histórico apenas como referência estruturada compacta. Se um
+parâmetro muda, a preparação nova cancela a anterior da mesma sessão e exige outro clique no card.
 
 A continuidade multi-turno compara ID (ou código canônico como fallback) do resultado singular novo
 com a entidade visual ou com o único card de imóvel da resposta imediatamente anterior. Não procura

@@ -1,6 +1,8 @@
 "use client";
 
 import { type FormEvent, useEffect, useRef } from "react";
+import AcaoAssistenteCard from "./AcaoAssistenteCard";
+import AcoesRapidasAssistente from "./AcoesRapidasAssistente";
 import RespostaEstruturada from "./RespostaEstruturada";
 import TextoMarkdownSeguro from "./TextoMarkdownSeguro";
 import { useEstadoAssistente } from "./AssistenteProvider";
@@ -8,7 +10,16 @@ import { useContextoAssistenteAtual } from "./useContextoAssistenteAtual";
 import styles from "./Assistente.module.css";
 
 export default function ConversaAssistente() {
-  const { mensagens, texto, carregando, setTexto, enviar } = useEstadoAssistente();
+  const {
+    mensagens,
+    texto,
+    carregando,
+    processandoAcaoId,
+    setTexto,
+    enviar,
+    confirmarAcao,
+    cancelarAcao,
+  } = useEstadoAssistente();
   const { contexto } = useContextoAssistenteAtual();
   const fim = useRef<HTMLDivElement>(null);
 
@@ -33,6 +44,14 @@ export default function ConversaAssistente() {
               ? <TextoMarkdownSeguro texto={mensagem.texto} />
               : <p>{mensagem.texto}</p>}
             {mensagem.blocos && <RespostaEstruturada blocos={mensagem.blocos} />}
+            {mensagem.acao && (
+              <AcaoAssistenteCard
+                acao={mensagem.acao}
+                processando={processandoAcaoId === mensagem.acao.id}
+                aoConfirmar={() => void confirmarAcao(mensagem.id, mensagem.acao!.id)}
+                aoCancelar={() => void cancelarAcao(mensagem.id, mensagem.acao!.id)}
+              />
+            )}
           </article>
         ))}
         {carregando && (
@@ -42,6 +61,7 @@ export default function ConversaAssistente() {
         )}
         <div ref={fim} />
       </div>
+      <AcoesRapidasAssistente />
       <form className={styles.formulario} onSubmit={enviarFormulario}>
         <textarea
           value={texto}
@@ -52,7 +72,7 @@ export default function ConversaAssistente() {
               evento.currentTarget.form?.requestSubmit();
             }
           }}
-          placeholder="Pergunte sobre sua carteira…"
+          placeholder="Pergunte ou peça uma ação…"
           aria-label="Pergunta ao Assistente"
           rows={2}
           maxLength={4000}

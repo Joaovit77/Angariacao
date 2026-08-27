@@ -1,5 +1,11 @@
 import { getSupabase } from "@/lib/persistencia/supabase";
-import type { PedidoAssistente, RespostaAssistente } from "./tipos";
+import type {
+  PedidoAssistente,
+  PedidoCancelarAcaoAssistente,
+  PedidoConfirmarAcaoAssistente,
+  PedidoPrepararAcaoAssistente,
+  RespostaAssistente,
+} from "./tipos";
 
 export const TIMEOUT_ASSISTENTE_PADRAO_MS = 30_000;
 
@@ -15,8 +21,8 @@ function timeoutConfigurado(): number {
     : TIMEOUT_ASSISTENTE_PADRAO_MS;
 }
 
-export async function perguntarAoAssistente(
-  pedido: PedidoAssistente,
+async function chamarAssistente(
+  pedido: PedidoAssistente | PedidoPrepararAcaoAssistente | PedidoConfirmarAcaoAssistente | PedidoCancelarAcaoAssistente,
   opcoes: OpcoesPerguntaAssistente = {},
 ): Promise<RespostaAssistente> {
   const controller = new AbortController();
@@ -44,7 +50,7 @@ export async function perguntarAoAssistente(
     if (!resposta.ok) return { ok: false, erro: "O Assistente encontrou um erro interno. Tente novamente em instantes.", codigo: "falha_api" };
     return dados || { ok: false, erro: "O Assistente devolveu uma resposta inválida.", codigo: "resposta_invalida" };
   } catch (erro) {
-    if (expirou) return { ok: false, erro: "A consulta demorou mais que o esperado. Tente novamente.", codigo: "timeout" };
+    if (expirou) return { ok: false, erro: "A operação demorou mais que o esperado. Tente novamente.", codigo: "timeout" };
     if (controller.signal.aborted || (erro instanceof DOMException && erro.name === "AbortError")) {
       return { ok: false, erro: "Consulta cancelada.", codigo: "cancelado" };
     }
@@ -53,4 +59,32 @@ export async function perguntarAoAssistente(
     clearTimeout(timer);
     opcoes.signal?.removeEventListener("abort", cancelarExternamente);
   }
+}
+
+export function perguntarAoAssistente(
+  pedido: PedidoAssistente,
+  opcoes: OpcoesPerguntaAssistente = {},
+): Promise<RespostaAssistente> {
+  return chamarAssistente(pedido, opcoes);
+}
+
+export function prepararAcaoAssistente(
+  pedido: PedidoPrepararAcaoAssistente,
+  opcoes: OpcoesPerguntaAssistente = {},
+): Promise<RespostaAssistente> {
+  return chamarAssistente(pedido, opcoes);
+}
+
+export function confirmarAcaoDoAssistente(
+  acaoId: string,
+  opcoes: OpcoesPerguntaAssistente = {},
+): Promise<RespostaAssistente> {
+  return chamarAssistente({ tipo: "confirmar_acao", acaoId }, opcoes);
+}
+
+export function cancelarAcaoDoAssistente(
+  acaoId: string,
+  opcoes: OpcoesPerguntaAssistente = {},
+): Promise<RespostaAssistente> {
+  return chamarAssistente({ tipo: "cancelar_acao", acaoId }, opcoes);
 }

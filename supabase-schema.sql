@@ -801,6 +801,296 @@ create policy "select_own_ia" on ia_permissoes
   for select using (auth.uid() = user_id);
 
 -- ------------------------------------------------------------
+-- AÇÕES CONGELADAS DO ASSISTENTE
+--
+-- O modelo nunca escreve nesta tabela e o browser não recebe permissão de
+-- insert/update. A preparação e a confirmação passam por funções fechadas:
+-- a primeira monta um payload tipado; a segunda bloqueia a linha e executa
+-- exatamente esse payload. O mesmo id de agenda nasce no preview e na
+-- execução, tornando retry, duplo clique e refresh idempotentes.
+-- ------------------------------------------------------------
+create table if not exists assistente_acoes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  sessao_id uuid not null,
+  action_type text not null check (action_type in ('agendar_visita')),
+  status text not null default 'ready_for_confirmation'
+    check (status in ('ready_for_confirmation', 'succeeded', 'cancelled', 'expired', 'failed')),
+  payload jsonb not null,
+  result jsonb,
+  error_code text,
+  expires_at timestamptz not null,
+  executed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table assistente_acoes enable row level security;
+
+-- Ausência deliberada de políticas: nem mesmo o dono altera o payload pelo
+-- Data API. As funções abaixo descobrem o ator por auth.uid() e são a única
+-- porta autenticada para preparar, confirmar ou cancelar.
+create index if not exists assistente_acoes_usuario_sessao_idx
+  on assistente_acoes (user_id, sessao_id, created_at desc);
+create unique index if not exists assistente_acoes_pendente_sessao_idx
+  on assistente_acoes (user_id, sessao_id)
+  where status = 'ready_for_confirmation';
+
+create schema if not exists private;
+revoke all on schema private from public, anon, authenticated;
+
+create or replace function private.assistente_acao_json(p_acao public.assistente_acoes)
+returns jsonb
+language sql
+stable
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'id', p_acao.id,
+    'tipo', p_acao.action_type,
+    'estado', p_acao.status,
+    'expiraEm', p_acao.expires_at,
+    'operacao', 'Agendar visita',
+    'impacto', 'Será criado um compromisso real na agenda.',
+    'entidade', jsonb_build_object(
+      'imovelId', p_acao.payload->>'imovelId',
+      'codigo', p_acao.payload->>'codigo',
+      'endereco', p_acao.payload->>'endereco',
+      'responsavel', p_acao.payload->>'responsavel'
+    ),
+    'dados', jsonb_build_object(
+      'data', p_acao.payload->>'date',
+      'hora', p_acao.payload->>'hora'
+    ),
+    'resultado', case when p_acao.result is null then null else jsonb_build_object(
+      'agendaId', p_acao.result->>'agendaId'
+    ) end,
+    'erro', case p_acao.error_code
+      when 'imovel_indisponivel' then 'O imóvel não está mais disponível para esta ação.'
+      when 'acao_expirada' then 'A confirmação expirou. Prepare a visita novamente.'
+      else null
+    end
+  );
+$$;
+revoke all on function private.assistente_acao_json(public.assistente_acoes) from public, anon, authenticated;
+
+create or replace function preparar_acao_assistente_agendar_visita(
+  p_imovel_id uuid,
+  p_data date,
+  p_hora text,
+  p_sessao_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_imovel record;
+  v_acao public.assistente_acoes;
+  v_agenda_id uuid := gen_random_uuid();
+  v_endereco text;
+begin
+  if v_user is null then
+    return jsonb_build_object('ok', false, 'codigo', 'nao_autenticado', 'erro', 'Sessão inválida ou expirada.');
+  end if;
+  if not exists (
+    select 1 from public.ia_permissoes p
+     where p.user_id = v_user and p.liberado = true
+  ) then
+    return jsonb_build_object('ok', false, 'codigo', 'sem_permissao', 'erro', 'Sua conta não tem permissão para usar o Assistente.');
+  end if;
+  if p_data < (now() at time zone 'America/Sao_Paulo')::date then
+    return jsonb_build_object('ok', false, 'codigo', 'data_invalida', 'erro', 'A data da visita não pode estar no passado.');
+  end if;
+  if p_hora is null or p_hora !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then
+    return jsonb_build_object('ok', false, 'codigo', 'hora_invalida', 'erro', 'Informe um horário válido no formato HH:MM.');
+  end if;
+
+  -- Serializa preparações da mesma conversa. Sem isto, dois requests que
+  -- cheguem juntos poderiam cancelar o estado antigo e criar dois previews.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(v_user::text || ':' || p_sessao_id::text, 0)
+  );
+
+  select i.id, i.codigo, i.endereco, i.bairro, i.cidade, i.responsavel
+    into v_imovel
+    from public.imoveis i
+   where i.id = p_imovel_id and i.user_id = v_user;
+  if not found then
+    return jsonb_build_object('ok', false, 'codigo', 'imovel_nao_encontrado', 'erro', 'O imóvel não foi encontrado na sua carteira.');
+  end if;
+
+  v_endereco := concat_ws(', ',
+    nullif(trim(v_imovel.endereco), ''),
+    nullif(trim(v_imovel.bairro), ''),
+    nullif(trim(v_imovel.cidade), '')
+  );
+
+  update public.assistente_acoes
+     set status = 'cancelled', error_code = 'substituida', updated_at = now()
+   where user_id = v_user
+     and sessao_id = p_sessao_id
+     and status = 'ready_for_confirmation';
+
+  insert into public.assistente_acoes (
+    user_id, sessao_id, action_type, status, payload, expires_at
+  ) values (
+    v_user,
+    p_sessao_id,
+    'agendar_visita',
+    'ready_for_confirmation',
+    jsonb_build_object(
+      'agendaId', v_agenda_id,
+      'imovelId', v_imovel.id,
+      'codigo', coalesce(nullif(trim(v_imovel.codigo), ''), 'Sem código'),
+      'endereco', coalesce(nullif(v_endereco, ''), 'Endereço não informado'),
+      'responsavel', coalesce(nullif(trim(v_imovel.responsavel), ''), 'Não informado'),
+      'title', 'Visita ao imóvel ' || coalesce(nullif(trim(v_imovel.codigo), ''), 'sem código'),
+      'type', 'Visita',
+      'date', p_data::text,
+      'hora', p_hora,
+      'notes', 'Agendada pelo Assistente após confirmação explícita do usuário.',
+      'done', false,
+      'isVerificacaoDisponibilidade', false
+    ),
+    now() + interval '15 minutes'
+  ) returning * into v_acao;
+
+  return jsonb_build_object('ok', true, 'acao', private.assistente_acao_json(v_acao));
+end;
+$$;
+
+create or replace function confirmar_acao_assistente(p_acao_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_acao public.assistente_acoes;
+  v_imovel_id uuid;
+  v_agenda_id uuid;
+begin
+  if v_user is null then
+    return jsonb_build_object('ok', false, 'codigo', 'nao_autenticado', 'erro', 'Sessão inválida ou expirada.');
+  end if;
+  if not exists (
+    select 1 from public.ia_permissoes p
+     where p.user_id = v_user and p.liberado = true
+  ) then
+    return jsonb_build_object('ok', false, 'codigo', 'sem_permissao', 'erro', 'Sua conta não tem permissão para usar o Assistente.');
+  end if;
+
+  select * into v_acao
+    from public.assistente_acoes a
+   where a.id = p_acao_id and a.user_id = v_user
+   for update;
+  if not found then
+    return jsonb_build_object('ok', false, 'codigo', 'acao_nao_encontrada', 'erro', 'A ação não foi encontrada.');
+  end if;
+
+  if v_acao.status = 'succeeded' then
+    return jsonb_build_object('ok', true, 'repetida', true, 'acao', private.assistente_acao_json(v_acao));
+  end if;
+  if v_acao.status <> 'ready_for_confirmation' then
+    return jsonb_build_object('ok', true, 'acao', private.assistente_acao_json(v_acao));
+  end if;
+  if v_acao.expires_at <= now() then
+    update public.assistente_acoes
+       set status = 'expired', error_code = 'acao_expirada', updated_at = now()
+     where id = v_acao.id
+     returning * into v_acao;
+    return jsonb_build_object('ok', true, 'acao', private.assistente_acao_json(v_acao));
+  end if;
+
+  v_imovel_id := (v_acao.payload->>'imovelId')::uuid;
+  v_agenda_id := (v_acao.payload->>'agendaId')::uuid;
+  if not exists (
+    select 1 from public.imoveis i
+     where i.id = v_imovel_id and i.user_id = v_user
+  ) then
+    update public.assistente_acoes
+       set status = 'failed', error_code = 'imovel_indisponivel', updated_at = now()
+     where id = v_acao.id
+     returning * into v_acao;
+    return jsonb_build_object('ok', true, 'acao', private.assistente_acao_json(v_acao));
+  end if;
+
+  insert into public.agenda (
+    id, user_id, title, type, date, hora, imovel_id, notes, done,
+    is_verificacao_disponibilidade
+  ) values (
+    v_agenda_id,
+    v_user,
+    v_acao.payload->>'title',
+    v_acao.payload->>'type',
+    (v_acao.payload->>'date')::date,
+    v_acao.payload->>'hora',
+    v_imovel_id,
+    v_acao.payload->>'notes',
+    false,
+    false
+  );
+
+  update public.assistente_acoes
+     set status = 'succeeded',
+         result = jsonb_build_object('agendaId', v_agenda_id),
+         error_code = null,
+         executed_at = now(),
+         updated_at = now()
+   where id = v_acao.id
+   returning * into v_acao;
+
+  return jsonb_build_object('ok', true, 'acao', private.assistente_acao_json(v_acao));
+end;
+$$;
+
+create or replace function cancelar_acao_assistente(p_acao_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_acao public.assistente_acoes;
+begin
+  if v_user is null then
+    return jsonb_build_object('ok', false, 'codigo', 'nao_autenticado', 'erro', 'Sessão inválida ou expirada.');
+  end if;
+
+  select * into v_acao
+    from public.assistente_acoes a
+   where a.id = p_acao_id and a.user_id = v_user
+   for update;
+  if not found then
+    return jsonb_build_object('ok', false, 'codigo', 'acao_nao_encontrada', 'erro', 'A ação não foi encontrada.');
+  end if;
+
+  if v_acao.status = 'ready_for_confirmation' then
+    update public.assistente_acoes
+       set status = case when expires_at <= now() then 'expired' else 'cancelled' end,
+           error_code = case when expires_at <= now() then 'acao_expirada' else null end,
+           updated_at = now()
+     where id = v_acao.id
+     returning * into v_acao;
+  end if;
+
+  return jsonb_build_object('ok', true, 'acao', private.assistente_acao_json(v_acao));
+end;
+$$;
+
+revoke all on function preparar_acao_assistente_agendar_visita(uuid, date, text, uuid) from public, anon;
+revoke all on function confirmar_acao_assistente(uuid) from public, anon;
+revoke all on function cancelar_acao_assistente(uuid) from public, anon;
+grant execute on function preparar_acao_assistente_agendar_visita(uuid, date, text, uuid) to authenticated;
+grant execute on function confirmar_acao_assistente(uuid) to authenticated;
+grant execute on function cancelar_acao_assistente(uuid) to authenticated;
+
+-- ------------------------------------------------------------
 -- CONFIGURAÇÃO GLOBAL DA IA (versões imutáveis)
 --
 -- Cada alteração feita no Centro de IA do ADM cria uma linha nova. A
@@ -2305,7 +2595,7 @@ create index if not exists idx_central_anuncios_visualizados_user_data
 -- ------------------------------------------------------------
 revoke all on table
   imoveis, mensagens_agendadas, metas, agenda, abordagens, user_config,
-  ia_permissoes, whatsapp_instancias, google_contas, admins, ia_uso,
+  ia_permissoes, assistente_acoes, whatsapp_instancias, google_contas, admins, ia_uso,
   log_eventos, aceites_termos, protocolos, radar_buscas, radar_anuncios,
   central_anuncios_visualizados, avaliacoes_imoveis, comparaveis_mercado,
   observacoes_comparaveis_mercado
@@ -2331,7 +2621,7 @@ grant select on table observacoes_comparaveis_mercado to authenticated;
 -- TRUNCATE, REFERENCES ou TRIGGER, que o aplicativo não utiliza.
 grant select, insert, update, delete on table
   imoveis, mensagens_agendadas, metas, agenda, abordagens, user_config,
-  ia_permissoes, whatsapp_instancias, google_contas, admins, ia_uso,
+  ia_permissoes, assistente_acoes, whatsapp_instancias, google_contas, admins, ia_uso,
   log_eventos, aceites_termos, protocolos, radar_buscas, radar_anuncios,
   central_anuncios_visualizados
 to service_role;

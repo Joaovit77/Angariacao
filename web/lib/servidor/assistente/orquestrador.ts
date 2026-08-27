@@ -3,7 +3,7 @@ import OpenAI from "openai";
 import { toResponseInputItems } from "openai/lib/responses/ResponseInputItems";
 import type { ResponseInputItem } from "openai/resources/responses/responses";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { BlocoAssistente, ContextoAssistente, MensagemAssistente, PedidoAssistente } from "@/lib/assistente/tipos";
+import type { AcaoAssistente, BlocoAssistente, ContextoAssistente, MensagemAssistente, PedidoAssistente } from "@/lib/assistente/tipos";
 import { normalizarResultadosHistorico } from "@/lib/assistente/historico";
 import {
   compararEntidadeComResultadoAtual,
@@ -17,6 +17,11 @@ import { metadadosExecucaoIa } from "@/lib/ia/observabilidade";
 import { instrucoesDoAssistente } from "./conhecimento";
 import { DEFINICOES_FERRAMENTAS, executarFerramenta } from "./ferramentas";
 import {
+  DEFINICAO_FERRAMENTA_AGENDAR_VISITA,
+  executarPreparacaoAgendamentoVisita,
+  FERRAMENTA_PREPARAR_AGENDAMENTO_VISITA,
+} from "./acoes";
+import {
   carregarCatalogoProtocolosAssistente,
   definicaoFerramentaProtocolosAssistente,
   FERRAMENTA_PROTOCOLOS_COMERCIAIS,
@@ -27,6 +32,8 @@ export const MODELO_ASSISTENTE_PADRAO = "gpt-5.4-mini";
 const MAX_HISTORICO = 12;
 const MAX_TEXTO_HISTORICO = 2_000;
 const MAX_MENSAGEM = 4_000;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ESTADOS_ACAO = new Set(["ready_for_confirmation", "succeeded", "cancelled", "expired", "failed"]);
 
 export function normalizarPedidoAssistente(valor: unknown): PedidoAssistente | null {
   if (!valor || typeof valor !== "object") return null;
@@ -51,9 +58,36 @@ export function normalizarPedidoAssistente(valor: unknown): PedidoAssistente | n
     if ((m.papel !== "usuario" && m.papel !== "assistente") || typeof m.texto !== "string") return [];
     const texto = m.texto.trim().slice(0, MAX_TEXTO_HISTORICO);
     const resultados = normalizarResultadosHistorico(m.resultados);
-    return texto ? [{ papel: m.papel, texto, ...(resultados.length ? { resultados } : {}) }] : [];
+    const a = m.acao && typeof m.acao === "object" ? m.acao as Record<string, unknown> : null;
+    const entidade = a?.entidade && typeof a.entidade === "object" ? a.entidade as Record<string, unknown> : null;
+    const dados = a?.dados && typeof a.dados === "object" ? a.dados as Record<string, unknown> : null;
+    const acao = a
+      && a.tipo === "agendar_visita"
+      && typeof a.estado === "string"
+      && ESTADOS_ACAO.has(a.estado)
+      && UUID.test(String(a.id || ""))
+      && entidade
+      && UUID.test(String(entidade.imovelId || ""))
+      && dados
+      && typeof dados.data === "string"
+      && typeof dados.hora === "string"
+      ? {
+          id: String(a.id),
+          tipo: "agendar_visita" as const,
+          estado: a.estado as NonNullable<PedidoAssistente["historico"][number]["acao"]>["estado"],
+          entidade: {
+            imovelId: String(entidade.imovelId),
+            codigo: String(entidade.codigo || ""),
+            endereco: String(entidade.endereco || ""),
+            responsavel: String(entidade.responsavel || ""),
+          },
+          dados: { data: dados.data, hora: dados.hora },
+        }
+      : undefined;
+    return texto ? [{ papel: m.papel, texto, ...(resultados.length ? { resultados } : {}), ...(acao ? { acao } : {}) }] : [];
   });
-  return { mensagem, contexto: { rota, pagina, superficie, ...(entidade ? { entidade } : {}) }, historico };
+  const sessaoId = typeof bruto.sessaoId === "string" && UUID.test(bruto.sessaoId) ? bruto.sessaoId : undefined;
+  return { mensagem, contexto: { rota, pagina, superficie, ...(entidade ? { entidade } : {}) }, historico, ...(sessaoId ? { sessaoId } : {}) };
 }
 
 function idSeguro(userId: string) {
@@ -61,14 +95,20 @@ function idSeguro(userId: string) {
 }
 
 export function conteudoMensagemHistorico(mensagem: PedidoAssistente["historico"][number]): string {
-  return mensagem.resultados?.length
-    ? `${mensagem.texto}\n\nRESULTADOS ESTRUTURADOS DESTA RESPOSTA (referencias compactas, reconsulte antes de afirmar fatos atuais): ${JSON.stringify(mensagem.resultados)}`
-    : mensagem.texto;
+  const partes = [mensagem.texto];
+  if (mensagem.resultados?.length) {
+    partes.push(`RESULTADOS ESTRUTURADOS DESTA RESPOSTA (referencias compactas, reconsulte antes de afirmar fatos atuais): ${JSON.stringify(mensagem.resultados)}`);
+  }
+  if (mensagem.acao) {
+    partes.push(`ACAO ESTRUTURADA DESTA RESPOSTA (referencia compacta; qualquer mudanca exige novo preview): ${JSON.stringify(mensagem.acao)}`);
+  }
+  return partes.join("\n\n");
 }
 
 export function sanitizarTextoAssistente(texto: string): string {
   return texto
     .replace(/\n*\s*RESULTADOS ESTRUTURADOS DESTA RESPOSTA(?:\s*\([^)]*\))?\s*:\s*[\s\S]*$/i, "")
+    .replace(/\n*\s*ACAO ESTRUTURADA DESTA RESPOSTA(?:\s*\([^)]*\))?\s*:\s*[\s\S]*$/i, "")
     .trim();
 }
 
@@ -110,6 +150,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
   }));
   entrada.push({ role: "user", content: pedido.mensagem });
   const blocos: BlocoAssistente[] = [];
+  let acaoPendente: AcaoAssistente | undefined;
   const ferramentasChamadas: string[] = [];
   const protocolosAplicados: string[] = [];
   let continuidadeResposta: ContinuidadeEntidade | null = null;
@@ -118,7 +159,11 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
     model: modelo,
     instructions: instrucoesDoAssistente(pedido.contexto, catalogoProtocolos.protocolos),
     input: entrada,
-    tools: [...DEFINICOES_FERRAMENTAS, ...(ferramentaProtocolos ? [ferramentaProtocolos] : [])],
+    tools: [
+      ...DEFINICOES_FERRAMENTAS,
+      DEFINICAO_FERRAMENTA_AGENDAR_VISITA,
+      ...(ferramentaProtocolos ? [ferramentaProtocolos] : []),
+    ],
     tool_choice: "auto" as const,
     parallel_tool_calls: false,
     max_output_tokens: 2500,
@@ -137,13 +182,22 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
       ferramentasChamadas.push(chamada.name);
       let args: Record<string, unknown> = {};
       try { args = JSON.parse(chamada.arguments) as Record<string, unknown>; } catch { /* validacao estrita ainda pode falhar */ }
-      const resultado = chamada.name === FERRAMENTA_PROTOCOLOS_COMERCIAIS
+      const resultado: { dados: unknown; bloco?: BlocoAssistente; acao?: AcaoAssistente } = chamada.name === FERRAMENTA_PROTOCOLOS_COMERCIAIS
         ? (() => {
             const selecionados = protocolosSelecionadosParaAssistente(args, catalogoProtocolos.protocolos);
             protocolosAplicados.push(...selecionados.map((protocolo) => protocolo.id));
             return { dados: { protocolos: selecionados }, bloco: undefined };
           })()
+        : chamada.name === FERRAMENTA_PREPARAR_AGENDAMENTO_VISITA
+          ? await executarPreparacaoAgendamentoVisita(
+              args,
+              supabase,
+              userId,
+              pedido.contexto,
+              pedido.sessaoId,
+            )
         : await executarFerramenta(chamada.name, args, supabase, userId, pedido.contexto, pedido.mensagem, pedido.historico);
+      if (resultado.acao) acaoPendente = resultado.acao;
       if (resultado.bloco?.itens.length) blocos.push(resultado.bloco);
       const preparado = prepararResultadoFerramentaParaModelo(
         resultado.dados,
@@ -158,7 +212,9 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
   }
 
   const textoGerado = sanitizarTextoAssistente(resposta.output_text);
-  const texto = continuidadeResposta
+  const texto = acaoPendente
+    ? "Preparei a visita. Revise os dados abaixo e confirme somente se estiver tudo certo."
+    : continuidadeResposta
     ? respostaNaturalDaContinuidade(continuidadeResposta)
     : textoGerado;
   registrarEvento({
@@ -192,10 +248,20 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
         ...(catalogoProtocolos.fonteDisponivel ? ["catalogo-protocolos-user-scoped"] : []),
         ...(protocolosAplicados.length ? ["ids-protocolos-validados"] : []),
         ...(continuidadeResposta ? ["continuidade-estruturada"] : []),
+        ...(acaoPendente ? ["acao-tipificada", "payload-congelado-no-backend", "confirmacao-visual-obrigatoria"] : []),
       ],
       resultado: "respondido",
       motivo: texto ? "resposta-gerada" : "resposta-vazia-com-fallback",
     })),
   });
-  return { modelo, mensagem: { id: randomUUID(), papel: "assistente", texto: texto || "Nao consegui formular uma resposta. Tente reformular a pergunta.", blocos: blocos.length ? blocos : undefined } };
+  return {
+    modelo,
+    mensagem: {
+      id: randomUUID(),
+      papel: "assistente",
+      texto: texto || "Nao consegui formular uma resposta. Tente reformular a pergunta.",
+      blocos: blocos.length ? blocos : undefined,
+      acao: acaoPendente,
+    },
+  };
 }
