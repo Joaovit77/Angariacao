@@ -15,7 +15,6 @@ export type TipoModal =
   | "meta"
   | "agenda"
   | "verificacao"
-  | "config"
   | "conexaoWhatsapp"
   | "importar"
   | "whatsapp"

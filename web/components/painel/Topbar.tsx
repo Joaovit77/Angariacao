@@ -36,6 +36,7 @@ const TITULOS: Record<string, string> = {
   "/protocolos": "Protocolos",
   "/cerebro-ia": "Cérebro da IA",
   "/admin": "Administração",
+  "/configuracoes": "Configurações",
 };
 
 export default function Topbar({

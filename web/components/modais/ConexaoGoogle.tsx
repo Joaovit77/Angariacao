@@ -24,8 +24,8 @@ export default function ConexaoGoogle() {
   const [estado, setEstado] = useState<EstadoConexaoGoogle | null>(null);
   const [ocupado, setOcupado] = useState(false);
 
-  // Consulta uma vez ao montar. O modal é remontado a cada abertura (ver
-  // uiModal.ts), então isto reflete o estado atual sem precisar de refresh.
+  // Consulta uma vez ao montar. A seção é remontada ao ser selecionada, então
+  // isto reflete o estado atual sem manter uma segunda fonte no store global.
   useEffect(() => {
     let vivo = true;
     estadoConexaoGoogle().then((e) => {

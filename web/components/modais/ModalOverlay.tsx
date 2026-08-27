@@ -12,7 +12,6 @@ import { usePipelineUi } from "@/lib/uiPipeline";
 import { useUiModal } from "@/lib/uiModal";
 import ModalAbordagens from "./ModalAbordagens";
 import ModalAgenda from "./ModalAgenda";
-import ModalConfig from "./ModalConfig";
 import ModalConexaoWhatsapp from "./ModalConexaoWhatsapp";
 import ModalImportar from "./ModalImportar";
 import ModalConfirmarDisponibilidade from "./ModalConfirmarDisponibilidade";
@@ -56,7 +55,6 @@ export default function ModalOverlay() {
           <ModalAgenda id={modal.id} imovelIdRelacionado={modal.imovelIdRelacionado} />
         )}
         {modal?.tipo === "verificacao" && modal.id && <ModalVerificacao id={modal.id} />}
-        {modal?.tipo === "config" && <ModalConfig />}
         {modal?.tipo === "conexaoWhatsapp" && <ModalConexaoWhatsapp />}
         {modal?.tipo === "importar" && <ModalImportar />}
         {modal?.tipo === "whatsapp" && modal.id && (

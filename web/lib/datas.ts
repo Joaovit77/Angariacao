@@ -101,6 +101,24 @@ export function inicioDoDiaOperacionalISO(iso: string): string | null {
   return new Date(meiaNoiteComoUtc - deslocamento(primeiraTentativa)).toISOString();
 }
 
+/** Rótulo curto para eventos recentes. Recebe o relógio para continuar
+    determinístico em testes e não espalhar `Date` pelos componentes. */
+export function tempoRelativoIso(
+  iso: string | null | undefined,
+  agora = Date.now(),
+): string {
+  const instante = timestampDeIso(iso);
+  if (instante === null) return "agora";
+  const minutos = Math.max(0, Math.floor((agora - instante) / 60_000));
+  if (minutos < 1) return "agora";
+  if (minutos < 60) return `há ${minutos} min`;
+  const horas = Math.floor(minutos / 60);
+  if (horas < 24) return `há ${horas} h`;
+  const dias = Math.floor(horas / 24);
+  if (dias === 1) return "ontem";
+  return `há ${dias} dias`;
+}
+
 /** Agora em São Paulo, como "YYYY-MM-DDTHH:mm". Não depende do fuso da máquina. */
 export function agoraISOComHora(): string {
   const partes = new Intl.DateTimeFormat("en-CA", {

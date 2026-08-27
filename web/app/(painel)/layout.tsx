@@ -27,7 +27,7 @@ import { AssistenteProvider } from "@/components/assistente/AssistenteProvider";
 import { useAppStore } from "@/lib/store";
 
 const CHAVE_RECOLHIDA = "sidebar-recolhida";
-const ROTAS_SEM_CARTEIRA = new Set(["/admin", "/cerebro-ia"]);
+const ROTAS_SEM_CARTEIRA = new Set(["/admin", "/cerebro-ia", "/configuracoes"]);
 
 // Desktop = acima do breakpoint mobile (720px). Lido como store externo
 // (useSyncExternalStore) em vez de setState num efeito, pra não esbarrar na
