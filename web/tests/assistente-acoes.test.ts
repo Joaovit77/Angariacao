@@ -138,11 +138,28 @@ describe("uma arquitetura para chat e menu", () => {
     expect(fonte("lib/servidor/assistente/acoes.ts")).toContain('supabase.rpc("preparar_acao_assistente_agendar_visita"');
   });
 
-  it("mostra apenas a escrita implementada e mantém leitura direta", () => {
+  it("oferece visita, revisão do follow-up existente e mantém leitura direta", () => {
     const acoes = fonte("components/assistente/AcoesRapidasAssistente.tsx");
     expect(acoes).toContain("Agendar visita");
+    expect(acoes).toContain("Criar follow-up");
+    expect(acoes).toContain('abrirModal("followUpLote")');
     expect(acoes).toContain("Ver agenda de hoje");
     expect(acoes).not.toContain("Agendar mensagem");
     expect(acoes).not.toContain("Atualizar status");
+  });
+
+  it("encaminha o pedido em linguagem natural para a revisão sem executar o envio", () => {
+    const operacoes = fonte("lib/servidor/assistente/acoes.ts");
+    const orquestrador = fonte("lib/servidor/assistente/orquestrador.ts");
+    const cliente = fonte("components/assistente/AssistenteProvider.tsx");
+    const conhecimento = fonte("lib/servidor/assistente/conhecimento.ts");
+
+    expect(operacoes).toContain('"buscar_followups"');
+    expect(operacoes).toContain("limite: 10");
+    expect(operacoes).toContain("envioExecutado: false");
+    expect(operacoes).toContain('comandoUi: { tipo: "abrir_followup_lote" }');
+    expect(orquestrador).toContain("FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE");
+    expect(cliente).toContain('abrirModal("followUpLote")');
+    expect(conhecimento).toContain("Nunca afirme que o follow-up foi enviado");
   });
 });

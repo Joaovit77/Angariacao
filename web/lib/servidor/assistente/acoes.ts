@@ -3,11 +3,29 @@ import { randomUUID } from "node:crypto";
 import { todayISO } from "@/lib/datas";
 import type {
   AcaoAssistente,
+  BlocoAssistente,
+  ComandoUiAssistente,
   ContextoAssistente,
   EstadoAcaoAssistente,
+  ItemHistoricoAssistente,
 } from "@/lib/assistente/tipos";
+import { executarFerramenta } from "./ferramentas";
 
 export const FERRAMENTA_PREPARAR_AGENDAMENTO_VISITA = "preparar_agendamento_visita";
+export const FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE = "abrir_revisao_followup_lote";
+
+export const DEFINICAO_FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE = {
+  type: "function" as const,
+  name: FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE,
+  description: "Abre a revisao segura do follow-up em lote ja existente no Angario. Use somente quando o usuario pedir explicitamente para criar ou enviar follow-ups para varios proprietarios. Esta ferramenta nao envia mensagens: ela consulta a fila atual e abre a tela em que o usuario revisa destinatarios e textos antes de confirmar o envio.",
+  strict: true,
+  parameters: {
+    type: "object",
+    properties: {},
+    required: [],
+    additionalProperties: false,
+  },
+} as const;
 
 export const DEFINICAO_FERRAMENTA_AGENDAR_VISITA = {
   type: "function" as const,
@@ -219,5 +237,44 @@ export async function executarPreparacaoAgendamentoVisita(
       executada: false,
     },
     acao: resultado.acao,
+  };
+}
+
+export async function prepararRevisaoFollowUpLote(
+  supabase: SupabaseClient,
+  userId: string,
+  contexto: ContextoAssistente,
+  perguntaUsuario: string,
+  historico: ItemHistoricoAssistente[],
+): Promise<{
+  dados: unknown;
+  bloco?: BlocoAssistente;
+  comandoUi?: ComandoUiAssistente;
+}> {
+  const consulta = await executarFerramenta(
+    "buscar_followups",
+    { escopo: "global", limite: 10 },
+    supabase,
+    userId,
+    contexto,
+    perguntaUsuario,
+    historico,
+  );
+  const dados = consulta.dados && typeof consulta.dados === "object"
+    ? consulta.dados as Record<string, unknown>
+    : {};
+  const totalFilaHoje = typeof dados.totalFilaHoje === "number" ? dados.totalFilaHoje : 0;
+
+  return {
+    dados: {
+      ...dados,
+      revisaoDisponivel: totalFilaHoje > 0,
+      envioExecutado: false,
+      exigeConfirmacaoNaRevisao: true,
+    },
+    bloco: consulta.bloco,
+    ...(totalFilaHoje > 0
+      ? { comandoUi: { tipo: "abrir_followup_lote" } as const }
+      : {}),
   };
 }

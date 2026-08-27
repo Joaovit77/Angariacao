@@ -3,7 +3,7 @@ import OpenAI from "openai";
 import { toResponseInputItems } from "openai/lib/responses/ResponseInputItems";
 import type { ResponseInputItem } from "openai/resources/responses/responses";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AcaoAssistente, BlocoAssistente, ContextoAssistente, MensagemAssistente, PedidoAssistente } from "@/lib/assistente/tipos";
+import type { AcaoAssistente, BlocoAssistente, ComandoUiAssistente, ContextoAssistente, MensagemAssistente, PedidoAssistente } from "@/lib/assistente/tipos";
 import { normalizarResultadosHistorico } from "@/lib/assistente/historico";
 import {
   compararEntidadeComResultadoAtual,
@@ -17,9 +17,12 @@ import { metadadosExecucaoIa } from "@/lib/ia/observabilidade";
 import { instrucoesDoAssistente } from "./conhecimento";
 import { DEFINICOES_FERRAMENTAS, executarFerramenta } from "./ferramentas";
 import {
+  DEFINICAO_FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE,
   DEFINICAO_FERRAMENTA_AGENDAR_VISITA,
   executarPreparacaoAgendamentoVisita,
+  FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE,
   FERRAMENTA_PREPARAR_AGENDAMENTO_VISITA,
+  prepararRevisaoFollowUpLote,
 } from "./acoes";
 import {
   carregarCatalogoProtocolosAssistente,
@@ -151,6 +154,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
   entrada.push({ role: "user", content: pedido.mensagem });
   const blocos: BlocoAssistente[] = [];
   let acaoPendente: AcaoAssistente | undefined;
+  let comandoUi: ComandoUiAssistente | undefined;
   const ferramentasChamadas: string[] = [];
   const protocolosAplicados: string[] = [];
   let continuidadeResposta: ContinuidadeEntidade | null = null;
@@ -162,6 +166,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
     tools: [
       ...DEFINICOES_FERRAMENTAS,
       DEFINICAO_FERRAMENTA_AGENDAR_VISITA,
+      DEFINICAO_FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE,
       ...(ferramentaProtocolos ? [ferramentaProtocolos] : []),
     ],
     tool_choice: "auto" as const,
@@ -182,7 +187,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
       ferramentasChamadas.push(chamada.name);
       let args: Record<string, unknown> = {};
       try { args = JSON.parse(chamada.arguments) as Record<string, unknown>; } catch { /* validacao estrita ainda pode falhar */ }
-      const resultado: { dados: unknown; bloco?: BlocoAssistente; acao?: AcaoAssistente } = chamada.name === FERRAMENTA_PROTOCOLOS_COMERCIAIS
+      const resultado: { dados: unknown; bloco?: BlocoAssistente; acao?: AcaoAssistente; comandoUi?: ComandoUiAssistente } = chamada.name === FERRAMENTA_PROTOCOLOS_COMERCIAIS
         ? (() => {
             const selecionados = protocolosSelecionadosParaAssistente(args, catalogoProtocolos.protocolos);
             protocolosAplicados.push(...selecionados.map((protocolo) => protocolo.id));
@@ -196,8 +201,17 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
               pedido.contexto,
               pedido.sessaoId,
             )
+        : chamada.name === FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE
+          ? await prepararRevisaoFollowUpLote(
+              supabase,
+              userId,
+              pedido.contexto,
+              pedido.mensagem,
+              pedido.historico,
+            )
         : await executarFerramenta(chamada.name, args, supabase, userId, pedido.contexto, pedido.mensagem, pedido.historico);
       if (resultado.acao) acaoPendente = resultado.acao;
+      if (resultado.comandoUi) comandoUi = resultado.comandoUi;
       if (resultado.bloco?.itens.length) blocos.push(resultado.bloco);
       const preparado = prepararResultadoFerramentaParaModelo(
         resultado.dados,
@@ -214,6 +228,8 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
   const textoGerado = sanitizarTextoAssistente(resposta.output_text);
   const texto = acaoPendente
     ? "Preparei a visita. Revise os dados abaixo e confirme somente se estiver tudo certo."
+    : comandoUi?.tipo === "abrir_followup_lote"
+    ? "Abri a revisão do lote de follow-ups. Confira os proprietários selecionados e as mensagens; o envio só começa quando você clicar em Enviar follow-ups."
     : continuidadeResposta
     ? respostaNaturalDaContinuidade(continuidadeResposta)
     : textoGerado;
@@ -249,6 +265,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
         ...(protocolosAplicados.length ? ["ids-protocolos-validados"] : []),
         ...(continuidadeResposta ? ["continuidade-estruturada"] : []),
         ...(acaoPendente ? ["acao-tipificada", "payload-congelado-no-backend", "confirmacao-visual-obrigatoria"] : []),
+        ...(comandoUi?.tipo === "abrir_followup_lote" ? ["fila-followup-user-scoped", "revisao-visual-obrigatoria", "envio-nao-executado-pelo-assistente"] : []),
       ],
       resultado: "respondido",
       motivo: texto ? "resposta-gerada" : "resposta-vazia-com-fallback",
@@ -262,6 +279,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
       texto: texto || "Nao consegui formular uma resposta. Tente reformular a pergunta.",
       blocos: blocos.length ? blocos : undefined,
       acao: acaoPendente,
+      comandoUi,
     },
   };
 }

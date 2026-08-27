@@ -1569,8 +1569,11 @@ ali para quem quiser um modelo.
 O Assistente é uma superfície global do painel para consultar carteira, agenda, mensagens agendadas,
 follow-ups, estagnação, Foco do dia, métricas e marcos históricos. Consultas continuam somente
 leitura. A primeira ação de escrita liberada é **agendar visita**; mensagens, mudanças de status,
-exclusões e demais efeitos sensíveis não são oferecidos. A rota exige sessão válida e permissão de
-IA; consultas e operações usam o token do chamador, preservando a identidade e o isolamento da RLS.
+exclusões e demais efeitos sensíveis não são executados diretamente. Pedidos explícitos de
+**follow-up em lote** consultam a fila user-scoped e abrem a revisão já existente do Angario, que
+mantém seleção, textos por origem, teto diário e confirmação final; abrir essa revisão não envia
+nenhuma mensagem. A rota exige sessão válida e permissão de IA; consultas e operações usam o token
+do chamador, preservando a identidade e o isolamento da RLS.
 
 Escrita segue uma regra única: **a IA propõe, o backend valida, o usuário confirma e o código
 executa**. Ao preparar uma visita, uma função tipada resolve o imóvel da própria carteira, valida
@@ -1596,8 +1599,9 @@ Arquitetura:
 - `lib/servidor/assistente/ferramentas.ts`: ferramentas de leitura com argumentos estritos. Elas
   reutilizam motores reais para foco, follow-up, estagnação e métricas, em vez de duplicar regras no
   prompt.
-- `lib/servidor/assistente/acoes.ts`: contrato e adaptação da única ação liberada. Chat e menu guiado
-  convergem para a mesma preparação tipada; o modelo nunca recebe acesso genérico ao Supabase.
+- `lib/servidor/assistente/acoes.ts`: contratos e adaptações das operações liberadas. Chat e menu
+  guiado convergem para a mesma preparação tipada; follow-up em lote converge para o modal real de
+  revisão, sem duplicar a fila nem seu envio; o modelo nunca recebe acesso genérico ao Supabase.
 - `lib/servidor/assistente/orquestrador.ts`: OpenAI Responses API com tool calling sequencial, até
   quatro rodadas, `store: false`, identificador de segurança derivado por hash e registro de custo.
   Antes da geração, relê pelo cliente do chamador até 40 protocolos comerciais ativos, filtrados

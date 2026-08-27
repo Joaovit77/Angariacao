@@ -172,6 +172,7 @@ describe("protocolos comerciais no Assistente", () => {
     expect(chamada.instructions).toContain("não possui ferramenta para navegar nessas áreas");
     expect(chamada.tools.map((ferramenta: { name: string }) => ferramenta.name)).toEqual([
       "preparar_agendamento_visita",
+      "abrir_revisao_followup_lote",
     ]);
     const detalhe = mocks.registrarEvento.mock.calls.at(-1)?.[0].detalhe as string;
     expect(detalhe).toContain('"protocolosConsiderados":[]');

@@ -3,6 +3,7 @@
 import { type FormEvent, useMemo, useState } from "react";
 import { addDaysISO, todayISO } from "@/lib/datas";
 import { useAppStore } from "@/lib/store";
+import { useUiModal } from "@/lib/uiModal";
 import { useEstadoAssistente } from "./AssistenteProvider";
 import { useContextoAssistenteAtual } from "./useContextoAssistenteAtual";
 import styles from "./Assistente.module.css";
@@ -11,6 +12,7 @@ export default function AcoesRapidasAssistente({ modo = "atalhos" }: { modo?: "a
   const imoveis = useAppStore((estado) => estado.imoveis);
   const { contexto } = useContextoAssistenteAtual();
   const { carregando, processandoAcaoId, enviar, prepararVisita } = useEstadoAssistente();
+  const abrirModal = useUiModal((estado) => estado.abrirModal);
   const [formularioAberto, setFormularioAberto] = useState(false);
   const [imovelId, setImovelId] = useState("");
   const [data, setData] = useState(() => addDaysISO(todayISO(), 1) || todayISO());
@@ -42,6 +44,15 @@ export default function AcoesRapidasAssistente({ modo = "atalhos" }: { modo?: "a
           <span aria-hidden="true">▣</span>
           <strong>Agendar visita</strong>
           {modo === "lateral" && <small>Prepare um compromisso na agenda</small>}
+        </button>
+        <button
+          type="button"
+          onClick={() => abrirModal("followUpLote")}
+          disabled={indisponivel}
+        >
+          <span aria-hidden="true">♧</span>
+          <strong>Criar follow-up</strong>
+          {modo === "lateral" && <small>Revise o lote antes de enviar</small>}
         </button>
         <button
           type="button"

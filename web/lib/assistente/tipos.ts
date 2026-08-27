@@ -90,7 +90,10 @@ export interface MensagemAssistente {
   texto: string;
   blocos?: BlocoAssistente[];
   acao?: AcaoAssistente;
+  comandoUi?: ComandoUiAssistente;
 }
+
+export type ComandoUiAssistente = { tipo: "abrir_followup_lote" };
 
 export type ResultadoHistoricoAssistente =
   | { tipo: "imoveis"; itens: Array<{

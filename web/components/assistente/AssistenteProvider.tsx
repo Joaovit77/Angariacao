@@ -19,11 +19,12 @@ import {
 import { compactarBlocosParaHistorico } from "@/lib/assistente/historico";
 import type { ContextoAssistente, MensagemAssistente } from "@/lib/assistente/tipos";
 import { useAppStore } from "@/lib/store";
+import { useUiModal } from "@/lib/uiModal";
 
 const BOAS_VINDAS: MensagemAssistente = {
   id: "boas-vindas",
   papel: "assistente",
-  texto: "Olá! Posso consultar sua operação e preparar visitas. Toda alteração exige sua confirmação antes de ser executada.",
+  texto: "Olá! Posso consultar sua operação e preparar visitas e follow-ups. Toda alteração exige sua confirmação antes de ser executada.",
 };
 
 interface ParametrosVisitaGuiada {
@@ -115,6 +116,9 @@ export function AssistenteProvider({ children }: { children: ReactNode }) {
           })),
       }, { signal: controller.signal });
       if (resposta.ok === false && resposta.codigo === "cancelado") return;
+      if (resposta.ok && resposta.mensagem.comandoUi?.tipo === "abrir_followup_lote") {
+        useUiModal.getState().abrirModal("followUpLote");
+      }
       setMensagens((atuais) => [
         ...atuais,
         resposta.ok
