@@ -227,6 +227,17 @@ describe("operações irmãs e contratos", () => {
     expect(compositor.match(/enviarWhatsapp\(imovel\.id, mensagem\)/g)).toHaveLength(1);
   });
 
+  it("marca como lida quando a conversa realmente fica visível", () => {
+    const selecionar = CENTRAL.slice(
+      CENTRAL.indexOf("function selecionar"),
+      CENTRAL.indexOf("function buscar"),
+    );
+    expect(selecionar).toContain("marcarAoVisualizar(id, conversa.naoLidas)");
+    expect(CENTRAL).toContain('window.matchMedia("(max-width: 720px)").matches');
+    expect(CENTRAL).toContain("marcarAoVisualizar(selecionada.imovel.id, selecionada.naoLidas)");
+    expect(CENTRAL).toContain("marcacoesEmCurso.current.has(id)");
+  });
+
   it("leva a origem de resposta ao modal e só limpa a pendência após envio confirmado", () => {
     useUiModal.getState().abrirWhatsappRascunho("imovel-1", "Vou verificar", ["Atendimento"]);
     expect(useUiModal.getState().modal).toMatchObject({

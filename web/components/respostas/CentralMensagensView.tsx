@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
 import Icone from "@/components/Icone";
 import {
@@ -651,6 +651,8 @@ export default function CentralMensagensView({ aoAbrirAgendadas }: { aoAbrirAgen
   const [erro, setErro] = useState("");
   const [mobileAberta, setMobileAberta] = useState(false);
   const [contextoAberto, setContextoAberto] = useState(false);
+  const primeiraConversaVisivel = useRef(false);
+  const marcacoesEmCurso = useRef(new Set<string>());
 
   const conversas = useMemo(() => conversasDosImoveis(imoveis, todayISO()), [imoveis]);
   const agendadasPorImovel = useMemo(
@@ -665,7 +667,27 @@ export default function CentralMensagensView({ aoAbrirAgendadas }: { aoAbrirAgen
     () => contagensConversas(conversas, buscaAdiada, filtros, agendadasPorImovel),
     [conversas, buscaAdiada, filtros, agendadasPorImovel],
   );
-  const selecionada = visiveis.find((conversa) => conversa.imovel.id === selecionadaId) || visiveis[0] || null;
+  // Depois de marcar uma conversa como lida ela pode sair do filtro
+  // "Não lidas". Mantê-la pelo id evita trocar o conteúdo aberto pela próxima
+  // conversa antes de o corretor terminar de lê-la.
+  const selecionada =
+    conversas.find((conversa) => conversa.imovel.id === selecionadaId) || visiveis[0] || null;
+
+  const marcarAoVisualizar = useCallback((id: string, naoLidas: number): void => {
+    if (naoLidas === 0 || marcacoesEmCurso.current.has(id)) return;
+    marcacoesEmCurso.current.add(id);
+    void marcarRespostasLidas(id, true).finally(() => marcacoesEmCurso.current.delete(id));
+  }, []);
+
+  // No desktop a primeira conversa já nasce visível no painel central, sem
+  // exigir clique. No celular ela continua escondida atrás da lista e só é
+  // lida quando `selecionar` realmente abre a conversa.
+  useEffect(() => {
+    if (primeiraConversaVisivel.current || !selecionada || selecionadaId !== null) return;
+    if (window.matchMedia("(max-width: 720px)").matches) return;
+    primeiraConversaVisivel.current = true;
+    marcarAoVisualizar(selecionada.imovel.id, selecionada.naoLidas);
+  }, [marcarAoVisualizar, selecionada, selecionadaId]);
 
   async function atualizar() {
     if (atualizando) return;
@@ -684,6 +706,28 @@ export default function CentralMensagensView({ aoAbrirAgendadas }: { aoAbrirAgen
     setSelecionadaId(id);
     setMobileAberta(true);
     setContextoAberto(false);
+    const conversa = conversas.find((item) => item.imovel.id === id);
+    if (conversa) marcarAoVisualizar(id, conversa.naoLidas);
+  }
+
+  function buscar(valor: string) {
+    setBusca(valor);
+    setSelecionadaId(null);
+  }
+
+  function filtrarPrincipal(principal: FiltroPrincipalConversas) {
+    setFiltros((atuais) => ({ ...atuais, principal }));
+    setSelecionadaId(null);
+  }
+
+  function alternarNaoLidas() {
+    setFiltros((atuais) => ({ ...atuais, naoLidas: !atuais.naoLidas }));
+    setSelecionadaId(null);
+  }
+
+  function alternarAgendadas() {
+    setFiltros((atuais) => ({ ...atuais, agendadas: !atuais.agendadas }));
+    setSelecionadaId(null);
   }
 
   if (!carregado) {
@@ -711,10 +755,10 @@ export default function CentralMensagensView({ aoAbrirAgendadas }: { aoAbrirAgen
         atualizando={atualizando}
         carregandoFiltro={filtros.agendadas && carregandoAgendadas}
         erro={erroLista}
-        aoBuscar={setBusca}
-        aoFiltrarPrincipal={(principal) => setFiltros((atuais) => ({ ...atuais, principal }))}
-        aoAlternarNaoLidas={() => setFiltros((atuais) => ({ ...atuais, naoLidas: !atuais.naoLidas }))}
-        aoAlternarAgendadas={() => setFiltros((atuais) => ({ ...atuais, agendadas: !atuais.agendadas }))}
+        aoBuscar={buscar}
+        aoFiltrarPrincipal={filtrarPrincipal}
+        aoAlternarNaoLidas={alternarNaoLidas}
+        aoAlternarAgendadas={alternarAgendadas}
         aoSelecionar={selecionar}
         aoAtualizar={() => void atualizar()}
         aoAbrirAgendadas={aoAbrirAgendadas}

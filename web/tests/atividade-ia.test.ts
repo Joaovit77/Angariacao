@@ -49,8 +49,65 @@ describe("atividade da IA", () => {
 
     expect(atividades[0]).toMatchObject({
       titulo: "Interação com a IA",
-      fluxo: ["Solicitação", "Processamento", "Validação", "Resposta"],
+      percurso: ["contexto", "analise", "resposta"],
+      detalhesObservados: false,
     });
     expect(JSON.stringify(atividades)).not.toContain("operacao-interna-nova");
+  });
+
+  it("projeta somente fatos seguros de uma execução detalhada", () => {
+    const atividades = criarAtividadesIa(
+      [{ id: 7, tipo: "assistente-chat", criado_em: "2026-08-27T12:00:00.000Z" }],
+      8,
+      [{
+        id: 9,
+        evento: "ia-assistente-respondido",
+        criado_em: "2026-08-27T12:00:10.000Z",
+        detalhe: JSON.stringify({
+          operacao: "assistente-chat",
+          protocolosConsiderados: ["protocolo-secreto-1"],
+          protocolosAplicados: ["protocolo-secreto-1"],
+          ferramentasChamadas: ["consultar_imovel"],
+          entidadesUtilizadas: ["imovel-secreto-1"],
+          fontesDeDados: ["protocolos", "ferramenta:consultar_imovel"],
+          validacoesAplicadas: ["sanitizacao-da-saida"],
+          resultado: "respondido",
+          motivo: "resposta-gerada",
+        }),
+      }],
+    );
+
+    expect(atividades).toHaveLength(1);
+    expect(atividades[0]).toMatchObject({
+      detalhesObservados: true,
+      percurso: ["contexto", "analise", "protocolos", "imoveis", "validacoes", "resposta"],
+    });
+    expect(atividades[0].etapas.map((etapa) => etapa.titulo)).toContain("Consultou um imóvel");
+    expect(JSON.stringify(atividades)).not.toContain("protocolo-secreto-1");
+    expect(JSON.stringify(atividades)).not.toContain("imovel-secreto-1");
+    expect(JSON.stringify(atividades)).not.toContain("sanitizacao-da-saida");
+  });
+
+  it("diferencia uma ação proposta de uma alteração executada", () => {
+    const [atividade] = criarAtividadesIa([], 8, [{
+      id: 11,
+      evento: "ia-assistente-acao-preparada",
+      criado_em: "2026-08-27T12:00:00.000Z",
+      detalhe: JSON.stringify({
+        operacao: "agendar_visita",
+        fontesDeDados: ["agenda", "imoveis"],
+        validacoesAplicadas: ["payload-congelado"],
+        resultado: "sugerido",
+        motivo: "aguardando-confirmacao",
+      }),
+    }]);
+
+    expect(atividade.estado).toBe("aguardando");
+    expect(atividade.resumo).toContain("nenhuma alteração foi executada");
+    expect(atividade.etapas.at(-1)).toMatchObject({
+      categoria: "acao",
+      titulo: "Aguardando confirmação",
+      estado: "aguardando",
+    });
   });
 });
