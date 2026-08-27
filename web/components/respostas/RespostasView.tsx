@@ -70,6 +70,7 @@ function Conversa({ linha, expandida }: { linha: LinhaResposta; expandida: boole
 function Linha({ linha, imovel }: { linha: LinhaResposta; imovel: Imovel }) {
   const abrirModal = useUiModal((s) => s.abrirModal);
   const abrirWhatsappRascunho = useUiModal((s) => s.abrirWhatsappRascunho);
+  const abrirWhatsappModeloResposta = useUiModal((s) => s.abrirWhatsappModeloResposta);
   const iaDisponivel = useAppStore((s) => s.iaDisponivel);
   const [expandida, setExpandida] = useState(false);
   const [marcando, setMarcando] = useState(false);
@@ -216,7 +217,7 @@ function Linha({ linha, imovel }: { linha: LinhaResposta; imovel: Imovel }) {
             title={modeloSugerido ? `Abre a resposta já escrita: ${rotuloSugerido}` : undefined}
             onClick={() =>
               modeloSugerido
-                ? abrirModal("whatsapp", imovel.id, modeloSugerido)
+                ? abrirWhatsappModeloResposta(imovel.id, modeloSugerido)
                 : // Em branco: o texto livre nasce sem modelo, então também não
                   // credita tentativa — responder não é contato de captação.
                   abrirWhatsappRascunho(imovel.id, "")

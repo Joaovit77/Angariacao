@@ -52,6 +52,7 @@ import { enviarWhatsapp } from "@/lib/envioWhatsapp";
 import type { ConfirmacaoVisitaPendente } from "@/lib/calculo/confirmacaoVisita";
 import {
   adicionarModeloWhatsapp,
+  marcarRespostasLidas,
   registrarMensagemEnviadaManual,
   registrarTentativa,
   removerModeloWhatsapp,
@@ -68,6 +69,7 @@ export default function ModalWhatsapp({
   textoInicial,
   abordagemInicial,
   protocolosUsados,
+  marcarRespostasLidasAposEnvio = false,
 }: {
   imovelId: string;
   modeloInicial?: string;
@@ -85,6 +87,10 @@ export default function ModalWhatsapp({
       fonte antes de enviar — a regra continua sendo "a IA sugere, o corretor
       confirma", e confirmar sem saber de onde saiu não é confirmar. */
   protocolosUsados?: string[];
+  /** Verdadeiro somente quando o modal nasceu de uma resposta recebida. O
+      envio confirmado trata a pendência; aberturas do Pipeline e da Agenda
+      continuam sem alterar mensagens não lidas. */
+  marcarRespostasLidasAposEnvio?: boolean;
 }) {
   const fecharModal = useUiModal((s) => s.fecharModal);
   const abrirModal = useUiModal((s) => s.abrirModal);
@@ -334,6 +340,9 @@ export default function ModalWhatsapp({
     }
     setEnviando(false);
     if (r.ok) {
+      if (marcarRespostasLidasAposEnvio) {
+        await marcarRespostasLidas(imovel.id, true);
+      }
       if (confirmacaoVisita && r.historicoPersistido === false) {
         toast("Mensagem enviada, mas o monitoramento da confirmação não pôde ser ativado.", "warning");
         fecharModal();
@@ -401,6 +410,9 @@ export default function ModalWhatsapp({
     // Em falha a pergunta continua: fechar perderia a confirmação humana que
     // ainda é a única prova disponível neste caminho.
     if (!historicoOk) return;
+    if (marcarRespostasLidasAposEnvio) {
+      await marcarRespostasLidas(imovel.id, true);
+    }
     let tentativaOk = true;
     if (registraTentativa) {
       tentativaOk = await registrarTentativa(imovel.id, {

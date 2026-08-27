@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ehNotaDeEvento, ehNotaDeResposta, notaDaMensagemEnviada } from "@/lib/calculo/notas";
+import { conversasDosImoveis } from "@/lib/calculo/conversas";
 import type { Imovel, NotaImovel } from "@/lib/tipos";
 
 const mocks = vi.hoisted(() => ({
@@ -19,11 +20,16 @@ import {
   marcarTodasRespostasLidas,
 } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
+import { useUiModal } from "@/lib/uiModal";
 
 const SCHEMA = readFileSync(new URL("../../supabase-schema.sql", import.meta.url), "utf8");
 const MUTACOES = readFileSync(new URL("../lib/mutacoes.ts", import.meta.url), "utf8");
 const CENTRAL = readFileSync(
   new URL("../components/respostas/CentralMensagensView.tsx", import.meta.url),
+  "utf8",
+);
+const MODAL_WHATSAPP = readFileSync(
+  new URL("../components/modais/ModalWhatsapp.tsx", import.meta.url),
   "utf8",
 );
 
@@ -107,6 +113,7 @@ beforeEach(() => {
   mocks.rpc.mockReset();
   mocks.toast.mockReset();
   useAppStore.getState().limparEstado();
+  useUiModal.getState().fecharModal();
   instalarRpcAtomica();
 });
 
@@ -135,6 +142,7 @@ describe("marcação atômica das respostas", () => {
     ]);
     expect(notasBanco.find((nota) => nota.id === "wa:0816")?.lida).toBe(true);
     expect(notasStore).toEqual(notasBanco);
+    expect(conversasDosImoveis(useAppStore.getState().imoveis, "2026-08-26")[0].naoLidas).toBe(0);
   });
 
   it("preserva uma mensagem do webhook concorrente e marca duas respostas pendentes", async () => {
@@ -217,6 +225,41 @@ describe("operações irmãs e contratos", () => {
     expect(compositor).toContain("await enviarWhatsapp(imovel.id, mensagem)");
     expect(compositor).toContain("setTexto(resultado.rascunho)");
     expect(compositor.match(/enviarWhatsapp\(imovel\.id, mensagem\)/g)).toHaveLength(1);
+  });
+
+  it("leva a origem de resposta ao modal e só limpa a pendência após envio confirmado", () => {
+    useUiModal.getState().abrirWhatsappRascunho("imovel-1", "Vou verificar", ["Atendimento"]);
+    expect(useUiModal.getState().modal).toMatchObject({
+      tipo: "whatsapp",
+      id: "imovel-1",
+      textoWhatsapp: "Vou verificar",
+      marcarRespostasLidasAposEnvio: true,
+    });
+
+    useUiModal.getState().abrirWhatsappModeloResposta("imovel-1", "resposta-aguardo");
+    expect(useUiModal.getState().modal).toMatchObject({
+      modeloWhatsapp: "resposta-aguardo",
+      marcarRespostasLidasAposEnvio: true,
+    });
+
+    useUiModal.getState().abrirModal("whatsapp", "imovel-1", "primeiro-contato");
+    expect(useUiModal.getState().modal?.marcarRespostasLidasAposEnvio).toBeUndefined();
+
+    const envioConfirmado = MODAL_WHATSAPP.slice(
+      MODAL_WHATSAPP.indexOf("async function enviarAgora"),
+      MODAL_WHATSAPP.indexOf("/** Saída antiga", MODAL_WHATSAPP.indexOf("async function enviarAgora")),
+    );
+    expect(envioConfirmado.indexOf("if (r.ok)")).toBeLessThan(
+      envioConfirmado.indexOf("await marcarRespostasLidas(imovel.id, true)"),
+    );
+
+    const envioManual = MODAL_WHATSAPP.slice(
+      MODAL_WHATSAPP.indexOf("async function confirmarEnvioManual"),
+      MODAL_WHATSAPP.indexOf("/** Insere um marcador", MODAL_WHATSAPP.indexOf("async function confirmarEnvioManual")),
+    );
+    expect(envioManual.indexOf("if (!historicoOk) return")).toBeLessThan(
+      envioManual.indexOf("await marcarRespostasLidas(imovel.id, true)"),
+    );
   });
 
   it("protege a transformação SQL por usuário e lock da linha", () => {

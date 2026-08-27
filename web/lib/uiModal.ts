@@ -59,6 +59,10 @@ export interface ModalAtivo {
       IA afirmou antes de mandar — o que não se confere num olhar deixa de ser
       conferido. Vazio quando o rascunho não usou nenhum. */
   protocolosWhatsapp?: string[];
+  /** O modal foi aberto para responder uma mensagem recebida. Só depois do
+      envio confirmado essa origem autoriza marcar as respostas como lidas;
+      envios comuns do Pipeline e da Agenda não podem limpar a pendência. */
+  marcarRespostasLidasAposEnvio?: boolean;
   /** Abordagem do catálogo a CREDITAR no envio, quando o texto foi gerado a
       partir do anúncio do proprietário.
 
@@ -90,8 +94,12 @@ interface UiModal {
   ) => void;
   /** Abre o modal de WhatsApp já com um rascunho (ex.: a resposta sugerida
       pela IA na caixa de respostas). Ação própria em vez de mais um parâmetro
-      posicional no `abrirModal` — o texto é whatsapp-específico. */
+      posicional no `abrirModal` — além do texto, ela preserva que este envio
+      trata uma resposta recebida. */
   abrirWhatsappRascunho: (imovelId: string, texto: string, protocolos?: string[]) => void;
+  /** Abre uma resposta pronta do sistema mantendo a mesma semântica de
+      leitura dos rascunhos: a pendência só some após o envio confirmado. */
+  abrirWhatsappModeloResposta: (imovelId: string, modeloId: string) => void;
   /** Abre o WhatsApp com a mensagem gerada a partir do anúncio do proprietário,
       já creditando a abordagem do catálogo — é o que põe a estratégia no
       ranking. Separada do rascunho porque aquele, de propósito, não credita. */
@@ -106,7 +114,24 @@ export const useUiModal = create<UiModal>((set) => ({
   abrirModal: (tipo, id, modeloWhatsapp, imovelIdRelacionado) =>
     set({ modal: { tipo, id, modeloWhatsapp, imovelIdRelacionado } }),
   abrirWhatsappRascunho: (imovelId, texto, protocolos) =>
-    set({ modal: { tipo: "whatsapp", id: imovelId, textoWhatsapp: texto, protocolosWhatsapp: protocolos } }),
+    set({
+      modal: {
+        tipo: "whatsapp",
+        id: imovelId,
+        textoWhatsapp: texto,
+        protocolosWhatsapp: protocolos,
+        marcarRespostasLidasAposEnvio: true,
+      },
+    }),
+  abrirWhatsappModeloResposta: (imovelId, modeloId) =>
+    set({
+      modal: {
+        tipo: "whatsapp",
+        id: imovelId,
+        modeloWhatsapp: modeloId,
+        marcarRespostasLidasAposEnvio: true,
+      },
+    }),
   abrirWhatsappAbordagem: (imovelId, texto, abordagemId) =>
     set({ modal: { tipo: "whatsapp", id: imovelId, textoWhatsapp: texto, abordagemWhatsapp: abordagemId } }),
   abrirMensagemAgendadaDisponibilidade: (imovelId, data, texto) =>
