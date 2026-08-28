@@ -17,7 +17,7 @@ import {
   prepararAcaoAssistente,
 } from "@/lib/assistente/cliente";
 import { compactarBlocosParaHistorico } from "@/lib/assistente/historico";
-import type { AcaoAssistente, ContextoAssistente, MensagemAssistente } from "@/lib/assistente/tipos";
+import type { AcaoAssistente, ContextoAssistente, ItemHistoricoAssistente, MensagemAssistente } from "@/lib/assistente/tipos";
 import { rascunharResposta } from "@/lib/ia";
 import { useAppStore } from "@/lib/store";
 import { useUiModal } from "@/lib/uiModal";
@@ -25,7 +25,7 @@ import { useUiModal } from "@/lib/uiModal";
 const BOAS_VINDAS: MensagemAssistente = {
   id: "boas-vindas",
   papel: "assistente",
-  texto: "Olá! Posso consultar sua operação e preparar compromissos, visitas, follow-ups e respostas baseadas nas conversas. Toda alteração exige sua confirmação antes de ser executada.",
+  texto: "Olá! Posso consultar sua operação e preparar compromissos, visitas, follow-ups, respostas baseadas nas conversas e a mudança para Sem resposta após 3 tentativas sem retorno. Toda alteração exige sua confirmação antes de ser executada.",
 };
 
 interface ParametrosVisitaGuiada {
@@ -52,7 +52,8 @@ interface EstadoAssistente {
 const ContextoEstadoAssistente = createContext<EstadoAssistente | null>(null);
 
 function sincronizarAgendaDaAcao(acao: AcaoAssistente | undefined): void {
-  if (acao?.estado !== "succeeded" || !acao.resultado?.agendaId) return;
+  if (!acao || acao.tipo === "alterar_status_sem_resposta_em_lote") return;
+  if (acao.estado !== "succeeded" || !acao.resultado?.agendaId) return;
   const { agenda, setAgenda } = useAppStore.getState();
   if (agenda.some((item) => item.id === acao.resultado?.agendaId)) return;
   const item = acao.tipo === "agendar_visita"
@@ -79,6 +80,36 @@ function sincronizarAgendaDaAcao(acao: AcaoAssistente | undefined): void {
         isVerificacaoDisponibilidade: false,
       };
   setAgenda([...agenda, item]);
+}
+
+function acaoParaHistorico(
+  acao: AcaoAssistente,
+): NonNullable<ItemHistoricoAssistente["acao"]> {
+  if (acao.tipo === "alterar_status_sem_resposta_em_lote") {
+    return {
+      id: acao.id,
+      tipo: acao.tipo,
+      estado: acao.estado,
+      entidade: { imoveis: acao.entidade.imoveis.slice(0, 100) },
+      dados: acao.dados,
+    };
+  }
+  if (acao.tipo === "agendar_visita") {
+    return {
+      id: acao.id,
+      tipo: acao.tipo,
+      estado: acao.estado,
+      entidade: acao.entidade,
+      dados: acao.dados,
+    };
+  }
+  return {
+    id: acao.id,
+    tipo: acao.tipo,
+    estado: acao.estado,
+    entidade: acao.entidade,
+    dados: acao.dados,
+  };
 }
 
 function incorporarRespostaNaConversa(
@@ -153,11 +184,7 @@ export function AssistenteProvider({ children }: { children: ReactNode }) {
             papel,
             texto: textoAnterior,
             ...(blocos?.length ? { resultados: compactarBlocosParaHistorico(blocos) } : {}),
-            ...(acao ? {
-              acao: acao.tipo === "agendar_visita"
-                ? { id: acao.id, tipo: acao.tipo, estado: acao.estado, entidade: acao.entidade, dados: acao.dados }
-                : { id: acao.id, tipo: acao.tipo, estado: acao.estado, entidade: acao.entidade, dados: acao.dados },
-            } : {}),
+            ...(acao ? { acao: acaoParaHistorico(acao) } : {}),
           })),
       }, { signal: controller.signal });
       if (resposta.ok === false && resposta.codigo === "cancelado") return;

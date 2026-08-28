@@ -7,7 +7,7 @@ import {
   confirmarAcaoAssistente,
   prepararAgendamentoVisita,
 } from "@/lib/servidor/assistente/acoes";
-import { acaoPendenteMaisRecente, classificarDecisaoTextual } from "@/lib/assistente/confirmacao";
+import { acaoPendenteMaisRecente, classificarDecisaoTextual, textoResultadoConfirmacao } from "@/lib/assistente/confirmacao";
 import { metadadosExecucaoIa } from "@/lib/ia/observabilidade";
 import { registrarEvento } from "@/lib/servidor/registro";
 import { admin, ambiente } from "@/app/api/google/_comum";
@@ -42,6 +42,12 @@ function registrarAcao(
   resultado: "sugerido" | "respondido" | "bloqueado" | "erro",
   motivo: string,
 ) {
+  const idsImoveis = acao.tipo === "alterar_status_sem_resposta_em_lote"
+    ? acao.entidade.imoveis.map((imovel) => imovel.id)
+    : [acao.entidade.imovelId];
+  const agendaId = acao.tipo === "alterar_status_sem_resposta_em_lote"
+    ? null
+    : acao.resultado?.agendaId;
   registrarEvento({
     userId,
     categoria: "ia",
@@ -49,9 +55,20 @@ function registrarAcao(
     evento,
     detalhe: JSON.stringify(metadadosExecucaoIa({
       operacao: acao.tipo,
-      entidadesUtilizadas: [acao.id, acao.entidade.imovelId, acao.resultado?.agendaId],
-      fontesDeDados: ["assistente_acoes", "agenda", ...(acao.entidade.imovelId ? ["imoveis"] : [])],
-      validacoesAplicadas: ["usuario-autenticado", "permissao-ia", "acao-user-scoped", "sessao-da-conversa", "payload-congelado"],
+      entidadesUtilizadas: [acao.id, ...idsImoveis, agendaId],
+      fontesDeDados: [
+        "assistente_acoes",
+        ...(acao.tipo === "alterar_status_sem_resposta_em_lote" ? ["imoveis", "status_history"] : ["agenda"]),
+        ...(acao.tipo !== "alterar_status_sem_resposta_em_lote" && acao.entidade.imovelId ? ["imoveis"] : []),
+      ],
+      validacoesAplicadas: [
+        "usuario-autenticado",
+        "permissao-ia",
+        "acao-user-scoped",
+        "sessao-da-conversa",
+        "payload-congelado",
+        ...(acao.tipo === "alterar_status_sem_resposta_em_lote" ? ["elegibilidade-revalidada-na-confirmacao"] : []),
+      ],
       resultado,
       motivo,
     })),
@@ -67,16 +84,6 @@ function espelharCompromissoDepois(userId: string, agendaId: string): void {
       console.warn("Assistente: não foi possível espelhar o compromisso no Google Agenda —", resultado.falha);
     }
   });
-}
-
-function textoResultadoConfirmacao(acao: AcaoAssistente): string {
-  if (acao.estado === "succeeded") {
-    if (acao.tipo === "agendar_visita") return `✓ Visita agendada\n\n${acao.entidade.codigo}\n${acao.dados.data} às ${acao.dados.hora}`;
-    return `✓ Compromisso criado\n\n${acao.dados.titulo}\n${acao.dados.data}${acao.dados.hora ? ` às ${acao.dados.hora}` : ""}`;
-  }
-  if (acao.estado === "expired") return "A confirmação expirou. Prepare a ação novamente; nada foi alterado.";
-  if (acao.estado === "cancelled") return "Ação cancelada. Nada foi alterado.";
-  return acao.erro || "Não foi possível concluir a ação. Nenhuma alteração adicional foi realizada.";
 }
 
 export async function POST(request: Request) {
@@ -124,7 +131,7 @@ export async function POST(request: Request) {
       sucesso ? "respondido" : resultado.acao.estado === "failed" ? "erro" : "bloqueado",
       resultado.repetida ? "execucao-ja-concluida" : resultado.acao.estado,
     );
-    if (sucesso && resultado.acao.resultado?.agendaId && !resultado.repetida) {
+    if (sucesso && resultado.acao.tipo !== "alterar_status_sem_resposta_em_lote" && resultado.acao.resultado?.agendaId && !resultado.repetida) {
       espelharCompromissoDepois(auth.user.id, resultado.acao.resultado.agendaId);
     }
     return respostaAcao(textoResultadoConfirmacao(resultado.acao), resultado.acao);
@@ -161,7 +168,7 @@ export async function POST(request: Request) {
       sucesso ? "respondido" : resultado.acao.estado === "failed" ? "erro" : "bloqueado",
       resultado.repetida ? "execucao-ja-concluida" : resultado.acao.estado,
     );
-    if (sucesso && resultado.acao.resultado?.agendaId && !resultado.repetida) {
+    if (sucesso && resultado.acao.tipo !== "alterar_status_sem_resposta_em_lote" && resultado.acao.resultado?.agendaId && !resultado.repetida) {
       espelharCompromissoDepois(auth.user.id, resultado.acao.resultado.agendaId);
     }
     return respostaAcao(textoResultadoConfirmacao(resultado.acao), resultado.acao);

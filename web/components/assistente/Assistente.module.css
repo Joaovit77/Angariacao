@@ -136,6 +136,17 @@
 .acaoDetalhes dt { color: var(--text-dim); font-size: 9px; text-transform: uppercase; letter-spacing: .05em; }
 .acaoDetalhes dd { margin: 2px 0 0; color: var(--text); font-size: 12px; line-height: 1.35; overflow-wrap: anywhere; }
 .acaoDetalhes .acaoLinhaCompleta { grid-column: 1 / -1; }
+.acaoLista { margin-top: 11px; border-top: 1px solid var(--border); padding-top: 9px; }
+.acaoLista summary { color: var(--accent-strong); font-size: 11px; font-weight: 800; cursor: pointer; }
+.acaoLista ul { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; max-height: 210px; overflow-y: auto; }
+.acaoLista li { padding: 7px 8px; border: 1px solid var(--border-soft); border-radius: 9px; background: var(--bg); display: flex; flex-direction: column; gap: 2px; }
+.acaoLista li strong { color: var(--text); font-size: 11px; }
+.acaoLista li span { color: var(--text-dim); font-size: 10px; line-height: 1.35; }
+.acaoLista li small { color: var(--text-faint); font-size: 9px; }
+.acaoResultado { margin-top: 10px; padding: 9px; border-radius: 9px; background: var(--good-soft); display: flex; flex-direction: column; gap: 4px; color: var(--text-dim); font-size: 10px; }
+.acaoResultado strong { color: var(--good); font-size: 11px; }
+.acaoResultado ul { margin: 2px 0 0; padding-left: 16px; }
+.acaoResultado li + li { margin-top: 3px; }
 .acaoSeguranca { margin: 11px 0 0 !important; padding-top: 9px; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 10px; text-align: center; }
 .acaoBotoes { margin-top: 9px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .acaoBotoes button { border: 0; border-radius: 9px; padding: 8px; font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }

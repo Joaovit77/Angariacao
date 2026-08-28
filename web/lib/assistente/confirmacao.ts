@@ -1,4 +1,4 @@
-import type { ItemHistoricoAssistente } from "./tipos";
+import type { AcaoAssistente, ItemHistoricoAssistente } from "./tipos";
 
 export type DecisaoTextualAcao = "confirmar" | "cancelar";
 
@@ -58,4 +58,25 @@ export function acaoPendenteMaisRecente(
     if (acao) return acao.estado === "ready_for_confirmation" ? acao : null;
   }
   return null;
+}
+
+export function textoResultadoConfirmacao(acao: AcaoAssistente): string {
+  if (acao.estado === "succeeded") {
+    if (acao.tipo === "alterar_status_sem_resposta_em_lote") {
+      const alterados = acao.resultado?.totalAlterados || 0;
+      const ignorados = acao.resultado?.totalIgnorados || 0;
+      if (alterados === 0) {
+        return `Nenhum imóvel foi alterado. ${ignorados === 1 ? "1 imóvel deixou" : `${ignorados} imóveis deixaram`} de ser elegível desde a preparação.`;
+      }
+      const sucesso = `Pronto. ${alterados === 1 ? "1 imóvel foi alterado" : `${alterados} imóveis foram alterados`} para Sem resposta. A alteração foi registrada no histórico de cada imóvel.`;
+      return ignorados > 0
+        ? `${sucesso}\n\n${ignorados === 1 ? "1 imóvel não foi alterado porque deixou" : `${ignorados} imóveis não foram alterados porque deixaram`} de ser elegível desde a preparação.`
+        : sucesso;
+    }
+    if (acao.tipo === "agendar_visita") return `✓ Visita agendada\n\n${acao.entidade.codigo}\n${acao.dados.data} às ${acao.dados.hora}`;
+    return `✓ Compromisso criado\n\n${acao.dados.titulo}\n${acao.dados.data}${acao.dados.hora ? ` às ${acao.dados.hora}` : ""}`;
+  }
+  if (acao.estado === "expired") return "A confirmação expirou. Prepare a ação novamente; nada foi alterado.";
+  if (acao.estado === "cancelled") return "Ação cancelada. Nada foi alterado.";
+  return acao.erro || "Não foi possível concluir a ação. Nenhuma alteração adicional foi realizada.";
 }

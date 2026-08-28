@@ -834,7 +834,7 @@ begin
       from pg_catalog.pg_constraint
      where conname = 'assistente_acoes_action_type_check'
        and conrelid = 'public.assistente_acoes'::regclass
-       and pg_catalog.pg_get_constraintdef(oid) not like '%criar_compromisso%'
+       and pg_catalog.pg_get_constraintdef(oid) not like '%alterar_status_sem_resposta_em_lote%'
   ) then
     alter table public.assistente_acoes
       drop constraint assistente_acoes_action_type_check;
@@ -847,7 +847,7 @@ begin
   ) then
     alter table public.assistente_acoes
       add constraint assistente_acoes_action_type_check
-      check (action_type in ('agendar_visita', 'criar_compromisso'));
+      check (action_type in ('agendar_visita', 'criar_compromisso', 'alterar_status_sem_resposta_em_lote'));
   end if;
 end $$;
 
@@ -865,6 +865,44 @@ create unique index if not exists assistente_acoes_pendente_sessao_idx
 create schema if not exists private;
 revoke all on schema private from public, anon, authenticated;
 
+-- Regra canônica da ação pontual de status do Assistente. A preparação e a
+-- confirmação chamam a mesma função para não divergirem entre o preview e a
+-- execução. Tentativa é o registro operacional; mensagem enviada, sozinha,
+-- não entra. Qualquer resposta observada encerra a hipótese de silêncio.
+create or replace function private.imovel_elegivel_status_sem_resposta(p_imovel public.imoveis)
+returns boolean
+language sql
+stable
+set search_path = ''
+as $$
+  select
+    p_imovel.status = 'Novo contato'
+    and not coalesce(p_imovel.retirado, false)
+    and not coalesce(p_imovel.pre_cadastro, false)
+    and jsonb_typeof(coalesce(p_imovel.tentativas, '[]'::jsonb)) = 'array'
+    and jsonb_array_length(coalesce(p_imovel.tentativas, '[]'::jsonb)) >= 3
+    and not exists (
+      select 1
+        from jsonb_array_elements(coalesce(p_imovel.tentativas, '[]'::jsonb)) tentativa
+       where tentativa->>'resultado' in ('respondeu', 'vai-retornar', 'agendou', 'recusou', 'outro-contato')
+    )
+    and not exists (
+      select 1
+        from jsonb_array_elements(coalesce(p_imovel.notas, '[]'::jsonb)) nota
+       where (
+         coalesce(nota->>'id', '') like 'wa:%'
+         and coalesce(nota->>'id', '') not like '%:encerrado'
+         and regexp_replace(lower(coalesce(nota->>'tipo', '')), '[[:space:]_.-]', '', 'g')
+             not in ('reaction', 'reactionmessage')
+       ) or (
+         nota->>'origem' = 'importacao-evolution'
+         and nota->>'direcao' = 'recebida'
+         and coalesce(nota->>'id', '') like 'wa-contexto-recebida:%'
+       )
+    );
+$$;
+revoke all on function private.imovel_elegivel_status_sem_resposta(public.imoveis) from public, anon, authenticated;
+
 create or replace function private.assistente_acao_json(p_acao public.assistente_acoes)
 returns jsonb
 language sql
@@ -878,28 +916,51 @@ as $$
     'expiraEm', p_acao.expires_at,
     'operacao', case p_acao.action_type
       when 'criar_compromisso' then 'Criar compromisso'
+      when 'alterar_status_sem_resposta_em_lote' then 'Alterar status em lote'
       else 'Agendar visita'
     end,
-    'impacto', 'Será criado um compromisso real na agenda.',
-    'entidade', jsonb_build_object(
-      'imovelId', p_acao.payload->>'imovelId',
-      'codigo', p_acao.payload->>'codigo',
-      'endereco', p_acao.payload->>'endereco',
-      'responsavel', p_acao.payload->>'responsavel'
-    ),
-    'dados', jsonb_build_object(
-      'titulo', p_acao.payload->>'title',
-      'tipo', p_acao.payload->>'type',
-      'data', p_acao.payload->>'date',
-      'hora', p_acao.payload->>'hora',
-      'observacao', p_acao.payload->>'notes'
-    ),
-    'resultado', case when p_acao.result is null then null else jsonb_build_object(
-      'agendaId', p_acao.result->>'agendaId'
-    ) end,
+    'impacto', case p_acao.action_type
+      when 'alterar_status_sem_resposta_em_lote' then
+        (p_acao.payload->>'quantidade') || case
+          when (p_acao.payload->>'quantidade')::integer = 1
+            then ' imóvel terá o status alterado para Sem resposta.'
+          else ' imóveis terão o status alterado para Sem resposta.'
+        end
+      else 'Será criado um compromisso real na agenda.'
+    end,
+    'entidade', case p_acao.action_type
+      when 'alterar_status_sem_resposta_em_lote' then jsonb_build_object(
+        'imoveis', p_acao.payload->'imoveis'
+      )
+      else jsonb_build_object(
+        'imovelId', p_acao.payload->>'imovelId',
+        'codigo', p_acao.payload->>'codigo',
+        'endereco', p_acao.payload->>'endereco',
+        'responsavel', p_acao.payload->>'responsavel'
+      )
+    end,
+    'dados', case p_acao.action_type
+      when 'alterar_status_sem_resposta_em_lote' then jsonb_build_object(
+        'statusDestino', p_acao.payload->>'statusDestino',
+        'quantidade', (p_acao.payload->>'quantidade')::integer
+      )
+      else jsonb_build_object(
+        'titulo', p_acao.payload->>'title',
+        'tipo', p_acao.payload->>'type',
+        'data', p_acao.payload->>'date',
+        'hora', p_acao.payload->>'hora',
+        'observacao', p_acao.payload->>'notes'
+      )
+    end,
+    'resultado', case
+      when p_acao.result is null then null
+      when p_acao.action_type = 'alterar_status_sem_resposta_em_lote' then p_acao.result
+      else jsonb_build_object('agendaId', p_acao.result->>'agendaId')
+    end,
     'erro', case p_acao.error_code
       when 'imovel_indisponivel' then 'O imóvel não está mais disponível para esta ação.'
       when 'acao_expirada' then 'A confirmação expirou. Prepare a ação novamente.'
+      when 'payload_invalido' then 'A ação preparada não passou na validação de segurança.'
       else null
     end
   );
@@ -1098,6 +1159,89 @@ begin
 end;
 $$;
 
+create or replace function preparar_acao_assistente_status_sem_resposta(
+  p_sessao_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_imoveis jsonb;
+  v_quantidade integer;
+  v_acao public.assistente_acoes;
+begin
+  if v_user is null then
+    return jsonb_build_object('ok', false, 'codigo', 'nao_autenticado', 'erro', 'Sessão inválida ou expirada.');
+  end if;
+  if not exists (
+    select 1 from public.ia_permissoes p
+     where p.user_id = v_user and p.liberado = true
+  ) then
+    return jsonb_build_object('ok', false, 'codigo', 'sem_permissao', 'erro', 'Sua conta não tem permissão para usar o Assistente.');
+  end if;
+  if p_sessao_id is null then
+    return jsonb_build_object('ok', false, 'codigo', 'sessao_invalida', 'erro', 'A sessão da conversa é inválida.');
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(v_user::text || ':' || p_sessao_id::text, 0)
+  );
+
+  -- Um novo pedido operacional substitui qualquer preview anterior da mesma
+  -- conversa, mesmo quando a nova consulta não encontra alvos elegíveis.
+  update public.assistente_acoes
+     set status = 'cancelled', error_code = 'substituida', updated_at = now()
+   where user_id = v_user
+     and sessao_id = p_sessao_id
+     and status = 'ready_for_confirmation';
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'id', i.id,
+           'codigo', coalesce(nullif(trim(i.codigo), ''), 'Sem código'),
+           'endereco', coalesce(nullif(concat_ws(', ',
+             nullif(trim(i.endereco), ''),
+             nullif(trim(i.bairro), ''),
+             nullif(trim(i.cidade), '')
+           ), ''), 'Endereço não informado'),
+           'statusPreparado', i.status,
+           'tentativas', jsonb_array_length(coalesce(i.tentativas, '[]'::jsonb))
+         ) order by i.codigo nulls last, i.id), '[]'::jsonb),
+         count(*)::integer
+    into v_imoveis, v_quantidade
+    from public.imoveis i
+   where i.user_id = v_user
+     and private.imovel_elegivel_status_sem_resposta(i);
+
+  if v_quantidade = 0 then
+    return jsonb_build_object(
+      'ok', false,
+      'codigo', 'sem_elegiveis',
+      'erro', 'Não encontrei imóveis em Novo contato com pelo menos 3 tentativas registradas e sem resposta do proprietário.'
+    );
+  end if;
+
+  insert into public.assistente_acoes (
+    user_id, sessao_id, action_type, status, payload, expires_at
+  ) values (
+    v_user,
+    p_sessao_id,
+    'alterar_status_sem_resposta_em_lote',
+    'ready_for_confirmation',
+    jsonb_build_object(
+      'statusDestino', 'Sem resposta',
+      'quantidade', v_quantidade,
+      'imoveis', v_imoveis
+    ),
+    now() + interval '15 minutes'
+  ) returning * into v_acao;
+
+  return jsonb_build_object('ok', true, 'acao', private.assistente_acao_json(v_acao));
+end;
+$$;
+
 drop function if exists confirmar_acao_assistente(uuid);
 create or replace function confirmar_acao_assistente(p_acao_id uuid, p_sessao_id uuid)
 returns jsonb
@@ -1110,6 +1254,11 @@ declare
   v_acao public.assistente_acoes;
   v_imovel_id uuid;
   v_agenda_id uuid;
+  v_item jsonb;
+  v_imovel public.imoveis;
+  v_alterados jsonb := '[]'::jsonb;
+  v_ignorados jsonb := '[]'::jsonb;
+  v_codigo text;
 begin
   if v_user is null then
     return jsonb_build_object('ok', false, 'codigo', 'nao_autenticado', 'erro', 'Sessão inválida ou expirada.');
@@ -1140,6 +1289,80 @@ begin
        set status = 'expired', error_code = 'acao_expirada', updated_at = now()
      where id = v_acao.id
      returning * into v_acao;
+    return jsonb_build_object('ok', true, 'acao', private.assistente_acao_json(v_acao));
+  end if;
+
+  if v_acao.action_type = 'alterar_status_sem_resposta_em_lote' then
+    if v_acao.payload->>'statusDestino' is distinct from 'Sem resposta'
+       or jsonb_typeof(v_acao.payload->'imoveis') is distinct from 'array' then
+      update public.assistente_acoes
+         set status = 'failed', error_code = 'payload_invalido', updated_at = now()
+       where id = v_acao.id
+       returning * into v_acao;
+      return jsonb_build_object('ok', true, 'acao', private.assistente_acao_json(v_acao));
+    end if;
+
+    -- O trigger continua sendo o único autor do status_history. A marca local
+    -- apenas informa a origem confiável desta transação; o usuário e a sessão
+    -- já foram validados e o navegador não escreve na tabela de ações.
+    perform pg_catalog.set_config('angario.status_history_source', 'assistente', true);
+    for v_item in
+      select value
+        from jsonb_array_elements(v_acao.payload->'imoveis')
+       order by value->>'id'
+    loop
+      v_imovel_id := (v_item->>'id')::uuid;
+      v_codigo := coalesce(nullif(v_item->>'codigo', ''), 'Sem código');
+
+      select * into v_imovel
+        from public.imoveis i
+       where i.id = v_imovel_id and i.user_id = v_user
+       for update;
+
+      if not found then
+        v_ignorados := v_ignorados || jsonb_build_array(jsonb_build_object(
+          'id', v_imovel_id,
+          'codigo', v_codigo,
+          'motivo', 'imovel_indisponivel'
+        ));
+      elsif v_imovel.status is distinct from v_item->>'statusPreparado' then
+        v_ignorados := v_ignorados || jsonb_build_array(jsonb_build_object(
+          'id', v_imovel.id,
+          'codigo', coalesce(nullif(trim(v_imovel.codigo), ''), v_codigo),
+          'motivo', 'status_alterado'
+        ));
+      elsif not private.imovel_elegivel_status_sem_resposta(v_imovel) then
+        v_ignorados := v_ignorados || jsonb_build_array(jsonb_build_object(
+          'id', v_imovel.id,
+          'codigo', coalesce(nullif(trim(v_imovel.codigo), ''), v_codigo),
+          'motivo', 'nao_elegivel'
+        ));
+      else
+        update public.imoveis
+           set status = 'Sem resposta'
+         where id = v_imovel.id and user_id = v_user;
+        v_alterados := v_alterados || jsonb_build_array(jsonb_build_object(
+          'id', v_imovel.id,
+          'codigo', coalesce(nullif(trim(v_imovel.codigo), ''), v_codigo)
+        ));
+      end if;
+    end loop;
+    perform pg_catalog.set_config('angario.status_history_source', '', true);
+
+    update public.assistente_acoes
+       set status = 'succeeded',
+           result = jsonb_build_object(
+             'alterados', v_alterados,
+             'ignorados', v_ignorados,
+             'totalAlterados', jsonb_array_length(v_alterados),
+             'totalIgnorados', jsonb_array_length(v_ignorados)
+           ),
+           error_code = null,
+           executed_at = now(),
+           updated_at = now()
+     where id = v_acao.id
+     returning * into v_acao;
+
     return jsonb_build_object('ok', true, 'acao', private.assistente_acao_json(v_acao));
   end if;
 
@@ -1223,10 +1446,12 @@ $$;
 
 revoke all on function preparar_acao_assistente_agendar_visita(uuid, date, text, uuid) from public, anon;
 revoke all on function preparar_acao_assistente_criar_compromisso(text, text, date, text, uuid, text, uuid) from public, anon;
+revoke all on function preparar_acao_assistente_status_sem_resposta(uuid) from public, anon;
 revoke all on function confirmar_acao_assistente(uuid, uuid) from public, anon;
 revoke all on function cancelar_acao_assistente(uuid, uuid) from public, anon;
 grant execute on function preparar_acao_assistente_agendar_visita(uuid, date, text, uuid) to authenticated;
 grant execute on function preparar_acao_assistente_criar_compromisso(text, text, date, text, uuid, text, uuid) to authenticated;
+grant execute on function preparar_acao_assistente_status_sem_resposta(uuid) to authenticated;
 grant execute on function confirmar_acao_assistente(uuid, uuid) to authenticated;
 grant execute on function cancelar_acao_assistente(uuid, uuid) to authenticated;
 
@@ -1699,7 +1924,13 @@ begin
   evento := jsonb_build_object('status', new.status, 'date', data_evento);
 
   if ator is not null then
-    evento := evento || jsonb_build_object('userId', ator::text, 'source', 'usuario');
+    evento := evento || jsonb_build_object(
+      'userId', ator::text,
+      'source', case
+        when current_setting('angario.status_history_source', true) = 'assistente' then 'assistente'
+        else 'usuario'
+      end
+    );
   elsif proposta is not null then
     -- Eventos externos não ganham um user_id fictício. Conserva apenas os
     -- metadados explicitamente fornecidos pela integração confiável.

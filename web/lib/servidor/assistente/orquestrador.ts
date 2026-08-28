@@ -21,12 +21,15 @@ import {
   DEFINICAO_FERRAMENTA_AGENDAR_VISITA,
   DEFINICAO_FERRAMENTA_CRIAR_COMPROMISSO,
   DEFINICAO_FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA,
+  DEFINICAO_FERRAMENTA_PREPARAR_STATUS_SEM_RESPOSTA,
   executarPreparacaoCriacaoCompromisso,
   executarPreparacaoAgendamentoVisita,
+  executarPreparacaoStatusSemResposta,
   FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE,
   FERRAMENTA_PREPARAR_CRIACAO_COMPROMISSO,
   FERRAMENTA_PREPARAR_AGENDAMENTO_VISITA,
   FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA,
+  FERRAMENTA_PREPARAR_STATUS_SEM_RESPOSTA,
   prepararRevisaoFollowUpLote,
   prepararRascunhoResposta,
 } from "./acoes";
@@ -130,7 +133,41 @@ export function normalizarPedidoAssistente(valor: unknown): PedidoAssistente | n
           },
         }
       : undefined;
-    const acao = acaoVisita || acaoCompromisso;
+    const imoveisStatus = entidade && Array.isArray(entidade.imoveis)
+      ? entidade.imoveis.slice(0, 100).flatMap((item) => {
+          if (!item || typeof item !== "object") return [];
+          const imovel = item as Record<string, unknown>;
+          const id = String(imovel.id || "");
+          const tentativas = Number(imovel.tentativas);
+          if (!UUID.test(id) || imovel.statusPreparado !== "Novo contato" || !Number.isInteger(tentativas) || tentativas < 3) return [];
+          return [{
+            id,
+            codigo: String(imovel.codigo || "Sem código").slice(0, 40),
+            endereco: String(imovel.endereco || "Endereço não informado").slice(0, 240),
+            statusPreparado: "Novo contato" as const,
+            tentativas,
+          }];
+        })
+      : [];
+    const quantidadeStatus = Number(dados?.quantidade);
+    const acaoStatusSemResposta = a
+      && a.tipo === "alterar_status_sem_resposta_em_lote"
+      && typeof a.estado === "string"
+      && ESTADOS_ACAO.has(a.estado)
+      && UUID.test(String(a.id || ""))
+      && entidade
+      && dados?.statusDestino === "Sem resposta"
+      && Number.isInteger(quantidadeStatus)
+      && quantidadeStatus >= imoveisStatus.length
+      ? {
+          id: String(a.id),
+          tipo: "alterar_status_sem_resposta_em_lote" as const,
+          estado: a.estado as NonNullable<PedidoAssistente["historico"][number]["acao"]>["estado"],
+          entidade: { imoveis: imoveisStatus },
+          dados: { statusDestino: "Sem resposta" as const, quantidade: quantidadeStatus },
+        }
+      : undefined;
+    const acao = acaoVisita || acaoCompromisso || acaoStatusSemResposta;
     return texto ? [{ papel: m.papel, texto, ...(resultados.length ? { resultados } : {}), ...(acao ? { acao } : {}) }] : [];
   });
   const sessaoId = typeof bruto.sessaoId === "string" && UUID.test(bruto.sessaoId) ? bruto.sessaoId : undefined;
@@ -213,6 +250,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
       DEFINICAO_FERRAMENTA_CRIAR_COMPROMISSO,
       DEFINICAO_FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE,
       DEFINICAO_FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA,
+      DEFINICAO_FERRAMENTA_PREPARAR_STATUS_SEM_RESPOSTA,
       ...(ferramentaProtocolos ? [ferramentaProtocolos] : []),
     ],
     tool_choice: "auto" as const,
@@ -270,6 +308,11 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
               userId,
               pedido.contexto,
             )
+        : chamada.name === FERRAMENTA_PREPARAR_STATUS_SEM_RESPOSTA
+          ? await executarPreparacaoStatusSemResposta(
+              supabase,
+              pedido.sessaoId,
+            )
         : await executarFerramenta(chamada.name, args, supabase, userId, pedido.contexto, pedido.mensagem, pedido.historico);
       if (resultado.acao) acaoPendente = resultado.acao;
       if (resultado.comandoUi) comandoUi = resultado.comandoUi;
@@ -288,7 +331,9 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
 
   const textoGerado = sanitizarTextoAssistente(resposta.output_text);
   const texto = acaoPendente
-    ? acaoPendente.tipo === "agendar_visita"
+    ? acaoPendente.tipo === "alterar_status_sem_resposta_em_lote"
+      ? `Encontrei ${acaoPendente.dados.quantidade === 1 ? "1 imóvel elegível" : `${acaoPendente.dados.quantidade} imóveis elegíveis`}. Nenhuma alteração foi feita ainda. Revise a lista e confirme para mudar o status para Sem resposta.`
+      : acaoPendente.tipo === "agendar_visita"
       ? "Preparei a visita. Revise os dados abaixo e confirme somente se estiver tudo certo."
       : "Preparei o compromisso. Revise os dados abaixo e confirme somente se estiver tudo certo."
     : comandoUi?.tipo === "abrir_followup_lote"
@@ -310,6 +355,11 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
       ferramentasChamadas,
       entidadesUtilizadas: [
         pedido.contexto.entidade?.id,
+        ...(acaoPendente?.tipo === "alterar_status_sem_resposta_em_lote"
+          ? acaoPendente.entidade.imoveis.map((imovel) => imovel.id)
+          : acaoPendente
+            ? [acaoPendente.entidade.imovelId]
+            : []),
         ...blocos.flatMap((bloco) =>
           bloco.tipo === "imoveis" || bloco.tipo === "agenda" || bloco.tipo === "mensagens_agendadas"
             ? bloco.itens.map((item) => item.id)

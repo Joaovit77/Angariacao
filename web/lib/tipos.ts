@@ -29,7 +29,7 @@ export interface StatusHistoryEntry {
       autenticado confiável. Nunca substitui um id disponível. */
   authorName?: string | null;
   /** Procedência do marco. Entradas legadas não possuem este campo. */
-  source?: "usuario" | "sophia" | "automacao";
+  source?: "usuario" | "assistente" | "sophia" | "automacao";
 }
 
 /** Nota do histórico de interações com o proprietário (CRM). */
