@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExecutorOpenAI } from "@/lib/servidor/ia/executor-openai";
 
 vi.mock("@/lib/calculo/notas", () => ({
@@ -92,6 +92,10 @@ function supabaseFalso(): SupabaseClient {
 }
 
 describe("handler especializado de atendimento", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("preserva o contrato da UI e exatamente três chamadas no caminho feliz", async () => {
     const executar = vi
       .fn<ExecutorOpenAI["executar"]>()
@@ -141,6 +145,7 @@ describe("handler especializado de atendimento", () => {
       ok: true,
       rascunho: "A taxa é de 10%.",
       protocolosUsados: ["Taxa"],
+      fallbackAplicado: false,
     });
     expect(executar).toHaveBeenCalledTimes(3);
     expect(executar.mock.calls.map(([pedido]) => pedido.tipo)).toEqual([
@@ -161,7 +166,7 @@ describe("handler especializado de atendimento", () => {
     expect(executar.mock.calls[0][0].mensagens[1].content).not.toContain("não repita informações");
   });
 
-  it("classifica a falha da geracao e repete o mesmo payload de decisao na nova tentativa", async () => {
+  it("regenera do zero quando a primeira geração declara protocolo não autorizado", async () => {
     const decisao = {
       intencao: "taxa",
       contextoRelevante: "pergunta direta",
@@ -183,17 +188,16 @@ describe("handler especializado de atendimento", () => {
     };
     const executar = vi
       .fn<ExecutorOpenAI["executar"]>()
-      // Primeira tentativa: a geracao cita um protocolo que nao foi autorizado.
+      // A primeira geração cita um protocolo que não foi autorizado.
       .mockResolvedValueOnce({ conclusao: {} as never, texto: JSON.stringify(decisao) })
       .mockResolvedValueOnce({
         conclusao: {} as never,
         texto: JSON.stringify({ mensagem: "A taxa é de 10%.", protocolosUsados: ["Inventado"] }),
       })
-      // Segunda tentativa, com a mesma fonte: caminho feliz.
-      .mockResolvedValueOnce({ conclusao: {} as never, texto: JSON.stringify(decisao) })
+      // O fallback não repete a decisão nem recebe a frase inválida.
       .mockResolvedValueOnce({
         conclusao: {} as never,
-        texto: JSON.stringify({ mensagem: "A taxa é de 10%.", protocolosUsados: ["Taxa"] }),
+        texto: JSON.stringify({ mensagem: "Posso confirmar essa informação para você.", protocolosUsados: [] }),
       })
       .mockResolvedValueOnce({ conclusao: {} as never, texto: JSON.stringify(validacao) });
     const entrada = {
@@ -204,39 +208,87 @@ describe("handler especializado de atendimento", () => {
       executor: { executar },
     };
 
-    const primeira = await atenderProprietario(entrada);
-    const segunda = await atenderProprietario(entrada);
+    const resposta = await atenderProprietario(entrada);
 
-    expect(primeira.status).toBe(422);
-    expect(await primeira.json()).toMatchObject({ ok: false, falha: "protocolo-inadequado" });
-    expect(segunda.status).toBe(200);
-    expect(executar.mock.calls[0][0]).toEqual(executar.mock.calls[2][0]);
+    expect(resposta.status).toBe(200);
+    expect(await resposta.json()).toEqual({
+      ok: true,
+      rascunho: "Posso confirmar essa informação para você.",
+      protocolosUsados: [],
+      fallbackAplicado: true,
+    });
+    expect(executar.mock.calls.map(([pedido]) => pedido.tipo)).toEqual([
+      "rascunhar-resposta-decisao",
+      "rascunhar-resposta-geracao",
+      "rascunhar-resposta-geracao-fallback",
+      "rascunhar-resposta-validacao-fallback",
+    ]);
+    expect(executar.mock.calls[2][0].mensagens[1].content).not.toContain('"Inventado"');
     expect(registrarEvento).toHaveBeenCalledWith(
       expect.objectContaining({
-        evento: "ia-atendimento-bloqueado",
-        detalhe: expect.stringContaining('"etapaFinal":"geracao"'),
+        evento: "ia-atendimento-sugerido",
+        detalhe: expect.stringContaining('"motivo":"aprovada-apos-fallback"'),
       }),
     );
-    expect(registrarEvento).toHaveBeenCalledWith(
-      expect.objectContaining({
-        evento: "ia-atendimento-bloqueado",
-        detalhe: expect.stringContaining('"motivo":"protocolo-inadequado"'),
-      }),
-    );
-    expect(vi.mocked(registrarEvento).mock.calls.at(-1)?.[0].detalhe).toContain(
+    const detalhe = vi.mocked(registrarEvento).mock.calls.at(-1)?.[0].detalhe || "";
+    expect(detalhe).toContain('"motivoFallback":"protocolo-inadequado"');
+    expect(detalhe).toContain(
       '"contextoFingerprint":"',
     );
-    expect(vi.mocked(registrarEvento).mock.calls.at(-1)?.[0].detalhe).toContain(
-      '"protocolosAplicados":["protocolo-taxa"]',
+    expect(detalhe).toContain(
+      '"protocolosAplicados":[]',
     );
-    expect(vi.mocked(registrarEvento).mock.calls.at(-1)?.[0].detalhe).toContain(
+    expect(detalhe).toContain(
       '"protocolosConsiderados":["protocolo-taxa"]',
     );
-    expect(vi.mocked(registrarEvento).mock.calls.at(-1)?.[0].detalhe).not.toContain(
+    expect(detalhe).not.toContain(
       "conduta-arquivada",
     );
-    expect(vi.mocked(registrarEvento).mock.calls.at(-1)?.[0].detalhe).not.toContain(
+    expect(detalhe).not.toContain(
       "Qual é a taxa?",
+    );
+  });
+
+  it("mantém o 422 quando também o fallback viola as fontes permitidas", async () => {
+    const executar = vi
+      .fn<ExecutorOpenAI["executar"]>()
+      .mockResolvedValueOnce({
+        conclusao: {} as never,
+        texto: JSON.stringify({
+          intencao: "taxa",
+          contextoRelevante: "pergunta direta",
+          protocolosAplicaveis: ["Taxa"],
+          informacoesFaltantes: [],
+          nivelConfianca: "alta",
+          precisaIntervencaoHumana: false,
+          podeResponderComSeguranca: true,
+        }),
+      })
+      .mockResolvedValueOnce({
+        conclusao: {} as never,
+        texto: JSON.stringify({ mensagem: "A taxa é de 8%.", protocolosUsados: ["Inventado"] }),
+      })
+      .mockResolvedValueOnce({
+        conclusao: {} as never,
+        texto: JSON.stringify({ mensagem: "A taxa é de 7%.", protocolosUsados: ["Outro"] }),
+      });
+
+    const resposta = await atenderProprietario({
+      tipo: "rascunhar-resposta",
+      corpo: { tipo: "rascunhar-resposta", imovelId: "imovel-1" },
+      supabase: supabaseFalso(),
+      userId: "usuario-1",
+      executor: { executar },
+    });
+
+    expect(resposta.status).toBe(422);
+    expect(await resposta.json()).toMatchObject({ ok: false, falha: "protocolo-inadequado" });
+    expect(executar).toHaveBeenCalledTimes(3);
+    expect(registrarEvento).toHaveBeenCalledWith(
+      expect.objectContaining({
+        evento: "ia-atendimento-bloqueado",
+        detalhe: expect.stringContaining('"motivoFallback":"protocolo-inadequado"'),
+      }),
     );
   });
 });

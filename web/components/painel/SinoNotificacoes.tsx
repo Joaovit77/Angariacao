@@ -2,23 +2,16 @@
 
 /* ================================================================
    SINO DE NOTIFICAÇÕES (topbar)
-   O sino representa somente acontecimentos novos e persistidos:
-   - eventos do Sistema Principal ainda não lidos;
-   - respostas do proprietário ainda não tratadas;
-   - oportunidades do Radar ainda não vistas.
-
-   Compromissos vencidos e imóveis parados continuam nas telas de trabalho,
-   mas não entram aqui: são estados correntes, não eventos recentes. Itens do
-   mesmo tipo são agrupados para uma carteira grande não gerar dezenas de
-   linhas iguais.
+   Representa somente acontecimentos reais e persistidos: mensagens recebidas
+   e eventos do Sistema Principal. Agenda, imóveis parados, Radar e outros
+   estados calculados continuam nas respectivas telas de trabalho, mas não
+   entram no badge nem reaparecem como notificações depois de uma recarga.
    ================================================================ */
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { caixaDeRespostas } from "@/lib/calculo/respostas";
-import { notificacoesPendentes, rotuloDoImovel } from "@/lib/calculo/sistemaPrincipal";
-import { marcarEventosLidos } from "@/lib/mutacoes";
+import { notificacoesDaCentral, tempoRelativoNotificacao } from "@/lib/calculo/notificacoes";
+import { marcarEventosLidos, marcarTodasRespostasLidas } from "@/lib/mutacoes";
 import { useUiModal } from "@/lib/uiModal";
-import { tempoRelativoIso, todayISO } from "@/lib/datas";
 import {
   assinarPermissao,
   lerPermissao,
@@ -31,9 +24,10 @@ import { toast } from "@/lib/toast";
 export default function SinoNotificacoes() {
   const router = useRouter();
   const imoveis = useAppStore((s) => s.imoveis);
-  const radarNovos = useAppStore((s) => s.radarNovos);
   const abrirModal = useUiModal((s) => s.abrirModal);
   const [aberto, setAberto] = useState(false);
+  const [filtro, setFiltro] = useState<"todas" | "nao-lidas">("todas");
+  const [marcandoTodas, setMarcandoTodas] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   // Store externo em vez de useState: `Notification.permission` não existe no
   // SSR, e lê-lo no render daria mismatch de hidratação (mesmo padrão da
@@ -44,16 +38,9 @@ export default function SinoNotificacoes() {
     () => PERMISSAO_NO_SERVIDOR,
   );
 
-  const hoje = todayISO();
-  const eventos = notificacoesPendentes(imoveis);
-  const respostas = caixaDeRespostas(imoveis, hoje).filter(
-    (linha) => linha.pendente && linha.fase === "captacao",
-  );
-  const ultimaResposta = respostas[0];
-  const imovelUltimaResposta = ultimaResposta
-    ? imoveis.find((imovel) => imovel.id === ultimaResposta.imovelId)
-    : null;
-  const total = eventos.length + respostas.length + radarNovos;
+  const notificacoes = useMemo(() => notificacoesDaCentral(imoveis), [imoveis]);
+  const naoLidas = useMemo(() => notificacoes.filter((item) => !item.lida), [notificacoes]);
+  const visiveis = filtro === "nao-lidas" ? naoLidas : notificacoes;
 
   // Fecha ao clicar fora. O listener só existe enquanto está aberto.
   useEffect(() => {
@@ -65,11 +52,6 @@ export default function SinoNotificacoes() {
     return () => document.removeEventListener("mousedown", aoClicarFora);
   }, [aberto]);
 
-  function irPara(rota: string) {
-    setAberto(false);
-    router.push(rota);
-  }
-
   // Só a partir de um clique: navegador ignora (ou nega de vez) pedido
   // automático, e "negado" é caro de desfazer.
   async function ativarAvisos() {
@@ -78,128 +60,119 @@ export default function SinoNotificacoes() {
     else if (r === "denied") toast("O navegador bloqueou os avisos. Dá para liberar no cadeado da barra de endereço.", "warning");
   }
 
+  function abrirNotificacao(id: string) {
+    const notificacao = notificacoes.find((item) => item.id === id);
+    if (!notificacao) return;
+    setAberto(false);
+
+    if (notificacao.destino === "conversa") {
+      router.push(`/respostas?imovel=${encodeURIComponent(notificacao.imovelId)}`);
+      return;
+    }
+
+    void marcarEventosLidos(notificacao.imovelId);
+    abrirModal("imovel", notificacao.imovelId);
+  }
+
+  async function marcarTudoComoLido() {
+    if (marcandoTodas || naoLidas.length === 0) return;
+    setMarcandoTodas(true);
+    const imoveisComMensagem = [
+      ...new Set(
+        naoLidas
+          .filter((item) => item.tipo === "mensagem-recebida")
+          .map((item) => item.imovelId),
+      ),
+    ];
+
+    try {
+      await marcarEventosLidos(null);
+      await marcarTodasRespostasLidas(imoveisComMensagem);
+    } finally {
+      setMarcandoTodas(false);
+    }
+  }
+
   return (
     <div className="topbar-pop-wrap" ref={wrapRef}>
       <button
         type="button"
         className="topbar-icon-btn"
-        aria-label={total > 0 ? `Notificações: ${total} não lida(s)` : "Notificações"}
+        aria-label={naoLidas.length > 0 ? `Notificações: ${naoLidas.length} não lida(s)` : "Notificações"}
         onClick={() => setAberto((v) => !v)}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18 }}>
           <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
-        {total > 0 && <span className="topbar-badge">{total > 9 ? "9+" : total}</span>}
+        {naoLidas.length > 0 && (
+          <span className="topbar-badge">{naoLidas.length > 9 ? "9+" : naoLidas.length}</span>
+        )}
       </button>
 
       {aberto && (
         <div className="topbar-pop topbar-pop-notificacoes">
-          <div className="topbar-pop-head notificacoes-head">
+          <div className="topbar-pop-head topbar-pop-head-notificacoes">
             <strong>Notificações</strong>
-            {total > 0 && <span>{total} nova{total === 1 ? "" : "s"}</span>}
+            {naoLidas.length > 0 && (
+              <button type="button" onClick={() => void marcarTudoComoLido()} disabled={marcandoTodas}>
+                {marcandoTodas ? "Marcando…" : "Marcar todas como lidas"}
+              </button>
+            )}
           </div>
 
-          {total === 0 && (
-            <div className="topbar-pop-empty notificacoes-vazio">
-              <span aria-hidden="true">✓</span>
-              <strong>Tudo em dia</strong>
-              <small>Nenhuma novidade exige sua atenção.</small>
-            </div>
-          )}
-
-          {total > 0 && <div className="notificacoes-grupo">Novas</div>}
-
-          {/* Cada evento é uma linha própria, e não um contador como as
-              respostas: são poucos e cada um diz uma coisa diferente
-              ("autorização assinada" e "comissão paga" não se resumem em
-              "3 atualizações"). O clique leva ao imóvel e dá a notificação
-              por lida — ler é a única ação que ela pede. */}
-          {eventos.slice(0, 5).map((e) => (
-            <button
-              key={e.id}
-              type="button"
-              className="topbar-pop-item notificacao-item nao-lida"
-              onClick={() => {
-                void marcarEventosLidos(e.imovelId);
-                setAberto(false);
-                // O modal do imóvel, e não uma rota: ele abre de qualquer
-                // view (o ModalOverlay vive no layout do painel) e mostra os
-                // campos que o evento acabou de gravar. Uma rota teria que
-                // acertar também o modo do Pipeline — em Kanban não há
-                // drawer, e o imóvel retirado nem aparece na lista.
-                abrirModal("imovel", e.imovelId);
-              }}
-            >
-              <span className="notificacao-indicador" aria-label="Não lida" />
-              <span className="topbar-pop-ic evento" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 5h16v14H4zM8 9h8M8 13h5" /></svg>
-              </span>
-              <span className="topbar-pop-txt">
-                <strong>{e.texto}</strong>
-                <span>{e.rotulo} · {tempoRelativoIso(e.data)}</span>
-              </span>
-            </button>
-          ))}
-
-          {eventos.length > 5 && (
+          <div className="topbar-pop-filtros" role="tablist" aria-label="Filtrar notificações">
             <button
               type="button"
-              className="topbar-pop-item notificacao-item"
-              onClick={() => {
-                void marcarEventosLidos(null);
-                setAberto(false);
-              }}
+              role="tab"
+              aria-selected={filtro === "todas"}
+              className={filtro === "todas" ? "ativo" : ""}
+              onClick={() => setFiltro("todas")}
             >
-              <span className="topbar-pop-ic" aria-hidden="true">✓</span>
-              <span className="topbar-pop-txt">
-                <strong>Marcar as {eventos.length} atualizações como lidas</strong>
-                <span>Os fatos seguem no histórico de cada imóvel</span>
-              </span>
+              Todas
             </button>
-          )}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filtro === "nao-lidas"}
+              className={filtro === "nao-lidas" ? "ativo" : ""}
+              onClick={() => setFiltro("nao-lidas")}
+            >
+              Não lidas {naoLidas.length > 0 ? `(${naoLidas.length})` : ""}
+            </button>
+          </div>
 
-          {respostas.length > 0 && (
-            <button type="button" className="topbar-pop-item notificacao-item nao-lida" onClick={() => irPara("/respostas")}>
-              <span className="notificacao-indicador" aria-label="Não lida" />
-              <span className="topbar-pop-ic resposta" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 11.5a8.5 8.5 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 20l1.9-4.1A8.5 8.5 0 1 1 21 11.5Z" /></svg>
-              </span>
-              <span className="topbar-pop-txt">
-                <strong>
-                  {respostas.length === 1
-                    ? "Proprietário respondeu"
-                    : `${respostas.length} proprietários responderam`}
-                </strong>
-                <span>
-                  {imovelUltimaResposta ? rotuloDoImovel(imovelUltimaResposta) : "Mensagem não tratada"}
-                  {ultimaResposta ? ` · ${tempoRelativoIso(ultimaResposta.ultima.data)}` : ""}
+          <div className="topbar-pop-lista">
+            {visiveis.length === 0 && (
+              <div className="topbar-pop-empty">
+                <strong>{filtro === "nao-lidas" ? "Nenhuma notificação não lida." : "Você está em dia."}</strong>
+                <span>Novas mensagens e atualizações do sistema aparecerão aqui.</span>
+              </div>
+            )}
+
+            {visiveis.slice(0, 30).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`topbar-pop-item topbar-pop-notificacao${item.lida ? "" : " nao-lida"}`}
+                onClick={() => abrirNotificacao(item.id)}
+              >
+                <span className="topbar-pop-ic" aria-hidden="true">
+                  {item.tipo === "mensagem-recebida" ? "💬" : "🏷️"}
                 </span>
-              </span>
-            </button>
-          )}
+                <span className="topbar-pop-txt">
+                  <strong>{item.titulo}</strong>
+                  <span>{item.descricao}</span>
+                  <time dateTime={item.data}>{tempoRelativoNotificacao(item.data)}</time>
+                </span>
+                {!item.lida && <span className="topbar-pop-ponto" aria-label="Não lida" />}
+              </button>
+            ))}
+          </div>
 
-          {radarNovos > 0 && (
-            <button type="button" className="topbar-pop-item notificacao-item nao-lida" onClick={() => irPara("/central-angariacao?aba=radar")}>
-              <span className="notificacao-indicador" aria-label="Não lida" />
-              <span className="topbar-pop-ic radar" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="2" /><path d="M7.8 16.2a6 6 0 0 1 0-8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 19.1a10 10 0 0 1 0-14.2M19.1 4.9a10 10 0 0 1 0 14.2" /></svg>
-              </span>
-              <span className="topbar-pop-txt">
-                <strong>{radarNovos} nova{radarNovos === 1 ? " oportunidade encontrada" : "s oportunidades encontradas"}</strong>
-                <span>Radar · revisar resultados</span>
-              </span>
-            </button>
-          )}
-
-          {/* Só quando ainda dá para pedir: concedida não tem o que oferecer,
-              negada não adianta reperguntar (o navegador nem mostra o diálogo)
-              e insistir viraria um botão que não faz nada. */}
           {permissao === "default" && (
-            <button type="button" className="topbar-pop-item notificacoes-permissao" onClick={ativarAvisos}>
-              <span className="topbar-pop-ic" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M14 21h-4" /></svg>
-              </span>
+            <button type="button" className="topbar-pop-item topbar-pop-aviso-sistema" onClick={ativarAvisos}>
+              <span className="topbar-pop-ic" aria-hidden="true">🔔</span>
               <span className="topbar-pop-txt">
                 <strong>Ativar avisos no computador</strong>
                 <span>Receber mesmo com a aba em segundo plano</span>

@@ -96,4 +96,17 @@ describe("acabamento da central de mensagens", () => {
     expect(hook).toContain('filter: `user_id=eq.${usuarioId}`');
     expect(hook).toContain("setInterval");
   });
+
+  it("abre a conversa indicada por uma notificação e marca sua leitura ao exibi-la", () => {
+    const sino = fonte("components/painel/SinoNotificacoes.tsx");
+    const pagina = fonte("app/(painel)/respostas/page.tsx");
+    const conversas = fonte("components/respostas/ConversasView.tsx");
+    const central = fonte("components/respostas/CentralMensagensView.tsx");
+    expect(sino).toContain("/respostas?imovel=${encodeURIComponent(notificacao.imovelId)}");
+    expect(pagina).toContain("searchParams: Promise<{ imovel?: string | string[] }>");
+    expect(pagina).toContain("imovelInicial={imovelInicial || null}");
+    expect(conversas).toContain("imovelInicial={imovelInicial}");
+    expect(central).toContain("conversaInicialMarcada");
+    expect(central).toContain("marcarAoVisualizar(conversa.imovel.id, conversa.naoLidas)");
+  });
 });

@@ -31,6 +31,8 @@ Regras permanentes:
 - Confirmação de leitura não é autorização. "Ok" só autoriza algo quando o contexto anterior tornar isso inequívoco.
 - Reparos ou ocupação que impeçam o próximo passo pedem reconhecimento ou espera, não visita, fotos, autorização ou cadastro imediato.
 - Informações oficiais da imobiliária são fatos comerciais; use somente as recuperadas para a mensagem atual.
+- A fala do proprietário é fonte conversacional atribuída a ele: pode ser reconhecida ou retomada como "você informou", mas não vira fato oficial do cadastro nem autoriza alteração ou persistência.
+- Respostas sociais ou neutras que apenas reconhecem, agradecem, lamentam ou encerram a conversa não introduzem fato novo e não exigem protocolo.
 - Regras obrigatórias de conduta controlam como conduzir a conversa em todas as respostas. Nunca as apresente como fatos comerciais nem revele seus nomes internos.
 - Nunca invente valor, taxa, comissão, garantia, vistoria, exclusividade, responsabilidade, procedimento, disponibilidade, origem do contato ou fato do imóvel.
 - A presença de outra imobiliária não encerra a conversa. Só respeite encerramento por exclusividade quando ela estiver explicitamente vigente e impeditiva.
@@ -157,7 +159,30 @@ DADOS_JSON:
 INFORMAÇÕES OFICIAIS DA IMOBILIÁRIA:
 ${catalogoProtocolos(informacoesComerciaisSelecionadas)}
 
-Siga a ação esperada e somente o próximo passo permitido. Nunca execute ações proibidas. Não repita informacoesJaExplicadas. Respeite o perfil sem copiar expressões à força. Use informação comercial somente se a frase depender dela e declare seu título em protocolosUsados. Não introduza informação não selecionada e nunca declare uma regra de conduta como protocolo usado. Se faltar dado comercial, ofereça confirmar. Não revele nomes internos de protocolos ao proprietário. Máximo programático: ${limiteRespostaPerfil(perfil)} caracteres. Sem markdown, assinatura, nova apresentação ou análise interna.`;
+Siga a ação esperada e somente o próximo passo permitido. Nunca execute ações proibidas. Não repita informacoesJaExplicadas. Respeite o perfil sem copiar expressões à força. Use informação comercial somente se a frase depender dela e declare seu título em protocolosUsados. protocolosUsados deve conter somente títulos presentes nas informações oficiais selecionadas; use [] quando a resposta for apenas social, neutra ou baseada na fala atribuída ao proprietário. Você pode reconhecer o que o proprietário declarou, mas não confirme essa declaração como estado oficial do imóvel e não sugira que o cadastro foi alterado. Não introduza informação não selecionada e nunca declare uma regra de conduta como protocolo usado. Se faltar dado comercial, ofereça confirmar. Não revele nomes internos de protocolos ao proprietário. Máximo programático: ${limiteRespostaPerfil(perfil)} caracteres. Sem markdown, assinatura, nova apresentação ou análise interna.`;
+}
+
+export function promptRegenerarAtendimentoSeguro(
+  mensagem: string,
+  contexto: ContextoAtendimento,
+  conversa: ConversaAnterior | undefined,
+  decisao: DecisaoAtendimento,
+  informacoesComerciaisSelecionadas: readonly ProtocoloPrompt[],
+  perfil: PerfilComunicacao,
+  mensagemId: string | null,
+  motivo: string,
+): string {
+  return `${promptGerarAtendimento(
+    mensagem,
+    contexto,
+    conversa,
+    decisao,
+    informacoesComerciaisSelecionadas,
+    perfil,
+    mensagemId,
+  )}
+
+FALLBACK SEGURO: a sugestão anterior foi reprovada por ${JSON.stringify(motivo)}. Gere outra sugestão do zero, sem repetir nem tentar corrigir a frase anterior. Prefira uma resposta curta e neutra que apenas reconheça a mensagem atual quando isso resolver a conversa. Não acrescente causa, agente, característica, condição ou consequência que o interlocutor não declarou e que não esteja nas fontes oficiais selecionadas.`;
 }
 
 export function promptValidarAtendimento(
@@ -179,5 +204,5 @@ DADOS_JSON:
 INFORMAÇÕES OFICIAIS DA IMOBILIÁRIA:
 ${catalogoProtocolos(informacoesComerciaisSelecionadas)}
 
-Só aprove se responder ao momento atual, não repetir o que já foi explicado, executar uma única etapa permitida, respeitar recusa e perfil, não forçar informação comercial, não transformar regra de conduta em conteúdo para o proprietário, não inventar fatos e permanecer segura. Uma pergunta objetiva de esclarecimento é suficiente quando for a única resposta honesta. Toda afirmação comercial exige uma informação oficial declarada em protocolosUsados. Não corrija nem exponha raciocínio.`;
+Só aprove se responder ao momento atual, não repetir o que já foi explicado, executar uma única etapa permitida, respeitar recusa e perfil, não forçar informação comercial, não transformar regra de conduta em conteúdo para o proprietário, não inventar fatos e permanecer segura. A mensagem e o histórico sustentam apenas o que o respectivo interlocutor declarou; reconhecer essa fala não a transforma em estado oficial do cadastro. Resposta social ou neutra sem nova afirmação factual não precisa de protocolo. Uma pergunta objetiva de esclarecimento é suficiente quando for a única resposta honesta. Toda afirmação comercial exige uma informação oficial declarada em protocolosUsados. Não corrija nem exponha raciocínio.`;
 }

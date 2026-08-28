@@ -33,6 +33,8 @@ import { agoraISOComSegundos, todayISO } from "@/lib/datas";
 import { idMensagemEvolution, registrarMensagemEnviada } from "@/lib/servidor/historicoWhatsapp";
 import { registrarEvento } from "@/lib/servidor/registro";
 import { instanciaWhatsappDoUsuario } from "@/lib/servidor/instanciaWhatsapp";
+import { destinoAncoradoDaConversa } from "@/lib/servidor/identidadeWhatsapp";
+import type { NotaImovel } from "@/lib/tipos";
 
 /** Corpo de resposta — espelha o que lib/envioWhatsapp espera. */
 interface Resposta {
@@ -132,9 +134,9 @@ export async function POST(request: Request): Promise<Response> {
   const serverUrl = process.env.EVOLUTION_SERVER_URL;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!serverUrl || !supabaseUrl || !anonKey) {
-    console.error("Envio de WhatsApp: variáveis de ambiente da Evolution ausentes (ver web/.env.example).");
-    return erro("nao-configurado", 500);
+  if (!serverUrl || !supabaseUrl || !anonKey || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("Envio de WhatsApp: configuração de servidor incompleta (ver web/.env.example).");
+    return erro("nao-configurado", 503);
   }
 
   // 1. Quem está chamando? Sem sessão do Supabase, a rota não existe —
@@ -150,7 +152,30 @@ export async function POST(request: Request): Promise<Response> {
   const { data: sessao, error: erroAuth } = await supabase.auth.getUser();
   if (erroAuth || !sessao.user) return erro("sessao-expirada", 401);
 
-  // 2. Qual número é o DESTE corretor? Sem linha na tabela não há por onde
+  // 2. Corpo da requisição. Validamos antes de consultar a integração para um
+  //    payload ruim nunca aparecer como falha de instância.
+  let corpo: { imovelId?: unknown; mensagem?: unknown; confirmacaoVisita?: unknown };
+  try {
+    corpo = await request.json();
+  } catch {
+    return erro("mensagem-invalida", 400);
+  }
+  const imovelId = typeof corpo.imovelId === "string" ? corpo.imovelId.trim() : "";
+  const mensagem = typeof corpo.mensagem === "string" ? corpo.mensagem.trim() : "";
+  if (!imovelId) return erro("imovel-nao-encontrado", 400);
+  if (!mensagem) return erro("mensagem-invalida", 422);
+  const confirmacaoVisita =
+    corpo.confirmacaoVisita === undefined
+      ? undefined
+      : confirmacaoVisitaValida(corpo.confirmacaoVisita, todayISO()) || null;
+  if (confirmacaoVisita === null) {
+    return Response.json(
+      { ok: false, falha: "falha-evolution", mensagem: "Informe uma data e um horário válidos para a visita." } satisfies Resposta,
+      { status: 400 },
+    );
+  }
+
+  // 3. Qual número é o DESTE corretor? Sem linha na tabela não há por onde
   //    enviar — e o certo é recusar, nunca cair num número padrão: com vários
   //    corretores, o padrão seria mandar pelo número de outra pessoa.
   const minha = await instanciaDoUsuario(supabaseUrl, sessao.user.id);
@@ -173,32 +198,11 @@ export async function POST(request: Request): Promise<Response> {
   }
   const { instancia, token } = minha;
 
-  // 3. Corpo da requisição.
-  let corpo: { imovelId?: unknown; mensagem?: unknown; confirmacaoVisita?: unknown };
-  try {
-    corpo = await request.json();
-  } catch {
-    return erro("imovel-nao-encontrado", 400);
-  }
-  const imovelId = typeof corpo.imovelId === "string" ? corpo.imovelId : "";
-  const mensagem = typeof corpo.mensagem === "string" ? corpo.mensagem.trim() : "";
-  if (!imovelId || !mensagem) return erro("imovel-nao-encontrado", 400);
-  const confirmacaoVisita =
-    corpo.confirmacaoVisita === undefined
-      ? undefined
-      : confirmacaoVisitaValida(corpo.confirmacaoVisita, todayISO()) || null;
-  if (confirmacaoVisita === null) {
-    return Response.json(
-      { ok: false, falha: "falha-evolution", mensagem: "Informe uma data e um horário válidos para a visita." } satisfies Resposta,
-      { status: 400 },
-    );
-  }
-
   // 4. O telefone vem do banco, nunca do browser. O RLS garante que o
   //    imóvel é de quem chamou — de outro dono, isto volta vazio.
   const { data: imovel, error: erroBusca } = await supabase
     .from("imoveis")
-    .select("proprietario_telefone")
+    .select("proprietario_telefone, notas")
     .eq("id", imovelId)
     .maybeSingle();
   if (erroBusca) {
@@ -208,6 +212,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!imovel) return erro("imovel-nao-encontrado", 404);
 
   const telefone = (imovel.proprietario_telefone as string | null) || "";
+  const notas = Array.isArray(imovel.notas) ? (imovel.notas as NotaImovel[]) : [];
   if (!telefone.trim()) return erro("sem-telefone", 422);
   const numero = numeroEvolution(telefone);
   if (!numero) return erro("numero-invalido", 422);
@@ -215,7 +220,11 @@ export async function POST(request: Request): Promise<Response> {
   // 5. O número existe no WhatsApp? Também é aqui que o nono dígito se resolve.
   const base = serverUrl.replace(/\/+$/, "");
   const jid = await resolverJid(base, instancia, token, numero);
-  if (jid === null) {
+  const destinoAncorado =
+    jid === null
+      ? await destinoAncoradoDaConversa(base, instancia, token, telefone, notas)
+      : null;
+  if (jid === null && !destinoAncorado) {
     // "aviso", não "erro": é um fato sobre o contato (telefone fixo,
     // número errado no cadastro), não sobre o sistema. É também o que
     // explica, no painel, uma taxa de falha alta num lote sem nada
@@ -229,7 +238,7 @@ export async function POST(request: Request): Promise<Response> {
     });
     return erro("sem-whatsapp", 422);
   }
-  const destino = jid ?? numero;
+  const destino = jid ?? destinoAncorado ?? numero;
 
   // 6. Envia. Usamos o token DA INSTÂNCIA (não a global key): ele basta para
   //    mandar mensagem e não dá poder de criar/apagar instâncias.

@@ -20,9 +20,55 @@ export interface EnderecoViaCep {
   erro?: boolean;
 }
 
+interface RespostaViaCepInterna {
+  ok: boolean;
+  resultados?: EnderecoViaCep[];
+  falha?: string;
+  mensagem?: string;
+}
+
+export class ErroConsultaViaCep extends Error {
+  constructor(
+    mensagem: string,
+    readonly falha = "indisponivel",
+  ) {
+    super(mensagem);
+    this.name = "ErroConsultaViaCep";
+  }
+}
+
+async function consultarViaCepInterno(
+  parametros: URLSearchParams,
+  signal?: AbortSignal,
+): Promise<EnderecoViaCep[]> {
+  const res = await fetch(`/api/viacep?${parametros.toString()}`, { signal });
+  const corpo = (await res.json().catch(() => null)) as RespostaViaCepInterna | null;
+  if (!res.ok || !corpo?.ok || !Array.isArray(corpo.resultados)) {
+    throw new ErroConsultaViaCep(
+      corpo?.mensagem || "Não foi possível consultar o ViaCEP agora.",
+      corpo?.falha,
+    );
+  }
+  return corpo.resultados;
+}
+
 export async function buscarCep(cep: string): Promise<EnderecoViaCep> {
-  const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-  return res.json();
+  const resultados = await consultarViaCepInterno(new URLSearchParams({ cep }));
+  return resultados[0] || { erro: true };
+}
+
+export async function buscarEnderecosViaCep(
+  pesquisa: { uf: string; cidade: string; logradouro: string },
+  signal?: AbortSignal,
+): Promise<EnderecoViaCep[]> {
+  return consultarViaCepInterno(
+    new URLSearchParams({
+      uf: pesquisa.uf,
+      cidade: pesquisa.cidade,
+      logradouro: pesquisa.logradouro,
+    }),
+    signal,
+  );
 }
 
 interface ResultadoNominatim {

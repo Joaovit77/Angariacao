@@ -13,6 +13,7 @@ import {
   normalizarDecisaoAtendimento,
   promptDecidirAtendimento,
   promptGerarAtendimento,
+  promptRegenerarAtendimentoSeguro,
   promptValidarAtendimento,
   selecionarMensagensAtendimento,
   type MotivoBloqueioAtendimento,
@@ -58,6 +59,7 @@ interface DiagnosticoAtendimento {
   protocolosAplicados?: string[];
   fontesDeDados?: string[];
   validacoesAplicadas?: string[];
+  motivoFallback?: string;
 }
 
 /** Metadados operacionais apenas: nunca inclui mensagem, prompt ou chain-of-thought. */
@@ -100,6 +102,7 @@ function registrarDiagnosticoAtendimento(
       etapaFinal,
       resultado,
       motivo,
+      motivoFallback: base.motivoFallback ?? null,
       execucao: metadadosExecucaoIa({
         operacao: "rascunhar-resposta",
         protocolosConsiderados: base.protocolosConsiderados,
@@ -363,164 +366,196 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   );
   diagnostico.protocolosSelecionados = protocolosSelecionados.length;
 
-  let textoGeracao: string;
-  try {
-    ({ texto: textoGeracao } = await executor.executar({
-      tipo: `${tipo}-geracao`,
-      reasoningEffort: "low",
-      formato: {
-        nome: "resposta_atendimento",
-        esquema: ESQUEMA_GERACAO_ATENDIMENTO,
-      },
-      mensagens: [
-        { role: "system", content: promptSistema },
-        {
-          role: "user",
-          content: promptGerarAtendimento(
-            mensagemProp,
-            contexto,
-            conversa,
-            decisao,
-            protocolosSelecionados,
-            perfil,
-            selecao.mensagemAtualId,
-          ),
-        },
-      ],
-    }));
-  } catch (e) {
-    console.error("IA: falha ao gerar a resposta de atendimento:", e);
-    const falha = classificarErroIa(e);
-    registrarDiagnosticoAtendimento(userId, diagnostico, "geracao", "erro", falha);
-    return respostaErroIa(falha, 502);
-  }
-
-  let dadosGeracao: { mensagem?: unknown; protocolosUsados?: unknown };
-  try {
-    dadosGeracao = JSON.parse(textoGeracao) as typeof dadosGeracao;
-  } catch {
-    registrarDiagnosticoAtendimento(
-      userId,
-      diagnostico,
-      "geracao",
-      "erro",
-      "resposta-estrutural-invalida",
-    );
-    return respostaErroIa("falha-modelo", 502);
-  }
-  const rascunho =
-    typeof dadosGeracao.mensagem === "string" ? dadosGeracao.mensagem.trim() : "";
-  const usadosBrutos = Array.isArray(dadosGeracao.protocolosUsados)
-    ? dadosGeracao.protocolosUsados.filter((t): t is string => typeof t === "string")
-    : [];
   const titulosPermitidos = new Set(protocolosSelecionados.map((p) => p.titulo));
-  (diagnostico.validacoesAplicadas ??= []).push("protocolos-declarados-contra-catalogo");
-  if (!rascunho) {
-    registrarDiagnosticoAtendimento(
-      userId,
-      diagnostico,
-      "geracao",
-      "bloqueado",
-      "geracao-reprovada",
-    );
-    return respostaErroIa("geracao-reprovada", 422);
-  }
-  if (usadosBrutos.some((t) => !titulosPermitidos.has(t))) {
-    registrarDiagnosticoAtendimento(
-      userId,
-      diagnostico,
-      "geracao",
-      "bloqueado",
-      "protocolo-inadequado",
-    );
-    return respostaErroIa("protocolo-inadequado", 422);
-  }
-  const protocolosUsados = [...new Set(usadosBrutos)];
-  diagnostico.protocolosAplicados = idsProtocolosDeclaradosSemAmbiguidade(
-    informacoesComerciaisConsideradas,
-    protocolosUsados,
-  );
-  (diagnostico.validacoesAplicadas ??= []).push("bloqueios-deterministicos-do-rascunho");
-  const motivoDeterministico = motivoBloqueioRascunhoDeterministico(
-    rascunho,
-    protocolosUsados,
-    decisao,
-    perfil,
-  );
-  if (motivoDeterministico) {
-    registrarDiagnosticoAtendimento(
-      userId,
-      diagnostico,
-      "geracao",
-      "bloqueado",
-      motivoDeterministico,
-    );
-    return respostaErroIa(falhaDoBloqueio(motivoDeterministico), 422);
-  }
+  let motivoAnterior: MotivoBloqueioAtendimento | null = null;
 
-  let textoValidacao: string;
-  try {
-    ({ texto: textoValidacao } = await executor.executar({
-      tipo: `${tipo}-validacao`,
-      reasoningEffort: "low",
-      formato: {
-        nome: "validacao_atendimento",
-        esquema: ESQUEMA_VALIDACAO_ATENDIMENTO,
-      },
-      mensagens: [
-        { role: "system", content: promptSistema },
-        {
-          role: "user",
-          content: promptValidarAtendimento(
-            mensagemProp,
-            contexto,
-            conversa,
-            protocolosSelecionados,
-            rascunho,
-            decisao,
-            protocolosUsados,
-            perfil,
-            selecao.mensagemAtualId,
-          ),
+  // Uma reprovação de conteúdo ganha uma segunda geração do zero. Erros de
+  // transporte ou structured output inválido continuam falhando claramente:
+  // o fallback não pode esconder problema estrutural do modelo/integração.
+  for (let tentativa = 0; tentativa < 2; tentativa += 1) {
+    const usandoFallback = tentativa === 1;
+    let textoGeracao: string;
+    try {
+      ({ texto: textoGeracao } = await executor.executar({
+        tipo: `${tipo}-geracao${usandoFallback ? "-fallback" : ""}`,
+        reasoningEffort: "low",
+        formato: {
+          nome: "resposta_atendimento",
+          esquema: ESQUEMA_GERACAO_ATENDIMENTO,
         },
-      ],
-    }));
-  } catch (e) {
-    console.error("IA: falha ao validar a resposta de atendimento:", e);
-    const falha = classificarErroIa(e);
-    registrarDiagnosticoAtendimento(userId, diagnostico, "validacao", "erro", falha);
-    return respostaErroIa(falha, 502);
-  }
+        mensagens: [
+          { role: "system", content: promptSistema },
+          {
+            role: "user",
+            content: usandoFallback
+              ? promptRegenerarAtendimentoSeguro(
+                  mensagemProp,
+                  contexto,
+                  conversa,
+                  decisao,
+                  protocolosSelecionados,
+                  perfil,
+                  selecao.mensagemAtualId,
+                  motivoAnterior || "geracao-reprovada",
+                )
+              : promptGerarAtendimento(
+                  mensagemProp,
+                  contexto,
+                  conversa,
+                  decisao,
+                  protocolosSelecionados,
+                  perfil,
+                  selecao.mensagemAtualId,
+                ),
+          },
+        ],
+      }));
+    } catch (e) {
+      console.error("IA: falha ao gerar a resposta de atendimento:", e);
+      const falha = classificarErroIa(e);
+      registrarDiagnosticoAtendimento(userId, diagnostico, "geracao", "erro", falha);
+      return respostaErroIa(falha, 502);
+    }
 
-  let validacao: unknown;
-  try {
-    validacao = JSON.parse(textoValidacao);
-  } catch {
-    validacao = null;
-  }
-  const motivoValidacao = motivoReprovacaoValidacaoAtendimento(validacao);
-  (diagnostico.validacoesAplicadas ??= []).push("validacao-independente-da-resposta");
-  if (motivoValidacao === undefined) {
-    registrarDiagnosticoAtendimento(
-      userId,
-      diagnostico,
-      "validacao",
-      "erro",
-      "resposta-estrutural-invalida",
+    let dadosGeracao: { mensagem?: unknown; protocolosUsados?: unknown };
+    try {
+      dadosGeracao = JSON.parse(textoGeracao) as typeof dadosGeracao;
+    } catch {
+      registrarDiagnosticoAtendimento(
+        userId,
+        diagnostico,
+        "geracao",
+        "erro",
+        "resposta-estrutural-invalida",
+      );
+      return respostaErroIa("falha-modelo", 502);
+    }
+
+    const rascunho =
+      typeof dadosGeracao.mensagem === "string" ? dadosGeracao.mensagem.trim() : "";
+    const usadosBrutos = Array.isArray(dadosGeracao.protocolosUsados)
+      ? dadosGeracao.protocolosUsados.filter((t): t is string => typeof t === "string")
+      : [];
+    const protocolosUsados = [...new Set(usadosBrutos)];
+    let motivo: MotivoBloqueioAtendimento | null = !rascunho
+      ? "geracao-reprovada"
+      : usadosBrutos.some((titulo) => !titulosPermitidos.has(titulo))
+        ? "protocolo-inadequado"
+        : null;
+    let etapaBloqueio: EtapaAtendimento = "geracao";
+
+    (diagnostico.validacoesAplicadas ??= []).push(
+      usandoFallback
+        ? "protocolos-declarados-contra-catalogo-fallback"
+        : "protocolos-declarados-contra-catalogo",
     );
-    return respostaErroIa("falha-modelo", 502);
-  }
-  if (motivoValidacao) {
+    diagnostico.protocolosAplicados = idsProtocolosDeclaradosSemAmbiguidade(
+      informacoesComerciaisConsideradas,
+      protocolosUsados,
+    );
+
+    if (!motivo) {
+      (diagnostico.validacoesAplicadas ??= []).push(
+        usandoFallback
+          ? "bloqueios-deterministicos-do-rascunho-fallback"
+          : "bloqueios-deterministicos-do-rascunho",
+      );
+      motivo = motivoBloqueioRascunhoDeterministico(
+        rascunho,
+        protocolosUsados,
+        decisao,
+        perfil,
+      );
+    }
+
+    if (!motivo) {
+      let textoValidacao: string;
+      try {
+        ({ texto: textoValidacao } = await executor.executar({
+          tipo: `${tipo}-validacao${usandoFallback ? "-fallback" : ""}`,
+          reasoningEffort: "low",
+          formato: {
+            nome: "validacao_atendimento",
+            esquema: ESQUEMA_VALIDACAO_ATENDIMENTO,
+          },
+          mensagens: [
+            { role: "system", content: promptSistema },
+            {
+              role: "user",
+              content: promptValidarAtendimento(
+                mensagemProp,
+                contexto,
+                conversa,
+                protocolosSelecionados,
+                rascunho,
+                decisao,
+                protocolosUsados,
+                perfil,
+                selecao.mensagemAtualId,
+              ),
+            },
+          ],
+        }));
+      } catch (e) {
+        console.error("IA: falha ao validar a resposta de atendimento:", e);
+        const falha = classificarErroIa(e);
+        registrarDiagnosticoAtendimento(userId, diagnostico, "validacao", "erro", falha);
+        return respostaErroIa(falha, 502);
+      }
+
+      let validacao: unknown;
+      try {
+        validacao = JSON.parse(textoValidacao);
+      } catch {
+        validacao = null;
+      }
+      const motivoValidacao = motivoReprovacaoValidacaoAtendimento(validacao);
+      (diagnostico.validacoesAplicadas ??= []).push(
+        usandoFallback
+          ? "validacao-independente-da-resposta-fallback"
+          : "validacao-independente-da-resposta",
+      );
+      if (motivoValidacao === undefined) {
+        registrarDiagnosticoAtendimento(
+          userId,
+          diagnostico,
+          "validacao",
+          "erro",
+          "resposta-estrutural-invalida",
+        );
+        return respostaErroIa("falha-modelo", 502);
+      }
+      motivo = motivoValidacao;
+      etapaBloqueio = "validacao";
+    }
+
+    if (!motivo) {
+      registrarDiagnosticoAtendimento(
+        userId,
+        diagnostico,
+        "sugestao",
+        "sugerido",
+        usandoFallback ? "aprovada-apos-fallback" : "aprovada",
+      );
+      return Response.json({ ok: true, rascunho, protocolosUsados, fallbackAplicado: usandoFallback });
+    }
+
+    if (!usandoFallback) {
+      motivoAnterior = motivo;
+      diagnostico.motivoFallback = motivo;
+      (diagnostico.validacoesAplicadas ??= []).push("regeneracao-segura-pos-reprovacao");
+      continue;
+    }
+
     registrarDiagnosticoAtendimento(
       userId,
       diagnostico,
-      "validacao",
+      etapaBloqueio,
       "bloqueado",
-      motivoValidacao,
+      motivo,
     );
-    return respostaErroIa(falhaDoBloqueio(motivoValidacao), 422);
+    return respostaErroIa(falhaDoBloqueio(motivo), 422);
   }
 
-  registrarDiagnosticoAtendimento(userId, diagnostico, "sugestao", "sugerido", "aprovada");
-  return Response.json({ ok: true, rascunho, protocolosUsados });
+  return respostaErroIa("geracao-reprovada", 422);
 };

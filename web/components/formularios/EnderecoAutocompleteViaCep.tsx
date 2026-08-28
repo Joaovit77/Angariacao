@@ -17,6 +17,7 @@ import {
   type PesquisaEnderecoViaCep,
   type ResultadoEnderecoViaCep,
 } from "@/lib/calculo/enderecoViaCep";
+import { buscarEnderecosViaCep } from "@/lib/geo";
 
 const ESPERA_MS = 500;
 const LIMITE_SUGESTOES = 6;
@@ -90,12 +91,7 @@ export default function EnderecoAutocompleteViaCep({
     setMensagem("");
 
     try {
-      const url = `https://viacep.com.br/ws/${encodeURIComponent(pesquisa.uf)}/${encodeURIComponent(
-        pesquisa.cidade,
-      )}/${encodeURIComponent(pesquisa.logradouro)}/json/`;
-      const resposta = await fetch(url, { signal: controller.signal });
-      if (!resposta.ok) throw new Error(`ViaCEP respondeu ${resposta.status}`);
-      const dados = (await resposta.json()) as ResultadoEnderecoViaCep[];
+      const dados = await buscarEnderecosViaCep(pesquisa, controller.signal);
       const chaves = new Set<string>();
       const resultados = (Array.isArray(dados) ? dados : [])
         .filter((item) => !item.erro && !!item.logradouro)

@@ -436,6 +436,7 @@ describe("mensagemFalhaEnvio", () => {
   it("toda falha tem texto em pt-BR", () => {
     const falhas: FalhaEnvio[] = [
       "sem-telefone",
+      "mensagem-invalida",
       "numero-invalido",
       "sem-whatsapp",
       "instancia-desconectada",

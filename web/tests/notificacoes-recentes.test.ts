@@ -10,20 +10,21 @@ function fonte(caminho: string) {
 describe("central de notificações recentes", () => {
   it("conta somente eventos reais com estado persistido de leitura", () => {
     const sino = fonte("components/painel/SinoNotificacoes.tsx");
-    expect(sino).toContain("notificacoesPendentes(imoveis)");
-    expect(sino).toContain("caixaDeRespostas(imoveis, hoje)");
-    expect(sino).toContain("radarNovos");
-    expect(sino).toContain("eventos.length + respostas.length + radarNovos");
+    expect(sino).toContain("notificacoesDaCentral(imoveis)");
+    expect(sino).toContain("notificacoes.filter((item) => !item.lida)");
+    expect(sino).toContain("naoLidas.length > 9");
     expect(sino).not.toContain("isStale");
     expect(sino).not.toContain("s.agenda");
-    expect(sino).not.toContain('irPara("/insights")');
+    expect(sino).not.toContain("radarNovos");
   });
 
-  it("agrupa respostas e Radar em vez de criar uma linha por ocorrência", () => {
+  it("preserva leitura em lote, estado vazio e navegação contextual", () => {
     const sino = fonte("components/painel/SinoNotificacoes.tsx");
-    expect(sino).toContain("proprietários responderam");
-    expect(sino).toContain("oportunidades encontradas");
-    expect(sino).toContain("notificacao-indicador");
+    expect(sino).toContain("marcarTudoComoLido");
+    expect(sino).toContain("marcarTodasRespostasLidas(imoveisComMensagem)");
+    expect(sino).toContain("Nenhuma notificação não lida.");
+    expect(sino).toContain("/respostas?imovel=");
+    expect(sino).toContain('abrirModal("imovel", notificacao.imovelId)');
   });
 
   it("formata a idade dos eventos de forma curta e determinística", () => {

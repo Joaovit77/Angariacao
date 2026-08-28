@@ -2033,63 +2033,109 @@ input, select, textarea{ font-family: inherit; font-size: 14px; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .topbar-pop-txt span{ font-size: 11.5px; color: var(--text-faint); }
-
-/* O sino é uma caixa de novidades, não um atalho para todos os estados da
-   operação. A largura extra permite duas linhas legíveis sem estourar o
-   viewport; no mobile ela volta a acompanhar a tela. */
+/* A Central lista somente eventos persistidos. A lista tem rolagem própria
+   para manter cabeçalho, filtros e ação de avisos disponíveis no viewport. */
 .topbar-pop-notificacoes{
   width: 390px;
   max-width: calc(100vw - 24px);
   max-height: min(620px, calc(100vh - 84px));
+  padding: 0;
+  overflow: hidden;
+}
+.topbar-pop-head-notificacoes{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 14px 9px;
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 700;
+}
+.topbar-pop-head-notificacoes > strong{
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+}
+.topbar-pop-head-notificacoes button{
+  border: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  font-size: 11.5px;
+  font-weight: 650;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.topbar-pop-head-notificacoes button:disabled{ opacity: .6; }
+.topbar-pop-filtros{
+  display: flex;
+  gap: 5px;
+  padding: 0 12px 9px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.topbar-pop-filtros button{
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.topbar-pop-filtros button:hover,
+.topbar-pop-filtros button.ativo{
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.topbar-pop-head-notificacoes button:focus-visible,
+.topbar-pop-filtros button:focus-visible{
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.topbar-pop-lista{
+  max-height: min(430px, 62vh);
   overflow-y: auto;
-  padding: 8px;
+  padding: 5px;
 }
-.topbar-pop-head.notificacoes-head{
-  display:flex; align-items:center; justify-content:space-between; gap:12px;
-  padding:9px 10px 11px; border-bottom:1px solid var(--border-soft);
-  color:var(--text); font-size:14px; letter-spacing:0; text-transform:none;
+.topbar-pop-notificacoes .topbar-pop-empty{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 25px 16px;
+  text-align: center;
 }
-.notificacoes-head strong{ font-family:var(--font-display); font-size:16px; }
-.notificacoes-head span{
-  padding:3px 8px; border-radius:999px; color:var(--accent-strong);
-  background:var(--accent-soft); font-size:10.5px; font-weight:800;
+.topbar-pop-notificacoes .topbar-pop-empty strong{ color: var(--text); font-size: 13px; }
+.topbar-pop-notificacoes .topbar-pop-empty span{ font-size: 11.5px; }
+.topbar-pop-notificacao{
+  position: relative;
+  align-items: flex-start;
+  padding: 10px 9px;
 }
-.notificacoes-grupo{
-  padding:11px 10px 5px; color:var(--text-faint); font-size:10px;
-  font-weight:800; letter-spacing:.7px; text-transform:uppercase;
+.topbar-pop-notificacao.nao-lida{ background: color-mix(in srgb, var(--accent-soft) 52%, transparent); }
+.topbar-pop-notificacao .topbar-pop-ic{ margin-top: 1px; }
+.topbar-pop-notificacao .topbar-pop-txt{ flex: 1; gap: 2px; }
+.topbar-pop-notificacao .topbar-pop-txt strong{ white-space: normal; line-height: 1.3; }
+.topbar-pop-notificacao .topbar-pop-txt span{
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.35;
 }
-.topbar-pop-item.notificacao-item{
-  position:relative; align-items:flex-start; gap:9px; min-height:56px;
-  padding:10px 10px 10px 17px;
+.topbar-pop-notificacao .topbar-pop-txt time{ color: var(--text-faint); font-size: 10.5px; }
+.topbar-pop-ponto{
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  margin: 7px 2px 0 0;
+  border-radius: 50%;
+  background: var(--accent);
 }
-.notificacao-indicador{
-  position:absolute; left:6px; top:16px; width:6px; height:6px;
-  border-radius:50%; background:var(--accent);
-  box-shadow:0 0 0 3px var(--accent-soft);
-}
-.notificacao-item .topbar-pop-ic{ margin-top:1px; }
-.notificacao-item .topbar-pop-ic svg,
-.notificacoes-permissao .topbar-pop-ic svg{ width:15px; height:15px; }
-.notificacao-item .topbar-pop-ic.resposta{ color:var(--good); background:var(--good-soft); }
-.notificacao-item .topbar-pop-ic.radar{ color:var(--info); background:var(--info-soft); }
-.notificacao-item .topbar-pop-txt{ flex:1; gap:3px; }
-.notificacao-item .topbar-pop-txt strong{
-  white-space:normal; display:-webkit-box; -webkit-line-clamp:2;
-  -webkit-box-orient:vertical; line-height:1.35;
-}
-.notificacao-item .topbar-pop-txt span{ line-height:1.4; }
-.notificacoes-vazio{
-  display:grid; grid-template-columns:32px 1fr; column-gap:10px;
-  padding:20px 12px;
-}
-.notificacoes-vazio > span{
-  grid-row:1 / 3; display:grid; place-items:center; width:32px; height:32px;
-  border-radius:50%; color:var(--good); background:var(--good-soft); font-weight:900;
-}
-.notificacoes-vazio strong{ color:var(--text); font-size:13px; }
-.notificacoes-vazio small{ color:var(--text-faint); font-size:11.5px; }
-.notificacoes-permissao{
-  margin-top:5px; border-top:1px solid var(--border-soft); border-radius:0 0 7px 7px;
+.topbar-pop-aviso-sistema{
+  margin: 0;
+  border-radius: 0;
+  border-top: 1px solid var(--border-soft);
+  padding: 10px 14px;
 }
 .view{ display:none; animation: fadein .18s ease; }
 .view.active{ display:block; }
