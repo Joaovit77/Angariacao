@@ -56,7 +56,47 @@ export interface AcaoCriarCompromissoAssistente {
   erro?: string;
 }
 
-export type AcaoAssistente = AcaoAgendarVisitaAssistente | AcaoCriarCompromissoAssistente;
+export interface ImovelAcaoStatusSemResposta {
+  id: string;
+  codigo: string;
+  endereco: string;
+  statusPreparado: "Novo contato";
+  tentativas: number;
+}
+
+export interface ImovelIgnoradoAcaoStatusSemResposta {
+  id: string;
+  codigo: string;
+  motivo: "status_alterado" | "nao_elegivel" | "imovel_indisponivel";
+}
+
+export interface AcaoAlterarStatusSemRespostaAssistente {
+  id: string;
+  tipo: "alterar_status_sem_resposta_em_lote";
+  estado: EstadoAcaoAssistente;
+  expiraEm: string;
+  operacao: "Alterar status em lote";
+  impacto: string;
+  entidade: {
+    imoveis: ImovelAcaoStatusSemResposta[];
+  };
+  dados: {
+    statusDestino: "Sem resposta";
+    quantidade: number;
+  };
+  resultado?: {
+    alterados: Array<Pick<ImovelAcaoStatusSemResposta, "id" | "codigo">>;
+    ignorados: ImovelIgnoradoAcaoStatusSemResposta[];
+    totalAlterados: number;
+    totalIgnorados: number;
+  };
+  erro?: string;
+}
+
+export type AcaoAssistente =
+  | AcaoAgendarVisitaAssistente
+  | AcaoCriarCompromissoAssistente
+  | AcaoAlterarStatusSemRespostaAssistente;
 
 export interface ContextoEntidade {
   tipo: "imovel" | "agenda";
@@ -161,7 +201,8 @@ export interface ItemHistoricoAssistente {
   resultados?: ResultadoHistoricoAssistente[];
   acao?:
     | Pick<AcaoAgendarVisitaAssistente, "id" | "tipo" | "estado" | "entidade" | "dados">
-    | Pick<AcaoCriarCompromissoAssistente, "id" | "tipo" | "estado" | "entidade" | "dados">;
+    | Pick<AcaoCriarCompromissoAssistente, "id" | "tipo" | "estado" | "entidade" | "dados">
+    | Pick<AcaoAlterarStatusSemRespostaAssistente, "id" | "tipo" | "estado" | "entidade" | "dados">;
 }
 
 export interface PedidoAssistente {

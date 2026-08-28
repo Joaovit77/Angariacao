@@ -18,7 +18,9 @@ describe("proteção dos marcos no banco", () => {
 
   it("carimba autoria autenticada no banco e não faz backfill por updated_at", () => {
     expect(SCHEMA).toContain("ator uuid := auth.uid()");
-    expect(SCHEMA).toContain("jsonb_build_object('userId', ator::text, 'source', 'usuario')");
+    expect(SCHEMA).toContain("'userId', ator::text");
+    expect(SCHEMA).toContain("current_setting('angario.status_history_source', true) = 'assistente'");
+    expect(SCHEMA).toContain("else 'usuario'");
     const blocoMarcos = SCHEMA.slice(SCHEMA.indexOf("MARCOS PERMANENTES DO FUNIL"), SCHEMA.indexOf("Atualiza updated_at automaticamente"));
     expect(blocoMarcos).not.toContain("new.updated_at");
   });

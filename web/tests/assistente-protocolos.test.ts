@@ -175,6 +175,7 @@ describe("protocolos comerciais no Assistente", () => {
       "preparar_criacao_compromisso",
       "abrir_revisao_followup_lote",
       "preparar_rascunho_resposta",
+      "preparar_alteracao_status_sem_resposta",
     ]);
     const detalhe = mocks.registrarEvento.mock.calls.at(-1)?.[0].detalhe as string;
     expect(detalhe).toContain('"protocolosConsiderados":[]');

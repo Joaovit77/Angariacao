@@ -753,7 +753,8 @@ A posição atual mora em `status`; a verdade histórica sobre por onde o imóve
 `proteger_status_history_imovel` impede que uma edição comum apague ou reescreva a trilha e acrescenta
 atomicamente a transição quando qualquer caminho altera `status`. Em sessão autenticada, a autoria
 vem de `auth.uid()`; integrações com service role podem preservar `authorName` e `source`, como
-`sophia`.
+`sophia`. A ação confirmada do Assistente preserva o mesmo `userId` autenticado e identifica a
+procedência com `source: assistente`.
 
 As primeiras entradas em **Angariado**, **Publicado** e **Locado** são marcos permanentes, mesmo que
 o status atual avance ou mude depois. Angariado e Publicado usam a primeira entrada correspondente;
@@ -1571,8 +1572,10 @@ ali para quem quiser um modelo.
 
 O Assistente é uma superfície global do painel para consultar carteira, agenda, mensagens agendadas,
 follow-ups, estagnação, Foco do dia, métricas e marcos históricos. Consultas continuam somente
-leitura. As ações de escrita liberadas na Agenda são **agendar visita** e **criar compromisso**;
-mensagens, mudanças de status, exclusões e demais efeitos sensíveis não são executados diretamente.
+leitura. As ações de escrita liberadas na Agenda são **agendar visita** e **criar compromisso**. A
+única mudança de status liberada é a ação confirmável que leva para **Sem resposta** os imóveis ainda
+em **Novo contato**, com pelo menos três tentativas registradas e sem resposta observada do
+proprietário. Mensagens, exclusões e outras mudanças de status não são executadas diretamente.
 O compromisso genérico exige título, tipo e data declarados pelo usuário; horário, observação e
 vínculo com imóvel são opcionais e nunca são inventados. Pedidos explícitos de
 **follow-up em lote** consultam a fila user-scoped e abrem a revisão já existente do Angario, que
@@ -1596,9 +1599,14 @@ minutos. A tabela tem RLS e nenhuma política/grant de escrita para o browser; s
 fechadas podem preparar, confirmar ou cancelar. A confirmação recebe apenas o ID da ação e da
 sessão atual, bloqueia a linha com `FOR UPDATE` e insere na Agenda exatamente os campos congelados.
 A mesma transação marca
-sucesso, impedindo duplo clique, retry ou refresh de criar duplicata. Ações substituídas, canceladas,
-expiradas ou concluídas não voltam a executar. Depois da criação local, o espelhamento existente do
-Google Agenda é acionado como conveniência, sem transformar falha externa em rollback do compromisso.
+sucesso, impedindo duplo clique, retry ou refresh de criar duplicata. Na ação de status, o payload
+congela os IDs, códigos, endereços, status de origem e contagem de tentativas apresentados no card.
+Na confirmação, cada linha é bloqueada e revalidada pela mesma regra usada na preparação; imóvel
+removido, com status alterado ou que tenha recebido resposta fica fora e aparece no resultado
+parcial. O `UPDATE` muda somente `status`; o trigger canônico acrescenta o `status_history` com o
+usuário autenticado e `source: assistente`. Ações substituídas, canceladas, expiradas ou concluídas
+não voltam a executar. Depois da criação local de compromissos, o espelhamento existente do Google
+Agenda é acionado como conveniência, sem transformar falha externa em rollback do compromisso.
 
 A conversa pode ser usada tanto na página `/assistente`, acessível pela navegação, quanto no atalho
 flutuante. As duas superfícies consomem o mesmo estado de sessão e o mesmo cliente da API; não há um
@@ -1617,7 +1625,8 @@ Arquitetura:
 - `lib/servidor/assistente/acoes.ts`: contratos e adaptações das operações liberadas. Chat e menu
   guiado convergem para a mesma preparação tipada; follow-up em lote converge para o modal real de
   revisão, sem duplicar a fila nem seu envio; respostas contextuais convergem para o atendimento e o
-  compositor já existentes; o modelo nunca recebe acesso genérico ao Supabase.
+  compositor já existentes; a mudança pontual para Sem resposta converge para `assistente_acoes` e
+  para o trigger oficial de status; o modelo nunca recebe acesso genérico ao Supabase.
 - `lib/servidor/assistente/orquestrador.ts`: OpenAI Responses API com tool calling sequencial, até
   quatro rodadas, `store: false`, identificador de segurança derivado por hash e registro de custo.
   Antes da geração, relê pelo cliente do chamador até 40 protocolos comerciais ativos, filtrados

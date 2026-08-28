@@ -16,6 +16,7 @@ export const FERRAMENTA_PREPARAR_AGENDAMENTO_VISITA = "preparar_agendamento_visi
 export const FERRAMENTA_PREPARAR_CRIACAO_COMPROMISSO = "preparar_criacao_compromisso";
 export const FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE = "abrir_revisao_followup_lote";
 export const FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA = "preparar_rascunho_resposta";
+export const FERRAMENTA_PREPARAR_STATUS_SEM_RESPOSTA = "preparar_alteracao_status_sem_resposta";
 
 export const DEFINICAO_FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE = {
   type: "function" as const,
@@ -85,6 +86,19 @@ export const DEFINICAO_FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA = {
   },
 } as const;
 
+export const DEFINICAO_FERRAMENTA_PREPARAR_STATUS_SEM_RESPOSTA = {
+  type: "function" as const,
+  name: FERRAMENTA_PREPARAR_STATUS_SEM_RESPOSTA,
+  description: "Prepara, sem executar, a alteracao para Sem resposta dos imoveis em Novo contato que possuem pelo menos 3 tentativas registradas e nenhuma resposta observada do proprietario. Use somente para esse pedido operacional especifico. O backend consulta a carteira real, congela os alvos e exige confirmacao explicita antes de qualquer mudanca.",
+  strict: true,
+  parameters: {
+    type: "object",
+    properties: {},
+    required: [],
+    additionalProperties: false,
+  },
+} as const;
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DATA = /^\d{4}-\d{2}-\d{2}$/;
 const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -110,6 +124,10 @@ export interface ParametrosCriarCompromisso {
   hora: string | null;
   imovelId: string | null;
   observacao: string | null;
+  sessaoId: string;
+}
+
+export interface ParametrosAlterarStatusSemResposta {
   sessaoId: string;
 }
 
@@ -142,7 +160,77 @@ export function normalizarAcao(valor: unknown): AcaoAssistente | null {
     ? acao.resultado as Record<string, unknown>
     : null;
   const estado = texto(acao.estado) as EstadoAcaoAssistente;
-  if (!UUID.test(texto(acao.id)) || !ESTADOS.has(estado) || !DATA.test(texto(dados.data))) return null;
+  if (!UUID.test(texto(acao.id)) || !ESTADOS.has(estado)) return null;
+
+  if (acao.tipo === "alterar_status_sem_resposta_em_lote") {
+    const imoveisBrutos = Array.isArray(entidade.imoveis) ? entidade.imoveis : [];
+    const imoveis = imoveisBrutos.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const imovel = item as Record<string, unknown>;
+      const id = texto(imovel.id);
+      const tentativas = Number(imovel.tentativas);
+      if (!UUID.test(id) || imovel.statusPreparado !== "Novo contato" || !Number.isInteger(tentativas) || tentativas < 3) return [];
+      return [{
+        id,
+        codigo: texto(imovel.codigo) || "Sem código",
+        endereco: texto(imovel.endereco) || "Endereço não informado",
+        statusPreparado: "Novo contato" as const,
+        tentativas,
+      }];
+    });
+    const quantidade = Number(dados.quantidade);
+    if (dados.statusDestino !== "Sem resposta" || !Number.isInteger(quantidade) || quantidade !== imoveis.length) return null;
+
+    const alterados = Array.isArray(resultado?.alterados)
+      ? resultado.alterados.flatMap((item) => {
+          if (!item || typeof item !== "object") return [];
+          const registro = item as Record<string, unknown>;
+          const id = texto(registro.id);
+          return UUID.test(id) ? [{ id, codigo: texto(registro.codigo) || "Sem código" }] : [];
+        })
+      : [];
+    const motivosIgnorados = new Set(["status_alterado", "nao_elegivel", "imovel_indisponivel"]);
+    const ignorados = Array.isArray(resultado?.ignorados)
+      ? resultado.ignorados.flatMap((item) => {
+          if (!item || typeof item !== "object") return [];
+          const registro = item as Record<string, unknown>;
+          const id = texto(registro.id);
+          const motivo = texto(registro.motivo);
+          return UUID.test(id) && motivosIgnorados.has(motivo)
+            ? [{ id, codigo: texto(registro.codigo) || "Sem código", motivo: motivo as "status_alterado" | "nao_elegivel" | "imovel_indisponivel" }]
+            : [];
+        })
+      : [];
+    const temResultado = resultado !== null;
+    if (temResultado && (
+      Number(resultado.totalAlterados) !== alterados.length
+      || Number(resultado.totalIgnorados) !== ignorados.length
+    )) return null;
+
+    return {
+      id: texto(acao.id),
+      tipo: "alterar_status_sem_resposta_em_lote",
+      estado,
+      expiraEm: texto(acao.expiraEm),
+      operacao: "Alterar status em lote",
+      impacto: texto(acao.impacto) || (quantidade === 1
+        ? "1 imóvel terá o status alterado para Sem resposta."
+        : `${quantidade} imóveis terão o status alterado para Sem resposta.`),
+      entidade: { imoveis },
+      dados: { statusDestino: "Sem resposta", quantidade },
+      ...(temResultado ? {
+        resultado: {
+          alterados,
+          ignorados,
+          totalAlterados: alterados.length,
+          totalIgnorados: ignorados.length,
+        },
+      } : {}),
+      ...(texto(acao.erro) ? { erro: texto(acao.erro) } : {}),
+    };
+  }
+
+  if (!DATA.test(texto(dados.data))) return null;
   const agendaId = texto(resultado?.agendaId);
   if (acao.tipo === "criar_compromisso") {
     const imovelId = texto(entidade.imovelId);
@@ -277,6 +365,23 @@ export async function prepararCriacaoCompromisso(
   return resultadoRpc(data, "Não foi possível preparar o compromisso.");
 }
 
+export async function prepararAlteracaoStatusSemResposta(
+  supabase: SupabaseClient,
+  parametros: ParametrosAlterarStatusSemResposta,
+): Promise<ResultadoOperacaoAcao> {
+  if (!UUID.test(parametros.sessaoId)) {
+    return { ok: false, erro: "A sessão da conversa é inválida.", codigo: "sessao_invalida" };
+  }
+  const { data, error } = await supabase.rpc("preparar_acao_assistente_status_sem_resposta", {
+    p_sessao_id: parametros.sessaoId,
+  });
+  if (error) {
+    console.error("Assistente: falha ao preparar alteração de status:", error.message);
+    return { ok: false, erro: "Não foi possível preparar a alteração de status agora.", codigo: "falha_preparacao" };
+  }
+  return resultadoRpc(data, "Não foi possível preparar a alteração de status.");
+}
+
 export async function confirmarAcaoAssistente(
   supabase: SupabaseClient,
   acaoId: string,
@@ -398,6 +503,9 @@ export async function executarPreparacaoAgendamentoVisita(
     sessaoId: sessaoId || "",
   });
   if (!resultado.ok) return { dados: { preparada: false, motivo: resultado.erro, codigo: resultado.codigo } };
+  if (resultado.acao.tipo !== "agendar_visita") {
+    return { dados: { preparada: false, motivo: "A ação preparada não corresponde à visita solicitada." } };
+  }
   return {
     dados: {
       preparada: true,
@@ -407,6 +515,43 @@ export async function executarPreparacaoAgendamentoVisita(
       data: resultado.acao.dados.data,
       hora: resultado.acao.dados.hora,
       exigeConfirmacaoVisual: true,
+      executada: false,
+    },
+    acao: resultado.acao,
+  };
+}
+
+export async function executarPreparacaoStatusSemResposta(
+  supabase: SupabaseClient,
+  sessaoId?: string,
+): Promise<{ dados: unknown; bloco?: undefined; acao?: AcaoAssistente }> {
+  const resultado = await prepararAlteracaoStatusSemResposta(supabase, { sessaoId: sessaoId || "" });
+  if (!resultado.ok) return { dados: { preparada: false, motivo: resultado.erro, codigo: resultado.codigo } };
+  if (resultado.acao.tipo !== "alterar_status_sem_resposta_em_lote") {
+    return { dados: { preparada: false, motivo: "A ação preparada não corresponde à alteração solicitada." } };
+  }
+  if (resultado.acao.dados.quantidade === 0) {
+    return {
+      dados: {
+        preparada: false,
+        totalElegiveis: 0,
+        motivo: "Não encontrei imóveis elegíveis: é preciso estar em Novo contato, ter pelo menos 3 tentativas registradas e continuar sem resposta do proprietário.",
+      },
+    };
+  }
+  return {
+    dados: {
+      preparada: true,
+      acaoId: resultado.acao.id,
+      statusDestino: resultado.acao.dados.statusDestino,
+      quantidade: resultado.acao.dados.quantidade,
+      imoveis: resultado.acao.entidade.imoveis.map((imovel) => ({
+        id: imovel.id,
+        codigo: imovel.codigo,
+        endereco: imovel.endereco,
+        tentativas: imovel.tentativas,
+      })),
+      exigeConfirmacao: true,
       executada: false,
     },
     acao: resultado.acao,
