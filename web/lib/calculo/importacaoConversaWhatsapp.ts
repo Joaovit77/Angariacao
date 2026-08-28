@@ -158,6 +158,26 @@ export function jidsDaEvolutionPorIdsConhecidos(
   return [...jids];
 }
 
+/** Escolhe um destinatário somente entre identidades ancoradas por mensagens
+    que já pertencem ao imóvel. O JID numérico equivalente ao telefone vence;
+    um LID só é aceito quando não há número e veio da mesma mensagem conhecida. */
+export function destinoWhatsappPorJidsConhecidos(
+  jids: Iterable<string>,
+  telefone: string,
+): string | null {
+  const alvo = telefoneCanonico(telefone);
+  if (!alvo) return null;
+  const candidatos = [...new Set(jids)]
+    .map((jid) => jid.trim())
+    .filter((jid) => /^\d+@(s\.whatsapp\.net|c\.us|lid)$/.test(jid));
+  const numerico = candidatos.find((jid) => {
+    if (jid.endsWith("@lid")) return false;
+    return telefoneCanonico(jid.split("@")[0]) === alvo;
+  });
+  if (numerico) return numerico.split("@")[0];
+  return candidatos.find((jid) => jid.endsWith("@lid")) || null;
+}
+
 /** Traduz a resposta da Evolution em uma prévia cronológica e segura. */
 export function mensagensRecentesDaEvolution(
   corpo: unknown,

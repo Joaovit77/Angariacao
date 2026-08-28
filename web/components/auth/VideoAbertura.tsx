@@ -83,7 +83,6 @@ export default function VideoAbertura({
         alt=""
         fill
         sizes="100vw"
-        priority
         draggable={false}
         aria-hidden="true"
       />

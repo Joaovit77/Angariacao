@@ -632,7 +632,13 @@ function ConversaSelecionada({
   );
 }
 
-export default function CentralMensagensView({ aoAbrirAgendadas }: { aoAbrirAgendadas: () => void }) {
+export default function CentralMensagensView({
+  aoAbrirAgendadas,
+  imovelInicial = null,
+}: {
+  aoAbrirAgendadas: () => void;
+  imovelInicial?: string | null;
+}) {
   const imoveis = useAppStore((estado) => estado.imoveis);
   const agenda = useAppStore((estado) => estado.agenda);
   const carregado = useAppStore((estado) => estado.carregado);
@@ -646,12 +652,13 @@ export default function CentralMensagensView({ aoAbrirAgendadas }: { aoAbrirAgen
   const [busca, setBusca] = useState("");
   const buscaAdiada = useDeferredValue(busca);
   const [filtros, setFiltros] = useState<FiltrosConversas>(FILTROS_INICIAIS);
-  const [selecionadaId, setSelecionadaId] = useState<string | null>(null);
+  const [selecionadaId, setSelecionadaId] = useState<string | null>(imovelInicial);
   const [atualizando, setAtualizando] = useState(false);
   const [erro, setErro] = useState("");
-  const [mobileAberta, setMobileAberta] = useState(false);
+  const [mobileAberta, setMobileAberta] = useState(Boolean(imovelInicial));
   const [contextoAberto, setContextoAberto] = useState(false);
   const primeiraConversaVisivel = useRef(false);
+  const conversaInicialMarcada = useRef(false);
   const marcacoesEmCurso = useRef(new Set<string>());
 
   const conversas = useMemo(() => conversasDosImoveis(imoveis, todayISO()), [imoveis]);
@@ -678,6 +685,17 @@ export default function CentralMensagensView({ aoAbrirAgendadas }: { aoAbrirAgen
     marcacoesEmCurso.current.add(id);
     void marcarRespostasLidas(id, true).finally(() => marcacoesEmCurso.current.delete(id));
   }, []);
+
+  // A navegação originada por uma notificação é uma abertura explícita da
+  // conversa, inclusive no celular. O id vem da URL, mas só é usado depois de
+  // encontrar o imóvel no estado já isolado por RLS.
+  useEffect(() => {
+    if (!imovelInicial || conversaInicialMarcada.current) return;
+    const conversa = conversas.find((item) => item.imovel.id === imovelInicial);
+    if (!conversa) return;
+    conversaInicialMarcada.current = true;
+    marcarAoVisualizar(conversa.imovel.id, conversa.naoLidas);
+  }, [conversas, imovelInicial, marcarAoVisualizar]);
 
   // No desktop a primeira conversa já nasce visível no painel central, sem
   // exigir clique. No celular ela continua escondida atrás da lista e só é

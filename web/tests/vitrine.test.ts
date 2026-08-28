@@ -88,7 +88,8 @@ describe("apresentação pública", () => {
     expect(VIDEO_ABERTURA).toContain("src={poster}");
     expect(VIDEO_ABERTURA).toContain("src={video}");
     expect(VIDEO_ABERTURA).toContain('className="apresentacao-video-poster"');
-    expect(VIDEO_ABERTURA).toContain("priority");
+    expect(VIDEO_ABERTURA).not.toContain('loading="eager"');
+    expect(VIDEO_ABERTURA).not.toContain("priority");
     expect(VIDEO_ABERTURA).not.toContain("{falhaVideo && (");
     expect(VIDEO_ABERTURA).toContain("onError={registrarFalha}");
     expect(VIDEO_ABERTURA).toContain("DURACAO_TRANSICAO_LOOP_SEGUNDOS = 0.85");

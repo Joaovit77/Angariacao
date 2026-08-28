@@ -4,10 +4,15 @@ import { useState } from "react";
 import MensagensAgendadasView from "@/components/mensagens/MensagensAgendadasView";
 import CentralMensagensView from "@/components/respostas/CentralMensagensView";
 
-export default function ConversasView() {
+export default function ConversasView({ imovelInicial = null }: { imovelInicial?: string | null }) {
   const [aba, setAba] = useState<"conversas" | "agendadas">("conversas");
   if (aba === "conversas") {
-    return <CentralMensagensView aoAbrirAgendadas={() => setAba("agendadas")} />;
+    return (
+      <CentralMensagensView
+        imovelInicial={imovelInicial}
+        aoAbrirAgendadas={() => setAba("agendadas")}
+      />
+    );
   }
 
   return (

@@ -521,7 +521,10 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   houver `remoteJidAlt` numérico que confirme o contato ou se o id de uma mensagem que o webhook já
   vinculou àquele imóvel servir de âncora para o LID. Essa segunda ponte cobre a troca de identidade
   que ocorre quando o contato é salvo depois do início da conversa; um LID global sem âncora
-  verificável continua descartado.
+  verificável continua descartado. A rota de envio reutiliza a mesma ponte quando
+  `/chat/whatsappNumbers` responde que o telefone não existe: ela procura, pelos ids externos já
+  persistidos no imóvel sob RLS, um JID/LID observado naquela conversa. O browser continua sem poder
+  escolher destinatário, e um JID numérico divergente do telefone continua recusado.
 - **`calculo/respostas.ts`** — a **caixa de respostas** (view `/respostas`): o que o proprietário
   ESCREVEU, num lugar só. O webhook já gravava tudo, e três consumidores já liam esse dado — mas
   nenhum mostrava o texto: `isStale` usa só a data (resposta é movimento), o termômetro usa a data
@@ -732,7 +735,8 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   regra de que modelo sem preço devolve `null`, nunca zero.
 - **`toast.ts` / `notificacaoSistema.ts` / `geo.ts` / `dadosDemo.ts` / `auth/`** — aviso dentro da
   tela; aviso do SISTEMA operacional (a caixinha do Windows, para quando a aba está oculta — ver
-  `calculo/chegadaResposta.ts`); CEP (ViaCEP) + geocoding (Nominatim); seed de exemplo; força de
+  `calculo/chegadaResposta.ts`); CEP por uma fronteira interna de servidor (`api/viacep`, host fixo,
+  validação e timeout) + geocoding (Nominatim); seed de exemplo; força de
   senha e tradução de erros do Supabase Auth.
 
 ### `web/components/` — UI
@@ -1515,7 +1519,13 @@ ali para quem quiser um modelo.
   três etapas separadas: decisão (intenção, objeção, estado conversacional, informação já explicada,
   ação esperada, próximo passo permitido, ações proibidas, evidências, protocolos, lacunas e confiança),
   geração e validação independente. Confiança baixa, falta de informação, protocolo inadequado ou
-  validação reprovada bloqueiam o rascunho e pedem intervenção humana. Diagnósticos operacionais
+  validação reprovada bloqueiam o rascunho e pedem intervenção humana. Uma reprovação de
+  **conteúdo** na geração ou validação aciona antes uma única regeneração segura do zero, sem carregar
+  a frase recusada; a segunda sugestão atravessa as mesmas travas determinísticas e a validação
+  independente. Falha de transporte ou saída estrutural inválida continua 502 e não é mascarada pelo
+  fallback. Fala atribuída ao proprietário é evidência conversacional, não fato oficial do cadastro;
+  por isso uma resposta neutra que apenas reconhece "já foi locado", por exemplo, usa zero protocolos
+  e não afirma que o sistema foi atualizado. Diagnósticos operacionais
   registram contagens, classificações, fingerprint e metadados estruturados reais da execução —
   incluindo IDs de protocolos considerados/aplicados, fontes e validações executadas —, nunca
   conversa, resposta completa, prompt ou raciocínio.
@@ -1812,9 +1822,13 @@ que está quebrado o que está fazendo exatamente o que deve. O `detalhe` começ
 tipo do evento (`detalheDoLog`), e é dali que a coluna "Evento" sai: escrita e leitura moram no
 mesmo arquivo porque uma divergência aqui não daria erro, só deixaria a coluna vazia.
 
-**As notificações são NOTAS, não uma tabela.** Cada evento aplicado vira uma nota `sophia:<id do
-evento>` no imóvel, e ela é a notificação: nasce sem `lida`, o sino a conta, o Realtime a empurra
-para a tela na hora e o clique abre o imóvel. Uma tabela nova exigiria RLS própria, mapeadores, mais
+**As notificações são NOTAS, não uma tabela.** O centro do sino materializa individualmente dois
+tipos de evento que já existem no histórico: mensagens `wa:<id da mensagem>` e atualizações
+`sophia:<id do evento>`. Cada nota é uma notificação real, com texto, horário, imóvel, destino e
+estado `lida`; o badge conta somente as não lidas. O Realtime a empurra para a tela na hora, e o
+clique abre diretamente a conversa ou o imóvel correspondente. Agenda atrasada, imóvel parado e
+outros estados calculados não entram: sem evento e leitura persistidos eles reapareceriam após cada
+recarga, simulando notificações novas. Uma tabela nova exigiria RLS própria, mapeadores, mais
 uma publicação de Realtime e uma regra de expiração — para guardar um texto que pertence ao
 histórico daquele imóvel de qualquer forma. A nota dá tudo isso de graça: idempotência (pelo id do
 evento, na função do banco), estado de leitura (o `lida` que a caixa de respostas inaugurou) e o

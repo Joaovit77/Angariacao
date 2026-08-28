@@ -5,7 +5,7 @@ import {
   conversaAtendimento, mensagemFalhaIa, motivoReprovacaoValidacaoAtendimento,
   motivoBloqueioRascunhoDeterministico,
   normalizarDecisaoAtendimento, promptBaseAtendimento, promptDecidirAtendimento, promptGerarAtendimento,
-  promptValidarAtendimento, selecionarMensagensAtendimento, validacaoAprovaAtendimento,
+  promptRegenerarAtendimentoSeguro, promptValidarAtendimento, selecionarMensagensAtendimento, validacaoAprovaAtendimento,
   type ContextoAtendimento, type DecisaoAtendimento, type ProtocoloPrompt,
 } from "@/lib/calculo/ia";
 import type { Imovel } from "@/lib/tipos";
@@ -304,5 +304,40 @@ describe("comportamento conversacional", () => {
     const prompt = promptDecidirAtendimento("Ok.", contexto, { anteriores: [{ autor: "corretor", texto: "Você conseguiu terminar os reparos?" }] }, protocolos);
     expect(PROMPT_BASE_ATENDIMENTO).toContain('"Ok" só autoriza algo quando o contexto anterior');
     expect(prompt).toContain("Você conseguiu terminar os reparos?");
+  });
+
+  it("trata a declaração do proprietário como fonte conversacional, não como fato oficial", () => {
+    const mensagem = "Este imóvel já foi locado.";
+    const gerar = promptGerarAtendimento(mensagem, contexto, undefined, base, []);
+    const validar = promptValidarAtendimento(
+      mensagem,
+      contexto,
+      undefined,
+      [],
+      "Entendi, obrigado por avisar.",
+      base,
+      [],
+    );
+    expect(PROMPT_BASE_ATENDIMENTO).toContain("fonte conversacional atribuída");
+    expect(gerar).toContain("use [] quando a resposta for apenas social, neutra ou baseada na fala atribuída");
+    expect(gerar).toContain("não confirme essa declaração como estado oficial");
+    expect(validar).toContain("Resposta social ou neutra sem nova afirmação factual não precisa de protocolo");
+  });
+
+  it("fallback seguro regenera sem carregar a sugestão reprovada", () => {
+    const prompt = promptRegenerarAtendimentoSeguro(
+      "Este imóvel já foi locado.",
+      contexto,
+      undefined,
+      base,
+      [],
+      normalizarPerfilComunicacao(null),
+      "wa:1",
+      "protocolo-inadequado",
+    );
+    expect(prompt).toContain("Gere outra sugestão do zero");
+    expect(prompt).toContain("Prefira uma resposta curta e neutra");
+    expect(prompt).toContain("protocolo-inadequado");
+    expect(prompt).not.toContain("sugestão reprovada anterior:");
   });
 });

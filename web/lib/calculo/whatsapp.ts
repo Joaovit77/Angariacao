@@ -478,6 +478,7 @@ export function linkWhatsapp(imovel: Imovel, mensagem: string): string | null {
 
 /** Motivos de falha de envio. O servidor devolve um destes; a UI traduz. */
 export type FalhaEnvio =
+  | "mensagem-invalida"
   | "sem-telefone"
   | "numero-invalido"
   | "sem-whatsapp"
@@ -526,6 +527,7 @@ export function numeroEvolution(telefone: string | null | undefined): string | n
 }
 
 const TEXTO_FALHA: Record<FalhaEnvio, string> = {
+  "mensagem-invalida": "Escreva uma mensagem antes de enviar.",
   "sem-telefone": "Este imóvel não tem telefone cadastrado.",
   "numero-invalido": "O telefone cadastrado não parece um número de celular válido. Confira o DDD e os dígitos.",
   "sem-whatsapp": "Este número não tem WhatsApp.",

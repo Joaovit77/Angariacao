@@ -34,6 +34,31 @@ export function fmtDataHoraIso(iso: string | null | undefined): string {
   return Number.isNaN(data.getTime()) ? "" : data.toLocaleString("pt-BR");
 }
 
+/** Rótulo compacto para uma data/hora recente. Centralizado aqui para não
+    espalhar parsing de Date pelas interfaces. */
+export function tempoRelativoIso(
+  iso: string | null | undefined,
+  instanteAtual = agoraTimestamp(),
+): string {
+  const instante = timestampDeIso(iso);
+  if (instante === null) return "Horário não informado";
+
+  const diferencaMs = Math.max(0, instanteAtual - instante);
+  const minutos = Math.floor(diferencaMs / 60_000);
+  if (minutos < 1) return "Agora";
+  if (minutos < 60) return `Há ${minutos} min`;
+
+  const horas = Math.floor(minutos / 60);
+  if (horas < 24) return `Há ${horas} h`;
+
+  const dias = Math.floor(horas / 24);
+  if (dias < 7) return `Há ${dias} d`;
+
+  return new Date(instante)
+    .toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+    .replace(".", "");
+}
+
 /** Converte data/hora digitadas no fuso local para um instante UTC. */
 export function dataHoraLocalParaIso(data: string, hora: string): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data) || !/^\d{2}:\d{2}$/.test(hora)) return null;
