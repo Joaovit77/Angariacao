@@ -77,6 +77,7 @@ export const PRIVACIDADE: Documento = {
       paragrafos: [
         `**Da sua conta:** nome, e-mail e senha (armazenada apenas de forma criptografada, nunca em texto legível — nem nós temos acesso a ela). Registramos também a data de criação da conta, a data do último acesso, o consumo de recursos de inteligência artificial (quantidade de tokens por chamada) e registros técnicos de falha.`,
         `**Dos imóveis e proprietários que você cadastra:** nome e telefone do proprietário, endereço e características do imóvel, valores, origem do contato, histórico de status, suas anotações, o histórico de tentativas de contato e o conteúdo das mensagens trocadas por WhatsApp — incluindo a transcrição em texto dos áudios recebidos.`,
+        `**Das pesquisas no Investigador de Imóveis:** os termos que você decidir informar, que podem conter endereço, referência, condomínio e características do imóvel. Essas pesquisas são processadas sob demanda e não são guardadas em histórico pelo ${PRODUTO}.`,
         `**Da integração com o Google Agenda,** se você optar por conectá-la: o e-mail da conta conectada e uma autorização de acesso à sua agenda, usada exclusivamente para criar e atualizar os compromissos que você registra no sistema.`,
         `O sistema não coleta dados de localização do seu dispositivo, não usa cookies de publicidade e não faz rastreamento entre sites.`,
       ],
@@ -89,6 +90,7 @@ export const PRIVACIDADE: Documento = {
         `- Transcrever em texto os áudios recebidos, para que você possa ler no painel o que o proprietário disse.`,
         `- Interpretar as respostas recebidas e sugerir desfechos, textos e prioridades — sempre como sugestão, sujeita à sua confirmação.`,
         `- Calcular indicadores, metas e relatórios sobre o seu próprio trabalho.`,
+        `- Pesquisar, por sua ação, anúncios ou páginas públicas que possam corresponder às informações de um imóvel, apresentando as fontes e as evidências encontradas.`,
         `- Manter a segurança e o funcionamento do serviço, incluindo o registro de falhas técnicas e do consumo de recursos.`,
         `Seus dados e os da sua carteira não são vendidos, alugados ou cedidos a terceiros para fins comerciais, e não são usados para publicidade.`,
       ],
@@ -101,7 +103,8 @@ export const PRIVACIDADE: Documento = {
         `- **Vercel** — hospedagem da aplicação.`,
         `- **Evolution API** — envio e recebimento das mensagens de WhatsApp, a partir do número de WhatsApp vinculado à sua conta.`,
         `- **OpenAI** — transcrição dos áudios recebidos, interpretação das respostas dos proprietários e geração dos textos sugeridos. Isso significa que o conteúdo das mensagens recebidas, incluindo áudios, é enviado a esse fornecedor para processamento. Pelos termos de uso da API que utilizamos, esse conteúdo não é usado para treinar modelos.`,
-        `- **Google** — apenas se você conectar o Google Agenda, e apenas para criar e atualizar os seus compromissos.`,
+        `- **RapidAPI (Google Search API)** — recebe somente os termos que você enviar ao Investigador de Imóveis e devolve resultados públicos da web. A chave dessa integração não é exposta ao navegador.`,
+        `- **Google** — se você conectar o Google Agenda, para criar e atualizar os seus compromissos; e, no Investigador, como mecanismo de pesquisa e redirecionamento para as fontes públicas encontradas.`,
         `Também poderemos compartilhar dados quando houver obrigação legal ou ordem de autoridade competente.`,
       ],
     },
@@ -117,6 +120,7 @@ export const PRIVACIDADE: Documento = {
       paragrafos: [
         `- **Dados da sua carteira** (imóveis, proprietários, mensagens, histórico): enquanto sua conta existir. Você pode apagá-los a qualquer momento, de uma vez, pelo próprio sistema, em Configurações → Apagar todos os meus dados.`,
         `- **Registros técnicos de falha e de consumo de IA:** 180 dias, após os quais são eliminados.`,
+        `- **Pesquisas do Investigador de Imóveis:** não são persistidas pelo ${PRODUTO}; permanecem apenas durante a investigação em andamento. O provedor externo pode tratar registros técnicos segundo a própria política.`,
         `- **Dados de cadastro da conta:** enquanto a conta existir e pelo prazo necessário ao cumprimento de obrigações legais após seu encerramento.`,
         `O encerramento da conta elimina os dados da carteira. Registros de consumo podem ser mantidos de forma dissociada da sua identidade, para fins contábeis.`,
       ],
@@ -126,7 +130,7 @@ export const PRIVACIDADE: Documento = {
       paragrafos: [
         `- Cada conta enxerga exclusivamente os próprios dados, por regras aplicadas no banco de dados (Row Level Security), e não apenas por controle na tela.`,
         `- Sua senha é armazenada de forma criptografada e não é acessível a ninguém, incluindo nossa equipe.`,
-        `- As credenciais sensíveis (token do WhatsApp, autorização do Google, chaves de serviço) ficam exclusivamente no servidor, em tabelas sem qualquer permissão de leitura pelo navegador.`,
+        `- As credenciais sensíveis (token do WhatsApp, autorização do Google, chaves de IA, busca e serviço) ficam exclusivamente no servidor, em tabelas ou variáveis sem qualquer permissão de leitura pelo navegador.`,
         `- O acesso administrativo é restrito, identificado e registrado.`,
         `- O registro técnico de falhas, consultado pela nossa equipe, nunca contém o conteúdo das conversas nem o telefone de proprietários — apenas o motivo classificado do erro.`,
         `Nenhum sistema é infalível. Em caso de incidente de segurança que possa acarretar risco relevante, comunicaremos você e a Autoridade Nacional de Proteção de Dados, conforme o art. 48 da LGPD.`,
@@ -160,7 +164,7 @@ export const TERMOS: Documento = {
     {
       titulo: "1. O que é este serviço",
       paragrafos: [
-        `O ${PRODUTO} é um sistema de apoio ao trabalho de captação de imóveis para locação, operado por ${EMPRESA}. Ele organiza a carteira de imóveis, registra contatos com proprietários, envia e recebe mensagens de WhatsApp pelo número vinculado à sua conta e produz indicadores sobre o seu trabalho.`,
+        `O ${PRODUTO} é um sistema de apoio ao trabalho de captação de imóveis para locação, operado por ${EMPRESA}. Ele organiza a carteira de imóveis, registra contatos com proprietários, pesquisa possíveis correspondências públicas na web por sua solicitação, envia e recebe mensagens de WhatsApp pelo número vinculado à sua conta e produz indicadores sobre o seu trabalho.`,
         `Ao criar uma conta, você declara ter lido e aceito estes Termos e a Política de Privacidade.`,
       ],
     },
@@ -204,7 +208,7 @@ export const TERMOS: Documento = {
       titulo: "6. Disponibilidade e dependências",
       paragrafos: [
         `Trabalhamos para manter o serviço disponível, mas ele não é oferecido com garantia de disponibilidade ininterrupta. Podem ocorrer interrupções para manutenção, correção ou por falha de fornecedores.`,
-        `O sistema depende de serviços de terceiros — WhatsApp, provedor de envio de mensagens, provedor de IA, Google Agenda, banco de dados e hospedagem. A indisponibilidade de qualquer um deles pode afetar total ou parcialmente o funcionamento, sem que isso configure descumprimento por nossa parte.`,
+        `O sistema depende de serviços de terceiros — WhatsApp, provedor de envio de mensagens, provedor de IA, RapidAPI, pesquisa do Google, Google Agenda, banco de dados e hospedagem. A indisponibilidade de qualquer um deles pode afetar total ou parcialmente o funcionamento, sem que isso configure descumprimento por nossa parte.`,
       ],
     },
     {

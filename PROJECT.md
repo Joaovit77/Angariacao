@@ -66,11 +66,11 @@ O aplicativo vive em **[`web/`](web/)** — Next 16 (App Router, Turbopack), Typ
   páginas públicas de termos/privacidade e o grupo **`(painel)/`** com o shell autenticado. As views
   atuais incluem `home`, `dashboard`, `pipeline`, `metas`, `agenda`, `mensagens`, `respostas`,
   `insights`, `mapa`, `relatorios`, `protocolos`, `cerebro-ia`, `avaliacao`, `central-angariacao` e
-  `admin`. A antiga rota `roadmap` redireciona para o Início: configuração e saúde técnica das
+  `investigador-imoveis` e `admin`. A antiga rota `roadmap` redireciona para o Início: configuração e saúde técnica das
   integrações e da IA pertencem à Administração; o `Cérebro da IA` é uma explicação visual do
   produto, não uma superfície operacional.
   As rotas de servidor vivem em **`app/api/`**: `whatsapp/*`, `ia`, `assistente`, `google/*`,
-  `admin/*`, `sophia/eventos`, `central-angariacao/*` e `cron/*`. Elas protegem secrets, executam
+  `admin/*`, `sophia/eventos`, `central-angariacao/*`, `investigador-imoveis` e `cron/*`. Elas protegem secrets, executam
   integrações externas ou realizam trabalho privilegiado que não pode ficar no browser.
 - **`web/app/style.css`** — o CSS do app antigo, dirigido por custom properties em `:root`. Não
   houve redesign: classes e paleta escura seguem as do app estático. As duas mudanças estruturais
@@ -1892,6 +1892,37 @@ janela e não bloqueia as demais.
 `api/central-angariacao/imagem` funciona apenas como proxy seguro para imagens de hosts esperados;
 não deve virar fetch genérico controlado pelo cliente.
 
+#### `api/investigador-imoveis` — possíveis correspondências na web
+
+O Investigador é uma superfície autenticada e sem persistência: recebe de 3 a 500 caracteres sobre
+um imóvel, gera até três consultas determinísticas e chama a Google Search API do RapidAPI
+sequencialmente. Depois de cada resposta, o núcleo normaliza e classifica os candidatos; uma
+correspondência muito forte com ao menos duas evidências independentes e sem contradições encerra a
+fila, enquanto resultado inconclusivo avança até o teto de três. Referência isolada não interrompe
+as consultas seguintes. A chave `RAPIDAPI_KEY` existe somente em
+`lib/servidor/investigadorImoveis.ts`; o browser conhece apenas a rota interna e envia o Bearer da
+própria sessão. O host do provider é fixo (`google-search-api7.p.rapidapi.com`), com timeout
+individual, tratamento específico de 429 e no máximo dez resultados orgânicos por consulta.
+
+`lib/calculo/investigadorImoveis.ts` é o contrato puro e independente do provider. Ele extrai
+somente valores observáveis em título e descrição, não escolhe um número quando um resultado
+agregado apresenta valores diferentes, canonicaliza URLs e remove repetições apenas por URL ou por
+conteúdo quase idêntico dentro do mesmo domínio. Fontes em domínios diferentes são preservadas. A
+correspondência não usa porcentagem nem soma arbitrária: combina identidade (referência/endereço),
+contexto (empreendimento) e características comparáveis. Ausência é neutra; referência, endereço,
+empreendimento, área, quartos ou vagas explicitamente divergentes viram contradições e limitam a
+classificação. A UI usa níveis probabilísticos — muito forte, forte, possível e indício — e exibe
+separadamente evidências favoráveis e contradições.
+
+A resposta é NDJSON progressivo: gerar consultas, pesquisar, normalizar e cruzar informações são
+eventos emitidos quando cada etapa realmente começa; a lista da UI contém apenas consultas de fato
+executadas. Falha intermediária preserva os resultados anteriores. Um 429 interrompe novas chamadas,
+mantém a resposta parcial quando houver dados úteis e registra somente status, tentativa, consulta,
+duração, `Retry-After` e headers públicos de quota — nunca chave, Bearer, cookies ou resposta bruta.
+O Investigador não cadastra, altera ou vincula imóveis, não chama o Assistente e não cria histórico
+no banco nesta versão. Essa separação deixa uma futura ferramenta `buscar_imovel_na_web` reutilizar
+a mesma fronteira sem duplicar o provider.
+
 #### `api/admin/*` — o painel de quem opera
 
 Oito rotas (`eu`, `corretores`, `logs`, `ia`, `instancia`, `cargo`, `conexao`, `ambiente`) e um
@@ -2224,7 +2255,7 @@ caixa há trinta segundos não pode ser recebido com um pedido para aceitar de n
 - **Bibliotecas novas via npm** em `web/`, fixando a mesma major das existentes quando fizer sentido
   (Chart.js 4, Leaflet 1.9, Supabase JS 2, Zustand 5).
 - **Sem segredo no cliente além da anon key.** Segredo mora no servidor (é o caso de credenciais da
-  Evolution/Google, `OPENAI_API_KEY`, `FIRECRAWL_API_KEY`, `CRON_SECRET` e
+  Evolution/Google, `OPENAI_API_KEY`, `FIRECRAWL_API_KEY`, `RAPIDAPI_KEY`, `CRON_SECRET` e
   `SUPABASE_SERVICE_ROLE_KEY`); código que chega ao browser, nunca. Na prática: variável com
   `NEXT_PUBLIC_` é pública — se é segredo, não leva o prefixo.
 - **A service role é a exceção mais perigosa do projeto.** Ela ignora a RLS por completo e só pode

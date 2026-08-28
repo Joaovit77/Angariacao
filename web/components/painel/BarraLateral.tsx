@@ -94,6 +94,16 @@ const ITENS: ItemNav[] = [
     ),
   },
   {
+    rota: "/investigador-imoveis",
+    texto: "Investigador de Imóveis",
+    icone: (
+      <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="10.5" cy="10.5" r="6.5" />
+        <path d="m15.5 15.5 5 5M10.5 7.5v6M7.5 10.5h6" />
+      </svg>
+    ),
+  },
+  {
     rota: "/respostas",
     texto: "Mensagens",
     badge: "respostas",

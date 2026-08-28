@@ -295,6 +295,31 @@ OPENAI_EMBEDDING_MODEL=text-embedding-3-small
   curl -H "Authorization: Bearer $OPENAI_API_KEY" https://api.openai.com/v1/models
   ```
 
+### RapidAPI (Investigador de Imóveis) — opcional
+
+O Investigador pesquisa possíveis correspondências na web pela Google Search API do RapidAPI
+(`google-search-api7.p.rapidapi.com`). Configure uma única chave, sempre como segredo de servidor:
+
+```
+RAPIDAPI_KEY=
+```
+
+- A assinatura e a franquia são geridas no painel do RapidAPI. Cada investigação faz até três
+  pesquisas sequenciais e encerra antes quando encontra ao menos duas evidências independentes
+  suficientes, sem contradições.
+  Vale configurar limite rígido de uso no plano.
+- **Nunca** crie `NEXT_PUBLIC_RAPIDAPI_KEY`: qualquer valor com esse prefixo entra no bundle do
+  navegador. A chave é lida somente por `web/lib/servidor/investigadorImoveis.ts`.
+- O endpoint usado é `GET /search`, com os parâmetros documentados `keyword` e `device=Desktop`,
+  e os headers `x-rapidapi-key` e `x-rapidapi-host`.
+- Em 27/08/2026, a página pública do provider informava 500 chamadas/mês no Basic e 1.000/hora;
+  a resposta real da conta local confirmou `x-ratelimit-requests-limit: 500` e expôs os headers
+  de restante/reset. O painel e os headers da assinatura ativa são a fonte operacional, pois planos
+  antigos podem permanecer diferentes. Em 429, confira `Retry-After` e os headers
+  `x-ratelimit-*`; não presuma janela por segundo ou minuto quando o provider não a publicar.
+- **Se você não configurar:** o restante do Angario continua funcionando; somente a página do
+  Investigador informa que o serviço ainda não está configurado.
+
 ### Sistema Principal / Sophia (eventos da locação) — opcional
 
 O Sistema Principal da imobiliária avisa o painel quando o proprietário assina a Autorização de
@@ -384,7 +409,7 @@ que a **raiz do projeto é `web`**. O resto ela detecta sozinha (é um projeto N
 5. **Environment Variables:** adicione as duas da Parte 2
    (`NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`). Se for usar o envio direto de
    WhatsApp, adicione as variáveis da Evolution descritas na Parte 2. Se for usar os botões de IA,
-   some a `OPENAI_API_KEY`.
+   some a `OPENAI_API_KEY`. Para usar o Investigador de Imóveis, adicione também `RAPIDAPI_KEY`.
 6. Clique em **Deploy**. Em 1–2 minutos a Vercel te dá um link
    (ex.: `https://angariacoes-web.vercel.app`).
 7. Volte no Supabase (Parte 1, passo 7) e confirme que a **Site URL** aponta para esse endereço.

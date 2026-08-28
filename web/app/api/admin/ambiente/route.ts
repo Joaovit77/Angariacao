@@ -106,6 +106,14 @@ export async function GET(request: Request): Promise<Response> {
       essencial: false,
     },
     {
+      chave: "rapidapi",
+      nome: "Investigador de Imóveis",
+      variavel: "RAPIDAPI_KEY",
+      configurado: tem("RAPIDAPI_KEY"),
+      semEla: "A pesquisa de possíveis correspondências na web fica indisponível.",
+      essencial: false,
+    },
+    {
       chave: "google",
       nome: "Google Agenda",
       variavel: "GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET",

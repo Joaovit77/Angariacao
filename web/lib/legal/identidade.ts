@@ -93,4 +93,4 @@ export function legalPublicavel(): boolean {
  * Formato ISO para ordenar sozinho e dizer, de cara, de quando é o
  * texto que a pessoa aceitou.
  */
-export const VERSAO_TERMOS = "2026-08-01";
+export const VERSAO_TERMOS = "2026-08-27";
