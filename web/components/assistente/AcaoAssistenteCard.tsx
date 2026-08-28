@@ -16,7 +16,12 @@ function tituloDoEstado(acao: AcaoAssistente): string {
   if (acao.estado === "ready_for_confirmation") return "Confirmação necessária";
   if (acao.estado === "succeeded") {
     if (acao.tipo === "alterar_status_sem_resposta_em_lote") return "Alteração concluída";
-    return acao.tipo === "agendar_visita" ? "Visita agendada" : "Compromisso criado";
+    if (acao.tipo === "agendar_visita") return "Visita agendada";
+    if (acao.tipo === "criar_compromisso") return "Compromisso criado";
+    if (acao.tipo === "registrar_tentativa") return "Tentativa registrada";
+    if (acao.tipo === "criar_followup") return "Follow-up criado";
+    if (acao.tipo === "reagendar_followup") return "Follow-up reagendado";
+    return "Follow-up concluído";
   }
   if (acao.estado === "cancelled") return "Ação cancelada";
   if (acao.estado === "expired") return "Confirmação expirada";
@@ -37,7 +42,7 @@ export default function AcaoAssistenteCard({ acao, processando, aoConfirmar, aoC
         <span aria-hidden="true">{pendente ? "🛡" : acao.estado === "succeeded" ? "✓" : "○"}</span>
         <span>
           <strong>{tituloDoEstado(acao)}</strong>
-          <small>{pendente ? "Revise os detalhes antes de confirmar." : acao.erro || "O estado desta ação foi atualizado."}</small>
+          <small>{pendente ? "Revise os detalhes antes de confirmar." : acao.erro || acao.motivo.descricao}</small>
         </span>
       </header>
 
@@ -77,6 +82,16 @@ export default function AcaoAssistenteCard({ acao, processando, aoConfirmar, aoC
             </div>
           )}
         </>
+      ) : acao.tipo === "registrar_tentativa" ? (
+        <dl className={styles.acaoDetalhes}>
+          <div><dt>Operação</dt><dd>{acao.operacao}</dd></div>
+          <div><dt>Imóvel</dt><dd>{acao.entidade.codigo}</dd></div>
+          <div><dt>Canal</dt><dd>{acao.dados.canal}</dd></div>
+          <div><dt>Resultado</dt><dd>{acao.dados.resultado}</dd></div>
+          {acao.dados.observacao ? <div className={styles.acaoLinhaCompleta}><dt>Observação</dt><dd>{acao.dados.observacao}</dd></div> : null}
+          <div className={styles.acaoLinhaCompleta}><dt>Motivo</dt><dd>{acao.motivo.descricao}</dd></div>
+          <div className={styles.acaoLinhaCompleta}><dt>Impacto</dt><dd>{acao.impacto}</dd></div>
+        </dl>
       ) : (
         <dl className={styles.acaoDetalhes}>
           <div><dt>Operação</dt><dd>{acao.operacao}</dd></div>
@@ -85,6 +100,9 @@ export default function AcaoAssistenteCard({ acao, processando, aoConfirmar, aoC
               <div><dt>Título</dt><dd>{acao.dados.titulo}</dd></div>
               <div><dt>Tipo</dt><dd>{acao.dados.tipo}</dd></div>
             </>
+          ) : null}
+          {acao.tipo === "reagendar_followup" ? (
+            <div><dt>Data anterior</dt><dd>{fmtDate(acao.dados.dataAnterior)}{acao.dados.horaAnterior ? ` às ${acao.dados.horaAnterior}` : ""}</dd></div>
           ) : null}
           {acao.entidade.imovelId ? <div><dt>Imóvel</dt><dd>{acao.entidade.codigo}</dd></div> : null}
           {acao.entidade.endereco ? <div className={styles.acaoLinhaCompleta}><dt>Endereço</dt><dd>{acao.entidade.endereco}</dd></div> : null}
@@ -95,13 +113,14 @@ export default function AcaoAssistenteCard({ acao, processando, aoConfirmar, aoC
             ? <div className={styles.acaoLinhaCompleta}><dt>Observação</dt><dd>{acao.dados.observacao}</dd></div>
             : null}
           <div className={styles.acaoLinhaCompleta}><dt>Impacto</dt><dd>{acao.impacto}</dd></div>
+          <div className={styles.acaoLinhaCompleta}><dt>Motivo</dt><dd>{acao.motivo.descricao}</dd></div>
         </dl>
       )}
 
       {pendente && (
         <>
           <p className={styles.acaoSeguranca}>
-            🔒 O Assistente só executa após sua confirmação. Válida até {fmtDataHoraIso(acao.expiraEm)}.
+            🔒 O Assistente só executa após sua confirmação. {acao.expiraEm ? `Válida até ${fmtDataHoraIso(acao.expiraEm)}.` : ""}
           </p>
           <div className={styles.acaoBotoes}>
             <button type="button" className={styles.acaoConfirmar} onClick={aoConfirmar} disabled={processando}>

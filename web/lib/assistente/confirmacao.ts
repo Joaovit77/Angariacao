@@ -74,6 +74,10 @@ export function textoResultadoConfirmacao(acao: AcaoAssistente): string {
         : sucesso;
     }
     if (acao.tipo === "agendar_visita") return `✓ Visita agendada\n\n${acao.entidade.codigo}\n${acao.dados.data} às ${acao.dados.hora}`;
+    if (acao.tipo === "registrar_tentativa") return `✓ Tentativa registrada\n\n${acao.entidade.codigo}\n${acao.dados.canal} · ${acao.dados.resultado}`;
+    if (acao.tipo === "criar_followup") return `✓ Follow-up criado\n\n${acao.entidade.codigo}\n${acao.dados.data}${acao.dados.hora ? ` às ${acao.dados.hora}` : ""}`;
+    if (acao.tipo === "reagendar_followup") return `✓ Follow-up reagendado\n\n${acao.entidade.codigo}\n${acao.dados.data}${acao.dados.hora ? ` às ${acao.dados.hora}` : ""}`;
+    if (acao.tipo === "concluir_followup") return `✓ Follow-up concluído\n\n${acao.entidade.codigo}\n${acao.dados.titulo}`;
     return `✓ Compromisso criado\n\n${acao.dados.titulo}\n${acao.dados.data}${acao.dados.hora ? ` às ${acao.dados.hora}` : ""}`;
   }
   if (acao.estado === "expired") return "A confirmação expirou. Prepare a ação novamente; nada foi alterado.";

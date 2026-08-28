@@ -87,7 +87,14 @@ export interface DbAgendaRow {
   notes: string | null;
   done: boolean | null;
   is_verificacao_disponibilidade: boolean | null;
+  origin?: "usuario" | "assistente" | "automacao" | "evento_whatsapp" | null;
+  reason_code?: string | null;
+  source_action_id?: string | null;
+  completed_at?: string | null;
+  completion_reason?: string | null;
+  completion_origin?: "usuario" | "assistente" | "automacao" | "evento_whatsapp" | null;
   created_at?: string;
+  updated_at?: string;
 }
 
 /** Linha da tabela `abordagens` (catálogo de roteiros de captação). */
@@ -363,5 +370,21 @@ export function toDbAgenda(a: AgendaItem, userId: string): Omit<DbAgendaRow, "cr
 }
 
 export function fromDbAgenda(r: DbAgendaRow): AgendaItem {
-  return { id: r.id, title: r.title, type: r.type, date: r.date, hora: r.hora ?? null, imovelId: r.imovel_id, notes: r.notes || "", done: !!r.done, isVerificacaoDisponibilidade: !!r.is_verificacao_disponibilidade };
+  return {
+    id: r.id,
+    title: r.title,
+    type: r.type,
+    date: r.date,
+    hora: r.hora ?? null,
+    imovelId: r.imovel_id,
+    notes: r.notes || "",
+    done: !!r.done,
+    isVerificacaoDisponibilidade: !!r.is_verificacao_disponibilidade,
+    ...(r.origin ? { origem: r.origin } : {}),
+    ...(r.reason_code ? { motivoCodigo: r.reason_code } : {}),
+    ...(r.source_action_id ? { acaoOrigemId: r.source_action_id } : {}),
+    ...(r.completed_at ? { concluidoEm: r.completed_at } : {}),
+    ...(r.completion_reason ? { motivoConclusao: r.completion_reason } : {}),
+    ...(r.completion_origin ? { origemConclusao: r.completion_origin } : {}),
+  };
 }

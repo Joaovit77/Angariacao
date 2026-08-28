@@ -1568,11 +1568,11 @@ ali para quem quiser um modelo.
   comerciais. Protocolos não são saudações nem preferências pessoais de escrita; estas pertencem ao
   perfil de comunicação.
 
-#### `api/assistente` — consultas e ações com confirmação
+#### `api/assistente` — consultas e ações operacionais controladas
 
 O Assistente é uma superfície global do painel para consultar carteira, agenda, mensagens agendadas,
 follow-ups, estagnação, Foco do dia, métricas e marcos históricos. Consultas continuam somente
-leitura. As ações de escrita liberadas na Agenda são **agendar visita** e **criar compromisso**. A
+leitura. As ações de escrita confirmáveis na Agenda são **agendar visita** e **criar compromisso**. A
 única mudança de status liberada é a ação confirmável que leva para **Sem resposta** os imóveis ainda
 em **Novo contato**, com pelo menos três tentativas registradas e sem resposta observada do
 proprietário. Mensagens, exclusões e outras mudanças de status não são executadas diretamente.
@@ -1583,6 +1583,15 @@ mantém seleção, textos por origem, teto diário e confirmação final; abrir 
 nenhuma mensagem. A rota exige sessão válida e permissão de IA; consultas e operações usam o token
 do chamador, preservando a identidade e o isolamento da RLS.
 
+A fundação do piloto automático de acompanhamento amplia o mesmo mecanismo, sem criar uma segunda
+timeline ou um motor de workflow. **Registrar tentativa** usa o JSONB real de `imoveis.tentativas`,
+congela ID, data, canal, resultado e observação e continua sendo ação de alto risco, com confirmação.
+**Criar, reagendar e concluir um único follow-up interno** usam a tabela real `agenda`, são ações de
+baixo risco e podem executar automaticamente somente depois de um pedido explícito e com imóvel/item
+inequívoco. Não enviam mensagem, não criam nota livre e não alteram status. A política fechada fica
+em `lib/assistente/politicas.ts`; exclusão, dados sensíveis, envio externo e mudança arbitrária de
+status permanecem críticos e não são expostos como ferramentas.
+
 O Assistente também pode identificar **proprietários que responderam** pela mesma classificação da
 Central de Mensagens: uma conversa em andamento exige negociação ativa e ao menos uma mensagem real
 recebida. A consulta pode restringir a lista às conversas cuja última fala foi do proprietário e
@@ -1591,8 +1600,9 @@ Assistente aciona o `rascunhar-resposta` já existente: a rota relê o históric
 aplica perfil e protocolos e abre o WhatsApp com texto editável. O rascunho nunca é tratado como
 envio; áudio, imagem ou documento sem texto suficiente exigem consulta manual.
 
-Escrita segue uma regra única: **a IA propõe, o backend valida, o usuário confirma e o código
-executa**. Ao preparar uma visita ou compromisso, uma função tipada valida os campos e o eventual
+Escrita segue um ciclo único: **a IA identifica, o backend valida e aplica a política, revalida e
+registra o resultado**. Alto risco inclui a etapa de confirmação humana; baixo risco interno pode
+executar na mesma transação. Ao preparar uma visita ou compromisso, uma função tipada valida os campos e o eventual
 imóvel da própria carteira, gera previamente o ID da Agenda e grava o payload em
 `assistente_acoes` por 15
 minutos. A tabela tem RLS e nenhuma política/grant de escrita para o browser; somente as funções
@@ -1608,15 +1618,35 @@ usuário autenticado e `source: assistente`. Ações substituídas, canceladas, 
 não voltam a executar. Depois da criação local de compromissos, o espelhamento existente do Google
 Agenda é acionado como conveniência, sem transformar falha externa em rollback do compromisso.
 
+`assistente_acoes` também registra `origin`, nível de autonomia, necessidade de confirmação, motivo
+estruturado, evento de origem e autoria/data da confirmação. A Agenda preserva origem, motivo,
+ação-fonte e dados de conclusão; um trigger impede que o browser se atribua autoria de Assistente.
+Quando o webhook persiste uma resposta real do proprietário, uma RPC exclusiva da service role
+conclui apenas follow-ups pendentes criados pelo Assistente/automação com motivo
+`aguardando_resposta`. Compromissos manuais e `mensagens_agendadas` não são tocados. A chave do evento
+é única por usuário/origem/tipo, então reentrega não duplica o processamento. Toda consulta e escrita
+repete `user_id`, e linhas de Agenda e imóvel são revalidadas/bloqueadas antes de mudar.
+
 A conversa pode ser usada tanto na página `/assistente`, acessível pela navegação, quanto no atalho
 flutuante. As duas superfícies consomem o mesmo estado de sessão e o mesmo cliente da API; não há um
 segundo agente. A preferência **Assistente flutuante** controla somente o atalho e é local ao
 navegador, como sua posição arrastável. Desativá-la não afeta a página nem os demais recursos de IA.
 
+As operações reais também são descritas pelo **catálogo de capacidades** em
+`lib/assistente/capacidades.ts`. Ele concentra metadados de produto, exemplos, limitações,
+disponibilidade e vínculo com ferramentas/ações; controles de autonomia são sempre derivados de
+`politicas.ts`, nunca redefinidos pelo manual. O catálogo alimenta a ajuda expansível acessível por
+**O que posso fazer?**, as boas-vindas e respostas determinísticas a perguntas de descoberta antes
+de qualquer chamada ao modelo. O contexto do modelo recebe somente uma projeção compacta do mesmo
+catálogo. Permissão de IA continua sendo validada antes de expor a resposta, e capacidades que
+dependem de protocolos ou do WhatsApp declaram essa condição sem assumir integração ativa. Este
+documento descreve a arquitetura, mas não é fonte executável das capacidades.
+
 Arquitetura:
 
 - `lib/assistente/`: contratos cliente-servidor, contexto visual, histórico compacto, referências,
-  posição e continuidade conversacional.
+  posição, continuidade conversacional, catálogo de capacidades e políticas determinísticas de
+  autonomia. Capacidades descrevem o que existe; políticas definem quanto poder cada ação possui.
 - `lib/servidor/assistente/conhecimento.ts`: regras do produto fornecidas ao modelo. Não substitui o
   motor; explica quando usar cada consulta.
 - `lib/servidor/assistente/ferramentas.ts`: ferramentas de leitura com argumentos estritos. Elas
@@ -1626,7 +1656,8 @@ Arquitetura:
   guiado convergem para a mesma preparação tipada; follow-up em lote converge para o modal real de
   revisão, sem duplicar a fila nem seu envio; respostas contextuais convergem para o atendimento e o
   compositor já existentes; a mudança pontual para Sem resposta converge para `assistente_acoes` e
-  para o trigger oficial de status; o modelo nunca recebe acesso genérico ao Supabase.
+  para o trigger oficial de status; tentativas e follow-ups convergem para uma RPC operacional
+  fechada; o modelo nunca recebe acesso genérico ao Supabase.
 - `lib/servidor/assistente/orquestrador.ts`: OpenAI Responses API com tool calling sequencial, até
   quatro rodadas, `store: false`, identificador de segurança derivado por hash e registro de custo.
   Antes da geração, relê pelo cliente do chamador até 40 protocolos comerciais ativos, filtrados
@@ -1638,6 +1669,14 @@ Arquitetura:
   aplicadas; não registra a pergunta, o conteúdo do protocolo nem a resposta.
   O modelo padrão é `gpt-5.4-mini`; a ausência de versão no banco ainda respeita um
   `OPENAI_ASSISTENTE_MODEL` válido. Com versão publicada, o Centro de IA é a fonte ativa.
+- `components/assistente/ManualCapacidadesAssistente.tsx`: projeção do catálogo em linguagem de
+  produto, agrupada por consulta, organização, registro, alteração, automação e limites. Não contém
+  uma segunda lista de funcionalidades nem decide segurança.
+
+Essa separação mantém o cérebro em camadas: o **orquestrador** entende intenção e contexto;
+**capacidades** informam operações existentes; **protocolos** fornecem regras e informações da
+imobiliária; **políticas de autonomia** fixam o controle; **ferramentas** executam contratos tipados;
+**eventos** iniciam comportamentos proativos; e o **histórico** registra decisões e resultados.
 
 O cliente envia rota/página/superfície e, quando há drawer ou modal compatível, apenas tipo e ID da
 entidade. O backend reconsulta o objeto; nenhum dado do card é aceito como verdade. Até 12 turnos são

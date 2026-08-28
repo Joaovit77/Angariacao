@@ -228,6 +228,38 @@ function espelharCompromissoDoWebhook(
   });
 }
 
+async function concluirFollowUpsQuePerderamSentido(
+  supabase: SupabaseClient,
+  userId: string,
+  imovelId: string,
+  eventoId: string,
+  rotulo: string,
+): Promise<void> {
+  const { data, error } = await supabase.rpc("processar_evento_resposta_acompanhamento", {
+    p_user_id: userId,
+    p_imovel_id: imovelId,
+    p_evento_id: eventoId,
+  });
+  if (error) {
+    console.error("Webhook do WhatsApp: falha ao concluir follow-ups automáticos:", error.message);
+    registrarEvento({
+      userId,
+      categoria: "webhook",
+      nivel: "erro",
+      evento: "followups-por-resposta-falhou",
+      detalhe: "evento-idempotente",
+    });
+    return;
+  }
+  const resposta = data && typeof data === "object" ? data as Record<string, unknown> : {};
+  const agendaIds = Array.isArray(resposta.agendaIds)
+    ? resposta.agendaIds.filter((id): id is string => typeof id === "string")
+    : [];
+  for (const agendaId of agendaIds) {
+    espelharCompromissoDoWebhook(supabase, userId, agendaId, rotulo);
+  }
+}
+
 /** Teste de vida, para quem administra a Evolution conferir a URL antes de
     apontar o webhook — sem isso a primeira validação vira adivinhação. */
 export async function GET(
@@ -441,6 +473,17 @@ export async function POST(
     return Response.json({ ok: true });
   }
 
+  // Uma resposta invalida somente os follow-ups internos que o próprio
+  // Assistente criou para aguardar essa resposta. A RPC é idempotente pelo ID
+  // do evento e nunca toca compromissos manuais ou mensagens programadas.
+  await concluirFollowUpsQuePerderamSentido(
+    supabase,
+    userId,
+    imovel.id,
+    `${mensagem.instancia}:${mensagem.mensagemId}`,
+    rotulo,
+  );
+
   // 5. Interpreta a resposta. A IA lê o texto e sugere o desfecho — mas é
   //    SUGESTÃO: a tentativa continua marcada e o corretor confirma no nudge,
   //    agora com a resposta na frente e o provável já escolhido. Sem chave da
@@ -638,6 +681,8 @@ export async function POST(
         notes: compromisso.notas,
         done: false,
         is_verificacao_disponibilidade: false,
+        origin: "evento_whatsapp",
+        reason_code: "prazo_combinado_na_resposta",
       });
       if (erroAgenda) {
         // A nota e a tentativa já estão gravadas; perder só o compromisso é

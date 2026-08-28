@@ -190,6 +190,10 @@ export interface Tentativa {
 
       Não precisou de migração: `tentativas` é jsonb. */
   viaLote?: boolean;
+  /** Autoria operacional quando a tentativa nasceu fora do formulário. */
+  origem?: "usuario" | "assistente" | "automacao";
+  /** Ação auditável que originou o registro, quando houver. */
+  acaoId?: string | null;
 }
 
 export interface Imovel {
@@ -346,6 +350,12 @@ export interface AgendaItem {
   notes?: string | null;
   done: boolean;
   isVerificacaoDisponibilidade: boolean;
+  origem?: "usuario" | "assistente" | "automacao" | "evento_whatsapp";
+  motivoCodigo?: string | null;
+  acaoOrigemId?: string | null;
+  concluidoEm?: string | null;
+  motivoConclusao?: string | null;
+  origemConclusao?: "usuario" | "assistente" | "automacao" | "evento_whatsapp" | null;
 }
 
 /** Modelo de mensagem de WhatsApp criado pelo usuário (ex.: "Falar mais tarde").

@@ -8,6 +8,7 @@ import {
   prepararAgendamentoVisita,
 } from "@/lib/servidor/assistente/acoes";
 import { acaoPendenteMaisRecente, classificarDecisaoTextual, textoResultadoConfirmacao } from "@/lib/assistente/confirmacao";
+import { respostaSobreCapacidades } from "@/lib/assistente/capacidades";
 import { metadadosExecucaoIa } from "@/lib/ia/observabilidade";
 import { registrarEvento } from "@/lib/servidor/registro";
 import { admin, ambiente } from "@/app/api/google/_comum";
@@ -30,9 +31,9 @@ function respostaAcao(texto: string, acao: AcaoAssistente) {
   return NextResponse.json<RespostaAssistente>({ ok: true, mensagem, modelo: "operacao-tipificada" });
 }
 
-function respostaOperacional(texto: string) {
+function respostaOperacional(texto: string, modelo = "operacao-tipificada") {
   const mensagem: MensagemAssistente = { id: randomUUID(), papel: "assistente", texto };
-  return NextResponse.json<RespostaAssistente>({ ok: true, mensagem, modelo: "operacao-tipificada" });
+  return NextResponse.json<RespostaAssistente>({ ok: true, mensagem, modelo });
 }
 
 function registrarAcao(
@@ -46,6 +47,7 @@ function registrarAcao(
     ? acao.entidade.imoveis.map((imovel) => imovel.id)
     : [acao.entidade.imovelId];
   const agendaId = acao.tipo === "alterar_status_sem_resposta_em_lote"
+    || acao.tipo === "registrar_tentativa"
     ? null
     : acao.resultado?.agendaId;
   registrarEvento({
@@ -58,7 +60,9 @@ function registrarAcao(
       entidadesUtilizadas: [acao.id, ...idsImoveis, agendaId],
       fontesDeDados: [
         "assistente_acoes",
-        ...(acao.tipo === "alterar_status_sem_resposta_em_lote" ? ["imoveis", "status_history"] : ["agenda"]),
+        ...(acao.tipo === "alterar_status_sem_resposta_em_lote"
+          ? ["imoveis", "status_history"]
+          : acao.tipo === "registrar_tentativa" ? ["imoveis", "tentativas"] : ["agenda"]),
         ...(acao.tipo !== "alterar_status_sem_resposta_em_lote" && acao.entidade.imovelId ? ["imoveis"] : []),
       ],
       validacoesAplicadas: [
@@ -68,6 +72,8 @@ function registrarAcao(
         "sessao-da-conversa",
         "payload-congelado",
         ...(acao.tipo === "alterar_status_sem_resposta_em_lote" ? ["elegibilidade-revalidada-na-confirmacao"] : []),
+        ...(acao.tipo === "registrar_tentativa" ? ["imovel-revalidado-na-confirmacao"] : []),
+        ...(acao.nivelAutonomia === "low" ? ["politica-baixo-risco"] : []),
       ],
       resultado,
       motivo,
@@ -131,7 +137,7 @@ export async function POST(request: Request) {
       sucesso ? "respondido" : resultado.acao.estado === "failed" ? "erro" : "bloqueado",
       resultado.repetida ? "execucao-ja-concluida" : resultado.acao.estado,
     );
-    if (sucesso && resultado.acao.tipo !== "alterar_status_sem_resposta_em_lote" && resultado.acao.resultado?.agendaId && !resultado.repetida) {
+    if (sucesso && resultado.acao.tipo !== "alterar_status_sem_resposta_em_lote" && resultado.acao.tipo !== "registrar_tentativa" && resultado.acao.resultado?.agendaId && !resultado.repetida) {
       espelharCompromissoDepois(auth.user.id, resultado.acao.resultado.agendaId);
     }
     return respostaAcao(textoResultadoConfirmacao(resultado.acao), resultado.acao);
@@ -168,16 +174,24 @@ export async function POST(request: Request) {
       sucesso ? "respondido" : resultado.acao.estado === "failed" ? "erro" : "bloqueado",
       resultado.repetida ? "execucao-ja-concluida" : resultado.acao.estado,
     );
-    if (sucesso && resultado.acao.tipo !== "alterar_status_sem_resposta_em_lote" && resultado.acao.resultado?.agendaId && !resultado.repetida) {
+    if (sucesso && resultado.acao.tipo !== "alterar_status_sem_resposta_em_lote" && resultado.acao.tipo !== "registrar_tentativa" && resultado.acao.resultado?.agendaId && !resultado.repetida) {
       espelharCompromissoDepois(auth.user.id, resultado.acao.resultado.agendaId);
     }
     return respostaAcao(textoResultadoConfirmacao(resultado.acao), resultado.acao);
   }
+  const orientacaoCapacidades = respostaSobreCapacidades(pedido.mensagem, { podeUsarIa: true });
+  if (orientacaoCapacidades) return respostaOperacional(orientacaoCapacidades, "catalogo-capacidades");
   if (!process.env.OPENAI_API_KEY) return falha("Assistente indisponível neste ambiente.", 503, "indisponivel");
   try {
     const resposta = await responderComAssistente(pedido, supabase, auth.user.id);
-    if (resposta.mensagem.acao?.estado === "ready_for_confirmation") {
-      registrarAcao(auth.user.id, "ia-assistente-acao-preparada", resposta.mensagem.acao, "sugerido", "aguardando-confirmacao");
+    const acao = resposta.mensagem.acao;
+    if (acao?.estado === "ready_for_confirmation") {
+      registrarAcao(auth.user.id, "ia-assistente-acao-preparada", acao, "sugerido", "aguardando-confirmacao");
+    } else if (acao?.estado === "succeeded") {
+      registrarAcao(auth.user.id, "ia-assistente-acao-executada", acao, "respondido", acao.motivo.codigo);
+      if (acao.tipo !== "alterar_status_sem_resposta_em_lote" && acao.tipo !== "registrar_tentativa" && acao.resultado?.agendaId) {
+        espelharCompromissoDepois(auth.user.id, acao.resultado.agendaId);
+      }
     }
     return NextResponse.json<RespostaAssistente>({ ok: true, ...resposta });
   } catch (error) {

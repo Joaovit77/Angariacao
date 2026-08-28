@@ -1,8 +1,9 @@
 "use client";
 
-import { type FormEvent, useEffect, useRef } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import AcaoAssistenteCard from "./AcaoAssistenteCard";
 import AcoesRapidasAssistente from "./AcoesRapidasAssistente";
+import ManualCapacidadesAssistente from "./ManualCapacidadesAssistente";
 import RespostaEstruturada from "./RespostaEstruturada";
 import TextoMarkdownSeguro from "./TextoMarkdownSeguro";
 import { useEstadoAssistente } from "./AssistenteProvider";
@@ -10,6 +11,7 @@ import { useContextoAssistenteAtual } from "./useContextoAssistenteAtual";
 import styles from "./Assistente.module.css";
 
 export default function ConversaAssistente() {
+  const [manualAberto, setManualAberto] = useState(false);
   const {
     mensagens,
     texto,
@@ -34,7 +36,24 @@ export default function ConversaAssistente() {
 
   return (
     <>
-      <div className={styles.mensagens} aria-live="polite">
+      <div className={styles.ajudaCapacidades}>
+        <button
+          type="button"
+          onClick={() => setManualAberto((aberto) => !aberto)}
+          aria-expanded={manualAberto}
+          aria-controls="manual-capacidades"
+        >
+          <span aria-hidden="true">?</span>
+          {manualAberto ? "Voltar à conversa" : "O que posso fazer?"}
+        </button>
+      </div>
+      {manualAberto ? (
+        <div className={styles.manualArea} id="manual-capacidades">
+          <ManualCapacidadesAssistente aoFechar={() => setManualAberto(false)} />
+        </div>
+      ) : (
+        <>
+          <div className={styles.mensagens} aria-live="polite">
         {mensagens.map((mensagem) => (
           <article
             className={`${styles.mensagem} ${mensagem.papel === "usuario" ? styles.usuario : styles.assistente}`}
@@ -60,29 +79,31 @@ export default function ConversaAssistente() {
           </div>
         )}
         <div ref={fim} />
-      </div>
-      <AcoesRapidasAssistente />
-      <form className={styles.formulario} onSubmit={enviarFormulario}>
-        <textarea
-          value={texto}
-          onChange={(evento) => setTexto(evento.target.value)}
-          onKeyDown={(evento) => {
-            if (evento.key === "Enter" && !evento.shiftKey) {
-              evento.preventDefault();
-              evento.currentTarget.form?.requestSubmit();
-            }
-          }}
-          placeholder="Pergunte ou peça uma ação…"
-          aria-label="Pergunta ao Assistente"
-          rows={2}
-          maxLength={4000}
-          disabled={carregando}
-        />
-        <button type="submit" disabled={carregando || !texto.trim()} aria-label="Enviar pergunta">
-          ➜
-        </button>
-      </form>
-      <small className={styles.rodape}>O histórico existe apenas nesta sessão do painel.</small>
+          </div>
+          <AcoesRapidasAssistente />
+          <form className={styles.formulario} onSubmit={enviarFormulario}>
+            <textarea
+              value={texto}
+              onChange={(evento) => setTexto(evento.target.value)}
+              onKeyDown={(evento) => {
+                if (evento.key === "Enter" && !evento.shiftKey) {
+                  evento.preventDefault();
+                  evento.currentTarget.form?.requestSubmit();
+                }
+              }}
+              placeholder="Pergunte ou peça uma ação…"
+              aria-label="Pergunta ao Assistente"
+              rows={2}
+              maxLength={4000}
+              disabled={carregando}
+            />
+            <button type="submit" disabled={carregando || !texto.trim()} aria-label="Enviar pergunta">
+              ➜
+            </button>
+          </form>
+          <small className={styles.rodape}>O histórico existe apenas nesta sessão do painel.</small>
+        </>
+      )}
     </>
   );
 }

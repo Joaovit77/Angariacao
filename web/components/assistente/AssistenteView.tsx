@@ -17,7 +17,7 @@ export default function AssistenteView() {
       <div className="page-head">
         <div>
           <h1 className="page-title">Assistente</h1>
-          <p className="page-sub">Consulte sua operação e prepare ações com confirmação explícita</p>
+          <p className="page-sub">Consulte sua operação e execute ações com controles claros</p>
         </div>
         {permitido && (
           <button type="button" className="btn btn-ghost btn-sm" onClick={limparConversa}>
@@ -33,14 +33,14 @@ export default function AssistenteView() {
         </section>
       ) : (
         <>
-          <p className={styles.avisoAcoes}>ⓘ O Assistente pode preparar ações operacionais, mas sempre pede confirmação antes de executar alterações.</p>
+          <p className={styles.avisoAcoes}>ⓘ Cada capacidade informa se é consulta, execução direta, confirmação ou automação.</p>
           <div className={styles.paginaLayout}>
             <section className={styles.paginaPainel} aria-label="Conversa com o Assistente">
               <header className={styles.paginaCabecalho}>
                 <span className={styles.paginaMarca} aria-hidden="true">✦</span>
                 <span>
                   <strong>Assistente</strong>
-                  <small>Leitura + ações com confirmação</small>
+                  <small>Consultas + ações controladas</small>
                 </span>
               </header>
               <ConversaAssistente />
@@ -53,7 +53,7 @@ export default function AssistenteView() {
                 <ol>
                   <li><span>1</span><p><strong>A IA entende o pedido</strong><small>Você fala em linguagem natural ou usa o menu.</small></p></li>
                   <li><span>2</span><p><strong>Monta a ação com segurança</strong><small>O backend valida e congela os dados.</small></p></li>
-                  <li><span>3</span><p><strong>Você confirma antes de executar</strong><small>Nada é alterado sem sua aprovação.</small></p></li>
+                  <li><span>3</span><p><strong>Aplica o controle da ação</strong><small>O manual mostra o que é direto, confirmado ou automático.</small></p></li>
                 </ol>
               </aside>
               <aside className={styles.preferencia} aria-labelledby="assistente-flutuante-titulo">

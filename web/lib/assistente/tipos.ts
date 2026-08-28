@@ -1,3 +1,5 @@
+import type { NivelAutonomiaAssistente, TipoAcaoOperacionalAssistente } from "./politicas";
+
 export type PapelAssistente = "usuario" | "assistente";
 
 export type EstadoAcaoAssistente =
@@ -7,13 +9,31 @@ export type EstadoAcaoAssistente =
   | "expired"
   | "failed";
 
-export interface AcaoAgendarVisitaAssistente {
+export type OrigemAcaoAssistente = "assistente" | "automacao" | "evento_whatsapp";
+
+export interface MotivoAcaoAssistente {
+  codigo: string;
+  descricao: string;
+  dados?: Record<string, string | number | boolean | null>;
+}
+
+export interface BaseAcaoAssistente {
   id: string;
-  tipo: "agendar_visita";
+  tipo: TipoAcaoOperacionalAssistente;
   estado: EstadoAcaoAssistente;
-  expiraEm: string;
-  operacao: "Agendar visita";
+  expiraEm: string | null;
+  operacao: string;
   impacto: string;
+  origem: OrigemAcaoAssistente;
+  nivelAutonomia: NivelAutonomiaAssistente;
+  requerConfirmacao: boolean;
+  motivo: MotivoAcaoAssistente;
+  erro?: string;
+}
+
+export interface AcaoAgendarVisitaAssistente extends BaseAcaoAssistente {
+  tipo: "agendar_visita";
+  operacao: "Agendar visita";
   entidade: {
     imovelId: string;
     codigo: string;
@@ -27,16 +47,11 @@ export interface AcaoAgendarVisitaAssistente {
   resultado?: {
     agendaId: string;
   };
-  erro?: string;
 }
 
-export interface AcaoCriarCompromissoAssistente {
-  id: string;
+export interface AcaoCriarCompromissoAssistente extends BaseAcaoAssistente {
   tipo: "criar_compromisso";
-  estado: EstadoAcaoAssistente;
-  expiraEm: string;
   operacao: "Criar compromisso";
-  impacto: string;
   entidade: {
     imovelId: string | null;
     codigo: string | null;
@@ -53,7 +68,6 @@ export interface AcaoCriarCompromissoAssistente {
   resultado?: {
     agendaId: string;
   };
-  erro?: string;
 }
 
 export interface ImovelAcaoStatusSemResposta {
@@ -70,13 +84,9 @@ export interface ImovelIgnoradoAcaoStatusSemResposta {
   motivo: "status_alterado" | "nao_elegivel" | "imovel_indisponivel";
 }
 
-export interface AcaoAlterarStatusSemRespostaAssistente {
-  id: string;
+export interface AcaoAlterarStatusSemRespostaAssistente extends BaseAcaoAssistente {
   tipo: "alterar_status_sem_resposta_em_lote";
-  estado: EstadoAcaoAssistente;
-  expiraEm: string;
   operacao: "Alterar status em lote";
-  impacto: string;
   entidade: {
     imoveis: ImovelAcaoStatusSemResposta[];
   };
@@ -90,13 +100,77 @@ export interface AcaoAlterarStatusSemRespostaAssistente {
     totalAlterados: number;
     totalIgnorados: number;
   };
-  erro?: string;
+}
+
+export interface EntidadeAcompanhamentoAssistente {
+  imovelId: string;
+  codigo: string;
+  endereco: string;
+  responsavel: string;
+}
+
+export interface AcaoRegistrarTentativaAssistente extends BaseAcaoAssistente {
+  tipo: "registrar_tentativa";
+  operacao: "Registrar tentativa de contato";
+  entidade: EntidadeAcompanhamentoAssistente;
+  dados: {
+    tentativaId: string;
+    canal: string;
+    resultado: string;
+    observacao: string | null;
+  };
+  resultado?: {
+    tentativaId: string;
+    imovelId: string;
+  };
+}
+
+export interface AcaoCriarFollowUpAssistente extends BaseAcaoAssistente {
+  tipo: "criar_followup";
+  operacao: "Criar follow-up";
+  entidade: EntidadeAcompanhamentoAssistente & { agendaId: string };
+  dados: {
+    titulo: string;
+    data: string;
+    hora: string | null;
+  };
+  resultado?: { agendaId: string };
+}
+
+export interface AcaoReagendarFollowUpAssistente extends BaseAcaoAssistente {
+  tipo: "reagendar_followup";
+  operacao: "Reagendar follow-up";
+  entidade: EntidadeAcompanhamentoAssistente & { agendaId: string };
+  dados: {
+    titulo: string;
+    dataAnterior: string;
+    horaAnterior: string | null;
+    data: string;
+    hora: string | null;
+  };
+  resultado?: { agendaId: string };
+}
+
+export interface AcaoConcluirFollowUpAssistente extends BaseAcaoAssistente {
+  tipo: "concluir_followup";
+  operacao: "Concluir follow-up";
+  entidade: EntidadeAcompanhamentoAssistente & { agendaId: string };
+  dados: {
+    titulo: string;
+    data: string;
+    hora: string | null;
+  };
+  resultado?: { agendaId: string };
 }
 
 export type AcaoAssistente =
   | AcaoAgendarVisitaAssistente
   | AcaoCriarCompromissoAssistente
-  | AcaoAlterarStatusSemRespostaAssistente;
+  | AcaoAlterarStatusSemRespostaAssistente
+  | AcaoRegistrarTentativaAssistente
+  | AcaoCriarFollowUpAssistente
+  | AcaoReagendarFollowUpAssistente
+  | AcaoConcluirFollowUpAssistente;
 
 export interface ContextoEntidade {
   tipo: "imovel" | "agenda";
@@ -195,14 +269,18 @@ export type ResultadoHistoricoAssistente =
   | { tipo: "conversas_respondidas"; itens: Array<{ imovelId: string; codigo: string; proprietario: string; ultimaRespostaEm: string; aguardandoCorretor: boolean }> }
   | { tipo: "metricas"; itens: Array<{ rotulo: string; valor: string }> };
 
+export type AcaoHistoricoAssistente = {
+  [Tipo in AcaoAssistente["tipo"]]: Pick<
+    Extract<AcaoAssistente, { tipo: Tipo }>,
+    "id" | "tipo" | "estado" | "entidade" | "dados"
+  >;
+}[AcaoAssistente["tipo"]];
+
 export interface ItemHistoricoAssistente {
   papel: PapelAssistente;
   texto: string;
   resultados?: ResultadoHistoricoAssistente[];
-  acao?:
-    | Pick<AcaoAgendarVisitaAssistente, "id" | "tipo" | "estado" | "entidade" | "dados">
-    | Pick<AcaoCriarCompromissoAssistente, "id" | "tipo" | "estado" | "entidade" | "dados">
-    | Pick<AcaoAlterarStatusSemRespostaAssistente, "id" | "tipo" | "estado" | "entidade" | "dados">;
+  acao?: AcaoHistoricoAssistente;
 }
 
 export interface PedidoAssistente {

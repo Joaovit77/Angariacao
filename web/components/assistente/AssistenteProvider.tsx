@@ -16,6 +16,7 @@ import {
   perguntarAoAssistente,
   prepararAcaoAssistente,
 } from "@/lib/assistente/cliente";
+import { respostaSobreCapacidades } from "@/lib/assistente/capacidades";
 import { compactarBlocosParaHistorico } from "@/lib/assistente/historico";
 import type { AcaoAssistente, ContextoAssistente, ItemHistoricoAssistente, MensagemAssistente } from "@/lib/assistente/tipos";
 import { rascunharResposta } from "@/lib/ia";
@@ -25,7 +26,7 @@ import { useUiModal } from "@/lib/uiModal";
 const BOAS_VINDAS: MensagemAssistente = {
   id: "boas-vindas",
   papel: "assistente",
-  texto: "Olá! Posso consultar sua operação e preparar compromissos, visitas, follow-ups, respostas baseadas nas conversas e a mudança para Sem resposta após 3 tentativas sem retorno. Toda alteração exige sua confirmação antes de ser executada.",
+  texto: `Olá! ${respostaSobreCapacidades("O que você consegue fazer?", { podeUsarIa: true }) ?? "Abra “O que posso fazer?” para conhecer as opções disponíveis."}`,
 };
 
 interface ParametrosVisitaGuiada {
@@ -52,9 +53,21 @@ interface EstadoAssistente {
 const ContextoEstadoAssistente = createContext<EstadoAssistente | null>(null);
 
 function sincronizarAgendaDaAcao(acao: AcaoAssistente | undefined): void {
-  if (!acao || acao.tipo === "alterar_status_sem_resposta_em_lote") return;
+  if (!acao || acao.tipo === "alterar_status_sem_resposta_em_lote" || acao.tipo === "registrar_tentativa") return;
   if (acao.estado !== "succeeded" || !acao.resultado?.agendaId) return;
   const { agenda, setAgenda } = useAppStore.getState();
+  if (acao.tipo === "reagendar_followup") {
+    setAgenda(agenda.map((item) => item.id === acao.resultado?.agendaId
+      ? { ...item, date: acao.dados.data, hora: acao.dados.hora }
+      : item));
+    return;
+  }
+  if (acao.tipo === "concluir_followup") {
+    setAgenda(agenda.map((item) => item.id === acao.resultado?.agendaId
+      ? { ...item, done: true, motivoConclusao: acao.motivo.codigo, origemConclusao: acao.origem }
+      : item));
+    return;
+  }
   if (agenda.some((item) => item.id === acao.resultado?.agendaId)) return;
   const item = acao.tipo === "agendar_visita"
     ? {
@@ -68,7 +81,7 @@ function sincronizarAgendaDaAcao(acao: AcaoAssistente | undefined): void {
         done: false,
         isVerificacaoDisponibilidade: false,
       }
-    : {
+    : acao.tipo === "criar_compromisso" ? {
         id: acao.resultado.agendaId,
         title: acao.dados.titulo,
         type: acao.dados.tipo,
@@ -78,6 +91,20 @@ function sincronizarAgendaDaAcao(acao: AcaoAssistente | undefined): void {
         notes: acao.dados.observacao,
         done: false,
         isVerificacaoDisponibilidade: false,
+      }
+    : {
+        id: acao.resultado.agendaId,
+        title: acao.dados.titulo,
+        type: "Follow-up",
+        date: acao.dados.data,
+        hora: acao.dados.hora,
+        imovelId: acao.entidade.imovelId,
+        notes: "Criado pelo Assistente para acompanhar uma resposta do proprietário.",
+        done: false,
+        isVerificacaoDisponibilidade: false,
+        origem: acao.origem,
+        motivoCodigo: "aguardando_resposta",
+        acaoOrigemId: acao.id,
       };
   setAgenda([...agenda, item]);
 }
@@ -103,13 +130,11 @@ function acaoParaHistorico(
       dados: acao.dados,
     };
   }
-  return {
-    id: acao.id,
-    tipo: acao.tipo,
-    estado: acao.estado,
-    entidade: acao.entidade,
-    dados: acao.dados,
-  };
+  if (acao.tipo === "criar_compromisso") return { id: acao.id, tipo: acao.tipo, estado: acao.estado, entidade: acao.entidade, dados: acao.dados };
+  if (acao.tipo === "registrar_tentativa") return { id: acao.id, tipo: acao.tipo, estado: acao.estado, entidade: acao.entidade, dados: acao.dados };
+  if (acao.tipo === "criar_followup") return { id: acao.id, tipo: acao.tipo, estado: acao.estado, entidade: acao.entidade, dados: acao.dados };
+  if (acao.tipo === "reagendar_followup") return { id: acao.id, tipo: acao.tipo, estado: acao.estado, entidade: acao.entidade, dados: acao.dados };
+  return { id: acao.id, tipo: acao.tipo, estado: acao.estado, entidade: acao.entidade, dados: acao.dados };
 }
 
 function incorporarRespostaNaConversa(
@@ -119,6 +144,8 @@ function incorporarRespostaNaConversa(
   const acaoResposta = resposta.acao;
   if (!acaoResposta) return [...atuais, resposta];
   if (acaoResposta.estado !== "ready_for_confirmation") {
+    const jaExiste = atuais.some((mensagem) => mensagem.acao?.id === acaoResposta.id);
+    if (!jaExiste) return [...atuais, resposta];
     const atualizadas = atuais.map((mensagem) => mensagem.acao?.id === acaoResposta.id
       ? { ...mensagem, acao: acaoResposta }
       : mensagem);

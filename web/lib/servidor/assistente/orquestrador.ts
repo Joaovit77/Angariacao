@@ -17,11 +17,9 @@ import { metadadosExecucaoIa } from "@/lib/ia/observabilidade";
 import { instrucoesDoAssistente } from "./conhecimento";
 import { DEFINICOES_FERRAMENTAS, executarFerramenta } from "./ferramentas";
 import {
-  DEFINICAO_FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE,
-  DEFINICAO_FERRAMENTA_AGENDAR_VISITA,
-  DEFINICAO_FERRAMENTA_CRIAR_COMPROMISSO,
-  DEFINICAO_FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA,
-  DEFINICAO_FERRAMENTA_PREPARAR_STATUS_SEM_RESPOSTA,
+  DEFINICOES_FERRAMENTAS_ACOES,
+  ehFerramentaAcompanhamento,
+  executarAcaoAcompanhamento,
   executarPreparacaoCriacaoCompromisso,
   executarPreparacaoAgendamentoVisita,
   executarPreparacaoStatusSemResposta,
@@ -165,9 +163,38 @@ export function normalizarPedidoAssistente(valor: unknown): PedidoAssistente | n
           estado: a.estado as NonNullable<PedidoAssistente["historico"][number]["acao"]>["estado"],
           entidade: { imoveis: imoveisStatus },
           dados: { statusDestino: "Sem resposta" as const, quantidade: quantidadeStatus },
+      }
+      : undefined;
+    const acaoTentativa = a
+      && a.tipo === "registrar_tentativa"
+      && typeof a.estado === "string"
+      && ESTADOS_ACAO.has(a.estado)
+      && UUID.test(String(a.id || ""))
+      && entidade
+      && UUID.test(String(entidade.imovelId || ""))
+      && dados
+      && UUID.test(String(dados.tentativaId || ""))
+      && typeof dados.canal === "string"
+      && typeof dados.resultado === "string"
+      ? {
+          id: String(a.id),
+          tipo: "registrar_tentativa" as const,
+          estado: a.estado as NonNullable<PedidoAssistente["historico"][number]["acao"]>["estado"],
+          entidade: {
+            imovelId: String(entidade.imovelId),
+            codigo: String(entidade.codigo || "Sem código"),
+            endereco: String(entidade.endereco || "Endereço não informado"),
+            responsavel: String(entidade.responsavel || "Não informado"),
+          },
+          dados: {
+            tentativaId: String(dados.tentativaId),
+            canal: dados.canal.slice(0, 80),
+            resultado: dados.resultado.slice(0, 80),
+            observacao: typeof dados.observacao === "string" ? dados.observacao.slice(0, 2_000) : null,
+          },
         }
       : undefined;
-    const acao = acaoVisita || acaoCompromisso || acaoStatusSemResposta;
+    const acao = acaoVisita || acaoCompromisso || acaoStatusSemResposta || acaoTentativa;
     return texto ? [{ papel: m.papel, texto, ...(resultados.length ? { resultados } : {}), ...(acao ? { acao } : {}) }] : [];
   });
   const sessaoId = typeof bruto.sessaoId === "string" && UUID.test(bruto.sessaoId) ? bruto.sessaoId : undefined;
@@ -246,11 +273,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
     input: entrada,
     tools: [
       ...DEFINICOES_FERRAMENTAS,
-      DEFINICAO_FERRAMENTA_AGENDAR_VISITA,
-      DEFINICAO_FERRAMENTA_CRIAR_COMPROMISSO,
-      DEFINICAO_FERRAMENTA_ABRIR_REVISAO_FOLLOWUP_LOTE,
-      DEFINICAO_FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA,
-      DEFINICAO_FERRAMENTA_PREPARAR_STATUS_SEM_RESPOSTA,
+      ...DEFINICOES_FERRAMENTAS_ACOES,
       ...(ferramentaProtocolos ? [ferramentaProtocolos] : []),
     ],
     tool_choice: "auto" as const,
@@ -313,6 +336,15 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
               supabase,
               pedido.sessaoId,
             )
+        : ehFerramentaAcompanhamento(chamada.name)
+          ? await executarAcaoAcompanhamento(
+              chamada.name,
+              args,
+              supabase,
+              userId,
+              pedido.contexto,
+              pedido.sessaoId,
+            )
         : await executarFerramenta(chamada.name, args, supabase, userId, pedido.contexto, pedido.mensagem, pedido.historico);
       if (resultado.acao) acaoPendente = resultado.acao;
       if (resultado.comandoUi) comandoUi = resultado.comandoUi;
@@ -335,7 +367,17 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
       ? `Encontrei ${acaoPendente.dados.quantidade === 1 ? "1 imóvel elegível" : `${acaoPendente.dados.quantidade} imóveis elegíveis`}. Nenhuma alteração foi feita ainda. Revise a lista e confirme para mudar o status para Sem resposta.`
       : acaoPendente.tipo === "agendar_visita"
       ? "Preparei a visita. Revise os dados abaixo e confirme somente se estiver tudo certo."
-      : "Preparei o compromisso. Revise os dados abaixo e confirme somente se estiver tudo certo."
+      : acaoPendente.tipo === "criar_compromisso"
+      ? "Preparei o compromisso. Revise os dados abaixo e confirme somente se estiver tudo certo."
+      : acaoPendente.tipo === "registrar_tentativa"
+      ? "Preparei o registro da tentativa. Revise os dados e confirme para gravá-la no histórico do imóvel."
+      : acaoPendente.tipo === "criar_followup"
+      ? "Criei o follow-up interno na Agenda. A ação foi registrada como automática de baixo risco e nenhuma mensagem foi enviada."
+      : acaoPendente.tipo === "reagendar_followup"
+      ? "Reagendei o follow-up interno. A mudança ficou registrada e nenhuma mensagem foi enviada."
+      : acaoPendente.tipo === "concluir_followup"
+      ? "Concluí o follow-up interno. O item permanece no histórico com o motivo da conclusão."
+      : textoGerado
     : comandoUi?.tipo === "abrir_followup_lote"
     ? "Abri a revisão do lote de follow-ups. Confira os proprietários selecionados e as mensagens; o envio só começa quando você clicar em Enviar follow-ups."
     : comandoUi?.tipo === "rascunhar_resposta"
@@ -381,7 +423,11 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
         ...(catalogoProtocolos.fonteDisponivel ? ["catalogo-protocolos-user-scoped"] : []),
         ...(protocolosAplicados.length ? ["ids-protocolos-validados"] : []),
         ...(continuidadeResposta ? ["continuidade-estruturada"] : []),
-        ...(acaoPendente ? ["acao-tipificada", "payload-congelado-no-backend", "confirmacao-explicita-obrigatoria"] : []),
+        ...(acaoPendente ? [
+          "acao-tipificada",
+          "payload-congelado-no-backend",
+          acaoPendente.requerConfirmacao ? "confirmacao-explicita-obrigatoria" : "politica-baixo-risco",
+        ] : []),
         ...(comandoUi?.tipo === "abrir_followup_lote" ? ["fila-followup-user-scoped", "revisao-visual-obrigatoria", "envio-nao-executado-pelo-assistente"] : []),
         ...(comandoUi?.tipo === "rascunhar_resposta" ? ["conversa-user-scoped", "historico-relido-no-servidor", "rascunho-editavel", "envio-nao-executado-pelo-assistente"] : []),
       ],
