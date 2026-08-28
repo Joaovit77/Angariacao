@@ -100,6 +100,23 @@ describe("POST /api/whatsapp/enviar — validação do contrato", () => {
     expect(mocks.createClient).toHaveBeenCalledTimes(1);
   });
 
+  it("classifica Preview sem service role como ambiente não configurado", async () => {
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
+
+    const resposta = await POST(
+      new Request("http://localhost/api/whatsapp/enviar", {
+        method: "POST",
+        headers: { Authorization: "Bearer token", "Content-Type": "application/json" },
+        body: JSON.stringify({ imovelId: "imovel-1", mensagem: "Olá." }),
+      }),
+    );
+
+    expect(resposta.status).toBe(503);
+    expect(await resposta.json()).toMatchObject({ ok: false, falha: "nao-configurado" });
+    expect(mocks.createClient).not.toHaveBeenCalled();
+    expect(mocks.destinoAncoradoDaConversa).not.toHaveBeenCalled();
+  });
+
   it("envia uma única vez ao JID canônico e só então persiste o histórico", async () => {
     mocks.createClient
       .mockReturnValueOnce(clienteComImovel())

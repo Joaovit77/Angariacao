@@ -134,9 +134,9 @@ export async function POST(request: Request): Promise<Response> {
   const serverUrl = process.env.EVOLUTION_SERVER_URL;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!serverUrl || !supabaseUrl || !anonKey) {
-    console.error("Envio de WhatsApp: variáveis de ambiente da Evolution ausentes (ver web/.env.example).");
-    return erro("nao-configurado", 500);
+  if (!serverUrl || !supabaseUrl || !anonKey || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("Envio de WhatsApp: configuração de servidor incompleta (ver web/.env.example).");
+    return erro("nao-configurado", 503);
   }
 
   // 1. Quem está chamando? Sem sessão do Supabase, a rota não existe —
