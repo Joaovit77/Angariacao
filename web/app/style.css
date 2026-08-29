@@ -4743,6 +4743,35 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
 .wpp-selecionado{ font-size: 12px; color: var(--text-dim); margin: 8px 2px 0; }
 .wpp-selecionado strong{ color: var(--text); }
 
+/* Feedback de rascunho: propositalmente secundário ao texto e ao envio. */
+.ia-feedback{ position:relative; margin-top:9px; padding-top:8px; border-top:1px solid var(--border-soft); }
+.ia-feedback-acoes{ display:flex; align-items:center; flex-wrap:wrap; gap:5px; }
+.ia-feedback-rotulo{ margin-right:2px; color:var(--text-faint); font-size:10.5px; }
+.ia-feedback-acoes button,
+.ia-feedback-rejeicao-acoes button{
+  padding:4px 7px; border:1px solid transparent; border-radius:6px; background:transparent;
+  color:var(--text-dim); font:inherit; font-size:10.5px; cursor:pointer;
+}
+.ia-feedback-acoes button:hover:not(:disabled){ border-color:var(--border); background:var(--bg-elev-2); color:var(--text); }
+.ia-feedback-acoes button.ativo{ border-color:color-mix(in srgb,var(--good) 35%,var(--border)); color:var(--good); background:var(--good-soft); }
+.ia-feedback-acoes button.ativo.rejeitado{ border-color:color-mix(in srgb,var(--bad) 35%,var(--border)); color:var(--bad); background:var(--bad-soft); }
+.ia-feedback-acoes button:disabled,
+.ia-feedback-rejeicao-acoes button:disabled{ opacity:.6; cursor:not-allowed; }
+.ia-feedback-estado{ display:block; margin-top:5px; color:var(--text-faint); font-size:10.5px; }
+.ia-feedback-estado.salvo{ color:var(--good); }
+.ia-feedback-estado.erro{ color:var(--bad); }
+.ia-feedback-rejeicao{
+  position:relative; z-index:3; width:min(100%,420px); margin-top:8px; padding:10px;
+  border:1px solid var(--border); border-radius:9px; background:var(--bg-elev-2);
+  box-shadow:0 10px 24px rgb(var(--sombra-rgb) / .2);
+}
+.ia-feedback-rejeicao label{ margin:0 0 8px; font-size:10px; }
+.ia-feedback-rejeicao select{ margin-top:4px; padding:6px 8px; font-size:11.5px; }
+.ia-feedback-rejeicao textarea{ min-height:58px; margin-top:4px; padding:7px 8px; font-size:11.5px; text-transform:none; }
+.ia-feedback-rejeicao-acoes{ display:flex; justify-content:flex-end; gap:5px; }
+.ia-feedback-rejeicao-acoes button{ border-color:var(--border); }
+.ia-feedback-rejeicao-acoes button.principal{ border-color:var(--accent); color:var(--accent-strong); background:var(--accent-soft); }
+
 .home-more{
   background: none; border: none; cursor: pointer;
   text-align: left; padding: 10px 6px;

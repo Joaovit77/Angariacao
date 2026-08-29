@@ -901,6 +901,116 @@ create policy "select_own_ia" on ia_permissoes
   for select using (auth.uid() = user_id);
 
 -- ------------------------------------------------------------
+-- FEEDBACK DE MENSAGENS SUGERIDAS PELA IA (FASE 1)
+--
+-- A sugestão é a evidência imutável do texto que o sistema ofereceu; o
+-- feedback é um único estado atual por sugestão. Repetir a mesma ação ou
+-- enviar depois uma versão editada atualiza essa linha, sem duplicar contagem.
+--
+-- `imovel_id` é a referência da conversa/lead neste CRM. `contexto` recebe
+-- somente metadados compactos (intenção/estado ou pontos objetivos do
+-- anúncio), nunca conversa completa, prompt ou conteúdo dos Protocolos.
+-- O dataset não é consumido por nenhum prompt nesta fase.
+-- ------------------------------------------------------------
+create table if not exists ia_sugestoes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  imovel_id uuid references imoveis(id) on delete set null,
+  tipo text not null check (tipo in ('prospeccao', 'resposta', 'outro')),
+  texto_sugerido text not null
+    check (char_length(trim(texto_sugerido)) between 1 and 4000),
+  contexto jsonb not null default '{}'::jsonb
+    check (jsonb_typeof(contexto) = 'object'),
+  origem text not null check (origem in (
+    'central-mensagens', 'caixa-respostas', 'notas', 'assistente',
+    'pipeline-anuncio', 'outro'
+  )),
+  modelo text check (modelo is null or char_length(modelo) <= 100),
+  created_at timestamptz not null default now(),
+  unique (id, user_id)
+);
+
+create table if not exists ia_feedbacks (
+  id uuid primary key default gen_random_uuid(),
+  sugestao_id uuid not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  resultado text not null check (resultado in ('aprovado', 'editado', 'rejeitado')),
+  motivo text check (motivo is null or motivo in (
+    'muito-formal', 'muito-longo', 'muito-generico', 'tom-inadequado',
+    'informacao-incorreta', 'outro'
+  )),
+  comentario text check (comentario is null or char_length(comentario) <= 500),
+  texto_final text check (
+    texto_final is null or char_length(trim(texto_final)) between 1 and 4000
+  ),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint ia_feedbacks_sugestao_unica unique (sugestao_id),
+  constraint ia_feedbacks_sugestao_usuario_fkey
+    foreign key (sugestao_id, user_id)
+    references ia_sugestoes(id, user_id) on delete cascade,
+  constraint ia_feedbacks_resultado_campos_check check (
+    (resultado = 'aprovado' and motivo is null and comentario is null and texto_final is null)
+    or (resultado = 'editado' and motivo is null and comentario is null and texto_final is not null)
+    or (resultado = 'rejeitado' and texto_final is null)
+  )
+);
+
+alter table ia_sugestoes enable row level security;
+alter table ia_feedbacks enable row level security;
+
+drop policy if exists "select_own_ia_sugestoes" on ia_sugestoes;
+create policy "select_own_ia_sugestoes" on ia_sugestoes
+  for select to authenticated using ((select auth.uid()) = user_id);
+drop policy if exists "insert_own_ia_sugestoes" on ia_sugestoes;
+create policy "insert_own_ia_sugestoes" on ia_sugestoes
+  for insert to authenticated with check (
+    (select auth.uid()) = user_id
+    and (
+      imovel_id is null
+      or exists (
+        select 1 from imoveis imovel
+        where imovel.id = imovel_id
+          and imovel.user_id = (select auth.uid())
+      )
+    )
+  );
+
+drop policy if exists "select_own_ia_feedbacks" on ia_feedbacks;
+create policy "select_own_ia_feedbacks" on ia_feedbacks
+  for select to authenticated using ((select auth.uid()) = user_id);
+drop policy if exists "insert_own_ia_feedbacks" on ia_feedbacks;
+create policy "insert_own_ia_feedbacks" on ia_feedbacks
+  for insert to authenticated with check (
+    (select auth.uid()) = user_id
+    and exists (
+      select 1 from ia_sugestoes sugestao
+      where sugestao.id = sugestao_id
+        and sugestao.user_id = (select auth.uid())
+    )
+  );
+drop policy if exists "update_own_ia_feedbacks" on ia_feedbacks;
+create policy "update_own_ia_feedbacks" on ia_feedbacks
+  for update to authenticated
+  using ((select auth.uid()) = user_id)
+  with check (
+    (select auth.uid()) = user_id
+    and exists (
+      select 1 from ia_sugestoes sugestao
+      where sugestao.id = sugestao_id
+        and sugestao.user_id = (select auth.uid())
+    )
+  );
+
+create index if not exists ia_sugestoes_usuario_data_idx
+  on ia_sugestoes (user_id, created_at desc);
+create index if not exists ia_sugestoes_imovel_data_idx
+  on ia_sugestoes (user_id, imovel_id, created_at desc)
+  where imovel_id is not null;
+create index if not exists ia_feedbacks_usuario_resultado_data_idx
+  on ia_feedbacks (user_id, resultado, updated_at desc);
+
+-- ------------------------------------------------------------
 -- AÇÕES CONGELADAS DO ASSISTENTE
 --
 -- O modelo nunca escreve nesta tabela e o browser não recebe permissão de
@@ -3551,7 +3661,7 @@ create index if not exists idx_central_anuncios_visualizados_user_data
 -- ------------------------------------------------------------
 revoke all on table
   imoveis, mensagens_agendadas, metas, agenda, abordagens, user_config,
-  ia_permissoes, assistente_acoes, whatsapp_instancias, google_contas, admins, ia_uso,
+  ia_permissoes, ia_sugestoes, ia_feedbacks, assistente_acoes, whatsapp_instancias, google_contas, admins, ia_uso,
   log_eventos, aceites_termos, protocolos, radar_buscas, radar_anuncios,
   central_anuncios_visualizados, avaliacoes_imoveis, comparaveis_mercado,
   observacoes_comparaveis_mercado
@@ -3564,6 +3674,8 @@ grant select, insert, update, delete on table agenda to authenticated;
 grant select, insert, update, delete on table abordagens to authenticated;
 grant select, insert, update on table user_config to authenticated;
 grant select on table ia_permissoes to authenticated;
+grant select, insert on table ia_sugestoes to authenticated;
+grant select, insert, update on table ia_feedbacks to authenticated;
 grant select, insert on table aceites_termos to authenticated;
 grant select, insert, update, delete on table protocolos to authenticated;
 grant select, insert, update, delete on table radar_buscas to authenticated;
@@ -3577,7 +3689,7 @@ grant select on table observacoes_comparaveis_mercado to authenticated;
 -- TRUNCATE, REFERENCES ou TRIGGER, que o aplicativo não utiliza.
 grant select, insert, update, delete on table
   imoveis, mensagens_agendadas, metas, agenda, abordagens, user_config,
-  ia_permissoes, assistente_acoes, whatsapp_instancias, google_contas, admins, ia_uso,
+  ia_permissoes, ia_sugestoes, ia_feedbacks, assistente_acoes, whatsapp_instancias, google_contas, admins, ia_uso,
   log_eventos, aceites_termos, protocolos, radar_buscas, radar_anuncios,
   central_anuncios_visualizados
 to service_role;

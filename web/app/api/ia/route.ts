@@ -86,6 +86,8 @@ import {
 import { atenderProprietario } from "@/lib/servidor/ia/handlers/atendimento";
 import { respostaErroIa as erro } from "@/lib/servidor/ia/respostas";
 import { aplicarSystemPromptAngario } from "@/lib/ia/system-prompt";
+import { feedbackSugestoesIaHabilitado } from "@/lib/servidor/ia/feedback-config";
+import { registrarSugestaoIa } from "@/lib/servidor/ia/sugestoes";
 
 interface Resposta {
   ok: boolean;
@@ -102,6 +104,8 @@ interface Resposta {
   /** tipo "rascunhar-resposta": títulos dos protocolos em que o rascunho se
       apoiou, para a tela mostrar em que ele se baseou. */
   protocolosUsados?: string[];
+  /** Identificador persistido da mensagem sugerida. */
+  sugestaoId?: string;
   /** tipo "gerar-anuncio" */
   anuncioGerado?: AnuncioGerado;
   /** tipo "abordagem-anuncio" */
@@ -526,7 +530,25 @@ export async function POST(request: Request): Promise<Response> {
       const pontos = Array.isArray(dados.pontos)
         ? dados.pontos.filter((p): p is string => typeof p === "string" && permitidos.has(p)).slice(0, 2)
         : [];
-      const resposta: Resposta = { ok: true, abordagem: { mensagem, pontos } };
+      let sugestaoId: string | undefined;
+      if (feedbackSugestoesIaHabilitado()) {
+        sugestaoId = await registrarSugestaoIa({
+          supabase,
+          userId: donoDaChamada,
+          imovelId,
+          tipo: "prospeccao",
+          textoSugerido: mensagem,
+          contexto: { versao: 1, pontosAnuncio: pontos },
+          origem: "pipeline-anuncio",
+          modelo: MODELO,
+        }) || undefined;
+        if (!sugestaoId) return erro("falha-ia", 500);
+      }
+      const resposta: Resposta = {
+        ok: true,
+        abordagem: { mensagem, pontos },
+        ...(sugestaoId ? { sugestaoId } : {}),
+      };
       return Response.json(resposta);
     } catch (e) {
       console.error("IA: abordagem do anúncio não veio parseável:", e);

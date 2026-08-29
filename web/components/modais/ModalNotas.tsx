@@ -112,10 +112,17 @@ export default function ModalNotas({ imovelId }: { imovelId: string }) {
   async function rascunharComContexto() {
     if (rascunhando) return;
     setRascunhando(true);
-    const resultado = await rascunharResposta(imovelId);
+    const resultado = await rascunharResposta(imovelId, "notas");
     setRascunhando(false);
     if (resultado.ok && resultado.rascunho) {
-      abrirWhatsappRascunho(imovelId, resultado.rascunho, resultado.protocolosUsados);
+      abrirWhatsappRascunho(
+        imovelId,
+        resultado.rascunho,
+        resultado.protocolosUsados,
+        resultado.sugestaoId
+          ? { id: resultado.sugestaoId, textoSugerido: resultado.rascunho }
+          : undefined,
+      );
     } else {
       toast(resultado.mensagem || "A IA não conseguiu rascunhar a resposta agora.", "error");
     }

@@ -8,6 +8,7 @@
    descartado ao desmontar (MIGRATION_NEXT.md §12).
    ================================================================ */
 import { create } from "zustand";
+import type { ReferenciaSugestaoIa } from "@/lib/ia/feedback";
 
 export type TipoModal =
   | "imovel"
@@ -58,6 +59,8 @@ export interface ModalAtivo {
       IA afirmou antes de mandar — o que não se confere num olhar deixa de ser
       conferido. Vazio quando o rascunho não usou nenhum. */
   protocolosWhatsapp?: string[];
+  /** Identidade imutável do texto gerado, preservada até o envio real. */
+  sugestaoWhatsapp?: ReferenciaSugestaoIa;
   /** O modal foi aberto para responder uma mensagem recebida. Só depois do
       envio confirmado essa origem autoriza marcar as respostas como lidas;
       envios comuns do Pipeline e da Agenda não podem limpar a pendência. */
@@ -95,14 +98,24 @@ interface UiModal {
       pela IA na caixa de respostas). Ação própria em vez de mais um parâmetro
       posicional no `abrirModal` — além do texto, ela preserva que este envio
       trata uma resposta recebida. */
-  abrirWhatsappRascunho: (imovelId: string, texto: string, protocolos?: string[]) => void;
+  abrirWhatsappRascunho: (
+    imovelId: string,
+    texto: string,
+    protocolos?: string[],
+    sugestao?: ReferenciaSugestaoIa,
+  ) => void;
   /** Abre uma resposta pronta do sistema mantendo a mesma semântica de
       leitura dos rascunhos: a pendência só some após o envio confirmado. */
   abrirWhatsappModeloResposta: (imovelId: string, modeloId: string) => void;
   /** Abre o WhatsApp com a mensagem gerada a partir do anúncio do proprietário,
       já creditando a abordagem do catálogo — é o que põe a estratégia no
       ranking. Separada do rascunho porque aquele, de propósito, não credita. */
-  abrirWhatsappAbordagem: (imovelId: string, texto: string, abordagemId: string) => void;
+  abrirWhatsappAbordagem: (
+    imovelId: string,
+    texto: string,
+    abordagemId: string,
+    sugestao?: ReferenciaSugestaoIa,
+  ) => void;
   abrirMensagemAgendadaDisponibilidade: (imovelId: string, data: string, texto: string) => void;
   abrirPreCadastro: (inicial: PreCadastroInicial) => void;
   fecharModal: () => void;
@@ -112,13 +125,14 @@ export const useUiModal = create<UiModal>((set) => ({
   modal: null,
   abrirModal: (tipo, id, modeloWhatsapp, imovelIdRelacionado) =>
     set({ modal: { tipo, id, modeloWhatsapp, imovelIdRelacionado } }),
-  abrirWhatsappRascunho: (imovelId, texto, protocolos) =>
+  abrirWhatsappRascunho: (imovelId, texto, protocolos, sugestao) =>
     set({
       modal: {
         tipo: "whatsapp",
         id: imovelId,
         textoWhatsapp: texto,
         protocolosWhatsapp: protocolos,
+        sugestaoWhatsapp: sugestao,
         marcarRespostasLidasAposEnvio: true,
       },
     }),
@@ -131,8 +145,16 @@ export const useUiModal = create<UiModal>((set) => ({
         marcarRespostasLidasAposEnvio: true,
       },
     }),
-  abrirWhatsappAbordagem: (imovelId, texto, abordagemId) =>
-    set({ modal: { tipo: "whatsapp", id: imovelId, textoWhatsapp: texto, abordagemWhatsapp: abordagemId } }),
+  abrirWhatsappAbordagem: (imovelId, texto, abordagemId, sugestao) =>
+    set({
+      modal: {
+        tipo: "whatsapp",
+        id: imovelId,
+        textoWhatsapp: texto,
+        abordagemWhatsapp: abordagemId,
+        sugestaoWhatsapp: sugestao,
+      },
+    }),
   abrirMensagemAgendadaDisponibilidade: (imovelId, data, texto) =>
     set({
       modal: {

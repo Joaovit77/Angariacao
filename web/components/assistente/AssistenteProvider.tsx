@@ -223,13 +223,16 @@ export function AssistenteProvider({ children }: { children: ReactNode }) {
         mensagemResposta = resposta.mensagem;
       } else if (resposta.mensagem.comandoUi?.tipo === "rascunhar_resposta") {
         const comando = resposta.mensagem.comandoUi;
-        const resultado = await rascunharResposta(comando.imovelId);
+        const resultado = await rascunharResposta(comando.imovelId, "assistente");
         if (controller.signal.aborted) return;
         if (resultado.ok && resultado.rascunho) {
           useUiModal.getState().abrirWhatsappRascunho(
             comando.imovelId,
             resultado.rascunho,
             resultado.protocolosUsados,
+            resultado.sugestaoId
+              ? { id: resultado.sugestaoId, textoSugerido: resultado.rascunho }
+              : undefined,
           );
           mensagemResposta = {
             ...resposta.mensagem,
