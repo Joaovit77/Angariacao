@@ -24,6 +24,7 @@ export interface CorpoPedidoIa {
   imovelId?: unknown;
   caracteristicas?: unknown;
   filtros?: unknown;
+  origem?: unknown;
 }
 
 export interface ContextoHandlerIa<T extends TipoPedidoIa = TipoPedidoIa> {

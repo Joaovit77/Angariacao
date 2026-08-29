@@ -39,6 +39,9 @@ import {
   idsProtocolosDeclaradosSemAmbiguidade,
   metadadosExecucaoIa,
 } from "@/lib/ia/observabilidade";
+import { normalizarOrigemSugestaoIa } from "@/lib/ia/feedback";
+import { feedbackSugestoesIaHabilitado } from "@/lib/servidor/ia/feedback-config";
+import { registrarSugestaoIa } from "@/lib/servidor/ia/sugestoes";
 
 type EtapaAtendimento = "contexto" | "decisao" | "geracao" | "validacao" | "sugestao";
 
@@ -530,6 +533,37 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
     }
 
     if (!motivo) {
+      let sugestaoId: string | undefined;
+      if (feedbackSugestoesIaHabilitado()) {
+        sugestaoId = await registrarSugestaoIa({
+          supabase,
+          userId,
+          imovelId,
+          tipo: "resposta",
+          textoSugerido: rascunho,
+          origem: normalizarOrigemSugestaoIa(corpo.origem),
+          modelo: configuracao?.atendimento.modelo || null,
+          contexto: {
+            versao: 1,
+            contextoFingerprint: diagnostico.contextoFingerprint || null,
+            intencao: decisao.intencao.slice(0, 160),
+            objecao: decisao.objecao.slice(0, 160),
+            estadoConversacional: decisao.estadoConversacional,
+            acaoEsperada: decisao.acaoEsperada,
+            protocolosAplicados: diagnostico.protocolosAplicados || [],
+          },
+        }) || undefined;
+        if (!sugestaoId) {
+          registrarDiagnosticoAtendimento(
+            userId,
+            diagnostico,
+            "sugestao",
+            "erro",
+            "falha-persistencia-sugestao",
+          );
+          return respostaErroIa("falha-modelo", 500);
+        }
+      }
       registrarDiagnosticoAtendimento(
         userId,
         diagnostico,
@@ -537,7 +571,13 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
         "sugerido",
         usandoFallback ? "aprovada-apos-fallback" : "aprovada",
       );
-      return Response.json({ ok: true, rascunho, protocolosUsados, fallbackAplicado: usandoFallback });
+      return Response.json({
+        ok: true,
+        rascunho,
+        protocolosUsados,
+        fallbackAplicado: usandoFallback,
+        ...(sugestaoId ? { sugestaoId } : {}),
+      });
     }
 
     if (!usandoFallback) {

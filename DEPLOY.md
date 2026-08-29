@@ -56,6 +56,30 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-anon-key
 Os valores são os que você copiou no passo 5 da Parte 1 (ou os que já estão em `supabase-config.js`,
 na raiz, do deploy antigo — são os mesmos).
 
+### Feedback das sugestões da IA — ativação controlada
+
+A ativação exige duas condições cumulativas: a trava de código `IA_FEEDBACK_SCHEMA_READY` e a
+variável de servidor `IA_FEEDBACK_SUGESTOES_ENABLED=true`. A trava de código permanece
+explicitamente `false` enquanto o schema não foi validado/aplicado; portanto nenhuma configuração
+existente na Vercel consegue ativar a coleta. Enquanto qualquer condição estiver desligada, o app
+não usa `ia_sugestoes` nem `ia_feedbacks`.
+
+Antes de ativá-la em qualquer ambiente:
+
+1. valide o schema em PostgreSQL/Supabase real;
+2. aplique `ia_sugestoes` e `ia_feedbacks` pelo procedimento controlado do ambiente;
+3. valide constraints, incluindo a FK composta `(sugestao_id, user_id)`;
+4. valide isolamento RLS entre dois usuários;
+5. valide os grants mínimos;
+6. execute smoke da interface para aprovação, rejeição, edição, reload e idempotência;
+7. execute smoke do envio e do retry de feedback sem novo envio;
+8. altere `IA_FEEDBACK_SCHEMA_READY` para `true` em uma revisão de código específica e publique
+   mantendo a variável de ambiente desligada;
+9. somente depois configure `IA_FEEDBACK_SUGESTOES_ENABLED=true` e faça novo deploy.
+
+A flag não substitui essas verificações. O schema não é aplicado automaticamente pelo deploy da
+aplicação.
+
 ### Endereço e CEP — gratuito, sem chave
 
 Os cadastros consultam o ViaCEP diretamente no navegador. Digitar um CEP preenche rua, bairro,

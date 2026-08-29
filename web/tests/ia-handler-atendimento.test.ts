@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExecutorOpenAI } from "@/lib/servidor/ia/executor-openai";
 
 vi.mock("@/lib/calculo/notas", () => ({
@@ -33,7 +33,15 @@ vi.mock("@/lib/servidor/registro", () => ({
 }));
 
 import { atenderProprietario } from "@/lib/servidor/ia/handlers/atendimento";
+import { definirSchemaFeedbackSugestoesIaProntoParaTeste } from "@/lib/servidor/ia/feedback-config";
 import { registrarEvento } from "@/lib/servidor/registro";
+
+const inserirSugestao = vi.fn((linha: Record<string, unknown>) => ({
+  select: () => ({
+    single: async () => ({ data: { id: "sugestao-1" }, error: null }),
+  }),
+  linha,
+}));
 
 function supabaseFalso(): SupabaseClient {
   return {
@@ -86,6 +94,9 @@ function supabaseFalso(): SupabaseClient {
           }),
         };
       }
+      if (tabela === "ia_sugestoes") {
+        return { insert: inserirSugestao };
+      }
       throw new Error(`Tabela inesperada: ${tabela}`);
     }),
   } as unknown as SupabaseClient;
@@ -94,6 +105,13 @@ function supabaseFalso(): SupabaseClient {
 describe("handler especializado de atendimento", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
+    vi.stubEnv("IA_FEEDBACK_SUGESTOES_ENABLED", "true");
+    definirSchemaFeedbackSugestoesIaProntoParaTeste(true);
+  });
+
+  afterEach(() => {
+    definirSchemaFeedbackSugestoesIaProntoParaTeste(null);
   });
 
   it("preserva o contrato da UI e exatamente três chamadas no caminho feliz", async () => {
@@ -146,7 +164,19 @@ describe("handler especializado de atendimento", () => {
       rascunho: "A taxa é de 10%.",
       protocolosUsados: ["Taxa"],
       fallbackAplicado: false,
+      sugestaoId: "sugestao-1",
     });
+    expect(inserirSugestao).toHaveBeenCalledWith(expect.objectContaining({
+      user_id: "usuario-1",
+      imovel_id: "imovel-1",
+      tipo: "resposta",
+      texto_sugerido: "A taxa é de 10%.",
+      origem: "outro",
+      contexto: expect.objectContaining({
+        versao: 1,
+        protocolosAplicados: ["protocolo-taxa"],
+      }),
+    }));
     expect(executar).toHaveBeenCalledTimes(3);
     expect(executar.mock.calls.map(([pedido]) => pedido.tipo)).toEqual([
       "rascunhar-resposta-decisao",
@@ -164,6 +194,65 @@ describe("handler especializado de atendimento", () => {
     );
     expect(executar.mock.calls[0][0].mensagens[1].content).toContain("A taxa é de 10%.");
     expect(executar.mock.calls[0][0].mensagens[1].content).not.toContain("não repita informações");
+  });
+
+  it("gera o mesmo rascunho sem acessar ia_sugestoes quando o feedback está desativado", async () => {
+    definirSchemaFeedbackSugestoesIaProntoParaTeste(false);
+    vi.stubEnv("IA_FEEDBACK_SUGESTOES_ENABLED", "true");
+    const executar = vi
+      .fn<ExecutorOpenAI["executar"]>()
+      .mockResolvedValueOnce({
+        conclusao: {} as never,
+        texto: JSON.stringify({
+          intencao: "taxa",
+          contextoRelevante: "pergunta direta",
+          protocolosAplicaveis: ["Taxa"],
+          informacoesFaltantes: [],
+          nivelConfianca: "alta",
+          precisaIntervencaoHumana: false,
+          podeResponderComSeguranca: true,
+        }),
+      })
+      .mockResolvedValueOnce({
+        conclusao: {} as never,
+        texto: JSON.stringify({
+          mensagem: "A taxa é de 10%.",
+          protocolosUsados: ["Taxa"],
+        }),
+      })
+      .mockResolvedValueOnce({
+        conclusao: {} as never,
+        texto: JSON.stringify({
+          aprovada: true,
+          respondeAMensagem: true,
+          coerenteComHistorico: true,
+          semProtocoloDesnecessario: true,
+          somenteFatosComFonte: true,
+          semDesvioDeAssunto: true,
+          informacaoSuficienteParaEstaResposta: true,
+          seguraParaSugerir: true,
+        }),
+      });
+    const supabase = supabaseFalso();
+
+    const resposta = await atenderProprietario({
+      tipo: "rascunhar-resposta",
+      corpo: { tipo: "rascunhar-resposta", imovelId: "imovel-1" },
+      supabase,
+      userId: "usuario-1",
+      executor: { executar },
+    });
+
+    expect(resposta.status).toBe(200);
+    expect(await resposta.json()).toEqual({
+      ok: true,
+      rascunho: "A taxa é de 10%.",
+      protocolosUsados: ["Taxa"],
+      fallbackAplicado: false,
+    });
+    expect(vi.mocked(supabase.from).mock.calls.map(([tabela]) => tabela))
+      .not.toContain("ia_sugestoes");
+    expect(inserirSugestao).not.toHaveBeenCalled();
   });
 
   it("regenera do zero quando a primeira geração declara protocolo não autorizado", async () => {
@@ -216,6 +305,7 @@ describe("handler especializado de atendimento", () => {
       rascunho: "Posso confirmar essa informação para você.",
       protocolosUsados: [],
       fallbackAplicado: true,
+      sugestaoId: "sugestao-1",
     });
     expect(executar.mock.calls.map(([pedido]) => pedido.tipo)).toEqual([
       "rascunhar-resposta-decisao",

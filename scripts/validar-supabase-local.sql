@@ -33,6 +33,15 @@ select pg_temp.assert_true(
   'mensagens agendadas não podem ser excluídas diretamente pelo cliente'
 );
 select pg_temp.assert_true(
+  has_table_privilege('authenticated', 'public.ia_sugestoes', 'select,insert')
+    and not has_table_privilege('authenticated', 'public.ia_sugestoes', 'update,delete')
+    and has_table_privilege('authenticated', 'public.ia_feedbacks', 'select,insert,update')
+    and not has_table_privilege('authenticated', 'public.ia_feedbacks', 'delete')
+    and not has_table_privilege('anon', 'public.ia_sugestoes', 'select')
+    and not has_table_privilege('anon', 'public.ia_feedbacks', 'select'),
+  'sugestões e feedbacks devem expor somente operações autenticadas necessárias'
+);
+select pg_temp.assert_true(
   not has_table_privilege('authenticated', 'public.whatsapp_instancias', 'select')
     and not has_table_privilege('authenticated', 'public.google_contas', 'select')
     and not has_table_privilege('authenticated', 'public.admins', 'select')
@@ -70,7 +79,9 @@ select pg_temp.assert_true(
 select pg_temp.assert_true(
   (select count(*) from pg_policies where schemaname = 'public' and tablename = 'imoveis') = 4
     and (select count(*) from pg_policies where schemaname = 'public' and tablename = 'agenda') = 4
-    and (select count(*) from pg_policies where schemaname = 'public' and tablename = 'mensagens_agendadas') = 3,
+    and (select count(*) from pg_policies where schemaname = 'public' and tablename = 'mensagens_agendadas') = 3
+    and (select count(*) from pg_policies where schemaname = 'public' and tablename = 'ia_sugestoes') = 2
+    and (select count(*) from pg_policies where schemaname = 'public' and tablename = 'ia_feedbacks') = 3,
   'policies das tabelas afetadas devem estar completas'
 );
 select pg_temp.assert_true(
@@ -121,6 +132,84 @@ insert into public.imoveis (
   '10000000-0000-0000-0000-000000000001',
   'Rua Local, 1', 'Proprietário Local', '(41) 99999-0001'
 );
+
+insert into public.ia_sugestoes (
+  id, user_id, imovel_id, tipo, texto_sugerido, contexto, origem, modelo
+) values (
+  '50000000-0000-0000-0000-000000000001',
+  '10000000-0000-0000-0000-000000000001',
+  '20000000-0000-0000-0000-000000000001',
+  'resposta', 'Posso ajudar por aqui.',
+  '{"versao":1,"estadoConversacional":"negociacao"}'::jsonb,
+  'central-mensagens', 'gpt-5.4-mini'
+);
+insert into public.ia_feedbacks (
+  id, sugestao_id, user_id, resultado
+) values (
+  '60000000-0000-0000-0000-000000000001',
+  '50000000-0000-0000-0000-000000000001',
+  '10000000-0000-0000-0000-000000000001',
+  'aprovado'
+);
+insert into public.ia_feedbacks (
+  sugestao_id, user_id, resultado, texto_final
+) values (
+  '50000000-0000-0000-0000-000000000001',
+  '10000000-0000-0000-0000-000000000001',
+  'editado', 'Consigo ajudar por aqui.'
+)
+on conflict (sugestao_id) do update set
+  resultado = excluded.resultado,
+  motivo = null,
+  comentario = null,
+  texto_final = excluded.texto_final,
+  updated_at = now();
+
+select pg_temp.assert_true(
+  (select count(*) = 1
+      and max(resultado) = 'editado'
+      and max(texto_final) = 'Consigo ajudar por aqui.'
+     from public.ia_feedbacks
+    where sugestao_id = '50000000-0000-0000-0000-000000000001'),
+  'retry deve atualizar um único feedback e preservar o vínculo com o texto original'
+);
+
+-- A FK composta protege o vínculo mesmo em acesso privilegiado, fora da RLS.
+reset role;
+do $$
+begin
+  begin
+    insert into public.ia_feedbacks (
+      sugestao_id, user_id, resultado
+    ) values (
+      '50000000-0000-0000-0000-000000000001',
+      '10000000-0000-0000-0000-000000000002',
+      'aprovado'
+    );
+    raise exception 'FK composta aceitou feedback com usuário diferente da sugestão';
+  exception
+    when foreign_key_violation then null;
+  end;
+end;
+$$;
+set local role authenticated;
+
+do $$
+begin
+  begin
+    insert into public.ia_sugestoes (
+      user_id, imovel_id, tipo, texto_sugerido, origem
+    ) values (
+      '10000000-0000-0000-0000-000000000002',
+      '20000000-0000-0000-0000-000000000001',
+      'resposta', 'Tentativa cruzada', 'outro'
+    );
+    raise exception 'RLS aceitou sugestão em nome de outro usuário';
+  exception
+    when insufficient_privilege then null;
+  end;
+end;
+$$;
 
 do $$
 begin
@@ -244,6 +333,40 @@ select pg_temp.assert_true(
   not exists (select 1 from public.imoveis where id = '20000000-0000-0000-0000-000000000002'),
   'RLS deve ocultar imóveis de outro usuário'
 );
+select pg_temp.assert_true(
+  not exists (
+    select 1 from public.ia_sugestoes
+    where id = '50000000-0000-0000-0000-000000000001'
+  ),
+  'RLS deve ocultar sugestão de outro usuário'
+);
+do $$
+begin
+  begin
+    insert into public.ia_feedbacks (
+      sugestao_id, user_id, resultado
+    ) values (
+      '50000000-0000-0000-0000-000000000001',
+      '10000000-0000-0000-0000-000000000002',
+      'aprovado'
+    );
+    raise exception 'RLS aceitou feedback apontando para sugestão de outro usuário';
+  exception
+    when insufficient_privilege then null;
+  end;
+end;
+$$;
+do $$
+declare
+  alteradas integer;
+begin
+  update public.ia_feedbacks
+     set resultado = 'rejeitado', motivo = 'outro', texto_final = null
+   where sugestao_id = '50000000-0000-0000-0000-000000000001';
+  get diagnostics alteradas = row_count;
+  perform pg_temp.assert_true(alteradas = 0, 'RLS permitiu alterar feedback de outro usuário');
+end;
+$$;
 do $$
 begin
   begin

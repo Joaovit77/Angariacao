@@ -1549,6 +1549,46 @@ ali para quem quiser um modelo.
   insistir após recusa, executar ação proibida ou repetir apresentação de forma óbvia. A validação
   por modelo recebe o rascunho inteiro e os títulos de `protocolosUsados`.
 
+##### Feedback das mensagens sugeridas pela IA
+
+A coleta é protegida no servidor por duas condições cumulativas, centralizadas no mesmo módulo:
+a trava de código `IA_FEEDBACK_SCHEMA_READY` e a variável
+`IA_FEEDBACK_SUGESTOES_ENABLED`. A trava permanece explicitamente `false` até uma alteração de
+código posterior à validação/aplicação do schema; a variável só habilita com o literal `true`.
+Assim, nenhuma configuração remota consegue antecipar a ativação. Isso permite integrar
+funcionalidades dependentes de schema ainda não validado em ambiente real sem transformar a flag em
+substituto dessa validação. Desativada, a geração e o envio mantêm o comportamento anterior, nenhum
+`sugestaoId` chega à interface, os controles de feedback não são renderizados e não há consulta nem
+escrita em `ia_sugestoes` ou `ia_feedbacks`.
+
+Quando explicitamente ativa, toda mensagem que a IA oferece ao corretor para envio real — hoje o
+rascunho de resposta e a abordagem baseada no anúncio — é persistida em `ia_sugestoes` **antes** de
+chegar à interface. A linha é imutável e guarda o usuário autenticado, `imovel_id` (a identidade da
+conversa/lead neste CRM), tipo, origem, modelo observável, texto sugerido e somente contexto compacto
+estruturado. Não duplica conversa, prompt nem conteúdo de Protocolo. O `sugestaoId` acompanha o
+texto pelo estado do compositor/modal até o envio, portanto a versão final nunca é associada por
+comparação de strings soltas.
+
+`ia_feedbacks` mantém **uma linha atual por sugestão**, com resultado `aprovado`, `editado` ou
+`rejeitado`. A avaliação pode ser alterada e o estado mais recente substitui o anterior, preservando
+a mesma linha e atualizando `updated_at`. Repetir uma ação é idempotente; um envio confirmado atualiza a mesma linha para
+`editado` quando o texto final difere da sugestão. Aprovar não envia. Editar só se torna evidência
+quando uma versão diferente é realmente enviada. Rejeitar aceita motivo classificado e comentário
+opcionais. Nos caminhos Evolution e `wa.me`, o feedback de edição é gravado somente depois da
+confirmação de envio, para não criar texto final fantasma. Se a mensagem sair e só a gravação do
+feedback falhar, a interface bloqueia novo envio e oferece retry exclusivo do feedback.
+
+As duas tabelas têm RLS e grants mínimos. O `user_id` do feedback vem da sessão validada pela rota,
+nunca do corpo do browser; a FK composta `(sugestao_id, user_id)` impede associação cruzada mesmo
+além da RLS. Excluir a conta remove o dataset; excluir o imóvel apenas remove a referência, como nas
+avaliações históricas. Não existe leitura desse dataset em geração, perfil, memória, System Prompt
+ou Protocolos nesta fase.
+
+Uma evolução pode derivar preferências de **estilo** por usuário e recuperar exemplos
+aprovados/editados semelhantes, usando este dataset como evidência. Essa camada futura não pode
+alterar fatos, permissões, governança, regras comerciais, System Prompt ou Protocolos; preferência
+aprendida permanece abaixo deles na hierarquia de autoridade e nunca é compartilhada entre contas.
+
   **As informações comerciais da imobiliária são a exceção a essa trava, e a única.** Não saber nada está certo
   para fato do IMÓVEL, que o painel não tem; está errado para regra da EMPRESA, que o corretor
   repete em toda conversa. Medido em 04/08/2026: das 49 respostas de proprietário com pergunta, ~18

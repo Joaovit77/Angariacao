@@ -58,7 +58,14 @@ export default function BotaoAbordagemAnuncio({ imovel }: { imovel: Imovel }) {
     }
     const pontos = r.abordagem.pontos;
     if (pontos.length > 0) toast(`Apoiada em: ${pontos.join(", ")}.`);
-    abrirWhatsappAbordagem(imovel.id, r.abordagem.mensagem, abordagem.id);
+    abrirWhatsappAbordagem(
+      imovel.id,
+      r.abordagem.mensagem,
+      abordagem.id,
+      r.sugestaoId
+        ? { id: r.sugestaoId, textoSugerido: r.abordagem.mensagem }
+        : undefined,
+    );
   }
 
   return (

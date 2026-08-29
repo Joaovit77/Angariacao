@@ -32,6 +32,7 @@
    ================================================================ */
 import { useRef, useState } from "react";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
+import FeedbackSugestaoIa from "@/components/ia/FeedbackSugestaoIa";
 import { abordagensParaEnvio, momentoDoContato } from "@/lib/calculo/abordagens";
 import { telefoneWhatsapp } from "@/lib/calculo/agenda";
 import {
@@ -49,6 +50,12 @@ import {
 } from "@/lib/calculo/whatsapp";
 import { todayISO } from "@/lib/datas";
 import { enviarWhatsapp } from "@/lib/envioWhatsapp";
+import { registrarFeedbackSugestaoIa } from "@/lib/feedbackSugestaoIa";
+import {
+  feedbackDoEnvio,
+  type PedidoFeedbackSugestaoIa,
+  type ReferenciaSugestaoIa,
+} from "@/lib/ia/feedback";
 import type { ConfirmacaoVisitaPendente } from "@/lib/calculo/confirmacaoVisita";
 import {
   adicionarModeloWhatsapp,
@@ -69,6 +76,7 @@ export default function ModalWhatsapp({
   textoInicial,
   abordagemInicial,
   protocolosUsados,
+  sugestao,
   marcarRespostasLidasAposEnvio = false,
 }: {
   imovelId: string;
@@ -87,6 +95,8 @@ export default function ModalWhatsapp({
       fonte antes de enviar — a regra continua sendo "a IA sugere, o corretor
       confirma", e confirmar sem saber de onde saiu não é confirmar. */
   protocolosUsados?: string[];
+  /** Identidade persistida do texto gerado. Viaja até o envio confirmado. */
+  sugestao?: ReferenciaSugestaoIa;
   /** Verdadeiro somente quando o modal nasceu de uma resposta recebida. O
       envio confirmado trata a pendência; aberturas do Pipeline e da Agenda
       continuam sem alterar mensagens não lidas. */
@@ -163,6 +173,10 @@ export default function ModalWhatsapp({
   const [perguntandoEnvio, setPerguntandoEnvio] = useState(false);
   const [dataVisita, setDataVisita] = useState("");
   const [horaVisita, setHoraVisita] = useState("");
+  const [sugestaoAtual, setSugestaoAtual] = useState(sugestao);
+  const [feedbackPendenteAposEnvio, setFeedbackPendenteAposEnvio] =
+    useState<PedidoFeedbackSugestaoIa | null>(null);
+  const [envioConcluido, setEnvioConcluido] = useState(false);
 
   if (!imovel) return null;
   const temTelefone = !!telefoneWhatsapp(imovel.proprietarioTelefone);
@@ -297,6 +311,33 @@ export default function ModalWhatsapp({
     }
   }
 
+  async function registrarFeedbackDoEnvio(textoFinal: string): Promise<boolean> {
+    if (!sugestaoAtual) return true;
+    const pedido = feedbackDoEnvio(sugestaoAtual, textoFinal);
+    const resposta = await registrarFeedbackSugestaoIa(pedido);
+    if (resposta.ok) {
+      setSugestaoAtual((atual) => atual ? { ...atual, feedbackResultado: resposta.resultado } : atual);
+      return true;
+    }
+    setFeedbackPendenteAposEnvio(pedido);
+    setEnvioConcluido(true);
+    return false;
+  }
+
+  async function tentarSalvarFeedbackPendente() {
+    if (!feedbackPendenteAposEnvio || enviando) return;
+    setEnviando(true);
+    const resposta = await registrarFeedbackSugestaoIa(feedbackPendenteAposEnvio);
+    setEnviando(false);
+    if (!resposta.ok) {
+      toast(resposta.mensagem, "error");
+      return;
+    }
+    setFeedbackPendenteAposEnvio(null);
+    toast("Feedback salvo. A mensagem já havia sido enviada.");
+    fecharModal();
+  }
+
   /** Envia pela Evolution — o corretor não sai do painel. */
   async function enviarAgora() {
     if (!imovel || enviando) return;
@@ -338,11 +379,16 @@ export default function ModalWhatsapp({
         true,
       );
     }
-    setEnviando(false);
     if (r.ok) {
       if (marcarRespostasLidasAposEnvio) {
         await marcarRespostasLidas(imovel.id, true);
       }
+      if (!(await registrarFeedbackDoEnvio(texto))) {
+        setEnviando(false);
+        toast("Mensagem enviada, mas o feedback não foi salvo. Tente novamente abaixo.", "warning");
+        return;
+      }
+      setEnviando(false);
       if (confirmacaoVisita && r.historicoPersistido === false) {
         toast("Mensagem enviada, mas o monitoramento da confirmação não pôde ser ativado.", "warning");
         fecharModal();
@@ -358,6 +404,7 @@ export default function ModalWhatsapp({
       fecharModal();
       return;
     }
+    setEnviando(false);
     // A rota já manda o texto pronto; o fallback cobre falha de rede.
     toast(r.mensagem || mensagemFalhaEnvio(r.falha || "falha-evolution"), "error");
     setFalhouEnvio(true);
@@ -395,12 +442,13 @@ export default function ModalWhatsapp({
    * sobre o envio — é o envio que ele está confirmando aqui.
    */
   async function confirmarEnvioManual(enviou: boolean) {
-    if (!imovel || !usuario) return;
+    if (!imovel || !usuario || enviando) return;
     if (!enviou) {
       setPerguntandoEnvio(false);
       fecharModal();
       return;
     }
+    setEnviando(true);
     const historicoOk = await registrarMensagemEnviadaManual(
       imovel.id,
       usuario.id,
@@ -409,7 +457,10 @@ export default function ModalWhatsapp({
     );
     // Em falha a pergunta continua: fechar perderia a confirmação humana que
     // ainda é a única prova disponível neste caminho.
-    if (!historicoOk) return;
+    if (!historicoOk) {
+      setEnviando(false);
+      return;
+    }
     if (marcarRespostasLidasAposEnvio) {
       await marcarRespostasLidas(imovel.id, true);
     }
@@ -424,6 +475,12 @@ export default function ModalWhatsapp({
         aguardandoResultado: true,
       });
     }
+    if (!(await registrarFeedbackDoEnvio(mensagem))) {
+      setEnviando(false);
+      setPerguntandoEnvio(false);
+      toast("Mensagem registrada, mas o feedback não foi salvo. Tente novamente abaixo.", "warning");
+      return;
+    }
     if (tentativaOk) {
       toast(
         abordagemSel
@@ -433,6 +490,7 @@ export default function ModalWhatsapp({
             : "Mensagem enviada registrada no histórico.",
       );
     }
+    setEnviando(false);
     setPerguntandoEnvio(false);
     fecharModal();
   }
@@ -660,7 +718,18 @@ export default function ModalWhatsapp({
           style={{ minHeight: "200px" }}
           value={mensagem}
           onChange={(e) => setMensagem(e.target.value)}
+          disabled={envioConcluido}
         />
+        {sugestaoAtual ? (
+          <FeedbackSugestaoIa
+            sugestao={sugestaoAtual}
+            desabilitado={envioConcluido}
+            aoEditar={() => textareaRef.current?.focus()}
+            aoSalvar={(resultado) =>
+              setSugestaoAtual((atual) => atual ? { ...atual, feedbackResultado: resultado } : atual)
+            }
+          />
+        ) : null}
         <div className="marcadores-modelo">
           <span>Inserir marcador:</span>
           {MARCADORES_MODELO.map((m) => (
@@ -721,17 +790,29 @@ export default function ModalWhatsapp({
           corretor sabe se chegou a mandar. As ações normais saem de cena para
           a resposta não competir com "Fechar" — fechar sem responder é o que
           deixaria a tentativa perdida de novo. */}
-      {perguntandoEnvio ? (
+      {feedbackPendenteAposEnvio ? (
+        <div className="modal-foot">
+          <p className="section-note" style={{ margin: 0 }}>
+            A mensagem já foi enviada. Falta apenas salvar o feedback desta sugestão.
+          </p>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button type="button" className="btn" onClick={fecharModal}>Fechar</button>
+            <button type="button" className="btn btn-primary" onClick={() => void tentarSalvarFeedbackPendente()} disabled={enviando}>
+              {enviando ? "Salvando..." : "Tentar salvar feedback"}
+            </button>
+          </div>
+        </div>
+      ) : perguntandoEnvio ? (
         <div className="modal-foot">
           <p className="section-note" style={{ margin: 0 }}>
             Abrimos a conversa no WhatsApp. Você chegou a mandar a mensagem?
           </p>
           <div style={{ display: "flex", gap: "10px" }}>
-            <button type="button" className="btn" onClick={() => confirmarEnvioManual(false)}>
+            <button type="button" className="btn" onClick={() => confirmarEnvioManual(false)} disabled={enviando}>
               Não mandei
             </button>
-            <button type="button" className="btn btn-primary" onClick={() => confirmarEnvioManual(true)}>
-              Sim, mandei
+            <button type="button" className="btn btn-primary" onClick={() => confirmarEnvioManual(true)} disabled={enviando}>
+              {enviando ? "Registrando..." : "Sim, mandei"}
             </button>
           </div>
         </div>

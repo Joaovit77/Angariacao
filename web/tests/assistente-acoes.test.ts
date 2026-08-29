@@ -371,7 +371,8 @@ describe("uma arquitetura para chat e menu", () => {
     expect(operacoes).toContain("selecionarMensagensAtendimento");
     expect(operacoes).toContain("envioExecutado: false");
     expect(orquestrador).toContain("FERRAMENTA_PREPARAR_RASCUNHO_RESPOSTA");
-    expect(cliente).toContain("rascunharResposta(comando.imovelId)");
+    expect(cliente).toContain('rascunharResposta(comando.imovelId, "assistente")');
+    expect(cliente).toContain("textoSugerido: resultado.rascunho");
     expect(cliente).toContain("abrirWhatsappRascunho");
     expect(cliente).not.toContain("enviarWhatsapp");
   });

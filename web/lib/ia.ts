@@ -16,6 +16,7 @@ import type {
   AcaoTerritorialIa,
 } from "./calculo/ia";
 import type { FiltrosMapa } from "./calculo/mapa";
+import type { OrigemSugestaoIa } from "./ia/feedback";
 import { getSupabase } from "./persistencia/supabase";
 
 export interface ResultadoRoteiros {
@@ -64,6 +65,8 @@ export interface ResultadoAbordagemAnuncio {
   /** A mensagem de primeiro contato e os pontos do anúncio em que ela se
       apoiou (quando ok=true). */
   abordagem?: AbordagemDoAnuncio;
+  /** Identificador estável da mensagem sugerida quando a coleta está ativa. */
+  sugestaoId?: string;
 }
 
 export interface ResultadoRascunho {
@@ -77,6 +80,8 @@ export interface ResultadoRascunho {
       filtrados pela rota contra os que existem de verdade. Serve para o
       corretor conferir a FONTE do que a IA afirmou sem reler a base inteira. */
   protocolosUsados?: string[];
+  /** Identificador que acompanha o texto quando a coleta de feedback está ativa. */
+  sugestaoId?: string;
 }
 
 async function chamar<T>(corpo: unknown): Promise<T | { ok: false; falha: FalhaIa }> {
@@ -150,8 +155,11 @@ export function extrairAnuncio(texto: string): Promise<ResultadoExtracao> {
     não confia no texto do browser — mesma regra do "o conteúdo sai do banco".
     O resultado é sugestão: cai no ModalWhatsapp editável, quem envia é o
     corretor. */
-export function rascunharResposta(imovelId: string): Promise<ResultadoRascunho> {
-  return chamar<ResultadoRascunho>({ tipo: "rascunhar-resposta", imovelId });
+export function rascunharResposta(
+  imovelId: string,
+  origem: OrigemSugestaoIa = "outro",
+): Promise<ResultadoRascunho> {
+  return chamar<ResultadoRascunho>({ tipo: "rascunhar-resposta", imovelId, origem });
 }
 
 /** Escreve a PRIMEIRA mensagem ao proprietário a partir do anúncio que ele
