@@ -115,6 +115,14 @@ afterEach(() => {
 });
 
 describe("feature flag do feedback de sugestões", () => {
+  it("permanece desativada com schema pronto e variável false", () => {
+    definirSchemaFeedbackSugestoesIaProntoParaTeste(true);
+    vi.stubEnv("IA_FEEDBACK_SUGESTOES_ENABLED", "false");
+
+    expect(IA_FEEDBACK_SCHEMA_READY).toBe(true);
+    expect(feedbackSugestoesIaHabilitado()).toBe(false);
+  });
+
   it("fica desligada por ausência ou valor inválido e só aceita o literal true", () => {
     vi.unstubAllEnvs();
     expect(feedbackSugestoesIaHabilitado()).toBe(false);
@@ -132,13 +140,13 @@ describe("feature flag do feedback de sugestões", () => {
     definirSchemaFeedbackSugestoesIaProntoParaTeste(false);
     vi.stubEnv("IA_FEEDBACK_SUGESTOES_ENABLED", "true");
 
-    expect(IA_FEEDBACK_SCHEMA_READY).toBe(false);
+    expect(IA_FEEDBACK_SCHEMA_READY).toBe(true);
     expect(feedbackSugestoesIaHabilitado()).toBe(false);
   });
 
-  it("encerra o endpoint antes de criar cliente ou consultar tabelas com a trava interna desligada", async () => {
-    definirSchemaFeedbackSugestoesIaProntoParaTeste(false);
-    vi.stubEnv("IA_FEEDBACK_SUGESTOES_ENABLED", "true");
+  it("encerra o endpoint antes de criar cliente ou consultar tabelas com a variável desligada", async () => {
+    definirSchemaFeedbackSugestoesIaProntoParaTeste(true);
+    vi.stubEnv("IA_FEEDBACK_SUGESTOES_ENABLED", "false");
 
     const resposta = await POST(requisicao({ sugestaoId: "sugestao-a", resultado: "aprovado" }));
 
@@ -150,9 +158,9 @@ describe("feature flag do feedback de sugestões", () => {
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
-  it("encerra a persistência de sugestão antes de acessar o Supabase com a trava interna desligada", async () => {
-    definirSchemaFeedbackSugestoesIaProntoParaTeste(false);
-    vi.stubEnv("IA_FEEDBACK_SUGESTOES_ENABLED", "true");
+  it("encerra a persistência de sugestão antes de acessar o Supabase com a variável desligada", async () => {
+    definirSchemaFeedbackSugestoesIaProntoParaTeste(true);
+    vi.stubEnv("IA_FEEDBACK_SUGESTOES_ENABLED", "false");
     const fromDesativado = vi.fn(() => {
       throw new Error("não deveria consultar ia_sugestoes");
     });

@@ -2,7 +2,7 @@
  * Trava de implantação: só deve mudar para true em uma alteração de código
  * posterior à validação e aplicação do schema no ambiente real.
  */
-export const IA_FEEDBACK_SCHEMA_READY = false;
+export const IA_FEEDBACK_SCHEMA_READY = true;
 
 let schemaReadyParaTeste: boolean | null = null;
 
