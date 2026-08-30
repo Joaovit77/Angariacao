@@ -1,6 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
-  anuncioPertenceACidade,
   PORTAIS_ANGARIACAO,
   type AnuncioCentralAngariacao,
   type FiltrosCentralAngariacao,
@@ -12,6 +11,7 @@ import {
 } from "@/lib/calculo/radarAngariacao";
 import { agoraISOString } from "@/lib/datas";
 import { urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
+import { finalizarColetaCentralAngariacao } from "@/lib/servidor/finalizacaoCentralAngariacao";
 import { buscarComFirecrawl } from "@/lib/servidor/firecrawlCentralAngariacao";
 
 const LIMITE_BUSCAS_POR_RODADA = 8;
@@ -84,7 +84,26 @@ async function verificarBusca(
   try {
     const urlPesquisa = urlDaPesquisa(busca.filtros);
     const coletados = await buscarComFirecrawl(busca.filtros, urlPesquisa);
-    const anuncios = coletados.filter((anuncio) => anuncioPertenceACidade(anuncio, busca.filtros.cidade));
+    const finalizacao = await finalizarColetaCentralAngariacao(
+      supabase,
+      busca.user_id,
+      coletados,
+      busca.filtros,
+    );
+    if (finalizacao.erroComparaveis) {
+      console.error("[radar-cron] falha ao atualizar a base de comparáveis", {
+        buscaId: busca.id,
+        portal: busca.filtros.portal,
+        erro: finalizacao.erroComparaveis,
+      });
+    } else {
+      console.info("[radar-cron] comparáveis atualizados", {
+        buscaId: busca.id,
+        portal: busca.filtros.portal,
+        salvos: finalizacao.comparaveisSalvos,
+      });
+    }
+    const anuncios = finalizacao.anuncios;
     const { data: existentes, error: erroExistentes } = await supabase
       .from("radar_anuncios")
       .select("portal,id_externo")

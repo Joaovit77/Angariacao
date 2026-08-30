@@ -190,4 +190,10 @@ describe("schema histórico e segurança", () => {
     expect(schema).toContain("c.embedding_dimensoes is distinct from v_embedding_dimensoes");
     expect(schema).toContain("embedding = case when v_precisa_embedding then null else c.embedding end");
   });
+
+  it("serializa identidades concorrentes e mantém a unicidade principal", () => {
+    expect(schema).toContain("unique (user_id, portal, id_externo)");
+    expect(schema).toContain("pg_catalog.pg_advisory_xact_lock");
+    expect(schema).toContain("for update;");
+  });
 });

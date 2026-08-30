@@ -1,7 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   anuncioPertenceACidade,
-  comCaracteristicasDoAnuncio,
   PERIODOS_PUBLICACAO,
   PORTAIS_ANGARIACAO,
   rotuloPortal,
@@ -9,8 +8,8 @@ import {
   type ResultadoBuscaCentral,
 } from "@/lib/calculo/centralAngariacao";
 import { dentroDoPeriodo } from "@/lib/datas";
-import { salvarComparaveisMercado } from "@/lib/servidor/comparaveisMercado";
 import { extrairJsonLd, urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
+import { finalizarColetaCentralAngariacao } from "@/lib/servidor/finalizacaoCentralAngariacao";
 import { buscarComFirecrawl, FirecrawlIndisponivel } from "@/lib/servidor/firecrawlCentralAngariacao";
 import { buscarComNavegador, NavegadorIndisponivel } from "@/lib/servidor/scraperCentralAngariacao";
 
@@ -22,11 +21,10 @@ function resposta(corpo: ResultadoBuscaCentral, status = 200) {
 }
 
 function resultadoColeta(
-  coletados: ResultadoBuscaCentral["anuncios"],
+  anuncios: ResultadoBuscaCentral["anuncios"],
   seguros: FiltrosCentralAngariacao,
   urlPesquisa: string,
 ): ResultadoBuscaCentral {
-  const anuncios = coletados.filter((anuncio) => anuncioPertenceACidade(anuncio, seguros.cidade));
   const filtroSemConfirmacao = (seguros.portal === "olx" || seguros.portal === "wimoveis")
     && seguros.somenteProprietario
     && anuncios.some((anuncio) => anuncio.anunciante !== "proprietario");
@@ -40,29 +38,34 @@ function resultadoColeta(
   };
 }
 
-async function finalizarColeta(
+async function finalizarRespostaColeta(
   supabase: SupabaseClient,
   userId: string,
   coletados: ResultadoBuscaCentral["anuncios"],
   seguros: FiltrosCentralAngariacao,
   urlPesquisa: string,
 ): Promise<ResultadoBuscaCentral> {
-  const normalizados = coletados.map((anuncio) =>
-    comCaracteristicasDoAnuncio(anuncio, seguros.tipo)
+  const finalizacao = await finalizarColetaCentralAngariacao(
+    supabase,
+    userId,
+    coletados,
+    seguros,
   );
-  const resultado = resultadoColeta(normalizados, seguros, urlPesquisa);
-  try {
-    const salvos = await salvarComparaveisMercado(supabase, userId, resultado.anuncios, seguros);
-    console.info("[central-angariacao] comparáveis atualizados", {
-      portal: seguros.portal,
-      salvos,
-    });
-  } catch (erro) {
-    console.error("[central-angariacao] falha ao atualizar a base de comparáveis", erro);
+  const resultado = resultadoColeta(finalizacao.anuncios, seguros, urlPesquisa);
+  if (finalizacao.erroComparaveis) {
+    console.error(
+      "[central-angariacao] falha ao atualizar a base de comparáveis",
+      finalizacao.erroComparaveis,
+    );
     resultado.aviso = [
       resultado.aviso,
       "Os resultados apareceram, mas não foi possível atualizar a base histórica agora.",
     ].filter(Boolean).join(" ");
+  } else {
+    console.info("[central-angariacao] comparáveis atualizados", {
+      portal: seguros.portal,
+      salvos: finalizacao.comparaveisSalvos,
+    });
   }
   return resultado;
 }
@@ -110,7 +113,7 @@ export async function POST(request: Request) {
   if (process.env.FIRECRAWL_API_KEY) {
     try {
       const coletados = await buscarComFirecrawl(seguros, urlPesquisa);
-      return resposta(await finalizarColeta(
+      return resposta(await finalizarRespostaColeta(
         sessao.supabase,
         sessao.userId,
         coletados,
@@ -133,7 +136,7 @@ export async function POST(request: Request) {
 
   try {
     const coletados = await buscarComNavegador(seguros, urlPesquisa);
-    return resposta(await finalizarColeta(
+    return resposta(await finalizarRespostaColeta(
       sessao.supabase,
       sessao.userId,
       coletados,
@@ -167,7 +170,7 @@ export async function POST(request: Request) {
       if (!seguros.somenteProprietario) return true;
       return a.anunciante !== "imobiliaria";
     });
-    const resultado = await finalizarColeta(
+    const resultado = await finalizarRespostaColeta(
       sessao.supabase,
       sessao.userId,
       anuncios,

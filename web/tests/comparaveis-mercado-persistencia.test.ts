@@ -1,0 +1,95 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AnuncioCentralAngariacao } from "@/lib/calculo/centralAngariacao";
+
+vi.mock("server-only", () => ({}));
+vi.mock("@/lib/servidor/embeddingsImoveis", () => ({
+  gerarEmbeddingsDeImoveis: vi.fn(),
+  hashConteudoEmbedding: (texto: string) => `hash:${texto}`,
+  modeloEmbeddingImoveis: () => "text-embedding-3-small",
+}));
+
+import { salvarComparaveisMercado } from "@/lib/servidor/comparaveisMercado";
+
+const filtros = {
+  portal: "olx" as const,
+  cidade: "Londrina",
+  estado: "PR",
+  tipo: "Apartamento",
+};
+
+const anuncioValido: AnuncioCentralAngariacao = {
+  idExterno: "oferta-1",
+  portal: "olx",
+  titulo: "Apartamento com 2 quartos e 70 m²",
+  preco: 2200,
+  cidade: "Londrina",
+  url: "https://www.olx.com.br/imovel/oferta-1",
+  anunciante: "incerto",
+};
+
+function bancoComparaveisFalso() {
+  const registros = new Map<string, string>();
+  const rpc = vi.fn(async (
+    _funcao: string,
+    argumentos: { p_dados: Record<string, unknown> },
+  ) => {
+    const dados = argumentos.p_dados;
+    const chave = `${dados.user_id}:${dados.portal}:${dados.id_externo}`;
+    const existente = registros.get(chave);
+    const id = existente || `comparavel-${registros.size + 1}`;
+    registros.set(chave, id);
+    return {
+      data: [{ id, criado: !existente, precisa_embedding: false }],
+      error: null,
+    };
+  });
+  return {
+    cliente: { rpc } as unknown as SupabaseClient,
+    registros,
+    rpc,
+  };
+}
+
+describe("persistência idempotente dos comparáveis de mercado", () => {
+  beforeEach(() => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("ignora anúncios sem os critérios já exigidos pela base", async () => {
+    const banco = bancoComparaveisFalso();
+    const invalidos: AnuncioCentralAngariacao[] = [
+      { ...anuncioValido, idExterno: "sem-preco", preco: null },
+      { ...anuncioValido, idExterno: "sem-titulo", titulo: "" },
+      { ...anuncioValido, idExterno: "sem-url", url: "" },
+    ];
+
+    const quantidade = await salvarComparaveisMercado(
+      banco.cliente,
+      "usuario-1",
+      [anuncioValido, ...invalidos],
+      filtros,
+    );
+
+    expect(quantidade).toBe(1);
+    expect(banco.rpc).toHaveBeenCalledOnce();
+    expect(banco.registros.size).toBe(1);
+  });
+
+  it("converge para um registro ao repetir ou concorrer no mesmo anúncio", async () => {
+    const banco = bancoComparaveisFalso();
+
+    await expect(Promise.all([
+      salvarComparaveisMercado(banco.cliente, "usuario-1", [anuncioValido], filtros),
+      salvarComparaveisMercado(banco.cliente, "usuario-1", [anuncioValido], filtros),
+    ])).resolves.toEqual([1, 1]);
+
+    expect(banco.rpc).toHaveBeenCalledTimes(2);
+    expect(banco.registros.size).toBe(1);
+    expect(banco.registros.values().next().value).toBe("comparavel-1");
+  });
+});

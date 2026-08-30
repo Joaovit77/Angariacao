@@ -1987,8 +1987,10 @@ Chromium e, por último, extração HTTP/JSON-LD. Falha conserva o link de pesqu
 continuar manualmente. Resultado coletado é oportunidade para revisão, não gravação automática no
 Pipeline; cidade é conferida exatamente para não misturar região metropolitana.
 
-Cada resultado válido também registra ou atualiza `comparaveis_mercado`, sempre sob o `user_id`
-autenticado. A deduplicação combina código externo, URL canônica e fingerprint forte; o trigger de
+Central e cron do Radar compartilham a mesma finalização da coleta: normalizam os anúncios,
+confirmam a cidade e registram ou atualizam cada resultado válido em `comparaveis_mercado`, sempre
+sob o `user_id` autenticado ou pertencente à busca reclamada pelo cron. A deduplicação combina
+código externo, URL canônica e fingerprint forte; o trigger de
 observações conserva preço e status ao longo do tempo. Campos objetivos declarados continuam em
 colunas e a descrição normalizada recebe embedding somente quando seu SHA-256/modelo/dimensão
 mudam. A Avaliação Rápida reutiliza essa base sem chamar o coletor a cada cálculo. No Firecrawl, a
