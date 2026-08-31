@@ -60,7 +60,7 @@ export default function AtivacaoInicial({
         <div className="ativacao-acoes">
           <button type="button" className="ativacao-acao principal" onClick={() => abrirModal("importar")}>
             <span className="ativacao-acao-icone"><Icone nome="importar" /></span>
-            <span><strong>Trazer minha carteira</strong><small>Importar uma planilha CSV</small></span>
+            <span><strong>Trazer minha carteira</strong><small>Importar PDF do CasaSoft ou CSV</small></span>
             <i aria-hidden>→</i>
           </button>
           <button type="button" className="ativacao-acao" onClick={() => abrirModal("preCadastro")}>

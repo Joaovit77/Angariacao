@@ -28,6 +28,7 @@ import {
 } from "@/lib/calculo/importacao";
 import { todayISO } from "@/lib/datas";
 import { importarImoveis } from "@/lib/mutacoes";
+import { prepararPdfParaImportacao } from "@/lib/importacaoPdf";
 import { useSessao } from "@/components/SessaoProvider";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
@@ -45,6 +46,9 @@ export default function ModalImportar() {
 
   const [texto, setTexto] = useState("");
   const [gravando, setGravando] = useState(false);
+  const [lendoArquivo, setLendoArquivo] = useState(false);
+  const [erroArquivo, setErroArquivo] = useState("");
+  const [resumoArquivo, setResumoArquivo] = useState("");
 
   // A leitura é pura: dá para recalcular a cada tecla sem tocar em nada.
   const leitura: ResultadoLeitura | null = useMemo(
@@ -53,11 +57,29 @@ export default function ModalImportar() {
   );
   const resumo = useMemo(() => (leitura ? resumirImportacao(leitura.linhas) : null), [leitura]);
 
-  const carregarArquivo = useCallback((arquivo: File | undefined) => {
+  const carregarArquivo = useCallback(async (arquivo: File | undefined) => {
     if (!arquivo) return;
-    const leitor = new FileReader();
-    leitor.onload = () => setTexto(String(leitor.result || ""));
-    leitor.readAsText(arquivo, "utf-8");
+    setLendoArquivo(true);
+    setErroArquivo("");
+    setResumoArquivo("");
+    try {
+      const pdf = arquivo.type === "application/pdf" || arquivo.name.toLowerCase().endsWith(".pdf");
+      if (pdf) {
+        const preparado = await prepararPdfParaImportacao(arquivo);
+        setTexto(preparado.textoCsv);
+        setResumoArquivo(
+          `${preparado.registros} imóvel(is) reconhecido(s) em ${preparado.paginas} página(s) do PDF.`,
+        );
+      } else {
+        setTexto(await arquivo.text());
+        setResumoArquivo(`Arquivo CSV carregado: ${arquivo.name}.`);
+      }
+    } catch (erro) {
+      setTexto("");
+      setErroArquivo(erro instanceof Error ? erro.message : "Não foi possível ler o arquivo.");
+    } finally {
+      setLendoArquivo(false);
+    }
   }, []);
 
   async function importar() {
@@ -82,7 +104,7 @@ export default function ModalImportar() {
   return (
     <>
       <div className="modal-head">
-        <div className="modal-title">Importar planilha</div>
+        <div className="modal-title">Importar carteira</div>
         <button type="button" className="icon-btn" onClick={fecharModal} aria-label="Fechar">
           ✕
         </button>
@@ -90,16 +112,20 @@ export default function ModalImportar() {
 
       <div className="modal-body">
         <div className="field-group">
-          <label>Arquivo CSV</label>
+          <label>Arquivo PDF ou CSV</label>
           <input
             type="file"
-            accept=".csv,text/csv,text/plain"
-            onChange={(e) => carregarArquivo(e.target.files?.[0])}
+            accept=".pdf,.csv,application/pdf,text/csv,text/plain"
+            disabled={lendoArquivo}
+            onChange={(e) => void carregarArquivo(e.target.files?.[0])}
           />
           <div className="field-hint">
-            No Excel ou Google Planilhas: <strong>Arquivo → Baixar → CSV</strong>. Também dá para
-            colar o conteúdo abaixo.
+            Aceitamos diretamente o relatório <strong>Imóveis Angariados</strong> em PDF do
+            CasaSoft. CSV e conteúdo colado continuam disponíveis.
           </div>
+          {lendoArquivo && <div className="field-hint">Lendo e conferindo o PDF…</div>}
+          {resumoArquivo && <div className="field-hint">{resumoArquivo}</div>}
+          {erroArquivo && <div className="importar-aviso">{erroArquivo}</div>}
         </div>
 
         <div className="field-group">
@@ -107,7 +133,11 @@ export default function ModalImportar() {
           <textarea
             rows={5}
             value={texto}
-            onChange={(e) => setTexto(e.target.value)}
+            onChange={(e) => {
+              setTexto(e.target.value);
+              setErroArquivo("");
+              setResumoArquivo("");
+            }}
             placeholder={"endereco;bairro;proprietario;telefone;valor;data\nRua X, 250;Centro;João;43 99999-0000;1800;10/07/2026"}
           />
           <div className="field-hint">
@@ -182,7 +212,7 @@ export default function ModalImportar() {
             type="button"
             className="btn btn-primary"
             onClick={() => void importar()}
-            disabled={gravando || !resumo || resumo.entram === 0}
+            disabled={gravando || lendoArquivo || !resumo || resumo.entram === 0}
           >
             {gravando ? "Importando…" : `Importar ${resumo?.entram ?? 0}`}
           </button>

@@ -347,8 +347,8 @@ export default function ConfiguracoesView({ secaoInicial }: { secaoInicial?: str
             <>
               <CabecalhoSecao titulo="Dados" descricao="Importe sua carteira ou gerencie os dados desta conta." />
               <div className="config-bloco config-resumo-acao">
-                <div><h3>Importar carteira</h3><p>Já possui imóveis em uma planilha? Importe sua carteira em CSV.</p></div>
-                <button type="button" className="btn" onClick={() => abrirModal("importar")}>Importar CSV</button>
+                <div><h3>Importar carteira</h3><p>Envie o relatório PDF do CasaSoft ou uma planilha CSV.</p></div>
+                <button type="button" className="btn" onClick={() => abrirModal("importar")}>Importar PDF ou CSV</button>
               </div>
               <div className="config-bloco config-resumo-acao">
                 <div><h3>Dados de exemplo</h3><p>Adiciona imóveis, metas e compromissos fictícios para explorar o sistema.</p></div>

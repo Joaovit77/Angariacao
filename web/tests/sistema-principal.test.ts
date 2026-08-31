@@ -428,7 +428,7 @@ describe("o status novo no funil", () => {
   it("NÃO acusa estagnação em 7 dias — senão todo imóvel autorizado nasceria com selo", () => {
     expect((STATUS_STALE_LENTO as readonly string[]).includes(STATUS_AUTORIZACAO_ASSINADA)).toBe(true);
     // 35 dias no status: passaria do limite de 7, não passa do de 60.
-    expect(isStale(autorizado)).toBe(false);
+    expect(isStale(autorizado, HOJE)).toBe(false);
   });
 
   it("continua na régua do lembrete de disponibilidade", () => {

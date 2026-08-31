@@ -10,6 +10,7 @@ import {
   detectarDelimitador,
   lerCsv,
   lerData,
+  lerInteiro,
   lerImportacao,
   lerValor,
   mapearColunas,
@@ -62,11 +63,16 @@ describe("lerCsv e delimitador", () => {
 
 describe("mapearColunas", () => {
   it("reconhece cabeçalho com acento, maiúscula e pontuação", () => {
-    const mapa = mapearColunas(["Endereço", "PROPRIETÁRIO", "Tel.", "Valor do Aluguel"]);
+    const mapa = mapearColunas([
+      "Endereço", "PROPRIETÁRIO", "Tel.", "Valor do Aluguel", "Ref.", "Angariador", "Garagem",
+    ]);
     expect(mapa.endereco).toBe(0);
     expect(mapa.proprietarioNome).toBe(1);
     expect(mapa.proprietarioTelefone).toBe(2);
     expect(mapa.valorAluguel).toBe(3);
+    expect(mapa.referenciaCrm).toBe(4);
+    expect(mapa.responsavel).toBe(5);
+    expect(mapa.vagas).toBe(6);
   });
 
   it("normaliza para a mesma forma", () => {
@@ -102,6 +108,15 @@ describe("lerValor", () => {
   });
 });
 
+describe("lerInteiro", () => {
+  it("aceita contagens e recusa coluna deslocada ou fora do limite", () => {
+    expect(lerInteiro("3")).toBe(3);
+    expect(lerInteiro("0")).toBe(0);
+    expect(lerInteiro("2026 quartos")).toBeNull();
+    expect(lerInteiro("101")).toBeNull();
+  });
+});
+
 describe("lerImportacao", () => {
   it("linha sem endereço não entra", () => {
     // Registro sem endereço não geocodifica, some do mapa, é invisível
@@ -125,6 +140,33 @@ describe("lerImportacao", () => {
     expect(r.linhas[0].imovel).not.toBeNull();
     expect(r.linhas[1].imovel).toBeNull();
     expect(r.linhas[1].problemas).toEqual(["repetida-no-arquivo"]);
+  });
+
+  it("a referência do CRM também impede duplicidade quando o endereço mudou de grafia", () => {
+    const existente: Imovel = {
+      id: "crm-1",
+      endereco: "Rua Antiga, 10",
+      referenciaCrm: "04044.001",
+      status: "Publicado",
+    };
+    const r = imp(csv("referencia;endereco", "04044.001;Avenida Nova, 20"), [existente]);
+    expect(r.linhas[0].imovel).toBeNull();
+    expect(r.linhas[0].problemas).toEqual(["duplicada-na-carteira"]);
+  });
+
+  it("preserva referência, responsável, quartos e vagas reconhecidos no arquivo", () => {
+    const r = imp(
+      csv(
+        "referencia;endereco;responsavel;quartos;garagem",
+        "04044.001;Avenida Nova, 20;EDNEA;2;1",
+      ),
+    );
+    expect(r.linhas[0].imovel).toMatchObject({
+      referenciaCrm: "04044.001",
+      responsavel: "EDNEA",
+      quartos: 2,
+      vagas: 1,
+    });
   });
 
   it("unidade diferente no mesmo prédio NÃO é duplicata", () => {

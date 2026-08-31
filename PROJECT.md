@@ -306,6 +306,16 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   vezes, contra a carteira **e dentro do próprio arquivo**, porque planilha de verdade tem linha
   repetida. Datas são lidas por manipulação de string (nunca `new Date`): `new Date("10/07/2026")`
   entende mês/dia e joga um imóvel de julho para outubro, silenciosa e plausivelmente.
+  O mesmo modal aceita o PDF **Imóveis Angariados** do CasaSoft. O arquivo vai a uma rota
+  autenticada, limitada a 5 MB, é lido apenas em memória e volta como CSV interno para atravessar
+  exatamente a mesma prévia e as mesmas travas acima. A extração usa as operações de texto com
+  coordenadas, não o texto corrido do PDF.js: no relatório real, endereço e bairro encostam e o
+  extrator comum produz strings como `AP 304CONJUNTO...`, perdendo a fronteira da coluna. O total
+  lido precisa coincidir com `Total de registros` antes de a prévia aparecer. A coluna Aluguel do
+  relatório representa 120% do aluguel-base guardado pelo app; a conversão divide por 1,2, contrato
+  confirmado pelos imóveis que já existiam na conta. Referência CRM, unidade/bloco, responsável,
+  quartos e garagem são preservados; áreas e suítes, que ainda não têm coluna em `imoveis`, ficam
+  nas observações.
 - **`calculo/solicitacaoAngariacao.ts`** (+ `lib/documentoDocx.ts`, que zipa) — o documento que
   COBRA a comissão, gerado no fim do funil. Quando a captação vira contrato, o corretor manda ao
   financeiro da imobiliária uma "Solicitação de recebimento de angariação de locação", e até aqui

@@ -126,9 +126,13 @@ export type CampoImportavel =
   | "unidade"
   | "bloco"
   | "edificio"
+  | "referenciaCrm"
   | "proprietarioNome"
   | "proprietarioTelefone"
+  | "responsavel"
   | "tipo"
+  | "quartos"
+  | "vagas"
   | "valorAluguel"
   | "origemImovel"
   | "observacoes"
@@ -150,9 +154,13 @@ const SINONIMOS: Record<CampoImportavel, string[]> = {
   unidade: ["unidade", "apto", "apartamento", "ap", "sala", "numeroapto"],
   bloco: ["bloco", "torre"],
   edificio: ["edificio", "predio", "condominio", "empreendimento"],
+  referenciaCrm: ["referencia", "referenciacrm", "ref", "refcrm", "codigocrm"],
   proprietarioNome: ["proprietario", "proprietarionome", "nome", "nomeproprietario", "dono", "contato"],
   proprietarioTelefone: ["telefone", "celular", "fone", "whatsapp", "tel", "contatotelefone"],
+  responsavel: ["responsavel", "angariador", "captador", "atendente"],
   tipo: ["tipo", "tipoimovel", "tipodeimovel"],
+  quartos: ["quartos", "quarto", "dormitorios", "dormitorio"],
+  vagas: ["vagas", "vaga", "garagem", "garagens"],
   valorAluguel: ["valor", "aluguel", "valoraluguel", "preco", "valordoaluguel"],
   origemImovel: ["origem", "fonte", "origemimovel", "portal"],
   observacoes: ["observacao", "observacoes", "obs", "anotacoes", "notas", "descricao"],
@@ -206,6 +214,16 @@ export function lerValor(texto: string | undefined): number | null {
   const limpo = s.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
   const n = Number(limpo);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** Inteiro não negativo para campos contáveis; vazio ou texto inválido não
+    inventa zero. O teto evita que uma coluna deslocada vire, por exemplo,
+    "2026 quartos" sem interromper a prévia. */
+export function lerInteiro(texto: string | undefined): number | null {
+  const s = (texto || "").trim();
+  if (!/^\d+$/.test(s)) return null;
+  const n = Number(s);
+  return Number.isInteger(n) && n >= 0 && n <= 100 ? n : null;
 }
 
 /**
@@ -321,6 +339,22 @@ export function lerImportacao(texto: string, carteira: Imovel[], hoje: string): 
       return;
     }
 
+    const referenciaCrm = celula(bruta, "referenciaCrm");
+    const referenciaRepetida = (i: Pick<Imovel, "referenciaCrm">) =>
+      !!referenciaCrm && (i.referenciaCrm || "").trim().toLowerCase() === referenciaCrm.toLowerCase();
+
+    // O endereço continua sendo a identidade principal, mas relatórios do CRM
+    // trazem também uma referência estável. Se ela já existe, uma diferença de
+    // grafia no endereço não pode furar a proteção contra duplicidade.
+    if (referenciaCrm && carteira.some(referenciaRepetida)) {
+      linhas.push({ linha: numero, imovel: null, problemas: ["duplicada-na-carteira"] });
+      return;
+    }
+    if (referenciaCrm && jaAceitos.some(referenciaRepetida)) {
+      linhas.push({ linha: numero, imovel: null, problemas: ["repetida-no-arquivo"] });
+      return;
+    }
+
     const candidato = {
       endereco,
       cidade: celula(bruta, "cidade") || null,
@@ -346,6 +380,7 @@ export function lerImportacao(texto: string, carteira: Imovel[], hoje: string): 
 
     const imovel: Omit<Imovel, "id"> = {
       endereco,
+      referenciaCrm: referenciaCrm || null,
       bairro: celula(bruta, "bairro") || null,
       cidade: candidato.cidade,
       unidade: candidato.unidade,
@@ -356,7 +391,10 @@ export function lerImportacao(texto: string, carteira: Imovel[], hoje: string): 
       // não a forma canônica: esta é chave de busca, aquela é o que o
       // corretor lê na tela. `telefoneWhatsapp` normaliza no envio.
       proprietarioTelefone: telefone ? telefoneBruto : null,
+      responsavel: celula(bruta, "responsavel") || null,
       tipo: celula(bruta, "tipo") || null,
+      quartos: lerInteiro(celula(bruta, "quartos")),
+      vagas: lerInteiro(celula(bruta, "vagas")),
       valorAluguel: lerValor(celula(bruta, "valorAluguel")),
       origemImovel: celula(bruta, "origemImovel") || null,
       observacoes: celula(bruta, "observacoes") || null,

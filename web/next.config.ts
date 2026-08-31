@@ -9,7 +9,7 @@ const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), 
 
 const nextConfig: NextConfig = {
   env: { NEXT_PUBLIC_APP_VERSION: pkg.version },
-  serverExternalPackages: ["@sparticuz/chromium", "playwright-core"],
+  serverExternalPackages: ["@sparticuz/chromium", "pdfjs-dist", "playwright-core"],
   outputFileTracingIncludes: {
     "/api/central-angariacao/buscar": [
       "./node_modules/@sparticuz/chromium/bin/**/*",
