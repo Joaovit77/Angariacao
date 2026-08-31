@@ -1,6 +1,33 @@
 import { getSupabase } from "./persistencia/supabase";
 import type { EventoInvestigacao } from "./calculo/investigadorImoveis";
 
+export interface ContextoInvestigador {
+  consulta: string;
+}
+
+export async function carregarContextoInvestigador(
+  imovelId: string,
+  signal?: AbortSignal,
+): Promise<ContextoInvestigador> {
+  const { data: { session } } = await getSupabase().auth.getSession();
+  if (!session) throw new Error("Sua sessão expirou. Entre novamente.");
+
+  const parametros = new URLSearchParams({ imovel: imovelId });
+  const resposta = await fetch(`/api/investigador-imoveis?${parametros}`, {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+    cache: "no-store",
+    signal,
+  });
+  const corpo = await resposta.json().catch(() => null) as (ContextoInvestigador & { mensagem?: string }) | null;
+  if (!resposta.ok || typeof corpo?.consulta !== "string") {
+    throw new Error(
+      corpo?.mensagem
+      || "Não foi possível carregar o imóvel indicado. Você ainda pode preencher a pesquisa manualmente.",
+    );
+  }
+  return { consulta: corpo.consulta };
+}
+
 export async function investigarImovel(
   consulta: string,
   aoEvento: (evento: EventoInvestigacao) => void,

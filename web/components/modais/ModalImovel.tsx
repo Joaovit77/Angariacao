@@ -31,6 +31,7 @@ import { fmtDate, fmtMoney } from "@/lib/formatadores";
 import { buscarCep, geocodeEndereco, maskCEP } from "@/lib/geo";
 import { canonizarValor, distintosCanonizados, nomeProprio } from "@/lib/normalizacao";
 import { canalObservado } from "@/lib/calculo/abordagens";
+import { urlInvestigadorDoImovel } from "@/lib/calculo/contextoInvestigador";
 import { podeDesdobrar } from "@/lib/calculo/desdobramento";
 import { descreverDuplicados, imoveisDuplicados } from "@/lib/calculo/duplicidade";
 import { unidadesDesdobradas } from "@/lib/calculo/motor";
@@ -217,6 +218,15 @@ export default function ModalImovel({ id }: { id?: string }) {
     if (!confirm("Alterações não salvas neste formulário serão perdidas. Continuar?")) return;
     fecharModal();
     router.push(`/avaliacao?imovel=${encodeURIComponent(imovel.id)}`);
+  }
+
+  /** Mesmo handoff seguro do drawer: a URL leva apenas o UUID e o
+      Investigador resolve os dados novamente antes de preencher a consulta. */
+  function irParaInvestigador() {
+    if (!imovel) return;
+    if (!confirm("Alterações não salvas neste formulário serão perdidas. Continuar?")) return;
+    fecharModal();
+    router.push(urlInvestigadorDoImovel(imovel.id));
   }
 
   async function aoBuscarCep() {
@@ -961,6 +971,11 @@ export default function ModalImovel({ id }: { id?: string }) {
           {imovel && (
             <button type="button" className="btn btn-ghost" onClick={irParaAvaliacao}>
               Avaliar imóvel
+            </button>
+          )}
+          {imovel && (
+            <button type="button" className="btn btn-ghost" onClick={irParaInvestigador}>
+              Investigar na web
             </button>
           )}
           {imovel && (

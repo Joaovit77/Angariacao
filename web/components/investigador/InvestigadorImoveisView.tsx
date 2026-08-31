@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   LIMITE_CONSULTA_INVESTIGADOR,
   type CorrespondenciaInvestigacao,
@@ -8,7 +8,7 @@ import {
   type ResultadoInvestigacao,
 } from "@/lib/calculo/investigadorImoveis";
 import { fmtMoney } from "@/lib/formatadores";
-import { investigarImovel } from "@/lib/investigadorImoveis";
+import { carregarContextoInvestigador, investigarImovel } from "@/lib/investigadorImoveis";
 import styles from "./InvestigadorImoveisView.module.css";
 
 type EtapaVisual = "preparando" | EtapaInvestigacao | "concluido";
@@ -119,13 +119,38 @@ function Processamento({ etapa }: { etapa: EtapaVisual }) {
   );
 }
 
-export default function InvestigadorImoveisView() {
+export default function InvestigadorImoveisView({ imovelIdInicial }: { imovelIdInicial?: string | null }) {
   const [consulta, setConsulta] = useState("");
+  const [carregandoContexto, setCarregandoContexto] = useState(Boolean(imovelIdInicial));
+  const [contextoCarregado, setContextoCarregado] = useState(false);
+  const [avisoContexto, setAvisoContexto] = useState("");
   const [processando, setProcessando] = useState(false);
   const [etapa, setEtapa] = useState<EtapaVisual | null>(null);
   const [consultasRealizadas, setConsultasRealizadas] = useState<string[]>([]);
   const [resultado, setResultado] = useState<ResultadoInvestigacao | null>(null);
   const [erro, setErro] = useState("");
+
+  useEffect(() => {
+    if (!imovelIdInicial) return;
+    const controlador = new AbortController();
+    carregarContextoInvestigador(imovelIdInicial, controlador.signal)
+      .then((contexto) => {
+        setConsulta(contexto.consulta);
+        setContextoCarregado(true);
+      })
+      .catch((causa) => {
+        if (causa instanceof DOMException && causa.name === "AbortError") return;
+        setAvisoContexto(
+          causa instanceof Error
+            ? causa.message
+            : "Não foi possível carregar o imóvel indicado. Você ainda pode preencher a pesquisa manualmente.",
+        );
+      })
+      .finally(() => {
+        if (!controlador.signal.aborted) setCarregandoContexto(false);
+      });
+    return () => controlador.abort();
+  }, [imovelIdInicial]);
 
   async function investigar(evento: FormEvent) {
     evento.preventDefault();
@@ -171,6 +196,13 @@ export default function InvestigadorImoveisView() {
         </div>
       </section>
 
+      {contextoCarregado ? (
+        <div className={styles.contexto} role="status">
+          Dados do imóvel carregados do Pipeline. Revise a consulta antes de investigar.
+        </div>
+      ) : null}
+      {avisoContexto ? <div className={styles.aviso} role="alert">{avisoContexto}</div> : null}
+
       <form className={styles.formulario} onSubmit={investigar}>
         <label htmlFor="consulta-investigador">O que você sabe sobre o imóvel?</label>
         <textarea
@@ -178,13 +210,17 @@ export default function InvestigadorImoveisView() {
           value={consulta}
           maxLength={LIMITE_CONSULTA_INVESTIGADOR}
           onChange={(evento) => setConsulta(evento.target.value)}
-          placeholder="Endereço, referência, condomínio ou características..."
+          placeholder={carregandoContexto ? "Carregando dados do imóvel…" : "Endereço, referência, condomínio ou características..."}
           rows={4}
-          disabled={processando}
+          disabled={processando || carregandoContexto}
         />
         <div className={styles.formularioRodape}>
-          <span>{consulta.length}/{LIMITE_CONSULTA_INVESTIGADOR} · Não inclua dados pessoais desnecessários.</span>
-          <button className="btn btn-primary" type="submit" disabled={processando || consulta.trim().length < 3}>
+          <span>
+            {carregandoContexto
+              ? "Resolvendo o imóvel com segurança…"
+              : `${consulta.length}/${LIMITE_CONSULTA_INVESTIGADOR} · Não inclua dados pessoais desnecessários.`}
+          </span>
+          <button className="btn btn-primary" type="submit" disabled={processando || carregandoContexto || consulta.trim().length < 3}>
             {processando ? "Investigando…" : "Investigar imóvel"}
           </button>
         </div>

@@ -12,9 +12,11 @@
    ================================================================ */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import Link from "next/link";
 import { useSessao } from "@/components/SessaoProvider";
 import BotaoAbordagemAnuncio from "./BotaoAbordagemAnuncio";
 import { resultadosPendentes, seloTentativas } from "@/lib/calculo/abordagens";
+import { urlInvestigadorDoImovel } from "@/lib/calculo/contextoInvestigador";
 import { selecionarFollowUp, selecionarVerificacaoDisponibilidade } from "@/lib/calculo/followup";
 import { deslocarStatusKanban, moverStatusKanban, ordenarStatusKanban, type OrdemKanban } from "@/lib/calculo/kanban";
 import {
@@ -608,6 +610,17 @@ function Drawer({ imovel }: { imovel: Imovel }) {
             <InfoDrawer label="Valor" value={fmtMoney(imovel.valorAluguel)} />
             <InfoDrawer label="Status" value={imovel.status || "-"} />
             <InfoDrawer label="Data de cadastro" value={fmtDate(imovel.dataAngariacao)} />
+          </div>
+          <div className="drawer-section">
+            <div className="drawer-section-title">Pesquisa na web</div>
+            <div className="drawer-notas-resumo">
+              <span className="drawer-notes">
+                Leve os dados conhecidos para uma busca revisável de possíveis correspondências.
+              </span>
+              <Link className="btn btn-sm" href={urlInvestigadorDoImovel(imovel.id)}>
+                Investigar na web
+              </Link>
+            </div>
           </div>
           <div className="drawer-section">
             <div className="drawer-section-title">Observacoes</div>
