@@ -2078,6 +2078,13 @@ O Investigador não cadastra, altera ou vincula imóveis, não chama o Assistent
 no banco nesta versão. Essa separação deixa uma futura ferramenta `buscar_imovel_na_web` reutilizar
 a mesma fronteira sem duplicar o provider.
 
+O Pipeline oferece um handoff contextual para essa superfície usando somente
+`/investigador-imoveis?imovel=<UUID>`. O UUID é validado e resolvido novamente após cada abertura ou
+refresh por uma rota autenticada, sob RLS e filtro explícito pelo `user_id` derivado da sessão. A
+resposta traz apenas uma consulta inicial com campos objetivos do imóvel, nunca dados do proprietário,
+e permanece editável; a pesquisa só começa após o clique do usuário. ID inválido, inexistente ou
+inacessível não revela outra conta e mantém o Investigador disponível para preenchimento manual.
+
 #### `api/admin/*` — o painel de quem opera
 
 Oito rotas (`eu`, `corretores`, `logs`, `ia`, `instancia`, `cargo`, `conexao`, `ambiente`) e um
