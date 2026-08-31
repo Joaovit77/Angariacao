@@ -25,7 +25,21 @@ interface LinhaHistoricoAvaliacao {
   nivel_confianca: NivelConfiancaAvaliacao;
   score_confianca: number;
   quantidade_comparaveis: number;
+  dados_entrada: EntradaAvaliacao;
   created_at: string;
+}
+
+interface LinhaAjusteValorAvaliacao {
+  avaliacao_id: string;
+  valor_final: number | string;
+  justificativa: string | null;
+  created_at: string;
+}
+
+export interface AjusteValorAvaliacao {
+  valorFinal: number;
+  justificativa: string | null;
+  criadoEm: string;
 }
 
 export interface HistoricoAvaliacao {
@@ -39,6 +53,10 @@ export interface HistoricoAvaliacao {
   nivelConfianca: NivelConfiancaAvaliacao;
   scoreConfianca: number;
   quantidadeComparaveis: number;
+  entrada: EntradaAvaliacao;
+  valorFinalCorretor: number | null;
+  justificativaValorFinal: string | null;
+  valorFinalEm: string | null;
   criadoEm: string;
 }
 
@@ -58,8 +76,24 @@ function doBanco(linha: LinhaHistoricoAvaliacao): HistoricoAvaliacao {
     nivelConfianca: linha.nivel_confianca,
     scoreConfianca: linha.score_confianca,
     quantidadeComparaveis: linha.quantidade_comparaveis,
+    entrada: linha.dados_entrada,
+    valorFinalCorretor: null,
+    justificativaValorFinal: null,
+    valorFinalEm: null,
     criadoEm: linha.created_at,
   };
+}
+
+function ajusteDoBanco(linha: LinhaAjusteValorAvaliacao): AjusteValorAvaliacao {
+  return {
+    valorFinal: Number(linha.valor_final),
+    justificativa: linha.justificativa,
+    criadoEm: linha.created_at,
+  };
+}
+
+function tabelaAjustesAusente(erro: { code?: string } | null): boolean {
+  return erro?.code === "42P01" || erro?.code === "PGRST205";
 }
 
 export async function registrarAvaliacao(
@@ -91,18 +125,66 @@ export async function registrarAvaliacao(
   return { id: String(data.id), criadoEm: String(data.created_at) };
 }
 
+export async function registrarValorFinalAvaliacao(
+  userId: string,
+  avaliacaoId: string,
+  valorFinal: number,
+  justificativa: string,
+): Promise<AjusteValorAvaliacao> {
+  const { data, error } = await getSupabase()
+    .from("ajustes_valor_avaliacao")
+    .insert({
+      user_id: userId,
+      avaliacao_id: avaliacaoId,
+      valor_final: valorFinal,
+      justificativa: justificativa.trim() || null,
+    })
+    .select("avaliacao_id, valor_final, justificativa, created_at")
+    .single();
+  if (error) throw error;
+  return ajusteDoBanco(data as LinhaAjusteValorAvaliacao);
+}
+
 export async function carregarHistoricoAvaliacoes(
   userId: string,
   imovelId?: string | null,
 ): Promise<HistoricoAvaliacao[]> {
   let consulta = getSupabase()
     .from("avaliacoes_imoveis")
-    .select("id, imovel_id, finalidade, valor_proprietario, valor_minimo, valor_recomendado, valor_maximo, nivel_confianca, score_confianca, quantidade_comparaveis, created_at")
+    .select("id, imovel_id, finalidade, valor_proprietario, valor_minimo, valor_recomendado, valor_maximo, nivel_confianca, score_confianca, quantidade_comparaveis, dados_entrada, created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(20);
   if (imovelId) consulta = consulta.eq("imovel_id", imovelId);
   const { data, error } = await consulta;
   if (error) throw error;
-  return ((data || []) as LinhaHistoricoAvaliacao[]).map(doBanco);
+  const avaliacoes = ((data || []) as LinhaHistoricoAvaliacao[]).map(doBanco);
+  if (!avaliacoes.length) return avaliacoes;
+
+  const { data: ajustes, error: erroAjustes } = await getSupabase()
+    .from("ajustes_valor_avaliacao")
+    .select("avaliacao_id, valor_final, justificativa, created_at")
+    .eq("user_id", userId)
+    .in("avaliacao_id", avaliacoes.map((item) => item.id))
+    .order("created_at", { ascending: false });
+  // Mantém a leitura do histórico compatível durante o intervalo entre o
+  // deploy do frontend e a aplicação do novo trecho do schema.
+  if (erroAjustes && !tabelaAjustesAusente(erroAjustes)) throw erroAjustes;
+  if (erroAjustes) return avaliacoes;
+
+  const ajusteMaisRecente = new Map<string, AjusteValorAvaliacao>();
+  for (const linha of (ajustes || []) as LinhaAjusteValorAvaliacao[]) {
+    if (!ajusteMaisRecente.has(linha.avaliacao_id)) {
+      ajusteMaisRecente.set(linha.avaliacao_id, ajusteDoBanco(linha));
+    }
+  }
+  return avaliacoes.map((avaliacao) => {
+    const ajuste = ajusteMaisRecente.get(avaliacao.id);
+    return ajuste ? {
+      ...avaliacao,
+      valorFinalCorretor: ajuste.valorFinal,
+      justificativaValorFinal: ajuste.justificativa,
+      valorFinalEm: ajuste.criadoEm,
+    } : avaliacao;
+  });
 }
