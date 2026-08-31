@@ -674,7 +674,7 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   (tentativa registrada), próxima ação pendente vinculada à carteira e meta do mês. Tudo é derivado
   dos dados escopados pela sessão; não existe flag, preferência ou coluna de ativação, e o bloco some
   quando as quatro etapas estão concluídas.
-- **`calculo/avaliacao.ts`** — motor determinístico da **Avaliação Rápida** (`/avaliacao`). A V4
+- **`calculo/avaliacao.ts`** — motor determinístico da **Avaliação Rápida** (`/avaliacao`). A V5
   combina a carteira com a base durável `comparaveis_mercado`. Na base externa, filtros de usuário,
   finalidade, cidade, família de tipo, área e quartos são aplicados no Postgres antes da ordenação
   vetorial; durante o preenchimento gradual, resultados estruturados complementam uma amostra
@@ -684,8 +684,13 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   bairro. Depois o motor ajusta parcialmente por área, remove outliers por mediana/desvio absoluto
   e usa mediana ponderada por estrutura, recência, estágio e origem para produzir faixa,
   recomendação e confiança. Com menos de três comparáveis locais, a busca pode ampliar a amostra
-  para imóveis estruturalmente compatíveis da mesma cidade e ainda apresenta uma **referência
+  somente para imóveis estruturalmente compatíveis da mesma região e ainda apresenta uma **referência
   preliminar**: confiança obrigatoriamente baixa, intervalo mais largo e sem estratégias de preço.
+  Em Londrina, a coordenada é classificada localmente por uma cópia simplificada dos polígonos
+  públicos da Lei 13.718/2023/SIGLON; nenhum endereço ou coordenada é enviado ao serviço municipal
+  durante a avaliação. A região persistida no catálogo ou o bairro oficial servem como fallback.
+  Se a região do imóvel não puder ser determinada, o motor mantém somente evidência local e nunca
+  usa "mesma cidade" como substituto de proximidade.
   Somente a ausência total de preço observado deixa o resultado sem valor. Preço externo é valor
   pedido, recebe peso menor e sozinho nunca produz confiança alta. Diferenciais informados, como
   móveis planejados e box nos banheiros, refinam a busca semântica quando ela está disponível, mas
@@ -2021,8 +2026,10 @@ mudam. A Avaliação Rápida reutiliza essa base sem chamar o coletor a cada cá
 consulta usa proxy básico e cache para manter o custo previsível; o fallback local preserva os
 mesmos campos estruturados quando o portal os disponibiliza.
 
-Para ampliações operacionais em Londrina, `calculo/regioesLondrina.ts` mantém os bairros separados
-pelas zonas oficiais Sul, Leste, Oeste e Norte. O script `npm run coletar:zonas` exige confirmação
+Para ampliações operacionais em Londrina, `calculo/regioesLondrina.ts` mantém os bairros nas cinco
+regiões oficiais (Central, Sul, Leste, Oeste e Norte) e os polígonos simplificados do SIGLON usados
+pela avaliação. A coleta paga continua restrita às quatro zonas solicitadas (Sul, Leste, Oeste e
+Norte). O script `npm run coletar:zonas` exige confirmação
 explícita e conta coletora, limita a rodada a 100 consultas Firecrawl sem repetição e desativa a
 geração de embeddings durante a carga; os dados estruturados já ficam disponíveis à avaliação.
 

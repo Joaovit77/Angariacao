@@ -20,6 +20,7 @@ interface LinhaComparavelMercado {
   endereco: string | null;
   bairro: string | null;
   cidade: string;
+  regiao?: string | null;
   area_m2: number | string | null;
   quartos: number | null;
   banheiros: number | null;
@@ -37,6 +38,11 @@ function numero(valor: number | string | null | undefined): number | null {
   if (valor == null) return null;
   const convertido = Number(valor);
   return Number.isFinite(convertido) ? convertido : null;
+}
+
+function somenteDataIso(valor: string | null | undefined): string | null {
+  const data = valor?.slice(0, 10) || "";
+  return /^\d{4}-\d{2}-\d{2}$/.test(data) ? data : null;
 }
 
 function tiposCompativeis(tipo: string): string[] {
@@ -79,6 +85,7 @@ export function mapearComparaveisMercado(
     endereco: linha.endereco || linha.titulo,
     bairro: linha.bairro,
     cidade: linha.cidade,
+    regiao: linha.regiao,
     edificio: null,
     tipo: linha.tipo || "Outro",
     areaM2: numero(linha.area_m2),
@@ -89,7 +96,7 @@ export function mapearComparaveisMercado(
     latitude: linha.latitude ?? null,
     longitude: linha.longitude ?? null,
     valorAnunciado: numero(linha.valor_anunciado) || 0,
-    dataInformacao: linha.publicado_em || linha.ultimo_visto_em,
+    dataInformacao: somenteDataIso(linha.publicado_em || linha.ultimo_visto_em),
     url: linha.url,
     status: rotuloStatus(linha.status_anuncio),
     similaridadeVetorial: numero(linha.similaridade_vetorial),
@@ -107,7 +114,7 @@ export async function carregarComparaveisMercadoComCliente(
 
   const { data, error } = await supabase
     .from("comparaveis_mercado")
-    .select("id, portal, id_externo, url, titulo, tipo, endereco, bairro, cidade, area_m2, quartos, banheiros, vagas, valor_anunciado, publicado_em, ultimo_visto_em, status_anuncio")
+    .select("id, portal, id_externo, url, titulo, tipo, endereco, bairro, cidade, regiao, area_m2, quartos, banheiros, vagas, valor_anunciado, publicado_em, ultimo_visto_em, status_anuncio")
     .eq("finalidade", entrada.finalidade)
     .eq("cidade_chave", cidadeChave)
     // Replica no banco os cortes mínimos do motor. Buscar primeiro os 500
