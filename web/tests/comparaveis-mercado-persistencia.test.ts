@@ -30,6 +30,7 @@ const anuncioValido: AnuncioCentralAngariacao = {
 
 function bancoComparaveisFalso() {
   const registros = new Map<string, string>();
+  const atualizacoesRegiao: Array<{ dados: Record<string, unknown>; ids: string[] }> = [];
   const rpc = vi.fn(async (
     _funcao: string,
     argumentos: { p_dados: Record<string, unknown> },
@@ -44,10 +45,25 @@ function bancoComparaveisFalso() {
       error: null,
     };
   });
+  const consultaAtualizacao = {
+    eq: vi.fn(() => consultaAtualizacao),
+    in: vi.fn(async (_coluna: string, ids: string[]) => {
+      atualizacoesRegiao.at(-1)!.ids = ids;
+      return { error: null };
+    }),
+  };
+  const from = vi.fn(() => ({
+    update: vi.fn((dados: Record<string, unknown>) => {
+      atualizacoesRegiao.push({ dados, ids: [] });
+      return consultaAtualizacao;
+    }),
+  }));
   return {
-    cliente: { rpc } as unknown as SupabaseClient,
+    cliente: { rpc, from } as unknown as SupabaseClient,
     registros,
     rpc,
+    from,
+    atualizacoesRegiao,
   };
 }
 
@@ -80,6 +96,18 @@ describe("persistência idempotente dos comparáveis de mercado", () => {
     expect(banco.registros.size).toBe(1);
   });
 
+  it("elimina identificadores repetidos dentro da mesma resposta do portal", async () => {
+    const banco = bancoComparaveisFalso();
+    const quantidade = await salvarComparaveisMercado(
+      banco.cliente,
+      "usuario-1",
+      [anuncioValido, { ...anuncioValido, titulo: "Card repetido" }],
+      filtros,
+    );
+    expect(quantidade).toBe(1);
+    expect(banco.rpc).toHaveBeenCalledOnce();
+  });
+
   it("converge para um registro ao repetir ou concorrer no mesmo anúncio", async () => {
     const banco = bancoComparaveisFalso();
 
@@ -91,5 +119,22 @@ describe("persistência idempotente dos comparáveis de mercado", () => {
     expect(banco.rpc).toHaveBeenCalledTimes(2);
     expect(banco.registros.size).toBe(1);
     expect(banco.registros.values().next().value).toBe("comparavel-1");
+  });
+
+  it("registra a zona somente nos anúncios pertencentes à conta coletora", async () => {
+    const banco = bancoComparaveisFalso();
+
+    await salvarComparaveisMercado(
+      banco.cliente,
+      "usuario-1",
+      [{ ...anuncioValido, bairro: "Bela Suíça" }],
+      { ...filtros, bairro: "Bela Suíça", regiao: "Zona Sul" },
+    );
+
+    expect(banco.from).toHaveBeenCalledWith("comparaveis_mercado");
+    expect(banco.atualizacoesRegiao).toEqual([{
+      dados: { regiao: "Zona Sul" },
+      ids: ["comparavel-1"],
+    }]);
   });
 });

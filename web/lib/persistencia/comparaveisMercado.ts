@@ -65,7 +65,14 @@ function rotuloStatus(status: string | null | undefined): string {
 export function mapearComparaveisMercado(
   linhas: LinhaComparavelMercado[],
 ): ComparavelAvaliacao[] {
-  return linhas.map((linha) => ({
+  const identidades = new Set<string>();
+  const unicas = linhas.filter((linha) => {
+    const identidade = `${linha.portal}:${linha.id_externo}`;
+    if (identidades.has(identidade)) return false;
+    identidades.add(identidade);
+    return true;
+  });
+  return unicas.map((linha) => ({
     origem: "externo",
     id: linha.id || `${linha.portal}:${linha.id_externo}`,
     codigo: linha.portal,
@@ -91,7 +98,7 @@ export function mapearComparaveisMercado(
 
 export async function carregarComparaveisMercadoComCliente(
   supabase: SupabaseClient,
-  userId: string,
+  _userId: string,
   entrada: EntradaAvaliacao,
 ): Promise<ComparavelAvaliacao[]> {
   if (entrada.finalidade !== "locacao") return [];
@@ -100,8 +107,7 @@ export async function carregarComparaveisMercadoComCliente(
 
   const { data, error } = await supabase
     .from("comparaveis_mercado")
-    .select("id, portal, id_externo, url, titulo, tipo, endereco, bairro, cidade, area_m2, quartos, banheiros, vagas, valor_anunciado, publicado_em, ultimo_visto_em")
-    .eq("user_id", userId)
+    .select("id, portal, id_externo, url, titulo, tipo, endereco, bairro, cidade, area_m2, quartos, banheiros, vagas, valor_anunciado, publicado_em, ultimo_visto_em, status_anuncio")
     .eq("finalidade", entrada.finalidade)
     .eq("cidade_chave", cidadeChave)
     // Replica no banco os cortes mínimos do motor. Buscar primeiro os 500

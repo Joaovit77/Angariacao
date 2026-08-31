@@ -4,6 +4,7 @@ import {
   avaliarImovel,
   calcularSimilaridade,
   compararPretensao,
+  descricaoSemanticaComDiferenciais,
   extrairAreaM2,
   internalComparablesProvider,
   type ComparavelAvaliacao,
@@ -113,14 +114,42 @@ describe("faixa robusta e confiança", () => {
     expect(resultado.estrategias).toHaveLength(3);
   });
 
-  it("não inventa valor quando existem menos de três comparáveis fortes", () => {
+  it("mostra referência preliminar, ampla e sem estratégias quando há só dois comparáveis", () => {
     const resultado = avaliarImovel(ENTRADA, BASE_COMPARAVEIS.slice(0, 2), HOJE);
+    expect(resultado.situacao).toBe("preliminar");
+    expect(resultado.valorMinimo).toBeLessThan(resultado.valorRecomendado!);
+    expect(resultado.valorRecomendado).not.toBeNull();
+    expect(resultado.valorMaximo).toBeGreaterThan(resultado.valorRecomendado!);
+    expect(resultado.nivelConfianca).toBe("Baixa");
+    expect(resultado.scoreConfianca).toBeLessThan(45);
+    expect(resultado.estrategias).toEqual([]);
+  });
+
+  it("só deixa de apresentar valor quando nenhum preço observado é compatível", () => {
+    const resultado = avaliarImovel(ENTRADA, [], HOJE);
     expect(resultado.situacao).toBe("insuficiente");
     expect(resultado.valorMinimo).toBeNull();
     expect(resultado.valorRecomendado).toBeNull();
     expect(resultado.valorMaximo).toBeNull();
-    expect(resultado.nivelConfianca).toBe("Baixa");
-    expect(resultado.estrategias).toEqual([]);
+    expect(resultado.scoreConfianca).toBe(0);
+  });
+
+  it("amplia a amostra para a mesma cidade sem promover a referência a avaliação completa", () => {
+    const mesmaCidade = BASE_COMPARAVEIS.slice(0, 4).map((item, indice) => ({
+      ...item,
+      id: `cidade-${indice}`,
+      edificio: null,
+      endereco: `Rua Distante ${indice}, 100`,
+      bairro: `Bairro ${indice}`,
+      latitude: null,
+      longitude: null,
+    }));
+    const resultado = avaliarImovel({ ...ENTRADA, edificio: null }, mesmaCidade, HOJE);
+    expect(resultado.situacao).toBe("preliminar");
+    expect(resultado.valorRecomendado).not.toBeNull();
+    expect(resultado.metodologia.modoAmostra).toBe("ampliada");
+    expect(resultado.metodologia.comparaveisLocaisAprovados).toBe(0);
+    expect(resultado.scoreConfianca).toBeLessThan(45);
   });
   it("não deixa casa, imóvel sem área ou bairro distante distorcer um apartamento de um quarto", () => {
     const entradaRoma: EntradaAvaliacao = {
@@ -178,6 +207,21 @@ describe("faixa robusta e confiança", () => {
     expect(resultado.situacao).toBe("calculada");
     expect(resultado.scoreConfianca).toBeLessThanOrEqual(74);
     expect(resultado.nivelConfianca).not.toBe("Alta");
+  });
+
+  it("reduz o peso de anúncio não encontrado ou removido sem apagar sua evidência histórica", () => {
+    const ativo = calcularSimilaridade(ENTRADA, {
+      ...BASE_COMPARAVEIS[0], origem: "externo", status: "Anunciado",
+    }, HOJE);
+    const naoEncontrado = calcularSimilaridade(ENTRADA, {
+      ...BASE_COMPARAVEIS[0], origem: "externo", status: "Não encontrado",
+    }, HOJE);
+    const removido = calcularSimilaridade(ENTRADA, {
+      ...BASE_COMPARAVEIS[0], origem: "externo", status: "Removido",
+    }, HOJE);
+    expect(naoEncontrado.pesoCalculo).toBeLessThan(ativo.pesoCalculo);
+    expect(removido.pesoCalculo).toBeLessThan(naoEncontrado.pesoCalculo);
+    expect(removido.valorAnunciado).toBe(ativo.valorAnunciado);
   });
 
 
@@ -240,6 +284,29 @@ describe("provedor interno", () => {
   });
 });
 
+describe("diferenciais da avaliação", () => {
+  it("acrescenta os diferenciais ao texto semântico sem inventar prêmio de preço", () => {
+    const texto = descricaoSemanticaComDiferenciais(
+      "Apartamento iluminado.",
+      ["moveis-planejados", "box-banheiros"],
+    );
+    expect(texto).toContain("Apartamento iluminado.");
+    expect(texto).toContain("Móveis planejados");
+    expect(texto).toContain("Box nos banheiros");
+  });
+
+  it("não aplica prêmio fixo aos diferenciais depois que os comparáveis foram escolhidos", () => {
+    const semDiferenciais = avaliarImovel(ENTRADA, BASE_COMPARAVEIS, HOJE);
+    const comDiferenciais = avaliarImovel({
+      ...ENTRADA,
+      diferenciais: ["moveis-planejados", "box-banheiros"],
+    }, BASE_COMPARAVEIS, HOJE);
+    expect(comDiferenciais.valorMinimo).toBe(semDiferenciais.valorMinimo);
+    expect(comDiferenciais.valorRecomendado).toBe(semDiferenciais.valorRecomendado);
+    expect(comDiferenciais.valorMaximo).toBe(semDiferenciais.valorMaximo);
+  });
+});
+
 describe("segurança e integração estrutural", () => {
   const schema = readFileSync(new URL("../../supabase-schema.sql", import.meta.url), "utf8");
   const tela = readFileSync(new URL("../components/avaliacao/AvaliacaoRapidaView.tsx", import.meta.url), "utf8");
@@ -254,9 +321,10 @@ describe("segurança e integração estrutural", () => {
     expect(schema).toContain("grant select, insert on table avaliacoes_imoveis to service_role");
     expect(schema).not.toContain("grant select, insert, update on table avaliacoes_imoveis to authenticated");
   });
-  it("mantém a base de mercado por usuário, sem permissão de exclusão", () => {
+  it("compartilha a leitura do catálogo e mantém a escrita por usuário, sem exclusão", () => {
     expect(schema).toContain("alter table comparaveis_mercado enable row level security");
-    expect(schema).toContain('create policy "select_own_comparaveis_mercado"');
+    expect(schema).toContain('create policy "select_catalogo_comparaveis_mercado"');
+    expect(schema).toContain("for select to authenticated using (true)");
     expect(schema).toContain('create policy "insert_own_comparaveis_mercado"');
     expect(schema).toContain('create policy "update_own_comparaveis_mercado"');
     expect(schema).toContain("grant select, insert, update on table comparaveis_mercado to authenticated");
@@ -272,5 +340,11 @@ describe("segurança e integração estrutural", () => {
     expect(publicacao).toBeGreaterThan(gravacao);
     expect(modal).toContain("/avaliacao?imovel=");
     expect(modal).toContain("Avaliar imóvel");
+  });
+
+  it("oferece diferenciais relevantes sem aplicar acréscimo fixo ao preço", () => {
+    expect(tela).toContain("Diferenciais do imóvel");
+    expect(tela).toContain("DIFERENCIAIS_AVALIACAO.map");
+    expect(tela).toContain("descricaoSemanticaComDiferenciais");
   });
 });

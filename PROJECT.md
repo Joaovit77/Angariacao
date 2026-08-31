@@ -674,7 +674,7 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   (tentativa registrada), próxima ação pendente vinculada à carteira e meta do mês. Tudo é derivado
   dos dados escopados pela sessão; não existe flag, preferência ou coluna de ativação, e o bloco some
   quando as quatro etapas estão concluídas.
-- **`calculo/avaliacao.ts`** — motor determinístico da **Avaliação Rápida** (`/avaliacao`). A V3
+- **`calculo/avaliacao.ts`** — motor determinístico da **Avaliação Rápida** (`/avaliacao`). A V4
   combina a carteira com a base durável `comparaveis_mercado`. Na base externa, filtros de usuário,
   finalidade, cidade, família de tipo, área e quartos são aplicados no Postgres antes da ordenação
   vetorial; durante o preenchimento gradual, resultados estruturados complementam uma amostra
@@ -683,8 +683,14 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   estrutural. Quando há ao menos três opções na mesma rua, elas prevalecem sobre as demais do
   bairro. Depois o motor ajusta parcialmente por área, remove outliers por mediana/desvio absoluto
   e usa mediana ponderada por estrutura, recência, estágio e origem para produzir faixa,
-  recomendação e confiança. Preço externo é valor pedido, recebe peso menor e sozinho nunca produz
-  confiança alta. A expectativa do proprietário é comparada somente depois e nunca entra no preço.
+  recomendação e confiança. Com menos de três comparáveis locais, a busca pode ampliar a amostra
+  para imóveis estruturalmente compatíveis da mesma cidade e ainda apresenta uma **referência
+  preliminar**: confiança obrigatoriamente baixa, intervalo mais largo e sem estratégias de preço.
+  Somente a ausência total de preço observado deixa o resultado sem valor. Preço externo é valor
+  pedido, recebe peso menor e sozinho nunca produz confiança alta. Diferenciais informados, como
+  móveis planejados e box nos banheiros, refinam a busca semântica quando ela está disponível, mas
+  não recebem acréscimo fixo inventado no preço. A expectativa do proprietário é comparada somente
+  depois e nunca entra no preço.
   Como `imoveis` e a base externa só têm locação, venda responde dados insuficientes. Área ausente
   não é inventada. Cada execução grava em `avaliacoes_imoveis` uma fotografia imutável da entrada,
   versão da metodologia e comparáveis utilizados.
@@ -693,10 +699,16 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   anúncios observados. A identidade aceita, em ordem, portal+código, URL canônica ou fingerprint
   forte; preço não faz parte dela. `observacoes_comparaveis_mercado` é append-only e conserva
   anúncio novo, mudança de preço/status, reaparecimento e confirmação diária. Ausência nunca prova
-  locação ou venda. O texto do embedding tem ordem e versão fixas; seu SHA-256, modelo e dimensão
+  locação ou venda. A URL identifica e permite revalidar a fonte, mas não prova que a oferta ainda
+  esteja ativa: `ultimo_visto_em` e `status_anuncio` carregam essa informação. Itens não encontrados,
+  removidos ou históricos preservam o preço observado e recebem peso progressivamente menor na
+  avaliação, sem serem apagados. O texto do embedding tem ordem e versão fixas; seu SHA-256, modelo e dimensão
   impedem geração repetida e comparação entre modelos diferentes. A V3 usa pgvector/HNSW com 512
   dimensões. Sem `OPENAI_API_KEY`, falha de geração ou RPC ainda não aplicada, a busca estruturada
-  da V2 continua funcionando.
+  da V2 continua funcionando. Como os anúncios dos portais são referências públicas de mercado,
+  sua leitura forma um catálogo único para todas as contas autenticadas. A conta coletora continua
+  registrada para auditoria e somente ela pode inserir ou alterar suas linhas; carteira, avaliações
+  e demais dados privados permanecem isolados por `user_id`.
 - **`calculo/centralAngariacao.ts` · `radarAngariacao.ts`** — contratos e regras da Central/Radar.
   Resultado de portal não é `Imovel` e só chega à carteira após revisão humana. As buscas cobrem
   OLX, Chaves na Mão, Wimoveis e Viva Real; o Radar persiste filtros e anúncios novos em tabelas
@@ -1999,13 +2011,20 @@ Pipeline; cidade é conferida exatamente para não misturar região metropolitan
 
 Central e cron do Radar compartilham a mesma finalização da coleta: normalizam os anúncios,
 confirmam a cidade e registram ou atualizam cada resultado válido em `comparaveis_mercado`, sempre
-sob o `user_id` autenticado ou pertencente à busca reclamada pelo cron. A deduplicação combina
+sob o `user_id` autenticado ou pertencente à busca reclamada pelo cron. A leitura da base é
+compartilhada entre contas autenticadas e elimina repetições de `portal + id_externo`; a escrita
+continua restrita ao coletor. A deduplicação na ingestão combina
 código externo, URL canônica e fingerprint forte; o trigger de
 observações conserva preço e status ao longo do tempo. Campos objetivos declarados continuam em
 colunas e a descrição normalizada recebe embedding somente quando seu SHA-256/modelo/dimensão
 mudam. A Avaliação Rápida reutiliza essa base sem chamar o coletor a cada cálculo. No Firecrawl, a
 consulta usa proxy básico e cache para manter o custo previsível; o fallback local preserva os
 mesmos campos estruturados quando o portal os disponibiliza.
+
+Para ampliações operacionais em Londrina, `calculo/regioesLondrina.ts` mantém os bairros separados
+pelas zonas oficiais Sul, Leste, Oeste e Norte. O script `npm run coletar:zonas` exige confirmação
+explícita e conta coletora, limita a rodada a 100 consultas Firecrawl sem repetição e desativa a
+geração de embeddings durante a carga; os dados estruturados já ficam disponíveis à avaliação.
 
 O Radar salva buscas e o baseline visto em `radar_buscas`/`radar_anuncios`. A chave única
 `busca_id + portal + id_externo` impede duplicatas entre consulta manual e monitor. O cron diário da
