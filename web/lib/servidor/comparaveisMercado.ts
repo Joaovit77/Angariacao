@@ -10,6 +10,7 @@ import {
 } from "@/lib/calculo/comparaveisMercado";
 import { chaveEndereco } from "@/lib/calculo/duplicidade";
 import { chaveNormalizada } from "@/lib/normalizacao";
+import { regiaoDeBairroLondrina } from "@/lib/calculo/regioesLondrina";
 import { agoraISOString } from "@/lib/datas";
 import {
   comCaracteristicasDoAnuncio,
@@ -62,6 +63,11 @@ function prepararRegistro(
   const cidade = anuncio.cidade?.trim() || filtros.cidade.trim();
   const cidadeChave = chaveNormalizada(cidade);
   if (!valor || valor <= 0 || !cidadeChave || !anuncio.url || !anuncio.titulo) return null;
+  const regiao = regiaoDeBairroLondrina(anuncio.bairro)
+    || (filtros.regiao && filtros.bairro && anuncio.bairro
+      && chaveNormalizada(anuncio.bairro) === chaveNormalizada(filtros.bairro)
+      ? filtros.regiao
+      : null);
 
   const sinais = {
     portal: anuncio.portal,
@@ -81,6 +87,7 @@ function prepararRegistro(
     tipo: anuncio.tipo,
     cidade,
     bairro: anuncio.bairro,
+    regiao,
     endereco: anuncio.endereco,
     areaPrivativaM2: anuncio.areaM2,
     areaTotalM2: anuncio.areaTotalM2,
@@ -117,6 +124,7 @@ function prepararRegistro(
       logradouro: endereco.logradouro,
       numero: endereco.numero,
       bairro: anuncio.bairro || null,
+      regiao,
       cidade,
       estado: filtros.estado,
       cidade_chave: cidadeChave,
@@ -185,6 +193,7 @@ async function salvarNoSchemaV2(
     tipo: dados.tipo,
     endereco: dados.endereco,
     bairro: dados.bairro,
+    regiao: dados.regiao,
     cidade: dados.cidade,
     estado: dados.estado,
     cidade_chave: dados.cidade_chave,
@@ -205,6 +214,21 @@ async function salvarNoSchemaV2(
   return linhas.length;
 }
 
+async function registrarRegiaoDaColeta(
+  supabase: SupabaseClient,
+  userId: string,
+  regiao: string | undefined,
+  registros: ResultadoRegistroRpc[],
+): Promise<void> {
+  if (!regiao || !registros.length) return;
+  const { error } = await supabase
+    .from("comparaveis_mercado")
+    .update({ regiao })
+    .eq("user_id", userId)
+    .in("id", registros.map((registro) => registro.id));
+  if (error) throw error;
+}
+
 export async function salvarComparaveisMercado(
   supabase: SupabaseClient,
   userId: string,
@@ -212,9 +236,16 @@ export async function salvarComparaveisMercado(
   filtros: FiltrosCentralAngariacao,
 ): Promise<number> {
   const observadoEm = agoraISOString();
+  const identidades = new Set<string>();
   const preparados = anuncios
     .map((anuncio) => prepararRegistro(anuncio, filtros, observadoEm, userId))
-    .filter((item): item is RegistroPreparado => !!item);
+    .filter((item): item is RegistroPreparado => {
+      if (!item) return false;
+      const identidade = `${item.dados.portal}:${item.dados.id_externo}`;
+      if (identidades.has(identidade)) return false;
+      identidades.add(identidade);
+      return true;
+    });
   if (!preparados.length) return 0;
 
   const registros: ResultadoRegistroRpc[] = [];
@@ -238,6 +269,16 @@ export async function salvarComparaveisMercado(
       return salvarNoSchemaV2(supabase, preparados);
     }
     throw erro;
+  }
+
+  const registrosPorRegiao = new Map<string, ResultadoRegistroRpc[]>();
+  registros.forEach((registro, indice) => {
+    const regiao = preparados[indice].dados.regiao;
+    if (typeof regiao !== "string" || !regiao) return;
+    registrosPorRegiao.set(regiao, [...(registrosPorRegiao.get(regiao) || []), registro]);
+  });
+  for (const [regiao, registrosDaRegiao] of registrosPorRegiao) {
+    await registrarRegiaoDaColeta(supabase, userId, regiao, registrosDaRegiao);
   }
 
   const pendentes = registros.flatMap((registro, indice) =>

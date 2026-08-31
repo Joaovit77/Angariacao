@@ -157,6 +157,7 @@ describe("busca e score híbridos", () => {
 describe("schema histórico e segurança", () => {
   const schema = readFileSync(new URL("../../supabase-schema.sql", import.meta.url), "utf8");
   const rota = readFileSync(new URL("../app/api/avaliacao/comparaveis/route.ts", import.meta.url), "utf8");
+  const persistencia = readFileSync(new URL("../lib/persistencia/comparaveisMercado.ts", import.meta.url), "utf8");
 
   it("registra preço/status em histórico append-only e não concede escrita ao cliente", () => {
     expect(schema).toContain("create table if not exists observacoes_comparaveis_mercado");
@@ -167,11 +168,15 @@ describe("schema histórico e segurança", () => {
     expect(schema).not.toContain("grant select, insert on table observacoes_comparaveis_mercado to authenticated");
   });
 
-  it("mantém RLS e filtros objetivos dentro da RPC vetorial", () => {
+  it("mantém RLS global autenticada e filtros objetivos dentro da RPC vetorial", () => {
     expect(schema).toContain("create extension if not exists vector with schema extensions");
     expect(schema).toContain("alter table observacoes_comparaveis_mercado enable row level security");
     expect(schema).toContain("security invoker");
-    expect(schema).toContain("c.user_id = (select auth.uid())");
+    expect(schema).toContain('create policy "select_catalogo_comparaveis_mercado"');
+    expect(schema).toContain("for select to authenticated using (true)");
+    expect(schema).not.toContain("where c.user_id = (select auth.uid())");
+    expect(schema).toContain("select distinct on (c.portal, c.id_externo) c.*");
+    expect(persistencia).not.toContain('.eq("user_id", userId)');
     expect(schema).toContain("c.finalidade = p_finalidade");
     expect(schema).toContain("c.embedding_modelo = p_embedding_modelo");
     expect(schema).toContain("c.embedding_dimensoes = p_embedding_dimensoes");

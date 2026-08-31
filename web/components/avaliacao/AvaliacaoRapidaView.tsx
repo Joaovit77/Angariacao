@@ -6,11 +6,14 @@ import EnderecoAutocompleteViaCep, {
   type EnderecoViaCepSelecionado,
 } from "@/components/formularios/EnderecoAutocompleteViaCep";
 import {
+  DIFERENCIAIS_AVALIACAO,
   avaliarImovel,
   compararPretensao,
+  descricaoSemanticaComDiferenciais,
   entradaDeImovel,
   internalComparablesProvider,
   type ConservacaoAvaliacao,
+  type DiferencialAvaliacao,
   type EntradaAvaliacao,
   type FinalidadeAvaliacao,
   type ResultadoAvaliacao,
@@ -43,6 +46,7 @@ interface FormularioAvaliacao {
   banheiros: number;
   vagas: number;
   conservacao: ConservacaoAvaliacao;
+  diferenciais: DiferencialAvaliacao[];
   latitude: number | null;
   longitude: number | null;
   valorProprietario: string;
@@ -70,6 +74,7 @@ const FORMULARIO_VAZIO: FormularioAvaliacao = {
   banheiros: 0,
   vagas: 0,
   conservacao: "Bom",
+  diferenciais: [],
   latitude: null,
   longitude: null,
   valorProprietario: "",
@@ -154,6 +159,15 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
     setFormulario((atual) => ({ ...atual, [campo]: valor }));
   }
 
+  function alternarDiferencial(diferencial: DiferencialAvaliacao) {
+    setFormulario((atual) => ({
+      ...atual,
+      diferenciais: atual.diferenciais.includes(diferencial)
+        ? atual.diferenciais.filter((item) => item !== diferencial)
+        : [...atual.diferenciais, diferencial],
+    }));
+  }
+
   function selecionarImovel(id: string) {
     const selecionado = imoveis.find((item) => item.id === id);
     if (!selecionado) {
@@ -226,7 +240,11 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
       banheiros: refinamentoAberto ? formulario.banheiros : null,
       vagas: formulario.vagas,
       conservacao: formulario.conservacao,
-      descricaoSemantica: imoveis.find((item) => item.id === formulario.imovelId)?.textoAnuncio || null,
+      diferenciais: formulario.diferenciais,
+      descricaoSemantica: descricaoSemanticaComDiferenciais(
+        imoveis.find((item) => item.id === formulario.imovelId)?.textoAnuncio,
+        formulario.diferenciais,
+      ),
       latitude,
       longitude,
     };
@@ -284,9 +302,14 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
   const resultado = avaliacao?.resultado;
   const temComparaveisInternos = !!resultado?.comparaveis.some((item) => item.origem === "interno");
   const temComparaveisExternos = !!resultado?.comparaveis.some((item) => item.origem === "externo");
-  const fonteResultado = temComparaveisInternos && temComparaveisExternos
+  const fonteResultado = !resultado?.comparaveis.length
+    ? "Sem base observada"
+    : temComparaveisInternos && temComparaveisExternos
     ? "Carteira + mercado"
     : (temComparaveisExternos ? "Mercado anunciado" : "Carteira interna");
+  const diferenciaisInformados = DIFERENCIAIS_AVALIACAO
+    .filter((item) => avaliacao?.entrada.diferenciais?.includes(item.id))
+    .map((item) => item.rotulo);
 
   const relacaoPretensao = compararPretensao(avaliacao?.valorProprietario, resultado?.valorRecomendado);
   const diferencaRefinamento = resultado?.valorRecomendado && avaliacao?.valorAnterior
@@ -394,6 +417,27 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
                 ))}
               </div>
             </div>
+            <fieldset className="avaliacao-diferenciais">
+              <legend>Diferenciais do imóvel</legend>
+              <p>Marque o que faz parte da unidade para buscar anúncios mais parecidos.</p>
+              <div>
+                {DIFERENCIAIS_AVALIACAO.map((diferencial) => {
+                  const selecionado = formulario.diferenciais.includes(diferencial.id);
+                  return (
+                    <button
+                      key={diferencial.id}
+                      type="button"
+                      className={selecionado ? "ativo" : ""}
+                      aria-pressed={selecionado}
+                      onClick={() => alternarDiferencial(diferencial.id)}
+                    >
+                      <span aria-hidden="true">{selecionado ? "✓" : "+"}</span>
+                      {diferencial.rotulo}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
             <button type="button" className="avaliacao-link" onClick={() => setRefinamentoAberto((aberto) => !aberto)} aria-expanded={refinamentoAberto}>
               {refinamentoAberto ? "Ocultar refinamento" : "Adicionar detalhes para refinar"}
             </button>
@@ -424,21 +468,31 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
         </form>
       ) : (
         <section className="avaliacao-resultado" aria-live="polite">
-          <div className={`avaliacao-resultado-principal ${resultado?.situacao === "insuficiente" ? "insuficiente" : ""}`}>
-            <span className="avaliacao-sobretitulo">Resultado registrado</span>
-            {resultado?.situacao === "calculada" ? (
+          <div className={`avaliacao-resultado-principal ${resultado?.situacao || ""}`}>
+            <span className="avaliacao-sobretitulo">
+              {resultado?.situacao === "preliminar" ? "Referência preliminar" : "Resultado registrado"}
+            </span>
+            {resultado && resultado.situacao !== "insuficiente" ? (
               <>
                 <h2>{fmtMoney(resultado.valorMinimo)} a {fmtMoney(resultado.valorMaximo)}</h2>
-                <p className="avaliacao-recomendado">Valor recomendado <strong>{fmtMoney(resultado.valorRecomendado)}</strong></p>
+                <p className="avaliacao-recomendado">
+                  {resultado.situacao === "preliminar" ? "Referência central" : "Valor recomendado"}{" "}
+                  <strong>{fmtMoney(resultado.valorRecomendado)}</strong>
+                </p>
                 <div className="avaliacao-faixa" aria-label={`Faixa de ${fmtMoney(resultado.valorMinimo)} a ${fmtMoney(resultado.valorMaximo)}`}>
                   <div className="avaliacao-faixa-trilho"><span /></div>
                   <div className="avaliacao-faixa-legendas"><span>{fmtMoney(resultado.valorMinimo)}</span><strong>{fmtMoney(resultado.valorRecomendado)}</strong><span>{fmtMoney(resultado.valorMaximo)}</span></div>
                 </div>
+                {resultado.situacao === "preliminar" && (
+                  <p className="avaliacao-alerta-preliminar">
+                    Amostra pequena ou mais distante. Use esta faixa para orientar a conversa e confirme com novos comparáveis antes de anunciar.
+                  </p>
+                )}
               </>
             ) : (
               <>
-                <h2>Dados insuficientes</h2>
-                <p>Não há comparáveis fortes o bastante para apresentar um valor responsável.</p>
+                <h2>Sem referência disponível</h2>
+                <p>Nenhum preço observado é compatível com este imóvel. Revise área, cidade e tipo ou atualize a base de mercado.</p>
               </>
             )}
             <div className="avaliacao-resumo-chips">
@@ -446,6 +500,11 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
               <span>Comparáveis <strong>{resultado?.comparaveis.length}</strong></span>
               <span>Fonte <strong>{fonteResultado}</strong></span>
             </div>
+            {diferenciaisInformados.length > 0 && (
+              <p className="avaliacao-diferenciais-informados">
+                <strong>Diferenciais informados:</strong> {diferenciaisInformados.join(" · ")}
+              </p>
+            )}
             {diferencaRefinamento !== 0 && (
               <p className="avaliacao-mudanca">O refinamento alterou a recomendação em {fmtMoney(Math.abs(diferencaRefinamento))} {diferencaRefinamento > 0 ? "para cima" : "para baixo"}.</p>
             )}

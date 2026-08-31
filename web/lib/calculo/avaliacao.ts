@@ -19,6 +19,17 @@ import { extrairAreaM2Declarada } from "./caracteristicasImovel";
 export type NivelConfiancaAvaliacao = "Baixa" | "Moderada" | "Boa" | "Alta";
 export type OrigemComparavelAvaliacao = "interno" | "externo";
 
+export const DIFERENCIAIS_AVALIACAO = [
+  { id: "moveis-planejados", rotulo: "Móveis planejados" },
+  { id: "box-banheiros", rotulo: "Box nos banheiros" },
+  { id: "ar-condicionado", rotulo: "Ar-condicionado" },
+  { id: "cozinha-equipada", rotulo: "Cozinha equipada" },
+  { id: "sacada", rotulo: "Sacada" },
+  { id: "area-lazer", rotulo: "Área de lazer" },
+] as const;
+
+export type DiferencialAvaliacao = typeof DIFERENCIAIS_AVALIACAO[number]["id"];
+
 export interface EntradaAvaliacao {
   imovelId?: string | null;
   finalidade: FinalidadeAvaliacao;
@@ -33,6 +44,7 @@ export interface EntradaAvaliacao {
   banheiros?: number | null;
   vagas: number;
   conservacao: ConservacaoAvaliacao;
+  diferenciais?: DiferencialAvaliacao[];
   descricaoSemantica?: string | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -95,7 +107,9 @@ export interface MetodologiaAvaliacao {
   scoreMinimo: number;
   comparaveisCandidatos: number;
   comparaveisAprovados: number;
+  comparaveisLocaisAprovados: number;
   comparaveisComEmbedding: number;
+  modoAmostra: "local" | "ampliada" | "sem-amostra";
   outliersRemovidos: number;
   medianaPonderada: number | null;
   medianaValorM2: number | null;
@@ -105,7 +119,7 @@ export interface MetodologiaAvaliacao {
 }
 
 export interface ResultadoAvaliacao {
-  situacao: "calculada" | "insuficiente";
+  situacao: "calculada" | "preliminar" | "insuficiente";
   valorMinimo: number | null;
   valorRecomendado: number | null;
   valorMaximo: number | null;
@@ -123,7 +137,7 @@ export interface ComparaveisProvider<Contexto = unknown> {
 }
 
 export const CONFIGURACAO_AVALIACAO = {
-  versao: "avaliacao-rapida-v3-hibrida",
+  versao: "avaliacao-rapida-v4-referencia-preliminar",
   scoreMinimo: 55,
   minimoComparaveis: 3,
   maximoComparaveis: 12,
@@ -262,6 +276,13 @@ function comparavelAtendeCriteriosMinimos(
   if (Math.abs(entrada.areaM2 - comparavel.areaM2) / entrada.areaM2 > 0.55) return false;
   if (comparavel.quartos == null || Math.abs(entrada.quartos - comparavel.quartos) > 1) return false;
 
+  return true;
+}
+
+function comparavelEhLocal(
+  entrada: EntradaAvaliacao,
+  comparavel: ComparavelAvaliacao,
+): boolean {
   const mesmoEdificio = mesmaLocalizacao(entrada.edificio, comparavel.edificio);
   const enderecoEntrada = chaveEndereco(entrada.endereco);
   const mesmoEndereco = !!enderecoEntrada && enderecoEntrada === chaveEndereco(comparavel.endereco);
@@ -324,6 +345,10 @@ function fatorStatus(status: string | null | undefined): number {
   if (status === "Locado") return 1;
   if (status === "Publicado") return 0.96;
   if (status === "Autorização assinada" || status === "Angariado") return 0.9;
+  if (status === "Anunciado") return 1;
+  if (status === "Possível negociação") return 0.7;
+  if (status === "Não encontrado") return 0.58;
+  if (status === "Removido" || status === "Histórico") return 0.45;
   return 0.78;
 }
 
@@ -470,6 +495,8 @@ function explicacaoResultado(
   entrada: EntradaAvaliacao,
   comparaveis: ComparavelAvaliado[],
   recomendado: number,
+  preliminar: boolean,
+  quantidadeLocais: number,
 ): string[] {
   const maisProximos = comparaveis.slice(0, Math.min(7, comparaveis.length));
   const menor = Math.min(...maisProximos.map((item) => item.valorAjustado));
@@ -477,10 +504,17 @@ function explicacaoResultado(
   const areaMedia = media(comparaveis.map((item) => item.areaM2 || 0).filter((area) => area > 0));
   const vagasMedia = media(comparaveis.map((item) => item.vagas ?? 0));
   const linhas = [
-    `${comparaveis.length} imóveis semelhantes passaram pelos critérios mínimos de localização e características.`,
+    `${comparaveis.length} imóveis semelhantes passaram pelos critérios objetivos de tipo, cidade, área e quartos.`,
     `Os ${maisProximos.length} comparáveis mais fortes apontam valores ajustados entre ${arredondar(menor)} e ${arredondar(maior)} reais.`,
     `A mediana ponderada por similaridade e recência ficou em ${recomendado} reais.`,
   ];
+  if (preliminar) {
+    linhas.unshift(
+      quantidadeLocais > 0
+        ? `A amostra possui apenas ${quantidadeLocais} ${quantidadeLocais === 1 ? "comparável local forte" : "comparáveis locais fortes"}; por isso a faixa foi ampliada e a confiança permanece baixa.`
+        : "A amostra foi ampliada para imóveis da mesma cidade porque não havia comparáveis fortes no entorno; por isso a faixa é apenas preliminar.",
+    );
+  }
   if (areaMedia > 0) {
     const diferenca = (entrada.areaM2 - areaMedia) / areaMedia;
     if (Math.abs(diferenca) >= 0.08) {
@@ -506,43 +540,53 @@ export function avaliarImovel(
   candidatos: ComparavelAvaliacao[],
   hoje: string,
 ): ResultadoAvaliacao {
-  const avaliadosAprovados = candidatos
+  const avaliadosEstruturais = candidatos
     .filter((item) => item.id !== entrada.imovelId && item.valorAnunciado > 0)
     .filter((item) => comparavelAtendeCriteriosMinimos(entrada, item))
     .map((item) => calcularSimilaridade(entrada, item, hoje))
     .filter((item) => item.similaridade >= CONFIGURACAO_AVALIACAO.scoreMinimo);
-  const mesmaRua = avaliadosAprovados.filter((item) =>
+  const avaliadosLocais = avaliadosEstruturais.filter((item) => comparavelEhLocal(entrada, item));
+  const mesmaRua = avaliadosLocais.filter((item) =>
     mesmoLogradouro(entrada.endereco, item.endereco)
   );
-  const avaliados = (mesmaRua.length >= CONFIGURACAO_AVALIACAO.minimoComparaveis
+  const locaisSelecionados = (mesmaRua.length >= CONFIGURACAO_AVALIACAO.minimoComparaveis
     ? mesmaRua
-    : avaliadosAprovados)
+    : avaliadosLocais);
+  const amostraAmpliada = locaisSelecionados.length < CONFIGURACAO_AVALIACAO.minimoComparaveis;
+  const avaliados = (amostraAmpliada ? avaliadosEstruturais : locaisSelecionados)
     .sort((a, b) => b.similaridade - a.similaridade || b.pesoCalculo - a.pesoCalculo)
     .slice(0, CONFIGURACAO_AVALIACAO.maximoComparaveis);
   const filtrados = semOutliers(avaliados);
+  const quantidadeLocais = filtrados.filter((item) => comparavelEhLocal(entrada, item)).length;
+  const resultadoPreliminar = amostraAmpliada
+    || filtrados.length < CONFIGURACAO_AVALIACAO.minimoComparaveis;
   const metodologiaBase = {
     versao: CONFIGURACAO_AVALIACAO.versao,
     scoreMinimo: CONFIGURACAO_AVALIACAO.scoreMinimo,
     comparaveisCandidatos: candidatos.length,
     comparaveisAprovados: filtrados.length,
+    comparaveisLocaisAprovados: quantidadeLocais,
     comparaveisComEmbedding: filtrados.filter((item) => item.similaridadeVetorial != null).length,
+    modoAmostra: filtrados.length === 0
+      ? "sem-amostra" as const
+      : resultadoPreliminar ? "ampliada" as const : "local" as const,
     outliersRemovidos: avaliados.length - filtrados.length,
     pesos: CONFIGURACAO_AVALIACAO.pesos,
     pesosComparabilidade: CONFIGURACAO_AVALIACAO.pesosComparabilidade,
   };
 
-  if (filtrados.length < CONFIGURACAO_AVALIACAO.minimoComparaveis) {
+  if (filtrados.length === 0) {
     return {
       situacao: "insuficiente",
       valorMinimo: null,
       valorRecomendado: null,
       valorMaximo: null,
       nivelConfianca: "Baixa",
-      scoreConfianca: Math.min(34, filtrados.length * 11),
+      scoreConfianca: 0,
       comparaveis: filtrados,
       explicacao: [
-        "Encontramos poucos imóveis realmente semelhantes para sustentar uma faixa de preço.",
-        "A avaliação não inventa um valor quando a base mínima de três comparáveis não é atingida.",
+        "Nenhum imóvel com preço observado passou pelos critérios mínimos de tipo, cidade, área e quartos.",
+        "Sem ao menos uma referência real, a avaliação não inventa um valor.",
       ],
       estrategias: [],
       metodologia: {
@@ -565,14 +609,19 @@ export function avaliarImovel(
   const q25 = quantilPonderado(itensPonderados, 0.25);
   const q75 = quantilPonderado(itensPonderados, 0.75);
   const dispersao = medianaPonderada > 0 ? (q75 - q25) / medianaPonderada : 1;
-  const confianca = scoreConfianca(entrada, filtrados, dispersao);
+  const confiancaCalculada = scoreConfianca(entrada, filtrados, dispersao);
+  const confianca = resultadoPreliminar ? Math.min(44, confiancaCalculada) : confiancaCalculada;
   const penalidade = (100 - confianca) / 100 * 0.13;
-  const meiaFaixa = limitar(Math.max(0.055, dispersao * 0.7) + penalidade, 0.07, 0.28);
+  const meiaFaixa = limitar(
+    Math.max(resultadoPreliminar ? 0.18 : 0.055, dispersao * 0.7) + penalidade,
+    resultadoPreliminar ? 0.18 : 0.07,
+    resultadoPreliminar ? 0.32 : 0.28,
+  );
   const recomendado = arredondar(medianaPonderada);
   const minimo = Math.min(recomendado, arredondar(medianaPonderada * (1 - meiaFaixa)));
   const maximo = Math.max(recomendado, arredondar(medianaPonderada * (1 + meiaFaixa)));
   const nivel = nivelConfianca(confianca);
-  const estrategias = confianca >= 45 ? [
+  const estrategias = !resultadoPreliminar && confianca >= 45 ? [
     {
       id: "rapida" as const,
       titulo: "Locação rápida",
@@ -594,14 +643,14 @@ export function avaliarImovel(
   ] : [];
 
   return {
-    situacao: "calculada",
+    situacao: resultadoPreliminar ? "preliminar" : "calculada",
     valorMinimo: minimo,
     valorRecomendado: recomendado,
     valorMaximo: maximo,
     nivelConfianca: nivel,
     scoreConfianca: confianca,
     comparaveis: filtrados,
-    explicacao: explicacaoResultado(entrada, filtrados, recomendado),
+    explicacao: explicacaoResultado(entrada, filtrados, recomendado, resultadoPreliminar, quantidadeLocais),
     estrategias,
     metodologia: {
       ...metodologiaBase,
@@ -610,6 +659,18 @@ export function avaliarImovel(
       dispersao: Math.round(dispersao * 1000) / 1000,
     },
   };
+}
+
+export function descricaoSemanticaComDiferenciais(
+  textoBase: string | null | undefined,
+  diferenciais: DiferencialAvaliacao[],
+): string | null {
+  const base = (textoBase || "").trim();
+  const rotulos = DIFERENCIAIS_AVALIACAO
+    .filter((item) => diferenciais.includes(item.id))
+    .map((item) => item.rotulo);
+  const resumo = rotulos.length ? `Diferenciais informados: ${rotulos.join(", ")}.` : "";
+  return [base, resumo].filter(Boolean).join("\n") || null;
 }
 
 /** Área declarada no texto original do anúncio. Não tenta inferir quando o

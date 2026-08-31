@@ -3190,8 +3190,9 @@ where tipo_familia is null and tipo is not null;
 alter table comparaveis_mercado enable row level security;
 
 drop policy if exists "select_own_comparaveis_mercado" on comparaveis_mercado;
-create policy "select_own_comparaveis_mercado" on comparaveis_mercado
-  for select to authenticated using ((select auth.uid()) = user_id);
+drop policy if exists "select_catalogo_comparaveis_mercado" on comparaveis_mercado;
+create policy "select_catalogo_comparaveis_mercado" on comparaveis_mercado
+  for select to authenticated using (true);
 
 drop policy if exists "insert_own_comparaveis_mercado" on comparaveis_mercado;
 create policy "insert_own_comparaveis_mercado" on comparaveis_mercado
@@ -3222,6 +3223,10 @@ create index if not exists idx_comparaveis_mercado_status_recencia
 create index if not exists idx_comparaveis_mercado_embedding_hnsw
   on comparaveis_mercado using hnsw (embedding extensions.vector_cosine_ops)
   where embedding is not null;
+create index if not exists idx_comparaveis_mercado_catalogo_busca
+  on comparaveis_mercado (cidade_chave, finalidade, ultimo_visto_em desc);
+create index if not exists idx_comparaveis_mercado_catalogo_bairro_tipo
+  on comparaveis_mercado (cidade_chave, bairro_chave, tipo);
 
 -- Uma única transação escolhe a identidade existente e a atualiza. A função
 -- é invoker: a RLS e os privilégios do chamador continuam valendo, e o user_id
@@ -3479,7 +3484,8 @@ after insert or update on comparaveis_mercado
 for each row execute function private.registrar_observacao_comparavel();
 
 -- Os filtros objetivos estão dentro da função, antes do ORDER BY vetorial.
--- SECURITY INVOKER + filtro explícito por auth.uid() mantém a RLS ativa.
+-- SECURITY INVOKER mantém a RLS ativa. O catálogo é legível por qualquer
+-- conta autenticada, enquanto as políticas de escrita continuam por dono.
 drop function if exists buscar_comparaveis_mercado_hibridos(
   extensions.vector, text, text, text, numeric, numeric, integer, integer, integer
 );
@@ -3509,6 +3515,19 @@ stable
 security invoker
 set search_path = ''
 as $$
+  with filtrados as (
+    select distinct on (c.portal, c.id_externo) c.*
+    from public.comparaveis_mercado c
+    where c.finalidade = p_finalidade
+      and c.embedding_modelo = p_embedding_modelo
+      and c.embedding_dimensoes = p_embedding_dimensoes
+      and c.cidade_chave = p_cidade_chave
+      and c.tipo_familia = p_tipo_familia
+      and coalesce(c.area_privativa_m2, c.area_m2) between p_area_min and p_area_max
+      and c.quartos between p_quartos_min and p_quartos_max
+      and c.embedding is not null
+    order by c.portal, c.id_externo, c.ultimo_visto_em desc
+  )
   select
     c.id, c.portal, c.id_externo, c.url, c.titulo, c.tipo, c.endereco,
     c.bairro, c.cidade, coalesce(c.area_privativa_m2, c.area_m2),
@@ -3518,16 +3537,7 @@ as $$
       1::double precision,
       1 - (c.embedding OPERATOR(extensions.<=>) p_query_embedding)
     )) as similaridade_vetorial
-  from public.comparaveis_mercado c
-  where c.user_id = (select auth.uid())
-    and c.finalidade = p_finalidade
-    and c.embedding_modelo = p_embedding_modelo
-    and c.embedding_dimensoes = p_embedding_dimensoes
-    and c.cidade_chave = p_cidade_chave
-    and c.tipo_familia = p_tipo_familia
-    and coalesce(c.area_privativa_m2, c.area_m2) between p_area_min and p_area_max
-    and c.quartos between p_quartos_min and p_quartos_max
-    and c.embedding is not null
+  from filtrados c
   order by c.embedding OPERATOR(extensions.<=>) p_query_embedding
   limit least(greatest(p_limite, 1), 200);
 $$;

@@ -283,5 +283,10 @@ describe("Central de Angariação", () => {
       areaM2: 70,
       quartos: 2,
     })]);
+    expect(extrairAnunciosFirecrawl(`${html}${html}`, {
+      portal: "wimoveis",
+      cidade: "Londrina",
+      estado: "PR",
+    })).toHaveLength(1);
   });
 });

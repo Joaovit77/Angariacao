@@ -152,6 +152,7 @@ function extrairChaves($: CheerioAPI): AnuncioCentralAngariacao[] {
 }
 
 function extrairWimoveis($: CheerioAPI, filtros: FiltrosCentralAngariacao): AnuncioCentralAngariacao[] {
+  const vistos = new Set<string>();
   return $('[data-qa="posting PROPERTY"], [data-to-posting*="/propriedades/"]')
     .slice(0, LIMITE_RESULTADOS).toArray().flatMap((elemento, indice) => {
       const card = $(elemento);
@@ -166,6 +167,9 @@ function extrairWimoveis($: CheerioAPI, filtros: FiltrosCentralAngariacao): Anun
       if (filtros.dormitorios != null && (!Number.isFinite(quartos) || quartos < filtros.dormitorios)) return [];
       const local = cidadeBairroWimoveis(texto(card.find('[data-qa="POSTING_CARD_LOCATION"]').first()));
       const url = new URL(urlParcial, "https://www.wimoveis.com.br").toString();
+      const identidade = card.attr("data-id") || url;
+      if (vistos.has(identidade)) return [];
+      vistos.add(identidade);
       return [{
         idExterno: card.attr("data-id") || idDoAnuncio("wimoveis", url, indice),
         portal: "wimoveis" as const,
@@ -216,7 +220,7 @@ function chaveCacheFirecrawl(filtros: FiltrosCentralAngariacao, urlPesquisa: str
   return createHash("sha256").update(dados).digest("hex");
 }
 
-async function buscarComFirecrawlAoVivo(
+export async function buscarComFirecrawlAoVivo(
   filtros: FiltrosCentralAngariacao,
   urlPesquisa: string,
 ): Promise<AnuncioCentralAngariacao[]> {

@@ -19,6 +19,7 @@ export interface FiltrosCentralAngariacao {
   cidade: string;
   estado: string;
   bairro?: string;
+  regiao?: string;
   tipo?: string;
   valorMin?: number | null;
   valorMax?: number | null;
