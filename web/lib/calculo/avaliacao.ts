@@ -12,6 +12,12 @@ import { daysBetween } from "../datas";
 import { chaveEndereco } from "./duplicidade";
 import { chaveNormalizada } from "../normalizacao";
 import type { Imovel } from "../tipos";
+import {
+  normalizarRegiaoLondrina,
+  regiaoDeBairroLondrina,
+  regiaoPorCoordenadasLondrina,
+  type RegiaoLondrina,
+} from "./regioesLondrina";
 
 export type FinalidadeAvaliacao = "locacao" | "venda";
 export type ConservacaoAvaliacao = "Regular" | "Bom" | "Excelente";
@@ -48,6 +54,7 @@ export interface EntradaAvaliacao {
   descricaoSemantica?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  regiao?: string | null;
 }
 
 export interface ComparavelAvaliacao {
@@ -57,6 +64,7 @@ export interface ComparavelAvaliacao {
   endereco: string;
   bairro?: string | null;
   cidade?: string | null;
+  regiao?: string | null;
   edificio?: string | null;
   tipo: string;
   areaM2?: number | null;
@@ -109,7 +117,8 @@ export interface MetodologiaAvaliacao {
   comparaveisAprovados: number;
   comparaveisLocaisAprovados: number;
   comparaveisComEmbedding: number;
-  modoAmostra: "local" | "ampliada" | "sem-amostra";
+  modoAmostra: "local" | "regional" | "sem-amostra";
+  regiaoReferencia: RegiaoLondrina | null;
   outliersRemovidos: number;
   medianaPonderada: number | null;
   medianaValorM2: number | null;
@@ -137,7 +146,7 @@ export interface ComparaveisProvider<Contexto = unknown> {
 }
 
 export const CONFIGURACAO_AVALIACAO = {
-  versao: "avaliacao-rapida-v4-referencia-preliminar",
+  versao: "avaliacao-rapida-v5-regional-siglon",
   scoreMinimo: 55,
   minimoComparaveis: 3,
   maximoComparaveis: 12,
@@ -299,6 +308,31 @@ function comparavelEhLocal(
     || mesmaRua
     || mesmoBairro
     || (distanciaKm != null && distanciaKm <= CONFIGURACAO_AVALIACAO.maximoDistanciaKm);
+}
+
+function regiaoDaEntrada(entrada: EntradaAvaliacao): RegiaoLondrina | null {
+  return normalizarRegiaoLondrina(entrada.regiao)
+    || regiaoPorCoordenadasLondrina(entrada.latitude, entrada.longitude)
+    || regiaoDeBairroLondrina(entrada.bairro);
+}
+
+function regiaoDoComparavel(comparavel: ComparavelAvaliacao): RegiaoLondrina | null {
+  return normalizarRegiaoLondrina(comparavel.regiao)
+    || regiaoPorCoordenadasLondrina(comparavel.latitude, comparavel.longitude)
+    || regiaoDeBairroLondrina(comparavel.bairro);
+}
+
+function comparavelAtendeRegiao(
+  entrada: EntradaAvaliacao,
+  comparavel: ComparavelAvaliacao,
+  regiaoReferencia: RegiaoLondrina | null,
+): boolean {
+  if (!regiaoReferencia) return comparavelEhLocal(entrada, comparavel);
+  const regiaoComparavel = regiaoDoComparavel(comparavel);
+  if (regiaoComparavel) return regiaoComparavel === regiaoReferencia;
+  // Um rótulo comercial desconhecido só entra quando há evidência espacial
+  // ou textual local. "Mesma cidade" não é evidência de mesma região.
+  return comparavelEhLocal(entrada, comparavel);
 }
 
 
@@ -497,6 +531,7 @@ function explicacaoResultado(
   recomendado: number,
   preliminar: boolean,
   quantidadeLocais: number,
+  amostraRegional: boolean,
 ): string[] {
   const maisProximos = comparaveis.slice(0, Math.min(7, comparaveis.length));
   const menor = Math.min(...maisProximos.map((item) => item.valorAjustado));
@@ -510,9 +545,11 @@ function explicacaoResultado(
   ];
   if (preliminar) {
     linhas.unshift(
-      quantidadeLocais > 0
-        ? `A amostra possui apenas ${quantidadeLocais} ${quantidadeLocais === 1 ? "comparável local forte" : "comparáveis locais fortes"}; por isso a faixa foi ampliada e a confiança permanece baixa.`
-        : "A amostra foi ampliada para imóveis da mesma cidade porque não havia comparáveis fortes no entorno; por isso a faixa é apenas preliminar.",
+      amostraRegional
+        ? quantidadeLocais > 0
+          ? `A amostra possui apenas ${quantidadeLocais} ${quantidadeLocais === 1 ? "comparável local forte" : "comparáveis locais fortes"}; a complementação ficou restrita à mesma região e a confiança permanece baixa.`
+          : "Não havia comparáveis fortes no entorno; a amostra foi ampliada somente dentro da mesma região e a faixa permanece preliminar."
+        : `A amostra possui apenas ${quantidadeLocais} ${quantidadeLocais === 1 ? "comparável local forte" : "comparáveis locais fortes"}; por isso a faixa permanece preliminar.`,
     );
   }
   if (areaMedia > 0) {
@@ -540,9 +577,11 @@ export function avaliarImovel(
   candidatos: ComparavelAvaliacao[],
   hoje: string,
 ): ResultadoAvaliacao {
+  const regiaoReferencia = regiaoDaEntrada(entrada);
   const avaliadosEstruturais = candidatos
     .filter((item) => item.id !== entrada.imovelId && item.valorAnunciado > 0)
     .filter((item) => comparavelAtendeCriteriosMinimos(entrada, item))
+    .filter((item) => comparavelAtendeRegiao(entrada, item, regiaoReferencia))
     .map((item) => calcularSimilaridade(entrada, item, hoje))
     .filter((item) => item.similaridade >= CONFIGURACAO_AVALIACAO.scoreMinimo);
   const avaliadosLocais = avaliadosEstruturais.filter((item) => comparavelEhLocal(entrada, item));
@@ -552,13 +591,14 @@ export function avaliarImovel(
   const locaisSelecionados = (mesmaRua.length >= CONFIGURACAO_AVALIACAO.minimoComparaveis
     ? mesmaRua
     : avaliadosLocais);
-  const amostraAmpliada = locaisSelecionados.length < CONFIGURACAO_AVALIACAO.minimoComparaveis;
-  const avaliados = (amostraAmpliada ? avaliadosEstruturais : locaisSelecionados)
+  const amostraRegional = !!regiaoReferencia
+    && locaisSelecionados.length < CONFIGURACAO_AVALIACAO.minimoComparaveis;
+  const avaliados = (amostraRegional ? avaliadosEstruturais : locaisSelecionados)
     .sort((a, b) => b.similaridade - a.similaridade || b.pesoCalculo - a.pesoCalculo)
     .slice(0, CONFIGURACAO_AVALIACAO.maximoComparaveis);
   const filtrados = semOutliers(avaliados);
   const quantidadeLocais = filtrados.filter((item) => comparavelEhLocal(entrada, item)).length;
-  const resultadoPreliminar = amostraAmpliada
+  const resultadoPreliminar = amostraRegional
     || filtrados.length < CONFIGURACAO_AVALIACAO.minimoComparaveis;
   const metodologiaBase = {
     versao: CONFIGURACAO_AVALIACAO.versao,
@@ -569,7 +609,8 @@ export function avaliarImovel(
     comparaveisComEmbedding: filtrados.filter((item) => item.similaridadeVetorial != null).length,
     modoAmostra: filtrados.length === 0
       ? "sem-amostra" as const
-      : resultadoPreliminar ? "ampliada" as const : "local" as const,
+      : amostraRegional ? "regional" as const : "local" as const,
+    regiaoReferencia,
     outliersRemovidos: avaliados.length - filtrados.length,
     pesos: CONFIGURACAO_AVALIACAO.pesos,
     pesosComparabilidade: CONFIGURACAO_AVALIACAO.pesosComparabilidade,
@@ -650,7 +691,14 @@ export function avaliarImovel(
     nivelConfianca: nivel,
     scoreConfianca: confianca,
     comparaveis: filtrados,
-    explicacao: explicacaoResultado(entrada, filtrados, recomendado, resultadoPreliminar, quantidadeLocais),
+    explicacao: explicacaoResultado(
+      entrada,
+      filtrados,
+      recomendado,
+      resultadoPreliminar,
+      quantidadeLocais,
+      amostraRegional,
+    ),
     estrategias,
     metodologia: {
       ...metodologiaBase,

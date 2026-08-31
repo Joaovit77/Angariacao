@@ -127,6 +127,19 @@ export async function POST(request: Request) {
     const vetoriais = mapearComparaveisMercado(
       (data || []) as Parameters<typeof mapearComparaveisMercado>[0],
     );
+    if (vetoriais.length) {
+      const { data: metadados, error: erroMetadados } = await sessao.supabase
+        .from("comparaveis_mercado")
+        .select("id, regiao")
+        .in("id", vetoriais.map((item) => item.id));
+      if (erroMetadados) throw erroMetadados;
+      const regiaoPorId = new Map(
+        (metadados || []).map((item) => [item.id, item.regiao as string | null]),
+      );
+      vetoriais.forEach((item) => {
+        item.regiao = regiaoPorId.get(item.id) ?? item.regiao ?? null;
+      });
+    }
     if (vetoriais.length < 3) {
       const complementares = await carregarComparaveisMercadoComCliente(
         sessao.supabase,

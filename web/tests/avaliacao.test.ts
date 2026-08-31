@@ -134,22 +134,51 @@ describe("faixa robusta e confiança", () => {
     expect(resultado.scoreConfianca).toBe(0);
   });
 
-  it("amplia a amostra para a mesma cidade sem promover a referência a avaliação completa", () => {
+  it("amplia a amostra somente dentro da mesma região sem promover a referência a avaliação completa", () => {
+    const bairrosCentrais = ["Higienópolis", "Ipiranga", "Petrópolis", "Quebec"];
     const mesmaCidade = BASE_COMPARAVEIS.slice(0, 4).map((item, indice) => ({
       ...item,
       id: `cidade-${indice}`,
       edificio: null,
       endereco: `Rua Distante ${indice}, 100`,
-      bairro: `Bairro ${indice}`,
+      bairro: bairrosCentrais[indice],
       latitude: null,
       longitude: null,
     }));
     const resultado = avaliarImovel({ ...ENTRADA, edificio: null }, mesmaCidade, HOJE);
     expect(resultado.situacao).toBe("preliminar");
     expect(resultado.valorRecomendado).not.toBeNull();
-    expect(resultado.metodologia.modoAmostra).toBe("ampliada");
+    expect(resultado.metodologia.modoAmostra).toBe("regional");
+    expect(resultado.metodologia.regiaoReferencia).toBe("Zona Central");
     expect(resultado.metodologia.comparaveisLocaisAprovados).toBe(0);
     expect(resultado.scoreConfianca).toBeLessThan(45);
+  });
+
+  it("não mistura Zona Norte com anúncios da Zona Leste ou Central", () => {
+    const entradaNovaOlinda: EntradaAvaliacao = {
+      ...ENTRADA,
+      endereco: "Rua Maria Bordon Ticianelli, 50",
+      bairro: "Nova Olinda",
+      edificio: null,
+      tipo: "Casa",
+      areaM2: 80,
+      quartos: 3,
+      vagas: 2,
+      latitude: -23.2778414,
+      longitude: -51.188041,
+    };
+    const candidatos = [
+      comparavel("norte-1", 1450, { tipo: "Casa", edificio: null, endereco: "Avenida A, 1", bairro: "Cinco Conjuntos", latitude: null, longitude: null, regiao: "Zona Norte" }),
+      comparavel("norte-2", 1750, { tipo: "Casa", edificio: null, endereco: "Rua B, 2", bairro: "Ouro Verde", latitude: null, longitude: null, regiao: "Norte 2" }),
+      comparavel("leste", 2200, { tipo: "Casa", edificio: null, endereco: "Rua Jupira, 3", bairro: "Jardim Oriente", latitude: null, longitude: null, regiao: "Zona Leste" }),
+      comparavel("central", 1500, { tipo: "Casa", edificio: null, endereco: "Rua Guararapes, 4", bairro: "Jardim Higienópolis", latitude: null, longitude: null }),
+    ];
+
+    const resultado = avaliarImovel(entradaNovaOlinda, candidatos, HOJE);
+
+    expect(resultado.metodologia.regiaoReferencia).toBe("Zona Norte");
+    expect(resultado.situacao).toBe("preliminar");
+    expect(resultado.comparaveis.map((item) => item.id).sort()).toEqual(["norte-1", "norte-2"]);
   });
   it("não deixa casa, imóvel sem área ou bairro distante distorcer um apartamento de um quarto", () => {
     const entradaRoma: EntradaAvaliacao = {

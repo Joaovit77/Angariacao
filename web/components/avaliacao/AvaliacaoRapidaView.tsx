@@ -485,7 +485,7 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
                 </div>
                 {resultado.situacao === "preliminar" && (
                   <p className="avaliacao-alerta-preliminar">
-                    Amostra pequena ou mais distante. Use esta faixa para orientar a conversa e confirme com novos comparáveis antes de anunciar.
+                    Amostra pequena ou regional. Use esta faixa para orientar a conversa e confirme com novos comparáveis antes de anunciar.
                   </p>
                 )}
               </>
@@ -499,6 +499,9 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
               <span>Confiança <strong>{resultado?.nivelConfianca} · {resultado?.scoreConfianca}%</strong></span>
               <span>Comparáveis <strong>{resultado?.comparaveis.length}</strong></span>
               <span>Fonte <strong>{fonteResultado}</strong></span>
+              {resultado?.metodologia.regiaoReferencia && (
+                <span>Região <strong>{resultado.metodologia.regiaoReferencia}</strong></span>
+              )}
             </div>
             {diferenciaisInformados.length > 0 && (
               <p className="avaliacao-diferenciais-informados">
@@ -538,7 +541,7 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
               {resultado?.comparaveis.length ? resultado.comparaveis.map((comparavel) => (
                 <article className="avaliacao-comparavel" key={`${comparavel.origem}-${comparavel.id}`}>
                   <div><strong>{comparavel.codigo || comparavel.endereco}</strong><span>{[comparavel.bairro, comparavel.cidade].filter(Boolean).join(" · ")}</span></div>
-                  <div className="avaliacao-comparavel-dados"><span>{comparavel.origem === "interno" ? "Fonte: carteira interna" : "Fonte externa"}</span><span>{comparavel.tipo}</span><span>{comparavel.areaM2 ? `${comparavel.areaM2} m²` : "Área não informada"}</span><span>{comparavel.quartos ?? "—"} quartos</span><span>{comparavel.vagas ?? "—"} vagas</span><span>{comparavel.distanciaKm == null ? "Distância aproximada" : `${comparavel.distanciaKm} km`}</span><span>Referência em {fmtDate(comparavel.dataInformacao)}</span></div>
+                  <div className="avaliacao-comparavel-dados"><span>{comparavel.origem === "interno" ? "Fonte: carteira interna" : "Fonte externa"}</span><span>{comparavel.regiao || resultado.metodologia.regiaoReferencia || "Região não identificada"}</span><span>{comparavel.tipo}</span><span>{comparavel.areaM2 ? `${comparavel.areaM2} m²` : "Área não informada"}</span><span>{comparavel.quartos ?? "—"} quartos</span><span>{comparavel.vagas ?? "—"} vagas</span><span>{comparavel.distanciaKm == null ? "Distância aproximada" : `${comparavel.distanciaKm} km`}</span><span>Referência em {fmtDate(comparavel.dataInformacao)}</span></div>
                   <div className="avaliacao-comparavel-valor"><strong>{fmtMoney(comparavel.valorAnunciado)}</strong><span>{comparavel.valorM2 ? `${fmtMoney(comparavel.valorM2)}/m²` : "Sem preço/m²"}</span></div>
                   <div className="avaliacao-similaridade"><span style={{ width: `${comparavel.comparabilidadeFinal}%` }} /><strong>{comparavel.comparabilidadeFinal}% comparável · estrutural {comparavel.similaridadeEstrutural}%{comparavel.similaridadeVetorial == null ? "" : ` · semântica ${Math.round(comparavel.similaridadeVetorial * 100)}%`}</strong></div>
                 </article>

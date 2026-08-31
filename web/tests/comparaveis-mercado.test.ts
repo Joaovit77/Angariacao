@@ -11,6 +11,7 @@ import {
 } from "@/lib/calculo/comparaveisMercado";
 import { avaliarImovel, type ComparavelAvaliacao, type EntradaAvaliacao } from "@/lib/calculo/avaliacao";
 import { extrairCaracteristicasImovel } from "@/lib/calculo/caracteristicasImovel";
+import { mapearComparaveisMercado } from "@/lib/persistencia/comparaveisMercado";
 
 const OFERTA: SinaisIdentidadeAnuncio = {
   portal: "olx",
@@ -151,6 +152,34 @@ describe("busca e score híbridos", () => {
       .toBeGreaterThan(resultado.comparaveis.at(-1)!.comparabilidadeFinal);
     expect(resultado.comparaveis[0].pesoCalculo)
       .toBeCloseTo(resultado.comparaveis[1].pesoCalculo, 8);
+  });
+});
+
+describe("adaptação do catálogo para a avaliação", () => {
+  it("preserva a região e reduz timestamptz à data civil exibível", () => {
+    const [comparavel] = mapearComparaveisMercado([{
+      id: "comparavel-1",
+      portal: "wimoveis",
+      id_externo: "123",
+      url: "https://www.wimoveis.com.br/imovel/123",
+      titulo: "Casa para alugar",
+      tipo: "Casa",
+      endereco: "Rua A, 10",
+      bairro: "Cinco Conjuntos",
+      cidade: "Londrina",
+      regiao: "Zona Norte",
+      area_m2: 80,
+      quartos: 3,
+      banheiros: 2,
+      vagas: 1,
+      valor_anunciado: 1800,
+      publicado_em: null,
+      ultimo_visto_em: "2026-08-31T14:10:03.720+00:00",
+      status_anuncio: "ativo",
+    }]);
+
+    expect(comparavel.regiao).toBe("Zona Norte");
+    expect(comparavel.dataInformacao).toBe("2026-08-31");
   });
 });
 
