@@ -3090,6 +3090,39 @@ create index if not exists idx_avaliacoes_imoveis_imovel
   on avaliacoes_imoveis (imovel_id)
   where imovel_id is not null;
 
+-- O cálculo permanece imutável. Quando o corretor adota outro valor comercial,
+-- registramos uma nova decisão em vez de reescrever a referência calculada.
+create table if not exists ajustes_valor_avaliacao (
+  id uuid primary key default gen_random_uuid(),
+  avaliacao_id uuid not null references avaliacoes_imoveis(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  valor_final numeric not null check (valor_final > 0),
+  justificativa text check (justificativa is null or char_length(justificativa) <= 500),
+  created_at timestamptz not null default now()
+);
+
+alter table ajustes_valor_avaliacao enable row level security;
+
+drop policy if exists "select_own_ajustes_valor_avaliacao" on ajustes_valor_avaliacao;
+create policy "select_own_ajustes_valor_avaliacao" on ajustes_valor_avaliacao
+  for select to authenticated using ((select auth.uid()) = user_id);
+
+drop policy if exists "insert_own_ajustes_valor_avaliacao" on ajustes_valor_avaliacao;
+create policy "insert_own_ajustes_valor_avaliacao" on ajustes_valor_avaliacao
+  for insert to authenticated with check (
+    (select auth.uid()) = user_id
+    and exists (
+      select 1 from avaliacoes_imoveis avaliacao
+      where avaliacao.id = avaliacao_id
+        and avaliacao.user_id = (select auth.uid())
+    )
+  );
+
+create index if not exists idx_ajustes_valor_avaliacao_user_avaliacao_data
+  on ajustes_valor_avaliacao (user_id, avaliacao_id, created_at desc);
+create index if not exists idx_ajustes_valor_avaliacao_avaliacao
+  on ajustes_valor_avaliacao (avaliacao_id);
+
 -- ------------------------------------------------------------
 -- BASE HISTÓRICA DE COMPARÁVEIS DO MERCADO
 --
@@ -3673,7 +3706,7 @@ revoke all on table
   imoveis, mensagens_agendadas, metas, agenda, abordagens, user_config,
   ia_permissoes, ia_sugestoes, ia_feedbacks, assistente_acoes, whatsapp_instancias, google_contas, admins, ia_uso,
   log_eventos, aceites_termos, protocolos, radar_buscas, radar_anuncios,
-  central_anuncios_visualizados, avaliacoes_imoveis, comparaveis_mercado,
+  central_anuncios_visualizados, avaliacoes_imoveis, ajustes_valor_avaliacao, comparaveis_mercado,
   observacoes_comparaveis_mercado
 from public, anon, authenticated, service_role;
 
@@ -3692,6 +3725,7 @@ grant select, insert, update, delete on table radar_buscas to authenticated;
 grant select, insert, update, delete on table radar_anuncios to authenticated;
 grant select, insert, update on table central_anuncios_visualizados to authenticated;
 grant select, insert on table avaliacoes_imoveis to authenticated;
+grant select, insert on table ajustes_valor_avaliacao to authenticated;
 grant select, insert, update on table comparaveis_mercado to authenticated;
 grant select on table observacoes_comparaveis_mercado to authenticated;
 
@@ -3704,5 +3738,6 @@ grant select, insert, update, delete on table
   central_anuncios_visualizados
 to service_role;
 grant select, insert on table avaliacoes_imoveis to service_role;
+grant select, insert on table ajustes_valor_avaliacao to service_role;
 grant select, insert, update on table comparaveis_mercado to service_role;
 grant select, insert on table observacoes_comparaveis_mercado to service_role;

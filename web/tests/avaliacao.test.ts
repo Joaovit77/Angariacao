@@ -371,6 +371,28 @@ describe("segurança e integração estrutural", () => {
     expect(modal).toContain("Avaliar imóvel");
   });
 
+  it("permite recalcular uma avaliação sem sobrescrever sua versão anterior", () => {
+    expect(tela).toContain("Ver histórico");
+    expect(tela).toContain("Editar e recalcular");
+    expect(tela).toContain("formularioDaAvaliacao(item.entrada");
+    expect(tela).toContain("Recalcular e salvar nova versão");
+    expect(tela).toContain("A versão anterior continuará intacta no histórico.");
+    expect(tela).not.toContain('.from("avaliacoes_imoveis").update');
+  });
+
+  it("separa o valor final do corretor da referência calculada e mantém auditoria append-only", () => {
+    expect(schema).toContain("create table if not exists ajustes_valor_avaliacao");
+    expect(schema).toContain("alter table ajustes_valor_avaliacao enable row level security");
+    expect(schema).toContain('create policy "select_own_ajustes_valor_avaliacao"');
+    expect(schema).toContain('create policy "insert_own_ajustes_valor_avaliacao"');
+    expect(schema).toContain("avaliacao.user_id = (select auth.uid())");
+    expect(schema).toContain("grant select, insert on table ajustes_valor_avaliacao to authenticated");
+    expect(schema).not.toContain("grant select, insert, update on table ajustes_valor_avaliacao");
+    expect(tela).toContain("Valor final definido pelo corretor");
+    expect(tela).toContain("Referência calculada preservada");
+    expect(tela).toContain("await registrarValorFinalAvaliacao");
+  });
+
   it("oferece diferenciais relevantes sem aplicar acréscimo fixo ao preço", () => {
     expect(tela).toContain("Diferenciais do imóvel");
     expect(tela).toContain("DIFERENCIAIS_AVALIACAO.map");

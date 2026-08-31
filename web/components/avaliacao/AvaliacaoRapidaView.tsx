@@ -25,6 +25,7 @@ import { geocodeEndereco } from "@/lib/geo";
 import {
   carregarHistoricoAvaliacoes,
   registrarAvaliacao,
+  registrarValorFinalAvaliacao,
   type HistoricoAvaliacao,
 } from "@/lib/persistencia/avaliacoes";
 import { buscarComparaveisMercado } from "@/lib/persistencia/comparaveisMercado";
@@ -53,11 +54,19 @@ interface FormularioAvaliacao {
 }
 
 interface AvaliacaoExibida {
+  id: string;
   entrada: EntradaAvaliacao;
   resultado: ResultadoAvaliacao;
   valorProprietario: number | null;
+  valorFinalCorretor: number | null;
+  justificativaValorFinal: string | null;
+  valorFinalEm: string | null;
   criadoEm: string;
   valorAnterior: number | null;
+}
+
+interface ReferenciaEdicaoAvaliacao {
+  criadoEm: string;
 }
 
 const FORMULARIO_VAZIO: FormularioAvaliacao = {
@@ -98,6 +107,33 @@ function formularioDoImovel(imovel: Imovel, finalidade: FinalidadeAvaliacao): Fo
     vagas: entrada.vagas ?? 0,
     latitude: entrada.latitude ?? null,
     longitude: entrada.longitude ?? null,
+  };
+}
+
+function formularioDaAvaliacao(
+  entrada: EntradaAvaliacao,
+  valorProprietario: number | null,
+  imovelId: string,
+): FormularioAvaliacao {
+  return {
+    ...FORMULARIO_VAZIO,
+    imovelId,
+    finalidade: entrada.finalidade,
+    endereco: entrada.endereco || "",
+    bairro: entrada.bairro || "",
+    cidade: entrada.cidade || "Londrina",
+    estado: entrada.estado || "PR",
+    edificio: entrada.edificio || "",
+    tipo: entrada.tipo || "Apartamento",
+    areaM2: entrada.areaM2 > 0 ? String(entrada.areaM2) : "",
+    quartos: entrada.quartos ?? 0,
+    banheiros: entrada.banheiros ?? 0,
+    vagas: entrada.vagas ?? 0,
+    conservacao: entrada.conservacao || "Bom",
+    diferenciais: [...(entrada.diferenciais || [])],
+    latitude: entrada.latitude ?? null,
+    longitude: entrada.longitude ?? null,
+    valorProprietario: valorProprietario == null ? "" : String(valorProprietario),
   };
 }
 
@@ -154,6 +190,11 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
   const [mostrarHistorico, setMostrarHistorico] = useState(false);
   const [historico, setHistorico] = useState<HistoricoAvaliacao[]>([]);
   const [carregandoHistorico, setCarregandoHistorico] = useState(false);
+  const [referenciaEdicao, setReferenciaEdicao] = useState<ReferenciaEdicaoAvaliacao | null>(null);
+  const [editorValorFinalAberto, setEditorValorFinalAberto] = useState(false);
+  const [valorFinalDigitado, setValorFinalDigitado] = useState("");
+  const [justificativaValorFinal, setJustificativaValorFinal] = useState("");
+  const [salvandoValorFinal, setSalvandoValorFinal] = useState(false);
 
   function atualizar<K extends keyof FormularioAvaliacao>(campo: K, valor: FormularioAvaliacao[K]) {
     setFormulario((atual) => ({ ...atual, [campo]: valor }));
@@ -169,6 +210,7 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
   }
 
   function selecionarImovel(id: string) {
+    setReferenciaEdicao(null);
     const selecionado = imoveis.find((item) => item.id === id);
     if (!selecionado) {
       setFormulario((atual) => ({
@@ -258,13 +300,28 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
       ]);
       const resultado = avaliarImovel(entrada, [...internos, ...externos], todayISO());
       const registro = await registrarAvaliacao(usuario.id, entrada, valorProprietario, resultado);
-      setAvaliacao({ entrada, resultado, valorProprietario, criadoEm: registro.criadoEm, valorAnterior });
+      const eraNovaVersao = referenciaEdicao !== null;
+      setAvaliacao({
+        id: registro.id,
+        entrada,
+        resultado,
+        valorProprietario,
+        valorFinalCorretor: null,
+        justificativaValorFinal: null,
+        valorFinalEm: null,
+        criadoEm: registro.criadoEm,
+        valorAnterior,
+      });
       setFormulario((atual) => ({ ...atual, latitude, longitude }));
       setValorAnterior(null);
+      setReferenciaEdicao(null);
+      setEditorValorFinalAberto(false);
+      setValorFinalDigitado("");
+      setJustificativaValorFinal("");
       setMostrarComparaveis(false);
       setMostrarCalculo(false);
       setMostrarHistorico(false);
-      toast("Avaliação registrada no histórico.");
+      toast(eraNovaVersao ? "Nova versão registrada; a avaliação anterior foi preservada." : "Avaliação registrada no histórico.");
     } catch (erro) {
       console.error("Falha ao registrar avaliação:", erro);
       toast("Não foi possível salvar a avaliação. Confira se o schema foi atualizado e tente novamente.", "error");
@@ -276,8 +333,67 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
 
   function refinar() {
     setValorAnterior(avaliacao?.resultado.valorRecomendado ?? null);
+    if (avaliacao) {
+      setReferenciaEdicao({
+        criadoEm: avaliacao.criadoEm,
+      });
+    }
     setRefinamentoAberto(true);
     setAvaliacao(null);
+  }
+
+  function abrirEditorValorFinal() {
+    const valorAtual = avaliacao?.valorFinalCorretor ?? avaliacao?.resultado.valorRecomendado;
+    setValorFinalDigitado(valorAtual == null ? "" : String(valorAtual));
+    setJustificativaValorFinal(avaliacao?.justificativaValorFinal || "");
+    setEditorValorFinalAberto(true);
+  }
+
+  async function salvarValorFinal(evento: FormEvent) {
+    evento.preventDefault();
+    if (!usuario || !avaliacao) return;
+    const valorFinal = Number(valorFinalDigitado.replace(",", "."));
+    if (!Number.isFinite(valorFinal) || valorFinal <= 0) {
+      toast("Informe um valor final válido.", "error");
+      return;
+    }
+    setSalvandoValorFinal(true);
+    try {
+      const ajuste = await registrarValorFinalAvaliacao(
+        usuario.id,
+        avaliacao.id,
+        valorFinal,
+        justificativaValorFinal,
+      );
+      setAvaliacao((atual) => atual ? {
+        ...atual,
+        valorFinalCorretor: ajuste.valorFinal,
+        justificativaValorFinal: ajuste.justificativa,
+        valorFinalEm: ajuste.criadoEm,
+      } : atual);
+      setEditorValorFinalAberto(false);
+      toast("Valor final do corretor registrado sem alterar a referência calculada.");
+    } catch (erro) {
+      console.error("Falha ao registrar valor final da avaliação:", erro);
+      toast("Não foi possível salvar o valor final. Confira se o novo schema foi aplicado.", "error");
+    } finally {
+      setSalvandoValorFinal(false);
+    }
+  }
+
+  function editarAvaliacaoHistorica(item: HistoricoAvaliacao) {
+    const imovelId = item.entrada.imovelId
+      && imoveis.some((imovel) => imovel.id === item.entrada.imovelId)
+      ? item.entrada.imovelId
+      : "";
+    setFormulario(formularioDaAvaliacao(item.entrada, item.valorProprietario, imovelId));
+    setRefinamentoAberto(item.entrada.banheiros != null || !!item.entrada.edificio);
+    setValorAnterior(item.valorRecomendado);
+    setReferenciaEdicao({
+      criadoEm: item.criadoEm,
+    });
+    setAvaliacao(null);
+    setMostrarHistorico(false);
   }
 
   async function alternarHistorico() {
@@ -320,15 +436,40 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
     <main className="avaliacao-pagina">
       <header className="avaliacao-cabecalho">
         <div className="avaliacao-cabecalho-icone"><IconeAvaliacao /></div>
-        <div>
+        <div className="avaliacao-cabecalho-texto">
           <span className="avaliacao-sobretitulo">Apoio à angariação</span>
           <h1>Avaliação Rápida de Imóvel</h1>
           <p>Uma faixa objetiva baseada na sua carteira e no histórico observado do mercado.</p>
         </div>
+        <button type="button" className="btn btn-ghost avaliacao-historico-atalho" onClick={alternarHistorico} disabled={carregandoHistorico}>
+          {carregandoHistorico ? "Carregando…" : mostrarHistorico ? "Fechar histórico" : "Ver histórico"}
+        </button>
       </header>
+
+      {mostrarHistorico && (
+        <div className="avaliacao-detalhes avaliacao-historico-painel">
+          <h3>Últimas avaliações {formulario.imovelId ? "deste imóvel" : "da conta"}</h3>
+          <div className="avaliacao-historico">
+            {historico.length ? historico.map((item) => (
+              <article key={item.id}>
+                <div><strong>{item.finalidade === "locacao" ? "Locação" : "Venda"}</strong><span>{fmtDataHora(item.criadoEm)}</span></div>
+                <strong>{item.valorFinalCorretor ? fmtMoney(item.valorFinalCorretor) : item.valorRecomendado ? fmtMoney(item.valorRecomendado) : "Sem faixa calculada"}</strong>
+                <span>{item.entrada.endereco || item.entrada.bairro || item.entrada.tipo} · {item.nivelConfianca} · {item.quantidadeComparaveis} comparáveis{item.valorFinalCorretor && item.valorRecomendado ? ` · referência calculada ${fmtMoney(item.valorRecomendado)}` : ""}</span>
+                <button type="button" className="avaliacao-historico-editar" onClick={() => editarAvaliacaoHistorica(item)}>Editar e recalcular</button>
+              </article>
+            )) : <p>Nenhuma avaliação anterior encontrada.</p>}
+          </div>
+        </div>
+      )}
 
       {!avaliacao ? (
         <form className="avaliacao-formulario" onSubmit={calcular}>
+          {referenciaEdicao && (
+            <div className="avaliacao-edicao-aviso">
+              <strong>Editando uma avaliação de {fmtDataHora(referenciaEdicao.criadoEm)}</strong>
+              <span>Altere os dados necessários e recalcule. A versão anterior continuará intacta no histórico.</span>
+            </div>
+          )}
           <section className="avaliacao-card">
             <div className="avaliacao-secao-titulo">
               <span>1</span>
@@ -462,7 +603,7 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
           </section>
 
           <button type="submit" className="btn btn-primary avaliacao-calcular" disabled={processando}>
-            {processando ? fase : "Calcular avaliação"}
+            {processando ? fase : referenciaEdicao ? "Recalcular e salvar nova versão" : "Calcular avaliação"}
           </button>
           <p className="avaliacao-rodape-form">Cálculo determinístico, sem IA definindo preço e sem consulta paga a cada avaliação.</p>
         </form>
@@ -513,6 +654,44 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
             )}
           </div>
 
+          {resultado?.valorRecomendado != null && (
+            <section className={`avaliacao-valor-final ${avaliacao.valorFinalCorretor != null ? "definido" : ""}`}>
+              <div className="avaliacao-valor-final-resumo">
+                <div>
+                  <span>{avaliacao.valorFinalCorretor != null ? "Valor final definido pelo corretor" : "Decisão comercial do corretor"}</span>
+                  {avaliacao.valorFinalCorretor != null ? (
+                    <>
+                      <strong>{fmtMoney(avaliacao.valorFinalCorretor)}</strong>
+                      <p>Referência calculada preservada em {fmtMoney(resultado.valorRecomendado)}{avaliacao.valorFinalEm ? ` · definida em ${fmtDataHora(avaliacao.valorFinalEm)}` : ""}.</p>
+                      {avaliacao.justificativaValorFinal && <p>Observação: {avaliacao.justificativaValorFinal}</p>}
+                    </>
+                  ) : (
+                    <p>Se a estratégia comercial pedir outro preço, registre-o sem alterar o cálculo técnico acima.</p>
+                  )}
+                </div>
+                <button type="button" className="btn" onClick={abrirEditorValorFinal}>
+                  {avaliacao.valorFinalCorretor != null ? "Alterar valor final" : "Definir valor final"}
+                </button>
+              </div>
+              {editorValorFinalAberto && (
+                <form className="avaliacao-valor-final-editor" onSubmit={salvarValorFinal}>
+                  <div className="field-group">
+                    <label>Valor final do corretor (R$)</label>
+                    <input type="number" min="1" step="50" inputMode="decimal" value={valorFinalDigitado} onChange={(e) => setValorFinalDigitado(e.target.value)} placeholder="Ex.: 2.200" autoFocus />
+                  </div>
+                  <div className="field-group">
+                    <label>Observação do ajuste <span>(opcional)</span></label>
+                    <input maxLength={500} value={justificativaValorFinal} onChange={(e) => setJustificativaValorFinal(e.target.value)} placeholder="Ex.: estratégia para acelerar a locação" />
+                  </div>
+                  <div className="avaliacao-valor-final-acoes">
+                    <button type="button" className="btn btn-ghost" onClick={() => setEditorValorFinalAberto(false)} disabled={salvandoValorFinal}>Cancelar</button>
+                    <button type="submit" className="btn btn-primary" disabled={salvandoValorFinal}>{salvandoValorFinal ? "Salvando…" : "Salvar valor final"}</button>
+                  </div>
+                </form>
+              )}
+            </section>
+          )}
+
           {relacaoPretensao && (
             <div className="avaliacao-pretensao">
               <span>Expectativa do proprietário</span>
@@ -530,9 +709,8 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
 
           <div className="avaliacao-acoes">
             <button type="button" className="btn btn-primary" onClick={() => setMostrarComparaveis((mostrar) => !mostrar)}>Ver imóveis comparáveis</button>
-            <button type="button" className="btn" onClick={refinar}>Refinar avaliação</button>
+            <button type="button" className="btn" onClick={refinar}>Editar dados e recalcular</button>
             <button type="button" className="btn" onClick={() => setMostrarCalculo((mostrar) => !mostrar)}>Entender o cálculo</button>
-            <button type="button" className="btn btn-ghost" onClick={alternarHistorico} disabled={carregandoHistorico}>{carregandoHistorico ? "Carregando…" : "Histórico"}</button>
           </div>
 
           {mostrarComparaveis && (
@@ -558,22 +736,11 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
             </div>
           )}
 
-          {mostrarHistorico && (
-            <div className="avaliacao-detalhes">
-              <h3>Últimas avaliações {formulario.imovelId ? "deste imóvel" : "da conta"}</h3>
-              <div className="avaliacao-historico">
-                {historico.length ? historico.map((item) => (
-                  <article key={item.id}><div><strong>{item.finalidade === "locacao" ? "Locação" : "Venda"}</strong><span>{fmtDataHora(item.criadoEm)}</span></div><strong>{item.valorRecomendado ? fmtMoney(item.valorRecomendado) : "Sem faixa calculada"}</strong><span>{item.nivelConfianca} · {item.quantidadeComparaveis} comparáveis</span></article>
-                )) : <p>Nenhuma avaliação anterior encontrada.</p>}
-              </div>
-            </div>
-          )}
-
           <div className="avaliacao-nota">
             <strong>Referência comercial, não laudo formal.</strong>
             <span>O resultado reflete os dados disponíveis na carteira e na base de mercado em {fmtDataHora(avaliacao.criadoEm)}. Não substitui avaliação técnica de engenharia ou perícia.</span>
           </div>
-          <button type="button" className="avaliacao-link avaliacao-nova" onClick={() => setAvaliacao(null)}>Fazer outra avaliação</button>
+          <button type="button" className="avaliacao-link avaliacao-nova" onClick={() => { setAvaliacao(null); setReferenciaEdicao(null); setEditorValorFinalAberto(false); }}>Fazer outra avaliação</button>
         </section>
       )}
     </main>

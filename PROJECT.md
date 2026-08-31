@@ -698,7 +698,11 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   depois e nunca entra no preço.
   Como `imoveis` e a base externa só têm locação, venda responde dados insuficientes. Área ausente
   não é inventada. Cada execução grava em `avaliacoes_imoveis` uma fotografia imutável da entrada,
-  versão da metodologia e comparáveis utilizados.
+  versão da metodologia e comparáveis utilizados. Uma avaliação histórica pode preencher novamente
+  o formulário para correção ou refinamento, mas o recálculo sempre cria uma nova execução e preserva
+  a versão anterior sem `UPDATE`. O corretor também pode registrar um valor comercial final diferente
+  da recomendação: essa decisão fica em `ajustes_valor_avaliacao`, de forma append-only e auditável,
+  enquanto a faixa e a referência calculadas permanecem inalteradas e visíveis.
 - **`calculo/comparaveisMercado.ts` · `servidor/comparaveisMercado.ts` ·
   `api/avaliacao/comparaveis`** — identidade, representação semântica, ingestão e busca híbrida dos
   anúncios observados. A identidade aceita, em ordem, portal+código, URL canônica ou fingerprint
