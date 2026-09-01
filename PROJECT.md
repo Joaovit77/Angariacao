@@ -2078,12 +2078,15 @@ O Investigador não cadastra, altera ou vincula imóveis, não chama o Assistent
 no banco nesta versão. Essa separação deixa uma futura ferramenta `buscar_imovel_na_web` reutilizar
 a mesma fronteira sem duplicar o provider.
 
-O Pipeline oferece um handoff contextual para essa superfície usando somente
-`/investigador-imoveis?imovel=<UUID>`. O UUID é validado e resolvido novamente após cada abertura ou
-refresh por uma rota autenticada, sob RLS e filtro explícito pelo `user_id` derivado da sessão. A
-resposta traz apenas uma consulta inicial com campos objetivos do imóvel, nunca dados do proprietário,
-e permanece editável; a pesquisa só começa após o clique do usuário. ID inválido, inexistente ou
-inacessível não revela outra conta e mantém o Investigador disponível para preenchimento manual.
+Pipeline, Radar e Central oferecem handoffs contextuais para essa superfície usando somente um UUID
+persistido e tipado na URL: `imovel`, `radarAnuncio` ou `comparavel`. O UUID é validado e resolvido
+novamente após cada abertura ou refresh por uma rota autenticada, sob RLS e filtro explícito pelo
+`user_id` derivado da sessão. No Radar a referência é `radar_anuncios.id`; na Central o atalho só
+aparece quando o resultado já possui `comparaveis_mercado.id`, sem persistir artificialmente anúncios
+inelegíveis ou transitórios. A resposta traz apenas uma consulta inicial com campos objetivos e
+públicos do imóvel ou anúncio, nunca dados do proprietário, preço ou descrição, e permanece editável;
+a pesquisa só começa após o clique do usuário. ID inválido, inexistente, ambíguo ou inacessível não
+revela outra conta e mantém o Investigador disponível para preenchimento manual.
 
 #### `api/admin/*` — o painel de quem opera
 

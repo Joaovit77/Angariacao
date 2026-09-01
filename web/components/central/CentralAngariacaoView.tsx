@@ -1,6 +1,7 @@
 "use client";
 
 import Image, { type ImageLoaderProps } from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSessao } from "@/components/SessaoProvider";
 import { ORIGEM_GARIMPO_SITE } from "@/lib/constantes";
@@ -23,6 +24,11 @@ import {
 } from "@/lib/calculo/repeticaoCentralAngariacao";
 import { fmtMoney } from "@/lib/formatadores";
 import { fmtDataHoraIso } from "@/lib/datas";
+import {
+  urlInvestigadorDoComparavel,
+  urlInvestigadorDoRadarAnuncio,
+} from "@/lib/calculo/contextoInvestigador";
+import { carregarIdsComparaveisDosAnuncios } from "@/lib/persistencia/referenciasInvestigador";
 import { carregarChavesAnunciosCentralVisualizados } from "@/lib/persistencia/historicoCentralAngariacao";
 import { marcarAnuncioCentralComoVisualizado } from "@/lib/mutacoes";
 import {
@@ -69,6 +75,7 @@ export default function CentralAngariacaoView() {
   const [nomeBuscaRadar, setNomeBuscaRadar] = useState("");
   const [verificandoRadar, setVerificandoRadar] = useState<string | null>(null);
   const [anunciosVisualizados, setAnunciosVisualizados] = useState<Set<string>>(() => new Set());
+  const [idsComparaveis, setIdsComparaveis] = useState<Map<string, string>>(() => new Map());
   const [mostrarOcultos, setMostrarOcultos] = useState(false);
   const radarNovos = useAppStore((s) => s.radarNovos);
   const setRadarNovos = useAppStore((s) => s.setRadarNovos);
@@ -130,6 +137,7 @@ export default function CentralAngariacaoView() {
   async function buscar() {
     if (!cidade.trim()) return;
     setBuscando(true);
+    setIdsComparaveis(new Map());
     const filtros = {
       portal,
       cidade,
@@ -145,6 +153,13 @@ export default function CentralAngariacaoView() {
     const dados = await buscarNaCentral(filtros);
     setResultado(dados);
     setFiltrosResultado(filtros);
+    if (usuario?.id && dados.anuncios.length) {
+      try {
+        setIdsComparaveis(await carregarIdsComparaveisDosAnuncios(usuario.id, dados.anuncios));
+      } catch {
+        toast("Os resultados foram carregados, mas os atalhos do Investigador estão indisponíveis agora.", "error");
+      }
+    }
     setBuscando(false);
     setAba("resultados");
   }
@@ -353,7 +368,11 @@ export default function CentralAngariacaoView() {
                           <strong className="central-price">{anuncio.preco ? fmtMoney(anuncio.preco) : "Preço não informado"}</strong>
                           <p>{[anuncio.endereco, anuncio.bairro, anuncio.cidade].filter(Boolean).join(" · ") || "Localização não informada"}</p>
                           <div className="central-radar-motivos">{avaliacao.motivos.slice(0, 3).map((motivo) => <span key={motivo}>✓ {motivo}</span>)}</div>
-                          <div className="central-card-actions"><a className="btn btn-ghost" href={anuncio.url} target="_blank" rel="noreferrer" onClick={() => void registrarVisualizacao(anuncio)}>Ver anúncio ↗</a><button className="btn btn-primary" type="button" disabled={duplicado} onClick={() => importar(anuncio)}>Revisar e importar</button></div>
+                          <div className="central-card-actions">
+                            <a className="btn btn-ghost" href={anuncio.url} target="_blank" rel="noreferrer" onClick={() => void registrarVisualizacao(anuncio)}>Ver anúncio ↗</a>
+                            <Link className="btn btn-ghost" href={urlInvestigadorDoRadarAnuncio(item.id)}>Investigar na web</Link>
+                            <button className="btn btn-primary" type="button" disabled={duplicado} onClick={() => importar(anuncio)}>Revisar e importar</button>
+                          </div>
                         </div>
                       </article>
                     );
@@ -451,6 +470,7 @@ export default function CentralAngariacaoView() {
             <div className="central-result-grid">
               {listaVisivel.map((anuncio) => {
                 const escolhido = selecionados.some((a) => a.url === anuncio.url);
+                const comparavelId = idsComparaveis.get(chaveAnuncio(anuncio));
                 const repeticao = repeticaoDo(anuncio);
                 const visualizado = anunciosVisualizados.has(chaveAnuncio(anuncio));
                 const duplicado = repeticao.ocultar;
@@ -484,6 +504,7 @@ export default function CentralAngariacaoView() {
                       <p>{[anuncio.endereco, anuncio.bairro, anuncio.cidade].filter(Boolean).join(" · ") || "Localização não informada"}</p>
                       <div className="central-card-actions">
                         <a className="btn btn-ghost" href={anuncio.url} target="_blank" rel="noreferrer" onClick={() => void registrarVisualizacao(anuncio)}>Ver anúncio ↗</a>
+                        {comparavelId ? <Link className="btn btn-ghost" href={urlInvestigadorDoComparavel(comparavelId)}>Investigar na web</Link> : null}
                         <button className="btn btn-ghost" type="button" onClick={() => alternarSelecionado(anuncio)}>{escolhido ? "Remover" : "Selecionar"}</button>
                         <button className="btn btn-primary" type="button" disabled={duplicado} onClick={() => importar(anuncio)}>Revisar e importar</button>
                       </div>
