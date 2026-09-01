@@ -703,6 +703,9 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   a versão anterior sem `UPDATE`. O corretor também pode registrar um valor comercial final diferente
   da recomendação: essa decisão fica em `ajustes_valor_avaliacao`, de forma append-only e auditável,
   enquanto a faixa e a referência calculadas permanecem inalteradas e visíveis.
+  Anúncios persistidos da Central e do Radar também podem preencher esse formulário por uma referência
+  curta resolvida sob a sessão. Eles não viram `Imovel`, não iniciam o cálculo automaticamente e o
+  anúncio-alvo é excluído da própria amostra por ID e identidade pública do portal.
 - **`calculo/comparaveisMercado.ts` · `servidor/comparaveisMercado.ts` ·
   `api/avaliacao/comparaveis`** — identidade, representação semântica, ingestão e busca híbrida dos
   anúncios observados. A identidade aceita, em ordem, portal+código, URL canônica ou fingerprint
@@ -2087,6 +2090,11 @@ inelegíveis ou transitórios. A resposta traz apenas uma consulta inicial com c
 públicos do imóvel ou anúncio, nunca dados do proprietário, preço ou descrição, e permanece editável;
 a pesquisa só começa após o clique do usuário. ID inválido, inexistente, ambíguo ou inacessível não
 revela outra conta e mantém o Investigador disponível para preenchimento manual.
+
+Central e Radar usam o mesmo princípio para abrir a Avaliação Rápida: `comparaveis_mercado.id` na
+Central e `radar_anuncios.id` no Radar. A resolução autenticada preenche apenas dados objetivos e
+editáveis; o preço anunciado não ocupa o campo de expectativa do proprietário. Resultado transitório
+sem referência persistida permanece sem atalho, e avaliações externas conservam `imovel_id = null`.
 
 #### `api/admin/*` — o painel de quem opera
 

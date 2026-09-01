@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useSessao } from "@/components/SessaoProvider";
 import EnderecoAutocompleteViaCep, {
   type EnderecoViaCepSelecionado,
@@ -16,8 +16,14 @@ import {
   type DiferencialAvaliacao,
   type EntradaAvaliacao,
   type FinalidadeAvaliacao,
+  type OrigemExternaAvaliacao,
   type ResultadoAvaliacao,
 } from "@/lib/calculo/avaliacao";
+import type {
+  PrefillAvaliacao,
+  ReferenciaContextoAvaliacao,
+} from "@/lib/calculo/contextoAvaliacao";
+import { carregarContextoAvaliacao } from "@/lib/contextoAvaliacao";
 import { TIPOS_IMOVEL } from "@/lib/constantes";
 import { todayISO } from "@/lib/datas";
 import { fmtDataHora, fmtDate, fmtMoney } from "@/lib/formatadores";
@@ -142,6 +148,22 @@ function formularioInicial(imoveis: Imovel[], imovelIdInicial?: string | null): 
   return imovel ? formularioDoImovel(imovel, "locacao") : { ...FORMULARIO_VAZIO };
 }
 
+function formularioDoContexto(prefill: PrefillAvaliacao): FormularioAvaliacao {
+  return {
+    ...FORMULARIO_VAZIO,
+    finalidade: prefill.finalidade,
+    endereco: prefill.endereco || "",
+    bairro: prefill.bairro || "",
+    cidade: prefill.cidade || FORMULARIO_VAZIO.cidade,
+    estado: prefill.estado || FORMULARIO_VAZIO.estado,
+    tipo: prefill.tipo || FORMULARIO_VAZIO.tipo,
+    areaM2: prefill.areaM2 && prefill.areaM2 > 0 ? String(prefill.areaM2) : "",
+    quartos: prefill.quartos ?? 0,
+    banheiros: prefill.banheiros ?? 0,
+    vagas: prefill.vagas ?? 0,
+  };
+}
+
 function ControleQuantidade({
   rotulo,
   valor,
@@ -176,7 +198,13 @@ function IconeAvaliacao() {
   );
 }
 
-export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInicial?: string | null }) {
+export default function AvaliacaoRapidaView({
+  imovelIdInicial,
+  referenciaInicial,
+}: {
+  imovelIdInicial?: string | null;
+  referenciaInicial?: ReferenciaContextoAvaliacao | null;
+}) {
   const { usuario } = useSessao();
   const imoveis = useAppStore((estado) => estado.imoveis);
   const [formulario, setFormulario] = useState(() => formularioInicial(imoveis, imovelIdInicial));
@@ -195,6 +223,31 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
   const [valorFinalDigitado, setValorFinalDigitado] = useState("");
   const [justificativaValorFinal, setJustificativaValorFinal] = useState("");
   const [salvandoValorFinal, setSalvandoValorFinal] = useState(false);
+  const [carregandoContexto, setCarregandoContexto] = useState(Boolean(referenciaInicial));
+  const [origemExterna, setOrigemExterna] = useState<OrigemExternaAvaliacao | null>(null);
+  const [origemContexto, setOrigemContexto] = useState<"central" | "radar" | null>(null);
+  const [avisoContexto, setAvisoContexto] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!referenciaInicial) return;
+    const controle = new AbortController();
+    carregarContextoAvaliacao(referenciaInicial, controle.signal)
+      .then((contexto) => {
+        setFormulario(formularioDoContexto(contexto.prefill));
+        setOrigemExterna(contexto.origemExterna);
+        setOrigemContexto(contexto.origem);
+        setRefinamentoAberto(contexto.prefill.banheiros != null);
+        setAvisoContexto(null);
+      })
+      .catch((erro) => {
+        if (controle.signal.aborted) return;
+        setAvisoContexto(erro instanceof Error ? erro.message : "Não foi possível carregar o anúncio indicado.");
+      })
+      .finally(() => {
+        if (!controle.signal.aborted) setCarregandoContexto(false);
+      });
+    return () => controle.abort();
+  }, [referenciaInicial]);
 
   function atualizar<K extends keyof FormularioAvaliacao>(campo: K, valor: FormularioAvaliacao[K]) {
     setFormulario((atual) => ({ ...atual, [campo]: valor }));
@@ -211,6 +264,9 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
 
   function selecionarImovel(id: string) {
     setReferenciaEdicao(null);
+    setOrigemExterna(null);
+    setOrigemContexto(null);
+    setAvisoContexto(null);
     const selecionado = imoveis.find((item) => item.id === id);
     if (!selecionado) {
       setFormulario((atual) => ({
@@ -289,6 +345,7 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
       ),
       latitude,
       longitude,
+      origemExterna,
     };
     const valorProprietario = Number(formulario.valorProprietario.replace(",", ".")) || null;
 
@@ -387,6 +444,8 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
       ? item.entrada.imovelId
       : "";
     setFormulario(formularioDaAvaliacao(item.entrada, item.valorProprietario, imovelId));
+    setOrigemExterna(item.entrada.origemExterna || null);
+    setOrigemContexto(item.entrada.origemExterna?.tipo === "comparavel" ? "central" : item.entrada.origemExterna ? "radar" : null);
     setRefinamentoAberto(item.entrada.banheiros != null || !!item.entrada.edificio);
     setValorAnterior(item.valorRecomendado);
     setReferenciaEdicao({
@@ -469,6 +528,21 @@ export default function AvaliacaoRapidaView({ imovelIdInicial }: { imovelIdInici
               <strong>Editando uma avaliação de {fmtDataHora(referenciaEdicao.criadoEm)}</strong>
               <span>Altere os dados necessários e recalcule. A versão anterior continuará intacta no histórico.</span>
             </div>
+          )}
+          {carregandoContexto && (
+            <div className="avaliacao-edicao-aviso" role="status">
+              <strong>Carregando dados do anúncio…</strong>
+              <span>A avaliação não será executada automaticamente.</span>
+            </div>
+          )}
+          {!carregandoContexto && origemContexto && (
+            <div className="avaliacao-edicao-aviso">
+              <strong>Dados preenchidos a partir {origemContexto === "central" ? "da Central" : "do Radar"}</strong>
+              <span>Revise e complete o formulário. O valor anunciado não foi usado como expectativa nem como insumo do cálculo.</span>
+            </div>
+          )}
+          {!carregandoContexto && avisoContexto && (
+            <div className="avaliacao-aviso" role="alert">{avisoContexto}</div>
           )}
           <section className="avaliacao-card">
             <div className="avaliacao-secao-titulo">

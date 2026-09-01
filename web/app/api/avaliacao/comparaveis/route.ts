@@ -1,5 +1,11 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { EntradaAvaliacao } from "@/lib/calculo/avaliacao";
+import {
+  comparavelEhOProprioAnuncio,
+  type EntradaAvaliacao,
+  type OrigemExternaAvaliacao,
+} from "@/lib/calculo/avaliacao";
+import { contextoAvaliacaoIdValido } from "@/lib/calculo/contextoAvaliacao";
+import { PORTAIS_ANGARIACAO } from "@/lib/calculo/centralAngariacao";
 import {
   CONFIGURACAO_COMPARAVEIS_MERCADO,
   familiaTipoMercado,
@@ -45,12 +51,38 @@ function entradaValida(valor: unknown): valor is EntradaAvaliacao {
     && typeof item.tipo === "string"
     && typeof item.areaM2 === "number" && item.areaM2 >= 10 && item.areaM2 <= 10000
     && typeof item.quartos === "number" && Number.isInteger(item.quartos)
-    && item.quartos >= 0 && item.quartos <= 30;
+    && item.quartos >= 0 && item.quartos <= 30
+    && origemExternaValida(item.origemExterna);
+}
+
+function origemExternaValida(valor: unknown): valor is OrigemExternaAvaliacao | null | undefined {
+  if (valor == null) return true;
+  if (typeof valor !== "object") return false;
+  const origem = valor as Partial<OrigemExternaAvaliacao>;
+  return (origem.tipo === "comparavel" || origem.tipo === "radar-anuncio")
+    && contextoAvaliacaoIdValido(origem.referenciaId)
+    && (origem.comparavelId == null || contextoAvaliacaoIdValido(origem.comparavelId))
+    && typeof origem.portal === "string"
+    && PORTAIS_ANGARIACAO.includes(origem.portal as (typeof PORTAIS_ANGARIACAO)[number])
+    && typeof origem.idExterno === "string"
+    && origem.idExterno.trim().length > 0
+    && origem.idExterno.length <= 500;
 }
 
 function textoLimitado(valor: string | null | undefined, limite: number): string | null {
   const limpo = (valor || "").replace(/\s+/g, " ").trim();
   return limpo ? limpo.slice(0, limite) : null;
+}
+
+function origemExternaSegura(origem: OrigemExternaAvaliacao | null | undefined) {
+  if (!origem) return null;
+  return {
+    tipo: origem.tipo,
+    referenciaId: origem.referenciaId.trim(),
+    comparavelId: origem.comparavelId?.trim() || null,
+    portal: origem.portal,
+    idExterno: origem.idExterno.trim(),
+  } satisfies OrigemExternaAvaliacao;
 }
 
 function entradaSegura(entrada: EntradaAvaliacao): EntradaAvaliacao {
@@ -63,6 +95,7 @@ function entradaSegura(entrada: EntradaAvaliacao): EntradaAvaliacao {
     edificio: textoLimitado(entrada.edificio, 160),
     tipo: textoLimitado(entrada.tipo, 80) || "",
     descricaoSemantica: textoLimitado(entrada.descricaoSemantica, 5_000),
+    origemExterna: origemExternaSegura(entrada.origemExterna),
   };
 }
 
@@ -126,7 +159,7 @@ export async function POST(request: Request) {
     if (error) throw error;
     const vetoriais = mapearComparaveisMercado(
       (data || []) as Parameters<typeof mapearComparaveisMercado>[0],
-    );
+    ).filter((item) => !comparavelEhOProprioAnuncio(entrada, item));
     if (vetoriais.length) {
       const { data: metadados, error: erroMetadados } = await sessao.supabase
         .from("comparaveis_mercado")
