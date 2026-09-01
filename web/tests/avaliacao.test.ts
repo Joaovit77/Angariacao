@@ -40,6 +40,7 @@ function comparavel(id: string, valor: number, parcial: Partial<ComparavelAvalia
     endereco: `Rua Paranaguá, ${310 + Number(id.replace(/\D/g, "") || 0)}`,
     bairro: "Centro",
     cidade: "Londrina",
+    estado: "PR",
     edificio: "Edifício Aurora",
     tipo: "Apartamento",
     areaM2: 70,

@@ -5,14 +5,57 @@ import {
   type FiltrosCentralAngariacao,
   type PortalAngariacao,
 } from "@/lib/calculo/centralAngariacao";
+import { normalizarUf, ufValida } from "@/lib/calculo/geografia";
+
+export type NivelCapacidadeGeograficaPortal =
+  | "comprovado"
+  | "formato-generico-a-validar"
+  | "limitado";
+
+export interface CapacidadeGeograficaPortal {
+  suportado: boolean;
+  nivel: NivelCapacidadeGeograficaPortal;
+  motivo: string;
+}
+
+export class PortalSemCoberturaGeografica extends Error {}
+
+export function capacidadeGeograficaPortal(
+  filtros: Pick<FiltrosCentralAngariacao, "portal" | "cidade" | "estado">,
+): CapacidadeGeograficaPortal {
+  const cidade = slugPortal(filtros.cidade);
+  const estado = normalizarUf(filtros.estado);
+  if (!cidade || !ufValida(estado)) {
+    return { suportado: false, nivel: "limitado", motivo: "Informe cidade e uma UF brasileira válida." };
+  }
+  if (filtros.portal === "olx") {
+    return estado === "PR" && cidade === "londrina"
+      ? { suportado: true, nivel: "comprovado", motivo: "Rota regional explícita de Londrina/PR." }
+      : { suportado: false, nivel: "limitado", motivo: "A rota regional da OLX só está comprovada para Londrina/PR." };
+  }
+  if (filtros.portal === "viva-real") {
+    return estado === "PR"
+      ? { suportado: true, nivel: "limitado", motivo: "O mapeamento nominal atual do VivaReal cobre somente o Paraná." }
+      : { suportado: false, nivel: "limitado", motivo: "O mapeamento estadual do VivaReal ainda não foi comprovado fora do Paraná." };
+  }
+  return {
+    suportado: true,
+    nivel: "formato-generico-a-validar",
+    motivo: "O formato inclui UF e cidade, mas cada novo mercado precisa de smoke no portal.",
+  };
+}
+
+function localizacaoSegura(f: FiltrosCentralAngariacao): { cidade: string; estado: string } {
+  const capacidade = capacidadeGeograficaPortal(f);
+  if (!capacidade.suportado) throw new PortalSemCoberturaGeografica(capacidade.motivo);
+  return { cidade: slugPortal(f.cidade), estado: normalizarUf(f.estado).toLowerCase() };
+}
 
 function urlOlx(f: FiltrosCentralAngariacao): string {
-  const estado = slugPortal(f.estado || "PR");
-  const cidade = slugPortal(f.cidade);
+  const { estado } = localizacaoSegura(f);
   // A OLX agrupa algumas cidades por DDD/região. Londrina é o primeiro
   // recorte atendido e sua rota canônica é "regiao-de-londrina".
-  const local = cidade === "londrina" ? "regiao-de-londrina" : cidade;
-  const url = new URL(`https://www.olx.com.br/imoveis/aluguel/estado-${estado}/${local}`);
+  const url = new URL(`https://www.olx.com.br/imoveis/aluguel/estado-${estado}/regiao-de-londrina`);
   if (f.valorMin != null) url.searchParams.set("pe", String(f.valorMin));
   if (f.valorMax != null) url.searchParams.set("ps", String(f.valorMax));
   if (f.bairro) url.searchParams.set("q", f.bairro);
@@ -22,8 +65,7 @@ function urlOlx(f: FiltrosCentralAngariacao): string {
 }
 
 function urlChaves(f: FiltrosCentralAngariacao): string {
-  const uf = slugPortal(f.estado || "PR");
-  const cidade = slugPortal(f.cidade);
+  const { estado: uf, cidade } = localizacaoSegura(f);
   const tipoNormalizado = slugPortal(f.tipo || "");
   const categoria = tipoNormalizado.includes("apartamento")
     ? "apartamentos"
@@ -48,11 +90,12 @@ function categoriaWimoveis(tipo?: string): string {
 }
 
 function urlWimoveis(f: FiltrosCentralAngariacao): string {
+  const local = localizacaoSegura(f);
   const partes = [
     "https://www.wimoveis.com.br/aluguel",
     categoriaWimoveis(f.tipo),
-    slugPortal(f.estado || "PR"),
-    slugPortal(f.cidade),
+    local.estado,
+    local.cidade,
     f.bairro ? slugPortal(f.bairro) : null,
     f.dormitorios != null ? `${f.dormitorios}-quarto${f.dormitorios === 1 ? "" : "s"}` : null,
     f.somenteProprietario ? "tipoanunciante-particular" : null,
@@ -61,8 +104,9 @@ function urlWimoveis(f: FiltrosCentralAngariacao): string {
 }
 
 function urlVivaReal(f: FiltrosCentralAngariacao): string {
+  const local = localizacaoSegura(f);
   const estados: Record<string, string> = { PR: "parana" };
-  const estado = estados[(f.estado || "PR").toUpperCase()] || slugPortal(f.estado || "PR");
+  const estado = estados[local.estado.toUpperCase()];
   const tipoNormalizado = slugPortal(f.tipo || "");
   const tipo = tipoNormalizado.includes("apartamento")
     ? "apartamento_residencial"
@@ -70,7 +114,7 @@ function urlVivaReal(f: FiltrosCentralAngariacao): string {
   const partes = [
     "https://www.vivareal.com.br/aluguel",
     estado,
-    slugPortal(f.cidade),
+    local.cidade,
     f.bairro ? `bairros/${slugPortal(f.bairro)}` : null,
     tipo,
   ].filter(Boolean);
@@ -162,6 +206,7 @@ export function extrairJsonLd(
       titulo: item.name,
       preco: Number.isFinite(preco) ? preco : null,
       cidade: typeof item.address?.addressLocality === "string" ? item.address.addressLocality : null,
+      estado: typeof item.address?.addressRegion === "string" ? normalizarUf(item.address.addressRegion) : null,
       bairro: null,
       endereco: typeof item.address?.streetAddress === "string" ? item.address.streetAddress : null,
       imagem: typeof imagem === "string" ? imagem : null,

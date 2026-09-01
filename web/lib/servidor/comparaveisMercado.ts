@@ -11,6 +11,7 @@ import {
 import { chaveEndereco } from "@/lib/calculo/duplicidade";
 import { chaveNormalizada } from "@/lib/normalizacao";
 import { regiaoDeBairroLondrina } from "@/lib/calculo/regioesLondrina";
+import { ehLondrinaParana, normalizarUf, ufValida } from "@/lib/calculo/geografia";
 import { agoraISOString } from "@/lib/datas";
 import {
   comCaracteristicasDoAnuncio,
@@ -61,19 +62,21 @@ function prepararRegistro(
   const anuncio = comCaracteristicasDoAnuncio(original, filtros.tipo);
   const valor = numero(anuncio.preco);
   const cidade = anuncio.cidade?.trim() || filtros.cidade.trim();
+  const estado = normalizarUf(filtros.estado);
   const cidadeChave = chaveNormalizada(cidade);
-  if (!valor || valor <= 0 || !cidadeChave || !anuncio.url || !anuncio.titulo) return null;
-  const regiao = regiaoDeBairroLondrina(anuncio.bairro)
+  if (!valor || valor <= 0 || !cidadeChave || !ufValida(estado) || !anuncio.url || !anuncio.titulo) return null;
+  const regiao = ehLondrinaParana(cidade, estado) ? (regiaoDeBairroLondrina(anuncio.bairro)
     || (filtros.regiao && filtros.bairro && anuncio.bairro
       && chaveNormalizada(anuncio.bairro) === chaveNormalizada(filtros.bairro)
       ? filtros.regiao
-      : null);
+      : null)) : null;
 
   const sinais = {
     portal: anuncio.portal,
     idExterno: anuncio.idExterno,
     url: anuncio.url,
     cidade,
+    estado,
     bairro: anuncio.bairro,
     endereco: anuncio.endereco,
     tipo: anuncio.tipo,
@@ -126,7 +129,7 @@ function prepararRegistro(
       bairro: anuncio.bairro || null,
       regiao,
       cidade,
-      estado: filtros.estado,
+      estado,
       cidade_chave: cidadeChave,
       bairro_chave: chaveNormalizada(anuncio.bairro) || null,
       area_privativa_m2: anuncio.areaM2 ?? null,

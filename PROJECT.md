@@ -676,7 +676,7 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   quando as quatro etapas estão concluídas.
 - **`calculo/avaliacao.ts`** — motor determinístico da **Avaliação Rápida** (`/avaliacao`). A V5
   combina a carteira com a base durável `comparaveis_mercado`. Na base externa, filtros de usuário,
-  finalidade, cidade, família de tipo, área e quartos são aplicados no Postgres antes da ordenação
+  finalidade, UF + cidade, família de tipo, área e quartos são aplicados no Postgres antes da ordenação
   vetorial; durante o preenchimento gradual, resultados estruturados complementam uma amostra
   vetorial pequena. O score expõe separadamente similaridade estrutural, semântica e
   comparabilidade final. O embedding só seleciona/reordena comparáveis: o peso do preço continua
@@ -686,7 +686,9 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   recomendação e confiança. Com menos de três comparáveis locais, a busca pode ampliar a amostra
   somente para imóveis estruturalmente compatíveis da mesma região e ainda apresenta uma **referência
   preliminar**: confiança obrigatoriamente baixa, intervalo mais largo e sem estratégias de preço.
-  Em Londrina, a coordenada é classificada localmente por uma cópia simplificada dos polígonos
+  A fronteira de mercado é sempre **UF + cidade**; linhas antigas sem UF comprovada não entram em
+  buscas multiestado estritas. Em Londrina/PR, e somente nesse mercado, a coordenada é classificada
+  localmente por uma cópia simplificada dos polígonos
   públicos da Lei 13.718/2023/SIGLON; nenhum endereço ou coordenada é enviado ao serviço municipal
   durante a avaliação. A região persistida no catálogo ou o bairro oficial servem como fallback.
   Se a região do imóvel não puder ser determinada, o motor mantém somente evidência local e nunca
@@ -721,6 +723,12 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   sua leitura forma um catálogo único para todas as contas autenticadas. A conta coletora continua
   registrada para auditoria e somente ela pode inserir ou alterar suas linhas; carteira, avaliações
   e demais dados privados permanecem isolados por `user_id`.
+- **`mercados_monitorados`** — configuração persistida dos mercados cuja inteligência cada usuário
+  quer manter atualizada. É um domínio separado de `radar_buscas`: não cria, altera nem exclui Radar
+  e não representa job, execução, anúncio ou imóvel. O tenant permanece `user_id`, a identidade é
+  `user_id + UF + cidade_chave + finalidade + segmento` e a primeira capacidade operacional
+  comprovada é locação residencial. Os campos de frequência e lease preparam a execução futura,
+  mas nenhuma coleta automática existe antes da Fase 5B.
 - **`calculo/centralAngariacao.ts` · `radarAngariacao.ts`** — contratos e regras da Central/Radar.
   Resultado de portal não é `Imovel` e só chega à carteira após revisão humana. As buscas cobrem
   OLX, Chaves na Mão, Wimoveis e Viva Real; o Radar persiste filtros e anúncios novos em tabelas
@@ -2019,10 +2027,10 @@ A Central faz busca sob demanda em hosts fixos; o browser fornece filtros tipado
 arbitrária. Em produção, usa Firecrawl quando configurado. Fora da Vercel pode cair para Playwright/
 Chromium e, por último, extração HTTP/JSON-LD. Falha conserva o link de pesquisa pronto para a pessoa
 continuar manualmente. Resultado coletado é oportunidade para revisão, não gravação automática no
-Pipeline; cidade é conferida exatamente para não misturar região metropolitana.
+Pipeline; UF + cidade são a fronteira geográfica e divergência explícita de UF é rejeitada.
 
 Central e cron do Radar compartilham a mesma finalização da coleta: normalizam os anúncios,
-confirmam a cidade e registram ou atualizam cada resultado válido em `comparaveis_mercado`, sempre
+confirmam UF + cidade e registram ou atualizam cada resultado válido em `comparaveis_mercado`, sempre
 sob o `user_id` autenticado ou pertencente à busca reclamada pelo cron. A leitura da base é
 compartilhada entre contas autenticadas e elimina repetições de `portal + id_externo`; a escrita
 continua restrita ao coletor. A deduplicação na ingestão combina
@@ -2033,7 +2041,7 @@ mudam. A Avaliação Rápida reutiliza essa base sem chamar o coletor a cada cá
 consulta usa proxy básico e cache para manter o custo previsível; o fallback local preserva os
 mesmos campos estruturados quando o portal os disponibiliza.
 
-Para ampliações operacionais em Londrina, `calculo/regioesLondrina.ts` mantém os bairros nas cinco
+Exclusivamente para Londrina/PR, `calculo/regioesLondrina.ts` mantém os bairros nas cinco
 regiões oficiais (Central, Sul, Leste, Oeste e Norte) e os polígonos simplificados do SIGLON usados
 pela avaliação. A coleta paga continua restrita às quatro zonas solicitadas (Sul, Leste, Oeste e
 Norte). O script `npm run coletar:zonas` exige confirmação

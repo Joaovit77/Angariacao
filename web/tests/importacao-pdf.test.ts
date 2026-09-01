@@ -68,7 +68,7 @@ describe("interpretarRelatorioCasaSoft", () => {
       referenciaCrm: "04044.001",
       endereco: "Avenida Camilly Fernandes Rodrigues, 155",
       bairro: "Cidade Industrial 2",
-      cidade: "Londrina",
+      cidade: "",
       unidade: "301",
       bloco: "11",
       tipo: "Apartamento",

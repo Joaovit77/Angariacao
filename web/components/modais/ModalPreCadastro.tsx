@@ -56,8 +56,8 @@ export default function ModalPreCadastro({ inicial }: { inicial?: PreCadastroIni
   const [bloco, setBloco] = useState("");
   const [edificio, setEdificio] = useState("");
   const [bairro, setBairro] = useState(inicial?.bairro || "");
-  const [cidade, setCidade] = useState(inicial?.cidade || "Londrina");
-  const [estado, setEstado] = useState(inicial?.estado || "PR");
+  const [cidade, setCidade] = useState(inicial?.cidade || "");
+  const [estado, setEstado] = useState(inicial?.estado || "");
   const [proprietarioNome, setProprietarioNome] = useState("");
   const [proprietarioTelefone, setProprietarioTelefone] = useState("");
   // Sem padrão, pela mesma razão do ModalImovel: chutar a origem envenena o
@@ -456,7 +456,7 @@ export default function ModalPreCadastro({ inicial }: { inicial?: PreCadastroIni
                 value={estado}
                 maxLength={2}
                 onChange={(e) => setEstado(e.target.value.toUpperCase())}
-                placeholder="PR"
+                placeholder="UF"
               />
             </div>
           </div>

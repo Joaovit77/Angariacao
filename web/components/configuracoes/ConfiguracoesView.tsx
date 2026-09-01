@@ -3,6 +3,7 @@
 import { useState } from "react";
 import ConexaoGoogle from "@/components/modais/ConexaoGoogle";
 import ResumoConexaoWhatsapp from "./ResumoConexaoWhatsapp";
+import MercadosMonitorados from "./MercadosMonitorados";
 import { useSessao } from "@/components/SessaoProvider";
 import {
   COMISSAO_PERCENT_PADRAO,
@@ -28,13 +29,14 @@ import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
 
-type Secao = "geral" | "ia" | "agenda" | "prospeccao" | "whatsapp" | "conta" | "dados";
+type Secao = "geral" | "ia" | "agenda" | "prospeccao" | "mercados" | "whatsapp" | "conta" | "dados";
 
 const SECOES: Array<{ id: Secao; titulo: string; descricao: string }> = [
   { id: "geral", titulo: "Geral", descricao: "Empresa e comissão" },
   { id: "ia", titulo: "IA e escrita", descricao: "Tom e vocabulário" },
   { id: "agenda", titulo: "Agenda", descricao: "Google e compromissos" },
   { id: "prospeccao", titulo: "Prospecção", descricao: "Portais e abordagens" },
+  { id: "mercados", titulo: "Mercados", descricao: "Cidades monitoradas" },
   { id: "whatsapp", titulo: "WhatsApp", descricao: "Estado da conexão" },
   { id: "conta", titulo: "Conta", descricao: "Acesso e transferência" },
   { id: "dados", titulo: "Dados", descricao: "Importação e exclusão" },
@@ -325,6 +327,13 @@ export default function ConfiguracoesView({ secaoInicial }: { secaoInicial?: str
             <>
               <CabecalhoSecao titulo="WhatsApp" descricao="Acompanhe o número usado para enviar e receber mensagens." />
               <div className="config-integracao-card"><ResumoConexaoWhatsapp /></div>
+            </>
+          )}
+
+          {secao === "mercados" && (
+            <>
+              <CabecalhoSecao titulo="Mercados" descricao="Defina as cidades cuja inteligência você quer manter organizada." />
+              <MercadosMonitorados />
             </>
           )}
 

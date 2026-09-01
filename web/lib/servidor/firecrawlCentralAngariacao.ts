@@ -50,12 +50,17 @@ function cidadeBairro(valor: string): { cidade: string | null; bairro: string | 
   return { cidade: partes[0], bairro: partes.slice(1).join(", ") };
 }
 
-function cidadeBairroWimoveis(valor: string): { cidade: string | null; bairro: string | null } {
+function cidadeBairroWimoveis(valor: string): { cidade: string | null; bairro: string | null; estado: string | null } {
   const partes = valor.split(",").map((parte) => parte.trim()).filter(Boolean);
-  if (partes.length < 2) return { cidade: partes[0] || null, bairro: null };
+  if (partes.length < 2) return { cidade: partes[0] || null, bairro: null, estado: null };
   const ultimo = partes.at(-1)?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  if (ultimo === "parana" || ultimo === "pr") return { cidade: partes[0], bairro: null };
-  return { cidade: partes.at(-1) || null, bairro: partes.slice(0, -1).join(", ") || null };
+  if (ultimo === "parana" || ultimo === "pr") {
+    return { cidade: partes[0], bairro: partes.length > 2 ? partes.slice(1, -1).join(", ") : null, estado: "PR" };
+  }
+  if (/^[a-z]{2}$/.test(ultimo || "")) {
+    return { cidade: partes.at(-2) || null, bairro: partes.slice(0, -2).join(", ") || null, estado: ultimo!.toUpperCase() };
+  }
+  return { cidade: partes.at(-1) || null, bairro: partes.slice(0, -1).join(", ") || null, estado: null };
 }
 
 function extrairOlx($: CheerioAPI, filtros: FiltrosCentralAngariacao): AnuncioCentralAngariacao[] {
@@ -131,16 +136,18 @@ function extrairChaves($: CheerioAPI): AnuncioCentralAngariacao[] {
       vistos.add(url);
       const textos = link.find("p").toArray().map((p) => texto($(p))).filter(Boolean);
       const precoTexto = [...textos].reverse().find((valor) => /R\$\s*[\d.]+/.test(valor));
-      const localidade = textos.find((valor) => /,\s*[^/]+\/PR/i.test(valor));
+      const localidade = textos.find((valor) => /,\s*[^/]+\/[A-Z]{2}\b/i.test(valor));
       const endereco = textos.find((valor) => valor !== localidade
         && !/R\$|m²|^\d+$|Endereço indisponível/i.test(valor));
-      const local = cidadeBairro(localidade?.replace(/\/PR.*$/, "").split(",").reverse().join(", ") || "");
+      const estado = localidade?.match(/\/([A-Z]{2})\b/i)?.[1]?.toUpperCase() || null;
+      const local = cidadeBairro(localidade?.replace(/\/[A-Z]{2}.*$/i, "").split(",").reverse().join(", ") || "");
       return [{
         idExterno: idDoAnuncio("chaves-na-mao", url, indice),
         portal: "chaves-na-mao" as const,
         titulo,
         preco: dinheiro(precoTexto),
         cidade: local.cidade,
+        estado,
         bairro: local.bairro,
         endereco: endereco || null,
         imagem: imagemDe(link),
@@ -176,6 +183,7 @@ function extrairWimoveis($: CheerioAPI, filtros: FiltrosCentralAngariacao): Anun
         titulo,
         preco,
         cidade: local.cidade,
+        estado: local.estado,
         bairro: local.bairro,
         endereco: texto(card.find('[class*="location-address"]').first()) || null,
         imagem: imagemDe(card.find('[data-qa="POSTING_CARD_GALLERY"]').first()),

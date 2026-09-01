@@ -1,7 +1,7 @@
 "use client";
 
 import { buscarNaCentral } from "./centralAngariacao";
-import { anuncioPertenceACidade, type AnuncioCentralAngariacao, type FiltrosCentralAngariacao } from "./calculo/centralAngariacao";
+import { anuncioPertenceAoMercado, type AnuncioCentralAngariacao, type FiltrosCentralAngariacao } from "./calculo/centralAngariacao";
 import { selecionarAnunciosNovosRadar, type AnuncioRadar, type BuscaRadar, type EstadoRadar } from "./calculo/radarAngariacao";
 import { getSupabase } from "./persistencia/supabase";
 import { agoraISOString } from "./datas";
@@ -70,10 +70,13 @@ export async function carregarRadar(): Promise<EstadoRadar> {
   if (buscas.error) throw buscas.error;
   if (anuncios.error) throw anuncios.error;
   const buscasMapeadas = (buscas.data as DbBuscaRadar[]).map(fromDbBusca);
-  const cidadePorBusca = new Map(buscasMapeadas.map((busca) => [busca.id, busca.filtros.cidade]));
+  const mercadoPorBusca = new Map(buscasMapeadas.map((busca) => [busca.id, busca.filtros]));
   const anunciosMapeados = (anuncios.data as DbAnuncioRadar[])
     .map(fromDbAnuncio)
-    .filter((item) => anuncioPertenceACidade(item.anuncio, cidadePorBusca.get(item.buscaId) || ""));
+    .filter((item) => {
+      const filtros = mercadoPorBusca.get(item.buscaId);
+      return !!filtros && anuncioPertenceAoMercado(item.anuncio, filtros.cidade, filtros.estado);
+    });
   return { buscas: buscasMapeadas, anuncios: anunciosMapeados };
 }
 

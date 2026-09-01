@@ -7,6 +7,7 @@
    ================================================================ */
 import { chaveEndereco } from "./duplicidade";
 import { chaveNormalizada } from "../normalizacao";
+import { normalizarUf, ufValida } from "./geografia";
 
 export const CONFIGURACAO_COMPARAVEIS_MERCADO = {
   versaoTextoEmbedding: "imovel-mercado-v1",
@@ -50,6 +51,7 @@ export interface SinaisIdentidadeAnuncio {
   idExterno: string;
   url: string;
   cidade?: string | null;
+  estado?: string | null;
   bairro?: string | null;
   endereco?: string | null;
   tipo?: string | null;
@@ -113,8 +115,9 @@ export function urlCanonicaDeAnuncio(valor: string | null | undefined): string {
     que uma redução de preço continue pertencendo ao mesmo anúncio. */
 export function baseFingerprintAnuncio(sinais: SinaisIdentidadeAnuncio): string {
   return [
-    "fingerprint-v1",
+    "fingerprint-v2-uf",
     chaveNormalizada(sinais.portal),
+    normalizarUf(sinais.estado),
     chaveNormalizada(sinais.cidade),
     chaveNormalizada(sinais.bairro),
     chaveEndereco(sinais.endereco),
@@ -129,7 +132,8 @@ export function baseFingerprintAnuncio(sinais: SinaisIdentidadeAnuncio): string 
     suficientemente específico e características que reduzam falsos merges. */
 export function fingerprintEhForte(sinais: SinaisIdentidadeAnuncio): boolean {
   const endereco = chaveEndereco(sinais.endereco);
-  return !!chaveNormalizada(sinais.cidade)
+  return ufValida(sinais.estado)
+    && !!chaveNormalizada(sinais.cidade)
     && /\b\d+[a-z]?\b/.test(endereco)
     && !!chaveNormalizada(sinais.tipo)
     && !!sinais.areaM2

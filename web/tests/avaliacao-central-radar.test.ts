@@ -295,6 +295,7 @@ describe("autocomparação e persistência da avaliação externa", () => {
       endereco: "Rua A, 20",
       bairro: "Centro",
       cidade: "Londrina",
+      estado: "PR",
       tipo: "Apartamento",
       areaM2: 70,
       quartos: 2,

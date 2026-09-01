@@ -195,7 +195,9 @@ export function interpretarRelatorioCasaSoft(
       referenciaCrm,
       endereco: enderecoSeparado.endereco,
       bairro: nomeProprio(textoDaFaixa(linha, 350, 440)),
-      cidade: "Londrina",
+      // O relatório não publica cidade/UF. Inferir Londrina contaminaria uma
+      // carteira multiestado; a localização fica vazia para revisão objetiva.
+      cidade: "",
       unidade: enderecoSeparado.unidade,
       bloco: enderecoSeparado.bloco,
       tipo: tipoDoRelatorio(tipoOriginal),

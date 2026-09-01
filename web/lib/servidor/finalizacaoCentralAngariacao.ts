@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  anuncioPertenceACidade,
+  anuncioPertenceAoMercado,
   comCaracteristicasDoAnuncio,
   type AnuncioCentralAngariacao,
   type FiltrosCentralAngariacao,
@@ -30,7 +30,7 @@ export async function finalizarColetaCentralAngariacao(
 ): Promise<ColetaCentralFinalizada> {
   const anuncios = coletados
     .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo))
-    .filter((anuncio) => anuncioPertenceACidade(anuncio, filtros.cidade));
+    .filter((anuncio) => anuncioPertenceAoMercado(anuncio, filtros.cidade, filtros.estado));
 
   try {
     const comparaveisSalvos = await salvarComparaveisMercado(

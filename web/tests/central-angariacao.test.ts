@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  anuncioPertenceAoMercado,
   anuncioPertenceACidade,
   idDoAnuncio,
   numeroOpcional,
@@ -8,7 +9,12 @@ import {
   type AnuncioCentralAngariacao,
 } from "@/lib/calculo/centralAngariacao";
 import { dataPublicacaoOlx, dentroDoPeriodo } from "@/lib/datas";
-import { extrairJsonLd, urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
+import {
+  capacidadeGeograficaPortal,
+  extrairJsonLd,
+  PortalSemCoberturaGeografica,
+  urlDaPesquisa,
+} from "@/lib/servidor/centralAngariacao";
 import { extrairAnunciosFirecrawl } from "@/lib/servidor/firecrawlCentralAngariacao";
 import {
   enderecoTemNumero,
@@ -77,6 +83,23 @@ describe("Central de Angariação", () => {
     }));
 
     expect(url.searchParams.get("f")).toBe("p");
+  });
+
+  it("modela capacidades regionais sem inventar slugs de outras cidades", () => {
+    expect(capacidadeGeograficaPortal({ portal: "olx", cidade: "Londrina", estado: "PR" }))
+      .toMatchObject({ suportado: true, nivel: "comprovado" });
+    expect(capacidadeGeograficaPortal({ portal: "olx", cidade: "Campinas", estado: "SP" }))
+      .toMatchObject({ suportado: false, nivel: "limitado" });
+    expect(capacidadeGeograficaPortal({ portal: "viva-real", cidade: "Campinas", estado: "SP" }))
+      .toMatchObject({ suportado: false, nivel: "limitado" });
+    expect(capacidadeGeograficaPortal({ portal: "chaves-na-mao", cidade: "Campinas", estado: "SP" }))
+      .toMatchObject({ suportado: true, nivel: "formato-generico-a-validar" });
+    expect(capacidadeGeograficaPortal({ portal: "wimoveis", cidade: "Campinas", estado: "SP" }))
+      .toMatchObject({ suportado: true, nivel: "formato-generico-a-validar" });
+    expect(() => urlDaPesquisa({ portal: "olx", cidade: "Campinas", estado: "SP" }))
+      .toThrow(PortalSemCoberturaGeografica);
+    expect(() => urlDaPesquisa({ portal: "viva-real", cidade: "Campinas", estado: "SP" }))
+      .toThrow(PortalSemCoberturaGeografica);
   });
 
   it("interpreta e filtra as datas relativas publicadas pela OLX", () => {
@@ -151,6 +174,17 @@ describe("Central de Angariação", () => {
     expect(anuncioPertenceACidade({ cidade: "Cornélio Procópio" }, "Londrina")).toBe(false);
     expect(anuncioPertenceACidade({ cidade: "Jacarezinho" }, "Londrina")).toBe(false);
     expect(anuncioPertenceACidade({ cidade: null }, "Londrina")).toBe(false);
+  });
+
+  it("rejeita UF divergente e aceita UF ausente somente sob a rota do mercado", () => {
+    expect(anuncioPertenceAoMercado({ cidade: "Londrina", estado: "PR" }, "Londrina", "PR")).toBe(true);
+    expect(anuncioPertenceAoMercado({ cidade: "Londrina - PR" }, "Londrina", "PR")).toBe(true);
+    expect(anuncioPertenceAoMercado({ cidade: "Londrina", estado: null }, "Londrina", "PR")).toBe(true);
+    expect(anuncioPertenceAoMercado({ cidade: "Londrina", estado: "SP" }, "Londrina", "PR")).toBe(false);
+    expect(anuncioPertenceAoMercado({ cidade: "Londrina", estado: "XX" }, "Londrina", "PR")).toBe(false);
+    expect(anuncioPertenceAoMercado({ cidade: "Londrina - SP" }, "Londrina", "PR")).toBe(false);
+    expect(anuncioPertenceAoMercado({ cidade: "Londrina - SP", estado: "PR" }, "Londrina", "PR")).toBe(false);
+    expect(anuncioPertenceAoMercado({ cidade: "Londrina", estado: "PR" }, "Londrina", "")).toBe(false);
   });
 
   it("oculta casa com endereço completo já existente no pipeline", () => {
