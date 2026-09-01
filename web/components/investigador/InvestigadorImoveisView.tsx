@@ -9,6 +9,7 @@ import {
 } from "@/lib/calculo/investigadorImoveis";
 import { fmtMoney } from "@/lib/formatadores";
 import { carregarContextoInvestigador, investigarImovel } from "@/lib/investigadorImoveis";
+import type { ReferenciaContextoInvestigador } from "@/lib/calculo/contextoInvestigador";
 import styles from "./InvestigadorImoveisView.module.css";
 
 type EtapaVisual = "preparando" | EtapaInvestigacao | "concluido";
@@ -119,10 +120,23 @@ function Processamento({ etapa }: { etapa: EtapaVisual }) {
   );
 }
 
-export default function InvestigadorImoveisView({ imovelIdInicial }: { imovelIdInicial?: string | null }) {
+interface Props {
+  imovelIdInicial?: string | null;
+  referenciaInicial?: ReferenciaContextoInvestigador | null;
+}
+
+const ROTULO_ORIGEM_CONTEXTO = {
+  pipeline: "Pipeline",
+  radar: "Radar",
+  central: "Central de Angariação",
+} as const;
+
+export default function InvestigadorImoveisView({ imovelIdInicial, referenciaInicial }: Props) {
+  const origemInicial = referenciaInicial?.origem || (imovelIdInicial ? "imovel" : null);
+  const idInicial = referenciaInicial?.id || imovelIdInicial || null;
   const [consulta, setConsulta] = useState("");
-  const [carregandoContexto, setCarregandoContexto] = useState(Boolean(imovelIdInicial));
-  const [contextoCarregado, setContextoCarregado] = useState(false);
+  const [carregandoContexto, setCarregandoContexto] = useState(Boolean(idInicial));
+  const [origemContexto, setOrigemContexto] = useState<keyof typeof ROTULO_ORIGEM_CONTEXTO | null>(null);
   const [avisoContexto, setAvisoContexto] = useState("");
   const [processando, setProcessando] = useState(false);
   const [etapa, setEtapa] = useState<EtapaVisual | null>(null);
@@ -131,12 +145,12 @@ export default function InvestigadorImoveisView({ imovelIdInicial }: { imovelIdI
   const [erro, setErro] = useState("");
 
   useEffect(() => {
-    if (!imovelIdInicial) return;
+    if (!origemInicial || !idInicial) return;
     const controlador = new AbortController();
-    carregarContextoInvestigador(imovelIdInicial, controlador.signal)
+    carregarContextoInvestigador({ origem: origemInicial, id: idInicial }, controlador.signal)
       .then((contexto) => {
         setConsulta(contexto.consulta);
-        setContextoCarregado(true);
+        setOrigemContexto(contexto.origem);
       })
       .catch((causa) => {
         if (causa instanceof DOMException && causa.name === "AbortError") return;
@@ -148,9 +162,9 @@ export default function InvestigadorImoveisView({ imovelIdInicial }: { imovelIdI
       })
       .finally(() => {
         if (!controlador.signal.aborted) setCarregandoContexto(false);
-      });
+    });
     return () => controlador.abort();
-  }, [imovelIdInicial]);
+  }, [idInicial, origemInicial]);
 
   async function investigar(evento: FormEvent) {
     evento.preventDefault();
@@ -196,9 +210,9 @@ export default function InvestigadorImoveisView({ imovelIdInicial }: { imovelIdI
         </div>
       </section>
 
-      {contextoCarregado ? (
+      {origemContexto ? (
         <div className={styles.contexto} role="status">
-          Dados do imóvel carregados do Pipeline. Revise a consulta antes de investigar.
+          Dados do imóvel carregados do {ROTULO_ORIGEM_CONTEXTO[origemContexto]}. Revise a consulta antes de investigar.
         </div>
       ) : null}
       {avisoContexto ? <div className={styles.aviso} role="alert">{avisoContexto}</div> : null}
