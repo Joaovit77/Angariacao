@@ -17,6 +17,7 @@ import {
 } from "@/lib/calculo/contextoInvestigador";
 import { PORTAIS_ANGARIACAO, type PortalAngariacao } from "@/lib/calculo/centralAngariacao";
 import { buscarImovelNaWeb, BuscaWebIndisponivel } from "@/lib/servidor/investigadorImoveis";
+import { associarReferenciasAvaliacaoDoInvestigador } from "@/lib/servidor/referenciasAvaliacaoInvestigador";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -286,7 +287,12 @@ export async function POST(request: Request): Promise<Response> {
         emitir({ tipo: "etapa", etapa: "normalizando-resultados" });
         const unicos = deduplicarResultadosInvestigacao(busca.resultados);
         emitir({ tipo: "etapa", etapa: "cruzando-informacoes" });
-        const resultados = analisarCorrespondenciasInvestigacao(consultaOriginal, unicos);
+        const correspondencias = analisarCorrespondenciasInvestigacao(consultaOriginal, unicos);
+        const resultados = await associarReferenciasAvaliacaoDoInvestigador(
+          acesso.supabase,
+          userId,
+          correspondencias,
+        );
         const aviso = busca.limiteAtingido
           ? busca.retryAfterSegundos !== undefined
             ? `Investigação concluída parcialmente por limite do provedor. Tente novamente em ${busca.retryAfterSegundos} segundos.`

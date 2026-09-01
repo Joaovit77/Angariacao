@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   LIMITE_CONSULTA_INVESTIGADOR,
@@ -10,6 +11,7 @@ import {
 import { fmtMoney } from "@/lib/formatadores";
 import { carregarContextoInvestigador, investigarImovel } from "@/lib/investigadorImoveis";
 import type { ReferenciaContextoInvestigador } from "@/lib/calculo/contextoInvestigador";
+import { urlAvaliacaoDoComparavel } from "@/lib/calculo/contextoAvaliacao";
 import styles from "./InvestigadorImoveisView.module.css";
 
 type EtapaVisual = "preparando" | EtapaInvestigacao | "concluido";
@@ -86,9 +88,16 @@ function CardResultado({ resultado }: { resultado: CorrespondenciaInvestigacao }
           <strong>{resultado.dominio}</strong>
           <small>Encontrada em {resultado.consultas.length} busca{resultado.consultas.length === 1 ? "" : "s"}</small>
         </div>
-        <a className="btn btn-ghost" href={resultado.url} target="_blank" rel="noreferrer">
-          Abrir fonte ↗
-        </a>
+        <div className={styles.acoesResultado}>
+          {resultado.comparavelId ? (
+            <Link className="btn btn-primary" href={urlAvaliacaoDoComparavel(resultado.comparavelId)}>
+              Usar na Avaliação
+            </Link>
+          ) : null}
+          <a className="btn btn-ghost" href={resultado.url} target="_blank" rel="noreferrer">
+            Abrir fonte ↗
+          </a>
+        </div>
       </div>
     </article>
   );
