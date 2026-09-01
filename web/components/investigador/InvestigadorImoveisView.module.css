@@ -137,10 +137,11 @@
 .contradicoes ul { display: grid; gap: 4px; margin: 7px 0 0; padding: 0; list-style: none; }
 .contradicoes li { color: var(--text-dim); font-size: 10px; line-height: 1.4; }
 .fonte { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-top: 13px; padding-top: 12px; border-top: 1px solid var(--border-soft); }
-.fonte div { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.fonte > div:first-child { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
 .fonte span { color: var(--text-faint); font-size: 8.5px; text-transform: uppercase; }
 .fonte strong { overflow: hidden; color: var(--text-dim); font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
 .fonte small { color: var(--text-faint); font-size: 8.5px; }
+.acoesResultado { display: flex; flex: 0 0 auto; align-items: center; gap: 7px; }
 .fonte :global(.btn) { flex: 0 0 auto; padding: 7px 9px; font-size: 9.5px; }
 .vazio { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 32px; text-align: center; }
 .vazio strong { font-size: 14px; }
@@ -159,4 +160,7 @@
   .formularioRodape :global(.btn) { width: 100%; justify-content: center; }
   .resultadosCabecalho small { text-align: left; }
   .gradeResultados { grid-template-columns: 1fr; }
+  .fonte { align-items: stretch; flex-direction: column; }
+  .acoesResultado { flex-wrap: wrap; }
+  .acoesResultado :global(.btn) { flex: 1 1 auto; justify-content: center; }
 }

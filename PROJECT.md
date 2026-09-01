@@ -2091,6 +2091,10 @@ públicos do imóvel ou anúncio, nunca dados do proprietário, preço ou descri
 a pesquisa só começa após o clique do usuário. ID inválido, inexistente, ambíguo ou inacessível não
 revela outra conta e mantém o Investigador disponível para preenchimento manual.
 
+Resultados do Investigador continuam transitórios. Quando a URL exata de um card já corresponde,
+de forma única, a um `comparaveis_mercado.id` da conta, o card pode abrir a Avaliação Rápida com
+`comparavel=<UUID>`; sem essa referência persistida, não há atalho nem persistência artificial.
+
 Central e Radar usam o mesmo princípio para abrir a Avaliação Rápida: `comparaveis_mercado.id` na
 Central e `radar_anuncios.id` no Radar. A resolução autenticada preenche apenas dados objetivos e
 editáveis; o preço anunciado não ocupa o campo de expectativa do proprietário. Resultado transitório

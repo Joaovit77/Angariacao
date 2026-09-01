@@ -41,6 +41,8 @@ export interface CorrespondenciaInvestigacao extends ResultadoWebInvestigacao {
   confianca: FaixaConfiancaInvestigacao;
   evidencias: string[];
   contradicoes: string[];
+  /** Referência já existente no catálogo; nunca é criada pelo Investigador. */
+  comparavelId?: string | null;
 }
 
 export interface ResultadoInvestigacao {
