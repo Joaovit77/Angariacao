@@ -28,6 +28,10 @@ import {
   urlInvestigadorDoComparavel,
   urlInvestigadorDoRadarAnuncio,
 } from "@/lib/calculo/contextoInvestigador";
+import {
+  urlAvaliacaoDoComparavel,
+  urlAvaliacaoDoRadarAnuncio,
+} from "@/lib/calculo/contextoAvaliacao";
 import { carregarIdsComparaveisDosAnuncios } from "@/lib/persistencia/referenciasInvestigador";
 import { carregarChavesAnunciosCentralVisualizados } from "@/lib/persistencia/historicoCentralAngariacao";
 import { marcarAnuncioCentralComoVisualizado } from "@/lib/mutacoes";
@@ -157,7 +161,7 @@ export default function CentralAngariacaoView() {
       try {
         setIdsComparaveis(await carregarIdsComparaveisDosAnuncios(usuario.id, dados.anuncios));
       } catch {
-        toast("Os resultados foram carregados, mas os atalhos do Investigador estão indisponíveis agora.", "error");
+        toast("Os resultados foram carregados, mas os atalhos das ferramentas estão indisponíveis agora.", "error");
       }
     }
     setBuscando(false);
@@ -371,6 +375,7 @@ export default function CentralAngariacaoView() {
                           <div className="central-card-actions">
                             <a className="btn btn-ghost" href={anuncio.url} target="_blank" rel="noreferrer" onClick={() => void registrarVisualizacao(anuncio)}>Ver anúncio ↗</a>
                             <Link className="btn btn-ghost" href={urlInvestigadorDoRadarAnuncio(item.id)}>Investigar na web</Link>
+                            <Link className="btn btn-ghost" href={urlAvaliacaoDoRadarAnuncio(item.id)}>Avaliar</Link>
                             <button className="btn btn-primary" type="button" disabled={duplicado} onClick={() => importar(anuncio)}>Revisar e importar</button>
                           </div>
                         </div>
@@ -505,6 +510,7 @@ export default function CentralAngariacaoView() {
                       <div className="central-card-actions">
                         <a className="btn btn-ghost" href={anuncio.url} target="_blank" rel="noreferrer" onClick={() => void registrarVisualizacao(anuncio)}>Ver anúncio ↗</a>
                         {comparavelId ? <Link className="btn btn-ghost" href={urlInvestigadorDoComparavel(comparavelId)}>Investigar na web</Link> : null}
+                        {comparavelId ? <Link className="btn btn-ghost" href={urlAvaliacaoDoComparavel(comparavelId)}>Avaliar</Link> : null}
                         <button className="btn btn-ghost" type="button" onClick={() => alternarSelecionado(anuncio)}>{escolhido ? "Remover" : "Selecionar"}</button>
                         <button className="btn btn-primary" type="button" disabled={duplicado} onClick={() => importar(anuncio)}>Revisar e importar</button>
                       </div>

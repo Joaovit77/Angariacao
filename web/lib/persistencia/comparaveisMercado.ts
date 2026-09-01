@@ -6,7 +6,11 @@
    chamada ao coletor externo.
    ================================================================ */
 import { chaveNormalizada } from "@/lib/normalizacao";
-import type { EntradaAvaliacao, ComparavelAvaliacao } from "@/lib/calculo/avaliacao";
+import {
+  comparavelEhOProprioAnuncio,
+  type EntradaAvaliacao,
+  type ComparavelAvaliacao,
+} from "@/lib/calculo/avaliacao";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabase } from "./supabase";
 
@@ -81,6 +85,7 @@ export function mapearComparaveisMercado(
   return unicas.map((linha) => ({
     origem: "externo",
     id: linha.id || `${linha.portal}:${linha.id_externo}`,
+    idExterno: linha.id_externo,
     codigo: linha.portal,
     endereco: linha.endereco || linha.titulo,
     bairro: linha.bairro,
@@ -128,7 +133,8 @@ export async function carregarComparaveisMercadoComCliente(
     .limit(1_000);
   if (error) throw error;
 
-  return mapearComparaveisMercado((data || []) as LinhaComparavelMercado[]);
+  const comparaveis = mapearComparaveisMercado((data || []) as LinhaComparavelMercado[]);
+  return comparaveis.filter((item) => !comparavelEhOProprioAnuncio(entrada, item));
 }
 
 export async function carregarComparaveisMercado(
@@ -156,7 +162,9 @@ export async function buscarComparaveisMercado(
     });
     if (resposta.ok) {
       const dados = await resposta.json() as { comparaveis?: ComparavelAvaliacao[] };
-      if (Array.isArray(dados.comparaveis)) return dados.comparaveis;
+      if (Array.isArray(dados.comparaveis)) {
+        return dados.comparaveis.filter((item) => !comparavelEhOProprioAnuncio(entrada, item));
+      }
     }
   } catch {
     // A busca estruturada abaixo preserva a V2 quando a rota/modelo falha.

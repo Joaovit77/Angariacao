@@ -55,11 +55,21 @@ export interface EntradaAvaliacao {
   latitude?: number | null;
   longitude?: number | null;
   regiao?: string | null;
+  origemExterna?: OrigemExternaAvaliacao | null;
+}
+
+export interface OrigemExternaAvaliacao {
+  tipo: "comparavel" | "radar-anuncio";
+  referenciaId: string;
+  comparavelId: string | null;
+  portal: string;
+  idExterno: string;
 }
 
 export interface ComparavelAvaliacao {
   origem: OrigemComparavelAvaliacao;
   id: string;
+  idExterno?: string | null;
   codigo?: string | null;
   endereco: string;
   bairro?: string | null;
@@ -79,6 +89,16 @@ export interface ComparavelAvaliacao {
   url?: string | null;
   status?: string | null;
   similaridadeVetorial?: number | null;
+}
+
+export function comparavelEhOProprioAnuncio(
+  entrada: EntradaAvaliacao,
+  comparavel: ComparavelAvaliacao,
+): boolean {
+  const origem = entrada.origemExterna;
+  if (!origem || comparavel.origem !== "externo") return false;
+  if (origem.comparavelId && comparavel.id === origem.comparavelId) return true;
+  return comparavel.codigo === origem.portal && comparavel.idExterno === origem.idExterno;
 }
 
 export interface ComponentesSimilaridade {
@@ -577,8 +597,9 @@ export function avaliarImovel(
   candidatos: ComparavelAvaliacao[],
   hoje: string,
 ): ResultadoAvaliacao {
+  const candidatosSemAlvo = candidatos.filter((item) => !comparavelEhOProprioAnuncio(entrada, item));
   const regiaoReferencia = regiaoDaEntrada(entrada);
-  const avaliadosEstruturais = candidatos
+  const avaliadosEstruturais = candidatosSemAlvo
     .filter((item) => item.id !== entrada.imovelId && item.valorAnunciado > 0)
     .filter((item) => comparavelAtendeCriteriosMinimos(entrada, item))
     .filter((item) => comparavelAtendeRegiao(entrada, item, regiaoReferencia))
@@ -603,7 +624,7 @@ export function avaliarImovel(
   const metodologiaBase = {
     versao: CONFIGURACAO_AVALIACAO.versao,
     scoreMinimo: CONFIGURACAO_AVALIACAO.scoreMinimo,
-    comparaveisCandidatos: candidatos.length,
+    comparaveisCandidatos: candidatosSemAlvo.length,
     comparaveisAprovados: filtrados.length,
     comparaveisLocaisAprovados: quantidadeLocais,
     comparaveisComEmbedding: filtrados.filter((item) => item.similaridadeVetorial != null).length,
