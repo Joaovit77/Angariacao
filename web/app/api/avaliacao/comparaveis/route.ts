@@ -12,6 +12,7 @@ import {
   textoSemanticoDoImovel,
 } from "@/lib/calculo/comparaveisMercado";
 import { chaveNormalizada } from "@/lib/normalizacao";
+import { normalizarUf, ufValida } from "@/lib/calculo/geografia";
 import {
   gerarEmbeddingsDeImoveis,
   modeloEmbeddingImoveis,
@@ -48,6 +49,7 @@ function entradaValida(valor: unknown): valor is EntradaAvaliacao {
   const item = valor as Partial<EntradaAvaliacao>;
   return (item.finalidade === "locacao" || item.finalidade === "venda")
     && typeof item.cidade === "string"
+    && typeof item.estado === "string" && ufValida(item.estado)
     && typeof item.tipo === "string"
     && typeof item.areaM2 === "number" && item.areaM2 >= 10 && item.areaM2 <= 10000
     && typeof item.quartos === "number" && Number.isInteger(item.quartos)
@@ -91,7 +93,7 @@ function entradaSegura(entrada: EntradaAvaliacao): EntradaAvaliacao {
     endereco: textoLimitado(entrada.endereco, 240) || "",
     bairro: textoLimitado(entrada.bairro, 100),
     cidade: textoLimitado(entrada.cidade, 100),
-    estado: textoLimitado(entrada.estado, 2),
+    estado: normalizarUf(textoLimitado(entrada.estado, 32)),
     edificio: textoLimitado(entrada.edificio, 160),
     tipo: textoLimitado(entrada.tipo, 80) || "",
     descricaoSemantica: textoLimitado(entrada.descricaoSemantica, 5_000),
@@ -117,8 +119,9 @@ export async function POST(request: Request) {
   }
 
   const cidadeChave = chaveNormalizada(entrada.cidade);
+  const estado = normalizarUf(entrada.estado);
   const tipoFamilia = familiaTipoMercado(entrada.tipo);
-  if (!cidadeChave || !tipoFamilia) return Response.json(await estruturados());
+  if (!cidadeChave || !ufValida(estado) || !tipoFamilia) return Response.json(await estruturados());
 
   try {
     const texto = textoSemanticoDoImovel({
@@ -148,6 +151,7 @@ export async function POST(request: Request) {
       p_embedding_modelo: modeloEmbeddingImoveis(),
       p_embedding_dimensoes: CONFIGURACAO_COMPARAVEIS_MERCADO.dimensoesEmbedding,
       p_finalidade: entrada.finalidade,
+      p_estado: estado,
       p_cidade_chave: cidadeChave,
       p_tipo_familia: tipoFamilia,
       p_area_min: entrada.areaM2 * filtros.areaMinimaRelativa,

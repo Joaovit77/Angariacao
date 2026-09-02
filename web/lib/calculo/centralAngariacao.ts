@@ -1,5 +1,6 @@
 import { agoraTimestamp, timestampDeIso } from "../datas";
 import { extrairCaracteristicasImovel } from "./caracteristicasImovel";
+import { normalizarUf, separarCidadeEUf, ufValida } from "./geografia";
 
 /* ================================================================
    CENTRAL DE ANGARIAÇÃO — contratos e regras puras
@@ -34,6 +35,7 @@ export interface AnuncioCentralAngariacao {
   titulo: string;
   preco?: number | null;
   cidade?: string | null;
+  estado?: string | null;
   bairro?: string | null;
   endereco?: string | null;
   imagem?: string | null;
@@ -169,8 +171,6 @@ export function slugPortal(valor: string): string {
     .replace(/^-|-$/g, "");
 }
 
-const SUFIXO_UF = /-(?:ac|al|ap|am|ba|ce|df|es|go|ma|mt|ms|mg|pa|pb|pr|pe|pi|rj|rn|rs|ro|rr|sc|sp|se|to)$/;
-
 /**
  * Confere a cidade declarada pelo anúncio, sem aceitar a região metropolitana
  * como se fosse a cidade pedida. O sufixo de UF é tolerado porque alguns
@@ -181,8 +181,29 @@ export function anuncioPertenceACidade(
   cidadeDesejada: string,
 ): boolean {
   if (!anuncio.cidade?.trim() || !cidadeDesejada.trim()) return false;
-  const normalizar = (valor: string) => slugPortal(valor).replace(SUFIXO_UF, "");
-  return normalizar(anuncio.cidade) === normalizar(cidadeDesejada);
+  return slugPortal(separarCidadeEUf(anuncio.cidade).cidade) === slugPortal(cidadeDesejada);
+}
+
+/**
+ * A URL de coleta já representa o mercado pedido; quando o anúncio publica a
+ * UF, porém, ela precisa concordar. Isso rejeita um resultado explicitamente
+ * divergente sem inventar a UF de cards que trazem apenas a cidade.
+ */
+export function anuncioPertenceAoMercado(
+  anuncio: Pick<AnuncioCentralAngariacao, "cidade" | "estado">,
+  cidadeDesejada: string,
+  estadoDesejado: string,
+): boolean {
+  const ufDesejada = normalizarUf(estadoDesejado);
+  if (!ufValida(ufDesejada) || !anuncioPertenceACidade(anuncio, cidadeDesejada)) return false;
+  const localTextual = separarCidadeEUf(anuncio.cidade);
+  const estadoDoCampo = normalizarUf(anuncio.estado);
+  if (anuncio.estado?.trim() && !ufValida(estadoDoCampo)) return false;
+  if (ufValida(estadoDoCampo) && localTextual.estado && estadoDoCampo !== localTextual.estado) {
+    return false;
+  }
+  const estadoComprovado = ufValida(estadoDoCampo) ? estadoDoCampo : localTextual.estado;
+  return !estadoComprovado || estadoComprovado === ufDesejada;
 }
 
 export function numeroOpcional(valor: unknown): number | null {

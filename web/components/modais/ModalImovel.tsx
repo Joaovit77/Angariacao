@@ -100,8 +100,8 @@ export default function ModalImovel({ id }: { id?: string }) {
   const [cep, setCep] = useState(imovel?.cep ?? "");
   const [endereco, setEndereco] = useState(imovel?.endereco ?? "");
   const [bairro, setBairro] = useState(imovel?.bairro ?? "");
-  const [cidade, setCidade] = useState(imovel?.cidade ?? "Londrina");
-  const [estado, setEstado] = useState(imovel?.estado ?? "PR");
+  const [cidade, setCidade] = useState(imovel?.cidade ?? "");
+  const [estado, setEstado] = useState(imovel?.estado ?? "");
   const [unidade, setUnidade] = useState(imovel?.unidade ?? "");
   const [bloco, setBloco] = useState(imovel?.bloco ?? "");
   const [edificio, setEdificio] = useState(imovel?.edificio ?? "");
@@ -556,7 +556,7 @@ export default function ModalImovel({ id }: { id?: string }) {
                 value={estado}
                 maxLength={2}
                 onChange={(e) => setEstado(e.target.value.toUpperCase())}
-                placeholder="PR"
+                placeholder="UF"
               />
             </div>
           </div>

@@ -18,6 +18,7 @@ const OFERTA: SinaisIdentidadeAnuncio = {
   idExterno: "123",
   url: "https://www.olx.com.br/imovel/123?utm_source=radar",
   cidade: "Londrina",
+  estado: "PR",
   bairro: "Centro",
   endereco: "Rua Pará, 100",
   tipo: "Apartamento",
@@ -55,6 +56,12 @@ describe("identidade do anúncio de mercado", () => {
   it("mantém a identidade quando apenas o preço muda", () => {
     // Preço não faz parte do contrato de SinaisIdentidadeAnuncio.
     expect(baseFingerprintAnuncio(OFERTA)).toBe(baseFingerprintAnuncio({ ...OFERTA }));
+  });
+
+  it("inclui UF no fingerprint geográfico de fallback", () => {
+    const outraUf = { ...OFERTA, estado: "SP", idExterno: "outro", url: "https://olx.com.br/outro" };
+    expect(baseFingerprintAnuncio(outraUf)).not.toBe(baseFingerprintAnuncio(OFERTA));
+    expect(anunciosRepresentamMesmaOferta(OFERTA, outraUf)).toBe(false);
   });
 });
 
@@ -115,6 +122,7 @@ describe("busca e score híbridos", () => {
     endereco: "Rua A, 10",
     bairro: "Centro",
     cidade: "Londrina",
+    estado: "PR",
     tipo: "Apartamento",
     areaM2: 80,
     quartos: 3,
@@ -128,6 +136,7 @@ describe("busca e score híbridos", () => {
     endereco: "Rua A, 100",
     bairro: "Centro",
     cidade: "Londrina",
+    estado: "PR",
     tipo: "Apartamento",
     areaM2: 80,
     quartos: 3,
@@ -167,6 +176,7 @@ describe("adaptação do catálogo para a avaliação", () => {
       endereco: "Rua A, 10",
       bairro: "Cinco Conjuntos",
       cidade: "Londrina",
+      estado: "PR",
       regiao: "Zona Norte",
       area_m2: 80,
       quartos: 3,
@@ -207,6 +217,7 @@ describe("schema histórico e segurança", () => {
     expect(schema).toContain("select distinct on (c.portal, c.id_externo) c.*");
     expect(persistencia).not.toContain('.eq("user_id", userId)');
     expect(schema).toContain("c.finalidade = p_finalidade");
+    expect(schema).toContain("c.estado = upper(trim(p_estado))");
     expect(schema).toContain("c.embedding_modelo = p_embedding_modelo");
     expect(schema).toContain("c.embedding_dimensoes = p_embedding_dimensoes");
     expect(schema).toContain("c.tipo_familia = p_tipo_familia");

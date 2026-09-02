@@ -13,6 +13,7 @@ import {
 } from "@/lib/calculo/avaliacao";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabase } from "./supabase";
+import { normalizarUf, ufValida } from "@/lib/calculo/geografia";
 
 interface LinhaComparavelMercado {
   id?: string;
@@ -24,6 +25,7 @@ interface LinhaComparavelMercado {
   endereco: string | null;
   bairro: string | null;
   cidade: string;
+  estado: string | null;
   regiao?: string | null;
   area_m2: number | string | null;
   quartos: number | null;
@@ -90,6 +92,7 @@ export function mapearComparaveisMercado(
     endereco: linha.endereco || linha.titulo,
     bairro: linha.bairro,
     cidade: linha.cidade,
+    estado: linha.estado,
     regiao: linha.regiao,
     edificio: null,
     tipo: linha.tipo || "Outro",
@@ -115,12 +118,14 @@ export async function carregarComparaveisMercadoComCliente(
 ): Promise<ComparavelAvaliacao[]> {
   if (entrada.finalidade !== "locacao") return [];
   const cidadeChave = chaveNormalizada(entrada.cidade);
-  if (!cidadeChave) return [];
+  const estado = normalizarUf(entrada.estado);
+  if (!cidadeChave || !ufValida(estado)) return [];
 
   const { data, error } = await supabase
     .from("comparaveis_mercado")
-    .select("id, portal, id_externo, url, titulo, tipo, endereco, bairro, cidade, regiao, area_m2, quartos, banheiros, vagas, valor_anunciado, publicado_em, ultimo_visto_em, status_anuncio")
+    .select("id, portal, id_externo, url, titulo, tipo, endereco, bairro, cidade, estado, regiao, area_m2, quartos, banheiros, vagas, valor_anunciado, publicado_em, ultimo_visto_em, status_anuncio")
     .eq("finalidade", entrada.finalidade)
+    .eq("estado", estado)
     .eq("cidade_chave", cidadeChave)
     // Replica no banco os cortes mínimos do motor. Buscar primeiro os 500
     // mais recentes da cidade escondia o imóvel certo quando a base crescia.

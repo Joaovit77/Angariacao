@@ -38,6 +38,7 @@ import { buscarComparaveisMercado } from "@/lib/persistencia/comparaveisMercado"
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import type { Imovel } from "@/lib/tipos";
+import { normalizarUf, UFS_BRASIL, ufValida } from "@/lib/calculo/geografia";
 
 interface FormularioAvaliacao {
   imovelId: string;
@@ -80,8 +81,8 @@ const FORMULARIO_VAZIO: FormularioAvaliacao = {
   finalidade: "locacao",
   endereco: "",
   bairro: "",
-  cidade: "Londrina",
-  estado: "PR",
+  cidade: "",
+  estado: "",
   edificio: "",
   tipo: "Apartamento",
   areaM2: "",
@@ -103,8 +104,8 @@ function formularioDoImovel(imovel: Imovel, finalidade: FinalidadeAvaliacao): Fo
     finalidade,
     endereco: entrada.endereco || "",
     bairro: entrada.bairro || "",
-    cidade: entrada.cidade || "Londrina",
-    estado: entrada.estado || "PR",
+    cidade: entrada.cidade || "",
+    estado: ufValida(entrada.estado) ? normalizarUf(entrada.estado) : "",
     edificio: entrada.edificio || "",
     tipo: entrada.tipo || "Apartamento",
     areaM2: entrada.areaM2 ? String(entrada.areaM2) : "",
@@ -127,8 +128,8 @@ function formularioDaAvaliacao(
     finalidade: entrada.finalidade,
     endereco: entrada.endereco || "",
     bairro: entrada.bairro || "",
-    cidade: entrada.cidade || "Londrina",
-    estado: entrada.estado || "PR",
+    cidade: entrada.cidade || "",
+    estado: ufValida(entrada.estado) ? normalizarUf(entrada.estado) : "",
     edificio: entrada.edificio || "",
     tipo: entrada.tipo || "Apartamento",
     areaM2: entrada.areaM2 > 0 ? String(entrada.areaM2) : "",
@@ -155,7 +156,7 @@ function formularioDoContexto(prefill: PrefillAvaliacao): FormularioAvaliacao {
     endereco: prefill.endereco || "",
     bairro: prefill.bairro || "",
     cidade: prefill.cidade || FORMULARIO_VAZIO.cidade,
-    estado: prefill.estado || FORMULARIO_VAZIO.estado,
+    estado: ufValida(prefill.estado) ? normalizarUf(prefill.estado) : FORMULARIO_VAZIO.estado,
     tipo: prefill.tipo || FORMULARIO_VAZIO.tipo,
     areaM2: prefill.areaM2 && prefill.areaM2 > 0 ? String(prefill.areaM2) : "",
     quartos: prefill.quartos ?? 0,
@@ -288,7 +289,7 @@ export default function AvaliacaoRapidaView({
       endereco: selecionado.endereco || atual.endereco,
       bairro: selecionado.bairro || atual.bairro,
       cidade: selecionado.cidade || atual.cidade,
-      estado: selecionado.estado || atual.estado,
+      estado: ufValida(selecionado.estado) ? normalizarUf(selecionado.estado) : atual.estado,
       latitude: null,
       longitude: null,
     }));
@@ -300,6 +301,7 @@ export default function AvaliacaoRapidaView({
     const areaM2 = Number(formulario.areaM2.replace(",", "."));
     if (!formulario.endereco.trim()) return toast("Informe o endereço do imóvel.", "error");
     if (!formulario.cidade.trim()) return toast("Informe a cidade do imóvel.", "error");
+    if (!ufValida(formulario.estado)) return toast("Informe uma UF válida para buscar comparáveis.", "error");
     if (!formulario.tipo.trim()) return toast("Informe o tipo do imóvel.", "error");
     if (!Number.isFinite(areaM2) || areaM2 < 10) {
       return toast("Informe uma área válida, a partir de 10 m².", "error");
@@ -597,7 +599,7 @@ export default function AvaliacaoRapidaView({
               </div>
               <div className="field-group"><label>Bairro</label><input value={formulario.bairro} onChange={(e) => atualizar("bairro", e.target.value)} /></div>
               <div className="field-group"><label>Cidade</label><input value={formulario.cidade} onChange={(e) => atualizar("cidade", e.target.value)} /></div>
-              <div className="field-group avaliacao-uf"><label>UF</label><input maxLength={2} value={formulario.estado} onChange={(e) => atualizar("estado", e.target.value.toUpperCase())} /></div>
+              <div className="field-group avaliacao-uf"><label>UF</label><select value={formulario.estado} onChange={(e) => atualizar("estado", e.target.value)}><option value="">Selecione</option>{UFS_BRASIL.map((uf) => <option key={uf} value={uf}>{uf}</option>)}</select></div>
             </div>
           </section>
 

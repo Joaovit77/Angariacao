@@ -48,6 +48,7 @@ import {
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
+import { UFS_BRASIL, ufValida } from "@/lib/calculo/geografia";
 
 const carregarImagemPortal = ({ src }: ImageLoaderProps) => src;
 
@@ -59,8 +60,8 @@ export default function CentralAngariacaoView() {
   const imoveis = useAppStore((s) => s.imoveis);
   const [aba, setAba] = useState<Aba>("buscar");
   const [portal, setPortal] = useState<PortalAngariacao>("olx");
-  const [cidade, setCidade] = useState("Londrina");
-  const [estado, setEstado] = useState("PR");
+  const [cidade, setCidade] = useState("");
+  const [estado, setEstado] = useState("");
   const [bairro, setBairro] = useState("");
   const [tipo, setTipo] = useState("");
   const [valorMin, setValorMin] = useState("");
@@ -139,13 +140,16 @@ export default function CentralAngariacaoView() {
   }, [radar.anuncios]);
 
   async function buscar() {
-    if (!cidade.trim()) return;
+    if (!cidade.trim() || !ufValida(estado)) {
+      toast("Informe a cidade e uma UF válida.", "error");
+      return;
+    }
     setBuscando(true);
     setIdsComparaveis(new Map());
     const filtros = {
       portal,
       cidade,
-      estado,
+      estado: estado.toUpperCase(),
       bairro: bairro || undefined,
       tipo: tipo || undefined,
       valorMin: numeroOpcional(valorMin),
@@ -252,7 +256,7 @@ export default function CentralAngariacaoView() {
       endereco: anuncio.endereco || "",
       bairro: anuncio.bairro || "",
       cidade: anuncio.cidade || cidade,
-      estado,
+      estado: anuncio.estado || estado,
       origemImovel: anuncio.portal === "olx" ? "OLX / Canal Pro" : ORIGEM_GARIMPO_SITE,
       valorAluguel: anuncio.preco,
       textoAnuncio: textoParaPreCadastro(anuncio),
@@ -413,7 +417,7 @@ export default function CentralAngariacaoView() {
           </div>
           <div className="central-form-grid">
             <label>Cidade<input value={cidade} onChange={(e) => setCidade(e.target.value)} /></label>
-            <label>UF<input value={estado} maxLength={2} onChange={(e) => setEstado(e.target.value.toUpperCase())} /></label>
+            <label>UF<select value={estado} onChange={(e) => setEstado(e.target.value)}><option value="">Selecione</option>{UFS_BRASIL.map((uf) => <option key={uf} value={uf}>{uf}</option>)}</select></label>
             <label>Bairro<input value={bairro} onChange={(e) => setBairro(e.target.value)} placeholder="Todos" /></label>
             <label>Tipo<input value={tipo} onChange={(e) => setTipo(e.target.value)} placeholder="Apartamento, casa…" /></label>
             <label>Valor mínimo<input inputMode="numeric" value={valorMin} onChange={(e) => setValorMin(e.target.value)} placeholder="R$ 0" /></label>
@@ -441,7 +445,7 @@ export default function CentralAngariacaoView() {
             </label>
           )}
           <div className="central-actions">
-            <button type="button" className="btn btn-primary" disabled={buscando || !cidade.trim()} onClick={() => void buscar()}>
+            <button type="button" className="btn btn-primary" disabled={buscando || !cidade.trim() || !ufValida(estado)} onClick={() => void buscar()}>
               {buscando ? "Consultando portal…" : "Buscar imóveis"}
             </button>
           </div>

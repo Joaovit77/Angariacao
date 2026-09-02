@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
-  anuncioPertenceACidade,
+  anuncioPertenceAoMercado,
   PERIODOS_PUBLICACAO,
   PORTAIS_ANGARIACAO,
   rotuloPortal,
@@ -8,7 +8,12 @@ import {
   type ResultadoBuscaCentral,
 } from "@/lib/calculo/centralAngariacao";
 import { dentroDoPeriodo } from "@/lib/datas";
-import { extrairJsonLd, urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
+import {
+  extrairJsonLd,
+  PortalSemCoberturaGeografica,
+  urlDaPesquisa,
+} from "@/lib/servidor/centralAngariacao";
+import { normalizarUf, ufValida } from "@/lib/calculo/geografia";
 import { finalizarColetaCentralAngariacao } from "@/lib/servidor/finalizacaoCentralAngariacao";
 import { buscarComFirecrawl, FirecrawlIndisponivel } from "@/lib/servidor/firecrawlCentralAngariacao";
 import { buscarComNavegador, NavegadorIndisponivel } from "@/lib/servidor/scraperCentralAngariacao";
@@ -96,19 +101,28 @@ export async function POST(request: Request) {
   }
 
   const filtros = (await request.json().catch(() => null)) as FiltrosCentralAngariacao | null;
-  if (!filtros || !PORTAIS_ANGARIACAO.includes(filtros.portal) || !filtros.cidade?.trim()) {
-    return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: "Informe portal e cidade." }, 400);
+  if (!filtros || !PORTAIS_ANGARIACAO.includes(filtros.portal)
+    || !filtros.cidade?.trim() || !ufValida(filtros.estado)) {
+    return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: "Informe portal, cidade e uma UF válida." }, 400);
   }
   const seguros: FiltrosCentralAngariacao = {
     ...filtros,
     cidade: filtros.cidade.trim().slice(0, 80),
-    estado: (filtros.estado || "PR").trim().slice(0, 2).toUpperCase(),
+    estado: normalizarUf(filtros.estado),
     bairro: filtros.bairro?.trim().slice(0, 80),
     diasPublicacao: filtros.portal === "olx" && PERIODOS_PUBLICACAO.includes(filtros.diasPublicacao as 1 | 7 | 30)
       ? filtros.diasPublicacao
       : null,
   };
-  const urlPesquisa = urlDaPesquisa(seguros);
+  let urlPesquisa: string;
+  try {
+    urlPesquisa = urlDaPesquisa(seguros);
+  } catch (erro) {
+    if (erro instanceof PortalSemCoberturaGeografica) {
+      return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: erro.message }, 422);
+    }
+    throw erro;
+  }
 
   if (process.env.FIRECRAWL_API_KEY) {
     try {
@@ -165,7 +179,7 @@ export async function POST(request: Request) {
     if (!r.ok) throw new Error(`portal respondeu ${r.status}`);
     const html = await r.text();
     const anuncios = extrairJsonLd(html, seguros.portal, urlPesquisa).filter((a) => {
-      if (!anuncioPertenceACidade(a, seguros.cidade)) return false;
+      if (!anuncioPertenceAoMercado(a, seguros.cidade, seguros.estado)) return false;
       if (seguros.diasPublicacao && !dentroDoPeriodo(a.publicadoEm, seguros.diasPublicacao)) return false;
       if (!seguros.somenteProprietario) return true;
       return a.anunciante !== "imobiliaria";

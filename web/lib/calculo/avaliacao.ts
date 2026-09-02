@@ -12,6 +12,7 @@ import { daysBetween } from "../datas";
 import { chaveEndereco } from "./duplicidade";
 import { chaveNormalizada } from "../normalizacao";
 import type { Imovel } from "../tipos";
+import { ehLondrinaParana, mesmoMercadoGeografico } from "./geografia";
 import {
   normalizarRegiaoLondrina,
   regiaoDeBairroLondrina,
@@ -74,6 +75,7 @@ export interface ComparavelAvaliacao {
   endereco: string;
   bairro?: string | null;
   cidade?: string | null;
+  estado?: string | null;
   regiao?: string | null;
   edificio?: string | null;
   tipo: string;
@@ -268,6 +270,7 @@ function scoreLocalizacao(
   comparavel: ComparavelAvaliacao,
   distanciaKm: number | null,
 ): number {
+  if (!mesmoMercadoGeografico(entrada, comparavel)) return 0;
   if (mesmaLocalizacao(entrada.edificio, comparavel.edificio)) return 100;
   if (chaveEndereco(entrada.endereco) && chaveEndereco(entrada.endereco) === chaveEndereco(comparavel.endereco)) {
     return 96;
@@ -300,7 +303,7 @@ function comparavelAtendeCriteriosMinimos(
   if (!familiaTipo(entrada.tipo) || familiaTipo(entrada.tipo) !== familiaTipo(comparavel.tipo)) {
     return false;
   }
-  if (!mesmaLocalizacao(entrada.cidade, comparavel.cidade)) return false;
+  if (!mesmoMercadoGeografico(entrada, comparavel)) return false;
   if (!(comparavel.areaM2 && comparavel.areaM2 > 0)) return false;
   if (Math.abs(entrada.areaM2 - comparavel.areaM2) / entrada.areaM2 > 0.55) return false;
   if (comparavel.quartos == null || Math.abs(entrada.quartos - comparavel.quartos) > 1) return false;
@@ -312,6 +315,7 @@ function comparavelEhLocal(
   entrada: EntradaAvaliacao,
   comparavel: ComparavelAvaliacao,
 ): boolean {
+  if (!mesmoMercadoGeografico(entrada, comparavel)) return false;
   const mesmoEdificio = mesmaLocalizacao(entrada.edificio, comparavel.edificio);
   const enderecoEntrada = chaveEndereco(entrada.endereco);
   const mesmoEndereco = !!enderecoEntrada && enderecoEntrada === chaveEndereco(comparavel.endereco);
@@ -331,12 +335,14 @@ function comparavelEhLocal(
 }
 
 function regiaoDaEntrada(entrada: EntradaAvaliacao): RegiaoLondrina | null {
+  if (!ehLondrinaParana(entrada.cidade, entrada.estado)) return null;
   return normalizarRegiaoLondrina(entrada.regiao)
     || regiaoPorCoordenadasLondrina(entrada.latitude, entrada.longitude)
     || regiaoDeBairroLondrina(entrada.bairro);
 }
 
 function regiaoDoComparavel(comparavel: ComparavelAvaliacao): RegiaoLondrina | null {
+  if (!ehLondrinaParana(comparavel.cidade, comparavel.estado)) return null;
   return normalizarRegiaoLondrina(comparavel.regiao)
     || regiaoPorCoordenadasLondrina(comparavel.latitude, comparavel.longitude)
     || regiaoDeBairroLondrina(comparavel.bairro);
@@ -776,6 +782,7 @@ export const internalComparablesProvider: ComparaveisProvider<ContextoComparavei
         endereco: imovel.endereco,
         bairro: imovel.bairro,
         cidade: imovel.cidade,
+        estado: imovel.estado,
         edificio: imovel.edificio,
         tipo: imovel.tipo || "Outro",
         areaM2: extrairAreaM2(imovel.textoAnuncio),

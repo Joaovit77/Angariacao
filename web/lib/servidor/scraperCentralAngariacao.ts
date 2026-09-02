@@ -63,13 +63,18 @@ function cidadeBairro(texto: string | null | undefined): { cidade: string | null
   return { cidade: partes[0], bairro: partes.slice(1).join(", ") };
 }
 
-function cidadeBairroWimoveis(texto: string | null | undefined): { cidade: string | null; bairro: string | null } {
+function cidadeBairroWimoveis(texto: string | null | undefined): { cidade: string | null; bairro: string | null; estado: string | null } {
   const partes = (texto || "").split(",").map((p) => p.trim()).filter(Boolean);
-  if (partes.length < 2) return { cidade: partes[0] || null, bairro: null };
+  if (partes.length < 2) return { cidade: partes[0] || null, bairro: null, estado: null };
   const ultimo = partes.at(-1)?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   // Alguns cards substituem o bairro pelo estado: "Londrina, Paraná".
-  if (ultimo === "parana" || ultimo === "pr") return { cidade: partes[0], bairro: null };
-  return { cidade: partes.at(-1) || null, bairro: partes.slice(0, -1).join(", ") || null };
+  if (ultimo === "parana" || ultimo === "pr") {
+    return { cidade: partes[0], bairro: partes.length > 2 ? partes.slice(1, -1).join(", ") : null, estado: "PR" };
+  }
+  if (/^[a-z]{2}$/.test(ultimo || "")) {
+    return { cidade: partes.at(-2) || null, bairro: partes.slice(0, -2).join(", ") || null, estado: ultimo!.toUpperCase() };
+  }
+  return { cidade: partes.at(-1) || null, bairro: partes.slice(0, -1).join(", ") || null, estado: null };
 }
 
 async function prepararPagina(page: Page) {
@@ -183,15 +188,17 @@ async function coletarChaves(page: Page): Promise<AnuncioCentralAngariacao[]> {
     if (!item.url || !item.titulo || vistos.has(item.url)) return [];
     vistos.add(item.url);
     const precoTexto = [...item.textos].reverse().find((t) => /R\$\s*[\d.]+/.test(t));
-    const localidade = item.textos.find((t) => /,\s*[^/]+\/PR/i.test(t));
+    const localidade = item.textos.find((t) => /,\s*[^/]+\/[A-Z]{2}\b/i.test(t));
     const endereco = item.textos.find((t) => t !== localidade && !/R\$|m²|^\d+$|Endereço indisponível/i.test(t));
-    const local = cidadeBairro(localidade?.replace(/\/PR.*$/, "").split(",").reverse().join(", "));
+    const estado = localidade?.match(/\/([A-Z]{2})\b/i)?.[1]?.toUpperCase() || null;
+    const local = cidadeBairro(localidade?.replace(/\/[A-Z]{2}.*$/i, "").split(",").reverse().join(", "));
     return [{
       idExterno: idDoAnuncio("chaves-na-mao", item.url, indice),
       portal: "chaves-na-mao" as const,
       titulo: item.titulo,
       preco: dinheiro(precoTexto),
       cidade: local.cidade,
+      estado,
       bairro: local.bairro,
       endereco: endereco || null,
       imagem: item.imagem || null,
@@ -236,6 +243,7 @@ async function coletarWimoveis(page: Page, filtros: FiltrosCentralAngariacao): P
       titulo: item.titulo,
       preco,
       cidade: local.cidade,
+      estado: local.estado,
       bairro: local.bairro,
       endereco: item.endereco || null,
       imagem: item.imagem || null,
