@@ -92,7 +92,13 @@ describe("domínio de mercados monitorados", () => {
     expect(schema).toContain('create policy "update_own_mercados_monitorados"');
     expect(schema).toContain('create policy "delete_own_mercados_monitorados"');
     expect(schema.match(/\(select auth\.uid\(\)\) = user_id/g)?.length).toBeGreaterThanOrEqual(5);
+    expect(migration).toContain(
+      "revoke all on table public.mercados_monitorados from anon, authenticated, service_role",
+    );
     expect(schema).toContain("grant select, insert, update, delete on table mercados_monitorados to authenticated");
+    expect(migration).toContain(
+      "grant select, insert, update, delete on table public.mercados_monitorados to service_role",
+    );
   });
 
   it("não introduz cron, job ou claim antes da Fase 5B", () => {

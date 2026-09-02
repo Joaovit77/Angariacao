@@ -71,7 +71,7 @@ create index if not exists idx_mercados_monitorados_ativos_vencidos
   on public.mercados_monitorados (proxima_execucao_em)
   where ativo;
 
-revoke all on table public.mercados_monitorados from anon, authenticated;
+revoke all on table public.mercados_monitorados from anon, authenticated, service_role;
 grant select, insert, update, delete on table public.mercados_monitorados to authenticated;
 grant select, insert, update, delete on table public.mercados_monitorados to service_role;
 
