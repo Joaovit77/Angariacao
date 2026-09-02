@@ -112,4 +112,13 @@ describe("domínio de mercados monitorados", () => {
     expect(migration).not.toMatch(/set\s+estado\s*=\s*['\"]PR['\"]/i);
     expect(migration).toContain("'estado', new.estado");
   });
+
+  it("preserva a assinatura híbrida anterior durante o rollout expand/contract", () => {
+    const remocaoAssinaturaAnterior = /drop function if exists public\.buscar_comparaveis_mercado_hibridos\(\s*extensions\.vector,\s*text,\s*integer,\s*text,\s*text,\s*text,\s*numeric,\s*numeric,\s*integer,\s*integer,\s*integer\s*\)/i;
+    expect(migration).not.toMatch(remocaoAssinaturaAnterior);
+    expect(schema).toContain("Overload temporário de compatibilidade");
+    expect(schema).toContain("p_estado text");
+    expect(schema.match(/create or replace function buscar_comparaveis_mercado_hibridos\(/g))
+      .toHaveLength(2);
+  });
 });

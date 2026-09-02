@@ -100,9 +100,9 @@ drop index if exists public.idx_comparaveis_mercado_catalogo_bairro_tipo;
 create index idx_comparaveis_mercado_catalogo_bairro_tipo
   on public.comparaveis_mercado (estado, cidade_chave, bairro_chave, tipo);
 
-drop function if exists public.buscar_comparaveis_mercado_hibridos(
-  extensions.vector, text, integer, text, text, text, numeric, numeric, integer, integer, integer
-);
+-- EXPAND: a assinatura anterior, sem p_estado, permanece durante o rollout.
+-- Deployments antigos continuam usando-a; a remoção fica para uma migration
+-- de contract posterior, depois que não houver mais tráfego no código antigo.
 drop function if exists public.buscar_comparaveis_mercado_hibridos(
   extensions.vector, text, integer, text, text, text, text, numeric, numeric, integer, integer, integer
 );
