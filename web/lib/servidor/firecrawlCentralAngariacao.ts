@@ -1,4 +1,5 @@
-import { createHash } from "node:crypto";
+import { gzipSync, gunzipSync } from "node:zlib";
+import { chaveCanonicaConsultaPortal } from "./planejadorColetaMercados";
 import { getCache } from "@vercel/functions";
 import { load, type CheerioAPI, type Cheerio } from "cheerio";
 import type { AnyNode } from "domhandler";
@@ -10,11 +11,11 @@ import {
   type FiltrosCentralAngariacao,
 } from "@/lib/calculo/centralAngariacao";
 
-const LIMITE_RESULTADOS = 50;
+export const LIMITE_RESULTADOS = 50;
 const TIMEOUT_FIRECRAWL_MS = 55_000;
 export const CACHE_FIRECRAWL_TTL_SEGUNDOS = 20 * 60;
 const CACHE_FIRECRAWL_TTL_MS = CACHE_FIRECRAWL_TTL_SEGUNDOS * 1000;
-const consultasEmAndamento = new Map<string, Promise<AnuncioCentralAngariacao[]>>();
+const consultasEmAndamento = new Map<string, Promise<string>>();
 
 interface RespostaFirecrawl {
   success?: boolean;
@@ -26,7 +27,11 @@ interface RespostaFirecrawl {
   };
 }
 
-export class FirecrawlIndisponivel extends Error {}
+export class FirecrawlIndisponivel extends Error {
+  constructor(mensagem: string, readonly codigo: CodigoErroFirecrawl = "firecrawl_indisponivel") {
+    super(mensagem);
+  }
+}
 
 function dinheiro(texto: string | null | undefined): number | null {
   const encontrado = texto?.match(/R\$\s*([\d.]+)/);
@@ -211,109 +216,106 @@ export function extrairAnunciosFirecrawl(
   }
 }
 
-function chaveCacheFirecrawl(filtros: FiltrosCentralAngariacao, urlPesquisa: string): string {
-  const dados = JSON.stringify([
-    urlPesquisa,
-    filtros.portal,
-    filtros.cidade,
-    filtros.estado,
-    filtros.bairro || "",
-    filtros.tipo || "",
-    filtros.valorMin ?? null,
-    filtros.valorMax ?? null,
-    filtros.dormitorios ?? null,
-    !!filtros.somenteProprietario,
-    filtros.diasPublicacao ?? null,
-  ]);
-  return createHash("sha256").update(dados).digest("hex");
+/** Origem da coleta antes do parsing: permite medir custo mesmo se houver falha. */
+export type OrigemConsultaFirecrawl = "cache" | "em_andamento" | "firecrawl";
+export type CodigoErroFirecrawl = "firecrawl_429" | "firecrawl_timeout" | "firecrawl_indisponivel" | "parser_falhou";
+
+async function coletarHtmlFirecrawl(urlPesquisa: string): Promise<string> {
+  const apiKey = process.env.FIRECRAWL_API_KEY?.trim();
+  if (!apiKey) throw new FirecrawlIndisponivel("Firecrawl não configurado.");
+  let resposta: Response;
+  try {
+    resposta = await fetch("https://api.firecrawl.dev/v2/scrape", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: urlPesquisa, formats: ["rawHtml"],
+        // Sem escalada de proxy, retries ou paginação.
+        proxy: "basic",
+        location: { country: "BR", languages: ["pt-BR"] },
+        timeout: TIMEOUT_FIRECRAWL_MS,
+        storeInCache: true,
+        maxAge: CACHE_FIRECRAWL_TTL_MS,
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_FIRECRAWL_MS + 5_000),
+    });
+  } catch (erro) {
+    const timeout = erro instanceof Error && ["AbortError", "TimeoutError"].includes(erro.name);
+    throw new FirecrawlIndisponivel("Consulta Firecrawl indisponível.",
+      timeout ? "firecrawl_timeout" : "firecrawl_indisponivel");
+  }
+  const corpo = await resposta.json().catch(() => null) as RespostaFirecrawl | null;
+  if (!resposta.ok || !corpo?.success || !corpo.data?.rawHtml) {
+    throw new FirecrawlIndisponivel("Firecrawl não retornou uma página utilizável.",
+      resposta.status === 429 ? "firecrawl_429" : "firecrawl_indisponivel");
+  }
+  const statusPortal = corpo.data.metadata?.statusCode;
+  if (statusPortal && statusPortal >= 400) {
+    throw new FirecrawlIndisponivel("Portal indisponível.",
+      statusPortal === 429 ? "firecrawl_429" : "firecrawl_indisponivel");
+  }
+  return corpo.data.rawHtml;
+}
+
+function extrairComProtecao(html: string, filtros: FiltrosCentralAngariacao) {
+  try {
+    return extrairAnunciosFirecrawl(html, filtros);
+  } catch {
+    throw new FirecrawlIndisponivel("Não foi possível interpretar a listagem.", "parser_falhou");
+  }
 }
 
 export async function buscarComFirecrawlAoVivo(
-  filtros: FiltrosCentralAngariacao,
-  urlPesquisa: string,
+  filtros: FiltrosCentralAngariacao, urlPesquisa: string,
 ): Promise<AnuncioCentralAngariacao[]> {
-  const apiKey = process.env.FIRECRAWL_API_KEY?.trim();
-  if (!apiKey) throw new FirecrawlIndisponivel("FIRECRAWL_API_KEY não configurada.");
-  const resposta = await fetch("https://api.firecrawl.dev/v2/scrape", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      url: urlPesquisa,
-      formats: ["rawHtml"],
-      // O modo básico mantém o custo previsível em 1 crédito por página.
-      // Se o portal o bloquear, a rota conserva o link e não escala para o
-      // proxy reforçado de 5 créditos sem uma decisão explícita.
-      proxy: "basic",
-      location: { country: "BR", languages: ["pt-BR"] },
-      timeout: TIMEOUT_FIRECRAWL_MS,
-      // O cache do Firecrawl ainda custa 1 crédito, mas evita o proxy reforçado
-      // de até 5 créditos. O cache regional abaixo evita inclusive esse crédito.
-      storeInCache: true,
-      maxAge: CACHE_FIRECRAWL_TTL_MS,
-    }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(TIMEOUT_FIRECRAWL_MS + 5_000),
-  });
-  const corpo = await resposta.json().catch(() => null) as RespostaFirecrawl | null;
-  if (!resposta.ok || !corpo?.success || !corpo.data?.rawHtml) {
-    throw new FirecrawlIndisponivel(
-      `Firecrawl respondeu ${resposta.status}: ${corpo?.error || "conteúdo indisponível"}`,
-    );
-  }
-  const anuncios = extrairAnunciosFirecrawl(corpo.data.rawHtml, filtros);
-  console.info("[central-angariacao] consulta Firecrawl concluída", {
-    portal: filtros.portal,
-    anuncios: anuncios.length,
-    statusPortal: corpo.data.metadata?.statusCode,
-    warning: corpo.warning || undefined,
-  });
-  return anuncios;
+  return extrairComProtecao(await coletarHtmlFirecrawl(urlPesquisa), filtros);
 }
 
 /**
- * Evita pagar novamente por cliques duplos, recargas e abas que repetem os
- * mesmos filtros. O Runtime Cache é regional e compartilhado pelas Functions;
- * o Map cobre requisições simultâneas dentro da mesma instância.
+ * Cache regional de HTML comprimido, anterior aos filtros locais. TTL preservado.
+ * O Map evita coletas simultâneas equivalentes na mesma instância; não é um lock
+ * distribuído entre Functions/regiões. O namespace muda pelo novo formato do valor.
  */
 export async function buscarComFirecrawl(
   filtros: FiltrosCentralAngariacao,
   urlPesquisa: string,
+  registrarOrigem?: (origem: OrigemConsultaFirecrawl) => void,
 ): Promise<AnuncioCentralAngariacao[]> {
-  const chave = chaveCacheFirecrawl(filtros, urlPesquisa);
+  const chave = chaveCanonicaConsultaPortal(filtros.portal, urlPesquisa);
   const existente = consultasEmAndamento.get(chave);
-  if (existente) return existente;
+  if (existente) {
+    registrarOrigem?.("em_andamento");
+    return extrairComProtecao(await existente, filtros);
+  }
 
   const consulta = (async () => {
-    const cache = getCache({ namespace: "central-firecrawl-v1" });
+    const cache = getCache({ namespace: "central-firecrawl-html-v2" });
     try {
       const armazenado = await cache.get(chave);
-      if (Array.isArray(armazenado)) {
-        console.info("[central-angariacao] consulta atendida pelo cache regional", {
-          portal: filtros.portal,
-          anuncios: armazenado.length,
-        });
-        return armazenado as AnuncioCentralAngariacao[];
+      if (typeof armazenado === "string") {
+        const html = gunzipSync(Buffer.from(armazenado, "base64")).toString("utf8");
+        registrarOrigem?.("cache");
+        return html;
       }
-    } catch (erro) {
-      console.warn("[central-angariacao] cache regional indisponível; consultando ao vivo", erro);
+    } catch {
+      console.warn("[central-angariacao] cache regional indisponível");
     }
 
-    const anuncios = await buscarComFirecrawlAoVivo(filtros, urlPesquisa);
+    registrarOrigem?.("firecrawl");
+    const html = await coletarHtmlFirecrawl(urlPesquisa);
     try {
-      await cache.set(chave, anuncios, {
+      await cache.set(chave, gzipSync(html).toString("base64"), {
         ttl: CACHE_FIRECRAWL_TTL_SEGUNDOS,
         tags: ["central-firecrawl", `central-firecrawl:${filtros.portal}`],
         name: `Central: ${filtros.portal}`,
       });
-    } catch (erro) {
-      console.warn("[central-angariacao] não foi possível guardar a consulta no cache regional", erro);
+    } catch {
+      console.warn("[central-angariacao] consulta não armazenada no cache regional");
     }
-    return anuncios;
+    return html;
   })().finally(() => consultasEmAndamento.delete(chave));
 
   consultasEmAndamento.set(chave, consulta);
-  return consulta;
+  return extrairComProtecao(await consulta, filtros);
 }
