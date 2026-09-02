@@ -92,8 +92,8 @@ export default function MercadosMonitorados() {
         <div className="config-campo-cabecalho">
           <h3>Mercados que você acompanha</h3>
           <p>
-            Esta configuração prepara a inteligência por cidade e UF. A coleta automática será
-            ativada em uma etapa futura e não começa ao adicionar um mercado.
+            Os mercados ativos entram na verificação diária de coleta, respeitando a frequência
+            e a cobertura dos portais. Adicionar um mercado não inicia uma coleta imediata.
           </p>
         </div>
         <form className="mercados-form" onSubmit={(evento) => void adicionar(evento)}>
@@ -135,8 +135,8 @@ export default function MercadosMonitorados() {
           </button>
         </form>
         <p id="mercados-capacidade" className="mercados-capacidade">
-          A primeira capacidade operacional será locação residencial. Venda e comercial continuam
-          previstos no domínio, sem indicação de coleta disponível nesta fase.
+          A coleta periódica atende locação residencial, conforme a cobertura dos portais.
+          Venda e comercial não possuem coleta automática disponível.
         </p>
       </div>
 
@@ -152,7 +152,7 @@ export default function MercadosMonitorados() {
                 <div>
                   <strong>{mercado.cidade} / {mercado.estado}</strong>
                   <span>Locação residencial · a cada {mercado.frequenciaDias} dias</span>
-                  <small>{mercado.ativo ? "Ativo para a futura coleta" : "Monitoramento pausado"}</small>
+                  <small>{mercado.ativo ? "Ativo para a coleta agendada" : "Monitoramento pausado"}</small>
                 </div>
                 <div className="mercado-acoes">
                   <button

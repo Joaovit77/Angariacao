@@ -727,8 +727,9 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   quer manter atualizada. É um domínio separado de `radar_buscas`: não cria, altera nem exclui Radar
   e não representa job, execução, anúncio ou imóvel. O tenant permanece `user_id`, a identidade é
   `user_id + UF + cidade_chave + finalidade + segmento` e a primeira capacidade operacional
-  comprovada é locação residencial. Os campos de frequência e lease preparam a execução futura,
-  mas nenhuma coleta automática existe antes da Fase 5B.
+  é locação residencial, limitada à cobertura dos adaptadores. Criar um mercado apenas configura:
+  a primeira execução (data ainda nula) entra na seleção do cron diário. Frequência é por mercado,
+  com padrão de 30 dias; o browser não pode alterar o estado operacional de execução/lease.
 - **`calculo/centralAngariacao.ts` · `radarAngariacao.ts`** — contratos e regras da Central/Radar.
   Resultado de portal não é `Imovel` e só chega à carteira após revisão humana. As buscas cobrem
   OLX, Chaves na Mão, Wimoveis e Viva Real; o Radar persiste filtros e anúncios novos em tabelas
@@ -2057,6 +2058,41 @@ janela e não bloqueia as demais.
 
 `api/central-angariacao/imagem` funciona apenas como proxy seguro para imagens de hosts esperados;
 não deve virar fetch genérico controlado pelo cliente.
+
+#### `api/cron/mercados` — coleta periódica de mercados monitorados
+
+O cron diário é independente do Radar e usa o mesmo `CRON_SECRET`. O executor processa **um mercado
+por rodada**, até quatro consultas amplas (uma por portal suportado), em duas ondas de concorrência
+dois. Reutiliza os adaptadores, o Firecrawl básico (até 50 resultados/consulta) e a finalização
+Central/Radar → `registrar_comparavel_mercado` → histórico. Não cria `radar_anuncios`, imóveis,
+notificações ou tabelas de jobs. A Avaliação continua somente lendo comparáveis persistidos.
+
+`claim_mercados_monitorados` usa `FOR UPDATE SKIP LOCKED`, teto absoluto de dois e lease de dez
+minutos. Somente service role executa claim/conclusão; ambas são `SECURITY INVOKER` com search_path
+vazio. O owner vem da linha reclamada, nunca da requisição. Conclusão exige ID + token ainda válido;
+crash/timeout permite recuperação após expiração. Desativação não cancela a coleta já reclamada,
+mas impede a próxima. Exclusão nunca é desfeita pelo worker. O trigger de proteção aceita o payload
+legado inerte da 5A, mas recusa alteração de leases, contadores e datas operacionais pelo browser.
+
+O planejador aceita somente locação residencial. OLX continua restrita a Londrina/PR e VivaReal ao
+mapeamento do Paraná; Chaves na Mão/Wimoveis preservam o formato UF/cidade, ainda sujeito a smoke
+em cada mercado novo. Não se inventam slugs regionais nem se promete cobertura nacional. Tipos
+residenciais reconhecidos entram na finalização, com UF + cidade explícitas. Saldo Firecrawl é
+consultado uma vez por execução útil; sem reserva para todas as consultas planejadas não há coleta.
+Não há proxy reforçado, retry imediato ou paginação. Após 180 segundos não se inicia nova consulta.
+
+A chave do cache representa portal + URL efetiva normalizada, não filtros ignorados pelo portal.
+HTML comprimido é reutilizado antes do parsing/filtros de cada consumidor, evitando contaminação
+entre Central, Radar e mercado. TTL regional permanece 20 minutos. O single-flight cobre somente
+a mesma instância; não é um lock global entre instâncias/regiões ou deployments. Chamadas externas
+simultâneas de outros domínios/instâncias ainda podem consumir crédito na mesma consulta.
+
+Ao menos um comparável persistido torna a rodada útil; falha em outro portal gera diagnóstico
+parcial e mantém os resultados, sem repetir chamadas pagas. Amostra vazia/sem anúncios utilizáveis
+ou falha total agenda backoff de 1, 2, 4 e no máximo 7 dias. Sucesso zera falhas e agenda a frequência
+a partir da observação concluída, sem catch-up de períodos perdidos. Logs agregados não armazenam
+mensagens externas ou HTML. Reobservação/preço usam os eventos existentes; **ausência na amostra
+nunca altera status nem gera observação artificial**. Métricas de inventário/frescor ficam fora.
 
 #### `api/investigador-imoveis` — possíveis correspondências na web
 

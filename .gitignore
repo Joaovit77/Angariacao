@@ -20,6 +20,7 @@ desktop.ini
 # faz sentido versionar (é específico de cada máquina).
 # ============================================================
 .vercel/
+supabase/.temp/
 
 # ============================================================
 # Variáveis de ambiente

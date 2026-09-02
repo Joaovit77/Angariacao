@@ -199,6 +199,46 @@ tiver, agende uma vez por mês:
 select cron.schedule('limpeza-logs', '0 4 1 * *', $$select limpar_registros_antigos(180)$$);
 ```
 
+### Mercados monitorados — coleta diária com frequência por mercado
+
+`web/vercel.json` agenda `/api/cron/mercados` diariamente às **06:00 UTC (03:00 em Brasília,
+UTC−3)**. O Radar permanece às 12:00 UTC, sem mudança de frequência. A Vercel ativa crons no
+deployment Production; Preview deve ser exercitado manualmente e somente com autorização.
+
+O executor requer `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL` e
+`FIRECRAWL_API_KEY` no servidor. A migration
+`supabase/migrations/20260902183304_fase5b_coleta_mercados.sql` instala claim/conclusão e proteção
+do estado operacional; não agenda jobs no banco. Validar primeiro no Supabase local e depois no
+ambiente não produtivo autorizado. Não apontar smoke com efeitos de escrita ao banco Production.
+
+- Aplicar a migration antes de ativar o código/cron novo. O cliente da 5A continua compatível:
+  seu INSERT com próxima execução nula e UPDATE de `updated_at` são aceitos. Ambas as assinaturas
+  híbridas da Avaliação permanecem intactas.
+- Cada rodada reclama um mercado (RPC limitada a dois), até quatro consultas, concorrência dois,
+  proxy `basic`, 50 resultados por consulta e nenhum retry/paginação. O saldo precisa cobrir o
+  plano inteiro; no pior caso são quatro raspagens básicas mais uma consulta de saldo, sem
+  considerar outros consumidores da conta. Cache pode reduzir as raspagens a zero.
+- Lease de dez minutos cobre a Function de 300 segundos. Chamadas de Firecrawl têm timeout de
+  60 segundos; após 180 segundos não se inicia outra consulta. Persistência/embeddings usam o
+  pipeline existente; encerramento abrupto recupera por lease, sem transação aberta durante HTTP.
+- `proxima_execucao_em IS NULL` significa primeira coleta pendente, não coleta imediata no INSERT.
+  Sucesso agenda `agora + frequencia_dias`; falhas totais usam 1/2/4/7 dias. A cadência depende do
+  lote diário: backlog pode atrasar mercados, não há garantia de horário exato ou cobertura total.
+- Resultados úteis com algum portal falho geram log `parcial` e cadência normal. Amostra vazia é
+  `sem_resultados`, com backoff; não marca anúncios ausentes/inativos. Logs incluem contagens,
+  duração e códigos fechados, nunca tokens, HTML ou erros crus.
+- Para pausar coletas, desative o cron de mercados na Vercel. Não altere o cron do Radar ou de
+  mensagens. Rollback de código não deve ser considerado suficiente para desligar cron:
+  confira o agendamento ativo. Não apague mercados, RPCs ou observações para rollback.
+- O cache regional mantém TTL de 20 minutos, mas muda de namespace ao adotar HTML comprimido.
+  O primeiro acesso após o deploy será frio. Deduplicação in-flight não é distribuída/global.
+
+Integração opt-in: `node node_modules/vitest/vitest.mjs run --config vitest.supabase-local.config.ts`
+em `web/`, com `LOCAL_SUPABASE_URL=http://127.0.0.1:54321`, `LOCAL_SUPABASE_ANON_KEY` e
+`LOCAL_SUPABASE_SERVICE_ROLE_KEY` obtidos do **status local**. O teste recusa outros hosts,
+cria/remove dois usuários descartáveis, usa Auth/PostgREST reais e simula Firecrawl. Não carrega
+`.env.local`, não imprime chaves, não acessa RapidAPI/OpenAI e não consome créditos externos.
+
 ### Mensagens agendadas - executor por minuto
 
 A Vercel Hobby nao aceita Cron a cada minuto. Por isso a rota
