@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { erroExternoSintetico } from "./fixtures/erroExterno";
 import type { AnuncioCentralAngariacao } from "@/lib/calculo/centralAngariacao";
 
 const mocks = vi.hoisted(() => ({
@@ -178,7 +179,7 @@ describe("monitor agendado do Radar", () => {
     const banco = clienteRadarFalso();
     mocks.createClient.mockReturnValue(banco.cliente);
     mocks.buscarComFirecrawl.mockResolvedValue([anuncioValido]);
-    mocks.salvarComparaveisMercado.mockRejectedValue(new Error("comparáveis indisponíveis"));
+    mocks.salvarComparaveisMercado.mockRejectedValue(erroExternoSintetico());
 
     const resumo = await executarMonitorRadar();
 
@@ -186,7 +187,9 @@ describe("monitor agendado do Radar", () => {
     expect(banco.inserirAnuncios).toHaveBeenCalledOnce();
     expect(console.error).toHaveBeenCalledWith(
       "[radar-cron] falha ao atualizar a base de comparáveis",
-      expect.objectContaining({ buscaId: "busca-1", portal: "olx" }),
+      { buscaId: "busca-1", portal: "olx", erro: {
+        provider: "supabase", operation: "persistir_comparaveis", error_code: "comparable_persistence_failed", status: 403,
+      } },
     );
   });
 

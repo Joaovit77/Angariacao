@@ -42,7 +42,7 @@ export function textoDaResposta(conclusao: OpenAI.Chat.ChatCompletion): string {
   const escolha = conclusao.choices[0];
   if (!escolha) return "";
   if (escolha.message.refusal) {
-    console.error("IA: o modelo recusou responder:", escolha.message.refusal);
+    console.error("IA: o modelo recusou responder.");
     return "";
   }
   if (escolha.finish_reason === "length") {

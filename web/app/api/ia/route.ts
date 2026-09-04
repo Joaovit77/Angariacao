@@ -25,6 +25,7 @@
       bem escrito de qualquer jeito.
    ================================================================ */
 import OpenAI from "openai";
+import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { registrarEvento, registrarUsoDaResposta } from "@/lib/servidor/registro";
 import { desempenhoPorAbordagem, resumoTentativas } from "@/lib/calculo/abordagens";
@@ -146,7 +147,7 @@ async function podeUsarIa(supabase: SupabaseClient, userId: string): Promise<boo
     .maybeSingle();
   if (error) {
     // Falha de leitura não libera — na dúvida, nega.
-    console.error("IA: falha ao ler a permissão:", error.message);
+    console.error("IA: falha ao ler a permissão:", sanitizarErroExterno(error, "consultarSupabase"));
     return false;
   }
   return data?.liberado === true;
@@ -266,7 +267,7 @@ export async function POST(request: Request): Promise<Response> {
       .from("abordagens")
       .select("nome, arquivada")
       .order("created_at", { ascending: false });
-    if (abErro) console.error("IA: falha ao ler abordagens existentes:", abErro.message);
+    if (abErro) console.error("IA: falha ao ler abordagens existentes:", sanitizarErroExterno(abErro, "consultarSupabase"));
     const nomesExistentes = ((abData || []) as { nome: string; arquivada: boolean | null }[])
       .filter((a) => !a.arquivada && typeof a.nome === "string" && a.nome.trim() !== "")
       .map((a) => a.nome);
@@ -289,7 +290,7 @@ export async function POST(request: Request): Promise<Response> {
         ]),
       });
     } catch (e) {
-      console.error("IA: falha ao sugerir roteiros:", e);
+      console.error("IA: falha ao sugerir roteiros:", sanitizarErroExterno(e, "iaTexto"));
       const falha = classificarErroIa(e);
       registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
       return erro(falha, 502);
@@ -314,7 +315,7 @@ export async function POST(request: Request): Promise<Response> {
       const resposta: Resposta = { ok: true, roteiros };
       return Response.json(resposta);
     } catch (e) {
-      console.error("IA: resposta de roteiros não veio parseável:", e);
+      console.error("IA: resposta de roteiros não veio parseável:", sanitizarErroExterno(e, "processarRespostaIa"));
       return erro("falha-ia", 502);
     }
   }
@@ -360,7 +361,7 @@ export async function POST(request: Request): Promise<Response> {
         messages: aplicarSystemPromptAngario([{ role: "user", content: conteudo }]),
       });
     } catch (e) {
-      console.error("IA: falha ao extrair o anúncio:", e);
+      console.error("IA: falha ao extrair o anúncio:", sanitizarErroExterno(e, "iaTexto"));
       const falha = classificarErroIa(e);
       registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
       return erro(falha, 502);
@@ -372,7 +373,7 @@ export async function POST(request: Request): Promise<Response> {
       const resposta: Resposta = { ok: true, anuncio };
       return Response.json(resposta);
     } catch (e) {
-      console.error("IA: resposta da extração não veio parseável:", e);
+      console.error("IA: resposta da extração não veio parseável:", sanitizarErroExterno(e, "processarRespostaIa"));
       return erro("falha-ia", 502);
     }
   }
@@ -407,7 +408,7 @@ export async function POST(request: Request): Promise<Response> {
       .eq("id", imovelId)
       .maybeSingle();
     if (imErr) {
-      console.error("IA: falha ao ler o imóvel para o anúncio:", imErr.message);
+      console.error("IA: falha ao ler o imóvel para o anúncio:", sanitizarErroExterno(imErr, "consultarSupabase"));
       return erro("falha-ia", 500);
     }
     // Id inválido ou imóvel de outro dono (barrado pelo RLS).
@@ -429,7 +430,7 @@ export async function POST(request: Request): Promise<Response> {
         ]),
       });
     } catch (e) {
-      console.error("IA: falha ao gerar o anúncio:", e);
+      console.error("IA: falha ao gerar o anúncio:", sanitizarErroExterno(e, "iaTexto"));
       const falha = classificarErroIa(e);
       registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
       return erro(falha, 502);
@@ -458,7 +459,7 @@ export async function POST(request: Request): Promise<Response> {
       const resposta: Resposta = { ok: true, anuncioGerado: { titulo, descricao, faltando } };
       return Response.json(resposta);
     } catch (e) {
-      console.error("IA: anúncio gerado não veio parseável:", e);
+      console.error("IA: anúncio gerado não veio parseável:", sanitizarErroExterno(e, "processarRespostaIa"));
       return erro("falha-ia", 502);
     }
   }
@@ -483,7 +484,7 @@ export async function POST(request: Request): Promise<Response> {
       .eq("id", imovelId)
       .maybeSingle();
     if (imErr) {
-      console.error("IA: falha ao ler o imóvel para a abordagem:", imErr.message);
+      console.error("IA: falha ao ler o imóvel para a abordagem:", sanitizarErroExterno(imErr, "consultarSupabase"));
       return erro("falha-ia", 500);
     }
     if (!imRow) return erro("sem-dados", 422);
@@ -508,7 +509,7 @@ export async function POST(request: Request): Promise<Response> {
         ]),
       });
     } catch (e) {
-      console.error("IA: falha ao escrever a abordagem do anúncio:", e);
+      console.error("IA: falha ao escrever a abordagem do anúncio:", sanitizarErroExterno(e, "iaTexto"));
       const falha = classificarErroIa(e);
       registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
       return erro(falha, 502);
@@ -551,7 +552,7 @@ export async function POST(request: Request): Promise<Response> {
       };
       return Response.json(resposta);
     } catch (e) {
-      console.error("IA: abordagem do anúncio não veio parseável:", e);
+      console.error("IA: abordagem do anúncio não veio parseável:", sanitizarErroExterno(e, "processarRespostaIa"));
       return erro("falha-ia", 502);
     }
   }
@@ -571,7 +572,7 @@ export async function POST(request: Request): Promise<Response> {
   if (imRes.error || abRes.error || agRes.error) {
     console.error(
       "IA: falha ao ler os dados:",
-      imRes.error?.message || abRes.error?.message || agRes.error?.message,
+      sanitizarErroExterno(imRes.error || abRes.error || agRes.error, "consultarSupabase"),
     );
     return erro("falha-ia", 500);
   }
@@ -612,7 +613,7 @@ export async function POST(request: Request): Promise<Response> {
         ]),
       });
     } catch (e) {
-      console.error("IA: falha ao analisar o mapa:", e);
+      console.error("IA: falha ao analisar o mapa:", sanitizarErroExterno(e, "iaTexto"));
       const falha = classificarErroIa(e);
       registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
       return erro(falha, 502);
@@ -624,7 +625,7 @@ export async function POST(request: Request): Promise<Response> {
       if (!acao) return erro("falha-ia", 502);
       return Response.json({ ok: true, leitura: { acao } } satisfies Resposta);
     } catch (e) {
-      console.error("IA: leitura territorial não veio parseável:", e);
+      console.error("IA: leitura territorial não veio parseável:", sanitizarErroExterno(e, "processarRespostaIa"));
       return erro("falha-ia", 502);
     }
   }
@@ -667,7 +668,7 @@ export async function POST(request: Request): Promise<Response> {
       messages: aplicarSystemPromptAngario([{ role: "user", content: prompt }]),
     });
   } catch (e) {
-    console.error(`IA: falha em ${pedido}:`, e);
+    console.error(`IA: falha em ${pedido}:`, sanitizarErroExterno(e, "iaTexto"));
     const falha = classificarErroIa(e);
     registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
     return erro(falha, 502);

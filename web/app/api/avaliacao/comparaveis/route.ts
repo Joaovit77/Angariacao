@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { sanitizarErroExterno, type ContextoErroExterno } from "@/lib/servidor/erroExterno";
 import {
   comparavelEhOProprioAnuncio,
   type EntradaAvaliacao,
@@ -123,6 +124,7 @@ export async function POST(request: Request) {
   const tipoFamilia = familiaTipoMercado(entrada.tipo);
   if (!cidadeChave || !ufValida(estado) || !tipoFamilia) return Response.json(await estruturados());
 
+  let contextoErro: ContextoErroExterno = "embedding";
   try {
     const texto = textoSemanticoDoImovel({
       finalidade: entrada.finalidade,
@@ -143,6 +145,7 @@ export async function POST(request: Request) {
       sessao.userId,
       "embedding-consulta-avaliacao",
     );
+    contextoErro = "buscarComparaveis";
     if (!embedding) return Response.json(await estruturados());
 
     const filtros = CONFIGURACAO_COMPARAVEIS_MERCADO.filtros;
@@ -191,7 +194,7 @@ export async function POST(request: Request) {
       comparaveis: vetoriais,
     });
   } catch (erro) {
-    console.error("[avaliacao] busca vetorial indisponível; usando filtros estruturados", erro);
+    console.error("[avaliacao] busca vetorial indisponível; usando filtros estruturados", sanitizarErroExterno(erro, contextoErro));
     return Response.json(await estruturados());
   }
 }

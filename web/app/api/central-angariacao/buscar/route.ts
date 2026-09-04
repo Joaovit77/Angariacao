@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import {
   anuncioPertenceAoMercado,
   PERIODOS_PUBLICACAO,
@@ -15,7 +16,7 @@ import {
 } from "@/lib/servidor/centralAngariacao";
 import { normalizarUf, ufValida } from "@/lib/calculo/geografia";
 import { finalizarColetaCentralAngariacao } from "@/lib/servidor/finalizacaoCentralAngariacao";
-import { buscarComFirecrawl, FirecrawlIndisponivel } from "@/lib/servidor/firecrawlCentralAngariacao";
+import { buscarComFirecrawl } from "@/lib/servidor/firecrawlCentralAngariacao";
 import { buscarComNavegador, NavegadorIndisponivel } from "@/lib/servidor/scraperCentralAngariacao";
 
 export const runtime = "nodejs";
@@ -60,7 +61,7 @@ async function finalizarRespostaColeta(
   if (finalizacao.erroComparaveis) {
     console.error(
       "[central-angariacao] falha ao atualizar a base de comparáveis",
-      finalizacao.erroComparaveis,
+      sanitizarErroExterno(finalizacao.erroComparaveis, "persistirComparaveis"),
     );
     resultado.aviso = [
       resultado.aviso,
@@ -136,7 +137,7 @@ export async function POST(request: Request) {
       ));
     } catch (erro) {
       console.warn("Central de Angariação: Firecrawl não concluiu a consulta:",
-        erro instanceof FirecrawlIndisponivel ? erro.message : erro);
+        sanitizarErroExterno(erro, "firecrawl"));
       if (process.env.VERCEL) {
         return resposta({
           ok: false,
@@ -162,7 +163,7 @@ export async function POST(request: Request) {
     // o fallback HTTP e o link pronto. No local e em hosts configurados, o
     // Playwright é sempre o caminho principal.
     if (!(erro instanceof NavegadorIndisponivel)) {
-      console.warn("Central de Angariação: navegador não concluiu a consulta:", erro);
+      console.warn("Central de Angariação: navegador não concluiu a consulta:", sanitizarErroExterno(erro, "navegador"));
     }
   }
 
@@ -196,7 +197,7 @@ export async function POST(request: Request) {
     }
     return resposta(resultado);
   } catch (erro) {
-    console.warn("Central de Angariação: consulta indisponível:", erro);
+    console.warn("Central de Angariação: consulta indisponível:", sanitizarErroExterno(erro, "portal"));
     return resposta({
       ok: false,
       anuncios: [],

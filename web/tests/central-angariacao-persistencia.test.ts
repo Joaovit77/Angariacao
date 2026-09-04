@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { erroExternoSintetico } from "./fixtures/erroExterno";
 
 const mocks = vi.hoisted(() => ({
   buscarComFirecrawl: vi.fn(),
@@ -116,7 +117,7 @@ describe("persistência da busca da Central", () => {
       url: "https://www.olx.com.br/imovel/novo-2",
       anunciante: "incerto",
     }]);
-    mocks.salvarComparaveisMercado.mockRejectedValue(new Error("banco indisponível"));
+    mocks.salvarComparaveisMercado.mockRejectedValue(erroExternoSintetico());
 
     const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
       method: "POST",
@@ -131,5 +132,22 @@ describe("persistência da busca da Central", () => {
     expect(corpo.ok).toBe(true);
     expect(corpo.anuncios).toHaveLength(1);
     expect(corpo.aviso).toContain("não foi possível atualizar a base histórica");
+    expect(console.error).toHaveBeenCalledExactlyOnceWith(
+      "[central-angariacao] falha ao atualizar a base de comparáveis",
+      { provider: "supabase", operation: "persistir_comparaveis", error_code: "comparable_persistence_failed", status: 403 },
+    );
+  });
+
+  it("mantém degradação do Firecrawl sem despejar erro inesperado", async () => {
+    vi.stubEnv("VERCEL", "1");
+    const log = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    mocks.buscarComFirecrawl.mockRejectedValueOnce(erroExternoSintetico());
+    const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
+      method: "POST", headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" },
+      body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+    }));
+    expect(await resposta.json()).toMatchObject({ ok: false, anuncios: [] });
+    expect(mocks.buscarComNavegador).not.toHaveBeenCalled();
+    expect(log.mock.calls[0][1]).toEqual({ provider: "firecrawl", operation: "coletar", error_code: "collection_failed", status: 403 });
   });
 });

@@ -36,6 +36,7 @@
       tabela em supabase-schema.sql.
    ================================================================ */
 import { after } from "next/server";
+import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { CategoriaEvento, NivelEvento } from "@/lib/calculo/admin";
 
@@ -64,7 +65,7 @@ function cliente(): SupabaseClient | null {
 function depois(trabalho: () => Promise<void>): void {
   const seguro = () =>
     trabalho().catch((e) => {
-      console.error("Registro: falha ao gravar (ignorada):", e);
+      console.error("Registro: falha ao gravar (ignorada):", sanitizarErroExterno(e, "registrar"));
     });
   try {
     after(seguro);
@@ -98,7 +99,7 @@ export function registrarEvento(entrada: EntradaEvento): void {
       evento: entrada.evento,
       detalhe: entrada.detalhe ?? null,
     });
-    if (error) console.error("Registro: log recusado:", error.message);
+    if (error) console.error("Registro: log recusado:", sanitizarErroExterno(error, "registrar"));
   });
 }
 
@@ -144,7 +145,7 @@ export function registrarUsoIa(entrada: EntradaUso): void {
       tokens_entrada_cache_gravacao: entrada.tokensEntradaCacheGravacao ?? 0,
       tokens_saida: entrada.tokensSaida,
     });
-    if (error) console.error("Registro: uso de IA recusado:", error.message);
+    if (error) console.error("Registro: uso de IA recusado:", sanitizarErroExterno(error, "registrar"));
   });
 }
 

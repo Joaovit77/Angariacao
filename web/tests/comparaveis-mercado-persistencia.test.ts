@@ -10,6 +10,8 @@ vi.mock("@/lib/servidor/embeddingsImoveis", () => ({
 }));
 
 import { salvarComparaveisMercado } from "@/lib/servidor/comparaveisMercado";
+import { gerarEmbeddingsDeImoveis } from "@/lib/servidor/embeddingsImoveis";
+import { erroExternoSintetico } from "./fixtures/erroExterno";
 
 const filtros = {
   portal: "olx" as const,
@@ -73,7 +75,30 @@ describe("persistência idempotente dos comparáveis de mercado", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.unstubAllEnvs();
+  });
+
+  it("preserva a persistência estruturada no 403 sem despejar o erro do provider", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "chave-ficticia");
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const banco = bancoComparaveisFalso();
+    const registrar = banco.rpc.getMockImplementation()!;
+    banco.rpc.mockImplementation(async (...args) => {
+      const resposta = await registrar(...args);
+      resposta.data[0].precisa_embedding = true;
+      return resposta;
+    });
+    vi.mocked(gerarEmbeddingsDeImoveis).mockRejectedValueOnce(erroExternoSintetico());
+    await expect(salvarComparaveisMercado(
+      banco.cliente, "usuario-1", [anuncioValido], filtros,
+    )).resolves.toBe(1);
+    expect(banco.registros.size).toBe(1);
+    expect(banco.from).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledExactlyOnceWith(
+      "[comparaveis-mercado] falha ao gerar embeddings",
+      { provider: "openai", operation: "embedding", error_code: "embedding_request_failed", status: 403 },
+    );
   });
 
   it("ignora anúncios sem os critérios já exigidos pela base", async () => {

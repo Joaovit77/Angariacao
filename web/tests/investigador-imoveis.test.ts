@@ -430,9 +430,10 @@ describe("Investigador de Imóveis", () => {
         "x-ratelimit-requests-remaining": "0",
         "x-rapidapi-key": "segredo-vazado",
         authorization: "Bearer token-vazado",
+        "x-ratelimit-requests-limit": "segredo-no-header-permitido",
       },
     }));
-    await expect(buscarImovelNaWeb("consulta", ["consulta"], fetcher)).rejects.toBeInstanceOf(
+    await expect(buscarImovelNaWeb("consulta-privada", ["consulta-privada"], fetcher)).rejects.toBeInstanceOf(
       BuscaWebIndisponivel,
     );
     const logs = JSON.stringify(aviso.mock.calls);
@@ -441,5 +442,7 @@ describe("Investigador de Imóveis", () => {
     expect(logs).not.toContain("segredo-vazado");
     expect(logs).not.toContain("token-vazado");
     expect(logs).not.toContain("authorization");
+    expect(logs).not.toContain("consulta-privada");
+    expect(logs).not.toContain("segredo-no-header-permitido");
   });
 });

@@ -1,4 +1,5 @@
 import "server-only";
+import { sanitizarErroExterno, type ContextoErroExterno } from "@/lib/servidor/erroExterno";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   baseFingerprintAnuncio,
@@ -289,12 +290,14 @@ export async function salvarComparaveisMercado(
   );
   if (!pendentes.length || !process.env.OPENAI_API_KEY) return registros.length;
 
+  let contextoErro: ContextoErroExterno = "embedding";
   try {
     const vetores = await gerarEmbeddingsDeImoveis(
       pendentes.map((item) => item.preparado.textoEmbedding),
       userId,
       "embedding-comparavel-mercado",
     );
+    contextoErro = "persistirEmbedding";
     await mapearComConcorrencia(
       pendentes,
       CONFIGURACAO_COMPARAVEIS_MERCADO.concorrenciaPersistencia,
@@ -314,7 +317,7 @@ export async function salvarComparaveisMercado(
   } catch (erro) {
     // Persistência estruturada e histórico continuam válidos. A próxima coleta
     // tenta novamente porque o embedding permaneceu nulo.
-    console.error("[comparaveis-mercado] falha ao gerar embeddings", erro);
+    console.error("[comparaveis-mercado] falha ao gerar embeddings", sanitizarErroExterno(erro, contextoErro));
   }
   return registros.length;
 }

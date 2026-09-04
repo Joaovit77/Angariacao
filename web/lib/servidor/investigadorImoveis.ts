@@ -59,8 +59,9 @@ const HEADERS_RATE_LIMIT_SEGUROS = [
 
 function diagnosticoHeaders(resposta: Response): Record<string, string> {
   return Object.fromEntries(HEADERS_RATE_LIMIT_SEGUROS.flatMap((nome) => {
-    const valor = resposta.headers.get(nome);
-    return valor ? [[nome, valor]] : [];
+    const valor = resposta.headers.get(nome)?.trim();
+    // Somente contadores numéricos: um header permitido ainda pode conter texto privado.
+    return valor && /^\d{1,10}$/.test(valor) ? [[nome, valor]] : [];
   }));
 }
 
@@ -72,7 +73,6 @@ function retryAfterEmSegundos(resposta: Response): number | undefined {
 }
 
 function registrarFalhaProvider(
-  consulta: string,
   tentativa: number,
   duracaoMs: number,
   motivo: "limite" | "indisponivel",
@@ -80,10 +80,11 @@ function registrarFalhaProvider(
   headers: Record<string, string> = {},
 ): void {
   console.warn("[investigador-imoveis] chamada ao provider falhou", {
+    provider: "rapidapi",
+    operation: "pesquisar_imovel",
     status: status ?? null,
     motivo,
     tentativa,
-    consulta,
     duracaoMs: Math.round(duracaoMs),
     headersRateLimit: headers,
   });
@@ -153,14 +154,13 @@ async function buscarConsultaNoGoogle(
       cache: "no-store",
     });
   } catch {
-    registrarFalhaProvider(consulta, tentativa, performance.now() - inicio, "indisponivel");
+    registrarFalhaProvider(tentativa, performance.now() - inicio, "indisponivel");
     throw new BuscaWebIndisponivel("O provider não respondeu.", "indisponivel");
   }
   const duracaoMs = performance.now() - inicio;
   if (resposta.status === 429) {
     const retryAfterSegundos = retryAfterEmSegundos(resposta);
     registrarFalhaProvider(
-      consulta,
       tentativa,
       duracaoMs,
       "limite",
@@ -171,7 +171,6 @@ async function buscarConsultaNoGoogle(
   }
   if (!resposta.ok) {
     registrarFalhaProvider(
-      consulta,
       tentativa,
       duracaoMs,
       "indisponivel",

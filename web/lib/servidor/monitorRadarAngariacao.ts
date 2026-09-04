@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import {
   PORTAIS_ANGARIACAO,
   type AnuncioCentralAngariacao,
@@ -94,7 +95,7 @@ async function verificarBusca(
       console.error("[radar-cron] falha ao atualizar a base de comparáveis", {
         buscaId: busca.id,
         portal: busca.filtros.portal,
-        erro: finalizacao.erroComparaveis,
+        erro: sanitizarErroExterno(finalizacao.erroComparaveis, "persistirComparaveis"),
       });
     } else {
       console.info("[radar-cron] comparáveis atualizados", {

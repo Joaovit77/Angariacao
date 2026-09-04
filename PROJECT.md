@@ -1430,6 +1430,12 @@ contrato usando o `log_eventos` já existente; não há segundo sistema de logs.
 resposta completa, prompt ou chain-of-thought. Fluxos que ainda não produzem um fato não preenchem o
 campo como se produzissem.
 
+Erros de integrações externas devem entrar nos logs por allowlist de metadados técnicos:
+provider, operação, código local e status HTTP. Nunca registrar o objeto de erro externo,
+headers completos, tokens, mensagens/respostas cruas, HTML ou dados privados da consulta.
+`lib/servidor/erroExterno.ts` fornece a extração mínima; falhas de logging não devem alterar
+o fallback funcional. Headers operacionais pontuais exigem validação do valor, além do nome.
+
 ##### Centro de IA no ADM
 
 O cartão **Centro de IA** em `/admin` é o mapa operacional e o roteador dos modelos. A configuração

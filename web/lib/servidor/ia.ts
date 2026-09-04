@@ -17,6 +17,7 @@
    o fato é o corretor, no nudge.
    ================================================================ */
 import OpenAI from "openai";
+import { sanitizarErroExterno } from "./erroExterno";
 import {
   ESQUEMA_CLASSIFICACAO,
   dataContextualDaResposta,
@@ -125,7 +126,7 @@ export async function classificarResposta(
     // um desfecho desconhecido nunca entre no ranking — nem que o esquema mude
     // e alguém esqueça de olhar este arquivo.
     if (!VALIDOS.includes(dados.resultado)) {
-      console.error("IA: desfecho fora do vocabulário:", dados.resultado);
+      console.error("IA: desfecho fora do vocabulário.");
       return null;
     }
 
@@ -157,7 +158,7 @@ export async function classificarResposta(
       motivoPerda: motivo,
     };
   } catch (e) {
-    console.error("IA: falha ao classificar a resposta:", e);
+    console.error("IA: falha ao classificar a resposta:", sanitizarErroExterno(e, "iaTexto"));
     return null;
   }
 }

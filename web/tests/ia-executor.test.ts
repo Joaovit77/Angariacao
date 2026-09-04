@@ -82,9 +82,12 @@ describe("executor OpenAI compartilhado", () => {
   });
 
   it("mantém recusa e truncamento fora do caminho feliz", () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const recusada = conclusao("");
-    recusada.choices[0].message.refusal = "recusado";
+    recusada.choices[0].message.refusal = "recusa com conteúdo privado sintético";
     expect(textoDaResposta(recusada)).toBe("");
     expect(textoDaResposta(conclusao("parcial", "length"))).toBe("");
+    expect(JSON.stringify(log.mock.calls)).not.toContain("conteúdo privado");
+    log.mockRestore();
   });
 });

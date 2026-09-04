@@ -94,9 +94,7 @@ async function esperarCards(page: Page, seletor: string, portal: string) {
       console.warn("[central-angariacao] cards ainda ausentes", {
         portal,
         tentativa,
-        url: page.url(),
-        titulo: await page.title().catch(() => ""),
-        erro: erro instanceof Error ? erro.message : String(erro),
+        codigo: "cards_indisponiveis",
       });
       if (tentativa === 2) throw erro;
       await page.reload({ waitUntil: "domcontentloaded", timeout: TIMEOUT_NAVEGACAO_MS });
@@ -336,7 +334,6 @@ export async function buscarComNavegador(
       console.warn("[central-angariacao] portal respondeu na navegação", {
         portal: filtros.portal,
         status: navegacao.status(),
-        url: page.url(),
       });
     }
     // O `await` é obrigatório: sem ele o `finally` fecha o browser enquanto

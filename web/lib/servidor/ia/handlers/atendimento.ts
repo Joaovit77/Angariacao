@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import {
   ESQUEMA_DECISAO_ATENDIMENTO,
   ESQUEMA_GERACAO_ATENDIMENTO,
@@ -155,7 +156,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
     .eq("id", imovelId)
     .maybeSingle();
   if (imErr) {
-    console.error("IA: falha ao ler o imóvel para rascunho:", imErr.message);
+    console.error("IA: falha ao ler o imóvel para rascunho:", sanitizarErroExterno(imErr, "consultarSupabase"));
     registrarDiagnosticoAtendimento(
       userId,
       { imovelId },
@@ -210,7 +211,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
       .eq("id", ultimaTentativa.abordagemId)
       .maybeSingle();
     if (abErro) {
-      console.error("IA: falha ao ler a abordagem para rascunho:", abErro.message);
+      console.error("IA: falha ao ler a abordagem para rascunho:", sanitizarErroExterno(abErro, "consultarSupabase"));
       // É somente fallback de legado. Uma indisponibilidade parcial do
       // catálogo não deve derrubar o histórico real já carregado.
     } else if (abRow) {
@@ -231,7 +232,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
     .select("*")
     .order("created_at", { ascending: true });
   if (ptErro) {
-    console.error("IA: falha ao ler os protocolos:", ptErro.message);
+    console.error("IA: falha ao ler os protocolos:", sanitizarErroExterno(ptErro, "consultarSupabase"));
     registrarDiagnosticoAtendimento(
       userId,
       diagnostico,
@@ -264,7 +265,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   if (cfErro) {
     // Compatibilidade durante a aplicação do schema: o perfil seguro mantém o
     // rascunho disponível, sem importar configuração de outra conta.
-    console.error("IA: falha ao ler o perfil de comunicação; usando padrão seguro:", cfErro.message);
+    console.error("IA: falha ao ler o perfil de comunicação; usando padrão seguro:", sanitizarErroExterno(cfErro, "consultarSupabase"));
   }
   const perfil = normalizarPerfilComunicacao((cfData as Pick<DbUserConfigRow, "perfil_comunicacao"> | null)?.perfil_comunicacao);
   if (!cfErro) (diagnostico.fontesDeDados ??= []).push("user_config");
@@ -315,7 +316,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
       ],
     }));
   } catch (e) {
-    console.error("IA: falha ao decidir o atendimento:", e);
+    console.error("IA: falha ao decidir o atendimento:", sanitizarErroExterno(e, "iaTexto"));
     const falha = classificarErroIa(e);
     registrarDiagnosticoAtendimento(userId, diagnostico, "decisao", "erro", falha);
     return respostaErroIa(falha, 502);
@@ -414,7 +415,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
         ],
       }));
     } catch (e) {
-      console.error("IA: falha ao gerar a resposta de atendimento:", e);
+      console.error("IA: falha ao gerar a resposta de atendimento:", sanitizarErroExterno(e, "iaTexto"));
       const falha = classificarErroIa(e);
       registrarDiagnosticoAtendimento(userId, diagnostico, "geracao", "erro", falha);
       return respostaErroIa(falha, 502);
@@ -500,7 +501,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
           ],
         }));
       } catch (e) {
-        console.error("IA: falha ao validar a resposta de atendimento:", e);
+        console.error("IA: falha ao validar a resposta de atendimento:", sanitizarErroExterno(e, "iaTexto"));
         const falha = classificarErroIa(e);
         registrarDiagnosticoAtendimento(userId, diagnostico, "validacao", "erro", falha);
         return respostaErroIa(falha, 502);

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExecutorOpenAI } from "@/lib/servidor/ia/executor-openai";
+import { erroExternoSintetico } from "./fixtures/erroExterno";
 
 vi.mock("@/lib/calculo/notas", () => ({
   corpoDaMensagemEnviada: () => "",
@@ -111,7 +112,24 @@ describe("handler especializado de atendimento", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     definirSchemaFeedbackSugestoesIaProntoParaTeste(null);
+  });
+
+  it("preserva a falha de atendimento sem logar credenciais nem gravar sugestão", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const executar = vi.fn().mockRejectedValueOnce(erroExternoSintetico());
+    const resposta = await atenderProprietario({
+      tipo: "rascunhar-resposta", corpo: { tipo: "rascunhar-resposta", imovelId: "imovel-1" },
+      supabase: supabaseFalso(), userId: "usuario-1", executor: { executar },
+    });
+    expect(resposta.status).toBe(502);
+    expect(await resposta.json()).toMatchObject({ ok: false, falha: "falha-ia" });
+    expect(inserirSugestao).not.toHaveBeenCalled();
+    expect(executar).toHaveBeenCalledOnce();
+    expect(log).toHaveBeenCalledExactlyOnceWith("IA: falha ao decidir o atendimento:", {
+      provider: "openai", operation: "gerar_texto", error_code: "text_request_failed", status: 403,
+    });
   });
 
   it("preserva o contrato da UI e exatamente três chamadas no caminho feliz", async () => {
