@@ -86,6 +86,9 @@ describe("executor periódico de mercados", () => {
     const d = (await executarColetaMercados(deps)).mercados[0];
     expect(d).toMatchObject({ status: "parcial", comparaveisFinalizados: 3, erro: null });
     expect(d.falhasPorPortal).toEqual([{ portal: "olx", codigo: "firecrawl_429" }]);
+    expect(salvar.mock.calls[0][2]).toHaveLength(3);
+    expect(salvar.mock.calls[0][2].every((item: AnuncioCentralAngariacao) => item.portal !== "olx"))
+      .toBe(true);
     expect(deps.buscar).toHaveBeenCalledTimes(4);
     expect(deps.rpc).toHaveBeenLastCalledWith("concluir_mercado_monitorado", expect.objectContaining({ p_sucesso: true }));
   });

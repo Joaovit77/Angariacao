@@ -708,15 +708,20 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   Anúncios persistidos da Central e do Radar também podem preencher esse formulário por uma referência
   curta resolvida sob a sessão. Eles não viram `Imovel`, não iniciam o cálculo automaticamente e o
   anúncio-alvo é excluído da própria amostra por ID e identidade pública do portal.
-- **`calculo/comparaveisMercado.ts` · `servidor/comparaveisMercado.ts` ·
+- **`calculo/comparaveisMercado.ts` · `calculo/historicoComparaveisMercado.ts` ·
+  `servidor/comparaveisMercado.ts` ·
   `api/avaliacao/comparaveis`** — identidade, representação semântica, ingestão e busca híbrida dos
   anúncios observados. A identidade aceita, em ordem, portal+código, URL canônica ou fingerprint
   forte; preço não faz parte dela. `observacoes_comparaveis_mercado` é append-only e conserva
-  anúncio novo, mudança de preço/status, reaparecimento e confirmação diária. Ausência nunca prova
-  locação ou venda. A URL identifica e permite revalidar a fonte, mas não prova que a oferta ainda
-  esteja ativa: `ultimo_visto_em` e `status_anuncio` carregam essa informação. Itens não encontrados,
-  removidos ou históricos preservam o preço observado e recebem peso progressivamente menor na
-  avaliação, sem serem apagados. O texto do embedding tem ordem e versão fixas; seu SHA-256, modelo e dimensão
+  anúncio novo, mudança de preço/status e confirmação diária. Ausência nunca prova locação, venda,
+  remoção ou inatividade e não altera `status_anuncio`: **ausência de observação não é observação de
+  ausência**. `primeiro_visto_em` e `ultimo_visto_em` significam somente primeira e última observação
+  positiva conhecidas, sem afirmar disponibilidade antes ou depois. O histórico legado e as
+  confirmações no mesmo dia não permitem contar todas as aparições; mudanças de status e
+  reaparecimentos só podem ser apresentados como fatos quando houver evidência explícita da origem.
+  A URL identifica e permite revalidar a fonte, mas também não prova disponibilidade atual. Status
+  explicitamente observados como não encontrado, removido ou histórico preservam o preço observado
+  e recebem peso progressivamente menor na avaliação, sem serem apagados. O texto do embedding tem ordem e versão fixas; seu SHA-256, modelo e dimensão
   impedem geração repetida e comparação entre modelos diferentes. A V3 usa pgvector/HNSW com 512
   dimensões. Sem `OPENAI_API_KEY`, falha de geração ou RPC ainda não aplicada, a busca estruturada
   da V2 continua funcionando. Como os anúncios dos portais são referências públicas de mercado,
