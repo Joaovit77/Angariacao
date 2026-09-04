@@ -13,7 +13,7 @@
 import { PORTAIS_ANGARIACAO } from "./centralAngariacao";
 import { normalizarUf, ufValida } from "./geografia";
 import { chaveNormalizada } from "../normalizacao";
-import { timestampDeIso } from "../datas";
+import { daysBetween, timestampDeIso } from "../datas";
 
 export type TipoEventoHistoricoComparavel =
   | "novo"
@@ -102,6 +102,54 @@ export interface FatosHistoricosComparavel {
   reaparecimentosComprovados: number;
   ultimoStatusExplicitamenteObservado: StatusHistoricoComparavel | null;
   qualidade: QualidadeHistoricaComparavel;
+}
+
+export interface ApresentacaoHistoricaComparavel {
+  textoFrescor: string | null;
+  textoQuantidadeObservacoes: string | null;
+  primeiraObservacaoData: string | null;
+  ultimaObservacaoData: string | null;
+  ultimaAlteracaoPreco: AlteracaoPrecoObservada | null;
+}
+
+function dataCivilObservada(valor: string | null): string | null {
+  if (timestampDeIso(valor) === null) return null;
+  const data = valor?.slice(0, 10) || "";
+  return /^\d{4}-\d{2}-\d{2}$/.test(data) ? data : null;
+}
+
+/**
+ * Converte fatos já comprovados em textos neutros para a interface. Não cria
+ * faixas de idade nem associa tempo sem observação a disponibilidade.
+ */
+export function apresentarFatosHistoricosComparavel(
+  fatos: FatosHistoricosComparavel,
+  hoje: string,
+): ApresentacaoHistoricaComparavel {
+  const primeiraObservacaoData = dataCivilObservada(fatos.primeiraObservacaoConhecida);
+  const ultimaObservacaoData = dataCivilObservada(fatos.ultimaObservacaoConhecida);
+  const dias = daysBetween(ultimaObservacaoData, hoje);
+  const textoFrescor = dias == null || dias < 0
+    ? null
+    : dias === 0
+      ? "Última observação hoje"
+      : dias === 1
+        ? "Última observação ontem"
+        : `Última observação há ${dias} dias`;
+  const quantidade = fatos.quantidadeMinimaObservacoesComprovadas;
+  const textoQuantidadeObservacoes = quantidade <= 0
+    ? null
+    : quantidade === 1
+      ? "1 observação conhecida"
+      : `Ao menos ${quantidade} observações conhecidas`;
+
+  return {
+    textoFrescor,
+    textoQuantidadeObservacoes,
+    primeiraObservacaoData,
+    ultimaObservacaoData,
+    ultimaAlteracaoPreco: fatos.alteracoesPrecoObservadas.at(-1) ?? null,
+  };
 }
 
 const STATUS_VALIDOS = new Set<StatusHistoricoComparavel>([

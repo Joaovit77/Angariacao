@@ -14,6 +14,20 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabase } from "./supabase";
 import { normalizarUf, ufValida } from "@/lib/calculo/geografia";
+import {
+  derivarFatosHistoricosComparavel,
+  type ObservacaoPositivaComparavel,
+  type SnapshotObservacaoComparavel,
+  type TipoEventoHistoricoComparavel,
+} from "@/lib/calculo/historicoComparaveisMercado";
+
+interface LinhaObservacaoComparavelMercado {
+  observado_em: string | null;
+  tipo_evento: TipoEventoHistoricoComparavel;
+  valor_anunciado: number | string | null;
+  status_anuncio: string | null;
+  dados_snapshot: SnapshotObservacaoComparavel | null;
+}
 
 interface LinhaComparavelMercado {
   id?: string;
@@ -33,11 +47,16 @@ interface LinhaComparavelMercado {
   vagas: number | null;
   valor_anunciado: number | string;
   publicado_em: string | null;
+  primeiro_visto_em?: string | null;
   ultimo_visto_em: string;
+  url_canonica?: string | null;
+  fingerprint_forte?: boolean | null;
+  cidade_chave?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   status_anuncio?: string | null;
   similaridade_vetorial?: number | string | null;
+  observacoes_comparaveis_mercado?: LinhaObservacaoComparavelMercado[] | null;
 }
 
 function numero(valor: number | string | null | undefined): number | null {
@@ -74,6 +93,31 @@ function rotuloStatus(status: string | null | undefined): string {
   return status || "Anunciado";
 }
 
+export function mapearFatosHistoricosComparavelMercado(linha: LinhaComparavelMercado) {
+  const observacoes: ObservacaoPositivaComparavel[] = (
+    linha.observacoes_comparaveis_mercado || []
+  ).map((observacao) => ({
+    observadoEm: observacao.observado_em,
+    tipoEvento: observacao.tipo_evento,
+    valorAnunciado: observacao.valor_anunciado,
+    statusAnuncio: observacao.status_anuncio,
+    dadosSnapshot: observacao.dados_snapshot,
+    // O schema atual não registra a procedência explícita do status.
+    statusExplicitamenteObservado: false,
+  }));
+
+  return derivarFatosHistoricosComparavel({
+    primeiroVistoEm: linha.primeiro_visto_em ?? null,
+    ultimoVistoEm: linha.ultimo_visto_em ?? null,
+    portal: linha.portal,
+    idExterno: linha.id_externo,
+    urlCanonica: linha.url_canonica || linha.url,
+    fingerprintForte: linha.fingerprint_forte === true,
+    estado: linha.estado,
+    cidadeChave: linha.cidade_chave ?? linha.cidade,
+  }, observacoes);
+}
+
 export function mapearComparaveisMercado(
   linhas: LinhaComparavelMercado[],
 ): ComparavelAvaliacao[] {
@@ -108,6 +152,7 @@ export function mapearComparaveisMercado(
     url: linha.url,
     status: rotuloStatus(linha.status_anuncio),
     similaridadeVetorial: numero(linha.similaridade_vetorial),
+    historico: mapearFatosHistoricosComparavelMercado(linha),
   }));
 }
 
@@ -123,7 +168,7 @@ export async function carregarComparaveisMercadoComCliente(
 
   const { data, error } = await supabase
     .from("comparaveis_mercado")
-    .select("id, portal, id_externo, url, titulo, tipo, endereco, bairro, cidade, estado, regiao, area_m2, quartos, banheiros, vagas, valor_anunciado, publicado_em, ultimo_visto_em, status_anuncio")
+    .select("id, portal, id_externo, url, url_canonica, fingerprint_forte, titulo, tipo, endereco, bairro, cidade, estado, cidade_chave, regiao, area_m2, quartos, banheiros, vagas, valor_anunciado, publicado_em, primeiro_visto_em, ultimo_visto_em, status_anuncio, observacoes_comparaveis_mercado(observado_em, tipo_evento, valor_anunciado, status_anuncio, dados_snapshot)")
     .eq("finalidade", entrada.finalidade)
     .eq("estado", estado)
     .eq("cidade_chave", cidadeChave)

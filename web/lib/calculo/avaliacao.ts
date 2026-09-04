@@ -91,6 +91,8 @@ export interface ComparavelAvaliacao {
   url?: string | null;
   status?: string | null;
   similaridadeVetorial?: number | null;
+  /** Fatos observacionais do catálogo externo; nunca participam do cálculo. */
+  historico?: import("./historicoComparaveisMercado").FatosHistoricosComparavel | null;
 }
 
 export function comparavelEhOProprioAnuncio(

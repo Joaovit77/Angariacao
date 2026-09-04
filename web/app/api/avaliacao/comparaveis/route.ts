@@ -20,6 +20,7 @@ import {
 } from "@/lib/servidor/embeddingsImoveis";
 import {
   carregarComparaveisMercadoComCliente,
+  mapearFatosHistoricosComparavelMercado,
   mapearComparaveisMercado,
 } from "@/lib/persistencia/comparaveisMercado";
 
@@ -170,14 +171,20 @@ export async function POST(request: Request) {
     if (vetoriais.length) {
       const { data: metadados, error: erroMetadados } = await sessao.supabase
         .from("comparaveis_mercado")
-        .select("id, regiao")
+        .select("id, portal, id_externo, url, url_canonica, fingerprint_forte, cidade, estado, cidade_chave, primeiro_visto_em, ultimo_visto_em, regiao, observacoes_comparaveis_mercado(observado_em, tipo_evento, valor_anunciado, status_anuncio, dados_snapshot)")
         .in("id", vetoriais.map((item) => item.id));
       if (erroMetadados) throw erroMetadados;
-      const regiaoPorId = new Map(
-        (metadados || []).map((item) => [item.id, item.regiao as string | null]),
+      const metadadosPorId = new Map(
+        (metadados || []).map((item) => [item.id, item]),
       );
       vetoriais.forEach((item) => {
-        item.regiao = regiaoPorId.get(item.id) ?? item.regiao ?? null;
+        const metadado = metadadosPorId.get(item.id);
+        item.regiao = (metadado?.regiao as string | null | undefined) ?? item.regiao ?? null;
+        item.historico = metadado
+          ? mapearFatosHistoricosComparavelMercado(
+            metadado as Parameters<typeof mapearFatosHistoricosComparavelMercado>[0],
+          )
+          : item.historico ?? null;
       });
     }
     if (vetoriais.length < 3) {

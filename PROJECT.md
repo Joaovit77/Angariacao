@@ -719,6 +719,9 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   positiva conhecidas, sem afirmar disponibilidade antes ou depois. O histórico legado e as
   confirmações no mesmo dia não permitem contar todas as aparições; mudanças de status e
   reaparecimentos só podem ser apresentados como fatos quando houver evidência explícita da origem.
+  Na Avaliação, frescor e histórico são metadata informativa: usam exclusivamente a última
+  observação positiva, não alteram peso, ranking, seleção, preço nem status e não retiram um
+  comparável por idade. A ausência de histórico aparece como limitação, nunca como indisponibilidade.
   A URL identifica e permite revalidar a fonte, mas também não prova disponibilidade atual. Status
   explicitamente observados como não encontrado, removido ou histórico preservam o preço observado
   e recebem peso progressivamente menor na avaliação, sem serem apagados. O texto do embedding tem ordem e versão fixas; seu SHA-256, modelo e dimensão

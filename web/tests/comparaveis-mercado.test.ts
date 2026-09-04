@@ -165,7 +165,7 @@ describe("busca e score híbridos", () => {
 });
 
 describe("adaptação do catálogo para a avaliação", () => {
-  it("preserva a região e reduz timestamptz à data civil exibível", () => {
+  it("preserva região, data civil e fatos históricos sem inferir status", () => {
     const [comparavel] = mapearComparaveisMercado([{
       id: "comparavel-1",
       portal: "wimoveis",
@@ -184,12 +184,38 @@ describe("adaptação do catálogo para a avaliação", () => {
       vagas: 1,
       valor_anunciado: 1800,
       publicado_em: null,
+      primeiro_visto_em: "2026-08-20T10:00:00.000+00:00",
       ultimo_visto_em: "2026-08-31T14:10:03.720+00:00",
+      url_canonica: "https://www.wimoveis.com.br/imovel/123",
+      fingerprint_forte: true,
+      cidade_chave: "londrina",
       status_anuncio: "ativo",
+      observacoes_comparaveis_mercado: [{
+        observado_em: "2026-08-20T10:00:00.000+00:00",
+        tipo_evento: "novo",
+        valor_anunciado: 1900,
+        status_anuncio: "ativo",
+        dados_snapshot: {},
+      }, {
+        observado_em: "2026-08-31T14:10:03.720+00:00",
+        tipo_evento: "preco_alterado",
+        valor_anunciado: 1800,
+        status_anuncio: "ativo",
+        dados_snapshot: { valorAnterior: 1900 },
+      }],
     }]);
 
     expect(comparavel.regiao).toBe("Zona Norte");
     expect(comparavel.dataInformacao).toBe("2026-08-31");
+    expect(comparavel.historico).toMatchObject({
+      primeiraObservacaoConhecida: "2026-08-20T10:00:00.000+00:00",
+      ultimaObservacaoConhecida: "2026-08-31T14:10:03.720+00:00",
+      quantidadeEventosPersistidos: 2,
+      quantidadeMinimaObservacoesComprovadas: 2,
+      foiReobservado: true,
+      alteracoesPrecoObservadas: [{ valorAnterior: 1900, valorAtual: 1800, diferenca: -100 }],
+      alteracoesStatusObservadas: [],
+    });
   });
 });
 

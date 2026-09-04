@@ -4,7 +4,11 @@ import { erroExternoSintetico } from "./fixtures/erroExterno";
 const mocks = vi.hoisted(() => ({ cliente: vi.fn(), embedding: vi.fn(), estruturados: vi.fn() }));
 vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.cliente }));
 vi.mock("@/lib/servidor/embeddingsImoveis", () => ({ gerarEmbeddingsDeImoveis: mocks.embedding, modeloEmbeddingImoveis: () => "modelo-fixture" }));
-vi.mock("@/lib/persistencia/comparaveisMercado", () => ({ carregarComparaveisMercadoComCliente: mocks.estruturados, mapearComparaveisMercado: vi.fn() }));
+vi.mock("@/lib/persistencia/comparaveisMercado", () => ({
+  carregarComparaveisMercadoComCliente: mocks.estruturados,
+  mapearComparaveisMercado: vi.fn(),
+  mapearFatosHistoricosComparavelMercado: vi.fn(),
+}));
 import { POST } from "@/app/api/avaliacao/comparaveis/route";
 
 describe("fallback da Avaliação com logs seguros", () => {

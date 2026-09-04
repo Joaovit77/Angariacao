@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useSessao } from "@/components/SessaoProvider";
+import ComparavelHistorico from "@/components/avaliacao/ComparavelHistorico";
 import EnderecoAutocompleteViaCep, {
   type EnderecoViaCepSelecionado,
 } from "@/components/formularios/EnderecoAutocompleteViaCep";
@@ -477,6 +478,7 @@ export default function AvaliacaoRapidaView({
   }
 
   const resultado = avaliacao?.resultado;
+  const hoje = todayISO();
   const temComparaveisInternos = !!resultado?.comparaveis.some((item) => item.origem === "interno");
   const temComparaveisExternos = !!resultado?.comparaveis.some((item) => item.origem === "externo");
   const fonteResultado = !resultado?.comparaveis.length
@@ -797,6 +799,9 @@ export default function AvaliacaoRapidaView({
                   <div><strong>{comparavel.codigo || comparavel.endereco}</strong><span>{[comparavel.bairro, comparavel.cidade].filter(Boolean).join(" · ")}</span></div>
                   <div className="avaliacao-comparavel-dados"><span>{comparavel.origem === "interno" ? "Fonte: carteira interna" : "Fonte externa"}</span><span>{comparavel.regiao || resultado.metodologia.regiaoReferencia || "Região não identificada"}</span><span>{comparavel.tipo}</span><span>{comparavel.areaM2 ? `${comparavel.areaM2} m²` : "Área não informada"}</span><span>{comparavel.quartos ?? "—"} quartos</span><span>{comparavel.vagas ?? "—"} vagas</span><span>{comparavel.distanciaKm == null ? "Distância aproximada" : `${comparavel.distanciaKm} km`}</span><span>Referência em {fmtDate(comparavel.dataInformacao)}</span></div>
                   <div className="avaliacao-comparavel-valor"><strong>{fmtMoney(comparavel.valorAnunciado)}</strong><span>{comparavel.valorM2 ? `${fmtMoney(comparavel.valorM2)}/m²` : "Sem preço/m²"}</span></div>
+                  {comparavel.origem === "externo" && (
+                    <ComparavelHistorico historico={comparavel.historico} hoje={hoje} />
+                  )}
                   <div className="avaliacao-similaridade"><span style={{ width: `${comparavel.comparabilidadeFinal}%` }} /><strong>{comparavel.comparabilidadeFinal}% comparável · estrutural {comparavel.similaridadeEstrutural}%{comparavel.similaridadeVetorial == null ? "" : ` · semântica ${Math.round(comparavel.similaridadeVetorial * 100)}%`}</strong></div>
                 </article>
               )) : <p>Nenhum comparável atingiu o corte mínimo de similaridade.</p>}
