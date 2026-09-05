@@ -168,6 +168,7 @@ export const ESQUEMA_VALIDACAO_ATENDIMENTO = {
   properties: {
     problemas: {
       type: "array",
+      description: "Códigos de todas as violações identificadas. Lista vazia somente quando a resposta usa a parte relevante comprovada e cada afirmação respeita a temporalidade da fonte. Omissão ou esclarecimento evasivo apesar de fatos úteis: omissao-parte-comprovada. Histórico convertido em continuidade ou estado presente sem evidência: informacao-sem-fonte (cobranca-sem-fonte se financeiro). Retomar fato relevante não é apresentacao-repetida. Relato qualificado do passado com confirmação do presente é permitido.",
       items: { type: "string", enum: PROBLEMAS_VALIDACAO_ATENDIMENTO },
       maxItems: PROBLEMAS_VALIDACAO_ATENDIMENTO.length,
     },

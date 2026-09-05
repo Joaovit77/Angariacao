@@ -187,3 +187,46 @@ describe("contrato HTTP e limite de regeneração", () => {
     expect(logs).not.toContain("DADOS_JSON");
   });
 });
+
+describe("regressão semântica no fluxo de rascunho", () => {
+  it.each([
+    ["omissao-parte-comprovada", "Vou verificar e te retorno."],
+    ["informacao-sem-fonte", "Se outra imobiliária alugar, o imóvel pode seguir com a divulgação por lá também."],
+  ])("recupera %s uma vez, preservando fontes e diagnóstico", async (codigo, mensagem) => {
+    const resultado = await executarSaidas([decisao, { mensagem, protocolosUsados: ["Exclusividade"] },
+      { problemas: [codigo] }, parcial, { problemas: [] }]);
+    expect(resultado.resposta.status).toBe(200);
+    expect(resultado.corpo.rascunho).toBe(parcial.mensagem);
+    expect(resultado.corpo.fallbackAplicado).toBe(true);
+    const pedidos = resultado.executar.mock.calls.map(([pedido]) => pedido);
+    expect(pedidos.map(p => p.tipo)).toEqual([
+      "rascunhar-resposta-decisao", "rascunhar-resposta-geracao", "rascunhar-resposta-validacao",
+      "rascunhar-resposta-geracao-fallback", "rascunhar-resposta-validacao-fallback",
+    ]);
+    const fallback = String(pedidos[3].mensagens[1].content);
+    expect(fallback).toContain(codigo);
+    expect(fallback).not.toContain(mensagem);
+    for (const indice of [1, 2, 3, 4]) {
+      const conteudo = String(pedidos[indice].mensagens[1].content);
+      expect(conteudo).toContain(protocolos[0].conteudo);
+      expect(conteudo).toContain("Se por acaso a outra imobiliária conseguir alugar");
+    }
+    const logs = JSON.stringify(vi.mocked(registrarEvento).mock.calls);
+    expect(logs).toContain(codigo);
+    expect(logs).not.toContain(mensagem);
+    expect(logs).not.toContain(parcial.mensagem);
+    expect(logs).not.toContain("DADOS_JSON");
+  });
+
+  it.each([
+    ["omissao-parte-comprovada", "Vou verificar e te retorno."],
+    ["informacao-sem-fonte", "Se outra imobiliária alugar, o imóvel pode seguir com a divulgação por lá também."],
+  ])("bloqueia a segunda ocorrência de %s sem entregar rascunho", async (codigo, mensagem) => {
+    const ruim = { mensagem, protocolosUsados: ["Exclusividade"] };
+    const resultado = await executarSaidas([decisao, ruim, { problemas: [codigo] }, ruim, { problemas: [codigo] }]);
+    expect(resultado.resposta.status).toBe(422);
+    expect(resultado.corpo.rascunho).toBeUndefined();
+    expect(resultado.executar).toHaveBeenCalledTimes(5);
+    expect(resultado.executar.mock.calls.filter(([p]) => p.tipo.includes("geracao"))).toHaveLength(2);
+  });
+});

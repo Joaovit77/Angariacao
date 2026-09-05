@@ -1,4 +1,243 @@
-# Resultado da tarefa independente: robustez do atendimento
+# Continuação: semântica do auditor de atendimento
+
+**Sugerir com IA pronto para smoke.** A correção e as verificações desta continuação estão
+descritas antes do registro histórico preservado abaixo. Não autoriza merge ou Production.
+
+## Base e escopo
+
+Worktree isolada: `angario-ia-atendimento-robustez`.
+Branch: `astra/ia-atendimento-robustez-sugestoes`.
+Após `git fetch origin`, HEAD e origin estavam em
+`173bf4e36ed17c34cfa38edb1789176ffd5b7f4d`, com árvore limpa e divergência 0/0.
+Os commits `79fa339` e `173bf4e` foram inspecionados; não foram alterados.
+A worktree antiga na branch `codex/fase2-central-radar-investigador` foi preservada.
+
+## Evidências anteriores e causa localizada antes da correção
+
+O artefato privado da última execução anterior foi localizado e lido. Os quatro rascunhos
+abaixo terminaram com auditoria `{ problemas: [] }` e HTTP 200:
+
+| Caso anterior | Trecho aprovado indevidamente | Informação omitida ou extrapolação |
+| --- | --- | --- |
+| Histórico, repetição 1 | “Vou confirmar esse ponto pra te passar certinho. Se quiser, me diz se a sua dúvida é sobre comissão ou sobre a divulgação.” | Não comunica ausência de exclusividade, liberdade de anúncio próprio/com outras imobiliárias e ausência de custo antes da locação, apesar das fontes selecionadas. |
+| Histórico, repetição 2 | “Claro — me fala qual parte você quer saber certinho, que eu te respondo sem passar informação errada.” | Substitui a resposta parcial possível por esclarecimento genérico. |
+| Outra imobiliária, repetição 1, após regeneração | “Se a outra imobiliária alugar, tudo bem. Como a gente trabalha sem exclusividade, o imóvel pode seguir com a divulgação por lá também.” | Projeta permissão de divulgação anterior à locação para a situação após locação por terceiro. |
+| Outra imobiliária, repetição 2 | “Se outra imobiliária alugar primeiro, tudo certo — como a gente trabalha sem exclusividade, você segue livre.” | Afirma permanência de liberdade após o evento sem fonte para esse momento; uma oferta vaga de confirmação no final não corrige a afirmação. |
+
+A primeira candidata do terceiro caso tinha sido rejeitada com `informacao-sem-fonte`;
+a segunda, também inadequada, recebeu lista vazia. Isso confirma falha de julgamento na
+auditoria da segunda tentativa, não uma terceira geração ou ausência de auditoria.
+
+O histórico de revisão registra protocolos selecionados, rascunhos e códigos, mas não o
+raciocínio interno do auditor. Portanto, a explicação causal abaixo deriva do código e da
+reprodução controlada, sem inventar justificativas internas do modelo.
+
+- **Prompt:** proibição absoluta de repetir condições já explicadas coexistia com a obrigação
+  de retomar a parte relevante; preferência genérica por confirmar informação ausente podia
+  suprimir a resposta parcial. O auditor não operacionalizava a diferença entre cobertura da
+  pergunta e mera ausência de invenção. Temporalidade aparecia especialmente em cobrança e
+  contradição; faltava exigir evidência para a continuidade de qualquer fato, mesmo sem
+  contradição posterior.
+- **Contrato semântico:** o campo `problemas` tinha apenas enum/tamanho; uma lista vazia
+  aprovava sem descrição explícita dos requisitos de cobertura e temporalidade.
+- **Parser/normalização:** consumiam corretamente a lista vazia recebida. Não há evidência de
+  que códigos de rejeição tenham sido apagados, de JSON inválido aceito ou de truncamento dos
+  dados nos casos isolados. Permanecem intactos.
+- **Critério determinístico:** não dispõe de fontes/contexto suficientes para julgar cobertura
+  ou continuidade, e delega esse julgamento à auditoria já obrigatória. Não se acrescentou
+  regex de palavras temporais, pois rejeitaria negações, perguntas e relatos qualificados.
+- **Teste anterior:** mocks comprovavam a reação do handler a uma rejeição, mas não o julgamento
+  real do auditor. A matriz nova fixa expectativas de produto antes da alteração.
+
+A matriz usa fontes sintéticas e trechos genéricos dos quatro rascunhos, sem ID real nem
+conversa completa. Preserva a questão e os fatos do caso de referência; não alega reproduzir
+todos os prompts privados do ensaio anterior nem modifica o histórico atual daquele imóvel.
+
+## Menor correção aplicada
+
+No prompt existente, a auditoria confronta a pergunta com a parte conhecida e verifica o
+momento de cada afirmação. Retomada relevante deixa de conflitar com repetição da oferta.
+A confirmação cobre somente a lacuna. Histórico pode ser relatado como passado, mas não
+convertido em presente por ausência de notícia de mudança.
+
+A descrição do mesmo campo `problemas` explicita esses requisitos. O formato continua
+`{ problemas: [...] }`, com os mesmos campos, enums, limites e parser estrito.
+Omissão usa `omissao-parte-comprovada`; extrapolação usa `informacao-sem-fonte`, ou
+`cobranca-sem-fonte` quando financeira. Os motivos existentes alimentam a regeneração.
+
+A primeira correção eliminou as aprovações indevidas da matriz, mas rejeitou três respostas
+válidas. O ajuste final esclarece que negar certeza não afirma continuidade, fatos tipados
+do imóvel dispensam protocolo comercial, e confirmar B não invalida a resposta comprovada A.
+As expectativas não foram alteradas para acomodar esses erros.
+
+Não foi necessária nova camada, validação adicional ou refatoração: a fonte já chegava ao
+auditor e o handler já reagia corretamente aos códigos. A suficiência está demonstrada nesta
+matriz, não constitui garantia universal de julgamento de um modelo não determinístico.
+
+## Arquivos alterados
+
+| Arquivo | Função da alteração |
+| --- | --- |
+| [prompts.ts](web/lib/ia/atendimento/prompts.ts) | Critérios de cobertura/temporalidade e exceções que preservam respostas parciais, negações de certeza e fatos do cadastro. |
+| [contratos.ts](web/lib/ia/atendimento/contratos.ts) | Descrição semântica do campo existente, sem mudança de forma ou enum. |
+| [atendimento-semantico.ts](web/tests/fixtures/atendimento-semantico.ts) | 24 casos de produto, incluindo as quatro respostas anteriores, seis formas de presente/continuidade, positivos e domínio diferente. |
+| [ia-auditor-semantico-real.test.ts](web/tests/ia-auditor-semantico-real.test.ts) | Auditor real, duas repetições, uma chamada por caso, sem banco ou mensagens; falhas mostram apenas códigos. |
+| [ia-atendimento-robustez.test.ts](web/tests/ia-atendimento-robustez.test.ts) | Quatro regressões de recuperação/bloqueio, manutenção das fontes, diagnóstico e sanitização. |
+| [PROJECT.md](PROJECT.md) | Regra permanente de cobertura e temporalidade. |
+| [RELATORIO_IA_ATENDIMENTO.md](RELATORIO_IA_ATENDIMENTO.md) | Evidências, causa, evolução dos resultados e limites da validação. |
+
+Total: **7 arquivos**, sendo somente **2 de execução**, **3 de testes/fixtures** e
+**2 documentos**. Nenhuma alteração visual.
+
+## Resultados exatos
+
+| Conjunto | Arquivos | Aprovados | Falhos | Ignorados |
+| --- | ---: | ---: | ---: | ---: |
+| Auditor real antes da correção | 1 | 29 | 19 | 0 |
+| Auditor real após primeira correção | 1 | 45 | 3 | 0 |
+| Auditor real após ajuste final | 1 | 48 | 0 | 0 |
+| Direcionados finais | 8 | 125 | 0 | 0 |
+| Regressões finais | 47 | 681 | 0 | 0 |
+| Suíte completa local final | 160 descobertos; 157 exercitados | 2.072 | 0 | 50 |
+
+A suíte completa descobre **2.122 testes**. Seus 50 ignorados são os 48 casos do auditor
+real, executados separadamente, e dois ensaios antigos que dependem de contexto real/comparação.
+Considerando a suíte completa e o auditor final sem duplicar testes, **2.120 testes foram
+aprovados em 158 arquivos**, com **2 testes em 2 arquivos não executados**.
+Os conjuntos direcionado e de regressão são subconjuntos da suíte; não se somam a esse total.
+
+A base produziu 16 aprovações indevidas, duas rejeições indevidas da resposta parcial e uma
+rejeição pelo código errado. Não houve erro operacional/estrutural nessa rodada.
+Modelo e esforço permaneceram `gpt-5.4-mini/low` nas três rodadas (48 chamadas de auditoria
+por rodada, 144 no diagnóstico completo). Não houve geração no ensaio isolado do auditor.
+A repetição após a primeira alteração foi inicialmente impedida pela revisão automática por
+limite de uso; só foi retomada após o usuário confirmar a restauração do limite e autorizar.
+
+TypeScript (`tsc --noEmit`), ESLint e build Next.js aprovados após o último ajuste.
+Build com `next build --webpack`: 60 páginas geradas. Mesma escolha da verificação anterior
+pela junction externa de dependências; nenhuma configuração de aplicação foi modificada.
+`git diff --check`: aprovado. Aviso existente de formato da configuração do Vitest não
+impediu execução; avisos Git de conversão LF/CRLF não representam erro de whitespace.
+
+### Testes direcionados por arquivo
+
+| Arquivo | Aprovados | Falhos |
+| --- | ---: | ---: |
+| `feedback-sugestoes-ia.test.ts` | 15 | 0 |
+| `ia-atendimento-robustez.test.ts` | 57 | 0 |
+| `ia-atendimento.test.ts` | 28 | 0 |
+| `ia-executor.test.ts` | 2 | 0 |
+| `ia-handler-atendimento.test.ts` | 5 | 0 |
+| `ia-observabilidade.test.ts` | 3 | 0 |
+| `ia-system-prompt.test.ts` | 4 | 0 |
+| `protocolos.test.ts` | 11 | 0 |
+
+### Regressões por arquivo
+
+Abrangem atendimento, IA, WhatsApp (envio, recebimento, identidade e histórico), protocolos,
+continuidade, Assistente, ações e autenticação. São validações automatizadas, sem efeitos reais.
+
+| Arquivo | Aprovados | Falhos |
+| --- | ---: | ---: |
+| `api-whatsapp-enviar.test.ts` | 6 | 0 |
+| `assistente-acesso.test.ts` | 3 | 0 |
+| `assistente-acoes.test.ts` | 34 | 0 |
+| `assistente-camadas.test.ts` | 4 | 0 |
+| `assistente-capacidades.test.ts` | 11 | 0 |
+| `assistente-cliente.test.ts` | 4 | 0 |
+| `assistente-conhecimento.test.ts` | 7 | 0 |
+| `assistente-contexto-tipado.test.ts` | 19 | 0 |
+| `assistente-contexto.test.ts` | 8 | 0 |
+| `assistente-continuidade.test.ts` | 16 | 0 |
+| `assistente-ferramentas.test.ts` | 45 | 0 |
+| `assistente-historico.test.ts` | 11 | 0 |
+| `assistente-markdown.test.ts` | 3 | 0 |
+| `assistente-mercado.test.ts` | 3 | 0 |
+| `assistente-orquestrador-continuidade.test.ts` | 2 | 0 |
+| `assistente-pedido.test.ts` | 3 | 0 |
+| `assistente-posicao.test.ts` | 2 | 0 |
+| `assistente-preferencia-flutuante.test.ts` | 4 | 0 |
+| `assistente-protocolos.test.ts` | 3 | 0 |
+| `assistente-somente-leitura.test.ts` | 2 | 0 |
+| `assistente-superficies.test.ts` | 6 | 0 |
+| `auth.test.ts` | 8 | 0 |
+| `conexao-whatsapp.test.ts` | 19 | 0 |
+| `feedback-sugestoes-ia.test.ts` | 15 | 0 |
+| `historico-whatsapp-bidirecional.test.ts` | 17 | 0 |
+| `ia-abordagem-anuncio.test.ts` | 11 | 0 |
+| `ia-anuncio.test.ts` | 10 | 0 |
+| `ia-atendimento-robustez.test.ts` | 57 | 0 |
+| `ia-atendimento.test.ts` | 28 | 0 |
+| `ia-classificacao.test.ts` | 31 | 0 |
+| `ia-configuracao.test.ts` | 6 | 0 |
+| `ia-dashboard.test.ts` | 15 | 0 |
+| `ia-dispatcher.test.ts` | 3 | 0 |
+| `ia-executor.test.ts` | 2 | 0 |
+| `ia-gerar-anuncio.test.ts` | 17 | 0 |
+| `ia-handler-atendimento.test.ts` | 5 | 0 |
+| `ia-mapa.test.ts` | 1 | 0 |
+| `ia-observabilidade.test.ts` | 3 | 0 |
+| `ia-system-prompt.test.ts` | 4 | 0 |
+| `ia.test.ts` | 25 | 0 |
+| `identidade-whatsapp.test.ts` | 11 | 0 |
+| `importacao-conversa-whatsapp.test.ts` | 10 | 0 |
+| `piloto-automatico-assistente.test.ts` | 12 | 0 |
+| `protocolos.test.ts` | 11 | 0 |
+| `status-sem-resposta-assistente.test.ts` | 16 | 0 |
+| `webhook-whatsapp.test.ts` | 78 | 0 |
+| `whatsapp.test.ts` | 70 | 0 |
+
+## Compatibilidade, segurança e limites
+
+Na matriz final, resposta direta e parcial continuam permitidas; omissão relevante e
+extrapolação são rejeitadas; histórico qualificado, incerteza e informação temporal incompleta
+admitem resposta conservadora. Fonte irrelevante não precisa ser citada. Protocolos continuam
+autoridade comercial; dados do imóvel continuam exigindo a fonte correspondente.
+Detalhes financeiros desconhecidos não foram inventados nas respostas aceitas da matriz.
+
+O handler e executor não mudaram: máximo de **1 geração inicial + 1 regeneração** e
+**5 chamadas totais** por solicitação. Rejeição na segunda tentativa termina sem terceira
+geração. As novas regressões verificam fontes mantidas nas tentativas e ausência do texto
+rejeitado no pedido de regeneração e nos logs.
+
+RLS, autenticação, isolamento por tenant/user_id e service role preservados. Nenhuma service
+role nova, migration, consulta nova ao Supabase, escrita em Production ou mudança de conversa,
+Pipeline/Agenda. Nenhuma mensagem enviada. Nenhum conteúdo privado novo em logs.
+Somente a chave OpenAI local já configurada foi utilizada em memória para o ensaio sintético;
+não foi copiada para arquivos, Git, outro ambiente ou relatório.
+
+Não houve mudança de modelo/esforço, teste de Terra, embeddings, novas ferramentas/agentes,
+nova autonomia, rebase, reset, stash, merge, alteração da main ou início da Fase 7.
+O SHA inicial é o ponto de rollback. Commit/push desta continuação devem atingir somente a
+feature branch, após estas verificações.
+
+## Validação manual ainda necessária
+
+**Validação automatizada concluída, mas o fluxo real não foi exercitado.**
+**Aguardando smoke manual.** O usuário reservou o smoke autenticado para depois desta etapa.
+
+Em ambiente autorizado e contato/contexto seguro, sem alterar o histórico de referência:
+
+1. Clicar somente em **Sugerir com IA** para pergunta integral e para pergunta parcialmente
+   conhecida; conferir rascunho editável usando os fatos e confirmando apenas a lacuna.
+2. Em contexto com informação passada, conferir atribuição ao passado e ausência de
+   continuidade presente inventada; com evidência atual, conferir reconhecimento compatível.
+3. Conferir manutenção dos protocolos aplicáveis e mensagens de bloqueio seguras.
+4. Não clicar em **Enviar mensagem**; verificar ausência de envio e de mudança de
+   conversa, Pipeline ou Agenda.
+
+O ensaio do auditor não valida sessão, UI, RLS entre usuários ou serviço WhatsApp real.
+Esses limites permanecem mesmo com toda a matriz aprovada. Nenhum smoke autenticado novo
+foi executado nesta continuação. Não fazer merge nem publicar Production nesta etapa.
+
+Metodologia: casos com expectativas fixas e exemplos positivos/negativos, conforme
+[orientações oficiais de avaliação](https://developers.openai.com/api/docs/guides/evaluation-best-practices).
+
+---
+
+## Registro histórico da tarefa anterior, até 173bf4e
+
+As conclusões e pendências abaixo descrevem exclusivamente o estado anterior à continuação.
 
 **Sugerir com IA bloqueado.** A correção de contrato e dos falsos bloqueios foi implementada,
 mas a qualidade semântica ainda não atende à aceitação. Não publicar esta branch.

@@ -1611,7 +1611,10 @@ ali para quem quiser um modelo.
   Mencionar taxa ou exclusividade não prova execução de uma ação comercial: a restrição
   explicar-condicoes é verificada pela auditoria semântica obrigatória, considerando a pergunta.
   Os parsers validam o mesmo JSON Schema estrito enviado ao provedor (tipos, enums, campos
-  obrigatórios e propriedades adicionais). A saída da auditoria é { problemas: [...] }.
+  obrigatórios e propriedades adicionais). A saída da auditoria é { problemas: [...] }. A aprovação exige usar a parte relevante
+  comprovada e preservar o momento de cada fonte. Retomar fato necessário à dúvida atual não é
+  reapresentação; histórico sem confirmação atual permite relato atribuído ao passado, não
+  afirmação de continuidade. Esses critérios usam os códigos existentes, sem ampliar o contrato.
   O teto é duas gerações e cinco chamadas totais (decisão, geração/auditoria, eventual
   geração/auditoria); o executor desativa retries do SDK somente no atendimento e aplica
   timeout de 45 segundos por chamada. Diagnósticos registram modelo, esforço, tentativa,
