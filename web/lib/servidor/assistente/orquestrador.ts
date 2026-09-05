@@ -4,6 +4,7 @@ import { toResponseInputItems } from "openai/lib/responses/ResponseInputItems";
 import type { ResponseInputItem } from "openai/resources/responses/responses";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AcaoAssistente, BlocoAssistente, ComandoUiAssistente, ContextoAssistente, MensagemAssistente, PedidoAssistente } from "@/lib/assistente/tipos";
+import { respostaParaLimiteAssistente } from "@/lib/assistente/capacidades";
 import { normalizarResultadosHistorico } from "@/lib/assistente/historico";
 import {
   compararEntidadeComResultadoAtual,
@@ -13,7 +14,7 @@ import {
 } from "@/lib/assistente/continuidade";
 import { registrarEvento, registrarUsoDaResponsesApi } from "@/lib/servidor/registro";
 import { carregarConfiguracaoIa } from "@/lib/servidor/ia/configuracao";
-import { metadadosExecucaoIa } from "@/lib/ia/observabilidade";
+import { diagnosticoContextoAssistente, metadadosExecucaoIa } from "@/lib/ia/observabilidade";
 import { instrucoesDoAssistente } from "./conhecimento";
 import {
   carregarContextoTipadoAssistente,
@@ -268,13 +269,62 @@ export function prepararResultadoFerramentaParaModelo(
 }
 
 export async function responderComAssistente(pedido: PedidoAssistente, supabase: SupabaseClient, userId: string): Promise<{ mensagem: MensagemAssistente; modelo: string }> {
+  const limite = respostaParaLimiteAssistente(pedido.mensagem, { podeUsarIa: true });
   const [configuracaoIa, contextoCarregado] = await Promise.all([
-    carregarConfiguracaoIa(),
+    limite ? Promise.resolve(null) : carregarConfiguracaoIa(),
     carregarContextoTipadoAssistente(pedido, supabase, userId),
   ]);
   const { contexto: contextoTipado, catalogoProtocolos } = contextoCarregado;
   const contextoSerializado = serializarContextoTipadoAssistente(contextoTipado);
-  const modelo = configuracaoIa.assistente.modelo;
+  const fontesContexto = fontesContextoTipado(contextoTipado);
+  const tokensContextoAproximados = Math.ceil(contextoSerializado.length / 4);
+  console.info("[assistente-contexto]", diagnosticoContextoAssistente({
+    blocos: contextoTipado.base.blocosSelecionados,
+    fontes: fontesContexto,
+    consultas: contextoCarregado.consultasExecutadas,
+    consultasReutilizadas: contextoCarregado.consultasReutilizadas,
+    duracaoMs: contextoCarregado.duracaoMs,
+    caracteresContexto: contextoSerializado.length,
+    tokensContextoAproximados,
+  }));
+  if (limite) {
+    registrarEvento({
+      userId,
+      categoria: "ia",
+      nivel: "info",
+      evento: "ia-assistente-respondido",
+      detalhe: JSON.stringify(metadadosExecucaoIa({
+        operacao: "assistente-chat",
+        fontesDeDados: fontesContexto,
+        validacoesAplicadas: [
+          "normalizacao-do-pedido",
+          "selecao-deterministica-de-contexto",
+          "capacidade-indisponivel-explicita",
+          "contexto-tipado-user-scoped",
+          "serializacao-sem-identificadores-internos",
+        ],
+        resultado: "respondido",
+        motivo: `capacidade-indisponivel:${limite.capacidadeId}`,
+        blocosContexto: contextoTipado.base.blocosSelecionados,
+        fontesContexto,
+        consultasExecutadas: contextoCarregado.consultasExecutadas,
+        duracaoContextoMs: contextoCarregado.duracaoMs,
+        caracteresContexto: contextoSerializado.length,
+        tokensContextoAproximados,
+        consultasReutilizadas: contextoCarregado.consultasReutilizadas,
+      })),
+    });
+    return {
+      modelo: "catalogo-capacidades",
+      mensagem: {
+        id: randomUUID(),
+        papel: "assistente",
+        texto: limite.texto,
+      },
+    };
+  }
+  const configuracao = configuracaoIa!;
+  const modelo = configuracao.assistente.modelo;
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const entrada: ResponseInputItem[] = [{
     role: "developer",
@@ -307,7 +357,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
     tool_choice: "auto" as const,
     parallel_tool_calls: false,
     max_output_tokens: 2500,
-    reasoning: { effort: configuracaoIa.assistente.esforco },
+    reasoning: { effort: configuracao.assistente.esforco },
     safety_identifier: idSeguro(userId),
     store: false,
   });
@@ -440,7 +490,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
         ),
       ],
       fontesDeDados: [
-        ...fontesContextoTipado(contextoTipado),
+        ...fontesContexto,
         ...ferramentasChamadas
           .filter((nome) => nome !== FERRAMENTA_PROTOCOLOS_COMERCIAIS)
           .map((nome) => `ferramenta:${nome}`),
@@ -466,11 +516,12 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
       resultado: "respondido",
       motivo: texto ? "resposta-gerada" : "resposta-vazia-com-fallback",
       blocosContexto: contextoTipado.base.blocosSelecionados,
-      fontesContexto: fontesContextoTipado(contextoTipado),
+      fontesContexto,
+      consultasExecutadas: contextoCarregado.consultasExecutadas,
       duracaoContextoMs: contextoCarregado.duracaoMs,
       caracteresContexto: contextoSerializado.length,
-      tokensContextoAproximados: Math.ceil(contextoSerializado.length / 4),
-      consultasReutilizadas: cacheLeituras.acertos,
+      tokensContextoAproximados,
+      consultasReutilizadas: contextoCarregado.consultasReutilizadas + cacheLeituras.acertos,
     })),
   });
   return {

@@ -8,6 +8,7 @@ import {
   CATALOGO_CAPACIDADES_ASSISTENTE,
   agruparCapacidades,
   montarManualCapacidades,
+  respostaParaLimiteAssistente,
   respostaSobreCapacidades,
   type DefinicaoCapacidadeAssistente,
 } from "@/lib/assistente/capacidades";
@@ -104,6 +105,20 @@ describe("catálogo de capacidades do Assistente", () => {
       .toContain("teste dinâmico");
     expect(respostaSobreCapacidades("Você consegue mandar mensagem sozinho?", contextoDisponivel))
       .toContain("não envia mensagens externas");
+  });
+
+  it("reconhece Mercado como limite informativo sem oferecer ferramenta operacional substituta", () => {
+    const limite = respostaParaLimiteAssistente(
+      "Como está o mercado para este imóvel?",
+      contextoDisponivel,
+    );
+
+    expect(limite).toMatchObject({ capacidadeId: "consultar_mercado" });
+    expect(limite?.texto).toContain("não possui uma leitura integrada");
+    expect(limite?.texto).toContain("não substituem");
+    expect(limite?.texto).not.toContain("movimentação moderada");
+    expect(montarManualCapacidades(contextoDisponivel).find((item) => item.id === "consultar_mercado"))
+      .toMatchObject({ disponivel: false, ferramentas: [], contextoNecessario: [] });
   });
 
   it("faz uma nova capacidade registrada aparecer no manual sem segunda lista", () => {

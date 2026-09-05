@@ -17,6 +17,7 @@ export interface MetadadosExecucaoIa {
   validacoesAplicadas: string[];
   blocosContexto: string[];
   fontesContexto: string[];
+  consultasExecutadas: number | null;
   duracaoContextoMs: number | null;
   caracteresContexto: number | null;
   tokensContextoAproximados: number | null;
@@ -39,9 +40,9 @@ type CamposListaMetadados =
   | "blocosContexto"
   | "fontesContexto";
 
-type EntradaMetadadosExecucaoIa = Omit<MetadadosExecucaoIa, CamposListaMetadados | "duracaoContextoMs" | "caracteresContexto" | "tokensContextoAproximados" | "consultasReutilizadas"> & {
+type EntradaMetadadosExecucaoIa = Omit<MetadadosExecucaoIa, CamposListaMetadados | "consultasExecutadas" | "duracaoContextoMs" | "caracteresContexto" | "tokensContextoAproximados" | "consultasReutilizadas"> & {
   [Campo in CamposListaMetadados]?: readonly (string | null | undefined)[];
-} & Pick<Partial<MetadadosExecucaoIa>, "duracaoContextoMs" | "caracteresContexto" | "tokensContextoAproximados" | "consultasReutilizadas">;
+} & Pick<Partial<MetadadosExecucaoIa>, "consultasExecutadas" | "duracaoContextoMs" | "caracteresContexto" | "tokensContextoAproximados" | "consultasReutilizadas">;
 
 export function metadadosExecucaoIa(
   entrada: EntradaMetadadosExecucaoIa,
@@ -56,10 +57,57 @@ export function metadadosExecucaoIa(
     validacoesAplicadas: unicos(entrada.validacoesAplicadas || []),
     blocosContexto: unicos(entrada.blocosContexto || []),
     fontesContexto: unicos(entrada.fontesContexto || []),
+    consultasExecutadas: entrada.consultasExecutadas ?? null,
     duracaoContextoMs: entrada.duracaoContextoMs ?? null,
     caracteresContexto: entrada.caracteresContexto ?? null,
     tokensContextoAproximados: entrada.tokensContextoAproximados ?? null,
     consultasReutilizadas: entrada.consultasReutilizadas ?? null,
+  };
+}
+
+export interface DiagnosticoContextoAssistente {
+  operacao: "assistente_contexto";
+  blocos: string[];
+  fontes: string[];
+  consultas: number;
+  consultas_reutilizadas: number;
+  duracao_ms: number;
+  tamanho_aproximado: number;
+  tokens_aproximados: number;
+}
+
+const BLOCOS_CONTEXTO_SEGUROS = new Set([
+  "imovel", "agenda", "pipeline", "conversa", "mensagens", "protocolos", "avaliacao", "mercado",
+]);
+const FONTES_CONTEXTO_SEGURAS = new Set([
+  "imoveis", "agenda", "protocolos", "imoveis.status+status_history+notas+tentativas",
+]);
+
+function inteiroNaoNegativo(valor: number): number {
+  return Number.isFinite(valor) ? Math.max(0, Math.round(valor)) : 0;
+}
+
+/** Projeção independente do histórico persistido, própria para logs de servidor.
+ * Aceita somente nomes estruturais em allowlist e contagens; não comporta
+ * pergunta, contexto serializado, IDs, prompt, resposta ou dados pessoais. */
+export function diagnosticoContextoAssistente(entrada: {
+  blocos: readonly string[];
+  fontes: readonly string[];
+  consultas: number;
+  consultasReutilizadas: number;
+  duracaoMs: number;
+  caracteresContexto: number;
+  tokensContextoAproximados: number;
+}): DiagnosticoContextoAssistente {
+  return {
+    operacao: "assistente_contexto",
+    blocos: unicos(entrada.blocos).filter((bloco) => BLOCOS_CONTEXTO_SEGUROS.has(bloco)),
+    fontes: unicos(entrada.fontes).filter((fonte) => FONTES_CONTEXTO_SEGURAS.has(fonte)),
+    consultas: inteiroNaoNegativo(entrada.consultas),
+    consultas_reutilizadas: inteiroNaoNegativo(entrada.consultasReutilizadas),
+    duracao_ms: inteiroNaoNegativo(entrada.duracaoMs),
+    tamanho_aproximado: inteiroNaoNegativo(entrada.caracteresContexto),
+    tokens_aproximados: inteiroNaoNegativo(entrada.tokensContextoAproximados),
   };
 }
 

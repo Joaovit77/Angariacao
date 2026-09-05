@@ -121,6 +121,28 @@ describe("seleção do contexto tipado do Assistente", () => {
     expect(selecao.blocos).not.toEqual(expect.arrayContaining(["avaliacao", "mercado", "imovel"]));
   });
 
+  it.each([
+    "Como está o mercado para este imóvel?",
+    "Tem muita oferta parecida nessa região?",
+    "Como estão os preços dos concorrentes?",
+  ])("não transforma Mercado em Pipeline para: %s", (mensagem) => {
+    const selecao = selecionarContextoAssistente(mensagem, contextoVisual);
+
+    expect(selecao.capacidades).toEqual([]);
+    expect(selecao.blocos).toEqual([]);
+  });
+
+  it.each([
+    "Esse imóvel está parado?",
+    "Qual foi a última movimentação?",
+    "Há quantos dias não tem movimento?",
+  ])("preserva Pipeline para a pergunta operacional: %s", (mensagem) => {
+    const selecao = selecionarContextoAssistente(mensagem, contextoVisual);
+
+    expect(selecao.capacidades).toContain("consultar_carteira");
+    expect(selecao.blocos).toEqual(expect.arrayContaining(["imovel", "pipeline"]));
+  });
+
   it("mantém a política de confirmação independente do contexto carregado", () => {
     const selecao = selecionarContextoAssistente("Agende uma visita para este imóvel amanhã às 15h.", contextoVisual);
 
@@ -159,6 +181,7 @@ describe("loaders do contexto tipado do Assistente", () => {
       dados: { escopo: "imovel", itens: [{ titulo: "Visita", data: hoje, hora: "14:00" }] },
     });
     expect(fake.consultas.map(({ tabela }) => tabela)).toEqual(["imoveis", "agenda"]);
+    expect(carregado).toMatchObject({ consultasExecutadas: 2, consultasReutilizadas: 0 });
     for (const { query } of fake.consultas) {
       expect(query.filtros).toContainEqual({ metodo: "eq", coluna: "user_id", valor: "user-1" });
     }
@@ -166,7 +189,7 @@ describe("loaders do contexto tipado do Assistente", () => {
 
   it("serializa o mínimo operacional sem IDs internos, telefone ou conteúdo de notas", async () => {
     const fake = new SupabaseFake({ imoveis: [imovelAtual] });
-    const { contexto } = await carregarContextoTipadoAssistente(
+    const { contexto, consultasExecutadas } = await carregarContextoTipadoAssistente(
       pedido("Mostre o histórico do imóvel."),
       fake as unknown as SupabaseClient,
       "user-1",
@@ -180,6 +203,8 @@ describe("loaders do contexto tipado do Assistente", () => {
     expect(serializado).not.toContain("imovel-1");
     expect(serializado).not.toContain("43999999999");
     expect(serializado).not.toContain("Conteúdo privado da conversa");
+    expect(contexto.base.blocosSelecionados).toEqual(expect.arrayContaining(["imovel", "pipeline"]));
+    expect(consultasExecutadas).toBe(1);
   });
 
   it("representa ausência e não busca a Agenda global quando a entidade não pertence ao usuário", async () => {
@@ -226,7 +251,7 @@ describe("loaders do contexto tipado do Assistente", () => {
         created_at: "2026-08-01T10:00:00Z",
       }],
     });
-    const { contexto, catalogoProtocolos } = await carregarContextoTipadoAssistente(
+    const { contexto, catalogoProtocolos, consultasExecutadas } = await carregarContextoTipadoAssistente(
       pedido("Qual é a taxa de administração?"),
       fake as unknown as SupabaseClient,
       "user-1",
@@ -236,6 +261,7 @@ describe("loaders do contexto tipado do Assistente", () => {
     expect(fake.consultas.map(({ tabela }) => tabela)).toEqual(["protocolos"]);
     expect(contexto.protocolos).toMatchObject({ autoridade: "protocolo", temporalidade: "atual" });
     expect(catalogoProtocolos.protocolos).toHaveLength(1);
+    expect(consultasExecutadas).toBe(1);
     expect(serializado).toContain("Taxa de administração");
     expect(serializado).not.toContain("10% sobre o aluguel");
   });
@@ -273,13 +299,33 @@ describe("loaders do contexto tipado do Assistente", () => {
 
   it("não consulta tabelas para uma saudação sem intenção reconhecida", async () => {
     const fake = new SupabaseFake({ imoveis: [imovelAtual] });
-    const { contexto } = await carregarContextoTipadoAssistente(
+    const { contexto, consultasExecutadas, consultasReutilizadas } = await carregarContextoTipadoAssistente(
       pedido("Olá, bom dia!"),
       fake as unknown as SupabaseClient,
       "user-1",
     );
 
     expect(contexto.base.blocosSelecionados).toEqual([]);
+    expect(fake.consultas).toHaveLength(0);
+    expect(consultasExecutadas).toBe(0);
+    expect(consultasReutilizadas).toBe(0);
+  });
+
+  it.each([
+    "Como está o mercado para este imóvel?",
+    "Tem muita oferta parecida nessa região?",
+    "Como estão os preços dos concorrentes?",
+  ])("não consulta nenhum domínio para capacidade de Mercado ausente: %s", async (mensagem) => {
+    const fake = new SupabaseFake({ imoveis: [imovelAtual] });
+    const carregado = await carregarContextoTipadoAssistente(
+      pedido(mensagem),
+      fake as unknown as SupabaseClient,
+      "user-1",
+    );
+
+    expect(carregado.contexto.base.blocosSelecionados).toEqual([]);
+    expect(carregado.consultasExecutadas).toBe(0);
+    expect(carregado.consultasReutilizadas).toBe(0);
     expect(fake.consultas).toHaveLength(0);
   });
 });

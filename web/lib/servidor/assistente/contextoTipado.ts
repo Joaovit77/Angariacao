@@ -32,6 +32,13 @@ export interface ContextoTipadoCarregadoAssistente {
   contexto: ContextoTipadoAssistente;
   catalogoProtocolos: CatalogoProtocolosAssistente;
   duracaoMs: number;
+  consultasExecutadas: number;
+  consultasReutilizadas: number;
+}
+
+interface ContadorConsultasContexto {
+  executadas: number;
+  reutilizadas: number;
 }
 
 function textoOuNull(valor: unknown): string | null {
@@ -90,6 +97,7 @@ async function carregarImovel(
   supabase: SupabaseClient,
   userId: string,
   pedido: PedidoAssistente,
+  contador: ContadorConsultasContexto,
 ): Promise<BlocoContextoAssistente<"imovel", DadosContextoImovelAssistente>> {
   const idVisual = pedido.contexto.entidade?.tipo === "imovel"
     && (pedido.contexto.superficie === "drawer" || pedido.contexto.superficie === "modal")
@@ -105,6 +113,7 @@ async function carregarImovel(
     .select(COLUNAS_IMOVEL_CONTEXTO)
     .eq("user_id", userId);
   consulta = idVisual ? consulta.eq("id", idVisual) : consulta.ilike("codigo", codigo!);
+  contador.executadas += 1;
   const { data, error } = await consulta.maybeSingle();
   if (error) throw new Error(`Falha ao carregar contexto do imóvel: ${error.message}`);
   if (!data) {
@@ -157,6 +166,7 @@ async function carregarAgenda(
   supabase: SupabaseClient,
   userId: string,
   pedido: PedidoAssistente,
+  contador: ContadorConsultasContexto,
   imovel?: BlocoContextoAssistente<"imovel", DadosContextoImovelAssistente>,
 ): Promise<BlocoContextoAssistente<"agenda", DadosContextoAgendaAssistente>> {
   const entidadeAgenda = pedido.contexto.entidade?.tipo === "agenda"
@@ -187,6 +197,7 @@ async function carregarAgenda(
     consulta = consulta.gte("date", periodo.inicio).eq("done", false);
     if (periodo.fim) consulta = consulta.lte("date", periodo.fim);
   }
+  contador.executadas += 1;
   const { data, error } = await consulta
     .order("date", { ascending: true })
     .order("hora", { ascending: true, nullsFirst: false })
@@ -269,15 +280,19 @@ export async function carregarContextoTipadoAssistente(
   userId: string,
 ): Promise<ContextoTipadoCarregadoAssistente> {
   const inicio = performance.now();
+  const contador: ContadorConsultasContexto = { executadas: 0, reutilizadas: 0 };
   const selecao = selecionarContextoAssistente(pedido.mensagem, pedido.contexto);
   const selecionados = new Set(selecao.blocos);
   const precisaImovel = selecionados.has("imovel") || selecionados.has("pipeline")
     || (selecionados.has("agenda") && /\b(im[oó]vel|dele|dela|desse|dessa|este|esta)\b/i.test(pedido.mensagem));
-  const imovel = precisaImovel ? await carregarImovel(supabase, userId, pedido) : undefined;
+  const imovel = precisaImovel ? await carregarImovel(supabase, userId, pedido, contador) : undefined;
   const [agenda, catalogoProtocolos] = await Promise.all([
-    selecionados.has("agenda") ? carregarAgenda(supabase, userId, pedido, imovel) : Promise.resolve(undefined),
+    selecionados.has("agenda") ? carregarAgenda(supabase, userId, pedido, contador, imovel) : Promise.resolve(undefined),
     selecionados.has("protocolos")
-      ? carregarCatalogoProtocolosAssistente(supabase, userId)
+      ? (() => {
+          contador.executadas += 1;
+          return carregarCatalogoProtocolosAssistente(supabase, userId);
+        })()
       : Promise.resolve({ protocolos: [], fonteDisponivel: false }),
   ]);
   const carregaveis = new Set<TipoBlocoContextoAssistente>(["imovel", "agenda", "pipeline", "protocolos"]);
@@ -302,7 +317,13 @@ export async function carregarContextoTipadoAssistente(
     ...(selecionados.has("pipeline") ? { pipeline: contextoPipeline(imovel) } : {}),
     ...(selecionados.has("protocolos") ? { protocolos: contextoProtocolos(catalogoProtocolos) } : {}),
   };
-  return { contexto, catalogoProtocolos, duracaoMs: Math.round(performance.now() - inicio) };
+  return {
+    contexto,
+    catalogoProtocolos,
+    duracaoMs: Math.round(performance.now() - inicio),
+    consultasExecutadas: contador.executadas,
+    consultasReutilizadas: contador.reutilizadas,
+  };
 }
 
 /** Serializa uma vez, na borda do modelo, removendo IDs internos e PII desnecessária. */

@@ -43,7 +43,7 @@ interface BaseCapacidadeAssistente {
 export type DefinicaoCapacidadeAssistente = BaseCapacidadeAssistente & (
   | { acao: TipoAcaoOperacionalAssistente; operacaoCritica?: never; controle?: never }
   | { operacaoCritica: OperacaoCriticaAssistente; acao?: never; controle?: never }
-  | { controle: Exclude<ControleCapacidadeAssistente, "Executa diretamente" | "Pede confirmação" | "Automático" | "Ainda não disponível">; acao?: never; operacaoCritica?: never }
+  | { controle: Exclude<ControleCapacidadeAssistente, "Executa diretamente" | "Pede confirmação" | "Automático">; acao?: never; operacaoCritica?: never }
 );
 
 export interface ContextoCapacidadesAssistente {
@@ -104,7 +104,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     exemplos: ["Quantos imóveis estão em Novo contato?", "Mostre o histórico do LD-201."],
     limitacoes: ["Os dados atuais são sempre reconsultados na sua própria carteira."],
     ferramentas: ["buscar_imoveis", "contar_imoveis", "consultar_imovel", "consultar_entidade_atual", "buscar_marcos_imoveis"],
-    termosDescoberta: ["consultar imóvel", "ver imóvel", "carteira", "histórico do imóvel", "última movimentação", "movimentação do imóvel", "último publicado", "última publicação", "última angariação", "último locado"],
+    termosDescoberta: ["consultar imóvel", "ver imóvel", "carteira", "histórico do imóvel", "última movimentação", "movimentação do imóvel", "imóvel está parado", "dias sem movimento", "há quantos dias não tem movimento", "sem movimento", "último publicado", "última publicação", "última angariação", "último locado"],
     contextoNecessario: ["imovel", "pipeline"],
     destaque: true,
   },
@@ -313,6 +313,19 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     requisito: "whatsapp_conectado",
   },
   {
+    id: "consultar_mercado",
+    nome: "Leitura de mercado",
+    descricao: "O Assistente ainda não possui uma leitura integrada do mercado imobiliário.",
+    categoria: "indisponivel",
+    tipo: "limite",
+    controle: "Ainda não disponível",
+    exemplos: [],
+    limitacoes: ["Dados operacionais do imóvel não substituem oferta regional, comparáveis, preços concorrentes ou liquidez de mercado."],
+    ferramentas: [],
+    termosDescoberta: ["mercado", "oferta parecida", "oferta semelhante", "preços dos concorrentes", "preço dos concorrentes", "imóveis comparáveis", "anúncios semelhantes", "liquidez de mercado"],
+    contextoNecessario: [],
+  },
+  {
     id: "enviar_mensagem_externa",
     nome: "Enviar mensagem sozinho",
     descricao: "O Assistente não envia mensagens externas por conta própria.",
@@ -480,4 +493,22 @@ export function catalogoCapacidadesParaModelo(contexto: ContextoCapacidadesAssis
     ferramentas: capacidade.ferramentas,
     contextoNecessario: capacidade.contextoNecessario || [],
   })));
+}
+
+/** Responde pedidos diretos que pertencem a um limite conhecido sem entregar
+ * ferramentas de outro domínio ao modelo. O texto vem do catálogo, não de uma
+ * frase especial por intenção. */
+export function respostaParaLimiteAssistente(
+  pergunta: string,
+  contexto: ContextoCapacidadesAssistente,
+  definicoes: readonly DefinicaoCapacidadeAssistente[] = CATALOGO_CAPACIDADES_ASSISTENTE,
+): { capacidadeId: string; texto: string } | null {
+  const limites = montarManualCapacidades(contexto, definicoes)
+    .filter((capacidade) => capacidade.tipo === "limite" && !capacidade.disponivel);
+  const capacidade = capacidadeMencionada(pergunta, limites);
+  if (!capacidade) return null;
+  return {
+    capacidadeId: capacidade.id,
+    texto: `${capacidade.descricao} ${capacidade.limitacoes[0] || capacidade.observacaoDisponibilidade || "Essa operação não está disponível."}`.trim(),
+  };
 }

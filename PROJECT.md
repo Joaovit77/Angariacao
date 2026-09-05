@@ -1749,8 +1749,9 @@ As operações reais também são descritas pelo **catálogo de capacidades** em
 disponibilidade e vínculo com ferramentas/ações; controles de autonomia são sempre derivados de
 `politicas.ts`, nunca redefinidos pelo manual. O catálogo alimenta a ajuda expansível acessível por
 **O que posso fazer?**, as boas-vindas e respostas determinísticas a perguntas de descoberta antes
-de qualquer chamada ao modelo. O contexto do modelo recebe somente uma projeção compacta do mesmo
-catálogo. Permissão de IA continua sendo validada antes de expor a resposta, e capacidades que
+de qualquer chamada ao modelo. Limites sem capacidade implementada também são resolvidos pelo
+catálogo antes do modelo, sem oferecer ferramentas de outro domínio como substitutas. O contexto do
+modelo recebe somente uma projeção compacta do mesmo catálogo. Permissão de IA continua sendo validada antes de expor a resposta, e capacidades que
 dependem de protocolos ou do WhatsApp declaram essa condição sem assumir integração ativa. Este
 documento descreve a arquitetura, mas não é fonte executável das capacidades.
 
@@ -1788,8 +1789,12 @@ Arquitetura:
   entram nesse catálogo.
   Ao concluir, registra no log existente somente metadados seguros: nomes das ferramentas realmente
   chamadas, IDs de protocolos considerados/aplicados e de entidades retornadas, fontes e validações
-  aplicadas, blocos selecionados, duração/tamanho do contexto e quantidade de consultas integrais
-  reaproveitadas; não registra a pergunta, o conteúdo do protocolo nem a resposta.
+  aplicadas, blocos selecionados, consultas executadas, duração/tamanho do contexto e quantidade de
+  consultas reaproveitadas; não registra a pergunta, o conteúdo do protocolo nem a resposta. A mesma
+  execução emite `[assistente-contexto]` no log do servidor com uma projeção ainda menor — blocos,
+  fontes em allowlist, contagens, duração e tamanho — para permitir smoke de Preview mesmo quando o
+  histórico persistido estiver indisponível. Essa linha não contém `user_id`, IDs de entidades,
+  pergunta, prompt, resposta nem conteúdo dos blocos.
   O modelo padrão é `gpt-5.4-mini`; a ausência de versão no banco ainda respeita um
   `OPENAI_ASSISTENTE_MODEL` válido. Com versão publicada, o Centro de IA é a fonte ativa.
 - `components/assistente/ManualCapacidadesAssistente.tsx`: projeção do catálogo em linguagem de

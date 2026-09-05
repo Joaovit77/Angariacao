@@ -106,6 +106,19 @@ webhook; com o painel de administração ela passou a ser necessária também pa
 - **Se você não configurar:** o envio direto e o painel de administração respondem "não
   configurado". O resto do app funciona.
 
+### Diagnóstico seguro do contexto do Assistente
+
+Cada pergunta que chega ao orquestrador emite no log server-side uma linha pesquisável por
+`[assistente-contexto]`. Na Vercel, abra **Logs**, selecione o deployment/ambiente do smoke e filtre
+por esse marcador. A linha contém somente `operacao`, nomes allowlisted de `blocos` e `fontes`,
+`consultas`, `consultas_reutilizadas`, `duracao_ms`, `tamanho_aproximado` e `tokens_aproximados`.
+
+Esse diagnóstico não depende de `SUPABASE_SERVICE_ROLE_KEY`, `log_eventos` nem do Cérebro da IA.
+Ele nunca inclui `user_id`, IDs de entidades, pergunta, prompt, resposta, contexto serializado,
+protocolos completos, mensagens, notas, endereço, telefone, e-mail, tokens de autenticação ou
+headers. O histórico persistido continua opcional e separado; não configure a service role em um
+Preview apenas para habilitar esse smoke.
+
 ### Super admin — liberando o primeiro
 
 O painel `/admin` mostra todos os corretores, o estado da conexão de WhatsApp de cada um, quanto
