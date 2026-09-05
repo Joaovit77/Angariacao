@@ -10,6 +10,71 @@ export const MAX_MENSAGEM_CONTEXTO = 2400;
 export const MAX_MENSAGENS_ATENDIMENTO = 12;
 export const MAX_MENSAGENS_ANTIGAS_RELEVANTES = 4;
 export const MAX_PROTOCOLOS_APLICAVEIS = 5;
+export const MAX_EVIDENCIAS_ATENDIMENTO = 16;
+export const MAX_AFIRMACOES_ATENDIMENTO = 12;
+
+export const TEMPORALIDADES_ATENDIMENTO = [
+  "atual",
+  "historica",
+  "antes-de-evento",
+  "depois-de-evento",
+  "atemporal",
+  "desconhecida",
+] as const;
+export type TemporalidadeAtendimento = (typeof TEMPORALIDADES_ATENDIMENTO)[number];
+
+export type OrigemFonteEvidenciaAtendimento =
+  | "protocolo"
+  | "dado-estruturado-imovel"
+  | "mensagem-recebida"
+  | "mensagem-enviada"
+  | "historico"
+  | "estado-operacional-atual";
+
+export type AutoridadeFonteEvidenciaAtendimento =
+  | "protocolo-ativo"
+  | "dado-estruturado-atual"
+  | "fala-atual-atribuida"
+  | "fala-historica-atribuida"
+  | "fallback-legado";
+
+/** Fonte material já carregada pelo fluxo. Não é criada pelo modelo. */
+export interface FonteEvidenciaAtendimento {
+  id: string;
+  origem: OrigemFonteEvidenciaAtendimento;
+  autoridade: AutoridadeFonteEvidenciaAtendimento;
+  referencia: string;
+  conteudo: string;
+  temporalidadeBase: "atual" | "historica" | "desconhecida";
+}
+
+/** Fato reconhecido na decisão e ligado a uma fonte real do catálogo. */
+export interface EvidenciaAtendimento {
+  id: string;
+  fonteId: string;
+  fato: string;
+  temporalidade: TemporalidadeAtendimento;
+  /** Vazio quando a temporalidade não é relativa a um evento. */
+  evento: string;
+}
+
+export interface LacunaAtendimento {
+  id: string;
+  descricao: string;
+  temporalidade: TemporalidadeAtendimento;
+  /** Vazio quando a temporalidade não é relativa a um evento. */
+  evento: string;
+}
+
+export interface AfirmacaoAtendimento {
+  descricao: string;
+  tipo: "fato" | "incerteza" | "negacao-de-extrapolacao";
+  evidencias: string[];
+  lacunas: string[];
+  temporalidade: TemporalidadeAtendimento;
+  /** Deve copiar exatamente o evento da evidência ou lacuna usada. */
+  evento: string;
+}
 
 export interface ProtocoloPrompt {
   titulo: string;
@@ -63,8 +128,8 @@ export interface DecisaoAtendimento {
     | "avancar-etapa"
   >;
   protocolosAplicaveis: string[];
-  mensagensEvidencia: string[];
-  informacoesFaltantes: string[];
+  evidencias: EvidenciaAtendimento[];
+  informacoesFaltantes: LacunaAtendimento[];
   nivelConfianca: "alta" | "media" | "baixa";
   precisaIntervencaoHumana: boolean;
   podeResponderComSeguranca: boolean;
@@ -77,8 +142,94 @@ export const PROBLEMAS_VALIDACAO_ATENDIMENTO = [
   "resposta-longa", "apresentacao-repetida", "intervencao-humana",
 ] as const;
 export type ProblemaValidacaoAtendimento = (typeof PROBLEMAS_VALIDACAO_ATENDIMENTO)[number];
-export interface ValidacaoAtendimento { problemas: ProblemaValidacaoAtendimento[] }
-export interface GeracaoAtendimento { mensagem: string; protocolosUsados: string[] }
+export interface ValidacaoAtendimento {
+  problemas: ProblemaValidacaoAtendimento[];
+  /** Leitura independente do auditor sobre o que o texto realmente afirma. */
+  afirmacoesAuditadas: AfirmacaoAtendimento[];
+}
+export interface GeracaoAtendimento {
+  mensagem: string;
+  protocolosUsados: string[];
+  afirmacoes: AfirmacaoAtendimento[];
+}
+
+const TEMPORALIDADES_RELATIVAS_ATENDIMENTO = ["antes-de-evento", "depois-de-evento"] as const;
+const TEMPORALIDADES_NAO_RELATIVAS_ATENDIMENTO = [
+  "atual", "historica", "atemporal", "desconhecida",
+] as const;
+const ESQUEMA_TEXTO_NAO_VAZIO_ATENDIMENTO = {
+  type: "string",
+  pattern: "^[\\s\\S]*\\S[\\s\\S]*$",
+} as const;
+
+function esquemaComEscopoTemporalAtendimento<
+  const Propriedades extends Readonly<Record<string, object>>,
+  const Obrigatorios extends readonly string[],
+>(
+  propriedades: Propriedades,
+  obrigatorios: Obrigatorios,
+) {
+  const objeto = <
+    const Temporalidades extends readonly string[],
+    const Evento extends object,
+  >(
+    temporalidades: Temporalidades,
+    evento: Evento,
+  ) => ({
+    type: "object" as const,
+    properties: {
+      ...propriedades,
+      temporalidade: { type: "string" as const, enum: temporalidades },
+      evento,
+    },
+    required: obrigatorios,
+    additionalProperties: false as const,
+  });
+  return {
+    anyOf: [
+      objeto(TEMPORALIDADES_RELATIVAS_ATENDIMENTO, ESQUEMA_TEXTO_NAO_VAZIO_ATENDIMENTO),
+      objeto(TEMPORALIDADES_NAO_RELATIVAS_ATENDIMENTO, { type: "string" as const, enum: [""] as const }),
+    ],
+  } as const;
+}
+
+const ESQUEMA_EVIDENCIA_ATENDIMENTO = esquemaComEscopoTemporalAtendimento(
+  {
+    id: { type: "string", pattern: "^evidencia_[1-9][0-9]*$" },
+    fonteId: { type: "string", pattern: "^fonte_[1-9][0-9]*$" },
+    fato: ESQUEMA_TEXTO_NAO_VAZIO_ATENDIMENTO,
+  },
+  ["id", "fonteId", "fato", "temporalidade", "evento"],
+);
+
+const ESQUEMA_LACUNA_ATENDIMENTO = esquemaComEscopoTemporalAtendimento(
+  {
+    id: { type: "string", pattern: "^lacuna_[1-9][0-9]*$" },
+    descricao: ESQUEMA_TEXTO_NAO_VAZIO_ATENDIMENTO,
+  },
+  ["id", "descricao", "temporalidade", "evento"],
+);
+
+const ESQUEMA_AFIRMACAO_ATENDIMENTO = esquemaComEscopoTemporalAtendimento(
+  {
+    descricao: ESQUEMA_TEXTO_NAO_VAZIO_ATENDIMENTO,
+    tipo: {
+      type: "string",
+      enum: ["fato", "incerteza", "negacao-de-extrapolacao"],
+    },
+    evidencias: {
+      type: "array",
+      items: { type: "string", pattern: "^evidencia_[1-9][0-9]*$" },
+      maxItems: MAX_EVIDENCIAS_ATENDIMENTO,
+    },
+    lacunas: {
+      type: "array",
+      items: { type: "string", pattern: "^lacuna_[1-9][0-9]*$" },
+      maxItems: 8,
+    },
+  },
+  ["descricao", "tipo", "evidencias", "lacunas", "temporalidade", "evento"],
+);
 
 export const ESQUEMA_RASCUNHO = {
   type: "object",
@@ -128,8 +279,16 @@ export const ESQUEMA_DECISAO_ATENDIMENTO = {
       items: { type: "string" },
       maxItems: MAX_PROTOCOLOS_APLICAVEIS,
     },
-    informacoesFaltantes: { type: "array", items: { type: "string" } },
-    mensagensEvidencia: { type: "array", items: { type: "string" }, maxItems: 8 },
+    evidencias: {
+      type: "array",
+      items: ESQUEMA_EVIDENCIA_ATENDIMENTO,
+      maxItems: MAX_EVIDENCIAS_ATENDIMENTO,
+    },
+    informacoesFaltantes: {
+      type: "array",
+      items: ESQUEMA_LACUNA_ATENDIMENTO,
+      maxItems: 8,
+    },
     nivelConfianca: { type: "string", enum: ["alta", "media", "baixa"] },
     precisaIntervencaoHumana: { type: "boolean" },
     podeResponderComSeguranca: { type: "boolean" },
@@ -144,8 +303,8 @@ export const ESQUEMA_DECISAO_ATENDIMENTO = {
     "proximoPassoPermitido",
     "acoesProibidas",
     "protocolosAplicaveis",
+    "evidencias",
     "informacoesFaltantes",
-    "mensagensEvidencia",
     "nivelConfianca",
     "precisaIntervencaoHumana",
     "podeResponderComSeguranca",
@@ -158,8 +317,15 @@ export const ESQUEMA_GERACAO_ATENDIMENTO = {
   properties: {
     mensagem: { type: "string" },
     protocolosUsados: { type: "array", items: { type: "string" } },
+    afirmacoes: {
+      type: "array",
+      description:
+        "Afirmações factuais ou temporais presentes no texto. Não inclua saudações ou cortesia. Cada fato referencia evidências existentes; incerteza e negação de extrapolação referenciam lacunas existentes.",
+      items: ESQUEMA_AFIRMACAO_ATENDIMENTO,
+      maxItems: MAX_AFIRMACOES_ATENDIMENTO,
+    },
   },
-  required: ["mensagem", "protocolosUsados"],
+  required: ["mensagem", "protocolosUsados", "afirmacoes"],
   additionalProperties: false,
 } as const;
 
@@ -172,7 +338,14 @@ export const ESQUEMA_VALIDACAO_ATENDIMENTO = {
       items: { type: "string", enum: PROBLEMAS_VALIDACAO_ATENDIMENTO },
       maxItems: PROBLEMAS_VALIDACAO_ATENDIMENTO.length,
     },
+    afirmacoesAuditadas: {
+      type: "array",
+      description:
+        "Afirmações factuais ou temporais que o texto realmente faz, extraídas de forma independente. Não copie cegamente afirmacoes da geração. Cada item deve apontar para evidências ou lacunas existentes e refletir o tempo/evento expresso no texto.",
+      items: ESQUEMA_AFIRMACAO_ATENDIMENTO,
+      maxItems: MAX_AFIRMACOES_ATENDIMENTO,
+    },
   },
-  required: ["problemas"],
+  required: ["problemas", "afirmacoesAuditadas"],
   additionalProperties: false,
 } as const;

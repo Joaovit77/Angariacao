@@ -1,7 +1,12 @@
 import {
   ESQUEMA_DECISAO_ATENDIMENTO, ESQUEMA_GERACAO_ATENDIMENTO, ESQUEMA_VALIDACAO_ATENDIMENTO,
   PROBLEMAS_VALIDACAO_ATENDIMENTO,
-  type GeracaoAtendimento, type ProblemaValidacaoAtendimento,
+  type AfirmacaoAtendimento,
+  type EvidenciaAtendimento,
+  type FonteEvidenciaAtendimento,
+  type GeracaoAtendimento,
+  type LacunaAtendimento,
+  type ProblemaValidacaoAtendimento,
   MAX_PROTOCOLOS_APLICAVEIS,
   MAX_TEXTO_RASCUNHO,
   type DecisaoAtendimento,
@@ -31,7 +36,7 @@ export type MotivoBloqueioAtendimento =
 export function normalizarDecisaoAtendimento(
   valor: unknown,
   protocolos: readonly ProtocoloPrompt[],
-  idsMensagens: readonly string[] = [],
+  catalogoFontes: readonly FonteEvidenciaAtendimento[],
 ): DecisaoAtendimento | null {
   if (!atendeSchemaAtendimento(valor, ESQUEMA_DECISAO_ATENDIMENTO)) return null;
   const d = valor as Record<string, unknown>;
@@ -42,7 +47,7 @@ export function normalizarDecisaoAtendimento(
   )
     return null;
   const titulos = new Set(protocolos.map((p) => p.titulo));
-  const evidenciasPermitidas = new Set(idsMensagens.filter(Boolean));
+  const fontesPorId = new Map(catalogoFontes.map((fonte) => [fonte.id, fonte]));
   const lista = (v: unknown) =>
     Array.isArray(v)
       ? v
@@ -50,6 +55,30 @@ export function normalizarDecisaoAtendimento(
           .map((x) => x.trim())
           .filter(Boolean)
       : [];
+  const protocolosAplicaveis = lista(d.protocolosAplicaveis)
+    .filter((t) => titulos.has(t))
+    .slice(0, MAX_PROTOCOLOS_APLICAVEIS);
+  if (protocolosAplicaveis.length !== lista(d.protocolosAplicaveis).length) return null;
+
+  const temporalidadeComEventoValida = (temporalidade: string, evento: string) =>
+    temporalidade === "antes-de-evento" || temporalidade === "depois-de-evento"
+      ? evento.trim().length > 0
+      : evento.trim().length === 0;
+  const evidencias = d.evidencias as EvidenciaAtendimento[];
+  if (evidencias.some((evidencia, indice) => {
+    const fonte = fontesPorId.get(evidencia.fonteId);
+    return evidencia.id !== `evidencia_${indice + 1}`
+      || !fonte
+      || !evidencia.fato.trim()
+      || !temporalidadeComEventoValida(evidencia.temporalidade, evidencia.evento);
+  })) return null;
+  const informacoesFaltantes = d.informacoesFaltantes as LacunaAtendimento[];
+  if (informacoesFaltantes.some((lacuna, indice) =>
+    lacuna.id !== `lacuna_${indice + 1}`
+    || !lacuna.descricao.trim()
+    || !temporalidadeComEventoValida(lacuna.temporalidade, lacuna.evento)
+  )) return null;
+
   return {
     intencao:
       typeof d.intencao === "string" && d.intencao.trim()
@@ -76,13 +105,17 @@ export function normalizarDecisaoAtendimento(
         ["apresentar-imobiliaria", "explicar-condicoes", "perguntar-exclusividade", "marcar-visita", "pedir-fotos", "pedir-autorizacao", "cadastrar-imovel", "insistir", "avancar-etapa"].includes(acao),
       )
       .slice(0, 9),
-    protocolosAplicaveis: lista(d.protocolosAplicaveis)
-      .filter((t) => titulos.has(t))
-      .slice(0, MAX_PROTOCOLOS_APLICAVEIS),
-    mensagensEvidencia: lista(d.mensagensEvidencia)
-      .filter((id) => evidenciasPermitidas.has(id))
-      .slice(0, 8),
-    informacoesFaltantes: lista(d.informacoesFaltantes).slice(0, 8),
+    protocolosAplicaveis,
+    evidencias: evidencias.map((evidencia) => ({
+      ...evidencia,
+      fato: evidencia.fato.trim(),
+      evento: evidencia.evento.trim(),
+    })),
+    informacoesFaltantes: informacoesFaltantes.map((lacuna) => ({
+      ...lacuna,
+      descricao: lacuna.descricao.trim(),
+      evento: lacuna.evento.trim(),
+    })),
     nivelConfianca: String(d.nivelConfianca) as DecisaoAtendimento["nivelConfianca"],
     precisaIntervencaoHumana: d.precisaIntervencaoHumana,
     podeResponderComSeguranca: d.podeResponderComSeguranca,
@@ -102,18 +135,102 @@ const PADROES_ACAO: Partial<Record<DecisaoAtendimento["acoesProibidas"][number],
   "avancar-etapa": /\b(?:ja podemos|vamos entao|proximo passo e)\b/i,
 };
 
+/** Valida somente a cadeia tipada afirmação -> evidência/lacuna -> fonte. */
+export function motivoBloqueioAfirmacoesDeterministico(
+  protocolosUsados: readonly string[],
+  afirmacoes: readonly AfirmacaoAtendimento[],
+  decisao: DecisaoAtendimento,
+  catalogoFontes: readonly FonteEvidenciaAtendimento[],
+): "informacao-sem-fonte" | "protocolo-inadequado" | null {
+  const evidenciasPorId = new Map(decisao.evidencias.map((evidencia) => [evidencia.id, evidencia]));
+  const lacunasPorId = new Map(decisao.informacoesFaltantes.map((lacuna) => [lacuna.id, lacuna]));
+  const fontesPorId = new Map(catalogoFontes.map((fonte) => [fonte.id, fonte]));
+  const protocolosReferenciados = new Set<string>();
+  const mesmoEscopo = (
+    origem: { temporalidade: string; evento: string },
+    destino: { temporalidade: string; evento: string },
+  ) => origem.temporalidade === "atemporal"
+    || (origem.temporalidade === destino.temporalidade
+      && origem.evento === destino.evento);
+
+  for (const afirmacao of afirmacoes) {
+    const evidencias = afirmacao.evidencias.map((id) => evidenciasPorId.get(id));
+    const lacunas = afirmacao.lacunas.map((id) => lacunasPorId.get(id));
+    if (evidencias.some((evidencia) => !evidencia) || lacunas.some((lacuna) => !lacuna)) {
+      return "informacao-sem-fonte";
+    }
+    if (afirmacao.tipo === "fato") {
+      if (evidencias.length === 0 || lacunas.length > 0
+        || !evidencias.some((evidencia) => evidencia && mesmoEscopo(evidencia, afirmacao))) {
+        return "informacao-sem-fonte";
+      }
+    } else if (lacunas.length === 0
+      || !lacunas.some((lacuna) => lacuna && mesmoEscopo(lacuna, afirmacao))) {
+      return "informacao-sem-fonte";
+    }
+    for (const evidencia of evidencias) {
+      if (!evidencia) continue;
+      const fonte = fontesPorId.get(evidencia.fonteId);
+      if (!fonte) return "informacao-sem-fonte";
+      if (fonte.origem === "protocolo") {
+        protocolosReferenciados.add(fonte.referencia);
+        if (!protocolosUsados.includes(fonte.referencia)) return "protocolo-inadequado";
+      }
+    }
+  }
+  if (protocolosUsados.some((titulo) => !protocolosReferenciados.has(titulo))) {
+    return "protocolo-inadequado";
+  }
+  return null;
+}
+
+/**
+ * Remove somente a acusação que contradiz a cadeia estruturada completa.
+ * Sem afirmações auditadas não há prova suficiente para contrariar o auditor.
+ */
+export function reconciliarValidacaoAtendimentoComEvidencias(
+  validacao: ValidacaoAtendimento,
+  protocolosUsados: readonly string[],
+  decisao: DecisaoAtendimento,
+  catalogoFontes: readonly FonteEvidenciaAtendimento[],
+): ValidacaoAtendimento {
+  if (!validacao.problemas.includes("informacao-sem-fonte")
+    || validacao.afirmacoesAuditadas.length === 0
+    || motivoBloqueioAfirmacoesDeterministico(
+      protocolosUsados,
+      validacao.afirmacoesAuditadas,
+      decisao,
+      catalogoFontes,
+    ) !== null) {
+    return validacao;
+  }
+  return {
+    ...validacao,
+    problemas: validacao.problemas.filter((problema) => problema !== "informacao-sem-fonte"),
+  };
+}
+
 /** Barreiras locais aplicadas ao texto inteiro antes da terceira chamada. */
 export function motivoBloqueioRascunhoDeterministico(
   rascunho: string,
   protocolosUsados: readonly string[],
+  afirmacoes: readonly AfirmacaoAtendimento[],
   decisao: DecisaoAtendimento,
   perfil: PerfilComunicacao,
+  catalogoFontes: readonly FonteEvidenciaAtendimento[],
 ): MotivoBloqueioAtendimento | null {
   const texto = rascunho.trim();
   const textoNormalizado = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   if (!texto) return "geracao-reprovada";
   if (texto.length > limiteRespostaPerfil(perfil)) return "resposta-longa";
   if (perfil.emojis === "nenhum" && /\p{Extended_Pictographic}/u.test(texto)) return "perfil-incompativel";
+  const motivoAfirmacoes = motivoBloqueioAfirmacoesDeterministico(
+    protocolosUsados,
+    afirmacoes,
+    decisao,
+    catalogoFontes,
+  );
+  if (motivoAfirmacoes) return motivoAfirmacoes;
   const frases = textoNormalizado.split(/(?<=[.!?])\s+|\n+/);
   if (protocolosUsados.length === 0 && frases.some((frase) =>
     /\b(?:taxa|comissao|multa|isencao|primeiro aluguel|garantia|vistoria|exclusividade|responsabilidade|procedimento)\b/i.test(frase)
@@ -152,17 +269,50 @@ export function motivoBloqueioDecisaoAtendimento(
 export function motivoReprovacaoValidacaoAtendimento(
   valor: unknown,
 ): MotivoBloqueioAtendimento | null | undefined {
-  if (!atendeSchemaAtendimento(valor, ESQUEMA_VALIDACAO_ATENDIMENTO)) return undefined;
-  const { problemas } = valor as ValidacaoAtendimento;
+  const validacao = normalizarValidacaoAtendimento(valor);
+  if (!validacao) return undefined;
+  const { problemas } = validacao;
   // Uma falha terminal nunca pode ser escondida pela ordem escolhida pelo modelo.
   if (problemas.includes("intervencao-humana")) return "intervencao-humana";
   return problemas[0] ?? null;
 }
 
+function normalizarAfirmacoesAtendimento(
+  afirmacoes: readonly AfirmacaoAtendimento[],
+): AfirmacaoAtendimento[] | null {
+  const temporalidadeComEventoValida = (afirmacao: AfirmacaoAtendimento) =>
+    afirmacao.temporalidade === "antes-de-evento" || afirmacao.temporalidade === "depois-de-evento"
+      ? afirmacao.evento.trim().length > 0
+      : afirmacao.evento.trim().length === 0;
+  if (afirmacoes.some((afirmacao) =>
+    !afirmacao.descricao.trim()
+    || !temporalidadeComEventoValida(afirmacao)
+  )) return null;
+  return afirmacoes.map((afirmacao) => ({
+    ...afirmacao,
+    descricao: afirmacao.descricao.trim(),
+    evento: afirmacao.evento.trim(),
+  }));
+}
+
+export function normalizarValidacaoAtendimento(valor: unknown): ValidacaoAtendimento | null {
+  if (!atendeSchemaAtendimento(valor, ESQUEMA_VALIDACAO_ATENDIMENTO)) return null;
+  const validacao = valor as ValidacaoAtendimento;
+  const afirmacoesAuditadas = normalizarAfirmacoesAtendimento(validacao.afirmacoesAuditadas);
+  if (!afirmacoesAuditadas) return null;
+  return { problemas: [...validacao.problemas], afirmacoesAuditadas };
+}
+
 export function normalizarGeracaoAtendimento(valor: unknown): GeracaoAtendimento | null {
   if (!atendeSchemaAtendimento(valor, ESQUEMA_GERACAO_ATENDIMENTO)) return null;
   const geracao = valor as GeracaoAtendimento;
-  return { mensagem: geracao.mensagem.trim(), protocolosUsados: [...new Set(geracao.protocolosUsados)] };
+  const afirmacoes = normalizarAfirmacoesAtendimento(geracao.afirmacoes);
+  if (!afirmacoes) return null;
+  return {
+    mensagem: geracao.mensagem.trim(),
+    protocolosUsados: [...new Set(geracao.protocolosUsados)],
+    afirmacoes,
+  };
 }
 
 /** Só falhas corrigíveis por reescrita recebem nova geração. */

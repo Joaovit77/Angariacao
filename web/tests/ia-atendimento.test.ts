@@ -6,7 +6,8 @@ import {
   motivoBloqueioRascunhoDeterministico,
   normalizarDecisaoAtendimento, promptBaseAtendimento, promptDecidirAtendimento, promptGerarAtendimento,
   promptRegenerarAtendimentoSeguro, promptValidarAtendimento, selecionarMensagensAtendimento, validacaoAprovaAtendimento,
-  type ContextoAtendimento, type DecisaoAtendimento, type ProtocoloPrompt,
+  type ContextoAtendimento, type DecisaoAtendimento, type FonteEvidenciaAtendimento,
+  type GeracaoAtendimento, type ProtocoloPrompt,
 } from "@/lib/calculo/ia";
 import type { Imovel } from "@/lib/tipos";
 import { normalizarPerfilComunicacao } from "@/lib/perfilComunicacao";
@@ -34,9 +35,33 @@ const base: DecisaoAtendimento = {
   intencao: "geral", objecao: "", estadoConversacional: "entendimento",
   contextoRelevante: "", informacoesJaExplicadas: [], acaoEsperada: "responder",
   proximoPassoPermitido: "responder ao assunto atual", acoesProibidas: [],
-  protocolosAplicaveis: [], mensagensEvidencia: [],
+  protocolosAplicaveis: [], evidencias: [],
   informacoesFaltantes: [], nivelConfianca: "alta",
   precisaIntervencaoHumana: false, podeResponderComSeguranca: true,
+};
+const geracaoNeutra = (mensagem: string): GeracaoAtendimento => ({
+  mensagem,
+  protocolosUsados: [],
+  afirmacoes: [],
+});
+const fonteTaxa: FonteEvidenciaAtendimento = {
+  id: "fonte_1",
+  origem: "protocolo",
+  autoridade: "protocolo-ativo",
+  referencia: "Taxa",
+  conteudo: "A taxa e de 10% sobre o aluguel.",
+  temporalidadeBase: "desconhecida",
+};
+const decisaoTaxa: DecisaoAtendimento = {
+  ...base,
+  protocolosAplicaveis: ["Taxa"],
+  evidencias: [{
+    id: "evidencia_1",
+    fonteId: "fonte_1",
+    fato: "a taxa é de 10%",
+    temporalidade: "atemporal",
+    evento: "",
+  }],
 };
 
 describe("assistente de atendimento - 12 cenarios", () => {
@@ -63,7 +88,9 @@ describe("assistente de atendimento - 12 cenarios", () => {
     expect(p).toContain("Mensagem ambígua pede esclarecimento");
   });
   it("6. informacao necessaria ausente", () => {
-    const d = { ...base, informacoesFaltantes: ["valor do condominio"], nivelConfianca: "baixa" as const };
+    const d = { ...base, informacoesFaltantes: [{
+      id: "lacuna_1", descricao: "valor do condominio", temporalidade: "atual" as const, evento: "",
+    }], nivelConfianca: "baixa" as const };
     const p = promptGerarAtendimento("E o condominio?", contexto, undefined, d, []);
     expect(p).toContain("valor do condominio"); expect(p).toContain("ofereça confirmar");
   });
@@ -87,7 +114,11 @@ describe("assistente de atendimento - 12 cenarios", () => {
     expect(promptGerarAtendimento("Certo?", contexto, undefined, base, [])).toContain("Máximo programático: 360 caracteres");
   });
   it("11. sem resposta segura exige intervencao", () => {
-    const d = normalizarDecisaoAtendimento({ ...base, precisaIntervencaoHumana: true, podeResponderComSeguranca: false }, protocolos);
+    const d = normalizarDecisaoAtendimento(
+      { ...base, precisaIntervencaoHumana: true, podeResponderComSeguranca: false },
+      protocolos,
+      [],
+    );
     expect(d?.precisaIntervencaoHumana).toBe(true);
     expect(mensagemFalhaIa("intervencao-humana")).toContain("Revise a conversa");
   });
@@ -135,16 +166,26 @@ describe("contratos e barreiras", () => {
       expect(s.additionalProperties).toBe(false); expect(s.required).toEqual(Object.keys(s.properties));
     }
   });
-  it("titulos inventados sao removidos da decisao", () => {
-    const d = normalizarDecisaoAtendimento({ ...base, protocolosAplicaveis: ["IPTU", "Inventado"] }, protocolos);
-    expect(d?.protocolosAplicaveis).toEqual(["IPTU"]);
+  it("titulos inventados invalidam a decisao sem fallback silencioso", () => {
+    const d = normalizarDecisaoAtendimento(
+      { ...base, protocolosAplicaveis: ["IPTU", "Inventado"] },
+      protocolos,
+      [],
+    );
+    expect(d).toBeNull();
   });
   it("qualquer falha reprova a validacao", () => {
-    const v = { problemas: ["protocolo-inadequado"] };
+    const v = { problemas: ["protocolo-inadequado"], afirmacoesAuditadas: [] };
     expect(validacaoAprovaAtendimento(v)).toBe(false);
   });
   it("validador ve fatos e somente fontes selecionadas", () => {
-    const p = promptValidarAtendimento("IPTU?", contexto, undefined, [protocolos[1]], "Definido no contrato.");
+    const p = promptValidarAtendimento(
+      "IPTU?",
+      contexto,
+      undefined,
+      [protocolos[1]],
+      geracaoNeutra("Definido no contrato."),
+    );
     expect(p).toContain("Rua A, 10"); expect(p).toContain("Definido no contrato"); expect(p).not.toContain("10%");
   });
   it("contexto usa campos tipados e ignora observacao livre", () => {
@@ -221,7 +262,7 @@ describe("contratos e barreiras", () => {
   });
 
   it("preserva o motivo especifico de uma reprovacao do validador", () => {
-    const v = { problemas: ["informacao-sem-fonte"] };
+    const v = { problemas: ["informacao-sem-fonte"], afirmacoesAuditadas: [] };
     expect(motivoReprovacaoValidacaoAtendimento(v)).toBe("informacao-sem-fonte");
   });
 });
@@ -261,25 +302,42 @@ describe("comportamento conversacional", () => {
       motivoBloqueioRascunhoDeterministico(
         "Podemos marcar uma visita e você me manda as fotos?",
         [],
+        [],
         { ...base, acaoEsperada: "aguardar", acoesProibidas: ["marcar-visita", "pedir-fotos"] },
         perfil,
+        [],
       ),
     ).toBe("acao-incompativel");
     expect(
       motivoBloqueioRascunhoDeterministico(
         "Entendo, mas vale a pena conhecer nossos benefícios.",
         [],
+        [],
         { ...base, acaoEsperada: "encerrar", acoesProibidas: ["insistir"] },
         perfil,
+        [],
       ),
     ).toBe("acao-incompativel");
   });
 
   it("exige protocolo para afirmação comercial e aceita confirmação segura", () => {
     const perfil = normalizarPerfilComunicacao(null);
-    expect(motivoBloqueioRascunhoDeterministico("A taxa é de 10%.", [], base, perfil)).toBe("informacao-sem-fonte");
-    expect(motivoBloqueioRascunhoDeterministico("A taxa é de 10%.", ["Taxa"], base, perfil)).toBeNull();
-    expect(motivoBloqueioRascunhoDeterministico("Posso confirmar a taxa certinho para você.", [], base, perfil)).toBeNull();
+    expect(motivoBloqueioRascunhoDeterministico("A taxa é de 10%.", [], [], base, perfil, []))
+      .toBe("informacao-sem-fonte");
+    expect(motivoBloqueioRascunhoDeterministico(
+      "A taxa é de 10%.",
+      ["Taxa"],
+      [{
+        descricao: "a taxa é de 10%", tipo: "fato", evidencias: ["evidencia_1"],
+        lacunas: [], temporalidade: "atual", evento: "",
+      }],
+      decisaoTaxa,
+      perfil,
+      [fonteTaxa],
+    )).toBeNull();
+    expect(motivoBloqueioRascunhoDeterministico(
+      "Posso confirmar a taxa certinho para você.", [], [], base, perfil, [],
+    )).toBeNull();
   });
 
   it("aplica perfil e limite sem alterar o código", () => {
@@ -287,8 +345,10 @@ describe("comportamento conversacional", () => {
     const profissional = normalizarPerfilComunicacao({ tamanho: "medio", emojis: "nenhum", formalidade: "profissional" });
     expect(promptGerarAtendimento("Ok", contexto, undefined, base, [], curto)).toContain('"emojis":"moderados"');
     expect(promptGerarAtendimento("Ok", contexto, undefined, base, [], profissional)).toContain('"formalidade":"profissional"');
-    expect(motivoBloqueioRascunhoDeterministico("Tudo certo! 👍", [], base, profissional)).toBe("perfil-incompativel");
-    expect(motivoBloqueioRascunhoDeterministico("x".repeat(361), [], base, curto)).toBe("resposta-longa");
+    expect(motivoBloqueioRascunhoDeterministico("Tudo certo! 👍", [], [], base, profissional, []))
+      .toBe("perfil-incompativel");
+    expect(motivoBloqueioRascunhoDeterministico("x".repeat(361), [], [], base, curto, []))
+      .toBe("resposta-longa");
   });
 
   it("trata ok como dependente da mensagem anterior, não como autorização automática", () => {
@@ -305,7 +365,7 @@ describe("comportamento conversacional", () => {
       contexto,
       undefined,
       [],
-      "Entendi, obrigado por avisar.",
+      geracaoNeutra("Entendi, obrigado por avisar."),
       base,
       [],
     );

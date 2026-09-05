@@ -12,13 +12,16 @@ import {
   conversaAtendimento,
   contextoAtendimentoDoImovel,
   motivoBloqueioDecisaoAtendimento,
+  reconciliarValidacaoAtendimentoComEvidencias,
   motivoBloqueioRascunhoDeterministico,
   motivoReprovacaoValidacaoAtendimento,
+  normalizarValidacaoAtendimento,
   normalizarDecisaoAtendimento,
   promptDecidirAtendimento,
   promptGerarAtendimento,
   promptRegenerarAtendimentoSeguro,
   promptValidarAtendimento,
+  catalogoFontesAtendimento,
   selecionarMensagensAtendimento,
   type MotivoBloqueioAtendimento,
   type ProtocoloPrompt,
@@ -77,6 +80,10 @@ interface DiagnosticoAtendimento {
   fontesDeDados?: string[];
   validacoesAplicadas?: string[];
   motivoFallback?: string;
+  fontesEvidenciaDisponiveis?: number;
+  origensEvidencias?: string[];
+  evidenciasReconhecidas?: number;
+  afirmacoes?: number;
 }
 
 /** Metadados operacionais apenas: nunca inclui mensagem, prompt ou chain-of-thought. */
@@ -126,6 +133,10 @@ function registrarDiagnosticoAtendimento(
       contextoFingerprint: base.contextoFingerprint ?? null,
       confianca: base.confianca ?? null,
       informacoesFaltantes: base.informacoesFaltantes ?? null,
+      fontesEvidenciaDisponiveis: base.fontesEvidenciaDisponiveis ?? null,
+      origensEvidencias: base.origensEvidencias ?? [],
+      evidenciasReconhecidas: base.evidenciasReconhecidas ?? null,
+      afirmacoes: base.afirmacoes ?? null,
       etapaFinal,
       resultado,
       motivo,
@@ -319,6 +330,16 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   );
   const conversa = conversaAtendimento(selecao, enviada);
   const contexto = contextoAtendimentoDoImovel(imovel);
+  const catalogoFontes = catalogoFontesAtendimento({
+    mensagemAtual: mensagemProp,
+    mensagemAtualId: selecao.mensagemAtualId,
+    contexto,
+    conversa,
+    informacoesComerciais: informacoesComerciaisPrompt,
+  });
+  diagnostico.fontesEvidenciaDisponiveis = catalogoFontes.length;
+  diagnostico.origensEvidencias = [...new Set(catalogoFontes.map((fonte) => fonte.origem))];
+  (diagnostico.validacoesAplicadas ??= []).push("catalogo-tipado-de-fontes");
   diagnostico.contextoFingerprint = createHash("sha256")
     .update(
       JSON.stringify({
@@ -367,6 +388,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
             conversa,
             informacoesComerciaisPrompt,
             selecao.mensagemAtualId,
+            catalogoFontes,
           ),
         },
       ],
@@ -380,15 +402,10 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
 
   let decisao;
   try {
-    const idsMensagens = [
-      selecao.mensagemAtualId,
-      ...selecao.anteriores.map((m) => m.id),
-      ...selecao.antigasRelevantes.map((m) => m.id),
-    ].filter((id): id is string => !!id);
     decisao = normalizarDecisaoAtendimento(
       JSON.parse(textoDecisao),
       informacoesComerciaisPrompt,
-      idsMensagens,
+      catalogoFontes,
     );
   } catch {
     decisao = null;
@@ -407,6 +424,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   (diagnostico.validacoesAplicadas ??= []).push("bloqueio-de-seguranca-da-decisao");
   diagnostico.confianca = decisao.nivelConfianca;
   diagnostico.informacoesFaltantes = decisao.informacoesFaltantes.length;
+  diagnostico.evidenciasReconhecidas = decisao.evidencias.length;
   const motivoDecisao = motivoBloqueioDecisaoAtendimento(decisao);
   if (motivoDecisao) {
     diagnostico.protocolosSelecionados = decisao.protocolosAplicaveis.length;
@@ -468,6 +486,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
                   perfil,
                   selecao.mensagemAtualId,
                   motivoAnterior || "geracao-reprovada",
+                  catalogoFontes,
                 )
               : promptGerarAtendimento(
                   mensagemProp,
@@ -477,6 +496,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
                   protocolosDaGeracao,
                   perfil,
                   selecao.mensagemAtualId,
+                  catalogoFontes,
                 ),
           },
         ],
@@ -509,6 +529,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
       ? dadosGeracao.protocolosUsados.filter((t): t is string => typeof t === "string")
       : [];
     const protocolosUsados = [...new Set(usadosBrutos)];
+    diagnostico.afirmacoes = dadosGeracao.afirmacoes.length;
     let motivo: MotivoBloqueioAtendimento | null = !rascunho
       ? "geracao-reprovada"
       : usadosBrutos.some((titulo) => !titulosPermitidos.has(titulo))
@@ -535,8 +556,10 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
       motivo = motivoBloqueioRascunhoDeterministico(
         rascunho,
         protocolosUsados,
+        dadosGeracao.afirmacoes,
         decisao,
         perfil,
+        catalogoFontes,
       );
     }
 
@@ -560,11 +583,12 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
                 contexto,
                 conversa,
                 informacoesComerciaisConsideradas,
-                rascunho,
+                dadosGeracao,
                 decisao,
                 protocolosUsados,
                 perfil,
                 selecao.mensagemAtualId,
+                catalogoFontes,
               ),
             },
           ],
@@ -582,13 +606,13 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
       } catch {
         validacao = null;
       }
-      const motivoValidacao = motivoReprovacaoValidacaoAtendimento(validacao);
+      const validacaoNormalizada = normalizarValidacaoAtendimento(validacao);
       (diagnostico.validacoesAplicadas ??= []).push(
         usandoFallback
           ? "validacao-independente-da-resposta-fallback"
           : "validacao-independente-da-resposta",
       );
-      if (motivoValidacao === undefined) {
+      if (!validacaoNormalizada) {
         registrarDiagnosticoAtendimento(
           userId,
           diagnostico,
@@ -598,7 +622,33 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
         );
         return respostaErroIa("falha-modelo", 502);
       }
-      motivo = motivoValidacao;
+      const validacaoConferida = reconciliarValidacaoAtendimentoComEvidencias(
+        validacaoNormalizada,
+        protocolosUsados,
+        decisao,
+        catalogoFontes,
+      );
+      (diagnostico.validacoesAplicadas ??= []).push(
+        usandoFallback
+          ? "codigos-do-auditor-contra-evidencias-fallback"
+          : "codigos-do-auditor-contra-evidencias",
+      );
+      motivo = motivoReprovacaoValidacaoAtendimento(validacaoConferida) ?? null;
+      if (!motivo) {
+        (diagnostico.validacoesAplicadas ??= []).push(
+          usandoFallback
+            ? "afirmacoes-auditadas-contra-evidencias-fallback"
+            : "afirmacoes-auditadas-contra-evidencias",
+        );
+        motivo = motivoBloqueioRascunhoDeterministico(
+          rascunho,
+          protocolosUsados,
+          validacaoConferida.afirmacoesAuditadas,
+          decisao,
+          perfil,
+          catalogoFontes,
+        );
+      }
       etapaBloqueio = "validacao";
     }
 

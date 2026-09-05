@@ -14,6 +14,8 @@ import {
   type ContextoAtendimento,
   type ConversaAnterior,
   type DecisaoAtendimento,
+  type FonteEvidenciaAtendimento,
+  type GeracaoAtendimento,
   type MensagemAnteriorAtendimento,
   type ProtocoloPrompt,
 } from "./contratos";
@@ -147,24 +149,37 @@ function catalogoProtocolos(protocolos: readonly ProtocoloPrompt[]): string {
   );
 }
 
+/** O conteúdo continua nos blocos canônicos; o catálogo só acrescenta identidade e procedência. */
+function catalogoFontesParaPrompt(fontes: readonly FonteEvidenciaAtendimento[]): string {
+  return JSON.stringify(fontes.map((fonte) => ({
+    id: fonte.id,
+    origem: fonte.origem,
+    autoridade: fonte.autoridade,
+    referencia: fonte.referencia,
+    temporalidadeBase: fonte.temporalidadeBase,
+  })));
+}
+
 export function promptDecidirAtendimento(
   mensagem: string,
   contexto: ContextoAtendimento,
   conversa: ConversaAnterior | undefined,
   informacoesComerciais: readonly ProtocoloPrompt[],
   mensagemId: string | null = null,
+  catalogoFontes: readonly FonteEvidenciaAtendimento[] = [],
 ): string {
   return `Analise o atendimento antes que qualquer resposta seja escrita.
 
 DADOS_JSON:
-{"fatos":${contextoParaPrompt(contexto)},"historico":${conversaParaPrompt(conversa)},"mensagemAtual":${JSON.stringify({ id: mensagemId, ...textoContextualAtendimento(mensagem || "") })}}
+{"fatos":${contextoParaPrompt(contexto)},"historico":${conversaParaPrompt(conversa)},"mensagemAtual":${JSON.stringify({ id: mensagemId, ...textoContextualAtendimento(mensagem || "") })},"fontesDisponiveis":${catalogoFontesParaPrompt(catalogoFontes)}}
 
 INFORMAÇÕES OFICIAIS DA IMOBILIÁRIA:
 ${catalogoProtocolos(informacoesComerciais)}
 
 Responda à sequência: o que acabou de ser dito; o que já foi explicado; em qual situação estamos; qual único próximo passo é permitido; o que não deve ser tentado agora.
-Escolha no máximo ${MAX_PROTOCOLOS_APLICAVEIS} informações comerciais e copie os títulos exatamente em protocolosAplicaveis. Regras de conduta nunca entram nessa lista. Mensagens antigas relevantes podem estar desatualizadas: use-as como evidência, mas deixe as recentes prevalecerem em contradições. Em mensagensEvidencia, devolva somente IDs presentes nos dados. Mensagem ambígua pede esclarecimento, nunca palpite. Uma pergunta segura permite podeResponderComSeguranca=true.
-O objeto descreve a segurança de um RASCUNHO LIMITADO às fontes, não a completude do conhecimento. Em informacoesFaltantes, registre somente detalhes ainda desconhecidos relevantes para a pergunta. Mesmo havendo lacunas, marque podeResponderComSeguranca=true e precisaIntervencaoHumana=false quando for possível responder a parte comprovada, reconhecer a lacuna ou fazer uma pergunta segura. Confirmação futura de um detalhe comercial é parte do rascunho, não bloqueio desta sugestão. Reserve precisaIntervencaoHumana=true para situações em que nem uma resposta limitada, reconhecimento ou esclarecimento seria seguro. Em contextoRelevante, distinga a parte comprovada das lacunas, sem inventar fontes nem consequência. Se precisar retomar fato já explicado para responder nova dúvida, não proíba explicar essa parte relevante.`;
+Escolha no máximo ${MAX_PROTOCOLOS_APLICAVEIS} informações comerciais e copie os títulos exatamente em protocolosAplicaveis. Regras de conduta nunca entram nessa lista. Mensagens antigas relevantes podem estar desatualizadas: use-as como fala atribuída ao momento em que foram escritas, deixando as recentes prevalecerem em contradições. Mensagem ambígua pede esclarecimento, nunca palpite. Uma pergunta segura permite podeResponderComSeguranca=true.
+Em evidencias, reconheça somente fatos realmente sustentados por fontesDisponiveis. Use IDs sequenciais exatos evidencia_1, evidencia_2 e assim por diante; fonteId deve copiar um ID existente. O fato é uma paráfrase curta do que aquela fonte sustenta, sem ampliar autoridade, modalidade, condição ou tempo. temporalidade descreve o escopo do fato: atual, historica, antes-de-evento, depois-de-evento, atemporal ou desconhecida. Use evento somente em antes-de-evento/depois-de-evento e copie a mesma descrição concreta sempre que o evento for o mesmo; nos demais casos, evento="". Protocolo ativo não é automaticamente atemporal: classifique conforme seu conteúdo. Se a fonte não prova o escopo, use desconhecida.
+O objeto descreve a segurança de um RASCUNHO LIMITADO às fontes, não a completude do conhecimento. Em informacoesFaltantes, use IDs sequenciais lacuna_1, lacuna_2 e registre somente detalhes ainda desconhecidos relevantes para a pergunta, com a temporalidade e o evento que faltam provar. Mesmo havendo lacunas, marque podeResponderComSeguranca=true e precisaIntervencaoHumana=false quando for possível responder a parte comprovada, reconhecer a lacuna ou fazer uma pergunta segura. Confirmação futura de um detalhe comercial é parte do rascunho, não bloqueio desta sugestão. Reserve precisaIntervencaoHumana=true para situações em que nem uma resposta limitada, reconhecimento ou esclarecimento seria seguro. Em contextoRelevante, distinga a parte comprovada das lacunas, sem inventar fontes nem consequência. Se precisar retomar fato já explicado para responder nova dúvida, não proíba explicar essa parte relevante.`;
 }
 
 export function promptGerarAtendimento(
@@ -175,16 +190,19 @@ export function promptGerarAtendimento(
   informacoesComerciaisSelecionadas: readonly ProtocoloPrompt[],
   perfil: PerfilComunicacao = PERFIL_COMUNICACAO_PADRAO,
   mensagemId: string | null = null,
+  catalogoFontes: readonly FonteEvidenciaAtendimento[] = [],
 ): string {
   return `Escreva uma única sugestão final de WhatsApp.
 
 DADOS_JSON:
-{"decisao":${JSON.stringify(decisao)},"perfil":${JSON.stringify(perfil)},"fatos":${contextoParaPrompt(contexto)},"historico":${conversaParaPrompt(conversa)},"mensagemAtual":${JSON.stringify({ id: mensagemId, ...textoContextualAtendimento(mensagem || "") })}}
+{"decisao":${JSON.stringify(decisao)},"perfil":${JSON.stringify(perfil)},"fatos":${contextoParaPrompt(contexto)},"historico":${conversaParaPrompt(conversa)},"mensagemAtual":${JSON.stringify({ id: mensagemId, ...textoContextualAtendimento(mensagem || "") })},"fontesDisponiveis":${catalogoFontesParaPrompt(catalogoFontes)}}
 
 INFORMAÇÕES OFICIAIS DA IMOBILIÁRIA:
 ${catalogoProtocolos(informacoesComerciaisSelecionadas)}
 
-Siga a ação esperada e somente o próximo passo permitido. Nunca execute ações proibidas. A proibição explicar-condicoes impede oferta comercial não solicitada; não impede responder uma dúvida atual com fonte nem reconhecer uma lacuna. Não repita a oferta; retome informacoesJaExplicadas quando forem necessárias para responder a nova pergunta. A decisão é uma interpretação da conversa, não fonte de fatos nem autorização para ignorar a pergunta atual. Respeite o perfil sem copiar expressões à força. Use informação comercial somente se a frase depender dela e declare seu título em protocolosUsados. protocolosUsados deve conter somente títulos presentes nas informações oficiais selecionadas; use [] quando a resposta for apenas social, neutra ou baseada na fala atribuída ao proprietário. Você pode reconhecer o que o proprietário declarou, mas não confirme essa declaração como estado oficial do imóvel e não sugira que o cadastro foi alterado. Não introduza informação não selecionada e nunca declare uma regra de conduta como protocolo usado. Se faltar dado comercial, ofereça confirmar. Responda primeiro a parte relevante comprovada; limite a confirmação ao detalhe desconhecido. Não conclua regra de cobrança, multa, isenção ou encaminhamento que a fonte não declare para a situação perguntada. Não revele nomes internos de protocolos ao proprietário. Máximo programático: ${limiteRespostaPerfil(perfil)} caracteres. Sem markdown, assinatura, nova apresentação ou análise interna.`;
+Siga a ação esperada e somente o próximo passo permitido. Nunca execute ações proibidas. A proibição explicar-condicoes impede oferta comercial não solicitada; não impede responder uma dúvida atual com fonte nem reconhecer uma lacuna. Não repita a oferta; retome informacoesJaExplicadas quando forem necessárias para responder a nova pergunta. A decisão é uma interpretação da conversa, não fonte de fatos nem autorização para ignorar a pergunta atual. Respeite o perfil sem copiar expressões à força. Use informação comercial somente se a frase depender dela e declare seu título em protocolosUsados. protocolosUsados deve conter somente títulos presentes nas informações oficiais selecionadas; use [] quando a resposta for apenas social, neutra ou baseada na fala atribuída ao proprietário. Você pode reconhecer o que o proprietário declarou, mas não confirme essa declaração como estado oficial do imóvel e não sugira que o cadastro foi alterado. Não introduza informação não selecionada e nunca declare uma regra de conduta como protocolo usado. Se faltar dado comercial, ofereça confirmar. Responda primeiro a parte relevante comprovada; limite a confirmação ao detalhe desconhecido. Não conclua regra de cobrança, multa, isenção ou encaminhamento que a fonte não declare para a situação perguntada.
+Em afirmacoes, registre toda afirmação factual ou temporal presente na mensagem, sem incluir cortesia. Para tipo=fato, referencie ao menos uma evidencia existente e nenhuma lacuna. Copie temporalidade e evento do fato sustentador; uma evidência atemporal pode sustentar qualquer momento. Para tipo=incerteza ou negacao-de-extrapolacao, referencie a lacuna existente que o texto reconhece e copie sua temporalidade/evento. Não crie IDs, evidências, lacunas ou escopos novos para justificar o texto. Se o texto só agradecer ou pedir esclarecimento sem afirmação factual, use afirmacoes=[]. O texto e afirmacoes devem dizer a mesma coisa.
+Não revele nomes internos de protocolos ao proprietário. Máximo programático: ${limiteRespostaPerfil(perfil)} caracteres. Sem markdown, assinatura, nova apresentação ou análise interna.`;
 }
 
 export function promptRegenerarAtendimentoSeguro(
@@ -196,6 +214,7 @@ export function promptRegenerarAtendimentoSeguro(
   perfil: PerfilComunicacao,
   mensagemId: string | null,
   motivo: string,
+  catalogoFontes: readonly FonteEvidenciaAtendimento[] = [],
 ): string {
   return `${promptGerarAtendimento(
     mensagem,
@@ -205,6 +224,7 @@ export function promptRegenerarAtendimentoSeguro(
     informacoesComerciaisSelecionadas,
     perfil,
     mensagemId,
+    catalogoFontes,
   )}
 
 FALLBACK SEGURO: a sugestão anterior foi reprovada por ${JSON.stringify(motivo)}. Gere outra sugestão do zero, sem repetir nem tentar corrigir a frase anterior. Preserve a parte relevante comprovada e corrija o problema indicado. Prefira uma resposta curta e neutra que apenas reconheça a mensagem atual quando isso resolver a conversa; nunca substitua uma resposta conhecida por evasiva de confirmação. Não acrescente causa, agente, característica, condição ou consequência que o interlocutor não declarou e que não esteja nas fontes oficiais selecionadas.`;
@@ -215,25 +235,27 @@ export function promptValidarAtendimento(
   contexto: ContextoAtendimento,
   conversa: ConversaAnterior | undefined,
   informacoesComerciaisSelecionadas: readonly ProtocoloPrompt[],
-  resposta: string,
+  geracao: GeracaoAtendimento,
   decisao?: DecisaoAtendimento,
   protocolosUsados: readonly string[] = [],
   perfil: PerfilComunicacao = PERFIL_COMUNICACAO_PADRAO,
   mensagemId: string | null = null,
+  catalogoFontes: readonly FonteEvidenciaAtendimento[] = [],
 ): string {
   return `Audite de forma independente esta sugestão.
 
 DADOS_JSON:
-{"mensagemAtual":${JSON.stringify({ id: mensagemId, ...textoContextualAtendimento(mensagem || "") })},"historico":${conversaParaPrompt(conversa)},"fatos":${contextoParaPrompt(contexto)},"decisao":${JSON.stringify(decisao || null)},"perfil":${JSON.stringify(perfil)},"protocolosUsados":${JSON.stringify(protocolosUsados)},"sugestao":${JSON.stringify((resposta || "").trim())}}
+{"mensagemAtual":${JSON.stringify({ id: mensagemId, ...textoContextualAtendimento(mensagem || "") })},"historico":${conversaParaPrompt(conversa)},"fatos":${contextoParaPrompt(contexto)},"decisao":${JSON.stringify(decisao || null)},"perfil":${JSON.stringify(perfil)},"protocolosUsados":${JSON.stringify(protocolosUsados)},"sugestao":${JSON.stringify(geracao)},"fontesDisponiveis":${catalogoFontesParaPrompt(catalogoFontes)}}
 
 INFORMAÇÕES OFICIAIS DA IMOBILIÁRIA:
 ${catalogoProtocolos(informacoesComerciaisSelecionadas)}
 
-Só aprove se responder ao momento atual, retomar os fatos relevantes à nova dúvida sem reapresentar a oferta, executar uma única etapa permitida, respeitar recusa e perfil, não forçar informação comercial, não transformar regra de conduta em conteúdo para o proprietário, não inventar fatos e permanecer segura. A mensagem e o histórico sustentam apenas o que o respectivo interlocutor declarou; reconhecer essa fala não a transforma em estado oficial do cadastro. Resposta social ou neutra sem nova afirmação factual não precisa de protocolo. Uma pergunta objetiva de esclarecimento é suficiente quando for a única resposta honesta. Diferencie as fontes: fatos do imóvel explicitamente presentes em fatosTipados podem ser respondidos diretamente e não exigem protocolo comercial; regras comerciais da imobiliária exigem informação oficial declarada em protocolosUsados. Não corrija nem exponha raciocínio.
+Só aprove se responder ao momento atual, retomar os fatos relevantes à nova dúvida sem reapresentar a oferta, executar uma única etapa permitida, respeitar recusa e perfil, não forçar informação comercial, não transformar regra de conduta em conteúdo para o proprietário, não inventar fatos e permanecer segura. A mensagem e o histórico sustentam apenas o que o respectivo interlocutor declarou; reconhecer essa fala não a transforma em estado oficial do cadastro. Resposta social ou neutra sem nova afirmação factual não precisa de protocolo. Uma pergunta objetiva de esclarecimento é suficiente quando for a única resposta honesta. Diferencie as fontes: fatos do imóvel explicitamente presentes em fatosTipados podem ser respondidos diretamente e não exigem protocolo comercial; regras comerciais da imobiliária exigem informação oficial declarada em protocolosUsados. Confira também se sugestao.afirmacoes representa todas as afirmações factuais/temporais realmente feitas no texto, sem omiti-las, alterar seu tempo ou citar suporte irrelevante. Divergência entre texto e declaração interna é informacao-sem-fonte. Não corrija nem exponha raciocínio.
 Critérios obrigatórios, independentes da decisão fornecida:
 1. COBERTURA: confronte cada parte da pergunta com os fatos e fontes disponíveis, inclusive condições já explicadas que são necessárias à nova dúvida. A sugestão precisa comunicar a parte relevante conhecida, mesmo quando a consequência exata ou outra parte for desconhecida. Listar títulos em protocolosUsados não comunica esses fatos ao proprietário. Pedir esclarecimento genérico ou prometer confirmar tudo é omissao-parte-comprovada quando já cabe resposta parcial útil. Não exija um catálogo de fatos: informações sem relação com a pergunta podem ser omitidas. Se nenhuma parte relevante estiver comprovada, confirmar a lacuna é suficiente.
 2. TEMPORALIDADE: confira o momento e o escopo de cada afirmação, inclusive suas implicações. Histórico sustenta "foi informado" ou "naquele momento", não "continua", "ainda", "segue", "permanece", "continua sendo", "ainda está" nem uma afirmação equivalente no presente. Não haver contradição posterior ou não haver data não prova continuidade. Uma condição válida antes de um evento não autoriza afirmar sua permanência depois dele. Leia a frase inteira: uma condição introduzida por "se acontecer" também limita as afirmações seguintes; não presuma que elas descrevem o período anterior. Sem fonte para o momento afirmado, use informacao-sem-fonte, ou cobranca-sem-fonte quando a extrapolação for financeira. Confirmação futura de outro detalhe não corrige a afirmação temporal sem evidência.
 Esses critérios avaliam sentido, não palavras isoladas: uma pergunta, negação de certeza ou relato explicitamente atribuído ao passado não afirma continuidade. Negar ter confirmação de que um fato continue não equivale a afirmar que ele continua. Combinar um fato conhecido A com a intenção de confirmar um detalhe desconhecido B é uma resposta parcial válida: a intenção de confirmar B não é afirmação sobre B nem procedimento inventado. Não exija fonte para a ausência declarada de confirmação, nem para uma promessa simples de verificar a lacuna. Uma declaração atual pode ser reconhecida como fala atual do interlocutor; protocolo ativo continua autoridade somente no escopo que declara. Informação temporal insuficiente permite relato conservador do passado e confirmação do presente, sem bloquear toda a resposta.
+Em afirmacoesAuditadas, extraia de forma INDEPENDENTE todas as afirmações factuais e temporais que a mensagem realmente comunica. Não copie sugestao.afirmacoes sem conferir o texto. Use somente evidencia_N e lacuna_N presentes na decisão; reflita o tempo e evento expressos no texto, ainda que isso revele incompatibilidade com a fonte. Cortesia não entra. Se não houver afirmação factual ou temporal, use [].
 Retorne problemas=[] somente se ambos os critérios e as demais regras forem atendidos; caso contrário, somente códigos da lista ${JSON.stringify(PROBLEMAS_VALIDACAO_ATENDIMENTO)}.
 Audite cada afirmação, não apenas a presença de um título ou da frase "vou confirmar":
 - cobranca-sem-fonte: inventou taxa, multa, isenção, obrigação ou consequência financeira, inclusive por extrapolação temporal, de modalidade ou de agente;

@@ -103,6 +103,47 @@ function supabaseFalso(): SupabaseClient {
   } as unknown as SupabaseClient;
 }
 
+const decisaoTaxa = {
+  intencao: "taxa",
+  objecao: "",
+  estadoConversacional: "entendimento",
+  informacoesJaExplicadas: [],
+  acaoEsperada: "responder",
+  proximoPassoPermitido: "responder a taxa",
+  acoesProibidas: [],
+  contextoRelevante: "pergunta direta",
+  protocolosAplicaveis: ["Taxa"],
+  evidencias: [{
+    id: "evidencia_1",
+    fonteId: "fonte_4",
+    fato: "a taxa é de 10%",
+    temporalidade: "atemporal",
+    evento: "",
+  }],
+  informacoesFaltantes: [],
+  nivelConfianca: "alta",
+  precisaIntervencaoHumana: false,
+  podeResponderComSeguranca: true,
+};
+const afirmacaoTaxa = {
+  descricao: "a taxa é de 10%",
+  tipo: "fato",
+  evidencias: ["evidencia_1"],
+  lacunas: [],
+  temporalidade: "atual",
+  evento: "",
+};
+const geracaoTaxa = {
+  mensagem: "A taxa é de 10%.",
+  protocolosUsados: ["Taxa"],
+  afirmacoes: [afirmacaoTaxa],
+};
+const geracaoConfirmacao = {
+  mensagem: "Posso confirmar essa informação para você.",
+  protocolosUsados: [],
+  afirmacoes: [],
+};
+
 describe("handler especializado de atendimento", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -137,29 +178,15 @@ describe("handler especializado de atendimento", () => {
       .fn<ExecutorOpenAI["executar"]>()
       .mockResolvedValueOnce({
         conclusao: {} as never,
-        texto: JSON.stringify({
-          intencao: "taxa",
-          objecao: "", estadoConversacional: "entendimento",
-          informacoesJaExplicadas: [], acaoEsperada: "responder",
-          proximoPassoPermitido: "responder a taxa", acoesProibidas: [], mensagensEvidencia: [],
-          contextoRelevante: "pergunta direta",
-          protocolosAplicaveis: ["Taxa"],
-          informacoesFaltantes: [],
-          nivelConfianca: "alta",
-          precisaIntervencaoHumana: false,
-          podeResponderComSeguranca: true,
-        }),
+        texto: JSON.stringify(decisaoTaxa),
       })
       .mockResolvedValueOnce({
         conclusao: {} as never,
-        texto: JSON.stringify({
-          mensagem: "A taxa é de 10%.",
-          protocolosUsados: ["Taxa"],
-        }),
+        texto: JSON.stringify(geracaoTaxa),
       })
       .mockResolvedValueOnce({
         conclusao: {} as never,
-        texto: JSON.stringify({ problemas: [] }),
+        texto: JSON.stringify({ problemas: [], afirmacoesAuditadas: [afirmacaoTaxa] }),
       });
 
     const resposta = await atenderProprietario({
@@ -215,29 +242,15 @@ describe("handler especializado de atendimento", () => {
       .fn<ExecutorOpenAI["executar"]>()
       .mockResolvedValueOnce({
         conclusao: {} as never,
-        texto: JSON.stringify({
-          intencao: "taxa",
-          objecao: "", estadoConversacional: "entendimento",
-          informacoesJaExplicadas: [], acaoEsperada: "responder",
-          proximoPassoPermitido: "responder a taxa", acoesProibidas: [], mensagensEvidencia: [],
-          contextoRelevante: "pergunta direta",
-          protocolosAplicaveis: ["Taxa"],
-          informacoesFaltantes: [],
-          nivelConfianca: "alta",
-          precisaIntervencaoHumana: false,
-          podeResponderComSeguranca: true,
-        }),
+        texto: JSON.stringify(decisaoTaxa),
       })
       .mockResolvedValueOnce({
         conclusao: {} as never,
-        texto: JSON.stringify({
-          mensagem: "A taxa é de 10%.",
-          protocolosUsados: ["Taxa"],
-        }),
+        texto: JSON.stringify(geracaoTaxa),
       })
       .mockResolvedValueOnce({
         conclusao: {} as never,
-        texto: JSON.stringify({ problemas: [] }),
+        texto: JSON.stringify({ problemas: [], afirmacoesAuditadas: [afirmacaoTaxa] }),
       });
     const supabase = supabaseFalso();
 
@@ -262,31 +275,19 @@ describe("handler especializado de atendimento", () => {
   });
 
   it("regenera do zero quando a primeira geração declara protocolo não autorizado", async () => {
-    const decisao = {
-      intencao: "taxa",
-          objecao: "", estadoConversacional: "entendimento",
-          informacoesJaExplicadas: [], acaoEsperada: "responder",
-          proximoPassoPermitido: "responder a taxa", acoesProibidas: [], mensagensEvidencia: [],
-      contextoRelevante: "pergunta direta",
-      protocolosAplicaveis: ["Taxa"],
-      informacoesFaltantes: [],
-      nivelConfianca: "alta",
-      precisaIntervencaoHumana: false,
-      podeResponderComSeguranca: true,
-    };
-    const validacao = { problemas: [] };
+    const validacao = { problemas: [], afirmacoesAuditadas: [] };
     const executar = vi
       .fn<ExecutorOpenAI["executar"]>()
       // A primeira geração cita um protocolo que não foi autorizado.
-      .mockResolvedValueOnce({ conclusao: {} as never, texto: JSON.stringify(decisao) })
+      .mockResolvedValueOnce({ conclusao: {} as never, texto: JSON.stringify(decisaoTaxa) })
       .mockResolvedValueOnce({
         conclusao: {} as never,
-        texto: JSON.stringify({ mensagem: "A taxa é de 10%.", protocolosUsados: ["Inventado"] }),
+        texto: JSON.stringify({ ...geracaoTaxa, protocolosUsados: ["Inventado"] }),
       })
       // O fallback não repete a decisão nem recebe a frase inválida.
       .mockResolvedValueOnce({
         conclusao: {} as never,
-        texto: JSON.stringify({ mensagem: "Posso confirmar essa informação para você.", protocolosUsados: [] }),
+        texto: JSON.stringify(geracaoConfirmacao),
       })
       .mockResolvedValueOnce({ conclusao: {} as never, texto: JSON.stringify(validacao) });
     const entrada = {
@@ -344,26 +345,15 @@ describe("handler especializado de atendimento", () => {
       .fn<ExecutorOpenAI["executar"]>()
       .mockResolvedValueOnce({
         conclusao: {} as never,
-        texto: JSON.stringify({
-          intencao: "taxa",
-          objecao: "", estadoConversacional: "entendimento",
-          informacoesJaExplicadas: [], acaoEsperada: "responder",
-          proximoPassoPermitido: "responder a taxa", acoesProibidas: [], mensagensEvidencia: [],
-          contextoRelevante: "pergunta direta",
-          protocolosAplicaveis: ["Taxa"],
-          informacoesFaltantes: [],
-          nivelConfianca: "alta",
-          precisaIntervencaoHumana: false,
-          podeResponderComSeguranca: true,
-        }),
+        texto: JSON.stringify(decisaoTaxa),
       })
       .mockResolvedValueOnce({
         conclusao: {} as never,
-        texto: JSON.stringify({ mensagem: "A taxa é de 8%.", protocolosUsados: ["Inventado"] }),
+        texto: JSON.stringify({ ...geracaoTaxa, mensagem: "A taxa é de 8%.", protocolosUsados: ["Inventado"] }),
       })
       .mockResolvedValueOnce({
         conclusao: {} as never,
-        texto: JSON.stringify({ mensagem: "A taxa é de 7%.", protocolosUsados: ["Outro"] }),
+        texto: JSON.stringify({ ...geracaoTaxa, mensagem: "A taxa é de 7%.", protocolosUsados: ["Outro"] }),
       });
 
     const resposta = await atenderProprietario({
