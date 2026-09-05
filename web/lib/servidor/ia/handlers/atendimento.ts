@@ -21,6 +21,7 @@ import {
   promptValidarAtendimento,
   selecionarMensagensAtendimento,
   type MotivoBloqueioAtendimento,
+  type ProtocoloPrompt,
   type SelecaoMensagensAtendimento,
 } from "@/lib/ia/atendimento";
 import type { FalhaIa } from "@/lib/calculo/ia";
@@ -425,7 +426,6 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   );
   diagnostico.protocolosSelecionados = protocolosSelecionados.length;
 
-  const titulosPermitidos = new Set(protocolosSelecionados.map((p) => p.titulo));
   let motivoAnterior: MotivoBloqueioAtendimento | null = null;
 
   // Uma reprovação de conteúdo ganha uma segunda geração do zero. Erros de
@@ -433,6 +433,16 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   // o fallback não pode esconder problema estrutural do modelo/integração.
   for (let tentativa = 0; tentativa < 2; tentativa += 1) {
     const usandoFallback = tentativa === 1;
+    // Se a decisão omitir uma fonte relevante, o auditor ainda precisa vê-la
+    // para detectar a omissão. A única regeneração pode então recuperar o
+    // catálogo já carregado, sem nova busca nem nova chamada ao modelo.
+    const protocolosDaGeracao: readonly ProtocoloPrompt[] =
+      usandoFallback && motivoAnterior === "omissao-parte-comprovada"
+        ? informacoesComerciaisConsideradas
+        : protocolosSelecionados;
+    const titulosPermitidos: ReadonlySet<string> = new Set(
+      protocolosDaGeracao.map((protocolo) => protocolo.titulo),
+    );
     diagnostico.tentativa = tentativa + 1;
     diagnostico.validacao = "nao-executada";
     let textoGeracao: string;
@@ -454,7 +464,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
                   contexto,
                   conversa,
                   decisao,
-                  protocolosSelecionados,
+                  protocolosDaGeracao,
                   perfil,
                   selecao.mensagemAtualId,
                   motivoAnterior || "geracao-reprovada",
@@ -464,7 +474,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
                   contexto,
                   conversa,
                   decisao,
-                  protocolosSelecionados,
+                  protocolosDaGeracao,
                   perfil,
                   selecao.mensagemAtualId,
                 ),
@@ -549,7 +559,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
                 mensagemProp,
                 contexto,
                 conversa,
-                protocolosSelecionados,
+                informacoesComerciaisConsideradas,
                 rascunho,
                 decisao,
                 protocolosUsados,

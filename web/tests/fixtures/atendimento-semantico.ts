@@ -44,6 +44,12 @@ export const casosSemanticos: CasoSemantico[] = [
     fontes: [{ titulo: "Administração", conteudo: "Na administração completa, a taxa de administração é de 10%." }], usados: ["Administração"], esperado: "aprovar" },
   parcial("resposta parcial útil", "Antes da locação, você pode anunciar por conta própria ou com outras imobiliárias, sem exclusividade e sem custo. Vou confirmar a consequência financeira caso outra imobiliária conclua a locação.", "aprovar"),
   parcial("evasiva genérica", "Vou verificar e te retorno.", "omissao-parte-comprovada", []),
+  parcial(
+    "evasiva observada no LD-288",
+    "Entendi, Joao. Esse ponto específico eu vou confirmar pra te passar certinho: se a outra imobiliária locar antes, como fica a situação daqui.",
+    "omissao-parte-comprovada",
+    [],
+  ),
   parcial("referência anterior: confirmação total", "Entendi. O ponto que não ficou detalhado é justamente o que acontece se a outra imobiliária fechar antes. Vou confirmar esse ponto pra te passar certinho. Se quiser, me diz se a sua dúvida é sobre comissão ou sobre a divulgação.", "omissao-parte-comprovada"),
   parcial("referência anterior: esclarecimento evasivo", "Claro — me fala qual parte você quer saber certinho, que eu te respondo sem passar informação errada.", "omissao-parte-comprovada", []),
   parcial("referência anterior: divulgação após locação", "Se a outra imobiliária alugar, tudo bem. Como a gente trabalha sem exclusividade, o imóvel pode seguir com a divulgação por lá também. E antes da locação você não tem nenhum custo com a gente.", "informacao-sem-fonte"),

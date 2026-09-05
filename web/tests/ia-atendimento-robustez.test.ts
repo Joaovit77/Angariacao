@@ -189,6 +189,73 @@ describe("contrato HTTP e limite de regeneração", () => {
 });
 
 describe("regressão semântica no fluxo de rascunho", () => {
+  it("não deixa a decisão esconder do auditor a parte comprovada da pergunta", async () => {
+    const evasiva = "Entendi, Joao. Esse ponto específico eu vou confirmar pra te passar certinho: se a outra imobiliária locar antes, como fica a situação daqui.";
+    const decisaoSemProtocolo = {
+      ...decisao,
+      protocolosAplicaveis: [],
+      informacoesJaExplicadas: [],
+    };
+    const executar = vi.fn<ExecutorOpenAI["executar"]>(async (pedido) => {
+      const conteudo = String(pedido.mensagens[1]?.content || "");
+      const recebeuExclusividade = conteudo.includes("Não há exclusividade antes da locação");
+      if (pedido.tipo.endsWith("-decisao")) {
+        return { texto: JSON.stringify(decisaoSemProtocolo), conclusao: {} as never };
+      }
+      if (pedido.tipo === "rascunhar-resposta-geracao") {
+        return {
+          texto: JSON.stringify({ mensagem: evasiva, protocolosUsados: [] }),
+          conclusao: {} as never,
+        };
+      }
+      if (pedido.tipo === "rascunhar-resposta-validacao") {
+        return {
+          texto: JSON.stringify({ problemas: recebeuExclusividade ? ["omissao-parte-comprovada"] : [] }),
+          conclusao: {} as never,
+        };
+      }
+      if (pedido.tipo === "rascunhar-resposta-geracao-fallback") {
+        return {
+          texto: JSON.stringify(
+            recebeuExclusividade
+              ? parcial
+              : { mensagem: evasiva, protocolosUsados: [] },
+          ),
+          conclusao: {} as never,
+        };
+      }
+      return {
+        texto: JSON.stringify({ problemas: recebeuExclusividade ? [] : ["omissao-parte-comprovada"] }),
+        conclusao: {} as never,
+      };
+    });
+
+    const resposta = await atenderProprietario({
+      tipo: "rascunhar-resposta",
+      corpo: { imovelId: "imovel-controlado" },
+      supabase: banco(),
+      userId: "tenant-controlado",
+      executor: { executar },
+    });
+    const corpo = await resposta.json();
+
+    expect(resposta.status).toBe(200);
+    expect(corpo).toMatchObject({
+      rascunho: parcial.mensagem,
+      fallbackAplicado: true,
+    });
+    expect(corpo.rascunho).not.toBe(evasiva);
+    expect(executar.mock.calls.map(([pedido]) => pedido.tipo)).toEqual([
+      "rascunhar-resposta-decisao",
+      "rascunhar-resposta-geracao",
+      "rascunhar-resposta-validacao",
+      "rascunhar-resposta-geracao-fallback",
+      "rascunhar-resposta-validacao-fallback",
+    ]);
+    expect(executar.mock.calls[2][0].mensagens[1].content).toContain("Não há exclusividade antes da locação");
+    expect(executar.mock.calls[3][0].mensagens[1].content).toContain("Não há exclusividade antes da locação");
+  });
+
   it.each([
     ["omissao-parte-comprovada", "Vou verificar e te retorno."],
     ["informacao-sem-fonte", "Se outra imobiliária alugar, o imóvel pode seguir com a divulgação por lá também."],
