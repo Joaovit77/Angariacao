@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { fromDbAgenda, fromDbImovel, type DbAgendaRow, type DbImovelRow } from "@/lib/persistencia/mapeadores";
 import { focoInteligenteDoDia } from "@/lib/calculo/focoDia";
 import { addDaysISO, todayISO } from "@/lib/datas";
-import { executarFerramenta, limiteConformeIntencao, normalizarCodigoImovel, resolverEscopoFollowUp } from "@/lib/servidor/assistente/ferramentas";
+import { executarFerramenta, limiteConformeIntencao, normalizarCodigoImovel, resolverEscopoFollowUp, type CacheLeiturasAssistente } from "@/lib/servidor/assistente/ferramentas";
 import { compactarBlocosParaHistorico } from "@/lib/assistente/historico";
 import { prepararResultadoFerramentaParaModelo } from "@/lib/servidor/assistente/orquestrador";
 import type { ItemHistoricoAssistente, PedidoAssistente } from "@/lib/assistente/tipos";
@@ -228,6 +228,37 @@ describe("conversas respondidas do assistente", () => {
 });
 
 describe("contagem e ordenacao de imoveis", () => {
+  it("reutiliza a leitura integral da carteira entre ferramentas da mesma resposta", async () => {
+    const fake = new SupabaseFake({
+      imoveis: [imovel("id-1", "user-1", "LD-601") as unknown as Linha],
+    });
+    const cache: CacheLeiturasAssistente = { acertos: 0 };
+
+    await executarFerramenta(
+      "contar_angariacoes",
+      { periodo: "mes_atual", data_inicio: null, data_fim: null },
+      fake as unknown as SupabaseClient,
+      "user-1",
+      contexto,
+      "Quantas angariações neste mês?",
+      [],
+      cache,
+    );
+    await executarFerramenta(
+      "buscar_marcos_imoveis",
+      { marco: "angariado", data_inicio: null, data_fim: null, somente_contagem: false, limite: 1 },
+      fake as unknown as SupabaseClient,
+      "user-1",
+      contexto,
+      "Qual foi a última angariação?",
+      [],
+      cache,
+    );
+
+    expect(fake.consultas.filter(({ tabela }) => tabela === "imoveis")).toHaveLength(1);
+    expect(cache.acertos).toBe(1);
+  });
+
   const argsBase = { codigo: null, status: null, bairro: null, responsavel: null, termo_endereco: null, data_inicio: null, data_fim: null };
 
   it("conta mais de 20 sem retornar a carteira", async () => {

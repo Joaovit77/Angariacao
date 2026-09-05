@@ -100,12 +100,17 @@ describe("protocolos comerciais no Assistente", () => {
     const ferramenta = primeiraChamada.tools.find((item: { name?: string }) =>
       item.name === FERRAMENTA_PROTOCOLOS_COMERCIAIS
     );
+    const contextoTipado = primeiraChamada.input.find((item: { role?: string; content?: string }) =>
+      item.role === "developer" && item.content?.includes("contexto_dinamico_tipado")
+    );
     const retornoFerramenta = segundaChamada.input.find((item: { type?: string }) =>
       item.type === "function_call_output"
     );
 
-    expect(primeiraChamada.instructions).toContain("Taxa de administração");
+    expect(primeiraChamada.instructions).not.toContain("Taxa de administração");
     expect(primeiraChamada.instructions).not.toContain("10% sobre o valor mensal");
+    expect(contextoTipado?.content).toContain("Taxa de administração");
+    expect(contextoTipado?.content).not.toContain("10% sobre o valor mensal");
     expect(ferramenta).toMatchObject({
       strict: true,
       parameters: {

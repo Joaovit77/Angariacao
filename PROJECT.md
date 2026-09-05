@@ -1427,7 +1427,8 @@ editáveis: esses conteúdos permanecem, respectivamente, em Protocolos, no conh
 do Assistente e nos prompts de operação.
 
 `lib/ia/observabilidade.ts` define metadados seguros e factuais de execução: operação, IDs de
-protocolos considerados/aplicados, ferramentas chamadas, entidades, fontes, validações, resultado e
+protocolos considerados/aplicados, ferramentas chamadas, entidades, fontes, validações, blocos de
+contexto selecionados, duração/tamanho aproximado do contexto, leituras reutilizadas, resultado e
 motivo. No atendimento, "aplicado" significa que o título foi declarado na saída estruturada da
 geração, corresponde inequivocamente a um protocolo selecionado e passou pelas validações
 disponíveis; não é uma tentativa de inferir o raciocínio interno do modelo. Títulos duplicados não
@@ -1755,14 +1756,22 @@ documento descreve a arquitetura, mas não é fonte executável das capacidades.
 
 Arquitetura:
 
-- `lib/assistente/`: contratos cliente-servidor, contexto visual, histórico compacto, referências,
-  posição, continuidade conversacional, catálogo de capacidades e políticas determinísticas de
-  autonomia. Capacidades descrevem o que existe; políticas definem quanto poder cada ação possui.
+- `lib/assistente/`: contratos cliente-servidor, contexto visual, contexto dinâmico tipado, histórico
+  compacto, referências, posição, continuidade conversacional, catálogo de capacidades e políticas
+  determinísticas de autonomia. Cada capacidade declara os blocos de contexto de que pode precisar;
+  capacidades descrevem o que existe, enquanto políticas definem quanto poder cada ação possui.
+- `lib/servidor/assistente/contextoTipado.ts`: seleciona deterministicamente e carrega no servidor
+  somente os blocos pertinentes à solicitação. Imóvel, Agenda, Pipeline e Protocolos têm fonte,
+  autoridade, temporalidade, instante observado e ausência explícitos. Conversas e mensagens ficam
+  sob demanda das ferramentas existentes; avaliação e mercado não são expostos enquanto não houver
+  capacidade real do Assistente. Toda leitura repete `user_id` derivado da sessão. A serialização
+  remove IDs internos, telefone e conteúdo livre desnecessário antes de chegar ao modelo.
 - `lib/servidor/assistente/conhecimento.ts`: regras do produto fornecidas ao modelo. Não substitui o
   motor; explica quando usar cada consulta.
 - `lib/servidor/assistente/ferramentas.ts`: ferramentas de leitura com argumentos estritos. Elas
   reutilizam motores reais para foco, follow-up, estagnação e métricas, em vez de duplicar regras no
-  prompt.
+  prompt. Leituras integrais repetidas da carteira são memoizadas somente durante a mesma resposta;
+  não existe cache entre usuários, sessões ou requisições.
 - `lib/servidor/assistente/acoes.ts`: contratos e adaptações das operações liberadas. Chat e menu
   guiado convergem para a mesma preparação tipada; follow-up em lote converge para o modal real de
   revisão, sem duplicar a fila nem seu envio; respostas contextuais convergem para o atendimento e o
@@ -1771,13 +1780,16 @@ Arquitetura:
   fechada; o modelo nunca recebe acesso genérico ao Supabase.
 - `lib/servidor/assistente/orquestrador.ts`: OpenAI Responses API com tool calling sequencial, até
   quatro rodadas, `store: false`, identificador de segurança derivado por hash e registro de custo.
-  Antes da geração, relê pelo cliente do chamador até 40 protocolos comerciais ativos, filtrados
-  explicitamente por usuário. O modelo recebe apenas IDs/títulos candidatos e pode selecionar zero
-  ou até cinco por argumentos estruturados; o backend valida os IDs e só então devolve o conteúdo
-  real à geração. Protocolos arquivados e regras de conduta não entram nesse catálogo.
+  Antes da geração, compõe um item separado de contexto dinâmico tipado. O catálogo de até 40
+  protocolos comerciais ativos só é relido quando a intenção seleciona o bloco Protocolos, sempre
+  pelo cliente do chamador e com filtro explícito por usuário. O modelo recebe apenas IDs/títulos
+  candidatos e pode selecionar zero ou até cinco por argumentos estruturados; o backend valida os
+  IDs e só então devolve o conteúdo real à geração. Protocolos arquivados e regras de conduta não
+  entram nesse catálogo.
   Ao concluir, registra no log existente somente metadados seguros: nomes das ferramentas realmente
   chamadas, IDs de protocolos considerados/aplicados e de entidades retornadas, fontes e validações
-  aplicadas; não registra a pergunta, o conteúdo do protocolo nem a resposta.
+  aplicadas, blocos selecionados, duração/tamanho do contexto e quantidade de consultas integrais
+  reaproveitadas; não registra a pergunta, o conteúdo do protocolo nem a resposta.
   O modelo padrão é `gpt-5.4-mini`; a ausência de versão no banco ainda respeita um
   `OPENAI_ASSISTENTE_MODEL` válido. Com versão publicada, o Centro de IA é a fonte ativa.
 - `components/assistente/ManualCapacidadesAssistente.tsx`: projeção do catálogo em linguagem de
@@ -1790,9 +1802,14 @@ imobiliária; **políticas de autonomia** fixam o controle; **ferramentas** exec
 **eventos** iniciam comportamentos proativos; e o **histórico** registra decisões e resultados.
 
 O cliente envia rota/página/superfície e, quando há drawer ou modal compatível, apenas tipo e ID da
-entidade. O backend reconsulta o objeto; nenhum dado do card é aceito como verdade. Até 12 turnos são
-enviados com limites de tamanho. Resultados estruturados anteriores são compactados só para resolver
-referências como “desses”, “dele” e “o último”; fatos atuais são sempre reconsultados.
+entidade. O backend reconsulta o objeto; nenhum dado do card é aceito como verdade. A identidade
+autenticada participa somente da autorização no servidor e não é serializada ao modelo. O contexto
+factual segue em item separado das instruções permanentes e do histórico, e resultados de ferramenta
+também declaram sua autoridade e temporalidade. Até 12 turnos são enviados com limites de tamanho.
+Resultados estruturados anteriores são compactados só para resolver referências como “desses”,
+“dele” e “o último”; memória conversacional é histórica e nunca prevalece sobre dado estruturado
+atual. Ausência permanece ausência: `null`, bloco ausente ou fonte indisponível não viram padrão,
+estimativa nem confirmação.
 Previews anteriores também entram no histórico apenas como referência estruturada compacta. Se um
 parâmetro muda, a preparação nova cancela a anterior da mesma sessão e exige nova confirmação. A
 confirmação pode ocorrer no card ou por uma frase completa de intenção inequívoca reconhecida por

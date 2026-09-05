@@ -359,13 +359,35 @@ function dadosDoMarco(row: DbImovelRow, marco: MarcoImovel) {
   };
 }
 
-async function todosImoveis(supabase: SupabaseClient, userId: string) {
-  const { data, error } = await supabase.from("imoveis").select("*").eq("user_id", userId);
-  if (error) throw new Error(`Falha ao consultar imoveis: ${error.message}`);
-  return (data || []) as DbImovelRow[];
+export interface CacheLeiturasAssistente {
+  imoveis?: Promise<DbImovelRow[]>;
+  acertos: number;
 }
 
-async function detalharImovel(row: DbImovelRow, supabase: SupabaseClient, userId: string): Promise<ResultadoFerramenta> {
+async function todosImoveis(
+  supabase: SupabaseClient,
+  userId: string,
+  cache?: CacheLeiturasAssistente,
+) {
+  if (cache?.imoveis) {
+    cache.acertos += 1;
+    return cache.imoveis;
+  }
+  const leitura = (async () => {
+    const { data, error } = await supabase.from("imoveis").select("*").eq("user_id", userId);
+    if (error) throw new Error(`Falha ao consultar imoveis: ${error.message}`);
+    return (data || []) as DbImovelRow[];
+  })();
+  if (cache) cache.imoveis = leitura;
+  return leitura;
+}
+
+async function detalharImovel(
+  row: DbImovelRow,
+  supabase: SupabaseClient,
+  userId: string,
+  cache?: CacheLeiturasAssistente,
+): Promise<ResultadoFerramenta> {
   const imovel = fromDbImovel(row);
   const itensHistorico = [
     ...(imovel.statusHistory || []).map((x) => ({ data: x.date, tipo: "Status", texto: x.status })),
@@ -376,7 +398,7 @@ async function detalharImovel(row: DbImovelRow, supabase: SupabaseClient, userId
     ...(imovel.notas || []).map((x) => x.data),
     ...(imovel.tentativas || []).map((x) => x.data),
   ].filter(Boolean).sort((a, b) => b.localeCompare(a));
-  const carteira = (await todosImoveis(supabase, userId)).map(fromDbImovel);
+  const carteira = (await todosImoveis(supabase, userId, cache)).map(fromDbImovel);
   const followups = selecionarFollowUp(carteira, todayISO());
   return {
     dados: {
@@ -398,6 +420,7 @@ export async function executarFerramenta(
   contexto: ContextoAssistente,
   perguntaUsuario = "",
   historico: ItemHistoricoAssistente[] = [],
+  cache?: CacheLeiturasAssistente,
 ): Promise<ResultadoFerramenta> {
   if (nome === "buscar_imoveis") {
     let q = supabase.from("imoveis").select("*", { count: "exact" }).eq("user_id", userId);
@@ -455,7 +478,7 @@ export async function executarFerramenta(
     const inicio = args.periodo === "hoje" ? hoje : args.periodo === "mes_atual" ? primeiroDiaDoMes(mesAtual) : inicioInformado;
     const fim = args.periodo === "hoje" ? hoje : args.periodo === "mes_atual" ? ultimoDiaDoMes(mesAtual) : fimInformado;
     if (!inicio || !fim) return { dados: { totalEncontrado: 0, itensRetornados: 0, erro: "Intervalo de datas invalido." } };
-    const totalEncontrado = imoveisAngariadosNoPeriodo((await todosImoveis(supabase, userId)).map(fromDbImovel), inicio, fim).length;
+    const totalEncontrado = imoveisAngariadosNoPeriodo((await todosImoveis(supabase, userId, cache)).map(fromDbImovel), inicio, fim).length;
     return { dados: { totalEncontrado, itensRetornados: 0, dataInicio: inicio, dataFim: fim } };
   }
 
@@ -466,7 +489,7 @@ export async function executarFerramenta(
     }
     const inicio = texto(args.data_inicio);
     const fim = texto(args.data_fim);
-    const encontrados = (await todosImoveis(supabase, userId))
+    const encontrados = (await todosImoveis(supabase, userId, cache))
       .map((row) => ({ row, marco: dadosDoMarco(row, marco) }))
       .filter((item) => item.marco.data != null)
       .filter((item) => !inicio || item.marco.data! >= inicio)
@@ -515,7 +538,7 @@ export async function executarFerramenta(
     const { data, error } = await q.maybeSingle();
     if (error) throw new Error(`Falha ao consultar imovel: ${error.message}`);
     if (!data) return { dados: { encontrado: false } };
-    return detalharImovel(data as DbImovelRow, supabase, userId);
+    return detalharImovel(data as DbImovelRow, supabase, userId, cache);
   }
 
   if (nome === "consultar_entidade_atual") {
@@ -529,7 +552,7 @@ export async function executarFerramenta(
     const { data, error } = await supabase.from("imoveis").select("*").eq("user_id", userId).eq("id", contexto.entidade.id).maybeSingle();
     if (error) throw new Error(`Falha ao consultar imovel: ${error.message}`);
     if (!data) return { dados: null };
-    return detalharImovel(data as DbImovelRow, supabase, userId);
+    return detalharImovel(data as DbImovelRow, supabase, userId, cache);
   }
 
   if (nome === "buscar_agenda") {
@@ -614,7 +637,7 @@ export async function executarFerramenta(
       const { data, error } = await consulta.maybeSingle();
       if (error) throw new Error(`Falha ao consultar follow-up do imovel: ${error.message}`);
       if (!data) return { dados: { escopo, encontrado: false } };
-      const rows = await todosImoveis(supabase, userId);
+      const rows = await todosImoveis(supabase, userId, cache);
       const selecao = selecionarFollowUp(rows.map(fromDbImovel), todayISO());
       const imovel = fromDbImovel(data as DbImovelRow);
       const elegivel = selecao.elegiveis.some((item) => item.id === imovel.id);
@@ -630,7 +653,7 @@ export async function executarFerramenta(
         },
       };
     }
-    const rows = await todosImoveis(supabase, userId);
+    const rows = await todosImoveis(supabase, userId, cache);
     const selecao = selecionarFollowUp(rows.map(fromDbImovel), todayISO());
     const rowsPorId = new Map(rows.map((row) => [row.id, row]));
     const intencao = intencaoGlobalFollowUp(perguntaUsuario);
@@ -666,7 +689,7 @@ export async function executarFerramenta(
 
   if (nome === "buscar_conversas_respondidas") {
     const conversas = conversasDosImoveis(
-      (await todosImoveis(supabase, userId)).map(fromDbImovel),
+      (await todosImoveis(supabase, userId, cache)).map(fromDbImovel),
       todayISO(),
     ).filter((conversa) => conversa.emAndamento);
     const aguardando = args.somente_aguardando_corretor === true;
@@ -708,13 +731,13 @@ export async function executarFerramenta(
   }
 
   if (nome === "buscar_estagnados") {
-    const itens = (await todosImoveis(supabase, userId)).filter((x) => isStale(fromDbImovel(x))).map(itemImovel).sort((a, b) => (b.diasSemMovimento || 0) - (a.diasSemMovimento || 0)).slice(0, limiteConformeIntencao(perguntaUsuario, args.limite, "estagnados"));
+    const itens = (await todosImoveis(supabase, userId, cache)).filter((x) => isStale(fromDbImovel(x))).map(itemImovel).sort((a, b) => (b.diasSemMovimento || 0) - (a.diasSemMovimento || 0)).slice(0, limiteConformeIntencao(perguntaUsuario, args.limite, "estagnados"));
     return { dados: itens, bloco: { tipo: "imoveis", titulo: "Imoveis estagnados", itens } };
   }
 
   if (nome === "consultar_foco_do_dia") {
     const [rows, agendaResultado, configResultado] = await Promise.all([
-      todosImoveis(supabase, userId),
+      todosImoveis(supabase, userId, cache),
       supabase.from("agenda").select("*").eq("user_id", userId),
       supabase.from("user_config").select("origens_extras").eq("user_id", userId).maybeSingle(),
     ]);
@@ -744,7 +767,7 @@ export async function executarFerramenta(
   }
 
   if (nome === "obter_metricas") {
-    const rows = await todosImoveis(supabase, userId);
+    const rows = await todosImoveis(supabase, userId, cache);
     const { data: config, error } = await supabase.from("user_config").select("comissao_percent").eq("user_id", userId).maybeSingle();
     if (error) throw new Error(`Falha ao consultar configuracao: ${error.message}`);
     const kpis = kpisDashboard(rows.map(fromDbImovel), Number(config?.comissao_percent) || 0);

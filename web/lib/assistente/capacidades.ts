@@ -4,6 +4,7 @@ import {
   type OperacaoCriticaAssistente,
   type TipoAcaoOperacionalAssistente,
 } from "./politicas";
+import type { TipoBlocoContextoAssistente } from "./contextoTipado";
 
 export type CategoriaCapacidadeAssistente =
   | "consultar"
@@ -35,6 +36,7 @@ interface BaseCapacidadeAssistente {
   ferramentas: readonly string[];
   termosDescoberta: readonly string[];
   requisito?: RequisitoCapacidadeAssistente;
+  contextoNecessario?: readonly TipoBlocoContextoAssistente[];
   destaque?: boolean;
 }
 
@@ -102,7 +104,8 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     exemplos: ["Quantos imóveis estão em Novo contato?", "Mostre o histórico do LD-201."],
     limitacoes: ["Os dados atuais são sempre reconsultados na sua própria carteira."],
     ferramentas: ["buscar_imoveis", "contar_imoveis", "consultar_imovel", "consultar_entidade_atual", "buscar_marcos_imoveis"],
-    termosDescoberta: ["consultar imóvel", "ver imóvel", "carteira", "histórico do imóvel"],
+    termosDescoberta: ["consultar imóvel", "ver imóvel", "carteira", "histórico do imóvel", "última movimentação", "movimentação do imóvel", "último publicado", "última publicação", "última angariação", "último locado"],
+    contextoNecessario: ["imovel", "pipeline"],
     destaque: true,
   },
   {
@@ -115,7 +118,8 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     exemplos: ["Quais são os compromissos de hoje?"],
     limitacoes: ["Compromissos e mensagens programadas são consultados separadamente."],
     ferramentas: ["buscar_agenda"],
-    termosDescoberta: ["consultar agenda", "ver agenda", "compromissos"],
+    termosDescoberta: ["consultar agenda", "ver agenda", "compromissos", "próximo compromisso", "agenda de hoje"],
+    contextoNecessario: ["agenda"],
     destaque: true,
   },
   {
@@ -129,6 +133,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     limitacoes: ["Uma referência ambígua exige que você indique o imóvel."],
     ferramentas: ["buscar_followups"],
     termosDescoberta: ["consultar follow-up", "ver follow-up", "quem precisa de follow-up"],
+    contextoNecessario: ["imovel", "agenda", "pipeline"],
     destaque: true,
   },
   {
@@ -142,6 +147,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     limitacoes: ["Prioridades e métricas usam os mesmos cálculos das telas do Angario."],
     ferramentas: ["consultar_foco_do_dia", "buscar_estagnados", "obter_metricas", "contar_angariacoes"],
     termosDescoberta: ["foco do dia", "prioridades", "métricas", "operação"],
+    contextoNecessario: ["pipeline", "agenda"],
     destaque: true,
   },
   {
@@ -155,6 +161,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     limitacoes: ["Consultar uma conversa não envia nem responde mensagens."],
     ferramentas: ["consultar_mensagens_agendadas", "buscar_conversas_respondidas"],
     termosDescoberta: ["consultar mensagens", "ver mensagens", "quem respondeu", "conversas"],
+    contextoNecessario: ["conversa", "mensagens"],
   },
   {
     id: "consultar_protocolos",
@@ -166,7 +173,8 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     exemplos: ["Qual é a taxa de administração?"],
     limitacoes: ["Só responde quando houver um protocolo ativo pertinente; não inventa uma regra comercial."],
     ferramentas: ["consultar_protocolos_comerciais"],
-    termosDescoberta: ["protocolo", "taxa de administração", "regra da imobiliária"],
+    termosDescoberta: ["protocolo", "taxa de administração", "regra da imobiliária", "multa", "rescisão", "repasse", "exclusividade", "garantia locatícia"],
+    contextoNecessario: ["protocolos"],
     requisito: "protocolos_ativos",
   },
   {
@@ -179,7 +187,8 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     exemplos: ["Crie uma visita amanhã às 15h para o LD-201."],
     limitacoes: ["Imóvel, data e horário precisam estar definidos."],
     ferramentas: ["preparar_agendamento_visita"],
-    termosDescoberta: ["agendar visita", "criar visita", "marcar visita"],
+    termosDescoberta: ["agendar visita", "agende uma visita", "agende visita", "criar visita", "marcar visita"],
+    contextoNecessario: ["imovel"],
     destaque: true,
   },
   {
@@ -193,6 +202,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     limitacoes: ["Título, tipo e data devem ser informados; o Assistente não inventa campos."],
     ferramentas: ["preparar_criacao_compromisso"],
     termosDescoberta: ["criar compromisso", "agendar compromisso", "marcar reunião"],
+    contextoNecessario: [],
   },
   {
     id: "criar_followup",
@@ -205,6 +215,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     limitacoes: ["É uma tarefa interna; nenhuma mensagem é enviada."],
     ferramentas: ["criar_followup"],
     termosDescoberta: ["criar follow-up", "novo follow-up", "criar acompanhamento"],
+    contextoNecessario: ["imovel"],
     destaque: true,
   },
   {
@@ -218,6 +229,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     limitacoes: ["O acompanhamento precisa estar identificado sem ambiguidade."],
     ferramentas: ["reagendar_followup"],
     termosDescoberta: ["reagendar follow-up", "mover follow-up", "adiar follow-up"],
+    contextoNecessario: ["imovel", "agenda"],
   },
   {
     id: "preparar_followups_lote",
@@ -230,6 +242,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     limitacoes: ["Abrir a revisão não envia nada; o envio depende da confirmação no fluxo próprio."],
     ferramentas: ["abrir_revisao_followup_lote"],
     termosDescoberta: ["follow-ups em lote", "lote de follow-up", "enviar follow-ups"],
+    contextoNecessario: ["pipeline"],
   },
   {
     id: "preparar_rascunho_resposta",
@@ -242,6 +255,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     limitacoes: ["O rascunho nunca é enviado pelo Assistente e precisa de conversa textual suficiente."],
     ferramentas: ["preparar_rascunho_resposta"],
     termosDescoberta: ["preparar resposta", "criar rascunho", "responder proprietário"],
+    contextoNecessario: ["imovel", "conversa", "protocolos"],
   },
   {
     id: "registrar_tentativa",
@@ -254,6 +268,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     limitacoes: ["Canal e resultado precisam vir do seu relato; intenção futura não conta como tentativa."],
     ferramentas: ["registrar_tentativa_contato"],
     termosDescoberta: ["registrar tentativa", "tentei contato", "anotar contato"],
+    contextoNecessario: ["imovel"],
     destaque: true,
   },
   {
@@ -267,6 +282,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     limitacoes: ["O acompanhamento precisa estar identificado sem ambiguidade e não é excluído."],
     ferramentas: ["concluir_followup"],
     termosDescoberta: ["concluir follow-up", "finalizar follow-up", "concluir acompanhamento"],
+    contextoNecessario: ["imovel", "agenda"],
   },
   {
     id: "alterar_status_sem_resposta_em_lote",
@@ -279,6 +295,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     limitacoes: ["Só inclui imóveis em Novo contato, com ao menos três tentativas e nenhuma resposta observada."],
     ferramentas: ["preparar_alteracao_status_sem_resposta"],
     termosDescoberta: ["mudar para sem resposta", "colocar como sem resposta", "alterar status para sem resposta"],
+    contextoNecessario: ["pipeline"],
     destaque: true,
   },
   {
@@ -292,6 +309,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     limitacoes: ["Só alcança follow-ups pendentes criados pelo Assistente ou automação com motivo aguardando resposta."],
     ferramentas: [],
     termosDescoberta: ["concluir automaticamente", "quando o proprietário responder", "follow-up automático"],
+    contextoNecessario: ["conversa", "agenda"],
     requisito: "whatsapp_conectado",
   },
   {
@@ -305,6 +323,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     limitacoes: ["Ele pode consultar conversas e preparar um rascunho para sua revisão."],
     ferramentas: [],
     termosDescoberta: ["mandar mensagem sozinho", "enviar mensagem sozinho", "responder automaticamente", "enviar whatsapp"],
+    contextoNecessario: [],
   },
   {
     id: "excluir_imovel",
@@ -317,6 +336,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     limitacoes: [],
     ferramentas: [],
     termosDescoberta: ["excluir imóvel", "apagar imóvel", "remover imóvel"],
+    contextoNecessario: [],
   },
   {
     id: "editar_dado_sensivel",
@@ -329,6 +349,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     limitacoes: [],
     ferramentas: [],
     termosDescoberta: ["editar dado sensível", "alterar telefone", "alterar dados do proprietário"],
+    contextoNecessario: [],
   },
   {
     id: "alterar_status_arbitrario",
@@ -341,6 +362,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     limitacoes: ["A única mudança disponível é a passagem elegível e confirmada para Sem resposta."],
     ferramentas: [],
     termosDescoberta: ["mudar qualquer status", "alterar status", "colocar como angariado", "colocar como publicado"],
+    contextoNecessario: [],
   },
 ] as const;
 
@@ -456,5 +478,6 @@ export function catalogoCapacidadesParaModelo(contexto: ContextoCapacidadesAssis
     disponivel: capacidade.disponivel,
     controle: capacidade.controle,
     ferramentas: capacidade.ferramentas,
+    contextoNecessario: capacidade.contextoNecessario || [],
   })));
 }

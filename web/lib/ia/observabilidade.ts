@@ -15,6 +15,12 @@ export interface MetadadosExecucaoIa {
   entidadesUtilizadas: string[];
   fontesDeDados: string[];
   validacoesAplicadas: string[];
+  blocosContexto: string[];
+  fontesContexto: string[];
+  duracaoContextoMs: number | null;
+  caracteresContexto: number | null;
+  tokensContextoAproximados: number | null;
+  consultasReutilizadas: number | null;
   resultado: ResultadoExecucaoIa;
   motivo: string;
 }
@@ -29,11 +35,13 @@ type CamposListaMetadados =
   | "ferramentasChamadas"
   | "entidadesUtilizadas"
   | "fontesDeDados"
-  | "validacoesAplicadas";
+  | "validacoesAplicadas"
+  | "blocosContexto"
+  | "fontesContexto";
 
-type EntradaMetadadosExecucaoIa = Omit<MetadadosExecucaoIa, CamposListaMetadados> & {
+type EntradaMetadadosExecucaoIa = Omit<MetadadosExecucaoIa, CamposListaMetadados | "duracaoContextoMs" | "caracteresContexto" | "tokensContextoAproximados" | "consultasReutilizadas"> & {
   [Campo in CamposListaMetadados]?: readonly (string | null | undefined)[];
-};
+} & Pick<Partial<MetadadosExecucaoIa>, "duracaoContextoMs" | "caracteresContexto" | "tokensContextoAproximados" | "consultasReutilizadas">;
 
 export function metadadosExecucaoIa(
   entrada: EntradaMetadadosExecucaoIa,
@@ -46,6 +54,12 @@ export function metadadosExecucaoIa(
     entidadesUtilizadas: unicos(entrada.entidadesUtilizadas || []),
     fontesDeDados: unicos(entrada.fontesDeDados || []),
     validacoesAplicadas: unicos(entrada.validacoesAplicadas || []),
+    blocosContexto: unicos(entrada.blocosContexto || []),
+    fontesContexto: unicos(entrada.fontesContexto || []),
+    duracaoContextoMs: entrada.duracaoContextoMs ?? null,
+    caracteresContexto: entrada.caracteresContexto ?? null,
+    tokensContextoAproximados: entrada.tokensContextoAproximados ?? null,
+    consultasReutilizadas: entrada.consultasReutilizadas ?? null,
   };
 }
 

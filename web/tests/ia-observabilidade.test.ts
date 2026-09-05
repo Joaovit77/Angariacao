@@ -14,6 +14,12 @@ describe("metadados seguros da execução de IA", () => {
       entidadesUtilizadas: [undefined, "imovel-1"],
       fontesDeDados: ["ferramenta:consultar_imovel"],
       validacoesAplicadas: ["sanitizacao-da-saida"],
+      blocosContexto: ["imovel", "imovel"],
+      fontesContexto: ["imoveis"],
+      duracaoContextoMs: 12,
+      caracteresContexto: 800,
+      tokensContextoAproximados: 200,
+      consultasReutilizadas: 1,
       resultado: "respondido",
       motivo: "resposta-gerada",
     });
@@ -21,6 +27,14 @@ describe("metadados seguros da execução de IA", () => {
     expect(metadados.protocolosConsiderados).toEqual(["protocolo-1"]);
     expect(metadados.ferramentasChamadas).toEqual(["consultar_imovel"]);
     expect(metadados.entidadesUtilizadas).toEqual(["imovel-1"]);
+    expect(metadados).toMatchObject({
+      blocosContexto: ["imovel"],
+      fontesContexto: ["imoveis"],
+      duracaoContextoMs: 12,
+      caracteresContexto: 800,
+      tokensContextoAproximados: 200,
+      consultasReutilizadas: 1,
+    });
     expect(Object.keys(metadados)).not.toContain("raciocinio");
     expect(JSON.stringify(metadados)).not.toContain("chain-of-thought");
   });

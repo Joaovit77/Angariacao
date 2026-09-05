@@ -129,6 +129,7 @@ describe("orquestrador com continuidade de entidade", () => {
       expect.anything(),
       "E o último publicado?",
       expect.anything(),
+      expect.objectContaining({ acertos: 0 }),
     );
     expect(resposta.mensagem.texto).toBe(
       "Foi o mesmo imóvel que mencionei acima: o LD-211. Ele foi publicado em 17/08/2026.",

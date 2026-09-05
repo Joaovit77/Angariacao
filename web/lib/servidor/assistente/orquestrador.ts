@@ -15,7 +15,16 @@ import { registrarEvento, registrarUsoDaResponsesApi } from "@/lib/servidor/regi
 import { carregarConfiguracaoIa } from "@/lib/servidor/ia/configuracao";
 import { metadadosExecucaoIa } from "@/lib/ia/observabilidade";
 import { instrucoesDoAssistente } from "./conhecimento";
-import { DEFINICOES_FERRAMENTAS, executarFerramenta } from "./ferramentas";
+import {
+  carregarContextoTipadoAssistente,
+  fontesContextoTipado,
+  serializarContextoTipadoAssistente,
+} from "./contextoTipado";
+import {
+  DEFINICOES_FERRAMENTAS,
+  executarFerramenta,
+  type CacheLeiturasAssistente,
+} from "./ferramentas";
 import {
   DEFINICOES_FERRAMENTAS_ACOES,
   ehFerramentaAcompanhamento,
@@ -32,7 +41,6 @@ import {
   prepararRascunhoResposta,
 } from "./acoes";
 import {
-  carregarCatalogoProtocolosAssistente,
   definicaoFerramentaProtocolosAssistente,
   FERRAMENTA_PROTOCOLOS_COMERCIAIS,
   protocolosSelecionadosParaAssistente,
@@ -206,7 +214,10 @@ function idSeguro(userId: string) {
 }
 
 export function conteudoMensagemHistorico(mensagem: PedidoAssistente["historico"][number]): string {
-  const partes = [mensagem.texto];
+  const partes = [
+    "MEMÓRIA CONVERSACIONAL HISTÓRICA (serve para linguagem e referências; reconsulte antes de afirmar fatos atuais).",
+    mensagem.texto,
+  ];
   if (mensagem.resultados?.length) {
     partes.push(`RESULTADOS ESTRUTURADOS DESTA RESPOSTA (referencias compactas, reconsulte antes de afirmar fatos atuais): ${JSON.stringify(mensagem.resultados)}`);
   }
@@ -229,16 +240,24 @@ export function prepararResultadoFerramentaParaModelo(
   dados: unknown,
   bloco: BlocoAssistente | undefined,
   pedido: PedidoAssistente,
+  ferramenta?: string,
 ): { output: string; continuidade: ContinuidadeEntidade | null } {
   const continuidade = compararEntidadeComResultadoAtual(
     pedido.contexto,
     pedido.historico,
     bloco,
   );
-  if (!continuidade) return { output: JSON.stringify(dados), continuidade: null };
-  const base = dados && typeof dados === "object" && !Array.isArray(dados)
-    ? dados as Record<string, unknown>
-    : { resultado: dados };
+  const envelope = ferramenta ? {
+    categoria: ferramenta === FERRAMENTA_PROTOCOLOS_COMERCIAIS ? "protocolo" : "resultado_ferramenta",
+    ferramenta,
+    autoridade: ferramenta === FERRAMENTA_PROTOCOLOS_COMERCIAIS ? "protocolo" : "resultado_ferramenta",
+    temporalidade: "consulta_atual",
+    dados,
+  } : dados;
+  if (!continuidade) return { output: JSON.stringify(envelope), continuidade: null };
+  const base = envelope && typeof envelope === "object" && !Array.isArray(envelope)
+    ? envelope as Record<string, unknown>
+    : { resultado: envelope };
   return {
     output: JSON.stringify({
       ...base,
@@ -249,27 +268,36 @@ export function prepararResultadoFerramentaParaModelo(
 }
 
 export async function responderComAssistente(pedido: PedidoAssistente, supabase: SupabaseClient, userId: string): Promise<{ mensagem: MensagemAssistente; modelo: string }> {
-  const [configuracaoIa, catalogoProtocolos] = await Promise.all([
+  const [configuracaoIa, contextoCarregado] = await Promise.all([
     carregarConfiguracaoIa(),
-    carregarCatalogoProtocolosAssistente(supabase, userId),
+    carregarContextoTipadoAssistente(pedido, supabase, userId),
   ]);
+  const { contexto: contextoTipado, catalogoProtocolos } = contextoCarregado;
+  const contextoSerializado = serializarContextoTipadoAssistente(contextoTipado);
   const modelo = configuracaoIa.assistente.modelo;
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  const entrada: ResponseInputItem[] = pedido.historico.map((m) => ({
+  const entrada: ResponseInputItem[] = [{
+    role: "developer",
+    content: contextoSerializado,
+  }, ...pedido.historico.map((m) => ({
     role: m.papel === "usuario" ? "user" : "assistant",
     content: conteudoMensagemHistorico(m),
-  }));
+  } as ResponseInputItem))];
   entrada.push({ role: "user", content: pedido.mensagem });
   const blocos: BlocoAssistente[] = [];
   let acaoPendente: AcaoAssistente | undefined;
   let comandoUi: ComandoUiAssistente | undefined;
   const ferramentasChamadas: string[] = [];
+  const cacheLeituras: CacheLeiturasAssistente = { acertos: 0 };
   const protocolosAplicados: string[] = [];
   let continuidadeResposta: ContinuidadeEntidade | null = null;
   const ferramentaProtocolos = definicaoFerramentaProtocolosAssistente(catalogoProtocolos.protocolos);
   const parametros = () => ({
     model: modelo,
-    instructions: instrucoesDoAssistente(pedido.contexto, catalogoProtocolos.protocolos),
+    instructions: instrucoesDoAssistente(
+      pedido.contexto,
+      contextoTipado.protocolos ? catalogoProtocolos.protocolos : undefined,
+    ),
     input: entrada,
     tools: [
       ...DEFINICOES_FERRAMENTAS,
@@ -345,7 +373,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
               pedido.contexto,
               pedido.sessaoId,
             )
-        : await executarFerramenta(chamada.name, args, supabase, userId, pedido.contexto, pedido.mensagem, pedido.historico);
+        : await executarFerramenta(chamada.name, args, supabase, userId, pedido.contexto, pedido.mensagem, pedido.historico, cacheLeituras);
       if (resultado.acao) acaoPendente = resultado.acao;
       if (resultado.comandoUi) comandoUi = resultado.comandoUi;
       if (resultado.bloco?.itens.length) blocos.push(resultado.bloco);
@@ -353,6 +381,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
         resultado.dados,
         resultado.bloco,
         pedido,
+        chamada.name,
       );
       if (preparado.continuidade) continuidadeResposta = preparado.continuidade;
       entrada.push({ type: "function_call_output", call_id: chamada.call_id, output: preparado.output });
@@ -411,7 +440,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
         ),
       ],
       fontesDeDados: [
-        ...(catalogoProtocolos.fonteDisponivel ? ["protocolos"] : []),
+        ...fontesContextoTipado(contextoTipado),
         ...ferramentasChamadas
           .filter((nome) => nome !== FERRAMENTA_PROTOCOLOS_COMERCIAIS)
           .map((nome) => `ferramenta:${nome}`),
@@ -419,8 +448,11 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
       validacoesAplicadas: [
         "normalizacao-do-pedido",
         "limites-do-historico",
+        "selecao-deterministica-de-contexto",
+        "contexto-tipado-user-scoped",
+        "serializacao-sem-identificadores-internos",
         "sanitizacao-da-saida",
-        ...(catalogoProtocolos.fonteDisponivel ? ["catalogo-protocolos-user-scoped"] : []),
+        ...(contextoTipado.protocolos ? ["catalogo-protocolos-user-scoped"] : []),
         ...(protocolosAplicados.length ? ["ids-protocolos-validados"] : []),
         ...(continuidadeResposta ? ["continuidade-estruturada"] : []),
         ...(acaoPendente ? [
@@ -433,6 +465,12 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
       ],
       resultado: "respondido",
       motivo: texto ? "resposta-gerada" : "resposta-vazia-com-fallback",
+      blocosContexto: contextoTipado.base.blocosSelecionados,
+      fontesContexto: fontesContextoTipado(contextoTipado),
+      duracaoContextoMs: contextoCarregado.duracaoMs,
+      caracteresContexto: contextoSerializado.length,
+      tokensContextoAproximados: Math.ceil(contextoSerializado.length / 4),
+      consultasReutilizadas: cacheLeituras.acertos,
     })),
   });
   return {
