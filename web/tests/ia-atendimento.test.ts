@@ -140,11 +140,7 @@ describe("contratos e barreiras", () => {
     expect(d?.protocolosAplicaveis).toEqual(["IPTU"]);
   });
   it("qualquer falha reprova a validacao", () => {
-    const v = {
-      aprovada: true, respondeAMensagem: true, coerenteComHistorico: true,
-      semProtocoloDesnecessario: false, somenteFatosComFonte: true,
-      semDesvioDeAssunto: true, informacaoSuficienteParaEstaResposta: true, seguraParaSugerir: true,
-    };
+    const v = { problemas: ["protocolo-inadequado"] };
     expect(validacaoAprovaAtendimento(v)).toBe(false);
   });
   it("validador ve fatos e somente fontes selecionadas", () => {
@@ -225,12 +221,7 @@ describe("contratos e barreiras", () => {
   });
 
   it("preserva o motivo especifico de uma reprovacao do validador", () => {
-    const v = {
-      aprovada: false, respondeAMensagem: true, coerenteComHistorico: true,
-      semProtocoloDesnecessario: true, somenteFatosComFonte: false,
-      semDesvioDeAssunto: true, informacaoSuficienteParaEstaResposta: true,
-      seguraParaSugerir: false,
-    };
+    const v = { problemas: ["informacao-sem-fonte"] };
     expect(motivoReprovacaoValidacaoAtendimento(v)).toBe("informacao-sem-fonte");
   });
 });

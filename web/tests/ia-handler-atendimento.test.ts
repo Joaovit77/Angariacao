@@ -139,6 +139,9 @@ describe("handler especializado de atendimento", () => {
         conclusao: {} as never,
         texto: JSON.stringify({
           intencao: "taxa",
+          objecao: "", estadoConversacional: "entendimento",
+          informacoesJaExplicadas: [], acaoEsperada: "responder",
+          proximoPassoPermitido: "responder a taxa", acoesProibidas: [], mensagensEvidencia: [],
           contextoRelevante: "pergunta direta",
           protocolosAplicaveis: ["Taxa"],
           informacoesFaltantes: [],
@@ -156,16 +159,7 @@ describe("handler especializado de atendimento", () => {
       })
       .mockResolvedValueOnce({
         conclusao: {} as never,
-        texto: JSON.stringify({
-          aprovada: true,
-          respondeAMensagem: true,
-          coerenteComHistorico: true,
-          semProtocoloDesnecessario: true,
-          somenteFatosComFonte: true,
-          semDesvioDeAssunto: true,
-          informacaoSuficienteParaEstaResposta: true,
-          seguraParaSugerir: true,
-        }),
+        texto: JSON.stringify({ problemas: [] }),
       });
 
     const resposta = await atenderProprietario({
@@ -223,6 +217,9 @@ describe("handler especializado de atendimento", () => {
         conclusao: {} as never,
         texto: JSON.stringify({
           intencao: "taxa",
+          objecao: "", estadoConversacional: "entendimento",
+          informacoesJaExplicadas: [], acaoEsperada: "responder",
+          proximoPassoPermitido: "responder a taxa", acoesProibidas: [], mensagensEvidencia: [],
           contextoRelevante: "pergunta direta",
           protocolosAplicaveis: ["Taxa"],
           informacoesFaltantes: [],
@@ -240,16 +237,7 @@ describe("handler especializado de atendimento", () => {
       })
       .mockResolvedValueOnce({
         conclusao: {} as never,
-        texto: JSON.stringify({
-          aprovada: true,
-          respondeAMensagem: true,
-          coerenteComHistorico: true,
-          semProtocoloDesnecessario: true,
-          somenteFatosComFonte: true,
-          semDesvioDeAssunto: true,
-          informacaoSuficienteParaEstaResposta: true,
-          seguraParaSugerir: true,
-        }),
+        texto: JSON.stringify({ problemas: [] }),
       });
     const supabase = supabaseFalso();
 
@@ -276,6 +264,9 @@ describe("handler especializado de atendimento", () => {
   it("regenera do zero quando a primeira geração declara protocolo não autorizado", async () => {
     const decisao = {
       intencao: "taxa",
+          objecao: "", estadoConversacional: "entendimento",
+          informacoesJaExplicadas: [], acaoEsperada: "responder",
+          proximoPassoPermitido: "responder a taxa", acoesProibidas: [], mensagensEvidencia: [],
       contextoRelevante: "pergunta direta",
       protocolosAplicaveis: ["Taxa"],
       informacoesFaltantes: [],
@@ -283,16 +274,7 @@ describe("handler especializado de atendimento", () => {
       precisaIntervencaoHumana: false,
       podeResponderComSeguranca: true,
     };
-    const validacao = {
-      aprovada: true,
-      respondeAMensagem: true,
-      coerenteComHistorico: true,
-      semProtocoloDesnecessario: true,
-      somenteFatosComFonte: true,
-      semDesvioDeAssunto: true,
-      informacaoSuficienteParaEstaResposta: true,
-      seguraParaSugerir: true,
-    };
+    const validacao = { problemas: [] };
     const executar = vi
       .fn<ExecutorOpenAI["executar"]>()
       // A primeira geração cita um protocolo que não foi autorizado.
@@ -364,6 +346,9 @@ describe("handler especializado de atendimento", () => {
         conclusao: {} as never,
         texto: JSON.stringify({
           intencao: "taxa",
+          objecao: "", estadoConversacional: "entendimento",
+          informacoesJaExplicadas: [], acaoEsperada: "responder",
+          proximoPassoPermitido: "responder a taxa", acoesProibidas: [], mensagensEvidencia: [],
           contextoRelevante: "pergunta direta",
           protocolosAplicaveis: ["Taxa"],
           informacoesFaltantes: [],

@@ -1,7 +1,8 @@
 /** Limites que já faziam parte do contrato do rascunho legado. */
 export const MAX_TEXTO_RASCUNHO = 600;
 export const MAX_PROTOCOLOS = 40;
-export const MAX_PROTOCOLO_CHARS = 600;
+export const MAX_PROTOCOLO_CHARS = 4000;
+export const MAX_MENSAGEM_CONTEXTO = 2400;
 
 /** Limites do fluxo especializado de decisão, geração e validação.
  *  A mensagem atual vai em bloco separado; portanto entram no máximo
@@ -16,6 +17,7 @@ export interface ProtocoloPrompt {
 }
 
 export interface ConversaAnterior {
+  mensagensOmitidas?: number;
   anteriores?: Array<string | MensagemAnteriorAtendimento>;
   antigasRelevantes?: MensagemAnteriorAtendimento[];
   enviada?: { rotulo?: string | null; texto?: string | null } | null;
@@ -68,16 +70,15 @@ export interface DecisaoAtendimento {
   podeResponderComSeguranca: boolean;
 }
 
-export interface ValidacaoAtendimento {
-  aprovada: boolean;
-  respondeAMensagem: boolean;
-  coerenteComHistorico: boolean;
-  semProtocoloDesnecessario: boolean;
-  somenteFatosComFonte: boolean;
-  semDesvioDeAssunto: boolean;
-  informacaoSuficienteParaEstaResposta: boolean;
-  seguraParaSugerir: boolean;
-}
+export const PROBLEMAS_VALIDACAO_ATENDIMENTO = [
+  "informacao-sem-fonte", "cobranca-sem-fonte", "contradicao-protocolo",
+  "entidade-sem-fonte", "omissao-parte-comprovada", "desvio-de-assunto",
+  "protocolo-inadequado", "acao-incompativel", "perfil-incompativel",
+  "resposta-longa", "apresentacao-repetida", "intervencao-humana",
+] as const;
+export type ProblemaValidacaoAtendimento = (typeof PROBLEMAS_VALIDACAO_ATENDIMENTO)[number];
+export interface ValidacaoAtendimento { problemas: ProblemaValidacaoAtendimento[] }
+export interface GeracaoAtendimento { mensagem: string; protocolosUsados: string[] }
 
 export const ESQUEMA_RASCUNHO = {
   type: "object",
@@ -165,24 +166,12 @@ export const ESQUEMA_GERACAO_ATENDIMENTO = {
 export const ESQUEMA_VALIDACAO_ATENDIMENTO = {
   type: "object",
   properties: {
-    aprovada: { type: "boolean" },
-    respondeAMensagem: { type: "boolean" },
-    coerenteComHistorico: { type: "boolean" },
-    semProtocoloDesnecessario: { type: "boolean" },
-    somenteFatosComFonte: { type: "boolean" },
-    semDesvioDeAssunto: { type: "boolean" },
-    informacaoSuficienteParaEstaResposta: { type: "boolean" },
-    seguraParaSugerir: { type: "boolean" },
+    problemas: {
+      type: "array",
+      items: { type: "string", enum: PROBLEMAS_VALIDACAO_ATENDIMENTO },
+      maxItems: PROBLEMAS_VALIDACAO_ATENDIMENTO.length,
+    },
   },
-  required: [
-    "aprovada",
-    "respondeAMensagem",
-    "coerenteComHistorico",
-    "semProtocoloDesnecessario",
-    "somenteFatosComFonte",
-    "semDesvioDeAssunto",
-    "informacaoSuficienteParaEstaResposta",
-    "seguraParaSugerir",
-  ],
+  required: ["problemas"],
   additionalProperties: false,
 } as const;

@@ -70,7 +70,7 @@ describe("executor OpenAI compartilhado", () => {
         { role: "developer", content: SYSTEM_PROMPT_CENTRAL_ANGARIO },
         { role: "user", content: "teste" },
       ],
-    });
+    }, { maxRetries: 0, timeout: 45_000 });
     expect(resultado.texto).toBe('{"ok":true}');
     expect(registrarUsoDaResposta).toHaveBeenCalledWith(
       "usuario-1",

@@ -1,4 +1,7 @@
 import {
+  ESQUEMA_DECISAO_ATENDIMENTO, ESQUEMA_GERACAO_ATENDIMENTO, ESQUEMA_VALIDACAO_ATENDIMENTO,
+  PROBLEMAS_VALIDACAO_ATENDIMENTO,
+  type GeracaoAtendimento, type ProblemaValidacaoAtendimento,
   MAX_PROTOCOLOS_APLICAVEIS,
   MAX_TEXTO_RASCUNHO,
   type DecisaoAtendimento,
@@ -7,9 +10,12 @@ import {
 } from "./contratos";
 import { limiteRespostaPerfil, type PerfilComunicacao } from "@/lib/perfilComunicacao";
 
+import { atendeSchemaAtendimento } from "./schema";
+
 const MAX_CONTEXTO_ATENDIMENTO = 200;
 
 export type MotivoBloqueioAtendimento =
+  | ProblemaValidacaoAtendimento
   | "baixa-confianca"
   | "contexto-incompleto"
   | "decisao-bloqueada"
@@ -27,7 +33,7 @@ export function normalizarDecisaoAtendimento(
   protocolos: readonly ProtocoloPrompt[],
   idsMensagens: readonly string[] = [],
 ): DecisaoAtendimento | null {
-  if (!valor || typeof valor !== "object") return null;
+  if (!atendeSchemaAtendimento(valor, ESQUEMA_DECISAO_ATENDIMENTO)) return null;
   const d = valor as Record<string, unknown>;
   if (!["alta", "media", "baixa"].includes(String(d.nivelConfianca))) return null;
   if (
@@ -83,9 +89,10 @@ export function normalizarDecisaoAtendimento(
   };
 }
 
-const PADROES_ACAO: Record<DecisaoAtendimento["acoesProibidas"][number], RegExp> = {
+const PADROES_ACAO: Partial<Record<DecisaoAtendimento["acoesProibidas"][number], RegExp>> = {
   "apresentar-imobiliaria": /\b(?:meu nome e|falo da|sou da|somos da)\b/i,
-  "explicar-condicoes": /\b(?:taxa|comissao|primeiro aluguel|garantia|exclusividade|condicoes de trabalho)\b/i,
+  // Explicar condições depende do contexto: mencionar uma taxa para confirmar sua
+  // existência não é explicá-la. A auditoria semântica obrigatória verifica essa ação.
   "perguntar-exclusividade": /\bexclusiv\w*\b[^?]{0,50}\?/i,
   "marcar-visita": /\b(?:marcar|agendar|combinar)\b.{0,35}\bvisita\b/i,
   "pedir-fotos": /\b(?:manda|envia|pode mandar|pode enviar)\b.{0,25}\bfotos?\b/i,
@@ -107,20 +114,19 @@ export function motivoBloqueioRascunhoDeterministico(
   if (!texto) return "geracao-reprovada";
   if (texto.length > limiteRespostaPerfil(perfil)) return "resposta-longa";
   if (perfil.emojis === "nenhum" && /\p{Extended_Pictographic}/u.test(texto)) return "perfil-incompativel";
-  if (
-    /\b(?:taxa|comissao|primeiro aluguel|garantia|vistoria|exclusividade|responsabilidade|procedimento)\b/i.test(textoNormalizado) &&
-    /(?:R\$|%|\b\d+[,.]?\d*\b|\b(?:e|sao|cobramos|inclui|exigimos|aceitamos|corresponde)\b)/i.test(textoNormalizado) &&
-    !/\b(?:vou|posso|preciso) confirmar\b|\bnao (?:quero|vou) te passar\b/i.test(textoNormalizado) &&
-    protocolosUsados.length === 0
-  )
-    return "informacao-sem-fonte";
-  if (decisao.acoesProibidas.some((acao) => PADROES_ACAO[acao].test(textoNormalizado))) return "acao-incompativel";
+  const frases = textoNormalizado.split(/(?<=[.!?])\s+|\n+/);
+  if (protocolosUsados.length === 0 && frases.some((frase) =>
+    /\b(?:taxa|comissao|multa|isencao|primeiro aluguel|garantia|vistoria|exclusividade|responsabilidade|procedimento)\b/i.test(frase)
+    && /(?:R\$|%|\b\d+[,.]?\d*\b|\b(?:e|sao|cobramos|inclui|exigimos|aceitamos|corresponde)\b)/i.test(frase)
+    && !/^\s*(?:(?:eu )?(?:vou|posso|preciso) confirmar\b|nao (?:quero|vou) te passar\b)/i.test(frase)
+  )) return "informacao-sem-fonte";
+  if (decisao.acoesProibidas.some((acao) => PADROES_ACAO[acao]?.test(textoNormalizado))) return "acao-incompativel";
   if (
     decisao.acaoEsperada === "encerrar" &&
     /\b(?:beneficio|oportunidade|agendar|visita|fotos?|divulgacao|autoriza|taxa|vantagem)\b/i.test(textoNormalizado)
   )
     return "acao-incompativel";
-  if (!/\b(?:quem e voce|quem fala|identific)\b/i.test(decisao.intencao.normalize("NFD").replace(/[\u0300-\u036f]/g, "")) && PADROES_ACAO["apresentar-imobiliaria"].test(textoNormalizado))
+  if (!/\b(?:quem e voce|quem fala|identific)\b/i.test(decisao.intencao.normalize("NFD").replace(/[\u0300-\u036f]/g, "")) && PADROES_ACAO["apresentar-imobiliaria"]?.test(textoNormalizado))
     return "apresentacao-repetida";
   return null;
 }
@@ -146,24 +152,23 @@ export function motivoBloqueioDecisaoAtendimento(
 export function motivoReprovacaoValidacaoAtendimento(
   valor: unknown,
 ): MotivoBloqueioAtendimento | null | undefined {
-  if (!valor || typeof valor !== "object") return undefined;
-  const v = valor as Record<keyof ValidacaoAtendimento, unknown>;
-  const campos = [
-    "aprovada",
-    "respondeAMensagem",
-    "coerenteComHistorico",
-    "semProtocoloDesnecessario",
-    "somenteFatosComFonte",
-    "semDesvioDeAssunto",
-    "informacaoSuficienteParaEstaResposta",
-    "seguraParaSugerir",
-  ] as const;
-  if (campos.some((campo) => typeof v[campo] !== "boolean")) return undefined;
-  if (campos.every((campo) => v[campo] === true)) return null;
-  if (v.semProtocoloDesnecessario === false) return "protocolo-inadequado";
-  if (v.somenteFatosComFonte === false) return "informacao-sem-fonte";
-  if (v.semDesvioDeAssunto === false) return "desvio-de-assunto";
-  if (v.informacaoSuficienteParaEstaResposta === false) return "contexto-incompleto";
-  if (v.seguraParaSugerir === false) return "baixa-confianca";
-  return "geracao-reprovada";
+  if (!atendeSchemaAtendimento(valor, ESQUEMA_VALIDACAO_ATENDIMENTO)) return undefined;
+  const { problemas } = valor as ValidacaoAtendimento;
+  // Uma falha terminal nunca pode ser escondida pela ordem escolhida pelo modelo.
+  if (problemas.includes("intervencao-humana")) return "intervencao-humana";
+  return problemas[0] ?? null;
+}
+
+export function normalizarGeracaoAtendimento(valor: unknown): GeracaoAtendimento | null {
+  if (!atendeSchemaAtendimento(valor, ESQUEMA_GERACAO_ATENDIMENTO)) return null;
+  const geracao = valor as GeracaoAtendimento;
+  return { mensagem: geracao.mensagem.trim(), protocolosUsados: [...new Set(geracao.protocolosUsados)] };
+}
+
+/** Só falhas corrigíveis por reescrita recebem nova geração. */
+export function podeRegenerarAtendimento(motivo: MotivoBloqueioAtendimento): boolean {
+  return motivo === "geracao-reprovada" || (
+    motivo !== "intervencao-humana"
+    && (PROBLEMAS_VALIDACAO_ATENDIMENTO as readonly string[]).includes(motivo)
+  );
 }

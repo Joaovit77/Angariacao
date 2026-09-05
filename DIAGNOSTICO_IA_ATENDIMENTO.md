@@ -1,3 +1,5 @@
+> Registro histórico da base, anterior à implementação. O teto de cinco chamadas foi posteriormente autorizado. Resultado e pendências atuais: [relatório da tarefa](RELATORIO_IA_ATENDIMENTO.md).
+
 # Diagnóstico de robustez do atendimento
 
 Investigação independente do roadmap. Base: `41d9658be65d21807e53c66b31a525022a27f73c`.

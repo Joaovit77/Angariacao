@@ -5,6 +5,9 @@ import {
   ESQUEMA_GERACAO_ATENDIMENTO,
   ESQUEMA_VALIDACAO_ATENDIMENTO,
   MAX_PROTOCOLOS,
+  MAX_PROTOCOLO_CHARS,
+  normalizarGeracaoAtendimento,
+  podeRegenerarAtendimento,
   promptBaseAtendimento,
   conversaAtendimento,
   contextoAtendimentoDoImovel,
@@ -33,6 +36,8 @@ import {
 import { normalizarPerfilComunicacao } from "@/lib/perfilComunicacao";
 import { separarProtocolosAtivos } from "@/lib/protocolos";
 import { registrarEvento } from "@/lib/servidor/registro";
+import { CONFIGURACAO_IA_PADRAO } from "@/lib/ia/configuracao";
+import type { PedidoExecutorOpenAI } from "../executor-openai";
 import type { HandlerIa } from "../dispatcher";
 import { classificarErroIa } from "../executor-openai";
 import { respostaErroIa } from "../respostas";
@@ -48,6 +53,13 @@ type EtapaAtendimento = "contexto" | "decisao" | "geracao" | "validacao" | "suge
 
 interface DiagnosticoAtendimento {
   imovelId: string;
+  modelo?: string;
+  esforco?: string;
+  tentativa?: number;
+  validacao?: "aprovada" | "rejeitada" | "nao-executada" | "erro";
+  iniciadoEm?: number;
+  chamadas?: number;
+  protocolosOmitidos?: number;
   selecao?: SelecaoMensagensAtendimento;
   protocolosDisponiveis?: number;
   protocolosSelecionados?: number;
@@ -81,6 +93,16 @@ function registrarDiagnosticoAtendimento(
     evento: resultado === "sugerido" ? "ia-atendimento-sugerido" : "ia-atendimento-bloqueado",
     detalhe: JSON.stringify({
       tarefa: "rascunhar-resposta",
+      operacao: "rascunhar_resposta",
+      modelo: base.modelo ?? null,
+      reasoning_effort: base.esforco ?? null,
+      tentativa: base.tentativa ?? 0,
+      chamadas: base.chamadas ?? 0,
+      duracao_ms: base.iniciadoEm === undefined ? null : Math.round(performance.now() - base.iniciadoEm),
+      protocolosOmitidos: base.protocolosOmitidos ?? 0,
+      validacao: base.validacao ?? "nao-executada",
+      decisao: base.confianca === undefined ? "nao-executada" : (base.tentativa ?? 0) > 0 ? "responder" : "bloquear",
+      codigo: motivo,
       imovelId: base.imovelId,
       mensagensRecebidas: base.selecao?.mensagensRecebidas ?? null,
       mensagensEnviadas: base.selecao?.mensagensEnviadas ?? null,
@@ -136,7 +158,8 @@ function falhaDoBloqueio(motivo: MotivoBloqueioAtendimento): FalhaIa {
     motivo === "apresentacao-repetida"
   )
     return "geracao-reprovada";
-  return "intervencao-humana";
+  if (motivo === "intervencao-humana" || motivo === "decisao-bloqueada") return "intervencao-humana";
+  return "geracao-reprovada";
 }
 
 export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
@@ -181,6 +204,11 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   const selecao = selecionarMensagensAtendimento(imovel);
   const diagnostico: DiagnosticoAtendimento = {
     imovelId,
+    modelo: (configuracao?.atendimento ?? CONFIGURACAO_IA_PADRAO.atendimento).modelo,
+    esforco: (configuracao?.atendimento ?? CONFIGURACAO_IA_PADRAO.atendimento).esforco,
+    iniciadoEm: performance.now(),
+    chamadas: 0,
+    tentativa: 0,
     selecao,
     fontesDeDados: ["imoveis", "notas-whatsapp"],
     validacoesAplicadas: ["selecao-deterministica-de-contexto"],
@@ -244,7 +272,19 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   }
   const protocolos = ((ptData || []) as DbProtocoloRow[]).map(fromDbProtocolo);
   const { informacoesComerciais, regrasConduta } = separarProtocolosAtivos(protocolos);
-  const informacoesComerciaisConsideradas = informacoesComerciais.slice(0, MAX_PROTOCOLOS);
+  // Fontes comerciais entram inteiras; um fragmento poderia omitir uma condição.
+  let caracteresProtocolos = 0;
+  const informacoesComerciaisConsideradas = informacoesComerciais.filter((protocolo) => {
+    if (protocolo.conteudo.length > MAX_PROTOCOLO_CHARS || caracteresProtocolos + protocolo.conteudo.length > 24_000) return false;
+    caracteresProtocolos += protocolo.conteudo.length;
+    return true;
+  }).slice(0, MAX_PROTOCOLOS);
+  diagnostico.protocolosOmitidos = informacoesComerciais.length - informacoesComerciaisConsideradas.length;
+  if (regrasConduta.some((regra) => regra.conteudo.length > MAX_PROTOCOLO_CHARS)
+      || regrasConduta.reduce((total, regra) => total + regra.conteudo.length, 0) > 24_000) {
+    registrarDiagnosticoAtendimento(userId, diagnostico, "contexto", "bloqueado", "regras-conduta-excedem-limite");
+    return respostaErroIa("contexto-incompleto", 422);
+  }
   (diagnostico.fontesDeDados ??= []).push("protocolos");
   diagnostico.protocolosConsiderados = informacoesComerciaisConsideradas
     .map((protocolo) => protocolo.id)
@@ -292,9 +332,24 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
     .digest("hex")
     .slice(0, 16);
 
+  const executarEtapa = async (pedido: PedidoExecutorOpenAI) => {
+    if ((diagnostico.chamadas ?? 0) >= 5) throw new Error("Limite de chamadas do atendimento excedido.");
+    diagnostico.chamadas = (diagnostico.chamadas ?? 0) + 1;
+    const inicio = performance.now();
+    const resultado = await executor.executar(pedido);
+    registrarEvento({ userId, categoria: "ia", nivel: "info", evento: "ia-atendimento-etapa", detalhe: JSON.stringify({
+      operacao: "rascunhar_resposta", etapa: pedido.tipo, tentativa: diagnostico.tentativa,
+      modelo: diagnostico.modelo, reasoning_effort: diagnostico.esforco,
+      duracao_ms: Math.round(performance.now() - inicio),
+      tokens_entrada: resultado.conclusao.usage?.prompt_tokens ?? null,
+      tokens_saida: resultado.conclusao.usage?.completion_tokens ?? null,
+    }) });
+    return resultado;
+  };
+
   let textoDecisao: string;
   try {
-    ({ texto: textoDecisao } = await executor.executar({
+    ({ texto: textoDecisao } = await executarEtapa({
       tipo: `${tipo}-decisao`,
       reasoningEffort: "low",
       formato: {
@@ -378,9 +433,11 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   // o fallback não pode esconder problema estrutural do modelo/integração.
   for (let tentativa = 0; tentativa < 2; tentativa += 1) {
     const usandoFallback = tentativa === 1;
+    diagnostico.tentativa = tentativa + 1;
+    diagnostico.validacao = "nao-executada";
     let textoGeracao: string;
     try {
-      ({ texto: textoGeracao } = await executor.executar({
+      ({ texto: textoGeracao } = await executarEtapa({
         tipo: `${tipo}-geracao${usandoFallback ? "-fallback" : ""}`,
         reasoningEffort: "low",
         formato: {
@@ -421,9 +478,10 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
       return respostaErroIa(falha, 502);
     }
 
-    let dadosGeracao: { mensagem?: unknown; protocolosUsados?: unknown };
+    let dadosGeracao;
     try {
-      dadosGeracao = JSON.parse(textoGeracao) as typeof dadosGeracao;
+      dadosGeracao = normalizarGeracaoAtendimento(JSON.parse(textoGeracao));
+      if (!dadosGeracao) throw new Error("Contrato de geração inválido.");
     } catch {
       registrarDiagnosticoAtendimento(
         userId,
@@ -473,9 +531,10 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
     }
 
     if (!motivo) {
+      diagnostico.validacao = "erro";
       let textoValidacao: string;
       try {
-        ({ texto: textoValidacao } = await executor.executar({
+        ({ texto: textoValidacao } = await executarEtapa({
           tipo: `${tipo}-validacao${usandoFallback ? "-fallback" : ""}`,
           reasoningEffort: "low",
           formato: {
@@ -533,6 +592,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
       etapaBloqueio = "validacao";
     }
 
+    diagnostico.validacao = motivo ? "rejeitada" : "aprovada";
     if (!motivo) {
       let sugestaoId: string | undefined;
       if (feedbackSugestoesIaHabilitado()) {
@@ -581,7 +641,11 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
       });
     }
 
-    if (!usandoFallback) {
+    registrarEvento({ userId, categoria: "ia", nivel: "aviso", evento: "ia-atendimento-validacao", detalhe: JSON.stringify({
+      operacao: "rascunhar_resposta", tentativa: tentativa + 1, validacao: "rejeitada", codigo: motivo,
+      modelo: diagnostico.modelo, decisao: "responder", duracao_ms: Math.round(performance.now() - diagnostico.iniciadoEm!),
+    }) });
+    if (!usandoFallback && podeRegenerarAtendimento(motivo)) {
       motivoAnterior = motivo;
       diagnostico.motivoFallback = motivo;
       (diagnostico.validacoesAplicadas ??= []).push("regeneracao-segura-pos-reprovacao");

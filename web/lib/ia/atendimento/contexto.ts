@@ -167,6 +167,7 @@ export function conversaAtendimento(
   enviada: ConversaAnterior["enviada"],
 ): ConversaAnterior {
   return {
+    mensagensOmitidas: Math.max(0, selecao.mensagensDisponiveis - selecao.mensagensSelecionadas),
     anteriores: selecao.anteriores,
     antigasRelevantes: selecao.antigasRelevantes,
     // A abordagem é apenas a ponte para registros antigos. Assim que existe

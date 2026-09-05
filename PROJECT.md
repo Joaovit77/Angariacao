@@ -1580,10 +1580,12 @@ ali para quem quiser um modelo.
   puro vive em `lib/ia/atendimento/`; o handler em `lib/servidor/ia/handlers/atendimento.ts` executa
   três etapas separadas: decisão (intenção, objeção, estado conversacional, informação já explicada,
   ação esperada, próximo passo permitido, ações proibidas, evidências, protocolos, lacunas e confiança),
-  geração e validação independente. Confiança baixa, falta de informação, protocolo inadequado ou
-  validação reprovada bloqueiam o rascunho e pedem intervenção humana. Uma reprovação de
-  **conteúdo** na geração ou validação aciona antes uma única regeneração segura do zero, sem carregar
-  a frase recusada; a segunda sugestão atravessa as mesmas travas determinísticas e a validação
+  geração e validação independente. Uma lacuna comercial limita a afirmação correspondente:
+  o contrato permite responder a parte comprovada e confirmar a desconhecida. A decisão só bloqueia
+  quando considera inseguro até esse rascunho limitado. A auditoria retorna códigos específicos de
+  cobrança/regra/entidade sem fonte, contradição, omissão relevante e incompatibilidade de conduta.
+  Uma reprovação corrigível por reescrita permite uma única regeneração do zero, sem carregar a frase
+  recusada; a segunda sugestão atravessa as mesmas travas determinísticas e a validação
   independente. Falha de transporte ou saída estrutural inválida continua 502 e não é mascarada pelo
   fallback. Fala atribuída ao proprietário é evidência conversacional, não fato oficial do cadastro;
   por isso uma resposta neutra que apenas reconhece "já foi locado", por exemplo, usa zero protocolos
@@ -1606,6 +1608,21 @@ ali para quem quiser um modelo.
   médio, incompatível com emojis desativados, fizer afirmação comercial sem protocolo declarado,
   insistir após recusa, executar ação proibida ou repetir apresentação de forma óbvia. A validação
   por modelo recebe o rascunho inteiro e os títulos de `protocolosUsados`.
+  Mencionar taxa ou exclusividade não prova execução de uma ação comercial: a restrição
+  explicar-condicoes é verificada pela auditoria semântica obrigatória, considerando a pergunta.
+  Os parsers validam o mesmo JSON Schema estrito enviado ao provedor (tipos, enums, campos
+  obrigatórios e propriedades adicionais). A saída da auditoria é { problemas: [...] }.
+  O teto é duas gerações e cinco chamadas totais (decisão, geração/auditoria, eventual
+  geração/auditoria); o executor desativa retries do SDK somente no atendimento e aplica
+  timeout de 45 segundos por chamada. Diagnósticos registram modelo, esforço, tentativa,
+  duração e resultado da validação, sem conteúdo privado.
+  Textos de conversa preservam início/fim até 2.400 caracteres de conteúdo e sinalizam cortes;
+  a janela informa mensagens omitidas. Protocolos comerciais são usados inteiros até 4.000
+  caracteres por item, 24.000 no catálogo e 40 itens; fontes além do limite ficam indisponíveis,
+  sem presumir inexistência da regra. Conduta além do limite bloqueia com diagnóstico explícito
+  em vez de aplicar regra cortada. Fatos atuais têm origem e ausência explícitas, e o fallback
+  de abordagem legada informa sua fidelidade limitada. Isso não acopla o atendimento ao Assistente.
+
 
 ##### Feedback das mensagens sugeridas pela IA
 

@@ -84,7 +84,7 @@ export function criarExecutorOpenAI(
             }
           : {}),
         messages: aplicarSystemPromptAngario(pedido.mensagens),
-      });
+      }, ...(pedido.tipo.startsWith("rascunhar-resposta-") ? [{ maxRetries: 0, timeout: 45_000 }] : []));
 
       registrarUsoDaResposta(userId, pedido.tipo, modelo, conclusao.usage);
       return { conclusao, texto: textoDaResposta(conclusao) };
