@@ -61,6 +61,7 @@ export function normalizarDecisaoAtendimento(
     .filter((t) => titulos.has(t))
     .slice(0, MAX_PROTOCOLOS_APLICAVEIS);
   if (protocolosAplicaveis.length !== lista(d.protocolosAplicaveis).length) return null;
+  const tipoResposta = String(d.tipoResposta) as DecisaoAtendimento["tipoResposta"];
 
   const temporalidadeComEventoValida = (temporalidade: string, evento: string) =>
     temporalidade === "antes-de-evento" || temporalidade === "depois-de-evento"
@@ -87,12 +88,18 @@ export function normalizarDecisaoAtendimento(
     || !idsEvidencias.has(obrigacao.evidenciaId)
   )) return null;
 
+  // A classificação vem da mesma decisão semântica, não de palavras-chave.
+  // Se a resposta é puramente social, fatos comerciais do histórico não podem
+  // vazar para a geração como protocolos, evidências, lacunas ou obrigações.
+  const respostaSocial = tipoResposta === "social";
+
   return {
     intencao:
       typeof d.intencao === "string" && d.intencao.trim()
         ? d.intencao.trim().slice(0, MAX_CONTEXTO_ATENDIMENTO)
         : "outro assunto",
     objecao: typeof d.objecao === "string" ? d.objecao.trim().slice(0, MAX_CONTEXTO_ATENDIMENTO) : "",
+    tipoResposta,
     estadoConversacional: ["abertura", "entendimento", "avaliando-interesse", "negociacao", "aguardando", "encerramento", "outro"].includes(String(d.estadoConversacional))
       ? (String(d.estadoConversacional) as DecisaoAtendimento["estadoConversacional"])
       : "outro",
@@ -113,14 +120,16 @@ export function normalizarDecisaoAtendimento(
         ["apresentar-imobiliaria", "explicar-condicoes", "perguntar-exclusividade", "marcar-visita", "pedir-fotos", "pedir-autorizacao", "cadastrar-imovel", "insistir", "avancar-etapa"].includes(acao),
       )
       .slice(0, 9),
-    protocolosAplicaveis,
-    evidencias: evidencias.map((evidencia) => ({
+    protocolosAplicaveis: respostaSocial ? [] : protocolosAplicaveis,
+    evidencias: respostaSocial ? [] : evidencias.map((evidencia) => ({
       ...evidencia,
       fato: evidencia.fato.trim(),
       evento: evidencia.evento.trim(),
     })),
-    obrigacoesResposta: obrigacoesResposta.map((obrigacao) => ({ ...obrigacao })),
-    informacoesFaltantes: informacoesFaltantes.map((lacuna) => ({
+    obrigacoesResposta: respostaSocial
+      ? []
+      : obrigacoesResposta.map((obrigacao) => ({ ...obrigacao })),
+    informacoesFaltantes: respostaSocial ? [] : informacoesFaltantes.map((lacuna) => ({
       ...lacuna,
       descricao: lacuna.descricao.trim(),
       evento: lacuna.evento.trim(),

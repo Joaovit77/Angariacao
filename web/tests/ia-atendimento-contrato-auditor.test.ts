@@ -117,6 +117,7 @@ const fontes: FonteEvidenciaAtendimento[] = [{
 const decisao: DecisaoAtendimento = {
   intencao: "vagas",
   objecao: "",
+  tipoResposta: "factual",
   estadoConversacional: "entendimento",
   contextoRelevante: "duas vagas",
   informacoesJaExplicadas: [],

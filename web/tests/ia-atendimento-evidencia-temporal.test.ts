@@ -66,7 +66,8 @@ const evidencias: EvidenciaAtendimento[] = [
   },
 ];
 const decisaoBase: DecisaoAtendimento = {
-  intencao: "dúvida temporal", objecao: "", estadoConversacional: "negociacao",
+  intencao: "dúvida temporal", objecao: "", tipoResposta: "factual",
+  estadoConversacional: "negociacao",
   contextoRelevante: "há uma parte conhecida e outra desconhecida",
   informacoesJaExplicadas: [], acaoEsperada: "responder",
   proximoPassoPermitido: "responder a parte comprovada", acoesProibidas: [],

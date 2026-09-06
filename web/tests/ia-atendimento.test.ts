@@ -32,7 +32,8 @@ const regrasConduta: ProtocoloPrompt[] = [
   },
 ];
 const base: DecisaoAtendimento = {
-  intencao: "geral", objecao: "", estadoConversacional: "entendimento",
+  intencao: "geral", objecao: "", tipoResposta: "factual",
+  estadoConversacional: "entendimento",
   contextoRelevante: "", informacoesJaExplicadas: [], acaoEsperada: "responder",
   proximoPassoPermitido: "responder ao assunto atual", acoesProibidas: [],
   protocolosAplicaveis: [], evidencias: [],
@@ -132,6 +133,73 @@ describe("assistente de atendimento - 12 cenarios", () => {
 });
 
 describe("contratos e barreiras", () => {
+  it("resposta social remove fatos comerciais artificiais sem usar texto ou regex", () => {
+    const social = normalizarDecisaoAtendimento({
+      ...decisaoTaxa,
+      tipoResposta: "social",
+      protocolosAplicaveis: ["Taxa"],
+      obrigacoesResposta: [{
+        id: "obrigacao_1",
+        evidenciaId: "evidencia_1",
+        necessidade: "obrigatoria",
+      }],
+      informacoesFaltantes: [{
+        id: "lacuna_1",
+        descricao: "detalhe comercial irrelevante",
+        temporalidade: "atual",
+        evento: "",
+      }],
+    }, protocolos, [fonteTaxa]);
+
+    expect(social).toMatchObject({
+      tipoResposta: "social",
+      protocolosAplicaveis: [],
+      evidencias: [],
+      obrigacoesResposta: [],
+      informacoesFaltantes: [],
+    });
+    expect(motivoBloqueioRascunhoDeterministico(
+      "Perfeito, fico à disposição.",
+      [],
+      [],
+      social!,
+      normalizarPerfilComunicacao(null),
+      [fonteTaxa],
+      [],
+    )).toBeNull();
+  });
+
+  it.each([
+    "Obrigado. E quanto vocês cobram?",
+    "Entendi, mas tem exclusividade?",
+    "Perfeito. Se outra imobiliária alugar primeiro, como fica?",
+  ])("cortesia com necessidade factual permanece no fluxo factual: %s", (mensagem) => {
+    const factual = normalizarDecisaoAtendimento({
+      ...decisaoTaxa,
+      tipoResposta: "factual",
+      obrigacoesResposta: [{
+        id: "obrigacao_1",
+        evidenciaId: "evidencia_1",
+        necessidade: "obrigatoria",
+      }],
+    }, protocolos, [fonteTaxa]);
+
+    expect(factual?.tipoResposta).toBe("factual");
+    expect(factual?.protocolosAplicaveis).toEqual(["Taxa"]);
+    expect(factual?.obrigacoesResposta).toHaveLength(1);
+    expect(promptDecidirAtendimento(mensagem, contexto, undefined, protocolos))
+      .toContain('inclusive depois de uma cortesia, use tipoResposta="factual"');
+    expect(motivoBloqueioRascunhoDeterministico(
+      "Obrigado.",
+      [],
+      [],
+      factual!,
+      normalizarPerfilComunicacao(null),
+      [fonteTaxa],
+      [],
+    )).toBe("omissao-parte-comprovada");
+  });
+
   it("aplica regras de conduta sempre, sem tratá-las como informação comercial", () => {
     const sistema = promptBaseAtendimento("", regrasConduta);
     const decisao = promptDecidirAtendimento(

@@ -112,6 +112,7 @@ export interface ContextoAtendimento {
 export interface DecisaoAtendimento {
   intencao: string;
   objecao: string;
+  tipoResposta: "factual" | "social";
   estadoConversacional:
     | "abertura"
     | "entendimento"
@@ -273,6 +274,12 @@ export const ESQUEMA_DECISAO_ATENDIMENTO = {
   properties: {
     intencao: { type: "string" },
     objecao: { type: "string" },
+    tipoResposta: {
+      type: "string",
+      enum: ["factual", "social"],
+      description:
+        "Use social somente quando a mensagem atual não contiver pergunta, solicitação ou conteúdo factual que precise de resposta. Cortesia acompanhada de dúvida continua factual.",
+    },
     estadoConversacional: {
       type: "string",
       enum: ["abertura", "entendimento", "avaliando-interesse", "negociacao", "aguardando", "encerramento", "outro"],
@@ -319,6 +326,7 @@ export const ESQUEMA_DECISAO_ATENDIMENTO = {
   required: [
     "intencao",
     "objecao",
+    "tipoResposta",
     "estadoConversacional",
     "contextoRelevante",
     "informacoesJaExplicadas",

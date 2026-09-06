@@ -1578,8 +1578,9 @@ ali para quem quiser um modelo.
 
   Desde 2026-08-15, esse fluxo é o primeiro **agente especializado** da rota `/api/ia`. O domínio
   puro vive em `lib/ia/atendimento/`; o handler em `lib/servidor/ia/handlers/atendimento.ts` executa
-  três etapas separadas: decisão (intenção, objeção, estado conversacional, informação já explicada,
-  ação esperada, próximo passo permitido, ações proibidas, evidências, protocolos, lacunas e confiança),
+  três etapas separadas: decisão (intenção, objeção, tipo de resposta factual ou social, estado
+  conversacional, informação já explicada, ação esperada, próximo passo permitido, ações proibidas,
+  evidências, protocolos, lacunas e confiança),
   geração e validação independente. Uma lacuna comercial limita a afirmação correspondente:
   o contrato permite responder a parte comprovada e confirmar a desconhecida. A decisão só bloqueia
   quando considera inseguro até esse rascunho limitado. A auditoria retorna códigos específicos de
@@ -1593,6 +1594,12 @@ ali para quem quiser um modelo.
   registram contagens, classificações, fingerprint e metadados estruturados reais da execução —
   incluindo IDs de protocolos considerados/aplicados, fontes e validações executadas —, nunca
   conversa, resposta completa, prompt ou raciocínio.
+
+  O tipo de resposta considera somente a necessidade semântica da mensagem atual. Cortesia,
+  agradecimento, confirmação simples ou encerramento sem pergunta, solicitação ou conteúdo factual
+  são sociais; nesse caso, a decisão normalizada zera protocolos, evidências, lacunas e obrigações
+  factuais para que o histórico comercial não crie assunto artificial. Cortesia acompanhada de
+  pergunta ou necessidade factual continua no fluxo factual e preserva todas as validações.
 
   A IA recebe somente fatos tipados do imóvel (endereço/unidade/localização, tipo, quartos,
   banheiros, vagas, valores, autorização, pausa, responsável, origem e histórico de estágio quando

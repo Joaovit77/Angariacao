@@ -3,9 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExecutorOpenAI } from "@/lib/servidor/ia/executor-openai";
 import { erroExternoSintetico } from "./fixtures/erroExterno";
 
+const cenario = vi.hoisted(() => ({
+  mensagemAtual: "Qual é a taxa?",
+  perfilComunicacao: null as Record<string, unknown> | null,
+}));
+
 vi.mock("@/lib/calculo/notas", () => ({
   corpoDaMensagemEnviada: () => "",
-  corpoDaResposta: () => "Qual é a taxa?",
+  corpoDaResposta: () => cenario.mensagemAtual,
   ehNotaDeMensagemEnviada: () => false,
   ehNotaRecebidaNaConversa: () => true,
   ehNotaDeResposta: () => true,
@@ -13,7 +18,7 @@ vi.mock("@/lib/calculo/notas", () => ({
 }));
 
 vi.mock("@/lib/calculo/respostas", () => ({
-  respostasDoImovel: () => [{ texto: "wa: Qual é a taxa?" }],
+  respostasDoImovel: () => [{ texto: `wa: ${cenario.mensagemAtual}` }],
 }));
 
 vi.mock("@/lib/persistencia/mapeadores", () => ({
@@ -23,7 +28,11 @@ vi.mock("@/lib/persistencia/mapeadores", () => ({
     proprietarioNome: "Marta",
     endereco: "Rua A, 10",
     tentativas: [],
-    notas: [{ id: "wa:1", texto: "Resposta pelo WhatsApp: Qual é a taxa?", data: "2026-08-17T09:00" }],
+    notas: [{
+      id: "wa:1",
+      texto: `Resposta pelo WhatsApp: ${cenario.mensagemAtual}`,
+      data: "2026-08-17T09:00",
+    }],
   }),
   fromDbAbordagem: (valor: unknown) => valor,
   fromDbProtocolo: (valor: unknown) => valor,
@@ -91,7 +100,12 @@ function supabaseFalso(): SupabaseClient {
       if (tabela === "user_config") {
         return {
           select: () => ({
-            maybeSingle: async () => ({ data: null, error: null }),
+            maybeSingle: async () => ({
+              data: cenario.perfilComunicacao
+                ? { perfil_comunicacao: cenario.perfilComunicacao }
+                : null,
+              error: null,
+            }),
           }),
         };
       }
@@ -106,6 +120,7 @@ function supabaseFalso(): SupabaseClient {
 const decisaoTaxa = {
   intencao: "taxa",
   objecao: "",
+  tipoResposta: "factual",
   estadoConversacional: "entendimento",
   informacoesJaExplicadas: [],
   acaoEsperada: "responder",
@@ -145,6 +160,20 @@ const geracaoTaxa = {
 const geracaoConfirmacao = {
   ...geracaoTaxa,
 };
+const decisaoSocialComRuido = {
+  ...decisaoTaxa,
+  intencao: "cortesia",
+  tipoResposta: "social",
+  estadoConversacional: "encerramento",
+  acaoEsperada: "encerrar",
+  proximoPassoPermitido: "responder somente à cortesia",
+};
+const geracaoSocial = {
+  mensagem: "Perfeito, fico à disposição.",
+  protocolosUsados: [],
+  obrigacoesCobertas: [],
+  afirmacoes: [],
+};
 
 describe("handler especializado de atendimento", () => {
   beforeEach(() => {
@@ -152,6 +181,8 @@ describe("handler especializado de atendimento", () => {
     vi.unstubAllEnvs();
     vi.stubEnv("IA_FEEDBACK_SUGESTOES_ENABLED", "true");
     definirSchemaFeedbackSugestoesIaProntoParaTeste(true);
+    cenario.mensagemAtual = "Qual é a taxa?";
+    cenario.perfilComunicacao = null;
   });
 
   afterEach(() => {
@@ -375,5 +406,106 @@ describe("handler especializado de atendimento", () => {
         detalhe: expect.stringContaining('"motivoFallback":"protocolo-inadequado"'),
       }),
     );
+  });
+
+  it("LD-247 controlado: cortesia social ignora protocolos e obrigações artificiais", async () => {
+    cenario.mensagemAtual = "Obrigado!";
+    const executar = vi
+      .fn<ExecutorOpenAI["executar"]>()
+      .mockResolvedValueOnce({
+        conclusao: {} as never,
+        texto: JSON.stringify(decisaoSocialComRuido),
+      })
+      .mockResolvedValueOnce({
+        conclusao: {} as never,
+        texto: JSON.stringify(geracaoSocial),
+      })
+      .mockResolvedValueOnce({
+        conclusao: {} as never,
+        texto: JSON.stringify({ problemas: [] }),
+      });
+
+    const resposta = await atenderProprietario({
+      tipo: "rascunhar-resposta",
+      corpo: { tipo: "rascunhar-resposta", imovelId: "imovel-1" },
+      supabase: supabaseFalso(),
+      userId: "usuario-1",
+      executor: { executar },
+    });
+
+    expect(resposta.status).toBe(200);
+    expect(await resposta.json()).toMatchObject({
+      ok: true,
+      rascunho: geracaoSocial.mensagem,
+      protocolosUsados: [],
+      fallbackAplicado: false,
+    });
+    expect(executar.mock.calls.map(([pedido]) => pedido.tipo)).toEqual([
+      "rascunhar-resposta-decisao",
+      "rascunhar-resposta-geracao",
+      "rascunhar-resposta-validacao",
+    ]);
+    const promptGeracao = executar.mock.calls[1][0].mensagens[1].content;
+    expect(promptGeracao).toContain('"tipoResposta":"social"');
+    expect(promptGeracao).toContain('"protocolosAplicaveis":[]');
+    expect(promptGeracao).toContain('"evidencias":[]');
+    expect(promptGeracao).toContain('"obrigacoesResposta":[]');
+    expect(promptGeracao).toContain("INFORMAÇÕES OFICIAIS DA IMOBILIÁRIA:\n[]");
+  });
+
+  it("LD-164 controlado: fallback remove emoji e preserva resposta social sem obrigação factual", async () => {
+    cenario.mensagemAtual = "Certo, muito obrigado pela atenção.";
+    cenario.perfilComunicacao = {
+      formalidade: "natural",
+      tamanho: "curto",
+      emojis: "nenhum",
+      tratamento: "voce",
+      expressoesPreferidas: [],
+      expressoesEvitar: [],
+    };
+    const executar = vi
+      .fn<ExecutorOpenAI["executar"]>()
+      .mockResolvedValueOnce({
+        conclusao: {} as never,
+        texto: JSON.stringify(decisaoSocialComRuido),
+      })
+      .mockResolvedValueOnce({
+        conclusao: {} as never,
+        texto: JSON.stringify({ ...geracaoSocial, mensagem: "Perfeito! 😊" }),
+      })
+      .mockResolvedValueOnce({
+        conclusao: {} as never,
+        texto: JSON.stringify(geracaoSocial),
+      })
+      .mockResolvedValueOnce({
+        conclusao: {} as never,
+        texto: JSON.stringify({ problemas: [] }),
+      });
+
+    const resposta = await atenderProprietario({
+      tipo: "rascunhar-resposta",
+      corpo: { tipo: "rascunhar-resposta", imovelId: "imovel-1" },
+      supabase: supabaseFalso(),
+      userId: "usuario-1",
+      executor: { executar },
+    });
+
+    expect(resposta.status).toBe(200);
+    expect(await resposta.json()).toMatchObject({
+      ok: true,
+      rascunho: geracaoSocial.mensagem,
+      protocolosUsados: [],
+      fallbackAplicado: true,
+    });
+    expect(executar.mock.calls.map(([pedido]) => pedido.tipo)).toEqual([
+      "rascunhar-resposta-decisao",
+      "rascunhar-resposta-geracao",
+      "rascunhar-resposta-geracao-fallback",
+      "rascunhar-resposta-validacao-fallback",
+    ]);
+    const detalhe = vi.mocked(registrarEvento).mock.calls.at(-1)?.[0].detalhe || "";
+    expect(detalhe).toContain('"tipoResposta":"social"');
+    expect(detalhe).toContain('"obrigacoesResposta":0');
+    expect(detalhe).toContain('"motivoFallback":"perfil-incompativel"');
   });
 });

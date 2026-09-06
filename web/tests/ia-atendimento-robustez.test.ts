@@ -17,7 +17,8 @@ import { atenderProprietario } from "@/lib/servidor/ia/handlers/atendimento";
 
 const decisao: DecisaoAtendimento = {
   intencao: "consequência de locação por terceiro", objecao: "",
-  estadoConversacional: "negociacao", contextoRelevante: "Sem exclusividade; consequência a confirmar",
+  tipoResposta: "factual", estadoConversacional: "negociacao",
+  contextoRelevante: "Sem exclusividade; consequência a confirmar",
   informacoesJaExplicadas: [], acaoEsperada: "responder", proximoPassoPermitido: "responder a parte conhecida",
   acoesProibidas: [], protocolosAplicaveis: ["Exclusividade"],
   evidencias: [{

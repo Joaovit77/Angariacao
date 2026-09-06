@@ -31,7 +31,8 @@ const lacunaDepoisLocacao = {
   temporalidade: "depois-de-evento" as const, evento: eventoLocacao,
 };
 const decisaoParcial: DecisaoAtendimento = {
-  intencao: "consequência de locação por terceiro", objecao: "", estadoConversacional: "negociacao",
+  intencao: "consequência de locação por terceiro", objecao: "", tipoResposta: "factual",
+  estadoConversacional: "negociacao",
   contextoRelevante: "Condições anteriores à locação conhecidas; consequência por terceiro desconhecida.",
   informacoesJaExplicadas: ["ausência de exclusividade", "anúncio próprio e por outras imobiliárias", "sem custo antes da locação"],
   acaoEsperada: "perguntar", proximoPassoPermitido: "confirmar a consequência desconhecida",

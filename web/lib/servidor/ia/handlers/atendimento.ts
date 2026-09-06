@@ -71,7 +71,9 @@ interface DiagnosticoAtendimento {
   origemHistorico?: string;
   contextoFingerprint?: string;
   confianca?: "alta" | "media" | "baixa";
+  tipoResposta?: "factual" | "social";
   informacoesFaltantes?: number;
+  obrigacoesResposta?: number;
   /** IDs comerciais presentes no catálogo da etapa de decisão. */
   protocolosConsiderados?: string[];
   /** IDs comerciais declarados pela geração e associados sem ambiguidade. */
@@ -131,7 +133,9 @@ function registrarDiagnosticoAtendimento(
       abordagemCorretorDisponivel: base.abordagemCorretorDisponivel ?? null,
       contextoFingerprint: base.contextoFingerprint ?? null,
       confianca: base.confianca ?? null,
+      tipoResposta: base.tipoResposta ?? null,
       informacoesFaltantes: base.informacoesFaltantes ?? null,
+      obrigacoesResposta: base.obrigacoesResposta ?? null,
       fontesEvidenciaDisponiveis: base.fontesEvidenciaDisponiveis ?? null,
       origensEvidencias: base.origensEvidencias ?? [],
       evidenciasReconhecidas: base.evidenciasReconhecidas ?? null,
@@ -422,7 +426,9 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   }
   (diagnostico.validacoesAplicadas ??= []).push("bloqueio-de-seguranca-da-decisao");
   diagnostico.confianca = decisao.nivelConfianca;
+  diagnostico.tipoResposta = decisao.tipoResposta;
   diagnostico.informacoesFaltantes = decisao.informacoesFaltantes.length;
+  diagnostico.obrigacoesResposta = decisao.obrigacoesResposta.length;
   diagnostico.evidenciasReconhecidas = decisao.evidencias.length;
   const motivoDecisao = motivoBloqueioDecisaoAtendimento(decisao);
   if (motivoDecisao) {
