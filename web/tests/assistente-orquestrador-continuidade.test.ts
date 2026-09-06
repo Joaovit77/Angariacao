@@ -9,10 +9,8 @@ const mocks = vi.hoisted(() => ({
   registrarEvento: vi.fn(),
 }));
 
-vi.mock("openai", () => ({
-  default: class OpenAIFalso {
-    responses = { create: mocks.criarResposta };
-  },
+vi.mock("@/lib/servidor/openai-real", () => ({
+  criarClienteOpenAIReal: () => ({ responses: { create: mocks.criarResposta } }),
 }));
 
 vi.mock("@/lib/servidor/assistente/ferramentas", () => ({

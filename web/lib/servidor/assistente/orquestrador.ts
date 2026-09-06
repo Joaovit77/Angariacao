@@ -1,5 +1,4 @@
 import { createHash, randomUUID } from "node:crypto";
-import OpenAI from "openai";
 import { toResponseInputItems } from "openai/lib/responses/ResponseInputItems";
 import type { ResponseInputItem } from "openai/resources/responses/responses";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -14,6 +13,7 @@ import {
 } from "@/lib/assistente/continuidade";
 import { registrarEvento, registrarUsoDaResponsesApi } from "@/lib/servidor/registro";
 import { carregarConfiguracaoIa } from "@/lib/servidor/ia/configuracao";
+import { criarClienteOpenAIReal } from "@/lib/servidor/openai-real";
 import { diagnosticoContextoAssistente, metadadosExecucaoIa } from "@/lib/ia/observabilidade";
 import { instrucoesDoAssistente } from "./conhecimento";
 import {
@@ -325,7 +325,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
   }
   const configuracao = configuracaoIa!;
   const modelo = configuracao.assistente.modelo;
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = criarClienteOpenAIReal({ apiKey: process.env.OPENAI_API_KEY });
   const entrada: ResponseInputItem[] = [{
     role: "developer",
     content: contextoSerializado,

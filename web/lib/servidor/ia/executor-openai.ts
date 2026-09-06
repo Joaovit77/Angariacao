@@ -4,6 +4,7 @@ import { registrarUsoDaResposta } from "@/lib/servidor/registro";
 import { MAX_TOKENS_IA, MODELO_TEXTO_IA } from "./config";
 import type { EsforcoIaPermitido, ModeloIaPermitido } from "@/lib/ia/configuracao";
 import { aplicarSystemPromptAngario } from "@/lib/ia/system-prompt";
+import { exigirAutorizacaoOpenAIReal } from "@/lib/servidor/openai-real";
 
 export interface FormatoEstruturadoOpenAI {
   nome: string;
@@ -59,13 +60,15 @@ export function textoDaResposta(conclusao: OpenAI.Chat.ChatCompletion): string {
  * continuem sob controle do chamador. O uso é registrado antes de qualquer
  * parse, exatamente como na rota original.
  */
-export function criarExecutorOpenAI(
+function criarExecutor(
   openai: OpenAI,
   userId: string | null,
   rota?: { modelo: ModeloIaPermitido; esforco: EsforcoIaPermitido },
+  clienteMockado = false,
 ): ExecutorOpenAI {
   return {
     async executar(pedido) {
+      if (!clienteMockado) exigirAutorizacaoOpenAIReal();
       const modelo = rota?.modelo || MODELO_TEXTO_IA;
       const conclusao = await openai.chat.completions.create({
         model: modelo,
@@ -90,4 +93,28 @@ export function criarExecutorOpenAI(
       return { conclusao, texto: textoDaResposta(conclusao) };
     },
   };
+}
+
+export function criarExecutorOpenAI(
+  openai: OpenAI,
+  userId: string | null,
+  rota?: { modelo: ModeloIaPermitido; esforco: EsforcoIaPermitido },
+): ExecutorOpenAI {
+  return criarExecutor(openai, userId, rota);
+}
+
+/**
+ * Entrada exclusiva para unit tests com um cliente inteiramente falso.
+ * Ela não aceita uso fora do ambiente de testes e nunca deve receber uma
+ * instância real do SDK.
+ */
+export function criarExecutorOpenAIMockParaTeste(
+  openaiMock: OpenAI,
+  userId: string | null,
+  rota?: { modelo: ModeloIaPermitido; esforco: EsforcoIaPermitido },
+): ExecutorOpenAI {
+  if (process.env.NODE_ENV !== "test") {
+    throw new Error("O executor mockado da OpenAI só pode ser usado em NODE_ENV=test.");
+  }
+  return criarExecutor(openaiMock, userId, rota, true);
 }

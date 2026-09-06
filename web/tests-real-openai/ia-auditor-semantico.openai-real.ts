@@ -1,4 +1,3 @@
-import OpenAI from "openai";
 import { describe, expect, it, vi } from "vitest";
 import {
   catalogoFontesAtendimento,
@@ -12,20 +11,25 @@ import {
 import { CONFIGURACAO_IA_PADRAO } from "@/lib/ia/configuracao";
 import { normalizarPerfilComunicacao } from "@/lib/perfilComunicacao";
 import { criarExecutorOpenAI } from "@/lib/servidor/ia/executor-openai";
-import { casosSemanticos, contextoSemantico } from "./fixtures/atendimento-semantico";
+import { criarClienteOpenAIReal } from "@/lib/servidor/openai-real";
+import { casosSemanticos, contextoSemantico } from "../tests/fixtures/atendimento-semantico";
 
 vi.mock("@/lib/servidor/registro", () => ({ registrarUsoDaResposta: vi.fn() }));
 
 // Opt-in: somente o auditor real, com dados sintéticos e sem acesso a banco ou WhatsApp.
 // As expectativas são de produto, fixadas antes da correção; não vêm do modelo.
-describe.skipIf(process.env.IA_AUDITOR_SEMANTICO_REAL !== "true")("aceitação semântica do auditor real", () => {
+describe("aceitação semântica do auditor real", () => {
   for (const repeticao of [1, 2]) {
     describe("repetição " + repeticao, () => {
       it.each(casosSemanticos)("$nome", async (caso) => {
         const rota = CONFIGURACAO_IA_PADRAO.atendimento;
         expect(rota).toEqual({ modelo: "gpt-5.4-mini", esforco: "low" });
         if (!process.env.OPENAI_API_KEY) throw new Error("Chave local do ensaio indisponível.");
-        const executor = criarExecutorOpenAI(new OpenAI({ maxRetries: 0, timeout: 45_000 }), null, rota);
+        const executor = criarExecutorOpenAI(
+          criarClienteOpenAIReal({ maxRetries: 0, timeout: 45_000 }),
+          null,
+          rota,
+        );
         const contexto = caso.contexto ?? contextoSemantico;
         const catalogoFontes = catalogoFontesAtendimento({
           mensagemAtual: caso.pergunta,

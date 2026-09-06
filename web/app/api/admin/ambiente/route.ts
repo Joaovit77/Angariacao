@@ -21,6 +21,7 @@
    responde é "está lá?", não "qual é".
    ================================================================ */
 import { exigirAdmin } from "../_comum";
+import { chamadaOpenAIRealAutorizada } from "@/lib/servidor/openai-real";
 
 /** Uma capacidade do sistema e o que ela deixa de funcionar sem a
     variável. O texto vem daqui e não da tela porque quem lê "OPENAI_API_KEY
@@ -92,8 +93,8 @@ export async function GET(request: Request): Promise<Response> {
     {
       chave: "openai",
       nome: "IA (OpenAI)",
-      variavel: "OPENAI_API_KEY",
-      configurado: tem("OPENAI_API_KEY"),
+      variavel: "OPENAI_API_KEY (+ ALLOW_REAL_OPENAI fora de produção)",
+      configurado: tem("OPENAI_API_KEY") && chamadaOpenAIRealAutorizada(),
       semEla: "Sem transcrição de áudio, sem classificação de resposta e sem rascunho.",
       essencial: false,
     },

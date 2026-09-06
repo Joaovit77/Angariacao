@@ -1,8 +1,11 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import OpenAI from "openai";
 import { CONFIGURACAO_COMPARAVEIS_MERCADO } from "@/lib/calculo/comparaveisMercado";
 import { registrarUsoDaResposta } from "./registro";
+import {
+  chamadaOpenAIRealAutorizada,
+  criarClienteOpenAIReal,
+} from "./openai-real";
 
 export function hashConteudoEmbedding(texto: string): string {
   return createHash("sha256").update(texto, "utf8").digest("hex");
@@ -22,8 +25,8 @@ export async function gerarEmbeddingsDeImoveis(
 ): Promise<number[][]> {
   if (!textos.length) return [];
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return [];
-  const cliente = new OpenAI({ apiKey });
+  if (!apiKey || !chamadaOpenAIRealAutorizada()) return [];
+  const cliente = criarClienteOpenAIReal({ apiKey });
   const resultado: number[][] = [];
   for (let inicio = 0; inicio < textos.length; inicio += CONFIGURACAO_COMPARAVEIS_MERCADO.maximoTextosPorLote) {
     const lote = textos.slice(inicio, inicio + CONFIGURACAO_COMPARAVEIS_MERCADO.maximoTextosPorLote);

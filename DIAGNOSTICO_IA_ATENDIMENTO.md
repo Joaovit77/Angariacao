@@ -161,7 +161,7 @@ O LD-288 atual já possui três mensagens posteriores do corretor. Sem recorte h
 não encontra entrada pendente e nenhuma geração ocorre. Isso é comportamento atual intencional,
 não evidência de falha de contexto da pergunta original.
 
-O ensaio opt-in `web/tests/ia-atendimento-reproducao.test.ts` lê a fotografia do imóvel e protocolos
+O ensaio manual isolado `web/tests-real-openai/ia-atendimento-reproducao.openai-real.ts` lê a fotografia do imóvel e protocolos
 com filtro explícito pelo tenant autorizado. As consultas são somente de leitura; o handler recebe
 um adaptador em memória sem métodos de escrita. Registro de eventos, consumo e persistência de
 sugestão estão desativados no ensaio. Esse adaptador não valida RLS real nem substitui a UI.

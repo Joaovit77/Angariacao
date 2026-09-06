@@ -107,6 +107,12 @@ npm run build      # build de produção
 Precisa de um projeto Supabase real (schema + `.env.local`) para auth e dados — não há modo
 offline/mock. Para dados de teste, use o `seed-teste.mjs` da raiz.
 
+`npm test` executa somente testes locais com mocks/fixtures. Ensaios pagos da OpenAI vivem fora da
+árvore comum, em `web/tests-real-openai/`, e possuem um runner manual separado. Eles nunca carregam
+`.env.local`: a chave e `ALLOW_REAL_OPENAI=1` precisam ser fornecidos deliberadamente por uma
+pessoa. O único comando agregado é `npm run test:openai-real:PERIGOSO`; CI e Codex são bloqueados
+independentemente dessa variável.
+
 > **Atenção — Next 16 tem breaking changes** vs. versões anteriores. Antes de escrever código de
 > app, consultar os docs empacotados em `web/node_modules/next/dist/docs/` (aviso do
 > `web/AGENTS.md`). Duas regras do React Compiler que já morderam durante a migração: **não** chamar
@@ -1393,6 +1399,14 @@ rota em outro monólito. Operações ainda não extraídas permanecem no fluxo l
 
 A chave (`OPENAI_API_KEY`, **sem** `NEXT_PUBLIC_`) é cobrada por token consumido. Sem ela o app
 não quebra: os botões respondem "não configurado" e o resto segue igual.
+
+A chave sozinha nunca habilita chamadas locais, nem mesmo com `NODE_ENV=production`: fora da
+Production real da Vercel também é obrigatório `ALLOW_REAL_OPENAI=1`. A autorização automática de
+produção exige simultaneamente os sinais de runtime `VERCEL=1` e `VERCEL_ENV=production`; Preview
+continua bloqueado sem opt-in. `lib/servidor/openai-real.ts` centraliza essa decisão, bloqueia
+CI/Codex e é o único ponto autorizado a construir o cliente real. O executor repete a checagem
+imediatamente antes de cada chamada. Testes unitários usam um executor mockado exclusivo de
+`NODE_ENV=test`.
 
 O executor OpenAI está isolado em `lib/servidor/ia/executor-openai.ts`; prompts, esquemas e contratos
 de domínio não importam o SDK. Na ausência de uma configuração publicada, o padrão seguro continua

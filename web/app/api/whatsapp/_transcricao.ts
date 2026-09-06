@@ -28,6 +28,7 @@ import {
   TIMEOUT_TRANSCRICAO_MS,
   transcricaoUtil,
 } from "@/lib/calculo/transcricao";
+import { chamadaOpenAIRealAutorizada } from "@/lib/servidor/openai-real";
 
 /**
  * Modelo de transcrição.
@@ -162,7 +163,9 @@ export interface PedidoTranscricao {
  * `esperaTranscricaoMs`, que por isso é curta.
  */
 export async function transcreverAudio(p: PedidoTranscricao): Promise<ResultadoTranscricao> {
-  if (!p.chaveOpenai || !p.serverUrl || !p.token) return { ok: false, falha: "nao-configurado" };
+  if (!p.chaveOpenai || !p.serverUrl || !p.token || !chamadaOpenAIRealAutorizada()) {
+    return { ok: false, falha: "nao-configurado" };
+  }
 
   const audio = await baixarAudio(p.serverUrl, p.instancia, p.token, p.mensagemId);
   if ("falha" in audio) return { ok: false, falha: audio.falha };

@@ -1,4 +1,3 @@
-import OpenAI from "openai";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
 import { writeFile } from "node:fs/promises";
@@ -11,10 +10,11 @@ import { atenderProprietario } from "@/lib/servidor/ia/handlers/atendimento";
 import { criarExecutorOpenAI } from "@/lib/servidor/ia/executor-openai";
 import { carregarConfiguracaoIa } from "@/lib/servidor/ia/configuracao";
 import { registrarEvento } from "@/lib/servidor/registro";
+import { criarClienteOpenAIReal } from "@/lib/servidor/openai-real";
 
 /** Comparação opt-in, com fotografia única, leitura por tenant e sem persistência de sugestões.
  * O relatório de revisão pode conter rascunhos; logs e métricas nunca contêm conteúdo privado. */
-describe.skipIf(process.env.IA_COMPARACAO_REAL !== "true")("comparação controlada de atendimento", () => {
+describe("comparação controlada de atendimento", () => {
   it("compara modelo atual e Terra com contextos idênticos e duas repetições", async () => {
     const userId = process.env.IA_REPRODUCAO_USER_ID;
     const imovelId = process.env.IA_REPRODUCAO_IMOVEL_ID;
@@ -75,7 +75,11 @@ describe.skipIf(process.env.IA_COMPARACAO_REAL !== "true")("comparação control
             return consulta;
           } } as unknown as SupabaseClient;
           const rota = { modelo, esforco: modelo === configuracao.atendimento.modelo ? configuracao.atendimento.esforco : "low" as const };
-          const executor = criarExecutorOpenAI(new OpenAI({ maxRetries: 0, timeout: 45_000 }), null, rota);
+          const executor = criarExecutorOpenAI(
+            criarClienteOpenAIReal({ maxRetries: 0, timeout: 45_000 }),
+            null,
+            rota,
+          );
           const inicio = performance.now();
           const revisao: Array<Record<string, unknown>> = [];
           let chamadas = 0, entrada = 0, saida = 0, cache = 0, geracoes = 0;
