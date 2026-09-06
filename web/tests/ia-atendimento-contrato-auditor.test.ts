@@ -24,7 +24,6 @@ const afirmacaoAtual: AfirmacaoAtendimento = {
 };
 const validacaoAprovada: ValidacaoAtendimento = {
   problemas: [],
-  afirmacoesAuditadas: [afirmacaoAtual],
 };
 
 const semCampo = (objeto: object, campo: string) => {
@@ -61,65 +60,26 @@ describe("contrato estrutural do auditor", () => {
     validarFechamentoRecursivo(ESQUEMA_VALIDACAO_ATENDIMENTO);
   });
 
-  it("aceita aprovação legítima sem afirmações e sem preencher estrutura fictícia", () => {
-    const aprovadoSemFatos = { problemas: [], afirmacoesAuditadas: [] } satisfies ValidacaoAtendimento;
-    expect(normalizarValidacaoAtendimento(aprovadoSemFatos)).toEqual(aprovadoSemFatos);
+  it("aceita aprovação residual sem reconstruir afirmações já validadas", () => {
+    const aprovadoSemProblemas = { problemas: [] } satisfies ValidacaoAtendimento;
+    expect(normalizarValidacaoAtendimento(aprovadoSemProblemas)).toEqual(aprovadoSemProblemas);
   });
 
   it.each([
-    ["campo obrigatório ausente", semCampo(validacaoAprovada, "afirmacoesAuditadas")],
+    ["campo obrigatório ausente", semCampo(validacaoAprovada, "problemas")],
     ["campo extra", { ...validacaoAprovada, explicacao: "não permitida" }],
-    ["enum inesperado", {
-      ...validacaoAprovada,
-      afirmacoesAuditadas: [{ ...afirmacaoAtual, temporalidade: "presente" }],
-    }],
-    ["null onde não é permitido", { ...validacaoAprovada, afirmacoesAuditadas: null }],
-    ["string vazia", {
-      ...validacaoAprovada,
-      afirmacoesAuditadas: [{ ...afirmacaoAtual, descricao: "   " }],
-    }],
-    ["array ausente", {
-      ...validacaoAprovada,
-      afirmacoesAuditadas: [semCampo(afirmacaoAtual as unknown as Record<string, unknown>, "evidencias")],
-    }],
-    ["tipo incorreto", { ...validacaoAprovada, problemas: "informacao-sem-fonte" }],
-    ["evidence ID inválido", {
-      ...validacaoAprovada,
-      afirmacoesAuditadas: [{ ...afirmacaoAtual, evidencias: ["evidência-livre"] }],
-    }],
-    ["claim ID inesperado", {
-      ...validacaoAprovada,
-      afirmacoesAuditadas: [{ ...afirmacaoAtual, id: "claim_1" }],
-    }],
-    ["estrutura aninhada diferente", {
-      ...validacaoAprovada,
-      afirmacoesAuditadas: [{ ...afirmacaoAtual, evidencias: [{ id: "evidencia_1" }] }],
-    }],
-    ["evento preenchido em temporalidade não relativa", {
-      ...validacaoAprovada,
-      afirmacoesAuditadas: [{ ...afirmacaoAtual, evento: "reforma" }],
-    }],
-    ["evento ausente em temporalidade relativa", {
-      ...validacaoAprovada,
-      afirmacoesAuditadas: [{
-        ...afirmacaoAtual,
-        temporalidade: "depois-de-evento",
-        evento: "",
-      }],
-    }],
+    ["código determinístico fora do auditor", { problemas: ["informacao-sem-fonte"] }],
+    ["null onde não é permitido", { problemas: null }],
+    ["tipo incorreto", { problemas: "desvio-de-assunto" }],
   ])("rejeita %s", (_nome, valor) => {
     expect(atendeSchemaAtendimento(valor, ESQUEMA_VALIDACAO_ATENDIMENTO)).toBe(false);
     expect(normalizarValidacaoAtendimento(valor)).toBeNull();
     expect(motivoReprovacaoValidacaoAtendimento(valor)).toBeUndefined();
   });
 
-  it("não cria divergência local para referências repetidas permitidas pelo schema", () => {
+  it("não cria divergência local para códigos repetidos permitidos pelo schema", () => {
     const repetida = {
-      ...validacaoAprovada,
-      afirmacoesAuditadas: [{
-        ...afirmacaoAtual,
-        evidencias: ["evidencia_1", "evidencia_1"],
-      }],
+      problemas: ["desvio-de-assunto", "desvio-de-assunto"],
     } satisfies ValidacaoAtendimento;
     expect(atendeSchemaAtendimento(repetida, ESQUEMA_VALIDACAO_ATENDIMENTO)).toBe(true);
     expect(normalizarValidacaoAtendimento(repetida)).toEqual(repetida);
@@ -129,6 +89,7 @@ describe("contrato estrutural do auditor", () => {
     const geracao: GeracaoAtendimento = {
       mensagem: "O imóvel tem duas vagas.",
       protocolosUsados: [],
+      obrigacoesCobertas: [],
       afirmacoes: [afirmacaoAtual],
     };
     const prompt = promptValidarAtendimento(
@@ -138,10 +99,10 @@ describe("contrato estrutural do auditor", () => {
       [],
       geracao,
     );
-    expect(prompt).toContain("afirmacoesAuditadas");
-    expect(prompt).toContain("evidencia_N");
-    expect(prompt).toContain("tempo e evento expressos no texto");
-    expect(ESQUEMA_VALIDACAO_ATENDIMENTO.required).toEqual(["problemas", "afirmacoesAuditadas"]);
+    expect(prompt).toContain("camada determinística já validou");
+    expect(prompt).toContain("afirmacao-nao-declarada");
+    expect(prompt).not.toContain("afirmacoesAuditadas");
+    expect(ESQUEMA_VALIDACAO_ATENDIMENTO.required).toEqual(["problemas"]);
   });
 });
 
@@ -170,6 +131,7 @@ const decisao: DecisaoAtendimento = {
     temporalidade: "atual",
     evento: "",
   }],
+  obrigacoesResposta: [],
   informacoesFaltantes: [],
   nivelConfianca: "alta",
   precisaIntervencaoHumana: false,
@@ -189,19 +151,11 @@ describe("separação entre estrutura e segurança referencial", () => {
 
   it("bloqueia evidence ID sintaticamente válido, mas inexistente", () => {
     const inexistente = { ...afirmacaoAtual, evidencias: ["evidencia_99"] };
-    expect(normalizarValidacaoAtendimento({
-      problemas: [],
-      afirmacoesAuditadas: [inexistente],
-    })).not.toBeNull();
     expect(bloquear(inexistente)).toBe("informacao-sem-fonte");
   });
 
   it("bloqueia claim factual sem evidência mesmo quando a estrutura JSON é válida", () => {
     const semEvidencia = { ...afirmacaoAtual, evidencias: [] };
-    expect(normalizarValidacaoAtendimento({
-      problemas: [],
-      afirmacoesAuditadas: [semEvidencia],
-    })).not.toBeNull();
     expect(bloquear(semEvidencia)).toBe("informacao-sem-fonte");
   });
 });

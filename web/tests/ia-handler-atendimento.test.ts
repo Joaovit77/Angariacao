@@ -120,6 +120,9 @@ const decisaoTaxa = {
     temporalidade: "atemporal",
     evento: "",
   }],
+  obrigacoesResposta: [{
+    id: "obrigacao_1", evidenciaId: "evidencia_1", necessidade: "obrigatoria",
+  }],
   informacoesFaltantes: [],
   nivelConfianca: "alta",
   precisaIntervencaoHumana: false,
@@ -136,12 +139,11 @@ const afirmacaoTaxa = {
 const geracaoTaxa = {
   mensagem: "A taxa é de 10%.",
   protocolosUsados: ["Taxa"],
+  obrigacoesCobertas: ["obrigacao_1"],
   afirmacoes: [afirmacaoTaxa],
 };
 const geracaoConfirmacao = {
-  mensagem: "Posso confirmar essa informação para você.",
-  protocolosUsados: [],
-  afirmacoes: [],
+  ...geracaoTaxa,
 };
 
 describe("handler especializado de atendimento", () => {
@@ -186,7 +188,7 @@ describe("handler especializado de atendimento", () => {
       })
       .mockResolvedValueOnce({
         conclusao: {} as never,
-        texto: JSON.stringify({ problemas: [], afirmacoesAuditadas: [afirmacaoTaxa] }),
+        texto: JSON.stringify({ problemas: [] }),
       });
 
     const resposta = await atenderProprietario({
@@ -250,7 +252,7 @@ describe("handler especializado de atendimento", () => {
       })
       .mockResolvedValueOnce({
         conclusao: {} as never,
-        texto: JSON.stringify({ problemas: [], afirmacoesAuditadas: [afirmacaoTaxa] }),
+        texto: JSON.stringify({ problemas: [] }),
       });
     const supabase = supabaseFalso();
 
@@ -275,7 +277,7 @@ describe("handler especializado de atendimento", () => {
   });
 
   it("regenera do zero quando a primeira geração declara protocolo não autorizado", async () => {
-    const validacao = { problemas: [], afirmacoesAuditadas: [] };
+    const validacao = { problemas: [] };
     const executar = vi
       .fn<ExecutorOpenAI["executar"]>()
       // A primeira geração cita um protocolo que não foi autorizado.
@@ -303,8 +305,8 @@ describe("handler especializado de atendimento", () => {
     expect(resposta.status).toBe(200);
     expect(await resposta.json()).toEqual({
       ok: true,
-      rascunho: "Posso confirmar essa informação para você.",
-      protocolosUsados: [],
+      rascunho: "A taxa é de 10%.",
+      protocolosUsados: ["Taxa"],
       fallbackAplicado: true,
       sugestaoId: "sugestao-1",
     });
@@ -327,7 +329,7 @@ describe("handler especializado de atendimento", () => {
       '"contextoFingerprint":"',
     );
     expect(detalhe).toContain(
-      '"protocolosAplicados":[]',
+      '"protocolosAplicados":["protocolo-taxa"]',
     );
     expect(detalhe).toContain(
       '"protocolosConsiderados":["protocolo-taxa"]',

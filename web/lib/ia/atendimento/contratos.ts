@@ -12,6 +12,7 @@ export const MAX_MENSAGENS_ANTIGAS_RELEVANTES = 4;
 export const MAX_PROTOCOLOS_APLICAVEIS = 5;
 export const MAX_EVIDENCIAS_ATENDIMENTO = 16;
 export const MAX_AFIRMACOES_ATENDIMENTO = 12;
+export const MAX_OBRIGACOES_RESPOSTA_ATENDIMENTO = 12;
 
 export const TEMPORALIDADES_ATENDIMENTO = [
   "atual",
@@ -76,6 +77,13 @@ export interface AfirmacaoAtendimento {
   evento: string;
 }
 
+/** Evidência relevante para a pergunta atual e sua exigência de cobertura. */
+export interface ObrigacaoRespostaAtendimento {
+  id: string;
+  evidenciaId: string;
+  necessidade: "obrigatoria" | "opcional";
+}
+
 export interface ProtocoloPrompt {
   titulo: string;
   conteudo: string;
@@ -129,6 +137,7 @@ export interface DecisaoAtendimento {
   >;
   protocolosAplicaveis: string[];
   evidencias: EvidenciaAtendimento[];
+  obrigacoesResposta: ObrigacaoRespostaAtendimento[];
   informacoesFaltantes: LacunaAtendimento[];
   nivelConfianca: "alta" | "media" | "baixa";
   precisaIntervencaoHumana: boolean;
@@ -136,20 +145,18 @@ export interface DecisaoAtendimento {
 }
 
 export const PROBLEMAS_VALIDACAO_ATENDIMENTO = [
-  "informacao-sem-fonte", "cobranca-sem-fonte", "contradicao-protocolo",
-  "entidade-sem-fonte", "omissao-parte-comprovada", "desvio-de-assunto",
-  "protocolo-inadequado", "acao-incompativel", "perfil-incompativel",
+  "afirmacao-nao-declarada", "contradicao-protocolo", "entidade-sem-fonte",
+  "desvio-de-assunto", "acao-incompativel", "perfil-incompativel",
   "resposta-longa", "apresentacao-repetida", "intervencao-humana",
 ] as const;
 export type ProblemaValidacaoAtendimento = (typeof PROBLEMAS_VALIDACAO_ATENDIMENTO)[number];
 export interface ValidacaoAtendimento {
   problemas: ProblemaValidacaoAtendimento[];
-  /** Leitura independente do auditor sobre o que o texto realmente afirma. */
-  afirmacoesAuditadas: AfirmacaoAtendimento[];
 }
 export interface GeracaoAtendimento {
   mensagem: string;
   protocolosUsados: string[];
+  obrigacoesCobertas: string[];
   afirmacoes: AfirmacaoAtendimento[];
 }
 
@@ -231,6 +238,17 @@ const ESQUEMA_AFIRMACAO_ATENDIMENTO = esquemaComEscopoTemporalAtendimento(
   ["descricao", "tipo", "evidencias", "lacunas", "temporalidade", "evento"],
 );
 
+const ESQUEMA_OBRIGACAO_RESPOSTA_ATENDIMENTO = {
+  type: "object",
+  properties: {
+    id: { type: "string", pattern: "^obrigacao_[1-9][0-9]*$" },
+    evidenciaId: { type: "string", pattern: "^evidencia_[1-9][0-9]*$" },
+    necessidade: { type: "string", enum: ["obrigatoria", "opcional"] },
+  },
+  required: ["id", "evidenciaId", "necessidade"],
+  additionalProperties: false,
+} as const;
+
 export const ESQUEMA_RASCUNHO = {
   type: "object",
   properties: {
@@ -284,6 +302,11 @@ export const ESQUEMA_DECISAO_ATENDIMENTO = {
       items: ESQUEMA_EVIDENCIA_ATENDIMENTO,
       maxItems: MAX_EVIDENCIAS_ATENDIMENTO,
     },
+    obrigacoesResposta: {
+      type: "array",
+      items: ESQUEMA_OBRIGACAO_RESPOSTA_ATENDIMENTO,
+      maxItems: MAX_OBRIGACOES_RESPOSTA_ATENDIMENTO,
+    },
     informacoesFaltantes: {
       type: "array",
       items: ESQUEMA_LACUNA_ATENDIMENTO,
@@ -304,6 +327,7 @@ export const ESQUEMA_DECISAO_ATENDIMENTO = {
     "acoesProibidas",
     "protocolosAplicaveis",
     "evidencias",
+    "obrigacoesResposta",
     "informacoesFaltantes",
     "nivelConfianca",
     "precisaIntervencaoHumana",
@@ -317,6 +341,13 @@ export const ESQUEMA_GERACAO_ATENDIMENTO = {
   properties: {
     mensagem: { type: "string" },
     protocolosUsados: { type: "array", items: { type: "string" } },
+    obrigacoesCobertas: {
+      type: "array",
+      items: { type: "string", pattern: "^obrigacao_[1-9][0-9]*$" },
+      maxItems: MAX_OBRIGACOES_RESPOSTA_ATENDIMENTO,
+      description:
+        "IDs das obrigações de resposta efetivamente cobertas pela mensagem e por uma afirmação factual que referencia a evidência da obrigação.",
+    },
     afirmacoes: {
       type: "array",
       description:
@@ -325,7 +356,7 @@ export const ESQUEMA_GERACAO_ATENDIMENTO = {
       maxItems: MAX_AFIRMACOES_ATENDIMENTO,
     },
   },
-  required: ["mensagem", "protocolosUsados", "afirmacoes"],
+  required: ["mensagem", "protocolosUsados", "obrigacoesCobertas", "afirmacoes"],
   additionalProperties: false,
 } as const;
 
@@ -334,18 +365,11 @@ export const ESQUEMA_VALIDACAO_ATENDIMENTO = {
   properties: {
     problemas: {
       type: "array",
-      description: "Códigos de todas as violações identificadas. Lista vazia somente quando a resposta usa a parte relevante comprovada e cada afirmação respeita a temporalidade da fonte. Omissão ou esclarecimento evasivo apesar de fatos úteis: omissao-parte-comprovada. Histórico convertido em continuidade ou estado presente sem evidência: informacao-sem-fonte (cobranca-sem-fonte se financeiro). Retomar fato relevante não é apresentacao-repetida. Relato qualificado do passado com confirmação do presente é permitido.",
+      description: "Códigos das violações semânticas residuais. Grounding, temporalidade e cobertura obrigatória já são validados deterministicamente antes desta etapa. Use afirmacao-nao-declarada quando o texto comunicar fato, tempo ou consequência ausente ou diferente de sugestao.afirmacoes.",
       items: { type: "string", enum: PROBLEMAS_VALIDACAO_ATENDIMENTO },
       maxItems: PROBLEMAS_VALIDACAO_ATENDIMENTO.length,
     },
-    afirmacoesAuditadas: {
-      type: "array",
-      description:
-        "Afirmações factuais ou temporais que o texto realmente faz, extraídas de forma independente. Não copie cegamente afirmacoes da geração. Cada item deve apontar para evidências ou lacunas existentes e refletir o tempo/evento expresso no texto.",
-      items: ESQUEMA_AFIRMACAO_ATENDIMENTO,
-      maxItems: MAX_AFIRMACOES_ATENDIMENTO,
-    },
   },
-  required: ["problemas", "afirmacoesAuditadas"],
+  required: ["problemas"],
   additionalProperties: false,
 } as const;

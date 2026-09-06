@@ -36,12 +36,14 @@ const base: DecisaoAtendimento = {
   contextoRelevante: "", informacoesJaExplicadas: [], acaoEsperada: "responder",
   proximoPassoPermitido: "responder ao assunto atual", acoesProibidas: [],
   protocolosAplicaveis: [], evidencias: [],
+  obrigacoesResposta: [],
   informacoesFaltantes: [], nivelConfianca: "alta",
   precisaIntervencaoHumana: false, podeResponderComSeguranca: true,
 };
 const geracaoNeutra = (mensagem: string): GeracaoAtendimento => ({
   mensagem,
   protocolosUsados: [],
+  obrigacoesCobertas: [],
   afirmacoes: [],
 });
 const fonteTaxa: FonteEvidenciaAtendimento = {
@@ -262,8 +264,8 @@ describe("contratos e barreiras", () => {
   });
 
   it("preserva o motivo especifico de uma reprovacao do validador", () => {
-    const v = { problemas: ["informacao-sem-fonte"], afirmacoesAuditadas: [] };
-    expect(motivoReprovacaoValidacaoAtendimento(v)).toBe("informacao-sem-fonte");
+    const v = { problemas: ["afirmacao-nao-declarada"] };
+    expect(motivoReprovacaoValidacaoAtendimento(v)).toBe("afirmacao-nao-declarada");
   });
 });
 
@@ -372,7 +374,7 @@ describe("comportamento conversacional", () => {
     expect(PROMPT_BASE_ATENDIMENTO).toContain("fonte conversacional atribuída");
     expect(gerar).toContain("use [] quando a resposta for apenas social, neutra ou baseada na fala atribuída");
     expect(gerar).toContain("não confirme essa declaração como estado oficial");
-    expect(validar).toContain("Resposta social ou neutra sem nova afirmação factual não precisa de protocolo");
+    expect(validar).toContain("camada determinística já validou");
   });
 
   it("fallback seguro regenera sem carregar a sugestão reprovada", () => {

@@ -25,6 +25,9 @@ const decisao: DecisaoAtendimento = {
     fato: "antes da locação não há exclusividade e o proprietário pode anunciar com outras imobiliárias",
     temporalidade: "antes-de-evento", evento: "locação concluída por outra imobiliária",
   }],
+  obrigacoesResposta: [{
+    id: "obrigacao_1", evidenciaId: "evidencia_1", necessidade: "obrigatoria",
+  }],
   informacoesFaltantes: [{
     id: "lacuna_1", descricao: "consequência da locação por terceiro",
     temporalidade: "depois-de-evento", evento: "locação concluída por outra imobiliária",
@@ -52,6 +55,7 @@ const afirmacoesParciais = [
 const parcial = {
   mensagem: "Você pode anunciar com outras imobiliárias, pois não há exclusividade antes da locação. Vou confirmar como fica se a locação ocorrer por outra empresa.",
   protocolosUsados: ["Exclusividade"],
+  obrigacoesCobertas: ["obrigacao_1"],
   afirmacoes: afirmacoesParciais,
 };
 const geracaoComSuporte = (mensagem: string, protocolosUsados = ["Exclusividade"]) => ({
@@ -62,12 +66,13 @@ const geracaoComSuporte = (mensagem: string, protocolosUsados = ["Exclusividade"
 const geracaoDeIncerteza = (mensagem: string) => ({
   mensagem,
   protocolosUsados: [],
+  obrigacoesCobertas: [],
   afirmacoes: [afirmacoesParciais[1]],
 });
 const auditoria = (
   problemas: string[] = [],
-  afirmacoesAuditadas = afirmacoesParciais,
-) => ({ problemas, afirmacoesAuditadas });
+  _afirmacoesIgnoradas = afirmacoesParciais,
+) => ({ problemas });
 
 function banco(semImovel = false, erro = false): SupabaseClient {
   const dados: Record<string, unknown> = {
@@ -151,7 +156,7 @@ describe("contrato HTTP e limite de regeneração", () => {
     expect(resultado.executar).toHaveBeenCalledTimes(3);
   });
   it("não bloqueia confirmação de taxa por palavra isolada e exige auditoria", async () => {
-    const limitada = { ...decisao, protocolosAplicaveis: [], acoesProibidas: ["explicar-condicoes"] };
+    const limitada = { ...decisao, protocolosAplicaveis: [], obrigacoesResposta: [], acoesProibidas: ["explicar-condicoes"] };
     const resposta = geracaoDeIncerteza(
       "Entendi. Vou confirmar se existe essa taxa de cancelamento antes da locação e te retorno com a informação certa.",
     );
@@ -173,9 +178,9 @@ describe("contrato HTTP e limite de regeneração", () => {
     expect(resultado.executar).toHaveBeenCalledTimes(5);
   });
   it.each([
-    ["cobranca-sem-fonte", "Se outra imobiliária alugar, não haverá nenhuma multa nem taxa."],
+    ["afirmacao-nao-declarada", "Se outra imobiliária alugar, não haverá nenhuma multa nem taxa."],
     ["entidade-sem-fonte", "O Departamento de Contratos Especiais vai resolver isso para você."],
-    ["informacao-sem-fonte", "Se outra imobiliária alugar, eu encerro a divulgação automaticamente."],
+    ["contradicao-protocolo", "Se outra imobiliária alugar, eu encerro a divulgação automaticamente."],
   ])("reescreve %s sem entregar a afirmação recusada", async (problema, mensagem) => {
     const resultado = await executarSaidas([decisao, geracaoComSuporte(mensagem),
       auditoria([problema], []), parcial, auditoria()]);
@@ -186,13 +191,13 @@ describe("contrato HTTP e limite de regeneração", () => {
   });
   it("regenera uma vez após omissão e valida a segunda sugestão", async () => {
     const resultado = await executarSaidas([decisao, geracaoDeIncerteza("Vou confirmar tudo."),
-      auditoria(["omissao-parte-comprovada"], []), parcial, auditoria()]);
+      parcial, auditoria()]);
     expect(resultado.resposta.status).toBe(200);
     expect(resultado.corpo.fallbackAplicado).toBe(true);
-    expect(resultado.executar).toHaveBeenCalledTimes(5);
+    expect(resultado.executar).toHaveBeenCalledTimes(4);
   });
   it("termina em 422 depois de duas rejeições sem sexta chamada ou terceira geração", async () => {
-    const resultado = await executarSaidas([decisao, parcial, auditoria(["cobranca-sem-fonte"], []),
+    const resultado = await executarSaidas([decisao, parcial, auditoria(["contradicao-protocolo"], []),
       parcial, auditoria(["entidade-sem-fonte"], [])]);
     expect(resultado.resposta.status).toBe(422);
     expect(resultado.corpo.falha).toBe("geracao-reprovada");
@@ -239,7 +244,6 @@ describe("regressão semântica no fluxo de rascunho", () => {
     const evasiva = "Entendi, Joao. Esse ponto específico eu vou confirmar pra te passar certinho: se a outra imobiliária locar antes, como fica a situação daqui.";
     const decisaoSemProtocolo = {
       ...decisao,
-      protocolosAplicaveis: [],
       informacoesJaExplicadas: [],
     };
     const executar = vi.fn<ExecutorOpenAI["executar"]>(async (pedido) => {
@@ -256,10 +260,7 @@ describe("regressão semântica no fluxo de rascunho", () => {
       }
       if (pedido.tipo === "rascunhar-resposta-validacao") {
         return {
-          texto: JSON.stringify({
-            problemas: recebeuExclusividade ? ["omissao-parte-comprovada"] : [],
-            afirmacoesAuditadas: [],
-          }),
+          texto: JSON.stringify({ problemas: [] }),
           conclusao: {} as never,
         };
       }
@@ -274,10 +275,7 @@ describe("regressão semântica no fluxo de rascunho", () => {
         };
       }
       return {
-        texto: JSON.stringify({
-          problemas: recebeuExclusividade ? [] : ["omissao-parte-comprovada"],
-          afirmacoesAuditadas: recebeuExclusividade ? afirmacoesParciais : [],
-        }),
+        texto: JSON.stringify({ problemas: [] }),
         conclusao: {} as never,
       };
     });
@@ -300,7 +298,6 @@ describe("regressão semântica no fluxo de rascunho", () => {
     expect(executar.mock.calls.map(([pedido]) => pedido.tipo)).toEqual([
       "rascunhar-resposta-decisao",
       "rascunhar-resposta-geracao",
-      "rascunhar-resposta-validacao",
       "rascunhar-resposta-geracao-fallback",
       "rascunhar-resposta-validacao-fallback",
     ]);
@@ -308,24 +305,35 @@ describe("regressão semântica no fluxo de rascunho", () => {
     expect(executar.mock.calls[3][0].mensagens[1].content).toContain("Não há exclusividade antes da locação");
   });
 
+  const geracaoDeterministicamenteRuim = (codigo: string, mensagem: string) => codigo === "omissao-parte-comprovada"
+    ? geracaoDeIncerteza(mensagem)
+    : {
+        ...parcial,
+        mensagem,
+        afirmacoes: [{
+          ...afirmacoesParciais[0],
+          temporalidade: "depois-de-evento" as const,
+        }],
+      };
+
   it.each([
     ["omissao-parte-comprovada", "Vou verificar e te retorno."],
     ["informacao-sem-fonte", "Se outra imobiliária alugar, o imóvel pode seguir com a divulgação por lá também."],
   ])("recupera %s uma vez, preservando fontes e diagnóstico", async (codigo, mensagem) => {
-    const resultado = await executarSaidas([decisao, geracaoComSuporte(mensagem),
-      auditoria([codigo], []), parcial, auditoria()]);
+    const ruim = geracaoDeterministicamenteRuim(codigo, mensagem);
+    const resultado = await executarSaidas([decisao, ruim, parcial, auditoria()]);
     expect(resultado.resposta.status).toBe(200);
     expect(resultado.corpo.rascunho).toBe(parcial.mensagem);
     expect(resultado.corpo.fallbackAplicado).toBe(true);
     const pedidos = resultado.executar.mock.calls.map(([pedido]) => pedido);
     expect(pedidos.map(p => p.tipo)).toEqual([
-      "rascunhar-resposta-decisao", "rascunhar-resposta-geracao", "rascunhar-resposta-validacao",
+      "rascunhar-resposta-decisao", "rascunhar-resposta-geracao",
       "rascunhar-resposta-geracao-fallback", "rascunhar-resposta-validacao-fallback",
     ]);
-    const fallback = String(pedidos[3].mensagens[1].content);
+    const fallback = String(pedidos[2].mensagens[1].content);
     expect(fallback).toContain(codigo);
     expect(fallback).not.toContain(mensagem);
-    for (const indice of [1, 2, 3, 4]) {
+    for (const indice of [1, 2, 3]) {
       const conteudo = String(pedidos[indice].mensagens[1].content);
       expect(conteudo).toContain(protocolos[0].conteudo);
       expect(conteudo).toContain("Se por acaso a outra imobiliária conseguir alugar");
@@ -341,13 +349,13 @@ describe("regressão semântica no fluxo de rascunho", () => {
     ["omissao-parte-comprovada", "Vou verificar e te retorno."],
     ["informacao-sem-fonte", "Se outra imobiliária alugar, o imóvel pode seguir com a divulgação por lá também."],
   ])("bloqueia a segunda ocorrência de %s sem entregar rascunho", async (codigo, mensagem) => {
-    const ruim = geracaoComSuporte(mensagem);
+    const ruim = geracaoDeterministicamenteRuim(codigo, mensagem);
     const resultado = await executarSaidas([
-      decisao, ruim, auditoria([codigo], []), ruim, auditoria([codigo], []),
+      decisao, ruim, ruim,
     ]);
     expect(resultado.resposta.status).toBe(422);
     expect(resultado.corpo.rascunho).toBeUndefined();
-    expect(resultado.executar).toHaveBeenCalledTimes(5);
+    expect(resultado.executar).toHaveBeenCalledTimes(3);
     expect(resultado.executar.mock.calls.filter(([p]) => p.tipo.includes("geracao"))).toHaveLength(2);
   });
 });

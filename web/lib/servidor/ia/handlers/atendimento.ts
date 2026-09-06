@@ -12,7 +12,6 @@ import {
   conversaAtendimento,
   contextoAtendimentoDoImovel,
   motivoBloqueioDecisaoAtendimento,
-  reconciliarValidacaoAtendimentoComEvidencias,
   motivoBloqueioRascunhoDeterministico,
   motivoReprovacaoValidacaoAtendimento,
   normalizarValidacaoAtendimento,
@@ -560,6 +559,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
         decisao,
         perfil,
         catalogoFontes,
+        dadosGeracao.obrigacoesCobertas,
       );
     }
 
@@ -622,33 +622,12 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
         );
         return respostaErroIa("falha-modelo", 502);
       }
-      const validacaoConferida = reconciliarValidacaoAtendimentoComEvidencias(
-        validacaoNormalizada,
-        protocolosUsados,
-        decisao,
-        catalogoFontes,
-      );
       (diagnostico.validacoesAplicadas ??= []).push(
         usandoFallback
-          ? "codigos-do-auditor-contra-evidencias-fallback"
-          : "codigos-do-auditor-contra-evidencias",
+          ? "auditoria-semantica-residual-fallback"
+          : "auditoria-semantica-residual",
       );
-      motivo = motivoReprovacaoValidacaoAtendimento(validacaoConferida) ?? null;
-      if (!motivo) {
-        (diagnostico.validacoesAplicadas ??= []).push(
-          usandoFallback
-            ? "afirmacoes-auditadas-contra-evidencias-fallback"
-            : "afirmacoes-auditadas-contra-evidencias",
-        );
-        motivo = motivoBloqueioRascunhoDeterministico(
-          rascunho,
-          protocolosUsados,
-          validacaoConferida.afirmacoesAuditadas,
-          decisao,
-          perfil,
-          catalogoFontes,
-        );
-      }
+      motivo = motivoReprovacaoValidacaoAtendimento(validacaoNormalizada) ?? null;
       etapaBloqueio = "validacao";
     }
 

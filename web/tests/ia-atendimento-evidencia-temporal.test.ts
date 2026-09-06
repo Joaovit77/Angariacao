@@ -2,8 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   catalogoFontesAtendimento,
+  motivoBloqueioCoberturaDeterministico,
   motivoBloqueioRascunhoDeterministico,
-  reconciliarValidacaoAtendimentoComEvidencias,
   normalizarDecisaoAtendimento,
   normalizarGeracaoAtendimento,
   type AfirmacaoAtendimento,
@@ -71,6 +71,7 @@ const decisaoBase: DecisaoAtendimento = {
   informacoesJaExplicadas: [], acaoEsperada: "responder",
   proximoPassoPermitido: "responder a parte comprovada", acoesProibidas: [],
   protocolosAplicaveis: [], evidencias,
+  obrigacoesResposta: [],
   informacoesFaltantes: [{
     id: "lacuna_1", descricao: "consequência depois da locação",
     temporalidade: "depois-de-evento", evento,
@@ -168,7 +169,7 @@ describe("evidência e temporalidade determinísticas", () => {
   it("rejeita evidência inexistente e ID de evidência inválido em níveis distintos", () => {
     expect(validar([fato("evidencia_99", "atual")])).toBe("informacao-sem-fonte");
     expect(normalizarGeracaoAtendimento({
-      mensagem: "Resposta.", protocolosUsados: [], afirmacoes: [{
+      mensagem: "Resposta.", protocolosUsados: [], obrigacoesCobertas: [], afirmacoes: [{
         ...fato("evidência-livre", "atual"),
       }],
     })).toBeNull();
@@ -178,45 +179,28 @@ describe("evidência e temporalidade determinísticas", () => {
     }, [], fontes)).toBeNull();
   });
 
-  it("invalida falso positivo de fonte quando a afirmação histórica tem suporte compatível", () => {
-    const afirmacao = fato("evidencia_3", "historica");
-    const validacao = reconciliarValidacaoAtendimentoComEvidencias(
-      { problemas: ["informacao-sem-fonte"], afirmacoesAuditadas: [afirmacao] },
-      [],
-      decisaoBase,
-      fontes,
-    );
-    expect(validacao.problemas).toEqual([]);
+  it("aprova histórico qualificado com evidência temporal compatível", () => {
+    expect(validar([fato("evidencia_3", "historica")])).toBeNull();
   });
 
-  it.each([
-    ["histórico sem evidência", fato("evidencia_99", "historica")],
-    ["pós-evento apoiado somente por evidência pré-evento", fato("evidencia_1", "depois-de-evento", evento)],
-  ])("preserva informacao-sem-fonte para %s", (_nome, afirmacao) => {
-    const validacao = reconciliarValidacaoAtendimentoComEvidencias(
-      { problemas: ["informacao-sem-fonte"], afirmacoesAuditadas: [afirmacao] },
-      [],
-      decisaoBase,
-      fontes,
-    );
-    expect(validacao.problemas).toEqual(["informacao-sem-fonte"]);
+  it("rejeita histórico sem evidência e pós-evento apoiado apenas por pré-evento", () => {
+    expect(validar([fato("evidencia_99", "historica")])).toBe("informacao-sem-fonte");
+    expect(validar([fato("evidencia_1", "depois-de-evento", evento)])).toBe("informacao-sem-fonte");
   });
 
-  it("preserva omissão real e não tenta inferir relevância ausente do contrato", () => {
-    const comParteComprovada = reconciliarValidacaoAtendimentoComEvidencias(
-      { problemas: ["omissao-parte-comprovada"], afirmacoesAuditadas: [fato("evidencia_1", "antes-de-evento", evento)] },
-      [],
-      decisaoBase,
-      fontes,
-    );
-    const semMapaDeRelevancia = reconciliarValidacaoAtendimentoComEvidencias(
-      { problemas: ["omissao-parte-comprovada"], afirmacoesAuditadas: [] },
-      [],
-      { ...decisaoBase, evidencias: [] },
-      fontes,
-    );
-    expect(comParteComprovada.problemas).toEqual(["omissao-parte-comprovada"]);
-    expect(semMapaDeRelevancia.problemas).toEqual(["omissao-parte-comprovada"]);
+  it("rejeita omissão real de obrigação comprovada", () => {
+    const decisaoComObrigacao = {
+      ...decisaoBase,
+      obrigacoesResposta: [{
+        id: "obrigacao_1", evidenciaId: "evidencia_1", necessidade: "obrigatoria" as const,
+      }],
+    };
+    expect(motivoBloqueioCoberturaDeterministico([], [], decisaoComObrigacao))
+      .toBe("omissao-parte-comprovada");
+  });
+
+  it("não cria falsa omissão quando nenhuma evidência é obrigação relevante", () => {
+    expect(motivoBloqueioCoberturaDeterministico([], [], decisaoBase)).toBeNull();
   });
 });
 
@@ -271,6 +255,10 @@ const decisaoLd288: DecisaoAtendimento = {
       temporalidade: "antes-de-evento", evento,
     },
   ],
+  obrigacoesResposta: [
+    { id: "obrigacao_1", evidenciaId: "evidencia_1", necessidade: "obrigatoria" },
+    { id: "obrigacao_2", evidenciaId: "evidencia_2", necessidade: "obrigatoria" },
+  ],
 };
 const afirmacaoPre = {
   descricao: "antes da locação é possível trabalhar com outra imobiliária sem exclusividade",
@@ -282,10 +270,16 @@ const afirmacaoLacuna = {
   tipo: "incerteza" as const, evidencias: [], lacunas: ["lacuna_1"],
   temporalidade: "depois-de-evento" as const, evento,
 };
+const afirmacaoCusto = {
+  descricao: "não há custo antes da locação",
+  tipo: "fato" as const, evidencias: ["evidencia_2"], lacunas: [],
+  temporalidade: "antes-de-evento" as const, evento,
+};
 const parcialSegura = {
-  mensagem: "Como não há exclusividade antes da locação, você pode trabalhar com outra imobiliária. Sobre como fica caso ela conclua a locação primeiro, preciso confirmar essa condição.",
-  protocolosUsados: ["Exclusividade"],
-  afirmacoes: [afirmacaoPre, afirmacaoLacuna],
+  mensagem: "Como não há exclusividade antes da locação, você pode trabalhar com outra imobiliária e não tem custo antes dela. Sobre como fica caso ela conclua a locação primeiro, preciso confirmar essa condição.",
+  protocolosUsados: ["Exclusividade", "Custo antes da locação"],
+  obrigacoesCobertas: ["obrigacao_1", "obrigacao_2"],
+  afirmacoes: [afirmacaoPre, afirmacaoCusto, afirmacaoLacuna],
 };
 async function executarFluxo(saidas: unknown[]) {
   const executar = vi.fn<ExecutorOpenAI["executar"]>();
@@ -305,11 +299,11 @@ async function executarFluxo(saidas: unknown[]) {
 beforeEach(() => vi.clearAllMocks());
 
 describe("integração controlada LD-288", () => {
-  it("não deixa falso positivo de fonte contrariar afirmações auditadas e comprovadas", async () => {
+  it("aprova resposta cuja cadeia tipada já foi validada antes do auditor", async () => {
     const resultado = await executarFluxo([
       decisaoLd288,
       parcialSegura,
-      { problemas: ["informacao-sem-fonte"], afirmacoesAuditadas: parcialSegura.afirmacoes },
+      { problemas: [] },
     ]);
     expect(resultado.resposta.status).toBe(200);
     expect(resultado.corpo).toMatchObject({ rascunho: parcialSegura.mensagem, fallbackAplicado: false });
@@ -320,25 +314,26 @@ describe("integração controlada LD-288", () => {
     const evasiva = {
       mensagem: "Vou confirmar esse ponto para você.",
       protocolosUsados: [],
+      obrigacoesCobertas: [],
       afirmacoes: [afirmacaoLacuna],
     };
     const resultado = await executarFluxo([
       decisaoLd288,
       evasiva,
-      { problemas: ["omissao-parte-comprovada"], afirmacoesAuditadas: [] },
       parcialSegura,
-      { problemas: [], afirmacoesAuditadas: parcialSegura.afirmacoes },
+      { problemas: [] },
     ]);
     expect(resultado.resposta.status).toBe(200);
     expect(resultado.corpo).toMatchObject({ rascunho: parcialSegura.mensagem, fallbackAplicado: true });
     expect(resultado.corpo.rascunho).not.toBe(evasiva.mensagem);
-    expect(resultado.executar).toHaveBeenCalledTimes(5);
+    expect(resultado.executar).toHaveBeenCalledTimes(4);
   });
 
   it("rejeita deterministicamente a extrapolação pós-locação antes do auditor", async () => {
     const extrapolacao = {
       mensagem: "Se ela alugar primeiro, não muda nada para você.",
       protocolosUsados: ["Exclusividade"],
+      obrigacoesCobertas: ["obrigacao_1", "obrigacao_2"],
       afirmacoes: [{
         ...afirmacaoPre,
         descricao: "não muda nada depois da locação por terceiro",
@@ -349,7 +344,7 @@ describe("integração controlada LD-288", () => {
       decisaoLd288,
       extrapolacao,
       parcialSegura,
-      { problemas: [], afirmacoesAuditadas: parcialSegura.afirmacoes },
+      { problemas: [] },
     ]);
     expect(resultado.resposta.status).toBe(200);
     expect(resultado.corpo.rascunho).toBe(parcialSegura.mensagem);
@@ -362,24 +357,20 @@ describe("integração controlada LD-288", () => {
   });
 
   it("não deixa a geração esconder a extrapolação com uma declaração temporal falsa", async () => {
-    const texto = "Mesmo se a outra imobiliária alugar primeiro, você continua livre.";
+    const texto = "Mesmo se a outra imobiliária alugar primeiro, você continua livre. Antes da locação não há custo.";
     const declaracaoFalsaDaGeracao = {
       mensagem: texto,
-      protocolosUsados: ["Exclusividade"],
+      protocolosUsados: ["Exclusividade", "Custo antes da locação"],
+      obrigacoesCobertas: ["obrigacao_1", "obrigacao_2"],
       // A geração tenta rotular como pré-evento o que o texto diz sobre o pós-evento.
-      afirmacoes: [afirmacaoPre],
+      afirmacoes: [afirmacaoPre, afirmacaoCusto],
     };
-    const leituraIndependenteDoAuditor = [{
-      ...afirmacaoPre,
-      descricao: "a liberdade continua depois da locação por terceiro",
-      temporalidade: "depois-de-evento" as const,
-    }];
     const resultado = await executarFluxo([
       decisaoLd288,
       declaracaoFalsaDaGeracao,
-      { problemas: [], afirmacoesAuditadas: leituraIndependenteDoAuditor },
+      { problemas: ["afirmacao-nao-declarada"] },
       parcialSegura,
-      { problemas: [], afirmacoesAuditadas: parcialSegura.afirmacoes },
+      { problemas: [] },
     ]);
     expect(resultado.resposta.status).toBe(200);
     expect(resultado.corpo.rascunho).toBe(parcialSegura.mensagem);
@@ -391,7 +382,7 @@ describe("integração controlada LD-288", () => {
     const resultado = await executarFluxo([
       decisaoLd288,
       parcialSegura,
-      { problemas: [], afirmacoesAuditadas: parcialSegura.afirmacoes },
+      { problemas: [] },
     ]);
     expect(resultado.resposta.status).toBe(200);
     expect(resultado.corpo).toMatchObject({ rascunho: parcialSegura.mensagem, fallbackAplicado: false });

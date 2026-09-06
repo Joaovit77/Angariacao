@@ -5,11 +5,12 @@ import {
   promptBaseAtendimento,
   promptValidarAtendimento,
   ESQUEMA_VALIDACAO_ATENDIMENTO,
+  motivoBloqueioRascunhoDeterministico,
   motivoReprovacaoValidacaoAtendimento,
   normalizarValidacaoAtendimento,
-  reconciliarValidacaoAtendimentoComEvidencias,
 } from "@/lib/ia/atendimento";
 import { CONFIGURACAO_IA_PADRAO } from "@/lib/ia/configuracao";
+import { normalizarPerfilComunicacao } from "@/lib/perfilComunicacao";
 import { criarExecutorOpenAI } from "@/lib/servidor/ia/executor-openai";
 import { casosSemanticos, contextoSemantico } from "./fixtures/atendimento-semantico";
 
@@ -33,6 +34,19 @@ describe.skipIf(process.env.IA_AUDITOR_SEMANTICO_REAL !== "true")("aceitação s
           conversa: caso.historico,
           informacoesComerciais: caso.fontes,
         });
+        const motivoDeterministico = motivoBloqueioRascunhoDeterministico(
+          caso.geracao.mensagem,
+          caso.geracao.protocolosUsados,
+          caso.geracao.afirmacoes,
+          caso.decisao,
+          normalizarPerfilComunicacao(null),
+          catalogoFontes,
+          caso.geracao.obrigacoesCobertas,
+        );
+        if (motivoDeterministico) {
+          expect(motivoDeterministico, "Barreira determinística").toBe(caso.esperado);
+          return;
+        }
         // Sem repetição por falha: uma chamada por caso e repetição.
         let texto: string;
         try {
@@ -64,18 +78,12 @@ describe.skipIf(process.env.IA_AUDITOR_SEMANTICO_REAL !== "true")("aceitação s
         try { saida = JSON.parse(texto); } catch { throw new Error("Auditoria fora do contrato JSON."); }
         const normalizada = normalizarValidacaoAtendimento(saida);
         expect(normalizada, "Contrato estrito da auditoria").not.toBeNull();
-        const validacao = reconciliarValidacaoAtendimentoComEvidencias(
-          normalizada!,
-          caso.geracao.protocolosUsados,
-          caso.decisao,
-          catalogoFontes,
-        );
-        const motivo = motivoReprovacaoValidacaoAtendimento(validacao);
+        const motivo = motivoReprovacaoValidacaoAtendimento(normalizada);
         expect(motivo, "Contrato estrito da auditoria").not.toBeUndefined();
         if (caso.esperado === "aprovar") expect(motivo).toBeNull();
         else {
           // Somente códigos fechados aparecem em falhas do ensaio, nunca o rascunho.
-          const problemas = validacao.problemas;
+          const problemas = normalizada!.problemas;
           expect(problemas).toContain(caso.esperado);
         }
       }, 60_000);

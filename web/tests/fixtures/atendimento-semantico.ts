@@ -37,6 +37,10 @@ const decisaoParcial: DecisaoAtendimento = {
   acaoEsperada: "perguntar", proximoPassoPermitido: "confirmar a consequência desconhecida",
   acoesProibidas: ["explicar-condicoes"], protocolosAplicaveis: comerciais.map((p) => p.titulo),
   evidencias: [evidenciaExclusividade, evidenciaCusto],
+  obrigacoesResposta: [
+    { id: "obrigacao_1", evidenciaId: "evidencia_1", necessidade: "obrigatoria" },
+    { id: "obrigacao_2", evidenciaId: "evidencia_2", necessidade: "obrigatoria" },
+  ],
   informacoesFaltantes: [lacunaDepoisLocacao],
   nivelConfianca: "media", precisaIntervencaoHumana: false, podeResponderComSeguranca: true,
 };
@@ -63,7 +67,13 @@ const gerar = (
   mensagem: string,
   protocolosUsados: string[],
   afirmacoes: AfirmacaoAtendimento[],
-): GeracaoAtendimento => ({ mensagem, protocolosUsados, afirmacoes });
+  obrigacoesCobertas: string[] = [...new Set(
+    afirmacoes
+      .filter((afirmacao) => afirmacao.tipo === "fato")
+      .flatMap((afirmacao) => afirmacao.evidencias)
+      .map((id) => id.replace("evidencia_", "obrigacao_")),
+  )],
+): GeracaoAtendimento => ({ mensagem, protocolosUsados, obrigacoesCobertas, afirmacoes });
 
 export interface CasoSemantico {
   nome: string;
@@ -73,7 +83,7 @@ export interface CasoSemantico {
   historico?: ConversaAnterior;
   decisao: DecisaoAtendimento;
   contexto?: ContextoAtendimento;
-  esperado: "aprovar" | "omissao-parte-comprovada" | "informacao-sem-fonte" | "cobranca-sem-fonte";
+  esperado: "aprovar" | "omissao-parte-comprovada" | "informacao-sem-fonte";
 }
 
 const parcial = (
@@ -97,6 +107,9 @@ const decisaoHistorica: DecisaoAtendimento = {
   evidencias: [{
     id: "evidencia_1", fonteId: "fonte_2", fato: "o proprietário informou que o imóvel estava em reforma",
     temporalidade: "historica", evento: "",
+  }],
+  obrigacoesResposta: [{
+    id: "obrigacao_1", evidenciaId: "evidencia_1", necessidade: "obrigatoria",
   }],
   informacoesFaltantes: [{
     id: "lacuna_1", descricao: "situação atual da reforma", temporalidade: "atual", evento: "",
@@ -136,6 +149,9 @@ const decisaoVagas: DecisaoAtendimento = {
     id: "evidencia_1", fonteId: "fonte_2", fato: "o imóvel tem duas vagas",
     temporalidade: "atual", evento: "",
   }],
+  obrigacoesResposta: [{
+    id: "obrigacao_1", evidenciaId: "evidencia_1", necessidade: "obrigatoria",
+  }],
   informacoesFaltantes: [{
     id: "lacuna_1", descricao: "aceitação de animal de estimação", temporalidade: "atual", evento: "",
   }],
@@ -164,6 +180,9 @@ export const casosSemanticos: CasoSemantico[] = [
       evidencias: [{
         id: "evidencia_1", fonteId: "fonte_2", fato: "na administração completa a taxa é de 10%",
         temporalidade: "atemporal", evento: "",
+      }],
+      obrigacoesResposta: [{
+        id: "obrigacao_1", evidenciaId: "evidencia_1", necessidade: "obrigatoria",
       }],
       informacoesFaltantes: [],
     },
@@ -211,7 +230,7 @@ export const casosSemanticos: CasoSemantico[] = [
   parcial(
     "isenção não sustentada",
     "Não há exclusividade e você não terá nenhuma taxa nem multa se outra imobiliária alugar.",
-    "cobranca-sem-fonte",
+    "informacao-sem-fonte",
     [fatoAntes(), fatoDepoisSemFonte("evidencia_2")],
   ),
   ...["continua em reforma", "ainda está em reforma", "segue em reforma", "permanece em reforma", "continua sendo reformado", "está em reforma"].map((expressao) =>
@@ -277,6 +296,7 @@ export const casosSemanticos: CasoSemantico[] = [
       ...decisaoParcial,
       protocolosAplicaveis: [],
       evidencias: [],
+      obrigacoesResposta: [],
       informacoesFaltantes: [{
         id: "lacuna_1", descricao: "existência de taxa antes da locação",
         temporalidade: "antes-de-evento", evento: "locação",
@@ -289,7 +309,7 @@ export const casosSemanticos: CasoSemantico[] = [
     pergunta: "Obrigado!",
     geracao: gerar("Por nada!", [], []),
     fontes: comerciais,
-    decisao: { ...decisaoParcial, protocolosAplicaveis: [], evidencias: [], informacoesFaltantes: [] },
+    decisao: { ...decisaoParcial, protocolosAplicaveis: [], evidencias: [], obrigacoesResposta: [], informacoesFaltantes: [] },
     esperado: "aprovar",
   },
   {
@@ -325,7 +345,7 @@ export const casosSemanticos: CasoSemantico[] = [
     geracao: gerar("Vou confirmar se aceita animal de estimação.", [], [incertezaPet]),
     fontes: [],
     contexto: { ...contextoSemantico, fatosImovel: ["Vagas: 2"] },
-    decisao: decisaoVagas,
+    decisao: { ...decisaoVagas, obrigacoesResposta: [] },
     esperado: "aprovar",
   },
 ];

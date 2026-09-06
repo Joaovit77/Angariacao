@@ -25,8 +25,10 @@ export type MotivoBloqueioAtendimento =
   | "contexto-incompleto"
   | "decisao-bloqueada"
   | "geracao-reprovada"
+  | "referencia-inexistente"
   | "protocolo-inadequado"
   | "informacao-sem-fonte"
+  | "omissao-parte-comprovada"
   | "desvio-de-assunto"
   | "resposta-longa"
   | "perfil-incompativel"
@@ -78,6 +80,12 @@ export function normalizarDecisaoAtendimento(
     || !lacuna.descricao.trim()
     || !temporalidadeComEventoValida(lacuna.temporalidade, lacuna.evento)
   )) return null;
+  const obrigacoesResposta = d.obrigacoesResposta as DecisaoAtendimento["obrigacoesResposta"];
+  const idsEvidencias = new Set(evidencias.map((evidencia) => evidencia.id));
+  if (obrigacoesResposta.some((obrigacao, indice) =>
+    obrigacao.id !== `obrigacao_${indice + 1}`
+    || !idsEvidencias.has(obrigacao.evidenciaId)
+  )) return null;
 
   return {
     intencao:
@@ -111,6 +119,7 @@ export function normalizarDecisaoAtendimento(
       fato: evidencia.fato.trim(),
       evento: evidencia.evento.trim(),
     })),
+    obrigacoesResposta: obrigacoesResposta.map((obrigacao) => ({ ...obrigacao })),
     informacoesFaltantes: informacoesFaltantes.map((lacuna) => ({
       ...lacuna,
       descricao: lacuna.descricao.trim(),
@@ -184,30 +193,37 @@ export function motivoBloqueioAfirmacoesDeterministico(
   return null;
 }
 
-/**
- * Remove somente a acusação que contradiz a cadeia estruturada completa.
- * Sem afirmações auditadas não há prova suficiente para contrariar o auditor.
- */
-export function reconciliarValidacaoAtendimentoComEvidencias(
-  validacao: ValidacaoAtendimento,
-  protocolosUsados: readonly string[],
+/** Valida cobertura sem interpretar o texto: obrigação -> evidência -> afirmação factual. */
+export function motivoBloqueioCoberturaDeterministico(
+  obrigacoesCobertas: readonly string[],
+  afirmacoes: readonly AfirmacaoAtendimento[],
   decisao: DecisaoAtendimento,
-  catalogoFontes: readonly FonteEvidenciaAtendimento[],
-): ValidacaoAtendimento {
-  if (!validacao.problemas.includes("informacao-sem-fonte")
-    || validacao.afirmacoesAuditadas.length === 0
-    || motivoBloqueioAfirmacoesDeterministico(
-      protocolosUsados,
-      validacao.afirmacoesAuditadas,
-      decisao,
-      catalogoFontes,
-    ) !== null) {
-    return validacao;
+): "referencia-inexistente" | "omissao-parte-comprovada" | "geracao-reprovada" | null {
+  const obrigacoesPorId = new Map(
+    decisao.obrigacoesResposta.map((obrigacao) => [obrigacao.id, obrigacao]),
+  );
+  if (obrigacoesCobertas.some((id) => !obrigacoesPorId.has(id))) {
+    return "referencia-inexistente";
   }
-  return {
-    ...validacao,
-    problemas: validacao.problemas.filter((problema) => problema !== "informacao-sem-fonte"),
-  };
+  const idsCobertos = new Set(obrigacoesCobertas);
+  const evidenciasAfirmadas = new Set(
+    afirmacoes
+      .filter((afirmacao) => afirmacao.tipo === "fato")
+      .flatMap((afirmacao) => afirmacao.evidencias),
+  );
+  for (const obrigacao of decisao.obrigacoesResposta) {
+    if (obrigacao.necessidade === "obrigatoria"
+      && (!idsCobertos.has(obrigacao.id) || !evidenciasAfirmadas.has(obrigacao.evidenciaId))) {
+      return "omissao-parte-comprovada";
+    }
+  }
+  for (const id of idsCobertos) {
+    const obrigacao = obrigacoesPorId.get(id);
+    if (obrigacao && !evidenciasAfirmadas.has(obrigacao.evidenciaId)) {
+      return "geracao-reprovada";
+    }
+  }
+  return null;
 }
 
 /** Barreiras locais aplicadas ao texto inteiro antes da terceira chamada. */
@@ -218,6 +234,7 @@ export function motivoBloqueioRascunhoDeterministico(
   decisao: DecisaoAtendimento,
   perfil: PerfilComunicacao,
   catalogoFontes: readonly FonteEvidenciaAtendimento[],
+  obrigacoesCobertas: readonly string[] = [],
 ): MotivoBloqueioAtendimento | null {
   const texto = rascunho.trim();
   const textoNormalizado = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -231,6 +248,12 @@ export function motivoBloqueioRascunhoDeterministico(
     catalogoFontes,
   );
   if (motivoAfirmacoes) return motivoAfirmacoes;
+  const motivoCobertura = motivoBloqueioCoberturaDeterministico(
+    obrigacoesCobertas,
+    afirmacoes,
+    decisao,
+  );
+  if (motivoCobertura) return motivoCobertura;
   const frases = textoNormalizado.split(/(?<=[.!?])\s+|\n+/);
   if (protocolosUsados.length === 0 && frases.some((frase) =>
     /\b(?:taxa|comissao|multa|isencao|primeiro aluguel|garantia|vistoria|exclusividade|responsabilidade|procedimento)\b/i.test(frase)
@@ -298,9 +321,7 @@ function normalizarAfirmacoesAtendimento(
 export function normalizarValidacaoAtendimento(valor: unknown): ValidacaoAtendimento | null {
   if (!atendeSchemaAtendimento(valor, ESQUEMA_VALIDACAO_ATENDIMENTO)) return null;
   const validacao = valor as ValidacaoAtendimento;
-  const afirmacoesAuditadas = normalizarAfirmacoesAtendimento(validacao.afirmacoesAuditadas);
-  if (!afirmacoesAuditadas) return null;
-  return { problemas: [...validacao.problemas], afirmacoesAuditadas };
+  return { problemas: [...validacao.problemas] };
 }
 
 export function normalizarGeracaoAtendimento(valor: unknown): GeracaoAtendimento | null {
@@ -311,13 +332,20 @@ export function normalizarGeracaoAtendimento(valor: unknown): GeracaoAtendimento
   return {
     mensagem: geracao.mensagem.trim(),
     protocolosUsados: [...new Set(geracao.protocolosUsados)],
+    obrigacoesCobertas: [...new Set(geracao.obrigacoesCobertas)],
     afirmacoes,
   };
 }
 
 /** Só falhas corrigíveis por reescrita recebem nova geração. */
 export function podeRegenerarAtendimento(motivo: MotivoBloqueioAtendimento): boolean {
-  return motivo === "geracao-reprovada" || (
+  return [
+    "geracao-reprovada",
+    "referencia-inexistente",
+    "protocolo-inadequado",
+    "informacao-sem-fonte",
+    "omissao-parte-comprovada",
+  ].includes(motivo) || (
     motivo !== "intervencao-humana"
     && (PROBLEMAS_VALIDACAO_ATENDIMENTO as readonly string[]).includes(motivo)
   );
