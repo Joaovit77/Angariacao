@@ -49,7 +49,9 @@ const historicoParcial: ConversaAnterior = { anteriores: [
 ] };
 
 const fatoAntes = (evidencia = "evidencia_1"): AfirmacaoAtendimento => ({
-  descricao: "condição aplicável antes da locação",
+  descricao: evidencia === "evidencia_2"
+    ? "não há custo antes da locação"
+    : "antes da locação é permitido anunciar com outras imobiliárias sem exclusividade",
   tipo: "fato", evidencias: [evidencia], lacunas: [],
   temporalidade: "antes-de-evento", evento: eventoLocacao,
 });
@@ -83,7 +85,7 @@ export interface CasoSemantico {
   historico?: ConversaAnterior;
   decisao: DecisaoAtendimento;
   contexto?: ContextoAtendimento;
-  esperado: "aprovar" | "omissao-parte-comprovada" | "informacao-sem-fonte";
+  esperado: "aprovar" | "omissao-parte-comprovada" | "informacao-sem-fonte" | "protocolo-inadequado";
 }
 
 const parcial = (
@@ -205,7 +207,7 @@ export const casosSemanticos: CasoSemantico[] = [
   parcial(
     "referência anterior: confirmação total",
     "Entendi. O ponto que não ficou detalhado é justamente o que acontece se a outra imobiliária fechar antes. Vou confirmar esse ponto pra te passar certinho. Se quiser, me diz se a sua dúvida é sobre comissão ou sobre a divulgação.",
-    "omissao-parte-comprovada",
+    "protocolo-inadequado",
     [incertezaDepois],
   ),
   parcial(
@@ -242,7 +244,7 @@ export const casosSemanticos: CasoSemantico[] = [
     )),
   temporal(
     "histórico qualificado",
-    "Na mensagem anterior, você informou que o imóvel estava em reforma. Vou confirmar a situação atual e a previsão de término.",
+    "Na mensagem anterior, você informou que o imóvel estava em reforma. Vou confirmar a situação atual.",
     "aprovar",
     [fatoHistorico, incertezaAtual],
   ),
@@ -279,6 +281,9 @@ export const casosSemanticos: CasoSemantico[] = [
     decisao: {
       ...decisaoParcial,
       evidencias: [{ ...evidenciaExclusividade, fonteId: "fonte_2" }],
+      obrigacoesResposta: [{
+        id: "obrigacao_1", evidenciaId: "evidencia_1", necessidade: "obrigatoria",
+      }],
       informacoesFaltantes: [],
     },
     esperado: "aprovar",

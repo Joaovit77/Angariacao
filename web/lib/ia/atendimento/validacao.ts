@@ -226,6 +226,17 @@ export function motivoBloqueioCoberturaDeterministico(
   return null;
 }
 
+/**
+ * Contrato de precedência: falhas de grounding/referência prevalecem sobre cobertura.
+ * Uma obrigação não pode ser considerada antes de validar o suporte declarado para a resposta.
+ */
+function motivoGroundingOuCobertura(
+  motivoGrounding: "informacao-sem-fonte" | "protocolo-inadequado" | null,
+  motivoCobertura: "referencia-inexistente" | "omissao-parte-comprovada" | "geracao-reprovada" | null,
+): MotivoBloqueioAtendimento | null {
+  return motivoGrounding ?? motivoCobertura;
+}
+
 /** Barreiras locais aplicadas ao texto inteiro antes da terceira chamada. */
 export function motivoBloqueioRascunhoDeterministico(
   rascunho: string,
@@ -247,13 +258,13 @@ export function motivoBloqueioRascunhoDeterministico(
     decisao,
     catalogoFontes,
   );
-  if (motivoAfirmacoes) return motivoAfirmacoes;
   const motivoCobertura = motivoBloqueioCoberturaDeterministico(
     obrigacoesCobertas,
     afirmacoes,
     decisao,
   );
-  if (motivoCobertura) return motivoCobertura;
+  const motivoEstruturado = motivoGroundingOuCobertura(motivoAfirmacoes, motivoCobertura);
+  if (motivoEstruturado) return motivoEstruturado;
   const frases = textoNormalizado.split(/(?<=[.!?])\s+|\n+/);
   if (protocolosUsados.length === 0 && frases.some((frase) =>
     /\b(?:taxa|comissao|multa|isencao|primeiro aluguel|garantia|vistoria|exclusividade|responsabilidade|procedimento)\b/i.test(frase)
