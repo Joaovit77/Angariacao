@@ -43,7 +43,27 @@ describe("proteção contra chamadas reais à OpenAI", () => {
     }
   });
 
-  it("mantém produção fora de CI/Codex operacional sem opt-in local", () => {
-    expect(chamadaOpenAIRealAutorizada({ NODE_ENV: "production" })).toBe(true);
+  it("não confunde NODE_ENV=production local com Production real", () => {
+    expect(chamadaOpenAIRealAutorizada({
+      NODE_ENV: "production",
+      OPENAI_API_KEY: "chave-ficticia",
+    })).toBe(false);
+  });
+
+  it("reconhece automaticamente somente Production real da Vercel", () => {
+    expect(chamadaOpenAIRealAutorizada({
+      NODE_ENV: "production",
+      VERCEL: "1",
+      VERCEL_ENV: "production",
+    })).toBe(true);
+    expect(chamadaOpenAIRealAutorizada({
+      NODE_ENV: "production",
+      VERCEL: "1",
+      VERCEL_ENV: "preview",
+    })).toBe(false);
+    expect(chamadaOpenAIRealAutorizada({
+      NODE_ENV: "production",
+      VERCEL_ENV: "production",
+    })).toBe(false);
   });
 });

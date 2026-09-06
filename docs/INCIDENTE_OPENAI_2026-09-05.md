@@ -57,7 +57,8 @@ A correção arquitetural move os ensaios para web/tests-real-openai/, usa uma c
 exclusiva e um comando manual identificado como perigoso. O runner não carrega .env.local, exige
 ALLOW_REAL_OPENAI=1, uma chave fornecida deliberadamente e recusa CI/Codex.
 
-Além do isolamento, web/lib/servidor/openai-real.ts bloqueia chamadas em qualquer ambiente não
-produtivo sem autorização. CI e Codex são negados mesmo com a variável de opt-in. O executor verifica
-a autorização imediatamente antes do transporte, e testes comuns usam somente mocks, fixtures ou
-respostas gravadas.
+Além do isolamento, web/lib/servidor/openai-real.ts bloqueia chamadas locais mesmo quando
+NODE_ENV=production. A liberação automática exige os sinais de runtime VERCEL=1 e
+VERCEL_ENV=production; fora dessa combinação, exige opt-in explícito. CI e Codex são negados mesmo
+com a variável de opt-in. O executor verifica a autorização imediatamente antes do transporte, e
+testes comuns usam somente mocks, fixtures ou respostas gravadas.

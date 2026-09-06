@@ -11,7 +11,9 @@ export function execucaoAutomaticaOpenAIBloqueada(
   ambiente: AmbienteOpenAI = process.env,
 ): boolean {
   return valorVerdadeiro(ambiente.CI)
-    || Object.keys(ambiente).some((nome) => nome === "CODEX_HOME" || nome.startsWith("CODEX_"));
+    || Object.entries(ambiente).some(([nome, valor]) =>
+      (nome === "CODEX_HOME" || nome.startsWith("CODEX_")) && valorVerdadeiro(valor)
+    );
 }
 
 export class ChamadaOpenAIRealNaoAutorizadaError extends Error {
@@ -35,8 +37,10 @@ export class ChamadaOpenAIRealNaoAutorizadaError extends Error {
 export function chamadaOpenAIRealAutorizada(
   ambiente: AmbienteOpenAI = process.env,
 ): boolean {
+  const producaoRealVercel = ambiente.VERCEL === "1"
+    && ambiente.VERCEL_ENV === "production";
   return !execucaoAutomaticaOpenAIBloqueada(ambiente) && (
-    ambiente.NODE_ENV === "production"
+    producaoRealVercel
     || ambiente[VARIAVEL_AUTORIZACAO_OPENAI_REAL] === "1"
   );
 }

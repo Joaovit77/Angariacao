@@ -38,6 +38,13 @@ function conclusao(
   };
 }
 
+function neutralizarMarcadoresAutomaticos(): void {
+  vi.stubEnv("CI", "");
+  for (const nome of Object.keys(process.env)) {
+    if (nome === "CODEX_HOME" || nome.startsWith("CODEX_")) vi.stubEnv(nome, "");
+  }
+}
+
 describe("executor OpenAI compartilhado", () => {
   beforeEach(() => {
     registrarUsoDaResposta.mockClear();
@@ -101,6 +108,46 @@ describe("executor OpenAI compartilhado", () => {
     })).rejects.toThrow("Chamada real à OpenAI bloqueada");
     expect(create).not.toHaveBeenCalled();
     expect(registrarUsoDaResposta).not.toHaveBeenCalled();
+  });
+
+  it("bloqueia executor local com NODE_ENV=production e chave presente", async () => {
+    neutralizarMarcadoresAutomaticos();
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("OPENAI_API_KEY", "chave-ficticia");
+    vi.stubEnv("ALLOW_REAL_OPENAI", "");
+    vi.stubEnv("VERCEL", "");
+    vi.stubEnv("VERCEL_ENV", "");
+    const create = vi.fn();
+    const openai = { chat: { completions: { create } } } as unknown as OpenAI;
+    const executor = criarExecutorOpenAI(openai, "usuario-1");
+
+    await expect(executor.executar({
+      tipo: "rascunhar-resposta-validacao",
+      reasoningEffort: "low",
+      mensagens: [{ role: "user", content: "teste local de produção" }],
+    })).rejects.toThrow("Chamada real à OpenAI bloqueada");
+    expect(create).not.toHaveBeenCalled();
+    expect(registrarUsoDaResposta).not.toHaveBeenCalled();
+  });
+
+  it("libera automaticamente o executor mockado somente como Production Vercel", async () => {
+    neutralizarMarcadoresAutomaticos();
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("OPENAI_API_KEY", "chave-ficticia");
+    vi.stubEnv("ALLOW_REAL_OPENAI", "");
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("VERCEL_ENV", "production");
+    const resposta = conclusao('{"ok":true}');
+    const create = vi.fn().mockResolvedValue(resposta);
+    const openai = { chat: { completions: { create } } } as unknown as OpenAI;
+    const executor = criarExecutorOpenAI(openai, "usuario-1");
+
+    await expect(executor.executar({
+      tipo: "rascunhar-resposta-validacao",
+      reasoningEffort: "low",
+      mensagens: [{ role: "user", content: "teste de Production Vercel" }],
+    })).resolves.toMatchObject({ texto: '{"ok":true}' });
+    expect(create).toHaveBeenCalledOnce();
   });
 
   it("mantém recusa e truncamento fora do caminho feliz", () => {
