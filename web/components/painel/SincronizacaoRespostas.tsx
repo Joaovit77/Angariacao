@@ -33,6 +33,12 @@ import {
   eventosQueChegaram,
   respostasQueChegaram,
 } from "@/lib/calculo/chegadaResposta";
+import {
+  deveAplicarVersaoRealtime,
+  linhaRealtimeSuficiente,
+  reconciliarImovelRealtime,
+  type LinhaParcialImovel,
+} from "@/lib/calculo/estabilidadeMensagens";
 import { notificarSistema } from "@/lib/notificacaoSistema";
 import { fromDbImovel, type DbImovelRow } from "@/lib/persistencia/mapeadores";
 import { getSupabase } from "@/lib/persistencia/supabase";
@@ -47,18 +53,38 @@ export default function SincronizacaoRespostas() {
 
   useEffect(() => {
     if (!usuarioId) return;
+    const usuarioIdAtual = usuarioId;
     const supabase = getSupabase();
     let ativo = true;
+    const versoesAplicadas = new Map<string, string>();
+    const releiturasEmCurso = new Map<string, Promise<void>>();
+    const releiturasPendentes = new Set<string>();
+    const releiturasInvalidas = new Set<string>();
+    const revisoesEventos = new Map<string, number>();
 
-    function aplicar(linha: DbImovelRow) {
+    function aplicar(linha: LinhaParcialImovel, versao?: string) {
       const { imoveis, carregado, setImoveis } = useAppStore.getState();
       // Antes da carga inicial não há retrato anterior de nada, e mexer no
       // store aqui só criaria uma lista parcial que o setEstado do boot
       // sobrescreveria em seguida.
       if (!carregado) return;
 
-      const novo = fromDbImovel(linha);
-      const anterior = imoveis.find((i) => i.id === novo.id);
+      const ultimaVersao = versoesAplicadas.get(linha.id);
+      if (!deveAplicarVersaoRealtime(ultimaVersao, versao)) return;
+
+      const anterior = imoveis.find((i) => i.id === linha.id);
+      const novo = anterior
+        ? reconciliarImovelRealtime(anterior, linha, usuarioIdAtual)
+        : linhaRealtimeSuficiente(linha)
+          ? fromDbImovel(linha)
+          : null;
+      if (!novo) {
+        if (versao) versoesAplicadas.set(linha.id, versao);
+        relerImovel(linha.id);
+        return;
+      }
+
+      if (versao) versoesAplicadas.set(linha.id, versao);
       setImoveis(anterior ? imoveis.map((i) => (i.id === novo.id ? novo : i)) : [...imoveis, novo]);
 
       // A comparação é contra o retrato ANTERIOR, então a nossa própria
@@ -74,6 +100,49 @@ export default function SincronizacaoRespostas() {
       avisar(avisoDeEvento(novo, eventosQueChegaram(anterior, novo)), "evento", () =>
         useUiModal.getState().abrirModal("imovel", novo.id),
       );
+
+      // O merge mantém o item e os contadores estáveis. Se o evento veio
+      // truncado, a releitura pontual traz a mensagem/coluna que não coube no
+      // payload, usando a mesma RLS e o mesmo user_id da assinatura.
+      if (anterior && !linhaRealtimeSuficiente(linha)) relerImovel(linha.id);
+    }
+
+    function relerImovel(id: string) {
+      if (releiturasEmCurso.has(id)) {
+        releiturasPendentes.add(id);
+        return;
+      }
+      const revisaoAoIniciar = revisoesEventos.get(id) || 0;
+      const releitura = Promise.resolve(
+        supabase
+          .from("imoveis")
+          .select("*")
+          .eq("id", id)
+          .eq("user_id", usuarioIdAtual)
+          .maybeSingle(),
+      )
+        .then(({ data, error }) => {
+          if (
+            !ativo ||
+            releiturasInvalidas.has(id) ||
+            (revisoesEventos.get(id) || 0) !== revisaoAoIniciar ||
+            error ||
+            !data
+          ) return;
+          const linha = data as DbImovelRow;
+          aplicar(linha);
+        })
+        .finally(() => {
+          releiturasEmCurso.delete(id);
+          if (
+            ativo &&
+            !releiturasInvalidas.has(id) &&
+            releiturasPendentes.delete(id)
+          ) {
+            relerImovel(id);
+          }
+        });
+      releiturasEmCurso.set(id, releitura);
     }
 
     function avisar(
@@ -130,12 +199,20 @@ export default function SincronizacaoRespostas() {
             if (payload.eventType === "DELETE") {
               const id = (payload.old as { id?: string } | null)?.id;
               if (!id) return;
+              revisoesEventos.set(id, (revisoesEventos.get(id) || 0) + 1);
+              versoesAplicadas.delete(id);
+              releiturasPendentes.delete(id);
+              releiturasInvalidas.add(id);
               const { imoveis, carregado, setImoveis } = useAppStore.getState();
               if (!carregado) return;
               setImoveis(imoveis.filter((i) => i.id !== id));
               return;
             }
-            aplicar(payload.new as DbImovelRow);
+            const linha = payload.new as LinhaParcialImovel;
+            if (typeof linha.id !== "string") return;
+            revisoesEventos.set(linha.id, (revisoesEventos.get(linha.id) || 0) + 1);
+            releiturasInvalidas.delete(linha.id);
+            aplicar(linha, linha.updated_at || payload.commit_timestamp);
           },
         )
         .subscribe();

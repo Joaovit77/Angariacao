@@ -14,6 +14,7 @@ import {
   type FiltrosConversas,
   type MensagemConversa,
 } from "@/lib/calculo/conversas";
+import { conversaSelecionadaEstavel } from "@/lib/calculo/estabilidadeMensagens";
 import { aplicarModeloUsuario, linkWhatsapp, mensagemFalhaEnvio } from "@/lib/calculo/whatsapp";
 import { todayISO } from "@/lib/datas";
 import { enviarWhatsapp } from "@/lib/envioWhatsapp";
@@ -690,16 +691,17 @@ function ConversaSelecionada({
   );
 }
 
-export default function CentralMensagensView({
+function CentralMensagensCarregada({
   aoAbrirAgendadas,
   imovelInicial = null,
+  imoveis,
+  agenda,
 }: {
   aoAbrirAgendadas: () => void;
   imovelInicial?: string | null;
+  imoveis: Imovel[];
+  agenda: AgendaItem[];
 }) {
-  const imoveis = useAppStore((estado) => estado.imoveis);
-  const agenda = useAppStore((estado) => estado.agenda);
-  const carregado = useAppStore((estado) => estado.carregado);
   const { usuario } = useSessao();
   const {
     itens: mensagensAgendadas,
@@ -707,10 +709,18 @@ export default function CentralMensagensView({
     erro: erroAgendadas,
     recarregar: recarregarAgendadas,
   } = useMensagensAgendadas();
+  const conversas = useMemo(() => conversasDosImoveis(imoveis, todayISO()), [imoveis]);
+  const conversaInicial =
+    conversas.find((conversa) => conversa.imovel.id === imovelInicial) || conversas[0] || null;
   const [busca, setBusca] = useState("");
   const buscaAdiada = useDeferredValue(busca);
   const [filtros, setFiltros] = useState<FiltrosConversas>(FILTROS_INICIAIS);
-  const [selecionadaId, setSelecionadaId] = useState<string | null>(imovelInicial);
+  const [selecionadaId, setSelecionadaId] = useState<string | null>(
+    conversaInicial?.imovel.id || null,
+  );
+  const [ultimaSelecionada, setUltimaSelecionada] = useState<ConversaImovel | null>(
+    conversaInicial,
+  );
   const [atualizando, setAtualizando] = useState(false);
   const [erro, setErro] = useState("");
   const [mobileAberta, setMobileAberta] = useState(Boolean(imovelInicial));
@@ -719,7 +729,6 @@ export default function CentralMensagensView({
   const conversaInicialMarcada = useRef(false);
   const marcacoesEmCurso = useRef(new Set<string>());
 
-  const conversas = useMemo(() => conversasDosImoveis(imoveis, todayISO()), [imoveis]);
   const agendadasPorImovel = useMemo(
     () => imoveisComAgendamentoAtivo(mensagensAgendadas),
     [mensagensAgendadas],
@@ -735,8 +744,13 @@ export default function CentralMensagensView({
   // Depois de marcar uma conversa como lida ela pode sair do filtro
   // "Não lidas". Mantê-la pelo id evita trocar o conteúdo aberto pela próxima
   // conversa antes de o corretor terminar de lê-la.
-  const selecionada =
-    conversas.find((conversa) => conversa.imovel.id === selecionadaId) || visiveis[0] || null;
+  const selecionada = conversaSelecionadaEstavel(
+    conversas,
+    visiveis,
+    selecionadaId,
+    ultimaSelecionada,
+    imoveis,
+  );
 
   const marcarAoVisualizar = useCallback((id: string, naoLidas: number): void => {
     if (naoLidas === 0 || marcacoesEmCurso.current.has(id)) return;
@@ -759,7 +773,7 @@ export default function CentralMensagensView({
   // exigir clique. No celular ela continua escondida atrás da lista e só é
   // lida quando `selecionar` realmente abre a conversa.
   useEffect(() => {
-    if (primeiraConversaVisivel.current || !selecionada || selecionadaId !== null) return;
+    if (primeiraConversaVisivel.current || !selecionada) return;
     if (window.matchMedia("(max-width: 720px)").matches) return;
     primeiraConversaVisivel.current = true;
     marcarAoVisualizar(selecionada.imovel.id, selecionada.naoLidas);
@@ -779,41 +793,36 @@ export default function CentralMensagensView({
   }
 
   function selecionar(id: string) {
+    const conversa = conversas.find((item) => item.imovel.id === id);
+    setUltimaSelecionada(conversa || null);
     setSelecionadaId(id);
     setMobileAberta(true);
     setContextoAberto(false);
-    const conversa = conversas.find((item) => item.imovel.id === id);
     if (conversa) marcarAoVisualizar(id, conversa.naoLidas);
   }
 
   function buscar(valor: string) {
     setBusca(valor);
+    setUltimaSelecionada(null);
     setSelecionadaId(null);
   }
 
   function filtrarPrincipal(principal: FiltroPrincipalConversas) {
     setFiltros((atuais) => ({ ...atuais, principal }));
+    setUltimaSelecionada(null);
     setSelecionadaId(null);
   }
 
   function alternarNaoLidas() {
     setFiltros((atuais) => ({ ...atuais, naoLidas: !atuais.naoLidas }));
+    setUltimaSelecionada(null);
     setSelecionadaId(null);
   }
 
   function alternarAgendadas() {
     setFiltros((atuais) => ({ ...atuais, agendadas: !atuais.agendadas }));
+    setUltimaSelecionada(null);
     setSelecionadaId(null);
-  }
-
-  if (!carregado) {
-    return (
-      <div className="mensagens-central carregando" aria-busy="true" aria-label="Carregando mensagens">
-        <div className="mensagens-skeleton lista" />
-        <div className="mensagens-skeleton conversa" />
-        <div className="mensagens-skeleton contexto" />
-      </div>
-    );
   }
 
   const erroLista = filtros.agendadas && erroAgendadas ? erroAgendadas : erro;
@@ -863,5 +872,36 @@ export default function CentralMensagensView({
         </div>
       )}
     </div>
+  );
+}
+
+export default function CentralMensagensView({
+  aoAbrirAgendadas,
+  imovelInicial = null,
+}: {
+  aoAbrirAgendadas: () => void;
+  imovelInicial?: string | null;
+}) {
+  const imoveis = useAppStore((estado) => estado.imoveis);
+  const agenda = useAppStore((estado) => estado.agenda);
+  const carregado = useAppStore((estado) => estado.carregado);
+
+  if (!carregado) {
+    return (
+      <div className="mensagens-central carregando" aria-busy="true" aria-label="Carregando mensagens">
+        <div className="mensagens-skeleton lista" />
+        <div className="mensagens-skeleton conversa" />
+        <div className="mensagens-skeleton contexto" />
+      </div>
+    );
+  }
+
+  return (
+    <CentralMensagensCarregada
+      agenda={agenda}
+      aoAbrirAgendadas={aoAbrirAgendadas}
+      imovelInicial={imovelInicial}
+      imoveis={imoveis}
+    />
   );
 }
