@@ -32,6 +32,7 @@
    ================================================================ */
 import { useRef, useState } from "react";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
+import EnsinarIa from "@/components/ia/EnsinarIa";
 import FeedbackSugestaoIa from "@/components/ia/FeedbackSugestaoIa";
 import { abordagensParaEnvio, momentoDoContato } from "@/lib/calculo/abordagens";
 import { telefoneWhatsapp } from "@/lib/calculo/agenda";
@@ -49,12 +50,14 @@ import {
   tokenizarModeloUsuario,
 } from "@/lib/calculo/whatsapp";
 import { todayISO } from "@/lib/datas";
+import { deveOferecerEnsinoAposFeedback } from "@/lib/ensinarIaAcoes";
 import { enviarWhatsapp } from "@/lib/envioWhatsapp";
 import { registrarFeedbackSugestaoIa } from "@/lib/feedbackSugestaoIa";
 import {
   feedbackDoEnvio,
   type PedidoFeedbackSugestaoIa,
   type ReferenciaSugestaoIa,
+  type ResultadoFeedbackSugestaoIa,
 } from "@/lib/ia/feedback";
 import type { ConfirmacaoVisitaPendente } from "@/lib/calculo/confirmacaoVisita";
 import {
@@ -177,6 +180,7 @@ export default function ModalWhatsapp({
   const [feedbackPendenteAposEnvio, setFeedbackPendenteAposEnvio] =
     useState<PedidoFeedbackSugestaoIa | null>(null);
   const [envioConcluido, setEnvioConcluido] = useState(false);
+  const [ensinoPendente, setEnsinoPendente] = useState(false);
 
   if (!imovel) return null;
   const temTelefone = !!telefoneWhatsapp(imovel.proprietarioTelefone);
@@ -311,22 +315,29 @@ export default function ModalWhatsapp({
     }
   }
 
-  async function registrarFeedbackDoEnvio(textoFinal: string): Promise<boolean> {
-    if (!sugestaoAtual) return true;
+  async function registrarFeedbackDoEnvio(textoFinal: string): Promise<
+    | { ok: true; resultado: ResultadoFeedbackSugestaoIa | null }
+    | { ok: false }
+  > {
+    if (!sugestaoAtual) return { ok: true, resultado: null };
     const pedido = feedbackDoEnvio(sugestaoAtual, textoFinal);
     const resposta = await registrarFeedbackSugestaoIa(pedido);
     if (resposta.ok) {
       setSugestaoAtual((atual) => atual ? { ...atual, feedbackResultado: resposta.resultado } : atual);
-      return true;
+      return { ok: true, resultado: resposta.resultado };
     }
     setFeedbackPendenteAposEnvio(pedido);
     setEnvioConcluido(true);
-    return false;
+    return { ok: false };
   }
 
   async function tentarSalvarFeedbackPendente() {
     if (!feedbackPendenteAposEnvio || enviando) return;
     setEnviando(true);
+    const oferecerEnsino = deveOferecerEnsinoAposFeedback(
+      feedbackPendenteAposEnvio.resultado,
+      true,
+    );
     const resposta = await registrarFeedbackSugestaoIa(feedbackPendenteAposEnvio);
     setEnviando(false);
     if (!resposta.ok) {
@@ -335,6 +346,11 @@ export default function ModalWhatsapp({
     }
     setFeedbackPendenteAposEnvio(null);
     toast("Feedback salvo. A mensagem já havia sido enviada.");
+    if (oferecerEnsino) {
+      setEnvioConcluido(true);
+      setEnsinoPendente(true);
+      return;
+    }
     fecharModal();
   }
 
@@ -383,15 +399,21 @@ export default function ModalWhatsapp({
       if (marcarRespostasLidasAposEnvio) {
         await marcarRespostasLidas(imovel.id, true);
       }
-      if (!(await registrarFeedbackDoEnvio(texto))) {
+      const feedback = await registrarFeedbackDoEnvio(texto);
+      if (!feedback.ok) {
         setEnviando(false);
         toast("Mensagem enviada, mas o feedback não foi salvo. Tente novamente abaixo.", "warning");
         return;
       }
       setEnviando(false);
+      const oferecerEnsino = deveOferecerEnsinoAposFeedback(feedback.resultado, true);
+      if (oferecerEnsino) {
+        setEnvioConcluido(true);
+        setEnsinoPendente(true);
+      }
       if (confirmacaoVisita && r.historicoPersistido === false) {
         toast("Mensagem enviada, mas o monitoramento da confirmação não pôde ser ativado.", "warning");
-        fecharModal();
+        if (!oferecerEnsino) fecharModal();
         return;
       }
       toast(
@@ -401,6 +423,7 @@ export default function ModalWhatsapp({
             ? `Mensagem enviada. Tentativa registrada com o modelo “${nomeSemCatalogo}”.`
             : "Mensagem enviada no WhatsApp.",
       );
+      if (oferecerEnsino) return;
       fecharModal();
       return;
     }
@@ -475,7 +498,8 @@ export default function ModalWhatsapp({
         aguardandoResultado: true,
       });
     }
-    if (!(await registrarFeedbackDoEnvio(mensagem))) {
+    const feedback = await registrarFeedbackDoEnvio(mensagem);
+    if (!feedback.ok) {
       setEnviando(false);
       setPerguntandoEnvio(false);
       toast("Mensagem registrada, mas o feedback não foi salvo. Tente novamente abaixo.", "warning");
@@ -492,6 +516,12 @@ export default function ModalWhatsapp({
     }
     setEnviando(false);
     setPerguntandoEnvio(false);
+    const oferecerEnsino = deveOferecerEnsinoAposFeedback(feedback.resultado, true);
+    if (oferecerEnsino) {
+      setEnvioConcluido(true);
+      setEnsinoPendente(true);
+      return;
+    }
     fecharModal();
   }
 
@@ -730,6 +760,7 @@ export default function ModalWhatsapp({
             }
           />
         ) : null}
+        {ensinoPendente ? <EnsinarIa aoConcluir={fecharModal} /> : null}
         <div className="marcadores-modelo">
           <span>Inserir marcador:</span>
           {MARCADORES_MODELO.map((m) => (
@@ -790,7 +821,13 @@ export default function ModalWhatsapp({
           corretor sabe se chegou a mandar. As ações normais saem de cena para
           a resposta não competir com "Fechar" — fechar sem responder é o que
           deixaria a tentativa perdida de novo. */}
-      {feedbackPendenteAposEnvio ? (
+      {ensinoPendente ? (
+        <div className="modal-foot">
+          <p className="section-note" style={{ margin: 0 }}>
+            A mensagem e o feedback já foram salvos. Revise o aprendizado opcional acima.
+          </p>
+        </div>
+      ) : feedbackPendenteAposEnvio ? (
         <div className="modal-foot">
           <p className="section-note" style={{ margin: 0 }}>
             A mensagem já foi enviada. Falta apenas salvar o feedback desta sugestão.

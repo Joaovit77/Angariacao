@@ -1683,10 +1683,20 @@ além da RLS. Excluir a conta remove o dataset; excluir o imóvel apenas remove 
 avaliações históricas. Não existe leitura desse dataset em geração, perfil, memória, System Prompt
 ou Protocolos nesta fase.
 
-Uma evolução pode derivar preferências de **estilo** por usuário e recuperar exemplos
-aprovados/editados semelhantes, usando este dataset como evidência. Essa camada futura não pode
-alterar fatos, permissões, governança, regras comerciais, System Prompt ou Protocolos; preferência
-aprendida permanece abaixo deles na hierarquia de autoridade e nunca é compartilhada entre contas.
+Depois de um envio confirmado cujo feedback foi persistido como `editado`, a interface pode oferecer
+**Ensinar a IA**. Essa ação é opcional, posterior ao feedback e totalmente determinística: **Só nesta
+mensagem** encerra sem escrita; **Preferência de escrita** atualiza um campo já existente de
+`user_config.perfil_comunicacao`; **Regra da imobiliária** cria um Protocolo pelas mesmas mutações e
+RLS das telas próprias. Os campos começam vazios ou em estado não selecionado, o usuário escreve ou
+escolhe o conteúdo, revisa e confirma antes da gravação. A feature não interpreta a edição, não
+consulta modelo, não chama endpoint de geração, não cria memória paralela e não altera os contratos
+ou limites do Sugerir com IA.
+
+Preferência continua sendo somente estilo; Protocolo continua sendo verdade comercial ou regra de
+conduta aprovada. Endereço, valor, nome, telefone, proposta, condição pontual, exceção, informação
+temporária, dado de Agenda/Pipeline/atendimento e afirmação legal ou regulatória não podem ser
+promovidos automaticamente. Conteúdo legal continua dependente das fontes oficiais já previstas na
+hierarquia e não é validado nem criado por esse fluxo.
 
   **As informações comerciais da imobiliária são a exceção a essa trava, e a única.** Não saber nada está certo
   para fato do IMÓVEL, que o painel não tem; está errado para regra da EMPRESA, que o corretor

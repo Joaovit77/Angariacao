@@ -4772,6 +4772,65 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
 .ia-feedback-rejeicao-acoes button{ border-color:var(--border); }
 .ia-feedback-rejeicao-acoes button.principal{ border-color:var(--accent); color:var(--accent-strong); background:var(--accent-soft); }
 
+/* Aprendizado supervisionado: aparece somente depois de envio + feedback
+   editado. É um formulário local; nenhuma ação daqui chama geração de IA. */
+.ensinar-ia{
+  margin-top:10px; padding:12px; border:1px solid var(--border); border-radius:10px;
+  background:var(--bg-elev-1);
+}
+.ensinar-ia-cabecalho strong{ display:block; color:var(--text); font-size:13px; }
+.ensinar-ia-cabecalho p{
+  margin:4px 0 0; color:var(--text-dim); font-size:11.5px; line-height:1.45;
+}
+.ensinar-ia-destinos{
+  display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-top:10px;
+}
+.ensinar-ia-destinos button{
+  display:flex; min-width:0; flex-direction:column; gap:3px; padding:9px;
+  border:1px solid var(--border-soft); border-radius:8px; background:var(--bg-elev-2);
+  color:var(--text); text-align:left; cursor:pointer;
+}
+.ensinar-ia-destinos button:hover:not(:disabled){ border-color:var(--accent); background:var(--accent-soft); }
+.ensinar-ia-destinos button:disabled{ opacity:.6; cursor:not-allowed; }
+.ensinar-ia-destinos strong{ font-size:11.5px; }
+.ensinar-ia-destinos span{ color:var(--text-dim); font-size:10.5px; line-height:1.35; }
+.ensinar-ia-formulario{ display:grid; gap:9px; margin-top:10px; }
+.ensinar-ia-formulario > label,
+.ensinar-ia-formulario fieldset{
+  margin:0; color:var(--text-dim); font-size:11px; font-weight:700;
+}
+.ensinar-ia-formulario select,
+.ensinar-ia-formulario input[type="text"],
+.ensinar-ia-formulario textarea{
+  width:100%; margin-top:4px; padding:8px 9px; border:1px solid var(--border);
+  border-radius:7px; background:var(--bg-elev-2); color:var(--text); font:inherit;
+  font-size:12px; text-transform:none;
+}
+.ensinar-ia-formulario textarea{ min-height:82px; resize:vertical; }
+.ensinar-ia-formulario fieldset{
+  display:grid; gap:6px; padding:9px; border:1px solid var(--border-soft); border-radius:8px;
+}
+.ensinar-ia-formulario legend{ padding:0 4px; color:var(--text); }
+.ensinar-ia-radio,
+.ensinar-ia-confirmacao{ display:flex; align-items:flex-start; gap:7px; margin:0; cursor:pointer; }
+.ensinar-ia-radio input,
+.ensinar-ia-confirmacao input{ flex:0 0 auto; margin-top:2px; }
+.ensinar-ia-radio span,
+.ensinar-ia-confirmacao span{ color:var(--text-dim); font-size:11px; font-weight:500; line-height:1.4; }
+.ensinar-ia-radio strong{ color:var(--text); }
+.ensinar-ia-aviso{
+  padding:8px 9px; border-radius:7px; background:var(--accent-soft);
+  color:var(--accent-strong); font-size:10.5px; line-height:1.45;
+}
+.ensinar-ia-aviso.importante{ background:var(--warn-soft); color:var(--warn); }
+.ensinar-ia-ajuda{ margin:0; color:var(--text-faint); font-size:10.5px; line-height:1.4; }
+.ensinar-ia-erro{ margin:0; color:var(--bad); font-size:11px; }
+.ensinar-ia-acoes{ display:flex; justify-content:flex-end; gap:7px; }
+
+@media (max-width:720px){
+  .ensinar-ia-destinos{ grid-template-columns:1fr; }
+}
+
 .home-more{
   background: none; border: none; cursor: pointer;
   text-align: left; padding: 10px 6px;

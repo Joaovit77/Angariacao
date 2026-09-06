@@ -3,6 +3,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
 import Icone from "@/components/Icone";
+import EnsinarIa from "@/components/ia/EnsinarIa";
 import FeedbackSugestaoIa from "@/components/ia/FeedbackSugestaoIa";
 import {
   contagensConversas,
@@ -17,6 +18,7 @@ import {
 import { conversaSelecionadaEstavel } from "@/lib/calculo/estabilidadeMensagens";
 import { aplicarModeloUsuario, linkWhatsapp, mensagemFalhaEnvio } from "@/lib/calculo/whatsapp";
 import { todayISO } from "@/lib/datas";
+import { deveOferecerEnsinoAposFeedback } from "@/lib/ensinarIaAcoes";
 import { enviarWhatsapp } from "@/lib/envioWhatsapp";
 import { registrarFeedbackSugestaoIa } from "@/lib/feedbackSugestaoIa";
 import { fmtDate } from "@/lib/formatadores";
@@ -361,6 +363,7 @@ function Compositor({ conversa }: { conversa: ConversaImovel }) {
   const [sugestao, setSugestao] = useState<ReferenciaSugestaoIa | null>(null);
   const [feedbackPendenteAposEnvio, setFeedbackPendenteAposEnvio] =
     useState<PedidoFeedbackSugestaoIa | null>(null);
+  const [ensinoPendente, setEnsinoPendente] = useState(false);
   const config = useAppStore((estado) => estado.config);
   const iaDisponivel = useAppStore((estado) => estado.iaDisponivel);
   const abrirWhatsappRascunho = useUiModal((estado) => estado.abrirWhatsappRascunho);
@@ -368,7 +371,7 @@ function Compositor({ conversa }: { conversa: ConversaImovel }) {
 
   async function enviar() {
     const mensagem = texto.trim();
-    if (!mensagem || enviando || feedbackPendenteAposEnvio) return;
+    if (!mensagem || enviando || feedbackPendenteAposEnvio || ensinoPendente) return;
     setEnviando(true);
     setFalha("");
     const resultado = await enviarWhatsapp(imovel.id, mensagem);
@@ -381,6 +384,7 @@ function Compositor({ conversa }: { conversa: ConversaImovel }) {
     }
     await marcarRespostasLidas(imovel.id, true);
     await recarregarEstado();
+    let oferecerEnsino = false;
     if (sugestao) {
       const pedidoFeedback = feedbackDoEnvio(sugestao, mensagem);
       const feedback = await registrarFeedbackSugestaoIa(pedidoFeedback);
@@ -390,10 +394,12 @@ function Compositor({ conversa }: { conversa: ConversaImovel }) {
         toast("Mensagem enviada, mas o feedback não foi salvo. Tente novamente.", "warning");
         return;
       }
+      oferecerEnsino = deveOferecerEnsinoAposFeedback(feedback.resultado, true);
     }
     setTexto("");
     setProtocolos([]);
     setSugestao(null);
+    setEnsinoPendente(oferecerEnsino);
     setEnviando(false);
     toast(
       resultado.historicoPersistido === false
@@ -405,6 +411,10 @@ function Compositor({ conversa }: { conversa: ConversaImovel }) {
 
   async function tentarSalvarFeedbackPendente() {
     if (!feedbackPendenteAposEnvio || enviando) return;
+    const oferecerEnsino = deveOferecerEnsinoAposFeedback(
+      feedbackPendenteAposEnvio.resultado,
+      true,
+    );
     setEnviando(true);
     const feedback = await registrarFeedbackSugestaoIa(feedbackPendenteAposEnvio);
     setEnviando(false);
@@ -416,6 +426,7 @@ function Compositor({ conversa }: { conversa: ConversaImovel }) {
     setTexto("");
     setProtocolos([]);
     setSugestao(null);
+    setEnsinoPendente(oferecerEnsino);
     setFalha("");
     toast("Feedback salvo. A mensagem já havia sido enviada.");
   }
@@ -457,7 +468,7 @@ function Compositor({ conversa }: { conversa: ConversaImovel }) {
         value={texto}
         onChange={(evento) => setTexto(evento.target.value)}
         placeholder={imovel.proprietarioTelefone ? "Digite uma mensagem…" : "Cadastre o telefone do proprietário para responder"}
-        disabled={!imovel.proprietarioTelefone || enviando || !!feedbackPendenteAposEnvio}
+        disabled={!imovel.proprietarioTelefone || enviando || !!feedbackPendenteAposEnvio || ensinoPendente}
         aria-label="Mensagem"
         onKeyDown={(evento) => {
           if (evento.key === "Enter" && (evento.ctrlKey || evento.metaKey)) {
@@ -479,6 +490,7 @@ function Compositor({ conversa }: { conversa: ConversaImovel }) {
           aoSalvar={(resultado) => setSugestao((atual) => atual ? { ...atual, feedbackResultado: resultado } : atual)}
         />
       ) : null}
+      {ensinoPendente ? <EnsinarIa aoConcluir={() => setEnsinoPendente(false)} /> : null}
       {falha ? <div className="mensagens-compositor-erro" role="alert">{falha}</div> : null}
       <div className="mensagens-compositor-acoes">
         <div className="mensagens-compositor-esquerda">
@@ -492,7 +504,7 @@ function Compositor({ conversa }: { conversa: ConversaImovel }) {
             </label>
           ) : null}
           {iaDisponivel ? (
-            <button type="button" className="mensagens-acao-texto ia" onClick={sugerirComIa} disabled={rascunhando || enviando || !!feedbackPendenteAposEnvio}>
+            <button type="button" className="mensagens-acao-texto ia" onClick={sugerirComIa} disabled={rascunhando || enviando || !!feedbackPendenteAposEnvio || ensinoPendente}>
               {rascunhando ? "Sugerindo…" : "Sugerir com IA"}
             </button>
           ) : null}
@@ -501,7 +513,7 @@ function Compositor({ conversa }: { conversa: ConversaImovel }) {
               {enviando ? "Salvando feedback…" : "Tentar salvar feedback"}
             </button>
           ) : null}
-          <button type="button" className="mensagens-acao-texto" onClick={() => abrirWhatsappRascunho(imovel.id, texto, protocolos, sugestao || undefined)} disabled={!!feedbackPendenteAposEnvio}>
+          <button type="button" className="mensagens-acao-texto" onClick={() => abrirWhatsappRascunho(imovel.id, texto, protocolos, sugestao || undefined)} disabled={!!feedbackPendenteAposEnvio || ensinoPendente}>
             Mais opções
           </button>
         </div>
@@ -509,7 +521,7 @@ function Compositor({ conversa }: { conversa: ConversaImovel }) {
           type="button"
           className="mensagens-enviar"
           onClick={() => void enviar()}
-          disabled={!texto.trim() || enviando || !imovel.proprietarioTelefone || !!feedbackPendenteAposEnvio}
+          disabled={!texto.trim() || enviando || !imovel.proprietarioTelefone || !!feedbackPendenteAposEnvio || ensinoPendente}
           aria-label={enviando ? "Enviando mensagem" : "Enviar mensagem"}
         >
           <span>{feedbackPendenteAposEnvio ? "Enviado" : enviando ? "Enviando…" : "Enviar"}</span>
