@@ -14,6 +14,7 @@ import { registrarEvento } from "@/lib/servidor/registro";
 import { admin, ambiente } from "@/app/api/google/_comum";
 import { espelharCompromisso } from "@/app/api/google/_espelho";
 import type { AcaoAssistente, MensagemAssistente, RespostaAssistente } from "@/lib/assistente/tipos";
+import { chamadaOpenAIRealAutorizada } from "@/lib/servidor/openai-real";
 
 export const runtime = "nodejs";
 
@@ -181,7 +182,9 @@ export async function POST(request: Request) {
   }
   const orientacaoCapacidades = respostaSobreCapacidades(pedido.mensagem, { podeUsarIa: true });
   if (orientacaoCapacidades) return respostaOperacional(orientacaoCapacidades, "catalogo-capacidades");
-  if (!process.env.OPENAI_API_KEY) return falha("Assistente indisponível neste ambiente.", 503, "indisponivel");
+  if (!process.env.OPENAI_API_KEY || !chamadaOpenAIRealAutorizada()) {
+    return falha("Assistente indisponível neste ambiente.", 503, "indisponivel");
+  }
   try {
     const resposta = await responderComAssistente(pedido, supabase, auth.user.id);
     const acao = resposta.mensagem.acao;

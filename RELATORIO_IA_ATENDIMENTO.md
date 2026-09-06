@@ -81,7 +81,7 @@ matriz, não constitui garantia universal de julgamento de um modelo não determ
 | [prompts.ts](web/lib/ia/atendimento/prompts.ts) | Critérios de cobertura/temporalidade e exceções que preservam respostas parciais, negações de certeza e fatos do cadastro. |
 | [contratos.ts](web/lib/ia/atendimento/contratos.ts) | Descrição semântica do campo existente, sem mudança de forma ou enum. |
 | [atendimento-semantico.ts](web/tests/fixtures/atendimento-semantico.ts) | 24 casos de produto, incluindo as quatro respostas anteriores, seis formas de presente/continuidade, positivos e domínio diferente. |
-| [ia-auditor-semantico-real.test.ts](web/tests/ia-auditor-semantico-real.test.ts) | Auditor real, duas repetições, uma chamada por caso, sem banco ou mensagens; falhas mostram apenas códigos. |
+| [ia-auditor-semantico.openai-real.ts](web/tests-real-openai/ia-auditor-semantico.openai-real.ts) | Auditor real, manual e isolado, com duas repetições e uma chamada por caso; não integra npm test, CI ou Codex. |
 | [ia-atendimento-robustez.test.ts](web/tests/ia-atendimento-robustez.test.ts) | Quatro regressões de recuperação/bloqueio, manutenção das fontes, diagnóstico e sanitização. |
 | [PROJECT.md](PROJECT.md) | Regra permanente de cobertura e temporalidade. |
 | [RELATORIO_IA_ATENDIMENTO.md](RELATORIO_IA_ATENDIMENTO.md) | Evidências, causa, evolução dos resultados e limites da validação. |

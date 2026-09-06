@@ -1,5 +1,5 @@
 import type OpenAI from "openai";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const registrarUsoDaResposta = vi.hoisted(() => vi.fn());
 
@@ -8,6 +8,7 @@ vi.mock("@/lib/servidor/registro", () => ({ registrarUsoDaResposta }));
 import { MAX_TOKENS_IA, MODELO_TEXTO_IA } from "@/lib/servidor/ia/config";
 import {
   criarExecutorOpenAI,
+  criarExecutorOpenAIMockParaTeste,
   textoDaResposta,
 } from "@/lib/servidor/ia/executor-openai";
 import { SYSTEM_PROMPT_CENTRAL_ANGARIO } from "@/lib/ia/system-prompt";
@@ -38,13 +39,20 @@ function conclusao(
 }
 
 describe("executor OpenAI compartilhado", () => {
-  beforeEach(() => registrarUsoDaResposta.mockClear());
+  beforeEach(() => {
+    registrarUsoDaResposta.mockClear();
+    vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("OPENAI_API_KEY", "chave-ficticia");
+    vi.stubEnv("ALLOW_REAL_OPENAI", "");
+  });
+
+  afterEach(() => vi.unstubAllEnvs());
 
   it("mantém modelo, limite, structured output e uma única chamada", async () => {
     const resposta = conclusao('  {"ok":true}  ');
     const create = vi.fn().mockResolvedValue(resposta);
     const openai = { chat: { completions: { create } } } as unknown as OpenAI;
-    const executor = criarExecutorOpenAI(openai, "usuario-1");
+    const executor = criarExecutorOpenAIMockParaTeste(openai, "usuario-1");
 
     const resultado = await executor.executar({
       tipo: "rascunhar-resposta-decisao",
@@ -79,6 +87,20 @@ describe("executor OpenAI compartilhado", () => {
       resposta.usage,
     );
     expect(MAX_TOKENS_IA).toBe(4000);
+  });
+
+  it("bloqueia o executor real em teste mesmo quando a chave está presente", async () => {
+    const create = vi.fn();
+    const openai = { chat: { completions: { create } } } as unknown as OpenAI;
+    const executor = criarExecutorOpenAI(openai, "usuario-1");
+
+    await expect(executor.executar({
+      tipo: "rascunhar-resposta-validacao",
+      reasoningEffort: "low",
+      mensagens: [{ role: "user", content: "teste" }],
+    })).rejects.toThrow("Chamada real à OpenAI bloqueada");
+    expect(create).not.toHaveBeenCalled();
+    expect(registrarUsoDaResposta).not.toHaveBeenCalled();
   });
 
   it("mantém recusa e truncamento fora do caminho feliz", () => {

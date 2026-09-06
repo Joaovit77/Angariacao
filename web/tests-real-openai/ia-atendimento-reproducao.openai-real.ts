@@ -1,4 +1,3 @@
-import OpenAI from "openai";
 import { writeFile } from "node:fs/promises";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
@@ -18,8 +17,9 @@ import { registrarEvento } from "@/lib/servidor/registro";
 import { carregarConfiguracaoIa } from "@/lib/servidor/ia/configuracao";
 import { fromDbImovel, type DbImovelRow } from "@/lib/persistencia/mapeadores";
 import { selecionarMensagensAtendimento } from "@/lib/ia/atendimento";
+import { criarClienteOpenAIReal } from "@/lib/servidor/openai-real";
 
-describe.skipIf(process.env.IA_REPRODUCAO_REAL !== "true")("reprodução controlada do atendimento", () => {
+describe("reprodução controlada do atendimento", () => {
   it("exercita o handler e o modelo com uma fotografia somente de leitura do contexto autorizado", async () => {
     const userId = process.env.IA_REPRODUCAO_USER_ID;
     const imovelId = process.env.IA_REPRODUCAO_IMOVEL_ID;
@@ -72,7 +72,11 @@ describe.skipIf(process.env.IA_REPRODUCAO_REAL !== "true")("reprodução control
         return consulta;
       },
     } as unknown as SupabaseClient;
-    const executorReal = criarExecutorOpenAI(new OpenAI({ maxRetries: 0, timeout: 45_000 }), null, configuracao.atendimento);
+    const executorReal = criarExecutorOpenAI(
+      criarClienteOpenAIReal({ maxRetries: 0, timeout: 45_000 }),
+      null,
+      configuracao.atendimento,
+    );
     const etapas: Array<{ etapa: string; duracao_ms: number; tokens_entrada: number | null; tokens_saida: number | null }> = [];
     const inicio = performance.now();
     const resposta = await atenderProprietario({

@@ -3,9 +3,10 @@ import { fileURLToPath } from "node:url";
 
 export default defineConfig({
   test: {
-    include: ["tests/**/*.test.ts"],
-    exclude: ["tests-real-openai/**", "node_modules/**"],
+    include: ["tests-real-openai/**/*.openai-real.ts"],
+    exclude: ["tests/**", "node_modules/**"],
     environment: "node",
+    fileParallelism: false,
   },
   resolve: {
     alias: {

@@ -24,7 +24,7 @@
       cima de números forjados — e ninguém notaria, porque o texto sai
       bem escrito de qualquer jeito.
    ================================================================ */
-import OpenAI from "openai";
+import type OpenAI from "openai";
 import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { registrarEvento, registrarUsoDaResposta } from "@/lib/servidor/registro";
@@ -89,6 +89,10 @@ import { respostaErroIa as erro } from "@/lib/servidor/ia/respostas";
 import { aplicarSystemPromptAngario } from "@/lib/ia/system-prompt";
 import { feedbackSugestoesIaHabilitado } from "@/lib/servidor/ia/feedback-config";
 import { registrarSugestaoIa } from "@/lib/servidor/ia/sugestoes";
+import {
+  chamadaOpenAIRealAutorizada,
+  criarClienteOpenAIReal,
+} from "@/lib/servidor/openai-real";
 
 interface Resposta {
   ok: boolean;
@@ -161,7 +165,7 @@ async function podeUsarIa(supabase: SupabaseClient, userId: string): Promise<boo
     boot do app não deve quebrar por causa disto, e a UI só precisa saber
     se esconde os botões. Quem vale mesmo é a checagem do POST. */
 export async function GET(request: Request): Promise<Response> {
-  const configurado = !!process.env.OPENAI_API_KEY;
+  const configurado = !!process.env.OPENAI_API_KEY && chamadaOpenAIRealAutorizada();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const accessToken = tokenDaRequisicao(request);
@@ -181,8 +185,8 @@ export async function POST(request: Request): Promise<Response> {
   const apiKey = process.env.OPENAI_API_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!apiKey || !supabaseUrl || !anonKey) {
-    console.error("IA: variáveis de ambiente ausentes (ver web/.env.example).");
+  if (!apiKey || !supabaseUrl || !anonKey || !chamadaOpenAIRealAutorizada()) {
+    console.error("IA: integração não configurada ou não autorizada neste ambiente.");
     return erro("nao-configurado", 503);
   }
 
@@ -223,7 +227,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!ehTipoPedidoIa(corpo.tipo)) return erro("requisicao-invalida", 400);
   const pedido = corpo.tipo;
 
-  const openai = new OpenAI({ apiKey });
+  const openai = criarClienteOpenAIReal({ apiKey });
   const configuracaoIa = await carregarConfiguracaoIa();
   const MODELO = configuracaoIa.operacoes.modelo;
   const ESFORCO = configuracaoIa.operacoes.esforco;

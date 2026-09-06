@@ -14,6 +14,9 @@ jobs:
     env:
       # Os helpers e o oráculo legado trabalham com datas locais do Brasil.
       TZ: America/Sao_Paulo
+      # Defesa em profundidade: CI nunca recebe autorização nem chave pagas.
+      ALLOW_REAL_OPENAI: "0"
+      OPENAI_API_KEY: ""
     defaults:
       run:
         working-directory: web

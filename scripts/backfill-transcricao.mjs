@@ -16,8 +16,8 @@
 
    Uso (a partir da raiz do repositório):
 
-     node scripts/backfill-transcricao.mjs                 # simulação
-     node scripts/backfill-transcricao.mjs --aplicar       # grava
+     ALLOW_REAL_OPENAI=1 node scripts/backfill-transcricao.mjs             # simulação
+     ALLOW_REAL_OPENAI=1 node scripts/backfill-transcricao.mjs --aplicar   # grava
 
    Lê as credenciais de web/.env.local (ou das variáveis de ambiente).
    Precisa da SUPABASE_SERVICE_ROLE_KEY: o script roda fora do app, sem
@@ -30,6 +30,19 @@ import { fileURLToPath } from "node:url";
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const APLICAR = process.argv.includes("--aplicar");
+
+const emCI = !!process.env.CI
+  && !["0", "false", "no", "off"].includes(process.env.CI.toLowerCase());
+const emCodex = Object.keys(process.env).some(
+  (nome) => nome === "CODEX_HOME" || nome.startsWith("CODEX_"),
+);
+if (process.env.ALLOW_REAL_OPENAI !== "1" || emCI || emCodex) {
+  console.error(
+    "BLOQUEADO: este backfill usa a OpenAI real; exige autorização humana "
+    + "por ALLOW_REAL_OPENAI=1 e não pode rodar em CI/Codex.",
+  );
+  process.exit(2);
+}
 
 /* --- Configuração ---------------------------------------------------- */
 

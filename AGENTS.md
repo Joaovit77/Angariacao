@@ -176,6 +176,18 @@ Testes unitários, TypeScript, lint e build não substituem essa etapa quando o 
 
 Nunca envie mensagens, altere dados de produção ou execute ações externas reais apenas para validar uma tarefa sem autorização explícita.
 
+### APIs pagas e testes reais
+
+- O Codex nunca deve executar suítes de teste ou scripts de diagnóstico que atinjam APIs
+  pagas/reais, incluindo a OpenAI. Qualquer outra validação externa paga exige autorização explícita
+  do usuário para aquela execução e deve respeitar os bloqueios técnicos do ambiente.
+- Testes comuns devem usar mocks, fixtures ou respostas gravadas. A presença de uma credencial no
+  ambiente não constitui autorização.
+- Nunca carregue web/.env.local automaticamente em um teste para obter credenciais reais.
+- Os ensaios OpenAI em web/tests-real-openai/ são exclusivamente manuais. Eles não podem ser
+  acionados pelo Codex nem por CI, mesmo com ALLOW_REAL_OPENAI=1.
+- Não execute o comando npm run test:openai-real:PERIGOSO como parte de validação automática.
+
 Quando for necessário smoke real, prepare o sistema e solicite que o usuário teste com um contato/dado seguro.
 
 ---

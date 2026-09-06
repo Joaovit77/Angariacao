@@ -16,7 +16,6 @@
    do proprietário e devolve dado. Ainda assim é SUGESTÃO — quem grava
    o fato é o corretor, no nudge.
    ================================================================ */
-import OpenAI from "openai";
 import { sanitizarErroExterno } from "./erroExterno";
 import {
   ESQUEMA_CLASSIFICACAO,
@@ -34,6 +33,10 @@ import {
 } from "./ia/config";
 import { carregarConfiguracaoIa } from "./ia/configuracao";
 import { aplicarSystemPromptAngario } from "../ia/system-prompt";
+import {
+  chamadaOpenAIRealAutorizada,
+  criarClienteOpenAIReal,
+} from "./openai-real";
 
 const VALIDOS: readonly string[] = RESULTADOS_TENTATIVA.map((r) => r.valor);
 
@@ -86,7 +89,7 @@ export async function classificarResposta(
   motivoPerda: string | null;
 } | null> {
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey || !chamadaOpenAIRealAutorizada()) return null;
   // Sem texto não há o que ler (áudio, figurinha): a nota já registra o que
   // chegou, e pedir classificação de string vazia só gastaria token.
   if (!texto.trim()) return null;
@@ -94,7 +97,7 @@ export async function classificarResposta(
   try {
     const configuracaoIa = await carregarConfiguracaoIa();
     const MODELO = configuracaoIa.classificacao.modelo;
-    const openai = new OpenAI({ apiKey });
+    const openai = criarClienteOpenAIReal({ apiKey });
     const conclusao = await openai.chat.completions.create({
       model: MODELO,
       max_completion_tokens: MAX_TOKENS,
