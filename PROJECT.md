@@ -1760,7 +1760,9 @@ somente em memória, o motor determinístico de `lib/calculo/avaliacao.ts` com o
 e de mercado já persistidos. Nenhum valor é recalculado pelo modelo. São aceitos no máximo 12
 comparáveis, 12 eventos operacionais, 12 mensagens recentes, quatro antigas relevantes e cinco
 Protocolos. Mensagens entram pelo seletor determinístico do Atendimento em modo retrospectivo e
-nunca como conversa integral. Anúncios, notas e mensagens são delimitados como dados não confiáveis;
+nunca como conversa integral. Sem opt-in, a seção de Atendimento é obrigatoriamente uma lacuna sem
+fontes e itens de Agenda originados do WhatsApp omitem título e observação derivados da conversa.
+Anúncios, notas e mensagens são delimitados como dados não confiáveis;
 Protocolos têm autoridade comercial intermediária, sem poder para liberar ferramentas, mudar
 permissões ou sobrescrever validações.
 

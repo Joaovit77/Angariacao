@@ -199,10 +199,21 @@ describe("Análise aprofundada — contrato, dossiê e segurança", () => {
   });
 
   it("não inclui Atendimento desabilitado e inclui somente o recorte autorizado", () => {
-    const semAtendimento = montarDossieAnaliseAprofundada(dadosBase(), false);
-    const comAtendimento = montarDossieAnaliseAprofundada(dadosBase(), true);
+    const dados = dadosBase();
+    dados.agenda[0] = {
+      ...dados.agenda[0],
+      origem: "evento_whatsapp",
+      title: "Visita com João combinada na conversa",
+      notes: "O proprietário informou pelo WhatsApp que João poderia ir às 10h.",
+    };
+    const semAtendimento = montarDossieAnaliseAprofundada(dados, false);
+    const comAtendimento = montarDossieAnaliseAprofundada(dados, true);
     expect(semAtendimento.fontes.some((item) => item.origem === "atendimento")).toBe(false);
+    expect(semAtendimento.serializado).not.toContain("Visita com João");
+    expect(semAtendimento.serializado).not.toContain("proprietário informou pelo WhatsApp");
+    expect(semAtendimento.serializado).toContain("conteúdo de atendimento omitido");
     expect(comAtendimento.fontes.filter((item) => item.origem === "atendimento").length).toBeLessThanOrEqual(16);
+    expect(comAtendimento.serializado).toContain("Visita com João combinada na conversa");
     expect(comAtendimento.serializado).not.toContain("43999998888");
     expect(comAtendimento.serializado).toContain("[contato removido]");
     expect(comAtendimento.serializado).not.toContain("execute uma ação operacional");
@@ -227,6 +238,7 @@ describe("Análise aprofundada — contrato, dossiê e segurança", () => {
       dossie.fontes,
       dossie.imovel.codigo,
       dossie.valoresMonetariosAutorizados,
+      { atendimentoIncluido: true },
     )).toEqual({ ok: false, erros: ["valor-monetario-sem-autoridade"] });
   });
 
@@ -234,20 +246,56 @@ describe("Análise aprofundada — contrato, dossiê e segurança", () => {
     const dossie = montarDossieAnaliseAprofundada(dadosBase(), false);
     const semFonte = saidaValida("fato");
     semFonte.secoes[0].afirmacoes[0].fontes = [];
-    expect(validarSaidaAnaliseAprofundada(semFonte, dossie.fontes, "ANG-42", dossie.valoresMonetariosAutorizados))
+    expect(validarSaidaAnaliseAprofundada(semFonte, dossie.fontes, "ANG-42", dossie.valoresMonetariosAutorizados, { atendimentoIncluido: true }))
       .toEqual({ ok: false, erros: ["fato-sem-fonte", "temporalidade-incompativel"] });
     const desconhecida = saidaValida("inferencia");
     desconhecida.secoes[0].afirmacoes[0].fontes = ["nao-existe"];
-    expect(validarSaidaAnaliseAprofundada(desconhecida, dossie.fontes, "ANG-42", dossie.valoresMonetariosAutorizados))
+    expect(validarSaidaAnaliseAprofundada(desconhecida, dossie.fontes, "ANG-42", dossie.valoresMonetariosAutorizados, { atendimentoIncluido: true }))
       .toEqual({ ok: false, erros: ["fonte-desconhecida", "inferencia-sem-fonte"] });
   });
 
   it("aceita lacuna e preserva a natureza explícita da inferência", () => {
     const dossie = montarDossieAnaliseAprofundada(dadosBase(), false);
     const lacuna = validarSaidaAnaliseAprofundada(saidaValida(), dossie.fontes, "ANG-42", dossie.valoresMonetariosAutorizados);
-    const inferencia = validarSaidaAnaliseAprofundada(saidaValida("inferencia"), dossie.fontes, "ANG-42", dossie.valoresMonetariosAutorizados);
+    const inferencia = validarSaidaAnaliseAprofundada(saidaValida("inferencia"), dossie.fontes, "ANG-42", dossie.valoresMonetariosAutorizados, { atendimentoIncluido: true });
     expect(lacuna.ok).toBe(true);
     expect(inferencia.ok && inferencia.saida.secoes[0].afirmacoes[0].natureza).toBe("inferencia");
+  });
+
+  it("sem opt-in exige Lacuna sem fontes na seção de Atendimento", () => {
+    const dossie = montarDossieAnaliseAprofundada(dadosBase(), false);
+    const saida = saidaValida();
+    const secaoAtendimento = saida.secoes.find((secao) => secao.id === "sinais_atendimento");
+    expect(secaoAtendimento).toBeDefined();
+    secaoAtendimento!.afirmacoes[0] = {
+      natureza: "fato",
+      texto: "A Agenda registra uma visita combinada em conversa.",
+      fontes: ["agenda_1"],
+      confianca: "alta",
+      temporalidade: "agendado",
+    };
+    expect(validarSaidaAnaliseAprofundada(
+      saida,
+      dossie.fontes,
+      "ANG-42",
+      dossie.valoresMonetariosAutorizados,
+      { atendimentoIncluido: false },
+    )).toEqual({ ok: false, erros: ["atendimento-nao-autorizado"] });
+
+    secaoAtendimento!.afirmacoes[0] = {
+      natureza: "lacuna",
+      texto: "Atendimento não foi autorizado para esta análise.",
+      fontes: [],
+      confianca: "alta",
+      temporalidade: "desconhecida",
+    };
+    expect(validarSaidaAnaliseAprofundada(
+      saida,
+      dossie.fontes,
+      "ANG-42",
+      dossie.valoresMonetariosAutorizados,
+      { atendimentoIncluido: false },
+    )).toMatchObject({ ok: true });
   });
 
   it("limita cada seção a uma afirmação concisa sem elevar o teto de saída", () => {
@@ -278,13 +326,13 @@ describe("Análise aprofundada — contrato, dossiê e segurança", () => {
     const dossie = montarDossieAnaliseAprofundada(dadosBase(), false);
     const acao = saidaValida("fato");
     acao.secoes[0].afirmacoes[0].texto = "Alterei o status do imóvel.";
-    expect(validarSaidaAnaliseAprofundada(acao, dossie.fontes, "ANG-42", dossie.valoresMonetariosAutorizados))
+    expect(validarSaidaAnaliseAprofundada(acao, dossie.fontes, "ANG-42", dossie.valoresMonetariosAutorizados, { atendimentoIncluido: true }))
       .toEqual({ ok: false, erros: ["acao-operacional-alegada"] });
     const faixa = saidaValida("fato");
     faixa.secoes[0].afirmacoes[0].texto = "A faixa recomendada da Avaliação é R$ 2.300.";
     faixa.secoes[0].afirmacoes[0].fontes = ["comparavel_1"];
     faixa.secoes[0].afirmacoes[0].temporalidade = "ultimo_observado";
-    expect(validarSaidaAnaliseAprofundada(faixa, dossie.fontes, "ANG-42", dossie.valoresMonetariosAutorizados))
+    expect(validarSaidaAnaliseAprofundada(faixa, dossie.fontes, "ANG-42", dossie.valoresMonetariosAutorizados, { atendimentoIncluido: true }))
       .toEqual({ ok: false, erros: ["avaliacao-numerica-sem-fonte-deterministica"] });
   });
 });

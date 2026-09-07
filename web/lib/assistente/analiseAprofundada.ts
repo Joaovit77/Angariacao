@@ -113,6 +113,10 @@ export interface PedidoAnaliseAprofundada {
   sessaoId: string;
 }
 
+export interface ContextoValidacaoAnaliseAprofundada {
+  atendimentoIncluido: boolean;
+}
+
 export const TITULOS_SECOES_ANALISE: Record<SecaoAnaliseAprofundada, string> = {
   resumo_executivo: "Resumo executivo",
   posicao_mercado: "Posição do imóvel no mercado",
@@ -212,6 +216,7 @@ export function validarSaidaAnaliseAprofundada(
   fontesAutorizadas: readonly FonteDossieAnaliseAprofundada[],
   codigoImovel: string,
   valoresMonetariosAutorizados: readonly number[],
+  contexto: ContextoValidacaoAnaliseAprofundada = { atendimentoIncluido: false },
 ): { ok: true; saida: SaidaModeloAnaliseAprofundada } | { ok: false; erros: string[] } {
   const saida = normalizarSaidaModeloAnalise(valor);
   if (!saida) return { ok: false, erros: ["estrutura-invalida"] };
@@ -228,6 +233,13 @@ export function validarSaidaAnaliseAprofundada(
       });
       if ((afirmacao.natureza === "fato" || afirmacao.natureza === "inferencia") && fontes.length === 0) {
         erros.add(afirmacao.natureza === "fato" ? "fato-sem-fonte" : "inferencia-sem-fonte");
+      }
+      if (secao.id === "sinais_atendimento" && !contexto.atendimentoIncluido
+        && (afirmacao.natureza !== "lacuna" || afirmacao.fontes.length > 0)) {
+        erros.add("atendimento-nao-autorizado");
+      }
+      if (!contexto.atendimentoIncluido && fontes.some((fonte) => fonte.origem === "atendimento")) {
+        erros.add("atendimento-nao-autorizado");
       }
       if (!temporalidadeCompativel(afirmacao, fontes)) erros.add("temporalidade-incompativel");
       if (ACOES_OPERACIONAIS_ALEGADAS.test(afirmacao.texto)) erros.add("acao-operacional-alegada");

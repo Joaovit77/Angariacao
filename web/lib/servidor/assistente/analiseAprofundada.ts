@@ -366,6 +366,7 @@ export function montarDossieAnaliseAprofundada(
   if (!historicoOperacional.length) lacunas.push("Não há histórico operacional suficiente para atribuir causas.");
 
   for (const [indice, item] of dados.agenda.slice(0, LIMITES_ANALISE_APROFUNDADA.historico).entries()) {
+    const conteudoAtendimentoProtegido = !incluirAtendimento && item.origem === "evento_whatsapp";
     fontes.push(fonte(`agenda_${indice + 1}`, {
       origem: "agenda",
       autoridade: "dado_estruturado_atual",
@@ -373,12 +374,12 @@ export function montarDossieAnaliseAprofundada(
       observadoEm: item.date,
       rotulo: `Agenda/follow-up ${indice + 1}`,
       conteudo: JSON.stringify({
-        titulo: item.title,
+        titulo: conteudoAtendimentoProtegido ? "Compromisso com conteúdo de atendimento omitido" : item.title,
         tipo: item.type,
         data: item.date,
         hora: item.hora || null,
         concluido: item.done,
-        observacao: item.notes || null,
+        observacao: conteudoAtendimentoProtegido ? null : item.notes || null,
       }),
     }));
   }
@@ -566,6 +567,7 @@ function instrucoesAnalise() {
   return `Produza exclusivamente uma análise diagnóstica estruturada do único imóvel no dossiê.
 Preencha as dez seções com exatamente uma afirmação concisa por seção, de no máximo 240 caracteres e no máximo três fontes.
 Cada afirmação deve ser fato, inferencia ou lacuna. Fatos e inferências precisam citar IDs exatos das fontes.
+Se atendimentoIncluido for falso, sinais_atendimento deve ser uma lacuna sem fontes; não extraia sinais de atendimento da Agenda.
 Inferências não podem virar causalidade comprovada. Lacunas podem ter fontes vazias.
 Não recalcule preço: copie apenas números presentes na fonte avaliacao_1 ou nos comparáveis autorizados.
 Não trate anúncio observado anteriormente como atualmente disponível ou alugado.
@@ -659,6 +661,7 @@ export async function executarAnaliseAprofundadaComDependencias(
           dossie.fontes,
           dossie.imovel.codigo,
           dossie.valoresMonetariosAutorizados,
+          { atendimentoIncluido: dossie.atendimentoIncluido },
         );
         if (!validacao.ok) {
           ultimoErro = new Error(`Resposta estruturalmente inválida: ${validacao.erros.join(",")}`);
