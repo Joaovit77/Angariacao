@@ -170,7 +170,11 @@ describe("Ensinar a IA — supervisão e custo zero", () => {
     expect(deveOferecerEnsinoAposFeedback(pedido.resultado, false)).toBe(false);
     expect(deveOferecerEnsinoAposFeedback(pedido.resultado, true)).toBe(true);
     expect(CENTRAL).toContain("await registrarFeedbackSugestaoIa(pedidoFeedback)");
+    expect(CENTRAL).toMatch(
+      /deveOferecerEnsinoAposFeedback\(pedidoFeedback\.resultado,\s*true\)/,
+    );
     expect(MODAL).toContain("await registrarFeedbackSugestaoIa(pedido)");
+    expect(MODAL).toContain("return { ok: true, resultado: pedido.resultado }");
   });
 
   it("aprovar ou rejeitar sugestão nunca cria aprendizado automático", () => {

@@ -353,7 +353,7 @@ function Timeline({ conversa, aoAbrirWhatsapp }: { conversa: ConversaImovel; aoA
   );
 }
 
-function Compositor({ conversa }: { conversa: ConversaImovel }) {
+export function Compositor({ conversa }: { conversa: ConversaImovel }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -384,7 +384,6 @@ function Compositor({ conversa }: { conversa: ConversaImovel }) {
     }
     await marcarRespostasLidas(imovel.id, true);
     await recarregarEstado();
-    let oferecerEnsino = false;
     if (sugestao) {
       const pedidoFeedback = feedbackDoEnvio(sugestao, mensagem);
       const feedback = await registrarFeedbackSugestaoIa(pedidoFeedback);
@@ -394,12 +393,13 @@ function Compositor({ conversa }: { conversa: ConversaImovel }) {
         toast("Mensagem enviada, mas o feedback não foi salvo. Tente novamente.", "warning");
         return;
       }
-      oferecerEnsino = deveOferecerEnsinoAposFeedback(feedback.resultado, true);
+      setEnsinoPendente(
+        deveOferecerEnsinoAposFeedback(pedidoFeedback.resultado, true),
+      );
     }
     setTexto("");
     setProtocolos([]);
     setSugestao(null);
-    setEnsinoPendente(oferecerEnsino);
     setEnviando(false);
     toast(
       resultado.historicoPersistido === false

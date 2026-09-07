@@ -323,8 +323,8 @@ export default function ModalWhatsapp({
     const pedido = feedbackDoEnvio(sugestaoAtual, textoFinal);
     const resposta = await registrarFeedbackSugestaoIa(pedido);
     if (resposta.ok) {
-      setSugestaoAtual((atual) => atual ? { ...atual, feedbackResultado: resposta.resultado } : atual);
-      return { ok: true, resultado: resposta.resultado };
+      setSugestaoAtual((atual) => atual ? { ...atual, feedbackResultado: pedido.resultado } : atual);
+      return { ok: true, resultado: pedido.resultado };
     }
     setFeedbackPendenteAposEnvio(pedido);
     setEnvioConcluido(true);
