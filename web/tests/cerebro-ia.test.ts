@@ -43,6 +43,7 @@ describe("Cérebro da IA", () => {
     expect(tela).toContain("useAppStore");
     expect(tela).toContain("protocolos.filter((protocolo) => !protocolo.arquivado)");
     expect(tela).toContain("imoveis.length");
+    expect(tela).toContain("agenda.length");
     expect(tela).toContain("carregarAtividadesIa");
     expect(tela).toContain("Nenhuma interação com IA ainda");
     expect(cliente).toContain('fetch("/api/ia/atividades"');

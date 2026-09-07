@@ -80,6 +80,8 @@ interface MetadadosSeguros {
   protocolosAplicados: string[];
   ferramentasChamadas: string[];
   entidadesUtilizadas: string[];
+  blocosContexto: string[];
+  fontesContexto: string[];
   fontesDeDados: string[];
   validacoesAplicadas: string[];
   resultado: "sugerido" | "respondido" | "bloqueado" | "erro";
@@ -171,6 +173,18 @@ const APRESENTACOES: Record<string, ApresentacaoAtividade> = {
     interpretacao: "Organizar características do imóvel para comparação.",
     icone: "imoveis",
   },
+  "embedding-consulta-avaliacao": {
+    titulo: "Busca semântica da Avaliação realizada",
+    pedido: "Foi solicitada uma busca semântica para apoiar a Avaliação.",
+    interpretacao: "Comparar semanticamente os dados disponíveis para a Avaliação.",
+    icone: "analise",
+  },
+  "embedding-comparavel-mercado": {
+    titulo: "Comparável preparado para busca semântica",
+    pedido: "Um comparável de mercado foi enviado para preparação semântica.",
+    interpretacao: "Organizar as características observadas para futuras comparações.",
+    icone: "imoveis",
+  },
   agendar_visita: {
     titulo: "Agendamento de visita",
     pedido: "Foi solicitada uma ação de agendamento de visita.",
@@ -181,6 +195,36 @@ const APRESENTACOES: Record<string, ApresentacaoAtividade> = {
     titulo: "Compromisso na Agenda",
     pedido: "Foi solicitada a criação de um compromisso na Agenda.",
     interpretacao: "Preparar ou criar o compromisso conforme a confirmação do usuário.",
+    icone: "atendimento",
+  },
+  alterar_status_sem_resposta_em_lote: {
+    titulo: "Mudança para Sem resposta",
+    pedido: "Foi solicitada a mudança de imóveis elegíveis para Sem resposta.",
+    interpretacao: "Preparar ou executar a mudança conforme a confirmação do usuário.",
+    icone: "imoveis",
+  },
+  registrar_tentativa: {
+    titulo: "Tentativa de contato",
+    pedido: "Foi solicitado o registro de uma tentativa de contato.",
+    interpretacao: "Preparar ou registrar a tentativa conforme a confirmação do usuário.",
+    icone: "atendimento",
+  },
+  criar_followup: {
+    titulo: "Criação de follow-up",
+    pedido: "Foi solicitada a criação de um follow-up interno.",
+    interpretacao: "Criar o follow-up interno conforme a política de autonomia.",
+    icone: "atendimento",
+  },
+  reagendar_followup: {
+    titulo: "Reagendamento de follow-up",
+    pedido: "Foi solicitado o reagendamento de um follow-up interno.",
+    interpretacao: "Reagendar o follow-up interno conforme a política de autonomia.",
+    icone: "atendimento",
+  },
+  concluir_followup: {
+    titulo: "Conclusão de follow-up",
+    pedido: "Foi solicitada a conclusão de um follow-up interno.",
+    interpretacao: "Concluir o follow-up interno conforme a política de autonomia.",
     icone: "atendimento",
   },
 };
@@ -200,13 +244,7 @@ const EVENTOS_EXECUCAO = new Set([
   "ia-assistente-acao-executada",
   "ia-assistente-acao-cancelada",
   "ia-assistente-acao-bloqueada",
-]);
-
-const FERRAMENTAS_DE_ACAO = new Set([
-  "preparar_agendamento_visita",
-  "preparar_criacao_compromisso",
-  "abrir_revisao_followup_lote",
-  "preparar_rascunho_resposta",
+  "ia-falhou",
 ]);
 
 const ROTULOS_FERRAMENTAS: Record<string, { titulo: string; no: NoExecucaoIa }> = {
@@ -226,14 +264,133 @@ const ROTULOS_FERRAMENTAS: Record<string, { titulo: string; no: NoExecucaoIa }> 
   consultar_protocolos_comerciais: { titulo: "Consultou Protocolos", no: "protocolos" },
 };
 
-const ROTULOS_FONTES: Record<string, { titulo: string; no: NoExecucaoIa }> = {
-  protocolos: { titulo: "Consultou Protocolos", no: "protocolos" },
+const ROTULOS_FERRAMENTAS_ACAO: Record<string, {
+  titulo: string;
+  estado: EstadoEtapaIa;
+}> = {
+  preparar_agendamento_visita: { titulo: "Preparou um agendamento de visita", estado: "aguardando" },
+  preparar_criacao_compromisso: { titulo: "Preparou um compromisso", estado: "aguardando" },
+  abrir_revisao_followup_lote: { titulo: "Preparou a revisão de follow-ups", estado: "aguardando" },
+  preparar_rascunho_resposta: { titulo: "Preparou um rascunho para revisão", estado: "aguardando" },
+  preparar_alteracao_status_sem_resposta: { titulo: "Preparou mudança para Sem resposta", estado: "aguardando" },
+  registrar_tentativa_contato: { titulo: "Preparou o registro de uma tentativa de contato", estado: "aguardando" },
+  criar_followup: { titulo: "Criou um follow-up", estado: "concluido" },
+  reagendar_followup: { titulo: "Reagendou um follow-up", estado: "concluido" },
+  concluir_followup: { titulo: "Concluiu um follow-up", estado: "concluido" },
+};
+
+const ROTULOS_FONTES: Record<string, {
+  titulo: string;
+  no: NoExecucaoIa;
+  categoria?: CategoriaEtapaIa;
+}> = {
+  protocolos: { titulo: "Consultou Protocolos", no: "protocolos", categoria: "regra" },
   imoveis: { titulo: "Consultou dados do imóvel", no: "imoveis" },
+  status_history: { titulo: "Consultou o histórico de status", no: "crm" },
+  tentativas: { titulo: "Consultou tentativas de contato", no: "atendimento" },
+  "imoveis.status+status_history+notas+tentativas": { titulo: "Consultou o contexto do Pipeline", no: "crm" },
   "notas-whatsapp": { titulo: "Consultou a conversa do WhatsApp", no: "whatsapp" },
   user_config: { titulo: "Consultou preferências de comunicação", no: "contexto" },
-  agenda: { titulo: "Preparou operação na Agenda", no: "contexto" },
+  agenda: { titulo: "Agenda consultada", no: "contexto" },
   assistente_acoes: { titulo: "Consultou a ação preparada", no: "ferramentas" },
 };
+
+const ROTULOS_CONTEXTO: Record<string, {
+  titulo: string;
+  no: NoExecucaoIa;
+  categoria: CategoriaEtapaIa;
+  bloco: string;
+}> = {
+  imoveis: { titulo: "Contexto do imóvel carregado", no: "imoveis", categoria: "consulta", bloco: "imovel" },
+  "imoveis.status+status_history+notas+tentativas": {
+    titulo: "Pipeline consultado",
+    no: "crm",
+    categoria: "consulta",
+    bloco: "pipeline",
+  },
+  agenda: { titulo: "Agenda consultada", no: "contexto", categoria: "consulta", bloco: "agenda" },
+  protocolos: { titulo: "Protocolos considerados", no: "protocolos", categoria: "regra", bloco: "protocolos" },
+};
+
+interface TitulosAcao {
+  preparada: string;
+  executada: string;
+  cancelada: string;
+  bloqueada: string;
+}
+
+const TITULOS_ACOES: Record<string, TitulosAcao> = {
+  agendar_visita: {
+    preparada: "Visita preparada para confirmação",
+    executada: "Visita agendada pelo Assistente",
+    cancelada: "Agendamento de visita cancelado",
+    bloqueada: "Agendamento de visita não executado",
+  },
+  criar_compromisso: {
+    preparada: "Compromisso preparado para confirmação",
+    executada: "Compromisso criado pelo Assistente",
+    cancelada: "Criação de compromisso cancelada",
+    bloqueada: "Compromisso não criado",
+  },
+  alterar_status_sem_resposta_em_lote: {
+    preparada: "Mudança para Sem resposta preparada",
+    executada: "Status alterado para Sem resposta pelo Assistente",
+    cancelada: "Mudança para Sem resposta cancelada",
+    bloqueada: "Mudança para Sem resposta não executada",
+  },
+  registrar_tentativa: {
+    preparada: "Tentativa de contato preparada",
+    executada: "Tentativa de contato registrada pelo Assistente",
+    cancelada: "Registro da tentativa de contato cancelado",
+    bloqueada: "Tentativa de contato não registrada",
+  },
+  criar_followup: {
+    preparada: "Criação de follow-up preparada",
+    executada: "Follow-up criado pelo Assistente",
+    cancelada: "Criação de follow-up cancelada",
+    bloqueada: "Follow-up não criado",
+  },
+  reagendar_followup: {
+    preparada: "Reagendamento de follow-up preparado",
+    executada: "Follow-up reagendado pelo Assistente",
+    cancelada: "Reagendamento de follow-up cancelado",
+    bloqueada: "Follow-up não reagendado",
+  },
+  concluir_followup: {
+    preparada: "Conclusão de follow-up preparada",
+    executada: "Follow-up concluído pelo Assistente",
+    cancelada: "Conclusão de follow-up cancelada",
+    bloqueada: "Follow-up não concluído",
+  },
+};
+
+const TITULOS_CAPACIDADES_INDISPONIVEIS: Record<string, string> = {
+  consultar_mercado: "Consulta de mercado não disponível",
+  enviar_mensagem_externa: "Envio direto de mensagem não disponível",
+  excluir_imovel: "Exclusão de imóvel não disponível",
+  editar_dado_sensivel: "Alteração de dados sensíveis não disponível",
+  alterar_status_arbitrario: "Mudança livre de status não disponível",
+};
+
+const TITULOS_FALHAS_IA: Record<string, string> = {
+  "sugerir-roteiros": "Sugestão de roteiros não concluída",
+  "analisar-abordagens": "Análise das abordagens não concluída",
+  "analisar-dashboard": "Análise do Dashboard não concluída",
+  "analisar-mapa": "Análise do mapa não concluída",
+  "resumo-dia": "Resumo do dia não concluído",
+  "explicar-foco": "Explicação das prioridades não concluída",
+  "extrair-anuncio": "Análise do anúncio não concluída",
+  "rascunhar-resposta": "Preparação da resposta não concluída",
+  "gerar-anuncio": "Geração do anúncio não concluída",
+  "abordagem-anuncio": "Preparação da abordagem não concluída",
+};
+
+const FALHAS_IA_SEGURAS = new Set([
+  "nao-configurado", "sem-permissao", "sessao-expirada", "requisicao-invalida",
+  "sem-dados", "intervencao-humana", "historico-insuficiente", "contexto-incompleto",
+  "baixa-confianca", "geracao-reprovada", "protocolo-inadequado",
+  "falha-carregamento-contexto", "falha-modelo", "limite-excedido", "falha-ia",
+]);
 
 function strings(valor: unknown): string[] {
   if (!Array.isArray(valor)) return [];
@@ -264,10 +421,40 @@ function lerMetadados(detalhe: string | null): MetadadosSeguros | null {
     protocolosAplicados: strings(candidato.protocolosAplicados),
     ferramentasChamadas: strings(candidato.ferramentasChamadas),
     entidadesUtilizadas: strings(candidato.entidadesUtilizadas),
+    blocosContexto: strings(candidato.blocosContexto),
+    fontesContexto: strings(candidato.fontesContexto),
     fontesDeDados: strings(candidato.fontesDeDados),
     validacoesAplicadas: strings(candidato.validacoesAplicadas),
     resultado: resultado as MetadadosSeguros["resultado"],
     motivo: typeof candidato.motivo === "string" ? candidato.motivo : "",
+  };
+}
+
+function lerFalhaIaLegada(detalhe: string | null): MetadadosSeguros | null {
+  const partes = detalhe?.match(/^([a-z0-9-]+): ([a-z0-9-]+)$/);
+  if (!partes || !TITULOS_FALHAS_IA[partes[1]] || !FALHAS_IA_SEGURAS.has(partes[2])) return null;
+  return {
+    operacao: partes[1],
+    protocolosConsiderados: [],
+    protocolosAplicados: [],
+    ferramentasChamadas: [],
+    entidadesUtilizadas: [],
+    blocosContexto: [],
+    fontesContexto: [],
+    fontesDeDados: [],
+    validacoesAplicadas: [],
+    resultado: "erro",
+    motivo: partes[2],
+  };
+}
+
+function capacidadeIndisponivel(motivo: string): { titulo: string } | null {
+  const prefixo = "capacidade-indisponivel:";
+  if (!motivo.startsWith(prefixo)) return null;
+  const capacidade = motivo.slice(prefixo.length);
+  return {
+    titulo: TITULOS_CAPACIDADES_INDISPONIVEIS[capacidade]
+      ?? "Capacidade solicitada não disponível",
   };
 }
 
@@ -333,36 +520,81 @@ function detalheDeQuantidade(quantidade: number, singular: string, plural: strin
   return `${quantidade} ${quantidade === 1 ? singular : plural}`;
 }
 
-function etapaDeFonte(etapas: EtapaAtividadeIa[], fonte: string): void {
+function etapaDeContexto(
+  etapas: EtapaAtividadeIa[],
+  fonte: string,
+  blocosContexto: Set<string>,
+): void {
+  const dados = ROTULOS_CONTEXTO[fonte];
+  if (!dados) return;
+  etapa(
+    etapas,
+    dados.no,
+    dados.categoria,
+    dados.titulo,
+    blocosContexto.has(dados.bloco)
+      ? "A fonte e o bloco de contexto foram registrados como carregados nesta execução."
+      : "A fonte de contexto foi registrada como carregada nesta execução.",
+  );
+}
+
+function etapaDeFonte(
+  etapas: EtapaAtividadeIa[],
+  fonte: string,
+  eventoDeAcao: boolean,
+): void {
   if (fonte.startsWith("ferramenta:")) {
     etapaDeFerramenta(etapas, fonte.slice("ferramenta:".length));
     return;
   }
   const dados = ROTULOS_FONTES[fonte];
   if (!dados) return;
+  if (fonte === "agenda" && eventoDeAcao) {
+    etapa(
+      etapas,
+      "contexto",
+      "acao",
+      "Agenda identificada como destino da operação",
+      "O evento de ação registra a Agenda como destino; isso não foi tratado como uma consulta.",
+    );
+    return;
+  }
   etapa(
     etapas,
     dados.no,
-    fonte === "protocolos" ? "regra" : fonte === "agenda" ? "acao" : "consulta",
+    dados.categoria ?? "consulta",
     dados.titulo,
-    fonte === "agenda" ? "A Agenda foi identificada como destino da operação." : "Fonte consultada nesta execução.",
+    "Fonte consultada nesta execução.",
   );
 }
 
 function etapaDeFerramenta(etapas: EtapaAtividadeIa[], ferramenta: string): void {
-  if (FERRAMENTAS_DE_ACAO.has(ferramenta)) {
-    const titulo = ferramenta === "preparar_agendamento_visita"
-      ? "Preparou um agendamento de visita"
-      : ferramenta === "preparar_criacao_compromisso"
-        ? "Preparou um compromisso"
-      : ferramenta === "abrir_revisao_followup_lote"
-        ? "Preparou a revisão de follow-ups"
-        : "Preparou um rascunho para revisão";
-    etapa(etapas, "ferramentas", "acao", titulo, "A ferramenta preparou a ação; a alteração não foi tratada como consulta.", "aguardando");
+  const acao = ROTULOS_FERRAMENTAS_ACAO[ferramenta];
+  if (acao) {
+    etapa(
+      etapas,
+      "ferramentas",
+      "acao",
+      acao.titulo,
+      acao.estado === "aguardando"
+        ? "A ferramenta somente preparou a ação e ainda depende de confirmação."
+        : "A ferramenta registrou a execução de uma ação interna autorizada.",
+      acao.estado,
+    );
     return;
   }
-  const dados = ROTULOS_FERRAMENTAS[ferramenta] ?? { titulo: "Executou uma consulta autorizada", no: "ferramentas" as const };
-  etapa(etapas, dados.no, "consulta", dados.titulo, "Ferramenta de leitura chamada nesta execução.");
+  const dados = ROTULOS_FERRAMENTAS[ferramenta];
+  if (dados) {
+    etapa(etapas, dados.no, "consulta", dados.titulo, "Ferramenta de leitura chamada nesta execução.");
+    return;
+  }
+  etapa(
+    etapas,
+    "ferramentas",
+    "processamento",
+    "Ferramenta autorizada utilizada",
+    "O evento não traz informação suficiente para classificá-la como consulta ou ação.",
+  );
 }
 
 function tituloDoResultado(evento: string, estado: EstadoEtapaIa): string {
@@ -374,14 +606,34 @@ function tituloDoResultado(evento: string, estado: EstadoEtapaIa): string {
   return "Resultado entregue";
 }
 
+function tituloDaAcao(evento: string, operacao: string): string {
+  const titulos = TITULOS_ACOES[operacao];
+  if (evento === "ia-assistente-acao-preparada") {
+    return titulos?.preparada ?? "Ação preparada para confirmação";
+  }
+  if (evento === "ia-assistente-acao-executada") {
+    return titulos?.executada ?? "Ação executada pelo Assistente";
+  }
+  if (evento === "ia-assistente-acao-cancelada") {
+    return titulos?.cancelada ?? "Ação do Assistente cancelada";
+  }
+  return titulos?.bloqueada ?? "Ação do Assistente não executada";
+}
+
 function atividadeDoEvento(linha: LinhaEventoExecucaoIa): AtividadeIa | null {
   if (!EVENTOS_EXECUCAO.has(linha.evento)) return null;
-  const metadados = lerMetadados(linha.detalhe);
+  const metadados = linha.evento === "ia-falhou"
+    ? lerFalhaIaLegada(linha.detalhe)
+    : lerMetadados(linha.detalhe);
   if (!metadados) return null;
   const dados = apresentacao(metadados.operacao);
+  const eventoDeAcao = linha.evento.startsWith("ia-assistente-acao-");
+  const capacidadeBloqueada = capacidadeIndisponivel(metadados.motivo);
   const estado = linha.evento === "ia-assistente-acao-preparada"
     ? "aguardando"
-    : estadoDoResultado(metadados.resultado);
+    : capacidadeBloqueada
+      ? "bloqueado"
+      : estadoDoResultado(metadados.resultado);
   const etapas: EtapaAtividadeIa[] = [];
 
   const pedido = linha.evento === "ia-assistente-acao-executada"
@@ -393,11 +645,35 @@ function atividadeDoEvento(linha: LinhaEventoExecucaoIa): AtividadeIa | null {
   etapa(etapas, "analise", "processamento", "Operação identificada", dados.interpretacao);
 
   const ferramentasRegistradas = new Set(metadados.ferramentasChamadas);
+  const fontesContexto = new Set(metadados.fontesContexto);
+  const blocosContexto = new Set(metadados.blocosContexto);
+  for (const fonte of fontesContexto) {
+    etapaDeContexto(etapas, fonte, blocosContexto);
+  }
   for (const fonte of metadados.fontesDeDados) {
+    if (fontesContexto.has(fonte)) continue;
     if (fonte.startsWith("ferramenta:") && ferramentasRegistradas.has(fonte.slice(11))) continue;
-    etapaDeFonte(etapas, fonte);
+    etapaDeFonte(etapas, fonte, eventoDeAcao);
   }
   for (const ferramenta of metadados.ferramentasChamadas) etapaDeFerramenta(etapas, ferramenta);
+
+  if (
+    metadados.protocolosConsiderados.length > 0
+    && !fontesContexto.has("protocolos")
+    && !metadados.fontesDeDados.includes("protocolos")
+  ) {
+    etapa(
+      etapas,
+      "protocolos",
+      "regra",
+      "Protocolos considerados",
+      detalheDeQuantidade(
+        metadados.protocolosConsiderados.length,
+        "protocolo considerado",
+        "protocolos considerados",
+      ),
+    );
+  }
 
   if (metadados.protocolosAplicados.length > 0) {
     etapa(
@@ -419,7 +695,7 @@ function atividadeDoEvento(linha: LinhaEventoExecucaoIa): AtividadeIa | null {
     );
   }
 
-  if (linha.evento.startsWith("ia-assistente-acao-")) {
+  if (eventoDeAcao) {
     const detalheAcao = linha.evento === "ia-assistente-acao-preparada"
       ? "A ação foi somente proposta e depende da confirmação do usuário."
       : linha.evento === "ia-assistente-acao-executada"
@@ -432,32 +708,29 @@ function atividadeDoEvento(linha: LinhaEventoExecucaoIa): AtividadeIa | null {
       estado === "bloqueado" || estado === "erro" ? "validacoes" : "resposta",
       "resultado",
       tituloDoResultado(linha.evento, estado),
-      estado === "bloqueado"
-        ? "Uma validação impediu a entrega de conteúdo sem segurança suficiente."
-        : estado === "erro"
+      capacidadeBloqueada
+        ? "A capacidade solicitada não está disponível no Assistente."
+        : estado === "bloqueado"
+          ? "Uma validação impediu a entrega de conteúdo sem segurança suficiente."
+          : estado === "erro"
           ? "O sistema registrou a falha sem apresentar uma resposta como concluída."
           : "A execução chegou a uma entrega para o usuário.",
       estado,
     );
   }
 
-  const titulo = linha.evento === "ia-assistente-acao-preparada"
-    ? metadados.operacao === "criar_compromisso"
-      ? "Compromisso preparado para confirmação"
-      : "Visita preparada para confirmação"
-    : linha.evento === "ia-assistente-acao-executada"
-      ? metadados.operacao === "criar_compromisso"
-        ? "Compromisso criado pelo Assistente"
-        : "Visita agendada pelo Assistente"
-      : linha.evento === "ia-assistente-acao-cancelada"
-        ? "Ação do Assistente cancelada"
-        : linha.evento === "ia-assistente-acao-bloqueada"
-          ? "Ação do Assistente não executada"
-          : dados.titulo;
+  const titulo = eventoDeAcao
+    ? tituloDaAcao(linha.evento, metadados.operacao)
+    : linha.evento === "ia-falhou"
+      ? TITULOS_FALHAS_IA[metadados.operacao]
+      : capacidadeBloqueada?.titulo ?? dados.titulo;
+  const tipoSeguro = APRESENTACOES[metadados.operacao]
+    ? metadados.operacao
+    : eventoDeAcao ? "acao-assistente" : "interacao-ia";
 
   return {
     id: `evento-ia-${linha.id}`,
-    tipo: metadados.operacao,
+    tipo: tipoSeguro,
     titulo,
     resumo: estado === "aguardando"
       ? "Ação proposta; nenhuma alteração foi executada sem confirmação."
@@ -465,7 +738,7 @@ function atividadeDoEvento(linha: LinhaEventoExecucaoIa): AtividadeIa | null {
     etapas,
     percurso: percursoDasEtapas(etapas),
     concluidaEm: linha.criado_em,
-    icone: dados.icone,
+    icone: eventoDeAcao && !APRESENTACOES[metadados.operacao] ? "atendimento" : dados.icone,
     detalhesObservados: true,
     estado,
   };

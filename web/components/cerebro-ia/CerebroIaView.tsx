@@ -182,6 +182,7 @@ function quantidadeComRotulo(quantidade: number, singular: string, plural: strin
 function useDadosCerebroIa(): DadosCerebroIa {
   const carregado = useAppStore((estado) => estado.carregado);
   const imoveis = useAppStore((estado) => estado.imoveis);
+  const agenda = useAppStore((estado) => estado.agenda);
   const protocolos = useAppStore((estado) => estado.protocolos);
   const protocolosAtivos = protocolos.filter((protocolo) => !protocolo.arquivado).length;
   const [atividades, setAtividades] = useState<AtividadeIa[]>([]);
@@ -224,6 +225,14 @@ function useDadosCerebroIa(): DadosCerebroIa {
           ? quantidadeComRotulo(protocolosAtivos, "ativo", "ativos")
           : "Carregando…",
         icone: "protocolos",
+        classificacao: "DERIVÁVEL",
+      },
+      {
+        rotulo: "Agenda",
+        valor: carregado
+          ? quantidadeComRotulo(agenda.length, "compromisso visível", "compromissos visíveis")
+          : "Carregando…",
+        icone: "contexto",
         classificacao: "DERIVÁVEL",
       },
     ],
