@@ -15,6 +15,11 @@ import { admin, ambiente } from "@/app/api/google/_comum";
 import { espelharCompromisso } from "@/app/api/google/_espelho";
 import type { AcaoAssistente, MensagemAssistente, RespostaAssistente } from "@/lib/assistente/tipos";
 import { chamadaOpenAIRealAutorizada } from "@/lib/servidor/openai-real";
+import {
+  ErroAnaliseAprofundada,
+  executarAnaliseAprofundada,
+  normalizarPedidoAnaliseAprofundada,
+} from "@/lib/servidor/assistente/analiseAprofundada";
 
 export const runtime = "nodejs";
 
@@ -106,6 +111,24 @@ export async function POST(request: Request) {
   let corpo: unknown;
   try { corpo = await request.json(); } catch { return falha("Requisição inválida.", 400, "pedido_invalido"); }
   const bruto = corpo && typeof corpo === "object" ? corpo as Record<string, unknown> : {};
+
+  if (bruto.tipo === "analise_aprofundada") {
+    const pedido = normalizarPedidoAnaliseAprofundada(corpo);
+    if (!pedido) return falha("Selecione um imóvel válido para analisar.", 400, "pedido_invalido");
+    if (!process.env.OPENAI_API_KEY || !chamadaOpenAIRealAutorizada()) {
+      return falha("Assistente indisponível neste ambiente.", 503, "indisponivel");
+    }
+    try {
+      const resposta = await executarAnaliseAprofundada(pedido, supabase, auth.user.id, request.signal);
+      return NextResponse.json<RespostaAssistente>({ ok: true, ...resposta });
+    } catch (error) {
+      if (error instanceof ErroAnaliseAprofundada) {
+        return falha(error.message, error.status, error.codigo);
+      }
+      console.error("Assistente: falha na análise aprofundada:", error);
+      return falha("Não foi possível concluir a análise agora.", 502, "falha_ia");
+    }
+  }
 
   if (bruto.tipo === "preparar_acao") {
     const parametros = bruto.parametros && typeof bruto.parametros === "object"

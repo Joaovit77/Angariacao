@@ -1,4 +1,5 @@
 import type { NivelAutonomiaAssistente, TipoAcaoOperacionalAssistente } from "./politicas";
+import type { PedidoAnaliseAprofundada, RelatorioAnaliseAprofundada } from "./analiseAprofundada";
 
 export type PapelAssistente = "usuario" | "assistente";
 
@@ -235,7 +236,8 @@ export type BlocoAssistente =
   | { tipo: "mensagens_agendadas"; titulo: string; itens: ItemMensagemAgendadaAssistente[] }
   | { tipo: "conversas_respondidas"; titulo: string; itens: ItemConversaRespondidaAssistente[] }
   | { tipo: "metricas"; titulo: string; itens: Array<{ rotulo: string; valor: string; detalhe?: string }> }
-  | { tipo: "historico"; titulo: string; itens: Array<{ data: string; tipo: string; texto: string }> };
+  | { tipo: "historico"; titulo: string; itens: Array<{ data: string; tipo: string; texto: string }> }
+  | { tipo: "analise_aprofundada"; titulo: string; itens: []; relatorio: RelatorioAnaliseAprofundada };
 
 export interface MensagemAssistente {
   id: string;
@@ -314,6 +316,13 @@ export interface PedidoCancelarAcaoAssistente {
   acaoId: string;
   sessaoId: string;
 }
+
+export type PedidoApiAssistente =
+  | PedidoAssistente
+  | PedidoPrepararAcaoAssistente
+  | PedidoConfirmarAcaoAssistente
+  | PedidoCancelarAcaoAssistente
+  | PedidoAnaliseAprofundada;
 
 export type RespostaAssistente =
   | { ok: true; mensagem: MensagemAssistente; modelo: string }

@@ -380,11 +380,13 @@ export function serializarContextoTipadoAssistente(contexto: ContextoTipadoAssis
       ...(agenda ? { agenda } : {}),
       ...(contexto.pipeline ? { pipeline: contexto.pipeline } : {}),
       ...(contexto.protocolos ? { protocolos: contexto.protocolos } : {}),
+      ...(contexto.avaliacao ? { avaliacao: contexto.avaliacao } : {}),
+      ...(contexto.mercado ? { mercado: contexto.mercado } : {}),
     },
   });
 }
 
 export function fontesContextoTipado(contexto: ContextoTipadoAssistente): string[] {
-  return [...new Set([contexto.imovel, contexto.agenda, contexto.pipeline, contexto.protocolos]
+  return [...new Set([contexto.imovel, contexto.agenda, contexto.pipeline, contexto.protocolos, contexto.avaliacao, contexto.mercado]
     .flatMap((bloco) => bloco?.estado === "disponivel" ? [bloco.fonte] : []))];
 }

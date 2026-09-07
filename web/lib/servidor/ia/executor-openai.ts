@@ -19,6 +19,9 @@ export interface PedidoExecutorOpenAI {
   >;
   maxCompletionTokens?: number;
   formato?: FormatoEstruturadoOpenAI;
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  maxRetries?: number;
 }
 
 export interface ResultadoExecutorOpenAI {
@@ -87,7 +90,12 @@ function criarExecutor(
             }
           : {}),
         messages: aplicarSystemPromptAngario(pedido.mensagens),
-      }, ...(pedido.tipo.startsWith("rascunhar-resposta-") ? [{ maxRetries: 0, timeout: 45_000 }] : []));
+      }, {
+        ...(pedido.tipo.startsWith("rascunhar-resposta-") ? { maxRetries: 0, timeout: 45_000 } : {}),
+        ...(pedido.maxRetries != null ? { maxRetries: pedido.maxRetries } : {}),
+        ...(pedido.timeoutMs != null ? { timeout: pedido.timeoutMs } : {}),
+        ...(pedido.signal ? { signal: pedido.signal } : {}),
+      });
 
       registrarUsoDaResposta(userId, pedido.tipo, modelo, conclusao.usage);
       return { conclusao, texto: textoDaResposta(conclusao) };

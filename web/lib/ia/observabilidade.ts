@@ -1,4 +1,4 @@
-export type ResultadoExecucaoIa = "sugerido" | "respondido" | "bloqueado" | "erro";
+export type ResultadoExecucaoIa = "sugerido" | "respondido" | "parcial" | "cancelado" | "bloqueado" | "erro";
 
 /**
  * Fatos seguros e estruturados sobre uma execução. Não comporta conteúdo de
@@ -24,6 +24,10 @@ export interface MetadadosExecucaoIa {
   consultasReutilizadas: number | null;
   resultado: ResultadoExecucaoIa;
   motivo: string;
+  quantidadeComparaveis?: number;
+  chamadasModelo?: number;
+  duracaoTotalMs?: number;
+  atendimentoIncluido?: boolean;
 }
 
 const unicos = (valores: readonly (string | null | undefined)[]) => [
@@ -40,9 +44,9 @@ type CamposListaMetadados =
   | "blocosContexto"
   | "fontesContexto";
 
-type EntradaMetadadosExecucaoIa = Omit<MetadadosExecucaoIa, CamposListaMetadados | "consultasExecutadas" | "duracaoContextoMs" | "caracteresContexto" | "tokensContextoAproximados" | "consultasReutilizadas"> & {
+type EntradaMetadadosExecucaoIa = Omit<MetadadosExecucaoIa, CamposListaMetadados | "consultasExecutadas" | "duracaoContextoMs" | "caracteresContexto" | "tokensContextoAproximados" | "consultasReutilizadas" | "quantidadeComparaveis" | "chamadasModelo" | "duracaoTotalMs" | "atendimentoIncluido"> & {
   [Campo in CamposListaMetadados]?: readonly (string | null | undefined)[];
-} & Pick<Partial<MetadadosExecucaoIa>, "consultasExecutadas" | "duracaoContextoMs" | "caracteresContexto" | "tokensContextoAproximados" | "consultasReutilizadas">;
+} & Pick<Partial<MetadadosExecucaoIa>, "consultasExecutadas" | "duracaoContextoMs" | "caracteresContexto" | "tokensContextoAproximados" | "consultasReutilizadas" | "quantidadeComparaveis" | "chamadasModelo" | "duracaoTotalMs" | "atendimentoIncluido">;
 
 export function metadadosExecucaoIa(
   entrada: EntradaMetadadosExecucaoIa,
@@ -62,6 +66,10 @@ export function metadadosExecucaoIa(
     caracteresContexto: entrada.caracteresContexto ?? null,
     tokensContextoAproximados: entrada.tokensContextoAproximados ?? null,
     consultasReutilizadas: entrada.consultasReutilizadas ?? null,
+    ...(entrada.quantidadeComparaveis == null ? {} : { quantidadeComparaveis: inteiroNaoNegativo(entrada.quantidadeComparaveis) }),
+    ...(entrada.chamadasModelo == null ? {} : { chamadasModelo: inteiroNaoNegativo(entrada.chamadasModelo) }),
+    ...(entrada.duracaoTotalMs == null ? {} : { duracaoTotalMs: inteiroNaoNegativo(entrada.duracaoTotalMs) }),
+    ...(entrada.atendimentoIncluido == null ? {} : { atendimentoIncluido: entrada.atendimentoIncluido === true }),
   };
 }
 

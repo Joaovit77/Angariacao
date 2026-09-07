@@ -11,12 +11,16 @@ const marcoSeguro = (valor: unknown): "angariado" | "publicado" | "locado" | und
   valor === "angariado" || valor === "publicado" || valor === "locado" ? valor : undefined;
 
 export function blocosComItens(blocos: BlocoAssistente[]): BlocoAssistente[] {
-  return blocos.filter((bloco) => bloco.itens.length > 0);
+  return blocos.filter((bloco) => bloco.tipo === "analise_aprofundada"
+    ? bloco.relatorio.secoes.length > 0
+    : bloco.itens.length > 0);
 }
 
 export function compactarBlocosParaHistorico(blocos: BlocoAssistente[] | undefined): ResultadoHistoricoAssistente[] {
   if (!blocos?.length) return [];
   return blocosComItens(blocos).slice(0, MAX_BLOCOS).flatMap((bloco): ResultadoHistoricoAssistente[] => {
+    // Relatórios são transitórios e não entram na memória compacta da conversa.
+    if (bloco.tipo === "analise_aprofundada") return [];
     if (bloco.tipo === "imoveis") return [{ tipo: bloco.tipo, itens: bloco.itens.slice(0, MAX_ITENS_POR_BLOCO).map((item) => ({
       id: textoSeguro(item.id, 100), codigo: textoSeguro(item.codigo, 40), bairro: textoSeguro(item.bairro), status: textoSeguro(item.status, 80),
       ...(item.marco ? { marco: item.marco } : {}),

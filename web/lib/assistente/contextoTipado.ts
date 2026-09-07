@@ -13,6 +13,7 @@ export type TipoBlocoContextoAssistente =
 
 export type AutoridadeContextoAssistente =
   | "dado_estruturado_atual"
+  | "avaliacao_deterministica"
   | "protocolo"
   | "historico_operacional"
   | "historico_conversacional"
@@ -92,6 +93,28 @@ export interface DadosContextoProtocolosAssistente {
   catalogo: Array<{ id: string; titulo: string }>;
 }
 
+export interface DadosContextoAvaliacaoAssistente {
+  finalidade: "locacao";
+  faixaMinima: number;
+  valorRecomendado: number;
+  faixaMaxima: number;
+  valorPretendido: number | null;
+  comparacaoPretensao: "abaixo" | "dentro" | "acima" | "indisponivel";
+  quantidadeComparaveis: number;
+}
+
+export interface DadosContextoMercadoAssistente {
+  limiteComparaveis: number;
+  comparaveisUtilizados: Array<{
+    referencia: string;
+    valor: number;
+    bairro: string;
+    observadoEm: string | null;
+    temporalidade: "atual" | "ultimo_observado" | "historico";
+  }>;
+  limitacoes: string[];
+}
+
 export interface ContextoTipadoAssistente {
   base: {
     /** Identidade de autorização. Nunca é serializada para o modelo. */
@@ -113,6 +136,8 @@ export interface ContextoTipadoAssistente {
   agenda?: BlocoContextoAssistente<"agenda", DadosContextoAgendaAssistente>;
   pipeline?: BlocoContextoAssistente<"pipeline", DadosContextoPipelineAssistente>;
   protocolos?: BlocoContextoAssistente<"protocolos", DadosContextoProtocolosAssistente>;
+  avaliacao?: BlocoContextoAssistente<"avaliacao", DadosContextoAvaliacaoAssistente>;
+  mercado?: BlocoContextoAssistente<"mercado", DadosContextoMercadoAssistente>;
 }
 
 export interface SelecaoContextoAssistente {

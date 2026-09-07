@@ -6,6 +6,7 @@ import { blocosComItens } from "@/lib/assistente/historico";
 import { usePipelineUi } from "@/lib/uiPipeline";
 import { useUiModal } from "@/lib/uiModal";
 import styles from "./Assistente.module.css";
+import RelatorioAnaliseAprofundadaView from "./RelatorioAnaliseAprofundada";
 
 export default function RespostaEstruturada({ blocos }: { blocos: BlocoAssistente[] }) {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function RespostaEstruturada({ blocos }: { blocos: BlocoAssistent
   return blocosComItens(blocos).map((bloco, indice) => (
     <section className={styles.bloco} key={`${bloco.tipo}-${indice}`}>
       <strong>{bloco.titulo}</strong>
+      {bloco.tipo === "analise_aprofundada" && <RelatorioAnaliseAprofundadaView relatorio={bloco.relatorio} />}
       {bloco.tipo === "metricas" && <div className={styles.metricas}>{bloco.itens.map((item) => <div key={item.rotulo}><span>{item.rotulo}</span><b>{item.valor}</b></div>)}</div>}
       {bloco.tipo === "imoveis" && bloco.itens.map((item) => <button className={styles.item} type="button" key={item.id} onClick={() => abrirImovel(item.id, item.codigo)}><span><b>{item.codigo}</b> · {item.status}</span><small>{item.endereco}{item.bairro ? ` · ${item.bairro}` : ""}{item.marcoEm ? ` · ${item.marco} em ${item.marcoEm}` : ""}{item.diasSemMovimento != null ? ` · ${item.diasSemMovimento} dias` : ""}</small></button>)}
       {bloco.tipo === "agenda" && bloco.itens.map((item) => <button className={styles.item} type="button" key={item.id} onClick={() => { router.push("/agenda"); abrirModal("agenda", item.id); }}><span><b>{item.titulo}</b>{item.concluido ? " · concluido" : ""}</span><small>{item.data}{item.hora ? ` às ${item.hora}` : ""} · {item.tipo}</small></button>)}

@@ -99,3 +99,36 @@ export function protocolosSelecionadosParaAssistente(
     return protocolo ? [protocolo] : [];
   });
 }
+
+const TERMOS_ANALISE_APROFUNDADA = [
+  "aluguel", "locacao", "mercado", "preco", "valor", "comparavel", "proprietario",
+  "anuncio", "divulgacao", "visita", "follow up", "taxa", "comissao", "garantia",
+  "vistoria", "reparo", "manutencao", "exclusividade", "autorizacao", "prazo",
+];
+
+function normalizarParaSelecao(texto: string): string {
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+}
+
+/**
+ * Seleção determinística para o fluxo de chamada única. O conteúdo continua
+ * subordinado às políticas do sistema e nunca amplia permissões.
+ */
+export function selecionarProtocolosParaAnaliseAprofundada(
+  protocolos: readonly ProtocoloComercialAssistente[],
+  contexto: string,
+): ProtocoloComercialAssistente[] {
+  const referencia = normalizarParaSelecao([contexto, ...TERMOS_ANALISE_APROFUNDADA].join(" "));
+  return protocolos
+    .map((protocolo, indice) => {
+      const termos = normalizarParaSelecao(protocolo.titulo)
+        .split(/[^a-z0-9]+/)
+        .filter((termo) => termo.length >= 4);
+      const pontos = termos.reduce((total, termo) => total + (referencia.includes(termo) ? 1 : 0), 0);
+      return { protocolo, indice, pontos };
+    })
+    .filter((item) => item.pontos > 0)
+    .sort((a, b) => b.pontos - a.pontos || a.indice - b.indice)
+    .slice(0, MAX_PROTOCOLOS_APLICAVEIS)
+    .map((item) => item.protocolo);
+}

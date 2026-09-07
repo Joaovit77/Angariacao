@@ -79,7 +79,10 @@ function pontuarMensagemAntiga(
  * pelo atendimento. A consulta do Supabase entrega o array JSONB inteiro; o
  * corte acontece somente aqui, depois da ordenacao cronologica.
  */
-export function selecionarMensagensAtendimento(imovel: Imovel): SelecaoMensagensAtendimento {
+export function selecionarMensagensAtendimento(
+  imovel: Imovel,
+  opcoes: { modo?: "rascunho" | "analise" } = {},
+): SelecaoMensagensAtendimento {
   const todas = [...(imovel.notas || [])]
     .filter((nota) => ehNotaRecebidaNaConversa(nota) || ehNotaDeMensagemEnviada(nota))
     .sort((a, b) => (a.data || "").localeCompare(b.data || "") || (a.id || "").localeCompare(b.id || ""));
@@ -105,9 +108,12 @@ export function selecionarMensagensAtendimento(imovel: Imovel): SelecaoMensagens
 
   // Se a fala legível mais recente é do corretor, a última entrada já foi
   // respondida: não a reapresentamos ao agente como uma pendência atual.
-  const indiceAtual = legiveis.at(-1)?.autor === "proprietario" ? legiveis.length - 1 : -1;
+  const modoAnalise = opcoes.modo === "analise";
+  const indiceAtual = !modoAnalise && legiveis.at(-1)?.autor === "proprietario" ? legiveis.length - 1 : -1;
   const atual = indiceAtual >= 0 ? legiveis[indiceAtual] : undefined;
-  const candidatasAnteriores = legiveis.slice(0, indiceAtual < 0 ? 0 : indiceAtual);
+  const candidatasAnteriores = modoAnalise
+    ? legiveis
+    : legiveis.slice(0, indiceAtual < 0 ? 0 : indiceAtual);
   const recentesComMetadados = candidatasAnteriores.slice(-MAX_MENSAGENS_ATENDIMENTO);
   const anteriores = recentesComMetadados.map(({ autor, texto, id, data }) => ({ autor, texto, id, data }));
   const referencia = [atual?.texto || "", ...recentesComMetadados.slice(-4).map((m) => m.texto)].join(" ");

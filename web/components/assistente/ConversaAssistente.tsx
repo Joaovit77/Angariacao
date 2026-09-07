@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import AcaoAssistenteCard from "./AcaoAssistenteCard";
 import AcoesRapidasAssistente from "./AcoesRapidasAssistente";
 import ManualCapacidadesAssistente from "./ManualCapacidadesAssistente";
+import ConfiguracaoAnaliseAprofundada from "./ConfiguracaoAnaliseAprofundada";
 import RespostaEstruturada from "./RespostaEstruturada";
 import TextoMarkdownSeguro from "./TextoMarkdownSeguro";
 import { useEstadoAssistente } from "./AssistenteProvider";
@@ -12,6 +13,7 @@ import styles from "./Assistente.module.css";
 
 export default function ConversaAssistente() {
   const [manualAberto, setManualAberto] = useState(false);
+  const [analiseAberta, setAnaliseAberta] = useState(false);
   const {
     mensagens,
     texto,
@@ -39,7 +41,16 @@ export default function ConversaAssistente() {
       <div className={styles.ajudaCapacidades}>
         <button
           type="button"
-          onClick={() => setManualAberto((aberto) => !aberto)}
+          onClick={() => { setAnaliseAberta((aberta) => !aberta); setManualAberto(false); }}
+          aria-expanded={analiseAberta}
+          aria-controls="configuracao-analise-aprofundada"
+        >
+          <span aria-hidden="true">⌁</span>
+          Análise aprofundada
+        </button>
+        <button
+          type="button"
+          onClick={() => { setManualAberto((aberto) => !aberto); setAnaliseAberta(false); }}
           aria-expanded={manualAberto}
           aria-controls="manual-capacidades"
         >
@@ -50,6 +61,10 @@ export default function ConversaAssistente() {
       {manualAberto ? (
         <div className={styles.manualArea} id="manual-capacidades">
           <ManualCapacidadesAssistente aoFechar={() => setManualAberto(false)} />
+        </div>
+      ) : analiseAberta ? (
+        <div className={styles.manualArea} id="configuracao-analise-aprofundada">
+          <ConfiguracaoAnaliseAprofundada aoFechar={() => setAnaliseAberta(false)} />
         </div>
       ) : (
         <>

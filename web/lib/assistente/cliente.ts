@@ -1,11 +1,11 @@
 import { getSupabase } from "@/lib/persistencia/supabase";
 import type {
+  PedidoApiAssistente,
   PedidoAssistente,
-  PedidoCancelarAcaoAssistente,
-  PedidoConfirmarAcaoAssistente,
   PedidoPrepararAcaoAssistente,
   RespostaAssistente,
 } from "./tipos";
+import type { PedidoAnaliseAprofundada } from "./analiseAprofundada";
 
 export const TIMEOUT_ASSISTENTE_PADRAO_MS = 30_000;
 
@@ -22,7 +22,7 @@ function timeoutConfigurado(): number {
 }
 
 async function chamarAssistente(
-  pedido: PedidoAssistente | PedidoPrepararAcaoAssistente | PedidoConfirmarAcaoAssistente | PedidoCancelarAcaoAssistente,
+  pedido: PedidoApiAssistente,
   opcoes: OpcoesPerguntaAssistente = {},
 ): Promise<RespostaAssistente> {
   const controller = new AbortController();
@@ -59,6 +59,13 @@ async function chamarAssistente(
     clearTimeout(timer);
     opcoes.signal?.removeEventListener("abort", cancelarExternamente);
   }
+}
+
+export function executarAnaliseAprofundada(
+  pedido: PedidoAnaliseAprofundada,
+  opcoes: OpcoesPerguntaAssistente = {},
+): Promise<RespostaAssistente> {
+  return chamarAssistente(pedido, { ...opcoes, timeoutMs: opcoes.timeoutMs ?? 52_000 });
 }
 
 export function perguntarAoAssistente(

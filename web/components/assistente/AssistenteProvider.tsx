@@ -13,6 +13,7 @@ import {
 import {
   cancelarAcaoDoAssistente,
   confirmarAcaoDoAssistente,
+  executarAnaliseAprofundada,
   perguntarAoAssistente,
   prepararAcaoAssistente,
 } from "@/lib/assistente/cliente";
@@ -44,6 +45,7 @@ interface EstadoAssistente {
   setTexto: (texto: string) => void;
   enviar: (contexto: ContextoAssistente, mensagemDireta?: string) => Promise<void>;
   prepararVisita: (parametros: ParametrosVisitaGuiada) => Promise<void>;
+  analisarAprofundadamente: (imovelId: string, incluirAtendimento: boolean) => Promise<void>;
   confirmarAcao: (mensagemId: string, acaoId: string) => Promise<void>;
   cancelarAcao: (mensagemId: string, acaoId: string) => Promise<void>;
   cancelarConsulta: () => void;
@@ -285,6 +287,40 @@ export function AssistenteProvider({ children }: { children: ReactNode }) {
     }
   }, [carregando, processandoAcaoId, sessaoId]);
 
+  const analisarAprofundadamente = useCallback(async (
+    imovelId: string,
+    incluirAtendimento: boolean,
+  ) => {
+    if (carregando || !imovelId) return;
+    const imovel = useAppStore.getState().imoveis.find((item) => item.id === imovelId);
+    if (!imovel) return;
+    const usuario: MensagemAssistente = {
+      id: crypto.randomUUID(),
+      papel: "usuario",
+      texto: `Análise aprofundada do imóvel ${imovel.codigo || "sem código"}${incluirAtendimento ? ", incluindo Atendimento autorizado." : ", sem incluir Atendimento."}`,
+    };
+    setMensagens((atuais) => [...atuais, usuario]);
+    setCarregando(true);
+    const controller = new AbortController();
+    requisicaoRef.current = controller;
+    try {
+      const resposta = await executarAnaliseAprofundada({
+        tipo: "analise_aprofundada",
+        imovelId,
+        incluirAtendimento,
+        sessaoId,
+      }, { signal: controller.signal });
+      if (resposta.ok === false && resposta.codigo === "cancelado") return;
+      const mensagemResposta: MensagemAssistente = resposta.ok
+        ? resposta.mensagem
+        : { id: crypto.randomUUID(), papel: "assistente", texto: resposta.erro };
+      setMensagens((atuais) => incorporarRespostaNaConversa(atuais, mensagemResposta));
+    } finally {
+      if (requisicaoRef.current === controller) requisicaoRef.current = null;
+      if (montadoRef.current && !requisicaoRef.current) setCarregando(false);
+    }
+  }, [carregando, sessaoId]);
+
   const aplicarRespostaAcao = useCallback((mensagemId: string, resposta: Awaited<ReturnType<typeof confirmarAcaoDoAssistente>>) => {
     if (resposta.ok) {
       const acao = resposta.mensagem.acao;
@@ -327,11 +363,12 @@ export function AssistenteProvider({ children }: { children: ReactNode }) {
     setTexto,
     enviar,
     prepararVisita,
+    analisarAprofundadamente,
     confirmarAcao,
     cancelarAcao,
     cancelarConsulta,
     limparConversa,
-  }), [mensagens, texto, carregando, processandoAcaoId, enviar, prepararVisita, confirmarAcao, cancelarAcao, cancelarConsulta, limparConversa]);
+  }), [mensagens, texto, carregando, processandoAcaoId, enviar, prepararVisita, analisarAprofundadamente, confirmarAcao, cancelarAcao, cancelarConsulta, limparConversa]);
 
   return (
     <ContextoEstadoAssistente.Provider value={valor}>

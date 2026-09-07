@@ -1746,6 +1746,31 @@ mantém seleção, textos por origem, teto diário e confirmação final; abrir 
 nenhuma mensagem. A rota exige sessão válida e permissão de IA; consultas e operações usam o token
 do chamador, preservando a identidade e o isolamento da RLS.
 
+O modo **Análise aprofundada** compõe um diagnóstico somente leitura de um único imóvel de locação,
+selecionado explicitamente pelo usuário. Antes da execução, a interface mostra as fontes fixas
+Dados do imóvel, Mercado e comparáveis, Histórico operacional, Agenda/follow-ups e Protocolos;
+Atendimento começa desligado e só participa após opt-in. Não há página, agente, fila, persistência
+de relatório, coleta externa ou ferramenta operacional próprios. O servidor relê o imóvel no
+escopo do usuário, monta um dossiê transitório limitado e sanitizado e faz uma síntese estruturada
+em uma chamada normal ao modelo. Uma segunda chamada só é admitida para falha transitória de
+transporte ou saída estruturalmente inválida; o teto absoluto é duas.
+
+A análise reutiliza a última entrada completa de Avaliação de locação registrada para reexecutar,
+somente em memória, o motor determinístico de `lib/calculo/avaliacao.ts` com os comparáveis internos
+e de mercado já persistidos. Nenhum valor é recalculado pelo modelo. São aceitos no máximo 12
+comparáveis, 12 eventos operacionais, 12 mensagens recentes, quatro antigas relevantes e cinco
+Protocolos. Mensagens entram pelo seletor determinístico do Atendimento em modo retrospectivo e
+nunca como conversa integral. Anúncios, notas e mensagens são delimitados como dados não confiáveis;
+Protocolos têm autoridade comercial intermediária, sem poder para liberar ferramentas, mudar
+permissões ou sobrescrever validações.
+
+A saída possui dez seções fixas. Cada afirmação declara natureza **fato**, **inferência** ou
+**lacuna**, fontes, confiança e temporalidade. O backend rejeita fatos sem fonte, fontes ou
+Protocolos ausentes do dossiê, outro imóvel, temporalidade incompatível e valores monetários sem
+autoridade determinística. Lacunas e relatórios parciais são resultados válidos e não provocam nova
+chamada. O cancelamento é propagado ao provedor; o single-flight em memória impede duas execuções
+simultâneas do mesmo usuário/imóvel na mesma instância, sem criar estado compartilhado ou tabela.
+
 A fundação do piloto automático de acompanhamento amplia o mesmo mecanismo, sem criar uma segunda
 timeline ou um motor de workflow. **Registrar tentativa** usa o JSONB real de `imoveis.tentativas`,
 congela ID, data, canal, resultado e observação e continua sendo ação de alto risco, com confirmação.
@@ -1815,8 +1840,9 @@ Arquitetura:
 - `lib/servidor/assistente/contextoTipado.ts`: seleciona deterministicamente e carrega no servidor
   somente os blocos pertinentes à solicitação. Imóvel, Agenda, Pipeline e Protocolos têm fonte,
   autoridade, temporalidade, instante observado e ausência explícitos. Conversas e mensagens ficam
-  sob demanda das ferramentas existentes; avaliação e mercado não são expostos enquanto não houver
-  capacidade real do Assistente. Toda leitura repete `user_id` derivado da sessão. A serialização
+  sob demanda das ferramentas existentes; Avaliação e Mercado são preenchidos apenas no modo
+  Análise aprofundada, por seu carregador dedicado e sem alterar o chat genérico. Toda leitura repete
+  `user_id` derivado da sessão. A serialização
   remove IDs internos, telefone e conteúdo livre desnecessário antes de chegar ao modelo.
 - `lib/servidor/assistente/conhecimento.ts`: regras do produto fornecidas ao modelo. Não substitui o
   motor; explica quando usar cada consulta.
@@ -1848,6 +1874,10 @@ Arquitetura:
   pergunta, prompt, resposta nem conteúdo dos blocos.
   O modelo padrão é `gpt-5.4-mini`; a ausência de versão no banco ainda respeita um
   `OPENAI_ASSISTENTE_MODEL` válido. Com versão publicada, o Centro de IA é a fonte ativa.
+- `lib/servidor/assistente/analiseAprofundada.ts`: agregador transitório e orquestrador de
+  profundidade única. Ele controla a coleta, reaproveita Avaliação, comparáveis, histórico, Agenda,
+  Atendimento e Protocolos, não registra ferramentas, não pesquisa fora do catálogo persistido e
+  valida deterministicamente a saída estruturada antes de entregá-la.
 - `components/assistente/ManualCapacidadesAssistente.tsx`: projeção do catálogo em linguagem de
   produto, agrupada por consulta, organização, registro, alteração, automação e limites. Não contém
   uma segunda lista de funcionalidades nem decide segurança.

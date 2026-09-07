@@ -84,11 +84,17 @@ interface MetadadosSeguros {
   fontesContexto: string[];
   fontesDeDados: string[];
   validacoesAplicadas: string[];
-  resultado: "sugerido" | "respondido" | "bloqueado" | "erro";
+  resultado: "sugerido" | "respondido" | "parcial" | "cancelado" | "bloqueado" | "erro";
   motivo: string;
 }
 
 const APRESENTACOES: Record<string, ApresentacaoAtividade> = {
+  "analise-aprofundada": {
+    titulo: "Análise aprofundada de imóvel",
+    pedido: "Foi solicitada uma análise diagnóstica de um imóvel selecionado.",
+    interpretacao: "Compor evidências internas autorizadas sem executar ações ou pesquisa externa.",
+    icone: "analise",
+  },
   "assistente-chat": {
     titulo: "Conversa com o Assistente",
     pedido: "Uma solicitação foi enviada ao Assistente.",
@@ -293,6 +299,12 @@ const ROTULOS_FONTES: Record<string, {
   user_config: { titulo: "Consultou preferências de comunicação", no: "contexto" },
   agenda: { titulo: "Agenda consultada", no: "contexto" },
   assistente_acoes: { titulo: "Consultou a ação preparada", no: "ferramentas" },
+  imovel: { titulo: "Consultou dados do imóvel", no: "imoveis" },
+  avaliacao: { titulo: "Consultou a Avaliação determinística", no: "analise" },
+  mercado: { titulo: "Consultou comparáveis persistidos", no: "contexto" },
+  historico: { titulo: "Consultou histórico operacional", no: "crm" },
+  atendimento: { titulo: "Consultou mensagens autorizadas", no: "atendimento" },
+  protocolo: { titulo: "Consultou Protocolos selecionados", no: "protocolos", categoria: "regra" },
 };
 
 const ROTULOS_CONTEXTO: Record<string, {
@@ -413,7 +425,7 @@ function lerMetadados(detalhe: string | null): MetadadosSeguros | null {
   const resultado = candidato.resultado;
   if (
     typeof candidato.operacao !== "string" ||
-    !["sugerido", "respondido", "bloqueado", "erro"].includes(String(resultado))
+    !["sugerido", "respondido", "parcial", "cancelado", "bloqueado", "erro"].includes(String(resultado))
   ) return null;
   return {
     operacao: normalizarTipoAtividadeIa(candidato.operacao),
@@ -464,7 +476,7 @@ function apresentacao(tipo: string): ApresentacaoAtividade {
 
 function estadoDoResultado(resultado: MetadadosSeguros["resultado"]): EstadoEtapaIa {
   if (resultado === "erro") return "erro";
-  if (resultado === "bloqueado") return "bloqueado";
+  if (resultado === "bloqueado" || resultado === "cancelado") return "bloqueado";
   return "concluido";
 }
 

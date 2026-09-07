@@ -320,7 +320,7 @@ export const CATALOGO_CAPACIDADES_ASSISTENTE: readonly DefinicaoCapacidadeAssist
     tipo: "limite",
     controle: "Ainda não disponível",
     exemplos: [],
-    limitacoes: ["Dados operacionais do imóvel não substituem oferta regional, comparáveis, preços concorrentes ou liquidez de mercado."],
+    limitacoes: ["Dados operacionais do imóvel não substituem oferta regional, comparáveis, preços concorrentes ou liquidez de mercado. Para um imóvel cadastrado, use Análise aprofundada; ela considera somente comparáveis já persistidos no Angario."],
     ferramentas: [],
     termosDescoberta: ["mercado", "oferta parecida", "oferta semelhante", "preços dos concorrentes", "preço dos concorrentes", "imóveis comparáveis", "anúncios semelhantes", "liquidez de mercado"],
     contextoNecessario: [],
