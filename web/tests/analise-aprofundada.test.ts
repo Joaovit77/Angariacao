@@ -7,7 +7,11 @@ import {
   type SaidaModeloAnaliseAprofundada,
 } from "@/lib/assistente/analiseAprofundada";
 import { avaliarImovel, type ComparavelAvaliacao, type EntradaAvaliacao } from "@/lib/calculo/avaliacao";
-import type { ExecutorOpenAI, PedidoExecutorOpenAI } from "@/lib/servidor/ia/executor-openai";
+import {
+  textoDaResposta,
+  type ExecutorOpenAI,
+  type PedidoExecutorOpenAI,
+} from "@/lib/servidor/ia/executor-openai";
 import {
   executarAnaliseAprofundadaComDependencias,
   imovelAutorizadoParaAnalise,
@@ -246,6 +250,30 @@ describe("Análise aprofundada — contrato, dossiê e segurança", () => {
     expect(inferencia.ok && inferencia.saida.secoes[0].afirmacoes[0].natureza).toBe("inferencia");
   });
 
+  it("limita cada seção a uma afirmação concisa sem elevar o teto de saída", () => {
+    const dossie = montarDossieAnaliseAprofundada(dadosBase(), false);
+    const comDuasAfirmacoes = saidaValida();
+    comDuasAfirmacoes.secoes[0].afirmacoes.push({ ...comDuasAfirmacoes.secoes[0].afirmacoes[0] });
+    expect(validarSaidaAnaliseAprofundada(
+      comDuasAfirmacoes,
+      dossie.fontes,
+      "ANG-42",
+      dossie.valoresMonetariosAutorizados,
+    )).toEqual({ ok: false, erros: ["estrutura-invalida"] });
+
+    const textoLongo = saidaValida();
+    textoLongo.secoes[0].afirmacoes[0].texto = "x".repeat(
+      LIMITES_ANALISE_APROFUNDADA.caracteresPorAfirmacao + 1,
+    );
+    expect(validarSaidaAnaliseAprofundada(
+      textoLongo,
+      dossie.fontes,
+      "ANG-42",
+      dossie.valoresMonetariosAutorizados,
+    )).toEqual({ ok: false, erros: ["estrutura-invalida"] });
+    expect(LIMITES_ANALISE_APROFUNDADA.tokensSaida).toBe(2_000);
+  });
+
   it("rejeita alegação de ação operacional e faixa atribuída à Avaliação sem sua fonte", () => {
     const dossie = montarDossieAnaliseAprofundada(dadosBase(), false);
     const acao = saidaValida("fato");
@@ -325,6 +353,30 @@ describe("Análise aprofundada — orçamento de modelo", () => {
       fakes.dependencias,
     )).rejects.toThrow("estruturalmente inválida");
     expect(fakes.executar).toHaveBeenCalledTimes(2);
+  });
+
+  it("nunca aceita resposta com finish_reason length", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const conteudoCompleto = JSON.stringify(saidaValida("fato"));
+    const respostaTruncada = textoDaResposta({
+      choices: [{
+        finish_reason: "length",
+        message: { content: conteudoCompleto, refusal: null },
+      }],
+    } as Parameters<typeof textoDaResposta>[0]);
+    expect(respostaTruncada).toBe("");
+
+    const fakes = dependenciasComSaidas([respostaTruncada, respostaTruncada]);
+    await expect(executarAnaliseAprofundadaComDependencias(
+      pedido,
+      {} as SupabaseClient,
+      USUARIO_ID,
+      new AbortController().signal,
+      fakes.dependencias,
+    )).rejects.toThrow("Resposta estruturalmente inválida: estrutura-invalida");
+    expect(fakes.executar).toHaveBeenCalledTimes(2);
+    expect(fakes.pedidos.every((item) => item.maxCompletionTokens === 2_000)).toBe(true);
+    log.mockRestore();
   });
 
   it("propaga cancelamento e não inicia retry depois do aborto", async () => {

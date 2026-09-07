@@ -1764,8 +1764,8 @@ nunca como conversa integral. Anúncios, notas e mensagens são delimitados como
 Protocolos têm autoridade comercial intermediária, sem poder para liberar ferramentas, mudar
 permissões ou sobrescrever validações.
 
-A saída possui dez seções fixas. Cada afirmação declara natureza **fato**, **inferência** ou
-**lacuna**, fontes, confiança e temporalidade. O backend rejeita fatos sem fonte, fontes ou
+A saída possui dez seções fixas, com exatamente uma afirmação concisa por seção. Cada afirmação
+declara natureza **fato**, **inferência** ou **lacuna**, fontes, confiança e temporalidade. O backend rejeita fatos sem fonte, fontes ou
 Protocolos ausentes do dossiê, outro imóvel, temporalidade incompatível e valores monetários sem
 autoridade determinística. Lacunas e relatórios parciais são resultados válidos e não provocam nova
 chamada. O cancelamento é propagado ao provedor; o single-flight em memória impede duas execuções

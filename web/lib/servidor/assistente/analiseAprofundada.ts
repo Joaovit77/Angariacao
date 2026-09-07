@@ -564,6 +564,7 @@ function abortado(error: unknown, signal: AbortSignal): boolean {
 
 function instrucoesAnalise() {
   return `Produza exclusivamente uma análise diagnóstica estruturada do único imóvel no dossiê.
+Preencha as dez seções com exatamente uma afirmação concisa por seção, de no máximo 240 caracteres e no máximo três fontes.
 Cada afirmação deve ser fato, inferencia ou lacuna. Fatos e inferências precisam citar IDs exatos das fontes.
 Inferências não podem virar causalidade comprovada. Lacunas podem ter fontes vazias.
 Não recalcule preço: copie apenas números presentes na fonte avaliacao_1 ou nos comparáveis autorizados.

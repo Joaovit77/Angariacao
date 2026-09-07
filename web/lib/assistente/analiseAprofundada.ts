@@ -7,6 +7,9 @@ export const LIMITES_ANALISE_APROFUNDADA = {
   caracteresDossie: 48_000,
   tokensEntradaEstimados: 16_000,
   tokensSaida: 2_000,
+  afirmacoesPorSecao: 1,
+  caracteresPorAfirmacao: 240,
+  fontesPorAfirmacao: 3,
   timeoutTotalMs: 50_000,
   chamadasNormais: 1,
   chamadasMaximas: 2,
@@ -149,8 +152,8 @@ function normalizarAfirmacao(valor: unknown): AfirmacaoAnaliseAprofundada | null
   if (!CONFIANCAS.has(item.confianca as ConfiancaAnalise)) return null;
   if (!TEMPORALIDADES.has(item.temporalidade as TemporalidadeAnalise)) return null;
   const texto = typeof item.texto === "string" ? item.texto.trim() : "";
-  const fontes = idsTexto(item.fontes, 8);
-  if (!texto || texto.length > 700 || !fontes) return null;
+  const fontes = idsTexto(item.fontes, LIMITES_ANALISE_APROFUNDADA.fontesPorAfirmacao);
+  if (!texto || texto.length > LIMITES_ANALISE_APROFUNDADA.caracteresPorAfirmacao || !fontes) return null;
   return {
     natureza: item.natureza as NaturezaAfirmacaoAnalise,
     texto,
@@ -171,7 +174,8 @@ export function normalizarSaidaModeloAnalise(valor: unknown): SaidaModeloAnalise
     const secao = valorSecao as Record<string, unknown>;
     if (!chavesExatas(secao, ["id", "afirmacoes"])) return null;
     if (!SECOES_ANALISE_APROFUNDADA.includes(secao.id as SecaoAnaliseAprofundada)) return null;
-    if (!Array.isArray(secao.afirmacoes) || secao.afirmacoes.length < 1 || secao.afirmacoes.length > 5) return null;
+    if (!Array.isArray(secao.afirmacoes)
+      || secao.afirmacoes.length !== LIMITES_ANALISE_APROFUNDADA.afirmacoesPorSecao) return null;
     const afirmacoes = secao.afirmacoes.map(normalizarAfirmacao);
     if (afirmacoes.some((item) => item === null)) return null;
     secoes.push({ id: secao.id as SecaoAnaliseAprofundada, afirmacoes: afirmacoes as AfirmacaoAnaliseAprofundada[] });
@@ -267,8 +271,16 @@ export function esquemaSaidaAnaliseAprofundada(
     type: "object",
     properties: {
       natureza: { type: "string", enum: ["fato", "inferencia", "lacuna"] },
-      texto: { type: "string", minLength: 1, maxLength: 700 },
-      fontes: { type: "array", items: { type: "string", enum: fontesAutorizadas }, maxItems: 8 },
+      texto: {
+        type: "string",
+        minLength: 1,
+        maxLength: LIMITES_ANALISE_APROFUNDADA.caracteresPorAfirmacao,
+      },
+      fontes: {
+        type: "array",
+        items: { type: "string", enum: fontesAutorizadas },
+        maxItems: LIMITES_ANALISE_APROFUNDADA.fontesPorAfirmacao,
+      },
       confianca: { type: "string", enum: ["alta", "media", "baixa"] },
       temporalidade: { type: "string", enum: [...TEMPORALIDADES] },
     },
@@ -286,7 +298,12 @@ export function esquemaSaidaAnaliseAprofundada(
           type: "object",
           properties: {
             id: { type: "string", enum: SECOES_ANALISE_APROFUNDADA },
-            afirmacoes: { type: "array", minItems: 1, maxItems: 5, items: esquemaAfirmacao },
+            afirmacoes: {
+              type: "array",
+              minItems: LIMITES_ANALISE_APROFUNDADA.afirmacoesPorSecao,
+              maxItems: LIMITES_ANALISE_APROFUNDADA.afirmacoesPorSecao,
+              items: esquemaAfirmacao,
+            },
           },
           required: ["id", "afirmacoes"],
           additionalProperties: false,
