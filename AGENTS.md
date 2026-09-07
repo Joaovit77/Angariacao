@@ -22,6 +22,7 @@ Documentos de domínio continuam canônicos em seus próprios escopos:
 
 - `supabase-schema.sql`: schema e políticas do banco;
 - `DEPLOY.md`: deploy, configuração e runbooks;
+- `docs/IA-AMBIENTES.md`: política operacional única de IA real por ambiente;
 - `INTEGRACAO_SOPHIA.md`: contrato externo da integração Sophia;
 - `MIGRATION_NEXT.md` e `BASELINE_ETAPA0.md`: histórico e contrato da migração para Next.js;
 - `PROTOTIPOS_LOCAIS.md`: limites de protótipos isolados.
@@ -177,6 +178,11 @@ Testes unitários, TypeScript, lint e build não substituem essa etapa quando o 
 Nunca envie mensagens, altere dados de produção ou execute ações externas reais apenas para validar uma tarefa sem autorização explícita.
 
 ### APIs pagas e testes reais
+
+Antes de qualquer tarefa envolvendo OpenAI, embeddings, transcrição ou IA real, leia e siga
+[`docs/IA-AMBIENTES.md`](docs/IA-AMBIENTES.md). Preview e qualquer ambiente Vercel não produtivo
+permanecem bloqueados mesmo com `ALLOW_REAL_OPENAI=1`; essa variável é exclusivamente um opt-in
+local. O Codex não deve sugerir mudança de escopo por branch nem liberação de IA real em Preview.
 
 - O Codex nunca deve executar suítes de teste ou scripts de diagnóstico que atinjam APIs
   pagas/reais, incluindo a OpenAI. Qualquer outra validação externa paga exige autorização explícita

@@ -130,6 +130,26 @@ describe("executor OpenAI compartilhado", () => {
     expect(registrarUsoDaResposta).not.toHaveBeenCalled();
   });
 
+  it("bloqueia o transporte em Preview mesmo com chave e opt-in", async () => {
+    neutralizarMarcadoresAutomaticos();
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("OPENAI_API_KEY", "chave-ficticia");
+    vi.stubEnv("ALLOW_REAL_OPENAI", "1");
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("VERCEL_ENV", "preview");
+    const create = vi.fn();
+    const openai = { chat: { completions: { create } } } as unknown as OpenAI;
+    const executor = criarExecutorOpenAI(openai, "usuario-1");
+
+    await expect(executor.executar({
+      tipo: "rascunhar-resposta-validacao",
+      reasoningEffort: "low",
+      mensagens: [{ role: "user", content: "teste de Preview" }],
+    })).rejects.toThrow("valide localmente");
+    expect(create).not.toHaveBeenCalled();
+    expect(registrarUsoDaResposta).not.toHaveBeenCalled();
+  });
+
   it("libera automaticamente o executor mockado somente como Production Vercel", async () => {
     neutralizarMarcadoresAutomaticos();
     vi.stubEnv("NODE_ENV", "production");

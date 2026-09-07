@@ -41,7 +41,37 @@ describe("isolamento estrutural dos testes reais da OpenAI", () => {
     const barreira = backfill.indexOf('process.env.ALLOW_REAL_OPENAI !== "1"');
     expect(barreira).toBeGreaterThan(-1);
     expect(backfill.indexOf("const env = carregarEnv()")).toBeGreaterThan(barreira);
+    expect(backfill.indexOf("https://api.openai.com")).toBeGreaterThan(barreira);
     expect(backfill).toContain('nome.startsWith("CODEX_")');
     expect(backfill).toContain("process.env.CI");
+  });
+
+  it("mantém os transportes OpenAI conhecidos atrás do gate central", () => {
+    const factory = ler("lib/servidor/openai-real.ts");
+    expect(factory).toMatch(/exigirAutorizacaoOpenAIReal\(\);[\s\S]*new OpenAI/);
+
+    const executor = ler("lib/servidor/ia/executor-openai.ts");
+    expect(executor).toMatch(/exigirAutorizacaoOpenAIReal\(\);[\s\S]*openai\.chat\.completions\.create/);
+
+    const rotaIa = ler("app/api/ia/route.ts");
+    expect(rotaIa).toContain("!chamadaOpenAIRealAutorizada()");
+    expect(rotaIa).toContain("criarClienteOpenAIReal({ apiKey })");
+
+    const classificacao = ler("lib/servidor/ia.ts");
+    expect(classificacao).toContain("chamadaOpenAIRealAutorizada()");
+    expect(classificacao).toContain("criarClienteOpenAIReal({ apiKey })");
+
+    const embeddings = ler("lib/servidor/embeddingsImoveis.ts");
+    expect(embeddings).toContain("chamadaOpenAIRealAutorizada()");
+    expect(embeddings).toContain("criarClienteOpenAIReal({ apiKey })");
+
+    const assistente = ler("lib/servidor/assistente/orquestrador.ts");
+    expect(assistente).toContain("criarClienteOpenAIReal({ apiKey: process.env.OPENAI_API_KEY })");
+
+    const analise = ler("lib/servidor/assistente/analiseAprofundada.ts");
+    expect(analise).toContain("criarClienteOpenAIReal({ apiKey: process.env.OPENAI_API_KEY })");
+
+    const transcricao = ler("app/api/whatsapp/_transcricao.ts");
+    expect(transcricao).toMatch(/export async function transcreverAudio[\s\S]*chamadaOpenAIRealAutorizada\(\)[\s\S]*await baixarAudio/);
   });
 });

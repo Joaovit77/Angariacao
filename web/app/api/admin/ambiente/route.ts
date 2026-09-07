@@ -93,7 +93,7 @@ export async function GET(request: Request): Promise<Response> {
     {
       chave: "openai",
       nome: "IA (OpenAI)",
-      variavel: "OPENAI_API_KEY (+ ALLOW_REAL_OPENAI fora de produção)",
+      variavel: "OPENAI_API_KEY em Production; ALLOW_REAL_OPENAI somente local",
       configurado: tem("OPENAI_API_KEY") && chamadaOpenAIRealAutorizada(),
       semEla: "Sem transcrição de áudio, sem classificação de resposta e sem rascunho.",
       essencial: false,

@@ -347,6 +347,11 @@ e outras mídias antigas entram como marcador (`[áudio]`, `[imagem]`), sem inve
 
 ### OpenAI (IA textual e embeddings da Avaliação) — opcional
 
+A política canônica de ambientes está em [`docs/IA-AMBIENTES.md`](docs/IA-AMBIENTES.md). Na Vercel,
+`OPENAI_API_KEY` deve ter escopo somente de Production e `ALLOW_REAL_OPENAI` não deve ser criada.
+Preview e qualquer ambiente hospedado não produtivo são bloqueados pelo código mesmo que recebam o
+opt-in por engano. Validação real durante desenvolvimento é exclusivamente local e manual.
+
 Os botões de IA — sugerir roteiros de abordagem e interpretar o ranking — exigem mais uma
 variável, também **segredo**:
 
@@ -366,11 +371,9 @@ OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 - `OPENAI_EMBEDDING_MODEL` é opcional e deve produzir vetores com a dimensão pedida pela aplicação
   (512). Ao trocar o modelo, anúncios antigos ficam fora da busca vetorial até serem reobservados e
   reprocessados; vetores de modelos diferentes nunca são comparados.
-- O modelo usado é a constante `MODELO` no topo de `web/app/api/ia/route.ts`. Para conferir se a
-  chave está válida:
-  ```bash
-  curl -H "Authorization: Bearer $OPENAI_API_KEY" https://api.openai.com/v1/models
-  ```
+- O modelo ativo vem da configuração tipada da IA, com fallback seguro no código. Não valide a
+  chave por chamada avulsa durante testes automatizados, em CI, no Codex ou em Preview. Quando uma
+  validação real for indispensável, siga o smoke local manual de `docs/IA-AMBIENTES.md`.
 
 ### RapidAPI (Investigador de Imóveis) — opcional
 
@@ -485,8 +488,9 @@ que a **raiz do projeto é `web`**. O resto ela detecta sozinha (é um projeto N
    ficam nos padrões — não precisa mexer.
 5. **Environment Variables:** adicione as duas da Parte 2
    (`NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`). Se for usar o envio direto de
-   WhatsApp, adicione as variáveis da Evolution descritas na Parte 2. Se for usar os botões de IA,
-   some a `OPENAI_API_KEY`. Para usar o Investigador de Imóveis, adicione também `RAPIDAPI_KEY`.
+   WhatsApp, adicione as variáveis da Evolution descritas na Parte 2. Se for usar IA real, adicione
+   `OPENAI_API_KEY` somente em Production; nunca crie `ALLOW_REAL_OPENAI` na Vercel. Para usar o
+   Investigador de Imóveis, adicione também `RAPIDAPI_KEY`.
 6. Clique em **Deploy**. Em 1–2 minutos a Vercel te dá um link
    (ex.: `https://angariacoes-web.vercel.app`).
 7. Volte no Supabase (Parte 1, passo 7) e confirme que a **Site URL** aponta para esse endereço.

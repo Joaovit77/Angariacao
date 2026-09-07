@@ -13,6 +13,7 @@ triviais devem ficar no histórico do Git.
 - Este arquivo: visão do produto, arquitetura, invariantes e decisões permanentes.
 - [supabase-schema.sql](supabase-schema.sql): fonte de verdade executável do schema e das políticas.
 - [DEPLOY.md](DEPLOY.md): configuração de ambientes, deploy, cutover, rollback e tarefas agendadas.
+- [docs/IA-AMBIENTES.md](docs/IA-AMBIENTES.md): política operacional única de IA real por ambiente.
 - [INTEGRACAO_SOPHIA.md](INTEGRACAO_SOPHIA.md): contrato externo da integração Sophia.
 - [MIGRATION_NEXT.md](MIGRATION_NEXT.md) e [BASELINE_ETAPA0.md](BASELINE_ETAPA0.md): histórico e
   contrato de paridade da migração para Next.js.
@@ -46,6 +47,8 @@ O que fica na **raiz** do repositório:
   Idempotente — pode ser re-rodado no SQL editor do Supabase. **É a fonte de verdade do schema.**
 - [DEPLOY.md](DEPLOY.md) — passo a passo de deploy (Supabase + Vercel com Root Directory `web`),
   runbook de cutover e rollback.
+- [docs/IA-AMBIENTES.md](docs/IA-AMBIENTES.md) — fluxo autorizado de IA real em Local, Preview,
+  CI, Codex e Production.
 - [MIGRATION_NEXT.md](MIGRATION_NEXT.md) / [BASELINE_ETAPA0.md](BASELINE_ETAPA0.md) — guia da
   migração e o baseline numérico de paridade (contrato de aceitação das views).
 - [INTEGRACAO_SOPHIA.md](INTEGRACAO_SOPHIA.md) — o contrato da integração com o Sistema Principal,
@@ -110,8 +113,9 @@ offline/mock. Para dados de teste, use o `seed-teste.mjs` da raiz.
 `npm test` executa somente testes locais com mocks/fixtures. Ensaios pagos da OpenAI vivem fora da
 árvore comum, em `web/tests-real-openai/`, e possuem um runner manual separado. Eles nunca carregam
 `.env.local`: a chave e `ALLOW_REAL_OPENAI=1` precisam ser fornecidos deliberadamente por uma
-pessoa. O único comando agregado é `npm run test:openai-real:PERIGOSO`; CI e Codex são bloqueados
-independentemente dessa variável.
+pessoa em ambiente local. O único comando agregado é `npm run test:openai-real:PERIGOSO`; CI e
+Codex são bloqueados independentemente dessa variável. Consulte a política operacional única em
+[`docs/IA-AMBIENTES.md`](docs/IA-AMBIENTES.md).
 
 > **Atenção — Next 16 tem breaking changes** vs. versões anteriores. Antes de escrever código de
 > app, consultar os docs empacotados em `web/node_modules/next/dist/docs/` (aviso do
@@ -1400,13 +1404,13 @@ rota em outro monólito. Operações ainda não extraídas permanecem no fluxo l
 A chave (`OPENAI_API_KEY`, **sem** `NEXT_PUBLIC_`) é cobrada por token consumido. Sem ela o app
 não quebra: os botões respondem "não configurado" e o resto segue igual.
 
-A chave sozinha nunca habilita chamadas locais, nem mesmo com `NODE_ENV=production`: fora da
-Production real da Vercel também é obrigatório `ALLOW_REAL_OPENAI=1`. A autorização automática de
-produção exige simultaneamente os sinais de runtime `VERCEL=1` e `VERCEL_ENV=production`; Preview
-continua bloqueado sem opt-in. `lib/servidor/openai-real.ts` centraliza essa decisão, bloqueia
-CI/Codex e é o único ponto autorizado a construir o cliente real. O executor repete a checagem
-imediatamente antes de cada chamada. Testes unitários usam um executor mockado exclusivo de
-`NODE_ENV=test`.
+A chave sozinha nunca habilita chamadas locais, nem mesmo com `NODE_ENV=production`. A autorização
+automática exige simultaneamente `VERCEL=1` e `VERCEL_ENV=production`; qualquer ambiente Vercel não
+produtivo permanece bloqueado mesmo com `ALLOW_REAL_OPENAI=1`. A variável é exclusivamente um
+opt-in local. `lib/servidor/openai-real.ts` centraliza a decisão, bloqueia CI/Codex e é o único ponto
+autorizado a construir o cliente real. O executor repete a checagem antes do transporte e testes
+unitários usam um executor mockado exclusivo de `NODE_ENV=test`. Consulte a matriz e o fluxo em
+[`docs/IA-AMBIENTES.md`](docs/IA-AMBIENTES.md).
 
 O executor OpenAI está isolado em `lib/servidor/ia/executor-openai.ts`; prompts, esquemas e contratos
 de domínio não importam o SDK. Na ausência de uma configuração publicada, o padrão seguro continua

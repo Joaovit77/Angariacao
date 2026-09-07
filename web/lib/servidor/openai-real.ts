@@ -19,37 +19,45 @@ export function execucaoAutomaticaOpenAIBloqueada(
 export class ChamadaOpenAIRealNaoAutorizadaError extends Error {
   readonly codigo = "openai-real-nao-autorizada";
 
-  constructor(ambiente: string | undefined = process.env.NODE_ENV) {
-    const nomeAmbiente = ambiente || "não informado";
+  constructor(
+    ambiente: string | undefined = process.env.NODE_ENV,
+    ambienteVercel: string | undefined = process.env.VERCEL_ENV,
+  ) {
+    const nomeAmbiente = ambienteVercel ? `Vercel ${ambienteVercel}` : ambiente || "não informado";
+    const orientacao = ambienteVercel && ambienteVercel !== "production"
+      ? "Ambientes Vercel não produtivos permanecem bloqueados; valide localmente."
+      : `Defina ${VARIAVEL_AUTORIZACAO_OPENAI_REAL}=1 somente em validação local explicitamente autorizada.`;
     super(
       `Chamada real à OpenAI bloqueada em ${nomeAmbiente}. `
-      + `Defina ${VARIAVEL_AUTORIZACAO_OPENAI_REAL}=1 somente após autorização explícita.`,
+      + orientacao,
     );
     this.name = "ChamadaOpenAIRealNaoAutorizadaError";
   }
 }
 
 /**
- * Produção é o único ambiente em que a presença da chave já faz parte da
- * configuração operacional. Teste, desenvolvimento e ambientes sem NODE_ENV
- * falham fechados e exigem uma segunda autorização deliberada.
+ * Production da Vercel é o único ambiente hospedado autorizável. Qualquer
+ * outro ambiente Vercel falha fechado, mesmo com opt-in. Fora da Vercel, o
+ * opt-in literal existe exclusivamente para validação local deliberada.
  */
 export function chamadaOpenAIRealAutorizada(
   ambiente: AmbienteOpenAI = process.env,
 ): boolean {
+  if (execucaoAutomaticaOpenAIBloqueada(ambiente)) return false;
+
+  const execucaoVercel = ambiente.VERCEL === "1" || !!ambiente.VERCEL_ENV?.trim();
   const producaoRealVercel = ambiente.VERCEL === "1"
     && ambiente.VERCEL_ENV === "production";
-  return !execucaoAutomaticaOpenAIBloqueada(ambiente) && (
-    producaoRealVercel
-    || ambiente[VARIAVEL_AUTORIZACAO_OPENAI_REAL] === "1"
-  );
+  if (execucaoVercel) return producaoRealVercel;
+
+  return ambiente[VARIAVEL_AUTORIZACAO_OPENAI_REAL] === "1";
 }
 
 export function exigirAutorizacaoOpenAIReal(
   ambiente: AmbienteOpenAI = process.env,
 ): void {
   if (!chamadaOpenAIRealAutorizada(ambiente)) {
-    throw new ChamadaOpenAIRealNaoAutorizadaError(ambiente.NODE_ENV);
+    throw new ChamadaOpenAIRealNaoAutorizadaError(ambiente.NODE_ENV, ambiente.VERCEL_ENV);
   }
 }
 
@@ -58,5 +66,10 @@ export function criarClienteOpenAIReal(
   opcoes?: ConstructorParameters<typeof OpenAI>[0],
 ): OpenAI {
   exigirAutorizacaoOpenAIReal();
-  return new OpenAI(opcoes);
+  const chaveDasOpcoes = typeof opcoes?.apiKey === "string"
+    ? opcoes.apiKey.trim()
+    : opcoes?.apiKey;
+  const apiKey = chaveDasOpcoes || process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) throw new Error("OPENAI_API_KEY não configurada para chamada real.");
+  return new OpenAI({ ...(opcoes || {}), apiKey });
 }

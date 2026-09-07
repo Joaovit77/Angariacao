@@ -58,7 +58,7 @@ exclusiva e um comando manual identificado como perigoso. O runner não carrega 
 ALLOW_REAL_OPENAI=1, uma chave fornecida deliberadamente e recusa CI/Codex.
 
 Além do isolamento, web/lib/servidor/openai-real.ts bloqueia chamadas locais mesmo quando
-NODE_ENV=production. A liberação automática exige os sinais de runtime VERCEL=1 e
-VERCEL_ENV=production; fora dessa combinação, exige opt-in explícito. CI e Codex são negados mesmo
-com a variável de opt-in. O executor verifica a autorização imediatamente antes do transporte, e
-testes comuns usam somente mocks, fixtures ou respostas gravadas.
+NODE_ENV=production. A contenção inicial permitia opt-in explícito fora de Production. A política
+vigente foi endurecida: qualquer ambiente Vercel não produtivo é sempre bloqueado e o opt-in existe
+somente para validação local manual. CI e Codex continuam negados, e testes comuns usam apenas
+mocks, fixtures ou respostas gravadas. Consulte [`IA-AMBIENTES.md`](IA-AMBIENTES.md).
