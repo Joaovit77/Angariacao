@@ -2049,9 +2049,9 @@ proprietário, a caixa de respostas cobraria leitura de um recado que ninguém m
 `marcarEventosLidos` é separada de `marcarRespostasLidas` pela mesma razão: uma função só com
 parâmetro de prefixo faria o "limpar" de uma tela apagar o pendente da outra.
 
-O sino agrega também as respostas de proprietário ainda não tratadas (notas `wa:`) e os anúncios
-do Radar com `radar_anuncios.visto = false`; os dois estados de leitura já são persistidos nas suas
-fontes de domínio. Respostas e Radar aparecem agrupados, embora o badge conte os itens não lidos.
+O sino agrega também as respostas de proprietário ainda não tratadas (notas `wa:`), mas não inclui
+os anúncios do Radar. O estado `radar_anuncios.visto = false` alimenta `radarNovos`, exibido na
+Central e na barra lateral; ele não participa da lista nem do badge do sino.
 Compromissos vencidos e imóveis parados ficam fora do sino: são estados correntes da operação e
 continuam nas superfícies de Agenda, Início e Insights, onde podem ser trabalhados sem transformar o
 badge numa contagem permanente.
