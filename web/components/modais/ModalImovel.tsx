@@ -812,15 +812,16 @@ export default function ModalImovel({ id }: { id?: string }) {
             <label>Status atual</label>
             <select value={status} onChange={(e) => setStatus(e.target.value)}>
               {STATUS_ALL.map((s) => (
-                <option key={s} value={s}>
-                  {s}
+                <option key={s} value={s} disabled={s === "Locado" && imovel?.status !== "Locado"}>
+                  {s === "Locado" && imovel?.status !== "Locado" ? "Locado — use a ação do Pipeline" : s}
                 </option>
               ))}
             </select>
             <div className="field-hint">
               O imóvel só conta como &quot;angariado&quot; nas metas e no dashboard quando o status
               chega em <strong>Angariado</strong> — mudar o status registra a data automaticamente
-              para esse e outros cálculos.
+              para esse e outros cálculos. Para locar, selecione o imóvel no Pipeline e use
+              <strong> Marcar como locado</strong>; assim o repasse é validado e criado junto.
             </div>
           </div>
           <div className="field-group">

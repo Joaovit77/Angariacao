@@ -29,6 +29,8 @@ import ModalVerificacao from "./ModalVerificacao";
 import ModalWhatsapp from "./ModalWhatsapp";
 import ModalMensagemAgendada from "./ModalMensagemAgendada";
 import ModalMensagemDisponibilidadeLote from "./ModalMensagemDisponibilidadeLote";
+import ModalLocacaoLote from "./ModalLocacaoLote";
+import ModalRecebimentoRepassesLote from "./ModalRecebimentoRepassesLote";
 
 export default function ModalOverlay() {
   const { modal, fecharModal } = useUiModal();
@@ -75,6 +77,10 @@ export default function ModalOverlay() {
         {modal?.tipo === "confirmarDisponibilidade" && <ModalConfirmarDisponibilidade />}
         {modal?.tipo === "resultadosPendentes" && <ModalResultadosPendentes />}
         {modal?.tipo === "desdobrar" && modal.id && <ModalDesdobrar imovelId={modal.id} />}
+        {modal?.tipo === "locarEmLote" && modal.ids && <ModalLocacaoLote imovelIds={modal.ids} />}
+        {modal?.tipo === "receberRepassesEmLote" && modal.ids && (
+          <ModalRecebimentoRepassesLote repasseIds={modal.ids} />
+        )}
         {modal?.tipo === "solicitacaoAngariacao" && modal.id && (
           <ModalSolicitacaoAngariacao imovelId={modal.id} />
         )}

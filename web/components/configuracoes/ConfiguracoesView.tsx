@@ -4,6 +4,7 @@ import { useState } from "react";
 import ConexaoGoogle from "@/components/modais/ConexaoGoogle";
 import ResumoConexaoWhatsapp from "./ResumoConexaoWhatsapp";
 import MercadosMonitorados from "./MercadosMonitorados";
+import PoliticaRepasseConfig from "./PoliticaRepasseConfig";
 import { useSessao } from "@/components/SessaoProvider";
 import {
   COMISSAO_PERCENT_PADRAO,
@@ -29,10 +30,11 @@ import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
 
-type Secao = "geral" | "ia" | "agenda" | "prospeccao" | "mercados" | "whatsapp" | "conta" | "dados";
+type Secao = "geral" | "repasses" | "ia" | "agenda" | "prospeccao" | "mercados" | "whatsapp" | "conta" | "dados";
 
 const SECOES: Array<{ id: Secao; titulo: string; descricao: string }> = [
   { id: "geral", titulo: "Geral", descricao: "Empresa e comissão" },
+  { id: "repasses", titulo: "Política de Repasse", descricao: "Prazos e vencimentos" },
   { id: "ia", titulo: "IA e escrita", descricao: "Tom e vocabulário" },
   { id: "agenda", titulo: "Agenda", descricao: "Google e compromissos" },
   { id: "prospeccao", titulo: "Prospecção", descricao: "Portais e abordagens" },
@@ -231,6 +233,16 @@ export default function ConfiguracoesView({ secaoInicial }: { secaoInicial?: str
                 </div>
               </div>
               <AcaoSalvar alterado={geralAlterado} salvando={ocupado === "geral"} aoSalvar={() => void salvarSecao("geral")} />
+            </>
+          )}
+
+          {secao === "repasses" && (
+            <>
+              <CabecalhoSecao
+                titulo="Política de Repasse"
+                descricao="Defina como os novos repasses serão previstos quando um imóvel for locado."
+              />
+              <PoliticaRepasseConfig />
             </>
           )}
 

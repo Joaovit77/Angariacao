@@ -2350,19 +2350,20 @@ tbody tr:last-child td{ border-bottom:none; }
    coluna inteira e o endereço saía com 86px — mais estreito que o Bairro,
    sendo o texto mais longo da linha. Abaixo disso a tabela rola na
    horizontal (`.table-scroll`), que é melhor que truncar o endereço. */
-.pipeline-list-card th:nth-child(1),  .pipeline-list-card td:nth-child(1){ width: 84px; }   /* Código */
-.pipeline-list-card th:nth-child(2),  .pipeline-list-card td:nth-child(2){ width: auto; }   /* Endereço */
-.pipeline-list-card th:nth-child(3),  .pipeline-list-card td:nth-child(3){ width: 56px; }   /* Ap. */
-.pipeline-list-card th:nth-child(4),  .pipeline-list-card td:nth-child(4){ width: 58px; }   /* Bloco */
-.pipeline-list-card th:nth-child(5),  .pipeline-list-card td:nth-child(5){ width: 128px; }  /* Bairro */
-.pipeline-list-card th:nth-child(6),  .pipeline-list-card td:nth-child(6){ width: 96px; }   /* Tipo */
-.pipeline-list-card th:nth-child(7),  .pipeline-list-card td:nth-child(7){ width: 96px; }   /* Origem */
-.pipeline-list-card th:nth-child(8),  .pipeline-list-card td:nth-child(8){ width: 112px; }  /* Telefone */
-.pipeline-list-card th:nth-child(9),  .pipeline-list-card td:nth-child(9){ width: 100px; }  /* Aluguel */
-.pipeline-list-card th:nth-child(10), .pipeline-list-card td:nth-child(10){ width: 132px; } /* Status */
-.pipeline-list-card th:nth-child(11), .pipeline-list-card td:nth-child(11){ width: 92px; }  /* Cadastro */
-.pipeline-list-card th:nth-child(12), .pipeline-list-card td:nth-child(12){ width: 96px; }  /* Captador */
-.pipeline-list-card th:nth-child(13), .pipeline-list-card td:nth-child(13){ width: 78px; }  /* ações */
+.pipeline-list-card th:nth-child(1),  .pipeline-list-card td:nth-child(1){ width: 38px; }   /* Seleção */
+.pipeline-list-card th:nth-child(2),  .pipeline-list-card td:nth-child(2){ width: 84px; }   /* Código */
+.pipeline-list-card th:nth-child(3),  .pipeline-list-card td:nth-child(3){ width: auto; }   /* Endereço */
+.pipeline-list-card th:nth-child(4),  .pipeline-list-card td:nth-child(4){ width: 56px; }   /* Ap. */
+.pipeline-list-card th:nth-child(5),  .pipeline-list-card td:nth-child(5){ width: 58px; }   /* Bloco */
+.pipeline-list-card th:nth-child(6),  .pipeline-list-card td:nth-child(6){ width: 128px; }  /* Bairro */
+.pipeline-list-card th:nth-child(7),  .pipeline-list-card td:nth-child(7){ width: 96px; }   /* Tipo */
+.pipeline-list-card th:nth-child(8),  .pipeline-list-card td:nth-child(8){ width: 96px; }   /* Origem */
+.pipeline-list-card th:nth-child(9),  .pipeline-list-card td:nth-child(9){ width: 112px; }  /* Telefone */
+.pipeline-list-card th:nth-child(10), .pipeline-list-card td:nth-child(10){ width: 100px; } /* Aluguel */
+.pipeline-list-card th:nth-child(11), .pipeline-list-card td:nth-child(11){ width: 132px; } /* Status */
+.pipeline-list-card th:nth-child(12), .pipeline-list-card td:nth-child(12){ width: 92px; }  /* Cadastro */
+.pipeline-list-card th:nth-child(13), .pipeline-list-card td:nth-child(13){ width: 96px; }  /* Captador */
+.pipeline-list-card th:nth-child(14), .pipeline-list-card td:nth-child(14){ width: 78px; }  /* ações */
 
 /* Dinheiro à direita: alinhado à esquerda, "R$ 960" e "R$ 1.920" não formam
    coluna e o olho não compara. O cabeçalho acompanha, senão o título fica
@@ -4122,20 +4123,21 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
      então a visão rápida prioriza identidade, localização e etapa atual. */
   .pipeline-list-card{ overflow:hidden; }
   .pipeline-list-card table{ min-width:0; width:100%; table-layout:fixed; }
-  .pipeline-list-card th:nth-child(3), .pipeline-list-card td:nth-child(3),
   .pipeline-list-card th:nth-child(4), .pipeline-list-card td:nth-child(4),
-  .pipeline-list-card th:nth-child(6), .pipeline-list-card td:nth-child(6),
+  .pipeline-list-card th:nth-child(5), .pipeline-list-card td:nth-child(5),
   .pipeline-list-card th:nth-child(7), .pipeline-list-card td:nth-child(7),
   .pipeline-list-card th:nth-child(8), .pipeline-list-card td:nth-child(8),
   .pipeline-list-card th:nth-child(9), .pipeline-list-card td:nth-child(9),
-  .pipeline-list-card th:nth-child(11), .pipeline-list-card td:nth-child(11),
+  .pipeline-list-card th:nth-child(10), .pipeline-list-card td:nth-child(10),
   .pipeline-list-card th:nth-child(12), .pipeline-list-card td:nth-child(12),
-  .pipeline-list-card th:nth-child(13), .pipeline-list-card td:nth-child(13){ display:none; }
-  .pipeline-list-card th:nth-child(1), .pipeline-list-card td:nth-child(1){ width:76px; }
-  .pipeline-list-card th:nth-child(2), .pipeline-list-card td:nth-child(2){ width:auto; }
-  .pipeline-list-card th:nth-child(5), .pipeline-list-card td:nth-child(5){ width:118px; }
-  .pipeline-list-card th:nth-child(10), .pipeline-list-card td:nth-child(10){ width:126px; }
-  .pipeline-list-card td:nth-child(2){
+  .pipeline-list-card th:nth-child(13), .pipeline-list-card td:nth-child(13),
+  .pipeline-list-card th:nth-child(14), .pipeline-list-card td:nth-child(14){ display:none; }
+  .pipeline-list-card th:nth-child(1), .pipeline-list-card td:nth-child(1){ width:38px; }
+  .pipeline-list-card th:nth-child(2), .pipeline-list-card td:nth-child(2){ width:76px; }
+  .pipeline-list-card th:nth-child(3), .pipeline-list-card td:nth-child(3){ width:auto; }
+  .pipeline-list-card th:nth-child(6), .pipeline-list-card td:nth-child(6){ width:118px; }
+  .pipeline-list-card th:nth-child(11), .pipeline-list-card td:nth-child(11){ width:126px; }
+  .pipeline-list-card td:nth-child(3){
     overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.45;
   }
   .pipeline-list-card th, .pipeline-list-card td{ padding-left:10px; padding-right:10px; }
@@ -4154,9 +4156,9 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
 @media (max-width: 480px){
   /* Em telas realmente estreitas, Bairro também sai: ele continua no drawer e
      liberar esta faixa mantém o endereço legível sem esconder o Status. */
-  .pipeline-list-card th:nth-child(5), .pipeline-list-card td:nth-child(5){ display:none; }
-  .pipeline-list-card th:nth-child(1), .pipeline-list-card td:nth-child(1){ width:70px; }
-  .pipeline-list-card th:nth-child(10), .pipeline-list-card td:nth-child(10){ width:116px; }
+  .pipeline-list-card th:nth-child(6), .pipeline-list-card td:nth-child(6){ display:none; }
+  .pipeline-list-card th:nth-child(2), .pipeline-list-card td:nth-child(2){ width:70px; }
+  .pipeline-list-card th:nth-child(11), .pipeline-list-card td:nth-child(11){ width:116px; }
   .pipeline-list-card th, .pipeline-list-card td{ padding-left:8px; padding-right:8px; }
 }
 
@@ -6220,6 +6222,7 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
    lista em que quase tudo é clique do corretor, o que veio de FORA é a
    informação que ele não tinha — e é a que ele abriu a tela para ver. */
 .timeline-item.do-sistema::before{ background: var(--accent); }
+.timeline-item.do-repasse::before{ background: var(--good); }
 .timeline-data{
   font-size: 11px; color: var(--text-dim);
   text-transform: uppercase; letter-spacing: .04em;
@@ -6231,6 +6234,49 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
    tema escuro, e aqui a linha carrega número de contrato e valor pago. */
 .timeline-detalhe{ font-size: 11.5px; color: var(--text-dim); margin-top: 1px; }
 .timeline-valor{ color: var(--good); font-weight: 600; }
+
+/* Repasses: reaproveita tabela, modal e cartões existentes, acrescentando
+   apenas a hierarquia necessária para prévia e ações transacionais em lote. */
+.pipeline-selecao-col{ width:38px; text-align:center; }
+.pipeline-selecao-col input{ width:16px; height:16px; accent-color:var(--accent); }
+.pipeline-acoes-massa{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.pipeline-acoes-massa > span{ color:var(--text-dim); font-size:11.5px; font-weight:700; }
+.modal:has(.modal-locacao-lote){ width:min(1120px, calc(100vw - 36px)); }
+.modal-locacao-lote{ display:flex; flex-direction:column; gap:14px; }
+.locacao-resumo,.repasses-resumo{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+.locacao-resumo > div,.repasses-resumo .card{ display:flex; flex-direction:column; gap:4px; padding:13px 15px; border:1px solid var(--border-soft); border-radius:var(--radius-sm); background:var(--bg-elev-1); }
+.locacao-resumo span,.repasses-resumo span{ color:var(--text-faint); font-size:10px; font-weight:800; letter-spacing:.45px; text-transform:uppercase; }
+.locacao-resumo strong,.repasses-resumo strong{ font:700 17px var(--font-display); }
+.locacao-aplicar-todos{ display:flex; align-items:center; gap:8px; margin:4px 0 10px; font-size:12px; }
+.locacao-aplicar-todos input{ width:16px; height:16px; accent-color:var(--accent); }
+.locacao-previa-tabela table{ min-width:850px; }
+.locacao-previa-tabela td{ vertical-align:middle; }
+.locacao-previa-tabela td small,.repasses-tabela td small{ display:block; margin-top:3px; color:var(--text-faint); font-size:10px; }
+.locacao-previa-tabela input,.locacao-previa-tabela select{ min-width:128px; padding:7px 8px; }
+.locacao-confirmacao{ display:flex; flex-direction:column; gap:4px; padding:13px 15px; border:1px solid color-mix(in srgb,var(--good) 38%,var(--border)); border-radius:var(--radius-sm); background:var(--good-soft); }
+.locacao-confirmacao span{ color:var(--text-dim); font-size:12px; }
+.lote-erros{ display:flex; flex-direction:column; gap:5px; padding:13px 15px; border:1px solid color-mix(in srgb,var(--bad) 40%,var(--border)); border-radius:var(--radius-sm); background:var(--bad-soft); color:var(--text); font-size:12px; }
+.lote-erros > strong{ color:var(--bad); }
+.lote-erros p{ margin:0; color:var(--text-dim); }
+.config-repasse-grid{ padding:0; }
+.config-repasse-grid label,.config-repasse-descricao{ display:flex; flex-direction:column; gap:6px; color:var(--text-dim); font-size:11.5px; font-weight:700; }
+.config-repasse-grid small{ color:var(--text-faint); font-size:10px; font-weight:500; line-height:1.4; }
+.config-repasse-descricao{ margin-top:14px; }
+.config-repasse-feriado{ margin-top:14px; }
+.config-repasse-erros{ color:var(--bad); font-size:12px; }
+.repasses-resumo{ margin-bottom:14px; }
+.repasses-toolbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.repasses-toolbar > span{ color:var(--text-dim); font-size:12px; font-weight:700; }
+.repasses-tabela table{ min-width:980px; }
+.repasse-status[data-repasse-status="pendente"]{ color:var(--warn); }
+.repasse-status[data-repasse-status="atrasado"]{ color:var(--bad); }
+.repasse-status[data-repasse-status="recebido"]{ color:var(--good); }
+
+@media (max-width: 760px){
+  .pipeline-acoes-massa{ width:100%; }
+  .repasses-toolbar{ align-items:stretch; flex-direction:column; }
+  .repasses-toolbar .filter-select{ width:100%; }
+}
 
 /* ==================================================================
    ADMINISTRAÇÃO (super admin)

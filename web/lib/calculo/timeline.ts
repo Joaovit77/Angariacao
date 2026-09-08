@@ -7,9 +7,9 @@
    nenhuma tela o mostrava inteiro), os fatos do Sistema Principal num
    bloco de só leitura e a comissão dentro do bloco de comissão.
 
-   NADA AQUI É DADO NOVO. Tudo se deriva do que já está gravado —
-   `dataAngariacao`, `statusHistory` e os campos que a integração
-   carimba. É a disciplina de `resultadoObservado.ts` e da
+   NADA AQUI INVENTA DADO NOVO. Tudo se deriva do que já está gravado —
+   `dataAngariacao`, `statusHistory`, os campos que a integração
+   carimba e o ledger de repasses. É a disciplina de `resultadoObservado.ts` e da
    `solicitacaoAngariacao.ts`: montar na LEITURA significa que a
    timeline de um imóvel de 2023 sai igual à de hoje, que um acerto de
    texto é a edição de uma função, e que não há um segundo lugar onde
@@ -36,11 +36,12 @@
    estado do negócio.
    ================================================================ */
 import { STATUS_AUTORIZACAO_ASSINADA } from "../constantes";
+import type { RepasseAngariacao } from "../repasses";
 import type { Imovel } from "../tipos";
 
 /** De onde saiu a linha — a UI usa para marcar visualmente o que é fato
     informado pelo Sistema Principal, e não coisa que o corretor digitou. */
-export type FonteTimeline = "cadastro" | "funil" | "sistema-principal";
+export type FonteTimeline = "cadastro" | "funil" | "sistema-principal" | "repasse";
 
 export interface MarcoTimeline {
   /** Dia do acontecido, ISO YYYY-MM-DD. */
@@ -112,16 +113,23 @@ function texto(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
 }
 
+function dataCurta(iso: string): string {
+  const [ano, mes, dia] = iso.split("-");
+  return ano && mes && dia ? `${dia}/${mes}/${ano}` : iso;
+}
+
 /**
  * A linha do tempo do imóvel, do mais antigo para o mais recente.
  *
- * Três fontes, costuradas sem repetir nada:
+ * Quatro fontes, costuradas sem repetir nada:
  *
  * 1. **O cadastro** — "angariação criada", em `dataAngariacao`.
  * 2. **O funil** — cada entrada do `statusHistory`.
  * 3. **Os fatos do Sistema Principal** — que ou CORRIGEM a data de uma etapa
  *    do funil (assinatura, locação) ou acrescentam um marco que o funil não
  *    tem (a comissão paga, que acontece depois de tudo e não é etapa).
+ * 4. **O ledger de repasses** — previsão e recebimento reais por ocorrência
+ *    de locação, preservando o snapshot e a autoria registrados no banco.
  *
  * O anti-duplicata é a parte que exige cuidado: a assinatura chega a existir
  * em três lugares ao mesmo tempo — a entrada no `statusHistory`, o campo
@@ -130,9 +138,17 @@ function texto(v: unknown): string {
  * consultada aqui (ela é a NOTIFICAÇÃO, e vive no sino e no histórico de
  * notas) e o campo só entra como correção de data da etapa que já existe.
  */
-export function timelineDaAngariacao(imovel: Imovel): MarcoTimeline[] {
+export function timelineDaAngariacao(
+  imovel: Imovel,
+  repasses: RepasseAngariacao[] = [],
+  autores: Readonly<Record<string, string>> = {},
+): MarcoTimeline[] {
   const marcos: MarcoTimeline[] = [];
   const historico = imovel.statusHistory || [];
+  const datasLocacao = [...repasses]
+    .sort((a, b) => a.numeroCiclo - b.numeroCiclo)
+    .map((repasse) => repasse.dataLocacao);
+  let indiceLocacao = 0;
 
   /* O nascimento, e ele é a MAIS ANTIGA das duas datas conhecidas — não o
      `dataAngariacao` sozinho.
@@ -172,7 +188,16 @@ export function timelineDaAngariacao(imovel: Imovel): MarcoTimeline[] {
     if (indice === 0 && entrada.date === criacao) return;
 
     const campo = DATA_REAL[entrada.status];
-    const dataReal = campo ? texto(imovel[campo]) : "";
+    /* `locado_em` no imóvel representa apenas a ocorrência mais recente.
+       Quando há mais de um ciclo, cada transição deve usar a data da sua
+       própria locação; aplicar o campo atual em todas reescreveria a
+       história visualmente. Registros legados continuam com o fallback. */
+    const dataReal =
+      entrada.status === "Locado" && datasLocacao.length > 0
+        ? datasLocacao[indiceLocacao++] || texto(imovel.locadoEm)
+        : campo
+          ? texto(imovel[campo])
+          : "";
     const doSistema = !!dataReal;
 
     marcos.push({
@@ -210,7 +235,7 @@ export function timelineDaAngariacao(imovel: Imovel): MarcoTimeline[] {
      transição falsa no `statusHistory` — de onde descendem conversão, coortes
      e tempo médio. Ver `aplicarEvento` em sistemaPrincipal.ts. */
   const dataComissao = texto(imovel.comissaoRecebidaData);
-  if (imovel.comissaoRecebida && dataComissao) {
+  if (imovel.comissaoRecebida && dataComissao && !repasses.some((repasse) => repasse.status === "recebido")) {
     marcos.push({
       data: dataComissao,
       icone: "💰",
@@ -230,6 +255,30 @@ export function timelineDaAngariacao(imovel: Imovel): MarcoTimeline[] {
         : "funil",
     });
   }
+
+  repasses.forEach((repasse) => {
+    const autorCriacao = autores[repasse.criadoPor] || repasse.criadoPor;
+    marcos.push({
+      data: repasse.dataLocacao,
+      icone: "🧾",
+      titulo: "Repasse gerado automaticamente",
+      detalhe: `Política: ${repasse.politicaNome}. Primeiro vencimento: ${dataCurta(repasse.primeiroVencimento)}. Previsão: ${dataCurta(repasse.dataPrevista)}. Registrado por ${autorCriacao}.`,
+      fonte: "repasse",
+    });
+    if (repasse.status === "recebido" && repasse.dataRecebimento) {
+      const autorRecebimento = repasse.recebidoPor
+        ? autores[repasse.recebidoPor] || repasse.recebidoPor
+        : "usuário autenticado";
+      marcos.push({
+        data: repasse.dataRecebimento,
+        icone: "💰",
+        titulo: "Repasse recebido",
+        detalhe: `Previsto para ${dataCurta(repasse.dataPrevista)}. Recebimento registrado por ${autorRecebimento}.`,
+        valor: repasse.valorRecebido,
+        fonte: "repasse",
+      });
+    }
+  });
 
   /* Ordenação estável por data. O `sort` do JS já é estável desde o ES2019,
      então empate de dia preserva a ordem de inserção — que é justamente a

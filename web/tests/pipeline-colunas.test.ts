@@ -65,10 +65,10 @@ describe("colunas da Lista do Pipeline", () => {
 
   it("no mobile preserva espaço para Endereço e mantém Status visível", () => {
     expect(CSS).toContain(".pipeline-list-card table{ min-width:0; width:100%; table-layout:fixed; }");
-    expect(CSS).toContain(".pipeline-list-card th:nth-child(2), .pipeline-list-card td:nth-child(2){ width:auto; }");
+    expect(CSS).toContain(".pipeline-list-card th:nth-child(3), .pipeline-list-card td:nth-child(3){ width:auto; }");
     expect(CSS).not.toContain(
-      ".pipeline-list-card th:nth-child(10), .pipeline-list-card td:nth-child(10){ display:none; }",
+      ".pipeline-list-card th:nth-child(11), .pipeline-list-card td:nth-child(11){ display:none; }",
     );
-    expect(CSS).toContain(".pipeline-list-card th:nth-child(5), .pipeline-list-card td:nth-child(5){ display:none; }");
+    expect(CSS).toContain(".pipeline-list-card th:nth-child(6), .pipeline-list-card td:nth-child(6){ display:none; }");
   });
 });

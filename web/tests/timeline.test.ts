@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import { timelineDaAngariacao } from "@/lib/calculo/timeline";
 import { STATUS_AUTORIZACAO_ASSINADA } from "@/lib/constantes";
 import type { Imovel } from "@/lib/tipos";
+import type { RepasseAngariacao } from "@/lib/repasses";
 
 function imovel(over: Partial<Imovel> = {}): Imovel {
   return {
@@ -27,6 +28,30 @@ function imovel(over: Partial<Imovel> = {}): Imovel {
       { status: STATUS_AUTORIZACAO_ASSINADA, date: "2026-07-25" },
       { status: "Locado", date: "2026-08-06" },
     ],
+    ...over,
+  };
+}
+
+function repasse(over: Partial<RepasseAngariacao> = {}): RepasseAngariacao {
+  return {
+    id: "r1",
+    imovelId: "i1",
+    codigo: "LD-201",
+    endereco: "Rua José Francisco Pereira, 800",
+    locacaoId: "l1",
+    numeroCiclo: 1,
+    dataLocacao: "2026-08-05",
+    primeiroVencimento: "2026-09-10",
+    dataPrevista: "2026-09-15",
+    status: "pendente",
+    valorPrevisto: null,
+    dataRecebimento: null,
+    valorRecebido: null,
+    politicaNome: "Repasse padrão",
+    politicaSnapshot: { quantidade_dias: 5 },
+    criadoPor: "u1",
+    recebidoPor: null,
+    createdAt: "2026-08-05T10:00:00Z",
     ...over,
   };
 }
@@ -214,5 +239,40 @@ describe("timelineDaAngariacao", () => {
       }),
     );
     expect(t[1].detalhe).toBe("Optou por outra imobiliária");
+  });
+
+  it("mostra previsão e recebimento reais sem duplicar o campo financeiro legado", () => {
+    const t = timelineDaAngariacao(
+      imovel({ comissaoRecebida: true, comissaoRecebidaData: "2026-09-18" }),
+      [repasse({ status: "recebido", dataRecebimento: "2026-09-18", recebidoPor: "u1" })],
+      { u1: "João" },
+    );
+    expect(t.filter((marco) => marco.titulo === "Repasse gerado automaticamente")).toHaveLength(1);
+    expect(t.filter((marco) => marco.titulo === "Repasse recebido")).toHaveLength(1);
+    expect(t.some((marco) => marco.titulo === "Comissão recebida")).toBe(false);
+    expect(t.find((marco) => marco.titulo === "Repasse gerado automaticamente")?.detalhe)
+      .toContain("Previsão: 15/09/2026");
+    expect(t.find((marco) => marco.titulo === "Repasse recebido")?.detalhe)
+      .toContain("registrado por João");
+  });
+
+  it("preserva a data de cada ocorrência quando o mesmo imóvel é locado novamente", () => {
+    const t = timelineDaAngariacao(
+      imovel({
+        locadoEm: "2027-02-01",
+        statusHistory: [
+          { status: "Novo contato", date: "2026-07-20" },
+          { status: "Locado", date: "2026-08-06" },
+          { status: "Publicado", date: "2027-01-15" },
+          { status: "Locado", date: "2027-02-02" },
+        ],
+      }),
+      [
+        repasse(),
+        repasse({ id: "r2", locacaoId: "l2", numeroCiclo: 2, dataLocacao: "2027-02-01" }),
+      ],
+    );
+    expect(t.filter((marco) => marco.titulo === "Imóvel locado").map((marco) => marco.data))
+      .toEqual(["2026-08-05", "2027-02-01"]);
   });
 });

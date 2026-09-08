@@ -26,6 +26,8 @@ export type TipoModal =
   | "confirmarDisponibilidade"
   | "resultadosPendentes"
   | "desdobrar"
+  | "locarEmLote"
+  | "receberRepassesEmLote"
   | "solicitacaoAngariacao"
   | "gerarAnuncio"
   | "mensagemAgendada"
@@ -47,6 +49,8 @@ export interface ModalAtivo {
   tipo: TipoModal;
   /** id do imóvel / compromisso em edição; ausente = criação. */
   id?: string;
+  /** Seleção de uma ação transacional em massa. */
+  ids?: string[];
   /** Modelo de WhatsApp pré-selecionado ao abrir o modal "whatsapp". */
   modeloWhatsapp?: string;
   /** Texto já preenchido ao abrir o modal "whatsapp" (rascunho da IA). Ao
@@ -118,6 +122,8 @@ interface UiModal {
   ) => void;
   abrirMensagemAgendadaDisponibilidade: (imovelId: string, data: string, texto: string) => void;
   abrirPreCadastro: (inicial: PreCadastroInicial) => void;
+  abrirLocacaoEmLote: (imovelIds: string[]) => void;
+  abrirRecebimentoEmLote: (repasseIds: string[]) => void;
   fecharModal: () => void;
 }
 
@@ -166,5 +172,7 @@ export const useUiModal = create<UiModal>((set) => ({
     }),
   abrirPreCadastro: (preCadastroInicial) =>
     set({ modal: { tipo: "preCadastro", preCadastroInicial } }),
+  abrirLocacaoEmLote: (ids) => set({ modal: { tipo: "locarEmLote", ids: [...new Set(ids)] } }),
+  abrirRecebimentoEmLote: (ids) => set({ modal: { tipo: "receberRepassesEmLote", ids: [...new Set(ids)] } }),
   fecharModal: () => set({ modal: null }),
 }));

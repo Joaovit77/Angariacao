@@ -264,6 +264,10 @@ function Kanban({
     setArrastandoId(null);
     setStatusAlvo(null);
     if (!imovel || !usuario || imovel.status === novoStatus || movendoId) return;
+    if (novoStatus === "Locado") {
+      useUiModal.getState().abrirLocacaoEmLote([imovelId]);
+      return;
+    }
 
     const atualizado: Imovel = {
       ...imovel,
@@ -436,7 +440,21 @@ function HeaderIdentificacao({ identificacao }: { identificacao: PipelineIdentif
   );
 }
 
-function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
+function Lista({
+  imoveis,
+  todos,
+  selecionados,
+  permitirSelecao,
+  aoAlternar,
+  aoAlternarTodos,
+}: {
+  imoveis: Imovel[];
+  todos: Imovel[];
+  selecionados: Set<string>;
+  permitirSelecao: boolean;
+  aoAlternar: (id: string) => void;
+  aoAlternarTodos: (ids: string[], marcar: boolean) => void;
+}) {
   const { drawerImovelId, abrirDrawer, identificacao } = usePipelineUi();
 
   if (imoveis.length === 0) {
@@ -449,12 +467,21 @@ function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
   }
 
   const distintos = (col: PipelineCol) => pipelineColDistinct(todos, col);
+  const todosMarcados = imoveis.length > 0 && imoveis.every((imovel) => selecionados.has(imovel.id));
 
   return (
     <div className="card table-scroll pipeline-list-card">
       <table>
         <thead>
           <tr>
+            <th className="pipeline-selecao-col">
+              {permitirSelecao && <input
+                type="checkbox"
+                aria-label="Selecionar todos os imóveis exibidos"
+                checked={todosMarcados}
+                onChange={(evento) => aoAlternarTodos(imoveis.map((imovel) => imovel.id), evento.target.checked)}
+              />}
+            </th>
             <HeaderIdentificacao identificacao={identificacao} />
             <th>Endereço</th>
             <ColunaFiltro col="unidade" distintos={distintos("unidade")} />
@@ -477,6 +504,15 @@ function Lista({ imoveis, todos }: { imoveis: Imovel[]; todos: Imovel[] }) {
               className={`pipeline-list-row ${drawerImovelId === i.id ? "selected" : ""}`}
               onClick={() => abrirDrawer(i.id)}
             >
+              <td className="pipeline-selecao-col">
+                {permitirSelecao && <input
+                  type="checkbox"
+                  aria-label={`Selecionar ${i.codigo || i.endereco}`}
+                  checked={selecionados.has(i.id)}
+                  onClick={(evento) => evento.stopPropagation()}
+                  onChange={() => aoAlternar(i.id)}
+                />}
+              </td>
               <td className="cell-strong">
                 {identificacaoExibidaNoPipeline(i, identificacao) || "-"}
                 {i.preCadastro && <span className="pre-cadastro-flag">pré-cadastro</span>}
@@ -756,6 +792,8 @@ export default function PipelineView() {
   const imoveis = useAppStore((s) => s.imoveis);
   const abordagens = useAppStore((s) => s.abordagens);
   const abrirModal = useUiModal((s) => s.abrirModal);
+  const abrirLocacaoEmLote = useUiModal((s) => s.abrirLocacaoEmLote);
+  const [selecionados, setSelecionados] = useState<Set<string>>(() => new Set());
   const {
     filters,
     identificacao,
@@ -790,6 +828,12 @@ export default function PipelineView() {
     };
   }, [openCol, fecharColMenu]);
 
+  useEffect(() => {
+    const limparSelecao = () => setSelecionados(new Set());
+    window.addEventListener("repasses:atualizados", limparSelecao);
+    return () => window.removeEventListener("repasses:atualizados", limparSelecao);
+  }, []);
+
   const bairros = pipelineUniqueSorted(imoveis.map((i) => i.bairro));
   const cidades = pipelineUniqueSorted(imoveis.map((i) => i.cidade));
   const responsaveis = pipelineUniqueSorted(imoveis.map((i) => i.responsavel));
@@ -819,6 +863,7 @@ export default function PipelineView() {
 
   function trocarVisualizacao(novoModo: PipelineViewMode) {
     if (novoModo === viewMode) return;
+    if (novoModo !== "lista") setSelecionados(new Set());
     const doc = document as Document & {
       startViewTransition?: (atualizar: () => void) => { finished: Promise<void> };
     };
@@ -828,6 +873,22 @@ export default function PipelineView() {
     }
     doc.startViewTransition(() => {
       flushSync(() => setViewMode(novoModo));
+    });
+  }
+
+  function alternarSelecionado(id: string) {
+    setSelecionados((atuais) => {
+      const proximos = new Set(atuais);
+      if (proximos.has(id)) proximos.delete(id); else proximos.add(id);
+      return proximos;
+    });
+  }
+
+  function alternarTodos(ids: string[], marcar: boolean) {
+    setSelecionados((atuais) => {
+      const proximos = new Set(atuais);
+      ids.forEach((id) => { if (marcar) proximos.add(id); else proximos.delete(id); });
+      return proximos;
     });
   }
 
@@ -965,6 +1026,15 @@ export default function PipelineView() {
           </select>
         </div>
         <div className="pipeline-toolbar-side">
+          {viewMode === "lista" && selecionados.size > 0 && (
+            <div className="pipeline-acoes-massa">
+              <span>{selecionados.size} selecionado(s)</span>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => abrirLocacaoEmLote([...selecionados])}>
+                Marcar como locado
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSelecionados(new Set())}>Limpar</button>
+            </div>
+          )}
           <span className="pipeline-result-count" id="pipeline-result-count">
             {filtrados.length} de {viewMode === "retirados" ? totalRetirados : imoveis.length - totalRetirados}
           </span>
@@ -1011,7 +1081,14 @@ export default function PipelineView() {
               identificacao={identificacao}
             />
           ) : (
-            <Lista imoveis={ordenarPipelineLista(filtrados, colSort)} todos={imoveis} />
+            <Lista
+              imoveis={ordenarPipelineLista(filtrados, colSort)}
+              todos={imoveis}
+              selecionados={selecionados}
+              permitirSelecao={viewMode === "lista"}
+              aoAlternar={alternarSelecionado}
+              aoAlternarTodos={alternarTodos}
+            />
           )}
         </div>
       </div>

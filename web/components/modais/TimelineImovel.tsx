@@ -11,12 +11,26 @@
    Não aparece em imóvel novo (sem `dataAngariacao` não há história a
    contar, e um bloco vazio no meio do formulário só ocupa espaço).
    ================================================================ */
+import { useEffect, useState } from "react";
+import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
 import { timelineDaAngariacao } from "@/lib/calculo/timeline";
 import { fmtDate, fmtMoneyFull } from "@/lib/formatadores";
+import { carregarRepasses, type RepasseAngariacao } from "@/lib/repasses";
 import type { Imovel } from "@/lib/tipos";
 
 export default function TimelineImovel({ imovel }: { imovel: Imovel }) {
-  const marcos = timelineDaAngariacao(imovel);
+  const { usuario } = useSessao();
+  const [repasses, setRepasses] = useState<RepasseAngariacao[]>([]);
+  useEffect(() => {
+    let ativo = true;
+    void carregarRepasses(undefined, imovel.id)
+      .then((lista) => { if (ativo) setRepasses(lista); })
+      // Compatibilidade de rollout: sem a migration, a timeline legada segue.
+      .catch(() => undefined);
+    return () => { ativo = false; };
+  }, [imovel.id]);
+  const autores = usuario ? { [usuario.id]: rotuloUsuario(usuario) } : {};
+  const marcos = timelineDaAngariacao(imovel, repasses, autores);
   if (marcos.length === 0) return null;
 
   return (
@@ -30,7 +44,7 @@ export default function TimelineImovel({ imovel }: { imovel: Imovel }) {
           // evento corrigindo uma data, por exemplo) não colidirem.
           <li
             key={`${m.data}-${m.titulo}-${i}`}
-            className={`timeline-item${m.fonte === "sistema-principal" ? " do-sistema" : ""}`}
+            className={`timeline-item${m.fonte === "sistema-principal" ? " do-sistema" : ""}${m.fonte === "repasse" ? " do-repasse" : ""}`}
           >
             <div className="timeline-data">{fmtDate(m.data)}</div>
             <div className="timeline-titulo">

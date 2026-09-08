@@ -28,6 +28,12 @@ acompanharem a **angariação (captação) de imóveis para locação**, do prim
 proprietário até o imóvel locado. Toda a UI, strings, comentários e mensagens são em **português
 do Brasil**.
 
+Atualmente o isolamento por tenant utiliza `user_id`, compatível com o modelo vigente de uma conta
+por imobiliária. Esse desenho não é o modelo definitivo para um SaaS multiusuário: se futuramente
+uma imobiliária puder possuir múltiplos usuários, o domínio deverá evoluir para uma entidade
+explícita de organização/imobiliária (`imobiliaria_id` ou equivalente), preservando separadamente a
+autoria por usuário.
+
 > **Migração concluída (2026-07).** O app era um site estático puro (`index.html` + `app.js` +
 > `style.css`) e foi migrado para **Next.js (App Router) + TypeScript**, hoje na pasta
 > [`web/`](web/). O app antigo foi removido. O histórico completo da migração — decisões, achados e
@@ -365,6 +371,31 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   R$ 1.250,00. E o CRM exporta o valor CHEIO na coluna "Valor do Aluguel", o que já fez 147 imóveis
   entrarem com o valor de atraso no campo do anúncio, inflando a carteira em R$ 47 mil: ao importar
   de lá, o que vale como aluguel é o "Aluguel Líquido".
+- **Repasses previstos e recebimentos** — o documento acima continua sendo uma saída de cobrança,
+  mas a obrigação financeira agora é persistida separadamente. `politicas_repasse` guarda as regras
+  configuráveis da conta; `locacoes` representa cada ocorrência de locação do imóvel; e `repasses`
+  guarda a previsão e, posteriormente, o recebimento real. A cardinalidade é **uma locação para zero
+  ou um repasse**, nunca um repasse permanente por imóvel: após o imóvel sair de `Locado`, um novo
+  ciclo legítimo recebe `numero_ciclo` seguinte e pode gerar outra obrigação.
+  A fonte única de datas é `private.calcular_datas_repasse`, usada tanto pelo RPC de prévia quanto
+  pelo RPC de confirmação. Para `mes_seguinte`, a data sempre parte do primeiro dia do mês seguinte;
+  dias 29, 30 e 31 inexistentes são reduzidos deterministicamente ao último dia daquele mês. Dias
+  úteis significam segunda a sexta. Feriados permanecem em `manter` até existir um calendário
+  confiável por localidade — o sistema não embute uma lista nacional aproximada.
+  `locar_imoveis_em_lote` valida política, tenant, estado e todos os imóveis antes de escrever; na
+  mesma transação cria ocorrências e repasses pendentes, atualiza `status`/`locado_em`, deixa o trigger
+  normal registrar `statusHistory` com o usuário autenticado e encerra lembretes de disponibilidade.
+  O UUID da confirmação torna retries idempotentes, e `repasses.locacao_id unique` impede duplicar a
+  obrigação de uma ocorrência. `receber_repasses_em_lote` faz o mesmo para recebimentos e sincroniza
+  apenas os campos legados `comissao_recebida`/`comissao_recebida_data`; não calcula nem inventa valor.
+  Cada repasse leva `politica_snapshot` imutável, além de `primeiro_vencimento` e `data_prevista`, para
+  que editar a política só afete novas locações. Registros antigos permanecem exclusivamente no
+  modelo legado e não recebem política retrospectiva inventada.
+  As tabelas têm RLS por `user_id`. Os ledgers `locacoes` e `repasses` são somente leitura direta para
+  `authenticated`; as escritas passam pelos RPCs transacionais `security definer`, com `search_path`
+  vazio, `auth.uid()` obrigatório e filtros explícitos de tenant. Gatilhos conferem também a
+  consistência de tenant entre política, imóvel, locação e repasse, inclusive para futuras escritas
+  privilegiadas.
 - **`calculo/filtros.ts`** — filtro/ordenação do Pipeline (parte pura), e o corte entre a carteira
   ATIVA e o que saiu dela. `PipelineViewMode` tem três modos, não dois: além de Lista e Kanban,
   **`retirados`** — o imóvel que o proprietário tirou (`Imovel.retirado`). Não é "Perdido", e a
@@ -475,8 +506,9 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   resposta, aquele documento tem que mudar junto**: ele é escrito para quem não lê este código, e
   desatualizado ele não é incompleto, é errado.
 - **`calculo/timeline.ts`** — a evolução do imóvel numa lista só, do cadastro ao pagamento da
-  comissão. **Nenhum dado novo**: deriva de `dataAngariacao`, do `statusHistory` e dos campos que a
-  integração carimba, na LEITURA — a disciplina de `resultadoObservado.ts`. Três decisões:
+  comissão. Para registros legados, deriva de `dataAngariacao`, do `statusHistory` e dos campos que a
+  integração carimba; locações novas acrescentam os marcos persistidos de previsão e recebimento de
+  `repasses`, sem duplicar a comissão legada. Quatro decisões:
   **tentativa e resposta ficam de FORA** (na carteira real há imóvel com 74 mensagens e outro com 3
   tentativas; misturar isso com os quatro marcos faria o marco virar agulha em palheiro — a
   reincidência exata do que matou a faixa de "imóvel parado" no termômetro, e por isso a lista é de
@@ -484,7 +516,8 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   data em que o painel soube** (o `statusHistory` guarda quando o evento chegou, `autorizacaoAssinadaEm`
   guarda quando o proprietário assinou, e as duas divergem sempre que a integração é religada
   depois do fim de semana — uma linha do tempo com a data do nosso servidor conta a história errada);
-  e **a assinatura aparece UMA vez**, embora exista em três lugares ao mesmo tempo (etapa do funil,
+  **cada ciclo de locação usa sua própria `data_locacao`**, porque `imoveis.locado_em` guarda apenas
+  a ocorrência mais recente; e **a assinatura aparece UMA vez**, embora exista em três lugares ao mesmo tempo (etapa do funil,
   campo e nota `sophia:`) — daí a nota nem ser consultada ali, e o campo entrar só como correção da
   data da etapa que já existe.
 - **`calculo/temperatura.ts`** — o **termômetro do proprietário**: de quem correr atrás hoje,

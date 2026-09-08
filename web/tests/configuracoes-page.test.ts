@@ -17,7 +17,7 @@ describe("página de Configurações", () => {
 
   it("organiza somente categorias com conteúdo real e preserva todos os fluxos existentes", () => {
     const tela = fonte("components/configuracoes/ConfiguracoesView.tsx");
-    for (const categoria of ["Geral", "IA e escrita", "Agenda", "Prospecção", "WhatsApp", "Conta", "Dados"]) {
+    for (const categoria of ["Geral", "Política de Repasse", "IA e escrita", "Agenda", "Prospecção", "WhatsApp", "Conta", "Dados"]) {
       expect(tela).toContain(`titulo: "${categoria}"`);
     }
     expect(tela).not.toContain('titulo: "Integrações"');
