@@ -51,6 +51,11 @@ O que fica na **raiz** do repositório:
   têm RLS por `auth.uid() = user_id`; secrets e dados globais de operação permanecem sem políticas
   de cliente.
   Idempotente — pode ser re-rodado no SQL editor do Supabase. **É a fonte de verdade do schema.**
+- `supabase/migrations/` — histórico versionado das migrations, espelho do ledger remoto de Production.
+  Em setembro de 2026 houve uma divergência temporária entre o ledger remoto de migrations e os
+  arquivos locais. A origem exata da alteração anterior do ledger não foi determinada. O histórico foi
+  posteriormente reconciliado e validado, ficando com 52 migrations locais e 52 remotas, sem pendências
+  no `db push --dry-run`.
 - [DEPLOY.md](DEPLOY.md) — passo a passo de deploy (Supabase + Vercel com Root Directory `web`),
   runbook de cutover e rollback.
 - [docs/IA-AMBIENTES.md](docs/IA-AMBIENTES.md) — fluxo autorizado de IA real em Local, Preview,
