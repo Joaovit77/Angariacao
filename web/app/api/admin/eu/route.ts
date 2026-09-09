@@ -29,36 +29,46 @@
    ================================================================ */
 import { ambiente, servico } from "../_comum";
 import { createClient } from "@supabase/supabase-js";
+import { agoraBoot, registrarEtapaBootServidor } from "@/lib/bootPerformance";
 
 /** A resposta em toda dúvida: sem cargo, mas com o painel do corretor
     inteiro. Ver o comentário do topo sobre a assimetria. */
 const NEUTRO = { admin: false, operaCarteira: true };
 
 export async function GET(request: Request): Promise<Response> {
+  const inicioTotal = agoraBoot();
+  const responder = (corpo: typeof NEUTRO, sucesso: boolean) => {
+    registrarEtapaBootServidor("api_admin_eu_servidor", inicioTotal, { sucesso });
+    return Response.json(corpo);
+  };
   const env = ambiente();
   const auth = request.headers.get("authorization") || "";
   const accessToken = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
-  if (!env || !accessToken) return Response.json(NEUTRO);
+  if (!env || !accessToken) return responder(NEUTRO, false);
 
   const comoUsuario = createClient(env.supabaseUrl, env.anonKey, {
     global: { headers: { Authorization: `Bearer ${accessToken}` } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const inicioAuth = agoraBoot();
   const { data: sessao, error } = await comoUsuario.auth.getUser();
-  if (error || !sessao.user) return Response.json(NEUTRO);
+  registrarEtapaBootServidor("auth_get_user_admin", inicioAuth, { sucesso: !error });
+  if (error || !sessao.user) return responder(NEUTRO, false);
 
+  const inicioQuery = agoraBoot();
   const { data, error: erroAdmin } = await servico(env)
     .from("admins")
     .select("user_id, opera_carteira")
     .eq("user_id", sessao.user.id)
     .maybeSingle();
+  registrarEtapaBootServidor("query_admins_perfil", inicioQuery, { sucesso: !erroAdmin });
   if (erroAdmin) {
     console.error("Admin: falha ao conferir o cargo:", erroAdmin.message);
-    return Response.json(NEUTRO);
+    return responder(NEUTRO, false);
   }
 
   // Quem não é admin opera carteira por definição — é o app inteiro
   // para ele. Só a linha de `admins` pode dizer o contrário.
-  if (!data) return Response.json(NEUTRO);
-  return Response.json({ admin: true, operaCarteira: data.opera_carteira !== false });
+  if (!data) return responder(NEUTRO, true);
+  return responder({ admin: true, operaCarteira: data.opera_carteira !== false }, true);
 }

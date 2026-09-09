@@ -24,6 +24,7 @@ import PortaoTermos from "@/components/legal/PortaoTermos";
 import RodapeApp from "@/components/RodapeApp";
 import Assistente from "@/components/assistente/Assistente";
 import { AssistenteProvider } from "@/components/assistente/AssistenteProvider";
+import { registrarPrimeiroRenderBoot } from "@/lib/bootPerformance";
 import { useAppStore } from "@/lib/store";
 
 const CHAVE_RECOLHIDA = "sidebar-recolhida";
@@ -79,6 +80,10 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
   const [gavetaAberta, setGavetaAberta] = useState(false);
   const ehDesktop = useSyncExternalStore(assinarViewport, ehDesktopAgora, () => true);
   const recolhida = useSyncExternalStore(assinarRecolhida, lerRecolhida, () => false);
+  const redirecionandoAdmin = cargoConfirmado
+    && ehAdmin
+    && !operaCarteira
+    && !ROTAS_SEM_CARTEIRA.has(pathname);
 
   useEffect(() => {
     if (estado === "anon" || estado === "recuperacao") router.replace("/");
@@ -91,16 +96,22 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
      `cargoConfirmado` inclui o id da sessão atual: além de esperar a
      resposta, impede o cargo de uma conta anterior de decidir a nova. */
   useEffect(() => {
-    if (cargoConfirmado && ehAdmin && !operaCarteira && !ROTAS_SEM_CARTEIRA.has(pathname)) {
+    if (redirecionandoAdmin) {
       router.replace("/admin");
     }
-  }, [cargoConfirmado, ehAdmin, operaCarteira, pathname, router]);
+  }, [redirecionandoAdmin, router]);
+
+  useEffect(() => {
+    if (estado === "auth" && cargoConfirmado && !redirecionandoAdmin) {
+      registrarPrimeiroRenderBoot();
+    }
+  }, [estado, cargoConfirmado, redirecionandoAdmin]);
 
   if (estado !== "auth") return null;
 
   /* Nunca monta o shell com o perfil provisório. Antes, os valores seguros
      iniciais faziam a conta de operação parecer corretor durante a consulta. */
-  if (!cargoConfirmado || (ehAdmin && !operaCarteira && !ROTAS_SEM_CARTEIRA.has(pathname))) {
+  if (!cargoConfirmado || redirecionandoAdmin) {
     return (
       <div className="perfil-gate" role="status" aria-live="polite">
         <div className="perfil-gate-marca" aria-hidden="true">

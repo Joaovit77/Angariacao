@@ -27,6 +27,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSessao } from "@/components/SessaoProvider";
+import { agoraBoot, registrarEtapaBoot } from "@/lib/bootPerformance";
 import {
   avisoDeEvento,
   avisoDeResposta,
@@ -55,6 +56,7 @@ export default function SincronizacaoRespostas() {
     if (!usuarioId) return;
     const usuarioIdAtual = usuarioId;
     const supabase = getSupabase();
+    const inicioRealtime = agoraBoot();
     let ativo = true;
     const versoesAplicadas = new Map<string, string>();
     const releiturasEmCurso = new Map<string, Promise<void>>();
@@ -215,7 +217,13 @@ export default function SincronizacaoRespostas() {
             aplicar(linha, linha.updated_at || payload.commit_timestamp);
           },
         )
-        .subscribe();
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            registrarEtapaBoot("realtime_setup", inicioRealtime, { sucesso: true });
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            registrarEtapaBoot("realtime_setup", inicioRealtime, { sucesso: false });
+          }
+        });
     }
 
     // O `postgres_changes` com RLS só entrega evento com um JWT válido no
@@ -225,12 +233,14 @@ export default function SincronizacaoRespostas() {
     // canal inscrito, nenhum evento chegando, nada no console. Chamar sem
     // argumento reusa o token que o cliente já tem; é idempotente.
     let canal: ReturnType<typeof assinar> | null = null;
+    const inicioAuthRealtime = agoraBoot();
     supabase.realtime
       .setAuth()
       .catch(() => {
         /* sem token o subscribe abaixo simplesmente não recebe nada */
       })
       .then(() => {
+        registrarEtapaBoot("realtime_auth", inicioAuthRealtime);
         if (ativo) canal = assinar();
       });
 

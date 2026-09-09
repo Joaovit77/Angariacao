@@ -27,6 +27,7 @@
 import type OpenAI from "openai";
 import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { agoraBoot, registrarEtapaBootServidor } from "@/lib/bootPerformance";
 import { registrarEvento, registrarUsoDaResposta } from "@/lib/servidor/registro";
 import { desempenhoPorAbordagem, resumoTentativas } from "@/lib/calculo/abordagens";
 import { kpisDashboard } from "@/lib/calculo/dashboard";
@@ -165,20 +166,31 @@ async function podeUsarIa(supabase: SupabaseClient, userId: string): Promise<boo
     boot do app não deve quebrar por causa disto, e a UI só precisa saber
     se esconde os botões. Quem vale mesmo é a checagem do POST. */
 export async function GET(request: Request): Promise<Response> {
+  const inicioTotal = agoraBoot();
   const configurado = !!process.env.OPENAI_API_KEY && chamadaOpenAIRealAutorizada();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const accessToken = tokenDaRequisicao(request);
 
   if (!configurado || !supabaseUrl || !anonKey || !accessToken) {
+    registrarEtapaBootServidor("api_ia_servidor", inicioTotal, { sucesso: false });
     return Response.json({ configurado, permitido: false });
   }
 
   const supabase = clienteDoChamador(supabaseUrl, anonKey, accessToken);
+  const inicioAuth = agoraBoot();
   const { data: sessao, error } = await supabase.auth.getUser();
-  if (error || !sessao.user) return Response.json({ configurado, permitido: false });
+  registrarEtapaBootServidor("auth_get_user_ia", inicioAuth, { sucesso: !error });
+  if (error || !sessao.user) {
+    registrarEtapaBootServidor("api_ia_servidor", inicioTotal, { sucesso: false });
+    return Response.json({ configurado, permitido: false });
+  }
 
-  return Response.json({ configurado, permitido: await podeUsarIa(supabase, sessao.user.id) });
+  const inicioQuery = agoraBoot();
+  const permitido = await podeUsarIa(supabase, sessao.user.id);
+  registrarEtapaBootServidor("query_ia_permissao", inicioQuery);
+  registrarEtapaBootServidor("api_ia_servidor", inicioTotal, { sucesso: true });
+  return Response.json({ configurado, permitido });
 }
 
 export async function POST(request: Request): Promise<Response> {

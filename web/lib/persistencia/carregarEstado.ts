@@ -17,6 +17,11 @@
    comissaoPercent = 100.
    ================================================================ */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  agoraBoot,
+  registrarEtapaBoot,
+  tamanhoAproximadoEmBytes,
+} from "../bootPerformance";
 import { configuracaoPadrao } from "../configuracaoUsuario";
 import { normalizarPerfilComunicacao } from "../perfilComunicacao";
 import type { Abordagem, AgendaItem, Imovel, Metas, Protocolo, UserConfig, WhatsappModelo } from "../tipos";
@@ -35,15 +40,30 @@ export interface EstadoApp {
   config: UserConfig;
 }
 
+async function medirConsulta<T extends { data: unknown; error: unknown }>(
+  tabela: string,
+  consulta: PromiseLike<T>,
+): Promise<T> {
+  const inicio = agoraBoot();
+  const resultado = await consulta;
+  registrarEtapaBoot(`query_${tabela}`, inicio, {
+    linhas: Array.isArray(resultado.data) ? resultado.data.length : resultado.data ? 1 : 0,
+    payloadBytes: tamanhoAproximadoEmBytes(resultado.data),
+    sucesso: !resultado.error,
+  });
+  return resultado;
+}
+
 export async function carregarEstado(client: SupabaseClient = getSupabase()): Promise<EstadoApp> {
+  const inicio = agoraBoot();
   const padrao = configuracaoPadrao();
   const [imRes, mtRes, agRes, abRes, ptRes, cfRes] = await Promise.all([
-    client.from("imoveis").select("*"),
-    client.from("metas").select("*"),
-    client.from("agenda").select("*"),
-    client.from("abordagens").select("*"),
-    client.from("protocolos").select("*"),
-    client.from("user_config").select("*").maybeSingle(),
+    medirConsulta("imoveis", client.from("imoveis").select("*")),
+    medirConsulta("metas", client.from("metas").select("*")),
+    medirConsulta("agenda", client.from("agenda").select("*")),
+    medirConsulta("abordagens", client.from("abordagens").select("*")),
+    medirConsulta("protocolos", client.from("protocolos").select("*")),
+    medirConsulta("user_config", client.from("user_config").select("*").maybeSingle()),
   ]);
   if (imRes.error) throw imRes.error;
   if (mtRes.error) throw mtRes.error;
@@ -80,7 +100,7 @@ export async function carregarEstado(client: SupabaseClient = getSupabase()): Pr
         )
         .map((m) => ({ id: m.id, nome: m.nome, texto: m.texto }))
     : [];
-  return {
+  const estado = {
     imoveis: ((imRes.data || []) as DbImovelRow[]).map(fromDbImovel),
     agenda: ((agRes.data || []) as DbAgendaRow[]).map(fromDbAgenda),
     abordagens: abRes.error ? [] : ((abRes.data || []) as DbAbordagemRow[]).map(fromDbAbordagem),
@@ -96,4 +116,8 @@ export async function carregarEstado(client: SupabaseClient = getSupabase()): Pr
       perfilComunicacao: normalizarPerfilComunicacao(cfData?.perfil_comunicacao),
     },
   };
+  registrarEtapaBoot("carregar_estado", inicio, {
+    payloadBytes: tamanhoAproximadoEmBytes(estado),
+  });
+  return estado;
 }
