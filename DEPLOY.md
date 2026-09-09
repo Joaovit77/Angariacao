@@ -94,10 +94,11 @@ ViaCEP devolve; as políticas RLS não mudam.
 ### Service role (obrigatória a partir do painel de administração)
 
 ```
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
 ```
 
-Copie em **Project Settings → API → service_role**. Ela já era usada pelo envio de WhatsApp e pelo
+Copie a **secret key** (`sb_secret_...`) em **Project Settings → API Keys**; a antiga `service_role`
+JWT foi migrada e está desativada. Ela já era usada pelo envio de WhatsApp e pelo
 webhook; com o painel de administração ela passou a ser necessária também para `/api/admin/*`.
 
 - **Nunca** prefixe com `NEXT_PUBLIC_`. Esta chave **ignora a Row Level Security por completo** —
