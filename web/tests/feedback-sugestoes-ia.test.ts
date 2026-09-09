@@ -32,6 +32,39 @@ const ABORDAGEM = readFileSync(new URL("../components/pipeline/BotaoAbordagemAnu
 const ROTA_IA = readFileSync(new URL("../app/api/ia/route.ts", import.meta.url), "utf8");
 const COMPONENTE = readFileSync(new URL("../components/ia/FeedbackSugestaoIa.tsx", import.meta.url), "utf8");
 const VALIDACAO_SQL = readFileSync(new URL("../../scripts/validar-supabase-local.sql", import.meta.url), "utf8");
+const MIGRATION_FEEDBACK = readFileSync(
+  new URL("../../supabase/migrations/20260829012038_ia_feedback_fase1.sql", import.meta.url),
+  "utf8",
+);
+
+/* A migration é o que roda num ambiente novo; o supabase-schema.sql é o que
+   os testes carregam e o que se cola no SQL Editor. Divergiram, e um ambiente
+   nasce diferente do outro sem ninguém notar até o erro em produção. A
+   normalização descarta o que é só estilo — comentário, `public.`,
+   `if not exists`, espaço em branco — e compara o contrato. */
+function normalizarContratoSql(sql: string): string {
+  return sql
+    .replace(/--.*$/gm, "")
+    .replace(/\bpublic\./g, "")
+    .replace(/\bif not exists\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extrairTabela(sql: string, tabela: "ia_sugestoes" | "ia_feedbacks"): string {
+  const trecho = sql.match(
+    new RegExp(`create table(?: if not exists)? (?:public\\.)?${tabela} \\([\\s\\S]*?\\n\\);`, "i"),
+  )?.[0];
+  if (!trecho) throw new Error(`Definição de ${tabela} ausente.`);
+  return normalizarContratoSql(trecho);
+}
+
+function extrairProtecoes(sql: string, tipo: "policy" | "index"): string[] {
+  const expressao = tipo === "policy"
+    ? /create policy "[^"]+" on (?:public\.)?ia_(?:sugestoes|feedbacks)[\s\S]*?;/gi
+    : /create index(?: if not exists)? ia_(?:sugestoes|feedbacks)[\s\S]*?;/gi;
+  return (sql.match(expressao) || []).map(normalizarContratoSql).sort();
+}
 
 interface BancoFalso {
   sugestoes: Map<string, { id: string; userId: string; texto: string }>;
@@ -340,6 +373,22 @@ describe("feedback de sugestões da IA", () => {
 });
 
 describe("contratos de schema e interface", () => {
+  it("mantém a migration versionada e o schema canônico dizendo a mesma coisa", () => {
+    expect(extrairTabela(MIGRATION_FEEDBACK, "ia_sugestoes")).toBe(extrairTabela(SCHEMA, "ia_sugestoes"));
+    expect(extrairTabela(MIGRATION_FEEDBACK, "ia_feedbacks")).toBe(extrairTabela(SCHEMA, "ia_feedbacks"));
+    expect(extrairProtecoes(MIGRATION_FEEDBACK, "policy")).toEqual(extrairProtecoes(SCHEMA, "policy"));
+    expect(extrairProtecoes(MIGRATION_FEEDBACK, "index")).toEqual(extrairProtecoes(SCHEMA, "index"));
+  });
+
+  /* Sem âncora, um regex que parasse de casar deixaria o teste acima
+     comparando vazio com vazio — verde por não medir nada. */
+  it("enxerga de fato as duas tabelas, as políticas e os índices", () => {
+    expect(extrairTabela(MIGRATION_FEEDBACK, "ia_sugestoes")).toContain("texto_sugerido");
+    expect(extrairTabela(MIGRATION_FEEDBACK, "ia_feedbacks")).toContain("sugestao_id");
+    expect(extrairProtecoes(MIGRATION_FEEDBACK, "policy").length).toBeGreaterThanOrEqual(5);
+    expect(extrairProtecoes(MIGRATION_FEEDBACK, "index").length).toBeGreaterThanOrEqual(3);
+  });
+
   it("mantém RLS, grants mínimos e uma única linha de feedback por sugestão/usuário", () => {
     expect(SCHEMA).toContain("create table if not exists ia_sugestoes");
     expect(SCHEMA).toContain("create table if not exists ia_feedbacks");
