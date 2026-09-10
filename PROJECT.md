@@ -1214,6 +1214,15 @@ tipo explícito e tradução consistente entre banco e domínio — nos dados ce
 tipados próprios. Tabelas que guardam secrets (`whatsapp_instancias`, `google_contas`, `admins`) não
 ganham políticas de cliente apenas para facilitar uma tela: são acessadas por rotas autenticadas.
 
+**A produção carrega uma rede extra que o repositório não consegue reproduzir.** O banco tem uma
+event trigger legada, `ensure_rls`, que liga RLS sozinha em qualquer `create table` no `public`.
+Ela pertence à role `postgres` e não há como recriá-la a partir do repositório: `create event
+trigger` exige superuser, e hoje no Supabase nem `postgres` é — só `supabase_admin`. Projeto novo
+nasce sem ela. A garantia que vale é estática e mora em `web/tests/rls-obrigatoria-schema.test.ts`:
+todo arquivo SQL que cria tabela precisa ligar RLS nela no mesmo arquivo. As 29 tabelas já
+satisfazem isso no `supabase-schema.sql` e em cada migration, então a trigger é redundância — ao
+criar tabela, não conte com ela.
+
 **Ao consultar o banco por fora do app — SQL editor, MCP do Supabase, service role — a RLS não
 vale, e o banco tem mais de uma conta**: a real do corretor, a de teste do `seed-teste.mjs` e
 sobras de experimentos. **Toda consulta administrativa leva `where user_id = '...'`.** Não é
