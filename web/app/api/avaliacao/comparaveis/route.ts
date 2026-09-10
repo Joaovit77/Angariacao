@@ -11,6 +11,7 @@ import {
   CONFIGURACAO_COMPARAVEIS_MERCADO,
   familiaTipoMercado,
   textoSemanticoDoImovel,
+  unirCandidatosComparaveis,
 } from "@/lib/calculo/comparaveisMercado";
 import { chaveNormalizada } from "@/lib/normalizacao";
 import { normalizarUf, ufValida } from "@/lib/calculo/geografia";
@@ -187,18 +188,18 @@ export async function POST(request: Request) {
           : item.historico ?? null;
       });
     }
-    if (vetoriais.length < 3) {
-      const complementares = await carregarComparaveisMercadoComCliente(
-        sessao.supabase,
-        sessao.userId,
-        entrada,
-      );
-      const ids = new Set(vetoriais.map((item) => item.id));
-      vetoriais.push(...complementares.filter((item) => !ids.has(item.id)));
-    }
+    // A suficiência da amostra é decidida por avaliarImovel(), depois de
+    // região, proximidade e score. Contar candidatos vetoriais aqui mede
+    // cobertura de embedding, não mercado: o bairro certo pode estar inteiro
+    // fora da RPC, que só enxerga linhas já vetorizadas.
+    const complementares = await carregarComparaveisMercadoComCliente(
+      sessao.supabase,
+      sessao.userId,
+      entrada,
+    );
     return Response.json({
       modo: "hibrido",
-      comparaveis: vetoriais,
+      comparaveis: unirCandidatosComparaveis(vetoriais, complementares),
     });
   } catch (erro) {
     console.error("[avaliacao] busca vetorial indisponível; usando filtros estruturados", sanitizarErroExterno(erro, contextoErro));

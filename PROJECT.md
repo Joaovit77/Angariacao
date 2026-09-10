@@ -725,8 +725,10 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
 - **`calculo/avaliacao.ts`** — motor determinístico da **Avaliação Rápida** (`/avaliacao`). A V5
   combina a carteira com a base durável `comparaveis_mercado`. Na base externa, filtros de usuário,
   finalidade, UF + cidade, família de tipo, área e quartos são aplicados no Postgres antes da ordenação
-  vetorial; durante o preenchimento gradual, resultados estruturados complementam uma amostra
-  vetorial pequena. O score expõe separadamente similaridade estrutural, semântica e
+  vetorial; no caminho híbrido, candidatos vetoriais e estruturados são sempre combinados e
+  deduplicados por identidade do catálogo, porque a busca vetorial só enxerga linhas já vetorizadas.
+  Contagem de candidatos não é suficiência: quem decide se a amostra basta é `avaliarImovel()`,
+  depois de região, proximidade e score. O score expõe separadamente similaridade estrutural, semântica e
   comparabilidade final. O embedding só seleciona/reordena comparáveis: o peso do preço continua
   estrutural. Quando há ao menos três opções na mesma rua, elas prevalecem sobre as demais do
   bairro. Depois o motor ajusta parcialmente por área, remove outliers por mediana/desvio absoluto
