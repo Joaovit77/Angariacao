@@ -32,8 +32,10 @@ import { POST } from "@/app/api/avaliacao/comparaveis/route";
 const HOJE = "2026-09-10";
 const USUARIO = "usuario-fixture";
 
-/** Igapó não consta no mapa oficial de bairros, mas a coordenada do alvo
-    resolve para Zona Norte pelos polígonos do SIGLON. */
+/** Igapó é o bairro postal da Av. Inglaterra, dentro do bairro oficial
+    Inglaterra (Zona Sul). A coordenada é a real da avenida à altura do
+    nº 700 e resolve para Zona Sul pelos polígonos do SIGLON, em acordo
+    com o bairro. */
 const ENTRADA: EntradaAvaliacao = {
   finalidade: "locacao",
   endereco: "Avenida Inglaterra, 700",
@@ -47,8 +49,8 @@ const ENTRADA: EntradaAvaliacao = {
   banheiros: 1,
   vagas: 1,
   conservacao: "Bom",
-  latitude: -23.286,
-  longitude: -51.152,
+  latitude: -23.3456,
+  longitude: -51.1472,
 };
 
 /** As três — e somente três — linhas com embedding na faixa objetiva do caso.
@@ -238,7 +240,7 @@ describe("candidatos da Avaliação Rápida com amostra vetorial de outra regiã
     expect(resultado.valorRecomendado).not.toBeNull();
     expect(resultado.comparaveis).toHaveLength(3);
     expect(resultado.comparaveis.every((item) => item.bairro === "Igapó")).toBe(true);
-    expect(resultado.metodologia.regiaoReferencia).toBe("Zona Norte");
+    expect(resultado.metodologia.regiaoReferencia).toBe("Zona Sul");
   });
 
   it("continua sem inventar valor quando não existe referência local real", async () => {
@@ -255,14 +257,14 @@ describe("candidatos da Avaliação Rápida com amostra vetorial de outra regiã
     // Fortes em tudo — tipo, área, quartos, recência — e ainda assim de outra
     // zona da mesma cidade. Amostra maior não pode virar amostra mais frouxa.
     const outraRegiao = [
-      comparavelDoIgapo("zona-sul-1", "Rua Bela Suíça, 100", 55, 3, 3200, {
-        bairro: "Bela Suíça", regiao: "Zona Sul", idExterno: "ZS-1",
+      comparavelDoIgapo("zona-norte-1", "Rua Cinco Conjuntos, 100", 55, 3, 3200, {
+        bairro: "Cinco Conjuntos", regiao: "Zona Norte", idExterno: "ZN-1",
       }),
-      comparavelDoIgapo("zona-sul-2", "Rua Piza, 200", 56, 3, 3400, {
-        bairro: "Piza", regiao: "Zona Sul", idExterno: "ZS-2",
+      comparavelDoIgapo("zona-leste-2", "Rua Lindóia, 200", 56, 3, 3400, {
+        bairro: "Lindóia", regiao: "Zona Leste", idExterno: "ZL-2",
       }),
-      comparavelDoIgapo("zona-sul-3", "Rua Guanabara, 300", 54, 3, 3300, {
-        bairro: "Guanabara", regiao: "Zona Sul", idExterno: "ZS-3",
+      comparavelDoIgapo("zona-oeste-3", "Rua Sabará, 300", 54, 3, 3300, {
+        bairro: "Sabará", regiao: "Zona Oeste", idExterno: "ZO-3",
       }),
     ];
     mocks.estruturados.mockResolvedValue([...ESTRUTURADOS_IGAPO, ...outraRegiao]);
@@ -272,7 +274,8 @@ describe("candidatos da Avaliação Rápida com amostra vetorial de outra regiã
     expect(dados.comparaveis).toHaveLength(9);
     expect(resultado.comparaveis.map((item) => item.id).sort())
       .toEqual(ESTRUTURADOS_IGAPO.map((item) => item.id).sort());
-    expect(resultado.comparaveis.some((item) => item.regiao === "Zona Sul")).toBe(false);
+    const usados = new Set(resultado.comparaveis.map((item) => item.id));
+    expect(outraRegiao.some((item) => usados.has(item.id))).toBe(false);
   });
 
   it("mantém o próprio anúncio fora da amostra quando a avaliação nasce de um comparável", async () => {

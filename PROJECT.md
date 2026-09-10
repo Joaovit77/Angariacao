@@ -2216,8 +2216,11 @@ mesmos campos estruturados quando o portal os disponibiliza.
 
 Exclusivamente para Londrina/PR, `calculo/regioesLondrina.ts` mantém os bairros nas cinco
 regiões oficiais (Central, Sul, Leste, Oeste e Norte) e os polígonos simplificados do SIGLON usados
-pela avaliação. A coleta paga continua restrita às quatro zonas solicitadas (Sul, Leste, Oeste e
-Norte). O script `npm run coletar:zonas` exige confirmação
+pela avaliação. Denominações postais ou comerciais que não constam na Lei 13.718/2023 (como
+"Igapó", bairro dos Correios para a Av. Inglaterra) só resolvem região por equivalência explícita
+a um bairro oficial, e só quando a base de CEP e o mapa IPPUL/SIGLON sustentam juntos; a lista
+oficial e o plano de coleta não recebem esses nomes. A coleta paga continua restrita às quatro
+zonas solicitadas (Sul, Leste, Oeste e Norte). O script `npm run coletar:zonas` exige confirmação
 explícita e conta coletora, limita a rodada a 100 consultas Firecrawl sem repetição e desativa a
 geração de embeddings durante a carga; os dados estruturados já ficam disponíveis à avaliação.
 
