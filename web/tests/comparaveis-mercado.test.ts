@@ -6,6 +6,7 @@ import {
   deveGerarEmbedding,
   fingerprintEhForte,
   textoSemanticoDoImovel,
+  unirCandidatosComparaveis,
   urlCanonicaDeAnuncio,
   type SinaisIdentidadeAnuncio,
 } from "@/lib/calculo/comparaveisMercado";
@@ -161,6 +162,61 @@ describe("busca e score híbridos", () => {
       .toBeGreaterThan(resultado.comparaveis.at(-1)!.comparabilidadeFinal);
     expect(resultado.comparaveis[0].pesoCalculo)
       .toBeCloseTo(resultado.comparaveis[1].pesoCalculo, 8);
+  });
+});
+
+describe("união de candidatos vetoriais e estruturados", () => {
+  const candidato = (
+    id: string,
+    parcial: Partial<ComparavelAvaliacao> = {},
+  ): ComparavelAvaliacao => ({
+    origem: "externo",
+    id,
+    idExterno: "AP-900",
+    codigo: "chaves-na-mao",
+    endereco: "Rua Bélgica, 1413",
+    bairro: "Igapó",
+    cidade: "Londrina",
+    estado: "PR",
+    tipo: "Apartamento",
+    areaM2: 64,
+    quartos: 3,
+    valorAnunciado: 2500,
+    dataInformacao: "2026-08-22",
+    status: "Anunciado",
+    similaridadeVetorial: null,
+    ...parcial,
+  });
+
+  it("mantém a versão vetorial quando a mesma linha volta pela busca estruturada", () => {
+    const unidos = unirCandidatosComparaveis(
+      [candidato("catalogo-1", { similaridadeVetorial: 0.91, regiao: "Zona Norte" })],
+      [candidato("catalogo-1")],
+    );
+    expect(unidos).toHaveLength(1);
+    expect(unidos[0].similaridadeVetorial).toBe(0.91);
+    expect(unidos[0].regiao).toBe("Zona Norte");
+  });
+
+  it("reconhece a mesma oferta por portal e código externo mesmo com id diferente", () => {
+    const unidos = unirCandidatosComparaveis(
+      [candidato("catalogo-1", { similaridadeVetorial: 0.88 })],
+      [candidato("catalogo-2", { codigo: "Chaves-na-Mao", idExterno: " AP-900 " })],
+    );
+    expect(unidos).toHaveLength(1);
+    expect(unidos[0].id).toBe("catalogo-1");
+  });
+
+  it("não descarta anúncio distinto e preserva os vetoriais na frente", () => {
+    const unidos = unirCandidatosComparaveis(
+      [candidato("catalogo-1", { similaridadeVetorial: 0.9 })],
+      [
+        candidato("catalogo-2", { idExterno: "AP-901", endereco: "Rua China, 225" }),
+        candidato("catalogo-3", { idExterno: "AP-902", codigo: "wimoveis" }),
+      ],
+    );
+    expect(unidos.map((item) => item.id)).toEqual(["catalogo-1", "catalogo-2", "catalogo-3"]);
+    expect(unidos.filter((item) => item.similaridadeVetorial != null)).toHaveLength(1);
   });
 });
 
