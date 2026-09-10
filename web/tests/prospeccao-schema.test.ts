@@ -2,11 +2,16 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { TIPOS_IMOVEL } from "@/lib/constantes";
 
-const MIGRATION = readFileSync(
-  new URL("../../supabase/migrations/20260910184310_prospeccao_campo.sql", import.meta.url),
-  "utf8",
-);
-const SCHEMA = readFileSync(new URL("../../supabase-schema.sql", import.meta.url), "utf8");
+/* `core.autocrlf=true` + `* text=auto` entrega o schema em CRLF num checkout
+   novo no Windows, enquanto a migration recém-escrita fica em LF. Comparar
+   texto literal entre os dois sem normalizar falha por fim de linha, não por
+   conteúdo — e falharia só na máquina de quem clonou. */
+function lerSql(relativo: string): string {
+  return readFileSync(new URL(relativo, import.meta.url), "utf8").replace(/\r\n/g, "\n");
+}
+
+const MIGRATION = lerSql("../../supabase/migrations/20260910184310_prospeccao_campo.sql");
+const SCHEMA = lerSql("../../supabase-schema.sql");
 
 const TABELAS = [
   "imoveis_identificados",
