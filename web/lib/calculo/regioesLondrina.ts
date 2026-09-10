@@ -43,6 +43,21 @@ const REGIAO_POR_BAIRRO = new Map(
     .flatMap(([regiao, bairros]) => bairros.map((bairro) => [chaveNormalizada(bairro), regiao] as const)),
 );
 
+// Denominações que chegam do ViaCEP e dos portais sem constar na Lei
+// 13.718/2023, mas cuja área fica inteira dentro de um bairro oficial. Serve
+// apenas à resolução de região: não altera a lista oficial nem o plano de
+// coleta. Só entra aqui o que a base de CEP dos Correios e o mapa IPPUL/SIGLON
+// sustentam juntos.
+//
+// - Igapó: bairro postal da Av. Inglaterra (CEP 86046-000/002) e das ruas
+//   Rússia, Itália e Áustria (86046-280 a 86046-320). A Av. Inglaterra é a via
+//   principal do bairro oficial Inglaterra (Região Sul 1) no mapa do IPPUL, e
+//   toda a sua extensão cai no polígono Sul do SIGLON.
+const BAIRRO_OFICIAL_POR_DENOMINACAO = new Map(
+  ([["Igapó", "Inglaterra"]] as const)
+    .map(([denominacao, oficial]) => [chaveNormalizada(denominacao), chaveNormalizada(oficial)] as const),
+);
+
 export function regiaoDeBairroLondrina(bairro: string | null | undefined): RegiaoLondrina | null {
   const chave = chaveNormalizada(bairro);
   if (!chave) return null;
@@ -52,7 +67,10 @@ export function regiaoDeBairroLondrina(bairro: string | null | undefined): Regia
     /^(?:(?:jardim|jd|parque|residencial|conjunto habitacional|conjunto residencial)\s+)+/,
     "",
   );
-  return REGIAO_POR_BAIRRO.get(semTipoLocal) || null;
+  const oficial = BAIRRO_OFICIAL_POR_DENOMINACAO.get(chave)
+    || BAIRRO_OFICIAL_POR_DENOMINACAO.get(semTipoLocal)
+    || semTipoLocal;
+  return REGIAO_POR_BAIRRO.get(oficial) || null;
 }
 
 export function normalizarRegiaoLondrina(
