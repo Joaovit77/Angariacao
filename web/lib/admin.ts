@@ -9,13 +9,16 @@
 import type { CorretorAdmin, EventoLog } from "./calculo/admin";
 import type { Conexao, EstadoConexao } from "./calculo/conexaoWhatsapp";
 import type { GastoIa, MesDeGasto } from "./calculo/custoIa";
+import { agoraBoot, registrarEtapaBoot } from "./bootPerformance";
 import { getSupabase } from "./persistencia/supabase";
 import type { ConfiguracaoIa, VersaoConfiguracaoIa } from "./ia/configuracao";
 
 async function autorizacao(): Promise<Record<string, string> | null> {
+  const inicio = agoraBoot();
   const {
     data: { session },
   } = await getSupabase().auth.getSession();
+  registrarEtapaBoot("sessao_local_admin", inicio, { autenticado: Boolean(session) });
   if (!session) return null;
   return { Authorization: `Bearer ${session.access_token}` };
 }
@@ -40,17 +43,28 @@ const NEUTRO: Cargo = { admin: false, operaCarteira: true };
  * servidor, e toda rota de admin reconfere.
  */
 export async function meuCargo(): Promise<Cargo> {
+  const inicioPerfil = agoraBoot();
   const headers = await autorizacao();
-  if (!headers) return NEUTRO;
+  if (!headers) {
+    registrarEtapaBoot("perfil_usuario", inicioPerfil, { sucesso: false });
+    return NEUTRO;
+  }
+  const inicioApi = agoraBoot();
   try {
     const r = await fetch("/api/admin/eu", { headers });
     const dados = (await r.json().catch(() => null)) as {
       admin?: unknown;
       operaCarteira?: unknown;
     } | null;
-    if (dados?.admin !== true) return NEUTRO;
-    return { admin: true, operaCarteira: dados.operaCarteira !== false };
+    registrarEtapaBoot("api_admin_eu", inicioApi, { sucesso: r.ok });
+    const cargo = dados?.admin === true
+      ? { admin: true, operaCarteira: dados.operaCarteira !== false }
+      : NEUTRO;
+    registrarEtapaBoot("perfil_usuario", inicioPerfil, { sucesso: r.ok });
+    return cargo;
   } catch {
+    registrarEtapaBoot("api_admin_eu", inicioApi, { sucesso: false });
+    registrarEtapaBoot("perfil_usuario", inicioPerfil, { sucesso: false });
     return NEUTRO;
   }
 }

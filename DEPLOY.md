@@ -67,7 +67,10 @@ não usa `ia_sugestoes` nem `ia_feedbacks`.
 Antes de ativá-la em qualquer ambiente:
 
 1. valide o schema em PostgreSQL/Supabase real;
-2. aplique `ia_sugestoes` e `ia_feedbacks` pelo procedimento controlado do ambiente;
+2. aplique a migration versionada
+   [`supabase/migrations/20260829012038_ia_feedback_fase1.sql`](supabase/migrations/20260829012038_ia_feedback_fase1.sql)
+   pelo procedimento controlado do ambiente — ela é a única fonte de `ia_sugestoes` e
+   `ia_feedbacks`, e um teste trava o conteúdo dela contra o `supabase-schema.sql`;
 3. valide constraints, incluindo a FK composta `(sugestao_id, user_id)`;
 4. valide isolamento RLS entre dois usuários;
 5. valide os grants mínimos;

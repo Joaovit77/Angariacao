@@ -20,6 +20,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { meuCargo } from "@/lib/admin";
+import {
+  agoraBoot,
+  associarUsuarioAoBoot,
+  iniciarBoot,
+  reiniciarBoot,
+  registrarEtapaBoot,
+} from "@/lib/bootPerformance";
 import { configuracaoPadrao } from "@/lib/configuracaoUsuario";
 import { iaDisponivelParaUsuario } from "@/lib/ia";
 import { valorMaisUsado } from "@/lib/normalizacao";
@@ -96,14 +103,23 @@ export default function SessaoProvider({ children }: { children: React.ReactNode
   const setCargo = useAppStore((s) => s.setCargo);
 
   useEffect(() => {
+    let inicioSessao = iniciarBoot();
     const { data } = getSupabase().auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN") inicioSessao = reiniciarBoot();
+      registrarEtapaBoot("sessao_supabase", inicioSessao, {
+        autenticado: Boolean(session?.user),
+        evento: event,
+      });
       if (event === "PASSWORD_RECOVERY") {
         // Chegou pelo link de "esqueci minha senha" do e-mail — mostra a
         // tela de definir nova senha em vez do fluxo normal.
         setSessao({ estado: "recuperacao", usuario: null });
         return;
       }
-      if (session && session.user) setSessao({ estado: "auth", usuario: session.user });
+      if (session && session.user) {
+        associarUsuarioAoBoot(session.user.id);
+        setSessao({ estado: "auth", usuario: session.user });
+      }
       else setSessao({ estado: "anon", usuario: null });
     });
     return () => data.subscription.unsubscribe();
@@ -117,13 +133,19 @@ export default function SessaoProvider({ children }: { children: React.ReactNode
     let cancelado = false;
     carregarEstado()
       .then((estado) => {
-        if (!cancelado) setEstado(estado);
+        if (!cancelado) {
+          const inicioStore = agoraBoot();
+          setEstado(estado);
+          registrarEtapaBoot("set_estado_store", inicioStore);
+        }
       })
       .catch((e) => {
         if (cancelado) return;
         console.error("Falha ao carregar dados do Supabase:", e);
         toast("Não foi possível carregar seus dados. Verifique sua conexão.", "error");
+        const inicioStore = agoraBoot();
         setEstado(ESTADO_VAZIO);
+        registrarEtapaBoot("set_estado_store", inicioStore, { fallback: true });
       });
     return () => {
       cancelado = true;
@@ -156,7 +178,11 @@ export default function SessaoProvider({ children }: { children: React.ReactNode
     if (sessao.estado !== "auth" || !usuarioId) return;
     let cancelado = false;
     meuCargo().then((cargo) => {
-      if (!cancelado) setCargo(usuarioId, cargo);
+      if (!cancelado) {
+        const inicioStore = agoraBoot();
+        setCargo(usuarioId, cargo);
+        registrarEtapaBoot("set_cargo_store", inicioStore);
+      }
     });
     return () => {
       cancelado = true;

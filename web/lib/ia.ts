@@ -17,6 +17,7 @@ import type {
 } from "./calculo/ia";
 import type { FiltrosMapa } from "./calculo/mapa";
 import type { OrigemSugestaoIa } from "./ia/feedback";
+import { agoraBoot, registrarEtapaBoot } from "./bootPerformance";
 import { getSupabase } from "./persistencia/supabase";
 
 export interface ResultadoRoteiros {
@@ -118,22 +119,35 @@ async function chamar<T>(corpo: unknown): Promise<T | { ok: false; falha: FalhaI
     Falha de rede ou sessão ausente contam como "não disponível": na
     dúvida, não oferece. */
 export async function iaDisponivelParaUsuario(): Promise<boolean> {
+  const inicio = agoraBoot();
+  let inicioApi: number | null = null;
   try {
+    const inicioSessao = agoraBoot();
     const {
       data: { session },
     } = await getSupabase().auth.getSession();
-    if (!session) return false;
+    registrarEtapaBoot("sessao_local_ia", inicioSessao, { autenticado: Boolean(session) });
+    if (!session) {
+      registrarEtapaBoot("api_ia", inicio, { sucesso: false });
+      return false;
+    }
 
+    inicioApi = agoraBoot();
     const resposta = await fetch("/api/ia", {
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
-    if (!resposta.ok) return false;
+    if (!resposta.ok) {
+      registrarEtapaBoot("api_ia", inicioApi, { sucesso: false });
+      return false;
+    }
     const dados = (await resposta.json().catch(() => null)) as {
       configurado?: unknown;
       permitido?: unknown;
     } | null;
+    registrarEtapaBoot("api_ia", inicioApi, { sucesso: true });
     return dados?.configurado === true && dados?.permitido === true;
   } catch {
+    registrarEtapaBoot("api_ia", inicioApi ?? inicio, { sucesso: false });
     return false;
   }
 }
