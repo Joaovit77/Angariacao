@@ -54,7 +54,7 @@ export function chaveEndereco(valor: string | null | undefined): string {
 }
 
 /** Identidade do imóvel: endereço + cidade + unidade (ap/bloco). */
-function chaveImovel(i: Pick<Imovel, "endereco" | "cidade" | "unidade" | "bloco">): string {
+export function chaveImovel(i: Pick<Imovel, "endereco" | "cidade" | "unidade" | "bloco">): string {
   return [
     chaveEndereco(i.endereco),
     chaveEndereco(i.cidade),
