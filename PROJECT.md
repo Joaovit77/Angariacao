@@ -740,7 +740,13 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   buscas multiestado estritas. Em Londrina/PR, e somente nesse mercado, a coordenada é classificada
   localmente por uma cópia simplificada dos polígonos
   públicos da Lei 13.718/2023/SIGLON; nenhum endereço ou coordenada é enviado ao serviço municipal
-  durante a avaliação. A região persistida no catálogo ou o bairro oficial servem como fallback.
+  durante a avaliação. Para o imóvel-alvo, a região segue esta ordem de confiança: rótulo explícito,
+  bairro oficial do ViaCEP (dado dos Correios, gravado ao escolher uma sugestão do autocomplete),
+  coordenada precisa nos polígonos, bairro digitado e, por último, centroide. A coordenada carrega a
+  precisão com que o geocoder a achou (`endereco`, `rua`, `bairro`, `cidade`): centroide de bairro ou
+  de cidade resolve região, mas nunca vira distância fina entre imóveis. O bairro digitado casa com
+  o rótulo dos portais e o oficial com o dos Correios; qualquer um dos dois é evidência de mesmo
+  bairro. Para comparáveis, a região persistida no catálogo ou o bairro servem como fallback.
   Se a região do imóvel não puder ser determinada, o motor mantém somente evidência local e nunca
   usa "mesma cidade" como substituto de proximidade.
   Somente a ausência total de preço observado deixa o resultado sem valor. Preço externo é valor

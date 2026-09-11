@@ -83,30 +83,48 @@ async function nominatimSearch(query: string): Promise<ResultadoNominatim | null
   return data && data.length > 0 ? data[0] : null;
 }
 
+/** O que a coordenada representa. Um centroide de bairro ou de cidade serve
+    para região, nunca para distância entre imóveis. */
+export type PrecisaoGeocodificacao = "endereco" | "rua" | "bairro" | "cidade";
+
 export interface Geocodificacao {
   lat: number;
   lon: number;
+  precisao: PrecisaoGeocodificacao;
   /** true quando o endereço exato não foi achado e caiu numa tentativa mais larga. */
   usedFallback: boolean;
+}
+
+export interface TentativaGeocode {
+  consulta: string;
+  precisao: PrecisaoGeocodificacao;
 }
 
 /**
  * Separa "Rua X, 123" em rua + número, para poder tentar de novo sem
  * o número caso o endereço exato não esteja mapeado no OpenStreetMap
  * (muito comum no Brasil, principalmente em bairros mais novos).
+ * A precisão vem do que cada tentativa contém, não da ordem.
  */
-export function tentativasGeocode(enderecoCompleto: string, bairro: string, cidade: string): string[] {
+export function tentativasGeocode(
+  enderecoCompleto: string,
+  bairro: string,
+  cidade: string,
+): TentativaGeocode[] {
   const partes = enderecoCompleto.match(/^(.*?),?\s*(\d+[a-zA-Z]?)\s*$/);
   const ruaSemNumero = partes ? partes[1].trim() : enderecoCompleto;
+  const temNumero = ruaSemNumero !== enderecoCompleto;
+  const montar = (parts: string[], precisao: PrecisaoGeocodificacao): TentativaGeocode => ({
+    consulta: parts.filter(Boolean).join(", "),
+    precisao,
+  });
 
-  return (
-    [
-      [enderecoCompleto, bairro, cidade, "Brasil"],
-      ruaSemNumero !== enderecoCompleto ? [ruaSemNumero, bairro, cidade, "Brasil"] : null,
-      [ruaSemNumero, cidade, "Brasil"],
-      [bairro, cidade, "Brasil"],
-    ].filter(Boolean) as string[][]
-  ).map((parts) => parts.filter(Boolean).join(", "));
+  return [
+    montar([enderecoCompleto, bairro, cidade, "Brasil"], temNumero ? "endereco" : "rua"),
+    temNumero ? montar([ruaSemNumero, bairro, cidade, "Brasil"], "rua") : null,
+    montar([ruaSemNumero, cidade, "Brasil"], "rua"),
+    montar([bairro, cidade, "Brasil"], bairro.trim() ? "bairro" : "cidade"),
+  ].filter((tentativa): tentativa is TentativaGeocode => tentativa !== null);
 }
 
 export async function geocodeEndereco(
@@ -116,8 +134,15 @@ export async function geocodeEndereco(
 ): Promise<Geocodificacao | null> {
   const tentativas = tentativasGeocode(enderecoCompleto, bairro, cidade);
   for (let i = 0; i < tentativas.length; i++) {
-    const found = await nominatimSearch(tentativas[i]);
-    if (found) return { lat: Number(found.lat), lon: Number(found.lon), usedFallback: i > 0 };
+    const found = await nominatimSearch(tentativas[i].consulta);
+    if (found) {
+      return {
+        lat: Number(found.lat),
+        lon: Number(found.lon),
+        precisao: tentativas[i].precisao,
+        usedFallback: i > 0,
+      };
+    }
   }
   return null;
 }
