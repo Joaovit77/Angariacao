@@ -12,6 +12,10 @@ import type { FotoAvistamento, ReservaFotoAvistamento } from "@/lib/prospeccao";
 import { getSupabase } from "@/lib/persistencia/supabase";
 import { useProspeccao } from "@/lib/useProspeccao";
 
+import CameraFachada, {
+  cameraEmPaginaDisponivel,
+  type DependenciasCameraFachada,
+} from "./CameraFachada";
 import styles from "./Prospeccao.module.css";
 
 export const BUCKET_FACHADAS = "fachadas";
@@ -81,6 +85,10 @@ interface DependenciasEnvio {
 
 interface DependenciasCapturaFachada extends DependenciasEnvio {
   preparar: (arquivo: File) => Promise<ResultadoProcessamentoFoto<Blob>>;
+  /** Força a disponibilidade da câmera em página (teste); por padrão
+      consulta `navigator.mediaDevices`. */
+  cameraDisponivel: boolean;
+  camera: Partial<DependenciasCameraFachada>;
 }
 
 export type FalhaFachada =
@@ -436,6 +444,12 @@ export default function CapturaFachada({
   const [reservaPreservada, setReservaPreservada] = useState(
     Boolean(reservaInicial) || foto?.estado === "reservada",
   );
+  // Lido uma vez na montagem: o modal só existe no cliente, então não há
+  // divergência com o servidor.
+  const [cameraEmPagina] = useState(
+    () => dependencias?.cameraDisponivel ?? cameraEmPaginaDisponivel(),
+  );
+  const [cameraAberta, setCameraAberta] = useState(false);
   const versaoArquivo = useRef(0);
   const arquivoSelecionado = useRef<File | null>(null);
   const reservaAtual = useRef<ReservaFotoAvistamento | null>(reservaInicial ?? null);
@@ -561,6 +575,26 @@ export default function CapturaFachada({
     else void processarArquivoAtual();
   }
 
+  function abrirCamera() {
+    // A página não sai de cena aqui, mas guardar o rascunho é barato e
+    // mantém a mesma garantia dos dois caminhos.
+    aoAntesDeCapturar?.();
+    setErro("");
+    setCameraAberta(true);
+  }
+
+  function receberCaptura(arquivo: File) {
+    setCameraAberta(false);
+    arquivoSelecionado.current = arquivo;
+    setArquivoDisponivel(true);
+    void processarArquivoAtual();
+  }
+
+  function cameraFalhou(mensagem: string) {
+    setCameraAberta(false);
+    setErro(mensagem);
+  }
+
   if (foto?.estado === "ativa") {
     return (
       <div className={styles.fotoFachada}>
@@ -606,22 +640,42 @@ export default function CapturaFachada({
         <p>A foto foi preservada e qualquer reserva existente será reutilizada na nova tentativa.</p>
       ) : null}
       {erro ? <p className={styles.erroCaptura} role="alert">{erro}</p> : null}
+      {cameraAberta ? (
+        <CameraFachada
+          aoCapturar={receberCaptura}
+          aoCancelar={() => setCameraAberta(false)}
+          aoFalhar={cameraFalhou}
+          dependencias={dependencias?.camera}
+        />
+      ) : null}
       <div className={styles.capturaAcoes}>
-        {!reservaPreservada || !arquivoDisponivel ? (
-          <label className="btn btn-sm">
-            {reservaPreservada ? "Selecionar a mesma foto para retomar" : "Fotografar fachada"}
-            {/* O clique no input é o último instante em que a página está viva
-                antes de a câmera abrir; no Android a aba pode ser descartada. */}
-            <input
-              className={styles.inputFoto}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              disabled={enviando}
-              onClick={() => aoAntesDeCapturar?.()}
-              onChange={selecionarArquivo}
-            />
-          </label>
+        {!cameraAberta && (!reservaPreservada || !arquivoDisponivel) ? (
+          <>
+            {/* Caminho principal: câmera dentro da página. O input nativo
+                troca de aplicativo e, em aparelhos apertados, o Chrome
+                descarta a aba e perde a foto na volta. */}
+            {cameraEmPagina && !reservaPreservada ? (
+              <button type="button" className="btn btn-sm btn-primary" onClick={abrirCamera} disabled={enviando}>
+                Fotografar fachada
+              </button>
+            ) : null}
+            <label className={cameraEmPagina && !reservaPreservada ? styles.capturaAlternativa : "btn btn-sm"}>
+              {reservaPreservada
+                ? "Selecionar a mesma foto para retomar"
+                : cameraEmPagina ? "Usar a câmera do aparelho" : "Fotografar fachada"}
+              {/* O clique no input é o último instante em que a página está viva
+                  antes de a câmera abrir; no Android a aba pode ser descartada. */}
+              <input
+                className={styles.inputFoto}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                disabled={enviando}
+                onClick={() => aoAntesDeCapturar?.()}
+                onChange={selecionarArquivo}
+              />
+            </label>
+          </>
         ) : null}
         {(etapa === "envio-nao-concluido" || etapa === "erro-recuperavel")
           && (processada || arquivoDisponivel) ? (
