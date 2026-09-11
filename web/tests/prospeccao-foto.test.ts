@@ -62,8 +62,27 @@ describe("processamento puro da foto de fachada", () => {
   });
 
   it("não chama IA nem adiciona dependência de imagem", () => {
-    const fonte = readFileSync(new URL("../lib/calculo/fotoFachada.ts", import.meta.url), "utf8");
+    const nucleo = readFileSync(new URL("../lib/calculo/fotoFachada.ts", import.meta.url), "utf8");
+    const captura = readFileSync(
+      new URL("../components/prospeccao/CapturaFachada.tsx", import.meta.url),
+      "utf8",
+    );
+    const fonte = `${nucleo}\n${captura}`;
     expect(fonte).not.toMatch(/(?:servidor\/ia|\/api\/ia|openai|sharp)/i);
-    expect(fonte).not.toMatch(/^import /m);
+    expect(fonte).not.toContain("ia_uso");
+    expect(nucleo).not.toMatch(/^import /m);
+  });
+
+  it("trava captura traseira, canvas sem EXIF e URL privada por cinco minutos", () => {
+    const captura = readFileSync(
+      new URL("../components/prospeccao/CapturaFachada.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(captura).toMatch(/type="file"[\s\S]*?accept="image\/\*"[\s\S]*?capture="environment"/);
+    expect(captura).toContain("canvas.toBlob(");
+    expect(captura).toContain("createSignedUrl(");
+    expect(captura).toContain("TTL_URL_FACHADA_SEGUNDOS = 300");
+    expect(captura).toContain('upsert: false');
+    expect(captura).not.toContain("getPublicUrl");
   });
 });

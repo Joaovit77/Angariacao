@@ -3,6 +3,7 @@ import { ordenarAvistamentosPorRecencia } from "@/lib/calculo/prospeccao";
 import { fmtDataHoraIso } from "@/lib/datas";
 import type { AvistamentoLongitudinal } from "@/lib/prospeccao";
 
+import CapturaFachada from "./CapturaFachada";
 import styles from "./Prospeccao.module.css";
 
 const ROTULOS_CLASSIFICACAO: Record<AvistamentoLongitudinal["classificacaoEstado"], string> = {
@@ -68,6 +69,14 @@ export default function LinhaDoTempoAvistamentos({
                 <span className={styles.modo}>Modo: {classificacaoMaisRecente.modo}</span>
               ) : null}
             </div>
+            {avistamento.fotos.map((foto) => (
+              <CapturaFachada
+                key={foto.id}
+                foto={foto}
+                imovelIdentificadoId={avistamento.imovelIdentificadoId}
+                avistamentoId={avistamento.id}
+              />
+            ))}
           </li>
         );
       })}

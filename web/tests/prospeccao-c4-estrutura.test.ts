@@ -61,10 +61,9 @@ describe("C4 do Garimpo em Campo — estrutura", () => {
     expect(topbar.match(/"\/garimpo-em-campo": "Garimpo em Campo"/g)).toHaveLength(1);
   });
 
-  it("mantém fotografia, mapa, geolocalização, IA, promoção e exclusão fora do C4", () => {
+  it("mantém mapa, geolocalização, IA, promoção e exclusão fora da tela mínima", () => {
     const fontes = Object.values(arquivosComponentes).map(ler).join("\n");
     for (const proibido of [
-      "CapturaFachada",
       "MapaProspeccao",
       "navigator.geolocation",
       "storage.upload",

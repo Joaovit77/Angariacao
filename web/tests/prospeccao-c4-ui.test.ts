@@ -235,10 +235,36 @@ describe("LinhaDoTempoAvistamentos", () => {
 });
 
 describe("ModalAvistamento", () => {
+  it("deixa explícito que só data e horário são obrigatórios e recolhe detalhes opcionais", () => {
+    render(createElement(ModalAvistamento));
+
+    const detalhes = screen.getByText("Mais detalhes do imóvel (opcional)").closest("details");
+    expect(detalhes).toBeTruthy();
+    expect(detalhes?.hasAttribute("open")).toBe(false);
+    expect((screen.getByLabelText("Data") as HTMLInputElement).required).toBe(true);
+    expect((screen.getByLabelText("Horário") as HTMLInputElement).required).toBe(true);
+    expect((screen.getByLabelText("Logradouro") as HTMLInputElement).required).toBe(false);
+    expect((screen.getByLabelText("Observação (opcional)") as HTMLTextAreaElement).required).toBe(false);
+  });
+
+  it("aceita o mínimo real do contrato sem inventar endereço ou referência obrigatórios", async () => {
+    render(createElement(ModalAvistamento));
+
+    fireEvent.click(screen.getByRole("button", { name: "Salvar avistamento" }));
+
+    await waitFor(() => expect(cenario.estado.criar).toHaveBeenCalled());
+    expect(cenario.estado.criar).toHaveBeenCalledWith(
+      "usuario-1",
+      expect.objectContaining({ logradouro: "", pontoReferencia: "", tipo: null }),
+      expect.objectContaining({ observacao: "" }),
+    );
+    expect(cenario.fecharModal).toHaveBeenCalledOnce();
+  });
+
   it("registra o primeiro avistamento pela action do C3 e fecha somente no sucesso", async () => {
     render(createElement(ModalAvistamento));
     fireEvent.change(screen.getByLabelText("Logradouro"), { target: { value: "Rua Nova" } });
-    fireEvent.change(screen.getByLabelText("Observação"), { target: { value: "Placa no portão" } });
+    fireEvent.change(screen.getByLabelText("Observação (opcional)"), { target: { value: "Placa no portão" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar avistamento" }));
 
     await waitFor(() => expect(cenario.estado.criar).toHaveBeenCalled());
@@ -251,11 +277,13 @@ describe("ModalAvistamento", () => {
     expect(cenario.fecharModal).toHaveBeenCalledOnce();
   });
 
-  it("registra novo avistamento sem campos de identidade nem fotografia", async () => {
+  it("registra novo avistamento sem campos de identidade e com foto opcional", async () => {
+    cenario.estado.detalhe = detalhe();
     render(createElement(ModalAvistamento, { imovelIdentificadoId: "identificado-1" }));
     expect(screen.queryByLabelText("Logradouro")).toBeNull();
-    expect(screen.queryByLabelText(/Foto/i)).toBeNull();
-    fireEvent.change(screen.getByLabelText("Observação"), { target: { value: "Novo retorno" } });
+    expect(screen.getByLabelText("Foto da fachada")).toBeTruthy();
+    expect(screen.getByText(/Rua identificado-1, 10/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Observação (opcional)"), { target: { value: "Novo retorno" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar avistamento" }));
 
     await waitFor(() => expect(cenario.estado.adicionarAvistamento).toHaveBeenCalledWith(
@@ -272,7 +300,7 @@ describe("ModalAvistamento", () => {
       return false;
     });
     render(createElement(ModalAvistamento, { imovelIdentificadoId: "identificado-1" }));
-    const observacao = screen.getByLabelText("Observação") as HTMLTextAreaElement;
+    const observacao = screen.getByLabelText("Observação (opcional)") as HTMLTextAreaElement;
     fireEvent.change(observacao, { target: { value: "Entrada preservada" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar avistamento" }));
 
