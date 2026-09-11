@@ -89,6 +89,7 @@ import {
   camposVazios,
   criarArmazemIndexedDb,
   criarArmazemMemoria,
+  fotoPerdidaNaCameraNativa,
   rascunhoExpirado,
   rascunhoPertenceAoContexto,
   rascunhoTemConteudo,
@@ -136,6 +137,7 @@ function rascunho(extra: Partial<RascunhoCaptura> = {}): RascunhoCaptura {
     foto: fotoProcessada(),
     destino: null,
     reserva: null,
+    cameraNativaEm: null,
     ...extra,
   };
 }
@@ -178,6 +180,20 @@ describe("rascunho de captura — lógica pura", () => {
     expect(rascunhoTemConteudo({
       ...so, destino: { imovelIdentificadoId: "a", avistamentoId: "b" },
     })).toBe(true);
+  });
+
+  it("a câmera do aparelho aberta sem foto de volta É conteúdo: a interrupção não pode ser invisível", () => {
+    const vazio = { campos: camposVazios(), foto: null, destino: null };
+    expect(rascunhoTemConteudo({ ...vazio, cameraNativaEm: null })).toBe(false);
+    expect(rascunhoTemConteudo({ ...vazio, cameraNativaEm: "2026-09-11T20:40:00Z" })).toBe(true);
+    // Rascunho antigo, sem o campo: continua vazio.
+    expect(rascunhoTemConteudo(vazio)).toBe(false);
+    expect(fotoPerdidaNaCameraNativa({ foto: null, cameraNativaEm: "2026-09-11T20:40:00Z" }))
+      .toBe("2026-09-11T20:40:00Z");
+    // A foto chegou: não há perda a avisar.
+    expect(fotoPerdidaNaCameraNativa({ foto: fotoProcessada(), cameraNativaEm: "2026-09-11T20:40:00Z" }))
+      .toBeNull();
+    expect(fotoPerdidaNaCameraNativa(null)).toBeNull();
   });
 
   it("avaliarRascunho distingue nenhum, expirado, outro contexto e restaurável", () => {
@@ -307,6 +323,55 @@ describe("rascunho de captura — modal (regressão do smoke)", () => {
     // Concluído: o rascunho sai do aparelho e o modal fecha.
     await waitFor(async () => expect(await armazem.ler("usuario-1")).toBeNull());
     expect(cenario.fecharModal).toHaveBeenCalled();
+  });
+
+  it("regressão do smoke: câmera do aparelho aberta sem digitar nada grava o marcador, e a volta sem foto avisa", async () => {
+    const armazem = criarArmazemMemoria();
+    const { unmount } = render(createElement(ModalAvistamento, {
+      armazemRascunho: armazem,
+      // Sem getUserMedia o "Fotografar fachada" é o input nativo.
+    }));
+    await waitFor(() => expect(screen.getByText("Fotografar fachada")).toBeTruthy());
+    fireEvent.click(screen.getByLabelText("Fotografar fachada"));
+    await waitFor(async () => expect((await armazem.ler("usuario-1"))?.cameraNativaEm).toBeTruthy());
+    const guardado = await armazem.ler("usuario-1");
+    expect(guardado?.foto).toBeNull();
+    expect(avaliarRascunho(guardado, "usuario-1", null)).toBe("restauravel");
+    unmount();
+
+    // A página recarregou e a foto não veio: a lista avisa...
+    render(createElement(ProspeccaoView, { armazemRascunho: armazem }));
+    await screen.findByText("A foto da câmera do aparelho não chegou.");
+    expect(screen.getByText(/câmera aqui na página/)).toBeTruthy();
+    cleanup();
+
+    // ...e o modal também, sem fingir que restaurou uma foto.
+    render(createElement(ModalAvistamento, { armazemRascunho: armazem }));
+    await screen.findByText("A foto da câmera do aparelho não chegou.");
+    expect(screen.queryByText("Foto pronta para registrar")).toBeNull();
+    expect(screen.getByText("Fotografar fachada")).toBeTruthy();
+  });
+
+  it("a câmera em página grava o rascunho, mas não deixa marcador de câmera do aparelho", async () => {
+    const original = Object.getOwnPropertyDescriptor(navigator, "mediaDevices");
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [] }) },
+    });
+    const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+    try {
+      const armazem = criarArmazemMemoria();
+      render(createElement(ModalAvistamento, { armazemRascunho: armazem }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Fotografar fachada" })).toBeTruthy());
+      fireEvent.click(screen.getByRole("button", { name: "Fotografar fachada" }));
+      await screen.findByLabelText("Visor da câmera");
+      await waitFor(async () => expect(await armazem.ler("usuario-1")).not.toBeNull());
+      expect((await armazem.ler("usuario-1"))?.cameraNativaEm ?? null).toBeNull();
+    } finally {
+      play.mockRestore();
+      if (original) Object.defineProperty(navigator, "mediaDevices", original);
+      else delete (navigator as { mediaDevices?: unknown }).mediaDevices;
+    }
   });
 
   it("guarda o texto digitado no instante em que a câmera vai abrir", async () => {

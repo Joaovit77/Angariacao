@@ -8,6 +8,7 @@ import type { DetalheImovelIdentificado } from "@/lib/prospeccao";
 import {
   armazemRascunhoCaptura,
   avaliarRascunho,
+  fotoPerdidaNaCameraNativa,
   type ArmazemRascunhoCaptura,
   type RascunhoCaptura,
 } from "@/lib/rascunhoCaptura";
@@ -142,13 +143,16 @@ export default function ProspeccaoView({
         <div className={styles.rascunhoPendente} role="status">
           <div>
             <strong>
-              {rascunhoPendente.destino
-                ? "Uma foto ficou pendente de envio."
-                : "Um registro de campo não foi concluído."}
+              {fotoPerdidaNaCameraNativa(rascunhoPendente)
+                ? "A foto da câmera do aparelho não chegou."
+                : rascunhoPendente.destino
+                  ? "Uma foto ficou pendente de envio."
+                  : "Um registro de campo não foi concluído."}
             </strong>
             <span>
-              {rascunhoPendente.foto ? "Foto e dados" : "Dados"} de {horaCurta(rascunhoPendente.salvoEm)} estão
-              guardados neste aparelho. Nada foi perdido.
+              {fotoPerdidaNaCameraNativa(rascunhoPendente)
+                ? `A página foi recarregada ao voltar da câmera às ${horaCurta(rascunhoPendente.cameraNativaEm ?? "")}. Nada foi enviado. Retome e fotografe por "Fotografar fachada", que usa a câmera aqui na página.`
+                : `${rascunhoPendente.foto ? "Foto e dados" : "Dados"} de ${horaCurta(rascunhoPendente.salvoEm)} estão guardados neste aparelho. Nada foi perdido.`}
             </span>
           </div>
           <button type="button" className="btn btn-sm btn-primary" onClick={retomarRascunho}>

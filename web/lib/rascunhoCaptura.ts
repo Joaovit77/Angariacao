@@ -58,6 +58,11 @@ export interface RascunhoCaptura {
   destino: { imovelIdentificadoId: string; avistamentoId: string } | null;
   /** Preenchido depois da reserva: o retry reutiliza os mesmos caminhos. */
   reserva: ReservaFotoAvistamento | null;
+  /** Instante em que a câmera do APARELHO foi aberta (input nativo). Se a
+      página recarregar e a foto não chegar, isso é a única prova de que
+      houve uma captura interrompida: a interrupção nunca pode ser
+      invisível. Rascunhos antigos não têm o campo (lê-se como null). */
+  cameraNativaEm?: string | null;
 }
 
 export interface ArmazemRascunhoCaptura {
@@ -113,11 +118,20 @@ export function rascunhoPertenceAoContexto(
 /** Há algo que valha a pena restaurar? Data/hora sozinhas não contam:
     elas são preenchidas automaticamente ao abrir. */
 export function rascunhoTemConteudo(
-  rascunho: Pick<RascunhoCaptura, "campos" | "foto" | "destino">,
+  rascunho: Pick<RascunhoCaptura, "campos" | "foto" | "destino" | "cameraNativaEm">,
 ): boolean {
-  if (rascunho.foto || rascunho.destino) return true;
+  if (rascunho.foto || rascunho.destino || rascunho.cameraNativaEm) return true;
   const { data: _data, hora: _hora, ...restante } = rascunho.campos;
   return Object.values(restante).some((valor) => valor.trim() !== "");
+}
+
+/** A câmera do aparelho foi aberta e a foto nunca chegou: a página morreu
+    no meio. É o caso que precisa de aviso próprio, não de "restaurar". */
+export function fotoPerdidaNaCameraNativa(
+  rascunho: Pick<RascunhoCaptura, "foto" | "cameraNativaEm"> | null,
+): string | null {
+  if (!rascunho || rascunho.foto || !rascunho.cameraNativaEm) return null;
+  return rascunho.cameraNativaEm;
 }
 
 /**

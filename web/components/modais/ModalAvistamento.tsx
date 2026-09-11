@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
 import { useSessao } from "@/components/SessaoProvider";
-import CapturaFachada, { type EstadoArquivoFachada } from "@/components/prospeccao/CapturaFachada";
+import CapturaFachada, {
+  type EstadoArquivoFachada,
+  type OrigemCaptura,
+} from "@/components/prospeccao/CapturaFachada";
 import styles from "@/components/prospeccao/Prospeccao.module.css";
 import type { ResultadoProcessamentoFoto } from "@/lib/calculo/fotoFachada";
 import { TIPOS_IMOVEL } from "@/lib/constantes";
@@ -12,6 +15,7 @@ import type { ReservaFotoAvistamento } from "@/lib/prospeccao";
 import {
   armazemRascunhoCaptura,
   avaliarRascunho,
+  fotoPerdidaNaCameraNativa,
   type ArmazemRascunhoCaptura,
   type CamposRascunhoCaptura,
   type RascunhoCaptura,
@@ -86,7 +90,9 @@ export default function ModalAvistamento({
   const [fotoInicial, setFotoInicial] = useState<ResultadoProcessamentoFoto<Blob> | null>(null);
   const [reservaInicial, setReservaInicial] = useState<ReservaFotoAvistamento | null>(null);
   const [rascunhoPronto, setRascunhoPronto] = useState(false);
+  const [fotoPerdidaEm, setFotoPerdidaEm] = useState<string | null>(null);
   const tocado = useRef(false);
+  const cameraNativaRef = useRef<string | null>(null);
   const fotoProcessada = useRef<ResultadoProcessamentoFoto<Blob> | null>(null);
   const destinoRef = useRef<typeof destinoFoto>(null);
   const reservaRef = useRef<ReservaFotoAvistamento | null>(null);
@@ -112,6 +118,7 @@ export default function ModalAvistamento({
       foto: fotoProcessada.current,
       destino: destinoRef.current,
       reserva: reservaRef.current,
+      cameraNativaEm: cameraNativaRef.current,
     };
     void armazem.salvar(rascunho);
   }, [armazem, camposAtuais, contextoRascunho, usuarioId]);
@@ -164,6 +171,8 @@ export default function ModalAvistamento({
         }
         tocado.current = true;
         setRascunhoRestauradoEm(rascunho.salvoEm);
+        // Não se carrega o marcador adiante: a próxima gravação o apaga.
+        setFotoPerdidaEm(fotoPerdidaNaCameraNativa(rascunho));
       }
       setRascunhoPronto(true);
     })();
@@ -195,6 +204,8 @@ export default function ModalAvistamento({
     if (estadoArquivo.pronta && estadoArquivo.processada) {
       // A foto processada é o que mais custa refazer: grava na hora.
       fotoProcessada.current = estadoArquivo.processada;
+      cameraNativaRef.current = null;
+      setFotoPerdidaEm(null);
       tocado.current = true;
       persistirRascunho();
     } else if (!estadoArquivo.selecionada) {
@@ -207,8 +218,10 @@ export default function ModalAvistamento({
     persistirRascunho();
   }
 
-  function aoAntesDeCapturar() {
-    // Último instante em que a página tem certeza de estar viva.
+  function aoAntesDeCapturar(origem: OrigemCaptura) {
+    // Último instante em que a página tem certeza de estar viva. Só a
+    // câmera do aparelho sai da página; é ela que deixa marca.
+    cameraNativaRef.current = origem === "aparelho" ? new Date().toISOString() : null;
     tocado.current = true;
     persistirRascunho();
   }
@@ -341,14 +354,18 @@ export default function ModalAvistamento({
           {rascunhoRestauradoEm ? (
             <div className={styles.rascunhoRestaurado} role="status">
               <strong>
-                {avistamentoSalvo
-                  ? "Avistamento já salvo; a foto ficou pendente."
-                  : "Registro não concluído restaurado."}
+                {fotoPerdidaEm
+                  ? "A foto da câmera do aparelho não chegou."
+                  : avistamentoSalvo
+                    ? "Avistamento já salvo; a foto ficou pendente."
+                    : "Registro não concluído restaurado."}
               </strong>
               <span>
-                {avistamentoSalvo
-                  ? `O envio da foto de ${horaCurta(rascunhoRestauradoEm)} continua de onde parou.`
-                  : `Foto e dados de ${horaCurta(rascunhoRestauradoEm)} foram recuperados deste aparelho. Nada foi enviado ainda.`}
+                {fotoPerdidaEm
+                  ? `A página foi recarregada ao voltar da câmera às ${horaCurta(fotoPerdidaEm)}. Nada foi enviado. Fotografe de novo por "Fotografar fachada", que usa a câmera aqui na página.`
+                  : avistamentoSalvo
+                    ? `O envio da foto de ${horaCurta(rascunhoRestauradoEm)} continua de onde parou.`
+                    : `Foto e dados de ${horaCurta(rascunhoRestauradoEm)} foram recuperados deste aparelho. Nada foi enviado ainda.`}
               </span>
               <button type="button" className="btn btn-sm" onClick={descartarRascunho}>
                 Descartar rascunho

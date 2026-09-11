@@ -386,6 +386,8 @@ function manterUrlAssinada({ src }: ImageLoaderProps): string {
   return src;
 }
 
+export type OrigemCaptura = "pagina" | "aparelho";
+
 export interface EstadoArquivoFachada {
   selecionada: boolean;
   pronta: boolean;
@@ -420,8 +422,9 @@ export default function CapturaFachada({
   /** Disparado assim que uma reserva existe — sucesso ou falha depois dela. */
   aoReserva?: (reserva: ReservaFotoAvistamento) => void;
   /** Disparado ao tocar em "Fotografar", ANTES de a câmera abrir: é o último
-      instante em que a página tem a certeza de estar viva. */
-  aoAntesDeCapturar?: () => void;
+      instante em que a página tem a certeza de estar viva. "aparelho" é o
+      input nativo, que troca de aplicativo e pode não voltar. */
+  aoAntesDeCapturar?: (origem: OrigemCaptura) => void;
   aoConcluir?: () => void;
   dependencias?: Partial<DependenciasCapturaFachada>;
   prazos?: Partial<PrazosFachada>;
@@ -578,7 +581,7 @@ export default function CapturaFachada({
   function abrirCamera() {
     // A página não sai de cena aqui, mas guardar o rascunho é barato e
     // mantém a mesma garantia dos dois caminhos.
-    aoAntesDeCapturar?.();
+    aoAntesDeCapturar?.("pagina");
     setErro("");
     setCameraAberta(true);
   }
@@ -671,7 +674,7 @@ export default function CapturaFachada({
                 accept="image/*"
                 capture="environment"
                 disabled={enviando}
-                onClick={() => aoAntesDeCapturar?.()}
+                onClick={() => aoAntesDeCapturar?.("aparelho")}
                 onChange={selecionarArquivo}
               />
             </label>
