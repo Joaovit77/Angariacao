@@ -725,8 +725,10 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
 - **`calculo/avaliacao.ts`** — motor determinístico da **Avaliação Rápida** (`/avaliacao`). A V5
   combina a carteira com a base durável `comparaveis_mercado`. Na base externa, filtros de usuário,
   finalidade, UF + cidade, família de tipo, área e quartos são aplicados no Postgres antes da ordenação
-  vetorial; durante o preenchimento gradual, resultados estruturados complementam uma amostra
-  vetorial pequena. O score expõe separadamente similaridade estrutural, semântica e
+  vetorial; no caminho híbrido, candidatos vetoriais e estruturados são sempre combinados e
+  deduplicados por identidade do catálogo, porque a busca vetorial só enxerga linhas já vetorizadas.
+  Contagem de candidatos não é suficiência: quem decide se a amostra basta é `avaliarImovel()`,
+  depois de região, proximidade e score. O score expõe separadamente similaridade estrutural, semântica e
   comparabilidade final. O embedding só seleciona/reordena comparáveis: o peso do preço continua
   estrutural. Quando há ao menos três opções na mesma rua, elas prevalecem sobre as demais do
   bairro. Depois o motor ajusta parcialmente por área, remove outliers por mediana/desvio absoluto
@@ -738,7 +740,13 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   buscas multiestado estritas. Em Londrina/PR, e somente nesse mercado, a coordenada é classificada
   localmente por uma cópia simplificada dos polígonos
   públicos da Lei 13.718/2023/SIGLON; nenhum endereço ou coordenada é enviado ao serviço municipal
-  durante a avaliação. A região persistida no catálogo ou o bairro oficial servem como fallback.
+  durante a avaliação. Para o imóvel-alvo, a região segue esta ordem de confiança: rótulo explícito,
+  bairro oficial do ViaCEP (dado dos Correios, gravado ao escolher uma sugestão do autocomplete),
+  coordenada precisa nos polígonos, bairro digitado e, por último, centroide. A coordenada carrega a
+  precisão com que o geocoder a achou (`endereco`, `rua`, `bairro`, `cidade`): centroide de bairro ou
+  de cidade resolve região, mas nunca vira distância fina entre imóveis. O bairro digitado casa com
+  o rótulo dos portais e o oficial com o dos Correios; qualquer um dos dois é evidência de mesmo
+  bairro. Para comparáveis, a região persistida no catálogo ou o bairro servem como fallback.
   Se a região do imóvel não puder ser determinada, o motor mantém somente evidência local e nunca
   usa "mesma cidade" como substituto de proximidade.
   Somente a ausência total de preço observado deixa o resultado sem valor. Preço externo é valor
@@ -2214,8 +2222,11 @@ mesmos campos estruturados quando o portal os disponibiliza.
 
 Exclusivamente para Londrina/PR, `calculo/regioesLondrina.ts` mantém os bairros nas cinco
 regiões oficiais (Central, Sul, Leste, Oeste e Norte) e os polígonos simplificados do SIGLON usados
-pela avaliação. A coleta paga continua restrita às quatro zonas solicitadas (Sul, Leste, Oeste e
-Norte). O script `npm run coletar:zonas` exige confirmação
+pela avaliação. Denominações postais ou comerciais que não constam na Lei 13.718/2023 (como
+"Igapó", bairro dos Correios para a Av. Inglaterra) só resolvem região por equivalência explícita
+a um bairro oficial, e só quando a base de CEP e o mapa IPPUL/SIGLON sustentam juntos; a lista
+oficial e o plano de coleta não recebem esses nomes. A coleta paga continua restrita às quatro
+zonas solicitadas (Sul, Leste, Oeste e Norte). O script `npm run coletar:zonas` exige confirmação
 explícita e conta coletora, limita a rodada a 100 consultas Firecrawl sem repetição e desativa a
 geração de embeddings durante a carga; os dados estruturados já ficam disponíveis à avaliação.
 

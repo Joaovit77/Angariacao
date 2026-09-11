@@ -28,7 +28,7 @@ import { carregarContextoAvaliacao } from "@/lib/contextoAvaliacao";
 import { TIPOS_IMOVEL } from "@/lib/constantes";
 import { todayISO } from "@/lib/datas";
 import { fmtDataHora, fmtDate, fmtMoney } from "@/lib/formatadores";
-import { geocodeEndereco } from "@/lib/geo";
+import { geocodeEndereco, type PrecisaoGeocodificacao } from "@/lib/geo";
 import {
   carregarHistoricoAvaliacoes,
   registrarAvaliacao,
@@ -58,6 +58,11 @@ interface FormularioAvaliacao {
   diferenciais: DiferencialAvaliacao[];
   latitude: number | null;
   longitude: number | null;
+  precisaoLocalizacao: PrecisaoGeocodificacao | null;
+  /** Vêm do ViaCEP ao escolher uma sugestão e pertencem àquele logradouro:
+      editar o endereço os limpa; editar o bairro à mão, não. */
+  bairroOficial: string;
+  cep: string;
   valorProprietario: string;
 }
 
@@ -94,6 +99,9 @@ const FORMULARIO_VAZIO: FormularioAvaliacao = {
   diferenciais: [],
   latitude: null,
   longitude: null,
+  precisaoLocalizacao: null,
+  bairroOficial: "",
+  cep: "",
   valorProprietario: "",
 };
 
@@ -141,6 +149,8 @@ function formularioDaAvaliacao(
     diferenciais: [...(entrada.diferenciais || [])],
     latitude: entrada.latitude ?? null,
     longitude: entrada.longitude ?? null,
+    precisaoLocalizacao: entrada.precisaoLocalizacao ?? null,
+    bairroOficial: entrada.bairroOficial || "",
     valorProprietario: valorProprietario == null ? "" : String(valorProprietario),
   };
 }
@@ -289,10 +299,13 @@ export default function AvaliacaoRapidaView({
       ...atual,
       endereco: selecionado.endereco || atual.endereco,
       bairro: selecionado.bairro || atual.bairro,
+      bairroOficial: selecionado.bairro || "",
+      cep: selecionado.cep || "",
       cidade: selecionado.cidade || atual.cidade,
       estado: ufValida(selecionado.estado) ? normalizarUf(selecionado.estado) : atual.estado,
       latitude: null,
       longitude: null,
+      precisaoLocalizacao: null,
     }));
   }
 
@@ -312,6 +325,7 @@ export default function AvaliacaoRapidaView({
     setFase("Buscando imóveis semelhantes…");
     let latitude = formulario.latitude;
     let longitude = formulario.longitude;
+    let precisaoLocalizacao = formulario.precisaoLocalizacao;
     if (latitude == null || longitude == null) {
       try {
         const localizacao = await geocodeEndereco(
@@ -321,6 +335,7 @@ export default function AvaliacaoRapidaView({
         );
         latitude = localizacao?.lat ?? null;
         longitude = localizacao?.lon ?? null;
+        precisaoLocalizacao = localizacao?.precisao ?? null;
       } catch {
         // A geocodificação melhora a proximidade, mas bairro e cidade ainda
         // permitem avaliar. A confiança absorve a ausência das coordenadas.
@@ -332,6 +347,7 @@ export default function AvaliacaoRapidaView({
       finalidade: formulario.finalidade,
       endereco: formulario.endereco.trim(),
       bairro: formulario.bairro.trim() || null,
+      bairroOficial: formulario.bairroOficial.trim() || null,
       cidade: formulario.cidade.trim() || null,
       estado: formulario.estado.trim().toUpperCase() || null,
       edificio: formulario.edificio.trim() || null,
@@ -348,6 +364,7 @@ export default function AvaliacaoRapidaView({
       ),
       latitude,
       longitude,
+      precisaoLocalizacao,
       origemExterna,
     };
     const valorProprietario = Number(formulario.valorProprietario.replace(",", ".")) || null;
@@ -372,7 +389,7 @@ export default function AvaliacaoRapidaView({
         criadoEm: registro.criadoEm,
         valorAnterior,
       });
-      setFormulario((atual) => ({ ...atual, latitude, longitude }));
+      setFormulario((atual) => ({ ...atual, latitude, longitude, precisaoLocalizacao }));
       setValorAnterior(null);
       setReferenciaEdicao(null);
       setEditorValorFinalAberto(false);
@@ -592,14 +609,23 @@ export default function AvaliacaoRapidaView({
                   onChange={(valor) => setFormulario((atual) => ({
                     ...atual,
                     endereco: valor,
+                    bairroOficial: "",
+                    cep: "",
                     latitude: null,
                     longitude: null,
+                    precisaoLocalizacao: null,
                   }))}
                   onSelecionar={aplicarEndereco}
                   placeholder="Rua, número"
                 />
               </div>
-              <div className="field-group"><label>Bairro</label><input value={formulario.bairro} onChange={(e) => atualizar("bairro", e.target.value)} /></div>
+              <div className="field-group">
+                <label>Bairro</label>
+                <input value={formulario.bairro} onChange={(e) => atualizar("bairro", e.target.value)} />
+                {formulario.bairroOficial && formulario.bairroOficial !== formulario.bairro.trim() && (
+                  <div className="field-hint">Bairro oficial (ViaCEP): {formulario.bairroOficial}</div>
+                )}
+              </div>
               <div className="field-group"><label>Cidade</label><input value={formulario.cidade} onChange={(e) => atualizar("cidade", e.target.value)} /></div>
               <div className="field-group avaliacao-uf"><label>UF</label><select value={formulario.estado} onChange={(e) => atualizar("estado", e.target.value)}><option value="">Selecione</option>{UFS_BRASIL.map((uf) => <option key={uf} value={uf}>{uf}</option>)}</select></div>
             </div>

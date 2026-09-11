@@ -154,6 +154,42 @@ export function anunciosRepresentamMesmaOferta(
     && baseFingerprintAnuncio(a) === baseFingerprintAnuncio(b);
 }
 
+export interface IdentidadeCandidatoComparavel {
+  id: string;
+  codigo?: string | null;
+  idExterno?: string | null;
+}
+
+function identidadesDoCandidato(candidato: IdentidadeCandidatoComparavel): string[] {
+  const identidades: string[] = [];
+  const id = (candidato.id || "").trim();
+  if (id) identidades.push(`id=${id}`);
+  const portal = chaveNormalizada(candidato.codigo);
+  const idExterno = (candidato.idExterno || "").trim();
+  if (portal && idExterno) identidades.push(`anuncio=${portal}:${idExterno}`);
+  return identidades;
+}
+
+/** Une candidatos vetoriais e estruturados sem decidir quais deles são
+    comparáveis: essa continua sendo a responsabilidade de avaliarImovel().
+    O vetorial vem primeiro para preservar similaridade semântica, região e
+    histórico já enriquecidos. A identidade segue a mesma regra do catálogo:
+    id persistido ou portal + código externo. */
+export function unirCandidatosComparaveis<T extends IdentidadeCandidatoComparavel>(
+  vetoriais: readonly T[],
+  estruturados: readonly T[],
+): T[] {
+  const vistos = new Set<string>();
+  const unidos: T[] = [];
+  for (const candidato of [...vetoriais, ...estruturados]) {
+    const identidades = identidadesDoCandidato(candidato);
+    if (identidades.some((identidade) => vistos.has(identidade))) continue;
+    identidades.forEach((identidade) => vistos.add(identidade));
+    unidos.push(candidato);
+  }
+  return unidos;
+}
+
 /** Texto curto, ordenado e reproduzível. Dados objetivos continuam também
     em colunas próprias; aqui dão contexto à descrição semântica. */
 export function textoSemanticoDoImovel(dados: ImovelParaRepresentacaoSemantica): string {
