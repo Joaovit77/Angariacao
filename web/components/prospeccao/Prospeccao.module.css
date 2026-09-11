@@ -1,0 +1,489 @@
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: var(--text);
+}
+
+.hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  overflow: hidden;
+  padding: 24px;
+  border: 1px solid var(--accent-borda);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 92% 8%, var(--accent-soft), transparent 38%),
+    var(--bg-elev-1);
+}
+
+.heroTexto {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.heroIcone {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  place-items: center;
+  border: 1px solid var(--accent-borda-forte);
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.heroIcone svg {
+  width: 27px;
+  height: 27px;
+}
+
+.sobretitulo {
+  color: var(--accent-strong);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.hero h2 {
+  margin: 4px 0 5px;
+  font-family: var(--font-display);
+  font-size: clamp(23px, 3vw, 31px);
+  font-weight: 680;
+}
+
+.hero p {
+  max-width: 640px;
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.conteudo {
+  display: grid;
+  grid-template-columns: minmax(300px, .82fr) minmax(420px, 1.18fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.lista,
+.painel,
+.estado {
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  background: var(--bg-elev-1);
+  box-shadow: 0 16px 42px rgb(var(--sombra-rgb) / .06);
+}
+
+.lista {
+  min-width: 0;
+  padding: 16px;
+}
+
+.listaCabecalho,
+.painelCabecalho,
+.secaoCabecalho,
+.paginacao,
+.acoes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.listaCabecalho {
+  margin-bottom: 12px;
+}
+
+.listaCabecalho h3,
+.painelCabecalho h3,
+.secaoCabecalho h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 680;
+}
+
+.listaCabecalho h3,
+.painelCabecalho h3 {
+  font-size: 17px;
+}
+
+.listaCabecalho span,
+.secaoCabecalho span,
+.paginacao span {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+.cards {
+  display: grid;
+  gap: 9px;
+}
+
+.card {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: 11px;
+  background: var(--bg-elev-2);
+  color: var(--text);
+  text-align: left;
+  transition: border-color .14s ease, background .14s ease, transform .14s ease;
+}
+
+.card:hover {
+  border-color: var(--accent-borda-forte);
+  background: var(--bg-elev-3);
+  transform: translateY(-1px);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.cardSelecionado {
+  border-color: var(--accent-borda-forte);
+  background: color-mix(in srgb, var(--accent-soft) 42%, var(--bg-elev-2));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.cardTopo,
+.cardMeta,
+.chips,
+.eventoMeta,
+.eventoRodape,
+.etiquetaAcoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cardTopo {
+  justify-content: space-between;
+}
+
+.cardEndereco {
+  display: block;
+  overflow: hidden;
+  margin-top: 8px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardMeta {
+  justify-content: space-between;
+  margin-top: 9px;
+  color: var(--text-faint);
+  font-size: 10.5px;
+}
+
+.situacao,
+.chip,
+.corrente,
+.estadoClassificacao {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .03em;
+}
+
+.situacao {
+  padding: 4px 7px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  text-transform: uppercase;
+}
+
+.tipo {
+  color: var(--text-dim);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.chips {
+  margin-top: 10px;
+}
+
+.chip {
+  padding: 4px 7px;
+  background: var(--bg-elev-3);
+  color: var(--text-dim);
+}
+
+.paginacao {
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.estado {
+  display: grid;
+  min-height: 180px;
+  padding: 28px;
+  place-items: center;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.estado div {
+  max-width: 360px;
+}
+
+.estado strong {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.estado p {
+  margin: 0 0 14px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.erro {
+  border-color: color-mix(in srgb, var(--bad) 45%, var(--border));
+  background: var(--bad-soft);
+}
+
+.painel {
+  min-width: 0;
+  padding: 19px;
+}
+
+.painelCabecalho {
+  align-items: flex-start;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.painelCabecalho p {
+  margin: 5px 0 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.dados {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.dado {
+  min-width: 0;
+  padding: 10px;
+  border-radius: 9px;
+  background: var(--bg-elev-2);
+}
+
+.dado span,
+.etiqueta small {
+  display: block;
+  color: var(--text-faint);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.dado strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: var(--text-dim);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acoes {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.secao {
+  margin-top: 18px;
+  padding-top: 17px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.secaoCabecalho {
+  align-items: baseline;
+  margin-bottom: 11px;
+}
+
+.secaoCabecalho h4 {
+  font-size: 14px;
+}
+
+.formularioCompacto {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.formularioCompacto label {
+  margin: 0;
+}
+
+.formularioCompacto textarea {
+  min-height: 74px;
+  margin-top: 6px;
+}
+
+.etiquetas {
+  display: grid;
+  gap: 7px;
+}
+
+.etiqueta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 9px;
+  background: var(--bg-elev-2);
+}
+
+.etiqueta strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 11.5px;
+}
+
+.linhaDoTempo {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.evento {
+  position: relative;
+  padding: 13px 13px 13px 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: var(--bg-elev-2);
+}
+
+.eventoCorrente {
+  border-color: var(--accent-borda-forte);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.eventoMeta {
+  justify-content: space-between;
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+.corrente,
+.estadoClassificacao {
+  padding: 3px 6px;
+}
+
+.corrente {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.estadoClassificacao {
+  background: var(--bg-elev-3);
+  color: var(--text-dim);
+}
+
+.evento p {
+  margin: 10px 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.eventoSemObservacao {
+  color: var(--text-faint) !important;
+  font-style: italic;
+}
+
+.eventoRodape {
+  color: var(--text-faint);
+  font-size: 9.5px;
+}
+
+.modo {
+  color: var(--accent-strong);
+}
+
+.vazioInterno {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+
+@media (max-width: 1080px) {
+  .conteudo {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .hero,
+  .heroTexto,
+  .painelCabecalho {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .hero {
+    padding: 19px;
+  }
+
+  .heroTexto {
+    flex-direction: row;
+  }
+
+  .hero :global(.btn),
+  .painelCabecalho :global(.btn) {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .dados {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .formularioCompacto {
+    grid-template-columns: 1fr;
+  }
+
+  .etiqueta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 460px) {
+  .dados {
+    grid-template-columns: 1fr;
+  }
+}

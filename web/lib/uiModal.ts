@@ -15,6 +15,7 @@ export type TipoModal =
   | "preCadastro"
   | "meta"
   | "agenda"
+  | "avistamento"
   | "verificacao"
   | "conexaoWhatsapp"
   | "importar"
