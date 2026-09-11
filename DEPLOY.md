@@ -36,6 +36,22 @@ Os dois são gratuitos no plano que você vai usar.
    raiz do site (`/`). Confira em **Authentication → URL Configuration** que a **Site URL** aponta
    para o endereço final do app na Vercel (senão o link de recuperação volta para o lugar errado).
 
+### Garimpo em Campo — Storage de fachadas
+
+O schema versionado cria o bucket privado `fachadas` com limite de 5 MB e aceita somente
+`image/jpeg` e `image/webp`. Se o ambiente recusar a criação do bucket pelo SQL por falta de
+privilégio, crie-o manualmente em **Storage → New bucket** usando exatamente esses parâmetros:
+
+- nome: `fachadas`;
+- bucket público: não;
+- limite por arquivo: 5 MB;
+- MIME types permitidos: `image/jpeg` e `image/webp`.
+
+As policies continuam vindo do `supabase-schema.sql`; não as substitua por acesso público. Em
+**Project Settings → API → Data API Settings → Exposed schemas**, confirme também que `storage`
+permanece fora da lista. O navegador acessa os objetos pela API própria do Storage e não deve
+consultar `storage.objects` diretamente pelo PostgREST.
+
 ---
 
 ## Parte 2 — As credenciais agora são variáveis de ambiente
