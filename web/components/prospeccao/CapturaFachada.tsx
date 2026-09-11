@@ -378,11 +378,24 @@ function manterUrlAssinada({ src }: ImageLoaderProps): string {
   return src;
 }
 
+export interface EstadoArquivoFachada {
+  selecionada: boolean;
+  pronta: boolean;
+  processando: boolean;
+  /** A foto já processada, quando `pronta`. É o que o rascunho guarda
+      para sobreviver a uma recarga da página. */
+  processada?: ResultadoProcessamentoFoto<Blob> | null;
+}
+
 export default function CapturaFachada({
   imovelIdentificadoId,
   avistamentoId,
   foto,
+  fotoInicial,
+  reservaInicial,
   aoEstadoArquivo,
+  aoReserva,
+  aoAntesDeCapturar,
   aoConcluir,
   dependencias,
   prazos,
@@ -390,11 +403,17 @@ export default function CapturaFachada({
   imovelIdentificadoId?: string;
   avistamentoId?: string;
   foto?: FotoAvistamento;
-  aoEstadoArquivo?: (estado: {
-    selecionada: boolean;
-    pronta: boolean;
-    processando: boolean;
-  }) => void;
+  /** Foto restaurada de um rascunho: entra já processada, sem passar pelo
+      input. É o que evita fotografar de novo depois de a aba ser descartada. */
+  fotoInicial?: ResultadoProcessamentoFoto<Blob> | null;
+  /** Reserva restaurada de um rascunho: o retry reutiliza os caminhos. */
+  reservaInicial?: ReservaFotoAvistamento | null;
+  aoEstadoArquivo?: (estado: EstadoArquivoFachada) => void;
+  /** Disparado assim que uma reserva existe — sucesso ou falha depois dela. */
+  aoReserva?: (reserva: ReservaFotoAvistamento) => void;
+  /** Disparado ao tocar em "Fotografar", ANTES de a câmera abrir: é o último
+      instante em que a página tem a certeza de estar viva. */
+  aoAntesDeCapturar?: () => void;
   aoConcluir?: () => void;
   dependencias?: Partial<DependenciasCapturaFachada>;
   prazos?: Partial<PrazosFachada>;
@@ -404,16 +423,22 @@ export default function CapturaFachada({
   const reservar = dependencias?.reservar ?? reservarDoStore;
   const finalizar = dependencias?.finalizar ?? finalizarDoStore;
   const preparar = dependencias?.preparar ?? prepararArquivoFachada;
-  const [processada, setProcessada] = useState<ResultadoProcessamentoFoto<Blob> | null>(null);
-  const [etapa, setEtapa] = useState<EtapaEnvio>(foto?.estado === "reservada" ? "envio-nao-concluido" : "ocioso");
+  const [processada, setProcessada] = useState<ResultadoProcessamentoFoto<Blob> | null>(
+    fotoInicial ?? null,
+  );
+  const [etapa, setEtapa] = useState<EtapaEnvio>(
+    fotoInicial ? "pronto" : foto?.estado === "reservada" ? "envio-nao-concluido" : "ocioso",
+  );
   const [erro, setErro] = useState("");
   const [urlAssinada, setUrlAssinada] = useState<string | null>(null);
   const [imagemIndisponivel, setImagemIndisponivel] = useState(false);
-  const [arquivoDisponivel, setArquivoDisponivel] = useState(false);
-  const [reservaPreservada, setReservaPreservada] = useState(foto?.estado === "reservada");
+  const [arquivoDisponivel, setArquivoDisponivel] = useState(Boolean(fotoInicial));
+  const [reservaPreservada, setReservaPreservada] = useState(
+    Boolean(reservaInicial) || foto?.estado === "reservada",
+  );
   const versaoArquivo = useRef(0);
   const arquivoSelecionado = useRef<File | null>(null);
-  const reservaAtual = useRef<ReservaFotoAvistamento | null>(null);
+  const reservaAtual = useRef<ReservaFotoAvistamento | null>(reservaInicial ?? null);
   const envioIniciado = useRef("");
   const enviando = etapa === "preparando"
     || etapa === "reservando"
@@ -469,16 +494,18 @@ export default function CapturaFachada({
       );
       reservaAtual.current = reserva;
       setReservaPreservada(true);
+      aoReserva?.(reserva);
       aoConcluir?.();
     } catch (falha) {
       if (falha instanceof ErroEnvioFachada && falha.reserva) {
         reservaAtual.current = falha.reserva;
         setReservaPreservada(true);
+        aoReserva?.(falha.reserva);
       }
       setEtapa("envio-nao-concluido");
       setErro(falha instanceof Error ? falha.message : "Não foi possível enviar a foto.");
     }
-  }, [aoConcluir, avistamentoId, enviando, enviarObjeto, finalizar, imovelIdentificadoId, prazos, processada, reservar]);
+  }, [aoConcluir, aoReserva, avistamentoId, enviando, enviarObjeto, finalizar, imovelIdentificadoId, prazos, processada, reservar]);
 
   useEffect(() => {
     if (!processada || !imovelIdentificadoId || !avistamentoId) return;
@@ -505,7 +532,7 @@ export default function CapturaFachada({
       );
       if (versaoArquivo.current !== versao) return;
       setProcessada(resultado);
-      aoEstadoArquivo?.({ selecionada: true, pronta: true, processando: false });
+      aoEstadoArquivo?.({ selecionada: true, pronta: true, processando: false, processada: resultado });
     } catch (falha) {
       if (versaoArquivo.current !== versao) return;
       setEtapa("erro-recuperavel");
@@ -583,12 +610,15 @@ export default function CapturaFachada({
         {!reservaPreservada || !arquivoDisponivel ? (
           <label className="btn btn-sm">
             {reservaPreservada ? "Selecionar a mesma foto para retomar" : "Fotografar fachada"}
+            {/* O clique no input é o último instante em que a página está viva
+                antes de a câmera abrir; no Android a aba pode ser descartada. */}
             <input
               className={styles.inputFoto}
               type="file"
               accept="image/*"
               capture="environment"
               disabled={enviando}
+              onClick={() => aoAntesDeCapturar?.()}
               onChange={selecionarArquivo}
             />
           </label>

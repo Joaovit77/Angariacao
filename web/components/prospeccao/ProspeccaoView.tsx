@@ -1,9 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
+import { useSessao } from "@/components/SessaoProvider";
 import { etiquetasDoImovel, type EtiquetaDoImovel } from "@/lib/calculo/etiquetasProspeccao";
 import type { DetalheImovelIdentificado } from "@/lib/prospeccao";
+import {
+  armazemRascunhoCaptura,
+  avaliarRascunho,
+  type ArmazemRascunhoCaptura,
+  type RascunhoCaptura,
+} from "@/lib/rascunhoCaptura";
 import { useProspeccao } from "@/lib/useProspeccao";
 import { useUiModal } from "@/lib/uiModal";
 
@@ -36,7 +43,21 @@ function etiquetasAtuais(detalhe: DetalheImovelIdentificado | null): EtiquetaDoI
   ).filter((etiqueta) => etiqueta.vigenteNoAvistamentoCorrente);
 }
 
-export default function ProspeccaoView() {
+function horaCurta(iso: string): string {
+  const data = new Date(iso);
+  if (Number.isNaN(data.getTime())) return "";
+  return data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+export default function ProspeccaoView({
+  armazemRascunho,
+}: {
+  /** Injetável para teste; em produção é o IndexedDB do aparelho. */
+  armazemRascunho?: ArmazemRascunhoCaptura;
+}) {
+  const { usuario } = useSessao();
+  const [armazem] = useState<ArmazemRascunhoCaptura>(() => armazemRascunho ?? armazemRascunhoCaptura());
+  const [rascunhoPendente, setRascunhoPendente] = useState<RascunhoCaptura | null>(null);
   const itens = useProspeccao((estado) => estado.itens);
   const detalhe = useProspeccao((estado) => estado.detalhe);
   const selecionadoId = useProspeccao((estado) => estado.selecionadoId);
@@ -55,6 +76,27 @@ export default function ProspeccaoView() {
   useEffect(() => {
     void carregarPagina(1, porPagina);
   }, [carregarPagina, porPagina]);
+
+  // Depois de uma recarga o corretor cai AQUI, não no modal. Se o aparelho
+  // guardou um registro interrompido, é esta tela que precisa dizer.
+  useEffect(() => {
+    if (!usuario) return;
+    let cancelado = false;
+    void (async () => {
+      const rascunho = await armazem.ler(usuario.id);
+      if (cancelado || !rascunho) return;
+      const veredito = avaliarRascunho(rascunho, usuario.id, rascunho.imovelIdentificadoId);
+      if (veredito === "expirado") void armazem.limpar(usuario.id);
+      setRascunhoPendente(veredito === "restauravel" ? rascunho : null);
+    })();
+    return () => { cancelado = true; };
+  }, [armazem, usuario]);
+
+  function retomarRascunho() {
+    if (!rascunhoPendente) return;
+    setRascunhoPendente(null);
+    abrirModal("avistamento", rascunhoPendente.imovelIdentificadoId ?? undefined);
+  }
 
   async function mudarPagina(proximaPagina: number) {
     const carregou = await carregarPagina(proximaPagina, porPagina);
@@ -88,6 +130,25 @@ export default function ProspeccaoView() {
           Registrar primeiro avistamento
         </button>
       </section>
+
+      {rascunhoPendente ? (
+        <div className={styles.rascunhoPendente} role="status">
+          <div>
+            <strong>
+              {rascunhoPendente.destino
+                ? "Uma foto ficou pendente de envio."
+                : "Um registro de campo não foi concluído."}
+            </strong>
+            <span>
+              {rascunhoPendente.foto ? "Foto e dados" : "Dados"} de {horaCurta(rascunhoPendente.salvoEm)} estão
+              guardados neste aparelho. Nada foi perdido.
+            </span>
+          </div>
+          <button type="button" className="btn btn-sm btn-primary" onClick={retomarRascunho}>
+            Retomar
+          </button>
+        </div>
+      ) : null}
 
       {erro ? (
         <div className={`${styles.estado} ${styles.erro}`} role="alert">

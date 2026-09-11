@@ -489,6 +489,50 @@
   color: var(--good);
 }
 
+/* Rascunho recuperado do aparelho — dentro do modal (restaurado) e na
+   página (pendente). Âmbar: não é erro, é aviso de que houve interrupção. */
+.rascunhoRestaurado,
+.rascunhoPendente {
+  display: grid;
+  gap: 6px;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--border-soft));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--warn) 9%, var(--bg-elev-3));
+}
+.rascunhoRestaurado strong,
+.rascunhoPendente strong {
+  color: var(--text);
+  font-size: 12px;
+}
+.rascunhoRestaurado span,
+.rascunhoPendente span {
+  color: var(--text-faint);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+.rascunhoRestaurado .btn {
+  justify-self: start;
+  margin-top: 2px;
+}
+.rascunhoPendente {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.rascunhoPendente > div {
+  display: grid;
+  gap: 3px;
+}
+@media (max-width: 520px) {
+  .rascunhoPendente {
+    grid-template-columns: 1fr;
+  }
+  .rascunhoPendente .btn {
+    justify-self: start;
+  }
+}
+
 .capturaFachada {
   display: grid;
   gap: 9px;

@@ -1,19 +1,42 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
 import { useSessao } from "@/components/SessaoProvider";
-import CapturaFachada from "@/components/prospeccao/CapturaFachada";
+import CapturaFachada, { type EstadoArquivoFachada } from "@/components/prospeccao/CapturaFachada";
 import styles from "@/components/prospeccao/Prospeccao.module.css";
+import type { ResultadoProcessamentoFoto } from "@/lib/calculo/fotoFachada";
 import { TIPOS_IMOVEL } from "@/lib/constantes";
 import { dataHoraLocalParaIso, partesDataHoraLocal } from "@/lib/datas";
+import type { ReservaFotoAvistamento } from "@/lib/prospeccao";
+import {
+  armazemRascunhoCaptura,
+  avaliarRascunho,
+  type ArmazemRascunhoCaptura,
+  type CamposRascunhoCaptura,
+  type RascunhoCaptura,
+} from "@/lib/rascunhoCaptura";
 import { useProspeccao } from "@/lib/useProspeccao";
 import { useUiModal } from "@/lib/uiModal";
 
+/** Quanto esperar depois da última tecla antes de gravar o rascunho.
+    Curto o bastante para não perder texto; longo o bastante para não
+    reescrever o Blob a cada letra. */
+const ATRASO_RASCUNHO_MS = 400;
+
+function horaCurta(iso: string): string {
+  const data = new Date(iso);
+  if (Number.isNaN(data.getTime())) return "";
+  return data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
 export default function ModalAvistamento({
   imovelIdentificadoId,
+  armazemRascunho,
 }: {
   imovelIdentificadoId?: string;
+  /** Injetável para teste; em produção é o IndexedDB do aparelho. */
+  armazemRascunho?: ArmazemRascunhoCaptura;
 }) {
   const { usuario } = useSessao();
   const fecharModal = useUiModal((estado) => estado.fecharModal);
@@ -40,7 +63,7 @@ export default function ModalAvistamento({
   const [pontoReferencia, setPontoReferencia] = useState("");
   const [tipo, setTipo] = useState("");
   const [erro, setErro] = useState("");
-  const [fotoSelecionada, setFotoSelecionada] = useState({
+  const [fotoSelecionada, setFotoSelecionada] = useState<EstadoArquivoFachada>({
     selecionada: false,
     pronta: false,
     processando: false,
@@ -51,6 +74,157 @@ export default function ModalAvistamento({
   } | null>(null);
   const [avistamentoSalvo, setAvistamentoSalvo] = useState(false);
   const primeiroAvistamento = !imovelIdentificadoId;
+
+  /* ---- rascunho no aparelho ------------------------------------------
+     Guarda o que custa refazer (foto processada, texto, destino, reserva)
+     ANTES de a aba correr risco — a ida à câmera pode matar a página no
+     Android. Ao remontar, restaura em silêncio e avisa; nada é enviado
+     sem o corretor. */
+  const [armazem] = useState<ArmazemRascunhoCaptura>(() => armazemRascunho ?? armazemRascunhoCaptura());
+  const contextoRascunho = imovelIdentificadoId ?? null;
+  const [rascunhoRestauradoEm, setRascunhoRestauradoEm] = useState<string | null>(null);
+  const [fotoInicial, setFotoInicial] = useState<ResultadoProcessamentoFoto<Blob> | null>(null);
+  const [reservaInicial, setReservaInicial] = useState<ReservaFotoAvistamento | null>(null);
+  const [rascunhoPronto, setRascunhoPronto] = useState(false);
+  const tocado = useRef(false);
+  const fotoProcessada = useRef<ResultadoProcessamentoFoto<Blob> | null>(null);
+  const destinoRef = useRef<typeof destinoFoto>(null);
+  const reservaRef = useRef<ReservaFotoAvistamento | null>(null);
+  const temporizador = useRef<number | null>(null);
+
+  const camposAtuais = useCallback((): CamposRascunhoCaptura => ({
+    data, hora, observacao, logradouro, numero, unidade, bloco, edificio,
+    bairro, cidade, estado, cep, pontoReferencia, tipo,
+  }), [bairro, bloco, cep, cidade, data, edificio, estado, hora, logradouro, numero, observacao, pontoReferencia, tipo, unidade]);
+
+  const persistirRascunho = useCallback(() => {
+    if (!usuario) return;
+    const rascunho: RascunhoCaptura = {
+      usuarioId: usuario.id,
+      imovelIdentificadoId: contextoRascunho,
+      salvoEm: new Date().toISOString(),
+      campos: camposAtuais(),
+      foto: fotoProcessada.current,
+      destino: destinoRef.current,
+      reserva: reservaRef.current,
+    };
+    void armazem.salvar(rascunho);
+  }, [armazem, camposAtuais, contextoRascunho, usuario]);
+
+  const limparRascunho = useCallback(() => {
+    if (!usuario) return;
+    if (temporizador.current !== null) window.clearTimeout(temporizador.current);
+    void armazem.limpar(usuario.id);
+  }, [armazem, usuario]);
+
+  // Restaura ao montar. Só o contexto certo, só dentro do prazo, e só se
+  // houver algo além de data/hora (que já nascem preenchidas).
+  useEffect(() => {
+    if (!usuario) return;
+    let cancelado = false;
+    void (async () => {
+      const rascunho = await armazem.ler(usuario.id);
+      if (cancelado) return;
+      const veredito = avaliarRascunho(rascunho, usuario.id, contextoRascunho);
+      if (veredito === "expirado") void armazem.limpar(usuario.id);
+      if (veredito === "restauravel" && rascunho) {
+        const c = rascunho.campos;
+        setData(c.data || agora.data);
+        setHora(c.hora || agora.hora);
+        setObservacao(c.observacao);
+        setLogradouro(c.logradouro);
+        setNumero(c.numero);
+        setUnidade(c.unidade);
+        setBloco(c.bloco);
+        setEdificio(c.edificio);
+        setBairro(c.bairro);
+        setCidade(c.cidade);
+        setEstado(c.estado);
+        setCep(c.cep);
+        setPontoReferencia(c.pontoReferencia);
+        setTipo(c.tipo);
+        if (rascunho.foto) {
+          fotoProcessada.current = rascunho.foto;
+          setFotoInicial(rascunho.foto);
+          setFotoSelecionada({ selecionada: true, pronta: true, processando: false, processada: rascunho.foto });
+        }
+        if (rascunho.reserva) {
+          reservaRef.current = rascunho.reserva;
+          setReservaInicial(rascunho.reserva);
+        }
+        if (rascunho.destino) {
+          destinoRef.current = rascunho.destino;
+          setDestinoFoto(rascunho.destino);
+          setAvistamentoSalvo(true);
+        }
+        tocado.current = true;
+        setRascunhoRestauradoEm(rascunho.salvoEm);
+      }
+      setRascunhoPronto(true);
+    })();
+    return () => { cancelado = true; };
+    // Só na montagem: os setters são estáveis e `agora` é o instante de abrir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [armazem, contextoRascunho, usuario?.id]);
+
+  // Texto digitado vai para o aparelho com atraso curto. Antes da primeira
+  // interação não há o que guardar — evita criar rascunho de modal intocado.
+  useEffect(() => {
+    if (!rascunhoPronto || !tocado.current || avistamentoSalvo) return;
+    if (temporizador.current !== null) window.clearTimeout(temporizador.current);
+    temporizador.current = window.setTimeout(() => {
+      temporizador.current = null;
+      persistirRascunho();
+    }, ATRASO_RASCUNHO_MS);
+    return () => {
+      if (temporizador.current !== null) window.clearTimeout(temporizador.current);
+    };
+  }, [avistamentoSalvo, camposAtuais, persistirRascunho, rascunhoPronto]);
+
+  function marcarTocado() {
+    tocado.current = true;
+  }
+
+  function aoEstadoArquivo(estadoArquivo: EstadoArquivoFachada) {
+    setFotoSelecionada(estadoArquivo);
+    if (estadoArquivo.pronta && estadoArquivo.processada) {
+      // A foto processada é o que mais custa refazer: grava na hora.
+      fotoProcessada.current = estadoArquivo.processada;
+      tocado.current = true;
+      persistirRascunho();
+    } else if (!estadoArquivo.selecionada) {
+      fotoProcessada.current = null;
+    }
+  }
+
+  function aoReserva(reserva: ReservaFotoAvistamento) {
+    reservaRef.current = reserva;
+    persistirRascunho();
+  }
+
+  function aoAntesDeCapturar() {
+    // Último instante em que a página tem certeza de estar viva.
+    tocado.current = true;
+    persistirRascunho();
+  }
+
+  function aoConcluirEnvio() {
+    limparRascunho();
+    fecharModal();
+  }
+
+  function cancelar() {
+    // Antes de salvar, cancelar é abandonar: o rascunho vai junto. Depois de
+    // salvo, o avistamento existe e a foto pode estar pendente: o rascunho
+    // fica para a retomada.
+    if (!avistamentoSalvo) limparRascunho();
+    fecharModal();
+  }
+
+  function descartarRascunho() {
+    limparRascunho();
+    fecharModal();
+  }
   const enderecoConhecido = identificadoConhecido
     ? [
         [identificadoConhecido.logradouro, identificadoConhecido.numero].filter(Boolean).join(", "),
@@ -114,6 +288,7 @@ export default function ModalAvistamento({
       return;
     }
     if (!fotoSelecionada.selecionada) {
+      limparRascunho();
       fecharModal();
       return;
     }
@@ -129,6 +304,13 @@ export default function ModalAvistamento({
       );
       return;
     }
+    // A partir daqui uma recarga NÃO pode criar segundo avistamento: o
+    // rascunho passa a carregar o destino, e a restauração vai direto ao envio.
+    destinoRef.current = {
+      imovelIdentificadoId: detalheAtual.identificado.id,
+      avistamentoId: avistamentoCriado.id,
+    };
+    persistirRascunho();
     setDestinoFoto({
       imovelIdentificadoId: detalheAtual.identificado.id,
       avistamentoId: avistamentoCriado.id,
@@ -139,14 +321,35 @@ export default function ModalAvistamento({
     <>
       <div className="modal-head">
         <div className="modal-title">
-          {primeiroAvistamento ? "Registrar primeiro avistamento" : "Novo avistamento"}
+          {avistamentoSalvo && rascunhoRestauradoEm
+            ? "Concluir envio da foto"
+            : primeiroAvistamento
+              ? "Registrar primeiro avistamento"
+              : "Novo avistamento"}
         </div>
-        <button type="button" className="icon-btn" aria-label="Fechar" onClick={fecharModal}>
+        <button type="button" className="icon-btn" aria-label="Fechar" onClick={cancelar}>
           ✕
         </button>
       </div>
-      <form onSubmit={salvar}>
+      <form onSubmit={salvar} onChange={marcarTocado}>
         <div className="modal-body">
+          {rascunhoRestauradoEm ? (
+            <div className={styles.rascunhoRestaurado} role="status">
+              <strong>
+                {avistamentoSalvo
+                  ? "Avistamento já salvo; a foto ficou pendente."
+                  : "Registro não concluído restaurado."}
+              </strong>
+              <span>
+                {avistamentoSalvo
+                  ? `O envio da foto de ${horaCurta(rascunhoRestauradoEm)} continua de onde parou.`
+                  : `Foto e dados de ${horaCurta(rascunhoRestauradoEm)} foram recuperados deste aparelho. Nada foi enviado ainda.`}
+              </span>
+              <button type="button" className="btn btn-sm" onClick={descartarRascunho}>
+                Descartar rascunho
+              </button>
+            </div>
+          ) : null}
           <div className={styles.capturaRapida}>
             <strong>Registre o essencial agora</strong>
             <span>
@@ -161,11 +364,19 @@ export default function ModalAvistamento({
               <small>Os dados já conhecidos serão reutilizados; você não precisa digitá-los novamente.</small>
             </div>
           ) : null}
+          {/* `key` remonta a captura quando um rascunho é restaurado, para que
+              `fotoInicial`/`reservaInicial` entrem como estado inicial. Só a
+              restauração muda a chave; limpar o rascunho não a toca. */}
           <CapturaFachada
+            key={rascunhoRestauradoEm ?? "novo"}
             imovelIdentificadoId={destinoFoto?.imovelIdentificadoId}
             avistamentoId={destinoFoto?.avistamentoId}
-            aoEstadoArquivo={setFotoSelecionada}
-            aoConcluir={fecharModal}
+            fotoInicial={fotoInicial}
+            reservaInicial={reservaInicial}
+            aoEstadoArquivo={aoEstadoArquivo}
+            aoReserva={aoReserva}
+            aoAntesDeCapturar={aoAntesDeCapturar}
+            aoConcluir={aoConcluirEnvio}
           />
           <div className="field-group">
             <label htmlFor="avistamento-observacao">Observação (opcional)</label>
@@ -336,7 +547,7 @@ export default function ModalAvistamento({
         <div className="modal-foot">
           <div></div>
           <div className="modal-foot-primary">
-            <button type="button" className="btn" disabled={salvando} onClick={fecharModal}>
+            <button type="button" className="btn" disabled={salvando} onClick={cancelar}>
               {avistamentoSalvo ? "Fechar" : "Cancelar"}
             </button>
             <button
