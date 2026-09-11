@@ -71,7 +71,9 @@ export default function ProspeccaoView({
   const carregarDetalhe = useProspeccao((estado) => estado.carregarDetalhe);
   const limparSelecao = useProspeccao((estado) => estado.limparSelecao);
   const abrirModal = useUiModal((estado) => estado.abrirModal);
+  const modalDeAvistamentoAberto = useUiModal((estado) => estado.modal?.tipo === "avistamento");
   const etiquetasSelecionadas = etiquetasAtuais(detalhe);
+  const usuarioId = usuario?.id ?? null;
 
   useEffect(() => {
     void carregarPagina(1, porPagina);
@@ -79,18 +81,23 @@ export default function ProspeccaoView({
 
   // Depois de uma recarga o corretor cai AQUI, não no modal. Se o aparelho
   // guardou um registro interrompido, é esta tela que precisa dizer.
+  //
+  // Depende do id, não do objeto `usuario`: o SessaoProvider troca o objeto
+  // a cada evento de sessão, e voltar da câmera dispara um. Enquanto o modal
+  // de avistamento está aberto o rascunho existe de propósito, então o
+  // aviso fica calado; ao fechar, reavalia (o rascunho pode ter sido limpo).
   useEffect(() => {
-    if (!usuario) return;
+    if (!usuarioId || modalDeAvistamentoAberto) return;
     let cancelado = false;
     void (async () => {
-      const rascunho = await armazem.ler(usuario.id);
-      if (cancelado || !rascunho) return;
-      const veredito = avaliarRascunho(rascunho, usuario.id, rascunho.imovelIdentificadoId);
-      if (veredito === "expirado") void armazem.limpar(usuario.id);
+      const rascunho = await armazem.ler(usuarioId);
+      if (cancelado) return;
+      const veredito = avaliarRascunho(rascunho, usuarioId, rascunho?.imovelIdentificadoId ?? null);
+      if (veredito === "expirado") void armazem.limpar(usuarioId);
       setRascunhoPendente(veredito === "restauravel" ? rascunho : null);
     })();
     return () => { cancelado = true; };
-  }, [armazem, usuario]);
+  }, [armazem, usuarioId, modalDeAvistamentoAberto]);
 
   function retomarRascunho() {
     if (!rascunhoPendente) return;
@@ -131,7 +138,7 @@ export default function ProspeccaoView({
         </button>
       </section>
 
-      {rascunhoPendente ? (
+      {rascunhoPendente && usuarioId && !modalDeAvistamentoAberto ? (
         <div className={styles.rascunhoPendente} role="status">
           <div>
             <strong>

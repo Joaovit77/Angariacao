@@ -40,6 +40,7 @@ const cenario = vi.hoisted(() => ({
   },
   abrirModal: vi.fn(),
   fecharModal: vi.fn(),
+  modal: null as { tipo: string } | null,
   usuario: { id: "usuario-1" },
   upload: vi.fn(),
 }));
@@ -53,9 +54,14 @@ vi.mock("@/lib/useProspeccao", () => {
 
 vi.mock("@/lib/uiModal", () => ({
   useUiModal: (seletor: (estado: {
+    modal: { tipo: string } | null;
     abrirModal: typeof cenario.abrirModal;
     fecharModal: typeof cenario.fecharModal;
-  }) => unknown) => seletor({ abrirModal: cenario.abrirModal, fecharModal: cenario.fecharModal }),
+  }) => unknown) => seletor({
+    modal: cenario.modal,
+    abrirModal: cenario.abrirModal,
+    fecharModal: cenario.fecharModal,
+  }),
 }));
 
 vi.mock("@/components/SessaoProvider", () => ({
@@ -91,6 +97,7 @@ import {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  cenario.modal = null;
   cenario.estado.detalhe = null;
   cenario.estado.itens = [];
   cenario.upload.mockResolvedValue({ error: null });
@@ -376,6 +383,43 @@ describe("rascunho de captura — a página avisa depois da recarga", () => {
     await screen.findByText("Uma foto ficou pendente de envio.");
     fireEvent.click(screen.getByRole("button", { name: "Retomar" }));
     expect(cenario.abrirModal).toHaveBeenCalledWith("avistamento", "identificado-1");
+  });
+
+  it("regressão do smoke: com o modal aberto o aviso fica calado, e ao fechar reflete o rascunho já limpo", async () => {
+    // Voltar da câmera dispara um evento de sessão; o rascunho existe de
+    // propósito nesse instante. O aviso só pode falar depois do modal fechar.
+    const armazem = criarArmazemMemoria();
+    await armazem.salvar(rascunho());
+    cenario.modal = { tipo: "avistamento" };
+    const { rerender } = render(createElement(ProspeccaoView, { armazemRascunho: armazem }));
+    await waitFor(() => expect(cenario.estado.carregarPagina).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Retomar" })).toBeNull();
+
+    // O envio concluiu: o modal limpou o rascunho e fechou.
+    await armazem.limpar("usuario-1");
+    cenario.modal = null;
+    rerender(createElement(ProspeccaoView, { armazemRascunho: armazem }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByRole("button", { name: "Retomar" })).toBeNull();
+
+    // Mas se o modal fechou sem concluir, o aviso aparece.
+    cenario.modal = { tipo: "avistamento" };
+    rerender(createElement(ProspeccaoView, { armazemRascunho: armazem }));
+    await armazem.salvar(rascunho());
+    cenario.modal = null;
+    rerender(createElement(ProspeccaoView, { armazemRascunho: armazem }));
+    await screen.findByRole("button", { name: "Retomar" });
+  });
+
+  it("um evento de sessão que troca o objeto do usuário não reavalia o rascunho", async () => {
+    const armazem = criarArmazemMemoria();
+    const ler = vi.spyOn(armazem, "ler");
+    const { rerender } = render(createElement(ProspeccaoView, { armazemRascunho: armazem }));
+    await waitFor(() => expect(ler).toHaveBeenCalledTimes(1));
+    cenario.usuario = { id: "usuario-1" }; // mesmo id, objeto novo (SIGNED_IN ao voltar da câmera)
+    rerender(createElement(ProspeccaoView, { armazemRascunho: armazem }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(ler).toHaveBeenCalledTimes(1);
   });
 
   it("sem rascunho, a página não mostra aviso nenhum", async () => {

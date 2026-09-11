@@ -97,10 +97,15 @@ export default function ModalAvistamento({
     bairro, cidade, estado, cep, pontoReferencia, tipo,
   }), [bairro, bloco, cep, cidade, data, edificio, estado, hora, logradouro, numero, observacao, pontoReferencia, tipo, unidade]);
 
+  // Callbacks e efeitos dependem do id, não do objeto `usuario`: o
+  // SessaoProvider troca o objeto a cada evento de sessão (voltar da câmera
+  // dispara um), e isso não pode reexecutar nada aqui.
+  const usuarioId = usuario?.id ?? null;
+
   const persistirRascunho = useCallback(() => {
-    if (!usuario) return;
+    if (!usuarioId) return;
     const rascunho: RascunhoCaptura = {
-      usuarioId: usuario.id,
+      usuarioId,
       imovelIdentificadoId: contextoRascunho,
       salvoEm: new Date().toISOString(),
       campos: camposAtuais(),
@@ -109,24 +114,24 @@ export default function ModalAvistamento({
       reserva: reservaRef.current,
     };
     void armazem.salvar(rascunho);
-  }, [armazem, camposAtuais, contextoRascunho, usuario]);
+  }, [armazem, camposAtuais, contextoRascunho, usuarioId]);
 
   const limparRascunho = useCallback(() => {
-    if (!usuario) return;
+    if (!usuarioId) return;
     if (temporizador.current !== null) window.clearTimeout(temporizador.current);
-    void armazem.limpar(usuario.id);
-  }, [armazem, usuario]);
+    void armazem.limpar(usuarioId);
+  }, [armazem, usuarioId]);
 
   // Restaura ao montar. Só o contexto certo, só dentro do prazo, e só se
   // houver algo além de data/hora (que já nascem preenchidas).
   useEffect(() => {
-    if (!usuario) return;
+    if (!usuarioId) return;
     let cancelado = false;
     void (async () => {
-      const rascunho = await armazem.ler(usuario.id);
+      const rascunho = await armazem.ler(usuarioId);
       if (cancelado) return;
-      const veredito = avaliarRascunho(rascunho, usuario.id, contextoRascunho);
-      if (veredito === "expirado") void armazem.limpar(usuario.id);
+      const veredito = avaliarRascunho(rascunho, usuarioId, contextoRascunho);
+      if (veredito === "expirado") void armazem.limpar(usuarioId);
       if (veredito === "restauravel" && rascunho) {
         const c = rascunho.campos;
         setData(c.data || agora.data);
@@ -165,7 +170,7 @@ export default function ModalAvistamento({
     return () => { cancelado = true; };
     // Só na montagem: os setters são estáveis e `agora` é o instante de abrir.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [armazem, contextoRascunho, usuario?.id]);
+  }, [armazem, contextoRascunho, usuarioId]);
 
   // Texto digitado vai para o aparelho com atraso curto. Antes da primeira
   // interação não há o que guardar — evita criar rascunho de modal intocado.
