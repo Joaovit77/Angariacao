@@ -12,6 +12,7 @@ import { daysBetween } from "../datas";
 import { chaveEndereco } from "./duplicidade";
 import { chaveNormalizada } from "../normalizacao";
 import type { Imovel } from "../tipos";
+import type { PrecisaoGeocodificacao } from "../geo";
 import { ehLondrinaParana, mesmoMercadoGeografico } from "./geografia";
 import {
   normalizarRegiaoLondrina,
@@ -42,6 +43,9 @@ export interface EntradaAvaliacao {
   finalidade: FinalidadeAvaliacao;
   endereco: string;
   bairro?: string | null;
+  /** Bairro dos Correios (ViaCEP) para o logradouro. Resolve a região antes
+      de qualquer inferência espacial e conta como evidência local. */
+  bairroOficial?: string | null;
   cidade?: string | null;
   estado?: string | null;
   edificio?: string | null;
@@ -55,6 +59,9 @@ export interface EntradaAvaliacao {
   descricaoSemantica?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  /** Ausente em avaliações antigas e em coordenadas da carteira: nesses
+      casos a coordenada é tratada como precisa, preservando o comportamento. */
+  precisaoLocalizacao?: PrecisaoGeocodificacao | null;
   regiao?: string | null;
   origemExterna?: OrigemExternaAvaliacao | null;
 }
@@ -253,6 +260,34 @@ function mesmaLocalizacao(a: string | null | undefined, b: string | null | undef
   return !!chaveA && chaveA === chaveNormalizada(b);
 }
 
+/** O nome digitado casa com o rótulo dos portais; o oficial, com o dos
+    Correios. Qualquer um dos dois é evidência de mesmo bairro. */
+function mesmoBairroDaEntrada(entrada: EntradaAvaliacao, comparavel: ComparavelAvaliacao): boolean {
+  return mesmaLocalizacao(entrada.bairro, comparavel.bairro)
+    || mesmaLocalizacao(entrada.bairroOficial, comparavel.bairro);
+}
+
+/** Centroide de bairro ou de cidade não é o ponto do imóvel: serve para
+    região, nunca para distância fina. Precisão ausente é legado e vale
+    como coordenada precisa. */
+function coordenadasParaDistancia(
+  entrada: EntradaAvaliacao,
+): { latitude: number; longitude: number } | null {
+  if (entrada.latitude == null || entrada.longitude == null) return null;
+  const precisao = entrada.precisaoLocalizacao;
+  if (precisao === "bairro" || precisao === "cidade") return null;
+  return { latitude: entrada.latitude, longitude: entrada.longitude };
+}
+
+function distanciaDaEntradaEmKm(
+  entrada: EntradaAvaliacao,
+  comparavel: ComparavelAvaliacao,
+): number | null {
+  const origem = coordenadasParaDistancia(entrada);
+  if (!origem) return null;
+  return distanciaEmKm(origem.latitude, origem.longitude, comparavel.latitude, comparavel.longitude);
+}
+
 function chaveLogradouro(valor: string | null | undefined): string {
   const chave = chaveEndereco(valor)
     .replace(/\b(?:numero|n)\s*\d+[a-z]?\b/g, " ")
@@ -286,7 +321,7 @@ function scoreLocalizacao(
     else if (distanciaKm <= 5) scoreDistancia = 58;
     else if (distanciaKm <= CONFIGURACAO_AVALIACAO.maximoDistanciaKm) scoreDistancia = 35;
   }
-  if (mesmaLocalizacao(entrada.bairro, comparavel.bairro)) return Math.max(82, scoreDistancia);
+  if (mesmoBairroDaEntrada(entrada, comparavel)) return Math.max(82, scoreDistancia);
   if (mesmaLocalizacao(entrada.cidade, comparavel.cidade)) return Math.max(42, scoreDistancia);
   return scoreDistancia;
 }
@@ -322,13 +357,8 @@ function comparavelEhLocal(
   const enderecoEntrada = chaveEndereco(entrada.endereco);
   const mesmoEndereco = !!enderecoEntrada && enderecoEntrada === chaveEndereco(comparavel.endereco);
   const mesmaRua = mesmoLogradouro(entrada.endereco, comparavel.endereco);
-  const mesmoBairro = mesmaLocalizacao(entrada.bairro, comparavel.bairro);
-  const distanciaKm = distanciaEmKm(
-    entrada.latitude,
-    entrada.longitude,
-    comparavel.latitude,
-    comparavel.longitude,
-  );
+  const mesmoBairro = mesmoBairroDaEntrada(entrada, comparavel);
+  const distanciaKm = distanciaDaEntradaEmKm(entrada, comparavel);
   return mesmoEdificio
     || mesmoEndereco
     || mesmaRua
@@ -336,11 +366,17 @@ function comparavelEhLocal(
     || (distanciaKm != null && distanciaKm <= CONFIGURACAO_AVALIACAO.maximoDistanciaKm);
 }
 
+/** Ordem de confiança: rótulo explícito, bairro oficial dos Correios,
+    coordenada precisa nos polígonos, bairro digitado e, por último, o
+    centroide — que ainda está dentro da própria zona, só não é ponto fino. */
 function regiaoDaEntrada(entrada: EntradaAvaliacao): RegiaoLondrina | null {
   if (!ehLondrinaParana(entrada.cidade, entrada.estado)) return null;
+  const precisa = coordenadasParaDistancia(entrada);
   return normalizarRegiaoLondrina(entrada.regiao)
-    || regiaoPorCoordenadasLondrina(entrada.latitude, entrada.longitude)
-    || regiaoDeBairroLondrina(entrada.bairro);
+    || regiaoDeBairroLondrina(entrada.bairroOficial)
+    || (precisa && regiaoPorCoordenadasLondrina(precisa.latitude, precisa.longitude))
+    || regiaoDeBairroLondrina(entrada.bairro)
+    || regiaoPorCoordenadasLondrina(entrada.latitude, entrada.longitude);
 }
 
 function regiaoDoComparavel(comparavel: ComparavelAvaliacao): RegiaoLondrina | null {
@@ -423,12 +459,7 @@ export function calcularSimilaridade(
   comparavel: ComparavelAvaliacao,
   hoje: string,
 ): ComparavelAvaliado {
-  const distanciaKm = distanciaEmKm(
-    entrada.latitude,
-    entrada.longitude,
-    comparavel.latitude,
-    comparavel.longitude,
-  );
+  const distanciaKm = distanciaDaEntradaEmKm(entrada, comparavel);
   const componentes: ComponentesSimilaridade = {
     localizacao: scoreLocalizacao(entrada, comparavel, distanciaKm),
     tipo: scoreTipo(entrada.tipo, comparavel.tipo),
