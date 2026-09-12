@@ -121,8 +121,9 @@ export function rascunhoTemConteudo(
   rascunho: Pick<RascunhoCaptura, "campos" | "foto" | "destino" | "cameraNativaEm">,
 ): boolean {
   if (rascunho.foto || rascunho.destino || rascunho.cameraNativaEm) return true;
-  const { data: _data, hora: _hora, ...restante } = rascunho.campos;
-  return Object.values(restante).some((valor) => valor.trim() !== "");
+  return Object.entries(rascunho.campos).some(
+    ([campo, valor]) => campo !== "data" && campo !== "hora" && valor.trim() !== "",
+  );
 }
 
 /** A câmera do aparelho foi aberta e a foto nunca chegou: a página morreu

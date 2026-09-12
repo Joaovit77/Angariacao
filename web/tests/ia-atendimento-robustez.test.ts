@@ -70,10 +70,7 @@ const geracaoDeIncerteza = (mensagem: string) => ({
   obrigacoesCobertas: [],
   afirmacoes: [afirmacoesParciais[1]],
 });
-const auditoria = (
-  problemas: string[] = [],
-  _afirmacoesIgnoradas = afirmacoesParciais,
-) => ({ problemas });
+const auditoria = (problemas: string[] = []) => ({ problemas });
 
 function banco(semImovel = false, erro = false): SupabaseClient {
   const dados: Record<string, unknown> = {
@@ -128,7 +125,7 @@ describe("contrato estrito e informação parcial", () => {
     }
   });
   it.each(PROBLEMAS_VALIDACAO_ATENDIMENTO)("preserva o diagnóstico específico %s", (problema) => {
-    expect(motivoReprovacaoValidacaoAtendimento(auditoria([problema], []))).toBe(problema);
+    expect(motivoReprovacaoValidacaoAtendimento(auditoria([problema]))).toBe(problema);
     expect(podeRegenerarAtendimento(problema)).toBe(problema !== "intervencao-humana");
   });
   it("preserva o fim da mensagem longa e informa o trecho ausente", () => {
@@ -161,7 +158,7 @@ describe("contrato HTTP e limite de regeneração", () => {
     const resposta = geracaoDeIncerteza(
       "Entendi. Vou confirmar se existe essa taxa de cancelamento antes da locação e te retorno com a informação certa.",
     );
-    const resultado = await executarSaidas([limitada, resposta, auditoria([], resposta.afirmacoes)]);
+    const resultado = await executarSaidas([limitada, resposta, auditoria()]);
     expect(resultado.resposta.status).toBe(200);
     expect(resultado.executar.mock.calls.map(([pedido]) => pedido.tipo)).toEqual([
       "rascunhar-resposta-decisao", "rascunhar-resposta-geracao", "rascunhar-resposta-validacao",
@@ -174,7 +171,7 @@ describe("contrato HTTP e limite de regeneração", () => {
   });
   it("continua reprovando oferta indevida pela auditoria semântica", async () => {
     const resultado = await executarSaidas([{ ...decisao, acoesProibidas: ["explicar-condicoes"] }, parcial,
-      auditoria(["acao-incompativel"], []), parcial, auditoria(["acao-incompativel"], [])]);
+      auditoria(["acao-incompativel"]), parcial, auditoria(["acao-incompativel"])]);
     expect(resultado.resposta.status).toBe(422);
     expect(resultado.executar).toHaveBeenCalledTimes(5);
   });
@@ -184,7 +181,7 @@ describe("contrato HTTP e limite de regeneração", () => {
     ["contradicao-protocolo", "Se outra imobiliária alugar, eu encerro a divulgação automaticamente."],
   ])("reescreve %s sem entregar a afirmação recusada", async (problema, mensagem) => {
     const resultado = await executarSaidas([decisao, geracaoComSuporte(mensagem),
-      auditoria([problema], []), parcial, auditoria()]);
+      auditoria([problema]), parcial, auditoria()]);
     expect(resultado.resposta.status).toBe(200);
     expect(resultado.corpo.rascunho).toBe(parcial.mensagem);
     expect(resultado.corpo.rascunho).not.toBe(mensagem);
@@ -198,8 +195,8 @@ describe("contrato HTTP e limite de regeneração", () => {
     expect(resultado.executar).toHaveBeenCalledTimes(4);
   });
   it("termina em 422 depois de duas rejeições sem sexta chamada ou terceira geração", async () => {
-    const resultado = await executarSaidas([decisao, parcial, auditoria(["contradicao-protocolo"], []),
-      parcial, auditoria(["entidade-sem-fonte"], [])]);
+    const resultado = await executarSaidas([decisao, parcial, auditoria(["contradicao-protocolo"]),
+      parcial, auditoria(["entidade-sem-fonte"])]);
     expect(resultado.resposta.status).toBe(422);
     expect(resultado.corpo.falha).toBe("geracao-reprovada");
     expect(resultado.executar).toHaveBeenCalledTimes(5);
@@ -207,7 +204,7 @@ describe("contrato HTTP e limite de regeneração", () => {
   });
   it("uma falha terminal não regenera mesmo acompanhada de falha corrigível", async () => {
     const resultado = await executarSaidas([
-      decisao, parcial, auditoria(["entidade-sem-fonte", "intervencao-humana"], []),
+      decisao, parcial, auditoria(["entidade-sem-fonte", "intervencao-humana"]),
     ]);
     expect(resultado.resposta.status).toBe(422);
     expect(resultado.executar).toHaveBeenCalledTimes(3);
