@@ -650,11 +650,16 @@
   place-items: center;
 }
 
+/* A foto inteira, sempre: fachada fotografada de pé no celular é mais alta
+   que larga, e "cover" cortava o que o corretor quis registrar. O limite
+   de altura segue a tela, e o contêiner centraliza o que sobrar. */
 .fotoFachada img {
-  width: 100%;
+  display: block;
+  width: auto;
+  max-width: 100%;
   height: auto;
-  max-height: 340px;
-  object-fit: cover;
+  max-height: min(70vh, 560px);
+  object-fit: contain;
 }
 
 .imagemIndisponivel {

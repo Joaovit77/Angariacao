@@ -210,6 +210,14 @@ describe("C5 — reserva, upload e finalização da fachada", () => {
       .toBe("environment");
   });
 
+  it("exibe a foto inteira, sem corte, limitada à altura da tela", () => {
+    const css = readFileSync(resolve("components/prospeccao/Prospeccao.module.css"), "utf8");
+    const regra = css.match(/\.fotoFachada img \{[\s\S]*?\}/)?.[0] ?? "";
+    expect(regra).toContain("object-fit: contain");
+    expect(regra).not.toContain("cover");
+    expect(regra).toMatch(/max-height: min\(\d+vh, \d+px\)/);
+  });
+
   it("assina a foto ORIGINAL ativa por 300 segundos (nunca a miniatura) e tolera objeto ausente", async () => {
     const fotoAtiva = {
       id: "foto-1",
