@@ -191,6 +191,11 @@ describe("câmera em página — dentro da captura da fachada", () => {
     // O botão principal é a câmera em página; o input nativo vira alternativa.
     const fotografar = screen.getByRole("button", { name: "Fotografar fachada" });
     expect(screen.getByLabelText("Usar a câmera do aparelho").getAttribute("capture")).toBe("environment");
+    // Quem fotografou antes e registra depois escolhe da galeria: mesmo input, sem `capture`.
+    const galeria = screen.getByLabelText("Escolher da galeria") as HTMLInputElement;
+    expect(galeria.type).toBe("file");
+    expect(galeria.hasAttribute("capture")).toBe(false);
+    expect(galeria.getAttribute("accept")).toBe("image/*");
     fireEvent.click(fotografar);
     expect(aoAntesDeCapturar).toHaveBeenCalledTimes(1);
     expect(screen.getByLabelText("Visor da câmera")).toBeTruthy();

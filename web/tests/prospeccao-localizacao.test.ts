@@ -68,6 +68,7 @@ import {
   localizacaoDoGeocode,
   localizacaoDoGps,
   localizacaoDoMapa,
+  resolverFonteLocalizacao,
   resumirAvistamentos,
   type AvistamentoProspeccao,
 } from "@/lib/calculo/prospeccao";
@@ -161,6 +162,34 @@ describe("C6 — vocabulário puro de localização", () => {
     expect(descreverLocalizacao(localizacaoDoGeocode({ lat: 1, lon: 1, precisao: "bairro" })))
       .toBe("Aproximada pelo endereço · pode variar 1,5 km");
     expect(descreverLocalizacao(localizacaoDoMapa({ latitude: 1, longitude: 1 }))).toContain("Marcada no mapa");
+  });
+});
+
+describe("C6 — fonte explícita: GPS longe do endereço não vence", () => {
+  const gps = localizacaoDoGps({ latitude: -23.3520, longitude: -51.1398, acuraciaMetros: 14 });
+  const endereco = localizacaoDoGeocode({ lat: -23.3100, lon: -51.1600, precisao: "endereco" });
+  const perto = localizacaoDoGeocode({ lat: -23.3521, lon: -51.1399, precisao: "endereco" });
+
+  it("em auto, GPS bom e endereço perto ⇒ GPS; GPS a quilômetros ⇒ endereço, com aviso", () => {
+    expect(resolverFonteLocalizacao({ gps, mapa: null, endereco: perto, distanciaGpsEnderecoMetros: 15, escolha: "auto" }))
+      .toMatchObject({ fonte: "gps", gpsLonge: false, localizacao: { precisaoLocalizacao: "gps" } });
+    expect(resolverFonteLocalizacao({ gps, mapa: null, endereco, distanciaGpsEnderecoMetros: 5100, escolha: "auto" }))
+      .toMatchObject({ fonte: "endereco", gpsLonge: true, localizacao: { precisaoLocalizacao: "geocodificado" } });
+  });
+
+  it("a escolha humana vence o automático nos dois sentidos, e o pino no mapa vence tudo", () => {
+    expect(resolverFonteLocalizacao({ gps, mapa: null, endereco, distanciaGpsEnderecoMetros: 5100, escolha: "gps" }).fonte).toBe("gps");
+    expect(resolverFonteLocalizacao({ gps, mapa: null, endereco: perto, distanciaGpsEnderecoMetros: 15, escolha: "endereco" }).fonte).toBe("endereco");
+    const mapa = localizacaoDoMapa({ latitude: 1, longitude: 1 });
+    expect(resolverFonteLocalizacao({ gps, mapa, endereco, distanciaGpsEnderecoMetros: 5100, escolha: "gps" }).fonte).toBe("mapa");
+  });
+
+  it("a tolerância cresce com o raio do geocode; sem nada é 'nenhuma'", () => {
+    const bairro = localizacaoDoGeocode({ lat: 0, lon: 0, precisao: "bairro" });
+    expect(resolverFonteLocalizacao({ gps, mapa: null, endereco: bairro, distanciaGpsEnderecoMetros: 4000, escolha: "auto" }).gpsLonge).toBe(false);
+    expect(resolverFonteLocalizacao({ gps, mapa: null, endereco: bairro, distanciaGpsEnderecoMetros: 4600, escolha: "auto" }).gpsLonge).toBe(true);
+    expect(resolverFonteLocalizacao({ gps: null, mapa: null, endereco: null, distanciaGpsEnderecoMetros: null, escolha: "auto" }))
+      .toMatchObject({ fonte: "nenhuma", localizacao: { precisaoLocalizacao: "desconhecida" } });
   });
 });
 
@@ -331,6 +360,51 @@ describe("C6 — endereço rápido pelo precedente EnderecoAutocompleteViaCep", 
     fireEvent.click(await screen.findByRole("option", { name: /Rua Sergipe/ }, { timeout: 3000 }));
     expect((screen.getByLabelText("Bairro") as HTMLInputElement).value).toBe("Inglaterra");
     expect((screen.getByLabelText("CEP") as HTMLInputElement).value).toBe("86020-000");
+  });
+
+  it("escolher a sugestão leva o mapa ao endereço na hora; com GPS longe, o padrão vira o endereço e o corretor pode inverter", async () => {
+    cenario.estado.itens = [{ id: "x", cidade: "Londrina", estado: "PR" }];
+    cenario.viaCep.mockResolvedValue([{ cep: "86039-090", logradouro: "Avenida Santos Dumont", bairro: "Boa Vista", localidade: "Londrina", uf: "PR" }]);
+    const geocodificar = vi.fn(async () => ({ lat: -23.30, lon: -51.16, precisao: "endereco" as const, usedFallback: false }));
+    // GPS a ~6 km do endereço: quem registra de casa.
+    abrirModal({ capturarPosicao: async () => ({ ok: true, latitude: -23.352, longitude: -51.14, acuraciaMetros: 14 }), geocodificar });
+    await screen.findByText(/precisão aproximada: 14 m/);
+
+    preencher("Logradouro", "Avenida Santos Du");
+    fireEvent.click(await screen.findByRole("option", { name: /Avenida Santos Dumont/ }, { timeout: 3000 }));
+    await waitFor(() => expect(geocodificar).toHaveBeenCalledWith("Avenida Santos Dumont", "Boa Vista", "Londrina"));
+
+    // O mapa foi ao endereço, o aviso apareceu e o padrão é o endereço.
+    await waitFor(() => expect((screen.getByTestId("mapa")).getAttribute("data-precisao")).toBe("geocodificado"));
+    expect(screen.getByRole("alert").textContent).toMatch(/Você está a \d+,\d km do endereço informado/);
+    expect((screen.getByLabelText(/No endereço informado/) as HTMLInputElement).checked).toBe(true);
+
+    // Informar o número geocodifica de novo com o número.
+    preencher("Número", "174");
+    fireEvent.blur(screen.getByLabelText("Número"));
+    await waitFor(() => expect(geocodificar).toHaveBeenLastCalledWith("Avenida Santos Dumont, 174", "Boa Vista", "Londrina"));
+
+    // O corretor insiste no GPS: a escolha dele vence.
+    fireEvent.click(screen.getByLabelText(/Onde estou agora/));
+    await waitFor(() => expect((screen.getByTestId("mapa")).getAttribute("data-precisao")).toBe("gps"));
+    const [, , avistamento] = await salvar();
+    expect(avistamento).toMatchObject({ precisaoLocalizacao: "gps", acuraciaMetros: 14 });
+  });
+
+  it("GPS perto do endereço continua vencendo pelo raio, sem aviso", async () => {
+    cenario.estado.itens = [{ id: "x", cidade: "Londrina", estado: "PR" }];
+    const geocodificar = vi.fn(async () => ({ lat: -23.3521, lon: -51.1399, precisao: "endereco" as const, usedFallback: false }));
+    abrirModal({ capturarPosicao: async () => ({ ok: true, latitude: -23.352, longitude: -51.1398, acuraciaMetros: 14 }), geocodificar });
+    await screen.findByText(/precisão aproximada: 14 m/);
+    preencher("Logradouro", "Rua Roma");
+    preencher("Número", "575");
+    fireEvent.blur(screen.getByLabelText("Número"));
+    await waitFor(() => expect(geocodificar).toHaveBeenCalled());
+    await screen.findByLabelText(/No endereço informado/);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect((screen.getByLabelText(/Onde estou agora/) as HTMLInputElement).checked).toBe(true);
+    const [, , avistamento] = await salvar();
+    expect(avistamento).toMatchObject({ precisaoLocalizacao: "gps" });
   });
 
   it("falha do ViaCEP não impede preencher tudo à mão", async () => {

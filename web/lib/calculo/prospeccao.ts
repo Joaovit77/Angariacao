@@ -281,3 +281,57 @@ export function descreverLocalizacao(localizacao: LocalizacaoAvistamento): strin
       return "Localização de origem desconhecida";
   }
 }
+
+/* ----------------------------------------------------------------
+   FONTE DA LOCALIZAÇÃO — quem registra DEPOIS, de casa, tem GPS bom no
+   lugar errado. O raio não denuncia isso; a distância até o endereço
+   denuncia. Então, com GPS e endereço em mãos, a escolha é explícita, e
+   o padrão muda para o endereço quando o GPS está longe dele.
+   ---------------------------------------------------------------- */
+
+/** Abaixo disto o GPS pode estar simplesmente do outro lado da rua ou a
+    geocodificação ter errado a quadra; acima, a pessoa não está lá. */
+export const DISTANCIA_GPS_LONGE_METROS = 1000;
+
+export type EscolhaFonteLocalizacao = "auto" | "gps" | "endereco";
+export type FonteLocalizacaoResolvida = "mapa" | "gps" | "endereco" | "nenhuma";
+
+export interface LocalizacaoResolvida {
+  localizacao: LocalizacaoAvistamento;
+  fonte: FonteLocalizacaoResolvida;
+  /** GPS e endereço existem e estão longe demais um do outro. */
+  gpsLonge: boolean;
+}
+
+export function gpsLongeDoEndereco(
+  endereco: LocalizacaoCapturada,
+  distanciaMetros: number | null,
+): boolean {
+  if (distanciaMetros === null) return false;
+  const tolerancia = Math.max(DISTANCIA_GPS_LONGE_METROS, 3 * (endereco.acuraciaMetros ?? 0));
+  return distanciaMetros > tolerancia;
+}
+
+/**
+ * Pino no mapa é decisão humana e vence tudo. Depois, a escolha explícita.
+ * Em "auto": GPS longe do endereço ⇒ endereço; senão a regra do raio.
+ */
+export function resolverFonteLocalizacao(entrada: {
+  gps: LocalizacaoCapturada | null;
+  mapa: LocalizacaoCapturada | null;
+  endereco: LocalizacaoCapturada | null;
+  distanciaGpsEnderecoMetros: number | null;
+  escolha: EscolhaFonteLocalizacao;
+}): LocalizacaoResolvida {
+  const { gps, mapa, endereco, escolha } = entrada;
+  const gpsLonge = Boolean(gps && endereco) && gpsLongeDoEndereco(endereco!, entrada.distanciaGpsEnderecoMetros);
+  const com = (localizacao: LocalizacaoCapturada, fonte: FonteLocalizacaoResolvida): LocalizacaoResolvida =>
+    ({ localizacao: { ...localizacao }, fonte, gpsLonge });
+  if (mapa) return com(mapa, "mapa");
+  if (escolha === "gps" && gps) return com(gps, "gps");
+  if (escolha === "endereco" && endereco) return com(endereco, "endereco");
+  if (gps && endereco && gpsLonge) return com(endereco, "endereco");
+  const melhor = escolherLocalizacao([gps, endereco]);
+  if (melhor.latitude === null) return { localizacao: melhor, fonte: "nenhuma", gpsLonge };
+  return { localizacao: melhor, fonte: melhor.precisaoLocalizacao === "gps" ? "gps" : "endereco", gpsLonge };
+}

@@ -13,14 +13,16 @@ import CapturaFachada, {
 } from "@/components/prospeccao/CapturaFachada";
 import styles from "@/components/prospeccao/Prospeccao.module.css";
 import type { ResultadoProcessamentoFoto } from "@/lib/calculo/fotoFachada";
+import { distanciaHaversineMetros } from "@/lib/calculo/dedupeProspeccao";
 import {
   descreverLocalizacao,
-  escolherLocalizacao,
   gpsImpreciso,
   localizacaoDoGeocode,
   localizacaoDoGps,
   localizacaoDoMapa,
   LOCALIZACAO_DESCONHECIDA,
+  resolverFonteLocalizacao,
+  type EscolhaFonteLocalizacao,
   type LocalizacaoAvistamento,
   type LocalizacaoCapturada,
 } from "@/lib/calculo/prospeccao";
@@ -136,6 +138,14 @@ export default function ModalAvistamento({
      último recurso, e nunca segura o salvamento além do prazo. */
   const [localizacaoGps, setLocalizacaoGps] = useState<LocalizacaoCapturada | null>(null);
   const [localizacaoMapa, setLocalizacaoMapa] = useState<LocalizacaoCapturada | null>(null);
+  /* O endereço é geocodificado assim que fica completo (sugestão escolhida
+     ou número informado): o mapa vai até ele sem esperar o salvamento. Quem
+     registra depois, longe do imóvel, precisa disso — e precisa poder
+     dizer que o GPS não é o lugar. */
+  const [localizacaoEndereco, setLocalizacaoEndereco] = useState<LocalizacaoCapturada | null>(null);
+  const [geocodificando, setGeocodificando] = useState(false);
+  const [fonteEscolhida, setFonteEscolhida] = useState<EscolhaFonteLocalizacao>("auto");
+  const geocodeRef = useRef({ chave: "", pedido: 0 });
   // Nasce "buscando": o pedido ao GPS acontece assim que o rascunho for lido.
   const [statusGps, setStatusGps] = useState<StatusGps>("buscando");
   const gpsPedido = useRef(false);
@@ -307,7 +317,42 @@ export default function ModalAvistamento({
     void capturarPosicao().then(registrarPosicao);
   }, [avistamentoSalvo, capturarPosicao, rascunhoPronto, registrarPosicao]);
 
-  const localizacaoAtual: LocalizacaoAvistamento = escolherLocalizacao([localizacaoGps, localizacaoMapa]);
+  const distanciaGpsEndereco = localizacaoGps && localizacaoEndereco
+    ? distanciaHaversineMetros(localizacaoGps, localizacaoEndereco)
+    : null;
+  const resolvida = resolverFonteLocalizacao({
+    gps: localizacaoGps,
+    mapa: localizacaoMapa,
+    endereco: localizacaoEndereco,
+    distanciaGpsEnderecoMetros: distanciaGpsEndereco,
+    escolha: fonteEscolhida,
+  });
+  const localizacaoAtual: LocalizacaoAvistamento = resolvida.localizacao;
+
+  /** Geocodifica o endereço atual (ou o passado) uma vez por combinação. */
+  const localizarEndereco = useCallback((endereco: {
+    logradouro: string; numero: string; bairro: string; cidade: string;
+  }) => {
+    const rua = endereco.logradouro.trim();
+    const cidadeLimpa = endereco.cidade.trim();
+    if (!rua || !cidadeLimpa) return;
+    const chave = [rua, endereco.numero.trim(), endereco.bairro.trim(), cidadeLimpa].join("|").toLocaleLowerCase("pt-BR");
+    if (chave === geocodeRef.current.chave) return;
+    const pedido = ++geocodeRef.current.pedido;
+    geocodeRef.current.chave = chave;
+    setGeocodificando(true);
+    const enderecoCompleto = [rua, endereco.numero.trim()].filter(Boolean).join(", ");
+    void comPrazo(geocodificar(enderecoCompleto, endereco.bairro.trim(), cidadeLimpa), PRAZO_GEOCODE_MS, null)
+      .then((geo) => {
+        if (pedido !== geocodeRef.current.pedido) return;
+        setLocalizacaoEndereco(geo ? localizacaoDoGeocode(geo) : null);
+        setGeocodificando(false);
+      });
+  }, [geocodificar]);
+
+  function localizarEnderecoDigitado() {
+    localizarEndereco({ logradouro, numero, bairro, cidade });
+  }
 
   function aplicarEnderecoViaCep(selecionado: EnderecoViaCepSelecionado) {
     const { rua, numero: numeroSugerido } = separarNumero(selecionado.endereco);
@@ -328,6 +373,13 @@ export default function ModalAvistamento({
     aplicar("estado", estado, selecionado.estado, setEstado);
     aplicar("cep", cep, selecionado.cep ? maskCEP(selecionado.cep) : undefined, setCep);
     tocado.current = true;
+    // O mapa vai ao endereço agora, com o que a sugestão trouxe.
+    localizarEndereco({
+      logradouro: rua || logradouro,
+      numero: numero.trim() || numeroSugerido,
+      bairro: selecionado.bairro || bairro,
+      cidade: selecionado.cidade || cidade,
+    });
   }
 
   function escolherPontoNoMapa(ponto: { latitude: number; longitude: number }) {
@@ -338,8 +390,7 @@ export default function ModalAvistamento({
   /** GPS e mapa já estão em mãos; o endereço só entra se nenhum dos dois
       existir, e nunca além do prazo. Sem nada, "desconhecida" — jamais zero. */
   async function resolverLocalizacao(): Promise<LocalizacaoAvistamento> {
-    const medida = escolherLocalizacao([localizacaoGps, localizacaoMapa]);
-    if (medida.latitude !== null) return medida;
+    if (localizacaoAtual.latitude !== null) return localizacaoAtual;
     const enderecoBase = identificadoConhecido
       ? { logradouro: identificadoConhecido.logradouro ?? "", numero: identificadoConhecido.numero ?? "",
           bairro: identificadoConhecido.bairro ?? "", cidade: identificadoConhecido.cidade ?? "" }
@@ -351,7 +402,7 @@ export default function ModalAvistamento({
       PRAZO_GEOCODE_MS,
       null,
     );
-    return geo ? escolherLocalizacao([localizacaoDoGeocode(geo)]) : LOCALIZACAO_DESCONHECIDA;
+    return geo ? localizacaoDoGeocode(geo) : LOCALIZACAO_DESCONHECIDA;
   }
 
   function aoEstadoArquivo(estadoArquivo: EstadoArquivoFachada) {
@@ -590,6 +641,7 @@ export default function ModalAvistamento({
                     mais preciso depois substitui. Toque no mapa se souber o ponto exato.
                   </small>
                 ) : null}
+                {geocodificando ? <small>Localizando o endereço no mapa…</small> : null}
               </div>
               <button
                 type="button"
@@ -600,6 +652,37 @@ export default function ModalAvistamento({
                 {statusGps === "buscando" ? "Localizando…" : statusGps === "ok" ? "Ler o GPS de novo" : "Usar minha localização"}
               </button>
             </div>
+            {localizacaoGps && localizacaoEndereco && !localizacaoMapa ? (
+              <fieldset className={styles.fonteLocalizacao}>
+                <legend>Onde fica este imóvel?</legend>
+                {resolvida.gpsLonge ? (
+                  <small className={styles.localizacaoAviso} role="alert">
+                    Você está a {distanciaGpsEndereco !== null && distanciaGpsEndereco >= 1000
+                      ? `${(distanciaGpsEndereco / 1000).toFixed(1).replace(".", ",")} km`
+                      : `${Math.round(distanciaGpsEndereco ?? 0)} m`} do endereço informado.
+                    Registrando depois? Use o endereço.
+                  </small>
+                ) : null}
+                <label>
+                  <input
+                    type="radio"
+                    name="fonte-localizacao"
+                    checked={resolvida.fonte === "gps"}
+                    onChange={() => setFonteEscolhida("gps")}
+                  />
+                  Onde estou agora ({descreverLocalizacao(localizacaoGps)})
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="fonte-localizacao"
+                    checked={resolvida.fonte === "endereco"}
+                    onChange={() => setFonteEscolhida("endereco")}
+                  />
+                  No endereço informado ({descreverLocalizacao(localizacaoEndereco)})
+                </label>
+              </fieldset>
+            ) : null}
             {localizacaoAtual.latitude !== null ? (
               <MapaProspeccao localizacao={localizacaoAtual} aoEscolherPonto={escolherPontoNoMapa} altura={200} />
             ) : null}
@@ -627,6 +710,7 @@ export default function ModalAvistamento({
                     type="text"
                     value={numero}
                     onChange={(evento) => setNumero(evento.target.value)}
+                    onBlur={localizarEnderecoDigitado}
                   />
                 </div>
               </div>
@@ -638,6 +722,7 @@ export default function ModalAvistamento({
                     type="text"
                     value={cidade}
                     onChange={(evento) => setCidade(evento.target.value)}
+                    onBlur={localizarEnderecoDigitado}
                   />
                 </div>
                 <div className="field-group">

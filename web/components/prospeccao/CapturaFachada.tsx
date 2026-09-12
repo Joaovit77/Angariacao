@@ -681,6 +681,22 @@ export default function CapturaFachada({
                 onChange={selecionarArquivo}
               />
             </label>
+            {/* Quem saiu fotografando e registra depois escolhe da galeria. É o
+                mesmo input sem `capture`; a foto passa pelo mesmo processamento,
+                e o EXIF (inclusive GPS) continua sendo descartado no re-encode. */}
+            {!reservaPreservada ? (
+              <label className={styles.capturaAlternativa}>
+                Escolher da galeria
+                <input
+                  className={styles.inputFoto}
+                  type="file"
+                  accept="image/*"
+                  disabled={enviando}
+                  onClick={() => aoAntesDeCapturar?.("aparelho")}
+                  onChange={selecionarArquivo}
+                />
+              </label>
+            ) : null}
           </>
         ) : null}
         {(etapa === "envio-nao-concluido" || etapa === "erro-recuperavel")
