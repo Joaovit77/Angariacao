@@ -13,8 +13,10 @@ import type {
 import { useProspeccao } from "@/lib/useProspeccao";
 import { useUiModal } from "@/lib/uiModal";
 
+import DialogoExcluirIdentificado, { AVISO_CANCELAR_EXCLUSAO } from "./DialogoExcluirIdentificado";
 import LinhaDoTempoAvistamentos from "./LinhaDoTempoAvistamentos";
 import styles from "./Prospeccao.module.css";
+import SeloExclusaoPendente from "./SeloExclusaoPendente";
 
 function enderecoCompleto(detalhe: DetalheImovelIdentificado): string {
   const item = detalhe.identificado;
@@ -163,8 +165,13 @@ export default function PainelIdentificado({
 }) {
   const abrirModal = useUiModal((estado) => estado.abrirModal);
   const descartar = useProspeccao((estado) => estado.descartar);
+  const cancelarExclusao = useProspeccao((estado) => estado.cancelarExclusao);
+  const removerFoto = useProspeccao((estado) => estado.removerFoto);
   const salvando = useProspeccao((estado) => estado.salvando);
+  const [dialogoExclusao, setDialogoExclusao] = useState<"fechado" | "novo" | "retomada">("fechado");
   const item = detalhe.identificado;
+  // §13.4: com a exclusão iniciada, o registro é retomável e nada mais.
+  const exclusaoPendente = Boolean(item.exclusaoSolicitadaEm);
   const corrente = detalhe.avistamentos.find(
     (avistamento) => avistamento.id === item.avistamentoCorrenteId,
   ) ?? null;
@@ -177,6 +184,53 @@ export default function PainelIdentificado({
   async function confirmarDescarte() {
     if (!window.confirm("Descartar esta identificação e preservar todo o histórico?")) return;
     await descartar(item.id, "Descartado manualmente no Garimpo em Campo");
+  }
+
+  async function confirmarCancelamentoDaExclusao() {
+    if (!window.confirm(AVISO_CANCELAR_EXCLUSAO)) return;
+    await cancelarExclusao(item.id);
+  }
+
+  async function confirmarRemocaoDeFoto(fotoId: string) {
+    if (!window.confirm("Remover esta foto do avistamento? O arquivo será apagado do Storage.")) return;
+    await removerFoto(item.id, fotoId);
+  }
+
+  if (exclusaoPendente) {
+    return (
+      <article className={styles.painel} aria-label="Detalhe do imóvel identificado">
+        <div className={styles.painelCabecalho}>
+          <div>
+            <span className={styles.sobretitulo}>IDENTIDADE DE CAMPO</span>
+            <h3>{enderecoCompleto(detalhe)}</h3>
+            <p>Registro bloqueado: só é possível retomar ou cancelar a exclusão.</p>
+          </div>
+        </div>
+        <SeloExclusaoPendente
+          exclusaoSolicitadaEm={item.exclusaoSolicitadaEm ?? ""}
+          ocupado={salvando || dialogoExclusao !== "fechado"}
+          aoRetomar={() => setDialogoExclusao("retomada")}
+          aoCancelar={() => void confirmarCancelamentoDaExclusao()}
+        />
+        {dialogoExclusao !== "fechado" ? (
+          <DialogoExcluirIdentificado
+            imovelIdentificadoId={item.id}
+            retomada
+            aoFechar={() => setDialogoExclusao("fechado")}
+          />
+        ) : null}
+        <section className={styles.secao}>
+          <div className={styles.secaoCabecalho}>
+            <h4>Linha do tempo</h4>
+            <span>Somente leitura durante a exclusão</span>
+          </div>
+          <LinhaDoTempoAvistamentos
+            avistamentos={detalhe.avistamentos}
+            avistamentoCorrenteId={item.avistamentoCorrenteId}
+          />
+        </section>
+      </article>
+    );
   }
 
   return (
@@ -209,14 +263,28 @@ export default function PainelIdentificado({
         {podeDescartar ? (
           <button
             type="button"
-            className="btn btn-sm btn-ghost btn-danger"
+            className="btn btn-sm btn-ghost"
             disabled={salvando}
             onClick={() => void confirmarDescarte()}
           >
             Descartar identificação
           </button>
         ) : null}
+        <button
+          type="button"
+          className="btn btn-sm btn-ghost btn-danger"
+          disabled={salvando || dialogoExclusao !== "fechado"}
+          onClick={() => setDialogoExclusao("novo")}
+        >
+          Excluir permanentemente
+        </button>
       </div>
+      {dialogoExclusao !== "fechado" ? (
+        <DialogoExcluirIdentificado
+          imovelIdentificadoId={item.id}
+          aoFechar={() => setDialogoExclusao("fechado")}
+        />
+      ) : null}
 
       <section className={styles.secao}>
         <div className={styles.secaoCabecalho}>
@@ -266,6 +334,7 @@ export default function PainelIdentificado({
         <LinhaDoTempoAvistamentos
           avistamentos={detalhe.avistamentos}
           avistamentoCorrenteId={item.avistamentoCorrenteId}
+          aoRemoverFoto={salvando ? undefined : (fotoId) => void confirmarRemocaoDeFoto(fotoId)}
         />
       </section>
     </article>

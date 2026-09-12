@@ -51,6 +51,9 @@ export default function CardIdentificado({
     >
       <span className={styles.cardTopo}>
         <span className={styles.situacao}>{ROTULOS_SITUACAO[identificado.situacao]}</span>
+        {identificado.exclusaoSolicitadaEm ? (
+          <span className={styles.exclusaoPendente}>Exclusão pendente</span>
+        ) : null}
         <span className={styles.tipo}>{identificado.tipo ?? "Tipo não definido"}</span>
       </span>
       <strong className={styles.cardEndereco}>{enderecoDoIdentificado(identificado)}</strong>

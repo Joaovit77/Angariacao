@@ -67,6 +67,8 @@ export default function ProspeccaoView({
   const total = useProspeccao((estado) => estado.total);
   const temMais = useProspeccao((estado) => estado.temMais);
   const carregando = useProspeccao((estado) => estado.carregando);
+  const incluirOcultos = useProspeccao((estado) => estado.incluirOcultos);
+  const definirIncluirOcultos = useProspeccao((estado) => estado.definirIncluirOcultos);
   const erro = useProspeccao((estado) => estado.erro);
   const carregarPagina = useProspeccao((estado) => estado.carregarPagina);
   const carregarDetalhe = useProspeccao((estado) => estado.carregarDetalhe);
@@ -184,8 +186,25 @@ export default function ProspeccaoView({
       ) : !erro && !itens.length ? (
         <div className={styles.estado}>
           <div>
-            <strong>Nenhum imóvel identificado ainda.</strong>
-            <p>Registre o primeiro avistamento para começar sua memória de campo.</p>
+            <strong>
+              {incluirOcultos ? "Nenhum imóvel identificado." : "Nenhum imóvel identificado ativo."}
+            </strong>
+            <p>
+              {incluirOcultos
+                ? "Registre o primeiro avistamento para começar sua memória de campo."
+                : "Descartados, fundidos e exclusões pendentes ficam atrás do filtro de ocultos."}
+            </p>
+            {!incluirOcultos ? (
+              <label className={styles.filtroOcultos}>
+                <input
+                  type="checkbox"
+                  checked={incluirOcultos}
+                  disabled={carregando}
+                  onChange={(evento) => void definirIncluirOcultos(evento.target.checked)}
+                />
+                Mostrar ocultos
+              </label>
+            ) : null}
             <button
               type="button"
               className="btn btn-primary"
@@ -202,6 +221,17 @@ export default function ProspeccaoView({
               <h3>Identificados</h3>
               <span>{carregando ? "Atualizando…" : `${total} no total`}</span>
             </div>
+            {/* Descartar preserva tudo e só esconde; fundido e exclusão pendente
+                também saem da lista normal. O filtro traz os três de volta. */}
+            <label className={styles.filtroOcultos}>
+              <input
+                type="checkbox"
+                checked={incluirOcultos}
+                disabled={carregando}
+                onChange={(evento) => void definirIncluirOcultos(evento.target.checked)}
+              />
+              Mostrar descartados, fundidos e exclusões pendentes
+            </label>
             <div className={styles.cards}>
               {itens.map((identificado) => (
                 <CardIdentificado

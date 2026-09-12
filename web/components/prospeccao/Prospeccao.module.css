@@ -720,3 +720,72 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Exclusão coordenada (§13.3/§13.4). Vermelho por token: é o único fluxo do
+   módulo que apaga de verdade, e a tela precisa dizer isso sem sutileza. */
+.seloExclusao,
+.dialogoExclusao {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px 13px;
+  border: 1px solid color-mix(in srgb, var(--bad) 45%, var(--border-soft));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--bad) 8%, var(--bg-elev-3));
+}
+.seloExclusao strong,
+.dialogoExclusao strong {
+  color: var(--text);
+  font-size: 12.5px;
+}
+.seloExclusao span,
+.dialogoExclusao p,
+.dialogoLista {
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 0;
+}
+.seloExclusao > div {
+  display: grid;
+  gap: 3px;
+}
+.seloExclusaoAcoes,
+.dialogoAcoes,
+.fotoAcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.fotoAcoes {
+  margin-top: 6px;
+}
+.dialogoLista {
+  padding-left: 18px;
+}
+.dialogoPendente {
+  color: var(--bad) !important;
+  font-weight: 600;
+}
+.exclusaoPendente {
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--bad) 45%, var(--border-soft));
+  background: var(--bad-soft);
+  color: var(--bad);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+.filtroOcultos {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 2px 0 10px;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+}
+.filtroOcultos input {
+  margin: 0;
+}

@@ -16,9 +16,13 @@ const ROTULOS_CLASSIFICACAO: Record<AvistamentoLongitudinal["classificacaoEstado
 export default function LinhaDoTempoAvistamentos({
   avistamentos,
   avistamentoCorrenteId,
+  aoRemoverFoto,
 }: {
   avistamentos: AvistamentoLongitudinal[];
   avistamentoCorrenteId: string | null;
+  /** Ausente = somente leitura (ex.: exclusão pendente). Trocar a foto é
+      remover a atual pela rota e reservar outra (§5.1). */
+  aoRemoverFoto?: (fotoId: string) => void;
 }) {
   const ordenados = ordenarAvistamentosPorRecencia(avistamentos);
   if (!ordenados.length) {
@@ -70,12 +74,24 @@ export default function LinhaDoTempoAvistamentos({
               ) : null}
             </div>
             {avistamento.fotos.map((foto) => (
-              <CapturaFachada
-                key={foto.id}
-                foto={foto}
-                imovelIdentificadoId={avistamento.imovelIdentificadoId}
-                avistamentoId={avistamento.id}
-              />
+              <div key={foto.id} data-foto-id={foto.id}>
+                <CapturaFachada
+                  foto={foto}
+                  imovelIdentificadoId={avistamento.imovelIdentificadoId}
+                  avistamentoId={avistamento.id}
+                />
+                {aoRemoverFoto ? (
+                  <div className={styles.fotoAcoes}>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-ghost btn-danger"
+                      onClick={() => aoRemoverFoto(foto.id)}
+                    >
+                      Remover foto
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             ))}
           </li>
         );

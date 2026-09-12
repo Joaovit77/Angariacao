@@ -211,6 +211,27 @@ export interface ResultadoRpcProspeccao {
   repetida: boolean;
 }
 
+/** O contrato exato da rota `/api/prospeccao/excluir` (§19). `concluido` só é
+    verdadeiro sem objeto pendente E com o prefixo do Storage vazio na releitura. */
+export interface ResultadoExclusaoProspeccao {
+  removidos: number;
+  pendentes: number;
+  prefixoVazio: boolean;
+  concluido: boolean;
+}
+
+/** Os três corpos aceitos pela rota; não existe quarto. */
+export type PedidoExclusaoProspeccao =
+  | { fotoId: string }
+  | { imovelIdentificadoId: string }
+  | { tudo: true };
+
+/** O que o diálogo mostra ANTES de iniciar: arquivos e lápides envolvidos. */
+export interface PreviaExclusaoIdentificado {
+  fotosTotal: number;
+  lapidesTotal: number;
+}
+
 export class ErroProspeccao extends Error {
   constructor(
     public readonly codigo: string,
@@ -529,17 +550,32 @@ async function chamarRpc(
   return resposta;
 }
 
+/** Situações que aparecem na lista normal. Descartado e fundido ficam atrás do
+    filtro "ocultos", junto com exclusão pendente (§13.3 / §13.4). */
+export const SITUACOES_VISIVEIS_PROSPECCAO: readonly SituacaoImovelIdentificado[] = [
+  "identificado",
+  "investigando",
+  "promovendo",
+  "promovido",
+];
+
 export async function listarIdentificados(
-  opcoes: { pagina?: number; porPagina?: number } = {},
+  opcoes: { pagina?: number; porPagina?: number; incluirOcultos?: boolean } = {},
   client: SupabaseClient = getSupabase(),
 ): Promise<PaginaImoveisIdentificados> {
   const pagina = Math.max(1, Math.trunc(opcoes.pagina ?? 1));
   const porPagina = Math.min(100, Math.max(1, Math.trunc(opcoes.porPagina ?? 24)));
   const inicio = (pagina - 1) * porPagina;
   const fim = inicio + porPagina - 1;
-  const { data, error, count } = await client
+  let consulta = client
     .from("imoveis_identificados")
-    .select(COLUNAS_IDENTIFICADO, { count: "exact" })
+    .select(COLUNAS_IDENTIFICADO, { count: "exact" });
+  if (!opcoes.incluirOcultos) {
+    consulta = consulta
+      .in("situacao", [...SITUACOES_VISIVEIS_PROSPECCAO])
+      .is("exclusao_solicitada_em", null);
+  }
+  const { data, error, count } = await consulta
     .order("ultimo_avistamento_em", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
@@ -837,4 +873,98 @@ export async function definirTipoManual(
     p_tipo: tipo,
   });
   return { repetida: resposta.repetida === true };
+}
+
+/* ----------------------------------------------------------------
+   EXCLUSÃO COORDENADA — o navegador NUNCA apaga arquivo nem linha.
+
+   Quem remove é a rota, com service role e na ordem objeto → linha. Aqui
+   só se pede, se relê o resultado honesto e se cancela pela RPC do
+   navegador. Retomar é chamar de novo: a rota é idempotente.
+   ---------------------------------------------------------------- */
+async function chamarRotaExclusao(
+  pedido: PedidoExclusaoProspeccao,
+  client: SupabaseClient,
+  fetchImpl: typeof fetch,
+): Promise<ResultadoExclusaoProspeccao> {
+  const { data: { session } } = await client.auth.getSession();
+  if (!session) throw new ErroProspeccao("sessao_expirada", "Sua sessão expirou. Entre novamente.");
+  const resposta = await fetchImpl("/api/prospeccao/excluir", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify(pedido),
+  });
+  const corpo = (await resposta.json().catch(() => null)) as
+    | (Partial<ResultadoExclusaoProspeccao> & { falha?: string })
+    | null;
+  if (!resposta.ok || !corpo || typeof corpo.concluido !== "boolean") {
+    throw new ErroProspeccao(corpo?.falha ?? "resposta_rota_invalida");
+  }
+  return {
+    removidos: Number(corpo.removidos ?? 0),
+    pendentes: Number(corpo.pendentes ?? 0),
+    prefixoVazio: corpo.prefixoVazio === true,
+    concluido: corpo.concluido,
+  };
+}
+
+/** Hard delete de uma identidade. Chamar de novo retoma de onde parou. */
+export function excluirIdentificado(
+  imovelIdentificadoId: string,
+  client: SupabaseClient = getSupabase(),
+  fetchImpl: typeof fetch = fetch,
+): Promise<ResultadoExclusaoProspeccao> {
+  return chamarRotaExclusao({ imovelIdentificadoId }, client, fetchImpl);
+}
+
+/** Remove uma foto isolada pela mesma rota. Falha de Storage deixa a foto onde está. */
+export function removerFotoAvistamento(
+  fotoId: string,
+  client: SupabaseClient = getSupabase(),
+  fetchImpl: typeof fetch = fetch,
+): Promise<ResultadoExclusaoProspeccao> {
+  return chamarRotaExclusao({ fotoId }, client, fetchImpl);
+}
+
+/** "Apagar todos os meus dados": o módulo inteiro, Storage incluído. */
+export function apagarProspeccaoDoUsuario(
+  client: SupabaseClient = getSupabase(),
+  fetchImpl: typeof fetch = fetch,
+): Promise<ResultadoExclusaoProspeccao> {
+  return chamarRotaExclusao({ tudo: true }, client, fetchImpl);
+}
+
+/** A saída de quem começou por engano. As fotos já removidas não voltam. */
+export async function cancelarExclusaoIdentificado(
+  imovelIdentificadoId: string,
+  client: SupabaseClient = getSupabase(),
+): Promise<ResultadoRpcProspeccao> {
+  const resposta = await chamarRpc(client, "cancelar_exclusao_imovel_identificado", {
+    p_imovel_identificado_id: imovelIdentificadoId,
+  });
+  return { repetida: resposta.repetida === true };
+}
+
+/** Conta sob RLS o que a exclusão vai alcançar: fotos (inclusive reservas) e lápides. */
+export async function previaExclusaoIdentificado(
+  imovelIdentificadoId: string,
+  client: SupabaseClient = getSupabase(),
+): Promise<PreviaExclusaoIdentificado> {
+  const [fotos, lapides] = await Promise.all([
+    client
+      .from("imoveis_identificados_fotos")
+      .select("id", { count: "exact", head: true })
+      .eq("imovel_identificado_id", imovelIdentificadoId),
+    client
+      .from("imoveis_identificados")
+      .select("id", { count: "exact", head: true })
+      .eq("fundido_em_imovel_id", imovelIdentificadoId)
+      .eq("situacao", "fundido"),
+  ]);
+  if (fotos.error) falha(fotos.error);
+  if (lapides.error) falha(lapides.error);
+  return { fotosTotal: fotos.count ?? 0, lapidesTotal: lapides.count ?? 0 };
 }

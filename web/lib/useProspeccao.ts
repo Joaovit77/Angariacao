@@ -5,21 +5,27 @@ import { create } from "zustand";
 import {
   acrescentarAvistamento,
   aplicarEtiquetaHumana,
+  cancelarExclusaoIdentificado,
   confirmarEtiqueta,
   contestarEtiqueta,
   corrigirObservacaoAvistamento,
   criarIdentificado,
   definirTipoManual,
   descartarIdentificado,
+  excluirIdentificado,
   finalizarFotoAvistamento,
   listarIdentificados,
   obterIdentificado,
+  previaExclusaoIdentificado,
+  removerFotoAvistamento,
   reservarFotoAvistamento,
   type DadosAvistamento,
   type DadosIdentificacao,
   type DetalheImovelIdentificado,
   type ImovelIdentificado,
+  type PreviaExclusaoIdentificado,
   type ReservaFotoAvistamento,
+  type ResultadoExclusaoProspeccao,
 } from "./prospeccao";
 import type {
   CategoriaEtiquetaProspeccao,
@@ -35,10 +41,13 @@ interface EstadoProspeccao {
   porPagina: number;
   total: number;
   temMais: boolean;
+  /** Mostra também descartados, fundidos e exclusões pendentes. */
+  incluirOcultos: boolean;
   carregando: boolean;
   salvando: boolean;
   erro: string | null;
   carregarPagina: (pagina?: number, porPagina?: number) => Promise<boolean>;
+  definirIncluirOcultos: (incluirOcultos: boolean) => Promise<boolean>;
   carregarDetalhe: (id: string, incluirClassificacoes?: boolean) => Promise<boolean>;
   limparSelecao: () => void;
   limparErro: () => void;
@@ -77,6 +86,15 @@ interface EstadoProspeccao {
     imovelIdentificadoId: string,
     tipo: TipoImovelProspeccao | null,
   ) => Promise<boolean>;
+  /** O que a exclusão vai alcançar; não muda estado. */
+  previaExclusao: (imovelIdentificadoId: string) => Promise<PreviaExclusaoIdentificado | null>;
+  /** Hard delete pela rota. Chamar de novo sobre exclusão pendente é retomar. */
+  excluir: (imovelIdentificadoId: string) => Promise<ResultadoExclusaoProspeccao | null>;
+  cancelarExclusao: (imovelIdentificadoId: string) => Promise<boolean>;
+  removerFoto: (
+    imovelIdentificadoId: string,
+    fotoId: string,
+  ) => Promise<ResultadoExclusaoProspeccao | null>;
 }
 
 const estadoInicial = {
@@ -87,6 +105,7 @@ const estadoInicial = {
   porPagina: 24,
   total: 0,
   temMais: false,
+  incluirOcultos: false,
   carregando: false,
   salvando: false,
   erro: null as string | null,
@@ -142,7 +161,11 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
     async carregarPagina(pagina = get().pagina, porPagina = get().porPagina) {
       set({ carregando: true, erro: null });
       try {
-        const resultado = await listarIdentificados({ pagina, porPagina });
+        const resultado = await listarIdentificados({
+          pagina,
+          porPagina,
+          incluirOcultos: get().incluirOcultos,
+        });
         set({
           itens: resultado.itens,
           pagina: resultado.pagina,
@@ -156,6 +179,10 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
         set({ carregando: false, erro: "Não foi possível carregar o Garimpo em Campo." });
         return false;
       }
+    },
+    definirIncluirOcultos(incluirOcultos) {
+      set({ incluirOcultos });
+      return get().carregarPagina(1, get().porPagina);
     },
     async carregarDetalhe(id, incluirClassificacoes = false) {
       set({ carregando: true, erro: null });
@@ -248,6 +275,58 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
         await definirTipoManual(imovelIdentificadoId, tipo);
         return detalheAtualizado(imovelIdentificadoId);
       });
+    },
+    async previaExclusao(imovelIdentificadoId) {
+      try {
+        return await previaExclusaoIdentificado(imovelIdentificadoId);
+      } catch {
+        return null;
+      }
+    },
+    async excluir(imovelIdentificadoId) {
+      set({ salvando: true, erro: null });
+      try {
+        const resultado = await excluirIdentificado(imovelIdentificadoId);
+        if (resultado.concluido) {
+          // O pai já não existe: nada a reler. Sai da lista e do detalhe.
+          set((estado) => ({
+            itens: estado.itens.filter((item) => item.id !== imovelIdentificadoId),
+            total: Math.max(0, estado.total - 1),
+            detalhe: estado.detalhe?.identificado.id === imovelIdentificadoId ? null : estado.detalhe,
+            selecionadoId: estado.selecionadoId === imovelIdentificadoId ? null : estado.selecionadoId,
+            salvando: false,
+          }));
+        } else {
+          // Ficou pendente: o registro segue existindo, bloqueado e retomável.
+          registrarDetalhe(await detalheAtualizado(imovelIdentificadoId));
+          set({ salvando: false });
+        }
+        return resultado;
+      } catch {
+        set({ salvando: false, erro: "Não foi possível concluir a exclusão. O registro continua retomável." });
+        return null;
+      }
+    },
+    cancelarExclusao(imovelIdentificadoId) {
+      return executarMutacao("Não foi possível cancelar a exclusão.", async () => {
+        await cancelarExclusaoIdentificado(imovelIdentificadoId);
+        return detalheAtualizado(imovelIdentificadoId);
+      });
+    },
+    async removerFoto(imovelIdentificadoId, fotoId) {
+      set({ salvando: true, erro: null });
+      try {
+        const resultado = await removerFotoAvistamento(fotoId);
+        registrarDetalhe(await detalheAtualizado(imovelIdentificadoId));
+        set({
+          salvando: false,
+          erro: resultado.concluido ? null : "O arquivo da foto não foi removido; ela continua no registro.",
+        });
+        return resultado;
+      } catch {
+        set({ salvando: false, erro: "Não foi possível remover a foto." });
+        return null;
+      }
     },
   };
 });

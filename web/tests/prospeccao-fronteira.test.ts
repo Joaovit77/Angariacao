@@ -30,6 +30,8 @@ function consulta(resposta: Resposta) {
     eq: vi.fn(),
     insert: vi.fn(),
     update: vi.fn(),
+    in: vi.fn(),
+    is: vi.fn(),
     single: vi.fn(async () => resposta),
     maybeSingle: vi.fn(async () => resposta),
   };
@@ -40,6 +42,8 @@ function consulta(resposta: Resposta) {
   chamada.eq.mockReturnValue(encadeavel);
   chamada.insert.mockReturnValue(encadeavel);
   chamada.update.mockReturnValue(encadeavel);
+  chamada.in.mockReturnValue(encadeavel);
+  chamada.is.mockReturnValue(encadeavel);
   encadeavel.then = (resolver, rejeitar) => Promise.resolve(resposta).then(resolver, rejeitar);
   return encadeavel;
 }
@@ -540,7 +544,10 @@ describe("isolamento arquitetural do C3", () => {
     const fachada = readFileSync(resolve("lib/prospeccao.ts"), "utf8");
     const estado = readFileSync(resolve("lib/useProspeccao.ts"), "utf8");
 
-    expect(fachada).not.toMatch(/\.storage\b|\/api\/|\.delete\s*\(/);
+    // A única rota que a fronteira conhece é a de exclusão coordenada (C5b):
+    // o navegador nunca toca o Storage nem apaga linha por conta própria.
+    expect(fachada).not.toMatch(/\.storage\b|\.delete\s*\(/);
+    expect([...new Set(fachada.match(/\/api\/[\w/-]*/g))]).toEqual(["/api/prospeccao/excluir"]);
     expect(fachada).not.toContain('.from("imoveis")');
     expect(estado).not.toMatch(/from ["']\.\/store["']|from ["']@\/lib\/store["']/);
     expect(estado).toContain('"use client"');

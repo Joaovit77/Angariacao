@@ -70,7 +70,6 @@ describe("C4 do Garimpo em Campo — estrutura", () => {
       "/api/prospeccao",
       "Transformar em oportunidade",
       "DialogoFundirIdentificados",
-      "DialogoExcluirIdentificado",
     ]) {
       expect(fontes).not.toContain(proibido);
     }

@@ -52,6 +52,12 @@ As policies continuam vindo do `supabase-schema.sql`; não as substitua por aces
 permanece fora da lista. O navegador acessa os objetos pela API própria do Storage e não deve
 consultar `storage.objects` diretamente pelo PostgREST.
 
+**Exclusão coordenada.** Quem apaga arquivo de fachada é só a rota `POST /api/prospeccao/excluir`
+(objeto no Storage primeiro, linha no banco depois, com reconciliação do prefixo do usuário). Ela
+exige a `SUPABASE_SERVICE_ROLE_KEY` na Vercel — sem ela responde 503 e nada é apagado. O navegador
+não recebe `delete` no bucket nem nas tabelas do módulo; "Apagar todos os meus dados" passa por essa
+rota antes das tabelas antigas e só declara sucesso com o prefixo `{user_id}/` vazio no bucket.
+
 ---
 
 ## Parte 2 — As credenciais agora são variáveis de ambiente

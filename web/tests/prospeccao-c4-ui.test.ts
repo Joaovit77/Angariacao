@@ -172,7 +172,7 @@ describe("ProspeccaoView", () => {
 
     cenario.estado.erro = null;
     rerender(createElement(ProspeccaoView));
-    expect(screen.getByText("Nenhum imóvel identificado ainda.")).toBeTruthy();
+    expect(screen.getByText("Nenhum imóvel identificado ativo.")).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: "Registrar primeiro avistamento" })[1]);
     expect(cenario.abrirModal).toHaveBeenCalledWith("avistamento");
   });
