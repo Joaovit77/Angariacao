@@ -177,6 +177,16 @@ describe("ProspeccaoView", () => {
     expect(cenario.abrirModal).toHaveBeenCalledWith("avistamento");
   });
 
+  it("com registros existentes o topo oferece um local novo, não o 'primeiro avistamento'", () => {
+    cenario.estado.itens = [identificado("identificado-1")];
+    cenario.estado.total = 1;
+    render(createElement(ProspeccaoView));
+
+    expect(screen.queryByRole("button", { name: "Registrar primeiro avistamento" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Registrar novo local" }));
+    expect(cenario.abrirModal).toHaveBeenCalledWith("avistamento");
+  });
+
   it("renderiza cards paginados, seleciona o detalhe e avança sem carregar tudo", async () => {
     cenario.estado.itens = [identificado("identificado-1")];
     cenario.estado.total = 30;

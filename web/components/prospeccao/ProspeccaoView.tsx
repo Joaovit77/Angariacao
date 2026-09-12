@@ -132,12 +132,15 @@ export default function ProspeccaoView({
             </p>
           </div>
         </div>
+        {/* Sem id, o modal cria um LOCAL novo com o seu primeiro avistamento.
+            "Primeiro" é do local, não da conta: depois que já há registros o
+            rótulo precisa dizer isso, senão parece que nada foi salvo. */}
         <button
           type="button"
           className="btn btn-primary"
           onClick={() => abrirModal("avistamento")}
         >
-          Registrar primeiro avistamento
+          {total > 0 ? "Registrar novo local" : "Registrar primeiro avistamento"}
         </button>
       </section>
 
