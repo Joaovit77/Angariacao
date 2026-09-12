@@ -72,7 +72,12 @@ const MENSAGEM_GPS: Record<Exclude<StatusGps, "ok" | "ocioso">, string> = {
     navegador e o Nominatim de lib/geo. */
 export interface DependenciasLocalizacaoAvistamento {
   capturarPosicao?: () => Promise<ResultadoPosicaoAparelho>;
-  geocodificar?: (enderecoCompleto: string, bairro: string, cidade: string) => Promise<Geocodificacao | null>;
+  geocodificar?: (
+    enderecoCompleto: string,
+    bairro: string,
+    cidade: string,
+    opcoes?: { cep?: string },
+  ) => Promise<Geocodificacao | null>;
 }
 
 function comPrazo<T>(promessa: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -331,18 +336,22 @@ export default function ModalAvistamento({
 
   /** Geocodifica o endereço atual (ou o passado) uma vez por combinação. */
   const localizarEndereco = useCallback((endereco: {
-    logradouro: string; numero: string; bairro: string; cidade: string;
+    logradouro: string; numero: string; bairro: string; cidade: string; cep: string;
   }) => {
     const rua = endereco.logradouro.trim();
     const cidadeLimpa = endereco.cidade.trim();
     if (!rua || !cidadeLimpa) return;
-    const chave = [rua, endereco.numero.trim(), endereco.bairro.trim(), cidadeLimpa].join("|").toLocaleLowerCase("pt-BR");
+    const chave = [rua, endereco.numero.trim(), endereco.bairro.trim(), cidadeLimpa, endereco.cep.trim()].join("|").toLocaleLowerCase("pt-BR");
     if (chave === geocodeRef.current.chave) return;
     const pedido = ++geocodeRef.current.pedido;
     geocodeRef.current.chave = chave;
     setGeocodificando(true);
     const enderecoCompleto = [rua, endereco.numero.trim()].filter(Boolean).join(", ");
-    void comPrazo(geocodificar(enderecoCompleto, endereco.bairro.trim(), cidadeLimpa), PRAZO_GEOCODE_MS, null)
+    void comPrazo(
+      geocodificar(enderecoCompleto, endereco.bairro.trim(), cidadeLimpa, { cep: endereco.cep.trim() || undefined }),
+      PRAZO_GEOCODE_MS,
+      null,
+    )
       .then((geo) => {
         if (pedido !== geocodeRef.current.pedido) return;
         setLocalizacaoEndereco(geo ? localizacaoDoGeocode(geo) : null);
@@ -351,7 +360,7 @@ export default function ModalAvistamento({
   }, [geocodificar]);
 
   function localizarEnderecoDigitado() {
-    localizarEndereco({ logradouro, numero, bairro, cidade });
+    localizarEndereco({ logradouro, numero, bairro, cidade, cep });
   }
 
   function aplicarEnderecoViaCep(selecionado: EnderecoViaCepSelecionado) {
@@ -379,6 +388,7 @@ export default function ModalAvistamento({
       numero: numero.trim() || numeroSugerido,
       bairro: selecionado.bairro || bairro,
       cidade: selecionado.cidade || cidade,
+      cep: selecionado.cep ? maskCEP(selecionado.cep) : cep,
     });
   }
 
@@ -393,12 +403,13 @@ export default function ModalAvistamento({
     if (localizacaoAtual.latitude !== null) return localizacaoAtual;
     const enderecoBase = identificadoConhecido
       ? { logradouro: identificadoConhecido.logradouro ?? "", numero: identificadoConhecido.numero ?? "",
-          bairro: identificadoConhecido.bairro ?? "", cidade: identificadoConhecido.cidade ?? "" }
-      : { logradouro, numero, bairro, cidade };
+          bairro: identificadoConhecido.bairro ?? "", cidade: identificadoConhecido.cidade ?? "",
+          cep: identificadoConhecido.cep ?? "" }
+      : { logradouro, numero, bairro, cidade, cep };
     if (!enderecoBase.logradouro.trim() || !enderecoBase.cidade.trim()) return LOCALIZACAO_DESCONHECIDA;
     const enderecoCompleto = [enderecoBase.logradouro.trim(), enderecoBase.numero.trim()].filter(Boolean).join(", ");
     const geo = await comPrazo(
-      geocodificar(enderecoCompleto, enderecoBase.bairro.trim(), enderecoBase.cidade.trim()),
+      geocodificar(enderecoCompleto, enderecoBase.bairro.trim(), enderecoBase.cidade.trim(), { cep: enderecoBase.cep.trim() || undefined }),
       PRAZO_GEOCODE_MS,
       null,
     );

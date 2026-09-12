@@ -71,19 +71,68 @@ export async function buscarEnderecosViaCep(
   );
 }
 
-interface ResultadoNominatim {
+export interface ResultadoNominatim {
   lat: string;
   lon: string;
   /** Com `addressdetails=1`: "building", "house", "road", "suburb", "city"… */
   addresstype?: string;
   class?: string;
+  address?: {
+    suburb?: string;
+    neighbourhood?: string;
+    quarter?: string;
+    city_district?: string;
+    postcode?: string;
+  };
 }
 
-async function nominatimSearch(query: string): Promise<ResultadoNominatim | null> {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&q=${encodeURIComponent(query)}`;
+const LIMITE_CANDIDATOS_NOMINATIM = 5;
+
+async function nominatimSearch(query: string): Promise<ResultadoNominatim[]> {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=${LIMITE_CANDIDATOS_NOMINATIM}&addressdetails=1&q=${encodeURIComponent(query)}`;
   const res = await fetch(url, { headers: { "Accept-Language": "pt-BR" } });
   const data = await res.json();
-  return data && data.length > 0 ? data[0] : null;
+  return Array.isArray(data) ? data : [];
+}
+
+function normalizarTexto(valor: string): string {
+  return valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLocaleLowerCase("pt-BR");
+}
+
+/**
+ * Uma avenida longa volta como vários trechos, e o primeiro é sorte: no
+ * smoke de 12/09 a Duque de Caxias caiu ora no Centro, ora 2 km ao norte.
+ * O bairro e o CEP que o ViaCEP já entregou ancoram o trecho certo: bairro
+ * igual vale mais, CEP com os cinco primeiros dígitos iguais desempata.
+ * Sem pista nenhuma, o primeiro.
+ */
+export function escolherResultadoNominatim(
+  candidatos: ResultadoNominatim[],
+  pistas: { bairro?: string; cep?: string },
+): ResultadoNominatim | null {
+  if (!candidatos.length) return null;
+  const bairro = normalizarTexto(pistas.bairro ?? "");
+  const cep5 = (pistas.cep ?? "").replace(/\D/g, "").slice(0, 5);
+  const pontuar = (candidato: ResultadoNominatim): number => {
+    const endereco = candidato.address ?? {};
+    const bairrosDoResultado = [endereco.suburb, endereco.neighbourhood, endereco.quarter, endereco.city_district]
+      .filter((valor): valor is string => Boolean(valor))
+      .map(normalizarTexto);
+    let pontos = 0;
+    if (bairro && bairrosDoResultado.includes(bairro)) pontos += 2;
+    if (cep5.length === 5 && (endereco.postcode ?? "").replace(/\D/g, "").startsWith(cep5)) pontos += 1;
+    return pontos;
+  };
+  let melhor = candidatos[0];
+  let melhorPontuacao = pontuar(melhor);
+  for (const candidato of candidatos.slice(1)) {
+    const pontuacao = pontuar(candidato);
+    if (pontuacao > melhorPontuacao) {
+      melhor = candidato;
+      melhorPontuacao = pontuacao;
+    }
+  }
+  return melhor;
 }
 
 /** O que a coordenada representa. Um centroide de bairro ou de cidade serve
@@ -158,10 +207,11 @@ export async function geocodeEndereco(
   enderecoCompleto: string,
   bairro: string,
   cidade: string,
+  opcoes: { cep?: string } = {},
 ): Promise<Geocodificacao | null> {
   const tentativas = tentativasGeocode(enderecoCompleto, bairro, cidade);
   for (let i = 0; i < tentativas.length; i++) {
-    const found = await nominatimSearch(tentativas[i].consulta);
+    const found = escolherResultadoNominatim(await nominatimSearch(tentativas[i].consulta), { bairro, cep: opcoes.cep });
     if (found) {
       const precisao = precisaoObservada(tentativas[i].precisao, found);
       return {

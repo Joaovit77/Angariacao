@@ -88,7 +88,7 @@ function geolocationFalsa(resposta: { coords?: Partial<GeolocationCoordinates>; 
 
 function abrirModal(deps: {
   capturarPosicao?: () => Promise<ResultadoPosicaoAparelho>;
-  geocodificar?: (...argumentos: string[]) => Promise<{ lat: number; lon: number; precisao: "endereco" | "rua" | "bairro" | "cidade"; usedFallback: boolean } | null>;
+  geocodificar?: (...argumentos: unknown[]) => Promise<{ lat: number; lon: number; precisao: "endereco" | "rua" | "bairro" | "cidade"; usedFallback: boolean } | null>;
 } = {}, props: Record<string, unknown> = {}) {
   return render(createElement(ModalAvistamento, {
     armazemRascunho: armazemVazio,
@@ -241,7 +241,7 @@ describe("C6 — o modal mede, avisa e cai para o endereço", () => {
     preencher("Cidade", "Londrina");
 
     const [, , avistamento] = await salvar();
-    expect(geocodificar).toHaveBeenCalledWith("Avenida Inglaterra, 1200", "", "Londrina");
+    expect(geocodificar).toHaveBeenCalledWith("Avenida Inglaterra, 1200", "", "Londrina", { cep: undefined });
     expect(avistamento).toMatchObject({
       latitude: -23.32, longitude: -51.17, acuraciaMetros: ACURACIA_GEOCODE_METROS.endereco, precisaoLocalizacao: "geocodificado",
     });
@@ -296,7 +296,7 @@ describe("C6 — o modal mede, avisa e cai para o endereço", () => {
     await screen.findByText(/Este aparelho não oferece localização/);
     fireEvent.click(screen.getByRole("button", { name: "Salvar avistamento" }));
     await waitFor(() => expect(cenario.estado.adicionarAvistamento).toHaveBeenCalled());
-    expect(geocodificar).toHaveBeenCalledWith("Rua Sergipe, 500", "Centro", "Londrina");
+    expect(geocodificar).toHaveBeenCalledWith("Rua Sergipe, 500", "Centro", "Londrina", { cep: undefined });
     expect(cenario.estado.adicionarAvistamento.mock.calls[0][2]).toMatchObject({
       acuraciaMetros: ACURACIA_GEOCODE_METROS.rua, precisaoLocalizacao: "geocodificado",
     });
@@ -372,7 +372,7 @@ describe("C6 — endereço rápido pelo precedente EnderecoAutocompleteViaCep", 
 
     preencher("Logradouro", "Avenida Santos Du");
     fireEvent.click(await screen.findByRole("option", { name: /Avenida Santos Dumont/ }, { timeout: 3000 }));
-    await waitFor(() => expect(geocodificar).toHaveBeenCalledWith("Avenida Santos Dumont", "Boa Vista", "Londrina"));
+    await waitFor(() => expect(geocodificar).toHaveBeenCalledWith("Avenida Santos Dumont", "Boa Vista", "Londrina", { cep: "86039-090" }));
 
     // O mapa foi ao endereço, o aviso apareceu e o padrão é o endereço.
     await waitFor(() => expect((screen.getByTestId("mapa")).getAttribute("data-precisao")).toBe("geocodificado"));
@@ -382,7 +382,7 @@ describe("C6 — endereço rápido pelo precedente EnderecoAutocompleteViaCep", 
     // Informar o número geocodifica de novo com o número.
     preencher("Número", "174");
     fireEvent.blur(screen.getByLabelText("Número"));
-    await waitFor(() => expect(geocodificar).toHaveBeenLastCalledWith("Avenida Santos Dumont, 174", "Boa Vista", "Londrina"));
+    await waitFor(() => expect(geocodificar).toHaveBeenLastCalledWith("Avenida Santos Dumont, 174", "Boa Vista", "Londrina", { cep: "86039-090" }));
 
     // O corretor insiste no GPS: a escolha dele vence.
     fireEvent.click(screen.getByLabelText(/Onde estou agora/));

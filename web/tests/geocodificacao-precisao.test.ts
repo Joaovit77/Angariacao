@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { precisaoObservada, tentativasGeocode } from "@/lib/geo";
+import { escolherResultadoNominatim, precisaoObservada, tentativasGeocode } from "@/lib/geo";
 
 describe("precisão de cada tentativa de geocodificação", () => {
   it("declara endereço, rua e bairro conforme o que cada consulta contém", () => {
@@ -35,5 +35,27 @@ describe("precisão observada no resultado do Nominatim", () => {
     expect(precisaoObservada("bairro", { addresstype: "road" })).toBe("bairro");
     expect(precisaoObservada("endereco", { addresstype: "building" })).toBe("endereco");
     expect(precisaoObservada("endereco", {})).toBe("endereco");
+  });
+});
+
+describe("escolha do trecho certo entre vários resultados do Nominatim", () => {
+  const vilaCasoni = { lat: "-23.2970", lon: "-51.1539", addresstype: "road", address: { suburb: "Vila Nova", quarter: "Vila Casoni", postcode: "86079-010" } };
+  const centro = { lat: "-23.3081", lon: "-51.1551", addresstype: "road", address: { suburb: "Centro", postcode: "86010-380" } };
+
+  it("prefere o trecho cujo bairro é o informado, mesmo vindo depois (smoke de 12/09: Duque de Caxias)", () => {
+    expect(escolherResultadoNominatim([vilaCasoni, centro], { bairro: "Centro", cep: "86015-981" })).toBe(centro);
+    expect(escolherResultadoNominatim([vilaCasoni, centro], { bairro: "centro" })).toBe(centro);
+  });
+
+  it("o CEP desempata pelos cinco primeiros dígitos e sem pista fica o primeiro", () => {
+    expect(escolherResultadoNominatim([vilaCasoni, centro], { cep: "86010-000" })).toBe(centro);
+    expect(escolherResultadoNominatim([vilaCasoni, centro], { cep: "86079-500" })).toBe(vilaCasoni);
+    expect(escolherResultadoNominatim([vilaCasoni, centro], {})).toBe(vilaCasoni);
+    expect(escolherResultadoNominatim([], { bairro: "Centro" })).toBeNull();
+  });
+
+  it("acento e caixa não atrapalham o bairro", () => {
+    const igapo = { lat: "0", lon: "0", address: { suburb: "Igapó" } };
+    expect(escolherResultadoNominatim([centro, igapo], { bairro: "IGAPO" })).toBe(igapo);
   });
 });
