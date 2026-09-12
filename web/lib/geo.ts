@@ -146,3 +146,61 @@ export async function geocodeEndereco(
   }
   return null;
 }
+
+/* ================================================================
+   POSIÇÃO DO APARELHO (navigator.geolocation) — Garimpo em Campo, C6.
+   Uma leitura, com prazo. Cada saída tem nome: quem chama decide o que
+   fazer com "negada" (cair para o endereço) e com "imprecisa" (guardar
+   mesmo assim, avisando). Nunca lança: falha é resultado, não exceção.
+   ================================================================ */
+
+export type MotivoPosicaoIndisponivel = "indisponivel" | "negada" | "timeout" | "falha";
+
+export type ResultadoPosicaoAparelho =
+  | { ok: true; latitude: number; longitude: number; acuraciaMetros: number }
+  | { ok: false; motivo: MotivoPosicaoIndisponivel };
+
+export const OPCOES_POSICAO_APARELHO: PositionOptions = {
+  enableHighAccuracy: true,
+  timeout: 12_000,
+  maximumAge: 0,
+};
+
+export function capturarPosicaoAtual(
+  geolocation: Geolocation | undefined = typeof navigator === "undefined" ? undefined : navigator.geolocation,
+  opcoes: PositionOptions = OPCOES_POSICAO_APARELHO,
+): Promise<ResultadoPosicaoAparelho> {
+  if (!geolocation || typeof geolocation.getCurrentPosition !== "function") {
+    return Promise.resolve({ ok: false, motivo: "indisponivel" });
+  }
+  return new Promise((resolve) => {
+    let respondido = false;
+    const responder = (resultado: ResultadoPosicaoAparelho) => {
+      if (respondido) return;
+      respondido = true;
+      resolve(resultado);
+    };
+    try {
+      geolocation.getCurrentPosition(
+        (posicao) => {
+          const { latitude, longitude, accuracy } = posicao.coords;
+          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            responder({ ok: false, motivo: "falha" });
+            return;
+          }
+          responder({ ok: true, latitude, longitude, acuraciaMetros: Number.isFinite(accuracy) ? accuracy : 0 });
+        },
+        (erro) => {
+          // 1 = PERMISSION_DENIED, 2 = POSITION_UNAVAILABLE, 3 = TIMEOUT.
+          responder({
+            ok: false,
+            motivo: erro.code === 1 ? "negada" : erro.code === 3 ? "timeout" : erro.code === 2 ? "indisponivel" : "falha",
+          });
+        },
+        opcoes,
+      );
+    } catch {
+      responder({ ok: false, motivo: "falha" });
+    }
+  });
+}

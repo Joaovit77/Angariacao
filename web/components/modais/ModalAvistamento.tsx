@@ -1,16 +1,38 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
 import { useSessao } from "@/components/SessaoProvider";
+import EnderecoAutocompleteViaCep, {
+  type EnderecoViaCepSelecionado,
+} from "@/components/formularios/EnderecoAutocompleteViaCep";
 import CapturaFachada, {
   type EstadoArquivoFachada,
   type OrigemCaptura,
 } from "@/components/prospeccao/CapturaFachada";
 import styles from "@/components/prospeccao/Prospeccao.module.css";
 import type { ResultadoProcessamentoFoto } from "@/lib/calculo/fotoFachada";
+import {
+  descreverLocalizacao,
+  escolherLocalizacao,
+  gpsImpreciso,
+  localizacaoDoGeocode,
+  localizacaoDoGps,
+  localizacaoDoMapa,
+  LOCALIZACAO_DESCONHECIDA,
+  type LocalizacaoAvistamento,
+  type LocalizacaoCapturada,
+} from "@/lib/calculo/prospeccao";
 import { TIPOS_IMOVEL } from "@/lib/constantes";
 import { dataHoraLocalParaIso, partesDataHoraLocal } from "@/lib/datas";
+import {
+  capturarPosicaoAtual,
+  geocodeEndereco,
+  maskCEP,
+  type Geocodificacao,
+  type ResultadoPosicaoAparelho,
+} from "@/lib/geo";
 import type { ReservaFotoAvistamento } from "@/lib/prospeccao";
 import {
   armazemRascunhoCaptura,
@@ -28,6 +50,45 @@ import { useUiModal } from "@/lib/uiModal";
     reescrever o Blob a cada letra. */
 const ATRASO_RASCUNHO_MS = 400;
 
+/** O Nominatim é público e às vezes lento; o corretor não espera por ele
+    para salvar. Passou o prazo, a localização fica "desconhecida". */
+const PRAZO_GEOCODE_MS = 8_000;
+
+const MapaProspeccao = dynamic(() => import("@/components/prospeccao/MapaProspeccao"), { ssr: false });
+
+type StatusGps = "ocioso" | "buscando" | "ok" | "negada" | "timeout" | "indisponivel" | "falha";
+
+const MENSAGEM_GPS: Record<Exclude<StatusGps, "ok" | "ocioso">, string> = {
+  buscando: "Obtendo a posição do aparelho…",
+  negada: "Permissão de localização negada. A posição virá do endereço, de forma aproximada.",
+  timeout: "O GPS não respondeu a tempo. Tente de novo ou siga pelo endereço.",
+  indisponivel: "Este aparelho não oferece localização. A posição virá do endereço, de forma aproximada.",
+  falha: "Não foi possível ler a posição. Tente de novo ou siga pelo endereço.",
+};
+
+/** Dependências do C6, injetáveis para teste. Em produção: o GPS do
+    navegador e o Nominatim de lib/geo. */
+export interface DependenciasLocalizacaoAvistamento {
+  capturarPosicao?: () => Promise<ResultadoPosicaoAparelho>;
+  geocodificar?: (enderecoCompleto: string, bairro: string, cidade: string) => Promise<Geocodificacao | null>;
+}
+
+function comPrazo<T>(promessa: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    const temporizador = setTimeout(() => resolve(fallback), ms);
+    promessa.then(
+      (valor) => { clearTimeout(temporizador); resolve(valor); },
+      () => { clearTimeout(temporizador); resolve(fallback); },
+    );
+  });
+}
+
+/** "Rua X, 123" vindo do ViaCEP vira rua + número separados. */
+function separarNumero(endereco: string): { rua: string; numero: string } {
+  const partes = endereco.match(/^(.*?),s*(d.*)$/);
+  return partes ? { rua: partes[1].trim(), numero: partes[2].trim() } : { rua: endereco.trim(), numero: "" };
+}
+
 function horaCurta(iso: string): string {
   const data = new Date(iso);
   if (Number.isNaN(data.getTime())) return "";
@@ -37,10 +98,12 @@ function horaCurta(iso: string): string {
 export default function ModalAvistamento({
   imovelIdentificadoId,
   armazemRascunho,
+  dependenciasLocalizacao,
 }: {
   imovelIdentificadoId?: string;
   /** Injetável para teste; em produção é o IndexedDB do aparelho. */
   armazemRascunho?: ArmazemRascunhoCaptura;
+  dependenciasLocalizacao?: DependenciasLocalizacaoAvistamento;
 }) {
   const { usuario } = useSessao();
   const fecharModal = useUiModal((estado) => estado.fecharModal);
@@ -67,6 +130,21 @@ export default function ModalAvistamento({
   const [pontoReferencia, setPontoReferencia] = useState("");
   const [tipo, setTipo] = useState("");
   const [erro, setErro] = useState("");
+  /* ---- localização (C6) ----------------------------------------------
+     GPS e pino no mapa ficam separados; na hora de salvar, a de menor
+     raio vence (mesma regra do trigger). O endereço só entra como
+     último recurso, e nunca segura o salvamento além do prazo. */
+  const [localizacaoGps, setLocalizacaoGps] = useState<LocalizacaoCapturada | null>(null);
+  const [localizacaoMapa, setLocalizacaoMapa] = useState<LocalizacaoCapturada | null>(null);
+  // Nasce "buscando": o pedido ao GPS acontece assim que o rascunho for lido.
+  const [statusGps, setStatusGps] = useState<StatusGps>("buscando");
+  const gpsPedido = useRef(false);
+  const capturarPosicao = dependenciasLocalizacao?.capturarPosicao ?? capturarPosicaoAtual;
+  const geocodificar = dependenciasLocalizacao?.geocodificar ?? geocodeEndereco;
+  /* O que o ViaCEP preencheu por último. Uma nova sugestão só troca o
+     campo se ele ainda estiver vazio ou igual ao que o ViaCEP pôs; o que
+     o corretor corrigiu à mão fica. */
+  const viaCepRef = useRef({ bairro: "", cidade: "", estado: "", cep: "" });
   const [fotoSelecionada, setFotoSelecionada] = useState<EstadoArquivoFachada>({
     selecionada: false,
     pronta: false,
@@ -173,6 +251,13 @@ export default function ModalAvistamento({
         setRascunhoRestauradoEm(rascunho.salvoEm);
         // Não se carrega o marcador adiante: a próxima gravação o apaga.
         setFotoPerdidaEm(fotoPerdidaNaCameraNativa(rascunho));
+      } else if (!imovelIdentificadoId) {
+        // Local novo: cidade e UF do último registro já carregado. O
+        // corretor trabalha numa cidade; digitar isso a cada casa é atrito,
+        // e o ViaCEP precisa dos dois para sugerir a rua.
+        const referencia = useProspeccao.getState().itens[0];
+        if (referencia?.cidade) setCidade(referencia.cidade);
+        if (referencia?.estado) setEstado(referencia.estado);
       }
       setRascunhoPronto(true);
     })();
@@ -197,6 +282,76 @@ export default function ModalAvistamento({
 
   function marcarTocado() {
     tocado.current = true;
+  }
+
+  const registrarPosicao = useCallback((resultado: ResultadoPosicaoAparelho) => {
+    if (resultado.ok) {
+      setLocalizacaoGps(localizacaoDoGps(resultado));
+      setStatusGps("ok");
+    } else {
+      setLocalizacaoGps(null);
+      setStatusGps(resultado.motivo);
+    }
+  }, []);
+
+  function lerGps() {
+    setStatusGps("buscando");
+    void capturarPosicao().then(registrarPosicao);
+  }
+
+  // O GPS é pedido ao abrir, uma vez: em campo, o momento certo de medir é
+  // agora, parado em frente ao imóvel. Retomada de foto já salva não mede.
+  useEffect(() => {
+    if (!rascunhoPronto || gpsPedido.current || avistamentoSalvo) return;
+    gpsPedido.current = true;
+    void capturarPosicao().then(registrarPosicao);
+  }, [avistamentoSalvo, capturarPosicao, rascunhoPronto, registrarPosicao]);
+
+  const localizacaoAtual: LocalizacaoAvistamento = escolherLocalizacao([localizacaoGps, localizacaoMapa]);
+
+  function aplicarEnderecoViaCep(selecionado: EnderecoViaCepSelecionado) {
+    const { rua, numero: numeroSugerido } = separarNumero(selecionado.endereco);
+    if (rua) setLogradouro(rua);
+    if (numeroSugerido && !numero.trim()) setNumero(numeroSugerido);
+    const aplicar = (
+      campo: keyof typeof viaCepRef.current,
+      atual: string,
+      novo: string | undefined,
+      definir: (valor: string) => void,
+    ) => {
+      if (!novo) return;
+      if (atual.trim() === "" || atual === viaCepRef.current[campo]) definir(novo);
+      viaCepRef.current[campo] = novo;
+    };
+    aplicar("bairro", bairro, selecionado.bairro, setBairro);
+    aplicar("cidade", cidade, selecionado.cidade, setCidade);
+    aplicar("estado", estado, selecionado.estado, setEstado);
+    aplicar("cep", cep, selecionado.cep ? maskCEP(selecionado.cep) : undefined, setCep);
+    tocado.current = true;
+  }
+
+  function escolherPontoNoMapa(ponto: { latitude: number; longitude: number }) {
+    setLocalizacaoMapa(localizacaoDoMapa(ponto));
+    tocado.current = true;
+  }
+
+  /** GPS e mapa já estão em mãos; o endereço só entra se nenhum dos dois
+      existir, e nunca além do prazo. Sem nada, "desconhecida" — jamais zero. */
+  async function resolverLocalizacao(): Promise<LocalizacaoAvistamento> {
+    const medida = escolherLocalizacao([localizacaoGps, localizacaoMapa]);
+    if (medida.latitude !== null) return medida;
+    const enderecoBase = identificadoConhecido
+      ? { logradouro: identificadoConhecido.logradouro ?? "", numero: identificadoConhecido.numero ?? "",
+          bairro: identificadoConhecido.bairro ?? "", cidade: identificadoConhecido.cidade ?? "" }
+      : { logradouro, numero, bairro, cidade };
+    if (!enderecoBase.logradouro.trim() || !enderecoBase.cidade.trim()) return LOCALIZACAO_DESCONHECIDA;
+    const enderecoCompleto = [enderecoBase.logradouro.trim(), enderecoBase.numero.trim()].filter(Boolean).join(", ");
+    const geo = await comPrazo(
+      geocodificar(enderecoCompleto, enderecoBase.bairro.trim(), enderecoBase.cidade.trim()),
+      PRAZO_GEOCODE_MS,
+      null,
+    );
+    return geo ? escolherLocalizacao([localizacaoDoGeocode(geo)]) : LOCALIZACAO_DESCONHECIDA;
   }
 
   function aoEstadoArquivo(estadoArquivo: EstadoArquivoFachada) {
@@ -277,9 +432,14 @@ export default function ModalAvistamento({
         ? (useProspeccao.getState().detalhe?.avistamentos ?? []).map((item) => item.id)
         : [],
     );
+    const localizacao = await resolverLocalizacao();
     const dadosAvistamento = {
       observadoEm,
       observacao,
+      latitude: localizacao.latitude,
+      longitude: localizacao.longitude,
+      acuraciaMetros: localizacao.acuraciaMetros,
+      precisaoLocalizacao: localizacao.precisaoLocalizacao,
     };
     const tipoSelecionado = TIPOS_IMOVEL.find((opcao) => opcao === tipo) ?? null;
     const sucesso = imovelIdentificadoId
@@ -414,6 +574,86 @@ export default function ModalAvistamento({
               Não registre nome ou telefone aqui · {observacao.length}/2000 caracteres
             </div>
           </div>
+          {avistamentoSalvo ? null : (
+          <section className={styles.localizacao} aria-label="Localização do avistamento">
+            <div className={styles.localizacaoCabecalho}>
+              <div>
+                <strong>Localização</strong>
+                <span role="status">
+                  {statusGps === "buscando" || (statusGps !== "ok" && statusGps !== "ocioso" && localizacaoAtual.latitude === null)
+                    ? MENSAGEM_GPS[statusGps as Exclude<StatusGps, "ok" | "ocioso">]
+                    : descreverLocalizacao(localizacaoAtual)}
+                </span>
+                {gpsImpreciso(localizacaoAtual) ? (
+                  <small className={styles.localizacaoAviso}>
+                    Leitura imprecisa (carro, prédios, GPS frio). Ela é guardada mesmo assim; um avistamento
+                    mais preciso depois substitui. Toque no mapa se souber o ponto exato.
+                  </small>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                className="btn btn-sm"
+                disabled={statusGps === "buscando"}
+                onClick={lerGps}
+              >
+                {statusGps === "buscando" ? "Localizando…" : statusGps === "ok" ? "Ler o GPS de novo" : "Usar minha localização"}
+              </button>
+            </div>
+            {localizacaoAtual.latitude !== null ? (
+              <MapaProspeccao localizacao={localizacaoAtual} aoEscolherPonto={escolherPontoNoMapa} altura={200} />
+            ) : null}
+          </section>
+          )}
+          {primeiroAvistamento ? (
+            <div className={styles.enderecoRapido}>
+              <div className="field-row">
+                <div className="field-group">
+                  <label htmlFor="avistamento-logradouro">Logradouro</label>
+                  <EnderecoAutocompleteViaCep
+                    id="avistamento-logradouro"
+                    value={logradouro}
+                    cidade={cidade}
+                    estado={estado}
+                    onChange={setLogradouro}
+                    onSelecionar={aplicarEnderecoViaCep}
+                    placeholder="Digite a rua e escolha a sugestão"
+                  />
+                </div>
+                <div className="field-group">
+                  <label htmlFor="avistamento-numero">Número</label>
+                  <input
+                    id="avistamento-numero"
+                    type="text"
+                    value={numero}
+                    onChange={(evento) => setNumero(evento.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="field-row">
+                <div className="field-group">
+                  <label htmlFor="avistamento-cidade">Cidade</label>
+                  <input
+                    id="avistamento-cidade"
+                    type="text"
+                    value={cidade}
+                    onChange={(evento) => setCidade(evento.target.value)}
+                  />
+                </div>
+                <div className="field-group">
+                  <label htmlFor="avistamento-estado">Estado</label>
+                  <input
+                    id="avistamento-estado"
+                    type="text"
+                    maxLength={2}
+                    value={estado}
+                    onChange={(evento) => setEstado(evento.target.value)}
+                    placeholder="PR"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : null}
           <div className="field-row">
             <div className="field-group">
               <label htmlFor="avistamento-data">Data</label>
@@ -440,28 +680,6 @@ export default function ModalAvistamento({
             <details className={styles.maisDetalhes}>
               <summary>Mais detalhes do imóvel (opcional)</summary>
               <div className={styles.camposDetalhes}>
-                <div className="field-row">
-                  <div className="field-group">
-                    <label htmlFor="avistamento-logradouro">Logradouro</label>
-                    <input
-                      id="avistamento-logradouro"
-                      type="text"
-                      maxLength={200}
-                      value={logradouro}
-                      onChange={(evento) => setLogradouro(evento.target.value)}
-                      placeholder="Rua, avenida ou estrada"
-                    />
-                  </div>
-                  <div className="field-group">
-                    <label htmlFor="avistamento-numero">Número</label>
-                    <input
-                      id="avistamento-numero"
-                      type="text"
-                      value={numero}
-                      onChange={(evento) => setNumero(evento.target.value)}
-                    />
-                  </div>
-                </div>
                 <div className="field-group">
                   <label htmlFor="avistamento-referencia">Ponto de referência</label>
                   <input
@@ -509,28 +727,6 @@ export default function ModalAvistamento({
                       type="text"
                       value={bairro}
                       onChange={(evento) => setBairro(evento.target.value)}
-                    />
-                  </div>
-                  <div className="field-group">
-                    <label htmlFor="avistamento-cidade">Cidade</label>
-                    <input
-                      id="avistamento-cidade"
-                      type="text"
-                      value={cidade}
-                      onChange={(evento) => setCidade(evento.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="field-row">
-                  <div className="field-group">
-                    <label htmlFor="avistamento-estado">Estado</label>
-                    <input
-                      id="avistamento-estado"
-                      type="text"
-                      maxLength={2}
-                      value={estado}
-                      onChange={(evento) => setEstado(evento.target.value)}
-                      placeholder="PR"
                     />
                   </div>
                   <div className="field-group">

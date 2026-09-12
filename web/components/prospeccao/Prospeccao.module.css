@@ -794,3 +794,69 @@
 .filtroOcultos input {
   margin: 0;
 }
+
+/* Localização (C6). A incerteza é mostrada, não escondida: o círculo do
+   mapa e a legenda dizem de onde veio a coordenada e quanto ela pode errar. */
+.localizacao {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 11px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 9px;
+  background: var(--bg-elev-3);
+}
+.localizacaoCabecalho {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.localizacaoCabecalho > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.localizacaoCabecalho strong {
+  color: var(--text);
+  font-size: 12px;
+}
+.localizacaoCabecalho span {
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.localizacaoAviso {
+  color: var(--warn);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+.enderecoRapido {
+  display: grid;
+  gap: 4px;
+}
+.mapa {
+  display: grid;
+  gap: 6px;
+}
+.mapaCanvas {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  border-radius: 9px;
+  background: var(--bg-elev-2);
+}
+.mapa[data-precisao="geocodificado"] .mapaCanvas {
+  border-style: dashed;
+}
+.mapaLegenda {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1.45;
+}
+@media (max-width: 520px) {
+  .localizacaoCabecalho {
+    flex-direction: column;
+  }
+}

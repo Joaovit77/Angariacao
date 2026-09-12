@@ -61,11 +61,9 @@ describe("C4 do Garimpo em Campo — estrutura", () => {
     expect(topbar.match(/"\/garimpo-em-campo": "Garimpo em Campo"/g)).toHaveLength(1);
   });
 
-  it("mantém mapa, geolocalização, IA, promoção e exclusão fora da tela mínima", () => {
+  it("mantém IA, promoção e fusão fora da tela mínima (mapa e GPS entraram no C6)", () => {
     const fontes = Object.values(arquivosComponentes).map(ler).join("\n");
     for (const proibido of [
-      "MapaProspeccao",
-      "navigator.geolocation",
       "storage.upload",
       "/api/prospeccao",
       "Transformar em oportunidade",

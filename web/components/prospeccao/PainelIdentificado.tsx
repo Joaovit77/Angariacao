@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
 
 import { obterEtiquetaCatalogo } from "@/lib/calculo/catalogoEtiquetas";
@@ -14,6 +15,8 @@ import { useProspeccao } from "@/lib/useProspeccao";
 import { useUiModal } from "@/lib/uiModal";
 
 import DialogoExcluirIdentificado, { AVISO_CANCELAR_EXCLUSAO } from "./DialogoExcluirIdentificado";
+
+const MapaProspeccao = dynamic(() => import("./MapaProspeccao"), { ssr: false });
 import LinhaDoTempoAvistamentos from "./LinhaDoTempoAvistamentos";
 import styles from "./Prospeccao.module.css";
 import SeloExclusaoPendente from "./SeloExclusaoPendente";
@@ -285,6 +288,27 @@ export default function PainelIdentificado({
           aoFechar={() => setDialogoExclusao("fechado")}
         />
       ) : null}
+
+      <section className={styles.secao}>
+        <div className={styles.secaoCabecalho}>
+          <h4>Localização</h4>
+          <span>A melhor coordenada entre os avistamentos; o raio é a incerteza.</span>
+        </div>
+        {item.latitude !== null && item.longitude !== null ? (
+          <MapaProspeccao
+            localizacao={{
+              latitude: item.latitude,
+              longitude: item.longitude,
+              acuraciaMetros: item.acuraciaMetros,
+              precisaoLocalizacao: item.precisaoLocalizacao,
+            }}
+          />
+        ) : (
+          <p className={styles.vazioInterno}>
+            Sem localização registrada. O próximo avistamento com GPS ou endereço preenche aqui.
+          </p>
+        )}
+      </section>
 
       <section className={styles.secao}>
         <div className={styles.secaoCabecalho}>

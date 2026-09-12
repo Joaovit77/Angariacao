@@ -24,6 +24,8 @@ const LIMITE_SUGESTOES = 6;
 const cache = new Map<string, ResultadoEnderecoViaCep[]>();
 
 interface Props {
+  /** Para ligar um <label htmlFor>; sem isso o input segue anônimo. */
+  id?: string;
   value: string;
   cidade: string;
   estado: string;
@@ -35,6 +37,7 @@ interface Props {
 export type { EnderecoViaCepSelecionado } from "@/lib/calculo/enderecoViaCep";
 
 export default function EnderecoAutocompleteViaCep({
+  id,
   value,
   cidade,
   estado,
@@ -185,6 +188,7 @@ export default function EnderecoAutocompleteViaCep({
   return (
     <div className="endereco-autocomplete">
       <input
+        id={id}
         type="text"
         value={value}
         onChange={aoDigitar}

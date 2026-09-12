@@ -64,6 +64,14 @@ vi.mock("@/lib/uiModal", () => ({
   }),
 }));
 
+/* C6: sem GPS nem Nominatim nos testes de tela — a localização é
+   exercitada na própria suíte do C6. */
+vi.mock("@/lib/geo", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/geo")>()),
+  capturarPosicaoAtual: async () => ({ ok: false, motivo: "indisponivel" }),
+  geocodeEndereco: async () => null,
+}));
+
 vi.mock("@/components/SessaoProvider", () => ({
   useSessao: () => ({ estado: "auth", usuario: cenario.usuario }),
 }));

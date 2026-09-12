@@ -1165,7 +1165,9 @@ describe("C5b — garantias estruturais do módulo", () => {
     for (const [caminho, fonte] of fontes) {
       expect(fonte, caminho).not.toMatch(/\.delete\s*\(/);
       if (caminho !== ROTA) {
-        expect(fonte, caminho).not.toMatch(/\.remove\s*\(/);
+        // Leaflet também tem .remove() (camadas do mapa, C6); o que se proíbe
+        // fora da rota é remover objeto do Storage.
+        expect(fonte, caminho).not.toMatch(/storage[\s\S]{0,80}\.remove\s*\(/);
         expect(fonte, caminho).not.toMatch(/SUPABASE_SERVICE_ROLE_KEY|service_role/);
       }
     }
