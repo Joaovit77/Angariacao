@@ -74,10 +74,13 @@ export async function buscarEnderecosViaCep(
 interface ResultadoNominatim {
   lat: string;
   lon: string;
+  /** Com `addressdetails=1`: "building", "house", "road", "suburb", "city"… */
+  addresstype?: string;
+  class?: string;
 }
 
 async function nominatimSearch(query: string): Promise<ResultadoNominatim | null> {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&q=${encodeURIComponent(query)}`;
   const res = await fetch(url, { headers: { "Accept-Language": "pt-BR" } });
   const data = await res.json();
   return data && data.length > 0 ? data[0] : null;
@@ -86,6 +89,30 @@ async function nominatimSearch(query: string): Promise<ResultadoNominatim | null
 /** O que a coordenada representa. Um centroide de bairro ou de cidade serve
     para região, nunca para distância entre imóveis. */
 export type PrecisaoGeocodificacao = "endereco" | "rua" | "bairro" | "cidade";
+
+const ORDEM_PRECISAO: PrecisaoGeocodificacao[] = ["endereco", "rua", "bairro", "cidade"];
+
+/**
+ * O Nominatim responde "Avenida X, 770" com a RUA quando não conhece o número
+ * — e a consulta continua rotulada "endereco" se ninguém olhar o que voltou.
+ * Aqui a precisão é a pior entre a pedida e a observada no resultado; sem
+ * `addresstype` (resposta antiga ou mock) fica a pedida.
+ */
+export function precisaoObservada(
+  pedida: PrecisaoGeocodificacao,
+  resultado: Pick<ResultadoNominatim, "addresstype" | "class">,
+): PrecisaoGeocodificacao {
+  const tipo = (resultado.addresstype ?? "").toLowerCase();
+  const classe = (resultado.class ?? "").toLowerCase();
+  let observada: PrecisaoGeocodificacao | null = null;
+  if (!tipo && !classe) observada = null;
+  else if (tipo === "road" || classe === "highway") observada = "rua";
+  else if (["suburb", "neighbourhood", "quarter", "residential", "hamlet"].includes(tipo)) observada = "bairro";
+  else if (["city", "town", "village", "municipality", "county", "state", "country"].includes(tipo)) observada = "cidade";
+  else observada = "endereco";
+  if (observada === null) return pedida;
+  return ORDEM_PRECISAO[Math.max(ORDEM_PRECISAO.indexOf(pedida), ORDEM_PRECISAO.indexOf(observada))];
+}
 
 export interface Geocodificacao {
   lat: number;
@@ -136,11 +163,12 @@ export async function geocodeEndereco(
   for (let i = 0; i < tentativas.length; i++) {
     const found = await nominatimSearch(tentativas[i].consulta);
     if (found) {
+      const precisao = precisaoObservada(tentativas[i].precisao, found);
       return {
         lat: Number(found.lat),
         lon: Number(found.lon),
-        precisao: tentativas[i].precisao,
-        usedFallback: i > 0,
+        precisao,
+        usedFallback: i > 0 || precisao !== tentativas[i].precisao,
       };
     }
   }

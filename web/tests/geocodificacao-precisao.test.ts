@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tentativasGeocode } from "@/lib/geo";
+import { precisaoObservada, tentativasGeocode } from "@/lib/geo";
 
 describe("precisão de cada tentativa de geocodificação", () => {
   it("declara endereço, rua e bairro conforme o que cada consulta contém", () => {
@@ -19,5 +19,21 @@ describe("precisão de cada tentativa de geocodificação", () => {
     const tentativas = tentativasGeocode("Rua Bélgica, 1413", "", "Londrina");
     expect(tentativas.at(-1)).toEqual({ consulta: "Londrina, Brasil", precisao: "cidade" });
     expect(tentativas.some((item) => item.precisao === "bairro")).toBe(false);
+  });
+});
+
+describe("precisão observada no resultado do Nominatim", () => {
+  it("rebaixa 'endereco' para 'rua' quando a resposta é a via, não o número (smoke de 12/09: Duque de Caxias, 770)", () => {
+    expect(precisaoObservada("endereco", { addresstype: "road", class: "highway" })).toBe("rua");
+    expect(precisaoObservada("endereco", { class: "highway" })).toBe("rua");
+    expect(precisaoObservada("endereco", { addresstype: "suburb" })).toBe("bairro");
+    expect(precisaoObservada("rua", { addresstype: "city" })).toBe("cidade");
+  });
+
+  it("nunca sobe acima do pedido, e sem detalhes mantém o pedido", () => {
+    expect(precisaoObservada("rua", { addresstype: "house", class: "building" })).toBe("rua");
+    expect(precisaoObservada("bairro", { addresstype: "road" })).toBe("bairro");
+    expect(precisaoObservada("endereco", { addresstype: "building" })).toBe("endereco");
+    expect(precisaoObservada("endereco", {})).toBe("endereco");
   });
 });
