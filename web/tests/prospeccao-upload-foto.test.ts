@@ -210,7 +210,7 @@ describe("C5 — reserva, upload e finalização da fachada", () => {
       .toBe("environment");
   });
 
-  it("assina a miniatura ativa por 300 segundos e tolera objeto ausente", async () => {
+  it("assina a foto ORIGINAL ativa por 300 segundos (nunca a miniatura) e tolera objeto ausente", async () => {
     const fotoAtiva = {
       id: "foto-1",
       estado: "ativa",
@@ -220,7 +220,8 @@ describe("C5 — reserva, upload e finalização da fachada", () => {
     const { unmount } = render(createElement(CapturaFachada, { foto: fotoAtiva }));
     await waitFor(() => expect(screen.getByText("Imagem indisponível")).toBeTruthy());
     expect(storage.from).toHaveBeenCalledWith("fachadas");
-    expect(storage.createSignedUrl).toHaveBeenCalledWith(reserva.caminhoMiniatura, 300);
+    expect(storage.createSignedUrl).toHaveBeenCalledWith(reserva.caminho, 300);
+    expect(storage.createSignedUrl).not.toHaveBeenCalledWith(reserva.caminhoMiniatura, expect.anything());
 
     storage.createSignedUrl.mockResolvedValue({
       data: { signedUrl: "https://projeto.supabase.co/storage/v1/object/sign/fachadas/foto" },

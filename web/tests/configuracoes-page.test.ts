@@ -29,6 +29,16 @@ describe("página de Configurações", () => {
     expect(tela).toContain("apagarTodosOsDados");
   });
 
+  it("a Zona de perigo diz que a exclusão alcança o Garimpo em Campo e suas fotos, e é definitiva", () => {
+    const tela = fonte("components/configuracoes/ConfiguracoesView.tsx");
+    const zona = tela.match(/<div className="config-zona-perigo">[\s\S]*?<\/div>\s*<button/)?.[0] ?? "";
+    for (const trecho of ["imóveis", "metas", "compromissos", "abordagens", "Garimpo em Campo", "fotos", "Não pode ser desfeito"]) {
+      expect(zona).toContain(trecho);
+    }
+    // O confirm() de apagarTodosOsDados conta a mesma história que a tela.
+    expect(fonte("lib/mutacoes.ts")).toMatch(/confirm\([\s\S]*?Garimpo em Campo \(com as fotos\)/);
+  });
+
   it("salva somente seções alteradas usando a persistência central existente", () => {
     const tela = fonte("components/configuracoes/ConfiguracoesView.tsx");
     expect(tela).toContain("await salvarConfig({ ...config, ...parcial }");

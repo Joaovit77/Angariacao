@@ -376,7 +376,7 @@ export default function ConfiguracoesView({ secaoInicial }: { secaoInicial?: str
                 <button type="button" className="btn" onClick={() => void carregarExemplos()} disabled={ocupado !== null}>{ocupado === "demo" ? "Carregando…" : "Carregar dados de exemplo"}</button>
               </div>
               <div className="config-zona-perigo">
-                <div><span>Zona de perigo</span><h3>Excluir todos os dados</h3><p>Remove permanentemente imóveis, metas, compromissos e abordagens desta conta.</p></div>
+                <div><span>Zona de perigo</span><h3>Excluir todos os dados</h3><p>Remove permanentemente imóveis, metas, compromissos, abordagens e o Garimpo em Campo desta conta, incluindo as fotos de fachada armazenadas. Não pode ser desfeito.</p></div>
                 <button type="button" className="btn btn-danger" onClick={() => void apagarDados()} disabled={ocupado !== null}>{ocupado === "apagar" ? "Excluindo…" : "Excluir todos os dados"}</button>
               </div>
             </>

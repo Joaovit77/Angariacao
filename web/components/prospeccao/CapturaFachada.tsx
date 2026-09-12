@@ -475,8 +475,11 @@ export default function CapturaFachada({
     return error;
   }, [dependencias]);
 
+  // A visualização grande é sempre a foto ORIGINAL. A miniatura (320 px) é
+  // para card e prévia pequena; esticada a 100% do painel ela vira borrão —
+  // foi a "qualidade baixa" vista no smoke de 12/09.
   useEffect(() => {
-    const caminho = foto?.estado === "ativa" ? (foto.caminhoMiniatura || foto.caminho) : null;
+    const caminho = foto?.estado === "ativa" ? foto.caminho : null;
     if (!caminho) return;
     let cancelado = false;
     void (async () => {
@@ -492,7 +495,7 @@ export default function CapturaFachada({
       }
     })();
     return () => { cancelado = true; };
-  }, [foto?.caminho, foto?.caminhoMiniatura, foto?.estado]);
+  }, [foto?.caminho, foto?.estado]);
 
   const enviar = useCallback(async () => {
     if (!processada || !imovelIdentificadoId || !avistamentoId || enviando) return;
