@@ -26,6 +26,8 @@ const cenario = vi.hoisted(() => ({
     confirmarEtiqueta: vi.fn(),
     contestarEtiqueta: vi.fn(),
     definirTipo: vi.fn(),
+    // C7: a dedupe só avisa; nestes testes ela não encontra nada.
+    buscarDuplicatas: vi.fn(async () => []),
   },
   abrirModal: vi.fn(),
   fecharModal: vi.fn(),

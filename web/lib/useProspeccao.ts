@@ -5,6 +5,7 @@ import { create } from "zustand";
 import {
   acrescentarAvistamento,
   aplicarEtiquetaHumana,
+  buscarCandidatosDuplicidade,
   cancelarExclusaoIdentificado,
   confirmarEtiqueta,
   contestarEtiqueta,
@@ -22,6 +23,7 @@ import {
   type DadosAvistamento,
   type DadosIdentificacao,
   type DetalheImovelIdentificado,
+  identidadeParaDedupe,
   type ImovelIdentificado,
   type PreviaExclusaoIdentificado,
   type ReservaFotoAvistamento,
@@ -31,7 +33,18 @@ import type {
   CategoriaEtiquetaProspeccao,
   CodigoEtiquetaProspeccao,
 } from "./calculo/catalogoEtiquetas";
+import {
+  encontrarDuplicatasProspeccao,
+  type IdentidadeParaDedupe,
+  type ResultadoDedupeProspeccao,
+} from "./calculo/dedupeProspeccao";
 import type { TipoImovelProspeccao } from "./calculo/prospeccao";
+
+/** O que a tela mostra: cada veredito junto do candidato que o produziu. */
+export interface DuplicataEncontrada {
+  resultado: ResultadoDedupeProspeccao;
+  candidato: ImovelIdentificado;
+}
 
 interface EstadoProspeccao {
   itens: ImovelIdentificado[];
@@ -86,6 +99,9 @@ interface EstadoProspeccao {
     imovelIdentificadoId: string,
     tipo: TipoImovelProspeccao | null,
   ) => Promise<boolean>;
+  /** Dedupe (C7): candidatos da conta pela fronteira, veredito pelo núcleo puro.
+      Só avisa — não muda estado, não bloqueia, não funde. */
+  buscarDuplicatas: (alvo: IdentidadeParaDedupe) => Promise<DuplicataEncontrada[] | null>;
   /** O que a exclusão vai alcançar; não muda estado. */
   previaExclusao: (imovelIdentificadoId: string) => Promise<PreviaExclusaoIdentificado | null>;
   /** Hard delete pela rota. Chamar de novo sobre exclusão pendente é retomar. */
@@ -275,6 +291,16 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
         await definirTipoManual(imovelIdentificadoId, tipo);
         return detalheAtualizado(imovelIdentificadoId);
       });
+    },
+    async buscarDuplicatas(alvo) {
+      try {
+        const candidatos = await buscarCandidatosDuplicidade(alvo);
+        const porId = new Map(candidatos.map((candidato) => [candidato.id, candidato]));
+        return encontrarDuplicatasProspeccao(alvo, candidatos.map(identidadeParaDedupe))
+          .map((resultado) => ({ resultado, candidato: porId.get(resultado.candidatoId)! }));
+      } catch {
+        return null;
+      }
     },
     async previaExclusao(imovelIdentificadoId) {
       try {

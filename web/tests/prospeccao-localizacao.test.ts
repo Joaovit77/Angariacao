@@ -26,6 +26,8 @@ const cenario = vi.hoisted(() => ({
     adicionarAvistamento: vi.fn(),
     reservarFoto: vi.fn(),
     finalizarFoto: vi.fn(),
+    // C7: a dedupe só avisa; nestes testes ela não encontra nada.
+    buscarDuplicatas: vi.fn<(alvo: unknown) => Promise<unknown[] | null>>(async () => []),
   },
   fecharModal: vi.fn(),
   viaCep: vi.fn(),
@@ -477,5 +479,34 @@ describe("C6 — o snapshot só melhora (núcleo puro e trigger)", () => {
     // Nenhuma migration nova do C6: a garantia já existe e não é duplicada.
     const migrations = readFileSync(resolve("..", "supabase-schema.sql"), "utf8");
     expect((migrations.match(/recalcular_agregados_identificado\(/g) ?? []).length).toBeGreaterThan(0);
+  });
+});
+
+describe("C7 no modal — o aviso de duplicata não bloqueia o registro", () => {
+  it("com endereço e coordenada em mãos o modal consulta duplicatas, mostra o motivo e salva mesmo assim", async () => {
+    cenario.estado.itens = [{ id: "x", cidade: "Londrina", estado: "PR" }];
+    cenario.estado.buscarDuplicatas.mockResolvedValue([{
+      resultado: { candidatoId: "dup", grau: "provavel", origem: "geografia", distanciaMetros: 18, motivo: "proximidade" },
+      candidato: { id: "dup", logradouro: "Rua Souza Naves", numero: "100", unidade: null, bloco: null, pontoReferencia: null,
+        ultimoAvistamentoEm: "2026-08-12T10:00:00.000Z", latitude: -23.31, longitude: -51.16, acuraciaMetros: 8 },
+    }]);
+    abrirModal({ capturarPosicao: async () => gpsBom });
+    await screen.findByText(/precisão aproximada: 12 m/);
+    preencher("Logradouro", "Rua Souza Naves");
+    preencher("Número", "100");
+
+    const secao = await screen.findByRole("region", { name: "Possíveis duplicatas" }, { timeout: 3000 });
+    expect(secao.textContent).toContain("Pode ser um local já registrado");
+    expect(secao.textContent).toContain("Rua Souza Naves, 100");
+    expect(secao.textContent).toContain("A cerca de 18 m");
+    expect(secao.querySelectorAll("button")).toHaveLength(0);
+    expect(cenario.estado.buscarDuplicatas).toHaveBeenLastCalledWith(expect.objectContaining({
+      id: "novo", logradouro: "Rua Souza Naves", numero: "100", cidade: "Londrina", latitude: -23.31, longitude: -51.16, acuraciaMetros: 12,
+    }));
+
+    // O botão de salvar não mudou: o aviso é só aviso.
+    const [, identidade] = await salvar();
+    expect(identidade).toMatchObject({ logradouro: "Rua Souza Naves", numero: "100" });
+    expect(cenario.fecharModal).toHaveBeenCalled();
   });
 });

@@ -4,6 +4,13 @@ import type {
   CategoriaEtiquetaProspeccao,
   CodigoEtiquetaProspeccao,
 } from "./calculo/catalogoEtiquetas";
+import {
+  caixaBuscaGeografica,
+  chaveImovelIdentificado,
+  geografiaOpina,
+  raioBuscaCandidatosMetros,
+  type IdentidadeParaDedupe,
+} from "./calculo/dedupeProspeccao";
 import { chaveEndereco, chaveImovel } from "./calculo/duplicidade";
 import {
   ordenarAvistamentosPorRecencia,
@@ -241,6 +248,8 @@ export class ErroProspeccao extends Error {
     this.name = "ErroProspeccao";
   }
 }
+
+const UUID_PROSPECCAO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const COLUNAS_IDENTIFICADO = [
   "id",
@@ -967,4 +976,96 @@ export async function previaExclusaoIdentificado(
   if (fotos.error) falha(fotos.error);
   if (lapides.error) falha(lapides.error);
   return { fotosTotal: fotos.count ?? 0, lapidesTotal: lapides.count ?? 0 };
+}
+
+/* ----------------------------------------------------------------
+   DEDUPE (C7) — só a consulta. O veredito é do núcleo puro
+   (`encontrarDuplicatasProspeccao`), e ele avisa: nunca bloqueia, nunca
+   funde, nunca promove. Duas fontes de candidatos, dentro da conta (RLS):
+   a chave textual persistida (`endereco_chave`, índice por usuário) e a
+   bounding box sobre `(user_id, latitude, longitude)` — pré-filtro; a
+   distância que decide é o haversine do núcleo. Lápides e registros em
+   exclusão não entram: não são operáveis.
+
+   O pré-filtro não pode escolher quais candidatos o algoritmo vai ver:
+   um prédio com 21 unidades na mesma coordenada encheria um limite de 20
+   com linhas que o veto de unidade descarta, e a casa ao lado — a
+   duplicata real — nunca chegaria ao haversine. Por isso as duas
+   consultas são lidas até o fim, em páginas com ordem estável.
+   ---------------------------------------------------------------- */
+const PAGINA_CANDIDATOS_DEDUPE = 100;
+
+type ConsultaCandidatos = {
+  order: (coluna: string, opcoes: { ascending: boolean }) => ConsultaCandidatos;
+  range: (inicio: number, fim: number) => PromiseLike<{ data: unknown; error: unknown }>;
+};
+
+/** Lê TODAS as páginas de uma consulta: a bounding box é pequena, mas nunca
+    é o banco quem decide quem fica de fora. */
+async function lerTodasAsPaginas(montar: () => ConsultaCandidatos): Promise<Linha[]> {
+  const linhas: Linha[] = [];
+  for (let inicio = 0; ; inicio += PAGINA_CANDIDATOS_DEDUPE) {
+    const { data, error } = await montar()
+      .order("id", { ascending: true })
+      .range(inicio, inicio + PAGINA_CANDIDATOS_DEDUPE - 1);
+    if (error) falha(error);
+    const pagina = (data ?? []) as Linha[];
+    linhas.push(...pagina);
+    if (pagina.length < PAGINA_CANDIDATOS_DEDUPE) return linhas;
+  }
+}
+
+/** A projeção que o núcleo entende, a partir da identidade lida. */
+export function identidadeParaDedupe(identificado: ImovelIdentificado): IdentidadeParaDedupe {
+  return {
+    id: identificado.id,
+    logradouro: identificado.logradouro,
+    numero: identificado.numero,
+    cidade: identificado.cidade,
+    unidade: identificado.unidade,
+    bloco: identificado.bloco,
+    tipo: identificado.tipo,
+    latitude: identificado.latitude,
+    longitude: identificado.longitude,
+    acuraciaMetros: identificado.acuraciaMetros,
+  };
+}
+
+export async function buscarCandidatosDuplicidade(
+  alvo: IdentidadeParaDedupe,
+  client: SupabaseClient = getSupabase(),
+): Promise<ImovelIdentificado[]> {
+  const base = () => {
+    let consulta = client
+      .from("imoveis_identificados")
+      .select(COLUNAS_IDENTIFICADO)
+      .neq("situacao", "fundido")
+      .is("exclusao_solicitada_em", null);
+    if (UUID_PROSPECCAO.test(alvo.id)) consulta = consulta.neq("id", alvo.id);
+    return consulta;
+  };
+
+  const consultas: Promise<Linha[]>[] = [];
+  const chave = chaveImovelIdentificado(alvo);
+  if (chaveEndereco([alvo.logradouro, alvo.numero].filter(Boolean).join(", "))) {
+    consultas.push(lerTodasAsPaginas(() => base().eq("endereco_chave", chave)));
+  }
+  if (geografiaOpina(alvo)) {
+    const caixa = caixaBuscaGeografica(alvo.latitude!, alvo.longitude!, raioBuscaCandidatosMetros(alvo));
+    consultas.push(lerTodasAsPaginas(() => base()
+      .gte("latitude", caixa.latitudeMinima)
+      .lte("latitude", caixa.latitudeMaxima)
+      .gte("longitude", caixa.longitudeMinima)
+      .lte("longitude", caixa.longitudeMaxima)));
+  }
+  if (!consultas.length) return [];
+
+  const porId = new Map<string, ImovelIdentificado>();
+  for (const linhas of await Promise.all(consultas)) {
+    for (const linha of linhas) {
+      const identificado = mapearIdentificado(linha);
+      porId.set(identificado.id, identificado);
+    }
+  }
+  return [...porId.values()];
 }

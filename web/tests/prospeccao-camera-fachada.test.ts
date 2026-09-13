@@ -16,6 +16,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const cenario = vi.hoisted(() => ({
   reservarFoto: vi.fn(),
   finalizarFoto: vi.fn(),
+  // C7: a dedupe só avisa; nestes testes ela não encontra nada.
+  buscarDuplicatas: vi.fn(async () => []),
 }));
 
 vi.mock("@/lib/useProspeccao", () => {

@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 
 import { obterEtiquetaCatalogo } from "@/lib/calculo/catalogoEtiquetas";
+import { identidadeParaDedupe } from "@/lib/prospeccao";
 import { TIPOS_IMOVEL } from "@/lib/constantes";
 import { fmtDataHoraIso } from "@/lib/datas";
 import type {
@@ -14,6 +15,7 @@ import type {
 import { useProspeccao } from "@/lib/useProspeccao";
 import { useUiModal } from "@/lib/uiModal";
 
+import CandidatosDuplicidade from "./CandidatosDuplicidade";
 import DialogoExcluirIdentificado, { AVISO_CANCELAR_EXCLUSAO } from "./DialogoExcluirIdentificado";
 
 const MapaProspeccao = dynamic(() => import("./MapaProspeccao"), { ssr: false });
@@ -309,6 +311,12 @@ export default function PainelIdentificado({
           </p>
         )}
       </section>
+
+      <CandidatosDuplicidade
+        alvo={identidadeParaDedupe(item)}
+        situacao={item.situacao}
+        avistamentosTotal={item.avistamentosTotal}
+      />
 
       <section className={styles.secao}>
         <div className={styles.secaoCabecalho}>

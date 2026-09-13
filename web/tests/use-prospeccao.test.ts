@@ -17,6 +17,13 @@ const mocks = vi.hoisted(() => ({
   cancelarExclusaoIdentificado: vi.fn(),
   removerFotoAvistamento: vi.fn(),
   previaExclusaoIdentificado: vi.fn(),
+  buscarCandidatosDuplicidade: vi.fn(),
+  identidadeParaDedupe: vi.fn((identificado: Record<string, unknown>) => ({
+    id: identificado.id, logradouro: identificado.logradouro ?? null, numero: identificado.numero ?? null,
+    cidade: identificado.cidade ?? null, unidade: identificado.unidade ?? null, bloco: identificado.bloco ?? null,
+    tipo: identificado.tipo ?? null, latitude: identificado.latitude ?? null, longitude: identificado.longitude ?? null,
+    acuraciaMetros: identificado.acuraciaMetros ?? null,
+  })),
 }));
 
 vi.mock("@/lib/prospeccao", () => mocks);
@@ -382,5 +389,29 @@ describe("C5b — exclusão coordenada no estado local", () => {
     expect(await useProspeccao.getState().previaExclusao("identificado-1")).toEqual({ fotosTotal: 3, lapidesTotal: 1 });
     expect(await useProspeccao.getState().previaExclusao("identificado-1")).toBeNull();
     expect(useProspeccao.getState()).toMatchObject({ salvando: false, erro: null });
+  });
+});
+
+describe("C7 — dedupe no estado local: liga fronteira e núcleo, sem tocar o estado", () => {
+  it("candidatos da conta viram vereditos ordenados; erro vira null; nada muda no store", async () => {
+    const alvo = { id: "alvo-1", logradouro: "Rua Souza Naves", numero: "100", cidade: "Londrina", unidade: "", bloco: "", tipo: "Casa" as const,
+      latitude: -23.31, longitude: -51.16, acuraciaMetros: 7 };
+    mocks.buscarCandidatosDuplicidade.mockResolvedValue([
+      { id: "longe", logradouro: "Rua Longe", numero: "1", cidade: "Londrina", latitude: -23.31 + 500 / 111_320, longitude: -51.16, acuraciaMetros: 5 },
+      { id: "dup", logradouro: "R. Souza Naves,", numero: "100", cidade: "Londrina", latitude: -23.31 + 10 / 111_320, longitude: -51.16, acuraciaMetros: 5 },
+    ]);
+    const antes = useProspeccao.getState();
+
+    const duplicatas = await useProspeccao.getState().buscarDuplicatas(alvo);
+
+    expect(mocks.buscarCandidatosDuplicidade).toHaveBeenCalledWith(alvo);
+    expect(duplicatas?.map((item) => [item.candidato.id, item.resultado.grau, item.resultado.motivo]))
+      .toEqual([["dup", "exata", "identidade-textual"]]);
+    expect(useProspeccao.getState().itens).toBe(antes.itens);
+    expect(useProspeccao.getState()).toMatchObject({ salvando: false, erro: null });
+
+    mocks.buscarCandidatosDuplicidade.mockRejectedValue(new Error("rls"));
+    expect(await useProspeccao.getState().buscarDuplicatas(alvo)).toBeNull();
+    expect(useProspeccao.getState().erro).toBeNull();
   });
 });

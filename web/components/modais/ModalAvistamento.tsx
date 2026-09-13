@@ -7,6 +7,7 @@ import { useSessao } from "@/components/SessaoProvider";
 import EnderecoAutocompleteViaCep, {
   type EnderecoViaCepSelecionado,
 } from "@/components/formularios/EnderecoAutocompleteViaCep";
+import CandidatosDuplicidade from "@/components/prospeccao/CandidatosDuplicidade";
 import CapturaFachada, {
   type EstadoArquivoFachada,
   type OrigemCaptura,
@@ -333,6 +334,24 @@ export default function ModalAvistamento({
     escolha: fonteEscolhida,
   });
   const localizacaoAtual: LocalizacaoAvistamento = resolvida.localizacao;
+  /* Dedupe (C7): com endereço ou coordenada em mãos, avisa se já existe
+     um local parecido. Aviso, não bloqueio: o botão de salvar não muda. */
+  const tipoSelecionadoParaDedupe = TIPOS_IMOVEL.find((opcao) => opcao === tipo) ?? null;
+  const alvoDedupe = primeiroAvistamento && !avistamentoSalvo
+    && (logradouro.trim() || localizacaoAtual.latitude !== null)
+    ? {
+        id: "novo",
+        logradouro: logradouro.trim() || null,
+        numero: numero.trim() || null,
+        cidade: cidade.trim() || null,
+        unidade: unidade.trim() || null,
+        bloco: bloco.trim() || null,
+        tipo: tipoSelecionadoParaDedupe,
+        latitude: localizacaoAtual.latitude,
+        longitude: localizacaoAtual.longitude,
+        acuraciaMetros: localizacaoAtual.acuraciaMetros,
+      }
+    : null;
 
   /** Geocodifica o endereço atual (ou o passado) uma vez por combinação. */
   const localizarEndereco = useCallback((endereco: {
@@ -699,6 +718,9 @@ export default function ModalAvistamento({
             ) : null}
           </section>
           )}
+          {alvoDedupe ? (
+            <CandidatosDuplicidade alvo={alvoDedupe} titulo="Pode ser um local já registrado" />
+          ) : null}
           {primeiroAvistamento ? (
             <div className={styles.enderecoRapido}>
               <div className="field-row">

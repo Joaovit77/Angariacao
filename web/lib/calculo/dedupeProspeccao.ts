@@ -210,3 +210,74 @@ export function duplicatasDoIdentificadoNaCarteira(
     bloco: alvo.bloco || "",
   }, carteira);
 }
+
+/* ----------------------------------------------------------------
+   C7 — o que a tela precisa para EXPLICAR a sugestão. Nada aqui muda o
+   veredito: só nomeia o grau e escreve o motivo com os números que o
+   próprio veredito usou (distância, acurácias, unidade). Sem percentual:
+   não existe probabilidade calibrada, e inventar uma seria mentir.
+   ---------------------------------------------------------------- */
+
+export const ROTULO_GRAU_DUPLICIDADE: Record<GrauDuplicidadeProspeccao, string> = {
+  exata: "Mesmo endereço",
+  provavel: "Provável",
+  possivel: "Possível",
+  inconclusiva: "Não dá para saber",
+};
+
+/** A geografia só opina com coordenada válida e acurácia conhecida ≤ 100 m. */
+export function geografiaOpina(imovel: IdentidadeParaDedupe): boolean {
+  return coordenadasValidas(imovel)
+    && imovel.acuraciaMetros != null
+    && Number.isFinite(imovel.acuraciaMetros)
+    && imovel.acuraciaMetros > 0
+    && imovel.acuraciaMetros <= ACURACIA_MAXIMA_UTIL_METROS;
+}
+
+/**
+ * Raio da bounding box que pré-filtra candidatos: precisa alcançar o pior
+ * caso em que a regra ainda opina — círculos que se sobrepõem com o outro
+ * lado no limite de 100 m. Pré-filtro, nunca veredito.
+ */
+export function raioBuscaCandidatosMetros(imovel: IdentidadeParaDedupe): number {
+  const acuracia = geografiaOpina(imovel) ? imovel.acuraciaMetros! : 0;
+  return Math.max(DISTANCIA_POSSIVEL_METROS, acuracia + ACURACIA_MAXIMA_UTIL_METROS);
+}
+
+function metros(valor: number | null | undefined): string | null {
+  return valor != null && Number.isFinite(valor) && valor > 0 ? `${Math.round(valor)} m` : null;
+}
+
+/** Motivo legível de UM resultado, com os números que o produziram. */
+export function descreverResultadoDedupe(
+  resultado: ResultadoDedupeProspeccao,
+  alvo: IdentidadeParaDedupe,
+  candidato: IdentidadeParaDedupe,
+): string {
+  const distancia = metros(resultado.distanciaMetros);
+  const acuracias = [metros(alvo.acuraciaMetros), metros(candidato.acuraciaMetros)]
+    .filter((valor): valor is string => valor !== null)
+    .map((valor) => `±${valor}`)
+    .join(" e ");
+  const partes: string[] = [];
+  switch (resultado.motivo) {
+    case "identidade-textual":
+      partes.push("Mesmo endereço normalizado");
+      if (distancia) partes.push(`a cerca de ${distancia}`);
+      break;
+    case "proximidade":
+      partes.push(`A cerca de ${distancia ?? "poucos metros"}`);
+      if (acuracias) partes.push(`precisão do GPS ${acuracias}`);
+      break;
+    case "precisao-nao-separa":
+      partes.push(`A cerca de ${distancia ?? "poucos metros"}`);
+      partes.push(`mas a precisão do GPS${acuracias ? ` (${acuracias})` : ""} não separa os dois`);
+      break;
+    case "unidade-desconhecida":
+      partes.push(resultado.origem === "texto" ? "Mesmo endereço normalizado" : `A cerca de ${distancia ?? "poucos metros"}`);
+      if (resultado.origem === "geografia" && acuracias) partes.push(`precisão do GPS ${acuracias}`);
+      partes.push("unidade desconhecida em imóvel vertical — no máximo possível");
+      break;
+  }
+  return partes.join("; ");
+}

@@ -887,3 +887,55 @@
 .fonteLocalizacao input {
   margin: 2px 0 0;
 }
+
+/* Dedupe (C7): aviso, nunca bloqueio. Âmbar como o rascunho — é "olhe
+   isto", não erro. */
+.duplicatas {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--border-soft));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--warn) 8%, var(--bg-elev-3));
+}
+.duplicatas .secaoCabecalho {
+  margin-bottom: 0;
+}
+.duplicatasLista {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.duplicatasLista li {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--bg-elev-2);
+}
+.duplicatasLista strong {
+  color: var(--text);
+  font-size: 12px;
+}
+.duplicatasLista small,
+.duplicatasNota,
+.duplicatasCarteira {
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1.45;
+  margin: 0;
+}
+.duplicataTopo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.duplicatasCarteira {
+  color: var(--text);
+  font-weight: 600;
+}
