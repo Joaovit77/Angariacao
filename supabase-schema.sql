@@ -4027,6 +4027,2985 @@ grant execute on function public.concluir_mercado_monitorado(uuid, uuid, boolean
 -- CRUD e RLS da 5A permanecem; nenhum grant nas tabelas antigas é modificado.
 notify pgrst, 'reload schema';
 
+-- Garimpo em Campo — C2a: somente tabelas, constraints e índices.
+-- Policies, grants, triggers, RPCs e Storage pertencem aos próximos checkpoints.
+
+create table if not exists public.imoveis_identificados (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  situacao text not null default 'identificado'
+    constraint imoveis_identificados_situacao_check check (
+      situacao in ('identificado', 'investigando', 'promovendo', 'promovido', 'descartado', 'fundido')
+    ),
+  logradouro text
+    constraint imoveis_identificados_logradouro_check check (
+      logradouro is null or char_length(trim(logradouro)) between 1 and 200
+    ),
+  numero text,
+  unidade text,
+  bloco text,
+  edificio text,
+  bairro text,
+  cidade text,
+  estado text
+    constraint imoveis_identificados_estado_check check (
+      estado is null or (
+        estado = upper(trim(estado))
+        and estado ~ '^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$'
+      )
+    ),
+  cep text,
+  ponto_referencia text,
+  endereco_chave text not null default '',
+  cidade_chave text not null default '',
+  bairro_chave text not null default '',
+  latitude double precision
+    constraint imoveis_identificados_latitude_check check (
+      latitude is null or latitude between -90 and 90
+    ),
+  longitude double precision
+    constraint imoveis_identificados_longitude_check check (
+      longitude is null or longitude between -180 and 180
+    ),
+  acuracia_metros numeric
+    constraint imoveis_identificados_acuracia_check check (
+      acuracia_metros is null or acuracia_metros > 0
+    ),
+  precisao_localizacao text not null default 'desconhecida'
+    constraint imoveis_identificados_precisao_check check (
+      precisao_localizacao in ('gps', 'mapa', 'geocodificado', 'desconhecida')
+    ),
+  tipo text
+    constraint imoveis_identificados_tipo_check check (
+      tipo is null or tipo in (
+        'Apartamento', 'Casa', 'Casa de Condomínio', 'Kitnet/Studio', 'Sobrado',
+        'Sala Comercial', 'Galpão', 'Terreno', 'Outro'
+      )
+    ),
+  tipo_origem text
+    constraint imoveis_identificados_tipo_origem_check check (
+      tipo_origem is null or tipo_origem in ('manual', 'ia-texto', 'carteira')
+    ),
+  tipo_confianca smallint
+    constraint imoveis_identificados_tipo_confianca_check check (
+      tipo_confianca is null or tipo_confianca between 0 and 100
+    ),
+  tipo_estado text
+    constraint imoveis_identificados_tipo_estado_check check (
+      tipo_estado is null or tipo_estado in ('declarado', 'inferido', 'confirmado')
+    ),
+  tipo_definido_em timestamptz,
+  tipo_classificacao_id uuid,
+  tipo_avistamento_id uuid,
+  tipo_confirmado_por uuid references auth.users(id) on delete set null,
+  tipo_confirmado_em timestamptz,
+  primeiro_avistamento_em timestamptz,
+  ultimo_avistamento_em timestamptz,
+  avistamentos_total integer not null default 0
+    constraint imoveis_identificados_avistamentos_total_check check (avistamentos_total >= 0),
+  avistamento_corrente_id uuid,
+  origem_identificacao text not null default 'campo'
+    constraint imoveis_identificados_origem_check check (
+      origem_identificacao in ('campo', 'placa')
+    ),
+  ultima_investigacao_em timestamptz,
+  imovel_id uuid references public.imoveis(id) on delete set null,
+  promovido_em timestamptz,
+  descartado_em timestamptz,
+  descartado_motivo text,
+  fundido_em timestamptz,
+  fundido_em_imovel_id uuid,
+  exclusao_solicitada_em timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint imoveis_identificados_fundido_destino_check check (
+    fundido_em_imovel_id is null or fundido_em_imovel_id <> id
+  ),
+  constraint imoveis_identificados_fundido_coerente_check check (
+    (situacao = 'fundido') = (fundido_em is not null and fundido_em_imovel_id is not null)
+  ),
+  constraint imoveis_identificados_promovido_coerente_check check (
+    situacao <> 'promovido'
+    or (imovel_id is not null and promovido_em is not null and fundido_em is null)
+  ),
+  constraint imoveis_identificados_promovendo_coerente_check check (
+    situacao <> 'promovendo' or (imovel_id is null and promovido_em is null)
+  ),
+  constraint imoveis_identificados_descartado_coerente_check check (
+    situacao <> 'descartado' or descartado_em is not null
+  ),
+  constraint imoveis_identificados_tipo_metadados_check check (
+    (
+      tipo is null
+      and tipo_origem is null
+      and tipo_confianca is null
+      and tipo_estado is null
+      and tipo_definido_em is null
+      and tipo_classificacao_id is null
+      and tipo_avistamento_id is null
+      and tipo_confirmado_por is null
+      and tipo_confirmado_em is null
+    )
+    or (
+      tipo is not null
+      and tipo_origem is not null
+      and tipo_estado is not null
+      and tipo_definido_em is not null
+    )
+  ),
+  constraint imoveis_identificados_tipo_ia_check check (
+    tipo_origem <> 'ia-texto'
+    or (
+      tipo_confianca is not null
+      and tipo_classificacao_id is not null
+      and tipo_avistamento_id is not null
+    )
+  ),
+  constraint imoveis_identificados_tipo_manual_check check (
+    tipo_origem <> 'manual'
+    or (
+      tipo_confianca is null
+      and tipo_classificacao_id is null
+      and tipo_avistamento_id is null
+    )
+  ),
+  constraint imoveis_identificados_tipo_confirmado_check check (
+    (tipo_estado = 'confirmado')
+    = (tipo_confirmado_por is not null and tipo_confirmado_em is not null)
+  )
+);
+
+create table if not exists public.imoveis_identificados_avistamentos (
+  id uuid primary key default gen_random_uuid(),
+  imovel_identificado_id uuid not null
+    references public.imoveis_identificados(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  observado_em timestamptz not null,
+  latitude double precision
+    constraint imoveis_identificados_avistamentos_latitude_check check (
+      latitude is null or latitude between -90 and 90
+    ),
+  longitude double precision
+    constraint imoveis_identificados_avistamentos_longitude_check check (
+      longitude is null or longitude between -180 and 180
+    ),
+  acuracia_metros numeric
+    constraint imoveis_identificados_avistamentos_acuracia_check check (
+      acuracia_metros is null or acuracia_metros > 0
+    ),
+  precisao_localizacao text not null default 'desconhecida'
+    constraint imoveis_identificados_avistamentos_precisao_check check (
+      precisao_localizacao in ('gps', 'mapa', 'geocodificado', 'desconhecida')
+    ),
+  observacao text not null default ''
+    constraint imoveis_identificados_avistamentos_observacao_check check (
+      char_length(observacao) <= 2000
+    ),
+  observacao_revisao integer not null default 1
+    constraint imoveis_identificados_avistamentos_revisao_check check (
+      observacao_revisao >= 1
+    ),
+  revisao_conflito_em timestamptz,
+  classificacao_estado text not null default 'pendente'
+    constraint imoveis_identificados_avistamentos_classificacao_estado_check check (
+      classificacao_estado in ('pendente', 'concluida', 'indisponivel', 'nao_aplicavel')
+    ),
+  classificacao_id uuid,
+  classificacao_em timestamptz,
+  fingerprint text,
+  created_at timestamptz not null default now(),
+  constraint imoveis_identificados_avistamentos_classificacao_coerente_check check (
+    (classificacao_estado = 'concluida')
+    = (classificacao_id is not null and classificacao_em is not null and fingerprint is not null)
+  )
+);
+
+create table if not exists public.imoveis_identificados_fotos (
+  id uuid primary key default gen_random_uuid(),
+  avistamento_id uuid not null
+    references public.imoveis_identificados_avistamentos(id) on delete cascade,
+  imovel_identificado_id uuid not null
+    references public.imoveis_identificados(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  estado text not null default 'reservada'
+    constraint imoveis_identificados_fotos_estado_check check (estado in ('reservada', 'ativa')),
+  caminho text not null unique,
+  caminho_miniatura text not null unique,
+  largura integer not null
+    constraint imoveis_identificados_fotos_largura_check check (largura > 0),
+  altura integer not null
+    constraint imoveis_identificados_fotos_altura_check check (altura > 0),
+  bytes integer not null
+    constraint imoveis_identificados_fotos_bytes_check check (bytes > 0 and bytes <= 5242880),
+  capturada_em timestamptz,
+  reservada_em timestamptz not null default now(),
+  ativada_em timestamptz,
+  created_at timestamptz not null default now(),
+  constraint imoveis_identificados_fotos_estado_coerente_check check (
+    (estado = 'ativa') = (ativada_em is not null)
+  )
+);
+
+create table if not exists public.imoveis_identificados_classificacoes (
+  id uuid primary key default gen_random_uuid(),
+  avistamento_id uuid not null
+    references public.imoveis_identificados_avistamentos(id) on delete cascade,
+  imovel_identificado_id uuid not null
+    references public.imoveis_identificados(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  estado text not null default 'processando'
+    constraint imoveis_identificados_classificacoes_estado_check check (
+      estado in ('processando', 'concluida', 'falhou', 'abandonada')
+    ),
+  modo text not null
+    constraint imoveis_identificados_classificacoes_modo_check check (modo in ('modelo', 'reuso')),
+  reusada_de_classificacao_id uuid
+    references public.imoveis_identificados_classificacoes(id) on delete set null,
+  observacao_revisao integer not null
+    constraint imoveis_identificados_classificacoes_revisao_check check (observacao_revisao >= 1),
+  fingerprint text not null,
+  modelo text,
+  esforco text,
+  versao_catalogo integer not null
+    constraint imoveis_identificados_classificacoes_versao_catalogo_check check (versao_catalogo > 0),
+  versao_classificador integer not null
+    constraint imoveis_identificados_classificacoes_versao_classificador_check check (
+      versao_classificador > 0
+    ),
+  confianca_minima smallint not null
+    constraint imoveis_identificados_classificacoes_confianca_minima_check check (
+      confianca_minima between 0 and 100
+    ),
+  tipo_sugerido text
+    constraint imoveis_identificados_classificacoes_tipo_check check (
+      tipo_sugerido is null or tipo_sugerido in (
+        'Apartamento', 'Casa', 'Casa de Condomínio', 'Kitnet/Studio', 'Sobrado',
+        'Sala Comercial', 'Galpão', 'Terreno', 'Outro'
+      )
+    ),
+  tipo_confianca smallint
+    constraint imoveis_identificados_classificacoes_tipo_confianca_check check (
+      tipo_confianca is null or tipo_confianca between 0 and 100
+    ),
+  snapshot_aplicado boolean not null default false,
+  sugeridas integer not null default 0 check (sugeridas >= 0),
+  aplicadas integer not null default 0 check (aplicadas >= 0),
+  abaixo_do_piso integer not null default 0 check (abaixo_do_piso >= 0),
+  fora_do_catalogo integer not null default 0 check (fora_do_catalogo >= 0),
+  sem_evidencia integer not null default 0 check (sem_evidencia >= 0),
+  ja_confirmada integer not null default 0 check (ja_confirmada >= 0),
+  falha_codigo text
+    constraint imoveis_identificados_classificacoes_falha_codigo_check check (
+      falha_codigo is null or falha_codigo in (
+        'nao-configurado', 'sem-permissao', 'sessao-expirada', 'requisicao-invalida',
+        'sem-dados', 'intervencao-humana', 'historico-insuficiente', 'contexto-incompleto',
+        'baixa-confianca', 'geracao-reprovada', 'protocolo-inadequado',
+        'falha-carregamento-contexto', 'falha-modelo', 'limite-excedido', 'falha-ia',
+        'indisponivel', 'limite-diario', 'saida-invalida'
+      )
+    ),
+  iniciada_em timestamptz not null default now(),
+  concluida_em timestamptz,
+  lease_token uuid,
+  lease_expira_em timestamptz,
+  constraint imoveis_identificados_classificacoes_reuso_check check (
+    (modo = 'reuso') = (reusada_de_classificacao_id is not null)
+  ),
+  constraint imoveis_identificados_classificacoes_lease_check check (
+    (lease_token is null) = (lease_expira_em is null)
+  ),
+  constraint imoveis_identificados_classificacoes_concluida_check check (
+    estado <> 'concluida' or concluida_em is not null
+  ),
+  constraint imoveis_identificados_classificacoes_falhou_check check (
+    estado <> 'falhou' or falha_codigo is not null
+  ),
+  constraint imoveis_identificados_classificacoes_reuso_sem_falha_check check (
+    modo <> 'reuso' or falha_codigo is null
+  )
+);
+
+create table if not exists public.imoveis_identificados_etiquetas (
+  id bigint generated always as identity primary key,
+  imovel_identificado_id uuid not null
+    references public.imoveis_identificados(id) on delete cascade,
+  avistamento_id uuid
+    references public.imoveis_identificados_avistamentos(id) on delete cascade,
+  classificacao_id uuid
+    references public.imoveis_identificados_classificacoes(id) on delete set null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  categoria text not null,
+  codigo text not null,
+  origem text not null
+    constraint imoveis_identificados_etiquetas_origem_check check (
+      origem in ('manual', 'ia-texto', 'ia-visao')
+    ),
+  confianca smallint
+    constraint imoveis_identificados_etiquetas_confianca_check check (
+      confianca is null or confianca between 0 and 100
+    ),
+  estado text not null default 'inferida'
+    constraint imoveis_identificados_etiquetas_estado_check check (
+      estado in ('inferida', 'confirmada', 'contestada', 'substituida', 'desatualizada')
+    ),
+  modelo text,
+  versao_catalogo integer not null
+    constraint imoveis_identificados_etiquetas_versao_catalogo_check check (versao_catalogo > 0),
+  versao_classificador integer
+    constraint imoveis_identificados_etiquetas_versao_classificador_check check (
+      versao_classificador is null or versao_classificador > 0
+    ),
+  revisao_observacao integer
+    constraint imoveis_identificados_etiquetas_revisao_check check (
+      revisao_observacao is null or revisao_observacao >= 1
+    ),
+  observado_em timestamptz,
+  confirmada_por uuid references auth.users(id) on delete set null,
+  confirmada_em timestamptz,
+  substituida_em timestamptz,
+  substituida_por_classificacao_id uuid
+    references public.imoveis_identificados_classificacoes(id),
+  desatualizada_em timestamptz,
+  created_at timestamptz not null default now(),
+  constraint imoveis_identificados_etiquetas_confirmada_check check (
+    estado <> 'confirmada' or (confirmada_por is not null and confirmada_em is not null)
+  ),
+  constraint imoveis_identificados_etiquetas_ia_texto_check check (
+    origem <> 'ia-texto'
+    or (
+      confianca is not null
+      and modelo is not null
+      and classificacao_id is not null
+      and avistamento_id is not null
+      and revisao_observacao is not null
+    )
+  ),
+  constraint imoveis_identificados_etiquetas_manual_check check (
+    origem <> 'manual' or (confianca is null and modelo is null)
+  ),
+  constraint imoveis_identificados_etiquetas_substituida_check check (
+    estado <> 'substituida'
+    or (substituida_em is not null and substituida_por_classificacao_id is not null)
+  ),
+  constraint imoveis_identificados_etiquetas_desatualizada_check check (
+    estado <> 'desatualizada' or desatualizada_em is not null
+  )
+);
+
+-- FKs cíclicas entram depois que as cinco relações existem.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'imoveis_identificados_tipo_classificacao_fkey'
+      and conrelid = 'public.imoveis_identificados'::regclass
+  ) then
+    alter table public.imoveis_identificados
+      add constraint imoveis_identificados_tipo_classificacao_fkey
+      foreign key (tipo_classificacao_id)
+      references public.imoveis_identificados_classificacoes(id) on delete set null;
+  end if;
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'imoveis_identificados_tipo_avistamento_fkey'
+      and conrelid = 'public.imoveis_identificados'::regclass
+  ) then
+    alter table public.imoveis_identificados
+      add constraint imoveis_identificados_tipo_avistamento_fkey
+      foreign key (tipo_avistamento_id)
+      references public.imoveis_identificados_avistamentos(id) on delete set null;
+  end if;
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'imoveis_identificados_avistamento_corrente_fkey'
+      and conrelid = 'public.imoveis_identificados'::regclass
+  ) then
+    alter table public.imoveis_identificados
+      add constraint imoveis_identificados_avistamento_corrente_fkey
+      foreign key (avistamento_corrente_id)
+      references public.imoveis_identificados_avistamentos(id) on delete set null;
+  end if;
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'imoveis_identificados_avistamentos_classificacao_fkey'
+      and conrelid = 'public.imoveis_identificados_avistamentos'::regclass
+  ) then
+    alter table public.imoveis_identificados_avistamentos
+      add constraint imoveis_identificados_avistamentos_classificacao_fkey
+      foreign key (classificacao_id)
+      references public.imoveis_identificados_classificacoes(id) on delete set null;
+  end if;
+end;
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'imoveis_identificados_fundido_em_imovel_fkey'
+      and conrelid = 'public.imoveis_identificados'::regclass
+  ) then
+    alter table public.imoveis_identificados
+      add constraint imoveis_identificados_fundido_em_imovel_fkey
+      foreign key (fundido_em_imovel_id)
+      references public.imoveis_identificados(id) on delete cascade;
+  end if;
+end;
+$$;
+
+create index if not exists idx_imoveis_identificados_user_situacao_ultimo
+  on public.imoveis_identificados (user_id, situacao, ultimo_avistamento_em desc);
+create index if not exists idx_imoveis_identificados_user_cidade_bairro
+  on public.imoveis_identificados (user_id, cidade_chave, bairro_chave);
+create index if not exists idx_imoveis_identificados_user_coordenadas
+  on public.imoveis_identificados (user_id, latitude, longitude)
+  where latitude is not null;
+create index if not exists idx_imoveis_identificados_user_endereco
+  on public.imoveis_identificados (user_id, endereco_chave)
+  where endereco_chave <> '';
+create index if not exists idx_imoveis_identificados_imovel
+  on public.imoveis_identificados (imovel_id)
+  where imovel_id is not null;
+create index if not exists idx_imoveis_identificados_avistamento_corrente
+  on public.imoveis_identificados (avistamento_corrente_id);
+create index if not exists idx_imoveis_identificados_fundido_destino
+  on public.imoveis_identificados (fundido_em_imovel_id)
+  where fundido_em_imovel_id is not null;
+create index if not exists idx_imoveis_identificados_exclusao_pendente
+  on public.imoveis_identificados (user_id)
+  where exclusao_solicitada_em is not null;
+create index if not exists idx_imoveis_identificados_promocao_pendente
+  on public.imoveis_identificados (user_id)
+  where situacao = 'promovendo';
+
+create index if not exists idx_identificados_avistamentos_imovel_ordem
+  on public.imoveis_identificados_avistamentos (
+    imovel_identificado_id, observado_em desc, created_at desc, id desc
+  );
+create index if not exists idx_identificados_avistamentos_user_observado
+  on public.imoveis_identificados_avistamentos (user_id, observado_em desc);
+create index if not exists idx_identificados_avistamentos_pendentes
+  on public.imoveis_identificados_avistamentos (user_id, classificacao_estado)
+  where classificacao_estado = 'pendente';
+
+create unique index if not exists idx_identificados_fotos_avistamento_unico
+  on public.imoveis_identificados_fotos (avistamento_id);
+create index if not exists idx_identificados_fotos_imovel_capturada
+  on public.imoveis_identificados_fotos (imovel_identificado_id, capturada_em desc);
+create index if not exists idx_identificados_fotos_reservadas
+  on public.imoveis_identificados_fotos (user_id)
+  where estado = 'reservada';
+
+create unique index if not exists idx_identificados_classificacoes_processando
+  on public.imoveis_identificados_classificacoes (avistamento_id)
+  where estado = 'processando';
+create unique index if not exists idx_identificados_classificacoes_concluida
+  on public.imoveis_identificados_classificacoes (
+    avistamento_id, observacao_revisao, fingerprint
+  ) where estado = 'concluida';
+create index if not exists idx_identificados_classificacoes_avistamento_inicio
+  on public.imoveis_identificados_classificacoes (avistamento_id, iniciada_em desc);
+create index if not exists idx_identificados_classificacoes_reuso
+  on public.imoveis_identificados_classificacoes (imovel_identificado_id, fingerprint)
+  where estado = 'concluida';
+create index if not exists idx_identificados_classificacoes_user_inicio
+  on public.imoveis_identificados_classificacoes (user_id, iniciada_em desc);
+
+create unique index if not exists idx_identificados_etiquetas_avistamento_vigente
+  on public.imoveis_identificados_etiquetas (avistamento_id, categoria, codigo)
+  where avistamento_id is not null and estado in ('inferida', 'confirmada');
+create unique index if not exists idx_identificados_etiquetas_imovel_vigente
+  on public.imoveis_identificados_etiquetas (imovel_identificado_id, categoria, codigo)
+  where avistamento_id is null and estado in ('inferida', 'confirmada');
+create index if not exists idx_identificados_etiquetas_analiticas
+  on public.imoveis_identificados_etiquetas (user_id, categoria, codigo)
+  where estado in ('inferida', 'confirmada');
+create index if not exists idx_identificados_etiquetas_avistamento_estado
+  on public.imoveis_identificados_etiquetas (avistamento_id, estado);
+create index if not exists idx_identificados_etiquetas_imovel_estado_observado
+  on public.imoveis_identificados_etiquetas (
+    imovel_identificado_id, estado, observado_em desc
+  );
+create index if not exists idx_identificados_etiquetas_classificacao
+  on public.imoveis_identificados_etiquetas (classificacao_id);
+
+-- A proteção fica ligada no mesmo arquivo da criação. As policies e os
+-- grants continuam reservados integralmente ao C2b.
+alter table public.imoveis_identificados enable row level security;
+alter table public.imoveis_identificados_avistamentos enable row level security;
+alter table public.imoveis_identificados_fotos enable row level security;
+alter table public.imoveis_identificados_classificacoes enable row level security;
+alter table public.imoveis_identificados_etiquetas enable row level security;
+
+notify pgrst, 'reload schema';
+
+-- Garimpo em Campo — C2b: somente RLS e grants explícitos.
+-- Triggers, RPCs e Storage permanecem reservados aos checkpoints seguintes.
+
+drop policy if exists "select_own_imoveis_identificados" on public.imoveis_identificados;
+create policy "select_own_imoveis_identificados" on public.imoveis_identificados
+  for select to authenticated
+  using ((select auth.uid()) = user_id);
+
+drop policy if exists "insert_own_imoveis_identificados" on public.imoveis_identificados;
+create policy "insert_own_imoveis_identificados" on public.imoveis_identificados
+  for insert to authenticated
+  with check ((select auth.uid()) = user_id);
+
+drop policy if exists "update_own_imoveis_identificados" on public.imoveis_identificados;
+create policy "update_own_imoveis_identificados" on public.imoveis_identificados
+  for update to authenticated
+  using ((select auth.uid()) = user_id)
+  with check (
+    (select auth.uid()) = user_id
+    and (
+      imoveis_identificados.imovel_id is null
+      or exists (
+        select 1
+        from public.imoveis carteira
+        where carteira.id = imoveis_identificados.imovel_id
+          and carteira.user_id = (select auth.uid())
+      )
+    )
+  );
+
+drop policy if exists "select_own_imoveis_identificados_avistamentos"
+  on public.imoveis_identificados_avistamentos;
+create policy "select_own_imoveis_identificados_avistamentos"
+  on public.imoveis_identificados_avistamentos
+  for select to authenticated
+  using ((select auth.uid()) = user_id);
+
+drop policy if exists "insert_own_imoveis_identificados_avistamentos"
+  on public.imoveis_identificados_avistamentos;
+create policy "insert_own_imoveis_identificados_avistamentos"
+  on public.imoveis_identificados_avistamentos
+  for insert to authenticated
+  with check (
+    (select auth.uid()) = user_id
+    and exists (
+      select 1
+      from public.imoveis_identificados pai
+      where pai.id = imoveis_identificados_avistamentos.imovel_identificado_id
+        and pai.user_id = (select auth.uid())
+        and pai.situacao not in ('fundido', 'promovido', 'promovendo')
+        and pai.exclusao_solicitada_em is null
+    )
+  );
+
+drop policy if exists "update_own_imoveis_identificados_avistamentos"
+  on public.imoveis_identificados_avistamentos;
+create policy "update_own_imoveis_identificados_avistamentos"
+  on public.imoveis_identificados_avistamentos
+  for update to authenticated
+  using ((select auth.uid()) = user_id)
+  with check (
+    (select auth.uid()) = user_id
+    and exists (
+      select 1
+      from public.imoveis_identificados pai
+      where pai.id = imoveis_identificados_avistamentos.imovel_identificado_id
+        and pai.user_id = (select auth.uid())
+    )
+  );
+
+drop policy if exists "select_own_imoveis_identificados_fotos"
+  on public.imoveis_identificados_fotos;
+create policy "select_own_imoveis_identificados_fotos"
+  on public.imoveis_identificados_fotos
+  for select to authenticated
+  using ((select auth.uid()) = user_id);
+
+drop policy if exists "select_own_imoveis_identificados_classificacoes"
+  on public.imoveis_identificados_classificacoes;
+create policy "select_own_imoveis_identificados_classificacoes"
+  on public.imoveis_identificados_classificacoes
+  for select to authenticated
+  using ((select auth.uid()) = user_id);
+
+drop policy if exists "select_own_imoveis_identificados_etiquetas"
+  on public.imoveis_identificados_etiquetas;
+create policy "select_own_imoveis_identificados_etiquetas"
+  on public.imoveis_identificados_etiquetas
+  for select to authenticated
+  using ((select auth.uid()) = user_id);
+
+revoke all on table
+  public.imoveis_identificados,
+  public.imoveis_identificados_avistamentos,
+  public.imoveis_identificados_fotos,
+  public.imoveis_identificados_classificacoes,
+  public.imoveis_identificados_etiquetas
+from public, anon, authenticated, service_role;
+
+grant select on table public.imoveis_identificados to authenticated;
+grant insert (
+  user_id, logradouro, numero, unidade, bloco, edificio, bairro, cidade,
+  estado, cep, ponto_referencia, endereco_chave, cidade_chave,
+  bairro_chave, origem_identificacao, tipo
+) on table public.imoveis_identificados to authenticated;
+grant update (
+  logradouro, numero, unidade, bloco, edificio, bairro, cidade,
+  estado, cep, ponto_referencia, endereco_chave, cidade_chave,
+  bairro_chave, origem_identificacao, ultima_investigacao_em
+) on table public.imoveis_identificados to authenticated;
+
+grant select, insert on table public.imoveis_identificados_avistamentos to authenticated;
+grant update (observacao)
+  on table public.imoveis_identificados_avistamentos to authenticated;
+
+grant select on table
+  public.imoveis_identificados_fotos,
+  public.imoveis_identificados_classificacoes,
+  public.imoveis_identificados_etiquetas
+to authenticated;
+
+grant select, insert, update, delete on table
+  public.imoveis_identificados,
+  public.imoveis_identificados_avistamentos,
+  public.imoveis_identificados_fotos,
+  public.imoveis_identificados_classificacoes,
+  public.imoveis_identificados_etiquetas
+to service_role;
+
+revoke all on sequence public.imoveis_identificados_etiquetas_id_seq
+  from public, anon, authenticated, service_role;
+grant usage, select on sequence public.imoveis_identificados_etiquetas_id_seq
+  to service_role;
+
+notify pgrst, 'reload schema';
+
+-- Garimpo em Campo — C2c: somente triggers e a função privada de recálculo.
+-- RPCs, Storage, bucket, APIs e UI permanecem reservados aos checkpoints seguintes.
+--
+-- Divisão de papéis que o plano fixa e este arquivo respeita:
+--   grant  = autorização (fechada no C2b)
+--   CHECK  = invariante de linha (fechado no C2a)
+--   trigger = derivação, bloqueio e invalidação  ← é só isto que entra aqui
+--
+-- Três destas funções são `security definer` por necessidade, não por
+-- conveniência: elas escrevem em colunas e tabelas que o C2b deliberadamente
+-- NÃO concedeu ao cliente (agregados da identidade, etiquetas). Sem isso a
+-- correção de uma observação falharia com 42501 para o próprio dono do
+-- registro. Precedente idêntico: private.registrar_observacao_comparavel.
+
+-- ============================================================
+-- RECÁLCULO TOTAL DOS AGREGADOS DA IDENTIDADE
+--
+-- Total, nunca incremental. Recontar do zero é idempotente e auto-corretivo:
+-- rodar de novo conserta qualquer divergência, inclusive a que um
+-- reparenteamento de fusão poderia deixar. Precedente de recálculo total em
+-- vez de soma: receber_repasses_em_lote refaz max(data_recebimento).
+--
+-- Corrente é o avistamento de maior `observado_em` — a DATA DO EVENTO —, com
+-- desempate por `created_at` e `id`. É exatamente isso que impede um
+-- avistamento antigo registrado hoje de virar o corrente e mover o snapshot.
+--
+-- A melhor localização é a do avistamento de MENOR `acuracia_metros`: um fix
+-- de ±80 m nunca apaga um de ±7 m. Acurácia desconhecida fica por último
+-- (`nulls last`) e só vence quando nenhuma é conhecida; aí decide o mais
+-- recente. Avistamento sem coordenada não concorre.
+--
+-- Só escreve quando algum valor muda, então chamar à vontade é barato e uma
+-- correção de observação não suja o `updated_at` da identidade. Identidade
+-- inexistente é no-op: no cascade da exclusão o pai já foi embora quando o
+-- gatilho do filho roda, e o UPDATE simplesmente não casa linha nenhuma.
+-- ============================================================
+create or replace function private.recalcular_agregados_identificado(p_imovel_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_total integer;
+  v_primeiro timestamptz;
+  v_ultimo timestamptz;
+  v_corrente uuid;
+  v_latitude double precision;
+  v_longitude double precision;
+  v_acuracia numeric;
+  v_precisao text;
+begin
+  if p_imovel_id is null then
+    return;
+  end if;
+
+  select count(*), min(a.observado_em), max(a.observado_em)
+    into v_total, v_primeiro, v_ultimo
+    from public.imoveis_identificados_avistamentos a
+   where a.imovel_identificado_id = p_imovel_id;
+
+  select a.id
+    into v_corrente
+    from public.imoveis_identificados_avistamentos a
+   where a.imovel_identificado_id = p_imovel_id
+   order by a.observado_em desc, a.created_at desc, a.id desc
+   limit 1;
+
+  select a.latitude, a.longitude, a.acuracia_metros, a.precisao_localizacao
+    into v_latitude, v_longitude, v_acuracia, v_precisao
+    from public.imoveis_identificados_avistamentos a
+   where a.imovel_identificado_id = p_imovel_id
+     and a.latitude is not null
+     and a.longitude is not null
+   order by a.acuracia_metros asc nulls last,
+            a.observado_em desc, a.created_at desc, a.id desc
+   limit 1;
+
+  update public.imoveis_identificados i
+     set primeiro_avistamento_em = v_primeiro,
+         ultimo_avistamento_em = v_ultimo,
+         avistamentos_total = coalesce(v_total, 0),
+         avistamento_corrente_id = v_corrente,
+         latitude = v_latitude,
+         longitude = v_longitude,
+         acuracia_metros = v_acuracia,
+         precisao_localizacao = coalesce(v_precisao, 'desconhecida')
+   where i.id = p_imovel_id
+     and (
+       i.primeiro_avistamento_em is distinct from v_primeiro
+       or i.ultimo_avistamento_em is distinct from v_ultimo
+       or i.avistamentos_total is distinct from coalesce(v_total, 0)
+       or i.avistamento_corrente_id is distinct from v_corrente
+       or i.latitude is distinct from v_latitude
+       or i.longitude is distinct from v_longitude
+       or i.acuracia_metros is distinct from v_acuracia
+       or i.precisao_localizacao is distinct from coalesce(v_precisao, 'desconhecida')
+     );
+end;
+$$;
+
+-- ============================================================
+-- SINCRONIZAÇÃO DA LINHA CORRENTE
+--
+-- `after insert or update or delete`: o UPDATE entra na lista porque o
+-- reparenteamento da fusão muda `imovel_identificado_id`, e aí os DOIS lados
+-- precisam ser recalculados — a origem fica com zero avistamentos e o destino
+-- herda os eventos.
+-- ============================================================
+create or replace function private.sincronizar_avistamentos_identidade()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if tg_op = 'DELETE' then
+    perform private.recalcular_agregados_identificado(old.imovel_identificado_id);
+    return old;
+  end if;
+
+  perform private.recalcular_agregados_identificado(new.imovel_identificado_id);
+
+  if tg_op = 'UPDATE'
+     and old.imovel_identificado_id is distinct from new.imovel_identificado_id then
+    perform private.recalcular_agregados_identificado(old.imovel_identificado_id);
+  end if;
+
+  return new;
+end;
+$$;
+
+-- ============================================================
+-- O ÚNICO `before update` DO AVISTAMENTO
+--
+-- Proteção, bloqueio e invalidação numa função só, de propósito: dois
+-- gatilhos `before update` na mesma tabela disparariam por ordem de NOME, e
+-- correção que depende de ordem alfabética não é correção. Uma função tem
+-- ordem interna garantida por construção.
+--
+-- A invalidação escreve em outra tabela daqui mesmo, e não num `after`
+-- separado, porque um `after` teria de REDESCOBRIR "a observação mudou?"
+-- comparando OLD/NEW outra vez — a mesma lógica em dois lugares, que é
+-- justamente a fragilidade que se quer eliminar. O rollback continua atômico
+-- porque tudo roda na transação do próprio UPDATE.
+-- ============================================================
+create or replace function private.proteger_avistamento()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_pai public.imoveis_identificados;
+  v_destino public.imoveis_identificados;
+  v_observacao_mudou boolean;
+  v_tem_confirmada boolean;
+begin
+  -- 1. O avistamento é evento: quando e onde são imutáveis.
+  if new.id is distinct from old.id
+     or new.user_id is distinct from old.user_id
+     or new.observado_em is distinct from old.observado_em
+     or new.latitude is distinct from old.latitude
+     or new.longitude is distinct from old.longitude
+     or new.acuracia_metros is distinct from old.acuracia_metros
+     or new.precisao_localizacao is distinct from old.precisao_localizacao
+     or new.created_at is distinct from old.created_at then
+    raise exception
+      'Avistamento é evento histórico: data, localização e autoria são imutáveis. Só a observação pode ser corrigida.'
+      using errcode = '42501';
+  end if;
+
+  select * into v_pai
+    from public.imoveis_identificados
+   where id = old.imovel_identificado_id;
+
+  if new.imovel_identificado_id is distinct from old.imovel_identificado_id then
+    -- 2. Reparenteamento existe só para a fusão, e a autorização é a LÁPIDE:
+    --    a origem precisa já estar `fundido` apontando exatamente o destino.
+    --    Condição de DADO, não de sessão — fica no banco para sempre.
+    select * into v_destino
+      from public.imoveis_identificados
+     where id = new.imovel_identificado_id;
+
+    if v_pai.id is null
+       or v_destino.id is null
+       or v_pai.situacao is distinct from 'fundido'
+       or v_pai.fundido_em_imovel_id is distinct from new.imovel_identificado_id
+       or v_pai.user_id is distinct from v_destino.user_id
+       or v_destino.user_id is distinct from new.user_id then
+      raise exception
+        'Avistamento só troca de imóvel pela fusão controlada, depois que a origem vira lápide apontando o destino.'
+        using errcode = '42501';
+    end if;
+
+    if v_pai.exclusao_solicitada_em is not null
+       or v_destino.exclusao_solicitada_em is not null then
+      raise exception 'Registro com exclusão em andamento não participa de fusão.'
+        using errcode = '42501';
+    end if;
+  elsif v_pai.exclusao_solicitada_em is not null then
+    -- 3. Exclusão em andamento congela o avistamento: retomável, não mutável.
+    raise exception
+      'Registro com exclusão em andamento: o avistamento não aceita alteração até a exclusão terminar ou ser cancelada.'
+      using errcode = '42501';
+  end if;
+
+  -- 4. A revisão é do gatilho, não do chamador. Sobrescrever o que veio de
+  --    fora é o padrão de proteger_status_history_imovel, que troca o `userId`
+  --    do navegador pelo `auth.uid()` real.
+  v_observacao_mudou := new.observacao is distinct from old.observacao;
+  new.observacao_revisao :=
+    old.observacao_revisao + (case when v_observacao_mudou then 1 else 0 end);
+
+  if not v_observacao_mudou then
+    -- `revisao_conflito_em` fica como veio: quem revisa o conflito precisa
+    -- poder limpá-lo sem mexer no texto.
+    return new;
+  end if;
+
+  -- 5. Texto novo invalida a inferência que se apoiava no texto velho, na
+  --    MESMA transação. Nunca existe a janela "texto novo + etiqueta antiga
+  --    apresentada como atual".
+  new.classificacao_estado := 'pendente';
+  new.classificacao_id := null;
+  new.classificacao_em := null;
+  new.fingerprint := null;
+
+  -- `desatualizada` e não `substituida`: fatos diferentes. Substituída é
+  -- "outra execução a trocou"; desatualizada é "o texto que a embasava não
+  -- existe mais". A linha CONTINUA na tabela — o histórico não encolhe.
+  update public.imoveis_identificados_etiquetas
+     set estado = 'desatualizada',
+         desatualizada_em = now()
+   where avistamento_id = old.id
+     and estado = 'inferida';
+
+  -- Confirmação humana NÃO é revogada: confirmar é afirmação sobre o mundo,
+  -- não sobre o texto. Mas se o texto corrigido contradisser a confirmação, o
+  -- sistema não tem como decidir — então avisa e deixa o humano resolver.
+  select exists (
+    select 1
+      from public.imoveis_identificados_etiquetas
+     where avistamento_id = old.id
+       and estado = 'confirmada'
+  ) into v_tem_confirmada;
+
+  if v_tem_confirmada then
+    new.revisao_conflito_em := now();
+  end if;
+
+  -- 6. Inferência de tipo cuja evidência desapareceu para de ser afirmada.
+  --    Não é importar o passado para o presente: é parar de apresentar como
+  --    atual algo que perdeu a base. Manual e confirmado ficam intactos.
+  update public.imoveis_identificados i
+     set tipo = null,
+         tipo_origem = null,
+         tipo_confianca = null,
+         tipo_estado = null,
+         tipo_definido_em = null,
+         tipo_classificacao_id = null,
+         tipo_avistamento_id = null,
+         tipo_confirmado_por = null,
+         tipo_confirmado_em = null
+   where i.id = old.imovel_identificado_id
+     and i.tipo_avistamento_id = old.id
+     and i.tipo_origem = 'ia-texto'
+     and i.tipo_estado = 'inferido';
+
+  return new;
+end;
+$$;
+
+-- ============================================================
+-- O `before update` DA IDENTIDADE — só derivação e bloqueio
+--
+-- Assimetria deliberada em relação ao avistamento: ali existe gatilho de
+-- IMUTABILIDADE porque a tabela é log append-only, e é onde o projeto sempre
+-- põe gatilho (proteger_snapshot_repasse, proteger_status_history_imovel).
+-- A identidade é linha corrente mutável: não há garantia de append-only a
+-- defender, então a autorização fica inteira no grant de coluna do C2b e este
+-- gatilho NÃO policia escrita — ele deriva. Policiar aqui obrigaria a
+-- inventar "contextos de exceção" que cada RPC legítima teria de satisfazer,
+-- que é onde esse tipo de desenho costuma falhar.
+-- ============================================================
+create or replace function private.proteger_identificado()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  -- O próprio flag (retomar/cancelar) e as colunas que o recálculo deriva.
+  -- Comparar o resto por jsonb em vez de listar coluna por coluna mantém a
+  -- regra correta quando uma coluna nova nascer: o padrão é BLOQUEAR.
+  v_livres text[] := array[
+    'exclusao_solicitada_em',
+    'primeiro_avistamento_em', 'ultimo_avistamento_em', 'avistamentos_total',
+    'avistamento_corrente_id', 'latitude', 'longitude', 'acuracia_metros',
+    'precisao_localizacao', 'updated_at'
+  ];
+begin
+  -- 1. Exclusão em andamento: retomável, não mutável.
+  if old.exclusao_solicitada_em is not null
+     and (to_jsonb(new) - v_livres) is distinct from (to_jsonb(old) - v_livres) then
+    raise exception
+      'Registro com exclusão em andamento: retome ou cancele a exclusão antes de alterar qualquer campo.'
+      using errcode = '42501';
+  end if;
+
+  -- 2. A data da investigação é do servidor, não do navegador. A coluna está
+  --    no grant para o fluxo poder marcá-la, mas o instante é sempre `now()` —
+  --    mesmo padrão de proteger_status_history_imovel.
+  if new.ultima_investigacao_em is distinct from old.ultima_investigacao_em then
+    new.ultima_investigacao_em := now();
+  end if;
+
+  return new;
+end;
+$$;
+
+-- ============================================================
+-- TIPO DECLARADO NO CADASTRO
+--
+-- `before insert`, e sem nenhuma heurística para "descobrir" quem escreveu:
+-- `concluir_classificacao` NUNCA insere identidade, então tipo presente num
+-- INSERT é, por construção, declaração humana. As outras duas portas do tipo
+-- (definir_tipo_manual e concluir_classificacao) são RPCs e pertencem aos
+-- checkpoints seguintes.
+-- ============================================================
+create or replace function private.tipo_manual_no_cadastro()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.tipo is null then
+    -- Sem tipo não há proveniência a guardar; o que vier é descartado.
+    new.tipo_origem := null;
+    new.tipo_estado := null;
+    new.tipo_definido_em := null;
+  else
+    new.tipo_origem := 'manual';
+    new.tipo_estado := 'declarado';
+    new.tipo_definido_em := now();
+  end if;
+
+  -- Proveniência de IA não nasce num cadastro, em nenhuma hipótese.
+  new.tipo_confianca := null;
+  new.tipo_classificacao_id := null;
+  new.tipo_avistamento_id := null;
+  new.tipo_confirmado_por := null;
+  new.tipo_confirmado_em := null;
+
+  return new;
+end;
+$$;
+
+-- ------------------------------------------------------------
+-- Ligação dos gatilhos
+-- ------------------------------------------------------------
+drop trigger if exists trg_identificados_tipo_manual on public.imoveis_identificados;
+create trigger trg_identificados_tipo_manual
+  before insert on public.imoveis_identificados
+  for each row execute function private.tipo_manual_no_cadastro();
+
+drop trigger if exists trg_identificados_proteger on public.imoveis_identificados;
+create trigger trg_identificados_proteger
+  before update on public.imoveis_identificados
+  for each row execute function private.proteger_identificado();
+
+drop trigger if exists trg_identificados_updated_at on public.imoveis_identificados;
+create trigger trg_identificados_updated_at
+  before update on public.imoveis_identificados
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists trg_identificados_avistamentos_proteger
+  on public.imoveis_identificados_avistamentos;
+create trigger trg_identificados_avistamentos_proteger
+  before update on public.imoveis_identificados_avistamentos
+  for each row execute function private.proteger_avistamento();
+
+drop trigger if exists trg_identificados_avistamentos_sincronizar
+  on public.imoveis_identificados_avistamentos;
+create trigger trg_identificados_avistamentos_sincronizar
+  after insert or update or delete on public.imoveis_identificados_avistamentos
+  for each row execute function private.sincronizar_avistamentos_identidade();
+
+-- ------------------------------------------------------------
+-- Nenhuma destas funções é RPC. O schema `private` continua sem USAGE para
+-- `anon`/`authenticated`, e o PostgREST não as expõe.
+-- ------------------------------------------------------------
+revoke all on function private.recalcular_agregados_identificado(uuid)
+  from public, anon, authenticated, service_role;
+revoke all on function private.sincronizar_avistamentos_identidade()
+  from public, anon, authenticated, service_role;
+revoke all on function private.proteger_avistamento()
+  from public, anon, authenticated, service_role;
+revoke all on function private.proteger_identificado()
+  from public, anon, authenticated, service_role;
+revoke all on function private.tipo_manual_no_cadastro()
+  from public, anon, authenticated, service_role;
+
+notify pgrst, 'reload schema';
+
+-- Garimpo em Campo — C2d: somente as três RPCs de classificação do modelo Servidor.
+-- RPCs do navegador, exclusão, Storage, bucket, API HTTP e UI permanecem
+-- reservados aos checkpoints seguintes.
+--
+-- MODELO DE IDENTIDADE — Servidor (as três usam, nenhuma mistura):
+--   `p_user_id` explícito, descoberto por auth.getUser() sobre o Bearer na rota.
+--   Nunca do corpo da requisição. Se houver JWT na conexão, ele tem de ser o
+--   mesmo usuário. E o registro alvo precisa pertencer a `p_user_id`, senão o
+--   erro é INDISTINGUÍVEL de "não existe" — nem a existência do registro de
+--   outra conta é revelada. Precedente: registrar_comparavel_mercado, que usa
+--   auth.uid() e só cai para o user_id do payload quando é service_role.
+--
+-- `concluir` jamais pode virar `authenticated`: ela grava origem='ia-texto'
+-- com modelo e confiança. Com o lease_token em mãos, o navegador forjaria
+-- proveniência de IA. Daí as três serem service_role.
+--
+-- SEPARAÇÃO DE ESTADOS: `processando` pertence à EXECUÇÃO. O avistamento não
+-- tem esse estado e continua `pendente` durante a chamada — a bicondicional
+-- criada no C2a (concluida ⇔ os três campos preenchidos) é respeitada, e
+-- "está sendo classificado agora?" é derivado por `exists` na execução.
+
+-- ============================================================
+-- INICIAR — claim atômico, lease e decisão de reuso
+--
+-- O claim é forte porque o BANCO recusa o problema: os dois únicos parciais
+-- do C2a (`where estado='processando'` e
+-- `(avistamento_id, observacao_revisao, fingerprint) where estado='concluida'`)
+-- não deixam janela entre "checa" e "escreve". O advisory lock existe para
+-- transformar a colisão em RESPOSTA LIMPA em vez de erro de constraint.
+--
+-- Lease de 2 minutos, não 10: a chamada leva ~2 s, e lease longo travaria
+-- reclassificação legítima depois de um crash.
+-- ============================================================
+create or replace function public.iniciar_classificacao(
+  p_user_id uuid,
+  p_avistamento_id uuid,
+  p_fingerprint text,
+  p_modelo text,
+  p_esforco text,
+  p_versao_catalogo integer,
+  p_versao_classificador integer,
+  p_confianca_minima smallint
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_jwt uuid := (select auth.uid());
+  v_avistamento public.imoveis_identificados_avistamentos;
+  v_exclusao timestamptz;
+  v_concluida uuid;
+  v_ocupada uuid;
+  v_reuso uuid;
+  v_modo text;
+  v_lease uuid;
+  v_run uuid;
+begin
+  if p_user_id is null then
+    raise exception 'Usuário do servidor obrigatório.' using errcode = '42501';
+  end if;
+  if v_jwt is not null and v_jwt <> p_user_id then
+    raise exception 'Usuário do servidor divergente da sessão.' using errcode = '42501';
+  end if;
+  if p_avistamento_id is null or coalesce(trim(p_fingerprint), '') = ''
+     or coalesce(trim(p_modelo), '') = ''
+     or p_versao_catalogo is null or p_versao_classificador is null
+     or p_confianca_minima is null then
+    raise exception 'Dados de classificação incompletos.' using errcode = '22023';
+  end if;
+
+  -- Serializa a decisão por avistamento. Avistamentos diferentes do mesmo
+  -- imóvel seguem em paralelo, o que é correto.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('classificar:' || p_user_id::text || ':' || p_avistamento_id::text, 0)
+  );
+
+  select a.* into v_avistamento
+    from public.imoveis_identificados_avistamentos a
+   where a.id = p_avistamento_id
+     and a.user_id = p_user_id;
+
+  -- Posse cruzada e inexistência caem no MESMO erro, de propósito.
+  if v_avistamento.id is null then
+    raise exception 'Avistamento não encontrado.' using errcode = 'P0002';
+  end if;
+
+  select i.exclusao_solicitada_em into v_exclusao
+    from public.imoveis_identificados i
+   where i.id = v_avistamento.imovel_identificado_id;
+
+  if v_exclusao is not null then
+    return jsonb_build_object('ok', false, 'codigo', 'exclusao_em_andamento');
+  end if;
+
+  -- Idempotência: mesma entrada, na revisão vigente, nunca roda duas vezes.
+  select c.id into v_concluida
+    from public.imoveis_identificados_classificacoes c
+   where c.avistamento_id = p_avistamento_id
+     and c.observacao_revisao = v_avistamento.observacao_revisao
+     and c.fingerprint = p_fingerprint
+     and c.estado = 'concluida'
+   limit 1;
+
+  if v_concluida is not null then
+    return jsonb_build_object('ok', true, 'repetida', true, 'run_id', v_concluida);
+  end if;
+
+  -- Lease vencido é execução abandonada: libera o claim sem perder o evento.
+  update public.imoveis_identificados_classificacoes c
+     set estado = 'abandonada',
+         lease_token = null,
+         lease_expira_em = null
+   where c.avistamento_id = p_avistamento_id
+     and c.estado = 'processando'
+     and c.lease_expira_em <= now();
+
+  select c.id into v_ocupada
+    from public.imoveis_identificados_classificacoes c
+   where c.avistamento_id = p_avistamento_id
+     and c.estado = 'processando'
+   limit 1;
+
+  if v_ocupada is not null then
+    return jsonb_build_object('ok', false, 'ocupado', true, 'run_id', v_ocupada);
+  end if;
+
+  -- Reuso: mesmo fingerprint já concluído no MESMO imóvel — seja em outro
+  -- avistamento, seja numa revisão anterior deste. Economiza token, nunca
+  -- evento: o run de reuso é real e gera as próprias etiquetas.
+  select c.id into v_reuso
+    from public.imoveis_identificados_classificacoes c
+   where c.user_id = p_user_id
+     and c.imovel_identificado_id = v_avistamento.imovel_identificado_id
+     and c.fingerprint = p_fingerprint
+     and c.estado = 'concluida'
+   order by c.concluida_em desc nulls last, c.iniciada_em desc
+   limit 1;
+
+  v_modo := case when v_reuso is null then 'modelo' else 'reuso' end;
+  v_lease := gen_random_uuid();
+
+  insert into public.imoveis_identificados_classificacoes (
+    avistamento_id, imovel_identificado_id, user_id, estado, modo,
+    reusada_de_classificacao_id, observacao_revisao, fingerprint, modelo, esforco,
+    versao_catalogo, versao_classificador, confianca_minima,
+    lease_token, lease_expira_em
+  ) values (
+    p_avistamento_id, v_avistamento.imovel_identificado_id, p_user_id, 'processando', v_modo,
+    v_reuso, v_avistamento.observacao_revisao, p_fingerprint, p_modelo,
+    nullif(trim(coalesce(p_esforco, '')), ''),
+    p_versao_catalogo, p_versao_classificador, p_confianca_minima,
+    v_lease, now() + interval '2 minutes'
+  )
+  returning id into v_run;
+
+  return jsonb_build_object(
+    'ok', true,
+    'repetida', false,
+    'ocupado', false,
+    'run_id', v_run,
+    'lease_token', v_lease,
+    'modo', v_modo,
+    'reusada_de', v_reuso
+  );
+end;
+$$;
+
+-- ============================================================
+-- CONCLUIR — uma função, uma transação, tudo ou nada
+--
+-- Persiste num só ato: supersessão das etiquetas que a execução nova não
+-- reafirmou, inserção das novas, contadores, estado do avistamento, snapshot
+-- de tipo e fecho da execução. Uma chamada de função em Postgres É uma
+-- transação: falha em qualquer ponto faz rollback integral, e não existe
+-- "etiquetas gravadas com execução ainda processando".
+--
+-- O cliente não decide reuso nem proveniência: o `modo` já está na linha da
+-- execução, e origem/estado/modelo/versões/revisão saem do run e do
+-- avistamento — nunca do payload. No ramo de reuso o payload é IGNORADO e as
+-- etiquetas são copiadas por `insert ... select` dentro do SQL.
+-- ============================================================
+create or replace function public.concluir_classificacao(
+  p_user_id uuid,
+  p_run_id uuid,
+  p_lease_token uuid,
+  p_tipo_sugerido text,
+  p_tipo_confianca smallint,
+  p_etiquetas jsonb,
+  p_contadores jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_jwt uuid := (select auth.uid());
+  v_run public.imoveis_identificados_classificacoes;
+  v_avistamento public.imoveis_identificados_avistamentos;
+  v_identidade public.imoveis_identificados;
+  v_etiquetas jsonb;
+  v_tipo text;
+  v_tipo_confianca smallint;
+  v_corrente boolean;
+  v_aplica_tipo boolean;
+  v_ja_confirmada integer := 0;
+  v_reafirmadas integer := 0;
+  v_inseridas integer := 0;
+begin
+  if p_user_id is null then
+    raise exception 'Usuário do servidor obrigatório.' using errcode = '42501';
+  end if;
+  if v_jwt is not null and v_jwt <> p_user_id then
+    raise exception 'Usuário do servidor divergente da sessão.' using errcode = '42501';
+  end if;
+
+  select c.* into v_run
+    from public.imoveis_identificados_classificacoes c
+   where c.id = p_run_id
+     and c.user_id = p_user_id
+   for update;
+
+  if v_run.id is null then
+    raise exception 'Execução de classificação não encontrada.' using errcode = 'P0002';
+  end if;
+
+  -- Idempotência do fecho: concluir de novo não duplica etiqueta nem contador.
+  if v_run.estado = 'concluida' then
+    return jsonb_build_object('ok', true, 'repetida', true, 'run_id', v_run.id);
+  end if;
+
+  if v_run.estado <> 'processando'
+     or v_run.lease_token is null
+     or v_run.lease_token <> p_lease_token
+     or v_run.lease_expira_em <= now() then
+    return jsonb_build_object('ok', false, 'codigo', 'lease_invalido');
+  end if;
+
+  select a.* into v_avistamento
+    from public.imoveis_identificados_avistamentos a
+   where a.id = v_run.avistamento_id;
+
+  select i.* into v_identidade
+    from public.imoveis_identificados i
+   where i.id = v_run.imovel_identificado_id
+   for update;
+
+  -- Exclusão iniciada depois do claim: não conclui, não toca o avistamento.
+  if v_identidade.exclusao_solicitada_em is not null then
+    update public.imoveis_identificados_classificacoes
+       set estado = 'abandonada', lease_token = null, lease_expira_em = null
+     where id = v_run.id;
+    return jsonb_build_object('ok', false, 'codigo', 'exclusao_em_andamento');
+  end if;
+
+  -- A observação foi corrigida durante a chamada: o gatilho do C2c já subiu a
+  -- revisão e devolveu o avistamento a `pendente`. Este resultado é de um
+  -- texto que não existe mais.
+  if v_avistamento.observacao_revisao <> v_run.observacao_revisao then
+    update public.imoveis_identificados_classificacoes
+       set estado = 'abandonada', lease_token = null, lease_expira_em = null
+     where id = v_run.id;
+    return jsonb_build_object('ok', false, 'codigo', 'revisao_desatualizada');
+  end if;
+
+  if v_run.modo = 'reuso' then
+    -- Payload ignorado: copia o que a execução de origem ainda afirma.
+    -- `estado` sempre 'inferida' — confirmação humana NUNCA é copiada.
+    select coalesce(jsonb_agg(jsonb_build_object(
+             'categoria', e.categoria,
+             'codigo', e.codigo,
+             'confianca', e.confianca,
+             'modelo', e.modelo,
+             'versao_classificador', e.versao_classificador
+           )), '[]'::jsonb)
+      into v_etiquetas
+      from public.imoveis_identificados_etiquetas e
+     where e.classificacao_id = v_run.reusada_de_classificacao_id
+       and e.estado in ('inferida', 'confirmada');
+
+    select o.tipo_sugerido, o.tipo_confianca
+      into v_tipo, v_tipo_confianca
+      from public.imoveis_identificados_classificacoes o
+     where o.id = v_run.reusada_de_classificacao_id;
+  else
+    select coalesce(jsonb_agg(jsonb_build_object(
+             'categoria', x.categoria,
+             'codigo', x.codigo,
+             'confianca', x.confianca,
+             'modelo', v_run.modelo,
+             'versao_classificador', v_run.versao_classificador
+           )), '[]'::jsonb)
+      into v_etiquetas
+      from jsonb_to_recordset(coalesce(p_etiquetas, '[]'::jsonb))
+           as x(categoria text, codigo text, confianca smallint)
+     where coalesce(trim(x.categoria), '') <> ''
+       and coalesce(trim(x.codigo), '') <> ''
+       and x.confianca is not null;
+
+    v_tipo := nullif(trim(coalesce(p_tipo_sugerido, '')), '');
+    v_tipo_confianca := p_tipo_confianca;
+  end if;
+
+  -- Quantas do resultado já têm assinatura humana: não são tocadas.
+  select count(*) into v_ja_confirmada
+    from jsonb_to_recordset(v_etiquetas) as x(categoria text, codigo text)
+   where exists (
+     select 1 from public.imoveis_identificados_etiquetas e
+      where e.avistamento_id = v_run.avistamento_id
+        and e.categoria = x.categoria
+        and e.codigo = x.codigo
+        and e.estado = 'confirmada'
+   );
+
+  -- Supersessão: só o que esta execução NÃO reafirmou sai de vigente. O que
+  -- ela reafirmou fica na linha antiga (não duplica), e a confirmada nunca é
+  -- rebaixada. A linha substituída CONTINUA na tabela — histórico não encolhe.
+  update public.imoveis_identificados_etiquetas e
+     set estado = 'substituida',
+         substituida_em = now(),
+         substituida_por_classificacao_id = v_run.id
+   where e.avistamento_id = v_run.avistamento_id
+     and e.estado = 'inferida'
+     and not exists (
+       select 1 from jsonb_to_recordset(v_etiquetas) as x(categoria text, codigo text)
+        where x.categoria = e.categoria and x.codigo = e.codigo
+     );
+
+  select count(*) into v_reafirmadas
+    from jsonb_to_recordset(v_etiquetas) as x(categoria text, codigo text)
+   where exists (
+     select 1 from public.imoveis_identificados_etiquetas e
+      where e.avistamento_id = v_run.avistamento_id
+        and e.categoria = x.categoria
+        and e.codigo = x.codigo
+        and e.estado = 'inferida'
+   );
+
+  with desejadas as (
+    select distinct on (x.categoria, x.codigo)
+           x.categoria, x.codigo, x.confianca, x.modelo, x.versao_classificador
+      from jsonb_to_recordset(v_etiquetas)
+           as x(categoria text, codigo text, confianca smallint,
+                modelo text, versao_classificador integer)
+     order by x.categoria, x.codigo, x.confianca desc nulls last
+  )
+  insert into public.imoveis_identificados_etiquetas (
+    imovel_identificado_id, avistamento_id, classificacao_id, user_id,
+    categoria, codigo, origem, confianca, estado, modelo,
+    versao_catalogo, versao_classificador, revisao_observacao, observado_em
+  )
+  select v_run.imovel_identificado_id, v_run.avistamento_id, v_run.id, p_user_id,
+         d.categoria, d.codigo, 'ia-texto', d.confianca, 'inferida', d.modelo,
+         v_run.versao_catalogo, d.versao_classificador,
+         v_run.observacao_revisao, v_avistamento.observado_em
+    from desejadas d
+   where not exists (
+     select 1 from public.imoveis_identificados_etiquetas e
+      where e.avistamento_id = v_run.avistamento_id
+        and e.categoria = d.categoria
+        and e.codigo = d.codigo
+        and e.estado in ('inferida', 'confirmada')
+   );
+  get diagnostics v_inseridas = row_count;
+
+  -- O avistamento fecha com os quatro campos juntos: a bicondicional do C2a
+  -- não admite meio estado.
+  update public.imoveis_identificados_avistamentos a
+     set classificacao_estado = 'concluida',
+         classificacao_id = v_run.id,
+         classificacao_em = now(),
+         fingerprint = v_run.fingerprint
+   where a.id = v_run.avistamento_id;
+
+  -- SNAPSHOT TEMPORAL: reprocessar o passado não reescreve o presente.
+  -- Só a execução do avistamento CORRENTE está autorizada a mover o snapshot.
+  v_corrente := v_identidade.avistamento_corrente_id is not null
+                and v_identidade.avistamento_corrente_id = v_run.avistamento_id;
+
+  -- Tipo só pelas regras canônicas: manual e confirmado vencem inferência
+  -- posterior, e sugestão nula não apaga tipo conhecido. A confiança é
+  -- obrigatória porque o CHECK de `ia-texto` exige proveniência completa.
+  v_aplica_tipo := v_corrente
+                   and v_tipo is not null
+                   and v_tipo_confianca is not null
+                   and coalesce(v_identidade.tipo_origem, '') <> 'manual'
+                   and coalesce(v_identidade.tipo_estado, '') <> 'confirmado';
+
+  if v_aplica_tipo then
+    update public.imoveis_identificados i
+       set tipo = v_tipo,
+           tipo_origem = 'ia-texto',
+           tipo_confianca = v_tipo_confianca,
+           tipo_estado = 'inferido',
+           tipo_definido_em = now(),
+           tipo_classificacao_id = v_run.id,
+           tipo_avistamento_id = v_run.avistamento_id,
+           tipo_confirmado_por = null,
+           tipo_confirmado_em = null
+     where i.id = v_run.imovel_identificado_id;
+  end if;
+
+  update public.imoveis_identificados_classificacoes c
+     set estado = 'concluida',
+         concluida_em = now(),
+         lease_token = null,
+         lease_expira_em = null,
+         tipo_sugerido = v_tipo,
+         tipo_confianca = v_tipo_confianca,
+         snapshot_aplicado = v_corrente,
+         sugeridas = greatest(
+           coalesce((p_contadores->>'sugeridas')::integer, 0),
+           v_inseridas + v_reafirmadas + v_ja_confirmada
+         ),
+         aplicadas = v_inseridas + v_reafirmadas,
+         abaixo_do_piso = coalesce((p_contadores->>'abaixo_do_piso')::integer, 0),
+         fora_do_catalogo = coalesce((p_contadores->>'fora_do_catalogo')::integer, 0),
+         sem_evidencia = coalesce((p_contadores->>'sem_evidencia')::integer, 0),
+         ja_confirmada = v_ja_confirmada
+   where c.id = v_run.id;
+
+  return jsonb_build_object(
+    'ok', true,
+    'repetida', false,
+    'run_id', v_run.id,
+    'modo', v_run.modo,
+    'aplicadas', v_inseridas + v_reafirmadas,
+    'inseridas', v_inseridas,
+    'reafirmadas', v_reafirmadas,
+    'ja_confirmada', v_ja_confirmada,
+    'snapshot_aplicado', v_corrente,
+    'tipo_aplicado', v_aplica_tipo
+  );
+end;
+$$;
+
+-- ============================================================
+-- FALHAR — lista fechada, e o avistamento volta a um estado de produto
+--
+-- IA indisponível não é erro do usuário: a execução guarda o motivo
+-- classificado e o avistamento fica `indisponivel` (ambiente/permissão não
+-- liberam) ou `pendente` (transitório, vale tentar de novo). Em dev e Preview
+-- esse é o caminho CORRETO, não uma falha a consertar.
+-- ============================================================
+create or replace function public.falhar_classificacao(
+  p_user_id uuid,
+  p_run_id uuid,
+  p_lease_token uuid,
+  p_falha_codigo text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_jwt uuid := (select auth.uid());
+  v_run public.imoveis_identificados_classificacoes;
+  v_codigo text;
+  v_estado_avistamento text;
+begin
+  if p_user_id is null then
+    raise exception 'Usuário do servidor obrigatório.' using errcode = '42501';
+  end if;
+  if v_jwt is not null and v_jwt <> p_user_id then
+    raise exception 'Usuário do servidor divergente da sessão.' using errcode = '42501';
+  end if;
+
+  select c.* into v_run
+    from public.imoveis_identificados_classificacoes c
+   where c.id = p_run_id
+     and c.user_id = p_user_id
+   for update;
+
+  if v_run.id is null then
+    raise exception 'Execução de classificação não encontrada.' using errcode = 'P0002';
+  end if;
+
+  if v_run.estado = 'falhou' then
+    return jsonb_build_object('ok', true, 'repetida', true, 'run_id', v_run.id);
+  end if;
+
+  if v_run.estado <> 'processando'
+     or v_run.lease_token is null
+     or v_run.lease_token <> p_lease_token
+     or v_run.lease_expira_em <= now() then
+    return jsonb_build_object('ok', false, 'codigo', 'lease_invalido');
+  end if;
+
+  -- Lista fechada, no molde de concluir_mercado_monitorado: mensagem, URL,
+  -- token e stack jamais são persistidos. Código desconhecido cai em
+  -- 'falha-ia' em vez de vazar texto livre.
+  v_codigo := case
+    when p_falha_codigo in (
+      'nao-configurado', 'sem-permissao', 'sessao-expirada', 'requisicao-invalida',
+      'sem-dados', 'intervencao-humana', 'historico-insuficiente', 'contexto-incompleto',
+      'baixa-confianca', 'geracao-reprovada', 'protocolo-inadequado',
+      'falha-carregamento-contexto', 'falha-modelo', 'limite-excedido', 'falha-ia',
+      'indisponivel', 'limite-diario', 'saida-invalida'
+    ) then p_falha_codigo
+    else 'falha-ia'
+  end;
+
+  -- Ambiente/permissão não liberam: o produto diz "classificação
+  -- indisponível". O resto é transitório e volta para a fila.
+  v_estado_avistamento := case
+    when v_codigo in (
+      'nao-configurado', 'sem-permissao', 'indisponivel', 'limite-diario', 'limite-excedido'
+    ) then 'indisponivel'
+    else 'pendente'
+  end;
+
+  update public.imoveis_identificados_classificacoes c
+     set estado = 'falhou',
+         falha_codigo = v_codigo,
+         concluida_em = now(),
+         lease_token = null,
+         lease_expira_em = null,
+         snapshot_aplicado = false
+   where c.id = v_run.id;
+
+  -- Os três campos da bicondicional seguem nulos: falha não produz
+  -- classificação, e o avistamento nunca fica meio concluído.
+  update public.imoveis_identificados_avistamentos a
+     set classificacao_estado = v_estado_avistamento,
+         classificacao_id = null,
+         classificacao_em = null,
+         fingerprint = null
+   where a.id = v_run.avistamento_id;
+
+  return jsonb_build_object(
+    'ok', true,
+    'repetida', false,
+    'run_id', v_run.id,
+    'falha_codigo', v_codigo,
+    'estado_avistamento', v_estado_avistamento
+  );
+end;
+$$;
+
+-- ------------------------------------------------------------
+-- Só o servidor alcança as três. `authenticated` não recebe execute em
+-- nenhuma: é o que impede o navegador de pegar um lease e concluir com
+-- etiquetas fabricadas.
+-- ------------------------------------------------------------
+revoke all on function public.iniciar_classificacao(
+  uuid, uuid, text, text, text, integer, integer, smallint
+) from public, anon, authenticated, service_role;
+revoke all on function public.concluir_classificacao(
+  uuid, uuid, uuid, text, smallint, jsonb, jsonb
+) from public, anon, authenticated, service_role;
+revoke all on function public.falhar_classificacao(
+  uuid, uuid, uuid, text
+) from public, anon, authenticated, service_role;
+
+grant execute on function public.iniciar_classificacao(
+  uuid, uuid, text, text, text, integer, integer, smallint
+) to service_role;
+grant execute on function public.concluir_classificacao(
+  uuid, uuid, uuid, text, smallint, jsonb, jsonb
+) to service_role;
+grant execute on function public.falhar_classificacao(
+  uuid, uuid, uuid, text
+) to service_role;
+
+notify pgrst, 'reload schema';
+
+-- Garimpo em Campo — C2e: somente as dez RPCs do modelo Navegador.
+-- RPCs de exclusão do modelo Servidor, bucket, policies de Storage, rota HTTP,
+-- fronteira lib/prospeccao.ts, APIs e UI permanecem reservados ao C2f em diante.
+--
+-- MODELO DE IDENTIDADE — Navegador (as dez usam, nenhuma mistura):
+--   identidade por `(select auth.uid())`. NENHUMA recebe `p_user_id` — isso é do
+--   modelo Servidor do C2d, e os dois modelos não se encontram em função alguma.
+--   `grant execute` só para `authenticated`.
+--
+-- Todas são `security definer` por necessidade: escrevem em colunas e tabelas
+-- que o C2b deliberadamente NÃO concedeu ao cliente — `..._fotos` e
+-- `..._etiquetas` são `select` apenas, e na identidade o cliente não alcança
+-- `situacao`, `imovel_id`, `fundido_*`, `exclusao_solicitada_em` nem a
+-- proveniência de tipo. Como o definer passa por cima da RLS, CADA uma valida
+-- a posse explicitamente por `auth.uid()`, e posse cruzada devolve o MESMO erro
+-- de inexistência — nem a existência do registro alheio é revelada.
+--
+-- REGRA GLOBAL: toda operação mutável recusa enquanto
+-- `exclusao_solicitada_em` estiver preenchido. A única exceção é o próprio
+-- cancelamento da exclusão, que existe justamente para sair desse estado.
+
+-- ============================================================
+-- RESERVAR FOTO — a linha nasce ANTES do objeto, e é ela que gera o caminho
+--
+-- Inverter a ordem é o que torna impossível objeto órfão: se o processo morrer
+-- no upload, a linha `reservada` já existe e o objeto continua descobrível.
+-- E o caminho é gerado AQUI, nunca aceito do browser — é o que a policy de
+-- insert do bucket vai exigir (C2f), e é o que torna caminho forjado
+-- impossível em vez de apenas improvável.
+-- ============================================================
+create or replace function public.reservar_foto_avistamento(
+  p_avistamento_id uuid,
+  p_largura integer,
+  p_altura integer,
+  p_bytes integer
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := (select auth.uid());
+  v_avistamento public.imoveis_identificados_avistamentos;
+  v_identidade public.imoveis_identificados;
+  v_foto public.imoveis_identificados_fotos;
+  v_base text;
+  v_uuid text;
+  v_id uuid;
+  v_caminho text;
+  v_miniatura text;
+begin
+  if v_user is null then
+    raise exception 'Sessão autenticada obrigatória.' using errcode = '42501';
+  end if;
+  if p_largura is null or p_largura <= 0
+     or p_altura is null or p_altura <= 0
+     or p_bytes is null or p_bytes <= 0 then
+    raise exception 'Dimensões e tamanho da foto obrigatórios.' using errcode = '22023';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('reservar-foto:' || p_avistamento_id::text, 0)
+  );
+
+  select a.* into v_avistamento
+    from public.imoveis_identificados_avistamentos a
+   where a.id = p_avistamento_id
+     and a.user_id = v_user;
+
+  if v_avistamento.id is null then
+    raise exception 'Avistamento não encontrado.' using errcode = 'P0002';
+  end if;
+
+  select i.* into v_identidade
+    from public.imoveis_identificados i
+   where i.id = v_avistamento.imovel_identificado_id;
+
+  if v_identidade.exclusao_solicitada_em is not null then
+    return jsonb_build_object('ok', false, 'codigo', 'exclusao_em_andamento');
+  end if;
+  if v_identidade.situacao = 'fundido' then
+    return jsonb_build_object('ok', false, 'codigo', 'registro_fundido');
+  end if;
+
+  -- Idempotente: a reserva aberta daquele avistamento é devolvida como está,
+  -- com os MESMOS caminhos. Retry sobe o que falta e chama finalizar de novo.
+  select f.* into v_foto
+    from public.imoveis_identificados_fotos f
+   where f.avistamento_id = p_avistamento_id;
+
+  if v_foto.id is not null then
+    if v_foto.estado = 'reservada' then
+      return jsonb_build_object(
+        'ok', true, 'repetida', true,
+        'foto_id', v_foto.id,
+        'caminho', v_foto.caminho,
+        'caminho_miniatura', v_foto.caminho_miniatura
+      );
+    end if;
+    -- Uma foto por avistamento é garantia do índice único do C2a. Trocar a
+    -- foto é remover a atual pelo fluxo de exclusão e reservar outra — em
+    -- sistema longitudinal, substituir evidência é ato deliberado.
+    return jsonb_build_object('ok', false, 'codigo', 'foto_ja_ativa', 'foto_id', v_foto.id);
+  end if;
+
+  v_uuid := gen_random_uuid()::text;
+  v_base := v_user::text || '/' || v_avistamento.imovel_identificado_id::text
+            || '/' || p_avistamento_id::text || '/' || v_uuid;
+  v_caminho := v_base || '.jpg';
+  v_miniatura := v_base || '_thumb.jpg';
+
+  insert into public.imoveis_identificados_fotos (
+    avistamento_id, imovel_identificado_id, user_id, estado,
+    caminho, caminho_miniatura, largura, altura, bytes, capturada_em
+  ) values (
+    p_avistamento_id, v_avistamento.imovel_identificado_id, v_user, 'reservada',
+    v_caminho, v_miniatura, p_largura, p_altura, p_bytes, v_avistamento.observado_em
+  )
+  returning id into v_id;
+
+  return jsonb_build_object(
+    'ok', true, 'repetida', false,
+    'foto_id', v_id, 'caminho', v_caminho, 'caminho_miniatura', v_miniatura
+  );
+end;
+$$;
+
+-- ============================================================
+-- FINALIZAR FOTO — ativa só com PROVA, nunca por confiança no browser
+--
+-- Lê `storage.objects` e exige os DOIS caminhos exatos daquela reserva. Em
+-- qualquer recusa a linha permanece `reservada`: estado recuperável, e o
+-- objeto que já subiu continua descoberto pela linha.
+--
+-- Nunca escreve nem apaga objeto: só LÊ o catálogo do Storage.
+-- ============================================================
+create or replace function public.finalizar_foto_avistamento(p_foto_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := (select auth.uid());
+  v_foto public.imoveis_identificados_fotos;
+  v_identidade public.imoveis_identificados;
+  v_tem_original boolean;
+  v_tem_miniatura boolean;
+begin
+  if v_user is null then
+    raise exception 'Sessão autenticada obrigatória.' using errcode = '42501';
+  end if;
+
+  select f.* into v_foto
+    from public.imoveis_identificados_fotos f
+   where f.id = p_foto_id
+     and f.user_id = v_user
+   for update;
+
+  if v_foto.id is null then
+    raise exception 'Foto não encontrada.' using errcode = 'P0002';
+  end if;
+
+  select i.* into v_identidade
+    from public.imoveis_identificados i
+   where i.id = v_foto.imovel_identificado_id;
+
+  if v_identidade.exclusao_solicitada_em is not null then
+    return jsonb_build_object('ok', false, 'codigo', 'exclusao_em_andamento');
+  end if;
+  if v_identidade.situacao = 'fundido' then
+    return jsonb_build_object('ok', false, 'codigo', 'registro_fundido');
+  end if;
+
+  -- Posse dos objetos é garantida pela construção do caminho: o primeiro
+  -- segmento é o user_id, e a reserva já foi filtrada por `f.user_id = v_user`.
+  select exists (
+    select 1 from storage.objects o
+     where o.bucket_id = 'fachadas' and o.name = v_foto.caminho
+  ) into v_tem_original;
+
+  select exists (
+    select 1 from storage.objects o
+     where o.bucket_id = 'fachadas' and o.name = v_foto.caminho_miniatura
+  ) into v_tem_miniatura;
+
+  if v_foto.estado = 'ativa' then
+    if v_tem_original and v_tem_miniatura then
+      return jsonb_build_object('ok', true, 'repetida', true, 'foto_id', v_foto.id);
+    end if;
+    -- Rebaixar `ativa` por ausência seria reescrever história a partir de uma
+    -- leitura que pode ter falhado. Reporta, e a UI oferece o caminho honesto.
+    return jsonb_build_object(
+      'ok', false, 'codigo', 'objeto_ausente', 'foto_id', v_foto.id,
+      'tem_original', v_tem_original, 'tem_miniatura', v_tem_miniatura
+    );
+  end if;
+
+  if not v_tem_original and not v_tem_miniatura then
+    return jsonb_build_object('ok', false, 'codigo', 'nenhum_objeto', 'foto_id', v_foto.id);
+  end if;
+  if v_tem_original and not v_tem_miniatura then
+    return jsonb_build_object('ok', false, 'codigo', 'miniatura_ausente', 'foto_id', v_foto.id);
+  end if;
+  if v_tem_miniatura and not v_tem_original then
+    return jsonb_build_object('ok', false, 'codigo', 'original_ausente', 'foto_id', v_foto.id);
+  end if;
+
+  update public.imoveis_identificados_fotos f
+     set estado = 'ativa',
+         ativada_em = now()
+   where f.id = v_foto.id;
+
+  return jsonb_build_object('ok', true, 'repetida', false, 'foto_id', v_foto.id);
+end;
+$$;
+
+-- ============================================================
+-- APLICAR ETIQUETA HUMANA
+--
+-- Codifica `origem='manual'` e não existe parâmetro de origem: o cliente não
+-- tem onde escrever 'ia-texto'. Aplicar uma etiqueta à mão É assinar, então o
+-- estado nasce `confirmada` com autoria de `auth.uid()` — nunca recebida.
+--
+-- `avistamento_id` nulo significa etiqueta sobre o LUGAR, não sobre um momento
+-- (§6.1); quando vem preenchido, o avistamento tem de pertencer ao imóvel
+-- informado, senão a etiqueta ficaria pendurada em duas identidades.
+--
+-- A VERSÃO DO CATÁLOGO NÃO VEM DO NAVEGADOR. O catálogo vive em código (D3) e
+-- `VERSAO_CATALOGO_ETIQUETAS` é a fonte única; deixar o cliente informá-la
+-- permitiria declarar que uma etiqueta nasceu sob um catálogo que não era o
+-- vigente. A constante é resolvida aqui dentro, e o que impede as duas cópias
+-- de divergirem é o mecanismo que o próprio plano usa para o schema do modelo:
+-- um teste amarra este literal a `lib/calculo/catalogoEtiquetas.ts`. Ao subir a
+-- versão lá, este número sobe junto — e o teste recusa esquecer.
+-- ============================================================
+create or replace function public.aplicar_etiqueta_humana(
+  p_imovel_identificado_id uuid,
+  p_avistamento_id uuid,
+  p_categoria text,
+  p_codigo text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := (select auth.uid());
+  v_identidade public.imoveis_identificados;
+  v_avistamento public.imoveis_identificados_avistamentos;
+  v_categoria text := nullif(trim(coalesce(p_categoria, '')), '');
+  v_codigo text := nullif(trim(coalesce(p_codigo, '')), '');
+  -- Espelho de VERSAO_CATALOGO_ETIQUETAS (lib/calculo/catalogoEtiquetas.ts).
+  -- Amarrado por teste: subir a versão lá obriga subir aqui.
+  v_versao_catalogo constant integer := 1;
+  v_existente bigint;
+  v_id bigint;
+begin
+  if v_user is null then
+    raise exception 'Sessão autenticada obrigatória.' using errcode = '42501';
+  end if;
+  if v_categoria is null or v_codigo is null then
+    raise exception 'Categoria e código da etiqueta obrigatórios.' using errcode = '22023';
+  end if;
+
+  select i.* into v_identidade
+    from public.imoveis_identificados i
+   where i.id = p_imovel_identificado_id
+     and i.user_id = v_user;
+
+  if v_identidade.id is null then
+    raise exception 'Imóvel identificado não encontrado.' using errcode = 'P0002';
+  end if;
+
+  if v_identidade.exclusao_solicitada_em is not null then
+    return jsonb_build_object('ok', false, 'codigo', 'exclusao_em_andamento');
+  end if;
+  if v_identidade.situacao = 'fundido' then
+    return jsonb_build_object('ok', false, 'codigo', 'registro_fundido');
+  end if;
+
+  if p_avistamento_id is not null then
+    select a.* into v_avistamento
+      from public.imoveis_identificados_avistamentos a
+     where a.id = p_avistamento_id
+       and a.user_id = v_user
+       and a.imovel_identificado_id = p_imovel_identificado_id;
+
+    if v_avistamento.id is null then
+      raise exception 'Avistamento não encontrado.' using errcode = 'P0002';
+    end if;
+  end if;
+
+  -- Vigente é `inferida` ou `confirmada`, e o único parcial do C2a garante um
+  -- por escopo. Repetir a mesma etiqueta não cria segunda linha.
+  select e.id into v_existente
+    from public.imoveis_identificados_etiquetas e
+   where e.categoria = v_categoria
+     and e.codigo = v_codigo
+     and e.estado in ('inferida', 'confirmada')
+     and (
+       (p_avistamento_id is not null and e.avistamento_id = p_avistamento_id)
+       or (p_avistamento_id is null
+           and e.avistamento_id is null
+           and e.imovel_identificado_id = p_imovel_identificado_id)
+     )
+   limit 1;
+
+  if v_existente is not null then
+    return jsonb_build_object('ok', true, 'repetida', true, 'etiqueta_id', v_existente);
+  end if;
+
+  insert into public.imoveis_identificados_etiquetas (
+    imovel_identificado_id, avistamento_id, classificacao_id, user_id,
+    categoria, codigo, origem, confianca, estado, modelo,
+    versao_catalogo, versao_classificador, revisao_observacao,
+    observado_em, confirmada_por, confirmada_em
+  ) values (
+    p_imovel_identificado_id, p_avistamento_id, null, v_user,
+    v_categoria, v_codigo, 'manual', null, 'confirmada', null,
+    v_versao_catalogo, null,
+    case when p_avistamento_id is null then null else v_avistamento.observacao_revisao end,
+    coalesce(v_avistamento.observado_em, now()), v_user, now()
+  )
+  returning id into v_id;
+
+  return jsonb_build_object('ok', true, 'repetida', false, 'etiqueta_id', v_id);
+end;
+$$;
+
+-- ============================================================
+-- DEFINIR ESTADO DA ETIQUETA — confirmar ou contestar
+--
+-- Autoria SEMPRE de `auth.uid()`: nenhum id vindo do navegador é confiado.
+-- Precedentes literais: `recebido_por = v_user` em receber_repasses_em_lote e
+-- proteger_status_history_imovel trocando o `userId` do cliente pelo real.
+--
+-- Só age sobre etiqueta VIGENTE: `substituida` e `desatualizada` são história,
+-- e história não se reabre por aqui.
+-- ============================================================
+create or replace function public.definir_estado_etiqueta(
+  p_etiqueta_id bigint,
+  p_estado text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := (select auth.uid());
+  v_etiqueta public.imoveis_identificados_etiquetas;
+  v_identidade public.imoveis_identificados;
+begin
+  if v_user is null then
+    raise exception 'Sessão autenticada obrigatória.' using errcode = '42501';
+  end if;
+  if p_estado is null or p_estado not in ('confirmada', 'contestada') then
+    raise exception 'Estado humano inválido para etiqueta.' using errcode = '22023';
+  end if;
+
+  select e.* into v_etiqueta
+    from public.imoveis_identificados_etiquetas e
+   where e.id = p_etiqueta_id
+     and e.user_id = v_user
+   for update;
+
+  if v_etiqueta.id is null then
+    raise exception 'Etiqueta não encontrada.' using errcode = 'P0002';
+  end if;
+
+  select i.* into v_identidade
+    from public.imoveis_identificados i
+   where i.id = v_etiqueta.imovel_identificado_id;
+
+  if v_identidade.exclusao_solicitada_em is not null then
+    return jsonb_build_object('ok', false, 'codigo', 'exclusao_em_andamento');
+  end if;
+
+  if v_etiqueta.estado = p_estado then
+    return jsonb_build_object('ok', true, 'repetida', true, 'etiqueta_id', v_etiqueta.id);
+  end if;
+
+  if v_etiqueta.estado not in ('inferida', 'confirmada', 'contestada') then
+    return jsonb_build_object(
+      'ok', false, 'codigo', 'etiqueta_nao_vigente', 'estado', v_etiqueta.estado
+    );
+  end if;
+
+  if p_estado = 'confirmada' then
+    update public.imoveis_identificados_etiquetas e
+       set estado = 'confirmada',
+           confirmada_por = v_user,
+           confirmada_em = now()
+     where e.id = v_etiqueta.id;
+  else
+    -- Contestar não apaga a assinatura anterior: que alguém havia confirmado
+    -- continua sendo fato. O que muda é a etiqueta deixar de valer.
+    update public.imoveis_identificados_etiquetas e
+       set estado = 'contestada'
+     where e.id = v_etiqueta.id;
+  end if;
+
+  return jsonb_build_object(
+    'ok', true, 'repetida', false, 'etiqueta_id', v_etiqueta.id, 'estado', p_estado
+  );
+end;
+$$;
+
+-- ============================================================
+-- DEFINIR TIPO MANUAL — a porta humana do tipo
+--
+-- Uma das três portas nomeadas do tipo (§7.2), e a razão de `tipo` estar fora
+-- do grant de `update` do cliente: sem porta ambígua, o gatilho não precisa
+-- adivinhar quem escreveu. Manual SEMPRE vence — e ao vencer, zera a
+-- proveniência de IA em vez de mascará-la.
+--
+-- `p_tipo` nulo limpa o tipo e todos os metadados: "não sei mais" é resposta
+-- legítima, e o CHECK do C2a exige que tudo caia junto.
+-- ============================================================
+create or replace function public.definir_tipo_manual(
+  p_imovel_identificado_id uuid,
+  p_tipo text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := (select auth.uid());
+  v_identidade public.imoveis_identificados;
+  v_tipo text := nullif(trim(coalesce(p_tipo, '')), '');
+begin
+  if v_user is null then
+    raise exception 'Sessão autenticada obrigatória.' using errcode = '42501';
+  end if;
+
+  select i.* into v_identidade
+    from public.imoveis_identificados i
+   where i.id = p_imovel_identificado_id
+     and i.user_id = v_user
+   for update;
+
+  if v_identidade.id is null then
+    raise exception 'Imóvel identificado não encontrado.' using errcode = 'P0002';
+  end if;
+
+  if v_identidade.exclusao_solicitada_em is not null then
+    return jsonb_build_object('ok', false, 'codigo', 'exclusao_em_andamento');
+  end if;
+  if v_identidade.situacao = 'fundido' then
+    return jsonb_build_object('ok', false, 'codigo', 'registro_fundido');
+  end if;
+
+  update public.imoveis_identificados i
+     set tipo = v_tipo,
+         tipo_origem = case when v_tipo is null then null else 'manual' end,
+         tipo_estado = case when v_tipo is null then null else 'declarado' end,
+         tipo_definido_em = case when v_tipo is null then null else now() end,
+         tipo_confianca = null,
+         tipo_classificacao_id = null,
+         tipo_avistamento_id = null,
+         tipo_confirmado_por = null,
+         tipo_confirmado_em = null
+   where i.id = p_imovel_identificado_id;
+
+  return jsonb_build_object('ok', true, 'imovel_identificado_id', p_imovel_identificado_id, 'tipo', v_tipo);
+end;
+$$;
+
+-- ============================================================
+-- CONFIRMAR TIPO INFERIDO — o humano assina a leitura da IA
+--
+-- Mantém `tipo_origem='ia-texto'` e a cadeia inteira de proveniência, de
+-- propósito: a história "a IA sugeriu, o humano assinou" tem de sobreviver.
+-- Só confirma inferência válida — tipo manual não tem o que confirmar.
+-- ============================================================
+create or replace function public.confirmar_tipo_identificado(p_imovel_identificado_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := (select auth.uid());
+  v_identidade public.imoveis_identificados;
+begin
+  if v_user is null then
+    raise exception 'Sessão autenticada obrigatória.' using errcode = '42501';
+  end if;
+
+  select i.* into v_identidade
+    from public.imoveis_identificados i
+   where i.id = p_imovel_identificado_id
+     and i.user_id = v_user
+   for update;
+
+  if v_identidade.id is null then
+    raise exception 'Imóvel identificado não encontrado.' using errcode = 'P0002';
+  end if;
+
+  if v_identidade.exclusao_solicitada_em is not null then
+    return jsonb_build_object('ok', false, 'codigo', 'exclusao_em_andamento');
+  end if;
+
+  if v_identidade.tipo_estado = 'confirmado' then
+    return jsonb_build_object('ok', true, 'repetida', true);
+  end if;
+
+  if v_identidade.tipo is null
+     or v_identidade.tipo_origem is distinct from 'ia-texto'
+     or v_identidade.tipo_estado is distinct from 'inferido' then
+    return jsonb_build_object('ok', false, 'codigo', 'tipo_nao_inferido');
+  end if;
+
+  update public.imoveis_identificados i
+     set tipo_estado = 'confirmado',
+         tipo_confirmado_por = v_user,
+         tipo_confirmado_em = now()
+   where i.id = p_imovel_identificado_id;
+
+  return jsonb_build_object('ok', true, 'repetida', false, 'tipo', v_identidade.tipo);
+end;
+$$;
+
+-- ============================================================
+-- DEFINIR SITUAÇÃO — descartar, reativar, investigar, iniciar promoção
+--
+-- `promovido` e `fundido` são INALCANÇÁVEIS por aqui: o primeiro só nasce de
+-- `vincular_promocao_imovel_identificado`, o segundo só da fusão. Descartar é
+-- `update` de estado e preserva tudo — avistamentos, fotos, classificações,
+-- etiquetas e datas.
+--
+-- `promovendo` é o estado transitório que impede uma segunda oportunidade
+-- quando o vínculo falha no meio (§13.2); o CHECK do C2a exige `imovel_id` e
+-- `promovido_em` nulos nele.
+-- ============================================================
+create or replace function public.definir_situacao_identificado(
+  p_imovel_identificado_id uuid,
+  p_situacao text,
+  p_motivo text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := (select auth.uid());
+  v_identidade public.imoveis_identificados;
+  v_motivo text := nullif(trim(coalesce(p_motivo, '')), '');
+begin
+  if v_user is null then
+    raise exception 'Sessão autenticada obrigatória.' using errcode = '42501';
+  end if;
+  if p_situacao is null
+     or p_situacao not in ('identificado', 'investigando', 'promovendo', 'descartado') then
+    raise exception 'Situação não definível pelo usuário.' using errcode = '22023';
+  end if;
+
+  select i.* into v_identidade
+    from public.imoveis_identificados i
+   where i.id = p_imovel_identificado_id
+     and i.user_id = v_user
+   for update;
+
+  if v_identidade.id is null then
+    raise exception 'Imóvel identificado não encontrado.' using errcode = 'P0002';
+  end if;
+
+  if v_identidade.exclusao_solicitada_em is not null then
+    return jsonb_build_object('ok', false, 'codigo', 'exclusao_em_andamento');
+  end if;
+  if v_identidade.situacao = 'fundido' then
+    return jsonb_build_object('ok', false, 'codigo', 'registro_fundido');
+  end if;
+  -- Despromover não é decisão deste módulo: a oportunidade vive no Pipeline.
+  if v_identidade.situacao = 'promovido' then
+    return jsonb_build_object('ok', false, 'codigo', 'ja_promovido');
+  end if;
+
+  if v_identidade.situacao = p_situacao then
+    return jsonb_build_object('ok', true, 'repetida', true, 'situacao', p_situacao);
+  end if;
+
+  update public.imoveis_identificados i
+     set situacao = p_situacao,
+         descartado_em = case when p_situacao = 'descartado' then now() else null end,
+         descartado_motivo = case when p_situacao = 'descartado' then v_motivo else null end
+   where i.id = p_imovel_identificado_id;
+
+  return jsonb_build_object('ok', true, 'repetida', false, 'situacao', p_situacao);
+end;
+$$;
+
+-- ============================================================
+-- VINCULAR PROMOÇÃO — o único caminho de `imovel_id`/`promovido_em`
+--
+-- NÃO cria `Imovel` e NÃO promove sozinha: o `Imovel` nasce no ModalImovel,
+-- por ato humano, e esta função apenas grava o vínculo que já foi decidido.
+-- É o que torna o invariante "nada promove automaticamente" verificável.
+--
+-- Idempotente com o MESMO `imovel_id` (é a recuperação de promoção parcial de
+-- §13.2) e RECUSADA com outro: um registro promovido não troca de oportunidade
+-- em silêncio. E um `Imovel` já vinculado a outro identificado é recusado,
+-- senão dois registros reivindicariam a mesma oportunidade.
+-- ============================================================
+create or replace function public.vincular_promocao_imovel_identificado(
+  p_imovel_identificado_id uuid,
+  p_imovel_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := (select auth.uid());
+  v_identidade public.imoveis_identificados;
+  v_tem_imovel boolean;
+  v_outro uuid;
+begin
+  if v_user is null then
+    raise exception 'Sessão autenticada obrigatória.' using errcode = '42501';
+  end if;
+  if p_imovel_id is null then
+    raise exception 'Oportunidade do Pipeline obrigatória.' using errcode = '22023';
+  end if;
+
+  select i.* into v_identidade
+    from public.imoveis_identificados i
+   where i.id = p_imovel_identificado_id
+     and i.user_id = v_user
+   for update;
+
+  if v_identidade.id is null then
+    raise exception 'Imóvel identificado não encontrado.' using errcode = 'P0002';
+  end if;
+
+  if v_identidade.exclusao_solicitada_em is not null then
+    return jsonb_build_object('ok', false, 'codigo', 'exclusao_em_andamento');
+  end if;
+  if v_identidade.situacao = 'fundido' then
+    return jsonb_build_object('ok', false, 'codigo', 'registro_fundido');
+  end if;
+
+  -- Posse da ponta do Pipeline conferida explicitamente: o definer passa por
+  -- cima da RLS, então a validação é desta função.
+  select exists (
+    select 1 from public.imoveis m
+     where m.id = p_imovel_id and m.user_id = v_user
+  ) into v_tem_imovel;
+
+  if not v_tem_imovel then
+    raise exception 'Oportunidade não encontrada.' using errcode = 'P0002';
+  end if;
+
+  if v_identidade.situacao = 'promovido' then
+    if v_identidade.imovel_id = p_imovel_id then
+      return jsonb_build_object(
+        'ok', true, 'repetida', true,
+        'imovel_id', v_identidade.imovel_id,
+        'promovido_em', v_identidade.promovido_em
+      );
+    end if;
+    return jsonb_build_object('ok', false, 'codigo', 'ja_promovido_em_outra');
+  end if;
+
+  if v_identidade.situacao = 'descartado' then
+    return jsonb_build_object('ok', false, 'codigo', 'registro_descartado');
+  end if;
+
+  select o.id into v_outro
+    from public.imoveis_identificados o
+   where o.imovel_id = p_imovel_id
+     and o.id <> p_imovel_identificado_id
+   limit 1;
+
+  if v_outro is not null then
+    return jsonb_build_object('ok', false, 'codigo', 'imovel_ja_vinculado', 'vinculado_a', v_outro);
+  end if;
+
+  update public.imoveis_identificados i
+     set situacao = 'promovido',
+         imovel_id = p_imovel_id,
+         promovido_em = now()
+   where i.id = p_imovel_identificado_id;
+
+  return jsonb_build_object(
+    'ok', true, 'repetida', false, 'imovel_id', p_imovel_id
+  );
+end;
+$$;
+
+-- ============================================================
+-- FUNDIR — reparenteamento controlado, nada apagado e recriado
+--
+-- O absorvido NÃO é apagado: vira lápide `fundido` apontando o sobrevivente.
+-- Essa lápide é a própria AUTORIZAÇÃO do reparenteamento para o gatilho do
+-- C2c — condição de DADO, não de sessão, que fica no banco para sempre.
+--
+-- Ponteiro canônico: ao fundir B em C, as lápides que apontavam para B são
+-- repontuadas para C. Então `fundido_em_imovel_id` é sempre o sobrevivente
+-- VIVO FINAL, resolução em um salto, sem recursão e sem lápide quebrada.
+--
+-- Uma função = uma transação: falha em qualquer ponto faz rollback integral,
+-- e nenhuma metade fica migrada. Os caminhos do Storage NÃO se movem (o
+-- caminho é identificador opaco e a policy decide pelo user_id); o que muda é
+-- o `imovel_identificado_id` denormalizado na linha.
+-- ============================================================
+create or replace function public.fundir_imoveis_identificados(
+  p_sobrevivente_id uuid,
+  p_absorvido_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := (select auth.uid());
+  v_sobrevivente public.imoveis_identificados;
+  v_absorvido public.imoveis_identificados;
+  v_movidos integer := 0;
+  v_lapides integer := 0;
+begin
+  if v_user is null then
+    raise exception 'Sessão autenticada obrigatória.' using errcode = '42501';
+  end if;
+  if p_sobrevivente_id is null or p_absorvido_id is null then
+    raise exception 'Os dois registros da fusão são obrigatórios.' using errcode = '22023';
+  end if;
+  if p_sobrevivente_id = p_absorvido_id then
+    return jsonb_build_object('ok', false, 'codigo', 'fusao_em_si_mesmo');
+  end if;
+
+  -- Ordem estável do lock: duas fusões cruzadas não se esperam em ciclo.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(
+      'fundir:' || v_user::text || ':' || least(p_sobrevivente_id::text, p_absorvido_id::text),
+      0
+    )
+  );
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(
+      'fundir:' || v_user::text || ':' || greatest(p_sobrevivente_id::text, p_absorvido_id::text),
+      0
+    )
+  );
+
+  select i.* into v_sobrevivente
+    from public.imoveis_identificados i
+   where i.id = p_sobrevivente_id and i.user_id = v_user
+   for update;
+  select i.* into v_absorvido
+    from public.imoveis_identificados i
+   where i.id = p_absorvido_id and i.user_id = v_user
+   for update;
+
+  if v_sobrevivente.id is null or v_absorvido.id is null then
+    raise exception 'Imóvel identificado não encontrado.' using errcode = 'P0002';
+  end if;
+
+  -- Já fundido NESTE sobrevivente: idempotente.
+  if v_absorvido.situacao = 'fundido'
+     and v_absorvido.fundido_em_imovel_id = p_sobrevivente_id then
+    return jsonb_build_object('ok', true, 'repetida', true,
+      'sobrevivente_id', p_sobrevivente_id, 'absorvido_id', p_absorvido_id);
+  end if;
+
+  if v_sobrevivente.exclusao_solicitada_em is not null
+     or v_absorvido.exclusao_solicitada_em is not null then
+    return jsonb_build_object('ok', false, 'codigo', 'exclusao_em_andamento');
+  end if;
+
+  -- Lápide nem absorve nem é absorvida de novo; promovido/promovendo ficariam
+  -- com o vínculo do Pipeline órfão. É o que torna cadeia e loop impossíveis.
+  if v_sobrevivente.situacao in ('fundido', 'promovido', 'promovendo')
+     or v_absorvido.situacao in ('fundido', 'promovido', 'promovendo') then
+    return jsonb_build_object('ok', false, 'codigo', 'situacao_incompativel',
+      'sobrevivente', v_sobrevivente.situacao, 'absorvido', v_absorvido.situacao);
+  end if;
+
+  -- 1. A lápide primeiro: é ela que autoriza o reparenteamento no gatilho.
+  update public.imoveis_identificados i
+     set situacao = 'fundido',
+         fundido_em = now(),
+         fundido_em_imovel_id = p_sobrevivente_id
+   where i.id = p_absorvido_id;
+
+  -- 2. Ponteiro canônico: quem apontava para o absorvido passa a apontar o
+  --    sobrevivente. Nunca se forma cadeia A→B→C.
+  update public.imoveis_identificados i
+     set fundido_em_imovel_id = p_sobrevivente_id
+   where i.user_id = v_user
+     and i.fundido_em_imovel_id = p_absorvido_id
+     and i.id <> p_absorvido_id;
+  get diagnostics v_lapides = row_count;
+
+  -- 3. Histórico muda de pai preservando `id`, `observado_em` e revisão. O
+  --    gatilho do C2c recalcula os dois lados a cada linha movida.
+  update public.imoveis_identificados_avistamentos a
+     set imovel_identificado_id = p_sobrevivente_id
+   where a.imovel_identificado_id = p_absorvido_id;
+  get diagnostics v_movidos = row_count;
+
+  -- 4. O denormalizado acompanha. Caminho de Storage NÃO muda.
+  update public.imoveis_identificados_fotos f
+     set imovel_identificado_id = p_sobrevivente_id
+   where f.imovel_identificado_id = p_absorvido_id;
+
+  update public.imoveis_identificados_classificacoes c
+     set imovel_identificado_id = p_sobrevivente_id
+   where c.imovel_identificado_id = p_absorvido_id;
+
+  update public.imoveis_identificados_etiquetas e
+     set imovel_identificado_id = p_sobrevivente_id
+   where e.imovel_identificado_id = p_absorvido_id;
+
+  -- 5. Recálculo explícito dos DOIS lados: determinístico mesmo quando zero
+  --    avistamentos se moveram. É total, logo idempotente.
+  perform private.recalcular_agregados_identificado(p_absorvido_id);
+  perform private.recalcular_agregados_identificado(p_sobrevivente_id);
+
+  -- 6. Tipo NÃO é reinferido: é decisão, não derivação. Só herda quando o
+  --    sobrevivente não tinha nenhum, e aí a proveniência vem inteira.
+  if v_sobrevivente.tipo is null and v_absorvido.tipo is not null then
+    update public.imoveis_identificados i
+       set tipo = v_absorvido.tipo,
+           tipo_origem = v_absorvido.tipo_origem,
+           tipo_confianca = v_absorvido.tipo_confianca,
+           tipo_estado = v_absorvido.tipo_estado,
+           tipo_definido_em = v_absorvido.tipo_definido_em,
+           tipo_classificacao_id = v_absorvido.tipo_classificacao_id,
+           tipo_avistamento_id = v_absorvido.tipo_avistamento_id,
+           tipo_confirmado_por = v_absorvido.tipo_confirmado_por,
+           tipo_confirmado_em = v_absorvido.tipo_confirmado_em
+     where i.id = p_sobrevivente_id;
+  end if;
+
+  return jsonb_build_object(
+    'ok', true, 'repetida', false,
+    'sobrevivente_id', p_sobrevivente_id,
+    'absorvido_id', p_absorvido_id,
+    'avistamentos_movidos', v_movidos,
+    'lapides_repontuadas', v_lapides
+  );
+end;
+$$;
+
+-- ============================================================
+-- CANCELAR EXCLUSÃO — a única saída humana do estado congelado
+--
+-- Limpa somente `exclusao_solicitada_em`, que é o que o gatilho do C2c deixa
+-- passar enquanto a exclusão está em andamento. NÃO restaura foto: objeto já
+-- removido do Storage não volta, e a UI avisa isso antes de confirmar.
+-- ============================================================
+create or replace function public.cancelar_exclusao_imovel_identificado(
+  p_imovel_identificado_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := (select auth.uid());
+  v_identidade public.imoveis_identificados;
+  v_fotos integer;
+begin
+  if v_user is null then
+    raise exception 'Sessão autenticada obrigatória.' using errcode = '42501';
+  end if;
+
+  select i.* into v_identidade
+    from public.imoveis_identificados i
+   where i.id = p_imovel_identificado_id
+     and i.user_id = v_user
+   for update;
+
+  if v_identidade.id is null then
+    raise exception 'Imóvel identificado não encontrado.' using errcode = 'P0002';
+  end if;
+
+  if v_identidade.exclusao_solicitada_em is null then
+    return jsonb_build_object('ok', true, 'repetida', true);
+  end if;
+
+  select count(*) into v_fotos
+    from public.imoveis_identificados_fotos f
+   where f.imovel_identificado_id = p_imovel_identificado_id;
+
+  update public.imoveis_identificados i
+     set exclusao_solicitada_em = null
+   where i.id = p_imovel_identificado_id;
+
+  -- `fotos_restantes` é o que sobrou de verdade: o que a exclusão já removeu
+  -- não é ressuscitado por este cancelamento.
+  return jsonb_build_object('ok', true, 'repetida', false, 'fotos_restantes', v_fotos);
+end;
+$$;
+
+-- ------------------------------------------------------------
+-- Modelo Navegador: execute só para `authenticated`. `service_role` não entra
+-- aqui — o caminho do servidor é o do C2d, com `p_user_id` explícito.
+-- ------------------------------------------------------------
+revoke all on function public.reservar_foto_avistamento(uuid, integer, integer, integer)
+  from public, anon, authenticated, service_role;
+revoke all on function public.finalizar_foto_avistamento(uuid)
+  from public, anon, authenticated, service_role;
+revoke all on function public.aplicar_etiqueta_humana(uuid, uuid, text, text)
+  from public, anon, authenticated, service_role;
+revoke all on function public.definir_estado_etiqueta(bigint, text)
+  from public, anon, authenticated, service_role;
+revoke all on function public.definir_tipo_manual(uuid, text)
+  from public, anon, authenticated, service_role;
+revoke all on function public.confirmar_tipo_identificado(uuid)
+  from public, anon, authenticated, service_role;
+revoke all on function public.definir_situacao_identificado(uuid, text, text)
+  from public, anon, authenticated, service_role;
+revoke all on function public.vincular_promocao_imovel_identificado(uuid, uuid)
+  from public, anon, authenticated, service_role;
+revoke all on function public.fundir_imoveis_identificados(uuid, uuid)
+  from public, anon, authenticated, service_role;
+revoke all on function public.cancelar_exclusao_imovel_identificado(uuid)
+  from public, anon, authenticated, service_role;
+
+grant execute on function public.reservar_foto_avistamento(uuid, integer, integer, integer)
+  to authenticated;
+grant execute on function public.finalizar_foto_avistamento(uuid) to authenticated;
+grant execute on function public.aplicar_etiqueta_humana(uuid, uuid, text, text) to authenticated;
+grant execute on function public.definir_estado_etiqueta(bigint, text) to authenticated;
+grant execute on function public.definir_tipo_manual(uuid, text) to authenticated;
+grant execute on function public.confirmar_tipo_identificado(uuid) to authenticated;
+grant execute on function public.definir_situacao_identificado(uuid, text, text) to authenticated;
+grant execute on function public.vincular_promocao_imovel_identificado(uuid, uuid)
+  to authenticated;
+grant execute on function public.fundir_imoveis_identificados(uuid, uuid) to authenticated;
+grant execute on function public.cancelar_exclusao_imovel_identificado(uuid) to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- Garimpo em Campo — C2f: exclusão coordenada e Storage.
+--
+-- A migration só instala contratos. Arquivos físicos continuam sendo
+-- removidos exclusivamente pela futura rota de servidor, via SDK do Storage.
+-- Nenhuma função abaixo escreve em `storage.objects`.
+
+-- ============================================================
+-- INICIAR EXCLUSÃO — congela o pai e inventaria todas as fotos
+-- ============================================================
+create or replace function public.iniciar_exclusao_imovel_identificado(
+  p_user_id uuid,
+  p_imovel_identificado_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_jwt uuid := (select auth.uid());
+  v_identidade public.imoveis_identificados;
+  v_fotos jsonb;
+  v_lapides integer;
+  v_repetida boolean;
+begin
+  if p_user_id is null then
+    raise exception 'Usuário obrigatório.' using errcode = '42501';
+  end if;
+  if v_jwt is not null and v_jwt <> p_user_id then
+    raise exception 'Usuário incompatível com a sessão.' using errcode = '42501';
+  end if;
+  if p_imovel_identificado_id is null then
+    raise exception 'Imóvel identificado obrigatório.' using errcode = '22023';
+  end if;
+
+  select i.* into v_identidade
+    from public.imoveis_identificados i
+   where i.id = p_imovel_identificado_id
+     and i.user_id = p_user_id
+   for update;
+
+  if v_identidade.id is null then
+    raise exception 'Imóvel identificado não encontrado.' using errcode = 'P0002';
+  end if;
+
+  v_repetida := v_identidade.exclusao_solicitada_em is not null;
+  if not v_repetida then
+    update public.imoveis_identificados i
+       set exclusao_solicitada_em = now()
+     where i.id = p_imovel_identificado_id
+       and i.user_id = p_user_id;
+  end if;
+
+  -- Inclui deliberadamente as reservas incompletas: a linha nasce antes do
+  -- upload e é o inventário que impede objeto órfão em caso de interrupção.
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'foto_id', f.id,
+        'caminho', f.caminho,
+        'caminho_miniatura', f.caminho_miniatura
+      ) order by f.id
+    ),
+    '[]'::jsonb
+  ) into v_fotos
+    from public.imoveis_identificados_fotos f
+   where f.imovel_identificado_id = p_imovel_identificado_id
+     and f.user_id = p_user_id;
+
+  select count(*) into v_lapides
+    from public.imoveis_identificados i
+   where i.user_id = p_user_id
+     and i.situacao = 'fundido'
+     and i.fundido_em_imovel_id = p_imovel_identificado_id;
+
+  return jsonb_build_object(
+    'ok', true,
+    'repetida', v_repetida,
+    'imovel_identificado_id', p_imovel_identificado_id,
+    'fotos', v_fotos,
+    'fotos_total', jsonb_array_length(v_fotos),
+    'lapides_total', v_lapides
+  );
+end;
+$$;
+
+-- ============================================================
+-- CONFIRMAR OBJETO REMOVIDO — objeto primeiro, linha depois
+-- ============================================================
+create or replace function public.confirmar_objeto_removido(
+  p_user_id uuid,
+  p_foto_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_jwt uuid := (select auth.uid());
+  v_foto public.imoveis_identificados_fotos;
+  v_original_presente boolean;
+  v_miniatura_presente boolean;
+begin
+  if p_user_id is null then
+    raise exception 'Usuário obrigatório.' using errcode = '42501';
+  end if;
+  if v_jwt is not null and v_jwt <> p_user_id then
+    raise exception 'Usuário incompatível com a sessão.' using errcode = '42501';
+  end if;
+  if p_foto_id is null then
+    raise exception 'Foto obrigatória.' using errcode = '22023';
+  end if;
+
+  select f.* into v_foto
+    from public.imoveis_identificados_fotos f
+   where f.id = p_foto_id
+     and f.user_id = p_user_id
+   for update;
+
+  if v_foto.id is null then
+    raise exception 'Foto não encontrada.' using errcode = 'P0002';
+  end if;
+
+  select exists (
+    select 1 from storage.objects o
+     where o.bucket_id = 'fachadas'
+       and o.name = v_foto.caminho
+  ) into v_original_presente;
+
+  select exists (
+    select 1 from storage.objects o
+     where o.bucket_id = 'fachadas'
+       and o.name = v_foto.caminho_miniatura
+  ) into v_miniatura_presente;
+
+  if v_original_presente or v_miniatura_presente then
+    return jsonb_build_object(
+      'ok', false,
+      'codigo', 'objeto_pendente',
+      'foto_id', p_foto_id,
+      'original_presente', v_original_presente,
+      'miniatura_presente', v_miniatura_presente
+    );
+  end if;
+
+  delete from public.imoveis_identificados_fotos f
+   where f.id = p_foto_id
+     and f.user_id = p_user_id;
+
+  return jsonb_build_object('ok', true, 'foto_id', p_foto_id);
+end;
+$$;
+
+-- ============================================================
+-- CONCLUIR EXCLUSÃO — sem linha de foto, pai por último
+-- ============================================================
+create or replace function public.concluir_exclusao_imovel_identificado(
+  p_user_id uuid,
+  p_imovel_identificado_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_jwt uuid := (select auth.uid());
+  v_identidade public.imoveis_identificados;
+  v_fotos_pendentes integer;
+  v_lapides integer;
+begin
+  if p_user_id is null then
+    raise exception 'Usuário obrigatório.' using errcode = '42501';
+  end if;
+  if v_jwt is not null and v_jwt <> p_user_id then
+    raise exception 'Usuário incompatível com a sessão.' using errcode = '42501';
+  end if;
+  if p_imovel_identificado_id is null then
+    raise exception 'Imóvel identificado obrigatório.' using errcode = '22023';
+  end if;
+
+  select i.* into v_identidade
+    from public.imoveis_identificados i
+   where i.id = p_imovel_identificado_id
+     and i.user_id = p_user_id
+   for update;
+
+  if v_identidade.id is null then
+    raise exception 'Imóvel identificado não encontrado.' using errcode = 'P0002';
+  end if;
+
+  if v_identidade.exclusao_solicitada_em is null then
+    return jsonb_build_object('ok', false, 'codigo', 'exclusao_nao_iniciada');
+  end if;
+
+  select count(*) into v_fotos_pendentes
+    from public.imoveis_identificados_fotos f
+   where f.imovel_identificado_id = p_imovel_identificado_id
+     and f.user_id = p_user_id;
+
+  if v_fotos_pendentes > 0 then
+    return jsonb_build_object(
+      'ok', false,
+      'codigo', 'objetos_pendentes',
+      'pendentes', v_fotos_pendentes
+    );
+  end if;
+
+  select count(*) into v_lapides
+    from public.imoveis_identificados i
+   where i.user_id = p_user_id
+     and i.situacao = 'fundido'
+     and i.fundido_em_imovel_id = p_imovel_identificado_id;
+
+  delete from public.imoveis_identificados i
+   where i.id = p_imovel_identificado_id
+     and i.user_id = p_user_id;
+
+  return jsonb_build_object(
+    'ok', true,
+    'imovel_identificado_id', p_imovel_identificado_id,
+    'lapides_removidas', v_lapides
+  );
+end;
+$$;
+
+-- ============================================================
+-- APAGAR TODA A PROSPECÇÃO — versão em lote do mesmo contrato
+-- ============================================================
+create or replace function public.apagar_prospeccao_do_usuario(
+  p_user_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_jwt uuid := (select auth.uid());
+  v_fotos_pendentes integer;
+  v_identidades_removidas integer;
+begin
+  if p_user_id is null then
+    raise exception 'Usuário obrigatório.' using errcode = '42501';
+  end if;
+  if v_jwt is not null and v_jwt <> p_user_id then
+    raise exception 'Usuário incompatível com a sessão.' using errcode = '42501';
+  end if;
+
+  -- Serializa duas tentativas de apagar o módulo inteiro para o mesmo tenant.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('apagar-prospeccao:' || p_user_id::text, 0)
+  );
+
+  select count(*) into v_fotos_pendentes
+    from public.imoveis_identificados_fotos f
+   where f.user_id = p_user_id;
+
+  if v_fotos_pendentes > 0 then
+    return jsonb_build_object(
+      'ok', false,
+      'codigo', 'objetos_pendentes',
+      'pendentes', v_fotos_pendentes
+    );
+  end if;
+
+  delete from public.imoveis_identificados i
+   where i.user_id = p_user_id;
+  get diagnostics v_identidades_removidas = row_count;
+
+  return jsonb_build_object(
+    'ok', true,
+    'identidades_removidas', v_identidades_removidas
+  );
+end;
+$$;
+
+-- ============================================================
+-- BACKSTOP — inventário exaustivo, sem paginação de Storage
+-- ============================================================
+create or replace function public.listar_objetos_do_usuario(
+  p_user_id uuid,
+  p_prefixo text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_jwt uuid := (select auth.uid());
+  v_prefixo_valido boolean;
+  v_objetos jsonb;
+begin
+  if p_user_id is null then
+    raise exception 'Usuário obrigatório.' using errcode = '42501';
+  end if;
+  if v_jwt is not null and v_jwt <> p_user_id then
+    raise exception 'Usuário incompatível com a sessão.' using errcode = '42501';
+  end if;
+  if p_prefixo is null or p_prefixo = '' then
+    raise exception 'Prefixo obrigatório.' using errcode = '22023';
+  end if;
+
+  -- Só há dois escopos legítimos: todo o tenant, ou uma identidade que ele
+  -- possui. Um UUID alheio recebe o mesmo P0002 de um alvo inexistente.
+  select
+    p_prefixo = p_user_id::text || '/'
+    or exists (
+      select 1
+        from public.imoveis_identificados i
+       where i.user_id = p_user_id
+         and p_prefixo = p_user_id::text || '/' || i.id::text || '/'
+    )
+    into v_prefixo_valido;
+
+  if not v_prefixo_valido then
+    raise exception 'Prefixo não encontrado.' using errcode = 'P0002';
+  end if;
+
+  select coalesce(jsonb_agg(o.name order by o.name), '[]'::jsonb)
+    into v_objetos
+    from storage.objects o
+   where o.bucket_id = 'fachadas'
+     and left(o.name, char_length(p_prefixo)) = p_prefixo;
+
+  return jsonb_build_object(
+    'ok', true,
+    'prefixo', p_prefixo,
+    'objetos', v_objetos,
+    'total', jsonb_array_length(v_objetos)
+  );
+end;
+$$;
+
+-- ------------------------------------------------------------
+-- Modelo Servidor: nenhuma RPC de exclusão é alcançável pelo navegador.
+-- ------------------------------------------------------------
+revoke all on function public.iniciar_exclusao_imovel_identificado(uuid, uuid)
+  from public, anon, authenticated, service_role;
+revoke all on function public.confirmar_objeto_removido(uuid, uuid)
+  from public, anon, authenticated, service_role;
+revoke all on function public.concluir_exclusao_imovel_identificado(uuid, uuid)
+  from public, anon, authenticated, service_role;
+revoke all on function public.apagar_prospeccao_do_usuario(uuid)
+  from public, anon, authenticated, service_role;
+revoke all on function public.listar_objetos_do_usuario(uuid, text)
+  from public, anon, authenticated, service_role;
+
+grant execute on function public.iniciar_exclusao_imovel_identificado(uuid, uuid)
+  to service_role;
+grant execute on function public.confirmar_objeto_removido(uuid, uuid)
+  to service_role;
+grant execute on function public.concluir_exclusao_imovel_identificado(uuid, uuid)
+  to service_role;
+grant execute on function public.apagar_prospeccao_do_usuario(uuid)
+  to service_role;
+grant execute on function public.listar_objetos_do_usuario(uuid, text)
+  to service_role;
+
+-- ============================================================
+-- STORAGE — bucket privado e superfície mínima do navegador
+-- ============================================================
+insert into storage.buckets (
+  id,
+  name,
+  public,
+  file_size_limit,
+  allowed_mime_types
+)
+values (
+  'fachadas',
+  'fachadas',
+  false,
+  5242880,
+  array['image/jpeg', 'image/webp']
+)
+on conflict do nothing;
+
+drop policy if exists "fachadas_select_proprio_prefixo" on storage.objects;
+create policy "fachadas_select_proprio_prefixo"
+  on storage.objects
+  for select to authenticated
+  using (
+    bucket_id = 'fachadas'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
+drop policy if exists "fachadas_insert_reserva_aberta" on storage.objects;
+create policy "fachadas_insert_reserva_aberta"
+  on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'fachadas'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+    and exists (
+      select 1
+        from public.imoveis_identificados_fotos f
+        join public.imoveis_identificados_avistamentos a on a.id = f.avistamento_id
+        join public.imoveis_identificados i on i.id = f.imovel_identificado_id
+       where name in (f.caminho, f.caminho_miniatura)
+         and f.estado = 'reservada'
+         and f.user_id = (select auth.uid())
+         and a.user_id = (select auth.uid())
+         and i.user_id = (select auth.uid())
+         and i.exclusao_solicitada_em is null
+         and i.situacao <> 'fundido'
+    )
+  );
+
+notify pgrst, 'reload schema';
+
 -- ============================================================
 -- REPASSES CONFIGURÁVEIS
 -- ============================================================

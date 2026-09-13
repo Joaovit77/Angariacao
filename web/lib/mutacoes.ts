@@ -38,6 +38,8 @@ import { ehTipoProtocolo } from "./protocolos";
 import { toDbAbordagem, toDbAgenda, toDbAnuncioCentralVisualizado, toDbImovel, toDbProtocolo } from "./persistencia/mapeadores";
 import { sincronizarCompromisso } from "./googleAgenda";
 import { getSupabase } from "./persistencia/supabase";
+import { apagarProspeccaoDoUsuario } from "./prospeccao";
+import { useProspeccao } from "./useProspeccao";
 import { useAppStore } from "./store";
 import { toast } from "./toast";
 import type { Abordagem, AgendaItem, AnuncioCentralVisualizado, Imovel, Meta, NotaImovel, Protocolo, Tentativa, UserConfig, WhatsappModelo } from "./tipos";
@@ -1278,10 +1280,28 @@ export async function carregarDadosDemo(userId: string): Promise<boolean> {
 export async function apagarTodosOsDados(userId: string): Promise<boolean> {
   if (
     !confirm(
-      "Isso vai apagar PERMANENTEMENTE todos os seus imóveis, metas, compromissos e abordagens salvos na nuvem. Essa ação não pode ser desfeita. Continuar?",
+      "Isso vai apagar PERMANENTEMENTE todos os seus imóveis, metas, compromissos, abordagens e o Garimpo em Campo (com as fotos) salvos na nuvem. Essa ação não pode ser desfeita. Continuar?",
     )
   )
     return false;
+  // O Garimpo em Campo vai ANTES das quatro tabelas antigas, e pela rota de
+  // exclusão coordenada: as fotos moram no Storage, e só a rota apaga
+  // objeto → linha na ordem certa. Se sobrar objeto, NADA mais é apagado e
+  // nada é declarado apagado — o estado fica recuperável para retomar.
+  try {
+    const garimpo = await apagarProspeccaoDoUsuario();
+    if (!garimpo.concluido) {
+      toast(
+        `O Garimpo em Campo não foi apagado por completo (${garimpo.pendentes} arquivo${garimpo.pendentes === 1 ? "" : "s"} ainda no Storage). Nada mais foi apagado. Tente novamente.`,
+        "error",
+      );
+      return false;
+    }
+  } catch {
+    toast("Não foi possível apagar o Garimpo em Campo. Nada foi apagado. Tente novamente.", "error");
+    return false;
+  }
+  useProspeccao.getState().resetar();
   const supabase = getSupabase();
   const { error: e1 } = await supabase.from("imoveis").delete().eq("user_id", userId);
   const { error: e2 } = await supabase.from("agenda").delete().eq("user_id", userId);

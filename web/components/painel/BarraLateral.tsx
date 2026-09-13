@@ -73,6 +73,17 @@ const ITENS: ItemNav[] = [
     ),
   },
   {
+    rota: "/garimpo-em-campo",
+    texto: "Garimpo em Campo",
+    icone: (
+      <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M4 20V9l8-5 8 5v11" />
+        <path d="M8 20v-6h8v6M3 20h18" />
+        <path d="m16.5 5.5 1-2 1 2 2 .9-2 .9-1 2-1-2-2-.9z" />
+      </svg>
+    ),
+  },
+  {
     rota: "/repasses",
     texto: "Repasses",
     icone: (
