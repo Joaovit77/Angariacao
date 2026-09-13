@@ -59,6 +59,7 @@ describe("imoveisComAgendamentoAtivo", () => {
 });
 const SCHEMA = readFileSync(new URL("../../supabase-schema.sql", import.meta.url), "utf8");
 const VERCEL = readFileSync(new URL("../vercel.json", import.meta.url), "utf8");
+const WORKER = readFileSync(new URL("../app/api/cron/mensagens/route.ts", import.meta.url), "utf8");
 
 describe("executor de mensagens agendadas", () => {
   it("vence mensagens antigas antes de obter o lote", () => {
@@ -81,5 +82,29 @@ describe("executor de mensagens agendadas", () => {
     expect(SCHEMA).toContain(
       "grant execute on function configurar_cron_mensagens(text, text) to service_role",
     );
+  });
+});
+
+describe("claim_mensagens_agendadas vence linhas presas em processando", () => {
+  const MIGRATION = readFileSync(
+    new URL("../../supabase/migrations/20260913143812_claim_mensagens_vence_processando_orfas.sql", import.meta.url),
+    "utf8",
+  );
+
+  it.each([["schema canônico", SCHEMA], ["migration", MIGRATION]])("no %s, órfã vira erro e nunca volta à fila", (_, bruto) => {
+    const sql = bruto.replace(/public./g, "");
+    const funcao = sql.slice(sql.indexOf("function claim_mensagens_agendadas"), sql.indexOf("grant execute on function claim_mensagens_agendadas"));
+    expect(funcao).toContain("erro = 'processamento-interrompido'");
+    expect(funcao).toMatch(/where status = 'processando'\s+and updated_at < now\(\) - interval '10 minutes'/);
+    // O worker vive no máximo 300 s (maxDuration); dez minutos após o claim ele já morreu.
+    expect(WORKER).toContain("export const maxDuration = 300;");
+    expect(funcao).not.toMatch(/set status = 'agendada'/);
+  });
+
+  it("a migration e o schema canônico definem o mesmo claim", () => {
+    const corpo = (sql: string) => sql
+      .slice(sql.indexOf("as $$"), sql.indexOf("$$;", sql.indexOf("as $$")))
+      .replace(/\s+/g, " ");
+    expect(corpo(MIGRATION)).toBe(corpo(SCHEMA.slice(SCHEMA.indexOf("function claim_mensagens_agendadas"))));
   });
 });

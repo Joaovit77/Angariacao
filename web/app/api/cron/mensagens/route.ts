@@ -1,13 +1,44 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { DbMensagemAgendada } from "@/lib/mensagensAgendadas";
 import { enviarMensagemAgendada } from "@/lib/servidor/envioMensagemAgendada";
 import { agoraISOComSegundos, agoraISOString } from "@/lib/datas";
+import {
+  classificarFalhaSupabase,
+  descreverFalhaSupabase,
+  type FalhaSupabase,
+} from "@/lib/servidor/erroExterno";
 import { registrarMensagemEnviada } from "@/lib/servidor/historicoWhatsapp";
 import { registrarEvento } from "@/lib/servidor/registro";
 import { garantirRegistroInstanciaWhatsapp } from "@/lib/servidor/instanciaWhatsapp";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
+
+/** Pausas entre as tentativas do claim. Curtas: o cron volta em um minuto. */
+const ESPERAS_CLAIM_MS = [500, 1500];
+
+/**
+ * Reclama o lote, repetindo somente falhas transitórias. Repetir é seguro:
+ * uma linha que a primeira tentativa já marcou `processando` (resposta
+ * perdida depois do commit) não volta na segunda, e o próprio
+ * `claim_mensagens_agendadas` a vence como `processamento-interrompido`
+ * quando o worker que a reclamou já morreu — nunca a reenvia.
+ */
+async function reclamarLote(admin: SupabaseClient): Promise<
+  { ok: true; lote: DbMensagemAgendada[]; falhas: FalhaSupabase[] } | { ok: false; falhas: FalhaSupabase[] }
+> {
+  const falhas: FalhaSupabase[] = [];
+  for (let tentativa = 0; ; tentativa++) {
+    const { data, error, status } = await admin.rpc("claim_mensagens_agendadas", { p_limite: 20 });
+    if (!error) return { ok: true, lote: (data || []) as DbMensagemAgendada[], falhas };
+    const falha = classificarFalhaSupabase(error, status);
+    falhas.push(falha);
+    console.error("[mensagens-cron] claim falhou", { tentativa: tentativa + 1, ...falha });
+    const espera = ESPERAS_CLAIM_MS[tentativa];
+    if (!falha.transitoria || espera === undefined) return { ok: false, falhas };
+    await new Promise((resolve) => setTimeout(resolve, espera));
+  }
+}
 
 export async function GET(request: Request) {
   const segredo = process.env.CRON_SECRET;
@@ -21,10 +52,34 @@ export async function GET(request: Request) {
     return Response.json({ ok: false, erro: "Envio não configurado." }, { status: 503 });
 
   const admin = createClient(url, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { data, error } = await admin.rpc("claim_mensagens_agendadas", { p_limite: 20 });
-  if (error) return Response.json({ ok: false, erro: error.message }, { status: 500 });
+  const claim = await reclamarLote(admin);
+  if (!claim.ok) {
+    registrarEvento({
+      userId: null,
+      categoria: "whatsapp",
+      nivel: "erro",
+      evento: "agendamento-fila-indisponivel",
+      detalhe: claim.falhas.map(descreverFalhaSupabase).join(" "),
+    });
+    return Response.json(
+      { ok: false, erro: "Fila de mensagens indisponível.", falha: claim.falhas[claim.falhas.length - 1].codigo },
+      { status: 500 },
+    );
+  }
+  if (claim.falhas.length) {
+    // Recuperou ao repetir. Fica registrado para medir a frequência do
+    // transitório, em vez de o 500 sumir junto com a causa.
+    registrarEvento({
+      userId: null,
+      categoria: "whatsapp",
+      nivel: "aviso",
+      evento: "agendamento-fila-recuperada",
+      detalhe: claim.falhas.map(descreverFalhaSupabase).join(" "),
+    });
+  }
+  const data = claim.lote;
   let enviadas = 0, falhas = 0;
-  for (const item of (data || []) as DbMensagemAgendada[]) {
+  for (const item of data) {
     const { data: instancia } = await admin.from("whatsapp_instancias").select("instancia, token, observacao")
       .eq("user_id", item.user_id).maybeSingle();
     try {
@@ -38,11 +93,14 @@ export async function GET(request: Request) {
       // O lote foi reclamado antes do loop. Nesse intervalo o imóvel pode ter
       // sido excluído e a transação ter removido esta mensagem. Relê-la
       // imediatamente antes do efeito externo evita usar o item em memória.
-      const { data: mensagemAtual } = await admin.from("mensagens_agendadas")
+      // Falha de leitura não é "linha sumiu": tratada como ausência, um erro
+      // passageiro deixaria a mensagem `processando` para sempre.
+      const { data: mensagemAtual, error: erroReleitura } = await admin.from("mensagens_agendadas")
         .select("status, imovel_id")
         .eq("id", item.id)
         .eq("user_id", item.user_id)
         .maybeSingle();
+      if (erroReleitura) throw new Error("releitura-falhou");
       if (mensagemAtual?.status !== "processando" || (item.imovel_id && mensagemAtual.imovel_id !== item.imovel_id)) continue;
 
       const envio = await enviarMensagemAgendada(item.telefone, item.mensagem,
@@ -77,5 +135,5 @@ export async function GET(request: Request) {
       falhas++;
     }
   }
-  return Response.json({ ok: true, processadas: (data || []).length, enviadas, falhas });
+  return Response.json({ ok: true, processadas: data.length, enviadas, falhas });
 }

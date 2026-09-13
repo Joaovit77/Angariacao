@@ -30,3 +30,43 @@ export function sanitizarErroExterno(erro: unknown, contexto: ContextoErroExtern
   }
   return { ...CONTEXTOS[contexto], status };
 }
+
+/* Classes SQLSTATE que descrevem uma falha passageira do banco, não da
+   consulta: 08 conexão, 40 transação desfeita (deadlock, serialização),
+   53 recurso esgotado, 57 intervenção do operador (statement_timeout,
+   reinício). Qualquer outra classe é recusa determinística; repetir não
+   muda nada. */
+const CLASSES_SQLSTATE_TRANSITORIAS = ["08", "40", "53", "57"];
+const CODIGO_ERRO_VALIDO = /^(?:[0-9A-Z]{5}|PGRST\d{3})$/;
+
+export interface FalhaSupabase {
+  /** Código local, seguro para log: nunca a mensagem crua do erro. */
+  codigo: "rede" | "gateway" | "banco-transitorio" | "recusado";
+  /** SQLSTATE ou código do PostgREST, só quando tem o formato esperado. */
+  sqlstate: string | null;
+  status: number;
+  transitoria: boolean;
+}
+
+/**
+ * Classifica uma resposta de erro do supabase-js pela mesma allowlist:
+ * status HTTP e código validado pelo formato. `status` 0 é o cliente
+ * dizendo que o fetch nem completou (socket fechado, DNS, timeout); 5xx
+ * sem SQLSTATE é o gateway do Supabase, não o Postgres. `transitoria`
+ * é o que autoriza uma repetição.
+ */
+export function classificarFalhaSupabase(erro: { code?: string | null }, status: number): FalhaSupabase {
+  const code = erro.code ?? "";
+  const sqlstate = CODIGO_ERRO_VALIDO.test(code) ? code : null;
+  const base = { sqlstate, status };
+  if (status === 0) return { ...base, codigo: "rede", transitoria: true };
+  if (sqlstate && CLASSES_SQLSTATE_TRANSITORIAS.includes(sqlstate.slice(0, 2)))
+    return { ...base, codigo: "banco-transitorio", transitoria: true };
+  if (status >= 500) return { ...base, codigo: "gateway", transitoria: true };
+  return { ...base, codigo: "recusado", transitoria: false };
+}
+
+/** Forma curta para `detalhe` de log: `rede:0`, `banco-transitorio:500:57014`. */
+export function descreverFalhaSupabase(falha: FalhaSupabase): string {
+  return `${falha.codigo}:${falha.status}${falha.sqlstate ? `:${falha.sqlstate}` : ""}`;
+}
