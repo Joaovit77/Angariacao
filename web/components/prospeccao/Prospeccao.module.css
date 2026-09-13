@@ -583,15 +583,37 @@
   color: var(--bad) !important;
 }
 
+/* O input de arquivo vive dentro de um <label>; quando ele veste "btn"
+   (sem câmera em página, ou retomada), o `label` global ainda passaria
+   caixa alta e margem por baixo do botão. */
+.capturaAcoes label {
+  margin: 0;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Rótulos CLICÁVEIS não são rótulos de campo: o `label` global do sistema
+   é caixa alta, 11,5 px, negrito — certo em cima de um input, errado num
+   controle. Tudo que se toca aqui usa caixa normal e cara de botão. */
 .capturaAlternativa {
-  color: var(--text-faint);
-  font-size: 10px;
-  text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 7px 11px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: var(--bg-elev-2);
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
 }
 
 .capturaAlternativa:hover {
-  color: var(--text-dim);
+  color: var(--text);
+  border-color: var(--border);
 }
 
 .cameraFachada {
@@ -785,14 +807,30 @@
 .filtroOcultos {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   margin: 2px 0 10px;
+  padding: 7px 11px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: var(--bg-elev-2);
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
+}
+.filtroOcultos:hover {
+  color: var(--text);
+  border-color: var(--border);
 }
 .filtroOcultos input {
   margin: 0;
+  accent-color: var(--accent);
+}
+/* No estado vazio o filtro fica abaixo do botão, não espremido ao lado. */
+.estado .filtroOcultos {
+  margin: 10px auto 0;
 }
 
 /* Localização (C6). A incerteza é mostrada, não escondida: o círculo do
@@ -878,14 +916,27 @@
 .fonteLocalizacao label {
   display: flex;
   align-items: flex-start;
-  gap: 7px;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--bg-elev-2);
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
   line-height: 1.45;
+  text-transform: none;
   cursor: pointer;
+}
+.fonteLocalizacao label:has(input:checked) {
+  border-color: var(--accent);
+  color: var(--text);
 }
 .fonteLocalizacao input {
   margin: 2px 0 0;
+  accent-color: var(--accent);
 }
 
 /* Dedupe (C7): aviso, nunca bloqueio. Âmbar como o rascunho — é "olhe

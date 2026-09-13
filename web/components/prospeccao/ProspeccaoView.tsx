@@ -197,6 +197,13 @@ export default function ProspeccaoView({
                 ? "Registre o primeiro avistamento para começar sua memória de campo."
                 : "Descartados, fundidos e exclusões pendentes ficam atrás do filtro de ocultos."}
             </p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => abrirModal("avistamento")}
+            >
+              Registrar primeiro avistamento
+            </button>
             {!incluirOcultos ? (
               <label className={styles.filtroOcultos}>
                 <input
@@ -208,13 +215,6 @@ export default function ProspeccaoView({
                 Mostrar ocultos
               </label>
             ) : null}
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => abrirModal("avistamento")}
-            >
-              Registrar primeiro avistamento
-            </button>
           </div>
         </div>
       ) : itens.length ? (
