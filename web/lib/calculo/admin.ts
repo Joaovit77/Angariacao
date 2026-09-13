@@ -263,6 +263,8 @@ export const EVENTOS: Record<string, string> = {
   "envio-ok": "Mensagem enviada",
   "envio-falhou": "Falha ao enviar mensagem",
   "historico-envio-falhou": "Mensagem enviada sem registro no histórico",
+  "agendamento-fila-indisponivel": "Fila de mensagens agendadas indisponível",
+  "agendamento-fila-recuperada": "Fila de mensagens agendadas recuperada após repetir",
   "sem-instancia": "Tentou enviar sem número cadastrado",
   "instancia-desconectada": "WhatsApp desconectado (releia o QR)",
   "sem-whatsapp": "Número do proprietário não tem WhatsApp",

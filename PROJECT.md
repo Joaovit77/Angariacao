@@ -1198,6 +1198,12 @@ Regras permanentes:
 - o Supabase `pg_cron` chama `/api/cron/mensagens` a cada minuto com `CRON_SECRET`. O worker usa
   service role, busca a instância do próprio `user_id`, envia sequencialmente e persiste a saída no
   histórico bidirecional;
+- o claim é repetido somente em falha transitória (fetch que não completou, 5xx do gateway,
+  SQLSTATE das classes 08/40/53/57), com o motivo classificado por allowlist em `log_eventos`
+  (`agendamento-fila-indisponivel` / `agendamento-fila-recuperada`); recusa determinística não é
+  repetida. Uma linha `processando` há mais de dez minutos pertence a um worker morto (a função vive
+  no máximo 300 s) e o próprio claim a vence como `erro`/`processamento-interrompido` — nunca volta
+  à fila, porque o envio pode ter saído antes da morte;
 - falha de persistência após envio não recoloca a mensagem na fila, evitando duplicidade real.
 - excluir um imóvel chama `excluir_imovel_com_dependencias`: na mesma transação bloqueia a fila,
   remove mensagens `agendada`, exclui a agenda vinculada e só então exclui o imóvel. Se um envio

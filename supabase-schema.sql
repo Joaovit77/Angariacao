@@ -342,6 +342,16 @@ as $$
        and data_envio < now() - interval '10 minutes'
     returning id
   ),
+  -- Linha reclamada por um worker que nao concluiu (resposta do claim
+  -- perdida, funcao encerrada). Dez minutos apos o claim ele ja morreu;
+  -- vira erro, nunca volta a fila: o envio pode ter saido antes.
+  interrompidas as (
+    update mensagens_agendadas
+       set status = 'erro', erro = 'processamento-interrompido', updated_at = now()
+     where status = 'processando'
+       and updated_at < now() - interval '10 minutes'
+    returning id
+  ),
   candidatas as (
     select id
       from mensagens_agendadas
