@@ -31,6 +31,7 @@ function rotuloEtiqueta(etiqueta: EtiquetaDoImovel): string {
 interface Props {
   identificado: ImovelIdentificado;
   selecionado: boolean;
+  desabilitado?: boolean;
   etiquetasAtuais?: EtiquetaDoImovel[];
   aoSelecionar: (id: string) => void;
 }
@@ -38,6 +39,7 @@ interface Props {
 export default function CardIdentificado({
   identificado,
   selecionado,
+  desabilitado = false,
   etiquetasAtuais = [],
   aoSelecionar,
 }: Props) {
@@ -46,6 +48,7 @@ export default function CardIdentificado({
     <button
       type="button"
       className={`${styles.card}${selecionado ? ` ${styles.cardSelecionado}` : ""}`}
+      disabled={desabilitado}
       aria-pressed={selecionado}
       onClick={() => aoSelecionar(identificado.id)}
     >

@@ -15,6 +15,7 @@ import {
   descartarIdentificado,
   excluirIdentificado,
   finalizarFotoAvistamento,
+  fundirIdentificados,
   listarIdentificados,
   obterIdentificado,
   previaExclusaoIdentificado,
@@ -28,6 +29,7 @@ import {
   type PreviaExclusaoIdentificado,
   type ReservaFotoAvistamento,
   type ResultadoExclusaoProspeccao,
+  type ResultadoFusaoIdentificados,
 } from "./prospeccao";
 import type {
   CategoriaEtiquetaProspeccao,
@@ -59,6 +61,9 @@ interface EstadoProspeccao {
   carregando: boolean;
   salvando: boolean;
   erro: string | null;
+  aviso: string | null;
+  revisaoFusao: number;
+  fundir: (sobreviventeId: string, absorvidoId: string) => Promise<ResultadoFusaoIdentificados | null>;
   carregarPagina: (pagina?: number, porPagina?: number) => Promise<boolean>;
   definirIncluirOcultos: (incluirOcultos: boolean) => Promise<boolean>;
   carregarDetalhe: (id: string, incluirClassificacoes?: boolean) => Promise<boolean>;
@@ -125,6 +130,8 @@ const estadoInicial = {
   carregando: false,
   salvando: false,
   erro: null as string | null,
+  aviso: null as string | null,
+  revisaoFusao: 0,
 };
 
 function substituirIdentificado(
@@ -137,6 +144,7 @@ function substituirIdentificado(
 }
 
 export const useProspeccao = create<EstadoProspeccao>((set, get) => {
+  let versaoEstado = 0;
   async function detalheAtualizado(
     imovelIdentificadoId: string,
   ): Promise<DetalheImovelIdentificado> {
@@ -189,6 +197,7 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
           total: resultado.total,
           temMais: resultado.temMais,
           carregando: false,
+          aviso: null,
         });
         return true;
       } catch {
@@ -223,7 +232,52 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
       set({ erro: null });
     },
     resetar() {
+      versaoEstado += 1;
       set(estadoInicial);
+    },
+    async fundir(sobreviventeId, absorvidoId) {
+      if (get().salvando || get().carregando) return null;
+      const versao = versaoEstado;
+      const { porPagina, incluirOcultos, detalhe } = get();
+      set({ salvando: true, erro: null, aviso: null });
+      let resultado: ResultadoFusaoIdentificados;
+      try {
+        resultado = await fundirIdentificados(sobreviventeId, absorvidoId);
+      } catch (erro) {
+        if (versao === versaoEstado) set({
+          salvando: false,
+          erro: erro instanceof Error ? erro.message : "Não foi possível confirmar a união. Tente novamente com a mesma escolha.",
+        });
+        return null;
+      }
+      if (versao !== versaoEstado) return null;
+      try {
+        // A lista e o histórico são publicados juntos, somente depois da RPC.
+        // Começar na primeira página evita uma página vazia após a união.
+        const [pagina, sobrevivente] = await Promise.all([
+          listarIdentificados({ pagina: 1, porPagina, incluirOcultos }),
+          obterIdentificado(sobreviventeId, { incluirClassificacoes: detalhe?.classificacoesCarregadas === true }),
+        ]);
+        if (!sobrevivente) throw new Error("Registro principal não encontrado após a união.");
+        if (versao !== versaoEstado) return null;
+        set((estado) => ({
+          ...pagina,
+          detalhe: sobrevivente,
+          selecionadoId: sobreviventeId,
+          salvando: false,
+          revisaoFusao: estado.revisaoFusao + 1,
+        }));
+      } catch {
+        if (versao !== versaoEstado) return null;
+        // A união já aconteceu. Retirar o retrato antigo evita operar a lápide
+        // como se estivesse viva; a recuperação é só leitura, sem outra RPC.
+        set((estado) => ({
+          itens: [], detalhe: null, selecionadoId: null, pagina: 1, total: 0, temMais: false,
+          salvando: false, revisaoFusao: estado.revisaoFusao + 1,
+          aviso: "Os registros foram unidos, mas não foi possível atualizar a tela. Recarregue para consultar o histórico.",
+        }));
+      }
+      return resultado;
     },
     criar(usuarioId, dados, primeiroAvistamento) {
       return executarMutacao("Não foi possível registrar esta identificação.", async () => {

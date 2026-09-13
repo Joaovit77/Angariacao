@@ -398,7 +398,7 @@ describe("C7 — fronteira: candidatos da própria conta pelas duas chaves", () 
     expect(geografica.range.mock.calls).toEqual([[0, 99], [100, 199], [200, 299]]);
   });
 
-  it("estrutural: nenhum arquivo do módulo escreve em imoveis, funde ou promove; a carteira só é lida", () => {
+  it("estrutural: merge só na fronteira canônica; nenhum arquivo escreve no Pipeline ou promove", () => {
     const arquivos = [
       "lib/prospeccao.ts", "lib/useProspeccao.ts", "lib/calculo/dedupeProspeccao.ts",
       ...readdirSync(resolve("components/prospeccao")).map((nome) => `components/prospeccao/${nome}`),
@@ -406,12 +406,18 @@ describe("C7 — fronteira: candidatos da própria conta pelas duas chaves", () 
     ];
     for (const caminho of arquivos) {
       const fonte = readFileSync(resolve(caminho), "utf8");
-      expect(fonte, caminho).not.toMatch(/from\("imoveis"\)|salvarImovel|fundir_imoveis_identificados|vincular_promocao|definir_situacao_identificado\([^)]*promov/);
+      expect(fonte, caminho).not.toMatch(/from\("imoveis"\)|salvarImovel|vincular_promocao|definir_situacao_identificado\([^)]*promov/);
       expect(fonte, caminho).not.toMatch(/openai|embedding|ia_uso|\/api\/ia/i);
+      // C7b autoriza uma única porta de união; dedupe e cards continuam sem RPC.
+      if (caminho === "lib/prospeccao.ts") {
+        expect(fonte.match(/client\.rpc\("fundir_imoveis_identificados"/g)).toHaveLength(1);
+      } else {
+        expect(fonte, caminho).not.toContain("fundir_imoveis_identificados");
+      }
     }
     const componente = readFileSync(resolve("components/prospeccao/CandidatosDuplicidade.tsx"), "utf8");
     expect(componente).toMatch(/useAppStore\(\(estado\) => estado\.imoveis\)/);
-    expect(componente).not.toMatch(/setImoveis|\.getState\(\)\.set|<button/);
+    expect(componente).not.toMatch(/setImoveis|\.getState\(\)\.set|\.rpc\(|\bfundir\(/);
     // Os cinco arquivos do C4 continuam sem store; só o componente de dedupe o lê.
     for (const caminho of ["ProspeccaoView", "CardIdentificado", "PainelIdentificado", "LinhaDoTempoAvistamentos"]) {
       expect(readFileSync(resolve(`components/prospeccao/${caminho}.tsx`), "utf8")).not.toContain("@/lib/store");
@@ -459,7 +465,7 @@ describe("C7 — na tela: avisa com motivo, nunca bloqueia", () => {
     expect(linhas[0].textContent).toContain("Avistado em 12/08/2026");
     expect(linhas[0].textContent).toContain("A cerca de 18 m; precisão do GPS ±7 m e ±12 m");
     expect(linhas[1].textContent).toContain("Mesmo endereço normalizado");
-    // Nenhuma ação executável: nem merge, nem promoção, nem "são diferentes".
+    // Sem identidade persistida (rascunho), continua sem ação executável.
     expect(secao.querySelectorAll("button")).toHaveLength(0);
     expect(secao.textContent).not.toMatch(/%|É o mesmo|São diferentes|Transformar em oportunidade/);
   });

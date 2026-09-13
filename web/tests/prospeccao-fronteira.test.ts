@@ -15,6 +15,7 @@ import {
   definirTipoManual,
   descartarIdentificado,
   finalizarFotoAvistamento,
+  fundirIdentificados,
   listarIdentificados,
   obterIdentificado,
   reservarFotoAvistamento,
@@ -566,5 +567,41 @@ describe("isolamento arquitetural do C3", () => {
       const atual = readFileSync(resolve("..", arquivo), "utf8");
       expect(atual.replace(/\r\n/g, "\n")).toBe(naBase.replace(/\r\n/g, "\n"));
     }
+  });
+});
+
+describe("C7b — fronteira da RPC canônica", () => {
+  const a = "10000000-0000-4000-8000-000000000001";
+  const b = "10000000-0000-4000-8000-000000000002";
+
+  it.each([false, true])("confirma repetida=%s com uma única RPC e nenhuma escrita direta", async (repetida) => {
+    const rpc = vi.fn().mockResolvedValue({ data: { ok: true, repetida, sobrevivente_id: b, absorvido_id: a }, error: null });
+    const client = clienteFalso({}, rpc);
+    expect(await fundirIdentificados(b, a, client as never)).toEqual({ sobreviventeId: b, absorvidoId: a, repetida });
+    expect(rpc).toHaveBeenCalledExactlyOnceWith("fundir_imoveis_identificados", { p_sobrevivente_id: b, p_absorvido_id: a });
+    expect(client.from).not.toHaveBeenCalled();
+  });
+
+  it.each(["exclusao_em_andamento", "situacao_incompativel", "fusao_em_si_mesmo"])("preserva recusa %s do banco", async (codigo) => {
+    const client = clienteFalso({}, vi.fn().mockResolvedValue({ data: { ok: false, codigo }, error: null }));
+    await expect(fundirIdentificados(b, a, client as never)).rejects.toMatchObject({ codigo });
+    expect(client.from).not.toHaveBeenCalled();
+  });
+
+  it("apresenta o erro real quando o banco não retorna código conhecido", async () => {
+    const client = clienteFalso({}, vi.fn().mockResolvedValue({ data: null, error: { code: "P0001", message: "Operação recusada pelo banco." } }));
+    await expect(fundirIdentificados(b, a, client as never)).rejects.toThrow("Operação recusada pelo banco.");
+  });
+
+  it("recusa auto-merge e IDs inválidos antes de chamar o banco", async () => {
+    const client = clienteFalso({});
+    await expect(fundirIdentificados(a, a, client as never)).rejects.toBeInstanceOf(ErroProspeccao);
+    await expect(fundirIdentificados("rascunho", a, client as never)).rejects.toBeInstanceOf(ErroProspeccao);
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
+
+  it("não declara sucesso com resposta de outro par", async () => {
+    const client = clienteFalso({}, vi.fn().mockResolvedValue({ data: { ok: true, repetida: false, sobrevivente_id: a, absorvido_id: b }, error: null }));
+    await expect(fundirIdentificados(b, a, client as never)).rejects.toMatchObject({ codigo: "resposta_rpc_invalida" });
   });
 });

@@ -173,6 +173,8 @@ export default function PainelIdentificado({
   const cancelarExclusao = useProspeccao((estado) => estado.cancelarExclusao);
   const removerFoto = useProspeccao((estado) => estado.removerFoto);
   const salvando = useProspeccao((estado) => estado.salvando);
+  const carregarDetalhe = useProspeccao((estado) => estado.carregarDetalhe);
+  const carregando = useProspeccao((estado) => estado.carregando);
   const [dialogoExclusao, setDialogoExclusao] = useState<"fechado" | "novo" | "retomada">("fechado");
   const item = detalhe.identificado;
   // §13.4: com a exclusão iniciada, o registro é retomável e nada mais.
@@ -199,6 +201,29 @@ export default function PainelIdentificado({
   async function confirmarRemocaoDeFoto(fotoId: string) {
     if (!window.confirm("Remover esta foto do avistamento? O arquivo será apagado do Storage.")) return;
     await removerFoto(item.id, fotoId);
+  }
+
+  if (item.situacao === "fundido" && !exclusaoPendente) {
+    return (
+      <article className={styles.painel} aria-label="Detalhe do imóvel identificado">
+        <div className={styles.painelCabecalho}>
+          <div>
+            <span className={styles.sobretitulo}>REGISTRO FUNDIDO</span>
+            <h3>{enderecoCompleto(detalhe)}</h3>
+            <p>Este registro foi unido a outro em {fmtDataHoraIso(item.fundidoEm)}.</p>
+          </div>
+        </div>
+        <div className={styles.resumoFusao}>
+          <p>Esta identificação permanece como memória da união. Todos os seus avistamentos e evidências estão no registro principal.</p>
+          {item.fundidoEmImovelId ? (
+            <button type="button" className="btn btn-primary" disabled={salvando || carregando}
+              onClick={() => void carregarDetalhe(item.fundidoEmImovelId!)}>
+              Abrir registro principal e histórico unido
+            </button>
+          ) : null}
+        </div>
+      </article>
+    );
   }
 
   if (exclusaoPendente) {
@@ -249,6 +274,7 @@ export default function PainelIdentificado({
         <button
           type="button"
           className="btn btn-primary"
+          disabled={salvando}
           onClick={() => abrirModal("avistamento", item.id)}
         >
           Novo avistamento
@@ -313,6 +339,9 @@ export default function PainelIdentificado({
       </section>
 
       <CandidatosDuplicidade
+        key={item.id}
+        identificado={item}
+        fotosIdentificado={detalhe.avistamentos.reduce((total, avistamento) => total + avistamento.fotos.length, 0)}
         alvo={identidadeParaDedupe(item)}
         situacao={item.situacao}
         avistamentosTotal={item.avistamentosTotal}

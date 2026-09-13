@@ -273,6 +273,96 @@ describe.sequential("merge — RPC, grants e triggers no PostgreSQL local", () =
       .rejects.toMatchObject({ code: "42501" });
   });
 
+
+  async function evidencias(pai: string, evento: string) {
+    const foto = randomUUID(); const classificacao = randomUUID();
+    const caminho = `${USUARIO}/${pai}/${evento}/fachada.jpg`;
+    await db.query(`insert into public.imoveis_identificados_fotos
+      (id, avistamento_id, imovel_identificado_id, user_id, caminho, caminho_miniatura, largura, altura, bytes)
+      values ($1, $2, $3, $4, $5, $6, 100, 100, 1000)`, [foto, evento, pai, USUARIO, caminho, caminho + ".thumb"]);
+    await db.query(`insert into public.imoveis_identificados_classificacoes
+      (id, avistamento_id, imovel_identificado_id, user_id, modo, observacao_revisao,
+       fingerprint, modelo, versao_catalogo, versao_classificador, confianca_minima)
+      values ($1, $2, $3, $4, 'modelo', 1, 'fixture-local', 'fixture-sem-api', 1, 1, 80)`, [classificacao, evento, pai, USUARIO]);
+    await db.query(`insert into public.imoveis_identificados_etiquetas
+      (imovel_identificado_id, avistamento_id, classificacao_id, user_id, categoria, codigo,
+       origem, confianca, modelo, versao_catalogo, revisao_observacao)
+      values ($1, $2, $3, $4, 'fachada', 'teste-local', 'ia-texto', 90, 'fixture-sem-api', 1, 1)`, [pai, evento, classificacao, USUARIO]);
+    await db.query(`update public.imoveis_identificados set tipo = 'Casa', tipo_origem = 'ia-texto',
+      tipo_confianca = 91, tipo_estado = 'confirmado', tipo_definido_em = '2026-09-10T12:00:00Z',
+      tipo_classificacao_id = $2, tipo_avistamento_id = $3, tipo_confirmado_por = $4,
+      tipo_confirmado_em = '2026-09-11T12:00:00Z' where id = $1`, [pai, classificacao, evento, USUARIO]);
+    await db.query("insert into storage.objects values ($1, 'fachadas', $2)", [foto, caminho]);
+    return { foto, classificacao, caminho };
+  }
+
+  async function retratoTipo(id: string) {
+    const linha = (await db.query<{ dados: Json }>("select to_jsonb(i) as dados from public.imoveis_identificados i where id = $1", [id])).rows[0].dados;
+    return Object.fromEntries(Object.entries(linha).filter(([chave]) => chave === "tipo" || chave.startsWith("tipo_")));
+  }
+
+  it.each([null, "Apartamento"])("une todo o histórico sem recriar evidências; tipo anterior do sobrevivente: %s", async (tipoAnterior) => {
+    const a = await identidade(); const b = await identidade(tipoAnterior);
+    const ea = await avistamento(a, 1, 4); const eb = await avistamento(b, 3, 80);
+    const evidencia = await evidencias(a, ea);
+    const tipoEsperado = await retratoTipo(tipoAnterior ? b : a);
+    const tabelas = ["imoveis_identificados_avistamentos", "imoveis_identificados_fotos",
+      "imoveis_identificados_classificacoes", "imoveis_identificados_etiquetas"];
+    async function historicos() {
+      return Promise.all(tabelas.map(async (tabela) =>
+        (await db.query(`select to_jsonb(t) - 'imovel_identificado_id' as dados from public.${tabela} t order by id`)).rows));
+    }
+    const antes = await historicos();
+    const objetos = (await db.query("select * from storage.objects")).rows;
+    // Uma tentativa de escrita, mesmo sem atingir linhas, deve abortar o ensaio.
+    await db.exec(`
+      create function private.bloquear_escrita_externa_teste() returns trigger language plpgsql as $$
+      begin raise exception 'Merge tentou escrever fora do Garimpo'; end; $$;
+      create trigger bloquear_pipeline_teste before insert or update or delete on public.imoveis
+        for each statement execute function private.bloquear_escrita_externa_teste();
+      create trigger bloquear_storage_teste before insert or update or delete on storage.objects
+        for each statement execute function private.bloquear_escrita_externa_teste();
+    `);
+    expect(await fundir(b, a)).toMatchObject({ ok: true, repetida: false, avistamentos_movidos: 1 });
+    expect(await historicos()).toEqual(antes);
+    expect(await retratoTipo(b)).toEqual(tipoEsperado);
+    expect((await db.query("select * from storage.objects")).rows).toEqual(objetos);
+    for (const tabela of tabelas) {
+      const linhas = (await db.query<{ imovel_identificado_id: string }>(`select imovel_identificado_id from public.${tabela}`)).rows;
+      expect(linhas.length).toBeGreaterThan(0);
+      expect(linhas.every((linha) => linha.imovel_identificado_id === b)).toBe(true);
+    }
+    const identidades = (await db.query<{ dados: Json }>("select to_jsonb(i) as dados from public.imoveis_identificados i")).rows.map((r) => r.dados);
+    expect(identidades.find((i) => i.id === a)).toMatchObject({
+      situacao: "fundido", fundido_em: expect.any(String), fundido_em_imovel_id: b,
+      avistamentos_total: 0, avistamento_corrente_id: null, primeiro_avistamento_em: null,
+      ultimo_avistamento_em: null, latitude: null, longitude: null, acuracia_metros: null,
+    });
+    expect(identidades.find((i) => i.id === b)).toMatchObject({
+      situacao: "identificado", avistamentos_total: 2, avistamento_corrente_id: eb,
+      latitude: -23.3, longitude: -51.1, acuracia_metros: 4, precisao_localizacao: "gps",
+    });
+    const principal = identidades.find((i) => i.id === b)!;
+    expect(new Date(principal.primeiro_avistamento_em as string).toISOString()).toBe("2026-09-01T12:00:00.000Z");
+    expect(new Date(principal.ultimo_avistamento_em as string).toISOString()).toBe("2026-09-03T12:00:00.000Z");
+    expect((await comoUsuario("select caminho from public.imoveis_identificados_fotos where id = $1", [evidencia.foto])).rows)
+      .toEqual([{ caminho: evidencia.caminho }]);
+    if (!tipoAnterior) expect((await retratoTipo(b)).tipo_avistamento_id).toBe(ea);
+  });
+
+  it("C5b pode remover o principal após a união sem deixar lápide ou evidência órfã", async () => {
+    const a = await identidade(); const b = await identidade();
+    const ea = await avistamento(a, 1); await avistamento(b, 2);
+    const evidencia = await evidencias(a, ea);
+    await fundir(b, a);
+    expect((await db.query("select caminho from public.imoveis_identificados_fotos where imovel_identificado_id = $1", [b])).rows)
+      .toEqual([{ caminho: evidencia.caminho }]);
+    // Apenas fixtures locais: reproduz a ordem objetos → banco usada na rota C5b.
+    await db.query("delete from storage.objects where name = $1", [evidencia.caminho]);
+    await db.query("delete from public.imoveis_identificados where id = $1", [b]);
+    expect(Object.values(await retrato()).every((linhas) => (linhas as unknown[]).length === 0)).toBe(true);
+  });
+
   it("falha SQL após lápide, reparenteamento, denormalizados, recálculo e herança desfaz tudo", async () => {
     const a = await identidade("Casa"); const b = await identidade();
     const evento = await avistamento(a, 1, 4); await avistamento(b, 2, 80);

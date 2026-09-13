@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   corrigirObservacaoAvistamento: vi.fn(),
   reservarFotoAvistamento: vi.fn(),
   finalizarFotoAvistamento: vi.fn(),
+  fundirIdentificados: vi.fn(),
   descartarIdentificado: vi.fn(),
   aplicarEtiquetaHumana: vi.fn(),
   confirmarEtiqueta: vi.fn(),
@@ -413,5 +414,78 @@ describe("C7 — dedupe no estado local: liga fronteira e núcleo, sem tocar o e
     mocks.buscarCandidatosDuplicidade.mockRejectedValue(new Error("rls"));
     expect(await useProspeccao.getState().buscarDuplicatas(alvo)).toBeNull();
     expect(useProspeccao.getState().erro).toBeNull();
+  });
+});
+
+describe("merge no hook", () => {
+  const resposta = { sobreviventeId: "principal", absorvidoId: "absorvido", repetida: false };
+  const pagina = (itens: ImovelIdentificado[]) => ({ itens, pagina: 1, porPagina: 24, total: itens.length, temMais: false });
+
+  it("aguarda a RPC, bloqueia chamada simultânea e publica lista/histórico somente após as leituras", async () => {
+    let concluir!: (r: unknown) => void;
+    mocks.fundirIdentificados.mockReturnValue(new Promise((resolve) => { concluir = resolve; }));
+    const antigo = detalhe("absorvido", ["evento-a"]);
+    const unido = detalhe("principal", ["evento-b", "evento-a"]);
+    useProspeccao.setState({ itens: [antigo.identificado, unido.identificado], detalhe: antigo, selecionadoId: "absorvido" });
+    mocks.listarIdentificados.mockResolvedValue(pagina([unido.identificado]));
+    mocks.obterIdentificado.mockResolvedValue(unido);
+    const operacao = useProspeccao.getState().fundir("principal", "absorvido");
+    expect(useProspeccao.getState().detalhe).toBe(antigo);
+    expect(mocks.listarIdentificados).not.toHaveBeenCalled();
+    await expect(useProspeccao.getState().fundir("principal", "absorvido")).resolves.toBeNull();
+    expect(mocks.fundirIdentificados).toHaveBeenCalledTimes(1);
+    concluir(resposta);
+    await expect(operacao).resolves.toEqual(resposta);
+    expect(useProspeccao.getState()).toMatchObject({
+      itens: [unido.identificado], detalhe: unido, selecionadoId: "principal", salvando: false, revisaoFusao: 1,
+    });
+  });
+
+  it("retorno repetido recupera o histórico, inclusive classificações já abertas e filtro de ocultos", async () => {
+    const lapide = { ...identificado("absorvido"), situacao: "fundido" } as ImovelIdentificado;
+    const unido = detalhe("principal", ["evento-a", "evento-b"]);
+    useProspeccao.setState({ incluirOcultos: true, detalhe: { ...detalhe("absorvido"), classificacoesCarregadas: true } });
+    mocks.fundirIdentificados.mockResolvedValue({ ...resposta, repetida: true });
+    mocks.listarIdentificados.mockResolvedValue(pagina([lapide, unido.identificado]));
+    mocks.obterIdentificado.mockResolvedValue(unido);
+    await useProspeccao.getState().fundir("principal", "absorvido");
+    expect(mocks.listarIdentificados).toHaveBeenCalledWith({ pagina: 1, porPagina: 24, incluirOcultos: true });
+    expect(mocks.obterIdentificado).toHaveBeenCalledWith("principal", { incluirClassificacoes: true });
+    expect(useProspeccao.getState().itens).toEqual([lapide, unido.identificado]);
+  });
+
+  it("erro da RPC mantém o retrato anterior e não recarrega nem declara sucesso", async () => {
+    const antigo = detalhe("absorvido");
+    useProspeccao.setState({ detalhe: antigo, itens: [antigo.identificado] });
+    mocks.fundirIdentificados.mockRejectedValue(new Error("Exclusão em andamento."));
+    await expect(useProspeccao.getState().fundir("principal", "absorvido")).resolves.toBeNull();
+    expect(useProspeccao.getState()).toMatchObject({ detalhe: antigo, itens: [antigo.identificado], erro: "Exclusão em andamento.", salvando: false });
+    expect(mocks.listarIdentificados).not.toHaveBeenCalled();
+    expect(mocks.obterIdentificado).not.toHaveBeenCalled();
+  });
+
+  it("falha de releitura após confirmação descarta o retrato antigo e recupera só por leitura", async () => {
+    useProspeccao.setState({ itens: [identificado("absorvido")], detalhe: detalhe("absorvido") });
+    mocks.fundirIdentificados.mockResolvedValue(resposta);
+    mocks.listarIdentificados.mockRejectedValueOnce(new Error("Sem conexão."));
+    mocks.obterIdentificado.mockResolvedValue(detalhe("principal"));
+    await expect(useProspeccao.getState().fundir("principal", "absorvido")).resolves.toEqual(resposta);
+    expect(useProspeccao.getState()).toMatchObject({ itens: [], detalhe: null, erro: null, salvando: false });
+    expect(useProspeccao.getState().aviso).toContain("Os registros foram unidos");
+    mocks.listarIdentificados.mockResolvedValue(pagina([identificado("principal")]));
+    await useProspeccao.getState().carregarPagina();
+    expect(useProspeccao.getState().aviso).toBeNull();
+    expect(mocks.fundirIdentificados).toHaveBeenCalledTimes(1);
+  });
+
+  it("resposta antiga não repõe dados depois de resetar a sessão", async () => {
+    let concluir!: (r: unknown) => void;
+    mocks.fundirIdentificados.mockReturnValue(new Promise((resolve) => { concluir = resolve; }));
+    const operacao = useProspeccao.getState().fundir("principal", "absorvido");
+    useProspeccao.getState().resetar();
+    concluir(resposta);
+    await expect(operacao).resolves.toBeNull();
+    expect(useProspeccao.getState()).toMatchObject({ itens: [], detalhe: null, salvando: false, revisaoFusao: 0 });
+    expect(mocks.listarIdentificados).not.toHaveBeenCalled();
   });
 });

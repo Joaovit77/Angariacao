@@ -990,3 +990,58 @@
   color: var(--text);
   font-weight: 600;
 }
+
+/* União de históricos: escolha legível e explícita em tela larga ou estreita. */
+.dialogoFusao {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 20px;
+  border: 1px solid var(--accent-borda-forte);
+  border-radius: 14px;
+  background: var(--bg-elev-2);
+}
+.dialogoFusao h4 { margin: 0; font-size: 18px; color: var(--text); }
+.dialogoFusao p,
+.resumoFusao p { margin: 0; color: var(--text-dim); font-size: 13px; line-height: 1.6; }
+.escolhaFusao { padding: 0; margin: 0; border: 0; min-width: 0; }
+.escolhaFusao legend { padding: 0 0 12px; color: var(--text); font-size: 13px; font-weight: 600; }
+.opcoesFusao { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.opcaoFusao,
+.confirmacaoFusao {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+.opcaoFusao {
+  padding: 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: var(--bg-elev-3);
+}
+.opcaoFusao > span { display: grid; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+.opcaoFusao strong { font-size: 14px; color: var(--text); }
+.opcaoFusao span span { color: var(--text-dim); font-size: 12px; }
+.opcaoFusao .papelFusao { font-weight: 600; color: var(--text); }
+.opcaoFusao b { margin-top: 4px; font-size: 12px; color: var(--accent-strong); }
+.opcaoFusao:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.opcaoFusao:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.opcaoFusao input,
+.confirmacaoFusao input { flex: 0 0 auto; margin: 3px 0 0; width: 16px; height: 16px; accent-color: var(--accent); }
+.escolhaFusao:disabled .opcaoFusao { cursor: default; opacity: 0.7; }
+.resumoFusao { display: grid; gap: 10px; padding: 14px; border-radius: 10px; background: var(--bg-elev-3); overflow-wrap: anywhere; }
+.resumoFusao strong { color: var(--text); }
+.dialogoFusao .erroFusao { color: var(--bad); }
+@media (max-width: 640px) {
+  .dialogoFusao { padding: 14px; }
+  .opcoesFusao { grid-template-columns: 1fr; }
+  .dialogoFusao .dialogoAcoes > button { width: 100%; }
+}

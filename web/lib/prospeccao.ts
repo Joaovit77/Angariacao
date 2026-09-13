@@ -218,6 +218,19 @@ export interface ResultadoRpcProspeccao {
   repetida: boolean;
 }
 
+export interface ResultadoFusaoIdentificados extends ResultadoRpcProspeccao {
+  sobreviventeId: string;
+  absorvidoId: string;
+}
+
+/** Antecipação para a interface; a RPC continua validando o estado no banco. */
+export function podeFundirIdentificado(
+  identificado: Pick<ImovelIdentificado, "situacao" | "exclusaoSolicitadaEm">,
+): boolean {
+  return !identificado.exclusaoSolicitadaEm
+    && !["fundido", "promovido", "promovendo"].includes(identificado.situacao);
+}
+
 /** O contrato exato da rota `/api/prospeccao/excluir` (§19). `concluido` só é
     verdadeiro sem objeto pendente E com o prefixo do Storage vazio na releitura. */
 export interface ResultadoExclusaoProspeccao {
@@ -882,6 +895,40 @@ export async function definirTipoManual(
     p_tipo: tipo,
   });
   return { repetida: resposta.repetida === true };
+}
+
+/** Uma intenção humana, uma RPC. Histórico e vínculos só mudam no banco. */
+export async function fundirIdentificados(
+  sobreviventeId: string,
+  absorvidoId: string,
+  client: SupabaseClient = getSupabase(),
+): Promise<ResultadoFusaoIdentificados> {
+  if (!UUID_PROSPECCAO.test(sobreviventeId) || !UUID_PROSPECCAO.test(absorvidoId)
+      || sobreviventeId === absorvidoId) {
+    throw new ErroProspeccao("par_invalido", "Escolha dois registros diferentes para unir.");
+  }
+  const { data, error } = await client.rpc("fundir_imoveis_identificados", {
+    p_sobrevivente_id: sobreviventeId,
+    p_absorvido_id: absorvidoId,
+  });
+  const resposta = data as RespostaRpc | null;
+  if (error || resposta?.ok !== true) {
+    const codigo = error?.code ?? resposta?.codigo ?? "resposta_rpc_invalida";
+    const mensagens: Record<string, string> = {
+      exclusao_em_andamento: "Um dos registros está com exclusão em andamento. Retome ou cancele a exclusão antes de unir.",
+      situacao_incompativel: "Um dos registros já foi unido ou está em promoção. Atualize a lista antes de continuar.",
+      fusao_em_si_mesmo: "Escolha dois registros diferentes para unir.",
+      P0002: "Um dos registros não foi encontrado nesta conta. Atualize a lista antes de continuar.",
+      "42501": "Sua sessão não permite unir estes registros. Confira o acesso à conta.",
+    };
+    throw new ErroProspeccao(codigo, mensagens[codigo] ?? error?.message
+      ?? "Não foi possível confirmar a união. Tente novamente com a mesma escolha.");
+  }
+  if (resposta.sobrevivente_id !== sobreviventeId || resposta.absorvido_id !== absorvidoId
+      || typeof resposta.repetida !== "boolean") {
+    throw new ErroProspeccao("resposta_rpc_invalida", "O retorno da união não pôde ser confirmado. Atualize a lista antes de continuar.");
+  }
+  return { sobreviventeId, absorvidoId, repetida: resposta.repetida };
 }
 
 /* ----------------------------------------------------------------

@@ -67,6 +67,8 @@ export default function ProspeccaoView({
   const total = useProspeccao((estado) => estado.total);
   const temMais = useProspeccao((estado) => estado.temMais);
   const carregando = useProspeccao((estado) => estado.carregando);
+  const salvando = useProspeccao((estado) => estado.salvando);
+  const aviso = useProspeccao((estado) => estado.aviso);
   const incluirOcultos = useProspeccao((estado) => estado.incluirOcultos);
   const definirIncluirOcultos = useProspeccao((estado) => estado.definirIncluirOcultos);
   const erro = useProspeccao((estado) => estado.erro);
@@ -138,6 +140,7 @@ export default function ProspeccaoView({
         <button
           type="button"
           className="btn btn-primary"
+          disabled={salvando}
           onClick={() => abrirModal("avistamento")}
         >
           {total > 0 ? "Registrar novo local" : "Registrar primeiro avistamento"}
@@ -160,9 +163,20 @@ export default function ProspeccaoView({
                 : `${rascunhoPendente.foto ? "Foto e dados" : "Dados"} de ${horaCurta(rascunhoPendente.salvoEm)} estão guardados neste aparelho. Nada foi perdido.`}
             </span>
           </div>
-          <button type="button" className="btn btn-sm btn-primary" onClick={retomarRascunho}>
+          <button type="button" className="btn btn-sm btn-primary" disabled={salvando} onClick={retomarRascunho}>
             Retomar
           </button>
+        </div>
+      ) : null}
+
+      {aviso ? (
+        <div className={styles.estado} role="status">
+          <div>
+            <strong>União confirmada; atualização pendente.</strong>
+            <p>{aviso}</p>
+            <button type="button" className="btn btn-sm" disabled={carregando || salvando}
+              onClick={() => void carregarPagina(1, porPagina)}>Recarregar registros</button>
+          </div>
         </div>
       ) : null}
 
@@ -186,7 +200,7 @@ export default function ProspeccaoView({
 
       {carregando && !itens.length ? (
         <div className={styles.estado} role="status">Carregando identificações…</div>
-      ) : !erro && !itens.length ? (
+      ) : !erro && !aviso && !itens.length ? (
         <div className={styles.estado}>
           <div>
             <strong>
@@ -200,6 +214,7 @@ export default function ProspeccaoView({
             <button
               type="button"
               className="btn btn-primary"
+              disabled={salvando}
               onClick={() => abrirModal("avistamento")}
             >
               Registrar primeiro avistamento
@@ -209,7 +224,7 @@ export default function ProspeccaoView({
                 <input
                   type="checkbox"
                   checked={incluirOcultos}
-                  disabled={carregando}
+                  disabled={carregando || salvando}
                   onChange={(evento) => void definirIncluirOcultos(evento.target.checked)}
                 />
                 Mostrar ocultos
@@ -230,7 +245,7 @@ export default function ProspeccaoView({
               <input
                 type="checkbox"
                 checked={incluirOcultos}
-                disabled={carregando}
+                disabled={carregando || salvando}
                 onChange={(evento) => void definirIncluirOcultos(evento.target.checked)}
               />
               Mostrar descartados, fundidos e exclusões pendentes
@@ -240,6 +255,7 @@ export default function ProspeccaoView({
                 <CardIdentificado
                   identificado={identificado}
                   selecionado={selecionadoId === identificado.id}
+                  desabilitado={salvando}
                   etiquetasAtuais={
                     detalhe?.identificado.id === identificado.id ? etiquetasSelecionadas : []
                   }
@@ -252,7 +268,7 @@ export default function ProspeccaoView({
               <button
                 type="button"
                 className="btn btn-sm"
-                disabled={pagina <= 1 || carregando}
+                disabled={pagina <= 1 || carregando || salvando}
                 onClick={() => void mudarPagina(pagina - 1)}
               >
                 Anterior
@@ -261,7 +277,7 @@ export default function ProspeccaoView({
               <button
                 type="button"
                 className="btn btn-sm"
-                disabled={!temMais || carregando}
+                disabled={!temMais || carregando || salvando}
                 onClick={() => void mudarPagina(pagina + 1)}
               >
                 Próxima
