@@ -51,7 +51,7 @@ vi.mock("@/lib/uiModal", () => ({
 import AvisoRevisaoConflito from "@/components/prospeccao/AvisoRevisaoConflito";
 import CardIdentificado from "@/components/prospeccao/CardIdentificado";
 import { descreverProveniencia } from "@/components/prospeccao/EtiquetasImovel";
-import LinhaDoTempoAvistamentos from "@/components/prospeccao/LinhaDoTempoAvistamentos";
+import LinhaDoTempoAvistamentos, { situacaoTemporalDaExecucao } from "@/components/prospeccao/LinhaDoTempoAvistamentos";
 import PainelIdentificado from "@/components/prospeccao/PainelIdentificado";
 import { vigenciaDasEtiquetas, type AvistamentoLongitudinal, type DetalheImovelIdentificado, type EtiquetaIdentificado } from "@/lib/prospeccao";
 
@@ -225,6 +225,54 @@ describe("LinhaDoTempoAvistamentos", () => {
     ]);
     expect(nov.textContent).toContain("Revisão 3 do texto");
     expect(nov.querySelector("[data-revisao-conflito]")!.textContent).toContain("Observação alterada após confirmação de etiquetas");
+  });
+
+  /* Pós-smoke: `snapshot_aplicado` é fato histórico ("influenciou o snapshot
+     quando concluiu") e continua `true` no banco quando outro avistamento
+     vira o corrente. A leitura temporal da tela cruza esse fato com
+     `avistamentoCorrenteId`; nenhum dado é reescrito para isso. */
+  it("leitura temporal: corrente + snapshot aplicado reflete; corrente sem snapshot não alterou; não corrente é histórico mesmo com snapshot_aplicado=true", () => {
+    const av1 = detalhe().avistamentos.find((a) => a.id === "av-set")!;
+    const av2 = detalhe().avistamentos.find((a) => a.id === "av-nov")!;
+    // AV1 acabou de ser classificado e, na época, era o corrente: snapshot aplicado.
+    av1.classificacoes[0] = { ...av1.classificacoes[0], snapshotAplicado: true };
+    const dados = JSON.stringify([av1, av2]);
+
+    // 1. AV1 corrente com snapshotAplicado=true → reflete o corrente.
+    let r = render(createElement(LinhaDoTempoAvistamentos, { avistamentos: [av1], avistamentoCorrenteId: "av-set" }));
+    let set = r.container.querySelector("[data-avistamento-id='av-set']")!;
+    expect(set.textContent).toContain("Reflete o avistamento corrente");
+    expect(set.textContent).not.toContain("Histórico");
+    cleanup();
+
+    // 2. AV2 passa a ser o corrente: AV1 conserva snapshotAplicado=true nos
+    //    dados, mas a tela o lê como histórico. 3. AV2 corrente + aplicado reflete.
+    r = render(createElement(LinhaDoTempoAvistamentos, { avistamentos: [av1, av2], avistamentoCorrenteId: "av-nov" }));
+    set = r.container.querySelector("[data-avistamento-id='av-set']")!;
+    const nov = r.container.querySelector("[data-avistamento-id='av-nov']")!;
+    expect(av1.classificacoes[0].snapshotAplicado).toBe(true);
+    expect(set.textContent).toContain("Histórico: não altera o estado atual");
+    expect(set.textContent).not.toContain("Reflete o avistamento corrente");
+    expect(nov.textContent).toContain("Reflete o avistamento corrente");
+    cleanup();
+
+    // 4. Corrente com snapshotAplicado=false (ex.: classificação concluída
+    //    depois de o texto ser revisado de novo) → não alterou o estado atual.
+    const av2SemSnapshot = { ...av2, classificacoes: [{ ...av2.classificacoes[0], snapshotAplicado: false }] };
+    r = render(createElement(LinhaDoTempoAvistamentos, { avistamentos: [av1, av2SemSnapshot], avistamentoCorrenteId: "av-nov" }));
+    expect(r.container.querySelector("[data-avistamento-id='av-nov']")!.textContent).toContain("Não alterou o estado atual");
+    expect(r.container.querySelector("[data-avistamento-id='av-set']")!.textContent).toContain("Histórico: não altera o estado atual");
+    cleanup();
+
+    // 5. Apresentação pura: os objetos de entrada saem como entraram.
+    expect(JSON.stringify([av1, av2])).toBe(dados);
+  });
+
+  it("situacaoTemporalDaExecucao: a tabela de verdade do contrato de apresentação", () => {
+    expect(situacaoTemporalDaExecucao(true, { snapshotAplicado: true })).toBe("Reflete o avistamento corrente");
+    expect(situacaoTemporalDaExecucao(true, { snapshotAplicado: false })).toBe("Não alterou o estado atual");
+    expect(situacaoTemporalDaExecucao(false, { snapshotAplicado: true })).toBe("Histórico: não altera o estado atual");
+    expect(situacaoTemporalDaExecucao(false, { snapshotAplicado: false })).toBe("Histórico: não altera o estado atual");
   });
 });
 

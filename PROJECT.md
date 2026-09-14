@@ -1469,8 +1469,13 @@ unitários usam um executor mockado exclusivo de `NODE_ENV=test`. Consulte a mat
 
 O executor OpenAI está isolado em `lib/servidor/ia/executor-openai.ts`; prompts, esquemas e contratos
 de domínio não importam o SDK. Na ausência de uma configuração publicada, o padrão seguro continua
-em `lib/servidor/ia/config.ts`/`lib/ia/configuracao.ts`, atualmente `gpt-5.4-mini`. Transcrição e
-embeddings são independentes porque têm contratos próprios.
+em `lib/servidor/ia/config.ts`/`lib/ia/configuracao.ts`, atualmente `gpt-5.4-mini` em todas as
+rotas (`CONFIGURACAO_IA_PADRAO`). `CONFIGURACAO_IA_RECOMENDADA` — que sugere `gpt-5.6-luna` para
+`classificacao` — é só a proposta que o `/admin` monta; ela **não é promovida automaticamente** e
+passa a valer somente quando o admin a salva como versão. Nenhum fluxo (webhook, Garimpo em Campo,
+painel) resolve modelo por conta própria: todos leem a mesma configuração, e um fluxo novo não
+ganha configuração paralela. Transcrição e embeddings são independentes porque têm contratos
+próprios.
 
 ##### Governança central da IA
 
@@ -1521,9 +1526,13 @@ o fallback funcional. Headers operacionais pontuais exigem validação do valor,
 ##### Centro de IA no ADM
 
 O cartão **Centro de IA** em `/admin` é o mapa operacional e o roteador dos modelos. A configuração
-é separada por responsabilidade — classificação do webhook, atendimento em três etapas, operações
-do painel e Assistente global — com modelo e esforço próprios. O botão de recomendação apenas monta
-uma proposta; nada muda em produção até o admin salvar.
+é separada por responsabilidade — classificação, atendimento em três etapas, operações do painel e
+Assistente global — com modelo e esforço próprios. A rota `classificacao` é compartilhada: o
+classificador de respostas do webhook e a classificação de avistamentos do Garimpo em Campo leem a
+mesma rota, e o Garimpo não tem (nem deve ganhar) configuração própria. O botão de recomendação
+apenas monta uma proposta; nada muda em produção até o admin salvar — sem versão publicada, todas
+as rotas ficam em `CONFIGURACAO_IA_PADRAO` (`gpt-5.4-mini`), mesmo que o recomendado sugira outro
+modelo.
 
 Cada salvamento insere uma linha imutável em `ia_configuracoes`; a maior `id` é a versão ativa e as
 anteriores formam o histórico. A tabela tem RLS ligada, privilégios de `anon`/`authenticated`

@@ -27,6 +27,19 @@ function execucaoVigente(avistamento: AvistamentoLongitudinal): ClassificacaoAvi
   return avistamento.classificacoes.find((execucao) => execucao.estado === "concluida") ?? null;
 }
 
+/** Leitura TEMPORAL da execução. `snapshot_aplicado` é fato histórico: "esta
+    execução influenciou o snapshot quando foi concluída" — e continua `true`
+    no banco depois que outro avistamento vira o corrente. O que ela diz sobre
+    o estado ATUAL depende também de o avistamento ainda ser o corrente; por
+    isso o rótulo cruza as duas coisas em vez de ler só a coluna. */
+export function situacaoTemporalDaExecucao(
+  corrente: boolean,
+  execucao: Pick<ClassificacaoAvistamento, "snapshotAplicado">,
+): string {
+  if (!corrente) return "Histórico: não altera o estado atual";
+  return execucao.snapshotAplicado ? "Reflete o avistamento corrente" : "Não alterou o estado atual";
+}
+
 export default function LinhaDoTempoAvistamentos({
   avistamentos,
   avistamentoCorrenteId,
@@ -100,7 +113,7 @@ export default function LinhaDoTempoAvistamentos({
                     {execucao.tipoConfianca !== null ? ` (sinal ${execucao.tipoConfianca})` : ""}
                   </span>
                 ) : null}
-                <span>{execucao.snapshotAplicado ? "Reflete o avistamento corrente" : "Histórico: não altera o estado atual"}</span>
+                <span>{situacaoTemporalDaExecucao(corrente, execucao)}</span>
               </div>
             ) : null}
             <div className={styles.eventoRodape}>

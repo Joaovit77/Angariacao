@@ -433,6 +433,10 @@ export async function classificarAvistamento(
     return { ok: true, estado: "nao_aplicavel", modo: null, etiquetas: [], tipo: null, snapshotAplicado: false };
   }
 
+  // A MESMA rota `classificacao` do classificador do webhook, resolvida pelo
+  // Centro de IA: versão publicada, ou `CONFIGURACAO_IA_PADRAO` quando não
+  // há nenhuma. O recomendado do /admin é proposta, não fallback. O Garimpo
+  // não tem configuração própria de modelo, e não deve ganhar uma.
   const rota = deps.configuracao.classificacao;
   const fingerprint = fingerprintClassificacao(materialFingerprintClassificacao({
     observacao: avistamento.observacao,
