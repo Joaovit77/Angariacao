@@ -55,7 +55,12 @@ import CardIdentificado from "@/components/prospeccao/CardIdentificado";
 import { apoioNoTexto, descreverProveniencia, explicarEtiqueta, faixaDeApoio, marcaProveniencia } from "@/components/prospeccao/EtiquetasImovel";
 import LinhaDoTempoAvistamentos, { situacaoTemporalDaExecucao } from "@/components/prospeccao/LinhaDoTempoAvistamentos";
 import { MENSAGEM_FALHA_ANALISE_GENERICA, mensagemFalhaAnalise } from "@/components/prospeccao/textosAnalise";
-import PainelIdentificado, { explicacaoInformarTipo } from "@/components/prospeccao/PainelIdentificado";
+import PainelIdentificado, {
+  DATA_ULTIMA_PASSAGEM_INDISPONIVEL,
+  NOTA_O_QUE_SABEMOS,
+  SEM_PASSAGEM,
+  explicacaoInformarTipo,
+} from "@/components/prospeccao/PainelIdentificado";
 import { vigenciaDasEtiquetas, type AvistamentoLongitudinal, type DetalheImovelIdentificado, type EtiquetaIdentificado } from "@/lib/prospeccao";
 
 const SETEMBRO = "2026-09-09T12:00:00.000Z";
@@ -483,7 +488,8 @@ describe("painel por estado atual e atenção (C9.1)", () => {
     render(createElement(PainelIdentificado, { detalhe: detalhe() }));
     expect(document.body.textContent).toContain("IMÓVEL VISTO EM CAMPO");
     expect(document.body.textContent).not.toMatch(/Pipeline|IDENTIDADE DE CAMPO|corrente|vigente|proveniência|classifica|snapshot/i);
-    expect(document.querySelector("[data-resumo-cabecalho]")!.textContent).toBe("Tipo não definido · Última passagem 10/11/2026, 09:00:00");
+    expect(document.querySelector("[data-resumo-cabecalho]")!.textContent).toBe("Tipo não definido");
+    expect(document.querySelector("[data-ultima-passagem]")!.textContent).toBe("Última passagem: 10/11/2026, 09:00:00");
     const titulos = [...document.querySelectorAll("h4")].map((h) => h.textContent);
     expect(titulos).toEqual(["Precisa de atenção", "O que sabemos agora", "Ações", "Visto anteriormente", "Histórico de passagens", "Localização"]);
     // Atenção: uma sugestão da IA ainda não confirmada (nível informação, não erro).
@@ -551,7 +557,7 @@ describe("painel por estado atual e atenção (C9.1)", () => {
     d.avistamentos[0] = { ...d.avistamentos[0], etiquetas: [etiqueta({ id: 20, estado: "confirmada", confirmadaPor: "u", confirmadaEm: NOVEMBRO })] };
     render(createElement(PainelIdentificado, { detalhe: d }));
     expect(screen.queryByRole("region", { name: "Precisa de atenção" })).toBeNull();
-    expect(document.body.textContent).toContain("1 informação da passagem mais recente");
+    expect(document.body.textContent).toContain("1 informação da última passagem registrada");
   });
 
   it("falha transitória do estado aparece com motivo humano, nível erro e 'Tentar de novo'; motivo de outra passagem não aparece", () => {
@@ -591,5 +597,111 @@ describe("painel por estado atual e atenção (C9.1)", () => {
     expect(itens).toEqual(["conflito:atencao", "sugestoes:info"]);
     expect(screen.getByRole("alert").textContent).toContain("Vale revisar esta informação.");
     expect(screen.getByRole("alert").textContent).toContain("“Sem placa visível”");
+  });
+});
+
+/* Refino visual e textual do C9.1: as frases dizem "sugestão continua
+   sugestão" e "mais recente ≠ confirmado agora"; a data da última passagem
+   tem linha própria; a tipografia do módulo é sans, sem tamanho minúsculo,
+   e nenhum significado depende só de cor. Só apresentação: estados,
+   níveis de atenção e marcas continuam os do C9. */
+describe("refino de textos, data e tipografia (C9.1)", () => {
+  const CSS = readFileSync(resolve("components/prospeccao/Prospeccao.module.css"), "utf8");
+
+  it("atenção: a sugestão 'permanece como sugestão' (singular e plural), sem 'continua valendo'", () => {
+    const { unmount } = render(createElement(PainelIdentificado, { detalhe: detalhe() }));
+    const uma = document.querySelector("[data-atencao='sugestoes']")!;
+    expect(uma.getAttribute("data-nivel")).toBe("info");
+    expect(uma.textContent).toContain("1 sugestão da IA ainda não confirmada.");
+    expect(uma.textContent).toContain("Confirme o que você viu no local ou marque como incorreta. Enquanto não for confirmada ou marcada como incorreta, ela permanece como sugestão.");
+    expect(document.body.textContent).not.toMatch(/continua valendo|estado atual garantido|situação atual confirmada|continua assim|verdades? atuais/i);
+    unmount();
+
+    const d = detalhe();
+    d.avistamentos[0] = { ...d.avistamentos[0], etiquetas: [etiqueta({ id: 20 }), etiqueta({ id: 21, codigo: "placa-aluga-se" })] };
+    render(createElement(PainelIdentificado, { detalhe: d }));
+    const duas = document.querySelector("[data-atencao='sugestoes']")!;
+    expect(duas.getAttribute("data-nivel")).toBe("info");
+    expect(duas.textContent).toContain("2 sugestões da IA ainda não confirmadas.");
+    expect(duas.textContent).toContain("Enquanto não forem confirmadas ou marcadas como incorretas, elas permanecem como sugestões.");
+    // Sugestão continua sugestão: nada virou confirmada na tela.
+    expect([...duas.ownerDocument.querySelectorAll("[data-etiqueta-id] [data-estado]")].map((c) => c.getAttribute("data-estado"))).toEqual(["inferida", "inferida"]);
+  });
+
+  it("'O que sabemos agora' conta a última passagem registrada e diz de onde vem, sem prometer que continua assim", () => {
+    render(createElement(PainelIdentificado, { detalhe: detalhe() }));
+    const secao = screen.getByRole("region", { name: "O que sabemos agora" });
+    expect(secao.querySelector("h4 + span")!.textContent).toBe("1 informação da última passagem registrada");
+    expect(secao.textContent).toContain(NOTA_O_QUE_SABEMOS);
+    expect(NOTA_O_QUE_SABEMOS).toBe("Estas são as informações mais recentes registradas em campo.");
+    expect(secao.textContent).not.toMatch(/passagem mais recente|continua|garantid|confirmada agora/i);
+  });
+
+  it("a data da última passagem tem linha própria no cabeçalho, com <time> legível por máquina, vinda de ultimoAvistamentoEm", () => {
+    render(createElement(PainelIdentificado, { detalhe: detalhe() }));
+    const ultima = document.querySelector("[data-ultima-passagem='registrada']")!;
+    expect(ultima.textContent).toBe("Última passagem: 10/11/2026, 09:00:00");
+    expect(ultima.querySelector("time")!.getAttribute("datetime")).toBe(NOVEMBRO);
+    // Uma só linha de data no cabeçalho: o resumo não a repete.
+    expect(document.querySelector("[data-resumo-cabecalho]")!.textContent).not.toMatch(/passagem|\d{2}\/\d{2}\/\d{4}/);
+  });
+
+  it("sem data válida o texto é humano e neutro: 'não disponível' com passagens, 'sem passagem' sem nenhuma; nunca uma data inventada", () => {
+    const { unmount } = render(createElement(PainelIdentificado, { detalhe: detalhe({ ultimoAvistamentoEm: null }) }));
+    let ultima = document.querySelector("[data-ultima-passagem='indisponivel']")!;
+    expect(ultima.textContent).toBe(DATA_ULTIMA_PASSAGEM_INDISPONIVEL);
+    expect(ultima.textContent).toBe("Data da última passagem não disponível.");
+    expect(ultima.querySelector("time")).toBeNull();
+    unmount();
+
+    render(createElement(PainelIdentificado, { detalhe: detalhe({ ultimoAvistamentoEm: "não-é-data", avistamentosTotal: 0 }, []) }));
+    ultima = document.querySelector("[data-ultima-passagem='indisponivel']")!;
+    expect(ultima.textContent).toBe(SEM_PASSAGEM);
+    expect(document.body.textContent).not.toMatch(/Invalid Date|NaN/);
+  });
+
+  it("o cabeçalho e a nota nova não mostram nome de modelo, token nem dólar", () => {
+    render(createElement(PainelIdentificado, { detalhe: detalhe() }));
+    const cabecalho = document.querySelector("[data-ultima-passagem]")!.parentElement!.textContent!;
+    expect(cabecalho).not.toMatch(/gpt-|luna|token|US\$|\$\s?\d|modelo/i);
+    expect(NOTA_O_QUE_SABEMOS).not.toMatch(/gpt-|luna|token|US\$|modelo/i);
+  });
+
+  it("os estados continuam os mesmos: cada chip declara o estado em atributo e a marca em texto, não só em cor", () => {
+    const d = detalhe();
+    d.avistamentos[0] = { ...d.avistamentos[0], etiquetas: [
+      etiqueta({ id: 20 }),
+      etiqueta({ id: 21, codigo: "placa-aluga-se", estado: "confirmada", confirmadaPor: "u", confirmadaEm: NOVEMBRO }),
+      etiqueta({ id: 22, codigo: "sem-placa-visivel", origem: "manual", confianca: null }),
+    ] };
+    render(createElement(PainelIdentificado, { detalhe: d }));
+    const chips = [...document.querySelectorAll("[data-etiqueta-id] [data-estado]")]
+      .map((c) => `${c.getAttribute("data-origem")}/${c.getAttribute("data-estado")}:${c.querySelector("span")!.textContent}`);
+    expect(chips).toEqual(["ia-texto/inferida:sugestão", "ia-texto/confirmada:confirmado", "manual/inferida:manual"]);
+    for (const chip of document.querySelectorAll("[data-etiqueta-id] [data-estado] span")) {
+      expect(chip.textContent!.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("tipografia: o módulo usa só a stack sans do sistema, sem serif, sem texto abaixo de 10 px nem peso acima de 600", () => {
+    expect(CSS).not.toMatch(/font-family:[^;]*(?:--font-display|Georgia|Zilla|(?<!sans-)serif)/);
+    expect(CSS).toMatch(/\.painelCabecalho h3 \{[^}]*font-family: var\(--font-body\)|\.secaoCabecalho h4 \{[^}]*font-family: var\(--font-body\)/);
+    expect(CSS).not.toMatch(/@import|@font-face|fonts\.googleapis/);
+    const tamanhos = [...CSS.matchAll(/font-size: ?([\d.]+)px/g)].map((m) => Number(m[1]));
+    expect(tamanhos.length).toBeGreaterThan(20);
+    expect(Math.min(...tamanhos)).toBeGreaterThanOrEqual(10);
+    const pesos = [...CSS.matchAll(/font-weight: ?(\d+)/g)].map((m) => Number(m[1]));
+    expect(Math.max(...pesos)).toBeLessThanOrEqual(600);
+    // A explicação abaixo do chip não herda mais caixa alta de rótulo de campo.
+    expect(CSS).not.toMatch(/\.etiqueta small/);
+  });
+
+  it("celular: endereço quebra por caractere, e botões de chip e de atenção ocupam a linha inteira", () => {
+    expect(CSS).toMatch(/\.painelCabecalho h3 \{[^}]*overflow-wrap: anywhere/);
+    expect(CSS).toMatch(/\.evento p \{[^}]*overflow-wrap: anywhere/);
+    const celular = CSS.slice(CSS.indexOf("@media (max-width: 720px)"));
+    expect(celular).toMatch(/\.painelCabecalho h3 \{[^}]*font-size: 17px/);
+    expect(celular).toMatch(/\.etiquetaAcoes,\s*\.atencaoItemCorpo > :global\(\.btn\) \{[^}]*width: 100%/);
+    expect(celular).toMatch(/\.painelCabecalho :global\(\.btn\) \{[^}]*width: 100%/);
   });
 });

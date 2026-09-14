@@ -71,6 +71,36 @@ export function explicacaoInformarTipo(
     : "Defina o tipo do imóvel com uma informação fornecida por você.";
 }
 
+/** "Mais recente" não é "confirmado agora": a nota diz de onde as
+    informações vêm, nunca que continuam valendo. */
+export const NOTA_O_QUE_SABEMOS = "Estas são as informações mais recentes registradas em campo.";
+export const SEM_PASSAGEM = "Sem passagem registrada.";
+export const DATA_ULTIMA_PASSAGEM_INDISPONIVEL = "Data da última passagem não disponível.";
+
+/** Responde "quando este imóvel foi visto em campo pela última vez?" a
+    partir de `ultimoAvistamentoEm` (o maior `observado_em`, mantido pelo
+    banco). Sem data válida, diz que não há — nunca inventa uma. */
+function UltimaPassagem({
+  identificado,
+}: {
+  identificado: Pick<DetalheImovelIdentificado["identificado"], "ultimoAvistamentoEm" | "avistamentosTotal">;
+}) {
+  const quando = fmtDataHoraIso(identificado.ultimoAvistamentoEm);
+  if (!quando) {
+    return (
+      <p className={styles.ultimaPassagem} data-ultima-passagem="indisponivel">
+        {identificado.avistamentosTotal ? DATA_ULTIMA_PASSAGEM_INDISPONIVEL : SEM_PASSAGEM}
+      </p>
+    );
+  }
+  return (
+    <p className={styles.ultimaPassagem} data-ultima-passagem="registrada">
+      <span>Última passagem:</span>{" "}
+      <time dateTime={identificado.ultimoAvistamentoEm ?? undefined}>{quando}</time>
+    </p>
+  );
+}
+
 function enderecoCompleto(detalhe: DetalheImovelIdentificado): string {
   const item = detalhe.identificado;
   const endereco = [item.logradouro, item.numero].filter(Boolean).join(", ");
@@ -323,12 +353,7 @@ export default function PainelIdentificado({
   const historicoEtiquetas = vigencia.filter((etiqueta) => !etiqueta.vigenteNoAvistamentoCorrente);
   const podeDescartar = item.situacao === "identificado" || item.situacao === "investigando";
   const situacao = ROTULOS_SITUACAO[item.situacao];
-  const ultimaPassagem = fmtDataHoraIso(item.ultimoAvistamentoEm);
-  const resumoCabecalho = [
-    tipoComMarca(item),
-    situacao || null,
-    ultimaPassagem ? `Última passagem ${ultimaPassagem}` : "Sem passagem registrada",
-  ].filter(Boolean).join(" · ");
+  const resumoCabecalho = [tipoComMarca(item), situacao || null].filter(Boolean).join(" · ");
 
   // O que pede atenção, e só quando pede. Níveis: atenção (revisar),
   // erro (a análise não aconteceu), informação (algo aguarda você).
@@ -428,7 +453,11 @@ export default function PainelIdentificado({
                 ? "1 sugestão da IA ainda não confirmada."
                 : `${sugestoesPendentes} sugestões da IA ainda não confirmadas.`}
             </strong>
-            <p>Confirme o que você viu no local ou marque como incorreta. Até lá, continua valendo como sugestão.</p>
+            <p>
+              {sugestoesPendentes === 1
+                ? "Confirme o que você viu no local ou marque como incorreta. Enquanto não for confirmada ou marcada como incorreta, ela permanece como sugestão."
+                : "Confirme o que você viu no local ou marque como incorretas. Enquanto não forem confirmadas ou marcadas como incorretas, elas permanecem como sugestões."}
+            </p>
           </div>
         </div>
       ),
@@ -518,6 +547,7 @@ export default function PainelIdentificado({
           <span className={styles.sobretitulo}>IMÓVEL VISTO EM CAMPO</span>
           <h3>{enderecoCompleto(detalhe)}</h3>
           <p data-resumo-cabecalho>{resumoCabecalho}</p>
+          <UltimaPassagem identificado={item} />
         </div>
         <button
           type="button"
@@ -551,10 +581,11 @@ export default function PainelIdentificado({
           <h4>O que sabemos agora</h4>
           <span>
             {etiquetasAtuais.length
-              ? `${etiquetasAtuais.length} informaç${etiquetasAtuais.length === 1 ? "ão" : "ões"} da passagem mais recente`
-              : "Passagem mais recente"}
+              ? `${etiquetasAtuais.length} informaç${etiquetasAtuais.length === 1 ? "ão" : "ões"} da última passagem registrada`
+              : "Última passagem registrada"}
           </span>
         </div>
+        <p className={styles.secaoNota}>{NOTA_O_QUE_SABEMOS}</p>
         <TipoComProveniencia detalhe={detalhe} />
         {etiquetasAtuais.length ? (
           <>
