@@ -41,6 +41,8 @@ export const MIGRATIONS_PROSPECCAO = [
   "20260910211045_prospeccao_campo_rpcs_navegador.sql",
   // Correção do reuso (pós-C8): a definição EFETIVA de concluir_classificacao.
   "20260914130000_prospeccao_reuso_reconstroi_execucao.sql",
+  // Reuso só de execução reconstruível: a definição EFETIVA de iniciar_classificacao.
+  "20260914140000_prospeccao_reuso_fonte_reconstruivel.sql",
   // C2f (Storage) e C7b (merge) ficam fora: exigem `storage.buckets` e não
   // participam da classificação. Os testes de exclusão e merge os cobrem.
 ] as const;

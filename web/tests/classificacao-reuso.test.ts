@@ -33,14 +33,23 @@ import {
 
 const PASTA = "supabase/migrations/";
 const ARQUIVO = "20260914130000_prospeccao_reuso_reconstroi_execucao.sql";
+const ARQUIVO_FONTE = "20260914140000_prospeccao_reuso_fonte_reconstruivel.sql";
 const MIGRATION = lerSql(PASTA + ARQUIVO);
+const MIGRATION_FONTE = lerSql(PASTA + ARQUIVO_FONTE);
 const PADRAO = /create or replace function public\.concluir_classificacao\([\s\S]*?\n\$\$;/g;
+const PADRAO_INICIAR = /create or replace function public\.iniciar_classificacao\([\s\S]*?\n\$\$;/g;
 const RAIZ_MIGRATIONS = new URL("../../supabase/migrations/", import.meta.url);
-const DEFINICOES = readdirSync(RAIZ_MIGRATIONS).filter((nome) => nome.endsWith(".sql")).sort()
-  .flatMap((nome) => [...lerSql(PASTA + nome).matchAll(PADRAO)].map(([sql]) => ({ nome, sql })));
+const ARQUIVOS = readdirSync(RAIZ_MIGRATIONS).filter((nome) => nome.endsWith(".sql")).sort();
+const definicoes = (padrao: RegExp) =>
+  ARQUIVOS.flatMap((nome) => [...lerSql(PASTA + nome).matchAll(padrao)].map(([sql]) => ({ nome, sql })));
+const DEFINICOES = definicoes(PADRAO);
 const HISTORICA = DEFINICOES[0].sql;
 const ATUAL = DEFINICOES.at(-1)!;
+const DEFINICOES_INICIAR = definicoes(PADRAO_INICIAR);
+const INICIAR_HISTORICA = DEFINICOES_INICIAR[0].sql;
+const INICIAR_ATUAL = DEFINICOES_INICIAR.at(-1)!;
 const ramoReuso = (sql: string) => sql.slice(sql.indexOf("if v_run.modo = 'reuso' then"), sql.indexOf("\n  else\n"));
+const buscaReuso = (sql: string) => sql.slice(sql.indexOf("select c.id into v_reuso"), sql.indexOf("v_modo := case"));
 
 const A = { categoria: "sinal-de-prospeccao", codigo: "imovel-fechado", confianca: 90 };
 const B = { categoria: "sinal-de-prospeccao", codigo: "sem-placa-visivel", confianca: 85 };
@@ -75,6 +84,41 @@ describe("migration corretiva — contrato estrutural da definição efetiva", (
     expect(semRamo(ATUAL.sql)).toBe(semRamo(HISTORICA));
     expect(ATUAL.sql).toMatch(/'ia-texto', d\.confianca, 'inferida'/);
     expect(ATUAL.sql).toMatch(/ja_confirmada = v_ja_confirmada/);
+  });
+});
+
+describe("migration da fonte reconstruível — contrato estrutural de iniciar_classificacao", () => {
+  it("é a última definição de iniciar_classificacao, redefine só ela e é espelhada no schema uma vez, depois da histórica", () => {
+    expect(INICIAR_ATUAL.nome).toBe(ARQUIVO_FONTE);
+    expect(DEFINICOES_INICIAR).toHaveLength(2);
+    expect([...MIGRATION_FONTE.matchAll(/create or replace function ([\w.]+)/gi)].map((m) => m[1]))
+      .toEqual(["public.iniciar_classificacao"]);
+    expect(MIGRATION_FONTE).not.toMatch(/\b(?:grant|revoke|drop|alter|create table|create policy|create trigger|create (?:unique )?index)\b/i);
+    const schema = lerSql("supabase-schema.sql");
+    expect(schema.split(MIGRATION_FONTE.trim())).toHaveLength(2);
+    expect([...schema.matchAll(PADRAO_INICIAR)].at(-1)?.[0]).toBe(INICIAR_ATUAL.sql);
+    expect(schema.indexOf(INICIAR_ATUAL.sql)).toBeGreaterThan(schema.indexOf(INICIAR_HISTORICA));
+  });
+
+  it("a candidata precisa provar reconstrução integral: ja_confirmada = 0 e aplicadas = linhas próprias; a mais recente entre as seguras", () => {
+    const busca = buscaReuso(INICIAR_ATUAL.sql);
+    expect(busca).toMatch(/c\.user_id = p_user_id/);
+    expect(busca).toMatch(/c\.imovel_identificado_id = v_avistamento\.imovel_identificado_id/);
+    expect(busca).toMatch(/c\.fingerprint = p_fingerprint/);
+    expect(busca).toMatch(/c\.estado = 'concluida'/);
+    expect(busca).toMatch(/c\.ja_confirmada = 0/);
+    expect(busca).toMatch(/c\.aplicadas = \(\s*select count\(\*\)\s+from public\.imoveis_identificados_etiquetas e\s+where e\.classificacao_id = c\.id\s*\)/);
+    expect(busca).toMatch(/order by c\.concluida_em desc nulls last, c\.iniciada_em desc\s+limit 1/);
+    expect(buscaReuso(INICIAR_HISTORICA)).not.toMatch(/ja_confirmada|count\(\*\)/);
+  });
+
+  it("fora da busca de reuso a função é idêntica à do C2d: claim, lease, lock, idempotência, exclusão", () => {
+    const semBusca = (sql: string) => sql
+      .replace(/  -- Reuso:[\s\S]*?select c\.id into v_reuso[\s\S]*?limit 1;\n/, "");
+    expect(semBusca(INICIAR_ATUAL.sql)).toBe(semBusca(INICIAR_HISTORICA));
+    expect(semBusca(INICIAR_ATUAL.sql)).not.toContain("v_reuso :=");
+    expect(INICIAR_ATUAL.sql).toContain("now() + interval '2 minutes'");
+    expect(INICIAR_ATUAL.sql.match(/pg_catalog\.pg_advisory_xact_lock\(/g)).toHaveLength(1);
   });
 });
 
@@ -268,6 +312,82 @@ describe.sequential("reuso no PostgreSQL local", () => {
     expect(await apoio.concluir(claim, [])).toMatchObject({ aplicadas: 1, snapshot_aplicado: false, tipo_aplicado: false });
     expect((await apoio.etiquetas(av0)).map((e) => e.codigo)).toEqual([A.codigo]);
     expect(await apoio.linha("public.imoveis_identificados", pai)).toMatchObject({ tipo: "Sobrado", tipo_classificacao_id: jan.claim.run_id, tipo_avistamento_id: av2 });
+  });
+
+  it("caso crítico: R1 F1 A/B → R2 F2 A/C (A reafirmada) → F2 de novo: R2 não é reutilizada, cai para o modelo", async () => {
+    const pai = await apoio.identidade();
+    const av = await apoio.avistamento(pai, "2026-09-10T12:00:00Z", TEXTO);
+    const r1 = await apoio.classificar(av, "1".repeat(64), [A, B]);
+    const r2 = await apoio.classificar(av, "2".repeat(64), [A, C]);
+    expect(r2.conclusao).toMatchObject({ inseridas: 1, reafirmadas: 1, aplicadas: 2 });
+    // Só C é linha própria de R2: o banco não prova A por R2.
+    const novembro = await apoio.avistamento(pai, "2026-11-10T12:00:00Z", TEXTO);
+    const claim = await apoio.iniciar(novembro, "2".repeat(64));
+    expect(claim).toMatchObject({ ok: true, modo: "modelo", reusada_de: null });
+    expect(await apoio.execucoes(novembro)).toHaveLength(1);
+    // O modelo produz de novo a saída completa; nada parcial foi gravado.
+    const conclusao = await apoio.concluir(claim, [A, C]);
+    expect(conclusao).toMatchObject({ modo: "modelo", aplicadas: 2, inseridas: 2 });
+    expect((await apoio.etiquetas(novembro)).map((e) => e.codigo).sort()).toEqual([A.codigo, C.codigo].sort());
+    // R1 (F1), por sua vez, segue reconstruível.
+    const dezembro = await apoio.avistamento(pai, "2026-12-10T12:00:00Z", TEXTO);
+    expect(await apoio.iniciar(dezembro, "1".repeat(64))).toMatchObject({ modo: "reuso", reusada_de: r1.claim.run_id });
+  });
+
+  it("caso crítico: run cujo resultado tinha código já confirmado (ja_confirmada > 0) não é fonte de reuso", async () => {
+    const pai = await apoio.identidade();
+    const av = await apoio.avistamento(pai, "2026-09-10T12:00:00Z", TEXTO);
+    await apoio.classificar(av, "1".repeat(64), [A]);
+    const idA = (await apoio.etiquetas(av)).find((e) => e.codigo === A.codigo)!.id as number;
+    await apoio.comoUsuario("select public.definir_estado_etiqueta($1, 'confirmada')", [idA]);
+    const r2 = await apoio.classificar(av, "2".repeat(64), [A, C]);
+    expect(r2.conclusao).toMatchObject({ ja_confirmada: 1, inseridas: 1 });
+    const novembro = await apoio.avistamento(pai, "2026-11-10T12:00:00Z", TEXTO);
+    expect(await apoio.iniciar(novembro, "2".repeat(64))).toMatchObject({ modo: "modelo", reusada_de: null });
+  });
+
+  it("candidato anterior seguro: entre concluídas com o mesmo fingerprint, escolhe a mais recente DENTRE AS SEGURAS", async () => {
+    const pai = await apoio.identidade();
+    const av = await apoio.avistamento(pai, "2026-09-10T12:00:00Z", TEXTO);
+    // R1 (F): A/B inseridas — segura.
+    const r1 = await apoio.classificar(av, FP, [A, B]);
+    // Em outro avistamento do mesmo imóvel, A/B já vigentes por outro fingerprint (G); depois F reusa R1
+    // e só REAFIRMA: R2 (F) fica sem linha própria — a candidata F mais recente é INSEGURA.
+    const outro = await apoio.avistamento(pai, "2027-01-10T12:00:00Z", TEXTO);
+    await apoio.classificar(outro, "g".repeat(64), [A, B]);
+    const r2claim = await apoio.iniciar(outro, FP);
+    expect(r2claim).toMatchObject({ modo: "reuso", reusada_de: r1.claim.run_id });
+    expect(await apoio.concluir(r2claim, [])).toMatchObject({ reafirmadas: 2, inseridas: 0, aplicadas: 2 });
+    // Nova busca por F: a mais recente concluída é R2 (insegura); a escolha recua para R1, a mais recente segura.
+    const mais = await apoio.avistamento(pai, "2027-02-10T12:00:00Z", TEXTO);
+    const r3claim = await apoio.iniciar(mais, FP);
+    expect(r3claim).toMatchObject({ modo: "reuso", reusada_de: r1.claim.run_id });
+    expect(await apoio.concluir(r3claim, [])).toMatchObject({ inseridas: 2, aplicadas: 2 });
+    expect((await apoio.etiquetas(mais)).map((e) => e.codigo).sort()).toEqual([A.codigo, B.codigo].sort());
+  });
+
+  it("estados posteriores das linhas da fonte não a tornam insegura: só reafirmação e confirmação prévia contam", async () => {
+    const pai = await apoio.identidade();
+    const av = await apoio.avistamento(pai, "2026-09-10T12:00:00Z", TEXTO);
+    const r1 = await apoio.classificar(av, FP, [A, B]);
+    const [linhaA, linhaB] = await apoio.etiquetas(av);
+    await apoio.comoUsuario("select public.definir_estado_etiqueta($1, 'confirmada')", [linhaA.id]);
+    await apoio.comoUsuario("select public.definir_estado_etiqueta($1, 'contestada')", [linhaB.id]);
+    const novembro = await apoio.avistamento(pai, "2026-11-10T12:00:00Z", TEXTO);
+    const claim = await apoio.iniciar(novembro, FP);
+    expect(claim).toMatchObject({ modo: "reuso", reusada_de: r1.claim.run_id });
+    await apoio.concluir(claim, []);
+    expect((await apoio.etiquetas(novembro)).map((e) => [e.codigo, e.estado]).sort()).toEqual([[A.codigo, "inferida"], [B.codigo, "inferida"]].sort());
+  });
+
+  it("run concluído com saída vazia é reconstruível (vazio fiel): reuso sem modelo e sem etiquetas", async () => {
+    const pai = await apoio.identidade();
+    const av = await apoio.avistamento(pai, "2026-09-10T12:00:00Z", "Nada de relevante hoje, só passei.");
+    const r1 = await apoio.classificar(av, "0".repeat(64), []);
+    const outro = await apoio.avistamento(pai, "2026-11-10T12:00:00Z", "Nada de relevante hoje, só passei.");
+    const claim = await apoio.iniciar(outro, "0".repeat(64));
+    expect(claim).toMatchObject({ modo: "reuso", reusada_de: r1.claim.run_id });
+    expect(await apoio.concluir(claim, [])).toMatchObject({ aplicadas: 0 });
   });
 
   it("três estados distinguíveis: não processado, processado por IA, resultado reutilizado", async () => {
