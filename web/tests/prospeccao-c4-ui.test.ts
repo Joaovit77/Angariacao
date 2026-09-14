@@ -258,18 +258,21 @@ describe("LinhaDoTempoAvistamentos", () => {
     expect(eventos[0].textContent).toContain("Placa nova");
     // C8: a etiqueta é um chip com a marca de proveniência, não texto cru.
     const chipNovo = eventos[0].querySelector("[data-origem]")!;
-    expect(chipNovo.textContent).toBe("Aparenta ocupadoIA");
+    expect(chipNovo.textContent).toBe("Aparenta ocupadosugestão");
     expect(chipNovo.getAttribute("data-origem")).toBe("ia-texto");
     expect(chipNovo.getAttribute("data-estado")).toBe("inferida");
-    expect(eventos[0].textContent).toContain("Revisão 2");
-    expect(eventos[0].textContent).toContain("resultado reutilizado");
-    expect(eventos[0].textContent).toContain("Avistamento corrente");
+    // C9.1: revisão vira marca "Texto corrigido"; o número fica nos detalhes.
+    expect(eventos[0].querySelector("[data-texto-corrigido]")!.textContent).toBe("Texto corrigido");
+    expect(eventos[0].querySelector("details[data-detalhes]")!.textContent).toContain("Revisão 2 do texto");
+    expect(eventos[0].textContent).toContain("Já tínhamos analisado uma observação igual");
+    expect(eventos[0].textContent).toContain("Passagem mais recente");
     expect(eventos[1].textContent).toContain("Imóvel vazio");
-    expect(eventos[1].querySelector("[data-origem]")!.textContent).toBe("Aparenta vagoIA");
-    expect(eventos[1].textContent).toContain("processado pela IA");
+    expect(eventos[1].textContent).toContain("Primeira passagem");
+    expect(eventos[1].querySelector("[data-origem]")!.textContent).toBe("Aparenta vagosugestão");
+    expect(eventos[1].textContent).toContain("Analisado pela IA");
     // V7 §16: o modelo gravado ("modelo-gravado") nunca aparece na tela.
     expect(eventos[1].textContent).not.toContain("modelo-gravado");
-    expect(eventos[1].textContent).toContain("Histórico: não altera o estado atual");
+    expect(eventos[1].textContent).toContain("Registro anterior; as informações atuais vêm da passagem mais recente.");
   });
 });
 

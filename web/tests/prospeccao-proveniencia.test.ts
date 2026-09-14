@@ -216,31 +216,31 @@ function detalhe(sobrescritas: Record<string, unknown> = {}, opcoes: {
 }
 
 describe("marcas e descrição de proveniência", () => {
-  it("diferencia IA inferida, confirmada, manual e histórica", () => {
-    expect(marcaProveniencia({ origem: "ia-texto", estado: "inferida" })).toBe("IA");
-    expect(marcaProveniencia({ origem: "ia-texto", estado: "confirmada" })).toBe("Confirmada");
-    expect(marcaProveniencia({ origem: "manual", estado: "confirmada" })).toBe("Confirmada");
-    expect(marcaProveniencia({ origem: "manual", estado: "inferida" })).toBe("Manual");
-    // C9: cada estado do banco tem marca própria; "Histórica" é apresentação de
-    // uma etiqueta vigente de avistamento anterior.
-    expect(marcaProveniencia({ origem: "ia-texto", estado: "substituida" })).toBe("Substituída");
-    expect(marcaProveniencia({ origem: "ia-texto", estado: "desatualizada" })).toBe("Desatualizada");
-    expect(marcaProveniencia({ origem: "ia-texto", estado: "contestada" })).toBe("Contestada");
-    expect(marcaProveniencia({ origem: "ia-texto", estado: "inferida" }, true)).toBe("Histórica");
-    expect(marcaProveniencia({ origem: "ia-texto", estado: "substituida" }, true)).toBe("Substituída");
+  it("diferencia sugestão da IA, confirmado, manual e visto antes (C9.1: marcas em linguagem de campo)", () => {
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "inferida" })).toBe("sugestão");
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "confirmada" })).toBe("confirmado");
+    expect(marcaProveniencia({ origem: "manual", estado: "confirmada" })).toBe("confirmado");
+    expect(marcaProveniencia({ origem: "manual", estado: "inferida" })).toBe("manual");
+    // C9: cada estado do banco tem marca própria; "visto antes" é apresentação
+    // de uma etiqueta vigente de passagem anterior.
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "substituida" })).toBe("substituída");
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "desatualizada" })).toBe("texto mudou");
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "contestada" })).toBe("incorreta");
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "inferida" }, true)).toBe("visto antes");
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "substituida" }, true)).toBe("substituída");
   });
 
-  it("descreve origem, sinal, modelo e avistamento sem vender probabilidade", () => {
+  it("descreve origem, apoio no texto e passagem sem vender probabilidade nem nome de modelo", () => {
     const texto = descreverProveniencia(etiqueta());
-    expect(texto).toContain("IA sobre o texto · sinal 88");
+    expect(texto).toContain("a partir do texto · apoio no texto: moderado (88 de 100)");
     // V7 §16: nome de modelo nunca vai para a tela; fica só na proveniência persistida.
     expect(texto).not.toContain("gpt-5.6-luna");
-    expect(texto).toContain("avistamento de 10/09/2026");
-    expect(texto).not.toMatch(/%|chance|probabilidade/);
+    expect(texto).toContain("passagem de 10/09/2026");
+    expect(texto).not.toMatch(/%|chance|probabilidade|sinal/);
     expect(descreverProveniencia(etiqueta({ estado: "confirmada", confirmadaEm: "2026-09-11T09:00:00.000Z", confirmadaPor: "u" })))
-      .toContain("confirmada em 11/09/2026");
+      .toContain("confirmado por você em 11/09/2026");
     expect(descreverProveniencia(etiqueta({ origem: "manual", confianca: null, modelo: null, avistamentoId: null, classificacaoId: null, estado: "confirmada", confirmadaEm: "2026-09-11T09:00:00.000Z" })))
-      .toMatch(/^Aplicada manualmente · sobre o lugar/);
+      .toMatch(/^aplicada manualmente · sobre o lugar/);
   });
 });
 
@@ -258,8 +258,8 @@ describe("CardIdentificado", () => {
       ],
     }));
     const chips = [...document.querySelectorAll("[data-origem]")];
-    expect(chips.map((chip) => chip.textContent)).toEqual(["Imóvel fechadoIA", "Mato altoConfirmada"]);
-    expect(screen.getByText(/Casa · IA/)).toBeTruthy();
+    expect(chips.map((chip) => chip.textContent)).toEqual(["Imóvel fechadosugestão", "Mato altoconfirmado"]);
+    expect(screen.getByText(/Casa · sugestão/)).toBeTruthy();
   });
 });
 
@@ -270,8 +270,8 @@ describe("PainelIdentificado", () => {
   it("etiqueta inferida: chip com marca IA, proveniência legível, e Confirmar/Contestar chamam o estado", () => {
     render(createElement(PainelIdentificado, { detalhe: detalhe() }));
     const bloco = document.querySelector("[data-etiqueta-id='1']")!;
-    expect(bloco.querySelector("[data-origem]")!.textContent).toBe("Imóvel fechadoIA");
-    expect(bloco.textContent).toContain("IA sobre o texto · sinal 88");
+    expect(bloco.querySelector("[data-origem]")!.textContent).toBe("Imóvel fechadosugestão");
+    expect(bloco.textContent).toContain("apoio no texto: moderado (88 de 100)");
     expect(bloco.textContent).not.toContain("gpt-5.6-luna");
     expect(bloco.textContent).not.toMatch(/prompt|Você classifica|json|token/i);
     fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
@@ -286,8 +286,8 @@ describe("PainelIdentificado", () => {
       etiqueta({ id: 8, codigo: "mato-alto", origem: "manual", confianca: null, modelo: null, estado: "confirmada", confirmadaPor: "u", confirmadaEm: "2026-09-11T09:00:00.000Z", classificacaoId: null }),
     ] }) }));
     expect(screen.queryByRole("button", { name: "Confirmar" })).toBeNull();
-    expect(document.querySelector("[data-etiqueta-id='7'] [data-origem]")!.textContent).toBe("Imóvel fechadoConfirmada");
-    expect(document.querySelector("[data-etiqueta-id='8']")!.textContent).toContain("Aplicada manualmente");
+    expect(document.querySelector("[data-etiqueta-id='7'] [data-origem]")!.textContent).toBe("Imóvel fechadoconfirmado");
+    expect(document.querySelector("[data-etiqueta-id='8']")!.textContent).toContain("plicada manualmente");
   });
 
   it("tipo inferido pela IA fica marcado como inferido, com sinal e avistamento, e Confirmar tipo chama a ação", () => {
@@ -338,18 +338,18 @@ describe("PainelIdentificado", () => {
     expect(screen.queryByRole("button", { name: "Classificar agora" })).toBeNull();
   });
 
-  it("enquanto classifica, o botão fica desabilitado e a linha do tempo diz 'Classificando…'", () => {
+  it("enquanto analisa, o botão fica desabilitado e a linha do tempo diz 'Analisando…'", () => {
     cenario.estado.classificandoAvistamentoId = "avistamento-corrente";
     render(createElement(PainelIdentificado, { detalhe: detalhe({}, { classificacaoEstado: "pendente", etiquetas: [] }) }));
     expect((screen.getByRole("button", { name: "Classificar agora" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(document.body.textContent).toContain("Classificando…");
+    expect(document.body.textContent).toContain("Analisando…");
   });
 });
 
 describe("LinhaDoTempoAvistamentos", () => {
   afterEach(cleanup);
 
-  it("por avistamento: estado, quando concluiu, modo, modelo, tipo sugerido e se refletiu o corrente; histórica não vira atual", () => {
+  it("por passagem: estado, modo, tipo sugerido e se reflete a mais recente; a auditoria (data, apoio) fica em 'Ver detalhes'", () => {
     const d = detalhe({}, {
       etiquetas: [
         etiqueta({ id: 1 }),
@@ -366,30 +366,35 @@ describe("LinhaDoTempoAvistamentos", () => {
     }));
     const evento = container.querySelector("[data-avistamento-id='avistamento-corrente']")!;
     expect(evento.getAttribute("data-classificacao-estado")).toBe("concluida");
-    expect(evento.textContent).toContain("Classificado em 12/09/2026");
-    expect(evento.textContent).toContain("processado pela IA");
+    expect(evento.textContent).toContain("Analisado pela IA");
     expect(evento.textContent).not.toContain("gpt-5.6-luna");
-    expect(evento.textContent).toContain("Tipo sugerido: Casa (sinal 76)");
-    expect(evento.textContent).toContain("Reflete o avistamento corrente");
+    expect(evento.querySelector("[data-tipo-sugerido]")!.textContent).toBe("Tipo: Casasugestão");
+    expect(evento.textContent).toContain("Estas informações refletem a passagem mais recente.");
     const chips = [...evento.querySelectorAll("[data-origem]")];
     expect(chips.map((c) => `${c.getAttribute("data-estado")}:${c.textContent}`))
-      .toEqual(["inferida:Imóvel fechadoIA", "substituida:Mato altoSubstituída"]);
-    // Concluído não oferece o botão; a falha não vira o rótulo do evento.
-    expect(screen.queryByRole("button", { name: "Classificar observação" })).toBeNull();
+      .toEqual(["inferida:Imóvel fechadosugestão", "substituida:Mato altosubstituída"]);
+    // Auditoria só nos detalhes: data da análise e apoio no texto (76 → moderado, tipo não tem piso).
+    const detalhes = evento.querySelector("details[data-detalhes]") as HTMLDetailsElement;
+    expect(detalhes.open).toBe(false);
+    expect(detalhes.textContent).toContain("Analisada em 12/09/2026");
+    expect(detalhes.textContent).toContain("Tipo sugerido: Casa · apoio no texto: moderado (76 de 100)");
+    expect(evento.textContent.replace(detalhes.textContent, "")).not.toMatch(/12\/09\/2026|76|sinal/);
+    // Concluído não oferece o botão; a falha não vira o rótulo da passagem.
+    expect(screen.queryByRole("button", { name: "Analisar agora" })).toBeNull();
   });
 
-  it("avistamento antigo pendente pode ser classificado por si — e o botão pede exatamente aquele id", () => {
+  it("passagem antiga não analisada pode ser analisada por si — e o botão pede exatamente aquele id", () => {
     const d = detalhe({}, { classificacaoEstado: "pendente", etiquetas: [], classificacoes: [] }) as { avistamentos: never[] };
     const aoClassificar = vi.fn();
     render(createElement(LinhaDoTempoAvistamentos, {
       avistamentos: d.avistamentos, avistamentoCorrenteId: "outro", aoClassificar,
     }));
-    fireEvent.click(screen.getByRole("button", { name: "Classificar observação" }));
+    fireEvent.click(screen.getByRole("button", { name: "Analisar agora" }));
     expect(aoClassificar).toHaveBeenCalledWith("avistamento-corrente");
     // Somente leitura (exclusão pendente): sem ação.
     cleanup();
     render(createElement(LinhaDoTempoAvistamentos, { avistamentos: d.avistamentos, avistamentoCorrenteId: "outro" }));
-    expect(screen.queryByRole("button", { name: "Classificar observação" })).toBeNull();
-    expect(document.body.textContent).toContain("Aguardando classificação");
+    expect(screen.queryByRole("button", { name: "Analisar agora" })).toBeNull();
+    expect(document.body.textContent).toContain("Ainda não analisada");
   });
 });

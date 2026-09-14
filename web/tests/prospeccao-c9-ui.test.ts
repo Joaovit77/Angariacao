@@ -6,10 +6,12 @@
    O banco preserva os eventos; a tela decide o que é atual, histórico,
    desatualizado ou substituído — por leitura derivada (`etiquetasDoImovel`),
    nunca por coluna. Aqui se prova que o card não promove histórico a atual,
-   que o painel separa atual de histórico ("visto por último em…"), que a
-   linha do tempo mantém as etiquetas de cada avistamento com o estado
-   próprio, que reuso aparece distinto de modelo e que o aviso de conflito
-   aparece só quando há `revisao_conflito_em`.
+   que o painel separa atual de histórico ("visto em…"), que a linha do
+   tempo mantém as etiquetas de cada passagem com o estado próprio, que
+   reuso aparece distinto de modelo e que o aviso de conflito aparece só
+   quando há `revisao_conflito_em`. C9.1: tudo isso em linguagem de campo
+   (marcas "sugestão / confirmado / incorreta / texto mudou / substituída /
+   visto antes"), com a auditoria atrás de "Ver detalhes".
    ================================================================ */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -50,8 +52,9 @@ vi.mock("@/lib/uiModal", () => ({
 
 import AvisoRevisaoConflito from "@/components/prospeccao/AvisoRevisaoConflito";
 import CardIdentificado from "@/components/prospeccao/CardIdentificado";
-import { descreverProveniencia } from "@/components/prospeccao/EtiquetasImovel";
+import { apoioNoTexto, descreverProveniencia, explicarEtiqueta, faixaDeApoio, marcaProveniencia } from "@/components/prospeccao/EtiquetasImovel";
 import LinhaDoTempoAvistamentos, { situacaoTemporalDaExecucao } from "@/components/prospeccao/LinhaDoTempoAvistamentos";
+import { MENSAGEM_FALHA_ANALISE_GENERICA, mensagemFalhaAnalise } from "@/components/prospeccao/textosAnalise";
 import PainelIdentificado from "@/components/prospeccao/PainelIdentificado";
 import { vigenciaDasEtiquetas, type AvistamentoLongitudinal, type DetalheImovelIdentificado, type EtiquetaIdentificado } from "@/lib/prospeccao";
 
@@ -122,17 +125,36 @@ describe("vigência derivada na fronteira", () => {
 });
 
 describe("AvisoRevisaoConflito", () => {
-  it("não aparece sem conflito; com conflito explica que a confirmação continua valendo e pede revisão, sem botão de resolver", () => {
+  it("não aparece sem conflito; com conflito nomeia o que foi confirmado, diz que a confirmação foi mantida e pede revisão, sem botão de resolver", () => {
     const { container, rerender } = render(createElement(AvisoRevisaoConflito, { revisaoConflitoEm: null, revisaoObservacao: 2 }));
     expect(container.querySelector("[data-revisao-conflito]")).toBeNull();
-    rerender(createElement(AvisoRevisaoConflito, { revisaoConflitoEm: "2026-11-12T10:00:00.000Z", revisaoObservacao: 2 }));
+    rerender(createElement(AvisoRevisaoConflito, {
+      revisaoConflitoEm: "2026-11-12T10:00:00.000Z", revisaoObservacao: 2, etiquetasConfirmadas: ["Sem placa visível"],
+    }));
     const aviso = screen.getByRole("alert");
-    expect(aviso.textContent).toContain("A observação mudou depois de você confirmar etiquetas.");
+    expect(aviso.textContent).toContain("Vale revisar esta informação.");
+    expect(aviso.textContent).toContain("Você confirmou “Sem placa visível”, mas depois alterou o texto usado naquela análise");
     expect(aviso.textContent).toContain("12/11/2026");
     expect(aviso.textContent).toContain("revisão 2");
-    expect(aviso.textContent).toContain("A confirmação continua valendo");
-    expect(aviso.textContent).toMatch(/Revise/);
+    expect(aviso.textContent).toContain("A confirmação foi mantida. Se o texto novo a contradiz, marque como incorreta.");
+    // Não inventa resolução: nem botão, nem promessa de que o sistema decide.
     expect(aviso.querySelector("button")).toBeNull();
+    expect(aviso.textContent).not.toMatch(/resolvid|resolver/i);
+  });
+
+  it("sem os nomes das etiquetas, fala em 'informações desta passagem'; com duas, lista as duas", () => {
+    render(createElement(AvisoRevisaoConflito, { revisaoConflitoEm: "2026-11-12T10:00:00.000Z", revisaoObservacao: 2 }));
+    expect(screen.getByRole("alert").textContent).toContain("Você confirmou informações desta passagem");
+    cleanup();
+    render(createElement(AvisoRevisaoConflito, {
+      revisaoConflitoEm: "2026-11-12T10:00:00.000Z", revisaoObservacao: 3, etiquetasConfirmadas: ["Sem placa visível", "Mato alto"],
+    }));
+    expect(screen.getByRole("alert").textContent).toContain("“Sem placa visível” e “Mato alto”");
+    expect(screen.getByRole("alert").textContent).toContain("Se o texto novo as contradiz");
+    cleanup();
+    // Na linha do tempo: marca curta.
+    render(createElement(AvisoRevisaoConflito, { compacto: true, revisaoConflitoEm: "2026-11-12T10:00:00.000Z", revisaoObservacao: 2 }));
+    expect(document.querySelector("[data-revisao-conflito]")!.textContent).toContain("Texto corrigido depois de uma confirmação");
   });
 });
 
@@ -142,8 +164,19 @@ describe("CardIdentificado", () => {
     const atuais = vigenciaDasEtiquetas(d).filter((e) => e.vigenteNoAvistamentoCorrente);
     render(createElement(CardIdentificado, { identificado: d.identificado, selecionado: false, aoSelecionar: vi.fn(), etiquetasAtuais: atuais }));
     const chips = [...document.querySelectorAll("[data-origem]")].map((c) => c.textContent);
-    expect(chips).toEqual(["Imóvel fechadoIA"]);
+    expect(chips).toEqual(["Imóvel fechadosugestão"]);
     expect(document.body.textContent).not.toContain("Placa de aluga-se");
+    // Atenção só a partir do que o card tem: uma sugestão a confirmar.
+    expect(document.querySelector("[data-atencao='sugestoes']")!.textContent).toBe("1 sugestão a confirmar");
+    expect(document.body.textContent).toContain("2 passagens · última em 10/11/2026");
+    // Situação normal não aparece; o tipo vem com marca curta.
+    expect(document.body.textContent).not.toContain("Identificado");
+  });
+
+  it("sem etiquetas carregadas (card não selecionado) não promete atenção nenhuma", () => {
+    const d = detalhe();
+    render(createElement(CardIdentificado, { identificado: d.identificado, selecionado: false, aoSelecionar: vi.fn() }));
+    expect(document.querySelector("[data-atencao]")).toBeNull();
   });
 });
 
@@ -151,11 +184,12 @@ describe("PainelIdentificado", () => {
   it("separa etiquetas atuais (corrente) do histórico com 'visto por último em', sem apagar setembro", () => {
     render(createElement(PainelIdentificado, { detalhe: detalhe() }));
     const atuais = screen.getByRole("heading", { name: "Etiquetas atuais" }).closest("section")!;
-    expect([...atuais.querySelectorAll("[data-origem]")].map((c) => c.textContent)).toEqual(["Imóvel fechadoIA"]);
-    const historico = screen.getByRole("list", { name: "Histórico de etiquetas" });
+    expect([...atuais.querySelectorAll("[data-origem]")].map((c) => c.textContent)).toEqual(["Imóvel fechadosugestão"]);
+    const historico = screen.getByRole("list", { name: "Visto anteriormente" });
     const item = historico.querySelector("[data-codigo='placa-aluga-se']")!;
-    expect(item.querySelector("[data-historica='true']")!.textContent).toBe("Placa de aluga-seHistórica");
-    expect(item.textContent).toContain("visto por último em 09/09/2026");
+    expect(item.querySelector("[data-historica='true']")!.textContent).toBe("Placa de aluga-sevisto antes");
+    expect(item.textContent).toContain("Visto em 09/09/2026");
+    expect(item.textContent).toContain("não apareceu na passagem mais recente");
   });
 
   it("mostra o aviso de conflito do avistamento corrente quando há revisao_conflito_em, e a confirmada segue confirmada", () => {
@@ -163,9 +197,9 @@ describe("PainelIdentificado", () => {
     d.avistamentos[0] = { ...d.avistamentos[0], observacaoRevisao: 2, revisaoConflitoEm: "2026-11-12T10:00:00.000Z",
       etiquetas: [etiqueta({ id: 20, estado: "confirmada", confirmadaPor: "u", confirmadaEm: "2026-11-11T09:00:00.000Z", revisaoObservacao: 1 })] };
     render(createElement(PainelIdentificado, { detalhe: d }));
-    expect(screen.getByRole("alert").textContent).toContain("A observação mudou depois de você confirmar etiquetas.");
+    expect(screen.getByRole("alert").textContent).toContain("Vale revisar esta informação.");
     const atuais = screen.getByRole("heading", { name: "Etiquetas atuais" }).closest("section")!;
-    expect(atuais.querySelector("[data-estado='confirmada']")!.textContent).toBe("Imóvel fechadoConfirmada");
+    expect(atuais.querySelector("[data-estado='confirmada']")!.textContent).toBe("Imóvel fechadoconfirmado");
     expect(atuais.textContent).toContain("revisão 1 do texto");
     expect(screen.getByRole("button", { name: "Contestar" })).toBeTruthy();
   });
@@ -183,33 +217,70 @@ describe("PainelIdentificado", () => {
     // O histórico derivado mostra cada código com a situação real: a placa de
     // setembro (vigente lá, histórica aqui), a desatualizada e a substituída —
     // cada uma com a própria marca, nenhuma como atual.
-    const historico = screen.getByRole("list", { name: "Histórico de etiquetas" });
+    const historico = screen.getByRole("list", { name: "Visto anteriormente" });
     expect([...historico.querySelectorAll("[data-codigo]")].map((li) =>
       `${li.getAttribute("data-codigo")}:${li.querySelector("[data-estado]")!.getAttribute("data-estado")}:${li.querySelector("[data-estado] span")!.textContent}`))
-      .toEqual(["imovel-fechado:desatualizada:Desatualizada", "mato-alto:substituida:Substituída", "placa-aluga-se:inferida:Histórica"]);
-    expect(historico.textContent).toContain("visto por último em 09/09/2026");
+      .toEqual(["imovel-fechado:desatualizada:texto mudou", "mato-alto:substituida:substituída", "placa-aluga-se:inferida:visto antes"]);
+    expect(historico.textContent).toContain("Visto em 09/09/2026");
+    expect(historico.textContent).toContain("Esta sugestão foi feita sobre um texto que depois foi corrigido");
+    expect(historico.textContent).toContain("Uma análise mais recente trouxe outro resultado");
   });
 });
 
 describe("LinhaDoTempoAvistamentos", () => {
-  it("cada avistamento com as próprias etiquetas e estado; reuso distinto de modelo; setembro não vira substituída por novembro", () => {
+  it("cada passagem com as próprias etiquetas e estado; reuso explicado sem custo; setembro não vira substituída por novembro", () => {
     const d = detalhe();
+    const { container } = render(createElement(LinhaDoTempoAvistamentos, { avistamentos: d.avistamentos, avistamentoCorrenteId: "av-nov" }));
+    expect(screen.getByRole("list", { name: "Histórico de passagens" })).toBeTruthy();
+    const nov = container.querySelector("[data-avistamento-id='av-nov']")!;
+    const set = container.querySelector("[data-avistamento-id='av-set']")!;
+    expect([...nov.querySelectorAll("[data-origem]")].map((c) => c.textContent)).toEqual(["Imóvel fechadosugestão"]);
+    expect([...set.querySelectorAll("[data-origem]")].map((c) => `${c.getAttribute("data-estado")}:${c.textContent}`)).toEqual(["inferida:Placa de aluga-sesugestão"]);
+    // Narrativa: a mais recente e a primeira, com o texto de cada uma.
+    expect(nov.textContent).toContain("Passagem mais recente");
+    expect(nov.textContent).toContain("Nova passagem registrada");
+    expect(set.textContent).toContain("Primeira passagem");
+    expect(set.textContent).not.toContain("Passagem mais recente");
+    // Reuso × modelo em linguagem humana, sem token, custo ou "chamada".
+    expect(nov.querySelector("[data-modo]")!.getAttribute("data-modo")).toBe("reuso");
+    expect(nov.textContent).toContain("Já tínhamos analisado uma observação igual");
+    expect(nov.textContent).toContain("O resultado anterior deste imóvel foi reaproveitado.");
+    expect(nov.textContent).not.toMatch(/token|custo|chamada|reutilizad/i);
+    expect(set.querySelector("[data-modo]")!.getAttribute("data-modo")).toBe("modelo");
+    expect(set.textContent).toContain("Analisado pela IA");
+    expect(set.textContent).toContain("O sistema leu a observação e identificou estas informações.");
+    // Atual × anterior.
+    expect(nov.textContent).toContain("Estas informações refletem a passagem mais recente.");
+    expect(set.textContent).toContain("Registro anterior; as informações atuais vêm da passagem mais recente.");
+    // Revisão só nos detalhes; sem marca "Texto corrigido" no texto original.
+    expect(nov.querySelector("[data-texto-corrigido]")).toBeNull();
+    expect(container.querySelector("[data-revisao-conflito]")).toBeNull();
+    expect(nov.textContent).not.toMatch(/classifica|snapshot|corrente|avistamento/i);
+  });
+
+  it("'Ver detalhes' nasce fechado e guarda a auditoria: análise nova × reaproveitada (com a data da fonte), data, revisão e apoio no texto", () => {
+    const d = detalhe();
+    // A execução de novembro reaproveitou a de setembro: a data da fonte aparece nos detalhes.
+    d.avistamentos[0] = { ...d.avistamentos[0], classificacoes: [{ ...d.avistamentos[0].classificacoes[0], reusadaDeClassificacaoId: "run-set" }] };
     const { container } = render(createElement(LinhaDoTempoAvistamentos, { avistamentos: d.avistamentos, avistamentoCorrenteId: "av-nov" }));
     const nov = container.querySelector("[data-avistamento-id='av-nov']")!;
     const set = container.querySelector("[data-avistamento-id='av-set']")!;
-    expect([...nov.querySelectorAll("[data-origem]")].map((c) => c.textContent)).toEqual(["Imóvel fechadoIA"]);
-    expect([...set.querySelectorAll("[data-origem]")].map((c) => `${c.getAttribute("data-estado")}:${c.textContent}`)).toEqual(["inferida:Placa de aluga-seIA"]);
-    expect(nov.querySelector("[data-modo]")!.getAttribute("data-modo")).toBe("reuso");
-    expect(nov.textContent).toContain("resultado reutilizado");
-    expect(nov.textContent).toContain("Reflete o avistamento corrente");
-    expect(set.querySelector("[data-modo]")!.getAttribute("data-modo")).toBe("modelo");
-    expect(set.textContent).toContain("processado pela IA");
-    expect(set.textContent).toContain("Histórico: não altera o estado atual");
-    expect(nov.textContent).toContain("Texto original");
-    expect(container.querySelector("[data-revisao-conflito]")).toBeNull();
+    const detalhesNov = nov.querySelector("details[data-detalhes]") as HTMLDetailsElement;
+    expect(detalhesNov.open).toBe(false);
+    expect(detalhesNov.querySelector("summary")!.textContent).toBe("Ver detalhes");
+    expect(detalhesNov.textContent).toContain("Resultado reaproveitado de uma análise anterior (de 09/09/2026");
+    expect(detalhesNov.textContent).toContain("Analisada em 10/11/2026");
+    expect(detalhesNov.textContent).toContain("Texto original, sem correções.");
+    expect(detalhesNov.textContent).toContain("Imóvel fechado: a partir do texto · apoio no texto: moderado (88 de 100)");
+    expect(detalhesNov.textContent).toContain("não é uma probabilidade de acerto");
+    const detalhesSet = set.querySelector("details[data-detalhes]")!;
+    expect(detalhesSet.textContent).toContain("Análise nova.");
+    expect(detalhesSet.textContent).toContain("Tipo sugerido: Casa · apoio no texto: moderado (72 de 100)");
+    // Fora dos detalhes, nada de número de apoio nem "sinal".
+    expect(nov.textContent.replace(detalhesNov.textContent, "")).not.toMatch(/88|sinal|apoio/);
   });
 
-  it("desatualizada, substituída e contestada aparecem com marca própria, e o conflito de revisão fica marcado no evento", () => {
+  it("texto mudou, substituída e incorreta aparecem com marca própria, e o conflito de revisão fica marcado na passagem", () => {
     const d = detalhe();
     d.avistamentos[0] = { ...d.avistamentos[0], observacaoRevisao: 3, revisaoConflitoEm: "2026-11-12T10:00:00.000Z",
       etiquetas: [
@@ -221,10 +292,11 @@ describe("LinhaDoTempoAvistamentos", () => {
     const { container } = render(createElement(LinhaDoTempoAvistamentos, { avistamentos: d.avistamentos, avistamentoCorrenteId: "av-nov" }));
     const nov = container.querySelector("[data-avistamento-id='av-nov']")!;
     expect([...nov.querySelectorAll("[data-origem]")].map((c) => `${c.getAttribute("data-estado")}:${c.querySelector("span")!.textContent}`)).toEqual([
-      "desatualizada:Desatualizada", "substituida:Substituída", "contestada:Contestada", "confirmada:Confirmada",
+      "desatualizada:texto mudou", "substituida:substituída", "contestada:incorreta", "confirmada:confirmado",
     ]);
-    expect(nov.textContent).toContain("Revisão 3 do texto");
-    expect(nov.querySelector("[data-revisao-conflito]")!.textContent).toContain("Observação alterada após confirmação de etiquetas");
+    expect(nov.querySelector("[data-texto-corrigido]")!.textContent).toBe("Texto corrigido");
+    expect(nov.querySelector("details[data-detalhes]")!.textContent).toContain("Revisão 3 do texto");
+    expect(nov.querySelector("[data-revisao-conflito]")!.textContent).toContain("Texto corrigido depois de uma confirmação");
   });
 
   /* Pós-smoke: `snapshot_aplicado` é fato histórico ("influenciou o snapshot
@@ -241,8 +313,8 @@ describe("LinhaDoTempoAvistamentos", () => {
     // 1. AV1 corrente com snapshotAplicado=true → reflete o corrente.
     let r = render(createElement(LinhaDoTempoAvistamentos, { avistamentos: [av1], avistamentoCorrenteId: "av-set" }));
     let set = r.container.querySelector("[data-avistamento-id='av-set']")!;
-    expect(set.textContent).toContain("Reflete o avistamento corrente");
-    expect(set.textContent).not.toContain("Histórico");
+    expect(set.textContent).toContain("Estas informações refletem a passagem mais recente.");
+    expect(set.textContent).not.toContain("Registro anterior");
     cleanup();
 
     // 2. AV2 passa a ser o corrente: AV1 conserva snapshotAplicado=true nos
@@ -251,17 +323,17 @@ describe("LinhaDoTempoAvistamentos", () => {
     set = r.container.querySelector("[data-avistamento-id='av-set']")!;
     const nov = r.container.querySelector("[data-avistamento-id='av-nov']")!;
     expect(av1.classificacoes[0].snapshotAplicado).toBe(true);
-    expect(set.textContent).toContain("Histórico: não altera o estado atual");
-    expect(set.textContent).not.toContain("Reflete o avistamento corrente");
-    expect(nov.textContent).toContain("Reflete o avistamento corrente");
+    expect(set.textContent).toContain("Registro anterior; as informações atuais vêm da passagem mais recente.");
+    expect(set.textContent).not.toContain("refletem a passagem mais recente");
+    expect(nov.textContent).toContain("Estas informações refletem a passagem mais recente.");
     cleanup();
 
     // 4. Corrente com snapshotAplicado=false (ex.: classificação concluída
     //    depois de o texto ser revisado de novo) → não alterou o estado atual.
     const av2SemSnapshot = { ...av2, classificacoes: [{ ...av2.classificacoes[0], snapshotAplicado: false }] };
     r = render(createElement(LinhaDoTempoAvistamentos, { avistamentos: [av1, av2SemSnapshot], avistamentoCorrenteId: "av-nov" }));
-    expect(r.container.querySelector("[data-avistamento-id='av-nov']")!.textContent).toContain("Não alterou o estado atual");
-    expect(r.container.querySelector("[data-avistamento-id='av-set']")!.textContent).toContain("Histórico: não altera o estado atual");
+    expect(r.container.querySelector("[data-avistamento-id='av-nov']")!.textContent).toContain("Esta análise não mudou as informações atuais.");
+    expect(r.container.querySelector("[data-avistamento-id='av-set']")!.textContent).toContain("Registro anterior; as informações atuais vêm da passagem mais recente.");
     cleanup();
 
     // 5. Apresentação pura: os objetos de entrada saem como entraram.
@@ -269,10 +341,10 @@ describe("LinhaDoTempoAvistamentos", () => {
   });
 
   it("situacaoTemporalDaExecucao: a tabela de verdade do contrato de apresentação", () => {
-    expect(situacaoTemporalDaExecucao(true, { snapshotAplicado: true })).toBe("Reflete o avistamento corrente");
-    expect(situacaoTemporalDaExecucao(true, { snapshotAplicado: false })).toBe("Não alterou o estado atual");
-    expect(situacaoTemporalDaExecucao(false, { snapshotAplicado: true })).toBe("Histórico: não altera o estado atual");
-    expect(situacaoTemporalDaExecucao(false, { snapshotAplicado: false })).toBe("Histórico: não altera o estado atual");
+    expect(situacaoTemporalDaExecucao(true, { snapshotAplicado: true })).toBe("Estas informações refletem a passagem mais recente.");
+    expect(situacaoTemporalDaExecucao(true, { snapshotAplicado: false })).toBe("Esta análise não mudou as informações atuais.");
+    expect(situacaoTemporalDaExecucao(false, { snapshotAplicado: true })).toBe("Registro anterior; as informações atuais vêm da passagem mais recente.");
+    expect(situacaoTemporalDaExecucao(false, { snapshotAplicado: false })).toBe("Registro anterior; as informações atuais vêm da passagem mais recente.");
   });
 });
 
@@ -288,9 +360,13 @@ describe("V7 §16: nenhuma tela do usuário mostra nome de modelo, token ou dól
 
     render(createElement(PainelIdentificado, { detalhe: d }));
     expect(document.body.textContent).not.toMatch(NOME_TECNICO);
-    expect(document.body.textContent).toContain("IA sobre o texto · sinal 88");
-    expect(document.body.textContent).toContain("resultado reutilizado de classificação anterior");
-    expect(document.body.textContent).toContain("processado pela IA");
+    expect(document.body.textContent).toContain("Já tínhamos analisado uma observação igual");
+    expect(document.body.textContent).toContain("Analisado pela IA");
+    // Abrir TODOS os "Ver detalhes" não revela nome técnico, token nem dólar.
+    for (const detalhes of document.querySelectorAll("details[data-detalhes]")) (detalhes as HTMLDetailsElement).open = true;
+    expect(document.body.textContent).not.toMatch(NOME_TECNICO);
+    expect(document.body.textContent).not.toMatch(/snapshot|fingerprint|classificacao_id|sugeridas|aplicadas|run-|gpt/i);
+    expect(document.body.textContent).toContain("apoio no texto: moderado (88 de 100)");
     cleanup();
 
     const atuais = vigenciaDasEtiquetas(d).filter((e) => e.vigenteNoAvistamentoCorrente);
@@ -303,7 +379,7 @@ describe("V7 §16: nenhuma tela do usuário mostra nome de modelo, token ou dól
       "components/prospeccao/EtiquetasImovel.tsx", "components/prospeccao/LinhaDoTempoAvistamentos.tsx",
       "components/prospeccao/PainelIdentificado.tsx", "components/prospeccao/CardIdentificado.tsx",
       "components/prospeccao/ProspeccaoView.tsx", "components/prospeccao/AvisoRevisaoConflito.tsx",
-      "components/modais/ModalAvistamento.tsx",
+      "components/prospeccao/textosAnalise.ts", "components/modais/ModalAvistamento.tsx",
     ]) {
       const fonte = readFileSync(resolve(arquivo), "utf8");
       expect(fonte, arquivo).not.toMatch(/\{[^}]*\.modelo[^}]*\}/);
@@ -313,11 +389,87 @@ describe("V7 §16: nenhuma tela do usuário mostra nome de modelo, token ou dól
 });
 
 describe("descrição de proveniência por estado", () => {
-  it("desatualizada fala do texto; substituída fala de outra classificação; nenhuma delas é a mesma coisa", () => {
+  it("texto mudou fala do texto; substituída fala de outra análise; nenhuma delas é a mesma coisa", () => {
     expect(descreverProveniencia(etiqueta({ estado: "desatualizada", desatualizadaEm: "2026-11-12T10:00:00.000Z" })))
-      .toMatch(/o texto da observação mudou em 12\/11\/2026/);
+      .toMatch(/o texto foi corrigido em 12\/11\/2026/);
     expect(descreverProveniencia(etiqueta({ estado: "substituida", substituidaEm: "2026-11-11T10:00:00.000Z", substituidaPorClassificacaoId: "run-y" })))
-      .toMatch(/substituída por outra classificação em 11\/11\/2026/);
+      .toMatch(/substituída por uma análise mais recente em 11\/11\/2026/);
     expect(descreverProveniencia(etiqueta({}))).toContain("revisão 1 do texto");
+  });
+
+  it("explicação de camada 1 por estado: nunca promove sugestão a fato nem 'visto antes' a 'continua assim'", () => {
+    expect(explicarEtiqueta(etiqueta({}))).toBe("Sugestão da IA a partir do texto; ainda não confirmada por uma pessoa.");
+    expect(explicarEtiqueta(etiqueta({ origem: "manual" }))).toBe("Aplicada manualmente por você.");
+    expect(explicarEtiqueta(etiqueta({ estado: "confirmada", confirmadaEm: "2026-11-11T09:00:00.000Z" }))).toMatch(/^Confirmado por você em 11\/11\/2026/);
+    expect(explicarEtiqueta(etiqueta({ estado: "contestada" }))).toBe("Você marcou como incorreta; não vale como informação atual.");
+    expect(explicarEtiqueta(etiqueta({ estado: "desatualizada", desatualizadaEm: "2026-11-12T10:00:00.000Z" }))).toMatch(/texto que depois foi corrigido em 12\/11\/2026/);
+    expect(explicarEtiqueta(etiqueta({ estado: "substituida", substituidaEm: "2026-11-11T10:00:00.000Z" }))).toMatch(/Uma análise mais recente trouxe outro resultado em 11\/11\/2026/);
+    expect(explicarEtiqueta(etiqueta({}), { historica: true, vistoEm: SETEMBRO })).toMatch(/^Visto em 09\/09\/2026.*; não apareceu na passagem mais recente\.$/);
+    for (const texto of [explicarEtiqueta(etiqueta({})), explicarEtiqueta(etiqueta({}), { historica: true, vistoEm: SETEMBRO })]) {
+      expect(texto).not.toMatch(/é verdade|continua assim|^Confirmad|é fato/i);
+    }
+  });
+
+  it("apoio no texto: faixas de apresentação, sem porcentagem", () => {
+    expect(faixaDeApoio(90)).toBe("forte");
+    expect(faixaDeApoio(89)).toBe("moderado");
+    expect(faixaDeApoio(70)).toBe("moderado");
+    expect(faixaDeApoio(69)).toBe("fraco");
+    expect(apoioNoTexto(92)).toBe("forte (92 de 100)");
+    expect(apoioNoTexto(null)).toBeNull();
+    expect(apoioNoTexto(55)).not.toContain("%");
+  });
+
+  it("marcas públicas para todos os estados; histórica distinta de atual", () => {
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "inferida" })).toBe("sugestão");
+    expect(marcaProveniencia({ origem: "manual", estado: "inferida" })).toBe("manual");
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "confirmada" })).toBe("confirmado");
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "contestada" })).toBe("incorreta");
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "desatualizada" })).toBe("texto mudou");
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "substituida" })).toBe("substituída");
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "inferida" }, true)).toBe("visto antes");
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "confirmada" }, true)).toBe("visto antes");
+    // Estados terminais não viram "visto antes": a marca própria diz mais.
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "contestada" }, true)).toBe("incorreta");
+  });
+});
+
+describe("falha da análise em linguagem de campo (C9.1)", () => {
+  it("mapa fechado de códigos da rota para frases humanas; código desconhecido cai na genérica; nada de mensagem bruta", () => {
+    expect(mensagemFalhaAnalise("limite-diario")).toContain("O limite de análises de hoje foi atingido");
+    expect(mensagemFalhaAnalise("ocupado")).toBe("Uma análise já está em andamento. Aguarde um instante.");
+    expect(mensagemFalhaAnalise("nao-configurado")).toBe("A análise automática não está disponível no momento.");
+    expect(mensagemFalhaAnalise("indisponivel")).toBe("Não foi possível analisar agora. Tente novamente.");
+    expect(mensagemFalhaAnalise("limite-excedido")).toContain("sobrecarregado");
+    expect(mensagemFalhaAnalise("falha-modelo")).toContain("não pôde ser concluída");
+    expect(mensagemFalhaAnalise("Error: ECONNRESET at openai.chat")).toBe(MENSAGEM_FALHA_ANALISE_GENERICA);
+    expect(mensagemFalhaAnalise(null)).toBe(MENSAGEM_FALHA_ANALISE_GENERICA);
+  });
+
+  it("na linha do tempo o motivo aparece só na passagem com o mesmo id e ainda não analisada; o botão vira 'Tentar de novo'", () => {
+    const d = detalhe();
+    // Setembro voltou a pendente (texto corrigido) e a tentativa falhou por limite diário.
+    d.avistamentos[1] = { ...d.avistamentos[1], classificacaoEstado: "pendente", classificacaoId: null, classificacaoEm: null, classificacoes: [], etiquetas: [] };
+    const aoClassificar = vi.fn();
+    const { container } = render(createElement(LinhaDoTempoAvistamentos, {
+      avistamentos: d.avistamentos, avistamentoCorrenteId: "av-nov", aoClassificar,
+      falhaAnalise: { avistamentoId: "av-set", codigo: "limite-diario" },
+    }));
+    const set = container.querySelector("[data-avistamento-id='av-set']")!;
+    const nov = container.querySelector("[data-avistamento-id='av-nov']")!;
+    expect(set.querySelector("[role='status']")!.textContent).toContain("O limite de análises de hoje foi atingido");
+    expect(set.querySelector("button")!.textContent).toBe("Tentar de novo");
+    // Não vaza para a outra passagem.
+    expect(nov.textContent).not.toContain("limite de análises");
+    expect(nov.querySelector("[role='status']")).toBeNull();
+    cleanup();
+
+    // Motivo de OUTRO avistamento não aparece em lugar nenhum; sem falha, o botão é "Analisar agora".
+    render(createElement(LinhaDoTempoAvistamentos, {
+      avistamentos: d.avistamentos, avistamentoCorrenteId: "av-nov", aoClassificar,
+      falhaAnalise: { avistamentoId: "av-inexistente", codigo: "limite-diario" },
+    }));
+    expect(document.body.textContent).not.toContain("limite de análises");
+    expect(screen.getByRole("button", { name: "Analisar agora" })).toBeTruthy();
   });
 });

@@ -1060,8 +1060,8 @@
 .chipInferida { background: var(--accent-soft); color: var(--accent-strong); }
 .chipConfirmada { background: var(--good-soft); color: var(--good); }
 .chipManual { background: var(--bg-elev-3); color: var(--text); }
-.chipHistorica { background: var(--bg-elev-3); color: var(--text-faint); text-decoration: line-through; }
-.chipHistorica .chipMarca { text-decoration: none; }
+/* "visto antes" não é "errado": sem risco no texto, só apagado. */
+.chipHistorica { background: var(--bg-elev-3); color: var(--text-faint); border: 1px dashed var(--border); }
 .proveniencia {
   display: block;
   margin-top: 3px;
@@ -1149,6 +1149,109 @@
   background: var(--warn-soft);
   color: var(--warn);
   font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .03em;
+}
+
+/* ---- C9.1: camada explicativa (linguagem de campo) ---- */
+.explicacao {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.detalhes {
+  margin-top: 8px;
+  font-size: 11px;
+}
+.detalhes summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+}
+.detalhes summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.detalhesCorpo {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: var(--bg-elev-3);
+  color: var(--text-dim);
+}
+.detalhesLista {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0 0 0 16px;
+  line-height: 1.5;
+}
+.eventoTitulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 8px;
+  color: var(--text);
+  font-size: 12.5px;
+}
+.marcaTexto {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--info-soft);
+  color: var(--info);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .03em;
+}
+.analise {
+  display: grid;
+  gap: 2px;
+  margin-top: 8px;
+  color: var(--text);
+  font-size: 12px;
+}
+.analise span { color: var(--text-dim); font-size: 11px; }
+.analiseFalhou {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--bad);
+  border-radius: 8px;
+  background: var(--bad-soft);
+  color: var(--text);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.percebido {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.percebido li { display: flex; align-items: center; gap: 6px; }
+.percebido li::before { content: "→"; color: var(--text-faint); font-size: 11px; }
+.situacaoTemporal {
+  margin: 8px 0 0 !important;
+  color: var(--text-dim) !important;
+  font-size: 11px !important;
+  font-style: italic;
+}
+.atencaoCurta {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 8px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: .03em;
 }

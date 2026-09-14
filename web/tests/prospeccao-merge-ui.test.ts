@@ -195,9 +195,9 @@ describe("C7b — lista, painel e histórico", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirmar união dos históricos" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(useProspeccao.getState().itens.map((i) => i.id)).toEqual(["b"]);
-    expect(screen.getByRole("list", { name: "Linha do tempo de avistamentos" }).querySelectorAll("[data-avistamento-id]")).toHaveLength(2);
+    expect(screen.getByRole("list", { name: "Histórico de passagens" }).querySelectorAll("[data-avistamento-id]")).toHaveLength(2);
     expect(screen.getByText("Observação evento-a")).toBeTruthy();
-    expect(within(screen.getByRole("list", { name: "Linha do tempo de avistamentos" })).getByText("Observação evento-b")).toBeTruthy();
+    expect(within(screen.getByRole("list", { name: "Histórico de passagens" })).getByText("Observação evento-b")).toBeTruthy();
     expect(mocks.fundirIdentificados).toHaveBeenCalledTimes(1);
   });
 
