@@ -69,6 +69,10 @@ export default function FormularioEnderecoIdentificado({
   const alterado = (Object.keys(campos) as (keyof CamposEndereco)[])
     .some((campo) => campos[campo].trim() !== inicial[campo].trim());
   const podeSalvar = alterado && enderecoIdentificaOLugar(campos) && !salvando;
+  // Já aberto quando algum detalhe foi gravado antes: o que existe não se esconde.
+  const temDetalhes = Boolean(
+    inicial.bairro || inicial.cep || inicial.pontoReferencia || inicial.unidade || inicial.bloco || inicial.edificio,
+  );
 
   function definir(campo: keyof CamposEndereco) {
     return (valor: string) => setCampos((atual) => ({ ...atual, [campo]: valor }));
@@ -116,16 +120,6 @@ export default function FormularioEnderecoIdentificado({
       </div>
       <div className="field-row">
         <div className="field-group">
-          <label htmlFor={id("bairro")}>Bairro</label>
-          <input id={id("bairro")} type="text" value={campos.bairro} onChange={(evento) => definir("bairro")(evento.target.value)} />
-        </div>
-        <div className="field-group">
-          <label htmlFor={id("cep")}>CEP</label>
-          <input id={id("cep")} type="text" inputMode="numeric" value={campos.cep} onChange={(evento) => definir("cep")(maskCEP(evento.target.value))} />
-        </div>
-      </div>
-      <div className="field-row">
-        <div className="field-group">
           <label htmlFor={id("cidade")}>Cidade</label>
           <input id={id("cidade")} type="text" value={campos.cidade} onChange={(evento) => definir("cidade")(evento.target.value)} />
         </div>
@@ -134,24 +128,40 @@ export default function FormularioEnderecoIdentificado({
           <input id={id("estado")} type="text" maxLength={2} placeholder="PR" value={campos.estado} onChange={(evento) => definir("estado")(evento.target.value.toUpperCase())} />
         </div>
       </div>
-      <div className="field-group">
-        <label htmlFor={id("referencia")}>Ponto de referência</label>
-        <input id={id("referencia")} type="text" placeholder="Ex.: ao lado do mercado" value={campos.pontoReferencia} onChange={(evento) => definir("pontoReferencia")(evento.target.value)} />
-      </div>
-      <div className="field-row-3">
-        <div className="field-group">
-          <label htmlFor={id("unidade")}>Unidade</label>
-          <input id={id("unidade")} type="text" value={campos.unidade} onChange={(evento) => definir("unidade")(evento.target.value)} />
+      {/* O que raramente muda fica recolhido, como no cadastro. */}
+      <details className={styles.maisDetalhes} open={temDetalhes}>
+        <summary>Mais detalhes (opcional)</summary>
+        <div className={styles.camposDetalhes}>
+          <div className="field-row">
+            <div className="field-group">
+              <label htmlFor={id("bairro")}>Bairro</label>
+              <input id={id("bairro")} type="text" value={campos.bairro} onChange={(evento) => definir("bairro")(evento.target.value)} />
+            </div>
+            <div className="field-group">
+              <label htmlFor={id("cep")}>CEP</label>
+              <input id={id("cep")} type="text" inputMode="numeric" value={campos.cep} onChange={(evento) => definir("cep")(maskCEP(evento.target.value))} />
+            </div>
+          </div>
+          <div className="field-group">
+            <label htmlFor={id("referencia")}>Ponto de referência</label>
+            <input id={id("referencia")} type="text" placeholder="Ex.: ao lado do mercado" value={campos.pontoReferencia} onChange={(evento) => definir("pontoReferencia")(evento.target.value)} />
+          </div>
+          <div className="field-row-3">
+            <div className="field-group">
+              <label htmlFor={id("unidade")}>Unidade</label>
+              <input id={id("unidade")} type="text" value={campos.unidade} onChange={(evento) => definir("unidade")(evento.target.value)} />
+            </div>
+            <div className="field-group">
+              <label htmlFor={id("bloco")}>Bloco</label>
+              <input id={id("bloco")} type="text" value={campos.bloco} onChange={(evento) => definir("bloco")(evento.target.value)} />
+            </div>
+            <div className="field-group">
+              <label htmlFor={id("edificio")}>Edifício</label>
+              <input id={id("edificio")} type="text" value={campos.edificio} onChange={(evento) => definir("edificio")(evento.target.value)} />
+            </div>
+          </div>
         </div>
-        <div className="field-group">
-          <label htmlFor={id("bloco")}>Bloco</label>
-          <input id={id("bloco")} type="text" value={campos.bloco} onChange={(evento) => definir("bloco")(evento.target.value)} />
-        </div>
-        <div className="field-group">
-          <label htmlFor={id("edificio")}>Edifício</label>
-          <input id={id("edificio")} type="text" value={campos.edificio} onChange={(evento) => definir("edificio")(evento.target.value)} />
-        </div>
-      </div>
+      </details>
       <button type="button" className="btn btn-sm" disabled={!podeSalvar} onClick={() => void salvar()}>
         {salvando ? "Salvando…" : "Salvar endereço"}
       </button>

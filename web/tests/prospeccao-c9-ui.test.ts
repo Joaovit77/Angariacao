@@ -724,14 +724,15 @@ describe("informar o endereço depois do cadastro", () => {
     const aviso = document.querySelector("[data-atencao='sem-endereco']")!;
     expect(aviso.getAttribute("data-nivel")).toBe("info");
     expect(aviso.textContent).toContain("Este imóvel ainda não tem endereço.");
-    expect(aviso.textContent).toContain("confere se este local já foi registrado antes");
+    // Uma linha e o botão: o cabeçalho já diz "Local ainda sem endereço".
+    expect(aviso.querySelector("p")).toBeNull();
     const detalhes = document.querySelector("details[data-acao='informar-endereco']") as HTMLDetailsElement;
     expect(detalhes.open).toBe(false);
     expect(detalhes.querySelector("summary")!.textContent).toBe("Informar o endereço");
     fireEvent.click(aviso.querySelector("button")!);
     expect(detalhes.open).toBe(true);
     // O texto da ação está entre "corrigir o texto" e "informar o tipo".
-    expect([...document.querySelectorAll("section[aria-label='Ações'] details")].map((d) => d.getAttribute("data-acao")))
+    expect([...document.querySelectorAll("section[aria-label='Ações'] > details")].map((d) => d.getAttribute("data-acao")))
       .toEqual(["corrigir-texto", "informar-endereco", "informar-tipo"]);
   });
 
@@ -740,6 +741,10 @@ describe("informar o endereço depois do cadastro", () => {
     expect(document.querySelector("[data-atencao='sem-endereco']")).toBeNull();
     const detalhes = document.querySelector("details[data-acao='informar-endereco']")!;
     expect(detalhes.querySelector("summary")!.textContent).toBe("Corrigir o endereço");
+    // Bairro/CEP/referência/unidade ficam em "Mais detalhes"; abre sozinho quando já há algum gravado.
+    const mais = detalhes.querySelector("[data-formulario-endereco] details") as HTMLDetailsElement;
+    expect(mais.querySelector("summary")!.textContent).toBe("Mais detalhes (opcional)");
+    expect(mais.open).toBe(true);
     const valor = (rotulo: string) => (screen.getByLabelText(rotulo) as HTMLInputElement).value;
     expect([valor("Logradouro"), valor("Número"), valor("Bairro"), valor("Cidade"), valor("Estado"), valor("CEP"), valor("Ponto de referência")])
       .toEqual(["Rua das Palmeiras", "120", "Centro", "Londrina", "PR", "86010-000", "Esquina"]);
@@ -750,6 +755,8 @@ describe("informar o endereço depois do cadastro", () => {
     render(createElement(PainelIdentificado, { detalhe: semEndereco() }));
     const salvar = () => screen.getByRole("button", { name: "Salvar endereço" }) as HTMLButtonElement;
     expect(salvar().disabled).toBe(true);
+    // Sem nada gravado, só rua, número, cidade e estado à vista.
+    expect((document.querySelector("[data-formulario-endereco] details") as HTMLDetailsElement).open).toBe(false);
     // Cidade sozinha não dá nome ao lugar.
     fireEvent.change(screen.getByLabelText("Cidade"), { target: { value: "Londrina" } });
     expect(salvar().disabled).toBe(true);

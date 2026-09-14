@@ -462,7 +462,6 @@ export default function PainelIdentificado({
         <div className={styles.atencaoItemCorpo}>
           <div>
             <strong>Este imóvel ainda não tem endereço.</strong>
-            <p>Com o endereço, o sistema identifica o imóvel e confere se este local já foi registrado antes.</p>
           </div>
           <button type="button" className="btn btn-sm btn-ghost" onClick={abrirFormularioEndereco}>
             Informar o endereço
