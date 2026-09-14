@@ -127,7 +127,8 @@ function avistamento(id: string, observadoEm: string, observacao: string) {
       modelo: "modelo-gravado",
       versaoCatalogo: 1,
       versaoClassificador: 1,
-      revisaoObservacao: 1,
+      // C9: uma inferida vigente tem sempre a revisão atual do avistamento.
+      revisaoObservacao: id === "avistamento-novo" ? 2 : 1,
       confirmadaPor: null,
       confirmadaEm: null,
       substituidaEm: null,
@@ -265,7 +266,9 @@ describe("LinhaDoTempoAvistamentos", () => {
     expect(eventos[0].textContent).toContain("Avistamento corrente");
     expect(eventos[1].textContent).toContain("Imóvel vazio");
     expect(eventos[1].querySelector("[data-origem]")!.textContent).toBe("Aparenta vagoIA");
-    expect(eventos[1].textContent).toContain("pelo modelo");
+    expect(eventos[1].textContent).toContain("processado pela IA");
+    // V7 §16: o modelo gravado ("modelo-gravado") nunca aparece na tela.
+    expect(eventos[1].textContent).not.toContain("modelo-gravado");
     expect(eventos[1].textContent).toContain("Histórico: não altera o estado atual");
   });
 });

@@ -2,6 +2,7 @@ import { ordenarAvistamentosPorRecencia } from "@/lib/calculo/prospeccao";
 import { fmtDataHoraIso } from "@/lib/datas";
 import type { AvistamentoLongitudinal, ClassificacaoAvistamento } from "@/lib/prospeccao";
 
+import AvisoRevisaoConflito from "./AvisoRevisaoConflito";
 import CapturaFachada from "./CapturaFachada";
 import EtiquetasImovel from "./EtiquetasImovel";
 import styles from "./Prospeccao.module.css";
@@ -13,9 +14,11 @@ const ROTULOS_CLASSIFICACAO: Record<AvistamentoLongitudinal["classificacaoEstado
   nao_aplicavel: "Sem texto para classificar",
 };
 
+/** Linguagem de produto: o usuário nunca vê nome de modelo, token ou dólar
+    (V7 §16). `modelo` fica na execução para auditoria; aqui só o conceito. */
 const ROTULOS_MODO: Record<ClassificacaoAvistamento["modo"], string> = {
-  modelo: "pelo modelo",
-  reuso: "resultado reutilizado",
+  modelo: "processado pela IA",
+  reuso: "resultado reutilizado de classificação anterior (sem nova chamada à IA)",
 };
 
 /** A execução que responde pelo estado atual deste avistamento: a mais
@@ -77,16 +80,20 @@ export default function LinhaDoTempoAvistamentos({
             <p className={avistamento.observacao ? undefined : styles.eventoSemObservacao}>
               {avistamento.observacao || "Sem observação textual."}
             </p>
-            {/* Etiquetas DESTE evento, com o estado de cada uma: o que foi
-                substituído ou desatualizado aparece como histórico, nunca
-                como estado atual. */}
+            <AvisoRevisaoConflito
+              compacto
+              revisaoConflitoEm={avistamento.revisaoConflitoEm}
+              revisaoObservacao={avistamento.observacaoRevisao}
+            />
+            {/* Etiquetas DESTE evento, com o estado de cada uma: desatualizada
+                (o texto mudou), substituída (outra execução) e contestada
+                aparecem como tais, nunca como estado atual. */}
             <EtiquetasImovel etiquetas={avistamento.etiquetas} rotulo="Etiquetas deste avistamento" />
             {execucao ? (
-              <div className={styles.classificacaoResumo} aria-label="Classificação deste avistamento">
+              <div className={styles.classificacaoResumo} aria-label="Classificação deste avistamento" data-modo={execucao.modo}>
                 <span>
                   Classificado em {fmtDataHoraIso(execucao.concluidaEm) || "data não registrada"} {ROTULOS_MODO[execucao.modo]}
                 </span>
-                {execucao.modelo ? <span>{execucao.modelo}</span> : null}
                 {execucao.tipoSugerido ? (
                   <span>
                     Tipo sugerido: {execucao.tipoSugerido}
@@ -97,9 +104,11 @@ export default function LinhaDoTempoAvistamentos({
               </div>
             ) : null}
             <div className={styles.eventoRodape}>
-              {avistamento.observacaoRevisao > 1 ? (
-                <span>Revisão {avistamento.observacaoRevisao}</span>
-              ) : null}
+              <span>
+                {avistamento.observacaoRevisao > 1
+                  ? `Revisão ${avistamento.observacaoRevisao} do texto`
+                  : "Texto original"}
+              </span>
               {podeClassificar ? (
                 <button
                   type="button"

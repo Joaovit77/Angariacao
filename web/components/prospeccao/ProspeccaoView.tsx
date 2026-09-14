@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { useSessao } from "@/components/SessaoProvider";
-import { etiquetasDoImovel, type EtiquetaDoImovel } from "@/lib/calculo/etiquetasProspeccao";
-import type { DetalheImovelIdentificado } from "@/lib/prospeccao";
+import type { EtiquetaDoImovel } from "@/lib/calculo/etiquetasProspeccao";
+import { vigenciaDasEtiquetas, type DetalheImovelIdentificado } from "@/lib/prospeccao";
 import {
   armazemRascunhoCaptura,
   avaliarRascunho,
@@ -21,27 +21,7 @@ import styles from "./Prospeccao.module.css";
 
 function etiquetasAtuais(detalhe: DetalheImovelIdentificado | null): EtiquetaDoImovel[] {
   if (!detalhe) return [];
-  const corrente = detalhe.avistamentos.find(
-    (avistamento) => avistamento.id === detalhe.identificado.avistamentoCorrenteId,
-  ) ?? null;
-  const todas = [
-    ...detalhe.etiquetasDoImovel,
-    ...detalhe.avistamentos.flatMap((avistamento) => avistamento.etiquetas),
-  ].map((etiqueta) => ({
-    categoria: etiqueta.categoria,
-    codigo: etiqueta.codigo,
-    avistamentoId: etiqueta.avistamentoId,
-    revisaoObservacao: etiqueta.revisaoObservacao,
-    observadoEm: etiqueta.observadoEm,
-    createdAt: etiqueta.criadoEm,
-    estado: etiqueta.estado,
-    origem: etiqueta.origem,
-    confianca: etiqueta.confianca,
-  }));
-  return etiquetasDoImovel(
-    todas,
-    corrente ? { id: corrente.id, observacaoRevisao: corrente.observacaoRevisao } : null,
-  ).filter((etiqueta) => etiqueta.vigenteNoAvistamentoCorrente);
+  return vigenciaDasEtiquetas(detalhe).filter((etiqueta) => etiqueta.vigenteNoAvistamentoCorrente);
 }
 
 function horaCurta(iso: string): string {

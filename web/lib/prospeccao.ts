@@ -13,6 +13,11 @@ import {
 } from "./calculo/dedupeProspeccao";
 import { chaveEndereco, chaveImovel } from "./calculo/duplicidade";
 import {
+  etiquetasDoImovel,
+  type EtiquetaDoImovel,
+  type EtiquetaProspeccaoLeitura,
+} from "./calculo/etiquetasProspeccao";
+import {
   ordenarAvistamentosPorRecencia,
   type AvistamentoProspeccao,
   type EstadoClassificacaoAvistamento,
@@ -941,6 +946,44 @@ export async function fundirIdentificados(
     throw new ErroProspeccao("resposta_rpc_invalida", "O retorno da união não pôde ser confirmado. Atualize a lista antes de continuar.");
   }
   return { sobreviventeId, absorvidoId, repetida: resposta.repetida };
+}
+
+/* ----------------------------------------------------------------
+   VIGÊNCIA DERIVADA (C9) — nenhuma coluna "atual".
+
+   As etiquetas do avistamento corrente são as ATUAIS; as demais são
+   histórico, com a data em que foram vistas por último. É a leitura de
+   `etiquetasDoImovel()` (núcleo puro) sobre tudo o que o detalhe carrega —
+   feita aqui uma vez, para o card, o painel e a lista lerem a mesma coisa.
+   ---------------------------------------------------------------- */
+export function leituraDeEtiqueta(etiqueta: EtiquetaIdentificado): EtiquetaProspeccaoLeitura {
+  return {
+    categoria: etiqueta.categoria,
+    codigo: etiqueta.codigo,
+    avistamentoId: etiqueta.avistamentoId,
+    revisaoObservacao: etiqueta.revisaoObservacao,
+    observadoEm: etiqueta.observadoEm,
+    createdAt: etiqueta.criadoEm,
+    estado: etiqueta.estado,
+    origem: etiqueta.origem,
+    confianca: etiqueta.confianca,
+  };
+}
+
+/** Por código: atual (vigente no avistamento corrente) ou histórica, com
+    `ultimaVezObservado`. Nunca a união ingênua de todos os avistamentos. */
+export function vigenciaDasEtiquetas(detalhe: DetalheImovelIdentificado): EtiquetaDoImovel[] {
+  const corrente = detalhe.avistamentos.find(
+    (avistamento) => avistamento.id === detalhe.identificado.avistamentoCorrenteId,
+  ) ?? null;
+  const todas = [
+    ...detalhe.etiquetasDoImovel,
+    ...detalhe.avistamentos.flatMap((avistamento) => avistamento.etiquetas),
+  ].map(leituraDeEtiqueta);
+  return etiquetasDoImovel(
+    todas,
+    corrente ? { id: corrente.id, observacaoRevisao: corrente.observacaoRevisao } : null,
+  );
 }
 
 /* ----------------------------------------------------------------

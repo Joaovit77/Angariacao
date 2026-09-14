@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
-import { identidadeParaDedupe } from "@/lib/prospeccao";
+import { identidadeParaDedupe, vigenciaDasEtiquetas } from "@/lib/prospeccao";
 import { TIPOS_IMOVEL } from "@/lib/constantes";
 import { fmtDataHoraIso } from "@/lib/datas";
 import type {
@@ -18,7 +18,8 @@ import CandidatosDuplicidade from "./CandidatosDuplicidade";
 import DialogoExcluirIdentificado, { AVISO_CANCELAR_EXCLUSAO } from "./DialogoExcluirIdentificado";
 
 const MapaProspeccao = dynamic(() => import("./MapaProspeccao"), { ssr: false });
-import { ChipEtiqueta, descreverProveniencia } from "./EtiquetasImovel";
+import AvisoRevisaoConflito from "./AvisoRevisaoConflito";
+import { ChipEtiqueta, HistoricoEtiquetas, descreverProveniencia } from "./EtiquetasImovel";
 import LinhaDoTempoAvistamentos from "./LinhaDoTempoAvistamentos";
 import styles from "./Prospeccao.module.css";
 import SeloExclusaoPendente from "./SeloExclusaoPendente";
@@ -237,10 +238,20 @@ export default function PainelIdentificado({
   const corrente = detalhe.avistamentos.find(
     (avistamento) => avistamento.id === item.avistamentoCorrenteId,
   ) ?? null;
+  // Vigência derivada (§6.1): atual = vigente no avistamento corrente ou
+  // afirmação humana sobre o lugar; o resto é histórico, nunca a união.
+  const vigencia = vigenciaDasEtiquetas(detalhe);
+  const codigosAtuais = new Set(
+    vigencia.filter((etiqueta) => etiqueta.vigenteNoAvistamentoCorrente)
+      .map((etiqueta) => `${etiqueta.categoria}:${etiqueta.codigo}`),
+  );
   const etiquetasAtuais = [
     ...detalhe.etiquetasDoImovel,
     ...(corrente?.etiquetas ?? []),
-  ].filter((etiqueta) => etiqueta.estado === "inferida" || etiqueta.estado === "confirmada");
+  ].filter((etiqueta) =>
+    (etiqueta.estado === "inferida" || etiqueta.estado === "confirmada")
+    && codigosAtuais.has(`${etiqueta.categoria}:${etiqueta.codigo}`));
+  const historicoEtiquetas = vigencia.filter((etiqueta) => !etiqueta.vigenteNoAvistamentoCorrente);
   const podeDescartar = item.situacao === "identificado" || item.situacao === "investigando";
 
   async function confirmarDescarte() {
@@ -425,6 +436,10 @@ export default function PainelIdentificado({
             identificadoId={item.id}
             avistamento={corrente}
           />
+          <AvisoRevisaoConflito
+            revisaoConflitoEm={corrente.revisaoConflitoEm}
+            revisaoObservacao={corrente.observacaoRevisao}
+          />
           {corrente.classificacaoEstado === "pendente" || corrente.classificacaoEstado === "indisponivel" ? (
             <div className={styles.aguardando} role="status">
               <span>
@@ -458,6 +473,16 @@ export default function PainelIdentificado({
           </div>
         ) : <p className={styles.vazioInterno}>Nenhuma etiqueta atual registrada.</p>}
       </section>
+
+      {historicoEtiquetas.length ? (
+        <section className={styles.secao}>
+          <div className={styles.secaoCabecalho}>
+            <h4>Histórico de etiquetas</h4>
+            <span>Já afirmado sobre este lugar; não vale no avistamento corrente.</span>
+          </div>
+          <HistoricoEtiquetas historico={historicoEtiquetas} />
+        </section>
+      ) : null}
 
       <section className={styles.secao}>
         <div className={styles.secaoCabecalho}>

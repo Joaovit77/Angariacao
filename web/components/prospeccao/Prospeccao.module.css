@@ -1106,3 +1106,49 @@
   color: var(--text-faint);
   font-size: 10px;
 }
+
+/* ---- C9: situação temporal das etiquetas e conflito de revisão ---- */
+.chipContestada { background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+.chipDesatualizada { background: var(--warn-soft); color: var(--warn); }
+.chipSubstituida { background: var(--bg-elev-3); color: var(--text-faint); text-decoration: line-through; }
+.chipContestada .chipMarca,
+.chipSubstituida .chipMarca { text-decoration: none; }
+.historicoEtiquetas {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.historicoEtiquetas li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+.historicoEtiquetas .proveniencia { margin-top: 0; }
+.conflito {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--warn);
+  border-radius: 9px;
+  background: var(--warn-soft);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.conflito strong { color: var(--warn); }
+.conflito p { margin: 0; color: var(--text-dim); }
+.conflitoMarca {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .03em;
+}

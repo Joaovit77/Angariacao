@@ -221,15 +221,20 @@ describe("marcas e descrição de proveniência", () => {
     expect(marcaProveniencia({ origem: "ia-texto", estado: "confirmada" })).toBe("Confirmada");
     expect(marcaProveniencia({ origem: "manual", estado: "confirmada" })).toBe("Confirmada");
     expect(marcaProveniencia({ origem: "manual", estado: "inferida" })).toBe("Manual");
-    expect(marcaProveniencia({ origem: "ia-texto", estado: "substituida" })).toBe("Histórica");
-    expect(marcaProveniencia({ origem: "ia-texto", estado: "desatualizada" })).toBe("Histórica");
+    // C9: cada estado do banco tem marca própria; "Histórica" é apresentação de
+    // uma etiqueta vigente de avistamento anterior.
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "substituida" })).toBe("Substituída");
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "desatualizada" })).toBe("Desatualizada");
     expect(marcaProveniencia({ origem: "ia-texto", estado: "contestada" })).toBe("Contestada");
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "inferida" }, true)).toBe("Histórica");
+    expect(marcaProveniencia({ origem: "ia-texto", estado: "substituida" }, true)).toBe("Substituída");
   });
 
   it("descreve origem, sinal, modelo e avistamento sem vender probabilidade", () => {
     const texto = descreverProveniencia(etiqueta());
     expect(texto).toContain("IA sobre o texto · sinal 88");
-    expect(texto).toContain("gpt-5.6-luna");
+    // V7 §16: nome de modelo nunca vai para a tela; fica só na proveniência persistida.
+    expect(texto).not.toContain("gpt-5.6-luna");
     expect(texto).toContain("avistamento de 10/09/2026");
     expect(texto).not.toMatch(/%|chance|probabilidade/);
     expect(descreverProveniencia(etiqueta({ estado: "confirmada", confirmadaEm: "2026-09-11T09:00:00.000Z", confirmadaPor: "u" })))
@@ -267,7 +272,7 @@ describe("PainelIdentificado", () => {
     const bloco = document.querySelector("[data-etiqueta-id='1']")!;
     expect(bloco.querySelector("[data-origem]")!.textContent).toBe("Imóvel fechadoIA");
     expect(bloco.textContent).toContain("IA sobre o texto · sinal 88");
-    expect(bloco.textContent).toContain("gpt-5.6-luna");
+    expect(bloco.textContent).not.toContain("gpt-5.6-luna");
     expect(bloco.textContent).not.toMatch(/prompt|Você classifica|json|token/i);
     fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
     expect(cenario.estado.confirmarEtiqueta).toHaveBeenCalledWith("identificado-1", 1);
@@ -362,13 +367,13 @@ describe("LinhaDoTempoAvistamentos", () => {
     const evento = container.querySelector("[data-avistamento-id='avistamento-corrente']")!;
     expect(evento.getAttribute("data-classificacao-estado")).toBe("concluida");
     expect(evento.textContent).toContain("Classificado em 12/09/2026");
-    expect(evento.textContent).toContain("pelo modelo");
-    expect(evento.textContent).toContain("gpt-5.6-luna");
+    expect(evento.textContent).toContain("processado pela IA");
+    expect(evento.textContent).not.toContain("gpt-5.6-luna");
     expect(evento.textContent).toContain("Tipo sugerido: Casa (sinal 76)");
     expect(evento.textContent).toContain("Reflete o avistamento corrente");
     const chips = [...evento.querySelectorAll("[data-origem]")];
     expect(chips.map((c) => `${c.getAttribute("data-estado")}:${c.textContent}`))
-      .toEqual(["inferida:Imóvel fechadoIA", "substituida:Mato altoHistórica"]);
+      .toEqual(["inferida:Imóvel fechadoIA", "substituida:Mato altoSubstituída"]);
     // Concluído não oferece o botão; a falha não vira o rótulo do evento.
     expect(screen.queryByRole("button", { name: "Classificar observação" })).toBeNull();
   });
