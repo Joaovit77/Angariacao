@@ -55,7 +55,7 @@ import CardIdentificado from "@/components/prospeccao/CardIdentificado";
 import { apoioNoTexto, descreverProveniencia, explicarEtiqueta, faixaDeApoio, marcaProveniencia } from "@/components/prospeccao/EtiquetasImovel";
 import LinhaDoTempoAvistamentos, { situacaoTemporalDaExecucao } from "@/components/prospeccao/LinhaDoTempoAvistamentos";
 import { MENSAGEM_FALHA_ANALISE_GENERICA, mensagemFalhaAnalise } from "@/components/prospeccao/textosAnalise";
-import PainelIdentificado from "@/components/prospeccao/PainelIdentificado";
+import PainelIdentificado, { explicacaoInformarTipo } from "@/components/prospeccao/PainelIdentificado";
 import { vigenciaDasEtiquetas, type AvistamentoLongitudinal, type DetalheImovelIdentificado, type EtiquetaIdentificado } from "@/lib/prospeccao";
 
 const SETEMBRO = "2026-09-09T12:00:00.000Z";
@@ -498,7 +498,7 @@ describe("painel por estado atual e atenção (C9.1)", () => {
     expect(corrigir.textContent).toContain("A análise será refeita sobre o texto novo. Informações que você confirmou são mantidas e podem aparecer para revisão.");
     const tipo = document.querySelector("details[data-acao='informar-tipo']") as HTMLDetailsElement;
     expect(tipo.open).toBe(false);
-    expect(tipo.textContent).toContain("Substitui a sugestão automática por uma informação definida por você.");
+    expect(tipo.textContent).toContain("Defina o tipo do imóvel com uma informação fornecida por você.");
     // Detalhes da análise: fechado, com a auditoria e a nota sobre o apoio.
     const detalhes = document.querySelector("details[data-detalhes-analise]") as HTMLDetailsElement;
     expect(detalhes.open).toBe(false);
@@ -507,6 +507,43 @@ describe("painel por estado atual e atenção (C9.1)", () => {
     // Descartar e excluir ficam no fim, depois de tudo.
     const botoes = [...document.querySelectorAll("button")].map((b) => b.textContent);
     expect(botoes.slice(-2)).toEqual(["Descartar", "Excluir permanentemente"]);
+  });
+
+  it("explica a ação de tipo conforme a origem já registrada, sem alterar a proveniência", () => {
+    expect(explicacaoInformarTipo({ tipo: "Casa", tipoOrigem: "ia-texto", tipoEstado: "inferido" }))
+      .toBe("Substitui a sugestão automática por uma informação definida por você.");
+    expect(explicacaoInformarTipo({ tipo: "Casa", tipoOrigem: "ia-texto", tipoEstado: "confirmado" }))
+      .toBe("Substitui a sugestão automática por uma informação definida por você.");
+    expect(explicacaoInformarTipo({ tipo: "Sala Comercial", tipoOrigem: "manual", tipoEstado: "declarado" }))
+      .toBe("Altere o tipo informado por você.");
+    expect(explicacaoInformarTipo({ tipo: "Apartamento", tipoOrigem: "carteira", tipoEstado: "declarado" }))
+      .toBe("Altere o tipo trazido da carteira por uma informação definida por você.");
+    expect(explicacaoInformarTipo({ tipo: null, tipoOrigem: null, tipoEstado: null }))
+      .toBe("Defina o tipo do imóvel com uma informação fornecida por você.");
+
+    render(createElement(PainelIdentificado, { detalhe: detalhe({
+      tipo: "Sala Comercial", tipoOrigem: "manual", tipoEstado: "declarado",
+    }) }));
+    expect(document.querySelector("details[data-acao='informar-tipo']")!.textContent)
+      .toContain("Altere o tipo informado por você.");
+    cleanup();
+
+    render(createElement(PainelIdentificado, { detalhe: detalhe({
+      tipo: "Casa", tipoOrigem: "ia-texto", tipoEstado: "inferido",
+    }) }));
+    expect(document.querySelector("details[data-acao='informar-tipo']")!.textContent)
+      .toContain("Substitui a sugestão automática por uma informação definida por você.");
+  });
+
+  it("limita a prévia da foto de forma responsiva e mantém acesso ao original", () => {
+    const css = readFileSync(resolve("components/prospeccao/Prospeccao.module.css"), "utf8");
+    const captura = readFileSync(resolve("components/prospeccao/CapturaFachada.tsx"), "utf8");
+    const linhaDoTempo = readFileSync(resolve("components/prospeccao/LinhaDoTempoAvistamentos.tsx"), "utf8");
+    expect(css).toMatch(/\.fotoFachada img[\s\S]*?max-height: min\(44vh, 360px\)/);
+    expect(css).toMatch(/@media \(max-width: 720px\)[\s\S]*?\.fotoFachada img[\s\S]*?max-height: min\(54vh, 420px\)/);
+    expect(captura).toContain('aria-label="Abrir foto em tamanho original"');
+    expect(captura).toContain('target="_blank"');
+    expect(linhaDoTempo).toContain("onClick={() => aoRemoverFoto(foto.id)}");
   });
 
   it("sem sugestões pendentes nem conflito nem falha, 'Precisa de atenção' não existe", () => {

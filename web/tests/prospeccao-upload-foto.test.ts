@@ -210,7 +210,7 @@ describe("C5 — reserva, upload e finalização da fachada", () => {
       .toBe("environment");
   });
 
-  it("exibe a foto inteira, sem corte, limitada à altura da tela", () => {
+  it("exibe a prévia inteira, sem corte, com limites responsivos", () => {
     const css = readFileSync(resolve("components/prospeccao/Prospeccao.module.css"), "utf8");
     const regra = css.match(/\.fotoFachada img \{[\s\S]*?\}/)?.[0] ?? "";
     expect(regra).toContain("object-fit: contain");
@@ -240,6 +240,9 @@ describe("C5 — reserva, upload e finalização da fachada", () => {
     await waitFor(() => {
       expect(screen.getByAltText("Fachada registrada nesta passagem")).toBeTruthy();
     });
+    const acessoOriginal = screen.getByRole("link", { name: "Abrir foto em tamanho original" });
+    expect(acessoOriginal.getAttribute("href")).toBe("https://projeto.supabase.co/storage/v1/object/sign/fachadas/foto");
+    expect(acessoOriginal.getAttribute("target")).toBe("_blank");
   });
 
   it("não informa conclusão antes de a RPC de finalização confirmar", async () => {

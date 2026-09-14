@@ -62,7 +62,7 @@ vi.mock("@/components/SessaoProvider", () => ({
 
 import ModalAvistamento from "@/components/modais/ModalAvistamento";
 import LinhaDoTempoAvistamentos from "@/components/prospeccao/LinhaDoTempoAvistamentos";
-import ProspeccaoView from "@/components/prospeccao/ProspeccaoView";
+import ProspeccaoView, { rotuloTotalImoveis } from "@/components/prospeccao/ProspeccaoView";
 
 function identificado(id: string) {
   return {
@@ -174,6 +174,14 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("ProspeccaoView", () => {
+  it.each([
+    [0, "0 no total"],
+    [1, "1 no total"],
+    [37, "37 no total"],
+  ])("apresenta o total real da lista para %i imóvel(is)", (total, esperado) => {
+    expect(rotuloTotalImoveis(total)).toBe(esperado);
+  });
+
   it("exibe o nome final do produto e o carregamento inicial", () => {
     cenario.estado.carregando = true;
     render(createElement(ProspeccaoView));
@@ -194,7 +202,7 @@ describe("ProspeccaoView", () => {
     cenario.estado.erro = null;
     rerender(createElement(ProspeccaoView));
     expect(screen.getByText("Nenhum imóvel ativo por aqui.")).toBeTruthy();
-    fireEvent.click(screen.getAllByRole("button", { name: "Registrar primeira passagem" })[1]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Registrar imóvel visto" })[1]);
     expect(cenario.abrirModal).toHaveBeenCalledWith("avistamento");
   });
 
@@ -203,7 +211,7 @@ describe("ProspeccaoView", () => {
     cenario.estado.total = 1;
     render(createElement(ProspeccaoView));
 
-    expect(screen.queryByRole("button", { name: "Registrar primeira passagem" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Registrar imóvel visto" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Registrar novo local" }));
     expect(cenario.abrirModal).toHaveBeenCalledWith("avistamento");
   });

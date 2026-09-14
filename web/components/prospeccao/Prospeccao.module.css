@@ -672,15 +672,22 @@
   place-items: center;
 }
 
-/* A foto inteira, sempre: fachada fotografada de pé no celular é mais alta
-   que larga, e "cover" cortava o que o corretor quis registrar. O limite
-   de altura segue a tela, e o contêiner centraliza o que sobrar. */
+/* A prévia preserva a foto inteira sem dominar a passagem. O original
+   continua acessível pelo clique, e o limite cresce um pouco no celular
+   para manter a leitura confortável em telas estreitas. */
+.fotoFachadaLink {
+  display: grid;
+  width: 100%;
+  cursor: zoom-in;
+  place-items: center;
+}
+
 .fotoFachada img {
   display: block;
   width: auto;
   max-width: 100%;
   height: auto;
-  max-height: min(70vh, 560px);
+  max-height: min(44vh, 360px);
   object-fit: contain;
 }
 
@@ -739,6 +746,10 @@
   .etiqueta {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .fotoFachada img {
+    max-height: min(54vh, 420px);
   }
 }
 

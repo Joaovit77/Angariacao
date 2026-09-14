@@ -93,7 +93,7 @@ describe("estado local do Garimpo em Campo", () => {
       new Promise((resolve) => { concluirCriacao = resolve; }),
     );
     mocks.obterIdentificado.mockResolvedValue(detalhe("novo", ["avistamento-1"]));
-    useProspeccao.setState({ itens: [identificado("anterior")] });
+    useProspeccao.setState({ itens: [identificado("anterior")], total: 1 });
 
     const criacao = useProspeccao.getState().criar(
       "usuario-1",
@@ -117,6 +117,7 @@ describe("estado local do Garimpo em Campo", () => {
       selecionadoId: "novo",
       detalhe: { identificado: { id: "novo" } },
       itens: [{ id: "novo" }, { id: "anterior" }],
+      total: 2,
     });
   });
 

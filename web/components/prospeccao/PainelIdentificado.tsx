@@ -48,10 +48,28 @@ export const EXPLICACAO_INCORRETA =
   "Ela deixa de aparecer como informação atual e permanece no histórico.";
 export const EXPLICACAO_CONFIRMAR_TIPO =
   "Você confirma a sugestão de tipo. Ela ficará marcada como confirmada por você.";
-export const EXPLICACAO_INFORMAR_TIPO =
-  "Substitui a sugestão automática por uma informação definida por você.";
 export const EXPLICACAO_CORRIGIR_TEXTO =
   "A análise será refeita sobre o texto novo. Informações que você confirmou são mantidas e podem aparecer para revisão.";
+
+export function explicacaoInformarTipo(
+  item: Pick<
+    DetalheImovelIdentificado["identificado"],
+    "tipo" | "tipoOrigem" | "tipoEstado"
+  >,
+): string {
+  if (item.tipoOrigem === "ia-texto") {
+    return "Substitui a sugestão automática por uma informação definida por você.";
+  }
+  if (item.tipoOrigem === "manual") {
+    return "Altere o tipo informado por você.";
+  }
+  if (item.tipoOrigem === "carteira") {
+    return "Altere o tipo trazido da carteira por uma informação definida por você.";
+  }
+  return item.tipo && item.tipoEstado
+    ? "Altere o tipo atual por uma informação definida por você."
+    : "Defina o tipo do imóvel com uma informação fornecida por você.";
+}
 
 function enderecoCompleto(detalhe: DetalheImovelIdentificado): string {
   const item = detalhe.identificado;
@@ -171,9 +189,13 @@ function TipoComProveniencia({ detalhe }: { detalhe: DetalheImovelIdentificado }
 function SeletorTipoManual({
   identificadoId,
   tipoAtual,
+  tipoOrigem,
+  tipoEstado,
 }: {
   identificadoId: string;
   tipoAtual: DetalheImovelIdentificado["identificado"]["tipo"];
+  tipoOrigem: DetalheImovelIdentificado["identificado"]["tipoOrigem"];
+  tipoEstado: DetalheImovelIdentificado["identificado"]["tipoEstado"];
 }) {
   const [tipo, setTipo] = useState(tipoAtual ?? "");
   const definirTipo = useProspeccao((estado) => estado.definirTipo);
@@ -204,7 +226,9 @@ function SeletorTipoManual({
       >
         {salvando ? "Salvando…" : "Informar o tipo"}
       </button>
-      <small className={styles.explicacao}>{EXPLICACAO_INFORMAR_TIPO}</small>
+      <small className={styles.explicacao}>
+        {explicacaoInformarTipo({ tipo: tipoAtual, tipoOrigem, tipoEstado })}
+      </small>
     </div>
   );
 }
@@ -578,6 +602,8 @@ export default function PainelIdentificado({
               key={`${item.id}:${item.tipo ?? "sem-tipo"}`}
               identificadoId={item.id}
               tipoAtual={item.tipo}
+              tipoOrigem={item.tipoOrigem}
+              tipoEstado={item.tipoEstado}
             />
           </div>
         </details>

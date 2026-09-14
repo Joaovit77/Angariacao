@@ -605,15 +605,23 @@ export default function CapturaFachada({
     return (
       <div className={styles.fotoFachada}>
         {urlAssinada && !imagemIndisponivel ? (
-          <Image
-            loader={manterUrlAssinada}
-            unoptimized
-            src={urlAssinada}
-            alt="Fachada registrada nesta passagem"
-            width={640}
-            height={400}
-            onError={() => setImagemIndisponivel(true)}
-          />
+          <a
+            className={styles.fotoFachadaLink}
+            href={urlAssinada}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Abrir foto em tamanho original"
+          >
+            <Image
+              loader={manterUrlAssinada}
+              unoptimized
+              src={urlAssinada}
+              alt="Fachada registrada nesta passagem"
+              width={640}
+              height={400}
+              onError={() => setImagemIndisponivel(true)}
+            />
+          </a>
         ) : (
           <span className={styles.imagemIndisponivel}>
             {!imagemIndisponivel ? "Carregando imagem…" : "Imagem indisponível"}

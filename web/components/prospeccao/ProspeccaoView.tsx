@@ -30,6 +30,10 @@ function horaCurta(iso: string): string {
   return data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
+export function rotuloTotalImoveis(total: number): string {
+  return `${total} no total`;
+}
+
 export default function ProspeccaoView({
   armazemRascunho,
 }: {
@@ -123,7 +127,7 @@ export default function ProspeccaoView({
           disabled={salvando}
           onClick={() => abrirModal("avistamento")}
         >
-          {total > 0 ? "Registrar novo local" : "Registrar primeira passagem"}
+          {total > 0 ? "Registrar novo local" : "Registrar imóvel visto"}
         </button>
       </section>
 
@@ -197,7 +201,7 @@ export default function ProspeccaoView({
               disabled={salvando}
               onClick={() => abrirModal("avistamento")}
             >
-              Registrar primeira passagem
+              Registrar imóvel visto
             </button>
             {!incluirOcultos ? (
               <label className={styles.filtroOcultos}>
@@ -217,7 +221,7 @@ export default function ProspeccaoView({
           <section className={styles.lista} aria-label="Imóveis vistos em campo">
             <div className={styles.listaCabecalho}>
               <h3>Imóveis vistos em campo</h3>
-              <span>{carregando ? "Atualizando…" : `${total} no total`}</span>
+              <span>{carregando ? "Atualizando…" : rotuloTotalImoveis(total)}</span>
             </div>
             {/* Descartar preserva tudo e só esconde; fundido e exclusão pendente
                 também saem da lista normal. O filtro traz os três de volta. */}

@@ -321,6 +321,14 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
       });
       if (sucesso && criadoId) {
         const { identificado, avistamento } = criadoId as { identificado: string; avistamento: string };
+        // A releitura canônica já inseriu o novo registro na lista local,
+        // mas não passa pela consulta paginada que traz o `count`. Como a
+        // criação acabou de ser confirmada, o total disponível sobe uma vez
+        // sem exigir outra leitura do banco.
+        set((estado) => ({
+          total: estado.total + 1,
+          temMais: estado.pagina * estado.porPagina < estado.total + 1,
+        }));
         classificarEmSegundoPlano(identificado, avistamento);
       }
       return sucesso;
