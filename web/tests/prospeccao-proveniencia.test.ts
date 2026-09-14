@@ -13,7 +13,7 @@
    ================================================================ */
 import { createElement } from "react";
 import { PGlite } from "@electric-sql/pglite";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const cenario = vi.hoisted(() => ({
@@ -267,17 +267,28 @@ describe("PainelIdentificado", () => {
   beforeEach(() => { vi.clearAllMocks(); cenario.estado.classificandoAvistamentoId = null; });
   afterEach(cleanup);
 
-  it("etiqueta inferida: chip com marca IA, proveniência legível, e Confirmar/Contestar chamam o estado", () => {
+  it("etiqueta sugerida: chip 'sugestão', explicação humana, e Confirmar / Marcar como incorreta chamam o estado", () => {
     render(createElement(PainelIdentificado, { detalhe: detalhe() }));
     const bloco = document.querySelector("[data-etiqueta-id='1']")!;
     expect(bloco.querySelector("[data-origem]")!.textContent).toBe("Imóvel fechadosugestão");
-    expect(bloco.textContent).toContain("apoio no texto: moderado (88 de 100)");
+    expect(bloco.textContent).toContain("Sugestão da IA a partir do texto; ainda não confirmada por uma pessoa.");
+    // Apoio no texto só nos detalhes da análise, não no bloco da etiqueta.
+    expect(bloco.textContent).not.toMatch(/88|sinal|apoio/);
+    expect(document.querySelector("[data-detalhes-analise]")!.textContent).toContain("Imóvel fechado: a partir do texto · apoio no texto: moderado (88 de 100)");
     expect(bloco.textContent).not.toContain("gpt-5.6-luna");
     expect(bloco.textContent).not.toMatch(/prompt|Você classifica|json|token/i);
-    fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+    const confirmar = screen.getByRole("button", { name: "Confirmar" });
+    fireEvent.click(confirmar);
     expect(cenario.estado.confirmarEtiqueta).toHaveBeenCalledWith("identificado-1", 1);
-    fireEvent.click(screen.getByRole("button", { name: "Contestar" }));
+    const incorreta = screen.getByRole("button", { name: "Marcar como incorreta" });
+    fireEvent.click(incorreta);
     expect(cenario.estado.contestarEtiqueta).toHaveBeenCalledWith("identificado-1", 1);
+    // A consequência está escrita antes do clique e ligada ao botão.
+    expect(document.getElementById(confirmar.getAttribute("aria-describedby")!)!.textContent)
+      .toContain("Se o texto for corrigido depois, a confirmação é mantida, mas pode aparecer para revisão.");
+    expect(document.getElementById(incorreta.getAttribute("aria-describedby")!)!.textContent)
+      .toContain("Ela deixa de aparecer como informação atual e permanece no histórico.");
+    expect(document.body.textContent).not.toMatch(/para sempre/i);
   });
 
   it("etiqueta confirmada não oferece Confirmar de novo; a manual aparece como humana", () => {
@@ -287,62 +298,91 @@ describe("PainelIdentificado", () => {
     ] }) }));
     expect(screen.queryByRole("button", { name: "Confirmar" })).toBeNull();
     expect(document.querySelector("[data-etiqueta-id='7'] [data-origem]")!.textContent).toBe("Imóvel fechadoconfirmado");
-    expect(document.querySelector("[data-etiqueta-id='8']")!.textContent).toContain("plicada manualmente");
+    expect(document.querySelector("[data-etiqueta-id='7']")!.textContent).toContain("Confirmado por você em 11/09/2026");
+    const manual = document.querySelector("[data-etiqueta-id='8']")!;
+    expect(manual.querySelector("[data-origem]")!.getAttribute("data-origem")).toBe("manual");
+    expect(manual.textContent).toContain("Confirmado por você em 11/09/2026");
+    expect(manual.textContent).not.toMatch(/IA/);
   });
 
-  it("tipo inferido pela IA fica marcado como inferido, com sinal e avistamento, e Confirmar tipo chama a ação", () => {
+  it("tipo sugerido pela IA: marca 'sugestão da IA', passagem de origem, e 'Confirmar que é Casa' confirma a sugestão (não vira manual)", () => {
     render(createElement(PainelIdentificado, { detalhe: detalhe({
       tipo: "Casa", tipoOrigem: "ia-texto", tipoConfianca: 76, tipoEstado: "inferido",
       tipoClassificacaoId: "classificacao-1", tipoAvistamentoId: "avistamento-corrente", tipoDefinidoEm: "2026-09-10T12:01:00.000Z",
     }) }));
     const marca = document.querySelector("[data-tipo-estado]")!;
     expect(marca.getAttribute("data-tipo-estado")).toBe("inferido");
-    expect(marca.textContent).toBe("Inferido pela IA");
-    expect(document.body.textContent).toContain("IA sobre o texto · sinal 76 · avistamento de 10/09/2026");
-    fireEvent.click(screen.getByRole("button", { name: "Confirmar tipo" }));
+    expect(marca.textContent).toBe("sugestão da IA");
+    expect(document.body.textContent).toContain("Sugestão da IA a partir do texto da passagem de 10/09/2026");
+    expect(document.body.textContent).toContain("ainda não confirmada por uma pessoa");
+    // O apoio (76 → moderado) vive nos detalhes; "sinal" não existe mais.
+    expect(document.querySelector("[data-detalhes-analise]")!.textContent).toContain("Tipo Casa: a partir do texto · apoio no texto: moderado (76 de 100)");
+    expect(document.body.textContent).not.toMatch(/sinal/);
+    const botao = screen.getByRole("button", { name: "Confirmar que é Casa" });
+    expect(document.getElementById(botao.getAttribute("aria-describedby")!)!.textContent)
+      .toBe("Você confirma a sugestão de tipo. Ela ficará marcada como confirmada por você.");
+    expect(document.body.textContent).not.toMatch(/tipo informado por você/i);
+    fireEvent.click(botao);
+    // A ação é a MESMA de antes: confirma a sugestão; não define tipo manual.
     expect(cenario.estado.confirmarTipo).toHaveBeenCalledWith("identificado-1");
+    expect(cenario.estado.definirTipo).not.toHaveBeenCalled();
+    // Cabeçalho resume com a marca curta.
+    expect(document.querySelector("[data-resumo-cabecalho]")!.textContent).toContain("Casa · sugestão");
   });
 
-  it("tipo confirmado mantém a origem IA à vista e não oferece Confirmar tipo; tipo manual nem marca de IA", () => {
+  it("tipo confirmado mantém a origem IA à vista e não oferece confirmar de novo; tipo informado por você nem marca de IA", () => {
     const { unmount } = render(createElement(PainelIdentificado, { detalhe: detalhe({
       tipo: "Casa", tipoOrigem: "ia-texto", tipoConfianca: 76, tipoEstado: "confirmado",
       tipoClassificacaoId: "classificacao-1", tipoAvistamentoId: "avistamento-corrente",
       tipoConfirmadoPor: "u", tipoConfirmadoEm: "2026-09-11T09:00:00.000Z",
     }) }));
-    expect(document.querySelector("[data-tipo-estado]")!.textContent).toBe("Confirmado");
-    expect(document.body.textContent).toContain("IA sobre o texto · sinal 76");
-    expect(document.body.textContent).toContain("confirmado em 11/09/2026");
-    expect(screen.queryByRole("button", { name: "Confirmar tipo" })).toBeNull();
+    expect(document.querySelector("[data-tipo-estado]")!.textContent).toBe("confirmado por você");
+    expect(document.body.textContent).toContain("Sugestão da IA confirmada por você em 11/09/2026");
+    expect(document.querySelector("[data-detalhes-analise]")!.textContent).toContain("apoio no texto: moderado (76 de 100) · confirmado por você em 11/09/2026");
+    expect(screen.queryByRole("button", { name: /Confirmar que é/ })).toBeNull();
     unmount();
 
     render(createElement(PainelIdentificado, { detalhe: detalhe({ tipo: "Galpão", tipoOrigem: "manual", tipoEstado: "declarado" }) }));
     const marcaManual = document.querySelector("[data-tipo-estado]")!;
-    expect(marcaManual.textContent).toBe("Declarado");
-    expect(marcaManual.closest("div")!.textContent).toContain("definido manualmente");
-    expect(marcaManual.closest("div")!.textContent).not.toContain("IA sobre o texto");
-    expect(screen.queryByRole("button", { name: "Confirmar tipo" })).toBeNull();
+    expect(marcaManual.textContent).toBe("informado por você");
+    expect(marcaManual.closest("div")!.textContent).toContain("Informado por você.");
+    expect(marcaManual.closest("div")!.textContent).not.toMatch(/IA/);
+    expect(screen.queryByRole("button", { name: /Confirmar que é/ })).toBeNull();
   });
 
-  it("avistamento corrente pendente ou indisponível: 'Aguardando classificação' e 'Classificar agora', sem erro na tela", () => {
-    for (const estado of ["pendente", "indisponivel"]) {
-      cenario.estado.classificarAvistamento.mockClear();
-      const { unmount } = render(createElement(PainelIdentificado, { detalhe: detalhe({}, { classificacaoEstado: estado, etiquetas: [] }) }));
-      expect(screen.getByRole("status").textContent).toContain("Aguardando classificação");
-      expect(screen.queryByRole("alert")).toBeNull();
-      fireEvent.click(screen.getByRole("button", { name: "Classificar agora" }));
-      expect(cenario.estado.classificarAvistamento).toHaveBeenCalledWith("identificado-1", "avistamento-corrente");
-      unmount();
-    }
-    // Concluído: nada de aguardar.
-    render(createElement(PainelIdentificado, { detalhe: detalhe() }));
-    expect(screen.queryByRole("button", { name: "Classificar agora" })).toBeNull();
+  it("passagem mais recente ainda não analisada: 'Precisa de atenção' explica e oferece 'Analisar agora'; indisponível vira motivo + 'Tentar de novo'", () => {
+    cenario.estado.classificarAvistamento.mockClear();
+    const { unmount } = render(createElement(PainelIdentificado, { detalhe: detalhe({}, { classificacaoEstado: "pendente", etiquetas: [] }) }));
+    const atencao = screen.getByRole("region", { name: "Precisa de atenção" });
+    expect(atencao.querySelector("[data-atencao='nao-analisada']")!.getAttribute("data-nivel")).toBe("info");
+    expect(atencao.textContent).toContain("A observação desta passagem ainda não foi analisada.");
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(within(atencao).getByRole("button", { name: "Analisar agora" }));
+    expect(cenario.estado.classificarAvistamento).toHaveBeenCalledWith("identificado-1", "avistamento-corrente");
+    unmount();
+
+    // `indisponivel` sem tentativa recente: a análise não aconteceu; diz isso e oferece tentar de novo.
+    cenario.estado.classificarAvistamento.mockClear();
+    render(createElement(PainelIdentificado, { detalhe: detalhe({}, { classificacaoEstado: "indisponivel", etiquetas: [] }) }));
+    const falha = document.querySelector("[data-atencao='falha']")!;
+    expect(falha.getAttribute("data-nivel")).toBe("erro");
+    expect(falha.textContent).toContain("Não foi possível analisar agora. Tente novamente.");
+    fireEvent.click(within(falha as HTMLElement).getByRole("button", { name: "Tentar de novo" }));
+    expect(cenario.estado.classificarAvistamento).toHaveBeenCalledWith("identificado-1", "avistamento-corrente");
+    cleanup();
+
+    // Concluído sem sugestões pendentes: a seção de atenção nem existe.
+    render(createElement(PainelIdentificado, { detalhe: detalhe({}, { etiquetas: [] }) }));
+    expect(screen.queryByRole("region", { name: "Precisa de atenção" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Analisar agora" })).toBeNull();
   });
 
-  it("enquanto analisa, o botão fica desabilitado e a linha do tempo diz 'Analisando…'", () => {
+  it("enquanto analisa, o botão fica desabilitado e a tela diz 'Analisando'", () => {
     cenario.estado.classificandoAvistamentoId = "avistamento-corrente";
     render(createElement(PainelIdentificado, { detalhe: detalhe({}, { classificacaoEstado: "pendente", etiquetas: [] }) }));
-    expect((screen.getByRole("button", { name: "Classificar agora" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(document.body.textContent).toContain("Analisando…");
+    const atencao = screen.getByRole("region", { name: "Precisa de atenção" });
+    expect((within(atencao).getByRole("button", { name: "Analisar agora" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(document.body.textContent).toContain("Analisando a observação…");
   });
 });
 

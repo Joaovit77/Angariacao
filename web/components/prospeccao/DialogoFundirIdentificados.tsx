@@ -81,8 +81,8 @@ export default function DialogoFundirIdentificados({
       }}>
       <h4 id={id + "-titulo"} ref={tituloRef} tabIndex={-1}>Unir registros</h4>
       <p id={id + "-explicacao"}>
-        Os dois históricos serão unidos no registro principal. Nenhum avistamento, foto ou evidência
-        será apagado. Esta operação não cria oportunidade no Pipeline.
+        Os dois históricos serão unidos no registro principal. Nenhuma passagem, foto ou evidência
+        será apagada. Esta operação não cria oportunidade no Pipeline.
       </p>
       <fieldset className={styles.escolhaFusao} disabled={ocupado || !permitido}>
         <legend>Qual registro você quer manter como principal?</legend>
@@ -95,8 +95,8 @@ export default function DialogoFundirIdentificados({
               <span>
                 <span className={styles.papelFusao}>{rotulo}</span>
                 <strong>{endereco(item)}</strong>
-                <span>{item.tipo ?? "Tipo não definido"} · {item.avistamentosTotal} avistamento{item.avistamentosTotal === 1 ? "" : "s"}</span>
-                <span>Último: {fmtDataHoraIso(item.ultimoAvistamentoEm) || "Sem avistamento"}</span>
+                <span>{item.tipo ?? "Tipo não definido"} · {item.avistamentosTotal} passage{item.avistamentosTotal === 1 ? "m" : "ns"}</span>
+                <span>Última: {fmtDataHoraIso(item.ultimoAvistamentoEm) || "Sem passagem"}</span>
                 <span>Registrado em {fmtDataHoraIso(item.criadoEm) || "data não informada"}</span>
                 {fotos !== undefined ? <span>{fotos} foto{fotos === 1 ? "" : "s"} no histórico</span> : null}
                 <b>{sobreviventeId === item.id ? "Será mantido como principal" : sobreviventeId ? "Terá o histórico absorvido" : "Manter este como principal"}</b>

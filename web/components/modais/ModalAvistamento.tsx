@@ -559,7 +559,7 @@ export default function ModalAvistamento({
     );
     if (!detalheAtual || !avistamentoCriado) {
       setErro(
-        "O avistamento foi salvo, mas não foi possível localizar o destino da foto. Abra o registro para tentar novamente.",
+        "A passagem foi salva, mas não foi possível localizar o destino da foto. Abra o registro para tentar novamente.",
       );
       return;
     }
@@ -583,8 +583,8 @@ export default function ModalAvistamento({
           {avistamentoSalvo && rascunhoRestauradoEm
             ? "Concluir envio da foto"
             : primeiroAvistamento
-              ? "Registrar primeiro avistamento"
-              : "Novo avistamento"}
+              ? "Registrar primeira passagem"
+              : "Nova passagem"}
         </div>
         <button type="button" className="icon-btn" aria-label="Fechar" onClick={cancelar}>
           ✕
@@ -598,7 +598,7 @@ export default function ModalAvistamento({
                 {fotoPerdidaEm
                   ? "A foto da câmera do aparelho não chegou."
                   : avistamentoSalvo
-                    ? "Avistamento já salvo; a foto ficou pendente."
+                    ? "Passagem já salva; a foto ficou pendente."
                     : "Registro não concluído restaurado."}
               </strong>
               <span>
@@ -622,7 +622,7 @@ export default function ModalAvistamento({
           </div>
           {!primeiroAvistamento ? (
             <div className={styles.identidadeReutilizada}>
-              <span>Novo avistamento de</span>
+              <span>Nova passagem por</span>
               <strong>{enderecoConhecido}</strong>
               <small>Os dados já conhecidos serão reutilizados; você não precisa digitá-los novamente.</small>
             </div>
@@ -656,7 +656,7 @@ export default function ModalAvistamento({
             </div>
           </div>
           {avistamentoSalvo ? null : (
-          <section className={styles.localizacao} aria-label="Localização do avistamento">
+          <section className={styles.localizacao} aria-label="Localização da passagem">
             <div className={styles.localizacaoCabecalho}>
               <div>
                 <strong>Localização</strong>
@@ -892,12 +892,12 @@ export default function ModalAvistamento({
               disabled={salvando || !usuario || avistamentoSalvo || fotoSelecionada.processando}
             >
               {avistamentoSalvo
-                ? "Avistamento salvo"
+                ? "Passagem salva"
                 : salvando
                   ? "Salvando…"
                   : fotoSelecionada.selecionada && fotoSelecionada.pronta
                     ? "Registrar e enviar foto"
-                    : "Salvar avistamento"}
+                    : "Salvar passagem"}
             </button>
           </div>
         </div>

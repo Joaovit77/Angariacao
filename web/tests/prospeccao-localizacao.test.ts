@@ -107,7 +107,7 @@ function preencher(rotulo: string, valor: string) {
 }
 
 async function salvar() {
-  fireEvent.click(screen.getByRole("button", { name: "Salvar avistamento" }));
+  fireEvent.click(screen.getByRole("button", { name: "Salvar passagem" }));
   await waitFor(() => expect(cenario.estado.criar).toHaveBeenCalled());
   return cenario.estado.criar.mock.calls[0] as [string, Record<string, unknown>, Record<string, unknown>];
 }
@@ -296,7 +296,7 @@ describe("C6 — o modal mede, avisa e cai para o endereço", () => {
     const geocodificar = vi.fn(async () => ({ lat: -23.3, lon: -51.1, precisao: "rua" as const, usedFallback: true }));
     abrirModal({ geocodificar }, { imovelIdentificadoId: "identificado-1" });
     await screen.findByText(/Este aparelho não oferece localização/);
-    fireEvent.click(screen.getByRole("button", { name: "Salvar avistamento" }));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar passagem" }));
     await waitFor(() => expect(cenario.estado.adicionarAvistamento).toHaveBeenCalled());
     expect(geocodificar).toHaveBeenCalledWith("Rua Sergipe, 500", "Centro", "Londrina", { cep: undefined });
     expect(cenario.estado.adicionarAvistamento.mock.calls[0][2]).toMatchObject({

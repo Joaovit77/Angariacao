@@ -2471,6 +2471,39 @@ quase igual (~3,5%), mas **custam muito diferente por tentativa** — abordar na
 mensagem; no garimpo é achar endereço, rodar o eemovel e cadastrar. A vantagem da OLX é custo por
 tentativa, não conversão.
 
+### Garimpo em Campo: a tela fala a língua da rua (C9.1)
+
+O módulo guarda `avistamento`, `classificacao`, `snapshot_aplicado`, `inferida/confirmada/contestada/
+desatualizada/substituida` no banco, nos tipos, nas RPCs e nos nomes de arquivo, e **nada disso
+aparece para o corretor**. A camada de apresentação (`components/prospeccao/*`) traduz, em duas
+camadas: a primeira diz o que o sistema percebeu, se ainda vale, o que mudou, se há algo a fazer e
+quando foi; a segunda, atrás de "Ver detalhes" (`<details>` nativo, fechado por padrão), guarda a
+auditoria: origem, análise nova × reaproveitada, apoio no texto, data, revisão, passagem de origem.
+
+Vocabulário público, e o que ele NÃO muda: **passagem** (= avistamento; "visita" foi rejeitado por
+colidir com visita de cliente; `aria-label` é interface, então também diz passagem); marcas de
+etiqueta **sugestão / confirmado / incorreta / texto mudou / substituída / visto antes / manual**
+(= inferida / confirmada / contestada / desatualizada / substituida / histórica / manual); **Analisado
+pela IA** e **Já tínhamos analisado uma observação igual** (= `modo` modelo / reuso, sem falar em
+token, custo ou chamada); **Estas informações refletem a passagem mais recente** / **Registro
+anterior; as informações atuais vêm da passagem mais recente** (= `snapshot_aplicado` cruzado com
+"é a passagem corrente"; a coluna não muda e nunca é dita); **apoio no texto: forte (92 de 100)** (=
+`confianca`, faixas de apresentação ≥ 90 / 70–89 / < 70, sem porcentagem, sempre com a nota de que
+não é probabilidade de acerto; o piso 70 das etiquetas segue no cálculo). Confirmar uma sugestão de
+tipo continua sendo confirmar a sugestão: a origem `ia-texto` não vira manual.
+
+O painel segue a ordem da leitura em campo: cabeçalho, **Precisa de atenção** (só quando há:
+conflito de revisão, falha da análise com motivo, texto corrigido aguardando análise, sugestões não
+confirmadas; nível declarado em atributo e em texto, nunca só na cor), **O que sabemos agora**,
+ações recolhidas (corrigir o texto, informar o tipo), **Visto anteriormente**, **Histórico de
+passagens**, localização e duplicatas, **Detalhes da análise**, e só no fim descartar/excluir. O
+motivo de uma falha de análise é estado transitório de tela (`falhaAnalise` no `useProspeccao`):
+só o código fechado da rota, preso ao avistamento em que falhou, apagado na próxima tentativa, no
+sucesso, ao trocar de imóvel e ao limpar a seleção; a tradução para frase humana é um mapa fechado
+(`textosAnalise.ts`), e mensagem bruta de fornecedor nunca chega à tela. Limitação conhecida: os
+chips e o indicador "N sugestões a confirmar" do card só existem para o imóvel selecionado, porque
+só ele tem as etiquetas carregadas; o card não promete o que não tem.
+
 ## O super admin: operar o sistema ≠ usar o sistema
 
 Tudo acima é o painel do **corretor**, e cada linha do banco pertence a um `user_id`. O que faltava

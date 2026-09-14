@@ -110,7 +110,7 @@ export default function ProspeccaoView({
             <span className={styles.sobretitulo}>MEMÓRIA DE CAMPO</span>
             <h2>Garimpo em Campo</h2>
             <p>
-              Registre locais observados e mantenha cada visita separada na linha do tempo.
+              Registre os imóveis que você vê na rua e mantenha cada passagem separada no histórico.
             </p>
           </div>
         </div>
@@ -123,7 +123,7 @@ export default function ProspeccaoView({
           disabled={salvando}
           onClick={() => abrirModal("avistamento")}
         >
-          {total > 0 ? "Registrar novo local" : "Registrar primeiro avistamento"}
+          {total > 0 ? "Registrar novo local" : "Registrar primeira passagem"}
         </button>
       </section>
 
@@ -179,17 +179,17 @@ export default function ProspeccaoView({
       ) : null}
 
       {carregando && !itens.length ? (
-        <div className={styles.estado} role="status">Carregando identificações…</div>
+        <div className={styles.estado} role="status">Carregando os imóveis vistos em campo…</div>
       ) : !erro && !aviso && !itens.length ? (
         <div className={styles.estado}>
           <div>
             <strong>
-              {incluirOcultos ? "Nenhum imóvel identificado." : "Nenhum imóvel identificado ativo."}
+              {incluirOcultos ? "Nenhum imóvel registrado ainda." : "Nenhum imóvel ativo por aqui."}
             </strong>
             <p>
               {incluirOcultos
-                ? "Registre o primeiro avistamento para começar sua memória de campo."
-                : "Descartados, fundidos e exclusões pendentes ficam atrás do filtro de ocultos."}
+                ? "Registre a primeira passagem por um imóvel para começar sua memória de campo."
+                : "Os descartados, unidos a outro registro e em exclusão ficam em “Mostrar ocultos”."}
             </p>
             <button
               type="button"
@@ -197,7 +197,7 @@ export default function ProspeccaoView({
               disabled={salvando}
               onClick={() => abrirModal("avistamento")}
             >
-              Registrar primeiro avistamento
+              Registrar primeira passagem
             </button>
             {!incluirOcultos ? (
               <label className={styles.filtroOcultos}>
@@ -214,9 +214,9 @@ export default function ProspeccaoView({
         </div>
       ) : itens.length ? (
         <div className={styles.conteudo}>
-          <section className={styles.lista} aria-label="Imóveis identificados">
+          <section className={styles.lista} aria-label="Imóveis vistos em campo">
             <div className={styles.listaCabecalho}>
-              <h3>Identificados</h3>
+              <h3>Imóveis vistos em campo</h3>
               <span>{carregando ? "Atualizando…" : `${total} no total`}</span>
             </div>
             {/* Descartar preserva tudo e só esconde; fundido e exclusão pendente
@@ -228,7 +228,7 @@ export default function ProspeccaoView({
                 disabled={carregando || salvando}
                 onChange={(evento) => void definirIncluirOcultos(evento.target.checked)}
               />
-              Mostrar descartados, fundidos e exclusões pendentes
+              Mostrar ocultos (descartados, unidos a outro registro e em exclusão)
             </label>
             <div className={styles.cards}>
               {itens.map((identificado) => (
@@ -271,9 +271,9 @@ export default function ProspeccaoView({
             <div className={styles.estado} role={carregando && selecionadoId ? "status" : undefined}>
               <div>
                 <strong>
-                  {carregando && selecionadoId ? "Carregando detalhe…" : "Selecione um identificado"}
+                  {carregando && selecionadoId ? "Carregando detalhe…" : "Escolha um imóvel na lista"}
                 </strong>
-                <p>O histórico completo será exibido aqui sem misturar os avistamentos.</p>
+                <p>O que sabemos agora e o histórico de passagens aparecem aqui.</p>
               </div>
             </div>
           )}

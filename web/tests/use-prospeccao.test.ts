@@ -550,6 +550,53 @@ describe("C8 — classificação por IA no estado local", () => {
     expect(useProspeccao.getState()).toMatchObject({ erro: null, classificandoAvistamentoId: null });
   });
 
+  /* C9.1: o motivo da última falha é estado TRANSITÓRIO de tela, preso ao
+     avistamento em que falhou. Só o código fechado da rota; nunca a
+     mensagem bruta. Some na próxima tentativa, no sucesso, ao trocar de
+     imóvel e ao limpar a seleção. */
+  it("falha guarda só o código, preso ao avistamento; sucesso limpa; nova tentativa apaga o anterior", async () => {
+    mocks.obterIdentificado.mockResolvedValue(detalhe("identificado-1", ["av-1", "av-2"]));
+    await useProspeccao.getState().carregarDetalhe("identificado-1");
+    mocks.classificarAvistamento.mockResolvedValue({ ...RESPOSTA, ok: false, estado: null, etiquetas: [], falha: "limite-diario" });
+
+    await useProspeccao.getState().classificarAvistamento("identificado-1", "av-1");
+    expect(useProspeccao.getState().falhaAnalise).toEqual({ avistamentoId: "av-1", codigo: "limite-diario" });
+    expect(JSON.stringify(useProspeccao.getState().falhaAnalise)).not.toMatch(/Error|openai|exception/i);
+
+    // Sucesso em OUTRO avistamento não apaga o motivo de av-1 (é dele, não do imóvel).
+    mocks.classificarAvistamento.mockResolvedValue(RESPOSTA);
+    await useProspeccao.getState().classificarAvistamento("identificado-1", "av-2");
+    expect(useProspeccao.getState().falhaAnalise).toEqual({ avistamentoId: "av-1", codigo: "limite-diario" });
+
+    // Nova tentativa em av-1 apaga o motivo enquanto roda; sucesso deixa limpo.
+    let concluir!: (r: unknown) => void;
+    mocks.classificarAvistamento.mockReturnValue(new Promise((resolve) => { concluir = resolve; }));
+    const tentativa = useProspeccao.getState().classificarAvistamento("identificado-1", "av-1");
+    expect(useProspeccao.getState().falhaAnalise).toBeNull();
+    concluir(RESPOSTA);
+    await tentativa;
+    expect(useProspeccao.getState().falhaAnalise).toBeNull();
+  });
+
+  it("sem resposta da rota o motivo é 'indisponivel'; trocar de imóvel ou limpar a seleção apaga o motivo", async () => {
+    mocks.obterIdentificado.mockResolvedValue(detalhe("identificado-1", ["av-1"]));
+    await useProspeccao.getState().carregarDetalhe("identificado-1");
+    mocks.classificarAvistamento.mockRejectedValue(new Error("ECONNRESET: mensagem bruta que não pode ir para a tela"));
+    await useProspeccao.getState().classificarAvistamento("identificado-1", "av-1");
+    expect(useProspeccao.getState().falhaAnalise).toEqual({ avistamentoId: "av-1", codigo: "indisponivel" });
+
+    // Outro imóvel carregado: o motivo de av-1 não tem o que dizer sobre ele.
+    mocks.obterIdentificado.mockResolvedValue(detalhe("identificado-2", ["av-9"]));
+    await useProspeccao.getState().carregarDetalhe("identificado-2");
+    expect(useProspeccao.getState().falhaAnalise).toBeNull();
+
+    mocks.classificarAvistamento.mockResolvedValue({ ...RESPOSTA, ok: false, estado: null, etiquetas: [], falha: "ocupado" });
+    await useProspeccao.getState().classificarAvistamento("identificado-2", "av-9");
+    expect(useProspeccao.getState().falhaAnalise).toEqual({ avistamentoId: "av-9", codigo: "ocupado" });
+    useProspeccao.getState().limparSelecao();
+    expect(useProspeccao.getState().falhaAnalise).toBeNull();
+  });
+
   it("confirmar tipo passa pela RPC do navegador e atualiza o detalhe", async () => {
     mocks.obterIdentificado.mockResolvedValue(detalhe("identificado-1", ["av-1"]));
     mocks.confirmarTipoIdentificado.mockResolvedValue({ repetida: false });

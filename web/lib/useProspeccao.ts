@@ -69,6 +69,12 @@ interface EstadoProspeccao {
   /** Avistamento cuja classificação por IA está em curso, se houver. Não
       bloqueia o resto da tela: a chamada corre em segundo plano. */
   classificandoAvistamentoId: string | null;
+  /** Motivo (código fechado da rota) da última tentativa de análise que
+      falhou, preso ao avistamento em que falhou. Estado TRANSITÓRIO de
+      tela: não persiste, não vai ao banco, some na próxima tentativa, no
+      sucesso, ao trocar de seleção e ao resetar. Nunca guarda mensagem
+      bruta de fornecedor: só o código. */
+  falhaAnalise: { avistamentoId: string; codigo: string } | null;
   fundir: (sobreviventeId: string, absorvidoId: string) => Promise<ResultadoFusaoIdentificados | null>;
   carregarPagina: (pagina?: number, porPagina?: number) => Promise<boolean>;
   definirIncluirOcultos: (incluirOcultos: boolean) => Promise<boolean>;
@@ -148,6 +154,7 @@ const estadoInicial = {
   aviso: null as string | null,
   revisaoFusao: 0,
   classificandoAvistamentoId: null as string | null,
+  falhaAnalise: null as { avistamentoId: string; codigo: string } | null,
 };
 
 function substituirIdentificado(
@@ -177,6 +184,9 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
       itens: substituirIdentificado(estado.itens, detalhe.identificado),
       detalhe,
       selecionadoId: detalhe.identificado.id,
+      // Trocar de imóvel apaga o motivo de falha do anterior: ele é do
+      // avistamento em que falhou e não tem o que dizer sobre outro registro.
+      falhaAnalise: estado.detalhe?.identificado.id === detalhe.identificado.id ? estado.falhaAnalise : null,
     }));
   }
 
@@ -249,7 +259,7 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
       }
     },
     limparSelecao() {
-      set({ detalhe: null, selecionadoId: null });
+      set({ detalhe: null, selecionadoId: null, falhaAnalise: null });
     },
     limparErro() {
       set({ erro: null });
@@ -338,7 +348,11 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
     async classificarAvistamento(imovelIdentificadoId, avistamentoId) {
       if (get().classificandoAvistamentoId === avistamentoId) return null;
       const versao = versaoEstado;
-      set({ classificandoAvistamentoId: avistamentoId });
+      // Nova tentativa apaga o motivo anterior DESTE avistamento.
+      set((estado) => ({
+        classificandoAvistamentoId: avistamentoId,
+        falhaAnalise: estado.falhaAnalise?.avistamentoId === avistamentoId ? null : estado.falhaAnalise,
+      }));
       let resultado: ResultadoClassificacaoAvistamento | null = null;
       try {
         resultado = (await classificarAvistamento(avistamentoId)) ?? null;
@@ -346,6 +360,17 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
         resultado = null;
       }
       if (versao !== versaoEstado) return resultado;
+      // Motivo transitório para a tela: só o código fechado da rota; sem
+      // resposta (rede, sessão) vira "indisponivel". Sucesso limpa.
+      if (!resultado) {
+        set({ falhaAnalise: { avistamentoId, codigo: "indisponivel" } });
+      } else if (!resultado.ok) {
+        set({ falhaAnalise: { avistamentoId, codigo: resultado.falha ?? "indisponivel" } });
+      } else {
+        set((estado) => ({
+          falhaAnalise: estado.falhaAnalise?.avistamentoId === avistamentoId ? null : estado.falhaAnalise,
+        }));
+      }
       // Seja qual for a resposta (inclusive "indisponível"), o que a tela
       // mostra é o estado do banco. Releitura silenciosa: nada de
       // `salvando`, nada de `erro`. Sem resposta, nada mudou: não relê.

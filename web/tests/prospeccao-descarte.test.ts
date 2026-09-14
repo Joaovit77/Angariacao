@@ -71,7 +71,7 @@ describe("descartar preserva o histórico", () => {
     const descarte = painel.match(/async function confirmarDescarte\(\)[\s\S]*?\n {2}\}/)?.[0] ?? "";
     expect(descarte).toContain("await descartar(item.id");
     expect(descarte).not.toMatch(/excluir|removerFoto|DialogoExcluirIdentificado/);
-    expect(painel).toContain("Descartar esta identificação e preservar todo o histórico?");
+    expect(painel).toContain("Descartar este imóvel? Ele sai da lista, mas nada é apagado");
   });
 });
 

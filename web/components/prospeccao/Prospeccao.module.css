@@ -1255,3 +1255,56 @@
   font-weight: 800;
   letter-spacing: .03em;
 }
+
+/* ---- C9.1: painel por estado atual e atenção ---- */
+.atencao {
+  border-color: var(--warn);
+}
+.atencaoLista {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* O nível vem por atributo e por texto, nunca só pela cor. */
+.atencaoItem {
+  border-left: 3px solid var(--info);
+  border-radius: 8px;
+  background: var(--info-soft);
+}
+.atencaoItem[data-nivel="atencao"] { border-left-color: var(--warn); background: var(--warn-soft); }
+.atencaoItem[data-nivel="erro"] { border-left-color: var(--bad); background: var(--bad-soft); }
+.atencaoItem > .conflito { margin-top: 0; border: 0; background: transparent; }
+.atencaoItemCorpo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.atencaoItemCorpo > div { display: grid; gap: 2px; min-width: 0; flex: 1 1 220px; }
+.atencaoItemCorpo strong { color: var(--text); }
+.atencaoItemCorpo p { margin: 0; color: var(--text-dim); font-size: 11.5px; }
+.tipoAtual {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  margin-bottom: 12px;
+}
+.tipoAtual strong { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 14px; color: var(--text); }
+.legendaAcoes {
+  margin: 10px 0 0;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+.legendaAcoes b { color: var(--text-dim); font-weight: 700; }
+.acoesSecundarias {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+}

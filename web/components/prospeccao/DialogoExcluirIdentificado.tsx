@@ -94,8 +94,8 @@ export default function DialogoExcluirIdentificado({
     <div className={styles.dialogoExclusao} role="dialog" aria-labelledby="dialogo-exclusao-titulo">
       <strong id="dialogo-exclusao-titulo">Excluir permanentemente este registro</strong>
       <p>
-        Isto <b>não</b> é descartar. Descartar preserva o histórico; excluir apaga de verdade a
-        identidade, todos os avistamentos, etiquetas, classificações e os arquivos de foto no Storage.
+        Isto <b>não</b> é descartar. Descartar preserva o histórico; excluir apaga de verdade o
+        registro, todas as passagens, informações, análises e os arquivos de foto.
       </p>
 
       {fase === "carregando" ? <p role="status">Contando o que será apagado…</p> : null}
@@ -106,7 +106,7 @@ export default function DialogoExcluirIdentificado({
             <ul className={styles.dialogoLista}>
               <li>
                 {plural(previa.fotosTotal, "foto", "fotos")} —{" "}
-                {plural(arquivosPrevistos ?? 0, "arquivo", "arquivos")} no Storage (original e miniatura,
+                {plural(arquivosPrevistos ?? 0, "arquivo de foto", "arquivos de foto")} (original e miniatura,
                 incluindo envios não concluídos)
               </li>
               <li>
@@ -116,7 +116,7 @@ export default function DialogoExcluirIdentificado({
           ) : (
             <p role="alert">
               Não foi possível contar os arquivos e lápides agora. A exclusão alcança tudo o que existir
-              neste registro, e a rota informa o resultado real ao final.
+              neste registro, e o resultado real é informado ao final.
             </p>
           )}
           <div className={styles.dialogoAcoes}>
@@ -137,7 +137,7 @@ export default function DialogoExcluirIdentificado({
 
       {fase === "executando" ? (
         <>
-          <p role="status">Removendo arquivos do Storage e confirmando cada um…</p>
+          <p role="status">Apagando os arquivos de foto e confirmando cada um…</p>
           <progress aria-label="Exclusão em andamento" />
         </>
       ) : null}
@@ -146,9 +146,9 @@ export default function DialogoExcluirIdentificado({
         <>
           <p className={styles.dialogoPendente} role="alert">
             {falhou
-              ? "A rota de exclusão não respondeu. Nada foi declarado concluído; a exclusão continua pendente."
+              ? "O servidor não respondeu. Nada foi declarado concluído; a exclusão continua pendente."
               : `${removidos} de ${removidos + pendentes} arquivos removidos; a exclusão continua pendente` +
-                ` (${plural(pendentes, "arquivo ainda", "arquivos ainda")} no Storage).`}
+                ` (${plural(pendentes, "arquivo de foto ainda", "arquivos de foto ainda")} por apagar).`}
           </p>
           <div className={styles.dialogoAcoes}>
             <button

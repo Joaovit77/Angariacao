@@ -98,7 +98,7 @@ describe("C7b — confirmação humana", () => {
     expect(dialogo.textContent).toContain("Unidade 101");
     expect(dialogo.textContent).toContain("Bloco A");
     expect(dialogo.textContent).toContain("1 foto no histórico");
-    expect(dialogo.textContent).toContain("Nenhum avistamento, foto ou evidência será apagado");
+    expect(dialogo.textContent).toContain("Nenhuma passagem, foto ou evidência será apagada");
     expect(dialogo.textContent).toContain("não cria oportunidade no Pipeline");
     expect(screen.getAllByRole("radio").every((r) => !(r as HTMLInputElement).checked)).toBe(true);
     expect((screen.getByRole("button", { name: "Confirmar união dos históricos" }) as HTMLButtonElement).disabled).toBe(true);
@@ -209,7 +209,7 @@ describe("C7b — lista, painel e histórico", () => {
     fireEvent.click(await screen.findByRole("button", { name: "É o mesmo" }));
     escolher();
     fireEvent.click(screen.getByRole("button", { name: "Confirmar união dos históricos" }));
-    expect((screen.getByRole("button", { name: "Novo avistamento" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Nova passagem" }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: "Registrar novo local" }) as HTMLButtonElement).disabled).toBe(true);
     await act(async () => { concluir({ sobreviventeId: "b", absorvidoId: "a", repetida: false }); });
   });
@@ -223,7 +223,7 @@ describe("C7b — lista, painel e histórico", () => {
     const comFoto = { ...unido, avistamentos: [unido.avistamentos[0], { ...unido.avistamentos[1], fotos: [foto] }] } as DetalheImovelIdentificado;
     render(createElement(PainelIdentificado, { detalhe: comFoto }));
     await waitFor(() => expect(mocks.createSignedUrl).toHaveBeenCalledWith(foto.caminho, expect.any(Number)));
-    await waitFor(() => expect(new URL((screen.getByRole("img", { name: "Fachada registrada neste avistamento" }) as HTMLImageElement).src).pathname).toBe("/foto-original-preservada.jpg"));
+    await waitFor(() => expect(new URL((screen.getByRole("img", { name: "Fachada registrada nesta passagem" }) as HTMLImageElement).src).pathname).toBe("/foto-original-preservada.jpg"));
     expect(mocks.upload).not.toHaveBeenCalled(); expect(mocks.remove).not.toHaveBeenCalled();
   });
 
@@ -232,7 +232,7 @@ describe("C7b — lista, painel e histórico", () => {
       situacao: "fundido", fundidoEm: "2026-09-13T10:00:00Z", fundidoEmImovelId: "b", avistamentosTotal: 0,
     }), avistamentos: [] };
     render(createElement(PainelIdentificado, { detalhe: lapide }));
-    expect(screen.getByText("REGISTRO FUNDIDO")).toBeTruthy();
+    expect(screen.getByText("UNIDO A OUTRO REGISTRO")).toBeTruthy();
     expect(screen.getAllByRole("button")).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Abrir registro principal e histórico unido" }));
     await waitFor(() => expect(mocks.obterIdentificado).toHaveBeenCalledWith("b", { incluirClassificacoes: false }));

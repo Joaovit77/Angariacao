@@ -148,8 +148,8 @@ export default function CandidatosDuplicidade({
               </div>
               <small>
                 {candidato.ultimoAvistamentoEm
-                  ? `Avistado em ${fmtDataHoraIso(candidato.ultimoAvistamentoEm)}`
-                  : "Sem avistamento registrado"}
+                  ? `Visto em ${fmtDataHoraIso(candidato.ultimoAvistamentoEm)}`
+                  : "Sem passagem registrada"}
                 {" · "}
                 {descreverResultadoDedupe(resultado, alvo, identidadeParaDedupe(candidato))}
               </small>

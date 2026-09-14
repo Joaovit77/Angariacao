@@ -609,7 +609,7 @@ export default function CapturaFachada({
             loader={manterUrlAssinada}
             unoptimized
             src={urlAssinada}
-            alt="Fachada registrada neste avistamento"
+            alt="Fachada registrada nesta passagem"
             width={640}
             height={400}
             onError={() => setImagemIndisponivel(true)}
@@ -641,7 +641,7 @@ export default function CapturaFachada({
           aria-label="Progresso por etapas do envio da foto"
         />
       ) : null}
-      {etapa === "pronto" ? <p>Salve o avistamento para iniciar o envio.</p> : null}
+      {etapa === "pronto" ? <p>Salve a passagem para iniciar o envio.</p> : null}
       {etapa === "envio-nao-concluido" || etapa === "erro-recuperavel" ? (
         <p>A foto foi preservada e qualquer reserva existente será reutilizada na nova tentativa.</p>
       ) : null}

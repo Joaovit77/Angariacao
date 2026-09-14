@@ -183,7 +183,7 @@ describe("CardIdentificado", () => {
 describe("PainelIdentificado", () => {
   it("separa etiquetas atuais (corrente) do histórico com 'visto por último em', sem apagar setembro", () => {
     render(createElement(PainelIdentificado, { detalhe: detalhe() }));
-    const atuais = screen.getByRole("heading", { name: "Etiquetas atuais" }).closest("section")!;
+    const atuais = screen.getByRole("region", { name: "O que sabemos agora" });
     expect([...atuais.querySelectorAll("[data-origem]")].map((c) => c.textContent)).toEqual(["Imóvel fechadosugestão"]);
     const historico = screen.getByRole("list", { name: "Visto anteriormente" });
     const item = historico.querySelector("[data-codigo='placa-aluga-se']")!;
@@ -197,11 +197,15 @@ describe("PainelIdentificado", () => {
     d.avistamentos[0] = { ...d.avistamentos[0], observacaoRevisao: 2, revisaoConflitoEm: "2026-11-12T10:00:00.000Z",
       etiquetas: [etiqueta({ id: 20, estado: "confirmada", confirmadaPor: "u", confirmadaEm: "2026-11-11T09:00:00.000Z", revisaoObservacao: 1 })] };
     render(createElement(PainelIdentificado, { detalhe: d }));
+    // O conflito vive em "Precisa de atenção", nomeando a etiqueta confirmada.
+    const atencao = screen.getByRole("region", { name: "Precisa de atenção" });
+    expect(atencao.querySelector("[data-atencao='conflito']")!.getAttribute("data-nivel")).toBe("atencao");
     expect(screen.getByRole("alert").textContent).toContain("Vale revisar esta informação.");
-    const atuais = screen.getByRole("heading", { name: "Etiquetas atuais" }).closest("section")!;
+    expect(screen.getByRole("alert").textContent).toContain("Você confirmou “Imóvel fechado”, mas depois alterou o texto");
+    const atuais = screen.getByRole("region", { name: "O que sabemos agora" });
     expect(atuais.querySelector("[data-estado='confirmada']")!.textContent).toBe("Imóvel fechadoconfirmado");
-    expect(atuais.textContent).toContain("revisão 1 do texto");
-    expect(screen.getByRole("button", { name: "Contestar" })).toBeTruthy();
+    expect(document.querySelector("[data-detalhes-analise]")!.textContent).toContain("revisão 1 do texto");
+    expect(screen.getByRole("button", { name: "Marcar como incorreta" })).toBeTruthy();
   });
 
   it("sem conflito não há aviso; desatualizada e substituída nunca aparecem como atuais", () => {
@@ -213,7 +217,7 @@ describe("PainelIdentificado", () => {
       ] };
     render(createElement(PainelIdentificado, { detalhe: d }));
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(screen.getByText("Nenhuma etiqueta atual registrada.")).toBeTruthy();
+    expect(screen.getByText("Nada identificado ainda nesta observação.")).toBeTruthy();
     // O histórico derivado mostra cada código com a situação real: a placa de
     // setembro (vigente lá, histórica aqui), a desatualizada e a substituída —
     // cada uma com a própria marca, nenhuma como atual.
@@ -471,5 +475,84 @@ describe("falha da análise em linguagem de campo (C9.1)", () => {
     }));
     expect(document.body.textContent).not.toContain("limite de análises");
     expect(screen.getByRole("button", { name: "Analisar agora" })).toBeTruthy();
+  });
+});
+
+describe("painel por estado atual e atenção (C9.1)", () => {
+  it("hierarquia: cabeçalho humano, atenção só quando há, o que sabemos agora, ações recolhidas, visto anteriormente, passagens, localização, detalhes fechados", () => {
+    render(createElement(PainelIdentificado, { detalhe: detalhe() }));
+    expect(document.body.textContent).toContain("IMÓVEL VISTO EM CAMPO");
+    expect(document.body.textContent).not.toMatch(/Pipeline|IDENTIDADE DE CAMPO|corrente|vigente|proveniência|classifica|snapshot/i);
+    expect(document.querySelector("[data-resumo-cabecalho]")!.textContent).toBe("Tipo não definido · Última passagem 10/11/2026, 09:00:00");
+    const titulos = [...document.querySelectorAll("h4")].map((h) => h.textContent);
+    expect(titulos).toEqual(["Precisa de atenção", "O que sabemos agora", "Ações", "Visto anteriormente", "Histórico de passagens", "Localização"]);
+    // Atenção: uma sugestão da IA ainda não confirmada (nível informação, não erro).
+    const sugestoes = document.querySelector("[data-atencao='sugestoes']")!;
+    expect(sugestoes.getAttribute("data-nivel")).toBe("info");
+    expect(sugestoes.textContent).toContain("1 sugestão da IA ainda não confirmada.");
+    // Ações recolhidas atrás de <details>, com o botão e a consequência dentro.
+    const corrigir = document.querySelector("details[data-acao='corrigir-texto']") as HTMLDetailsElement;
+    expect(corrigir.open).toBe(false);
+    expect(corrigir.querySelector("summary")!.textContent).toBe("Corrigir o texto da última passagem");
+    expect(corrigir.textContent).toContain("Salvar texto corrigido");
+    expect(corrigir.textContent).toContain("A análise será refeita sobre o texto novo. Informações que você confirmou são mantidas e podem aparecer para revisão.");
+    const tipo = document.querySelector("details[data-acao='informar-tipo']") as HTMLDetailsElement;
+    expect(tipo.open).toBe(false);
+    expect(tipo.textContent).toContain("Substitui a sugestão automática por uma informação definida por você.");
+    // Detalhes da análise: fechado, com a auditoria e a nota sobre o apoio.
+    const detalhes = document.querySelector("details[data-detalhes-analise]") as HTMLDetailsElement;
+    expect(detalhes.open).toBe(false);
+    expect(detalhes.textContent).toContain("Imóvel fechado: a partir do texto · apoio no texto: moderado (88 de 100) · passagem de 10/11/2026");
+    expect(detalhes.textContent).toContain("não é uma probabilidade de acerto");
+    // Descartar e excluir ficam no fim, depois de tudo.
+    const botoes = [...document.querySelectorAll("button")].map((b) => b.textContent);
+    expect(botoes.slice(-2)).toEqual(["Descartar", "Excluir permanentemente"]);
+  });
+
+  it("sem sugestões pendentes nem conflito nem falha, 'Precisa de atenção' não existe", () => {
+    const d = detalhe();
+    d.avistamentos[0] = { ...d.avistamentos[0], etiquetas: [etiqueta({ id: 20, estado: "confirmada", confirmadaPor: "u", confirmadaEm: NOVEMBRO })] };
+    render(createElement(PainelIdentificado, { detalhe: d }));
+    expect(screen.queryByRole("region", { name: "Precisa de atenção" })).toBeNull();
+    expect(document.body.textContent).toContain("1 informação da passagem mais recente");
+  });
+
+  it("falha transitória do estado aparece com motivo humano, nível erro e 'Tentar de novo'; motivo de outra passagem não aparece", () => {
+    const d = detalhe();
+    d.avistamentos[0] = { ...d.avistamentos[0], classificacaoEstado: "pendente", classificacaoId: null, classificacaoEm: null, classificacoes: [], etiquetas: [] };
+    (cenario.estado as { falhaAnalise?: unknown }).falhaAnalise = { avistamentoId: "av-nov", codigo: "limite-diario" };
+    const { unmount } = render(createElement(PainelIdentificado, { detalhe: d }));
+    const falha = document.querySelector("[data-atencao='falha']")!;
+    expect(falha.getAttribute("data-nivel")).toBe("erro");
+    expect(falha.textContent).toContain("Não foi possível analisar a observação.");
+    expect(falha.textContent).toContain("O limite de análises de hoje foi atingido.");
+    expect(falha.querySelector("button")!.textContent).toBe("Tentar de novo");
+    expect(document.body.textContent).not.toMatch(/limite-diario|429|Error/);
+    unmount();
+
+    // O mesmo motivo, preso a OUTRA passagem, não aparece para a mais recente.
+    (cenario.estado as { falhaAnalise?: unknown }).falhaAnalise = { avistamentoId: "av-set", codigo: "limite-diario" };
+    render(createElement(PainelIdentificado, { detalhe: d }));
+    expect(document.querySelector("[data-atencao='falha']")).toBeNull();
+    expect(document.querySelector("[data-atencao='nao-analisada']")!.textContent).toContain("ainda não foi analisada");
+    delete (cenario.estado as { falhaAnalise?: unknown }).falhaAnalise;
+  });
+
+  it("texto corrigido e ainda não analisado: a atenção diz que a análise será refeita", () => {
+    const d = detalhe();
+    d.avistamentos[0] = { ...d.avistamentos[0], observacaoRevisao: 2, classificacaoEstado: "pendente", classificacaoId: null, classificacaoEm: null, classificacoes: [], etiquetas: [] };
+    render(createElement(PainelIdentificado, { detalhe: d }));
+    expect(document.querySelector("[data-atencao='nao-analisada']")!.textContent).toContain("O texto foi corrigido; a análise será refeita.");
+  });
+
+  it("os níveis de atenção não dependem só de cor: cada item declara o nível em atributo e em texto", () => {
+    const d = detalhe();
+    d.avistamentos[0] = { ...d.avistamentos[0], observacaoRevisao: 2, revisaoConflitoEm: "2026-11-12T10:00:00.000Z",
+      etiquetas: [etiqueta({ id: 20, revisaoObservacao: 2 }), etiqueta({ id: 23, codigo: "sem-placa-visivel", estado: "confirmada", confirmadaPor: "u", confirmadaEm: "2026-11-11T09:00:00.000Z", revisaoObservacao: 1 })] };
+    render(createElement(PainelIdentificado, { detalhe: d }));
+    const itens = [...document.querySelectorAll("[data-atencao]")].map((li) => `${li.getAttribute("data-atencao")}:${li.getAttribute("data-nivel")}`);
+    expect(itens).toEqual(["conflito:atencao", "sugestoes:info"]);
+    expect(screen.getByRole("alert").textContent).toContain("Vale revisar esta informação.");
+    expect(screen.getByRole("alert").textContent).toContain("“Sem placa visível”");
   });
 });

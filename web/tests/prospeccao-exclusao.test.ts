@@ -1005,7 +1005,7 @@ describe("C5b — DialogoExcluirIdentificado e SeloExclusaoPendente", () => {
     const { container } = render(createElement(DialogoExcluirIdentificado, { imovelIdentificadoId: IDENTIFICADO, aoFechar }));
 
     expect(container.textContent).toMatch(/não é descartar/i);
-    await waitFor(() => expect(screen.getByText(/2 fotos — 4 arquivos no Storage/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/2 fotos — 4 arquivos de foto/)).toBeTruthy());
     expect(screen.getByText(/1 lápide de fusão irá por cascata/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Excluir permanentemente" }));
@@ -1106,8 +1106,8 @@ describe("C5b — bloqueio na tela durante a exclusão (§13.4)", () => {
 
   it("fora da exclusão o painel oferece descartar, excluir e remover foto — e descartar não é excluir", () => {
     render(createElement(PainelIdentificado, { detalhe: detalhe({}, [fotoAtiva]) }));
-    expect(screen.getByRole("button", { name: "Novo avistamento" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Descartar identificação" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Nova passagem" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Descartar" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Excluir permanentemente" })).toBeTruthy();
     expect(screen.queryByRole("status", { name: "Exclusão pendente" })).toBeNull();
 
@@ -1122,7 +1122,7 @@ describe("C5b — bloqueio na tela durante a exclusão (§13.4)", () => {
     }));
     expect(screen.getByRole("status", { name: "Exclusão pendente" })).toBeTruthy();
     expect(screen.getAllByRole("button").map((botao) => botao.textContent)).toEqual(["Retomar exclusão", "Cancelar exclusão"]);
-    for (const nome of ["Novo avistamento", "Descartar identificação", "Excluir permanentemente", "Salvar correção", "Definir tipo", "Remover foto"]) {
+    for (const nome of ["Nova passagem", "Descartar", "Excluir permanentemente", "Salvar texto corrigido", "Informar o tipo", "Remover foto"]) {
       expect(screen.queryByRole("button", { name: nome })).toBeNull();
     }
     // A linha do tempo continua visível, só que somente leitura.

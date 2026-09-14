@@ -238,7 +238,7 @@ describe("C5 — reserva, upload e finalização da fachada", () => {
     unmount();
     render(createElement(CapturaFachada, { foto: fotoAtiva }));
     await waitFor(() => {
-      expect(screen.getByAltText("Fachada registrada neste avistamento")).toBeTruthy();
+      expect(screen.getByAltText("Fachada registrada nesta passagem")).toBeTruthy();
     });
   });
 
@@ -276,7 +276,7 @@ describe("C5 — reserva, upload e finalização da fachada", () => {
     });
 
     await waitFor(() => expect(screen.getByText("Foto pronta para registrar")).toBeTruthy());
-    expect(screen.getByText(/salve o avistamento para iniciar o envio/i)).toBeTruthy();
+    expect(screen.getByText(/salve a passagem para iniciar o envio/i)).toBeTruthy();
     expect(container.querySelector("progress")).toBeNull();
     expect(container.textContent).not.toContain("15%");
     expect(dependencias.reservar).not.toHaveBeenCalled();

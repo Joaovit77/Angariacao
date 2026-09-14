@@ -462,7 +462,7 @@ describe("C7 — na tela: avisa com motivo, nunca bloqueia", () => {
     expect(linhas.map((linha) => linha.getAttribute("data-grau"))).toEqual(["provavel", "exata"]);
     expect(linhas[0].textContent).toContain("Rua Outra, 100");
     expect(linhas[0].textContent).toContain("Provável");
-    expect(linhas[0].textContent).toContain("Avistado em 12/08/2026");
+    expect(linhas[0].textContent).toContain("Visto em 12/08/2026");
     expect(linhas[0].textContent).toContain("A cerca de 18 m; precisão do GPS ±7 m e ±12 m");
     expect(linhas[1].textContent).toContain("Mesmo endereço normalizado");
     // Sem identidade persistida (rascunho), continua sem ação executável.
