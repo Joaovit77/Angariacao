@@ -3,6 +3,7 @@ import {
   chaveResultadoViaCep,
   mapearEnderecoViaCep,
   prepararPesquisaEnderecoViaCep,
+  separarNumeroDoEndereco,
 } from "@/lib/calculo/enderecoViaCep";
 
 describe("endereço por ViaCEP", () => {
@@ -55,5 +56,18 @@ describe("endereço por ViaCEP", () => {
   it("gera chave estável para eliminar resultados repetidos", () => {
     const resultado = { cep: "86010-390", logradouro: "Rua Paraná", localidade: "Londrina", uf: "PR" };
     expect(chaveResultadoViaCep(resultado)).toBe(chaveResultadoViaCep({ ...resultado }));
+  });
+});
+
+describe("separarNumeroDoEndereco", () => {
+  it("devolve rua e número quando o endereço vem como 'Rua X, 123'", () => {
+    expect(separarNumeroDoEndereco("Rua das Palmeiras, 120")).toEqual({ rua: "Rua das Palmeiras", numero: "120" });
+    expect(separarNumeroDoEndereco("Rua das Palmeiras,120-A")).toEqual({ rua: "Rua das Palmeiras", numero: "120-A" });
+  });
+
+  it("sem número depois da vírgula, tudo é rua — inclusive nomes com vírgula ou número", () => {
+    expect(separarNumeroDoEndereco("Rua Sete de Setembro")).toEqual({ rua: "Rua Sete de Setembro", numero: "" });
+    expect(separarNumeroDoEndereco("Avenida 10, Jardim")).toEqual({ rua: "Avenida 10, Jardim", numero: "" });
+    expect(separarNumeroDoEndereco("  Rua   Larga  ")).toEqual({ rua: "Rua Larga", numero: "" });
   });
 });

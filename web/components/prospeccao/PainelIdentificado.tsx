@@ -9,7 +9,7 @@
    quiser conferir. Tudo aqui é apresentação: estados, vigência, revisão e
    RPCs são os mesmos do C9. */
 import dynamic from "next/dynamic";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import { identidadeParaDedupe, vigenciaDasEtiquetas } from "@/lib/prospeccao";
 import { TIPOS_IMOVEL } from "@/lib/constantes";
@@ -37,6 +37,7 @@ import {
   explicarEtiqueta,
   rotuloEtiqueta,
 } from "./EtiquetasImovel";
+import FormularioEnderecoIdentificado, { chaveFormularioEndereco } from "./FormularioEnderecoIdentificado";
 import LinhaDoTempoAvistamentos from "./LinhaDoTempoAvistamentos";
 import styles from "./Prospeccao.module.css";
 import SeloExclusaoPendente from "./SeloExclusaoPendente";
@@ -352,6 +353,16 @@ export default function PainelIdentificado({
     && codigosAtuais.has(`${etiqueta.categoria}:${etiqueta.codigo}`));
   const historicoEtiquetas = vigencia.filter((etiqueta) => !etiqueta.vigenteNoAvistamentoCorrente);
   const podeDescartar = item.situacao === "identificado" || item.situacao === "investigando";
+  // Depois da promoção o endereço vive na carteira; antes dela, é daqui.
+  const podeEditarEndereco = item.situacao === "identificado" || item.situacao === "investigando";
+  const detalhesEndereco = useRef<HTMLDetailsElement>(null);
+  function abrirFormularioEndereco() {
+    const detalhes = detalhesEndereco.current;
+    if (!detalhes) return;
+    detalhes.open = true;
+    detalhes.scrollIntoView({ block: "start", behavior: "smooth" });
+    detalhes.querySelector("input")?.focus({ preventScroll: true });
+  }
   const situacao = ROTULOS_SITUACAO[item.situacao];
   const resumoCabecalho = [tipoComMarca(item), situacao || null].filter(Boolean).join(" · ");
 
@@ -436,6 +447,25 @@ export default function PainelIdentificado({
             onClick={() => void classificarAvistamento(item.id, corrente.id)}
           >
             Analisar agora
+          </button>
+        </div>
+      ),
+    });
+  }
+  // Sem endereço não há identidade para a deduplicação nem para a ficha:
+  // é informação, não erro — a foto e a passagem já valem sozinhas.
+  if (podeEditarEndereco && !item.logradouro) {
+    atencao.push({
+      chave: "sem-endereco",
+      nivel: "info",
+      conteudo: (
+        <div className={styles.atencaoItemCorpo}>
+          <div>
+            <strong>Este imóvel ainda não tem endereço.</strong>
+            <p>Com o endereço, o sistema identifica o imóvel e confere se este local já foi registrado antes.</p>
+          </div>
+          <button type="button" className="btn btn-sm btn-ghost" onClick={abrirFormularioEndereco}>
+            Informar o endereço
           </button>
         </div>
       ),
@@ -609,7 +639,8 @@ export default function PainelIdentificado({
         )}
       </section>
 
-      {/* 4. Ações principais, recolhidas: corrigir o texto e informar o tipo. */}
+      {/* 4. Ações principais, recolhidas: corrigir o texto, informar o
+          endereço e informar o tipo. */}
       <section className={styles.secao} aria-label="Ações">
         <div className={styles.secaoCabecalho}>
           <h4>Ações</h4>
@@ -622,6 +653,17 @@ export default function PainelIdentificado({
                 key={`${corrente.id}:${corrente.observacaoRevisao}`}
                 identificadoId={item.id}
                 avistamento={corrente}
+              />
+            </div>
+          </details>
+        ) : null}
+        {podeEditarEndereco ? (
+          <details className={styles.detalhes} data-acao="informar-endereco" ref={detalhesEndereco}>
+            <summary>{item.logradouro ? "Corrigir o endereço" : "Informar o endereço"}</summary>
+            <div className={styles.detalhesCorpo}>
+              <FormularioEnderecoIdentificado
+                key={chaveFormularioEndereco(item)}
+                identificado={item}
               />
             </div>
           </details>

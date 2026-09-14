@@ -198,6 +198,11 @@ export interface DadosIdentificacao {
   tipo?: TipoImovelProspeccao | null;
 }
 
+/** O endereço sozinho: o que pode ser informado ou corrigido depois do
+    cadastro. Origem e tipo ficam de fora — o tipo tem as próprias portas
+    (§7.2) e a origem é do momento da identificação. */
+export type DadosEnderecoIdentificado = Omit<DadosIdentificacao, "origemIdentificacao" | "tipo">;
+
 export interface DadosAvistamento {
   observadoEm: string;
   latitude?: number | null;
@@ -719,12 +724,10 @@ function payloadAvistamento(
   };
 }
 
-export async function criarIdentificado(
-  usuarioId: string,
-  dados: DadosIdentificacao,
-  primeiroAvistamento: DadosAvistamento,
-  client: SupabaseClient = getSupabase(),
-): Promise<ResultadoCriacaoIdentificado> {
+/** As colunas de endereço com as chaves de dedupe derivadas — uma só
+    função para o cadastro e para a correção posterior, senão a chave que a
+    deduplicação consulta divergiria de quem a escreveu. */
+function colunasEndereco(dados: DadosEnderecoIdentificado) {
   const logradouro = textoOuNulo(dados.logradouro);
   const numero = textoOuNulo(dados.numero);
   const unidade = textoOuNulo(dados.unidade);
@@ -732,25 +735,36 @@ export async function criarIdentificado(
   const cidade = textoOuNulo(dados.cidade);
   const bairro = textoOuNulo(dados.bairro);
   const endereco = [logradouro, numero].filter(Boolean).join(", ");
+  return {
+    logradouro,
+    numero,
+    unidade,
+    bloco,
+    edificio: textoOuNulo(dados.edificio),
+    bairro,
+    cidade,
+    estado: textoOuNulo(dados.estado)?.toUpperCase() ?? null,
+    cep: textoOuNulo(dados.cep),
+    ponto_referencia: textoOuNulo(dados.pontoReferencia),
+    endereco_chave: endereco
+      ? chaveImovel({ endereco, cidade: cidade ?? "", unidade, bloco })
+      : "",
+    cidade_chave: chaveEndereco(cidade),
+    bairro_chave: chaveEndereco(bairro),
+  };
+}
+
+export async function criarIdentificado(
+  usuarioId: string,
+  dados: DadosIdentificacao,
+  primeiroAvistamento: DadosAvistamento,
+  client: SupabaseClient = getSupabase(),
+): Promise<ResultadoCriacaoIdentificado> {
   const { data: linhaIdentificado, error: erroIdentificado } = await client
     .from("imoveis_identificados")
     .insert({
       user_id: usuarioId,
-      logradouro,
-      numero,
-      unidade,
-      bloco,
-      edificio: textoOuNulo(dados.edificio),
-      bairro,
-      cidade,
-      estado: textoOuNulo(dados.estado)?.toUpperCase() ?? null,
-      cep: textoOuNulo(dados.cep),
-      ponto_referencia: textoOuNulo(dados.pontoReferencia),
-      endereco_chave: endereco
-        ? chaveImovel({ endereco, cidade: cidade ?? "", unidade, bloco })
-        : "",
-      cidade_chave: chaveEndereco(cidade),
-      bairro_chave: chaveEndereco(bairro),
+      ...colunasEndereco(dados),
       origem_identificacao: dados.origemIdentificacao ?? "campo",
       tipo: dados.tipo ?? null,
     })
@@ -800,6 +814,26 @@ export async function corrigirObservacaoAvistamento(
     .single();
   if (error) falha(error);
   return mapearAvistamento(data as unknown as Linha);
+}
+
+/** Informa ou corrige o endereço de um imóvel já identificado (quem sai
+    com pressa registra a foto e deixa o endereço para depois). Só as
+    colunas de endereço, pelo grant de update que a V7 já concede; as
+    chaves de dedupe são recalculadas junto, e as passagens, a localização
+    e o tipo não são tocados. */
+export async function atualizarEnderecoIdentificado(
+  imovelIdentificadoId: string,
+  dados: DadosEnderecoIdentificado,
+  client: SupabaseClient = getSupabase(),
+): Promise<ImovelIdentificado> {
+  const { data, error } = await client
+    .from("imoveis_identificados")
+    .update(colunasEndereco(dados))
+    .eq("id", imovelIdentificadoId)
+    .select(COLUNAS_IDENTIFICADO)
+    .single();
+  if (error) falha(error);
+  return mapearIdentificado(data as unknown as Linha);
 }
 
 export async function reservarFotoAvistamento(

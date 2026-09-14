@@ -88,3 +88,12 @@ export function chaveResultadoViaCep(resultado: ResultadoEnderecoViaCep): string
     .map((parte) => limparEspacos(parte || "").toLocaleLowerCase("pt-BR"))
     .join("|");
 }
+
+/** O inverso de `mapearEnderecoViaCep`: "Rua X, 123" vira rua + número
+    para preencher dois campos. Sem vírgula seguida de número, tudo é rua. */
+export function separarNumeroDoEndereco(endereco: string): { rua: string; numero: string } {
+  const partes = endereco.match(/^(.*?),\s*(\d.*)$/);
+  return partes
+    ? { rua: limparEspacos(partes[1]), numero: limparEspacos(partes[2]) }
+    : { rua: limparEspacos(endereco), numero: "" };
+}

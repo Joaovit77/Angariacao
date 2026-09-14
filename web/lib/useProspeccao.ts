@@ -5,6 +5,7 @@ import { create } from "zustand";
 import {
   acrescentarAvistamento,
   aplicarEtiquetaHumana,
+  atualizarEnderecoIdentificado,
   buscarCandidatosDuplicidade,
   cancelarExclusaoIdentificado,
   classificarAvistamento,
@@ -24,6 +25,7 @@ import {
   removerFotoAvistamento,
   reservarFotoAvistamento,
   type DadosAvistamento,
+  type DadosEnderecoIdentificado,
   type DadosIdentificacao,
   type DetalheImovelIdentificado,
   identidadeParaDedupe,
@@ -124,6 +126,12 @@ interface EstadoProspeccao {
   definirTipo: (
     imovelIdentificadoId: string,
     tipo: TipoImovelProspeccao | null,
+  ) => Promise<boolean>;
+  /** Informa ou corrige o endereço de um imóvel já cadastrado. Só o
+      endereço: passagens, localização e tipo ficam como estão. */
+  definirEndereco: (
+    imovelIdentificadoId: string,
+    dados: DadosEnderecoIdentificado,
   ) => Promise<boolean>;
   /** Dedupe (C7): candidatos da conta pela fronteira, veredito pelo núcleo puro.
       Só avisa — não muda estado, não bloqueia, não funde. */
@@ -444,6 +452,12 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
     definirTipo(imovelIdentificadoId, tipo) {
       return executarMutacao("Não foi possível definir o tipo do imóvel.", async () => {
         await definirTipoManual(imovelIdentificadoId, tipo);
+        return detalheAtualizado(imovelIdentificadoId);
+      });
+    },
+    definirEndereco(imovelIdentificadoId, dados) {
+      return executarMutacao("Não foi possível salvar o endereço.", async () => {
+        await atualizarEnderecoIdentificado(imovelIdentificadoId, dados);
         return detalheAtualizado(imovelIdentificadoId);
       });
     },

@@ -8,6 +8,7 @@ import {
   ErroProspeccao,
   acrescentarAvistamento,
   aplicarEtiquetaHumana,
+  atualizarEnderecoIdentificado,
   confirmarEtiqueta,
   contestarEtiqueta,
   corrigirObservacaoAvistamento,
@@ -450,6 +451,53 @@ describe("fronteira de dados do Garimpo em Campo", () => {
       latitude: -25.5,
     }));
     expect(atualizar.update).toHaveBeenCalledWith({ observacao: "Observação corrigida" });
+  });
+
+  it("informa o endereço depois do cadastro: só colunas de endereço, com as chaves de dedupe recalculadas como no cadastro", async () => {
+    const atualizar = consulta({
+      data: linhaIdentificado({ logradouro: "Rua das Palmeiras", numero: "120", endereco_chave: "rua das palmeiras 120|londrina||" }),
+      error: null,
+    });
+    const client = clienteFalso({ imoveis_identificados: [atualizar] });
+
+    const identificado = await atualizarEnderecoIdentificado(
+      "identificado-1",
+      { logradouro: " Rua das Palmeiras ", numero: "120", bairro: " Centro ", cidade: "Londrina", estado: "pr", cep: "", pontoReferencia: "  " },
+      client as never,
+    );
+
+    // Nenhuma coluna fora do endereço: nem tipo, nem origem, nem
+    // localização, nem agregados — o grant de update não as concede e a
+    // função não as pede.
+    expect(atualizar.update).toHaveBeenCalledWith({
+      logradouro: "Rua das Palmeiras",
+      numero: "120",
+      unidade: null,
+      bloco: null,
+      edificio: null,
+      bairro: "Centro",
+      cidade: "Londrina",
+      estado: "PR",
+      cep: null,
+      ponto_referencia: null,
+      endereco_chave: "rua das palmeiras 120|londrina||",
+      cidade_chave: "londrina",
+      bairro_chave: "centro",
+    });
+    expect(atualizar.eq).toHaveBeenCalledWith("id", "identificado-1");
+    expect(identificado.logradouro).toBe("Rua das Palmeiras");
+
+    // Sem rua nem número a chave volta a vazio (o índice parcial ignora ''), e o
+    // ponto de referência entra sozinho.
+    const limpar = consulta({ data: linhaIdentificado(), error: null });
+    await atualizarEnderecoIdentificado(
+      "identificado-1",
+      { pontoReferencia: "Ao lado do mercado", cidade: "Londrina" },
+      clienteFalso({ imoveis_identificados: [limpar] }) as never,
+    );
+    expect(limpar.update).toHaveBeenCalledWith(expect.objectContaining({
+      logradouro: null, numero: null, endereco_chave: "", cidade_chave: "londrina", ponto_referencia: "Ao lado do mercado",
+    }));
   });
 
   it("reserva e finaliza a foto só pelas RPCs, sem fazer upload", async () => {

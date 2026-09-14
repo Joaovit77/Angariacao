@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   confirmarEtiqueta: vi.fn(),
   contestarEtiqueta: vi.fn(),
   definirTipoManual: vi.fn(),
+  atualizarEnderecoIdentificado: vi.fn(),
   excluirIdentificado: vi.fn(),
   cancelarExclusaoIdentificado: vi.fn(),
   classificarAvistamento: vi.fn(),
@@ -608,5 +609,29 @@ describe("C8 — classificação por IA no estado local", () => {
     mocks.confirmarTipoIdentificado.mockRejectedValue(new Error("tipo_nao_inferido"));
     await expect(useProspeccao.getState().confirmarTipo("identificado-1")).resolves.toBe(false);
     expect(useProspeccao.getState().erro).toBe("Não foi possível confirmar o tipo do imóvel.");
+  });
+
+  it("informar o endereço grava só pela fronteira e relê o detalhe; a lista recebe o endereço novo", async () => {
+    mocks.obterIdentificado.mockResolvedValue(detalhe("identificado-1", ["av-1"]));
+    await useProspeccao.getState().carregarDetalhe("identificado-1");
+    const atualizado = detalhe("identificado-1", ["av-1"]);
+    atualizado.identificado = { ...atualizado.identificado, logradouro: "Rua das Palmeiras", numero: "120" };
+    mocks.obterIdentificado.mockResolvedValue(atualizado);
+    mocks.atualizarEnderecoIdentificado.mockResolvedValue(atualizado.identificado);
+
+    await expect(useProspeccao.getState().definirEndereco(
+      "identificado-1",
+      { logradouro: "Rua das Palmeiras", numero: "120", cidade: "Londrina" },
+    )).resolves.toBe(true);
+    expect(mocks.atualizarEnderecoIdentificado).toHaveBeenCalledWith(
+      "identificado-1",
+      { logradouro: "Rua das Palmeiras", numero: "120", cidade: "Londrina" },
+    );
+    expect(useProspeccao.getState().detalhe?.identificado.logradouro).toBe("Rua das Palmeiras");
+    expect(useProspeccao.getState().itens.find((item) => item.id === "identificado-1")?.logradouro).toBe("Rua das Palmeiras");
+
+    mocks.atualizarEnderecoIdentificado.mockRejectedValue(new Error("42501"));
+    await expect(useProspeccao.getState().definirEndereco("identificado-1", { logradouro: "Outra" })).resolves.toBe(false);
+    expect(useProspeccao.getState().erro).toBe("Não foi possível salvar o endereço.");
   });
 });

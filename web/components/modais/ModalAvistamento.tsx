@@ -15,6 +15,7 @@ import CapturaFachada, {
 import styles from "@/components/prospeccao/Prospeccao.module.css";
 import type { ResultadoProcessamentoFoto } from "@/lib/calculo/fotoFachada";
 import { distanciaHaversineMetros } from "@/lib/calculo/dedupeProspeccao";
+import { separarNumeroDoEndereco } from "@/lib/calculo/enderecoViaCep";
 import {
   descreverLocalizacao,
   gpsImpreciso,
@@ -89,12 +90,6 @@ function comPrazo<T>(promessa: Promise<T>, ms: number, fallback: T): Promise<T> 
       () => { clearTimeout(temporizador); resolve(fallback); },
     );
   });
-}
-
-/** "Rua X, 123" vindo do ViaCEP vira rua + número separados. */
-function separarNumero(endereco: string): { rua: string; numero: string } {
-  const partes = endereco.match(/^(.*?),s*(d.*)$/);
-  return partes ? { rua: partes[1].trim(), numero: partes[2].trim() } : { rua: endereco.trim(), numero: "" };
 }
 
 function horaCurta(iso: string): string {
@@ -383,7 +378,7 @@ export default function ModalAvistamento({
   }
 
   function aplicarEnderecoViaCep(selecionado: EnderecoViaCepSelecionado) {
-    const { rua, numero: numeroSugerido } = separarNumero(selecionado.endereco);
+    const { rua, numero: numeroSugerido } = separarNumeroDoEndereco(selecionado.endereco);
     if (rua) setLogradouro(rua);
     if (numeroSugerido && !numero.trim()) setNumero(numeroSugerido);
     const aplicar = (

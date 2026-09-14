@@ -374,6 +374,28 @@
   margin-top: 6px;
 }
 
+/* Endereço depois do cadastro: as linhas de campo do sistema, mais
+   compactas dentro do bloco de ação. */
+.formularioEndereco {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+}
+
+.formularioEndereco :global(.field-row),
+.formularioEndereco :global(.field-row-3),
+.formularioEndereco > :global(.field-group) {
+  width: 100%;
+}
+
+.formularioEndereco :global(.field-group) {
+  margin-bottom: 8px;
+}
+
+.formularioEndereco :global(.btn) {
+  margin-top: 4px;
+}
+
 .etiquetas {
   display: grid;
   gap: 7px;

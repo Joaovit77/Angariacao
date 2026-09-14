@@ -16,7 +16,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createElement } from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const cenario = vi.hoisted(() => ({
@@ -30,6 +30,7 @@ const cenario = vi.hoisted(() => ({
     confirmarTipo: vi.fn(),
     classificarAvistamento: vi.fn(),
     definirTipo: vi.fn(),
+    definirEndereco: vi.fn(),
     corrigirObservacao: vi.fn(),
     descartar: vi.fn(),
     cancelarExclusao: vi.fn(),
@@ -703,5 +704,78 @@ describe("refino de textos, data e tipografia (C9.1)", () => {
     expect(celular).toMatch(/\.painelCabecalho h3 \{[^}]*font-size: 17px/);
     expect(celular).toMatch(/\.etiquetaAcoes,\s*\.atencaoItemCorpo > :global\(\.btn\) \{[^}]*width: 100%/);
     expect(celular).toMatch(/\.painelCabecalho :global\(\.btn\) \{[^}]*width: 100%/);
+  });
+});
+
+/* Endereço depois do cadastro. Quem sai com pressa registra a foto e deixa
+   o endereço para depois; o painel avisa (informação, não erro) e oferece
+   o formulário em "Ações". Só endereço: nada de tipo, passagens ou
+   localização — e depois da promoção o endereço é da carteira. */
+describe("informar o endereço depois do cadastro", () => {
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  const semEndereco = () => detalhe({ logradouro: null, numero: null, bairro: null, cidade: null, estado: null, enderecoChave: "", cidadeChave: "", bairroChave: "" });
+
+  it("sem logradouro: cabeçalho 'Local ainda sem endereço', atenção em nível informação, e o botão abre o formulário em Ações", () => {
+    render(createElement(PainelIdentificado, { detalhe: semEndereco() }));
+    expect(document.querySelector(".painelCabecalho h3, h3")!.textContent).toBe("Local ainda sem endereço");
+    const aviso = document.querySelector("[data-atencao='sem-endereco']")!;
+    expect(aviso.getAttribute("data-nivel")).toBe("info");
+    expect(aviso.textContent).toContain("Este imóvel ainda não tem endereço.");
+    expect(aviso.textContent).toContain("confere se este local já foi registrado antes");
+    const detalhes = document.querySelector("details[data-acao='informar-endereco']") as HTMLDetailsElement;
+    expect(detalhes.open).toBe(false);
+    expect(detalhes.querySelector("summary")!.textContent).toBe("Informar o endereço");
+    fireEvent.click(aviso.querySelector("button")!);
+    expect(detalhes.open).toBe(true);
+    // O texto da ação está entre "corrigir o texto" e "informar o tipo".
+    expect([...document.querySelectorAll("section[aria-label='Ações'] details")].map((d) => d.getAttribute("data-acao")))
+      .toEqual(["corrigir-texto", "informar-endereco", "informar-tipo"]);
+  });
+
+  it("com logradouro: sem aviso, a ação vira 'Corrigir o endereço' e os campos já vêm preenchidos", () => {
+    render(createElement(PainelIdentificado, { detalhe: detalhe({ cep: "86010-000", pontoReferencia: "Esquina" }) }));
+    expect(document.querySelector("[data-atencao='sem-endereco']")).toBeNull();
+    const detalhes = document.querySelector("details[data-acao='informar-endereco']")!;
+    expect(detalhes.querySelector("summary")!.textContent).toBe("Corrigir o endereço");
+    const valor = (rotulo: string) => (screen.getByLabelText(rotulo) as HTMLInputElement).value;
+    expect([valor("Logradouro"), valor("Número"), valor("Bairro"), valor("Cidade"), valor("Estado"), valor("CEP"), valor("Ponto de referência")])
+      .toEqual(["Rua das Palmeiras", "120", "Centro", "Londrina", "PR", "86010-000", "Esquina"]);
+    expect((screen.getByRole("button", { name: "Salvar endereço" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("salvar só quando algo mudou e o endereço identifica o lugar; envia os dez campos e nada mais", () => {
+    render(createElement(PainelIdentificado, { detalhe: semEndereco() }));
+    const salvar = () => screen.getByRole("button", { name: "Salvar endereço" }) as HTMLButtonElement;
+    expect(salvar().disabled).toBe(true);
+    // Cidade sozinha não dá nome ao lugar.
+    fireEvent.change(screen.getByLabelText("Cidade"), { target: { value: "Londrina" } });
+    expect(salvar().disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Logradouro"), { target: { value: "Rua das Palmeiras" } });
+    fireEvent.change(screen.getByLabelText("Número"), { target: { value: "120" } });
+    fireEvent.change(screen.getByLabelText("Estado"), { target: { value: "pr" } });
+    fireEvent.change(screen.getByLabelText("CEP"), { target: { value: "86010000" } });
+    expect(salvar().disabled).toBe(false);
+    fireEvent.click(salvar());
+    expect(cenario.estado.definirEndereco).toHaveBeenCalledWith("identificado-1", {
+      logradouro: "Rua das Palmeiras", numero: "120", unidade: "", bloco: "", edificio: "",
+      bairro: "", cidade: "Londrina", estado: "PR", cep: "86010-000", pontoReferencia: "",
+    });
+    expect(document.querySelector("[data-formulario-endereco]")!.textContent).toContain("As passagens, a localização e o tipo não mudam.");
+  });
+
+  it("ponto de referência sozinho identifica o lugar; promovido não edita endereço nem recebe aviso", () => {
+    const { unmount } = render(createElement(PainelIdentificado, { detalhe: semEndereco() }));
+    fireEvent.change(screen.getByLabelText("Ponto de referência"), { target: { value: "Ao lado do mercado" } });
+    expect((screen.getByRole("button", { name: "Salvar endereço" }) as HTMLButtonElement).disabled).toBe(false);
+    unmount();
+
+    const promovido = semEndereco();
+    promovido.identificado = { ...promovido.identificado, situacao: "promovido", imovelId: "imovel-1", promovidoEm: NOVEMBRO };
+    render(createElement(PainelIdentificado, { detalhe: promovido }));
+    expect(document.querySelector("details[data-acao='informar-endereco']")).toBeNull();
+    expect(document.querySelector("[data-atencao='sem-endereco']")).toBeNull();
   });
 });
