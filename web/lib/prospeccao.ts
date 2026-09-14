@@ -885,6 +885,18 @@ export function contestarEtiqueta(
   return definirEstadoEtiqueta(etiquetaId, "contestada", client);
 }
 
+/** Endossa um tipo inferido pela IA: vira `confirmado` mantendo a origem
+    `ia-texto` e os ids da execução/avistamento (V7 §7.2, regra 5). */
+export async function confirmarTipoIdentificado(
+  imovelIdentificadoId: string,
+  client: SupabaseClient = getSupabase(),
+): Promise<ResultadoRpcProspeccao> {
+  const resposta = await chamarRpc(client, "confirmar_tipo_identificado", {
+    p_imovel_identificado_id: imovelIdentificadoId,
+  });
+  return { repetida: resposta.repetida === true };
+}
+
 export async function definirTipoManual(
   imovelIdentificadoId: string,
   tipo: TipoImovelProspeccao | null,
@@ -929,6 +941,60 @@ export async function fundirIdentificados(
     throw new ErroProspeccao("resposta_rpc_invalida", "O retorno da união não pôde ser confirmado. Atualize a lista antes de continuar.");
   }
   return { sobreviventeId, absorvidoId, repetida: resposta.repetida };
+}
+
+/* ----------------------------------------------------------------
+   CLASSIFICAÇÃO POR IA (C8) — o navegador manda SÓ o id do avistamento.
+
+   O texto, a revisão e o tipo declarado são relidos do banco pela rota; o
+   claim, o lease e a conclusão são do banco. Aqui não há decisão nenhuma:
+   pede-se, lê-se a resposta e depois relê-se o detalhe. IA indisponível
+   (dev, Preview, sem permissão) NÃO é erro para o usuário — o avistamento
+   fica "aguardando classificação" e a tela mostra isso pelo estado.
+   ---------------------------------------------------------------- */
+export interface ResultadoClassificacaoAvistamento {
+  ok: boolean;
+  repetida: boolean;
+  estado: EstadoClassificacaoAvistamento | null;
+  modo: ModoClassificacaoProspeccao | null;
+  etiquetas: { categoria: CategoriaEtiquetaProspeccao; codigo: CodigoEtiquetaProspeccao; confianca: number }[];
+  tipo: { sugerido: TipoImovelProspeccao; confianca: number | null } | null;
+  snapshotAplicado: boolean;
+  /** Código fechado da rota (`nao-configurado`, `ocupado`, `limite-diario`…). */
+  falha: string | null;
+}
+
+export async function classificarAvistamento(
+  avistamentoId: string,
+  client: SupabaseClient = getSupabase(),
+  fetchImpl: typeof fetch = fetch,
+): Promise<ResultadoClassificacaoAvistamento> {
+  const { data: { session } } = await client.auth.getSession();
+  if (!session) throw new ErroProspeccao("sessao_expirada", "Sua sessão expirou. Entre novamente.");
+  const resposta = await fetchImpl("/api/prospeccao/classificar", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ avistamentoId }),
+  });
+  const corpo = (await resposta.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!corpo || typeof corpo.ok !== "boolean") throw new ErroProspeccao("resposta_rota_invalida");
+  const etiquetas = Array.isArray(corpo.etiquetas) ? corpo.etiquetas : [];
+  const tipo = corpo.tipo && typeof corpo.tipo === "object"
+    ? (corpo.tipo as { sugerido: TipoImovelProspeccao; confianca: number | null })
+    : null;
+  return {
+    ok: corpo.ok,
+    repetida: corpo.repetida === true,
+    estado: typeof corpo.estado === "string" ? (corpo.estado as EstadoClassificacaoAvistamento) : null,
+    modo: corpo.modo === "modelo" || corpo.modo === "reuso" ? corpo.modo : null,
+    etiquetas: etiquetas as ResultadoClassificacaoAvistamento["etiquetas"],
+    tipo,
+    snapshotAplicado: corpo.snapshotAplicado === true,
+    falha: typeof corpo.falha === "string" ? corpo.falha : null,
+  };
 }
 
 /* ----------------------------------------------------------------

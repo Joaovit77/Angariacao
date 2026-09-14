@@ -279,6 +279,12 @@ export const EVENTOS: Record<string, string> = {
   "ia-assistente-acao-cancelada": "Ação do Assistente cancelada",
   "ia-assistente-acao-bloqueada": "Ação do Assistente bloqueada",
   "ia-sem-permissao": "Tentou usar IA sem liberação",
+  /* Garimpo em Campo (C8): a classificação de um avistamento por IA sobre o
+     texto da observação. Só o código e contadores no detalhe — nunca a
+     observação, o endereço ou a resposta bruta do modelo. */
+  "ia-classificacao-concluida": "Avistamento classificado por IA",
+  "ia-classificacao-falhou": "Falha ao classificar avistamento",
+  "ia-classificacao-limite-diario": "Teto diário de classificações atingido",
   "google-expirado": "Autorização do Google Agenda expirou",
   "google-falhou": "Falha ao sincronizar com o Google Agenda",
   "admin-ia-liberada": "IA liberada por um administrador",

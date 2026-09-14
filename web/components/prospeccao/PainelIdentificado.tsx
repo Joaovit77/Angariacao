@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
-import { obterEtiquetaCatalogo } from "@/lib/calculo/catalogoEtiquetas";
 import { identidadeParaDedupe } from "@/lib/prospeccao";
 import { TIPOS_IMOVEL } from "@/lib/constantes";
 import { fmtDataHoraIso } from "@/lib/datas";
@@ -19,6 +18,7 @@ import CandidatosDuplicidade from "./CandidatosDuplicidade";
 import DialogoExcluirIdentificado, { AVISO_CANCELAR_EXCLUSAO } from "./DialogoExcluirIdentificado";
 
 const MapaProspeccao = dynamic(() => import("./MapaProspeccao"), { ssr: false });
+import { ChipEtiqueta, descreverProveniencia } from "./EtiquetasImovel";
 import LinhaDoTempoAvistamentos from "./LinhaDoTempoAvistamentos";
 import styles from "./Prospeccao.module.css";
 import SeloExclusaoPendente from "./SeloExclusaoPendente";
@@ -74,6 +74,60 @@ function FormularioCorrecao({
   );
 }
 
+const ROTULOS_ESTADO_TIPO: Record<NonNullable<DetalheImovelIdentificado["identificado"]["tipoEstado"]>, string> = {
+  declarado: "Declarado",
+  inferido: "Inferido pela IA",
+  confirmado: "Confirmado",
+};
+
+/** O tipo como chip com marca de proveniência: apresentação, não segunda
+    fonte (§7.2). Inferido pela IA pede assinatura; confirmar mantém a
+    origem `ia-texto` e os ids da execução que sugeriu. */
+function TipoComProveniencia({ detalhe }: { detalhe: DetalheImovelIdentificado }) {
+  const item = detalhe.identificado;
+  const confirmarTipo = useProspeccao((estado) => estado.confirmarTipo);
+  const salvando = useProspeccao((estado) => estado.salvando);
+  if (!item.tipo) return <strong>Não definido</strong>;
+  const estadoTipo = item.tipoEstado;
+  const classeMarca = estadoTipo === "inferido"
+    ? styles.tipoInferido
+    : estadoTipo === "confirmado" ? styles.tipoConfirmado : styles.tipoDeclarado;
+  const detalhes: string[] = [];
+  if (item.tipoOrigem === "ia-texto") {
+    detalhes.push(item.tipoConfianca !== null ? `IA sobre o texto · sinal ${item.tipoConfianca}` : "IA sobre o texto");
+    const avistamento = detalhe.avistamentos.find((candidato) => candidato.id === item.tipoAvistamentoId);
+    if (avistamento) detalhes.push(`avistamento de ${fmtDataHoraIso(avistamento.observadoEm)}`);
+  } else if (item.tipoOrigem === "manual") {
+    detalhes.push("definido manualmente");
+  }
+  if (estadoTipo === "confirmado" && item.tipoConfirmadoEm) {
+    detalhes.push(`confirmado em ${fmtDataHoraIso(item.tipoConfirmadoEm)}`);
+  }
+  return (
+    <>
+      <strong>
+        {item.tipo}
+        {estadoTipo ? (
+          <span className={`${styles.tipoMarca} ${classeMarca}`} data-tipo-estado={estadoTipo}>
+            {ROTULOS_ESTADO_TIPO[estadoTipo]}
+          </span>
+        ) : null}
+      </strong>
+      {detalhes.length ? <small className={styles.proveniencia}>{detalhes.join(" · ")}</small> : null}
+      {estadoTipo === "inferido" && item.tipoOrigem === "ia-texto" ? (
+        <button
+          type="button"
+          className="btn btn-sm"
+          disabled={salvando}
+          onClick={() => void confirmarTipo(item.id)}
+        >
+          Confirmar tipo
+        </button>
+      ) : null}
+    </>
+  );
+}
+
 function SeletorTipoManual({
   identificadoId,
   tipoAtual,
@@ -124,16 +178,15 @@ function EtiquetaAtual({
   const confirmar = useProspeccao((estado) => estado.confirmarEtiqueta);
   const contestar = useProspeccao((estado) => estado.contestarEtiqueta);
   const salvando = useProspeccao((estado) => estado.salvando);
-  const rotulo = obterEtiquetaCatalogo(etiqueta.categoria, etiqueta.codigo)?.rotulo
-    ?? etiqueta.codigo;
-  const podeConfirmar = etiqueta.estado === "inferida";
+  // Só a inferência pede assinatura; a etiqueta aplicada à mão já é humana.
+  const podeConfirmar = etiqueta.estado === "inferida" && etiqueta.origem !== "manual";
   const podeContestar = etiqueta.estado === "inferida" || etiqueta.estado === "confirmada";
 
   return (
-    <div className={styles.etiqueta}>
+    <div className={styles.etiqueta} data-etiqueta-id={etiqueta.id}>
       <div>
-        <strong>{rotulo}</strong>
-        <small>{etiqueta.origem} · {etiqueta.estado}</small>
+        <ChipEtiqueta etiqueta={etiqueta} />
+        <small className={styles.proveniencia}>{descreverProveniencia(etiqueta)}</small>
       </div>
       {podeConfirmar || podeContestar ? (
         <div className={styles.etiquetaAcoes}>
@@ -172,6 +225,8 @@ export default function PainelIdentificado({
   const descartar = useProspeccao((estado) => estado.descartar);
   const cancelarExclusao = useProspeccao((estado) => estado.cancelarExclusao);
   const removerFoto = useProspeccao((estado) => estado.removerFoto);
+  const classificarAvistamento = useProspeccao((estado) => estado.classificarAvistamento);
+  const classificandoAvistamentoId = useProspeccao((estado) => estado.classificandoAvistamentoId);
   const salvando = useProspeccao((estado) => estado.salvando);
   const carregarDetalhe = useProspeccao((estado) => estado.carregarDetalhe);
   const carregando = useProspeccao((estado) => estado.carregando);
@@ -283,7 +338,7 @@ export default function PainelIdentificado({
 
       <div className={styles.dados}>
         <div className={styles.dado}><span>Situação</span><strong>{item.situacao}</strong></div>
-        <div className={styles.dado}><span>Tipo</span><strong>{item.tipo ?? "Não definido"}</strong></div>
+        <div className={styles.dado}><span>Tipo</span><TipoComProveniencia detalhe={detalhe} /></div>
         <div className={styles.dado}>
           <span>Último avistamento</span>
           <strong>{fmtDataHoraIso(item.ultimoAvistamentoEm) || "Não registrado"}</strong>
@@ -370,6 +425,23 @@ export default function PainelIdentificado({
             identificadoId={item.id}
             avistamento={corrente}
           />
+          {corrente.classificacaoEstado === "pendente" || corrente.classificacaoEstado === "indisponivel" ? (
+            <div className={styles.aguardando} role="status">
+              <span>
+                {classificandoAvistamentoId === corrente.id
+                  ? "Classificando a observação…"
+                  : "Aguardando classificação da observação por IA."}
+              </span>
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost"
+                disabled={classificandoAvistamentoId === corrente.id}
+                onClick={() => void classificarAvistamento(item.id, corrente.id)}
+              >
+                Classificar agora
+              </button>
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -396,6 +468,8 @@ export default function PainelIdentificado({
           avistamentos={detalhe.avistamentos}
           avistamentoCorrenteId={item.avistamentoCorrenteId}
           aoRemoverFoto={salvando ? undefined : (fotoId) => void confirmarRemocaoDeFoto(fotoId)}
+          aoClassificar={(avistamentoId) => void classificarAvistamento(item.id, avistamentoId)}
+          classificandoAvistamentoId={classificandoAvistamentoId}
         />
       </section>
     </article>

@@ -102,7 +102,17 @@ function avistamento(id: string, observadoEm: string, observacao: string) {
     classificacaoEm: observadoEm,
     fingerprint: "fingerprint",
     fotos: [],
-    classificacoes: [{ modo: id === "avistamento-novo" ? "reuso" : "modelo" }],
+    // C8: a execução concluída responde pelo resumo ("classificado em…, modo").
+    classificacoes: [{
+      id: `classificacao-${id}`,
+      estado: "concluida",
+      modo: id === "avistamento-novo" ? "reuso" : "modelo",
+      modelo: "modelo-gravado",
+      concluidaEm: observadoEm,
+      tipoSugerido: null,
+      tipoConfianca: null,
+      snapshotAplicado: id === "avistamento-novo",
+    }],
     etiquetas: [{
       id: id === "avistamento-novo" ? 2 : 1,
       imovelIdentificadoId: "identificado-1",
@@ -245,12 +255,18 @@ describe("LinhaDoTempoAvistamentos", () => {
       "avistamento-antigo",
     ]);
     expect(eventos[0].textContent).toContain("Placa nova");
-    expect(eventos[0].textContent).toContain("Aparenta ocupado · ia-texto · inferida");
+    // C8: a etiqueta é um chip com a marca de proveniência, não texto cru.
+    const chipNovo = eventos[0].querySelector("[data-origem]")!;
+    expect(chipNovo.textContent).toBe("Aparenta ocupadoIA");
+    expect(chipNovo.getAttribute("data-origem")).toBe("ia-texto");
+    expect(chipNovo.getAttribute("data-estado")).toBe("inferida");
     expect(eventos[0].textContent).toContain("Revisão 2");
-    expect(eventos[0].textContent).toContain("Modo: reuso");
+    expect(eventos[0].textContent).toContain("resultado reutilizado");
     expect(eventos[0].textContent).toContain("Avistamento corrente");
     expect(eventos[1].textContent).toContain("Imóvel vazio");
-    expect(eventos[1].textContent).toContain("Aparenta vago · ia-texto · inferida");
+    expect(eventos[1].querySelector("[data-origem]")!.textContent).toBe("Aparenta vagoIA");
+    expect(eventos[1].textContent).toContain("pelo modelo");
+    expect(eventos[1].textContent).toContain("Histórico: não altera o estado atual");
   });
 });
 

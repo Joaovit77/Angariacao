@@ -1,8 +1,8 @@
-import { obterEtiquetaCatalogo } from "@/lib/calculo/catalogoEtiquetas";
 import type { EtiquetaDoImovel } from "@/lib/calculo/etiquetasProspeccao";
 import { fmtDataHoraIso } from "@/lib/datas";
 import type { ImovelIdentificado } from "@/lib/prospeccao";
 
+import EtiquetasImovel from "./EtiquetasImovel";
 import styles from "./Prospeccao.module.css";
 
 const ROTULOS_SITUACAO: Record<ImovelIdentificado["situacao"], string> = {
@@ -24,9 +24,11 @@ function enderecoDoIdentificado(identificado: ImovelIdentificado): string {
     || "Local ainda sem endereço";
 }
 
-function rotuloEtiqueta(etiqueta: EtiquetaDoImovel): string {
-  return obterEtiquetaCatalogo(etiqueta.categoria, etiqueta.codigo)?.rotulo ?? etiqueta.codigo;
-}
+const MARCA_TIPO: Record<NonNullable<ImovelIdentificado["tipoEstado"]>, string> = {
+  declarado: "",
+  inferido: "IA",
+  confirmado: "confirmado",
+};
 
 interface Props {
   identificado: ImovelIdentificado;
@@ -57,7 +59,12 @@ export default function CardIdentificado({
         {identificado.exclusaoSolicitadaEm ? (
           <span className={styles.exclusaoPendente}>Exclusão pendente</span>
         ) : null}
-        <span className={styles.tipo}>{identificado.tipo ?? "Tipo não definido"}</span>
+        <span className={styles.tipo}>
+          {identificado.tipo ?? "Tipo não definido"}
+          {identificado.tipo && identificado.tipoEstado && MARCA_TIPO[identificado.tipoEstado]
+            ? ` · ${MARCA_TIPO[identificado.tipoEstado]}`
+            : ""}
+        </span>
       </span>
       <strong className={styles.cardEndereco}>{enderecoDoIdentificado(identificado)}</strong>
       <span className={styles.cardMeta}>
@@ -67,15 +74,9 @@ export default function CardIdentificado({
         </span>
         <span>{ultimaObservacao ? `Último em ${ultimaObservacao}` : "Sem avistamento"}</span>
       </span>
-      {etiquetasAtuais.length ? (
-        <span className={styles.chips} aria-label="Etiquetas atuais">
-          {etiquetasAtuais.slice(0, 3).map((etiqueta) => (
-            <span className={styles.chip} key={`${etiqueta.categoria}:${etiqueta.codigo}`}>
-              {rotuloEtiqueta(etiqueta)}
-            </span>
-          ))}
-        </span>
-      ) : null}
+      {/* Só as etiquetas do avistamento corrente (§6.1): a lista chega já
+          filtrada por `vigenteNoAvistamentoCorrente`, nunca a união de todos. */}
+      <EtiquetasImovel etiquetas={etiquetasAtuais} rotulo="Etiquetas atuais" limite={3} />
     </button>
   );
 }

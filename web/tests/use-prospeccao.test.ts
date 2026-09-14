@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   definirTipoManual: vi.fn(),
   excluirIdentificado: vi.fn(),
   cancelarExclusaoIdentificado: vi.fn(),
+  classificarAvistamento: vi.fn(),
+  confirmarTipoIdentificado: vi.fn(),
   removerFotoAvistamento: vi.fn(),
   previaExclusaoIdentificado: vi.fn(),
   buscarCandidatosDuplicidade: vi.fn(),
@@ -487,5 +489,76 @@ describe("merge no hook", () => {
     await expect(operacao).resolves.toBeNull();
     expect(useProspeccao.getState()).toMatchObject({ itens: [], detalhe: null, salvando: false, revisaoFusao: 0 });
     expect(mocks.listarIdentificados).not.toHaveBeenCalled();
+  });
+});
+
+describe("C8 — classificação por IA no estado local", () => {
+  const RESPOSTA = {
+    ok: true, repetida: false, estado: "concluida", modo: "modelo",
+    etiquetas: [{ categoria: "sinal-de-prospeccao", codigo: "imovel-fechado", confianca: 90 }],
+    tipo: null, snapshotAplicado: true, falha: null,
+  };
+
+  function esperarSegundoPlano() {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  it("avistamento salvo dispara a classificação em segundo plano, com o id do avistamento criado", async () => {
+    mocks.criarIdentificado.mockResolvedValue({ identificado: identificado("novo"), avistamento: { id: "av-1" } });
+    mocks.acrescentarAvistamento.mockResolvedValue({ id: "av-2" });
+    mocks.corrigirObservacaoAvistamento.mockResolvedValue({ id: "av-2" });
+    mocks.obterIdentificado.mockImplementation(async (id: string) => detalhe(id, ["av-1", "av-2"]));
+    mocks.classificarAvistamento.mockResolvedValue(RESPOSTA);
+
+    await expect(useProspeccao.getState().criar("usuario-1", {} as never, {} as never)).resolves.toBe(true);
+    await expect(useProspeccao.getState().adicionarAvistamento("usuario-1", "novo", {} as never)).resolves.toBe(true);
+    await expect(useProspeccao.getState().corrigirObservacao("novo", "av-2", "Texto corrigido")).resolves.toBe(true);
+    await esperarSegundoPlano();
+
+    expect(mocks.classificarAvistamento.mock.calls.map(([id]) => id)).toEqual(["av-1", "av-2", "av-2"]);
+    // A gravação não espera a classificação: `salvando` já voltou a false antes.
+    expect(useProspeccao.getState()).toMatchObject({ salvando: false, erro: null, classificandoAvistamentoId: null });
+  });
+
+  it("IA indisponível não vira erro na tela: relê o detalhe e segue", async () => {
+    mocks.obterIdentificado.mockResolvedValue(detalhe("identificado-1", ["av-1"]));
+    await useProspeccao.getState().carregarDetalhe("identificado-1");
+    mocks.obterIdentificado.mockClear();
+    mocks.classificarAvistamento.mockResolvedValue({ ...RESPOSTA, ok: false, estado: null, etiquetas: [], falha: "nao-configurado" });
+
+    const resultado = await useProspeccao.getState().classificarAvistamento("identificado-1", "av-1");
+    expect(resultado).toMatchObject({ ok: false, falha: "nao-configurado" });
+    expect(mocks.obterIdentificado).toHaveBeenCalledWith("identificado-1", { incluirClassificacoes: false });
+    expect(useProspeccao.getState()).toMatchObject({ erro: null, salvando: false, classificandoAvistamentoId: null });
+  });
+
+  it("sem resposta da rota nada muda e nada é relido; a mesma classificação não roda duas vezes ao mesmo tempo", async () => {
+    mocks.obterIdentificado.mockResolvedValue(detalhe("identificado-1", ["av-1"]));
+    await useProspeccao.getState().carregarDetalhe("identificado-1");
+    mocks.obterIdentificado.mockClear();
+    let concluir!: (r: unknown) => void;
+    mocks.classificarAvistamento.mockReturnValue(new Promise((resolve) => { concluir = resolve; }));
+
+    const primeira = useProspeccao.getState().classificarAvistamento("identificado-1", "av-1");
+    expect(useProspeccao.getState().classificandoAvistamentoId).toBe("av-1");
+    await expect(useProspeccao.getState().classificarAvistamento("identificado-1", "av-1")).resolves.toBeNull();
+    expect(mocks.classificarAvistamento).toHaveBeenCalledTimes(1);
+
+    concluir(undefined);
+    await expect(primeira).resolves.toBeNull();
+    expect(mocks.obterIdentificado).not.toHaveBeenCalled();
+    expect(useProspeccao.getState()).toMatchObject({ erro: null, classificandoAvistamentoId: null });
+  });
+
+  it("confirmar tipo passa pela RPC do navegador e atualiza o detalhe", async () => {
+    mocks.obterIdentificado.mockResolvedValue(detalhe("identificado-1", ["av-1"]));
+    mocks.confirmarTipoIdentificado.mockResolvedValue({ repetida: false });
+    await expect(useProspeccao.getState().confirmarTipo("identificado-1")).resolves.toBe(true);
+    expect(mocks.confirmarTipoIdentificado).toHaveBeenCalledWith("identificado-1");
+    expect(useProspeccao.getState()).toMatchObject({ salvando: false, erro: null, detalhe: { identificado: { id: "identificado-1" } } });
+
+    mocks.confirmarTipoIdentificado.mockRejectedValue(new Error("tipo_nao_inferido"));
+    await expect(useProspeccao.getState().confirmarTipo("identificado-1")).resolves.toBe(false);
+    expect(useProspeccao.getState().erro).toBe("Não foi possível confirmar o tipo do imóvel.");
   });
 });

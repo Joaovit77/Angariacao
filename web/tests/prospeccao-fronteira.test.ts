@@ -545,10 +545,15 @@ describe("isolamento arquitetural do C3", () => {
     const fachada = readFileSync(resolve("lib/prospeccao.ts"), "utf8");
     const estado = readFileSync(resolve("lib/useProspeccao.ts"), "utf8");
 
-    // A única rota que a fronteira conhece é a de exclusão coordenada (C5b):
-    // o navegador nunca toca o Storage nem apaga linha por conta própria.
+    // As únicas rotas que a fronteira conhece são as duas da V7 §19: a
+    // classificação por IA (C8), que manda SÓ o id do avistamento, e a
+    // exclusão coordenada (C5b). O navegador nunca toca o Storage, nunca
+    // apaga linha e nunca manda texto para o modelo por conta própria.
     expect(fachada).not.toMatch(/\.storage\b|\.delete\s*\(/);
-    expect([...new Set(fachada.match(/\/api\/[\w/-]*/g))]).toEqual(["/api/prospeccao/excluir"]);
+    expect([...new Set(fachada.match(/\/api\/[\w/-]*/g))].sort()).toEqual([
+      "/api/prospeccao/classificar",
+      "/api/prospeccao/excluir",
+    ]);
     expect(fachada).not.toContain('.from("imoveis")');
     expect(estado).not.toMatch(/from ["']\.\/store["']|from ["']@\/lib\/store["']/);
     expect(estado).toContain('"use client"');

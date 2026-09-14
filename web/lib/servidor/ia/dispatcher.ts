@@ -13,6 +13,11 @@ export const TIPOS_PEDIDO_IA = [
   "rascunhar-resposta",
   "gerar-anuncio",
   "abordagem-anuncio",
+  /** Garimpo em Campo (C8). Servido SÓ por /api/prospeccao/classificar: a
+      rota /api/ia recusa este tipo — ele não recebe contexto do browser,
+      relê a observação do banco e passa pelo claim do avistamento. Entra
+      aqui para o vocabulário de `ia_uso` continuar único. */
+  "classificar-imovel-identificado",
 ] as const;
 
 export type TipoPedidoIa = (typeof TIPOS_PEDIDO_IA)[number];

@@ -238,6 +238,11 @@ export async function POST(request: Request): Promise<Response> {
   }
   if (!ehTipoPedidoIa(corpo.tipo)) return erro("requisicao-invalida", 400);
   const pedido = corpo.tipo;
+  // A classificação do Garimpo em Campo tem rota própria, com claim por
+  // avistamento e texto relido do banco. Aceitá-la aqui a faria cair no
+  // ramo genérico do fim da função — e cobrar um "resumo do dia" em nome
+  // dela. Recusa antes de criar qualquer cliente pago.
+  if (pedido === "classificar-imovel-identificado") return erro("requisicao-invalida", 400);
 
   const openai = criarClienteOpenAIReal({ apiKey });
   const configuracaoIa = await carregarConfiguracaoIa();
