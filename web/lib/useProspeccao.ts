@@ -9,6 +9,7 @@ import {
   buscarCandidatosDuplicidade,
   cancelarExclusaoIdentificado,
   classificarAvistamento,
+  confirmarAtributoIdentificado,
   confirmarEtiqueta,
   confirmarTipoIdentificado,
   contestarEtiqueta,
@@ -25,6 +26,7 @@ import {
   listarIdentificados,
   listarImoveisJaVinculados,
   obterIdentificado,
+  obterMemoriaIdentificado,
   oportunidadeCriadaNaSessao,
   previaExclusaoIdentificado,
   removerFotoAvistamento,
@@ -36,6 +38,7 @@ import {
   type DetalheImovelIdentificado,
   identidadeParaDedupe,
   type ImovelIdentificado,
+  type MemoriaIdentificadoCarregada,
   type PreviaExclusaoIdentificado,
   type ReservaFotoAvistamento,
   type ResultadoClassificacaoAvistamento,
@@ -182,6 +185,14 @@ interface EstadoProspeccao {
   /** Desistir da recuperação: volta a `identificado`; a oportunidade
       criada continua no Pipeline. */
   desistirPromocao: (imovelIdentificadoId: string) => Promise<boolean>;
+  /** Memória de identidade (C13C): as investigações e afirmações do
+      registro, lidas sob RLS só quando o detalhe pede. Não muda estado;
+      `null` quando a leitura falha, e o detalhe segue de pé. */
+  carregarMemoria: (imovelIdentificadoId: string) => Promise<MemoriaIdentificadoCarregada | null>;
+  /** Uma pessoa valida uma hipótese da memória pela RPC do C13A. Só o
+      estado da afirmação muda; o detalhe do imóvel não é relido porque
+      nada nele mudou. Falha vira `false` e fica local na seção. */
+  confirmarAtributo: (atributoId: number) => Promise<boolean>;
 }
 
 const estadoInicial = {
@@ -628,6 +639,25 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
         await desistirPromocaoIdentificado(imovelIdentificadoId);
         return detalheAtualizado(imovelIdentificadoId);
       });
+    },
+    async carregarMemoria(imovelIdentificadoId) {
+      try {
+        return await obterMemoriaIdentificado(imovelIdentificadoId);
+      } catch {
+        return null;
+      }
+    },
+    async confirmarAtributo(atributoId) {
+      if (get().salvando) return false;
+      set({ salvando: true });
+      try {
+        await confirmarAtributoIdentificado(atributoId);
+        set({ salvando: false });
+        return true;
+      } catch {
+        set({ salvando: false });
+        return false;
+      }
     },
   };
 });

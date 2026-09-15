@@ -57,6 +57,8 @@ const cenario = vi.hoisted(() => ({
     oportunidadeCriadaNaSessao: vi.fn(() => null),
     imoveisJaVinculados: vi.fn(async () => new Set<string>()),
     buscarDuplicatas: vi.fn(async () => []),
+    carregarMemoria: vi.fn(async () => ({ investigacoes: [], atributos: [] })),
+    confirmarAtributo: vi.fn(async () => false),
   },
   modal: null as { tipo: string } | null,
   abrirModal: vi.fn(),

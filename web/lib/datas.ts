@@ -34,6 +34,14 @@ export function fmtDataHoraIso(iso: string | null | undefined): string {
   return Number.isNaN(data.getTime()) ? "" : data.toLocaleString("pt-BR");
 }
 
+/** Só a data ("DD/MM/AAAA") de um instante ISO completo, no fuso local.
+    Inválido vira vazio, nunca uma data inventada. */
+export function fmtDataIso(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const data = new Date(iso);
+  return Number.isNaN(data.getTime()) ? "" : data.toLocaleDateString("pt-BR");
+}
+
 /** Converte data/hora digitadas no fuso local para um instante UTC. */
 export function dataHoraLocalParaIso(data: string, hora: string): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data) || !/^\d{2}:\d{2}$/.test(hora)) return null;

@@ -22,6 +22,7 @@ const cenario = vi.hoisted(() => ({
     erro: null as string | null, aviso: null, incluirOcultos: false,
     carregarPagina: vi.fn(), carregarDetalhe: vi.fn(), limparSelecao: vi.fn(), dispensarUltimoRegistro: vi.fn(),
     definirIncluirOcultos: vi.fn(), buscarDuplicatas: vi.fn(async () => []),
+    carregarMemoria: vi.fn(async () => ({ investigacoes: [], atributos: [] })), confirmarAtributo: vi.fn(async () => false),
   },
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: cenario.push }), usePathname: () => "/garimpo-em-campo/catalogo" }));

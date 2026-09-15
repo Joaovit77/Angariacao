@@ -26,6 +26,8 @@ const cenario = vi.hoisted(() => ({
     previaExclusao: vi.fn(),
     // C7: a dedupe só avisa; nestes testes ela não encontra nada.
     buscarDuplicatas: vi.fn(async () => []),
+    carregarMemoria: vi.fn(async () => ({ investigacoes: [], atributos: [] })),
+    confirmarAtributo: vi.fn(async () => false),
     excluir: vi.fn(),
     cancelarExclusao: vi.fn(),
     removerFoto: vi.fn(),

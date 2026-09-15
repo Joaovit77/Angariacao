@@ -686,10 +686,9 @@ describe("C13B — a tela do Investigador diz a verdade sobre a memória, sem da
     expect(await telaCom(undefined)).toBeNull();
   });
 
-  it("17/33. nada de promoção, situação ou seção de memória na tela do Investigador (isso é C13C)", () => {
+  it("17/33. nada de promoção, situação ou seção de memória na tela do Investigador (a memória é lida no detalhe do Garimpo, C13C)", () => {
     const tela = ler("web/components/investigador/InvestigadorImoveisView.tsx");
-    expect(tela).not.toMatch(/Transformar em oportunidade|Memória do imóvel<|Confirmar informação|carregarMemoriaIdentificado|montarMemoriaIdentidade/);
+    expect(tela).not.toMatch(/Transformar em oportunidade|Memória do imóvel<|Confirmar informação|carregarMemoria|montarMemoriaIdentidade/);
     expect(tela).not.toMatch(/vincular_promocao|salvarImovel|definir_situacao|promovid/);
-    expect(ler("web/components/prospeccao/PainelIdentificado.tsx")).not.toMatch(/memoriaIdentidade|Memória do imóvel/);
   });
 });
