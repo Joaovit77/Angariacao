@@ -36,6 +36,7 @@ vi.mock("@/lib/uiModal", () => ({
 }));
 vi.mock("@/components/SessaoProvider", () => ({ useSessao: () => ({ estado: "auth", usuario: { id: "usuario-1" } }) }));
 
+import CardCatalogoVisual, { fonteDaImagemDoCard } from "@/components/prospeccao/CardCatalogoVisual";
 import CatalogoVisualView, {
   SITUACOES_FILTRO_CATALOGO,
   VAZIO_CATALOGO,
@@ -256,7 +257,9 @@ describe("CatalogoVisualView: cards, filtros, abrir o detalhe do Garimpo, estado
 
     const um = cards[0];
     expect(um.getAttribute("data-catalogo-card")).toBe("um");
-    expect(um.querySelector("img")!.getAttribute("src")).toBe("https://assinada/u/um/av-1/f_thumb.jpg");
+    // A imagem do card é o ORIGINAL assinado (a miniatura de 320 px é só fallback).
+    expect(um.querySelector("img")!.getAttribute("src")).toBe("https://assinada/u/um/av-1/f.jpg");
+    expect(um.querySelector("img")!.getAttribute("data-fonte-imagem")).toBe("original");
     expect(um.querySelector("img")!.getAttribute("loading")).toBe("lazy");
     expect(um.textContent).toContain("Rua Sergipe, 800 — Centro · Londrina · PR");
     expect(um.textContent).toContain("Casa");
@@ -271,9 +274,12 @@ describe("CatalogoVisualView: cards, filtros, abrir o detalhe do Garimpo, estado
     expect(promovido.getAttribute("data-capa-avistamento")).toBe("av-antiga");
     expect(within(promovido).getByText(/Foto de 10\/09\/2026/)).toBeTruthy();
 
-    // Q. uma assinatura por página, só das capas exibidas.
+    // Q/H. UMA assinatura por página, com original e miniatura de cada capa (sem N+1).
     expect(assinar).toHaveBeenCalledTimes(1);
-    expect(assinar).toHaveBeenCalledWith(["u/um/av-1/f_thumb.jpg", "u/promovido/av-1/f_thumb.jpg"]);
+    expect(assinar).toHaveBeenCalledWith([
+      "u/um/av-1/f.jpg", "u/um/av-1/f_thumb.jpg",
+      "u/promovido/av-1/f.jpg", "u/promovido/av-1/f_thumb.jpg",
+    ]);
   });
 
   it("F. clicar no card abre o detalhe existente do Garimpo, pelo id certo", async () => {
@@ -313,11 +319,18 @@ describe("CatalogoVisualView: cards, filtros, abrir o detalhe do Garimpo, estado
     expect(await screen.findByText(VAZIO_FILTRO)).toBeTruthy();
   });
 
-  it("Q. miniatura sem URL assinada mostra 'Imagem indisponível' em vez de uma URL pública", async () => {
+  it("Q. sem URL assinada de original nem de miniatura, 'Imagem indisponível' em vez de uma URL pública", async () => {
     montar([item("sem-url")], { urls: new Map() });
     const card = await screen.findByRole("button", { name: /^Abrir / });
     expect(card.querySelector("img")).toBeNull();
     expect(card.textContent).toContain("Imagem indisponível");
+  });
+
+  it("qualidade: sem original assinado o card cai na miniatura; com os dois, o original vence", async () => {
+    montar([item("so-mini")], { urls: new Map([["u/so-mini/av-1/f_thumb.jpg", "https://assinada/mini"]]) });
+    const card = await screen.findByRole("button", { name: /^Abrir / });
+    expect(card.querySelector("img")!.getAttribute("src")).toBe("https://assinada/mini");
+    expect(card.querySelector("img")!.getAttribute("data-fonte-imagem")).toBe("miniatura");
   });
 
   it("paginação: usa temMais/pagina do resultado; sem segunda página não há controles", async () => {
@@ -347,6 +360,60 @@ describe("CatalogoVisualView: cards, filtros, abrir o detalhe do Garimpo, estado
     expect(celular).toMatch(/\.catalogoGrade \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
     expect(CSS).toMatch(/\.cardCatalogoFoto \{[^}]*aspect-ratio: 4 \/ 3/);
     expect(CSS).toMatch(/\.cardCatalogoFoto img \{[^}]*object-fit: cover/);
+  });
+});
+
+describe("CardCatalogoVisual: original nítido, miniatura como fallback, nunca outra capa", () => {
+  const capa = { fotoId: "foto-x", avistamentoId: "av-x", caminho: "u/x/av-x/f.jpg", caminhoMiniatura: "u/x/av-x/f_thumb.jpg", observadoEm: D3 };
+  const montarCard = (urlOriginal: string | null, urlMiniatura: string | null) => {
+    const aoAbrir = vi.fn();
+    render(createElement(CardCatalogoVisual, { item: item("x", {}, capa), urlOriginal, urlMiniatura, aoAbrir }));
+    return { aoAbrir, card: screen.getByRole("button", { name: /^Abrir / }) };
+  };
+
+  it("A/B/C/D. a ordem das fontes é original → miniatura → indisponível, sem inventar URL", () => {
+    expect(fonteDaImagemDoCard("https://o", "https://m", false)).toEqual({ src: "https://o", fonte: "original" });
+    expect(fonteDaImagemDoCard("https://o", "https://m", true)).toEqual({ src: "https://m", fonte: "miniatura" });
+    expect(fonteDaImagemDoCard(null, "https://m", false)).toEqual({ src: "https://m", fonte: "miniatura" });
+    expect(fonteDaImagemDoCard(null, null, false)).toBeNull();
+    expect(fonteDaImagemDoCard("https://o", null, true)).toBeNull();
+  });
+
+  it("A/I/J/K/L. mostra o original com lazy loading; a capa continua a mesma foto/passagem; o clique abre o mesmo detalhe", () => {
+    const { card, aoAbrir } = montarCard("https://assinada/original", "https://assinada/mini");
+    const img = card.querySelector("img")!;
+    expect(img.getAttribute("src")).toBe("https://assinada/original");
+    expect(img.getAttribute("loading")).toBe("lazy");
+    expect(card.getAttribute("data-capa-foto")).toBe("foto-x");
+    expect(card.getAttribute("data-capa-avistamento")).toBe("av-x");
+    fireEvent.click(card);
+    expect(aoAbrir).toHaveBeenCalledExactlyOnceWith("x");
+  });
+
+  it("B/D. se o original falhar ao carregar, o card cai na miniatura; se ela também falhar, 'Imagem indisponível' — o imóvel nunca some", () => {
+    const { card } = montarCard("https://assinada/original", "https://assinada/mini");
+    fireEvent.error(card.querySelector("img")!);
+    const mini = card.querySelector("img")!;
+    expect(mini.getAttribute("src")).toBe("https://assinada/mini");
+    expect(mini.getAttribute("data-fonte-imagem")).toBe("miniatura");
+    // Capa inalterada: a mesma foto e a mesma passagem, só a fonte mudou.
+    expect(card.getAttribute("data-capa-foto")).toBe("foto-x");
+    expect(card.getAttribute("data-capa-avistamento")).toBe("av-x");
+    fireEvent.error(mini);
+    expect(card.querySelector("img")).toBeNull();
+    expect(card.textContent).toContain("Imagem indisponível");
+    expect(card.textContent).toContain("Rua Sergipe, 800");
+  });
+
+  it("E/F/G/M. estrutural: fontes só por URL assinada em lote, bucket privado, nada persistido, nenhuma escrita", () => {
+    const view = ler("components/prospeccao/CatalogoVisualView.tsx");
+    const card = ler("components/prospeccao/CardCatalogoVisual.tsx");
+    expect(view).toContain("createSignedUrls(");
+    expect(view).toMatch(/flatMap\(\(item\) => \[item\.capa\.caminho, item\.capa\.caminhoMiniatura\]\)/);
+    expect(view + card).not.toMatch(/getPublicUrl|\/storage\/v1\/object\/public|\.insert\(|\.update\(|\.upsert\(|\.rpc\(|localStorage|sessionStorage/);
+    expect(card).not.toMatch(/filter:|image-rendering/);
+    expect(CSS.slice(CSS.indexOf(".cardCatalogoFoto img"))).toMatch(/^\.cardCatalogoFoto img \{[^}]*object-fit: cover/);
+    expect(CSS).not.toMatch(/\.cardCatalogoFoto[^{]*\{[^}]*(filter|image-rendering|transform)/);
   });
 });
 

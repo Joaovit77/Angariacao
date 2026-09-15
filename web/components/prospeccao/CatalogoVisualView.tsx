@@ -133,8 +133,10 @@ export default function CatalogoVisualView({
             situacao: situacaoFiltro as FiltrosCatalogoVisual["situacao"],
           },
         });
-        // Uma chamada ao Storage por página, só das capas que vão aparecer.
-        const urls = await assinar(resposta.itens.map((item) => item.capa.caminhoMiniatura));
+        // Uma chamada ao Storage por página: o ORIGINAL de cada capa (é ele
+        // que o card mostra, senão a miniatura de 320 px vira borrão em
+        // qualquer tela com DPR alto) e a miniatura, como fallback.
+        const urls = await assinar(resposta.itens.flatMap((item) => [item.capa.caminho, item.capa.caminhoMiniatura]));
         if (meuPedido !== pedido.current) return;
         setResultado({ chave, fase: "pronto", pagina: resposta, urls });
       } catch {
@@ -240,6 +242,7 @@ export default function CatalogoVisualView({
               <CardCatalogoVisual
                 key={item.identificado.id}
                 item={item}
+                urlOriginal={estado.urls.get(item.capa.caminho) ?? null}
                 urlMiniatura={estado.urls.get(item.capa.caminhoMiniatura) ?? null}
                 aoAbrir={abrirImovel}
               />
