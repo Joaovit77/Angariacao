@@ -146,6 +146,11 @@ export default function ModalAvistamento({
   const [localizacaoEndereco, setLocalizacaoEndereco] = useState<LocalizacaoCapturada | null>(null);
   const [geocodificando, setGeocodificando] = useState(false);
   const [fonteEscolhida, setFonteEscolhida] = useState<EscolhaFonteLocalizacao>("auto");
+  /* C10.1: o mapa fica recolhido atrás da linha de status. Abre por toque
+     (ver / ajustar o ponto) ou sozinho quando precisa do humano: GPS
+     impreciso ou GPS longe do endereço. A regra de qual localização vence
+     não muda; só o que aparece. */
+  const [mapaAberto, setMapaAberto] = useState(false);
   const geocodeRef = useRef({ chave: "", pedido: 0 });
   // Nasce "buscando": o pedido ao GPS acontece assim que o rascunho for lido.
   const [statusGps, setStatusGps] = useState<StatusGps>("buscando");
@@ -329,6 +334,8 @@ export default function ModalAvistamento({
     escolha: fonteEscolhida,
   });
   const localizacaoAtual: LocalizacaoAvistamento = resolvida.localizacao;
+  const mapaPrecisaDoHumano = gpsImpreciso(localizacaoAtual) || resolvida.gpsLonge;
+  const mostrarMapa = localizacaoAtual.latitude !== null && (mapaAberto || mapaPrecisaDoHumano || localizacaoMapa !== null);
   /* Dedupe (C7): com endereço ou coordenada em mãos, avisa se já existe
      um local parecido. Aviso, não bloqueio: o botão de salvar não muda. */
   const tipoSelecionadoParaDedupe = TIPOS_IMOVEL.find((opcao) => opcao === tipo) ?? null;
@@ -408,6 +415,7 @@ export default function ModalAvistamento({
 
   function escolherPontoNoMapa(ponto: { latitude: number; longitude: number }) {
     setLocalizacaoMapa(localizacaoDoMapa(ponto));
+    setMapaAberto(true);
     tocado.current = true;
   }
 
@@ -696,7 +704,21 @@ export default function ModalAvistamento({
               </fieldset>
             ) : null}
             {localizacaoAtual.latitude !== null ? (
-              <MapaProspeccao localizacao={localizacaoAtual} aoEscolherPonto={escolherPontoNoMapa} altura={200} />
+              <div className={styles.mapaRecolhivel} data-mapa-recolhivel data-aberto={mostrarMapa}>
+                {!mapaPrecisaDoHumano && localizacaoMapa === null ? (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    aria-expanded={mostrarMapa}
+                    onClick={() => setMapaAberto((aberto) => !aberto)}
+                  >
+                    {mostrarMapa ? "Ocultar o mapa" : "Ver no mapa ou ajustar o ponto"}
+                  </button>
+                ) : null}
+                {mostrarMapa ? (
+                  <MapaProspeccao localizacao={localizacaoAtual} aoEscolherPonto={escolherPontoNoMapa} altura={200} />
+                ) : null}
+              </div>
             ) : null}
           </section>
           )}

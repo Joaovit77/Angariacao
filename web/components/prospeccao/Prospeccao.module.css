@@ -1566,6 +1566,14 @@
 
 .painelAncora { min-width: 0; scroll-margin-top: 72px; }
 
+/* Mapa da captura recolhido: uma linha de status e um toque para ver. */
+.mapaRecolhivel {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.mapaRecolhivel > :global(.btn) { padding-inline: 0; }
+
 /* Celular: menos topo, menos texto auxiliar, mais espaço para a tarefa. */
 @media (max-width: 720px) {
   .hero { gap: 12px; padding: 14px 16px; }
