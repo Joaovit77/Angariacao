@@ -708,55 +708,44 @@ describe("refino de textos, data e tipografia (C9.1)", () => {
 });
 
 /* Endereço depois do cadastro. Quem sai com pressa registra a foto e deixa
-   o endereço para depois; o painel avisa (informação, não erro) e oferece
-   o formulário em "Ações". Só endereço: nada de tipo, passagens ou
-   localização — e depois da promoção o endereço é da carteira. */
+   o endereço para depois. Sem endereço, o cabeçalho oferece só o botão
+   "Digitar o endereço": o formulário existe depois do toque e some ao
+   salvar ou cancelar. Com endereço, "Corrigir o endereço" fica em Ações.
+   Só endereço: nada de tipo, passagens ou localização — e depois da
+   promoção o endereço é da carteira. */
 describe("informar o endereço depois do cadastro", () => {
-  beforeEach(() => {
-    Element.prototype.scrollIntoView = vi.fn();
-  });
-
   const semEndereco = () => detalhe({ logradouro: null, numero: null, bairro: null, cidade: null, estado: null, enderecoChave: "", cidadeChave: "", bairroChave: "" });
+  const botaoDigitar = () => screen.queryByRole("button", { name: "Digitar o endereço" });
 
-  it("sem logradouro: cabeçalho 'Local ainda sem endereço', atenção em nível informação, e o botão abre o formulário em Ações", () => {
+  it("sem logradouro: só o botão 'Digitar o endereço' no cabeçalho; nem aviso, nem formulário, nem ação em Ações", () => {
     render(createElement(PainelIdentificado, { detalhe: semEndereco() }));
-    expect(document.querySelector(".painelCabecalho h3, h3")!.textContent).toBe("Local ainda sem endereço");
-    const aviso = document.querySelector("[data-atencao='sem-endereco']")!;
-    expect(aviso.getAttribute("data-nivel")).toBe("info");
-    expect(aviso.textContent).toContain("Este imóvel ainda não tem endereço.");
-    // Uma linha e o botão: o cabeçalho já diz "Local ainda sem endereço".
-    expect(aviso.querySelector("p")).toBeNull();
-    const detalhes = document.querySelector("details[data-acao='informar-endereco']") as HTMLDetailsElement;
-    expect(detalhes.open).toBe(false);
-    expect(detalhes.querySelector("summary")!.textContent).toBe("Informar o endereço");
-    fireEvent.click(aviso.querySelector("button")!);
-    expect(detalhes.open).toBe(true);
-    // O texto da ação está entre "corrigir o texto" e "informar o tipo".
+    expect(document.querySelector("h3")!.textContent).toBe("Local ainda sem endereço");
+    expect(botaoDigitar()).not.toBeNull();
+    expect(document.querySelector("[data-formulario-endereco]")).toBeNull();
+    expect(document.querySelector("[data-atencao='sem-endereco']")).toBeNull();
     expect([...document.querySelectorAll("section[aria-label='Ações'] > details")].map((d) => d.getAttribute("data-acao")))
-      .toEqual(["corrigir-texto", "informar-endereco", "informar-tipo"]);
+      .toEqual(["corrigir-texto", "informar-tipo"]);
   });
 
-  it("com logradouro: sem aviso, a ação vira 'Corrigir o endereço' e os campos já vêm preenchidos", () => {
-    render(createElement(PainelIdentificado, { detalhe: detalhe({ cep: "86010-000", pontoReferencia: "Esquina" }) }));
-    expect(document.querySelector("[data-atencao='sem-endereco']")).toBeNull();
-    const detalhes = document.querySelector("details[data-acao='informar-endereco']")!;
-    expect(detalhes.querySelector("summary")!.textContent).toBe("Corrigir o endereço");
-    // Bairro/CEP/referência/unidade ficam em "Mais detalhes"; abre sozinho quando já há algum gravado.
-    const mais = detalhes.querySelector("[data-formulario-endereco] details") as HTMLDetailsElement;
-    expect(mais.querySelector("summary")!.textContent).toBe("Mais detalhes (opcional)");
-    expect(mais.open).toBe(true);
-    const valor = (rotulo: string) => (screen.getByLabelText(rotulo) as HTMLInputElement).value;
-    expect([valor("Logradouro"), valor("Número"), valor("Bairro"), valor("Cidade"), valor("Estado"), valor("CEP"), valor("Ponto de referência")])
-      .toEqual(["Rua das Palmeiras", "120", "Centro", "Londrina", "PR", "86010-000", "Esquina"]);
-    expect((screen.getByRole("button", { name: "Salvar endereço" }) as HTMLButtonElement).disabled).toBe(true);
+  it("o botão abre o formulário (rua, número, cidade e estado à vista; o resto recolhido) e 'Cancelar' fecha sem salvar", () => {
+    render(createElement(PainelIdentificado, { detalhe: semEndereco() }));
+    fireEvent.click(botaoDigitar()!);
+    expect(botaoDigitar()).toBeNull();
+    const formulario = document.querySelector("[data-formulario-endereco]")!;
+    expect(screen.getByRole("region", { name: "Digitar o endereço" }).contains(formulario)).toBe(true);
+    expect((formulario.querySelector("details") as HTMLDetailsElement).open).toBe(false);
+    expect(formulario.querySelector("summary")!.textContent).toBe("Mais detalhes (opcional)");
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(document.querySelector("[data-formulario-endereco]")).toBeNull();
+    expect(botaoDigitar()).not.toBeNull();
+    expect(cenario.estado.definirEndereco).not.toHaveBeenCalled();
   });
 
   it("salvar só quando algo mudou e o endereço identifica o lugar; envia os dez campos e nada mais", () => {
     render(createElement(PainelIdentificado, { detalhe: semEndereco() }));
+    fireEvent.click(botaoDigitar()!);
     const salvar = () => screen.getByRole("button", { name: "Salvar endereço" }) as HTMLButtonElement;
     expect(salvar().disabled).toBe(true);
-    // Sem nada gravado, só rua, número, cidade e estado à vista.
-    expect((document.querySelector("[data-formulario-endereco] details") as HTMLDetailsElement).open).toBe(false);
     // Cidade sozinha não dá nome ao lugar.
     fireEvent.change(screen.getByLabelText("Cidade"), { target: { value: "Londrina" } });
     expect(salvar().disabled).toBe(true);
@@ -773,8 +762,9 @@ describe("informar o endereço depois do cadastro", () => {
     expect(document.querySelector("[data-formulario-endereco]")!.textContent).toContain("As passagens, a localização e o tipo não mudam.");
   });
 
-  it("ponto de referência sozinho identifica o lugar; promovido não edita endereço nem recebe aviso", () => {
+  it("ponto de referência sozinho identifica o lugar; promovido não recebe botão nem ação", () => {
     const { unmount } = render(createElement(PainelIdentificado, { detalhe: semEndereco() }));
+    fireEvent.click(botaoDigitar()!);
     fireEvent.change(screen.getByLabelText("Ponto de referência"), { target: { value: "Ao lado do mercado" } });
     expect((screen.getByRole("button", { name: "Salvar endereço" }) as HTMLButtonElement).disabled).toBe(false);
     unmount();
@@ -782,7 +772,25 @@ describe("informar o endereço depois do cadastro", () => {
     const promovido = semEndereco();
     promovido.identificado = { ...promovido.identificado, situacao: "promovido", imovelId: "imovel-1", promovidoEm: NOVEMBRO };
     render(createElement(PainelIdentificado, { detalhe: promovido }));
-    expect(document.querySelector("details[data-acao='informar-endereco']")).toBeNull();
-    expect(document.querySelector("[data-atencao='sem-endereco']")).toBeNull();
+    expect(botaoDigitar()).toBeNull();
+    expect(document.querySelector("details[data-acao='corrigir-endereco']")).toBeNull();
+  });
+
+  it("com logradouro: sem botão; 'Corrigir o endereço' em Ações, recolhido, com os campos preenchidos e 'Mais detalhes' aberto quando há algum gravado", () => {
+    render(createElement(PainelIdentificado, { detalhe: detalhe({ cep: "86010-000", pontoReferencia: "Esquina" }) }));
+    expect(botaoDigitar()).toBeNull();
+    const detalhes = document.querySelector("details[data-acao='corrigir-endereco']") as HTMLDetailsElement;
+    expect(detalhes.open).toBe(false);
+    expect(detalhes.querySelector("summary")!.textContent).toBe("Corrigir o endereço");
+    expect([...document.querySelectorAll("section[aria-label='Ações'] > details")].map((d) => d.getAttribute("data-acao")))
+      .toEqual(["corrigir-texto", "corrigir-endereco", "informar-tipo"]);
+    const mais = detalhes.querySelector("[data-formulario-endereco] details") as HTMLDetailsElement;
+    expect(mais.open).toBe(true);
+    const valor = (rotulo: string) => (screen.getByLabelText(rotulo) as HTMLInputElement).value;
+    expect([valor("Logradouro"), valor("Número"), valor("Bairro"), valor("Cidade"), valor("Estado"), valor("CEP"), valor("Ponto de referência")])
+      .toEqual(["Rua das Palmeiras", "120", "Centro", "Londrina", "PR", "86010-000", "Esquina"]);
+    expect((screen.getByRole("button", { name: "Salvar endereço" }) as HTMLButtonElement).disabled).toBe(true);
+    // Aberto por Ações, não por botão: sem "Cancelar".
+    expect(screen.queryByRole("button", { name: "Cancelar" })).toBeNull();
   });
 });

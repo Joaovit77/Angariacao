@@ -59,8 +59,11 @@ export function enderecoIdentificaOLugar(campos: Pick<CamposEndereco, "logradour
 
 export default function FormularioEnderecoIdentificado({
   identificado,
+  aoCancelar,
 }: {
   identificado: Pick<ImovelIdentificado, "id" | keyof DadosEnderecoIdentificado>;
+  /** Presente quando o formulário foi aberto por um botão e pode ser fechado sem salvar. */
+  aoCancelar?: () => void;
 }) {
   const inicial = camposDoIdentificado(identificado);
   const [campos, setCampos] = useState<CamposEndereco>(inicial);
@@ -162,9 +165,16 @@ export default function FormularioEnderecoIdentificado({
           </div>
         </div>
       </details>
-      <button type="button" className="btn btn-sm" disabled={!podeSalvar} onClick={() => void salvar()}>
-        {salvando ? "Salvando…" : "Salvar endereço"}
-      </button>
+      <div className={styles.acoesFormulario}>
+        <button type="button" className="btn btn-sm" disabled={!podeSalvar} onClick={() => void salvar()}>
+          {salvando ? "Salvando…" : "Salvar endereço"}
+        </button>
+        {aoCancelar ? (
+          <button type="button" className="btn btn-sm btn-ghost" disabled={salvando} onClick={aoCancelar}>
+            Cancelar
+          </button>
+        ) : null}
+      </div>
       <small className={styles.explicacao}>{EXPLICACAO_ENDERECO}</small>
     </div>
   );

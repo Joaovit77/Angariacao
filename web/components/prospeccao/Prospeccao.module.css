@@ -392,8 +392,17 @@
   margin-bottom: 8px;
 }
 
-.formularioEndereco :global(.btn) {
+.acoesFormulario {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 4px;
+}
+
+/* Sem endereço, o cabeçalho oferece só o botão; o formulário vem depois. */
+.painelCabecalho .digitarEndereco {
+  width: auto;
+  margin-top: 10px;
 }
 
 .etiquetas {
