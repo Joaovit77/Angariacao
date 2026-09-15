@@ -15,6 +15,7 @@ import {
 import { useProspeccao } from "@/lib/useProspeccao";
 import { useUiModal } from "@/lib/uiModal";
 
+import AlternadorGarimpo from "./AlternadorGarimpo";
 import CardIdentificado from "./CardIdentificado";
 import ConfirmacaoRegistro from "./ConfirmacaoRegistro";
 import PainelIdentificado from "./PainelIdentificado";
@@ -71,6 +72,18 @@ export default function ProspeccaoView({
   useEffect(() => {
     void carregarPagina(1, porPagina);
   }, [carregarPagina, porPagina]);
+
+  // C12: o Catálogo Visual abre o detalhe daqui por `?abrir=<id>`. Lido
+  // uma vez ao montar, direto da URL (sem `useSearchParams`, que exigiria
+  // Suspense na pré-renderização); depois o painel rola até a vista.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const id = new URLSearchParams(window.location.search).get("abrir");
+    if (!id) return;
+    void carregarDetalhe(id, true).then((carregou) => {
+      if (carregou) painelRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    });
+  }, [carregarDetalhe]);
 
   // Depois de uma recarga o corretor cai AQUI, não no modal. Se o aparelho
   // guardou um registro interrompido, é esta tela que precisa dizer.
@@ -138,14 +151,17 @@ export default function ProspeccaoView({
         {/* Sem id, o modal cria um LOCAL novo com o seu primeiro avistamento.
             "Primeiro" é do local, não da conta: depois que já há registros o
             rótulo precisa dizer isso, senão parece que nada foi salvo. */}
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={salvando}
-          onClick={() => abrirModal("avistamento")}
-        >
-          {total > 0 ? "Registrar novo local" : "Registrar imóvel visto"}
-        </button>
+        <div className={styles.heroAcoes}>
+          <AlternadorGarimpo ativo="garimpo" />
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={salvando}
+            onClick={() => abrirModal("avistamento")}
+          >
+            {total > 0 ? "Registrar novo local" : "Registrar imóvel visto"}
+          </button>
+        </div>
       </section>
 
       {rascunhoPendente && usuarioId && !modalDeAvistamentoAberto ? (

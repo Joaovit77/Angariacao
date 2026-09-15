@@ -23,7 +23,7 @@ export const ROTULOS_SITUACAO: Record<ImovelIdentificado["situacao"], string> = 
   fundido: "Unido a outro registro",
 };
 
-function enderecoDoIdentificado(identificado: ImovelIdentificado): string {
+export function enderecoDoIdentificado(identificado: ImovelIdentificado): string {
   const endereco = [identificado.logradouro, identificado.numero].filter(Boolean).join(", ");
   const local = [identificado.bairro, identificado.cidade, identificado.estado]
     .filter(Boolean)
