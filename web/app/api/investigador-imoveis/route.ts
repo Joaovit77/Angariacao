@@ -19,6 +19,7 @@ import {
 } from "@/lib/calculo/contextoInvestigador";
 import { PORTAIS_ANGARIACAO, type PortalAngariacao } from "@/lib/calculo/centralAngariacao";
 import { buscarImovelNaWeb, BuscaWebIndisponivel } from "@/lib/servidor/investigadorImoveis";
+import { novaExecucaoInvestigacao, persistirMemoriaDaInvestigacao } from "@/lib/servidor/memoriaIdentidade";
 import { associarReferenciasAvaliacaoDoInvestigador } from "@/lib/servidor/referenciasAvaliacaoInvestigador";
 
 export const runtime = "nodejs";
@@ -280,11 +281,35 @@ export async function POST(request: Request): Promise<Response> {
   if (Number.isFinite(tamanhoDeclarado) && tamanhoDeclarado > 4_096) {
     return Response.json({ mensagem: "A consulta excede o tamanho permitido." }, { status: 413 });
   }
-  const corpo = await request.json().catch(() => null) as { consulta?: unknown } | null;
+  const corpo = await request.json().catch(() => null) as { consulta?: unknown; imovelIdentificado?: unknown } | null;
   if (!consultaInvestigadorValida(corpo?.consulta)) {
     return Response.json({ mensagem: "Informe ao menos 3 caracteres sobre o imóvel." }, { status: 400 });
   }
   const consultaOriginal = corpo.consulta.replace(/\s+/g, " ").trim().slice(0, LIMITE_CONSULTA_INVESTIGADOR);
+
+  // C13B: a memória só existe para a origem do Garimpo. O corpo traz no
+  // máximo o UUID do imóvel identificado; a posse é conferida aqui, sob
+  // RLS e com filtro explícito de user_id, ANTES de gastar a pesquisa. O
+  // id da execução nasce no servidor: nada do cliente vira id nem fato.
+  let imovelIdentificadoId: string | null = null;
+  if (corpo.imovelIdentificado !== undefined && corpo.imovelIdentificado !== null) {
+    if (typeof corpo.imovelIdentificado !== "string" || !contextoInvestigadorIdValido(corpo.imovelIdentificado)) {
+      return respostaContextoIndisponivel(400);
+    }
+    const { data, error } = await acesso.supabase
+      .from("imoveis_identificados")
+      .select("id")
+      .eq("id", corpo.imovelIdentificado)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) {
+      console.warn("[investigador-imoveis] contexto indisponível", { codigo: error.code || "consulta" });
+      return respostaContextoIndisponivel(503);
+    }
+    if (!data) return respostaContextoIndisponivel(404);
+    imovelIdentificadoId = corpo.imovelIdentificado;
+  }
+  const execucaoId = novaExecucaoInvestigacao();
   const chaveEmAndamento = `${userId}:${consultaOriginal.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()}`;
   if (investigacoesEmAndamento.has(chaveEmAndamento)) {
     return Response.json({ mensagem: "Esta investigação já está em andamento." }, { status: 409 });
@@ -321,6 +346,13 @@ export async function POST(request: Request): Promise<Response> {
           : busca.falhas
             ? `${busca.falhas} das ${busca.consultasExecutadas.length} pesquisas executadas não responderam; os demais resultados foram mantidos.`
           : resultados.length ? undefined : "Nenhuma possível correspondência apareceu nessas buscas.";
+        // Ponto único de persistência (C13B): a pesquisa terminou com
+        // sucesso (mesmo parcial ou vazia) e há um imóvel identificado
+        // conferido. Antes disto nada é gravado; erro acima pula tudo.
+        // A consulta digitada fica de fora de propósito: é texto livre.
+        const memoria = imovelIdentificadoId
+          ? await persistirMemoriaDaInvestigacao({ userId, execucaoId, imovelIdentificadoId, resultados })
+          : undefined;
         emitir({
           tipo: "resultado",
           dados: {
@@ -332,6 +364,7 @@ export async function POST(request: Request): Promise<Response> {
             encerramentoAntecipado: busca.encerramentoAntecipado,
             limiteAtingido: busca.limiteAtingido,
             aviso,
+            ...(memoria ? { memoria } : {}),
           },
         });
       } catch (erro) {

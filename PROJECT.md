@@ -2760,16 +2760,61 @@ tipo continua sendo confirmar a sugestão: a origem `ia-texto` não vira manual.
 O painel segue a ordem da leitura em campo: cabeçalho, **Precisa de atenção** (só quando há:
 conflito de revisão, falha da análise com motivo, texto corrigido aguardando análise, sugestões não
 confirmadas; nível declarado em atributo e em texto, nunca só na cor), **Próximas ações** (desde o
-C10.1: oportunidade, investigar, informar o tipo quando falta), **O que sabemos agora**, ações
-recolhidas (corrigir o texto, corrigir o endereço, informar o tipo), **Visto anteriormente**,
-**Histórico de passagens** e localização (recolhidos no celular), duplicatas, **Detalhes da
-análise**, e só no fim descartar/excluir. O
+C10.1: oportunidade, investigar, informar o tipo quando falta), **O que sabemos agora**, **Memória
+do imóvel** (desde o C13C; ver abaixo), ações recolhidas (corrigir o texto, corrigir o endereço,
+informar o tipo), **Visto anteriormente**, **Histórico de passagens** e localização (recolhidos no
+celular), duplicatas, **Detalhes da análise**, e só no fim descartar/excluir. O
 motivo de uma falha de análise é estado transitório de tela (`falhaAnalise` no `useProspeccao`):
 só o código fechado da rota, preso ao avistamento em que falhou, apagado na próxima tentativa, no
 sucesso, ao trocar de imóvel e ao limpar a seleção; a tradução para frase humana é um mapa fechado
 (`textosAnalise.ts`), e mensagem bruta de fornecedor nunca chega à tela. Limitação conhecida: os
 chips e o indicador "N sugestões a confirmar" do card só existem para o imóvel selecionado, porque
 só ele tem as etiquetas carregadas; o card não promete o que não tem.
+
+### Memória de identidade do imóvel (C13)
+
+A memória é o que o Garimpo sabe de um imóvel identificado a partir de fora do campo, com
+procedência. Núcleo (C13A, migration `20260915190000_prospeccao_memoria_identidade.sql`): duas
+tabelas aditivas ligadas a `imoveis_identificados.id` — `imoveis_identificados_investigacoes` (uma
+execução concluída do Investigador = um evento, nunca sobrescrito) e `imoveis_identificados_atributos`
+(uma afirmação estruturada por linha, **append-only**, com `fonte_url`, `fonte_dominio`,
+`observado_em`; a única mutação é a confirmação humana). Catálogo fechado de seis atributos, no
+CHECK e no código: `area_m2`, `quartos`, `vagas`, `valor_anunciado`, `condominio`,
+`referencia_anuncio`. **Vigente é derivado na leitura** (`derivarMemoriaAtual`): confirmada vence
+qualquer hipótese, mesmo mais nova; sem confirmada, vale a hipótese mais recente; valores distintos
+no histórico viram "divergente" e ficam todos visíveis — nunca média, nunca escolha automática.
+Ausência é neutra: sem linha, sem afirmação, sem placeholder. Duas RPCs: `registrar_investigacao_identificado`
+(só `service_role`; idempotente por execução, o id da execução nasce no servidor; grava evento,
+afirmações e `ultima_investigacao_em` na mesma transação) e `confirmar_atributo_identificado`
+(`authenticated`, só o dono; muda `estado`, `confirmado_por`, `confirmado_em` e nada mais).
+Merge reparenteia a memória do absorvido; exclusão é cascata por FK; RLS de leitura própria e
+nenhuma escrita direta pelo navegador.
+
+O que NÃO entra na memória (C13B): a consulta digitada pela pessoa (texto livre; não há coluna nem
+parâmetro), título, descrição, evidências e endereço dos resultados (texto livre da web), qualquer
+campo curto com cara de dado pessoal (telefone, e-mail, CPF/CNPJ; recusado e contado), e
+`valor_anunciado` enquanto o Investigador não distinguir venda de locação (reservado no catálogo:
+R$ 450.000 e R$ 2.500 do mesmo imóvel não são contradição, e gravá-los fabricaria uma). A faixa
+de correspondência do anúncio (`muito-forte/forte/possivel/indicio`) mede anúncio ↔ imóvel, não
+veracidade do atributo: toda afirmação do Investigador sai com `confianca = null`, e a tela não
+mostra percentual, faixa nem score. A memória é gravada uma única vez, depois de a pesquisa concluir
+e antes do evento final; falha de memória é explícita na tela e nunca apaga a pesquisa.
+
+Na tela (C13C), a memória vive na seção **Memória do imóvel** do detalhe existente — sem página,
+rota, item de menu ou modal próprios — logo depois de "O que sabemos agora", recolhida no celular
+com o resumo no título ("3 informações · 1 confirmada"). É camada de leitura + confirmação humana:
+o componente não decide vigência nem conflito (isso é do núcleo puro, e o read model
+`leituraMemoria.ts` só formata), carrega investigações e atributos sob RLS pelo store somente
+quando o detalhe abre (`carregarMemoria`; falha é local, com "Tentar de novo", e o resto do painel
+segue de pé), e **Confirmar informação** chama a RPC de confirmação pelo store (`confirmarAtributo`)
+depois de `window.confirm` — origem, fonte, valor e data de observação não mudam; a tela relê em vez
+de supor. Rótulos amigáveis e formatação determinística (`82 m²`, `3`, texto); **Hipótese** e
+**Confirmado** em texto e em atributo, nunca só em cor; fonte como domínio, link em nova aba só para
+http(s), "Fonte registrada" quando não há domínio. **Histórico** próprio da memória (primeiro/último
+avistamento derivados de colunas existentes, tipo, investigações com contagem e fontes, confirmações,
+divergências, "Transformado em oportunidade" a partir de `promovido_em`) sem repetir fotos nem cada
+passagem. Zero IA ao abrir, confirmar ou ler; zero escrita por visualizar; nada promove nem muda
+situação.
 
 ## O super admin: operar o sistema ≠ usar o sistema
 

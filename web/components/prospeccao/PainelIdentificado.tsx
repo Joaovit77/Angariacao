@@ -6,8 +6,10 @@
    atenção (e só quando precisa); o que sabemos agora; as ações; o que já
    foi visto e não voltou; o histórico de passagens; localização e
    possíveis duplicatas; por último, os detalhes da análise para quem
-   quiser conferir. Tudo aqui é apresentação: estados, vigência, revisão e
-   RPCs são os mesmos do C9. */
+   quiser conferir. Depois do que sabemos em campo entra o que a web
+   disse (C13C, memória de identidade): leitura e confirmação humana,
+   recolhida no celular. Tudo aqui é apresentação: estados, vigência,
+   revisão e RPCs são os mesmos do C9 e do C13A. */
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -43,6 +45,7 @@ import {
 } from "./EtiquetasImovel";
 import FormularioEnderecoIdentificado, { chaveFormularioEndereco } from "./FormularioEnderecoIdentificado";
 import LinhaDoTempoAvistamentos from "./LinhaDoTempoAvistamentos";
+import MemoriaIdentidade from "./MemoriaIdentidade";
 import styles from "./Prospeccao.module.css";
 import SeloExclusaoPendente from "./SeloExclusaoPendente";
 import { mensagemFalhaAnalise } from "./textosAnalise";
@@ -775,6 +778,11 @@ export default function PainelIdentificado({
               </p>
             )}
           </section>
+
+          {/* 3b. Memória do imóvel (C13C): o que a web disse e o que uma
+              pessoa validou, com fonte e histórico próprio. Distinta das
+              etiquetas (campo) e das passagens; no celular nasce recolhida. */}
+          <MemoriaIdentidade detalhe={detalhe} recolhida={telaEstreita} />
 
           {/* 4. Ações principais, recolhidas: corrigir o texto, informar o
               endereço e informar o tipo. */}

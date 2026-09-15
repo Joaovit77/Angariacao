@@ -8,10 +8,12 @@
    edifício, bairro, cidade, UF, tipo). A observação livre da passagem e
    qualquer dado pessoal NUNCA atravessam — nem quando estão na linha. As
    três origens anteriores continuam como eram; nada vaza entre origens
-   nem entre contas; carregar a página não pesquisa. Concluir uma
-   investigação anota `ultima_investigacao_em` (o trigger sobrescreve o
-   instante por now()) e NÃO muda situação, NÃO promove, NÃO escreve no
-   Pipeline — mesmo achando um possível proprietário.
+   nem entre contas; carregar a página não pesquisa. Desde o C13B, quem
+   anota `ultima_investigacao_em` é a RPC de servidor do C13A, na mesma
+   transação que grava a memória (o trigger segue normalizando o instante
+   por now()); o navegador só manda o UUID. Concluir NÃO muda situação,
+   NÃO promove, NÃO escreve no Pipeline — mesmo achando um possível
+   proprietário.
    ================================================================ */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -24,7 +26,6 @@ const mocks = vi.hoisted(() => ({
   getSupabase: vi.fn(),
   investigarImovel: vi.fn(),
   carregarContextoInvestigador: vi.fn(),
-  registrarInvestigacaoConcluida: vi.fn(),
 }));
 
 vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.createClient }));
@@ -39,8 +40,7 @@ import {
   urlInvestigadorDoImovelIdentificado,
   urlInvestigadorDoRadarAnuncio,
 } from "@/lib/calculo/contextoInvestigador";
-import { carregarContextoInvestigador, registrarInvestigacaoConcluida } from "@/lib/investigadorImoveis";
-import { registrarInvestigacaoIdentificado } from "@/lib/prospeccao";
+import { carregarContextoInvestigador, imovelIdentificadoDaReferencia, investigarImovel } from "@/lib/investigadorImoveis";
 
 const IDENTIFICADO_ID = "55555555-5555-4555-8555-555555555555";
 const IMOVEL_ID = "11111111-1111-4111-8111-111111111111";
@@ -206,7 +206,7 @@ describe("handoff do Garimpo em Campo para o Investigador", () => {
     const efeito = componente.slice(componente.indexOf("useEffect(() =>"), componente.indexOf("async function investigar"));
     expect(efeito).toContain("carregarContextoInvestigador");
     expect(efeito).not.toContain("investigarImovel(");
-    expect(efeito).not.toContain("registrarInvestigacaoConcluida(");
+    expect(efeito).not.toContain("persistirMemoria");
     expect(componente).toContain('garimpo: "Garimpo em Campo"');
     const painel = ler("components/prospeccao/PainelIdentificado.tsx");
     expect(painel).toContain("href={urlInvestigadorDoImovelIdentificado(item.id)}");
@@ -215,32 +215,19 @@ describe("handoff do Garimpo em Campo para o Investigador", () => {
   });
 });
 
-describe("concluir investigação anota a data — e só a data", () => {
-  function clienteDeAtualizacao(retorno: Record<string, unknown>) {
-    const single = vi.fn().mockResolvedValue({ data: retorno, error: null });
-    const select = vi.fn().mockReturnValue({ single });
-    const eq = vi.fn().mockReturnValue({ select });
-    const update = vi.fn().mockReturnValue({ eq });
-    const from = vi.fn().mockReturnValue({ update });
-    const rpc = vi.fn();
-    return { cliente: { from, rpc }, from, update, eq, select, rpc };
-  }
-
-  it("escreve só ultima_investigacao_em, pela superfície já autorizada, e devolve o instante do banco (não o do cliente)", async () => {
-    // O banco falso faz o que o trigger faz: ignora o valor enviado.
-    const fake = clienteDeAtualizacao({ id: IDENTIFICADO_ID, ultima_investigacao_em: "2026-09-15T10:00:00.000Z" });
-    const resultado = await registrarInvestigacaoIdentificado(IDENTIFICADO_ID, fake.cliente as never);
-
-    expect(fake.from).toHaveBeenCalledExactlyOnceWith("imoveis_identificados");
-    const payload = fake.update.mock.calls[0][0] as Record<string, unknown>;
-    expect(Object.keys(payload)).toEqual(["ultima_investigacao_em"]);
-    expect(typeof payload.ultima_investigacao_em).toBe("string");
-    expect(fake.eq).toHaveBeenCalledWith("id", IDENTIFICADO_ID);
-    expect(fake.rpc).not.toHaveBeenCalled();
-    // Nem situação, nem imovel_id, nem Pipeline.
-    expect(JSON.stringify(payload)).not.toMatch(/situacao|imovel_id|promovid/);
-    expect(resultado).toEqual({ ultimaInvestigacaoEm: "2026-09-15T10:00:00.000Z" });
-    expect(resultado.ultimaInvestigacaoEm).not.toBe(payload.ultima_investigacao_em);
+describe("concluir investigação anota a data — pela RPC do C13A, e só ela", () => {
+  it("o navegador não escreve mais ultima_investigacao_em: a data nasce na mesma transação da memória", () => {
+    // Nenhum caminho de escrita da coluna no cliente: nem fronteira, nem Investigador.
+    expect(ler("lib/prospeccao.ts")).not.toMatch(/update\(\{\s*ultima_investigacao_em/);
+    expect(ler("lib/prospeccao.ts")).not.toContain("registrarInvestigacaoIdentificado");
+    const semComentarios = (fonte: string) => fonte.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
+    expect(semComentarios(ler("lib/investigadorImoveis.ts"))).not.toMatch(/ultima_investigacao_em|\.from\(|\.rpc\(/);
+    // A RPC de servidor anota a data depois de gravar o evento e as afirmações.
+    const rpc = ler("../supabase/migrations/20260915190000_prospeccao_memoria_identidade.sql");
+    const corpo = rpc.slice(rpc.indexOf("function public.registrar_investigacao_identificado"), rpc.indexOf("function public.confirmar_atributo_identificado"));
+    expect(corpo).toMatch(/update public\.imoveis_identificados\s+set ultima_investigacao_em = v_agora\s+where id = p_imovel_identificado_id;/);
+    expect(corpo.indexOf("insert into public.imoveis_identificados_investigacoes")).toBeLessThan(corpo.indexOf("set ultima_investigacao_em"));
+    expect(corpo).not.toMatch(/set situacao|promovid|imovel_id =/);
   });
 
   it("timestamp falso do cliente não prevalece: o trigger sobrescreve por now(), na migration base já aplicada", () => {
@@ -258,22 +245,24 @@ describe("concluir investigação anota a data — e só a data", () => {
     expect(ler("../supabase-schema.sql")).toContain("new.ultima_investigacao_em := now();");
   });
 
-  it("recusa id inválido antes de tocar o banco", async () => {
-    const fake = clienteDeAtualizacao({});
-    await expect(registrarInvestigacaoIdentificado("nao-e-uuid", fake.cliente as never)).rejects.toMatchObject({ codigo: "id_invalido" });
-    expect(fake.from).not.toHaveBeenCalled();
-  });
+  it("só a origem do Garimpo leva a referência ao servidor; Pipeline, Radar, Central e modo manual continuam sem persistência", async () => {
+    expect(imovelIdentificadoDaReferencia({ origem: "imovel", id: IMOVEL_ID })).toBeNull();
+    expect(imovelIdentificadoDaReferencia({ origem: "radar-anuncio", id: IMOVEL_ID })).toBeNull();
+    expect(imovelIdentificadoDaReferencia({ origem: "comparavel", id: IMOVEL_ID })).toBeNull();
+    expect(imovelIdentificadoDaReferencia(null)).toBeNull();
+    expect(imovelIdentificadoDaReferencia({ origem: "imovel-identificado", id: IDENTIFICADO_ID })).toBe(IDENTIFICADO_ID);
 
-  it("só a origem do Garimpo anota; Pipeline, Radar, Central e modo manual continuam sem persistência", async () => {
-    const fake = clienteDeAtualizacao({ id: IDENTIFICADO_ID, ultima_investigacao_em: "2026-09-15T10:00:00.000Z" });
-    mocks.getSupabase.mockReturnValue(fake.cliente);
-    await registrarInvestigacaoConcluida({ origem: "imovel", id: IMOVEL_ID });
-    await registrarInvestigacaoConcluida({ origem: "radar-anuncio", id: IMOVEL_ID });
-    await registrarInvestigacaoConcluida({ origem: "comparavel", id: IMOVEL_ID });
-    await registrarInvestigacaoConcluida(null);
-    expect(fake.from).not.toHaveBeenCalled();
-    await registrarInvestigacaoConcluida({ origem: "imovel-identificado", id: IDENTIFICADO_ID });
-    expect(fake.from).toHaveBeenCalledExactlyOnceWith("imoveis_identificados");
+    const fetcher = vi.fn().mockImplementation(() => Promise.resolve(new Response("", { status: 200 })));
+    vi.stubGlobal("fetch", fetcher);
+    await investigarImovel("Rua das Palmeiras, 120", () => {}, undefined, { origem: "imovel", id: IMOVEL_ID });
+    await investigarImovel("Rua das Palmeiras, 120", () => {}, undefined, null);
+    await investigarImovel("Rua das Palmeiras, 120", () => {});
+    await investigarImovel("Rua das Palmeiras, 120", () => {}, undefined, { origem: "imovel-identificado", id: IDENTIFICADO_ID });
+    const corpos = fetcher.mock.calls.map(([, opcoes]) => JSON.parse(String(opcoes.body)) as Record<string, unknown>);
+    expect(corpos.slice(0, 3)).toEqual([{ consulta: "Rua das Palmeiras, 120" }, { consulta: "Rua das Palmeiras, 120" }, { consulta: "Rua das Palmeiras, 120" }]);
+    expect(corpos[3]).toEqual({ consulta: "Rua das Palmeiras, 120", imovelIdentificado: IDENTIFICADO_ID });
+    // Só o UUID: nenhum id de execução, usuário ou fato sai do navegador.
+    expect(Object.keys(corpos[3]).sort()).toEqual(["consulta", "imovelIdentificado"]);
   });
 
   it("as derivadas continuam leitura: nunca-investigado / investigado-ha-mais-de-90-dias, sem coluna de status", async () => {
@@ -301,7 +290,6 @@ describe("a tela do Investigador: pesquisa só no clique; concluir anota; nada p
     vi.doMock("@/lib/investigadorImoveis", () => ({
       carregarContextoInvestigador: mocks.carregarContextoInvestigador,
       investigarImovel: mocks.investigarImovel,
-      registrarInvestigacaoConcluida: mocks.registrarInvestigacaoConcluida,
     }));
     mocks.carregarContextoInvestigador.mockResolvedValue({ consulta: "Rua das Palmeiras, 120, Casa", origem: "garimpo" });
     const { default: InvestigadorImoveisView } = await import("@/components/investigador/InvestigadorImoveisView");
@@ -316,22 +304,20 @@ describe("a tela do Investigador: pesquisa só no clique; concluir anota; nada p
     );
     expect((document.getElementById("consulta-investigador") as HTMLTextAreaElement).value).toBe("Rua das Palmeiras, 120, Casa");
     expect(mocks.investigarImovel).not.toHaveBeenCalled();
-    expect(mocks.registrarInvestigacaoConcluida).not.toHaveBeenCalled();
     vi.doUnmock("@/lib/investigadorImoveis");
   });
 
-  it("concluída (inclusive achando um 'possível proprietário'), anota a data da origem do Garimpo — e só isso", async () => {
+  it("concluída (inclusive achando um 'possível proprietário'), leva a referência do Garimpo ao servidor e mostra o que a memória guardou — e só isso", async () => {
     vi.doMock("@/lib/investigadorImoveis", () => ({
       carregarContextoInvestigador: mocks.carregarContextoInvestigador,
       investigarImovel: mocks.investigarImovel,
-      registrarInvestigacaoConcluida: mocks.registrarInvestigacaoConcluida,
     }));
     mocks.carregarContextoInvestigador.mockResolvedValue({ consulta: "Rua das Palmeiras, 120, Casa", origem: "garimpo" });
-    mocks.registrarInvestigacaoConcluida.mockResolvedValue(undefined);
     mocks.investigarImovel.mockImplementation(async (_consulta: string, aoEvento: (e: unknown) => void) => {
       aoEvento({ tipo: "etapa", etapa: "gerando-buscas" });
       aoEvento({ tipo: "resultado", dados: {
         ok: true, consultaOriginal: "x", consultas: ["x"], pesquisasEvitadas: 0, encerramentoAntecipado: false, limiteAtingido: false,
+        memoria: { estado: "salva", execucaoId: "77777777-7777-4777-8777-777777777777", atributosSalvos: 0, atributosRecusados: 0 },
         resultados: [{
           url: "https://anuncio.test/1", dominio: "anuncio.test", titulo: "Casa das Palmeiras — fale com o proprietário",
           descricao: "Proprietário Sr. José, direto.", confianca: "muito-forte", evidencias: ["endereço"], contradicoes: [],
@@ -350,8 +336,10 @@ describe("a tela do Investigador: pesquisa só no clique; concluir anota; nada p
     await act(async () => {
       screen.getByRole("button", { name: "Investigar imóvel" }).click();
     });
-    await waitFor(() => expect(mocks.registrarInvestigacaoConcluida).toHaveBeenCalledExactlyOnceWith({ origem: "imovel-identificado", id: IDENTIFICADO_ID }));
-    expect(mocks.investigarImovel).toHaveBeenCalledOnce();
+    await waitFor(() => expect(document.body.textContent).toContain("Investigação registrada na memória do imóvel"));
+    expect(mocks.investigarImovel).toHaveBeenCalledExactlyOnceWith(
+      "Rua das Palmeiras, 120, Casa", expect.any(Function), undefined, { origem: "imovel-identificado", id: IDENTIFICADO_ID },
+    );
     expect(document.body.textContent).toContain("fale com o proprietário");
     // Não há botão de transformar em oportunidade aqui, nem escrita no Pipeline.
     expect(document.body.textContent).not.toMatch(/Transformar em oportunidade|Concluir vínculo/);
@@ -362,7 +350,6 @@ describe("a tela do Investigador: pesquisa só no clique; concluir anota; nada p
     vi.doMock("@/lib/investigadorImoveis", () => ({
       carregarContextoInvestigador: mocks.carregarContextoInvestigador,
       investigarImovel: mocks.investigarImovel,
-      registrarInvestigacaoConcluida: mocks.registrarInvestigacaoConcluida,
     }));
     mocks.carregarContextoInvestigador.mockResolvedValue({ consulta: "Rua das Palmeiras, 120, Casa", origem: "garimpo" });
     mocks.investigarImovel.mockImplementation(async (_consulta: string, aoEvento: (e: unknown) => void) => {
@@ -378,7 +365,8 @@ describe("a tela do Investigador: pesquisa só no clique; concluir anota; nada p
       screen.getByRole("button", { name: "Investigar imóvel" }).click();
     });
     await waitFor(() => expect(document.body.textContent).toContain("indisponível agora"));
-    expect(mocks.registrarInvestigacaoConcluida).not.toHaveBeenCalled();
+    expect(document.body.textContent).not.toMatch(/memória do imóvel/);
+    expect(document.querySelector("[data-memoria]")).toBeNull();
     vi.doUnmock("@/lib/investigadorImoveis");
   });
 
@@ -394,10 +382,13 @@ describe("a tela do Investigador: pesquisa só no clique; concluir anota; nada p
       expect(fonte, arquivo).not.toMatch(/vincular_promocao|vincularPromocao|salvarImovel|definir_situacao|iniciarPromocao|abrirImovelDoGarimpo|situacao/);
       expect(fonte, arquivo).not.toMatch(/from\(["']imoveis["']\)\s*\.\s*(insert|update|upsert)/);
     }
-    // A fronteira que anota a data só toca essa coluna.
-    const fronteira = ler("lib/prospeccao.ts");
-    const funcao = fronteira.slice(fronteira.indexOf("export async function registrarInvestigacaoIdentificado"), fronteira.indexOf("VIGÊNCIA DERIVADA (C9)"));
-    expect(funcao).toContain(".update({ ultima_investigacao_em: agoraISOString() })");
-    expect(funcao).not.toMatch(/situacao|imovel_id|promovido|rpc\(/);
+    // A rota não escreve nada por conta própria: a memória entra pelo módulo
+    // de servidor do C13B, que só chama a RPC do C13A.
+    const rota = ler("app/api/investigador-imoveis/route.ts");
+    expect(rota).not.toMatch(/\.rpc\(|\.insert\(|\.update\(|\.upsert\(/);
+    expect(rota).toContain("persistirMemoriaDaInvestigacao({");
+    const servidor = ler("lib/servidor/memoriaIdentidade.ts");
+    expect(servidor).toMatch(/\.rpc\(RPC_REGISTRAR_INVESTIGACAO, parametros\)/);
+    expect(servidor).not.toMatch(/\.from\(|\.insert\(|\.update\(|\.upsert\(|\.delete\(|vincular_promocao|salvarImovel|definir_situacao|promovid/);
   });
 });

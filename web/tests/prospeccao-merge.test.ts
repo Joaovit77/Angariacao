@@ -16,6 +16,10 @@ const DEFINICOES = readdirSync(new URL(PASTA, RAIZ)).filter((nome) => nome.endsW
   .flatMap((nome) => [...ler(PASTA + nome).matchAll(PADRAO_RPC)].map(([sql]) => ({ nome, sql })));
 const ATUAL = DEFINICOES.at(-1)!;
 const HISTORICA = [...C2E.matchAll(PADRAO_RPC)][0][0];
+// C7b corrigiu lock e validações; C13 só acrescentou o passo 4b (memória).
+const CORRETIVA = DEFINICOES[1];
+const PASSO_MEMORIA = /  -- 4b\. C13: a memória de identidade[\s\S]*?imoveis_identificados_atributos t\n\s+set imovel_identificado_id = p_sobrevivente_id\n\s+where t\.imovel_identificado_id = p_absorvido_id;\n\n/;
+const semPassoMemoria = (sql: string) => sql.replace(PASSO_MEMORIA, "");
 const USUARIO = "10000000-0000-4000-8000-000000000001";
 const OUTRO_USUARIO = "10000000-0000-4000-8000-000000000002";
 type Json = Record<string, unknown>;
@@ -37,19 +41,35 @@ describe("merge — contrato estrutural da definição efetiva", () => {
 
   it("mantém intactos assinatura, transação e todos os passos após as validações", () => {
     const inicio = "  -- 1. A lápide primeiro:";
-    expect(ATUAL.sql.slice(ATUAL.sql.indexOf(inicio))).toBe(HISTORICA.slice(HISTORICA.indexOf(inicio)));
+    // C13 insere o passo 4b (reparenteamento da memória) entre o 4 e o 5 e
+    // nada mais: tirando esse bloco, o corpo é o mesmo da C7b e da C2e.
+    expect(ATUAL.sql).toMatch(PASSO_MEMORIA);
+    expect(ATUAL.sql.indexOf("-- 4b.")).toBeGreaterThan(ATUAL.sql.indexOf("-- 4. O denormalizado"));
+    expect(ATUAL.sql.indexOf("-- 4b.")).toBeLessThan(ATUAL.sql.indexOf("-- 5. Recálculo"));
+    const atual = semPassoMemoria(ATUAL.sql);
+    expect(atual.slice(atual.indexOf(inicio))).toBe(HISTORICA.slice(HISTORICA.indexOf(inicio)));
+    expect(atual).toBe(CORRETIVA.sql);
+    expect(CORRETIVA.sql.slice(CORRETIVA.sql.indexOf(inicio))).toBe(HISTORICA.slice(HISTORICA.indexOf(inicio)));
     expect(ATUAL.sql.split("declare")[0]).toBe(HISTORICA.split("declare")[0]);
     expect(ATUAL.sql).not.toMatch(/\b(?:commit|rollback|savepoint)\b|public\.imoveis\b|storage\.|set_config|classificar/i);
   });
 
   it("espelha a correção no schema, depois da definição histórica, sem ampliar permissões", () => {
-    expect(DEFINICOES).toHaveLength(2);
+    expect(DEFINICOES).toHaveLength(3);
+    expect(DEFINICOES.map((d) => d.nome)).toEqual([
+      "20260910211045_prospeccao_campo_rpcs_navegador.sql",
+      "20260913162604_prospeccao_merge_contrato_transacional.sql",
+      "20260915190000_prospeccao_memoria_identidade.sql",
+    ]);
     const schema = ler("supabase-schema.sql");
-    const migration = ler(PASTA + ATUAL.nome).trim();
-    expect(schema.split(migration)).toHaveLength(2);
-    expect([...schema.matchAll(PADRAO_RPC)].at(-1)?.[0]).toBe(ATUAL.sql);
-    expect(schema.indexOf(ATUAL.sql)).toBeGreaterThan(schema.indexOf(HISTORICA));
-    expect(migration).not.toMatch(/\b(?:grant|revoke|drop|alter|create table|create policy|create trigger)\b/i);
+    for (const definicao of [CORRETIVA, ATUAL]) {
+      const migration = ler(PASTA + definicao.nome).trim();
+      expect(schema.split(migration)).toHaveLength(2);
+    }
+    expect([...schema.matchAll(PADRAO_RPC)].map(([sql]) => sql)).toEqual([HISTORICA, CORRETIVA.sql, ATUAL.sql]);
+    expect(ler(PASTA + CORRETIVA.nome)).not.toMatch(/\b(?:grant|revoke|drop|alter|create table|create policy|create trigger)\b/i);
+    // A C13 tem grants próprios (tabelas e RPCs novas), mas nenhum toca o merge.
+    expect(ler(PASTA + ATUAL.nome)).not.toMatch(/(?:grant|revoke)[^;]*fundir_imoveis_identificados/i);
   });
 });
 

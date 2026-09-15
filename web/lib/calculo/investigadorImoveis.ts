@@ -45,6 +45,25 @@ export interface CorrespondenciaInvestigacao extends ResultadoWebInvestigacao {
   comparavelId?: string | null;
 }
 
+/** C13B: o que aconteceu com a memória de identidade DEPOIS da conclusão,
+    só quando a investigação partiu de um imóvel identificado do Garimpo.
+    Contagens e estado; nunca valores, nunca resposta bruta. */
+export type EstadoMemoriaInvestigacao =
+  | "salva"
+  | "repetida"
+  | "recusada"
+  | "falhou"
+  | "indisponivel";
+
+export interface MemoriaInvestigacao {
+  estado: EstadoMemoriaInvestigacao;
+  /** Id da execução, gerado no servidor; é a chave da idempotência. */
+  execucaoId: string;
+  atributosSalvos: number;
+  atributosRecusados: number;
+  codigo?: string;
+}
+
 export interface ResultadoInvestigacao {
   ok: boolean;
   consultaOriginal: string;
@@ -54,6 +73,7 @@ export interface ResultadoInvestigacao {
   encerramentoAntecipado: boolean;
   limiteAtingido: boolean;
   aviso?: string;
+  memoria?: MemoriaInvestigacao;
 }
 
 export type EventoInvestigacao =

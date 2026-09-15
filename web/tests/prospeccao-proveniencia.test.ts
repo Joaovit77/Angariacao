@@ -22,6 +22,8 @@ const cenario = vi.hoisted(() => ({
     carregando: false,
     classificandoAvistamentoId: null as string | null,
     buscarDuplicatas: vi.fn(async () => []),
+    carregarMemoria: vi.fn(async () => ({ investigacoes: [], atributos: [] })),
+    confirmarAtributo: vi.fn(async () => false),
     confirmarEtiqueta: vi.fn(),
     contestarEtiqueta: vi.fn(),
     confirmarTipo: vi.fn(),

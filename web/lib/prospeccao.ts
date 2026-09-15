@@ -18,7 +18,6 @@ import {
   type CapaCatalogo,
   type FotoParaCapa,
 } from "./calculo/catalogoVisual";
-import { agoraISOString } from "./datas";
 import {
   etiquetasDoImovel,
   type EtiquetaDoImovel,
@@ -36,6 +35,11 @@ import {
   type SituacaoImovelIdentificado,
   type TipoImovelProspeccao,
 } from "./calculo/prospeccao";
+import {
+  atributoMemoriaValido,
+  type AfirmacaoRegistrada,
+  type InvestigacaoRegistrada,
+} from "./calculo/memoriaIdentidade";
 import { getSupabase } from "./persistencia/supabase";
 
 export type OrigemIdentificacaoProspeccao = "campo" | "placa";
@@ -411,6 +415,37 @@ const COLUNAS_ETIQUETA = [
   "substituida_em",
   "substituida_por_classificacao_id",
   "desatualizada_em",
+  "created_at",
+].join(",");
+
+/* C13: memória de identidade. As duas tabelas do C13A, lidas sob RLS
+   (select próprio) e mapeadas para os tipos do módulo puro. */
+const COLUNAS_INVESTIGACAO_MEMORIA = [
+  "id",
+  "imovel_identificado_id",
+  "origem",
+  "resultados_total",
+  "atributos_total",
+  "recusados_total",
+  "concluida_em",
+  "created_at",
+].join(",");
+
+const COLUNAS_ATRIBUTO_MEMORIA = [
+  "id",
+  "imovel_identificado_id",
+  "investigacao_id",
+  "atributo",
+  "valor_texto",
+  "valor_num",
+  "origem",
+  "estado",
+  "confianca",
+  "fonte_url",
+  "fonte_dominio",
+  "observado_em",
+  "confirmado_por",
+  "confirmado_em",
   "created_at",
 ].join(",");
 
@@ -1052,6 +1087,95 @@ export async function confirmarTipoIdentificado(
   return { repetida: resposta.repetida === true };
 }
 
+/** O que a memória de identidade (C13) já sabe deste registro: as
+    investigações concluídas e as afirmações que elas deixaram, com a
+    procedência. Só leitura, só o que a RLS deixa ver; a composição
+    (vigência, divergência, linha do tempo) é do módulo puro. */
+export interface MemoriaIdentificadoCarregada {
+  investigacoes: InvestigacaoRegistrada[];
+  atributos: AfirmacaoRegistrada[];
+}
+
+function mapearInvestigacaoMemoria(linha: Linha): InvestigacaoRegistrada {
+  return {
+    id: String(linha.id),
+    imovelIdentificadoId: String(linha.imovel_identificado_id),
+    origem: "investigador-web",
+    resultadosTotal: Number(linha.resultados_total ?? 0),
+    atributosTotal: Number(linha.atributos_total ?? 0),
+    recusadosTotal: Number(linha.recusados_total ?? 0),
+    concluidaEm: String(linha.concluida_em),
+    criadoEm: String(linha.created_at),
+  };
+}
+
+function mapearAtributoMemoria(linha: Linha): AfirmacaoRegistrada | null {
+  // Fora do catálogo não existe para a tela: o CHECK do banco impede, mas
+  // a leitura não confia em ninguém.
+  if (!atributoMemoriaValido(linha.atributo)) return null;
+  const confianca = linha.confianca;
+  return {
+    id: Number(linha.id),
+    imovelIdentificadoId: String(linha.imovel_identificado_id),
+    investigacaoId: String(linha.investigacao_id),
+    atributo: linha.atributo,
+    valorTexto: typeof linha.valor_texto === "string" ? linha.valor_texto : null,
+    valorNum: numeroOuNulo(linha.valor_num),
+    origem: "investigador-web",
+    estado: linha.estado === "confirmada" ? "confirmada" : "hipotese",
+    confianca: confianca === "muito-forte" || confianca === "forte" || confianca === "possivel" || confianca === "indicio"
+      ? confianca
+      : null,
+    fonteUrl: String(linha.fonte_url ?? ""),
+    fonteDominio: String(linha.fonte_dominio ?? ""),
+    observadoEm: String(linha.observado_em),
+    confirmadoPor: typeof linha.confirmado_por === "string" ? linha.confirmado_por : null,
+    confirmadoEm: typeof linha.confirmado_em === "string" ? linha.confirmado_em : null,
+    criadoEm: String(linha.created_at),
+  };
+}
+
+export async function obterMemoriaIdentificado(
+  imovelIdentificadoId: string,
+  client: SupabaseClient = getSupabase(),
+): Promise<MemoriaIdentificadoCarregada> {
+  const [respostaInvestigacoes, respostaAtributos] = await Promise.all([
+    client
+      .from("imoveis_identificados_investigacoes")
+      .select(COLUNAS_INVESTIGACAO_MEMORIA)
+      .eq("imovel_identificado_id", imovelIdentificadoId)
+      .order("concluida_em", { ascending: false })
+      .order("id", { ascending: false }),
+    client
+      .from("imoveis_identificados_atributos")
+      .select(COLUNAS_ATRIBUTO_MEMORIA)
+      .eq("imovel_identificado_id", imovelIdentificadoId)
+      .order("observado_em", { ascending: false })
+      .order("id", { ascending: false }),
+  ]);
+  if (respostaInvestigacoes.error) falha(respostaInvestigacoes.error);
+  if (respostaAtributos.error) falha(respostaAtributos.error);
+  return {
+    investigacoes: ((respostaInvestigacoes.data ?? []) as unknown as Linha[]).map(mapearInvestigacaoMemoria),
+    atributos: ((respostaAtributos.data ?? []) as unknown as Linha[])
+      .map(mapearAtributoMemoria)
+      .filter((atributo): atributo is AfirmacaoRegistrada => atributo !== null),
+  };
+}
+
+/** Uma pessoa valida uma hipótese da memória (C13A): só o estado muda;
+    origem, fonte, valor e data de observação ficam como estavam. A RPC
+    é a única porta e decide tudo (dono, exclusão pendente, repetição). */
+export async function confirmarAtributoIdentificado(
+  atributoId: number,
+  client: SupabaseClient = getSupabase(),
+): Promise<ResultadoRpcProspeccao> {
+  const resposta = await chamarRpc(client, "confirmar_atributo_identificado", {
+    p_atributo_id: atributoId,
+  });
+  return { repetida: resposta.repetida === true };
+}
+
 export async function definirTipoManual(
   imovelIdentificadoId: string,
   tipo: TipoImovelProspeccao | null,
@@ -1236,33 +1360,16 @@ export async function listarImoveisJaVinculados(
 }
 
 /* ----------------------------------------------------------------
-   INVESTIGAÇÃO (C10) — só a data; a pesquisa é do Investigador.
+   INVESTIGAÇÃO (C10 → C13B) — a data é do servidor.
 
-   `ultima_investigacao_em` está no grant de update do cliente, mas o
-   valor que o browser manda é IGNORADO: o trigger `proteger_identificado`
-   sobrescreve por `now()` (V7 §18.1, padrão de proteger_status_history).
-   Mandamos um instante só para a coluna "mudar" e o trigger agir. Não
-   muda situação, não cria Imovel, não vincula nada: as derivadas
-   `nunca-investigado` / `investigado-ha-mais-de-90-dias` continuam sendo
-   leitura sobre esta coluna, nunca estado persistido.
+   `ultima_investigacao_em` continua sendo a única coluna de investigação
+   da identidade (as derivadas `nunca-investigado` /
+   `investigado-ha-mais-de-90-dias` são leitura sobre ela). Desde o C13B
+   o navegador não a escreve mais: quem anota é a RPC de servidor
+   `registrar_investigacao_identificado`, na mesma transação que grava o
+   evento e as descobertas da memória. Uma fonte de verdade; o trigger
+   `proteger_identificado` segue normalizando o instante por `now()`.
    ---------------------------------------------------------------- */
-export async function registrarInvestigacaoIdentificado(
-  imovelIdentificadoId: string,
-  client: SupabaseClient = getSupabase(),
-): Promise<{ ultimaInvestigacaoEm: string | null }> {
-  if (!UUID_PROSPECCAO.test(imovelIdentificadoId)) {
-    throw new ErroProspeccao("id_invalido", "Registro do Garimpo inválido.");
-  }
-  const { data, error } = await client
-    .from("imoveis_identificados")
-    .update({ ultima_investigacao_em: agoraISOString() })
-    .eq("id", imovelIdentificadoId)
-    .select("id,ultima_investigacao_em")
-    .single();
-  if (error) falha(error);
-  const linha = data as unknown as Linha;
-  return { ultimaInvestigacaoEm: (linha.ultima_investigacao_em as string | null) ?? null };
-}
 
 /* ----------------------------------------------------------------
    VIGÊNCIA DERIVADA (C9) — nenhuma coluna "atual".
