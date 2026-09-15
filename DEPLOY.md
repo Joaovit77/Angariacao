@@ -47,16 +47,36 @@ privilégio, crie-o manualmente em **Storage → New bucket** usando exatamente 
 - limite por arquivo: 5 MB;
 - MIME types permitidos: `image/jpeg` e `image/webp`.
 
-As policies continuam vindo do `supabase-schema.sql`; não as substitua por acesso público. Em
-**Project Settings → API → Data API Settings → Exposed schemas**, confirme também que `storage`
-permanece fora da lista. O navegador acessa os objetos pela API própria do Storage e não deve
-consultar `storage.objects` diretamente pelo PostgREST.
+As policies continuam vindo do `supabase-schema.sql`; não as substitua por acesso público. São
+duas, ambas para `authenticated` e restritas ao prefixo `{user_id}/` do próprio usuário:
+`fachadas_select_proprio_prefixo` (leitura, que alimenta a URL assinada) e
+`fachadas_insert_reserva_aberta` (envio só no caminho de uma foto `reservada` do próprio usuário,
+com passagem e registro dele, fora de exclusão e fora de lápide). Não existe policy de `update` nem
+de `delete` para o cliente. Cada foto ocupa dois objetos, original e miniatura
+(`{user_id}/{identificado}/{avistamento}/{foto}.jpg` e `_thumb.jpg`), gerados pela RPC de reserva,
+nunca escolhidos pelo navegador. Em **Project Settings → API → Data API Settings → Exposed
+schemas**, confirme também que `storage` permanece fora da lista. O navegador acessa os objetos
+pela API própria do Storage e não deve consultar `storage.objects` diretamente pelo PostgREST.
 
 **Exclusão coordenada.** Quem apaga arquivo de fachada é só a rota `POST /api/prospeccao/excluir`
 (objeto no Storage primeiro, linha no banco depois, com reconciliação do prefixo do usuário). Ela
 exige a `SUPABASE_SERVICE_ROLE_KEY` na Vercel — sem ela responde 503 e nada é apagado. O navegador
 não recebe `delete` no bucket nem nas tabelas do módulo; "Apagar todos os meus dados" passa por essa
 rota antes das tabelas antigas e só declara sucesso com o prefixo `{user_id}/` vazio no bucket.
+Nunca use `delete from storage.objects` como exclusão: isso apaga a linha do índice e deixa o
+arquivo físico no bucket, invisível para o app. A remoção real é `storage.remove()` pelo SDK, com
+service role, dentro da rota; se ela responder `pendentes > 0` ou `concluido: false`, a exclusão
+não terminou e pode ser chamada de novo do ponto em que parou.
+
+**Rollback do módulo.** Um deploy do Garimpo em Campo volta como qualquer outro: `git revert` ou
+"Promote to Production" de um deployment anterior. Isso nunca apaga tabelas, histórico de passagens,
+fotos nem o bucket: as migrations do módulo são aditivas e os dados continuam no banco, prontos
+para o deploy seguinte. Rollback destrutivo (dropar tabela, esvaziar bucket, reverter migration
+com perda) exige autorização explícita e não faz parte do runbook.
+
+**Smoke.** O roteiro final de validação manual do módulo está em
+[`docs/GARIMPO_EM_CAMPO_SMOKE.md`](docs/GARIMPO_EM_CAMPO_SMOKE.md); execute-o na conta de teste
+antes de promover um deploy que toque o Garimpo.
 
 ---
 
@@ -534,6 +554,8 @@ que a **raiz do projeto é `web`**. O resto ela detecta sozinha (é um projeto N
 3. Se você desativou a confirmação de e-mail (Parte 1, passo 6), cai direto no sistema.
 4. Confira que os dados aparecem, navegue pelas telas e teste "Esqueci minha senha".
 5. Peça pros colegas criarem a própria conta — cada um só vê os próprios imóveis.
+6. Para o Garimpo em Campo, siga [`docs/GARIMPO_EM_CAMPO_SMOKE.md`](docs/GARIMPO_EM_CAMPO_SMOKE.md)
+   numa conta de teste, de preferência no celular.
 
 ---
 

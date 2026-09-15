@@ -18,6 +18,8 @@ triviais devem ficar no histórico do Git.
 - [MIGRATION_NEXT.md](MIGRATION_NEXT.md) e [BASELINE_ETAPA0.md](BASELINE_ETAPA0.md): histórico e
   contrato de paridade da migração para Next.js.
 - [PROTOTIPOS_LOCAIS.md](PROTOTIPOS_LOCAIS.md): protótipos isolados e limites de alteração.
+- [docs/GARIMPO_EM_CAMPO_SMOKE.md](docs/GARIMPO_EM_CAMPO_SMOKE.md): roteiro final de smoke manual do
+  Garimpo em Campo (o módulo em si está em "Garimpo em Campo: contratos permanentes do módulo").
 - [AGENTS.md](AGENTS.md): regras de trabalho para agentes; [CLAUDE.md](CLAUDE.md) é apenas a ponte
   de compatibilidade do Claude.
 
@@ -2477,6 +2479,263 @@ quase igual (~3,5%), mas **custam muito diferente por tentativa** — abordar na
 mensagem; no garimpo é achar endereço, rodar o eemovel e cadastrar. A vantagem da OLX é custo por
 tentativa, não conversão.
 
+## Garimpo em Campo: contratos permanentes do módulo
+
+O Garimpo em Campo é a memória longitudinal do que o corretor vê na rua: um lugar, as passagens por
+ele, a foto e a localização de cada passagem, o que a IA sugeriu sobre cada texto e o que o humano
+confirmou. Foi construído entre 2026-09-10 e 2026-09-15 em checkpoints (C0 a C10.1) sobre o plano
+"Prospecção de Campo" (V7), que continua sendo a fonte arquitetural; o que segue é o sistema como
+ficou, e vale sobre a V7 onde os dois divergirem. Nomes internos são históricos e não mudam:
+`prospeccao` (rota `/api/prospeccao/*`, `lib/prospeccao.ts`, `components/prospeccao/*`),
+`avistamento` (tabelas, RPCs, tipos) e `imovel_identificado`. O produto se chama **Garimpo em
+Campo** e o termo público de avistamento é **passagem**; a tradução é responsabilidade da camada de
+apresentação, nunca de rename técnico.
+
+**Entidade separada do Pipeline.** O Garimpo mora em `imoveis_identificados` (mais
+`_avistamentos`, `_fotos`, `_classificacoes`, `_etiquetas`); o Pipeline continua em `imoveis`, que
+não ganhou coluna. O vínculo é o ponteiro `imoveis_identificados.imovel_id` (`on delete set null`:
+apagar a oportunidade preserva a memória). Um identificado existe sem proprietário, sem telefone,
+sem contato e sem Pipeline, por tempo indefinido, sendo enriquecido. O Garimpo não é um segundo
+Pipeline: `situacao` é `identificado | investigando | promovendo | promovido | descartado | fundido`
+(CHECK no banco; `investigando` está reservado no CHECK e nenhum código o escreve hoje), não há
+badge no menu nem contagem de "pendências", e nada dele entra nos KPIs, no `isStale` ou no
+`focoDia`.
+
+**Memória longitudinal.** Uma passagem é evento: `observado_em`, localização, autoria e
+`created_at` são imutáveis por trigger (`private.proteger_avistamento`, o único `before update` da
+tabela). Nova passagem nunca sobrescreve a anterior; cada uma guarda data e hora, observação, foto,
+localização com `acuracia_metros` e `precisao_localizacao` (`gps | mapa | geocodificado |
+desconhecida`), classificação e proveniência. A identidade guarda só agregados derivados
+(`primeiro_avistamento_em`, `ultimo_avistamento_em`, `avistamentos_total`,
+`avistamento_corrente_id`, melhor localização), recalculados do zero, nunca incrementalmente, por
+`private.recalcular_agregados_identificado` a cada insert, update ou delete de passagem.
+
+**Passagem corrente.** `avistamento_corrente_id` é a passagem de maior `observado_em` (a data do
+evento), com desempate por `created_at` e `id`. Não é o último insert: uma passagem antiga cadastrada
+hoje não vira corrente nem move o estado atual. A melhor localização da identidade é a de menor
+`acuracia_metros` (acurácia desconhecida por último; sem coordenada não concorre), então um fix de
+±80 m nunca apaga um de ±7 m.
+
+**Classificação é por passagem.** A IA classifica UMA passagem, nunca o imóvel: toda execução em
+`_classificacoes` tem `avistamento_id`, estado (`processando | concluida | falhou | abandonada`),
+`modo` (`modelo | reuso`), versão do catálogo e do classificador, e é obtida por claim no banco
+(`iniciar_classificacao`, lease de 2 min, idempotente por revisão + fingerprint do conteúdo). Duas
+passagens com o mesmo texto têm execuções e etiquetas próprias; o reuso (`modo='reuso'`) copia o
+resultado de uma execução anterior sem chamar o modelo e sem linha em `ia_uso`, mas cria a execução
+e as etiquetas da passagem nova. A rota é `POST /api/prospeccao/classificar` (Node, `no-store`), com
+teto diário por usuário contado em `ia_uso`; a câmera e o upload nunca importam `lib/servidor/ia`.
+
+**Snapshot temporal.** Só a classificação da passagem corrente pode escrever o estado atual da
+identidade (`tipo*` inferido); reclassificar uma passagem antiga preserva o resultado histórico e não
+reescreve o presente. `snapshot_aplicado` na execução registra se ela influenciou o estado atual
+quando concluiu; é fato histórico e continua `true` depois que outra passagem vira corrente. A UI
+cruza esse boolean com `avistamento_corrente_id` para dizer "reflete a passagem corrente" ou
+"histórico"; o boolean sozinho não determina temporalidade.
+
+**Revisão da observação.** `observacao` é a única mutabilidade deliberada da passagem, e o cliente só
+tem `update (observacao)`. Corrigir o texto, em um único `update` e na mesma transação, incrementa
+`observacao_revisao` (o gatilho sobrescreve o valor que vier do chamador), devolve a passagem a
+`classificacao_estado='pendente'`, marca as etiquetas `inferida` daquela passagem como
+`desatualizada` (a linha fica), zera o tipo inferido cuja evidência sumiu (manual e confirmado ficam
+intactos) e, se havia etiqueta `confirmada`, grava `revisao_conflito_em` para o humano revisar. A
+confirmação humana nunca é revogada pelo sistema. Tudo isso é do banco: a proteção não é
+responsabilidade do front-end, e um `update` direto na tabela produz o mesmo estado final.
+
+**Etiquetas.** Persistem-se só as não deriváveis: as de IA e as humanas, com origem (`manual |
+ia-texto | ia-visao`, esta última reservada), confiança, passagem, execução, revisão e datas. Estados
+gravados: `inferida`, `confirmada`, `contestada`, `desatualizada` (o texto que a embasava mudou) e
+`substituida` (outra execução a trocou); **histórica** é derivada na leitura (vigente numa passagem
+anterior, ausente na corrente; `vigenciaDasEtiquetas`). Etiquetas determinísticas
+(`derivarEtiquetasProspeccao`: possível duplicata, já na carteira, etc.) continuam derivadas na
+leitura e nunca são materializadas. Nenhuma etiqueta é escrita direto pelo cliente: só por RPC
+(`aplicar_etiqueta_humana`, `definir_estado_etiqueta`, `concluir_classificacao`).
+
+**Catálogo fechado.** `calculo/catalogoEtiquetas.ts` (`VERSAO_CATALOGO_ETIQUETAS`) é a única fonte
+de códigos; o JSON Schema enviado ao modelo é gerado dele com `enum` e `strict`. Saída fora do
+catálogo, abaixo do piso de confiança (70) ou sem evidência no texto é descartada e contada na
+execução (`fora_do_catalogo`, `abaixo_do_piso`, `sem_evidencia`). Etiqueta nova entra por commit.
+
+**Tipo canônico, três portas.** `tipo` da identidade tem `tipo_origem` (`manual | ia-texto |
+carteira`) e `tipo_estado` (`declarado | inferido | confirmado`), com CHECKs que amarram os
+metadados a cada origem. As portas: (1) manual, no `insert` da identidade ou por
+`definir_tipo_manual`; (2) inferido pela IA, só por `concluir_classificacao` da passagem corrente e
+só quando não há tipo manual ou confirmado; (3) confirmação humana da sugestão por
+`confirmar_tipo_identificado`, que mantém a origem `ia-texto` e marca `confirmado`. O `update` direto
+de `tipo` não existe no grant do cliente; nenhum trigger adivinha quem escreveu; a IA nunca
+sobrescreve tipo manual ou confirmado.
+
+**Autorização é grant, não trigger.** RLS por `user_id` em todas as tabelas; `revoke all` seguido
+de grants explícitos e por coluna: identidade com `insert` e `update` só nas colunas de endereço,
+origem e `ultima_investigacao_em`; passagem com `insert` e `update (observacao)`; fotos,
+classificações e etiquetas `select` apenas; bucket com `select` e `insert` condicionados à reserva;
+**nenhum `delete` de cliente** em tabela ou bucket do módulo. Trigger é derivação, bloqueio e
+invalidação; CHECK é invariante de linha. As RPCs de servidor têm `grant execute` só para
+`service_role`; as de navegador, para `authenticated`.
+
+**Identidade das RPCs.** Duas famílias, nunca misturadas. RPC de navegador (foto, etiqueta, tipo,
+situação, vínculo de promoção, fusão, cancelar exclusão) usa `(select auth.uid())` e não recebe
+usuário; posse cruzada devolve o mesmo erro de inexistente. RPC de servidor (classificação e
+exclusão) recebe `p_user_id`, que a rota descobre por `auth.getUser()` sobre o Bearer e nunca lê do
+corpo; as de exclusão ainda recusam quando há JWT e ele difere de `p_user_id`.
+
+**Fotos.** A foto pertence à passagem; no MVP é uma por passagem, garantida por índice único.
+Ciclo: `reservar_foto_avistamento` cria a linha `reservada` e gera `caminho` e `caminho_miniatura`
+(`{user_id}/{identificado}/{avistamento}/{foto}.jpg` e `_thumb.jpg`); o cliente reduz a imagem no
+aparelho (EXIF removido, até 5 MB), sobe original e miniatura só nesses caminhos (a policy de
+`insert` do bucket exige reserva viva do próprio usuário, fora de exclusão e fora de lápide);
+`finalizar_foto_avistamento` confere em `storage.objects` que os dois objetos existem e só então
+marca `ativa`, sem nunca rebaixar. Exibição por URL assinada curta. Remoção de foto é ato
+deliberado e passa pela rota de exclusão.
+
+**Storage e exclusão.** O objeto sai antes da linha, e os dois lados são do mesmo ator: `POST
+/api/prospeccao/excluir` (`{ fotoId }`, `{ imovelIdentificadoId }` ou `{ tudo: true }`), que prova a
+posse sob RLS com o cliente do chamador e só então usa a service role para `storage.remove()` e as
+RPCs `iniciar_exclusao_*`, `confirmar_objeto_removido` (recusa apagar a linha se o objeto ainda
+existir), `concluir_exclusao_*` e `apagar_prospeccao_do_usuario`. `exclusao_solicitada_em` congela o
+registro (retomável ou cancelável, nunca mutável). A resposta é `{ removidos, pendentes,
+prefixoVazio, concluido }`: falha de Storage nunca vira "concluído", tudo é idempotente e retomável
+pelo humano, e a reconciliação do prefixo `{user_id}/` (`listar_objetos_do_usuario`) é o backstop
+para objeto sem linha. `delete from storage.objects` não apaga arquivo e não é caminho de exclusão.
+"Apagar todos os meus dados" passa por essa rota antes das tabelas antigas e só declara sucesso com
+o prefixo vazio.
+
+**Dedupe e merge.** A duplicidade avisa e nunca bloqueia: chave textual (`endereco_chave`,
+`cidade_chave`, unidade e bloco) mais geografia (haversine com as acurácias declaradas), graus
+`exata | provavel | possivel`, incerteza explícita quando os círculos do GPS se sobrepõem, e nunca
+percentual. A união é a RPC `fundir_imoveis_identificados`, transacional: a origem vira lápide
+`fundido` apontando o sobrevivente, as passagens são reparenteadas (o trigger só aceita
+reparenteamento quando a lápide já aponta o destino), IDs, timestamps, fotos, classificações e
+etiquetas são preservados, os agregados dos dois lados são recalculados, e a RPC recusa lados
+`promovido`, `promovendo` ou em exclusão. Merge não promove, não escreve em `imoveis` e não
+re-infere tipo.
+
+**Promoção é ato humano.** Só o botão "Transformar em oportunidade" promove. Nunca promovem: IA,
+etiquetas, Investigador, proprietário encontrado, dedupe, merge, cron, trigger, webhook ou qualquer
+automação (provado por teste estrutural em `prospeccao-promocao`). O contrato de três passos: (1)
+`definir_situacao_identificado('promovendo')` ANTES de abrir o `ModalImovel`; (2) o mesmo
+`salvarImovel` do Pipeline cria o `Imovel` com endereço, unidade, bloco, edifício, bairro, cidade,
+UF, tipo (quando conhecido; sem tipo o modal exige a escolha e não cai em "Apartamento"), origem
+mapeada para `ORIGENS_IMOVEL` e a observação da passagem corrente; nasce em `Novo contato`,
+`statusHistory` vazio e `data_angariacao` de hoje (a data em que foi visto fica no Garimpo); (3)
+`vincular_promocao_imovel_identificado`, o único caminho de `imovel_id`, `promovido_em` e
+`situacao='promovido'`, idempotente com o mesmo `imovel_id` e recusado com outro. Fotos, passagens e
+etiquetas continuam no Garimpo, ligadas pelo vínculo.
+
+**Promoção parcial.** Se o `Imovel` foi salvo e o vínculo falhou, o registro fica `promovendo`
+(CHECK: sem `imovel_id`), a tela troca o botão por "Concluir vínculo" e nunca oferece criar outra
+oportunidade. Na mesma sessão, o retry usa exatamente o id que o cadastro devolveu; depois de
+recarregar, a tela lista as oportunidades da conta sem vínculo e com a mesma chave de endereço, e o
+humano escolhe (nunca "a mais provável"). "Desistir do vínculo" devolve a `identificado` e a
+oportunidade criada permanece no Pipeline. Nenhuma segunda oportunidade nasce em silêncio.
+
+**Investigador.** "Investigar na web" abre o Investigador existente com a quarta origem
+(`imovelIdentificado=<uuid>`), e o servidor seleciona só o que identifica o lugar: logradouro,
+número, unidade, bloco, edifício, bairro, cidade, UF e tipo. A observação livre e qualquer dado
+pessoal ficam de fora por construção (o tipo do recorte não tem o campo). Investigar é
+enriquecimento: não muda `situacao`, não cria `Imovel`, não escreve no Pipeline; concluir a busca
+grava só `ultima_investigacao_em`.
+
+**Dados pessoais.** `imoveis_identificados` não tem coluna de nome, telefone, e-mail, CPF ou
+WhatsApp, e não deve ganhar. Dado pessoal estruturado entra no regime jurídico de `imoveis`, e a
+entrada dele exige promover; descobrir informação não causa promoção. A observação é texto livre
+(2.000 caracteres) e a UI orienta a não registrar nome ou telefone ali, mas o texto vai ao
+fornecedor de IA na classificação. A base do Garimpo **não é anônima**: foto de fachada, endereço
+exato, coordenada e data permitem identificação indireta do morador; bucket privado, URL assinada e
+ausência de caminho de exportação são as mitigações, e qualquer uso além do interno passa pelas
+validações de §16 da V7. O fechamento do módulo (C11) auditou a política de privacidade: nenhum
+fornecedor novo passou a receber dados, mas o texto afirmava que o sistema não coletava
+localização do aparelho e omitia ViaCEP e Nominatim, já usados pelo Pipeline. A versão
+`2026-09-15` corrige isso: declara a leitura única do GPS por registro, mediante permissão, com
+latitude, longitude e precisão guardadas na passagem; os dados do Garimpo (endereço, passagens,
+observação enviada ao provedor de IA, foto sem metadados); e os dois serviços de endereço com o que
+cada um recebe.
+
+### UX de campo (C10.1): decisões de produto
+
+Em uso real na rua o próprio criador do sistema ficou confuso com a tela. O diagnóstico não foi
+falta de função, mas informação e decisão demais ao mesmo tempo; as decisões abaixo são de produto,
+não de CSS, e valem para o mobile.
+
+- **Mobile é fluxo de campo.** No celular a prioridade é registrar, ver que salvou e poder encerrar.
+  A tela não obriga quem está em frente ao imóvel a entender a administração dele.
+- **Captura curta.** Ordem: foto; localização e endereço; observação (opcional); tipo (opcional, "se
+  souber", sem valor inventado); data e hora já preenchidas; o resto recolhido. Nenhum campo
+  opcional vira obrigatório sem decisão de produto.
+- **Confirmação pós-salvamento.** Depois de salvar, a primeira coisa na tela é "Imóvel registrado"
+  ou "Passagem registrada", com endereço, quando, foto e localização registradas ou não, e as ações
+  que já existem (concluir, ver detalhes, investigar). É estado transitório de apresentação
+  (`ultimoRegistro` no `useProspeccao`, como `falhaAnalise`); não existe estado de domínio para
+  isso no banco.
+- **Gerenciamento não é captura.** No mobile, histórico de passagens, localização e textos auxiliares
+  ficam recolhidos e a um toque; nada é removido. O detalhe abre com resumo (endereço, tipo,
+  última passagem, quantas passagens) e "Próximas ações" (oportunidade, investigar, informar o tipo
+  quando falta). Desktop continua mais informativo.
+- **Mapa recolhido.** Com localização suficientemente resolvida, a captura mostra só a linha de
+  status ("GPS · precisão aproximada: 12 m") e o mapa abre por toque; abre sozinho apenas quando
+  precisa de decisão humana (GPS impreciso, GPS longe do endereço). A regra de qual localização
+  vence não muda.
+- **Endereço continua existindo com GPS.** GPS não substitui o endereço; os dois coexistem, e o
+  endereço segue sendo identidade, chave de dedupe, consulta do Investigador e preenchimento da
+  promoção. Não introduzir fluxo excludente "GPS ou endereço" sem nova decisão.
+- **Formulário de captura não é endereço pessoal.** Os campos de endereço carregam
+  `autocomplete="off"` para o navegador não oferecer "salvar endereço"; o autocomplete do ViaCEP é
+  do sistema e não passa por aí.
+
+### IA e ambiente
+
+A classificação do Garimpo lê a rota `classificacao` compartilhada com o classificador do webhook,
+com configuração padrão (`CONFIGURACAO_IA_PADRAO`), configuração recomendada e versão publicada
+pelo `/admin`; o Garimpo não tem nem deve ganhar configuração própria, e a hipótese antiga de trocar
+o default global de `classificacao` por outro modelo foi descartada. IA real continua travada fora
+dos ambientes autorizados (`docs/IA-AMBIENTES.md`): Preview e desenvolvimento não ganham segredo
+real para testar o Garimpo (a análise cai em "indisponível" e o registro funciona inteiro), e
+Production usa a configuração autorizada. Nenhuma tela do corretor mostra modelo, token ou custo;
+`/admin` mostra o consumo do tipo `classificar-imovel-identificado` e os eventos declarados.
+
+### Visão computacional
+
+Análise de fachada por visão continua fora do MVP. O protótipo `mapillary-facade-test` é isolado
+(`PROTOTIPOS_LOCAIS.md`) e não é funcionalidade; `origem='ia-visao'` existe no CHECK apenas como
+reserva. Qualquer retomada depende do protocolo de medição da V7 (§9.1) e de autorização explícita,
+e é a Fase 4 abaixo.
+
+### Como a memória responde (critérios de aceite)
+
+- **O que sabíamos em determinada data?** Passagens com `observado_em` até a data, mais as etiquetas
+  com `created_at` até a data cujo `substituida_em`/`desatualizada_em` é posterior ou nulo.
+- **Quando uma característica apareceu?** Menor `observado_em` entre as etiquetas daquele código.
+- **Quantas vezes o imóvel foi observado?** `avistamentos_total`, conferível pela lista de passagens.
+- **Qual era a foto anterior?** A foto da passagem anterior, ainda no bucket e na linha de tempo.
+- **Quando foi investigado?** `ultima_investigacao_em` (por execução, só na Fase 3).
+- **Qual classificação influenciou o estado atual?** A execução com `snapshot_aplicado` da passagem
+  corrente; as demais são histórico.
+- **Quando virou oportunidade?** `promovido_em` e `imovel_id`.
+
+### Fases fora do MVP
+
+Preservadas como futuras, sem código, placeholder ou migration: **Fase 2** (camada no `/mapa`
+global e calor; classificação em lote por cron sobre passagens pendentes; varredura de exclusões e
+reservas abandonadas; decisão persistida de "não é duplicata"; piso de confiança no `/admin`);
+**Fase 3** (investigações persistidas como evento e atributos append-only com hipótese, evidência,
+contradição e fonte; vigente derivado na leitura; continua sem promover); **Fase 4** (visão sobre a
+fachada, após o protocolo e autorização); **Fase 5** (score de oportunidade derivado de histórico
+real, com no mínimo 200 registros com desfecho; nenhuma fórmula de prioridade antes disso); **Fase
+6** (inteligência de mercado agregada, respeitando as validações de privacidade).
+
+### Riscos permanentes
+
+- Foto, endereço exato e coordenada não são "anônimos"; a base não pode ser tratada como vendável.
+- Storage exige exclusão coordenada pelo servidor; service role e SQL editor continuam podendo
+  orfanar objeto, e a reconciliação de prefixo é o conserto.
+- Promoção parcial: `promovendo` sem vínculo é estado esperado e recuperável, nunca motivo para
+  criar outra oportunidade.
+- Unidades de prédio: sem unidade, o dedupe de tipo vertical não passa de "possível"; unidade
+  diferente é veto.
+- Inferência de IA não é fato: `inferida` por padrão, vocabulário "aparenta", confirmação humana
+  separada; a confiança é apoio no texto, não probabilidade calibrada.
+- O Garimpo não pode virar segundo Pipeline: nada dele entra em KPI, foco ou contagem de pendências.
+- A UX de campo não deve voltar a ser um relatório completo no mobile.
+
 ### Garimpo em Campo: a tela fala a língua da rua (C9.1)
 
 O módulo guarda `avistamento`, `classificacao`, `snapshot_aplicado`, `inferida/confirmada/contestada/
@@ -2500,9 +2759,11 @@ tipo continua sendo confirmar a sugestão: a origem `ia-texto` não vira manual.
 
 O painel segue a ordem da leitura em campo: cabeçalho, **Precisa de atenção** (só quando há:
 conflito de revisão, falha da análise com motivo, texto corrigido aguardando análise, sugestões não
-confirmadas; nível declarado em atributo e em texto, nunca só na cor), **O que sabemos agora**,
-ações recolhidas (corrigir o texto, informar o tipo), **Visto anteriormente**, **Histórico de
-passagens**, localização e duplicatas, **Detalhes da análise**, e só no fim descartar/excluir. O
+confirmadas; nível declarado em atributo e em texto, nunca só na cor), **Próximas ações** (desde o
+C10.1: oportunidade, investigar, informar o tipo quando falta), **O que sabemos agora**, ações
+recolhidas (corrigir o texto, corrigir o endereço, informar o tipo), **Visto anteriormente**,
+**Histórico de passagens** e localização (recolhidos no celular), duplicatas, **Detalhes da
+análise**, e só no fim descartar/excluir. O
 motivo de uma falha de análise é estado transitório de tela (`falhaAnalise` no `useProspeccao`):
 só o código fechado da rota, preso ao avistamento em que falhou, apagado na próxima tentativa, no
 sucesso, ao trocar de imóvel e ao limpar a seleção; a tradução para frase humana é um mapa fechado
