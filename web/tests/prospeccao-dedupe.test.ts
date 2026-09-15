@@ -406,13 +406,19 @@ describe("C7 — fronteira: candidatos da própria conta pelas duas chaves", () 
     ];
     for (const caminho of arquivos) {
       const fonte = readFileSync(resolve(caminho), "utf8");
-      expect(fonte, caminho).not.toMatch(/from\("imoveis"\)|salvarImovel|vincular_promocao|definir_situacao_identificado\([^)]*promov/);
+      // Comentários podem nomear o salvarImovel (é o contrato do C10); código, não.
+      const codigo = fonte.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+      expect(codigo, caminho).not.toMatch(/from\("imoveis"\)|salvarImovel|definir_situacao_identificado\([^)]*promov/);
       expect(fonte, caminho).not.toMatch(/openai|embedding|ia_uso|\/api\/ia/i);
-      // C7b autoriza uma única porta de união; dedupe e cards continuam sem RPC.
+      // C7b autoriza uma única porta de união; C10, uma única porta de
+      // vínculo (prospeccao-promocao prova o resto). Dedupe e cards
+      // continuam sem RPC.
       if (caminho === "lib/prospeccao.ts") {
         expect(fonte.match(/client\.rpc\("fundir_imoveis_identificados"/g)).toHaveLength(1);
+        expect(fonte.match(/client\.rpc\("vincular_promocao_imovel_identificado"/g)).toHaveLength(1);
       } else {
         expect(fonte, caminho).not.toContain("fundir_imoveis_identificados");
+        expect(fonte, caminho).not.toContain("vincular_promocao");
       }
     }
     const componente = readFileSync(resolve("components/prospeccao/CandidatosDuplicidade.tsx"), "utf8");

@@ -16,14 +16,20 @@ import {
   criarIdentificado,
   definirTipoManual,
   descartarIdentificado,
+  desistirPromocaoIdentificado,
   excluirIdentificado,
   finalizarFotoAvistamento,
   fundirIdentificados,
+  iniciarPromocaoIdentificado,
+  lembrarOportunidadeCriada,
   listarIdentificados,
+  listarImoveisJaVinculados,
   obterIdentificado,
+  oportunidadeCriadaNaSessao,
   previaExclusaoIdentificado,
   removerFotoAvistamento,
   reservarFotoAvistamento,
+  vincularPromocaoIdentificado,
   type DadosAvistamento,
   type DadosEnderecoIdentificado,
   type DadosIdentificacao,
@@ -35,6 +41,7 @@ import {
   type ResultadoClassificacaoAvistamento,
   type ResultadoExclusaoProspeccao,
   type ResultadoFusaoIdentificados,
+  type ResultadoVinculoPromocao,
 } from "./prospeccao";
 import type {
   CategoriaEtiquetaProspeccao,
@@ -145,6 +152,30 @@ interface EstadoProspeccao {
     imovelIdentificadoId: string,
     fotoId: string,
   ) => Promise<ResultadoExclusaoProspeccao | null>;
+  /** Promoção (C10, V7 §13.2). Passo 1: `promovendo` ANTES de abrir o
+      ModalImovel. Quem cria o `Imovel` é o modal + `salvarImovel`; este
+      store nunca escreve em `imoveis`. */
+  iniciarPromocao: (imovelIdentificadoId: string) => Promise<boolean>;
+  /** O ModalImovel salvou: guarda em memória de sessão EXATAMENTE o id
+      criado e tenta o vínculo. Se o vínculo falhar, o registro fica
+      `promovendo` e o retry usa o mesmo id — nunca cria outro. */
+  registrarOportunidadeCriada: (
+    imovelIdentificadoId: string,
+    imovelId: string,
+  ) => Promise<ResultadoVinculoPromocao | null>;
+  /** Passo 3: grava `imovel_id`/`promovido_em`/`situacao='promovido'` pela
+      única RPC que pode. Idempotente com o mesmo id; recusada com outro. */
+  vincularPromocao: (
+    imovelIdentificadoId: string,
+    imovelId: string,
+  ) => Promise<ResultadoVinculoPromocao | null>;
+  /** O id que `salvarImovel` devolveu nesta sessão, se o vínculo falhou. */
+  oportunidadeCriadaNaSessao: (imovelIdentificadoId: string) => string | null;
+  /** Ids de `imoveis` já reivindicados por algum identificado da conta. */
+  imoveisJaVinculados: () => Promise<Set<string> | null>;
+  /** Desistir da recuperação: volta a `identificado`; a oportunidade
+      criada continua no Pipeline. */
+  desistirPromocao: (imovelIdentificadoId: string) => Promise<boolean>;
 }
 
 const estadoInicial = {
@@ -522,6 +553,66 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
         set({ salvando: false, erro: "Não foi possível remover a foto." });
         return null;
       }
+    },
+    iniciarPromocao(imovelIdentificadoId) {
+      return executarMutacao("Não foi possível iniciar a transformação em oportunidade.", async () => {
+        await iniciarPromocaoIdentificado(imovelIdentificadoId);
+        return detalheAtualizado(imovelIdentificadoId);
+      });
+    },
+    registrarOportunidadeCriada(imovelIdentificadoId, imovelId) {
+      // A memória vem ANTES do vínculo: se ele falhar, o id não se perde.
+      lembrarOportunidadeCriada(imovelIdentificadoId, imovelId);
+      return get().vincularPromocao(imovelIdentificadoId, imovelId);
+    },
+    async vincularPromocao(imovelIdentificadoId, imovelId) {
+      set({ salvando: true, erro: null });
+      let resultado: ResultadoVinculoPromocao;
+      try {
+        resultado = await vincularPromocaoIdentificado(imovelIdentificadoId, imovelId);
+      } catch (erro) {
+        // A oportunidade JÁ existe no Pipeline; só o vínculo ficou pendente.
+        // O registro continua `promovendo` e a tela oferece concluir — nunca
+        // criar de novo. A releitura mostra esse estado como ele está.
+        try {
+          registrarDetalhe(await detalheAtualizado(imovelIdentificadoId));
+        } catch {
+          // O próximo carregamento do detalhe mostra o estado real.
+        }
+        set({
+          salvando: false,
+          erro: erro instanceof Error
+            ? erro.message
+            : "Não foi possível concluir o vínculo. A oportunidade continua no Pipeline; tente de novo.",
+        });
+        return null;
+      }
+      try {
+        registrarDetalhe(await detalheAtualizado(imovelIdentificadoId));
+        set({ salvando: false });
+      } catch {
+        set({
+          salvando: false,
+          aviso: "O vínculo foi concluído, mas não foi possível atualizar a tela. Recarregue para conferir.",
+        });
+      }
+      return resultado;
+    },
+    oportunidadeCriadaNaSessao(imovelIdentificadoId) {
+      return oportunidadeCriadaNaSessao(imovelIdentificadoId);
+    },
+    async imoveisJaVinculados() {
+      try {
+        return await listarImoveisJaVinculados();
+      } catch {
+        return null;
+      }
+    },
+    desistirPromocao(imovelIdentificadoId) {
+      return executarMutacao("Não foi possível desistir agora. Tente de novo.", async () => {
+        await desistirPromocaoIdentificado(imovelIdentificadoId);
+        return detalheAtualizado(imovelIdentificadoId);
+      });
     },
   };
 });

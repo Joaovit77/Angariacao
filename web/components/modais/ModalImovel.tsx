@@ -38,7 +38,7 @@ import { unidadesDesdobradas } from "@/lib/calculo/motor";
 import { aplicarMudancaDeStatus, excluirImovel, numOrNull, salvarImovel, uid } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
-import { useUiModal } from "@/lib/uiModal";
+import { useUiModal, type PromocaoDoGarimpo } from "@/lib/uiModal";
 import type { Imovel, StatusHistoryEntry } from "@/lib/tipos";
 
 const MiniMapa = dynamic(() => import("./MiniMapa"), { ssr: false });
@@ -80,7 +80,7 @@ function IconeDesdobrar() {
   );
 }
 
-export default function ModalImovel({ id }: { id?: string }) {
+export default function ModalImovel({ id, promocao }: { id?: string; promocao?: PromocaoDoGarimpo }) {
   const router = useRouter();
   const fecharModal = useUiModal((s) => s.fecharModal);
   const abrirModal = useUiModal((s) => s.abrirModal);
@@ -91,20 +91,23 @@ export default function ModalImovel({ id }: { id?: string }) {
 
   const imovel = id ? imoveis.find((i) => i.id === id) || null : null;
   const origensDisponiveis = origensDoUsuario(origensExtras, imoveis);
+  // Aberto pelo Garimpo em Campo: valores iniciais de um imóvel visto na
+  // rua. Só valem na criação — editar um imóvel existente ignora o prefill.
+  const inicial = imovel ? null : promocao?.inicial ?? null;
 
   // Nova angariação já vem com o próximo código sugerido (ex.: LD-0235);
   // na edição, mantém o código do próprio imóvel.
   const [codigo, setCodigo] = useState(() => imovel?.codigo ?? sugerirCodigoImovel(imoveis));
   const [referenciaCrm, setReferenciaCrm] = useState(imovel?.referenciaCrm ?? "");
-  const [tipo, setTipo] = useState(imovel?.tipo ?? "Apartamento");
+  const [tipo, setTipo] = useState(imovel?.tipo ?? inicial?.tipo ?? "Apartamento");
   const [cep, setCep] = useState(imovel?.cep ?? "");
-  const [endereco, setEndereco] = useState(imovel?.endereco ?? "");
-  const [bairro, setBairro] = useState(imovel?.bairro ?? "");
-  const [cidade, setCidade] = useState(imovel?.cidade ?? "");
-  const [estado, setEstado] = useState(imovel?.estado ?? "");
-  const [unidade, setUnidade] = useState(imovel?.unidade ?? "");
-  const [bloco, setBloco] = useState(imovel?.bloco ?? "");
-  const [edificio, setEdificio] = useState(imovel?.edificio ?? "");
+  const [endereco, setEndereco] = useState(imovel?.endereco ?? inicial?.endereco ?? "");
+  const [bairro, setBairro] = useState(imovel?.bairro ?? inicial?.bairro ?? "");
+  const [cidade, setCidade] = useState(imovel?.cidade ?? inicial?.cidade ?? "");
+  const [estado, setEstado] = useState(imovel?.estado ?? inicial?.estado ?? "");
+  const [unidade, setUnidade] = useState(imovel?.unidade ?? inicial?.unidade ?? "");
+  const [bloco, setBloco] = useState(imovel?.bloco ?? inicial?.bloco ?? "");
+  const [edificio, setEdificio] = useState(imovel?.edificio ?? inicial?.edificio ?? "");
   const [quartos, setQuartos] = useState(imovel?.quartos != null ? String(imovel.quartos) : "");
   const [banheiros, setBanheiros] = useState(imovel?.banheiros != null ? String(imovel.banheiros) : "");
   const [vagas, setVagas] = useState(imovel?.vagas != null ? String(imovel.vagas) : "");
@@ -120,7 +123,7 @@ export default function ModalImovel({ id }: { id?: string }) {
   // origem enche a leitura de imóveis que ninguém disse de onde vieram, e o
   // corretor descobre isso tarde, quando o "melhor canal" já é o padrão do
   // seletor. O cálculo já sabe lidar com o vazio ("Não informado").
-  const [origemImovel, setOrigemImovel] = useState(imovel?.origemImovel ?? "");
+  const [origemImovel, setOrigemImovel] = useState(imovel?.origemImovel ?? inicial?.origemImovel ?? "");
   const [imobiliariaConcorrente, setImobiliariaConcorrente] = useState(imovel?.imobiliariaConcorrente ?? "");
   const [concorrentesAberto, setConcorrentesAberto] = useState(false);
   const [concorrenteTermo, setConcorrenteTermo] = useState("");
@@ -144,7 +147,7 @@ export default function ModalImovel({ id }: { id?: string }) {
     () => imovel?.responsavel ?? captadorPadrao(usuario, imoveis),
   );
   const [status, setStatus] = useState(imovel?.status ?? "Novo contato");
-  const [observacoes, setObservacoes] = useState(imovel?.observacoes ?? "");
+  const [observacoes, setObservacoes] = useState(imovel?.observacoes ?? inicial?.observacoes ?? "");
   const [pausadoAte, setPausadoAte] = useState(imovel?.pausadoAte ?? "");
   const [criarLembretePausa, setCriarLembretePausa] = useState(true);
   const [motivoPerda, setMotivoPerda] = useState(imovel?.motivoPerda ?? "");
@@ -373,9 +376,15 @@ export default function ModalImovel({ id }: { id?: string }) {
     const imobiliariaCanon = canonizarValor(imobiliariaConcorrente, outros.map((i) => i.imobiliariaConcorrente));
     const responsavelCanon = canonizarValor(responsavel, outros.map((i) => i.responsavel));
 
+    // Promovido do Garimpo em Campo: o histórico nasce VAZIO, como na
+    // importação — promover não é transição, e o motor já cai em
+    // `dataAngariacao` quando o histórico está vazio. "Novo contato" é o
+    // estado implícito de partida; só uma mudança real entra na trilha.
     const historico: StatusHistoryEntry[] = imovel
       ? [...(imovel.statusHistory || [])]
-      : [{ status: "Novo contato", date: dataAngariacao, userId: usuario.id, source: "usuario" }];
+      : promocao
+        ? []
+        : [{ status: "Novo contato", date: dataAngariacao, userId: usuario.id, source: "usuario" }];
 
     const data: Imovel = {
       id: imovel ? imovel.id : uid(),
@@ -430,12 +439,22 @@ export default function ModalImovel({ id }: { id?: string }) {
       preCadastro: false,
     };
 
-    aplicarMudancaDeStatus(data, status, imovel ? imovel.status : null, usuario.id);
+    aplicarMudancaDeStatus(
+      data,
+      status,
+      imovel ? imovel.status : promocao ? "Novo contato" : null,
+      usuario.id,
+    );
 
     setSalvando(true);
     const { ok } = await salvarImovel(data, usuario.id, !!data.pausadoAte && criarLembretePausa);
     setSalvando(false);
-    if (ok) fecharModal();
+    if (!ok) return;
+    // O Garimpo grava o vínculo com o id recém-criado, num passo próprio.
+    // Só depois da gravação confirmada: um id de imóvel que não existe
+    // seria um vínculo para o nada.
+    if (promocao && !imovel) promocao.aoSalvar(data.id);
+    fecharModal();
   }
 
   async function excluir() {
@@ -457,6 +476,13 @@ export default function ModalImovel({ id }: { id?: string }) {
           <p className="section-note" style={{ marginBottom: "14px" }}>
             📋 Este imóvel é um <strong>pré-cadastro</strong>. Confira os dados com o que o
             proprietário respondeu e clique em <strong>Salvar alterações</strong> para confirmar.
+          </p>
+        )}
+        {inicial && (
+          <p className="section-note" style={{ marginBottom: "14px" }} data-origem-garimpo>
+            Endereço e tipo vieram do <strong>Garimpo em Campo</strong>. Confira, informe o
+            proprietário e o telefone quando souber, e salve para criar a oportunidade no
+            Pipeline. As passagens e fotos continuam no Garimpo, ligadas a esta oportunidade.
           </p>
         )}
         {principalDeste && (

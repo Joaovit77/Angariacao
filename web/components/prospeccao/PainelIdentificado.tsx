@@ -12,6 +12,7 @@ import dynamic from "next/dynamic";
 import { useState, type ReactNode } from "react";
 
 import { identidadeParaDedupe, vigenciaDasEtiquetas } from "@/lib/prospeccao";
+import { podePromoverIdentificado, precisaConcluirVinculo } from "@/lib/calculo/promocaoProspeccao";
 import { TIPOS_IMOVEL } from "@/lib/constantes";
 import { fmtDataHoraIso } from "@/lib/datas";
 import type {
@@ -42,6 +43,7 @@ import LinhaDoTempoAvistamentos from "./LinhaDoTempoAvistamentos";
 import styles from "./Prospeccao.module.css";
 import SeloExclusaoPendente from "./SeloExclusaoPendente";
 import { mensagemFalhaAnalise } from "./textosAnalise";
+import TransformarEmOportunidade from "./TransformarEmOportunidade";
 
 export const EXPLICACAO_CONFIRMAR =
   "Você passa a confirmar esta informação. Se o texto for corrigido depois, a confirmação é mantida, mas pode aparecer para revisão.";
@@ -359,6 +361,11 @@ export default function PainelIdentificado({
   // Sem endereço, o cabeçalho oferece um botão; o formulário só existe
   // depois do toque, e some assim que o endereço é gravado.
   const semEndereco = podeEditarEndereco && !item.logradouro;
+  // A seção da oportunidade existe quando há algo a fazer ou a dizer:
+  // promover, concluir um vínculo pendente ou mostrar que já é uma.
+  const mostrarOportunidade = podePromoverIdentificado(item)
+    || precisaConcluirVinculo(item)
+    || item.situacao === "promovido";
   const situacao = ROTULOS_SITUACAO[item.situacao];
   const resumoCabecalho = [tipoComMarca(item), situacao || null].filter(Boolean).join(" · ");
 
@@ -686,6 +693,17 @@ export default function PainelIdentificado({
               </div>
             </details>
           </section>
+
+          {/* 4b. Oportunidade no Pipeline: promover (clique humano), concluir
+              um vínculo pendente ou ver que já é uma. Nunca automático. */}
+          {mostrarOportunidade ? (
+            <section className={styles.secao} aria-label="Oportunidade no Pipeline" data-secao-oportunidade>
+              <div className={styles.secaoCabecalho}>
+                <h4>Oportunidade no Pipeline</h4>
+              </div>
+              <TransformarEmOportunidade detalhe={detalhe} />
+            </section>
+          ) : null}
 
           {/* 5. Visto anteriormente: o que já foi percebido e não voltou. */}
           {historicoEtiquetas.length ? (

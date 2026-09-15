@@ -244,7 +244,9 @@ describe("ProspeccaoView", () => {
     expect(screen.getByRole("button", { name: "Informar o tipo" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Confirmar" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Marcar como incorreta" })).toBeTruthy();
-    expect(screen.queryByText("Transformar em oportunidade")).toBeNull();
+    // C10 entregou a promoção: o botão existe, mas continua fora dos cinco
+    // arquivos do C4 (prospeccao-c4-estrutura) — vive em componente próprio.
+    expect(screen.getByRole("button", { name: "Transformar em oportunidade" })).toBeTruthy();
   });
 });
 
