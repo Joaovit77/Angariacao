@@ -1464,3 +1464,131 @@
   justify-items: start;
   margin-top: 10px;
 }
+
+/* ---- C10.1: captura rápida e leitura de campo ----------------------
+   Nada aqui muda regra ou dado: é só o que aparece primeiro, o que se
+   recolhe e quanto texto sobra numa tela de celular. */
+
+/* Confirmação depois de salvar: a primeira coisa a ler é "deu certo". */
+.confirmacao {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--accent-borda);
+  border-left: 4px solid var(--good);
+  border-radius: 14px;
+  background: var(--good-soft);
+}
+.confirmacaoTopo {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.confirmacaoTopo strong {
+  display: block;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.confirmacaoMarca {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--good);
+  color: var(--bg-elev-1);
+  font-size: 16px;
+  font-weight: 600;
+}
+.confirmacaoEndereco {
+  margin: 3px 0 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.confirmacaoItens {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0 0 0 42px;
+  list-style: none;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.confirmacaoItens li[data-registrada="true"] { color: var(--text); }
+.confirmacaoAcoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-left: 42px;
+}
+
+/* Próximas ações: um bloco compacto, antes da leitura. */
+.proximasAcoes {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+.proximasAcoes .investigar { margin-top: 0; }
+
+/* Contagem de passagens no cabeçalho do painel. */
+.resumoPassagens {
+  margin: 4px 0 0;
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+
+/* Seção recolhível: o título continua sendo o título; o triângulo some. */
+.secaoRecolhivel > summary {
+  cursor: pointer;
+  list-style: none;
+  margin-bottom: 0;
+}
+.secaoRecolhivel > summary::-webkit-details-marker { display: none; }
+.secaoRecolhivel > summary::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  border-right: 1.5px solid var(--text-dim);
+  border-bottom: 1.5px solid var(--text-dim);
+  transform: rotate(-45deg);
+  transition: transform .15s ease;
+}
+.secaoRecolhivel[open] > summary::after { transform: rotate(45deg); }
+.secaoRecolhivel > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.secaoRecolhivelCorpo { margin-top: 11px; }
+
+.painelAncora { min-width: 0; scroll-margin-top: 72px; }
+
+/* Celular: menos topo, menos texto auxiliar, mais espaço para a tarefa. */
+@media (max-width: 720px) {
+  .hero { gap: 12px; padding: 14px 16px; }
+  .heroIcone { width: 40px; height: 40px; flex-basis: 40px; border-radius: 11px; }
+  .heroIcone svg { width: 21px; height: 21px; }
+  .hero h2 { margin: 2px 0 0; font-size: 20px; }
+  .heroDescricao { display: none; }
+  .secaoNota,
+  .legendaAcoes { display: none; }
+  .painel { padding: 15px; }
+  .secao { margin-top: 14px; padding-top: 13px; }
+  .confirmacao { padding: 14px; }
+  .confirmacaoItens,
+  .confirmacaoAcoes { padding-left: 0; }
+  .confirmacaoAcoes :global(.btn-primary) { width: 100%; justify-content: center; }
+  .proximasAcoes :global(.btn) { width: 100%; justify-content: center; }
+  .proximasAcoes > * { width: 100%; }
+  /* O botão já diz o que faz; a nota da oportunidade volta no modal. A do
+     Investigar fica: diz o que sai (e o que não sai) do sistema. */
+  .proximasAcoes [data-oportunidade="disponivel"] .explicacao { display: none; }
+  /* Endereço rápido em duas linhas, não quatro: rua + número, cidade + UF. */
+  .enderecoRapido :global(.field-row) { grid-template-columns: minmax(0, 1fr) 96px; gap: 10px; }
+  .enderecoRapido :global(.field-row):last-child { grid-template-columns: minmax(0, 1fr) 72px; }
+  /* Data e horário já vêm preenchidos: uma linha só. */
+  .dataHora { grid-template-columns: 1fr 1fr; gap: 10px; }
+}

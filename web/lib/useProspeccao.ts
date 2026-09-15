@@ -84,6 +84,12 @@ interface EstadoProspeccao {
       sucesso, ao trocar de seleção e ao resetar. Nunca guarda mensagem
       bruta de fornecedor: só o código. */
   falhaAnalise: { avistamentoId: string; codigo: string } | null;
+  /** A passagem que acabou de ser salva NESTA sessão de tela, para a
+      confirmação de campo ("Imóvel registrado"). Estado TRANSITÓRIO de
+      apresentação, como `falhaAnalise`: não persiste, não vai ao banco;
+      some ao dispensar, ao trocar de seleção e ao resetar. */
+  ultimoRegistro: { imovelIdentificadoId: string; avistamentoId: string; novoLocal: boolean } | null;
+  dispensarUltimoRegistro: () => void;
   fundir: (sobreviventeId: string, absorvidoId: string) => Promise<ResultadoFusaoIdentificados | null>;
   carregarPagina: (pagina?: number, porPagina?: number) => Promise<boolean>;
   definirIncluirOcultos: (incluirOcultos: boolean) => Promise<boolean>;
@@ -194,6 +200,7 @@ const estadoInicial = {
   revisaoFusao: 0,
   classificandoAvistamentoId: null as string | null,
   falhaAnalise: null as { avistamentoId: string; codigo: string } | null,
+  ultimoRegistro: null as { imovelIdentificadoId: string; avistamentoId: string; novoLocal: boolean } | null,
 };
 
 function substituirIdentificado(
@@ -226,6 +233,7 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
       // Trocar de imóvel apaga o motivo de falha do anterior: ele é do
       // avistamento em que falhou e não tem o que dizer sobre outro registro.
       falhaAnalise: estado.detalhe?.identificado.id === detalhe.identificado.id ? estado.falhaAnalise : null,
+      ultimoRegistro: estado.ultimoRegistro?.imovelIdentificadoId === detalhe.identificado.id ? estado.ultimoRegistro : null,
     }));
   }
 
@@ -298,7 +306,10 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
       }
     },
     limparSelecao() {
-      set({ detalhe: null, selecionadoId: null, falhaAnalise: null });
+      set({ detalhe: null, selecionadoId: null, falhaAnalise: null, ultimoRegistro: null });
+    },
+    dispensarUltimoRegistro() {
+      set({ ultimoRegistro: null });
     },
     limparErro() {
       set({ erro: null });
@@ -367,6 +378,7 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
         set((estado) => ({
           total: estado.total + 1,
           temMais: estado.pagina * estado.porPagina < estado.total + 1,
+          ultimoRegistro: { imovelIdentificadoId: identificado, avistamentoId: avistamento, novoLocal: true },
         }));
         classificarEmSegundoPlano(identificado, avistamento);
       }
@@ -379,7 +391,10 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
         avistamentoId = avistamento.id;
         return detalheAtualizado(imovelIdentificadoId);
       });
-      if (sucesso && avistamentoId) classificarEmSegundoPlano(imovelIdentificadoId, avistamentoId);
+      if (sucesso && avistamentoId) {
+        set({ ultimoRegistro: { imovelIdentificadoId, avistamentoId, novoLocal: false } });
+        classificarEmSegundoPlano(imovelIdentificadoId, avistamentoId);
+      }
       return sucesso;
     },
     async corrigirObservacao(imovelIdentificadoId, avistamentoId, observacao) {

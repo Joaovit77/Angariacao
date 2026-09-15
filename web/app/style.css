@@ -1828,6 +1828,14 @@ input, select, textarea{ font-family: inherit; font-size: 14px; }
 }
 .rodape-assinatura{ font-size: 11.5px; color: var(--text-faint); }
 .rodape-versao{ font-variant-numeric: tabular-nums; }
+/* Celular: o rodapé fecha a página sem disputar espaço com a tarefa
+   (C10.1). Mesmo conteúdo, menos altura. */
+@media (max-width: 720px){
+  .rodape-app{ margin-top: 24px; padding-top: 16px; }
+  .rodape-oferecimento{ width: 130px; min-height: 44px; }
+  .rodape-oferecimento img{ width: 130px; }
+  .rodape-risco{ margin: 8px auto; }
+}
 
 /* Na tela de acesso não há .main: o rodapé é o último filho do
    .auth-screen (flex column) e fecha a apresentação, alinhado à mesma

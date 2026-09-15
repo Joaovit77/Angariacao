@@ -585,7 +585,11 @@ export default function ModalAvistamento({
           ✕
         </button>
       </div>
-      <form onSubmit={salvar} onChange={marcarTocado}>
+      {/* `autoComplete="off"` no formulário e nos campos de endereço: isto é
+          o endereço de um imóvel visto na rua, não o de quem digita. Sem
+          isso o navegador oferece "salvar endereço?" ao enviar. O
+          autocomplete do ViaCEP é do sistema e não passa por aqui. */}
+      <form onSubmit={salvar} onChange={marcarTocado} autoComplete="off">
         <div className="modal-body">
           {rascunhoRestauradoEm ? (
             <div className={styles.rascunhoRestaurado} role="status">
@@ -610,10 +614,7 @@ export default function ModalAvistamento({
           ) : null}
           <div className={styles.capturaRapida}>
             <strong>Registre o essencial agora</strong>
-            <span>
-              Data e horário já estão preenchidos. Foto, observação e dados do imóvel podem ser
-              complementados quando fizer sentido.
-            </span>
+            <span>Foto e endereço bastam. O resto pode vir depois.</span>
           </div>
           {!primeiroAvistamento ? (
             <div className={styles.identidadeReutilizada}>
@@ -636,20 +637,6 @@ export default function ModalAvistamento({
             aoAntesDeCapturar={aoAntesDeCapturar}
             aoConcluir={aoConcluirEnvio}
           />
-          <div className="field-group">
-            <label htmlFor="avistamento-observacao">Observação (opcional)</label>
-            <textarea
-              id="avistamento-observacao"
-              rows={3}
-              maxLength={2000}
-              value={observacao}
-              onChange={(evento) => setObservacao(evento.target.value)}
-              placeholder="Ex.: placa no portão, imóvel fechado, fachada em obra"
-            />
-            <div className="field-hint">
-              Não registre nome ou telefone aqui · {observacao.length}/2000 caracteres
-            </div>
-          </div>
           {avistamentoSalvo ? null : (
           <section className={styles.localizacao} aria-label="Localização da passagem">
             <div className={styles.localizacaoCabecalho}>
@@ -713,9 +700,6 @@ export default function ModalAvistamento({
             ) : null}
           </section>
           )}
-          {alvoDedupe ? (
-            <CandidatosDuplicidade alvo={alvoDedupe} titulo="Pode ser um local já registrado" />
-          ) : null}
           {primeiroAvistamento ? (
             <div className={styles.enderecoRapido}>
               <div className="field-row">
@@ -736,6 +720,7 @@ export default function ModalAvistamento({
                   <input
                     id="avistamento-numero"
                     type="text"
+                    autoComplete="off"
                     value={numero}
                     onChange={(evento) => setNumero(evento.target.value)}
                     onBlur={localizarEnderecoDigitado}
@@ -748,6 +733,7 @@ export default function ModalAvistamento({
                   <input
                     id="avistamento-cidade"
                     type="text"
+                    autoComplete="off"
                     value={cidade}
                     onChange={(evento) => setCidade(evento.target.value)}
                     onBlur={localizarEnderecoDigitado}
@@ -758,6 +744,7 @@ export default function ModalAvistamento({
                   <input
                     id="avistamento-estado"
                     type="text"
+                    autoComplete="off"
                     maxLength={2}
                     value={estado}
                     onChange={(evento) => setEstado(evento.target.value)}
@@ -767,7 +754,39 @@ export default function ModalAvistamento({
               </div>
             </div>
           ) : null}
-          <div className="field-row">
+          {alvoDedupe ? (
+            <CandidatosDuplicidade alvo={alvoDedupe} titulo="Pode ser um local já registrado" />
+          ) : null}
+          <div className="field-group">
+            <label htmlFor="avistamento-observacao">Observação (opcional)</label>
+            <textarea
+              id="avistamento-observacao"
+              rows={3}
+              maxLength={2000}
+              value={observacao}
+              onChange={(evento) => setObservacao(evento.target.value)}
+              placeholder="Ex.: placa no portão, imóvel fechado, fachada em obra"
+            />
+            <div className="field-hint">
+              Não registre nome ou telefone aqui · {observacao.length}/2000 caracteres
+            </div>
+          </div>
+          {primeiroAvistamento ? (
+            <div className="field-group" data-campo-tipo>
+              <label htmlFor="avistamento-tipo">Tipo do imóvel (se souber)</label>
+              <select
+                id="avistamento-tipo"
+                value={tipo}
+                onChange={(evento) => setTipo(evento.target.value)}
+              >
+                <option value="">Não definido</option>
+                {TIPOS_IMOVEL.map((opcao) => (
+                  <option value={opcao} key={opcao}>{opcao}</option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+          <div className={`field-row ${styles.dataHora}`}>
             <div className="field-group">
               <label htmlFor="avistamento-data">Data</label>
               <input
@@ -798,6 +817,7 @@ export default function ModalAvistamento({
                   <input
                     id="avistamento-referencia"
                     type="text"
+                    autoComplete="off"
                     value={pontoReferencia}
                     onChange={(evento) => setPontoReferencia(evento.target.value)}
                     placeholder="Ex.: ao lado do mercado"
@@ -809,6 +829,7 @@ export default function ModalAvistamento({
                     <input
                       id="avistamento-unidade"
                       type="text"
+                      autoComplete="off"
                       value={unidade}
                       onChange={(evento) => setUnidade(evento.target.value)}
                     />
@@ -818,6 +839,7 @@ export default function ModalAvistamento({
                     <input
                       id="avistamento-bloco"
                       type="text"
+                      autoComplete="off"
                       value={bloco}
                       onChange={(evento) => setBloco(evento.target.value)}
                     />
@@ -827,6 +849,7 @@ export default function ModalAvistamento({
                     <input
                       id="avistamento-edificio"
                       type="text"
+                      autoComplete="off"
                       value={edificio}
                       onChange={(evento) => setEdificio(evento.target.value)}
                     />
@@ -838,6 +861,7 @@ export default function ModalAvistamento({
                     <input
                       id="avistamento-bairro"
                       type="text"
+                      autoComplete="off"
                       value={bairro}
                       onChange={(evento) => setBairro(evento.target.value)}
                     />
@@ -847,23 +871,11 @@ export default function ModalAvistamento({
                     <input
                       id="avistamento-cep"
                       type="text"
+                      autoComplete="off"
                       value={cep}
                       onChange={(evento) => setCep(evento.target.value)}
                     />
                   </div>
-                </div>
-                <div className="field-group">
-                  <label htmlFor="avistamento-tipo">Tipo do imóvel</label>
-                  <select
-                    id="avistamento-tipo"
-                    value={tipo}
-                    onChange={(evento) => setTipo(evento.target.value)}
-                  >
-                    <option value="">Não definido</option>
-                    {TIPOS_IMOVEL.map((opcao) => (
-                      <option value={opcao} key={opcao}>{opcao}</option>
-                    ))}
-                  </select>
                 </div>
               </div>
             </details>
