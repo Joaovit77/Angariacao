@@ -349,10 +349,9 @@ export async function POST(request: Request): Promise<Response> {
         // Ponto único de persistência (C13B): a pesquisa terminou com
         // sucesso (mesmo parcial ou vazia) e há um imóvel identificado
         // conferido. Antes disto nada é gravado; erro acima pula tudo.
+        // A consulta digitada fica de fora de propósito: é texto livre.
         const memoria = imovelIdentificadoId
-          ? await persistirMemoriaDaInvestigacao({
-            userId, execucaoId, imovelIdentificadoId, consulta: consultaOriginal, resultados,
-          })
+          ? await persistirMemoriaDaInvestigacao({ userId, execucaoId, imovelIdentificadoId, resultados })
           : undefined;
         emitir({
           tipo: "resultado",

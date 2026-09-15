@@ -8,10 +8,13 @@
 
    O que entra: o id da execução (gerado AQUI, no servidor, no início
    lógico da execução; nunca vem do cliente), o usuário autenticado pela
-   rota, o imóvel identificado já conferido como dele, a consulta e as
-   correspondências estruturadas que o Investigador produziu. O que vai
-   para o banco: só o que `extrairAfirmacoesDaInvestigacao` (C13A) aceita
-   do catálogo fechado, sem PII, sem texto livre, com fonte e faixa.
+   rota, o imóvel identificado já conferido como dele e as correspondências
+   estruturadas que o Investigador produziu. A consulta digitada NÃO entra:
+   é texto livre (nome, telefone, e-mail, o que a pessoa quiser) e texto
+   livre não é memória. O que vai para o banco: só o que
+   `extrairAfirmacoesDaInvestigacao` (C13A) aceita do catálogo fechado, sem
+   PII, com fonte, e sem confiança (o Investigador mede correspondência do
+   anúncio, não veracidade do atributo).
 
    Nunca lança: a pesquisa que a pessoa acabou de ver não pode sumir
    porque a memória falhou. Devolve um estado explícito, e a UI conta a
@@ -22,11 +25,7 @@
 import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { CorrespondenciaInvestigacao, MemoriaInvestigacao } from "@/lib/calculo/investigadorImoveis";
-import {
-  extrairAfirmacoesDaInvestigacao,
-  LIMITE_CONSULTA_MEMORIA,
-  type AfirmacaoMemoria,
-} from "@/lib/calculo/memoriaIdentidade";
+import { extrairAfirmacoesDaInvestigacao, type AfirmacaoMemoria } from "@/lib/calculo/memoriaIdentidade";
 
 export const RPC_REGISTRAR_INVESTIGACAO = "registrar_investigacao_identificado";
 export const TENTATIVAS_PERSISTENCIA_MEMORIA = 3;
@@ -49,7 +48,6 @@ export interface PedidoMemoriaInvestigacao {
   userId: string;
   execucaoId: string;
   imovelIdentificadoId: string;
-  consulta: string;
   resultados: ReadonlyArray<CorrespondenciaInvestigacao>;
 }
 
@@ -105,7 +103,6 @@ export async function persistirMemoriaDaInvestigacao(
     p_user_id: pedido.userId,
     p_investigacao_id: execucaoId,
     p_imovel_identificado_id: pedido.imovelIdentificadoId,
-    p_consulta: pedido.consulta.slice(0, LIMITE_CONSULTA_MEMORIA),
     p_resultados_total: pedido.resultados.length,
     p_recusados_total: extracao.recusadas,
     p_atributos: atributosParaRpc(extracao.afirmacoes),

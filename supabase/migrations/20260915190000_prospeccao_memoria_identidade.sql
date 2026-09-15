@@ -15,7 +15,8 @@
 -- Divisão de papéis herdada do C2: grant = autorização; CHECK = invariante de
 -- linha; RPC = porta nomeada. Sem trigger novo. Sem dado pessoal: as colunas
 -- de valor são numéricas ou texto curto de catálogo, e a RPC de servidor só
--- aceita atributos do catálogo fechado.
+-- aceita atributos do catálogo fechado. A consulta digitada pela pessoa é texto
+-- livre (pode carregar nome, telefone, e-mail) e por isso NÃO é gravada.
 
 -- ============================================================
 -- TABELAS
@@ -28,10 +29,6 @@ create table if not exists public.imoveis_identificados_investigacoes (
   origem text not null default 'investigador-web'
     constraint imoveis_identificados_investigacoes_origem_check check (
       origem in ('investigador-web')
-    ),
-  consulta text not null
-    constraint imoveis_identificados_investigacoes_consulta_check check (
-      char_length(consulta) between 1 and 500
     ),
   resultados_total integer not null default 0
     constraint imoveis_identificados_investigacoes_resultados_check check (resultados_total >= 0),
@@ -183,7 +180,6 @@ create or replace function public.registrar_investigacao_identificado(
   p_user_id uuid,
   p_investigacao_id uuid,
   p_imovel_identificado_id uuid,
-  p_consulta text,
   p_resultados_total integer,
   p_recusados_total integer,
   p_atributos jsonb
@@ -216,9 +212,6 @@ begin
   end if;
   if p_investigacao_id is null or p_imovel_identificado_id is null then
     raise exception 'Investigação e imóvel identificado são obrigatórios.' using errcode = '22023';
-  end if;
-  if p_consulta is null or char_length(p_consulta) < 1 then
-    raise exception 'Consulta obrigatória.' using errcode = '22023';
   end if;
 
   select i.* into v_identidade
@@ -254,11 +247,11 @@ begin
   end if;
 
   insert into public.imoveis_identificados_investigacoes (
-    id, user_id, imovel_identificado_id, origem, consulta, resultados_total,
+    id, user_id, imovel_identificado_id, origem, resultados_total,
     atributos_total, recusados_total, concluida_em
   ) values (
     p_investigacao_id, p_user_id, p_imovel_identificado_id, 'investigador-web',
-    left(p_consulta, 500), greatest(coalesce(p_resultados_total, 0), 0), 0, 0, v_agora
+    greatest(coalesce(p_resultados_total, 0), 0), 0, 0, v_agora
   );
 
   for v_item in select value from jsonb_array_elements(coalesce(p_atributos, '[]'::jsonb)) loop
@@ -380,9 +373,9 @@ $$;
 -- Permissões das RPCs: servidor só para service_role; confirmação só para
 -- authenticated. Ninguém mais.
 -- ------------------------------------------------------------
-revoke all on function public.registrar_investigacao_identificado(uuid, uuid, uuid, text, integer, integer, jsonb)
+revoke all on function public.registrar_investigacao_identificado(uuid, uuid, uuid, integer, integer, jsonb)
   from public, anon, authenticated, service_role;
-grant execute on function public.registrar_investigacao_identificado(uuid, uuid, uuid, text, integer, integer, jsonb)
+grant execute on function public.registrar_investigacao_identificado(uuid, uuid, uuid, integer, integer, jsonb)
   to service_role;
 
 revoke all on function public.confirmar_atributo_identificado(bigint)

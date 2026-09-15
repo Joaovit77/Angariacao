@@ -77,6 +77,10 @@ describe("C13A — migration e espelho canônico", () => {
     }
     expect(colunas).not.toContain("vigente");
     expect(colunas).not.toContain("atributo_atual_id");
+    // Texto livre do usuário não é memória: a consulta digitada (que pode
+    // trazer nome, telefone, e-mail) não tem coluna nem parâmetro.
+    expect(colunas).not.toContain("consulta");
+    expect(MIGRATION).not.toMatch(/\bconsulta\b(?! digitada)/);
     expect(MIGRATION).not.toMatch(/vector|embedding|langchain|redis/i);
     expect(MIGRATION).not.toMatch(/\bcreate trigger\b|\bcreate event trigger\b/i);
     expect(MIGRATION).not.toMatch(/\bdrop (?:table|function|index|column)\b/i);
@@ -129,7 +133,8 @@ describe("C13A — migration e espelho canônico", () => {
 
   it("registrar: modelo Servidor (p_user_id + trava de JWT), idempotente por execução, só service_role", () => {
     const fn = funcao("registrar_investigacao_identificado");
-    expect(fn).toMatch(/p_user_id uuid,\n\s+p_investigacao_id uuid,\n\s+p_imovel_identificado_id uuid,\n\s+p_consulta text,\n\s+p_resultados_total integer,\n\s+p_recusados_total integer,\n\s+p_atributos jsonb/);
+    expect(fn).toMatch(/p_user_id uuid,\n\s+p_investigacao_id uuid,\n\s+p_imovel_identificado_id uuid,\n\s+p_resultados_total integer,\n\s+p_recusados_total integer,\n\s+p_atributos jsonb/);
+    expect(fn).not.toMatch(/^\s+p_\w+ text,?$/m); // nenhum parâmetro de texto livre
     expect(fn).toMatch(/if p_user_id is null then\s+raise exception[\s\S]*?'42501'/i);
     expect(fn).toMatch(/v_jwt uuid := \(select auth\.uid\(\)\)/);
     expect(fn).toMatch(/if v_jwt is not null and v_jwt <> p_user_id then\s+raise exception[\s\S]*?'42501'/i);
@@ -142,7 +147,7 @@ describe("C13A — migration e espelho canônico", () => {
     expect(fn).toMatch(/update public\.imoveis_identificados\s+set ultima_investigacao_em = v_agora/);
     // Só essa coluna da identidade é tocada: nada de situação, tipo ou promoção.
     expect(fn).not.toMatch(/set situacao|promovido|imovel_id =|tipo =/);
-    expect(MIGRATION).toMatch(/revoke all on function public\.registrar_investigacao_identificado\(uuid, uuid, uuid, text, integer, integer, jsonb\)\n  from public, anon, authenticated, service_role;\ngrant execute on function public\.registrar_investigacao_identificado\(uuid, uuid, uuid, text, integer, integer, jsonb\)\n  to service_role;/);
+    expect(MIGRATION).toMatch(/revoke all on function public\.registrar_investigacao_identificado\(uuid, uuid, uuid, integer, integer, jsonb\)\n  from public, anon, authenticated, service_role;\ngrant execute on function public\.registrar_investigacao_identificado\(uuid, uuid, uuid, integer, integer, jsonb\)\n  to service_role;/);
   });
 
   it("confirmar: modelo Navegador (auth.uid), só muda estado/autor/instante, só authenticated", () => {
@@ -246,8 +251,8 @@ describe.sequential("C13A — RPCs, CHECKs, RLS e merge no PostgreSQL local", ()
   ) {
     const { papel = "service_role", sub = null, usuario = USUARIO, recusados = 0 } = opcoes;
     const resposta = await como(papel, sub,
-      "select public.registrar_investigacao_identificado($1, $2, $3, $4, $5, $6, $7::jsonb) as resultado",
-      [usuario, execucao, identificado, "Rua de teste 100, Londrina", 2, recusados, JSON.stringify(atributos)]);
+      "select public.registrar_investigacao_identificado($1, $2, $3, $4, $5, $6::jsonb) as resultado",
+      [usuario, execucao, identificado, 2, recusados, JSON.stringify(atributos)]);
     return { execucao, resultado: resposta.rows[0].resultado };
   }
 
@@ -267,7 +272,7 @@ describe.sequential("C13A — RPCs, CHECKs, RLS e merge no PostgreSQL local", ()
       expect(permitidos).toEqual(["authenticated:select", "service_role:delete", "service_role:insert", "service_role:select", "service_role:update"]);
     }
     const fns = (await db.query<{ fn: string; papel: string; ok: boolean }>(`select fn, papel, has_function_privilege(papel, fn, 'execute') as ok
-      from unnest(array['public.registrar_investigacao_identificado(uuid,uuid,uuid,text,integer,integer,jsonb)', 'public.confirmar_atributo_identificado(bigint)']) fn,
+      from unnest(array['public.registrar_investigacao_identificado(uuid,uuid,uuid,integer,integer,jsonb)', 'public.confirmar_atributo_identificado(bigint)']) fn,
            unnest(array['anon','authenticated','service_role']) papel`)).rows;
     expect(fns.filter((r) => r.ok).map((r) => `${r.fn.split("(")[0]}:${r.papel}`).sort()).toEqual([
       "public.confirmar_atributo_identificado:authenticated",
@@ -284,7 +289,8 @@ describe.sequential("C13A — RPCs, CHECKs, RLS e merge no PostgreSQL local", ()
     const { execucao, resultado } = await registrar(id, undefined, AFIRMACOES, { recusados: 1 });
     expect(resultado).toEqual({ ok: true, repetida: false, investigacao_id: execucao, atributos_salvos: 3, atributos_recusados: 1 });
     const [investigacao] = await linhas("imoveis_identificados_investigacoes", id);
-    expect(investigacao).toMatchObject({ id: execucao, user_id: USUARIO, origem: "investigador-web", consulta: "Rua de teste 100, Londrina", resultados_total: 2, atributos_total: 3, recusados_total: 1 });
+    expect(investigacao).toMatchObject({ id: execucao, user_id: USUARIO, origem: "investigador-web", resultados_total: 2, atributos_total: 3, recusados_total: 1 });
+    expect(investigacao).not.toHaveProperty("consulta");
     const atributos = await linhas("imoveis_identificados_atributos", id);
     expect(atributos.map((a) => [a.atributo, a.valor_num, a.valor_texto, a.estado, a.confianca, a.fonte_dominio])).toEqual([
       ["area_m2", 85.5, null, "hipotese", "forte", "portal.exemplo"],
@@ -370,7 +376,7 @@ describe.sequential("C13A — RPCs, CHECKs, RLS e merge no PostgreSQL local", ()
       .toMatchObject({ code: "42501" });
     await expect(como("authenticated", USUARIO, "update public.imoveis_identificados_atributos set estado = 'confirmada'")).rejects.toMatchObject({ code: "42501" });
     await expect(como("authenticated", USUARIO, "delete from public.imoveis_identificados_atributos")).rejects.toMatchObject({ code: "42501" });
-    await expect(como("authenticated", USUARIO, `insert into public.imoveis_identificados_investigacoes (id, user_id, imovel_identificado_id, consulta) values ($1, $2, $3, 'x')`, [randomUUID(), USUARIO, meu]))
+    await expect(como("authenticated", USUARIO, `insert into public.imoveis_identificados_investigacoes (id, user_id, imovel_identificado_id) values ($1, $2, $3)`, [randomUUID(), USUARIO, meu]))
       .rejects.toMatchObject({ code: "42501" });
   });
 
@@ -451,14 +457,16 @@ function registrada(extra: Partial<AfirmacaoRegistrada>): AfirmacaoRegistrada {
 }
 
 describe("C13A — extração: só o estruturado, sem PII, sem texto livre", () => {
-  it("mapeia os seis campos estruturados para o catálogo e ignora título, descrição, evidências e endereço", () => {
+  it("mapeia os cinco campos alimentáveis para o catálogo e ignora título, descrição, evidências, endereço e preço", () => {
     const { afirmacoes, recusadas } = extrairAfirmacoesDaInvestigacao([correspondencia()]);
     expect(recusadas).toBe(0);
     expect(afirmacoes.map((a) => [a.atributo, a.valorNum, a.valorTexto])).toEqual([
-      ["area_m2", 85.5, null], ["quartos", 3, null], ["vagas", 2, null], ["valor_anunciado", 450000, null],
+      ["area_m2", 85.5, null], ["quartos", 3, null], ["vagas", 2, null],
       ["condominio", null, "Residencial Aurora"], ["referencia_anuncio", null, "ZAP-1234"],
     ]);
-    expect(afirmacoes.every((a) => a.fonteUrl === "https://portal.exemplo/anuncio/1" && a.fonteDominio === "portal.exemplo" && a.confianca === "forte")).toBe(true);
+    // A faixa "forte" do resultado mede correspondência anúncio ↔ imóvel,
+    // não veracidade do atributo: nunca é copiada para a afirmação.
+    expect(afirmacoes.every((a) => a.fonteUrl === "https://portal.exemplo/anuncio/1" && a.fonteDominio === "portal.exemplo" && a.confianca === null)).toBe(true);
     const texto = JSON.stringify(afirmacoes);
     expect(texto).not.toMatch(/99999|WhatsApp|João|Rua de teste|ligue/);
   });
@@ -475,10 +483,10 @@ describe("C13A — extração: só o estruturado, sem PII, sem texto livre", () 
   it("recusa e conta texto com cara de dado pessoal, valores inválidos e fonte inválida", () => {
     const { afirmacoes, recusadas } = extrairAfirmacoesDaInvestigacao([
       correspondencia({ condominio: "Falar com Maria (43) 99999-0000", referencia: "CPF 123.456.789-00", quartos: -1, area: Number.NaN }),
-      correspondencia({ url: "javascript:alert(1)", preco: 1, area: null, quartos: null, vagas: null, condominio: null, referencia: null }),
-      correspondencia({ dominio: " ", preco: 1, area: null, quartos: null, vagas: null, condominio: null, referencia: null }),
+      correspondencia({ url: "javascript:alert(1)", preco: null, area: null, quartos: null, vagas: 1, condominio: null, referencia: null }),
+      correspondencia({ dominio: " ", preco: null, area: null, quartos: null, vagas: 1, condominio: null, referencia: null }),
     ]);
-    expect(afirmacoes.map((a) => a.atributo)).toEqual(["vagas", "valor_anunciado"]);
+    expect(afirmacoes.map((a) => a.atributo)).toEqual(["vagas"]);
     expect(recusadas).toBe(6);
     for (const texto of ["maria@exemplo.com", "43999990000", "12.345.678/0001-90", "whatsapp 9999", "Doc 123456789"]) {
       expect(contemDadoPessoal(texto), texto).toBe(true);
@@ -558,7 +566,7 @@ describe("C13A — composição sem cópia", () => {
     return { identificado, avistamentos: [avistamento], etiquetasDoImovel: [], classificacoesCarregadas: true };
   }
   const investigacao: InvestigacaoRegistrada = {
-    id: "x1", imovelIdentificadoId: "i", origem: "investigador-web", consulta: "Rua 1", resultadosTotal: 2,
+    id: "x1", imovelIdentificadoId: "i", origem: "investigador-web", resultadosTotal: 2,
     atributosTotal: 2, recusadosTotal: 1, concluidaEm: "2026-09-05T00:00:00Z", criadoEm: "2026-09-05T00:00:00Z",
   };
 

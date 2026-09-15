@@ -12,6 +12,13 @@
    sem PII, sem texto livre; ausência é ausência; fontes e contradições
    ficam separadas. Falha de memória é explícita na tela. Nada promove,
    nada muda de situação, nada escreve em `imoveis`.
+
+   Corretivo (três limites semânticos):
+   - a consulta digitada é texto livre e NÃO é persistida, nem tem coluna;
+   - `valor_anunciado` fica reservado: sem finalidade (venda/locação)
+     estruturada, R$ 450.000 e R$ 2.500 não podem virar falsa contradição;
+   - a faixa de correspondência do anúncio NÃO vira confiança do atributo:
+     toda afirmação do Investigador sai com `confianca = null`.
    ================================================================ */
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -26,7 +33,14 @@ import {
   type CorrespondenciaInvestigacao,
   type ResultadoWebInvestigacao,
 } from "@/lib/calculo/investigadorImoveis";
-import { extrairAfirmacoesDaInvestigacao } from "@/lib/calculo/memoriaIdentidade";
+import {
+  ATRIBUTOS_ALIMENTADOS_PELO_INVESTIGADOR,
+  ATRIBUTOS_MEMORIA,
+  ATRIBUTOS_RESERVADOS,
+  derivarMemoriaAtual,
+  extrairAfirmacoesDaInvestigacao,
+  type AfirmacaoRegistrada,
+} from "@/lib/calculo/memoriaIdentidade";
 
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
@@ -74,6 +88,10 @@ function resultadoWeb(url: string, titulo: string, descricao: string): Resultado
 }
 
 const CONSULTA = "Rua das Palmeiras, 120, Centro, Londrina, PR, Casa";
+/** O que uma pessoa pode digitar: nome, telefone e e-mail do proprietário.
+    Nada disto pode chegar à memória por nenhum caminho. */
+const CONSULTA_COM_PII = "casa rua das palmeiras 120 proprietario Joaquina telefone 43 98888-1111 joaquina@example.com";
+const PII_DA_CONSULTA = /Joaquina|98888|example\.com|proprietario|telefone/i;
 const ANUNCIO_A = resultadoWeb(
   "https://www.portal-a.test/anuncio/1",
   "Casa na Rua das Palmeiras, 120 – Residencial Aurora",
@@ -93,26 +111,50 @@ function correspondencias(...itens: ResultadoWebInvestigacao[]): Correspondencia
    1. UNITÁRIO: saída real do Investigador → afirmações do catálogo
    ================================================================ */
 describe("C13B — do resultado estruturado do Investigador às afirmações do C13A", () => {
-  it("A/G/H/J. os campos estruturados viram afirmações tipadas, com faixa real, URL e domínio da fonte", () => {
+  it("A/G/H/J. os campos estruturados alimentáveis viram afirmações tipadas com URL e domínio da fonte; preço fica de fora", () => {
     const [a] = correspondencias(ANUNCIO_A);
     expect(a).toMatchObject({ area: 85.5, quartos: 3, vagas: 2, preco: 450000, referencia: "CA-7781" });
     expect(a.condominio).toMatch(/Residencial Aurora/);
     const { afirmacoes, recusadas } = extrairAfirmacoesDaInvestigacao([a]);
-    expect(recusadas).toBe(0);
+    expect(recusadas).toBe(0); // preço não é recusa: é reserva; ausência de finalidade é neutra
     expect(afirmacoes.map((x) => [x.atributo, x.valorNum, x.valorTexto])).toEqual([
-      ["area_m2", 85.5, null], ["quartos", 3, null], ["vagas", 2, null], ["valor_anunciado", 450000, null],
+      ["area_m2", 85.5, null], ["quartos", 3, null], ["vagas", 2, null],
       ["condominio", null, a.condominio], ["referencia_anuncio", null, "CA-7781"],
     ]);
     for (const x of afirmacoes) {
       expect(x.fonteUrl).toBe("https://www.portal-a.test/anuncio/1");
       expect(x.fonteDominio).toBe("portal-a.test");
-      expect(x.confianca).toBe(a.confianca);
-      expect(["muito-forte", "forte", "possivel", "indicio"]).toContain(x.confianca);
       expect(typeof (x.valorNum ?? x.valorTexto)).toBe(x.valorNum !== null ? "number" : "string");
     }
   });
 
-  it("C/D. PII e texto livre (título, descrição, evidências, endereço, consulta) nunca viram afirmação", () => {
+  it("catálogo: os 6 atributos do C13A continuam no banco; o Investigador alimenta 5 e `valor_anunciado` fica reservado", () => {
+    expect([...ATRIBUTOS_MEMORIA]).toEqual(["area_m2", "quartos", "vagas", "valor_anunciado", "condominio", "referencia_anuncio"]);
+    expect([...ATRIBUTOS_RESERVADOS]).toEqual(["valor_anunciado"]);
+    expect([...ATRIBUTOS_ALIMENTADOS_PELO_INVESTIGADOR]).toEqual(["area_m2", "quartos", "vagas", "condominio", "referencia_anuncio"]);
+    expect(new Set([...ATRIBUTOS_ALIMENTADOS_PELO_INVESTIGADOR, ...ATRIBUTOS_RESERVADOS])).toEqual(new Set(ATRIBUTOS_MEMORIA));
+    // O banco segue aceitando o atributo reservado: nada foi tirado do schema.
+    expect(ler("supabase/migrations/20260915190000_prospeccao_memoria_identidade.sql")).toContain("'valor_anunciado'");
+  });
+
+  it("D/E. preço sem finalidade estruturada NÃO é persistido: 450.000 (venda) e 2.500 (aluguel) não viram contradição", () => {
+    const [a, b] = correspondencias(ANUNCIO_A, ANUNCIO_B);
+    expect([a.preco, b.preco]).toEqual([450000, 2500]);
+    expect(a).not.toHaveProperty("finalidade");
+    const { afirmacoes, recusadas } = extrairAfirmacoesDaInvestigacao([a, b]);
+    expect(afirmacoes.filter((x) => x.atributo === "valor_anunciado")).toEqual([]);
+    expect(recusadas).toBe(0);
+    expect(JSON.stringify(afirmacoes)).not.toMatch(/450000|2500|valor_anunciado|venda|aluguel|locacao|temporada|finalidade/);
+    // Os demais atributos das duas fontes seguem normalmente, inclusive a divergência real de área.
+    expect(afirmacoes.map((x) => [x.atributo, x.valorNum ?? x.valorTexto, x.fonteDominio])).toEqual([
+      ["area_m2", 85.5, "portal-a.test"], ["quartos", 3, "portal-a.test"], ["vagas", 2, "portal-a.test"],
+      ["condominio", a.condominio, "portal-a.test"], ["referencia_anuncio", "CA-7781", "portal-a.test"],
+      ["area_m2", 95, "portal-b.test"], ["quartos", 3, "portal-b.test"], ["vagas", 2, "portal-b.test"],
+      ["referencia_anuncio", "CA-7781", "portal-b.test"],
+    ]);
+  });
+
+  it("C/H. PII e texto livre (título, descrição, evidências, endereço) nunca viram afirmação; condomínio/referência contaminados são recusados", () => {
     const [a] = correspondencias(ANUNCIO_A);
     expect(`${a.titulo} ${a.descricao} ${a.evidencias.join(" ")}`).toMatch(/Maria|99999|exemplo\.com/);
     const texto = JSON.stringify(extrairAfirmacoesDaInvestigacao([a]).afirmacoes);
@@ -121,7 +163,16 @@ describe("C13B — do resultado estruturado do Investigador às afirmações do 
     const contaminada = { ...a, condominio: "Residencial Aurora, falar com Maria 43 99999-0000", referencia: "CPF 123.456.789-00" };
     const resultado = extrairAfirmacoesDaInvestigacao([contaminada]);
     expect(resultado.recusadas).toBe(2);
-    expect(resultado.afirmacoes.map((x) => x.atributo)).toEqual(["area_m2", "quartos", "vagas", "valor_anunciado"]);
+    expect(resultado.afirmacoes.map((x) => x.atributo)).toEqual(["area_m2", "quartos", "vagas"]);
+  });
+
+  it("C. a consulta digitada não é entrada da extração: mesmo que o anúncio a ecoe em texto livre, nada dela vira atributo", () => {
+    const [a] = analisarCorrespondenciasInvestigacao(CONSULTA_COM_PII, [
+      resultadoWeb("https://portal-d.test/1", CONSULTA_COM_PII, `${CONSULTA_COM_PII}. Casa com 3 quartos.`),
+    ]);
+    const { afirmacoes } = extrairAfirmacoesDaInvestigacao([a]);
+    expect(afirmacoes.map((x) => [x.atributo, x.valorNum])).toEqual([["quartos", 3]]);
+    expect(JSON.stringify(afirmacoes)).not.toMatch(PII_DA_CONSULTA);
   });
 
   it("E/F. ausente, vazio ou inválido não vira afirmação: ausência é ausência", () => {
@@ -132,17 +183,21 @@ describe("C13B — do resultado estruturado do Investigador às afirmações do 
     const r = extrairAfirmacoesDaInvestigacao([vazios]);
     expect(r.afirmacoes).toEqual([]);
     expect(r.recusadas).toBe(1); // "   " existe, mas não tem valor real
-    const invalidos = { ...a, preco: Number.NaN, area: -5, quartos: null, vagas: null, condominio: null, referencia: null };
+    const invalidos = { ...a, preco: null, area: -5, quartos: -1, vagas: null, condominio: null, referencia: null };
     expect(extrairAfirmacoesDaInvestigacao([invalidos])).toEqual({ afirmacoes: [], recusadas: 2 });
   });
 
-  it("I. sem faixa de confiança reconhecível a afirmação vai com null, nunca com número inventado", () => {
+  it("F. a faixa de correspondência (anúncio ↔ imóvel) não vira confiança factual do atributo: sempre null, nunca número", () => {
     const [a] = correspondencias(ANUNCIO_A);
-    const semFaixa = { ...a, confianca: "certeza" as CorrespondenciaInvestigacao["confianca"] };
-    const { afirmacoes } = extrairAfirmacoesDaInvestigacao([semFaixa]);
-    expect(afirmacoes.length).toBeGreaterThan(0);
-    expect(afirmacoes.every((x) => x.confianca === null)).toBe(true);
-    expect(JSON.stringify(afirmacoes)).not.toMatch(/100|90|80/);
+    expect(["muito-forte", "forte", "possivel", "indicio"]).toContain(a.confianca);
+    for (const faixa of ["muito-forte", "forte", "possivel", "indicio", "certeza"] as CorrespondenciaInvestigacao["confianca"][]) {
+      const { afirmacoes } = extrairAfirmacoesDaInvestigacao([{ ...a, confianca: faixa }]);
+      expect(afirmacoes.length).toBeGreaterThan(0);
+      expect(afirmacoes.every((x) => x.confianca === null)).toBe(true);
+    }
+    const { afirmacoes } = extrairAfirmacoesDaInvestigacao(correspondencias(ANUNCIO_A, ANUNCIO_B));
+    expect(atributosParaRpc(afirmacoes).every((x) => x.confianca === null)).toBe(true);
+    expect(JSON.stringify(afirmacoes)).not.toMatch(/muito-forte|forte|possivel|indicio|100|90|80|score/);
   });
 
   it("K/L. duas fontes ficam separadas (mesmo valor ou contraditório); a mesma evidência repetida conta uma vez", () => {
@@ -152,16 +207,15 @@ describe("C13B — do resultado estruturado do Investigador às afirmações do 
     expect(quartos.map((x) => [x.valorNum, x.fonteDominio])).toEqual([[3, "portal-a.test"], [3, "portal-b.test"]]);
     const areas = afirmacoes.filter((x) => x.atributo === "area_m2");
     expect(areas.map((x) => [x.valorNum, x.fonteDominio])).toEqual([[85.5, "portal-a.test"], [95, "portal-b.test"]]);
-    const valores = afirmacoes.filter((x) => x.atributo === "valor_anunciado").map((x) => x.valorNum);
-    expect(valores).toEqual([450000, 2500]); // sem média, sem escolha, sem conversão
-    expect(recusadas).toBe(6); // as 6 do `a` repetido
+    expect(afirmacoes.filter((x) => x.atributo === "valor_anunciado")).toEqual([]); // reservado: ver D/E
+    expect(recusadas).toBe(5); // as 5 do `a` repetido
   });
 
   it("B/M. só o catálogo: campos que o Investigador tem e o catálogo não (endereço, banheiros, tipo) ficam de fora", () => {
     const [a] = correspondencias(ANUNCIO_A);
     const comExtras = { ...a, banheiros: 2, tipo: "Casa", proprietario: "Maria", telefone: "43 99999-0000" } as CorrespondenciaInvestigacao;
     const { afirmacoes } = extrairAfirmacoesDaInvestigacao([comExtras]);
-    expect(new Set(afirmacoes.map((x) => x.atributo))).toEqual(new Set(["area_m2", "quartos", "vagas", "valor_anunciado", "condominio", "referencia_anuncio"]));
+    expect(new Set(afirmacoes.map((x) => x.atributo))).toEqual(new Set(["area_m2", "quartos", "vagas", "condominio", "referencia_anuncio"]));
     expect(JSON.stringify(atributosParaRpc(afirmacoes))).not.toMatch(/endereco|banheiros|tipo|proprietario|telefone|titulo|descricao/);
   });
 });
@@ -186,7 +240,7 @@ describe("C13B — persistirMemoriaDaInvestigacao: payload, retry pelo mesmo id,
     return { cliente: { rpc } as never, rpc };
   }
   const pedido = () => ({
-    userId: USUARIO, execucaoId: randomUUID(), imovelIdentificadoId: IDENTIFICADO, consulta: CONSULTA,
+    userId: USUARIO, execucaoId: randomUUID(), imovelIdentificadoId: IDENTIFICADO,
     resultados: correspondencias(ANUNCIO_A, ANUNCIO_B),
   });
 
@@ -195,25 +249,27 @@ describe("C13B — persistirMemoriaDaInvestigacao: payload, retry pelo mesmo id,
 
   it("chama a RPC do C13A uma vez, com identidade do servidor, colunas do banco e só afirmações do catálogo", async () => {
     const p = pedido();
-    const { cliente, rpc } = servico([{ data: { ok: true, repetida: false, investigacao_id: p.execucaoId, atributos_salvos: 11, atributos_recusados: 0 } }]);
+    const { cliente, rpc } = servico([{ data: { ok: true, repetida: false, investigacao_id: p.execucaoId, atributos_salvos: 9, atributos_recusados: 0 } }]);
     const memoria = await persistirMemoriaDaInvestigacao(p, { servico: cliente });
-    expect(memoria).toEqual({ estado: "salva", execucaoId: p.execucaoId, atributosSalvos: 11, atributosRecusados: 0 });
+    expect(memoria).toEqual({ estado: "salva", execucaoId: p.execucaoId, atributosSalvos: 9, atributosRecusados: 0 });
     expect(rpc).toHaveBeenCalledOnce();
     const [nome, parametros] = rpc.mock.calls[0] as [string, Json];
     expect(nome).toBe(RPC_REGISTRAR_INVESTIGACAO);
-    expect(Object.keys(parametros).sort()).toEqual(["p_atributos", "p_consulta", "p_imovel_identificado_id", "p_investigacao_id", "p_recusados_total", "p_resultados_total", "p_user_id"]);
-    expect(parametros).toMatchObject({ p_user_id: USUARIO, p_investigacao_id: p.execucaoId, p_imovel_identificado_id: IDENTIFICADO, p_consulta: CONSULTA, p_resultados_total: 2, p_recusados_total: 0 });
+    expect(Object.keys(parametros).sort()).toEqual(["p_atributos", "p_imovel_identificado_id", "p_investigacao_id", "p_recusados_total", "p_resultados_total", "p_user_id"]);
+    expect(parametros).toMatchObject({ p_user_id: USUARIO, p_investigacao_id: p.execucaoId, p_imovel_identificado_id: IDENTIFICADO, p_resultados_total: 2, p_recusados_total: 0 });
     const atributos = parametros.p_atributos as Json[];
-    expect(atributos).toHaveLength(11);
+    expect(atributos).toHaveLength(9);
     for (const a of atributos) {
       expect(Object.keys(a).sort()).toEqual(["atributo", "confianca", "fonte_dominio", "fonte_url", "valor_num", "valor_texto"]);
+      expect(a.confianca).toBeNull();
+      expect(a.atributo).not.toBe("valor_anunciado");
     }
     expect(JSON.stringify(parametros)).not.toMatch(/Maria|99999|exemplo\.com|titulo|descricao|evidencias|contradicoes|user_id":"[^"]*"[^}]*\bbody/);
   });
 
   it("falha transitória: repete com o MESMO id e devolve salva; três falhas: falhou explícito, nunca lança", async () => {
     const p = pedido();
-    const umaFalha = servico([{ error: { code: "57P01" } }, { data: { ok: true, repetida: false, atributos_salvos: 11, atributos_recusados: 0 } }]);
+    const umaFalha = servico([{ error: { code: "57P01" } }, { data: { ok: true, repetida: false, atributos_salvos: 9, atributos_recusados: 0 } }]);
     expect(await persistirMemoriaDaInvestigacao(p, { servico: umaFalha.cliente })).toMatchObject({ estado: "salva", execucaoId: p.execucaoId });
     expect(umaFalha.rpc).toHaveBeenCalledTimes(2);
     expect(umaFalha.rpc.mock.calls.map(([, x]) => (x as Json).p_investigacao_id)).toEqual([p.execucaoId, p.execucaoId]);
@@ -226,8 +282,8 @@ describe("C13B — persistirMemoriaDaInvestigacao: payload, retry pelo mesmo id,
 
   it("repetida e recusada vêm do banco e não geram nova tentativa; sem service role é indisponível sem tocar nada", async () => {
     const p = pedido();
-    const repetida = servico([{ data: { ok: true, repetida: true, atributos_salvos: 11, atributos_recusados: 0 } }]);
-    expect(await persistirMemoriaDaInvestigacao(p, { servico: repetida.cliente })).toMatchObject({ estado: "repetida", atributosSalvos: 11 });
+    const repetida = servico([{ data: { ok: true, repetida: true, atributos_salvos: 9, atributos_recusados: 0 } }]);
+    expect(await persistirMemoriaDaInvestigacao(p, { servico: repetida.cliente })).toMatchObject({ estado: "repetida", atributosSalvos: 9 });
     const recusada = servico([{ data: { ok: false, codigo: "exclusao_em_andamento" } }]);
     expect(await persistirMemoriaDaInvestigacao(p, { servico: recusada.cliente })).toEqual({ estado: "recusada", execucaoId: p.execucaoId, atributosSalvos: 0, atributosRecusados: 0, codigo: "exclusao_em_andamento" });
     expect(recusada.rpc).toHaveBeenCalledOnce();
@@ -265,7 +321,7 @@ describe("C13B — POST /api/investigador-imoveis: persiste só na conclusão, s
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://projeto.supabase.co");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon");
     mocks.associarReferencias.mockImplementation(async (_c: unknown, _u: unknown, itens: CorrespondenciaInvestigacao[]) => itens.map((i) => ({ ...i, comparavelId: null })));
-    mocks.persistirMemoria.mockImplementation(async ({ execucaoId }: { execucaoId: string }) => ({ estado: "salva", execucaoId, atributosSalvos: 11, atributosRecusados: 0 }));
+    mocks.persistirMemoria.mockImplementation(async ({ execucaoId }: { execucaoId: string }) => ({ estado: "salva", execucaoId, atributosSalvos: 9, atributosRecusados: 0 }));
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
   });
   afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
@@ -286,7 +342,7 @@ describe("C13B — POST /api/investigador-imoveis: persiste só na conclusão, s
     mocks.createClient.mockReturnValue(fake.cliente);
     const ordem: string[] = [];
     mocks.buscarImovelNaWeb.mockImplementation(async () => { ordem.push("busca"); return busca(); });
-    mocks.persistirMemoria.mockImplementation(async ({ execucaoId }: { execucaoId: string }) => { ordem.push("memoria"); return { estado: "salva", execucaoId, atributosSalvos: 11, atributosRecusados: 0 }; });
+    mocks.persistirMemoria.mockImplementation(async ({ execucaoId }: { execucaoId: string }) => { ordem.push("memoria"); return { estado: "salva", execucaoId, atributosSalvos: 9, atributosRecusados: 0 }; });
     fake.eqUser.mockImplementation(() => { ordem.push("posse"); return { maybeSingle: vi.fn().mockResolvedValue({ data: { id: IDENTIFICADO }, error: null }) }; });
 
     const lista = await eventos(await POST(requisicao({
@@ -305,12 +361,37 @@ describe("C13B — POST /api/investigador-imoveis: persiste só na conclusão, s
     expect(pedido.imovelIdentificadoId).toBe(IDENTIFICADO);
     expect(pedido.execucaoId).toMatch(UUID);
     expect(pedido.execucaoId).not.toBe("99999999-9999-4999-8999-999999999999");
-    expect(pedido.consulta).toBe(CONSULTA);
+    expect(pedido).not.toHaveProperty("consulta");
+    expect(Object.keys(pedido).sort()).toEqual(["execucaoId", "imovelIdentificadoId", "resultados", "userId"]);
     expect((pedido.resultados as unknown[]).length).toBe(2);
     expect(JSON.stringify(pedido)).not.toContain('"valor_num":9');
     const final = lista.find((e) => e.tipo === "resultado") as Json;
-    expect((final.dados as Json).memoria).toEqual({ estado: "salva", execucaoId: pedido.execucaoId, atributosSalvos: 11, atributosRecusados: 0 });
+    expect((final.dados as Json).memoria).toEqual({ estado: "salva", execucaoId: pedido.execucaoId, atributosSalvos: 9, atributosRecusados: 0 });
     expect(JSON.stringify(lista)).not.toContain(OUTRO_USUARIO);
+  });
+
+  it("A/B/C. consulta com nome, telefone e e-mail: a pesquisa acontece, a investigação é registrada, e NADA da consulta chega à RPC", async () => {
+    mocks.createClient.mockReturnValue(clienteUsuario({ id: IDENTIFICADO }).cliente);
+    mocks.buscarImovelNaWeb.mockResolvedValue(busca());
+    // Implementação real da ponte, com um cliente de serviço falso que captura o que iria ao banco.
+    const rpc = vi.fn().mockResolvedValue({ data: { ok: true, repetida: false, atributos_salvos: 9, atributos_recusados: 0 }, error: null });
+    const { persistirMemoriaDaInvestigacao: real } = await vi.importActual<typeof import("@/lib/servidor/memoriaIdentidade")>("@/lib/servidor/memoriaIdentidade");
+    mocks.persistirMemoria.mockImplementation((pedido: Parameters<typeof real>[0]) => real(pedido, { servico: { rpc } as never }));
+
+    const lista = await eventos(await POST(requisicao({ consulta: CONSULTA_COM_PII, imovelIdentificado: IDENTIFICADO })));
+    const final = lista.find((e) => e.tipo === "resultado") as Json;
+    expect((final.dados as Json).consultaOriginal).toBe(CONSULTA_COM_PII); // a pessoa vê o que digitou: isso é resposta, não memória
+    expect((final.dados as Json).memoria).toMatchObject({ estado: "salva", atributosSalvos: 9 });
+    expect(rpc).toHaveBeenCalledOnce();
+    const [, parametros] = rpc.mock.calls[0] as [string, Json];
+    expect(parametros).not.toHaveProperty("p_consulta");
+    expect(JSON.stringify(parametros)).not.toMatch(PII_DA_CONSULTA);
+    expect(JSON.stringify(parametros)).not.toContain("palmeiras");
+    const atributos = parametros.p_atributos as Json[];
+    expect(atributos.length).toBe(9);
+    expect(atributos.every((a) => ATRIBUTOS_ALIMENTADOS_PELO_INVESTIGADOR.includes(a.atributo as never))).toBe(true);
+    expect(atributos.every((a) => !PII_DA_CONSULTA.test(String(a.valor_texto ?? "")))).toBe(true);
+    expect(mocks.buscarImovelNaWeb).toHaveBeenCalledOnce(); // a pesquisa em si não muda
   });
 
   it("posse negada (registro de outra conta ou inexistente) responde 404 sem pesquisar; UUID inválido responde 400", async () => {
@@ -365,6 +446,12 @@ describe("C13B — POST /api/investigador-imoveis: persiste só na conclusão, s
     expect(rota).toContain("const execucaoId = novaExecucaoInvestigacao();");
     expect(rota.indexOf("const execucaoId = novaExecucaoInvestigacao();")).toBeLessThan(rota.indexOf("new ReadableStream"));
     expect(rota.indexOf("persistirMemoriaDaInvestigacao({")).toBeGreaterThan(rota.indexOf("await buscarImovelNaWeb("));
+    // A consulta digitada não passa pela ponte nem pela RPC: nem campo, nem parâmetro.
+    expect(rota).toMatch(/persistirMemoriaDaInvestigacao\(\{ userId, execucaoId, imovelIdentificadoId, resultados \}\)/);
+    const ponte = ler("web/lib/servidor/memoriaIdentidade.ts");
+    expect(ponte).not.toMatch(/p_consulta|consultaOriginal|LIMITE_CONSULTA/);
+    expect(ponte).not.toMatch(/^\s+consulta:/m);
+    expect(ler("web/lib/calculo/memoriaIdentidade.ts")).not.toMatch(/LIMITE_CONSULTA_MEMORIA|consulta: string|\["preco", "valor_anunciado"\]|FAIXAS_CONFIANCA/);
     for (const arquivo of ["web/lib/investigadorImoveis.ts", "web/components/investigador/InvestigadorImoveisView.tsx"]) {
       expect(ler(arquivo)).not.toMatch(/SERVICE_ROLE|registrar_investigacao_identificado|execucaoId:|randomUUID/);
     }
@@ -427,8 +514,8 @@ describe.sequential("C13B — payload real do Investigador na RPC do C13A (PGlit
       await db.query("select set_config('request.jwt.claim.sub', '', false)");
       await db.exec("set role service_role");
       const r = await db.query<{ resultado: Json }>(
-        "select public.registrar_investigacao_identificado($1, $2, $3, $4, $5, $6, $7::jsonb) as resultado",
-        [USUARIO, execucao, imovel, CONSULTA, resultados.length, extracao.recusadas, JSON.stringify(atributosParaRpc(extracao.afirmacoes))],
+        "select public.registrar_investigacao_identificado($1, $2, $3, $4, $5, $6::jsonb) as resultado",
+        [USUARIO, execucao, imovel, resultados.length, extracao.recusadas, JSON.stringify(atributosParaRpc(extracao.afirmacoes))],
       );
       await db.exec("reset role; release savepoint tentativa");
       return r.rows[0].resultado;
@@ -445,14 +532,15 @@ describe.sequential("C13B — payload real do Investigador na RPC do C13A (PGlit
     const antes = (await db.query<Json>("select to_jsonb(i) as l from public.imoveis_identificados i where id = $1", [imovel])).rows[0].l as Json;
     const execucao = randomUUID();
     const resultado = await registrarComoServidor(imovel, execucao, correspondencias(ANUNCIO_A, ANUNCIO_B));
-    expect(resultado).toEqual({ ok: true, repetida: false, investigacao_id: execucao, atributos_salvos: 11, atributos_recusados: 0 });
+    expect(resultado).toEqual({ ok: true, repetida: false, investigacao_id: execucao, atributos_salvos: 9, atributos_recusados: 0 });
     const [evento] = await linhas("imoveis_identificados_investigacoes", imovel);
-    expect(evento).toMatchObject({ id: execucao, user_id: USUARIO, consulta: CONSULTA, resultados_total: 2, atributos_total: 11, recusados_total: 0, origem: "investigador-web" });
+    expect(evento).toMatchObject({ id: execucao, user_id: USUARIO, resultados_total: 2, atributos_total: 9, recusados_total: 0, origem: "investigador-web" });
+    expect(evento).not.toHaveProperty("consulta");
     const atributos = await linhas("imoveis_identificados_atributos", imovel);
     expect(atributos.filter((a) => a.atributo === "area_m2").map((a) => [a.valor_num, a.fonte_dominio, a.estado])).toEqual([[85.5, "portal-a.test", "hipotese"], [95, "portal-b.test", "hipotese"]]);
-    expect(atributos.filter((a) => a.atributo === "valor_anunciado").map((a) => a.valor_num)).toEqual([450000, 2500]);
+    expect(atributos.filter((a) => a.atributo === "valor_anunciado")).toEqual([]); // reservado: 450.000 × 2.500 não é contradição
     expect(atributos.every((a) => typeof a.valor_num === "number" || typeof a.valor_texto === "string")).toBe(true);
-    expect(atributos.every((a) => a.confianca !== null && a.observado_em && a.investigacao_id === execucao)).toBe(true);
+    expect(atributos.every((a) => a.confianca === null && a.observado_em && a.investigacao_id === execucao)).toBe(true);
     expect(JSON.stringify(atributos)).not.toMatch(/Maria|99999|exemplo\.com|Fale com/);
     const depois = (await db.query<Json>("select to_jsonb(i) as l from public.imoveis_identificados i where id = $1", [imovel])).rows[0].l as Json;
     expect(depois.ultima_investigacao_em).not.toBeNull();
@@ -473,10 +561,10 @@ describe.sequential("C13B — payload real do Investigador na RPC do C13A (PGlit
     await db.exec("rollback to savepoint primeira");
     expect(await linhas("imoveis_identificados_investigacoes", imovel)).toEqual([]);
     // 2ª tentativa, mesmo id.
-    expect(await registrarComoServidor(imovel, execucao, resultados)).toMatchObject({ ok: true, repetida: false, atributos_salvos: 6 });
+    expect(await registrarComoServidor(imovel, execucao, resultados)).toMatchObject({ ok: true, repetida: false, atributos_salvos: 5 });
     // 3ª (retry após sucesso): repetida, nada muda.
     const antes = await linhas("imoveis_identificados_atributos", imovel);
-    expect(await registrarComoServidor(imovel, execucao, resultados)).toMatchObject({ ok: true, repetida: true, atributos_salvos: 6 });
+    expect(await registrarComoServidor(imovel, execucao, resultados)).toMatchObject({ ok: true, repetida: true, atributos_salvos: 5 });
     expect(await linhas("imoveis_identificados_atributos", imovel)).toEqual(antes);
     expect(await linhas("imoveis_identificados_investigacoes", imovel)).toHaveLength(1);
   });
@@ -497,6 +585,43 @@ describe.sequential("C13B — payload real do Investigador na RPC do C13A (PGlit
     expect(await registrarComoServidor(vazio, randomUUID(), [])).toMatchObject({ ok: true, atributos_salvos: 0 });
   });
 
+  it("B/D/E/F/L/M/N/O. investigação feita a partir de uma consulta com PII: o banco não tem onde guardá-la, o preço ambíguo não vira divergência, a confiança fica null e só a data muda", async () => {
+    const imovel = await identidade();
+    const antes = (await db.query<Json>("select to_jsonb(i) as l from public.imoveis_identificados i where id = $1", [imovel])).rows[0].l as Json;
+    // A consulta é a entrada da análise (como na rota), mas não da persistência.
+    const resultados = analisarCorrespondenciasInvestigacao(CONSULTA_COM_PII, [ANUNCIO_A, ANUNCIO_B]).map((c) => ({ ...c, comparavelId: null }));
+    const execucao = randomUUID();
+    expect(await registrarComoServidor(imovel, execucao, resultados)).toMatchObject({ ok: true, atributos_salvos: 9 });
+    // B. Nem coluna, nem parâmetro, nem conteúdo.
+    const colunas = (await db.query<{ c: string }>("select column_name as c from information_schema.columns where table_schema = 'public' and table_name = any($1)", [["imoveis_identificados_investigacoes", "imoveis_identificados_atributos"]])).rows.map((r) => r.c);
+    expect(colunas).not.toContain("consulta");
+    const tudo = JSON.stringify([...(await linhas("imoveis_identificados_investigacoes", imovel)), ...(await linhas("imoveis_identificados_atributos", imovel))]);
+    expect(tudo).not.toMatch(PII_DA_CONSULTA);
+    expect(tudo).not.toMatch(/Maria|99999|exemplo\.com/);
+    // D/E. Sem valor_anunciado, a memória derivada não acusa divergência de preço; a de área (85,5 × 95) continua real.
+    const registradas: AfirmacaoRegistrada[] = (await linhas("imoveis_identificados_atributos", imovel)).map((a) => ({
+      id: a.id as number, imovelIdentificadoId: imovel, investigacaoId: execucao, atributo: a.atributo as AfirmacaoRegistrada["atributo"],
+      valorTexto: a.valor_texto as string | null, valorNum: a.valor_num as number | null, origem: "investigador-web", estado: "hipotese",
+      confianca: a.confianca as AfirmacaoRegistrada["confianca"], fonteUrl: a.fonte_url as string, fonteDominio: a.fonte_dominio as string,
+      observadoEm: a.observado_em as string, confirmadoPor: null, confirmadoEm: null, criadoEm: a.created_at as string,
+    }));
+    const visoes = derivarMemoriaAtual(registradas);
+    expect(visoes.map((v) => v.atributo)).toEqual(["area_m2", "quartos", "vagas", "condominio", "referencia_anuncio"]);
+    expect(visoes.filter((v) => v.divergente).map((v) => v.atributo)).toEqual(["area_m2"]);
+    // F. Confiança factual: ninguém a atribuiu, então é null (o CHECK segue aceitando as faixas para uma origem futura).
+    expect(registradas.every((a) => a.confianca === null)).toBe(true);
+    // L/M/N/O. Só ultima_investigacao_em (e updated_at) mudou; nada em imoveis; situação e promoção intactas.
+    const depois = (await db.query<Json>("select to_jsonb(i) as l from public.imoveis_identificados i where id = $1", [imovel])).rows[0].l as Json;
+    expect(depois.ultima_investigacao_em).not.toBeNull();
+    const { ultima_investigacao_em: a1, updated_at: u1, ...restoAntes } = antes;
+    const { ultima_investigacao_em: a2, updated_at: u2, ...restoDepois } = depois;
+    void a1; void a2; void u1; void u2;
+    expect(restoDepois).toEqual(restoAntes);
+    expect(depois.situacao).toBe("identificado");
+    expect(depois.promovido_em).toBeNull();
+    expect((await db.query("select count(*)::int as n from public.imoveis")).rows[0]).toEqual({ n: 0 });
+  });
+
   it("ownership e catálogo: imóvel de outra conta é P0002; atributo inválido no payload é recusado e contado, não gravado", async () => {
     const alheio = randomUUID();
     await db.query("insert into public.imoveis_identificados (id, user_id, logradouro) values ($1, $2, 'Rua X')", [alheio, OUTRO_USUARIO]);
@@ -504,8 +629,8 @@ describe.sequential("C13B — payload real do Investigador na RPC do C13A (PGlit
     const imovel = await identidade();
     await db.exec("set role service_role");
     const r = await db.query<{ resultado: Json }>(
-      "select public.registrar_investigacao_identificado($1, $2, $3, $4, 1, 0, $5::jsonb) as resultado",
-      [USUARIO, randomUUID(), imovel, CONSULTA, JSON.stringify([
+      "select public.registrar_investigacao_identificado($1, $2, $3, 1, 0, $4::jsonb) as resultado",
+      [USUARIO, randomUUID(), imovel, JSON.stringify([
         { atributo: "quartos", valor_num: 3, fonte_url: "https://a.test/1", fonte_dominio: "a.test" },
         { atributo: "telefone", valor_texto: "43 99999-0000", fonte_url: "https://a.test/1", fonte_dominio: "a.test" },
         { atributo: "outros", valor_texto: "{}", fonte_url: "https://a.test/1", fonte_dominio: "a.test" },

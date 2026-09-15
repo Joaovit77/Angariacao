@@ -6,8 +6,10 @@
 
    1. O que uma execução do Investigador pode virar afirmação persistida
       (`extrairAfirmacoesDaInvestigacao`). Só campos estruturados do
-      catálogo fechado; texto livre (título, descrição, evidências) nunca
-      entra, e texto curto com cara de dado pessoal é recusado e contado.
+      catálogo fechado; texto livre (título, descrição, evidências, a
+      consulta digitada) nunca entra, e texto curto com cara de dado
+      pessoal é recusado e contado. A faixa de correspondência do anúncio
+      não vira confiança do atributo: vai `null`.
    2. Qual afirmação está vigente para cada atributo, dado o histórico
       append-only (`derivarMemoriaAtual`). Vigência é derivada na leitura:
       confirmação humana vence; senão, a hipótese mais recente. O resto
@@ -67,7 +69,6 @@ export type EstadoAfirmacaoMemoria = "hipotese" | "confirmada";
 export const LIMITE_VALOR_TEXTO_MEMORIA = 200;
 export const LIMITE_FONTE_URL_MEMORIA = 2048;
 export const LIMITE_FONTE_DOMINIO_MEMORIA = 255;
-export const LIMITE_CONSULTA_MEMORIA = 500;
 
 export function atributoMemoriaValido(valor: unknown): valor is AtributoMemoria {
   return typeof valor === "string" && (ATRIBUTOS_MEMORIA as readonly string[]).includes(valor);
@@ -77,7 +78,10 @@ export function atributoMemoriaValido(valor: unknown): valor is AtributoMemoria 
    1. Extração: de uma execução concluída para afirmações candidatas.
    ------------------------------------------------------------------ */
 
-/** Uma afirmação candidata, ainda sem id: é o que a rota manda para a RPC. */
+/** Uma afirmação candidata, ainda sem id: é o que a rota manda para a RPC.
+    `confianca` é a confiança FACTUAL do atributo ("a área É 82 m²"). O
+    Investigador atual só mede se o anúncio corresponde ao imóvel, o que é
+    outra pergunta; por isso toda afirmação dele sai com `null`. */
 export interface AfirmacaoMemoria {
   atributo: AtributoMemoria;
   valorTexto: string | null;
@@ -92,8 +96,6 @@ export interface ExtracaoAfirmacoes {
   /** Candidatas descartadas (fora da forma, PII, duplicadas na execução). */
   recusadas: number;
 }
-
-const FAIXAS_CONFIANCA: readonly FaixaConfiancaInvestigacao[] = ["muito-forte", "forte", "possivel", "indicio"];
 
 /** Padrões de dado pessoal que NUNCA podem ir para a memória, mesmo num
     campo estruturado curto: telefone/WhatsApp, e-mail, CPF/CNPJ, sequência
@@ -136,16 +138,28 @@ function fonteAceitavel(url: unknown, dominio: unknown): { fonteUrl: string; fon
   return { fonteUrl, fonteDominio };
 }
 
-/** Campo do resultado → atributo do catálogo. `endereco` fica de fora de
-    propósito: o endereço já é a identidade (C2) e é texto livre. */
+/** Campo do resultado → atributo do catálogo. Ficam de fora de propósito:
+    `endereco`, porque já é a identidade (C2) e é texto livre; e `preco`,
+    porque o Investigador não diz se o anúncio é de venda ou de locação —
+    R$ 450.000 e R$ 2.500 do mesmo imóvel não são contradição, e gravar os
+    dois como `valor_anunciado` fabricaria uma. O atributo segue reservado
+    no catálogo até a finalidade vir estruturada (`ATRIBUTOS_RESERVADOS`). */
 const CAMPOS_PARA_ATRIBUTO: ReadonlyArray<[keyof CorrespondenciaInvestigacao, AtributoMemoria]> = [
   ["area", "area_m2"],
   ["quartos", "quartos"],
   ["vagas", "vagas"],
-  ["preco", "valor_anunciado"],
   ["condominio", "condominio"],
   ["referencia", "referencia_anuncio"],
 ];
+
+/** Atributos do catálogo que existem no banco mas que NENHUMA origem atual
+    alimenta com segurança. Só saem daqui quando a origem entregar o dado
+    estruturado que falta. */
+export const ATRIBUTOS_RESERVADOS: ReadonlyArray<AtributoMemoria> = ["valor_anunciado"];
+
+/** Os que o Investigador atual alimenta: catálogo menos os reservados. */
+export const ATRIBUTOS_ALIMENTADOS_PELO_INVESTIGADOR: ReadonlyArray<AtributoMemoria> =
+  CAMPOS_PARA_ATRIBUTO.map(([, atributo]) => atributo);
 
 function chaveDeDuplicidade(a: AfirmacaoMemoria): string {
   return `${a.atributo}|${a.valorNum ?? ""}|${a.valorTexto ?? ""}|${a.fonteUrl}`;
@@ -153,8 +167,10 @@ function chaveDeDuplicidade(a: AfirmacaoMemoria): string {
 
 /** Só o que é estruturado, do catálogo, sem PII e com fonte válida vira
     afirmação. Título, descrição, evidências e contradições NÃO entram: são
-    texto livre da web. Dentro da mesma execução, a mesma afirmação da
-    mesma fonte conta uma vez. */
+    texto livre da web. A `confianca` do resultado (correspondência anúncio
+    ↔ imóvel) NÃO é copiada: não diz se o valor do atributo é verdadeiro.
+    Dentro da mesma execução, a mesma afirmação da mesma fonte conta uma
+    vez. */
 export function extrairAfirmacoesDaInvestigacao(
   resultados: ReadonlyArray<CorrespondenciaInvestigacao>,
 ): ExtracaoAfirmacoes {
@@ -164,7 +180,6 @@ export function extrairAfirmacoesDaInvestigacao(
 
   for (const resultado of resultados) {
     const fonte = fonteAceitavel(resultado.url, resultado.dominio);
-    const confianca = FAIXAS_CONFIANCA.includes(resultado.confianca) ? resultado.confianca : null;
     for (const [campo, atributo] of CAMPOS_PARA_ATRIBUTO) {
       const bruto = resultado[campo];
       if (bruto === null || bruto === undefined || bruto === "") continue; // ausência é neutra
@@ -173,7 +188,7 @@ export function extrairAfirmacoesDaInvestigacao(
       const valorNum = definicao.tipo === "numero" ? numeroAceitavel(bruto) : null;
       const valorTexto = definicao.tipo === "texto" ? textoAceitavel(bruto) : null;
       if (valorNum === null && valorTexto === null) { recusadas += 1; continue; }
-      const afirmacao: AfirmacaoMemoria = { atributo, valorTexto, valorNum, confianca, ...fonte };
+      const afirmacao: AfirmacaoMemoria = { atributo, valorTexto, valorNum, confianca: null, ...fonte };
       const chave = chaveDeDuplicidade(afirmacao);
       if (vistas.has(chave)) { recusadas += 1; continue; }
       vistas.add(chave);
@@ -206,12 +221,12 @@ export interface AfirmacaoRegistrada {
   criadoEm: string;
 }
 
-/** Linha persistida de `imoveis_identificados_investigacoes`. */
+/** Linha persistida de `imoveis_identificados_investigacoes`. Não há a
+    consulta digitada: é texto livre e nunca é gravada. */
 export interface InvestigacaoRegistrada {
   id: string;
   imovelIdentificadoId: string;
   origem: OrigemMemoria;
-  consulta: string;
   resultadosTotal: number;
   atributosTotal: number;
   recusadosTotal: number;
