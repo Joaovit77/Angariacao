@@ -46,6 +46,38 @@ export interface PreCadastroInicial {
   textoAnuncio?: string;
 }
 
+/** Valores iniciais do ModalImovel quando ele é aberto pelo Garimpo em
+    Campo para transformar um imóvel visto em campo em oportunidade (V7
+    §13). São só valores de formulário: o corretor confere, completa
+    proprietário e telefone e salva pelo caminho normal. Nada aqui é dado
+    pessoal, foto, etiqueta ou classificação — isso fica do lado do Garimpo. */
+export interface PreenchimentoImovelDoGarimpo {
+  endereco: string;
+  unidade: string;
+  bloco: string;
+  edificio: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  /** Tipo já definido no Garimpo; nulo mantém o padrão do modal. */
+  tipo: string | null;
+  origemImovel: string;
+  /** Observação da passagem corrente — nunca o histórico inteiro. */
+  observacoes: string;
+}
+
+/** A promoção de um registro do Garimpo. O modal continua sendo o mesmo
+    cadastro do Pipeline; a única diferença é que, ao salvar, ele devolve o
+    id criado a quem pediu — para o Garimpo gravar o vínculo, num passo
+    separado, pela sua própria RPC. Promover não é transição de status:
+    o `statusHistory` nasce vazio, como na importação. */
+export interface PromocaoDoGarimpo {
+  imovelIdentificadoId: string;
+  inicial: PreenchimentoImovelDoGarimpo;
+  /** Chamada UMA vez, depois de `salvarImovel` confirmar a gravação. */
+  aoSalvar: (imovelId: string) => void;
+}
+
 export interface ModalAtivo {
   tipo: TipoModal;
   /** id do imóvel / compromisso em edição; ausente = criação. */
@@ -89,6 +121,8 @@ export interface ModalAtivo {
   textoMensagemAgendada?: string;
   /** Resultado escolhido na Central de Angariação. */
   preCadastroInicial?: PreCadastroInicial;
+  /** ModalImovel aberto pelo Garimpo em Campo para criar a oportunidade. */
+  promocaoDoGarimpo?: PromocaoDoGarimpo;
 }
 
 interface UiModal {
@@ -123,6 +157,10 @@ interface UiModal {
   ) => void;
   abrirMensagemAgendadaDisponibilidade: (imovelId: string, data: string, texto: string) => void;
   abrirPreCadastro: (inicial: PreCadastroInicial) => void;
+  /** Abre o ModalImovel (criação) pré-preenchido pelo Garimpo em Campo. É o
+      único caminho pelo qual uma oportunidade nasce de um imóvel visto em
+      campo — e é um clique humano que chega aqui, nunca um fluxo automático. */
+  abrirImovelDoGarimpo: (promocao: PromocaoDoGarimpo) => void;
   abrirLocacaoEmLote: (imovelIds: string[]) => void;
   abrirRecebimentoEmLote: (repasseIds: string[]) => void;
   fecharModal: () => void;
@@ -173,6 +211,8 @@ export const useUiModal = create<UiModal>((set) => ({
     }),
   abrirPreCadastro: (preCadastroInicial) =>
     set({ modal: { tipo: "preCadastro", preCadastroInicial } }),
+  abrirImovelDoGarimpo: (promocaoDoGarimpo) =>
+    set({ modal: { tipo: "imovel", promocaoDoGarimpo } }),
   abrirLocacaoEmLote: (ids) => set({ modal: { tipo: "locarEmLote", ids: [...new Set(ids)] } }),
   abrirRecebimentoEmLote: (ids) => set({ modal: { tipo: "receberRepassesEmLote", ids: [...new Set(ids)] } }),
   fecharModal: () => set({ modal: null }),

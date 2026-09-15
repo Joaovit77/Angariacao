@@ -9,7 +9,7 @@ import {
   type ResultadoInvestigacao,
 } from "@/lib/calculo/investigadorImoveis";
 import { fmtMoney } from "@/lib/formatadores";
-import { carregarContextoInvestigador, investigarImovel } from "@/lib/investigadorImoveis";
+import { carregarContextoInvestigador, investigarImovel, registrarInvestigacaoConcluida } from "@/lib/investigadorImoveis";
 import type { ReferenciaContextoInvestigador } from "@/lib/calculo/contextoInvestigador";
 import { urlAvaliacaoDoComparavel } from "@/lib/calculo/contextoAvaliacao";
 import styles from "./InvestigadorImoveisView.module.css";
@@ -138,6 +138,7 @@ const ROTULO_ORIGEM_CONTEXTO = {
   pipeline: "Pipeline",
   radar: "Radar",
   central: "Central de Angariação",
+  garimpo: "Garimpo em Campo",
 } as const;
 
 export default function InvestigadorImoveisView({ imovelIdInicial, referenciaInicial }: Props) {
@@ -186,6 +187,7 @@ export default function InvestigadorImoveisView({ imovelIdInicial, referenciaIni
     setResultado(null);
     setErro("");
     let falhaRecebida = "";
+    let concluiu = false;
     try {
       await investigarImovel(limpa, (eventoRecebido) => {
         if (eventoRecebido.tipo === "etapa") setEtapa(eventoRecebido.etapa);
@@ -193,12 +195,19 @@ export default function InvestigadorImoveisView({ imovelIdInicial, referenciaIni
         if (eventoRecebido.tipo === "resultado") {
           setResultado(eventoRecebido.dados);
           setEtapa("concluido");
+          concluiu = true;
         }
         if (eventoRecebido.tipo === "erro") falhaRecebida = eventoRecebido.mensagem;
       });
       if (falhaRecebida) {
         setErro(falhaRecebida);
         setEtapa(null);
+      }
+      // Concluída (com ou sem correspondência): a origem do Garimpo anota a
+      // data. Só a data — nada muda de situação nem vira oportunidade, e
+      // falhar em anotar não desfaz a pesquisa que a pessoa acabou de ver.
+      if (concluiu) {
+        await registrarInvestigacaoConcluida(referenciaInicial).catch(() => {});
       }
     } catch (causa) {
       setErro(causa instanceof Error ? causa.message : "Não foi possível concluir a investigação.");

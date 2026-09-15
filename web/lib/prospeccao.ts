@@ -12,6 +12,7 @@ import {
   type IdentidadeParaDedupe,
 } from "./calculo/dedupeProspeccao";
 import { chaveEndereco, chaveImovel } from "./calculo/duplicidade";
+import { agoraISOString } from "./datas";
 import {
   etiquetasDoImovel,
   type EtiquetaDoImovel,
@@ -980,6 +981,172 @@ export async function fundirIdentificados(
     throw new ErroProspeccao("resposta_rpc_invalida", "O retorno da união não pôde ser confirmado. Atualize a lista antes de continuar.");
   }
   return { sobreviventeId, absorvidoId, repetida: resposta.repetida };
+}
+
+/* ----------------------------------------------------------------
+   PROMOÇÃO (C10) — o Garimpo NÃO escreve em `imoveis`.
+
+   A oportunidade nasce no ModalImovel + salvarImovel, por clique humano.
+   Daqui saem só os três passos do contrato de §13.2: marcar `promovendo`
+   ANTES de abrir o modal, gravar o vínculo DEPOIS que o humano salvou, e
+   voltar a `identificado` se ele desistir. As três são RPCs do navegador
+   (`auth.uid()`); nenhuma cria, apaga ou toca o `Imovel`.
+   ---------------------------------------------------------------- */
+
+const MENSAGENS_PROMOCAO: Record<string, string> = {
+  exclusao_em_andamento: "Este registro está com exclusão em andamento. Retome ou cancele a exclusão antes de continuar.",
+  registro_fundido: "Este registro foi unido a outro. Abra o registro principal para continuar.",
+  registro_descartado: "Este registro está descartado. Reative-o antes de transformá-lo em oportunidade.",
+  ja_promovido: "Este registro já foi transformado em oportunidade.",
+  ja_promovido_em_outra: "Este registro já está vinculado a outra oportunidade do Pipeline. O vínculo não foi alterado.",
+  imovel_ja_vinculado: "Esta oportunidade já está vinculada a outro registro do Garimpo. Escolha outra.",
+  P0002: "O registro ou a oportunidade não foi encontrado nesta conta. Atualize a lista antes de continuar.",
+  "42501": "Sua sessão não permite esta ação. Confira o acesso à conta.",
+};
+
+function falhaPromocao(codigo: string, padrao: string): never {
+  throw new ErroProspeccao(codigo, MENSAGENS_PROMOCAO[codigo] ?? padrao);
+}
+
+async function definirSituacaoIdentificado(
+  imovelIdentificadoId: string,
+  situacao: "promovendo" | "identificado",
+  client: SupabaseClient,
+): Promise<ResultadoRpcProspeccao> {
+  const { data, error } = await client.rpc("definir_situacao_identificado", {
+    p_imovel_identificado_id: imovelIdentificadoId,
+    p_situacao: situacao,
+    p_motivo: null,
+  });
+  const resposta = data as RespostaRpc | null;
+  if (error || resposta?.ok !== true) {
+    falhaPromocao(
+      error?.code ?? resposta?.codigo ?? "resposta_rpc_invalida",
+      error?.message ?? "Não foi possível atualizar a situação deste registro.",
+    );
+  }
+  return { repetida: resposta.repetida === true };
+}
+
+/** Passo 1 de §13.2: `promovendo` ANTES de abrir o ModalImovel. A partir
+    daqui a tela não oferece mais "Transformar em oportunidade" — só
+    concluir o vínculo ou desistir. */
+export function iniciarPromocaoIdentificado(
+  imovelIdentificadoId: string,
+  client: SupabaseClient = getSupabase(),
+): Promise<ResultadoRpcProspeccao> {
+  return definirSituacaoIdentificado(imovelIdentificadoId, "promovendo", client);
+}
+
+/** Desistir da recuperação: o identificado volta a `identificado`. A
+    oportunidade já criada CONTINUA no Pipeline — apagá-la não é decisão
+    deste módulo, e esta função não a alcança. */
+export async function desistirPromocaoIdentificado(
+  imovelIdentificadoId: string,
+  client: SupabaseClient = getSupabase(),
+): Promise<ResultadoRpcProspeccao> {
+  const resultado = await definirSituacaoIdentificado(imovelIdentificadoId, "identificado", client);
+  esquecerOportunidadeCriada(imovelIdentificadoId);
+  return resultado;
+}
+
+export interface ResultadoVinculoPromocao extends ResultadoRpcProspeccao {
+  imovelId: string;
+}
+
+/** Passo 3 de §13.2: o ÚNICO caminho de `imovel_id`/`promovido_em`/
+    `situacao='promovido'`. Idempotente com o MESMO `imovel_id` num registro
+    já promovido (`repetida: true`); com outro, o banco recusa e a recusa é
+    propagada como está — nunca "corrigida" pelo cliente. */
+export async function vincularPromocaoIdentificado(
+  imovelIdentificadoId: string,
+  imovelId: string,
+  client: SupabaseClient = getSupabase(),
+): Promise<ResultadoVinculoPromocao> {
+  if (!UUID_PROSPECCAO.test(imovelIdentificadoId) || !UUID_PROSPECCAO.test(imovelId)) {
+    throw new ErroProspeccao("par_invalido", "Escolha uma oportunidade válida para concluir o vínculo.");
+  }
+  const { data, error } = await client.rpc("vincular_promocao_imovel_identificado", {
+    p_imovel_identificado_id: imovelIdentificadoId,
+    p_imovel_id: imovelId,
+  });
+  const resposta = data as RespostaRpc | null;
+  if (error || resposta?.ok !== true) {
+    falhaPromocao(
+      error?.code ?? resposta?.codigo ?? "resposta_rpc_invalida",
+      error?.message ?? "Não foi possível concluir o vínculo. A oportunidade continua no Pipeline; tente de novo.",
+    );
+  }
+  if (resposta.imovel_id !== imovelId) {
+    throw new ErroProspeccao("resposta_rpc_invalida", "O retorno do vínculo não pôde ser confirmado. Atualize a lista antes de continuar.");
+  }
+  esquecerOportunidadeCriada(imovelIdentificadoId);
+  return { repetida: resposta.repetida === true, imovelId };
+}
+
+/* Memória de SESSÃO da promoção parcial (§13.2): `salvarImovel` criou o
+   `Imovel` e o vínculo falhou. O retry usa EXATAMENTE este id — não
+   pesquisa outro, não cria outro, não adivinha. Some com o reload; aí a
+   recuperação passa a ser a escolha humana entre oportunidades elegíveis. */
+const oportunidadesCriadasNaSessao: Record<string, string> = {};
+
+export function lembrarOportunidadeCriada(imovelIdentificadoId: string, imovelId: string): void {
+  oportunidadesCriadasNaSessao[imovelIdentificadoId] = imovelId;
+}
+
+export function oportunidadeCriadaNaSessao(imovelIdentificadoId: string): string | null {
+  return oportunidadesCriadasNaSessao[imovelIdentificadoId] ?? null;
+}
+
+export function esquecerOportunidadeCriada(imovelIdentificadoId: string): void {
+  delete oportunidadesCriadasNaSessao[imovelIdentificadoId];
+}
+
+/** Os `imoveis.id` já reivindicados por algum identificado da conta (RLS).
+    A recuperação após reload oferece só o que NÃO está aqui — o `not
+    exists` de §13.2, resolvido do lado do Garimpo, sem consultar `imoveis`. */
+export async function listarImoveisJaVinculados(
+  client: SupabaseClient = getSupabase(),
+): Promise<Set<string>> {
+  const { data, error } = await client
+    .from("imoveis_identificados")
+    .select("imovel_id")
+    .not("imovel_id", "is", null);
+  if (error) falha(error);
+  return new Set(
+    ((data ?? []) as Linha[])
+      .map((linha) => linha.imovel_id)
+      .filter((valor): valor is string => typeof valor === "string"),
+  );
+}
+
+/* ----------------------------------------------------------------
+   INVESTIGAÇÃO (C10) — só a data; a pesquisa é do Investigador.
+
+   `ultima_investigacao_em` está no grant de update do cliente, mas o
+   valor que o browser manda é IGNORADO: o trigger `proteger_identificado`
+   sobrescreve por `now()` (V7 §18.1, padrão de proteger_status_history).
+   Mandamos um instante só para a coluna "mudar" e o trigger agir. Não
+   muda situação, não cria Imovel, não vincula nada: as derivadas
+   `nunca-investigado` / `investigado-ha-mais-de-90-dias` continuam sendo
+   leitura sobre esta coluna, nunca estado persistido.
+   ---------------------------------------------------------------- */
+export async function registrarInvestigacaoIdentificado(
+  imovelIdentificadoId: string,
+  client: SupabaseClient = getSupabase(),
+): Promise<{ ultimaInvestigacaoEm: string | null }> {
+  if (!UUID_PROSPECCAO.test(imovelIdentificadoId)) {
+    throw new ErroProspeccao("id_invalido", "Registro do Garimpo inválido.");
+  }
+  const { data, error } = await client
+    .from("imoveis_identificados")
+    .update({ ultima_investigacao_em: agoraISOString() })
+    .eq("id", imovelIdentificadoId)
+    .select("id,ultima_investigacao_em")
+    .single();
+  if (error) falha(error);
+  const linha = data as unknown as Linha;
+  return { ultimaInvestigacaoEm: (linha.ultima_investigacao_em as string | null) ?? null };
 }
 
 /* ----------------------------------------------------------------

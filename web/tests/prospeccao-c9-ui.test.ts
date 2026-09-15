@@ -488,11 +488,13 @@ describe("painel por estado atual e atenção (C9.1)", () => {
   it("hierarquia: cabeçalho humano, atenção só quando há, o que sabemos agora, ações recolhidas, visto anteriormente, passagens, localização, detalhes fechados", () => {
     render(createElement(PainelIdentificado, { detalhe: detalhe() }));
     expect(document.body.textContent).toContain("IMÓVEL VISTO EM CAMPO");
-    expect(document.body.textContent).not.toMatch(/Pipeline|IDENTIDADE DE CAMPO|corrente|vigente|proveniência|classifica|snapshot/i);
+    // "Pipeline" saiu da lista proibida no C10: é o nome do módulo de destino
+    // da promoção ("Oportunidade no Pipeline"), não vocabulário técnico.
+    expect(document.body.textContent).not.toMatch(/IDENTIDADE DE CAMPO|corrente|vigente|proveniência|classifica|snapshot/i);
     expect(document.querySelector("[data-resumo-cabecalho]")!.textContent).toBe("Tipo não definido");
     expect(document.querySelector("[data-ultima-passagem]")!.textContent).toBe("Última passagem: 10/11/2026, 09:00:00");
     const titulos = [...document.querySelectorAll("h4")].map((h) => h.textContent);
-    expect(titulos).toEqual(["Precisa de atenção", "O que sabemos agora", "Ações", "Visto anteriormente", "Histórico de passagens", "Localização"]);
+    expect(titulos).toEqual(["Precisa de atenção", "O que sabemos agora", "Ações", "Oportunidade no Pipeline", "Visto anteriormente", "Histórico de passagens", "Localização"]);
     // Atenção: uma sugestão da IA ainda não confirmada (nível informação, não erro).
     const sugestoes = document.querySelector("[data-atencao='sugestoes']")!;
     expect(sugestoes.getAttribute("data-nivel")).toBe("info");
@@ -707,7 +709,8 @@ describe("refino de textos, data e tipografia (C9.1)", () => {
 
     render(createElement(PainelIdentificado, { detalhe: detalhe() }));
     const titulos = (coluna: string) => [...document.querySelectorAll(`[data-painel-coluna="${coluna}"] h4`)].map((h) => h.textContent);
-    expect(titulos("principal")).toEqual(["Precisa de atenção", "O que sabemos agora", "Ações", "Visto anteriormente"]);
+    // C10: a oportunidade é decisão, então fica na coluna de decidir.
+    expect(titulos("principal")).toEqual(["Precisa de atenção", "O que sabemos agora", "Ações", "Oportunidade no Pipeline", "Visto anteriormente"]);
     expect(titulos("lateral")).toEqual(["Histórico de passagens", "Localização"]);
     expect(document.querySelector("[data-painel-coluna='lateral'] [data-detalhes-analise]")).not.toBeNull();
     // Descartar e excluir continuam fora das colunas, no fim de tudo.
