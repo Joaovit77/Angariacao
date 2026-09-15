@@ -99,7 +99,11 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
   // na edição, mantém o código do próprio imóvel.
   const [codigo, setCodigo] = useState(() => imovel?.codigo ?? sugerirCodigoImovel(imoveis));
   const [referenciaCrm, setReferenciaCrm] = useState(imovel?.referenciaCrm ?? "");
-  const [tipo, setTipo] = useState(imovel?.tipo ?? inicial?.tipo ?? "Apartamento");
+  // "Apartamento" é o padrão histórico do cadastro comum. Promovido do
+  // Garimpo em Campo sem tipo conhecido, o seletor nasce VAZIO: um tipo que
+  // ninguém viu na rua não pode entrar no Pipeline por acaso — o humano
+  // escolhe antes de salvar (validação em `salvar`).
+  const [tipo, setTipo] = useState(imovel?.tipo ?? (inicial ? inicial.tipo ?? "" : "Apartamento"));
   const [cep, setCep] = useState(imovel?.cep ?? "");
   const [endereco, setEndereco] = useState(imovel?.endereco ?? inicial?.endereco ?? "");
   const [bairro, setBairro] = useState(imovel?.bairro ?? inicial?.bairro ?? "");
@@ -344,6 +348,11 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
       toast("Informe a data do primeiro contato.", "error");
       return;
     }
+    // Só o caminho da promoção pode chegar aqui sem tipo (ver o estado inicial).
+    if (promocao && !tipo) {
+      toast("Informe o tipo do imóvel.", "error");
+      return;
+    }
 
     // Impede código de imóvel repetido (comparação sem diferenciar
     // maiúsculas/minúsculas). Código é opcional: em branco não bloqueia.
@@ -518,6 +527,7 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
             <div className="field-group">
               <label>Tipo do imóvel</label>
               <select value={tipo ?? ""} onChange={(e) => setTipo(e.target.value)}>
+                {promocao && !tipo && <option value="" disabled>Selecione o tipo</option>}
                 {TIPOS_IMOVEL.map((t) => (
                   <option key={t} value={t}>
                     {t}

@@ -27,7 +27,7 @@ import {
   type IdentidadeParaDedupe,
 } from "@/lib/calculo/dedupeProspeccao";
 import { chaveImovel } from "@/lib/calculo/duplicidade";
-import { buscarCandidatosDuplicidade } from "@/lib/prospeccao";
+import { buscarCandidatosDuplicidade, type ImovelIdentificado } from "@/lib/prospeccao";
 import { useAppStore } from "@/lib/store";
 import type { Imovel } from "@/lib/tipos";
 
@@ -504,6 +504,42 @@ describe("C7 — na tela: avisa com motivo, nunca bloqueia", () => {
     expect(secao.querySelector('[data-derivada="ja-na-carteira"]')?.textContent).toBe("Já está na carteira");
     expect(setImoveis).not.toHaveBeenCalled();
     expect(useAppStore.getState().imoveis).toHaveLength(1);
+  });
+
+  it("promovido: a própria oportunidade vinculada nunca é duplicata; outra parecida continua; sem imovelId nada muda", async () => {
+    cenario.buscarDuplicatas.mockResolvedValue([]);
+    const ld01 = { id: "pipeline-1", codigo: "LD-01", endereco: "R. Souza Naves 100", cidade: "Londrina", status: "Novo contato" } as Imovel;
+    const ld02 = { id: "pipeline-2", codigo: "LD-02", endereco: "Rua Souza Naves, 100", cidade: "Londrina", status: "Novo contato" } as Imovel;
+    const alvo = identificado({ id: "alvo-1" });
+    const registro = (imovelId: string | null) =>
+      ({ id: "alvo-1", situacao: imovelId ? "promovido" : "identificado", imovelId }) as unknown as ImovelIdentificado;
+
+    // A. carteira só com a vinculada (LD-01): nada a avisar, o card nem aparece.
+    useAppStore.setState({ imoveis: [ld01] });
+    const { container } = render(createElement(CandidatosDuplicidade, {
+      alvo, identificado: registro("pipeline-1"), situacao: "promovido",
+    }));
+    await waitFor(() => expect(cenario.buscarDuplicatas).toHaveBeenCalledTimes(1));
+    expect(container.querySelector("section")).toBeNull();
+    cleanup();
+
+    // B. mais uma parecida (LD-02): ela continua aparecendo; a vinculada, não.
+    useAppStore.setState({ imoveis: [ld01, ld02] });
+    render(createElement(CandidatosDuplicidade, {
+      alvo, identificado: registro("pipeline-1"), situacao: "promovido",
+    }));
+    const secao = await screen.findByRole("region", { name: "Possíveis duplicatas" });
+    expect(secao.textContent).toContain("Esse imóvel já está no Pipeline.");
+    expect(secao.textContent).toContain("LD-02");
+    expect(secao.textContent).not.toContain("LD-01");
+    cleanup();
+
+    // C. antes da promoção (sem imovelId): LD-01 conta como antes.
+    useAppStore.setState({ imoveis: [ld01] });
+    render(createElement(CandidatosDuplicidade, { alvo, identificado: registro(null) }));
+    const antes = await screen.findByRole("region", { name: "Possíveis duplicatas" });
+    expect(antes.textContent).toContain("LD-01");
+    expect(antes.querySelector('[data-derivada="ja-na-carteira"]')).toBeTruthy();
   });
 
   it("falha na consulta não impede nada: avisa que não conferiu e segue", async () => {

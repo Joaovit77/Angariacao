@@ -98,7 +98,14 @@ export default function CandidatosDuplicidade({
     return () => { cancelado = true; clearTimeout(temporizador); };
   }, [buscarDuplicatas, chave, revisaoFusao]);
 
-  const naCarteira = duplicatasDoIdentificadoNaCarteira(alvo, carteira);
+  // Depois da promoção, a oportunidade vinculada por `imovelId` é ESTE
+  // registro no Pipeline, não uma duplicata dele. Só ela sai da comparação;
+  // qualquer outro imóvel parecido continua aparecendo.
+  const vinculada = identificado?.imovelId ?? null;
+  const naCarteira = duplicatasDoIdentificadoNaCarteira(
+    alvo,
+    vinculada ? carteira.filter((imovel) => imovel.id !== vinculada) : carteira,
+  );
   const encontradas = duplicatas ?? [];
   const etiquetas = derivarEtiquetasProspeccao({
     ...alvo,

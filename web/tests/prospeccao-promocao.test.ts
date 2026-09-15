@@ -294,6 +294,11 @@ async function carregarTela(): Promise<void> {
 }
 
 const identificadoNoBanco = () => banco.tabelas.imoveis_identificados.find((l) => l.id === ID)!;
+/** O `<select>` de "Tipo do imóvel" do ModalImovel aberto. */
+function seletorTipo(): HTMLSelectElement {
+  const rotulo = [...document.querySelectorAll("label")].find((l) => l.textContent === "Tipo do imóvel")!;
+  return rotulo.parentElement!.querySelector("select")!;
+}
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -336,7 +341,7 @@ describe("promoção positiva — clique humano, ModalImovel existente, vínculo
       bairro: "Centro", cidade: "Londrina", estado: "PR", tipo: "Casa",
       origemImovel: "Prospecção ativa (porta a porta)", observacoes: "Placa de aluga-se na janela.",
     });
-    // Sem passagem corrente, nada é inventado; sem tipo, o modal usa o padrão dele.
+    // Sem passagem corrente, nada é inventado; sem tipo, o modal exige a escolha (não cai em "Apartamento").
     expect(preenchimentoDaPromocao({
       logradouro: null, numero: null, unidade: null, bloco: null, edificio: null, bairro: null, cidade: null,
       estado: null, tipo: null, origemIdentificacao: "placa",
@@ -429,6 +434,48 @@ describe("promoção positiva — clique humano, ModalImovel existente, vínculo
     expect(useUiModal.getState().modal).toBeNull();
     // Id da sessão foi esquecido: não há mais vínculo pendente.
     expect(oportunidadeCriadaNaSessao(ID)).toBeNull();
+  });
+
+  it("tipo NULO no Garimpo: o modal não escolhe 'Apartamento' por ninguém; sem tipo não salva; com tipo escolhido, salva o escolhido", async () => {
+    semearBanco({
+      tipo: null, tipo_origem: null, tipo_confianca: null, tipo_estado: null, tipo_definido_em: null,
+      tipo_classificacao_id: null, tipo_avistamento_id: null,
+    });
+    await carregarTela();
+    fireEvent.click(screen.getByRole("button", { name: ROTULO_TRANSFORMAR }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Cadastrar imóvel" })).toBeTruthy());
+    expect(useUiModal.getState().modal!.promocaoDoGarimpo?.inicial.tipo).toBeNull();
+
+    // O seletor nasce vazio, com o convite explícito — nunca "Apartamento".
+    const seletor = seletorTipo();
+    expect(seletor.value).toBe("");
+    expect(seletor.selectedOptions[0]?.textContent).toBe("Selecione o tipo");
+    expect(seletor.selectedOptions[0]?.textContent).not.toBe("Apartamento");
+
+    // Sem escolha humana, o cadastro não conclui: nada no Pipeline, nada vinculado.
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Cadastrar imóvel" })); });
+    expect(banco.tabelas.imoveis).toHaveLength(0);
+    expect(banco.log.filter((l) => l.startsWith("imoveis:"))).toEqual([]);
+    expect(banco.log.filter((l) => l.startsWith("rpc:vincular"))).toEqual([]);
+    expect(identificadoNoBanco()).toMatchObject({ situacao: "promovendo", imovel_id: null });
+    expect(useUiModal.getState().modal).not.toBeNull();
+
+    // Escolhido um tipo válido, o caminho normal segue e grava O ESCOLHIDO.
+    fireEvent.change(seletor, { target: { value: "Terreno" } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Cadastrar imóvel" })); });
+    await waitFor(() => expect(identificadoNoBanco().situacao).toBe("promovido"));
+    expect(banco.tabelas.imoveis).toHaveLength(1);
+    expect(banco.tabelas.imoveis[0].tipo).toBe("Terreno");
+    expect(banco.tabelas.imoveis[0].tipo).not.toBe("Apartamento");
+  });
+
+  it("tipo CONHECIDO no Garimpo ('Casa'): o modal abre com 'Casa', sem convite para escolher", async () => {
+    await carregarTela();
+    fireEvent.click(screen.getByRole("button", { name: ROTULO_TRANSFORMAR }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Cadastrar imóvel" })).toBeTruthy());
+    const seletor = seletorTipo();
+    expect(seletor.value).toBe("Casa");
+    expect([...seletor.options].map((opcao) => opcao.textContent)).not.toContain("Selecione o tipo");
   });
 
   it("fechar o modal sem salvar não cria Imovel e devolve o registro a `identificado`", async () => {
