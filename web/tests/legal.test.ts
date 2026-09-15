@@ -58,8 +58,29 @@ describe("conteúdo", () => {
        fornecedor não é um texto incompleto — é uma informação errada ao
        titular. Ao ligar uma integração nova, este teste falha até que
        alguém a declare. */
-    for (const fornecedor of ["Supabase", "Vercel", "Evolution", "OpenAI", "RapidAPI", "Google"]) {
+    for (const fornecedor of ["Supabase", "Vercel", "Evolution", "OpenAI", "RapidAPI", "Google", "ViaCEP", "OpenStreetMap"]) {
       expect(PRIVACIDADE.secoes.some((s) => s.paragrafos.join(" ").includes(fornecedor)), fornecedor).toBe(true);
+    }
+  });
+
+  it("diz a verdade sobre a localização do aparelho: lida no Garimpo, com permissão, sem rastreamento", () => {
+    /* C11.1: a frase antiga ("não coleta dados de localização do seu
+       dispositivo") ficou falsa quando o Garimpo em Campo passou a ler o
+       GPS na captura. A política precisa dizer quando lê, que depende de
+       permissão, o que guarda e que não há coleta contínua. */
+    expect(TEXTO_INTEIRO).not.toMatch(/não coleta dados de localização/);
+    const localizacao = PRIVACIDADE.secoes.flatMap((s) => s.paragrafos).find((p) => p.includes("Localização do dispositivo"))!;
+    expect(localizacao).toBeTruthy();
+    expect(localizacao).toMatch(/Garimpo em Campo/);
+    expect(localizacao).toMatch(/permissão/);
+    expect(localizacao).toMatch(/latitude, a longitude e a precisão/);
+    expect(localizacao).toMatch(/Não há rastreamento contínuo nem coleta em segundo plano/);
+    // ViaCEP e Nominatim: só endereço em texto; nunca posição do aparelho, foto ou observação.
+    for (const nome of ["ViaCEP", "OpenStreetMap (Nominatim)"]) {
+      const paragrafo = PRIVACIDADE.secoes.flatMap((s) => s.paragrafos).find((p) => p.includes(`**${nome}**`))!;
+      expect(paragrafo, nome).toBeTruthy();
+      expect(paragrafo, nome).toMatch(/Não recebe/);
+      expect(paragrafo, nome).toMatch(/fotos, observações nem dados de proprietários/);
     }
   });
 

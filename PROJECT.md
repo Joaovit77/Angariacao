@@ -2642,7 +2642,13 @@ entrada dele exige promover; descobrir informação não causa promoção. A obs
 fornecedor de IA na classificação. A base do Garimpo **não é anônima**: foto de fachada, endereço
 exato, coordenada e data permitem identificação indireta do morador; bucket privado, URL assinada e
 ausência de caminho de exportação são as mitigações, e qualquer uso além do interno passa pelas
-validações de §16 da V7.
+validações de §16 da V7. O fechamento do módulo (C11) auditou a política de privacidade: nenhum
+fornecedor novo passou a receber dados, mas o texto afirmava que o sistema não coletava
+localização do aparelho e omitia ViaCEP e Nominatim, já usados pelo Pipeline. A versão
+`2026-09-15` corrige isso: declara a leitura única do GPS por registro, mediante permissão, com
+latitude, longitude e precisão guardadas na passagem; os dados do Garimpo (endereço, passagens,
+observação enviada ao provedor de IA, foto sem metadados); e os dois serviços de endereço com o que
+cada um recebe.
 
 ### UX de campo (C10.1): decisões de produto
 
