@@ -697,6 +697,23 @@ describe("refino de textos, data e tipografia (C9.1)", () => {
     expect(CSS).not.toMatch(/\.etiqueta small/);
   });
 
+  it("desktop: lista estreita e presa ao rolar; painel em duas colunas pela largura do próprio painel, com decidir à esquerda e consultar à direita", () => {
+    expect(CSS).toMatch(/\.conteudo \{[^}]*grid-template-columns: minmax\(300px, 360px\) minmax\(0, 1fr\)/);
+    expect(CSS).toMatch(/\.lista \{[^}]*position: sticky/);
+    expect(CSS).toMatch(/\.painel \{[^}]*container-type: inline-size/);
+    expect(CSS).toMatch(/@container \(min-width: 760px\) \{\s*\.painelCorpo \{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\)/);
+    // Em tela estreita a lista volta a fluir com a página.
+    expect(CSS.slice(CSS.indexOf("@media (max-width: 1080px)"))).toMatch(/\.lista \{[^}]*position: static/);
+
+    render(createElement(PainelIdentificado, { detalhe: detalhe() }));
+    const titulos = (coluna: string) => [...document.querySelectorAll(`[data-painel-coluna="${coluna}"] h4`)].map((h) => h.textContent);
+    expect(titulos("principal")).toEqual(["Precisa de atenção", "O que sabemos agora", "Ações", "Visto anteriormente"]);
+    expect(titulos("lateral")).toEqual(["Histórico de passagens", "Localização"]);
+    expect(document.querySelector("[data-painel-coluna='lateral'] [data-detalhes-analise]")).not.toBeNull();
+    // Descartar e excluir continuam fora das colunas, no fim de tudo.
+    expect(document.querySelector("[data-painel-corpo] button.btn-danger")).toBeNull();
+  });
+
   it("celular: endereço quebra por caractere, e botões de chip e de atenção ocupam a linha inteira", () => {
     expect(CSS).toMatch(/\.painelCabecalho h3 \{[^}]*overflow-wrap: anywhere/);
     expect(CSS).toMatch(/\.evento p \{[^}]*overflow-wrap: anywhere/);

@@ -72,11 +72,21 @@
   line-height: 1.5;
 }
 
+/* Lista estreita e presa ao rolar; o painel fica com o resto da largura.
+   Sem isso, em desktop a coluna da esquerda virava um vazio enquanto o
+   painel rolava sozinho à direita. */
 .conteudo {
   display: grid;
-  grid-template-columns: minmax(300px, .82fr) minmax(420px, 1.18fr);
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
+}
+
+.lista {
+  position: sticky;
+  top: 82px;
+  max-height: calc(100vh - 98px);
+  overflow-y: auto;
 }
 
 .lista,
@@ -764,9 +774,41 @@
   line-height: 1.5;
 }
 
+/* Painel em duas colunas quando ELE é largo o bastante (a barra lateral
+   aberta ou fechada muda a conta, por isso a medida é do painel, não da
+   janela): decidir à esquerda, consultar à direita. Abaixo disso, uma
+   coluna na ordem de leitura. */
+.painel {
+  container-type: inline-size;
+}
+
+.painelCorpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+
+.painelPrincipal,
+.painelLateral {
+  min-width: 0;
+}
+
+@container (min-width: 760px) {
+  .painelCorpo {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 28px;
+  }
+}
+
 @media (max-width: 1080px) {
   .conteudo {
     grid-template-columns: 1fr;
+  }
+
+  .lista {
+    position: static;
+    max-height: none;
+    overflow: visible;
   }
 }
 

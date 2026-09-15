@@ -588,181 +588,191 @@ export default function PainelIdentificado({
         </section>
       ) : null}
 
-      {/* 2. Precisa de atenção: só existe quando há algo a fazer. */}
-      {atencao.length ? (
-        <section className={`${styles.secao} ${styles.atencao}`} aria-label="Precisa de atenção">
-          <div className={styles.secaoCabecalho}>
-            <h4>Precisa de atenção</h4>
-          </div>
-          <ul className={styles.atencaoLista}>
-            {atencao.map((entrada) => (
-              <li key={entrada.chave} className={styles.atencaoItem} data-nivel={entrada.nivel} data-atencao={entrada.chave}>
-                {entrada.conteudo}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      {/* Em tela larga o painel abre em duas colunas: o que se decide
+          (atenção, o que sabemos, ações, visto anteriormente) à esquerda;
+          o que se consulta (passagens, localização, duplicatas, detalhes)
+          à direita. Em tela estreita, a mesma ordem, empilhada. */}
+      <div className={styles.painelCorpo} data-painel-corpo>
+        <div className={styles.painelPrincipal} data-painel-coluna="principal">
+          {/* 2. Precisa de atenção: só existe quando há algo a fazer. */}
+          {atencao.length ? (
+            <section className={`${styles.secao} ${styles.atencao}`} aria-label="Precisa de atenção">
+              <div className={styles.secaoCabecalho}>
+                <h4>Precisa de atenção</h4>
+              </div>
+              <ul className={styles.atencaoLista}>
+                {atencao.map((entrada) => (
+                  <li key={entrada.chave} className={styles.atencaoItem} data-nivel={entrada.nivel} data-atencao={entrada.chave}>
+                    {entrada.conteudo}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
-      {/* 3. O que sabemos agora: tipo e etiquetas vigentes, com quem disse. */}
-      <section className={styles.secao} aria-label="O que sabemos agora">
-        <div className={styles.secaoCabecalho}>
-          <h4>O que sabemos agora</h4>
-          <span>
-            {etiquetasAtuais.length
-              ? `${etiquetasAtuais.length} informaç${etiquetasAtuais.length === 1 ? "ão" : "ões"} da última passagem registrada`
-              : "Última passagem registrada"}
-          </span>
-        </div>
-        <p className={styles.secaoNota}>{NOTA_O_QUE_SABEMOS}</p>
-        <TipoComProveniencia detalhe={detalhe} />
-        {etiquetasAtuais.length ? (
-          <>
-            <div className={styles.etiquetas}>
-              {etiquetasAtuais.map((etiqueta) => (
-                <EtiquetaAtual identificadoId={item.id} etiqueta={etiqueta} key={etiqueta.id} />
-              ))}
+          {/* 3. O que sabemos agora: tipo e etiquetas vigentes, com quem disse. */}
+          <section className={styles.secao} aria-label="O que sabemos agora">
+            <div className={styles.secaoCabecalho}>
+              <h4>O que sabemos agora</h4>
+              <span>
+                {etiquetasAtuais.length
+                  ? `${etiquetasAtuais.length} informaç${etiquetasAtuais.length === 1 ? "ão" : "ões"} da última passagem registrada`
+                  : "Última passagem registrada"}
+              </span>
             </div>
-            <p className={styles.legendaAcoes}>
-              <span id={`explicacao-confirmar-${item.id}`}><b>Confirmar:</b> {EXPLICACAO_CONFIRMAR}</span>
-              {" "}
-              <span id={`explicacao-incorreta-${item.id}`}><b>Marcar como incorreta:</b> {EXPLICACAO_INCORRETA}</span>
-            </p>
-          </>
-        ) : (
-          <p className={styles.vazioInterno}>
-            {corrente?.classificacaoEstado === "nao_aplicavel"
-              ? "Sem texto suficiente para analisar nesta passagem."
-              : "Nada identificado ainda nesta observação."}
-          </p>
-        )}
-      </section>
+            <p className={styles.secaoNota}>{NOTA_O_QUE_SABEMOS}</p>
+            <TipoComProveniencia detalhe={detalhe} />
+            {etiquetasAtuais.length ? (
+              <>
+                <div className={styles.etiquetas}>
+                  {etiquetasAtuais.map((etiqueta) => (
+                    <EtiquetaAtual identificadoId={item.id} etiqueta={etiqueta} key={etiqueta.id} />
+                  ))}
+                </div>
+                <p className={styles.legendaAcoes}>
+                  <span id={`explicacao-confirmar-${item.id}`}><b>Confirmar:</b> {EXPLICACAO_CONFIRMAR}</span>
+                  {" "}
+                  <span id={`explicacao-incorreta-${item.id}`}><b>Marcar como incorreta:</b> {EXPLICACAO_INCORRETA}</span>
+                </p>
+              </>
+            ) : (
+              <p className={styles.vazioInterno}>
+                {corrente?.classificacaoEstado === "nao_aplicavel"
+                  ? "Sem texto suficiente para analisar nesta passagem."
+                  : "Nada identificado ainda nesta observação."}
+              </p>
+            )}
+          </section>
 
-      {/* 4. Ações principais, recolhidas: corrigir o texto, informar o
-          endereço e informar o tipo. */}
-      <section className={styles.secao} aria-label="Ações">
-        <div className={styles.secaoCabecalho}>
-          <h4>Ações</h4>
+          {/* 4. Ações principais, recolhidas: corrigir o texto, informar o
+              endereço e informar o tipo. */}
+          <section className={styles.secao} aria-label="Ações">
+            <div className={styles.secaoCabecalho}>
+              <h4>Ações</h4>
+            </div>
+            {corrente ? (
+              <details className={styles.detalhes} data-acao="corrigir-texto">
+                <summary>Corrigir o texto da última passagem</summary>
+                <div className={styles.detalhesCorpo}>
+                  <FormularioCorrecao
+                    key={`${corrente.id}:${corrente.observacaoRevisao}`}
+                    identificadoId={item.id}
+                    avistamento={corrente}
+                  />
+                </div>
+              </details>
+            ) : null}
+            {podeEditarEndereco && !semEndereco ? (
+              <details className={styles.detalhes} data-acao="corrigir-endereco">
+                <summary>Corrigir o endereço</summary>
+                <div className={styles.detalhesCorpo}>
+                  <FormularioEnderecoIdentificado
+                    key={chaveFormularioEndereco(item)}
+                    identificado={item}
+                  />
+                </div>
+              </details>
+            ) : null}
+            <details className={styles.detalhes} data-acao="informar-tipo">
+              <summary>Informar o tipo</summary>
+              <div className={styles.detalhesCorpo}>
+                <SeletorTipoManual
+                  key={`${item.id}:${item.tipo ?? "sem-tipo"}`}
+                  identificadoId={item.id}
+                  tipoAtual={item.tipo}
+                  tipoOrigem={item.tipoOrigem}
+                  tipoEstado={item.tipoEstado}
+                />
+              </div>
+            </details>
+          </section>
+
+          {/* 5. Visto anteriormente: o que já foi percebido e não voltou. */}
+          {historicoEtiquetas.length ? (
+            <section className={styles.secao}>
+              <div className={styles.secaoCabecalho}>
+                <h4>Visto anteriormente</h4>
+                <span>O que já foi percebido neste imóvel e não voltou a aparecer na passagem mais recente.</span>
+              </div>
+              <HistoricoEtiquetas historico={historicoEtiquetas} />
+            </section>
+          ) : null}
         </div>
-        {corrente ? (
-          <details className={styles.detalhes} data-acao="corrigir-texto">
-            <summary>Corrigir o texto da última passagem</summary>
-            <div className={styles.detalhesCorpo}>
-              <FormularioCorrecao
-                key={`${corrente.id}:${corrente.observacaoRevisao}`}
-                identificadoId={item.id}
-                avistamento={corrente}
-              />
+
+        <div className={styles.painelLateral} data-painel-coluna="lateral">
+          {/* 6. Histórico de passagens. */}
+          <section className={styles.secao}>
+            <div className={styles.secaoCabecalho}>
+              <h4>Histórico de passagens</h4>
+              <span>{detalhe.avistamentos.length} passage{detalhe.avistamentos.length === 1 ? "m" : "ns"}</span>
             </div>
-          </details>
-        ) : null}
-        {podeEditarEndereco && !semEndereco ? (
-          <details className={styles.detalhes} data-acao="corrigir-endereco">
-            <summary>Corrigir o endereço</summary>
-            <div className={styles.detalhesCorpo}>
-              <FormularioEnderecoIdentificado
-                key={chaveFormularioEndereco(item)}
-                identificado={item}
-              />
-            </div>
-          </details>
-        ) : null}
-        <details className={styles.detalhes} data-acao="informar-tipo">
-          <summary>Informar o tipo</summary>
-          <div className={styles.detalhesCorpo}>
-            <SeletorTipoManual
-              key={`${item.id}:${item.tipo ?? "sem-tipo"}`}
-              identificadoId={item.id}
-              tipoAtual={item.tipo}
-              tipoOrigem={item.tipoOrigem}
-              tipoEstado={item.tipoEstado}
+            <LinhaDoTempoAvistamentos
+              avistamentos={detalhe.avistamentos}
+              avistamentoCorrenteId={item.avistamentoCorrenteId}
+              aoRemoverFoto={salvando ? undefined : (fotoId) => void confirmarRemocaoDeFoto(fotoId)}
+              aoClassificar={(avistamentoId) => void classificarAvistamento(item.id, avistamentoId)}
+              classificandoAvistamentoId={classificandoAvistamentoId}
+              falhaAnalise={falhaAnalise}
             />
-          </div>
-        </details>
-      </section>
+          </section>
 
-      {/* 5. Visto anteriormente: o que já foi percebido e não voltou. */}
-      {historicoEtiquetas.length ? (
-        <section className={styles.secao}>
-          <div className={styles.secaoCabecalho}>
-            <h4>Visto anteriormente</h4>
-            <span>O que já foi percebido neste imóvel e não voltou a aparecer na passagem mais recente.</span>
-          </div>
-          <HistoricoEtiquetas historico={historicoEtiquetas} />
-        </section>
-      ) : null}
+          {/* 7. Localização e possíveis duplicatas. */}
+          <section className={styles.secao}>
+            <div className={styles.secaoCabecalho}>
+              <h4>Localização</h4>
+              <span>Posição aproximada; o círculo é a margem de erro.</span>
+            </div>
+            {item.latitude !== null && item.longitude !== null ? (
+              <MapaProspeccao
+                localizacao={{
+                  latitude: item.latitude,
+                  longitude: item.longitude,
+                  acuraciaMetros: item.acuraciaMetros,
+                  precisaoLocalizacao: item.precisaoLocalizacao,
+                }}
+              />
+            ) : (
+              <p className={styles.vazioInterno}>
+                Sem localização registrada. A próxima passagem com GPS ou endereço preenche aqui.
+              </p>
+            )}
+          </section>
 
-      {/* 6. Histórico de passagens. */}
-      <section className={styles.secao}>
-        <div className={styles.secaoCabecalho}>
-          <h4>Histórico de passagens</h4>
-          <span>{detalhe.avistamentos.length} passage{detalhe.avistamentos.length === 1 ? "m" : "ns"}</span>
-        </div>
-        <LinhaDoTempoAvistamentos
-          avistamentos={detalhe.avistamentos}
-          avistamentoCorrenteId={item.avistamentoCorrenteId}
-          aoRemoverFoto={salvando ? undefined : (fotoId) => void confirmarRemocaoDeFoto(fotoId)}
-          aoClassificar={(avistamentoId) => void classificarAvistamento(item.id, avistamentoId)}
-          classificandoAvistamentoId={classificandoAvistamentoId}
-          falhaAnalise={falhaAnalise}
-        />
-      </section>
-
-      {/* 7. Localização e possíveis duplicatas. */}
-      <section className={styles.secao}>
-        <div className={styles.secaoCabecalho}>
-          <h4>Localização</h4>
-          <span>Posição aproximada; o círculo é a margem de erro.</span>
-        </div>
-        {item.latitude !== null && item.longitude !== null ? (
-          <MapaProspeccao
-            localizacao={{
-              latitude: item.latitude,
-              longitude: item.longitude,
-              acuraciaMetros: item.acuraciaMetros,
-              precisaoLocalizacao: item.precisaoLocalizacao,
-            }}
+          <CandidatosDuplicidade
+            key={item.id}
+            identificado={item}
+            fotosIdentificado={detalhe.avistamentos.reduce((total, avistamento) => total + avistamento.fotos.length, 0)}
+            alvo={identidadeParaDedupe(item)}
+            situacao={item.situacao}
+            avistamentosTotal={item.avistamentosTotal}
           />
-        ) : (
-          <p className={styles.vazioInterno}>
-            Sem localização registrada. A próxima passagem com GPS ou endereço preenche aqui.
-          </p>
-        )}
-      </section>
 
-      <CandidatosDuplicidade
-        key={item.id}
-        identificado={item}
-        fotosIdentificado={detalhe.avistamentos.reduce((total, avistamento) => total + avistamento.fotos.length, 0)}
-        alvo={identidadeParaDedupe(item)}
-        situacao={item.situacao}
-        avistamentosTotal={item.avistamentosTotal}
-      />
-
-      {/* 8. Detalhes da análise: auditoria para quem quiser conferir. */}
-      <section className={styles.secao}>
-        <details className={styles.detalhes} data-detalhes data-detalhes-analise>
-          <summary>Detalhes da análise</summary>
-          <div className={styles.detalhesCorpo}>
-            <ul className={styles.detalhesLista}>
-              {item.tipo && item.tipoOrigem === "ia-texto" ? (
-                <li>
-                  Tipo {item.tipo}: a partir do texto
-                  {item.tipoConfianca !== null ? ` · apoio no texto: ${apoioNoTexto(item.tipoConfianca)}` : ""}
-                  {item.tipoEstado === "confirmado" && item.tipoConfirmadoEm ? ` · confirmado por você em ${fmtDataHoraIso(item.tipoConfirmadoEm)}` : ""}.
-                </li>
-              ) : item.tipo ? (
-                <li>Tipo {item.tipo}: informado por você.</li>
-              ) : null}
-              {etiquetasAtuais.map((etiqueta) => (
-                <li key={etiqueta.id}>{rotuloEtiqueta(etiqueta)}: {descreverProveniencia(etiqueta)}.</li>
-              ))}
-              {!etiquetasAtuais.length && !item.tipo ? <li>Nenhuma informação atual para detalhar.</li> : null}
-            </ul>
-            <small className={styles.explicacao}>{EXPLICACAO_APOIO}</small>
-          </div>
-        </details>
-      </section>
+          {/* 8. Detalhes da análise: auditoria para quem quiser conferir. */}
+          <section className={styles.secao}>
+            <details className={styles.detalhes} data-detalhes data-detalhes-analise>
+              <summary>Detalhes da análise</summary>
+              <div className={styles.detalhesCorpo}>
+                <ul className={styles.detalhesLista}>
+                  {item.tipo && item.tipoOrigem === "ia-texto" ? (
+                    <li>
+                      Tipo {item.tipo}: a partir do texto
+                      {item.tipoConfianca !== null ? ` · apoio no texto: ${apoioNoTexto(item.tipoConfianca)}` : ""}
+                      {item.tipoEstado === "confirmado" && item.tipoConfirmadoEm ? ` · confirmado por você em ${fmtDataHoraIso(item.tipoConfirmadoEm)}` : ""}.
+                    </li>
+                  ) : item.tipo ? (
+                    <li>Tipo {item.tipo}: informado por você.</li>
+                  ) : null}
+                  {etiquetasAtuais.map((etiqueta) => (
+                    <li key={etiqueta.id}>{rotuloEtiqueta(etiqueta)}: {descreverProveniencia(etiqueta)}.</li>
+                  ))}
+                  {!etiquetasAtuais.length && !item.tipo ? <li>Nenhuma informação atual para detalhar.</li> : null}
+                </ul>
+                <small className={styles.explicacao}>{EXPLICACAO_APOIO}</small>
+              </div>
+            </details>
+          </section>
+        </div>
+      </div>
 
       {/* Outras ações: raras e com consequência; ficam longe do polegar. */}
       <div className={`${styles.acoes} ${styles.acoesSecundarias}`}>
