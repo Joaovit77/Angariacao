@@ -219,8 +219,13 @@ describe("C6 — o modal mede, avisa e cai para o endereço", () => {
   it("GPS válido vai para o avistamento como gps com acuracia_metros, e a tela mostra a precisão", async () => {
     abrirModal({ capturarPosicao: async () => gpsBom });
     await screen.findByText("GPS · precisão aproximada: 12 m");
-    // O mapa entra por dynamic(): aguarda o chunk montar.
+    // C10.1: com GPS bom o mapa fica recolhido atrás da linha de status;
+    // um toque abre. O mapa entra por dynamic(): aguarda o chunk montar.
+    expect(screen.queryByTestId("mapa")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Ver no mapa ou ajustar o ponto" }));
     expect((await screen.findByTestId("mapa")).getAttribute("data-raio")).toBe("12");
+    fireEvent.click(screen.getByRole("button", { name: "Ocultar o mapa" }));
+    expect(screen.queryByTestId("mapa")).toBeNull();
 
     const [, , avistamento] = await salvar();
     expect(avistamento).toMatchObject({ latitude: -23.31, longitude: -51.16, acuraciaMetros: 12, precisaoLocalizacao: "gps" });
@@ -230,6 +235,9 @@ describe("C6 — o modal mede, avisa e cai para o endereço", () => {
     abrirModal({ capturarPosicao: async () => ({ ...gpsBom, acuraciaMetros: 350 }) });
     await screen.findByText(/GPS impreciso · precisão aproximada: 350 m/);
     expect(screen.getByText(/Leitura imprecisa/)).toBeTruthy();
+    // C10.1: aqui o mapa abre sozinho (precisa do humano), sem botão de esconder.
+    expect((await screen.findByTestId("mapa")).getAttribute("data-raio")).toBe("350");
+    expect(screen.queryByRole("button", { name: /Ocultar o mapa|Ver no mapa/ })).toBeNull();
     const [, , avistamento] = await salvar();
     expect(avistamento).toMatchObject({ acuraciaMetros: 350, precisaoLocalizacao: "gps" });
   });

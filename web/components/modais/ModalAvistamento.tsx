@@ -146,6 +146,11 @@ export default function ModalAvistamento({
   const [localizacaoEndereco, setLocalizacaoEndereco] = useState<LocalizacaoCapturada | null>(null);
   const [geocodificando, setGeocodificando] = useState(false);
   const [fonteEscolhida, setFonteEscolhida] = useState<EscolhaFonteLocalizacao>("auto");
+  /* C10.1: o mapa fica recolhido atrás da linha de status. Abre por toque
+     (ver / ajustar o ponto) ou sozinho quando precisa do humano: GPS
+     impreciso ou GPS longe do endereço. A regra de qual localização vence
+     não muda; só o que aparece. */
+  const [mapaAberto, setMapaAberto] = useState(false);
   const geocodeRef = useRef({ chave: "", pedido: 0 });
   // Nasce "buscando": o pedido ao GPS acontece assim que o rascunho for lido.
   const [statusGps, setStatusGps] = useState<StatusGps>("buscando");
@@ -329,6 +334,8 @@ export default function ModalAvistamento({
     escolha: fonteEscolhida,
   });
   const localizacaoAtual: LocalizacaoAvistamento = resolvida.localizacao;
+  const mapaPrecisaDoHumano = gpsImpreciso(localizacaoAtual) || resolvida.gpsLonge;
+  const mostrarMapa = localizacaoAtual.latitude !== null && (mapaAberto || mapaPrecisaDoHumano || localizacaoMapa !== null);
   /* Dedupe (C7): com endereço ou coordenada em mãos, avisa se já existe
      um local parecido. Aviso, não bloqueio: o botão de salvar não muda. */
   const tipoSelecionadoParaDedupe = TIPOS_IMOVEL.find((opcao) => opcao === tipo) ?? null;
@@ -408,6 +415,7 @@ export default function ModalAvistamento({
 
   function escolherPontoNoMapa(ponto: { latitude: number; longitude: number }) {
     setLocalizacaoMapa(localizacaoDoMapa(ponto));
+    setMapaAberto(true);
     tocado.current = true;
   }
 
@@ -585,7 +593,11 @@ export default function ModalAvistamento({
           ✕
         </button>
       </div>
-      <form onSubmit={salvar} onChange={marcarTocado}>
+      {/* `autoComplete="off"` no formulário e nos campos de endereço: isto é
+          o endereço de um imóvel visto na rua, não o de quem digita. Sem
+          isso o navegador oferece "salvar endereço?" ao enviar. O
+          autocomplete do ViaCEP é do sistema e não passa por aqui. */}
+      <form onSubmit={salvar} onChange={marcarTocado} autoComplete="off">
         <div className="modal-body">
           {rascunhoRestauradoEm ? (
             <div className={styles.rascunhoRestaurado} role="status">
@@ -610,10 +622,7 @@ export default function ModalAvistamento({
           ) : null}
           <div className={styles.capturaRapida}>
             <strong>Registre o essencial agora</strong>
-            <span>
-              Data e horário já estão preenchidos. Foto, observação e dados do imóvel podem ser
-              complementados quando fizer sentido.
-            </span>
+            <span>Foto e endereço bastam. O resto pode vir depois.</span>
           </div>
           {!primeiroAvistamento ? (
             <div className={styles.identidadeReutilizada}>
@@ -636,20 +645,6 @@ export default function ModalAvistamento({
             aoAntesDeCapturar={aoAntesDeCapturar}
             aoConcluir={aoConcluirEnvio}
           />
-          <div className="field-group">
-            <label htmlFor="avistamento-observacao">Observação (opcional)</label>
-            <textarea
-              id="avistamento-observacao"
-              rows={3}
-              maxLength={2000}
-              value={observacao}
-              onChange={(evento) => setObservacao(evento.target.value)}
-              placeholder="Ex.: placa no portão, imóvel fechado, fachada em obra"
-            />
-            <div className="field-hint">
-              Não registre nome ou telefone aqui · {observacao.length}/2000 caracteres
-            </div>
-          </div>
           {avistamentoSalvo ? null : (
           <section className={styles.localizacao} aria-label="Localização da passagem">
             <div className={styles.localizacaoCabecalho}>
@@ -709,13 +704,24 @@ export default function ModalAvistamento({
               </fieldset>
             ) : null}
             {localizacaoAtual.latitude !== null ? (
-              <MapaProspeccao localizacao={localizacaoAtual} aoEscolherPonto={escolherPontoNoMapa} altura={200} />
+              <div className={styles.mapaRecolhivel} data-mapa-recolhivel data-aberto={mostrarMapa}>
+                {!mapaPrecisaDoHumano && localizacaoMapa === null ? (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    aria-expanded={mostrarMapa}
+                    onClick={() => setMapaAberto((aberto) => !aberto)}
+                  >
+                    {mostrarMapa ? "Ocultar o mapa" : "Ver no mapa ou ajustar o ponto"}
+                  </button>
+                ) : null}
+                {mostrarMapa ? (
+                  <MapaProspeccao localizacao={localizacaoAtual} aoEscolherPonto={escolherPontoNoMapa} altura={200} />
+                ) : null}
+              </div>
             ) : null}
           </section>
           )}
-          {alvoDedupe ? (
-            <CandidatosDuplicidade alvo={alvoDedupe} titulo="Pode ser um local já registrado" />
-          ) : null}
           {primeiroAvistamento ? (
             <div className={styles.enderecoRapido}>
               <div className="field-row">
@@ -736,6 +742,7 @@ export default function ModalAvistamento({
                   <input
                     id="avistamento-numero"
                     type="text"
+                    autoComplete="off"
                     value={numero}
                     onChange={(evento) => setNumero(evento.target.value)}
                     onBlur={localizarEnderecoDigitado}
@@ -748,6 +755,7 @@ export default function ModalAvistamento({
                   <input
                     id="avistamento-cidade"
                     type="text"
+                    autoComplete="off"
                     value={cidade}
                     onChange={(evento) => setCidade(evento.target.value)}
                     onBlur={localizarEnderecoDigitado}
@@ -758,6 +766,7 @@ export default function ModalAvistamento({
                   <input
                     id="avistamento-estado"
                     type="text"
+                    autoComplete="off"
                     maxLength={2}
                     value={estado}
                     onChange={(evento) => setEstado(evento.target.value)}
@@ -767,7 +776,39 @@ export default function ModalAvistamento({
               </div>
             </div>
           ) : null}
-          <div className="field-row">
+          {alvoDedupe ? (
+            <CandidatosDuplicidade alvo={alvoDedupe} titulo="Pode ser um local já registrado" />
+          ) : null}
+          <div className="field-group">
+            <label htmlFor="avistamento-observacao">Observação (opcional)</label>
+            <textarea
+              id="avistamento-observacao"
+              rows={3}
+              maxLength={2000}
+              value={observacao}
+              onChange={(evento) => setObservacao(evento.target.value)}
+              placeholder="Ex.: placa no portão, imóvel fechado, fachada em obra"
+            />
+            <div className="field-hint">
+              Não registre nome ou telefone aqui · {observacao.length}/2000 caracteres
+            </div>
+          </div>
+          {primeiroAvistamento ? (
+            <div className="field-group" data-campo-tipo>
+              <label htmlFor="avistamento-tipo">Tipo do imóvel (se souber)</label>
+              <select
+                id="avistamento-tipo"
+                value={tipo}
+                onChange={(evento) => setTipo(evento.target.value)}
+              >
+                <option value="">Não definido</option>
+                {TIPOS_IMOVEL.map((opcao) => (
+                  <option value={opcao} key={opcao}>{opcao}</option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+          <div className={`field-row ${styles.dataHora}`}>
             <div className="field-group">
               <label htmlFor="avistamento-data">Data</label>
               <input
@@ -798,6 +839,7 @@ export default function ModalAvistamento({
                   <input
                     id="avistamento-referencia"
                     type="text"
+                    autoComplete="off"
                     value={pontoReferencia}
                     onChange={(evento) => setPontoReferencia(evento.target.value)}
                     placeholder="Ex.: ao lado do mercado"
@@ -809,6 +851,7 @@ export default function ModalAvistamento({
                     <input
                       id="avistamento-unidade"
                       type="text"
+                      autoComplete="off"
                       value={unidade}
                       onChange={(evento) => setUnidade(evento.target.value)}
                     />
@@ -818,6 +861,7 @@ export default function ModalAvistamento({
                     <input
                       id="avistamento-bloco"
                       type="text"
+                      autoComplete="off"
                       value={bloco}
                       onChange={(evento) => setBloco(evento.target.value)}
                     />
@@ -827,6 +871,7 @@ export default function ModalAvistamento({
                     <input
                       id="avistamento-edificio"
                       type="text"
+                      autoComplete="off"
                       value={edificio}
                       onChange={(evento) => setEdificio(evento.target.value)}
                     />
@@ -838,6 +883,7 @@ export default function ModalAvistamento({
                     <input
                       id="avistamento-bairro"
                       type="text"
+                      autoComplete="off"
                       value={bairro}
                       onChange={(evento) => setBairro(evento.target.value)}
                     />
@@ -847,23 +893,11 @@ export default function ModalAvistamento({
                     <input
                       id="avistamento-cep"
                       type="text"
+                      autoComplete="off"
                       value={cep}
                       onChange={(evento) => setCep(evento.target.value)}
                     />
                   </div>
-                </div>
-                <div className="field-group">
-                  <label htmlFor="avistamento-tipo">Tipo do imóvel</label>
-                  <select
-                    id="avistamento-tipo"
-                    value={tipo}
-                    onChange={(evento) => setTipo(evento.target.value)}
-                  >
-                    <option value="">Não definido</option>
-                    {TIPOS_IMOVEL.map((opcao) => (
-                      <option value={opcao} key={opcao}>{opcao}</option>
-                    ))}
-                  </select>
                 </div>
               </div>
             </details>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useSessao } from "@/components/SessaoProvider";
 import type { EtiquetaDoImovel } from "@/lib/calculo/etiquetasProspeccao";
@@ -16,6 +16,7 @@ import { useProspeccao } from "@/lib/useProspeccao";
 import { useUiModal } from "@/lib/uiModal";
 
 import CardIdentificado from "./CardIdentificado";
+import ConfirmacaoRegistro from "./ConfirmacaoRegistro";
 import PainelIdentificado from "./PainelIdentificado";
 import styles from "./Prospeccao.module.css";
 
@@ -59,6 +60,9 @@ export default function ProspeccaoView({
   const carregarPagina = useProspeccao((estado) => estado.carregarPagina);
   const carregarDetalhe = useProspeccao((estado) => estado.carregarDetalhe);
   const limparSelecao = useProspeccao((estado) => estado.limparSelecao);
+  const ultimoRegistro = useProspeccao((estado) => estado.ultimoRegistro);
+  const dispensarUltimoRegistro = useProspeccao((estado) => estado.dispensarUltimoRegistro);
+  const painelRef = useRef<HTMLDivElement | null>(null);
   const abrirModal = useUiModal((estado) => estado.abrirModal);
   const modalDeAvistamentoAberto = useUiModal((estado) => estado.modal?.tipo === "avistamento");
   const etiquetasSelecionadas = etiquetasAtuais(detalhe);
@@ -94,6 +98,19 @@ export default function ProspeccaoView({
     abrirModal("avistamento", rascunhoPendente.imovelIdentificadoId ?? undefined);
   }
 
+  // "Concluir" encerra a tarefa de campo: some a confirmação e a seleção,
+  // e a tela volta à lista. "Ver detalhes" leva ao painel, que em tela
+  // estreita fica abaixo da lista.
+  function concluirRegistro() {
+    dispensarUltimoRegistro();
+    limparSelecao();
+  }
+
+  function verDetalhesDoRegistro() {
+    dispensarUltimoRegistro();
+    painelRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  }
+
   async function mudarPagina(proximaPagina: number) {
     const carregou = await carregarPagina(proximaPagina, porPagina);
     if (carregou) limparSelecao();
@@ -113,7 +130,7 @@ export default function ProspeccaoView({
           <div>
             <span className={styles.sobretitulo}>MEMÓRIA DE CAMPO</span>
             <h2>Garimpo em Campo</h2>
-            <p>
+            <p className={styles.heroDescricao}>
               Registre os imóveis que você vê na rua e mantenha cada passagem separada no histórico.
             </p>
           </div>
@@ -180,6 +197,18 @@ export default function ProspeccaoView({
             ) : null}
           </div>
         </div>
+      ) : null}
+
+      {ultimoRegistro && detalhe && detalhe.identificado.id === ultimoRegistro.imovelIdentificadoId
+        && !modalDeAvistamentoAberto ? (
+        <ConfirmacaoRegistro
+          key={ultimoRegistro.avistamentoId}
+          detalhe={detalhe}
+          avistamentoId={ultimoRegistro.avistamentoId}
+          novoLocal={ultimoRegistro.novoLocal}
+          aoConcluir={concluirRegistro}
+          aoVerDetalhes={verDetalhesDoRegistro}
+        />
       ) : null}
 
       {carregando && !itens.length ? (
@@ -270,7 +299,9 @@ export default function ProspeccaoView({
           </section>
 
           {detalhe && detalhe.identificado.id === selecionadoId ? (
-            <PainelIdentificado detalhe={detalhe} />
+            <div ref={painelRef} className={styles.painelAncora}>
+              <PainelIdentificado detalhe={detalhe} />
+            </div>
           ) : (
             <div className={styles.estado} role={carregando && selecionadoId ? "status" : undefined}>
               <div>

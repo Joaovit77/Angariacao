@@ -10,7 +10,7 @@
    RPCs são os mesmos do C9. */
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { identidadeParaDedupe, vigenciaDasEtiquetas } from "@/lib/prospeccao";
 import { urlInvestigadorDoImovelIdentificado } from "@/lib/calculo/contextoInvestigador";
@@ -111,6 +111,52 @@ export const DATA_ULTIMA_PASSAGEM_INDISPONIVEL = "Data da última passagem não 
 /** Responde "quando este imóvel foi visto em campo pela última vez?" a
     partir de `ultimoAvistamentoEm` (o maior `observado_em`, mantido pelo
     banco). Sem data válida, diz que não há — nunca inventa uma. */
+/** Largura em que o painel deixa de ser leitura de mesa e vira leitura de
+    campo (mesmo corte do CSS do módulo). Fora do navegador, ou sem
+    `matchMedia` (jsdom), nada se recolhe. */
+export const LARGURA_TELA_ESTREITA = "(max-width: 720px)";
+
+function useTelaEstreita(): boolean {
+  const [estreita, setEstreita] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const consulta = window.matchMedia(LARGURA_TELA_ESTREITA);
+    const aplicar = () => setEstreita(consulta.matches);
+    aplicar();
+    consulta.addEventListener?.("change", aplicar);
+    return () => consulta.removeEventListener?.("change", aplicar);
+  }, []);
+  return estreita;
+}
+
+/** Seção que nasce aberta em tela larga e recolhida no celular. O conteúdo
+    continua no DOM e a um toque; nada é perdido nem deixa de existir. */
+function SecaoRecolhivel({
+  titulo,
+  legenda,
+  recolhida,
+  atributos,
+  children,
+}: {
+  titulo: string;
+  legenda?: ReactNode;
+  recolhida: boolean;
+  atributos?: Record<string, string>;
+  children: ReactNode;
+}) {
+  return (
+    <section className={styles.secao} aria-label={titulo} {...atributos}>
+      <details className={styles.secaoRecolhivel} open={!recolhida} data-secao-recolhivel>
+        <summary className={styles.secaoCabecalho}>
+          <h4>{titulo}</h4>
+          {legenda ? <span>{legenda}</span> : null}
+        </summary>
+        <div className={styles.secaoRecolhivelCorpo}>{children}</div>
+      </details>
+    </section>
+  );
+}
+
 function UltimaPassagem({
   identificado,
 }: {
@@ -362,6 +408,8 @@ export default function PainelIdentificado({
   const carregarDetalhe = useProspeccao((estado) => estado.carregarDetalhe);
   const carregando = useProspeccao((estado) => estado.carregando);
   const [dialogoExclusao, setDialogoExclusao] = useState<"fechado" | "novo" | "retomada">("fechado");
+  const telaEstreita = useTelaEstreita();
+  const detalhesTipoRef = useRef<HTMLDetailsElement | null>(null);
   const [digitandoEndereco, setDigitandoEndereco] = useState(false);
   const item = detalhe.identificado;
   // §13.4: com a exclusão iniciada, o registro é retomável e nada mais.
@@ -590,6 +638,11 @@ export default function PainelIdentificado({
           <h3>{enderecoCompleto(detalhe)}</h3>
           <p data-resumo-cabecalho>{resumoCabecalho}</p>
           <UltimaPassagem identificado={item} />
+          {item.avistamentosTotal ? (
+            <p className={styles.resumoPassagens} data-resumo-passagens>
+              {item.avistamentosTotal === 1 ? "1 passagem registrada" : `${item.avistamentosTotal} passagens registradas`}
+            </p>
+          ) : null}
           {semEndereco && !digitandoEndereco ? (
             <button
               type="button"
@@ -644,6 +697,50 @@ export default function PainelIdentificado({
               </ul>
             </section>
           ) : null}
+
+          {/* 2b. Próximas ações (C10.1): o que se faz a partir daqui, num
+              bloco só, antes da leitura. Só ações que já existem: investigar,
+              a oportunidade no Pipeline e, quando falta, informar o tipo
+              (abre o mesmo formulário de "Ações"). */}
+          <section className={styles.secao} aria-label="Próximas ações" data-proximas-acoes>
+            <div className={styles.secaoCabecalho}>
+              <h4>Próximas ações</h4>
+            </div>
+            <div className={styles.proximasAcoes}>
+              {mostrarOportunidade ? (
+                <div data-secao-oportunidade>
+                  <TransformarEmOportunidade detalhe={detalhe} />
+                </div>
+              ) : null}
+              <div className={styles.investigar} data-acao="investigar">
+                <Link
+                  className="btn btn-sm"
+                  href={urlInvestigadorDoImovelIdentificado(item.id)}
+                  aria-describedby={`explicacao-investigar-${item.id}`}
+                >
+                  Investigar na web
+                </Link>
+                <small className={styles.explicacao} id={`explicacao-investigar-${item.id}`}>
+                  {explicacaoInvestigar(item)}
+                </small>
+              </div>
+              {!item.tipo ? (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost"
+                  data-acao="informar-tipo-atalho"
+                  onClick={() => {
+                    const detalhes = detalhesTipoRef.current;
+                    if (!detalhes) return;
+                    detalhes.open = true;
+                    detalhes.scrollIntoView?.({ behavior: "smooth", block: "start" });
+                  }}
+                >
+                  Informar o tipo do imóvel
+                </button>
+              ) : null}
+            </div>
+          </section>
 
           {/* 3. O que sabemos agora: tipo e etiquetas vigentes, com quem disse. */}
           <section className={styles.secao} aria-label="O que sabemos agora">
@@ -708,7 +805,7 @@ export default function PainelIdentificado({
                 </div>
               </details>
             ) : null}
-            <details className={styles.detalhes} data-acao="informar-tipo">
+            <details className={styles.detalhes} data-acao="informar-tipo" ref={detalhesTipoRef}>
               <summary>Informar o tipo</summary>
               <div className={styles.detalhesCorpo}>
                 <SeletorTipoManual
@@ -720,32 +817,7 @@ export default function PainelIdentificado({
                 />
               </div>
             </details>
-            {/* Investigar na web: abre o Investigador existente com o que
-                identifica o lugar. Enriquecimento, não promoção (§14). */}
-            <div className={styles.investigar} data-acao="investigar">
-              <Link
-                className="btn btn-sm"
-                href={urlInvestigadorDoImovelIdentificado(item.id)}
-                aria-describedby={`explicacao-investigar-${item.id}`}
-              >
-                Investigar na web
-              </Link>
-              <small className={styles.explicacao} id={`explicacao-investigar-${item.id}`}>
-                {explicacaoInvestigar(item)}
-              </small>
-            </div>
           </section>
-
-          {/* 4b. Oportunidade no Pipeline: promover (clique humano), concluir
-              um vínculo pendente ou ver que já é uma. Nunca automático. */}
-          {mostrarOportunidade ? (
-            <section className={styles.secao} aria-label="Oportunidade no Pipeline" data-secao-oportunidade>
-              <div className={styles.secaoCabecalho}>
-                <h4>Oportunidade no Pipeline</h4>
-              </div>
-              <TransformarEmOportunidade detalhe={detalhe} />
-            </section>
-          ) : null}
 
           {/* 5. Visto anteriormente: o que já foi percebido e não voltou. */}
           {historicoEtiquetas.length ? (
@@ -760,12 +832,14 @@ export default function PainelIdentificado({
         </div>
 
         <div className={styles.painelLateral} data-painel-coluna="lateral">
-          {/* 6. Histórico de passagens. */}
-          <section className={styles.secao}>
-            <div className={styles.secaoCabecalho}>
-              <h4>Histórico de passagens</h4>
-              <span>{detalhe.avistamentos.length} passage{detalhe.avistamentos.length === 1 ? "m" : "ns"}</span>
-            </div>
+          {/* 6. Histórico de passagens: no celular nasce recolhido, a um
+              toque; em tela larga, aberto. O modelo longitudinal é o mesmo. */}
+          <SecaoRecolhivel
+            titulo="Histórico de passagens"
+            legenda={`${detalhe.avistamentos.length} passage${detalhe.avistamentos.length === 1 ? "m" : "ns"}`}
+            recolhida={telaEstreita}
+            atributos={{ "data-secao-historico": "" }}
+          >
             <LinhaDoTempoAvistamentos
               avistamentos={detalhe.avistamentos}
               avistamentoCorrenteId={item.avistamentoCorrenteId}
@@ -774,14 +848,15 @@ export default function PainelIdentificado({
               classificandoAvistamentoId={classificandoAvistamentoId}
               falhaAnalise={falhaAnalise}
             />
-          </section>
+          </SecaoRecolhivel>
 
-          {/* 7. Localização e possíveis duplicatas. */}
-          <section className={styles.secao}>
-            <div className={styles.secaoCabecalho}>
-              <h4>Localização</h4>
-              <span>Posição aproximada; o círculo é a margem de erro.</span>
-            </div>
+          {/* 7. Localização (recolhida no celular) e possíveis duplicatas. */}
+          <SecaoRecolhivel
+            titulo="Localização"
+            legenda="Posição aproximada; o círculo é a margem de erro."
+            recolhida={telaEstreita}
+            atributos={{ "data-secao-localizacao": "" }}
+          >
             {item.latitude !== null && item.longitude !== null ? (
               <MapaProspeccao
                 localizacao={{
@@ -796,7 +871,7 @@ export default function PainelIdentificado({
                 Sem localização registrada. A próxima passagem com GPS ou endereço preenche aqui.
               </p>
             )}
-          </section>
+          </SecaoRecolhivel>
 
           <CandidatosDuplicidade
             key={item.id}

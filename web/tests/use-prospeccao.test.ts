@@ -635,3 +635,48 @@ describe("C8 — classificação por IA no estado local", () => {
     expect(useProspeccao.getState().erro).toBe("Não foi possível salvar o endereço.");
   });
 });
+
+describe("C10.1 — `ultimoRegistro`: a confirmação de campo é estado transitório de tela", () => {
+  it("nasce ao criar (local novo) e ao acrescentar passagem; sobrevive à releitura do mesmo registro; some ao dispensar, ao trocar de seleção e ao resetar", async () => {
+    mocks.criarIdentificado.mockResolvedValue({ identificado: identificado("novo"), avistamento: { id: "av-1" } });
+    mocks.acrescentarAvistamento.mockResolvedValue({ id: "av-2" });
+    mocks.obterIdentificado.mockImplementation(async (id: string) => detalhe(id, ["av-1", "av-2"]));
+    mocks.classificarAvistamento.mockResolvedValue({ ok: false, estado: null, etiquetas: [], falha: "nao-configurado" });
+
+    expect(useProspeccao.getState().ultimoRegistro).toBeNull();
+    await expect(useProspeccao.getState().criar("usuario-1", {} as never, {} as never)).resolves.toBe(true);
+    expect(useProspeccao.getState().ultimoRegistro).toEqual({ imovelIdentificadoId: "novo", avistamentoId: "av-1", novoLocal: true });
+    // A classificação em segundo plano relê o MESMO registro: a confirmação fica.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(useProspeccao.getState().ultimoRegistro?.avistamentoId).toBe("av-1");
+
+    await expect(useProspeccao.getState().adicionarAvistamento("usuario-1", "novo", {} as never)).resolves.toBe(true);
+    expect(useProspeccao.getState().ultimoRegistro).toEqual({ imovelIdentificadoId: "novo", avistamentoId: "av-2", novoLocal: false });
+
+    useProspeccao.getState().dispensarUltimoRegistro();
+    expect(useProspeccao.getState().ultimoRegistro).toBeNull();
+    // Não persiste nada: nenhuma escrita além das que já existiam.
+    expect(mocks.criarIdentificado).toHaveBeenCalledTimes(1);
+    expect(mocks.acrescentarAvistamento).toHaveBeenCalledTimes(1);
+
+    await useProspeccao.getState().adicionarAvistamento("usuario-1", "novo", {} as never);
+    expect(useProspeccao.getState().ultimoRegistro).not.toBeNull();
+    await useProspeccao.getState().carregarDetalhe("outro");
+    expect(useProspeccao.getState().ultimoRegistro).toBeNull();
+
+    await useProspeccao.getState().adicionarAvistamento("usuario-1", "outro", {} as never);
+    expect(useProspeccao.getState().ultimoRegistro?.imovelIdentificadoId).toBe("outro");
+    useProspeccao.getState().limparSelecao();
+    expect(useProspeccao.getState().ultimoRegistro).toBeNull();
+
+    await useProspeccao.getState().adicionarAvistamento("usuario-1", "outro", {} as never);
+    useProspeccao.getState().resetar();
+    expect(useProspeccao.getState().ultimoRegistro).toBeNull();
+  });
+
+  it("falha ao salvar não confirma nada", async () => {
+    mocks.criarIdentificado.mockRejectedValue(new Error("falhou"));
+    await expect(useProspeccao.getState().criar("usuario-1", {} as never, {} as never)).resolves.toBe(false);
+    expect(useProspeccao.getState().ultimoRegistro).toBeNull();
+  });
+});
