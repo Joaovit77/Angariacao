@@ -12,6 +12,12 @@ import {
   type IdentidadeParaDedupe,
 } from "./calculo/dedupeProspeccao";
 import { chaveEndereco, chaveImovel } from "./calculo/duplicidade";
+import {
+  escolherCapaCatalogo,
+  termoBuscaCatalogo,
+  type CapaCatalogo,
+  type FotoParaCapa,
+} from "./calculo/catalogoVisual";
 import { agoraISOString } from "./datas";
 import {
   etiquetasDoImovel,
@@ -623,6 +629,115 @@ export async function listarIdentificados(
     total,
     temMais: inicio + porPagina < total,
   };
+}
+
+/* ----------------------------------------------------------------
+   CATÁLOGO VISUAL (C12) — leitura, nunca escrita.
+
+   Um card por identificado com ao menos UMA foto ativa. A consulta é
+   UMA: `imoveis_identificados` com o embed `!inner` das fotos ativas (o
+   `!inner` faz o filtro da foto valer para o pai, então quem não tem foto
+   nem vem) e, dentro de cada foto, o `observado_em` da passagem dona. A
+   capa é escolhida aqui, na leitura; a foto continua da passagem original.
+   Mesma visibilidade e mesma ordem temporal da lista do Garimpo. Sem
+   tabela, coluna, RPC ou policy nova: RLS de posse das três tabelas basta.
+   ---------------------------------------------------------------- */
+
+export interface FiltrosCatalogoVisual {
+  /** Texto livre: endereço, bairro ou cidade, normalizado como as chaves. */
+  busca?: string;
+  tipo?: TipoImovelProspeccao | "";
+  situacao?: SituacaoImovelIdentificado | "";
+}
+
+export interface ItemCatalogoVisual {
+  identificado: ImovelIdentificado;
+  capa: CapaCatalogo;
+  /** Quantas fotos ativas o imóvel tem, somando as passagens. */
+  fotosAtivas: number;
+}
+
+export interface PaginaCatalogoVisual {
+  itens: ItemCatalogoVisual[];
+  pagina: number;
+  porPagina: number;
+  total: number;
+  temMais: boolean;
+}
+
+const COLUNAS_CATALOGO = [
+  COLUNAS_IDENTIFICADO,
+  "fotos:imoveis_identificados_fotos!inner("
+    + "id,avistamento_id,estado,caminho,caminho_miniatura,created_at,"
+    + "avistamento:imoveis_identificados_avistamentos!avistamento_id(observado_em)"
+    + ")",
+].join(",");
+
+function fotoParaCapa(linha: Linha): FotoParaCapa {
+  const avistamento = (linha.avistamento ?? null) as { observado_em?: unknown } | null;
+  return {
+    id: String(linha.id),
+    avistamentoId: String(linha.avistamento_id),
+    estado: String(linha.estado),
+    caminho: String(linha.caminho),
+    caminhoMiniatura: String(linha.caminho_miniatura),
+    observadoEm: typeof avistamento?.observado_em === "string" ? avistamento.observado_em : null,
+    criadoEm: String(linha.created_at),
+  };
+}
+
+export async function listarCatalogoVisual(
+  opcoes: { pagina?: number; porPagina?: number; filtros?: FiltrosCatalogoVisual } = {},
+  client: SupabaseClient = getSupabase(),
+): Promise<PaginaCatalogoVisual> {
+  const pagina = Math.max(1, Math.trunc(opcoes.pagina ?? 1));
+  const porPagina = Math.min(100, Math.max(1, Math.trunc(opcoes.porPagina ?? 24)));
+  const inicio = (pagina - 1) * porPagina;
+  const fim = inicio + porPagina - 1;
+  const filtros = opcoes.filtros ?? {};
+
+  let consulta = client
+    .from("imoveis_identificados")
+    .select(COLUNAS_CATALOGO, { count: "exact" })
+    .eq("fotos.estado", "ativa")
+    .in("situacao", [...SITUACOES_VISIVEIS_PROSPECCAO])
+    .is("exclusao_solicitada_em", null);
+  if (filtros.tipo) consulta = consulta.eq("tipo", filtros.tipo);
+  if (filtros.situacao && SITUACOES_VISIVEIS_PROSPECCAO.includes(filtros.situacao)) {
+    consulta = consulta.eq("situacao", filtros.situacao);
+  }
+  const termo = termoBuscaCatalogo(filtros.busca);
+  if (termo) {
+    // `%` e `_` são curingas do ILIKE; o texto normalizado não os contém
+    // (a chave só tem letras, dígitos e espaço), então o padrão é literal.
+    const padrao = `%${termo}%`;
+    consulta = consulta.or(
+      `endereco_chave.ilike.${padrao},bairro_chave.ilike.${padrao},cidade_chave.ilike.${padrao}`,
+    );
+  }
+
+  const { data, error, count } = await consulta
+    .order("ultimo_avistamento_em", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(inicio, fim);
+  if (error) falha(error);
+
+  const itens: ItemCatalogoVisual[] = [];
+  for (const linha of (data ?? []) as unknown as Linha[]) {
+    const fotos = ((linha.fotos ?? []) as Linha[]).map(fotoParaCapa);
+    const capa = escolherCapaCatalogo(fotos);
+    // Sem capa não há card: o `!inner` já garante ao menos uma ativa, mas a
+    // escolha é a fonte da verdade e não confia no transporte.
+    if (!capa) continue;
+    itens.push({
+      identificado: mapearIdentificado(linha),
+      capa,
+      fotosAtivas: fotos.filter((foto) => foto.estado === "ativa").length,
+    });
+  }
+  const total = count ?? 0;
+  return { itens, pagina, porPagina, total, temMais: inicio + porPagina < total };
 }
 
 export async function obterIdentificado(

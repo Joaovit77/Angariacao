@@ -323,7 +323,7 @@ export default function BarraLateral({
           <button
             key={item.rota}
             type="button"
-            className={`nav-item${pathname === item.rota ? " active" : ""}`}
+            className={`nav-item${pathname === item.rota || pathname.startsWith(`${item.rota}/`) ? " active" : ""}`}
             onClick={() => navegar(item.rota)}
             data-tip={item.texto}
           >
