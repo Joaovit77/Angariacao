@@ -18,7 +18,6 @@ import {
   type CapaCatalogo,
   type FotoParaCapa,
 } from "./calculo/catalogoVisual";
-import { agoraISOString } from "./datas";
 import {
   etiquetasDoImovel,
   type EtiquetaDoImovel,
@@ -1236,33 +1235,16 @@ export async function listarImoveisJaVinculados(
 }
 
 /* ----------------------------------------------------------------
-   INVESTIGAÇÃO (C10) — só a data; a pesquisa é do Investigador.
+   INVESTIGAÇÃO (C10 → C13B) — a data é do servidor.
 
-   `ultima_investigacao_em` está no grant de update do cliente, mas o
-   valor que o browser manda é IGNORADO: o trigger `proteger_identificado`
-   sobrescreve por `now()` (V7 §18.1, padrão de proteger_status_history).
-   Mandamos um instante só para a coluna "mudar" e o trigger agir. Não
-   muda situação, não cria Imovel, não vincula nada: as derivadas
-   `nunca-investigado` / `investigado-ha-mais-de-90-dias` continuam sendo
-   leitura sobre esta coluna, nunca estado persistido.
+   `ultima_investigacao_em` continua sendo a única coluna de investigação
+   da identidade (as derivadas `nunca-investigado` /
+   `investigado-ha-mais-de-90-dias` são leitura sobre ela). Desde o C13B
+   o navegador não a escreve mais: quem anota é a RPC de servidor
+   `registrar_investigacao_identificado`, na mesma transação que grava o
+   evento e as descobertas da memória. Uma fonte de verdade; o trigger
+   `proteger_identificado` segue normalizando o instante por `now()`.
    ---------------------------------------------------------------- */
-export async function registrarInvestigacaoIdentificado(
-  imovelIdentificadoId: string,
-  client: SupabaseClient = getSupabase(),
-): Promise<{ ultimaInvestigacaoEm: string | null }> {
-  if (!UUID_PROSPECCAO.test(imovelIdentificadoId)) {
-    throw new ErroProspeccao("id_invalido", "Registro do Garimpo inválido.");
-  }
-  const { data, error } = await client
-    .from("imoveis_identificados")
-    .update({ ultima_investigacao_em: agoraISOString() })
-    .eq("id", imovelIdentificadoId)
-    .select("id,ultima_investigacao_em")
-    .single();
-  if (error) falha(error);
-  const linha = data as unknown as Linha;
-  return { ultimaInvestigacaoEm: (linha.ultima_investigacao_em as string | null) ?? null };
-}
 
 /* ----------------------------------------------------------------
    VIGÊNCIA DERIVADA (C9) — nenhuma coluna "atual".

@@ -4,23 +4,22 @@ import {
   parametrosDaReferenciaInvestigador,
   type ReferenciaContextoInvestigador,
 } from "./calculo/contextoInvestigador";
-import { registrarInvestigacaoIdentificado } from "./prospeccao";
 
 export interface ContextoInvestigador {
   consulta: string;
   origem: "pipeline" | "radar" | "central" | "garimpo";
 }
 
-/** Investigação concluída: só a origem do Garimpo em Campo tem onde anotar
-    isso (`ultima_investigacao_em`, sobrescrita por now() pelo trigger).
-    Pipeline, Radar e Central continuam sem persistência, como sempre.
-    NÃO muda situação, NÃO promove, NÃO toca o Pipeline — mesmo que a
-    pesquisa tenha achado um possível proprietário (V7 §13.0, §14). */
-export async function registrarInvestigacaoConcluida(
+/** C13B: só a origem do Garimpo em Campo tem memória. O navegador manda
+    apenas o UUID do imóvel identificado; o servidor confere a posse,
+    gera o id da execução e, concluída a pesquisa, grava o evento e as
+    descobertas estruturadas pela RPC do C13A (que também anota
+    `ultima_investigacao_em`, na mesma transação). Pipeline, Radar e
+    Central continuam sem persistência, como sempre. */
+export function imovelIdentificadoDaReferencia(
   referencia: ReferenciaContextoInvestigador | null | undefined,
-): Promise<void> {
-  if (referencia?.origem !== "imovel-identificado") return;
-  await registrarInvestigacaoIdentificado(referencia.id);
+): string | null {
+  return referencia?.origem === "imovel-identificado" ? referencia.id : null;
 }
 
 export async function carregarContextoInvestigador(
@@ -52,17 +51,19 @@ export async function investigarImovel(
   consulta: string,
   aoEvento: (evento: EventoInvestigacao) => void,
   signal?: AbortSignal,
+  referencia?: ReferenciaContextoInvestigador | null,
 ): Promise<void> {
   const { data: { session } } = await getSupabase().auth.getSession();
   if (!session) throw new Error("Sua sessão expirou. Entre novamente.");
 
+  const imovelIdentificado = imovelIdentificadoDaReferencia(referencia);
   const resposta = await fetch("/api/investigador-imoveis", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${session.access_token}`,
     },
-    body: JSON.stringify({ consulta }),
+    body: JSON.stringify(imovelIdentificado ? { consulta, imovelIdentificado } : { consulta }),
     signal,
   });
   if (!resposta.ok || !resposta.body) {

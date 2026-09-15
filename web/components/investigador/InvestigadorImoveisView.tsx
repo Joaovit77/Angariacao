@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   LIMITE_CONSULTA_INVESTIGADOR,
+  type MemoriaInvestigacao,
   type CorrespondenciaInvestigacao,
   type EtapaInvestigacao,
   type ResultadoInvestigacao,
 } from "@/lib/calculo/investigadorImoveis";
 import { fmtMoney } from "@/lib/formatadores";
-import { carregarContextoInvestigador, investigarImovel, registrarInvestigacaoConcluida } from "@/lib/investigadorImoveis";
+import { carregarContextoInvestigador, investigarImovel } from "@/lib/investigadorImoveis";
 import type { ReferenciaContextoInvestigador } from "@/lib/calculo/contextoInvestigador";
 import { urlAvaliacaoDoComparavel } from "@/lib/calculo/contextoAvaliacao";
 import styles from "./InvestigadorImoveisView.module.css";
@@ -141,6 +142,28 @@ const ROTULO_ORIGEM_CONTEXTO = {
   garimpo: "Garimpo em Campo",
 } as const;
 
+/** C13B: o que a tela diz sobre a memória do imóvel depois da pesquisa.
+    Só contagens; a memória em si é lida no Garimpo (C13C). Falha é
+    explícita: a pesquisa aconteceu, mas nada foi guardado. */
+export function mensagemMemoriaInvestigacao(memoria: MemoriaInvestigacao): string {
+  const n = memoria.atributosSalvos;
+  const informacoes = n === 1 ? "1 informação" : `${n} informações`;
+  switch (memoria.estado) {
+    case "salva":
+      return n > 0
+        ? `Memória do imóvel atualizada: ${informacoes} estruturada${n === 1 ? "" : "s"} salva${n === 1 ? "" : "s"} com a fonte.`
+        : "Investigação registrada na memória do imóvel. Nenhuma informação estruturada foi encontrada desta vez.";
+    case "repetida":
+      return "Esta investigação já estava registrada na memória do imóvel.";
+    case "recusada":
+      return "Investigação concluída, mas a memória do imóvel não aceitou o registro. Verifique a situação do registro no Garimpo em Campo.";
+    case "falhou":
+      return "Investigação concluída, mas a memória do imóvel não foi salva. Investigue novamente para tentar de novo.";
+    default:
+      return "Investigação concluída. A memória do imóvel não está disponível neste ambiente.";
+  }
+}
+
 export default function InvestigadorImoveisView({ imovelIdInicial, referenciaInicial }: Props) {
   const origemInicial = referenciaInicial?.origem || (imovelIdInicial ? "imovel" : null);
   const idInicial = referenciaInicial?.id || imovelIdInicial || null;
@@ -187,27 +210,23 @@ export default function InvestigadorImoveisView({ imovelIdInicial, referenciaIni
     setResultado(null);
     setErro("");
     let falhaRecebida = "";
-    let concluiu = false;
     try {
+      // Na origem do Garimpo a referência vai junto: o servidor confere a
+      // posse e, concluída a pesquisa, grava a memória e anota a data na
+      // mesma transação (C13B). Nada muda de situação nem vira
+      // oportunidade; o que aconteceu com a memória volta em `memoria`.
       await investigarImovel(limpa, (eventoRecebido) => {
         if (eventoRecebido.tipo === "etapa") setEtapa(eventoRecebido.etapa);
         if (eventoRecebido.tipo === "consultas") setConsultasRealizadas(eventoRecebido.consultas);
         if (eventoRecebido.tipo === "resultado") {
           setResultado(eventoRecebido.dados);
           setEtapa("concluido");
-          concluiu = true;
         }
         if (eventoRecebido.tipo === "erro") falhaRecebida = eventoRecebido.mensagem;
-      });
+      }, undefined, referenciaInicial);
       if (falhaRecebida) {
         setErro(falhaRecebida);
         setEtapa(null);
-      }
-      // Concluída (com ou sem correspondência): a origem do Garimpo anota a
-      // data. Só a data — nada muda de situação nem vira oportunidade, e
-      // falhar em anotar não desfaz a pesquisa que a pessoa acabou de ver.
-      if (concluiu) {
-        await registrarInvestigacaoConcluida(referenciaInicial).catch(() => {});
       }
     } catch (causa) {
       setErro(causa instanceof Error ? causa.message : "Não foi possível concluir a investigação.");
@@ -283,6 +302,15 @@ export default function InvestigadorImoveisView({ imovelIdInicial, referenciaIni
             <small>A classificação indica probabilidade de correspondência, não confirmação factual.</small>
           </div>
           {resultado.aviso ? <div className={styles.aviso}>{resultado.aviso}</div> : null}
+          {resultado.memoria ? (
+            <div
+              className={resultado.memoria.estado === "falhou" ? styles.erro : styles.contexto}
+              role={resultado.memoria.estado === "falhou" ? "alert" : "status"}
+              data-memoria={resultado.memoria.estado}
+            >
+              {mensagemMemoriaInvestigacao(resultado.memoria)}
+            </div>
+          ) : null}
           {resultado.resultados.length ? (
             <div className={styles.gradeResultados}>
               {resultado.resultados.map((item) => <CardResultado key={item.url} resultado={item} />)}
