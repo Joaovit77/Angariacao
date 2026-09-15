@@ -323,16 +323,6 @@ export default function Vitrine({ aoEntrar, aoCriarConta }: Props) {
   return (
     <>
     <section className="auth-showcase explore-angario" id="conheca-o-sistema">
-      <div className="explore-menu-wrap">
-        <nav className="explore-menu" aria-label="Navegação pelas funcionalidades">
-          <div className="explore-menu-desktop">
-            <div className="explore-menu-rolagem">
-              {itensDoMenu()}
-            </div>
-          </div>
-        </nav>
-      </div>
-
       <header className="explore-intro">
         <motion.div initial={false} whileInView={semAnimacaoDeEntrada ? {} : { opacity: [0, 1], y: [22, 0] }} viewport={{ once: true, amount: 0.4 }} transition={{ duration: 0.55 }}>
           <span className="explore-sobrelinha">Explore o produto</span>
@@ -342,20 +332,32 @@ export default function Vitrine({ aoEntrar, aoCriarConta }: Props) {
         <div className="explore-intro-indicadores" aria-label="Resumo do produto"><span><strong>09</strong> frentes conectadas</span><span><strong>01</strong> fonte de verdade</span><span><strong>24/7</strong> operação organizada</span></div>
       </header>
 
-      <div className="explore-funcionalidades">
-        {FUNCIONALIDADES.map((funcionalidade, indice) => (
-          <section className={`explore-feature${indice % 2 ? " invertida" : ""}${funcionalidade.icone === "ia" ? " principal" : ""}`} id={funcionalidade.id} ref={(elemento) => { secoesRef.current[funcionalidade.id] = elemento; }} key={funcionalidade.id}>
-            <motion.div className="explore-feature-copy" initial={false} whileInView={semAnimacaoDeEntrada ? {} : { opacity: [0, 1], x: [indice % 2 ? 28 : -28, 0] }} viewport={{ once: true, amount: 0.22 }} transition={{ duration: 0.58, ease: [0.22, 1, 0.36, 1] }}>
-              <span className="explore-feature-numero">{String(indice + 1).padStart(2, "0")} / {funcionalidade.sobrelinha}</span>
-              <div className="explore-feature-icone"><IconeFuncionalidade nome={funcionalidade.icone} /></div>
-              <h2>{funcionalidade.headline}</h2><p className="explore-feature-frase">{funcionalidade.frase}</p>
-              <div className="explore-problema"><span>O problema</span><p>{funcionalidade.problema}</p></div>
-              <div className="explore-solucao"><span>Como o Angario resolve</span><ul>{funcionalidade.solucoes.map((solucao) => <li key={solucao}>{solucao}</li>)}</ul></div>
-              <div className="explore-resultado"><span>Resultado</span><strong>{funcionalidade.resultado}</strong></div>
-            </motion.div>
-            <motion.div className="explore-feature-visual" initial={false} whileInView={semAnimacaoDeEntrada ? {} : { opacity: [0, 1], y: [30, 0], scale: [0.985, 1] }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.66, delay: semAnimacaoDeEntrada ? 0 : 0.08, ease: [0.22, 1, 0.36, 1] }}><div className="explore-visual-aura" aria-hidden="true" /><MockupFuncionalidade nome={funcionalidade.icone} /></motion.div>
-          </section>
-        ))}
+      <div className="explore-corpo">
+        <div className="explore-menu-wrap">
+          <nav className="explore-menu" aria-label="Navegação pelas funcionalidades">
+            <div className="explore-menu-desktop">
+              <div className="explore-menu-rolagem">
+                {itensDoMenu()}
+              </div>
+            </div>
+          </nav>
+        </div>
+
+        <div className="explore-funcionalidades">
+          {FUNCIONALIDADES.map((funcionalidade, indice) => (
+            <section className={`explore-feature${indice % 2 ? " invertida" : ""}${funcionalidade.icone === "ia" ? " principal" : ""}`} id={funcionalidade.id} ref={(elemento) => { secoesRef.current[funcionalidade.id] = elemento; }} key={funcionalidade.id}>
+              <motion.div className="explore-feature-copy" initial={false} whileInView={semAnimacaoDeEntrada ? {} : { opacity: [0, 1], x: [indice % 2 ? 28 : -28, 0] }} viewport={{ once: true, amount: 0.22 }} transition={{ duration: 0.58, ease: [0.22, 1, 0.36, 1] }}>
+                <span className="explore-feature-numero">{String(indice + 1).padStart(2, "0")} / {funcionalidade.sobrelinha}</span>
+                <div className="explore-feature-icone"><IconeFuncionalidade nome={funcionalidade.icone} /></div>
+                <h2>{funcionalidade.headline}</h2><p className="explore-feature-frase">{funcionalidade.frase}</p>
+                <div className="explore-problema"><span>O problema</span><p>{funcionalidade.problema}</p></div>
+                <div className="explore-solucao"><span>Como o Angario resolve</span><ul>{funcionalidade.solucoes.map((solucao) => <li key={solucao}>{solucao}</li>)}</ul></div>
+                <div className="explore-resultado"><span>Resultado</span><strong>{funcionalidade.resultado}</strong></div>
+              </motion.div>
+              <motion.div className="explore-feature-visual" initial={false} whileInView={semAnimacaoDeEntrada ? {} : { opacity: [0, 1], y: [30, 0], scale: [0.985, 1] }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.66, delay: semAnimacaoDeEntrada ? 0 : 0.08, ease: [0.22, 1, 0.36, 1] }}><div className="explore-visual-aura" aria-hidden="true" /><MockupFuncionalidade nome={funcionalidade.icone} /></motion.div>
+            </section>
+          ))}
+        </div>
       </div>
 
       <motion.section className="explore-fecho" initial={false} whileInView={semAnimacaoDeEntrada ? {} : { opacity: [0, 1], y: [24, 0] }} viewport={{ once: true, amount: 0.3 }}>
