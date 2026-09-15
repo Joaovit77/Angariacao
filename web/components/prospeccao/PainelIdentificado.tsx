@@ -9,12 +9,15 @@
    quiser conferir. Tudo aqui é apresentação: estados, vigência, revisão e
    RPCs são os mesmos do C9. */
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useState, type ReactNode } from "react";
 
 import { identidadeParaDedupe, vigenciaDasEtiquetas } from "@/lib/prospeccao";
+import { urlInvestigadorDoImovelIdentificado } from "@/lib/calculo/contextoInvestigador";
+import { derivarEtiquetasProspeccao } from "@/lib/calculo/etiquetasProspeccao";
 import { podePromoverIdentificado, precisaConcluirVinculo } from "@/lib/calculo/promocaoProspeccao";
 import { TIPOS_IMOVEL } from "@/lib/constantes";
-import { fmtDataHoraIso } from "@/lib/datas";
+import { fmtDataHoraIso, todayISO } from "@/lib/datas";
 import type {
   AvistamentoLongitudinal,
   DetalheImovelIdentificado,
@@ -72,6 +75,31 @@ export function explicacaoInformarTipo(
   return item.tipo && item.tipoEstado
     ? "Altere o tipo atual por uma informação definida por você."
     : "Defina o tipo do imóvel com uma informação fornecida por você.";
+}
+
+export const EXPLICACAO_INVESTIGAR_NUNCA =
+  "Ainda não foi pesquisado na web. Leva endereço e tipo para uma busca revisável; a observação e qualquer dado pessoal ficam de fora. A pesquisa só começa quando você clicar lá.";
+
+/** O que dizer ao lado de "Investigar na web": deriva de
+    `ultimaInvestigacaoEm` pela mesma leitura do núcleo
+    (`nunca-investigado` / `investigado-ha-mais-de-90-dias`) — nada
+    persistido, nada de status de investigação. */
+export function explicacaoInvestigar(
+  item: Pick<DetalheImovelIdentificado["identificado"], "ultimaInvestigacaoEm" | "avistamentosTotal" | "situacao">,
+  hoje = todayISO(),
+): string {
+  const codigos = new Set(derivarEtiquetasProspeccao({
+    ultimaInvestigacaoEm: item.ultimaInvestigacaoEm,
+    avistamentosTotal: item.avistamentosTotal,
+    situacao: item.situacao,
+    hoje,
+  }).map((etiqueta) => etiqueta.codigo));
+  if (codigos.has("nunca-investigado")) return EXPLICACAO_INVESTIGAR_NUNCA;
+  const quando = fmtDataHoraIso(item.ultimaInvestigacaoEm);
+  if (codigos.has("investigado-ha-mais-de-90-dias")) {
+    return `Última pesquisa na web em ${quando}, há mais de 90 dias. Vale pesquisar de novo; a pesquisa só começa quando você clicar lá.`;
+  }
+  return `Última pesquisa na web em ${quando}. A pesquisa só começa quando você clicar lá.`;
 }
 
 /** "Mais recente" não é "confirmado agora": a nota diz de onde as
@@ -692,6 +720,20 @@ export default function PainelIdentificado({
                 />
               </div>
             </details>
+            {/* Investigar na web: abre o Investigador existente com o que
+                identifica o lugar. Enriquecimento, não promoção (§14). */}
+            <div className={styles.investigar} data-acao="investigar">
+              <Link
+                className="btn btn-sm"
+                href={urlInvestigadorDoImovelIdentificado(item.id)}
+                aria-describedby={`explicacao-investigar-${item.id}`}
+              >
+                Investigar na web
+              </Link>
+              <small className={styles.explicacao} id={`explicacao-investigar-${item.id}`}>
+                {explicacaoInvestigar(item)}
+              </small>
+            </div>
           </section>
 
           {/* 4b. Oportunidade no Pipeline: promover (clique humano), concluir

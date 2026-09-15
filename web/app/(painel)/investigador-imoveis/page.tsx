@@ -6,6 +6,7 @@ interface Props {
     imovel?: string | string[];
     radarAnuncio?: string | string[];
     comparavel?: string | string[];
+    imovelIdentificado?: string | string[];
   }>;
 }
 
@@ -16,6 +17,7 @@ export default async function Pagina({ searchParams }: Props) {
     { origem: "imovel", id: valor(parametros.imovel) },
     { origem: "radar-anuncio", id: valor(parametros.radarAnuncio) },
     { origem: "comparavel", id: valor(parametros.comparavel) },
+    { origem: "imovel-identificado", id: valor(parametros.imovelIdentificado) },
   ].filter((item): item is ReferenciaContextoInvestigador => Boolean(item.id?.trim()));
   const referenciaInicial = referencias.length === 1 ? referencias[0] : null;
   const imovelId = referenciaInicial?.origem === "imovel" ? referenciaInicial.id : undefined;

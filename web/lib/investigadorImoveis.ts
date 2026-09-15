@@ -4,10 +4,23 @@ import {
   parametrosDaReferenciaInvestigador,
   type ReferenciaContextoInvestigador,
 } from "./calculo/contextoInvestigador";
+import { registrarInvestigacaoIdentificado } from "./prospeccao";
 
 export interface ContextoInvestigador {
   consulta: string;
-  origem: "pipeline" | "radar" | "central";
+  origem: "pipeline" | "radar" | "central" | "garimpo";
+}
+
+/** Investigação concluída: só a origem do Garimpo em Campo tem onde anotar
+    isso (`ultima_investigacao_em`, sobrescrita por now() pelo trigger).
+    Pipeline, Radar e Central continuam sem persistência, como sempre.
+    NÃO muda situação, NÃO promove, NÃO toca o Pipeline — mesmo que a
+    pesquisa tenha achado um possível proprietário (V7 §13.0, §14). */
+export async function registrarInvestigacaoConcluida(
+  referencia: ReferenciaContextoInvestigador | null | undefined,
+): Promise<void> {
+  if (referencia?.origem !== "imovel-identificado") return;
+  await registrarInvestigacaoIdentificado(referencia.id);
 }
 
 export async function carregarContextoInvestigador(

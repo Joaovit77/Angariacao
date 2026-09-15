@@ -1457,3 +1457,10 @@
   gap: 8px;
   align-items: center;
 }
+/* Investigar na web: ação com a explicação embaixo, alinhada às demais. */
+.investigar {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  margin-top: 10px;
+}

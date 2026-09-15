@@ -1,7 +1,11 @@
 import type { Imovel } from "@/lib/tipos";
 import { rotuloPortal, type PortalAngariacao } from "./centralAngariacao";
 
-export type OrigemContextoInvestigador = "imovel" | "radar-anuncio" | "comparavel";
+export type OrigemContextoInvestigador =
+  | "imovel"
+  | "radar-anuncio"
+  | "comparavel"
+  | "imovel-identificado";
 
 export interface ReferenciaContextoInvestigador {
   origem: OrigemContextoInvestigador;
@@ -116,10 +120,50 @@ export function consultaInicialDoAnuncio(anuncio: AnuncioParaInvestigacao): stri
   return partes.join(", ").slice(0, 500);
 }
 
+/** O recorte do Garimpo em Campo que pode atravessar esta fronteira: só o
+    que identifica o LUGAR. A observação livre da passagem fica de fora por
+    construção — o tipo nem tem o campo — porque é texto digitado e pode
+    conter qualquer coisa (V7 §14). Dado pessoal não existe na entidade. */
+export interface ImovelIdentificadoParaInvestigacao {
+  id: string;
+  logradouro: string | null;
+  numero: string | null;
+  unidade: string | null;
+  bloco: string | null;
+  edificio: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  estado: string | null;
+  tipo: string | null;
+}
+
+/** Mesma forma da consulta do Pipeline, sem código, referência ou
+    quartos/vagas — o Garimpo não os tem. Continua editável na tela. */
+export function consultaInicialDoImovelIdentificado(
+  identificado: ImovelIdentificadoParaInvestigacao,
+): string {
+  const endereco = [texto(identificado.logradouro), texto(identificado.numero)]
+    .filter(Boolean)
+    .join(", ");
+  const partes = [
+    endereco,
+    texto(identificado.unidade) ? `unidade ${texto(identificado.unidade)}` : "",
+    texto(identificado.bloco) ? `bloco ${texto(identificado.bloco)}` : "",
+    texto(identificado.bairro),
+    texto(identificado.cidade),
+    texto(identificado.estado),
+    texto(identificado.edificio),
+    texto(identificado.tipo),
+  ].filter(Boolean);
+
+  return partes.join(", ").slice(0, 500);
+}
+
 const PARAMETRO_POR_ORIGEM: Record<OrigemContextoInvestigador, string> = {
   imovel: "imovel",
   "radar-anuncio": "radarAnuncio",
   comparavel: "comparavel",
+  "imovel-identificado": "imovelIdentificado",
 };
 
 export function parametrosDaReferenciaInvestigador(
@@ -142,4 +186,8 @@ export function urlInvestigadorDoRadarAnuncio(radarAnuncioId: string): string {
 
 export function urlInvestigadorDoComparavel(comparavelId: string): string {
   return urlInvestigadorDaReferencia({ origem: "comparavel", id: comparavelId });
+}
+
+export function urlInvestigadorDoImovelIdentificado(imovelIdentificadoId: string): string {
+  return urlInvestigadorDaReferencia({ origem: "imovel-identificado", id: imovelIdentificadoId });
 }

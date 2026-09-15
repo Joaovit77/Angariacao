@@ -10,8 +10,10 @@ import {
 import {
   consultaInicialDoAnuncio,
   consultaInicialDoImovel,
+  consultaInicialDoImovelIdentificado,
   contextoInvestigadorIdValido,
   type AnuncioParaInvestigacao,
+  type ImovelIdentificadoParaInvestigacao,
   type ImovelParaInvestigacao,
   type ReferenciaContextoInvestigador,
 } from "@/lib/calculo/contextoInvestigador";
@@ -112,12 +114,20 @@ interface LinhaComparavelInvestigador {
   vagas: number | null;
 }
 
+// O Garimpo em Campo manda só o que identifica o lugar. A observação da
+// passagem mora em outra tabela e nem é selecionada; a entidade não tem
+// coluna de dado pessoal (V7 §14, §18.1).
+const CAMPOS_CONTEXTO_IDENTIFICADO = [
+  "id", "logradouro", "numero", "unidade", "bloco", "edificio", "bairro", "cidade", "estado", "tipo",
+].join(",");
+
 function referenciaDaRequisicao(request: Request): ReferenciaContextoInvestigador | null {
   const parametros = new URL(request.url).searchParams;
   const candidatas: ReferenciaContextoInvestigador[] = [
     { origem: "imovel" as const, id: parametros.get("imovel")?.trim() || "" },
     { origem: "radar-anuncio" as const, id: parametros.get("radarAnuncio")?.trim() || "" },
     { origem: "comparavel" as const, id: parametros.get("comparavel")?.trim() || "" },
+    { origem: "imovel-identificado" as const, id: parametros.get("imovelIdentificado")?.trim() || "" },
   ].filter((item) => Boolean(item.id));
   if (candidatas.length !== 1 || !contextoInvestigadorIdValido(candidatas[0].id)) return null;
   return candidatas[0];
@@ -195,14 +205,20 @@ export async function GET(request: Request): Promise<Response> {
     });
   }
 
-  const tabela = referencia.origem === "imovel"
-    ? "imoveis"
-    : referencia.origem === "radar-anuncio" ? "radar_anuncios" : "comparaveis_mercado";
-  const campos = referencia.origem === "imovel"
-    ? CAMPOS_CONTEXTO
-    : referencia.origem === "radar-anuncio"
-      ? "id,portal,id_externo,dados"
-      : "id,portal,id_externo,titulo,endereco,bairro,cidade,estado,tipo,area_m2,quartos,banheiros,vagas";
+  const TABELA_POR_ORIGEM = {
+    imovel: "imoveis",
+    "radar-anuncio": "radar_anuncios",
+    comparavel: "comparaveis_mercado",
+    "imovel-identificado": "imoveis_identificados",
+  } as const;
+  const CAMPOS_POR_ORIGEM = {
+    imovel: CAMPOS_CONTEXTO,
+    "radar-anuncio": "id,portal,id_externo,dados",
+    comparavel: "id,portal,id_externo,titulo,endereco,bairro,cidade,estado,tipo,area_m2,quartos,banheiros,vagas",
+    "imovel-identificado": CAMPOS_CONTEXTO_IDENTIFICADO,
+  } as const;
+  const tabela = TABELA_POR_ORIGEM[referencia.origem];
+  const campos = CAMPOS_POR_ORIGEM[referencia.origem];
   const { data, error } = await acesso.supabase
     .from(tabela)
     .select(campos)
@@ -217,10 +233,15 @@ export async function GET(request: Request): Promise<Response> {
   if (!data) return respostaContextoIndisponivel(404);
 
   let consulta = "";
-  let origem: "pipeline" | "radar" | "central";
+  let origem: "pipeline" | "radar" | "central" | "garimpo";
   if (referencia.origem === "imovel") {
     consulta = consultaInicialDoImovel(paraImovelInvestigavel(data as unknown as LinhaImovelInvestigador));
     origem = "pipeline";
+  } else if (referencia.origem === "imovel-identificado") {
+    // Devolve só a consulta editável; não muda situação, não promove, não
+    // grava nada — investigar é enriquecimento, não transição (V7 §13.0).
+    consulta = consultaInicialDoImovelIdentificado(data as unknown as ImovelIdentificadoParaInvestigacao);
+    origem = "garimpo";
   } else if (referencia.origem === "radar-anuncio") {
     const anuncio = paraAnuncioDoRadar(data as unknown as LinhaRadarInvestigador);
     if (!anuncio) return respostaContextoIndisponivel(404);
