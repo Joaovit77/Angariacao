@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { useSessao } from "@/components/SessaoProvider";
-import { etiquetasDoImovel, type EtiquetaDoImovel } from "@/lib/calculo/etiquetasProspeccao";
-import type { DetalheImovelIdentificado } from "@/lib/prospeccao";
+import type { EtiquetaDoImovel } from "@/lib/calculo/etiquetasProspeccao";
+import { vigenciaDasEtiquetas, type DetalheImovelIdentificado } from "@/lib/prospeccao";
 import {
   armazemRascunhoCaptura,
   avaliarRascunho,
@@ -21,33 +21,17 @@ import styles from "./Prospeccao.module.css";
 
 function etiquetasAtuais(detalhe: DetalheImovelIdentificado | null): EtiquetaDoImovel[] {
   if (!detalhe) return [];
-  const corrente = detalhe.avistamentos.find(
-    (avistamento) => avistamento.id === detalhe.identificado.avistamentoCorrenteId,
-  ) ?? null;
-  const todas = [
-    ...detalhe.etiquetasDoImovel,
-    ...detalhe.avistamentos.flatMap((avistamento) => avistamento.etiquetas),
-  ].map((etiqueta) => ({
-    categoria: etiqueta.categoria,
-    codigo: etiqueta.codigo,
-    avistamentoId: etiqueta.avistamentoId,
-    revisaoObservacao: etiqueta.revisaoObservacao,
-    observadoEm: etiqueta.observadoEm,
-    createdAt: etiqueta.criadoEm,
-    estado: etiqueta.estado,
-    origem: etiqueta.origem,
-    confianca: etiqueta.confianca,
-  }));
-  return etiquetasDoImovel(
-    todas,
-    corrente ? { id: corrente.id, observacaoRevisao: corrente.observacaoRevisao } : null,
-  ).filter((etiqueta) => etiqueta.vigenteNoAvistamentoCorrente);
+  return vigenciaDasEtiquetas(detalhe).filter((etiqueta) => etiqueta.vigenteNoAvistamentoCorrente);
 }
 
 function horaCurta(iso: string): string {
   const data = new Date(iso);
   if (Number.isNaN(data.getTime())) return "";
   return data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+export function rotuloTotalImoveis(total: number): string {
+  return `${total} no total`;
 }
 
 export default function ProspeccaoView({
@@ -67,6 +51,8 @@ export default function ProspeccaoView({
   const total = useProspeccao((estado) => estado.total);
   const temMais = useProspeccao((estado) => estado.temMais);
   const carregando = useProspeccao((estado) => estado.carregando);
+  const salvando = useProspeccao((estado) => estado.salvando);
+  const aviso = useProspeccao((estado) => estado.aviso);
   const incluirOcultos = useProspeccao((estado) => estado.incluirOcultos);
   const definirIncluirOcultos = useProspeccao((estado) => estado.definirIncluirOcultos);
   const erro = useProspeccao((estado) => estado.erro);
@@ -128,7 +114,7 @@ export default function ProspeccaoView({
             <span className={styles.sobretitulo}>MEMÓRIA DE CAMPO</span>
             <h2>Garimpo em Campo</h2>
             <p>
-              Registre locais observados e mantenha cada visita separada na linha do tempo.
+              Registre os imóveis que você vê na rua e mantenha cada passagem separada no histórico.
             </p>
           </div>
         </div>
@@ -138,9 +124,10 @@ export default function ProspeccaoView({
         <button
           type="button"
           className="btn btn-primary"
+          disabled={salvando}
           onClick={() => abrirModal("avistamento")}
         >
-          {total > 0 ? "Registrar novo local" : "Registrar primeiro avistamento"}
+          {total > 0 ? "Registrar novo local" : "Registrar imóvel visto"}
         </button>
       </section>
 
@@ -160,9 +147,20 @@ export default function ProspeccaoView({
                 : `${rascunhoPendente.foto ? "Foto e dados" : "Dados"} de ${horaCurta(rascunhoPendente.salvoEm)} estão guardados neste aparelho. Nada foi perdido.`}
             </span>
           </div>
-          <button type="button" className="btn btn-sm btn-primary" onClick={retomarRascunho}>
+          <button type="button" className="btn btn-sm btn-primary" disabled={salvando} onClick={retomarRascunho}>
             Retomar
           </button>
+        </div>
+      ) : null}
+
+      {aviso ? (
+        <div className={styles.estado} role="status">
+          <div>
+            <strong>União confirmada; atualização pendente.</strong>
+            <p>{aviso}</p>
+            <button type="button" className="btn btn-sm" disabled={carregando || salvando}
+              onClick={() => void carregarPagina(1, porPagina)}>Recarregar registros</button>
+          </div>
         </div>
       ) : null}
 
@@ -185,31 +183,32 @@ export default function ProspeccaoView({
       ) : null}
 
       {carregando && !itens.length ? (
-        <div className={styles.estado} role="status">Carregando identificações…</div>
-      ) : !erro && !itens.length ? (
+        <div className={styles.estado} role="status">Carregando os imóveis vistos em campo…</div>
+      ) : !erro && !aviso && !itens.length ? (
         <div className={styles.estado}>
           <div>
             <strong>
-              {incluirOcultos ? "Nenhum imóvel identificado." : "Nenhum imóvel identificado ativo."}
+              {incluirOcultos ? "Nenhum imóvel registrado ainda." : "Nenhum imóvel ativo por aqui."}
             </strong>
             <p>
               {incluirOcultos
-                ? "Registre o primeiro avistamento para começar sua memória de campo."
-                : "Descartados, fundidos e exclusões pendentes ficam atrás do filtro de ocultos."}
+                ? "Registre a primeira passagem por um imóvel para começar sua memória de campo."
+                : "Os descartados, unidos a outro registro e em exclusão ficam em “Mostrar ocultos”."}
             </p>
             <button
               type="button"
               className="btn btn-primary"
+              disabled={salvando}
               onClick={() => abrirModal("avistamento")}
             >
-              Registrar primeiro avistamento
+              Registrar imóvel visto
             </button>
             {!incluirOcultos ? (
               <label className={styles.filtroOcultos}>
                 <input
                   type="checkbox"
                   checked={incluirOcultos}
-                  disabled={carregando}
+                  disabled={carregando || salvando}
                   onChange={(evento) => void definirIncluirOcultos(evento.target.checked)}
                 />
                 Mostrar ocultos
@@ -219,10 +218,10 @@ export default function ProspeccaoView({
         </div>
       ) : itens.length ? (
         <div className={styles.conteudo}>
-          <section className={styles.lista} aria-label="Imóveis identificados">
+          <section className={styles.lista} aria-label="Imóveis vistos em campo">
             <div className={styles.listaCabecalho}>
-              <h3>Identificados</h3>
-              <span>{carregando ? "Atualizando…" : `${total} no total`}</span>
+              <h3>Imóveis vistos em campo</h3>
+              <span>{carregando ? "Atualizando…" : rotuloTotalImoveis(total)}</span>
             </div>
             {/* Descartar preserva tudo e só esconde; fundido e exclusão pendente
                 também saem da lista normal. O filtro traz os três de volta. */}
@@ -230,16 +229,17 @@ export default function ProspeccaoView({
               <input
                 type="checkbox"
                 checked={incluirOcultos}
-                disabled={carregando}
+                disabled={carregando || salvando}
                 onChange={(evento) => void definirIncluirOcultos(evento.target.checked)}
               />
-              Mostrar descartados, fundidos e exclusões pendentes
+              Mostrar ocultos (descartados, unidos a outro registro e em exclusão)
             </label>
             <div className={styles.cards}>
               {itens.map((identificado) => (
                 <CardIdentificado
                   identificado={identificado}
                   selecionado={selecionadoId === identificado.id}
+                  desabilitado={salvando}
                   etiquetasAtuais={
                     detalhe?.identificado.id === identificado.id ? etiquetasSelecionadas : []
                   }
@@ -252,7 +252,7 @@ export default function ProspeccaoView({
               <button
                 type="button"
                 className="btn btn-sm"
-                disabled={pagina <= 1 || carregando}
+                disabled={pagina <= 1 || carregando || salvando}
                 onClick={() => void mudarPagina(pagina - 1)}
               >
                 Anterior
@@ -261,7 +261,7 @@ export default function ProspeccaoView({
               <button
                 type="button"
                 className="btn btn-sm"
-                disabled={!temMais || carregando}
+                disabled={!temMais || carregando || salvando}
                 onClick={() => void mudarPagina(pagina + 1)}
               >
                 Próxima
@@ -275,9 +275,9 @@ export default function ProspeccaoView({
             <div className={styles.estado} role={carregando && selecionadoId ? "status" : undefined}>
               <div>
                 <strong>
-                  {carregando && selecionadoId ? "Carregando detalhe…" : "Selecione um identificado"}
+                  {carregando && selecionadoId ? "Carregando detalhe…" : "Escolha um imóvel na lista"}
                 </strong>
-                <p>O histórico completo será exibido aqui sem misturar os avistamentos.</p>
+                <p>O que sabemos agora e o histórico de passagens aparecem aqui.</p>
               </div>
             </div>
           )}

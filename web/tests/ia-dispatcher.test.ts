@@ -27,6 +27,9 @@ describe("dispatcher de IA", () => {
       "rascunhar-resposta",
       "gerar-anuncio",
       "abordagem-anuncio",
+      // C8: só o vocabulário; a rota /api/ia recusa este tipo (ver
+      // prospeccao-api.test.ts) — quem o serve é /api/prospeccao/classificar.
+      "classificar-imovel-identificado",
     ]);
     for (const tipo of TIPOS_PEDIDO_IA) expect(ehTipoPedidoIa(tipo)).toBe(true);
     expect(ehTipoPedidoIa("outro")).toBe(false);

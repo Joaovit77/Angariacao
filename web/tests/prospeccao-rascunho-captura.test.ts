@@ -274,7 +274,7 @@ describe("rascunho de captura — captura da fachada", () => {
   it("nasce pronta a partir de uma foto restaurada, sem passar pelo input", () => {
     render(createElement(CapturaFachada, { fotoInicial: fotoProcessada() }));
     expect(screen.getByText("Foto pronta para registrar")).toBeTruthy();
-    expect(screen.getByText("Salve o avistamento para iniciar o envio.")).toBeTruthy();
+    expect(screen.getByText("Salve a passagem para iniciar o envio.")).toBeTruthy();
   });
 
   it("reutiliza a reserva restaurada em vez de reservar de novo, e avisa o pai", async () => {
@@ -429,7 +429,7 @@ describe("rascunho de captura — modal (regressão do smoke)", () => {
     try {
       render(createElement(ModalAvistamento, {}));
       await waitFor(() => expect(screen.getByText("Fotografar fachada")).toBeTruthy());
-      expect(screen.getByRole("button", { name: "Salvar avistamento" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Salvar passagem" })).toBeTruthy();
       expect(screen.queryByText(/restaurado/)).toBeNull();
     } finally {
       restaurar();

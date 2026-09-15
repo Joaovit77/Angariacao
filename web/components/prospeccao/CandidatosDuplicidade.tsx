@@ -1,14 +1,14 @@
 "use client";
 
 /* ================================================================
-   POSSÍVEIS DUPLICATAS (C7) — avisa, nunca bloqueia, nunca funde,
-   nunca promove.
+   POSSÍVEIS DUPLICATAS (C7) — a dedupe avisa, nunca bloqueia nem promove.
+   A união (C7b) exige escolha e confirmação no diálogo próprio.
 
    Quatro camadas, na ordem de autoridade do núcleo puro: unidade veta;
    identidade textual; proximidade com a incerteza declarada; carteira.
    Cada linha diz POR QUE foi sugerida, com os números que produziram o
-   veredito. Não há ação executável aqui: "é o mesmo" é o merge (C7b) e
-   "são diferentes" ainda não tem onde ser guardado (Fase 2).
+   veredito. "É o mesmo" abre o diálogo; não chama a RPC neste card.
+   "São diferentes" ainda não tem onde ser guardado (Fase 2).
 
    A carteira é lida do store central — só lida; nada aqui escreve em
    `imoveis`, e é por isso que este arquivo, e não os cinco do C4, é o
@@ -29,9 +29,10 @@ import { derivarEtiquetasProspeccao } from "@/lib/calculo/etiquetasProspeccao";
 import type { SituacaoImovelIdentificado } from "@/lib/calculo/prospeccao";
 import { fmtDataHoraIso, todayISO } from "@/lib/datas";
 import { useAppStore } from "@/lib/store";
-import { identidadeParaDedupe, type ImovelIdentificado } from "@/lib/prospeccao";
+import { identidadeParaDedupe, podeFundirIdentificado, type ImovelIdentificado } from "@/lib/prospeccao";
 import { useProspeccao, type DuplicataEncontrada } from "@/lib/useProspeccao";
 
+import DialogoFundirIdentificados from "./DialogoFundirIdentificados";
 import styles from "./Prospeccao.module.css";
 
 const ATRASO_CONSULTA_MS = 400;
@@ -55,34 +56,47 @@ function enderecoCurto(identificado: ImovelIdentificado): string {
 
 export default function CandidatosDuplicidade({
   alvo,
+  identificado,
+  fotosIdentificado,
   situacao = "identificado",
   avistamentosTotal = 0,
   titulo = "Pode ser o mesmo que…",
 }: {
   alvo: IdentidadeParaDedupe;
+  /** Ausente no rascunho de local novo: ainda não existem duas identidades. */
+  identificado?: ImovelIdentificado;
+  fotosIdentificado?: number;
   situacao?: SituacaoImovelIdentificado;
   avistamentosTotal?: number;
   titulo?: string;
 }) {
   const buscarDuplicatas = useProspeccao((estado) => estado.buscarDuplicatas);
   const carteira = useAppStore((estado) => estado.imoveis);
-  const [duplicatas, setDuplicatas] = useState<DuplicataEncontrada[] | null>(null);
-  const [indisponivel, setIndisponivel] = useState(false);
+  const revisaoFusao = useProspeccao((estado) => estado.revisaoFusao) ?? 0;
+  const salvando = useProspeccao((estado) => estado.salvando);
+  const carregando = useProspeccao((estado) => estado.carregando);
+  const [candidatoParaUnir, setCandidatoParaUnir] = useState<ImovelIdentificado | null>(null);
+  const [consulta, setConsulta] = useState<{
+    chave: string; revisao: number; duplicatas: DuplicataEncontrada[] | null;
+  } | null>(null);
 
   // Mesma entrada ⇒ mesma consulta; a chave evita repetir a cada render, e o
   // atraso evita consultar a cada letra digitada no modal.
   const chave = JSON.stringify(alvo);
+  // Uma resposta do alvo anterior nunca pode oferecer uma união no alvo novo.
+  const consultaAtual = consulta?.chave === chave && consulta.revisao === revisaoFusao ? consulta : null;
+  const duplicatas = consultaAtual ? consultaAtual.duplicatas ?? [] : null;
+  const indisponivel = consultaAtual?.duplicatas === null;
   useEffect(() => {
     let cancelado = false;
     const temporizador = setTimeout(() => {
       void buscarDuplicatas(JSON.parse(chave) as IdentidadeParaDedupe).then((encontradas) => {
         if (cancelado) return;
-        setDuplicatas(encontradas ?? []);
-        setIndisponivel(encontradas === null);
+        setConsulta({ chave, revisao: revisaoFusao, duplicatas: encontradas });
       });
     }, ATRASO_CONSULTA_MS);
     return () => { cancelado = true; clearTimeout(temporizador); };
-  }, [buscarDuplicatas, chave]);
+  }, [buscarDuplicatas, chave, revisaoFusao]);
 
   const naCarteira = duplicatasDoIdentificadoNaCarteira(alvo, carteira);
   const encontradas = duplicatas ?? [];
@@ -134,14 +148,24 @@ export default function CandidatosDuplicidade({
               </div>
               <small>
                 {candidato.ultimoAvistamentoEm
-                  ? `Avistado em ${fmtDataHoraIso(candidato.ultimoAvistamentoEm)}`
-                  : "Sem avistamento registrado"}
+                  ? `Visto em ${fmtDataHoraIso(candidato.ultimoAvistamentoEm)}`
+                  : "Sem passagem registrada"}
                 {" · "}
                 {descreverResultadoDedupe(resultado, alvo, identidadeParaDedupe(candidato))}
               </small>
+              {identificado && identificado.id === alvo.id && podeFundirIdentificado(identificado)
+                && candidato.id !== identificado.id && podeFundirIdentificado(candidato) ? (
+                <button type="button" className="btn btn-sm" disabled={salvando || carregando || candidatoParaUnir !== null}
+                  onClick={() => setCandidatoParaUnir(candidato)}>É o mesmo</button>
+              ) : null}
             </li>
           ))}
         </ul>
+      ) : null}
+      {candidatoParaUnir && identificado && identificado.id === alvo.id ? (
+        <DialogoFundirIdentificados key={identificado.id + ":" + candidatoParaUnir.id}
+          identificado={identificado} candidato={candidatoParaUnir} fotosIdentificado={fotosIdentificado}
+          aoFechar={() => setCandidatoParaUnir(null)} />
       ) : null}
       {naCarteira.length ? (
         <p className={styles.duplicatasCarteira} role="status">

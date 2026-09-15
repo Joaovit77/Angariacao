@@ -1475,8 +1475,13 @@ unitários usam um executor mockado exclusivo de `NODE_ENV=test`. Consulte a mat
 
 O executor OpenAI está isolado em `lib/servidor/ia/executor-openai.ts`; prompts, esquemas e contratos
 de domínio não importam o SDK. Na ausência de uma configuração publicada, o padrão seguro continua
-em `lib/servidor/ia/config.ts`/`lib/ia/configuracao.ts`, atualmente `gpt-5.4-mini`. Transcrição e
-embeddings são independentes porque têm contratos próprios.
+em `lib/servidor/ia/config.ts`/`lib/ia/configuracao.ts`, atualmente `gpt-5.4-mini` em todas as
+rotas (`CONFIGURACAO_IA_PADRAO`). `CONFIGURACAO_IA_RECOMENDADA` — que sugere `gpt-5.6-luna` para
+`classificacao` — é só a proposta que o `/admin` monta; ela **não é promovida automaticamente** e
+passa a valer somente quando o admin a salva como versão. Nenhum fluxo (webhook, Garimpo em Campo,
+painel) resolve modelo por conta própria: todos leem a mesma configuração, e um fluxo novo não
+ganha configuração paralela. Transcrição e embeddings são independentes porque têm contratos
+próprios.
 
 ##### Governança central da IA
 
@@ -1527,9 +1532,13 @@ o fallback funcional. Headers operacionais pontuais exigem validação do valor,
 ##### Centro de IA no ADM
 
 O cartão **Centro de IA** em `/admin` é o mapa operacional e o roteador dos modelos. A configuração
-é separada por responsabilidade — classificação do webhook, atendimento em três etapas, operações
-do painel e Assistente global — com modelo e esforço próprios. O botão de recomendação apenas monta
-uma proposta; nada muda em produção até o admin salvar.
+é separada por responsabilidade — classificação, atendimento em três etapas, operações do painel e
+Assistente global — com modelo e esforço próprios. A rota `classificacao` é compartilhada: o
+classificador de respostas do webhook e a classificação de avistamentos do Garimpo em Campo leem a
+mesma rota, e o Garimpo não tem (nem deve ganhar) configuração própria. O botão de recomendação
+apenas monta uma proposta; nada muda em produção até o admin salvar — sem versão publicada, todas
+as rotas ficam em `CONFIGURACAO_IA_PADRAO` (`gpt-5.4-mini`), mesmo que o recomendado sugira outro
+modelo.
 
 Cada salvamento insere uma linha imutável em `ia_configuracoes`; a maior `id` é a versão ativa e as
 anteriores formam o histórico. A tabela tem RLS ligada, privilégios de `anon`/`authenticated`
@@ -2467,6 +2476,39 @@ Exigiria textos de anúncio reais, não endereços reconstruídos.
 quase igual (~3,5%), mas **custam muito diferente por tentativa** — abordar na OLX é escrever uma
 mensagem; no garimpo é achar endereço, rodar o eemovel e cadastrar. A vantagem da OLX é custo por
 tentativa, não conversão.
+
+### Garimpo em Campo: a tela fala a língua da rua (C9.1)
+
+O módulo guarda `avistamento`, `classificacao`, `snapshot_aplicado`, `inferida/confirmada/contestada/
+desatualizada/substituida` no banco, nos tipos, nas RPCs e nos nomes de arquivo, e **nada disso
+aparece para o corretor**. A camada de apresentação (`components/prospeccao/*`) traduz, em duas
+camadas: a primeira diz o que o sistema percebeu, se ainda vale, o que mudou, se há algo a fazer e
+quando foi; a segunda, atrás de "Ver detalhes" (`<details>` nativo, fechado por padrão), guarda a
+auditoria: origem, análise nova × reaproveitada, apoio no texto, data, revisão, passagem de origem.
+
+Vocabulário público, e o que ele NÃO muda: **passagem** (= avistamento; "visita" foi rejeitado por
+colidir com visita de cliente; `aria-label` é interface, então também diz passagem); marcas de
+etiqueta **sugestão / confirmado / incorreta / texto mudou / substituída / visto antes / manual**
+(= inferida / confirmada / contestada / desatualizada / substituida / histórica / manual); **Analisado
+pela IA** e **Já tínhamos analisado uma observação igual** (= `modo` modelo / reuso, sem falar em
+token, custo ou chamada); **Estas informações refletem a passagem mais recente** / **Registro
+anterior; as informações atuais vêm da passagem mais recente** (= `snapshot_aplicado` cruzado com
+"é a passagem corrente"; a coluna não muda e nunca é dita); **apoio no texto: forte (92 de 100)** (=
+`confianca`, faixas de apresentação ≥ 90 / 70–89 / < 70, sem porcentagem, sempre com a nota de que
+não é probabilidade de acerto; o piso 70 das etiquetas segue no cálculo). Confirmar uma sugestão de
+tipo continua sendo confirmar a sugestão: a origem `ia-texto` não vira manual.
+
+O painel segue a ordem da leitura em campo: cabeçalho, **Precisa de atenção** (só quando há:
+conflito de revisão, falha da análise com motivo, texto corrigido aguardando análise, sugestões não
+confirmadas; nível declarado em atributo e em texto, nunca só na cor), **O que sabemos agora**,
+ações recolhidas (corrigir o texto, informar o tipo), **Visto anteriormente**, **Histórico de
+passagens**, localização e duplicatas, **Detalhes da análise**, e só no fim descartar/excluir. O
+motivo de uma falha de análise é estado transitório de tela (`falhaAnalise` no `useProspeccao`):
+só o código fechado da rota, preso ao avistamento em que falhou, apagado na próxima tentativa, no
+sucesso, ao trocar de imóvel e ao limpar a seleção; a tradução para frase humana é um mapa fechado
+(`textosAnalise.ts`), e mensagem bruta de fornecedor nunca chega à tela. Limitação conhecida: os
+chips e o indicador "N sugestões a confirmar" do card só existem para o imóvel selecionado, porque
+só ele tem as etiquetas carregadas; o card não promete o que não tem.
 
 ## O super admin: operar o sistema ≠ usar o sistema
 

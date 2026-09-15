@@ -605,15 +605,23 @@ export default function CapturaFachada({
     return (
       <div className={styles.fotoFachada}>
         {urlAssinada && !imagemIndisponivel ? (
-          <Image
-            loader={manterUrlAssinada}
-            unoptimized
-            src={urlAssinada}
-            alt="Fachada registrada neste avistamento"
-            width={640}
-            height={400}
-            onError={() => setImagemIndisponivel(true)}
-          />
+          <a
+            className={styles.fotoFachadaLink}
+            href={urlAssinada}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Abrir foto em tamanho original"
+          >
+            <Image
+              loader={manterUrlAssinada}
+              unoptimized
+              src={urlAssinada}
+              alt="Fachada registrada nesta passagem"
+              width={640}
+              height={400}
+              onError={() => setImagemIndisponivel(true)}
+            />
+          </a>
         ) : (
           <span className={styles.imagemIndisponivel}>
             {!imagemIndisponivel ? "Carregando imagem…" : "Imagem indisponível"}
@@ -641,7 +649,7 @@ export default function CapturaFachada({
           aria-label="Progresso por etapas do envio da foto"
         />
       ) : null}
-      {etapa === "pronto" ? <p>Salve o avistamento para iniciar o envio.</p> : null}
+      {etapa === "pronto" ? <p>Salve a passagem para iniciar o envio.</p> : null}
       {etapa === "envio-nao-concluido" || etapa === "erro-recuperavel" ? (
         <p>A foto foi preservada e qualquer reserva existente será reutilizada na nova tentativa.</p>
       ) : null}

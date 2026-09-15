@@ -8,6 +8,7 @@ import {
   ErroProspeccao,
   acrescentarAvistamento,
   aplicarEtiquetaHumana,
+  atualizarEnderecoIdentificado,
   confirmarEtiqueta,
   contestarEtiqueta,
   corrigirObservacaoAvistamento,
@@ -15,6 +16,7 @@ import {
   definirTipoManual,
   descartarIdentificado,
   finalizarFotoAvistamento,
+  fundirIdentificados,
   listarIdentificados,
   obterIdentificado,
   reservarFotoAvistamento,
@@ -451,6 +453,53 @@ describe("fronteira de dados do Garimpo em Campo", () => {
     expect(atualizar.update).toHaveBeenCalledWith({ observacao: "Observação corrigida" });
   });
 
+  it("informa o endereço depois do cadastro: só colunas de endereço, com as chaves de dedupe recalculadas como no cadastro", async () => {
+    const atualizar = consulta({
+      data: linhaIdentificado({ logradouro: "Rua das Palmeiras", numero: "120", endereco_chave: "rua das palmeiras 120|londrina||" }),
+      error: null,
+    });
+    const client = clienteFalso({ imoveis_identificados: [atualizar] });
+
+    const identificado = await atualizarEnderecoIdentificado(
+      "identificado-1",
+      { logradouro: " Rua das Palmeiras ", numero: "120", bairro: " Centro ", cidade: "Londrina", estado: "pr", cep: "", pontoReferencia: "  " },
+      client as never,
+    );
+
+    // Nenhuma coluna fora do endereço: nem tipo, nem origem, nem
+    // localização, nem agregados — o grant de update não as concede e a
+    // função não as pede.
+    expect(atualizar.update).toHaveBeenCalledWith({
+      logradouro: "Rua das Palmeiras",
+      numero: "120",
+      unidade: null,
+      bloco: null,
+      edificio: null,
+      bairro: "Centro",
+      cidade: "Londrina",
+      estado: "PR",
+      cep: null,
+      ponto_referencia: null,
+      endereco_chave: "rua das palmeiras 120|londrina||",
+      cidade_chave: "londrina",
+      bairro_chave: "centro",
+    });
+    expect(atualizar.eq).toHaveBeenCalledWith("id", "identificado-1");
+    expect(identificado.logradouro).toBe("Rua das Palmeiras");
+
+    // Sem rua nem número a chave volta a vazio (o índice parcial ignora ''), e o
+    // ponto de referência entra sozinho.
+    const limpar = consulta({ data: linhaIdentificado(), error: null });
+    await atualizarEnderecoIdentificado(
+      "identificado-1",
+      { pontoReferencia: "Ao lado do mercado", cidade: "Londrina" },
+      clienteFalso({ imoveis_identificados: [limpar] }) as never,
+    );
+    expect(limpar.update).toHaveBeenCalledWith(expect.objectContaining({
+      logradouro: null, numero: null, endereco_chave: "", cidade_chave: "londrina", ponto_referencia: "Ao lado do mercado",
+    }));
+  });
+
   it("reserva e finaliza a foto só pelas RPCs, sem fazer upload", async () => {
     const rpc = vi
       .fn()
@@ -544,10 +593,15 @@ describe("isolamento arquitetural do C3", () => {
     const fachada = readFileSync(resolve("lib/prospeccao.ts"), "utf8");
     const estado = readFileSync(resolve("lib/useProspeccao.ts"), "utf8");
 
-    // A única rota que a fronteira conhece é a de exclusão coordenada (C5b):
-    // o navegador nunca toca o Storage nem apaga linha por conta própria.
+    // As únicas rotas que a fronteira conhece são as duas da V7 §19: a
+    // classificação por IA (C8), que manda SÓ o id do avistamento, e a
+    // exclusão coordenada (C5b). O navegador nunca toca o Storage, nunca
+    // apaga linha e nunca manda texto para o modelo por conta própria.
     expect(fachada).not.toMatch(/\.storage\b|\.delete\s*\(/);
-    expect([...new Set(fachada.match(/\/api\/[\w/-]*/g))]).toEqual(["/api/prospeccao/excluir"]);
+    expect([...new Set(fachada.match(/\/api\/[\w/-]*/g))].sort()).toEqual([
+      "/api/prospeccao/classificar",
+      "/api/prospeccao/excluir",
+    ]);
     expect(fachada).not.toContain('.from("imoveis")');
     expect(estado).not.toMatch(/from ["']\.\/store["']|from ["']@\/lib\/store["']/);
     expect(estado).toContain('"use client"');
@@ -566,5 +620,41 @@ describe("isolamento arquitetural do C3", () => {
       const atual = readFileSync(resolve("..", arquivo), "utf8");
       expect(atual.replace(/\r\n/g, "\n")).toBe(naBase.replace(/\r\n/g, "\n"));
     }
+  });
+});
+
+describe("C7b — fronteira da RPC canônica", () => {
+  const a = "10000000-0000-4000-8000-000000000001";
+  const b = "10000000-0000-4000-8000-000000000002";
+
+  it.each([false, true])("confirma repetida=%s com uma única RPC e nenhuma escrita direta", async (repetida) => {
+    const rpc = vi.fn().mockResolvedValue({ data: { ok: true, repetida, sobrevivente_id: b, absorvido_id: a }, error: null });
+    const client = clienteFalso({}, rpc);
+    expect(await fundirIdentificados(b, a, client as never)).toEqual({ sobreviventeId: b, absorvidoId: a, repetida });
+    expect(rpc).toHaveBeenCalledExactlyOnceWith("fundir_imoveis_identificados", { p_sobrevivente_id: b, p_absorvido_id: a });
+    expect(client.from).not.toHaveBeenCalled();
+  });
+
+  it.each(["exclusao_em_andamento", "situacao_incompativel", "fusao_em_si_mesmo"])("preserva recusa %s do banco", async (codigo) => {
+    const client = clienteFalso({}, vi.fn().mockResolvedValue({ data: { ok: false, codigo }, error: null }));
+    await expect(fundirIdentificados(b, a, client as never)).rejects.toMatchObject({ codigo });
+    expect(client.from).not.toHaveBeenCalled();
+  });
+
+  it("apresenta o erro real quando o banco não retorna código conhecido", async () => {
+    const client = clienteFalso({}, vi.fn().mockResolvedValue({ data: null, error: { code: "P0001", message: "Operação recusada pelo banco." } }));
+    await expect(fundirIdentificados(b, a, client as never)).rejects.toThrow("Operação recusada pelo banco.");
+  });
+
+  it("recusa auto-merge e IDs inválidos antes de chamar o banco", async () => {
+    const client = clienteFalso({});
+    await expect(fundirIdentificados(a, a, client as never)).rejects.toBeInstanceOf(ErroProspeccao);
+    await expect(fundirIdentificados("rascunho", a, client as never)).rejects.toBeInstanceOf(ErroProspeccao);
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
+
+  it("não declara sucesso com resposta de outro par", async () => {
+    const client = clienteFalso({}, vi.fn().mockResolvedValue({ data: { ok: true, repetida: false, sobrevivente_id: a, absorvido_id: b }, error: null }));
+    await expect(fundirIdentificados(b, a, client as never)).rejects.toMatchObject({ codigo: "resposta_rpc_invalida" });
   });
 });

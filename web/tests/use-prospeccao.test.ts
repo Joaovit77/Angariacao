@@ -8,13 +8,17 @@ const mocks = vi.hoisted(() => ({
   corrigirObservacaoAvistamento: vi.fn(),
   reservarFotoAvistamento: vi.fn(),
   finalizarFotoAvistamento: vi.fn(),
+  fundirIdentificados: vi.fn(),
   descartarIdentificado: vi.fn(),
   aplicarEtiquetaHumana: vi.fn(),
   confirmarEtiqueta: vi.fn(),
   contestarEtiqueta: vi.fn(),
   definirTipoManual: vi.fn(),
+  atualizarEnderecoIdentificado: vi.fn(),
   excluirIdentificado: vi.fn(),
   cancelarExclusaoIdentificado: vi.fn(),
+  classificarAvistamento: vi.fn(),
+  confirmarTipoIdentificado: vi.fn(),
   removerFotoAvistamento: vi.fn(),
   previaExclusaoIdentificado: vi.fn(),
   buscarCandidatosDuplicidade: vi.fn(),
@@ -90,7 +94,7 @@ describe("estado local do Garimpo em Campo", () => {
       new Promise((resolve) => { concluirCriacao = resolve; }),
     );
     mocks.obterIdentificado.mockResolvedValue(detalhe("novo", ["avistamento-1"]));
-    useProspeccao.setState({ itens: [identificado("anterior")] });
+    useProspeccao.setState({ itens: [identificado("anterior")], total: 1 });
 
     const criacao = useProspeccao.getState().criar(
       "usuario-1",
@@ -114,6 +118,7 @@ describe("estado local do Garimpo em Campo", () => {
       selecionadoId: "novo",
       detalhe: { identificado: { id: "novo" } },
       itens: [{ id: "novo" }, { id: "anterior" }],
+      total: 2,
     });
   });
 
@@ -413,5 +418,220 @@ describe("C7 — dedupe no estado local: liga fronteira e núcleo, sem tocar o e
     mocks.buscarCandidatosDuplicidade.mockRejectedValue(new Error("rls"));
     expect(await useProspeccao.getState().buscarDuplicatas(alvo)).toBeNull();
     expect(useProspeccao.getState().erro).toBeNull();
+  });
+});
+
+describe("merge no hook", () => {
+  const resposta = { sobreviventeId: "principal", absorvidoId: "absorvido", repetida: false };
+  const pagina = (itens: ImovelIdentificado[]) => ({ itens, pagina: 1, porPagina: 24, total: itens.length, temMais: false });
+
+  it("aguarda a RPC, bloqueia chamada simultânea e publica lista/histórico somente após as leituras", async () => {
+    let concluir!: (r: unknown) => void;
+    mocks.fundirIdentificados.mockReturnValue(new Promise((resolve) => { concluir = resolve; }));
+    const antigo = detalhe("absorvido", ["evento-a"]);
+    const unido = detalhe("principal", ["evento-b", "evento-a"]);
+    useProspeccao.setState({ itens: [antigo.identificado, unido.identificado], detalhe: antigo, selecionadoId: "absorvido" });
+    mocks.listarIdentificados.mockResolvedValue(pagina([unido.identificado]));
+    mocks.obterIdentificado.mockResolvedValue(unido);
+    const operacao = useProspeccao.getState().fundir("principal", "absorvido");
+    expect(useProspeccao.getState().detalhe).toBe(antigo);
+    expect(mocks.listarIdentificados).not.toHaveBeenCalled();
+    await expect(useProspeccao.getState().fundir("principal", "absorvido")).resolves.toBeNull();
+    expect(mocks.fundirIdentificados).toHaveBeenCalledTimes(1);
+    concluir(resposta);
+    await expect(operacao).resolves.toEqual(resposta);
+    expect(useProspeccao.getState()).toMatchObject({
+      itens: [unido.identificado], detalhe: unido, selecionadoId: "principal", salvando: false, revisaoFusao: 1,
+    });
+  });
+
+  it("retorno repetido recupera o histórico, inclusive classificações já abertas e filtro de ocultos", async () => {
+    const lapide = { ...identificado("absorvido"), situacao: "fundido" } as ImovelIdentificado;
+    const unido = detalhe("principal", ["evento-a", "evento-b"]);
+    useProspeccao.setState({ incluirOcultos: true, detalhe: { ...detalhe("absorvido"), classificacoesCarregadas: true } });
+    mocks.fundirIdentificados.mockResolvedValue({ ...resposta, repetida: true });
+    mocks.listarIdentificados.mockResolvedValue(pagina([lapide, unido.identificado]));
+    mocks.obterIdentificado.mockResolvedValue(unido);
+    await useProspeccao.getState().fundir("principal", "absorvido");
+    expect(mocks.listarIdentificados).toHaveBeenCalledWith({ pagina: 1, porPagina: 24, incluirOcultos: true });
+    expect(mocks.obterIdentificado).toHaveBeenCalledWith("principal", { incluirClassificacoes: true });
+    expect(useProspeccao.getState().itens).toEqual([lapide, unido.identificado]);
+  });
+
+  it("erro da RPC mantém o retrato anterior e não recarrega nem declara sucesso", async () => {
+    const antigo = detalhe("absorvido");
+    useProspeccao.setState({ detalhe: antigo, itens: [antigo.identificado] });
+    mocks.fundirIdentificados.mockRejectedValue(new Error("Exclusão em andamento."));
+    await expect(useProspeccao.getState().fundir("principal", "absorvido")).resolves.toBeNull();
+    expect(useProspeccao.getState()).toMatchObject({ detalhe: antigo, itens: [antigo.identificado], erro: "Exclusão em andamento.", salvando: false });
+    expect(mocks.listarIdentificados).not.toHaveBeenCalled();
+    expect(mocks.obterIdentificado).not.toHaveBeenCalled();
+  });
+
+  it("falha de releitura após confirmação descarta o retrato antigo e recupera só por leitura", async () => {
+    useProspeccao.setState({ itens: [identificado("absorvido")], detalhe: detalhe("absorvido") });
+    mocks.fundirIdentificados.mockResolvedValue(resposta);
+    mocks.listarIdentificados.mockRejectedValueOnce(new Error("Sem conexão."));
+    mocks.obterIdentificado.mockResolvedValue(detalhe("principal"));
+    await expect(useProspeccao.getState().fundir("principal", "absorvido")).resolves.toEqual(resposta);
+    expect(useProspeccao.getState()).toMatchObject({ itens: [], detalhe: null, erro: null, salvando: false });
+    expect(useProspeccao.getState().aviso).toContain("Os registros foram unidos");
+    mocks.listarIdentificados.mockResolvedValue(pagina([identificado("principal")]));
+    await useProspeccao.getState().carregarPagina();
+    expect(useProspeccao.getState().aviso).toBeNull();
+    expect(mocks.fundirIdentificados).toHaveBeenCalledTimes(1);
+  });
+
+  it("resposta antiga não repõe dados depois de resetar a sessão", async () => {
+    let concluir!: (r: unknown) => void;
+    mocks.fundirIdentificados.mockReturnValue(new Promise((resolve) => { concluir = resolve; }));
+    const operacao = useProspeccao.getState().fundir("principal", "absorvido");
+    useProspeccao.getState().resetar();
+    concluir(resposta);
+    await expect(operacao).resolves.toBeNull();
+    expect(useProspeccao.getState()).toMatchObject({ itens: [], detalhe: null, salvando: false, revisaoFusao: 0 });
+    expect(mocks.listarIdentificados).not.toHaveBeenCalled();
+  });
+});
+
+describe("C8 — classificação por IA no estado local", () => {
+  const RESPOSTA = {
+    ok: true, repetida: false, estado: "concluida", modo: "modelo",
+    etiquetas: [{ categoria: "sinal-de-prospeccao", codigo: "imovel-fechado", confianca: 90 }],
+    tipo: null, snapshotAplicado: true, falha: null,
+  };
+
+  function esperarSegundoPlano() {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  it("avistamento salvo dispara a classificação em segundo plano, com o id do avistamento criado", async () => {
+    mocks.criarIdentificado.mockResolvedValue({ identificado: identificado("novo"), avistamento: { id: "av-1" } });
+    mocks.acrescentarAvistamento.mockResolvedValue({ id: "av-2" });
+    mocks.corrigirObservacaoAvistamento.mockResolvedValue({ id: "av-2" });
+    mocks.obterIdentificado.mockImplementation(async (id: string) => detalhe(id, ["av-1", "av-2"]));
+    mocks.classificarAvistamento.mockResolvedValue(RESPOSTA);
+
+    await expect(useProspeccao.getState().criar("usuario-1", {} as never, {} as never)).resolves.toBe(true);
+    await expect(useProspeccao.getState().adicionarAvistamento("usuario-1", "novo", {} as never)).resolves.toBe(true);
+    await expect(useProspeccao.getState().corrigirObservacao("novo", "av-2", "Texto corrigido")).resolves.toBe(true);
+    await esperarSegundoPlano();
+
+    expect(mocks.classificarAvistamento.mock.calls.map(([id]) => id)).toEqual(["av-1", "av-2", "av-2"]);
+    // A gravação não espera a classificação: `salvando` já voltou a false antes.
+    expect(useProspeccao.getState()).toMatchObject({ salvando: false, erro: null, classificandoAvistamentoId: null });
+  });
+
+  it("IA indisponível não vira erro na tela: relê o detalhe e segue", async () => {
+    mocks.obterIdentificado.mockResolvedValue(detalhe("identificado-1", ["av-1"]));
+    await useProspeccao.getState().carregarDetalhe("identificado-1");
+    mocks.obterIdentificado.mockClear();
+    mocks.classificarAvistamento.mockResolvedValue({ ...RESPOSTA, ok: false, estado: null, etiquetas: [], falha: "nao-configurado" });
+
+    const resultado = await useProspeccao.getState().classificarAvistamento("identificado-1", "av-1");
+    expect(resultado).toMatchObject({ ok: false, falha: "nao-configurado" });
+    expect(mocks.obterIdentificado).toHaveBeenCalledWith("identificado-1", { incluirClassificacoes: false });
+    expect(useProspeccao.getState()).toMatchObject({ erro: null, salvando: false, classificandoAvistamentoId: null });
+  });
+
+  it("sem resposta da rota nada muda e nada é relido; a mesma classificação não roda duas vezes ao mesmo tempo", async () => {
+    mocks.obterIdentificado.mockResolvedValue(detalhe("identificado-1", ["av-1"]));
+    await useProspeccao.getState().carregarDetalhe("identificado-1");
+    mocks.obterIdentificado.mockClear();
+    let concluir!: (r: unknown) => void;
+    mocks.classificarAvistamento.mockReturnValue(new Promise((resolve) => { concluir = resolve; }));
+
+    const primeira = useProspeccao.getState().classificarAvistamento("identificado-1", "av-1");
+    expect(useProspeccao.getState().classificandoAvistamentoId).toBe("av-1");
+    await expect(useProspeccao.getState().classificarAvistamento("identificado-1", "av-1")).resolves.toBeNull();
+    expect(mocks.classificarAvistamento).toHaveBeenCalledTimes(1);
+
+    concluir(undefined);
+    await expect(primeira).resolves.toBeNull();
+    expect(mocks.obterIdentificado).not.toHaveBeenCalled();
+    expect(useProspeccao.getState()).toMatchObject({ erro: null, classificandoAvistamentoId: null });
+  });
+
+  /* C9.1: o motivo da última falha é estado TRANSITÓRIO de tela, preso ao
+     avistamento em que falhou. Só o código fechado da rota; nunca a
+     mensagem bruta. Some na próxima tentativa, no sucesso, ao trocar de
+     imóvel e ao limpar a seleção. */
+  it("falha guarda só o código, preso ao avistamento; sucesso limpa; nova tentativa apaga o anterior", async () => {
+    mocks.obterIdentificado.mockResolvedValue(detalhe("identificado-1", ["av-1", "av-2"]));
+    await useProspeccao.getState().carregarDetalhe("identificado-1");
+    mocks.classificarAvistamento.mockResolvedValue({ ...RESPOSTA, ok: false, estado: null, etiquetas: [], falha: "limite-diario" });
+
+    await useProspeccao.getState().classificarAvistamento("identificado-1", "av-1");
+    expect(useProspeccao.getState().falhaAnalise).toEqual({ avistamentoId: "av-1", codigo: "limite-diario" });
+    expect(JSON.stringify(useProspeccao.getState().falhaAnalise)).not.toMatch(/Error|openai|exception/i);
+
+    // Sucesso em OUTRO avistamento não apaga o motivo de av-1 (é dele, não do imóvel).
+    mocks.classificarAvistamento.mockResolvedValue(RESPOSTA);
+    await useProspeccao.getState().classificarAvistamento("identificado-1", "av-2");
+    expect(useProspeccao.getState().falhaAnalise).toEqual({ avistamentoId: "av-1", codigo: "limite-diario" });
+
+    // Nova tentativa em av-1 apaga o motivo enquanto roda; sucesso deixa limpo.
+    let concluir!: (r: unknown) => void;
+    mocks.classificarAvistamento.mockReturnValue(new Promise((resolve) => { concluir = resolve; }));
+    const tentativa = useProspeccao.getState().classificarAvistamento("identificado-1", "av-1");
+    expect(useProspeccao.getState().falhaAnalise).toBeNull();
+    concluir(RESPOSTA);
+    await tentativa;
+    expect(useProspeccao.getState().falhaAnalise).toBeNull();
+  });
+
+  it("sem resposta da rota o motivo é 'indisponivel'; trocar de imóvel ou limpar a seleção apaga o motivo", async () => {
+    mocks.obterIdentificado.mockResolvedValue(detalhe("identificado-1", ["av-1"]));
+    await useProspeccao.getState().carregarDetalhe("identificado-1");
+    mocks.classificarAvistamento.mockRejectedValue(new Error("ECONNRESET: mensagem bruta que não pode ir para a tela"));
+    await useProspeccao.getState().classificarAvistamento("identificado-1", "av-1");
+    expect(useProspeccao.getState().falhaAnalise).toEqual({ avistamentoId: "av-1", codigo: "indisponivel" });
+
+    // Outro imóvel carregado: o motivo de av-1 não tem o que dizer sobre ele.
+    mocks.obterIdentificado.mockResolvedValue(detalhe("identificado-2", ["av-9"]));
+    await useProspeccao.getState().carregarDetalhe("identificado-2");
+    expect(useProspeccao.getState().falhaAnalise).toBeNull();
+
+    mocks.classificarAvistamento.mockResolvedValue({ ...RESPOSTA, ok: false, estado: null, etiquetas: [], falha: "ocupado" });
+    await useProspeccao.getState().classificarAvistamento("identificado-2", "av-9");
+    expect(useProspeccao.getState().falhaAnalise).toEqual({ avistamentoId: "av-9", codigo: "ocupado" });
+    useProspeccao.getState().limparSelecao();
+    expect(useProspeccao.getState().falhaAnalise).toBeNull();
+  });
+
+  it("confirmar tipo passa pela RPC do navegador e atualiza o detalhe", async () => {
+    mocks.obterIdentificado.mockResolvedValue(detalhe("identificado-1", ["av-1"]));
+    mocks.confirmarTipoIdentificado.mockResolvedValue({ repetida: false });
+    await expect(useProspeccao.getState().confirmarTipo("identificado-1")).resolves.toBe(true);
+    expect(mocks.confirmarTipoIdentificado).toHaveBeenCalledWith("identificado-1");
+    expect(useProspeccao.getState()).toMatchObject({ salvando: false, erro: null, detalhe: { identificado: { id: "identificado-1" } } });
+
+    mocks.confirmarTipoIdentificado.mockRejectedValue(new Error("tipo_nao_inferido"));
+    await expect(useProspeccao.getState().confirmarTipo("identificado-1")).resolves.toBe(false);
+    expect(useProspeccao.getState().erro).toBe("Não foi possível confirmar o tipo do imóvel.");
+  });
+
+  it("informar o endereço grava só pela fronteira e relê o detalhe; a lista recebe o endereço novo", async () => {
+    mocks.obterIdentificado.mockResolvedValue(detalhe("identificado-1", ["av-1"]));
+    await useProspeccao.getState().carregarDetalhe("identificado-1");
+    const atualizado = detalhe("identificado-1", ["av-1"]);
+    atualizado.identificado = { ...atualizado.identificado, logradouro: "Rua das Palmeiras", numero: "120" };
+    mocks.obterIdentificado.mockResolvedValue(atualizado);
+    mocks.atualizarEnderecoIdentificado.mockResolvedValue(atualizado.identificado);
+
+    await expect(useProspeccao.getState().definirEndereco(
+      "identificado-1",
+      { logradouro: "Rua das Palmeiras", numero: "120", cidade: "Londrina" },
+    )).resolves.toBe(true);
+    expect(mocks.atualizarEnderecoIdentificado).toHaveBeenCalledWith(
+      "identificado-1",
+      { logradouro: "Rua das Palmeiras", numero: "120", cidade: "Londrina" },
+    );
+    expect(useProspeccao.getState().detalhe?.identificado.logradouro).toBe("Rua das Palmeiras");
+    expect(useProspeccao.getState().itens.find((item) => item.id === "identificado-1")?.logradouro).toBe("Rua das Palmeiras");
+
+    mocks.atualizarEnderecoIdentificado.mockRejectedValue(new Error("42501"));
+    await expect(useProspeccao.getState().definirEndereco("identificado-1", { logradouro: "Outra" })).resolves.toBe(false);
+    expect(useProspeccao.getState().erro).toBe("Não foi possível salvar o endereço.");
   });
 });

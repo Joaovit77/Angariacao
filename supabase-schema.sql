@@ -7796,3 +7796,573 @@ grant execute on function public.receber_repasses_em_lote(uuid, uuid[], date) to
 
 
 notify pgrst, 'reload schema';
+
+-- Garimpo em Campo — correção contratual da RPC de merge (V7, §12.1).
+-- Substitui somente o lock e a precedência das validações da definição C2e.
+-- Uma chave user_id|menor_id|maior_id; exclusão bloqueia também a repetição.
+-- Assinatura e permissões existentes são preservadas por CREATE OR REPLACE.
+-- Lápide, histórico, denormalizados, agregados e tipo permanecem intactos.
+
+create or replace function public.fundir_imoveis_identificados(
+  p_sobrevivente_id uuid,
+  p_absorvido_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := (select auth.uid());
+  v_sobrevivente public.imoveis_identificados;
+  v_absorvido public.imoveis_identificados;
+  v_movidos integer := 0;
+  v_lapides integer := 0;
+begin
+  if v_user is null then
+    raise exception 'Sessão autenticada obrigatória.' using errcode = '42501';
+  end if;
+  if p_sobrevivente_id is null or p_absorvido_id is null then
+    raise exception 'Os dois registros da fusão são obrigatórios.' using errcode = '22023';
+  end if;
+  -- Par canônico da V7: A/B e B/A disputam o mesmo lock transacional.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(
+      v_user::text || '|' || least(p_sobrevivente_id::text, p_absorvido_id::text)
+        || '|' || greatest(p_sobrevivente_id::text, p_absorvido_id::text),
+      0
+    )
+  );
+
+  select i.* into v_sobrevivente
+    from public.imoveis_identificados i
+   where i.id = p_sobrevivente_id and i.user_id = v_user
+   for update;
+  select i.* into v_absorvido
+    from public.imoveis_identificados i
+   where i.id = p_absorvido_id and i.user_id = v_user
+   for update;
+
+  if v_sobrevivente.id is null or v_absorvido.id is null then
+    raise exception 'Imóvel identificado não encontrado.' using errcode = 'P0002';
+  end if;
+
+  if p_sobrevivente_id = p_absorvido_id then
+    return jsonb_build_object('ok', false, 'codigo', 'fusao_em_si_mesmo');
+  end if;
+
+  -- Exclusão bloqueia os dois lados, inclusive uma repetição já concluída.
+  if v_sobrevivente.exclusao_solicitada_em is not null
+     or v_absorvido.exclusao_solicitada_em is not null then
+    return jsonb_build_object('ok', false, 'codigo', 'exclusao_em_andamento');
+  end if;
+
+  -- Já fundido NESTE sobrevivente e sem exclusão pendente: idempotente.
+  if v_absorvido.situacao = 'fundido'
+     and v_absorvido.fundido_em_imovel_id = p_sobrevivente_id then
+    return jsonb_build_object('ok', true, 'repetida', true,
+      'sobrevivente_id', p_sobrevivente_id, 'absorvido_id', p_absorvido_id);
+  end if;
+
+  -- Lápide nem absorve nem é absorvida de novo; promovido/promovendo ficariam
+  -- com o vínculo do Pipeline órfão. É o que torna cadeia e loop impossíveis.
+  if v_sobrevivente.situacao in ('fundido', 'promovido', 'promovendo')
+     or v_absorvido.situacao in ('fundido', 'promovido', 'promovendo') then
+    return jsonb_build_object('ok', false, 'codigo', 'situacao_incompativel',
+      'sobrevivente', v_sobrevivente.situacao, 'absorvido', v_absorvido.situacao);
+  end if;
+
+  -- 1. A lápide primeiro: é ela que autoriza o reparenteamento no gatilho.
+  update public.imoveis_identificados i
+     set situacao = 'fundido',
+         fundido_em = now(),
+         fundido_em_imovel_id = p_sobrevivente_id
+   where i.id = p_absorvido_id;
+
+  -- 2. Ponteiro canônico: quem apontava para o absorvido passa a apontar o
+  --    sobrevivente. Nunca se forma cadeia A→B→C.
+  update public.imoveis_identificados i
+     set fundido_em_imovel_id = p_sobrevivente_id
+   where i.user_id = v_user
+     and i.fundido_em_imovel_id = p_absorvido_id
+     and i.id <> p_absorvido_id;
+  get diagnostics v_lapides = row_count;
+
+  -- 3. Histórico muda de pai preservando `id`, `observado_em` e revisão. O
+  --    gatilho do C2c recalcula os dois lados a cada linha movida.
+  update public.imoveis_identificados_avistamentos a
+     set imovel_identificado_id = p_sobrevivente_id
+   where a.imovel_identificado_id = p_absorvido_id;
+  get diagnostics v_movidos = row_count;
+
+  -- 4. O denormalizado acompanha. Caminho de Storage NÃO muda.
+  update public.imoveis_identificados_fotos f
+     set imovel_identificado_id = p_sobrevivente_id
+   where f.imovel_identificado_id = p_absorvido_id;
+
+  update public.imoveis_identificados_classificacoes c
+     set imovel_identificado_id = p_sobrevivente_id
+   where c.imovel_identificado_id = p_absorvido_id;
+
+  update public.imoveis_identificados_etiquetas e
+     set imovel_identificado_id = p_sobrevivente_id
+   where e.imovel_identificado_id = p_absorvido_id;
+
+  -- 5. Recálculo explícito dos DOIS lados: determinístico mesmo quando zero
+  --    avistamentos se moveram. É total, logo idempotente.
+  perform private.recalcular_agregados_identificado(p_absorvido_id);
+  perform private.recalcular_agregados_identificado(p_sobrevivente_id);
+
+  -- 6. Tipo NÃO é reinferido: é decisão, não derivação. Só herda quando o
+  --    sobrevivente não tinha nenhum, e aí a proveniência vem inteira.
+  if v_sobrevivente.tipo is null and v_absorvido.tipo is not null then
+    update public.imoveis_identificados i
+       set tipo = v_absorvido.tipo,
+           tipo_origem = v_absorvido.tipo_origem,
+           tipo_confianca = v_absorvido.tipo_confianca,
+           tipo_estado = v_absorvido.tipo_estado,
+           tipo_definido_em = v_absorvido.tipo_definido_em,
+           tipo_classificacao_id = v_absorvido.tipo_classificacao_id,
+           tipo_avistamento_id = v_absorvido.tipo_avistamento_id,
+           tipo_confirmado_por = v_absorvido.tipo_confirmado_por,
+           tipo_confirmado_em = v_absorvido.tipo_confirmado_em
+     where i.id = p_sobrevivente_id;
+  end if;
+
+  return jsonb_build_object(
+    'ok', true, 'repetida', false,
+    'sobrevivente_id', p_sobrevivente_id,
+    'absorvido_id', p_absorvido_id,
+    'avistamentos_movidos', v_movidos,
+    'lapides_repontuadas', v_lapides
+  );
+end;
+$$;
+
+-- Garimpo em Campo — correção contratual do reuso em concluir_classificacao (V7, §8.3).
+-- Substitui somente a seleção de origem do ramo `modo='reuso'` da definição C2d:
+-- a fonte é a execução apontada por `reusada_de_classificacao_id`, e o estado
+-- mutável das linhas dela deixa de condicionar a cópia. Caso que motivou: rev 1
+-- classificada, rev 2 corrige o texto (etiquetas viram `desatualizada`), rev 3
+-- volta ao texto original — o reuso concluía com zero etiquetas.
+-- Assinatura, permissões, claim, supersessão, `ja_confirmada`, snapshot temporal
+-- e o ramo modelo permanecem intactos por CREATE OR REPLACE.
+
+create or replace function public.concluir_classificacao(
+  p_user_id uuid,
+  p_run_id uuid,
+  p_lease_token uuid,
+  p_tipo_sugerido text,
+  p_tipo_confianca smallint,
+  p_etiquetas jsonb,
+  p_contadores jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_jwt uuid := (select auth.uid());
+  v_run public.imoveis_identificados_classificacoes;
+  v_avistamento public.imoveis_identificados_avistamentos;
+  v_identidade public.imoveis_identificados;
+  v_etiquetas jsonb;
+  v_tipo text;
+  v_tipo_confianca smallint;
+  v_corrente boolean;
+  v_aplica_tipo boolean;
+  v_ja_confirmada integer := 0;
+  v_reafirmadas integer := 0;
+  v_inseridas integer := 0;
+begin
+  if p_user_id is null then
+    raise exception 'Usuário do servidor obrigatório.' using errcode = '42501';
+  end if;
+  if v_jwt is not null and v_jwt <> p_user_id then
+    raise exception 'Usuário do servidor divergente da sessão.' using errcode = '42501';
+  end if;
+
+  select c.* into v_run
+    from public.imoveis_identificados_classificacoes c
+   where c.id = p_run_id
+     and c.user_id = p_user_id
+   for update;
+
+  if v_run.id is null then
+    raise exception 'Execução de classificação não encontrada.' using errcode = 'P0002';
+  end if;
+
+  -- Idempotência do fecho: concluir de novo não duplica etiqueta nem contador.
+  if v_run.estado = 'concluida' then
+    return jsonb_build_object('ok', true, 'repetida', true, 'run_id', v_run.id);
+  end if;
+
+  if v_run.estado <> 'processando'
+     or v_run.lease_token is null
+     or v_run.lease_token <> p_lease_token
+     or v_run.lease_expira_em <= now() then
+    return jsonb_build_object('ok', false, 'codigo', 'lease_invalido');
+  end if;
+
+  select a.* into v_avistamento
+    from public.imoveis_identificados_avistamentos a
+   where a.id = v_run.avistamento_id;
+
+  select i.* into v_identidade
+    from public.imoveis_identificados i
+   where i.id = v_run.imovel_identificado_id
+   for update;
+
+  -- Exclusão iniciada depois do claim: não conclui, não toca o avistamento.
+  if v_identidade.exclusao_solicitada_em is not null then
+    update public.imoveis_identificados_classificacoes
+       set estado = 'abandonada', lease_token = null, lease_expira_em = null
+     where id = v_run.id;
+    return jsonb_build_object('ok', false, 'codigo', 'exclusao_em_andamento');
+  end if;
+
+  -- A observação foi corrigida durante a chamada: o gatilho do C2c já subiu a
+  -- revisão e devolveu o avistamento a `pendente`. Este resultado é de um
+  -- texto que não existe mais.
+  if v_avistamento.observacao_revisao <> v_run.observacao_revisao then
+    update public.imoveis_identificados_classificacoes
+       set estado = 'abandonada', lease_token = null, lease_expira_em = null
+     where id = v_run.id;
+    return jsonb_build_object('ok', false, 'codigo', 'revisao_desatualizada');
+  end if;
+
+  if v_run.modo = 'reuso' then
+    -- Payload ignorado: reconstrói a SAÍDA da execução de origem, ancorada
+    -- no `classificacao_id` que `iniciar_classificacao` escolheu. O estado
+    -- atual de cada linha (`desatualizada`, `substituida`, `contestada`…) é
+    -- ciclo de vida da afirmação histórica, não identidade do resultado:
+    -- filtrar por ele fazia o reuso perder etiquetas quando a observação
+    -- foi corrigida e depois voltou ao texto original. A linha nova nasce
+    -- sempre 'inferida' — confirmação humana NUNCA é copiada.
+    select coalesce(jsonb_agg(jsonb_build_object(
+             'categoria', e.categoria,
+             'codigo', e.codigo,
+             'confianca', e.confianca,
+             'modelo', e.modelo,
+             'versao_classificador', e.versao_classificador
+           )), '[]'::jsonb)
+      into v_etiquetas
+      from public.imoveis_identificados_etiquetas e
+     where e.classificacao_id = v_run.reusada_de_classificacao_id;
+
+    select o.tipo_sugerido, o.tipo_confianca
+      into v_tipo, v_tipo_confianca
+      from public.imoveis_identificados_classificacoes o
+     where o.id = v_run.reusada_de_classificacao_id;
+  else
+    select coalesce(jsonb_agg(jsonb_build_object(
+             'categoria', x.categoria,
+             'codigo', x.codigo,
+             'confianca', x.confianca,
+             'modelo', v_run.modelo,
+             'versao_classificador', v_run.versao_classificador
+           )), '[]'::jsonb)
+      into v_etiquetas
+      from jsonb_to_recordset(coalesce(p_etiquetas, '[]'::jsonb))
+           as x(categoria text, codigo text, confianca smallint)
+     where coalesce(trim(x.categoria), '') <> ''
+       and coalesce(trim(x.codigo), '') <> ''
+       and x.confianca is not null;
+
+    v_tipo := nullif(trim(coalesce(p_tipo_sugerido, '')), '');
+    v_tipo_confianca := p_tipo_confianca;
+  end if;
+
+  -- Quantas do resultado já têm assinatura humana: não são tocadas.
+  select count(*) into v_ja_confirmada
+    from jsonb_to_recordset(v_etiquetas) as x(categoria text, codigo text)
+   where exists (
+     select 1 from public.imoveis_identificados_etiquetas e
+      where e.avistamento_id = v_run.avistamento_id
+        and e.categoria = x.categoria
+        and e.codigo = x.codigo
+        and e.estado = 'confirmada'
+   );
+
+  -- Supersessão: só o que esta execução NÃO reafirmou sai de vigente. O que
+  -- ela reafirmou fica na linha antiga (não duplica), e a confirmada nunca é
+  -- rebaixada. A linha substituída CONTINUA na tabela — histórico não encolhe.
+  update public.imoveis_identificados_etiquetas e
+     set estado = 'substituida',
+         substituida_em = now(),
+         substituida_por_classificacao_id = v_run.id
+   where e.avistamento_id = v_run.avistamento_id
+     and e.estado = 'inferida'
+     and not exists (
+       select 1 from jsonb_to_recordset(v_etiquetas) as x(categoria text, codigo text)
+        where x.categoria = e.categoria and x.codigo = e.codigo
+     );
+
+  select count(*) into v_reafirmadas
+    from jsonb_to_recordset(v_etiquetas) as x(categoria text, codigo text)
+   where exists (
+     select 1 from public.imoveis_identificados_etiquetas e
+      where e.avistamento_id = v_run.avistamento_id
+        and e.categoria = x.categoria
+        and e.codigo = x.codigo
+        and e.estado = 'inferida'
+   );
+
+  with desejadas as (
+    select distinct on (x.categoria, x.codigo)
+           x.categoria, x.codigo, x.confianca, x.modelo, x.versao_classificador
+      from jsonb_to_recordset(v_etiquetas)
+           as x(categoria text, codigo text, confianca smallint,
+                modelo text, versao_classificador integer)
+     order by x.categoria, x.codigo, x.confianca desc nulls last
+  )
+  insert into public.imoveis_identificados_etiquetas (
+    imovel_identificado_id, avistamento_id, classificacao_id, user_id,
+    categoria, codigo, origem, confianca, estado, modelo,
+    versao_catalogo, versao_classificador, revisao_observacao, observado_em
+  )
+  select v_run.imovel_identificado_id, v_run.avistamento_id, v_run.id, p_user_id,
+         d.categoria, d.codigo, 'ia-texto', d.confianca, 'inferida', d.modelo,
+         v_run.versao_catalogo, d.versao_classificador,
+         v_run.observacao_revisao, v_avistamento.observado_em
+    from desejadas d
+   where not exists (
+     select 1 from public.imoveis_identificados_etiquetas e
+      where e.avistamento_id = v_run.avistamento_id
+        and e.categoria = d.categoria
+        and e.codigo = d.codigo
+        and e.estado in ('inferida', 'confirmada')
+   );
+  get diagnostics v_inseridas = row_count;
+
+  -- O avistamento fecha com os quatro campos juntos: a bicondicional do C2a
+  -- não admite meio estado.
+  update public.imoveis_identificados_avistamentos a
+     set classificacao_estado = 'concluida',
+         classificacao_id = v_run.id,
+         classificacao_em = now(),
+         fingerprint = v_run.fingerprint
+   where a.id = v_run.avistamento_id;
+
+  -- SNAPSHOT TEMPORAL: reprocessar o passado não reescreve o presente.
+  -- Só a execução do avistamento CORRENTE está autorizada a mover o snapshot.
+  v_corrente := v_identidade.avistamento_corrente_id is not null
+                and v_identidade.avistamento_corrente_id = v_run.avistamento_id;
+
+  -- Tipo só pelas regras canônicas: manual e confirmado vencem inferência
+  -- posterior, e sugestão nula não apaga tipo conhecido. A confiança é
+  -- obrigatória porque o CHECK de `ia-texto` exige proveniência completa.
+  v_aplica_tipo := v_corrente
+                   and v_tipo is not null
+                   and v_tipo_confianca is not null
+                   and coalesce(v_identidade.tipo_origem, '') <> 'manual'
+                   and coalesce(v_identidade.tipo_estado, '') <> 'confirmado';
+
+  if v_aplica_tipo then
+    update public.imoveis_identificados i
+       set tipo = v_tipo,
+           tipo_origem = 'ia-texto',
+           tipo_confianca = v_tipo_confianca,
+           tipo_estado = 'inferido',
+           tipo_definido_em = now(),
+           tipo_classificacao_id = v_run.id,
+           tipo_avistamento_id = v_run.avistamento_id,
+           tipo_confirmado_por = null,
+           tipo_confirmado_em = null
+     where i.id = v_run.imovel_identificado_id;
+  end if;
+
+  update public.imoveis_identificados_classificacoes c
+     set estado = 'concluida',
+         concluida_em = now(),
+         lease_token = null,
+         lease_expira_em = null,
+         tipo_sugerido = v_tipo,
+         tipo_confianca = v_tipo_confianca,
+         snapshot_aplicado = v_corrente,
+         sugeridas = greatest(
+           coalesce((p_contadores->>'sugeridas')::integer, 0),
+           v_inseridas + v_reafirmadas + v_ja_confirmada
+         ),
+         aplicadas = v_inseridas + v_reafirmadas,
+         abaixo_do_piso = coalesce((p_contadores->>'abaixo_do_piso')::integer, 0),
+         fora_do_catalogo = coalesce((p_contadores->>'fora_do_catalogo')::integer, 0),
+         sem_evidencia = coalesce((p_contadores->>'sem_evidencia')::integer, 0),
+         ja_confirmada = v_ja_confirmada
+   where c.id = v_run.id;
+
+  return jsonb_build_object(
+    'ok', true,
+    'repetida', false,
+    'run_id', v_run.id,
+    'modo', v_run.modo,
+    'aplicadas', v_inseridas + v_reafirmadas,
+    'inseridas', v_inseridas,
+    'reafirmadas', v_reafirmadas,
+    'ja_confirmada', v_ja_confirmada,
+    'snapshot_aplicado', v_corrente,
+    'tipo_aplicado', v_aplica_tipo
+  );
+end;
+$$;
+
+-- Garimpo em Campo — reuso restrito a execução reconstruível (V7, §8.3).
+-- Substitui somente a busca de reuso de iniciar_classificacao da definição C2d:
+-- a candidata precisa ter TODO o resultado materializado em linhas próprias
+-- (`ja_confirmada = 0` e `aplicadas` = número de etiquetas com o seu
+-- classificacao_id). Reuso é otimização: sem prova de reconstrução integral,
+-- não há reuso parcial — cai para `modo='modelo'`. Claim, lease, advisory lock,
+-- idempotência, exclusão e permissões permanecem intactos por CREATE OR REPLACE.
+
+create or replace function public.iniciar_classificacao(
+  p_user_id uuid,
+  p_avistamento_id uuid,
+  p_fingerprint text,
+  p_modelo text,
+  p_esforco text,
+  p_versao_catalogo integer,
+  p_versao_classificador integer,
+  p_confianca_minima smallint
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_jwt uuid := (select auth.uid());
+  v_avistamento public.imoveis_identificados_avistamentos;
+  v_exclusao timestamptz;
+  v_concluida uuid;
+  v_ocupada uuid;
+  v_reuso uuid;
+  v_modo text;
+  v_lease uuid;
+  v_run uuid;
+begin
+  if p_user_id is null then
+    raise exception 'Usuário do servidor obrigatório.' using errcode = '42501';
+  end if;
+  if v_jwt is not null and v_jwt <> p_user_id then
+    raise exception 'Usuário do servidor divergente da sessão.' using errcode = '42501';
+  end if;
+  if p_avistamento_id is null or coalesce(trim(p_fingerprint), '') = ''
+     or coalesce(trim(p_modelo), '') = ''
+     or p_versao_catalogo is null or p_versao_classificador is null
+     or p_confianca_minima is null then
+    raise exception 'Dados de classificação incompletos.' using errcode = '22023';
+  end if;
+
+  -- Serializa a decisão por avistamento. Avistamentos diferentes do mesmo
+  -- imóvel seguem em paralelo, o que é correto.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('classificar:' || p_user_id::text || ':' || p_avistamento_id::text, 0)
+  );
+
+  select a.* into v_avistamento
+    from public.imoveis_identificados_avistamentos a
+   where a.id = p_avistamento_id
+     and a.user_id = p_user_id;
+
+  -- Posse cruzada e inexistência caem no MESMO erro, de propósito.
+  if v_avistamento.id is null then
+    raise exception 'Avistamento não encontrado.' using errcode = 'P0002';
+  end if;
+
+  select i.exclusao_solicitada_em into v_exclusao
+    from public.imoveis_identificados i
+   where i.id = v_avistamento.imovel_identificado_id;
+
+  if v_exclusao is not null then
+    return jsonb_build_object('ok', false, 'codigo', 'exclusao_em_andamento');
+  end if;
+
+  -- Idempotência: mesma entrada, na revisão vigente, nunca roda duas vezes.
+  select c.id into v_concluida
+    from public.imoveis_identificados_classificacoes c
+   where c.avistamento_id = p_avistamento_id
+     and c.observacao_revisao = v_avistamento.observacao_revisao
+     and c.fingerprint = p_fingerprint
+     and c.estado = 'concluida'
+   limit 1;
+
+  if v_concluida is not null then
+    return jsonb_build_object('ok', true, 'repetida', true, 'run_id', v_concluida);
+  end if;
+
+  -- Lease vencido é execução abandonada: libera o claim sem perder o evento.
+  update public.imoveis_identificados_classificacoes c
+     set estado = 'abandonada',
+         lease_token = null,
+         lease_expira_em = null
+   where c.avistamento_id = p_avistamento_id
+     and c.estado = 'processando'
+     and c.lease_expira_em <= now();
+
+  select c.id into v_ocupada
+    from public.imoveis_identificados_classificacoes c
+   where c.avistamento_id = p_avistamento_id
+     and c.estado = 'processando'
+   limit 1;
+
+  if v_ocupada is not null then
+    return jsonb_build_object('ok', false, 'ocupado', true, 'run_id', v_ocupada);
+  end if;
+
+  -- Reuso: mesmo fingerprint já concluído no MESMO imóvel — seja em outro
+  -- avistamento, seja numa revisão anterior deste. Economiza token, nunca
+  -- evento: o run de reuso é real e gera as próprias etiquetas.
+  --
+  -- Só é fonte a execução cujo resultado o banco PROVA reconstruir inteiro
+  -- pelas linhas dela (classificacao_id). `concluir_classificacao` não
+  -- duplica etiqueta reafirmada (fica na linha do run anterior) nem toca a já
+  -- confirmada — e não registra QUAL código foi reafirmado. Logo, um run com
+  -- `ja_confirmada > 0` ou com `aplicadas` maior que o número de linhas
+  -- próprias tem parte do resultado fora das suas linhas e não serve de
+  -- fonte: cai para o modelo. Correção vale mais que token. As linhas de um
+  -- run nunca somem (append-only, sem delete, o reuso copia em vez de mover),
+  -- então a contagem é determinística. Entre as seguras, a mais recente.
+  select c.id into v_reuso
+    from public.imoveis_identificados_classificacoes c
+   where c.user_id = p_user_id
+     and c.imovel_identificado_id = v_avistamento.imovel_identificado_id
+     and c.fingerprint = p_fingerprint
+     and c.estado = 'concluida'
+     and c.ja_confirmada = 0
+     and c.aplicadas = (
+       select count(*)
+         from public.imoveis_identificados_etiquetas e
+        where e.classificacao_id = c.id
+     )
+   order by c.concluida_em desc nulls last, c.iniciada_em desc
+   limit 1;
+
+  v_modo := case when v_reuso is null then 'modelo' else 'reuso' end;
+  v_lease := gen_random_uuid();
+
+  insert into public.imoveis_identificados_classificacoes (
+    avistamento_id, imovel_identificado_id, user_id, estado, modo,
+    reusada_de_classificacao_id, observacao_revisao, fingerprint, modelo, esforco,
+    versao_catalogo, versao_classificador, confianca_minima,
+    lease_token, lease_expira_em
+  ) values (
+    p_avistamento_id, v_avistamento.imovel_identificado_id, p_user_id, 'processando', v_modo,
+    v_reuso, v_avistamento.observacao_revisao, p_fingerprint, p_modelo,
+    nullif(trim(coalesce(p_esforco, '')), ''),
+    p_versao_catalogo, p_versao_classificador, p_confianca_minima,
+    v_lease, now() + interval '2 minutes'
+  )
+  returning id into v_run;
+
+  return jsonb_build_object(
+    'ok', true,
+    'repetida', false,
+    'ocupado', false,
+    'run_id', v_run,
+    'lease_token', v_lease,
+    'modo', v_modo,
+    'reusada_de', v_reuso
+  );
+end;
+$$;

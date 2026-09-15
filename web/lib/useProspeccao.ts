@@ -5,9 +5,12 @@ import { create } from "zustand";
 import {
   acrescentarAvistamento,
   aplicarEtiquetaHumana,
+  atualizarEnderecoIdentificado,
   buscarCandidatosDuplicidade,
   cancelarExclusaoIdentificado,
+  classificarAvistamento,
   confirmarEtiqueta,
+  confirmarTipoIdentificado,
   contestarEtiqueta,
   corrigirObservacaoAvistamento,
   criarIdentificado,
@@ -15,19 +18,23 @@ import {
   descartarIdentificado,
   excluirIdentificado,
   finalizarFotoAvistamento,
+  fundirIdentificados,
   listarIdentificados,
   obterIdentificado,
   previaExclusaoIdentificado,
   removerFotoAvistamento,
   reservarFotoAvistamento,
   type DadosAvistamento,
+  type DadosEnderecoIdentificado,
   type DadosIdentificacao,
   type DetalheImovelIdentificado,
   identidadeParaDedupe,
   type ImovelIdentificado,
   type PreviaExclusaoIdentificado,
   type ReservaFotoAvistamento,
+  type ResultadoClassificacaoAvistamento,
   type ResultadoExclusaoProspeccao,
+  type ResultadoFusaoIdentificados,
 } from "./prospeccao";
 import type {
   CategoriaEtiquetaProspeccao,
@@ -59,6 +66,18 @@ interface EstadoProspeccao {
   carregando: boolean;
   salvando: boolean;
   erro: string | null;
+  aviso: string | null;
+  revisaoFusao: number;
+  /** Avistamento cuja classificação por IA está em curso, se houver. Não
+      bloqueia o resto da tela: a chamada corre em segundo plano. */
+  classificandoAvistamentoId: string | null;
+  /** Motivo (código fechado da rota) da última tentativa de análise que
+      falhou, preso ao avistamento em que falhou. Estado TRANSITÓRIO de
+      tela: não persiste, não vai ao banco, some na próxima tentativa, no
+      sucesso, ao trocar de seleção e ao resetar. Nunca guarda mensagem
+      bruta de fornecedor: só o código. */
+  falhaAnalise: { avistamentoId: string; codigo: string } | null;
+  fundir: (sobreviventeId: string, absorvidoId: string) => Promise<ResultadoFusaoIdentificados | null>;
   carregarPagina: (pagina?: number, porPagina?: number) => Promise<boolean>;
   definirIncluirOcultos: (incluirOcultos: boolean) => Promise<boolean>;
   carregarDetalhe: (id: string, incluirClassificacoes?: boolean) => Promise<boolean>;
@@ -95,9 +114,24 @@ interface EstadoProspeccao {
   ) => Promise<boolean>;
   confirmarEtiqueta: (imovelIdentificadoId: string, etiquetaId: number) => Promise<boolean>;
   contestarEtiqueta: (imovelIdentificadoId: string, etiquetaId: number) => Promise<boolean>;
+  /** Assina um tipo inferido pela IA; a origem `ia-texto` fica registrada. */
+  confirmarTipo: (imovelIdentificadoId: string) => Promise<boolean>;
+  /** Pede a classificação por IA de UM avistamento pela rota (C8). Nunca
+      escreve `erro`: IA indisponível é estado do avistamento, não falha da
+      tela. Devolve null se a rota não respondeu. */
+  classificarAvistamento: (
+    imovelIdentificadoId: string,
+    avistamentoId: string,
+  ) => Promise<ResultadoClassificacaoAvistamento | null>;
   definirTipo: (
     imovelIdentificadoId: string,
     tipo: TipoImovelProspeccao | null,
+  ) => Promise<boolean>;
+  /** Informa ou corrige o endereço de um imóvel já cadastrado. Só o
+      endereço: passagens, localização e tipo ficam como estão. */
+  definirEndereco: (
+    imovelIdentificadoId: string,
+    dados: DadosEnderecoIdentificado,
   ) => Promise<boolean>;
   /** Dedupe (C7): candidatos da conta pela fronteira, veredito pelo núcleo puro.
       Só avisa — não muda estado, não bloqueia, não funde. */
@@ -125,6 +159,10 @@ const estadoInicial = {
   carregando: false,
   salvando: false,
   erro: null as string | null,
+  aviso: null as string | null,
+  revisaoFusao: 0,
+  classificandoAvistamentoId: null as string | null,
+  falhaAnalise: null as { avistamentoId: string; codigo: string } | null,
 };
 
 function substituirIdentificado(
@@ -137,6 +175,7 @@ function substituirIdentificado(
 }
 
 export const useProspeccao = create<EstadoProspeccao>((set, get) => {
+  let versaoEstado = 0;
   async function detalheAtualizado(
     imovelIdentificadoId: string,
   ): Promise<DetalheImovelIdentificado> {
@@ -153,6 +192,9 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
       itens: substituirIdentificado(estado.itens, detalhe.identificado),
       detalhe,
       selecionadoId: detalhe.identificado.id,
+      // Trocar de imóvel apaga o motivo de falha do anterior: ele é do
+      // avistamento em que falhou e não tem o que dizer sobre outro registro.
+      falhaAnalise: estado.detalhe?.identificado.id === detalhe.identificado.id ? estado.falhaAnalise : null,
     }));
   }
 
@@ -172,6 +214,13 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
     }
   }
 
+  /** Gatilho do C8: avistamento salvo ou observação corrigida pede
+      classificação em segundo plano. A gravação já aconteceu — a
+      classificação não a condiciona nem a atrasa. */
+  function classificarEmSegundoPlano(imovelIdentificadoId: string, avistamentoId: string): void {
+    void get().classificarAvistamento(imovelIdentificadoId, avistamentoId);
+  }
+
   return {
     ...estadoInicial,
     async carregarPagina(pagina = get().pagina, porPagina = get().porPagina) {
@@ -189,6 +238,7 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
           total: resultado.total,
           temMais: resultado.temMais,
           carregando: false,
+          aviso: null,
         });
         return true;
       } catch {
@@ -217,29 +267,142 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
       }
     },
     limparSelecao() {
-      set({ detalhe: null, selecionadoId: null });
+      set({ detalhe: null, selecionadoId: null, falhaAnalise: null });
     },
     limparErro() {
       set({ erro: null });
     },
     resetar() {
+      versaoEstado += 1;
       set(estadoInicial);
     },
-    criar(usuarioId, dados, primeiroAvistamento) {
-      return executarMutacao("Não foi possível registrar esta identificação.", async () => {
+    async fundir(sobreviventeId, absorvidoId) {
+      if (get().salvando || get().carregando) return null;
+      const versao = versaoEstado;
+      const { porPagina, incluirOcultos, detalhe } = get();
+      set({ salvando: true, erro: null, aviso: null });
+      let resultado: ResultadoFusaoIdentificados;
+      try {
+        resultado = await fundirIdentificados(sobreviventeId, absorvidoId);
+      } catch (erro) {
+        if (versao === versaoEstado) set({
+          salvando: false,
+          erro: erro instanceof Error ? erro.message : "Não foi possível confirmar a união. Tente novamente com a mesma escolha.",
+        });
+        return null;
+      }
+      if (versao !== versaoEstado) return null;
+      try {
+        // A lista e o histórico são publicados juntos, somente depois da RPC.
+        // Começar na primeira página evita uma página vazia após a união.
+        const [pagina, sobrevivente] = await Promise.all([
+          listarIdentificados({ pagina: 1, porPagina, incluirOcultos }),
+          obterIdentificado(sobreviventeId, { incluirClassificacoes: detalhe?.classificacoesCarregadas === true }),
+        ]);
+        if (!sobrevivente) throw new Error("Registro principal não encontrado após a união.");
+        if (versao !== versaoEstado) return null;
+        set((estado) => ({
+          ...pagina,
+          detalhe: sobrevivente,
+          selecionadoId: sobreviventeId,
+          salvando: false,
+          revisaoFusao: estado.revisaoFusao + 1,
+        }));
+      } catch {
+        if (versao !== versaoEstado) return null;
+        // A união já aconteceu. Retirar o retrato antigo evita operar a lápide
+        // como se estivesse viva; a recuperação é só leitura, sem outra RPC.
+        set((estado) => ({
+          itens: [], detalhe: null, selecionadoId: null, pagina: 1, total: 0, temMais: false,
+          salvando: false, revisaoFusao: estado.revisaoFusao + 1,
+          aviso: "Os registros foram unidos, mas não foi possível atualizar a tela. Recarregue para consultar o histórico.",
+        }));
+      }
+      return resultado;
+    },
+    async criar(usuarioId, dados, primeiroAvistamento) {
+      let criadoId: { identificado: string; avistamento: string } | null = null;
+      const sucesso = await executarMutacao("Não foi possível registrar esta identificação.", async () => {
         const criado = await criarIdentificado(usuarioId, dados, primeiroAvistamento);
+        criadoId = { identificado: criado.identificado.id, avistamento: criado.avistamento.id };
         return detalheAtualizado(criado.identificado.id);
       });
+      if (sucesso && criadoId) {
+        const { identificado, avistamento } = criadoId as { identificado: string; avistamento: string };
+        // A releitura canônica já inseriu o novo registro na lista local,
+        // mas não passa pela consulta paginada que traz o `count`. Como a
+        // criação acabou de ser confirmada, o total disponível sobe uma vez
+        // sem exigir outra leitura do banco.
+        set((estado) => ({
+          total: estado.total + 1,
+          temMais: estado.pagina * estado.porPagina < estado.total + 1,
+        }));
+        classificarEmSegundoPlano(identificado, avistamento);
+      }
+      return sucesso;
     },
-    adicionarAvistamento(usuarioId, imovelIdentificadoId, dados) {
-      return executarMutacao("Não foi possível adicionar o avistamento.", async () => {
-        await acrescentarAvistamento(usuarioId, imovelIdentificadoId, dados);
+    async adicionarAvistamento(usuarioId, imovelIdentificadoId, dados) {
+      let avistamentoId: string | null = null;
+      const sucesso = await executarMutacao("Não foi possível adicionar o avistamento.", async () => {
+        const avistamento = await acrescentarAvistamento(usuarioId, imovelIdentificadoId, dados);
+        avistamentoId = avistamento.id;
         return detalheAtualizado(imovelIdentificadoId);
       });
+      if (sucesso && avistamentoId) classificarEmSegundoPlano(imovelIdentificadoId, avistamentoId);
+      return sucesso;
     },
-    corrigirObservacao(imovelIdentificadoId, avistamentoId, observacao) {
-      return executarMutacao("Não foi possível corrigir a observação.", async () => {
+    async corrigirObservacao(imovelIdentificadoId, avistamentoId, observacao) {
+      const sucesso = await executarMutacao("Não foi possível corrigir a observação.", async () => {
         await corrigirObservacaoAvistamento(avistamentoId, observacao);
+        return detalheAtualizado(imovelIdentificadoId);
+      });
+      // O gatilho do banco já subiu a revisão e devolveu o avistamento a
+      // `pendente`; a nova classificação é sobre o texto novo.
+      if (sucesso) classificarEmSegundoPlano(imovelIdentificadoId, avistamentoId);
+      return sucesso;
+    },
+    async classificarAvistamento(imovelIdentificadoId, avistamentoId) {
+      if (get().classificandoAvistamentoId === avistamentoId) return null;
+      const versao = versaoEstado;
+      // Nova tentativa apaga o motivo anterior DESTE avistamento.
+      set((estado) => ({
+        classificandoAvistamentoId: avistamentoId,
+        falhaAnalise: estado.falhaAnalise?.avistamentoId === avistamentoId ? null : estado.falhaAnalise,
+      }));
+      let resultado: ResultadoClassificacaoAvistamento | null = null;
+      try {
+        resultado = (await classificarAvistamento(avistamentoId)) ?? null;
+      } catch {
+        resultado = null;
+      }
+      if (versao !== versaoEstado) return resultado;
+      // Motivo transitório para a tela: só o código fechado da rota; sem
+      // resposta (rede, sessão) vira "indisponivel". Sucesso limpa.
+      if (!resultado) {
+        set({ falhaAnalise: { avistamentoId, codigo: "indisponivel" } });
+      } else if (!resultado.ok) {
+        set({ falhaAnalise: { avistamentoId, codigo: resultado.falha ?? "indisponivel" } });
+      } else {
+        set((estado) => ({
+          falhaAnalise: estado.falhaAnalise?.avistamentoId === avistamentoId ? null : estado.falhaAnalise,
+        }));
+      }
+      // Seja qual for a resposta (inclusive "indisponível"), o que a tela
+      // mostra é o estado do banco. Releitura silenciosa: nada de
+      // `salvando`, nada de `erro`. Sem resposta, nada mudou: não relê.
+      if (resultado && get().detalhe?.identificado.id === imovelIdentificadoId) {
+        try {
+          registrarDetalhe(await detalheAtualizado(imovelIdentificadoId));
+        } catch {
+          // A classificação já está gravada (ou não); a próxima leitura mostra.
+        }
+      }
+      if (get().classificandoAvistamentoId === avistamentoId) set({ classificandoAvistamentoId: null });
+      return resultado;
+    },
+    confirmarTipo(imovelIdentificadoId) {
+      return executarMutacao("Não foi possível confirmar o tipo do imóvel.", async () => {
+        await confirmarTipoIdentificado(imovelIdentificadoId);
         return detalheAtualizado(imovelIdentificadoId);
       });
     },
@@ -289,6 +452,12 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
     definirTipo(imovelIdentificadoId, tipo) {
       return executarMutacao("Não foi possível definir o tipo do imóvel.", async () => {
         await definirTipoManual(imovelIdentificadoId, tipo);
+        return detalheAtualizado(imovelIdentificadoId);
+      });
+    },
+    definirEndereco(imovelIdentificadoId, dados) {
+      return executarMutacao("Não foi possível salvar o endereço.", async () => {
+        await atualizarEnderecoIdentificado(imovelIdentificadoId, dados);
         return detalheAtualizado(imovelIdentificadoId);
       });
     },

@@ -13,6 +13,11 @@ import {
 } from "./calculo/dedupeProspeccao";
 import { chaveEndereco, chaveImovel } from "./calculo/duplicidade";
 import {
+  etiquetasDoImovel,
+  type EtiquetaDoImovel,
+  type EtiquetaProspeccaoLeitura,
+} from "./calculo/etiquetasProspeccao";
+import {
   ordenarAvistamentosPorRecencia,
   type AvistamentoProspeccao,
   type EstadoClassificacaoAvistamento,
@@ -193,6 +198,11 @@ export interface DadosIdentificacao {
   tipo?: TipoImovelProspeccao | null;
 }
 
+/** O endereço sozinho: o que pode ser informado ou corrigido depois do
+    cadastro. Origem e tipo ficam de fora — o tipo tem as próprias portas
+    (§7.2) e a origem é do momento da identificação. */
+export type DadosEnderecoIdentificado = Omit<DadosIdentificacao, "origemIdentificacao" | "tipo">;
+
 export interface DadosAvistamento {
   observadoEm: string;
   latitude?: number | null;
@@ -216,6 +226,19 @@ export interface ReservaFotoAvistamento {
 
 export interface ResultadoRpcProspeccao {
   repetida: boolean;
+}
+
+export interface ResultadoFusaoIdentificados extends ResultadoRpcProspeccao {
+  sobreviventeId: string;
+  absorvidoId: string;
+}
+
+/** Antecipação para a interface; a RPC continua validando o estado no banco. */
+export function podeFundirIdentificado(
+  identificado: Pick<ImovelIdentificado, "situacao" | "exclusaoSolicitadaEm">,
+): boolean {
+  return !identificado.exclusaoSolicitadaEm
+    && !["fundido", "promovido", "promovendo"].includes(identificado.situacao);
 }
 
 /** O contrato exato da rota `/api/prospeccao/excluir` (§19). `concluido` só é
@@ -701,12 +724,10 @@ function payloadAvistamento(
   };
 }
 
-export async function criarIdentificado(
-  usuarioId: string,
-  dados: DadosIdentificacao,
-  primeiroAvistamento: DadosAvistamento,
-  client: SupabaseClient = getSupabase(),
-): Promise<ResultadoCriacaoIdentificado> {
+/** As colunas de endereço com as chaves de dedupe derivadas — uma só
+    função para o cadastro e para a correção posterior, senão a chave que a
+    deduplicação consulta divergiria de quem a escreveu. */
+function colunasEndereco(dados: DadosEnderecoIdentificado) {
   const logradouro = textoOuNulo(dados.logradouro);
   const numero = textoOuNulo(dados.numero);
   const unidade = textoOuNulo(dados.unidade);
@@ -714,25 +735,36 @@ export async function criarIdentificado(
   const cidade = textoOuNulo(dados.cidade);
   const bairro = textoOuNulo(dados.bairro);
   const endereco = [logradouro, numero].filter(Boolean).join(", ");
+  return {
+    logradouro,
+    numero,
+    unidade,
+    bloco,
+    edificio: textoOuNulo(dados.edificio),
+    bairro,
+    cidade,
+    estado: textoOuNulo(dados.estado)?.toUpperCase() ?? null,
+    cep: textoOuNulo(dados.cep),
+    ponto_referencia: textoOuNulo(dados.pontoReferencia),
+    endereco_chave: endereco
+      ? chaveImovel({ endereco, cidade: cidade ?? "", unidade, bloco })
+      : "",
+    cidade_chave: chaveEndereco(cidade),
+    bairro_chave: chaveEndereco(bairro),
+  };
+}
+
+export async function criarIdentificado(
+  usuarioId: string,
+  dados: DadosIdentificacao,
+  primeiroAvistamento: DadosAvistamento,
+  client: SupabaseClient = getSupabase(),
+): Promise<ResultadoCriacaoIdentificado> {
   const { data: linhaIdentificado, error: erroIdentificado } = await client
     .from("imoveis_identificados")
     .insert({
       user_id: usuarioId,
-      logradouro,
-      numero,
-      unidade,
-      bloco,
-      edificio: textoOuNulo(dados.edificio),
-      bairro,
-      cidade,
-      estado: textoOuNulo(dados.estado)?.toUpperCase() ?? null,
-      cep: textoOuNulo(dados.cep),
-      ponto_referencia: textoOuNulo(dados.pontoReferencia),
-      endereco_chave: endereco
-        ? chaveImovel({ endereco, cidade: cidade ?? "", unidade, bloco })
-        : "",
-      cidade_chave: chaveEndereco(cidade),
-      bairro_chave: chaveEndereco(bairro),
+      ...colunasEndereco(dados),
       origem_identificacao: dados.origemIdentificacao ?? "campo",
       tipo: dados.tipo ?? null,
     })
@@ -782,6 +814,26 @@ export async function corrigirObservacaoAvistamento(
     .single();
   if (error) falha(error);
   return mapearAvistamento(data as unknown as Linha);
+}
+
+/** Informa ou corrige o endereço de um imóvel já identificado (quem sai
+    com pressa registra a foto e deixa o endereço para depois). Só as
+    colunas de endereço, pelo grant de update que a V7 já concede; as
+    chaves de dedupe são recalculadas junto, e as passagens, a localização
+    e o tipo não são tocados. */
+export async function atualizarEnderecoIdentificado(
+  imovelIdentificadoId: string,
+  dados: DadosEnderecoIdentificado,
+  client: SupabaseClient = getSupabase(),
+): Promise<ImovelIdentificado> {
+  const { data, error } = await client
+    .from("imoveis_identificados")
+    .update(colunasEndereco(dados))
+    .eq("id", imovelIdentificadoId)
+    .select(COLUNAS_IDENTIFICADO)
+    .single();
+  if (error) falha(error);
+  return mapearIdentificado(data as unknown as Linha);
 }
 
 export async function reservarFotoAvistamento(
@@ -872,6 +924,18 @@ export function contestarEtiqueta(
   return definirEstadoEtiqueta(etiquetaId, "contestada", client);
 }
 
+/** Endossa um tipo inferido pela IA: vira `confirmado` mantendo a origem
+    `ia-texto` e os ids da execução/avistamento (V7 §7.2, regra 5). */
+export async function confirmarTipoIdentificado(
+  imovelIdentificadoId: string,
+  client: SupabaseClient = getSupabase(),
+): Promise<ResultadoRpcProspeccao> {
+  const resposta = await chamarRpc(client, "confirmar_tipo_identificado", {
+    p_imovel_identificado_id: imovelIdentificadoId,
+  });
+  return { repetida: resposta.repetida === true };
+}
+
 export async function definirTipoManual(
   imovelIdentificadoId: string,
   tipo: TipoImovelProspeccao | null,
@@ -882,6 +946,132 @@ export async function definirTipoManual(
     p_tipo: tipo,
   });
   return { repetida: resposta.repetida === true };
+}
+
+/** Uma intenção humana, uma RPC. Histórico e vínculos só mudam no banco. */
+export async function fundirIdentificados(
+  sobreviventeId: string,
+  absorvidoId: string,
+  client: SupabaseClient = getSupabase(),
+): Promise<ResultadoFusaoIdentificados> {
+  if (!UUID_PROSPECCAO.test(sobreviventeId) || !UUID_PROSPECCAO.test(absorvidoId)
+      || sobreviventeId === absorvidoId) {
+    throw new ErroProspeccao("par_invalido", "Escolha dois registros diferentes para unir.");
+  }
+  const { data, error } = await client.rpc("fundir_imoveis_identificados", {
+    p_sobrevivente_id: sobreviventeId,
+    p_absorvido_id: absorvidoId,
+  });
+  const resposta = data as RespostaRpc | null;
+  if (error || resposta?.ok !== true) {
+    const codigo = error?.code ?? resposta?.codigo ?? "resposta_rpc_invalida";
+    const mensagens: Record<string, string> = {
+      exclusao_em_andamento: "Um dos registros está com exclusão em andamento. Retome ou cancele a exclusão antes de unir.",
+      situacao_incompativel: "Um dos registros já foi unido ou está em promoção. Atualize a lista antes de continuar.",
+      fusao_em_si_mesmo: "Escolha dois registros diferentes para unir.",
+      P0002: "Um dos registros não foi encontrado nesta conta. Atualize a lista antes de continuar.",
+      "42501": "Sua sessão não permite unir estes registros. Confira o acesso à conta.",
+    };
+    throw new ErroProspeccao(codigo, mensagens[codigo] ?? error?.message
+      ?? "Não foi possível confirmar a união. Tente novamente com a mesma escolha.");
+  }
+  if (resposta.sobrevivente_id !== sobreviventeId || resposta.absorvido_id !== absorvidoId
+      || typeof resposta.repetida !== "boolean") {
+    throw new ErroProspeccao("resposta_rpc_invalida", "O retorno da união não pôde ser confirmado. Atualize a lista antes de continuar.");
+  }
+  return { sobreviventeId, absorvidoId, repetida: resposta.repetida };
+}
+
+/* ----------------------------------------------------------------
+   VIGÊNCIA DERIVADA (C9) — nenhuma coluna "atual".
+
+   As etiquetas do avistamento corrente são as ATUAIS; as demais são
+   histórico, com a data em que foram vistas por último. É a leitura de
+   `etiquetasDoImovel()` (núcleo puro) sobre tudo o que o detalhe carrega —
+   feita aqui uma vez, para o card, o painel e a lista lerem a mesma coisa.
+   ---------------------------------------------------------------- */
+export function leituraDeEtiqueta(etiqueta: EtiquetaIdentificado): EtiquetaProspeccaoLeitura {
+  return {
+    categoria: etiqueta.categoria,
+    codigo: etiqueta.codigo,
+    avistamentoId: etiqueta.avistamentoId,
+    revisaoObservacao: etiqueta.revisaoObservacao,
+    observadoEm: etiqueta.observadoEm,
+    createdAt: etiqueta.criadoEm,
+    estado: etiqueta.estado,
+    origem: etiqueta.origem,
+    confianca: etiqueta.confianca,
+  };
+}
+
+/** Por código: atual (vigente no avistamento corrente) ou histórica, com
+    `ultimaVezObservado`. Nunca a união ingênua de todos os avistamentos. */
+export function vigenciaDasEtiquetas(detalhe: DetalheImovelIdentificado): EtiquetaDoImovel[] {
+  const corrente = detalhe.avistamentos.find(
+    (avistamento) => avistamento.id === detalhe.identificado.avistamentoCorrenteId,
+  ) ?? null;
+  const todas = [
+    ...detalhe.etiquetasDoImovel,
+    ...detalhe.avistamentos.flatMap((avistamento) => avistamento.etiquetas),
+  ].map(leituraDeEtiqueta);
+  return etiquetasDoImovel(
+    todas,
+    corrente ? { id: corrente.id, observacaoRevisao: corrente.observacaoRevisao } : null,
+  );
+}
+
+/* ----------------------------------------------------------------
+   CLASSIFICAÇÃO POR IA (C8) — o navegador manda SÓ o id do avistamento.
+
+   O texto, a revisão e o tipo declarado são relidos do banco pela rota; o
+   claim, o lease e a conclusão são do banco. Aqui não há decisão nenhuma:
+   pede-se, lê-se a resposta e depois relê-se o detalhe. IA indisponível
+   (dev, Preview, sem permissão) NÃO é erro para o usuário — o avistamento
+   fica "aguardando classificação" e a tela mostra isso pelo estado.
+   ---------------------------------------------------------------- */
+export interface ResultadoClassificacaoAvistamento {
+  ok: boolean;
+  repetida: boolean;
+  estado: EstadoClassificacaoAvistamento | null;
+  modo: ModoClassificacaoProspeccao | null;
+  etiquetas: { categoria: CategoriaEtiquetaProspeccao; codigo: CodigoEtiquetaProspeccao; confianca: number }[];
+  tipo: { sugerido: TipoImovelProspeccao; confianca: number | null } | null;
+  snapshotAplicado: boolean;
+  /** Código fechado da rota (`nao-configurado`, `ocupado`, `limite-diario`…). */
+  falha: string | null;
+}
+
+export async function classificarAvistamento(
+  avistamentoId: string,
+  client: SupabaseClient = getSupabase(),
+  fetchImpl: typeof fetch = fetch,
+): Promise<ResultadoClassificacaoAvistamento> {
+  const { data: { session } } = await client.auth.getSession();
+  if (!session) throw new ErroProspeccao("sessao_expirada", "Sua sessão expirou. Entre novamente.");
+  const resposta = await fetchImpl("/api/prospeccao/classificar", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ avistamentoId }),
+  });
+  const corpo = (await resposta.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!corpo || typeof corpo.ok !== "boolean") throw new ErroProspeccao("resposta_rota_invalida");
+  const etiquetas = Array.isArray(corpo.etiquetas) ? corpo.etiquetas : [];
+  const tipo = corpo.tipo && typeof corpo.tipo === "object"
+    ? (corpo.tipo as { sugerido: TipoImovelProspeccao; confianca: number | null })
+    : null;
+  return {
+    ok: corpo.ok,
+    repetida: corpo.repetida === true,
+    estado: typeof corpo.estado === "string" ? (corpo.estado as EstadoClassificacaoAvistamento) : null,
+    modo: corpo.modo === "modelo" || corpo.modo === "reuso" ? corpo.modo : null,
+    etiquetas: etiquetas as ResultadoClassificacaoAvistamento["etiquetas"],
+    tipo,
+    snapshotAplicado: corpo.snapshotAplicado === true,
+    falha: typeof corpo.falha === "string" ? corpo.falha : null,
+  };
 }
 
 /* ----------------------------------------------------------------

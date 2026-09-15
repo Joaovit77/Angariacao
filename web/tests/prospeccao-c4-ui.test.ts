@@ -62,7 +62,7 @@ vi.mock("@/components/SessaoProvider", () => ({
 
 import ModalAvistamento from "@/components/modais/ModalAvistamento";
 import LinhaDoTempoAvistamentos from "@/components/prospeccao/LinhaDoTempoAvistamentos";
-import ProspeccaoView from "@/components/prospeccao/ProspeccaoView";
+import ProspeccaoView, { rotuloTotalImoveis } from "@/components/prospeccao/ProspeccaoView";
 
 function identificado(id: string) {
   return {
@@ -102,7 +102,17 @@ function avistamento(id: string, observadoEm: string, observacao: string) {
     classificacaoEm: observadoEm,
     fingerprint: "fingerprint",
     fotos: [],
-    classificacoes: [{ modo: id === "avistamento-novo" ? "reuso" : "modelo" }],
+    // C8: a execução concluída responde pelo resumo ("classificado em…, modo").
+    classificacoes: [{
+      id: `classificacao-${id}`,
+      estado: "concluida",
+      modo: id === "avistamento-novo" ? "reuso" : "modelo",
+      modelo: "modelo-gravado",
+      concluidaEm: observadoEm,
+      tipoSugerido: null,
+      tipoConfianca: null,
+      snapshotAplicado: id === "avistamento-novo",
+    }],
     etiquetas: [{
       id: id === "avistamento-novo" ? 2 : 1,
       imovelIdentificadoId: "identificado-1",
@@ -117,7 +127,8 @@ function avistamento(id: string, observadoEm: string, observacao: string) {
       modelo: "modelo-gravado",
       versaoCatalogo: 1,
       versaoClassificador: 1,
-      revisaoObservacao: 1,
+      // C9: uma inferida vigente tem sempre a revisão atual do avistamento.
+      revisaoObservacao: id === "avistamento-novo" ? 2 : 1,
       confirmadaPor: null,
       confirmadaEm: null,
       substituidaEm: null,
@@ -163,12 +174,20 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("ProspeccaoView", () => {
+  it.each([
+    [0, "0 no total"],
+    [1, "1 no total"],
+    [37, "37 no total"],
+  ])("apresenta o total real da lista para %i imóvel(is)", (total, esperado) => {
+    expect(rotuloTotalImoveis(total)).toBe(esperado);
+  });
+
   it("exibe o nome final do produto e o carregamento inicial", () => {
     cenario.estado.carregando = true;
     render(createElement(ProspeccaoView));
 
     expect(screen.getByRole("heading", { name: "Garimpo em Campo" })).toBeTruthy();
-    expect(screen.getByRole("status").textContent).toContain("Carregando identificações");
+    expect(screen.getByRole("status").textContent).toContain("Carregando os imóveis vistos em campo");
     expect(cenario.estado.carregarPagina).toHaveBeenCalledWith(1, 24);
   });
 
@@ -182,8 +201,8 @@ describe("ProspeccaoView", () => {
 
     cenario.estado.erro = null;
     rerender(createElement(ProspeccaoView));
-    expect(screen.getByText("Nenhum imóvel identificado ativo.")).toBeTruthy();
-    fireEvent.click(screen.getAllByRole("button", { name: "Registrar primeiro avistamento" })[1]);
+    expect(screen.getByText("Nenhum imóvel ativo por aqui.")).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("button", { name: "Registrar imóvel visto" })[1]);
     expect(cenario.abrirModal).toHaveBeenCalledWith("avistamento");
   });
 
@@ -192,7 +211,7 @@ describe("ProspeccaoView", () => {
     cenario.estado.total = 1;
     render(createElement(ProspeccaoView));
 
-    expect(screen.queryByRole("button", { name: "Registrar primeiro avistamento" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Registrar imóvel visto" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Registrar novo local" }));
     expect(cenario.abrirModal).toHaveBeenCalledWith("avistamento");
   });
@@ -220,11 +239,11 @@ describe("ProspeccaoView", () => {
     cenario.estado.selecionadoId = "identificado-1";
     render(createElement(ProspeccaoView));
 
-    expect(screen.getByRole("button", { name: "Novo avistamento" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Salvar correção" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Definir tipo" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Nova passagem" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Salvar texto corrigido" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Informar o tipo" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Confirmar" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Contestar" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Marcar como incorreta" })).toBeTruthy();
     expect(screen.queryByText("Transformar em oportunidade")).toBeNull();
   });
 });
@@ -245,12 +264,23 @@ describe("LinhaDoTempoAvistamentos", () => {
       "avistamento-antigo",
     ]);
     expect(eventos[0].textContent).toContain("Placa nova");
-    expect(eventos[0].textContent).toContain("Aparenta ocupado · ia-texto · inferida");
-    expect(eventos[0].textContent).toContain("Revisão 2");
-    expect(eventos[0].textContent).toContain("Modo: reuso");
-    expect(eventos[0].textContent).toContain("Avistamento corrente");
+    // C8: a etiqueta é um chip com a marca de proveniência, não texto cru.
+    const chipNovo = eventos[0].querySelector("[data-origem]")!;
+    expect(chipNovo.textContent).toBe("Aparenta ocupadosugestão");
+    expect(chipNovo.getAttribute("data-origem")).toBe("ia-texto");
+    expect(chipNovo.getAttribute("data-estado")).toBe("inferida");
+    // C9.1: revisão vira marca "Texto corrigido"; o número fica nos detalhes.
+    expect(eventos[0].querySelector("[data-texto-corrigido]")!.textContent).toBe("Texto corrigido");
+    expect(eventos[0].querySelector("details[data-detalhes]")!.textContent).toContain("Revisão 2 do texto");
+    expect(eventos[0].textContent).toContain("Já tínhamos analisado uma observação igual");
+    expect(eventos[0].textContent).toContain("Passagem mais recente");
     expect(eventos[1].textContent).toContain("Imóvel vazio");
-    expect(eventos[1].textContent).toContain("Aparenta vago · ia-texto · inferida");
+    expect(eventos[1].textContent).toContain("Primeira passagem");
+    expect(eventos[1].querySelector("[data-origem]")!.textContent).toBe("Aparenta vagosugestão");
+    expect(eventos[1].textContent).toContain("Analisado pela IA");
+    // V7 §16: o modelo gravado ("modelo-gravado") nunca aparece na tela.
+    expect(eventos[1].textContent).not.toContain("modelo-gravado");
+    expect(eventos[1].textContent).toContain("Registro anterior; as informações atuais vêm da passagem mais recente.");
   });
 });
 
@@ -270,7 +300,7 @@ describe("ModalAvistamento", () => {
   it("aceita o mínimo real do contrato sem inventar endereço ou referência obrigatórios", async () => {
     render(createElement(ModalAvistamento));
 
-    fireEvent.click(screen.getByRole("button", { name: "Salvar avistamento" }));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar passagem" }));
 
     await waitFor(() => expect(cenario.estado.criar).toHaveBeenCalled());
     expect(cenario.estado.criar).toHaveBeenCalledWith(
@@ -285,7 +315,7 @@ describe("ModalAvistamento", () => {
     render(createElement(ModalAvistamento));
     fireEvent.change(screen.getByLabelText("Logradouro"), { target: { value: "Rua Nova" } });
     fireEvent.change(screen.getByLabelText("Observação (opcional)"), { target: { value: "Placa no portão" } });
-    fireEvent.click(screen.getByRole("button", { name: "Salvar avistamento" }));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar passagem" }));
 
     await waitFor(() => expect(cenario.estado.criar).toHaveBeenCalled());
     expect(cenario.estado.criar).toHaveBeenCalledWith(
@@ -304,7 +334,7 @@ describe("ModalAvistamento", () => {
     expect(screen.getByLabelText("Foto da fachada")).toBeTruthy();
     expect(screen.getByText(/Rua identificado-1, 10/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Observação (opcional)"), { target: { value: "Novo retorno" } });
-    fireEvent.click(screen.getByRole("button", { name: "Salvar avistamento" }));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar passagem" }));
 
     await waitFor(() => expect(cenario.estado.adicionarAvistamento).toHaveBeenCalledWith(
       "usuario-1",
@@ -322,7 +352,7 @@ describe("ModalAvistamento", () => {
     render(createElement(ModalAvistamento, { imovelIdentificadoId: "identificado-1" }));
     const observacao = screen.getByLabelText("Observação (opcional)") as HTMLTextAreaElement;
     fireEvent.change(observacao, { target: { value: "Entrada preservada" } });
-    fireEvent.click(screen.getByRole("button", { name: "Salvar avistamento" }));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar passagem" }));
 
     await waitFor(() => {
       expect(screen.getByRole("alert").textContent).toContain(
