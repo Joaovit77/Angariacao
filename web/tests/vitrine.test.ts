@@ -161,15 +161,30 @@ describe("apresentação pública", () => {
     ]) {
       expect(VITRINE).toContain(`id: "${id}"`);
     }
+    expect(VITRINE).toContain("explore-corpo");
     expect(VITRINE).toContain("explore-menu-wrap");
     expect(VITRINE).not.toContain('className="explore-menu-mobile-toggle"');
     expect(VITRINE).not.toContain("explore-menu-drawer");
-    expect(VITRINE.indexOf("explore-menu-wrap")).toBeLessThan(VITRINE.indexOf("explore-intro"));
+    expect(VITRINE.indexOf("explore-intro")).toBeLessThan(VITRINE.indexOf("explore-corpo"));
+    expect(VITRINE.indexOf("explore-menu-wrap")).toBeLessThan(
+      VITRINE.indexOf("explore-funcionalidades"),
+    );
     expect(VITRINE).toContain("scrollIntoView");
     expect(VITRINE).toContain("window.requestAnimationFrame");
     expect(VITRINE).toContain("window.history.replaceState");
     expect(VITRINE).toContain('from "framer-motion"');
-    expect(ESTILO_BASE).toMatch(/\.explore-menu-wrap\{[\s\S]*?position:sticky/);
+    expect(ESTILO_BASE).toMatch(
+      /\.explore-corpo\{[\s\S]*?grid-template-columns:minmax\(180px,220px\) minmax\(0,1fr\)/,
+    );
+    expect(ESTILO_BASE).toMatch(
+      /\.explore-corpo>\.explore-menu-wrap\{[\s\S]*?position:sticky/,
+    );
+    expect(ESTILO_BASE).toMatch(
+      /\.explore-menu-item\{[\s\S]*?justify-content:flex-start[\s\S]*?text-align:left/,
+    );
+    expect(ESTILO_BASE).toMatch(
+      /@media \(max-width:840px\)[\s\S]*?\.explore-corpo\{ display:block; \}[\s\S]*?\.explore-menu-rolagem\{[\s\S]*?display:flex/,
+    );
     expect(ESTILO_BASE).toMatch(
       /@media \(max-width:720px\)[\s\S]*?\.explore-menu-wrap\{ display:none; \}/,
     );
