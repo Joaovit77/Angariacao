@@ -109,6 +109,28 @@
   padding:9px 13px; white-space:nowrap; cursor:pointer; font:inherit; font-size:13px; font-weight:700;
 }
 .central-tabs button.active{ background:var(--accent-soft); color:var(--accent-strong); }
+/* Faixa das ferramentas de angariação (NavAngariacao): mesma pílula das
+   abas acima, com links. Montada pelo shell acima do conteúdo da área. */
+.nav-angariacao{
+  display:flex; gap:6px; margin:0 0 18px; padding:5px; width:max-content;
+  max-width:100%; overflow-x:auto; border:1px solid var(--border); border-radius:12px;
+  background:var(--bg-elev-1);
+}
+.nav-angariacao a{
+  display:inline-flex; align-items:center; gap:7px; border-radius:8px;
+  color:var(--text-dim); padding:9px 13px; white-space:nowrap; text-decoration:none;
+  font-size:13px; font-weight:700;
+  transition:background .12s ease, color .12s ease;
+}
+.nav-angariacao a:hover{ background:var(--bg-elev-2); color:var(--text); }
+.nav-angariacao a:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; }
+.nav-angariacao a.active{ background:var(--accent-soft); color:var(--accent-strong); }
+.nav-angariacao .ic{ width:14px; height:14px; flex-shrink:0; opacity:.9; }
+.nav-angariacao-badge{
+  background:var(--bg-elev-3); color:var(--text-dim);
+  font-size:10.5px; font-weight:600; padding:1px 6px; border-radius:20px;
+}
+.nav-angariacao a.active .nav-angariacao-badge{ color:var(--accent-strong); }
 .card.central-filtros{ padding:22px; }
 .central-intro{ display:flex; flex-direction:column; gap:4px; margin-bottom:16px; }
 .central-intro span{ color:var(--text-dim); font-size:13px; }
@@ -4126,6 +4148,12 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
   .pipeline-toolbar-side{ flex-wrap:wrap; }
   .search-input{ width:100%; min-width:0; }
   .view-toggle{ align-self:flex-start; }
+  /* Faixa da angariação no celular: 2×2 com os nomes completos, sem rolagem. */
+  .nav-angariacao{ width:100%; flex-wrap:wrap; overflow:visible; }
+  .nav-angariacao a{ flex:1 1 calc(50% - 3px); justify-content:center; padding-inline:6px; font-size:12.5px; }
+  /* Sem ícone no celular: "Central de Angariação" e "Investigador de Imóveis"
+     não cabem em meia largura com ele, e o nome já identifica. */
+  .nav-angariacao .ic{ display:none; }
   /* A lista desktop tem 13 colunas. No celular, mantê-las todas só comprime o
      endereço até virar uma palavra por linha. A linha inteira abre o drawer,
      então a visão rápida prioriza identidade, localização e etapa atual. */

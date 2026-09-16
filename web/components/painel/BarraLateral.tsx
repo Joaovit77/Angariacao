@@ -15,16 +15,22 @@ import { contarRespostasPendentes } from "@/lib/calculo/respostas";
 import { STATUS_FLOW } from "@/lib/constantes";
 import { todayISO } from "@/lib/datas";
 import { useAppStore } from "@/lib/store";
+import {
+  type Badge,
+  FERRAMENTAS_ANGARIACAO,
+  ROTA_ANGARIACAO,
+  rotaCorresponde,
+} from "./ferramentasAngariacao";
 
 const STATUS_FUNIL: readonly string[] = STATUS_FLOW;
-
-type Badge = "pipeline" | "agenda" | "respostas" | "radar";
 
 interface ItemNav {
   rota: string;
   texto: string;
   icone: React.ReactNode;
   badge?: Badge;
+  /** Outras rotas que acendem este item (um item que agrupa telas). */
+  rotasAtivas?: string[];
 }
 
 const ITEM_CEREBRO_IA: ItemNav = {
@@ -73,8 +79,12 @@ const ITENS: ItemNav[] = [
     ),
   },
   {
-    rota: "/garimpo-em-campo",
-    texto: "Garimpo em Campo",
+    // Uma entrada para a área toda: as ferramentas de captação vivem em
+    // FERRAMENTAS_ANGARIACAO e são alternadas pela faixa no topo da página
+    // (NavAngariacao). Sem badge: o contador do Radar é da Central e fica lá.
+    rota: ROTA_ANGARIACAO,
+    texto: "Angariação",
+    rotasAtivas: FERRAMENTAS_ANGARIACAO.map((f) => f.rota),
     icone: (
       <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M4 20V9l8-5 8 5v11" />
@@ -89,37 +99,6 @@ const ITENS: ItemNav[] = [
     icone: (
       <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M4 7h16M4 17h16M7 4l-3 3 3 3M17 14l3 3-3 3" />
-      </svg>
-    ),
-  },
-  {
-    rota: "/avaliacao",
-    texto: "Avaliação Rápida",
-    icone: (
-      <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M4 19V9M10 19V5M16 19v-7M22 19H2" />
-        <path d="m3 6 5-3 5 4 7-5" />
-      </svg>
-    ),
-  },
-  {
-    rota: "/central-angariacao",
-    texto: "Central de Angariação",
-    badge: "radar",
-    icone: (
-      <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="11" cy="11" r="7" />
-        <path d="m16 16 5 5M11 7v8M7 11h8" />
-      </svg>
-    ),
-  },
-  {
-    rota: "/investigador-imoveis",
-    texto: "Investigador de Imóveis",
-    icone: (
-      <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="10.5" cy="10.5" r="6.5" />
-        <path d="m15.5 15.5 5 5M10.5 7.5v6M7.5 10.5h6" />
       </svg>
     ),
   },
@@ -266,7 +245,10 @@ export default function BarraLateral({
   // (INP alto). Aquece o cache no mount. (No dev o prefetch é no-op — a
   // lentidão ao navegar em localhost é a compilação sob demanda, não isto.)
   useEffect(() => {
-    for (const item of itens) router.prefetch(item.rota);
+    for (const item of itens) {
+      router.prefetch(item.rota);
+      for (const rota of item.rotasAtivas ?? []) if (rota !== item.rota) router.prefetch(rota);
+    }
   }, [router, itens]);
 
   // A caixa varre as notas de todos os imóveis; ao contrário dos outros dois
@@ -323,7 +305,7 @@ export default function BarraLateral({
           <button
             key={item.rota}
             type="button"
-            className={`nav-item${pathname === item.rota || pathname.startsWith(`${item.rota}/`) ? " active" : ""}`}
+            className={`nav-item${[item.rota, ...(item.rotasAtivas ?? [])].some((rota) => rotaCorresponde(pathname, rota)) ? " active" : ""}`}
             onClick={() => navegar(item.rota)}
             data-tip={item.texto}
           >

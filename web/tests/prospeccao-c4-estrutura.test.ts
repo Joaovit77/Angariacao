@@ -52,12 +52,17 @@ describe("C4 do Garimpo em Campo — estrutura", () => {
     expect(overlay).toContain("<ModalAvistamento imovelIdentificadoId={modal.id} />");
   });
 
-  it("adiciona exatamente uma entrada final no menu e em TITULOS", () => {
+  it("adiciona exatamente uma entrada final na lista de ferramentas de angariação e em TITULOS", () => {
+    // O menu lateral tem uma entrada só para a área ("Angariação"); as
+    // ferramentas vivem em FERRAMENTAS_ANGARIACAO, que a barra e a faixa leem.
+    const ferramentas = ler("components/painel/ferramentasAngariacao.tsx");
     const barra = ler("components/painel/BarraLateral.tsx");
     const topbar = ler("components/painel/Topbar.tsx");
-    expect(barra.match(/rota: "\/garimpo-em-campo"/g)).toHaveLength(1);
-    expect(barra.match(/texto: "Garimpo em Campo"/g)).toHaveLength(1);
-    expect(barra).toMatch(/rota: "\/garimpo-em-campo"[\s\S]*?<svg className="ic"/);
+    expect(ferramentas.match(/rota: "\/garimpo-em-campo"/g)).toHaveLength(1);
+    expect(ferramentas.match(/texto: "Garimpo em Campo"/g)).toHaveLength(1);
+    expect(ferramentas).toMatch(/rota: "\/garimpo-em-campo"[\s\S]*?<svg className="ic"/);
+    expect(barra).toContain("FERRAMENTAS_ANGARIACAO");
+    expect(barra).not.toContain('rota: "/garimpo-em-campo"');
     expect(topbar.match(/"\/garimpo-em-campo": "Garimpo em Campo"/g)).toHaveLength(1);
   });
 

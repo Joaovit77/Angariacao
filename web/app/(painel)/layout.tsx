@@ -15,6 +15,8 @@ import { useSessao } from "@/components/SessaoProvider";
 import BarraLateral from "@/components/painel/BarraLateral";
 import Topbar from "@/components/painel/Topbar";
 import EsqueletoPainel from "@/components/painel/EsqueletoPainel";
+import NavAngariacao from "@/components/painel/NavAngariacao";
+import { ferramentaAtiva } from "@/components/painel/ferramentasAngariacao";
 import Celebracao from "@/components/painel/Celebracao";
 import IndicadorFollowUp from "@/components/painel/IndicadorFollowUp";
 import SincronizacaoRespostas from "@/components/painel/SincronizacaoRespostas";
@@ -170,9 +172,14 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
 
       <main className="main" id="main-content">
         {carregado || pathname === "/admin" ? (
-          <div key={pathname} className="view-anim">
-            {children}
-          </div>
+          <>
+            {/* Faixa das ferramentas de captação, fora do div com key: não
+                re-anima nem remonta ao alternar entre elas. */}
+            {ferramentaAtiva(pathname) && <NavAngariacao />}
+            <div key={pathname} className="view-anim">
+              {children}
+            </div>
+          </>
         ) : (
           <EsqueletoPainel />
         )}
