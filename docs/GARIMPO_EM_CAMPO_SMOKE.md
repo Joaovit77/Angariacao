@@ -201,6 +201,48 @@ configuração de bucket, exclusão e IA está em [`DEPLOY.md`](../DEPLOY.md).
 3. Se a rota devolver `prefixoVazio: false`, a limpeza não terminou: repetir até o prefixo ficar
    vazio antes de encerrar o smoke.
 
+## S. Memória de identidade do imóvel (C13)
+
+Pré-requisito: a migration `20260915190000_prospeccao_memoria_identidade` aplicada no ambiente
+(tabelas `imoveis_identificados_investigacoes` e `_atributos`, RPCs
+`registrar_investigacao_identificado` e `confirmar_atributo_identificado`, passo 4b em
+`fundir_imoveis_identificados`).
+
+1. **Leitura (C13C).** No detalhe de um identificado, a seção **Memória do imóvel** abre sem IA e
+   sem escrita: lista as afirmações com rótulo amigável, **Hipótese**/**Confirmado** em texto, fonte
+   como domínio e data de observação. Sem afirmação, a seção fica neutra (nada inventado).
+2. **Confirmação humana (C13C).** **Confirmar informação** pede `window.confirm` e chama
+   `confirmar_atributo_identificado`; a linha vira `confirmada` com `confirmado_por`/`confirmado_em`
+   e nada mais muda (atributo, valor, fonte, `observado_em`). Repetir é idempotente.
+3. **Investigador → memória (C13B).** **Investigar na web** a partir do identificado e concluir UMA
+   pesquisa. A tela informa quantas informações estruturadas foram salvas com a fonte. No banco:
+   uma linha em `_investigacoes` para a execução (`resultados_total`, `atributos_total`,
+   `recusados_total`), atributos só do catálogo fechado, todos `hipotese`, `confianca` **null**,
+   nenhum `valor_anunciado`; `ultima_investigacao_em` igual a `concluida_em`; `situacao` intacta;
+   `imovel_id` nulo. A consulta digitada não existe em coluna nenhuma.
+4. **Merge e exclusão.** Fundir dois identificados move investigações e atributos para o
+   sobrevivente com os mesmos ids; excluir o identificado (passo P) apaga a memória em cascata,
+   sem órfão em `_investigacoes` nem em `_atributos`.
+
+### Registro de fechamento do C13 (Production)
+
+- Migration aplicada em Production em 2026-09-15, antes do merge do C13 em `main`; ledger em dia.
+  Estrutura validada no banco: tabelas com RLS e policies de leitura própria, grants mínimos
+  (`authenticated` só lê; `service_role` grava; RPC de registro só `service_role`, RPC de
+  confirmação só `authenticated`), sem coluna nem parâmetro de consulta, passo 4b presente.
+- **C13C comprovado em 2026-09-15**, na conta de teste: leitura da memória pela tela e duas
+  confirmações humanas via `confirmar_atributo_identificado` (HTTP 200), com releitura em seguida.
+- **C13B comprovado em 2026-09-16**, na conta de teste, com um identificado sintético sem foto e
+  endereço fictício: uma investigação real pela UI → `registrar_investigacao_identificado`
+  (HTTP 200) → 1 investigação (18 resultados, 11 atributos salvos, 0 recusados) e 11 atributos
+  (`area_m2`, `quartos`, `vagas`, `condominio`; nenhum `valor_anunciado`; `confianca` null em
+  todos; estado `hipotese`); `ultima_investigacao_em = concluida_em`; `situacao = identificado`;
+  `imovel_id = null`; nenhuma consulta livre persistida.
+- Limpeza: identificado removido pelo fluxo coordenado
+  (`iniciar_exclusao_imovel_identificado` → `concluir_exclusao_imovel_identificado`); a cascata
+  zerou investigações e atributos; 0 órfãos nas duas tabelas; conta de teste sem identificado,
+  passagem, foto, objeto no bucket ou imóvel no Pipeline.
+
 ## UX de campo (C10.1), no celular
 
 - Abrir o Garimpo e registrar um imóvel sem precisar entender o resto da tela.

@@ -2816,6 +2816,14 @@ divergências, "Transformado em oportunidade" a partir de `promovido_em`) sem re
 passagem. Zero IA ao abrir, confirmar ou ler; zero escrita por visualizar; nada promove nem muda
 situação.
 
+**Estado.** O C13 está publicado em Production desde 2026-09-15 (migration aplicada antes do merge
+em `main`) e foi comprovado de ponta a ponta na conta de teste: C13C em 2026-09-15 (leitura e
+confirmação humana) e C13B em 2026-09-16 (uma investigação real persistindo investigação e
+atributos, sem `valor_anunciado`, com `confianca` nula e sem consulta livre), com limpeza sem
+órfãos. O registro factual e o roteiro estão na seção S de
+[docs/GARIMPO_EM_CAMPO_SMOKE.md](docs/GARIMPO_EM_CAMPO_SMOKE.md). Com ele fecha a série C1 → C13
+do Garimpo em Campo; o que vier depois é fase nova, não checkpoint desta.
+
 ## O super admin: operar o sistema ≠ usar o sistema
 
 Tudo acima é o painel do **corretor**, e cada linha do banco pertence a um `user_id`. O que faltava
