@@ -238,7 +238,7 @@ export function totaisDoPainel(
    ---------------------------------------------------------------- */
 
 export type NivelEvento = "erro" | "aviso" | "info";
-export type CategoriaEvento = "whatsapp" | "ia" | "webhook" | "google" | "admin" | "sophia";
+export type CategoriaEvento = "whatsapp" | "ia" | "webhook" | "google" | "admin" | "sophia" | "radar";
 
 export interface EventoLog {
   id: number;
@@ -296,6 +296,11 @@ export const EVENTOS: Record<string, string> = {
   "admin-cargo-concedido": "Cargo de administrador concedido",
   "admin-cargo-removido": "Cargo de administrador removido",
   "admin-carteira-alterada": "Acesso ao painel do corretor alterado",
+  "radar-rodada": "Rodada automática do Radar",
+  "radar-busca-pulada": "Busca do Radar pulada",
+  "radar-busca-falhou": "Falha na busca do Radar",
+  "radar-busca-vazia": "Busca do Radar sem anúncios",
+  "radar-busca-ok": "Busca do Radar concluída",
   /* Integração com o Sistema Principal. Os dois primeiros são a razão de a
      categoria existir: um evento que não acha a angariação, ou que acha duas,
      não gera reclamação nenhuma — gera SILÊNCIO. O corretor simplesmente

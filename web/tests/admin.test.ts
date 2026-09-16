@@ -299,5 +299,6 @@ describe("log", () => {
     expect(rotuloEvento("historico-envio-falhou")).toBe(
       "Mensagem enviada sem registro no histórico",
     );
+    expect(rotuloEvento("radar-busca-vazia")).toBe("Busca do Radar sem anúncios");
   });
 });

@@ -5,6 +5,7 @@ import type { AnuncioCentralAngariacao } from "@/lib/calculo/centralAngariacao";
 const mocks = vi.hoisted(() => ({
   buscarComFirecrawl: vi.fn(),
   createClient: vi.fn(),
+  registrarEvento: vi.fn(),
   salvarComparaveisMercado: vi.fn(),
 }));
 
@@ -15,6 +16,9 @@ vi.mock("@/lib/servidor/firecrawlCentralAngariacao", () => ({
 }));
 vi.mock("@/lib/servidor/comparaveisMercado", () => ({
   salvarComparaveisMercado: mocks.salvarComparaveisMercado,
+}));
+vi.mock("@/lib/servidor/registro", () => ({
+  registrarEvento: mocks.registrarEvento,
 }));
 
 import { executarMonitorRadar } from "@/lib/servidor/monitorRadarAngariacao";
@@ -44,10 +48,13 @@ const anuncioValido: AnuncioCentralAngariacao = {
   anunciante: "incerto",
 };
 
+type BuscaRadarTeste = Omit<typeof busca, "ultimo_check"> & { ultimo_check: string | null };
+
 function clienteRadarFalso(
   existentes: Array<{ portal: string; id_externo: string }> = [],
+  buscas: BuscaRadarTeste[] = [busca],
 ) {
-  const limitarBuscas = vi.fn().mockResolvedValue({ data: [busca], error: null });
+  const limitarBuscas = vi.fn().mockResolvedValue({ data: buscas, error: null });
   const ordenarBuscas = vi.fn().mockReturnValue({ limit: limitarBuscas });
   const filtrarBuscasAtivas = vi.fn().mockReturnValue({ order: ordenarBuscas });
   const selecionarBuscas = vi.fn().mockReturnValue({ eq: filtrarBuscasAtivas });
@@ -81,6 +88,16 @@ function clienteRadarFalso(
     inserirAnuncios,
     atualizarBusca,
   };
+}
+
+function eventosRadar(evento: string) {
+  return mocks.registrarEvento.mock.calls
+    .map(([entrada]) => entrada)
+    .filter((entrada) => entrada.evento === evento);
+}
+
+function detalheRadar(evento: string, indice = 0) {
+  return JSON.parse(eventosRadar(evento)[indice].detalhe);
 }
 
 describe("monitor agendado do Radar", () => {
@@ -125,6 +142,14 @@ describe("monitor agendado do Radar", () => {
       onConflict: "busca_id,portal,id_externo",
       ignoreDuplicates: true,
     });
+    expect(detalheRadar("radar-busca-ok")).toMatchObject({
+      busca_id: "busca-1",
+      portal: "olx",
+      coletados: 1,
+      apos_filtro: 1,
+      novos: 1,
+      origem_html: "firecrawl",
+    });
   });
 
   it("preserva no Radar o anúncio que não atende aos critérios de comparável", async () => {
@@ -155,6 +180,7 @@ describe("monitor agendado do Radar", () => {
     expect(resumo).toMatchObject({ novos: 0, falhas: 0 });
     expect(mocks.salvarComparaveisMercado).toHaveBeenCalledOnce();
     expect(banco.inserirAnuncios).not.toHaveBeenCalled();
+    expect(detalheRadar("radar-busca-ok")).toMatchObject({ novos: 0 });
   });
 
   it("não cria anúncios nem comparáveis artificiais quando a coleta vem vazia", async () => {
@@ -173,6 +199,15 @@ describe("monitor agendado do Radar", () => {
       busca.filtros,
     );
     expect(banco.inserirAnuncios).not.toHaveBeenCalled();
+    expect(detalheRadar("radar-busca-vazia")).toMatchObject({
+      busca_id: "busca-1",
+      portal: "olx",
+      coletados: 0,
+      apos_filtro: 0,
+      novos: 0,
+      origem_html: "firecrawl",
+      status_portal: "sem_cards",
+    });
   });
 
   it("mantém o Radar bem-sucedido e registra separadamente a falha de comparáveis", async () => {
@@ -193,16 +228,142 @@ describe("monitor agendado do Radar", () => {
     );
   });
 
-  it("preserva a falha atual do cron quando o Firecrawl não responde", async () => {
+  it("classifica a falha do Firecrawl sem persistir conteúdo externo sensível", async () => {
     const banco = clienteRadarFalso();
     mocks.createClient.mockReturnValue(banco.cliente);
-    mocks.buscarComFirecrawl.mockRejectedValue(new Error("Firecrawl indisponível"));
+    mocks.buscarComFirecrawl.mockImplementation(async (_filtros, _url, registrarOrigem) => {
+      registrarOrigem("firecrawl");
+      throw Object.assign(
+        new Error("<html>telefone 43999998888 https://olx.com.br/anuncio/segredo</html>"),
+        { codigo: "firecrawl_timeout" },
+      );
+    });
 
     const resumo = await executarMonitorRadar();
 
-    expect(resumo).toMatchObject({ verificadas: 1, novos: 0, falhas: 1 });
+    expect(resumo).toMatchObject({
+      verificadas: 1,
+      novos: 0,
+      falhas: 1,
+      resultados: [{
+        buscaId: "busca-1",
+        ok: false,
+        codigo: "firecrawl_timeout",
+        origem_html: "firecrawl",
+      }],
+    });
     expect(mocks.salvarComparaveisMercado).not.toHaveBeenCalled();
     expect(banco.inserirAnuncios).not.toHaveBeenCalled();
     expect(banco.atualizarBusca).toHaveBeenCalledOnce();
+    expect(detalheRadar("radar-busca-falhou")).toMatchObject({
+      busca_id: "busca-1",
+      portal: "olx",
+      codigo: "firecrawl_timeout",
+      etapa: "coleta",
+      origem_html: "firecrawl",
+    });
+    const logsPersistentes = JSON.stringify(mocks.registrarEvento.mock.calls);
+    expect(logsPersistentes).not.toContain("<html>");
+    expect(logsPersistentes).not.toContain("43999998888");
+    expect(logsPersistentes).not.toContain("olx.com.br/anuncio");
+  });
+
+  it.each(["cache", "firecrawl"] as const)(
+    "expõe e persiste a origem %s da coleta",
+    async (origem) => {
+      const banco = clienteRadarFalso();
+      mocks.createClient.mockReturnValue(banco.cliente);
+      mocks.buscarComFirecrawl.mockImplementation(async (_filtros, _url, registrarOrigem) => {
+        registrarOrigem(origem);
+        return [anuncioValido];
+      });
+
+      const resumo = await executarMonitorRadar();
+
+      expect(resumo.resultados[0]).toMatchObject({ origem_html: origem });
+      expect(detalheRadar("radar-busca-ok")).toMatchObject({ origem_html: origem });
+    },
+  );
+
+  it("uma falha do log de uma busca não altera a coleta", async () => {
+    const banco = clienteRadarFalso();
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([anuncioValido]);
+    mocks.registrarEvento.mockImplementation(() => { throw new Error("log indisponível"); });
+
+    const resumo = await executarMonitorRadar();
+
+    expect(resumo).toMatchObject({ verificadas: 1, novos: 1, falhas: 0 });
+    expect(banco.inserirAnuncios).toHaveBeenCalledOnce();
+    expect(console.error).toHaveBeenCalledWith(
+      "[radar-cron] falha ao agendar registro de observabilidade (ignorada)",
+      expect.objectContaining({ provider: "supabase", error_code: "registration_failed" }),
+    );
+  });
+
+  it("uma busca com falha não interrompe as demais", async () => {
+    const segundaBusca = { ...busca, id: "busca-2", nome: "Gleba Palhano" };
+    const banco = clienteRadarFalso([], [busca, segundaBusca]);
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl
+      .mockRejectedValueOnce(Object.assign(new Error("falha"), { codigo: "firecrawl_429" }))
+      .mockResolvedValueOnce([anuncioValido]);
+
+    const resumo = await executarMonitorRadar();
+
+    expect(resumo).toMatchObject({ verificadas: 2, novos: 1, falhas: 1 });
+    expect(resumo.resultados).toEqual([
+      expect.objectContaining({ buscaId: "busca-1", ok: false, codigo: "firecrawl_429" }),
+      expect.objectContaining({ buscaId: "busca-2", ok: true, novos: 1 }),
+    ]);
+    expect(eventosRadar("radar-busca-falhou")).toHaveLength(1);
+    expect(eventosRadar("radar-busca-ok")).toHaveLength(1);
+  });
+
+  it("registra buscas puladas por recência, filtros e cobertura sem executá-las", async () => {
+    const naoVencida = { ...busca, id: "busca-recente", ultimo_check: "2999-01-01T00:00:00.000Z" };
+    const filtrosInvalidos = {
+      ...busca,
+      id: "busca-invalida",
+      filtros: { ...busca.filtros, cidade: "" },
+    };
+    const portalSemCobertura = {
+      ...busca,
+      id: "busca-sem-cobertura",
+      filtros: { ...busca.filtros, portal: "portal-desconhecido" as typeof busca.filtros.portal },
+    };
+    const banco = clienteRadarFalso([], [naoVencida, filtrosInvalidos, portalSemCobertura]);
+    mocks.createClient.mockReturnValue(banco.cliente);
+
+    const resumo = await executarMonitorRadar();
+
+    expect(resumo).toMatchObject({ candidatas: 3, elegiveis: 0, verificadas: 0 });
+    expect(mocks.buscarComFirecrawl).not.toHaveBeenCalled();
+    expect(eventosRadar("radar-busca-pulada").map((entrada) => JSON.parse(entrada.detalhe))).toEqual([
+      { busca_id: "busca-recente", motivo: "nao-vencida" },
+      { busca_id: "busca-invalida", motivo: "filtros-invalidos" },
+      { busca_id: "busca-sem-cobertura", motivo: "portal-sem-cobertura" },
+    ]);
+  });
+
+  it("registra o limite da rodada sem alterar o teto de oito buscas", async () => {
+    const noveBuscas = Array.from({ length: 9 }, (_, indice) => ({
+      ...busca,
+      id: `busca-${indice + 1}`,
+      nome: `Busca ${indice + 1}`,
+    }));
+    const banco = clienteRadarFalso([], noveBuscas);
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([]);
+
+    const resumo = await executarMonitorRadar();
+
+    expect(resumo).toMatchObject({ candidatas: 9, elegiveis: 9, verificadas: 8 });
+    expect(mocks.buscarComFirecrawl).toHaveBeenCalledTimes(8);
+    expect(eventosRadar("radar-busca-pulada")).toHaveLength(1);
+    expect(detalheRadar("radar-busca-pulada")).toEqual({
+      busca_id: "busca-9",
+      motivo: "limite-rodada",
+    });
   });
 });

@@ -13,7 +13,12 @@ import {
 import { agoraISOString } from "@/lib/datas";
 import { urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
 import { finalizarColetaCentralAngariacao } from "@/lib/servidor/finalizacaoCentralAngariacao";
-import { buscarComFirecrawl } from "@/lib/servidor/firecrawlCentralAngariacao";
+import {
+  buscarComFirecrawl,
+  type CodigoErroFirecrawl,
+  type OrigemConsultaFirecrawl,
+} from "@/lib/servidor/firecrawlCentralAngariacao";
+import { registrarEvento } from "@/lib/servidor/registro";
 
 const LIMITE_BUSCAS_POR_RODADA = 8;
 const CONCORRENCIA = 2;
@@ -31,17 +36,38 @@ interface DbBuscaRadar {
 interface ResultadoBuscaMonitorada {
   buscaId: string;
   nome: string;
+  portal: string;
   novos: number;
   ok: boolean;
   erro?: string;
+  codigo?: CodigoFalhaRadar;
+  origem_html?: OrigemConsultaFirecrawl;
 }
 
 export interface ResumoMonitorRadar {
+  candidatas: number;
+  elegiveis: number;
   verificadas: number;
   novos: number;
   falhas: number;
   resultados: ResultadoBuscaMonitorada[];
 }
+
+type MotivoBuscaPulada =
+  | "nao-vencida"
+  | "filtros-invalidos"
+  | "limite-rodada"
+  | "portal-sem-cobertura";
+
+type EtapaBuscaRadar = "montagem-url" | "coleta" | "normalizacao" | "persistencia";
+type CodigoFalhaRadar = CodigoErroFirecrawl | "falha_interna";
+
+const CODIGOS_FIRECRAWL = new Set<CodigoErroFirecrawl>([
+  "firecrawl_timeout",
+  "firecrawl_429",
+  "firecrawl_indisponivel",
+  "parser_falhou",
+]);
 
 function clienteServico(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -52,17 +78,50 @@ function clienteServico(): SupabaseClient {
   });
 }
 
-function buscaValida(row: DbBuscaRadar): boolean {
-  return !!row.filtros?.cidade?.trim()
-    && PORTAIS_ANGARIACAO.includes(row.filtros.portal)
-    && buscaRadarEstaVencida({
-      id: row.id,
-      nome: row.nome,
-      filtros: row.filtros,
-      ativo: row.ativo,
-      ultimoCheck: row.ultimo_check,
-      criadoEm: row.created_at,
-    } satisfies BuscaRadar);
+function motivoParaPularBusca(row: DbBuscaRadar): MotivoBuscaPulada | null {
+  if (!PORTAIS_ANGARIACAO.includes(row.filtros?.portal)) return "portal-sem-cobertura";
+  if (!row.filtros?.cidade?.trim()) return "filtros-invalidos";
+  if (!buscaRadarEstaVencida({
+    id: row.id,
+    nome: row.nome,
+    filtros: row.filtros,
+    ativo: row.ativo,
+    ultimoCheck: row.ultimo_check,
+    criadoEm: row.created_at,
+  } satisfies BuscaRadar)) return "nao-vencida";
+  return null;
+}
+
+function registrarRadar(
+  userId: string | null,
+  nivel: "erro" | "aviso" | "info",
+  evento: "radar-busca-pulada" | "radar-busca-falhou" | "radar-busca-vazia" | "radar-busca-ok",
+  detalhe: Record<string, unknown>,
+): void {
+  try {
+    registrarEvento({
+      userId,
+      categoria: "radar",
+      nivel,
+      evento,
+      detalhe: JSON.stringify(detalhe),
+    });
+  } catch (erro) {
+    console.error(
+      "[radar-cron] falha ao agendar registro de observabilidade (ignorada)",
+      sanitizarErroExterno(erro, "registrar"),
+    );
+  }
+}
+
+function codigoDaFalha(erro: unknown): CodigoFalhaRadar {
+  if (erro && typeof erro === "object" && "codigo" in erro) {
+    const codigo = (erro as { codigo?: unknown }).codigo;
+    if (typeof codigo === "string" && CODIGOS_FIRECRAWL.has(codigo as CodigoErroFirecrawl)) {
+      return codigo as CodigoErroFirecrawl;
+    }
+  }
+  return "falha_interna";
 }
 
 function linhaAnuncio(row: DbBuscaRadar, anuncio: AnuncioCentralAngariacao) {
@@ -82,9 +141,19 @@ async function verificarBusca(
   busca: DbBuscaRadar,
 ): Promise<ResultadoBuscaMonitorada> {
   const agora = agoraISOString();
+  const inicio = performance.now();
+  const portal = busca.filtros.portal;
+  let etapa: EtapaBuscaRadar = "montagem-url";
+  let origemHtml: OrigemConsultaFirecrawl | undefined;
   try {
     const urlPesquisa = urlDaPesquisa(busca.filtros);
-    const coletados = await buscarComFirecrawl(busca.filtros, urlPesquisa);
+    etapa = "coleta";
+    const coletados = await buscarComFirecrawl(
+      busca.filtros,
+      urlPesquisa,
+      (origem) => { origemHtml = origem; },
+    );
+    etapa = "normalizacao";
     const finalizacao = await finalizarColetaCentralAngariacao(
       supabase,
       busca.user_id,
@@ -105,6 +174,7 @@ async function verificarBusca(
       });
     }
     const anuncios = finalizacao.anuncios;
+    etapa = "persistencia";
     const { data: existentes, error: erroExistentes } = await supabase
       .from("radar_anuncios")
       .select("portal,id_externo")
@@ -127,17 +197,54 @@ async function verificarBusca(
 
     const atualizado = await supabase.from("radar_buscas").update({ ultimo_check: agora }).eq("id", busca.id);
     if (atualizado.error) throw atualizado.error;
-    return { buscaId: busca.id, nome: busca.nome, novos: quantidadeInserida, ok: true };
+    const origem = origemHtml ?? "firecrawl";
+    const detalheComum = {
+      busca_id: busca.id,
+      portal,
+      coletados: coletados.length,
+      apos_filtro: anuncios.length,
+      novos: quantidadeInserida,
+      origem_html: origem,
+      duracao_ms: Math.round(performance.now() - inicio),
+    };
+    if (coletados.length === 0) {
+      registrarRadar(busca.user_id, "aviso", "radar-busca-vazia", {
+        ...detalheComum,
+        status_portal: "sem_cards",
+      });
+    } else {
+      registrarRadar(busca.user_id, "info", "radar-busca-ok", detalheComum);
+    }
+    return {
+      buscaId: busca.id,
+      nome: busca.nome,
+      portal,
+      novos: quantidadeInserida,
+      ok: true,
+      origem_html: origem,
+    };
   } catch (erro) {
     // Evita uma busca quebrada consumir créditos em repetidas tentativas. A
     // próxima janela agendada tenta de novo e as outras buscas seguem vivas.
     await supabase.from("radar_buscas").update({ ultimo_check: agora }).eq("id", busca.id);
+    const codigo = codigoDaFalha(erro);
+    registrarRadar(busca.user_id, "erro", "radar-busca-falhou", {
+      busca_id: busca.id,
+      portal,
+      codigo,
+      etapa,
+      duracao_ms: Math.round(performance.now() - inicio),
+      ...(origemHtml ? { origem_html: origemHtml } : {}),
+    });
     return {
       buscaId: busca.id,
       nome: busca.nome,
+      portal,
       novos: 0,
       ok: false,
       erro: erro instanceof Error ? erro.message : "Falha desconhecida",
+      codigo,
+      ...(origemHtml ? { origem_html: origemHtml } : {}),
     };
   }
 }
@@ -166,9 +273,31 @@ export async function executarMonitorRadar(): Promise<ResumoMonitorRadar> {
     .limit(40);
   if (error) throw error;
 
-  const buscas = ((data || []) as DbBuscaRadar[]).filter(buscaValida).slice(0, LIMITE_BUSCAS_POR_RODADA);
+  const candidatas = (data || []) as DbBuscaRadar[];
+  const elegiveis: DbBuscaRadar[] = [];
+  for (const busca of candidatas) {
+    const motivo = motivoParaPularBusca(busca);
+    if (motivo) {
+      registrarRadar(busca.user_id, "info", "radar-busca-pulada", {
+        busca_id: busca.id,
+        motivo,
+      });
+    } else {
+      elegiveis.push(busca);
+    }
+  }
+
+  const buscas = elegiveis.slice(0, LIMITE_BUSCAS_POR_RODADA);
+  for (const busca of elegiveis.slice(LIMITE_BUSCAS_POR_RODADA)) {
+    registrarRadar(busca.user_id, "info", "radar-busca-pulada", {
+      busca_id: busca.id,
+      motivo: "limite-rodada",
+    });
+  }
   const resultados = await emLotes(buscas, CONCORRENCIA, (busca) => verificarBusca(supabase, busca));
   return {
+    candidatas: candidatas.length,
+    elegiveis: elegiveis.length,
     verificadas: resultados.length,
     novos: resultados.reduce((total, item) => total + item.novos, 0),
     falhas: resultados.filter((item) => !item.ok).length,

@@ -2254,6 +2254,13 @@ ativas vencidas, no máximo oito por rodada e duas por vez, sempre filtrando/esc
 da própria busca. O limite controla custo do Firecrawl e evita rajada. Falha numa busca atualiza a
 janela e não bloqueia as demais.
 
+Cada execução autenticada do cron registra em `log_eventos`, na categoria `radar`, o início e o fim
+da rodada e classifica cada busca candidata como pulada, falha, vazia ou concluída. O detalhe é JSON
+compacto com IDs internos, portal, códigos/motivos fechados, quantidades, duração e origem do HTML
+(`cache`, `firecrawl` ou consulta já em andamento); nunca inclui HTML, conteúdo de anúncio, telefone
+ou URL completa. A ausência do evento de rodada continua sendo o sinal para cruzar com o Cron Jobs
+da Vercel. A falha do próprio registro é ignorada e não interfere na coleta.
+
 `api/central-angariacao/imagem` funciona apenas como proxy seguro para imagens de hosts esperados;
 não deve virar fetch genérico controlado pelo cliente.
 

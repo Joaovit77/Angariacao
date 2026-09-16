@@ -1,10 +1,14 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { executarMonitorRadar } = vi.hoisted(() => ({ executarMonitorRadar: vi.fn() }));
+const { executarMonitorRadar, registrarEvento } = vi.hoisted(() => ({
+  executarMonitorRadar: vi.fn(),
+  registrarEvento: vi.fn(),
+}));
 
 vi.mock("@/lib/servidor/monitorRadarAngariacao", () => ({
   executarMonitorRadar,
 }));
+vi.mock("@/lib/servidor/registro", () => ({ registrarEvento }));
 
 import { GET } from "@/app/api/cron/radar/route";
 
@@ -13,7 +17,12 @@ const segredoAnterior = process.env.CRON_SECRET;
 describe("cron do Radar", () => {
   beforeEach(() => {
     executarMonitorRadar.mockReset();
+    registrarEvento.mockReset();
     process.env.CRON_SECRET = "segredo-do-cron";
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   afterAll(() => {
@@ -37,7 +46,14 @@ describe("cron do Radar", () => {
   });
 
   it("executa a rodada autenticada e devolve o resumo", async () => {
-    executarMonitorRadar.mockResolvedValue({ verificadas: 2, novos: 3, falhas: 0, resultados: [] });
+    executarMonitorRadar.mockResolvedValue({
+      candidatas: 3,
+      elegiveis: 2,
+      verificadas: 2,
+      novos: 3,
+      falhas: 0,
+      resultados: [],
+    });
     const resposta = await GET(new Request("http://localhost/api/cron/radar", {
       headers: { Authorization: "Bearer segredo-do-cron" },
     }));
@@ -45,5 +61,40 @@ describe("cron do Radar", () => {
     expect(resposta.status).toBe(200);
     expect(await resposta.json()).toMatchObject({ ok: true, verificadas: 2, novos: 3, falhas: 0 });
     expect(executarMonitorRadar).toHaveBeenCalledOnce();
+    expect(registrarEvento).toHaveBeenCalledTimes(2);
+    expect(registrarEvento).toHaveBeenNthCalledWith(1, {
+      userId: null,
+      categoria: "radar",
+      nivel: "info",
+      evento: "radar-rodada",
+      detalhe: JSON.stringify({ etapa: "inicio" }),
+    });
+    expect(JSON.parse(registrarEvento.mock.calls[1][0].detalhe)).toMatchObject({
+      etapa: "fim",
+      candidatas: 3,
+      elegiveis: 2,
+      verificadas: 2,
+      falhas: 0,
+    });
+  });
+
+  it("uma falha do registro não altera a execução nem a resposta da rodada", async () => {
+    registrarEvento.mockImplementation(() => { throw new Error("log indisponível"); });
+    executarMonitorRadar.mockResolvedValue({
+      candidatas: 1,
+      elegiveis: 1,
+      verificadas: 1,
+      novos: 0,
+      falhas: 0,
+      resultados: [],
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const resposta = await GET(new Request("http://localhost/api/cron/radar", {
+      headers: { Authorization: "Bearer segredo-do-cron" },
+    }));
+
+    expect(resposta.status).toBe(200);
+    expect(await resposta.json()).toMatchObject({ ok: true, verificadas: 1, falhas: 0 });
   });
 });
