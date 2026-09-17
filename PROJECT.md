@@ -2248,11 +2248,15 @@ explícita e conta coletora, limita a rodada a 100 consultas Firecrawl sem repet
 geração de embeddings durante a carga; os dados estruturados já ficam disponíveis à avaliação.
 
 O Radar salva buscas e o baseline visto em `radar_buscas`/`radar_anuncios`. A chave única
-`busca_id + portal + id_externo` impede duplicatas entre consulta manual e monitor. O cron diário da
-Vercel chama `/api/cron/radar` com `CRON_SECRET`; o worker usa service role, processa somente buscas
-ativas vencidas, no máximo oito por rodada e duas por vez, sempre filtrando/escrevendo o `user_id`
-da própria busca. O limite controla custo do Firecrawl e evita rajada. Falha numa busca atualiza a
-janela e não bloqueia as demais.
+`busca_id + portal + id_externo` impede duplicatas entre consulta manual e monitor. `ultimo_check`
+mantém a janela geral de duas horas usada pelo navegador e pela ação manual;
+`ultimo_check_automatico` registra separadamente a execução programada e
+`ultimo_check_origem` distingue `manual`, `navegador` e `cron`. O cron diário da Vercel chama
+`/api/cron/radar` com `CRON_SECRET`; o worker usa service role, processa somente buscas ativas sem
+execução automática no dia civil de `America/Sao_Paulo`, no máximo oito por rodada e duas por vez,
+sempre filtrando/escrevendo o `user_id` da própria busca. O cache regional existente pode atender
+uma coleta equivalente recente sem nova chamada Firecrawl. O limite controla custo e evita rajada.
+Falha numa busca atualiza os relógios da rodada automática e não bloqueia as demais.
 
 Cada execução autenticada do cron registra em `log_eventos`, na categoria `radar`, o início e o fim
 da rodada e classifica cada busca candidata como pulada, falha, vazia ou concluída. O detalhe é JSON

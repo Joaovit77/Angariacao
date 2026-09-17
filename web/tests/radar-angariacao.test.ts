@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { avaliarOportunidade, type AnuncioCentralAngariacao } from "@/lib/calculo/centralAngariacao";
 import {
+  buscaElegivelParaCron,
   buscaRadarEstaVencida,
   nomePadraoBuscaRadar,
   selecionarAnunciosNovosRadar,
@@ -60,11 +61,50 @@ describe("Radar de Angariação", () => {
       filtros: { portal: "olx", cidade: "Londrina", estado: "PR" },
       ativo: true,
       ultimoCheck: "2026-08-10T13:01:00.000Z",
+      ultimoCheckAutomatico: null,
+      ultimoCheckOrigem: "navegador",
       criadoEm: "2026-08-10T14:00:00.000Z",
     };
     expect(buscaRadarEstaVencida(busca, agora)).toBe(false);
     expect(buscaRadarEstaVencida({ ...busca, ultimoCheck: "2026-08-10T13:00:00.000Z" }, agora)).toBe(true);
     expect(buscaRadarEstaVencida({ ...busca, ativo: false, ultimoCheck: null }, agora)).toBe(false);
+  });
+
+  it("separa a janela geral da execução automática diária em São Paulo", () => {
+    const busca: BuscaRadar = {
+      id: "busca-1",
+      nome: "Centro",
+      filtros: { portal: "olx", cidade: "Londrina", estado: "PR" },
+      ativo: true,
+      ultimoCheck: "2026-09-18T02:20:00.000Z",
+      ultimoCheckAutomatico: "2026-09-17T12:00:00.000Z",
+      ultimoCheckOrigem: "navegador",
+      criadoEm: "2026-09-10T12:00:00.000Z",
+    };
+
+    // 02:30 UTC ainda é 23:30 de 17/09 em São Paulo.
+    expect(buscaElegivelParaCron(busca, Date.parse("2026-09-18T02:30:00.000Z"))).toBe(false);
+    // 03:00 UTC já é meia-noite de 18/09 em São Paulo.
+    expect(buscaElegivelParaCron(busca, Date.parse("2026-09-18T03:00:00.000Z"))).toBe(true);
+    expect(buscaElegivelParaCron({ ...busca, ultimoCheckAutomatico: null })).toBe(true);
+    expect(buscaElegivelParaCron({ ...busca, ativo: false, ultimoCheckAutomatico: null })).toBe(false);
+  });
+
+  it("uma verificação manual recente não torna o cron inelegível", () => {
+    const agora = Date.parse("2026-09-17T12:45:00.000Z");
+    const busca: BuscaRadar = {
+      id: "busca-1",
+      nome: "Centro",
+      filtros: { portal: "olx", cidade: "Londrina", estado: "PR" },
+      ativo: true,
+      ultimoCheck: "2026-09-17T12:40:00.000Z",
+      ultimoCheckAutomatico: null,
+      ultimoCheckOrigem: "manual",
+      criadoEm: "2026-09-10T12:00:00.000Z",
+    };
+
+    expect(buscaRadarEstaVencida(busca, agora)).toBe(false);
+    expect(buscaElegivelParaCron(busca, agora)).toBe(true);
   });
 
   it("sugere um nome reconhecível para a busca", () => {

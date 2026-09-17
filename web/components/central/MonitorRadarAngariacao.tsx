@@ -73,7 +73,7 @@ export default function MonitorRadarAngariacao() {
         if (!busca || !adquirirTrava(busca.id)) return;
 
         try {
-          const novos = await verificarBuscaRadar(idUsuario, busca);
+          const novos = await verificarBuscaRadar(idUsuario, busca, "navegador");
           if (!novos.length || !ativo) return;
 
           const quantidade = novos.length;

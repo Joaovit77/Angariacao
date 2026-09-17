@@ -23,7 +23,24 @@ vi.mock("@/lib/servidor/registro", () => ({
 
 import { executarMonitorRadar } from "@/lib/servidor/monitorRadarAngariacao";
 
-const busca = {
+interface BuscaRadarTeste {
+  id: string;
+  user_id: string;
+  nome: string;
+  filtros: {
+    portal: "olx";
+    cidade: string;
+    estado: string;
+    tipo: string;
+  };
+  ativo: boolean;
+  ultimo_check: string | null;
+  ultimo_check_automatico: string | null;
+  ultimo_check_origem: "manual" | "navegador" | "cron" | null;
+  created_at: string;
+}
+
+const busca: BuscaRadarTeste = {
   id: "busca-1",
   user_id: "usuario-radar",
   nome: "Centro",
@@ -35,6 +52,8 @@ const busca = {
   },
   ativo: true,
   ultimo_check: null,
+  ultimo_check_automatico: null,
+  ultimo_check_origem: null,
   created_at: "2026-08-01T12:00:00.000Z",
 };
 
@@ -48,14 +67,13 @@ const anuncioValido: AnuncioCentralAngariacao = {
   anunciante: "incerto",
 };
 
-type BuscaRadarTeste = Omit<typeof busca, "ultimo_check"> & { ultimo_check: string | null };
-
 function clienteRadarFalso(
   existentes: Array<{ portal: string; id_externo: string }> = [],
   buscas: BuscaRadarTeste[] = [busca],
 ) {
   const limitarBuscas = vi.fn().mockResolvedValue({ data: buscas, error: null });
-  const ordenarBuscas = vi.fn().mockReturnValue({ limit: limitarBuscas });
+  const ordenarCriacao = vi.fn().mockReturnValue({ limit: limitarBuscas });
+  const ordenarBuscas = vi.fn().mockReturnValue({ order: ordenarCriacao });
   const filtrarBuscasAtivas = vi.fn().mockReturnValue({ order: ordenarBuscas });
   const selecionarBuscas = vi.fn().mockReturnValue({ eq: filtrarBuscasAtivas });
   const atualizarBuscaEq = vi.fn().mockResolvedValue({ error: null });
@@ -150,6 +168,10 @@ describe("monitor agendado do Radar", () => {
       novos: 1,
       origem_html: "firecrawl",
     });
+    expect(banco.atualizarBusca).toHaveBeenCalledWith(expect.objectContaining({
+      ultimo_check_automatico: expect.any(String),
+      ultimo_check_origem: "cron",
+    }));
   });
 
   it("preserva no Radar o anúncio que não atende aos critérios de comparável", async () => {
@@ -255,6 +277,10 @@ describe("monitor agendado do Radar", () => {
     expect(mocks.salvarComparaveisMercado).not.toHaveBeenCalled();
     expect(banco.inserirAnuncios).not.toHaveBeenCalled();
     expect(banco.atualizarBusca).toHaveBeenCalledOnce();
+    expect(banco.atualizarBusca).toHaveBeenCalledWith(expect.objectContaining({
+      ultimo_check_automatico: expect.any(String),
+      ultimo_check_origem: "cron",
+    }));
     expect(detalheRadar("radar-busca-falhou")).toMatchObject({
       busca_id: "busca-1",
       portal: "olx",
@@ -320,8 +346,68 @@ describe("monitor agendado do Radar", () => {
     expect(eventosRadar("radar-busca-ok")).toHaveLength(1);
   });
 
-  it("registra buscas puladas por recência, filtros e cobertura sem executá-las", async () => {
-    const naoVencida = { ...busca, id: "busca-recente", ultimo_check: "2999-01-01T00:00:00.000Z" };
+  it("o cron executa mesmo se o navegador verificou há menos de duas horas", async () => {
+    const verificadaNoNavegador = {
+      ...busca,
+      ultimo_check: "2999-01-01T00:00:00.000Z",
+      ultimo_check_origem: "navegador" as const,
+    };
+    const banco = clienteRadarFalso([], [verificadaNoNavegador]);
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([]);
+
+    const resumo = await executarMonitorRadar();
+
+    expect(resumo).toMatchObject({ candidatas: 1, elegiveis: 1, verificadas: 1 });
+    expect(mocks.buscarComFirecrawl).toHaveBeenCalledOnce();
+  });
+
+  it("considera já executada a segunda rodada automática no mesmo dia", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-09-17T12:45:00.000Z"));
+    const executadaHoje = {
+      ...busca,
+      ultimo_check: "2026-09-17T12:40:00.000Z",
+      ultimo_check_automatico: "2026-09-17T12:40:00.000Z",
+      ultimo_check_origem: "cron" as const,
+    };
+    const banco = clienteRadarFalso([], [executadaHoje]);
+    mocks.createClient.mockReturnValue(banco.cliente);
+
+    const resumo = await executarMonitorRadar();
+
+    expect(resumo).toMatchObject({ candidatas: 1, elegiveis: 0, verificadas: 0 });
+    expect(mocks.buscarComFirecrawl).not.toHaveBeenCalled();
+    expect(detalheRadar("radar-busca-pulada")).toEqual({
+      busca_id: "busca-1",
+      motivo: "nao-vencida",
+    });
+  });
+
+  it("mantém anúncios e buscas isolados pelo usuário dono", async () => {
+    const segundaBusca = { ...busca, id: "busca-2", user_id: "outro-usuario" };
+    const banco = clienteRadarFalso([], [busca, segundaBusca]);
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([anuncioValido]);
+
+    const resumo = await executarMonitorRadar();
+
+    expect(resumo).toMatchObject({ verificadas: 2, novos: 2, falhas: 0 });
+    expect(banco.inserirAnuncios).toHaveBeenNthCalledWith(1, [
+      expect.objectContaining({ user_id: "usuario-radar", busca_id: "busca-1" }),
+    ], expect.any(Object));
+    expect(banco.inserirAnuncios).toHaveBeenNthCalledWith(2, [
+      expect.objectContaining({ user_id: "outro-usuario", busca_id: "busca-2" }),
+    ], expect.any(Object));
+  });
+
+  it("registra buscas puladas por execução automática, filtros e cobertura sem executá-las", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-09-17T12:45:00.000Z"));
+    const naoVencida = {
+      ...busca,
+      id: "busca-recente",
+      ultimo_check_automatico: "2026-09-17T08:00:00.000Z",
+      ultimo_check_origem: "cron" as const,
+    };
     const filtrosInvalidos = {
       ...busca,
       id: "busca-invalida",

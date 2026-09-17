@@ -40,12 +40,14 @@ describe("economia de créditos do Firecrawl", () => {
 
     const filtros = { portal: "olx" as const, cidade: "Londrina", estado: "PR", somenteProprietario: true };
     const url = "https://www.olx.com.br/imoveis/estado-pr/regiao-de-londrina";
-    const primeira = await buscarComFirecrawl(filtros, url);
-    const segunda = await buscarComFirecrawl(filtros, url);
+    const origens: string[] = [];
+    const primeira = await buscarComFirecrawl(filtros, url, (origem) => origens.push(origem));
+    const segunda = await buscarComFirecrawl(filtros, url, (origem) => origens.push(origem));
 
     expect(primeira).toHaveLength(1);
     expect(segunda).toEqual(primeira);
     expect(requisicao).toHaveBeenCalledTimes(1);
+    expect(origens).toEqual(["firecrawl", "cache"]);
   });
 
   it("duas consultas simultâneas equivalentes usam uma chamada, mesmo com tipo ignorado pelo portal", async () => {

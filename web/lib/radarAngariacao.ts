@@ -2,7 +2,13 @@
 
 import { buscarNaCentral } from "./centralAngariacao";
 import { anuncioPertenceAoMercado, type AnuncioCentralAngariacao, type FiltrosCentralAngariacao } from "./calculo/centralAngariacao";
-import { selecionarAnunciosNovosRadar, type AnuncioRadar, type BuscaRadar, type EstadoRadar } from "./calculo/radarAngariacao";
+import {
+  selecionarAnunciosNovosRadar,
+  type AnuncioRadar,
+  type BuscaRadar,
+  type EstadoRadar,
+  type OrigemVerificacaoRadar,
+} from "./calculo/radarAngariacao";
 import { getSupabase } from "./persistencia/supabase";
 import { agoraISOString } from "./datas";
 
@@ -12,6 +18,8 @@ interface DbBuscaRadar {
   filtros: FiltrosCentralAngariacao;
   ativo: boolean;
   ultimo_check: string | null;
+  ultimo_check_automatico: string | null;
+  ultimo_check_origem: OrigemVerificacaoRadar | null;
   created_at: string;
 }
 
@@ -30,6 +38,8 @@ function fromDbBusca(row: DbBuscaRadar): BuscaRadar {
     filtros: row.filtros,
     ativo: row.ativo,
     ultimoCheck: row.ultimo_check,
+    ultimoCheckAutomatico: row.ultimo_check_automatico,
+    ultimoCheckOrigem: row.ultimo_check_origem,
     criadoEm: row.created_at,
   };
 }
@@ -64,7 +74,7 @@ function linhaAnuncio(
 export async function carregarRadar(): Promise<EstadoRadar> {
   const supabase = getSupabase();
   const [buscas, anuncios] = await Promise.all([
-    supabase.from("radar_buscas").select("id,nome,filtros,ativo,ultimo_check,created_at").order("created_at", { ascending: false }),
+    supabase.from("radar_buscas").select("id,nome,filtros,ativo,ultimo_check,ultimo_check_automatico,ultimo_check_origem,created_at").order("created_at", { ascending: false }),
     supabase.from("radar_anuncios").select("id,busca_id,dados,visto,encontrado_em").order("encontrado_em", { ascending: false }).limit(120),
   ]);
   if (buscas.error) throw buscas.error;
@@ -99,8 +109,14 @@ export async function salvarBuscaRadar(
   const agora = agoraISOString();
   const { data, error } = await supabase
     .from("radar_buscas")
-    .insert({ user_id: userId, nome: nome.trim(), filtros, ultimo_check: agora })
-    .select("id,nome,filtros,ativo,ultimo_check,created_at")
+    .insert({
+      user_id: userId,
+      nome: nome.trim(),
+      filtros,
+      ultimo_check: agora,
+      ultimo_check_origem: "manual",
+    })
+    .select("id,nome,filtros,ativo,ultimo_check,ultimo_check_automatico,ultimo_check_origem,created_at")
     .single();
   if (error) throw error;
   const busca = fromDbBusca(data as DbBuscaRadar);
@@ -116,13 +132,20 @@ export async function salvarBuscaRadar(
   return busca;
 }
 
-export async function verificarBuscaRadar(userId: string, busca: BuscaRadar) {
+export async function verificarBuscaRadar(
+  userId: string,
+  busca: BuscaRadar,
+  origem: Exclude<OrigemVerificacaoRadar, "cron">,
+) {
   const resultado = await buscarNaCentral(busca.filtros);
   const supabase = getSupabase();
   const agora = agoraISOString();
 
   if (!resultado.ok) {
-    await supabase.from("radar_buscas").update({ ultimo_check: agora }).eq("id", busca.id);
+    await supabase.from("radar_buscas").update({
+      ultimo_check: agora,
+      ultimo_check_origem: origem,
+    }).eq("id", busca.id);
     throw new Error(resultado.aviso || "Não foi possível consultar o portal.");
   }
 
@@ -146,7 +169,10 @@ export async function verificarBuscaRadar(userId: string, busca: BuscaRadar) {
     inseridos = (data || []) as DbAnuncioRadar[];
   }
 
-  const atualizado = await supabase.from("radar_buscas").update({ ultimo_check: agora }).eq("id", busca.id);
+  const atualizado = await supabase.from("radar_buscas").update({
+    ultimo_check: agora,
+    ultimo_check_origem: origem,
+  }).eq("id", busca.id);
   if (atualizado.error) throw atualizado.error;
   return inseridos.map(fromDbAnuncio);
 }

@@ -89,6 +89,22 @@ export function inicioDaSemana(iso: string | null | undefined): string | null {
 /** Fuso operacional explícito: funções da Vercel rodam em UTC. */
 export const FUSO_OPERACIONAL = "America/Sao_Paulo";
 
+/** Data civil de um instante no fuso operacional, como "YYYY-MM-DD". */
+export function dataOperacionalDeTimestamp(instante: number): string | null {
+  if (!Number.isFinite(instante)) return null;
+  const data = new Date(instante);
+  if (Number.isNaN(data.getTime())) return null;
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: FUSO_OPERACIONAL,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(data);
+  const valor = (tipo: Intl.DateTimeFormatPartTypes) =>
+    partes.find((parte) => parte.type === tipo)?.value || "";
+  return `${valor("year")}-${valor("month")}-${valor("day")}`;
+}
+
 /** Inicio de um dia civil no fuso operacional, convertido para timestamptz. */
 export function inicioDoDiaOperacionalISO(iso: string): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;

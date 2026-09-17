@@ -6,9 +6,10 @@ import {
   type FiltrosCentralAngariacao,
 } from "@/lib/calculo/centralAngariacao";
 import {
-  buscaRadarEstaVencida,
+  buscaElegivelParaCron,
   selecionarAnunciosNovosRadar,
   type BuscaRadar,
+  type OrigemVerificacaoRadar,
 } from "@/lib/calculo/radarAngariacao";
 import { agoraISOString } from "@/lib/datas";
 import { urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
@@ -30,6 +31,8 @@ interface DbBuscaRadar {
   filtros: FiltrosCentralAngariacao;
   ativo: boolean;
   ultimo_check: string | null;
+  ultimo_check_automatico: string | null;
+  ultimo_check_origem: OrigemVerificacaoRadar | null;
   created_at: string;
 }
 
@@ -81,12 +84,14 @@ function clienteServico(): SupabaseClient {
 function motivoParaPularBusca(row: DbBuscaRadar): MotivoBuscaPulada | null {
   if (!PORTAIS_ANGARIACAO.includes(row.filtros?.portal)) return "portal-sem-cobertura";
   if (!row.filtros?.cidade?.trim()) return "filtros-invalidos";
-  if (!buscaRadarEstaVencida({
+  if (!buscaElegivelParaCron({
     id: row.id,
     nome: row.nome,
     filtros: row.filtros,
     ativo: row.ativo,
     ultimoCheck: row.ultimo_check,
+    ultimoCheckAutomatico: row.ultimo_check_automatico,
+    ultimoCheckOrigem: row.ultimo_check_origem,
     criadoEm: row.created_at,
   } satisfies BuscaRadar)) return "nao-vencida";
   return null;
@@ -195,7 +200,11 @@ async function verificarBusca(
       quantidadeInserida = data?.length ?? 0;
     }
 
-    const atualizado = await supabase.from("radar_buscas").update({ ultimo_check: agora }).eq("id", busca.id);
+    const atualizado = await supabase.from("radar_buscas").update({
+      ultimo_check: agora,
+      ultimo_check_automatico: agora,
+      ultimo_check_origem: "cron",
+    }).eq("id", busca.id);
     if (atualizado.error) throw atualizado.error;
     const origem = origemHtml ?? "firecrawl";
     const detalheComum = {
@@ -226,7 +235,11 @@ async function verificarBusca(
   } catch (erro) {
     // Evita uma busca quebrada consumir créditos em repetidas tentativas. A
     // próxima janela agendada tenta de novo e as outras buscas seguem vivas.
-    await supabase.from("radar_buscas").update({ ultimo_check: agora }).eq("id", busca.id);
+    await supabase.from("radar_buscas").update({
+      ultimo_check: agora,
+      ultimo_check_automatico: agora,
+      ultimo_check_origem: "cron",
+    }).eq("id", busca.id);
     const codigo = codigoDaFalha(erro);
     registrarRadar(busca.user_id, "erro", "radar-busca-falhou", {
       busca_id: busca.id,
@@ -258,7 +271,8 @@ async function emLotes<T, R>(itens: T[], tamanho: number, tarefa: (item: T) => P
 }
 
 /**
- * Executa somente buscas vencidas, no máximo oito por dia e duas por vez.
+ * Executa somente buscas ainda não processadas automaticamente no dia civil
+ * de São Paulo, no máximo oito por rodada e duas por vez.
  * O limite impede uma conta com muitas buscas antigas de produzir uma rajada
  * cara no Firecrawl; as restantes entram naturalmente na rodada seguinte.
  */
@@ -267,9 +281,10 @@ export async function executarMonitorRadar(): Promise<ResumoMonitorRadar> {
   const supabase = clienteServico();
   const { data, error } = await supabase
     .from("radar_buscas")
-    .select("id,user_id,nome,filtros,ativo,ultimo_check,created_at")
+    .select("id,user_id,nome,filtros,ativo,ultimo_check,ultimo_check_automatico,ultimo_check_origem,created_at")
     .eq("ativo", true)
-    .order("ultimo_check", { ascending: true, nullsFirst: true })
+    .order("ultimo_check_automatico", { ascending: true, nullsFirst: true })
+    .order("created_at", { ascending: true })
     .limit(40);
   if (error) throw error;
 

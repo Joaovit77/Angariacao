@@ -202,7 +202,7 @@ export default function CentralAngariacaoView() {
     if (!busca) return;
     setVerificandoRadar(buscaId);
     try {
-      const novos = await verificarBuscaRadar(usuario.id, busca);
+      const novos = await verificarBuscaRadar(usuario.id, busca, "manual");
       toast(novos.length ? `${novos.length} anúncio${novos.length === 1 ? " novo encontrado" : "s novos encontrados"}.` : "Radar verificado: nada novo por enquanto.");
       publicarAtualizacaoRadar();
       await recarregarRadar();
@@ -340,7 +340,9 @@ export default function CentralAngariacaoView() {
                         <div className="central-card-tags"><span>{busca.filtros.portal}</span>{novos > 0 && <span className="radar-novo">{novos} novo{novos === 1 ? "" : "s"}</span>}</div>
                         <h3>{busca.nome}</h3>
                         <p>{[busca.filtros.tipo, busca.filtros.bairro, busca.filtros.cidade].filter(Boolean).join(" · ")}</p>
-                        <small>{busca.ultimoCheck ? `Última verificação: ${fmtDataHoraIso(busca.ultimoCheck)}` : "Ainda não verificada"}</small>
+                        <small>{busca.ultimoCheck
+                          ? `Última verificação${busca.ultimoCheckOrigem ? ` (${busca.ultimoCheckOrigem})` : ""}: ${fmtDataHoraIso(busca.ultimoCheck)}`
+                          : "Ainda não verificada"}</small>
                       </div>
                       <div className="central-radar-actions">
                         <label className="central-radar-toggle"><input type="checkbox" checked={busca.ativo} onChange={(e) => void alternarRadar(busca.id, e.target.checked)} /> Ativa</label>

@@ -3,11 +3,13 @@ import {
   type AnuncioCentralAngariacao,
   type FiltrosCentralAngariacao,
 } from "./centralAngariacao";
-import { agoraTimestamp, timestampDeIso } from "../datas";
+import { agoraTimestamp, dataOperacionalDeTimestamp, timestampDeIso } from "../datas";
 
 // Duas horas preservam alertas no mesmo turno e reduzem em 75% as consultas
 // automáticas em comparação com o intervalo anterior de 30 minutos.
 export const INTERVALO_RADAR_MS = 2 * 60 * 60 * 1000;
+
+export type OrigemVerificacaoRadar = "manual" | "navegador" | "cron";
 
 export interface BuscaRadar {
   id: string;
@@ -15,6 +17,8 @@ export interface BuscaRadar {
   filtros: FiltrosCentralAngariacao;
   ativo: boolean;
   ultimoCheck: string | null;
+  ultimoCheckAutomatico: string | null;
+  ultimoCheckOrigem: OrigemVerificacaoRadar | null;
   criadoEm: string;
 }
 
@@ -54,4 +58,15 @@ export function buscaRadarEstaVencida(busca: BuscaRadar, agora = agoraTimestamp(
   if (!busca.ultimoCheck) return true;
   const ultimo = timestampDeIso(busca.ultimoCheck);
   return ultimo == null || agora - ultimo >= INTERVALO_RADAR_MS;
+}
+
+/** O cron roda uma vez por dia civil de São Paulo, independentemente das
+    verificações manuais e do monitor do navegador. */
+export function buscaElegivelParaCron(busca: BuscaRadar, agora = agoraTimestamp()): boolean {
+  if (!busca.ativo) return false;
+  if (!busca.ultimoCheckAutomatico) return true;
+  const ultimoAutomatico = timestampDeIso(busca.ultimoCheckAutomatico);
+  if (ultimoAutomatico == null) return true;
+  if (ultimoAutomatico > agora) return false;
+  return dataOperacionalDeTimestamp(ultimoAutomatico) !== dataOperacionalDeTimestamp(agora);
 }
