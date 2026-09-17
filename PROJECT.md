@@ -468,6 +468,22 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   gráfico vizinho já exibe angariados junto dos locados.
 - **`calculo/followup.ts`** — elegibilidade e texto do follow-up em lote (os freios que impedem
   o disparo em rajada). A fila que executa é `filaFollowUp.ts`. Ver "Follow-up em lote" abaixo.
+- **`calculo/evidenciaDisponibilidade.ts` · `contextoProprietario.ts`** — evidência temporal de
+  disponibilidade de um imóvel e o contexto do proprietário com vários imóveis. Só fatos
+  estruturados contam: tentativa com resultado `agendou` (confirmado por pessoa) e compromisso
+  `Visita` com o código determinístico `visita_confirmada_pelo_proprietario` são evidência
+  positiva; `retirado`, "Locado", "Perdido" e "Cancelado" no estado atual são evidência negativa.
+  Visita classificada só pela IA (`prazo_combinado_na_resposta`), visita criada à mão, lembrete
+  concluído (o `done` também nasce do envio do lote), mensagem pendente, texto livre e ausência de
+  negativa não são evidência; visita não realizada não retira a evidência da combinação. Cada
+  evidência carrega o instante do registro (tentativa `data`, `created_at` do compromisso, data da
+  transição de status) no datetime civil operacional; a comparação usa a precisão mais grossa dos
+  dois lados e empate entre sinais opostos é `conflitante`, nunca desempate silencioso. A
+  identidade do proprietário é o par conta + telefone canônico (a mesma chave do webhook e da
+  Sophia), nunca o nome; os estados dos imóveis de um mesmo dono permanecem independentes e o
+  módulo apenas detecta verificações pendentes repetidas para a mesma pessoa. Nenhum dos dois
+  módulos lê banco, cancela, reagenda ou aplica a cadência de 60 dias: isso pertence ao worker e
+  às funções de transição que os consomem.
 - **`calculo/conquistasDoMes.ts`** — o que se move ENQUANTO o mês corre, e o terceiro recorte do
   reconhecimento. Nasceu de um sintoma que o corretor descreveu melhor que qualquer métrica: "quando
   o mês vira, as conquistas não viram junto". Ele tinha razão — em 03/08/2026 a grade de medalhas
