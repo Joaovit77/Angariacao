@@ -16,6 +16,7 @@ export async function associarReferenciasAvaliacaoDoInvestigador(
   supabase: SupabaseClient,
   userId: string,
   resultados: CorrespondenciaInvestigacao[],
+  execucao: string | null = null,
 ): Promise<CorrespondenciaInvestigacao[]> {
   const urlsCanonicas = [...new Set(
     resultados.map((resultado) => urlCanonicaDeAnuncio(resultado.url)).filter(Boolean),
@@ -31,6 +32,7 @@ export async function associarReferenciasAvaliacaoDoInvestigador(
     .in("url_canonica", urlsCanonicas);
   if (error) {
     console.warn("[investigador-imoveis] referências de avaliação indisponíveis", {
+      execucao,
       codigo: error.code || "consulta",
     });
     return resultados.map((resultado) => ({ ...resultado, comparavelId: null }));

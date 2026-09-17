@@ -6,6 +6,11 @@ import {
   MAXIMO_BUSCAS_POR_INVESTIGACAO,
   type ResultadoWebInvestigacao,
 } from "@/lib/calculo/investigadorImoveis";
+import {
+  classificarErroFetch,
+  registrarFalhaProvider,
+  registrarSucessoProvider,
+} from "@/lib/servidor/investigadorObservabilidade";
 
 const HOST_RAPIDAPI = "google-search-api7.p.rapidapi.com";
 const URL_BUSCA_RAPIDAPI = `https://${HOST_RAPIDAPI}/search`;
@@ -27,11 +32,19 @@ interface RespostaRapidApi {
   data?: { organic_results?: unknown };
 }
 
+/** Contagens da fila no momento em que a busca desistiu; só números, para
+    a linha de conclusão da investigação. */
+export interface ResumoBuscaInterrompida {
+  consultasExecutadas: number;
+  falhas: number;
+}
+
 export class BuscaWebIndisponivel extends Error {
   constructor(
     message: string,
     public readonly motivo: "configuracao" | "limite" | "indisponivel",
     public readonly retryAfterSegundos?: number,
+    public readonly resumo: ResumoBuscaInterrompida = { consultasExecutadas: 0, falhas: 0 },
   ) {
     super(message);
   }
@@ -72,24 +85,6 @@ function retryAfterEmSegundos(resposta: Response): number | undefined {
   return Number.isSafeInteger(segundos) && segundos >= 0 ? segundos : undefined;
 }
 
-function registrarFalhaProvider(
-  tentativa: number,
-  duracaoMs: number,
-  motivo: "limite" | "indisponivel",
-  status?: number,
-  headers: Record<string, string> = {},
-): void {
-  console.warn("[investigador-imoveis] chamada ao provider falhou", {
-    provider: "rapidapi",
-    operation: "pesquisar_imovel",
-    status: status ?? null,
-    motivo,
-    tentativa,
-    duracaoMs: Math.round(duracaoMs),
-    headersRateLimit: headers,
-  });
-}
-
 function texto(valor: unknown, limite: number): string {
   return typeof valor === "string" ? valor.replace(/\s+/g, " ").trim().slice(0, limite) : "";
 }
@@ -125,16 +120,19 @@ async function resolverUrlOriginal(link: string, fetcher: typeof fetch): Promise
   return redirecionamento;
 }
 
-function resultadosOrganicos(corpo: RespostaRapidApi | null): ResultadoOrganicoRapidApi[] {
+/** Lista bruta como veio, ou null quando o corpo não tem `organic_results`
+    utilizável (JSON inválido, campo ausente ou de outro tipo). */
+function listaOrganicaBruta(corpo: RespostaRapidApi | null): ResultadoOrganicoRapidApi[] | null {
   const valor = corpo?.organic_results ?? corpo?.data?.organic_results;
-  return Array.isArray(valor) ? valor.slice(0, MAXIMO_RESULTADOS_POR_BUSCA) : [];
+  return Array.isArray(valor) ? valor as ResultadoOrganicoRapidApi[] : null;
 }
 
 async function buscarConsultaNoGoogle(
   consulta: string,
-  tentativa: number,
+  indiceConsulta: number,
   apiKey: string,
   fetcher: typeof fetch,
+  execucao: string | null,
 ): Promise<ResultadoWebInvestigacao[]> {
   const url = new URL(URL_BUSCA_RAPIDAPI);
   url.searchParams.set("keyword", consulta);
@@ -153,34 +151,68 @@ async function buscarConsultaNoGoogle(
       signal: AbortSignal.timeout(TIMEOUT_BUSCA_MS),
       cache: "no-store",
     });
-  } catch {
-    registrarFalhaProvider(tentativa, performance.now() - inicio, "indisponivel");
+  } catch (erro) {
+    // O fetch rejeitou antes de haver Response: timeout próprio, DNS, TLS,
+    // reset... A classificação guarda só o nome do erro e um código curto.
+    registrarFalhaProvider({
+      execucao,
+      indiceConsulta,
+      duracaoMs: performance.now() - inicio,
+      motivo: "indisponivel",
+      ...classificarErroFetch(erro),
+    });
     throw new BuscaWebIndisponivel("O provider não respondeu.", "indisponivel");
   }
-  const duracaoMs = performance.now() - inicio;
   if (resposta.status === 429) {
     const retryAfterSegundos = retryAfterEmSegundos(resposta);
-    registrarFalhaProvider(
-      tentativa,
-      duracaoMs,
-      "limite",
-      resposta.status,
-      diagnosticoHeaders(resposta),
-    );
+    registrarFalhaProvider({
+      execucao,
+      indiceConsulta,
+      duracaoMs: performance.now() - inicio,
+      causa: "http",
+      motivo: "limite",
+      status: resposta.status,
+      headersRateLimit: diagnosticoHeaders(resposta),
+    });
     throw new BuscaWebIndisponivel("Limite de buscas atingido.", "limite", retryAfterSegundos);
   }
   if (!resposta.ok) {
-    registrarFalhaProvider(
-      tentativa,
-      duracaoMs,
-      "indisponivel",
-      resposta.status,
-      diagnosticoHeaders(resposta),
-    );
+    registrarFalhaProvider({
+      execucao,
+      indiceConsulta,
+      duracaoMs: performance.now() - inicio,
+      causa: "http",
+      motivo: "indisponivel",
+      status: resposta.status,
+      headersRateLimit: diagnosticoHeaders(resposta),
+    });
     throw new BuscaWebIndisponivel(`Provider respondeu ${resposta.status}.`, "indisponivel");
   }
   const corpo = await resposta.json().catch(() => null) as RespostaRapidApi | null;
-  const organicos = resultadosOrganicos(corpo);
+  const duracaoMs = performance.now() - inicio;
+  const lista = listaOrganicaBruta(corpo);
+  if (lista === null) {
+    // 200 sem lista utilizável. O comportamento entregue continua o mesmo
+    // (zero resultados, sem contar falha); só deixa de ser silencioso.
+    registrarFalhaProvider({
+      execucao,
+      indiceConsulta,
+      duracaoMs,
+      causa: "resposta-invalida",
+      motivo: "resposta-invalida",
+      status: resposta.status,
+      headersRateLimit: diagnosticoHeaders(resposta),
+    });
+  } else {
+    registrarSucessoProvider({
+      execucao,
+      indiceConsulta,
+      duracaoMs,
+      status: resposta.status,
+      resultadosBrutos: lista.length,
+    });
+  }
+  const organicos = (lista ?? []).slice(0, MAXIMO_RESULTADOS_POR_BUSCA);
 
   return Promise.all(organicos.map(async (item) => {
     const titulo = texto(item.title, 300);
@@ -201,12 +233,19 @@ async function buscarConsultaNoGoogle(
 }
 
 /** Fronteira interna do Investigador. Nenhum componente conhece RapidAPI. */
+export interface OpcoesBuscaWebInvestigacao {
+  /** Id da execução gerado pela rota; amarra todas as linhas de log. */
+  execucao?: string;
+}
+
 export async function buscarImovelNaWeb(
   consultaOriginal: string,
   consultas: string[],
   fetcher: typeof fetch = fetch,
   aoConcluirPesquisa?: (consultasExecutadas: string[]) => void,
+  opcoes: OpcoesBuscaWebInvestigacao = {},
 ): Promise<ResultadoBuscaWebInvestigacao> {
+  const execucao = opcoes.execucao ?? null;
   const apiKey = process.env.RAPIDAPI_KEY?.trim();
   if (!apiKey) {
     throw new BuscaWebIndisponivel("RAPIDAPI_KEY não configurada.", "configuracao");
@@ -223,7 +262,7 @@ export async function buscarImovelNaWeb(
   for (const [indice, consulta] of fila.entries()) {
     consultasExecutadas.push(consulta);
     try {
-      resultados.push(...await buscarConsultaNoGoogle(consulta, indice + 1, apiKey, fetcher));
+      resultados.push(...await buscarConsultaNoGoogle(consulta, indice + 1, apiKey, fetcher, execucao));
     } catch (erro) {
       falhas += 1;
       if (erro instanceof BuscaWebIndisponivel && erro.motivo === "limite") {
@@ -245,10 +284,11 @@ export async function buscarImovelNaWeb(
   }
 
   if (!resultados.length && falhas) {
+    const resumo = { consultasExecutadas: consultasExecutadas.length, falhas };
     if (limiteAtingido) {
-      throw new BuscaWebIndisponivel("Limite de buscas atingido.", "limite", retryAfterSegundos);
+      throw new BuscaWebIndisponivel("Limite de buscas atingido.", "limite", retryAfterSegundos, resumo);
     }
-    throw new BuscaWebIndisponivel("O serviço de pesquisa não respondeu.", "indisponivel");
+    throw new BuscaWebIndisponivel("O serviço de pesquisa não respondeu.", "indisponivel", undefined, resumo);
   }
   return {
     resultados,

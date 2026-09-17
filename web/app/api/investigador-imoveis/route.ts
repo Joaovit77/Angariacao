@@ -19,6 +19,10 @@ import {
 } from "@/lib/calculo/contextoInvestigador";
 import { PORTAIS_ANGARIACAO, type PortalAngariacao } from "@/lib/calculo/centralAngariacao";
 import { buscarImovelNaWeb, BuscaWebIndisponivel } from "@/lib/servidor/investigadorImoveis";
+import {
+  registrarConclusaoInvestigacao,
+  type EncerramentoInvestigacao,
+} from "@/lib/servidor/investigadorObservabilidade";
 import { novaExecucaoInvestigacao, persistirMemoriaDaInvestigacao } from "@/lib/servidor/memoriaIdentidade";
 import { associarReferenciasAvaliacaoDoInvestigador } from "@/lib/servidor/referenciasAvaliacaoInvestigador";
 
@@ -273,7 +277,17 @@ function mensagemSegura(erro: unknown): string {
   return "A pesquisa na web está indisponível agora. Tente novamente em alguns minutos.";
 }
 
+function encerramentoDaFalha(erro: unknown): EncerramentoInvestigacao {
+  if (!(erro instanceof BuscaWebIndisponivel)) return "erro";
+  if (erro.motivo === "configuracao") return "configuracao";
+  if (erro.motivo === "limite") return "limite-provider";
+  return "provider-indisponivel";
+}
+
 export async function POST(request: Request): Promise<Response> {
+  // Medido desde a entrada, antes da auth: a linha de conclusão precisa
+  // refletir o tempo que a função de fato ocupou, não só a pesquisa.
+  const inicioMs = performance.now();
   const acesso = await acessoAutenticado(request);
   if (!acesso) return Response.json({ mensagem: "Sessão inválida." }, { status: 401 });
   const { userId } = acesso;
@@ -320,6 +334,9 @@ export async function POST(request: Request): Promise<Response> {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const emitir = (evento: EventoInvestigacao) => controller.enqueue(encoder.encode(`${JSON.stringify(evento)}\n`));
+      // Contagem para a linha de conclusão mesmo quando a busca lança:
+      // o callback é a única testemunha de quantas consultas rodaram.
+      let consultasExecutadas = 0;
       try {
         emitir({ tipo: "etapa", etapa: "gerando-buscas" });
         const consultas = gerarConsultasInvestigacao(consultaOriginal);
@@ -328,7 +345,11 @@ export async function POST(request: Request): Promise<Response> {
           consultaOriginal,
           consultas,
           undefined,
-          (consultasExecutadas) => emitir({ tipo: "consultas", consultas: consultasExecutadas }),
+          (lista) => {
+            consultasExecutadas = lista.length;
+            emitir({ tipo: "consultas", consultas: lista });
+          },
+          { execucao: execucaoId },
         );
         emitir({ tipo: "etapa", etapa: "normalizando-resultados" });
         const unicos = deduplicarResultadosInvestigacao(busca.resultados);
@@ -338,6 +359,7 @@ export async function POST(request: Request): Promise<Response> {
           acesso.supabase,
           userId,
           correspondencias,
+          execucaoId,
         );
         const aviso = busca.limiteAtingido
           ? busca.retryAfterSegundos !== undefined
@@ -353,6 +375,17 @@ export async function POST(request: Request): Promise<Response> {
         const memoria = imovelIdentificadoId
           ? await persistirMemoriaDaInvestigacao({ userId, execucaoId, imovelIdentificadoId, resultados })
           : undefined;
+        registrarConclusaoInvestigacao({
+          execucao: execucaoId,
+          consultas: busca.consultasExecutadas.length,
+          falhas: busca.falhas,
+          resultadosBrutos: busca.resultados.length,
+          resultadosExibidos: resultados.length,
+          encerramento: busca.limiteAtingido
+            ? "limite-provider"
+            : busca.encerramentoAntecipado ? "evidencia-suficiente" : "concluida",
+          duracaoMs: performance.now() - inicioMs,
+        });
         emitir({
           tipo: "resultado",
           dados: {
@@ -369,7 +402,20 @@ export async function POST(request: Request): Promise<Response> {
         });
       } catch (erro) {
         console.warn("[investigador-imoveis] investigação não concluída", {
+          execucao: execucaoId,
           motivo: erro instanceof BuscaWebIndisponivel ? erro.motivo : "inesperado",
+        });
+        // A busca só lança quando nenhuma consulta trouxe resultado; as
+        // contagens vêm no erro. Para erro inesperado, o callback é a fonte.
+        const resumo = erro instanceof BuscaWebIndisponivel ? erro.resumo : null;
+        registrarConclusaoInvestigacao({
+          execucao: execucaoId,
+          consultas: resumo?.consultasExecutadas ?? consultasExecutadas,
+          falhas: resumo?.falhas ?? 0,
+          resultadosBrutos: 0,
+          resultadosExibidos: 0,
+          encerramento: encerramentoDaFalha(erro),
+          duracaoMs: performance.now() - inicioMs,
         });
         emitir({ tipo: "erro", mensagem: mensagemSegura(erro) });
       } finally {

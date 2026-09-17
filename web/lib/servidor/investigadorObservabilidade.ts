@@ -1,0 +1,152 @@
+/* ================================================================
+   INVESTIGADOR DE IMÓVEIS — observabilidade do provider e da investigação
+
+   Tudo o que o Investigador conta sobre si mesmo no log passa por aqui,
+   com a mesma política da Fase 5B1: nomes operacionais, números e
+   códigos locais. Nunca a consulta digitada, nunca URL com query, nunca
+   chave, Bearer, header privado ou resposta bruta.
+
+   Por que existe: no incidente de 17/09/2026 só a falha era logada, com
+   `tentativa` (que na verdade era o índice da consulta na fila) e sem o
+   nome do erro; timeout, DNS e reset caíam no mesmo `status: null`. Sem
+   log de sucesso não há como medir a latência real do provider, e sem
+   latência real não dá para escolher o timeout por chamada (A2). Separado
+   de `investigadorImoveis.ts` para que os testes que substituem aquele
+   módulo inteiro não percam a rota.
+   ================================================================ */
+
+export const PROVIDER_INVESTIGADOR = "rapidapi";
+export const OPERACAO_PESQUISAR_IMOVEL = "pesquisar_imovel";
+
+/** Como a chamada ao provider terminou mal. `timeout-provider` é o teto
+    individual da chamada; `abort-orcamento` é o orçamento global (A2);
+    `abortada` é qualquer outro abort; `rede` é o fetch rejeitado por
+    DNS/TLS/reset; `http` é resposta com status não-2xx; `resposta-invalida`
+    é 200 sem `organic_results` utilizável. */
+export type CausaFalhaProvider =
+  | "timeout-provider"
+  | "abort-orcamento"
+  | "abortada"
+  | "rede"
+  | "http"
+  | "resposta-invalida";
+
+/** Por que a investigação terminou. Os valores ligados a tempo entram no A2. */
+export type EncerramentoInvestigacao =
+  | "concluida"
+  | "evidencia-suficiente"
+  | "limite-provider"
+  | "provider-indisponivel"
+  | "configuracao"
+  | "erro";
+
+export interface ClassificacaoErroFetch {
+  causa: CausaFalhaProvider;
+  /** `erro.name`, só letras, para não carregar mensagem. */
+  erro: string;
+  /** `erro.cause.code` quando é um código curto (ETIMEDOUT, ECONNRESET...). */
+  codigo?: string;
+}
+
+function nomeSeguro(valor: unknown): string {
+  return typeof valor === "string" && /^[A-Za-z]{1,40}$/.test(valor) ? valor : "desconhecido";
+}
+
+function codigoSeguro(valor: unknown): string | undefined {
+  return typeof valor === "string" && /^[A-Z0-9_]{2,30}$/.test(valor) ? valor : undefined;
+}
+
+/** Classifica o motivo de um `fetch` rejeitado sem guardar a mensagem. */
+export function classificarErroFetch(erro: unknown): ClassificacaoErroFetch {
+  const objeto = erro && typeof erro === "object" ? erro as { name?: unknown; cause?: unknown } : {};
+  const nome = nomeSeguro(objeto.name);
+  const causaInterna = objeto.cause && typeof objeto.cause === "object"
+    ? objeto.cause as { code?: unknown; name?: unknown }
+    : null;
+  const codigo = codigoSeguro(causaInterna?.code);
+
+  let causa: CausaFalhaProvider;
+  if (nome === "TimeoutError") causa = "timeout-provider";
+  else if (nome === "OrcamentoEsgotadoError") causa = "abort-orcamento";
+  else if (nome === "AbortError") causa = "abortada";
+  else causa = "rede";
+
+  return codigo ? { causa, erro: nome, codigo } : { causa, erro: nome };
+}
+
+interface BaseRegistroProvider {
+  execucao: string | null;
+  /** Posição da consulta na fila (1..3). Não é retry: o Investigador não repete consulta. */
+  indiceConsulta: number;
+  duracaoMs: number;
+}
+
+export interface RegistroFalhaProvider extends BaseRegistroProvider {
+  causa: CausaFalhaProvider;
+  /** Classificação de negócio que a rota já usa (mantida). */
+  motivo: "limite" | "indisponivel" | "resposta-invalida";
+  status?: number;
+  erro?: string;
+  codigo?: string;
+  headersRateLimit?: Record<string, string>;
+}
+
+export interface RegistroSucessoProvider extends BaseRegistroProvider {
+  status: number;
+  /** Quantidade de `organic_results` recebidos, antes de qualquer corte. */
+  resultadosBrutos: number;
+}
+
+export interface RegistroConclusaoInvestigacao {
+  execucao: string;
+  /** Consultas de fato executadas. */
+  consultas: number;
+  falhas: number;
+  resultadosBrutos: number;
+  resultadosExibidos: number;
+  encerramento: EncerramentoInvestigacao;
+  duracaoMs: number;
+}
+
+export function registrarFalhaProvider(registro: RegistroFalhaProvider): void {
+  console.warn("[investigador-imoveis] chamada ao provider falhou", {
+    provider: PROVIDER_INVESTIGADOR,
+    operation: OPERACAO_PESQUISAR_IMOVEL,
+    execucao: registro.execucao,
+    indiceConsulta: registro.indiceConsulta,
+    status: registro.status ?? null,
+    causa: registro.causa,
+    motivo: registro.motivo,
+    ...(registro.erro ? { erro: registro.erro } : {}),
+    ...(registro.codigo ? { codigo: registro.codigo } : {}),
+    duracaoMs: Math.round(registro.duracaoMs),
+    headersRateLimit: registro.headersRateLimit ?? {},
+  });
+}
+
+export function registrarSucessoProvider(registro: RegistroSucessoProvider): void {
+  console.info("[investigador-imoveis] chamada ao provider concluída", {
+    provider: PROVIDER_INVESTIGADOR,
+    operation: OPERACAO_PESQUISAR_IMOVEL,
+    execucao: registro.execucao,
+    indiceConsulta: registro.indiceConsulta,
+    status: registro.status,
+    duracaoMs: Math.round(registro.duracaoMs),
+    resultadosBrutos: registro.resultadosBrutos,
+  });
+}
+
+/** Uma linha por investigação, sempre, inclusive quando termina em erro.
+    A ausência desta linha para uma execução iniciada passa a ser a
+    assinatura de "a plataforma matou a função". */
+export function registrarConclusaoInvestigacao(registro: RegistroConclusaoInvestigacao): void {
+  console.info("[investigador-imoveis] investigação concluída", {
+    execucao: registro.execucao,
+    consultas: registro.consultas,
+    falhas: registro.falhas,
+    resultadosBrutos: registro.resultadosBrutos,
+    resultadosExibidos: registro.resultadosExibidos,
+    encerramento: registro.encerramento,
+    duracaoMs: Math.round(registro.duracaoMs),
+  });
+}
