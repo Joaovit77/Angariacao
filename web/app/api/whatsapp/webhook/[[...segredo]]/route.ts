@@ -682,7 +682,9 @@ export async function POST(
         done: false,
         is_verificacao_disponibilidade: false,
         origin: "evento_whatsapp",
-        reason_code: "prazo_combinado_na_resposta",
+        reason_code: visitaConfirmada
+          ? "visita_confirmada_pelo_proprietario"
+          : "prazo_combinado_na_resposta",
       });
       if (erroAgenda) {
         // A nota e a tentativa já estão gravadas; perder só o compromisso é

@@ -21,9 +21,16 @@ export default function MensagensAgendadasView({ incorporada = false }: { incorp
 
   async function cancelar(item: MensagemAgendada) {
     if (!confirm("Cancelar o envio desta mensagem?")) return;
+    const canceladaEm = agoraISOString();
     const { error } = await getSupabase()
       .from("mensagens_agendadas")
-      .update({ status: "cancelada", updated_at: agoraISOString() })
+      .update({
+        status: "cancelada",
+        cancelamento_motivo: "usuario",
+        cancelamento_origem: "usuario",
+        cancelada_em: canceladaEm,
+        updated_at: canceladaEm,
+      })
       .eq("id", item.id)
       .eq("status", "agendada");
     if (error) {

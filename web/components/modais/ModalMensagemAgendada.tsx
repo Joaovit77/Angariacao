@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import { useSessao } from "@/components/SessaoProvider";
 import { agoraISOString, agoraTimestamp, dataHoraLocalParaIso, fmtDataHoraIso, partesDataHoraLocal, timestampDeIso } from "@/lib/datas";
-import { fromDbMensagem, telefoneValido, type DbMensagemAgendada } from "@/lib/mensagensAgendadas";
+import {
+  fromDbMensagem,
+  telefoneValido,
+  type DbMensagemAgendada,
+  type TipoMensagemAgendada,
+} from "@/lib/mensagensAgendadas";
 import { getSupabase } from "@/lib/persistencia/supabase";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
@@ -12,11 +17,15 @@ import { useUiModal } from "@/lib/uiModal";
 export default function ModalMensagemAgendada({
   id,
   imovelIdRelacionado,
+  agendaIdRelacionado,
+  tipoInicial = "livre",
   dataInicial,
   mensagemInicial,
 }: {
   id?: string;
   imovelIdRelacionado?: string;
+  agendaIdRelacionado?: string;
+  tipoInicial?: TipoMensagemAgendada;
   dataInicial?: string;
   mensagemInicial?: string;
 }) {
@@ -71,8 +80,13 @@ export default function ModalMensagemAgendada({
       telefone, mensagem: mensagem.trim(), data_envio: dataEnvio,
       status: "agendada", updated_at: agoraISOString() };
     setSalvando(true);
-    const query = id ? getSupabase().from("mensagens_agendadas").update(payload).eq("id", id).eq("status", "agendada")
-      : getSupabase().from("mensagens_agendadas").insert(payload);
+    const query = id
+      ? getSupabase().from("mensagens_agendadas").update(payload).eq("id", id).eq("status", "agendada")
+      : getSupabase().from("mensagens_agendadas").insert({
+          ...payload,
+          tipo: tipoInicial,
+          agenda_id: agendaIdRelacionado ?? null,
+        });
     const { error } = await query;
     setSalvando(false);
     if (error) return toast("Não foi possível agendar: " + error.message, "error");

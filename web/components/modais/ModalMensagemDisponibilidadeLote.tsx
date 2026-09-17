@@ -100,6 +100,8 @@ export default function ModalMensagemDisponibilidadeLote() {
       return [{
         user_id: usuario.id,
         imovel_id: imovel.id,
+        tipo: "verificacao-disponibilidade" as const,
+        agenda_id: compromisso.id,
         nome_proprietario: imovel.proprietarioNome?.trim() || "Proprietário",
         telefone: imovel.proprietarioTelefone?.trim() || "",
         mensagem: textoFollowUp(base, imovel),

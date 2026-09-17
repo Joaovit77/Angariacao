@@ -27,8 +27,38 @@ describe("mensagens agendadas", () => {
       nome_proprietario: "João", telefone: "43998024316", mensagem: "Olá",
       data_envio: "2026-08-15T12:00:00.000Z", status: "enviada",
       enviado_em: "2026-08-15T12:00:02.000Z", erro: null });
-    expect(item).toMatchObject({ id: "m1", userId: "u1", imovelId: "i1", status: "enviada" });
+    expect(item).toMatchObject({
+      id: "m1",
+      userId: "u1",
+      imovelId: "i1",
+      tipo: "livre",
+      agendaId: null,
+      status: "enviada",
+      cancelamentoMotivo: null,
+      cancelamentoOrigem: null,
+      canceladaEm: null,
+    });
     expect(item.enviadoEm).toBe("2026-08-15T12:00:02.000Z");
+  });
+
+  it("mapeia tipo, agenda e auditoria do cancelamento estruturados", () => {
+    const item = fromDbMensagem({
+      id: "m2", user_id: "u1", imovel_id: "i1",
+      tipo: "verificacao-disponibilidade", agenda_id: "a1",
+      nome_proprietario: "João", telefone: "43998024316", mensagem: "Olá",
+      data_envio: "2026-08-15T12:00:00.000Z", status: "cancelada",
+      enviado_em: null, erro: null,
+      cancelamento_motivo: "disponibilidade-confirmada",
+      cancelamento_origem: "worker",
+      cancelada_em: "2026-08-14T12:00:00.000Z",
+    });
+    expect(item).toMatchObject({
+      tipo: "verificacao-disponibilidade",
+      agendaId: "a1",
+      cancelamentoMotivo: "disponibilidade-confirmada",
+      cancelamentoOrigem: "worker",
+      canceladaEm: "2026-08-14T12:00:00.000Z",
+    });
   });
 });
 
@@ -37,6 +67,8 @@ describe("imoveisComAgendamentoAtivo", () => {
     id: "m1",
     userId: "u1",
     imovelId: "i1",
+    tipo: "livre",
+    agendaId: null,
     nomeProprietario: "Ana",
     telefone: "43999999999",
     mensagem: "Olá",
@@ -44,6 +76,9 @@ describe("imoveisComAgendamentoAtivo", () => {
     status: "agendada",
     enviadoEm: null,
     erro: null,
+    cancelamentoMotivo: null,
+    cancelamentoOrigem: null,
+    canceladaEm: null,
   };
 
   it("conta conversas únicas com itens agendados ou processando", () => {
@@ -60,6 +95,88 @@ describe("imoveisComAgendamentoAtivo", () => {
 const SCHEMA = readFileSync(new URL("../../supabase-schema.sql", import.meta.url), "utf8");
 const VERCEL = readFileSync(new URL("../vercel.json", import.meta.url), "utf8");
 const WORKER = readFileSync(new URL("../app/api/cron/mensagens/route.ts", import.meta.url), "utf8");
+const MIGRATION_M1 = readFileSync(
+  new URL("../../supabase/migrations/20260917140326_modelo_mensagens_disponibilidade.sql", import.meta.url),
+  "utf8",
+);
+const MODAL_INDIVIDUAL = readFileSync(new URL("../components/modais/ModalMensagemAgendada.tsx", import.meta.url), "utf8");
+const MODAL_LOTE = readFileSync(new URL("../components/modais/ModalMensagemDisponibilidadeLote.tsx", import.meta.url), "utf8");
+const MODAL_OVERLAY = readFileSync(new URL("../components/modais/ModalOverlay.tsx", import.meta.url), "utf8");
+const UI_MODAL = readFileSync(new URL("../lib/uiModal.ts", import.meta.url), "utf8");
+const VIEW = readFileSync(new URL("../components/mensagens/MensagensAgendadasView.tsx", import.meta.url), "utf8");
+const WEBHOOK = readFileSync(new URL("../app/api/whatsapp/webhook/[[...segredo]]/route.ts", import.meta.url), "utf8");
+const BACKFILL = readFileSync(new URL("../../scripts/listar-backfill-mensagens-disponibilidade.ts", import.meta.url), "utf8");
+
+describe("M1 — modelo das mensagens de disponibilidade", () => {
+  it.each([["schema canônico", SCHEMA], ["migration", MIGRATION_M1]])(
+    "%s declara tipo, agenda opcional e cancelamento auditável",
+    (_, sql) => {
+      expect(sql).toContain("tipo text not null default 'livre'");
+      expect(sql).toContain("'verificacao-disponibilidade'");
+      expect(sql).toContain("agenda_id uuid");
+      expect(sql).toContain("cancelamento_motivo text");
+      expect(sql).toContain("cancelamento_origem text");
+      expect(sql).toContain("cancelada_em timestamptz");
+      expect(sql).toContain("mensagens_agendadas_disponibilidade_pendente_idx");
+    },
+  );
+
+  it("preserva linhas antigas como livres e não faz backfill por texto", () => {
+    expect(MIGRATION_M1).not.toMatch(/update\s+public\.mensagens_agendadas\s+set/i);
+    expect(MIGRATION_M1).not.toContain("Olá, o imóvel ainda está disponível?");
+    expect(MIGRATION_M1).not.toMatch(/mensagem\s+(?:like|ilike)/i);
+    expect(MIGRATION_M1).toContain("default 'livre'");
+  });
+
+  it("liga agenda e mensagem pela chave composta do mesmo usuário", () => {
+    for (const sql of [SCHEMA, MIGRATION_M1]) {
+      expect(sql).toContain("unique (id, user_id)");
+      expect(sql).toMatch(/foreign key \(agenda_id, user_id\)[\s\S]+references public\.agenda \(id, user_id\)/);
+      expect(sql).toContain("on delete set null (agenda_id)");
+      expect(sql).toMatch(/agenda_id is null[\s\S]+a\.user_id = \(select auth\.uid\(\)\)/);
+    }
+  });
+
+  it("os dois fluxos de disponibilidade persistem tipo e agenda; o fluxo genérico nasce livre", () => {
+    expect(MODAL_INDIVIDUAL).toContain('tipoInicial = "livre"');
+    expect(MODAL_INDIVIDUAL).toContain("tipo: tipoInicial");
+    expect(MODAL_INDIVIDUAL).toContain("agenda_id: agendaIdRelacionado ?? null");
+    expect(MODAL_OVERLAY).toContain('"verificacao-disponibilidade"');
+    expect(UI_MODAL).toContain("agendaIdMensagemAgendada: agendaId");
+    expect(MODAL_LOTE).toContain('tipo: "verificacao-disponibilidade"');
+    expect(MODAL_LOTE).toContain("agenda_id: compromisso.id");
+  });
+
+  it("o cancelamento manual atual continua disponível e passa a ser auditado", () => {
+    expect(VIEW).toContain('cancelamento_motivo: "usuario"');
+    expect(VIEW).toContain('cancelamento_origem: "usuario"');
+    expect(VIEW).toContain("cancelada_em: canceladaEm");
+    expect(MIGRATION_M1).toContain("cancelamento_motivo = 'usuario'");
+    expect(MIGRATION_M1).toContain("cancelamento_origem = 'usuario'");
+  });
+
+  it("a confirmação determinística de visita ganha motivo próprio sem promover a classificação da IA", () => {
+    const insercao = WEBHOOK.slice(WEBHOOK.indexOf("const agendaId = crypto.randomUUID()"), WEBHOOK.indexOf("if (erroAgenda)"));
+    expect(insercao).toContain("reason_code: visitaConfirmada");
+    expect(insercao).toContain('"visita_confirmada_pelo_proprietario"');
+    expect(insercao).toContain(': "prazo_combinado_na_resposta"');
+  });
+
+  it("a listagem de backfill é somente leitura, tenant-scoped e exige os três sinais fortes", () => {
+    expect(BACKFILL).toContain('startsWith("--user-id=")');
+    expect(BACKFILL).toContain('user_id: `eq.${USUARIO_ID}`');
+    expect(BACKFILL).toContain("is_verificacao_disponibilidade");
+    expect(BACKFILL).toContain("mensagem.mensagem !== textoFollowUp(base, imovel)");
+    expect(BACKFILL).toContain(">= 2");
+    expect(BACKFILL).not.toMatch(/method:\s*["'](?:POST|PATCH|PUT|DELETE)["']/);
+    expect(BACKFILL).not.toMatch(/console\.log\([^)]*(?:mensagem|telefone|proprietario)/i);
+  });
+
+  it("M1 não altera a decisão nem o envio do worker", () => {
+    expect(WORKER).not.toContain("verificacao-disponibilidade");
+    expect(WORKER).not.toContain("cancelamento_motivo");
+  });
+});
 
 describe("executor de mensagens agendadas", () => {
   it("vence mensagens antigas antes de obter o lote", () => {

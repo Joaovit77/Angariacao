@@ -41,6 +41,7 @@ export default function ModalVerificacao({ id }: { id: string }) {
     if (!item?.imovelId || !imovel) return;
     abrirMensagemAgendadaDisponibilidade(
       item.imovelId,
+      item.id,
       item.date,
       textoFollowUp(textoBaseDisponibilidade(), imovel),
     );

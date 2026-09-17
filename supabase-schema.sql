@@ -243,6 +243,9 @@ create table if not exists mensagens_agendadas (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   imovel_id uuid references imoveis(id) on delete set null,
+  tipo text not null default 'livre'
+    check (tipo in ('livre', 'verificacao-disponibilidade')),
+  agenda_id uuid,
   nome_proprietario text not null,
   telefone text not null,
   mensagem text not null check (char_length(trim(mensagem)) > 0),
@@ -251,9 +254,83 @@ create table if not exists mensagens_agendadas (
     check (status in ('agendada', 'processando', 'enviada', 'erro', 'cancelada')),
   enviado_em timestamptz,
   erro text,
+  cancelamento_motivo text,
+  cancelamento_origem text,
+  cancelada_em timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Compatibilidade com bancos criados antes do modelo estruturado de M1.
+-- Linhas antigas ficam `livre`: texto isolado não prova a origem da mensagem.
+alter table mensagens_agendadas add column if not exists tipo text not null default 'livre';
+alter table mensagens_agendadas add column if not exists agenda_id uuid;
+alter table mensagens_agendadas add column if not exists cancelamento_motivo text;
+alter table mensagens_agendadas add column if not exists cancelamento_origem text;
+alter table mensagens_agendadas add column if not exists cancelada_em timestamptz;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_catalog.pg_constraint
+     where conname = 'mensagens_agendadas_tipo_check'
+       and conrelid = 'public.mensagens_agendadas'::regclass
+  ) then
+    alter table public.mensagens_agendadas
+      add constraint mensagens_agendadas_tipo_check
+      check (tipo in ('livre', 'verificacao-disponibilidade'));
+  end if;
+  if not exists (
+    select 1 from pg_catalog.pg_constraint
+     where conname = 'mensagens_agendadas_cancelamento_motivo_check'
+       and conrelid = 'public.mensagens_agendadas'::regclass
+  ) then
+    alter table public.mensagens_agendadas
+      add constraint mensagens_agendadas_cancelamento_motivo_check
+      check (
+        cancelamento_motivo is null
+        or cancelamento_motivo in (
+          'usuario',
+          'imovel-indisponivel',
+          'disponibilidade-confirmada',
+          'imovel-excluido'
+        )
+      );
+  end if;
+  if not exists (
+    select 1 from pg_catalog.pg_constraint
+     where conname = 'mensagens_agendadas_cancelamento_origem_check'
+       and conrelid = 'public.mensagens_agendadas'::regclass
+  ) then
+    alter table public.mensagens_agendadas
+      add constraint mensagens_agendadas_cancelamento_origem_check
+      check (
+        cancelamento_origem is null
+        or cancelamento_origem in ('usuario', 'automacao', 'worker')
+      );
+  end if;
+  if not exists (
+    select 1 from pg_catalog.pg_constraint
+     where conname = 'mensagens_agendadas_cancelamento_auditavel_check'
+       and conrelid = 'public.mensagens_agendadas'::regclass
+  ) then
+    alter table public.mensagens_agendadas
+      add constraint mensagens_agendadas_cancelamento_auditavel_check
+      check (
+        (
+          cancelamento_motivo is null
+          and cancelamento_origem is null
+          and cancelada_em is null
+        )
+        or (
+          status = 'cancelada'
+          and cancelamento_motivo is not null
+          and cancelamento_origem is not null
+          and cancelada_em is not null
+        )
+      );
+  end if;
+end $$;
 
 alter table mensagens_agendadas enable row level security;
 
@@ -264,6 +341,7 @@ drop policy if exists "insert_own_mensagens_agendadas" on mensagens_agendadas;
 create policy "insert_own_mensagens_agendadas" on mensagens_agendadas
   for insert to authenticated with check (
     (select auth.uid()) = user_id and status = 'agendada' and data_envio > now()
+    and cancelamento_motivo is null and cancelamento_origem is null and cancelada_em is null
     and (imovel_id is null or exists (select 1 from imoveis i where i.id = imovel_id and i.user_id = (select auth.uid())))
   );
 drop policy if exists "update_own_mensagens_agendadas" on mensagens_agendadas;
@@ -274,6 +352,10 @@ create policy "update_own_mensagens_agendadas" on mensagens_agendadas
     (select auth.uid()) = user_id and status in ('agendada', 'cancelada')
     and (status = 'cancelada' or data_envio > now())
     and (imovel_id is null or exists (select 1 from imoveis i where i.id = imovel_id and i.user_id = (select auth.uid())))
+    and (
+      (status = 'agendada' and cancelamento_motivo is null and cancelamento_origem is null and cancelada_em is null)
+      or (status = 'cancelada' and cancelamento_motivo = 'usuario' and cancelamento_origem = 'usuario' and cancelada_em is not null)
+    )
   );
 
 create index if not exists mensagens_agendadas_pendentes_idx
@@ -282,6 +364,9 @@ create index if not exists mensagens_agendadas_usuario_idx
   on mensagens_agendadas (user_id, data_envio desc);
 create index if not exists mensagens_agendadas_imovel_idx
   on mensagens_agendadas (imovel_id);
+create index if not exists mensagens_agendadas_disponibilidade_pendente_idx
+  on mensagens_agendadas (imovel_id)
+  where status = 'agendada' and tipo = 'verificacao-disponibilidade';
 
 -- O browser escolhe somente `imovel_id`; o destinatário nunca é confiado ao
 -- payload do cliente. Mesmo uma chamada manual à Data API tem nome/telefone
@@ -678,6 +763,84 @@ create index if not exists agenda_user_id_idx on agenda(user_id);
 create index if not exists agenda_followup_pendente_imovel_idx
   on agenda (user_id, imovel_id, date, id)
   where type = 'Follow-up' and done = false;
+
+-- A FK composta mantém o vínculo da mensagem dentro da mesma conta mesmo em
+-- escritas privilegiadas. Ao excluir o compromisso, só o vínculo é limpo;
+-- a mensagem e o seu user_id permanecem intactos.
+do $$
+begin
+  if not exists (
+    select 1 from pg_catalog.pg_constraint
+     where conname = 'agenda_id_user_id_key'
+       and conrelid = 'public.agenda'::regclass
+  ) then
+    alter table public.agenda
+      add constraint agenda_id_user_id_key unique (id, user_id);
+  end if;
+  if not exists (
+    select 1 from pg_catalog.pg_constraint
+     where conname = 'mensagens_agendadas_agenda_usuario_fkey'
+       and conrelid = 'public.mensagens_agendadas'::regclass
+  ) then
+    alter table public.mensagens_agendadas
+      add constraint mensagens_agendadas_agenda_usuario_fkey
+      foreign key (agenda_id, user_id)
+      references public.agenda (id, user_id)
+      on delete set null (agenda_id)
+      not valid;
+  end if;
+end $$;
+
+alter table public.mensagens_agendadas
+  validate constraint mensagens_agendadas_agenda_usuario_fkey;
+
+create index if not exists mensagens_agendadas_agenda_idx
+  on mensagens_agendadas (agenda_id)
+  where agenda_id is not null;
+
+-- Recriada depois de `agenda` existir para que o próprio RLS valide também o
+-- vínculo opcional. A FK composta continua sendo a barreira independente de
+-- RLS para clientes privilegiados e futuras rotinas de servidor.
+drop policy if exists "insert_own_mensagens_agendadas" on mensagens_agendadas;
+create policy "insert_own_mensagens_agendadas" on mensagens_agendadas
+  for insert to authenticated with check (
+    (select auth.uid()) = user_id
+    and status = 'agendada'
+    and data_envio > now()
+    and cancelamento_motivo is null
+    and cancelamento_origem is null
+    and cancelada_em is null
+    and (imovel_id is null or exists (
+      select 1 from imoveis i
+       where i.id = imovel_id and i.user_id = (select auth.uid())
+    ))
+    and (agenda_id is null or exists (
+      select 1 from agenda a
+       where a.id = agenda_id and a.user_id = (select auth.uid())
+    ))
+  );
+
+drop policy if exists "update_own_mensagens_agendadas" on mensagens_agendadas;
+create policy "update_own_mensagens_agendadas" on mensagens_agendadas
+  for update to authenticated
+  using ((select auth.uid()) = user_id and status = 'agendada')
+  with check (
+    (select auth.uid()) = user_id
+    and status in ('agendada', 'cancelada')
+    and (status = 'cancelada' or data_envio > now())
+    and (imovel_id is null or exists (
+      select 1 from imoveis i
+       where i.id = imovel_id and i.user_id = (select auth.uid())
+    ))
+    and (agenda_id is null or exists (
+      select 1 from agenda a
+       where a.id = agenda_id and a.user_id = (select auth.uid())
+    ))
+    and (
+      (status = 'agendada' and cancelamento_motivo is null and cancelamento_origem is null and cancelada_em is null)
+      or (status = 'cancelada' and cancelamento_motivo = 'usuario' and cancelamento_origem = 'usuario' and cancelada_em is not null)
+    )
+  );
 
 -- Excluir o imóvel, seus compromissos e a possibilidade de disparos futuros
 -- é uma única transação. A função é SECURITY DEFINER somente para poder

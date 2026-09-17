@@ -1190,6 +1190,14 @@ Regras permanentes:
   `user_id`; payload de cliente não escolhe arbitrariamente o destinatário;
 - nome e telefone são fotografados no agendamento, preservando o que seria enviado mesmo se o
   cadastro mudar depois;
+- `tipo` distingue mensagem `livre` de `verificacao-disponibilidade`. Mensagens antigas permanecem
+  `livre` por padrão; texto isolado nunca é usado para inferir o tipo;
+- mensagens de disponibilidade guardam `agenda_id` quando nasceram de um compromisso. O vínculo é
+  opcional e usa `(agenda_id, user_id)`, impedindo referência cruzada entre contas inclusive em
+  escritas privilegiadas; excluir o compromisso apenas limpa o vínculo;
+- um cancelamento novo pode registrar `cancelamento_motivo`, `cancelamento_origem` e `cancelada_em`.
+  Linhas canceladas antigas sem esses dados continuam válidas, e o cancelamento manual grava origem
+  e motivo `usuario`;
 - a central de mensagens lista agendamentos ativos (`agendada` ou `processando`) por `imovel_id`
   e sempre filtra a leitura pelo `user_id` autenticado; Realtime atualiza a lista e uma releitura
   periódica cobre ambientes em que a tabela ainda não foi publicada no canal;

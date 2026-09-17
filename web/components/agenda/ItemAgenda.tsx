@@ -58,6 +58,7 @@ export default function ItemAgenda({
     if (!imovel) return;
     abrirMensagemAgendadaDisponibilidade(
       imovel.id,
+      a.id,
       a.date,
       textoFollowUp(textoBaseDisponibilidade(), imovel),
     );

@@ -93,6 +93,8 @@ export default function ModalOverlay() {
           <ModalMensagemAgendada
             id={modal.id}
             imovelIdRelacionado={modal.imovelIdRelacionado}
+            agendaIdRelacionado={modal.agendaIdMensagemAgendada}
+            tipoInicial={modal.agendaIdMensagemAgendada ? "verificacao-disponibilidade" : "livre"}
             dataInicial={modal.dataMensagemAgendada}
             mensagemInicial={modal.textoMensagemAgendada}
           />

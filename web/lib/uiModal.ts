@@ -117,6 +117,7 @@ export interface ModalAtivo {
   imovelIdRelacionado?: string;
   /** Valores iniciais ao transformar um compromisso de verificação de
       disponibilidade em uma mensagem automática. */
+  agendaIdMensagemAgendada?: string;
   dataMensagemAgendada?: string;
   textoMensagemAgendada?: string;
   /** Resultado escolhido na Central de Angariação. */
@@ -155,7 +156,12 @@ interface UiModal {
     abordagemId: string,
     sugestao?: ReferenciaSugestaoIa,
   ) => void;
-  abrirMensagemAgendadaDisponibilidade: (imovelId: string, data: string, texto: string) => void;
+  abrirMensagemAgendadaDisponibilidade: (
+    imovelId: string,
+    agendaId: string,
+    data: string,
+    texto: string,
+  ) => void;
   abrirPreCadastro: (inicial: PreCadastroInicial) => void;
   /** Abre o ModalImovel (criação) pré-preenchido pelo Garimpo em Campo. É o
       único caminho pelo qual uma oportunidade nasce de um imóvel visto em
@@ -200,11 +206,12 @@ export const useUiModal = create<UiModal>((set) => ({
         sugestaoWhatsapp: sugestao,
       },
     }),
-  abrirMensagemAgendadaDisponibilidade: (imovelId, data, texto) =>
+  abrirMensagemAgendadaDisponibilidade: (imovelId, agendaId, data, texto) =>
     set({
       modal: {
         tipo: "mensagemAgendada",
         imovelIdRelacionado: imovelId,
+        agendaIdMensagemAgendada: agendaId,
         dataMensagemAgendada: data,
         textoMensagemAgendada: texto,
       },
