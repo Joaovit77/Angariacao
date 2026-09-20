@@ -2,7 +2,7 @@
 
 import Image, { type ImageLoaderProps } from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSessao } from "@/components/SessaoProvider";
 import { ORIGEM_GARIMPO_SITE } from "@/lib/constantes";
 import { buscarNaCentral } from "@/lib/centralAngariacao";
@@ -49,6 +49,8 @@ import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
 import { UFS_BRASIL, ufValida } from "@/lib/calculo/geografia";
+import { aplicarCidadePadraoInicial } from "@/lib/configuracaoUsuario";
+import { useCidadePadraoDaConta } from "@/lib/useCidadePadraoDaConta";
 
 const carregarImagemPortal = ({ src }: ImageLoaderProps) => src;
 
@@ -56,12 +58,14 @@ type Aba = "buscar" | "resultados" | "selecionados" | "radar";
 
 export default function CentralAngariacaoView() {
   const { usuario } = useSessao();
+  const cidadePadrao = useCidadePadraoDaConta(usuario?.id);
   const abrirPreCadastro = useUiModal((s) => s.abrirPreCadastro);
   const imoveis = useAppStore((s) => s.imoveis);
   const [aba, setAba] = useState<Aba>("buscar");
   const [portal, setPortal] = useState<PortalAngariacao>("olx");
   const [cidade, setCidade] = useState("");
   const [estado, setEstado] = useState("");
+  const cidadeEstadoProtegidos = useRef(false);
   const [bairro, setBairro] = useState("");
   const [tipo, setTipo] = useState("");
   const [valorMin, setValorMin] = useState("");
@@ -126,6 +130,17 @@ export default function CentralAngariacaoView() {
       cancelado = true;
     };
   }, [usuario?.id]);
+
+  useEffect(() => {
+    const preenchido = aplicarCidadePadraoInicial(
+      { cidade, estado },
+      cidadePadrao,
+      cidadeEstadoProtegidos.current,
+    );
+    if (preenchido.cidade === cidade && preenchido.estado === estado) return;
+    setCidade(preenchido.cidade);
+    setEstado(preenchido.estado);
+  }, [cidade, cidadePadrao, estado]);
 
   const urlsNaCarteira = useMemo(() => {
     return urlsDosImoveis(imoveis);
@@ -418,8 +433,8 @@ export default function CentralAngariacaoView() {
             ))}
           </div>
           <div className="central-form-grid">
-            <label>Cidade<input value={cidade} onChange={(e) => setCidade(e.target.value)} /></label>
-            <label>UF<select value={estado} onChange={(e) => setEstado(e.target.value)}><option value="">Selecione</option>{UFS_BRASIL.map((uf) => <option key={uf} value={uf}>{uf}</option>)}</select></label>
+            <label>Cidade<input value={cidade} onChange={(e) => { cidadeEstadoProtegidos.current = true; setCidade(e.target.value); }} /></label>
+            <label>UF<select value={estado} onChange={(e) => { cidadeEstadoProtegidos.current = true; setEstado(e.target.value); }}><option value="">Selecione</option>{UFS_BRASIL.map((uf) => <option key={uf} value={uf}>{uf}</option>)}</select></label>
             <label>Bairro<input value={bairro} onChange={(e) => setBairro(e.target.value)} placeholder="Todos" /></label>
             <label>Tipo<input value={tipo} onChange={(e) => setTipo(e.target.value)} placeholder="Apartamento, casa…" /></label>
             <label>Valor mínimo<input inputMode="numeric" value={valorMin} onChange={(e) => setValorMin(e.target.value)} placeholder="R$ 0" /></label>

@@ -216,7 +216,7 @@ describe("C1 — persistência opcional e isolamento", () => {
     await db.close();
   }, 15_000);
 
-  it("não integra o resolver aos formulários durante o C1", () => {
+  it("mantém a regra do resolver centralizada mesmo após a integração do C2", () => {
     const formularios = [
       "../components/avaliacao/AvaliacaoRapidaView.tsx",
       "../components/modais/ModalImovel.tsx",
@@ -228,7 +228,9 @@ describe("C1 — persistência opcional e isolamento", () => {
     ];
 
     for (const formulario of formularios) {
-      expect(readFileSync(new URL(formulario, import.meta.url), "utf8")).not.toContain("resolverCidadePadrao");
+      const fonte = readFileSync(new URL(formulario, import.meta.url), "utf8");
+      expect(fonte).toContain("useCidadePadraoDaConta");
+      expect(fonte).not.toContain("resolverCidadePadrao(");
     }
   });
 });

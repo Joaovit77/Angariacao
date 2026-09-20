@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useSessao } from "@/components/SessaoProvider";
 import { UFS_BRASIL } from "@/lib/calculo/geografia";
 import type { MercadoMonitorado } from "@/lib/calculo/mercadosMonitorados";
+import { aplicarCidadePadraoInicial } from "@/lib/configuracaoUsuario";
 import {
   carregarMercadosMonitorados,
   criarMercadoMonitorado,
@@ -10,11 +12,15 @@ import {
   excluirMercadoMonitorado,
 } from "@/lib/persistencia/mercadosMonitorados";
 import { toast } from "@/lib/toast";
+import { useCidadePadraoDaConta } from "@/lib/useCidadePadraoDaConta";
 
 export default function MercadosMonitorados() {
+  const { usuario } = useSessao();
+  const cidadePadrao = useCidadePadraoDaConta(usuario?.id);
   const [mercados, setMercados] = useState<MercadoMonitorado[]>([]);
   const [cidade, setCidade] = useState("");
   const [estado, setEstado] = useState("");
+  const cidadeEstadoProtegidos = useRef(false);
   const [carregando, setCarregando] = useState(true);
   const [ocupado, setOcupado] = useState<string | null>(null);
 
@@ -35,6 +41,17 @@ export default function MercadosMonitorados() {
     };
   }, []);
 
+  useEffect(() => {
+    const preenchido = aplicarCidadePadraoInicial(
+      { cidade, estado },
+      cidadePadrao,
+      cidadeEstadoProtegidos.current,
+    );
+    if (preenchido.cidade === cidade && preenchido.estado === estado) return;
+    setCidade(preenchido.cidade);
+    setEstado(preenchido.estado);
+  }, [cidade, cidadePadrao, estado]);
+
   async function adicionar(evento: FormEvent) {
     evento.preventDefault();
     if (ocupado) return;
@@ -47,8 +64,10 @@ export default function MercadosMonitorados() {
         segmento: "residencial",
       });
       setMercados((atuais) => [criado, ...atuais]);
-      setCidade("");
-      setEstado("");
+      cidadeEstadoProtegidos.current = false;
+      const proximo = aplicarCidadePadraoInicial({ cidade: "", estado: "" }, cidadePadrao);
+      setCidade(proximo.cidade);
+      setEstado(proximo.estado);
       toast("Mercado configurado. Nenhuma coleta foi iniciada.");
     } catch (erro) {
       toast(erro instanceof Error ? erro.message : "Não foi possível adicionar o mercado.", "error");
@@ -102,14 +121,23 @@ export default function MercadosMonitorados() {
             <input
               value={cidade}
               maxLength={100}
-              onChange={(evento) => setCidade(evento.target.value)}
+              onChange={(evento) => {
+                cidadeEstadoProtegidos.current = true;
+                setCidade(evento.target.value);
+              }}
               placeholder="Ex.: Campinas"
               autoComplete="address-level2"
             />
           </label>
           <label>
             UF
-            <select value={estado} onChange={(evento) => setEstado(evento.target.value)}>
+            <select
+              value={estado}
+              onChange={(evento) => {
+                cidadeEstadoProtegidos.current = true;
+                setEstado(evento.target.value);
+              }}
+            >
               <option value="">Selecione</option>
               {UFS_BRASIL.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
             </select>

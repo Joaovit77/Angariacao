@@ -16,6 +16,7 @@ import styles from "@/components/prospeccao/Prospeccao.module.css";
 import type { ResultadoProcessamentoFoto } from "@/lib/calculo/fotoFachada";
 import { distanciaHaversineMetros } from "@/lib/calculo/dedupeProspeccao";
 import { separarNumeroDoEndereco } from "@/lib/calculo/enderecoViaCep";
+import { aplicarCidadePadraoInicial } from "@/lib/configuracaoUsuario";
 import {
   descreverLocalizacao,
   gpsImpreciso,
@@ -48,6 +49,7 @@ import {
 } from "@/lib/rascunhoCaptura";
 import { useProspeccao } from "@/lib/useProspeccao";
 import { useUiModal } from "@/lib/uiModal";
+import { useCidadePadraoDaConta } from "@/lib/useCidadePadraoDaConta";
 
 /** Quanto esperar depois da última tecla antes de gravar o rascunho.
     Curto o bastante para não perder texto; longo o bastante para não
@@ -109,6 +111,7 @@ export default function ModalAvistamento({
   dependenciasLocalizacao?: DependenciasLocalizacaoAvistamento;
 }) {
   const { usuario } = useSessao();
+  const cidadePadrao = useCidadePadraoDaConta(usuario?.id);
   const fecharModal = useUiModal((estado) => estado.fecharModal);
   const criar = useProspeccao((estado) => estado.criar);
   const adicionarAvistamento = useProspeccao((estado) => estado.adicionarAvistamento);
@@ -129,6 +132,7 @@ export default function ModalAvistamento({
   const [bairro, setBairro] = useState("");
   const [cidade, setCidade] = useState("");
   const [estado, setEstado] = useState("");
+  const cidadeEstadoProtegidos = useRef(false);
   const [cep, setCep] = useState("");
   const [pontoReferencia, setPontoReferencia] = useState("");
   const [tipo, setTipo] = useState("");
@@ -234,6 +238,7 @@ export default function ModalAvistamento({
       const veredito = avaliarRascunho(rascunho, usuarioId, contextoRascunho);
       if (veredito === "expirado") void armazem.limpar(usuarioId);
       if (veredito === "restauravel" && rascunho) {
+        cidadeEstadoProtegidos.current = true;
         const c = rascunho.campos;
         setData(c.data || agora.data);
         setHora(c.hora || agora.hora);
@@ -267,13 +272,6 @@ export default function ModalAvistamento({
         setRascunhoRestauradoEm(rascunho.salvoEm);
         // Não se carrega o marcador adiante: a próxima gravação o apaga.
         setFotoPerdidaEm(fotoPerdidaNaCameraNativa(rascunho));
-      } else if (!imovelIdentificadoId) {
-        // Local novo: cidade e UF do último registro já carregado. O
-        // corretor trabalha numa cidade; digitar isso a cada casa é atrito,
-        // e o ViaCEP precisa dos dois para sugerir a rua.
-        const referencia = useProspeccao.getState().itens[0];
-        if (referencia?.cidade) setCidade(referencia.cidade);
-        if (referencia?.estado) setEstado(referencia.estado);
       }
       setRascunhoPronto(true);
     })();
@@ -281,6 +279,20 @@ export default function ModalAvistamento({
     // Só na montagem: os setters são estáveis e `agora` é o instante de abrir.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [armazem, contextoRascunho, usuarioId]);
+
+  useEffect(() => {
+    if (!rascunhoPronto || !primeiroAvistamento) return;
+    const preenchido = aplicarCidadePadraoInicial(
+      { cidade, estado },
+      cidadePadrao,
+      cidadeEstadoProtegidos.current,
+    );
+    if (preenchido.cidade === cidade && preenchido.estado === estado) return;
+    viaCepRef.current.cidade = preenchido.cidade;
+    viaCepRef.current.estado = preenchido.estado;
+    setCidade(preenchido.cidade);
+    setEstado(preenchido.estado);
+  }, [cidade, cidadePadrao, estado, primeiroAvistamento, rascunhoPronto]);
 
   // Texto digitado vai para o aparelho com atraso curto. Antes da primeira
   // interação não há o que guardar — evita criar rascunho de modal intocado.
@@ -385,6 +397,7 @@ export default function ModalAvistamento({
   }
 
   function aplicarEnderecoViaCep(selecionado: EnderecoViaCepSelecionado) {
+    if (selecionado.cidade || selecionado.estado) cidadeEstadoProtegidos.current = true;
     const { rua, numero: numeroSugerido } = separarNumeroDoEndereco(selecionado.endereco);
     if (rua) setLogradouro(rua);
     if (numeroSugerido && !numero.trim()) setNumero(numeroSugerido);
@@ -757,7 +770,10 @@ export default function ModalAvistamento({
                     type="text"
                     autoComplete="off"
                     value={cidade}
-                    onChange={(evento) => setCidade(evento.target.value)}
+                    onChange={(evento) => {
+                      cidadeEstadoProtegidos.current = true;
+                      setCidade(evento.target.value);
+                    }}
                     onBlur={localizarEnderecoDigitado}
                   />
                 </div>
@@ -769,7 +785,10 @@ export default function ModalAvistamento({
                     autoComplete="off"
                     maxLength={2}
                     value={estado}
-                    onChange={(evento) => setEstado(evento.target.value)}
+                    onChange={(evento) => {
+                      cidadeEstadoProtegidos.current = true;
+                      setEstado(evento.target.value);
+                    }}
                     placeholder="PR"
                   />
                 </div>

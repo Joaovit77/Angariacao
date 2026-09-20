@@ -166,6 +166,11 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   representam a mesma combinação normalizada. Ambiguidade devolve ausência de default, e a cidade
   inferida nunca é persistida como escolha do usuário nem restringe operação multi-cidade. Dados
   sensíveis ou contratuais (`dados_pagamento`, empresa e percentual de comissão) nunca são inferidos.
+  Nos formulários de imóvel, pré-cadastro, avaliação, avistamento, endereço identificado, busca da
+  Central e criação de mercado monitorado, essa resolução é somente um valor inicial: entidade,
+  prefill, rascunho e endereço escolhido vencem, e uma resposta assíncrona nunca sobrescreve o que
+  o usuário já alterou. Cidade e UF são aplicadas sempre como par; limpar ou trocar os campos
+  continua permitido, e cada novo formulário pode reaplicar o default sem herdar o cadastro anterior.
 - **`calculo/motor.ts`** — o motor: `dateEnteredStatus`, `currentStatusSince`, `isStale`,
   `foiAngariado`, `metricsForRange`, coortes mensais, tempo médio, etc.
 - **`calculo/motor.ts` → `isStale` / `diasSemMovimento`** — **"parado" é ausência de MOVIMENTO,

@@ -9,11 +9,11 @@
    ponto que empurra {status, date} no statusHistory — invariante
    §3.1 do MIGRATION_NEXT.md.
    ================================================================ */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { captadorPadrao, useSessao } from "@/components/SessaoProvider";
-import { origensDoUsuario } from "@/lib/configuracaoUsuario";
+import { aplicarCidadePadraoInicial, origensDoUsuario } from "@/lib/configuracaoUsuario";
 import EnderecoAutocompleteViaCep, {
   type EnderecoViaCepSelecionado,
 } from "@/components/formularios/EnderecoAutocompleteViaCep";
@@ -39,6 +39,7 @@ import { aplicarMudancaDeStatus, excluirImovel, numOrNull, salvarImovel, uid } f
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useUiModal, type PromocaoDoGarimpo } from "@/lib/uiModal";
+import { useCidadePadraoDaConta } from "@/lib/useCidadePadraoDaConta";
 import type { Imovel, StatusHistoryEntry } from "@/lib/tipos";
 
 const MiniMapa = dynamic(() => import("./MiniMapa"), { ssr: false });
@@ -85,6 +86,7 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
   const fecharModal = useUiModal((s) => s.fecharModal);
   const abrirModal = useUiModal((s) => s.abrirModal);
   const { usuario } = useSessao();
+  const cidadePadrao = useCidadePadraoDaConta(usuario?.id);
   const imoveis = useAppStore((s) => s.imoveis);
   const comissaoPercent = useAppStore((s) => s.config.comissaoPercent);
   const origensExtras = useAppStore((s) => s.config.origensExtras);
@@ -109,6 +111,7 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
   const [bairro, setBairro] = useState(imovel?.bairro ?? inicial?.bairro ?? "");
   const [cidade, setCidade] = useState(imovel?.cidade ?? inicial?.cidade ?? "");
   const [estado, setEstado] = useState(imovel?.estado ?? inicial?.estado ?? "");
+  const cidadeEstadoProtegidos = useRef(false);
   const [unidade, setUnidade] = useState(imovel?.unidade ?? inicial?.unidade ?? "");
   const [bloco, setBloco] = useState(imovel?.bloco ?? inicial?.bloco ?? "");
   const [edificio, setEdificio] = useState(imovel?.edificio ?? inicial?.edificio ?? "");
@@ -173,6 +176,17 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
     tone: "",
   });
   const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    const preenchido = aplicarCidadePadraoInicial(
+      { cidade, estado },
+      cidadePadrao,
+      cidadeEstadoProtegidos.current,
+    );
+    if (preenchido.cidade === cidade && preenchido.estado === estado) return;
+    setCidade(preenchido.cidade);
+    setEstado(preenchido.estado);
+  }, [cidade, cidadePadrao, estado]);
 
   // Sugestões sem duplicata por acento/caixa/espaço: uma grafia por
   // imobiliária/captador já usado (ver lib/normalizacao.ts).
@@ -266,6 +280,7 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
     const novoBairro = dadosEndereco.bairro || bairro;
     const novaCidade = dadosEndereco.localidade || cidade;
     if (dadosEndereco.bairro) setBairro(dadosEndereco.bairro);
+    if (dadosEndereco.localidade || dadosEndereco.uf) cidadeEstadoProtegidos.current = true;
     if (dadosEndereco.localidade) setCidade(dadosEndereco.localidade);
     if (dadosEndereco.uf) setEstado(dadosEndereco.uf.toUpperCase());
 
@@ -279,6 +294,7 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
   /** Complementa o formulário somente com componentes que o ViaCEP devolveu.
       A ausência de CEP/bairro/etc. nunca apaga o que já estava digitado. */
   function aplicarEnderecoViaCep(selecionado: EnderecoViaCepSelecionado) {
+    if (selecionado.cidade || selecionado.estado) cidadeEstadoProtegidos.current = true;
     if (selecionado.endereco) setEndereco(selecionado.endereco);
     if (selecionado.bairro) setBairro(selecionado.bairro);
     if (selecionado.cidade) setCidade(selecionado.cidade);
@@ -583,7 +599,14 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
             </div>
             <div className="field-group">
               <label>Cidade</label>
-              <input type="text" value={cidade ?? ""} onChange={(e) => setCidade(e.target.value)} />
+              <input
+                type="text"
+                value={cidade ?? ""}
+                onChange={(e) => {
+                  cidadeEstadoProtegidos.current = true;
+                  setCidade(e.target.value);
+                }}
+              />
             </div>
             <div className="field-group">
               <label>Estado / UF</label>
@@ -591,7 +614,10 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
                 type="text"
                 value={estado}
                 maxLength={2}
-                onChange={(e) => setEstado(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  cidadeEstadoProtegidos.current = true;
+                  setEstado(e.target.value.toUpperCase());
+                }}
                 placeholder="UF"
               />
             </div>

@@ -35,6 +35,27 @@ export type ResolucaoCidadePadrao =
   | { cidade: string; uf: string; origem: "configurada" | "inferida" }
   | { cidade: null; uf: null; origem: "nenhuma" };
 
+export function aplicarCidadePadraoInicial<T extends { cidade: string; estado: string }>(
+  atual: T,
+  resolucao: ResolucaoCidadePadrao,
+  protegido = false,
+): T {
+  if (
+    protegido
+    || atual.cidade.trim()
+    || atual.estado.trim()
+    || resolucao.origem === "nenhuma"
+  ) {
+    return atual;
+  }
+
+  return {
+    ...atual,
+    cidade: resolucao.cidade,
+    estado: resolucao.uf,
+  };
+}
+
 export interface ConfiguracaoCidadePadraoConta {
   userId: string;
   cidadePadrao?: string | null;
