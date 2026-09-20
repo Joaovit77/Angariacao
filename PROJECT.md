@@ -156,12 +156,16 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
 - **`formatadores.ts`** — `fmtMoney`, `fmtDate`, etc.
 - **`tipos.ts`** — `Imovel`, `Meta`, `AgendaItem`, `Abordagem`, `Tentativa`, `UserConfig`,
   `StatusHistoryEntry`.
-- **`configuracaoUsuario.ts`** — separa padrão do produto, preferências explícitas de `user_config`
+- **`configuracaoUsuario.ts`** + **`persistencia/cidadePadrao.ts`** — separam padrão do produto,
+  preferências explícitas de `user_config`
   e catálogos inferidos dos dados da própria conta. Origens já presentes em `imoveis` e tipos já
   presentes em `agenda` reaparecem automaticamente nos seletores e no Foco do dia, mesmo quando
   vieram de importação; a inferência fica em memória e não transforma um dado histórico em
-  preferência permanente. Dados sensíveis ou contratuais (`dados_pagamento`, empresa e percentual
-  de comissão) nunca são inferidos.
+  preferência permanente. A cidade padrão segue o mesmo limite: `cidade_padrao` + `uf_padrao`
+  explícitas vencem; sem elas, só há inferência quando todos os imóveis com cidade e UF válidas
+  representam a mesma combinação normalizada. Ambiguidade devolve ausência de default, e a cidade
+  inferida nunca é persistida como escolha do usuário nem restringe operação multi-cidade. Dados
+  sensíveis ou contratuais (`dados_pagamento`, empresa e percentual de comissão) nunca são inferidos.
 - **`calculo/motor.ts`** — o motor: `dateEnteredStatus`, `currentStatusSince`, `isStale`,
   `foiAngariado`, `metricsForRange`, coortes mensais, tempo médio, etc.
 - **`calculo/motor.ts` → `isStale` / `diasSemMovimento`** — **"parado" é ausência de MOVIMENTO,

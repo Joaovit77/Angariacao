@@ -984,7 +984,23 @@ create table if not exists user_config (
   comissao_percent numeric default 100,
   agenda_tipos jsonb not null default '[]'::jsonb,
   whatsapp_modelos jsonb not null default '[]'::jsonb,
-  perfil_comunicacao jsonb not null default '{"formalidade":"natural","tamanho":"curto","emojis":"poucos","tratamento":"voce","expressoesPreferidas":[],"expressoesEvitar":[]}'::jsonb
+  perfil_comunicacao jsonb not null default '{"formalidade":"natural","tamanho":"curto","emojis":"poucos","tratamento":"voce","expressoesPreferidas":[],"expressoesEvitar":[]}'::jsonb,
+  cidade_padrao text,
+  uf_padrao text,
+  constraint user_config_cidade_uf_padrao_validos check (
+    (cidade_padrao is null and uf_padrao is null)
+    or (
+      cidade_padrao is not null
+      and uf_padrao is not null
+      and char_length(trim(cidade_padrao)) between 1 and 100
+      and cidade_padrao = trim(cidade_padrao)
+      and uf_padrao = any (array[
+        'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
+        'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
+        'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+      ]::text[])
+    )
+  )
 );
 
 -- Tipos de compromisso personalizados do usuário (além dos fixos do app).
@@ -1018,6 +1034,43 @@ alter table user_config add column if not exists dados_pagamento text;
 -- imobiliária continuam em protocolos; este JSONB não é um editor de prompt.
 alter table user_config add column if not exists perfil_comunicacao jsonb not null
   default '{"formalidade":"natural","tamanho":"curto","emojis":"poucos","tratamento":"voce","expressoesPreferidas":[],"expressoesEvitar":[]}'::jsonb;
+
+-- Cidade/UF escolhidas explicitamente para sugestões futuras. São opcionais,
+-- sempre formam um par e nunca limitam o cadastro de imóveis em outras cidades.
+-- A inferência da carteira acontece somente na aplicação e não escreve aqui.
+alter table user_config add column if not exists cidade_padrao text;
+alter table user_config add column if not exists uf_padrao text;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'user_config_cidade_uf_padrao_validos'
+      and conrelid = 'public.user_config'::regclass
+  ) then
+    alter table public.user_config
+      add constraint user_config_cidade_uf_padrao_validos check (
+        (cidade_padrao is null and uf_padrao is null)
+        or (
+          cidade_padrao is not null
+          and uf_padrao is not null
+          and char_length(trim(cidade_padrao)) between 1 and 100
+          and cidade_padrao = trim(cidade_padrao)
+          and uf_padrao = any (array[
+            'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
+            'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
+            'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+          ]::text[])
+        )
+      );
+  end if;
+end
+$$;
+
+comment on column public.user_config.cidade_padrao is
+  'Cidade escolhida explicitamente pelo usuário como sugestão padrão; não restringe imóveis de outras cidades.';
+comment on column public.user_config.uf_padrao is
+  'UF da cidade padrão explícita. Nula junto com cidade_padrao quando não configurada.';
 
 alter table user_config enable row level security;
 
