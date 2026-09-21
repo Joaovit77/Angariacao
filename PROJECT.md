@@ -1320,6 +1320,67 @@ Regras permanentes:
 Configuração e verificação do job ficam em [DEPLOY.md](DEPLOY.md); não presuma que aplicar o schema
 sozinho cadastrou URL e segredo no Vault.
 
+### Contatos: pessoa ≠ telefone ≠ imóvel
+
+A fundação relacional de contatos (migration `20260921183930_contatos_fase1a`) separa três coisas
+que `imoveis.proprietario_nome/telefone` misturavam. **`contatos.id` é a identidade da pessoa**;
+nome e telefone nunca identificam ninguém e o sistema nunca agrupa pessoas por nome.
+**`contatos_telefones` é o canal**: uma pessoa tem 0..N números com histórico (`desativado_em`,
+`motivo`), o canônico vem da mesma `telefone_canonico()` do legado, e só o número **ativo** é único
+por conta (`unique (user_id, telefone_canonico) where desativado_em is null`) — regra de roteamento,
+não de identidade; o mesmo número pode existir em outra conta. **`imoveis_contatos` é N:N** (não
+existe `imoveis.contato_id`): `papel` é só `proprietario | contato`, `relacao` é texto livre
+("filha", "administradora"), e `principal` — no vínculo, ≤ 1 vigente por imóvel — significa *com
+quem falar sobre este imóvel*, não *quem é o dono*; um principal pode não ter telefone ativo, e
+quem precisar de canal falha explicitamente. Vínculo nunca é apagado: `encerrado_em` + motivo.
+`contatos_revisoes` é a fila persistente do que só um humano decide (mesma pessoa ou outra? qual
+nome?); "precisa de revisão" é derivado da fila, não de um booleano. Fusão de pessoas é humana
+(`fundido_em_contato_id` como lápide, ainda sem RPC). O browser só **lê** as quatro tabelas (RLS por
+dono; grants só `select`); toda escrita é por trigger `security definer` ou, futuramente, RPC. As
+views `imoveis_contato_principal` e `imoveis_proprietario` separam "com quem falo" de "quem é o dono".
+
+**Compatibilidade com o legado (transição).** `proprietario_nome/telefone/_canonico` continuam
+existindo e continuam sendo o que webhook, Sophia, lote, M2/M3/M4 e a UI leem; passam a ser
+**projeção** com precedência fixa: principal vigente → senão, o **único** proprietário vigente →
+senão (zero ou dois+ proprietários, sem principal) **NULL** — nunca se escolhe uma pessoa por
+`updated_at`, ordem, nome ou id. A projeção grava só quando o valor muda e respeita revisão
+pendente **por dimensão e por escopo**: uma revisão de nome congela só `proprietario_nome`, uma de
+telefone só `proprietario_telefone`; revisões nascidas de um imóvel (`nome-alterado-legado`,
+`telefone-alterado-legado`, `nome-divergente-importacao`) valem só para aquele imóvel e morrem com
+ele; as de pessoa (`nome-divergente-backfill`, e as reservadas `fusao`/`telefone-conflito`) valem
+para todos os imóveis da pessoa. Dimensão congelada não é sobrescrita nem anulada.
+
+INSERT legado (modal, pré-cadastro, importação, promoção do Garimpo) cria ou resolve a pessoa pelo
+número **ativo** (resolução de canal, não prova de identidade): se o nome informado não é exatamente
+o nome confirmado da pessoa — inclusive quando ela ainda não tem nome — vincula **e** abre
+`nome-divergente-importacao`; **telefone nunca autoriza preencher ou renomear `contatos.nome`**.
+Sem telefone confiável nasce pessoa própria; nunca se agrupa por nome. UPDATE legado de
+nome/telefone (o modal atual) é **aceito na coluna e registrado como revisão**
+(`telefone-alterado-legado` / `nome-alterado-legado`, uma por imóvel, com histórico): o modelo novo
+não é alterado por ele, porque trocar o número pode ser "corrigi o número da mesma pessoa" ou
+"agora falo com outra pessoa", e introduzir/trocar um nome pode ser correção ou outra pessoa — isso
+não se adivinha; toda introdução ou alteração de nome pelo legado que não esteja semanticamente
+resolvida vira revisão. Imóvel sem nenhum vínculo (nem histórico) que ganha nome/telefone depois
+recebe o primeiro contato pela mesma regra conservadora do INSERT.
+
+O backfill (por conta, por `(user_id, telefone canônico)`; classes A–G; ambíguos viram revisão
+`nome-divergente-backfill`; sem telefone plausível é uma pessoa por imóvel) é idempotente, não
+escreve no legado, deixa o relatório em `log_eventos` (`contatos-backfill`) e **nunca reabre
+vínculo histórico**: imóvel com qualquer vínculo, vigente ou encerrado, é pulado, porque um vínculo
+encerrado é decisão humana. Número já ativo numa pessoa é reaproveitado só como canal: nome legado
+diferente do confirmado vira `nome-divergente-importacao` por imóvel.
+
+**Fronteira com a 1b.** A resolução por canal segue a lápide (`fundido_em_contato_id`) até o
+sobrevivente como rede de segurança, mas a RPC de fusão da 1b é obrigada a reparentear os vínculos
+e a desativar/reparentear os números do absorvido, para que nada volte a resolver para ele;
+contato arquivado continua resolvendo (arquivar é esconder da lista, não negar a pessoa) e a 1b
+decide o que fazer ao vinculá-lo de novo. Para a 1a-B/1a-C: a projeção que muda o legado passa
+pelo `trg_imoveis_updated_at` normal (a linha mudou de fato), e por isso **`updated_at` não pode
+ter semântica de seleção de imóvel** em nenhum consumidor — a arquitetura de atribuição já
+determina isso. Consumidores que agrupam por `proprietario_telefone_canonico` —
+`contextoProprietario.ts` (M2) e `disponibilidadeMensagem.ts` (M3/M4) — continuam válidos e migram
+para `contato_id` só na 1c.
+
 ### Modelo de RLS
 
 Supabase (Postgres + Auth) é o backend dos **dados**. O CRUD normal do painel usa o cliente
