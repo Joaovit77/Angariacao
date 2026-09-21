@@ -283,8 +283,11 @@ export async function carregarContextoTipadoAssistente(
   const contador: ContadorConsultasContexto = { executadas: 0, reutilizadas: 0 };
   const selecao = selecionarContextoAssistente(pedido.mensagem, pedido.contexto);
   const selecionados = new Set(selecao.blocos);
+  // Agenda de um imóvel citado por código (ex.: "próxima verificação do
+  // LD-340") carrega o imóvel para que o bloco venha no escopo dele, em vez
+  // de "imovel_de_referencia_ausente".
   const precisaImovel = selecionados.has("imovel") || selecionados.has("pipeline")
-    || (selecionados.has("agenda") && /\b(im[oó]vel|dele|dela|desse|dessa|este|esta)\b/i.test(pedido.mensagem));
+    || (selecionados.has("agenda") && (/\b(im[oó]vel|dele|dela|desse|dessa|este|esta)\b/i.test(pedido.mensagem) || codigoExplicito(pedido.mensagem) !== null));
   const imovel = precisaImovel ? await carregarImovel(supabase, userId, pedido, contador) : undefined;
   const [agenda, catalogoProtocolos] = await Promise.all([
     selecionados.has("agenda") ? carregarAgenda(supabase, userId, pedido, contador, imovel) : Promise.resolve(undefined),

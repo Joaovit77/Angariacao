@@ -9,7 +9,7 @@ import { prepararResultadoFerramentaParaModelo } from "@/lib/servidor/assistente
 import type { ItemHistoricoAssistente, PedidoAssistente } from "@/lib/assistente/tipos";
 
 type Linha = Record<string, unknown>;
-type Filtro = { metodo: "eq" | "ilike" | "gte" | "lte" | "lt"; coluna: string; valor: unknown };
+type Filtro = { metodo: "eq" | "ilike" | "gte" | "lte" | "lt" | "in"; coluna: string; valor: unknown };
 type ResultadoConsulta = { data: Linha[] | null; error: null; count: number | null };
 
 class ConsultaFake implements PromiseLike<ResultadoConsulta> {
@@ -29,10 +29,12 @@ class ConsultaFake implements PromiseLike<ResultadoConsulta> {
   gte(coluna: string, valor: unknown) { this.filtros.push({ metodo: "gte", coluna, valor }); return this; }
   lte(coluna: string, valor: unknown) { this.filtros.push({ metodo: "lte", coluna, valor }); return this; }
   lt(coluna: string, valor: unknown) { this.filtros.push({ metodo: "lt", coluna, valor }); return this; }
+  in(coluna: string, valor: unknown[]) { this.filtros.push({ metodo: "in", coluna, valor }); return this; }
   private resultado(limite?: number): ResultadoConsulta {
     let data = this.linhas.filter((linha) => this.filtros.every((filtro) => {
       const atual = linha[filtro.coluna];
       if (filtro.metodo === "eq") return atual === filtro.valor;
+      if (filtro.metodo === "in") return (filtro.valor as unknown[]).includes(atual);
       if (filtro.metodo === "gte") return String(atual ?? "") >= String(filtro.valor);
       if (filtro.metodo === "lte") return String(atual ?? "") <= String(filtro.valor);
       if (filtro.metodo === "lt") return String(atual ?? "") < String(filtro.valor);

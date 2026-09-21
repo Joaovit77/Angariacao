@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fromDbAgenda, fromDbImovel, type DbAgendaRow, type DbImovelRow } from "@/lib/persistencia/mapeadores";
+import { rotuloAutomacaoLembrete } from "@/lib/calculo/agenda";
 import { explicarMensagemAgendada } from "@/lib/calculo/explicacaoMensagemAgendada";
 import { fromDbMensagem, type DbMensagemAgendada } from "@/lib/mensagensAgendadas";
 import {
@@ -100,7 +101,7 @@ export const DEFINICOES_FERRAMENTAS = [
   {
     type: "function" as const,
     name: "consultar_imovel",
-    description: "Consulta detalhes e historico de um imovel por codigo visivel (ex. LD-225) ou id interno. Use codigo para referencias naturais do usuario.",
+    description: "Consulta detalhes e historico de um imovel (status, notas, tentativas, ultimo contato) por codigo visivel (ex. LD-225) ou id interno. Use codigo para referencias naturais do usuario. Nao informa o estado das mensagens programadas (enviada, cancelada, reprogramada, incluida em outra) nem a proxima verificacao de disponibilidade: para isso use consultar_mensagens_agendadas e buscar_agenda com codigo_imovel, combinando com esta ferramenta quando precisar de contexto.",
     strict: true,
     parameters: {
       type: "object",
@@ -122,28 +123,30 @@ export const DEFINICOES_FERRAMENTAS = [
   {
     type: "function" as const,
     name: "buscar_agenda",
-    description: "Busca compromissos da agenda por intervalo e estado de conclusao.",
+    description: "Busca compromissos da agenda por intervalo, estado de conclusao e, opcionalmente, por imovel (codigo_imovel). Inclui os lembretes de verificacao de disponibilidade: para 'quando sera a proxima verificacao do LD-X' use codigo_imovel com concluido=false, sem datas. Cada item diz se e verificacao de disponibilidade e se foi programado ou concluido automaticamente.",
     strict: true,
     parameters: {
       type: "object",
       properties: {
+        codigo_imovel: { type: ["string", "null"], description: "Codigo visivel do imovel, por exemplo LD-225, para ver somente os compromissos e lembretes desse imovel. Nao e o id interno." },
         data_inicio: { type: ["string", "null"], description: "Data ISO YYYY-MM-DD" },
         data_fim: { type: ["string", "null"], description: "Data ISO YYYY-MM-DD" },
         concluido: { type: ["boolean", "null"] },
         limite: { type: "integer", minimum: 1, maximum: 20 },
       },
-      required: ["data_inicio", "data_fim", "concluido", "limite"],
+      required: ["codigo_imovel", "data_inicio", "data_fim", "concluido", "limite"],
       additionalProperties: false,
     },
   },
   {
     type: "function" as const,
     name: "consultar_mensagens_agendadas",
-    description: "Consulta somente mensagens programadas. Nao confundir com compromissos da agenda. Pendente significa status agendada; para a proxima, use agendada, somente_futuras=true, ordem=asc e limite=1.",
+    description: "Consulta mensagens programadas (WhatsApp agendado) e o que aconteceu com cada uma: enviada, cancelada e por que, reprogramada e para quando, incluida em outra mensagem (consolidacao), verificacao de disponibilidade. E a fonte estruturada para qualquer pergunta sobre as mensagens de um imovel, por exemplo 'o que aconteceu com a mensagem do LD-340' ou 'a mensagem do LD-344 foi enviada separadamente?': informe codigo_imovel e nao deduza o estado pelo historico do imovel. Nao confundir com compromissos da agenda. Pendente significa status agendada; para a proxima, use agendada, somente_futuras=true, ordem=asc e limite=1.",
     strict: true,
     parameters: {
       type: "object",
       properties: {
+        codigo_imovel: { type: ["string", "null"], description: "Codigo visivel do imovel, por exemplo LD-225, para ver somente as mensagens desse imovel. Nao e o id interno." },
         data_inicio: { type: ["string", "null"], description: "Primeiro dia no fuso operacional, ISO YYYY-MM-DD." },
         data_fim: { type: ["string", "null"], description: "Ultimo dia inclusivo no fuso operacional, ISO YYYY-MM-DD." },
         status: { type: ["string", "null"], enum: ["agendada", "processando", "enviada", "erro", "cancelada", null] },
@@ -151,7 +154,7 @@ export const DEFINICOES_FERRAMENTAS = [
         ordem: { type: "string", enum: ["asc", "desc"] },
         limite: { type: "integer", minimum: 1, maximum: 20 },
       },
-      required: ["data_inicio", "data_fim", "status", "somente_futuras", "ordem", "limite"],
+      required: ["codigo_imovel", "data_inicio", "data_fim", "status", "somente_futuras", "ordem", "limite"],
       additionalProperties: false,
     },
   },
@@ -318,6 +321,37 @@ export function normalizarCodigoImovel(v: unknown): string | null {
   const valor = texto(v)?.toUpperCase();
   return valor && /^[A-Z0-9][A-Z0-9._/-]{0,39}$/.test(valor) ? valor : null;
 }
+
+type ImovelResolvido = { id: string; codigo: string };
+
+/** Resolve o codigo humano dentro da conta autenticada. O modelo nunca
+    fornece o id: o codigo e consultado sob o user_id e devolve `null` quando
+    nao existe nessa carteira, sem olhar outra conta. */
+async function resolverImovelPorCodigo(
+  supabase: SupabaseClient,
+  userId: string,
+  codigo: string,
+): Promise<ImovelResolvido | null> {
+  const { data, error } = await supabase.from("imoveis").select("id,codigo").eq("user_id", userId).ilike("codigo", codigo).maybeSingle();
+  if (error) throw new Error(`Falha ao resolver o codigo do imovel: ${error.message}`);
+  return data ? { id: String(data.id), codigo: String(data.codigo || codigo) } : null;
+}
+
+/** Codigos humanos dos ids informados, sempre sob o user_id; ids de fora da
+    conta simplesmente nao aparecem no mapa. */
+async function codigosDosImoveis(
+  supabase: SupabaseClient,
+  userId: string,
+  ids: readonly string[],
+): Promise<Map<string, string>> {
+  const unicos = [...new Set(ids.filter((id) => !!id))];
+  if (!unicos.length) return new Map();
+  const { data, error } = await supabase.from("imoveis").select("id,codigo").eq("user_id", userId).in("id", unicos);
+  if (error) throw new Error(`Falha ao consultar codigos dos imoveis: ${error.message}`);
+  return new Map((data || []).flatMap((row) => (row.codigo ? [[String(row.id), String(row.codigo)] as const] : [])));
+}
+
+const SEM_IMOVEL_NA_CARTEIRA = "Nenhum imovel com esse codigo na sua carteira.";
 
 function itemImovel(row: DbImovelRow): ItemImovelAssistente {
   const imovel = fromDbImovel(row);
@@ -558,7 +592,21 @@ export async function executarFerramenta(
   }
 
   if (nome === "buscar_agenda") {
-    let q = supabase.from("agenda").select("id,title,type,date,hora,done,imovel_id").eq("user_id", userId).order("date", { ascending: true });
+    // Filtro opcional por imovel: o codigo humano e resolvido na conta
+    // autenticada e vira filtro em agenda.imovel_id; codigo inexistente
+    // devolve vazio, nunca consulta outra conta.
+    const codigoImovel = normalizarCodigoImovel(args.codigo_imovel);
+    if (texto(args.codigo_imovel) && !codigoImovel) return { dados: { itens: [], erro: "Codigo de imovel invalido." } };
+    const imovelFiltro = codigoImovel ? await resolverImovelPorCodigo(supabase, userId, codigoImovel) : null;
+    if (codigoImovel && !imovelFiltro) {
+      return { dados: { imovel: { codigo: codigoImovel, encontrado: false }, itens: [], motivo: SEM_IMOVEL_NA_CARTEIRA } };
+    }
+    let q = supabase
+      .from("agenda")
+      .select("id,title,type,date,hora,done,imovel_id,is_verificacao_disponibilidade,origin,reason_code,completed_at,completion_reason,completion_origin")
+      .eq("user_id", userId)
+      .order("date", { ascending: true });
+    if (imovelFiltro) q = q.eq("imovel_id", imovelFiltro.id);
     const inicio = texto(args.data_inicio);
     const fim = texto(args.data_fim);
     if (inicio) q = q.gte("date", inicio);
@@ -566,11 +614,41 @@ export async function executarFerramenta(
     if (typeof args.concluido === "boolean") q = q.eq("done", args.concluido);
     const { data, error } = await q.limit(limiteConformeIntencao(perguntaUsuario, args.limite, "agenda"));
     if (error) throw new Error(`Falha ao buscar agenda: ${error.message}`);
-    const itens = (data || []).map((x) => ({ id: x.id, titulo: x.title, tipo: x.type, data: x.date, hora: x.hora || "", concluido: !!x.done, imovelId: x.imovel_id }));
-    return { dados: itens, bloco: { tipo: "agenda", titulo: "Agenda", itens } };
+    // O "por que" de um lembrete de verificacao vem do mesmo rotulo que a
+    // Agenda mostra (programado/concluido automaticamente), nunca do titulo.
+    const itens = ((data || []) as DbAgendaRow[]).map((x) => {
+      const compromisso = fromDbAgenda(x);
+      return {
+        id: x.id,
+        titulo: x.title,
+        tipo: x.type,
+        data: x.date,
+        hora: x.hora || "",
+        concluido: !!x.done,
+        imovelId: x.imovel_id,
+        ...(imovelFiltro ? { codigoImovel: imovelFiltro.codigo } : {}),
+        verificacaoDisponibilidade: compromisso.isVerificacaoDisponibilidade,
+        automacao: rotuloAutomacaoLembrete(compromisso),
+      };
+    });
+    const titulo = imovelFiltro ? `Agenda de ${imovelFiltro.codigo}` : "Agenda";
+    return {
+      dados: imovelFiltro ? { imovel: { codigo: imovelFiltro.codigo, encontrado: true }, itens } : itens,
+      bloco: { tipo: "agenda", titulo, itens },
+    };
   }
 
   if (nome === "consultar_mensagens_agendadas") {
+    // Filtro opcional por imovel, com a mesma disciplina da Agenda: codigo
+    // humano resolvido na conta, filtro em mensagens_agendadas.imovel_id.
+    const codigoImovel = normalizarCodigoImovel(args.codigo_imovel);
+    if (texto(args.codigo_imovel) && !codigoImovel) {
+      return { dados: { totalEncontrado: 0, itensRetornados: 0, itens: [], erro: "Codigo de imovel invalido." } };
+    }
+    const imovelFiltro = codigoImovel ? await resolverImovelPorCodigo(supabase, userId, codigoImovel) : null;
+    if (codigoImovel && !imovelFiltro) {
+      return { dados: { imovel: { codigo: codigoImovel, encontrado: false }, totalEncontrado: 0, itensRetornados: 0, itens: [], motivo: SEM_IMOVEL_NA_CARTEIRA } };
+    }
     let q = supabase
       .from("mensagens_agendadas")
       .select(
@@ -590,6 +668,7 @@ export async function executarFerramenta(
     if (status && !["agendada", "processando", "enviada", "erro", "cancelada"].includes(status)) {
       return { dados: { totalEncontrado: 0, itensRetornados: 0, itens: [], erro: "Status de mensagem invalido." } };
     }
+    if (imovelFiltro) q = q.eq("imovel_id", imovelFiltro.id);
     if (inicio) q = q.gte("data_envio", inicio);
     if (fimExclusivo) q = q.lt("data_envio", fimExclusivo);
     if (status) q = q.eq("status", status);
@@ -599,13 +678,22 @@ export async function executarFerramenta(
     if (error) throw new Error(`Falha ao consultar mensagens agendadas: ${error.message}`);
     // O que aconteceu com cada mensagem vem dos campos estruturados, pelo
     // mesmo módulo que a tela usa; o assistente explica, nunca infere pelo
-    // texto nem executa nada.
-    const itens = (data || []).map((item) => {
-      const mensagem = fromDbMensagem(item as DbMensagemAgendada);
-      const explicacao = explicarMensagemAgendada(mensagem);
+    // texto nem executa nada. Os codigos humanos (do imovel da linha e dos
+    // imoveis consultados pela mensagem conjunta) substituem qualquer UUID.
+    const linhas = (data || []) as DbMensagemAgendada[];
+    const codigos = await codigosDosImoveis(
+      supabase,
+      userId,
+      linhas.flatMap((item) => [item.imovel_id || "", ...(item.imoveis_consultados || [])]),
+    );
+    const codigoDoImovel = (id: string) => codigos.get(id) ?? null;
+    const itens = linhas.map((item) => {
+      const mensagem = fromDbMensagem(item);
+      const explicacao = explicarMensagemAgendada(mensagem, { codigoDoImovel });
       return {
         id: item.id,
         imovelId: item.imovel_id,
+        codigoImovel: item.imovel_id ? codigoDoImovel(item.imovel_id) : null,
         nomeProprietario: item.nome_proprietario || "Proprietario nao informado",
         resumoMensagem: String(item.mensagem || "").trim().slice(0, 160),
         dataEnvio: item.data_envio,
@@ -619,8 +707,13 @@ export async function executarFerramenta(
       };
     });
     return {
-      dados: { totalEncontrado: count ?? itens.length, itensRetornados: itens.length, itens },
-      bloco: itens.length ? { tipo: "mensagens_agendadas", titulo: "Mensagens agendadas", itens } : undefined,
+      dados: {
+        ...(imovelFiltro ? { imovel: { codigo: imovelFiltro.codigo, encontrado: true } } : {}),
+        totalEncontrado: count ?? itens.length,
+        itensRetornados: itens.length,
+        itens,
+      },
+      bloco: itens.length ? { tipo: "mensagens_agendadas", titulo: imovelFiltro ? `Mensagens de ${imovelFiltro.codigo}` : "Mensagens agendadas", itens } : undefined,
     };
   }
 

@@ -207,6 +207,12 @@ export interface ItemAgendaAssistente {
   hora: string;
   concluido: boolean;
   imovelId?: string | null;
+  /** Código humano do imóvel, presente quando a consulta foi filtrada por ele. */
+  codigoImovel?: string | null;
+  /** Lembrete de verificação de disponibilidade (flag estruturada, não o título). */
+  verificacaoDisponibilidade?: boolean;
+  /** Rótulo da automação que programou ou concluiu o lembrete; `null` quando foi manual. */
+  automacao?: string | null;
 }
 
 export interface ItemMensagemAgendadaAssistente {
@@ -216,6 +222,8 @@ export interface ItemMensagemAgendadaAssistente {
   resumoMensagem: string;
   dataEnvio: string;
   status: string;
+  /** Código humano do imóvel da mensagem; `null` quando não resolvido na conta. */
+  codigoImovel?: string | null;
   /** `livre` ou `verificacao-disponibilidade`; só a segunda tem regras automáticas. */
   tipo: string;
   /** Rótulo operacional do estado (ex.: "Incluída em outra mensagem"). */
