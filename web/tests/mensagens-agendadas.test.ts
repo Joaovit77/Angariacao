@@ -79,6 +79,11 @@ describe("imoveisComAgendamentoAtivo", () => {
     cancelamentoMotivo: null,
     cancelamentoOrigem: null,
     canceladaEm: null,
+    imoveisConsultados: null,
+    consolidadaEmMensagemId: null,
+    reagendadaEm: null,
+    reagendamentoMotivo: null,
+    dataEnvioOriginal: null,
   };
 
   it("conta conversas únicas com itens agendados ou processando", () => {
@@ -172,9 +177,16 @@ describe("M1 — modelo das mensagens de disponibilidade", () => {
     expect(BACKFILL).not.toMatch(/console\.log\([^)]*(?:mensagem|telefone|proprietario)/i);
   });
 
-  it("M1 não altera a decisão nem o envio do worker", () => {
-    expect(WORKER).not.toContain("verificacao-disponibilidade");
+  /* Até o M2 o worker não conhecia o tipo da mensagem (a guarda antiga
+     exigia isso). O M3 é o checkpoint em que a decisão de envio passa a
+     depender dele; o que continua proibido é o worker escrever a auditoria
+     de cancelamento por conta própria: a mutação é sempre a RPC do M4. */
+  it("o worker reavalia só as verificações de disponibilidade e nunca grava cancelamento à mão", () => {
+    expect(WORKER).toContain('item.tipo === "verificacao-disponibilidade"');
+    expect(WORKER).toContain("revalidarVerificacaoDisponibilidade");
+    expect(WORKER).toContain("aplicarDecisaoNoBanco");
     expect(WORKER).not.toContain("cancelamento_motivo");
+    expect(WORKER).not.toMatch(/status:\s*"cancelada"/);
   });
 });
 

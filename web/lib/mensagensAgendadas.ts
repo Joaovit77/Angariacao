@@ -4,8 +4,14 @@ export type MotivoCancelamentoMensagemAgendada =
   | "usuario"
   | "imovel-indisponivel"
   | "disponibilidade-confirmada"
-  | "imovel-excluido";
+  | "imovel-excluido"
+  /** Absorvida por outra verificação do mesmo proprietário no mesmo dia; a
+      âncora está em `consolidadaEmMensagemId`. */
+  | "contato-consolidado";
 export type OrigemCancelamentoMensagemAgendada = "usuario" | "automacao" | "worker";
+/** Único motivo de reagendamento automático: a cadência recomeça na evidência
+    positiva mais recente (`E + VERIFICACAO_DISPONIBILIDADE_DIAS`). */
+export type MotivoReagendamentoMensagemAgendada = "disponibilidade-confirmada";
 
 export interface MensagemAgendada {
   id: string;
@@ -23,6 +29,16 @@ export interface MensagemAgendada {
   cancelamentoMotivo: MotivoCancelamentoMensagemAgendada | null;
   cancelamentoOrigem: OrigemCancelamentoMensagemAgendada | null;
   canceladaEm: string | null;
+  /** Por quais imóveis a mensagem perguntou. `null` = somente `imovelId`.
+      Preenchido pelo worker quando uma mensagem absorve outras do mesmo
+      proprietário; é a lista, e não o texto, que diz o que foi perguntado. */
+  imoveisConsultados: string[] | null;
+  /** A mensagem que absorveu esta, quando cancelada como `contato-consolidado`. */
+  consolidadaEmMensagemId: string | null;
+  reagendadaEm: string | null;
+  reagendamentoMotivo: MotivoReagendamentoMensagemAgendada | null;
+  /** O `data_envio` de antes do primeiro reagendamento automático. */
+  dataEnvioOriginal: string | null;
 }
 
 export interface DbMensagemAgendada {
@@ -43,6 +59,11 @@ export interface DbMensagemAgendada {
   cancelamento_motivo?: MotivoCancelamentoMensagemAgendada | null;
   cancelamento_origem?: OrigemCancelamentoMensagemAgendada | null;
   cancelada_em?: string | null;
+  imoveis_consultados?: string[] | null;
+  consolidada_em_mensagem_id?: string | null;
+  reagendada_em?: string | null;
+  reagendamento_motivo?: MotivoReagendamentoMensagemAgendada | null;
+  data_envio_original?: string | null;
 }
 
 export function fromDbMensagem(r: DbMensagemAgendada): MensagemAgendada {
@@ -52,7 +73,12 @@ export function fromDbMensagem(r: DbMensagemAgendada): MensagemAgendada {
     enviadoEm: r.enviado_em, erro: r.erro,
     cancelamentoMotivo: r.cancelamento_motivo ?? null,
     cancelamentoOrigem: r.cancelamento_origem ?? null,
-    canceladaEm: r.cancelada_em ?? null };
+    canceladaEm: r.cancelada_em ?? null,
+    imoveisConsultados: r.imoveis_consultados ?? null,
+    consolidadaEmMensagemId: r.consolidada_em_mensagem_id ?? null,
+    reagendadaEm: r.reagendada_em ?? null,
+    reagendamentoMotivo: r.reagendamento_motivo ?? null,
+    dataEnvioOriginal: r.data_envio_original ?? null };
 }
 
 export function telefoneValido(telefone: string): boolean {

@@ -13,6 +13,10 @@ const mocks = vi.hoisted(() => ({
   enviar: vi.fn(),
   garantir: vi.fn(),
   historico: vi.fn(),
+  revalidar: vi.fn(),
+  aplicarDecisao: vi.fn(),
+  cancelarSemImovel: vi.fn(),
+  consolidar: vi.fn(),
   /** Resposta de cada leitura/escrita por tabela, na ordem das chamadas. */
   tabelas: {} as Record<string, ResultadoMock[]>,
   escritas: [] as Array<{ tabela: string; valores: Record<string, unknown> }>,
@@ -41,6 +45,12 @@ vi.mock("@/lib/servidor/registro", () => ({ registrarEvento: mocks.registrarEven
 vi.mock("@/lib/servidor/envioMensagemAgendada", () => ({ enviarMensagemAgendada: mocks.enviar }));
 vi.mock("@/lib/servidor/instanciaWhatsapp", () => ({ garantirRegistroInstanciaWhatsapp: mocks.garantir }));
 vi.mock("@/lib/servidor/historicoWhatsapp", () => ({ registrarMensagemEnviada: mocks.historico }));
+vi.mock("@/lib/servidor/disponibilidadeMensagem", () => ({
+  revalidarVerificacaoDisponibilidade: mocks.revalidar,
+  aplicarDecisaoNoBanco: mocks.aplicarDecisao,
+  cancelarMensagemSemImovel: mocks.cancelarSemImovel,
+  consolidarContatoDoProprietario: mocks.consolidar,
+}));
 
 import { GET } from "@/app/api/cron/mensagens/route";
 
@@ -75,6 +85,10 @@ describe("cron de mensagens agendadas", () => {
     mocks.enviar.mockReset().mockResolvedValue({ mensagemId: "wa-1" });
     mocks.garantir.mockReset().mockResolvedValue({ ok: true, instancia: "corretora", token: "tok", criada: false, qr: null });
     mocks.historico.mockReset().mockResolvedValue({ erro: null });
+    mocks.revalidar.mockReset();
+    mocks.aplicarDecisao.mockReset().mockResolvedValue({ ok: true, detalhe: null, erro: null });
+    mocks.cancelarSemImovel.mockReset().mockResolvedValue({ ok: true, detalhe: null, erro: null });
+    mocks.consolidar.mockReset();
     mocks.tabelas = {};
     mocks.escritas.length = 0;
     log = vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -94,7 +108,7 @@ describe("cron de mensagens agendadas", () => {
     const resposta = await chamarComPausas();
 
     expect(resposta.status).toBe(200);
-    expect(await resposta.json()).toEqual({ ok: true, processadas: 0, enviadas: 0, falhas: 0 });
+    expect(await resposta.json()).toEqual({ ok: true, processadas: 0, enviadas: 0, falhas: 0, suprimidas: 0, reagendadas: 0, consolidadas: 0 });
     expect(mocks.rpc).toHaveBeenCalledTimes(2);
     expect(mocks.registrarEvento).toHaveBeenCalledExactlyOnceWith({
       userId: null, categoria: "whatsapp", nivel: "aviso", evento: "agendamento-fila-recuperada", detalhe: "rede:0",
@@ -143,7 +157,7 @@ describe("cron de mensagens agendadas", () => {
 
     const resposta = await chamarComPausas();
 
-    expect(await resposta.json()).toEqual({ ok: true, processadas: 1, enviadas: 0, falhas: 1 });
+    expect(await resposta.json()).toEqual({ ok: true, processadas: 1, enviadas: 0, falhas: 1, suprimidas: 0, reagendadas: 0, consolidadas: 0 });
     expect(mocks.enviar).not.toHaveBeenCalled();
     expect(mocks.escritas).toEqual([
       { tabela: "mensagens_agendadas", valores: expect.objectContaining({ status: "erro", erro: "releitura-falhou" }) },
@@ -159,7 +173,7 @@ describe("cron de mensagens agendadas", () => {
 
     const resposta = await chamarComPausas();
 
-    expect(await resposta.json()).toEqual({ ok: true, processadas: 1, enviadas: 0, falhas: 0 });
+    expect(await resposta.json()).toEqual({ ok: true, processadas: 1, enviadas: 0, falhas: 0, suprimidas: 0, reagendadas: 0, consolidadas: 0 });
     expect(mocks.enviar).not.toHaveBeenCalled();
     expect(mocks.escritas).toEqual([]);
   });
@@ -173,10 +187,173 @@ describe("cron de mensagens agendadas", () => {
 
     const resposta = await chamarComPausas();
 
-    expect(await resposta.json()).toEqual({ ok: true, processadas: 1, enviadas: 1, falhas: 0 });
+    expect(await resposta.json()).toEqual({ ok: true, processadas: 1, enviadas: 1, falhas: 0, suprimidas: 0, reagendadas: 0, consolidadas: 0 });
     expect(mocks.enviar).toHaveBeenCalledOnce();
     expect(mocks.escritas).toEqual([
       { tabela: "mensagens_agendadas", valores: expect.objectContaining({ status: "enviada", erro: null }) },
     ]);
+  });
+
+  /* --- M3: verificação de disponibilidade reavaliada antes do envio -------- */
+
+  const VERIFICACAO = { ...MENSAGEM, id: "v1", tipo: "verificacao-disponibilidade" as "verificacao-disponibilidade" | "livre" };
+  const IMOVEL = { id: "i1", endereco: "Rua A, 1", status: "Publicado" };
+
+  function prontoParaEnviar(mensagem = VERIFICACAO) {
+    mocks.rpc.mockResolvedValueOnce({ data: [mensagem], error: null, status: 200 });
+    mocks.tabelas = {
+      whatsapp_instancias: [{ data: { instancia: "corretora", token: "tok", observacao: null }, error: null }],
+      mensagens_agendadas: [{ data: { status: "processando", imovel_id: "i1" }, error: null }],
+    };
+  }
+
+  it("mensagem livre não passa pela revalidação nem pela consolidação", async () => {
+    prontoParaEnviar({ ...MENSAGEM, tipo: "livre" as const });
+
+    const resposta = await chamarComPausas();
+
+    expect(await resposta.json()).toMatchObject({ enviadas: 1, suprimidas: 0 });
+    expect(mocks.revalidar).not.toHaveBeenCalled();
+    expect(mocks.consolidar).not.toHaveBeenCalled();
+    expect(mocks.enviar).toHaveBeenCalledOnce();
+  });
+
+  it("imóvel indisponível: cancela pela RPC do M4 e não envia", async () => {
+    prontoParaEnviar();
+    mocks.revalidar.mockResolvedValueOnce({
+      decisao: { acao: "cancelar", motivo: "imovel-indisponivel", evidencia: { codigo: "status-perdido" }, fato: "Perdido" },
+      contexto: { imovel: IMOVEL, agenda: [], avaliacao: null },
+    });
+
+    const resposta = await chamarComPausas();
+
+    expect(await resposta.json()).toMatchObject({ enviadas: 0, suprimidas: 1, falhas: 0 });
+    expect(mocks.enviar).not.toHaveBeenCalled();
+    expect(mocks.aplicarDecisao).toHaveBeenCalledOnce();
+    expect(mocks.aplicarDecisao.mock.calls[0][1]).toMatchObject({ id: "v1" });
+    expect(mocks.aplicarDecisao.mock.calls[0][2]).toMatchObject({ acao: "cancelar", motivo: "imovel-indisponivel" });
+    expect(mocks.registrarEvento).toHaveBeenCalledWith(expect.objectContaining({
+      evento: "agendamento-cancelado-worker", detalhe: "v1 imovel-indisponivel status-perdido",
+    }));
+    // O worker não escreve na linha por conta própria: a transação é da RPC.
+    expect(mocks.escritas).toEqual([]);
+  });
+
+  it("disponibilidade confirmada depois do agendamento: reagenda pela RPC e não envia", async () => {
+    prontoParaEnviar();
+    mocks.revalidar.mockResolvedValueOnce({
+      decisao: {
+        acao: "reagendar", motivo: "disponibilidade-confirmada", dataEvidencia: "2026-09-01T10:15:00",
+        novoDiaEnvio: "2026-10-31", novaDataEnvio: "2026-10-31T11:00:00.000Z",
+        evidencia: { codigo: "visita_confirmada_pelo_proprietario" },
+      },
+      contexto: { imovel: IMOVEL, agenda: [], avaliacao: null },
+    });
+
+    const resposta = await chamarComPausas();
+
+    expect(await resposta.json()).toMatchObject({ enviadas: 0, reagendadas: 1, falhas: 0 });
+    expect(mocks.enviar).not.toHaveBeenCalled();
+    expect(mocks.aplicarDecisao.mock.calls[0][2]).toMatchObject({ acao: "reagendar", novoDiaEnvio: "2026-10-31" });
+    expect(mocks.registrarEvento).toHaveBeenCalledWith(expect.objectContaining({
+      evento: "agendamento-reagendado", detalhe: "v1 visita_confirmada_pelo_proprietario E=2026-09-01 -> 2026-10-31",
+    }));
+  });
+
+  it("transição recusada pelo banco vira erro classificado: nunca envia uma mensagem que devia ser cancelada", async () => {
+    prontoParaEnviar();
+    mocks.revalidar.mockResolvedValueOnce({
+      decisao: { acao: "cancelar", motivo: "imovel-indisponivel", evidencia: null, fato: "Perdido" },
+      contexto: { imovel: IMOVEL, agenda: [], avaliacao: null },
+    });
+    mocks.aplicarDecisao.mockResolvedValueOnce({ ok: false, detalhe: null, erro: "imovel-nao-encontrado" });
+
+    const resposta = await chamarComPausas();
+
+    expect(await resposta.json()).toMatchObject({ enviadas: 0, suprimidas: 0, falhas: 1 });
+    expect(mocks.enviar).not.toHaveBeenCalled();
+    expect(mocks.escritas).toEqual([
+      { tabela: "mensagens_agendadas", valores: expect.objectContaining({ status: "erro", erro: "transicao-falhou:imovel-nao-encontrado" }) },
+    ]);
+  });
+
+  it("falha ao carregar os fatos não envia nem cancela: erro classificado e evento", async () => {
+    prontoParaEnviar();
+    mocks.revalidar.mockRejectedValueOnce(new Error("agenda: timeout"));
+
+    const resposta = await chamarComPausas();
+
+    expect(await resposta.json()).toMatchObject({ enviadas: 0, suprimidas: 0, falhas: 1 });
+    expect(mocks.enviar).not.toHaveBeenCalled();
+    expect(mocks.registrarEvento).toHaveBeenCalledWith(expect.objectContaining({ evento: "agendamento-revalidacao-falhou" }));
+    expect(mocks.escritas).toEqual([
+      { tabela: "mensagens_agendadas", valores: expect.objectContaining({ status: "erro", erro: "revalidacao-falhou" }) },
+    ]);
+  });
+
+  it("sem evidência: envia como sempre e registra a nota só no imóvel da mensagem", async () => {
+    prontoParaEnviar();
+    mocks.revalidar.mockResolvedValueOnce({
+      decisao: { acao: "enviar", estado: "sem-evidencia", motivo: "sem-evidencia" },
+      contexto: { imovel: IMOVEL, agenda: [], avaliacao: null },
+    });
+    mocks.consolidar.mockResolvedValueOnce({
+      plano: { imoveisConsultados: ["i1"], absorvidas: [], recusadas: [], texto: null },
+      absorvidasIds: [], transicoes: [], imoveisConsultados: [IMOVEL],
+    });
+
+    const resposta = await chamarComPausas();
+
+    expect(await resposta.json()).toMatchObject({ enviadas: 1, consolidadas: 0 });
+    expect(mocks.enviar).toHaveBeenCalledWith("43999999999", "Olá", expect.anything());
+    expect(mocks.historico).toHaveBeenCalledOnce();
+    expect(mocks.escritas).toEqual([
+      { tabela: "mensagens_agendadas", valores: expect.not.objectContaining({ imoveis_consultados: expect.anything() }) },
+    ]);
+  });
+
+  it("conflitante não vira disponível nem indisponível: segue o fluxo de sempre", async () => {
+    prontoParaEnviar();
+    mocks.revalidar.mockResolvedValueOnce({
+      decisao: { acao: "enviar", estado: "conflitante", motivo: "conflitante" },
+      contexto: { imovel: IMOVEL, agenda: [], avaliacao: null },
+    });
+    mocks.consolidar.mockResolvedValueOnce({
+      plano: { imoveisConsultados: ["i1"], absorvidas: [], recusadas: [], texto: null },
+      absorvidasIds: [], transicoes: [], imoveisConsultados: [IMOVEL],
+    });
+
+    const resposta = await chamarComPausas();
+
+    expect(await resposta.json()).toMatchObject({ enviadas: 1, suprimidas: 0, reagendadas: 0 });
+    expect(mocks.aplicarDecisao).not.toHaveBeenCalled();
+  });
+
+  it("mesmo proprietário: envia uma mensagem só, com a lista de imóveis, e registra a nota em cada um", async () => {
+    prontoParaEnviar();
+    mocks.revalidar.mockResolvedValueOnce({
+      decisao: { acao: "enviar", estado: "sem-evidencia", motivo: "sem-evidencia" },
+      contexto: { imovel: IMOVEL, agenda: [], avaliacao: null },
+    });
+    const outros = [{ id: "i2", endereco: "Rua B, 2", status: "Publicado" }, { id: "i3", endereco: "Rua C, 3", status: "Publicado" }];
+    mocks.consolidar.mockResolvedValueOnce({
+      plano: { imoveisConsultados: ["i1", "i2", "i3"], absorvidas: [], recusadas: [], texto: "TEXTO CONSOLIDADO" },
+      absorvidasIds: ["v2", "v3"], transicoes: [], imoveisConsultados: [IMOVEL, ...outros],
+    });
+
+    const resposta = await chamarComPausas();
+
+    expect(await resposta.json()).toMatchObject({ enviadas: 1, consolidadas: 2 });
+    expect(mocks.enviar).toHaveBeenCalledOnce();
+    expect(mocks.enviar).toHaveBeenCalledWith("43999999999", "TEXTO CONSOLIDADO", expect.anything());
+    expect(mocks.historico.mock.calls.map((chamada) => chamada[1].imovelId)).toEqual(["i1", "i2", "i3"]);
+    expect(mocks.escritas).toEqual([
+      { tabela: "mensagens_agendadas", valores: expect.objectContaining({
+        status: "enviada", mensagem: "TEXTO CONSOLIDADO", imoveis_consultados: ["i1", "i2", "i3"],
+      }) },
+    ]);
+    expect(mocks.registrarEvento).toHaveBeenCalledWith(expect.objectContaining({
+      evento: "agendamento-consolidado", detalhe: "v1 absorveu 2; imoveis=3",
+    }));
   });
 });

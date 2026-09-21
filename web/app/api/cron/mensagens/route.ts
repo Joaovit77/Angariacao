@@ -10,6 +10,12 @@ import {
 import { registrarMensagemEnviada } from "@/lib/servidor/historicoWhatsapp";
 import { registrarEvento } from "@/lib/servidor/registro";
 import { garantirRegistroInstanciaWhatsapp } from "@/lib/servidor/instanciaWhatsapp";
+import {
+  aplicarDecisaoNoBanco,
+  cancelarMensagemSemImovel,
+  consolidarContatoDoProprietario,
+  revalidarVerificacaoDisponibilidade,
+} from "@/lib/servidor/disponibilidadeMensagem";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -78,7 +84,7 @@ export async function GET(request: Request) {
     });
   }
   const data = claim.lote;
-  let enviadas = 0, falhas = 0;
+  let enviadas = 0, falhas = 0, suprimidas = 0, reagendadas = 0, consolidadas = 0;
   for (const item of data) {
     const { data: instancia } = await admin.from("whatsapp_instancias").select("instancia, token, observacao")
       .eq("user_id", item.user_id).maybeSingle();
@@ -103,15 +109,82 @@ export async function GET(request: Request) {
       if (erroReleitura) throw new Error("releitura-falhou");
       if (mensagemAtual?.status !== "processando" || (item.imovel_id && mensagemAtual.imovel_id !== item.imovel_id)) continue;
 
-      const envio = await enviarMensagemAgendada(item.telefone, item.mensagem,
+      // Agendar não é garantir o envio. Uma verificação de disponibilidade é
+      // reavaliada AQUI, o mais perto possível do efeito externo, contra o
+      // estado atual do imóvel e as evidências estruturadas (M2): o imóvel
+      // que saiu da carteira cancela a pergunta; a disponibilidade confirmada
+      // depois do agendamento empurra a pergunta para E + cadência; e o mesmo
+      // proprietário recebe um contato só por dia, não um por imóvel. A
+      // mutação é sempre a RPC do M4, que fecha na mesma transação esta linha
+      // (`p_mensagem_processando`), os lembretes e as outras mensagens do
+      // imóvel. Mensagem `livre` não passa por nada disto.
+      let texto = item.mensagem;
+      let imoveisDaMensagem: string[] = item.imovel_id ? [item.imovel_id] : [];
+      let consolidadaEm: string | null = null;
+      if (item.tipo === "verificacao-disponibilidade") {
+        let revalidacao: Awaited<ReturnType<typeof revalidarVerificacaoDisponibilidade>>;
+        try {
+          revalidacao = await revalidarVerificacaoDisponibilidade(admin, item);
+        } catch (erro) {
+          // Sem fatos confiáveis não se envia nem se cancela: a linha vira
+          // erro classificado e o próximo agendamento humano decide.
+          registrarEvento({
+            userId: item.user_id, categoria: "whatsapp", nivel: "erro",
+            evento: "agendamento-revalidacao-falhou",
+            detalhe: `${item.id} ${erro instanceof Error ? erro.message.slice(0, 120) : "falha"}`,
+          });
+          throw new Error("revalidacao-falhou");
+        }
+        const { decisao, contexto } = revalidacao;
+        if (decisao.acao === "cancelar") {
+          const resultado = decisao.motivo === "imovel-excluido"
+            ? await cancelarMensagemSemImovel(admin, item, agoraISOString())
+            : await aplicarDecisaoNoBanco(admin, item, decisao);
+          if (!resultado.ok) throw new Error(`transicao-falhou:${resultado.erro ?? "desconhecido"}`);
+          registrarEvento({
+            userId: item.user_id, categoria: "whatsapp", nivel: "info",
+            evento: "agendamento-cancelado-worker",
+            detalhe: `${item.id} ${decisao.motivo} ${decisao.evidencia?.codigo ?? "status"}`,
+          });
+          suprimidas++;
+          continue;
+        }
+        if (decisao.acao === "reagendar") {
+          const resultado = await aplicarDecisaoNoBanco(admin, item, decisao);
+          if (!resultado.ok) throw new Error(`transicao-falhou:${resultado.erro ?? "desconhecido"}`);
+          registrarEvento({
+            userId: item.user_id, categoria: "whatsapp", nivel: "info",
+            evento: "agendamento-reagendado",
+            detalhe: `${item.id} ${decisao.evidencia.codigo} E=${decisao.dataEvidencia.slice(0, 10)} -> ${decisao.novoDiaEnvio}`,
+          });
+          reagendadas++;
+          continue;
+        }
+        if (contexto.imovel) {
+          const consolidacao = await consolidarContatoDoProprietario(admin, item, contexto.imovel, agoraISOString());
+          if (consolidacao.absorvidasIds.length) {
+            texto = consolidacao.plano.texto ?? texto;
+            imoveisDaMensagem = consolidacao.imoveisConsultados.map((imovel) => imovel.id);
+            consolidadaEm = agoraISOString();
+            registrarEvento({
+              userId: item.user_id, categoria: "whatsapp", nivel: "info",
+              evento: "agendamento-consolidado",
+              detalhe: `${item.id} absorveu ${consolidacao.absorvidasIds.length}; imoveis=${imoveisDaMensagem.length}`,
+            });
+            consolidadas += consolidacao.absorvidasIds.length;
+          }
+        }
+      }
+
+      const envio = await enviarMensagemAgendada(item.telefone, texto,
         { serverUrl, instancia: pronta.instancia, token: pronta.token });
       const agora = agoraISOString();
-      if (item.imovel_id) {
+      for (const imovelId of imoveisDaMensagem) {
         const historico = await registrarMensagemEnviada(admin, {
-          imovelId: item.imovel_id,
+          imovelId,
           userId: item.user_id,
           mensagemId: envio.mensagemId,
-          texto: item.mensagem,
+          texto,
           data: agoraISOComSegundos(),
           origem: "agendamento",
         });
@@ -127,7 +200,10 @@ export async function GET(request: Request) {
           });
         }
       }
-      await admin.from("mensagens_agendadas").update({ status: "enviada", enviado_em: agora, updated_at: agora, erro: null }).eq("id", item.id).eq("status", "processando");
+      await admin.from("mensagens_agendadas").update({
+        status: "enviada", enviado_em: agora, updated_at: agora, erro: null,
+        ...(consolidadaEm ? { mensagem: texto, imoveis_consultados: imoveisDaMensagem } : {}),
+      }).eq("id", item.id).eq("status", "processando");
       enviadas++;
     } catch (e) {
       const motivo = e instanceof Error ? e.message.slice(0, 300) : "falha-desconhecida";
@@ -135,5 +211,5 @@ export async function GET(request: Request) {
       falhas++;
     }
   }
-  return Response.json({ ok: true, processadas: data.length, enviadas, falhas });
+  return Response.json({ ok: true, processadas: data.length, enviadas, falhas, suprimidas, reagendadas, consolidadas });
 }

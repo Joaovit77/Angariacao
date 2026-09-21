@@ -28,6 +28,13 @@ export function timestampDeIso(iso: string | null | undefined): number | null {
   return Number.isFinite(valor) ? valor : null;
 }
 
+/** O inverso de `timestampDeIso`: milissegundos viram ISO UTC. */
+export function isoDeTimestamp(instante: number | null | undefined): string | null {
+  if (instante === null || instante === undefined || !Number.isFinite(instante)) return null;
+  const data = new Date(instante);
+  return Number.isNaN(data.getTime()) ? null : data.toISOString();
+}
+
 export function fmtDataHoraIso(iso: string | null | undefined): string {
   if (!iso) return "";
   const data = new Date(iso);

@@ -86,6 +86,33 @@ export function enderecoComUnidade(imovel: Imovel): string {
   return partes.join(", ");
 }
 
+/**
+ * A confirmação de disponibilidade para um proprietário com VÁRIOS imóveis
+ * na mesma janela de contato: uma mensagem só, listando cada imóvel, em vez
+ * de três iguais com dois minutos de intervalo. É o texto do modelo
+ * `confirmacao-disponibilidade` reescrito no plural; quem decide quando usar
+ * é `calculo/consolidacaoContatoDisponibilidade.ts`, e só quando todas as
+ * mensagens envolvidas eram o modelo do sistema intocado.
+ *
+ * O pedido "indicando qual deles" existe porque a resposta "sim" a uma lista
+ * não vale para todos os imóveis por padrão (ver `contextoProprietario.ts`).
+ */
+export function mensagemConfirmacaoDisponibilidadeConsolidada(imoveis: Imovel[]): string {
+  const [primeiro] = imoveis;
+  const linhas = imoveis.map((imovel) => {
+    const endereco = enderecoComUnidade(imovel) || "imóvel sem endereço cadastrado";
+    const bairro = (imovel.bairro || "").trim();
+    return `• ${endereco}${bairro ? `, ${bairro}` : ""}`;
+  });
+  return `${saudacao(primeiro)}
+
+Passando para confirmar se os seus imóveis abaixo ainda estão disponíveis para locação:
+
+${linhas.join("\n")}
+
+Se algum deles já alugou, você decidiu não alugar agora ou quer ajustar algo, é só me avisar por aqui, indicando qual deles. Seguindo disponíveis, continuamos com a divulgação para você.`;
+}
+
 /** Sem artigo, para o modelo escrever "o/ao/do seu imóvel (…)". */
 function referenciaImovel(imovel: Imovel): string {
   const endereco = enderecoComUnidade(imovel);

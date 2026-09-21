@@ -732,6 +732,16 @@ export function textoFollowUp(base: string, imovel: Imovel): string {
   return aplicarModeloUsuario(base, imovel);
 }
 
+/** O texto é exatamente o modelo do sistema `confirmacao-disponibilidade`
+    preenchido com os dados ATUAIS do imóvel, byte a byte. É o único caso em
+    que o app sabe o que a mensagem diz sem ler texto: serve para a
+    consolidação por proprietário e para o backfill de `tipo` (Ajuste C do
+    plano). Nome ou endereço alterados depois do agendamento fazem o texto
+    deixar de bater, e aí ele volta a ser opaco, de propósito. */
+export function ehTextoPadraoDisponibilidade(texto: string, imovel: Imovel): boolean {
+  return texto === textoFollowUp(textoBaseDisponibilidade(), imovel);
+}
+
 /** Aviso quando o texto base não personaliza nada.
     Sem `{nome}`, as dez mensagens saem byte a byte idênticas — a assinatura
     de spam mais forte que existe, e justamente a que o resto do módulo tenta

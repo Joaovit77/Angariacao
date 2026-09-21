@@ -335,7 +335,33 @@ limit 10;
 ```
 
 Uma execucao saudavel devolve HTTP 200. O corpo da resposta informa quantas
-mensagens foram processadas, enviadas e quantas falharam.
+mensagens foram processadas, enviadas e quantas falharam, e ainda quantas verificações de
+disponibilidade foram `suprimidas` (canceladas antes do envio), `reagendadas` (E + cadência) e
+`consolidadas` (absorvidas por outra do mesmo proprietário).
+
+#### Transição de disponibilidade (M3/M4)
+
+A migration `supabase/migrations/20260917203000_transicao_disponibilidade.sql` cria as colunas de
+consolidação/reagendamento em `mensagens_agendadas`, a função interna
+`private.aplicar_transicao_disponibilidade`, as RPCs `registrar_confirmacao_disponibilidade` e
+`encerrar_disponibilidade_imovel` e o trigger `trg_transicao_disponibilidade_imovel` em `imoveis`.
+
+Ordem obrigatória: **migration antes do deploy do código.** O worker chama as RPCs ao reavaliar
+uma verificação; sem elas, cada verificação que precisaria de transição vira `erro` com
+`transicao-falhou:…` e **não é enviada** (falha segura), mas o cron acumula falhas até a migration
+existir. Mensagens `livre` não são afetadas em nenhuma ordem.
+
+Validação local antes de Production: `supabase start` numa pasta com `config.toml` (as portas
+54321/54322 podem estar na faixa excluída do Windows; troque no `config.toml`), aplicar
+`supabase-schema.sql` da `main` anterior, aplicar a migration nova, e rodar
+`node node_modules/vitest/vitest.mjs run --config vitest.disponibilidade-supabase-local.config.ts`
+em `web/` com `LOCAL_SUPABASE_URL`, `LOCAL_SUPABASE_ANON_KEY` e `LOCAL_SUPABASE_SERVICE_ROLE_KEY`
+do status local. Reaplicar o `supabase-schema.sql` atual por cima confirma o espelho idempotente.
+
+Rollback de código não desfaz a transição: o trigger continua reagindo a mudanças de status no
+banco (cancelando verificações pendentes de imóveis que saem do alvo), o que é o comportamento
+desejado mesmo com o worker antigo. Para desligar por completo, `drop trigger
+trg_transicao_disponibilidade_imovel on imoveis`; as colunas e funções podem ficar.
 
 ### Evolution API (envio direto de WhatsApp) — opcional
 

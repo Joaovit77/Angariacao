@@ -265,6 +265,14 @@ export const EVENTOS: Record<string, string> = {
   "historico-envio-falhou": "Mensagem enviada sem registro no histórico",
   "agendamento-fila-indisponivel": "Fila de mensagens agendadas indisponível",
   "agendamento-fila-recuperada": "Fila de mensagens agendadas recuperada após repetir",
+  /* Verificação de disponibilidade reavaliada pelo worker antes do envio
+     (M3): cada transição fica no log com ids e motivo, nunca com texto ou
+     telefone. */
+  "agendamento-cancelado-worker": "Verificação de disponibilidade cancelada antes do envio",
+  "agendamento-reagendado": "Verificação de disponibilidade reagendada pela cadência",
+  "agendamento-consolidado": "Verificações do mesmo proprietário enviadas numa mensagem só",
+  "agendamento-revalidacao-falhou": "Falha ao reavaliar verificação antes do envio",
+  "transicao-disponibilidade-falhou": "Falha na transição automática de disponibilidade no banco",
   "sem-instancia": "Tentou enviar sem número cadastrado",
   "instancia-desconectada": "WhatsApp desconectado (releia o QR)",
   "sem-whatsapp": "Número do proprietário não tem WhatsApp",

@@ -1214,6 +1214,42 @@ Regras permanentes:
 - um cancelamento novo pode registrar `cancelamento_motivo`, `cancelamento_origem` e `cancelada_em`.
   Linhas canceladas antigas sem esses dados continuam válidas, e o cancelamento manual grava origem
   e motivo `usuario`;
+- **agendar não é garantir o envio.** Uma mensagem `verificacao-disponibilidade` é reavaliada pelo
+  worker imediatamente antes do efeito externo, contra o estado atual do imóvel e as evidências
+  estruturadas de `calculo/evidenciaDisponibilidade.ts`, pela função pura
+  `calculo/decisaoMensagemDisponibilidade.ts`: imóvel `retirado` ou fora de
+  `DISPONIBILIDADE_STATUS_ALVO` cancela a mensagem (`imovel-indisponivel`, origem `worker`);
+  evidência positiva vigente em E com `E + VERIFICACAO_DISPONIBILIDADE_DIAS` depois da data da
+  mensagem a reagenda para esse dia, na mesma hora (`reagendada_em`, `reagendamento_motivo`,
+  `data_envio_original`); sem evidência, ou com evidência `conflitante`, nada muda e a mensagem
+  segue o fluxo de sempre. Visita não realizada não cria evidência nova: E continua sendo o registro
+  da combinação. Mensagem `livre` não passa por nada disso; falha ao carregar os fatos vira
+  `erro`/`revalidacao-falhou`, nunca envio;
+- **uma mutação só no banco.** `private.aplicar_transicao_disponibilidade(imovel, user_id, acao, …)`
+  é a única implementação de "encerrar" (apaga lembretes abertos e cancela verificações pendentes) e
+  de "confirmar" (conclui lembretes com `completion_reason`, garante um lembrete em E + cadência,
+  reagenda a verificação mais antiga e cancela as demais do mesmo imóvel antes dessa data). As RPCs
+  `registrar_confirmacao_disponibilidade` e `encerrar_disponibilidade_imovel` só autorizam (dono por
+  `auth.uid()`; sob service role, pela linha do imóvel, e só ela aceita `p_mensagem_processando`, a
+  linha que o worker já reclamou) e chamam a interna. O trigger
+  `trg_transicao_disponibilidade_imovel` chama a mesma função com `NEW.id` e `NEW.user_id`, sem
+  `auth.uid()`, sempre que o imóvel sai do alvo ou é retirado, por qualquer caminho (webhook, Sophia,
+  assistente, RPC de locação, cliente); falha interna vai para `log_eventos`
+  (`transicao-disponibilidade-falhou`) e não derruba a mudança de status. Tudo é idempotente:
+  repetir a transição não cancela, reagenda nem cria nada de novo. As constantes SQL
+  `private.disponibilidade_status_alvo()` e `private.verificacao_disponibilidade_dias()` são gêmeas
+  das TS, com teste amarrando as duas;
+- **um contato por proprietário, não uma mensagem por imóvel.** O proprietário é
+  `(user_id, proprietario_telefone_canonico)`, nunca o nome. Ao enviar uma verificação, o worker
+  reavalia as outras verificações `agendada` do mesmo proprietário no mesmo dia civil operacional e,
+  quando todas são o modelo do sistema intocado (`ehTextoPadraoDisponibilidade`), envia uma mensagem
+  só (`mensagemConfirmacaoDisponibilidadeConsolidada`) gravando em `imoveis_consultados` por quais
+  imóveis perguntou; as absorvidas viram `cancelada`/`contato-consolidado` apontando para a âncora
+  em `consolidada_em_mensagem_id`, com o cancelamento condicionado a `status = 'agendada'` para uma
+  linha reclamada por outro worker ficar de fora. Texto editado pelo corretor nunca é reescrito e
+  segue sozinho. A nota `wa:` é gravada em cada imóvel consultado. O estado de cada imóvel continua
+  individual, e uma resposta do proprietário não se aplica a todos sem contexto inequívoco (isso
+  ainda não é interpretado automaticamente);
 - a central de mensagens lista agendamentos ativos (`agendada` ou `processando`) por `imovel_id`
   e sempre filtra a leitura pelo `user_id` autenticado; Realtime atualiza a lista e uma releitura
   periódica cobre ambientes em que a tabela ainda não foi publicada no canal;
