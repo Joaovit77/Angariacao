@@ -375,6 +375,42 @@ banco (cancelando verificações pendentes de imóveis que saem do alvo), o que 
 desejado mesmo com o worker antigo. Para desligar por completo, `drop trigger
 trg_transicao_disponibilidade_imovel on imoveis`; as colunas e funções podem ficar.
 
+#### Contatos — Fase 1a-A (schema + backfill + compatibilidade)
+
+A migration `supabase/migrations/20260921183930_contatos_fase1a.sql` cria `contatos`,
+`contatos_telefones`, `imoveis_contatos` e `contatos_revisoes`, as views `imoveis_contato_principal`
+e `imoveis_proprietario`, as triggers de projeção/INSERT/UPDATE legados em `imoveis` e roda o
+backfill por conta dentro da própria migration (relatório por conta em `log_eventos`, evento
+`contatos-backfill`, categoria `admin`). Ela é aditiva e não altera `proprietario_*` (o relatório
+e um `md5` das colunas antes/depois provam isso); o código publicado antes dela continua igual,
+então a ordem migration ↔ deploy é livre neste slice.
+
+Validação local antes de Production: `supabase start` numa pasta de scratch com `config.toml`,
+aplicar o baseline (`supabase-schema.sql` de `6015984` + `20260921120000` + `20260921173129`,
+porque o `supabase-schema.sql` atual não constrói banco vazio sozinho — dívida separada), semear
+imóveis legados, aplicar a migration, reaplicar (idempotente) e rodar
+`node node_modules/vitest/vitest.mjs run --config vitest.contatos-supabase-local.config.ts` em
+`web/` com `LOCAL_SUPABASE_URL`, `LOCAL_SUPABASE_ANON_KEY`, `LOCAL_SUPABASE_SERVICE_ROLE_KEY` e
+`LOCAL_SUPABASE_DB_URL` do status local. O backfill pode ser reexecutado por conta com
+`select private.backfill_contatos('<user_id>')` (só pula o que já tem vínculo).
+
+Rollback (nesta ordem): as duas triggers novas em `imoveis` (`trg_imoveis_sincronizar_contato`,
+`trg_imoveis_alteracao_legada_contato`), as três de projeção (`trg_imoveis_contatos_projecao` em
+`imoveis_contatos`, `trg_contatos_telefones_projecao` em `contatos_telefones`,
+`trg_contatos_projecao` em `contatos`), as views `imoveis_contato_principal` e
+`imoveis_proprietario`, as tabelas `contatos_revisoes`, `imoveis_contatos`, `contatos_telefones`,
+`contatos`, e as funções `private.*` desta migration (`contato_em_revisao`,
+`projetar_contato_legado`, `projetar_contato_principal`, `resolver_contato_por_canal`,
+`abrir_revisao_contato`, `sincronizar_contato_legado`, `sincronizar_contato_no_insert`,
+`registrar_alteracao_legada_contato`, `backfill_contatos`, `normalizar_nome`). As triggers
+pré-existentes de `imoveis` (`trg_imoveis_status_history`, `trg_imoveis_updated_at`,
+`trg_transicao_disponibilidade_imovel`) e `imoveis_id_user_id_key` ficam. `imoveis.proprietario_*`
+é fonte suficiente: neste slice nenhum caminho do app aciona a projeção (INSERT/UPDATE legados não
+escrevem em `imoveis`), então as colunas contêm o que o corretor digitou. O que se perde ao
+dropar: a fila de revisões (ambiguidades do backfill e o antigo/novo das edições legadas — o valor
+atual continua na coluna), `metadados` (reconstruíveis das linhas) e qualquer histórico de
+canais/vínculos criado por SQL; `log_eventos` (`contatos-backfill`) permanece.
+
 #### M6 — Aguardando smoke manual
 
 O smoke real do M3/M4/M5 ainda não foi executado. Ele roda **em Production, depois de M5
