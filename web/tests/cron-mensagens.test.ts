@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { format } from "node:util";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,7 +17,10 @@ const mocks = vi.hoisted(() => ({
   revalidar: vi.fn(),
   aplicarDecisao: vi.fn(),
   cancelarSemImovel: vi.fn(),
-  consolidar: vi.fn(),
+  preparar: vi.fn(),
+  efetivar: vi.fn(),
+  desfazer: vi.fn(),
+  marcarIncerta: vi.fn(),
   /** Resposta de cada leitura/escrita por tabela, na ordem das chamadas. */
   tabelas: {} as Record<string, ResultadoMock[]>,
   escritas: [] as Array<{ tabela: string; valores: Record<string, unknown> }>,
@@ -49,7 +53,10 @@ vi.mock("@/lib/servidor/disponibilidadeMensagem", () => ({
   revalidarVerificacaoDisponibilidade: mocks.revalidar,
   aplicarDecisaoNoBanco: mocks.aplicarDecisao,
   cancelarMensagemSemImovel: mocks.cancelarSemImovel,
-  consolidarContatoDoProprietario: mocks.consolidar,
+  prepararConsolidacaoContato: mocks.preparar,
+  efetivarConsolidacaoContato: mocks.efetivar,
+  desfazerConsolidacaoContato: mocks.desfazer,
+  marcarConsolidacaoIncerta: mocks.marcarIncerta,
 }));
 
 import { GET } from "@/app/api/cron/mensagens/route";
@@ -88,7 +95,12 @@ describe("cron de mensagens agendadas", () => {
     mocks.revalidar.mockReset();
     mocks.aplicarDecisao.mockReset().mockResolvedValue({ ok: true, detalhe: null, erro: null });
     mocks.cancelarSemImovel.mockReset().mockResolvedValue({ ok: true, detalhe: null, erro: null });
-    mocks.consolidar.mockReset();
+    mocks.preparar.mockReset();
+    mocks.efetivar.mockReset().mockResolvedValue({ ok: true, absorvidasIds: ["v2", "v3"], notasGravadas: 3, notasFalhas: [], erro: null });
+    mocks.desfazer.mockReset().mockImplementation(async (_admin: unknown, _item: unknown, preparacao: { reservadasIds: string[] }) =>
+      ({ liberadasIds: preparacao.reservadasIds, erro: null }));
+    mocks.marcarIncerta.mockReset().mockImplementation(async (_admin: unknown, _item: unknown, preparacao: { reservadasIds: string[] }) =>
+      ({ marcadasIds: preparacao.reservadasIds, erro: null }));
     mocks.tabelas = {};
     mocks.escritas.length = 0;
     log = vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -214,7 +226,8 @@ describe("cron de mensagens agendadas", () => {
 
     expect(await resposta.json()).toMatchObject({ enviadas: 1, suprimidas: 0 });
     expect(mocks.revalidar).not.toHaveBeenCalled();
-    expect(mocks.consolidar).not.toHaveBeenCalled();
+    expect(mocks.preparar).not.toHaveBeenCalled();
+    expect(mocks.efetivar).not.toHaveBeenCalled();
     expect(mocks.enviar).toHaveBeenCalledOnce();
   });
 
@@ -297,9 +310,9 @@ describe("cron de mensagens agendadas", () => {
       decisao: { acao: "enviar", estado: "sem-evidencia", motivo: "sem-evidencia" },
       contexto: { imovel: IMOVEL, agenda: [], avaliacao: null },
     });
-    mocks.consolidar.mockResolvedValueOnce({
+    mocks.preparar.mockResolvedValueOnce({
       plano: { imoveisConsultados: ["i1"], absorvidas: [], recusadas: [], texto: null },
-      absorvidasIds: [], transicoes: [], imoveisConsultados: [IMOVEL],
+      reservadasIds: [], transicoes: [], imoveisConsultados: [IMOVEL],
     });
 
     const resposta = await chamarComPausas();
@@ -318,9 +331,9 @@ describe("cron de mensagens agendadas", () => {
       decisao: { acao: "enviar", estado: "conflitante", motivo: "conflitante" },
       contexto: { imovel: IMOVEL, agenda: [], avaliacao: null },
     });
-    mocks.consolidar.mockResolvedValueOnce({
+    mocks.preparar.mockResolvedValueOnce({
       plano: { imoveisConsultados: ["i1"], absorvidas: [], recusadas: [], texto: null },
-      absorvidasIds: [], transicoes: [], imoveisConsultados: [IMOVEL],
+      reservadasIds: [], transicoes: [], imoveisConsultados: [IMOVEL],
     });
 
     const resposta = await chamarComPausas();
@@ -329,31 +342,135 @@ describe("cron de mensagens agendadas", () => {
     expect(mocks.aplicarDecisao).not.toHaveBeenCalled();
   });
 
-  it("mesmo proprietário: envia uma mensagem só, com a lista de imóveis, e registra a nota em cada um", async () => {
+  /* --- Consolidação em dois tempos: reservar antes, efetivar só depois do POST --- */
+
+  const OUTROS = [{ id: "i2", endereco: "Rua B, 2", status: "Publicado" }, { id: "i3", endereco: "Rua C, 3", status: "Publicado" }];
+  function preparacaoComReserva() {
     prontoParaEnviar();
     mocks.revalidar.mockResolvedValueOnce({
       decisao: { acao: "enviar", estado: "sem-evidencia", motivo: "sem-evidencia" },
       contexto: { imovel: IMOVEL, agenda: [], avaliacao: null },
     });
-    const outros = [{ id: "i2", endereco: "Rua B, 2", status: "Publicado" }, { id: "i3", endereco: "Rua C, 3", status: "Publicado" }];
-    mocks.consolidar.mockResolvedValueOnce({
+    mocks.preparar.mockResolvedValueOnce({
       plano: { imoveisConsultados: ["i1", "i2", "i3"], absorvidas: [], recusadas: [], texto: "TEXTO CONSOLIDADO" },
-      absorvidasIds: ["v2", "v3"], transicoes: [], imoveisConsultados: [IMOVEL, ...outros],
+      reservadasIds: ["v2", "v3"], transicoes: [], imoveisConsultados: [IMOVEL, ...OUTROS],
+    });
+  }
+
+  it("2. POST bem-sucedido: A + B + C elegíveis, A sai com a lista e a efetivação é UMA RPC depois do envio, com o id externo e as notas", async () => {
+    preparacaoComReserva();
+    const ordem: string[] = [];
+    mocks.enviar.mockImplementationOnce(async () => { ordem.push("post"); return { mensagemId: "wa-1" }; });
+    mocks.efetivar.mockImplementationOnce(async (_a: unknown, item: { id: string }, entrada: { texto: string; imoveisConsultados: string[]; mensagemExternaId: string }) => {
+      ordem.push(`efetivar:${item.id}:${entrada.imoveisConsultados.join(",")}:${entrada.mensagemExternaId}`);
+      return { ok: true, absorvidasIds: ["v2", "v3"], notasGravadas: 3, notasFalhas: [], erro: null };
     });
 
     const resposta = await chamarComPausas();
 
-    expect(await resposta.json()).toMatchObject({ enviadas: 1, consolidadas: 2 });
+    expect(await resposta.json()).toMatchObject({ enviadas: 1, consolidadas: 2, falhas: 0 });
+    expect(ordem).toEqual(["post", "efetivar:v1:i1,i2,i3:wa-1"]);
     expect(mocks.enviar).toHaveBeenCalledOnce();
     expect(mocks.enviar).toHaveBeenCalledWith("43999999999", "TEXTO CONSOLIDADO", expect.anything());
-    expect(mocks.historico.mock.calls.map((chamada) => chamada[1].imovelId)).toEqual(["i1", "i2", "i3"]);
-    expect(mocks.escritas).toEqual([
-      { tabela: "mensagens_agendadas", valores: expect.objectContaining({
-        status: "enviada", mensagem: "TEXTO CONSOLIDADO", imoveis_consultados: ["i1", "i2", "i3"],
-      }) },
-    ]);
+    expect(mocks.efetivar.mock.calls[0][2]).toMatchObject({ texto: "TEXTO CONSOLIDADO", enviadoEm: expect.any(String), dataNota: expect.any(String) });
+    expect(mocks.desfazer).not.toHaveBeenCalled();
+    expect(mocks.marcarIncerta).not.toHaveBeenCalled();
+    // Notas e `enviada` são da transação da RPC: o worker não escreve nada por fora.
+    expect(mocks.historico).not.toHaveBeenCalled();
+    expect(mocks.escritas).toEqual([]);
     expect(mocks.registrarEvento).toHaveBeenCalledWith(expect.objectContaining({
       evento: "agendamento-consolidado", detalhe: "v1 absorveu 2; imoveis=3",
     }));
+  });
+
+  it("3. POST iniciado e falhou (timeout/rede/HTTP): B e C NÃO voltam à fila, viram resultado incerto e ninguém vira contato-consolidado", async () => {
+    preparacaoComReserva();
+    mocks.enviar.mockRejectedValueOnce(new Error("evolution-http-503"));
+
+    const resposta = await chamarComPausas();
+
+    expect(await resposta.json()).toMatchObject({ enviadas: 0, consolidadas: 0, falhas: 1 });
+    expect(mocks.efetivar).not.toHaveBeenCalled();
+    expect(mocks.desfazer).not.toHaveBeenCalled();
+    expect(mocks.marcarIncerta).toHaveBeenCalledOnce();
+    expect(mocks.marcarIncerta.mock.calls[0][1]).toMatchObject({ id: "v1" });
+    expect(mocks.marcarIncerta.mock.calls[0][2]).toMatchObject({ reservadasIds: ["v2", "v3"] });
+    expect(mocks.historico).not.toHaveBeenCalled();
+    expect(mocks.escritas).toEqual([
+      { tabela: "mensagens_agendadas", valores: expect.objectContaining({ status: "erro", erro: "evolution-http-503" }) },
+    ]);
+    expect(mocks.registrarEvento).toHaveBeenCalledWith(expect.objectContaining({
+      evento: "agendamento-consolidacao-incerta", nivel: "erro", detalhe: "v1 marcadas=2/2 evolution-http-503",
+    }));
+    expect(mocks.registrarEvento).not.toHaveBeenCalledWith(expect.objectContaining({ evento: "agendamento-consolidado" }));
+  });
+
+  it("3b. timeout do POST (AbortSignal) é resultado incerto, não desistência", async () => {
+    preparacaoComReserva();
+    mocks.enviar.mockRejectedValueOnce(Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" }));
+
+    const resposta = await chamarComPausas();
+
+    expect(await resposta.json()).toMatchObject({ enviadas: 0, falhas: 1 });
+    expect(mocks.marcarIncerta).toHaveBeenCalledOnce();
+    expect(mocks.desfazer).not.toHaveBeenCalled();
+    expect(mocks.efetivar).not.toHaveBeenCalled();
+  });
+
+  it("POST aceito, mas a RPC de efetivação recusa/falha: a mensagem saiu, então é resultado incerto (nunca reenvio, nunca contato afirmado)", async () => {
+    preparacaoComReserva();
+    mocks.efetivar.mockResolvedValueOnce({ ok: false, absorvidasIds: [], notasGravadas: 0, notasFalhas: [], erro: "connection reset" });
+
+    const resposta = await chamarComPausas();
+
+    expect(await resposta.json()).toMatchObject({ enviadas: 0, consolidadas: 0, falhas: 1 });
+    expect(mocks.enviar).toHaveBeenCalledOnce();
+    expect(mocks.marcarIncerta).toHaveBeenCalledOnce();
+    expect(mocks.desfazer).not.toHaveBeenCalled();
+    expect(mocks.escritas).toEqual([
+      { tabela: "mensagens_agendadas", valores: expect.objectContaining({ status: "erro", erro: "efetivacao-falhou:connection reset" }) },
+    ]);
+    expect(mocks.registrarEvento).not.toHaveBeenCalledWith(expect.objectContaining({ evento: "agendamento-consolidado" }));
+  });
+
+  it("1. falha na preparação (antes de qualquer POST): erro classificado, sem envio, sem efetivar; as reservas parciais a própria preparação já devolveu", async () => {
+    prontoParaEnviar();
+    mocks.revalidar.mockResolvedValueOnce({
+      decisao: { acao: "enviar", estado: "sem-evidencia", motivo: "sem-evidencia" },
+      contexto: { imovel: IMOVEL, agenda: [], avaliacao: null },
+    });
+    mocks.preparar.mockRejectedValueOnce(new TypeError("fetch failed"));
+
+    const resposta = await chamarComPausas();
+
+    expect(await resposta.json()).toMatchObject({ enviadas: 0, falhas: 1 });
+    expect(mocks.enviar).not.toHaveBeenCalled();
+    expect(mocks.efetivar).not.toHaveBeenCalled();
+    expect(mocks.marcarIncerta).not.toHaveBeenCalled();
+    expect(mocks.escritas).toEqual([
+      { tabela: "mensagens_agendadas", valores: expect.objectContaining({ status: "erro", erro: "fetch failed" }) },
+    ]);
+  });
+
+  it("a fronteira do efeito externo é a chamada de envio: só a partir dela uma falha vira resultado incerto", () => {
+    const WORKER = readFileSync(new URL("../app/api/cron/mensagens/route.ts", import.meta.url), "utf8");
+    const trecho = WORKER.slice(WORKER.indexOf("envioIniciado = true;"), WORKER.indexOf("const agora = agoraISOString();", WORKER.indexOf("envioIniciado = true;")));
+    expect(trecho).toMatch(/envioIniciado = true;\s+const envio = await enviarMensagemAgendada\(/);
+    expect(WORKER).toContain("if (!envioIniciado) {");
+    expect(WORKER).toContain("marcarConsolidacaoIncerta(admin, item, consolidacao");
+  });
+
+  it("enviada com uma nota que não entrou: consolidação gravada, contador certo, e o histórico registra a falha", async () => {
+    preparacaoComReserva();
+    mocks.efetivar.mockResolvedValueOnce({ ok: true, absorvidasIds: ["v2", "v3"], notasGravadas: 2, notasFalhas: [{ imovel_id: "i3", erro: "22023" }], erro: null });
+
+    const resposta = await chamarComPausas();
+
+    expect(await resposta.json()).toMatchObject({ enviadas: 1, consolidadas: 2 });
+    expect(mocks.marcarIncerta).not.toHaveBeenCalled();
+    expect(mocks.registrarEvento).toHaveBeenCalledWith(expect.objectContaining({
+      evento: "historico-envio-falhou", detalhe: "agendamento consolidado 22023",
+    }));
+    expect(mocks.escritas).toEqual([]);
   });
 });

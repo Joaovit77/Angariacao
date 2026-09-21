@@ -271,6 +271,8 @@ export const EVENTOS: Record<string, string> = {
   "agendamento-cancelado-worker": "Verificação de disponibilidade cancelada antes do envio",
   "agendamento-reagendado": "Verificação de disponibilidade reagendada pela cadência",
   "agendamento-consolidado": "Verificações do mesmo proprietário enviadas numa mensagem só",
+  "agendamento-consolidacao-desfeita": "Consolidação desfeita porque o envio não aconteceu",
+  "agendamento-consolidacao-incerta": "Envio consolidado com resultado incerto: absorvidas retiradas da fila sem afirmar contato",
   "agendamento-revalidacao-falhou": "Falha ao reavaliar verificação antes do envio",
   "transicao-disponibilidade-falhou": "Falha na transição automática de disponibilidade no banco",
   "sem-instancia": "Tentou enviar sem número cadastrado",

@@ -52,6 +52,7 @@ function mensagem(id: string, imovelId: string, extra: Partial<MensagemAgendada>
     canceladaEm: null,
     imoveisConsultados: null,
     consolidadaEmMensagemId: null,
+    reservadaParaMensagemId: null,
     reagendadaEm: null,
     reagendamentoMotivo: null,
     dataEnvioOriginal: null,

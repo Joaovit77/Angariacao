@@ -337,14 +337,22 @@ limit 10;
 Uma execucao saudavel devolve HTTP 200. O corpo da resposta informa quantas
 mensagens foram processadas, enviadas e quantas falharam, e ainda quantas verificações de
 disponibilidade foram `suprimidas` (canceladas antes do envio), `reagendadas` (E + cadência) e
-`consolidadas` (absorvidas por outra do mesmo proprietário).
+`consolidadas` (absorvidas por outra do mesmo proprietário, contadas só depois de o envio ser
+aceito e a efetivação atômica gravada). Uma falha antes de o POST começar devolve as reservadas à
+fila (`agendamento-consolidacao-desfeita`); uma falha depois de o POST ter começado as retira da
+fila como `consolidacao-resultado-incerto` (`agendamento-consolidacao-incerta`), sem reenvio e sem
+afirmar contato; conferir no histórico do imóvel (nota `wa:` do webhook de saída) se a mensagem
+saiu antes de decidir manualmente.
 
 #### Transição de disponibilidade (M3/M4)
 
-A migration `supabase/migrations/20260917203000_transicao_disponibilidade.sql` cria as colunas de
-consolidação/reagendamento em `mensagens_agendadas`, a função interna
-`private.aplicar_transicao_disponibilidade`, as RPCs `registrar_confirmacao_disponibilidade` e
-`encerrar_disponibilidade_imovel` e o trigger `trg_transicao_disponibilidade_imovel` em `imoveis`.
+A migration `supabase/migrations/20260921120000_transicao_disponibilidade.sql` cria as colunas de
+consolidação/reagendamento e a reserva (`reservada_para_mensagem_id`, FK composta por tenant) em
+`mensagens_agendadas`, a função interna `private.aplicar_transicao_disponibilidade`, as RPCs
+`registrar_confirmacao_disponibilidade`, `encerrar_disponibilidade_imovel` e
+`efetivar_consolidacao_contato` (só service role), o trigger `trg_transicao_disponibilidade_imovel`
+em `imoveis` e redefine `claim_mensagens_agendadas` para varrer reservas órfãs como
+`consolidacao-interrompida` antes da regra genérica.
 
 Ordem obrigatória: **migration antes do deploy do código.** O worker chama as RPCs ao reavaliar
 uma verificação; sem elas, cada verificação que precisaria de transição vira `erro` com
@@ -356,7 +364,11 @@ Validação local antes de Production: `supabase start` numa pasta com `config.t
 `supabase-schema.sql` da `main` anterior, aplicar a migration nova, e rodar
 `node node_modules/vitest/vitest.mjs run --config vitest.disponibilidade-supabase-local.config.ts`
 em `web/` com `LOCAL_SUPABASE_URL`, `LOCAL_SUPABASE_ANON_KEY` e `LOCAL_SUPABASE_SERVICE_ROLE_KEY`
-do status local. Reaplicar o `supabase-schema.sql` atual por cima confirma o espelho idempotente.
+do status local; `LOCAL_SUPABASE_DB_URL` (o `DB_URL` local, com `?sslmode=disable`) liga o teste que
+injeta uma falha no fim da transação da RPC para provar que nada fica pela metade. Para aplicar os
+arquivos, `supabase db query` aceita um comando por chamada: use `psql` no container
+(`docker exec -i supabase_db_<projeto> psql -U postgres -d postgres -v ON_ERROR_STOP=1 < arquivo`).
+Reaplicar o `supabase-schema.sql` atual por cima confirma o espelho idempotente.
 
 Rollback de código não desfaz a transição: o trigger continua reagindo a mudanças de status no
 banco (cancelando verificações pendentes de imóveis que saem do alvo), o que é o comportamento

@@ -3,7 +3,11 @@
    que a chama com NEW.id + NEW.user_id. Opt-in, só contra Supabase LOCAL. */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { execSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const url = process.env.LOCAL_SUPABASE_URL || "";
 const serviceKey = process.env.LOCAL_SUPABASE_SERVICE_ROLE_KEY || "";
@@ -354,5 +358,337 @@ describe("tenant", () => {
     const esperado = new Date(Date.UTC(2099, 0, 1 + DIAS)).toISOString().slice(0, 10);
     expect(data).toMatchObject({ proxima_verificacao: esperado });
     expect((await mensagem(id)).data_envio.slice(0, 10)).toBe(esperado);
+  });
+});
+
+/* ------------------------------------------------------------------
+   Consolidação em dois tempos: reserva (`reservada_para_mensagem_id`),
+   efetivação atômica (`efetivar_consolidacao_contato`) e varredura de
+   reservas órfãs no claim. Tudo contra o Postgres local.
+   ------------------------------------------------------------------ */
+const dbUrl = process.env.LOCAL_SUPABASE_DB_URL || "";
+const temDbUrl = /^postgres(ql)?:\/\/[^@]+@(127\.0\.0\.1|localhost):\d+\/\w+(\?[\w=&-]*)?$/.test(dbUrl);
+
+/** DDL de teste (gatilho que injeta falha) pelo CLI, só contra o banco local.
+    `db query` aceita um comando por chamada: cada instrução vai num arquivo. */
+function sqlLocal(instrucoes: string[]) {
+  for (const sql of instrucoes) {
+    const arquivo = join(tmpdir(), `angario-injecao-${randomUUID()}.sql`);
+    writeFileSync(arquivo, sql, "utf8");
+    try {
+      execSync(`npx --no-install supabase db query --db-url "${dbUrl}" -f "${arquivo}"`, { stdio: "pipe", cwd: process.cwd() });
+    } finally {
+      rmSync(arquivo, { force: true });
+    }
+  }
+}
+
+async function linha(id: string) {
+  const { data, error } = await service.from("mensagens_agendadas")
+    .select("status,erro,mensagem,enviado_em,imoveis_consultados,cancelamento_motivo,cancelamento_origem,cancelada_em,consolidada_em_mensagem_id,reservada_para_mensagem_id,updated_at")
+    .eq("id", id).single();
+  expect(error).toBeNull();
+  return data!;
+}
+
+async function notasDoImovel(imovelId: string) {
+  const { data, error } = await service.from("imoveis").select("notas").eq("id", imovelId).single();
+  expect(error).toBeNull();
+  return ((data!.notas as Array<{ id: string; texto: string; origem?: string }> | null) ?? []);
+}
+
+async function reservar(ancoraId: string, candidataId: string, userId = aId) {
+  return service.from("mensagens_agendadas")
+    .update({ status: "processando", reservada_para_mensagem_id: ancoraId, updated_at: new Date().toISOString() })
+    .eq("id", candidataId).eq("user_id", userId).eq("status", "agendada").select("id");
+}
+
+async function reclamar(id: string) {
+  const { error } = await service.from("mensagens_agendadas").update({ status: "processando", updated_at: new Date().toISOString() }).eq("id", id);
+  expect(error).toBeNull();
+}
+
+function nota(externoId: string, texto: string) {
+  return { id: `wa:${externoId}`, texto: `Enviado: ${texto}`, data: "2099-09-22T08:00:30", direcao: "enviada", autor: "corretor", tipo: "conversation", origem: "agendamento" };
+}
+
+describe("reserva de consolidação: coluna, FK por tenant, autorreserva e estados", () => {
+  it("a reserva só nasce de `agendada` → `processando`, aponta para a âncora e o navegador não a forja", async () => {
+    const imA = await criarImovel(a, aId, "A");
+    const imB = await criarImovel(a, aId, "B");
+    const ancora = await criarVerificacao(a, aId, imA);
+    const cand = await criarVerificacao(a, aId, imB, "2099-09-22T11:02:00.000Z");
+    await reclamar(ancora);
+    const reserva = await reservar(ancora, cand);
+    expect(reserva.error).toBeNull();
+    expect(reserva.data).toHaveLength(1);
+    expect(await linha(cand)).toMatchObject({ status: "processando", reservada_para_mensagem_id: ancora, cancelamento_motivo: null, consolidada_em_mensagem_id: null });
+    // Reservar de novo (já não é `agendada`) não pega: 0 linhas.
+    const repetida = await reservar(ancora, cand);
+    expect(repetida.error).toBeNull();
+    expect(repetida.data).toHaveLength(0);
+    // O navegador (RLS só escreve agendada/cancelada) nunca consegue uma reserva.
+    const outra = await criarVerificacao(a, aId, imB, "2099-09-22T11:04:00.000Z");
+    const forjada = await a.from("mensagens_agendadas").update({ reservada_para_mensagem_id: ancora }).eq("id", outra);
+    expect(forjada.error).not.toBeNull();
+    expect(["42501", "23514"]).toContain(forjada.error?.code);
+  });
+
+  it("9. autorreserva é impossível, e uma reserva em `agendada`/`cancelada` também", async () => {
+    const im = await criarImovel(a, aId, "A");
+    const id = await criarVerificacao(a, aId, im);
+    await reclamar(id);
+    const auto = await service.from("mensagens_agendadas").update({ reservada_para_mensagem_id: id }).eq("id", id);
+    expect(auto.error?.code).toBe("23514");
+    const outroId = await criarVerificacao(a, aId, im, "2099-09-22T11:02:00.000Z");
+    const emAgendada = await service.from("mensagens_agendadas").update({ reservada_para_mensagem_id: id }).eq("id", outroId);
+    expect(emAgendada.error?.code).toBe("23514");
+  });
+
+  it("8. cross-user é impossível: a FK composta recusa reserva para âncora de outra conta", async () => {
+    const imA = await criarImovel(a, aId, "A");
+    const imB = await criarImovel(b, bId, "B");
+    const ancoraDeA = await criarVerificacao(a, aId, imA);
+    const candDeB = await criarVerificacao(b, bId, imB, "2099-09-22T11:02:00.000Z");
+    await reclamar(ancoraDeA);
+    const cruzada = await service.from("mensagens_agendadas")
+      .update({ status: "processando", reservada_para_mensagem_id: ancoraDeA })
+      .eq("id", candDeB);
+    expect(cruzada.error?.code).toBe("23503");
+    expect(await linha(candDeB)).toMatchObject({ status: "agendada", reservada_para_mensagem_id: null });
+  });
+});
+
+describe("efetivar_consolidacao_contato: uma transação, ou nada", () => {
+  async function cenarioABC() {
+    const imA = await criarImovel(a, aId, "A");
+    const imB = await criarImovel(a, aId, "B");
+    const imC = await criarImovel(a, aId, "C");
+    const ancora = await criarVerificacao(a, aId, imA);
+    const mB = await criarVerificacao(a, aId, imB, "2099-09-22T11:02:00.000Z");
+    const mC = await criarVerificacao(a, aId, imC, "2099-09-22T11:04:00.000Z");
+    await reclamar(ancora);
+    expect((await reservar(ancora, mB)).data).toHaveLength(1);
+    expect((await reservar(ancora, mC)).data).toHaveLength(1);
+    return { imA, imB, imC, ancora, mB, mC };
+  }
+  const TEXTO = "Olá! Confirmo a disponibilidade dos imóveis A, B e C?";
+
+  it("2/5. sucesso: A enviada com texto e imoveis_consultados, B/C contato-consolidado apontando para A, reserva limpa e notas wa: nos três, tudo junto", async () => {
+    const { imA, imB, imC, ancora, mB, mC } = await cenarioABC();
+    const { data, error } = await service.rpc("efetivar_consolidacao_contato", {
+      p_mensagem_id: ancora, p_user_id: aId, p_texto: TEXTO, p_imoveis_consultados: [imA, imB, imC],
+      p_notas: [{ imovel_id: imA, nota: nota("ext-1", TEXTO) }, { imovel_id: imB, nota: nota("ext-1", TEXTO) }, { imovel_id: imC, nota: nota("ext-1", TEXTO) }],
+      p_enviado_em: "2099-09-22T11:00:30.000Z",
+    });
+    expect(error).toBeNull();
+    expect(data).toMatchObject({ ok: true, absorvidas_total: 2, notas_gravadas: 3, notas_falhas: [] });
+    expect((data as { absorvidas: string[] }).absorvidas.sort()).toEqual([mB, mC].sort());
+
+    const A = await linha(ancora);
+    expect(A).toMatchObject({ status: "enviada", mensagem: TEXTO, imoveis_consultados: [imA, imB, imC], erro: null, reservada_para_mensagem_id: null });
+    expect(A.enviado_em).not.toBeNull();
+    for (const id of [mB, mC]) {
+      expect(await linha(id)).toMatchObject({
+        status: "cancelada", cancelamento_motivo: "contato-consolidado", cancelamento_origem: "worker",
+        consolidada_em_mensagem_id: ancora, reservada_para_mensagem_id: null,
+      });
+    }
+    for (const im of [imA, imB, imC]) {
+      const notas = await notasDoImovel(im);
+      expect(notas.map((n) => n.id)).toEqual(["wa:ext-1"]);
+      expect(notas[0].origem).toBe("agendamento");
+    }
+  });
+
+  it("10. reexecutar a RPC não duplica nada: a âncora já não está processando e nada é escrito", async () => {
+    const { imA, imB, imC, ancora, mB } = await cenarioABC();
+    const params = {
+      p_mensagem_id: ancora, p_user_id: aId, p_texto: TEXTO, p_imoveis_consultados: [imA, imB, imC],
+      p_notas: [{ imovel_id: imA, nota: nota("ext-2", TEXTO) }], p_enviado_em: "2099-09-22T11:00:30.000Z",
+    };
+    expect((await service.rpc("efetivar_consolidacao_contato", params)).data).toMatchObject({ ok: true });
+    const antesA = await linha(ancora);
+    const antesB = await linha(mB);
+    const repetida = await service.rpc("efetivar_consolidacao_contato", { ...params, p_enviado_em: "2099-09-22T11:05:00.000Z", p_notas: [{ imovel_id: imA, nota: nota("ext-3", TEXTO) }] });
+    expect(repetida.error).toBeNull();
+    expect(repetida.data).toMatchObject({ ok: false, motivo: "ancora-nao-processando", status: "enviada" });
+    expect(await linha(ancora)).toEqual(antesA);
+    expect(await linha(mB)).toEqual(antesB);
+    expect((await notasDoImovel(imA)).map((n) => n.id)).toEqual(["wa:ext-2"]);
+    // Mesma nota (mesmo id externo) repetida também não duplica: registrar_nota_imovel deduplica.
+  });
+
+  it("8. cross-user é impossível na RPC: p_user_id de outra conta não encontra a âncora, imóvel alheio na lista é recusado, e o navegador não a executa", async () => {
+    const { imA, imB, imC, ancora, mB } = await cenarioABC();
+    const imDeB = await criarImovel(b, bId, "Z");
+    const alheia = await service.rpc("efetivar_consolidacao_contato", { p_mensagem_id: ancora, p_user_id: bId, p_texto: TEXTO, p_imoveis_consultados: [imA] });
+    expect(alheia.data).toMatchObject({ ok: false, motivo: "ancora-nao-encontrada" });
+    const listaAlheia = await service.rpc("efetivar_consolidacao_contato", { p_mensagem_id: ancora, p_user_id: aId, p_texto: TEXTO, p_imoveis_consultados: [imA, imDeB] });
+    expect(listaAlheia.data).toMatchObject({ ok: false, motivo: "imovel-de-outra-conta" });
+    const foraDeOrdem = await service.rpc("efetivar_consolidacao_contato", { p_mensagem_id: ancora, p_user_id: aId, p_texto: TEXTO, p_imoveis_consultados: [imB, imA] });
+    expect(foraDeOrdem.data).toMatchObject({ ok: false, motivo: "imoveis-consultados-incoerentes" });
+    const pelaSessao = await a.rpc("efetivar_consolidacao_contato", { p_mensagem_id: ancora, p_user_id: aId, p_texto: TEXTO, p_imoveis_consultados: [imA, imB, imC] });
+    expect(pelaSessao.error?.code).toBe("42501");
+    // Nada mudou.
+    expect(await linha(ancora)).toMatchObject({ status: "processando", imoveis_consultados: null });
+    expect(await linha(mB)).toMatchObject({ status: "processando", reservada_para_mensagem_id: ancora });
+  });
+
+  it("reserva de OUTRA âncora ou candidata que já não está processando não é absorvida", async () => {
+    const { imA, imB, imC, ancora, mB, mC } = await cenarioABC();
+    const imD = await criarImovel(a, aId, "D");
+    const outraAncora = await criarVerificacao(a, aId, imD, "2099-09-22T11:06:00.000Z");
+    const mD2 = await criarVerificacao(a, aId, imD, "2099-09-22T11:08:00.000Z");
+    await reclamar(outraAncora);
+    expect((await reservar(outraAncora, mD2)).data).toHaveLength(1);
+    // C perdeu a reserva (varrida para erro) antes da efetivação.
+    expect((await service.from("mensagens_agendadas").update({ status: "erro", erro: "consolidacao-interrompida" }).eq("id", mC)).error).toBeNull();
+    const { data } = await service.rpc("efetivar_consolidacao_contato", { p_mensagem_id: ancora, p_user_id: aId, p_texto: TEXTO, p_imoveis_consultados: [imA, imB, imC] });
+    expect(data).toMatchObject({ ok: true, absorvidas: [mB], absorvidas_total: 1 });
+    expect(await linha(mC)).toMatchObject({ status: "erro", erro: "consolidacao-interrompida", reservada_para_mensagem_id: ancora, cancelamento_motivo: null });
+    expect(await linha(mD2)).toMatchObject({ status: "processando", reservada_para_mensagem_id: outraAncora });
+  });
+
+  it.skipIf(!temDbUrl)("6. falha injetada no fim da transação: A, B/C e as notas continuam exatamente como antes (LOCAL_SUPABASE_DB_URL)", async () => {
+    const { imA, imB, imC, ancora, mB, mC } = await cenarioABC();
+    const antes = { A: await linha(ancora), B: await linha(mB), C: await linha(mC), notasA: await notasDoImovel(imA) };
+    // O gatilho dispara na ÚLTIMA escrita da RPC (âncora → enviada), depois
+    // das absorvidas e das notas: se a transação não fosse uma só, elas
+    // ficariam gravadas.
+    sqlLocal([
+      `create or replace function public.__injetar_falha_efetivacao() returns trigger language plpgsql as $$
+      begin
+        if new.status = 'enviada' and new.id = '${ancora}'::uuid then
+          raise exception 'falha injetada pelo teste' using errcode = 'P0001';
+        end if;
+        return new;
+      end $$`,
+      "drop trigger if exists __trg_injetar_falha_efetivacao on public.mensagens_agendadas",
+      `create trigger __trg_injetar_falha_efetivacao before update on public.mensagens_agendadas
+        for each row execute function public.__injetar_falha_efetivacao()`,
+    ]);
+    try {
+      const { data, error } = await service.rpc("efetivar_consolidacao_contato", {
+        p_mensagem_id: ancora, p_user_id: aId, p_texto: TEXTO, p_imoveis_consultados: [imA, imB, imC],
+        p_notas: [{ imovel_id: imA, nota: nota("ext-9", TEXTO) }, { imovel_id: imB, nota: nota("ext-9", TEXTO) }],
+      });
+      expect(data).toBeNull();
+      expect(error?.message).toContain("falha injetada");
+    } finally {
+      sqlLocal([
+        "drop trigger if exists __trg_injetar_falha_efetivacao on public.mensagens_agendadas",
+        "drop function if exists public.__injetar_falha_efetivacao()",
+      ]);
+    }
+    expect(await linha(ancora)).toEqual(antes.A);
+    expect(await linha(mB)).toEqual(antes.B);
+    expect(await linha(mC)).toEqual(antes.C);
+    expect(await notasDoImovel(imA)).toEqual(antes.notasA);
+    expect(await notasDoImovel(imB)).toEqual([]);
+    // E depois de remover a injeção, a mesma chamada efetiva tudo.
+    const depois = await service.rpc("efetivar_consolidacao_contato", { p_mensagem_id: ancora, p_user_id: aId, p_texto: TEXTO, p_imoveis_consultados: [imA, imB, imC], p_notas: [{ imovel_id: imA, nota: nota("ext-9", TEXTO) }] });
+    expect(depois.data).toMatchObject({ ok: true, absorvidas_total: 2, notas_gravadas: 1 });
+  });
+
+  it("uma nota que falha (imóvel fora da lista) fica em savepoint: o núcleo é gravado e a falha é devolvida", async () => {
+    const { imA, imB, imC, ancora, mB } = await cenarioABC();
+    const imD = await criarImovel(a, aId, "D");
+    const { data } = await service.rpc("efetivar_consolidacao_contato", {
+      p_mensagem_id: ancora, p_user_id: aId, p_texto: TEXTO, p_imoveis_consultados: [imA, imB, imC],
+      p_notas: [{ imovel_id: imA, nota: nota("ext-4", TEXTO) }, { imovel_id: imD, nota: nota("ext-4", TEXTO) }],
+    });
+    expect(data).toMatchObject({ ok: true, absorvidas_total: 2, notas_gravadas: 1, notas_falhas: [{ imovel_id: imD, erro: "22023" }] });
+    expect(await linha(ancora)).toMatchObject({ status: "enviada" });
+    expect(await linha(mB)).toMatchObject({ status: "cancelada", cancelamento_motivo: "contato-consolidado" });
+    expect(await notasDoImovel(imD)).toEqual([]);
+  });
+});
+
+describe("varredura do claim: reserva órfã ≠ envio individual", () => {
+  it("4/5/7. crash entre reserva e efetivação: 10 min depois a reserva vira consolidacao-interrompida com o vínculo, a âncora vira processamento-interrompido, e nada volta à fila nem vira contato", async () => {
+    const imA = await criarImovel(a, aId, "A");
+    const imB = await criarImovel(a, aId, "B");
+    const ancora = await criarVerificacao(a, aId, imA, "2099-09-22T11:00:00.000Z");
+    const cand = await criarVerificacao(a, aId, imB, "2099-09-22T11:02:00.000Z");
+    await reclamar(ancora);
+    expect((await reservar(ancora, cand)).data).toHaveLength(1);
+    const antiga = new Date(Date.now() - 11 * 60 * 1000).toISOString();
+    expect((await service.from("mensagens_agendadas").update({ updated_at: antiga }).in("id", [ancora, cand])).error).toBeNull();
+
+    const claim = await service.rpc("claim_mensagens_agendadas", { p_limite: 5 });
+    expect(claim.error).toBeNull();
+    expect((claim.data as Array<{ id: string }>).map((m) => m.id)).not.toContain(cand);
+
+    expect(await linha(cand)).toMatchObject({
+      status: "erro", erro: "consolidacao-interrompida", reservada_para_mensagem_id: ancora,
+      cancelamento_motivo: null, consolidada_em_mensagem_id: null,
+    });
+    expect(await linha(ancora)).toMatchObject({ status: "erro", erro: "processamento-interrompido" });
+    // Uma segunda varredura não muda nada (idempotente) e não reclama nenhuma das duas.
+    const segunda = await service.rpc("claim_mensagens_agendadas", { p_limite: 5 });
+    expect((segunda.data as Array<{ id: string }>).map((m) => m.id)).not.toContain(cand);
+    expect(await linha(cand)).toMatchObject({ status: "erro", erro: "consolidacao-interrompida" });
+    // E a efetivação tardia não transforma isso em contato realizado.
+    const tardia = await service.rpc("efetivar_consolidacao_contato", { p_mensagem_id: ancora, p_user_id: aId, p_texto: "x", p_imoveis_consultados: [imA, imB] });
+    expect(tardia.data).toMatchObject({ ok: false, motivo: "ancora-nao-processando", status: "erro" });
+    expect(await linha(cand)).toMatchObject({ status: "erro", cancelamento_motivo: null });
+  });
+
+  it("uma reserva viva (recente) não é varrida nem reclamada por outro worker", async () => {
+    const imA = await criarImovel(a, aId, "A");
+    const imB = await criarImovel(a, aId, "B");
+    const ancora = await criarVerificacao(a, aId, imA, "2099-09-22T11:00:00.000Z");
+    const cand = await criarVerificacao(a, aId, imB, "2099-09-22T11:02:00.000Z");
+    await reclamar(ancora);
+    expect((await reservar(ancora, cand)).data).toHaveLength(1);
+    const claim = await service.rpc("claim_mensagens_agendadas", { p_limite: 5 });
+    expect(claim.error).toBeNull();
+    expect((claim.data as Array<{ id: string }>).map((m) => m.id)).not.toContain(cand);
+    expect(await linha(cand)).toMatchObject({ status: "processando", reservada_para_mensagem_id: ancora });
+  });
+
+  it("1. desistência antes do POST: a reserva volta a `agendada` limpa e pode ser reclamada normalmente depois", async () => {
+    const imA = await criarImovel(a, aId, "A");
+    const imB = await criarImovel(a, aId, "B");
+    const ancora = await criarVerificacao(a, aId, imA, "2099-09-22T11:00:00.000Z");
+    const cand = await criarVerificacao(a, aId, imB, "2099-09-22T11:02:00.000Z");
+    await reclamar(ancora);
+    expect((await reservar(ancora, cand)).data).toHaveLength(1);
+    const liberada = await service.from("mensagens_agendadas")
+      .update({ status: "agendada", reservada_para_mensagem_id: null, updated_at: new Date().toISOString() })
+      .eq("id", cand).eq("status", "processando").eq("reservada_para_mensagem_id", ancora).select("id");
+    expect(liberada.data).toHaveLength(1);
+    expect(await linha(cand)).toMatchObject({ status: "agendada", reservada_para_mensagem_id: null, cancelamento_motivo: null });
+  });
+
+  it("3. resultado incerto depois do POST: a reserva vira erro próprio, mantém o vínculo, e nunca é reclamada de novo", async () => {
+    const imA = await criarImovel(a, aId, "A");
+    const imB = await criarImovel(a, aId, "B");
+    const ancora = await criarVerificacao(a, aId, imA, "2099-09-22T11:00:00.000Z");
+    const cand = await criarVerificacao(a, aId, imB, "2099-09-22T11:02:00.000Z");
+    await reclamar(ancora);
+    expect((await reservar(ancora, cand)).data).toHaveLength(1);
+    const incerta = await service.from("mensagens_agendadas")
+      .update({ status: "erro", erro: "consolidacao-resultado-incerto", updated_at: new Date().toISOString() })
+      .eq("id", cand).eq("status", "processando").eq("reservada_para_mensagem_id", ancora).select("id");
+    expect(incerta.data).toHaveLength(1);
+    expect(await linha(cand)).toMatchObject({ status: "erro", erro: "consolidacao-resultado-incerto", reservada_para_mensagem_id: ancora, cancelamento_motivo: null });
+    const claim = await service.rpc("claim_mensagens_agendadas", { p_limite: 5 });
+    expect((claim.data as Array<{ id: string }>).map((m) => m.id)).not.toContain(cand);
+  });
+
+  it("12. mensagens `livre` seguem intocadas por reserva, RPC e varredura", async () => {
+    const im = await criarImovel(a, aId, "A");
+    const { data, error } = await a.from("mensagens_agendadas").insert({
+      user_id: aId, imovel_id: im, nome_proprietario: "x", telefone: "43999999999", mensagem: "Livre",
+      data_envio: "2099-09-22T11:00:00.000Z", status: "agendada",
+    }).select("id").single();
+    expect(error).toBeNull();
+    const livre = data!.id as string;
+    await reclamar(livre);
+    const efetivada = await service.rpc("efetivar_consolidacao_contato", { p_mensagem_id: livre, p_user_id: aId, p_texto: "Livre", p_imoveis_consultados: [im] });
+    expect(efetivada.data).toMatchObject({ ok: false, motivo: "ancora-nao-verificacao" });
+    expect(await linha(livre)).toMatchObject({ status: "processando", reservada_para_mensagem_id: null, imoveis_consultados: null });
   });
 });

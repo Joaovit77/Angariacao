@@ -13,8 +13,12 @@ import { garantirRegistroInstanciaWhatsapp } from "@/lib/servidor/instanciaWhats
 import {
   aplicarDecisaoNoBanco,
   cancelarMensagemSemImovel,
-  consolidarContatoDoProprietario,
+  desfazerConsolidacaoContato,
+  efetivarConsolidacaoContato,
+  marcarConsolidacaoIncerta,
+  prepararConsolidacaoContato,
   revalidarVerificacaoDisponibilidade,
+  type ConsolidacaoPreparada,
 } from "@/lib/servidor/disponibilidadeMensagem";
 
 export const runtime = "nodejs";
@@ -88,6 +92,15 @@ export async function GET(request: Request) {
   for (const item of data) {
     const { data: instancia } = await admin.from("whatsapp_instancias").select("instancia, token, observacao")
       .eq("user_id", item.user_id).maybeSingle();
+    // Reserva de consolidação desta mensagem (candidatas do mesmo proprietário
+    // em `processando` com `reservada_para_mensagem_id`). Só vira
+    // `contato-consolidado` na efetivação atômica, depois do POST aceito.
+    // Falha ANTES de o POST começar devolve as reservadas a `agendada`; falha
+    // DEPOIS de o POST ter começado (não se prova que não saiu) as tira da
+    // fila como `consolidacao-resultado-incerto`, com o vínculo mantido.
+    let consolidacao: ConsolidacaoPreparada | null = null;
+    let envioIniciado = false;
+    let consolidacaoEfetivada = false;
     try {
       if (!instancia?.instancia) throw new Error("sem-instancia");
       const pronta = await garantirRegistroInstanciaWhatsapp(admin, item.user_id, {
@@ -118,6 +131,11 @@ export async function GET(request: Request) {
       // mutação é sempre a RPC do M4, que fecha na mesma transação esta linha
       // (`p_mensagem_processando`), os lembretes e as outras mensagens do
       // imóvel. Mensagem `livre` não passa por nada disto.
+      //
+      // A consolidação é em dois tempos: antes do POST só se RESERVA (as
+      // candidatas viram `processando`, fora do alcance de outra execução);
+      // depois do POST aceito é que elas viram `contato-consolidado`. A
+      // persistência diz o que aconteceu, nunca o que se pretendia.
       let texto = item.mensagem;
       let imoveisDaMensagem: string[] = item.imovel_id ? [item.imovel_id] : [];
       let consolidadaEm: string | null = null;
@@ -161,24 +179,51 @@ export async function GET(request: Request) {
           continue;
         }
         if (contexto.imovel) {
-          const consolidacao = await consolidarContatoDoProprietario(admin, item, contexto.imovel, agoraISOString());
-          if (consolidacao.absorvidasIds.length) {
+          consolidacao = await prepararConsolidacaoContato(admin, item, contexto.imovel, agoraISOString());
+          if (consolidacao.reservadasIds.length) {
             texto = consolidacao.plano.texto ?? texto;
             imoveisDaMensagem = consolidacao.imoveisConsultados.map((imovel) => imovel.id);
             consolidadaEm = agoraISOString();
-            registrarEvento({
-              userId: item.user_id, categoria: "whatsapp", nivel: "info",
-              evento: "agendamento-consolidado",
-              detalhe: `${item.id} absorveu ${consolidacao.absorvidasIds.length}; imoveis=${imoveisDaMensagem.length}`,
-            });
-            consolidadas += consolidacao.absorvidasIds.length;
           }
         }
       }
 
+      // A partir daqui a chamada externa pode ter alcançado a Evolution.
+      envioIniciado = true;
       const envio = await enviarMensagemAgendada(item.telefone, texto,
         { serverUrl, instancia: pronta.instancia, token: pronta.token });
       const agora = agoraISOString();
+      if (consolidacao?.reservadasIds.length) {
+        // O contato aconteceu: âncora, absorvidas e notas fecham numa
+        // transação só. Se a RPC recusar, nada foi gravado e a mensagem já
+        // saiu: cai no `catch` como resultado incerto (nunca reenvio).
+        const efetivacao = await efetivarConsolidacaoContato(admin, item, {
+          texto,
+          imoveisConsultados: imoveisDaMensagem,
+          mensagemExternaId: envio.mensagemId,
+          enviadoEm: agora,
+          dataNota: agoraISOComSegundos(),
+        });
+        if (!efetivacao.ok) throw new Error(`efetivacao-falhou:${efetivacao.erro ?? "desconhecido"}`);
+        consolidacaoEfetivada = true;
+        registrarEvento({
+          userId: item.user_id, categoria: "whatsapp", nivel: "info",
+          evento: "agendamento-consolidado",
+          detalhe: `${item.id} absorveu ${efetivacao.absorvidasIds.length}; imoveis=${imoveisDaMensagem.length}`,
+        });
+        consolidadas += efetivacao.absorvidasIds.length;
+        if (efetivacao.notasFalhas.length) {
+          // O envio e a consolidação estão gravados; só a nota `wa:` de
+          // algum imóvel não entrou (o webhook de saída ainda pode gravá-la).
+          registrarEvento({
+            userId: item.user_id, categoria: "whatsapp", nivel: "erro",
+            evento: "historico-envio-falhou",
+            detalhe: `agendamento consolidado ${efetivacao.notasFalhas.map((f) => f.erro).join(" ")}`.trim(),
+          });
+        }
+        enviadas++;
+        continue;
+      }
       for (const imovelId of imoveisDaMensagem) {
         const historico = await registrarMensagemEnviada(admin, {
           imovelId,
@@ -207,6 +252,35 @@ export async function GET(request: Request) {
       enviadas++;
     } catch (e) {
       const motivo = e instanceof Error ? e.message.slice(0, 300) : "falha-desconhecida";
+      if (consolidacao?.reservadasIds.length && !consolidacaoEfetivada) {
+        try {
+          if (!envioIniciado) {
+            // O POST nem começou: as reservadas voltam a `agendada` e seguem
+            // sozinhas. Nenhuma marca de contato fica.
+            const liberacao = await desfazerConsolidacaoContato(admin, item, consolidacao, agoraISOString());
+            registrarEvento({
+              userId: item.user_id, categoria: "whatsapp", nivel: liberacao.erro ? "erro" : "info",
+              evento: "agendamento-consolidacao-desfeita",
+              detalhe: `${item.id} liberadas=${liberacao.liberadasIds.length}/${consolidacao.reservadasIds.length} ${liberacao.erro?.slice(0, 120) ?? ""}`.trim(),
+            });
+          } else {
+            // O POST pode ter saído: as reservadas saem da fila sem voltar
+            // (contato duplicado) e sem afirmar contato (não comprovado).
+            const marca = await marcarConsolidacaoIncerta(admin, item, consolidacao, agoraISOString());
+            registrarEvento({
+              userId: item.user_id, categoria: "whatsapp", nivel: "erro",
+              evento: "agendamento-consolidacao-incerta",
+              detalhe: `${item.id} marcadas=${marca.marcadasIds.length}/${consolidacao.reservadasIds.length} ${motivo.slice(0, 80)} ${marca.erro?.slice(0, 60) ?? ""}`.trim(),
+            });
+          }
+        } catch (erroReserva) {
+          registrarEvento({
+            userId: item.user_id, categoria: "whatsapp", nivel: "erro",
+            evento: envioIniciado ? "agendamento-consolidacao-incerta" : "agendamento-consolidacao-desfeita",
+            detalhe: `${item.id} falhou ${erroReserva instanceof Error ? erroReserva.message.slice(0, 120) : "falha"}`,
+          });
+        }
+      }
       await admin.from("mensagens_agendadas").update({ status: "erro", erro: motivo, updated_at: agoraISOString() }).eq("id", item.id).eq("status", "processando");
       falhas++;
     }

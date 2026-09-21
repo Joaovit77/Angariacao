@@ -35,6 +35,10 @@ export interface MensagemAgendada {
   imoveisConsultados: string[] | null;
   /** A mensagem que absorveu esta, quando cancelada como `contato-consolidado`. */
   consolidadaEmMensagemId: string | null;
+  /** Reserva de consolidação (antes do POST): a âncora para a qual esta linha
+      está reservada enquanto `processando`; em `erro`, o vínculo de uma
+      consolidação interrompida/incerta. Nunca significa contato realizado. */
+  reservadaParaMensagemId: string | null;
   reagendadaEm: string | null;
   reagendamentoMotivo: MotivoReagendamentoMensagemAgendada | null;
   /** O `data_envio` de antes do primeiro reagendamento automático. */
@@ -61,6 +65,7 @@ export interface DbMensagemAgendada {
   cancelada_em?: string | null;
   imoveis_consultados?: string[] | null;
   consolidada_em_mensagem_id?: string | null;
+  reservada_para_mensagem_id?: string | null;
   reagendada_em?: string | null;
   reagendamento_motivo?: MotivoReagendamentoMensagemAgendada | null;
   data_envio_original?: string | null;
@@ -76,6 +81,7 @@ export function fromDbMensagem(r: DbMensagemAgendada): MensagemAgendada {
     canceladaEm: r.cancelada_em ?? null,
     imoveisConsultados: r.imoveis_consultados ?? null,
     consolidadaEmMensagemId: r.consolidada_em_mensagem_id ?? null,
+    reservadaParaMensagemId: r.reservada_para_mensagem_id ?? null,
     reagendadaEm: r.reagendada_em ?? null,
     reagendamentoMotivo: r.reagendamento_motivo ?? null,
     dataEnvioOriginal: r.data_envio_original ?? null };

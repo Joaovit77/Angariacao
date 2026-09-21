@@ -61,6 +61,7 @@ function mensagem(extra: Partial<MensagemAgendada> = {}): MensagemAgendada {
     canceladaEm: null,
     imoveisConsultados: null,
     consolidadaEmMensagemId: null,
+    reservadaParaMensagemId: null,
     reagendadaEm: null,
     reagendamentoMotivo: null,
     dataEnvioOriginal: null,
@@ -273,6 +274,38 @@ describe("F/G/H. consolidação por proprietário", () => {
     ]);
   });
 
+  it("virada do dia: 23:59 e 00:01 (America/Sao_Paulo) são dias civis diferentes e não se consolidam; a janela não é 24h móveis", () => {
+    const a = dono("LD-200"), b = dono("LD-201"), c = dono("LD-202");
+    // 22/09 23:59 em São Paulo = 23/09 02:59Z; 23/09 00:01 em São Paulo = 23/09 03:01Z.
+    const ancora = padrao("m1", a, { dataEnvio: "2026-09-23T02:59:00.000Z" });
+    expect(diaOperacionalDoEnvio(ancora.dataEnvio)).toBe("2026-09-22");
+    const plano = planejarConsolidacaoContato({ mensagem: ancora, imovel: a }, [
+      // dois minutos depois, mas já no dia 23: fica de fora
+      { mensagem: padrao("m2", b, { dataEnvio: "2026-09-23T03:01:00.000Z" }), imovel: b },
+      // 22/09 08:00 em São Paulo: quase 16 h antes, mas mesmo dia civil: entra
+      { mensagem: padrao("m3", c, { dataEnvio: "2026-09-22T11:00:00.000Z" }), imovel: c },
+    ]);
+    expect(plano.recusadas).toEqual([{ mensagemId: "m2", motivo: "outro-dia" }]);
+    expect(plano.absorvidas.map((x) => x.mensagem.id)).toEqual(["m3"]);
+    expect(plano.imoveisConsultados).toEqual(["LD-200", "LD-202"]);
+  });
+
+  it("virada do dia: o dia civil é o de São Paulo, não o UTC (22:30 e 21:30 locais são o mesmo dia mesmo cruzando a meia-noite UTC)", () => {
+    const a = dono("LD-200"), b = dono("LD-201");
+    // 22/09 22:30 em SP = 23/09 01:30Z; 22/09 21:30 em SP = 23/09 00:30Z; ambos dia 22 em SP.
+    const plano = planejarConsolidacaoContato(
+      { mensagem: padrao("m1", a, { dataEnvio: "2026-09-23T01:30:00.000Z" }), imovel: a },
+      [{ mensagem: padrao("m2", b, { dataEnvio: "2026-09-23T00:30:00.000Z" }), imovel: b }],
+    );
+    expect(plano.absorvidas.map((x) => x.mensagem.id)).toEqual(["m2"]);
+    // e 23/09 00:01 em SP (03:01Z) contra 22/09 20:00 em SP (23:00Z): dias diferentes
+    const outro = planejarConsolidacaoContato(
+      { mensagem: padrao("m1", a, { dataEnvio: "2026-09-22T23:00:00.000Z" }), imovel: a },
+      [{ mensagem: padrao("m2", b, { dataEnvio: "2026-09-23T03:01:00.000Z" }), imovel: b }],
+    );
+    expect(outro.recusadas).toEqual([{ mensagemId: "m2", motivo: "outro-dia" }]);
+  });
+
   it("âncora com texto editado pelo corretor não absorve nada: a máquina não reescreve o texto dele", () => {
     const a = dono("LD-200"), b = dono("LD-201");
     const plano = planejarConsolidacaoContato({ mensagem: padrao("m1", a, { mensagem: "Texto meu" }), imovel: a }, [{ mensagem: padrao("m2", b), imovel: b }]);
@@ -291,7 +324,7 @@ describe("F/G/H. consolidação por proprietário", () => {
 
 describe("constantes gêmeas TS/SQL", () => {
   const migration = readFileSync(
-    join(process.cwd(), "..", "supabase", "migrations", "20260917203000_transicao_disponibilidade.sql"),
+    join(process.cwd(), "..", "supabase", "migrations", "20260921120000_transicao_disponibilidade.sql"),
     "utf8",
   );
 

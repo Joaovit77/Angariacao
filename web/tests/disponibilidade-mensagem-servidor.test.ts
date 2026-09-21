@@ -1,8 +1,12 @@
 /* Fronteira de servidor da revalidação (lib/servidor/disponibilidadeMensagem).
    Com um Supabase simulado que registra filtros e escritas, fixa: toda
    consulta leva user_id; `created_at` da agenda vira `criadoEm`; a transição
-   vai pela RPC do M4 com a linha reclamada; e a consolidação só absorve o
-   que cancelou de fato, com o cancelamento condicionado a `agendada`. */
+   vai pela RPC do M4 com a linha reclamada; e a consolidação é em dois
+   tempos: preparar só RESERVA (candidatas `agendada` → `processando` com
+   `reservada_para_mensagem_id`, sem marca de contato); efetivar, só depois
+   do POST aceito, vai pela RPC atômica; desfazer (antes do POST) devolve as
+   reservadas a `agendada`; resultado incerto (depois do POST) as tira da
+   fila sem afirmar contato. */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -10,7 +14,11 @@ vi.mock("server-only", () => ({}));
 import {
   aplicarDecisaoNoBanco,
   carregarContextoDisponibilidade,
-  consolidarContatoDoProprietario,
+  desfazerConsolidacaoContato,
+  efetivarConsolidacaoContato,
+  marcarConsolidacaoIncerta,
+  notasDaConsolidacao,
+  prepararConsolidacaoContato,
   revalidarVerificacaoDisponibilidade,
 } from "@/lib/servidor/disponibilidadeMensagem";
 import { textoBaseDisponibilidade, textoFollowUp } from "@/lib/calculo/followup";
@@ -146,7 +154,7 @@ describe("aplicarDecisaoNoBanco", () => {
   });
 });
 
-describe("consolidarContatoDoProprietario", () => {
+describe("consolidação em dois tempos: preparar (reserva) → efetivar (após o POST) / desfazer", () => {
   const base = textoBaseDisponibilidade();
   const ancoraImovel = fromDbImovel(IMOVEL_ROW);
   const rowB = { ...IMOVEL_ROW, id: "i2", codigo: "LD-201", endereco: "Rua B, 20" };
@@ -154,11 +162,22 @@ describe("consolidarContatoDoProprietario", () => {
   const ancora = mensagemRow("m1", "i1", textoFollowUp(base, ancoraImovel));
   const mB = mensagemRow("m2", "i2", textoFollowUp(base, fromDbImovel(rowB)), "2026-09-22T11:02:00.000Z");
   const mC = mensagemRow("m3", "i3", textoFollowUp(base, fromDbImovel(rowC)), "2026-09-22T11:04:00.000Z");
+  const AGORA = "2026-09-22T11:00:30.000Z";
 
-  let cancelamentosAceitos: Set<string>;
-  beforeEach(() => { cancelamentosAceitos = new Set(["m2", "m3"]); });
+  /** Estado das linhas de mensagens: um update só "pega" quando a condição
+      de status bate com o estado atual, como no Postgres. */
+  let estado: Map<string, Record<string, unknown>>;
+  beforeEach(() => {
+    estado = new Map([
+      ["m1", { status: "processando" }],
+      ["m2", { status: "agendada" }],
+      ["m3", { status: "agendada" }],
+    ]);
+  });
 
-  function supabaseDoProprietario(imoveisRows = [IMOVEL_ROW, rowB, rowC], mensagens = [mB, mC]) {
+  /** `buscaDesatualizada`: a busca devolve as candidatas como estavam antes de
+      outro worker reclamar uma delas (a corrida entre buscar e reservar). */
+  function supabaseDoProprietario(imoveisRows = [IMOVEL_ROW, rowB, rowC], mensagens = [mB, mC], buscaDesatualizada = false) {
     return criarSupabase((c) => {
       if (c.tabela === "imoveis" && c.single) {
         const id = c.filtros.find((f) => f.coluna === "id")?.valor;
@@ -168,19 +187,35 @@ describe("consolidarContatoDoProprietario", () => {
       if (c.tabela === "agenda") return { data: [], error: null };
       if (c.tabela === "mensagens_agendadas" && c.acao === "update") {
         const id = c.filtros.find((f) => f.coluna === "id")?.valor as string;
-        return { data: cancelamentosAceitos.has(id) ? [{ id }] : [], error: null };
+        const exigido = c.filtros.find((f) => f.coluna === "status")?.valor;
+        const atual = estado.get(id);
+        if (!atual || atual.status !== exigido) return { data: [], error: null };
+        estado.set(id, { ...atual, ...c.valores });
+        return { data: [{ id }], error: null };
       }
-      if (c.tabela === "mensagens_agendadas") return { data: mensagens, error: null };
+      if (c.tabela === "mensagens_agendadas") {
+        return { data: buscaDesatualizada ? mensagens : mensagens.filter((m) => estado.get(m.id)?.status === "agendada"), error: null };
+      }
       return { data: null, error: null };
     });
   }
 
-  it("absorve as verificações do mesmo proprietário no dia, cancelando-as com status=agendada como condição", async () => {
+  const updates = (consultas: Consulta[]) => consultas.filter((c) => c.tabela === "mensagens_agendadas" && c.acao === "update");
+
+  const ENTRADA = {
+    texto: "TEXTO CONSOLIDADO",
+    imoveisConsultados: ["i1", "i2", "i3"],
+    mensagemExternaId: "wa-abc",
+    enviadoEm: "2026-09-22T11:00:45.000Z",
+    dataNota: "2026-09-22T08:00:45",
+  };
+
+  it("preparar só reserva: B e C vão para `processando` com a reserva apontando para A, condicionado a `agendada`, e nada é cancelado", async () => {
     const { cliente, consultas } = supabaseDoProprietario();
-    const resultado = await consolidarContatoDoProprietario(cliente, ancora, ancoraImovel, "2026-09-22T11:00:30.000Z");
-    expect(resultado.absorvidasIds).toEqual(["m2", "m3"]);
-    expect(resultado.imoveisConsultados.map((i) => i.id)).toEqual(["i1", "i2", "i3"]);
-    expect(resultado.plano.texto).toContain("• Rua B, 20, Centro");
+    const preparacao = await prepararConsolidacaoContato(cliente, ancora, ancoraImovel, AGORA);
+    expect(preparacao.reservadasIds).toEqual(["m2", "m3"]);
+    expect(preparacao.imoveisConsultados.map((i) => i.id)).toEqual(["i1", "i2", "i3"]);
+    expect(preparacao.plano.texto).toContain("• Rua B, 20, Centro");
 
     const busca = consultas.find((c) => c.tabela === "mensagens_agendadas" && c.acao === "select")!;
     expect(busca.filtros).toEqual(expect.arrayContaining([
@@ -197,52 +232,158 @@ describe("consolidarContatoDoProprietario", () => {
       { op: "eq", coluna: "user_id", valor: USER },
       { op: "eq", coluna: "proprietario_telefone_canonico", valor: "4399992525" },
     ]));
-    const cancelamentos = consultas.filter((c) => c.tabela === "mensagens_agendadas" && c.acao === "update");
-    expect(cancelamentos).toHaveLength(2);
-    for (const cancelamento of cancelamentos) {
-      expect(cancelamento.valores).toMatchObject({
-        status: "cancelada", cancelamento_motivo: "contato-consolidado", cancelamento_origem: "worker",
-        consolidada_em_mensagem_id: "m1", cancelada_em: "2026-09-22T11:00:30.000Z",
-      });
-      expect(cancelamento.filtros).toEqual(expect.arrayContaining([
+
+    const reservas = updates(consultas);
+    expect(reservas).toHaveLength(2);
+    for (const reserva of reservas) {
+      expect(reserva.valores).toEqual({ status: "processando", reservada_para_mensagem_id: "m1", updated_at: AGORA });
+      expect(reserva.filtros).toEqual(expect.arrayContaining([
         { op: "eq", coluna: "user_id", valor: USER },
         { op: "eq", coluna: "status", valor: "agendada" },
       ]));
     }
+    expect(estado.get("m2")).toEqual({ status: "processando", reservada_para_mensagem_id: "m1", updated_at: AGORA });
+    expect(estado.get("m3")).toEqual({ status: "processando", reservada_para_mensagem_id: "m1", updated_at: AGORA });
+    // Nenhuma marca de contato antes do POST.
+    for (const linha of estado.values()) {
+      expect(linha.cancelamento_motivo).toBeUndefined();
+      expect(linha.consolidada_em_mensagem_id).toBeUndefined();
+    }
   });
 
-  it("candidata reclamada por outro worker no meio fica de fora e o texto final não a cita", async () => {
-    cancelamentosAceitos = new Set(["m2"]);
+  it("POST bem-sucedido: efetivar é UMA chamada à RPC atômica, com âncora, conta, texto que saiu, imóveis e notas prontas", async () => {
+    const { cliente, rpc, consultas } = supabaseDoProprietario();
+    rpc.mockResolvedValueOnce({ data: { ok: true, absorvidas: ["m2", "m3"], absorvidas_total: 2, notas_gravadas: 3, notas_falhas: [] }, error: null });
+    const efetivacao = await efetivarConsolidacaoContato(cliente, ancora, ENTRADA);
+    expect(efetivacao).toEqual({ ok: true, absorvidasIds: ["m2", "m3"], notasGravadas: 3, notasFalhas: [], erro: null });
+    expect(rpc).toHaveBeenCalledOnce();
+    const [nome, params] = rpc.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(nome).toBe("efetivar_consolidacao_contato");
+    expect(params).toMatchObject({
+      p_mensagem_id: "m1", p_user_id: USER, p_texto: "TEXTO CONSOLIDADO",
+      p_imoveis_consultados: ["i1", "i2", "i3"], p_enviado_em: "2026-09-22T11:00:45.000Z",
+    });
+    // As notas vêm no formato do TypeScript, uma por imóvel, com o id externo.
+    const notas = params.p_notas as Array<{ imovel_id: string; nota: { id: string; texto: string; direcao: string; origem: string; data: string } }>;
+    expect(notas.map((n) => n.imovel_id)).toEqual(["i1", "i2", "i3"]);
+    for (const { nota } of notas) {
+      expect(nota).toMatchObject({ direcao: "enviada", origem: "agendamento", data: "2026-09-22T08:00:45" });
+      expect(nota.id).toContain("wa-abc");
+      expect(nota.texto).toContain("TEXTO CONSOLIDADO");
+    }
+    expect(notas).toEqual(notasDaConsolidacao(ENTRADA));
+    // Nenhuma escrita direta do TypeScript: a transação é toda da RPC.
+    expect(updates(consultas)).toEqual([]);
+  });
+
+  it("efetivar recusada ou com erro devolve ok=false sem exceção silenciosa (o worker decide: resultado incerto)", async () => {
+    const { cliente, rpc } = supabaseDoProprietario();
+    rpc.mockResolvedValueOnce({ data: { ok: false, motivo: "ancora-nao-processando", status: "erro" }, error: null });
+    expect(await efetivarConsolidacaoContato(cliente, ancora, ENTRADA)).toMatchObject({ ok: false, absorvidasIds: [], erro: "ancora-nao-processando" });
+    rpc.mockResolvedValueOnce({ data: null, error: { message: "connection reset" } });
+    expect(await efetivarConsolidacaoContato(cliente, ancora, ENTRADA)).toMatchObject({ ok: false, erro: "connection reset" });
+  });
+
+  it("efetivar com nota que falhou no banco continua ok (o envio e a consolidação estão gravados) e expõe a falha", async () => {
+    const { cliente, rpc } = supabaseDoProprietario();
+    rpc.mockResolvedValueOnce({ data: { ok: true, absorvidas: ["m2"], absorvidas_total: 1, notas_gravadas: 2, notas_falhas: [{ imovel_id: "i3", erro: "22023" }] }, error: null });
+    expect(await efetivarConsolidacaoContato(cliente, ancora, ENTRADA)).toEqual({
+      ok: true, absorvidasIds: ["m2"], notasGravadas: 2, notasFalhas: [{ imovel_id: "i3", erro: "22023" }], erro: null,
+    });
+  });
+
+  it("antes do POST: desfazer devolve B e C a `agendada`, limpa a reserva e não deixa evidência de contato", async () => {
+    const { cliente, consultas } = supabaseDoProprietario();
+    const preparacao = await prepararConsolidacaoContato(cliente, ancora, ancoraImovel, AGORA);
+    const liberacao = await desfazerConsolidacaoContato(cliente, ancora, preparacao, "2026-09-22T11:00:45.000Z");
+    expect(liberacao).toEqual({ liberadasIds: ["m2", "m3"], erro: null });
+    for (const id of ["m2", "m3"]) {
+      expect(estado.get(id)).toEqual({ status: "agendada", reservada_para_mensagem_id: null, updated_at: "2026-09-22T11:00:45.000Z" });
+    }
+    for (const liberacao of updates(consultas).slice(2)) {
+      expect(liberacao.filtros).toEqual(expect.arrayContaining([
+        { op: "eq", coluna: "status", valor: "processando" },
+        { op: "eq", coluna: "reservada_para_mensagem_id", valor: "m1" },
+      ]));
+    }
+  });
+
+  it("depois do POST iniciado (timeout/resultado incerto): B e C NÃO voltam à fila, viram erro com semântica própria e mantêm o vínculo", async () => {
     const { cliente } = supabaseDoProprietario();
-    const resultado = await consolidarContatoDoProprietario(cliente, ancora, ancoraImovel, "2026-09-22T11:00:30.000Z");
-    expect(resultado.absorvidasIds).toEqual(["m2"]);
-    expect(resultado.imoveisConsultados.map((i) => i.id)).toEqual(["i1", "i2"]);
-    expect(resultado.plano.texto).not.toContain("Rua C, 30");
+    const preparacao = await prepararConsolidacaoContato(cliente, ancora, ancoraImovel, AGORA);
+    const marca = await marcarConsolidacaoIncerta(cliente, ancora, preparacao, "2026-09-22T11:01:05.000Z");
+    expect(marca).toEqual({ marcadasIds: ["m2", "m3"], erro: null });
+    for (const id of ["m2", "m3"]) {
+      expect(estado.get(id)).toEqual({
+        status: "erro", erro: "consolidacao-resultado-incerto", reservada_para_mensagem_id: "m1", updated_at: "2026-09-22T11:01:05.000Z",
+      });
+      expect(estado.get(id)).not.toHaveProperty("cancelamento_motivo");
+      expect(estado.get(id)).not.toHaveProperty("consolidada_em_mensagem_id");
+    }
+  });
+
+  it("reexecução depois de uma desistência: B vira âncora e reserva só C; A (em erro) não é candidata; nada é absorvido duas vezes", async () => {
+    const { cliente } = supabaseDoProprietario();
+    const primeira = await prepararConsolidacaoContato(cliente, ancora, ancoraImovel, AGORA);
+    await desfazerConsolidacaoContato(cliente, ancora, primeira, AGORA);
+    estado.set("m1", { status: "erro" });
+    // Segunda execução: B reclamada pelo claim (processando) é a âncora.
+    estado.set("m2", { status: "processando" });
+    const ancoraB = { ...mB, status: "processando" as const };
+    const segunda = await prepararConsolidacaoContato(cliente, ancoraB, fromDbImovel(rowB), "2026-09-22T11:02:10.000Z");
+    expect(segunda.reservadasIds).toEqual(["m3"]);
+    expect(segunda.imoveisConsultados.map((i) => i.id)).toEqual(["i2", "i3"]);
+    expect(estado.get("m3")).toMatchObject({ status: "processando", reservada_para_mensagem_id: "m2" });
+    expect(estado.get("m1")).toEqual({ status: "erro" });
+  });
+
+  it("reserva órfã já varrida para `erro` não vira contato realizado: desfazer e marcar só tocam reservas vivas desta âncora", async () => {
+    const { cliente } = supabaseDoProprietario();
+    const preparacao = await prepararConsolidacaoContato(cliente, ancora, ancoraImovel, AGORA);
+    // O processo morreu; dez minutos depois a varredura marcou a reserva de
+    // C como consolidação interrompida (mantendo o vínculo).
+    estado.set("m3", { status: "erro", erro: "consolidacao-interrompida", reservada_para_mensagem_id: "m1" });
+    const liberacao = await desfazerConsolidacaoContato(cliente, ancora, preparacao, "2026-09-22T11:12:00.000Z");
+    expect(liberacao.liberadasIds).toEqual(["m2"]);
+    expect(estado.get("m3")).toEqual({ status: "erro", erro: "consolidacao-interrompida", reservada_para_mensagem_id: "m1" });
+    expect(estado.get("m3")).not.toHaveProperty("cancelamento_motivo");
+    expect(estado.get("m3")).not.toHaveProperty("consolidada_em_mensagem_id");
+  });
+
+  it("concorrência: candidata reclamada por outro worker entre a busca e a reserva não é reservada e o texto final não a cita", async () => {
+    // Outro worker reclamou m3 depois de a busca a ter visto `agendada`.
+    estado.set("m3", { status: "processando" });
+    const { cliente } = supabaseDoProprietario([IMOVEL_ROW, rowB, rowC], [mB, mC], true);
+    const preparacao = await prepararConsolidacaoContato(cliente, ancora, ancoraImovel, AGORA);
+    expect(preparacao.reservadasIds).toEqual(["m2"]);
+    expect(preparacao.imoveisConsultados.map((i) => i.id)).toEqual(["i1", "i2"]);
+    expect(preparacao.plano.texto).not.toContain("Rua C, 30");
+    expect(estado.get("m3")).toEqual({ status: "processando" });
   });
 
   it("candidata cujo imóvel ficou indisponível é cancelada pela RPC e não entra na mensagem", async () => {
     const rowCPerdido = { ...rowC, status: "Perdido" };
     const { cliente, rpc } = supabaseDoProprietario([IMOVEL_ROW, rowB, rowCPerdido]);
-    const resultado = await consolidarContatoDoProprietario(cliente, ancora, ancoraImovel, "2026-09-22T11:00:30.000Z");
-    expect(resultado.transicoes).toEqual([{ mensagemId: "m3", acao: "cancelar", ok: true }]);
+    const preparacao = await prepararConsolidacaoContato(cliente, ancora, ancoraImovel, AGORA);
+    expect(preparacao.transicoes).toEqual([{ mensagemId: "m3", acao: "cancelar", ok: true }]);
     expect(rpc).toHaveBeenCalledWith("encerrar_disponibilidade_imovel", expect.objectContaining({ p_imovel_id: "i3" }));
-    expect(resultado.absorvidasIds).toEqual(["m2"]);
-    expect(resultado.imoveisConsultados.map((i) => i.id)).toEqual(["i1", "i2"]);
+    expect(preparacao.reservadasIds).toEqual(["m2"]);
+    expect(preparacao.imoveisConsultados.map((i) => i.id)).toEqual(["i1", "i2"]);
   });
 
   it("sem outras verificações do proprietário no dia nada muda e nada é escrito", async () => {
     const { cliente, consultas } = supabaseDoProprietario([IMOVEL_ROW, rowB, rowC], []);
-    const resultado = await consolidarContatoDoProprietario(cliente, ancora, ancoraImovel, "2026-09-22T11:00:30.000Z");
-    expect(resultado.absorvidasIds).toEqual([]);
-    expect(resultado.plano.texto).toBeNull();
-    expect(consultas.filter((c) => c.acao === "update")).toEqual([]);
+    const preparacao = await prepararConsolidacaoContato(cliente, ancora, ancoraImovel, AGORA);
+    expect(preparacao.reservadasIds).toEqual([]);
+    expect(preparacao.plano.texto).toBeNull();
+    expect(updates(consultas)).toEqual([]);
   });
 
   it("imóvel sem telefone canônico não procura ninguém", async () => {
     const { cliente, consultas } = supabaseDoProprietario();
     const semTelefone = { ...ancoraImovel, proprietarioTelefone: null };
-    const resultado = await consolidarContatoDoProprietario(cliente, ancora, semTelefone, "2026-09-22T11:00:30.000Z");
-    expect(resultado.absorvidasIds).toEqual([]);
+    const preparacao = await prepararConsolidacaoContato(cliente, ancora, semTelefone, AGORA);
+    expect(preparacao.reservadasIds).toEqual([]);
     expect(consultas).toEqual([]);
   });
 });

@@ -15,6 +15,12 @@
 --    cliente. Falha interna vai para `log_eventos` e nunca derruba a
 --    mudança de status.
 --
+-- 5. A consolidação é em dois tempos: `reservada_para_mensagem_id` marca a
+--    candidata reservada antes do POST; `efetivar_consolidacao_contato` fecha
+--    tudo numa transação só depois do envio aceito; e a varredura do claim
+--    trata a reserva órfã como consolidação interrompida, nunca como envio
+--    individual nem como contato realizado.
+--
 -- Nada aqui altera linhas existentes por si só: colunas novas nascem nulas
 -- e a função só roda quando chamada ou quando um imóvel muda de estado.
 
@@ -87,6 +93,69 @@ begin
       );
   end if;
 end $$;
+
+-- Reserva de consolidação (M3, dois tempos). Enquanto a mensagem única do
+-- proprietário ainda não saiu, cada candidata absorvível fica `processando`
+-- com `reservada_para_mensagem_id` apontando para a âncora: é isso que
+-- distingue, no banco, "reservada para uma consolidação" de "reclamada para
+-- envio". A coluna nunca significa consolidação concluída: no sucesso ela é
+-- limpa e `consolidada_em_mensagem_id` assume; na desistência antes do POST
+-- ela é limpa e a linha volta a `agendada`; na interrupção/resultado incerto
+-- a linha vira `erro` e o vínculo fica para auditoria. Sem default, sem
+-- backfill: linhas existentes seguem nulas.
+alter table public.mensagens_agendadas
+  add column if not exists reservada_para_mensagem_id uuid;
+
+do $$
+begin
+  -- Chave (id, user_id) para a FK composta respeitar o tenant, como
+  -- `agenda_id_user_id_key` fez para a agenda no M1.
+  if not exists (
+    select 1 from pg_catalog.pg_constraint
+     where conname = 'mensagens_agendadas_id_user_id_key'
+       and conrelid = 'public.mensagens_agendadas'::regclass
+  ) then
+    alter table public.mensagens_agendadas
+      add constraint mensagens_agendadas_id_user_id_key unique (id, user_id);
+  end if;
+
+  if not exists (
+    select 1 from pg_catalog.pg_constraint
+     where conname = 'mensagens_agendadas_reserva_usuario_fkey'
+       and conrelid = 'public.mensagens_agendadas'::regclass
+  ) then
+    alter table public.mensagens_agendadas
+      add constraint mensagens_agendadas_reserva_usuario_fkey
+      foreign key (reservada_para_mensagem_id, user_id)
+      references public.mensagens_agendadas (id, user_id)
+      on delete set null (reservada_para_mensagem_id);
+  end if;
+
+  -- Sem autorreserva, e só nos dois estados em que uma reserva faz sentido:
+  -- `processando` (viva) ou `erro` (interrompida/incerta, vínculo de
+  -- auditoria). `agendada`, `enviada` e `cancelada` nunca carregam reserva,
+  -- o que também impede o navegador (RLS só escreve agendada/cancelada) de
+  -- forjar uma.
+  if not exists (
+    select 1 from pg_catalog.pg_constraint
+     where conname = 'mensagens_agendadas_reserva_coerente_check'
+       and conrelid = 'public.mensagens_agendadas'::regclass
+  ) then
+    alter table public.mensagens_agendadas
+      add constraint mensagens_agendadas_reserva_coerente_check
+      check (
+        reservada_para_mensagem_id is null
+        or (
+          reservada_para_mensagem_id <> id
+          and status in ('processando', 'erro')
+        )
+      );
+  end if;
+end $$;
+
+create index if not exists mensagens_agendadas_reserva_idx
+  on public.mensagens_agendadas (reservada_para_mensagem_id)
+  where reservada_para_mensagem_id is not null;
 
 -- ------------------------------------------------------------
 -- 2. Constantes gêmeas do TypeScript (há teste amarrando as duas)
@@ -475,3 +544,202 @@ drop trigger if exists trg_transicao_disponibilidade_imovel on public.imoveis;
 create trigger trg_transicao_disponibilidade_imovel
   after update of status, retirado on public.imoveis
   for each row execute function public.reagir_transicao_disponibilidade_imovel();
+
+-- ------------------------------------------------------------
+-- 6. Efetivação atômica da consolidação (só depois do POST aceito)
+-- ------------------------------------------------------------
+-- Uma transação só, ou nada: as reservadas da âncora (`reservada_para_mensagem_id`
+-- = âncora, `processando`, mesma conta) viram `cancelada`/`contato-consolidado`
+-- apontando para a âncora, com a reserva limpa; as notas `wa:` (já montadas
+-- pelo servidor: o formato pertence ao TypeScript) entram por
+-- `registrar_nota_imovel`; e a âncora `processando` → `enviada` com o texto
+-- que de fato saiu e `imoveis_consultados`. `registrar_nota_imovel` é plpgsql
+-- chamada daqui: roda na transação desta função (não existe commit autônomo
+-- em função), então um erro no fim desfaz tudo, inclusive as notas. Uma nota
+-- individual que falhe fica num savepoint (bloco `exception`) e é devolvida em
+-- `notas_falhas`, porque o envio já aconteceu e a linha nunca volta à fila.
+-- Só service_role, pelo papel do JWT (auth.role()), como nas RPCs acima.
+create or replace function public.efetivar_consolidacao_contato(
+  p_mensagem_id uuid,
+  p_user_id uuid,
+  p_texto text,
+  p_imoveis_consultados uuid[],
+  p_notas jsonb default '[]'::jsonb,
+  p_enviado_em timestamptz default now()
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_ancora record;
+  v_absorvidas uuid[] := array[]::uuid[];
+  v_nota jsonb;
+  v_imovel uuid;
+  v_notas_gravadas integer := 0;
+  v_notas_falhas jsonb := '[]'::jsonb;
+begin
+  if (select auth.role()) is distinct from 'service_role' then
+    raise exception 'Somente o servidor efetiva uma consolidação.' using errcode = '42501';
+  end if;
+  if p_mensagem_id is null or p_user_id is null or p_texto is null
+     or p_imoveis_consultados is null or cardinality(p_imoveis_consultados) = 0 then
+    return jsonb_build_object('ok', false, 'motivo', 'parametros-invalidos');
+  end if;
+
+  select m.id, m.user_id, m.status, m.imovel_id, m.tipo
+    into v_ancora
+    from public.mensagens_agendadas m
+   where m.id = p_mensagem_id
+     and m.user_id = p_user_id
+   for update;
+  if not found then
+    return jsonb_build_object('ok', false, 'motivo', 'ancora-nao-encontrada');
+  end if;
+  if v_ancora.status <> 'processando' then
+    return jsonb_build_object('ok', false, 'motivo', 'ancora-nao-processando', 'status', v_ancora.status);
+  end if;
+  if v_ancora.tipo <> 'verificacao-disponibilidade' then
+    return jsonb_build_object('ok', false, 'motivo', 'ancora-nao-verificacao');
+  end if;
+  -- A lista diz por quais imóveis se perguntou: começa pelo da âncora e só
+  -- contém imóveis desta conta.
+  if v_ancora.imovel_id is null or p_imoveis_consultados[1] <> v_ancora.imovel_id then
+    return jsonb_build_object('ok', false, 'motivo', 'imoveis-consultados-incoerentes');
+  end if;
+  if exists (
+    select 1 from unnest(p_imoveis_consultados) as c(id)
+     where not exists (select 1 from public.imoveis i where i.id = c.id and i.user_id = p_user_id)
+  ) then
+    return jsonb_build_object('ok', false, 'motivo', 'imovel-de-outra-conta');
+  end if;
+
+  with fechadas as (
+    update public.mensagens_agendadas m
+       set status = 'cancelada',
+           cancelamento_motivo = 'contato-consolidado',
+           cancelamento_origem = 'worker',
+           cancelada_em = p_enviado_em,
+           consolidada_em_mensagem_id = p_mensagem_id,
+           reservada_para_mensagem_id = null,
+           updated_at = p_enviado_em
+     where m.user_id = p_user_id
+       and m.reservada_para_mensagem_id = p_mensagem_id
+       and m.status = 'processando'
+       and m.tipo = 'verificacao-disponibilidade'
+    returning m.id
+  )
+  select coalesce(array_agg(id), '{}'::uuid[]) into v_absorvidas from fechadas;
+
+  -- `registrar_nota_imovel` resolve `imoveis` pelo search_path: o da
+  -- transação passa a `public, pg_temp` só para estas chamadas (transação
+  -- local; a função restaura o seu ao sair).
+  perform pg_catalog.set_config('search_path', 'public, pg_temp', true);
+  for v_nota in select value from jsonb_array_elements(coalesce(p_notas, '[]'::jsonb)) loop
+    begin
+      v_imovel := nullif(v_nota->>'imovel_id', '')::uuid;
+      if v_imovel is null or not (v_imovel = any (p_imoveis_consultados)) then
+        raise exception 'Nota fora dos imóveis consultados.' using errcode = '22023';
+      end if;
+      if public.registrar_nota_imovel(v_imovel, p_user_id, v_nota->'nota') then
+        v_notas_gravadas := v_notas_gravadas + 1;
+      end if;
+    exception when others then
+      v_notas_falhas := v_notas_falhas || jsonb_build_object('imovel_id', v_nota->>'imovel_id', 'erro', sqlstate);
+    end;
+  end loop;
+  perform pg_catalog.set_config('search_path', '', true);
+
+  update public.mensagens_agendadas m
+     set status = 'enviada',
+         enviado_em = p_enviado_em,
+         mensagem = p_texto,
+         imoveis_consultados = p_imoveis_consultados,
+         erro = null,
+         updated_at = p_enviado_em
+   where m.id = p_mensagem_id
+     and m.user_id = p_user_id
+     and m.status = 'processando';
+
+  return jsonb_build_object(
+    'ok', true,
+    'absorvidas', to_jsonb(v_absorvidas),
+    'absorvidas_total', cardinality(v_absorvidas),
+    'notas_gravadas', v_notas_gravadas,
+    'notas_falhas', v_notas_falhas
+  );
+end;
+$$;
+
+revoke all on function public.efetivar_consolidacao_contato(uuid, uuid, text, uuid[], jsonb, timestamptz)
+  from public, anon, authenticated;
+grant execute on function public.efetivar_consolidacao_contato(uuid, uuid, text, uuid[], jsonb, timestamptz)
+  to service_role;
+
+-- ------------------------------------------------------------
+-- 7. Varredura de órfãs distingue reserva de consolidação de claim
+-- ------------------------------------------------------------
+-- Mesmo claim de 20260913143812, com um ramo a mais antes do genérico: a
+-- reserva órfã não é um envio individual comum. (O schema canônico mantém
+-- a definição no lugar de sempre.)
+create or replace function public.claim_mensagens_agendadas(p_limite integer default 20)
+returns setof public.mensagens_agendadas
+language sql
+security definer
+set search_path = public, pg_temp
+as $$
+  -- Uma indisponibilidade nunca pode transformar uma mensagem de ontem em
+  -- um disparo surpresa hoje. Antes de obter o lote, vence o que perdeu a
+  -- janela operacional. Dez minutos cobrem atraso do scheduler/deploy sem
+  -- fingir que uma mensagem antiga ainda saiu no horario combinado.
+  with expiradas as (
+    update mensagens_agendadas
+       set status = 'erro', erro = 'janela-expirada', updated_at = now()
+     where status = 'agendada'
+       and data_envio < now() - interval '10 minutes'
+    returning id
+  ),
+  -- Reserva de consolidação órfã (M3): candidata reservada por um worker que
+  -- morreu entre reservar, enviar a mensagem única e efetivar. Não é um envio
+  -- individual: o texto único pode ter saído com a âncora, então não volta à
+  -- fila; e não há prova de contato, então não vira `contato-consolidado`.
+  -- Vira erro com semântica própria e o vínculo com a âncora fica.
+  reservas_interrompidas as (
+    update mensagens_agendadas
+       set status = 'erro', erro = 'consolidacao-interrompida', updated_at = now()
+     where status = 'processando'
+       and reservada_para_mensagem_id is not null
+       and updated_at < now() - interval '10 minutes'
+    returning id
+  ),
+  -- Linha reclamada por um worker que nao concluiu (resposta do claim
+  -- perdida, funcao encerrada). Dez minutos apos o claim ele ja morreu;
+  -- vira erro, nunca volta a fila: o envio pode ter saido antes.
+  interrompidas as (
+    update mensagens_agendadas
+       set status = 'erro', erro = 'processamento-interrompido', updated_at = now()
+     where status = 'processando'
+       and reservada_para_mensagem_id is null
+       and updated_at < now() - interval '10 minutes'
+    returning id
+  ),
+  candidatas as (
+    select id
+      from mensagens_agendadas
+     where status = 'agendada'
+       and data_envio >= now() - interval '10 minutes'
+       and data_envio <= now()
+     order by data_envio, id
+     for update skip locked
+     limit greatest(1, least(coalesce(p_limite, 20), 100))
+  )
+  update mensagens_agendadas m
+     set status = 'processando', updated_at = now(), erro = null
+    from candidatas c
+   where m.id = c.id
+  returning m.*;
+$$;
+
+revoke all on function public.claim_mensagens_agendadas(integer) from public, anon, authenticated;
+grant execute on function public.claim_mensagens_agendadas(integer) to service_role;

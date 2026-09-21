@@ -1256,9 +1256,21 @@ Regras permanentes:
   reavalia as outras verificações `agendada` do mesmo proprietário no mesmo dia civil operacional e,
   quando todas são o modelo do sistema intocado (`ehTextoPadraoDisponibilidade`), envia uma mensagem
   só (`mensagemConfirmacaoDisponibilidadeConsolidada`) gravando em `imoveis_consultados` por quais
-  imóveis perguntou; as absorvidas viram `cancelada`/`contato-consolidado` apontando para a âncora
-  em `consolidada_em_mensagem_id`, com o cancelamento condicionado a `status = 'agendada'` para uma
-  linha reclamada por outro worker ficar de fora. Texto editado pelo corretor nunca é reescrito e
+  imóveis perguntou. A consolidação é em dois tempos: antes do POST as candidatas só são
+  **reservadas** (`agendada` → `processando` com `reservada_para_mensagem_id` = âncora, condicionado
+  a `agendada`; é a coluna, e não o status, que distingue no banco "reservada para uma consolidação"
+  de "reclamada para envio"); só depois de o envio ser aceito a RPC `efetivar_consolidacao_contato`
+  (service role, uma transação) grava juntos âncora `enviada` + texto que saiu + `imoveis_consultados`,
+  absorvidas `cancelada`/`contato-consolidado` apontando para a âncora em `consolidada_em_mensagem_id`
+  com a reserva limpa, e as notas `wa:` (montadas no TypeScript, gravadas por `registrar_nota_imovel`
+  na mesma transação). Falha ANTES de o POST começar devolve as reservadas a `agendada`; falha DEPOIS
+  de o POST ter começado (timeout, rede, resposta perdida, RPC recusada) não prova que a mensagem não
+  saiu: as reservadas viram `erro`/`consolidacao-resultado-incerto` mantendo o vínculo, nunca voltam à
+  fila (contato duplicado) e nunca viram `contato-consolidado` (não comprovado). A varredura do claim
+  trata a reserva órfã (`processando` + reserva + 10 min) como `consolidacao-interrompida`, antes da
+  regra genérica e com a mesma lógica. A persistência registra o contato que houve, nunca o
+  pretendido; a reserva nunca significa consolidação concluída. Texto editado pelo corretor nunca é
+  reescrito e
   segue sozinho. A nota `wa:` é gravada em cada imóvel consultado. O estado de cada imóvel continua
   individual, e uma resposta do proprietário não se aplica a todos sem contexto inequívoco (isso
   ainda não é interpretado automaticamente);
