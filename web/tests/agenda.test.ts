@@ -3,7 +3,7 @@
    horários e a lista sem hora. Misturados, a visita das 10h vira mais uma
    linha no meio de sete follow-ups. */
 import { describe, expect, it } from "vitest";
-import { separarPorHorario } from "@/lib/calculo/agenda";
+import { rotuloAutomacaoLembrete, separarPorHorario } from "@/lib/calculo/agenda";
 import { fmtDiaSemana } from "@/lib/formatadores";
 import type { AgendaItem } from "@/lib/tipos";
 
@@ -72,5 +72,32 @@ describe("fmtDiaSemana", () => {
   it("sem data, string vazia (não '—') — é sufixo de um rótulo", () => {
     expect(fmtDiaSemana(null)).toBe("");
     expect(fmtDiaSemana("")).toBe("");
+  });
+});
+
+describe("rotuloAutomacaoLembrete (M5)", () => {
+  const verificacao = (over: Partial<AgendaItem>) => item({ id: "v", isVerificacaoDisponibilidade: true, title: "Verificar disponibilidade — LD-1", ...over });
+
+  it("16. lembrete concluído pela transição de disponibilidade recebe o rótulo", () => {
+    expect(rotuloAutomacaoLembrete(verificacao({ done: true, motivoConclusao: "disponibilidade-confirmada", origemConclusao: "automacao" })))
+      .toBe("Concluído por confirmação de disponibilidade");
+    // Pela RPC chamada com sessão a origem é "usuario", mas o motivo estruturado é o mesmo.
+    expect(rotuloAutomacaoLembrete(verificacao({ done: true, motivoConclusao: "disponibilidade-confirmada", origemConclusao: "usuario" })))
+      .toBe("Concluído por confirmação de disponibilidade");
+  });
+
+  it("17. lembrete criado/reposicionado pela automação recebe o rótulo de próxima verificação", () => {
+    expect(rotuloAutomacaoLembrete(verificacao({ origem: "automacao", motivoCodigo: "disponibilidade-confirmada" })))
+      .toBe("Próxima verificação programada automaticamente");
+  });
+
+  it("18. lembrete manual (concluído à mão ou criado à mão) continua sem rótulo; compromisso comum idem", () => {
+    expect(rotuloAutomacaoLembrete(verificacao({}))).toBeNull();
+    expect(rotuloAutomacaoLembrete(verificacao({ done: true }))).toBeNull();
+    expect(rotuloAutomacaoLembrete(verificacao({ done: true, origemConclusao: "usuario", motivoConclusao: null }))).toBeNull();
+    expect(rotuloAutomacaoLembrete(verificacao({ origem: "usuario", motivoCodigo: null }))).toBeNull();
+    // Visita confirmada por escrito tem outro código: não é lembrete de verificação.
+    expect(rotuloAutomacaoLembrete(item({ id: "vis", type: "Visita", origem: "evento_whatsapp", motivoCodigo: "visita_confirmada_pelo_proprietario" }))).toBeNull();
+    expect(rotuloAutomacaoLembrete(item({ id: "c", done: true, motivoConclusao: "disponibilidade-confirmada" }))).toBeNull();
   });
 });

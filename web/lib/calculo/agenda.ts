@@ -92,6 +92,25 @@ export interface VencimentoInfo {
   label: string;
 }
 
+/** Motivo estruturado que a transição de disponibilidade grava nos lembretes
+    (`reason_code` do lembrete novo, `completion_reason` do concluído). É o
+    único sinal usado: um lembrete concluído ou criado à mão continua sem rótulo. */
+export const MOTIVO_AGENDA_DISPONIBILIDADE_CONFIRMADA = "disponibilidade-confirmada";
+
+/** Rótulo operacional de um lembrete de verificação tocado pela automação;
+    `null` para qualquer outro compromisso. */
+export function rotuloAutomacaoLembrete(a: AgendaItem): string | null {
+  if (!a.isVerificacaoDisponibilidade) return null;
+  if (a.done) {
+    return a.motivoConclusao === MOTIVO_AGENDA_DISPONIBILIDADE_CONFIRMADA
+      ? "Concluído por confirmação de disponibilidade"
+      : null;
+  }
+  return a.motivoCodigo === MOTIVO_AGENDA_DISPONIBILIDADE_CONFIRMADA
+    ? "Próxima verificação programada automaticamente"
+    : null;
+}
+
 export function agendaVencimentoInfo(a: AgendaItem): VencimentoInfo | null {
   if (!isAgendaAngariacaoMonitorada(a)) return null;
   const days = daysBetween(todayISO(), a.date);

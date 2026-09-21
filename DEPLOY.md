@@ -375,6 +375,51 @@ banco (cancelando verificações pendentes de imóveis que saem do alvo), o que 
 desejado mesmo com o worker antigo. Para desligar por completo, `drop trigger
 trg_transicao_disponibilidade_imovel on imoveis`; as colunas e funções podem ficar.
 
+#### M6 — Aguardando smoke manual
+
+O smoke real do M3/M4/M5 ainda não foi executado. Ele roda **em Production, depois de M5
+publicado**, com a **conta de teste** autorizada e um **contato/número seguro controlado** (nunca um
+cliente real para provocar cenários artificiais). Nada é criado na conta real do corretor. Cada
+ramo é observado em três lugares: a tela `/mensagens` (explicação operacional), a Agenda (rótulos
+dos lembretes) e o histórico do imóvel (nota `wa:`); e conferido no banco pelos campos
+estruturados de `mensagens_agendadas`, nos lembretes e nos eventos `agendamento-*` do admin.
+
+Preparação (conta de teste): 3 imóveis do mesmo proprietário fictício com o número seguro como
+telefone, em `Publicado`, cada um com lembrete aberto de "Verificar disponibilidade"; WhatsApp da
+conta de teste conectado à Evolution.
+
+1. **Envio normal.** Na Agenda, "Agendar mensagem" num lembrete (mensagem nasce
+   `verificacao-disponibilidade` com `agenda_id`) para daqui a poucos minutos. Esperado: o número
+   seguro recebe a mensagem; `/mensagens` mostra "Enviada" sem subtexto; a nota `wa:` aparece no
+   imóvel; `enviado_em` preenchido; evento `envio` do worker sem erro.
+2. **Supressão por imóvel indisponível.** Agendar outra verificação e, antes do horário, mover o
+   imóvel para `Perdido`. Esperado: o trigger cancela na hora (`cancelamento_motivo =
+   imovel-indisponivel`, origem `automacao`), o lembrete aberto some, nada é enviado; `/mensagens`
+   mostra "Cancelada" com "Cancelada em DD/MM porque o imóvel não está mais disponível.". Variante:
+   deixar o worker chegar primeiro (imóvel já `Perdido` no envio) → mesmo motivo, origem `worker`,
+   evento `agendamento-cancelado-worker`.
+3. **Reprogramação por evidência positiva.** Agendar uma verificação e, antes do horário, registrar
+   no imóvel uma tentativa com resultado `agendou` (ou uma visita confirmada por escrito pelo
+   webhook). Esperado no envio: nada sai; a mensagem continua `agendada` com `data_envio` = E + 60
+   dias na mesma hora, `data_envio_original` preenchido; `/mensagens` mostra "Agendada" com
+   "Reprogramada de DD/MM para DD/MM após confirmação de disponibilidade."; na Agenda, o lembrete
+   antigo aparece concluído com "Concluído por confirmação de disponibilidade" e existe um lembrete
+   novo em E + 60 com "Próxima verificação programada automaticamente"; evento
+   `agendamento-reagendado`.
+4. **Consolidação multi-imóvel.** "Agendar verificações em lote" com os 3 imóveis do mesmo
+   proprietário no mesmo dia (2 min de intervalo), texto do sistema intocado. Esperado: o número
+   seguro recebe **uma** mensagem listando os 3 endereços ("indicando qual deles"); em `/mensagens`
+   a primeira mostra "Enviada" com "Perguntou pela disponibilidade de 3 imóveis (códigos)" e as
+   outras duas "Incluída em outra mensagem" com "Incluída em outra mensagem enviada ao proprietário
+   em DD/MM."; no banco, âncora com `imoveis_consultados` (3), absorvidas `cancelada` /
+   `contato-consolidado` / `consolidada_em_mensagem_id` = âncora e reserva limpa; nota `wa:` nos 3
+   imóveis; evento `agendamento-consolidado` (`absorveu 2; imoveis=3`). Zero linhas `processando`
+   e zero `reservada_para_mensagem_id` ao final.
+
+Fecha quando os quatro ramos passam sem erro em `log_eventos`, sem linha `processando` órfã e sem
+mensagem `livre` alterada. Até lá, o estado da frente é **"Aguardando smoke manual"**; depois,
+registrar aqui a data e os ids observados.
+
 ### Evolution API (envio direto de WhatsApp) — opcional
 
 O botão **"Enviar agora"** do modal de WhatsApp dispara a mensagem pela Evolution sem abrir o

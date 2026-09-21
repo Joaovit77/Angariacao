@@ -2296,6 +2296,14 @@ tbody tr:last-child td{ border-bottom:none; }
 .mensagem-status[data-status="enviada"]{ color:var(--good); background:var(--good-soft); }
 .mensagem-status[data-status="erro"]{ color:var(--bad); background:var(--bad-soft); }
 .mensagem-status[data-status="cancelada"]{ color:var(--text-dim); background:var(--bg-elev-2); }
+/* O tom operacional prevalece sobre a cor do status técnico: um "erro" de
+   envio não confirmado é atenção, não falha; uma linha incluída em outra
+   mensagem é neutra, não um cancelamento. */
+.mensagem-status[data-tom="atencao"]{ color:var(--warn); background:var(--warn-soft); }
+.mensagem-status[data-tom="falha"]{ color:var(--bad); background:var(--bad-soft); }
+.mensagem-status[data-tom="neutro"]{ color:var(--text-dim); background:var(--bg-elev-2); }
+.mensagem-status[data-tom="andamento"]{ color:var(--info); background:var(--info-soft); }
+.mensagem-explicacao{ display:block; margin-top:4px; max-width:34ch; line-height:1.35; color:var(--text-dim); }
 .mensagens-table small{ display:block; margin-top:5px; color:var(--text-dim); max-width:220px; overflow:hidden; text-overflow:ellipsis; }
 .mensagem-acoes{ display:flex; gap:6px; }
 .conversas-cabecalho{ margin-bottom:20px; }
@@ -3276,6 +3284,7 @@ legend{
 }
 /* Mesmo véu de currentColor das pílulas de status (ver .badge): o tipo
    declara a cor, o fundo cai dela. */
+.agenda-automacao-tag{ display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; color:var(--info); background:var(--info-soft); white-space:nowrap; }
 .agenda-type-tag[data-type="Retorno ao proprietário"],
 .agenda-type-tag[data-type="Visita"],
 .agenda-type-tag[data-type="Pendência"],

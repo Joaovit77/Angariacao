@@ -1274,6 +1274,26 @@ Regras permanentes:
   segue sozinho. A nota `wa:` é gravada em cada imóvel consultado. O estado de cada imóvel continua
   individual, e uma resposta do proprietário não se aplica a todos sem contexto inequívoco (isso
   ainda não é interpretado automaticamente);
+- **a tela explica, nunca decide.** `calculo/explicacaoMensagemAgendada.ts` (puro) transforma só os
+  campos estruturados de uma mensagem em linguagem operacional, e é a única fonte do que
+  `/mensagens` e o assistente dizem sobre ela: motivo humano do cancelamento (pelo usuário; imóvel
+  indisponível; imóvel excluído; disponibilidade já confirmada), reprogramação com as duas datas
+  (`data_envio_original` → `data_envio`), "Incluída em outra mensagem" para `contato-consolidado` (o
+  banco continua `cancelada`; nenhum status novo), "Perguntou pela disponibilidade de N imóveis" a
+  partir de `imoveis_consultados` (códigos só quando todos estão carregados; nunca UUID), e a
+  tradução do código de `erro` em famílias: não enviada (janela, revalidação, transição, instância,
+  telefone), falha no envio (recusa do provedor), envio não confirmado (resultado incerto,
+  consolidação ou processamento interrompidos, e qualquer código desconhecido, sempre com a
+  orientação de conferir o histórico do imóvel antes de novo contato) e enviada com registro
+  incompleto. O código técnico fica em `tecnico`, para áreas administrativas; a tela normal nunca o
+  mostra, nem cita reserva, claim, RPC ou trigger. Nada disso é ação: resultado incerto é só
+  leitura. Mensagem `livre` recebe apenas o que os próprios campos provam, sem semântica de
+  disponibilidade e sem ser escondida por causa do estado do imóvel. Na Agenda,
+  `rotuloAutomacaoLembrete` marca o lembrete concluído pela transição ("Concluído por confirmação
+  de disponibilidade", por `completion_reason`) e o criado/reposicionado por ela ("Próxima
+  verificação programada automaticamente", por `reason_code`); lembrete tocado à mão continua sem
+  rótulo. O assistente (`consultar_mensagens_agendadas`) recebe `tipo`, `situacao`, `explicacao`,
+  `imoveisConsultados`, `incluidaEmOutraMensagem` e `reprogramada` pelo mesmo módulo e só explica;
 - a central de mensagens lista agendamentos ativos (`agendada` ou `processando`) por `imovel_id`
   e sempre filtra a leitura pelo `user_id` autenticado; Realtime atualiza a lista e uma releitura
   periódica cobre ambientes em que a tabela ainda não foi publicada no canal;

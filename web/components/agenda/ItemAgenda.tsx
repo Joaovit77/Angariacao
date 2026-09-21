@@ -12,7 +12,7 @@
    simples "done": abre o modal que registra o contato e encadeia o
    próximo lembrete; os demais alternam done direto.
    ================================================================ */
-import { agendaTypeIcon, agendaVencimentoInfo, isAgendaAngariacaoVencida } from "@/lib/calculo/agenda";
+import { agendaTypeIcon, agendaVencimentoInfo, isAgendaAngariacaoVencida, rotuloAutomacaoLembrete } from "@/lib/calculo/agenda";
 import { textoBaseDisponibilidade, textoFollowUp } from "@/lib/calculo/followup";
 import { enderecoComUnidade } from "@/lib/calculo/whatsapp";
 import { todayISO } from "@/lib/datas";
@@ -38,6 +38,9 @@ export default function ItemAgenda({
   const dueInfo = agendaVencimentoInfo(a);
   const typeIcon = agendaTypeIcon(a.type, a.isVerificacaoDisponibilidade);
   const canSendWhatsapp = imovel && isAgendaAngariacaoVencida(a);
+  // Lembrete concluído ou reposicionado pela transição de disponibilidade:
+  // o corretor precisa saber que não foi ele quem mexeu.
+  const rotuloAutomacao = rotuloAutomacaoLembrete(a);
 
   // Concluir uma verificação de disponibilidade não é um simples "done":
   // abre o modal que registra o contato e encadeia o próximo lembrete.
@@ -109,6 +112,11 @@ export default function ItemAgenda({
           {a.type}
         </span>
         {codigo && !tituloJaTemCodigo && <span className="agenda-item-cod">{codigo}</span>}
+        {rotuloAutomacao && (
+          <span className="agenda-automacao-tag" title={rotuloAutomacao}>
+            {rotuloAutomacao}
+          </span>
+        )}
         {dueInfo && (
           <span className={`agenda-due-chip ${dueInfo.tone}`}>
             <span className="agenda-due-dot"></span>

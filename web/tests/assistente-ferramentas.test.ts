@@ -357,6 +357,60 @@ describe("mensagens agendadas somente leitura", () => {
   });
 });
 
+describe("mensagens agendadas — explicação operacional (M5)", () => {
+  const args = { data_inicio: null, data_fim: null, status: null, somente_futuras: false, ordem: "asc", limite: 20 };
+  const hoje = `${todayISO()}T15:00:00.000Z`;
+
+  it("19/20. devolve tipo, situação e motivo humano, sem código cru", async () => {
+    const fake = new SupabaseFake({ mensagens_agendadas: [
+      { ...mensagemAgendada("livre", "user-1", hoje), tipo: "livre" },
+      { ...mensagemAgendada("cancelada", "user-1", hoje, "cancelada"), tipo: "verificacao-disponibilidade", cancelamento_motivo: "imovel-indisponivel", cancelamento_origem: "worker", cancelada_em: "2026-09-26T11:00:00.000Z" },
+      { ...mensagemAgendada("incerta", "user-1", hoje, "erro"), tipo: "verificacao-disponibilidade", erro: "consolidacao-resultado-incerto", reservada_para_mensagem_id: "ancora" },
+    ] });
+    const resultado = await executarFerramenta("consultar_mensagens_agendadas", args, fake as unknown as SupabaseClient, "user-1", contexto);
+    const itens = (resultado.dados as { itens: Array<Record<string, unknown>> }).itens;
+    expect(itens.map((i) => [i.id, i.tipo, i.situacao])).toEqual([
+      ["livre", "livre", "Agendada"],
+      ["cancelada", "verificacao-disponibilidade", "Cancelada"],
+      ["incerta", "verificacao-disponibilidade", "Envio não confirmado"],
+    ]);
+    expect(itens[1].explicacao).toBe("Cancelada em 26/09/2026 porque o imóvel não está mais disponível.");
+    expect(itens[2].explicacao).toBe("Não foi possível confirmar se a mensagem foi enviada. Confira o histórico do imóvel antes de realizar novo contato.");
+    const serializado = JSON.stringify(resultado.dados);
+    expect(serializado).not.toContain("consolidacao-resultado-incerto");
+    expect(serializado).not.toContain("reservada_para");
+    expect(serializado).not.toContain("43999999999");
+  });
+
+  it("21. representa consolidação: âncora com quantidade de imóveis e absorvida como incluída em outra mensagem", async () => {
+    const fake = new SupabaseFake({ mensagens_agendadas: [
+      { ...mensagemAgendada("ancora", "user-1", hoje, "enviada"), tipo: "verificacao-disponibilidade", imoveis_consultados: ["i1", "i2", "i3"] },
+      { ...mensagemAgendada("absorvida", "user-1", hoje, "cancelada"), tipo: "verificacao-disponibilidade", cancelamento_motivo: "contato-consolidado", cancelamento_origem: "worker", cancelada_em: hoje, consolidada_em_mensagem_id: "ancora" },
+      { ...mensagemAgendada("reprogramada", "user-1", "2026-10-31T11:00:00.000Z"), tipo: "verificacao-disponibilidade", data_envio_original: "2026-09-01T11:00:00.000Z", reagendada_em: "2026-09-01T11:00:05.000Z", reagendamento_motivo: "disponibilidade-confirmada" },
+    ] });
+    const resultado = await executarFerramenta("consultar_mensagens_agendadas", args, fake as unknown as SupabaseClient, "user-1", contexto);
+    const itens = (resultado.dados as { itens: Array<Record<string, unknown>> }).itens;
+    const porId = Object.fromEntries(itens.map((i) => [i.id as string, i]));
+    expect(porId.ancora).toMatchObject({ situacao: "Enviada", imoveisConsultados: 3, explicacao: "Perguntou pela disponibilidade de 3 imóveis.", incluidaEmOutraMensagem: false });
+    expect(porId.absorvida).toMatchObject({ situacao: "Incluída em outra mensagem", incluidaEmOutraMensagem: true, status: "cancelada" });
+    expect(String(porId.absorvida.explicacao)).toContain("Incluída em outra mensagem enviada ao proprietário");
+    expect(porId.reprogramada).toMatchObject({ situacao: "Agendada", reprogramada: { de: "01/09/2026", para: "31/10/2026" } });
+    expect(resultado.bloco).toMatchObject({ tipo: "mensagens_agendadas" });
+    // O vínculo com a âncora fica no banco; o assistente recebe só a leitura humana.
+    expect(porId.absorvida).not.toHaveProperty("consolidadaEmMensagemId");
+    expect(JSON.stringify(porId.absorvida)).not.toContain("consolidada");
+  });
+
+  it("22. mensagem livre não recebe interpretação de verificação, mesmo com texto parecido", async () => {
+    const fake = new SupabaseFake({ mensagens_agendadas: [
+      { ...mensagemAgendada("legada", "user-1", hoje), tipo: "livre", mensagem: "Passando para confirmar se o seu imóvel continua disponível" },
+    ] });
+    const resultado = await executarFerramenta("consultar_mensagens_agendadas", args, fake as unknown as SupabaseClient, "user-1", contexto);
+    const [item] = (resultado.dados as { itens: Array<Record<string, unknown>> }).itens;
+    expect(item).toMatchObject({ tipo: "livre", situacao: "Agendada", explicacao: "", imoveisConsultados: null, incluidaEmOutraMensagem: false, reprogramada: null });
+  });
+});
+
 describe("follow-up contextual", () => {
   const elegivel = imovel("imovel-com-followup", "user-1", "LD-10", { status: "Sem resposta", proprietario_telefone: "43999999999" });
   const semFollowup = imovel("imovel-sem-followup", "user-1", "LD-225", { status: "Novo contato", proprietario_telefone: "43988888888", tentativas: [] });

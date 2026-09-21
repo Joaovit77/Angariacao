@@ -216,6 +216,18 @@ export interface ItemMensagemAgendadaAssistente {
   resumoMensagem: string;
   dataEnvio: string;
   status: string;
+  /** `livre` ou `verificacao-disponibilidade`; só a segunda tem regras automáticas. */
+  tipo: string;
+  /** Rótulo operacional do estado (ex.: "Incluída em outra mensagem"). */
+  situacao: string;
+  /** Explicação humana derivada só de campos estruturados; vazia quando não há o que explicar. */
+  explicacao: string;
+  /** Quantos imóveis a mensagem consultou; `null` quando o dado não existe. */
+  imoveisConsultados: number | null;
+  /** Não foi enviada separadamente: saiu dentro de outra mensagem ao proprietário. */
+  incluidaEmOutraMensagem: boolean;
+  /** Reprogramação automática comprovada (datas civis), quando houve. */
+  reprogramada: { de: string; para: string } | null;
 }
 
 export interface ItemConversaRespondidaAssistente {
@@ -267,7 +279,7 @@ export type ResultadoHistoricoAssistente =
       marcoEm?: string | null;
     }> }
   | { tipo: "agenda"; itens: Array<{ id: string; titulo: string; data: string; imovelId?: string | null }> }
-  | { tipo: "mensagens_agendadas"; itens: Array<{ id: string; nomeProprietario: string; dataEnvio: string; status: string; imovelId?: string | null }> }
+  | { tipo: "mensagens_agendadas"; itens: Array<{ id: string; nomeProprietario: string; dataEnvio: string; status: string; imovelId?: string | null; tipo?: string; situacao?: string }> }
   | { tipo: "conversas_respondidas"; itens: Array<{ imovelId: string; codigo: string; proprietario: string; ultimaRespostaEm: string; aguardandoCorretor: boolean }> }
   | { tipo: "metricas"; itens: Array<{ rotulo: string; valor: string }> };
 

@@ -1,23 +1,25 @@
 "use client";
 
+import { useMemo } from "react";
+import { explicarMensagemAgendada } from "@/lib/calculo/explicacaoMensagemAgendada";
 import { agoraISOString, fmtDataHoraIso } from "@/lib/datas";
-import type { MensagemAgendada, StatusMensagemAgendada } from "@/lib/mensagensAgendadas";
+import type { MensagemAgendada } from "@/lib/mensagensAgendadas";
 import { getSupabase } from "@/lib/persistencia/supabase";
+import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useMensagensAgendadas } from "@/lib/useMensagensAgendadas";
 import { useUiModal } from "@/lib/uiModal";
 
-const ROTULOS: Record<StatusMensagemAgendada, string> = {
-  agendada: "Agendada",
-  processando: "Processando",
-  enviada: "Enviada",
-  erro: "Erro",
-  cancelada: "Cancelada",
-};
-
 export default function MensagensAgendadasView({ incorporada = false }: { incorporada?: boolean }) {
   const abrirModal = useUiModal((estado) => estado.abrirModal);
   const { itens, carregando, erro, recarregar } = useMensagensAgendadas();
+  // Códigos dos imóveis já carregados na conta, para a mensagem consolidada
+  // dizer por quais imóveis perguntou sem consulta extra e sem UUID.
+  const imoveis = useAppStore((s) => s.imoveis);
+  const codigoDoImovel = useMemo(() => {
+    const porId = new Map(imoveis.map((imovel) => [imovel.id, imovel.codigo?.trim() || null]));
+    return (id: string) => porId.get(id) ?? null;
+  }, [imoveis]);
 
   async function cancelar(item: MensagemAgendada) {
     if (!confirm("Cancelar o envio desta mensagem?")) return;
@@ -82,7 +84,13 @@ export default function MensagensAgendadasView({ incorporada = false }: { incorp
               </tr>
             </thead>
             <tbody>
-              {itens.map((item) => (
+              {itens.map((item) => {
+                // O que aconteceu com a mensagem, em linguagem operacional:
+                // motivo de cancelamento, reprogramação, inclusão em outra
+                // mensagem, imóveis consultados ou o que o erro significa.
+                // O código técnico nunca chega à tela.
+                const explicacao = explicarMensagemAgendada(item, { codigoDoImovel });
+                return (
                 <tr key={item.id}>
                   <td><strong>{item.nomeProprietario}</strong></td>
                   <td>{item.telefone}</td>
@@ -92,8 +100,10 @@ export default function MensagensAgendadasView({ incorporada = false }: { incorp
                     {item.enviadoEm ? <small>Enviada em {fmtDataHoraIso(item.enviadoEm)}</small> : null}
                   </td>
                   <td>
-                    <span className="mensagem-status" data-status={item.status}>{ROTULOS[item.status]}</span>
-                    {item.erro ? <small title={item.erro}>{item.erro}</small> : null}
+                    <span className="mensagem-status" data-status={item.status} data-tom={explicacao.tom}>{explicacao.rotulo}</span>
+                    {explicacao.detalhes.map((detalhe) => (
+                      <small key={detalhe} className="mensagem-explicacao">{detalhe}</small>
+                    ))}
                   </td>
                   <td>
                     {item.status === "agendada" ? (
@@ -110,7 +120,8 @@ export default function MensagensAgendadasView({ incorporada = false }: { incorp
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

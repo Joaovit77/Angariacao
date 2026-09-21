@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fromDbAgenda, fromDbImovel, type DbAgendaRow, type DbImovelRow } from "@/lib/persistencia/mapeadores";
+import { explicarMensagemAgendada } from "@/lib/calculo/explicacaoMensagemAgendada";
+import { fromDbMensagem, type DbMensagemAgendada } from "@/lib/mensagensAgendadas";
 import {
   dataAngariadoEfetiva,
   dataLocadoEfetiva,
@@ -571,7 +573,10 @@ export async function executarFerramenta(
   if (nome === "consultar_mensagens_agendadas") {
     let q = supabase
       .from("mensagens_agendadas")
-      .select("id,imovel_id,nome_proprietario,mensagem,data_envio,status", { count: "exact" })
+      .select(
+        "id,imovel_id,nome_proprietario,mensagem,data_envio,status,tipo,erro,cancelamento_motivo,cancelamento_origem,cancelada_em,reagendada_em,reagendamento_motivo,data_envio_original,imoveis_consultados,consolidada_em_mensagem_id,reservada_para_mensagem_id",
+        { count: "exact" },
+      )
       .eq("user_id", userId);
     const dataInicio = texto(args.data_inicio);
     const dataFim = texto(args.data_fim);
@@ -592,14 +597,27 @@ export async function executarFerramenta(
     q = q.order("data_envio", { ascending: args.ordem !== "desc" });
     const { data, error, count } = await q.limit(limiteConformeIntencao(perguntaUsuario, args.limite, "mensagens"));
     if (error) throw new Error(`Falha ao consultar mensagens agendadas: ${error.message}`);
-    const itens = (data || []).map((item) => ({
-      id: item.id,
-      imovelId: item.imovel_id,
-      nomeProprietario: item.nome_proprietario || "Proprietario nao informado",
-      resumoMensagem: String(item.mensagem || "").trim().slice(0, 160),
-      dataEnvio: item.data_envio,
-      status: item.status,
-    }));
+    // O que aconteceu com cada mensagem vem dos campos estruturados, pelo
+    // mesmo módulo que a tela usa; o assistente explica, nunca infere pelo
+    // texto nem executa nada.
+    const itens = (data || []).map((item) => {
+      const mensagem = fromDbMensagem(item as DbMensagemAgendada);
+      const explicacao = explicarMensagemAgendada(mensagem);
+      return {
+        id: item.id,
+        imovelId: item.imovel_id,
+        nomeProprietario: item.nome_proprietario || "Proprietario nao informado",
+        resumoMensagem: String(item.mensagem || "").trim().slice(0, 160),
+        dataEnvio: item.data_envio,
+        status: item.status,
+        tipo: mensagem.tipo,
+        situacao: explicacao.rotulo,
+        explicacao: explicacao.detalhes.join(" "),
+        imoveisConsultados: explicacao.imoveisConsultados,
+        incluidaEmOutraMensagem: explicacao.incluidaEmOutraMensagem,
+        reprogramada: explicacao.reprogramada,
+      };
+    });
     return {
       dados: { totalEncontrado: count ?? itens.length, itensRetornados: itens.length, itens },
       bloco: itens.length ? { tipo: "mensagens_agendadas", titulo: "Mensagens agendadas", itens } : undefined,
