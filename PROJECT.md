@@ -1333,6 +1333,9 @@ tipo explícito e tradução consistente entre banco e domínio — nos dados ce
 `toDb*`/`fromDb*` em `web/lib/persistencia/mapeadores.ts`; features isoladas podem ter adaptadores
 tipados próprios. Tabelas que guardam secrets (`whatsapp_instancias`, `google_contas`, `admins`) não
 ganham políticas de cliente apenas para facilitar uma tela: são acessadas por rotas autenticadas.
+`imoveis (id, user_id)` é único (`imoveis_id_user_id_key`, redundante com a PK) para que tabelas
+filhas possam declarar FK composta por tenant, `references imoveis (id, user_id)`, como já fazem
+`agenda` e `mensagens_agendadas`; nenhuma FK depende dela ainda.
 
 **A produção carrega uma rede extra que o repositório não consegue reproduzir.** O banco tem uma
 event trigger legada, `ensure_rls`, que liga RLS sozinha em qualquer `create table` no `public`.
@@ -2609,7 +2612,10 @@ apresentação, nunca de rename técnico.
 **Entidade separada do Pipeline.** O Garimpo mora em `imoveis_identificados` (mais
 `_avistamentos`, `_fotos`, `_classificacoes`, `_etiquetas`); o Pipeline continua em `imoveis`, que
 não ganhou coluna. O vínculo é o ponteiro `imoveis_identificados.imovel_id` (`on delete set null`:
-apagar a oportunidade preserva a memória). Um identificado existe sem proprietário, sem telefone,
+apagar a oportunidade preserva a memória). O teste `prospeccao-fronteira` congela os cinco arquivos
+do núcleo (`store.ts`, `carregarEstado.ts`, `tipos.ts`, `mapeadores.ts`, `motor.ts`) por pin de
+conteúdo (SHA-256 com CRLF normalizado), não por commit; um pin só muda no mesmo commit que altera o
+arquivo, com a justificativa na mensagem. Um identificado existe sem proprietário, sem telefone,
 sem contato e sem Pipeline, por tempo indefinido, sendo enriquecido. O Garimpo não é um segundo
 Pipeline: `situacao` é `identificado | investigando | promovendo | promovido | descartado | fundido`
 (CHECK no banco; `investigando` está reservado no CHECK e nenhum código o escreve hoje), não há

@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -608,17 +608,30 @@ describe("isolamento arquitetural do C3", () => {
   });
 
   it("não altera os cinco arquivos centrais protegidos pelo checkpoint", () => {
-    const base = "0ff1120ab7f58f1077dad80d6a1e6c119c1c0c40";
-    for (const arquivo of [
-      "web/lib/store.ts",
-      "web/lib/persistencia/carregarEstado.ts",
-      "web/lib/tipos.ts",
-      "web/lib/persistencia/mapeadores.ts",
-      "web/lib/calculo/motor.ts",
-    ]) {
-      const naBase = execFileSync("git", ["show", `${base}:${arquivo}`], { encoding: "utf8" });
-      const atual = readFileSync(resolve("..", arquivo), "utf8");
-      expect(atual.replace(/\r\n/g, "\n")).toBe(naBase.replace(/\r\n/g, "\n"));
+    // Pins de conteúdo (SHA-256 do arquivo com CRLF normalizado para LF),
+    // calculados sobre o conteúdo idêntico ao checkpoint 0ff1120 (C2f do
+    // Garimpo). Substituem o `git show <commit>` antigo, que dependia do
+    // histórico estar presente (falha em clone raso) e obrigava um segundo
+    // commit para mudar a base. Regra: um pin só muda no MESMO commit que
+    // altera o arquivo, e a mensagem do commit explica a mudança. Não existe
+    // script que regenere pins. O Garimpo nunca altera estes arquivos.
+    const pins: Record<string, string> = {
+      "lib/store.ts": "36b998f65e37e754186962b907ebd29cba181e30ae11f87a94cca651013572c0",
+      "lib/persistencia/carregarEstado.ts": "6fb0bc6923f504b793b240074b6acd08a3b119191ed0f70e7e361a0ce59b3299",
+      "lib/tipos.ts": "9cbc5224bc8d2c4150d6c18db710f15813db1f9ae90e8bd75639b0cdcde723dd",
+      "lib/persistencia/mapeadores.ts": "13f4f50b93c8614bbaf8ab1c9c6abb91a011d1c821fd5f6b28af1050ae7f3d69",
+      "lib/calculo/motor.ts": "a5586f7baaf79964dbfb466388eee0372f649bc9c40f3fd9ab7f5ebd2640e030",
+    };
+    const sha256 = (texto: string) =>
+      createHash("sha256").update(texto.replace(/\r\n/g, "\n")).digest("hex");
+
+    expect(Object.keys(pins)).toHaveLength(5);
+    for (const [arquivo, esperado] of Object.entries(pins)) {
+      const observado = sha256(readFileSync(resolve(arquivo), "utf8"));
+      expect(
+        observado,
+        `${arquivo} mudou (sha256 observado ${observado}); atualize o pin no MESMO commit e explique por quê`,
+      ).toBe(esperado);
     }
   });
 });
