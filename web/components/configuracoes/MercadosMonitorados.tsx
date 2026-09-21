@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useSessao } from "@/components/SessaoProvider";
 import { UFS_BRASIL } from "@/lib/calculo/geografia";
 import type { MercadoMonitorado } from "@/lib/calculo/mercadosMonitorados";
+import {
+  aplicarCidadePadraoInicial,
+  type ResolucaoCidadePadrao,
+} from "@/lib/configuracaoUsuario";
+import { salvarCidadePadraoDaConta } from "@/lib/persistencia/cidadePadrao";
 import {
   carregarMercadosMonitorados,
   criarMercadoMonitorado,
@@ -10,11 +16,24 @@ import {
   excluirMercadoMonitorado,
 } from "@/lib/persistencia/mercadosMonitorados";
 import { toast } from "@/lib/toast";
+import { useCidadePadraoDaConta } from "@/lib/useCidadePadraoDaConta";
 
 export default function MercadosMonitorados() {
+  const { usuario } = useSessao();
+  const cidadePadraoCarregada = useCidadePadraoDaConta(usuario?.id);
+  const [cidadePadraoSalva, setCidadePadraoSalva] = useState<{
+    userId: string;
+    resolucao: ResolucaoCidadePadrao;
+  } | null>(null);
+  const cidadePadrao =
+    cidadePadraoSalva && cidadePadraoSalva.userId === usuario?.id
+      ? cidadePadraoSalva.resolucao
+      : cidadePadraoCarregada;
   const [mercados, setMercados] = useState<MercadoMonitorado[]>([]);
   const [cidade, setCidade] = useState("");
   const [estado, setEstado] = useState("");
+  const [usarComoPadrao, setUsarComoPadrao] = useState(false);
+  const cidadeEstadoProtegidos = useRef(false);
   const [carregando, setCarregando] = useState(true);
   const [ocupado, setOcupado] = useState<string | null>(null);
 
@@ -35,9 +54,25 @@ export default function MercadosMonitorados() {
     };
   }, []);
 
+  useEffect(() => {
+    const preenchido = aplicarCidadePadraoInicial(
+      { cidade, estado },
+      cidadePadrao,
+      cidadeEstadoProtegidos.current,
+    );
+    if (preenchido.cidade === cidade && preenchido.estado === estado) return;
+    setCidade(preenchido.cidade);
+    setEstado(preenchido.estado);
+    setUsarComoPadrao(cidadePadrao.origem === "configurada");
+  }, [cidade, cidadePadrao, estado]);
+
   async function adicionar(evento: FormEvent) {
     evento.preventDefault();
     if (ocupado) return;
+    if (usarComoPadrao && !usuario?.id) {
+      toast("Sessão inválida para definir a cidade padrão.", "error");
+      return;
+    }
     setOcupado("novo");
     try {
       const criado = await criarMercadoMonitorado({
@@ -47,9 +82,41 @@ export default function MercadosMonitorados() {
         segmento: "residencial",
       });
       setMercados((atuais) => [criado, ...atuais]);
-      setCidade("");
-      setEstado("");
-      toast("Mercado configurado. Nenhuma coleta foi iniciada.");
+
+      let proximaCidadePadrao = cidadePadrao;
+      let erroCidadePadrao: unknown = null;
+      if (usarComoPadrao && usuario?.id) {
+        try {
+          proximaCidadePadrao = await salvarCidadePadraoDaConta(
+            usuario.id,
+            criado.cidade,
+            criado.estado,
+          );
+          setCidadePadraoSalva({ userId: usuario.id, resolucao: proximaCidadePadrao });
+        } catch (erro) {
+          erroCidadePadrao = erro;
+        }
+      }
+
+      cidadeEstadoProtegidos.current = false;
+      const proximo = aplicarCidadePadraoInicial(
+        { cidade: "", estado: "" },
+        proximaCidadePadrao,
+      );
+      setCidade(proximo.cidade);
+      setEstado(proximo.estado);
+      setUsarComoPadrao(proximaCidadePadrao.origem === "configurada");
+
+      if (erroCidadePadrao) {
+        const detalhe = erroCidadePadrao instanceof Error
+          ? erroCidadePadrao.message
+          : "Não foi possível salvar a preferência.";
+        toast(`Mercado configurado, mas a cidade padrão não foi alterada. ${detalhe}`, "error");
+      } else if (usarComoPadrao) {
+        toast("Mercado configurado e cidade definida como padrão. Nenhuma coleta foi iniciada.");
+      } else {
+        toast("Mercado configurado. Nenhuma coleta foi iniciada.");
+      }
     } catch (erro) {
       toast(erro instanceof Error ? erro.message : "Não foi possível adicionar o mercado.", "error");
     } finally {
@@ -102,14 +169,25 @@ export default function MercadosMonitorados() {
             <input
               value={cidade}
               maxLength={100}
-              onChange={(evento) => setCidade(evento.target.value)}
+              onChange={(evento) => {
+                cidadeEstadoProtegidos.current = true;
+                setUsarComoPadrao(false);
+                setCidade(evento.target.value);
+              }}
               placeholder="Ex.: Campinas"
               autoComplete="address-level2"
             />
           </label>
           <label>
             UF
-            <select value={estado} onChange={(evento) => setEstado(evento.target.value)}>
+            <select
+              value={estado}
+              onChange={(evento) => {
+                cidadeEstadoProtegidos.current = true;
+                setUsarComoPadrao(false);
+                setEstado(evento.target.value);
+              }}
+            >
               <option value="">Selecione</option>
               {UFS_BRASIL.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
             </select>
@@ -125,6 +203,15 @@ export default function MercadosMonitorados() {
             <select value="residencial" disabled aria-describedby="mercados-capacidade">
               <option value="residencial">Residencial</option>
             </select>
+          </label>
+          <label className="mercados-padrao-check">
+            <input
+              type="checkbox"
+              checked={usarComoPadrao}
+              disabled={ocupado !== null || !cidade.trim() || !estado}
+              onChange={(evento) => setUsarComoPadrao(evento.target.checked)}
+            />
+            Usar esta cidade como padrão nos cadastros
           </label>
           <button
             type="submit"

@@ -5586,6 +5586,14 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
   color:var(--text-dim); font-size:11.5px; font-weight:700;
 }
 .mercados-form input,.mercados-form select{ margin-top:6px; }
+.mercados-form .mercados-padrao-check{
+  display:flex; grid-column:1 / -1; align-items:center; gap:8px; margin:0;
+  color:var(--text-dim); font-size:13px; font-weight:500; cursor:pointer;
+}
+.mercados-form .mercados-padrao-check input{
+  flex:none; width:auto; margin:0; accent-color:var(--accent);
+}
+.mercados-form .mercados-padrao-check input:disabled{ cursor:not-allowed; }
 .mercados-form .btn{ grid-column:1 / -1; justify-self:start; }
 .mercados-form select:disabled{ opacity:.72; cursor:not-allowed; }
 .mercados-capacidade{ margin:0; color:var(--text-faint); font-size:11.5px; line-height:1.55; }

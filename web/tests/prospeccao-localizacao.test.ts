@@ -31,6 +31,7 @@ const cenario = vi.hoisted(() => ({
   },
   fecharModal: vi.fn(),
   viaCep: vi.fn(),
+  cidadePadrao: vi.fn(),
 }));
 
 vi.mock("@/lib/useProspeccao", () => {
@@ -44,6 +45,9 @@ vi.mock("@/lib/uiModal", () => ({
 }));
 vi.mock("@/components/SessaoProvider", () => ({
   useSessao: () => ({ estado: "auth", usuario: { id: "usuario-1" } }),
+}));
+vi.mock("@/lib/persistencia/cidadePadrao", () => ({
+  carregarCidadePadraoDaConta: (...argumentos: unknown[]) => cenario.cidadePadrao(...argumentos),
 }));
 vi.mock("@/lib/persistencia/supabase", () => ({
   getSupabase: () => ({ storage: { from: () => ({ createSignedUrl: async () => ({ data: null, error: null }) }) } }),
@@ -120,6 +124,11 @@ beforeEach(() => {
   cenario.estado.adicionarAvistamento.mockResolvedValue(true);
   // mockReset: uma fila de Once que um teste não consumiu não pode vazar para o próximo.
   cenario.viaCep.mockReset().mockResolvedValue([]);
+  cenario.cidadePadrao.mockReset().mockResolvedValue({
+    origem: "configurada",
+    cidade: "Londrina",
+    uf: "PR",
+  });
 });
 afterEach(cleanup);
 
@@ -372,6 +381,39 @@ describe("C6 — endereço rápido pelo precedente EnderecoAutocompleteViaCep", 
     expect((screen.getByLabelText("CEP") as HTMLInputElement).value).toBe("86020-000");
   });
 
+  it("endereço selecionado em outra cidade vence o default inicial da conta", async () => {
+    cenario.viaCep.mockResolvedValue([{
+      cep: "86181-000",
+      logradouro: "Rua Espanha",
+      bairro: "Centro",
+      localidade: "Cambé",
+      uf: "PR",
+    }]);
+    abrirModal();
+    await waitFor(() => expect((screen.getByLabelText("Cidade") as HTMLInputElement).value).toBe("Londrina"));
+
+    preencher("Logradouro", "Rua Espanha");
+    fireEvent.click(await screen.findByRole("option", { name: /Rua Espanha/ }, { timeout: 3000 }));
+
+    expect((screen.getByLabelText("Cidade") as HTMLInputElement).value).toBe("Cambé");
+    expect((screen.getByLabelText("Estado") as HTMLInputElement).value).toBe("PR");
+  });
+
+  it("carregamento tardio não sobrescreve cidade e UF já alteradas pelo corretor", async () => {
+    let concluir!: (valor: { origem: "inferida"; cidade: string; uf: string }) => void;
+    cenario.cidadePadrao.mockReset().mockImplementationOnce(() => new Promise((resolve) => {
+      concluir = resolve;
+    }));
+    abrirModal();
+    preencher("Cidade", "Ibiporã");
+    preencher("Estado", "PR");
+    concluir({ origem: "inferida", cidade: "Londrina", uf: "PR" });
+
+    await waitFor(() => expect(cenario.cidadePadrao).toHaveBeenCalledWith("usuario-1"));
+    expect((screen.getByLabelText("Cidade") as HTMLInputElement).value).toBe("Ibiporã");
+    expect((screen.getByLabelText("Estado") as HTMLInputElement).value).toBe("PR");
+  });
+
   it("escolher a sugestão leva o mapa ao endereço na hora; com GPS longe, o padrão vira o endereço e o corretor pode inverter", async () => {
     cenario.estado.itens = [{ id: "x", cidade: "Londrina", estado: "PR" }];
     cenario.viaCep.mockResolvedValue([{ cep: "86039-090", logradouro: "Avenida Santos Dumont", bairro: "Boa Vista", localidade: "Londrina", uf: "PR" }]);
@@ -432,6 +474,11 @@ describe("C6 — endereço rápido pelo precedente EnderecoAutocompleteViaCep", 
   });
 
   it("sem registro anterior, cidade e UF ficam a cargo do corretor e a pesquisa espera por eles", async () => {
+    cenario.cidadePadrao.mockReset().mockResolvedValueOnce({
+      origem: "nenhuma",
+      cidade: null,
+      uf: null,
+    });
     abrirModal();
     await screen.findByText(/Este aparelho não oferece localização/);
     expect((screen.getByLabelText("Cidade") as HTMLInputElement).value).toBe("");

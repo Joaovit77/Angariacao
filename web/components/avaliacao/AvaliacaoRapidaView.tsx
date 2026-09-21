@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSessao } from "@/components/SessaoProvider";
 import ComparavelHistorico from "@/components/avaliacao/ComparavelHistorico";
 import EnderecoAutocompleteViaCep, {
@@ -40,6 +40,8 @@ import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import type { Imovel } from "@/lib/tipos";
 import { normalizarUf, UFS_BRASIL, ufValida } from "@/lib/calculo/geografia";
+import { aplicarCidadePadraoInicial } from "@/lib/configuracaoUsuario";
+import { useCidadePadraoDaConta } from "@/lib/useCidadePadraoDaConta";
 
 interface FormularioAvaliacao {
   imovelId: string;
@@ -218,8 +220,10 @@ export default function AvaliacaoRapidaView({
   referenciaInicial?: ReferenciaContextoAvaliacao | null;
 }) {
   const { usuario } = useSessao();
+  const cidadePadrao = useCidadePadraoDaConta(usuario?.id);
   const imoveis = useAppStore((estado) => estado.imoveis);
   const [formulario, setFormulario] = useState(() => formularioInicial(imoveis, imovelIdInicial));
+  const cidadeEstadoProtegidos = useRef(false);
   const [refinamentoAberto, setRefinamentoAberto] = useState(false);
   const [processando, setProcessando] = useState(false);
   const [fase, setFase] = useState("");
@@ -261,7 +265,17 @@ export default function AvaliacaoRapidaView({
     return () => controle.abort();
   }, [referenciaInicial]);
 
+  useEffect(() => {
+    if (carregandoContexto) return;
+    setFormulario((atual) => aplicarCidadePadraoInicial(
+      atual,
+      cidadePadrao,
+      cidadeEstadoProtegidos.current,
+    ));
+  }, [carregandoContexto, cidadePadrao]);
+
   function atualizar<K extends keyof FormularioAvaliacao>(campo: K, valor: FormularioAvaliacao[K]) {
+    if (campo === "cidade" || campo === "estado") cidadeEstadoProtegidos.current = true;
     setFormulario((atual) => ({ ...atual, [campo]: valor }));
   }
 
@@ -280,12 +294,13 @@ export default function AvaliacaoRapidaView({
     setOrigemContexto(null);
     setAvisoContexto(null);
     const selecionado = imoveis.find((item) => item.id === id);
+    cidadeEstadoProtegidos.current = false;
     if (!selecionado) {
-      setFormulario((atual) => ({
+      setFormulario((atual) => aplicarCidadePadraoInicial({
         ...FORMULARIO_VAZIO,
         finalidade: atual.finalidade,
         valorProprietario: atual.valorProprietario,
-      }));
+      }, cidadePadrao));
       return;
     }
     setFormulario((atual) => ({
@@ -295,6 +310,7 @@ export default function AvaliacaoRapidaView({
   }
 
   function aplicarEndereco(selecionado: EnderecoViaCepSelecionado) {
+    if (selecionado.cidade || selecionado.estado) cidadeEstadoProtegidos.current = true;
     setFormulario((atual) => ({
       ...atual,
       endereco: selecionado.endereco || atual.endereco,

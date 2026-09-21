@@ -9,9 +9,9 @@
    confirma/corrige na conversa; depois o corretor edita e confirma
    pelo modal completo — o que limpa a marca de pré-cadastro.
    ================================================================ */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { captadorPadrao, useSessao } from "@/components/SessaoProvider";
-import { origensDoUsuario } from "@/lib/configuracaoUsuario";
+import { aplicarCidadePadraoInicial, origensDoUsuario } from "@/lib/configuracaoUsuario";
 import EnderecoAutocompleteViaCep, {
   type EnderecoViaCepSelecionado,
 } from "@/components/formularios/EnderecoAutocompleteViaCep";
@@ -27,6 +27,7 @@ import { nomeProprio } from "@/lib/normalizacao";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
+import { useCidadePadraoDaConta } from "@/lib/useCidadePadraoDaConta";
 import type { PreCadastroInicial } from "@/lib/uiModal";
 import type { Imovel, StatusHistoryEntry } from "@/lib/tipos";
 
@@ -39,6 +40,7 @@ export default function ModalPreCadastro({ inicial }: { inicial?: PreCadastroIni
   const abrirModal = useUiModal((s) => s.abrirModal);
   const fecharModal = useUiModal((s) => s.fecharModal);
   const { usuario } = useSessao();
+  const cidadePadrao = useCidadePadraoDaConta(usuario?.id);
   const imoveis = useAppStore((s) => s.imoveis);
   const origensExtras = useAppStore((s) => s.config.origensExtras);
   const iaDisponivel = useAppStore((s) => s.iaDisponivel);
@@ -58,6 +60,7 @@ export default function ModalPreCadastro({ inicial }: { inicial?: PreCadastroIni
   const [bairro, setBairro] = useState(inicial?.bairro || "");
   const [cidade, setCidade] = useState(inicial?.cidade || "");
   const [estado, setEstado] = useState(inicial?.estado || "");
+  const cidadeEstadoProtegidos = useRef(false);
   const [proprietarioNome, setProprietarioNome] = useState("");
   const [proprietarioTelefone, setProprietarioTelefone] = useState("");
   // Sem padrão, pela mesma razão do ModalImovel: chutar a origem envenena o
@@ -91,6 +94,17 @@ export default function ModalPreCadastro({ inicial }: { inicial?: PreCadastroIni
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
 
+  useEffect(() => {
+    const preenchido = aplicarCidadePadraoInicial(
+      { cidade, estado },
+      cidadePadrao,
+      cidadeEstadoProtegidos.current,
+    );
+    if (preenchido.cidade === cidade && preenchido.estado === estado) return;
+    setCidade(preenchido.cidade);
+    setEstado(preenchido.estado);
+  }, [cidade, cidadePadrao, estado]);
+
   // Derivado a cada render (nada de setState em efeito — regra do React
   // Compiler no CLAUDE.md). Este modal só checava código repetido; endereço
   // repetido passava batido, e é justamente o que o garimpo produz: a mesma
@@ -108,7 +122,10 @@ export default function ModalPreCadastro({ inicial }: { inicial?: PreCadastroIni
     if (a.bloco) setBloco(a.bloco);
     if (a.edificio) setEdificio(a.edificio);
     if (a.bairro) setBairro(a.bairro);
-    if (a.cidade) setCidade(a.cidade);
+    if (a.cidade) {
+      cidadeEstadoProtegidos.current = true;
+      setCidade(a.cidade);
+    }
     if (a.cep) setCep(maskCEP(a.cep));
     if (a.origemSugerida) setOrigemImovel(a.origemSugerida);
     // A IA lê "publicado há 3 dias" do texto colado — nenhuma digitação a mais.
@@ -174,6 +191,7 @@ export default function ModalPreCadastro({ inicial }: { inicial?: PreCadastroIni
     const novoBairro = data.bairro || bairro;
     const novaCidade = data.localidade || cidade;
     if (data.bairro) setBairro(data.bairro);
+    if (data.localidade || data.uf) cidadeEstadoProtegidos.current = true;
     if (data.localidade) setCidade(data.localidade);
     if (data.uf) setEstado(data.uf.toUpperCase());
     setCepStatus({ msg: "Endereço preenchido a partir do CEP.", tone: "ok" });
@@ -194,6 +212,7 @@ export default function ModalPreCadastro({ inicial }: { inicial?: PreCadastroIni
   }
 
   function aplicarEnderecoViaCep(selecionado: EnderecoViaCepSelecionado) {
+    if (selecionado.cidade || selecionado.estado) cidadeEstadoProtegidos.current = true;
     if (selecionado.endereco) setEndereco(selecionado.endereco);
     if (selecionado.bairro) setBairro(selecionado.bairro);
     if (selecionado.cidade) setCidade(selecionado.cidade);
@@ -447,7 +466,14 @@ export default function ModalPreCadastro({ inicial }: { inicial?: PreCadastroIni
             </div>
             <div className="field-group">
               <label>Cidade</label>
-              <input type="text" value={cidade} onChange={(e) => setCidade(e.target.value)} />
+              <input
+                type="text"
+                value={cidade}
+                onChange={(e) => {
+                  cidadeEstadoProtegidos.current = true;
+                  setCidade(e.target.value);
+                }}
+              />
             </div>
             <div className="field-group">
               <label>Estado / UF</label>
@@ -455,7 +481,10 @@ export default function ModalPreCadastro({ inicial }: { inicial?: PreCadastroIni
                 type="text"
                 value={estado}
                 maxLength={2}
-                onChange={(e) => setEstado(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  cidadeEstadoProtegidos.current = true;
+                  setEstado(e.target.value.toUpperCase());
+                }}
                 placeholder="UF"
               />
             </div>

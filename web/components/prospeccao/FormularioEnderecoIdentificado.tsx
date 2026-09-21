@@ -9,15 +9,18 @@
    o tipo e o histórico ficam como estão. Ao salvar, as chaves de
    deduplicação são recalculadas e a tela volta a conferir se este local
    já foi registrado antes. */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { useSessao } from "@/components/SessaoProvider";
 import EnderecoAutocompleteViaCep, {
   type EnderecoViaCepSelecionado,
 } from "@/components/formularios/EnderecoAutocompleteViaCep";
 import { separarNumeroDoEndereco } from "@/lib/calculo/enderecoViaCep";
+import { aplicarCidadePadraoInicial } from "@/lib/configuracaoUsuario";
 import { maskCEP } from "@/lib/geo";
 import type { DadosEnderecoIdentificado, ImovelIdentificado } from "@/lib/prospeccao";
 import { useProspeccao } from "@/lib/useProspeccao";
+import { useCidadePadraoDaConta } from "@/lib/useCidadePadraoDaConta";
 
 import styles from "./Prospeccao.module.css";
 
@@ -65,8 +68,11 @@ export default function FormularioEnderecoIdentificado({
   /** Presente quando o formulário foi aberto por um botão e pode ser fechado sem salvar. */
   aoCancelar?: () => void;
 }) {
+  const { usuario } = useSessao();
+  const cidadePadrao = useCidadePadraoDaConta(usuario?.id);
   const inicial = camposDoIdentificado(identificado);
   const [campos, setCampos] = useState<CamposEndereco>(inicial);
+  const cidadeEstadoProtegidos = useRef(false);
   const definirEndereco = useProspeccao((estado) => estado.definirEndereco);
   const salvando = useProspeccao((estado) => estado.salvando);
   const alterado = (Object.keys(campos) as (keyof CamposEndereco)[])
@@ -77,20 +83,32 @@ export default function FormularioEnderecoIdentificado({
     inicial.bairro || inicial.cep || inicial.pontoReferencia || inicial.unidade || inicial.bloco || inicial.edificio,
   );
 
+  useEffect(() => {
+    setCampos((atual) => aplicarCidadePadraoInicial(
+      atual,
+      cidadePadrao,
+      cidadeEstadoProtegidos.current,
+    ));
+  }, [cidadePadrao]);
+
   function definir(campo: keyof CamposEndereco) {
-    return (valor: string) => setCampos((atual) => ({ ...atual, [campo]: valor }));
+    return (valor: string) => {
+      if (campo === "cidade" || campo === "estado") cidadeEstadoProtegidos.current = true;
+      setCampos((atual) => ({ ...atual, [campo]: valor }));
+    };
   }
 
-  /** A sugestão preenche o que está vazio; o que você já digitou fica. */
+  /** A sugestão completa detalhes vazios; cidade e UF acompanham o endereço selecionado. */
   function aplicarEnderecoViaCep(selecionado: EnderecoViaCepSelecionado) {
+    if (selecionado.cidade || selecionado.estado) cidadeEstadoProtegidos.current = true;
     const { rua, numero } = separarNumeroDoEndereco(selecionado.endereco);
     setCampos((atual) => ({
       ...atual,
       logradouro: rua || atual.logradouro,
       numero: atual.numero.trim() || numero,
       bairro: atual.bairro.trim() || selecionado.bairro || "",
-      cidade: atual.cidade.trim() || selecionado.cidade || "",
-      estado: atual.estado.trim() || selecionado.estado || "",
+      cidade: selecionado.cidade || atual.cidade,
+      estado: selecionado.estado || atual.estado,
       cep: atual.cep.trim() || (selecionado.cep ? maskCEP(selecionado.cep) : ""),
     }));
   }
