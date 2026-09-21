@@ -231,6 +231,22 @@ create policy "delete_own_imoveis" on imoveis
 
 create index if not exists imoveis_user_id_idx on imoveis(user_id);
 
+-- Chave única composta (id, user_id): `id` já é PK, então é redundante para
+-- os dados e existe só para o Postgres aceitar FKs compostas por tenant
+-- (`references imoveis (id, user_id)`) nas tabelas filhas futuras. Espelho
+-- da migration 20260921173129_imoveis_unique_id_user_id.
+do $$
+begin
+  if not exists (
+    select 1 from pg_catalog.pg_constraint
+     where conname = 'imoveis_id_user_id_key'
+       and conrelid = 'public.imoveis'::regclass
+  ) then
+    alter table public.imoveis
+      add constraint imoveis_id_user_id_key unique (id, user_id);
+  end if;
+end $$;
+
 -- ------------------------------------------------------------
 -- MENSAGENS AGENDADAS
 -- O destinatário é sempre um imóvel da carteira do usuário. Nome e telefone
