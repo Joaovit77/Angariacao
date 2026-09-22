@@ -21,7 +21,21 @@ vi.mock("@/lib/servidor/registro", () => ({
   registrarEvento: mocks.registrarEvento,
 }));
 
-import { executarMonitorRadar, LIMITE_IDS_PARECE_QUARTO } from "@/lib/servidor/monitorRadarAngariacao";
+import {
+  executarMonitorRadar,
+  LIMITE_AMOSTRA_REPETICAO,
+  LIMITE_IDS_PARECE_QUARTO,
+} from "@/lib/servidor/monitorRadarAngariacao";
+import {
+  BELO_HORIZONTE_GEMINADA,
+  BELO_HORIZONTE_TERREA,
+  EDU_CHAVES_DOM_PEDRO,
+  EDU_CHAVES_NOVO_AEROPORTO,
+  EDU_CHAVES_SANTOS_DUMONT,
+  JARDIM_TOKIO,
+  UNIVERSITARIO_DELVINA,
+  UNIVERSITARIO_SEM_ENDERECO,
+} from "./fixtures/radarChavesR41";
 
 interface BuscaRadarTeste {
   id: string;
@@ -627,5 +641,255 @@ describe("monitor agendado do Radar: observabilidade R3.1 e shadow R3.2a", () =>
 
     expect(detalheRadar("radar-busca-vazia")).not.toHaveProperty("cards_pagina");
     expect(detalheRadar("radar-busca-vazia")).not.toHaveProperty("parece_quarto");
+  });
+});
+
+describe("monitor agendado do Radar: shadow de repetição do Chaves (R4.1a)", () => {
+  const buscaChaves = {
+    ...busca,
+    id: "busca-chaves",
+    nome: "Londrina · Chaves na Mão",
+    filtros: { ...busca.filtros, portal: "chaves-na-mao" as typeof busca.filtros.portal, tipo: "Casa" },
+  };
+  const linhaImovel = (codigo: string, endereco: string, extra: Record<string, unknown> = {}) => ({
+    id: `imovel-${codigo}`,
+    user_id: "usuario-radar",
+    codigo,
+    endereco,
+    bairro: null,
+    cidade: "Londrina",
+    tipo: "Casa",
+    quartos: null,
+    valor_aluguel: 0,
+    status: "Publicado",
+    ...extra,
+  });
+  const carteira = [
+    linhaImovel("LD-65", "Rua Professora Delvina Borges, 190", { valor_aluguel: 6000 }),
+    linhaImovel("LD-178", "Rua Presidente Wilson, 170", { valor_aluguel: 5500 }),
+    linhaImovel("LD-900", "Rua Yoshikawa Koji, 250", { quartos: 3, valor_aluguel: 2900 }),
+  ];
+
+  interface OpcoesBanco {
+    buscas?: BuscaRadarTeste[];
+    existentes?: AnuncioCentralAngariacao[];
+    mercado?: Array<{ id_externo: string; primeiro_visto_em: string }>;
+    imoveis?: unknown[];
+    falhaMercado?: boolean;
+  }
+
+  function bancoComShadow(opcoes: OpcoesBanco = {}) {
+    const existentes = opcoes.existentes || [];
+    const limitarBuscas = vi.fn().mockResolvedValue({ data: opcoes.buscas || [buscaChaves], error: null });
+    const selecionarBuscas = vi.fn().mockReturnValue({
+      eq: () => ({ order: () => ({ order: () => ({ limit: limitarBuscas }) }) }),
+    });
+    const atualizarBusca = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+    const confirmarInsercao = vi.fn().mockResolvedValue({ data: [{ id: "radar-anuncio-1" }], error: null });
+    const inserirAnuncios = vi.fn().mockReturnValue({ select: confirmarInsercao });
+    const consultasShadow: string[] = [];
+
+    const selecionarAnuncios = vi.fn((colunas: string) => {
+      if (colunas === "portal,id_externo") {
+        return {
+          eq: vi.fn().mockResolvedValue({
+            data: existentes.map((anuncio) => ({ portal: anuncio.portal, id_externo: anuncio.idExterno })),
+            error: null,
+          }),
+        };
+      }
+      consultasShadow.push("radar_anuncios");
+      return {
+        eq: () => ({
+          eq: () => ({
+            order: () => ({
+              limit: vi.fn().mockResolvedValue({
+                data: existentes.map((anuncio) => ({ id_externo: anuncio.idExterno, dados: anuncio })),
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+    });
+
+    const from = vi.fn((tabela: string) => {
+      if (tabela === "radar_buscas") return { select: selecionarBuscas, update: atualizarBusca };
+      if (tabela === "radar_anuncios") return { select: selecionarAnuncios, upsert: inserirAnuncios };
+      if (tabela === "comparaveis_mercado") {
+        consultasShadow.push(tabela);
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                in: vi.fn().mockResolvedValue(opcoes.falhaMercado
+                  ? { data: null, error: { message: "falha" } }
+                  : { data: opcoes.mercado || [], error: null }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (tabela === "imoveis") {
+        consultasShadow.push(tabela);
+        return { select: () => ({ eq: vi.fn().mockResolvedValue({ data: opcoes.imoveis ?? carteira, error: null }) }) };
+      }
+      throw new Error(`Tabela inesperada no teste: ${tabela}`);
+    });
+
+    return { cliente: { from }, inserirAnuncios, consultasShadow };
+  }
+
+  const coletaReal = [
+    EDU_CHAVES_NOVO_AEROPORTO,
+    EDU_CHAVES_DOM_PEDRO,
+    UNIVERSITARIO_DELVINA,
+    UNIVERSITARIO_SEM_ENDERECO,
+    JARDIM_TOKIO,
+    BELO_HORIZONTE_TERREA,
+    BELO_HORIZONTE_GEMINADA,
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv("FIRECRAWL_API_KEY", "fc-teste");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://projeto.supabase.co");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role");
+    mocks.salvarComparaveisMercado.mockResolvedValue(1);
+    vi.spyOn(console, "info").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it("registra os três sinais com os casos reais da auditoria", async () => {
+    const banco = bancoComShadow({
+      existentes: [EDU_CHAVES_SANTOS_DUMONT],
+      mercado: [
+        { id_externo: "38985130", primeiro_visto_em: "2026-08-22T17:20:47.000Z" },
+        { id_externo: "43083373", primeiro_visto_em: new Date().toISOString() },
+      ],
+    });
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue(coletaReal);
+
+    await executarMonitorRadar();
+
+    expect(detalheRadar("radar-busca-ok").repeticao_chaves).toEqual({
+      ja_conhecido_no_mercado: 1,
+      ja_conhecido_ids: ["38985130"],
+      possivel_mesmo_imovel: 2,
+      possivel_mesmo_imovel_pares: [
+        ["30868208", "40494125"],
+        ["30868208", "31083573"],
+        ["31083573", "40494125"],
+      ],
+      possivel_imovel_carteira: 1,
+      possivel_imovel_carteira_itens: [
+        { id: "33821843", origem: "foto", codigos: ["LD-900"], evidencias: ["logradouro", "quartos", "preco"] },
+      ],
+    });
+  });
+
+  it("não muda a lista: grava exatamente os mesmos anúncios, com ou sem shadow", async () => {
+    const comShadow = bancoComShadow({ existentes: [EDU_CHAVES_SANTOS_DUMONT] });
+    mocks.createClient.mockReturnValue(comShadow.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([...coletaReal, EDU_CHAVES_SANTOS_DUMONT]);
+    const resumoCom = await executarMonitorRadar();
+
+    const semShadow = bancoComShadow({ existentes: [EDU_CHAVES_SANTOS_DUMONT], falhaMercado: true });
+    mocks.createClient.mockReturnValue(semShadow.cliente);
+    const resumoSem = await executarMonitorRadar();
+
+    const gravados = comShadow.inserirAnuncios.mock.calls[0];
+    expect(gravados).toEqual(semShadow.inserirAnuncios.mock.calls[0]);
+    expect(gravados[0].map((linha: { id_externo: string; visto: boolean }) => [linha.id_externo, linha.visto]))
+      .toEqual(coletaReal.map((anuncio) => [anuncio.idExterno, false]));
+    expect(gravados[1]).toEqual({ onConflict: "busca_id,portal,id_externo", ignoreDuplicates: true });
+    expect(resumoCom).toEqual(resumoSem);
+  });
+
+  it("falha do shadow omite o bloco e mantém a rodada e os campos atuais", async () => {
+    const banco = bancoComShadow({ falhaMercado: true });
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue(coletaReal);
+
+    const resumo = await executarMonitorRadar();
+
+    expect(resumo).toMatchObject({ verificadas: 1, novos: 1, falhas: 0 });
+    expect(Object.keys(detalheRadar("radar-busca-ok")).sort()).toEqual(
+      ["apos_filtro", "busca_id", "coletados", "duracao_ms", "novos", "origem_html", "portal"],
+    );
+  });
+
+  it("sem anúncio novo registra zeros sem consultar histórico nem carteira", async () => {
+    const banco = bancoComShadow({ existentes: [EDU_CHAVES_SANTOS_DUMONT] });
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([EDU_CHAVES_SANTOS_DUMONT]);
+
+    await executarMonitorRadar();
+
+    expect(banco.inserirAnuncios).not.toHaveBeenCalled();
+    expect(banco.consultasShadow).toEqual([]);
+    expect(detalheRadar("radar-busca-ok").repeticao_chaves).toEqual({
+      ja_conhecido_no_mercado: 0,
+      possivel_mesmo_imovel: 0,
+      possivel_imovel_carteira: 0,
+    });
+  });
+
+  it.each([
+    ["OLX", { ...busca }],
+    ["Chaves de apartamento", { ...buscaChaves, filtros: { ...buscaChaves.filtros, tipo: "Apartamento" } }],
+  ])("fica desligado em %s: nenhuma consulta e nenhum campo novo", async (_nome, outraBusca) => {
+    const banco = bancoComShadow({ buscas: [outraBusca] });
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([{ ...EDU_CHAVES_NOVO_AEROPORTO, portal: outraBusca.filtros.portal }]);
+
+    await executarMonitorRadar();
+
+    expect(banco.consultasShadow).toEqual([]);
+    expect(detalheRadar("radar-busca-ok")).not.toHaveProperty("repeticao_chaves");
+  });
+
+  it("limita as amostras sem limitar as contagens", async () => {
+    const muitos = Array.from({ length: 12 }, (_, indice) => ({
+      ...EDU_CHAVES_NOVO_AEROPORTO,
+      idExterno: `9000000${indice + 10}`,
+      endereco: "Rua Edu Chaves, --",
+      url: `https://www.chavesnamao.com.br/imovel/casa/id-9000000${indice + 10}/`,
+    }));
+    const banco = bancoComShadow({
+      mercado: muitos.map((anuncio) => ({ id_externo: anuncio.idExterno, primeiro_visto_em: "2026-08-01T00:00:00.000Z" })),
+      imoveis: [linhaImovel("LD-901", "Rua Edu Chaves, 112", { valor_aluguel: 6000 })],
+    });
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue(muitos);
+
+    await executarMonitorRadar();
+
+    const repeticao = detalheRadar("radar-busca-ok").repeticao_chaves;
+    expect(repeticao.ja_conhecido_no_mercado).toBe(12);
+    expect(repeticao.ja_conhecido_ids).toHaveLength(LIMITE_AMOSTRA_REPETICAO);
+    expect(repeticao.possivel_mesmo_imovel).toBe(12);
+    expect(repeticao.possivel_mesmo_imovel_pares).toHaveLength(LIMITE_AMOSTRA_REPETICAO);
+    expect(repeticao.possivel_imovel_carteira).toBe(12);
+    expect(repeticao.possivel_imovel_carteira_itens).toHaveLength(LIMITE_AMOSTRA_REPETICAO);
+  });
+
+  it("não registra endereço, título, URL nem foto no shadow", async () => {
+    const banco = bancoComShadow({ existentes: [EDU_CHAVES_SANTOS_DUMONT] });
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue(coletaReal);
+
+    await executarMonitorRadar();
+
+    const logs = JSON.stringify(mocks.registrarEvento.mock.calls);
+    for (const proibido of ["Edu Chaves", "edu chaves", "Yoshikawa", "yoshikawa", "Delvina", "chavesnamao.com.br", "Casa Geminada"]) {
+      expect(logs).not.toContain(proibido);
+    }
   });
 });

@@ -16,6 +16,15 @@ import { urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
 import { finalizarColetaCentralAngariacao } from "@/lib/servidor/finalizacaoCentralAngariacao";
 import { classificarRelevanciaRadarOlx } from "@/lib/calculo/relevanciaRadarOlx";
 import {
+  avaliarPossivelImovelCarteira,
+  buscaNoEscopoRepeticaoChaves,
+  idsJaConhecidosNoMercado,
+  paresPossivelMesmoImovel,
+  type HistoricoMercadoAnuncio,
+} from "@/lib/calculo/sinaisRepeticaoRadar";
+import { urlsDosImoveis } from "@/lib/calculo/repeticaoCentralAngariacao";
+import { fromDbImovel, type DbImovelRow } from "@/lib/persistencia/mapeadores";
+import {
   buscarComFirecrawl,
   type CodigoErroFirecrawl,
   type DiagnosticoPaginaOlx,
@@ -27,6 +36,10 @@ const LIMITE_BUSCAS_POR_RODADA = 8;
 const CONCORRENCIA = 2;
 /** Teto da amostra de IDs no shadow de quarto, para não inflar o log. */
 export const LIMITE_IDS_PARECE_QUARTO = 10;
+/** Teto de cada amostra do shadow de repetição do Chaves (R4.1a). */
+export const LIMITE_AMOSTRA_REPETICAO = 10;
+/** Histórico da busca comparado com os novos; a busca real tem dezenas. */
+const LIMITE_HISTORICO_REPETICAO = 300;
 
 interface DbBuscaRadar {
   id: string;
@@ -184,6 +197,84 @@ function detalheShadowQuartoOlx(anuncios: AnuncioCentralAngariacao[]) {
   };
 }
 
+/**
+ * R4.1a (shadow): sinais de repetição do Chaves na Mão + Casa para os anúncios
+ * novos desta rodada. Só lê: `comparaveis_mercado` pelo `id_externo` exato,
+ * o histórico da própria busca e a carteira do dono da busca. Registra apenas
+ * IDs, códigos de imóvel e enums; nunca endereço, título ou URL. Qualquer falha
+ * omite o bloco inteiro e a rodada segue como antes.
+ */
+async function detalheShadowRepeticaoChaves(
+  supabase: SupabaseClient,
+  busca: DbBuscaRadar,
+  novos: AnuncioCentralAngariacao[],
+  inicioColeta: string,
+): Promise<Record<string, unknown>> {
+  try {
+    if (!novos.length) {
+      return {
+        repeticao_chaves: {
+          ja_conhecido_no_mercado: 0,
+          possivel_mesmo_imovel: 0,
+          possivel_imovel_carteira: 0,
+        },
+      };
+    }
+    const [mercado, historico, carteira] = await Promise.all([
+      supabase
+        .from("comparaveis_mercado")
+        .select("id_externo,primeiro_visto_em")
+        .eq("user_id", busca.user_id)
+        .eq("portal", "chaves-na-mao")
+        .in("id_externo", novos.map((anuncio) => anuncio.idExterno)),
+      supabase
+        .from("radar_anuncios")
+        .select("id_externo,dados")
+        .eq("busca_id", busca.id)
+        .eq("user_id", busca.user_id)
+        .order("encontrado_em", { ascending: false })
+        .limit(LIMITE_HISTORICO_REPETICAO),
+      supabase.from("imoveis").select("*").eq("user_id", busca.user_id),
+    ]);
+    if (mercado.error || historico.error || carteira.error) return {};
+
+    const conhecidos = idsJaConhecidosNoMercado(
+      novos,
+      (mercado.data || []) as HistoricoMercadoAnuncio[],
+      inicioColeta,
+    );
+    const anterioresDaBusca = ((historico.data || []) as Array<{ dados: AnuncioCentralAngariacao | null }>)
+      .flatMap((linha) => (linha.dados?.idExterno ? [linha.dados] : []));
+    const pares = paresPossivelMesmoImovel(novos, anterioresDaBusca);
+    const idsNosPares = new Set(pares.flat());
+    const imoveis = ((carteira.data || []) as DbImovelRow[]).map(fromDbImovel);
+    const urlsNaCarteira = urlsDosImoveis(imoveis);
+    const naCarteira = novos.flatMap((anuncio) => {
+      const avaliacao = avaliarPossivelImovelCarteira(anuncio, imoveis, urlsNaCarteira);
+      return avaliacao.classe === "possivel_imovel_carteira"
+        ? [{
+          id: anuncio.idExterno,
+          origem: avaliacao.origem,
+          codigos: avaliacao.candidatos.slice(0, 3).map((candidato) => candidato.codigo),
+          evidencias: avaliacao.candidatos[0].evidencias,
+        }]
+        : [];
+    });
+    return {
+      repeticao_chaves: {
+        ja_conhecido_no_mercado: conhecidos.length,
+        ja_conhecido_ids: conhecidos.slice(0, LIMITE_AMOSTRA_REPETICAO),
+        possivel_mesmo_imovel: novos.filter((anuncio) => idsNosPares.has(anuncio.idExterno)).length,
+        possivel_mesmo_imovel_pares: pares.slice(0, LIMITE_AMOSTRA_REPETICAO),
+        possivel_imovel_carteira: naCarteira.length,
+        possivel_imovel_carteira_itens: naCarteira.slice(0, LIMITE_AMOSTRA_REPETICAO),
+      },
+    };
+  } catch {
+    return {};
+  }
+}
+
 /** Instrumentação é acessória: um erro nela nunca transforma sucesso em falha. */
 function detalheOpcional(montar: () => Record<string, unknown>): Record<string, unknown> {
   try {
@@ -270,6 +361,9 @@ async function verificarBusca(
       origem_html: origem,
       duracao_ms: Math.round(performance.now() - inicio),
     };
+    const repeticaoChaves = coletados.length && buscaNoEscopoRepeticaoChaves(busca.filtros)
+      ? await detalheShadowRepeticaoChaves(supabase, busca, novos, agora)
+      : {};
     if (coletados.length === 0) {
       registrarRadar(busca.user_id, "aviso", "radar-busca-vazia", {
         ...detalheComum,
@@ -282,6 +376,7 @@ async function verificarBusca(
           ? detalhePaginaOlx(diagnosticoOlx, anuncios.length)
           : {})),
         ...detalheOpcional(() => (portal === "olx" ? detalheShadowQuartoOlx(anuncios) : {})),
+        ...repeticaoChaves,
       });
     }
     return {
