@@ -324,3 +324,20 @@ export const STALE_DAYS_THRESHOLD_POS_ANGARIACAO = 60;
 // Dias após a angariação (sem locação) para gerar o lembrete automático
 // de "verificar disponibilidade com o proprietário".
 export const VERIFICACAO_DISPONIBILIDADE_DIAS = 60;
+
+/**
+ * Configuração da resolução "a qual imóvel esta mensagem pertence"
+ * (`calculo/atribuicaoMensagem.ts`).
+ *
+ * `janelaAgendamentoHoras`: por quanto tempo uma mensagem programada já
+ * enviada continua sendo o contexto plausível de uma resposta. 48 h cobre o
+ * proprietário que responde no dia seguinte sem transformar a mensagem da
+ * semana passada em evidência.
+ *
+ * A idade da tentativa pendente NÃO mora aqui: ela é a mesma janela do nudge
+ * (`DIAS_COBRANCA_RESULTADO`, em `calculo/abordagens.ts`), e duplicar o
+ * número criaria duas definições de "pendente" para divergirem em silêncio.
+ */
+export const ATRIBUICAO_MENSAGEM = {
+  janelaAgendamentoHoras: 48,
+} as const;

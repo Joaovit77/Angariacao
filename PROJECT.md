@@ -1370,6 +1370,26 @@ vínculo histórico**: imóvel com qualquer vínculo, vigente ou encerrado, é p
 encerrado é decisão humana. Número já ativo numa pessoa é reaproveitado só como canal: nome legado
 diferente do confirmado vira `nome-divergente-importacao` por imóvel.
 
+**A qual imóvel a mensagem pertence (motor da 1a-B).** Resolver a pessoa não resolve o assunto:
+uma pessoa pode ter vários imóveis. `web/lib/calculo/atribuicaoMensagem.ts` é a função **pura** que
+decide isso, e nada a chama ainda — a integração com o webhook é fatia própria. Precedência única:
+(1) **referência explícita** no texto ao **código** de um imóvel vinculado; (2) exatamente um imóvel
+plausível com **tentativa pendente** elegível (mesma regra do nudge: `aguardandoResultado` dentro de
+`DIAS_COBRANCA_RESULTADO`); (3) exatamente um imóvel plausível com **mensagem programada enviada**
+dentro de `ATRIBUICAO_MENSAGEM.janelaAgendamentoHoras` (48 h), expandindo a consolidação
+(`imoveis_consultados`) — mensagem única que perguntou por dois plausíveis é empate, a âncora não
+ganha; (4) exatamente um imóvel plausível. Qualquer outro caso é `pendente`. **Um nível com dois
+candidatos encerra a busca** — não se desce para desempatar; a contagem do nível 2 é por imóvel, não
+por tentativa. **Terminal para atribuição** é `Perdido`, `Cancelado`, `Locado` ou `retirado` — lista
+própria do módulo, porque **"Sem resposta" continua plausível** aqui (é o público do follow-up, e o
+silêncio de ontem é quem responde hoje). Terminal só é alcançado por referência explícita, e o
+resultado sai marcado como histórico. `imoveis.updated_at` não participa de nenhuma decisão (ele
+muda por motivos alheios à conversa, inclusive pela projeção de contatos); o instante de referência
+é `mensagem.recebidaEm`, vindo da entrada — mesma entrada, mesma saída, em qualquer máquina e em
+qualquer ordem de array. Endereço no texto foi avaliado e **rejeitado** como referência nesta fase:
+na carteira real há imóveis com endereço sem número e contatos com dois imóveis no mesmo logradouro,
+e o falso positivo é pior que a pendência.
+
 **Fronteira com a 1b.** A resolução por canal segue a lápide (`fundido_em_contato_id`) até o
 sobrevivente como rede de segurança, mas a RPC de fusão da 1b é obrigada a reparentear os vínculos
 e a desativar/reparentear os números do absorvido, para que nada volte a resolver para ele;
