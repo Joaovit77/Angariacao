@@ -74,16 +74,31 @@ export async function investigarImovel(
   const leitor = resposta.body.getReader();
   const decodificador = new TextDecoder();
   let pendente = "";
+  let terminalRecebido = false;
+  const erroDeInterrupcao = () => new Error("A investigação foi interrompida antes de concluir. Tente novamente.");
+  const entregar = (linha: string) => {
+    let evento: EventoInvestigacao;
+    try {
+      evento = JSON.parse(linha) as EventoInvestigacao;
+    } catch {
+      throw erroDeInterrupcao();
+    }
+    if (evento.tipo === "resultado" || evento.tipo === "erro") terminalRecebido = true;
+    aoEvento(evento);
+  };
   while (true) {
-    const { done, value } = await leitor.read();
+    const { done, value } = await leitor.read().catch(() => { throw erroDeInterrupcao(); });
     pendente += decodificador.decode(value, { stream: !done });
     const linhas = pendente.split("\n");
     pendente = linhas.pop() || "";
     for (const linha of linhas) {
       if (!linha.trim()) continue;
-      aoEvento(JSON.parse(linha) as EventoInvestigacao);
+      entregar(linha);
     }
     if (done) break;
   }
-  if (pendente.trim()) aoEvento(JSON.parse(pendente) as EventoInvestigacao);
+  if (pendente.trim()) entregar(pendente);
+  if (!terminalRecebido) {
+    throw erroDeInterrupcao();
+  }
 }

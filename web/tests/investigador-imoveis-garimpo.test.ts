@@ -252,7 +252,7 @@ describe("concluir investigação anota a data — pela RPC do C13A, e só ela",
     expect(imovelIdentificadoDaReferencia(null)).toBeNull();
     expect(imovelIdentificadoDaReferencia({ origem: "imovel-identificado", id: IDENTIFICADO_ID })).toBe(IDENTIFICADO_ID);
 
-    const fetcher = vi.fn().mockImplementation(() => Promise.resolve(new Response("", { status: 200 })));
+    const fetcher = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ tipo: "erro", mensagem: "Fim controlado." }) + "\n", { status: 200 })));
     vi.stubGlobal("fetch", fetcher);
     await investigarImovel("Rua das Palmeiras, 120", () => {}, undefined, { origem: "imovel", id: IMOVEL_ID });
     await investigarImovel("Rua das Palmeiras, 120", () => {}, undefined, null);
@@ -367,6 +367,29 @@ describe("a tela do Investigador: pesquisa só no clique; concluir anota; nada p
     await waitFor(() => expect(document.body.textContent).toContain("indisponível agora"));
     expect(document.body.textContent).not.toMatch(/memória do imóvel/);
     expect(document.querySelector("[data-memoria]")).toBeNull();
+    vi.doUnmock("@/lib/investigadorImoveis");
+  });
+
+  it("stream interrompido mostra erro, limpa andamento e permite nova tentativa", async () => {
+    vi.doMock("@/lib/investigadorImoveis", () => ({
+      carregarContextoInvestigador: mocks.carregarContextoInvestigador,
+      investigarImovel: mocks.investigarImovel,
+    }));
+    mocks.carregarContextoInvestigador.mockResolvedValue({ consulta: "Rua das Palmeiras, 120, Casa", origem: "garimpo" });
+    mocks.investigarImovel.mockImplementation(async (_consulta: string, aoEvento: (e: unknown) => void) => {
+      aoEvento({ tipo: "etapa", etapa: "pesquisando-web" });
+      throw new Error("A investigação foi interrompida antes de concluir. Tente novamente.");
+    });
+    const { default: InvestigadorImoveisView } = await import("@/components/investigador/InvestigadorImoveisView");
+    render(createElement(InvestigadorImoveisView, {
+      imovelIdInicial: null,
+      referenciaInicial: { origem: "imovel-identificado", id: IDENTIFICADO_ID },
+    }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Investigar imóvel" })).not.toHaveProperty("disabled", true));
+    await act(async () => { screen.getByRole("button", { name: "Investigar imóvel" }).click(); });
+    await waitFor(() => expect(document.body.textContent).toContain("A investigação foi interrompida antes de concluir."));
+    expect(document.body.textContent).not.toContain("Investigação em andamento");
+    expect(screen.getByRole("button", { name: "Investigar imóvel" })).not.toHaveProperty("disabled", true);
     vi.doUnmock("@/lib/investigadorImoveis");
   });
 

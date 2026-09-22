@@ -6,6 +6,7 @@ import {
   MAXIMO_BUSCAS_POR_INVESTIGACAO,
   type ResultadoWebInvestigacao,
 } from "@/lib/calculo/investigadorImoveis";
+import { MARGEM_FINALIZACAO_INVESTIGACAO_MS } from "@/lib/servidor/investigadorOrcamento";
 import {
   classificarErroFetch,
   registrarFalhaProvider,
@@ -17,6 +18,7 @@ const URL_BUSCA_RAPIDAPI = `https://${HOST_RAPIDAPI}/search`;
 const TIMEOUT_BUSCA_MS = 22_000;
 const TIMEOUT_LINK_MS = 3_500;
 const MAXIMO_RESULTADOS_POR_BUSCA = 10;
+const MINIMO_TEMPO_CONSULTA_MS = TIMEOUT_LINK_MS;
 
 interface ResultadoOrganicoRapidApi {
   title?: unknown;
@@ -42,7 +44,7 @@ export interface ResumoBuscaInterrompida {
 export class BuscaWebIndisponivel extends Error {
   constructor(
     message: string,
-    public readonly motivo: "configuracao" | "limite" | "indisponivel",
+    public readonly motivo: "configuracao" | "limite" | "indisponivel" | "orcamento",
     public readonly retryAfterSegundos?: number,
     public readonly resumo: ResumoBuscaInterrompida = { consultasExecutadas: 0, falhas: 0 },
   ) {
@@ -57,6 +59,8 @@ export interface ResultadoBuscaWebInvestigacao {
   consultasExecutadas: string[];
   pesquisasEvitadas: number;
   encerramentoAntecipado: boolean;
+  orcamentoEsgotado: boolean;
+  consultasLimitadasPeloOrcamento: number;
   retryAfterSegundos?: number;
 }
 
@@ -102,14 +106,14 @@ function dominioDaUrl(valor: string, fallback = ""): string {
   }
 }
 
-async function resolverUrlOriginal(link: string, fetcher: typeof fetch): Promise<string> {
+async function resolverUrlOriginal(link: string, fetcher: typeof fetch, sinalConsulta: AbortSignal): Promise<string> {
   if (!link.startsWith("/goto?")) return /^https?:\/\//i.test(link) ? link : "";
   const redirecionamento = `https://www.google.com${link}`;
   try {
     const resposta = await fetcher(redirecionamento, {
       method: "GET",
       redirect: "manual",
-      signal: AbortSignal.timeout(TIMEOUT_LINK_MS),
+      signal: AbortSignal.any([sinalConsulta, AbortSignal.timeout(TIMEOUT_LINK_MS)]),
       cache: "no-store",
     });
     const destino = resposta.headers.get("location");
@@ -133,12 +137,15 @@ async function buscarConsultaNoGoogle(
   apiKey: string,
   fetcher: typeof fetch,
   execucao: string | null,
+  timeoutMs: number,
 ): Promise<ResultadoWebInvestigacao[]> {
   const url = new URL(URL_BUSCA_RAPIDAPI);
   url.searchParams.set("keyword", consulta);
   url.searchParams.set("device", "Desktop");
 
   const inicio = performance.now();
+  const sinalConsulta = AbortSignal.timeout(timeoutMs);
+  const prazoLimitado = timeoutMs < TIMEOUT_BUSCA_MS;
   let resposta: Response;
   try {
     resposta = await fetcher(url, {
@@ -148,7 +155,7 @@ async function buscarConsultaNoGoogle(
         "x-rapidapi-key": apiKey,
         "x-rapidapi-host": HOST_RAPIDAPI,
       },
-      signal: AbortSignal.timeout(TIMEOUT_BUSCA_MS),
+      signal: sinalConsulta,
       cache: "no-store",
     });
   } catch (erro) {
@@ -159,7 +166,9 @@ async function buscarConsultaNoGoogle(
       indiceConsulta,
       duracaoMs: performance.now() - inicio,
       motivo: "indisponivel",
-      ...classificarErroFetch(erro),
+      ...(sinalConsulta.aborted && prazoLimitado
+        ? { causa: "abort-orcamento" as const, erro: "TimeoutError" }
+        : classificarErroFetch(erro)),
     });
     throw new BuscaWebIndisponivel("O provider não respondeu.", "indisponivel");
   }
@@ -189,6 +198,14 @@ async function buscarConsultaNoGoogle(
     throw new BuscaWebIndisponivel(`Provider respondeu ${resposta.status}.`, "indisponivel");
   }
   const corpo = await resposta.json().catch(() => null) as RespostaRapidApi | null;
+  if (sinalConsulta.aborted) {
+    registrarFalhaProvider({
+      execucao, indiceConsulta, duracaoMs: performance.now() - inicio,
+      causa: prazoLimitado ? "abort-orcamento" : "timeout-provider",
+      motivo: "indisponivel", erro: "TimeoutError",
+    });
+    throw new BuscaWebIndisponivel("A pesquisa excedeu o tempo disponível.", "indisponivel");
+  }
   const duracaoMs = performance.now() - inicio;
   const lista = listaOrganicaBruta(corpo);
   if (lista === null) {
@@ -218,7 +235,7 @@ async function buscarConsultaNoGoogle(
     const titulo = texto(item.title, 300);
     const descricao = texto(item.description ?? item.desc, 1_000);
     const linkRecebido = texto(item.link ?? item.url, 2_000);
-    const urlOriginal = linkRecebido ? await resolverUrlOriginal(linkRecebido, fetcher) : "";
+    const urlOriginal = linkRecebido ? await resolverUrlOriginal(linkRecebido, fetcher, sinalConsulta) : "";
     const dominioFallback = dominioExibido(item.displayedLink);
     const campos = extrairCamposInvestigacao(`${titulo} ${descricao}`);
     return {
@@ -236,6 +253,10 @@ async function buscarConsultaNoGoogle(
 export interface OpcoesBuscaWebInvestigacao {
   /** Id da execução gerado pela rota; amarra todas as linhas de log. */
   execucao?: string;
+  /** Prazo absoluto medido desde a entrada da rota. */
+  deadlineMs?: number;
+  /** Permite testar o orçamento sem esperar pelo relógio real. */
+  agoraMs?: () => number;
 }
 
 export async function buscarImovelNaWeb(
@@ -246,6 +267,7 @@ export async function buscarImovelNaWeb(
   opcoes: OpcoesBuscaWebInvestigacao = {},
 ): Promise<ResultadoBuscaWebInvestigacao> {
   const execucao = opcoes.execucao ?? null;
+  const agoraMs = opcoes.agoraMs ?? (() => performance.now());
   const apiKey = process.env.RAPIDAPI_KEY?.trim();
   if (!apiKey) {
     throw new BuscaWebIndisponivel("RAPIDAPI_KEY não configurada.", "configuracao");
@@ -257,12 +279,23 @@ export async function buscarImovelNaWeb(
   let falhas = 0;
   let limiteAtingido = false;
   let encerramentoAntecipado = false;
+  let orcamentoEsgotado = false;
+  let consultasLimitadasPeloOrcamento = 0;
   let retryAfterSegundos: number | undefined;
 
   for (const [indice, consulta] of fila.entries()) {
+    const restante = opcoes.deadlineMs === undefined
+      ? TIMEOUT_BUSCA_MS
+      : opcoes.deadlineMs - agoraMs() - MARGEM_FINALIZACAO_INVESTIGACAO_MS;
+    if (restante < MINIMO_TEMPO_CONSULTA_MS) {
+      orcamentoEsgotado = true;
+      break;
+    }
+    const timeoutMs = Math.max(1, Math.floor(Math.min(TIMEOUT_BUSCA_MS, restante)));
+    if (timeoutMs < TIMEOUT_BUSCA_MS) consultasLimitadasPeloOrcamento += 1;
     consultasExecutadas.push(consulta);
     try {
-      resultados.push(...await buscarConsultaNoGoogle(consulta, indice + 1, apiKey, fetcher, execucao));
+      resultados.push(...await buscarConsultaNoGoogle(consulta, indice + 1, apiKey, fetcher, execucao, timeoutMs));
     } catch (erro) {
       falhas += 1;
       if (erro instanceof BuscaWebIndisponivel && erro.motivo === "limite") {
@@ -288,7 +321,15 @@ export async function buscarImovelNaWeb(
     if (limiteAtingido) {
       throw new BuscaWebIndisponivel("Limite de buscas atingido.", "limite", retryAfterSegundos, resumo);
     }
+    if (orcamentoEsgotado) {
+      throw new BuscaWebIndisponivel("O tempo da investigação se esgotou.", "orcamento", undefined, resumo);
+    }
     throw new BuscaWebIndisponivel("O serviço de pesquisa não respondeu.", "indisponivel", undefined, resumo);
+  }
+  if (!resultados.length && orcamentoEsgotado) {
+    throw new BuscaWebIndisponivel("O tempo da investigação se esgotou.", "orcamento", undefined, {
+      consultasExecutadas: consultasExecutadas.length, falhas,
+    });
   }
   return {
     resultados,
@@ -297,6 +338,8 @@ export async function buscarImovelNaWeb(
     consultasExecutadas,
     pesquisasEvitadas: fila.length - consultasExecutadas.length,
     encerramentoAntecipado,
+    orcamentoEsgotado,
+    consultasLimitadasPeloOrcamento,
     retryAfterSegundos,
   };
 }

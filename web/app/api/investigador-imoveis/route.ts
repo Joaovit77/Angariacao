@@ -18,7 +18,14 @@ import {
   type ReferenciaContextoInvestigador,
 } from "@/lib/calculo/contextoInvestigador";
 import { PORTAIS_ANGARIACAO, type PortalAngariacao } from "@/lib/calculo/centralAngariacao";
-import { buscarImovelNaWeb, BuscaWebIndisponivel } from "@/lib/servidor/investigadorImoveis";
+import {
+  buscarImovelNaWeb,
+  BuscaWebIndisponivel,
+} from "@/lib/servidor/investigadorImoveis";
+import {
+  MARGEM_FINALIZACAO_INVESTIGACAO_MS,
+  ORCAMENTO_TOTAL_INVESTIGACAO_MS,
+} from "@/lib/servidor/investigadorOrcamento";
 import {
   registrarConclusaoInvestigacao,
   type EncerramentoInvestigacao,
@@ -267,6 +274,7 @@ export async function GET(request: Request): Promise<Response> {
 
 function mensagemSegura(erro: unknown): string {
   if (erro instanceof BuscaWebIndisponivel) {
+    if (erro.motivo === "orcamento") return "A investigação excedeu o tempo disponível. Tente novamente.";
     if (erro.motivo === "configuracao") return "O Investigador ainda não está configurado neste ambiente.";
     if (erro.motivo === "limite") {
       return erro.retryAfterSegundos !== undefined
@@ -281,6 +289,7 @@ function encerramentoDaFalha(erro: unknown): EncerramentoInvestigacao {
   if (!(erro instanceof BuscaWebIndisponivel)) return "erro";
   if (erro.motivo === "configuracao") return "configuracao";
   if (erro.motivo === "limite") return "limite-provider";
+  if (erro.motivo === "orcamento") return "orcamento-sem-resultados";
   return "provider-indisponivel";
 }
 
@@ -288,6 +297,7 @@ export async function POST(request: Request): Promise<Response> {
   // Medido desde a entrada, antes da auth: a linha de conclusão precisa
   // refletir o tempo que a função de fato ocupou, não só a pesquisa.
   const inicioMs = performance.now();
+  const deadlineMs = inicioMs + ORCAMENTO_TOTAL_INVESTIGACAO_MS;
   const acesso = await acessoAutenticado(request);
   if (!acesso) return Response.json({ mensagem: "Sessão inválida." }, { status: 401 });
   const { userId } = acesso;
@@ -337,9 +347,11 @@ export async function POST(request: Request): Promise<Response> {
       // Contagem para a linha de conclusão mesmo quando a busca lança:
       // o callback é a única testemunha de quantas consultas rodaram.
       let consultasExecutadas = 0;
+      let consultasPlanejadas = 0;
       try {
         emitir({ tipo: "etapa", etapa: "gerando-buscas" });
         const consultas = gerarConsultasInvestigacao(consultaOriginal);
+        consultasPlanejadas = consultas.length;
         emitir({ tipo: "etapa", etapa: "pesquisando-web" });
         const busca = await buscarImovelNaWeb(
           consultaOriginal,
@@ -349,7 +361,7 @@ export async function POST(request: Request): Promise<Response> {
             consultasExecutadas = lista.length;
             emitir({ tipo: "consultas", consultas: lista });
           },
-          { execucao: execucaoId },
+          { execucao: execucaoId, deadlineMs },
         );
         emitir({ tipo: "etapa", etapa: "normalizando-resultados" });
         const unicos = deduplicarResultadosInvestigacao(busca.resultados);
@@ -361,10 +373,12 @@ export async function POST(request: Request): Promise<Response> {
           correspondencias,
           execucaoId,
         );
-        const aviso = busca.limiteAtingido
-          ? busca.retryAfterSegundos !== undefined
-            ? `Investigação concluída parcialmente por limite do provedor. Tente novamente em ${busca.retryAfterSegundos} segundos.`
-            : "Investigação concluída parcialmente porque o limite do provedor foi atingido."
+        const aviso = busca.orcamentoEsgotado
+          ? "Investigação concluída parcialmente pelo tempo disponível. Os resultados encontrados foram mantidos."
+          : busca.limiteAtingido
+            ? busca.retryAfterSegundos !== undefined
+              ? `Investigação concluída parcialmente por limite do provedor. Tente novamente em ${busca.retryAfterSegundos} segundos.`
+              : "Investigação concluída parcialmente porque o limite do provedor foi atingido."
           : busca.falhas
             ? `${busca.falhas} das ${busca.consultasExecutadas.length} pesquisas executadas não responderam; os demais resultados foram mantidos.`
           : resultados.length ? undefined : "Nenhuma possível correspondência apareceu nessas buscas.";
@@ -381,10 +395,17 @@ export async function POST(request: Request): Promise<Response> {
           falhas: busca.falhas,
           resultadosBrutos: busca.resultados.length,
           resultadosExibidos: resultados.length,
-          encerramento: busca.limiteAtingido
-            ? "limite-provider"
-            : busca.encerramentoAntecipado ? "evidencia-suficiente" : "concluida",
+          encerramento: busca.orcamentoEsgotado
+            ? "orcamento-parcial"
+            : busca.limiteAtingido
+              ? "limite-provider"
+              : busca.encerramentoAntecipado ? "evidencia-suficiente" : "concluida",
           duracaoMs: performance.now() - inicioMs,
+          orcamentoTotalMs: ORCAMENTO_TOTAL_INVESTIGACAO_MS,
+          margemFinalizacaoMs: MARGEM_FINALIZACAO_INVESTIGACAO_MS,
+          consultasPuladasPorOrcamento: busca.orcamentoEsgotado ? busca.pesquisasEvitadas : 0,
+          consultasLimitadasPeloOrcamento: busca.consultasLimitadasPeloOrcamento ?? 0,
+          resultadoParcial: Boolean(busca.orcamentoEsgotado || busca.limiteAtingido || busca.falhas),
         });
         emitir({
           tipo: "resultado",
@@ -416,6 +437,12 @@ export async function POST(request: Request): Promise<Response> {
           resultadosExibidos: 0,
           encerramento: encerramentoDaFalha(erro),
           duracaoMs: performance.now() - inicioMs,
+          orcamentoTotalMs: ORCAMENTO_TOTAL_INVESTIGACAO_MS,
+          margemFinalizacaoMs: MARGEM_FINALIZACAO_INVESTIGACAO_MS,
+          consultasPuladasPorOrcamento: erro instanceof BuscaWebIndisponivel && erro.motivo === "orcamento"
+            ? Math.max(0, consultasPlanejadas - (resumo?.consultasExecutadas ?? consultasExecutadas))
+            : 0,
+          resultadoParcial: false,
         });
         emitir({ tipo: "erro", mensagem: mensagemSegura(erro) });
       } finally {

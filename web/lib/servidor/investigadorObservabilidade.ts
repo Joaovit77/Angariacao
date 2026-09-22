@@ -38,6 +38,8 @@ export type EncerramentoInvestigacao =
   | "limite-provider"
   | "provider-indisponivel"
   | "configuracao"
+  | "orcamento-parcial"
+  | "orcamento-sem-resultados"
   | "erro";
 
 export interface ClassificacaoErroFetch {
@@ -106,6 +108,11 @@ export interface RegistroConclusaoInvestigacao {
   resultadosExibidos: number;
   encerramento: EncerramentoInvestigacao;
   duracaoMs: number;
+  orcamentoTotalMs?: number;
+  margemFinalizacaoMs?: number;
+  consultasPuladasPorOrcamento?: number;
+  consultasLimitadasPeloOrcamento?: number;
+  resultadoParcial?: boolean;
 }
 
 export function registrarFalhaProvider(registro: RegistroFalhaProvider): void {
@@ -148,5 +155,10 @@ export function registrarConclusaoInvestigacao(registro: RegistroConclusaoInvest
     resultadosExibidos: registro.resultadosExibidos,
     encerramento: registro.encerramento,
     duracaoMs: Math.round(registro.duracaoMs),
+    ...(registro.orcamentoTotalMs !== undefined ? { orcamentoTotalMs: registro.orcamentoTotalMs } : {}),
+    ...(registro.margemFinalizacaoMs !== undefined ? { margemFinalizacaoMs: registro.margemFinalizacaoMs } : {}),
+    ...(registro.consultasPuladasPorOrcamento !== undefined ? { consultasPuladasPorOrcamento: registro.consultasPuladasPorOrcamento } : {}),
+    ...(registro.consultasLimitadasPeloOrcamento !== undefined ? { consultasLimitadasPeloOrcamento: registro.consultasLimitadasPeloOrcamento } : {}),
+    ...(registro.resultadoParcial !== undefined ? { resultadoParcial: registro.resultadoParcial } : {}),
   });
 }

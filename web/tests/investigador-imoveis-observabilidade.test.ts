@@ -406,4 +406,49 @@ describe("rota POST: conclusão e execução", () => {
     expect(JSON.stringify(eventos)).not.toContain("encerramento\"");
     expect(JSON.stringify(eventos)).not.toContain("duracaoMs");
   });
+  it("duas respostas lentas preservam cards e registram resultado parcial por orçamento", async () => {
+    const logs = capturarLogs();
+    let agora = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => agora);
+    const fetcher = vi.fn(async () => {
+      agora += 21_000;
+      return respostaRapid([organico(agora)]);
+    });
+    vi.stubGlobal("fetch", fetcher);
+
+    const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos Rua Privada 10, Londrina")));
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    const final = eventos.at(-1);
+    expect(final.tipo).toBe("resultado");
+    expect(final.dados.resultados.length).toBeGreaterThan(0);
+    expect(final.dados.consultas).toHaveLength(2);
+    expect(final.dados.pesquisasEvitadas).toBe(1);
+    expect(final.dados.aviso).toContain("tempo disponível");
+    expect(logs.conclusoes()[0]).toMatchObject({
+      consultas: 2, consultasPuladasPorOrcamento: 1, resultadoParcial: true,
+      encerramento: "orcamento-parcial", orcamentoTotalMs: 52_000,
+    });
+  });
+
+  it("orçamento esgotado antes da primeira chamada envia erro terminal e diagnóstico A1", async () => {
+    const logs = capturarLogs();
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValue(39_000);
+
+    const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos Londrina")));
+    expect(eventos.at(-1)).toEqual({
+      tipo: "erro",
+      mensagem: "A investigação excedeu o tempo disponível. Tente novamente.",
+    });
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(logs.conclusoes()).toHaveLength(1);
+    expect(logs.conclusoes()[0]).toMatchObject({
+      consultas: 0, falhas: 0, consultasPuladasPorOrcamento: 3,
+      encerramento: "orcamento-sem-resultados", resultadoParcial: false,
+      orcamentoTotalMs: 52_000, margemFinalizacaoMs: 10_000,
+    });
+    expect(logs.texto()).not.toContain("Casa 3 quartos");
+    expect(logs.texto()).not.toContain("token-de-sessao");
+  });
 });

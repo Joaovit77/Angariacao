@@ -2527,7 +2527,12 @@ fila, enquanto resultado inconclusivo avança até o teto de três. Referência 
 as consultas seguintes. A chave `RAPIDAPI_KEY` existe somente em
 `lib/servidor/investigadorImoveis.ts`; o browser conhece apenas a rota interna e envia o Bearer da
 própria sessão. O host do provider é fixo (`google-search-api7.p.rapidapi.com`), com timeout
-individual, tratamento específico de 429 e no máximo dez resultados orgânicos por consulta.
+individual de até 22 s, tratamento específico de 429 e no máximo dez resultados orgânicos por consulta.
+A rota tem `maxDuration` de 60 s e encerra as buscas até 42 s após a entrada: orçamento total de
+52 s, dos quais 10 s são reservados para finalização e 8 s separam o orçamento do teto da plataforma.
+Cada consulta usa o menor prazo entre 22 s e o tempo restante até essa reserva; com menos de 3,5 s,
+a próxima não começa. O orçamento conserva cards anteriores e sinaliza resultado parcial, ou emite
+erro terminal quando não há resultado útil.
 
 `lib/calculo/investigadorImoveis.ts` é o contrato puro e independente do provider. Ele extrai
 somente valores observáveis em título e descrição, não escolhe um número quando um resultado
@@ -2541,7 +2546,8 @@ separadamente evidências favoráveis e contradições.
 
 A resposta é NDJSON progressivo: gerar consultas, pesquisar, normalizar e cruzar informações são
 eventos emitidos quando cada etapa realmente começa; a lista da UI contém apenas consultas de fato
-executadas. Falha intermediária preserva os resultados anteriores. Um 429 interrompe novas chamadas,
+executadas. EOF sem `resultado` ou `erro` encerra o andamento na UI com erro e permite nova tentativa.
+Falha intermediária preserva os resultados anteriores. Um 429 interrompe novas chamadas,
 mantém a resposta parcial quando houver dados úteis e registra somente status, tentativa, consulta,
 duração, `Retry-After` e headers públicos de quota — nunca chave, Bearer, cookies ou resposta bruta.
 O Investigador não cadastra, altera ou vincula imóveis, não chama o Assistente e não cria histórico
