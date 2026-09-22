@@ -14,15 +14,19 @@ import {
 import { agoraISOString } from "@/lib/datas";
 import { urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
 import { finalizarColetaCentralAngariacao } from "@/lib/servidor/finalizacaoCentralAngariacao";
+import { classificarRelevanciaRadarOlx } from "@/lib/calculo/relevanciaRadarOlx";
 import {
   buscarComFirecrawl,
   type CodigoErroFirecrawl,
+  type DiagnosticoPaginaOlx,
   type OrigemConsultaFirecrawl,
 } from "@/lib/servidor/firecrawlCentralAngariacao";
 import { registrarEvento } from "@/lib/servidor/registro";
 
 const LIMITE_BUSCAS_POR_RODADA = 8;
 const CONCORRENCIA = 2;
+/** Teto da amostra de IDs no shadow de quarto, para não inflar o log. */
+export const LIMITE_IDS_PARECE_QUARTO = 10;
 
 interface DbBuscaRadar {
   id: string;
@@ -141,6 +145,54 @@ function linhaAnuncio(row: DbBuscaRadar, anuncio: AnuncioCentralAngariacao) {
   };
 }
 
+/**
+ * R3.1: ordem e tamanho da página da OLX. `descartados_cidade` é a diferença
+ * entre os candidatos do período e os aprovados pelo filtro de cidade/UF.
+ * Semântica dos demais campos em `DiagnosticoPaginaOlx`.
+ */
+function detalhePaginaOlx(diagnostico: DiagnosticoPaginaOlx, aposFiltro: number) {
+  return {
+    cards_pagina: diagnostico.cardsPagina,
+    no_periodo_antes_cidade: diagnostico.noPeriodoAntesCidade,
+    descartados_cidade: diagnostico.noPeriodoAntesCidade - aposFiltro,
+    ...(diagnostico.indiceUltimoNoPeriodo !== undefined
+      ? { indice_ultimo_no_periodo: diagnostico.indiceUltimoNoPeriodo }
+      : {}),
+    ...(diagnostico.cardsAntigosAntesDeRecente !== undefined
+      ? { cards_antigos_antes_de_recente: diagnostico.cardsAntigosAntesDeRecente }
+      : {}),
+  };
+}
+
+/**
+ * R3.2a (shadow): classifica os anúncios que o Radar já vai considerar, sem
+ * esconder nenhum. `sinal_quarto_preservado` conta os que tinham sinal de
+ * quarto mas foram mantidos por um sinal de imóvel inteiro.
+ */
+function detalheShadowQuartoOlx(anuncios: AnuncioCentralAngariacao[]) {
+  const pareceQuarto: string[] = [];
+  let preservados = 0;
+  for (const anuncio of anuncios) {
+    const { classe, motivo } = classificarRelevanciaRadarOlx(anuncio.titulo);
+    if (classe === "parece_quarto") pareceQuarto.push(anuncio.idExterno);
+    else if (motivo === "imovel-inteiro-preservado") preservados += 1;
+  }
+  return {
+    parece_quarto: pareceQuarto.length,
+    parece_quarto_ids: pareceQuarto.slice(0, LIMITE_IDS_PARECE_QUARTO),
+    sinal_quarto_preservado: preservados,
+  };
+}
+
+/** Instrumentação é acessória: um erro nela nunca transforma sucesso em falha. */
+function detalheOpcional(montar: () => Record<string, unknown>): Record<string, unknown> {
+  try {
+    return montar();
+  } catch {
+    return {};
+  }
+}
+
 async function verificarBusca(
   supabase: SupabaseClient,
   busca: DbBuscaRadar,
@@ -150,6 +202,7 @@ async function verificarBusca(
   const portal = busca.filtros.portal;
   let etapa: EtapaBuscaRadar = "montagem-url";
   let origemHtml: OrigemConsultaFirecrawl | undefined;
+  let diagnosticoOlx: DiagnosticoPaginaOlx | undefined;
   try {
     const urlPesquisa = urlDaPesquisa(busca.filtros);
     etapa = "coleta";
@@ -157,6 +210,7 @@ async function verificarBusca(
       busca.filtros,
       urlPesquisa,
       (origem) => { origemHtml = origem; },
+      (diagnostico) => { diagnosticoOlx = diagnostico; },
     );
     etapa = "normalizacao";
     const finalizacao = await finalizarColetaCentralAngariacao(
@@ -222,7 +276,13 @@ async function verificarBusca(
         status_portal: "sem_cards",
       });
     } else {
-      registrarRadar(busca.user_id, "info", "radar-busca-ok", detalheComum);
+      registrarRadar(busca.user_id, "info", "radar-busca-ok", {
+        ...detalheComum,
+        ...detalheOpcional(() => (portal === "olx" && diagnosticoOlx
+          ? detalhePaginaOlx(diagnosticoOlx, anuncios.length)
+          : {})),
+        ...detalheOpcional(() => (portal === "olx" ? detalheShadowQuartoOlx(anuncios) : {})),
+      });
     }
     return {
       buscaId: busca.id,

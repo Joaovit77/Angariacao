@@ -21,7 +21,7 @@ vi.mock("@/lib/servidor/registro", () => ({
   registrarEvento: mocks.registrarEvento,
 }));
 
-import { executarMonitorRadar } from "@/lib/servidor/monitorRadarAngariacao";
+import { executarMonitorRadar, LIMITE_IDS_PARECE_QUARTO } from "@/lib/servidor/monitorRadarAngariacao";
 
 interface BuscaRadarTeste {
   id: string;
@@ -451,5 +451,181 @@ describe("monitor agendado do Radar", () => {
       busca_id: "busca-9",
       motivo: "limite-rodada",
     });
+  });
+});
+
+describe("monitor agendado do Radar: observabilidade R3.1 e shadow R3.2a", () => {
+  const quarto = (id: string, titulo: string): AnuncioCentralAngariacao => ({
+    ...anuncioValido,
+    idExterno: id,
+    titulo,
+    url: `https://pr.olx.com.br/imoveis/${id}`,
+  });
+  const deCambe: AnuncioCentralAngariacao = {
+    ...anuncioValido,
+    idExterno: "cambe-1",
+    cidade: "Cambé",
+    url: "https://pr.olx.com.br/imoveis/cambe-1",
+  };
+  const diagnostico = {
+    cardsPagina: 50,
+    noPeriodoAntesCidade: 3,
+    indiceUltimoNoPeriodo: 12,
+    cardsAntigosAntesDeRecente: 4,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv("FIRECRAWL_API_KEY", "fc-teste");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://projeto.supabase.co");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role");
+    mocks.salvarComparaveisMercado.mockResolvedValue(1);
+    vi.spyOn(console, "info").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it("acrescenta ordem, tamanho da página e shadow ao radar-busca-ok sem mudar os campos atuais", async () => {
+    const banco = clienteRadarFalso();
+    mocks.createClient.mockReturnValue(banco.cliente);
+    const coletados = [anuncioValido, quarto("1523674129", "QUARTO MOBILIADO CENTRO DE LONDRINA"), deCambe];
+    mocks.buscarComFirecrawl.mockImplementation(async (_filtros, _url, registrarOrigem, registrarDiagnostico) => {
+      registrarOrigem("firecrawl");
+      registrarDiagnostico(diagnostico);
+      return coletados;
+    });
+
+    await executarMonitorRadar();
+
+    expect(detalheRadar("radar-busca-ok")).toEqual({
+      busca_id: "busca-1",
+      portal: "olx",
+      coletados: 3,
+      apos_filtro: 2,
+      novos: 1,
+      origem_html: "firecrawl",
+      duracao_ms: expect.any(Number),
+      cards_pagina: 50,
+      no_periodo_antes_cidade: 3,
+      descartados_cidade: 1,
+      indice_ultimo_no_periodo: 12,
+      cards_antigos_antes_de_recente: 4,
+      parece_quarto: 1,
+      parece_quarto_ids: ["1523674129"],
+      sinal_quarto_preservado: 1,
+    });
+  });
+
+  it("omite os campos de período quando o diagnóstico não os traz", async () => {
+    const banco = clienteRadarFalso();
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockImplementation(async (_f, _u, _o, registrarDiagnostico) => {
+      registrarDiagnostico({ cardsPagina: 7, noPeriodoAntesCidade: 1 });
+      return [anuncioValido];
+    });
+
+    await executarMonitorRadar();
+
+    const detalhe = detalheRadar("radar-busca-ok");
+    expect(detalhe).toMatchObject({ cards_pagina: 7, no_periodo_antes_cidade: 1, descartados_cidade: 0 });
+    expect(detalhe).not.toHaveProperty("indice_ultimo_no_periodo");
+    expect(detalhe).not.toHaveProperty("cards_antigos_antes_de_recente");
+  });
+
+  it("shadow não esconde o quarto: persiste no Radar e nos comparáveis como hoje", async () => {
+    const banco = clienteRadarFalso();
+    mocks.createClient.mockReturnValue(banco.cliente);
+    const anuncioQuarto = quarto("1534620451", "Alugo quarto mobilado ");
+    mocks.buscarComFirecrawl.mockResolvedValue([anuncioQuarto]);
+
+    const resumo = await executarMonitorRadar();
+
+    expect(resumo).toMatchObject({ novos: 1, falhas: 0 });
+    expect(mocks.salvarComparaveisMercado).toHaveBeenCalledWith(
+      banco.cliente,
+      "usuario-radar",
+      [expect.objectContaining({ idExterno: "1534620451" })],
+      busca.filtros,
+    );
+    expect(banco.inserirAnuncios).toHaveBeenCalledWith([
+      expect.objectContaining({ id_externo: "1534620451", visto: false }),
+    ], { onConflict: "busca_id,portal,id_externo", ignoreDuplicates: true });
+    expect(detalheRadar("radar-busca-ok")).toMatchObject({ parece_quarto: 1, novos: 1 });
+  });
+
+  it("deduplicação não muda: quarto já conhecido é contado no shadow, mas não reinserido", async () => {
+    const banco = clienteRadarFalso([{ portal: "olx", id_externo: "1530812703" }]);
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([quarto("1530812703", "Aluguel Quarto ")]);
+
+    await executarMonitorRadar();
+
+    expect(banco.inserirAnuncios).not.toHaveBeenCalled();
+    expect(detalheRadar("radar-busca-ok")).toMatchObject({ novos: 0, parece_quarto: 1 });
+  });
+
+  it("limita a amostra de IDs do shadow sem limitar a contagem", async () => {
+    const banco = clienteRadarFalso();
+    mocks.createClient.mockReturnValue(banco.cliente);
+    const quartos = Array.from({ length: 12 }, (_, i) => quarto(`15000000${i + 10}`, "Aluguel Quarto"));
+    mocks.buscarComFirecrawl.mockResolvedValue(quartos);
+
+    await executarMonitorRadar();
+
+    const detalhe = detalheRadar("radar-busca-ok");
+    expect(detalhe.parece_quarto).toBe(12);
+    expect(detalhe.parece_quarto_ids).toHaveLength(LIMITE_IDS_PARECE_QUARTO);
+  });
+
+  it("não registra título nem URL do anúncio no shadow", async () => {
+    const banco = clienteRadarFalso();
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([quarto("1523968436", "Pensionato mensal")]);
+
+    await executarMonitorRadar();
+
+    const logs = JSON.stringify(mocks.registrarEvento.mock.calls);
+    expect(logs).not.toContain("Pensionato");
+    expect(logs).not.toContain("olx.com.br");
+    expect(detalheRadar("radar-busca-ok").parece_quarto_ids).toEqual(["1523968436"]);
+  });
+
+  it("Chaves na Mão não recebe os campos da OLX nem o shadow", async () => {
+    const buscaChaves = {
+      ...busca,
+      id: "busca-chaves",
+      filtros: { ...busca.filtros, portal: "chaves-na-mao" as typeof busca.filtros.portal, tipo: "Casa" },
+    };
+    const banco = clienteRadarFalso([], [buscaChaves]);
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([
+      { ...anuncioValido, portal: "chaves-na-mao", idExterno: "35106344", titulo: "Quarto para alugar" },
+    ]);
+
+    await executarMonitorRadar();
+
+    const detalhe = detalheRadar("radar-busca-ok");
+    expect(Object.keys(detalhe).sort()).toEqual(
+      ["apos_filtro", "busca_id", "coletados", "duracao_ms", "novos", "origem_html", "portal"],
+    );
+    expect(banco.inserirAnuncios).toHaveBeenCalledOnce();
+  });
+
+  it("radar-busca-vazia continua sem os campos novos", async () => {
+    const banco = clienteRadarFalso();
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockImplementation(async (_f, _u, _o, registrarDiagnostico) => {
+      registrarDiagnostico({ cardsPagina: 0, noPeriodoAntesCidade: 0 });
+      return [];
+    });
+
+    await executarMonitorRadar();
+
+    expect(detalheRadar("radar-busca-vazia")).not.toHaveProperty("cards_pagina");
+    expect(detalheRadar("radar-busca-vazia")).not.toHaveProperty("parece_quarto");
   });
 });

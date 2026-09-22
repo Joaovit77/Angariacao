@@ -3,7 +3,7 @@ import { chaveCanonicaConsultaPortal } from "./planejadorColetaMercados";
 import { getCache } from "@vercel/functions";
 import { load, type CheerioAPI, type Cheerio } from "cheerio";
 import type { AnyNode } from "domhandler";
-import { dataPublicacaoOlx, dentroDoPeriodo } from "@/lib/datas";
+import { agoraTimestamp, dataPublicacaoOlx, dentroDoPeriodo, timestampDeIso } from "@/lib/datas";
 import {
   idDoAnuncio,
   comCaracteristicasDoAnuncio,
@@ -68,33 +68,127 @@ function cidadeBairroWimoveis(valor: string): { cidade: string | null; bairro: s
   return { cidade: partes.at(-1) || null, bairro: partes.slice(0, -1).join(", ") || null, estado: null };
 }
 
-function extrairOlx($: CheerioAPI, filtros: FiltrosCentralAngariacao): AnuncioCentralAngariacao[] {
-  return $("section.olx-adcard").slice(0, LIMITE_RESULTADOS).toArray().flatMap((elemento, indice) => {
+interface CardOlx {
+  /** Posição 1-based na ordem original da página, contando todos os cards. */
+  posicao: number;
+  /** `null` quando o card não tem link/título/id de anúncio utilizável. */
+  anuncio: AnuncioCentralAngariacao | null;
+  noPeriodo: boolean;
+  /** Fora do período, com data legível e mais antiga que `diasPublicacao`. */
+  antigo: boolean;
+}
+
+interface PaginaOlx {
+  cardsPagina: number;
+  cards: CardOlx[];
+}
+
+/**
+ * Lê os cards uma única vez. A extração e o diagnóstico derivam do mesmo
+ * `noPeriodo` por card, então não podem divergir entre si. O filtro de período
+ * é exatamente o de antes; só os primeiros LIMITE_RESULTADOS cards são
+ * interpretados, como sempre foi.
+ */
+function lerPaginaOlx($: CheerioAPI, filtros: FiltrosCentralAngariacao): PaginaOlx {
+  const agora = agoraTimestamp();
+  const todos = $("section.olx-adcard");
+  const cards = todos.slice(0, LIMITE_RESULTADOS).toArray().map((elemento, indice): CardOlx => {
+    const posicao = indice + 1;
     const card = $(elemento);
     const link = card.find('a[data-testid="adcard-link"]').first();
     const url = link.attr("href") || "";
     const titulo = link.attr("title") || texto(link);
-    if (!url || !titulo || !/\d{6,}(?:\?|$)/.test(url)) return [];
+    if (!url || !titulo || !/\d{6,}(?:\?|$)/.test(url)) {
+      return { posicao, anuncio: null, noPeriodo: false, antigo: false };
+    }
     const local = cidadeBairro(texto(card.find(".olx-adcard__location").first()));
     const publicadoTexto = texto(card.find(".olx-adcard__date").first());
     const publicadoEm = dataPublicacaoOlx(publicadoTexto)?.toISOString() || null;
-    if (filtros.diasPublicacao && !dentroDoPeriodo(publicadoEm, filtros.diasPublicacao)) return [];
-    return [{
-      idExterno: idDoAnuncio("olx", url, indice),
-      portal: "olx" as const,
-      titulo,
-      preco: dinheiro(texto(card.find(".olx-adcard__price").first())),
-      cidade: local.cidade,
-      bairro: local.bairro,
-      endereco: null,
-      imagem: imagemDe(card),
-      url,
-      descricao: texto(card.find(".olx-adcard__details").first()) || null,
-      publicadoEm,
-      publicadoTexto: publicadoTexto || null,
-      anunciante: "incerto" as const,
-    }];
+    const dias = filtros.diasPublicacao;
+    const noPeriodo = !dias || dentroDoPeriodo(publicadoEm, dias);
+    const publicado = timestampDeIso(publicadoEm);
+    const antigo = !!dias && !noPeriodo && publicado != null
+      && agora - publicado > dias * 24 * 60 * 60 * 1000;
+    return {
+      posicao,
+      noPeriodo,
+      antigo,
+      anuncio: {
+        idExterno: idDoAnuncio("olx", url, indice),
+        portal: "olx" as const,
+        titulo,
+        preco: dinheiro(texto(card.find(".olx-adcard__price").first())),
+        cidade: local.cidade,
+        bairro: local.bairro,
+        endereco: null,
+        imagem: imagemDe(card),
+        url,
+        descricao: texto(card.find(".olx-adcard__details").first()) || null,
+        publicadoEm,
+        publicadoTexto: publicadoTexto || null,
+        anunciante: "incerto" as const,
+      },
+    };
   });
+  return { cardsPagina: todos.length, cards };
+}
+
+function anunciosDaPaginaOlx(pagina: PaginaOlx): AnuncioCentralAngariacao[] {
+  return pagina.cards.flatMap((card) => (card.anuncio && card.noPeriodo ? [card.anuncio] : []));
+}
+
+/**
+ * Diagnóstico da página da OLX para a observabilidade do Radar (R3.1).
+ * Não altera a coleta: descreve a mesma página que a extração acabou de ler.
+ *
+ * - `cardsPagina`: todos os `section.olx-adcard` do HTML, antes de qualquer
+ *   filtro, inclusive os além do limite de LIMITE_RESULTADOS e os inválidos.
+ * - `noPeriodoAntesCidade`: anúncios válidos dos primeiros LIMITE_RESULTADOS
+ *   cards que passaram por `diasPublicacao`. Na OLX é o mesmo número que a
+ *   extração devolve (`coletados`), ainda antes do filtro de cidade/UF.
+ * - `indiceUltimoNoPeriodo`: posição 1-based, na ordem original da página, do
+ *   último card dentro do período; `null` se nenhum estiver.
+ * - `cardsAntigosAntesDeRecente`: cards com data legível mais antiga que o
+ *   período posicionados antes de `indiceUltimoNoPeriodo`. Numa página
+ *   ordenada por recência é 0. Cards sem data legível ou inválidos não contam.
+ *
+ * Os dois últimos campos só existem quando a busca tem `diasPublicacao`.
+ */
+export interface DiagnosticoPaginaOlx {
+  cardsPagina: number;
+  noPeriodoAntesCidade: number;
+  indiceUltimoNoPeriodo?: number | null;
+  cardsAntigosAntesDeRecente?: number;
+}
+
+function diagnosticarPaginaOlx(pagina: PaginaOlx, filtros: FiltrosCentralAngariacao): DiagnosticoPaginaOlx {
+  const noPeriodo = pagina.cards.filter((card) => card.anuncio && card.noPeriodo);
+  const diagnostico: DiagnosticoPaginaOlx = {
+    cardsPagina: pagina.cardsPagina,
+    noPeriodoAntesCidade: noPeriodo.length,
+  };
+  if (!filtros.diasPublicacao) return diagnostico;
+  const ultimo = noPeriodo.at(-1)?.posicao ?? null;
+  return {
+    ...diagnostico,
+    indiceUltimoNoPeriodo: ultimo,
+    cardsAntigosAntesDeRecente: ultimo == null
+      ? 0
+      : pagina.cards.filter((card) => card.anuncio && card.antigo && card.posicao < ultimo).length,
+  };
+}
+
+function extrairOlx(
+  $: CheerioAPI,
+  filtros: FiltrosCentralAngariacao,
+  registrarDiagnostico?: (diagnostico: DiagnosticoPaginaOlx) => void,
+): AnuncioCentralAngariacao[] {
+  const pagina = lerPaginaOlx($, filtros);
+  if (registrarDiagnostico) {
+    // Observabilidade nunca interrompe a coleta.
+    try { registrarDiagnostico(diagnosticarPaginaOlx(pagina, filtros)); } catch { /* ignora */ }
+  }
+  return anunciosDaPaginaOlx(pagina);
 }
 
 function extrairVivaReal($: CheerioAPI, filtros: FiltrosCentralAngariacao): AnuncioCentralAngariacao[] {
@@ -202,10 +296,11 @@ function extrairWimoveis($: CheerioAPI, filtros: FiltrosCentralAngariacao): Anun
 export function extrairAnunciosFirecrawl(
   html: string,
   filtros: FiltrosCentralAngariacao,
+  registrarDiagnosticoOlx?: (diagnostico: DiagnosticoPaginaOlx) => void,
 ): AnuncioCentralAngariacao[] {
   const $ = load(html);
   switch (filtros.portal) {
-    case "olx": return extrairOlx($, filtros)
+    case "olx": return extrairOlx($, filtros, registrarDiagnosticoOlx)
       .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
     case "chaves-na-mao": return extrairChaves($)
       .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
@@ -258,9 +353,13 @@ async function coletarHtmlFirecrawl(urlPesquisa: string): Promise<string> {
   return corpo.data.rawHtml;
 }
 
-function extrairComProtecao(html: string, filtros: FiltrosCentralAngariacao) {
+function extrairComProtecao(
+  html: string,
+  filtros: FiltrosCentralAngariacao,
+  registrarDiagnosticoOlx?: (diagnostico: DiagnosticoPaginaOlx) => void,
+) {
   try {
-    return extrairAnunciosFirecrawl(html, filtros);
+    return extrairAnunciosFirecrawl(html, filtros, registrarDiagnosticoOlx);
   } catch {
     throw new FirecrawlIndisponivel("Não foi possível interpretar a listagem.", "parser_falhou");
   }
@@ -281,12 +380,13 @@ export async function buscarComFirecrawl(
   filtros: FiltrosCentralAngariacao,
   urlPesquisa: string,
   registrarOrigem?: (origem: OrigemConsultaFirecrawl) => void,
+  registrarDiagnosticoOlx?: (diagnostico: DiagnosticoPaginaOlx) => void,
 ): Promise<AnuncioCentralAngariacao[]> {
   const chave = chaveCanonicaConsultaPortal(filtros.portal, urlPesquisa);
   const existente = consultasEmAndamento.get(chave);
   if (existente) {
     registrarOrigem?.("em_andamento");
-    return extrairComProtecao(await existente, filtros);
+    return extrairComProtecao(await existente, filtros, registrarDiagnosticoOlx);
   }
 
   const consulta = (async () => {
@@ -317,5 +417,5 @@ export async function buscarComFirecrawl(
   })().finally(() => consultasEmAndamento.delete(chave));
 
   consultasEmAndamento.set(chave, consulta);
-  return extrairComProtecao(await consulta, filtros);
+  return extrairComProtecao(await consulta, filtros, registrarDiagnosticoOlx);
 }
