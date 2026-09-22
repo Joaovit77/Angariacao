@@ -3,13 +3,17 @@
 import { buscarNaCentral } from "./centralAngariacao";
 import { anuncioPertenceAoMercado, type AnuncioCentralAngariacao, type FiltrosCentralAngariacao } from "./calculo/centralAngariacao";
 import {
+  resumirPendenciasRadar,
   selecionarAnunciosNovosRadar,
   type AnuncioRadar,
   type BuscaRadar,
+  type CandidatoPendenteRadar,
   type EstadoRadar,
   type OrigemVerificacaoRadar,
+  type PendenciasRadar,
 } from "./calculo/radarAngariacao";
 import { getSupabase } from "./persistencia/supabase";
+import { useAppStore } from "./store";
 import { agoraISOString } from "./datas";
 
 interface DbBuscaRadar {
@@ -90,13 +94,78 @@ export async function carregarRadar(): Promise<EstadoRadar> {
   return { buscas: buscasMapeadas, anuncios: anunciosMapeados };
 }
 
-export async function contarNovosRadar(): Promise<number> {
-  const { count, error } = await getSupabase()
-    .from("radar_anuncios")
-    .select("id", { count: "exact", head: true })
-    .eq("visto", false);
+interface DbCandidatoPendenteRadar {
+  id: string;
+  busca_id: string;
+  portal: CandidatoPendenteRadar["anuncio"]["portal"];
+  id_externo: string;
+  url: string;
+  titulo: string | null;
+  descricao: string | null;
+  endereco: string | null;
+  cidade: string | null;
+  estado: string | null;
+}
+
+/** Candidatos do banco inteiro, sem a janela de 120 da lista. */
+export async function carregarCandidatosPendentesRadar(): Promise<CandidatoPendenteRadar[]> {
+  const { data, error } = await getSupabase().rpc("candidatos_pendentes_radar");
   if (error) throw error;
-  return count ?? 0;
+  return ((data || []) as DbCandidatoPendenteRadar[]).map((row) => ({
+    id: row.id,
+    buscaId: row.busca_id,
+    anuncio: {
+      portal: row.portal,
+      idExterno: row.id_externo,
+      url: row.url,
+      titulo: row.titulo || "",
+      descricao: row.descricao,
+      endereco: row.endereco,
+      cidade: row.cidade,
+      estado: row.estado,
+    },
+  }));
+}
+
+export const EVENTO_PENDENCIAS_RADAR = "radar:pendencias";
+
+// Última fonte lida do banco. Tela e monitor recalculam a partir dela, então
+// uma mudança de imóveis nunca recompõe o contador com dados mais velhos que
+// os da última leitura de qualquer um dos dois.
+let fontePendencias: {
+  candidatos: CandidatoPendenteRadar[];
+  buscas: Array<Pick<BuscaRadar, "id" | "filtros">>;
+} | null = null;
+
+/**
+ * Único ponto que escreve o contador do Radar. Reaplica a regra sobre a última
+ * leitura com os imóveis atuais da store; não consulta o banco.
+ */
+export function recalcularPendenciasRadar(): PendenciasRadar | null {
+  if (!fontePendencias) return null;
+  const pendencias = resumirPendenciasRadar(
+    fontePendencias.candidatos,
+    fontePendencias.buscas,
+    useAppStore.getState().imoveis,
+  );
+  useAppStore.getState().setRadarNovos(pendencias.total);
+  window.dispatchEvent(new CustomEvent<PendenciasRadar>(EVENTO_PENDENCIAS_RADAR, { detail: pendencias }));
+  return pendencias;
+}
+
+/** Relê candidatos e buscas do banco e atualiza o contador. */
+export async function atualizarPendenciasRadar(): Promise<PendenciasRadar> {
+  const supabase = getSupabase();
+  const [candidatos, buscas] = await Promise.all([
+    carregarCandidatosPendentesRadar(),
+    supabase.from("radar_buscas").select("id,filtros"),
+  ]);
+  if (buscas.error) throw buscas.error;
+  fontePendencias = {
+    candidatos,
+    buscas: (buscas.data || []) as Array<Pick<BuscaRadar, "id" | "filtros">>,
+  };
+  return recalcularPendenciasRadar()!;
 }
 
 export async function salvarBuscaRadar(

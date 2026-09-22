@@ -36,6 +36,7 @@ import { carregarIdsComparaveisDosAnuncios } from "@/lib/persistencia/referencia
 import { carregarChavesAnunciosCentralVisualizados } from "@/lib/persistencia/historicoCentralAngariacao";
 import { marcarAnuncioCentralComoVisualizado } from "@/lib/mutacoes";
 import {
+  atualizarPendenciasRadar,
   carregarRadar,
   definirBuscaRadarAtiva,
   excluirBuscaRadar,
@@ -43,8 +44,10 @@ import {
   publicarAtualizacaoRadar,
   salvarBuscaRadar,
   verificarBuscaRadar,
+  EVENTO_PENDENCIAS_RADAR,
   EVENTO_RADAR_ATUALIZADO,
 } from "@/lib/radarAngariacao";
+import type { PendenciasRadar } from "@/lib/calculo/radarAngariacao";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
@@ -87,13 +90,18 @@ export default function CentralAngariacaoView() {
   const [idsComparaveis, setIdsComparaveis] = useState<Map<string, string>>(() => new Map());
   const [mostrarOcultos, setMostrarOcultos] = useState(false);
   const radarNovos = useAppStore((s) => s.radarNovos);
-  const setRadarNovos = useAppStore((s) => s.setRadarNovos);
+  const [pendencias, setPendencias] = useState<PendenciasRadar | null>(null);
+
+  function atualizarPendencias() {
+    // O contador é complementar: uma falha mantém o último valor conhecido.
+    atualizarPendenciasRadar().catch(() => {});
+  }
 
   async function recarregarRadar() {
     try {
       const estado = await carregarRadar();
       setRadar(estado);
-      setRadarNovos(estado.anuncios.filter((item) => !item.visto).length);
+      atualizarPendencias();
     } catch {
       toast("Não foi possível carregar o Radar agora.", "error");
     } finally {
@@ -107,10 +115,13 @@ export default function CentralAngariacaoView() {
       void recarregarRadar();
     });
     const atualizar = () => void recarregarRadar();
+    const receberPendencias = (evento: Event) => setPendencias((evento as CustomEvent<PendenciasRadar>).detail);
     window.addEventListener(EVENTO_RADAR_ATUALIZADO, atualizar);
+    window.addEventListener(EVENTO_PENDENCIAS_RADAR, receberPendencias);
     return () => {
       window.cancelAnimationFrame(quadro);
       window.removeEventListener(EVENTO_RADAR_ATUALIZADO, atualizar);
+      window.removeEventListener(EVENTO_PENDENCIAS_RADAR, receberPendencias);
     };
     // A função usa somente setters estáveis; a carga acontece uma vez no mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -146,13 +157,9 @@ export default function CentralAngariacaoView() {
     return urlsDosImoveis(imoveis);
   }, [imoveis]);
 
-  const novosPorBusca = useMemo(() => {
-    const contagem = new Map<string, number>();
-    for (const item of radar.anuncios) {
-      if (!item.visto) contagem.set(item.buscaId, (contagem.get(item.buscaId) || 0) + 1);
-    }
-    return contagem;
-  }, [radar.anuncios]);
+  // Mesma regra do contador geral, sobre o banco inteiro (não a janela de 120).
+  const novosPorBusca = pendencias?.porBusca ?? new Map<string, number>();
+  const radarPendente = (item: { id: string; visto: boolean }) => (pendencias ? pendencias.ids.has(item.id) : !item.visto);
 
   async function buscar() {
     if (!cidade.trim() || !ufValida(estado)) {
@@ -285,6 +292,8 @@ export default function CentralAngariacaoView() {
     try {
       await marcarAnuncioCentralComoVisualizado(anuncio, usuario.id);
       setAnunciosVisualizados((atuais) => new Set(atuais).add(chave));
+      // A visualização gravada é o que resolve a pendência no contador.
+      atualizarPendencias();
     } catch {
       toast("Não foi possível marcar o anúncio como visualizado.", "error");
     }
@@ -385,10 +394,10 @@ export default function CentralAngariacaoView() {
                     const visualizado = anunciosVisualizados.has(chaveAnuncio(anuncio));
                     const duplicado = repeticao.ocultar;
                     return (
-                      <article className={`card central-card${item.visto ? "" : " radar-nao-visto"}${visualizado ? " central-card-visualizado" : ""}`} key={item.id}>
+                      <article className={`card central-card${radarPendente(item) ? " radar-nao-visto" : ""}${visualizado ? " central-card-visualizado" : ""}`} key={item.id}>
                         <div className="central-card-media">{anuncio.imagem ? <Image loader={carregarImagemPortal} unoptimized src={`/api/central-angariacao/imagem?url=${encodeURIComponent(anuncio.imagem)}`} alt="" fill sizes="(max-width: 720px) 100vw, 33vw" /> : <span>Sem foto disponibilizada</span>}</div>
                         <div className="central-card-body">
-                          <div className="central-card-tags"><span>{rotuloPortal(anuncio.portal)}</span><span className={`radar-score ${avaliacao.faixa}`}>{avaliacao.nota}/100</span>{!item.visto && <span className="radar-novo">Novo</span>}{visualizado && <span className="visualizado">Visualizado</span>}{repeticao.motivo === "url-na-carteira" && <span className="duplicado">Já está na carteira</span>}{repeticao.motivo === "casa-no-pipeline" && <span className="duplicado">Casa já no pipeline</span>}{repeticao.motivo === "apartamento-no-endereco" && <span className="endereco-pipeline">Endereço no pipeline</span>}</div>
+                          <div className="central-card-tags"><span>{rotuloPortal(anuncio.portal)}</span><span className={`radar-score ${avaliacao.faixa}`}>{avaliacao.nota}/100</span>{radarPendente(item) && <span className="radar-novo">Novo</span>}{visualizado && <span className="visualizado">Visualizado</span>}{repeticao.motivo === "url-na-carteira" && <span className="duplicado">Já está na carteira</span>}{repeticao.motivo === "casa-no-pipeline" && <span className="duplicado">Casa já no pipeline</span>}{repeticao.motivo === "apartamento-no-endereco" && <span className="endereco-pipeline">Endereço no pipeline</span>}</div>
                           <h3>{anuncio.titulo}</h3>
                           <strong className="central-price">{anuncio.preco ? fmtMoney(anuncio.preco) : "Preço não informado"}</strong>
                           <p>{[anuncio.endereco, anuncio.bairro, anuncio.cidade].filter(Boolean).join(" · ") || "Localização não informada"}</p>

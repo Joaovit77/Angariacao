@@ -50,7 +50,9 @@ export function enderecoTemNumero(endereco: string | null | undefined): boolean 
   return /(?:,\s*|\b(?:n|nº|n°|numero)\.?\s*)\d+[a-z]?\b/i.test(endereco) || /\b\d+[a-z]?\s*$/i.test(endereco);
 }
 
-function mesmoEndereco(anuncio: AnuncioCentralAngariacao, imovel: Imovel): boolean {
+type AnuncioComparavelComCarteira = Pick<AnuncioCentralAngariacao, "url" | "titulo" | "descricao" | "endereco" | "cidade">;
+
+function mesmoEndereco(anuncio: AnuncioComparavelComCarteira, imovel: Imovel): boolean {
   const endereco = chaveEndereco(anuncio.endereco);
   const cidade = chaveEndereco(anuncio.cidade);
   return !!endereco && !!cidade && endereco === chaveEndereco(imovel.endereco) && cidade === chaveEndereco(imovel.cidade);
@@ -72,7 +74,7 @@ export function urlsDosImoveis(imoveis: Imovel[]): Set<string> {
 }
 
 export function situacaoRepeticaoCentral(
-  anuncio: AnuncioCentralAngariacao,
+  anuncio: AnuncioComparavelComCarteira,
   imoveis: Imovel[],
   urlsNaCarteira: Set<string> = urlsDosImoveis(imoveis),
 ): SituacaoRepeticaoCentral {

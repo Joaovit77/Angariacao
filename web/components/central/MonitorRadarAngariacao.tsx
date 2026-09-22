@@ -6,9 +6,10 @@ import { useSessao } from "@/components/SessaoProvider";
 import { buscaRadarEstaVencida } from "@/lib/calculo/radarAngariacao";
 import { notificarSistema } from "@/lib/notificacaoSistema";
 import {
+  atualizarPendenciasRadar,
   carregarRadar,
-  contarNovosRadar,
   publicarAtualizacaoRadar,
+  recalcularPendenciasRadar,
   verificarBuscaRadar,
 } from "@/lib/radarAngariacao";
 import { useAppStore } from "@/lib/store";
@@ -55,12 +56,17 @@ export default function MonitorRadarAngariacao() {
 
     async function atualizarContagem() {
       try {
-        const quantidade = await contarNovosRadar();
-        if (ativo) useAppStore.getState().setRadarNovos(quantidade);
+        if (ativo) await atualizarPendenciasRadar();
       } catch {
         /* Radar é complementar: uma falha não interrompe o painel. */
       }
     }
+
+    // "No pipeline" depende dos imóveis: quando eles mudam (carga inicial,
+    // cadastro, pré-cadastro importado), recalcula sem ir ao banco.
+    const cancelarImoveis = useAppStore.subscribe((estado, anterior) => {
+      if (ativo && estado.imoveis !== anterior.imoveis) recalcularPendenciasRadar();
+    });
 
     async function rodada() {
       if (!ativo || executando || !navigator.onLine) return;
@@ -111,6 +117,7 @@ export default function MonitorRadarAngariacao() {
     const intervalo = window.setInterval(() => void rodada(), INTERVALO_ENTRE_RODADAS_MS);
     return () => {
       ativo = false;
+      cancelarImoveis();
       window.clearTimeout(primeira);
       window.clearInterval(intervalo);
     };

@@ -4145,6 +4145,54 @@ grant select, insert, update on central_anuncios_visualizados to authenticated;
 create index if not exists idx_central_anuncios_visualizados_user_data
   on central_anuncios_visualizados (user_id, visualizado_em desc);
 
+-- R4: candidatos a pendência do Radar (visto = false e sem visualização pela
+-- identidade user_id + portal + id_externo). "No pipeline" continua decidido
+-- no TypeScript por `situacaoRepeticaoCentral`; esta função só lê.
+create or replace function public.candidatos_pendentes_radar()
+returns table (
+  id uuid,
+  busca_id uuid,
+  portal text,
+  id_externo text,
+  url text,
+  titulo text,
+  descricao text,
+  endereco text,
+  cidade text,
+  estado text
+)
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select
+    r.id,
+    r.busca_id,
+    r.portal,
+    r.id_externo,
+    r.url,
+    r.dados ->> 'titulo',
+    r.dados ->> 'descricao',
+    r.dados ->> 'endereco',
+    r.dados ->> 'cidade',
+    r.dados ->> 'estado'
+  from public.radar_anuncios r
+  where r.user_id = (select auth.uid())
+    and r.visto = false
+    and not exists (
+      select 1
+      from public.central_anuncios_visualizados v
+      where v.user_id = r.user_id
+        and v.portal = r.portal
+        and v.id_externo = r.id_externo
+    )
+  order by r.encontrado_em desc, r.id;
+$$;
+
+revoke all on function public.candidatos_pendentes_radar() from public, anon, authenticated, service_role;
+grant execute on function public.candidatos_pendentes_radar() to authenticated;
+
 -- ------------------------------------------------------------
 -- PRIVILÉGIOS EXPLÍCITOS DA DATA API
 --

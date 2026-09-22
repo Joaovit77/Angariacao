@@ -1,9 +1,12 @@
 import {
+  anuncioPertenceAoMercado,
   rotuloPortal,
   type AnuncioCentralAngariacao,
   type FiltrosCentralAngariacao,
 } from "./centralAngariacao";
+import { situacaoRepeticaoCentral, urlsDosImoveis } from "./repeticaoCentralAngariacao";
 import { agoraTimestamp, dataOperacionalDeTimestamp, timestampDeIso } from "../datas";
+import type { Imovel } from "../tipos";
 
 // Duas horas preservam alertas no mesmo turno e reduzem em 75% as consultas
 // automáticas em comparação com o intervalo anterior de 30 minutos.
@@ -69,4 +72,51 @@ export function buscaElegivelParaCron(busca: BuscaRadar, agora = agoraTimestamp(
   if (ultimoAutomatico == null) return true;
   if (ultimoAutomatico > agora) return false;
   return dataOperacionalDeTimestamp(ultimoAutomatico) !== dataOperacionalDeTimestamp(agora);
+}
+
+/**
+ * Anúncio do Radar que ainda pode exigir atenção, como devolvido pela RPC
+ * `candidatos_pendentes_radar`: `visto = false` e sem registro em
+ * `central_anuncios_visualizados` para o mesmo usuário + portal + id externo.
+ * Traz só os campos que a regra de pipeline e a de mercado leem.
+ */
+export interface CandidatoPendenteRadar {
+  id: string;
+  buscaId: string;
+  anuncio: Pick<
+    AnuncioCentralAngariacao,
+    "portal" | "idExterno" | "url" | "titulo" | "descricao" | "endereco" | "cidade" | "estado"
+  >;
+}
+
+export interface PendenciasRadar {
+  total: number;
+  porBusca: Map<string, number>;
+  /** IDs de `radar_anuncios` pendentes, para marcar "Novo" nos cards. */
+  ids: Set<string>;
+}
+
+/**
+ * Regra única do contador do Radar, usada pela tela e pelo monitor:
+ * pendente = candidato do servidor (não visto e não visualizado) que pertence
+ * ao mercado da busca e que a lista não esconde por já estar no pipeline
+ * (`situacaoRepeticaoCentral`, a mesma regra que oculta os cards).
+ */
+export function resumirPendenciasRadar(
+  candidatos: CandidatoPendenteRadar[],
+  buscas: Array<Pick<BuscaRadar, "id" | "filtros">>,
+  imoveis: Imovel[],
+): PendenciasRadar {
+  const filtrosPorBusca = new Map(buscas.map((busca) => [busca.id, busca.filtros]));
+  const urlsNaCarteira = urlsDosImoveis(imoveis);
+  const porBusca = new Map<string, number>();
+  const ids = new Set<string>();
+  for (const candidato of candidatos) {
+    const filtros = filtrosPorBusca.get(candidato.buscaId);
+    if (!filtros || !anuncioPertenceAoMercado(candidato.anuncio, filtros.cidade, filtros.estado)) continue;
+    if (situacaoRepeticaoCentral(candidato.anuncio, imoveis, urlsNaCarteira).ocultar) continue;
+    ids.add(candidato.id);
+    porBusca.set(candidato.buscaId, (porBusca.get(candidato.buscaId) || 0) + 1);
+  }
+  return { total: ids.size, porBusca, ids };
 }
