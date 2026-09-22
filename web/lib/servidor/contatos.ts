@@ -37,6 +37,7 @@ import {
 import {
   classificarComparacao,
   resolverContatoSobrevivente,
+  MAX_SALTOS_FUSAO,
   type CategoriaComparacao,
   type ContatoParaResolucao,
   type FalhaResolucaoContato,
@@ -44,9 +45,10 @@ import {
 import { ATRIBUICAO_MENSAGEM } from "../constantes";
 import { instanteParaISOOperacional, isoDeTimestamp, timestampDeIso } from "../datas";
 
-/** Quantos contatos a travessia de lápide carrega de uma vez. Fusão é
-    rara e a cadeia é curta; o teto existe para a consulta ser previsível. */
-const MAX_CONTATOS_CARREGADOS = 20;
+/** Quantas buscas a travessia de lápide pode fazer: o contato do canal
+    mais um salto por fusão, até o teto da cadeia. Cada busca é por ID —
+    nunca uma página da tabela. */
+const MAX_BUSCAS_CADEIA = MAX_SALTOS_FUSAO + 1;
 
 export interface EntradaShadow {
   userId: string;
@@ -149,21 +151,11 @@ export async function observarAtribuicao(
       };
     }
 
-    // 2. Lápide: o contato do canal pode ter sido absorvido por outro.
-    const contatos = await supabase
-      .from("contatos")
-      .select("id, user_id, fundido_em_contato_id")
-      .eq("user_id", entrada.userId)
-      .limit(MAX_CONTATOS_CARREGADOS);
-    if (contatos.error) return falha("consulta-contatos", entrada);
-    const porId = new Map<string, ContatoParaResolucao>();
-    for (const linha of contatos.data || []) {
-      porId.set(String(linha.id), {
-        id: String(linha.id),
-        userId: String(linha.user_id),
-        fundidoEmContatoId: (linha.fundido_em_contato_id as string | null) ?? null,
-      });
-    }
+    // 2. Lápide: o contato do canal pode ter sido absorvido por outro. A
+    //    cadeia é buscada pelo ID que o canal devolveu — identidade, não
+    //    posição na tabela.
+    const porId = await carregarCadeiaDeFusao(supabase, entrada.userId, contatoDoCanal);
+    if (porId === null) return falha("consulta-contatos", entrada);
     const resolucao = resolverContatoSobrevivente(contatoDoCanal, entrada.userId, porId);
     if (!resolucao.ok) return falha(`lapide-${resolucao.falha}`, entrada, resolucao.saltos);
     const contatoId = resolucao.contatoId;
@@ -242,6 +234,62 @@ export async function observarAtribuicao(
   } catch {
     return falha("inesperada", entrada);
   }
+}
+
+/**
+ * A cadeia de fusão que sai do contato do canal, e só ela.
+ *
+ * O primeiro `select` é pelo id que `contatos_telefones` devolveu; cada
+ * lápide encontrada gera a busca do id seguinte. Nenhuma página, nenhum
+ * `order`, nenhum teto de linhas: a identidade do contato vem do canal, e
+ * onde a linha está fisicamente na tabela é irrelevante. (Foi exatamente
+ * isso que quebrou em Production: uma conta com 331 contatos, uma consulta
+ * que lia 20 linhas quaisquer, e o contato certo fora delas.)
+ *
+ * Sem fusão — o caso de hoje, com zero lápides em Production — isto custa
+ * **uma** consulta. O teto de buscas é o da cadeia (`MAX_SALTOS_FUSAO`),
+ * então dado inconsistente vira parada, não laço.
+ *
+ * Devolve `null` só quando o banco recusa. Ciclo, alvo ausente e cadeia
+ * funda demais NÃO são tratados aqui: a busca simplesmente para, e quem
+ * classifica é `resolverContatoSobrevivente`, que já tem as três regras
+ * testadas.
+ */
+async function carregarCadeiaDeFusao(
+  supabase: SupabaseClient,
+  userId: string,
+  contatoInicial: string,
+): Promise<Map<string, ContatoParaResolucao> | null> {
+  const porId = new Map<string, ContatoParaResolucao>();
+  let atual = contatoInicial;
+
+  for (let busca = 0; busca < MAX_BUSCAS_CADEIA; busca += 1) {
+    if (porId.has(atual)) break; // ciclo
+    const contato = await supabase
+      .from("contatos")
+      .select("id, user_id, fundido_em_contato_id")
+      .eq("user_id", userId)
+      .eq("id", atual)
+      .maybeSingle();
+    if (contato.error) return null;
+    const linha = contato.data as {
+      id?: unknown;
+      user_id?: unknown;
+      fundido_em_contato_id?: unknown;
+    } | null;
+    if (!linha?.id) break; // alvo ausente (ou de outra conta: o filtro é explícito)
+
+    const proximo = (linha.fundido_em_contato_id as string | null) ?? null;
+    porId.set(String(linha.id), {
+      id: String(linha.id),
+      userId: String(linha.user_id),
+      fundidoEmContatoId: proximo,
+    });
+    if (!proximo) break; // sobrevivente: nenhuma busca a mais
+    atual = proximo;
+  }
+
+  return porId;
 }
 
 /** As mensagens programadas que já saíram dentro da janela e falam de

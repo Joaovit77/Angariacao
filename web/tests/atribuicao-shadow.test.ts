@@ -74,9 +74,53 @@ function consulta(resposta: Resposta, registro: { tabela: string; filtros: Recor
   return { chain, filtros, registro };
 }
 
+/* Uma TABELA falsa, não uma resposta fixa: aplica os `eq` pedidos e
+   respeita o `limit`, como o banco faria. É o que permite reproduzir o
+   defeito de Production — ler N linhas quaisquer e esperar que o contato
+   certo esteja entre elas depende da POSIÇÃO da linha, e só um fake que
+   tenha posição mostra isso. */
+type LinhaContato = { id: string; user_id: string; fundido_em_contato_id: string | null };
+const CONTATO_PADRAO: LinhaContato = { id: "contato-1", user_id: CONTA, fundido_em_contato_id: null };
+
+function consultaTabela(linhas: readonly LinhaContato[]) {
+  const filtros: Record<string, unknown> = {};
+  const iguais: [string, unknown][] = [];
+  let teto: number | null = null;
+  const aplicar = () => {
+    const casam = linhas.filter((linha) =>
+      iguais.every(([coluna, valor]) => (linha as unknown as Record<string, unknown>)[coluna] === valor),
+    );
+    return teto === null ? casam : casam.slice(0, teto);
+  };
+  const chain = {
+    select: vi.fn(() => chain),
+    eq: vi.fn((coluna: string, valor: unknown) => {
+      filtros[coluna] = valor;
+      iguais.push([coluna, valor]);
+      return chain;
+    }),
+    is: vi.fn((coluna: string, valor: unknown) => {
+      filtros[`${coluna}:is`] = valor;
+      return chain;
+    }),
+    in: vi.fn(() => chain),
+    gte: vi.fn(() => chain),
+    limit: vi.fn((n: number) => {
+      teto = n;
+      return chain;
+    }),
+    maybeSingle: vi.fn(async () => ({ data: aplicar()[0] ?? null, error: null })),
+    then: (resolver: (r: Resposta) => unknown, rejeitar?: (e: unknown) => unknown) =>
+      Promise.resolve({ data: aplicar(), error: null } as Resposta).then(resolver, rejeitar),
+  };
+  return { chain, filtros };
+}
+
 interface Cenario {
   canal?: Resposta;
   contatos?: Resposta;
+  /** Quando presente, `contatos` vira tabela de verdade (com posição). */
+  contatosTabela?: readonly LinhaContato[];
   vinculos?: Resposta;
   imoveis?: Resposta;
   mensagens_agendadas?: Resposta;
@@ -86,10 +130,8 @@ function clienteFalso(cenario: Cenario) {
   const chamadas: { tabela: string; filtros: Record<string, unknown> }[] = [];
   const padrao: Record<string, Resposta> = {
     contatos_telefones: cenario.canal ?? { data: { contato_id: "contato-1" }, error: null },
-    contatos: cenario.contatos ?? {
-      data: [{ id: "contato-1", user_id: CONTA, fundido_em_contato_id: null }],
-      error: null,
-    },
+    // Só usado quando o cenário injeta erro; o caminho normal vai à tabela.
+    contatos: cenario.contatos ?? { data: null, error: null },
     imoveis_contatos: cenario.vinculos ?? { data: [{ imovel_id: "a" }], error: null },
     imoveis: cenario.imoveis ?? {
       data: [{ id: "a", user_id: CONTA, codigo: "LD-1", status: "Novo contato", retirado: false, tentativas: [] }],
@@ -101,6 +143,13 @@ function clienteFalso(cenario: Cenario) {
     chamadas,
     cliente: {
       from: vi.fn((tabela: string) => {
+        // `contatos` é tabela (tem posição); as outras seguem resposta fixa.
+        // O cenário `contatos` explícito existe só para injetar erro.
+        if (tabela === "contatos" && !cenario.contatos) {
+          const t = consultaTabela(cenario.contatosTabela ?? [CONTATO_PADRAO]);
+          chamadas.push({ tabela, filtros: t.filtros });
+          return t.chain;
+        }
         const c = consulta(padrao[tabela] ?? { data: [], error: null }, chamadas);
         chamadas.push({ tabela, filtros: c.filtros });
         return c.chain;
@@ -219,9 +268,125 @@ describe("4-7. lápide de fusão", () => {
 
   it("a falha de lápide vira observação, não exceção", async () => {
     const o = await observar({
-      contatos: { data: [{ id: "contato-1", user_id: CONTA, fundido_em_contato_id: "contato-1" }], error: null },
+      contatosTabela: [{ id: "contato-1", user_id: CONTA, fundido_em_contato_id: "contato-1" }],
     }).promessa;
     expect(o).toMatchObject({ categoria: "falha", falha: "lapide-ciclo" });
+  });
+});
+
+/* ================================================================
+   7c-7k. A CADEIA VEM DO BANCO PELO ID — REGRESSÃO DE PRODUCTION
+
+   A 1a-C1 subiu carregando `contatos` com `.eq("user_id").limit(20)` e
+   procurando o contato do canal ali dentro. Numa conta com 331 contatos, o
+   contato certo ficou fora das 20 linhas: três mensagens orgânicas viraram
+   `lapide-contato-ausente` no primeiro dia. O legado seguiu normal (o
+   shadow não tem autoridade), mas a medição não saiu do lugar.
+
+   Estes testes fixam a semântica da CONSULTA, não do objeto em memória: a
+   tabela falsa tem posição, e ler uma página nunca mais pode substituir
+   perguntar pelo id.
+   ================================================================ */
+describe("7c-7k. a travessia busca por identidade, não por página", () => {
+  /** Uma conta grande, com o contato do canal propositalmente longe do
+      começo — exatamente a forma do caso de Production. */
+  function contaGrande(alvo: LinhaContato, posicao = 23): LinhaContato[] {
+    const outros = Array.from({ length: 30 }, (_, i) => ({
+      id: `outro-${i}`,
+      user_id: CONTA,
+      fundido_em_contato_id: null,
+    }));
+    return [...outros.slice(0, posicao), alvo, ...outros.slice(posicao)];
+  }
+
+  it("7c. REGRESSÃO: contato fora das primeiras 20 linhas ainda resolve", async () => {
+    const { promessa, chamadas } = observar({
+      contatosTabela: contaGrande(CONTATO_PADRAO),
+    });
+    const o = await promessa;
+    // Com `.limit(20)` isto dava `lapide-contato-ausente`.
+    expect(o).toMatchObject({ categoria: "concordante", contatoId: "contato-1", novoImovelId: "a", saltos: 0 });
+    expect(o.falha).toBeUndefined();
+    // E a consulta perguntou pelo id, com o tenant explícito.
+    const busca = chamadas.find((c) => c.tabela === "contatos")!;
+    expect(busca.filtros.id).toBe("contato-1");
+    expect(busca.filtros.user_id).toBe(CONTA);
+  });
+
+  it("7d. o caminho sem lápide custa UMA consulta a contatos", async () => {
+    const { promessa, chamadas } = observar({ contatosTabela: contaGrande(CONTATO_PADRAO) });
+    await promessa;
+    expect(chamadas.filter((c) => c.tabela === "contatos")).toHaveLength(1);
+  });
+
+  it("7e. um salto: cada lápide custa exatamente uma busca a mais", async () => {
+    const { promessa, chamadas } = observar({
+      contatosTabela: contaGrande({ id: "contato-1", user_id: CONTA, fundido_em_contato_id: "vivo" }).concat([
+        { id: "vivo", user_id: CONTA, fundido_em_contato_id: null },
+      ]),
+    });
+    const o = await promessa;
+    expect(o).toMatchObject({ categoria: "concordante", contatoId: "vivo", saltos: 1 });
+    expect(chamadas.filter((c) => c.tabela === "contatos")).toHaveLength(2);
+  });
+
+  it("7f. N saltos seguem a cadeia inteira, mesmo espalhada pela tabela", async () => {
+    const cadeia: LinhaContato[] = ["contato-1", "c1", "c2", "c3", "vivo"].map((id, i, todos) => ({
+      id,
+      user_id: CONTA,
+      fundido_em_contato_id: todos[i + 1] ?? null,
+    }));
+    // Ordem invertida: se a posição importasse, isto quebraria.
+    const o = await observar({ contatosTabela: [...contaGrande(cadeia[0]!), ...cadeia.slice(1).reverse()] }).promessa;
+    expect(o).toMatchObject({ categoria: "concordante", contatoId: "vivo", saltos: 4 });
+  });
+
+  it("7g. o teto de 8 saltos é respeitado: 8 resolve, 9 falha", async () => {
+    const monta = (tamanho: number): LinhaContato[] =>
+      Array.from({ length: tamanho + 1 }, (_, i) => ({
+        id: i === 0 ? "contato-1" : `c${i}`,
+        user_id: CONTA,
+        fundido_em_contato_id: i === tamanho ? null : `c${i + 1}`,
+      }));
+    const oito = await observar({ contatosTabela: monta(MAX_SALTOS_FUSAO) }).promessa;
+    expect(oito).toMatchObject({ contatoId: `c${MAX_SALTOS_FUSAO}`, saltos: MAX_SALTOS_FUSAO });
+    const nove = await observar({ contatosTabela: monta(MAX_SALTOS_FUSAO + 1) }).promessa;
+    expect(nove).toMatchObject({ categoria: "falha", falha: "lapide-profundidade-excedida" });
+  });
+
+  it("7h. ciclo no banco para a busca em vez de girar", async () => {
+    const { promessa, chamadas } = observar({
+      contatosTabela: [
+        { id: "contato-1", user_id: CONTA, fundido_em_contato_id: "b" },
+        { id: "b", user_id: CONTA, fundido_em_contato_id: "contato-1" },
+      ],
+    });
+    expect(await promessa).toMatchObject({ categoria: "falha", falha: "lapide-ciclo" });
+    expect(chamadas.filter((c) => c.tabela === "contatos").length).toBeLessThanOrEqual(MAX_SALTOS_FUSAO + 1);
+  });
+
+  it("7i. alvo da lápide inexistente falha seguro", async () => {
+    const o = await observar({
+      contatosTabela: [{ id: "contato-1", user_id: CONTA, fundido_em_contato_id: "sumiu" }],
+    }).promessa;
+    expect(o).toMatchObject({ categoria: "falha", falha: "lapide-contato-ausente", saltos: 1 });
+  });
+
+  it("7j. contato do canal inexistente falha seguro (e não vira candidato)", async () => {
+    const o = await observar({ contatosTabela: [] }).promessa;
+    expect(o).toMatchObject({ categoria: "falha", falha: "lapide-contato-ausente", saltos: 0, candidatos: 0 });
+  });
+
+  it("7k. alvo de outra conta não é alcançado: o filtro de tenant é da consulta", async () => {
+    const o = await observar({
+      contatosTabela: [
+        { id: "contato-1", user_id: CONTA, fundido_em_contato_id: "z" },
+        { id: "z", user_id: OUTRA, fundido_em_contato_id: null },
+      ],
+    }).promessa;
+    // A linha existe na tabela, mas é de `conta-b`: o `eq("user_id")` a
+    // esconde, e a travessia para em vez de atravessar o tenant.
+    expect(o).toMatchObject({ categoria: "falha", falha: "lapide-contato-ausente" });
   });
 });
 
@@ -439,7 +604,12 @@ describe("23-35. fronteira da C1", () => {
     const espiao = {
       from: (tabela: string) => {
         const chain: Record<string, unknown> = {};
-        const resposta = { data: tabela === "contatos_telefones" ? { contato_id: "contato-1" } : [], error: null };
+        const dados: Record<string, unknown> = {
+          contatos_telefones: { contato_id: "contato-1" },
+          contatos: { id: "contato-1", user_id: CONTA, fundido_em_contato_id: null },
+          imoveis_contatos: [{ imovel_id: "a" }],
+        };
+        const resposta = { data: dados[tabela] ?? [], error: null };
         Object.assign(chain, {
           select: (cols: string) => {
             colunas.push(`${tabela}: ${cols}`);
@@ -467,7 +637,17 @@ describe("23-35. fronteira da C1", () => {
     const deImoveis = colunas.find((c) => c.startsWith("imoveis:")) ?? "";
     expect(colunas.some((c) => c.includes("notas"))).toBe(false);
     expect(colunas.some((c) => c.includes("updated_at"))).toBe(false);
-    if (deImoveis) expect(deImoveis).toContain("tentativas");
+    // O caminho inteiro roda: o shadow chega a `imoveis` e pede o mínimo.
+    expect(deImoveis).toContain("tentativas");
+    expect(colunas).toContain("contatos: id, user_id, fundido_em_contato_id");
+  });
+
+  it("nenhuma consulta do shadow usa página como identidade", () => {
+    // O defeito da 1a-C1 foi este: `.limit(20)` em `contatos` e a esperança
+    // de que o contato certo estivesse na página. Identidade vem de `eq`.
+    expect(semComentarios(SERVIDOR)).not.toMatch(/\.limit\(/);
+    expect(semComentarios(SERVIDOR)).not.toMatch(/\.range\(|\.offset\(/);
+    expect(SERVIDOR).toContain('.eq("id", atual)');
   });
 
   it("imóvel de outra conta devolvido pelo banco não entra na resolução", async () => {
