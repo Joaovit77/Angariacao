@@ -1390,6 +1390,32 @@ qualquer ordem de array. Endereço no texto foi avaliado e **rejeitado** como re
 na carteira real há imóveis com endereço sem número e contatos com dois imóveis no mesmo logradouro,
 e o falso positivo é pior que a pendência.
 
+**Sombra da atribuição (1a-C1).** O webhook continua escolhendo o imóvel como sempre escolheu — o
+`order("updated_at").limit(2)` segue lá, de propósito — e, **depois da resposta sair** (`after()`),
+roda em paralelo a resolução do modelo novo: canal ativo → contato (seguindo `fundido_em_contato_id`
+com profundidade limitada, ciclo detectado e tenant nunca atravessado) → vínculos vigentes →
+`resolverAtribuicaoMensagem`. O resultado **não decide nada**: vai para `log_eventos`
+(`webhook-atribuicao-shadow`, ou `webhook-atribuicao-falhou` como aviso) num evento por mensagem,
+com categoria da comparação (`concordante`, `divergente`, `novo-pendente`, `novo-sem-candidatos`,
+`terminal-historico`, `sem-contato-relacional`, `falha`), nível, contagens e ids técnicos — sem
+telefone, nome, texto ou endereço. `observarAtribuicao` **nunca lança**: qualquer falha vira
+categoria `falha` e o fluxo legado segue intacto. O shadow não escreve dado de negócio, não chama
+IA nem transcrição e não carrega `notas`. Trocar a escolha do imóvel é a fatia seguinte, e só com
+os números que esta produzir — em Production, 46% dos contatos têm apenas imóveis terminais, e
+trocar a regra sem medir isso apagaria mensagens que hoje aparecem na caixa.
+
+Quatro fatos que a sombra deixa registrados para quando o imóvel passar a ser escolhido pelo motor,
+e que **não** estão implementados: (1) no ponto em que a sombra roda, o imóvel legado nunca é nulo
+— o casamento por telefone já resolveu um —, então "sem imóvel legado" só passa a existir quando o
+motor virar autoridade; (2) a janela de 48 h atravessa duas representações de tempo (o `enviado_em`
+`timestamptz` das mensagens programadas, convertido por `instanteParaISOOperacional`, e o ISO local
+da mensagem recebida), e isso precisa de teste de fuso explícito antes do cutover; (3) o cutover é
+a primeira etapa que vai precisar carregar `notas` dos candidatos, para o dedupe do `wa:<id>` entre
+imóveis do mesmo contato e para o contexto agregado que a IA lê; (4) o armazenamento de uma mensagem
+sem imóvel resolvido precisa de regra estável — a planejada é o menor id entre os candidatos —,
+porque uma regra que dependa de estado mutável muda de linha entre duas entregas do mesmo evento e
+duplica a mensagem.
+
 **Fronteira com a 1b.** A resolução por canal segue a lápide (`fundido_em_contato_id`) até o
 sobrevivente como rede de segurança, mas a RPC de fusão da 1b é obrigada a reparentear os vínculos
 e a desativar/reparentear os números do absorvido, para que nada volte a resolver para ele;
