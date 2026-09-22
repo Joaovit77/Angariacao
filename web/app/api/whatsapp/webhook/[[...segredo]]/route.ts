@@ -94,6 +94,11 @@ import { compromissoDaConfirmacaoDeVisita } from "@/lib/calculo/confirmacaoVisit
 import { MAX_MENSAGENS_CONTEXTO } from "@/lib/calculo/ia";
 import { classificarResposta } from "@/lib/servidor/ia";
 import { registrarEvento } from "@/lib/servidor/registro";
+import {
+  detalheDoEvento,
+  eventoDaObservacao,
+  observarAtribuicao,
+} from "@/lib/servidor/contatos";
 import { registrarMensagemEnviada } from "@/lib/servidor/historicoWhatsapp";
 import { agoraISOComHora, agoraISOComSegundos, todayISO } from "@/lib/datas";
 import type { NotaImovel, StatusHistoryEntry, Tentativa } from "@/lib/tipos";
@@ -379,6 +384,62 @@ export async function POST(
   };
   const ambiguo = imoveis.length > 1 ? " (o proprietário tem mais de um imóvel; usando o mais recente)" : "";
   const rotulo = imovel.codigo || imovel.id;
+
+  /* SOMBRA DA ATRIBUIÇÃO (Fase 1a-C1) — observa, não decide.
+
+     O casamento acima continua sendo o que manda: ele escolheu `imovel`, e
+     é esse imóvel que recebe nota, tentativa, encerramento e agenda daqui
+     para baixo. O que roda agora, ao lado, é a resolução do modelo
+     relacional (contato pelo canal ativo -> vínculos vigentes) somada ao
+     motor da 1a-B, só para registrar SE as duas concordariam.
+
+     Três garantias, e cada uma existe por um motivo:
+     - roda em `after()`, depois da resposta sair: quem espera é a
+       Evolution, e um observador não pode custar latência nem provocar
+       reentrega;
+     - `observarAtribuicao` nunca lança — qualquer falha vira uma
+       observação com categoria `falha`, e o fluxo legado segue intacto;
+     - o resultado não é lido por nenhuma linha abaixo. Trocar a escolha do
+       imóvel é a fatia seguinte (C2), e só depois de os dados desta aqui
+       mostrarem o tamanho da diferença. */
+  const legadoImovelId = imovel.id;
+  const recebidaEm = agoraISOComSegundos();
+  // Telefone e direção não mudam mais; o TEXTO muda quando o passo 3.5
+  // transcreve o áudio, e por isso é lido lá dentro, tarde.
+  const telefoneDoRemetente = mensagem.telefone;
+  const direcaoDoEvento = mensagem.direcao;
+  const observar = async () => {
+    try {
+      const observacao = await observarAtribuicao(supabase, {
+        userId,
+        telefoneCanonico: telefoneDoRemetente,
+        texto: mensagem?.texto ?? "",
+        recebidaEm,
+        legadoImovelId,
+        direcao: direcaoDoEvento,
+      });
+      const { evento, nivel } = eventoDaObservacao(observacao);
+      registrarEvento({ userId, categoria: "webhook", nivel, evento, detalhe: detalheDoEvento(observacao) });
+    } catch {
+      // Observador que derruba o observado não serve para nada. Mesmo o
+      // caminho "impossível" cai aqui em silêncio.
+      registrarEvento({
+        userId,
+        categoria: "webhook",
+        nivel: "aviso",
+        evento: "webhook-atribuicao-falhou",
+        detalhe: JSON.stringify({ categoria: "falha", falha: "inesperada" }),
+      });
+    }
+  };
+  try {
+    after(observar);
+  } catch {
+    // Fora de um ciclo de requisição (teste) `after` lança — mesmo
+    // fallback do `registrarEvento`, e sem `await`: o fluxo legado abaixo
+    // não espera pelo observador.
+    void observar();
+  }
 
   // Uma saída `fromMe` é confirmação do integrador, inclusive quando o
   // corretor enviou pelo celular/WhatsApp Web fora do painel. Ela entra no
