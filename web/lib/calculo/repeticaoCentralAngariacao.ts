@@ -114,6 +114,56 @@ function mesmoEndereco(anuncio: AnuncioComparavelComCarteira, imovel: Imovel): b
   return !!endereco && !!cidade && endereco === chaveEndereco(imovel.endereco) && cidade === chaveEndereco(imovel.cidade);
 }
 
+/** Tipos de logradouro já uniformizados por `chaveEndereco` ("r." → "rua"). */
+const TIPOS_LOGRADOURO = ["rua", "avenida", "alameda", "travessa", "praca", "rodovia", "estrada"];
+
+export interface PartesEnderecoCasa {
+  /** Tipo explícito já uniformizado ("R." → "rua"), ou null quando o endereço não o informa. */
+  tipoLogradouro: string | null;
+  /** Nome do logradouro normalizado, sem o tipo ("Rua Michigan" → "michigan"). */
+  logradouro: string;
+  /** Número confiável, com a letra quando houver ("321 A" → "321a"). */
+  numero: string;
+}
+
+/**
+ * Leitura estruturada do endereço de uma casa, usada só como caminho extra do
+ * match de casa (R4.1c.2). Aceita apenas os formatos vistos nos dados reais:
+ * "logradouro, número" e "logradouro, casa, número". Qualquer outro trecho
+ * entre o logradouro e o número (como "Casa 2") pode ser outra unidade e
+ * devolve null, assim como "--", "sn", "0", "00" e "1", que são placeholders.
+ */
+export function partesEnderecoCasa(endereco: string | null | undefined): PartesEnderecoCasa | null {
+  const partes = (endereco || "").split(",").map((parte) => parte.trim());
+  if (partes.length === 3 && chaveEndereco(partes[1]) === "casa") partes.splice(1, 1);
+  if (partes.length !== 2) return null;
+  const numero = partes[1].toLowerCase().replace(/\s+/g, "").match(/^(\d+)([a-z]?)$/);
+  if (!numero || Number(numero[1]) <= 1) return null;
+  const palavras = chaveEndereco(partes[0]).split(" ").filter(Boolean);
+  const tipoLogradouro = TIPOS_LOGRADOURO.includes(palavras[0]) ? palavras.shift()! : null;
+  const logradouro = palavras.join(" ");
+  if (!/[a-z]{3}/.test(logradouro)) return null;
+  return { tipoLogradouro, logradouro, numero: `${Number(numero[1])}${numero[2]}` };
+}
+
+/** Mesma cidade e mesmo logradouro + número confiável, por igualdade exata.
+    O tipo só pode faltar de um lado: "Rua X" e "Avenida X" são ruas diferentes. */
+function mesmaCasaEstruturada(
+  anuncio: AnuncioComparavelComCarteira,
+  partesAnuncio: PartesEnderecoCasa,
+  imovel: Imovel,
+): boolean {
+  const cidade = chaveEndereco(anuncio.cidade);
+  if (!cidade || cidade !== chaveEndereco(imovel.cidade)) return false;
+  const partesImovel = partesEnderecoCasa(imovel.endereco);
+  const tiposCompativeis = !partesImovel?.tipoLogradouro || !partesAnuncio.tipoLogradouro
+    || partesImovel.tipoLogradouro === partesAnuncio.tipoLogradouro;
+  return !!partesImovel
+    && tiposCompativeis
+    && partesImovel.logradouro === partesAnuncio.logradouro
+    && partesImovel.numero === partesAnuncio.numero;
+}
+
 function imovelEhApartamento(imovel: Imovel): boolean {
   return !!imovel.unidade?.trim() || !!imovel.bloco?.trim() || ehApartamento(`${imovel.tipo || ""} ${imovel.edificio || ""}`);
 }
@@ -161,14 +211,19 @@ export function situacaoRepeticaoCentral(
 
   const tipo = tipoDoAnuncio(anuncio);
   const mesmoLocal = imoveis.filter((imovel) => mesmoEndereco(anuncio, imovel));
-  if (!mesmoLocal.length) return resultado(null, false);
 
   if (tipo === "casa" && enderecoTemNumero(anuncio.endereco)) {
-    const casas = mesmoLocal.filter((imovel) => !imovelEhApartamento(imovel));
+    // Endereço idêntico OU, só para casa, logradouro + número confiável iguais
+    // (R4.1c.2: "Michigan, 610" = "Rua Michigan, 610"). O caminho estruturado
+    // soma ao match atual; nunca o substitui.
+    const partesAnuncio = partesEnderecoCasa(anuncio.endereco);
+    const casas = imoveis.filter((imovel) => !imovelEhApartamento(imovel)
+      && (mesmoEndereco(anuncio, imovel) || (!!partesAnuncio && mesmaCasaEstruturada(anuncio, partesAnuncio, imovel))));
     if (casas.some(imovelBloqueiaRadar)) return { motivo: "casa-no-pipeline", ocultar: true };
     registrar(casas, "endereco");
   }
 
+  if (!mesmoLocal.length) return resultado(null, false);
   if (tipo === "apartamento") return resultado("apartamento-no-endereco", false);
   return resultado(null, false);
 }
