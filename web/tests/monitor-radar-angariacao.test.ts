@@ -36,6 +36,15 @@ import {
   UNIVERSITARIO_DELVINA,
   UNIVERSITARIO_SEM_ENDERECO,
 } from "./fixtures/radarChavesR41";
+import {
+  CARD_43083373,
+  CARD_45326545,
+  CARD_46811835,
+  FOTO_CARD_46811835,
+  FOTO_LD_43083373,
+  FOTO_LD_45326545,
+  LD_REAL,
+} from "./fixtures/chavesFotosJsonLd";
 
 interface BuscaRadarTeste {
   id: string;
@@ -891,5 +900,50 @@ describe("monitor agendado do Radar: shadow de repetição do Chaves (R4.1a)", (
     for (const proibido of ["Edu Chaves", "edu chaves", "Yoshikawa", "yoshikawa", "Delvina", "chavesnamao.com.br", "Casa Geminada"]) {
       expect(logs).not.toContain(proibido);
     }
+  });
+});
+
+describe("monitor agendado do Radar: foto do Chaves via JSON-LD (R4.1b.1)", () => {
+  const buscaChaves = {
+    ...busca,
+    id: "busca-chaves",
+    filtros: { ...busca.filtros, portal: "chaves-na-mao" as typeof busca.filtros.portal, tipo: "Casa" },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv("FIRECRAWL_API_KEY", "fc-teste");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://projeto.supabase.co");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role");
+    mocks.salvarComparaveisMercado.mockResolvedValue(1);
+    vi.spyOn(console, "info").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  async function linhasGravadas(html: string) {
+    const real = await vi.importActual<typeof import("@/lib/servidor/firecrawlCentralAngariacao")>(
+      "@/lib/servidor/firecrawlCentralAngariacao",
+    );
+    const banco = clienteRadarFalso([], [buscaChaves]);
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockImplementation(async (filtros) => real.extrairAnunciosFirecrawl(html, filtros));
+    await executarMonitorRadar();
+    return banco.inserirAnuncios.mock.calls[0][0] as Array<{ id_externo: string; dados: AnuncioCentralAngariacao }>;
+  }
+
+  it("a gravação no Radar só difere na foto", async () => {
+    const cards = `${CARD_46811835}${CARD_43083373}${CARD_45326545}`;
+    const antes = await linhasGravadas(cards);
+    const depois = await linhasGravadas(`${cards}${LD_REAL}`);
+
+    const semFoto = (linhas: typeof antes) => linhas.map((linha) => ({ ...linha, dados: { ...linha.dados, imagem: null } }));
+    expect(semFoto(depois)).toEqual(semFoto(antes));
+    expect(antes.map((linha) => linha.dados.imagem ?? null)).toEqual([FOTO_CARD_46811835, null, null]);
+    expect(depois.map((linha) => linha.dados.imagem)).toEqual([FOTO_CARD_46811835, FOTO_LD_43083373, FOTO_LD_45326545]);
   });
 });

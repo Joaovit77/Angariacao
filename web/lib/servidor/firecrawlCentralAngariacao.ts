@@ -224,8 +224,72 @@ function extrairVivaReal($: CheerioAPI, filtros: FiltrosCentralAngariacao): Anun
     });
 }
 
+const HOST_IMAGEM_CHAVES = "www.chavesnamao.com.br";
+
+/** ID do anúncio no endereço do detalhe do Chaves (`/imovel/.../id-43083373/`). */
+function idDoDetalheChaves(valor: unknown): string | null {
+  if (typeof valor !== "string") return null;
+  try {
+    return new URL(valor, `https://${HOST_IMAGEM_CHAVES}`).pathname.match(/\/id-(\d+)\/?$/)?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Foto do próprio anúncio: https, host do Chaves e o id no segmento
+    `/imoveis/<pasta>/<id>/` do caminho, comparado por igualdade exata. */
+function fotoDoAnuncioChaves(valor: unknown, id: string): string | null {
+  if (typeof valor !== "string") return null;
+  let url: URL;
+  try {
+    url = new URL(valor);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" || url.hostname !== HOST_IMAGEM_CHAVES) return null;
+  const partes = url.pathname.split("/");
+  const indice = partes.indexOf("imoveis");
+  if (indice < 0 || !/^\d+$/.test(partes[indice + 1] || "") || partes[indice + 2] !== id) return null;
+  return url.toString();
+}
+
+/**
+ * R4.1b.1: o Chaves só desenha `<img>` nos primeiros cards (as demais fotos
+ * entram por lazy loading), mas publica a foto de todos no JSON-LD da página
+ * (`offers.itemListElement[].itemOffered`, com `@id` do anúncio e `image`).
+ * Monta uma vez por página o mapa id → foto. JSON malformado ou fora desse
+ * formato é ignorado: o fallback nunca interrompe a coleta.
+ */
+function fotosJsonLdChaves($: CheerioAPI): Map<string, string> {
+  const fotos = new Map<string, string>();
+  const visitar = (no: unknown) => {
+    if (!no || typeof no !== "object") return;
+    if (Array.isArray(no)) {
+      no.forEach(visitar);
+      return;
+    }
+    const objeto = no as Record<string, unknown>;
+    const id = idDoDetalheChaves(objeto["@id"]) ?? idDoDetalheChaves(objeto.url);
+    if (id && !fotos.has(id)) {
+      const candidatas = Array.isArray(objeto.image) ? objeto.image : [objeto.image];
+      const foto = candidatas.map((candidata) => fotoDoAnuncioChaves(candidata, id)).find(Boolean);
+      if (foto) fotos.set(id, foto);
+    }
+    Object.values(objeto).forEach(visitar);
+  };
+  $('script[type="application/ld+json"]').each((_, script) => {
+    try {
+      visitar(JSON.parse($(script).html() || ""));
+    } catch {
+      // bloco malformado: segue sem ele
+    }
+  });
+  return fotos;
+}
+
 function extrairChaves($: CheerioAPI): AnuncioCentralAngariacao[] {
   const vistos = new Set<string>();
+  const fotosJsonLd = fotosJsonLdChaves($);
   return $('a[href*="/imovel/"][href*="/id-"]').slice(0, LIMITE_RESULTADOS).toArray()
     .flatMap((elemento, indice) => {
       const link = $(elemento);
@@ -240,8 +304,9 @@ function extrairChaves($: CheerioAPI): AnuncioCentralAngariacao[] {
         && !/R\$|m²|^\d+$|Endereço indisponível/i.test(valor));
       const estado = localidade?.match(/\/([A-Z]{2})\b/i)?.[1]?.toUpperCase() || null;
       const local = cidadeBairro(localidade?.replace(/\/[A-Z]{2}.*$/i, "").split(",").reverse().join(", ") || "");
+      const idExterno = idDoAnuncio("chaves-na-mao", url, indice);
       return [{
-        idExterno: idDoAnuncio("chaves-na-mao", url, indice),
+        idExterno,
         portal: "chaves-na-mao" as const,
         titulo,
         preco: dinheiro(precoTexto),
@@ -249,7 +314,7 @@ function extrairChaves($: CheerioAPI): AnuncioCentralAngariacao[] {
         estado,
         bairro: local.bairro,
         endereco: endereco || null,
-        imagem: imagemDe(link),
+        imagem: imagemDe(link) || fotosJsonLd.get(idExterno) || null,
         url,
         descricao: textos.join(" · ") || null,
         anunciante: "incerto" as const,
