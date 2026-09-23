@@ -174,6 +174,7 @@
 .central-card-tags .duplicado{ color:var(--warn); background:var(--warn-soft); }
 .central-card-tags .visualizado{ color:var(--text-dim); background:var(--bg-elev-3); }
 .central-card-tags .endereco-pipeline{ color:var(--warn); background:var(--warn-soft); }
+.central-card-tags .carteira-sem-bloqueio{ color:var(--text-dim); background:var(--bg-elev-3); cursor:help; }
 .central-card-tags .radar-novo{ color:var(--good); background:var(--good-soft); }
 .central-card-tags .radar-score.alta{ color:var(--good); background:var(--good-soft); }
 .central-card-tags .radar-score.media{ color:var(--warn); background:var(--warn-soft); }

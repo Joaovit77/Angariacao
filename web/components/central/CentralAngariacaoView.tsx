@@ -4,6 +4,7 @@ import Image, { type ImageLoaderProps } from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSessao } from "@/components/SessaoProvider";
+import EtiquetaCarteiraSemBloqueio from "@/components/central/EtiquetaCarteiraSemBloqueio";
 import { ORIGEM_GARIMPO_SITE } from "@/lib/constantes";
 import { buscarNaCentral } from "@/lib/centralAngariacao";
 import {
@@ -397,7 +398,7 @@ export default function CentralAngariacaoView() {
                       <article className={`card central-card${radarPendente(item) ? " radar-nao-visto" : ""}${visualizado ? " central-card-visualizado" : ""}`} key={item.id}>
                         <div className="central-card-media">{anuncio.imagem ? <Image loader={carregarImagemPortal} unoptimized src={`/api/central-angariacao/imagem?url=${encodeURIComponent(anuncio.imagem)}`} alt="" fill sizes="(max-width: 720px) 100vw, 33vw" /> : <span>Sem foto disponibilizada</span>}</div>
                         <div className="central-card-body">
-                          <div className="central-card-tags"><span>{rotuloPortal(anuncio.portal)}</span><span className={`radar-score ${avaliacao.faixa}`}>{avaliacao.nota}/100</span>{radarPendente(item) && <span className="radar-novo">Novo</span>}{visualizado && <span className="visualizado">Visualizado</span>}{repeticao.motivo === "url-na-carteira" && <span className="duplicado">Já está na carteira</span>}{repeticao.motivo === "casa-no-pipeline" && <span className="duplicado">Casa já no pipeline</span>}{repeticao.motivo === "apartamento-no-endereco" && <span className="endereco-pipeline">Endereço no pipeline</span>}</div>
+                          <div className="central-card-tags"><span>{rotuloPortal(anuncio.portal)}</span><span className={`radar-score ${avaliacao.faixa}`}>{avaliacao.nota}/100</span>{radarPendente(item) && <span className="radar-novo">Novo</span>}{visualizado && <span className="visualizado">Visualizado</span>}{repeticao.motivo === "url-na-carteira" && <span className="duplicado">Já está na carteira</span>}{repeticao.motivo === "casa-no-pipeline" && <span className="duplicado">Casa já no pipeline</span>}{repeticao.motivo === "apartamento-no-endereco" && <span className="endereco-pipeline">Endereço no pipeline</span>}<EtiquetaCarteiraSemBloqueio correspondencias={repeticao.naCarteiraSemBloqueio} /></div>
                           <h3>{anuncio.titulo}</h3>
                           <strong className="central-price">{anuncio.preco ? fmtMoney(anuncio.preco) : "Preço não informado"}</strong>
                           <p>{[anuncio.endereco, anuncio.bairro, anuncio.cidade].filter(Boolean).join(" · ") || "Localização não informada"}</p>
@@ -533,6 +534,7 @@ export default function CentralAngariacaoView() {
                         {repeticao.motivo === "url-na-carteira" && <span className="duplicado">Já está na carteira</span>}
                         {repeticao.motivo === "casa-no-pipeline" && <span className="duplicado">Casa já no pipeline</span>}
                         {repeticao.motivo === "apartamento-no-endereco" && <span className="endereco-pipeline">Endereço no pipeline</span>}
+                        <EtiquetaCarteiraSemBloqueio correspondencias={repeticao.naCarteiraSemBloqueio} />
                       </div>
                       <h3>{anuncio.titulo}</h3>
                       <strong className="central-price">{anuncio.preco ? fmtMoney(anuncio.preco) : "Preço não informado"}</strong>
