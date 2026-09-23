@@ -231,3 +231,9 @@ export function idDoAnuncio(portal: PortalAngariacao, url: string, indice: numbe
   const daUrl = url.match(/(?:-|\/)(\d{6,})(?:\?|\/|$)/)?.[1];
   return daUrl || `${portal}-${indice}-${slugPortal(url).slice(-28)}`;
 }
+
+/** O id caiu no fallback de `idDoAnuncio`, que depende da posição do card na
+    página: se a ordem mudar, o mesmo anúncio ganha outro id. Só para medir. */
+export function idExternoEhFallback(portal: PortalAngariacao, idExterno: string): boolean {
+  return idExterno.startsWith(`${portal}-`) && /^\d+-/.test(idExterno.slice(portal.length + 1));
+}

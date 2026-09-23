@@ -540,6 +540,17 @@ describe("monitor agendado do Radar: observabilidade R3.1 e shadow R3.2a", () =>
       parece_quarto: 1,
       parece_quarto_ids: ["1523674129"],
       sinal_quarto_preservado: 1,
+      // R4.2a: os dois considerados (Cambé fica fora) só publicam a cidade.
+      localizacao: {
+        logradouro_numero: 0,
+        logradouro_numero_placeholder: 0,
+        logradouro_sem_numero: 0,
+        indisponivel: 0,
+        bairro: 0,
+        cidade: 2,
+        sem_localizacao: 0,
+      },
+      id_fallback: 0,
     });
   });
 
@@ -632,8 +643,9 @@ describe("monitor agendado do Radar: observabilidade R3.1 e shadow R3.2a", () =>
     await executarMonitorRadar();
 
     const detalhe = detalheRadar("radar-busca-ok");
+    // A localização/id_fallback (R4.2a) vale para todo portal; os extras da OLX não.
     expect(Object.keys(detalhe).sort()).toEqual(
-      ["apos_filtro", "busca_id", "coletados", "duracao_ms", "novos", "origem_html", "portal"],
+      ["apos_filtro", "busca_id", "coletados", "duracao_ms", "id_fallback", "localizacao", "novos", "origem_html", "portal"],
     );
     expect(banco.inserirAnuncios).toHaveBeenCalledOnce();
   });
@@ -774,6 +786,31 @@ describe("monitor agendado do Radar: shadow de repetição do Chaves (R4.1a)", (
     vi.restoreAllMocks();
   });
 
+  it("R4.2a: a localização convive com a repetição e soma apos_filtro", async () => {
+    const banco = bancoComShadow({ existentes: [EDU_CHAVES_SANTOS_DUMONT] });
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue(coletaReal);
+
+    await executarMonitorRadar();
+
+    const detalhe = detalheRadar("radar-busca-ok");
+    expect(detalhe.repeticao_chaves).toMatchObject({ possivel_mesmo_imovel: 2, possivel_imovel_carteira: 1 });
+    // 31083573 tem a rua só no nome da foto: continua "indisponivel".
+    expect(detalhe.localizacao).toEqual({
+      logradouro_numero: 2,
+      logradouro_numero_placeholder: 0,
+      logradouro_sem_numero: 0,
+      indisponivel: 5,
+      bairro: 0,
+      cidade: 0,
+      sem_localizacao: 0,
+    });
+    const soma = Object.values(detalhe.localizacao as Record<string, number>).reduce((total, valor) => total + valor, 0);
+    expect(soma).toBe(detalhe.apos_filtro);
+    expect(detalhe.id_fallback).toBe(0);
+    expect(banco.inserirAnuncios.mock.calls[0][0]).toHaveLength(coletaReal.length);
+  });
+
   it("registra os três sinais com os casos reais da auditoria", async () => {
     const banco = bancoComShadow({
       existentes: [EDU_CHAVES_SANTOS_DUMONT],
@@ -829,8 +866,9 @@ describe("monitor agendado do Radar: shadow de repetição do Chaves (R4.1a)", (
     const resumo = await executarMonitorRadar();
 
     expect(resumo).toMatchObject({ verificadas: 1, novos: 1, falhas: 0 });
+    // Só o bloco do shadow some; a localização (R4.2a) é independente dele.
     expect(Object.keys(detalheRadar("radar-busca-ok")).sort()).toEqual(
-      ["apos_filtro", "busca_id", "coletados", "duracao_ms", "novos", "origem_html", "portal"],
+      ["apos_filtro", "busca_id", "coletados", "duracao_ms", "id_fallback", "localizacao", "novos", "origem_html", "portal"],
     );
   });
 
@@ -945,5 +983,74 @@ describe("monitor agendado do Radar: foto do Chaves via JSON-LD (R4.1b.1)", () =
     expect(semFoto(depois)).toEqual(semFoto(antes));
     expect(antes.map((linha) => linha.dados.imagem ?? null)).toEqual([FOTO_CARD_46811835, null, null]);
     expect(depois.map((linha) => linha.dados.imagem)).toEqual([FOTO_CARD_46811835, FOTO_LD_43083373, FOTO_LD_45326545]);
+  });
+});
+
+describe("monitor agendado do Radar: localização e id_fallback (R4.2a)", () => {
+  const olx = (id: string, campos: Partial<AnuncioCentralAngariacao> = {}): AnuncioCentralAngariacao => ({
+    ...anuncioValido,
+    idExterno: id,
+    url: `https://pr.olx.com.br/imoveis/${id}`,
+    ...campos,
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv("FIRECRAWL_API_KEY", "fc-teste");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://projeto.supabase.co");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role");
+    mocks.salvarComparaveisMercado.mockResolvedValue(1);
+    vi.spyOn(console, "info").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it("classifica só os considerados e conta o fallback na coleta inteira", async () => {
+    const banco = clienteRadarFalso();
+    mocks.createClient.mockReturnValue(banco.cliente);
+    const coletados = [
+      olx("1517890225", { bairro: "Gleba Fazenda Palhano" }),
+      olx("olx-4-imoveis-sem-id", { bairro: "Centro" }),
+      olx("olx-7-cambe-sem-id", { cidade: "Cambé", bairro: "Centro" }),
+    ];
+    mocks.buscarComFirecrawl.mockResolvedValue(coletados);
+
+    await executarMonitorRadar();
+
+    const detalhe = detalheRadar("radar-busca-ok");
+    expect(detalhe).toMatchObject({ coletados: 3, apos_filtro: 2, id_fallback: 2 });
+    expect(detalhe.localizacao).toMatchObject({ bairro: 2, cidade: 0, indisponivel: 0 });
+    // A localização não esconde nada: os dois considerados são gravados.
+    expect(banco.inserirAnuncios.mock.calls[0][0].map((linha: { id_externo: string }) => linha.id_externo))
+      .toEqual(["1517890225", "olx-4-imoveis-sem-id"]);
+  });
+
+  it("não registra endereço, bairro nem cidade no log, só contagens", async () => {
+    const banco = clienteRadarFalso();
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([
+      olx("1535683965", { endereco: "Av Rio de Janeiro, 1443", bairro: "Centro Histórico Teste" }),
+    ]);
+
+    await executarMonitorRadar();
+
+    const bruto = eventosRadar("radar-busca-ok")[0].detalhe as string;
+    expect(bruto).not.toMatch(/Rio de Janeiro|1443|Centro Histórico Teste|Londrina/);
+    expect(JSON.parse(bruto).localizacao.logradouro_numero).toBe(1);
+  });
+
+  it("radar-busca-vazia continua sem localização", async () => {
+    const banco = clienteRadarFalso();
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([]);
+
+    await executarMonitorRadar();
+
+    expect(detalheRadar("radar-busca-vazia")).not.toHaveProperty("localizacao");
+    expect(detalheRadar("radar-busca-vazia")).not.toHaveProperty("id_fallback");
   });
 });

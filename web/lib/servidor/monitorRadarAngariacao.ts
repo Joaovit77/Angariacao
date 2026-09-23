@@ -1,10 +1,12 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import {
+  idExternoEhFallback,
   PORTAIS_ANGARIACAO,
   type AnuncioCentralAngariacao,
   type FiltrosCentralAngariacao,
 } from "@/lib/calculo/centralAngariacao";
+import { resumirLocalizacaoRadar } from "@/lib/calculo/localizacaoRadar";
 import {
   buscaElegivelParaCron,
   selecionarAnunciosNovosRadar,
@@ -275,6 +277,19 @@ async function detalheShadowRepeticaoChaves(
   }
 }
 
+/**
+ * R4.2a (shadow): qualidade da localização dos anúncios que o Radar considera
+ * (a soma é `apos_filtro`) e quantos ids da coleta inteira caíram no fallback
+ * posicional de `idDoAnuncio`. Só contagens: nenhum endereço vai para o log e
+ * nada aqui esconde ou reordena anúncio.
+ */
+function detalheLocalizacao(coletados: AnuncioCentralAngariacao[], anuncios: AnuncioCentralAngariacao[]) {
+  return {
+    localizacao: resumirLocalizacaoRadar(anuncios),
+    id_fallback: coletados.filter((anuncio) => idExternoEhFallback(anuncio.portal, anuncio.idExterno)).length,
+  };
+}
+
 /** Instrumentação é acessória: um erro nela nunca transforma sucesso em falha. */
 function detalheOpcional(montar: () => Record<string, unknown>): Record<string, unknown> {
   try {
@@ -377,6 +392,7 @@ async function verificarBusca(
           : {})),
         ...detalheOpcional(() => (portal === "olx" ? detalheShadowQuartoOlx(anuncios) : {})),
         ...repeticaoChaves,
+        ...detalheOpcional(() => detalheLocalizacao(coletados, anuncios)),
       });
     }
     return {
