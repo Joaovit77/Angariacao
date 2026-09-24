@@ -1,14 +1,15 @@
 "use client";
 
-/* Memória de identidade do imóvel (C13C): camada de leitura + confirmação
-   humana sobre o que o núcleo do C13A já decidiu.
+/* Memória de identidade do imóvel (C13C): camada de leitura + decisão
+   humana (confirmar; B3-M3: marcar como incorreta) sobre o que o núcleo do
+   C13A já decidiu.
 
    O componente NÃO decide vigência, conflito nem prioridade: recebe o
    detalhe que o painel já tem, pede ao store as investigações e afirmações
    (sob RLS, só quando o detalhe abre), compõe pelo núcleo puro e renderiza
-   o read model de `leituraMemoria`. Confirmar chama a RPC do C13A pelo
-   store; a origem, a fonte, o valor e a data de observação ficam como
-   estavam. Nada aqui chama IA, promove, muda situação ou escreve por
+   o read model de `leituraMemoria`. Confirmar e marcar como incorreta
+   chamam as RPCs pelo store; a origem, a fonte, o valor e a data de
+   observação ficam como estavam, e a incorreta segue visível, recolhida. Nada aqui chama IA, promove, muda situação ou escreve por
    visualizar. No celular a seção nasce recolhida, com o resumo no título. */
 import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
@@ -22,6 +23,7 @@ import {
   type AfirmacaoLeitura,
   type EventoLeitura,
   type FatoLeitura,
+  type FatoSemVigenteLeitura,
   type LeituraMemoria,
 } from "@/lib/calculo/leituraMemoria";
 import { montarMemoriaIdentidade } from "@/lib/calculo/memoriaIdentidade";
@@ -37,11 +39,23 @@ export const ROTULO_CONFIRMAR_INFORMACAO = "Confirmar informação";
 export const PERGUNTA_CONFIRMAR_INFORMACAO = "Confirmar esta informação como válida?";
 export const ERRO_CARREGAR_MEMORIA = "Não foi possível carregar a memória.";
 export const ERRO_CONFIRMAR_INFORMACAO = "Não foi possível confirmar a informação. Ela continua como hipótese.";
+export const ROTULO_MARCAR_INCORRETA = "Marcar como incorreta";
+export const PERGUNTA_MARCAR_INCORRETA = "Marcar esta informação como incorreta? Ela deixa de ser usada, mas continua no histórico.";
+export const ERRO_MARCAR_INCORRETA = "Não foi possível marcar a informação como incorreta. Ela continua como hipótese.";
+export const TITULO_MARCADAS_INCORRETAS = "Marcadas como incorretas";
+export const TITULO_INFORMACOES_INCORRETAS = "Informações marcadas como incorretas";
+export const TEXTO_SO_INCORRETAS = "Não há informação em uso: as encontradas foram marcadas como incorretas.";
 export const NOTA_MEMORIA =
   "Informações encontradas fora do campo, com a fonte de cada uma. Hipótese é o que a web disse; Confirmado é o que você validou.";
 
+const CLASSE_ESTADO: Record<AfirmacaoLeitura["estado"], string> = {
+  hipotese: styles.chipInferida,
+  confirmada: styles.chipConfirmada,
+  rejeitada: styles.chipIncorreta,
+};
+
 function MarcaEstado({ afirmacao }: { afirmacao: AfirmacaoLeitura }) {
-  const classe = afirmacao.estado === "confirmada" ? styles.chipConfirmada : styles.chipInferida;
+  const classe = CLASSE_ESTADO[afirmacao.estado];
   return (
     <span className={`${styles.chipMarca} ${classe}`} data-memoria-estado={afirmacao.estado}>
       {afirmacao.rotuloEstado}
@@ -69,6 +83,22 @@ function Quando({ afirmacao }: { afirmacao: AfirmacaoLeitura }) {
       </span>
     );
   }
+  if (afirmacao.estado === "rejeitada") {
+    return (
+      <>
+        {afirmacao.observadoEmTexto ? (
+          <span>
+            Visto em <time dateTime={afirmacao.observadoEm}>{afirmacao.observadoEmTexto}</time>
+          </span>
+        ) : null}
+        {afirmacao.rejeitadoEmTexto ? (
+          <span>
+            Marcada como incorreta em <time dateTime={afirmacao.rejeitadoEm ?? undefined}>{afirmacao.rejeitadoEmTexto}</time>
+          </span>
+        ) : null}
+      </>
+    );
+  }
   if (!afirmacao.observadoEmTexto) return null;
   return (
     <span>
@@ -77,15 +107,15 @@ function Quando({ afirmacao }: { afirmacao: AfirmacaoLeitura }) {
   );
 }
 
-function Afirmacao({
-  afirmacao,
-  ocupado,
-  aoConfirmar,
-}: {
-  afirmacao: AfirmacaoLeitura;
+/** O que uma pessoa pode decidir sobre uma afirmação. */
+interface Decisoes {
   ocupado: boolean;
   aoConfirmar: (afirmacao: AfirmacaoLeitura) => void;
-}) {
+  aoRejeitar: (afirmacao: AfirmacaoLeitura) => void;
+}
+
+function Afirmacao({ afirmacao, decisoes }: { afirmacao: AfirmacaoLeitura; decisoes: Decisoes }) {
+  const { ocupado, aoConfirmar, aoRejeitar } = decisoes;
   return (
     <div className={styles.memoriaAfirmacao} data-memoria-afirmacao={afirmacao.id}>
       <div className={styles.memoriaValorLinha}>
@@ -96,33 +126,56 @@ function Afirmacao({
         <Fonte afirmacao={afirmacao} />
         <Quando afirmacao={afirmacao} />
       </small>
-      {afirmacao.podeConfirmar ? (
-        <button
-          type="button"
-          className={`btn btn-sm ${styles.memoriaConfirmar}`}
-          disabled={ocupado}
-          onClick={() => aoConfirmar(afirmacao)}
-        >
-          {ROTULO_CONFIRMAR_INFORMACAO}
-        </button>
+      {afirmacao.podeConfirmar || afirmacao.podeRejeitar ? (
+        <div className={styles.memoriaDecisoes}>
+          {afirmacao.podeConfirmar ? (
+            <button
+              type="button"
+              className={`btn btn-sm ${styles.memoriaConfirmar}`}
+              disabled={ocupado}
+              onClick={() => aoConfirmar(afirmacao)}
+            >
+              {ROTULO_CONFIRMAR_INFORMACAO}
+            </button>
+          ) : null}
+          {afirmacao.podeRejeitar ? (
+            <button
+              type="button"
+              className={`btn btn-sm btn-ghost ${styles.memoriaConfirmar}`}
+              disabled={ocupado}
+              onClick={() => aoRejeitar(afirmacao)}
+            >
+              {ROTULO_MARCAR_INCORRETA}
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
 }
 
-function Fato({
-  fato,
-  ocupado,
-  aoConfirmar,
-}: {
-  fato: FatoLeitura;
-  ocupado: boolean;
-  aoConfirmar: (afirmacao: AfirmacaoLeitura) => void;
-}) {
+/** Marcadas como incorretas: fora de uso, mas à vista para quem quiser conferir. */
+function Incorretas({ titulo, incorretas, decisoes }: { titulo: string; incorretas: AfirmacaoLeitura[]; decisoes: Decisoes }) {
+  if (!incorretas.length) return null;
+  return (
+    <details className={styles.memoriaIncorretas} data-memoria-incorretas>
+      <summary>{titulo} ({incorretas.length})</summary>
+      <ul className={styles.memoriaOutros}>
+        {incorretas.map((incorreta) => (
+          <li key={incorreta.id}>
+            <Afirmacao afirmacao={incorreta} decisoes={decisoes} />
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+function Fato({ fato, decisoes }: { fato: FatoLeitura; decisoes: Decisoes }) {
   return (
     <li className={styles.memoriaFato} data-memoria-fato={fato.atributo} data-memoria-divergente={fato.divergente ? "" : undefined}>
       <span className={styles.memoriaRotulo}>{fato.rotulo}</span>
-      <Afirmacao afirmacao={fato.vigente} ocupado={ocupado} aoConfirmar={aoConfirmar} />
+      <Afirmacao afirmacao={fato.vigente} decisoes={decisoes} />
       {fato.divergente ? (
         <div className={styles.conflito} data-memoria-conflito>
           <strong>{TITULO_DIVERGENCIA}</strong>
@@ -130,12 +183,28 @@ function Fato({
           <ul className={styles.memoriaOutros}>
             {fato.divergentes.map((outro) => (
               <li key={outro.id}>
-                <Afirmacao afirmacao={outro} ocupado={ocupado} aoConfirmar={aoConfirmar} />
+                <Afirmacao afirmacao={outro} decisoes={decisoes} />
               </li>
             ))}
           </ul>
         </div>
       ) : null}
+      <Incorretas titulo={TITULO_MARCADAS_INCORRETAS} incorretas={fato.incorretas} decisoes={decisoes} />
+    </li>
+  );
+}
+
+function FatoSemVigente({ fato, decisoes }: { fato: FatoSemVigenteLeitura; decisoes: Decisoes }) {
+  return (
+    <li className={styles.memoriaFato} data-memoria-sem-vigente={fato.atributo}>
+      <span className={styles.memoriaRotulo}>{fato.rotulo}</span>
+      <ul className={styles.memoriaOutros}>
+        {fato.incorretas.map((incorreta) => (
+          <li key={incorreta.id}>
+            <Afirmacao afirmacao={incorreta} decisoes={decisoes} />
+          </li>
+        ))}
+      </ul>
     </li>
   );
 }
@@ -173,6 +242,7 @@ export default function MemoriaIdentidade({
   const item = detalhe.identificado;
   const carregarMemoria = useProspeccao((estado) => estado.carregarMemoria);
   const confirmarAtributo = useProspeccao((estado) => estado.confirmarAtributo);
+  const rejeitarAtributo = useProspeccao((estado) => estado.rejeitarAtributo);
   const salvando = useProspeccao((estado) => estado.salvando);
   const idCorpo = useId();
 
@@ -214,22 +284,29 @@ export default function MemoriaIdentidade({
   const [erroConfirmacao, setErroConfirmacao] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
 
-  async function confirmar(afirmacao: AfirmacaoLeitura) {
+  // Confirmar e marcar como incorreta seguem o mesmo rito: pergunta
+  // explícita, uma RPC, erro local, e o banco (que sabe a data) é relido.
+  async function decidir(afirmacao: AfirmacaoLeitura, decisao: "confirmar" | "rejeitar") {
     if (confirmando || salvando) return;
-    if (!window.confirm(PERGUNTA_CONFIRMAR_INFORMACAO)) return;
+    const pergunta = decisao === "confirmar" ? PERGUNTA_CONFIRMAR_INFORMACAO : PERGUNTA_MARCAR_INCORRETA;
+    if (!window.confirm(pergunta)) return;
     setErroConfirmacao(null);
     setConfirmando(true);
-    const ok = await confirmarAtributo(afirmacao.id);
+    const ok = decisao === "confirmar" ? await confirmarAtributo(afirmacao.id) : await rejeitarAtributo(afirmacao.id);
     setConfirmando(false);
     if (!ok) {
-      setErroConfirmacao(ERRO_CONFIRMAR_INFORMACAO);
+      setErroConfirmacao(decisao === "confirmar" ? ERRO_CONFIRMAR_INFORMACAO : ERRO_MARCAR_INCORRETA);
       return;
     }
-    // O banco é quem sabe a data da confirmação: relê em vez de supor.
     setRevisao((atual) => atual + 1);
   }
 
   const ocupado = confirmando || salvando;
+  const decisoes: Decisoes = {
+    ocupado,
+    aoConfirmar: (afirmacao) => void decidir(afirmacao, "confirmar"),
+    aoRejeitar: (afirmacao) => void decidir(afirmacao, "rejeitar"),
+  };
   const legenda = leitura?.resumo.texto ?? null;
 
   return (
@@ -260,9 +337,8 @@ export default function MemoriaIdentidade({
           <MemoriaPronta
             leitura={leitura}
             identificadoId={item.id}
-            ocupado={ocupado}
+            decisoes={decisoes}
             erroConfirmacao={erroConfirmacao}
-            aoConfirmar={(afirmacao) => void confirmar(afirmacao)}
           />
         )}
       </div>
@@ -273,16 +349,15 @@ export default function MemoriaIdentidade({
 function MemoriaPronta({
   leitura,
   identificadoId,
-  ocupado,
+  decisoes,
   erroConfirmacao,
-  aoConfirmar,
 }: {
   leitura: LeituraMemoria;
   identificadoId: string;
-  ocupado: boolean;
+  decisoes: Decisoes;
   erroConfirmacao: string | null;
-  aoConfirmar: (afirmacao: AfirmacaoLeitura) => void;
 }) {
+  const soIncorretas = !leitura.fatos.length && leitura.semVigente.length > 0;
   return (
     <>
       {leitura.fatos.length ? (
@@ -291,10 +366,14 @@ function MemoriaPronta({
           <h5 className={styles.memoriaSubtitulo}>{TITULO_O_QUE_SABEMOS}</h5>
           <ul className={styles.memoriaFatos} data-memoria-fatos>
             {leitura.fatos.map((fato) => (
-              <Fato key={fato.atributo} fato={fato} ocupado={ocupado} aoConfirmar={aoConfirmar} />
+              <Fato key={fato.atributo} fato={fato} decisoes={decisoes} />
             ))}
           </ul>
         </>
+      ) : soIncorretas ? (
+        <div className={styles.memoriaVazia} data-memoria-vazia="so-incorretas">
+          <p className={styles.vazioInterno}>{TEXTO_SO_INCORRETAS}</p>
+        </div>
       ) : (
         <div className={styles.memoriaVazia} data-memoria-vazia={leitura.investigado ? "sem-descobertas" : "nunca-investigado"}>
           <p className={styles.vazioInterno}>{leitura.investigado ? TEXTO_SEM_DESCOBERTAS : TEXTO_NUNCA_INVESTIGADO}</p>
@@ -305,6 +384,16 @@ function MemoriaPronta({
           ) : null}
         </div>
       )}
+      {leitura.semVigente.length ? (
+        <details className={styles.memoriaIncorretas} data-memoria-secao-incorretas>
+          <summary>{TITULO_INFORMACOES_INCORRETAS}</summary>
+          <ul className={styles.memoriaFatos}>
+            {leitura.semVigente.map((fato) => (
+              <FatoSemVigente key={fato.atributo} fato={fato} decisoes={decisoes} />
+            ))}
+          </ul>
+        </details>
+      ) : null}
       {erroConfirmacao ? <p className={styles.memoriaErroConfirmacao} role="alert">{erroConfirmacao}</p> : null}
       <Historico eventos={leitura.historico} />
     </>

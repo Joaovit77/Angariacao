@@ -136,7 +136,7 @@ function afirmacao(extra: Partial<AfirmacaoRegistrada> = {}): AfirmacaoRegistrad
   return {
     id: 1, imovelIdentificadoId: ID, investigacaoId: "x1", atributo: "area_m2", valorTexto: null, valorNum: 82,
     origem: "investigador-web", estado: "hipotese", confianca: null, fonteUrl: "https://portal-a.test/anuncio/1", fonteDominio: "portal-a.test",
-    observadoEm: T2, confirmadoPor: null, confirmadoEm: null, criadoEm: T2, ...extra,
+    observadoEm: T2, confirmadoPor: null, confirmadoEm: null, rejeitadoPor: null, rejeitadoEm: null, criadoEm: T2, ...extra,
   };
 }
 const confirmada = (extra: Partial<AfirmacaoRegistrada> = {}) => afirmacao({ estado: "confirmada", confirmadoPor: USUARIO, confirmadoEm: T3, ...extra });
@@ -547,6 +547,8 @@ describe.sequential("C13C — hipótese → carregar → confirmar → recarrega
       "20260910184310_prospeccao_campo.sql", "20260910190155_prospeccao_campo_rls_grants.sql",
       "20260910193412_prospeccao_campo_triggers.sql", "20260910211045_prospeccao_campo_rpcs_navegador.sql",
       "20260913162604_prospeccao_merge_contrato_transacional.sql", "20260915190000_prospeccao_memoria_identidade.sql",
+      // B3-M3: o store lê `rejeitado_por`/`rejeitado_em`; a leitura real exige o schema atual.
+      "20260924210000_prospeccao_memoria_rejeicao.sql",
     ]) await db.exec(ler(PASTA + nome));
   }, 30_000);
   beforeEach(async () => { await db.exec("reset role; truncate public.imoveis_identificados cascade; begin"); });

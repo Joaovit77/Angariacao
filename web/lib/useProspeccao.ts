@@ -10,6 +10,7 @@ import {
   cancelarExclusaoIdentificado,
   classificarAvistamento,
   confirmarAtributoIdentificado,
+  rejeitarAtributoIdentificado,
   confirmarEtiqueta,
   confirmarTipoIdentificado,
   contestarEtiqueta,
@@ -193,6 +194,9 @@ interface EstadoProspeccao {
       estado da afirmação muda; o detalhe do imóvel não é relido porque
       nada nele mudou. Falha vira `false` e fica local na seção. */
   confirmarAtributo: (atributoId: number) => Promise<boolean>;
+  /** B3-M3: uma pessoa marca uma hipótese como incorreta. Mesmo desenho da
+      confirmação; a linha fica no histórico e só a decisão muda. */
+  rejeitarAtributo: (atributoId: number) => Promise<boolean>;
 }
 
 const estadoInicial = {
@@ -652,6 +656,18 @@ export const useProspeccao = create<EstadoProspeccao>((set, get) => {
       set({ salvando: true });
       try {
         await confirmarAtributoIdentificado(atributoId);
+        set({ salvando: false });
+        return true;
+      } catch {
+        set({ salvando: false });
+        return false;
+      }
+    },
+    async rejeitarAtributo(atributoId) {
+      if (get().salvando) return false;
+      set({ salvando: true });
+      try {
+        await rejeitarAtributoIdentificado(atributoId);
         set({ salvando: false });
         return true;
       } catch {

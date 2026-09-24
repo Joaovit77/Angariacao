@@ -220,7 +220,12 @@ Pré-requisito: a migration `20260915190000_prospeccao_memoria_identidade` aplic
    `recusados_total`), atributos só do catálogo fechado, todos `hipotese`, `confianca` **null**,
    nenhum `valor_anunciado`; `ultima_investigacao_em` igual a `concluida_em`; `situacao` intacta;
    `imovel_id` nulo. A consulta digitada não existe em coluna nenhuma.
-4. **Merge e exclusão.** Fundir dois identificados move investigações e atributos para o
+4. **Marcar como incorreta (B3-M3).** Numa hipótese, **Marcar como incorreta** pede `window.confirm`
+   e chama `rejeitar_atributo_identificado`; a linha vira `rejeitada` com `rejeitado_por`/`rejeitado_em`
+   e nada mais muda. Ela sai de "Também encontrado" e do vigente (a próxima hipótese assume), aparece
+   recolhida em "Marcadas como incorretas" com "Incorreta", e o Histórico ganha o evento. Repetir é
+   idempotente; confirmada não oferece a ação, e rejeitada não pode ser confirmada.
+5. **Merge e exclusão.** Fundir dois identificados move investigações e atributos para o
    sobrevivente com os mesmos ids; excluir o identificado (passo P) apaga a memória em cascata,
    sem órfão em `_investigacoes` nem em `_atributos`.
 
