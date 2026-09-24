@@ -139,24 +139,105 @@ export function extrairReferenciaInvestigacao(texto: string): string | null {
   }) ?? null;
 }
 
-export function gerarConsultasInvestigacao(entrada: string): string[] {
-  const consulta = limparConsulta(entrada);
-  const referencia = extrairReferenciaInvestigacao(consulta);
-  // Reserva espaço para os qualificadores, para uma descrição no limite não
-  // transformar as três variações na mesma string truncada.
-  const baseConsulta = consulta.slice(0, LIMITE_CONSULTA_INVESTIGADOR - 30).trim();
-  const bases = referencia
-    ? [`"${referencia}" imóvel`, `"${referencia}" aluguel`, `"${referencia}" imobiliária`]
-    : [`${baseConsulta} imóvel`, `${baseConsulta} aluguel`, `${baseConsulta} imobiliária`];
+/* ------------------------------------------------------------------
+   B1 — pesquisas progressivas. Precisão primeiro, ampliação controlada
+   depois: cada etapa só existe quando traz consulta nova e ainda
+   identificável. Sem âncora explícita (referência, logradouro com número
+   ou condomínio/edifício rotulado) não há ampliação — pesquisar "casa
+   Londrina" gera ruído, não investigação. Nada aqui julga relevância.
+   ------------------------------------------------------------------ */
 
-  const unicas: string[] = [];
-  for (const item of bases) {
-    const limpa = limparConsulta(item);
-    if (!unicas.some((existente) => chaveNormalizada(existente) === chaveNormalizada(limpa))) {
-      unicas.push(limpa);
+/** Ordem fixa, da mais restrita para a mais ampla. */
+export type EtapaPesquisaInvestigacao = "especifica" | "nucleo" | "logradouro";
+
+export interface PesquisaPlanejadaInvestigacao {
+  etapa: EtapaPesquisaInvestigacao;
+  consulta: string;
+}
+
+// Detalhes que restringem a busca sem identificar o lugar: anúncios
+// costumam omiti-los ou escrevê-los de outro jeito. O nome do tipo fica,
+// porque não restringe e pode fazer parte do nome de um condomínio.
+const DETALHES_RESTRITIVOS = [
+  /\b\d{1,4}(?:[.,]\d{1,2})?\s*m(?:²|2)(?![\p{L}\d])/giu,
+  /\b\d{1,2}\s+(?:quartos?|dormit[oó]rios?|su[ií]tes?|banheiros?|vagas?(?:\s+de\s+garagem)?|garagens?)(?![\p{L}\d])/giu,
+  /\b(?:unidade|bloco)\s+[\p{L}\d-]{1,10}/giu,
+  /\bapto\.?\s*\d[\p{L}\d-]*/giu,
+  /\b(?:refer[eê]ncia|ref|c[oó]digo|c[oó]d)(?![\p{L}\d])\.?(?:\s+do\s+im[oó]vel)?\s*[:#-]?\s*[\p{L}\d][\p{L}\d./-]*/giu,
+  /\ban[uú]ncio(?![\p{L}\d])[^,]*/giu,
+];
+
+const PALAVRAS_DE_TIPO = new Set([
+  "apartamento", "casa", "condominio", "kitnet", "studio", "sobrado", "sala", "comercial", "galpao", "terreno", "outro",
+]);
+
+function semDetalhesRestritivos(texto: string): string {
+  const reduzido = DETALHES_RESTRITIVOS.reduce((atual, padrao) => atual.replace(padrao, " "), texto);
+  return reduzido
+    .split(",")
+    .map((parte) => parte.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+// "Rua Michigan 610 Londrina": o número sem vírgula só vale quando fecha o
+// nome da rua — seguido de vírgula, fim do texto ou palavra que não seja
+// "de/da/do(s)". Assim "Rua 10 de Dezembro" não vira rua com número.
+const LOGRADOURO_NUMERO_SEM_VIRGULA =
+  /\b(?:rua|avenida|av\.?|alameda|travessa|rodovia|estrada)\s+[\p{L}\d .'-]{2,80}?\s+\d{1,6}(?=\s*,|\s*$|\s+(?!d[aeo]s?(?![\p{L}\d]))\p{L})/iu;
+
+/** Âncora de endereço do planejador: o extrator da análise e, como reserva,
+    o número separado por espaço em qualquer tipo de via (inclusive rodovia
+    e estrada, que o extrator da análise recusa sem vírgula). */
+function logradouroComNumero(texto: string): string | null {
+  return extrairEndereco(texto) || texto.match(LOGRADOURO_NUMERO_SEM_VIRGULA)?.[0]?.trim() || null;
+}
+
+function logradouroSemNumero(endereco: string): string {
+  return endereco.replace(/(?:,\s*|\s+(?:n[ºo.]?\s*)?)\d{1,6}$/iu, "").trim();
+}
+
+/**
+ * Planeja até três pesquisas em ordem progressiva, deterministicamente:
+ *
+ * 1. `especifica` — a combinação mais forte: a referência exata, quando
+ *    houver; senão o texto completo (a mesma primeira consulta de antes).
+ * 2. `nucleo` — o texto sem detalhes restritivos (área, quartos, vagas,
+ *    unidade, bloco, código, anúncio), somente se ainda houver logradouro
+ *    com número ou condomínio/edifício rotulado.
+ * 3. `logradouro` — o núcleo sem o número do endereço, somente se sobrar
+ *    contexto além do nome da rua (bairro, cidade, edifício).
+ */
+export function planejarPesquisasInvestigacao(entrada: string): PesquisaPlanejadaInvestigacao[] {
+  // Reserva espaço para o qualificador, para uma descrição no limite não
+  // virar a mesma string truncada em todas as etapas.
+  const base = limparConsulta(entrada).slice(0, LIMITE_CONSULTA_INVESTIGADOR - 30).trim();
+  const referencia = extrairReferenciaInvestigacao(base);
+  const nucleo = semDetalhesRestritivos(base);
+  const endereco = logradouroComNumero(nucleo);
+  const ancorado = Boolean(endereco || extrairCondominioExplicito(nucleo));
+
+  const candidatas: PesquisaPlanejadaInvestigacao[] = [
+    { etapa: "especifica", consulta: referencia ? `"${referencia}" imóvel` : `${base} imóvel` },
+  ];
+  if (ancorado) candidatas.push({ etapa: "nucleo", consulta: `${nucleo} imóvel` });
+  if (endereco) {
+    const rua = logradouroSemNumero(endereco);
+    const contexto = [...termosRelevantes(nucleo.replace(endereco, " "))]
+      .filter((termo) => !PALAVRAS_DE_TIPO.has(termo));
+    if (rua && contexto.length) {
+      candidatas.push({ etapa: "logradouro", consulta: `${nucleo.replace(endereco, rua)} imóvel` });
     }
   }
-  return unicas.slice(0, MAXIMO_BUSCAS_POR_INVESTIGACAO);
+
+  const plano: PesquisaPlanejadaInvestigacao[] = [];
+  for (const candidata of candidatas) {
+    const consulta = limparConsulta(candidata.consulta);
+    if (!plano.some((item) => chaveNormalizada(item.consulta) === chaveNormalizada(consulta))) {
+      plano.push({ etapa: candidata.etapa, consulta });
+    }
+  }
+  return plano.slice(0, MAXIMO_BUSCAS_POR_INVESTIGACAO);
 }
 
 function numeroMonetario(valor: string): number | null {
@@ -193,8 +274,51 @@ function extrairQuantidadeUnica(texto: string, rotulos: string): number | null {
   return unico(valores);
 }
 
+// B2: número seguido de rótulo de característica é quantidade, não número
+// predial — "Avenida 7 de Setembro, 3 quartos" não tem número do imóvel.
+const CARACTERISTICA_APOS_NUMERO =
+  String.raw`\s*(?:quartos?|dormit[oó]rios?|su[ií]tes?|banheiros?|vagas?|garagens?|m(?:²|2)(?![\p{L}\d]))`;
+
+const ENDERECO_COM_SEPARADOR = new RegExp(
+  String.raw`\b(?:rua|avenida|av\.?|alameda|travessa|rodovia|estrada)\s+[\p{L}\d .'-]{2,80}?(?:,\s*|\s+n[ºo.]?\s*)\d{1,6}\b`
+    + `(?!${CARACTERISTICA_APOS_NUMERO})`,
+  "iu",
+);
+
+// Sem vírgula nem "nº", o número só vale quando fecha o nome: depois dele
+// vem pontuação, fim do texto, uma característica ("3 quartos") ou palavra
+// que não seja "de/da/do(s)" — "Rua 10 de Dezembro" continua sem número.
+// Rodovia e estrada ficam de fora: "Rodovia PR 445" é nome, não endereço.
+const ENDERECO_SEM_VIRGULA = new RegExp(
+  String.raw`\b(?:rua|avenida|av\.?|alameda|travessa)\s+[\p{L}\d .'-]{2,80}?\s+\d{1,6}`
+    + `(?!${CARACTERISTICA_APOS_NUMERO})`
+    + String.raw`(?=\s*[,;.|–-]|\s*$|\s+\d{1,4}(?:[.,]\d+)?${CARACTERISTICA_APOS_NUMERO}|\s+(?!d[aeo]s?(?![\p{L}\d]))\p{L})`,
+  "iu",
+);
+
+/** O primeiro endereço com número no texto, com ou sem vírgula. */
 function extrairEndereco(texto: string): string | null {
-  return texto.match(/\b(?:rua|avenida|av\.?|alameda|travessa|rodovia|estrada)\s+[\p{L}\d .'-]{2,80}?(?:,\s*|\s+n[ºo.]?\s*)(\d{1,6})\b/iu)?.[0]?.trim() || null;
+  const encontrados = [texto.match(ENDERECO_COM_SEPARADOR), texto.match(ENDERECO_SEM_VIRGULA)]
+    .filter((item): item is RegExpMatchArray => item !== null)
+    .sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+  return encontrados[0]?.[0]?.trim() || null;
+}
+
+/** Mesma rua e número escritos com vírgula, "nº" ou só espaço, e "Av."/"Av"
+    por "Avenida", têm a mesma chave. Só compara; o texto exibido não muda. */
+function chaveEndereco(valor: string | null): string {
+  return chaveNormalizada(valor)
+    .replace(/\bav\.?(?=\s)/g, "avenida")
+    .replace(/\s+n[ºo.]?\s*(?=\d)/g, " ")
+    .replace(/\s*,\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** O endereço aparece no texto e o número não continua ("610" ≠ "6100"). */
+function textoContemEndereco(texto: string, endereco: string): boolean {
+  const escapado = chaveEndereco(endereco).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(escapado + String.raw`(?![\p{L}\d])`, "u").test(chaveEndereco(texto));
 }
 
 function extrairCondominioExplicito(texto: string): string | null {
@@ -202,12 +326,18 @@ function extrairCondominioExplicito(texto: string): string | null {
   return valor?.replace(/\s+/g, " ").trim() || null;
 }
 
+// Os mesmos tipos de via que o extrator de endereço reconhece.
+const TIPO_DE_LOGRADOURO = /\b(?:rua|avenida|av\.?|alameda|travessa|rodovia|estrada)\s/i;
+
 function expressaoPrincipal(texto: string): string | null {
   if (extrairEndereco(texto) || extrairReferenciaInvestigacao(texto)) return null;
   const antesDasCaracteristicas = texto.split(/\b\d{1,4}(?:[.,]\d+)?\s*m(?:²|2)|\b\d{1,2}\s+(?:quartos?|dormit[oó]rios?|vagas?)\b/i)[0]
     .replace(/\b(?:apartamento|casa|im[oó]vel)\b/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
+  // Rua sem número não é nome de empreendimento: "Rua Michigan, 3 quartos"
+  // não pode virar "Mesmo condomínio" em todo anúncio da mesma rua.
+  if (TIPO_DE_LOGRADOURO.test(antesDasCaracteristicas)) return null;
   const palavras = antesDasCaracteristicas.split(" ").filter(Boolean);
   return palavras.length >= 2 && palavras.length <= 7 ? antesDasCaracteristicas : null;
 }
@@ -337,15 +467,15 @@ export function analisarCorrespondenciasInvestigacao(
     }
 
     if (entrada.endereco && resultado.endereco) {
-      enderecoIdentico = chaveNormalizada(entrada.endereco) === chaveNormalizada(resultado.endereco)
-        || textoResultado.includes(chaveNormalizada(entrada.endereco));
+      enderecoIdentico = chaveEndereco(entrada.endereco) === chaveEndereco(resultado.endereco)
+        || textoContemEndereco(textoResultado, entrada.endereco);
       if (enderecoIdentico) {
         evidencias.push(`Endereço idêntico: ${entrada.endereco}`);
       } else {
         contradicoes.push(`Endereço diferente: ${resultado.endereco}`);
         conflitoGrave = true;
       }
-    } else if (entrada.endereco && textoResultado.includes(chaveNormalizada(entrada.endereco))) {
+    } else if (entrada.endereco && textoContemEndereco(textoResultado, entrada.endereco)) {
       enderecoIdentico = true;
       evidencias.push(`Endereço idêntico: ${entrada.endereco}`);
     }

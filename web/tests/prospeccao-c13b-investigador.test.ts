@@ -107,6 +107,15 @@ function correspondencias(...itens: ResultadoWebInvestigacao[]): Correspondencia
   return analisarCorrespondenciasInvestigacao(CONSULTA, itens).map((c) => ({ ...c, comparavelId: null }));
 }
 
+/** A correspondência de um anúncio pela fonte, não pela posição: a ordem é
+    o ranking do Investigador, que não é assunto da memória. Desde o B2 os
+    dois anúncios empatam (o B, sem vírgula, também tem endereço idêntico). */
+function daFonte(resultados: CorrespondenciaInvestigacao[], anuncio: ResultadoWebInvestigacao) {
+  const encontrada = resultados.find((item) => item.url === anuncio.url);
+  if (!encontrada) throw new Error(`fonte ausente: ${anuncio.url}`);
+  return encontrada;
+}
+
 /* ================================================================
    1. UNITÁRIO: saída real do Investigador → afirmações do catálogo
    ================================================================ */
@@ -138,7 +147,8 @@ describe("C13B — do resultado estruturado do Investigador às afirmações do 
   });
 
   it("D/E. preço sem finalidade estruturada NÃO é persistido: 450.000 (venda) e 2.500 (aluguel) não viram contradição", () => {
-    const [a, b] = correspondencias(ANUNCIO_A, ANUNCIO_B);
+    const todas = correspondencias(ANUNCIO_A, ANUNCIO_B);
+    const [a, b] = [daFonte(todas, ANUNCIO_A), daFonte(todas, ANUNCIO_B)];
     expect([a.preco, b.preco]).toEqual([450000, 2500]);
     expect(a).not.toHaveProperty("finalidade");
     const { afirmacoes, recusadas } = extrairAfirmacoesDaInvestigacao([a, b]);
@@ -201,7 +211,8 @@ describe("C13B — do resultado estruturado do Investigador às afirmações do 
   });
 
   it("K/L. duas fontes ficam separadas (mesmo valor ou contraditório); a mesma evidência repetida conta uma vez", () => {
-    const [a, b] = correspondencias(ANUNCIO_A, ANUNCIO_B);
+    const todas = correspondencias(ANUNCIO_A, ANUNCIO_B);
+    const [a, b] = [daFonte(todas, ANUNCIO_A), daFonte(todas, ANUNCIO_B)];
     const { afirmacoes, recusadas } = extrairAfirmacoesDaInvestigacao([a, b, a]);
     const quartos = afirmacoes.filter((x) => x.atributo === "quartos");
     expect(quartos.map((x) => [x.valorNum, x.fonteDominio])).toEqual([[3, "portal-a.test"], [3, "portal-b.test"]]);
@@ -537,7 +548,9 @@ describe.sequential("C13B — payload real do Investigador na RPC do C13A (PGlit
     expect(evento).toMatchObject({ id: execucao, user_id: USUARIO, resultados_total: 2, atributos_total: 9, recusados_total: 0, origem: "investigador-web" });
     expect(evento).not.toHaveProperty("consulta");
     const atributos = await linhas("imoveis_identificados_atributos", imovel);
-    expect(atributos.filter((a) => a.atributo === "area_m2").map((a) => [a.valor_num, a.fonte_dominio, a.estado])).toEqual([[85.5, "portal-a.test", "hipotese"], [95, "portal-b.test", "hipotese"]]);
+    // Uma linha por fonte; a ordem de inserção segue o ranking, então compara por domínio.
+    expect(atributos.filter((a) => a.atributo === "area_m2").map((a) => [a.valor_num, a.fonte_dominio, a.estado])
+      .sort((x, y) => String(x[1]).localeCompare(String(y[1])))).toEqual([[85.5, "portal-a.test", "hipotese"], [95, "portal-b.test", "hipotese"]]);
     expect(atributos.filter((a) => a.atributo === "valor_anunciado")).toEqual([]); // reservado: 450.000 × 2.500 não é contradição
     expect(atributos.every((a) => typeof a.valor_num === "number" || typeof a.valor_texto === "string")).toBe(true);
     expect(atributos.every((a) => a.confianca === null && a.observado_em && a.investigacao_id === execucao)).toBe(true);

@@ -5,8 +5,8 @@ import {
   consultaInvestigadorValida,
   deduplicarResultadosInvestigacao,
   extrairCamposInvestigacao,
-  gerarConsultasInvestigacao,
   haEvidenciaSuficiente,
+  planejarPesquisasInvestigacao,
   type ResultadoWebInvestigacao,
 } from "@/lib/calculo/investigadorImoveis";
 import { buscarImovelNaWeb, BuscaWebIndisponivel } from "@/lib/servidor/investigadorImoveis";
@@ -52,14 +52,16 @@ describe("Investigador de Imóveis", () => {
     else process.env.RAPIDAPI_KEY = chaveAnterior;
   });
 
-  it("gera no máximo três buscas rastreáveis e conserva a referência exata", () => {
-    expect(gerarConsultasInvestigacao("01860.001")).toEqual([
-      '"01860.001" imóvel',
-      '"01860.001" aluguel',
-      '"01860.001" imobiliária',
+  it("conserva a referência exata como primeira pesquisa e não amplia sem âncora", () => {
+    // B1: antes eram três variações do mesmo texto (imóvel/aluguel/
+    // imobiliária). Agora só há ampliação quando existe o que ampliar.
+    expect(planejarPesquisasInvestigacao("01860.001")).toEqual([
+      { etapa: "especifica", consulta: '"01860.001" imóvel' },
     ]);
-    expect(gerarConsultasInvestigacao("Vivere Palhano 79m² 3 quartos Londrina")).toHaveLength(3);
-    expect(gerarConsultasInvestigacao("a".repeat(500))).toHaveLength(3);
+    expect(planejarPesquisasInvestigacao("Vivere Palhano 79m² 3 quartos Londrina")).toHaveLength(1);
+    const noLimite = planejarPesquisasInvestigacao("a".repeat(500));
+    expect(noLimite).toHaveLength(1);
+    expect(noLimite[0].consulta.length).toBeLessThanOrEqual(500);
     expect(consultaInvestigadorValida("a".repeat(500))).toBe(true);
     expect(consultaInvestigadorValida("a".repeat(501))).toBe(false);
   });

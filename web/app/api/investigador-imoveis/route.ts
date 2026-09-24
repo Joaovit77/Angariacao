@@ -3,9 +3,10 @@ import {
   analisarCorrespondenciasInvestigacao,
   consultaInvestigadorValida,
   deduplicarResultadosInvestigacao,
-  gerarConsultasInvestigacao,
   LIMITE_CONSULTA_INVESTIGADOR,
+  planejarPesquisasInvestigacao,
   type EventoInvestigacao,
+  type PesquisaPlanejadaInvestigacao,
 } from "@/lib/calculo/investigadorImoveis";
 import {
   consultaInicialDoAnuncio,
@@ -29,6 +30,7 @@ import {
 import {
   registrarConclusaoInvestigacao,
   type EncerramentoInvestigacao,
+  type ResumoEtapaPesquisa,
 } from "@/lib/servidor/investigadorObservabilidade";
 import { novaExecucaoInvestigacao, persistirMemoriaDaInvestigacao } from "@/lib/servidor/memoriaIdentidade";
 import { associarReferenciasAvaliacaoDoInvestigador } from "@/lib/servidor/referenciasAvaliacaoInvestigador";
@@ -285,6 +287,11 @@ function mensagemSegura(erro: unknown): string {
   return "A pesquisa na web está indisponível agora. Tente novamente em alguns minutos.";
 }
 
+/** B1: nomeia cada etapa executada pela posição no plano; só contagens. */
+function etapasRotuladas(plano: PesquisaPlanejadaInvestigacao[], etapas: ResumoEtapaPesquisa[] = []) {
+  return etapas.map((etapa, indice) => ({ etapa: plano[indice]?.etapa ?? "desconhecida", ...etapa }));
+}
+
 function encerramentoDaFalha(erro: unknown): EncerramentoInvestigacao {
   if (!(erro instanceof BuscaWebIndisponivel)) return "erro";
   if (erro.motivo === "configuracao") return "configuracao";
@@ -347,15 +354,14 @@ export async function POST(request: Request): Promise<Response> {
       // Contagem para a linha de conclusão mesmo quando a busca lança:
       // o callback é a única testemunha de quantas consultas rodaram.
       let consultasExecutadas = 0;
-      let consultasPlanejadas = 0;
+      let plano: PesquisaPlanejadaInvestigacao[] = [];
       try {
         emitir({ tipo: "etapa", etapa: "gerando-buscas" });
-        const consultas = gerarConsultasInvestigacao(consultaOriginal);
-        consultasPlanejadas = consultas.length;
+        plano = planejarPesquisasInvestigacao(consultaOriginal);
         emitir({ tipo: "etapa", etapa: "pesquisando-web" });
         const busca = await buscarImovelNaWeb(
           consultaOriginal,
-          consultas,
+          plano.map((item) => item.consulta),
           undefined,
           (lista) => {
             consultasExecutadas = lista.length;
@@ -406,6 +412,10 @@ export async function POST(request: Request): Promise<Response> {
           consultasPuladasPorOrcamento: busca.orcamentoEsgotado ? busca.pesquisasEvitadas : 0,
           consultasLimitadasPeloOrcamento: busca.consultasLimitadasPeloOrcamento ?? 0,
           resultadoParcial: Boolean(busca.orcamentoEsgotado || busca.limiteAtingido || busca.falhas),
+          etapasPlanejadas: plano.length,
+          motivoParada: busca.motivoParada,
+          etapas: etapasRotuladas(plano, busca.etapas),
+          orcamentoRestanteNaParadaMs: busca.orcamentoRestanteNaParadaMs,
         });
         emitir({
           tipo: "resultado",
@@ -440,9 +450,12 @@ export async function POST(request: Request): Promise<Response> {
           orcamentoTotalMs: ORCAMENTO_TOTAL_INVESTIGACAO_MS,
           margemFinalizacaoMs: MARGEM_FINALIZACAO_INVESTIGACAO_MS,
           consultasPuladasPorOrcamento: erro instanceof BuscaWebIndisponivel && erro.motivo === "orcamento"
-            ? Math.max(0, consultasPlanejadas - (resumo?.consultasExecutadas ?? consultasExecutadas))
+            ? Math.max(0, plano.length - (resumo?.consultasExecutadas ?? consultasExecutadas))
             : 0,
           resultadoParcial: false,
+          etapasPlanejadas: plano.length,
+          motivoParada: resumo?.motivoParada,
+          etapas: etapasRotuladas(plano, resumo?.etapas),
         });
         emitir({ tipo: "erro", mensagem: mensagemSegura(erro) });
       } finally {

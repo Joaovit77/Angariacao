@@ -2520,8 +2520,13 @@ nunca altera status nem gera observação artificial**. Métricas de inventário
 #### `api/investigador-imoveis` — possíveis correspondências na web
 
 O Investigador é uma superfície autenticada e sem persistência: recebe de 3 a 500 caracteres sobre
-um imóvel, gera até três consultas determinísticas e chama a Google Search API do RapidAPI
-sequencialmente. Depois de cada resposta, o núcleo normaliza e classifica os candidatos; uma
+um imóvel, planeja até três pesquisas determinísticas e progressivas e chama a Google Search API do
+RapidAPI sequencialmente, da mais restrita para a mais ampla: a referência exata (ou, sem ela, o
+texto completo); o texto sem detalhes restritivos (área, quartos, vagas, unidade, bloco, código,
+anúncio); e o mesmo núcleo sem o número do logradouro. Só há ampliação quando existe âncora explícita
+— logradouro com número ou condomínio/edifício rotulado — e, na terceira etapa, contexto além do nome
+da rua; texto sem âncora gera uma única pesquisa. Etapas que repetem uma consulta anterior não
+existem. Depois de cada resposta, o núcleo normaliza e classifica os candidatos; uma
 correspondência muito forte com ao menos duas evidências independentes e sem contradições encerra a
 fila, enquanto resultado inconclusivo avança até o teto de três. Referência isolada não interrompe
 as consultas seguintes. A chave `RAPIDAPI_KEY` existe somente em

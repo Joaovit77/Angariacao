@@ -42,6 +42,26 @@ export type EncerramentoInvestigacao =
   | "orcamento-sem-resultados"
   | "erro";
 
+/** B1: por que a fila progressiva não executou a próxima etapa.
+    `plano-esgotado` cobre também o plano de uma etapa só (sem âncora
+    para ampliar). Falha individual não para a fila; é contada à parte. */
+export type MotivoParadaPesquisa =
+  | "evidencia-suficiente"
+  | "plano-esgotado"
+  | "orcamento"
+  | "limite-provider";
+
+/** Uma etapa executada: só contagens e tempo, nunca a consulta. */
+export interface ResumoEtapaPesquisa {
+  /** Cards normalizados que a etapa trouxe. */
+  resultados: number;
+  /** Quantos deles ainda não existiam depois do dedupe das etapas anteriores. */
+  novos: number;
+  falhou: boolean;
+  /** Orçamento A2 disponível ao iniciar a etapa; null sem prazo global. */
+  orcamentoRestanteMs: number | null;
+}
+
 export interface ClassificacaoErroFetch {
   causa: CausaFalhaProvider;
   /** `erro.name`, só letras, para não carregar mensagem. */
@@ -113,6 +133,13 @@ export interface RegistroConclusaoInvestigacao {
   consultasPuladasPorOrcamento?: number;
   consultasLimitadasPeloOrcamento?: number;
   resultadoParcial?: boolean;
+  /** B1: tamanho do plano progressivo desta investigação. */
+  etapasPlanejadas?: number;
+  motivoParada?: MotivoParadaPesquisa;
+  /** B1: etapas executadas, na ordem, com o nome da etapa do plano. */
+  etapas?: (ResumoEtapaPesquisa & { etapa: string })[];
+  /** B1: orçamento que sobrava quando a próxima etapa foi recusada. */
+  orcamentoRestanteNaParadaMs?: number;
 }
 
 export function registrarFalhaProvider(registro: RegistroFalhaProvider): void {
@@ -160,5 +187,11 @@ export function registrarConclusaoInvestigacao(registro: RegistroConclusaoInvest
     ...(registro.consultasPuladasPorOrcamento !== undefined ? { consultasPuladasPorOrcamento: registro.consultasPuladasPorOrcamento } : {}),
     ...(registro.consultasLimitadasPeloOrcamento !== undefined ? { consultasLimitadasPeloOrcamento: registro.consultasLimitadasPeloOrcamento } : {}),
     ...(registro.resultadoParcial !== undefined ? { resultadoParcial: registro.resultadoParcial } : {}),
+    ...(registro.etapasPlanejadas !== undefined ? { etapasPlanejadas: registro.etapasPlanejadas } : {}),
+    ...(registro.motivoParada !== undefined ? { motivoParada: registro.motivoParada } : {}),
+    ...(registro.etapas !== undefined ? { etapas: registro.etapas } : {}),
+    ...(registro.orcamentoRestanteNaParadaMs !== undefined
+      ? { orcamentoRestanteNaParadaMs: registro.orcamentoRestanteNaParadaMs }
+      : {}),
   });
 }

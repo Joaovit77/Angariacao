@@ -11,6 +11,8 @@ import {
   classificarErroFetch,
   registrarFalhaProvider,
   registrarSucessoProvider,
+  type MotivoParadaPesquisa,
+  type ResumoEtapaPesquisa,
 } from "@/lib/servidor/investigadorObservabilidade";
 
 const HOST_RAPIDAPI = "google-search-api7.p.rapidapi.com";
@@ -39,6 +41,8 @@ interface RespostaRapidApi {
 export interface ResumoBuscaInterrompida {
   consultasExecutadas: number;
   falhas: number;
+  motivoParada?: MotivoParadaPesquisa;
+  etapas?: ResumoEtapaPesquisa[];
 }
 
 export class BuscaWebIndisponivel extends Error {
@@ -62,6 +66,10 @@ export interface ResultadoBuscaWebInvestigacao {
   orcamentoEsgotado: boolean;
   consultasLimitadasPeloOrcamento: number;
   retryAfterSegundos?: number;
+  /** B1: uma entrada por consulta executada, na ordem da fila. */
+  etapas: ResumoEtapaPesquisa[];
+  motivoParada: MotivoParadaPesquisa;
+  orcamentoRestanteNaParadaMs?: number;
 }
 
 const HEADERS_RATE_LIMIT_SEGUROS = [
@@ -282,6 +290,13 @@ export async function buscarImovelNaWeb(
   let orcamentoEsgotado = false;
   let consultasLimitadasPeloOrcamento = 0;
   let retryAfterSegundos: number | undefined;
+  // B1: a fila é progressiva (da consulta mais restrita para a mais ampla).
+  // Avança só sem evidência suficiente, sem 429 e com orçamento A2; o
+  // orçamento é conferido antes de cada etapa e sempre prevalece.
+  const etapas: ResumoEtapaPesquisa[] = [];
+  let motivoParada: MotivoParadaPesquisa = "plano-esgotado";
+  let orcamentoRestanteNaParadaMs: number | undefined;
+  let unicosAteAqui = 0;
 
   for (const [indice, consulta] of fila.entries()) {
     const restante = opcoes.deadlineMs === undefined
@@ -289,15 +304,21 @@ export async function buscarImovelNaWeb(
       : opcoes.deadlineMs - agoraMs() - MARGEM_FINALIZACAO_INVESTIGACAO_MS;
     if (restante < MINIMO_TEMPO_CONSULTA_MS) {
       orcamentoEsgotado = true;
+      motivoParada = "orcamento";
+      orcamentoRestanteNaParadaMs = Math.max(0, Math.round(restante));
       break;
     }
     const timeoutMs = Math.max(1, Math.floor(Math.min(TIMEOUT_BUSCA_MS, restante)));
     if (timeoutMs < TIMEOUT_BUSCA_MS) consultasLimitadasPeloOrcamento += 1;
     consultasExecutadas.push(consulta);
+    let daEtapa: ResultadoWebInvestigacao[] = [];
+    let falhou = false;
     try {
-      resultados.push(...await buscarConsultaNoGoogle(consulta, indice + 1, apiKey, fetcher, execucao, timeoutMs));
+      daEtapa = await buscarConsultaNoGoogle(consulta, indice + 1, apiKey, fetcher, execucao, timeoutMs);
+      resultados.push(...daEtapa);
     } catch (erro) {
       falhas += 1;
+      falhou = true;
       if (erro instanceof BuscaWebIndisponivel && erro.motivo === "limite") {
         limiteAtingido = true;
         retryAfterSegundos = erro.retryAfterSegundos;
@@ -305,19 +326,28 @@ export async function buscarImovelNaWeb(
     }
     aoConcluirPesquisa?.([...consultasExecutadas]);
 
-    if (limiteAtingido) break;
-    const candidatos = analisarCorrespondenciasInvestigacao(
-      consultaOriginal,
-      deduplicarResultadosInvestigacao(resultados),
-    );
-    if (haEvidenciaSuficiente(candidatos)) {
+    const unicos = deduplicarResultadosInvestigacao(resultados);
+    etapas.push({
+      resultados: daEtapa.length,
+      novos: unicos.length - unicosAteAqui,
+      falhou,
+      orcamentoRestanteMs: opcoes.deadlineMs === undefined ? null : Math.round(restante),
+    });
+    unicosAteAqui = unicos.length;
+
+    if (limiteAtingido) {
+      motivoParada = "limite-provider";
+      break;
+    }
+    if (haEvidenciaSuficiente(analisarCorrespondenciasInvestigacao(consultaOriginal, unicos))) {
       encerramentoAntecipado = consultasExecutadas.length < fila.length;
+      motivoParada = "evidencia-suficiente";
       break;
     }
   }
 
   if (!resultados.length && falhas) {
-    const resumo = { consultasExecutadas: consultasExecutadas.length, falhas };
+    const resumo = { consultasExecutadas: consultasExecutadas.length, falhas, motivoParada, etapas };
     if (limiteAtingido) {
       throw new BuscaWebIndisponivel("Limite de buscas atingido.", "limite", retryAfterSegundos, resumo);
     }
@@ -328,7 +358,7 @@ export async function buscarImovelNaWeb(
   }
   if (!resultados.length && orcamentoEsgotado) {
     throw new BuscaWebIndisponivel("O tempo da investigação se esgotou.", "orcamento", undefined, {
-      consultasExecutadas: consultasExecutadas.length, falhas,
+      consultasExecutadas: consultasExecutadas.length, falhas, motivoParada, etapas,
     });
   }
   return {
@@ -341,5 +371,8 @@ export async function buscarImovelNaWeb(
     orcamentoEsgotado,
     consultasLimitadasPeloOrcamento,
     retryAfterSegundos,
+    etapas,
+    motivoParada,
+    ...(orcamentoRestanteNaParadaMs !== undefined ? { orcamentoRestanteNaParadaMs } : {}),
   };
 }

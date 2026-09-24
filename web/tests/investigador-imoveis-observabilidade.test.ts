@@ -240,6 +240,8 @@ describe("o que nunca entra no log", () => {
 
 /* ------------------------------------------------------------------
    Rota: uma linha de conclusão, mesmo `execucao` em tudo, NDJSON igual.
+   Desde o B1 as entradas trazem logradouro com número: sem âncora o
+   plano tem uma etapa só, e estes cenários precisam da fila de três.
    ------------------------------------------------------------------ */
 
 const USUARIO_ID = "11111111-1111-4111-8111-111111111111";
@@ -283,7 +285,7 @@ describe("rota POST: conclusão e execução", () => {
       .mockResolvedValueOnce(respostaRapid([organico(2)]));
     vi.stubGlobal("fetch", fetcher);
 
-    const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos 80 m² 2 vagas Rua Privada 10, Londrina")));
+    const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos 80 m² 2 vagas Rua Privada, 10, Londrina")));
     const final = eventos.find((e) => e.tipo === "resultado");
     expect(final, JSON.stringify(eventos)).toBeDefined();
 
@@ -326,7 +328,7 @@ describe("rota POST: conclusão e execução", () => {
     const logs = capturarLogs();
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new DOMException("t", "TimeoutError")));
 
-    const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos Londrina")));
+    const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos Rua Privada, 10, Londrina")));
     expect(eventos.at(-1)).toEqual({
       tipo: "erro",
       mensagem: "A pesquisa na web está indisponível agora. Tente novamente em alguns minutos.",
@@ -343,7 +345,7 @@ describe("rota POST: conclusão e execução", () => {
   it("limite do provider sem resultado: conclusão limite-provider e mensagem com Retry-After como antes", async () => {
     const logs = capturarLogs();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 429, headers: { "Retry-After": "30" } })));
-    const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos Londrina")));
+    const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos Rua Privada, 10, Londrina")));
     expect(eventos.at(-1)).toEqual({
       tipo: "erro",
       mensagem: "O limite de pesquisas foi atingido. Tente novamente em 30 segundos.",
@@ -356,7 +358,7 @@ describe("rota POST: conclusão e execução", () => {
     delete process.env.RAPIDAPI_KEY;
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
-    const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos Londrina")));
+    const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos Rua Privada, 10, Londrina")));
     expect(eventos.at(-1)).toEqual({ tipo: "erro", mensagem: "O Investigador ainda não está configurado neste ambiente." });
     expect(fetcher).not.toHaveBeenCalled();
     expect(logs.conclusoes()[0]).toMatchObject({ consultas: 0, falhas: 0, encerramento: "configuracao" });
@@ -370,7 +372,7 @@ describe("rota POST: conclusão e execução", () => {
       .mockResolvedValueOnce(respostaRapid([]));
     vi.stubGlobal("fetch", fetcher);
 
-    const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos 80 m² Rua Privada 10, Londrina")));
+    const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos 80 m² Rua Privada, 10, Londrina")));
     expect(eventos.map((e) => (e.tipo === "etapa" ? `etapa:${e.etapa}` : e.tipo))).toEqual([
       "etapa:gerando-buscas",
       "etapa:pesquisando-web",
@@ -416,7 +418,7 @@ describe("rota POST: conclusão e execução", () => {
     });
     vi.stubGlobal("fetch", fetcher);
 
-    const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos Rua Privada 10, Londrina")));
+    const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos Rua Privada, 10, Londrina")));
     expect(fetcher).toHaveBeenCalledTimes(2);
     const final = eventos.at(-1);
     expect(final.tipo).toBe("resultado");
@@ -436,7 +438,7 @@ describe("rota POST: conclusão e execução", () => {
     vi.stubGlobal("fetch", fetcher);
     vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValue(39_000);
 
-    const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos Londrina")));
+    const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos Rua Privada, 10, Londrina")));
     expect(eventos.at(-1)).toEqual({
       tipo: "erro",
       mensagem: "A investigação excedeu o tempo disponível. Tente novamente.",
