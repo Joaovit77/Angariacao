@@ -423,12 +423,20 @@ export function deduplicarResultadosInvestigacao(
   return unicos;
 }
 
-/** Sinais de identidade e contexto que a análise já calcula; o B2 os lê
-    em vez de reinterpretar o texto das evidências. */
-interface SinaisCorrespondencia {
+/** Sinais de identidade e contexto que a análise já calcula; o B2 e o B3
+    os leem em vez de reinterpretar o texto das evidências. */
+export interface SinaisCorrespondencia {
   referenciaIdentica: boolean;
   enderecoIdentico: boolean;
   condominioIdentico: boolean;
+  areaCompativel: boolean;
+  quartosIguais: boolean;
+  vagasIguais: boolean;
+  /** Referência, endereço ou empreendimento divergentes (inclusive entre
+      resultados com a mesma referência): as que limitam a faixa. */
+  contradicoesGraves: number;
+  /** Área incompatível, quartos ou vagas diferentes. */
+  contradicoesCaracteristica: number;
 }
 
 interface ComparacaoComEntrada {
@@ -482,11 +490,14 @@ function compararComEntrada(
     const textoResultado = chaveNormalizada(`${resultado.titulo} ${resultado.descricao}`);
     const evidencias: string[] = [];
     const contradicoes: string[] = [];
-    let conflitoGrave = false;
+    let contradicoesGraves = 0;
+    let contradicoesCaracteristica = 0;
     let referenciaIdentica = false;
     let enderecoIdentico = false;
     let condominioIdentico = false;
-    let caracteristicasCompativeis = 0;
+    let areaCompativel = false;
+    let quartosIguais = false;
+    let vagasIguais = false;
 
     if (entrada.referencia && resultado.referencia) {
       referenciaIdentica = chaveNormalizada(entrada.referencia) === chaveNormalizada(resultado.referencia);
@@ -494,16 +505,16 @@ function compararComEntrada(
         evidencias.push(`Referência idêntica: ${entrada.referencia}`);
       } else {
         contradicoes.push(`Referência diferente: ${resultado.referencia}`);
-        conflitoGrave = true;
+        contradicoesGraves += 1;
       }
     }
     if (referenciaIdentica && condominiosDaReferencia.size > 1) {
       contradicoes.push("Empreendimento diverge entre resultados com a mesma referência");
-      conflitoGrave = true;
+      contradicoesGraves += 1;
     }
     if (referenciaIdentica && enderecosDaReferencia.size > 1) {
       contradicoes.push("Endereço diverge entre resultados com a mesma referência");
-      conflitoGrave = true;
+      contradicoesGraves += 1;
     }
 
     if (entrada.endereco && resultado.endereco) {
@@ -513,7 +524,7 @@ function compararComEntrada(
         evidencias.push(`Endereço idêntico: ${entrada.endereco}`);
       } else {
         contradicoes.push(`Endereço diferente: ${resultado.endereco}`);
-        conflitoGrave = true;
+        contradicoesGraves += 1;
       }
     } else if (entrada.endereco && textoContemEndereco(textoResultado, entrada.endereco)) {
       enderecoIdentico = true;
@@ -529,7 +540,7 @@ function compararComEntrada(
         evidencias.push(`Mesmo condomínio ou empreendimento: ${condominioInformado}`);
       } else {
         contradicoes.push(`Empreendimento diferente: ${resultado.condominio}`);
-        conflitoGrave = true;
+        contradicoesGraves += 1;
       }
     } else if (chaveCondominioEntrada && textoResultado.includes(chaveCondominioEntrada)) {
       condominioIdentico = true;
@@ -541,28 +552,33 @@ function compararComEntrada(
       const toleranciaCompatibilidade = Math.max(2, entrada.area * 0.03);
       const toleranciaIncompatibilidade = Math.max(10, entrada.area * 0.2);
       if (diferenca <= toleranciaCompatibilidade) {
-        caracteristicasCompativeis += 1;
+        areaCompativel = true;
         evidencias.push(`Área compatível: ${resultado.area.toLocaleString("pt-BR")} m²`);
       } else if (diferenca >= toleranciaIncompatibilidade) {
         contradicoes.push(`Área incompatível: ${resultado.area.toLocaleString("pt-BR")} m²`);
+        contradicoesCaracteristica += 1;
       }
     }
     if (entrada.quartos !== null && resultado.quartos !== null) {
       if (entrada.quartos === resultado.quartos) {
-        caracteristicasCompativeis += 1;
+        quartosIguais = true;
         evidencias.push(`Mesma quantidade de quartos: ${resultado.quartos}`);
       } else {
         contradicoes.push(`Quantidade de quartos diferente: ${resultado.quartos}`);
+        contradicoesCaracteristica += 1;
       }
     }
     if (entrada.vagas !== null && resultado.vagas !== null) {
       if (entrada.vagas === resultado.vagas) {
-        caracteristicasCompativeis += 1;
+        vagasIguais = true;
         evidencias.push(`Mesma quantidade de vagas: ${resultado.vagas}`);
       } else {
         contradicoes.push(`Quantidade de vagas diferente: ${resultado.vagas}`);
+        contradicoesCaracteristica += 1;
       }
     }
+    const caracteristicasCompativeis = Number(areaCompativel) + Number(quartosIguais) + Number(vagasIguais);
+    const conflitoGrave = contradicoesGraves > 0;
 
     const termosResultado = termosRelevantes(`${resultado.titulo} ${resultado.descricao}`);
     const comuns = [...termosEntrada].filter((termo) => termosResultado.has(termo));
@@ -592,7 +608,16 @@ function compararComEntrada(
 
     return {
       correspondencia: { ...resultado, confianca, evidencias, contradicoes },
-      sinais: { referenciaIdentica, enderecoIdentico, condominioIdentico },
+      sinais: {
+        referenciaIdentica,
+        enderecoIdentico,
+        condominioIdentico,
+        areaCompativel,
+        quartosIguais,
+        vagasIguais,
+        contradicoesGraves,
+        contradicoesCaracteristica,
+      },
     };
   });
   return { entrada, condominioInformado, comparacoes };
@@ -630,13 +655,16 @@ export interface ItemTriagemInvestigacao {
   relevancia: RelevanciaInvestigacao;
   /** Só em `irrelevante`. */
   motivo: MotivoDescarteInvestigacao | null;
+  /** Os sinais estruturados da análise. Ficam no servidor: o B3 pontua
+      com eles; nada disto vai ao cliente nem à memória. */
+  sinais: SinaisCorrespondencia;
 }
 
 export interface TriagemInvestigacao {
   /** Todos os resultados analisados, na ordem da análise. */
   itens: ItemTriagemInvestigacao[];
-  /** Relevantes e inconclusivos, na ordem da análise: o que chega à UI,
-      à memória e à regra de parada. */
+  /** Relevantes e inconclusivos, na ordem da análise: o que chega à
+      memória e à regra de parada, e o que o B3 reordena para a UI. */
   mantidos: CorrespondenciaInvestigacao[];
 }
 
@@ -718,7 +746,7 @@ function avaliarRelevancia(
   ancoras: string[],
   correspondencia: CorrespondenciaInvestigacao,
   sinais: SinaisCorrespondencia,
-): Omit<ItemTriagemInvestigacao, "correspondencia"> {
+): Omit<ItemTriagemInvestigacao, "correspondencia" | "sinais"> {
   if (sinais.referenciaIdentica || sinais.enderecoIdentico || sinais.condominioIdentico) {
     return { relevancia: "relevante", motivo: null };
   }
@@ -776,6 +804,7 @@ export function triarCorrespondenciasInvestigacao(
     .map(({ correspondencia, sinais }) => ({
       correspondencia,
       ...avaliarRelevancia(entrada, ancoras, correspondencia, sinais),
+      sinais,
     }))
     .sort((a, b) => ordemDasCorrespondencias(a.correspondencia, b.correspondencia));
   return {
@@ -799,6 +828,203 @@ export function resumirTriagemInvestigacao(triagem: TriagemInvestigacao): Resumo
     inconclusivos: contar("inconclusivo"),
     descartados: contar("irrelevante"),
     motivosDescarte,
+  };
+}
+
+/* ------------------------------------------------------------------
+   B3: pontuação dos mantidos. O B2 decide o que fica; o B3 só decide a
+   ordem entre o que ficou. A faixa continua soberana: o score ordena
+   DENTRO dela e nunca a muda, então rótulo, regra de parada, evidências,
+   contradições e memória ficam exatamente como estavam.
+
+   Pesos fixos em três degraus (identidade, contexto, característica), e
+   cada contradição desfaz uma coincidência do mesmo tipo. Termos
+   principais valem zero: são texto, não atributo do imóvel. Domínio,
+   preço, número de consultas e o atalho de avaliação não entram.
+   ------------------------------------------------------------------ */
+
+/** Muda sempre que um peso ou uma regra mudar: é o que separa os logs. */
+export const VERSAO_PONTUACAO_INVESTIGACAO = "b3.1-v1";
+
+export type MotivoPontuacaoInvestigacao =
+  | "referencia"
+  | "endereco"
+  | "empreendimento"
+  | "area"
+  | "quartos"
+  | "vagas"
+  | "contradicao-grave"
+  | "contradicao-caracteristica";
+
+/** Pontos por ocorrência. As contradições contam uma vez cada. */
+export const PESOS_PONTUACAO_INVESTIGACAO: Readonly<Record<MotivoPontuacaoInvestigacao, number>> = {
+  referencia: 3,
+  endereco: 3,
+  empreendimento: 2,
+  area: 1,
+  quartos: 1,
+  vagas: 1,
+  "contradicao-grave": -3,
+  "contradicao-caracteristica": -1,
+};
+
+/** Limites do que a análise consegue produzir: tudo a favor soma 11; o
+    pior caso são três contradições graves (referência, endereço e
+    empreendimento, ou a referência idêntica com as duas divergências entre
+    resultados, que ainda conta os seus +3) mais as três características. */
+export const PONTUACAO_MAXIMA_INVESTIGACAO = 11;
+export const PONTUACAO_MINIMA_INVESTIGACAO = -12;
+
+export interface MotivoPontuadoInvestigacao {
+  motivo: MotivoPontuacaoInvestigacao;
+  pontos: number;
+}
+
+export interface PontuacaoInvestigacao {
+  pontos: number;
+  /** Na ordem do catálogo; só o que contribuiu. */
+  motivos: MotivoPontuadoInvestigacao[];
+}
+
+export function pontuarCorrespondenciaInvestigacao(sinais: SinaisCorrespondencia): PontuacaoInvestigacao {
+  const ocorrencias: [MotivoPontuacaoInvestigacao, number][] = [
+    ["referencia", Number(sinais.referenciaIdentica)],
+    ["endereco", Number(sinais.enderecoIdentico)],
+    ["empreendimento", Number(sinais.condominioIdentico)],
+    ["area", Number(sinais.areaCompativel)],
+    ["quartos", Number(sinais.quartosIguais)],
+    ["vagas", Number(sinais.vagasIguais)],
+    ["contradicao-grave", sinais.contradicoesGraves],
+    ["contradicao-caracteristica", sinais.contradicoesCaracteristica],
+  ];
+  const motivos = ocorrencias
+    .filter(([, vezes]) => vezes > 0)
+    .map(([motivo, vezes]) => ({ motivo, pontos: vezes * PESOS_PONTUACAO_INVESTIGACAO[motivo] }));
+  return { pontos: motivos.reduce((total, item) => total + item.pontos, 0), motivos };
+}
+
+export interface ItemPontuadoInvestigacao<T extends CorrespondenciaInvestigacao = CorrespondenciaInvestigacao> {
+  correspondencia: T;
+  sinais: SinaisCorrespondencia | null;
+  pontuacao: PontuacaoInvestigacao;
+}
+
+const SEM_PONTUACAO: PontuacaoInvestigacao = { pontos: 0, motivos: [] };
+
+/** URL por último, e comparada por código de caractere: só determinismo. */
+function ordemDoB3(a: ItemPontuadoInvestigacao, b: ItemPontuadoInvestigacao): number {
+  const x = a.correspondencia;
+  const y = b.correspondencia;
+  return ORDEM_CONFIANCA[y.confianca] - ORDEM_CONFIANCA[x.confianca]
+    || b.pontuacao.pontos - a.pontuacao.pontos
+    || x.contradicoes.length - y.contradicoes.length
+    || y.evidencias.length - x.evidencias.length
+    || x.titulo.localeCompare(y.titulo, "pt-BR")
+    || (x.url < y.url ? -1 : x.url > y.url ? 1 : 0);
+}
+
+/**
+ * B3: devolve os mesmos itens de `mantidos`, sem tirar nem pôr, na ordem
+ * faixa → score → menos contradições → mais evidências → título → URL.
+ * `mantidos` pode ser a lista da triagem ou a mesma lista enriquecida
+ * depois (atalho de avaliação); o casamento é pela URL canônica do dedupe.
+ * Não altera nenhum objeto: a lista de entrada, que a memória recebe,
+ * continua na ordem do B2.
+ */
+export function ordenarMantidosInvestigacao<T extends CorrespondenciaInvestigacao>(
+  triagem: TriagemInvestigacao,
+  mantidos: readonly T[],
+): ItemPontuadoInvestigacao<T>[] {
+  const sinaisPorUrl = new Map(
+    triagem.itens
+      .filter((item) => item.relevancia !== "irrelevante")
+      .map((item) => [item.correspondencia.url, item.sinais]),
+  );
+  return mantidos
+    .map((correspondencia) => {
+      const sinais = sinaisPorUrl.get(correspondencia.url) ?? null;
+      return {
+        correspondencia,
+        sinais,
+        pontuacao: sinais ? pontuarCorrespondenciaInvestigacao(sinais) : SEM_PONTUACAO,
+      };
+    })
+    .sort(ordemDoB3);
+}
+
+export type FaixaPontuacaoInvestigacao = "<=0" | "1-2" | "3-4" | "5-6" | ">=7";
+
+export interface ResumoPontuacaoInvestigacao {
+  versao: string;
+  pontuados: number;
+  distribuicao: Record<FaixaPontuacaoInvestigacao, number>;
+  /** Quantos resultados tiveram cada motivo. */
+  motivos: Partial<Record<MotivoPontuacaoInvestigacao, number>>;
+  rankingMudou: boolean;
+  /** Posições em que o resultado exibido difere da ordem do B2. */
+  posicoesAlteradas: number;
+  topoMudou: boolean;
+  /** Medido, não usado: resultados com outro domínio que compartilha a
+      mesma âncora (referência, endereço ou empreendimento) e o mesmo valor
+      de área, quartos ou vagas. Domínio diferente não é fonte
+      independente (anúncio sindicado), por isso ainda não pontua. */
+  corroboraveis: number;
+  /** Medido, não usado: resultados trazidos por mais de uma consulta. */
+  multiplasEtapas: number;
+  /** O B3.1 não consulta nem usa a memória, em nenhuma origem: não quer
+      dizer que o imóvel não tenha memória (o Garimpo pode ter). */
+  memoria: "nao-utilizada";
+}
+
+function faixaDoScore(pontos: number): FaixaPontuacaoInvestigacao {
+  if (pontos <= 0) return "<=0";
+  if (pontos <= 2) return "1-2";
+  if (pontos <= 4) return "3-4";
+  if (pontos <= 6) return "5-6";
+  return ">=7";
+}
+
+function compartilhaAncora(a: SinaisCorrespondencia, b: SinaisCorrespondencia): boolean {
+  return (a.referenciaIdentica && b.referenciaIdentica)
+    || (a.enderecoIdentico && b.enderecoIdentico)
+    || (a.condominioIdentico && b.condominioIdentico);
+}
+
+function mesmaCaracteristica(a: CorrespondenciaInvestigacao, b: CorrespondenciaInvestigacao): boolean {
+  return (["area", "quartos", "vagas"] as const).some((campo) => a[campo] !== null && a[campo] === b[campo]);
+}
+
+/** Só contagens e códigos: é o que vai para o log. `antes` é a ordem do
+    B2 (a que a memória recebe); `depois`, a que o cliente recebe. */
+export function resumirPontuacaoInvestigacao(
+  antes: readonly CorrespondenciaInvestigacao[],
+  depois: readonly ItemPontuadoInvestigacao[],
+): ResumoPontuacaoInvestigacao {
+  const distribuicao: Record<FaixaPontuacaoInvestigacao, number> = { "<=0": 0, "1-2": 0, "3-4": 0, "5-6": 0, ">=7": 0 };
+  const motivos: Partial<Record<MotivoPontuacaoInvestigacao, number>> = {};
+  for (const item of depois) {
+    distribuicao[faixaDoScore(item.pontuacao.pontos)] += 1;
+    for (const { motivo } of item.pontuacao.motivos) motivos[motivo] = (motivos[motivo] ?? 0) + 1;
+  }
+  const posicoesAlteradas = depois.filter((item, indice) => antes[indice]?.url !== item.correspondencia.url).length;
+  const corroboraveis = depois.filter((item) => item.sinais && depois.some((outro) =>
+    outro !== item
+    && outro.sinais
+    && outro.correspondencia.dominio !== item.correspondencia.dominio
+    && compartilhaAncora(item.sinais!, outro.sinais)
+    && mesmaCaracteristica(item.correspondencia, outro.correspondencia)
+  )).length;
+  return {
+    versao: VERSAO_PONTUACAO_INVESTIGACAO,
+    pontuados: depois.length,
+    distribuicao,
+    motivos,
+    rankingMudou: posicoesAlteradas > 0,
+    posicoesAlteradas,
+    topoMudou: depois.length > 0 && antes[0]?.url !== depois[0].correspondencia.url,
+    corroboraveis,
+    multiplasEtapas: depois.filter((item) => item.correspondencia.consultas.length > 1).length,
+    memoria: "nao-utilizada",
   };
 }
 

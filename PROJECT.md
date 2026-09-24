@@ -2557,6 +2557,16 @@ imobiliário e com marcador explícito de outro assunto, ou sem nenhum sinal imo
 sempre mantêm o resultado; ausência de dado nunca descarta. O gate não pontua, não reordena, não
 cria pesquisa além do plano e só expõe contagens e códigos no log.
 
+Entre os mantidos, a ordem exibida é faixa → score → menos contradições → mais evidências → título
+→ URL (esta só por determinismo). O score (versão `b3.1-v1`) soma pesos fixos sobre os sinais
+estruturados que a análise já calcula: referência pública ou endereço idênticos +3, mesmo
+empreendimento +2, área, quartos ou vagas compatíveis +1 cada; cada contradição grave −3 e cada
+divergência de característica −1. Termos, domínio, preço, número de consultas e atalho de avaliação
+valem zero. A faixa continua soberana: o score só ordena dentro dela e não muda faixa, evidências,
+contradições, relevância, regra de parada nem o conjunto exibido. Ele não vai ao cliente nem à
+memória, que continua recebendo a lista e a ordem do B2; no log aparecem só versão, distribuição,
+motivos e quantas posições mudaram.
+
 A resposta é NDJSON progressivo: gerar consultas, pesquisar, normalizar e cruzar informações são
 eventos emitidos quando cada etapa realmente começa; a lista da UI contém apenas consultas de fato
 executadas. EOF sem `resultado` ou `erro` encerra o andamento na UI com erro e permite nova tentativa.

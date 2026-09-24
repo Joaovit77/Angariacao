@@ -14,6 +14,7 @@
    de `investigadorImoveis.ts` para que os testes que substituem aquele
    módulo inteiro não percam a rota.
    ================================================================ */
+import type { ResumoPontuacaoInvestigacao } from "@/lib/calculo/investigadorImoveis";
 
 export const PROVIDER_INVESTIGADOR = "rapidapi";
 export const OPERACAO_PESQUISAR_IMOVEL = "pesquisar_imovel";
@@ -134,6 +135,8 @@ export interface RegistroConclusaoInvestigacao {
   resultadosDescartados?: number;
   /** B2: descartes por motivo; só códigos e contagens. */
   motivosDescarte?: Partial<Record<string, number>>;
+  /** B3: versão, distribuição e motivos do score; só contagens e códigos. */
+  pontuacao?: ResumoPontuacaoInvestigacao;
   encerramento: EncerramentoInvestigacao;
   duracaoMs: number;
   orcamentoTotalMs?: number;
@@ -196,6 +199,7 @@ export function registrarConclusaoInvestigacao(registro: RegistroConclusaoInvest
       : {}),
     ...(registro.resultadosDescartados !== undefined ? { resultadosDescartados: registro.resultadosDescartados } : {}),
     ...(registro.motivosDescarte !== undefined ? { motivosDescarte: registro.motivosDescarte } : {}),
+    ...(registro.pontuacao !== undefined ? { pontuacao: registro.pontuacao } : {}),
     encerramento: registro.encerramento,
     duracaoMs: Math.round(registro.duracaoMs),
     ...(registro.orcamentoTotalMs !== undefined ? { orcamentoTotalMs: registro.orcamentoTotalMs } : {}),

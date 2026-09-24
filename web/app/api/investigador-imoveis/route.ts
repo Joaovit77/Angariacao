@@ -3,7 +3,9 @@ import {
   consultaInvestigadorValida,
   deduplicarResultadosInvestigacao,
   LIMITE_CONSULTA_INVESTIGADOR,
+  ordenarMantidosInvestigacao,
   planejarPesquisasInvestigacao,
+  resumirPontuacaoInvestigacao,
   resumirTriagemInvestigacao,
   triarCorrespondenciasInvestigacao,
   type EventoInvestigacao,
@@ -394,6 +396,12 @@ export async function POST(request: Request): Promise<Response> {
           correspondencias,
           execucaoId,
         );
+        // B3: só a cópia exibida é reordenada (faixa → score → ...). A
+        // memória continua recebendo `resultados`, com o mesmo conteúdo e
+        // a mesma ordem do B2; o score não vai ao cliente nem ao banco.
+        const pontuados = ordenarMantidosInvestigacao(triagem, resultados);
+        const exibidos = pontuados.map((item) => item.correspondencia);
+        const pontuacao = resumirPontuacaoInvestigacao(resultados, pontuados);
         const aviso = busca.orcamentoEsgotado
           ? "Investigação concluída parcialmente pelo tempo disponível. Os resultados encontrados foram mantidos."
           : busca.limiteAtingido
@@ -421,6 +429,7 @@ export async function POST(request: Request): Promise<Response> {
           resultadosInconclusivos: relevancia.inconclusivos,
           resultadosDescartados: relevancia.descartados,
           motivosDescarte: relevancia.motivosDescarte,
+          pontuacao,
           encerramento: busca.orcamentoEsgotado
             ? "orcamento-parcial"
             : busca.limiteAtingido
@@ -443,7 +452,7 @@ export async function POST(request: Request): Promise<Response> {
             ok: true,
             consultaOriginal,
             consultas: busca.consultasExecutadas,
-            resultados,
+            resultados: exibidos,
             pesquisasEvitadas: busca.pesquisasEvitadas,
             encerramentoAntecipado: busca.encerramentoAntecipado,
             limiteAtingido: busca.limiteAtingido,
