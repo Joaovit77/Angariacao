@@ -620,7 +620,7 @@ describe.sequential("C13B — payload real do Investigador na RPC do C13A (PGlit
       id: a.id as number, imovelIdentificadoId: imovel, investigacaoId: execucao, atributo: a.atributo as AfirmacaoRegistrada["atributo"],
       valorTexto: a.valor_texto as string | null, valorNum: a.valor_num as number | null, origem: "investigador-web", estado: "hipotese",
       confianca: a.confianca as AfirmacaoRegistrada["confianca"], fonteUrl: a.fonte_url as string, fonteDominio: a.fonte_dominio as string,
-      observadoEm: a.observado_em as string, confirmadoPor: null, confirmadoEm: null, criadoEm: a.created_at as string,
+      observadoEm: a.observado_em as string, confirmadoPor: null, confirmadoEm: null, rejeitadoPor: null, rejeitadoEm: null, criadoEm: a.created_at as string,
     }));
     const visoes = derivarMemoriaAtual(registradas);
     expect(visoes.map((v) => v.atributo)).toEqual(["area_m2", "quartos", "vagas", "condominio", "referencia_anuncio"]);

@@ -1,17 +1,18 @@
 /* ================================================================
    INVESTIGADOR — B3-M3a: escudo de compatibilidade do estado da memória
 
-   Antes da migration do B3-M3 (que passará a aceitar `rejeitada`), a
-   leitura desta versão precisa ser fail-closed: aceita só `hipotese` e
-   `confirmada`; qualquer outro estado é DESCARTADO, nunca convertido em
-   hipótese. Sem isso, uma Production antiga leria `rejeitada` e a
-   ressuscitaria como candidata a vigente.
+   A leitura é fail-closed: só os estados conhecidos são mapeados, e
+   qualquer outro é DESCARTADO, nunca convertido em hipótese. O M3a
+   entrou antes da migration do B3-M3 aceitando só `hipotese` e
+   `confirmada`; com o B3-M3 integrado, `rejeitada` passa a ser conhecida
+   e mapeada explicitamente (e fica fora da vigência pelo núcleo). O
+   contrato do M3a não muda: estado desconhecido nunca vira hipótese.
 
-   Contra o schema ATUAL (só as migrations do C13), com o store real
-   (`obterMemoriaIdentificado`, `confirmarAtributoIdentificado`) por um
-   cliente mínimo que executa como `authenticated`, como o navegador. Os
-   estados que o schema atual não aceita são gravados dentro de uma
-   transação desfeita, com os CHECKs retirados só ali.
+   Contra o schema com as migrations do C13 e do B3-M3, com o store real
+   (`obterMemoriaIdentificado`, `confirmar…`, `rejeitar…`) por um cliente
+   mínimo que executa como `authenticated`, como o navegador. Estados que
+   nenhum schema aceita são gravados dentro de uma transação desfeita,
+   com os CHECKs retirados só ali.
    ================================================================ */
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -23,6 +24,7 @@ import { derivarMemoriaAtual, montarMemoriaIdentidade } from "@/lib/calculo/memo
 import {
   confirmarAtributoIdentificado,
   obterMemoriaIdentificado,
+  rejeitarAtributoIdentificado,
   type DetalheImovelIdentificado,
 } from "@/lib/prospeccao";
 
@@ -54,6 +56,7 @@ describe.sequential("B3-M3a — leitura fail-closed do estado da memória (schem
       "20260910184310_prospeccao_campo.sql", "20260910190155_prospeccao_campo_rls_grants.sql",
       "20260910193412_prospeccao_campo_triggers.sql", "20260910211045_prospeccao_campo_rpcs_navegador.sql",
       "20260913162604_prospeccao_merge_contrato_transacional.sql", "20260915190000_prospeccao_memoria_identidade.sql",
+      "20260924210000_prospeccao_memoria_rejeicao.sql",
     ]) await db.exec(ler("supabase/migrations/" + nome));
   }, 60_000);
   afterAll(async () => { await db?.close(); });
@@ -121,13 +124,13 @@ describe.sequential("B3-M3a — leitura fail-closed do estado da memória (schem
   const area = (valor: number, dominio: string) => ({ atributo: "area_m2", valor_num: valor, fonte_url: `https://${dominio}/anuncio`, fonte_dominio: dominio });
   const idDe = async (imovel: string, valor: number) =>
     (await db.query<{ id: number }>("select id from public.imoveis_identificados_atributos where imovel_identificado_id = $1 and valor_num = $2", [imovel, valor])).rows[0].id;
-  /** Grava estados que o schema atual não aceita, lê pelo store e desfaz tudo. */
+  /** Grava estados que o schema não aceita, lê pelo store e desfaz tudo. */
   async function comEstadosForaDoSchema<T>(estados: Record<number, string>, ler: () => Promise<T>): Promise<T> {
     await db.exec("begin");
     try {
       await db.exec(`alter table public.imoveis_identificados_atributos
         drop constraint imoveis_identificados_atributos_estado_check,
-        drop constraint imoveis_identificados_atributos_confirmacao_check`);
+        drop constraint imoveis_identificados_atributos_decisao_check`);
       for (const [id, estado] of Object.entries(estados)) {
         await db.query("update public.imoveis_identificados_atributos set estado = $1 where id = $2", [estado, Number(id)]);
       }
@@ -145,8 +148,10 @@ describe.sequential("B3-M3a — leitura fail-closed do estado da memória (schem
     primeiroAvistamentoEm: null, ultimoAvistamentoEm: null, avistamentosTotal: 0,
   };
 
-  it("contrato: a leitura usa só colunas que o schema atual tem (nada do B3-M3)", async () => {
-    expect(ler("web/lib/prospeccao.ts")).not.toMatch(/rejeitado_por|rejeitado_em|rejeitad/);
+  it("contrato: o mapeamento é lista fechada, sem nenhum fallback para hipótese", async () => {
+    const fonte = ler("web/lib/prospeccao.ts");
+    expect(fonte).toMatch(/if \(!estadoAfirmacaoValido\(estado\)\) return null;/);
+    expect(fonte).not.toMatch(/\? "confirmada" : "hipotese"|: "hipotese",/);
     const imovel = await identidade();
     await investigar(imovel, [area(85, "portal-a.test")]);
     await expect(obterMemoriaIdentificado(imovel, navegador)).resolves.toMatchObject({ atributos: [{ valorNum: 85 }] });
@@ -178,25 +183,29 @@ describe.sequential("B3-M3a — leitura fail-closed do estado da memória (schem
     expect(atributos).toEqual([]);
   });
 
-  it("D. `rejeitada` (que o schema atual ainda não aceita) é ignorada, não vira hipótese", async () => {
+  it("D. `rejeitada` (B3-M3) é reconhecida como rejeitada — nunca como hipótese — e não é vigente", async () => {
     const imovel = await identidade();
     await investigar(imovel, [area(36, "crv.test")]);
     const id = await idDe(imovel, 36);
-    const { atributos } = await comEstadosForaDoSchema({ [id]: "rejeitada" }, () => obterMemoriaIdentificado(imovel, navegador));
-    expect(atributos).toEqual([]);
-    expect(atributos.some((a) => a.id === id)).toBe(false);
+    await rejeitarAtributoIdentificado(id, navegador);
+    const { atributos } = await obterMemoriaIdentificado(imovel, navegador);
+    expect(atributos.map((a) => [a.id, a.estado])).toEqual([[id, "rejeitada"]]);
+    expect(atributos[0].rejeitadoPor).toBe(USUARIO);
+    expect(derivarMemoriaAtual(atributos)).toEqual([]);
   });
 
-  it("E. hipótese válida + linha rejeitada/desconhecida: o vigente vem só da válida", async () => {
+  it("E. hipótese válida + linha rejeitada + linha desconhecida: o vigente vem só da válida", async () => {
     const imovel = await identidade();
     // A rejeitada entra PRIMEIRO na investigação: se fosse lida como hipótese, o B3-M2 a faria vigente.
     await investigar(imovel, [area(36, "crv.test"), area(304, "vivareal.test"), area(25, "zap.test")]);
     const [id36, id25] = [await idDe(imovel, 36), await idDe(imovel, 25)];
-    const { atributos } = await comEstadosForaDoSchema({ [id36]: "rejeitada", [id25]: "arquivada" }, () => obterMemoriaIdentificado(imovel, navegador));
-    expect(atributos.map((a) => [a.valorNum, a.estado])).toEqual([[304, "hipotese"]]);
+    await rejeitarAtributoIdentificado(id36, navegador);
+    const { atributos } = await comEstadosForaDoSchema({ [id25]: "arquivada" }, () => obterMemoriaIdentificado(imovel, navegador));
+    // Ordem do store: observado_em desc, id desc.
+    expect(atributos.map((a) => [a.valorNum, a.estado])).toEqual([[304, "hipotese"], [36, "rejeitada"]]);
     const [visao] = derivarMemoriaAtual(atributos);
-    expect(visao).toMatchObject({ atributo: "area_m2", vigente: { valorNum: 304, estado: "hipotese" }, valoresDistintos: 1, divergente: false });
-    expect(visao.historico.map((a) => a.valorNum)).toEqual([304]);
+    expect(visao).toMatchObject({ atributo: "area_m2", vigente: { valorNum: 304, estado: "hipotese" }, valoresAtivos: 1, divergente: false });
+    expect(visao.historico.map((a) => [a.valorNum, a.estado])).toEqual([[36, "rejeitada"], [304, "hipotese"]]);
   });
 
   it("F. todas as linhas com estado desconhecido: nenhuma afirmação ativa, sem crash e sem hipótese inventada", async () => {
@@ -205,7 +214,7 @@ describe.sequential("B3-M3a — leitura fail-closed do estado da memória (schem
     const ids = await Promise.all([36, 25].map((v) => idDe(imovel, v)));
     const idQuartos = (await db.query<{ id: number }>("select id from public.imoveis_identificados_atributos where imovel_identificado_id = $1 and atributo = 'quartos'", [imovel])).rows[0].id;
     const carregada = await comEstadosForaDoSchema(
-      { [ids[0]]: "rejeitada", [ids[1]]: "arquivada", [idQuartos]: "" },
+      { [ids[0]]: "suspensa", [ids[1]]: "arquivada", [idQuartos]: "" },
       () => obterMemoriaIdentificado(imovel, navegador),
     );
     expect(carregada.atributos).toEqual([]);
@@ -233,13 +242,30 @@ describe.sequential("B3-M3a — leitura fail-closed do estado da memória (schem
     const imovel = await identidade();
     await investigar(imovel, [area(85, "portal-a.test"), area(95, "portal-b.test")]);
     expect(derivarMemoriaAtual((await obterMemoriaIdentificado(imovel, navegador)).atributos)[0].vigente.valorNum).toBe(85);
-    // Com uma linha de estado desconhecido à frente, ela não ocupa o lugar: vence a primeira VÁLIDA.
+    // Com uma rejeitada e uma desconhecida à frente, nenhuma ocupa o lugar: vence a primeira VÁLIDA.
     const outro = await identidade();
-    await investigar(outro, [area(36, "crv.test"), area(85, "portal-a.test"), area(95, "portal-b.test")]);
-    const id36 = await idDe(outro, 36);
-    const { atributos } = await comEstadosForaDoSchema({ [id36]: "rejeitada" }, () => obterMemoriaIdentificado(outro, navegador));
+    await investigar(outro, [area(36, "crv.test"), area(25, "zap.test"), area(85, "portal-a.test"), area(95, "portal-b.test")]);
+    const [id36, id25] = [await idDe(outro, 36), await idDe(outro, 25)];
+    await rejeitarAtributoIdentificado(id36, navegador);
+    const { atributos } = await comEstadosForaDoSchema({ [id25]: "arquivada" }, () => obterMemoriaIdentificado(outro, navegador));
     const [visao] = derivarMemoriaAtual(atributos);
     expect(visao.vigente).toMatchObject({ valorNum: 85, fonteDominio: "portal-a.test" });
-    expect(visao.historico.map((a) => a.valorNum)).toEqual([85, 95]);
+    expect(visao.historico.map((a) => [a.valorNum, a.estado])).toEqual([[36, "rejeitada"], [85, "hipotese"], [95, "hipotese"]]);
+  });
+
+  it("M3 + M3a coexistem: hipotese, confirmada e rejeitada são aceitas explicitamente; arquivada é descartada", async () => {
+    const imovel = await identidade();
+    await investigar(imovel, [area(85, "portal-a.test"), area(95, "portal-b.test"), area(36, "crv.test"), area(25, "zap.test")]);
+    const [id85, id95, id36, id25] = await Promise.all([85, 95, 36, 25].map((v) => idDe(imovel, v)));
+    await confirmarAtributoIdentificado(id95, navegador);
+    await rejeitarAtributoIdentificado(id36, navegador);
+    const { atributos } = await comEstadosForaDoSchema({ [id25]: "arquivada" }, () => obterMemoriaIdentificado(imovel, navegador));
+    const porId = new Map(atributos.map((a) => [a.id, a.estado]));
+    expect(porId.get(id85)).toBe("hipotese");
+    expect(porId.get(id95)).toBe("confirmada");
+    expect(porId.get(id36)).toBe("rejeitada");
+    expect(porId.has(id25)).toBe(false);
+    expect(atributos).toHaveLength(3);
+    expect(derivarMemoriaAtual(atributos)[0].vigente).toMatchObject({ id: id95, estado: "confirmada" });
   });
 });

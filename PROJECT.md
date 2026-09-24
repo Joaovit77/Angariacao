@@ -3086,6 +3086,19 @@ divergências, "Transformado em oportunidade" a partir de `promovido_em`) sem re
 passagem. Zero IA ao abrir, confirmar ou ler; zero escrita por visualizar; nada promove nem muda
 situação.
 
+**Rejeição humana (B3-M3, migration `20260924210000_prospeccao_memoria_rejeicao.sql`).** Além de
+confirmar, a pessoa pode **Marcar como incorreta** uma hipótese (RPC `rejeitar_atributo_identificado`,
+só `authenticated`, só o dono, idempotente, recusa com exclusão pendente). Estados: `hipotese`,
+`confirmada`, `rejeitada`; confirmada e rejeitada são decisões finais — nenhuma volta a hipótese nem
+vira a outra (as duas RPCs devolvem `decisao_existente`). A linha rejeitada fica no banco com valor,
+fonte, investigação e `observado_em` intactos (`rejeitado_por`/`rejeitado_em`; FK sem cascata própria:
+a linha já some com a conta pelo `user_id`, e excluir um autor que não seja o dono é recusado). Ela
+nunca é vigente nem divergência ativa (`divergente` olha só confirmadas e hipóteses;
+`valoresDistintos` segue histórico); atributo só com rejeitadas sai de "O que sabemos" para
+`atributosSemVigente`, e a tela mostra as incorretas recolhidas, com "Incorreta" em texto. A lista de
+estados utilizáveis é fechada (`ESTADOS_CANDIDATOS_VIGENCIA`): estado desconhecido é descartado na
+leitura, e nenhum consumidor futuro da memória pode usar uma rejeitada.
+
 **Estado.** O C13 está publicado em Production desde 2026-09-15 (migration aplicada antes do merge
 em `main`) e foi comprovado de ponta a ponta na conta de teste: C13C em 2026-09-15 (leitura e
 confirmação humana) e C13B em 2026-09-16 (uma investigação real persistindo investigação e

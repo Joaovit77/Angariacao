@@ -6,7 +6,9 @@
    tela mostra — rótulos amigáveis, valores formatados, fonte segura,
    datas legíveis, resumo curto e um histórico enxuto. Ele NÃO decide
    vigência, conflito nem prioridade: isso já vem decidido do núcleo
-   (`vigente`, `historico`, `divergente`). Aqui só se apresenta.
+   (`vigente`, `historico`, `divergente`, `atributosSemVigente`). Aqui só
+   se apresenta. Afirmação marcada como incorreta (B3-M3) nunca aparece
+   como candidata ("Também encontrado"): fica à parte, recolhida.
 
    O histórico da memória não repete a linha do tempo de passagens: fotos
    e passagens individuais ficam onde já estão. Entram a primeira e a
@@ -18,6 +20,7 @@ import type { ImovelIdentificado } from "../prospeccao";
 import {
   CATALOGO_ATRIBUTOS_MEMORIA,
   ROTULO_ESTADO_MEMORIA,
+  afirmacaoAtiva,
   formatarValorMemoria,
   valorCanonico,
   type AfirmacaoRegistrada,
@@ -26,6 +29,7 @@ import {
   type MemoriaIdentidade,
   type TipoEventoMemoria,
   type VisaoAtributoMemoria,
+  type VisaoAtributoSemVigente,
 } from "./memoriaIdentidade";
 
 export const ROTULO_FONTE_SEM_DOMINIO = "Fonte registrada";
@@ -50,15 +54,20 @@ export interface AfirmacaoLeitura {
   observadoEmTexto: string;
   confirmadoEm: string | null;
   confirmadoEmTexto: string | null;
+  rejeitadoEm: string | null;
+  rejeitadoEmTexto: string | null;
   /** Hipótese que uma pessoa pode validar agora (registro sem exclusão pendente). */
   podeConfirmar: boolean;
+  /** Hipótese que uma pessoa pode marcar como incorreta agora (mesma regra). */
+  podeRejeitar: boolean;
 }
 
 export interface FatoLeitura {
   atributo: AtributoMemoria;
   rotulo: string;
   vigente: AfirmacaoLeitura;
-  /** As outras afirmações do histórico deste atributo, da mais recente à mais antiga. */
+  /** As outras afirmações ATIVAS deste atributo (confirmadas e hipóteses),
+      da mais recente à mais antiga. As marcadas como incorretas não entram. */
   outros: AfirmacaoLeitura[];
   /** Entre as outras, as que dizem um valor DIFERENTE do vigente (pelo
       mesmo valor canônico do núcleo). É o que a tela mostra como
@@ -66,6 +75,16 @@ export interface FatoLeitura {
       divergência. */
   divergentes: AfirmacaoLeitura[];
   divergente: boolean;
+  /** As marcadas como incorretas, da mais recente à mais antiga. */
+  incorretas: AfirmacaoLeitura[];
+}
+
+/** Atributo em que tudo foi marcado como incorreto: sem valor vigente, fora
+    de "O que sabemos", com o histórico acessível. */
+export interface FatoSemVigenteLeitura {
+  atributo: AtributoMemoria;
+  rotulo: string;
+  incorretas: AfirmacaoLeitura[];
 }
 
 export type TipoEventoLeitura = TipoEventoMemoria | "primeiro-avistamento" | "ultimo-avistamento" | "divergencia";
@@ -92,6 +111,8 @@ export interface LeituraMemoria {
   investigado: boolean;
   resumo: ResumoLeitura;
   fatos: FatoLeitura[];
+  /** Atributos só com informações marcadas como incorretas. */
+  semVigente: FatoSemVigenteLeitura[];
   historico: EventoLeitura[];
 }
 
@@ -122,6 +143,7 @@ function podeConfirmarAgora(identificado: IdentificadoParaLeitura): boolean {
 }
 
 function afirmacaoParaLeitura(a: AfirmacaoRegistrada, identificado: IdentificadoParaLeitura): AfirmacaoLeitura {
+  const decidivel = a.estado === "hipotese" && podeConfirmarAgora(identificado);
   return {
     id: a.id,
     valor: formatarValorMemoria(a),
@@ -132,12 +154,15 @@ function afirmacaoParaLeitura(a: AfirmacaoRegistrada, identificado: Identificado
     observadoEmTexto: dataTexto(a.observadoEm),
     confirmadoEm: a.estado === "confirmada" ? a.confirmadoEm : null,
     confirmadoEmTexto: a.estado === "confirmada" ? dataTexto(a.confirmadoEm) || null : null,
-    podeConfirmar: a.estado === "hipotese" && podeConfirmarAgora(identificado),
+    rejeitadoEm: a.estado === "rejeitada" ? a.rejeitadoEm : null,
+    rejeitadoEmTexto: a.estado === "rejeitada" ? dataTexto(a.rejeitadoEm) || null : null,
+    podeConfirmar: decidivel,
+    podeRejeitar: decidivel,
   };
 }
 
 function fatoParaLeitura(visao: VisaoAtributoMemoria, identificado: IdentificadoParaLeitura): FatoLeitura {
-  const outras = visao.historico.filter((a) => a.id !== visao.vigente.id);
+  const outras = visao.historico.filter((a) => a.id !== visao.vigente.id && afirmacaoAtiva(a));
   const canonicoVigente = valorCanonico(visao.vigente);
   return {
     atributo: visao.atributo,
@@ -148,6 +173,15 @@ function fatoParaLeitura(visao: VisaoAtributoMemoria, identificado: Identificado
       .filter((a) => valorCanonico(a) !== canonicoVigente)
       .map((a) => afirmacaoParaLeitura(a, identificado)),
     divergente: visao.divergente,
+    incorretas: visao.rejeitadas.map((a) => afirmacaoParaLeitura(a, identificado)),
+  };
+}
+
+function semVigenteParaLeitura(visao: VisaoAtributoSemVigente, identificado: IdentificadoParaLeitura): FatoSemVigenteLeitura {
+  return {
+    atributo: visao.atributo,
+    rotulo: visao.rotulo,
+    incorretas: visao.historico.map((a) => afirmacaoParaLeitura(a, identificado)),
   };
 }
 
@@ -166,11 +200,16 @@ export function resumirMemoria(fatos: ReadonlyArray<FatoLeitura>): ResumoLeitura
   return { informacoes, confirmadas, divergentes, texto: partes.join(" · ") };
 }
 
-const TIPOS_DO_NUCLEO_NO_HISTORICO: ReadonlySet<TipoEventoMemoria> = new Set(["tipo", "investigacao", "confirmacao", "promocao"]);
+const TIPOS_DO_NUCLEO_NO_HISTORICO: ReadonlySet<TipoEventoMemoria> = new Set(["tipo", "investigacao", "confirmacao", "rejeicao", "promocao"]);
+
+/** Todo atributo com histórico, tenha ou não valor vigente. */
+function todasAsVisoes(memoria: MemoriaIdentidade): ReadonlyArray<{ rotulo: string; historico: AfirmacaoRegistrada[] }> {
+  return [...memoria.atributos, ...memoria.atributosSemVigente];
+}
 
 function dominiosDaInvestigacao(memoria: MemoriaIdentidade, investigacaoId: string): string[] {
   const vistos = new Set<string>();
-  for (const visao of memoria.atributos) {
+  for (const visao of todasAsVisoes(memoria)) {
     for (const a of visao.historico) {
       if (a.investigacaoId === investigacaoId && a.fonteDominio) vistos.add(a.fonteDominio);
     }
@@ -179,9 +218,20 @@ function dominiosDaInvestigacao(memoria: MemoriaIdentidade, investigacaoId: stri
 }
 
 function rotulosDaInvestigacao(memoria: MemoriaIdentidade, investigacaoId: string): string[] {
-  return memoria.atributos
-    .filter((visao) => visao.historico.some((a) => a.investigacaoId === investigacaoId))
+  return CATALOGO_ORDENADO
+    .map((atributo) => todasAsVisoes(memoria).find((visao) => visao.historico.some((a) => a.atributo === atributo && a.investigacaoId === investigacaoId)))
+    .filter((visao): visao is { rotulo: string; historico: AfirmacaoRegistrada[] } => Boolean(visao))
     .map((visao) => visao.rotulo);
+}
+
+const CATALOGO_ORDENADO = Object.keys(CATALOGO_ATRIBUTOS_MEMORIA) as AtributoMemoria[];
+
+function afirmacaoPorId(memoria: MemoriaIdentidade, id: string): AfirmacaoRegistrada | undefined {
+  for (const visao of todasAsVisoes(memoria)) {
+    const achada = visao.historico.find((a) => String(a.id) === id);
+    if (achada) return achada;
+  }
+  return undefined;
 }
 
 function porDataDesc(a: EventoLeitura, b: EventoLeitura): number {
@@ -239,6 +289,10 @@ export function historicoParaLeitura(
       titulo = "Transformado em oportunidade";
     } else if (evento.tipo === "confirmacao") {
       titulo = `${evento.descricao} por você`;
+    } else if (evento.tipo === "rejeicao") {
+      titulo = `${evento.descricao} por você`;
+      const rejeitada = afirmacaoPorId(memoria, evento.referencia);
+      if (rejeitada) detalhe = `${formatarValorMemoria(rejeitada)} · Fonte: ${fonteParaLeitura(rejeitada).rotulo}`;
     }
     eventos.push({
       chave: `${evento.tipo}:${evento.referencia}`,
@@ -274,10 +328,14 @@ export function lerMemoria(memoria: MemoriaIdentidade, identificado: Identificad
   const fatos = memoria.atributos
     .filter((visao) => visao.atributo in CATALOGO_ATRIBUTOS_MEMORIA)
     .map((visao) => fatoParaLeitura(visao, identificado));
+  const semVigente = memoria.atributosSemVigente
+    .filter((visao) => visao.atributo in CATALOGO_ATRIBUTOS_MEMORIA)
+    .map((visao) => semVigenteParaLeitura(visao, identificado));
   return {
     investigado: Boolean(identificado.ultimaInvestigacaoEm),
     resumo: resumirMemoria(fatos),
     fatos,
+    semVigente,
     historico: historicoParaLeitura(memoria, identificado, fatos),
   };
 }

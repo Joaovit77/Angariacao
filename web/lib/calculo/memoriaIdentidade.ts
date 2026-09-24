@@ -14,8 +14,11 @@
       indício seguem na investigação, mas não gravam atributo.
    2. Qual afirmação está vigente para cada atributo, dado o histórico
       append-only (`derivarMemoriaAtual`). Vigência é derivada na leitura:
-      confirmação humana vence; senão, a hipótese mais recente. O resto
-      fica visível como histórico, e valores distintos viram "divergente".
+      confirmação humana vence; senão, a hipótese mais recente. Rejeitada
+      (B3-M3, "está incorreta") nunca é candidata. O resto fica visível
+      como histórico; valores distintos ATIVOS viram "divergente". Atributo
+      em que tudo foi rejeitado não tem vigente e sai à parte
+      (`derivarAtributosSemVigente`), com o histórico inteiro.
    3. Como a memória compõe o que o módulo já sabe por outras tabelas
       (`montarMemoriaIdentidade`): passagens, fotos, tipo, investigações,
       confirmações e promoção numa linha do tempo, sem copiar nada.
@@ -66,7 +69,22 @@ export const CATALOGO_ATRIBUTOS_MEMORIA: Record<AtributoMemoria, DefinicaoAtribu
 
 export const ORIGEM_MEMORIA_INVESTIGADOR = "investigador-web" as const;
 export type OrigemMemoria = typeof ORIGEM_MEMORIA_INVESTIGADOR;
-export type EstadoAfirmacaoMemoria = "hipotese" | "confirmada";
+export const ESTADOS_AFIRMACAO_MEMORIA = ["hipotese", "confirmada", "rejeitada"] as const;
+export type EstadoAfirmacaoMemoria = (typeof ESTADOS_AFIRMACAO_MEMORIA)[number];
+
+export function estadoAfirmacaoValido(valor: unknown): valor is EstadoAfirmacaoMemoria {
+  return typeof valor === "string" && (ESTADOS_AFIRMACAO_MEMORIA as readonly string[]).includes(valor);
+}
+
+/** Estados que podem responder por um atributo (lista fechada, nunca de
+    exclusão): confirmada e hipótese. `rejeitada` é decisão humana de que a
+    informação está incorreta e jamais volta a ser usada — nem como vigente,
+    nem como divergência ativa, nem como contexto de consumidor futuro. */
+export const ESTADOS_CANDIDATOS_VIGENCIA: ReadonlyArray<EstadoAfirmacaoMemoria> = ["confirmada", "hipotese"];
+
+export function afirmacaoAtiva(a: Pick<AfirmacaoRegistrada, "estado">): boolean {
+  return ESTADOS_CANDIDATOS_VIGENCIA.includes(a.estado);
+}
 
 export const LIMITE_VALOR_TEXTO_MEMORIA = 200;
 export const LIMITE_FONTE_URL_MEMORIA = 2048;
@@ -234,6 +252,8 @@ export interface AfirmacaoRegistrada {
   observadoEm: string;
   confirmadoPor: string | null;
   confirmadoEm: string | null;
+  rejeitadoPor: string | null;
+  rejeitadoEm: string | null;
   criadoEm: string;
 }
 
@@ -254,12 +274,29 @@ export interface VisaoAtributoMemoria {
   atributo: AtributoMemoria;
   rotulo: string;
   /** A afirmação que responde hoje: confirmada mais recente, senão a
-      hipótese mais recente. Nunca null: sem linhas não há visão. */
+      hipótese mais recente; nunca rejeitada. Nunca null: atributo sem
+      candidata não tem visão aqui (ver `VisaoAtributoSemVigente`). */
   vigente: AfirmacaoRegistrada;
-  /** Todas as afirmações do atributo, da mais recente à mais antiga. */
+  /** Todas as afirmações do atributo, rejeitadas inclusive, da mais
+      recente à mais antiga. */
   historico: AfirmacaoRegistrada[];
+  /** Valores distintos em TODO o histórico (contagem histórica). */
   valoresDistintos: number;
+  /** Valores distintos entre as afirmações ativas (confirmadas + hipóteses). */
+  valoresAtivos: number;
+  /** Só sobre os valores ativos: o que um humano já marcou como incorreto
+      não é mais conflito. */
   divergente: boolean;
+  /** As marcadas como incorretas, da mais recente à mais antiga. */
+  rejeitadas: AfirmacaoRegistrada[];
+}
+
+/** Atributo com histórico, mas em que TODAS as afirmações foram rejeitadas:
+    não há valor vigente, e o histórico continua disponível. */
+export interface VisaoAtributoSemVigente {
+  atributo: AtributoMemoria;
+  rotulo: string;
+  historico: AfirmacaoRegistrada[];
 }
 
 export function valorCanonico(a: Pick<AfirmacaoRegistrada, "valorTexto" | "valorNum">): string {
@@ -286,11 +323,12 @@ function confirmacaoMaisRecentePrimeiro(a: AfirmacaoRegistrada, b: AfirmacaoRegi
   return maisRecentePrimeiro(a, b);
 }
 
-/** Uma visão por atributo que tem pelo menos uma linha, na ordem do
-    catálogo. Regra de vigência: confirmada (a de confirmação mais recente)
-    vence qualquer hipótese, mesmo mais nova; sem confirmada, vale a
-    hipótese de `observado_em` mais recente. Divergência é sobre TODOS os
-    valores do histórico, porque é o histórico que o humano precisa ver. */
+/** Uma visão por atributo que tem pelo menos uma afirmação ATIVA, na
+    ordem do catálogo. Regra de vigência: confirmada (a de confirmação mais
+    recente) vence qualquer hipótese, mesmo mais nova; sem confirmada, vale
+    a hipótese mais recente (desempate do B3-M2); rejeitada nunca concorre.
+    `divergente` olha só os valores ativos; `valoresDistintos` segue sobre
+    todo o histórico, que continua inteiro na visão. */
 export function derivarMemoriaAtual(
   atributos: ReadonlyArray<AfirmacaoRegistrada>,
 ): VisaoAtributoMemoria[] {
@@ -299,19 +337,42 @@ export function derivarMemoriaAtual(
     const linhas = atributos.filter((a) => a.atributo === atributo);
     if (linhas.length === 0) continue;
     const historico = [...linhas].sort(maisRecentePrimeiro);
-    const confirmadas = historico.filter((a) => a.estado === "confirmada").sort(confirmacaoMaisRecentePrimeiro);
-    const vigente = confirmadas[0] ?? historico[0];
-    const valoresDistintos = new Set(historico.map(valorCanonico)).size;
+    const ativas = historico.filter(afirmacaoAtiva);
+    if (ativas.length === 0) continue; // tudo rejeitado: ver derivarAtributosSemVigente
+    const confirmadas = ativas.filter((a) => a.estado === "confirmada").sort(confirmacaoMaisRecentePrimeiro);
+    const vigente = confirmadas[0] ?? ativas[0];
+    const valoresAtivos = new Set(ativas.map(valorCanonico)).size;
     visoes.push({
       atributo,
       rotulo: CATALOGO_ATRIBUTOS_MEMORIA[atributo].rotulo,
       vigente,
       historico,
-      valoresDistintos,
-      divergente: valoresDistintos > 1,
+      valoresDistintos: new Set(historico.map(valorCanonico)).size,
+      valoresAtivos,
+      divergente: valoresAtivos > 1,
+      rejeitadas: historico.filter((a) => a.estado === "rejeitada"),
     });
   }
   return visoes;
+}
+
+/** Atributos que têm linhas, mas nenhuma ativa (todas rejeitadas), na
+    ordem do catálogo. Complementa `derivarMemoriaAtual`: juntos cobrem
+    todo atributo com histórico, sem sobreposição. */
+export function derivarAtributosSemVigente(
+  atributos: ReadonlyArray<AfirmacaoRegistrada>,
+): VisaoAtributoSemVigente[] {
+  const semVigente: VisaoAtributoSemVigente[] = [];
+  for (const atributo of ATRIBUTOS_MEMORIA) {
+    const linhas = atributos.filter((a) => a.atributo === atributo);
+    if (linhas.length === 0 || linhas.some(afirmacaoAtiva)) continue;
+    semVigente.push({
+      atributo,
+      rotulo: CATALOGO_ATRIBUTOS_MEMORIA[atributo].rotulo,
+      historico: [...linhas].sort(maisRecentePrimeiro),
+    });
+  }
+  return semVigente;
 }
 
 /* ------------------------------------------------------------------
@@ -324,7 +385,18 @@ export type TipoEventoMemoria =
   | "tipo"
   | "investigacao"
   | "confirmacao"
+  | "rejeicao"
   | "promocao";
+
+/** Concordância do rótulo do catálogo com "marcado como incorreto". */
+const MARCADO_COMO_INCORRETO: Record<AtributoMemoria, string> = {
+  area_m2: "marcada como incorreta",
+  quartos: "marcados como incorretos",
+  vagas: "marcadas como incorretas",
+  valor_anunciado: "marcado como incorreto",
+  condominio: "marcado como incorreto",
+  referencia_anuncio: "marcada como incorreta",
+};
 
 export interface EventoMemoria {
   tipo: TipoEventoMemoria;
@@ -335,10 +407,13 @@ export interface EventoMemoria {
 }
 
 export interface MemoriaIdentidade {
+  /** Só atributos com valor vigente. */
   atributos: VisaoAtributoMemoria[];
+  /** Atributos com histórico em que tudo foi marcado como incorreto. */
+  atributosSemVigente: VisaoAtributoSemVigente[];
   investigacoes: InvestigacaoRegistrada[];
   linhaDoTempo: EventoMemoria[];
-  /** Atributos com valores distintos no histórico: pede olhar humano. */
+  /** Atributos com valores ativos distintos: pede olhar humano. */
   divergentes: AtributoMemoria[];
 }
 
@@ -393,6 +468,14 @@ export function montarMemoriaIdentidade(
         referencia: String(a.id),
       });
     }
+    if (a.estado === "rejeitada" && a.rejeitadoEm) {
+      eventos.push({
+        tipo: "rejeicao",
+        em: a.rejeitadoEm,
+        descricao: `${CATALOGO_ATRIBUTOS_MEMORIA[a.atributo].rotulo} ${MARCADO_COMO_INCORRETO[a.atributo]}`,
+        referencia: String(a.id),
+      });
+    }
   }
   if (identificado.promovidoEm) {
     eventos.push({ tipo: "promocao", em: identificado.promovidoEm, descricao: "Virou oportunidade no Pipeline", referencia: identificado.id });
@@ -401,6 +484,7 @@ export function montarMemoriaIdentidade(
   const visoes = derivarMemoriaAtual(atributos);
   return {
     atributos: visoes,
+    atributosSemVigente: derivarAtributosSemVigente(atributos),
     investigacoes: investigacoesOrdenadas,
     linhaDoTempo: eventos.sort(porDataDesc),
     divergentes: visoes.filter((v) => v.divergente).map((v) => v.atributo),
@@ -425,4 +509,5 @@ export function formatarValorMemoria(a: Pick<AfirmacaoRegistrada, "atributo" | "
 export const ROTULO_ESTADO_MEMORIA: Record<EstadoAfirmacaoMemoria, string> = {
   hipotese: "Hipótese",
   confirmada: "Confirmado",
+  rejeitada: "Incorreta",
 };

@@ -171,6 +171,8 @@ describe.sequential("B3-M2 — vigência com instantes empatados (ponte real + R
       observadoEm: new Date(l.observado_em as string).toISOString(),
       confirmadoPor: (l.confirmado_por as string | null) ?? null,
       confirmadoEm: l.confirmado_em ? new Date(l.confirmado_em as string).toISOString() : null,
+      rejeitadoPor: (l.rejeitado_por as string | null) ?? null,
+      rejeitadoEm: l.rejeitado_em ? new Date(l.rejeitado_em as string).toISOString() : null,
       criadoEm: new Date(l.created_at as string).toISOString(),
     }));
   }

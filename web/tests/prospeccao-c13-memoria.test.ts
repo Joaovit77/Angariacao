@@ -52,10 +52,13 @@ function funcao(nome: string, sql = MIGRATION): string {
    1. ESTRUTURA
    ================================================================ */
 describe("C13A — migration e espelho canônico", () => {
-  it("espelha a migration inteira no schema canônico, uma única vez, no fim", () => {
+  it("espelha a migration inteira no schema canônico, uma única vez, no fim (só o B3-M3, que a altera, vem depois)", () => {
     const bloco = MIGRATION.trim();
     expect(SCHEMA.split(bloco)).toHaveLength(2);
-    expect(SCHEMA.trimEnd().endsWith(bloco)).toBe(true);
+    // O B3-M3 altera as tabelas daqui: para o schema continuar executável de
+    // cima a baixo, o espelho dele vem logo depois deste, e nada mais.
+    const depois = SCHEMA.split(bloco)[1].trim();
+    expect(depois).toBe(ler("supabase/migrations/20260924210000_prospeccao_memoria_rejeicao.sql").trim());
   });
 
   it("cria exatamente as duas tabelas da memória, ambas com RLS no mesmo arquivo", () => {
@@ -452,7 +455,7 @@ function registrada(extra: Partial<AfirmacaoRegistrada>): AfirmacaoRegistrada {
   return {
     id: 1, imovelIdentificadoId: "i", investigacaoId: "x1", atributo: "quartos", valorTexto: null, valorNum: 3,
     origem: "investigador-web", estado: "hipotese", confianca: "forte", fonteUrl: "https://a.exemplo/1", fonteDominio: "a.exemplo",
-    observadoEm: "2026-09-10T12:00:00Z", confirmadoPor: null, confirmadoEm: null, criadoEm: "2026-09-10T12:00:00Z", ...extra,
+    observadoEm: "2026-09-10T12:00:00Z", confirmadoPor: null, confirmadoEm: null, rejeitadoPor: null, rejeitadoEm: null, criadoEm: "2026-09-10T12:00:00Z", ...extra,
   };
 }
 

@@ -37,6 +37,7 @@ import {
 } from "./calculo/prospeccao";
 import {
   atributoMemoriaValido,
+  estadoAfirmacaoValido,
   type AfirmacaoRegistrada,
   type InvestigacaoRegistrada,
 } from "./calculo/memoriaIdentidade";
@@ -446,6 +447,8 @@ const COLUNAS_ATRIBUTO_MEMORIA = [
   "observado_em",
   "confirmado_por",
   "confirmado_em",
+  "rejeitado_por",
+  "rejeitado_em",
   "created_at",
 ].join(",");
 
@@ -1113,12 +1116,13 @@ function mapearAtributoMemoria(linha: Linha): AfirmacaoRegistrada | null {
   // Fora do catálogo não existe para a tela: o CHECK do banco impede, mas
   // a leitura não confia em ninguém.
   if (!atributoMemoriaValido(linha.atributo)) return null;
-  // Estado também é lista fechada: só `hipotese` e `confirmada` existem para
-  // esta versão. Qualquer outro (um estado que um schema mais novo venha a
-  // aceitar, ou um valor corrompido) é descartado da leitura, NUNCA tratado
-  // como hipótese: isso ressuscitaria como candidato algo que foi decidido.
+  // Estado também é lista fechada (B3-M3a): só os três conhecidos —
+  // `hipotese`, `confirmada`, `rejeitada` (B3-M3). Qualquer outro (um estado
+  // que um schema mais novo venha a aceitar, ou um valor corrompido) é
+  // descartado da leitura, NUNCA tratado como hipótese: isso ressuscitaria
+  // como candidato algo que foi decidido.
   const estado = linha.estado;
-  if (estado !== "hipotese" && estado !== "confirmada") return null;
+  if (!estadoAfirmacaoValido(estado)) return null;
   const confianca = linha.confianca;
   return {
     id: Number(linha.id),
@@ -1137,6 +1141,8 @@ function mapearAtributoMemoria(linha: Linha): AfirmacaoRegistrada | null {
     observadoEm: String(linha.observado_em),
     confirmadoPor: typeof linha.confirmado_por === "string" ? linha.confirmado_por : null,
     confirmadoEm: typeof linha.confirmado_em === "string" ? linha.confirmado_em : null,
+    rejeitadoPor: typeof linha.rejeitado_por === "string" ? linha.rejeitado_por : null,
+    rejeitadoEm: typeof linha.rejeitado_em === "string" ? linha.rejeitado_em : null,
     criadoEm: String(linha.created_at),
   };
 }
@@ -1177,6 +1183,19 @@ export async function confirmarAtributoIdentificado(
   client: SupabaseClient = getSupabase(),
 ): Promise<ResultadoRpcProspeccao> {
   const resposta = await chamarRpc(client, "confirmar_atributo_identificado", {
+    p_atributo_id: atributoId,
+  });
+  return { repetida: resposta.repetida === true };
+}
+
+/** Uma pessoa diz que uma hipótese da memória está incorreta (B3-M3): a
+    linha fica, com valor, fonte e datas intactos; só a decisão é gravada.
+    Confirmada e rejeitada são finais: a RPC recusa trocar uma pela outra. */
+export async function rejeitarAtributoIdentificado(
+  atributoId: number,
+  client: SupabaseClient = getSupabase(),
+): Promise<ResultadoRpcProspeccao> {
+  const resposta = await chamarRpc(client, "rejeitar_atributo_identificado", {
     p_atributo_id: atributoId,
   });
   return { repetida: resposta.repetida === true };
