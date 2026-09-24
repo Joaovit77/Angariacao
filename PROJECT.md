@@ -3061,7 +3061,10 @@ campo curto com cara de dado pessoal (telefone, e-mail, CPF/CNPJ; recusado e con
 R$ 450.000 e R$ 2.500 do mesmo imóvel não são contradição, e gravá-los fabricaria uma). A faixa
 de correspondência do anúncio (`muito-forte/forte/possivel/indicio`) mede anúncio ↔ imóvel, não
 veracidade do atributo: toda afirmação do Investigador sai com `confianca = null`, e a tela não
-mostra percentual, faixa nem score. A memória é gravada uma única vez, depois de a pesquisa concluir
+mostra percentual, faixa nem score. A faixa só decide quem pode afirmar (B3-M1): somente resultados
+`muito-forte` e `forte` geram novas hipóteses; `possivel` e `indicio` continuam visíveis na
+investigação e contados em `resultados_total`, mas não alimentam a memória persistente (ficar de
+fora por faixa não é recusa). A memória é gravada uma única vez, depois de a pesquisa concluir
 e antes do evento final; falha de memória é explícita na tela e nunca apaga a pesquisa.
 
 Na tela (C13C), a memória vive na seção **Memória do imóvel** do detalhe existente — sem página,

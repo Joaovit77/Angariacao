@@ -14,7 +14,11 @@
    livre não é memória. O que vai para o banco: só o que
    `extrairAfirmacoesDaInvestigacao` (C13A) aceita do catálogo fechado, sem
    PII, com fonte, e sem confiança (o Investigador mede correspondência do
-   anúncio, não veracidade do atributo).
+   anúncio, não veracidade do atributo). Desde o B3-M1 só resultados de
+   faixa muito forte ou forte podem afirmar; a lista inteira continua
+   chegando aqui, porque `p_resultados_total` é o que a pesquisa achou, não
+   o que virou memória. O log é só de contagens: nada de URL, domínio,
+   consulta, título, trecho ou valor.
 
    Nunca lança: a pesquisa que a pessoa acabou de ver não pode sumir
    porque a memória falhou. Devolve um estado explícito, e a UI conta a
@@ -25,7 +29,11 @@
 import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { CorrespondenciaInvestigacao, MemoriaInvestigacao } from "@/lib/calculo/investigadorImoveis";
-import { extrairAfirmacoesDaInvestigacao, type AfirmacaoMemoria } from "@/lib/calculo/memoriaIdentidade";
+import {
+  extrairAfirmacoesDaInvestigacao,
+  resultadoElegivelParaMemoria,
+  type AfirmacaoMemoria,
+} from "@/lib/calculo/memoriaIdentidade";
 
 export const RPC_REGISTRAR_INVESTIGACAO = "registrar_investigacao_identificado";
 export const TENTATIVAS_PERSISTENCIA_MEMORIA = 3;
@@ -94,11 +102,17 @@ export async function persistirMemoriaDaInvestigacao(
   }
 
   const extracao = extrairAfirmacoesDaInvestigacao(pedido.resultados);
-  if (extracao.recusadas > 0) {
-    console.info("[investigador-imoveis] afirmações descartadas antes da memória", {
-      execucao: execucaoId, descartadas: extracao.recusadas, aceitas: extracao.afirmacoes.length,
-    });
-  }
+  const elegiveis = pedido.resultados.filter(resultadoElegivelParaMemoria).length;
+  // Só contagens agregadas: nenhum campo do resultado entra no log.
+  const triagem = {
+    execucao: execucaoId,
+    resultados: pedido.resultados.length,
+    elegiveis,
+    ignoradosPorFaixa: pedido.resultados.length - elegiveis,
+    aceitas: extracao.afirmacoes.length,
+    descartadas: extracao.recusadas,
+  };
+  console.info("[investigador-imoveis] triagem da memória", triagem);
   const parametros = {
     p_user_id: pedido.userId,
     p_investigacao_id: execucaoId,
@@ -125,9 +139,13 @@ export async function persistirMemoriaDaInvestigacao(
         console.warn("[investigador-imoveis] memória recusada pelo banco", { execucao: execucaoId, codigo: dados.codigo });
         return { ...base, estado: "recusada", codigo: dados.codigo };
       }
+      const estado = dados.repetida ? "repetida" : "salva";
+      console.info("[investigador-imoveis] memória registrada", {
+        ...triagem, estado, salvos: inteiro(dados.atributos_salvos), recusados: inteiro(dados.atributos_recusados),
+      });
       return {
         execucaoId,
-        estado: dados.repetida ? "repetida" : "salva",
+        estado,
         atributosSalvos: inteiro(dados.atributos_salvos),
         atributosRecusados: inteiro(dados.atributos_recusados),
       };

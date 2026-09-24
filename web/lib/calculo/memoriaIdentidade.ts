@@ -9,7 +9,9 @@
       catálogo fechado; texto livre (título, descrição, evidências, a
       consulta digitada) nunca entra, e texto curto com cara de dado
       pessoal é recusado e contado. A faixa de correspondência do anúncio
-      não vira confiança do atributo: vai `null`.
+      não vira confiança do atributo: vai `null`. Ela só decide QUEM pode
+      afirmar (B3-M1): muito forte e forte geram hipóteses; possível e
+      indício seguem na investigação, mas não gravam atributo.
    2. Qual afirmação está vigente para cada atributo, dado o histórico
       append-only (`derivarMemoriaAtual`). Vigência é derivada na leitura:
       confirmação humana vence; senão, a hipótese mais recente. O resto
@@ -91,6 +93,18 @@ export interface AfirmacaoMemoria {
   fonteDominio: string;
 }
 
+/** B3-M1: faixas de correspondência cujo anúncio pode virar hipótese na
+    memória. Possível e indício são pistas para a pessoa olhar, não fonte
+    de atributo: continuam na investigação, na UI e em `resultados_total`,
+    mas não produzem afirmação. Ficar de fora por faixa NÃO é recusa — o
+    dado não foi descartado por forma, PII ou duplicidade; só não é
+    elegível. Lista fechada: faixa desconhecida também não é elegível. */
+export const FAIXAS_ELEGIVEIS_MEMORIA: ReadonlyArray<FaixaConfiancaInvestigacao> = ["muito-forte", "forte"];
+
+export function resultadoElegivelParaMemoria(resultado: Pick<CorrespondenciaInvestigacao, "confianca">): boolean {
+  return FAIXAS_ELEGIVEIS_MEMORIA.includes(resultado.confianca);
+}
+
 export interface ExtracaoAfirmacoes {
   afirmacoes: AfirmacaoMemoria[];
   /** Candidatas descartadas (fora da forma, PII, duplicadas na execução). */
@@ -168,9 +182,10 @@ function chaveDeDuplicidade(a: AfirmacaoMemoria): string {
 /** Só o que é estruturado, do catálogo, sem PII e com fonte válida vira
     afirmação. Título, descrição, evidências e contradições NÃO entram: são
     texto livre da web. A `confianca` do resultado (correspondência anúncio
-    ↔ imóvel) NÃO é copiada: não diz se o valor do atributo é verdadeiro.
-    Dentro da mesma execução, a mesma afirmação da mesma fonte conta uma
-    vez. */
+    ↔ imóvel) NÃO é copiada: não diz se o valor do atributo é verdadeiro;
+    ela só filtra quais resultados podem afirmar (`resultadoElegivelParaMemoria`),
+    e o inelegível é pulado sem contar como recusa. Dentro da mesma
+    execução, a mesma afirmação da mesma fonte conta uma vez. */
 export function extrairAfirmacoesDaInvestigacao(
   resultados: ReadonlyArray<CorrespondenciaInvestigacao>,
 ): ExtracaoAfirmacoes {
@@ -179,6 +194,7 @@ export function extrairAfirmacoesDaInvestigacao(
   let recusadas = 0;
 
   for (const resultado of resultados) {
+    if (!resultadoElegivelParaMemoria(resultado)) continue; // B3-M1: faixa fraca não afirma
     const fonte = fonteAceitavel(resultado.url, resultado.dominio);
     for (const [campo, atributo] of CAMPOS_PARA_ATRIBUTO) {
       const bruto = resultado[campo];

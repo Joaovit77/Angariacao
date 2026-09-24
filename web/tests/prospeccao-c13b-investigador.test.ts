@@ -200,10 +200,14 @@ describe("C13B — do resultado estruturado do Investigador às afirmações do 
   it("F. a faixa de correspondência (anúncio ↔ imóvel) não vira confiança factual do atributo: sempre null, nunca número", () => {
     const [a] = correspondencias(ANUNCIO_A);
     expect(["muito-forte", "forte", "possivel", "indicio"]).toContain(a.confianca);
-    for (const faixa of ["muito-forte", "forte", "possivel", "indicio", "certeza"] as CorrespondenciaInvestigacao["confianca"][]) {
+    for (const faixa of ["muito-forte", "forte"] as CorrespondenciaInvestigacao["confianca"][]) {
       const { afirmacoes } = extrairAfirmacoesDaInvestigacao([{ ...a, confianca: faixa }]);
       expect(afirmacoes.length).toBeGreaterThan(0);
       expect(afirmacoes.every((x) => x.confianca === null)).toBe(true);
+    }
+    // B3-M1: possível, indício (e faixa desconhecida) não afirmam; ficar de fora não é recusa.
+    for (const faixa of ["possivel", "indicio", "certeza"] as CorrespondenciaInvestigacao["confianca"][]) {
+      expect(extrairAfirmacoesDaInvestigacao([{ ...a, confianca: faixa }])).toEqual({ afirmacoes: [], recusadas: 0 });
     }
     const { afirmacoes } = extrairAfirmacoesDaInvestigacao(correspondencias(ANUNCIO_A, ANUNCIO_B));
     expect(atributosParaRpc(afirmacoes).every((x) => x.confianca === null)).toBe(true);
