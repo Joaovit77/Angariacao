@@ -10,9 +10,25 @@
    ================================================================ */
 import type { Imovel } from "./tipos";
 
+/** Prefixo do código interno do Angario. */
+export const PREFIXO_CODIGO_INTERNO = "LD-";
+
 /** Letras do prefixo padrão (ex.: "LD-" → "LD"). */
 function letrasDoPrefixo(prefixo: string): string {
   return (prefixo.match(/[A-Za-z]+/) || ["LD"])[0].toUpperCase();
+}
+
+/** Código no padrão PREFIXO-NÚMERO, com ou sem separador. */
+const PADRAO_CODIGO = /^([A-Za-z]+)[-\s]?(\d+)$/;
+
+/**
+ * O valor tem o formato do código interno que `sugerirCodigoImovel` gera
+ * ("LD-146", "ld 146", "LD146"). Esse código só existe dentro do Angario:
+ * nunca é referência pública de anúncio.
+ */
+export function ehCodigoInternoAngario(valor: string, prefixo = PREFIXO_CODIGO_INTERNO): boolean {
+  const m = valor.trim().match(PADRAO_CODIGO);
+  return Boolean(m && m[1].toUpperCase() === letrasDoPrefixo(prefixo));
 }
 
 /**
@@ -24,7 +40,7 @@ function letrasDoPrefixo(prefixo: string): string {
  */
 export function sugerirCodigoImovel(
   imoveis: Pick<Imovel, "codigo">[],
-  prefixoPadrao = "LD-",
+  prefixoPadrao = PREFIXO_CODIGO_INTERNO,
 ): string {
   const letras = letrasDoPrefixo(prefixoPadrao);
   let maxNum = 0;
@@ -34,7 +50,7 @@ export function sugerirCodigoImovel(
 
   for (const im of imoveis) {
     const cod = (im.codigo || "").trim();
-    const m = cod.match(/^([A-Za-z]+)[-\s]?(\d+)$/);
+    const m = cod.match(PADRAO_CODIGO);
     if (!m || m[1].toUpperCase() !== letras) continue;
     const n = parseInt(m[2], 10);
     if (Number.isNaN(n)) continue;

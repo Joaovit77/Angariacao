@@ -96,8 +96,10 @@ describe("handoff Pipeline para Investigador", () => {
     });
 
     expect(consulta).toBe(
-      "Rua Joel Braz de Oliveira, 741, unidade 101, bloco Torre 2, Gleba Palhano, Londrina, PR, Ed. Vivere, Apartamento, 3 quartos, 2 banheiros, 2 vagas, referência 01860.001, código LD-123",
+      "Rua Joel Braz de Oliveira, 741, unidade 101, bloco Torre 2, Gleba Palhano, Londrina, PR, Ed. Vivere, Apartamento, 3 quartos, 2 banheiros, 2 vagas, referência 01860.001",
     );
+    // O código interno do Angario não é público: fica fora da consulta web.
+    expect(consulta).not.toContain("LD-123");
     expect(consulta).not.toContain("proprietário");
     expect(consulta).not.toContain("telefone");
     expect(consulta).not.toContain("R$");

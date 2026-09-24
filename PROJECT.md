@@ -2573,7 +2573,9 @@ novamente após cada abertura ou refresh por uma rota autenticada, sob RLS e fil
 `user_id` derivado da sessão. No Radar a referência é `radar_anuncios.id`; na Central o atalho só
 aparece quando o resultado já possui `comparaveis_mercado.id`, sem persistir artificialmente anúncios
 inelegíveis ou transitórios. A resposta traz apenas uma consulta inicial com campos objetivos e
-públicos do imóvel ou anúncio, nunca dados do proprietário, preço ou descrição, e permanece editável;
+públicos do imóvel ou anúncio, nunca dados do proprietário, preço ou descrição, e permanece editável.
+O código interno do Angario (`codigo`, "LD-###") nunca entra na consulta nem é lido como referência
+pelo extrator, porque não aparece em portal; a referência pública é a do CRM (`referencia_crm`);
 a pesquisa só começa após o clique do usuário. ID inválido, inexistente, ambíguo ou inacessível não
 revela outra conta e mantém o Investigador disponível para preenchimento manual.
 

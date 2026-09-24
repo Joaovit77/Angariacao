@@ -55,10 +55,14 @@ function area(valor: number | null | undefined): string {
 /**
  * Monta somente a consulta editável do Investigador. Dados pessoais, valores,
  * observações e o restante do cadastro não atravessam esta fronteira.
+ *
+ * `referenciaCrm` é a referência pública (a do CRM da imobiliária, que vai
+ * para o anúncio). `codigo` é o código interno do Angario ("LD-146"): não
+ * aparece em portal nenhum, então pesquisá-lo só traz homônimos (projeto de
+ * lei, peça, roupa). Fica fora da consulta web; dentro do Angario segue igual.
  */
 export function consultaInicialDoImovel(imovel: ImovelParaInvestigacao): string {
   const referencia = texto(imovel.referenciaCrm);
-  const codigo = texto(imovel.codigo);
   const partes = [
     texto(imovel.endereco),
     texto(imovel.unidade) ? `unidade ${texto(imovel.unidade)}` : "",
@@ -72,9 +76,6 @@ export function consultaInicialDoImovel(imovel: ImovelParaInvestigacao): string 
     quantidade(imovel.banheiros, "banheiro", "banheiros"),
     quantidade(imovel.vagas, "vaga", "vagas"),
     referencia ? `referência ${referencia}` : "",
-    codigo && codigo.toLocaleLowerCase("pt-BR") !== referencia.toLocaleLowerCase("pt-BR")
-      ? `código ${codigo}`
-      : "",
   ].filter(Boolean);
 
   return partes.join(", ").slice(0, 500);

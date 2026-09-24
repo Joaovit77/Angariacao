@@ -1,3 +1,4 @@
+import { ehCodigoInternoAngario } from "../codigoImovel";
 import { chaveNormalizada } from "../normalizacao";
 
 /* ================================================================
@@ -119,9 +120,11 @@ function valoresMonetariosComContexto(texto: string): string[] {
 }
 
 export function extrairReferenciaInvestigacao(texto: string): string | null {
-  const rotulada = texto.match(
-    /\b(?:ref(?:er[eê]ncia)?|c[oó]d(?:igo)?)\.?(?:\s+do\s+im[oó]vel)?\s*[:#-]?\s*([a-z0-9][a-z0-9./-]{3,30})\b/i,
-  )?.[1];
+  // O código interno do Angario ("código LD-146", digitado à mão) não é
+  // referência pública: portal nenhum o publica. Pula para o próximo rótulo.
+  const rotulada = [...texto.matchAll(
+    /\b(?:ref(?:er[eê]ncia)?|c[oó]d(?:igo)?)\.?(?:\s+do\s+im[oó]vel)?\s*[:#-]?\s*([a-z0-9][a-z0-9./-]{3,30})\b/gi,
+  )].map((ocorrencia) => ocorrencia[1]).find((valor) => !ehCodigoInternoAngario(valor));
   if (rotulada && /\d/.test(rotulada)) return rotulada;
 
   const valoresMonetarios = new Set(
