@@ -267,12 +267,17 @@ export function valorCanonico(a: Pick<AfirmacaoRegistrada, "valorTexto" | "valor
   return `t:${(a.valorTexto ?? "").trim().toLowerCase()}`;
 }
 
+/** Mais recente primeiro. Com instantes empatados (B3-M2): dentro da MESMA
+    investigação vence a primeira inserida (`id` asc), porque a RPC grava as
+    afirmações em sequência, na ordem do B2 (melhor correspondência
+    primeiro); entre investigações diferentes, a de `id` maior. Não é score
+    do B3.1 nem confiança factual: é só a ordem em que a execução afirmou. */
 function maisRecentePrimeiro(a: AfirmacaoRegistrada, b: AfirmacaoRegistrada): number {
   const porObservacao = b.observadoEm.localeCompare(a.observadoEm);
   if (porObservacao !== 0) return porObservacao;
   const porCriacao = b.criadoEm.localeCompare(a.criadoEm);
   if (porCriacao !== 0) return porCriacao;
-  return b.id - a.id;
+  return a.investigacaoId === b.investigacaoId ? a.id - b.id : b.id - a.id;
 }
 
 function confirmacaoMaisRecentePrimeiro(a: AfirmacaoRegistrada, b: AfirmacaoRegistrada): number {

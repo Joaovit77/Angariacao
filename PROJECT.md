@@ -3045,7 +3045,10 @@ execução concluída do Investigador = um evento, nunca sobrescrito) e `imoveis
 `observado_em`; a única mutação é a confirmação humana). Catálogo fechado de seis atributos, no
 CHECK e no código: `area_m2`, `quartos`, `vagas`, `valor_anunciado`, `condominio`,
 `referencia_anuncio`. **Vigente é derivado na leitura** (`derivarMemoriaAtual`): confirmada vence
-qualquer hipótese, mesmo mais nova; sem confirmada, vale a hipótese mais recente; valores distintos
+qualquer hipótese, mesmo mais nova (entre confirmadas, a de confirmação mais recente); sem confirmada,
+vale a hipótese da investigação mais recente. Dentro da mesma investigação os instantes empatam, e aí
+vence a primeira afirmação inserida (B3-M2): a RPC grava em sequência, na ordem do B2, melhor
+correspondência primeiro. Esse desempate não é score do B3.1 nem confiança factual. Valores distintos
 no histórico viram "divergente" e ficam todos visíveis — nunca média, nunca escolha automática.
 Ausência é neutra: sem linha, sem afirmação, sem placeholder. Duas RPCs: `registrar_investigacao_identificado`
 (só `service_role`; idempotente por execução, o id da execução nasce no servidor; grava evento,
