@@ -1113,6 +1113,12 @@ function mapearAtributoMemoria(linha: Linha): AfirmacaoRegistrada | null {
   // Fora do catálogo não existe para a tela: o CHECK do banco impede, mas
   // a leitura não confia em ninguém.
   if (!atributoMemoriaValido(linha.atributo)) return null;
+  // Estado também é lista fechada: só `hipotese` e `confirmada` existem para
+  // esta versão. Qualquer outro (um estado que um schema mais novo venha a
+  // aceitar, ou um valor corrompido) é descartado da leitura, NUNCA tratado
+  // como hipótese: isso ressuscitaria como candidato algo que foi decidido.
+  const estado = linha.estado;
+  if (estado !== "hipotese" && estado !== "confirmada") return null;
   const confianca = linha.confianca;
   return {
     id: Number(linha.id),
@@ -1122,7 +1128,7 @@ function mapearAtributoMemoria(linha: Linha): AfirmacaoRegistrada | null {
     valorTexto: typeof linha.valor_texto === "string" ? linha.valor_texto : null,
     valorNum: numeroOuNulo(linha.valor_num),
     origem: "investigador-web",
-    estado: linha.estado === "confirmada" ? "confirmada" : "hipotese",
+    estado,
     confianca: confianca === "muito-forte" || confianca === "forte" || confianca === "possivel" || confianca === "indicio"
       ? confianca
       : null,
