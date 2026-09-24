@@ -109,7 +109,7 @@ export const PRIVACIDADE: Documento = {
         `- **RapidAPI (Google Search API)** — recebe somente os termos que você enviar ao Investigador de Imóveis e devolve resultados públicos da web. A chave dessa integração não é exposta ao navegador.`,
         `- **Google** — se você conectar o Google Agenda, para criar e atualizar os seus compromissos; e, no Investigador, como mecanismo de pesquisa e redirecionamento para as fontes públicas encontradas.`,
         `- **ViaCEP** — recebe apenas o CEP digitado ou a combinação de UF, cidade e trecho do nome da rua, para sugerir e completar endereços de imóveis. Não recebe coordenadas, fotos, observações nem dados de proprietários.`,
-        `- **OpenStreetMap (Nominatim)** — recebe o endereço de um imóvel em texto (rua, número, bairro e cidade) para obter a posição aproximada no mapa, quando você digita um endereço ou quando não há posição do aparelho. Não recebe a posição do seu aparelho, fotos, observações nem dados de proprietários.`,
+        `- **OpenStreetMap (Nominatim)** — recebe o endereço de um imóvel em texto (rua, número, bairro e cidade) para obter a posição aproximada no mapa, quando você digita um endereço ou quando não há posição do aparelho. No Garimpo em Campo, quando você marca manualmente um ponto no mapa, recebe também somente a latitude e a longitude desse ponto, para sugerir o nome da rua correspondente. Não recebe a posição do seu aparelho, fotos, observações nem dados de proprietários.`,
         `Também poderemos compartilhar dados quando houver obrigação legal ou ordem de autoridade competente.`,
       ],
     },

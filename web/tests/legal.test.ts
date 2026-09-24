@@ -82,6 +82,11 @@ describe("conteúdo", () => {
       expect(paragrafo, nome).toMatch(/Não recebe/);
       expect(paragrafo, nome).toMatch(/fotos, observações nem dados de proprietários/);
     }
+    /* G1: o Nominatim também recebe a coordenada do ponto que a pessoa
+       marca no mapa, para sugerir a rua; o GPS do aparelho continua fora. */
+    const nominatim = PRIVACIDADE.secoes.flatMap((s) => s.paragrafos).find((p) => p.includes("**OpenStreetMap (Nominatim)**"))!;
+    expect(nominatim).toMatch(/marca manualmente um ponto no mapa, recebe também somente a latitude e a longitude desse ponto/);
+    expect(nominatim).toMatch(/Não recebe a posição do seu aparelho/);
   });
 
   it("avisa sobre transferência internacional", () => {

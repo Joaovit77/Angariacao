@@ -226,6 +226,48 @@ export async function geocodeEndereco(
 }
 
 /* ================================================================
+   RUA DO PONTO MARCADO NO MAPA (Nominatim reverso) — Garimpo, G1.
+   Só a coordenada que a pessoa escolheu no mapa vai para o serviço,
+   nunca a do GPS. Volta só o nome da rua: a coordenada da resposta é
+   descartada, e número, bairro e CEP do OSM ficam de fora (o número é
+   do prédio mais perto do pino, muitas vezes o vizinho; o CEP costuma
+   ser genérico).
+   ================================================================ */
+
+export interface ResultadoReversoNominatim {
+  address?: { road?: string; country_code?: string };
+}
+
+/** A rua do campo estruturado `address.road`, ou nada. Sem recortar o
+    `display_name`: sem rua na resposta, não há rua. */
+export function logradouroDoReverso(resultado: ResultadoReversoNominatim | null | undefined): string | null {
+  const endereco = resultado?.address;
+  if (!endereco) return null;
+  if (endereco.country_code && endereco.country_code.toLowerCase() !== "br") return null;
+  const rua = (endereco.road ?? "").trim().replace(/\s+/g, " ");
+  return rua || null;
+}
+
+export async function logradouroDoPonto(
+  ponto: { latitude: number; longitude: number },
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const parametros = new URLSearchParams({
+    format: "jsonv2",
+    zoom: "18",
+    addressdetails: "1",
+    lat: String(ponto.latitude),
+    lon: String(ponto.longitude),
+  });
+  const res = await fetch(`https://nominatim.openstreetmap.org/reverse?${parametros.toString()}`, {
+    headers: { "Accept-Language": "pt-BR" },
+    signal,
+  });
+  if (!res.ok) return null;
+  return logradouroDoReverso((await res.json().catch(() => null)) as ResultadoReversoNominatim | null);
+}
+
+/* ================================================================
    POSIÇÃO DO APARELHO (navigator.geolocation) — Garimpo em Campo, C6.
    Uma leitura, com prazo. Cada saída tem nome: quem chama decide o que
    fazer com "negada" (cair para o endereço) e com "imprecisa" (guardar

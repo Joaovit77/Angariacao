@@ -2897,7 +2897,12 @@ localização do aparelho e omitia ViaCEP e Nominatim, já usados pelo Pipeline.
 `2026-09-15` corrige isso: declara a leitura única do GPS por registro, mediante permissão, com
 latitude, longitude e precisão guardadas na passagem; os dados do Garimpo (endereço, passagens,
 observação enviada ao provedor de IA, foto sem metadados); e os dois serviços de endereço com o que
-cada um recebe.
+cada um recebe. A versão `2026-09-24` acrescenta o G1: no primeiro registro, marcar o ponto no mapa
+consulta o Nominatim reverso só com a coordenada desse ponto (nunca a do GPS) e sugere apenas o
+logradouro, a partir de `address.road`. A coordenada da resposta é descartada (o ponto salvo é o
+escolhido, com `precisao_localizacao='mapa'`); número, bairro e CEP do OSM não entram (o número é o
+do prédio mais perto do pino, e o CEP costuma ser genérico); a sugestão só ocupa o campo vazio ou
+ainda igual à sugestão anterior do mapa, então o que foi digitado ou escolhido no ViaCEP fica.
 
 ### UX de campo (C10.1): decisões de produto
 

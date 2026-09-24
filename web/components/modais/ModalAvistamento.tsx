@@ -34,6 +34,7 @@ import { dataHoraLocalParaIso, partesDataHoraLocal } from "@/lib/datas";
 import {
   capturarPosicaoAtual,
   geocodeEndereco,
+  logradouroDoPonto,
   maskCEP,
   type Geocodificacao,
   type ResultadoPosicaoAparelho,
@@ -60,6 +61,12 @@ const ATRASO_RASCUNHO_MS = 400;
     para salvar. Passou o prazo, a localização fica "desconhecida". */
 const PRAZO_GEOCODE_MS = 8_000;
 
+/** Toques seguidos no mapa (ajuste fino do pino) viram uma consulta só,
+    a do último ponto. A política do Nominatim público é de no máximo uma
+    requisição por segundo; esperar 1,1 s depois do último toque garante
+    esse intervalo entre duas consultas, com folga. */
+export const ESPERA_RUA_DO_PONTO_MS = 1_100;
+
 const MapaProspeccao = dynamic(() => import("@/components/prospeccao/MapaProspeccao"), { ssr: false });
 
 type StatusGps = "ocioso" | "buscando" | "ok" | "negada" | "timeout" | "indisponivel" | "falha";
@@ -82,6 +89,8 @@ export interface DependenciasLocalizacaoAvistamento {
     cidade: string,
     opcoes?: { cep?: string },
   ) => Promise<Geocodificacao | null>;
+  /** G1: a rua do ponto marcado no mapa. Em produção, o Nominatim reverso. */
+  logradouroDoPonto?: (ponto: { latitude: number; longitude: number }) => Promise<string | null>;
 }
 
 function comPrazo<T>(promessa: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -161,6 +170,28 @@ export default function ModalAvistamento({
   const gpsPedido = useRef(false);
   const capturarPosicao = dependenciasLocalizacao?.capturarPosicao ?? capturarPosicaoAtual;
   const geocodificar = dependenciasLocalizacao?.geocodificar ?? geocodeEndereco;
+  const ruaDoPonto = dependenciasLocalizacao?.logradouroDoPonto ?? logradouroDoPonto;
+  /* G1: o ponto marcado no mapa sugere o logradouro. A sugestão só entra
+     com o campo vazio ou ainda igual à última sugestão do mapa: o que o
+     corretor digitou ou escolheu no ViaCEP fica. `pedido` descarta a
+     resposta de um ponto que já foi trocado; `pendente` deixa o salvar
+     esperar a rua que ainda está a caminho. A coordenada da resposta
+     nunca é usada: o ponto é o que a pessoa escolheu. */
+  const [ruaSugeridaPeloMapa, setRuaSugeridaPeloMapa] = useState("");
+  const ruaDoPontoRef = useRef<{ pedido: number; sugerida: string; pendente: Promise<string | null> | null }>({
+    pedido: 0,
+    sugerida: "",
+    pendente: null,
+  });
+  const logradouroAtual = useRef("");
+  useEffect(() => {
+    logradouroAtual.current = logradouro;
+  }, [logradouro]);
+  useEffect(() => {
+    const consulta = ruaDoPontoRef.current;
+    // Fechou o modal: a consulta que ainda esperava a vez não sai.
+    return () => { consulta.pedido += 1; };
+  }, []);
   /* O que o ViaCEP preencheu por último. Uma nova sugestão só troca o
      campo se ele ainda estiver vazio ou igual ao que o ViaCEP pôs; o que
      o corretor corrigiu à mão fica. */
@@ -430,6 +461,28 @@ export default function ModalAvistamento({
     setLocalizacaoMapa(localizacaoDoMapa(ponto));
     setMapaAberto(true);
     tocado.current = true;
+    // Só o primeiro registro tem campo de endereço; a nova passagem reusa o do imóvel.
+    if (primeiroAvistamento) sugerirRuaDoPonto(ponto);
+  }
+
+  function sugerirRuaDoPonto(ponto: { latitude: number; longitude: number }) {
+    const consulta = ruaDoPontoRef.current;
+    const pedido = ++consulta.pedido;
+    consulta.pendente = new Promise<void>((resolve) => { window.setTimeout(resolve, ESPERA_RUA_DO_PONTO_MS); })
+      .then(() => (pedido === consulta.pedido ? comPrazo(ruaDoPonto(ponto), PRAZO_GEOCODE_MS, null) : null))
+      .then((rua) => {
+        if (pedido !== consulta.pedido) return null;
+        // Chegou: quem apagar a rua depois não a vê voltar no salvar.
+        consulta.pendente = null;
+        if (!rua) return null;
+        const atual = logradouroAtual.current;
+        if (atual.trim() && atual !== consulta.sugerida) return null;
+        consulta.sugerida = rua;
+        logradouroAtual.current = rua;
+        setLogradouro(rua);
+        setRuaSugeridaPeloMapa(rua);
+        return rua;
+      });
   }
 
   /** GPS e mapa já estão em mãos; o endereço só entra se nenhum dos dois
@@ -530,6 +583,8 @@ export default function ModalAvistamento({
         : [],
     );
     const localizacao = await resolverLocalizacao();
+    // Tocou no mapa e salvou logo: a rua do ponto ainda pode estar a caminho.
+    const ruaPendente = primeiroAvistamento && !logradouro.trim() ? await ruaDoPontoRef.current.pendente : null;
     const dadosAvistamento = {
       observadoEm,
       observacao,
@@ -544,7 +599,7 @@ export default function ModalAvistamento({
       : await criar(
           usuario.id,
           {
-            logradouro,
+            logradouro: ruaPendente ?? logradouro,
             numero,
             unidade,
             bloco,
@@ -749,6 +804,9 @@ export default function ModalAvistamento({
                     onSelecionar={aplicarEnderecoViaCep}
                     placeholder="Digite a rua e escolha a sugestão"
                   />
+                  {ruaSugeridaPeloMapa && logradouro === ruaSugeridaPeloMapa ? (
+                    <small className="field-hint">Rua sugerida pelo ponto marcado no mapa. Confira.</small>
+                  ) : null}
                 </div>
                 <div className="field-group">
                   <label htmlFor="avistamento-numero">Número</label>
