@@ -3099,6 +3099,16 @@ nunca é vigente nem divergência ativa (`divergente` olha só confirmadas e hip
 estados utilizáveis é fechada (`ESTADOS_CANDIDATOS_VIGENCIA`): estado desconhecido é descartado na
 leitura, e nenhum consumidor futuro da memória pode usar uma rejeitada.
 
+**Contexto confirmado no Investigador (B3.2a).** Somente no Garimpo e após a persistência
+normal da investigação, a rota lê sob a sessão autenticada as afirmações confirmadas do mesmo
+usuário e imóvel identificado. Uma projeção pura agrupa todas as confirmações por atributo:
+valores canônicos equivalentes dão um contexto, mas confirmações incompatíveis retiram o atributo
+da comparação, sem escolher a vigente. A comparação exata com campos já extraídos da web é metadado
+separado da resposta para a UI; campo ausente é neutro e valor anunciado segue sem equivalente.
+Hipóteses, rejeitadas e estados desconhecidos não entram. O contexto não altera consulta, buscas,
+B2, faixa, score B3.1, parada, ordem ou escrita da memória. O log B3.2a guarda só contagens e
+estado da leitura, sem valores ou fontes.
+
 **Estado.** O C13 está publicado em Production desde 2026-09-15 (migration aplicada antes do merge
 em `main`) e foi comprovado de ponta a ponta na conta de teste: C13C em 2026-09-15 (leitura e
 confirmação humana) e C13B em 2026-09-16 (uma investigação real persistindo investigação e

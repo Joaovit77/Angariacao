@@ -13,6 +13,8 @@ import { fmtMoney } from "@/lib/formatadores";
 import { carregarContextoInvestigador, investigarImovel } from "@/lib/investigadorImoveis";
 import type { ReferenciaContextoInvestigador } from "@/lib/calculo/contextoInvestigador";
 import { urlAvaliacaoDoComparavel } from "@/lib/calculo/contextoAvaliacao";
+import { CATALOGO_ATRIBUTOS_MEMORIA } from "@/lib/calculo/memoriaIdentidade";
+import type { ComparacaoConfirmada } from "@/lib/calculo/contextoConfirmadoInvestigador";
 import styles from "./InvestigadorImoveisView.module.css";
 
 type EtapaVisual = "preparando" | EtapaInvestigacao | "concluido";
@@ -50,7 +52,8 @@ function Caracteristicas({ resultado }: { resultado: CorrespondenciaInvestigacao
   return itens.length ? <div className={styles.caracteristicas}>{itens.map((item) => <span key={item}>{item}</span>)}</div> : null;
 }
 
-function CardResultado({ resultado }: { resultado: CorrespondenciaInvestigacao }) {
+function CardResultado({ resultado, comparacoes }: { resultado: CorrespondenciaInvestigacao; comparacoes: ComparacaoConfirmada[] }) {
+  const comparacoesVisiveis = comparacoes.filter((item) => item.estado !== "sem_dado_no_resultado");
   return (
     <article className={styles.resultadoCard}>
       <div className={styles.resultadoTopo}>
@@ -81,6 +84,19 @@ function CardResultado({ resultado }: { resultado: CorrespondenciaInvestigacao }
         <div className={styles.contradicoes}>
           <span>Contradições observadas</span>
           <ul>{resultado.contradicoes.map((item) => <li key={item}>⚠ {item}</li>)}</ul>
+        </div>
+      ) : null}
+      {comparacoesVisiveis.length ? (
+        <div className={styles.memoriaConfirmada} data-memoria-confirmada>
+          <strong>Memória confirmada</strong>
+          <ul>
+            {comparacoesVisiveis.map((item) => (
+              <li key={item.atributo} data-comparacao={item.estado}>
+                {item.estado === "coincide" ? "✓" : "⚠"} {CATALOGO_ATRIBUTOS_MEMORIA[item.atributo].rotulo} {item.estado === "coincide" ? "coincide" : "conflita"}
+              </li>
+            ))}
+          </ul>
+          <small>Comparação com informações confirmadas por uma pessoa; não altera a correspondência.</small>
         </div>
       ) : null}
       <div className={styles.fonte}>
@@ -311,9 +327,20 @@ export default function InvestigadorImoveisView({ imovelIdInicial, referenciaIni
               {mensagemMemoriaInvestigacao(resultado.memoria)}
             </div>
           ) : null}
+          {resultado.memoriaConfirmada?.conflitosConfirmacoes.length ? (
+            <p className={styles.memoriaConflito} role="status">
+              Há confirmações incompatíveis na memória; esses atributos não foram usados na comparação.
+            </p>
+          ) : null}
           {resultado.resultados.length ? (
             <div className={styles.gradeResultados}>
-              {resultado.resultados.map((item) => <CardResultado key={item.url} resultado={item} />)}
+              {resultado.resultados.map((item) => (
+                <CardResultado
+                  key={item.url}
+                  resultado={item}
+                  comparacoes={resultado.memoriaConfirmada?.porResultado.find((comparacao) => comparacao.url === item.url)?.comparacoes ?? []}
+                />
+              ))}
             </div>
           ) : (
             <div className={styles.vazio}>

@@ -470,14 +470,14 @@ describe("rota POST com o B3", () => {
     }
   });
 
-  it("no Garimpo, com imóvel identificado (que pode ter memória), o B3.1 não consulta a memória e o log diz \"nao-utilizada\"", async () => {
+  it("no Garimpo, a leitura B3.2a posterior não altera o resumo do score B3.1", async () => {
     const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
     const cliente = clienteSupabase();
     mocks.createClient.mockReturnValue(cliente);
     await eventosDe(await POST(requisicao({ consulta: ENTRADA_MICHIGAN, imovelIdentificado: IDENTIFICADO })));
     const tabelas = cliente.from.mock.calls.map(([tabela]) => tabela);
     expect(tabelas).toContain("imoveis_identificados"); // a posse, como antes
-    expect(tabelas).not.toContain("imoveis_identificados_atributos");
+    expect(tabelas).toContain("imoveis_identificados_atributos"); // leitura B3.2a após o pipeline
     expect(tabelas).not.toContain("imoveis_identificados_investigacoes");
     const conclusao = info.mock.calls.find(([rotulo]) => String(rotulo).includes("investigação concluída"))?.[1] as {
       pontuacao: { memoria: string };

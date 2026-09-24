@@ -315,9 +315,14 @@ describe("C13B — POST /api/investigador-imoveis: persiste só na conclusão, s
     const eqUser = vi.fn().mockReturnValue({ maybeSingle });
     const eqId = vi.fn().mockReturnValue({ eq: eqUser });
     const select = vi.fn().mockReturnValue({ eq: eqId });
-    const from = vi.fn().mockReturnValue({ select });
+    const memoriaAbort = vi.fn().mockResolvedValue({ data: [], error: null, count: 0 });
+    const memoriaEq = vi.fn();
+    memoriaEq.mockReturnValue({ eq: memoriaEq, abortSignal: memoriaAbort });
+    const memoriaSelect = vi.fn().mockReturnValue({ eq: memoriaEq });
+    const from = vi.fn((tabela: string) => tabela === "imoveis_identificados_atributos"
+      ? { select: memoriaSelect } : { select });
     const getUser = vi.fn().mockResolvedValue({ data: { user: { id: userId } }, error: null });
-    return { cliente: { auth: { getUser }, from }, from, select, eqId, eqUser };
+    return { cliente: { auth: { getUser }, from }, from, select, eqId, eqUser, memoriaSelect, memoriaEq, memoriaAbort };
   }
   function requisicao(corpo: Json): Request {
     return new Request("http://localhost/api/investigador-imoveis", {
@@ -359,14 +364,17 @@ describe("C13B — POST /api/investigador-imoveis: persiste só na conclusão, s
     mocks.buscarImovelNaWeb.mockImplementation(async () => { ordem.push("busca"); return busca(); });
     mocks.persistirMemoria.mockImplementation(async ({ execucaoId }: { execucaoId: string }) => { ordem.push("memoria"); return { estado: "salva", execucaoId, atributosSalvos: 9, atributosRecusados: 0 }; });
     fake.eqUser.mockImplementation(() => { ordem.push("posse"); return { maybeSingle: vi.fn().mockResolvedValue({ data: { id: IDENTIFICADO }, error: null }) }; });
+    fake.memoriaAbort.mockImplementation(async () => { ordem.push("leitura"); return { data: [], error: null, count: 0 }; });
 
     const lista = await eventos(await POST(requisicao({
       consulta: CONSULTA, imovelIdentificado: IDENTIFICADO,
       // Tudo isto é ignorado: nada do cliente vira identidade, id ou fato.
       user_id: OUTRO_USUARIO, execucaoId: "99999999-9999-4999-8999-999999999999", atributos: [{ atributo: "quartos", valor_num: 9 }],
     })));
-    expect(ordem).toEqual(["posse", "busca", "memoria"]);
-    expect(fake.from).toHaveBeenCalledExactlyOnceWith("imoveis_identificados");
+    expect(ordem).toEqual(["posse", "busca", "memoria", "leitura"]);
+    expect(fake.from.mock.calls.map(([tabela]) => tabela)).toEqual(["imoveis_identificados", "imoveis_identificados_atributos"]);
+    expect(fake.memoriaSelect).toHaveBeenCalledWith("atributo,estado,valor_texto,valor_num", { count: "exact" });
+    expect(fake.memoriaEq.mock.calls).toEqual([["user_id", USUARIO], ["imovel_identificado_id", IDENTIFICADO], ["estado", "confirmada"]]);
     expect(fake.select).toHaveBeenCalledWith("id");
     expect(fake.eqId).toHaveBeenCalledWith("id", IDENTIFICADO);
     expect(fake.eqUser).toHaveBeenCalledWith("user_id", USUARIO);

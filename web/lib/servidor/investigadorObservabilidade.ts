@@ -15,6 +15,7 @@
    módulo inteiro não percam a rota.
    ================================================================ */
 import type { ResumoPontuacaoInvestigacao } from "@/lib/calculo/investigadorImoveis";
+import type { ResumoContextoConfirmado } from "@/lib/calculo/contextoConfirmadoInvestigador";
 
 export const PROVIDER_INVESTIGADOR = "rapidapi";
 export const OPERACAO_PESQUISAR_IMOVEL = "pesquisar_imovel";
@@ -137,6 +138,8 @@ export interface RegistroConclusaoInvestigacao {
   motivosDescarte?: Partial<Record<string, number>>;
   /** B3: versão, distribuição e motivos do score; só contagens e códigos. */
   pontuacao?: ResumoPontuacaoInvestigacao;
+  /** B3.2a: somente agregados da comparação posterior à persistência. */
+  b3_2a?: ResumoContextoConfirmado;
   encerramento: EncerramentoInvestigacao;
   duracaoMs: number;
   orcamentoTotalMs?: number;
@@ -200,6 +203,7 @@ export function registrarConclusaoInvestigacao(registro: RegistroConclusaoInvest
     ...(registro.resultadosDescartados !== undefined ? { resultadosDescartados: registro.resultadosDescartados } : {}),
     ...(registro.motivosDescarte !== undefined ? { motivosDescarte: registro.motivosDescarte } : {}),
     ...(registro.pontuacao !== undefined ? { pontuacao: registro.pontuacao } : {}),
+    ...(registro.b3_2a !== undefined ? { b3_2a: registro.b3_2a } : {}),
     encerramento: registro.encerramento,
     duracaoMs: Math.round(registro.duracaoMs),
     ...(registro.orcamentoTotalMs !== undefined ? { orcamentoTotalMs: registro.orcamentoTotalMs } : {}),

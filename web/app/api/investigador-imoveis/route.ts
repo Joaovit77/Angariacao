@@ -36,6 +36,14 @@ import {
   type ResumoEtapaPesquisa,
 } from "@/lib/servidor/investigadorObservabilidade";
 import { novaExecucaoInvestigacao, persistirMemoriaDaInvestigacao } from "@/lib/servidor/memoriaIdentidade";
+import {
+  compararResultadosComConfirmacoes,
+  projetarContextoConfirmado,
+  resumirContextoConfirmado,
+  type MemoriaConfirmadaNaResposta,
+  type ResumoContextoConfirmado,
+} from "@/lib/calculo/contextoConfirmadoInvestigador";
+import { lerConfirmacoesInvestigador } from "@/lib/servidor/contextoConfirmadoInvestigador";
 import { associarReferenciasAvaliacaoDoInvestigador } from "@/lib/servidor/referenciasAvaliacaoInvestigador";
 
 export const runtime = "nodejs";
@@ -418,6 +426,19 @@ export async function POST(request: Request): Promise<Response> {
         const memoria = imovelIdentificadoId
           ? await persistirMemoriaDaInvestigacao({ userId, execucaoId, imovelIdentificadoId, resultados })
           : undefined;
+        // Barreira B3.2a: a leitura começa somente depois da escrita normal.
+        // O contexto não toca busca, B2, B3.1 nem a lista enviada à memória.
+        let memoriaConfirmada: MemoriaConfirmadaNaResposta | undefined;
+        let b3_2a: ResumoContextoConfirmado | undefined;
+        if (imovelIdentificadoId) {
+          const leitura = await lerConfirmacoesInvestigador(acesso.supabase, userId, imovelIdentificadoId);
+          const contexto = projetarContextoConfirmado(leitura.linhas);
+          const comparacao = compararResultadosComConfirmacoes(contexto, exibidos.map((item) => ({ ...item })));
+          b3_2a = resumirContextoConfirmado(contexto, comparacao, leitura.falhou);
+          if (contexto.valores.length || contexto.conflitosConfirmacoes.length) {
+            memoriaConfirmada = comparacao;
+          }
+        }
         registrarConclusaoInvestigacao({
           execucao: execucaoId,
           consultas: busca.consultasExecutadas.length,
@@ -430,6 +451,7 @@ export async function POST(request: Request): Promise<Response> {
           resultadosDescartados: relevancia.descartados,
           motivosDescarte: relevancia.motivosDescarte,
           pontuacao,
+          ...(b3_2a ? { b3_2a } : {}),
           encerramento: busca.orcamentoEsgotado
             ? "orcamento-parcial"
             : busca.limiteAtingido
@@ -458,6 +480,7 @@ export async function POST(request: Request): Promise<Response> {
             limiteAtingido: busca.limiteAtingido,
             aviso,
             ...(memoria ? { memoria } : {}),
+            ...(memoriaConfirmada ? { memoriaConfirmada } : {}),
           },
         });
       } catch (erro) {

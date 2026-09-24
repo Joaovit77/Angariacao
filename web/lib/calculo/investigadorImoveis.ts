@@ -1,5 +1,6 @@
 import { ehCodigoInternoAngario } from "../codigoImovel";
 import { chaveNormalizada } from "../normalizacao";
+import type { MemoriaConfirmadaNaResposta } from "./contextoConfirmadoInvestigador";
 
 /* ================================================================
    INVESTIGADOR DE IMÓVEIS — contratos e regras puras
@@ -75,6 +76,8 @@ export interface ResultadoInvestigacao {
   limiteAtingido: boolean;
   aviso?: string;
   memoria?: MemoriaInvestigacao;
+  /** B3.2a: comparação informativa, produzida após a persistência normal. */
+  memoriaConfirmada?: MemoriaConfirmadaNaResposta;
 }
 
 export type EventoInvestigacao =
