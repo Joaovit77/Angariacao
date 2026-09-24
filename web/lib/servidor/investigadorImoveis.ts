@@ -1,9 +1,9 @@
 import {
-  analisarCorrespondenciasInvestigacao,
   deduplicarResultadosInvestigacao,
   extrairCamposInvestigacao,
   haEvidenciaSuficiente,
   MAXIMO_BUSCAS_POR_INVESTIGACAO,
+  triarCorrespondenciasInvestigacao,
   type ResultadoWebInvestigacao,
 } from "@/lib/calculo/investigadorImoveis";
 import { MARGEM_FINALIZACAO_INVESTIGACAO_MS } from "@/lib/servidor/investigadorOrcamento";
@@ -68,6 +68,9 @@ export interface ResultadoBuscaWebInvestigacao {
   retryAfterSegundos?: number;
   /** B1: uma entrada por consulta executada, na ordem da fila. */
   etapas: ResumoEtapaPesquisa[];
+  /** B2: alinhado com `etapas`: quantos dos `novos` de cada etapa o gate
+      de relevância descartou naquele momento. Só contagem. */
+  descartadosPorEtapa: number[];
   motivoParada: MotivoParadaPesquisa;
   orcamentoRestanteNaParadaMs?: number;
 }
@@ -297,6 +300,8 @@ export async function buscarImovelNaWeb(
   let motivoParada: MotivoParadaPesquisa = "plano-esgotado";
   let orcamentoRestanteNaParadaMs: number | undefined;
   let unicosAteAqui = 0;
+  const descartadosPorEtapa: number[] = [];
+  const urlsJaVistas = new Set<string>();
 
   for (const [indice, consulta] of fila.entries()) {
     const restante = opcoes.deadlineMs === undefined
@@ -334,12 +339,21 @@ export async function buscarImovelNaWeb(
       orcamentoRestanteMs: opcoes.deadlineMs === undefined ? null : Math.round(restante),
     });
     unicosAteAqui = unicos.length;
+    // B2: a regra de parada só enxerga o que passou pelo gate; um resultado
+    // descartado como ruído não encerra a fila. O gate não cria etapa nova:
+    // se tudo for descartado, a fila segue o plano do B1 e o orçamento A2.
+    const triagem = triarCorrespondenciasInvestigacao(consultaOriginal, unicos);
+    // O dedupe já devolve a URL canônica: ela identifica o card entre etapas.
+    descartadosPorEtapa.push(triagem.itens.filter((item) =>
+      item.motivo !== null && !urlsJaVistas.has(item.correspondencia.url)
+    ).length);
+    for (const item of unicos) urlsJaVistas.add(item.url);
 
     if (limiteAtingido) {
       motivoParada = "limite-provider";
       break;
     }
-    if (haEvidenciaSuficiente(analisarCorrespondenciasInvestigacao(consultaOriginal, unicos))) {
+    if (haEvidenciaSuficiente(triagem.mantidos)) {
       encerramentoAntecipado = consultasExecutadas.length < fila.length;
       motivoParada = "evidencia-suficiente";
       break;
@@ -372,6 +386,7 @@ export async function buscarImovelNaWeb(
     consultasLimitadasPeloOrcamento,
     retryAfterSegundos,
     etapas,
+    descartadosPorEtapa,
     motivoParada,
     ...(orcamentoRestanteNaParadaMs !== undefined ? { orcamentoRestanteNaParadaMs } : {}),
   };

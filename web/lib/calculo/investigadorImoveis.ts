@@ -420,10 +420,47 @@ export function deduplicarResultadosInvestigacao(
   return unicos;
 }
 
+/** Sinais de identidade e contexto que a análise já calcula; o B2 os lê
+    em vez de reinterpretar o texto das evidências. */
+interface SinaisCorrespondencia {
+  referenciaIdentica: boolean;
+  enderecoIdentico: boolean;
+  condominioIdentico: boolean;
+}
+
+interface ComparacaoComEntrada {
+  entrada: CamposImovelEncontrados;
+  condominioInformado: string | null;
+  comparacoes: { correspondencia: CorrespondenciaInvestigacao; sinais: SinaisCorrespondencia }[];
+}
+
+const ORDEM_CONFIANCA: Record<FaixaConfiancaInvestigacao, number> = {
+  "muito-forte": 4,
+  forte: 3,
+  possivel: 2,
+  indicio: 1,
+};
+
+function ordemDasCorrespondencias(a: CorrespondenciaInvestigacao, b: CorrespondenciaInvestigacao): number {
+  return ORDEM_CONFIANCA[b.confianca] - ORDEM_CONFIANCA[a.confianca]
+    || a.contradicoes.length - b.contradicoes.length
+    || b.evidencias.length - a.evidencias.length
+    || a.titulo.localeCompare(b.titulo, "pt-BR");
+}
+
 export function analisarCorrespondenciasInvestigacao(
   consultaOriginal: string,
   resultados: ResultadoWebInvestigacao[],
 ): CorrespondenciaInvestigacao[] {
+  return compararComEntrada(consultaOriginal, resultados).comparacoes
+    .map((item) => item.correspondencia)
+    .sort(ordemDasCorrespondencias);
+}
+
+function compararComEntrada(
+  consultaOriginal: string,
+  resultados: ResultadoWebInvestigacao[],
+): ComparacaoComEntrada {
   const entrada = extrairCamposInvestigacao(consultaOriginal);
   const condominioInformado = entrada.condominio || expressaoPrincipal(consultaOriginal);
   const termosEntrada = termosRelevantes(consultaOriginal);
@@ -438,7 +475,7 @@ export function analisarCorrespondenciasInvestigacao(
     resultadosComMesmaReferencia.map((resultado) => chaveNormalizada(resultado.endereco)).filter(Boolean),
   );
 
-  return resultados.map<CorrespondenciaInvestigacao>((resultado) => {
+  const comparacoes = resultados.map((resultado) => {
     const textoResultado = chaveNormalizada(`${resultado.titulo} ${resultado.descricao}`);
     const evidencias: string[] = [];
     const contradicoes: string[] = [];
@@ -551,23 +588,215 @@ export function analisarCorrespondenciasInvestigacao(
     }
 
     return {
-      ...resultado,
-      confianca,
-      evidencias,
-      contradicoes,
+      correspondencia: { ...resultado, confianca, evidencias, contradicoes },
+      sinais: { referenciaIdentica, enderecoIdentico, condominioIdentico },
     };
-  }).sort((a, b) => {
-    const ordem: Record<FaixaConfiancaInvestigacao, number> = {
-      "muito-forte": 4,
-      forte: 3,
-      possivel: 2,
-      indicio: 1,
-    };
-    return ordem[b.confianca] - ordem[a.confianca]
-      || a.contradicoes.length - b.contradicoes.length
-      || b.evidencias.length - a.evidencias.length
-      || a.titulo.localeCompare(b.titulo, "pt-BR");
   });
+  return { entrada, condominioInformado, comparacoes };
+}
+
+/* ------------------------------------------------------------------
+   B2: gate de relevância. A análise acima ordena e nunca descartava: um
+   clipe de música que divide uma palavra com a rua chegava ao usuário
+   como "indício". Aqui só sai o que tem evidência concreta de ruído.
+   Ausência de dado nunca é motivo: snippet pobre fica como inconclusivo.
+   Não pontua nem ordena: isso é do B3.
+
+   Assimetria de propósito: para descartar é preciso um motivo abaixo e
+   nenhum sinal positivo de identidade ou contexto (referência, endereço
+   ou empreendimento iguais). Com qualquer um deles, o resultado fica.
+   ------------------------------------------------------------------ */
+
+export type RelevanciaInvestigacao = "relevante" | "inconclusivo" | "irrelevante";
+
+/** Um motivo por descarte, na ordem em que as regras são avaliadas. */
+export type MotivoDescarteInvestigacao =
+  /** Endereço com número diferente do procurado: a mesma rua com outro
+      número, ou outra rua sem que a procurada apareça no resultado. */
+  | "endereco-divergente"
+  /** Nenhum sinal de imóvel e marcador explícito de outro assunto
+      (música, vídeo, enciclopédia, biografia). */
+  | "conteudo-nao-imobiliario"
+  /** Nenhum sinal de imóvel e nenhuma âncora da entrada (rua,
+      empreendimento, referência) como expressão inteira: divide só uma
+      palavra solta com a consulta. */
+  | "sem-relacao-com-a-entrada";
+
+export interface ItemTriagemInvestigacao {
+  correspondencia: CorrespondenciaInvestigacao;
+  relevancia: RelevanciaInvestigacao;
+  /** Só em `irrelevante`. */
+  motivo: MotivoDescarteInvestigacao | null;
+}
+
+export interface TriagemInvestigacao {
+  /** Todos os resultados analisados, na ordem da análise. */
+  itens: ItemTriagemInvestigacao[];
+  /** Relevantes e inconclusivos, na ordem da análise: o que chega à UI,
+      à memória e à regra de parada. */
+  mantidos: CorrespondenciaInvestigacao[];
+}
+
+export interface ResumoTriagemInvestigacao {
+  analisados: number;
+  mantidos: number;
+  relevantes: number;
+  inconclusivos: number;
+  descartados: number;
+  motivosDescarte: Partial<Record<MotivoDescarteInvestigacao, number>>;
+}
+
+/** Minúsculas, sem acento, só letras e dígitos separados por um espaço. */
+function textoComparavel(valor: string | null | undefined): string {
+  return chaveNormalizada(valor).replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function contemExpressao(texto: string, expressao: string): boolean {
+  return Boolean(expressao) && ` ${texto} `.includes(` ${expressao} `);
+}
+
+/** "Rua Michigan, 610" → "michigan"; "Av. Higienópolis 1000" → "higienopolis". */
+function nomeDoLogradouro(endereco: string): string {
+  return textoComparavel(
+    chaveEndereco(logradouroSemNumero(endereco)).replace(/^(?:rua|avenida|alameda|travessa|rodovia|estrada)\s+/, ""),
+  );
+}
+
+// Nome de logradouro escrito como nome próprio: maiúscula ou número logo
+// depois do tipo ("Rua Sergipe", "Rua 10 de Dezembro").
+// Sem a flag i: com ela, \p{Lu} também aceitaria minúscula.
+function logradouroNomeado(endereco: string): boolean {
+  return /^[\p{Lu}\d]/u.test(endereco.replace(/^(?:rua|avenida|av\.?|alameda|travessa|rodovia|estrada)\s+/i, ""));
+}
+
+// Palavras que um texto sobre imóvel usa e um texto de outro assunto quase
+// nunca usa. Basta uma para o resultado ser do domínio. Ampla de propósito:
+// uma palavra a mais aqui só deixa o gate mais conservador.
+const VOCABULARIO_IMOBILIARIO = new RegExp(String.raw`\b(?:` + [
+  "imove(?:l|is)", "imobiliari[ao]s?", "apartamentos?", "aptos?", "ap", "casas?", "sobrados?", "coberturas?",
+  "kitnets?", "kitinetes?", "studios?", "estudios?", "flats?", "lofts?", "terrenos?", "lotes?", "chacaras?",
+  "sitios?", "galpao", "galpoes", "barracao", "salas?", "lojas?", "predios?", "edificios?", "condominios?",
+  "residencia(?:l|is)", "cond", "empreendimentos?", "lancamentos?", "planta", "vendas?", "vende", "vendo",
+  "alug\\w*", "locacao", "comprar", "quartos?", "qtos?", "dormitorios?", "dorms?", "suites?", "banheiros?", "vagas?",
+  "garage(?:m|ns)", "iptu", "corretor\\w*", "creci", "anuncios?", "mobiliad[ao]s?", "m2",
+  "metros quadrados", "area (?:util|privativa|total|construida)",
+  "real estate", "apartments?", "houses?", "for (?:sale|rent)",
+].join("|") + String.raw`)\b`);
+
+// Na URL as palavras vêm coladas ("portalimoveis", "apartamento-a-venda").
+const URL_IMOBILIARIA = /imove|imobil|apartament|alug|venda|locacao|condomin|residencial|corretor|lancament|sobrado|cobertura|terreno|kitnet/;
+
+// Marcadores explícitos de outro assunto. Só pesam quando o resultado não
+// tem nenhum sinal de imóvel: "tour em vídeo do apartamento" continua.
+const MARCADOR_OUTRO_ASSUNTO = new RegExp(String.raw`\b(?:` + [
+  "musicas?", "musical", "clipes?", "videoclipes?", "videos?", "cifras?", "letras?", "album", "playlist",
+  "podcasts?", "episodios?", "trailer", "filmes?", "cinema", "novela", "cantora?", "banda", "ao vivo",
+  "shows?", "biografia", "nasceu", "nascid[ao]", "faleceu", "falecid[ao]", "enciclopedia",
+].join("|") + String.raw`)\b`);
+
+function urlComparavel(url: string): string {
+  try {
+    const { hostname, pathname } = new URL(url);
+    return chaveNormalizada(`${hostname} ${decodeURIComponent(pathname)}`);
+  } catch {
+    return chaveNormalizada(url);
+  }
+}
+
+function temSinalImobiliario(resultado: ResultadoWebInvestigacao, texto: string, url: string): boolean {
+  const campoEstruturado = resultado.preco !== null || resultado.endereco !== null || resultado.referencia !== null
+    || resultado.condominio !== null || resultado.quartos !== null || resultado.vagas !== null
+    || resultado.area !== null;
+  return campoEstruturado || VOCABULARIO_IMOBILIARIO.test(texto) || URL_IMOBILIARIA.test(url);
+}
+
+function avaliarRelevancia(
+  entrada: CamposImovelEncontrados,
+  ancoras: string[],
+  correspondencia: CorrespondenciaInvestigacao,
+  sinais: SinaisCorrespondencia,
+): Omit<ItemTriagemInvestigacao, "correspondencia"> {
+  if (sinais.referenciaIdentica || sinais.enderecoIdentico || sinais.condominioIdentico) {
+    return { relevancia: "relevante", motivo: null };
+  }
+
+  const texto = textoComparavel(`${correspondencia.titulo} ${correspondencia.descricao}`);
+  const url = urlComparavel(correspondencia.url);
+  const textoComUrl = `${texto} ${textoComparavel(url)}`;
+
+  // Endereço: o resultado declara outro número. Se é a mesma rua, é outro
+  // imóvel. Se é outra rua, só descarta quando ela tem cara de nome próprio
+  // ("Rua Sergipe, 610"; o extrator também pega "rua tranquila, 12
+  // minutos") e a rua procurada não aparece em lugar nenhum, porque o
+  // único número do snippet pode ser o da imobiliária.
+  if (entrada.endereco && correspondencia.endereco) {
+    const ruaProcurada = nomeDoLogradouro(entrada.endereco);
+    const mesmaRua = ruaProcurada === nomeDoLogradouro(correspondencia.endereco);
+    const outraRuaNomeada = logradouroNomeado(correspondencia.endereco)
+      && !contemExpressao(textoComUrl, ruaProcurada);
+    if (ruaProcurada && (mesmaRua || outraRuaNomeada)) {
+      return { relevancia: "irrelevante", motivo: "endereco-divergente" };
+    }
+  }
+
+  if (!temSinalImobiliario(correspondencia, texto, url)) {
+    if (MARCADOR_OUTRO_ASSUNTO.test(texto)) {
+      return { relevancia: "irrelevante", motivo: "conteudo-nao-imobiliario" };
+    }
+    if (ancoras.length && !ancoras.some((ancora) => contemExpressao(textoComUrl, ancora))) {
+      return { relevancia: "irrelevante", motivo: "sem-relacao-com-a-entrada" };
+    }
+  }
+  return { relevancia: "inconclusivo", motivo: null };
+}
+
+/**
+ * B2: separa, sobre o conjunto já deduplicado, o que é claramente ruído.
+ * Reusa a análise de correspondência (mesma confiança, mesmas evidências,
+ * mesma ordem) e só retira itens; nunca muda um item mantido.
+ */
+export function triarCorrespondenciasInvestigacao(
+  consultaOriginal: string,
+  resultados: ResultadoWebInvestigacao[],
+): TriagemInvestigacao {
+  const { entrada, condominioInformado, comparacoes } = compararComEntrada(consultaOriginal, resultados);
+  // O que identifica o imóvel na entrada, como expressão inteira. Sem
+  // nenhuma âncora (ex.: "Casa 3 quartos Londrina") a regra de relação
+  // com a entrada não se aplica.
+  const ancoras = [
+    entrada.endereco ? nomeDoLogradouro(entrada.endereco) : "",
+    textoComparavel(chaveCondominio(condominioInformado)),
+    textoComparavel(entrada.referencia),
+  ].filter((ancora) => ancora.length >= 3);
+
+  const itens = comparacoes
+    .map(({ correspondencia, sinais }) => ({
+      correspondencia,
+      ...avaliarRelevancia(entrada, ancoras, correspondencia, sinais),
+    }))
+    .sort((a, b) => ordemDasCorrespondencias(a.correspondencia, b.correspondencia));
+  return {
+    itens,
+    mantidos: itens.filter((item) => item.relevancia !== "irrelevante").map((item) => item.correspondencia),
+  };
+}
+
+/** Só contagens e códigos: é o que vai para o log. */
+export function resumirTriagemInvestigacao(triagem: TriagemInvestigacao): ResumoTriagemInvestigacao {
+  const motivosDescarte: Partial<Record<MotivoDescarteInvestigacao, number>> = {};
+  for (const item of triagem.itens) {
+    if (item.motivo) motivosDescarte[item.motivo] = (motivosDescarte[item.motivo] ?? 0) + 1;
+  }
+  const contar = (relevancia: RelevanciaInvestigacao) =>
+    triagem.itens.filter((item) => item.relevancia === relevancia).length;
+  return {
+    analisados: triagem.itens.length,
+    mantidos: triagem.mantidos.length,
+    relevantes: contar("relevante"),
+    inconclusivos: contar("inconclusivo"),
+    descartados: contar("irrelevante"),
+    motivosDescarte,
+  };
 }
 
 /**
@@ -575,6 +804,8 @@ export function analisarCorrespondenciasInvestigacao(
  * uma correspondência muito forte, ao menos duas evidências favoráveis
  * independentes e nenhuma contradição observada.
  * Quantidade de resultados, isoladamente, nunca encerra a investigação.
+ * Recebe os mantidos pelo gate B2 (`triarCorrespondenciasInvestigacao`):
+ * ruído descartado não encerra a fila.
  */
 export function haEvidenciaSuficiente(
   resultados: CorrespondenciaInvestigacao[],

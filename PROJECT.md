@@ -2549,6 +2549,14 @@ empreendimento, área, quartos ou vagas explicitamente divergentes viram contrad
 classificação. A UI usa níveis probabilísticos — muito forte, forte, possível e indício — e exibe
 separadamente evidências favoráveis e contradições.
 
+Sobre o conjunto deduplicado, um gate de relevância determinístico retira só o ruído com evidência
+concreta, antes da regra de parada, da UI e da memória: endereço com número divergente (a mesma rua
+com outro número, ou outra rua nomeada sem que a procurada apareça), conteúdo sem nenhum sinal
+imobiliário e com marcador explícito de outro assunto, ou sem nenhum sinal imobiliário e sem nenhuma
+âncora da entrada (rua, empreendimento, referência). Referência, endereço ou empreendimento iguais
+sempre mantêm o resultado; ausência de dado nunca descarta. O gate não pontua, não reordena, não
+cria pesquisa além do plano e só expõe contagens e códigos no log.
+
 A resposta é NDJSON progressivo: gerar consultas, pesquisar, normalizar e cruzar informações são
 eventos emitidos quando cada etapa realmente começa; a lista da UI contém apenas consultas de fato
 executadas. EOF sem `resultado` ou `erro` encerra o andamento na UI com erro e permite nova tentativa.

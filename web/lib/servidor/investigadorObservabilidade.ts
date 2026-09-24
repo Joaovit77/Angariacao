@@ -126,6 +126,14 @@ export interface RegistroConclusaoInvestigacao {
   falhas: number;
   resultadosBrutos: number;
   resultadosExibidos: number;
+  /** B2: resultados únicos (após dedupe) que chegaram ao gate de relevância. */
+  resultadosUnicos?: number;
+  resultadosRelevantes?: number;
+  resultadosInconclusivos?: number;
+  /** B2: únicos descartados como claramente irrelevantes. */
+  resultadosDescartados?: number;
+  /** B2: descartes por motivo; só códigos e contagens. */
+  motivosDescarte?: Partial<Record<string, number>>;
   encerramento: EncerramentoInvestigacao;
   duracaoMs: number;
   orcamentoTotalMs?: number;
@@ -136,8 +144,9 @@ export interface RegistroConclusaoInvestigacao {
   /** B1: tamanho do plano progressivo desta investigação. */
   etapasPlanejadas?: number;
   motivoParada?: MotivoParadaPesquisa;
-  /** B1: etapas executadas, na ordem, com o nome da etapa do plano. */
-  etapas?: (ResumoEtapaPesquisa & { etapa: string })[];
+  /** B1: etapas executadas, na ordem, com o nome da etapa do plano.
+      B2: `descartados` diz quantos dos novos da etapa o gate retirou. */
+  etapas?: (ResumoEtapaPesquisa & { etapa: string; descartados?: number })[];
   /** B1: orçamento que sobrava quando a próxima etapa foi recusada. */
   orcamentoRestanteNaParadaMs?: number;
 }
@@ -180,6 +189,13 @@ export function registrarConclusaoInvestigacao(registro: RegistroConclusaoInvest
     falhas: registro.falhas,
     resultadosBrutos: registro.resultadosBrutos,
     resultadosExibidos: registro.resultadosExibidos,
+    ...(registro.resultadosUnicos !== undefined ? { resultadosUnicos: registro.resultadosUnicos } : {}),
+    ...(registro.resultadosRelevantes !== undefined ? { resultadosRelevantes: registro.resultadosRelevantes } : {}),
+    ...(registro.resultadosInconclusivos !== undefined
+      ? { resultadosInconclusivos: registro.resultadosInconclusivos }
+      : {}),
+    ...(registro.resultadosDescartados !== undefined ? { resultadosDescartados: registro.resultadosDescartados } : {}),
+    ...(registro.motivosDescarte !== undefined ? { motivosDescarte: registro.motivosDescarte } : {}),
     encerramento: registro.encerramento,
     duracaoMs: Math.round(registro.duracaoMs),
     ...(registro.orcamentoTotalMs !== undefined ? { orcamentoTotalMs: registro.orcamentoTotalMs } : {}),

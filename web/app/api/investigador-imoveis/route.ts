@@ -1,10 +1,11 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
-  analisarCorrespondenciasInvestigacao,
   consultaInvestigadorValida,
   deduplicarResultadosInvestigacao,
   LIMITE_CONSULTA_INVESTIGADOR,
   planejarPesquisasInvestigacao,
+  resumirTriagemInvestigacao,
+  triarCorrespondenciasInvestigacao,
   type EventoInvestigacao,
   type PesquisaPlanejadaInvestigacao,
 } from "@/lib/calculo/investigadorImoveis";
@@ -287,9 +288,18 @@ function mensagemSegura(erro: unknown): string {
   return "A pesquisa na web está indisponível agora. Tente novamente em alguns minutos.";
 }
 
-/** B1: nomeia cada etapa executada pela posição no plano; só contagens. */
-function etapasRotuladas(plano: PesquisaPlanejadaInvestigacao[], etapas: ResumoEtapaPesquisa[] = []) {
-  return etapas.map((etapa, indice) => ({ etapa: plano[indice]?.etapa ?? "desconhecida", ...etapa }));
+/** B1: nomeia cada etapa executada pela posição no plano; só contagens.
+    B2: quando conhecido, soma quantos novos daquela etapa foram descartados. */
+function etapasRotuladas(
+  plano: PesquisaPlanejadaInvestigacao[],
+  etapas: ResumoEtapaPesquisa[] = [],
+  descartadosPorEtapa?: number[],
+) {
+  return etapas.map((etapa, indice) => ({
+    etapa: plano[indice]?.etapa ?? "desconhecida",
+    ...etapa,
+    ...(descartadosPorEtapa ? { descartados: descartadosPorEtapa[indice] ?? 0 } : {}),
+  }));
 }
 
 function encerramentoDaFalha(erro: unknown): EncerramentoInvestigacao {
@@ -372,7 +382,12 @@ export async function POST(request: Request): Promise<Response> {
         emitir({ tipo: "etapa", etapa: "normalizando-resultados" });
         const unicos = deduplicarResultadosInvestigacao(busca.resultados);
         emitir({ tipo: "etapa", etapa: "cruzando-informacoes" });
-        const correspondencias = analisarCorrespondenciasInvestigacao(consultaOriginal, unicos);
+        // B2: o gate de relevância retira só o ruído claro; os mantidos
+        // conservam a confiança e a ordem da análise. Os descartados não
+        // vão ao cliente nem à memória; aparecem apenas como contagem no log.
+        const triagem = triarCorrespondenciasInvestigacao(consultaOriginal, unicos);
+        const relevancia = resumirTriagemInvestigacao(triagem);
+        const correspondencias = triagem.mantidos;
         const resultados = await associarReferenciasAvaliacaoDoInvestigador(
           acesso.supabase,
           userId,
@@ -401,6 +416,11 @@ export async function POST(request: Request): Promise<Response> {
           falhas: busca.falhas,
           resultadosBrutos: busca.resultados.length,
           resultadosExibidos: resultados.length,
+          resultadosUnicos: relevancia.analisados,
+          resultadosRelevantes: relevancia.relevantes,
+          resultadosInconclusivos: relevancia.inconclusivos,
+          resultadosDescartados: relevancia.descartados,
+          motivosDescarte: relevancia.motivosDescarte,
           encerramento: busca.orcamentoEsgotado
             ? "orcamento-parcial"
             : busca.limiteAtingido
@@ -414,7 +434,7 @@ export async function POST(request: Request): Promise<Response> {
           resultadoParcial: Boolean(busca.orcamentoEsgotado || busca.limiteAtingido || busca.falhas),
           etapasPlanejadas: plano.length,
           motivoParada: busca.motivoParada,
-          etapas: etapasRotuladas(plano, busca.etapas),
+          etapas: etapasRotuladas(plano, busca.etapas, busca.descartadosPorEtapa),
           orcamentoRestanteNaParadaMs: busca.orcamentoRestanteNaParadaMs,
         });
         emitir({
