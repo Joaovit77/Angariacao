@@ -2479,6 +2479,14 @@ compacto com IDs internos, portal, códigos/motivos fechados, quantidades, dura�
 ou URL completa. A ausência do evento de rodada continua sendo o sinal para cruzar com o Cron Jobs
 da Vercel. A falha do próprio registro é ignorada e não interfere na coleta.
 
+No score da Central, aviso do portal de endereço não informado ou indisponível segue a localização
+parcial (+10), não o endereço publicado (+20). Uma regra pura compartilhada reconhece o aviso;
+`QualidadeLocalizacaoRadar` e suas sete categorias continuam somente no shadow de `radar-busca-ok`,
+sem servir de entrada ao score ou à seleção. A contagem de localização usa anúncios após o filtro;
+`id_fallback` usa todos os coletados. Score graduado, penalizações ou filtros de bairro e endereço
+indisponível e uso da localização em deduplicação/identidade permanecem sem promoção por falta de
+evidência. A cobertura da observabilidade no caminho manual/navegador é um checkpoint separado (R4.3).
+
 `api/central-angariacao/imagem` funciona apenas como proxy seguro para imagens de hosts esperados;
 não deve virar fetch genérico controlado pelo cliente.
 

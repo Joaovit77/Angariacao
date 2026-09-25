@@ -1,5 +1,6 @@
 import { agoraTimestamp, timestampDeIso } from "../datas";
 import { extrairCaracteristicasImovel } from "./caracteristicasImovel";
+import { ehAvisoEnderecoIndisponivel } from "./avisoEndereco";
 import { normalizarUf, separarCidadeEUf, ufValida } from "./geografia";
 
 /* ================================================================
@@ -115,10 +116,11 @@ export function avaliarOportunidade(anuncio: AnuncioCentralAngariacao): Avaliaca
     motivos.push("anunciante ainda precisa ser confirmado");
   }
 
-  if (anuncio.endereco) {
+  const avisoEndereco = ehAvisoEnderecoIndisponivel(anuncio.endereco);
+  if (anuncio.endereco && !avisoEndereco) {
     nota += 20;
     motivos.push("endereço publicado");
-  } else if (anuncio.bairro || anuncio.cidade) {
+  } else if (avisoEndereco || anuncio.bairro || anuncio.cidade) {
     nota += 10;
     motivos.push("localização parcial disponível");
   }

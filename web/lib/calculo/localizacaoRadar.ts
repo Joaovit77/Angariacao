@@ -21,6 +21,7 @@ import type { AnuncioCentralAngariacao } from "./centralAngariacao";
 import { chaveEndereco } from "./duplicidade";
 import { chaveLogradouro } from "./sinaisRepeticaoRadar";
 import { chaveNormalizada } from "../normalizacao";
+import { ehAvisoEnderecoIndisponivel } from "./avisoEndereco";
 
 /** Em ordem de prioridade: cada anúncio cai na primeira que se aplica. */
 export const CATEGORIAS_LOCALIZACAO_RADAR = [
@@ -42,11 +43,6 @@ export interface QualidadeLocalizacaoRadar {
 }
 
 type AnuncioLocalizavel = Pick<AnuncioCentralAngariacao, "endereco" | "bairro" | "cidade" | "descricao">;
-
-/** Texto que o próprio portal publica no lugar do endereço. O Chaves e o Viva
-    Real o descartam no parser (sobra no início da descrição); o Wimoveis o
-    grava no campo `endereco`, às vezes seguido de "1". */
-const AVISO_SEM_ENDERECO = /^endereco (?:nao informado|indisponivel)\b/;
 
 /** Sufixo "- CEP: 86010520" do endereço completo do Wimoveis. */
 const CEP_NO_FIM = /[\s,-]*cep:?\s*\d{5}-?\d{3}\s*$/i;
@@ -96,7 +92,7 @@ function logradouroUtil(logradouro: string, bairro: string | null | undefined): 
 /** Classificação determinística da localização publicada no card. */
 export function qualidadeLocalizacaoRadar(anuncio: AnuncioLocalizavel): QualidadeLocalizacaoRadar {
   const endereco = (anuncio.endereco || "").replace(/\s+/g, " ").trim();
-  const avisoNoEndereco = AVISO_SEM_ENDERECO.test(chaveNormalizada(endereco));
+  const avisoNoEndereco = ehAvisoEnderecoIndisponivel(endereco);
   if (endereco && !avisoNoEndereco) {
     const { logradouro, numero } = lerEndereco(endereco);
     if (logradouroUtil(logradouro, anuncio.bairro)) {
@@ -105,7 +101,7 @@ export function qualidadeLocalizacaoRadar(anuncio: AnuncioLocalizavel): Qualidad
       return { categoria: "logradouro_sem_numero", numero: null };
     }
   }
-  if (avisoNoEndereco || AVISO_SEM_ENDERECO.test(chaveNormalizada(anuncio.descricao))) {
+  if (avisoNoEndereco || ehAvisoEnderecoIndisponivel(anuncio.descricao)) {
     return { categoria: "indisponivel", numero: null };
   }
   if (chaveNormalizada(anuncio.bairro)) return { categoria: "bairro", numero: null };

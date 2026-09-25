@@ -1029,6 +1029,32 @@ describe("monitor agendado do Radar: localização e id_fallback (R4.2a)", () =>
       .toEqual(["1517890225", "olx-4-imoveis-sem-id"]);
   });
 
+  it("o aviso muda apenas a leitura do score; coleta e persistência mantêm os dados do anúncio", async () => {
+    const banco = clienteRadarFalso();
+    mocks.createClient.mockReturnValue(banco.cliente);
+    const coletado = olx("1517890225", { endereco: "Endereço não informado", bairro: "Centro" });
+    mocks.buscarComFirecrawl.mockResolvedValue([coletado]);
+
+    const resultado = await executarMonitorRadar();
+
+    expect(resultado).toMatchObject({ novos: 1, falhas: 0 });
+    expect(mocks.salvarComparaveisMercado).toHaveBeenCalledWith(
+      banco.cliente, "usuario-radar", [expect.objectContaining({ endereco: coletado.endereco })], busca.filtros,
+    );
+    expect(banco.inserirAnuncios.mock.calls[0][0][0].dados).toMatchObject({
+      idExterno: coletado.idExterno,
+      endereco: coletado.endereco,
+      bairro: coletado.bairro,
+      cidade: coletado.cidade,
+    });
+    expect(banco.inserirAnuncios.mock.calls[0][0][0].dados).not.toHaveProperty("nota");
+    expect(banco.inserirAnuncios.mock.calls[0][0][0].dados).not.toHaveProperty("motivos");
+    expect(detalheRadar("radar-busca-ok")).toMatchObject({
+      coletados: 1, apos_filtro: 1, novos: 1,
+      localizacao: { indisponivel: 1 },
+    });
+  });
+
   it("não registra endereço, bairro nem cidade no log, só contagens", async () => {
     const banco = clienteRadarFalso();
     mocks.createClient.mockReturnValue(banco.cliente);

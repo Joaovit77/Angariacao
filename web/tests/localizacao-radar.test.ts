@@ -11,6 +11,7 @@ import {
   qualidadeLocalizacaoRadar,
   resumirLocalizacaoRadar,
 } from "@/lib/calculo/localizacaoRadar";
+import { ehAvisoEnderecoIndisponivel } from "@/lib/calculo/avisoEndereco";
 import {
   BELA_SUICA_6_QUARTOS,
   EDU_CHAVES_DOM_PEDRO,
@@ -266,9 +267,61 @@ describe("idExternoEhFallback", () => {
   });
 });
 
-describe("pontuação atual (R4.2a só observa, não corrige)", () => {
-  it("'Endereço não informado' ainda soma como endereço publicado", () => {
-    expect(categoria(WIMOVEIS_NAO_INFORMADO)).toBe("indisponivel");
-    expect(avaliarOportunidade(WIMOVEIS_NAO_INFORMADO).motivos).toContain("endereço publicado");
+describe("R4.2b: aviso de endereço no score", () => {
+  it.each([
+    ["Endereço não informado", WIMOVEIS_NAO_INFORMADO],
+    ["Endereço indisponível", anuncio("wimoveis", "aviso-indisponivel", { endereco: "Endereço indisponível", bairro: "Centro" })],
+  ])("%s recebe somente os 10 pontos de localização parcial", (_nome, item) => {
+    const avaliacao = avaliarOportunidade(item);
+    expect(avaliacao.nota).toBe(38);
+    expect(avaliacao.motivos).toContain("localização parcial disponível");
+    expect(avaliacao.motivos).not.toContain("endereço publicado");
+    expect(categoria(item)).toBe("indisponivel");
+  });
+
+  it("o aviso por si só mantém a semântica parcial, mesmo sem bairro e cidade", () => {
+    const item = anuncio("wimoveis", "so-aviso", { endereco: "Endereço indisponível", bairro: null, cidade: null });
+    expect(avaliarOportunidade(item)).toEqual({
+      nota: 38,
+      faixa: "baixa",
+      motivos: ["anunciante ainda precisa ser confirmado", "localização parcial disponível"],
+    });
+  });
+
+  it("endereço real e localização parcial normal preservam seus pontos e motivos", () => {
+    expect(ehAvisoEnderecoIndisponivel(WIMOVEIS_SEM_TIPO.endereco)).toBe(false);
+    expect(avaliarOportunidade(WIMOVEIS_SEM_TIPO)).toEqual({
+      nota: 48,
+      faixa: "baixa",
+      motivos: ["anunciante ainda precisa ser confirmado", "endereço publicado"],
+    });
+    expect(avaliarOportunidade(OLX_SO_BAIRRO)).toEqual({
+      nota: 38,
+      faixa: "baixa",
+      motivos: ["anunciante ainda precisa ser confirmado", "localização parcial disponível"],
+    });
+  });
+
+  it.each([
+    "Endereço não informado",
+    "ENDEREÇO NÃO INFORMADO",
+    "Endereco nao informado",
+    "Endereço indisponível",
+    "Endereço não informado 1",
+  ])("a regra compartilhada reconhece '%s' no score e no shadow", (endereco) => {
+    const item = anuncio("wimoveis", "variacao-aviso", { endereco, bairro: "Centro" });
+    expect(ehAvisoEnderecoIndisponivel(endereco)).toBe(true);
+    expect(avaliarOportunidade(item).motivos).toContain("localização parcial disponível");
+    expect(avaliarOportunidade(item).motivos).not.toContain("endereço publicado");
+    expect(categoria(item)).toBe("indisponivel");
+  });
+
+  it("um endereço publicado com palavras semelhantes não vira aviso", () => {
+    const endereco = "Rua Endereço não informado, 123";
+    const item = anuncio("wimoveis", "rua-real", { endereco, bairro: "Centro" });
+    expect(ehAvisoEnderecoIndisponivel(endereco)).toBe(false);
+    expect(avaliarOportunidade(item).motivos).toContain("endereço publicado");
+    expect(avaliarOportunidade(item).motivos).not.toContain("localização parcial disponível");
+    expect(categoria(item)).toBe("logradouro_numero");
   });
 });
