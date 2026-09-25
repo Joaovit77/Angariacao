@@ -21,7 +21,7 @@ describe("fronteira do shadow de quarto individual (R3.2a)", () => {
 
   it("a Central manual continua coletando sem diagnóstico nem filtro extra", () => {
     const rota = ler("app/api/central-angariacao/buscar/route.ts");
-    expect(rota).toMatch(/buscarComFirecrawl\(seguros, urlPesquisa\)/);
+    expect(rota).toMatch(/buscarComFirecrawl\(seguros, urlPesquisa, undefined, undefined, observador\.observar\)/);
   });
 
   it("o shadow não cria schema nem coluna", () => {

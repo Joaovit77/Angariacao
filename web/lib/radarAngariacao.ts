@@ -206,7 +206,10 @@ export async function verificarBuscaRadar(
   busca: BuscaRadar,
   origem: Exclude<OrigemVerificacaoRadar, "cron">,
 ) {
-  const resultado = await buscarNaCentral(busca.filtros);
+  const resultado = await buscarNaCentral(
+    busca.filtros,
+    origem === "navegador" ? "monitor_navegador" : "verificar_agora",
+  );
   const supabase = getSupabase();
   const agora = agoraISOString();
 
@@ -243,6 +246,26 @@ export async function verificarBuscaRadar(
     ultimo_check_origem: origem,
   }).eq("id", busca.id);
   if (atualizado.error) throw atualizado.error;
+  if (resultado.execucaoId) {
+    void (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await fetch("/api/central-angariacao/telemetria-radar", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ execucaoId: resultado.execucaoId, buscaId: busca.id, novos: inseridos.length }),
+            signal: AbortSignal.timeout(3000),
+          });
+        }
+      } catch {
+        // O fechamento telemétrico jamais altera a persistência já concluída.
+      }
+    })();
+  }
   return inseridos.map(fromDbAnuncio);
 }
 

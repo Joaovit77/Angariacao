@@ -3,9 +3,13 @@
 import { getSupabase } from "./persistencia/supabase";
 import type { FiltrosCentralAngariacao, ResultadoBuscaCentral } from "./calculo/centralAngariacao";
 
+export type IniciadorBuscaCentral = "pesquisar" | "verificar_agora" | "monitor_navegador";
+export type ResultadoBuscaComExecucao = ResultadoBuscaCentral & { execucaoId?: string };
+
 export async function buscarNaCentral(
   filtros: FiltrosCentralAngariacao,
-): Promise<ResultadoBuscaCentral> {
+  iniciador: IniciadorBuscaCentral = "pesquisar",
+): Promise<ResultadoBuscaComExecucao> {
   const { data: { session } } = await getSupabase().auth.getSession();
   if (!session) {
     return { ok: false, anuncios: [], urlPesquisa: "", aviso: "Sua sessão expirou. Entre novamente." };
@@ -17,10 +21,11 @@ export async function buscarNaCentral(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
+        "x-angario-iniciador": iniciador,
       },
       body: JSON.stringify(filtros),
     });
-    const dados = (await resposta.json().catch(() => null)) as ResultadoBuscaCentral | null;
+    const dados = (await resposta.json().catch(() => null)) as ResultadoBuscaComExecucao | null;
     if (dados) return dados;
   } catch {
     /* mensagem uniforme abaixo */

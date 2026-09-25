@@ -1,4 +1,5 @@
 import { gzipSync, gunzipSync } from "node:zlib";
+import { randomUUID } from "node:crypto";
 import { chaveCanonicaConsultaPortal } from "./planejadorColetaMercados";
 import { getCache } from "@vercel/functions";
 import { load, type CheerioAPI, type Cheerio } from "cheerio";
@@ -15,7 +16,12 @@ export const LIMITE_RESULTADOS = 50;
 const TIMEOUT_FIRECRAWL_MS = 55_000;
 export const CACHE_FIRECRAWL_TTL_SEGUNDOS = 20 * 60;
 const CACHE_FIRECRAWL_TTL_MS = CACHE_FIRECRAWL_TTL_SEGUNDOS * 1000;
-const consultasEmAndamento = new Map<string, Promise<string>>();
+type HtmlColetado = { html: string; aquisicao: "cache" | "firecrawl"; statusHttp: number | null };
+const consultasEmAndamento = new Map<string, {
+  coletaId: string;
+  promessa: Promise<HtmlColetado>;
+  estado: { aquisicao: "cache" | "firecrawl" | "desconhecida"; statusHttp: number | null };
+}>();
 
 interface RespostaFirecrawl {
   success?: boolean;
@@ -379,12 +385,33 @@ export function extrairAnunciosFirecrawl(
 /** Origem da coleta antes do parsing: permite medir custo mesmo se houver falha. */
 export type OrigemConsultaFirecrawl = "cache" | "em_andamento" | "firecrawl";
 export type CodigoErroFirecrawl = "firecrawl_429" | "firecrawl_timeout" | "firecrawl_indisponivel" | "parser_falhou";
+export type FaseConsultaFirecrawl = "cache_hit" | "single_flight" | "caminho_escolhido"
+  | "fetch_iniciado" | "resposta_recebida" | "resultado_interpretado" | "falha"
+  | "coleta_compartilhada_concluida";
+export interface EventoConsultaFirecrawl {
+  fase: FaseConsultaFirecrawl;
+  aquisicao: "cache" | "firecrawl" | "desconhecida";
+  coletaId: string;
+  statusHttp?: number;
+  codigo?: CodigoErroFirecrawl;
+}
 
-async function coletarHtmlFirecrawl(urlPesquisa: string): Promise<string> {
+function notificarConsulta(
+  observar: ((evento: EventoConsultaFirecrawl) => void) | undefined,
+  evento: EventoConsultaFirecrawl,
+): void {
+  try { observar?.(evento); } catch { /* instrumentação nova nunca altera a coleta */ }
+}
+
+async function coletarHtmlFirecrawl(
+  urlPesquisa: string,
+  observar?: (fase: "fetch_iniciado" | "resposta_recebida", statusHttp?: number) => void,
+): Promise<{ html: string; statusHttp: number }> {
   const apiKey = process.env.FIRECRAWL_API_KEY?.trim();
   if (!apiKey) throw new FirecrawlIndisponivel("Firecrawl não configurado.");
   let resposta: Response;
   try {
+    try { observar?.("fetch_iniciado"); } catch { /* telemetria acessória */ }
     resposta = await fetch("https://api.firecrawl.dev/v2/scrape", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -405,6 +432,7 @@ async function coletarHtmlFirecrawl(urlPesquisa: string): Promise<string> {
     throw new FirecrawlIndisponivel("Consulta Firecrawl indisponível.",
       timeout ? "firecrawl_timeout" : "firecrawl_indisponivel");
   }
+  try { observar?.("resposta_recebida", resposta.status); } catch { /* telemetria acessória */ }
   const corpo = await resposta.json().catch(() => null) as RespostaFirecrawl | null;
   if (!resposta.ok || !corpo?.success || !corpo.data?.rawHtml) {
     throw new FirecrawlIndisponivel("Firecrawl não retornou uma página utilizável.",
@@ -415,7 +443,7 @@ async function coletarHtmlFirecrawl(urlPesquisa: string): Promise<string> {
     throw new FirecrawlIndisponivel("Portal indisponível.",
       statusPortal === 429 ? "firecrawl_429" : "firecrawl_indisponivel");
   }
-  return corpo.data.rawHtml;
+  return { html: corpo.data.rawHtml, statusHttp: resposta.status };
 }
 
 function extrairComProtecao(
@@ -433,7 +461,7 @@ function extrairComProtecao(
 export async function buscarComFirecrawlAoVivo(
   filtros: FiltrosCentralAngariacao, urlPesquisa: string,
 ): Promise<AnuncioCentralAngariacao[]> {
-  return extrairComProtecao(await coletarHtmlFirecrawl(urlPesquisa), filtros);
+  return extrairComProtecao((await coletarHtmlFirecrawl(urlPesquisa)).html, filtros);
 }
 
 /**
@@ -446,14 +474,42 @@ export async function buscarComFirecrawl(
   urlPesquisa: string,
   registrarOrigem?: (origem: OrigemConsultaFirecrawl) => void,
   registrarDiagnosticoOlx?: (diagnostico: DiagnosticoPaginaOlx) => void,
+  observar?: (evento: EventoConsultaFirecrawl) => void,
 ): Promise<AnuncioCentralAngariacao[]> {
   const chave = chaveCanonicaConsultaPortal(filtros.portal, urlPesquisa);
   const existente = consultasEmAndamento.get(chave);
   if (existente) {
     registrarOrigem?.("em_andamento");
-    return extrairComProtecao(await existente, filtros, registrarDiagnosticoOlx);
+    notificarConsulta(observar, {
+      fase: "single_flight", aquisicao: "desconhecida", coletaId: existente.coletaId,
+    });
+    try {
+      const compartilhado = await existente.promessa;
+      notificarConsulta(observar, {
+        fase: "coleta_compartilhada_concluida", aquisicao: compartilhado.aquisicao,
+        coletaId: existente.coletaId,
+        ...(compartilhado.statusHttp != null ? { statusHttp: compartilhado.statusHttp } : {}),
+      });
+      const anuncios = extrairComProtecao(compartilhado.html, filtros, registrarDiagnosticoOlx);
+      notificarConsulta(observar, {
+        fase: "resultado_interpretado", aquisicao: compartilhado.aquisicao, coletaId: existente.coletaId,
+      });
+      return anuncios;
+    } catch (erro) {
+      notificarConsulta(observar, {
+        fase: "falha", aquisicao: existente.estado.aquisicao,
+        coletaId: existente.coletaId,
+        ...(existente.estado.statusHttp != null ? { statusHttp: existente.estado.statusHttp } : {}),
+        ...(erro instanceof FirecrawlIndisponivel ? { codigo: erro.codigo } : {}),
+      });
+      throw erro;
+    }
   }
 
+  const coletaId = randomUUID();
+  const estado: { aquisicao: "cache" | "firecrawl" | "desconhecida"; statusHttp: number | null } = {
+    aquisicao: "desconhecida", statusHttp: null,
+  };
   const consulta = (async () => {
     const cache = getCache({ namespace: "central-firecrawl-html-v2" });
     try {
@@ -461,16 +517,26 @@ export async function buscarComFirecrawl(
       if (typeof armazenado === "string") {
         const html = gunzipSync(Buffer.from(armazenado, "base64")).toString("utf8");
         registrarOrigem?.("cache");
-        return html;
+        estado.aquisicao = "cache";
+        notificarConsulta(observar, { fase: "cache_hit", aquisicao: "cache", coletaId });
+        return { html, aquisicao: "cache" as const, statusHttp: null };
       }
     } catch {
       console.warn("[central-angariacao] cache regional indisponível");
     }
 
     registrarOrigem?.("firecrawl");
-    const html = await coletarHtmlFirecrawl(urlPesquisa);
+    estado.aquisicao = "firecrawl";
+    notificarConsulta(observar, { fase: "caminho_escolhido", aquisicao: "firecrawl", coletaId });
+    const coletado = await coletarHtmlFirecrawl(urlPesquisa, (fase, statusHttp) => {
+      if (statusHttp != null) estado.statusHttp = statusHttp;
+      notificarConsulta(observar, {
+        fase, aquisicao: "firecrawl", coletaId,
+        ...(statusHttp != null ? { statusHttp } : {}),
+      });
+    });
     try {
-      await cache.set(chave, gzipSync(html).toString("base64"), {
+      await cache.set(chave, gzipSync(coletado.html).toString("base64"), {
         ttl: CACHE_FIRECRAWL_TTL_SEGUNDOS,
         tags: ["central-firecrawl", `central-firecrawl:${filtros.portal}`],
         name: `Central: ${filtros.portal}`,
@@ -478,9 +544,23 @@ export async function buscarComFirecrawl(
     } catch {
       console.warn("[central-angariacao] consulta não armazenada no cache regional");
     }
-    return html;
+    return { html: coletado.html, aquisicao: "firecrawl" as const, statusHttp: coletado.statusHttp };
   })().finally(() => consultasEmAndamento.delete(chave));
 
-  consultasEmAndamento.set(chave, consulta);
-  return extrairComProtecao(await consulta, filtros, registrarDiagnosticoOlx);
+  consultasEmAndamento.set(chave, { coletaId, promessa: consulta, estado });
+  try {
+    const coletado = await consulta;
+    const anuncios = extrairComProtecao(coletado.html, filtros, registrarDiagnosticoOlx);
+    notificarConsulta(observar, {
+      fase: "resultado_interpretado", aquisicao: coletado.aquisicao, coletaId,
+    });
+    return anuncios;
+  } catch (erro) {
+    notificarConsulta(observar, {
+      fase: "falha", aquisicao: estado.aquisicao, coletaId,
+      ...(estado.statusHttp != null ? { statusHttp: estado.statusHttp } : {}),
+      ...(erro instanceof FirecrawlIndisponivel ? { codigo: erro.codigo } : {}),
+    });
+    throw erro;
+  }
 }

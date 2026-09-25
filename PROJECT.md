@@ -2485,7 +2485,19 @@ parcial (+10), não o endereço publicado (+20). Uma regra pura compartilhada re
 sem servir de entrada ao score ou à seleção. A contagem de localização usa anúncios após o filtro;
 `id_fallback` usa todos os coletados. Score graduado, penalizações ou filtros de bairro e endereço
 indisponível e uso da localização em deduplicação/identidade permanecem sem promoção por falta de
-evidência. A cobertura da observabilidade no caminho manual/navegador é um checkpoint separado (R4.3).
+evidência.
+
+A observabilidade do Radar correlaciona cada rodada do cron por `rodada_id`, cada tentativa de busca
+por `execucao_id` gerado no servidor e, quando há consulta compartilhada na mesma instância, por
+`coleta_id`. O iniciador (`cron`, monitor do navegador, Verificar agora ou Pesquisar) é distinto da
+aquisição (`cache`, `firecrawl`, `playwright`, `http_direto` ou desconhecida) e da reutilização por
+single-flight. O navegador informa seu iniciador por um valor fechado; essa origem declarada não é
+uma autorização. Fases de coleta e desfecho só são registrados quando observados, sem inferir
+ausência de chamada externa ou custo. A telemetria usa apenas IDs internos, enums, portal, códigos
+fechados, status HTTP, contagens e duração; falhas de registro não alteram coleta nem persistência.
+No Radar do navegador e da ação manual, o fechamento de `novos` ocorre depois da escrita normal em
+`radar_anuncios`, autenticado e limitado à busca do próprio usuário. Pesquisar não tem contagem de
+`novos`. A instrumentação não altera o agendamento automático do monitor no painel autenticado.
 
 `api/central-angariacao/imagem` funciona apenas como proxy seguro para imagens de hosts esperados;
 não deve virar fetch genérico controlado pelo cliente.

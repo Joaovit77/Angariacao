@@ -300,6 +300,7 @@ export class NavegadorIndisponivel extends Error {}
 export async function buscarComNavegador(
   filtros: FiltrosCentralAngariacao,
   urlPesquisa: string,
+  observar?: (fase: "fetch_iniciado" | "resposta_recebida", statusHttp?: number) => void,
 ): Promise<AnuncioCentralAngariacao[]> {
   const configuracao = await configuracaoNavegador();
   if (!configuracao) throw new NavegadorIndisponivel("Chrome não encontrado no servidor.");
@@ -329,7 +330,11 @@ export async function buscarComNavegador(
     });
     const page = await contexto.newPage();
     await prepararPagina(page);
+    try { observar?.("fetch_iniciado"); } catch { /* telemetria acessória */ }
     const navegacao = await page.goto(urlPesquisa, { waitUntil: "domcontentloaded", timeout: TIMEOUT_NAVEGACAO_MS });
+    if (navegacao) {
+      try { observar?.("resposta_recebida", navegacao.status()); } catch { /* telemetria acessória */ }
+    }
     if (navegacao && navegacao.status() >= 400) {
       console.warn("[central-angariacao] portal respondeu na navegação", {
         portal: filtros.portal,

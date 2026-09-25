@@ -18,12 +18,13 @@ import { normalizarUf, ufValida } from "@/lib/calculo/geografia";
 import { finalizarColetaCentralAngariacao } from "@/lib/servidor/finalizacaoCentralAngariacao";
 import { buscarComFirecrawl } from "@/lib/servidor/firecrawlCentralAngariacao";
 import { buscarComNavegador, NavegadorIndisponivel } from "@/lib/servidor/scraperCentralAngariacao";
+import { criarObservadorRadar, novoIdExecucao, type IniciadorColeta } from "@/lib/servidor/observabilidadeRadar";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-function resposta(corpo: ResultadoBuscaCentral, status = 200) {
-  return Response.json(corpo, { status, headers: { "Cache-Control": "no-store" } });
+function resposta(corpo: ResultadoBuscaCentral, status = 200, execucaoId?: string) {
+  return Response.json({ ...corpo, execucaoId }, { status, headers: { "Cache-Control": "no-store" } });
 }
 
 function resultadoColeta(
@@ -50,6 +51,8 @@ async function finalizarRespostaColeta(
   coletados: ResultadoBuscaCentral["anuncios"],
   seguros: FiltrosCentralAngariacao,
   urlPesquisa: string,
+  observador: ReturnType<typeof criarObservadorRadar>,
+  inicio: number,
 ): Promise<ResultadoBuscaCentral> {
   const finalizacao = await finalizarColetaCentralAngariacao(
     supabase,
@@ -73,12 +76,24 @@ async function finalizarRespostaColeta(
       salvos: finalizacao.comparaveisSalvos,
     });
   }
+  observador.concluir(userId, "central-busca-ok", {
+    coletados: coletados.length,
+    aposFiltro: finalizacao.anuncios.length,
+    comparaveisSalvos: finalizacao.comparaveisSalvos,
+    duracaoMs: performance.now() - inicio,
+  });
   return resultado;
 }
 
 interface SessaoAutenticada {
   supabase: SupabaseClient;
   userId: string;
+}
+
+function iniciadorDaRequisicao(request: Request): IniciadorColeta {
+  const informado = request.headers.get("x-angario-iniciador");
+  return informado === "monitor_navegador" || informado === "verificar_agora" || informado === "pesquisar"
+    ? informado : "desconhecido";
 }
 
 async function autenticado(request: Request): Promise<SessaoAutenticada | null> {
@@ -96,15 +111,17 @@ async function autenticado(request: Request): Promise<SessaoAutenticada | null> 
 }
 
 export async function POST(request: Request) {
+  const execucaoId = novoIdExecucao();
+  const inicio = performance.now();
   const sessao = await autenticado(request);
   if (!sessao) {
-    return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: "Sessão inválida." }, 401);
+    return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: "Sessão inválida." }, 401, execucaoId);
   }
 
   const filtros = (await request.json().catch(() => null)) as FiltrosCentralAngariacao | null;
   if (!filtros || !PORTAIS_ANGARIACAO.includes(filtros.portal)
     || !filtros.cidade?.trim() || !ufValida(filtros.estado)) {
-    return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: "Informe portal, cidade e uma UF válida." }, 400);
+    return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: "Informe portal, cidade e uma UF válida." }, 400, execucaoId);
   }
   const seguros: FiltrosCentralAngariacao = {
     ...filtros,
@@ -115,50 +132,64 @@ export async function POST(request: Request) {
       ? filtros.diasPublicacao
       : null,
   };
+  const observador = criarObservadorRadar({
+    execucaoId, iniciador: iniciadorDaRequisicao(request), portal: seguros.portal,
+  });
   let urlPesquisa: string;
   try {
     urlPesquisa = urlDaPesquisa(seguros);
   } catch (erro) {
     if (erro instanceof PortalSemCoberturaGeografica) {
-      return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: erro.message }, 422);
+      return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: erro.message }, 422, execucaoId);
     }
     throw erro;
   }
 
   if (process.env.FIRECRAWL_API_KEY) {
     try {
-      const coletados = await buscarComFirecrawl(seguros, urlPesquisa);
+      const coletados = await buscarComFirecrawl(seguros, urlPesquisa, undefined, undefined, observador.observar);
       return resposta(await finalizarRespostaColeta(
         sessao.supabase,
         sessao.userId,
         coletados,
         seguros,
         urlPesquisa,
-      ));
+        observador,
+        inicio,
+      ), 200, execucaoId);
     } catch (erro) {
       console.warn("Central de Angariação: Firecrawl não concluiu a consulta:",
         sanitizarErroExterno(erro, "firecrawl"));
       if (process.env.VERCEL) {
+        observador.concluir(sessao.userId, "central-busca-falhou", { duracaoMs: performance.now() - inicio });
         return resposta({
           ok: false,
           anuncios: [],
           urlPesquisa,
           aviso: "O serviço de consulta não respondeu agora. A pesquisa pronta ainda pode ser aberta.",
-        });
+        }, 200, execucaoId);
       }
+      observador.observar({ fase: "fallback", aquisicao: "playwright" });
     }
   }
 
   try {
-    const coletados = await buscarComNavegador(seguros, urlPesquisa);
+    observador.observar({ fase: "caminho_escolhido", aquisicao: "playwright" });
+    const coletados = await buscarComNavegador(seguros, urlPesquisa, (fase, statusHttp) => {
+      observador.observar({ fase, aquisicao: "playwright", ...(statusHttp != null ? { statusHttp } : {}) });
+    });
+    observador.observar({ fase: "resultado_interpretado", aquisicao: "playwright" });
     return resposta(await finalizarRespostaColeta(
       sessao.supabase,
       sessao.userId,
       coletados,
       seguros,
       urlPesquisa,
-    ));
+      observador,
+      inicio,
+    ), 200, execucaoId);
   } catch (erro) {
+    observador.observar({ fase: "falha", aquisicao: "playwright", codigo: "navegador_falhou" });
     // Sem Chrome no host (ex.: deploy ainda sem runtime de navegador), conserva
     // o fallback HTTP e o link pronto. No local e em hosts configurados, o
     // Playwright é sempre o caminho principal.
@@ -168,6 +199,9 @@ export async function POST(request: Request) {
   }
 
   try {
+    observador.observar({ fase: "fallback", aquisicao: "http_direto" });
+    observador.observar({ fase: "caminho_escolhido", aquisicao: "http_direto" });
+    observador.observar({ fase: "fetch_iniciado", aquisicao: "http_direto" });
     const r = await fetch(urlPesquisa, {
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; CentralAngariacao/1.0)",
@@ -177,6 +211,7 @@ export async function POST(request: Request) {
       signal: AbortSignal.timeout(15000),
       cache: "no-store",
     });
+    observador.observar({ fase: "resposta_recebida", aquisicao: "http_direto", statusHttp: r.status });
     if (!r.ok) throw new Error(`portal respondeu ${r.status}`);
     const html = await r.text();
     const anuncios = extrairJsonLd(html, seguros.portal, urlPesquisa).filter((a) => {
@@ -185,24 +220,29 @@ export async function POST(request: Request) {
       if (!seguros.somenteProprietario) return true;
       return a.anunciante !== "imobiliaria";
     });
+    observador.observar({ fase: "resultado_interpretado", aquisicao: "http_direto" });
     const resultado = await finalizarRespostaColeta(
       sessao.supabase,
       sessao.userId,
       anuncios,
       seguros,
       urlPesquisa,
+      observador,
+      inicio,
     );
     if (!anuncios.length) {
       resultado.aviso = "O portal não disponibilizou resultados para leitura. Abra a pesquisa pronta para continuar.";
     }
-    return resposta(resultado);
+    return resposta(resultado, 200, execucaoId);
   } catch (erro) {
+    observador.observar({ fase: "falha", aquisicao: "http_direto", codigo: "portal_falhou" });
+    observador.concluir(sessao.userId, "central-busca-falhou", { duracaoMs: performance.now() - inicio });
     console.warn("Central de Angariação: consulta indisponível:", sanitizarErroExterno(erro, "portal"));
     return resposta({
       ok: false,
       anuncios: [],
       urlPesquisa,
       aviso: "O portal bloqueou ou não respondeu à consulta. A pesquisa pronta ainda pode ser aberta.",
-    });
+    }, 200, execucaoId);
   }
 }

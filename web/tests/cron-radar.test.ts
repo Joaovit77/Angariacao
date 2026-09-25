@@ -62,15 +62,13 @@ describe("cron do Radar", () => {
     expect(await resposta.json()).toMatchObject({ ok: true, verificadas: 2, novos: 3, falhas: 0 });
     expect(executarMonitorRadar).toHaveBeenCalledOnce();
     expect(registrarEvento).toHaveBeenCalledTimes(2);
-    expect(registrarEvento).toHaveBeenNthCalledWith(1, {
-      userId: null,
-      categoria: "radar",
-      nivel: "info",
-      evento: "radar-rodada",
-      detalhe: JSON.stringify({ etapa: "inicio" }),
-    });
-    expect(JSON.parse(registrarEvento.mock.calls[1][0].detalhe)).toMatchObject({
+    const inicio = JSON.parse(registrarEvento.mock.calls[0][0].detalhe);
+    const fim = JSON.parse(registrarEvento.mock.calls[1][0].detalhe);
+    expect(inicio).toEqual({ etapa: "inicio", rodada_id: expect.any(String) });
+    expect(executarMonitorRadar).toHaveBeenCalledWith(inicio.rodada_id);
+    expect(fim).toMatchObject({
       etapa: "fim",
+      rodada_id: inicio.rodada_id,
       candidatas: 3,
       elegiveis: 2,
       verificadas: 2,

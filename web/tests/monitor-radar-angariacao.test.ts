@@ -197,6 +197,43 @@ describe("monitor agendado do Radar", () => {
     }));
   });
 
+  it.each([
+    { aquisicao: "cache", fases: ["cache_hit", "resultado_interpretado"], iniciou: false },
+    { aquisicao: "firecrawl", fases: ["caminho_escolhido", "fetch_iniciado", "resposta_recebida", "resultado_interpretado"], iniciou: true },
+  ] as const)("correlaciona cron com $aquisicao e fases comprovadas", async ({ aquisicao, fases, iniciou }) => {
+    const banco = clienteRadarFalso();
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockImplementation(async (_f, _u, registrarOrigem, _diag, observar) => {
+      registrarOrigem(aquisicao);
+      for (const fase of fases) observar({
+        fase, aquisicao, coletaId: "48b73600-e868-46c6-a899-845b5487c2ca",
+        ...(fase === "resposta_recebida" ? { statusHttp: 200 } : {}),
+      });
+      return [anuncioValido];
+    });
+    const rodadaId = "229ee00d-1fe9-44b6-9fa4-80702fef8327";
+    await executarMonitorRadar(rodadaId);
+    const detalhe = detalheRadar("radar-busca-ok");
+    expect(detalhe).toMatchObject({
+      rodada_id: rodadaId, execucao_id: expect.any(String), iniciador: "cron", aquisicao,
+      chamada_propria_iniciada: iniciou, coleta_id: "48b73600-e868-46c6-a899-845b5487c2ca",
+      novos: 1,
+    });
+    expect(detalhe.execucao_id).not.toBe(rodadaId);
+    expect(detalhe.fases.map((item: { fase: string }) => item.fase)).toEqual(fases);
+  });
+
+  it("gera execução distinta por busca na mesma rodada", async () => {
+    const banco = clienteRadarFalso([], [busca, { ...busca, id: "busca-2" }]);
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([]);
+    await executarMonitorRadar("229ee00d-1fe9-44b6-9fa4-80702fef8327");
+    const detalhes = eventosRadar("radar-busca-vazia").map((entrada) => JSON.parse(entrada.detalhe));
+    expect(detalhes).toHaveLength(2);
+    expect(detalhes[0].rodada_id).toBe(detalhes[1].rodada_id);
+    expect(detalhes[0].execucao_id).not.toBe(detalhes[1].execucao_id);
+  });
+
   it("preserva no Radar o anúncio que não atende aos critérios de comparável", async () => {
     const banco = clienteRadarFalso();
     mocks.createClient.mockReturnValue(banco.cliente);
@@ -402,6 +439,7 @@ describe("monitor agendado do Radar", () => {
     expect(mocks.buscarComFirecrawl).not.toHaveBeenCalled();
     expect(detalheRadar("radar-busca-pulada")).toEqual({
       busca_id: "busca-1",
+      rodada_id: expect.any(String),
       motivo: "nao-vencida",
     });
   });
@@ -449,9 +487,9 @@ describe("monitor agendado do Radar", () => {
     expect(resumo).toMatchObject({ candidatas: 3, elegiveis: 0, verificadas: 0 });
     expect(mocks.buscarComFirecrawl).not.toHaveBeenCalled();
     expect(eventosRadar("radar-busca-pulada").map((entrada) => JSON.parse(entrada.detalhe))).toEqual([
-      { busca_id: "busca-recente", motivo: "nao-vencida" },
-      { busca_id: "busca-invalida", motivo: "filtros-invalidos" },
-      { busca_id: "busca-sem-cobertura", motivo: "portal-sem-cobertura" },
+      { busca_id: "busca-recente", rodada_id: expect.any(String), motivo: "nao-vencida" },
+      { busca_id: "busca-invalida", rodada_id: expect.any(String), motivo: "filtros-invalidos" },
+      { busca_id: "busca-sem-cobertura", rodada_id: expect.any(String), motivo: "portal-sem-cobertura" },
     ]);
   });
 
@@ -472,6 +510,7 @@ describe("monitor agendado do Radar", () => {
     expect(eventosRadar("radar-busca-pulada")).toHaveLength(1);
     expect(detalheRadar("radar-busca-pulada")).toEqual({
       busca_id: "busca-9",
+      rodada_id: expect.any(String),
       motivo: "limite-rodada",
     });
   });
@@ -527,6 +566,16 @@ describe("monitor agendado do Radar: observabilidade R3.1 e shadow R3.2a", () =>
     expect(detalheRadar("radar-busca-ok")).toEqual({
       busca_id: "busca-1",
       portal: "olx",
+      rodada_id: expect.any(String),
+      execucao_id: expect.any(String),
+      iniciador: "cron",
+      coleta_id: null,
+      reutilizacao: "desconhecida",
+      aquisicao: "desconhecida",
+      chamada_propria_iniciada: null,
+      resposta_recebida: null,
+      resultado_interpretado: null,
+      fases: [],
       coletados: 3,
       apos_filtro: 2,
       novos: 1,
@@ -645,7 +694,7 @@ describe("monitor agendado do Radar: observabilidade R3.1 e shadow R3.2a", () =>
     const detalhe = detalheRadar("radar-busca-ok");
     // A localização/id_fallback (R4.2a) vale para todo portal; os extras da OLX não.
     expect(Object.keys(detalhe).sort()).toEqual(
-      ["apos_filtro", "busca_id", "coletados", "duracao_ms", "id_fallback", "localizacao", "novos", "origem_html", "portal"],
+      ["apos_filtro", "aquisicao", "busca_id", "chamada_propria_iniciada", "coleta_id", "coletados", "duracao_ms", "execucao_id", "fases", "id_fallback", "iniciador", "localizacao", "novos", "origem_html", "portal", "resposta_recebida", "resultado_interpretado", "reutilizacao", "rodada_id"],
     );
     expect(banco.inserirAnuncios).toHaveBeenCalledOnce();
   });
@@ -868,7 +917,7 @@ describe("monitor agendado do Radar: shadow de repetição do Chaves (R4.1a)", (
     expect(resumo).toMatchObject({ verificadas: 1, novos: 1, falhas: 0 });
     // Só o bloco do shadow some; a localização (R4.2a) é independente dele.
     expect(Object.keys(detalheRadar("radar-busca-ok")).sort()).toEqual(
-      ["apos_filtro", "busca_id", "coletados", "duracao_ms", "id_fallback", "localizacao", "novos", "origem_html", "portal"],
+      ["apos_filtro", "aquisicao", "busca_id", "chamada_propria_iniciada", "coleta_id", "coletados", "duracao_ms", "execucao_id", "fases", "id_fallback", "iniciador", "localizacao", "novos", "origem_html", "portal", "resposta_recebida", "resultado_interpretado", "reutilizacao", "rodada_id"],
     );
   });
 

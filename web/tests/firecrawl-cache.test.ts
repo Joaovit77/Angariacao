@@ -13,6 +13,8 @@ vi.mock("@vercel/functions", () => ({
 
 import { buscarComFirecrawl, buscarComFirecrawlAoVivo, FirecrawlIndisponivel } from "@/lib/servidor/firecrawlCentralAngariacao";
 import { urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
+import type { EventoConsultaFirecrawl } from "@/lib/servidor/firecrawlCentralAngariacao";
+import { criarObservadorRadar } from "@/lib/servidor/observabilidadeRadar";
 
 const htmlOlx = `<section class="olx-adcard">
   <a data-testid="adcard-link" title="Casa direto com proprietário" href="https://pr.olx.com.br/imoveis/casa-1525177784">Casa direto com proprietário</a>
@@ -94,9 +96,12 @@ describe("economia de créditos do Firecrawl", () => {
     const requisicao = vi.fn(async () => new Response(JSON.stringify({ error: "secret-url-token" }), { status: 429 }));
     vi.stubGlobal("fetch", requisicao);
     const base = { portal: "olx" as const, cidade: "Londrina", estado: "PR" };
-    await expect(buscarComFirecrawl(base, urlDaPesquisa(base))).rejects.toMatchObject({ codigo: "firecrawl_429" });
+    const eventos: EventoConsultaFirecrawl[] = [];
+    await expect(buscarComFirecrawl(base, urlDaPesquisa(base), undefined, undefined,
+      (evento) => eventos.push(evento))).rejects.toMatchObject({ codigo: "firecrawl_429" });
     expect(cacheFalso.size).toBe(0);
     expect(requisicao).toHaveBeenCalledTimes(1);
+    expect(eventos.at(-1)).toMatchObject({ fase: "falha", aquisicao: "firecrawl", statusHttp: 429, codigo: "firecrawl_429" });
   });
 
   it("timeout possui código sanitizado", async () => {
@@ -106,5 +111,80 @@ describe("economia de créditos do Firecrawl", () => {
     expect(erro).toBeInstanceOf(FirecrawlIndisponivel);
     expect(erro.codigo).toBe("firecrawl_timeout");
     expect(erro.message).not.toContain("token-remoto");
+  });
+
+  it("observa chamada externa e depois cache sem segunda chamada", async () => {
+    const requisicao = vi.fn(async () => new Response(JSON.stringify({ success: true, data: { rawHtml: htmlOlx } })));
+    vi.stubGlobal("fetch", requisicao);
+    const filtros = { portal: "olx" as const, cidade: "Londrina", estado: "PR" };
+    const url = urlDaPesquisa(filtros);
+    const primeira: EventoConsultaFirecrawl[] = [];
+    const segunda: EventoConsultaFirecrawl[] = [];
+    await buscarComFirecrawl(filtros, url, undefined, undefined, (evento) => primeira.push(evento));
+    await buscarComFirecrawl(filtros, url, undefined, undefined, (evento) => segunda.push(evento));
+    expect(primeira.map((evento) => evento.fase)).toEqual([
+      "caminho_escolhido", "fetch_iniciado", "resposta_recebida", "resultado_interpretado",
+    ]);
+    expect(segunda.map((evento) => evento.fase)).toEqual(["cache_hit", "resultado_interpretado"]);
+    expect(segunda.every((evento) => evento.aquisicao === "cache")).toBe(true);
+    expect(primeira[0].coletaId).not.toBe(segunda[0].coletaId);
+    expect(requisicao).toHaveBeenCalledTimes(1);
+  });
+
+  it("single-flight compartilha coleta e desfecho, sem iniciar segunda chamada", async () => {
+    const log = vi.spyOn(console, "info").mockImplementation(() => {});
+    let liberar!: (resposta: Response) => void;
+    const requisicao = vi.fn(() => new Promise<Response>((resolve) => { liberar = resolve; }));
+    vi.stubGlobal("fetch", requisicao);
+    const filtros = { portal: "olx" as const, cidade: "Londrina", estado: "PR" };
+    const url = urlDaPesquisa(filtros);
+    const produtor: EventoConsultaFirecrawl[] = [];
+    const consumidor: EventoConsultaFirecrawl[] = [];
+    const produtorObs = criarObservadorRadar({
+      execucaoId: "229ee00d-1fe9-44b6-9fa4-80702fef8327", iniciador: "cron", portal: "olx",
+    });
+    const consumidorObs = criarObservadorRadar({
+      execucaoId: "229ee00d-1fe9-44b6-9fa4-80702fef8328", iniciador: "monitor_navegador", portal: "olx",
+    });
+    const primeira = buscarComFirecrawl(filtros, url, undefined, undefined, (evento) => {
+      produtor.push(evento); produtorObs.observar(evento);
+    });
+    const segunda = buscarComFirecrawl(filtros, url, undefined, undefined, (evento) => {
+      consumidor.push(evento); consumidorObs.observar(evento);
+    });
+    await vi.waitFor(() => expect(requisicao).toHaveBeenCalledOnce());
+    liberar(new Response(JSON.stringify({ success: true, data: { rawHtml: htmlOlx } }), { status: 200 }));
+    const resultados = await Promise.all([primeira, segunda]);
+    expect(resultados[0]).toEqual(resultados[1]);
+    expect(consumidor.map((evento) => evento.fase)).toEqual([
+      "single_flight", "coleta_compartilhada_concluida", "resultado_interpretado",
+    ]);
+    expect(consumidor.some((evento) => evento.fase === "fetch_iniciado")).toBe(false);
+    expect(produtor[0].coletaId).toBe(consumidor[0].coletaId);
+    expect(consumidor[1]).toMatchObject({ aquisicao: "firecrawl", statusHttp: 200 });
+    expect(produtorObs.resumo()).toMatchObject({
+      reutilizacao: "nenhuma", aquisicao: "firecrawl", chamada_propria_iniciada: true,
+      coleta_id: produtor[0].coletaId,
+    });
+    expect(consumidorObs.resumo()).toMatchObject({
+      reutilizacao: "single_flight", aquisicao: "firecrawl", chamada_propria_iniciada: false,
+      coleta_id: produtor[0].coletaId,
+    });
+    expect(produtorObs.resumo().execucao_id).not.toBe(consumidorObs.resumo().execucao_id);
+    expect(requisicao).toHaveBeenCalledOnce();
+    log.mockRestore();
+  });
+
+  it("falha da nova telemetria não transforma cache em chamada externa", async () => {
+    const requisicao = vi.fn(async () => new Response(JSON.stringify({ success: true, data: { rawHtml: htmlOlx } })));
+    vi.stubGlobal("fetch", requisicao);
+    const filtros = { portal: "olx" as const, cidade: "Londrina", estado: "PR" };
+    const url = urlDaPesquisa(filtros);
+    await buscarComFirecrawl(filtros, url);
+    const resultado = await buscarComFirecrawl(filtros, url, undefined, undefined, () => {
+      throw new Error("telemetria indisponível");
+    });
+    expect(resultado).toHaveLength(1);
+    expect(requisicao).toHaveBeenCalledOnce();
   });
 });

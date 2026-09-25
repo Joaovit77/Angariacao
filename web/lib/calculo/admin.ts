@@ -311,6 +311,9 @@ export const EVENTOS: Record<string, string> = {
   "radar-busca-falhou": "Falha na busca do Radar",
   "radar-busca-vazia": "Busca do Radar sem anúncios",
   "radar-busca-ok": "Busca do Radar concluída",
+  "central-busca-ok": "Consulta da Central concluída",
+  "central-busca-falhou": "Falha na consulta da Central",
+  "radar-verificacao-fechada": "Verificação do Radar registrada",
   /* Integração com o Sistema Principal. Os dois primeiros são a razão de a
      categoria existir: um evento que não acha a angariação, ou que acha duas,
      não gera reclamação nenhuma — gera SILÊNCIO. O corretor simplesmente

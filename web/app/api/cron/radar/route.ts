@@ -1,6 +1,7 @@
 import { executarMonitorRadar } from "@/lib/servidor/monitorRadarAngariacao";
 import { registrarEvento } from "@/lib/servidor/registro";
 import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
+import { novoIdExecucao } from "@/lib/servidor/observabilidadeRadar";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -37,11 +38,13 @@ export async function GET(request: Request) {
   }
 
   const inicio = performance.now();
-  registrarRodada({ etapa: "inicio" });
+  const rodadaId = novoIdExecucao();
+  registrarRodada({ etapa: "inicio", rodada_id: rodadaId });
   try {
-    const resumo = await executarMonitorRadar();
+    const resumo = await executarMonitorRadar(rodadaId);
     registrarRodada({
       etapa: "fim",
+      rodada_id: rodadaId,
       candidatas: resumo.candidatas,
       elegiveis: resumo.elegiveis,
       verificadas: resumo.verificadas,
@@ -53,6 +56,7 @@ export async function GET(request: Request) {
   } catch (erro) {
     registrarRodada({
       etapa: "fim",
+      rodada_id: rodadaId,
       candidatas: 0,
       elegiveis: 0,
       verificadas: 0,

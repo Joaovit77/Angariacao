@@ -181,7 +181,7 @@ export default function CentralAngariacaoView() {
       somenteProprietario: (portal === "olx" || portal === "wimoveis") && somenteProprietario,
       diasPublicacao: portal === "olx" ? diasPublicacao : null,
     } satisfies Parameters<typeof buscarNaCentral>[0];
-    const dados = await buscarNaCentral(filtros);
+    const dados = await buscarNaCentral(filtros, "pesquisar");
     setResultado(dados);
     setFiltrosResultado(filtros);
     if (usuario?.id && dados.anuncios.length) {

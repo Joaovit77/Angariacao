@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   buscarComNavegador: vi.fn(),
   createClient: vi.fn(),
   salvarComparaveisMercado: vi.fn(),
+  registrarEvento: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -13,6 +14,7 @@ vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.createClient }));
 vi.mock("@/lib/servidor/comparaveisMercado", () => ({
   salvarComparaveisMercado: mocks.salvarComparaveisMercado,
 }));
+vi.mock("@/lib/servidor/registro", () => ({ registrarEvento: mocks.registrarEvento }));
 vi.mock("@/lib/servidor/firecrawlCentralAngariacao", () => ({
   buscarComFirecrawl: mocks.buscarComFirecrawl,
   FirecrawlIndisponivel: class FirecrawlIndisponivel extends Error {},
@@ -150,4 +152,124 @@ describe("persistência da busca da Central", () => {
     expect(mocks.buscarComNavegador).not.toHaveBeenCalled();
     expect(log.mock.calls[0][1]).toEqual({ provider: "firecrawl", operation: "coletar", error_code: "collection_failed", status: 403 });
   });
+
+  it.each(["monitor_navegador", "verificar_agora", "pesquisar"] as const)(
+    "%s: identifica iniciador, ID do servidor e cache sem inferir chamada externa",
+    async (iniciador) => {
+      mocks.buscarComFirecrawl.mockImplementation(async (_f, _u, _origem, _diag, observar) => {
+        observar({ fase: "cache_hit", aquisicao: "cache", coletaId: "48b73600-e868-46c6-a899-845b5487c2ca" });
+        observar({ fase: "resultado_interpretado", aquisicao: "cache", coletaId: "48b73600-e868-46c6-a899-845b5487c2ca" });
+        return [];
+      });
+      const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
+        method: "POST",
+        headers: { Authorization: "Bearer fixture", "Content-Type": "application/json", "x-angario-iniciador": iniciador },
+        body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+      }));
+      const corpo = await resposta.json();
+      const log = mocks.registrarEvento.mock.calls.find(([entrada]) => entrada.evento === "central-busca-ok")?.[0];
+      const detalhe = JSON.parse(log.detalhe);
+      expect(corpo.execucaoId).toMatch(/^[0-9a-f-]{36}$/);
+      expect(detalhe).toMatchObject({
+        execucao_id: corpo.execucaoId, iniciador, aquisicao: "cache", reutilizacao: "nenhuma",
+        chamada_propria_iniciada: false, novos: iniciador === "pesquisar" ? "nao_aplicavel" : null,
+      });
+      expect(detalhe.fases.map((fase: { fase: string }) => fase.fase)).toEqual(["cache_hit", "resultado_interpretado"]);
+    },
+  );
+
+  it("em Vercel, falha do Firecrawl registra falha sem fallback", async () => {
+    vi.stubEnv("VERCEL", "1");
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    mocks.buscarComFirecrawl.mockImplementation(async (_f, _u, _origem, _diag, observar) => {
+      observar({ fase: "caminho_escolhido", aquisicao: "firecrawl" });
+      observar({ fase: "fetch_iniciado", aquisicao: "firecrawl" });
+      observar({ fase: "falha", aquisicao: "firecrawl", codigo: "firecrawl_timeout" });
+      throw new Error("token privado");
+    });
+    const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
+      method: "POST", headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" },
+      body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+    }));
+    expect((await resposta.json()).ok).toBe(false);
+    expect(mocks.buscarComNavegador).not.toHaveBeenCalled();
+    const log = mocks.registrarEvento.mock.calls.find(([entrada]) => entrada.evento === "central-busca-falhou")?.[0];
+    const detalhe = JSON.parse(log.detalhe);
+    expect(detalhe.fases.map((fase: { fase: string }) => fase.fase)).toEqual([
+      "caminho_escolhido", "fetch_iniciado", "falha",
+    ]);
+    expect(JSON.stringify(detalhe)).not.toContain("token privado");
+  });
+
+  it("fora da Vercel, fallback observado segue a ordem funcional anterior", async () => {
+    vi.stubEnv("VERCEL", "");
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    mocks.buscarComFirecrawl.mockRejectedValue(new Error("coleta indisponível"));
+    mocks.buscarComNavegador.mockImplementation(async (_f, _u, observar) => {
+      observar("fetch_iniciado");
+      observar("resposta_recebida", 200);
+      return [];
+    });
+    const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
+      method: "POST", headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" },
+      body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+    }));
+    expect((await resposta.json()).ok).toBe(true);
+    expect(mocks.buscarComNavegador).toHaveBeenCalledOnce();
+    const log = mocks.registrarEvento.mock.calls.find(([entrada]) => entrada.evento === "central-busca-ok")?.[0];
+    const detalhe = JSON.parse(log.detalhe);
+    expect(detalhe.aquisicao).toBe("playwright");
+    expect(detalhe.fases.map((fase: { fase: string }) => fase.fase)).toEqual([
+      "fallback", "caminho_escolhido", "fetch_iniciado", "resposta_recebida", "resultado_interpretado",
+    ]);
+  });
+
+  it("fallback HTTP direto só aparece após falha dos caminhos anteriores", async () => {
+    vi.stubEnv("VERCEL", "");
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    mocks.buscarComFirecrawl.mockRejectedValue(new Error("coleta indisponível"));
+    mocks.buscarComNavegador.mockRejectedValue(new Error("navegador indisponível"));
+    const fetchFalso = vi.fn(async () => new Response("<html></html>", { status: 200 }));
+    vi.stubGlobal("fetch", fetchFalso);
+    const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
+      method: "POST", headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" },
+      body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+    }));
+    expect((await resposta.json()).ok).toBe(true);
+    expect(fetchFalso).toHaveBeenCalledOnce();
+    const log = mocks.registrarEvento.mock.calls.find(([entrada]) => entrada.evento === "central-busca-ok")?.[0];
+    const detalhe = JSON.parse(log.detalhe);
+    expect(detalhe).toMatchObject({ aquisicao: "http_direto", chamada_propria_iniciada: true });
+    expect(detalhe.fases.map((fase: { fase: string }) => fase.fase)).toEqual([
+      "fallback", "caminho_escolhido", "falha", "fallback", "caminho_escolhido",
+      "fetch_iniciado", "resposta_recebida", "resultado_interpretado",
+    ]);
+    vi.unstubAllGlobals();
+  });
+
+  it.each(["monitor_navegador", "verificar_agora", "pesquisar"] as const)(
+    "%s: registra borda Firecrawl sem alterar resultado funcional",
+    async (iniciador) => {
+      mocks.buscarComFirecrawl.mockImplementation(async (_f, _u, _origem, _diag, observar) => {
+        observar({ fase: "caminho_escolhido", aquisicao: "firecrawl" });
+        observar({ fase: "fetch_iniciado", aquisicao: "firecrawl" });
+        observar({ fase: "resposta_recebida", aquisicao: "firecrawl", statusHttp: 200 });
+        observar({ fase: "resultado_interpretado", aquisicao: "firecrawl" });
+        return [];
+      });
+      const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
+        method: "POST", headers: {
+          Authorization: "Bearer fixture", "Content-Type": "application/json", "x-angario-iniciador": iniciador,
+        },
+        body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+      }));
+      const corpo = await resposta.json();
+      const log = mocks.registrarEvento.mock.calls.find(([entrada]) => entrada.evento === "central-busca-ok")?.[0];
+      expect(JSON.parse(log.detalhe)).toMatchObject({
+        execucao_id: corpo.execucaoId, aquisicao: "firecrawl", chamada_propria_iniciada: true,
+        resposta_recebida: true, resultado_interpretado: true,
+      });
+      expect(corpo).toMatchObject({ ok: true, anuncios: [] });
+    },
+  );
 });

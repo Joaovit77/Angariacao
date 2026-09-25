@@ -33,6 +33,7 @@ import {
   type OrigemConsultaFirecrawl,
 } from "@/lib/servidor/firecrawlCentralAngariacao";
 import { registrarEvento } from "@/lib/servidor/registro";
+import { criarObservadorRadar, novoIdExecucao } from "@/lib/servidor/observabilidadeRadar";
 
 const LIMITE_BUSCAS_POR_RODADA = 8;
 const CONCORRENCIA = 2;
@@ -302,10 +303,14 @@ function detalheOpcional(montar: () => Record<string, unknown>): Record<string, 
 async function verificarBusca(
   supabase: SupabaseClient,
   busca: DbBuscaRadar,
+  rodadaId: string,
 ): Promise<ResultadoBuscaMonitorada> {
   const agora = agoraISOString();
   const inicio = performance.now();
   const portal = busca.filtros.portal;
+  const observador = criarObservadorRadar({
+    execucaoId: novoIdExecucao(), rodadaId, iniciador: "cron", portal, buscaId: busca.id,
+  });
   let etapa: EtapaBuscaRadar = "montagem-url";
   let origemHtml: OrigemConsultaFirecrawl | undefined;
   let diagnosticoOlx: DiagnosticoPaginaOlx | undefined;
@@ -317,6 +322,7 @@ async function verificarBusca(
       urlPesquisa,
       (origem) => { origemHtml = origem; },
       (diagnostico) => { diagnosticoOlx = diagnostico; },
+      observador.observar,
     );
     etapa = "normalizacao";
     const finalizacao = await finalizarColetaCentralAngariacao(
@@ -369,12 +375,12 @@ async function verificarBusca(
     const origem = origemHtml ?? "firecrawl";
     const detalheComum = {
       busca_id: busca.id,
-      portal,
       coletados: coletados.length,
       apos_filtro: anuncios.length,
       novos: quantidadeInserida,
       origem_html: origem,
       duracao_ms: Math.round(performance.now() - inicio),
+      ...observador.resumo(),
     };
     const repeticaoChaves = coletados.length && buscaNoEscopoRepeticaoChaves(busca.filtros)
       ? await detalheShadowRepeticaoChaves(supabase, busca, novos, agora)
@@ -414,11 +420,11 @@ async function verificarBusca(
     const codigo = codigoDaFalha(erro);
     registrarRadar(busca.user_id, "erro", "radar-busca-falhou", {
       busca_id: busca.id,
-      portal,
       codigo,
       etapa,
       duracao_ms: Math.round(performance.now() - inicio),
       ...(origemHtml ? { origem_html: origemHtml } : {}),
+      ...observador.resumo(),
     });
     return {
       buscaId: busca.id,
@@ -447,7 +453,7 @@ async function emLotes<T, R>(itens: T[], tamanho: number, tarefa: (item: T) => P
  * O limite impede uma conta com muitas buscas antigas de produzir uma rajada
  * cara no Firecrawl; as restantes entram naturalmente na rodada seguinte.
  */
-export async function executarMonitorRadar(): Promise<ResumoMonitorRadar> {
+export async function executarMonitorRadar(rodadaId = novoIdExecucao()): Promise<ResumoMonitorRadar> {
   if (!process.env.FIRECRAWL_API_KEY) throw new Error("FIRECRAWL_API_KEY não configurada.");
   const supabase = clienteServico();
   const { data, error } = await supabase
@@ -466,6 +472,7 @@ export async function executarMonitorRadar(): Promise<ResumoMonitorRadar> {
     if (motivo) {
       registrarRadar(busca.user_id, "info", "radar-busca-pulada", {
         busca_id: busca.id,
+        rodada_id: rodadaId,
         motivo,
       });
     } else {
@@ -477,10 +484,11 @@ export async function executarMonitorRadar(): Promise<ResumoMonitorRadar> {
   for (const busca of elegiveis.slice(LIMITE_BUSCAS_POR_RODADA)) {
     registrarRadar(busca.user_id, "info", "radar-busca-pulada", {
       busca_id: busca.id,
+      rodada_id: rodadaId,
       motivo: "limite-rodada",
     });
   }
-  const resultados = await emLotes(buscas, CONCORRENCIA, (busca) => verificarBusca(supabase, busca));
+  const resultados = await emLotes(buscas, CONCORRENCIA, (busca) => verificarBusca(supabase, busca, rodadaId));
   return {
     candidatas: candidatas.length,
     elegiveis: elegiveis.length,
