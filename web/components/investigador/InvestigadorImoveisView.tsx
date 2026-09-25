@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   LIMITE_CONSULTA_INVESTIGADOR,
+  MAXIMO_BUSCAS_POR_INVESTIGACAO,
   type MemoriaInvestigacao,
   type CorrespondenciaInvestigacao,
   type EtapaInvestigacao,
@@ -20,11 +21,11 @@ import styles from "./InvestigadorImoveisView.module.css";
 type EtapaVisual = "preparando" | EtapaInvestigacao | "concluido";
 
 const ETAPAS: { id: Exclude<EtapaVisual, "concluido">; titulo: string; detalhe: string }[] = [
-  { id: "preparando", titulo: "Preparando investigação", detalhe: "Validando sua sessão e as informações fornecidas." },
-  { id: "gerando-buscas", titulo: "Gerando buscas", detalhe: "Criando poucas variações relevantes para economizar requisições." },
-  { id: "pesquisando-web", titulo: "Pesquisando na web", detalhe: "Consultando os resultados do Google pelo provedor configurado." },
-  { id: "normalizando-resultados", titulo: "Organizando resultados", detalhe: "Canonicalizando fontes e removendo repetições desnecessárias." },
-  { id: "cruzando-informacoes", titulo: "Cruzando informações", detalhe: "Comparando referências, endereço e características observadas." },
+  { id: "preparando", titulo: "Preparando", detalhe: "Conferindo sua sessão e a consulta." },
+  { id: "gerando-buscas", titulo: "Planejando pesquisas", detalhe: "Poucas variações da sua consulta, da mais específica para a mais ampla." },
+  { id: "pesquisando-web", titulo: "Pesquisando na web", detalhe: "Buscando anúncios e páginas públicas." },
+  { id: "normalizando-resultados", titulo: "Organizando resultados", detalhe: "Juntando páginas repetidas." },
+  { id: "cruzando-informacoes", titulo: "Comparando com a consulta", detalhe: "Conferindo endereço, referência e características." },
 ];
 
 const ROTULO_CONFIANCA = {
@@ -33,6 +34,14 @@ const ROTULO_CONFIANCA = {
   possivel: "Correspondência possível",
   indicio: "Indício",
 } as const;
+
+// Mesmo texto que a rota envia quando a busca terminou sem nenhum card e sem
+// falha parcial; o estado vazio já diz isso, então o aviso não se repete.
+export const AVISO_SEM_RESULTADOS = "Nenhuma possível correspondência apareceu nessas buscas.";
+
+function plural(n: number, singular: string, varios: string): string {
+  return `${n} ${n === 1 ? singular : varios}`;
+}
 
 function IconeInvestigador() {
   return (
@@ -52,17 +61,51 @@ function Caracteristicas({ resultado }: { resultado: CorrespondenciaInvestigacao
   return itens.length ? <div className={styles.caracteristicas}>{itens.map((item) => <span key={item}>{item}</span>)}</div> : null;
 }
 
-function CardResultado({ resultado, comparacoes }: { resultado: CorrespondenciaInvestigacao; comparacoes: ComparacaoConfirmada[] }) {
-  const comparacoesVisiveis = comparacoes.filter((item) => item.estado !== "sem_dado_no_resultado");
+function atributoEmTexto(atributo: ComparacaoConfirmada["atributo"]): string {
+  const rotulo = CATALOGO_ATRIBUTOS_MEMORIA[atributo].rotulo;
+  return rotulo.charAt(0).toLocaleLowerCase("pt-BR") + rotulo.slice(1);
+}
+
+/** B3.2a: bloco à parte das evidências. Compara o anúncio com o que uma
+    pessoa já confirmou; não diz que o anúncio está certo nem muda a faixa. */
+function ComparacaoMemoria({ comparacoes }: { comparacoes: ComparacaoConfirmada[] }) {
+  const visiveis = comparacoes.filter((item) => item.estado !== "sem_dado_no_resultado");
+  if (!visiveis.length) return null;
   return (
-    <article className={styles.resultadoCard}>
+    <div className={styles.memoriaConfirmada} data-memoria-confirmada>
+      <strong>Comparado com o que você confirmou</strong>
+      <ul>
+        {visiveis.map((item) => (
+          <li key={item.atributo} data-comparacao={item.estado}>
+            <span aria-hidden="true">{item.estado === "coincide" ? "=" : "≠"}</span>
+            {item.estado === "coincide" ? "Bate com o que você confirmou: " : "Diferente do que você confirmou: "}
+            {atributoEmTexto(item.atributo)}
+          </li>
+        ))}
+      </ul>
+      <small>Essa comparação não altera a correspondência.</small>
+    </div>
+  );
+}
+
+function CardResultado({
+  resultado,
+  comparacoes,
+  compacto,
+}: {
+  resultado: CorrespondenciaInvestigacao;
+  comparacoes: ComparacaoConfirmada[];
+  compacto: boolean;
+}) {
+  return (
+    <article className={`${styles.resultadoCard} ${compacto ? styles.resultadoCompacto : ""}`} data-faixa={resultado.confianca}>
       <div className={styles.resultadoTopo}>
         <span className={`${styles.confianca} ${styles[resultado.confianca]}`}>
           {ROTULO_CONFIANCA[resultado.confianca]}
         </span>
-        {resultado.preco !== null ? <strong>{fmtMoney(resultado.preco)}</strong> : null}
+        {resultado.preco !== null ? <span className={styles.preco}>{fmtMoney(resultado.preco)}</span> : null}
       </div>
-      <h3>{resultado.titulo}</h3>
+      <h4>{resultado.titulo}</h4>
       <Caracteristicas resultado={resultado} />
       {resultado.endereco || resultado.condominio || resultado.referencia ? (
         <dl className={styles.dadosEncontrados}>
@@ -72,47 +115,40 @@ function CardResultado({ resultado, comparacoes }: { resultado: CorrespondenciaI
         </dl>
       ) : null}
       {resultado.descricao ? <p className={styles.descricao}>{resultado.descricao}</p> : null}
-      <div className={styles.evidencias}>
-        <span>Evidências favoráveis</span>
-        {resultado.evidencias.length ? (
-          <ul>{resultado.evidencias.map((item) => <li key={item}>✓ {item}</li>)}</ul>
-        ) : (
-          <p>O resultado apareceu nas buscas, mas não trouxe coincidências estruturadas suficientes.</p>
-        )}
-      </div>
-      {resultado.contradicoes.length ? (
-        <div className={styles.contradicoes}>
-          <span>Contradições observadas</span>
-          <ul>{resultado.contradicoes.map((item) => <li key={item}>⚠ {item}</li>)}</ul>
-        </div>
-      ) : null}
-      {comparacoesVisiveis.length ? (
-        <div className={styles.memoriaConfirmada} data-memoria-confirmada>
-          <strong>Memória confirmada</strong>
+      {resultado.evidencias.length ? (
+        <div className={styles.evidencias}>
+          <span>O que bate</span>
           <ul>
-            {comparacoesVisiveis.map((item) => (
-              <li key={item.atributo} data-comparacao={item.estado}>
-                {item.estado === "coincide" ? "✓" : "⚠"} {CATALOGO_ATRIBUTOS_MEMORIA[item.atributo].rotulo} {item.estado === "coincide" ? "coincide" : "conflita"}
-              </li>
+            {resultado.evidencias.map((item) => (
+              <li key={item}><span aria-hidden="true">✓</span>{item}</li>
             ))}
           </ul>
-          <small>Comparação com informações confirmadas por uma pessoa; não altera a correspondência.</small>
+        </div>
+      ) : (
+        <p className={styles.semEvidencias}>Nenhum dado em comum com a sua consulta foi identificado.</p>
+      )}
+      {resultado.contradicoes.length ? (
+        <div className={styles.contradicoes}>
+          <span>O que diverge</span>
+          <ul>
+            {resultado.contradicoes.map((item) => (
+              <li key={item}><span aria-hidden="true">⚠</span>{item}</li>
+            ))}
+          </ul>
         </div>
       ) : null}
+      <ComparacaoMemoria comparacoes={comparacoes} />
       <div className={styles.fonte}>
-        <div>
-          <span>Fonte encontrada</span>
-          <strong>{resultado.dominio}</strong>
-          <small>Encontrada em {resultado.consultas.length} busca{resultado.consultas.length === 1 ? "" : "s"}</small>
-        </div>
+        <strong className={styles.dominio} title={resultado.dominio}>{resultado.dominio}</strong>
         <div className={styles.acoesResultado}>
           {resultado.comparavelId ? (
             <Link className="btn btn-primary" href={urlAvaliacaoDoComparavel(resultado.comparavelId)}>
               Usar na Avaliação
             </Link>
           ) : null}
-          <a className="btn btn-ghost" href={resultado.url} target="_blank" rel="noreferrer">
-            Abrir fonte ↗
+          <a className="btn" href={resultado.url} target="_blank" rel="noreferrer">
+            Abrir fonte <span aria-hidden="true">↗</span>
+            <span className={styles.somenteLeitor}> (abre em nova aba)</span>
           </a>
         </div>
       </div>
@@ -120,28 +156,108 @@ function CardResultado({ resultado, comparacoes }: { resultado: CorrespondenciaI
   );
 }
 
-function Processamento({ etapa }: { etapa: EtapaVisual }) {
-  const atual = etapa === "concluido" ? ETAPAS.length : ETAPAS.findIndex((item) => item.id === etapa);
+function GrupoResultados({
+  id,
+  titulo,
+  explicacao,
+  itens,
+  resultado,
+  compacto,
+}: {
+  id: string;
+  titulo: string;
+  explicacao: string;
+  itens: CorrespondenciaInvestigacao[];
+  resultado: ResultadoInvestigacao;
+  compacto: boolean;
+}) {
+  if (!itens.length) return null;
   return (
-    <section className={styles.processamento} aria-live="polite" aria-label="Andamento da investigação">
+    <section className={styles.grupo} aria-labelledby={id} data-grupo={id}>
+      <div className={styles.grupoCabecalho}>
+        <h3 id={id}>{titulo} <span>({itens.length})</span></h3>
+        <p>{explicacao}</p>
+      </div>
+      <div className={styles.gradeResultados}>
+        {itens.map((item) => (
+          <CardResultado
+            key={item.url}
+            resultado={item}
+            compacto={compacto}
+            comparacoes={resultado.memoriaConfirmada?.porResultado.find((comparacao) => comparacao.url === item.url)?.comparacoes ?? []}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Texto da única região viva do painel. Só usa o que o stream entrega: a
+    etapa atual e as pesquisas já concluídas (nunca a que está rodando). */
+export function textoAndamentoInvestigacao(etapa: EtapaVisual, pesquisasConcluidas: number): string {
+  if (etapa === "concluido") {
+    return pesquisasConcluidas
+      ? `${plural(pesquisasConcluidas, "pesquisa realizada", "pesquisas realizadas")}.`
+      : "Resultados prontos.";
+  }
+  if (etapa === "pesquisando-web") {
+    return pesquisasConcluidas
+      ? `Pesquisando na web… ${pesquisasConcluidas} de até ${MAXIMO_BUSCAS_POR_INVESTIGACAO} pesquisas concluídas.`
+      : "Pesquisando na web… a primeira pesquisa está em andamento.";
+  }
+  const atual = ETAPAS.find((item) => item.id === etapa);
+  return atual ? `${atual.titulo}… ${atual.detalhe}` : "";
+}
+
+function Processamento({
+  etapa,
+  pesquisasConcluidas,
+  consultas,
+  pesquisasEvitadas,
+}: {
+  etapa: EtapaVisual;
+  pesquisasConcluidas: number;
+  consultas: string[];
+  pesquisasEvitadas: number;
+}) {
+  const concluida = etapa === "concluido";
+  const atual = concluida ? ETAPAS.length : ETAPAS.findIndex((item) => item.id === etapa);
+  return (
+    <section
+      className={styles.processamento}
+      data-concluida={concluida ? "sim" : "nao"}
+      aria-label="Andamento da investigação"
+    >
       <div className={styles.processamentoCabecalho}>
-        <span className={styles.pulso} aria-hidden="true" />
+        <span className={concluida ? styles.concluidoIcone : styles.pulso} aria-hidden="true">{concluida ? "✓" : null}</span>
         <div>
-          <strong>{etapa === "concluido" ? "Investigação concluída" : "Investigação em andamento"}</strong>
-          <small>As etapas abaixo refletem o processamento real.</small>
+          <strong>{concluida ? "Investigação concluída" : "Investigação em andamento"}</strong>
+          <small role="status" aria-live="polite">{textoAndamentoInvestigacao(etapa, pesquisasConcluidas)}</small>
         </div>
       </div>
-      <ol>
-        {ETAPAS.map((item, indice) => {
-          const estado = indice < atual || etapa === "concluido" ? "concluida" : indice === atual ? "ativa" : "pendente";
-          return (
-            <li key={item.id} data-estado={estado}>
-              <i aria-hidden="true">{estado === "concluida" ? "✓" : indice + 1}</i>
-              <div><strong>{item.titulo}</strong><small>{item.detalhe}</small></div>
-            </li>
-          );
-        })}
-      </ol>
+      {!concluida ? (
+        <ol>
+          {ETAPAS.map((item, indice) => {
+            const estado = indice < atual ? "concluida" : indice === atual ? "ativa" : "pendente";
+            return (
+              <li key={item.id} data-estado={estado} aria-current={estado === "ativa" ? "step" : undefined}>
+                <i aria-hidden="true">{estado === "concluida" ? "✓" : indice + 1}</i>
+                <div><strong>{item.titulo}</strong><small>{item.detalhe}</small></div>
+              </li>
+            );
+          })}
+        </ol>
+      ) : consultas.length ? (
+        <details className={styles.consultas}>
+          <summary>Ver {consultas.length === 1 ? "a pesquisa feita" : `as ${consultas.length} pesquisas feitas`}</summary>
+          <ol>{consultas.map((item) => <li key={item}>{item}</li>)}</ol>
+          {pesquisasEvitadas ? (
+            <p>
+              {plural(pesquisasEvitadas, "pesquisa dispensada", "pesquisas dispensadas")} porque já havia sinais suficientes.
+            </p>
+          ) : null}
+        </details>
+      ) : null}
     </section>
   );
 }
@@ -157,6 +273,13 @@ const ROTULO_ORIGEM_CONTEXTO = {
   central: "Central de Angariação",
   garimpo: "Garimpo em Campo",
 } as const;
+
+const PREPOSICAO_ORIGEM_CONTEXTO: Record<keyof typeof ROTULO_ORIGEM_CONTEXTO, string> = {
+  pipeline: "do",
+  radar: "do",
+  central: "da",
+  garimpo: "do",
+};
 
 /** C13B: o que a tela diz sobre a memória do imóvel depois da pesquisa.
     Só contagens; a memória em si é lida no Garimpo (C13C). Falha é
@@ -178,6 +301,17 @@ export function mensagemMemoriaInvestigacao(memoria: MemoriaInvestigacao): strin
     default:
       return "Investigação concluída. A memória do imóvel não está disponível neste ambiente.";
   }
+}
+
+/** Divide só para apresentação, pela faixa que já veio do servidor. `filter`
+    é estável: cada grupo mantém exatamente a ordem recebida, e a união dos
+    dois é a lista inteira (as quatro faixas são cobertas). */
+export function agruparResultadosPorFaixa(resultados: readonly CorrespondenciaInvestigacao[]) {
+  const melhor = (item: CorrespondenciaInvestigacao) => item.confianca === "muito-forte" || item.confianca === "forte";
+  return {
+    melhores: resultados.filter(melhor),
+    outros: resultados.filter((item) => !melhor(item)),
+  };
 }
 
 export default function InvestigadorImoveisView({ imovelIdInicial, referenciaInicial }: Props) {
@@ -252,20 +386,24 @@ export default function InvestigadorImoveisView({ imovelIdInicial, referenciaIni
     }
   }
 
+  const grupos = resultado ? agruparResultadosPorFaixa(resultado.resultados) : null;
+  const avisoResultado = resultado?.aviso && !(resultado.resultados.length === 0 && resultado.aviso === AVISO_SEM_RESULTADOS)
+    ? resultado.aviso
+    : "";
+
   return (
     <div className={styles.pagina}>
       <section className={styles.hero}>
         <div className={styles.heroIcone}><IconeInvestigador /></div>
-        <div>
-          <span className={styles.sobretitulo}>PESQUISA ASSISTIDA</span>
-          <h2>Investigador de Imóveis</h2>
-          <p>Informe o que você sabe. Pode ser um endereço, referência, condomínio ou uma combinação de características.</p>
-        </div>
+        <p>
+          <strong>Procure o imóvel em anúncios e páginas públicas.</strong>{" "}
+          Informe endereço, referência, condomínio ou características; o resultado mostra o que bate e o que diverge.
+        </p>
       </section>
 
       {origemContexto ? (
         <div className={styles.contexto} role="status">
-          Dados do imóvel carregados do {ROTULO_ORIGEM_CONTEXTO[origemContexto]}. Revise a consulta antes de investigar.
+          {`Dados do imóvel carregados ${PREPOSICAO_ORIGEM_CONTEXTO[origemContexto]} ${ROTULO_ORIGEM_CONTEXTO[origemContexto]}. Revise a consulta antes de investigar.`}
         </div>
       ) : null}
       {avisoContexto ? <div className={styles.aviso} role="alert">{avisoContexto}</div> : null}
@@ -279,13 +417,14 @@ export default function InvestigadorImoveisView({ imovelIdInicial, referenciaIni
           onChange={(evento) => setConsulta(evento.target.value)}
           placeholder={carregandoContexto ? "Carregando dados do imóvel…" : "Endereço, referência, condomínio ou características..."}
           rows={4}
+          aria-describedby="ajuda-consulta-investigador"
           disabled={processando || carregandoContexto}
         />
         <div className={styles.formularioRodape}>
-          <span>
+          <span id="ajuda-consulta-investigador">
             {carregandoContexto
-              ? "Resolvendo o imóvel com segurança…"
-              : `${consulta.length}/${LIMITE_CONSULTA_INVESTIGADOR} · Não inclua dados pessoais desnecessários.`}
+              ? "Carregando dados do imóvel…"
+              : `Você pode editar o texto antes de investigar. Não inclua dados pessoais. ${consulta.length}/${LIMITE_CONSULTA_INVESTIGADOR}`}
           </span>
           <button className="btn btn-primary" type="submit" disabled={processando || carregandoContexto || consulta.trim().length < 3}>
             {processando ? "Investigando…" : "Investigar imóvel"}
@@ -294,30 +433,26 @@ export default function InvestigadorImoveisView({ imovelIdInicial, referenciaIni
       </form>
 
       {erro ? <div className={styles.erro} role="alert">{erro}</div> : null}
-      {etapa ? <Processamento etapa={etapa} /> : null}
-
-      {consultasRealizadas.length ? (
-        <details className={styles.consultas} open={Boolean(resultado)}>
-          <summary>
-            {consultasRealizadas.length} de até 3 pesquisa{consultasRealizadas.length === 1 ? "" : "s"} realizada{consultasRealizadas.length === 1 ? "" : "s"}
-          </summary>
-          <ol>{consultasRealizadas.map((item) => <li key={item}>{item}</li>)}</ol>
-          {resultado?.encerramentoAntecipado ? (
-            <p>{resultado.pesquisasEvitadas} pesquisa{resultado.pesquisasEvitadas === 1 ? "" : "s"} evitada{resultado.pesquisasEvitadas === 1 ? "" : "s"} porque já havia evidência suficiente.</p>
-          ) : null}
-        </details>
+      {etapa ? (
+        <Processamento
+          etapa={etapa}
+          pesquisasConcluidas={etapa === "concluido" && resultado ? resultado.consultas.length : consultasRealizadas.length}
+          consultas={resultado?.consultas ?? []}
+          pesquisasEvitadas={resultado?.encerramentoAntecipado ? resultado.pesquisasEvitadas : 0}
+        />
       ) : null}
 
-      {resultado ? (
-        <section className={styles.resultados}>
+      {resultado && grupos ? (
+        <section className={styles.resultados} aria-labelledby="titulo-resultados-investigador">
           <div className={styles.resultadosCabecalho}>
-            <div>
-              <span>POSSÍVEIS CORRESPONDÊNCIAS</span>
-              <h2>{resultado.resultados.length} resultado{resultado.resultados.length === 1 ? "" : "s"} após remover duplicatas</h2>
-            </div>
-            <small>A classificação indica probabilidade de correspondência, não confirmação factual.</small>
+            <span>POSSÍVEIS CORRESPONDÊNCIAS</span>
+            <h2 id="titulo-resultados-investigador">{plural(resultado.resultados.length, "resultado", "resultados")}</h2>
+            <p>
+              A faixa indica o quanto o anúncio se parece com a sua consulta. Ela não confirma que é o mesmo imóvel:
+              abra a fonte para conferir.
+            </p>
           </div>
-          {resultado.aviso ? <div className={styles.aviso}>{resultado.aviso}</div> : null}
+          {avisoResultado ? <div className={styles.aviso}>{avisoResultado}</div> : null}
           {resultado.memoria ? (
             <div
               className={resultado.memoria.estado === "falhou" ? styles.erro : styles.contexto}
@@ -333,17 +468,26 @@ export default function InvestigadorImoveisView({ imovelIdInicial, referenciaIni
             </p>
           ) : null}
           {resultado.resultados.length ? (
-            <div className={styles.gradeResultados}>
-              {resultado.resultados.map((item) => (
-                <CardResultado
-                  key={item.url}
-                  resultado={item}
-                  comparacoes={resultado.memoriaConfirmada?.porResultado.find((comparacao) => comparacao.url === item.url)?.comparacoes ?? []}
-                />
-              ))}
-            </div>
+            <>
+              <GrupoResultados
+                id="grupo-melhores"
+                titulo="Melhores correspondências"
+                explicacao="Têm dados de identificação em comum com a sua consulta."
+                itens={grupos.melhores}
+                resultado={resultado}
+                compacto={false}
+              />
+              <GrupoResultados
+                id="grupo-outros"
+                titulo="Outros resultados"
+                explicacao="Pouca informação em comum com a sua consulta ou algo divergente. Confira na fonte antes de usar."
+                itens={grupos.outros}
+                resultado={resultado}
+                compacto
+              />
+            </>
           ) : (
-            <div className={styles.vazio}>
+            <div className={styles.vazio} data-vazio>
               <strong>Nenhuma correspondência encontrada</strong>
               <span>Tente acrescentar cidade, bairro, referência ou uma característica específica.</span>
             </div>
