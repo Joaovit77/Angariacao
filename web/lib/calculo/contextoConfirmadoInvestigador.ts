@@ -1,4 +1,4 @@
-import type { CorrespondenciaInvestigacao } from "./investigadorImoveis";
+import { extrairCamposInvestigacao, type CorrespondenciaInvestigacao } from "./investigadorImoveis";
 import {
   ATRIBUTOS_MEMORIA,
   CATALOGO_ATRIBUTOS_MEMORIA,
@@ -34,6 +34,14 @@ export type EstadoComparacaoConfirmada = "coincide" | "conflita" | "sem_dado_no_
 export interface ComparacaoConfirmada {
   atributo: AtributoMemoria;
   estado: EstadoComparacaoConfirmada;
+  /** Só existe quando a entrada inequívoca discorda da confirmação. */
+  relacaoEntrada?: EstadoComparacaoConfirmada;
+}
+
+export interface ConflitoEntradaConfirmada {
+  atributo: "area_m2" | "quartos" | "vagas";
+  valorInformado: number;
+  valorConfirmado: number;
 }
 
 export interface ComparacaoResultadoConfirmado {
@@ -45,6 +53,8 @@ export interface ComparacaoResultadoConfirmado {
 export interface MemoriaConfirmadaNaResposta {
   porResultado: ComparacaoResultadoConfirmado[];
   conflitosConfirmacoes: AtributoMemoria[];
+  /** Contexto auxiliar: não altera consulta, resultado ou correspondência. */
+  conflitosEntrada?: ConflitoEntradaConfirmada[];
 }
 
 export interface ResumoContextoConfirmado {
@@ -129,19 +139,54 @@ function compararCampo(
   return valorCanonico(confirmado) === valorCanonico(valorResultado) ? "coincide" : "conflita";
 }
 
+/** B3.2b: apenas quantidades rotuladas e área com unidade. Reaproveita
+    os casos explícitos do extrator, mas descarta alternativas e faixas que
+    ele pode interpretar como um valor único. */
+export function atributosInequivocosDaConsulta(consulta: string): Partial<Record<ConflitoEntradaConfirmada["atributo"], number>> {
+  const campos = extrairCamposInvestigacao(consulta);
+  // O extrator do pipeline pode reconhecer apenas o último valor de
+  // "2 ou 3 quartos". Aqui uma alternativa ou faixa não é fato informado.
+  const ambiguos = new Set(
+    [...consulta.matchAll(/\b\d{1,4}(?:[.,]\d{1,2})?\s*(?:ou|e|a|até|[-–/])\s*\d{1,4}(?:[.,]\d{1,2})?\s*(quartos?|dormit[oó]rios?|vagas?(?:\s+de\s+garagem)?|garagens?|m(?:²|2|\^2))(?=\s|[,.;:]|$)/giu)]
+      .map((item) => item[1].toLowerCase()),
+  );
+  const ambiguo = (inicio: string) => [...ambiguos].some((rotulo) => rotulo.startsWith(inicio));
+  return {
+    ...(campos.area !== null && !ambiguo("m") ? { area_m2: campos.area } : {}),
+    ...(campos.quartos !== null && !ambiguo("quarto") && !ambiguo("dormit") ? { quartos: campos.quartos } : {}),
+    ...(campos.vagas !== null && !ambiguo("vaga") && !ambiguo("garag") ? { vagas: campos.vagas } : {}),
+  };
+}
+
 export function compararResultadosComConfirmacoes(
   contexto: ContextoConfirmadoInvestigador,
   resultados: ReadonlyArray<CorrespondenciaInvestigacao>,
+  consultaAtual?: string,
 ): MemoriaConfirmadaNaResposta {
+  const informados = consultaAtual === undefined ? {} : atributosInequivocosDaConsulta(consultaAtual);
+  const conflitosEntrada: ConflitoEntradaConfirmada[] = contexto.valores.flatMap((confirmado) => {
+    if (confirmado.atributo !== "area_m2" && confirmado.atributo !== "quartos" && confirmado.atributo !== "vagas") return [];
+    const valorInformado = informados[confirmado.atributo];
+    return valorInformado !== undefined && valorInformado !== confirmado.valorNum
+      ? [{ atributo: confirmado.atributo, valorInformado, valorConfirmado: confirmado.valorNum! }]
+      : [];
+  });
+  const conflitoPorAtributo = new Map(conflitosEntrada.map((conflito) => [conflito.atributo, conflito]));
   return {
     porResultado: resultados.map((resultado) => ({
       url: resultado.url,
       comparacoes: contexto.valores.flatMap((confirmado) => {
         const estado = compararCampo(confirmado, resultado);
-        return estado ? [{ atributo: confirmado.atributo, estado }] : [];
+        if (!estado) return [];
+        const conflito = conflitoPorAtributo.get(confirmado.atributo as ConflitoEntradaConfirmada["atributo"]);
+        const relacaoEntrada = conflito
+          ? compararCampo({ ...confirmado, valorNum: conflito.valorInformado }, resultado)
+          : null;
+        return [{ atributo: confirmado.atributo, estado, ...(relacaoEntrada ? { relacaoEntrada } : {}) }];
       }),
     })),
     conflitosConfirmacoes: [...contexto.conflitosConfirmacoes],
+    ...(conflitosEntrada.length ? { conflitosEntrada } : {}),
   };
 }
 

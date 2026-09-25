@@ -284,7 +284,7 @@ describe("B3.2a — barreira depois da persistência real da rota", () => {
     }
     const comparacao = (execucao: typeof comTres) => execucao.dados.memoriaConfirmada.porResultado[0].comparacoes;
     expect(comparacao(comTres)).toContainEqual({ atributo: "quartos", estado: "coincide" });
-    expect(comparacao(comDois)).toContainEqual({ atributo: "quartos", estado: "conflita" });
+    expect(comparacao(comDois)).toContainEqual({ atributo: "quartos", estado: "conflita", relacaoEntrada: "coincide" });
     const conclusoes = (info.mock.calls as unknown as Array<[unknown, unknown]>).filter(([rotulo]) => String(rotulo).includes("investigação concluída"))
       .map(([, dados]) => dados as { pontuacao: unknown; resultadosDescartados: number; motivoParada: string });
     expect(conclusoes.map((item) => item.pontuacao)).toEqual([conclusoes[0].pontuacao, conclusoes[0].pontuacao, conclusoes[0].pontuacao]);

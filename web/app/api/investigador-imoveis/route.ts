@@ -433,7 +433,7 @@ export async function POST(request: Request): Promise<Response> {
         if (imovelIdentificadoId) {
           const leitura = await lerConfirmacoesInvestigador(acesso.supabase, userId, imovelIdentificadoId);
           const contexto = projetarContextoConfirmado(leitura.linhas);
-          const comparacao = compararResultadosComConfirmacoes(contexto, exibidos.map((item) => ({ ...item })));
+          const comparacao = compararResultadosComConfirmacoes(contexto, exibidos.map((item) => ({ ...item })), consultaOriginal);
           b3_2a = resumirContextoConfirmado(contexto, comparacao, leitura.falhou);
           if (contexto.valores.length || contexto.conflitosConfirmacoes.length) {
             memoriaConfirmada = comparacao;

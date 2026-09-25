@@ -3109,6 +3109,16 @@ Hipóteses, rejeitadas e estados desconhecidos não entram. O contexto não alte
 B2, faixa, score B3.1, parada, ordem ou escrita da memória. O log B3.2a guarda só contagens e
 estado da leitura, sem valores ou fontes.
 
+**Precedência auxiliar (B3.2b).** Após a mesma barreira de persistência, a comparação
+considera apenas área com unidade explícita e quantidades rotuladas de quartos/vagas
+reconhecidas sem ambiguidade na consulta atual. Quando uma delas diverge de uma
+confirmação humana utilizável, a resposta mostra os dois valores e distingue, por
+resultado, a relação com a memória e com a entrada atual; ausência na fonte permanece
+ausência. Confirmações incompatíveis seguem bloqueadas. Condomínio, referência e valor
+anunciado não ganham inferência da consulta livre. Nenhum desses metadados alimenta
+busca, análise, B2, faixa, score B3.1, parada ou persistência B3-M1; hipóteses e
+rejeitadas continuam fora do contexto positivo.
+
 **Estado.** O C13 está publicado em Production desde 2026-09-15 (migration aplicada antes do merge
 em `main`) e foi comprovado de ponta a ponta na conta de teste: C13C em 2026-09-15 (leitura e
 confirmação humana) e C13B em 2026-09-16 (uma investigação real persistindo investigação e

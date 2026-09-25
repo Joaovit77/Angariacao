@@ -53,7 +53,7 @@ function Caracteristicas({ resultado }: { resultado: CorrespondenciaInvestigacao
 }
 
 function CardResultado({ resultado, comparacoes }: { resultado: CorrespondenciaInvestigacao; comparacoes: ComparacaoConfirmada[] }) {
-  const comparacoesVisiveis = comparacoes.filter((item) => item.estado !== "sem_dado_no_resultado");
+  const comparacoesVisiveis = comparacoes.filter((item) => item.estado !== "sem_dado_no_resultado" || item.relacaoEntrada);
   return (
     <article className={styles.resultadoCard}>
       <div className={styles.resultadoTopo}>
@@ -92,7 +92,7 @@ function CardResultado({ resultado, comparacoes }: { resultado: CorrespondenciaI
           <ul>
             {comparacoesVisiveis.map((item) => (
               <li key={item.atributo} data-comparacao={item.estado}>
-                {item.estado === "coincide" ? "✓" : "⚠"} {CATALOGO_ATRIBUTOS_MEMORIA[item.atributo].rotulo} {item.estado === "coincide" ? "coincide" : "conflita"}
+                {item.estado === "coincide" ? "✓" : "⚠"} {CATALOGO_ATRIBUTOS_MEMORIA[item.atributo].rotulo} {item.estado === "sem_dado_no_resultado" ? "sem dado no resultado" : item.estado === "coincide" ? "coincide" : "conflita"}{item.relacaoEntrada === "coincide" ? " com a memória; acompanha o informado nesta investigação" : item.relacaoEntrada === "conflita" ? " com a memória; difere do informado nesta investigação" : ""}
               </li>
             ))}
           </ul>
@@ -332,6 +332,12 @@ export default function InvestigadorImoveisView({ imovelIdInicial, referenciaIni
               Há confirmações incompatíveis na memória; esses atributos não foram usados na comparação.
             </p>
           ) : null}
+          {resultado.memoriaConfirmada?.conflitosEntrada?.map((conflito) => (
+            <p className={styles.memoriaConflito} role="status" key={conflito.atributo} data-conflito-entrada={conflito.atributo}>
+              <strong>Conflito entre a investigação atual e a memória confirmada.</strong>{" "}
+              {CATALOGO_ATRIBUTOS_MEMORIA[conflito.atributo].rotulo}: informado nesta investigação: {conflito.valorInformado.toLocaleString("pt-BR")}{conflito.atributo === "area_m2" ? " m²" : ""}; memória confirmada: {conflito.valorConfirmado.toLocaleString("pt-BR")}{conflito.atributo === "area_m2" ? " m²" : ""}.
+            </p>
+          ))}
           {resultado.resultados.length ? (
             <div className={styles.gradeResultados}>
               {resultado.resultados.map((item) => (
