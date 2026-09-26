@@ -178,12 +178,15 @@ export async function POST(request: Request) {
       );
     } catch (erro) {
       firecrawlFalhou = true;
-      if (erro instanceof HttpChavesIndisponivel && erro.codigo === "http_orcamento_insuficiente") {
+      const orcamentoInsuficiente = erro instanceof HttpChavesIndisponivel
+        && erro.codigo === "http_orcamento_insuficiente";
+      if (orcamentoInsuficiente) {
         observador.observar({ fase: "falha", codigo: erro.codigo });
+      } else {
+        console.warn("Central de Angariação: Firecrawl não concluiu a consulta:",
+          sanitizarErroExterno(erro, "firecrawl"));
       }
-      console.warn("Central de Angariação: Firecrawl não concluiu a consulta:",
-        sanitizarErroExterno(erro, "firecrawl"));
-      if (process.env.VERCEL) {
+      if (process.env.VERCEL || orcamentoInsuficiente) {
         observador.concluir(sessao.userId, "central-busca-falhou", { duracaoMs: performance.now() - inicio });
         return resposta({
           ok: false,

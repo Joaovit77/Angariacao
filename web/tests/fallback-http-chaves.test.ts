@@ -193,7 +193,7 @@ describe("fallback HTTP restrito do Chaves", () => {
     armazenamentos.set("central-firecrawl-html-v2", new Map([
       [chave, gzipSync(htmlFirecrawl).toString("base64")],
     ]));
-    const resultado = await buscarComFallbackHttpChaves(filtros, url);
+    const resultado = await buscarComFallbackHttpChaves(filtros, url, undefined, undefined, undefined, () => 0);
     expect(resultado[0].titulo).toBe("Resultado do cache Firecrawl");
     expect(resultado[0].url).toBe(href);
     expect(requisicao).toHaveBeenCalledTimes(2);
@@ -228,6 +228,58 @@ describe("fallback HTTP restrito do Chaves", () => {
 
     expect(requisicao).toHaveBeenCalledOnce();
     expect(cacheHttp().size).toBe(1);
+  });
+
+  it("cache HTTP surgido após falha Firecrawl aceita exatamente 35 s sem nova aquisição", async () => {
+    const url = urlDaPesquisa(filtros);
+    const chave = chaveCanonicaConsultaPortal(filtros.portal, url);
+    const requisicao = vi.fn(async () => {
+      armazenamentos.set("central-chaves-http-html-v1", new Map([
+        [chave, gzipSync(card()).toString("base64")],
+      ]));
+      return falhaFirecrawl();
+    });
+    vi.stubGlobal("fetch", requisicao);
+    const eventos: EventoConsultaFirecrawl[] = [];
+
+    const anuncios = await buscarComFallbackHttpChaves(filtros, url, undefined, undefined,
+      (evento) => eventos.push(evento), () => 35_000);
+
+    expect(anuncios).toHaveLength(1);
+    expect(requisicao).toHaveBeenCalledOnce();
+    expect(eventos.at(-2)).toMatchObject({ fase: "cache_hit", aquisicao: "cache" });
+    expect(eventos.at(-1)).toMatchObject({ fase: "resultado_interpretado", aquisicao: "cache" });
+    expect(eventos.some((evento) => evento.fase === "fetch_iniciado" && evento.aquisicao === "http_direto"))
+      .toBe(false);
+  });
+
+  it("cache surgido durante single-flight respeita o orçamento de cada consumidor", async () => {
+    let liberarFirecrawl!: (resposta: Response) => void;
+    const requisicao = vi.fn(() => new Promise<Response>((resolve) => { liberarFirecrawl = resolve; }));
+    vi.stubGlobal("fetch", requisicao);
+    const url = urlDaPesquisa(filtros);
+    const chave = chaveCanonicaConsultaPortal(filtros.portal, url);
+    const primeiro = criarObservadorRadar({
+      execucaoId: "dbda497e-d0b2-45ca-935b-01f48a2d2c21", iniciador: "cron", portal: filtros.portal,
+    });
+    const segundo = criarObservadorRadar({
+      execucaoId: "dbda497e-d0b2-45ca-935b-01f48a2d2c22", iniciador: "pesquisar", portal: filtros.portal,
+    });
+    const a = buscarComFallbackHttpChaves(filtros, url, undefined, undefined, primeiro.observar, () => 35_000);
+    const b = buscarComFallbackHttpChaves(filtros, url, undefined, undefined, segundo.observar, () => 34_999);
+    await vi.waitFor(() => expect(segundo.resumo().reutilizacao).toBe("single_flight"));
+    armazenamentos.set("central-chaves-http-html-v1", new Map([
+      [chave, gzipSync(card()).toString("base64")],
+    ]));
+    liberarFirecrawl(falhaFirecrawl());
+
+    const [resultadoA, resultadoB] = await Promise.allSettled([a, b]);
+    expect(resultadoA).toMatchObject({ status: "fulfilled", value: [expect.objectContaining({ idExterno: "35106344" })] });
+    expect(resultadoB).toMatchObject({ status: "rejected", reason: { codigo: "http_orcamento_insuficiente" } });
+    expect(requisicao).toHaveBeenCalledOnce();
+    expect(segundo.resumo()).toMatchObject({ reutilizacao: "single_flight", chamada_propria_iniciada: false });
+    expect(segundo.resumo().fases.some((fase) => fase.fase === "fetch_iniciado" && fase.aquisicao === "http_direto"))
+      .toBe(false);
   });
 
   it("duas execuções compartilham uma chamada Firecrawl e uma HTTP com crédito correto", async () => {

@@ -208,6 +208,7 @@ export async function buscarComFallbackHttpChaves(
   }
   const armazenado = await cacheHttp(chave, filtros);
   if (armazenado) {
+    exigirOrcamento(restanteMs, RESERVA_PROCESSAMENTO_CENTRAL_MS);
     registrarOrigem?.("cache");
     const coletaId = randomUUID();
     notificar(observar, { fase: "cache_hit", aquisicao: "cache", coletaId });

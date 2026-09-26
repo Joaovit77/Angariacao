@@ -1,3 +1,4 @@
+import { gzipSync } from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -46,6 +47,8 @@ vi.mock("@/lib/servidor/finalizacaoCentralAngariacao", async (importOriginal) =>
 
 import { FirecrawlIndisponivel, TIMEOUT_FIRECRAWL_FETCH_MS } from "@/lib/servidor/firecrawlCentralAngariacao";
 import { RESERVA_PROCESSAMENTO_CENTRAL_MS, TIMEOUT_HTTP_CHAVES_MS } from "@/lib/servidor/fallbackHttpChaves";
+import { urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
+import { chaveCanonicaConsultaPortal } from "@/lib/servidor/planejadorColetaMercados";
 import { POST, maxDuration } from "@/app/api/central-angariacao/buscar/route";
 
 const htmlContrato = `<a href="/imovel/casa-para-alugar-pr-londrina-centro/id-35106344/">
@@ -57,6 +60,14 @@ const requisicao = () => new Request("http://localhost/api/central-angariacao/bu
   headers: { Authorization: "Bearer token-sintetico", "Content-Type": "application/json" },
   body: JSON.stringify({ portal: "chaves-na-mao", cidade: "Londrina", estado: "PR" }),
 });
+const filtrosChaves = { portal: "chaves-na-mao" as const, cidade: "Londrina", estado: "PR" };
+
+function guardarCacheHttpChaves() {
+  const chave = chaveCanonicaConsultaPortal(filtrosChaves.portal, urlDaPesquisa(filtrosChaves));
+  mocks.cache.set("central-chaves-http-html-v1", new Map([
+    [chave, gzipSync(htmlContrato).toString("base64")],
+  ]));
+}
 
 describe("fronteira Central do fallback Chaves", () => {
   beforeEach(() => {
@@ -86,6 +97,53 @@ describe("fronteira Central do fallback Chaves", () => {
   it("reserva aquisição HTTP, processamento e folga após o timeout máximo do Firecrawl", () => {
     expect(maxDuration * 1000 - TIMEOUT_FIRECRAWL_FETCH_MS - TIMEOUT_HTTP_CHAVES_MS
       - RESERVA_PROCESSAMENTO_CENTRAL_MS).toBeGreaterThanOrEqual(10_000);
+  });
+
+  it("cache HTTP pré-Firecrawl com exatamente 35 s finaliza sem nova aquisição", async () => {
+    guardarCacheHttpChaves();
+    vi.spyOn(performance, "now").mockImplementationOnce(() => 0)
+      .mockImplementation(() => maxDuration * 1000 - RESERVA_PROCESSAMENTO_CENTRAL_MS);
+    const buscarHttp = vi.fn();
+    vi.stubGlobal("fetch", buscarHttp);
+
+    const corpo = await (await POST(requisicao())).json();
+
+    expect(corpo).toMatchObject({ ok: true, anuncios: [expect.objectContaining({ idExterno: "35106344" })] });
+    expect(mocks.buscarComFirecrawl).not.toHaveBeenCalled();
+    expect(buscarHttp).not.toHaveBeenCalled();
+    expect(mocks.buscarComNavegador).not.toHaveBeenCalled();
+    expect(mocks.salvarComparaveisMercado).toHaveBeenCalledOnce();
+    const evento = mocks.registrarEvento.mock.calls.find(([entrada]) => entrada.evento === "central-busca-ok")?.[0];
+    expect(JSON.parse(evento.detalhe)).toMatchObject({
+      aquisicao: "cache", reutilizacao: "nenhuma", chamada_propria_iniciada: false,
+      coleta_id: expect.any(String),
+      fases: [expect.objectContaining({ fase: "cache_hit", aquisicao: "cache" }),
+        expect.objectContaining({ fase: "resultado_interpretado", aquisicao: "cache" })],
+    });
+  });
+
+  it("cache HTTP pré-Firecrawl com 34.999 ms falha sem nenhuma aquisição nem finalização", async () => {
+    vi.stubEnv("VERCEL", "");
+    guardarCacheHttpChaves();
+    mocks.buscarComNavegador.mockRejectedValue(new Error("Playwright não deve iniciar"));
+    vi.spyOn(performance, "now").mockImplementationOnce(() => 0)
+      .mockImplementation(() => maxDuration * 1000 - RESERVA_PROCESSAMENTO_CENTRAL_MS + 1);
+    const buscarHttp = vi.fn(async () => new Response("bloqueio", { status: 503 }));
+    vi.stubGlobal("fetch", buscarHttp);
+
+    const corpo = await (await POST(requisicao())).json();
+
+    expect(corpo).toMatchObject({ ok: false, anuncios: [] });
+    expect(mocks.buscarComFirecrawl).not.toHaveBeenCalled();
+    expect(buscarHttp).not.toHaveBeenCalled();
+    expect(mocks.buscarComNavegador).not.toHaveBeenCalled();
+    expect(mocks.salvarComparaveisMercado).not.toHaveBeenCalled();
+    const evento = mocks.registrarEvento.mock.calls.find(([entrada]) => entrada.evento === "central-busca-falhou")?.[0];
+    expect(JSON.parse(evento.detalhe)).toMatchObject({
+      aquisicao: "desconhecida", reutilizacao: "desconhecida", coleta_id: null,
+      chamada_propria_iniciada: null,
+      fases: [expect.objectContaining({ fase: "falha", codigo: "http_orcamento_insuficiente" })],
+    });
   });
 
   it("Firecrawl rápido e bem-sucedido conserva o caminho normal sem HTTP", async () => {

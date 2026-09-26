@@ -2443,6 +2443,8 @@ incerto não vira proprietário. OLX, Viva Real e Wimoveis não têm fallback HT
 A rota da Central dispõe de 120 segundos; antes de iniciar HTTP Chaves, reserva até 15 segundos
 para a aquisição e 35 segundos para interpretação/finalização. Se faltar essa janela, falha
 explicitamente sem iniciar outra chamada. O cron conserva seu limite próprio de 300 segundos.
+O cache HTTP Chaves só é reutilizado na Central com 35 segundos restantes; sem essa reserva,
+falha sem iniciar outra aquisição.
 Fora da Vercel, Playwright/Chromium continua disponível após falha das aquisições anteriores.
 Sem Firecrawl configurado, a rota local conserva seu caminho legado Playwright seguido de
 HTTP/JSON-LD; essa rota não é fallback do Firecrawl. Na Vercel, falha não recuperada conserva
