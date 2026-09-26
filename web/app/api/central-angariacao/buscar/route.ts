@@ -16,12 +16,12 @@ import {
 } from "@/lib/servidor/centralAngariacao";
 import { normalizarUf, ufValida } from "@/lib/calculo/geografia";
 import { finalizarColetaCentralAngariacao } from "@/lib/servidor/finalizacaoCentralAngariacao";
-import { buscarComFallbackHttpChaves } from "@/lib/servidor/fallbackHttpChaves";
+import { buscarComFallbackHttpChaves, HttpChavesIndisponivel } from "@/lib/servidor/fallbackHttpChaves";
 import { buscarComNavegador, NavegadorIndisponivel } from "@/lib/servidor/scraperCentralAngariacao";
 import { criarObservadorRadar, novoIdExecucao, type IniciadorColeta } from "@/lib/servidor/observabilidadeRadar";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 function resposta(corpo: ResultadoBuscaCentral, status = 200, execucaoId?: string) {
   return Response.json({ ...corpo, execucaoId }, { status, headers: { "Cache-Control": "no-store" } });
@@ -158,6 +158,7 @@ export async function POST(request: Request) {
   const observador = criarObservadorRadar({
     execucaoId, iniciador: iniciadorDaRequisicao(request), portal: seguros.portal,
   });
+  const restanteMs = () => maxDuration * 1000 - (performance.now() - inicio);
   let urlPesquisa: string;
   try {
     urlPesquisa = urlDaPesquisa(seguros);
@@ -172,9 +173,14 @@ export async function POST(request: Request) {
   let coletadosFirecrawl: ResultadoBuscaCentral["anuncios"] | null = null;
   if (process.env.FIRECRAWL_API_KEY) {
     try {
-      coletadosFirecrawl = await buscarComFallbackHttpChaves(seguros, urlPesquisa, undefined, undefined, observador.observar);
+      coletadosFirecrawl = await buscarComFallbackHttpChaves(
+        seguros, urlPesquisa, undefined, undefined, observador.observar, restanteMs,
+      );
     } catch (erro) {
       firecrawlFalhou = true;
+      if (erro instanceof HttpChavesIndisponivel && erro.codigo === "http_orcamento_insuficiente") {
+        observador.observar({ fase: "falha", codigo: erro.codigo });
+      }
       console.warn("Central de Angariação: Firecrawl não concluiu a consulta:",
         sanitizarErroExterno(erro, "firecrawl"));
       if (process.env.VERCEL) {

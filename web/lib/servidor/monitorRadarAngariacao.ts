@@ -99,6 +99,7 @@ const CODIGOS_COLETA = new Set<CodigoErroFirecrawl | CodigoErroHttpChaves>([
   "http_transporte_falhou",
   "http_parser_falhou",
   "http_resultado_indeterminado",
+  "http_orcamento_insuficiente",
 ]);
 
 function clienteServico(): SupabaseClient {

@@ -28,7 +28,7 @@ const CODIGOS = new Set([
   "firecrawl_html_invalido", "portal_http_falhou", "parser_falhou",
   "navegador_falhou", "portal_falhou", "fallback_vazio", "persistencia_falhou", "falha_interna",
   "http_status_falhou", "http_timeout", "http_transporte_falhou",
-  "http_parser_falhou", "http_resultado_indeterminado",
+  "http_parser_falhou", "http_resultado_indeterminado", "http_orcamento_insuficiente",
 ]);
 
 /** Allowlist: jamais serializa um erro, URL, filtro ou anúncio recebido. */

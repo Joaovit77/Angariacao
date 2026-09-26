@@ -12,8 +12,13 @@ import {
 } from "./firecrawlCentralAngariacao";
 
 export type CodigoErroHttpChaves = "http_status_falhou" | "http_timeout"
-  | "http_transporte_falhou" | "http_parser_falhou" | "http_resultado_indeterminado";
+  | "http_transporte_falhou" | "http_parser_falhou" | "http_resultado_indeterminado"
+  | "http_orcamento_insuficiente";
 export type OrigemColetaCentral = OrigemConsultaFirecrawl | "http_direto";
+
+export const TIMEOUT_HTTP_CHAVES_MS = 15_000;
+/** Inclui interpretação, cache e finalização na rota da Central. */
+export const RESERVA_PROCESSAMENTO_CENTRAL_MS = 35_000;
 
 export class HttpChavesIndisponivel extends Error {
   constructor(
@@ -37,6 +42,14 @@ function notificar(observar: ((evento: EventoConsultaFirecrawl) => void) | undef
 
 function timeout(erro: unknown): boolean {
   return erro instanceof Error && ["AbortError", "TimeoutError"].includes(erro.name);
+}
+
+function exigirOrcamento(restanteMs: (() => number) | undefined, minimoMs: number): void {
+  if (!restanteMs) return;
+  const restante = restanteMs();
+  if (!Number.isFinite(restante) || restante < minimoMs) {
+    throw new HttpChavesIndisponivel("http_orcamento_insuficiente");
+  }
 }
 
 /** O parser é o mesmo do Firecrawl; só a saída do fallback recebe URL absoluta. */
@@ -95,7 +108,7 @@ async function coletarHttpChaves(
         Accept: "text/html,application/xhtml+xml",
       },
       redirect: "follow",
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(TIMEOUT_HTTP_CHAVES_MS),
       cache: "no-store",
     });
   } catch (erro) {
@@ -184,6 +197,7 @@ export async function buscarComFallbackHttpChaves(
   registrarOrigem?: (origem: OrigemColetaCentral) => void,
   registrarDiagnosticoOlx?: (diagnostico: DiagnosticoPaginaOlx) => void,
   observar?: (evento: EventoConsultaFirecrawl) => void,
+  restanteMs?: () => number,
 ): Promise<AnuncioCentralAngariacao[]> {
   if (filtros.portal !== "chaves-na-mao" || urlPesquisa !== urlDaPesquisa(filtros)) {
     return buscarComFirecrawl(filtros, urlPesquisa, registrarOrigem, registrarDiagnosticoOlx, observar);
@@ -207,11 +221,13 @@ export async function buscarComFallbackHttpChaves(
   }
   const cacheAposFalha = await cacheHttp(chave, filtros);
   if (cacheAposFalha) {
+    exigirOrcamento(restanteMs, RESERVA_PROCESSAMENTO_CENTRAL_MS);
     registrarOrigem?.("cache");
     const coletaId = randomUUID();
     notificar(observar, { fase: "cache_hit", aquisicao: "cache", coletaId });
     notificar(observar, { fase: "resultado_interpretado", aquisicao: "cache", coletaId });
     return cacheAposFalha.anuncios;
   }
+  exigirOrcamento(restanteMs, TIMEOUT_HTTP_CHAVES_MS + RESERVA_PROCESSAMENTO_CENTRAL_MS);
   return buscarHttpChaves(filtros, urlPesquisa, registrarOrigem, observar);
 }

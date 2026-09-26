@@ -89,6 +89,22 @@ describe("persistência da origem do Radar no navegador", () => {
     expect(banco.atualizar.mock.calls[0][0]).not.toHaveProperty("ultimo_check_automatico");
   });
 
+  it("falha temporal do Chaves mantém o relógio manual sem gravar anúncio", async () => {
+    const banco = clienteFalso();
+    mocks.getSupabase.mockReturnValue(banco.cliente);
+    mocks.buscarNaCentral.mockResolvedValue({ ok: false,
+      aviso: "A consulta não pôde ser recuperada agora.", execucaoId: "execucao-sintetica" });
+    const buscaChaves = { ...busca, filtros: { ...busca.filtros, portal: "chaves-na-mao" as const } };
+
+    await expect(verificarBuscaRadar("usuario-1", buscaChaves, "manual")).rejects.toThrow();
+
+    expect(banco.atualizar).toHaveBeenCalledWith({
+      ultimo_check: expect.any(String), ultimo_check_origem: "manual",
+    });
+    expect(banco.atualizar.mock.calls[0][0]).not.toHaveProperty("ultimo_check_automatico");
+    expect(banco.upsert).not.toHaveBeenCalled();
+  });
+
   it.each(["manual", "navegador"] as const)(
     "%s fecha telemetria com o ID do servidor só depois do upsert normal",
     async (origem) => {

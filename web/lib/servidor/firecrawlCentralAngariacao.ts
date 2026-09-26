@@ -13,7 +13,8 @@ import {
 } from "@/lib/calculo/centralAngariacao";
 
 export const LIMITE_RESULTADOS = 50;
-const TIMEOUT_FIRECRAWL_MS = 55_000;
+export const TIMEOUT_FIRECRAWL_MS = 55_000;
+export const TIMEOUT_FIRECRAWL_FETCH_MS = TIMEOUT_FIRECRAWL_MS + 5_000;
 export const CACHE_FIRECRAWL_TTL_SEGUNDOS = 20 * 60;
 const CACHE_FIRECRAWL_TTL_MS = CACHE_FIRECRAWL_TTL_SEGUNDOS * 1000;
 type HtmlColetado = {
@@ -441,7 +442,7 @@ async function coletarHtmlFirecrawl(
         maxAge: CACHE_FIRECRAWL_TTL_MS,
       }),
       cache: "no-store",
-      signal: AbortSignal.timeout(TIMEOUT_FIRECRAWL_MS + 5_000),
+      signal: AbortSignal.timeout(TIMEOUT_FIRECRAWL_FETCH_MS),
     });
   } catch (erro) {
     throw new FirecrawlIndisponivel("Consulta Firecrawl indisponível.",
