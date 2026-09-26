@@ -102,6 +102,23 @@ describe("Central de Angariação", () => {
       .toThrow(PortalSemCoberturaGeografica);
   });
 
+  it("mantém as quatro fronteiras geográficas e recusa portal desconhecido", () => {
+    const local = { cidade: "Londrina", estado: "PR" };
+    expect(capacidadeGeograficaPortal({ ...local, portal: "olx" }))
+      .toMatchObject({ suportado: true, nivel: "comprovado" });
+    expect(capacidadeGeograficaPortal({ ...local, portal: "viva-real" }))
+      .toMatchObject({ suportado: true, nivel: "limitado" });
+    for (const portal of ["chaves-na-mao", "wimoveis"] as const) {
+      expect(capacidadeGeograficaPortal({ ...local, portal }))
+        .toMatchObject({ suportado: true, nivel: "formato-generico-a-validar" });
+    }
+    const portalDesconhecido = "portal-desconhecido" as unknown as "olx";
+    expect(capacidadeGeograficaPortal({ ...local, portal: portalDesconhecido }))
+      .toMatchObject({ suportado: false, nivel: "limitado" });
+    expect(() => urlDaPesquisa({ ...local, portal: portalDesconhecido }))
+      .toThrow(PortalSemCoberturaGeografica);
+  });
+
   it("interpreta e filtra as datas relativas publicadas pela OLX", () => {
     const agora = new Date(2026, 7, 10, 10, 0);
     const hoje = dataPublicacaoOlx("Hoje, 06:29", agora);

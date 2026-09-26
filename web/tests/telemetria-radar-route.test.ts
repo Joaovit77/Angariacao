@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({ createClient: vi.fn(), registrarEvento: vi.fn(
 vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.createClient }));
 vi.mock("@/lib/servidor/registro", () => ({ registrarEvento: mocks.registrarEvento }));
 
+import { PORTAIS_ANGARIACAO } from "@/lib/calculo/centralAngariacao";
 import { POST } from "@/app/api/central-angariacao/telemetria-radar/route";
 
 const execucaoId = "229ee00d-1fe9-44b6-9fa4-80702fef8327";
@@ -45,6 +46,32 @@ describe("fechamento acessório do Radar", () => {
       execucao_id: execucaoId, busca_id: buscaId, portal: "olx", novos: 2,
       origem_contagem: "cliente_autenticado_apos_upsert",
     });
+  });
+
+  it("mantém exatamente os quatro portais operacionais", () => {
+    expect(PORTAIS_ANGARIACAO).toEqual(["olx", "chaves-na-mao", "wimoveis", "viva-real"]);
+  });
+
+  it.each(["olx", "chaves-na-mao", "wimoveis", "viva-real"])(
+    "registra %s como portal ativo no fechamento autenticado",
+    async (portal) => {
+      maybeSingle.mockResolvedValue({ data: { id: buscaId, filtros: { portal } }, error: null });
+      expect((await POST(requisicao({ execucaoId, buscaId, novos: 0 }))).status).toBe(200);
+      const detalhe = JSON.parse(mocks.registrarEvento.mock.calls[0][0].detalhe);
+      expect(detalhe).toMatchObject({ execucao_id: execucaoId, busca_id: buscaId, portal });
+    },
+  );
+
+  it("registra portal desconhecido como desconhecido sem criar quinto portal", async () => {
+    maybeSingle.mockResolvedValue({ data: { id: buscaId, filtros: { portal: "zap" } }, error: null });
+    expect((await POST(requisicao({ execucaoId, buscaId, novos: 0 }))).status).toBe(200);
+    expect(JSON.parse(mocks.registrarEvento.mock.calls[0][0].detalhe).portal).toBe("desconhecido");
+  });
+
+  it("exige autenticação antes de consultar a busca", async () => {
+    expect((await POST(requisicao({ execucaoId, buscaId, novos: 0 }, ""))).status).toBe(401);
+    expect(from).not.toHaveBeenCalled();
+    expect(mocks.registrarEvento).not.toHaveBeenCalled();
   });
 
   it("recusa busca de outro usuário e contagem inválida", async () => {

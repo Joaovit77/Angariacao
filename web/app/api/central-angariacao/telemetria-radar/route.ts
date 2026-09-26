@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { PORTAIS_ANGARIACAO, type PortalAngariacao } from "@/lib/calculo/centralAngariacao";
 import { registrarEvento } from "@/lib/servidor/registro";
 
 export const runtime = "nodejs";
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
       detalhe: JSON.stringify({
         execucao_id: execucaoId,
         busca_id: buscaId,
-        portal: typeof portal === "string" && ["olx", "chaves-na-mao", "wimoveis", "viva-real"].includes(portal)
+        portal: typeof portal === "string" && PORTAIS_ANGARIACAO.includes(portal as PortalAngariacao)
           ? portal : "desconhecido",
         novos,
         origem_contagem: "cliente_autenticado_apos_upsert",

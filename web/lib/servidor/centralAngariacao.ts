@@ -38,11 +38,14 @@ export function capacidadeGeograficaPortal(
       ? { suportado: true, nivel: "limitado", motivo: "O mapeamento nominal atual do VivaReal cobre somente o Paraná." }
       : { suportado: false, nivel: "limitado", motivo: "O mapeamento estadual do VivaReal ainda não foi comprovado fora do Paraná." };
   }
-  return {
-    suportado: true,
-    nivel: "formato-generico-a-validar",
-    motivo: "O formato inclui UF e cidade, mas cada novo mercado precisa de smoke no portal.",
-  };
+  if (filtros.portal === "chaves-na-mao" || filtros.portal === "wimoveis") {
+    return {
+      suportado: true,
+      nivel: "formato-generico-a-validar",
+      motivo: "O formato inclui UF e cidade, mas cada novo mercado precisa de smoke no portal.",
+    };
+  }
+  return { suportado: false, nivel: "limitado", motivo: "Portal de consulta não suportado." };
 }
 
 function localizacaoSegura(f: FiltrosCentralAngariacao): { cidade: string; estado: string } {
@@ -131,6 +134,7 @@ export function urlDaPesquisa(filtros: FiltrosCentralAngariacao): string {
     case "chaves-na-mao": return urlChaves(filtros);
     case "wimoveis": return urlWimoveis(filtros);
     case "viva-real": return urlVivaReal(filtros);
+    default: throw new PortalSemCoberturaGeografica("Portal de consulta não suportado.");
   }
 }
 
