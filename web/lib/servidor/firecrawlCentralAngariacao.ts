@@ -16,7 +16,12 @@ export const LIMITE_RESULTADOS = 50;
 const TIMEOUT_FIRECRAWL_MS = 55_000;
 export const CACHE_FIRECRAWL_TTL_SEGUNDOS = 20 * 60;
 const CACHE_FIRECRAWL_TTL_MS = CACHE_FIRECRAWL_TTL_SEGUNDOS * 1000;
-type HtmlColetado = { html: string; aquisicao: "cache" | "firecrawl"; statusHttp: number | null };
+type HtmlColetado = {
+  html: string;
+  aquisicao: "cache" | "firecrawl";
+  statusHttp: number | null;
+  anunciosProdutor?: AnuncioCentralAngariacao[];
+};
 const consultasEmAndamento = new Map<string, {
   coletaId: string;
   promessa: Promise<HtmlColetado>;
@@ -34,7 +39,11 @@ interface RespostaFirecrawl {
 }
 
 export class FirecrawlIndisponivel extends Error {
-  constructor(mensagem: string, readonly codigo: CodigoErroFirecrawl = "firecrawl_indisponivel") {
+  constructor(
+    mensagem: string,
+    readonly codigo: CodigoErroFirecrawl = "firecrawl_indisponivel",
+    readonly statusPortalHttp: number | null = null,
+  ) {
     super(mensagem);
   }
 }
@@ -384,16 +393,19 @@ export function extrairAnunciosFirecrawl(
 
 /** Origem da coleta antes do parsing: permite medir custo mesmo se houver falha. */
 export type OrigemConsultaFirecrawl = "cache" | "em_andamento" | "firecrawl";
-export type CodigoErroFirecrawl = "firecrawl_429" | "firecrawl_timeout" | "firecrawl_indisponivel" | "parser_falhou";
+export type CodigoErroFirecrawl = "firecrawl_429" | "firecrawl_timeout" | "firecrawl_indisponivel"
+  | "firecrawl_http_falhou" | "firecrawl_resposta_invalida" | "firecrawl_resposta_falhou"
+  | "firecrawl_html_invalido" | "portal_http_falhou" | "parser_falhou";
 export type FaseConsultaFirecrawl = "cache_hit" | "single_flight" | "caminho_escolhido"
   | "fetch_iniciado" | "resposta_recebida" | "resultado_interpretado" | "falha"
-  | "coleta_compartilhada_concluida";
+  | "fallback" | "coleta_compartilhada_concluida";
 export interface EventoConsultaFirecrawl {
   fase: FaseConsultaFirecrawl;
-  aquisicao: "cache" | "firecrawl" | "desconhecida";
+  aquisicao: "cache" | "firecrawl" | "http_direto" | "desconhecida";
   coletaId: string;
   statusHttp?: number;
-  codigo?: CodigoErroFirecrawl;
+  statusPortalHttp?: number;
+  codigo?: CodigoErroFirecrawl | import("./fallbackHttpChaves").CodigoErroHttpChaves;
 }
 
 function notificarConsulta(
@@ -401,6 +413,10 @@ function notificarConsulta(
   evento: EventoConsultaFirecrawl,
 ): void {
   try { observar?.(evento); } catch { /* instrumentação nova nunca altera a coleta */ }
+}
+
+function erroDeTimeout(erro: unknown): boolean {
+  return erro instanceof Error && ["AbortError", "TimeoutError"].includes(erro.name);
 }
 
 async function coletarHtmlFirecrawl(
@@ -428,24 +444,44 @@ async function coletarHtmlFirecrawl(
       signal: AbortSignal.timeout(TIMEOUT_FIRECRAWL_MS + 5_000),
     });
   } catch (erro) {
-    const timeout = erro instanceof Error && ["AbortError", "TimeoutError"].includes(erro.name);
     throw new FirecrawlIndisponivel("Consulta Firecrawl indisponível.",
-      timeout ? "firecrawl_timeout" : "firecrawl_indisponivel");
+      erroDeTimeout(erro) ? "firecrawl_timeout" : "firecrawl_indisponivel");
   }
   try { observar?.("resposta_recebida", resposta.status); } catch { /* telemetria acessória */ }
-  const corpo = await resposta.json().catch(() => null) as RespostaFirecrawl | null;
-  if (!resposta.ok || !corpo?.success || !corpo.data?.rawHtml) {
-    throw new FirecrawlIndisponivel("Firecrawl não retornou uma página utilizável.",
-      resposta.status === 429 ? "firecrawl_429" : "firecrawl_indisponivel");
+  if (!resposta.ok) {
+    throw new FirecrawlIndisponivel("Firecrawl não concluiu a consulta.",
+      resposta.status === 429 ? "firecrawl_429" : "firecrawl_http_falhou");
   }
+
+  let corpo: RespostaFirecrawl;
+  try {
+    corpo = await resposta.json() as RespostaFirecrawl;
+  } catch (erro) {
+    throw new FirecrawlIndisponivel("Resposta Firecrawl inválida.",
+      erroDeTimeout(erro) ? "firecrawl_timeout" : "firecrawl_resposta_invalida");
+  }
+  if (!corpo || typeof corpo !== "object" || Array.isArray(corpo)) {
+    throw new FirecrawlIndisponivel("Resposta Firecrawl inválida.", "firecrawl_resposta_invalida");
+  }
+  if (corpo.success === false) {
+    throw new FirecrawlIndisponivel("Firecrawl não concluiu a consulta.", "firecrawl_resposta_falhou");
+  }
+  if (corpo.success !== true || !corpo.data || typeof corpo.data !== "object") {
+    throw new FirecrawlIndisponivel("Resposta Firecrawl inválida.", "firecrawl_resposta_invalida");
+  }
+
   const statusPortal = corpo.data.metadata?.statusCode;
-  if (statusPortal && statusPortal >= 400) {
-    throw new FirecrawlIndisponivel("Portal indisponível.",
-      statusPortal === 429 ? "firecrawl_429" : "firecrawl_indisponivel");
+  if (statusPortal != null && (!Number.isInteger(statusPortal) || statusPortal < 100 || statusPortal > 599)) {
+    throw new FirecrawlIndisponivel("Resposta Firecrawl inválida.", "firecrawl_resposta_invalida");
+  }
+  if (statusPortal != null && statusPortal >= 400) {
+    throw new FirecrawlIndisponivel("Portal indisponível.", "portal_http_falhou", statusPortal);
+  }
+  if (typeof corpo.data.rawHtml !== "string" || !corpo.data.rawHtml.trim()) {
+    throw new FirecrawlIndisponivel("Firecrawl não retornou uma página utilizável.", "firecrawl_html_invalido");
   }
   return { html: corpo.data.rawHtml, statusHttp: resposta.status };
 }
-
 function extrairComProtecao(
   html: string,
   filtros: FiltrosCentralAngariacao,
@@ -500,7 +536,10 @@ export async function buscarComFirecrawl(
         fase: "falha", aquisicao: existente.estado.aquisicao,
         coletaId: existente.coletaId,
         ...(existente.estado.statusHttp != null ? { statusHttp: existente.estado.statusHttp } : {}),
-        ...(erro instanceof FirecrawlIndisponivel ? { codigo: erro.codigo } : {}),
+        ...(erro instanceof FirecrawlIndisponivel ? {
+          codigo: erro.codigo,
+          ...(erro.statusPortalHttp != null ? { statusPortalHttp: erro.statusPortalHttp } : {}),
+        } : {}),
       });
       throw erro;
     }
@@ -535,6 +574,8 @@ export async function buscarComFirecrawl(
         ...(statusHttp != null ? { statusHttp } : {}),
       });
     });
+    // O HTML só entra no cache após uma interpretação sem exceção.
+    const anunciosProdutor = extrairComProtecao(coletado.html, filtros, registrarDiagnosticoOlx);
     try {
       await cache.set(chave, gzipSync(coletado.html).toString("base64"), {
         ttl: CACHE_FIRECRAWL_TTL_SEGUNDOS,
@@ -544,13 +585,17 @@ export async function buscarComFirecrawl(
     } catch {
       console.warn("[central-angariacao] consulta não armazenada no cache regional");
     }
-    return { html: coletado.html, aquisicao: "firecrawl" as const, statusHttp: coletado.statusHttp };
+    return {
+      html: coletado.html, aquisicao: "firecrawl" as const,
+      statusHttp: coletado.statusHttp, anunciosProdutor,
+    };
   })().finally(() => consultasEmAndamento.delete(chave));
 
   consultasEmAndamento.set(chave, { coletaId, promessa: consulta, estado });
   try {
     const coletado = await consulta;
-    const anuncios = extrairComProtecao(coletado.html, filtros, registrarDiagnosticoOlx);
+    const anuncios = coletado.anunciosProdutor
+      ?? extrairComProtecao(coletado.html, filtros, registrarDiagnosticoOlx);
     notificarConsulta(observar, {
       fase: "resultado_interpretado", aquisicao: coletado.aquisicao, coletaId,
     });
@@ -559,7 +604,10 @@ export async function buscarComFirecrawl(
     notificarConsulta(observar, {
       fase: "falha", aquisicao: estado.aquisicao, coletaId,
       ...(estado.statusHttp != null ? { statusHttp: estado.statusHttp } : {}),
-      ...(erro instanceof FirecrawlIndisponivel ? { codigo: erro.codigo } : {}),
+      ...(erro instanceof FirecrawlIndisponivel ? {
+        codigo: erro.codigo,
+        ...(erro.statusPortalHttp != null ? { statusPortalHttp: erro.statusPortalHttp } : {}),
+      } : {}),
     });
     throw erro;
   }

@@ -27,11 +27,10 @@ import {
 import { urlsDosImoveis } from "@/lib/calculo/repeticaoCentralAngariacao";
 import { fromDbImovel, type DbImovelRow } from "@/lib/persistencia/mapeadores";
 import {
-  buscarComFirecrawl,
   type CodigoErroFirecrawl,
   type DiagnosticoPaginaOlx,
-  type OrigemConsultaFirecrawl,
 } from "@/lib/servidor/firecrawlCentralAngariacao";
+import { buscarComFallbackHttpChaves, type CodigoErroHttpChaves, type OrigemColetaCentral } from "@/lib/servidor/fallbackHttpChaves";
 import { registrarEvento } from "@/lib/servidor/registro";
 import { criarObservadorRadar, novoIdExecucao } from "@/lib/servidor/observabilidadeRadar";
 
@@ -64,7 +63,7 @@ interface ResultadoBuscaMonitorada {
   ok: boolean;
   erro?: string;
   codigo?: CodigoFalhaRadar;
-  origem_html?: OrigemConsultaFirecrawl;
+  origem_html?: OrigemColetaCentral;
 }
 
 export interface ResumoMonitorRadar {
@@ -83,13 +82,23 @@ type MotivoBuscaPulada =
   | "portal-sem-cobertura";
 
 type EtapaBuscaRadar = "montagem-url" | "coleta" | "normalizacao" | "persistencia";
-type CodigoFalhaRadar = CodigoErroFirecrawl | "falha_interna";
+type CodigoFalhaRadar = CodigoErroFirecrawl | CodigoErroHttpChaves | "falha_interna";
 
-const CODIGOS_FIRECRAWL = new Set<CodigoErroFirecrawl>([
+const CODIGOS_COLETA = new Set<CodigoErroFirecrawl | CodigoErroHttpChaves>([
   "firecrawl_timeout",
   "firecrawl_429",
   "firecrawl_indisponivel",
+  "firecrawl_http_falhou",
+  "firecrawl_resposta_invalida",
+  "firecrawl_resposta_falhou",
+  "firecrawl_html_invalido",
+  "portal_http_falhou",
   "parser_falhou",
+  "http_status_falhou",
+  "http_timeout",
+  "http_transporte_falhou",
+  "http_parser_falhou",
+  "http_resultado_indeterminado",
 ]);
 
 function clienteServico(): SupabaseClient {
@@ -142,8 +151,8 @@ function registrarRadar(
 function codigoDaFalha(erro: unknown): CodigoFalhaRadar {
   if (erro && typeof erro === "object" && "codigo" in erro) {
     const codigo = (erro as { codigo?: unknown }).codigo;
-    if (typeof codigo === "string" && CODIGOS_FIRECRAWL.has(codigo as CodigoErroFirecrawl)) {
-      return codigo as CodigoErroFirecrawl;
+    if (typeof codigo === "string" && CODIGOS_COLETA.has(codigo as CodigoErroFirecrawl | CodigoErroHttpChaves)) {
+      return codigo as CodigoFalhaRadar;
     }
   }
   return "falha_interna";
@@ -312,12 +321,12 @@ async function verificarBusca(
     execucaoId: novoIdExecucao(), rodadaId, iniciador: "cron", portal, buscaId: busca.id,
   });
   let etapa: EtapaBuscaRadar = "montagem-url";
-  let origemHtml: OrigemConsultaFirecrawl | undefined;
+  let origemHtml: OrigemColetaCentral | undefined;
   let diagnosticoOlx: DiagnosticoPaginaOlx | undefined;
   try {
     const urlPesquisa = urlDaPesquisa(busca.filtros);
     etapa = "coleta";
-    const coletados = await buscarComFirecrawl(
+    const coletados = await buscarComFallbackHttpChaves(
       busca.filtros,
       urlPesquisa,
       (origem) => { origemHtml = origem; },

@@ -125,6 +125,7 @@ describe("economia de créditos do Firecrawl", () => {
     expect(primeira.map((evento) => evento.fase)).toEqual([
       "caminho_escolhido", "fetch_iniciado", "resposta_recebida", "resultado_interpretado",
     ]);
+    expect(primeira.every((evento) => evento.aquisicao === "firecrawl")).toBe(true);
     expect(segunda.map((evento) => evento.fase)).toEqual(["cache_hit", "resultado_interpretado"]);
     expect(segunda.every((evento) => evento.aquisicao === "cache")).toBe(true);
     expect(primeira[0].coletaId).not.toBe(segunda[0].coletaId);
@@ -186,5 +187,93 @@ describe("economia de créditos do Firecrawl", () => {
     });
     expect(resultado).toHaveLength(1);
     expect(requisicao).toHaveBeenCalledOnce();
+  });
+  it.each([
+    { nome: "exceção de transporte", resposta: () => Promise.reject(new Error("token externo")), codigo: "firecrawl_indisponivel", status: null },
+    { nome: "HTTP 503", resposta: () => Promise.resolve(new Response("falha externa", { status: 503 })), codigo: "firecrawl_http_falhou", status: 503 },
+    { nome: "envelope inválido", resposta: () => Promise.resolve(new Response("{", { status: 200 })), codigo: "firecrawl_resposta_invalida", status: 200 },
+    { nome: "success falso", resposta: () => Promise.resolve(Response.json({ success: false, error: "segredo" })), codigo: "firecrawl_resposta_falhou", status: 200 },
+    { nome: "HTML ausente", resposta: () => Promise.resolve(Response.json({ success: true, data: {} })), codigo: "firecrawl_html_invalido", status: 200 },
+    { nome: "HTML em branco", resposta: () => Promise.resolve(Response.json({ success: true, data: { rawHtml: "  " } })), codigo: "firecrawl_html_invalido", status: 200 },
+    { nome: "HTML de tipo errado", resposta: () => Promise.resolve(Response.json({ success: true, data: { rawHtml: 42 } })), codigo: "firecrawl_html_invalido", status: 200 },
+  ])("$nome é falha classificada sem cache", async ({ resposta, codigo, status }) => {
+    const requisicao = vi.fn(resposta);
+    vi.stubGlobal("fetch", requisicao);
+    const filtros = { portal: "olx" as const, cidade: "Londrina", estado: "PR" };
+    const eventos: EventoConsultaFirecrawl[] = [];
+    await expect(buscarComFirecrawl(filtros, urlDaPesquisa(filtros), undefined, undefined,
+      (evento) => eventos.push(evento))).rejects.toMatchObject({ codigo });
+    expect(requisicao).toHaveBeenCalledOnce();
+    expect(cacheFalso.size).toBe(0);
+    expect(eventos.at(-1)).toMatchObject({
+      fase: "falha", aquisicao: "firecrawl", codigo,
+      ...(status == null ? {} : { statusHttp: status }),
+    });
+    expect(JSON.stringify(eventos)).not.toMatch(/segredo|token externo|falha externa/);
+  });
+
+  it("status do portal é distinto do HTTP 200 do Firecrawl", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+      success: true, data: { rawHtml: htmlOlx, metadata: { statusCode: 403 } },
+    })));
+    const filtros = { portal: "olx" as const, cidade: "Londrina", estado: "PR" };
+    const eventos: EventoConsultaFirecrawl[] = [];
+    await expect(buscarComFirecrawl(filtros, urlDaPesquisa(filtros), undefined, undefined,
+      (evento) => eventos.push(evento))).rejects.toMatchObject({
+        codigo: "portal_http_falhou", statusPortalHttp: 403,
+      });
+    expect(eventos.at(-1)).toMatchObject({
+      fase: "falha", statusHttp: 200, statusPortalHttp: 403,
+    });
+    expect(cacheFalso.size).toBe(0);
+  });
+
+  it("timeout ao ler o corpo continua timeout, com resposta já recebida", async () => {
+    const resposta = Response.json({ success: true, data: { rawHtml: htmlOlx } });
+    vi.spyOn(resposta, "json").mockRejectedValue(new DOMException("segredo", "TimeoutError"));
+    vi.stubGlobal("fetch", vi.fn(async () => resposta));
+    const filtros = { portal: "olx" as const, cidade: "Londrina", estado: "PR" };
+    const eventos: EventoConsultaFirecrawl[] = [];
+    await expect(buscarComFirecrawl(filtros, urlDaPesquisa(filtros), undefined, undefined,
+      (evento) => eventos.push(evento))).rejects.toMatchObject({ codigo: "firecrawl_timeout" });
+    expect(eventos.map((evento) => evento.fase)).toEqual([
+      "caminho_escolhido", "fetch_iniciado", "resposta_recebida", "falha",
+    ]);
+  });
+
+  it("HTML com zero anúncios é resultado interpretado e fica no cache", async () => {
+    const requisicao = vi.fn(async () => Response.json({
+      success: true, data: { rawHtml: "<html><body>Sem anúncios</body></html>" },
+    }));
+    vi.stubGlobal("fetch", requisicao);
+    const filtros = { portal: "olx" as const, cidade: "Londrina", estado: "PR" };
+    const url = urlDaPesquisa(filtros);
+    const eventos: EventoConsultaFirecrawl[] = [];
+    expect(await buscarComFirecrawl(filtros, url, undefined, undefined,
+      (evento) => eventos.push(evento))).toEqual([]);
+    expect(await buscarComFirecrawl(filtros, url)).toEqual([]);
+    expect(requisicao).toHaveBeenCalledOnce();
+    expect(cacheFalso.size).toBe(1);
+    expect(eventos.at(-1)?.fase).toBe("resultado_interpretado");
+  });
+
+  it("single-flight compartilha a mesma falha sem duplicar a chamada", async () => {
+    let liberar!: (resposta: Response) => void;
+    const requisicao = vi.fn(() => new Promise<Response>((resolve) => { liberar = resolve; }));
+    vi.stubGlobal("fetch", requisicao);
+    const filtros = { portal: "olx" as const, cidade: "Londrina", estado: "PR" };
+    const url = urlDaPesquisa(filtros);
+    const primeiro: EventoConsultaFirecrawl[] = [];
+    const segundo: EventoConsultaFirecrawl[] = [];
+    const a = buscarComFirecrawl(filtros, url, undefined, undefined, (evento) => primeiro.push(evento));
+    const b = buscarComFirecrawl(filtros, url, undefined, undefined, (evento) => segundo.push(evento));
+    await vi.waitFor(() => expect(requisicao).toHaveBeenCalledOnce());
+    liberar(new Response("indisponível", { status: 503 }));
+    const resultados = await Promise.allSettled([a, b]);
+    expect(resultados.map((resultado) => resultado.status)).toEqual(["rejected", "rejected"]);
+    expect(primeiro[0].coletaId).toBe(segundo[0].coletaId);
+    expect(segundo.map((evento) => evento.fase)).toEqual(["single_flight", "falha"]);
+    expect(requisicao).toHaveBeenCalledOnce();
+    expect(cacheFalso.size).toBe(0);
   });
 });

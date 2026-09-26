@@ -14,6 +14,7 @@ describe("fronteira do shadow de quarto individual (R3.2a)", () => {
     "lib/servidor/coletaMercadosMonitorados.ts",
     "lib/servidor/comparaveisMercado.ts",
     "lib/servidor/firecrawlCentralAngariacao.ts",
+    "lib/servidor/fallbackHttpChaves.ts",
     "lib/calculo/radarAngariacao.ts",
   ])("%s não usa a classificação de relevância", (arquivo) => {
     expect(ler(arquivo)).not.toMatch(/relevanciaRadarOlx|classificarRelevanciaRadarOlx|parece_quarto/);
@@ -21,7 +22,7 @@ describe("fronteira do shadow de quarto individual (R3.2a)", () => {
 
   it("a Central manual continua coletando sem diagnóstico nem filtro extra", () => {
     const rota = ler("app/api/central-angariacao/buscar/route.ts");
-    expect(rota).toMatch(/buscarComFirecrawl\(seguros, urlPesquisa, undefined, undefined, observador\.observar\)/);
+    expect(rota).toMatch(/buscarComFallbackHttpChaves\(seguros, urlPesquisa, undefined, undefined, observador\.observar\)/);
   });
 
   it("o shadow não cria schema nem coluna", () => {

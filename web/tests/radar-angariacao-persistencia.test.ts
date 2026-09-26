@@ -74,17 +74,17 @@ describe("persistência da origem do Radar no navegador", () => {
     },
   );
 
-  it("registra a origem mesmo quando a consulta manual falha", async () => {
+  it.each(["manual", "navegador"] as const)("preserva relógio de %s quando a consulta falha", async (origem) => {
     const banco = clienteFalso();
     mocks.getSupabase.mockReturnValue(banco.cliente);
     mocks.buscarNaCentral.mockResolvedValue({ ok: false, aviso: "Portal indisponível" });
 
-    await expect(verificarBuscaRadar("usuario-1", busca, "manual"))
+    await expect(verificarBuscaRadar("usuario-1", busca, origem))
       .rejects.toThrow("Portal indisponível");
 
     expect(banco.atualizar).toHaveBeenCalledWith({
       ultimo_check: expect.any(String),
-      ultimo_check_origem: "manual",
+      ultimo_check_origem: origem,
     });
     expect(banco.atualizar.mock.calls[0][0]).not.toHaveProperty("ultimo_check_automatico");
   });

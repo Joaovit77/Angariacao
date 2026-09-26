@@ -12,6 +12,7 @@ export interface EventoColetaSeguro {
   aquisicao?: AquisicaoColeta;
   coletaId?: string;
   statusHttp?: number;
+  statusPortalHttp?: number;
   codigo?: string;
 }
 
@@ -22,8 +23,12 @@ const FASES = new Set<FaseColeta>([
 ]);
 const AQUISICOES = new Set<AquisicaoColeta>(["cache", "firecrawl", "playwright", "http_direto", "desconhecida"]);
 const CODIGOS = new Set([
-  "firecrawl_429", "firecrawl_timeout", "firecrawl_indisponivel", "parser_falhou",
-  "navegador_falhou", "portal_falhou", "persistencia_falhou", "falha_interna",
+  "firecrawl_429", "firecrawl_timeout", "firecrawl_indisponivel",
+  "firecrawl_http_falhou", "firecrawl_resposta_invalida", "firecrawl_resposta_falhou",
+  "firecrawl_html_invalido", "portal_http_falhou", "parser_falhou",
+  "navegador_falhou", "portal_falhou", "fallback_vazio", "persistencia_falhou", "falha_interna",
+  "http_status_falhou", "http_timeout", "http_transporte_falhou",
+  "http_parser_falhou", "http_resultado_indeterminado",
 ]);
 
 /** Allowlist: jamais serializa um erro, URL, filtro ou anúncio recebido. */
@@ -34,6 +39,8 @@ function faseSegura(evento: EventoColetaSeguro) {
     coleta_id: evento.coletaId && /^[0-9a-f-]{36}$/i.test(evento.coletaId) ? evento.coletaId : null,
     status_http: typeof evento.statusHttp === "number" && Number.isInteger(evento.statusHttp)
       && evento.statusHttp >= 100 && evento.statusHttp <= 599 ? evento.statusHttp : null,
+    status_portal_http: typeof evento.statusPortalHttp === "number" && Number.isInteger(evento.statusPortalHttp)
+      && evento.statusPortalHttp >= 100 && evento.statusPortalHttp <= 599 ? evento.statusPortalHttp : null,
     codigo: evento.codigo && CODIGOS.has(evento.codigo) ? evento.codigo : null,
   };
 }
@@ -60,6 +67,10 @@ export function criarObservadorRadar(contexto: {
       const seguro = faseSegura(evento);
       fases.push(seguro);
       if (seguro.coleta_id) coletaId = seguro.coleta_id;
+      if (seguro.fase === "fallback") {
+        respostaRecebida = null;
+        resultadoInterpretado = null;
+      }
       if (seguro.fase === "single_flight") {
         reutilizacao = "single_flight";
         chamadaPropriaIniciada = false;

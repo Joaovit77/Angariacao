@@ -2434,10 +2434,19 @@ feito, e uma visita que some depois de realizada apaga a prova de que aconteceu.
 #### `api/central-angariacao/*` e `api/cron/radar` — Central e Radar
 
 A Central faz busca sob demanda em hosts fixos; o browser fornece filtros tipados, nunca uma URL
-arbitrária. Em produção, usa Firecrawl quando configurado. Fora da Vercel pode cair para Playwright/
-Chromium e, por último, extração HTTP/JSON-LD. Falha conserva o link de pesquisa pronto para a pessoa
-continuar manualmente. Resultado coletado é oportunidade para revisão, não gravação automática no
-Pipeline; UF + cidade são a fronteira geográfica e divergência explícita de UF é rejeitada.
+arbitrária. Com Firecrawl configurado, cache válido precede nova aquisição e Firecrawl permanece
+primário. Após falha classificada, somente Chaves na Mão pode usar fallback HTTP direto: o HTML
+passa pelo mesmo parser de cards, href relativo de imóvel com ID estável é resolvido para HTTPS
+no domínio canônico e só há sucesso com ao menos um anúncio válido após os filtros aplicáveis.
+Zero interpretado por HTTP é indeterminado, falha explicitamente e não entra no cache; anunciante
+incerto não vira proprietário. OLX, Viva Real e Wimoveis não têm fallback HTTP após Firecrawl.
+Fora da Vercel, Playwright/Chromium continua disponível após falha das aquisições anteriores.
+Sem Firecrawl configurado, a rota local conserva seu caminho legado Playwright seguido de
+HTTP/JSON-LD; essa rota não é fallback do Firecrawl. Na Vercel, falha não recuperada conserva
+o link de pesquisa pronto; no cron, registra falha da busca. Resultado coletado é oportunidade
+para revisão, não gravação automática no Pipeline; UF + cidade são a fronteira geográfica e
+divergência explícita de UF é rejeitada. A observabilidade R4.3 continua distinguindo aquisição,
+reutilização e fases efetivamente observadas.
 
 Central e cron do Radar compartilham a mesma finalização da coleta: normalizam os anúncios,
 confirmam UF + cidade e registram ou atualizam cada resultado válido em `comparaveis_mercado`, sempre
@@ -2526,7 +2535,9 @@ Não há proxy reforçado, retry imediato ou paginação. Após 180 segundos nã
 
 A chave do cache representa portal + URL efetiva normalizada, não filtros ignorados pelo portal.
 HTML comprimido é reutilizado antes do parsing/filtros de cada consumidor, evitando contaminação
-entre Central, Radar e mercado. TTL regional permanece 20 minutos. O single-flight cobre somente
+entre Central, Radar e mercado. Envelope/HTML inválido e exceção de parser não entram no cache;
+resultado do Firecrawl interpretado com zero anúncios continua válido; no fallback HTTP do Chaves, zero é indeterminado. TTL regional permanece 20 minutos.
+O single-flight cobre somente
 a mesma instância; não é um lock global entre instâncias/regiões ou deployments. Chamadas externas
 simultâneas de outros domínios/instâncias ainda podem consumir crédito na mesma consulta.
 

@@ -13,6 +13,10 @@ vi.mock("server-only", () => ({}));
 vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.createClient }));
 vi.mock("@/lib/servidor/firecrawlCentralAngariacao", () => ({
   buscarComFirecrawl: mocks.buscarComFirecrawl,
+  extrairAnunciosFirecrawl: () => [],
+  FirecrawlIndisponivel: class FirecrawlIndisponivel extends Error {
+    constructor(mensagem: string, readonly codigo: string) { super(mensagem); }
+  },
 }));
 vi.mock("@/lib/servidor/comparaveisMercado", () => ({
   salvarComparaveisMercado: mocks.salvarComparaveisMercado,
@@ -338,6 +342,7 @@ describe("monitor agendado do Radar", () => {
     expect(banco.inserirAnuncios).not.toHaveBeenCalled();
     expect(banco.atualizarBusca).toHaveBeenCalledOnce();
     expect(banco.atualizarBusca).toHaveBeenCalledWith(expect.objectContaining({
+      ultimo_check: expect.any(String),
       ultimo_check_automatico: expect.any(String),
       ultimo_check_origem: "cron",
     }));
@@ -404,6 +409,37 @@ describe("monitor agendado do Radar", () => {
     ]);
     expect(eventosRadar("radar-busca-falhou")).toHaveLength(1);
     expect(eventosRadar("radar-busca-ok")).toHaveLength(1);
+  });
+
+  it("HTTP Chaves indeterminado falha sem persistir anúncio e preserva relógio do cron", async () => {
+    const buscaChaves = {
+      ...busca, filtros: { ...busca.filtros, portal: "chaves-na-mao" as typeof busca.filtros.portal },
+    };
+    const banco = clienteRadarFalso([], [buscaChaves]);
+    mocks.createClient.mockReturnValue(banco.cliente);
+    const { FirecrawlIndisponivel } = await import("@/lib/servidor/firecrawlCentralAngariacao");
+    mocks.buscarComFirecrawl.mockRejectedValue(new FirecrawlIndisponivel("falha sintética", "firecrawl_429"));
+    const requisicao = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("<html><main>Estrutura desconhecida</main></html>", { status: 200 }),
+    );
+
+    const resumo = await executarMonitorRadar();
+
+    expect(resumo).toMatchObject({ verificadas: 1, falhas: 1, novos: 0 });
+    expect(resumo.resultados[0]).toMatchObject({ ok: false, codigo: "http_resultado_indeterminado" });
+    expect(requisicao).toHaveBeenCalledOnce();
+    expect(banco.inserirAnuncios).not.toHaveBeenCalled();
+    expect(mocks.salvarComparaveisMercado).not.toHaveBeenCalled();
+    expect(banco.atualizarBusca).toHaveBeenCalledWith({
+      ultimo_check: expect.any(String),
+      ultimo_check_automatico: expect.any(String),
+      ultimo_check_origem: "cron",
+    });
+    const detalhe = detalheRadar("radar-busca-falhou");
+    expect(detalhe).toMatchObject({
+      codigo: "http_resultado_indeterminado", aquisicao: "http_direto", origem_html: "http_direto",
+    });
+    expect(detalhe.fases.map((fase: { fase: string }) => fase.fase)).not.toContain("resultado_interpretado");
   });
 
   it("o cron executa mesmo se o navegador verificou há menos de duas horas", async () => {

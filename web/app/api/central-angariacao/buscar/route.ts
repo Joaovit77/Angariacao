@@ -16,7 +16,7 @@ import {
 } from "@/lib/servidor/centralAngariacao";
 import { normalizarUf, ufValida } from "@/lib/calculo/geografia";
 import { finalizarColetaCentralAngariacao } from "@/lib/servidor/finalizacaoCentralAngariacao";
-import { buscarComFirecrawl } from "@/lib/servidor/firecrawlCentralAngariacao";
+import { buscarComFallbackHttpChaves } from "@/lib/servidor/fallbackHttpChaves";
 import { buscarComNavegador, NavegadorIndisponivel } from "@/lib/servidor/scraperCentralAngariacao";
 import { criarObservadorRadar, novoIdExecucao, type IniciadorColeta } from "@/lib/servidor/observabilidadeRadar";
 
@@ -85,6 +85,29 @@ async function finalizarRespostaColeta(
   return resultado;
 }
 
+async function finalizarComProtecao(
+  supabase: SupabaseClient,
+  userId: string,
+  coletados: ResultadoBuscaCentral["anuncios"],
+  seguros: FiltrosCentralAngariacao,
+  urlPesquisa: string,
+  observador: ReturnType<typeof criarObservadorRadar>,
+  inicio: number,
+): Promise<ResultadoBuscaCentral> {
+  try {
+    return await finalizarRespostaColeta(supabase, userId, coletados, seguros, urlPesquisa, observador, inicio);
+  } catch {
+    console.error("[central-angariacao] falha ao finalizar coleta", { codigo: "falha_interna" });
+    observador.observar({ fase: "falha", codigo: "falha_interna" });
+    observador.concluir(userId, "central-busca-falhou", { duracaoMs: performance.now() - inicio });
+    return {
+      ok: false,
+      anuncios: [],
+      urlPesquisa,
+      aviso: "A consulta foi recebida, mas não pôde ser finalizada agora.",
+    };
+  }
+}
 interface SessaoAutenticada {
   supabase: SupabaseClient;
   userId: string;
@@ -145,19 +168,13 @@ export async function POST(request: Request) {
     throw erro;
   }
 
+  let firecrawlFalhou = false;
+  let coletadosFirecrawl: ResultadoBuscaCentral["anuncios"] | null = null;
   if (process.env.FIRECRAWL_API_KEY) {
     try {
-      const coletados = await buscarComFirecrawl(seguros, urlPesquisa, undefined, undefined, observador.observar);
-      return resposta(await finalizarRespostaColeta(
-        sessao.supabase,
-        sessao.userId,
-        coletados,
-        seguros,
-        urlPesquisa,
-        observador,
-        inicio,
-      ), 200, execucaoId);
+      coletadosFirecrawl = await buscarComFallbackHttpChaves(seguros, urlPesquisa, undefined, undefined, observador.observar);
     } catch (erro) {
+      firecrawlFalhou = true;
       console.warn("Central de Angariação: Firecrawl não concluiu a consulta:",
         sanitizarErroExterno(erro, "firecrawl"));
       if (process.env.VERCEL) {
@@ -172,32 +189,47 @@ export async function POST(request: Request) {
       observador.observar({ fase: "fallback", aquisicao: "playwright" });
     }
   }
+  if (coletadosFirecrawl !== null) {
+    return resposta(await finalizarComProtecao(
+      sessao.supabase, sessao.userId, coletadosFirecrawl, seguros, urlPesquisa, observador, inicio,
+    ), 200, execucaoId);
+  }
 
+  let coletadosNavegador: ResultadoBuscaCentral["anuncios"] | null = null;
   try {
     observador.observar({ fase: "caminho_escolhido", aquisicao: "playwright" });
-    const coletados = await buscarComNavegador(seguros, urlPesquisa, (fase, statusHttp) => {
+    coletadosNavegador = await buscarComNavegador(seguros, urlPesquisa, (fase, statusHttp) => {
       observador.observar({ fase, aquisicao: "playwright", ...(statusHttp != null ? { statusHttp } : {}) });
     });
     observador.observar({ fase: "resultado_interpretado", aquisicao: "playwright" });
-    return resposta(await finalizarRespostaColeta(
-      sessao.supabase,
-      sessao.userId,
-      coletados,
-      seguros,
-      urlPesquisa,
-      observador,
-      inicio,
-    ), 200, execucaoId);
   } catch (erro) {
     observador.observar({ fase: "falha", aquisicao: "playwright", codigo: "navegador_falhou" });
-    // Sem Chrome no host (ex.: deploy ainda sem runtime de navegador), conserva
-    // o fallback HTTP e o link pronto. No local e em hosts configurados, o
-    // Playwright é sempre o caminho principal.
+    // Sem Chrome no host, conserva o link de pesquisa pronto.
     if (!(erro instanceof NavegadorIndisponivel)) {
       console.warn("Central de Angariação: navegador não concluiu a consulta:", sanitizarErroExterno(erro, "navegador"));
     }
   }
-
+  if (coletadosNavegador !== null) {
+    if (firecrawlFalhou && coletadosNavegador.length === 0) {
+      observador.observar({ fase: "falha", aquisicao: "playwright", codigo: "fallback_vazio" });
+      observador.concluir(sessao.userId, "central-busca-falhou", { duracaoMs: performance.now() - inicio });
+      return resposta({
+        ok: false, anuncios: [], urlPesquisa,
+        aviso: "A consulta alternativa não confirmou resultados. A pesquisa pronta ainda pode ser aberta.",
+      }, 200, execucaoId);
+    }
+    return resposta(await finalizarComProtecao(
+      sessao.supabase, sessao.userId, coletadosNavegador, seguros, urlPesquisa, observador, inicio,
+    ), 200, execucaoId);
+  }
+  // O fallback HTTP do Chaves já foi tentado na aquisição; os outros portais falham fechados.
+  if (firecrawlFalhou) {
+    observador.concluir(sessao.userId, "central-busca-falhou", { duracaoMs: performance.now() - inicio });
+    return resposta({
+      ok: false, anuncios: [], urlPesquisa,
+      aviso: "A consulta não pôde ser recuperada agora. A pesquisa pronta ainda pode ser aberta.",
+    }, 200, execucaoId);
+  }
   try {
     observador.observar({ fase: "fallback", aquisicao: "http_direto" });
     observador.observar({ fase: "caminho_escolhido", aquisicao: "http_direto" });

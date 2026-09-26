@@ -134,12 +134,33 @@ describe("persistência da busca da Central", () => {
     expect(corpo.ok).toBe(true);
     expect(corpo.anuncios).toHaveLength(1);
     expect(corpo.aviso).toContain("não foi possível atualizar a base histórica");
+    expect(mocks.buscarComFirecrawl).toHaveBeenCalledOnce();
+    expect(mocks.buscarComNavegador).not.toHaveBeenCalled();
     expect(console.error).toHaveBeenCalledExactlyOnceWith(
       "[central-angariacao] falha ao atualizar a base de comparáveis",
       { provider: "supabase", operation: "persistir_comparaveis", error_code: "comparable_persistence_failed", status: 403 },
     );
   });
 
+  it("falha de finalização após aquisição não inicia navegador nem HTTP", async () => {
+    vi.stubEnv("VERCEL", "");
+    const requisicao = vi.fn();
+    vi.stubGlobal("fetch", requisicao);
+    mocks.buscarComFirecrawl.mockResolvedValue([null]);
+    const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
+      method: "POST", headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" },
+      body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+    }));
+    expect((await resposta.json()).ok).toBe(false);
+    expect(mocks.buscarComFirecrawl).toHaveBeenCalledOnce();
+    expect(mocks.buscarComNavegador).not.toHaveBeenCalled();
+    expect(requisicao).not.toHaveBeenCalled();
+    const log = mocks.registrarEvento.mock.calls.find(([entrada]) => entrada.evento === "central-busca-falhou")?.[0];
+    expect(JSON.parse(log.detalhe).fases.at(-1)).toMatchObject({
+      fase: "falha", codigo: "falha_interna",
+    });
+    vi.unstubAllGlobals();
+  });
   it("mantém degradação do Firecrawl sem despejar erro inesperado", async () => {
     vi.stubEnv("VERCEL", "1");
     const log = vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -201,14 +222,18 @@ describe("persistência da busca da Central", () => {
     expect(JSON.stringify(detalhe)).not.toContain("token privado");
   });
 
-  it("fora da Vercel, fallback observado segue a ordem funcional anterior", async () => {
+  it("fora da Vercel, Playwright local mantém o fallback quando recupera anúncios", async () => {
     vi.stubEnv("VERCEL", "");
     vi.spyOn(console, "warn").mockImplementation(() => {});
     mocks.buscarComFirecrawl.mockRejectedValue(new Error("coleta indisponível"));
     mocks.buscarComNavegador.mockImplementation(async (_f, _u, observar) => {
       observar("fetch_iniciado");
       observar("resposta_recebida", 200);
-      return [];
+      return [{
+        idExterno: "novo-playwright", portal: "olx", titulo: "Casa em Londrina",
+        cidade: "Londrina", estado: "PR", preco: 1800,
+        url: "https://www.olx.com.br/imovel/novo-playwright", anunciante: "incerto",
+      }];
     });
     const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
       method: "POST", headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" },
@@ -224,10 +249,49 @@ describe("persistência da busca da Central", () => {
     ]);
   });
 
-  it("fallback HTTP direto só aparece após falha dos caminhos anteriores", async () => {
+  it("sem prova de HTTP direto, falha Firecrawl e Playwright local não vira sucesso vazio", async () => {
     vi.stubEnv("VERCEL", "");
     vi.spyOn(console, "warn").mockImplementation(() => {});
     mocks.buscarComFirecrawl.mockRejectedValue(new Error("coleta indisponível"));
+    mocks.buscarComNavegador.mockRejectedValue(new Error("navegador indisponível"));
+    const fetchFalso = vi.fn();
+    vi.stubGlobal("fetch", fetchFalso);
+    const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
+      method: "POST", headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" },
+      body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+    }));
+    expect((await resposta.json()).ok).toBe(false);
+    expect(fetchFalso).not.toHaveBeenCalled();
+    expect(mocks.salvarComparaveisMercado).not.toHaveBeenCalled();
+    const log = mocks.registrarEvento.mock.calls.find(([entrada]) => entrada.evento === "central-busca-falhou")?.[0];
+    const detalhe = JSON.parse(log.detalhe);
+    expect(detalhe.fases.map((fase: { fase: string }) => fase.fase)).toEqual([
+      "fallback", "caminho_escolhido", "falha",
+    ]);
+    vi.unstubAllGlobals();
+  });
+
+  it("fallback Playwright vazio após falha Firecrawl continua sendo falha", async () => {
+    vi.stubEnv("VERCEL", "");
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    mocks.buscarComFirecrawl.mockRejectedValue(new Error("coleta indisponível"));
+    mocks.buscarComNavegador.mockResolvedValue([]);
+    const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
+      method: "POST", headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" },
+      body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+    }));
+    expect((await resposta.json()).ok).toBe(false);
+    expect(mocks.salvarComparaveisMercado).not.toHaveBeenCalled();
+    const log = mocks.registrarEvento.mock.calls.find(([entrada]) => entrada.evento === "central-busca-falhou")?.[0];
+    expect(JSON.parse(log.detalhe).fases.at(-1)).toMatchObject({
+      fase: "falha", aquisicao: "playwright", codigo: "fallback_vazio",
+    });
+  });
+
+  it("sem Firecrawl configurado, preserva HTTP direto após falha do navegador", async () => {
+    vi.stubEnv("FIRECRAWL_API_KEY", "");
+    vi.stubEnv("VERCEL", "");
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     mocks.buscarComNavegador.mockRejectedValue(new Error("navegador indisponível"));
     const fetchFalso = vi.fn(async () => new Response("<html></html>", { status: 200 }));
     vi.stubGlobal("fetch", fetchFalso);
@@ -236,17 +300,12 @@ describe("persistência da busca da Central", () => {
       body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
     }));
     expect((await resposta.json()).ok).toBe(true);
+    expect(mocks.buscarComFirecrawl).not.toHaveBeenCalled();
     expect(fetchFalso).toHaveBeenCalledOnce();
     const log = mocks.registrarEvento.mock.calls.find(([entrada]) => entrada.evento === "central-busca-ok")?.[0];
-    const detalhe = JSON.parse(log.detalhe);
-    expect(detalhe).toMatchObject({ aquisicao: "http_direto", chamada_propria_iniciada: true });
-    expect(detalhe.fases.map((fase: { fase: string }) => fase.fase)).toEqual([
-      "fallback", "caminho_escolhido", "falha", "fallback", "caminho_escolhido",
-      "fetch_iniciado", "resposta_recebida", "resultado_interpretado",
-    ]);
+    expect(JSON.parse(log.detalhe).aquisicao).toBe("http_direto");
     vi.unstubAllGlobals();
   });
-
   it.each(["monitor_navegador", "verificar_agora", "pesquisar"] as const)(
     "%s: registra borda Firecrawl sem alterar resultado funcional",
     async (iniciador) => {
