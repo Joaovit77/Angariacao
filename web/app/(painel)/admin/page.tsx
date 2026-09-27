@@ -30,10 +30,5 @@ export default function Pagina() {
   }, [cargoConfirmado, ehAdmin, router]);
 
   if (!cargoConfirmado || !ehAdmin) return null;
-  return <>
-    <div style={{ padding: "12px 20px" }}>
-      <a href="/admin/diagnostico-vivareal">Abrir prova temporária Viva Real — R4.2d</a>
-    </div>
-    <AdminView />
-  </>;
+  return <AdminView />;
 }
