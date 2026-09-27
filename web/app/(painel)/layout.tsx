@@ -30,7 +30,7 @@ import { registrarPrimeiroRenderBoot } from "@/lib/bootPerformance";
 import { useAppStore } from "@/lib/store";
 
 const CHAVE_RECOLHIDA = "sidebar-recolhida";
-const ROTAS_SEM_CARTEIRA = new Set(["/admin", "/cerebro-ia", "/configuracoes"]);
+const ROTAS_SEM_CARTEIRA = new Set(["/admin", "/admin/diagnostico-vivareal", "/cerebro-ia", "/configuracoes"]);
 
 // Desktop = acima do breakpoint mobile (720px). Lido como store externo
 // (useSyncExternalStore) em vez de setState num efeito, pra não esbarrar na
@@ -171,7 +171,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
       />
 
       <main className="main" id="main-content">
-        {carregado || pathname === "/admin" ? (
+        {carregado || pathname === "/admin" || pathname === "/admin/diagnostico-vivareal" ? (
           <>
             {/* Faixa das ferramentas de captação, fora do div com key: não
                 re-anima nem remonta ao alternar entre elas. */}
