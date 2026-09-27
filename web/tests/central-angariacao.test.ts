@@ -339,5 +339,11 @@ describe("Central de Angariação", () => {
       cidade: "Londrina",
       estado: "PR",
     })).toHaveLength(1);
+
+    for (const somenteProprietario of [false, true]) {
+      expect(extrairAnunciosFirecrawl(html, {
+        portal: "wimoveis", cidade: "Londrina", estado: "PR", somenteProprietario,
+      })[0]?.anunciante).toBe("incerto");
+    }
   });
 });

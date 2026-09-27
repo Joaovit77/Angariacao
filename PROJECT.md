@@ -2440,6 +2440,8 @@ passa pelo mesmo parser de cards, href relativo de imóvel com ID estável é re
 no domínio canônico e só há sucesso com ao menos um anúncio válido após os filtros aplicáveis.
 Zero interpretado por HTTP é indeterminado, falha explicitamente e não entra no cache; anunciante
 incerto não vira proprietário. OLX, Viva Real e Wimoveis não têm fallback HTTP após Firecrawl.
+No Wimoveis, pedir o filtro de anunciante particular não comprova a autoria de cada card: sem
+evidência individual, o anunciante permanece incerto nos caminhos Firecrawl e Playwright.
 A rota da Central dispõe de 120 segundos; antes de iniciar HTTP Chaves, reserva até 15 segundos
 para a aquisição e 35 segundos para interpretação/finalização. Se faltar essa janela, falha
 explicitamente sem iniciar outra chamada. O cron conserva seu limite próprio de 300 segundos.

@@ -8,6 +8,7 @@
    ================================================================ */
 import { existsSync } from "node:fs";
 import type { Browser, Page } from "playwright-core";
+import { tituloWimoveis } from "./tituloWimoveis";
 import { dataPublicacaoOlx, dentroDoPeriodo } from "@/lib/datas";
 import {
   idDoAnuncio,
@@ -238,7 +239,7 @@ async function coletarWimoveis(page: Page, filtros: FiltrosCentralAngariacao): P
     return [{
       idExterno: item.id || idDoAnuncio("wimoveis", url, indice),
       portal: "wimoveis" as const,
-      titulo: item.titulo,
+      titulo: tituloWimoveis(item.titulo),
       preco,
       cidade: local.cidade,
       estado: local.estado,
@@ -247,7 +248,7 @@ async function coletarWimoveis(page: Page, filtros: FiltrosCentralAngariacao): P
       imagem: item.imagem || null,
       url,
       descricao: item.caracteristicas || null,
-      anunciante: filtros.somenteProprietario ? "proprietario" as const : "incerto" as const,
+      anunciante: "incerto" as const,
     }];
   });
 }

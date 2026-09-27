@@ -4,6 +4,7 @@ import { chaveCanonicaConsultaPortal } from "./planejadorColetaMercados";
 import { getCache } from "@vercel/functions";
 import { load, type CheerioAPI, type Cheerio } from "cheerio";
 import type { AnyNode } from "domhandler";
+import { tituloWimoveis } from "./tituloWimoveis";
 import { agoraTimestamp, dataPublicacaoOlx, dentroDoPeriodo, timestampDeIso } from "@/lib/datas";
 import {
   idDoAnuncio,
@@ -344,7 +345,7 @@ function extrairWimoveis($: CheerioAPI, filtros: FiltrosCentralAngariacao): Anun
     .slice(0, LIMITE_RESULTADOS).toArray().flatMap((elemento, indice) => {
       const card = $(elemento);
       const urlParcial = card.attr("data-to-posting") || "";
-      const titulo = card.find('img[alt]:not([alt=""])').first().attr("alt") || "";
+      const titulo = tituloWimoveis(card.find('img[alt]:not([alt=""])').first().attr("alt") || "");
       if (!urlParcial || !titulo) return [];
       const preco = dinheiro(texto(card.find('[data-qa="POSTING_CARD_PRICE"]').first()));
       const caracteristicas = texto(card.find('[data-qa="POSTING_CARD_FEATURES"]').first());
@@ -369,7 +370,7 @@ function extrairWimoveis($: CheerioAPI, filtros: FiltrosCentralAngariacao): Anun
         imagem: imagemDe(card.find('[data-qa="POSTING_CARD_GALLERY"]').first()),
         url,
         descricao: caracteristicas || null,
-        anunciante: filtros.somenteProprietario ? "proprietario" as const : "incerto" as const,
+        anunciante: "incerto" as const,
       }];
     });
 }

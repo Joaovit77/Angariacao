@@ -109,6 +109,28 @@ describe("persistência da busca da Central", () => {
     );
   });
 
+  it("avisa quando o filtro Wimoveis não comprova individualmente o proprietário", async () => {
+    mocks.buscarComFirecrawl.mockResolvedValue([{
+      idExterno: "3018468881", portal: "wimoveis", titulo: "Apartamento para alugar",
+      preco: 1900, cidade: "Londrina", url: "https://www.wimoveis.com.br/propriedades/apartamento-3018468881.html",
+      anunciante: "incerto",
+    }]);
+    const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
+      method: "POST",
+      headers: { Authorization: "Bearer token-valido", "Content-Type": "application/json" },
+      body: JSON.stringify({ portal: "wimoveis", cidade: "Londrina", estado: "PR", somenteProprietario: true }),
+    }));
+    const corpo = await resposta.json();
+    expect(corpo.ok).toBe(true);
+    expect(corpo.aviso).toContain("não confirmou o filtro de proprietário");
+    expect(corpo.anuncios[0].anunciante).toBe("incerto");
+    expect(mocks.salvarComparaveisMercado).toHaveBeenCalledWith(
+      supabase, "usuario-central", [expect.objectContaining({ anunciante: "incerto" })],
+      expect.objectContaining({ portal: "wimoveis", somenteProprietario: true }),
+    );
+    expect(mocks.buscarComNavegador).not.toHaveBeenCalled();
+  });
+
   it("preserva os resultados e avisa quando somente a base histórica falha", async () => {
     mocks.buscarComFirecrawl.mockResolvedValue([{
       idExterno: "novo-2",

@@ -79,6 +79,23 @@ describe("persistência idempotente dos comparáveis de mercado", () => {
     vi.unstubAllEnvs();
   });
 
+  it("aceita comparável Wimoveis incerto apesar do filtro solicitado ao portal", async () => {
+    const banco = bancoComparaveisFalso();
+    const salvos = await salvarComparaveisMercado(banco.cliente, "usuario-1", [{
+      ...anuncioValido,
+      portal: "wimoveis",
+      idExterno: "3018468881",
+      url: "https://www.wimoveis.com.br/propriedades/apartamento-3018468881.html",
+    }], { ...filtros, portal: "wimoveis", somenteProprietario: true });
+    expect(salvos).toBe(1);
+    expect(banco.rpc).toHaveBeenCalledWith("registrar_comparavel_mercado", {
+      p_dados: expect.objectContaining({
+        id_externo: "3018468881", anunciante_tipo: "incerto",
+        dados_originais: expect.objectContaining({ anunciante: "incerto" }),
+      }),
+    });
+  });
+
   it("preserva a persistência estruturada no 403 sem despejar o erro do provider", async () => {
     vi.stubEnv("OPENAI_API_KEY", "chave-ficticia");
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
