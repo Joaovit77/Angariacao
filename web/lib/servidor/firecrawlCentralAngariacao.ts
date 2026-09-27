@@ -498,8 +498,14 @@ function extrairComProtecao(
 
 export async function buscarComFirecrawlAoVivo(
   filtros: FiltrosCentralAngariacao, urlPesquisa: string,
+  opcoesDiagnostico?: { observarHtml: (html: string) => void },
 ): Promise<AnuncioCentralAngariacao[]> {
-  return extrairComProtecao((await coletarHtmlFirecrawl(urlPesquisa)).html, filtros);
+  if (opcoesDiagnostico && process.env.VERCEL_ENV !== "preview") {
+    throw new Error("Observação estrutural permitida somente em Preview.");
+  }
+  const { html } = await coletarHtmlFirecrawl(urlPesquisa);
+  opcoesDiagnostico?.observarHtml(html);
+  return extrairComProtecao(html, filtros);
 }
 
 /**
