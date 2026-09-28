@@ -218,7 +218,8 @@ function extrairVivaReal($: CheerioAPI, filtros: FiltrosCentralAngariacao): Anun
       if (!url || !titulo || vistos.has(url)) return [];
       vistos.add(url);
       const paragrafos = link.find("p").toArray().map((p) => texto($(p))).filter(Boolean);
-      const preco = dinheiro(paragrafos.find((valor) => /R\$\s*[\d.]+/.test(valor)));
+      // Na estrutura comprovada do Viva Real, a posição do R$ não identifica o aluguel.
+      const preco: number | null = null;
       if (filtros.valorMin != null && (preco == null || preco < filtros.valorMin)) return [];
       if (filtros.valorMax != null && (preco == null || preco > filtros.valorMax)) return [];
       const quartos = Number(titulo.match(/(\d+)\s+quartos?/i)?.[1]);

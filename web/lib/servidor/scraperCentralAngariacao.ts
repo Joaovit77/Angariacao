@@ -272,8 +272,8 @@ async function coletarVivaReal(page: Page, filtros: FiltrosCentralAngariacao): P
   return brutos.flatMap((item, indice) => {
     if (!item.url || !item.titulo || vistos.has(item.url)) return [];
     vistos.add(item.url);
-    const precoTexto = item.paragrafos.find((texto) => /R\$\s*[\d.]+/.test(texto));
-    const preco = dinheiro(precoTexto);
+    // A posição do R$ no card não comprova que o valor corresponde ao aluguel.
+    const preco: number | null = null;
     if (filtros.valorMin != null && (preco == null || preco < filtros.valorMin)) return [];
     if (filtros.valorMax != null && (preco == null || preco > filtros.valorMax)) return [];
     const quartos = Number(item.titulo.match(/(\d+)\s+quartos?/i)?.[1]);

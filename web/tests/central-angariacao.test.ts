@@ -276,7 +276,7 @@ describe("Central de Angariação", () => {
       dormitorios: 3,
     })).toEqual([expect.objectContaining({
       idExterno: "2904079401",
-      preco: 3200,
+      preco: null,
       cidade: "Londrina",
       bairro: "Centro",
       endereco: "Rua Sergipe",
