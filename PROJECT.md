@@ -3219,6 +3219,11 @@ duas colunas de significado e não uma.
   resposta de proprietário e evento do Sistema Principal — as duas coisas chegam a uma CARTEIRA).
   A única tela comum é `/cerebro-ia`, porque explica o produto sem consultar a carteira. Não há o
   que proteger: as views do corretor são a carteira DELE, vazia.
+- **Subrotas administrativas para contas sem carteira** precisam estar na lista de exceções do
+  redirecionamento do layout **e** renderizar sem esperar o carregamento da carteira. O login leva
+  inicialmente a `/home`, de onde a conta de operação volta a `/admin`; quando uma subrota precisa
+  ser alcançada após o login, ofereça também navegação a partir do painel admin. Validar os dois
+  caminhos evita que uma página existente fique invisível ou seja redirecionada para `/admin`.
 
 Quatro regras ao mexer nisto:
 

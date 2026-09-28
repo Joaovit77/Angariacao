@@ -74,8 +74,10 @@ describe("Cérebro da IA", () => {
   it("permite a explicação visual à conta sem carteira e preserva o redirecionamento das demais rotas", () => {
     const layout = fonte("app/(painel)/layout.tsx");
     const barra = fonte("components/painel/BarraLateral.tsx");
-    expect(layout).toContain('new Set(["/admin", "/cerebro-ia", "/configuracoes"])');
+    expect(layout).toContain('new Set(["/admin", "/admin/diagnostico-vivareal", "/cerebro-ia", "/configuracoes"])');
     expect(layout).toContain("!ROTAS_SEM_CARTEIRA.has(pathname)");
+    expect(layout).toContain('carregado || pathname === "/admin" || pathname === "/admin/diagnostico-vivareal"');
+    expect(fonte("app/(painel)/admin/page.tsx")).toContain('href="/admin/diagnostico-vivareal"');
     expect(barra).toContain("[ITEM_CEREBRO_IA, ITEM_ADMIN]");
   });
 
