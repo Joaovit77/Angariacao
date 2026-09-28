@@ -1,6 +1,6 @@
 // R4.2h — diagnóstico ESTRUTURAL dos cards do ZAP (HTML SINTÉTICO). Descobre
 // onde moram os links de imóvel quando o seletor esperado não existe. Só
-// observa: o parser continua exigindo `li[data-testid="rp-property-cd"]`.
+// observa: o parser continua exigindo um `li` marcado com `rp-property-cd`.
 import { load } from "cheerio";
 import { describe, expect, it, vi } from "vitest";
 

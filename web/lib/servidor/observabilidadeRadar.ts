@@ -115,6 +115,7 @@ export function diagnosticoZapSeguro(valor: unknown) {
         .map((item) => ({ valor: item.valor as string, quantidade: contagem(item.quantidade) })),
     },
     seletor_cards: contagem(d.seletorCards),
+    seletor_variantes: campos(d.seletorVariantes, ["dataCy", "dataTestid", "ambos", "uniao"]),
     cards: campos(d.cards, ["processados", "alemDoLimite", "comUmId", "idsUnicos", "idsDuplicados"]),
     json_ld: campos(d.jsonLd, [
       "blocos", "invalidos", "product", "apartment", "offer", "rentAction", "priceSpecification",

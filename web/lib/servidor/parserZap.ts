@@ -2,9 +2,10 @@
    ZAP IMÓVEIS — parser da listagem (R4.2h)
 
    Contrato comprovado no discovery (R4.2f), e nada além dele:
-   - o CARD define o conjunto visível: `li[data-testid="rp-property-cd"]`
-     com um link `/imovel/{slug}-id-{n}/`; o ID sai desse link, nunca da
-     posição. Item do JSON-LD sem card é ignorado;
+   - o CARD define o conjunto visível: `li` marcado com `rp-property-cd` em
+     `data-cy` (smoke do R4.2h) ou em `data-testid` (discovery R4.2f), as
+     duas variantes reais observadas, com um link `/imovel/{slug}-id-{n}/`;
+     o ID sai desse link, nunca da posição. Item do JSON-LD sem card é ignorado;
    - o JSON-LD só ENRIQUECE o anúncio do mesmo ID (Product/Apartment);
    - aluguel = Product.offers → Offer.potentialAction(RentAction)
      → priceSpecification.price, em BRL. `Offer.price` só corrobora; qualquer
@@ -24,7 +25,11 @@ import {
 import { normalizarUf, ufValida } from "@/lib/calculo/geografia";
 
 const ORIGEM_ZAP = "https://www.zapimoveis.com.br/";
-const SELETOR_CARD_ZAP = 'li[data-testid="rp-property-cd"]';
+const SELETOR_CARD_DATA_CY_ZAP = 'li[data-cy="rp-property-cd"]';
+const SELETOR_CARD_DATA_TESTID_ZAP = 'li[data-testid="rp-property-cd"]';
+// Uma lista de seletores percorre o DOM uma vez: ordem do documento, e um
+// card com os dois atributos aparece uma única vez.
+const SELETOR_CARD_ZAP = `${SELETOR_CARD_DATA_CY_ZAP}, ${SELETOR_CARD_DATA_TESTID_ZAP}`;
 const CAMINHO_ANUNCIO_ZAP = /^\/imovel\/[^/]+-id-(\d{6,})\/?$/i;
 const LOGRADOURO = /^(rua|r\.|avenida|av\.?|alameda|al\.|travessa|tv\.|rodovia|estrada|pra[çc]a)\s/i;
 
@@ -211,6 +216,8 @@ export interface DiagnosticoZap {
     dataTestid: Array<{ valor: string; quantidade: number }>;
   };
   seletorCards: number;
+  /** Quantos cards vieram de cada variante; `uniao` = cards únicos processáveis. */
+  seletorVariantes: { dataCy: number; dataTestid: number; ambos: number; uniao: number };
   cards: {
     processados: number;
     alemDoLimite: number;
@@ -370,6 +377,12 @@ function estruturaGlobalZap($: CheerioAPI) {
         .map(([valor, quantidade]) => ({ valor, quantidade })),
     },
     seletorCards: $(SELETOR_CARD_ZAP).length,
+    seletorVariantes: {
+      dataCy: $(SELETOR_CARD_DATA_CY_ZAP).length,
+      dataTestid: $(SELETOR_CARD_DATA_TESTID_ZAP).length,
+      ambos: $(SELETOR_CARD_DATA_CY_ZAP).filter(SELETOR_CARD_DATA_TESTID_ZAP).length,
+      uniao: $(SELETOR_CARD_ZAP).length,
+    },
     tipos,
     blocos,
     invalidos,
@@ -682,6 +695,7 @@ export function extrairZap(
         tituloMencionaLondrina: global.tituloMencionaLondrina,
         estrutura: global.estrutura,
         seletorCards: global.seletorCards,
+        seletorVariantes: global.seletorVariantes,
         cards: {
           processados,
           alemDoLimite: Math.max(0, global.seletorCards - processados),

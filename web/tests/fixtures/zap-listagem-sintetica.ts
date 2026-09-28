@@ -1,6 +1,7 @@
 // FIXTURE SINTÉTICA (R4.2h). Não é captura do ZAP: o HTML real do discovery
 // (R4.2f) nunca foi guardado. Ela reproduz SOMENTE as estruturas comprovadas
-// lá: card `li[data-testid="rp-property-cd"]`, link `/imovel/{slug}-id-{n}/`
+// lá: card `li[data-testid="rp-property-cd"]` (ou, pela opção `marcador`, a
+// variante `data-cy` vista no smoke do R4.2h), link `/imovel/{slug}-id-{n}/`
 // com query `?source=`, foto em resizedimgs.zapimoveis.com.br, texto
 // "Bairro, Londrina" no card e JSON-LD com ItemList → Product → offers(Offer)
 // → potentialAction(RentAction) → priceSpecification(PriceSpecification),
@@ -20,7 +21,17 @@ export interface AnuncioSintetico {
   datePosted?: string;
   hrefExtra?: string;
   imagem?: string | null;
+  /** Atributo que marca o card; padrão `data-testid`. */
+  marcador?: "data-testid" | "data-cy" | "ambos" | "nenhum" | "data-cy-outro";
 }
+
+const MARCADORES_CARD: Record<NonNullable<AnuncioSintetico["marcador"]>, string> = {
+  "data-testid": ' data-testid="rp-property-cd"',
+  "data-cy": ' data-cy="rp-property-cd"',
+  ambos: ' data-cy="rp-property-cd" data-testid="rp-property-cd"',
+  nenhum: "",
+  "data-cy-outro": ' data-cy="outro-valor"',
+};
 
 export function urlAnuncio(id: string, slug = "aluguel-apartamento-2-quartos-centro-londrina-pr-60m2"): string {
   return `${ORIGEM}/imovel/${slug}-id-${id}/`;
@@ -89,7 +100,7 @@ function card(anuncio: AnuncioSintetico): string {
   const folhas = (anuncio.folhas ?? FOLHAS_PADRAO).map((f) => `<p>${f}</p>`).join("");
   const imagem = anuncio.imagem === null ? "" : `<img src="${anuncio.imagem ?? `https://resizedimgs.zapimoveis.com.br/img/${anuncio.id}.jpg`}" alt="">`;
   const extra = anuncio.hrefExtra ? `<a href="${anuncio.hrefExtra}">outro</a>` : "";
-  return `<li data-testid="rp-property-cd"><a href="${urlAnuncio(anuncio.id)}?source=ranking%2Crp">${imagem}<h2>${anuncio.titulo ?? "Título do card"}</h2></a><div>${folhas}</div>${extra}</li>`;
+  return `<li${MARCADORES_CARD[anuncio.marcador ?? "data-testid"]}><a href="${urlAnuncio(anuncio.id)}?source=ranking%2Crp">${imagem}<h2>${anuncio.titulo ?? "Título do card"}</h2></a><div>${folhas}</div>${extra}</li>`;
 }
 
 /** HTML da listagem: cards na ordem dada; JSON-LD em outra ordem (invertida). */
