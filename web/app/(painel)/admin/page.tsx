@@ -15,6 +15,7 @@
    ================================================================ */
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import AdminView from "@/components/admin/AdminView";
 import { useSessao } from "@/components/SessaoProvider";
 import { useAppStore } from "@/lib/store";
@@ -30,5 +31,11 @@ export default function Pagina() {
   }, [cargoConfirmado, ehAdmin, router]);
 
   if (!cargoConfirmado || !ehAdmin) return null;
-  return <AdminView />;
+  // R4.2f (temporário): acesso ao diagnóstico do ZAP depois do login.
+  return <>
+    <p style={{ margin: "1rem 0" }}>
+      <Link href="/admin/diagnostico-zap">Abrir diagnóstico temporário do ZAP</Link>
+    </p>
+    <AdminView />
+  </>;
 }
