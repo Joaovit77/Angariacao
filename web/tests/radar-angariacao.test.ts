@@ -37,7 +37,7 @@ describe("Radar de Angariação", () => {
     expect(avaliacao.nota).toBe(80);
     expect(avaliacao.faixa).toBe("alta");
     expect(avaliacao.motivos).toContain("anúncio direto com o proprietário");
-    expect(avaliacao.motivos).toContain("endereço publicado");
+    expect(avaliacao.motivos).toContain("endereço com número publicado");
   });
 
   it("mantém baixa a nota quando há poucos dados públicos", () => {

@@ -2509,13 +2509,16 @@ compacto com IDs internos, portal, códigos/motivos fechados, quantidades, dura�
 ou URL completa. A ausência do evento de rodada continua sendo o sinal para cruzar com o Cron Jobs
 da Vercel. A falha do próprio registro é ignorada e não interfere na coleta.
 
-No score da Central, aviso do portal de endereço não informado ou indisponível segue a localização
-parcial (+10), não o endereço publicado (+20). Uma regra pura compartilhada reconhece o aviso;
-`QualidadeLocalizacaoRadar` e suas sete categorias continuam somente no shadow de `radar-busca-ok`,
-sem servir de entrada ao score ou à seleção. A contagem de localização usa anúncios após o filtro;
-`id_fallback` usa todos os coletados. Score graduado, penalizações ou filtros de bairro e endereço
-indisponível e uso da localização em deduplicação/identidade permanecem sem promoção por falta de
-evidência.
+No score da Central, os pontos de localização vêm da categoria de `qualidadeLocalizacaoRadar`
+(R4.2i); o score não tem classificação própria. +20 exige logradouro útil com número confiável
+(`logradouro_numero`); número placeholder, rua sem número, aviso do portal de endereço não
+informado ou indisponível, bairro e cidade são localização parcial (+10); sem localização, 0. A
+cidade vale só como parcial: no Viva Real ela pode vir do filtro. As sete categorias também seguem
+no shadow de `radar-busca-ok`, mas nunca decidem seleção, entrada no Radar, deduplicação, filtros,
+ordenação, coleta ou planejamento; categoria e nota são calculadas sob demanda, sem persistência.
+A contagem de localização usa anúncios após o filtro; `id_fallback` usa todos os coletados. Score
+graduado além de +10/+20, penalizações, filtros de bairro e endereço indisponível e uso da
+localização em deduplicação/identidade permanecem sem promoção por falta de evidência.
 
 A observabilidade do Radar correlaciona cada rodada do cron por `rodada_id`, cada tentativa de busca
 por `execucao_id` gerado no servidor e, quando há consulta compartilhada na mesma instância, por

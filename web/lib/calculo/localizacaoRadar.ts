@@ -1,10 +1,11 @@
 /* ================================================================
-   QUALIDADE DA LOCALIZAÇÃO DO RADAR (R4.2a, somente medição)
+   QUALIDADE DA LOCALIZAÇÃO DO RADAR (R4.2a; score desde o R4.2i)
 
    Diz quanto de localização confiável o card de um portal trouxe. Serve
-   para observabilidade e debugging, NUNCA para decidir se o anúncio
-   existe no Radar: um anúncio só com bairro (a OLX inteira) ou com
-   "Endereço indisponível" continua válido.
+   para observabilidade e, desde o R4.2i, para os pontos de localização
+   de `avaliarOportunidade`. NUNCA decide se o anúncio existe no Radar,
+   nem seleção, filtro ou ordem: um anúncio só com bairro (a OLX inteira)
+   ou com "Endereço indisponível" continua válido.
 
    Também não é regra de identidade. "Rua Brasil" é localização útil,
    mas não identifica o imóvel; a deduplicação continua nas regras do

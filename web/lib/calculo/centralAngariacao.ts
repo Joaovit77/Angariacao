@@ -1,7 +1,7 @@
 import { agoraTimestamp, timestampDeIso } from "../datas";
 import { extrairCaracteristicasImovel } from "./caracteristicasImovel";
-import { ehAvisoEnderecoIndisponivel } from "./avisoEndereco";
 import { normalizarUf, separarCidadeEUf, ufValida } from "./geografia";
+import { qualidadeLocalizacaoRadar, type CategoriaLocalizacaoRadar } from "./localizacaoRadar";
 
 /* ================================================================
    CENTRAL DE ANGARIAÇÃO — contratos e regras puras
@@ -120,6 +120,20 @@ export interface AvaliacaoOportunidade {
   motivos: string[];
 }
 
+/* R4.2i: a categoria de `qualidadeLocalizacaoRadar` decide os pontos de
+   localização; o score não tem classificação própria. +20 exige logradouro
+   útil com número confiável; qualquer localização parcial vale +10 (a cidade
+   pode vir do filtro no Viva Real, então nunca prova endereço); nada, 0. */
+const LOCALIZACAO_NO_SCORE: Record<CategoriaLocalizacaoRadar, { pontos: number; motivo: string | null }> = {
+  logradouro_numero: { pontos: 20, motivo: "endereço com número publicado" },
+  logradouro_numero_placeholder: { pontos: 10, motivo: "rua publicada, número não confirmado" },
+  logradouro_sem_numero: { pontos: 10, motivo: "rua publicada, sem número" },
+  indisponivel: { pontos: 10, motivo: "localização parcial disponível" },
+  bairro: { pontos: 10, motivo: "bairro informado" },
+  cidade: { pontos: 10, motivo: "cidade informada" },
+  sem_localizacao: { pontos: 0, motivo: null },
+};
+
 /**
  * Triagem explicável do Radar. Não tenta prever fechamento nem inventa dados:
  * apenas valoriza os sinais que tornam uma oportunidade mais acionável.
@@ -136,14 +150,9 @@ export function avaliarOportunidade(anuncio: AnuncioCentralAngariacao): Avaliaca
     motivos.push("anunciante ainda precisa ser confirmado");
   }
 
-  const avisoEndereco = ehAvisoEnderecoIndisponivel(anuncio.endereco);
-  if (anuncio.endereco && !avisoEndereco) {
-    nota += 20;
-    motivos.push("endereço publicado");
-  } else if (avisoEndereco || anuncio.bairro || anuncio.cidade) {
-    nota += 10;
-    motivos.push("localização parcial disponível");
-  }
+  const localizacao = LOCALIZACAO_NO_SCORE[qualidadeLocalizacaoRadar(anuncio).categoria];
+  nota += localizacao.pontos;
+  if (localizacao.motivo) motivos.push(localizacao.motivo);
 
   if (anuncio.preco && anuncio.preco > 0) {
     nota += 10;
