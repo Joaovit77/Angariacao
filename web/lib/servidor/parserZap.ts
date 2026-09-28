@@ -241,6 +241,51 @@ export interface DiagnosticoZap {
   };
   titulo: { comProductName: number; comTituloHtml: number; semTitulo: number };
   saida: { aceitos: number; descartes: Record<MotivoDescarteZap, number> };
+  /** Onde estão os links de imóvel, independente do seletor; null se falhar. */
+  estruturaCards: EstruturaCardsZap | null;
+}
+
+/** Contagem por valor: {"1": 29} = 29 ocorrências do valor 1. */
+export type HistogramaZap = Record<string, number>;
+export interface ParEstruturalZap { atributo: string; valor: string; quantidade: number }
+
+export const ANCESTRAIS_ZAP = ["li", "article", "section", "role", "dataTestid", "dataCy", "itemtype"] as const;
+export type AncestralZap = (typeof ANCESTRAIS_ZAP)[number];
+
+/** Ancestral mais próximo de um tipo, agrupando os links de imóvel por contêiner. */
+export interface AncestralCardZap {
+  linksComAncestral: number;
+  profundidade: HistogramaZap;
+  containers: number;
+  linksPorContainer: HistogramaZap;
+  idsPorContainer: HistogramaZap;
+  /** Contêineres com exatamente um ID; os campos abaixo contam só esses. */
+  unitarios: number;
+  comProduct: number;
+  semProduct: number;
+  comApartment: number;
+  semApartment: number;
+  atributos: ParEstruturalZap[];
+}
+
+export interface EstruturaCardsZap {
+  cruzamento: {
+    idsLinks: number;
+    idsProduct: number;
+    idsApartment: number;
+    idsLinkComProduct: number;
+    idsLinkSemProduct: number;
+    idsProductSemLink: number;
+    idsLinkComApartment: number;
+    idsLinkSemApartment: number;
+    idsApartmentSemLink: number;
+    idsComVariosLinks: number;
+    idsComUrlsDiferentes: number;
+  };
+  recomendacoes: { listas: number; linksDentro: number; idsDentro: number; linksFora: number; idsFora: number };
+  atributosDoLink: ParEstruturalZap[];
+  ancestrais: Record<AncestralZap, AncestralCardZap>;
+  assinaturas: Array<{ valor: string; quantidade: number }>;
 }
 
 const MARCADORES_BLOQUEIO_ZAP: Array<[string, RegExp]> = [
@@ -330,6 +375,160 @@ function estruturaGlobalZap($: CheerioAPI) {
     invalidos,
     produtosPorId,
     apartamentosPorId,
+  };
+}
+
+const SELETOR_RECOMENDACOES_ZAP = '[data-testid="recommendations-list"]';
+const SUBIDA_MAXIMA_ZAP = 40;
+const ANCESTRAIS_NA_ASSINATURA_ZAP = 6;
+const TAG_ESTRUTURAL = /^[a-z][a-z0-9-]{0,15}$/;
+
+const EH_ANCESTRAL_ZAP: Record<AncestralZap, (el: Element) => boolean> = {
+  li: (el) => el.name === "li",
+  article: (el) => el.name === "article",
+  section: (el) => el.name === "section",
+  role: (el) => el.attribs.role !== undefined,
+  dataTestid: (el) => el.attribs["data-testid"] !== undefined,
+  dataCy: (el) => el.attribs["data-cy"] !== undefined,
+  itemtype: (el) => el.attribs.itemtype !== undefined,
+};
+
+function paiElemento(el: Element): Element | null {
+  const pai = el.parent as Element | null;
+  return pai && pai.type === "tag" ? pai : null;
+}
+
+function tagEstrutural(el: Element): string {
+  return TAG_ESTRUTURAL.test(el.name) ? el.name : "outra";
+}
+
+/** Só tag, role, data-testid, data-cy, itemprop e o tipo schema.org do itemtype. */
+function atributosEstruturais(el: Element): Array<[string, string]> {
+  const pares: Array<[string, string]> = [["tag", tagEstrutural(el)]];
+  for (const [atributo, nome] of [["role", "role"], ["data-testid", "dataTestid"], ["data-cy", "dataCy"], ["itemprop", "itemprop"]]) {
+    const valor = el.attribs[atributo];
+    if (valor !== undefined) pares.push([nome, rotuloEstrutural(valor) ?? "valor-recusado"]);
+  }
+  if (el.attribs.itemtype !== undefined) {
+    const tipo = el.attribs.itemtype.trim().match(/^https?:\/\/schema\.org\/([A-Za-z]{1,40})$/)?.[1];
+    pares.push(["itemtype", tipo ?? "valor-recusado"]);
+  }
+  return pares;
+}
+
+function agruparPares(pares: Array<[string, string]>, limite = 15): ParEstruturalZap[] {
+  const contagens = new Map<string, ParEstruturalZap>();
+  for (const [atributo, valor] of pares) {
+    const chave = `${atributo}\u0000${valor}`;
+    const atual = contagens.get(chave) ?? { atributo, valor, quantidade: 0 };
+    atual.quantidade += 1;
+    contagens.set(chave, atual);
+  }
+  return [...contagens.values()]
+    .sort((a, b) => b.quantidade - a.quantidade || a.atributo.localeCompare(b.atributo) || a.valor.localeCompare(b.valor))
+    .slice(0, limite);
+}
+
+function histograma(valores: number[]): HistogramaZap {
+  const contagens: HistogramaZap = {};
+  for (const valor of valores) contagens[String(valor)] = (contagens[String(valor)] ?? 0) + 1;
+  return contagens;
+}
+
+/** Onde os links `/imovel/...-id-{n}/` moram no DOM: só tags, contagens e
+    atributos estruturais permitidos. Nunca texto, href, classe, id HTML ou ID. */
+function estruturaCardsZap(
+  $: CheerioAPI,
+  produtosPorId: Map<string, number>,
+  apartamentosPorId: Map<string, number>,
+): EstruturaCardsZap {
+  const links: Array<{ el: Element; id: string; href: string }> = [];
+  $("a[href]").each((_, a) => {
+    const href = ($(a).attr("href") || "").trim();
+    const id = idDaUrlZap(href);
+    if (id) links.push({ el: a as Element, id, href });
+  });
+  const idsLinks = new Set(links.map((link) => link.id));
+  const idsProduct = new Set(produtosPorId.keys());
+  const idsApartment = new Set(apartamentosPorId.keys());
+  const quantosEm = (origem: Set<string>, destino: Set<string>) => [...origem].filter((id) => destino.has(id)).length;
+  const hrefsPorId = new Map<string, string[]>();
+  for (const link of links) hrefsPorId.set(link.id, [...(hrefsPorId.get(link.id) ?? []), link.href]);
+
+  const dentro = links.filter((link) => $(link.el).closest(SELETOR_RECOMENDACOES_ZAP).length > 0);
+  const fora = links.filter((link) => !dentro.includes(link));
+
+  // Pareável = exatamente um Product (ou Apartment) para o ID, como no parser.
+  const unico = (mapa: Map<string, number>, id: string) => mapa.get(id) === 1;
+  const ancestrais = Object.fromEntries(ANCESTRAIS_ZAP.map((tipo): [AncestralZap, AncestralCardZap] => {
+    const grupos = new Map<Element, string[]>();
+    const profundidades: number[] = [];
+    for (const link of links) {
+      let atual = paiElemento(link.el);
+      let distancia = 1;
+      while (atual && distancia <= SUBIDA_MAXIMA_ZAP && !EH_ANCESTRAL_ZAP[tipo](atual)) {
+        atual = paiElemento(atual);
+        distancia += 1;
+      }
+      if (!atual || distancia > SUBIDA_MAXIMA_ZAP) continue;
+      profundidades.push(distancia);
+      grupos.set(atual, [...(grupos.get(atual) ?? []), link.id]);
+    }
+    const idsDosUnitarios = [...grupos.values()].filter((ids) => new Set(ids).size === 1).map((ids) => ids[0]);
+    return [tipo, {
+      linksComAncestral: profundidades.length,
+      profundidade: histograma(profundidades),
+      containers: grupos.size,
+      linksPorContainer: histograma([...grupos.values()].map((ids) => ids.length)),
+      idsPorContainer: histograma([...grupos.values()].map((ids) => new Set(ids).size)),
+      unitarios: idsDosUnitarios.length,
+      comProduct: idsDosUnitarios.filter((id) => unico(produtosPorId, id)).length,
+      semProduct: idsDosUnitarios.filter((id) => !unico(produtosPorId, id)).length,
+      comApartment: idsDosUnitarios.filter((id) => unico(apartamentosPorId, id)).length,
+      semApartment: idsDosUnitarios.filter((id) => !unico(apartamentosPorId, id)).length,
+      atributos: agruparPares([...grupos.keys()].flatMap(atributosEstruturais)),
+    }];
+  })) as Record<AncestralZap, AncestralCardZap>;
+
+  const assinaturas = new Map<string, number>();
+  for (const link of links) {
+    const tags = [tagEstrutural(link.el)];
+    let atual = paiElemento(link.el);
+    while (atual && tags.length <= ANCESTRAIS_NA_ASSINATURA_ZAP) {
+      tags.push(tagEstrutural(atual));
+      atual = paiElemento(atual);
+    }
+    const assinatura = tags.join(" > ");
+    assinaturas.set(assinatura, (assinaturas.get(assinatura) ?? 0) + 1);
+  }
+
+  return {
+    cruzamento: {
+      idsLinks: idsLinks.size,
+      idsProduct: idsProduct.size,
+      idsApartment: idsApartment.size,
+      idsLinkComProduct: quantosEm(idsLinks, idsProduct),
+      idsLinkSemProduct: idsLinks.size - quantosEm(idsLinks, idsProduct),
+      idsProductSemLink: [...idsProduct].filter((id) => !idsLinks.has(id)).length,
+      idsLinkComApartment: quantosEm(idsLinks, idsApartment),
+      idsLinkSemApartment: idsLinks.size - quantosEm(idsLinks, idsApartment),
+      idsApartmentSemLink: [...idsApartment].filter((id) => !idsLinks.has(id)).length,
+      idsComVariosLinks: [...hrefsPorId.values()].filter((hrefs) => hrefs.length > 1).length,
+      idsComUrlsDiferentes: [...hrefsPorId.values()].filter((hrefs) => new Set(hrefs).size > 1).length,
+    },
+    recomendacoes: {
+      listas: $(SELETOR_RECOMENDACOES_ZAP).length,
+      linksDentro: dentro.length,
+      idsDentro: new Set(dentro.map((link) => link.id)).size,
+      linksFora: fora.length,
+      idsFora: new Set(fora.map((link) => link.id)).size,
+    },
+    atributosDoLink: agruparPares(links.flatMap((link) => atributosEstruturais(link.el))),
+    ancestrais,
+    assinaturas: [...assinaturas.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 10)
+      .map(([valor, quantidade]) => ({ valor, quantidade })),
   };
 }
 
@@ -471,6 +670,12 @@ export function extrairZap(
       const global = estruturaGlobalZap($);
       const idsValidos = [...vistos];
       const idsJsonLd = new Set([...global.produtosPorId.keys(), ...global.apartamentosPorId.keys()]);
+      let estruturaCards: EstruturaCardsZap | null = null;
+      try {
+        estruturaCards = estruturaCardsZap($, global.produtosPorId, global.apartamentosPorId);
+      } catch {
+        /* a parte estrutural não derruba o restante do diagnóstico */
+      }
       registrarDiagnostico({
         htmlCaracteres,
         marcadoresBloqueio: global.marcadoresBloqueio,
@@ -503,6 +708,7 @@ export function extrairZap(
         },
         titulo: titulos,
         saida: { aceitos: anuncios.length, descartes },
+        estruturaCards,
       });
     } catch {
       /* diagnóstico é acessório */

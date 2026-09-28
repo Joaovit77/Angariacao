@@ -31,6 +31,65 @@ const MOTIVOS_DESCARTE_ZAP = [
   "id_duplicado", "id_inconsistente", "sem_titulo", "filtro_local",
 ] as const;
 const MARCADORES_ZAP = new Set(["cloudflare", "captcha", "acesso_negado", "aguarde_verificacao"]);
+const ANCESTRAIS_ZAP = ["li", "article", "section", "role", "dataTestid", "dataCy", "itemtype"] as const;
+const ATRIBUTOS_ESTRUTURAIS_ZAP = new Set(["tag", "role", "dataTestid", "dataCy", "itemprop", "itemtype"]);
+const TAG_ZAP = /^[a-z][a-z0-9-]{0,15}$/;
+const ROTULO_ZAP = /^[A-Za-z][A-Za-z0-9_-]{0,47}$/;
+const ASSINATURA_ZAP = /^[a-z][a-z0-9-]{0,15}( > [a-z][a-z0-9-]{0,15}){0,6}$/;
+
+function rotuloZapSeguro(valor: unknown): valor is string {
+  return typeof valor === "string" && ROTULO_ZAP.test(valor) && !/\d{6,}/.test(valor);
+}
+
+/** Histograma: só chaves numéricas curtas e contagens. */
+function histogramaSeguro(valor: unknown): Record<string, number> {
+  return Object.fromEntries(Object.entries(objetoOuVazio(valor))
+    .filter(([chave]) => /^\d{1,3}$/.test(chave))
+    .slice(0, 40)
+    .map(([chave, quantidade]) => [chave, contagem(quantidade)]));
+}
+
+function paresEstruturaisSeguros(valor: unknown) {
+  return (Array.isArray(valor) ? valor : []).slice(0, 15)
+    .map(objetoOuVazio)
+    .filter((par) => typeof par.atributo === "string" && ATRIBUTOS_ESTRUTURAIS_ZAP.has(par.atributo)
+      && (par.atributo === "tag" ? typeof par.valor === "string" && TAG_ZAP.test(par.valor) : rotuloZapSeguro(par.valor)))
+    .map((par) => ({ atributo: par.atributo as string, valor: par.valor as string, quantidade: contagem(par.quantidade) }));
+}
+
+function estruturaCardsZapSegura(valor: unknown) {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return null;
+  const e = valor as Record<string, unknown>;
+  const campos = (grupo: unknown, nomes: readonly string[]) => {
+    const origem = objetoOuVazio(grupo);
+    return Object.fromEntries(nomes.map((nome) => [nome, contagem(origem[nome])]));
+  };
+  const ancestrais = objetoOuVazio(e.ancestrais);
+  return {
+    cruzamento: campos(e.cruzamento, [
+      "idsLinks", "idsProduct", "idsApartment",
+      "idsLinkComProduct", "idsLinkSemProduct", "idsProductSemLink",
+      "idsLinkComApartment", "idsLinkSemApartment", "idsApartmentSemLink",
+      "idsComVariosLinks", "idsComUrlsDiferentes",
+    ]),
+    recomendacoes: campos(e.recomendacoes, ["listas", "linksDentro", "idsDentro", "linksFora", "idsFora"]),
+    atributos_do_link: paresEstruturaisSeguros(e.atributosDoLink),
+    ancestrais: Object.fromEntries(ANCESTRAIS_ZAP.map((tipo) => {
+      const a = objetoOuVazio(ancestrais[tipo]);
+      return [tipo, {
+        ...campos(a, ["linksComAncestral", "containers", "unitarios", "comProduct", "semProduct", "comApartment", "semApartment"]),
+        profundidade: histogramaSeguro(a.profundidade),
+        linksPorContainer: histogramaSeguro(a.linksPorContainer),
+        idsPorContainer: histogramaSeguro(a.idsPorContainer),
+        atributos: paresEstruturaisSeguros(a.atributos),
+      }];
+    })),
+    assinaturas: (Array.isArray(e.assinaturas) ? e.assinaturas : []).slice(0, 10)
+      .map(objetoOuVazio)
+      .filter((item) => typeof item.valor === "string" && ASSINATURA_ZAP.test(item.valor))
+      .map((item) => ({ valor: item.valor as string, quantidade: contagem(item.quantidade) })),
+  };
+}
 
 /** Reconstrói o diagnóstico do ZAP campo a campo: só números e rótulos curtos
     conhecidos. Qualquer campo extra (HTML, texto, URL, ID) é descartado. */
@@ -67,6 +126,7 @@ export function diagnosticoZapSeguro(valor: unknown) {
       aceitos: contagem(saida.aceitos),
       descartes: campos(saida.descartes, MOTIVOS_DESCARTE_ZAP),
     },
+    estrutura_cards: estruturaCardsZapSegura(d.estruturaCards),
   };
 }
 
