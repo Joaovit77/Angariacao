@@ -1,7 +1,13 @@
 // R4.2f (temporário): guarda da rota diagnóstica do ZAP. Sai junto com o harness.
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { HTML_ZAP_SINTETICO, respostaFirecrawl, SEGREDOS_DO_HTML } from "./fixtures/zap-diagnostico-sintetico";
+import {
+  HTML_ZAP_SINTETICO,
+  HTML_ZAP_SINTETICO_COM_JSONLD,
+  respostaFirecrawl,
+  SEGREDOS_DO_HTML,
+  SEGREDOS_DO_JSONLD,
+} from "./fixtures/zap-diagnostico-sintetico";
 
 const mocks = vi.hoisted(() => ({
   exigirAdmin: vi.fn(),
@@ -33,7 +39,11 @@ const pedidoComStreamVazio = () => new Request(rota, {
 
 /** Código da rota e do módulo, sem comentários (que citam de propósito o que está fora). */
 function codigoSemComentarios(): string {
-  return ["app/api/admin/diagnostico-zap/route.ts", "lib/servidor/diagnosticoTemporarioZap.ts"]
+  return [
+    "app/api/admin/diagnostico-zap/route.ts",
+    "lib/servidor/diagnosticoTemporarioZap.ts",
+    "lib/servidor/diagnosticoTemporarioZapJsonLd.ts",
+  ]
     .map((arquivo) => readFileSync(arquivo, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, ""))
     .join("\n");
 }
@@ -200,6 +210,34 @@ describe("rota diagnóstica temporária do ZAP", () => {
     const registros = JSON.stringify([log.mock.calls, aviso.mock.calls, erro.mock.calls]);
     expect(registros).not.toContain(CHAVE);
     expect(registros).not.toContain(TOKEN);
+  });
+
+  it("segunda prova: devolve o bloco jsonLd agregado, ainda com uma chamada e sem conteúdo bruto", async () => {
+    fetchMock.mockResolvedValue(respostaFirecrawl(HTML_ZAP_SINTETICO_COM_JSONLD));
+    const resposta = await POST(pedido());
+    expect(resposta.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const texto = await resposta.text();
+    const corpo = JSON.parse(texto);
+    expect(Object.keys(corpo.jsonLd)).toEqual(expect.arrayContaining([
+      "pareamento", "preco", "localizacao", "data", "autoria", "itensExtras",
+    ]));
+    expect(corpo.jsonLd.preco.gruposComAluguelComprovado).toBe(2);
+    for (const proibido of [...SEGREDOS_DO_JSONLD, CHAVE, TOKEN, "schema.org", "rawHtml"]) {
+      expect(texto, proibido).not.toContain(proibido);
+    }
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it("JSON-LD patológico (profundo) não derruba o restante do diagnóstico", async () => {
+    // Um JSON-LD enorme e profundo não pode quebrar a resposta: no pior caso o bloco vira falha.
+    const profundo = `<script type="application/ld+json">${"[".repeat(5000)}${"]".repeat(5000)}</script>`;
+    fetchMock.mockResolvedValue(respostaFirecrawl(HTML_ZAP_SINTETICO.replace("</head>", `${profundo}</head>`)));
+    const resposta = await POST(pedido());
+    expect(resposta.status).toBe(200);
+    const corpo = await resposta.json();
+    expect(corpo.estrutura.cardsCandidatos).toBe(2);
+    expect(corpo.jsonLd).toBeTruthy();
   });
 
   it("sem FIRECRAWL_API_KEY responde indisponível sem chamar nada", async () => {

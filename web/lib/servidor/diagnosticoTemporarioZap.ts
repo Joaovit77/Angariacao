@@ -113,25 +113,25 @@ export async function adquirirHtmlZapUmaVez(
 // ----------------------------------------------------------------
 
 /** Rótulo estrutural curto (nome de chave, data-testid, @type...). Qualquer outra coisa vira null. */
-function rotuloSeguro(valor: unknown): string | null {
+export function rotuloSeguro(valor: unknown): string | null {
   if (typeof valor !== "string") return null;
   const limpo = valor.trim();
   return /^[A-Za-z_][A-Za-z0-9_:\-]{0,47}$/.test(limpo) ? limpo : null;
 }
 
-function contar<T extends string>(mapa: Map<T, number>, chave: T | null): void {
+export function contar<T extends string>(mapa: Map<T, number>, chave: T | null): void {
   if (chave == null) return;
   mapa.set(chave, (mapa.get(chave) ?? 0) + 1);
 }
 
-function maisFrequentes(mapa: Map<string, number>, limite = MAX_PADROES): Array<{ padrao: string; quantidade: number }> {
+export function maisFrequentes(mapa: Map<string, number>, limite = MAX_PADROES): Array<{ padrao: string; quantidade: number }> {
   return [...mapa.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, limite)
     .map(([padrao, quantidade]) => ({ padrao, quantidade }));
 }
 
-function textoDe(elemento: Cheerio<AnyNode>): string {
+export function textoDe(elemento: Cheerio<AnyNode>): string {
   return elemento.text().replace(/\s+/g, " ").trim();
 }
 
@@ -145,7 +145,7 @@ function atributosEstruturais($: CheerioAPI, elemento: AnyNode): string {
     .toLowerCase();
 }
 
-function urlSegura(href: string | undefined): URL | null {
+export function urlSegura(href: string | undefined): URL | null {
   if (!href) return null;
   try {
     return new URL(href, `https://${HOST_ZAP}/`);
@@ -176,7 +176,7 @@ export function padraoDoCaminho(url: URL): string {
 }
 
 /** ID numérico aparente do caminho (sequência de 6+ dígitos), com a forma de onde saiu. */
-function idDaUrl(url: URL): { id: string; forma: string } | null {
+export function idDaUrl(url: URL): { id: string; forma: string } | null {
   const segmentos = url.pathname.split("/").filter(Boolean);
   for (let i = segmentos.length - 1; i >= 0; i -= 1) {
     const segmento = segmentos[i];
@@ -196,12 +196,19 @@ function idDaUrl(url: URL): { id: string; forma: string } | null {
 // Cards: sobe do link de detalhe até o maior ancestral com um só anúncio
 // ----------------------------------------------------------------
 
-interface CardCandidato {
+export interface CardCandidato {
   raiz: Element;
   id: string;
+  /** origem + caminho do link, sem query nem barra final: só para parear com o JSON-LD. */
+  urlNormalizada: string;
   forma: string;
   comQuery: boolean;
   linkPadrao: string;
+}
+
+/** Origem + caminho, minúsculos e sem barra final: compara link do card com URL do JSON-LD. */
+export function normalizarUrl(url: URL): string {
+  return `${url.hostname.toLowerCase()}${url.pathname.toLowerCase().replace(/\/+$/, "")}`;
 }
 
 /** Forma do caminho sem a query: agrupa links do mesmo tipo de página. */
@@ -209,7 +216,7 @@ function familiaDoCaminho(padrao: string): string {
   return padrao.split("?")[0];
 }
 
-function cardsCandidatos($: CheerioAPI): {
+export function cardsCandidatos($: CheerioAPI): {
   cards: CardCandidato[];
   links: {
     internos: number; externos: number; comId: number; padroes: Map<string, number>;
@@ -217,7 +224,7 @@ function cardsCandidatos($: CheerioAPI): {
   };
 } {
   const padroes = new Map<string, number>();
-  const comId: Array<{ link: Element; id: string; forma: string; comQuery: boolean; padrao: string }> = [];
+  const comId: Array<{ link: Element; id: string; forma: string; comQuery: boolean; padrao: string; urlNormalizada: string }> = [];
   let internos = 0;
   let externos = 0;
   $("a[href]").each((_, elemento) => {
@@ -231,7 +238,7 @@ function cardsCandidatos($: CheerioAPI): {
     const padrao = padraoDoCaminho(url);
     contar(padroes, padrao);
     const id = idDaUrl(url);
-    if (id) comId.push({ link: elemento, ...id, comQuery: url.search.length > 0, padrao });
+    if (id) comId.push({ link: elemento, ...id, comQuery: url.search.length > 0, padrao, urlNormalizada: normalizarUrl(url) });
   });
 
   // Links com número podem apontar para anunciante, lançamento etc. O card é
@@ -258,7 +265,10 @@ function cardsCandidatos($: CheerioAPI): {
       raiz = atual as Element;
     }
     if (!cards.has(raiz)) {
-      cards.set(raiz, { raiz, id: item.id, forma: item.forma, comQuery: item.comQuery, linkPadrao: item.padrao });
+      cards.set(raiz, {
+        raiz, id: item.id, forma: item.forma, comQuery: item.comQuery, linkPadrao: item.padrao,
+        urlNormalizada: item.urlNormalizada,
+      });
     }
   }
   return {

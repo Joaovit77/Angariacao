@@ -7,6 +7,7 @@ import {
   diagnosticarHtmlZap,
   URL_DIAGNOSTICO_ZAP,
 } from "@/lib/servidor/diagnosticoTemporarioZap";
+import { analisarJsonLdZap } from "@/lib/servidor/diagnosticoTemporarioZapJsonLd";
 import { agoraISOString } from "@/lib/datas";
 
 export const runtime = "nodejs";
@@ -59,6 +60,13 @@ export async function POST(request: Request): Promise<Response> {
         horario: agoraISOString(), url: URL_DIAGNOSTICO_ZAP, duracaoMs: duracaoMs(), aquisicao,
       });
     }
+    // Segunda prova: campos do JSON-LD. Uma falha aqui não derruba o restante do diagnóstico.
+    let jsonLd: ReturnType<typeof analisarJsonLdZap> | { falha: "analise_jsonld_falhou" };
+    try {
+      jsonLd = analisarJsonLdZap(html);
+    } catch {
+      jsonLd = { falha: "analise_jsonld_falhou" };
+    }
     return Response.json({
       ok: true,
       horario: agoraISOString(),
@@ -66,6 +74,7 @@ export async function POST(request: Request): Promise<Response> {
       duracaoMs: duracaoMs(),
       aquisicao,
       ...diagnostico,
+      jsonLd,
     }, { headers: SEM_CACHE });
   } finally {
     emAndamento = false;

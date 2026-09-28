@@ -56,3 +56,107 @@ export function respostaFirecrawl(html = HTML_ZAP_SINTETICO, statusCode = 200, s
     status, headers: { "Content-Type": "application/json" },
   });
 }
+
+// ----------------------------------------------------------------
+// Segunda prova: JSON-LD SINTÉTICO. A ordem dos itens é diferente da
+// dos cards de propósito (um extra vem primeiro), para que parear por
+// posição dê resultado errado.
+//  - A (2612345678, card 1): Offer que contém RentAction; valor mensal em
+//    BRL; um IPTU rotulado; vendedor imobiliária com endereço próprio.
+//  - B (2612345699, card 2): Offer e PriceSpecification mensal, SEM
+//    nenhum RentAction: não prova locação.
+//  - Extra (2612345700, sem card): valores dentro do RentAction, um deles
+//    rotulado como condomínio.
+//  - D (2612345701, sem card): Offer com RentAction só como irmão.
+//  - Listing da própria página (sem ID) e Organization do portal.
+// ----------------------------------------------------------------
+const ZAP = "https://www.zapimoveis.com.br";
+const jsonLdLista = {
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  itemListElement: [
+    {
+      "@type": "ListItem", position: 1,
+      item: {
+        "@type": "RealEstateListing", url: `${ZAP}/imovel/aluguel-apartamento-londrina-pr-id-2612345700/`,
+        datePosted: "2026-09-27",
+        offers: { "@type": "Offer", price: "1800", priceCurrency: "BRL" },
+        potentialAction: {
+          "@type": "RentAction",
+          priceSpecification: [
+            { "@type": "PriceSpecification", price: 1800, priceCurrency: "BRL", unitCode: "MON" },
+            { "@type": "PriceSpecification", name: "Condomínio", price: 400, priceCurrency: "BRL" },
+          ],
+        },
+      },
+    },
+    {
+      "@type": "ListItem", position: 2,
+      item: {
+        "@type": "RealEstateListing", url: `${ZAP}/imovel/aluguel-apartamento-2-quartos-londrina-pr-id-2612345699/`,
+        offers: {
+          "@type": "Offer", price: 3100, priceCurrency: "BRL",
+          priceSpecification: { "@type": "PriceSpecification", price: 3100, priceCurrency: "BRL", unitText: "mensal" },
+        },
+        mainEntity: { "@type": "Apartment", address: { "@type": "PostalAddress", addressLocality: "Londrina", addressRegion: "PR" } },
+      },
+    },
+    {
+      "@type": "ListItem", position: 3,
+      item: {
+        "@type": "RealEstateListing",
+        url: `${ZAP}/imovel/aluguel-apartamento-2-quartos-centro-londrina-pr-60m2-id-2612345678/`,
+        datePosted: "2026-09-20T10:00:00Z",
+        offers: {
+          "@type": "Offer", price: "2500", priceCurrency: "BRL",
+          potentialAction: { "@type": "RentAction" },
+          priceSpecification: [
+            { "@type": "UnitPriceSpecification", price: 2500, priceCurrency: "BRL", unitCode: "MON" },
+            { "@type": "PriceSpecification", name: "IPTU", price: 80, priceCurrency: "BRL" },
+          ],
+          seller: {
+            "@type": "RealEstateAgent", name: "Imobiliária Segredo",
+            address: { "@type": "PostalAddress", streetAddress: "Avenida Segredo, 999", addressLocality: "Londrina" },
+          },
+        },
+        mainEntity: {
+          "@type": "Apartment",
+          address: {
+            "@type": "PostalAddress", streetAddress: "Rua Segredo, 15", addressLocality: "Londrina",
+            addressRegion: "PR", postalCode: "86010-000", addressNeighborhood: "Centro",
+          },
+        },
+      },
+    },
+    {
+      "@type": "ListItem", position: 4,
+      item: {
+        "@type": "RealEstateListing", url: `${ZAP}/imovel/aluguel-apartamento-londrina-pr-id-2612345701/`,
+        offers: { "@type": "Offer", price: 999, priceCurrency: "BRL" },
+        potentialAction: { "@type": "RentAction" },
+      },
+    },
+  ],
+};
+const jsonLdPagina = {
+  "@context": "https://schema.org", "@type": "RealEstateListing",
+  url: `${ZAP}/aluguel/apartamentos/pr+londrina/`, name: "Apartamentos para alugar", datePosted: "2026-09-28",
+};
+const jsonLdPortal = {
+  "@context": "https://schema.org", "@type": "Organization", name: "Portal Segredo",
+  address: { "@type": "PostalAddress", addressLocality: "São Paulo" },
+};
+
+export const AGORA_JSONLD = Date.parse("2026-09-28T12:00:00Z");
+
+export const SEGREDOS_DO_JSONLD = [
+  "<", "Rua Segredo", "Avenida Segredo", "Segredo", "86010-000", "2026-09-20", "2026-09-27", "2612345678", "2612345699",
+  "2612345700", "2612345701", "1800", "3100", "2500", "zapimoveis.com.br/imovel", "Centro", "São Paulo",
+];
+
+export const HTML_ZAP_SINTETICO_COM_JSONLD = HTML_ZAP_SINTETICO.replace(
+  "</head>",
+  [jsonLdLista, jsonLdPagina, jsonLdPortal]
+    .map((bloco) => `<script type="application/ld+json">${JSON.stringify(bloco)}</script>`)
+    .join("\n") + "\n</head>",
+);
