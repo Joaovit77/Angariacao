@@ -188,6 +188,152 @@ function escaparRegex(valor: string): string {
 }
 
 // ----------------------------------------------------------------
+// Diagnóstico agregado (R4.2h): só contagens e rótulos estruturais.
+// Nunca HTML, título, preço, endereço, URL, ID individual ou nome.
+// ----------------------------------------------------------------
+
+export const MOTIVOS_DESCARTE_ZAP = [
+  "sem_link_imovel", "sem_id", "multiplos_ids", "url_invalida",
+  "id_duplicado", "id_inconsistente", "sem_titulo", "filtro_local",
+] as const;
+export type MotivoDescarteZap = (typeof MOTIVOS_DESCARTE_ZAP)[number];
+
+export interface DiagnosticoZap {
+  htmlCaracteres: number;
+  marcadoresBloqueio: string[];
+  tituloMencionaLondrina: boolean;
+  estrutura: {
+    li: number;
+    links: number;
+    linksImovelComId: number;
+    idsUnicosNosLinks: number;
+    elementosComDataTestid: number;
+    dataTestid: Array<{ valor: string; quantidade: number }>;
+  };
+  seletorCards: number;
+  cards: {
+    processados: number;
+    alemDoLimite: number;
+    comUmId: number;
+    idsUnicos: number;
+    idsDuplicados: number;
+  };
+  jsonLd: {
+    blocos: number;
+    invalidos: number;
+    product: number;
+    apartment: number;
+    offer: number;
+    rentAction: number;
+    priceSpecification: number;
+    realEstateListing: number;
+    productsComId: number;
+    apartmentsComId: number;
+    idsUnicos: number;
+  };
+  pareamento: {
+    comProduct: number;
+    semProduct: number;
+    comApartment: number;
+    semApartment: number;
+    ambiguos: number;
+    jsonLdSemCard: number;
+  };
+  titulo: { comProductName: number; comTituloHtml: number; semTitulo: number };
+  saida: { aceitos: number; descartes: Record<MotivoDescarteZap, number> };
+}
+
+const MARCADORES_BLOQUEIO_ZAP: Array<[string, RegExp]> = [
+  ["cloudflare", /cloudflare|cf-chl|attention required/i],
+  ["captcha", /captcha|recaptcha|hcaptcha/i],
+  ["acesso_negado", /access denied|acesso negado|forbidden/i],
+  ["aguarde_verificacao", /just a moment|verificando|checking your browser/i],
+];
+
+/** Rótulo estrutural curto (data-testid); recusa qualquer coisa com cara de ID. */
+function rotuloEstrutural(valor: string | undefined): string | null {
+  const limpo = (valor || "").trim();
+  return /^[A-Za-z][A-Za-z0-9_-]{0,47}$/.test(limpo) && !/\d{6,}/.test(limpo) ? limpo : null;
+}
+
+function ehLinkImovelZap(href: string): boolean {
+  try {
+    const url = new URL(href, ORIGEM_ZAP);
+    return /(^|\.)zapimoveis\.com\.br$/i.test(url.hostname) && /^\/imovel\//i.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
+/** Estrutura global da página, independente do seletor dos cards. */
+function estruturaGlobalZap($: CheerioAPI) {
+  const idsLinks = new Set<string>();
+  let linksImovelComId = 0;
+  $("a[href]").each((_, a) => {
+    const id = idDaUrlZap($(a).attr("href"));
+    if (!id) return;
+    linksImovelComId += 1;
+    idsLinks.add(id);
+  });
+  const testids = new Map<string, number>();
+  let comTestid = 0;
+  $("[data-testid]").each((_, el) => {
+    comTestid += 1;
+    const rotulo = rotuloEstrutural($(el).attr("data-testid"));
+    if (rotulo) testids.set(rotulo, (testids.get(rotulo) ?? 0) + 1);
+  });
+  const tipos = { product: 0, apartment: 0, offer: 0, rentAction: 0, priceSpecification: 0, realEstateListing: 0 };
+  const produtosPorId = new Map<string, number>();
+  const apartamentosPorId = new Map<string, number>();
+  let blocos = 0;
+  let invalidos = 0;
+  const visitar = (valor: unknown, profundidade: number) => {
+    if (profundidade > 12 || !valor || typeof valor !== "object") return;
+    if (Array.isArray(valor)) {
+      for (const item of valor) visitar(item, profundidade + 1);
+      return;
+    }
+    const obj = valor as Objeto;
+    if (temTipo(obj, "Product")) tipos.product += 1;
+    if (temTipo(obj, "Apartment")) tipos.apartment += 1;
+    if (temTipo(obj, "Offer")) tipos.offer += 1;
+    if (temTipo(obj, "RentAction")) tipos.rentAction += 1;
+    if (temTipo(obj, "PriceSpecification")) tipos.priceSpecification += 1;
+    if (temTipo(obj, "RealEstateListing")) tipos.realEstateListing += 1;
+    const id = idDaUrlZap(obj.url);
+    if (id && temTipo(obj, "Product")) produtosPorId.set(id, (produtosPorId.get(id) ?? 0) + 1);
+    if (id && temTipo(obj, "Apartment")) apartamentosPorId.set(id, (apartamentosPorId.get(id) ?? 0) + 1);
+    for (const filho of Object.values(obj)) visitar(filho, profundidade + 1);
+  };
+  $('script[type="application/ld+json"]').each((_, script) => {
+    blocos += 1;
+    try { visitar(JSON.parse($(script).text()), 0); } catch { invalidos += 1; }
+  });
+  const cabecalho = `${$("title").first().text()} ${$("h1").first().text()}`;
+  return {
+    marcadoresBloqueio: MARCADORES_BLOQUEIO_ZAP.filter(([, regra]) => regra.test(cabecalho)).map(([nome]) => nome),
+    tituloMencionaLondrina: /\blondrina\b/i.test($("title").first().text()),
+    estrutura: {
+      li: $("li").length,
+      links: $("a[href]").length,
+      linksImovelComId,
+      idsUnicosNosLinks: idsLinks.size,
+      elementosComDataTestid: comTestid,
+      dataTestid: [...testids.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, 20)
+        .map(([valor, quantidade]) => ({ valor, quantidade })),
+    },
+    seletorCards: $(SELETOR_CARD_ZAP).length,
+    tipos,
+    blocos,
+    invalidos,
+    produtosPorId,
+    apartamentosPorId,
+  };
+}
+
+// ----------------------------------------------------------------
 // Extração
 // ----------------------------------------------------------------
 
@@ -195,24 +341,41 @@ export function extrairZap(
   $: CheerioAPI,
   filtros: FiltrosCentralAngariacao,
   limite: number,
+  registrarDiagnostico?: (diagnostico: DiagnosticoZap) => void,
+  htmlCaracteres = 0,
 ): AnuncioCentralAngariacao[] {
   const jsonLd = indexarJsonLd($);
   const vistos = new Set<string>();
   const anuncios: AnuncioCentralAngariacao[] = [];
+  // Contagens do diagnóstico: só observam as decisões abaixo, nunca as mudam.
+  const descartes = Object.fromEntries(MOTIVOS_DESCARTE_ZAP.map((m) => [m, 0])) as Record<MotivoDescarteZap, number>;
+  const idsComUmId: string[] = [];
+  const titulos = { comProductName: 0, comTituloHtml: 0, semTitulo: 0 };
+  let processados = 0;
 
   $(SELETOR_CARD_ZAP).slice(0, limite).each((indice, elemento) => {
+    processados += 1;
     const card = $(elemento as Element);
-    const links = card.find("a[href]").toArray()
-      .map((a) => $(a).attr("href") || "")
-      .filter((href) => idDaUrlZap(href) != null);
+    const hrefs = card.find("a[href]").toArray().map((a) => $(a).attr("href") || "");
+    const links = hrefs.filter((href) => idDaUrlZap(href) != null);
     const ids = new Set(links.map((href) => idDaUrlZap(href)!));
     // Card sem link de anúncio, ou com links de dois anúncios, não entra.
-    if (ids.size !== 1) return;
+    if (ids.size !== 1) {
+      descartes[ids.size > 1 ? "multiplos_ids" : (hrefs.some(ehLinkImovelZap) ? "sem_id" : "sem_link_imovel")] += 1;
+      return;
+    }
     const idLink = [...ids][0];
+    idsComUmId.push(idLink);
     const url = urlCanonicaZap(links[0]);
-    if (!url || vistos.has(idLink)) return;
+    if (!url || vistos.has(idLink)) {
+      descartes[!url ? "url_invalida" : "id_duplicado"] += 1;
+      return;
+    }
     const idExterno = idDoAnuncio("zap", url, indice);
-    if (idExterno !== idLink) return;
+    if (idExterno !== idLink) {
+      descartes.id_inconsistente += 1;
+      return;
+    }
     vistos.add(idLink);
 
     const dados = jsonLd.get(idLink) ?? { produto: null, apartamento: null };
@@ -222,11 +385,19 @@ export function extrairZap(
       .filter(Boolean);
     const textoCard = folhas.join(" · ");
 
+    if (texto(dados.produto?.name)) titulos.comProductName += 1;
+    if (texto(card.find("h1, h2, h3, h4").first().text()) ?? texto(card.find("a[title]").first().attr("title"))) {
+      titulos.comTituloHtml += 1;
+    }
     const titulo = texto(dados.produto?.name)
       ?? texto(dados.apartamento?.name)
       ?? texto(card.find("h1, h2, h3, h4").first().text())
       ?? texto(card.find("a[title]").first().attr("title"));
-    if (!titulo) return;
+    if (!titulo) {
+      titulos.semTitulo += 1;
+      descartes.sem_titulo += 1;
+      return;
+    }
 
     // Local: só o que o anúncio publica.
     const rua = campoEndereco(dados, "streetAddress");
@@ -262,9 +433,14 @@ export function extrairZap(
 
     // Filtros locais: agem só sobre esta primeira página da listagem (a URL
     // comprovada não aceita preço nem quartos). Sem preço, faixa exclui.
-    if (filtros.valorMin != null && (preco == null || preco < filtros.valorMin)) return;
-    if (filtros.valorMax != null && (preco == null || preco > filtros.valorMax)) return;
-    if (filtros.dormitorios != null && (quartos == null || quartos < filtros.dormitorios)) return;
+    if (
+      (filtros.valorMin != null && (preco == null || preco < filtros.valorMin))
+      || (filtros.valorMax != null && (preco == null || preco > filtros.valorMax))
+      || (filtros.dormitorios != null && (quartos == null || quartos < filtros.dormitorios))
+    ) {
+      descartes.filtro_local += 1;
+      return;
+    }
 
     anuncios.push({
       idExterno,
@@ -288,5 +464,49 @@ export function extrairZap(
       anunciante: "incerto",
     });
   });
+
+  if (registrarDiagnostico) {
+    // Diagnóstico nunca interrompe nem altera a extração.
+    try {
+      const global = estruturaGlobalZap($);
+      const idsValidos = [...vistos];
+      const idsJsonLd = new Set([...global.produtosPorId.keys(), ...global.apartamentosPorId.keys()]);
+      registrarDiagnostico({
+        htmlCaracteres,
+        marcadoresBloqueio: global.marcadoresBloqueio,
+        tituloMencionaLondrina: global.tituloMencionaLondrina,
+        estrutura: global.estrutura,
+        seletorCards: global.seletorCards,
+        cards: {
+          processados,
+          alemDoLimite: Math.max(0, global.seletorCards - processados),
+          comUmId: idsComUmId.length,
+          idsUnicos: new Set(idsComUmId).size,
+          idsDuplicados: idsComUmId.length - new Set(idsComUmId).size,
+        },
+        jsonLd: {
+          blocos: global.blocos,
+          invalidos: global.invalidos,
+          ...global.tipos,
+          productsComId: [...global.produtosPorId.values()].reduce((s, n) => s + n, 0),
+          apartmentsComId: [...global.apartamentosPorId.values()].reduce((s, n) => s + n, 0),
+          idsUnicos: idsJsonLd.size,
+        },
+        pareamento: {
+          comProduct: idsValidos.filter((id) => jsonLd.get(id)?.produto).length,
+          semProduct: idsValidos.filter((id) => !jsonLd.get(id)?.produto).length,
+          comApartment: idsValidos.filter((id) => jsonLd.get(id)?.apartamento).length,
+          semApartment: idsValidos.filter((id) => !jsonLd.get(id)?.apartamento).length,
+          ambiguos: idsValidos.filter((id) => (global.produtosPorId.get(id) ?? 0) > 1
+            || (global.apartamentosPorId.get(id) ?? 0) > 1).length,
+          jsonLdSemCard: [...idsJsonLd].filter((id) => !vistos.has(id)).length,
+        },
+        titulo: titulos,
+        saida: { aceitos: anuncios.length, descartes },
+      });
+    } catch {
+      /* diagnóstico é acessório */
+    }
+  }
   return anuncios;
 }

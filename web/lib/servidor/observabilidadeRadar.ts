@@ -14,6 +14,60 @@ export interface EventoColetaSeguro {
   statusHttp?: number;
   statusPortalHttp?: number;
   codigo?: string;
+  /** Contagens agregadas do parser do ZAP (R4.2h); reconstruídas por allowlist. */
+  diagnosticoZap?: unknown;
+}
+
+function contagem(valor: unknown): number {
+  return typeof valor === "number" && Number.isInteger(valor) && valor >= 0 && valor <= 10_000_000 ? valor : 0;
+}
+
+function objetoOuVazio(valor: unknown): Record<string, unknown> {
+  return valor && typeof valor === "object" && !Array.isArray(valor) ? valor as Record<string, unknown> : {};
+}
+
+const MOTIVOS_DESCARTE_ZAP = [
+  "sem_link_imovel", "sem_id", "multiplos_ids", "url_invalida",
+  "id_duplicado", "id_inconsistente", "sem_titulo", "filtro_local",
+] as const;
+const MARCADORES_ZAP = new Set(["cloudflare", "captcha", "acesso_negado", "aguarde_verificacao"]);
+
+/** Reconstrói o diagnóstico do ZAP campo a campo: só números e rótulos curtos
+    conhecidos. Qualquer campo extra (HTML, texto, URL, ID) é descartado. */
+export function diagnosticoZapSeguro(valor: unknown) {
+  const d = objetoOuVazio(valor);
+  const campos = (grupo: unknown, nomes: readonly string[]) => {
+    const origem = objetoOuVazio(grupo);
+    return Object.fromEntries(nomes.map((nome) => [nome, contagem(origem[nome])]));
+  };
+  const estrutura = objetoOuVazio(d.estrutura);
+  const saida = objetoOuVazio(d.saida);
+  return {
+    html_caracteres: contagem(d.htmlCaracteres),
+    marcadores_bloqueio: (Array.isArray(d.marcadoresBloqueio) ? d.marcadoresBloqueio : [])
+      .filter((m): m is string => typeof m === "string" && MARCADORES_ZAP.has(m)),
+    titulo_menciona_londrina: d.tituloMencionaLondrina === true,
+    estrutura: {
+      ...campos(estrutura, ["li", "links", "linksImovelComId", "idsUnicosNosLinks", "elementosComDataTestid"]),
+      dataTestid: (Array.isArray(estrutura.dataTestid) ? estrutura.dataTestid : []).slice(0, 20)
+        .map(objetoOuVazio)
+        .filter((item) => typeof item.valor === "string"
+          && /^[A-Za-z][A-Za-z0-9_-]{0,47}$/.test(item.valor) && !/\d{6,}/.test(item.valor))
+        .map((item) => ({ valor: item.valor as string, quantidade: contagem(item.quantidade) })),
+    },
+    seletor_cards: contagem(d.seletorCards),
+    cards: campos(d.cards, ["processados", "alemDoLimite", "comUmId", "idsUnicos", "idsDuplicados"]),
+    json_ld: campos(d.jsonLd, [
+      "blocos", "invalidos", "product", "apartment", "offer", "rentAction", "priceSpecification",
+      "realEstateListing", "productsComId", "apartmentsComId", "idsUnicos",
+    ]),
+    pareamento: campos(d.pareamento, ["comProduct", "semProduct", "comApartment", "semApartment", "ambiguos", "jsonLdSemCard"]),
+    titulo: campos(d.titulo, ["comProductName", "comTituloHtml", "semTitulo"]),
+    saida: {
+      aceitos: contagem(saida.aceitos),
+      descartes: campos(saida.descartes, MOTIVOS_DESCARTE_ZAP),
+    },
+  };
 }
 
 const FASES = new Set<FaseColeta>([
@@ -61,11 +115,16 @@ export function criarObservadorRadar(contexto: {
   let chamadaPropriaIniciada: boolean | null = null;
   let respostaRecebida: boolean | null = null;
   let resultadoInterpretado: boolean | null = null;
+  let diagnosticoZap: ReturnType<typeof diagnosticoZapSeguro> | null = null;
 
   function observar(evento: EventoColetaSeguro): void {
     try {
       const seguro = faseSegura(evento);
       fases.push(seguro);
+      // Um único resumo agregado por execução, só no resultado interpretado.
+      if (seguro.fase === "resultado_interpretado" && evento.diagnosticoZap) {
+        diagnosticoZap = diagnosticoZapSeguro(evento.diagnosticoZap);
+      }
       if (seguro.coleta_id) coletaId = seguro.coleta_id;
       if (seguro.fase === "fallback") {
         respostaRecebida = null;
@@ -110,6 +169,7 @@ export function criarObservadorRadar(contexto: {
       resposta_recebida: respostaRecebida,
       resultado_interpretado: resultadoInterpretado,
       fases,
+      ...(diagnosticoZap ? { diagnostico_zap: diagnosticoZap } : {}),
     };
   }
 

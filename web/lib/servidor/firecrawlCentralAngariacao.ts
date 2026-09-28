@@ -5,7 +5,7 @@ import { getCache } from "@vercel/functions";
 import { load, type CheerioAPI, type Cheerio } from "cheerio";
 import type { AnyNode } from "domhandler";
 import { tituloWimoveis } from "./tituloWimoveis";
-import { extrairZap } from "./parserZap";
+import { extrairZap, type DiagnosticoZap } from "./parserZap";
 import { agoraTimestamp, dataPublicacaoOlx, dentroDoPeriodo, timestampDeIso } from "@/lib/datas";
 import {
   idDoAnuncio,
@@ -381,6 +381,7 @@ export function extrairAnunciosFirecrawl(
   html: string,
   filtros: FiltrosCentralAngariacao,
   registrarDiagnosticoOlx?: (diagnostico: DiagnosticoPaginaOlx) => void,
+  registrarDiagnosticoZap?: (diagnostico: DiagnosticoZap) => void,
 ): AnuncioCentralAngariacao[] {
   const $ = load(html);
   switch (filtros.portal) {
@@ -392,7 +393,7 @@ export function extrairAnunciosFirecrawl(
       .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
     case "viva-real": return extrairVivaReal($, filtros)
       .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
-    case "zap": return extrairZap($, filtros, LIMITE_RESULTADOS)
+    case "zap": return extrairZap($, filtros, LIMITE_RESULTADOS, registrarDiagnosticoZap, html.length)
       .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
   }
   // Portal conhecido e inativo (ou valor sem tipo) nunca vira lista vazia silenciosa.
@@ -414,6 +415,8 @@ export interface EventoConsultaFirecrawl {
   statusHttp?: number;
   statusPortalHttp?: number;
   codigo?: CodigoErroFirecrawl | import("./fallbackHttpChaves").CodigoErroHttpChaves;
+  /** Só no `resultado_interpretado` do ZAP: contagens agregadas do parser. */
+  diagnosticoZap?: DiagnosticoZap;
 }
 
 function notificarConsulta(
@@ -494,9 +497,10 @@ function extrairComProtecao(
   html: string,
   filtros: FiltrosCentralAngariacao,
   registrarDiagnosticoOlx?: (diagnostico: DiagnosticoPaginaOlx) => void,
+  registrarDiagnosticoZap?: (diagnostico: DiagnosticoZap) => void,
 ) {
   try {
-    return extrairAnunciosFirecrawl(html, filtros, registrarDiagnosticoOlx);
+    return extrairAnunciosFirecrawl(html, filtros, registrarDiagnosticoOlx, registrarDiagnosticoZap);
   } catch {
     throw new FirecrawlIndisponivel("Não foi possível interpretar a listagem.", "parser_falhou");
   }
@@ -534,9 +538,11 @@ export async function buscarComFirecrawl(
         coletaId: existente.coletaId,
         ...(compartilhado.statusHttp != null ? { statusHttp: compartilhado.statusHttp } : {}),
       });
-      const anuncios = extrairComProtecao(compartilhado.html, filtros, registrarDiagnosticoOlx);
+      let diagnosticoCompartilhado: DiagnosticoZap | undefined;
+      const anuncios = extrairComProtecao(compartilhado.html, filtros, registrarDiagnosticoOlx, (d) => { diagnosticoCompartilhado = d; });
       notificarConsulta(observar, {
         fase: "resultado_interpretado", aquisicao: compartilhado.aquisicao, coletaId: existente.coletaId,
+        ...(diagnosticoCompartilhado ? { diagnosticoZap: diagnosticoCompartilhado } : {}),
       });
       return anuncios;
     } catch (erro) {
@@ -554,6 +560,8 @@ export async function buscarComFirecrawl(
   }
 
   const coletaId = randomUUID();
+  let diagnosticoZap: DiagnosticoZap | undefined;
+  const registrarDiagnosticoZap = (diagnostico: DiagnosticoZap) => { diagnosticoZap = diagnostico; };
   const estado: { aquisicao: "cache" | "firecrawl" | "desconhecida"; statusHttp: number | null } = {
     aquisicao: "desconhecida", statusHttp: null,
   };
@@ -583,7 +591,7 @@ export async function buscarComFirecrawl(
       });
     });
     // O HTML só entra no cache após uma interpretação sem exceção.
-    const anunciosProdutor = extrairComProtecao(coletado.html, filtros, registrarDiagnosticoOlx);
+    const anunciosProdutor = extrairComProtecao(coletado.html, filtros, registrarDiagnosticoOlx, registrarDiagnosticoZap);
     try {
       await cache.set(chave, gzipSync(coletado.html).toString("base64"), {
         ttl: CACHE_FIRECRAWL_TTL_SEGUNDOS,
@@ -603,9 +611,10 @@ export async function buscarComFirecrawl(
   try {
     const coletado = await consulta;
     const anuncios = coletado.anunciosProdutor
-      ?? extrairComProtecao(coletado.html, filtros, registrarDiagnosticoOlx);
+      ?? extrairComProtecao(coletado.html, filtros, registrarDiagnosticoOlx, registrarDiagnosticoZap);
     notificarConsulta(observar, {
       fase: "resultado_interpretado", aquisicao: coletado.aquisicao, coletaId,
+      ...(diagnosticoZap ? { diagnosticoZap } : {}),
     });
     return anuncios;
   } catch (erro) {
