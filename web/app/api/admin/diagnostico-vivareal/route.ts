@@ -18,7 +18,8 @@ export async function POST(request: Request): Promise<Response> {
   if (process.env.VERCEL_ENV !== "preview") {
     return Response.json({ ok: false, falha: "ambiente_bloqueado" }, { status: 403, headers: SEM_CACHE });
   }
-  if (new URL(request.url).search || request.body) {
+  // O runtime pode fornecer um stream de body mesmo quando o POST tem zero bytes.
+  if (new URL(request.url).search || (await request.text()).length > 0) {
     return Response.json({ ok: false, falha: "pedido_invalido" }, { status: 400, headers: SEM_CACHE });
   }
   const guarda = await exigirAdmin(request);

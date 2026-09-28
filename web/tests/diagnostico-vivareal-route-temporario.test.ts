@@ -58,7 +58,18 @@ describe("rota diagnóstica temporária Viva Real", () => {
   it("rejeita URL arbitrária e corpo enviado pelo cliente", async () => {
     expect((await POST(pedido(`${rota}?url=https://outro.test/`))).status).toBe(400);
     expect((await POST(pedido(rota, JSON.stringify({ url: "https://outro.test/" })))).status).toBe(400);
+    expect((await POST(pedido(rota, "texto não permitido"))).status).toBe(400);
     expect(mocks.buscarComFirecrawlAoVivo).not.toHaveBeenCalled();
+  });
+
+  it("aceita POST sem query e sem bytes mesmo quando o runtime fornece um stream vazio", async () => {
+    const vazio = new ReadableStream<Uint8Array>({ start(controle) { controle.close(); } });
+    const requisicao = new Request(rota, { method: "POST", body: vazio, duplex: "half" } as RequestInit);
+    expect(new URL(requisicao.url).search).toBe("");
+    expect(await requisicao.clone().text()).toBe("");
+    expect(requisicao.body).not.toBeNull();
+    expect((await POST(requisicao)).status).toBe(200);
+    expect(mocks.buscarComFirecrawlAoVivo).toHaveBeenCalledTimes(1);
   });
 
   it("usa apenas a URL do builder, chama Firecrawl uma vez e devolve só agregados", async () => {
