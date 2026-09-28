@@ -1,8 +1,8 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import {
+  ehPortalAtivo,
   idExternoEhFallback,
-  PORTAIS_ANGARIACAO,
   type AnuncioCentralAngariacao,
   type FiltrosCentralAngariacao,
 } from "@/lib/calculo/centralAngariacao";
@@ -112,7 +112,8 @@ function clienteServico(): SupabaseClient {
 }
 
 function motivoParaPularBusca(row: DbBuscaRadar): MotivoBuscaPulada | null {
-  if (!PORTAIS_ANGARIACAO.includes(row.filtros?.portal)) return "portal-sem-cobertura";
+  // O cron só executa portal ativo; busca salva com portal inativo é pulada.
+  if (!ehPortalAtivo(row.filtros?.portal)) return "portal-sem-cobertura";
   if (!row.filtros?.cidade?.trim()) return "filtros-invalidos";
   if (!buscaElegivelParaCron({
     id: row.id,

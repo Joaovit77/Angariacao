@@ -10,7 +10,7 @@
    catálogo antecede a tabela de observações. Por isso distinguimos eventos
    persistidos de quantidade mínima comprovável, sem inventar uma contagem.
    ================================================================ */
-import { PORTAIS_ANGARIACAO } from "./centralAngariacao";
+import { ehPortalConhecido } from "./centralAngariacao";
 import { normalizarUf, ufValida } from "./geografia";
 import { chaveNormalizada } from "../normalizacao";
 import { daysBetween, timestampDeIso } from "../datas";
@@ -284,7 +284,7 @@ export function derivarFatosHistoricosComparavel(
     .filter((status): status is StatusHistoricoComparavel => status !== null);
   const quantidadeMinimaObservacoesComprovadas = Math.max(observacoes.length, extremos.instantes.size);
   const portal = chaveNormalizada(referencia.portal);
-  const portalConhecido = PORTAIS_ANGARIACAO.some((item) => item === portal);
+  const portalConhecido = ehPortalConhecido(portal);
   const temIdentidadePublica = portalConhecido && !!referencia.idExterno?.trim();
   const temUrlCanonica = /^https?:\/\//i.test(referencia.urlCanonica?.trim() || "");
   const identidadeConfiavel = temIdentidadePublica || temUrlCanonica || referencia.fingerprintForte === true;

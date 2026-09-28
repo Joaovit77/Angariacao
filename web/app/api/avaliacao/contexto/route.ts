@@ -5,7 +5,7 @@ import {
   type PrefillAvaliacao,
   type ReferenciaContextoAvaliacao,
 } from "@/lib/calculo/contextoAvaliacao";
-import { PORTAIS_ANGARIACAO, type PortalAngariacao } from "@/lib/calculo/centralAngariacao";
+import { ehPortalConhecido, type PortalAngariacao } from "@/lib/calculo/centralAngariacao";
 
 export const runtime = "nodejs";
 
@@ -65,8 +65,9 @@ function referenciaDaRequisicao(request: Request): ReferenciaContextoAvaliacao |
   return candidatas[0];
 }
 
+/** Portal de dado salvo: conhecido basta, mesmo que ainda não seja ativo. */
 function portalValido(valor: string): valor is PortalAngariacao {
-  return PORTAIS_ANGARIACAO.includes(valor as PortalAngariacao);
+  return ehPortalConhecido(valor);
 }
 
 function textoDoObjeto(dados: Record<string, unknown>, campo: string): string | null {

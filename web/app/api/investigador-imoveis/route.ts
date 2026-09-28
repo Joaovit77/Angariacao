@@ -21,7 +21,7 @@ import {
   type ImovelParaInvestigacao,
   type ReferenciaContextoInvestigador,
 } from "@/lib/calculo/contextoInvestigador";
-import { PORTAIS_ANGARIACAO, type PortalAngariacao } from "@/lib/calculo/centralAngariacao";
+import { ehPortalConhecido, type PortalAngariacao } from "@/lib/calculo/centralAngariacao";
 import {
   buscarImovelNaWeb,
   BuscaWebIndisponivel,
@@ -158,8 +158,9 @@ function referenciaDaRequisicao(request: Request): ReferenciaContextoInvestigado
   return candidatas[0];
 }
 
+/** Portal de dado salvo: conhecido basta, mesmo que ainda não seja ativo. */
 function portalValido(valor: string): valor is PortalAngariacao {
-  return PORTAIS_ANGARIACAO.includes(valor as PortalAngariacao);
+  return ehPortalConhecido(valor);
 }
 
 function textoDoObjeto(dados: Record<string, unknown>, campo: string): string | null {

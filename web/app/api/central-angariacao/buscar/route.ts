@@ -2,8 +2,8 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import {
   anuncioPertenceAoMercado,
+  ehPortalAtivo,
   PERIODOS_PUBLICACAO,
-  PORTAIS_ANGARIACAO,
   rotuloPortal,
   type FiltrosCentralAngariacao,
   type ResultadoBuscaCentral,
@@ -142,7 +142,8 @@ export async function POST(request: Request) {
   }
 
   const filtros = (await request.json().catch(() => null)) as FiltrosCentralAngariacao | null;
-  if (!filtros || !PORTAIS_ANGARIACAO.includes(filtros.portal)
+  // Só portal ativo pode ser consultado; conhecido e inativo (ZAP no R4.2g) é recusado.
+  if (!filtros || !ehPortalAtivo(filtros.portal)
     || !filtros.cidade?.trim() || !ufValida(filtros.estado)) {
     return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: "Informe portal, cidade e uma UF válida." }, 400, execucaoId);
   }

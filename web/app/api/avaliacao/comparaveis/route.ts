@@ -6,7 +6,7 @@ import {
   type OrigemExternaAvaliacao,
 } from "@/lib/calculo/avaliacao";
 import { contextoAvaliacaoIdValido } from "@/lib/calculo/contextoAvaliacao";
-import { PORTAIS_ANGARIACAO } from "@/lib/calculo/centralAngariacao";
+import { ehPortalConhecido } from "@/lib/calculo/centralAngariacao";
 import {
   CONFIGURACAO_COMPARAVEIS_MERCADO,
   familiaTipoMercado,
@@ -67,8 +67,8 @@ function origemExternaValida(valor: unknown): valor is OrigemExternaAvaliacao | 
   return (origem.tipo === "comparavel" || origem.tipo === "radar-anuncio")
     && contextoAvaliacaoIdValido(origem.referenciaId)
     && (origem.comparavelId == null || contextoAvaliacaoIdValido(origem.comparavelId))
-    && typeof origem.portal === "string"
-    && PORTAIS_ANGARIACAO.includes(origem.portal as (typeof PORTAIS_ANGARIACAO)[number])
+    // Origem de dado salvo: qualquer portal conhecido, inclusive um ainda inativo.
+    && ehPortalConhecido(origem.portal)
     && typeof origem.idExterno === "string"
     && origem.idExterno.trim().length > 0
     && origem.idExterno.length <= 500;

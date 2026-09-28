@@ -11,13 +11,32 @@ import { normalizarUf, separarCidadeEUf, ufValida } from "./geografia";
    separados impede que uma busca polua silenciosamente o Pipeline.
    ================================================================ */
 
-export const PORTAIS_ANGARIACAO = ["olx", "chaves-na-mao", "wimoveis", "viva-real"] as const;
-export type PortalAngariacao = (typeof PORTAIS_ANGARIACAO)[number];
+/* Dois conjuntos com papéis diferentes (R4.2g):
+   - CONHECIDOS: valores que o sistema representa, lê e persiste. Dado salvo
+     de um portal conhecido nunca é descartado por não ser coletável.
+   - ATIVOS: portais que podem ser consultados agora (busca da Central,
+     builder, parsers, planejador, cron do Radar, telemetria de coleta).
+   Todo ativo é conhecido; um conhecido só vira ativo quando ganha coleta
+   própria. O ZAP é conhecido e ainda não é ativo. */
+export const PORTAIS_CONHECIDOS = ["olx", "chaves-na-mao", "wimoveis", "viva-real", "zap"] as const;
+export type PortalAngariacao = (typeof PORTAIS_CONHECIDOS)[number];
+export const PORTAIS_ATIVOS = ["olx", "chaves-na-mao", "wimoveis", "viva-real"] as const satisfies readonly PortalAngariacao[];
+export type PortalAtivoAngariacao = (typeof PORTAIS_ATIVOS)[number];
+
+export function ehPortalConhecido(valor: unknown): valor is PortalAngariacao {
+  return typeof valor === "string" && (PORTAIS_CONHECIDOS as readonly string[]).includes(valor);
+}
+
+export function ehPortalAtivo(valor: unknown): valor is PortalAtivoAngariacao {
+  return typeof valor === "string" && (PORTAIS_ATIVOS as readonly string[]).includes(valor);
+}
+
 export const PERIODOS_PUBLICACAO = [1, 7, 30] as const;
 export type PeriodoPublicacao = (typeof PERIODOS_PUBLICACAO)[number];
 
 export interface FiltrosCentralAngariacao {
-  portal: PortalAngariacao;
+  /** Filtro de consulta: só portal ativo pode ser pesquisado. */
+  portal: PortalAtivoAngariacao;
   cidade: string;
   estado: string;
   bairro?: string;
@@ -159,6 +178,8 @@ export function rotuloPortal(portal: PortalAngariacao): string {
     "chaves-na-mao": "Chaves na Mão",
     wimoveis: "Wimoveis",
     "viva-real": "Viva Real",
+    // Só representação de dado conhecido: o ZAP ainda não é portal ativo.
+    zap: "ZAP Imóveis",
   };
   return rotulos[portal];
 }

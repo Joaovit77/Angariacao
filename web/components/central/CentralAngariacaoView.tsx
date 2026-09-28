@@ -14,7 +14,7 @@ import {
   rotuloPortal,
   textoParaPreCadastro,
   type AnuncioCentralAngariacao,
-  type PortalAngariacao,
+  type PortalAtivoAngariacao,
   type ResultadoBuscaCentral,
 } from "@/lib/calculo/centralAngariacao";
 import { nomePadraoBuscaRadar, type EstadoRadar } from "@/lib/calculo/radarAngariacao";
@@ -66,7 +66,7 @@ export default function CentralAngariacaoView() {
   const abrirPreCadastro = useUiModal((s) => s.abrirPreCadastro);
   const imoveis = useAppStore((s) => s.imoveis);
   const [aba, setAba] = useState<Aba>("buscar");
-  const [portal, setPortal] = useState<PortalAngariacao>("olx");
+  const [portal, setPortal] = useState<PortalAtivoAngariacao>("olx");
   const [cidade, setCidade] = useState("");
   const [estado, setEstado] = useState("");
   const cidadeEstadoProtegidos = useRef(false);

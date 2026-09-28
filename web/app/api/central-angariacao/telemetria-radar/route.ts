@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { PORTAIS_ANGARIACAO, type PortalAngariacao } from "@/lib/calculo/centralAngariacao";
+import { ehPortalAtivo } from "@/lib/calculo/centralAngariacao";
 import { registrarEvento } from "@/lib/servidor/registro";
 
 export const runtime = "nodejs";
@@ -48,7 +48,8 @@ export async function POST(request: Request) {
       detalhe: JSON.stringify({
         execucao_id: execucaoId,
         busca_id: buscaId,
-        portal: typeof portal === "string" && PORTAIS_ANGARIACAO.includes(portal as PortalAngariacao)
+        // Telemetria de COLETA: portal inativo ainda não executa, então segue "desconhecido".
+        portal: ehPortalAtivo(portal)
           ? portal : "desconhecido",
         novos,
         origem_contagem: "cliente_autenticado_apos_upsert",

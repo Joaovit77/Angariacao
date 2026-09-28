@@ -392,6 +392,8 @@ export function extrairAnunciosFirecrawl(
     case "viva-real": return extrairVivaReal($, filtros)
       .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
   }
+  // Portal conhecido e inativo (ou valor sem tipo) nunca vira lista vazia silenciosa.
+  throw new Error("Portal não ativo para coleta.");
 }
 
 /** Origem da coleta antes do parsing: permite medir custo mesmo se houver falha. */

@@ -529,6 +529,25 @@ describe("monitor agendado do Radar", () => {
     ]);
   });
 
+  it("R4.2g: busca salva com portal zap (conhecido, inativo) é pulada e nunca executa", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-09-17T12:45:00.000Z"));
+    const buscaZap = {
+      ...busca,
+      id: "busca-zap",
+      filtros: { ...busca.filtros, portal: "zap" as typeof busca.filtros.portal },
+    };
+    const banco = clienteRadarFalso([], [buscaZap]);
+    mocks.createClient.mockReturnValue(banco.cliente);
+
+    const resumo = await executarMonitorRadar();
+
+    expect(resumo).toMatchObject({ candidatas: 1, elegiveis: 0, verificadas: 0 });
+    expect(mocks.buscarComFirecrawl).not.toHaveBeenCalled();
+    expect(eventosRadar("radar-busca-pulada").map((entrada) => JSON.parse(entrada.detalhe))).toEqual([
+      { busca_id: "busca-zap", rodada_id: expect.any(String), motivo: "portal-sem-cobertura" },
+    ]);
+  });
+
   it("registra o limite da rodada sem alterar o teto de oito buscas", async () => {
     const noveBuscas = Array.from({ length: 9 }, (_, indice) => ({
       ...busca,

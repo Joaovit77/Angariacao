@@ -1,4 +1,4 @@
-import type { PortalAngariacao } from "./centralAngariacao";
+import type { PortalAtivoAngariacao } from "./centralAngariacao";
 import { chaveNormalizada } from "../normalizacao";
 import regioesGeoJson from "./regioesLondrinaGeojson.json";
 
@@ -130,10 +130,10 @@ export function regiaoPorCoordenadasLondrina(
 export interface ConsultaPlanejadaLondrina {
   regiao: RegiaoLondrina;
   bairro: string;
-  portal: PortalAngariacao;
+  portal: PortalAtivoAngariacao;
 }
 
-const PORTAIS_PRIORIZADOS: PortalAngariacao[] = [
+const PORTAIS_PRIORIZADOS: PortalAtivoAngariacao[] = [
   "chaves-na-mao",
   "wimoveis",
   "viva-real",

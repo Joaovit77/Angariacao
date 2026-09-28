@@ -828,6 +828,14 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   Resultado de portal não é `Imovel` e só chega à carteira após revisão humana. As buscas cobrem
   OLX, Chaves na Mão, Wimoveis e Viva Real; o Radar persiste filtros e anúncios novos em tabelas
   próprias, com unicidade por busca/portal/id externo e intervalo mínimo de duas horas.
+  Portal **conhecido** e portal **ativo** são conceitos separados. `PORTAIS_CONHECIDOS`
+  (`PortalAngariacao`) é o que o sistema representa, lê e persiste; `PORTAIS_ATIVOS`
+  (`PortalAtivoAngariacao`) é o que pode ser consultado: entrada da busca da Central, builder,
+  capacidade geográfica, parsers, planejador, cron do Radar e telemetria de coleta. Todo ativo é
+  conhecido. Leitura de dado salvo aceita qualquer conhecido; coleta aceita só ativo e falha
+  fechada para o resto, nunca com lista vazia silenciosa. O ZAP é conhecido e ainda não é ativo:
+  o banco e os tipos o aceitam, mas nenhuma coleta, botão, agendamento ou host de imagem existe
+  para ele. Tornar um portal ativo exige coleta própria e é decisão explícita.
 - **`calculo/duplicidade.ts`** — detecta imóvel já cadastrado. A identidade é
   `endereço + cidade + unidade + bloco`, comparada por chave normalizada (grafia, acento,
   pontuação e abreviação de logradouro não contam). `unidade`/`bloco` fazem parte da identidade

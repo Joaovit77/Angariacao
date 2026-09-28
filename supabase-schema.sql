@@ -3470,7 +3470,7 @@ grant select, insert, update, delete on table mercados_monitorados to authentica
 create table if not exists comparaveis_mercado (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  portal text not null check (portal in ('olx', 'chaves-na-mao', 'wimoveis', 'viva-real')),
+  portal text not null check (portal in ('olx', 'chaves-na-mao', 'wimoveis', 'viva-real', 'zap')),
   id_externo text not null,
   url text not null,
   finalidade text not null default 'locacao' check (finalidade in ('locacao', 'venda')),
@@ -4051,7 +4051,7 @@ create table if not exists radar_anuncios (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   busca_id uuid not null references radar_buscas(id) on delete cascade,
-  portal text not null check (portal in ('olx', 'chaves-na-mao', 'wimoveis', 'viva-real')),
+  portal text not null check (portal in ('olx', 'chaves-na-mao', 'wimoveis', 'viva-real', 'zap')),
   id_externo text not null,
   url text not null,
   dados jsonb not null default '{}'::jsonb,
@@ -4119,12 +4119,33 @@ create index if not exists idx_radar_anuncios_busca
 -- ------------------------------------------------------------
 create table if not exists central_anuncios_visualizados (
   user_id uuid not null references auth.users(id) on delete cascade,
-  portal text not null check (portal in ('olx', 'chaves-na-mao', 'wimoveis', 'viva-real')),
+  portal text not null check (portal in ('olx', 'chaves-na-mao', 'wimoveis', 'viva-real', 'zap')),
   id_externo text not null,
   url text not null,
   visualizado_em timestamptz not null default now(),
   primary key (user_id, portal, id_externo)
 );
+
+-- Radar R4.2g: portais CONHECIDOS pelo banco. `zap` é conhecido e ainda
+-- inerte (a aplicação só o coleta a partir do R4.2h). O CREATE TABLE acima
+-- não altera a CHECK de uma tabela que já existe; este bloco converge o banco
+-- existente para os mesmos cinco valores, mantendo os nomes das constraints.
+-- Espelha supabase/migrations/20260928140000_radar_portais_conhecidos_zap.sql.
+alter table public.radar_anuncios
+  drop constraint if exists radar_anuncios_portal_check;
+alter table public.radar_anuncios
+  add constraint radar_anuncios_portal_check
+  check (portal in ('olx', 'chaves-na-mao', 'wimoveis', 'viva-real', 'zap'));
+alter table public.central_anuncios_visualizados
+  drop constraint if exists central_anuncios_visualizados_portal_check;
+alter table public.central_anuncios_visualizados
+  add constraint central_anuncios_visualizados_portal_check
+  check (portal in ('olx', 'chaves-na-mao', 'wimoveis', 'viva-real', 'zap'));
+alter table public.comparaveis_mercado
+  drop constraint if exists comparaveis_mercado_portal_check;
+alter table public.comparaveis_mercado
+  add constraint comparaveis_mercado_portal_check
+  check (portal in ('olx', 'chaves-na-mao', 'wimoveis', 'viva-real', 'zap'));
 
 alter table central_anuncios_visualizados enable row level security;
 

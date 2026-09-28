@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({ createClient: vi.fn(), registrarEvento: vi.fn(
 vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.createClient }));
 vi.mock("@/lib/servidor/registro", () => ({ registrarEvento: mocks.registrarEvento }));
 
-import { PORTAIS_ANGARIACAO } from "@/lib/calculo/centralAngariacao";
+import { PORTAIS_ATIVOS } from "@/lib/calculo/centralAngariacao";
 import { POST } from "@/app/api/central-angariacao/telemetria-radar/route";
 
 const execucaoId = "229ee00d-1fe9-44b6-9fa4-80702fef8327";
@@ -49,7 +49,7 @@ describe("fechamento acessório do Radar", () => {
   });
 
   it("mantém exatamente os quatro portais operacionais", () => {
-    expect(PORTAIS_ANGARIACAO).toEqual(["olx", "chaves-na-mao", "wimoveis", "viva-real"]);
+    expect(PORTAIS_ATIVOS).toEqual(["olx", "chaves-na-mao", "wimoveis", "viva-real"]);
   });
 
   it.each(["olx", "chaves-na-mao", "wimoveis", "viva-real"])(

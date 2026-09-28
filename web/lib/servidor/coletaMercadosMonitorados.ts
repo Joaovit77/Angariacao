@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { agoraTimestamp } from "@/lib/datas";
-import { comCaracteristicasDoAnuncio, type AnuncioCentralAngariacao, type PortalAngariacao } from "@/lib/calculo/centralAngariacao";
+import { comCaracteristicasDoAnuncio, type AnuncioCentralAngariacao, type PortalAtivoAngariacao } from "@/lib/calculo/centralAngariacao";
 import { familiaTipoMercado } from "@/lib/calculo/comparaveisMercado";
 import { buscarComFirecrawl, FirecrawlIndisponivel, LIMITE_RESULTADOS, type CodigoErroFirecrawl } from "./firecrawlCentralAngariacao";
 import { finalizarColetaCentralAngariacao } from "./finalizacaoCentralAngariacao";
@@ -28,7 +28,7 @@ export interface DiagnosticoColetaMercado {
   consultasPlanejadas: number; consultasExecutadas: number;
   cacheHits: number; reutilizacoesEmAndamento: number; chamadasFirecrawl: number;
   resultadosBrutos: number; resultadosNormalizados: number; comparaveisFinalizados: number;
-  falhasPorPortal: { portal: PortalAngariacao; codigo: CodigoErroColetaMercado }[];
+  falhasPorPortal: { portal: PortalAtivoAngariacao; codigo: CodigoErroColetaMercado }[];
   duracaoMs: number; status: "sucesso" | "parcial" | "falha";
   erro: CodigoErroColetaMercado | null;
 }

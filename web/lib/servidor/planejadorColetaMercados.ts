@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { PORTAIS_ANGARIACAO, type FiltrosCentralAngariacao } from "@/lib/calculo/centralAngariacao";
+import { PORTAIS_ATIVOS, type FiltrosCentralAngariacao } from "@/lib/calculo/centralAngariacao";
 import { normalizarUf, ufValida } from "@/lib/calculo/geografia";
 import { capacidadeGeograficaPortal, urlDaPesquisa } from "./centralAngariacao";
 
@@ -36,7 +36,7 @@ export function planejarColetaMercado(mercado: {
   if (!cidade || !ufValida(estado)) {
     return { consultas: [], erro: "sem_portal_suportado" as const };
   }
-  const consultas = deduplicarConsultasPortal(PORTAIS_ANGARIACAO.map((portal) => ({
+  const consultas = deduplicarConsultasPortal(PORTAIS_ATIVOS.map((portal) => ({
     portal, cidade, estado,
   })));
   return { consultas, erro: consultas.length ? null : "sem_portal_suportado" as const };

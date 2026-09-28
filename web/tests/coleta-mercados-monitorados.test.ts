@@ -20,7 +20,9 @@ function preparar(linhas: MercadoReclamado[] = [mercado]) {
     data: nome === "claim_mercados_monitorados" ? linhas : true, error: null,
   }));
   const supabase = { rpc, from: vi.fn(() => { throw new Error("Não deve gravar Radar nem imóveis"); }) } as unknown as SupabaseClient;
-  const buscar = vi.fn(async (f: FiltrosCentralAngariacao, _url: string, origem?: (o: OrigemConsultaFirecrawl) => void) => {
+  const buscar = vi.fn(async (
+    f: FiltrosCentralAngariacao, _url: string, origem?: (o: OrigemConsultaFirecrawl) => void,
+  ): Promise<AnuncioCentralAngariacao[]> => {
     origem?.("firecrawl");
     return [{ ...anuncio, portal: f.portal }];
   });

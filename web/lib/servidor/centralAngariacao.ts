@@ -1,9 +1,10 @@
 import {
+  ehPortalAtivo,
   idDoAnuncio,
   slugPortal,
   type AnuncioCentralAngariacao,
   type FiltrosCentralAngariacao,
-  type PortalAngariacao,
+  type PortalAtivoAngariacao,
 } from "@/lib/calculo/centralAngariacao";
 import { normalizarUf, ufValida } from "@/lib/calculo/geografia";
 
@@ -172,9 +173,11 @@ function coletarItens(valor: unknown, saida: JsonLd[]) {
     inventado ou em card associado ao imóvel errado. */
 export function extrairJsonLd(
   html: string,
-  portal: PortalAngariacao,
+  portal: PortalAtivoAngariacao,
   baseUrl: string,
 ): AnuncioCentralAngariacao[] {
+  // Fallback de coleta: portal inativo falha fechado, nunca cai na regra genérica.
+  if (!ehPortalAtivo(portal)) throw new PortalSemCoberturaGeografica("Portal de consulta não suportado.");
   const scripts = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
   const itens: JsonLd[] = [];
   for (const match of scripts) {
