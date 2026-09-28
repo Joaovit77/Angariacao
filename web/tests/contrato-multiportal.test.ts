@@ -14,6 +14,7 @@ const cards: Record<PortalAtivoAngariacao, string> = {
   "chaves-na-mao": `<a href="https://www.chavesnamao.com.br/imovel/casa-para-alugar-pr-londrina-centro/id-35106344/"><h2>Casa para alugar no Centro</h2><p>Rua Pará, 100</p><p>Centro, Londrina/PR</p><p>R$ 2.700</p></a>`,
   wimoveis: `<article data-qa="posting PROPERTY" data-id="3018468881" data-to-posting="/propriedades/apartamento-centro-3018468881.html"><div data-qa="POSTING_CARD_GALLERY"><img alt="Apartamento em Londrina" src="https://img.wimoveis.com.br/a.jpg"></div><div data-qa="POSTING_CARD_PRICE">R$ 1.900</div><div data-qa="POSTING_CARD_FEATURES">2 quartos</div><div data-qa="POSTING_CARD_LOCATION">Centro, Londrina</div></article>`,
   "viva-real": `<a href="https://www.vivareal.com.br/imovel/apartamento-3-quartos-centro-londrina-id-2904079401/"><h2>Apartamento para alugar com 3 quartos em Centro, Londrina</h2><p>Rua Sergipe</p><p>R$ 3.200 / mês</p></a>`,
+  zap: `<li data-testid="rp-property-cd"><a href="https://www.zapimoveis.com.br/imovel/aluguel-apartamento-2-quartos-centro-londrina-pr-id-2612345678/?source=ranking"><h2>Apartamento</h2></a><p>Centro, Londrina</p></li><script type="application/ld+json">${JSON.stringify({ "@type": "Product", url: "https://www.zapimoveis.com.br/imovel/aluguel-apartamento-2-quartos-centro-londrina-pr-id-2612345678/", name: "Apartamento para alugar em Centro", address: { "@type": "PostalAddress", addressLocality: "Londrina", addressRegion: "PR" } })}</script>`,
 };
 
 const ids: Record<PortalAtivoAngariacao, string> = {
@@ -21,9 +22,10 @@ const ids: Record<PortalAtivoAngariacao, string> = {
   "chaves-na-mao": "35106344",
   wimoveis: "3018468881",
   "viva-real": "2904079401",
+  zap: "2612345678",
 };
 
-describe("contrato estrutural dos quatro portais ativos", () => {
+describe("contrato estrutural dos cinco portais ativos", () => {
   it.each(PORTAIS_ATIVOS)("%s entrega anúncio compatível com o filtro geográfico comum", (portal) => {
     const anuncios = extrairAnunciosFirecrawl(cards[portal], { portal, cidade: "Londrina", estado: "PR" });
     expect(anuncios).toHaveLength(1);

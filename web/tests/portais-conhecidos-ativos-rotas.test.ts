@@ -1,5 +1,5 @@
-// R4.2g — nas rotas: consultar exige portal ATIVO; ler dado salvo aceita portal
-// CONHECIDO. O ZAP é recusado na busca e reconhecido na leitura.
+// R4.2g/R4.2h — nas rotas: consultar exige portal ATIVO e dentro da capacidade;
+// ler dado salvo aceita portal CONHECIDO. O ZAP é consultável só no recorte comprovado.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -26,6 +26,7 @@ vi.mock("@/lib/servidor/scraperCentralAngariacao", () => ({
 import { POST as buscar } from "@/app/api/central-angariacao/buscar/route";
 import { GET as contextoAvaliacao } from "@/app/api/avaliacao/contexto/route";
 import { GET as contextoInvestigador } from "@/app/api/investigador-imoveis/route";
+import { URL_ZAP_LONDRINA_APARTAMENTOS } from "@/lib/servidor/centralAngariacao";
 
 const COMPARAVEL_ID = "44444444-4444-4444-8444-444444444444";
 const RADAR_ID = "33333333-3333-4333-8333-333333333333";
@@ -42,11 +43,11 @@ function clienteComLinha(linha: unknown) {
   };
 }
 
-function pedidoBusca(portal: string) {
+function pedidoBusca(portal: string, extra: Record<string, unknown> = {}) {
   return new Request("http://localhost/api/central-angariacao/buscar", {
     method: "POST",
     headers: { Authorization: "Bearer token-valido", "Content-Type": "application/json" },
-    body: JSON.stringify({ portal, cidade: "Londrina", estado: "PR" }),
+    body: JSON.stringify({ portal, cidade: "Londrina", estado: "PR", ...extra }),
   });
 }
 
@@ -65,13 +66,34 @@ describe("R4.2g nas rotas", () => {
     vi.restoreAllMocks();
   });
 
-  it.each(["zap", "portal-inexistente"])("a busca da Central recusa %s antes de qualquer coleta", async (portal) => {
+  it("a busca da Central recusa portal arbitrário antes de qualquer coleta", async () => {
+    const portal = "portal-inexistente";
     const resposta = await buscar(pedidoBusca(portal));
     expect(resposta.status).toBe(400);
     expect(await resposta.json()).toMatchObject({ ok: false, anuncios: [], urlPesquisa: "" });
     expect(mocks.buscarComFirecrawl).not.toHaveBeenCalled();
     expect(mocks.buscarComNavegador).not.toHaveBeenCalled();
     expect(mocks.salvarComparaveisMercado).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["sem tipo", {}],
+    ["casa", { tipo: "Casa" }],
+    ["com bairro", { tipo: "Apartamento", bairro: "Centro" }],
+  ])("a busca da Central recusa o ZAP %s pela capacidade, sem coletar", async (_nome, extra) => {
+    const resposta = await buscar(pedidoBusca("zap", extra));
+    expect(resposta.status).toBe(422);
+    expect((await resposta.json()).aviso).toMatch(/ZAP Imóveis/);
+    expect(mocks.buscarComFirecrawl).not.toHaveBeenCalled();
+    expect(mocks.buscarComNavegador).not.toHaveBeenCalled();
+  });
+
+  it("a busca da Central aceita o ZAP no recorte comprovado, com a URL real", async () => {
+    mocks.buscarComFirecrawl.mockResolvedValue([]);
+    const resposta = await buscar(pedidoBusca("zap", { tipo: "Apartamento" }));
+    expect(resposta.status).toBe(200);
+    expect(mocks.buscarComFirecrawl).toHaveBeenCalledTimes(1);
+    expect(mocks.buscarComFirecrawl.mock.calls[0][1]).toBe(URL_ZAP_LONDRINA_APARTAMENTOS);
   });
 
   it("a busca da Central continua aceitando um portal ativo", async () => {

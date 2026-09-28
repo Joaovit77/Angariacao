@@ -833,9 +833,15 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   (`PortalAtivoAngariacao`) é o que pode ser consultado: entrada da busca da Central, builder,
   capacidade geográfica, parsers, planejador, cron do Radar e telemetria de coleta. Todo ativo é
   conhecido. Leitura de dado salvo aceita qualquer conhecido; coleta aceita só ativo e falha
-  fechada para o resto, nunca com lista vazia silenciosa. O ZAP é conhecido e ainda não é ativo:
-  o banco e os tipos o aceitam, mas nenhuma coleta, botão, agendamento ou host de imagem existe
-  para ele. Tornar um portal ativo exige coleta própria e é decisão explícita.
+  fechada para o resto, nunca com lista vazia silenciosa. Tornar um portal ativo exige coleta
+  própria e é decisão explícita.
+  O ZAP é ativo com capacidade funcional **restrita** a Londrina/PR + Apartamento, sem bairro
+  (`capacidadeFuncionalZap`, usada pelo servidor e pela Central). O builder é deliberadamente a
+  única URL real comprovada; preço e dormitórios são filtrados depois da extração, só na primeira
+  página. O parser (`servidor/parserZap.ts`) parte dos cards e usa o JSON-LD só para o mesmo ID;
+  o aluguel vem do `RentAction` da Offer em BRL (`Offer.price` apenas corrobora) e cidade/UF só
+  do que o anúncio publica, nunca do filtro, então anúncio sem UF não vira comparável. `datePosted`
+  não é recência; autoria é sempre `incerto`. Sem Playwright nem HTTP direto para o ZAP.
 - **`calculo/duplicidade.ts`** — detecta imóvel já cadastrado. A identidade é
   `endereço + cidade + unidade + bloco`, comparada por chave normalizada (grafia, acento,
   pontuação e abreviação de logradouro não contam). `unidade`/`bloco` fazem parte da identidade

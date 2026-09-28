@@ -30,6 +30,7 @@ import {
   LIMITE_AMOSTRA_REPETICAO,
   LIMITE_IDS_PARECE_QUARTO,
 } from "@/lib/servidor/monitorRadarAngariacao";
+import { URL_ZAP_LONDRINA_APARTAMENTOS } from "@/lib/servidor/centralAngariacao";
 import {
   BELO_HORIZONTE_GEMINADA,
   BELO_HORIZONTE_TERREA,
@@ -529,22 +530,43 @@ describe("monitor agendado do Radar", () => {
     ]);
   });
 
-  it("R4.2g: busca salva com portal zap (conhecido, inativo) é pulada e nunca executa", async () => {
+  it("R4.2h: busca salva de ZAP no recorte comprovado é executada com a URL real", async () => {
     vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-09-17T12:45:00.000Z"));
     const buscaZap = {
       ...busca,
       id: "busca-zap",
-      filtros: { ...busca.filtros, portal: "zap" as typeof busca.filtros.portal },
+      filtros: { ...busca.filtros, portal: "zap" as typeof busca.filtros.portal, tipo: "Apartamento" },
     };
     const banco = clienteRadarFalso([], [buscaZap]);
     mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([]);
 
     const resumo = await executarMonitorRadar();
 
-    expect(resumo).toMatchObject({ candidatas: 1, elegiveis: 0, verificadas: 0 });
-    expect(mocks.buscarComFirecrawl).not.toHaveBeenCalled();
+    expect(resumo).toMatchObject({ candidatas: 1, elegiveis: 1 });
+    expect(mocks.buscarComFirecrawl).toHaveBeenCalledTimes(1);
+    expect(mocks.buscarComFirecrawl.mock.calls[0][1]).toBe(URL_ZAP_LONDRINA_APARTAMENTOS);
+    expect(eventosRadar("radar-busca-pulada")).toEqual([]);
+  });
+
+  it("R4.2h: busca de ZAP fora da capacidade é pulada sem derrubar a rodada dos outros portais", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-09-17T12:45:00.000Z"));
+    const zapCasa = {
+      ...busca,
+      id: "busca-zap-casa",
+      filtros: { ...busca.filtros, portal: "zap" as typeof busca.filtros.portal, tipo: "Casa" },
+    };
+    const banco = clienteRadarFalso([], [zapCasa, busca]);
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([]);
+
+    const resumo = await executarMonitorRadar();
+
+    expect(resumo).toMatchObject({ candidatas: 2, elegiveis: 1 });
+    expect(mocks.buscarComFirecrawl).toHaveBeenCalledTimes(1);
+    expect(mocks.buscarComFirecrawl.mock.calls[0][0]).toMatchObject({ portal: "olx" });
     expect(eventosRadar("radar-busca-pulada").map((entrada) => JSON.parse(entrada.detalhe))).toEqual([
-      { busca_id: "busca-zap", rodada_id: expect.any(String), motivo: "portal-sem-cobertura" },
+      { busca_id: "busca-zap-casa", rodada_id: expect.any(String), motivo: "portal-sem-cobertura" },
     ]);
   });
 

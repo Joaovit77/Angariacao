@@ -15,12 +15,15 @@ vi.mock("@/lib/servidor/centralAngariacao", () => ({
 }));
 
 import { planejarColetaMercado } from "@/lib/servidor/planejadorColetaMercados";
+import { PORTAIS_ATIVOS } from "@/lib/calculo/centralAngariacao";
 
-describe("R4.2g: planejador de mercados", () => {
-  it("nunca considera portal inativo, mesmo se a capacidade permitisse", () => {
+describe("planejador de mercados", () => {
+  it("considera exatamente os portais ativos; quem decide cobertura é a capacidade", () => {
     avaliados.length = 0;
     const plano = planejarColetaMercado({ cidade: "Londrina", estado: "PR", finalidade: "locacao", segmento: "residencial" });
-    expect(avaliados).toEqual(["olx", "chaves-na-mao", "wimoveis", "viva-real"]);
+    // Com a capacidade neutralizada, o zap aparece aqui; com a capacidade real ele
+    // é pulado por não haver tipo (ver zap-radar.test.ts). O teto de 4 corta o 5º.
+    expect(avaliados).toEqual([...PORTAIS_ATIVOS]);
     expect(plano.consultas.map((consulta) => consulta.filtros.portal)).toEqual(["olx", "chaves-na-mao", "wimoveis", "viva-real"]);
   });
 });

@@ -5,6 +5,7 @@ import { getCache } from "@vercel/functions";
 import { load, type CheerioAPI, type Cheerio } from "cheerio";
 import type { AnyNode } from "domhandler";
 import { tituloWimoveis } from "./tituloWimoveis";
+import { extrairZap } from "./parserZap";
 import { agoraTimestamp, dataPublicacaoOlx, dentroDoPeriodo, timestampDeIso } from "@/lib/datas";
 import {
   idDoAnuncio,
@@ -390,6 +391,8 @@ export function extrairAnunciosFirecrawl(
     case "wimoveis": return extrairWimoveis($, filtros)
       .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
     case "viva-real": return extrairVivaReal($, filtros)
+      .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
+    case "zap": return extrairZap($, filtros, LIMITE_RESULTADOS)
       .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
   }
   // Portal conhecido e inativo (ou valor sem tipo) nunca vira lista vazia silenciosa.

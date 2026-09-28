@@ -17,10 +17,11 @@ import { normalizarUf, separarCidadeEUf, ufValida } from "./geografia";
    - ATIVOS: portais que podem ser consultados agora (busca da Central,
      builder, parsers, planejador, cron do Radar, telemetria de coleta).
    Todo ativo é conhecido; um conhecido só vira ativo quando ganha coleta
-   própria. O ZAP é conhecido e ainda não é ativo. */
+   própria. O ZAP é ativo desde o R4.2h, com capacidade funcional restrita
+   (ver capacidadeFuncionalZap). */
 export const PORTAIS_CONHECIDOS = ["olx", "chaves-na-mao", "wimoveis", "viva-real", "zap"] as const;
 export type PortalAngariacao = (typeof PORTAIS_CONHECIDOS)[number];
-export const PORTAIS_ATIVOS = ["olx", "chaves-na-mao", "wimoveis", "viva-real"] as const satisfies readonly PortalAngariacao[];
+export const PORTAIS_ATIVOS = ["olx", "chaves-na-mao", "wimoveis", "viva-real", "zap"] as const satisfies readonly PortalAngariacao[];
 export type PortalAtivoAngariacao = (typeof PORTAIS_ATIVOS)[number];
 
 export function ehPortalConhecido(valor: unknown): valor is PortalAngariacao {
@@ -192,6 +193,29 @@ export function slugPortal(valor: string): string {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+/** Recorte funcional comprovado do ZAP (R4.2h). Só uma listagem real foi
+    provada no discovery: apartamentos para alugar em Londrina/PR, sem bairro.
+    Tudo fora disso é recusado aqui, antes do builder, e a própria Central usa
+    esta mesma regra para não oferecer combinações que o ZAP não atende. */
+export const COBERTURA_ZAP = "Londrina/PR · Apartamento";
+
+export function capacidadeFuncionalZap(
+  filtros: { cidade?: string | null; estado?: string | null; tipo?: string | null; bairro?: string | null },
+): { suportado: boolean; motivo: string } {
+  const recusa = (motivo: string) => ({ suportado: false, motivo });
+  if (slugPortal(filtros.cidade || "") !== "londrina" || normalizarUf(filtros.estado) !== "PR") {
+    return recusa(`O ZAP Imóveis está disponível somente em Londrina/PR (${COBERTURA_ZAP}).`);
+  }
+  const tipo = slugPortal(filtros.tipo || "");
+  if (tipo !== "apartamento" && tipo !== "apartamentos") {
+    return recusa(`O ZAP Imóveis está disponível somente para Apartamento (${COBERTURA_ZAP}).`);
+  }
+  if (filtros.bairro?.trim()) {
+    return recusa("O ZAP Imóveis ainda não aceita busca por bairro.");
+  }
+  return { suportado: true, motivo: "Listagem real comprovada: apartamentos para alugar em Londrina/PR." };
 }
 
 /**

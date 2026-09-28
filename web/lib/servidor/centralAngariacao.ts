@@ -1,4 +1,5 @@
 import {
+  capacidadeFuncionalZap,
   ehPortalAtivo,
   idDoAnuncio,
   slugPortal,
@@ -21,8 +22,11 @@ export interface CapacidadeGeograficaPortal {
 
 export class PortalSemCoberturaGeografica extends Error {}
 
+/** Tipo e bairro só pesam para portais cuja listagem comprovada depende deles
+    (hoje o ZAP). Os quatro portais anteriores continuam decididos só por
+    cidade e UF, exatamente como antes. */
 export function capacidadeGeograficaPortal(
-  filtros: Pick<FiltrosCentralAngariacao, "portal" | "cidade" | "estado">,
+  filtros: Pick<FiltrosCentralAngariacao, "portal" | "cidade" | "estado" | "tipo" | "bairro">,
 ): CapacidadeGeograficaPortal {
   const cidade = slugPortal(filtros.cidade);
   const estado = normalizarUf(filtros.estado);
@@ -45,6 +49,12 @@ export function capacidadeGeograficaPortal(
       nivel: "formato-generico-a-validar",
       motivo: "O formato inclui UF e cidade, mas cada novo mercado precisa de smoke no portal.",
     };
+  }
+  if (filtros.portal === "zap") {
+    const zap = capacidadeFuncionalZap(filtros);
+    return zap.suportado
+      ? { suportado: true, nivel: "comprovado", motivo: zap.motivo }
+      : { suportado: false, nivel: "limitado", motivo: zap.motivo };
   }
   return { suportado: false, nivel: "limitado", motivo: "Portal de consulta não suportado." };
 }
@@ -129,12 +139,26 @@ function urlVivaReal(f: FiltrosCentralAngariacao): string {
   return url.toString();
 }
 
+/** A única listagem do ZAP comprovada no discovery (R4.2f), gerada pelo próprio
+    site: apartamentos para alugar em Londrina/PR. O `onde` carrega coordenadas
+    que não sabemos gerar para outro recorte, então a URL é constante e a
+    capacidade recusa qualquer filtro fora dela. Preço e dormitórios nunca vão
+    para a URL: são filtrados depois da extração, só sobre esta primeira página. */
+export const URL_ZAP_LONDRINA_APARTAMENTOS =
+  "https://www.zapimoveis.com.br/aluguel/apartamentos/pr+londrina/?onde=%2CParan%C3%A1%2CLondrina%2C%2C%2C%2C%2Ccity%2CBR%3EParana%3ENULL%3ELondrina%2C-23.319731%2C-51.166201%2C&tipos=apartamento_residencial";
+
+function urlZap(f: FiltrosCentralAngariacao): string {
+  localizacaoSegura(f);
+  return URL_ZAP_LONDRINA_APARTAMENTOS;
+}
+
 export function urlDaPesquisa(filtros: FiltrosCentralAngariacao): string {
   switch (filtros.portal) {
     case "olx": return urlOlx(filtros);
     case "chaves-na-mao": return urlChaves(filtros);
     case "wimoveis": return urlWimoveis(filtros);
     case "viva-real": return urlVivaReal(filtros);
+    case "zap": return urlZap(filtros);
     default: throw new PortalSemCoberturaGeografica("Portal de consulta não suportado.");
   }
 }
@@ -178,6 +202,9 @@ export function extrairJsonLd(
 ): AnuncioCentralAngariacao[] {
   // Fallback de coleta: portal inativo falha fechado, nunca cai na regra genérica.
   if (!ehPortalAtivo(portal)) throw new PortalSemCoberturaGeografica("Portal de consulta não suportado.");
+  // O ZAP não tem caminho HTTP direto: a regra genérica `/imovel/` importaria
+  // todo o JSON-LD, inclusive itens sem card e o `Offer.price` isolado.
+  if (portal === "zap") throw new PortalSemCoberturaGeografica("O ZAP Imóveis não tem coleta por HTTP direto.");
   const scripts = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
   const itens: JsonLd[] = [];
   for (const match of scripts) {

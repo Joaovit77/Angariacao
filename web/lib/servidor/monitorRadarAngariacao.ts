@@ -14,7 +14,7 @@ import {
   type OrigemVerificacaoRadar,
 } from "@/lib/calculo/radarAngariacao";
 import { agoraISOString } from "@/lib/datas";
-import { urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
+import { capacidadeGeograficaPortal, urlDaPesquisa } from "@/lib/servidor/centralAngariacao";
 import { finalizarColetaCentralAngariacao } from "@/lib/servidor/finalizacaoCentralAngariacao";
 import { classificarRelevanciaRadarOlx } from "@/lib/calculo/relevanciaRadarOlx";
 import {
@@ -114,6 +114,9 @@ function clienteServico(): SupabaseClient {
 function motivoParaPularBusca(row: DbBuscaRadar): MotivoBuscaPulada | null {
   // O cron só executa portal ativo; busca salva com portal inativo é pulada.
   if (!ehPortalAtivo(row.filtros?.portal)) return "portal-sem-cobertura";
+  // ZAP (R4.2h): capacidade funcional restrita; busca fora dela é pulada antes
+  // de gastar consulta. Os demais portais seguem observados como antes.
+  if (row.filtros.portal === "zap" && !capacidadeGeograficaPortal(row.filtros).suportado) return "portal-sem-cobertura";
   if (!row.filtros?.cidade?.trim()) return "filtros-invalidos";
   if (!buscaElegivelParaCron({
     id: row.id,

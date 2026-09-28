@@ -62,8 +62,14 @@ function prepararRegistro(
 ): RegistroPreparado | null {
   const anuncio = comCaracteristicasDoAnuncio(original, filtros.tipo);
   const valor = numero(anuncio.preco);
-  const cidade = anuncio.cidade?.trim() || filtros.cidade.trim();
-  const estado = normalizarUf(filtros.estado);
+  // ZAP (R4.2h): cidade e UF só do que o anúncio publica. Sem UF comprovada o
+  // anúncio continua oportunidade, mas não vira comparável. Os demais portais
+  // mantêm o contrato anterior (cidade do anúncio ou do filtro; UF do filtro).
+  const localSoDoAnuncio = anuncio.portal === "zap";
+  const cidade = localSoDoAnuncio
+    ? (anuncio.cidade?.trim() || "")
+    : (anuncio.cidade?.trim() || filtros.cidade.trim());
+  const estado = localSoDoAnuncio ? normalizarUf(anuncio.estado) : normalizarUf(filtros.estado);
   const cidadeChave = chaveNormalizada(cidade);
   if (!valor || valor <= 0 || !cidadeChave || !ufValida(estado) || !anuncio.url || !anuncio.titulo) return null;
   const regiao = ehLondrinaParana(cidade, estado) ? (regiaoDeBairroLondrina(anuncio.bairro)

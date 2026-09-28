@@ -4,9 +4,12 @@ const HOSTS_IMAGEM = [
   "resizedimgs.vivareal.com",
   "imgbr.imovelwebcdn.com",
   "www.chavesnamao.com.br",
+  // ZAP (R4.2h): só o host das fotos dos cards. Outros hosts do ZAP ficam fora.
+  "resizedimgs.zapimoveis.com.br",
 ] as const;
 
 function origemPara(host: string): string {
+  if (host === "resizedimgs.zapimoveis.com.br") return "https://www.zapimoveis.com.br/";
   if (host.includes("vivareal")) return "https://www.vivareal.com.br/";
   if (host.includes("imovelwebcdn")) return "https://www.wimoveis.com.br/";
   if (host.includes("chavesnamao")) return "https://www.chavesnamao.com.br/";

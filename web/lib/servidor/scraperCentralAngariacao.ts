@@ -303,6 +303,8 @@ export async function buscarComNavegador(
   urlPesquisa: string,
   observar?: (fase: "fetch_iniciado" | "resposta_recebida", statusHttp?: number) => void,
 ): Promise<AnuncioCentralAngariacao[]> {
+  // O ZAP só tem coleta via Firecrawl (R4.2h): falha fechada antes de abrir o navegador.
+  if (filtros.portal === "zap") throw new Error("Coleta local não suportada para o ZAP Imóveis.");
   const configuracao = await configuracaoNavegador();
   if (!configuracao) throw new NavegadorIndisponivel("Chrome não encontrado no servidor.");
 

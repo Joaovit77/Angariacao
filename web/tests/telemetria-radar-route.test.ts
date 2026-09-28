@@ -48,11 +48,11 @@ describe("fechamento acessório do Radar", () => {
     });
   });
 
-  it("mantém exatamente os quatro portais operacionais", () => {
-    expect(PORTAIS_ATIVOS).toEqual(["olx", "chaves-na-mao", "wimoveis", "viva-real"]);
+  it("mantém exatamente os cinco portais operacionais", () => {
+    expect(PORTAIS_ATIVOS).toEqual(["olx", "chaves-na-mao", "wimoveis", "viva-real", "zap"]);
   });
 
-  it.each(["olx", "chaves-na-mao", "wimoveis", "viva-real"])(
+  it.each([...PORTAIS_ATIVOS])(
     "registra %s como portal ativo no fechamento autenticado",
     async (portal) => {
       maybeSingle.mockResolvedValue({ data: { id: buscaId, filtros: { portal } }, error: null });
@@ -62,8 +62,8 @@ describe("fechamento acessório do Radar", () => {
     },
   );
 
-  it("registra portal desconhecido como desconhecido sem criar quinto portal", async () => {
-    maybeSingle.mockResolvedValue({ data: { id: buscaId, filtros: { portal: "zap" } }, error: null });
+  it("registra portal desconhecido como desconhecido sem criar portal novo", async () => {
+    maybeSingle.mockResolvedValue({ data: { id: buscaId, filtros: { portal: "portal-inexistente" } }, error: null });
     expect((await POST(requisicao({ execucaoId, buscaId, novos: 0 }))).status).toBe(200);
     expect(JSON.parse(mocks.registrarEvento.mock.calls[0][0].detalhe).portal).toBe("desconhecido");
   });

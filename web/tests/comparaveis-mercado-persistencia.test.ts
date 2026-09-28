@@ -79,6 +79,43 @@ describe("persistência idempotente dos comparáveis de mercado", () => {
     vi.unstubAllEnvs();
   });
 
+  const anuncioZap: AnuncioCentralAngariacao = {
+    ...anuncioValido,
+    portal: "zap",
+    idExterno: "2612345678",
+    url: "https://www.zapimoveis.com.br/imovel/aluguel-apartamento-2-quartos-centro-londrina-pr-id-2612345678/",
+    preco: 2500,
+    cidade: "Londrina",
+    estado: "PR",
+  };
+  const filtrosZap = { ...filtros, portal: "zap" as const };
+
+  it("R4.2h: comparável ZAP com preço e UF publicados é salvo com a UF do anúncio", async () => {
+    const banco = bancoComparaveisFalso();
+    expect(await salvarComparaveisMercado(banco.cliente, "usuario-1", [anuncioZap], filtrosZap)).toBe(1);
+    expect(banco.rpc).toHaveBeenCalledWith("registrar_comparavel_mercado", {
+      p_dados: expect.objectContaining({ portal: "zap", id_externo: "2612345678", estado: "PR", cidade: "Londrina", valor_anunciado: 2500 }),
+    });
+  });
+
+  it.each([
+    ["preço nulo", { preco: null }],
+    ["UF nula (nunca preenchida pelo filtro)", { estado: null }],
+    ["cidade nula (nunca preenchida pelo filtro)", { cidade: null }],
+  ])("R4.2h: ZAP com %s não vira comparável", async (_nome, parcial) => {
+    const banco = bancoComparaveisFalso();
+    expect(await salvarComparaveisMercado(banco.cliente, "usuario-1", [{ ...anuncioZap, ...parcial }], filtrosZap)).toBe(0);
+    expect(banco.rpc).not.toHaveBeenCalledWith("registrar_comparavel_mercado", expect.anything());
+  });
+
+  it("R4.2h: os demais portais mantêm UF do filtro e cidade do filtro como reserva", async () => {
+    const banco = bancoComparaveisFalso();
+    expect(await salvarComparaveisMercado(banco.cliente, "usuario-1", [{ ...anuncioValido, cidade: null, estado: null }], filtros)).toBe(1);
+    expect(banco.rpc).toHaveBeenCalledWith("registrar_comparavel_mercado", {
+      p_dados: expect.objectContaining({ portal: "olx", estado: "PR", cidade: "Londrina" }),
+    });
+  });
+
   it("aceita comparável Wimoveis incerto apesar do filtro solicitado ao portal", async () => {
     const banco = bancoComparaveisFalso();
     const salvos = await salvarComparaveisMercado(banco.cliente, "usuario-1", [{

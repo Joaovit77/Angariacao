@@ -9,6 +9,8 @@ import { ORIGEM_GARIMPO_SITE } from "@/lib/constantes";
 import { buscarNaCentral } from "@/lib/centralAngariacao";
 import {
   avaliarOportunidade,
+  capacidadeFuncionalZap,
+  COBERTURA_ZAP,
   numeroOpcional,
   type PeriodoPublicacao,
   rotuloPortal,
@@ -162,6 +164,9 @@ export default function CentralAngariacaoView() {
   const novosPorBusca = pendencias?.porBusca ?? new Map<string, number>();
   const radarPendente = (item: { id: string; visto: boolean }) => (pendencias ? pendencias.ids.has(item.id) : !item.visto);
 
+  // ZAP (R4.2h): mesma regra do servidor; a Central não oferece combinação que ele recusaria.
+  const capacidadeZap = portal === "zap" ? capacidadeFuncionalZap({ cidade, estado, tipo }) : null;
+
   async function buscar() {
     if (!cidade.trim() || !ufValida(estado)) {
       toast("Informe a cidade e uma UF válida.", "error");
@@ -173,7 +178,7 @@ export default function CentralAngariacaoView() {
       portal,
       cidade,
       estado: estado.toUpperCase(),
-      bairro: bairro || undefined,
+      bairro: portal === "zap" ? undefined : (bairro || undefined),
       tipo: tipo || undefined,
       valorMin: numeroOpcional(valorMin),
       valorMax: numeroOpcional(valorMax),
@@ -425,7 +430,7 @@ export default function CentralAngariacaoView() {
             <span>A consulta só acontece quando você clicar em Buscar.</span>
           </div>
           <div className="central-portal-grid">
-            {(["olx", "chaves-na-mao", "wimoveis", "viva-real"] as const).map((item) => (
+            {(["olx", "chaves-na-mao", "wimoveis", "viva-real", "zap"] as const).map((item) => (
               <button
                 key={item}
                 type="button"
@@ -438,6 +443,7 @@ export default function CentralAngariacaoView() {
                   "chaves-na-mao": "Maior chance de localização detalhada",
                   wimoveis: "Direto com proprietário e endereço",
                   "viva-real": "Grande volume com localização",
+                  zap: `Somente ${COBERTURA_ZAP}`,
                 }[item]}</small>
               </button>
             ))}
@@ -445,7 +451,7 @@ export default function CentralAngariacaoView() {
           <div className="central-form-grid">
             <label>Cidade<input value={cidade} onChange={(e) => { cidadeEstadoProtegidos.current = true; setCidade(e.target.value); }} /></label>
             <label>UF<select value={estado} onChange={(e) => { cidadeEstadoProtegidos.current = true; setEstado(e.target.value); }}><option value="">Selecione</option>{UFS_BRASIL.map((uf) => <option key={uf} value={uf}>{uf}</option>)}</select></label>
-            <label>Bairro<input value={bairro} onChange={(e) => setBairro(e.target.value)} placeholder="Todos" /></label>
+            <label>Bairro<input value={portal === "zap" ? "" : bairro} onChange={(e) => setBairro(e.target.value)} placeholder={portal === "zap" ? "Indisponível no ZAP" : "Todos"} disabled={portal === "zap"} /></label>
             <label>Tipo<input value={tipo} onChange={(e) => setTipo(e.target.value)} placeholder="Apartamento, casa…" /></label>
             <label>Valor mínimo<input inputMode="numeric" value={valorMin} onChange={(e) => setValorMin(e.target.value)} placeholder="R$ 0" /></label>
             <label>Valor máximo<input inputMode="numeric" value={valorMax} onChange={(e) => setValorMax(e.target.value)} placeholder="Sem limite" /></label>
@@ -471,8 +477,14 @@ export default function CentralAngariacaoView() {
               Mostrar somente anúncios diretos com o proprietário
             </label>
           )}
+          {capacidadeZap && (
+            <div className="central-hint">
+              O ZAP Imóveis está disponível somente para {COBERTURA_ZAP}, sem bairro. Faixa de valor e dormitórios filtram só a primeira página da listagem.
+              {!capacidadeZap.suportado && <> {capacidadeZap.motivo}</>}
+            </div>
+          )}
           <div className="central-actions">
-            <button type="button" className="btn btn-primary" disabled={buscando || !cidade.trim() || !ufValida(estado)} onClick={() => void buscar()}>
+            <button type="button" className="btn btn-primary" disabled={buscando || !cidade.trim() || !ufValida(estado) || capacidadeZap?.suportado === false} onClick={() => void buscar()}>
               {buscando ? "Consultando portal…" : "Buscar imóveis"}
             </button>
           </div>
