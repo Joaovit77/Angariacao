@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSessao } from "@/components/SessaoProvider";
+import { AVISO_IMOVEL_INATIVO_MENSAGEM, imovelBloqueiaMensagemLivre } from "@/lib/calculo/mensagemLivreImovel";
 import { agoraISOString, agoraTimestamp, dataHoraLocalParaIso, fmtDataHoraIso, partesDataHoraLocal, timestampDeIso } from "@/lib/datas";
 import {
   fromDbMensagem,
@@ -43,7 +44,12 @@ export default function ModalMensagemAgendada({
   const [hora, setHora] = useState(inicial.hora);
   const [carregando, setCarregando] = useState(!!id);
   const [salvando, setSalvando] = useState(false);
+  const [tipo, setTipo] = useState<TipoMensagemAgendada>(tipoInicial);
   const imovel = imoveis.find((i) => i.id === imovelId) || null;
+  // Mensagem livre vinculada a imóvel Perdido, Locado ou retirado não é
+  // agendada (o worker também não a enviaria). Sem "forçar": reconquista,
+  // se existir, será fluxo próprio.
+  const imovelInativo = modoDestinatario === "cadastro" && tipo === "livre" && !!imovel && imovelBloqueiaMensagemLivre(imovel);
   const termoBusca = buscaImovel.trim().toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const imoveisFiltrados = termoBusca
     ? imoveis.filter((i) => [i.proprietarioNome, i.codigo, i.endereco, i.proprietarioTelefone]
@@ -57,6 +63,7 @@ export default function ModalMensagemAgendada({
         const item = fromDbMensagem(row as DbMensagemAgendada);
         const partes = partesDataHoraLocal(item.dataEnvio);
         setModoDestinatario(item.imovelId ? "cadastro" : "manual");
+        setTipo(item.tipo);
         setImovelId(item.imovelId || ""); setNomeManual(item.nomeProprietario); setTelefoneManual(item.telefone);
         setMensagem(item.mensagem); setData(partes.data); setHora(partes.hora);
       }
@@ -67,6 +74,7 @@ export default function ModalMensagemAgendada({
   async function salvar() {
     if (!usuario) return;
     if (modoDestinatario === "cadastro" && !imovel) return toast("Selecione um proprietário/imóvel.", "error");
+    if (imovelInativo) return toast(AVISO_IMOVEL_INATIVO_MENSAGEM, "error");
     const nomeProprietario = modoDestinatario === "cadastro" ? imovel?.proprietarioNome?.trim() || "Proprietário" : nomeManual.trim();
     const telefone = modoDestinatario === "cadastro" ? imovel?.proprietarioTelefone?.trim() || "" : telefoneManual.trim();
     if (!nomeProprietario) return toast("Informe o nome do proprietário.", "error");
@@ -112,7 +120,8 @@ export default function ModalMensagemAgendada({
           <select value={imovelId} onChange={(e) => setImovelId(e.target.value)} disabled={!!id}>
             <option value="">{termoBusca ? `${imoveisFiltrados.length} resultado(s)` : "Selecione"}</option>{imoveisFiltrados.map((i) => <option key={i.id} value={i.id}>{i.proprietarioNome || "Sem nome"} — {i.codigo || i.endereco}</option>)}
           </select>{termoBusca && imoveisFiltrados.length === 0 && <div className="field-hint">Nenhum imóvel ou proprietário encontrado.</div>}
-          {imovel && <div className="mensagem-destinatario-selecionado"><span className="mensagem-destinatario-avatar" aria-hidden="true">{(imovel.proprietarioNome || "P").trim().charAt(0).toUpperCase()}</span><div><strong>{imovel.proprietarioNome || "Sem nome"}</strong><small>{imovel.codigo || imovel.endereco} · {imovel.proprietarioTelefone || "Sem telefone"}</small></div><span className="mensagem-destinatario-ok">✓ Selecionado</span></div>}</div> :
+          {imovel && <div className="mensagem-destinatario-selecionado"><span className="mensagem-destinatario-avatar" aria-hidden="true">{(imovel.proprietarioNome || "P").trim().charAt(0).toUpperCase()}</span><div><strong>{imovel.proprietarioNome || "Sem nome"}</strong><small>{imovel.codigo || imovel.endereco} · {imovel.proprietarioTelefone || "Sem telefone"}</small></div><span className="mensagem-destinatario-ok">✓ Selecionado</span></div>}
+          {imovelInativo && <div className="field-hint" role="alert">{AVISO_IMOVEL_INATIVO_MENSAGEM}</div>}</div> :
           <div className="field-row"><div className="field-group"><label>Nome do proprietário</label><input value={nomeManual} onChange={(e) => setNomeManual(e.target.value)} placeholder="Ex.: João da Silva" disabled={!!id} /></div>
             <div className="field-group"><label>Telefone</label><input type="tel" value={telefoneManual} onChange={(e) => setTelefoneManual(e.target.value)} placeholder="(43) 99999-9999" disabled={!!id} /></div></div>}
         <div className="field-group"><label>Mensagem</label><textarea rows={7} value={mensagem} onChange={(e) => setMensagem(e.target.value)} placeholder="Escreva qualquer mensagem personalizada" /></div>

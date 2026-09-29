@@ -1251,6 +1251,12 @@ Regras permanentes:
   segue o fluxo de sempre. Visita não realizada não cria evidência nova: E continua sendo o registro
   da combinação. Mensagem `livre` não passa por nada disso; falha ao carregar os fatos vira
   `erro`/`revalidacao-falhou`, nunca envio;
+- **mensagem `livre` vinculada a imóvel é revalidada no worker** e não é enviada quando o imóvel
+  está `Perdido`, `Locado` ou `retirado` (`calculo/mensagemLivreImovel.ts`, lida pelo worker e pelo
+  modal, que não agenda nesse caso). O worker lê o imóvel pelo `imovel_id` + `user_id`, nunca pelo
+  telefone, e cancela a linha `processando` com `imovel-indisponivel`, origem `worker`; falha de
+  leitura vira `erro`/`revalidacao-falhou`. Livre sem imóvel segue como antes. A lista é
+  deliberadamente mais estreita que o alvo do M4 (LD-163, 26/09/2026);
 - **uma mutação só no banco.** `private.aplicar_transicao_disponibilidade(imovel, user_id, acao, …)`
   é a única implementação de "encerrar" (apaga lembretes abertos e cancela verificações pendentes) e
   de "confirmar" (conclui lembretes com `completion_reason`, garante um lembrete em E + cadência,

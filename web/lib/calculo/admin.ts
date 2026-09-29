@@ -266,14 +266,15 @@ export const EVENTOS: Record<string, string> = {
   "agendamento-fila-indisponivel": "Fila de mensagens agendadas indisponível",
   "agendamento-fila-recuperada": "Fila de mensagens agendadas recuperada após repetir",
   /* Verificação de disponibilidade reavaliada pelo worker antes do envio
-     (M3): cada transição fica no log com ids e motivo, nunca com texto ou
+     (M3), e mensagem livre de imóvel Perdido/Locado/retirado barrada no
+     envio: cada transição fica no log com ids e motivo, nunca com texto ou
      telefone. */
-  "agendamento-cancelado-worker": "Verificação de disponibilidade cancelada antes do envio",
+  "agendamento-cancelado-worker": "Mensagem agendada cancelada antes do envio",
   "agendamento-reagendado": "Verificação de disponibilidade reagendada pela cadência",
   "agendamento-consolidado": "Verificações do mesmo proprietário enviadas numa mensagem só",
   "agendamento-consolidacao-desfeita": "Consolidação desfeita porque o envio não aconteceu",
   "agendamento-consolidacao-incerta": "Envio consolidado com resultado incerto: absorvidas retiradas da fila sem afirmar contato",
-  "agendamento-revalidacao-falhou": "Falha ao reavaliar verificação antes do envio",
+  "agendamento-revalidacao-falhou": "Falha ao reavaliar mensagem antes do envio",
   "transicao-disponibilidade-falhou": "Falha na transição automática de disponibilidade no banco",
   "sem-instancia": "Tentou enviar sem número cadastrado",
   "instancia-desconectada": "WhatsApp desconectado (releia o QR)",

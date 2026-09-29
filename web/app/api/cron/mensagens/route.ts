@@ -20,6 +20,10 @@ import {
   revalidarVerificacaoDisponibilidade,
   type ConsolidacaoPreparada,
 } from "@/lib/servidor/disponibilidadeMensagem";
+import {
+  cancelarMensagemLivreImovelIndisponivel,
+  revalidarMensagemLivreVinculada,
+} from "@/lib/servidor/mensagemLivreImovel";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -122,6 +126,34 @@ export async function GET(request: Request) {
       if (erroReleitura) throw new Error("releitura-falhou");
       if (mensagemAtual?.status !== "processando" || (item.imovel_id && mensagemAtual.imovel_id !== item.imovel_id)) continue;
 
+      // Mensagem livre vinculada a imóvel: não sai para imóvel Perdido,
+      // Locado ou retirado (LD-163, 26/09/2026). Lê o imóvel agora, pelo
+      // `imovel_id`; falha de leitura não envia. Sem imóvel, segue como sempre.
+      if ((item.tipo ?? "livre") === "livre" && item.imovel_id) {
+        let revalidacaoLivre: Awaited<ReturnType<typeof revalidarMensagemLivreVinculada>>;
+        try {
+          revalidacaoLivre = await revalidarMensagemLivreVinculada(admin, item);
+        } catch (erro) {
+          registrarEvento({
+            userId: item.user_id, categoria: "whatsapp", nivel: "erro",
+            evento: "agendamento-revalidacao-falhou",
+            detalhe: `${item.id} livre ${erro instanceof Error ? erro.message.slice(0, 120) : "falha"}`,
+          });
+          throw new Error("revalidacao-falhou");
+        }
+        if (revalidacaoLivre.acao === "cancelar") {
+          const resultado = await cancelarMensagemLivreImovelIndisponivel(admin, item, agoraISOString());
+          if (!resultado.ok) throw new Error(`transicao-falhou:${resultado.erro ?? "desconhecido"}`);
+          registrarEvento({
+            userId: item.user_id, categoria: "whatsapp", nivel: "info",
+            evento: "agendamento-cancelado-worker",
+            detalhe: `${item.id} imovel-indisponivel livre:${revalidacaoLivre.situacao}`,
+          });
+          suprimidas++;
+          continue;
+        }
+      }
+
       // Agendar não é garantir o envio. Uma verificação de disponibilidade é
       // reavaliada AQUI, o mais perto possível do efeito externo, contra o
       // estado atual do imóvel e as evidências estruturadas (M2): o imóvel
@@ -130,7 +162,8 @@ export async function GET(request: Request) {
       // proprietário recebe um contato só por dia, não um por imóvel. A
       // mutação é sempre a RPC do M4, que fecha na mesma transação esta linha
       // (`p_mensagem_processando`), os lembretes e as outras mensagens do
-      // imóvel. Mensagem `livre` não passa por nada disto.
+      // imóvel. Mensagem `livre` não passa por nada disto (só pela guarda
+      // de imóvel fora da carteira, acima).
       //
       // A consolidação é em dois tempos: antes do POST só se RESERVA (as
       // candidatas viram `processando`, fora do alcance de outra execução);

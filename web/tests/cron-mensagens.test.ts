@@ -24,19 +24,32 @@ const mocks = vi.hoisted(() => ({
   /** Resposta de cada leitura/escrita por tabela, na ordem das chamadas. */
   tabelas: {} as Record<string, ResultadoMock[]>,
   escritas: [] as Array<{ tabela: string; valores: Record<string, unknown> }>,
+  /** Toda leitura/escrita com as colunas e os filtros `eq` usados. */
+  consultas: [] as Array<{ tabela: string; operacao: "select" | "update"; colunas?: string; filtros: Array<[string, unknown]> }>,
 }));
 
+vi.mock("server-only", () => ({}));
 vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({
     rpc: mocks.rpc,
     from: (tabela: string) => {
       const proxima = () => mocks.tabelas[tabela]?.shift() ?? { data: null, error: null };
+      let consulta: (typeof mocks.consultas)[number] | null = null;
       const cadeia = {
-        select: () => cadeia,
-        eq: () => cadeia,
+        select: (colunas?: string) => {
+          consulta = { tabela, operacao: "select", colunas, filtros: [] };
+          mocks.consultas.push(consulta);
+          return cadeia;
+        },
+        eq: (coluna: string, valor: unknown) => {
+          consulta?.filtros.push([coluna, valor]);
+          return cadeia;
+        },
         maybeSingle: async () => proxima(),
         update: (valores: Record<string, unknown>) => {
           mocks.escritas.push({ tabela, valores });
+          consulta = { tabela, operacao: "update", filtros: [] };
+          mocks.consultas.push(consulta);
           return cadeia;
         },
         then: (resolve: (r: ResultadoMock) => void) => resolve(proxima()),
@@ -103,6 +116,7 @@ describe("cron de mensagens agendadas", () => {
       ({ marcadasIds: preparacao.reservadasIds, erro: null }));
     mocks.tabelas = {};
     mocks.escritas.length = 0;
+    mocks.consultas.length = 0;
     log = vi.spyOn(console, "error").mockImplementation(() => undefined);
   });
 
@@ -195,6 +209,7 @@ describe("cron de mensagens agendadas", () => {
     mocks.tabelas = {
       whatsapp_instancias: [{ data: { instancia: "corretora", token: "tok", observacao: null }, error: null }],
       mensagens_agendadas: [{ data: { status: "processando", imovel_id: "i1" }, error: null }],
+      imoveis: [{ data: { status: "Publicado", retirado: false }, error: null }],
     };
 
     const resposta = await chamarComPausas();
@@ -221,6 +236,7 @@ describe("cron de mensagens agendadas", () => {
 
   it("mensagem livre não passa pela revalidação nem pela consolidação", async () => {
     prontoParaEnviar({ ...MENSAGEM, tipo: "livre" as const });
+    mocks.tabelas.imoveis = [{ data: { status: "Publicado", retirado: false }, error: null }];
 
     const resposta = await chamarComPausas();
 
@@ -472,5 +488,240 @@ describe("cron de mensagens agendadas", () => {
       evento: "historico-envio-falhou", detalhe: "agendamento consolidado 22023",
     }));
     expect(mocks.escritas).toEqual([]);
+  });
+
+  /* --- LD-163: mensagem livre vinculada a imóvel fora da carteira ----------
+     Em 26/09/2026 uma livre agendada em 11/08 saiu para o LD-163, Perdido
+     desde 12/08: a livre não passava por nenhuma checagem de status. */
+
+  const LIVRE = { ...MENSAGEM, id: "l1", tipo: "livre" as const };
+  const INSTANCIA = { data: { instancia: "corretora", token: "tok", observacao: null }, error: null };
+  const imovelNoBanco = (status: string, retirado = false): ResultadoMock => ({ data: { status, retirado }, error: null });
+
+  function livrePronta(imovel: ResultadoMock, mensagem: typeof LIVRE = LIVRE) {
+    mocks.rpc.mockResolvedValueOnce({ data: [mensagem], error: null, status: 200 });
+    mocks.tabelas = {
+      whatsapp_instancias: [INSTANCIA],
+      mensagens_agendadas: [{ data: { status: "processando", imovel_id: mensagem.imovel_id }, error: null }],
+      imoveis: [imovel],
+    };
+  }
+
+  const CANCELADA_PELO_WORKER = {
+    tabela: "mensagens_agendadas",
+    valores: expect.objectContaining({
+      status: "cancelada",
+      cancelamento_motivo: "imovel-indisponivel",
+      cancelamento_origem: "worker",
+      cancelada_em: expect.any(String),
+    }),
+  };
+
+  function escritaDeCancelamento() {
+    return mocks.consultas.find((c) => c.tabela === "mensagens_agendadas" && c.operacao === "update");
+  }
+
+  describe("livre vinculada a imóvel Perdido, Locado ou retirado não sai", () => {
+    it.each([
+      ["A. Perdido", imovelNoBanco("Perdido"), "livre:Perdido"],
+      ["B. Locado", imovelNoBanco("Locado"), "livre:Locado"],
+      ["C. retirado", imovelNoBanco("Publicado", true), "livre:retirado"],
+    ])("%s: não envia, cancela com imovel-indisponivel/worker e registra o evento", async (_, imovel, situacao) => {
+      livrePronta(imovel);
+
+      const resposta = await chamarComPausas();
+
+      expect(await resposta.json()).toEqual({ ok: true, processadas: 1, enviadas: 0, falhas: 0, suprimidas: 1, reagendadas: 0, consolidadas: 0 });
+      expect(mocks.enviar).not.toHaveBeenCalled();
+      expect(mocks.historico).not.toHaveBeenCalled();
+      expect(mocks.escritas).toEqual([CANCELADA_PELO_WORKER]);
+      // Só fecha a linha que o próprio worker reclamou.
+      expect(escritaDeCancelamento()?.filtros).toEqual([["id", "l1"], ["user_id", "u1"], ["status", "processando"]]);
+      expect(mocks.registrarEvento).toHaveBeenCalledWith(expect.objectContaining({
+        userId: "u1", evento: "agendamento-cancelado-worker", detalhe: `l1 imovel-indisponivel ${situacao}`,
+      }));
+      // Não é verificação de disponibilidade: o caminho M2/M4 fica de fora.
+      expect(mocks.revalidar).not.toHaveBeenCalled();
+      expect(mocks.aplicarDecisao).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["D. Em negociação", "Em negociação"],
+      ["E. Pausado (fora da lista nesta rodada)", "Pausado"],
+      ["F. Publicado", "Publicado"],
+      ["Novo contato", "Novo contato"],
+      ["Angariado", "Angariado"],
+      ["Autorização assinada", "Autorização assinada"],
+    ])("%s: envia normalmente", async (_, status) => {
+      livrePronta(imovelNoBanco(status));
+
+      const resposta = await chamarComPausas();
+
+      expect(await resposta.json()).toMatchObject({ enviadas: 1, suprimidas: 0, falhas: 0 });
+      expect(mocks.enviar).toHaveBeenCalledOnce();
+      expect(mocks.escritas).toEqual([
+        { tabela: "mensagens_agendadas", valores: expect.objectContaining({ status: "enviada" }) },
+      ]);
+    });
+
+    it("G. telefone trocado depois do agendamento e imóvel Perdido: cancela pelo imovel_id, sem olhar telefone", async () => {
+      livrePronta(imovelNoBanco("Perdido"), { ...LIVRE, telefone: "43900000001" });
+
+      await chamarComPausas();
+
+      expect(mocks.enviar).not.toHaveBeenCalled();
+      const leitura = mocks.consultas.find((c) => c.tabela === "imoveis");
+      expect(leitura).toEqual({ tabela: "imoveis", operacao: "select", colunas: "status, retirado", filtros: [["id", "i1"], ["user_id", "u1"]] });
+      const colunasDeFiltro = mocks.consultas.flatMap((c) => c.filtros.map(([coluna]) => coluna));
+      expect(colunasDeFiltro).not.toContain("telefone");
+      expect(colunasDeFiltro).not.toContain("proprietario_telefone");
+      expect(mocks.escritas).toEqual([CANCELADA_PELO_WORKER]);
+    });
+
+    it("H. telefone trocado e imóvel ativo: envia para o snapshot da mensagem (comportamento atual, não o ideal)", async () => {
+      livrePronta(imovelNoBanco("Publicado"), { ...LIVRE, telefone: "43900000001" });
+
+      await chamarComPausas();
+
+      expect(mocks.enviar).toHaveBeenCalledOnce();
+      expect(mocks.enviar.mock.calls[0][0]).toBe("43900000001");
+    });
+
+    it("I. imóvel virou Perdido depois do claim: a leitura é feita depois da releitura e antes do envio", async () => {
+      livrePronta(imovelNoBanco("Perdido"));
+
+      await chamarComPausas();
+
+      expect(mocks.enviar).not.toHaveBeenCalled();
+      expect(mocks.consultas.map((c) => `${c.operacao}:${c.tabela}`)).toEqual([
+        "select:whatsapp_instancias",
+        "select:mensagens_agendadas",
+        "select:imoveis",
+        "update:mensagens_agendadas",
+      ]);
+    });
+
+    it.each([
+      ["J. erro de leitura", { data: null, error: FETCH_FALHOU, status: 0 }, "leitura-imovel-falhou"],
+      ["J. imóvel não encontrado", { data: null, error: null }, "imovel-nao-encontrado"],
+    ])("%s: não envia nem cancela, vira erro e registra a falha", async (_, imovel, causa) => {
+      livrePronta(imovel as ResultadoMock);
+
+      const resposta = await chamarComPausas();
+
+      expect(await resposta.json()).toMatchObject({ enviadas: 0, falhas: 1, suprimidas: 0 });
+      expect(mocks.enviar).not.toHaveBeenCalled();
+      expect(mocks.escritas).toEqual([
+        { tabela: "mensagens_agendadas", valores: expect.objectContaining({ status: "erro", erro: "revalidacao-falhou" }) },
+      ]);
+      expect(mocks.registrarEvento).toHaveBeenCalledWith(expect.objectContaining({
+        evento: "agendamento-revalidacao-falhou", detalhe: `l1 livre ${causa}`,
+      }));
+    });
+
+    it("cancelamento recusado pelo banco: vira erro e não envia", async () => {
+      livrePronta(imovelNoBanco("Perdido"));
+      mocks.tabelas.mensagens_agendadas.push({ data: null, error: { message: "permission denied", code: "42501" } });
+
+      const resposta = await chamarComPausas();
+
+      expect(await resposta.json()).toMatchObject({ enviadas: 0, falhas: 1, suprimidas: 0 });
+      expect(mocks.enviar).not.toHaveBeenCalled();
+      expect(mocks.escritas[1]).toEqual({
+        tabela: "mensagens_agendadas", valores: expect.objectContaining({ status: "erro", erro: "transicao-falhou:permission denied" }),
+      });
+    });
+
+    it("K. livre sem imovel_id (destinatário manual): envia como sempre, sem ler imóvel", async () => {
+      const manual = { ...LIVRE, imovel_id: null } as unknown as typeof LIVRE;
+      mocks.rpc.mockResolvedValueOnce({ data: [manual], error: null, status: 200 });
+      mocks.tabelas = {
+        whatsapp_instancias: [INSTANCIA],
+        mensagens_agendadas: [{ data: { status: "processando", imovel_id: null }, error: null }],
+      };
+
+      const resposta = await chamarComPausas();
+
+      expect(await resposta.json()).toMatchObject({ enviadas: 1, suprimidas: 0, falhas: 0 });
+      expect(mocks.enviar).toHaveBeenCalledOnce();
+      expect(mocks.consultas.some((c) => c.tabela === "imoveis")).toBe(false);
+    });
+
+    it("mensagem legada sem tipo com imóvel é tratada como livre: Perdido não sai", async () => {
+      const semTipo = { ...LIVRE, tipo: undefined } as unknown as typeof LIVRE;
+      livrePronta(imovelNoBanco("Perdido"), semTipo);
+
+      await chamarComPausas();
+
+      expect(mocks.enviar).not.toHaveBeenCalled();
+      expect(mocks.escritas).toEqual([CANCELADA_PELO_WORKER]);
+    });
+
+    it.each([["cancelada"], ["enviada"]])(
+      "L/M. linha que já saiu de processando (%s, outra execução ou o usuário) não é lida, cancelada nem enviada",
+      async (status) => {
+        mocks.rpc.mockResolvedValueOnce({ data: [LIVRE], error: null, status: 200 });
+        mocks.tabelas = {
+          whatsapp_instancias: [INSTANCIA],
+          mensagens_agendadas: [{ data: { status, imovel_id: "i1" }, error: null }],
+          imoveis: [imovelNoBanco("Perdido")],
+        };
+
+        const resposta = await chamarComPausas();
+
+        expect(await resposta.json()).toMatchObject({ enviadas: 0, suprimidas: 0, falhas: 0 });
+        expect(mocks.enviar).not.toHaveBeenCalled();
+        expect(mocks.escritas).toEqual([]);
+        expect(mocks.consultas.some((c) => c.tabela === "imoveis")).toBe(false);
+      },
+    );
+
+    it("L/M. o claim só reclama `agendada` e trava com SKIP LOCKED: cancelada não volta e duas execuções não pegam a mesma linha", () => {
+      const sql = readFileSync(new URL("../../supabase/migrations/20260921120000_transicao_disponibilidade.sql", import.meta.url), "utf8");
+      const claim = sql.slice(sql.indexOf("function public.claim_mensagens_agendadas"));
+      const candidatas = claim.slice(claim.indexOf("candidatas as ("), claim.indexOf("update mensagens_agendadas m"));
+      expect(candidatas).toMatch(/where status = 'agendada'/);
+      expect(candidatas).toMatch(/for update skip locked/);
+    });
+
+    it("N. no mesmo lote, a do imóvel Perdido é cancelada e a do imóvel Publicado sai", async () => {
+      const a = { ...LIVRE, id: "la", imovel_id: "ia" };
+      const b = { ...LIVRE, id: "lb", imovel_id: "ib", telefone: "43900000002" };
+      mocks.rpc.mockResolvedValueOnce({ data: [a, b], error: null, status: 200 });
+      mocks.tabelas = {
+        whatsapp_instancias: [INSTANCIA, INSTANCIA],
+        mensagens_agendadas: [
+          { data: { status: "processando", imovel_id: "ia" }, error: null },
+          { data: null, error: null }, // resposta do cancelamento de A
+          { data: { status: "processando", imovel_id: "ib" }, error: null },
+        ],
+        imoveis: [imovelNoBanco("Perdido"), imovelNoBanco("Publicado")],
+      };
+
+      const resposta = await chamarComPausas();
+
+      expect(await resposta.json()).toMatchObject({ processadas: 2, enviadas: 1, suprimidas: 1, falhas: 0 });
+      expect(mocks.enviar).toHaveBeenCalledOnce();
+      expect(mocks.enviar.mock.calls[0][0]).toBe("43900000002");
+      const updates = mocks.consultas.filter((c) => c.operacao === "update");
+      expect(updates.map((u) => u.filtros[0])).toEqual([["id", "la"], ["id", "lb"]]);
+      expect(mocks.escritas.map((e) => e.valores.status)).toEqual(["cancelada", "enviada"]);
+    });
+
+    it("O. verificação de disponibilidade segue só pelo caminho M2/M4: a guarda da livre não lê o imóvel", async () => {
+      prontoParaEnviar();
+      mocks.revalidar.mockResolvedValueOnce({
+        decisao: { acao: "cancelar", motivo: "imovel-indisponivel", evidencia: { codigo: "status-perdido" }, fato: "Perdido" },
+        contexto: { imovel: IMOVEL, agenda: [], avaliacao: null },
+      });
+
+      await chamarComPausas();
+
+      expect(mocks.revalidar).toHaveBeenCalledOnce();
+      expect(mocks.aplicarDecisao).toHaveBeenCalledOnce();
+      expect(mocks.consultas.some((c) => c.tabela === "imoveis")).toBe(false);
+      expect(mocks.escritas).toEqual([]);
+      expect(mocks.enviar).not.toHaveBeenCalled();
+    });
   });
 });
