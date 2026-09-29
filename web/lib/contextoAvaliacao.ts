@@ -3,21 +3,18 @@ import {
   type ContextoExternoAvaliacao,
   type ReferenciaContextoAvaliacao,
 } from "./calculo/contextoAvaliacao";
-import { getSupabase } from "./persistencia/supabase";
+import { fetchAutenticado } from "./auth/recuperacaoSessao";
 
 export async function carregarContextoAvaliacao(
   referencia: ReferenciaContextoAvaliacao,
   signal?: AbortSignal,
 ): Promise<ContextoExternoAvaliacao> {
-  const { data: { session } } = await getSupabase().auth.getSession();
-  if (!session) throw new Error("Sua sessão expirou. Entre novamente.");
-
   const parametros = parametrosDaReferenciaAvaliacao(referencia);
-  const resposta = await fetch(`/api/avaliacao/contexto?${parametros}`, {
-    headers: { Authorization: `Bearer ${session.access_token}` },
+  const resposta = await fetchAutenticado(`/api/avaliacao/contexto?${parametros}`, {
     cache: "no-store",
     signal,
-  });
+  }, { repetivel: true });
+  if (!resposta) throw new Error("Sua sessão expirou. Entre novamente.");
   const corpo = await resposta.json().catch(() => null) as
     (ContextoExternoAvaliacao & { mensagem?: string }) | null;
   if (!resposta.ok || !corpo?.prefill || !corpo.origemExterna) {

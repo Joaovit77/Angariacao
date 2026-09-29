@@ -7,21 +7,16 @@
    sabe exibir.
    ================================================================ */
 import type { Conexao } from "./calculo/conexaoWhatsapp";
-import { getSupabase } from "./persistencia/supabase";
+import { fetchAutenticado } from "./auth/recuperacaoSessao";
 
 export async function consultarConexao(): Promise<Conexao> {
-  const {
-    data: { session },
-  } = await getSupabase().auth.getSession();
-  if (!session) return { estado: "falha" };
-
   try {
-    const r = await fetch("/api/whatsapp/conexao", {
-      headers: { Authorization: `Bearer ${session.access_token}` },
+    const r = await fetchAutenticado("/api/whatsapp/conexao", {
       // A tela pergunta em laço: um cache aqui a faria repetir a mesma
       // resposta enquanto o corretor escaneia o QR.
       cache: "no-store",
-    });
+    }, { repetivel: true });
+    if (!r) return { estado: "falha" };
     const dados = (await r.json().catch(() => null)) as Conexao | null;
     return dados ?? { estado: "falha" };
   } catch {

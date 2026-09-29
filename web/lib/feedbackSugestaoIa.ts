@@ -1,5 +1,5 @@
 import type { PedidoFeedbackSugestaoIa, ResultadoFeedbackSugestaoIa } from "@/lib/ia/feedback";
-import { getSupabase } from "@/lib/persistencia/supabase";
+import { fetchAutenticado } from "@/lib/auth/recuperacaoSessao";
 
 export type RespostaFeedbackSugestaoIa =
   | { ok: true; resultado: ResultadoFeedbackSugestaoIa }
@@ -12,20 +12,13 @@ export type RespostaFeedbackSugestaoIa =
 export async function registrarFeedbackSugestaoIa(
   pedido: PedidoFeedbackSugestaoIa,
 ): Promise<RespostaFeedbackSugestaoIa> {
-  const {
-    data: { session },
-  } = await getSupabase().auth.getSession();
-  if (!session) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente para salvar o feedback." };
-
   try {
-    const resposta = await fetch("/api/ia/feedback", {
+    const resposta = await fetchAutenticado("/api/ia/feedback", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(pedido),
-    });
+    }, { repetivel: false });
+    if (!resposta) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente para salvar o feedback." };
     const dados = (await resposta.json().catch(() => null)) as
       | { ok?: unknown; resultado?: unknown; mensagem?: unknown }
       | null;

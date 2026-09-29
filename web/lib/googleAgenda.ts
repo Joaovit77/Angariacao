@@ -12,7 +12,7 @@
    erro vira um aviso — nunca um rollback.
    ================================================================ */
 import type { FalhaGoogle } from "./calculo/googleAgenda";
-import { getSupabase } from "./persistencia/supabase";
+import { fetchAutenticado } from "./auth/recuperacaoSessao";
 
 export interface ResultadoGoogle {
   ok: boolean;
@@ -27,19 +27,11 @@ export interface EstadoConexaoGoogle {
   email: string | null;
 }
 
-async function comSessao(): Promise<string | null> {
-  const {
-    data: { session },
-  } = await getSupabase().auth.getSession();
-  return session?.access_token || null;
-}
-
 /** Estado da conexão, para a tela de Configurações. */
 export async function estadoConexaoGoogle(): Promise<EstadoConexaoGoogle> {
-  const token = await comSessao();
-  if (!token) return { configurado: false, conectado: false, email: null };
   try {
-    const r = await fetch("/api/google/conta", { headers: { Authorization: `Bearer ${token}` } });
+    const r = await fetchAutenticado("/api/google/conta", {}, { repetivel: true });
+    if (!r) return { configurado: false, conectado: false, email: null };
     const corpo = (await r.json().catch(() => null)) as
       | { configurado?: boolean; conectado?: boolean; email?: string | null }
       | null;
@@ -60,13 +52,9 @@ export async function estadoConexaoGoogle(): Promise<EstadoConexaoGoogle> {
     pelo próprio Google. Ao voltar, o callback redireciona para
     /agenda?google=..., e é a Agenda que traduz o resultado. */
 export async function conectarGoogle(): Promise<ResultadoGoogle> {
-  const token = await comSessao();
-  if (!token) return { ok: false, falha: "sessao-expirada" };
   try {
-    const r = await fetch("/api/google/conectar", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const r = await fetchAutenticado("/api/google/conectar", { method: "POST" }, { repetivel: false });
+    if (!r) return { ok: false, falha: "sessao-expirada" };
     const corpo = (await r.json().catch(() => null)) as (ResultadoGoogle & { url?: string }) | null;
     if (!corpo?.ok || !corpo.url) return corpo || { ok: false, falha: "falha-google" };
     window.location.href = corpo.url;
@@ -77,13 +65,9 @@ export async function conectarGoogle(): Promise<ResultadoGoogle> {
 }
 
 export async function desconectarGoogle(): Promise<ResultadoGoogle> {
-  const token = await comSessao();
-  if (!token) return { ok: false, falha: "sessao-expirada" };
   try {
-    const r = await fetch("/api/google/conta", {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const r = await fetchAutenticado("/api/google/conta", { method: "DELETE" }, { repetivel: false });
+    if (!r) return { ok: false, falha: "sessao-expirada" };
     return ((await r.json().catch(() => null)) as ResultadoGoogle | null) || { ok: false, falha: "falha-google" };
   } catch {
     return { ok: false, falha: "falha-google" };
@@ -104,14 +88,13 @@ export async function sincronizarCompromisso(
   agendaId: string,
   acao?: "remover",
 ): Promise<ResultadoGoogle> {
-  const token = await comSessao();
-  if (!token) return { ok: false, falha: "sessao-expirada" };
   try {
-    const r = await fetch("/api/google/sincronizar", {
+    const r = await fetchAutenticado("/api/google/sincronizar", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(acao ? { agendaId, acao } : { agendaId }),
-    });
+    }, { repetivel: false });
+    if (!r) return { ok: false, falha: "sessao-expirada" };
     return ((await r.json().catch(() => null)) as ResultadoGoogle | null) || { ok: false, falha: "falha-google" };
   } catch {
     return { ok: false, falha: "falha-google" };

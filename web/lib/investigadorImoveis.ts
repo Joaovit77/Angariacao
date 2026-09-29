@@ -1,4 +1,4 @@
-import { getSupabase } from "./persistencia/supabase";
+import { fetchAutenticado } from "./auth/recuperacaoSessao";
 import type { EventoInvestigacao } from "./calculo/investigadorImoveis";
 import {
   parametrosDaReferenciaInvestigador,
@@ -26,17 +26,14 @@ export async function carregarContextoInvestigador(
   referencia: string | ReferenciaContextoInvestigador,
   signal?: AbortSignal,
 ): Promise<ContextoInvestigador> {
-  const { data: { session } } = await getSupabase().auth.getSession();
-  if (!session) throw new Error("Sua sessão expirou. Entre novamente.");
-
   const parametros = parametrosDaReferenciaInvestigador(
     typeof referencia === "string" ? { origem: "imovel", id: referencia } : referencia,
   );
-  const resposta = await fetch(`/api/investigador-imoveis?${parametros}`, {
-    headers: { Authorization: `Bearer ${session.access_token}` },
+  const resposta = await fetchAutenticado(`/api/investigador-imoveis?${parametros}`, {
     cache: "no-store",
     signal,
-  });
+  }, { repetivel: true });
+  if (!resposta) throw new Error("Sua sessão expirou. Entre novamente.");
   const corpo = await resposta.json().catch(() => null) as (ContextoInvestigador & { mensagem?: string }) | null;
   if (!resposta.ok || typeof corpo?.consulta !== "string") {
     throw new Error(
@@ -53,19 +50,14 @@ export async function investigarImovel(
   signal?: AbortSignal,
   referencia?: ReferenciaContextoInvestigador | null,
 ): Promise<void> {
-  const { data: { session } } = await getSupabase().auth.getSession();
-  if (!session) throw new Error("Sua sessão expirou. Entre novamente.");
-
   const imovelIdentificado = imovelIdentificadoDaReferencia(referencia);
-  const resposta = await fetch("/api/investigador-imoveis", {
+  const resposta = await fetchAutenticado("/api/investigador-imoveis", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.access_token}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(imovelIdentificado ? { consulta, imovelIdentificado } : { consulta }),
     signal,
-  });
+  }, { repetivel: false });
+  if (!resposta) throw new Error("Sua sessão expirou. Entre novamente.");
   if (!resposta.ok || !resposta.body) {
     const corpo = await resposta.json().catch(() => null) as { mensagem?: string } | null;
     throw new Error(corpo?.mensagem || "Não foi possível iniciar a investigação.");

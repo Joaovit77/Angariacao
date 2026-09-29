@@ -32,7 +32,9 @@ export default function MenuUsuario() {
 
   async function sair() {
     setAberto(false);
-    await getSupabase().auth.signOut();
+    // Só este aparelho: sem escopo o SDK faz logout GLOBAL, e sair no
+    // celular deixava o computador com a sessão revogada.
+    await getSupabase().auth.signOut({ scope: "local" });
   }
 
   return (

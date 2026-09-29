@@ -46,7 +46,7 @@ describe("Cérebro da IA", () => {
     expect(tela).toContain("agenda.length");
     expect(tela).toContain("carregarAtividadesIa");
     expect(tela).toContain("Nenhuma interação com IA ainda");
-    expect(cliente).toContain('fetch("/api/ia/atividades"');
+    expect(cliente).toContain('fetchAutenticado("/api/ia/atividades"');
     expect(rota).toContain('.select("id,tipo,criado_em")');
     expect(rota).toContain('.eq("user_id", auth.user.id)');
     expect(rota).not.toContain("tokens_entrada");

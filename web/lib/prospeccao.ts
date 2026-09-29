@@ -41,6 +41,7 @@ import {
   type AfirmacaoRegistrada,
   type InvestigacaoRegistrada,
 } from "./calculo/memoriaIdentidade";
+import { fetchAutenticado } from "./auth/recuperacaoSessao";
 import { getSupabase } from "./persistencia/supabase";
 
 export type OrigemIdentificacaoProspeccao = "campo" | "placa";
@@ -1460,16 +1461,12 @@ export async function classificarAvistamento(
   client: SupabaseClient = getSupabase(),
   fetchImpl: typeof fetch = fetch,
 ): Promise<ResultadoClassificacaoAvistamento> {
-  const { data: { session } } = await client.auth.getSession();
-  if (!session) throw new ErroProspeccao("sessao_expirada", "Sua sessão expirou. Entre novamente.");
-  const resposta = await fetchImpl("/api/prospeccao/classificar", {
+  const resposta = await fetchAutenticado("/api/prospeccao/classificar", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.access_token}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ avistamentoId }),
-  });
+  }, { repetivel: false, cliente: client, fetchImpl });
+  if (!resposta) throw new ErroProspeccao("sessao_expirada", "Sua sessão expirou. Entre novamente.");
   const corpo = (await resposta.json().catch(() => null)) as Record<string, unknown> | null;
   if (!corpo || typeof corpo.ok !== "boolean") throw new ErroProspeccao("resposta_rota_invalida");
   const etiquetas = Array.isArray(corpo.etiquetas) ? corpo.etiquetas : [];
@@ -1500,16 +1497,13 @@ async function chamarRotaExclusao(
   client: SupabaseClient,
   fetchImpl: typeof fetch,
 ): Promise<ResultadoExclusaoProspeccao> {
-  const { data: { session } } = await client.auth.getSession();
-  if (!session) throw new ErroProspeccao("sessao_expirada", "Sua sessão expirou. Entre novamente.");
-  const resposta = await fetchImpl("/api/prospeccao/excluir", {
+  // Idempotente, mas nem assim repetida aqui: retomar é decisão de quem chama.
+  const resposta = await fetchAutenticado("/api/prospeccao/excluir", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.access_token}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(pedido),
-  });
+  }, { repetivel: false, cliente: client, fetchImpl });
+  if (!resposta) throw new ErroProspeccao("sessao_expirada", "Sua sessão expirou. Entre novamente.");
   const corpo = (await resposta.json().catch(() => null)) as
     | (Partial<ResultadoExclusaoProspeccao> & { falha?: string })
     | null;

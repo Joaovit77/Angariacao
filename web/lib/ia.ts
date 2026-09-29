@@ -18,6 +18,7 @@ import type {
 import type { FiltrosMapa } from "./calculo/mapa";
 import type { OrigemSugestaoIa } from "./ia/feedback";
 import { agoraBoot, registrarEtapaBoot } from "./bootPerformance";
+import { fetchAutenticado } from "./auth/recuperacaoSessao";
 import { getSupabase } from "./persistencia/supabase";
 
 export interface ResultadoRoteiros {
@@ -86,20 +87,13 @@ export interface ResultadoRascunho {
 }
 
 async function chamar<T>(corpo: unknown): Promise<T | { ok: false; falha: FalhaIa }> {
-  const {
-    data: { session },
-  } = await getSupabase().auth.getSession();
-  if (!session) return { ok: false, falha: "sessao-expirada" };
-
   try {
-    const resposta = await fetch("/api/ia", {
+    const resposta = await fetchAutenticado("/api/ia", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(corpo),
-    });
+    }, { repetivel: false });
+    if (!resposta) return { ok: false, falha: "sessao-expirada" };
     const dados = (await resposta.json().catch(() => null)) as T | null;
     if (!dados) return { ok: false, falha: "falha-ia" };
     return dados;
@@ -117,7 +111,8 @@ async function chamar<T>(corpo: unknown): Promise<T | { ok: false; falha: FalhaI
     controle de acesso.
 
     Falha de rede ou sessão ausente contam como "não disponível": na
-    dúvida, não oferece. */
+    dúvida, não oferece. Fica fora de `fetchAutenticado` porque o GET de
+    /api/ia responde neutro, nunca 401, e esta leitura mede o boot. */
 export async function iaDisponivelParaUsuario(): Promise<boolean> {
   const inicio = agoraBoot();
   let inicioApi: number | null = null;

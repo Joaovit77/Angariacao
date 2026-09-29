@@ -2,7 +2,7 @@
    fronteira; o browser envia apenas o imóvel e, após a prévia, os ids que o
    corretor marcou. */
 import type { MensagemRecenteWhatsapp } from "@/lib/calculo/importacaoConversaWhatsapp";
-import { getSupabase } from "@/lib/persistencia/supabase";
+import { fetchAutenticado } from "@/lib/auth/recuperacaoSessao";
 import type { NotaImovel } from "@/lib/tipos";
 
 export interface ResultadoImportacaoConversa {
@@ -14,20 +14,13 @@ export interface ResultadoImportacaoConversa {
 }
 
 async function chamar(corpo: unknown): Promise<ResultadoImportacaoConversa> {
-  const {
-    data: { session },
-  } = await getSupabase().auth.getSession();
-  if (!session) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
-
   try {
-    const resposta = await fetch("/api/whatsapp/importar-conversa", {
+    const resposta = await fetchAutenticado("/api/whatsapp/importar-conversa", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(corpo),
-    });
+    }, { repetivel: false });
+    if (!resposta) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
     const dados = (await resposta.json().catch(() => null)) as ResultadoImportacaoConversa | null;
     return dados || { ok: false, mensagem: "O servidor não devolveu uma resposta válida." };
   } catch {

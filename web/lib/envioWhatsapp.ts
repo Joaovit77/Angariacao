@@ -7,7 +7,7 @@
    entre avisar e cair no wa.me.
    ================================================================ */
 import type { FalhaEnvio } from "./calculo/whatsapp";
-import { getSupabase } from "./persistencia/supabase";
+import { fetchAutenticado } from "./auth/recuperacaoSessao";
 import type { ConfirmacaoVisitaPendente } from "./calculo/confirmacaoVisita";
 
 export interface ResultadoEnvio {
@@ -27,20 +27,14 @@ export async function enviarWhatsapp(
   mensagem: string,
   confirmacaoVisita?: ConfirmacaoVisitaPendente,
 ): Promise<ResultadoEnvio> {
-  const {
-    data: { session },
-  } = await getSupabase().auth.getSession();
-  if (!session) return { ok: false, falha: "sessao-expirada" };
-
   try {
-    const resposta = await fetch("/api/whatsapp/enviar", {
+    // Nunca repetível: repetir mandaria a mesma mensagem duas vezes ao proprietário.
+    const resposta = await fetchAutenticado("/api/whatsapp/enviar", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ imovelId, mensagem, ...(confirmacaoVisita ? { confirmacaoVisita } : {}) }),
-    });
+    }, { repetivel: false });
+    if (!resposta) return { ok: false, falha: "sessao-expirada" };
     const corpo = (await resposta.json().catch(() => null)) as ResultadoEnvio | null;
     if (!corpo) return { ok: false, falha: "falha-evolution" };
     return corpo;

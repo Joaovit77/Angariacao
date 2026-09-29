@@ -10,9 +10,15 @@ import type { CorretorAdmin, EventoLog } from "./calculo/admin";
 import type { Conexao, EstadoConexao } from "./calculo/conexaoWhatsapp";
 import type { GastoIa, MesDeGasto } from "./calculo/custoIa";
 import { agoraBoot, registrarEtapaBoot } from "./bootPerformance";
+import { fetchAutenticado } from "./auth/recuperacaoSessao";
 import { getSupabase } from "./persistencia/supabase";
 import type { ConfiguracaoIa, VersaoConfiguracaoIa } from "./ia/configuracao";
 
+const SESSAO_EXPIRADA = "Sua sessão expirou. Entre novamente.";
+
+/** Só o `meuCargo` lê a sessão assim, porque mede o boot. `/api/admin/eu`
+    responde neutro em vez de 401, então a recuperação de sessão não teria
+    o que fazer ali; as demais chamadas passam por `fetchAutenticado`. */
 async function autorizacao(): Promise<Record<string, string> | null> {
   const inicio = agoraBoot();
   const {
@@ -81,11 +87,10 @@ export interface PainelAdmin {
 }
 
 export async function carregarPainelAdmin(desde?: string): Promise<PainelAdmin> {
-  const headers = await autorizacao();
-  if (!headers) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
   try {
     const q = desde ? `?desde=${encodeURIComponent(desde)}` : "";
-    const r = await fetch(`/api/admin/corretores${q}`, { headers });
+    const r = await fetchAutenticado(`/api/admin/corretores${q}`, {}, { repetivel: true });
+    if (!r) return { ok: false, mensagem: SESSAO_EXPIRADA };
     const dados = (await r.json().catch(() => null)) as PainelAdmin | null;
     return dados ?? { ok: false, mensagem: "Não foi possível carregar o painel." };
   } catch {
@@ -102,15 +107,14 @@ export interface RespostaLogs {
 export async function carregarLogs(
   filtro: { nivel?: string; categoria?: string; userId?: string; limite?: number } = {},
 ): Promise<RespostaLogs> {
-  const headers = await autorizacao();
-  if (!headers) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
   const q = new URLSearchParams();
   if (filtro.nivel) q.set("nivel", filtro.nivel);
   if (filtro.categoria) q.set("categoria", filtro.categoria);
   if (filtro.userId) q.set("userId", filtro.userId);
   if (filtro.limite) q.set("limite", String(filtro.limite));
   try {
-    const r = await fetch(`/api/admin/logs?${q.toString()}`, { headers });
+    const r = await fetchAutenticado(`/api/admin/logs?${q.toString()}`, {}, { repetivel: true });
+    if (!r) return { ok: false, mensagem: SESSAO_EXPIRADA };
     const dados = (await r.json().catch(() => null)) as RespostaLogs | null;
     return dados ?? { ok: false, mensagem: "Não foi possível carregar o log." };
   } catch {
@@ -124,14 +128,13 @@ interface RespostaAcao {
 }
 
 async function acao(rota: string, corpo: unknown): Promise<RespostaAcao> {
-  const headers = await autorizacao();
-  if (!headers) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
   try {
-    const r = await fetch(rota, {
+    const r = await fetchAutenticado(rota, {
       method: "POST",
-      headers: { ...headers, "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(corpo),
-    });
+    }, { repetivel: false });
+    if (!r) return { ok: false, mensagem: SESSAO_EXPIRADA };
     const dados = (await r.json().catch(() => null)) as RespostaAcao | null;
     return dados ?? { ok: false, mensagem: "Não foi possível concluir." };
   } catch {
@@ -159,10 +162,9 @@ export interface RespostaConfiguracaoIaAdmin {
 
 /** Configuração global; toda leitura e escrita é revalidada como admin no servidor. */
 export async function carregarConfiguracaoIaAdmin(): Promise<RespostaConfiguracaoIaAdmin> {
-  const headers = await autorizacao();
-  if (!headers) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
   try {
-    const r = await fetch("/api/admin/ia/configuracao", { headers, cache: "no-store" });
+    const r = await fetchAutenticado("/api/admin/ia/configuracao", { cache: "no-store" }, { repetivel: true });
+    if (!r) return { ok: false, mensagem: SESSAO_EXPIRADA };
     return (await r.json().catch(() => null)) as RespostaConfiguracaoIaAdmin || {
       ok: false,
       mensagem: "Não foi possível carregar o Centro de IA.",
@@ -175,14 +177,13 @@ export async function carregarConfiguracaoIaAdmin(): Promise<RespostaConfiguraca
 export async function salvarConfiguracaoIaAdmin(
   configuracao: ConfiguracaoIa,
 ): Promise<RespostaConfiguracaoIaAdmin> {
-  const headers = await autorizacao();
-  if (!headers) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
   try {
-    const r = await fetch("/api/admin/ia/configuracao", {
+    const r = await fetchAutenticado("/api/admin/ia/configuracao", {
       method: "POST",
-      headers: { ...headers, "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(configuracao),
-    });
+    }, { repetivel: false });
+    if (!r) return { ok: false, mensagem: SESSAO_EXPIRADA };
     return (await r.json().catch(() => null)) as RespostaConfiguracaoIaAdmin || {
       ok: false,
       mensagem: "Não foi possível salvar a configuração.",
@@ -222,10 +223,9 @@ export interface RespostaConexoes {
 
 /** Varre TODAS as instâncias de uma vez, sem pedir QR (ver a rota). */
 export async function verificarConexoes(): Promise<RespostaConexoes> {
-  const headers = await autorizacao();
-  if (!headers) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
   try {
-    const r = await fetch("/api/admin/conexao", { headers });
+    const r = await fetchAutenticado("/api/admin/conexao", {}, { repetivel: true });
+    if (!r) return { ok: false, mensagem: SESSAO_EXPIRADA };
     const dados = (await r.json().catch(() => null)) as RespostaConexoes | null;
     return dados ?? { ok: false, mensagem: "Não foi possível consultar as conexões." };
   } catch {
@@ -236,10 +236,13 @@ export async function verificarConexoes(): Promise<RespostaConexoes> {
 /** Uma instância só, COM QR — é a tela em que alguém está reconectando
     aquele número. */
 export async function conexaoDoCorretor(userId: string): Promise<Conexao> {
-  const headers = await autorizacao();
-  if (!headers) return { estado: "falha" };
   try {
-    const r = await fetch(`/api/admin/conexao?userId=${encodeURIComponent(userId)}`, { headers });
+    const r = await fetchAutenticado(
+      `/api/admin/conexao?userId=${encodeURIComponent(userId)}`,
+      {},
+      { repetivel: true },
+    );
+    if (!r) return { estado: "falha" };
     const dados = (await r.json().catch(() => null)) as (Conexao & { ok?: boolean }) | null;
     if (!dados?.estado) return { estado: "falha" };
     return { estado: dados.estado as EstadoConexao, qr: dados.qr ?? null, numero: dados.numero ?? null };
@@ -261,11 +264,10 @@ export interface RespostaHistoricoIa {
 }
 
 export async function carregarHistoricoIa(meses?: number): Promise<RespostaHistoricoIa> {
-  const headers = await autorizacao();
-  if (!headers) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
   try {
     const q = meses ? `?meses=${meses}` : "";
-    const r = await fetch(`/api/admin/ia${q}`, { headers });
+    const r = await fetchAutenticado(`/api/admin/ia${q}`, {}, { repetivel: true });
+    if (!r) return { ok: false, mensagem: SESSAO_EXPIRADA };
     const dados = (await r.json().catch(() => null)) as RespostaHistoricoIa | null;
     return dados ?? { ok: false, mensagem: "Não foi possível carregar o histórico." };
   } catch {
@@ -306,10 +308,9 @@ export interface RespostaUsoFirecrawlAdmin {
 
 /** Saldo global da chave Firecrawl do deploy, disponível apenas para admins. */
 export async function carregarUsoFirecrawl(): Promise<RespostaUsoFirecrawlAdmin> {
-  const headers = await autorizacao();
-  if (!headers) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
   try {
-    const r = await fetch("/api/admin/firecrawl", { headers, cache: "no-store" });
+    const r = await fetchAutenticado("/api/admin/firecrawl", { cache: "no-store" }, { repetivel: true });
+    if (!r) return { ok: false, mensagem: SESSAO_EXPIRADA };
     const dados = (await r.json().catch(() => null)) as RespostaUsoFirecrawlAdmin | null;
     return dados ?? { ok: false, mensagem: "Não foi possível consultar o Firecrawl." };
   } catch {
@@ -318,10 +319,9 @@ export async function carregarUsoFirecrawl(): Promise<RespostaUsoFirecrawlAdmin>
 }
 
 export async function carregarAmbiente(): Promise<RespostaAmbiente> {
-  const headers = await autorizacao();
-  if (!headers) return { ok: false, mensagem: "Sua sessão expirou. Entre novamente." };
   try {
-    const r = await fetch("/api/admin/ambiente", { headers });
+    const r = await fetchAutenticado("/api/admin/ambiente", {}, { repetivel: true });
+    if (!r) return { ok: false, mensagem: SESSAO_EXPIRADA };
     const dados = (await r.json().catch(() => null)) as RespostaAmbiente | null;
     return dados ?? { ok: false, mensagem: "Não foi possível ler a configuração." };
   } catch {

@@ -354,7 +354,7 @@ export default function ConfiguracoesView({ secaoInicial }: { secaoInicial?: str
               <CabecalhoSecao titulo="Conta" descricao="Informações do acesso atual e dados para repasse de comissão." />
               <div className="config-bloco config-conta-identidade">
                 <div><span>E-mail</span><strong>{usuario?.email || "E-mail não disponível"}</strong></div>
-                <button type="button" className="btn btn-sm" onClick={() => void getSupabase().auth.signOut()}>Sair da conta</button>
+                <button type="button" className="btn btn-sm" onClick={() => void getSupabase().auth.signOut({ scope: "local" })}>Sair da conta</button>
               </div>
               <div className="config-bloco">
                 <div className="config-campo-cabecalho"><label htmlFor="config-pagamento">Conta ou PIX para transferência</label><p>Usado na solicitação de angariação enviada ao financeiro da imobiliária.</p></div>

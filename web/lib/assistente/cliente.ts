@@ -1,4 +1,4 @@
-import { getSupabase } from "@/lib/persistencia/supabase";
+import { fetchAutenticado } from "@/lib/auth/recuperacaoSessao";
 import type {
   PedidoApiAssistente,
   PedidoAssistente,
@@ -34,16 +34,13 @@ async function chamarAssistente(
   const timer = setTimeout(() => { expirou = true; controller.abort(); }, timeoutMs);
 
   try {
-    const { data: { session } } = await getSupabase().auth.getSession();
-    if (!session) return { ok: false, erro: "Sua sessão expirou. Entre novamente para continuar.", codigo: "nao_autenticado" };
-    if (controller.signal.aborted) throw new DOMException("Abortado", "AbortError");
-
-    const resposta = await fetch("/api/assistente", {
+    const resposta = await fetchAutenticado("/api/assistente", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(pedido),
       signal: controller.signal,
-    });
+    }, { repetivel: false });
+    if (!resposta) return { ok: false, erro: "Sua sessão expirou. Entre novamente para continuar.", codigo: "nao_autenticado" };
     const dados = await resposta.json().catch(() => null) as RespostaAssistente | null;
     if (resposta.status === 401) return { ok: false, erro: "Sua sessão expirou. Entre novamente para continuar.", codigo: "nao_autenticado" };
     if (resposta.status === 403) return { ok: false, erro: "Você não tem permissão para usar o Assistente.", codigo: "sem_permissao" };

@@ -13,6 +13,7 @@ import {
 } from "@/lib/calculo/avaliacao";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabase } from "./supabase";
+import { fetchAutenticado } from "@/lib/auth/recuperacaoSessao";
 import { normalizarUf, ufValida } from "@/lib/calculo/geografia";
 import {
   derivarFatosHistoricosComparavel,
@@ -199,18 +200,13 @@ export async function buscarComparaveisMercado(
   entrada: EntradaAvaliacao,
 ): Promise<ComparavelAvaliacao[]> {
   const supabase = getSupabase();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return carregarComparaveisMercadoComCliente(supabase, userId, entrada);
   try {
-    const resposta = await fetch("/api/avaliacao/comparaveis", {
+    const resposta = await fetchAutenticado("/api/avaliacao/comparaveis", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entrada),
-    });
-    if (resposta.ok) {
+    }, { repetivel: false, cliente: supabase });
+    if (resposta?.ok) {
       const dados = await resposta.json() as { comparaveis?: ComparavelAvaliacao[] };
       if (Array.isArray(dados.comparaveis)) {
         return dados.comparaveis.filter((item) => !comparavelEhOProprioAnuncio(entrada, item));

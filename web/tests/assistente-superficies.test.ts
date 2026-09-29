@@ -54,6 +54,6 @@ describe("superficies compartilhadas do Assistente", () => {
   it("nao cria outro agente ou outra rota de API", () => {
     const provider = fonte("components/assistente/AssistenteProvider.tsx");
     expect(provider).toContain('from "@/lib/assistente/cliente"');
-    expect(fonte("lib/assistente/cliente.ts")).toContain('fetch("/api/assistente"');
+    expect(fonte("lib/assistente/cliente.ts")).toContain('fetchAutenticado("/api/assistente"');
   });
 });
