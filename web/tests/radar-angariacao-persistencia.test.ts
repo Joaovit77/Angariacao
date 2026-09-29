@@ -163,3 +163,62 @@ describe("persistência da origem do Radar no navegador", () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe("falha de autenticação no Radar (AUTH-1b)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it.each([
+    ["sessao-invalida", "Sessão inválida."],
+    ["auth-indisponivel", "Não foi possível confirmar sua sessão agora. Tente novamente em instantes."],
+    ["erro-auth", "Não foi possível confirmar sua sessão agora."],
+  ] as const)("%s não conta como verificação: não grava ultimo_check nem anúncio", async (falhaAuth, aviso) => {
+    for (const origem of ["manual", "navegador"] as const) {
+      const banco = clienteFalso();
+      mocks.getSupabase.mockReturnValue(banco.cliente);
+      const requisicao = vi.fn();
+      vi.stubGlobal("fetch", requisicao);
+      mocks.buscarNaCentral.mockResolvedValue({
+        ok: false, anuncios: [], urlPesquisa: "", aviso, falhaAuth, execucaoId: "execucao-auth",
+      });
+
+      await expect(verificarBuscaRadar("usuario-1", busca, origem)).rejects.toThrow(aviso);
+
+      expect(banco.atualizar).not.toHaveBeenCalled();
+      expect(banco.upsert).not.toHaveBeenCalled();
+      expect(banco.cliente.from).not.toHaveBeenCalled();
+      expect(requisicao).not.toHaveBeenCalled();
+    }
+  });
+
+  it("503 da autenticação nunca vira sucesso vazio", async () => {
+    const banco = clienteFalso();
+    mocks.getSupabase.mockReturnValue(banco.cliente);
+    mocks.buscarNaCentral.mockResolvedValue({
+      ok: false, anuncios: [], urlPesquisa: "", falhaAuth: "auth-indisponivel",
+      aviso: "Não foi possível confirmar sua sessão agora. Tente novamente em instantes.",
+    });
+
+    const verificacao = verificarBuscaRadar("usuario-1", busca, "navegador");
+
+    await expect(verificacao).rejects.toThrow("Tente novamente em instantes.");
+  });
+
+  it("falha de portal sem falhaAuth continua gravando ultimo_check (R5)", async () => {
+    const banco = clienteFalso();
+    mocks.getSupabase.mockReturnValue(banco.cliente);
+    mocks.buscarNaCentral.mockResolvedValue({ ok: false, anuncios: [], urlPesquisa: "", aviso: "O portal bloqueou." });
+
+    await expect(verificarBuscaRadar("usuario-1", busca, "navegador")).rejects.toThrow("O portal bloqueou.");
+
+    expect(banco.atualizar).toHaveBeenCalledExactlyOnceWith({
+      ultimo_check: expect.any(String), ultimo_check_origem: "navegador",
+    });
+  });
+});
