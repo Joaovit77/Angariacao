@@ -11,23 +11,9 @@ import type { Conexao, EstadoConexao } from "./calculo/conexaoWhatsapp";
 import type { GastoIa, MesDeGasto } from "./calculo/custoIa";
 import { agoraBoot, registrarEtapaBoot } from "./bootPerformance";
 import { fetchAutenticado } from "./auth/recuperacaoSessao";
-import { getSupabase } from "./persistencia/supabase";
 import type { ConfiguracaoIa, VersaoConfiguracaoIa } from "./ia/configuracao";
 
 const SESSAO_EXPIRADA = "Sua sessão expirou. Entre novamente.";
-
-/** Só o `meuCargo` lê a sessão assim, porque mede o boot. `/api/admin/eu`
-    responde neutro em vez de 401, então a recuperação de sessão não teria
-    o que fazer ali; as demais chamadas passam por `fetchAutenticado`. */
-async function autorizacao(): Promise<Record<string, string> | null> {
-  const inicio = agoraBoot();
-  const {
-    data: { session },
-  } = await getSupabase().auth.getSession();
-  registrarEtapaBoot("sessao_local_admin", inicio, { autenticado: Boolean(session) });
-  if (!session) return null;
-  return { Authorization: `Bearer ${session.access_token}` };
-}
 
 export interface Cargo {
   /** Tem o cargo de administrador? */
@@ -44,33 +30,37 @@ const NEUTRO: Cargo = { admin: false, operaCarteira: true };
 /**
  * O cargo desta conta.
  *
- * Neutro em qualquer dúvida (sem sessão, rota fora do ar, resposta
- * estranha). Esconder o menu é conveniência — a trava está no
- * servidor, e toda rota de admin reconfere.
+ * Neutro em qualquer dúvida (sem sessão, sessão recusada, Auth fora,
+ * rota fora do ar, resposta estranha) e nunca lança: o layout espera
+ * esta resposta para sair de "Confirmando seu perfil". Esconder o menu
+ * é conveniência — a trava está no servidor, e toda rota de admin
+ * reconfere.
+ *
+ * Passa por `fetchAutenticado` porque a rota responde 401 a sessão
+ * recusada: é assim que uma sessão revogada é percebida já no boot. A
+ * recuperação (e o eventual login) é dela; aqui só se devolve o neutro.
  */
 export async function meuCargo(): Promise<Cargo> {
-  const inicioPerfil = agoraBoot();
-  const headers = await autorizacao();
-  if (!headers) {
-    registrarEtapaBoot("perfil_usuario", inicioPerfil, { sucesso: false });
-    return NEUTRO;
-  }
-  const inicioApi = agoraBoot();
+  const inicio = agoraBoot();
   try {
-    const r = await fetch("/api/admin/eu", { headers });
-    const dados = (await r.json().catch(() => null)) as {
+    const r = await fetchAutenticado("/api/admin/eu", {}, { repetivel: true });
+    if (!r) {
+      registrarEtapaBoot("perfil_usuario", inicio, { sucesso: false });
+      return NEUTRO;
+    }
+    const dados = (r.ok ? await r.json().catch(() => null) : null) as {
       admin?: unknown;
       operaCarteira?: unknown;
     } | null;
-    registrarEtapaBoot("api_admin_eu", inicioApi, { sucesso: r.ok });
+    registrarEtapaBoot("api_admin_eu", inicio, { sucesso: r.ok });
     const cargo = dados?.admin === true
       ? { admin: true, operaCarteira: dados.operaCarteira !== false }
       : NEUTRO;
-    registrarEtapaBoot("perfil_usuario", inicioPerfil, { sucesso: r.ok });
+    registrarEtapaBoot("perfil_usuario", inicio, { sucesso: r.ok });
     return cargo;
   } catch {
-    registrarEtapaBoot("api_admin_eu", inicioApi, { sucesso: false });
-    registrarEtapaBoot("perfil_usuario", inicioPerfil, { sucesso: false });
+    registrarEtapaBoot("api_admin_eu", inicio, { sucesso: false });
+    registrarEtapaBoot("perfil_usuario", inicio, { sucesso: false });
     return NEUTRO;
   }
 }

@@ -25,6 +25,7 @@
       bem escrito de qualquer jeito.
    ================================================================ */
 import type OpenAI from "openai";
+import { autenticarRequisicao } from "@/lib/servidor/autenticacao";
 import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { agoraBoot, registrarEtapaBootServidor } from "@/lib/bootPerformance";
@@ -161,33 +162,32 @@ async function podeUsarIa(supabase: SupabaseClient, userId: string): Promise<boo
 /** A UI precisa saber se vale mostrar os botões de IA. Duas condições
     independentes: o ambiente tem chave E esta conta tem acesso.
 
-    Passou a exigir o token (antes era público) porque a resposta agora é
-    POR USUÁRIO. Sem token responde `permitido: false` em vez de 401: o
-    boot do app não deve quebrar por causa disto, e a UI só precisa saber
-    se esconde os botões. Quem vale mesmo é a checagem do POST. */
+    A resposta é POR USUÁRIO, então exige o token. Ambiente sem IA
+    responde `configurado: false` antes de perguntar ao Auth — não há o
+    que liberar. Falha de autenticação segue o contrato do AUTH-1b
+    (401/503/500): é o 401 daqui que deixa o browser perceber, já no
+    boot, uma sessão revogada. Sem permissão continua 200
+    `permitido: false`, porque é resposta, não erro. Quem vale mesmo é a
+    checagem do POST. */
 export async function GET(request: Request): Promise<Response> {
   const inicioTotal = agoraBoot();
   const configurado = !!process.env.OPENAI_API_KEY && chamadaOpenAIRealAutorizada();
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const accessToken = tokenDaRequisicao(request);
 
-  if (!configurado || !supabaseUrl || !anonKey || !accessToken) {
+  if (!configurado) {
     registrarEtapaBootServidor("api_ia_servidor", inicioTotal, { sucesso: false });
     return Response.json({ configurado, permitido: false });
   }
 
-  const supabase = clienteDoChamador(supabaseUrl, anonKey, accessToken);
   const inicioAuth = agoraBoot();
-  const { data: sessao, error } = await supabase.auth.getUser();
-  registrarEtapaBootServidor("auth_get_user_ia", inicioAuth, { sucesso: !error });
-  if (error || !sessao.user) {
+  const auth = await autenticarRequisicao(request, "ia");
+  registrarEtapaBootServidor("auth_get_user_ia", inicioAuth, { sucesso: auth.ok });
+  if (!auth.ok) {
     registrarEtapaBootServidor("api_ia_servidor", inicioTotal, { sucesso: false });
-    return Response.json({ configurado, permitido: false });
+    return Response.json({ erro: auth.erro }, { status: auth.status });
   }
 
   const inicioQuery = agoraBoot();
-  const permitido = await podeUsarIa(supabase, sessao.user.id);
+  const permitido = await podeUsarIa(auth.supabase, auth.userId);
   registrarEtapaBootServidor("query_ia_permissao", inicioQuery);
   registrarEtapaBootServidor("api_ia_servidor", inicioTotal, { sucesso: true });
   return Response.json({ configurado, permitido });

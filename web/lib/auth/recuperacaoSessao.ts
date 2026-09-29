@@ -75,7 +75,13 @@ function diagnosticar(erro: unknown): Diagnostico {
   return "desconhecido";
 }
 
-type Motivo = "sessao-valida" | Diagnostico | "refresh-falhou" | "erro-inesperado";
+type Motivo =
+  | "sessao-valida"
+  | Diagnostico
+  | "refresh-falhou"
+  | "erro-inesperado"
+  | "401-tardio-sessao-encerrada"
+  | "401-tardio-token-renovado";
 
 /** Só o resultado e um motivo fechado. Nunca token, header, e-mail,
     `user_id` ou o objeto de erro (que pode carregar a resposta crua). */
@@ -186,6 +192,12 @@ function comBearer(init: InitAutenticado, token: string): RequestInit {
  * Depois de uma renovação, GET marcado `repetivel` é refeito uma única
  * vez com o token novo; mutação devolve o 401 original e o aviso de que
  * a sessão foi renovada, para o corretor repetir por conta própria.
+ *
+ * 401 tardio: a resposta pode chegar depois que outra chamada já
+ * resolveu a sessão. Se o token local não é mais o que foi enviado, a
+ * sessão já foi encerrada ou renovada — abrir outra recuperação daria
+ * um segundo `getUser` e um segundo aviso (encerrada) ou um `valida`
+ * que deixaria o GET sem repetir (renovada).
  */
 export async function fetchAutenticado(
   url: string,
@@ -195,16 +207,27 @@ export async function fetchAutenticado(
   const cliente = opcoes.cliente ?? getSupabase();
   const executar = opcoes.fetchImpl ?? fetch;
 
-  const token = await tokenLocal(cliente);
-  if (!token) return null;
+  const tokenEnviado = await tokenLocal(cliente);
+  if (!tokenEnviado) return null;
 
-  const resposta = await executar(url, comBearer(init, token));
+  const resposta = await executar(url, comBearer(init, tokenEnviado));
   if (resposta.status !== 401) return resposta;
+
+  const leitura = (init.method ?? "GET").toUpperCase() === "GET";
+  const tokenAtual = await tokenLocal(cliente);
+  if (tokenAtual !== tokenEnviado) {
+    if (!tokenAtual) {
+      registrar("encerrada", "401-tardio-sessao-encerrada");
+      return resposta;
+    }
+    registrar("renovada", "401-tardio-token-renovado");
+    if (!opcoes.repetivel || !leitura) return resposta;
+    return executar(url, comBearer(init, tokenAtual));
+  }
 
   const recuperacao = recuperacaoCompartilhada(cliente);
   if ((await recuperacao.resultado) !== "renovada") return resposta;
 
-  const leitura = (init.method ?? "GET").toUpperCase() === "GET";
   if (!opcoes.repetivel || !leitura) {
     if (!recuperacao.avisouRenovacao) {
       recuperacao.avisouRenovacao = true;

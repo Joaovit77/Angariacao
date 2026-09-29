@@ -397,6 +397,141 @@ describe("single-flight", () => {
   });
 });
 
+describe("401 tardio (a resposta chega depois que outra recuperação terminou)", () => {
+  /** Duas chamadas saem com o token velho; cada 401 só chega quando o
+      teste manda. Chamadas com o token novo respondem na hora. */
+  function doisEnviosComTokenVelho(statusTokenNovo = 200) {
+    const liberacoes: Array<() => void> = [];
+    const fetchImpl = vi.fn<typeof fetch>(async (...chamada) => {
+      if (bearer(chamada) !== "Bearer token-velho") return resposta(statusTokenNovo);
+      await new Promise<void>((resolve) => liberacoes.push(resolve));
+      return resposta(401);
+    });
+    return { fetchImpl, liberar: (i: number) => liberacoes[i]() };
+  }
+
+  it("A. depois de `encerrada`: sem novo getUser, sem segundo aviso, 401 original de volta", async () => {
+    const { auth, cliente } = clienteFalso({ getUser: SESSAO_INEXISTENTE });
+    const { fetchImpl, liberar } = doisEnviosComTokenVelho();
+    const primeira = fetchAutenticado("/api/a", {}, { repetivel: true, cliente, fetchImpl });
+    const segunda = fetchAutenticado("/api/b", {}, { repetivel: true, cliente, fetchImpl });
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(2));
+
+    liberar(0);
+    expect((await primeira)?.status).toBe(401);
+    expect(auth.signOut).toHaveBeenCalledTimes(1);
+    liberar(1);
+    const r = await segunda;
+
+    expect(r?.status).toBe(401);
+    expect(auth.getUser).toHaveBeenCalledTimes(1);
+    expect(auth.signOut).toHaveBeenCalledTimes(1);
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(toastMock).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(logs.at(-1)).toEqual(["[auth]", { recuperacao: "encerrada", motivo: "401-tardio-sessao-encerrada" }]);
+  });
+
+  it("B. depois de `renovada`: GET repetível refaz uma vez com o token atual, sem novo getUser nem refresh", async () => {
+    const { auth, cliente } = clienteFalso({ getUser: JWT_RECUSADO });
+    const { fetchImpl, liberar } = doisEnviosComTokenVelho();
+    const primeira = fetchAutenticado("/api/a", {}, { repetivel: true, cliente, fetchImpl });
+    const segunda = fetchAutenticado("/api/b", {}, { repetivel: true, cliente, fetchImpl });
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(2));
+
+    liberar(0);
+    expect((await primeira)?.status).toBe(200);
+    liberar(1);
+    const r = await segunda;
+
+    expect(r?.status).toBe(200);
+    expect(auth.getUser).toHaveBeenCalledTimes(1);
+    expect(auth.refreshSession).toHaveBeenCalledTimes(1);
+    expect(auth.signOut).not.toHaveBeenCalled();
+    expect(toastMock).not.toHaveBeenCalled();
+    const daSegunda = fetchImpl.mock.calls.filter(([url]) => url === "/api/b").map(bearer);
+    expect(daSegunda).toEqual(["Bearer token-velho", "Bearer token-novo"]);
+    expect(logs.at(-1)).toEqual(["[auth]", { recuperacao: "renovada", motivo: "401-tardio-token-renovado" }]);
+  });
+
+  it("B'. a repetição com o token atual que volta 401 não repete de novo nem abre recuperação", async () => {
+    const { auth, cliente } = clienteFalso({ getUser: JWT_RECUSADO });
+    const { fetchImpl, liberar } = doisEnviosComTokenVelho(401);
+    const primeira = fetchAutenticado("/api/a", {}, { repetivel: true, cliente, fetchImpl });
+    const segunda = fetchAutenticado("/api/b", {}, { repetivel: true, cliente, fetchImpl });
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(2));
+
+    liberar(0);
+    await primeira;
+    liberar(1);
+    const r = await segunda;
+
+    expect(r?.status).toBe(401);
+    expect(fetchImpl.mock.calls.filter(([url]) => url === "/api/b")).toHaveLength(2);
+    expect(auth.getUser).toHaveBeenCalledTimes(1);
+    expect(auth.refreshSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("C. mutação depois de `renovada`: não repete, não abre recuperação, devolve o 401 original", async () => {
+    const { auth, cliente } = clienteFalso({ getUser: JWT_RECUSADO });
+    const { fetchImpl, liberar } = doisEnviosComTokenVelho();
+    const primeira = fetchAutenticado("/api/a", {}, { repetivel: true, cliente, fetchImpl });
+    const segunda = fetchAutenticado("/api/b", { method: "POST", body: "{}" }, { repetivel: false, cliente, fetchImpl });
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(2));
+
+    liberar(0);
+    await primeira;
+    liberar(1);
+    const r = await segunda;
+
+    expect(r?.status).toBe(401);
+    expect(fetchImpl.mock.calls.filter(([url]) => url === "/api/b")).toHaveLength(1);
+    expect(auth.getUser).toHaveBeenCalledTimes(1);
+    expect(auth.refreshSession).toHaveBeenCalledTimes(1);
+    expect(toastMock).not.toHaveBeenCalled();
+  });
+
+  it("GET não repetível depois de `renovada` também não repete", async () => {
+    const { cliente } = clienteFalso({ getUser: JWT_RECUSADO });
+    const { fetchImpl, liberar } = doisEnviosComTokenVelho();
+    const primeira = fetchAutenticado("/api/a", {}, { repetivel: true, cliente, fetchImpl });
+    const segunda = fetchAutenticado("/api/b", {}, { repetivel: false, cliente, fetchImpl });
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(2));
+
+    liberar(0);
+    await primeira;
+    liberar(1);
+    expect((await segunda)?.status).toBe(401);
+    expect(fetchImpl.mock.calls.filter(([url]) => url === "/api/b")).toHaveLength(1);
+  });
+
+  it("C (sem mudança de token). 401 com o token local igual ao enviado segue o fluxo existente de recuperação", async () => {
+    const { auth, cliente } = clienteFalso({ getUser: SESSAO_INEXISTENTE });
+    const r = await fetchAutenticado("/api/x", {}, { repetivel: true, cliente, fetchImpl: fetchFalso(401) });
+    expect(r?.status).toBe(401);
+    expect(auth.getUser).toHaveBeenCalledTimes(1);
+    expect(auth.signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it("os logs do 401 tardio não carregam token", async () => {
+    const { cliente } = clienteFalso({ getUser: JWT_RECUSADO });
+    const { fetchImpl, liberar } = doisEnviosComTokenVelho();
+    const primeira = fetchAutenticado("/api/a", {}, { repetivel: true, cliente, fetchImpl });
+    const segunda = fetchAutenticado("/api/b", {}, { repetivel: true, cliente, fetchImpl });
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(2));
+    liberar(0);
+    await primeira;
+    liberar(1);
+    await segunda;
+
+    expect(JSON.stringify(logs)).not.toMatch(/token-velho|token-novo|Bearer|Authorization|access_token/);
+    for (const args of logs) {
+      expect(args[0]).toBe("[auth]");
+      expect(Object.keys(args[1] as object).sort()).toEqual(["motivo", "recuperacao"]);
+    }
+  });
+});
+
 describe("segurança e fronteiras", () => {
   const RAIZ = join(__dirname, "..");
   const fonteHelper = readFileSync(join(RAIZ, "lib/auth/recuperacaoSessao.ts"), "utf8");

@@ -19,7 +19,6 @@ import type { FiltrosMapa } from "./calculo/mapa";
 import type { OrigemSugestaoIa } from "./ia/feedback";
 import { agoraBoot, registrarEtapaBoot } from "./bootPerformance";
 import { fetchAutenticado } from "./auth/recuperacaoSessao";
-import { getSupabase } from "./persistencia/supabase";
 
 export interface ResultadoRoteiros {
   ok: boolean;
@@ -110,39 +109,27 @@ async function chamar<T>(corpo: unknown): Promise<T | { ok: false; falha: FalhaI
     responderia erro. Quem de fato barra é o POST — esconder botão não é
     controle de acesso.
 
-    Falha de rede ou sessão ausente contam como "não disponível": na
-    dúvida, não oferece. Fica fora de `fetchAutenticado` porque o GET de
-    /api/ia responde neutro, nunca 401, e esta leitura mede o boot. */
+    Sessão ausente ou recusada, Auth fora e falha de rede contam como
+    "não disponível": na dúvida, não oferece, e nunca lança. Passa por
+    `fetchAutenticado` porque o GET responde 401 a sessão recusada — é um
+    dos pontos em que uma sessão revogada é percebida já no boot. A
+    recuperação é dela; aqui só se devolve `false`. */
 export async function iaDisponivelParaUsuario(): Promise<boolean> {
   const inicio = agoraBoot();
-  let inicioApi: number | null = null;
   try {
-    const inicioSessao = agoraBoot();
-    const {
-      data: { session },
-    } = await getSupabase().auth.getSession();
-    registrarEtapaBoot("sessao_local_ia", inicioSessao, { autenticado: Boolean(session) });
-    if (!session) {
+    const resposta = await fetchAutenticado("/api/ia", {}, { repetivel: true });
+    if (!resposta?.ok) {
       registrarEtapaBoot("api_ia", inicio, { sucesso: false });
-      return false;
-    }
-
-    inicioApi = agoraBoot();
-    const resposta = await fetch("/api/ia", {
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    });
-    if (!resposta.ok) {
-      registrarEtapaBoot("api_ia", inicioApi, { sucesso: false });
       return false;
     }
     const dados = (await resposta.json().catch(() => null)) as {
       configurado?: unknown;
       permitido?: unknown;
     } | null;
-    registrarEtapaBoot("api_ia", inicioApi, { sucesso: true });
+    registrarEtapaBoot("api_ia", inicio, { sucesso: true });
     return dados?.configurado === true && dados?.permitido === true;
   } catch {
-    registrarEtapaBoot("api_ia", inicioApi ?? inicio, { sucesso: false });
+    registrarEtapaBoot("api_ia", inicio, { sucesso: false });
     return false;
   }
 }
