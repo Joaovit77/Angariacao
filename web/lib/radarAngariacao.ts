@@ -213,6 +213,12 @@ export async function verificarBuscaRadar(
   const supabase = getSupabase();
   const agora = agoraISOString();
 
+  // Falha de autenticação não consultou portal nenhum: a busca não conta
+  // como verificada e continua na fila. Falha de portal segue abaixo.
+  if (resultado.falhaAuth) {
+    throw new Error(resultado.aviso || "Não foi possível confirmar sua sessão agora.");
+  }
+
   if (!resultado.ok) {
     await supabase.from("radar_buscas").update({
       ultimo_check: agora,

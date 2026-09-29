@@ -1,4 +1,5 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { autenticarRequisicao, type ErroAutenticacao } from "@/lib/servidor/autenticacao";
 import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import {
   anuncioPertenceAoMercado,
@@ -27,9 +28,20 @@ import { criarObservadorRadar, novoIdExecucao, type IniciadorColeta } from "@/li
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
-function resposta(corpo: ResultadoBuscaCentral, status = 200, execucaoId?: string) {
+function resposta(
+  corpo: ResultadoBuscaCentral & { erro?: ErroAutenticacao },
+  status = 200,
+  execucaoId?: string,
+) {
   return Response.json({ ...corpo, execucaoId }, { status, headers: { "Cache-Control": "no-store" } });
 }
+
+/** O 401 mantém o aviso de sempre; 503 e 500 não dizem que a sessão acabou. */
+const AVISO_FALHA_AUTH: Record<ErroAutenticacao, string> = {
+  "sessao-invalida": "Sessão inválida.",
+  "auth-indisponivel": "Não foi possível confirmar sua sessão agora. Tente novamente em instantes.",
+  "erro-auth": "Não foi possível confirmar sua sessão agora.",
+};
 
 function resultadoColeta(
   anuncios: ResultadoBuscaCentral["anuncios"],
@@ -112,37 +124,20 @@ async function finalizarComProtecao(
     };
   }
 }
-interface SessaoAutenticada {
-  supabase: SupabaseClient;
-  userId: string;
-}
-
 function iniciadorDaRequisicao(request: Request): IniciadorColeta {
   const informado = request.headers.get("x-angario-iniciador");
   return informado === "monitor_navegador" || informado === "verificar_agora" || informado === "pesquisar"
     ? informado : "desconhecido";
 }
 
-async function autenticado(request: Request): Promise<SessaoAutenticada | null> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const auth = request.headers.get("authorization") || "";
-  const token = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
-  if (!url || !key || !token) return null;
-  const supabase = createClient(url, key, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { data, error } = await supabase.auth.getUser();
-  return !error && data.user ? { supabase, userId: data.user.id } : null;
-}
-
 export async function POST(request: Request) {
   const execucaoId = novoIdExecucao();
   const inicio = performance.now();
-  const sessao = await autenticado(request);
-  if (!sessao) {
-    return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: "Sessão inválida." }, 401, execucaoId);
+  const sessao = await autenticarRequisicao(request, "central-angariacao/buscar");
+  if (!sessao.ok) {
+    return resposta({
+      ok: false, anuncios: [], urlPesquisa: "", aviso: AVISO_FALHA_AUTH[sessao.erro], erro: sessao.erro,
+    }, sessao.status, execucaoId);
   }
 
   const filtros = (await request.json().catch(() => null)) as FiltrosCentralAngariacao | null;
