@@ -1436,6 +1436,25 @@ sem imóvel resolvido precisa de regra estável — a planejada é o menor id en
 porque uma regra que dependa de estado mutável muda de linha entre duas entregas do mesmo evento e
 duplica a mensagem.
 
+**Autoridade parcial (1a-C2.1a).** A resolução acima deixou de ser sombra: o webhook a calcula
+uma vez por mensagem, de forma síncrona, antes da nota (nas recebidas, depois da transcrição,
+porque a referência explícita lê o texto), e a função pura `decidirImovelOperacional`
+(`web/lib/calculo/autoridadeAtribuicao.ts`) escolhe o imóvel operacional. O motor manda
+**somente** quando resolveu um imóvel não terminal; pendente, sem candidatos, terminal, sem
+contato relacional, falha técnica, estado desconhecido e falha ao carregar o imóvel do motor
+(sempre por `id` e `user_id`) caem no **legado explícito**, com o motivo registrado. A mesma
+regra vale para recebidas e para saídas `fromMe`, e a nota `wa:`/`wa-enviada:` guarda o
+metadado opcional `atribuicao` (autoridade, estado, nível ou nível do empate, contato, ids de
+candidatos e terminais, imóvel do legado e do motor, motivo do fallback), sem migration e fora
+de `tipos.ts`; nota antiga sem o campo continua válida. O evento por mensagem passou a ser
+`webhook-atribuicao` (falha segue `webhook-atribuicao-falhou`). O que **não** mudou: pendente e
+sem candidatos ainda não bloqueiam efeito nenhum (IA, tentativa, encerramento, agenda e
+follow-ups seguem no imóvel do legado), e o portão de efeitos continua sendo a C3. O dedupe
+continua **por linha**: se uma reentrega chegar depois de o contexto mudar e a decisão
+operacional trocar de imóvel, a mesma mensagem pode ser gravada em dois imóveis; o dedupe por
+conta é a C2.1b. A consulta legada por `updated_at` segue existindo só como fallback e caminho
+de rollback.
+
 **Fronteira com a 1b.** A resolução por canal segue a lápide (`fundido_em_contato_id`) até o
 sobrevivente como rede de segurança, mas a RPC de fusão da 1b é obrigada a reparentear os vínculos
 e a desativar/reparentear os números do absorvido, para que nada volte a resolver para ele;

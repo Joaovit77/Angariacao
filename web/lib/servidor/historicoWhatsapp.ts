@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { notaDaMensagemEnviada, type OrigemMensagemEnviada } from "@/lib/calculo/notas";
 import type { ConfirmacaoVisitaPendente } from "@/lib/calculo/confirmacaoVisita";
+import type { AtribuicaoNota } from "@/lib/calculo/autoridadeAtribuicao";
 
 function objeto(valor: unknown): Record<string, unknown> {
   return valor && typeof valor === "object" ? (valor as Record<string, unknown>) : {};
@@ -31,6 +32,9 @@ export interface RegistroMensagemEnviada {
   origem: OrigemMensagemEnviada;
   tipo?: string;
   confirmacaoVisita?: ConfirmacaoVisitaPendente;
+  /** Só o webhook preenche: a decisão de autoridade que escolheu este
+      imóvel (Fase 1a-C2.1a). Envio pelo painel não passa por atribuição. */
+  atribuicao?: AtribuicaoNota;
 }
 
 /** Persiste por RPC em vez de regravar o array JSONB inteiro. A função do
@@ -43,14 +47,17 @@ export async function registrarMensagemEnviada(
   const { data, error } = await supabase.rpc("registrar_nota_imovel", {
     p_imovel_id: registro.imovelId,
     p_user_id: registro.userId,
-    p_nota: notaDaMensagemEnviada(
-      registro.mensagemId,
-      registro.texto,
-      registro.data,
-      registro.origem,
-      registro.tipo,
-      registro.confirmacaoVisita,
-    ),
+    p_nota: {
+      ...notaDaMensagemEnviada(
+        registro.mensagemId,
+        registro.texto,
+        registro.data,
+        registro.origem,
+        registro.tipo,
+        registro.confirmacaoVisita,
+      ),
+      ...(registro.atribuicao ? { atribuicao: registro.atribuicao } : {}),
+    },
   });
   return { gravou: data === true, erro: error?.message || null };
 }

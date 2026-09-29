@@ -97,8 +97,17 @@ import { registrarEvento } from "@/lib/servidor/registro";
 import {
   detalheDoEvento,
   eventoDaObservacao,
+  observacaoDeFalhaInesperada,
   observarAtribuicao,
+  resolucaoDaObservacao,
+  type ObservacaoShadow,
 } from "@/lib/servidor/contatos";
+import {
+  decidirImovelOperacional,
+  metadadoDaAtribuicao,
+  rebaixarParaLegado,
+  type AtribuicaoNota,
+} from "@/lib/calculo/autoridadeAtribuicao";
 import { registrarMensagemEnviada } from "@/lib/servidor/historicoWhatsapp";
 import { agoraISOComHora, agoraISOComSegundos, todayISO } from "@/lib/datas";
 import type { NotaImovel, StatusHistoryEntry, Tentativa } from "@/lib/tipos";
@@ -265,6 +274,108 @@ async function concluirFollowUpsQuePerderamSentido(
   }
 }
 
+/** O imóvel como o resto da rota o lê: nota, tentativa, encerramento e
+    agenda consomem exatamente estas colunas, e nada além. */
+type ImovelOperacional = {
+  id: string;
+  endereco: string | null;
+  codigo: string | null;
+  tentativas: Tentativa[] | null;
+  status: string;
+  status_history: StatusHistoryEntry[] | null;
+  notas: NotaImovel[] | null;
+};
+
+const COLUNAS_IMOVEL_OPERACIONAL = "id, codigo, endereco, tentativas, status, status_history, notas";
+
+/** Carrega o imóvel que o motor escolheu. Se ele já veio no casamento
+    legado (que também filtrou `user_id`), reaproveita a linha; senão busca
+    por `id` E `user_id` — nunca só por id, porque a service role ignora a
+    RLS. `null` em qualquer falha: quem chama devolve a autoridade ao
+    legado em vez de parar a rota. */
+async function carregarImovelOperacional(
+  supabase: SupabaseClient,
+  userId: string,
+  imovelId: string,
+  jaCarregados: readonly ImovelOperacional[],
+): Promise<ImovelOperacional | null> {
+  const pronto = jaCarregados.find((i) => i.id === imovelId);
+  if (pronto) return pronto;
+  try {
+    const { data, error } = await supabase
+      .from("imoveis")
+      .select(COLUNAS_IMOVEL_OPERACIONAL)
+      .eq("id", imovelId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error || !data) return null;
+    return data as unknown as ImovelOperacional;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * ATRIBUIÇÃO (Fase 1a-C2.1a) — qual imóvel recebe esta mensagem.
+ *
+ * Roda UMA vez por mensagem, antes da nota, e devolve o imóvel operacional
+ * com o metadado que a nota vai guardar. A sequência:
+ *
+ *   resolução relacional (canal → contato → vínculos → motor da 1a-B)
+ *   → decisão de autoridade (função pura)
+ *   → carga do imóvel do motor, quando ele vence e não é o do legado
+ *   → um evento de observabilidade
+ *
+ * O motor só vence quando resolveu um imóvel não terminal. Pendente, sem
+ * candidato, terminal, sem contato relacional, falha e estado desconhecido
+ * ficam com o legado — com os efeitos de sempre, porque o portão de
+ * efeitos é a fatia seguinte (C3). E nada aqui lança: qualquer falha vira
+ * fallback legado, nunca 500 e nunca "sem candidato".
+ */
+async function atribuirImovelOperacional(
+  supabase: SupabaseClient,
+  userId: string,
+  casamentoLegado: readonly ImovelOperacional[],
+  entrada: { telefone: string; texto: string; recebidaEm: string; direcao: "recebida" | "enviada" },
+): Promise<{ imovel: ImovelOperacional; atribuicao: AtribuicaoNota }> {
+  const legado = casamentoLegado[0];
+  let observacao: ObservacaoShadow;
+  try {
+    observacao = await observarAtribuicao(supabase, {
+      userId,
+      telefoneCanonico: entrada.telefone,
+      texto: entrada.texto,
+      recebidaEm: entrada.recebidaEm,
+      legadoImovelId: legado.id,
+      direcao: entrada.direcao,
+    });
+  } catch {
+    observacao = observacaoDeFalhaInesperada(legado.id, entrada.direcao);
+  }
+
+  const resolucao = resolucaoDaObservacao(observacao);
+  let decisao = decidirImovelOperacional(legado.id, resolucao);
+  let imovel = legado;
+  if (decisao.autoridade === "motor") {
+    const escolhido = await carregarImovelOperacional(supabase, userId, decisao.imovelId, casamentoLegado);
+    if (escolhido) imovel = escolhido;
+    else decisao = rebaixarParaLegado(decisao, legado.id, "carregamento-imovel");
+  }
+
+  const { evento, nivel } = eventoDaObservacao(observacao);
+  registrarEvento({
+    userId,
+    categoria: "webhook",
+    // Motor que venceu e não pôde ser carregado é aviso: o legado seguiu,
+    // mas a resolução apontou um imóvel que a rota não conseguiu ler.
+    nivel: decisao.fallbackMotivo === "carregamento-imovel" ? "aviso" : nivel,
+    evento,
+    detalhe: detalheDoEvento(observacao, decisao),
+  });
+
+  return { imovel, atribuicao: metadadoDaAtribuicao(decisao, resolucao, legado.id) };
+}
+
 /** Teste de vida, para quem administra a Evolution conferir a URL antes de
     apontar o webhook — sem isso a primeira validação vira adivinhação. */
 export async function GET(
@@ -373,79 +484,30 @@ export async function POST(
     return Response.json({ ok: true });
   }
 
-  const imovel = imoveis[0] as {
-    id: string;
-    endereco: string | null;
-    codigo: string | null;
-    tentativas: Tentativa[] | null;
-    status: string;
-    status_history: StatusHistoryEntry[] | null;
-    notas: NotaImovel[] | null;
-  };
-  const ambiguo = imoveis.length > 1 ? " (o proprietário tem mais de um imóvel; usando o mais recente)" : "";
-  const rotulo = imovel.codigo || imovel.id;
-
-  /* SOMBRA DA ATRIBUIÇÃO (Fase 1a-C1) — observa, não decide.
-
-     O casamento acima continua sendo o que manda: ele escolheu `imovel`, e
-     é esse imóvel que recebe nota, tentativa, encerramento e agenda daqui
-     para baixo. O que roda agora, ao lado, é a resolução do modelo
-     relacional (contato pelo canal ativo -> vínculos vigentes) somada ao
-     motor da 1a-B, só para registrar SE as duas concordariam.
-
-     Três garantias, e cada uma existe por um motivo:
-     - roda em `after()`, depois da resposta sair: quem espera é a
-       Evolution, e um observador não pode custar latência nem provocar
-       reentrega;
-     - `observarAtribuicao` nunca lança — qualquer falha vira uma
-       observação com categoria `falha`, e o fluxo legado segue intacto;
-     - o resultado não é lido por nenhuma linha abaixo. Trocar a escolha do
-       imóvel é a fatia seguinte (C2), e só depois de os dados desta aqui
-       mostrarem o tamanho da diferença. */
-  const legadoImovelId = imovel.id;
+  // O casamento legado continua sendo calculado e continua sendo o
+  // fallback de todo caso que o motor não resolve (ver
+  // atribuirImovelOperacional). É também a porta: sem imóvel pelo telefone,
+  // a mensagem já saiu acima.
+  const casamentoLegado = imoveis as unknown as ImovelOperacional[];
+  const rotuloLegado = casamentoLegado[0].codigo || casamentoLegado[0].id;
+  // O instante de referência das janelas do motor, fixado na chegada.
   const recebidaEm = agoraISOComSegundos();
-  // Telefone e direção não mudam mais; o TEXTO muda quando o passo 3.5
-  // transcreve o áudio, e por isso é lido lá dentro, tarde.
-  const telefoneDoRemetente = mensagem.telefone;
-  const direcaoDoEvento = mensagem.direcao;
-  const observar = async () => {
-    try {
-      const observacao = await observarAtribuicao(supabase, {
-        userId,
-        telefoneCanonico: telefoneDoRemetente,
-        texto: mensagem?.texto ?? "",
-        recebidaEm,
-        legadoImovelId,
-        direcao: direcaoDoEvento,
-      });
-      const { evento, nivel } = eventoDaObservacao(observacao);
-      registrarEvento({ userId, categoria: "webhook", nivel, evento, detalhe: detalheDoEvento(observacao) });
-    } catch {
-      // Observador que derruba o observado não serve para nada. Mesmo o
-      // caminho "impossível" cai aqui em silêncio.
-      registrarEvento({
-        userId,
-        categoria: "webhook",
-        nivel: "aviso",
-        evento: "webhook-atribuicao-falhou",
-        detalhe: JSON.stringify({ categoria: "falha", falha: "inesperada" }),
-      });
-    }
-  };
-  try {
-    after(observar);
-  } catch {
-    // Fora de um ciclo de requisição (teste) `after` lança — mesmo
-    // fallback do `registrarEvento`, e sem `await`: o fluxo legado abaixo
-    // não espera pelo observador.
-    void observar();
-  }
 
   // Uma saída `fromMe` é confirmação do integrador, inclusive quando o
   // corretor enviou pelo celular/WhatsApp Web fora do painel. Ela entra no
   // mesmo JSONB e termina aqui: transcrição, classificação, encerramento e
   // agenda são efeitos exclusivos de mensagens recebidas do proprietário.
+  //
+  // A mesma política de autoridade vale aqui: a saída fica no imóvel que
+  // a atribuição escolheu, com o mesmo metadado de uma recebida.
   if (mensagem.direcao === "enviada") {
+    const { imovel, atribuicao } = await atribuirImovelOperacional(supabase, userId, casamentoLegado, {
+      telefone: mensagem.telefone,
+      texto: mensagem.texto,
+      recebidaEm,
+      direcao: "enviada",
+    });
+    const rotulo = imovel.codigo || imovel.id;
     const historico = await registrarMensagemEnviada(supabase, {
       imovelId: imovel.id,
       userId,
@@ -454,6 +516,7 @@ export async function POST(
       data: agoraISOComSegundos(),
       origem: "webhook-evolution",
       tipo: mensagem.tipo,
+      atribuicao,
     });
     if (historico.erro) {
       console.error("Webhook do WhatsApp: falha ao gravar mensagem enviada:", historico.erro);
@@ -499,9 +562,9 @@ export async function POST(
     });
     if (r.ok) {
       mensagem = { ...mensagem, texto: r.texto };
-      console.log(`Webhook do WhatsApp: áudio transcrito — imóvel ${rotulo} (${r.texto.length} chars).`);
+      console.log(`Webhook do WhatsApp: áudio transcrito — imóvel ${rotuloLegado} (${r.texto.length} chars).`);
     } else {
-      console.log(`Webhook do WhatsApp: áudio não transcrito (${r.falha}) — imóvel ${rotulo}, segue como [áudio].`);
+      console.log(`Webhook do WhatsApp: áudio não transcrito (${r.falha}) — imóvel ${rotuloLegado}, segue como [áudio].`);
       // "aviso", não "erro": a nota sai como `[áudio]`, que é exatamente
       // o comportamento de antes desta feature existir. O que interessa
       // no painel é a REPETIÇÃO — uma falha é ruído, vinte são um
@@ -516,6 +579,22 @@ export async function POST(
     }
   }
 
+  // 3.6. Qual imóvel recebe a resposta. Roda DEPOIS da transcrição de
+  //      propósito: a referência explícita (N1) lê o texto, e o texto de um
+  //      áudio só existe a partir daqui. Daqui para baixo `imovel` é o
+  //      operacional: nota, tentativa, encerramento e agenda vão para ele.
+  const { imovel, atribuicao } = await atribuirImovelOperacional(supabase, userId, casamentoLegado, {
+    telefone: mensagem.telefone,
+    texto: mensagem.texto,
+    recebidaEm,
+    direcao: "recebida",
+  });
+  const rotulo = imovel.codigo || imovel.id;
+  const ambiguo =
+    atribuicao.autoridade === "legado" && casamentoLegado.length > 1
+      ? " (o proprietário tem mais de um imóvel; usando o mais recente)"
+      : "";
+
   // 4. Grava a nota. A função do banco faz a verificação de duplicata e a
   //    escrita numa instrução só — ver registrar_nota_whatsapp no schema.
   //    `false` = reentrega do mesmo evento: paramos aqui, senão fecharíamos
@@ -523,7 +602,7 @@ export async function POST(
   const { data: gravou, error: erroNota } = await supabase.rpc("registrar_nota_whatsapp", {
     p_imovel_id: imovel.id,
     p_user_id: userId,
-    p_nota: notaDaResposta(mensagem, agoraISOComSegundos()),
+    p_nota: { ...notaDaResposta(mensagem, agoraISOComSegundos()), atribuicao },
   });
   if (erroNota) {
     console.error("Webhook do WhatsApp: falha ao gravar a nota:", erroNota.message);

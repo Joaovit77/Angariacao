@@ -8,6 +8,7 @@ import {
   resolverContatoSobrevivente,
   type ContatoParaResolucao,
 } from "@/lib/calculo/resolucaoContato";
+import type { DecisaoAutoridade } from "@/lib/calculo/autoridadeAtribuicao";
 import {
   detalheDoEvento,
   eventoDaObservacao,
@@ -15,14 +16,15 @@ import {
   type ObservacaoShadow,
 } from "@/lib/servidor/contatos";
 
-/* Fase 1a-C1 — o shadow da atribuição.
+/* Fase 1a-C1 — a resolução relacional que nasceu como shadow.
 
-   O que estes testes protegem, em ordem de importância: (1) o resultado
-   novo NÃO decide nada — o webhook continua com o imóvel legado; (2) uma
-   falha do observador não derruba o observado; (3) nenhuma consulta escapa
-   do `user_id`; (4) nada de PII sai no log. O acerto da resolução em si já
-   é coberto por `atribuicao-mensagem.test.ts`; aqui o alvo é a integração
-   e a fronteira. */
+   Desde a 1a-C2.1a ela tem autoridade parcial: a rota a calcula uma vez,
+   antes da nota, e `decidirImovelOperacional` escolhe entre ela e o
+   legado. O comportamento da rota em si está em
+   `webhook-atribuicao-autoridade.test.ts`; aqui continuam as garantias da
+   RESOLUÇÃO: (1) uma falha vira observação, nunca exceção; (2) nenhuma
+   consulta escapa do `user_id`; (3) nada de PII sai no log; (4) o acerto
+   da resolução em si é coberto por `atribuicao-mensagem.test.ts`. */
 
 const CONTA = "conta-a";
 const OUTRA = "conta-b";
@@ -533,44 +535,35 @@ describe("20-22. o observador nunca derruba o observado", () => {
     expect(o).toMatchObject({ categoria: "falha", falha: "inesperada", legadoImovelId: "a" });
   });
 
-  it("22. a rota isola o observador: after com fallback, try/catch e sem await no fluxo", () => {
-    const bloco = ROTA.slice(ROTA.indexOf("SOMBRA DA ATRIBUIÇÃO"), ROTA.indexOf("// Uma saída `fromMe`"));
-    expect(bloco).toContain("try {\n    after(observar);\n  } catch {");
-    expect(bloco).toContain("void observar()");
-    expect(bloco).toMatch(/catch \{[\s\S]*webhook-atribuicao-falhou/);
-    expect(bloco).not.toMatch(/await observar\(\)/);
-    expect(bloco).not.toMatch(/\breturn\b/); // o shadow não interrompe a rota
+  it("22. a rota nunca espera a resolução lançar: falha vira fallback, não 500", () => {
+    const bloco = ROTA.slice(ROTA.indexOf("async function atribuirImovelOperacional"), ROTA.indexOf("/** Teste de vida"));
+    expect(bloco).toMatch(/try \{\s*observacao = await observarAtribuicao\(/);
+    expect(bloco).toContain("observacaoDeFalhaInesperada(legado.id, entrada.direcao)");
+    // A resolução deixou de rodar em `after()`: ela precisa existir antes da nota.
+    expect(bloco).not.toMatch(/after\(/);
   });
 });
 
 /* ================================================================
    23-35. FRONTEIRA: O SHADOW NÃO TEM AUTORIDADE
    ================================================================ */
-describe("23-35. fronteira da C1", () => {
-  it("23-24, 29. a rota não usa o resultado do shadow em nenhuma decisão nem no retorno", () => {
-    // O único ponto que menciona o observador é o bloco da sombra.
-    const bloco = ROTA.slice(ROTA.indexOf("SOMBRA DA ATRIBUIÇÃO"), ROTA.indexOf("// Uma saída `fromMe`"));
-    const fora = (
-      ROTA.slice(0, ROTA.indexOf("SOMBRA DA ATRIBUIÇÃO")) + ROTA.slice(ROTA.indexOf("// Uma saída `fromMe`"))
-    )
-      .split("\n")
-      .filter((linha) => /observarAtribuicao|observacao|observar\(/.test(linha));
-    // Fora do bloco da sombra, o observador só aparece no import.
-    expect(fora.every((linha) => /^\s*(import|})|^\s+observarAtribuicao,$/.test(linha))).toBe(true);
-    // Uma única CHAMADA no bloco (as outras menções são comentário).
-    expect([...bloco.matchAll(/observarAtribuicao\(/g)]).toHaveLength(1);
-    // Nada depois da sombra lê o resultado novo.
-    const depois = ROTA.slice(ROTA.indexOf("// Uma saída `fromMe`"));
-    expect(depois).not.toMatch(/observacao|novoImovelId|observarAtribuicao/);
+describe("23-35. fronteira da resolução (C1 → C2.1a)", () => {
+  it("23-24, 29. a rota decide a autoridade pela função pura, com a resolução calculada uma vez", () => {
+    // Uma única CHAMADA da resolução em toda a rota (as outras menções são
+    // comentário ou import), e ela mora no helper de atribuição.
+    expect([...semComentarios(ROTA).matchAll(/observarAtribuicao\(/g)]).toHaveLength(1);
+    expect(ROTA).toContain("decidirImovelOperacional(legado.id, resolucao)");
+    // A rota não reimplementa a regra: nada de comparar estado à mão.
+    expect(semComentarios(ROTA)).not.toMatch(/estado === "resolvido"|\.terminal === false/);
   });
 
-  it("25, 32. o imóvel operacional continua vindo do casamento legado", () => {
-    expect(ROTA).toContain("const imovel = imoveis[0] as {");
+  it("25, 32. o casamento legado continua sendo calculado e é o fallback", () => {
     expect(ROTA).toContain('.order("updated_at", { ascending: false })');
     expect(ROTA).toContain(".limit(2)");
-    // A nota continua sendo gravada no imóvel legado.
+    expect(ROTA).toContain("const casamentoLegado = imoveis as unknown as ImovelOperacional[];");
+    expect(ROTA).toContain("const legado = casamentoLegado[0];");
+    // A nota vai para o imóvel operacional que a atribuição devolveu.
     expect(ROTA).toContain("p_imovel_id: imovel.id");
-    expect(ROTA).toContain("const legadoImovelId = imovel.id;");
   });
 
   it("26-28. o shadow não escreve dado de negócio: nem imóveis, nem agenda, nem contatos", () => {
@@ -660,7 +653,7 @@ describe("23-35. fronteira da C1", () => {
     expect(o).toMatchObject({ categoria: "novo-sem-candidatos", candidatos: 0 });
   });
 
-  it("a C1 não mexe em tipos congelados nem em migrations", () => {
+  it("a resolução não mexe em tipos congelados", () => {
     expect(SERVIDOR).not.toMatch(/from "\.\.\/tipos"/);
     const tipos = readFileSync(new URL("../lib/tipos.ts", import.meta.url), "utf8");
     expect(tipos).not.toMatch(/atribuicao|efeitosPendentes|classificacaoIa/);
@@ -673,6 +666,9 @@ describe("23-35. fronteira da C1", () => {
 describe("33. observabilidade sem dado pessoal", () => {
   const observacao: ObservacaoShadow = {
     categoria: "divergente",
+    estado: "resolvido",
+    candidatoIds: ["a", "b"],
+    terminalIds: ["t"],
     contatoId: "contato-1",
     nivel: "contexto-tentativa",
     terminal: false,
@@ -684,10 +680,13 @@ describe("33. observabilidade sem dado pessoal", () => {
     saltos: 0,
   };
 
+  const decisao: DecisaoAutoridade = { autoridade: "motor", imovelId: "b", fallbackMotivo: null, concordante: false };
+
   it("o detalhe tem só contagens, vocabulário fechado e ids técnicos", () => {
-    const detalhe = detalheDoEvento(observacao);
+    const detalhe = detalheDoEvento(observacao, decisao);
     expect(JSON.parse(detalhe)).toEqual({
       categoria: "divergente",
+      estado: "resolvido",
       direcao: "recebida",
       nivel: "contexto-tentativa",
       terminal: false,
@@ -696,7 +695,13 @@ describe("33. observabilidade sem dado pessoal", () => {
       contato_id: "contato-1",
       legado_imovel_id: "a",
       novo_imovel_id: "b",
+      autoridade: "motor",
+      operacional_imovel_id: "b",
+      concordante: false,
+      fallback_motivo: null,
     });
+    // As listas de ids ficam na nota, não no log.
+    expect(detalhe).not.toMatch(/candidato_ids|terminal_ids|candidatoIds/);
     for (const proibido of ["telefone", "nome", "endereco", "mensagem"]) {
       expect(detalhe.toLowerCase()).not.toContain(proibido);
     }
@@ -709,25 +714,27 @@ describe("33. observabilidade sem dado pessoal", () => {
   });
 
   it("um evento por mensagem, e falha sobe para aviso", () => {
-    expect(eventoDaObservacao(observacao)).toEqual({ evento: "webhook-atribuicao-shadow", nivel: "info" });
+    expect(eventoDaObservacao(observacao)).toEqual({ evento: "webhook-atribuicao", nivel: "info" });
     expect(eventoDaObservacao({ ...observacao, categoria: "falha", falha: "motor" })).toEqual({
       evento: "webhook-atribuicao-falhou",
       nivel: "aviso",
     });
-    const bloco = ROTA.slice(ROTA.indexOf("SOMBRA DA ATRIBUIÇÃO"), ROTA.indexOf("// Uma saída `fromMe`"));
-    expect([...bloco.matchAll(/registrarEvento\(/g)]).toHaveLength(2); // sucesso + rede de segurança
+    const bloco = ROTA.slice(ROTA.indexOf("async function atribuirImovelOperacional"), ROTA.indexOf("/** Teste de vida"));
+    expect([...bloco.matchAll(/registrarEvento\(/g)]).toHaveLength(1); // um evento por mensagem
     // O texto da mensagem entra no motor, mas nunca no log.
     expect(SERVIDOR).toMatch(/texto: entrada\.texto|texto: string/);
-    expect(detalheDoEvento({ ...observacao, categoria: "falha", falha: "motor" })).toContain('"falha":"motor"');
+    expect(
+      detalheDoEvento({ ...observacao, categoria: "falha", falha: "motor" }, { ...decisao }),
+    ).toContain('"falha":"motor"');
   });
 
-  it("23. fromMe é observado com a direção marcada, sem mudar o fluxo de saída", async () => {
+  it("23. fromMe é resolvido com a direção marcada e passa pela mesma atribuição", async () => {
     const o = await observar({}, { direcao: "enviada" }).promessa;
     expect(o.direcao).toBe("enviada");
-    // A rota continua tratando `fromMe` exatamente como antes: grava
-    // histórico e retorna, sem efeito e sem depender do shadow.
     const trecho = ROTA.slice(ROTA.indexOf('if (mensagem.direcao === "enviada")'), ROTA.indexOf("3.5. ÁUDIO VIRA TEXTO"));
+    expect(trecho).toContain("atribuirImovelOperacional(");
+    expect(trecho).toContain('direcao: "enviada"');
+    expect(trecho).toContain("atribuicao,");
     expect(trecho).toContain("registrarMensagemEnviada");
-    expect(trecho).not.toMatch(/observacao|observarAtribuicao/);
   });
 });

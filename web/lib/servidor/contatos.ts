@@ -1,18 +1,16 @@
 /* ================================================================
-   O MODELO RELACIONAL DE CONTATOS, LIDO PELO SERVIDOR — e, por
-   enquanto, só OBSERVADO.
+   O MODELO RELACIONAL DE CONTATOS, LIDO PELO SERVIDOR.
 
    A Fase 1a-A criou `contatos`, `contatos_telefones`, `imoveis_contatos`
    e `contatos_revisoes`; a 1a-B criou o motor puro que decide a qual
    imóvel uma mensagem pertence. Este módulo é a ponte entre os dois: lê o
    canal, resolve a pessoa, monta os candidatos e chama o motor.
 
-   NESTA FATIA (1a-C1) O RESULTADO NÃO TEM AUTORIDADE. O webhook continua
-   escolhendo o imóvel exatamente como sempre escolheu (o `order
-   ("updated_at")` legado segue lá, de propósito), e o que sai daqui vai
-   para `log_eventos` e nada mais. Medir antes de trocar é o ponto: quase
-   metade dos contatos de Production só tem imóvel terminal, e trocar a
-   regra sem saber disso apagaria mensagens que hoje aparecem na caixa.
+   Na 1a-C1 o resultado só era observado. Desde a 1a-C2.1a ele é lido
+   ANTES da nota e entra na decisão de autoridade
+   (`calculo/autoridadeAtribuicao.ts`): o motor manda quando resolve um
+   imóvel não terminal, e o legado continua mandando em todo o resto. Quem
+   decide não é este módulo; aqui só se resolve, uma vez por mensagem.
 
    Duas regras que valem para todo este arquivo:
 
@@ -42,6 +40,7 @@ import {
   type ContatoParaResolucao,
   type FalhaResolucaoContato,
 } from "../calculo/resolucaoContato";
+import type { DecisaoAutoridade, ResolucaoRelacional } from "../calculo/autoridadeAtribuicao";
 import { ATRIBUICAO_MENSAGEM } from "../constantes";
 import { instanteParaISOOperacional, isoDeTimestamp, timestampDeIso } from "../datas";
 
@@ -67,12 +66,18 @@ export interface EntradaShadow {
 
 export interface ObservacaoShadow {
   categoria: CategoriaComparacao;
+  /** O estado da resolução em si, sem a comparação com o legado. É ele
+      que entra na decisão de autoridade. */
+  estado: "resolvido" | "pendente" | "sem-candidatos" | "sem-contato-relacional" | "falha";
   contatoId: string | null;
   /** Nível do motor quando resolveu (`unico`, `contexto-tentativa`…). */
   nivel: string | null;
   terminal: boolean;
   candidatos: number;
   terminais: number;
+  /** Os ids por trás das contagens, ordenados como o motor devolve. */
+  candidatoIds: readonly string[];
+  terminalIds: readonly string[];
   novoImovelId: string | null;
   legadoImovelId: string | null;
   direcao: "recebida" | "enviada";
@@ -96,11 +101,14 @@ export type FalhaShadow =
 function falha(motivo: FalhaShadow, entrada: EntradaShadow, saltos?: number): ObservacaoShadow {
   return {
     categoria: "falha",
+    estado: "falha",
     contatoId: null,
     nivel: null,
     terminal: false,
     candidatos: 0,
     terminais: 0,
+    candidatoIds: [],
+    terminalIds: [],
     novoImovelId: null,
     legadoImovelId: entrada.legadoImovelId,
     direcao: entrada.direcao,
@@ -110,13 +118,15 @@ function falha(motivo: FalhaShadow, entrada: EntradaShadow, saltos?: number): Ob
 }
 
 /**
- * Resolve contato + candidatos, roda o motor e devolve a comparação com o
- * resultado legado.
+ * Resolve contato + candidatos, roda o motor e devolve o resultado junto
+ * com a comparação com o legado.
  *
  * **Nunca lança.** Qualquer anomalia — consulta recusada, lápide
  * inconsistente, motor reclamando de entrada — vira uma observação com
- * `categoria: "falha"`, porque o webhook não pode parar por causa de um
- * observador. Falhar aberto para o legado é o contrato desta fatia.
+ * `estado: "falha"`, porque o webhook não pode parar por causa da
+ * resolução nova. Falhar aberto para o legado continua sendo o contrato:
+ * a decisão de autoridade trata `falha` como fallback, nunca como "sem
+ * candidato".
  */
 export async function observarAtribuicao(
   supabase: SupabaseClient,
@@ -140,11 +150,14 @@ export async function observarAtribuicao(
       // para medir quanto o fallback ainda seria necessário no cutover.
       return {
         categoria: "sem-contato-relacional",
+        estado: "sem-contato-relacional",
         contatoId: null,
         nivel: null,
         terminal: false,
         candidatos: 0,
         terminais: 0,
+        candidatoIds: [],
+        terminalIds: [],
         novoImovelId: null,
         legadoImovelId: entrada.legadoImovelId,
         direcao: entrada.direcao,
@@ -221,11 +234,14 @@ export async function observarAtribuicao(
         terminal: resultado.ok ? resultado.terminal : undefined,
         motivo: resultado.ok ? undefined : resultado.motivo,
       }),
+      estado: resultado.ok ? "resolvido" : resultado.motivo,
       contatoId,
       nivel: resultado.ok ? resultado.nivel : (resultado.nivelEmpate ?? null),
       terminal: resultado.ok ? resultado.terminal : false,
       candidatos: resultado.candidatos.length,
       terminais: resultado.terminais.length,
+      candidatoIds: [...resultado.candidatos],
+      terminalIds: [...resultado.terminais],
       novoImovelId: resultado.ok ? resultado.imovelId : null,
       legadoImovelId: entrada.legadoImovelId,
       direcao: entrada.direcao,
@@ -336,11 +352,43 @@ function inicioDaJanela(recebidaEm: string): string | null {
   return isoDeTimestamp(ms - ATRIBUICAO_MENSAGEM.janelaAgendamentoHoras * 3_600_000);
 }
 
+/** A falha que nem chegou a ser uma observação (a promessa rejeitou, o
+    que o contrato acima diz que não acontece). Existe para a rota nunca
+    precisar montar esse objeto à mão. */
+export function observacaoDeFalhaInesperada(
+  legadoImovelId: string | null,
+  direcao: "recebida" | "enviada",
+): ObservacaoShadow {
+  return falha("inesperada", {
+    userId: "",
+    telefoneCanonico: "",
+    texto: "",
+    recebidaEm: "",
+    legadoImovelId,
+    direcao,
+  });
+}
+
+/** O que a decisão de autoridade (e a nota) precisa da observação. */
+export function resolucaoDaObservacao(observacao: ObservacaoShadow): ResolucaoRelacional {
+  return {
+    estado: observacao.estado,
+    imovelId: observacao.novoImovelId,
+    terminal: observacao.terminal,
+    nivel: observacao.nivel,
+    contatoId: observacao.contatoId,
+    candidatos: observacao.candidatoIds,
+    terminais: observacao.terminalIds,
+  };
+}
+
 /** O detalhe do evento: contagens, ids técnicos e vocabulário fechado.
-    NUNCA telefone, nome, texto, endereço ou conteúdo de nota. */
-export function detalheDoEvento(observacao: ObservacaoShadow): string {
+    NUNCA telefone, nome, texto, endereço ou conteúdo de nota. As listas de
+    ids ficam na nota; aqui vão só as contagens. */
+export function detalheDoEvento(observacao: ObservacaoShadow, decisao: DecisaoAutoridade): string {
   return JSON.stringify({
     categoria: observacao.categoria,
+    estado: observacao.estado,
     direcao: observacao.direcao,
     nivel: observacao.nivel,
     terminal: observacao.terminal,
@@ -349,14 +397,19 @@ export function detalheDoEvento(observacao: ObservacaoShadow): string {
     contato_id: observacao.contatoId,
     legado_imovel_id: observacao.legadoImovelId,
     novo_imovel_id: observacao.novoImovelId,
+    autoridade: decisao.autoridade,
+    operacional_imovel_id: decisao.imovelId,
+    concordante: decisao.concordante,
+    fallback_motivo: decisao.fallbackMotivo,
     ...(observacao.falha ? { falha: observacao.falha } : {}),
     ...(observacao.saltos ? { saltos: observacao.saltos } : {}),
   });
 }
 
-/** O evento único por mensagem observada. `falha` sobe o nível para
-    `aviso` porque uma falha isolada é ruído e vinte são um problema de
-    modelo — a mesma leitura que o resto do webhook faz. */
+/** O evento único por mensagem. Desde a 1a-C2.1a ele deixou de ser
+    `webhook-atribuicao-shadow`: a resolução passou a ter autoridade, e a
+    série nova começa com nome novo. `falha` continua subindo para `aviso`,
+    porque uma falha isolada é ruído e vinte são um problema de modelo. */
 export function eventoDaObservacao(observacao: ObservacaoShadow): {
   evento: string;
   nivel: "info" | "aviso";
@@ -364,5 +417,5 @@ export function eventoDaObservacao(observacao: ObservacaoShadow): {
   if (observacao.categoria === "falha") {
     return { evento: "webhook-atribuicao-falhou", nivel: "aviso" };
   }
-  return { evento: "webhook-atribuicao-shadow", nivel: "info" };
+  return { evento: "webhook-atribuicao", nivel: "info" };
 }
