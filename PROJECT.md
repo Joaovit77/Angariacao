@@ -2560,6 +2560,31 @@ No Radar do navegador e da ação manual, o fechamento de `novos` ocorre depois 
 `api/central-angariacao/imagem` funciona apenas como proxy seguro para imagens de hosts esperados;
 não deve virar fetch genérico controlado pelo cliente.
 
+**Autenticação da Central e do Radar (AUTH-1b).** `buscar` e `telemetria-radar` validam o Bearer
+pelo helper compartilhado `lib/servidor/autenticacao.ts` (`autenticarRequisicao`): um único
+`auth.getUser(token)` por requisição, e o cliente Supabase devolvido, já com o Bearer do chamador,
+é o mesmo usado no PostgREST, para o RLS seguir valendo. O servidor só valida: não faz refresh,
+`signOut`, cookie nem sessão. Recuperar a sessão continua sendo papel do browser
+(`lib/auth/recuperacaoSessao.ts`), que só reage a 401. A resposta separa as classes pelo tipo e
+pelo `code`/`status` do SDK, nunca pela mensagem:
+
+- **401 `sessao-invalida`**: sem token, scheme que não é Bearer, Bearer vazio, sessão revogada
+  (`session_not_found`), JWT recusado (`bad_jwt`), `user_not_found`, `session_expired`. Token não
+  vazio sempre vai ao Auth; não há validação local do formato do JWT.
+- **503 `auth-indisponivel`**: Auth temporariamente indisponível (rede, 5xx, 52x, 429, resposta
+  ilegível). Não é sessão expirada: o browser não recupera nem desloga.
+- **500 `erro-auth`**: erro de Auth não classificado ou configuração ausente. Erro desconhecido
+  nunca vira 401.
+- **403** continua sendo autorização da rota (busca de outro usuário, RLS) e nunca passa pelo helper.
+
+Falha de autenticação não é falha de portal: `buscarNaCentral` expõe `falhaAuth`, e o Radar não
+avança `ultimo_check` quando ela existe, porque nenhum portal foi consultado. Falha de portal segue
+avançando o relógio. O POST de `buscar` passa por `fetchAutenticado` com `repetivel: false` e nunca
+é refeito automaticamente; a telemetria do Radar segue com fetch direto, fora da recuperação de
+sessão. Cada falha registra `[auth]` com rota, motivo, status e, quando houver, o `code` e o status
+do SDK. Nunca registra token, header, mensagem do SDK, e-mail, telefone ou `user_id`. As demais
+rotas com Bearer ainda seguem o padrão antigo.
+
 #### `api/cron/mercados` — coleta periódica de mercados monitorados
 
 O cron diário é independente do Radar e usa o mesmo `CRON_SECRET`. O executor processa **um mercado
