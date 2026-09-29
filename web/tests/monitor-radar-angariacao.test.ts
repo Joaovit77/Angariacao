@@ -29,7 +29,12 @@ import {
   executarMonitorRadar,
   LIMITE_AMOSTRA_REPETICAO,
   LIMITE_IDS_PARECE_QUARTO,
+  ORCAMENTO_RODADA_RADAR_MS,
 } from "@/lib/servidor/monitorRadarAngariacao";
+import { decidirRetryFirecrawl } from "@/lib/calculo/retryFirecrawl";
+import type { PoliticaRetryFirecrawl } from "@/lib/servidor/firecrawlCentralAngariacao";
+/** Espelha TIMEOUT_FIRECRAWL_FETCH_MS; o módulo real está simulado neste arquivo. */
+const TIMEOUT_FIRECRAWL_FETCH_MS_REAL = 60_000;
 import { URL_ZAP_LONDRINA_APARTAMENTOS } from "@/lib/servidor/centralAngariacao";
 import {
   BELO_HORIZONTE_GEMINADA,
@@ -652,6 +657,8 @@ describe("monitor agendado do Radar: observabilidade R3.1 e shadow R3.2a", () =>
       chamada_propria_iniciada: null,
       resposta_recebida: null,
       resultado_interpretado: null,
+      // R5: o mock não faz chamada própria.
+      tentativas_firecrawl: 0,
       fases: [],
       coletados: 3,
       apos_filtro: 2,
@@ -771,7 +778,7 @@ describe("monitor agendado do Radar: observabilidade R3.1 e shadow R3.2a", () =>
     const detalhe = detalheRadar("radar-busca-ok");
     // A localização/id_fallback (R4.2a) vale para todo portal; os extras da OLX não.
     expect(Object.keys(detalhe).sort()).toEqual(
-      ["apos_filtro", "aquisicao", "busca_id", "chamada_propria_iniciada", "coleta_id", "coletados", "duracao_ms", "execucao_id", "fases", "id_fallback", "iniciador", "localizacao", "novos", "origem_html", "portal", "resposta_recebida", "resultado_interpretado", "reutilizacao", "rodada_id"],
+      ["apos_filtro", "aquisicao", "busca_id", "chamada_propria_iniciada", "coleta_id", "coletados", "duracao_ms", "execucao_id", "fases", "id_fallback", "iniciador", "localizacao", "novos", "origem_html", "portal", "resposta_recebida", "resultado_interpretado", "reutilizacao", "rodada_id", "tentativas_firecrawl"],
     );
     expect(banco.inserirAnuncios).toHaveBeenCalledOnce();
   });
@@ -994,7 +1001,7 @@ describe("monitor agendado do Radar: shadow de repetição do Chaves (R4.1a)", (
     expect(resumo).toMatchObject({ verificadas: 1, novos: 1, falhas: 0 });
     // Só o bloco do shadow some; a localização (R4.2a) é independente dele.
     expect(Object.keys(detalheRadar("radar-busca-ok")).sort()).toEqual(
-      ["apos_filtro", "aquisicao", "busca_id", "chamada_propria_iniciada", "coleta_id", "coletados", "duracao_ms", "execucao_id", "fases", "id_fallback", "iniciador", "localizacao", "novos", "origem_html", "portal", "resposta_recebida", "resultado_interpretado", "reutilizacao", "rodada_id"],
+      ["apos_filtro", "aquisicao", "busca_id", "chamada_propria_iniciada", "coleta_id", "coletados", "duracao_ms", "execucao_id", "fases", "id_fallback", "iniciador", "localizacao", "novos", "origem_html", "portal", "resposta_recebida", "resultado_interpretado", "reutilizacao", "rodada_id", "tentativas_firecrawl"],
     );
   });
 
@@ -1204,5 +1211,130 @@ describe("monitor agendado do Radar: localização e id_fallback (R4.2a)", () =>
 
     expect(detalheRadar("radar-busca-vazia")).not.toHaveProperty("localizacao");
     expect(detalheRadar("radar-busca-vazia")).not.toHaveProperty("id_fallback");
+  });
+});
+
+describe("monitor agendado do Radar: orçamento da rodada e retry (R5)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv("FIRECRAWL_API_KEY", "fc-teste");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://projeto.supabase.co");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role");
+    mocks.salvarComparaveisMercado.mockResolvedValue(1);
+    vi.spyOn(console, "info").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  const falha503 = { codigo: "firecrawl_http_falhou", statusHttp: 503, causaRede: null, retryAfterMs: null };
+  const buscaChaves = {
+    ...busca, filtros: { ...busca.filtros, portal: "chaves-na-mao" as typeof busca.filtros.portal },
+  };
+
+  /** Relógio monotônico controlado: a rodada começa em 0 e a coleta vê `emColeta`. */
+  function relogio(emColeta: number) {
+    let inicio = true;
+    vi.spyOn(performance, "now").mockImplementation(() => {
+      if (inicio) { inicio = false; return 0; }
+      return emColeta;
+    });
+  }
+
+  it("o orçamento da rodada é o maxDuration da rota do cron", async () => {
+    const { maxDuration } = await import("@/app/api/cron/radar/route");
+    expect(ORCAMENTO_RODADA_RADAR_MS).toBe(maxDuration * 1000);
+  });
+
+  it("entrega à aquisição o restanteMs da rodada e a política de retry", async () => {
+    relogio(10_000);
+    mocks.createClient.mockReturnValue(clienteRadarFalso().cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([anuncioValido]);
+
+    await executarMonitorRadar();
+
+    const politica = mocks.buscarComFirecrawl.mock.calls[0][5];
+    expect(politica).toMatchObject({ reservaPosAquisicaoMs: 35_000 });
+    expect(politica.restanteMs()).toBe(ORCAMENTO_RODADA_RADAR_MS - 10_000);
+  });
+
+  it("com orçamento a política autoriza o retry; sem orçamento, não", async () => {
+    const decisao = (politica: PoliticaRetryFirecrawl) => decidirRetryFirecrawl({
+      falha: falha503, portal: "olx", politicaHabilitada: true, tentativa: 1,
+      restanteMs: politica.restanteMs(), duracaoMaximaTentativaMs: TIMEOUT_FIRECRAWL_FETCH_MS_REAL,
+      reservaPosAquisicaoMs: politica.reservaPosAquisicaoMs, jitter: 0.5,
+    });
+
+    relogio(30_000);
+    mocks.createClient.mockReturnValue(clienteRadarFalso().cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([]);
+    await executarMonitorRadar();
+    expect(decisao(mocks.buscarComFirecrawl.mock.calls[0][5]).retentar).toBe(true);
+
+    vi.clearAllMocks();
+    relogio(250_000);
+    mocks.createClient.mockReturnValue(clienteRadarFalso().cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([]);
+    await executarMonitorRadar();
+    expect(decisao(mocks.buscarComFirecrawl.mock.calls[0][5]))
+      .toEqual({ retentar: false, motivo: "orcamento_insuficiente" });
+  });
+
+  it("mantém no máximo 8 buscas e 2 simultâneas", async () => {
+    const dezBuscas = Array.from({ length: 10 }, (_, indice) => ({ ...busca, id: `busca-${indice + 1}` }));
+    mocks.createClient.mockReturnValue(clienteRadarFalso([], dezBuscas).cliente);
+    let emCurso = 0;
+    let maximo = 0;
+    mocks.buscarComFirecrawl.mockImplementation(async () => {
+      emCurso += 1;
+      maximo = Math.max(maximo, emCurso);
+      await new Promise((resolver) => setTimeout(resolver, 5));
+      emCurso -= 1;
+      return [];
+    });
+
+    const resumo = await executarMonitorRadar();
+
+    expect(resumo.verificadas).toBe(8);
+    expect(mocks.buscarComFirecrawl).toHaveBeenCalledTimes(8);
+    expect(maximo).toBe(2);
+  });
+
+  it("Chaves: sem orçamento para o fallback, a busca falha sem HTTP e as demais seguem", async () => {
+    relogio(260_000);
+    mocks.createClient.mockReturnValue(clienteRadarFalso([], [buscaChaves, { ...busca, id: "busca-2" }]).cliente);
+    const { FirecrawlIndisponivel } = await import("@/lib/servidor/firecrawlCentralAngariacao");
+    // As duas buscas correm juntas: a resposta depende do portal, não da ordem.
+    mocks.buscarComFirecrawl.mockImplementation(async (filtros: { portal: string }) => {
+      if (filtros.portal === "chaves-na-mao") throw new FirecrawlIndisponivel("falha sintética", "firecrawl_http_falhou");
+      return [anuncioValido];
+    });
+    const requisicao = vi.spyOn(globalThis, "fetch");
+
+    const resumo = await executarMonitorRadar();
+
+    expect(requisicao).not.toHaveBeenCalled();
+    expect(resumo.resultados).toEqual([
+      expect.objectContaining({ buscaId: "busca-1", ok: false, codigo: "http_orcamento_insuficiente" }),
+      expect.objectContaining({ buscaId: "busca-2", ok: true, novos: 1 }),
+    ]);
+  });
+
+  it("Chaves com orçamento: o fallback HTTP roda uma vez, como antes", async () => {
+    relogio(10_000);
+    mocks.createClient.mockReturnValue(clienteRadarFalso([], [buscaChaves]).cliente);
+    const { FirecrawlIndisponivel } = await import("@/lib/servidor/firecrawlCentralAngariacao");
+    mocks.buscarComFirecrawl.mockRejectedValue(new FirecrawlIndisponivel("falha sintética", "firecrawl_http_falhou"));
+    const requisicao = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("<html><main>Estrutura desconhecida</main></html>", { status: 200 }),
+    );
+
+    const resumo = await executarMonitorRadar();
+
+    expect(requisicao).toHaveBeenCalledOnce();
+    expect(resumo.resultados[0]).toMatchObject({ ok: false, codigo: "http_resultado_indeterminado" });
   });
 });

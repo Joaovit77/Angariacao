@@ -5,7 +5,7 @@ export type IniciadorColeta = "cron" | "monitor_navegador" | "verificar_agora" |
 export type AquisicaoColeta = "cache" | "firecrawl" | "playwright" | "http_direto" | "desconhecida";
 export type FaseColeta = "caminho_escolhido" | "cache_hit" | "single_flight"
   | "fetch_iniciado" | "resposta_recebida" | "resultado_interpretado" | "falha"
-  | "fallback" | "coleta_compartilhada_concluida";
+  | "fallback" | "coleta_compartilhada_concluida" | "retry_agendado";
 
 export interface EventoColetaSeguro {
   fase: FaseColeta;
@@ -14,6 +14,10 @@ export interface EventoColetaSeguro {
   statusHttp?: number;
   statusPortalHttp?: number;
   codigo?: string;
+  /** Tentativa Firecrawl (R5): 1 ou 2. */
+  tentativa?: number;
+  /** Espera antes da próxima tentativa, só em `retry_agendado`. */
+  backoffMs?: number;
   /** Contagens agregadas do parser do ZAP (R4.2h); reconstruídas por allowlist. */
   diagnosticoZap?: unknown;
 }
@@ -134,13 +138,14 @@ export function diagnosticoZapSeguro(valor: unknown) {
 const FASES = new Set<FaseColeta>([
   "caminho_escolhido", "cache_hit", "single_flight", "fetch_iniciado",
   "resposta_recebida", "resultado_interpretado", "falha", "fallback",
-  "coleta_compartilhada_concluida",
+  "coleta_compartilhada_concluida", "retry_agendado",
 ]);
 const AQUISICOES = new Set<AquisicaoColeta>(["cache", "firecrawl", "playwright", "http_direto", "desconhecida"]);
 const CODIGOS = new Set([
   "firecrawl_429", "firecrawl_timeout", "firecrawl_indisponivel",
   "firecrawl_http_falhou", "firecrawl_resposta_invalida", "firecrawl_resposta_falhou",
   "firecrawl_html_invalido", "portal_http_falhou", "parser_falhou",
+  "firecrawl_5xx", "firecrawl_rede_transitoria",
   "navegador_falhou", "portal_falhou", "fallback_vazio", "persistencia_falhou", "falha_interna",
   "http_status_falhou", "http_timeout", "http_transporte_falhou",
   "http_parser_falhou", "http_resultado_indeterminado", "http_orcamento_insuficiente",
@@ -157,6 +162,10 @@ function faseSegura(evento: EventoColetaSeguro) {
     status_portal_http: typeof evento.statusPortalHttp === "number" && Number.isInteger(evento.statusPortalHttp)
       && evento.statusPortalHttp >= 100 && evento.statusPortalHttp <= 599 ? evento.statusPortalHttp : null,
     codigo: evento.codigo && CODIGOS.has(evento.codigo) ? evento.codigo : null,
+    ...(evento.tentativa === 1 || evento.tentativa === 2 ? { tentativa: evento.tentativa } : {}),
+    ...(evento.fase === "retry_agendado" && typeof evento.backoffMs === "number"
+      && Number.isInteger(evento.backoffMs) && evento.backoffMs >= 0 && evento.backoffMs <= 5_000
+      ? { backoff_ms: evento.backoffMs } : {}),
   };
 }
 
@@ -229,6 +238,8 @@ export function criarObservadorRadar(contexto: {
       chamada_propria_iniciada: chamadaPropriaIniciada,
       resposta_recebida: respostaRecebida,
       resultado_interpretado: resultadoInterpretado,
+      // Chamadas Firecrawl próprias desta execução (R5): 0 no cache ou single-flight.
+      tentativas_firecrawl: fases.filter((fase) => fase.fase === "fetch_iniciado" && fase.aquisicao === "firecrawl").length,
       fases,
       ...(diagnosticoZap ? { diagnostico_zap: diagnosticoZap } : {}),
     };

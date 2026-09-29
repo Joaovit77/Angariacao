@@ -8,6 +8,7 @@ import { chaveCanonicaConsultaPortal } from "./planejadorColetaMercados";
 import {
   buscarComFirecrawl, CACHE_FIRECRAWL_TTL_SEGUNDOS, extrairAnunciosFirecrawl,
   FirecrawlIndisponivel, type DiagnosticoPaginaOlx, type EventoConsultaFirecrawl,
+  type PoliticaRetryFirecrawl,
   type OrigemConsultaFirecrawl,
 } from "./firecrawlCentralAngariacao";
 
@@ -198,13 +199,16 @@ export async function buscarComFallbackHttpChaves(
   registrarDiagnosticoOlx?: (diagnostico: DiagnosticoPaginaOlx) => void,
   observar?: (evento: EventoConsultaFirecrawl) => void,
   restanteMs?: () => number,
+  /** R5: repassada à aquisição; o Chaves nunca repete o Firecrawl (a decisão
+      recusa), porque este fallback HTTP já é sua segunda via. */
+  politicaRetry?: PoliticaRetryFirecrawl,
 ): Promise<AnuncioCentralAngariacao[]> {
   if (filtros.portal !== "chaves-na-mao" || urlPesquisa !== urlDaPesquisa(filtros)) {
-    return buscarComFirecrawl(filtros, urlPesquisa, registrarOrigem, registrarDiagnosticoOlx, observar);
+    return buscarComFirecrawl(filtros, urlPesquisa, registrarOrigem, registrarDiagnosticoOlx, observar, politicaRetry);
   }
   const chave = chaveCanonicaConsultaPortal(filtros.portal, urlPesquisa);
   if (await cacheFirecrawlDisponivel(chave)) {
-    return buscarComFirecrawl(filtros, urlPesquisa, registrarOrigem, registrarDiagnosticoOlx, observar);
+    return buscarComFirecrawl(filtros, urlPesquisa, registrarOrigem, registrarDiagnosticoOlx, observar, politicaRetry);
   }
   const armazenado = await cacheHttp(chave, filtros);
   if (armazenado) {
@@ -216,7 +220,7 @@ export async function buscarComFallbackHttpChaves(
     return armazenado.anuncios;
   }
   try {
-    return await buscarComFirecrawl(filtros, urlPesquisa, registrarOrigem, registrarDiagnosticoOlx, observar);
+    return await buscarComFirecrawl(filtros, urlPesquisa, registrarOrigem, registrarDiagnosticoOlx, observar, politicaRetry);
   } catch (erro) {
     if (!(erro instanceof FirecrawlIndisponivel)) throw erro;
   }

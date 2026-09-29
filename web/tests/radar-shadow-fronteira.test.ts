@@ -22,7 +22,8 @@ describe("fronteira do shadow de quarto individual (R3.2a)", () => {
 
   it("a Central manual continua coletando sem diagnóstico nem filtro extra", () => {
     const rota = ler("app/api/central-angariacao/buscar/route.ts");
-    expect(rota).toMatch(/buscarComFallbackHttpChaves\(\s*seguros,\s*urlPesquisa,\s*undefined,\s*undefined,\s*observador\.observar,\s*restanteMs,\s*\)/);
+    // R5: o único argumento novo é a política de retry da aquisição.
+    expect(rota).toMatch(/buscarComFallbackHttpChaves\(\s*seguros,\s*urlPesquisa,\s*undefined,\s*undefined,\s*observador\.observar,\s*restanteMs,\s*\{\s*restanteMs,\s*reservaPosAquisicaoMs:\s*RESERVA_PROCESSAMENTO_CENTRAL_MS\s*\},\s*\)/);
   });
 
   it("o shadow não cria schema nem coluna", () => {

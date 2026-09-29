@@ -2565,6 +2565,20 @@ O single-flight cobre somente
 a mesma instância; não é um lock global entre instâncias/regiões ou deployments. Chamadas externas
 simultâneas de outros domínios/instâncias ainda podem consumir crédito na mesma consulta.
 
+No caminho saudável a aquisição faz 1 chamada Firecrawl. Central (inclusive monitor do navegador
+e Verificar agora) e cron do Radar habilitam uma única segunda tentativa, nunca uma terceira, só
+para falha transitória explícita da aquisição: 502/503/504 e erro de rede antes da resposta
+(ECONNRESET, UND_ERR_SOCKET, EAI_AGAIN), com espera de 750–1250 ms, e 429 com `Retry-After` válido de
+até 5 s. 500, demais 4xx, 408, timeout, ENOTFOUND, resposta inválida, portal com erro, parser com
+zero ou exceção nunca repetem. A decisão é uma função pura única; a segunda tentativa só começa se
+couberem a espera, uma aquisição inteira e a reserva de processamento do chamador (a rodada do cron
+tem prazo próprio, o `maxDuration` da rota, também usado pelo fallback do Chaves). O retry fica dentro
+da consulta do single-flight e antes do parser: quem aguarda compartilha as mesmas tentativas, o
+cache recebe só o HTML final válido e a persistência ocorre uma vez. O Chaves não repete o Firecrawl:
+o fallback HTTP é sua segunda via (teto de 1 Firecrawl + 1 HTTP); o cron de mercados não repete.
+A telemetria marca `tentativa`, `retry_agendado` (motivo e espera) e `tentativas_firecrawl`, na mesma
+execução e coleta.
+
 Ao menos um comparável persistido torna a rodada útil; falha em outro portal gera diagnóstico
 parcial e mantém os resultados, sem repetir chamadas pagas. Amostra vazia/sem anúncios utilizáveis
 ou falha total agenda backoff de 1, 2, 4 e no máximo 7 dias. Sucesso zera falhas e agenda a frequência

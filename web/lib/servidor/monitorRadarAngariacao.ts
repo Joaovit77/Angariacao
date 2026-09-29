@@ -30,12 +30,20 @@ import {
   type CodigoErroFirecrawl,
   type DiagnosticoPaginaOlx,
 } from "@/lib/servidor/firecrawlCentralAngariacao";
-import { buscarComFallbackHttpChaves, type CodigoErroHttpChaves, type OrigemColetaCentral } from "@/lib/servidor/fallbackHttpChaves";
+import {
+  buscarComFallbackHttpChaves,
+  RESERVA_PROCESSAMENTO_CENTRAL_MS,
+  type CodigoErroHttpChaves,
+  type OrigemColetaCentral,
+} from "@/lib/servidor/fallbackHttpChaves";
 import { registrarEvento } from "@/lib/servidor/registro";
 import { criarObservadorRadar, novoIdExecucao } from "@/lib/servidor/observabilidadeRadar";
 
 const LIMITE_BUSCAS_POR_RODADA = 8;
 const CONCORRENCIA = 2;
+/** Orçamento da rodada: o `maxDuration` da rota do cron (300 s). O retry da
+    aquisição (R5) e o fallback HTTP do Chaves só começam se couberem nele. */
+export const ORCAMENTO_RODADA_RADAR_MS = 300_000;
 /** Teto da amostra de IDs no shadow de quarto, para não inflar o log. */
 export const LIMITE_IDS_PARECE_QUARTO = 10;
 /** Teto de cada amostra do shadow de repetição do Chaves (R4.1a). */
@@ -318,6 +326,7 @@ async function verificarBusca(
   supabase: SupabaseClient,
   busca: DbBuscaRadar,
   rodadaId: string,
+  prazoRodada: number,
 ): Promise<ResultadoBuscaMonitorada> {
   const agora = agoraISOString();
   const inicio = performance.now();
@@ -331,12 +340,15 @@ async function verificarBusca(
   try {
     const urlPesquisa = urlDaPesquisa(busca.filtros);
     etapa = "coleta";
+    const restanteMs = () => prazoRodada - performance.now();
     const coletados = await buscarComFallbackHttpChaves(
       busca.filtros,
       urlPesquisa,
       (origem) => { origemHtml = origem; },
       (diagnostico) => { diagnosticoOlx = diagnostico; },
       observador.observar,
+      restanteMs,
+      { restanteMs, reservaPosAquisicaoMs: RESERVA_PROCESSAMENTO_CENTRAL_MS },
     );
     etapa = "normalizacao";
     const finalizacao = await finalizarColetaCentralAngariacao(
@@ -469,6 +481,7 @@ async function emLotes<T, R>(itens: T[], tamanho: number, tarefa: (item: T) => P
  */
 export async function executarMonitorRadar(rodadaId = novoIdExecucao()): Promise<ResumoMonitorRadar> {
   if (!process.env.FIRECRAWL_API_KEY) throw new Error("FIRECRAWL_API_KEY não configurada.");
+  const prazoRodada = performance.now() + ORCAMENTO_RODADA_RADAR_MS;
   const supabase = clienteServico();
   const { data, error } = await supabase
     .from("radar_buscas")
@@ -502,7 +515,7 @@ export async function executarMonitorRadar(rodadaId = novoIdExecucao()): Promise
       motivo: "limite-rodada",
     });
   }
-  const resultados = await emLotes(buscas, CONCORRENCIA, (busca) => verificarBusca(supabase, busca, rodadaId));
+  const resultados = await emLotes(buscas, CONCORRENCIA, (busca) => verificarBusca(supabase, busca, rodadaId, prazoRodada));
   return {
     candidatas: candidatas.length,
     elegiveis: elegiveis.length,

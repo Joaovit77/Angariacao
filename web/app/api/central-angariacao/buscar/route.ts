@@ -16,7 +16,11 @@ import {
 } from "@/lib/servidor/centralAngariacao";
 import { normalizarUf, ufValida } from "@/lib/calculo/geografia";
 import { finalizarColetaCentralAngariacao } from "@/lib/servidor/finalizacaoCentralAngariacao";
-import { buscarComFallbackHttpChaves, HttpChavesIndisponivel } from "@/lib/servidor/fallbackHttpChaves";
+import {
+  buscarComFallbackHttpChaves,
+  HttpChavesIndisponivel,
+  RESERVA_PROCESSAMENTO_CENTRAL_MS,
+} from "@/lib/servidor/fallbackHttpChaves";
 import { buscarComNavegador, NavegadorIndisponivel } from "@/lib/servidor/scraperCentralAngariacao";
 import { criarObservadorRadar, novoIdExecucao, type IniciadorColeta } from "@/lib/servidor/observabilidadeRadar";
 
@@ -176,6 +180,7 @@ export async function POST(request: Request) {
     try {
       coletadosFirecrawl = await buscarComFallbackHttpChaves(
         seguros, urlPesquisa, undefined, undefined, observador.observar, restanteMs,
+        { restanteMs, reservaPosAquisicaoMs: RESERVA_PROCESSAMENTO_CENTRAL_MS },
       );
     } catch (erro) {
       firecrawlFalhou = true;

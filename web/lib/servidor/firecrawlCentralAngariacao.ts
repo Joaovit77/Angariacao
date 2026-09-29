@@ -7,6 +7,12 @@ import type { AnyNode } from "domhandler";
 import { tituloWimoveis } from "./tituloWimoveis";
 import { extrairZap, type DiagnosticoZap } from "./parserZap";
 import { agoraTimestamp, dataPublicacaoOlx, dentroDoPeriodo, timestampDeIso } from "@/lib/datas";
+import { segundosRetryAfter } from "@/lib/calculo/retryAfter";
+import {
+  decidirRetryFirecrawl,
+  type MotivoRetryFirecrawl,
+} from "@/lib/calculo/retryFirecrawl";
+import { classificarErroFetch } from "./investigadorObservabilidade";
 import {
   idDoAnuncio,
   comCaracteristicasDoAnuncio,
@@ -25,10 +31,16 @@ type HtmlColetado = {
   statusHttp: number | null;
   anunciosProdutor?: AnuncioCentralAngariacao[];
 };
+type EstadoConsulta = {
+  aquisicao: "cache" | "firecrawl" | "desconhecida";
+  statusHttp: number | null;
+  /** Tentativa Firecrawl em curso (R5); null antes da primeira ou no cache. */
+  tentativa: number | null;
+};
 const consultasEmAndamento = new Map<string, {
   coletaId: string;
   promessa: Promise<HtmlColetado>;
-  estado: { aquisicao: "cache" | "firecrawl" | "desconhecida"; statusHttp: number | null };
+  estado: EstadoConsulta;
 }>();
 
 interface RespostaFirecrawl {
@@ -42,12 +54,23 @@ interface RespostaFirecrawl {
 }
 
 export class FirecrawlIndisponivel extends Error {
+  /** Status HTTP da própria API Firecrawl, quando houve resposta. */
+  readonly statusHttp: number | null;
+  /** `cause.code` curto do fetch (ECONNRESET...), já sanitizado. */
+  readonly causaRede: string | null;
+  /** `Retry-After` de um 429, em ms; o header bruto não é guardado. */
+  readonly retryAfterMs: number | null;
+
   constructor(
     mensagem: string,
     readonly codigo: CodigoErroFirecrawl = "firecrawl_indisponivel",
     readonly statusPortalHttp: number | null = null,
+    sinais: { statusHttp?: number; causaRede?: string; retryAfterMs?: number } = {},
   ) {
     super(mensagem);
+    this.statusHttp = sinais.statusHttp ?? null;
+    this.causaRede = sinais.causaRede ?? null;
+    this.retryAfterMs = sinais.retryAfterMs ?? null;
   }
 }
 
@@ -407,16 +430,37 @@ export type CodigoErroFirecrawl = "firecrawl_429" | "firecrawl_timeout" | "firec
   | "firecrawl_html_invalido" | "portal_http_falhou" | "parser_falhou";
 export type FaseConsultaFirecrawl = "cache_hit" | "single_flight" | "caminho_escolhido"
   | "fetch_iniciado" | "resposta_recebida" | "resultado_interpretado" | "falha"
-  | "fallback" | "coleta_compartilhada_concluida";
+  | "fallback" | "coleta_compartilhada_concluida" | "retry_agendado";
 export interface EventoConsultaFirecrawl {
   fase: FaseConsultaFirecrawl;
   aquisicao: "cache" | "firecrawl" | "http_direto" | "desconhecida";
   coletaId: string;
   statusHttp?: number;
   statusPortalHttp?: number;
-  codigo?: CodigoErroFirecrawl | import("./fallbackHttpChaves").CodigoErroHttpChaves;
+  codigo?: CodigoErroFirecrawl | MotivoRetryFirecrawl | import("./fallbackHttpChaves").CodigoErroHttpChaves;
+  /** Tentativa Firecrawl a que a fase pertence (R5): 1, ou 2 depois de um retry. */
+  tentativa?: number;
+  /** Só em `retry_agendado`: espera antes da próxima tentativa. */
+  backoffMs?: number;
   /** Só no `resultado_interpretado` do ZAP: contagens agregadas do parser. */
   diagnosticoZap?: DiagnosticoZap;
+}
+
+/**
+ * Habilita a segunda tentativa da aquisição (R5). Sem política, a aquisição
+ * faz 1 chamada, como antes. `restanteMs` é o orçamento do chamador;
+ * `reservaPosAquisicaoMs`, o que ele precisa depois de receber o HTML.
+ * `aleatorio` e `esperar` só existem para testes determinísticos.
+ */
+export interface PoliticaRetryFirecrawl {
+  restanteMs: () => number;
+  reservaPosAquisicaoMs: number;
+  aleatorio?: () => number;
+  esperar?: (ms: number) => Promise<void>;
+}
+
+function esperarMs(ms: number): Promise<void> {
+  return new Promise((resolver) => setTimeout(resolver, ms));
 }
 
 function notificarConsulta(
@@ -444,7 +488,8 @@ async function coletarHtmlFirecrawl(
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         url: urlPesquisa, formats: ["rawHtml"],
-        // Sem escalada de proxy, retries ou paginação.
+        // Sem escalada de proxy nem paginação; a única segunda tentativa
+        // possível (R5) é decidida por `decidirRetryFirecrawl`, fora daqui.
         proxy: "basic",
         location: { country: "BR", languages: ["pt-BR"] },
         timeout: TIMEOUT_FIRECRAWL_MS,
@@ -455,13 +500,19 @@ async function coletarHtmlFirecrawl(
       signal: AbortSignal.timeout(TIMEOUT_FIRECRAWL_FETCH_MS),
     });
   } catch (erro) {
-    throw new FirecrawlIndisponivel("Consulta Firecrawl indisponível.",
-      erroDeTimeout(erro) ? "firecrawl_timeout" : "firecrawl_indisponivel");
+    if (erroDeTimeout(erro)) throw new FirecrawlIndisponivel("Consulta Firecrawl indisponível.", "firecrawl_timeout");
+    const causaRede = classificarErroFetch(erro).codigo;
+    throw new FirecrawlIndisponivel("Consulta Firecrawl indisponível.", "firecrawl_indisponivel", null,
+      causaRede ? { causaRede } : {});
   }
   try { observar?.("resposta_recebida", resposta.status); } catch { /* telemetria acessória */ }
   if (!resposta.ok) {
+    const retryAfter = resposta.status === 429 ? segundosRetryAfter(resposta.headers.get("retry-after")) : undefined;
     throw new FirecrawlIndisponivel("Firecrawl não concluiu a consulta.",
-      resposta.status === 429 ? "firecrawl_429" : "firecrawl_http_falhou");
+      resposta.status === 429 ? "firecrawl_429" : "firecrawl_http_falhou", null, {
+        statusHttp: resposta.status,
+        ...(retryAfter != null ? { retryAfterMs: retryAfter * 1000 } : {}),
+      });
   }
 
   let corpo: RespostaFirecrawl;
@@ -523,6 +574,7 @@ export async function buscarComFirecrawl(
   registrarOrigem?: (origem: OrigemConsultaFirecrawl) => void,
   registrarDiagnosticoOlx?: (diagnostico: DiagnosticoPaginaOlx) => void,
   observar?: (evento: EventoConsultaFirecrawl) => void,
+  politicaRetry?: PoliticaRetryFirecrawl,
 ): Promise<AnuncioCentralAngariacao[]> {
   const chave = chaveCanonicaConsultaPortal(filtros.portal, urlPesquisa);
   const existente = consultasEmAndamento.get(chave);
@@ -562,9 +614,7 @@ export async function buscarComFirecrawl(
   const coletaId = randomUUID();
   let diagnosticoZap: DiagnosticoZap | undefined;
   const registrarDiagnosticoZap = (diagnostico: DiagnosticoZap) => { diagnosticoZap = diagnostico; };
-  const estado: { aquisicao: "cache" | "firecrawl" | "desconhecida"; statusHttp: number | null } = {
-    aquisicao: "desconhecida", statusHttp: null,
-  };
+  const estado: EstadoConsulta = { aquisicao: "desconhecida", statusHttp: null, tentativa: null };
   const consulta = (async () => {
     const cache = getCache({ namespace: "central-firecrawl-html-v2" });
     try {
@@ -583,13 +633,44 @@ export async function buscarComFirecrawl(
     registrarOrigem?.("firecrawl");
     estado.aquisicao = "firecrawl";
     notificarConsulta(observar, { fase: "caminho_escolhido", aquisicao: "firecrawl", coletaId });
-    const coletado = await coletarHtmlFirecrawl(urlPesquisa, (fase, statusHttp) => {
-      if (statusHttp != null) estado.statusHttp = statusHttp;
-      notificarConsulta(observar, {
-        fase, aquisicao: "firecrawl", coletaId,
-        ...(statusHttp != null ? { statusHttp } : {}),
+    const tentar = (tentativa: number) => {
+      estado.tentativa = tentativa;
+      estado.statusHttp = null;
+      return coletarHtmlFirecrawl(urlPesquisa, (fase, statusHttp) => {
+        if (statusHttp != null) estado.statusHttp = statusHttp;
+        notificarConsulta(observar, {
+          fase, aquisicao: "firecrawl", coletaId, tentativa,
+          ...(statusHttp != null ? { statusHttp } : {}),
+        });
       });
-    });
+    };
+    // R5: no máximo uma segunda tentativa, só da aquisição. O parser roda
+    // depois, uma vez, sobre o HTML final; quem aguarda no single-flight
+    // recebe esse mesmo resultado sem tentativas próprias.
+    let coletado: { html: string; statusHttp: number };
+    try {
+      coletado = await tentar(1);
+    } catch (erro) {
+      if (!(erro instanceof FirecrawlIndisponivel)) throw erro;
+      const decisao = decidirRetryFirecrawl({
+        falha: erro,
+        portal: filtros.portal,
+        politicaHabilitada: !!politicaRetry,
+        tentativa: 1,
+        restanteMs: politicaRetry ? politicaRetry.restanteMs() : 0,
+        duracaoMaximaTentativaMs: TIMEOUT_FIRECRAWL_FETCH_MS,
+        reservaPosAquisicaoMs: politicaRetry?.reservaPosAquisicaoMs ?? 0,
+        jitter: (politicaRetry?.aleatorio ?? Math.random)(),
+      });
+      if (!decisao.retentar) throw erro;
+      notificarConsulta(observar, {
+        fase: "retry_agendado", aquisicao: "firecrawl", coletaId, tentativa: 1,
+        codigo: decisao.motivo, backoffMs: decisao.esperaMs,
+        ...(erro.statusHttp != null ? { statusHttp: erro.statusHttp } : {}),
+      });
+      await (politicaRetry?.esperar ?? esperarMs)(decisao.esperaMs);
+      coletado = await tentar(2);
+    }
     // O HTML só entra no cache após uma interpretação sem exceção.
     const anunciosProdutor = extrairComProtecao(coletado.html, filtros, registrarDiagnosticoOlx, registrarDiagnosticoZap);
     try {
@@ -620,6 +701,7 @@ export async function buscarComFirecrawl(
   } catch (erro) {
     notificarConsulta(observar, {
       fase: "falha", aquisicao: estado.aquisicao, coletaId,
+      ...(estado.tentativa != null ? { tentativa: estado.tentativa } : {}),
       ...(estado.statusHttp != null ? { statusHttp: estado.statusHttp } : {}),
       ...(erro instanceof FirecrawlIndisponivel ? {
         codigo: erro.codigo,

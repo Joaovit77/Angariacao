@@ -157,3 +157,23 @@ describe("executor periódico de mercados", () => {
     expect(deps.rpc).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("executor de mercados sem retry imediato (R5)", () => {
+  beforeEach(() => { salvar.mockReset().mockImplementation(async (_db, _owner, anuncios) => anuncios.length); });
+
+  it("nunca repassa política de retry à aquisição: cada consulta é uma chamada", async () => {
+    const deps = preparar();
+    await executarColetaMercados(deps);
+    expect(deps.buscar).toHaveBeenCalledTimes(4);
+    // (filtros, url, origem): sem observador nem política, a aquisição faz 1 chamada.
+    for (const chamada of deps.buscar.mock.calls) expect(chamada).toHaveLength(3);
+  });
+
+  it("falha transitória (503) segue sem nova consulta na mesma rodada", async () => {
+    const deps = preparar();
+    deps.buscar.mockRejectedValueOnce(new FirecrawlIndisponivel("503", "firecrawl_http_falhou", null, { statusHttp: 503 }));
+    const d = (await executarColetaMercados(deps)).mercados[0];
+    expect(deps.buscar).toHaveBeenCalledTimes(4);
+    expect(d.falhasPorPortal).toEqual([{ portal: "olx", codigo: "firecrawl_http_falhou" }]);
+  });
+});

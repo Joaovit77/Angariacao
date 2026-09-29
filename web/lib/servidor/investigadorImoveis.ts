@@ -6,6 +6,7 @@ import {
   triarCorrespondenciasInvestigacao,
   type ResultadoWebInvestigacao,
 } from "@/lib/calculo/investigadorImoveis";
+import { segundosRetryAfter } from "@/lib/calculo/retryAfter";
 import { MARGEM_FINALIZACAO_INVESTIGACAO_MS } from "@/lib/servidor/investigadorOrcamento";
 import {
   classificarErroFetch,
@@ -94,10 +95,7 @@ function diagnosticoHeaders(resposta: Response): Record<string, string> {
 }
 
 function retryAfterEmSegundos(resposta: Response): number | undefined {
-  const valor = resposta.headers.get("retry-after")?.trim();
-  if (!valor || !/^\d+$/.test(valor)) return undefined;
-  const segundos = Number(valor);
-  return Number.isSafeInteger(segundos) && segundos >= 0 ? segundos : undefined;
+  return segundosRetryAfter(resposta.headers.get("retry-after"));
 }
 
 function texto(valor: unknown, limite: number): string {
