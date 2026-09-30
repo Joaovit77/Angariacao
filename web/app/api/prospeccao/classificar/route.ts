@@ -27,7 +27,12 @@ import {
 import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import { clienteDoChamador, tokenDaRequisicao } from "@/lib/servidor/iaAcesso";
 import { carregarConfiguracaoIa } from "@/lib/servidor/ia/configuracao";
-import { criarExecutorOpenAI, type ExecutorOpenAI } from "@/lib/servidor/ia/executor-openai";
+import {
+  contextoDaConfiguracao,
+  criarExecutorOpenAI,
+  type ContextoConfiguracaoExecutor,
+  type ExecutorOpenAI,
+} from "@/lib/servidor/ia/executor-openai";
 import { chamadaOpenAIRealAutorizada, criarClienteOpenAIReal } from "@/lib/servidor/openai-real";
 
 export const runtime = "nodejs";
@@ -87,10 +92,11 @@ function clienteDeServico(url: string): SupabaseClient | null {
 function executorSeAutorizado(
   userId: string,
   rota: Parameters<typeof criarExecutorOpenAI>[2],
+  contexto: ContextoConfiguracaoExecutor,
 ): ExecutorOpenAI | null {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey || !chamadaOpenAIRealAutorizada()) return null;
-  return criarExecutorOpenAI(criarClienteOpenAIReal({ apiKey }), userId, rota);
+  return criarExecutorOpenAI(criarClienteOpenAIReal({ apiKey }), userId, rota, contexto);
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -122,7 +128,11 @@ export async function POST(request: Request): Promise<Response> {
         chamador,
         servico,
         userId,
-        executor: executorSeAutorizado(userId, configuracao.classificacao),
+        executor: executorSeAutorizado(
+          userId,
+          configuracao.classificacao,
+          contextoDaConfiguracao(configuracao, "classificacao"),
+        ),
         configuracao,
         // 200 execuções com modelo por usuário por dia operacional, contadas
         // em `ia_uso` no servidor; o dia vira à meia-noite do fuso canônico.

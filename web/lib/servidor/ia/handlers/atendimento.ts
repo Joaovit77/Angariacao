@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import {
   ESQUEMA_DECISAO_ATENDIMENTO,
@@ -357,11 +357,14 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
     .digest("hex")
     .slice(0, 16);
 
+  // Uma execução de atendimento: todas as etapas (decisão, geração,
+  // validação e a eventual regeneração) compartilham o mesmo id em ia_uso.
+  const execucaoId = randomUUID();
   const executarEtapa = async (pedido: PedidoExecutorOpenAI) => {
     if ((diagnostico.chamadas ?? 0) >= 5) throw new Error("Limite de chamadas do atendimento excedido.");
     diagnostico.chamadas = (diagnostico.chamadas ?? 0) + 1;
     const inicio = performance.now();
-    const resultado = await executor.executar(pedido);
+    const resultado = await executor.executar({ ...pedido, execucaoId });
     registrarEvento({ userId, categoria: "ia", nivel: "info", evento: "ia-atendimento-etapa", detalhe: JSON.stringify({
       operacao: "rascunhar_resposta", etapa: pedido.tipo, tentativa: diagnostico.tentativa,
       modelo: diagnostico.modelo, reasoning_effort: diagnostico.esforco,

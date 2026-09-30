@@ -206,6 +206,32 @@ describe("handler especializado de atendimento", () => {
     });
   });
 
+  it("IA-M1c-A: as etapas de um atendimento compartilham um execucaoId, e cada requisição tem o seu", async () => {
+    const ids: Array<string | undefined>[] = [];
+    for (let rodada = 0; rodada < 2; rodada += 1) {
+      const executar = vi
+        .fn<ExecutorOpenAI["executar"]>()
+        .mockResolvedValueOnce({ conclusao: {} as never, texto: JSON.stringify(decisaoTaxa) })
+        .mockResolvedValueOnce({ conclusao: {} as never, texto: JSON.stringify(geracaoTaxa) })
+        .mockResolvedValueOnce({ conclusao: {} as never, texto: JSON.stringify({ problemas: [] }) });
+      const resposta = await atenderProprietario({
+        tipo: "rascunhar-resposta",
+        corpo: { tipo: "rascunhar-resposta", imovelId: "imovel-1" },
+        supabase: supabaseFalso(),
+        userId: "usuario-1",
+        executor: { executar },
+      });
+      expect(resposta.status).toBe(200);
+      ids.push(executar.mock.calls.map(([pedido]) => pedido.execucaoId));
+    }
+    for (const daRequisicao of ids) {
+      expect(daRequisicao).toHaveLength(3);
+      expect(new Set(daRequisicao).size).toBe(1);
+      expect(daRequisicao[0]).toMatch(/^[0-9a-f-]{36}$/);
+    }
+    expect(ids[0][0]).not.toBe(ids[1][0]);
+  });
+
   it("preserva o contrato da UI e exatamente três chamadas no caminho feliz", async () => {
     const executar = vi
       .fn<ExecutorOpenAI["executar"]>()

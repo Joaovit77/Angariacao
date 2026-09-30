@@ -77,6 +77,7 @@ import { MAX_TOKENS_IA as MAX_TOKENS } from "@/lib/servidor/ia/config";
 import { carregarConfiguracaoIa } from "@/lib/servidor/ia/configuracao";
 import {
   classificarErroIa,
+  contextoDaConfiguracao,
   criarExecutorOpenAI,
   textoDaResposta,
 } from "@/lib/servidor/ia/executor-openai";
@@ -256,7 +257,12 @@ export async function POST(request: Request): Promise<Response> {
       corpo,
       supabase,
       userId: donoDaChamada,
-      executor: criarExecutorOpenAI(openai, donoDaChamada, configuracaoIa.atendimento),
+      executor: criarExecutorOpenAI(
+        openai,
+        donoDaChamada,
+        configuracaoIa.atendimento,
+        contextoDaConfiguracao(configuracaoIa, "atendimento"),
+      ),
       configuracao: configuracaoIa,
     },
     handlers,
@@ -267,7 +273,12 @@ export async function POST(request: Request): Promise<Response> {
   // monta o corpo exatamente como as chamadas diretas montavam, aplica o
   // System Prompt central e registra o uso antes de qualquer parse. Não recebe
   // opção de transporte: retry e timeout continuam os do cliente.
-  const executor = criarExecutorOpenAI(openai, donoDaChamada, configuracaoIa.operacoes);
+  const executor = criarExecutorOpenAI(
+    openai,
+    donoDaChamada,
+    configuracaoIa.operacoes,
+    contextoDaConfiguracao(configuracaoIa, "operacoes"),
+  );
 
   // ---------------------------------------------------------------
   // 3a. Sugerir roteiros — o contexto vem do browser, mas só os campos

@@ -13,6 +13,10 @@ import {
 } from "@/lib/servidor/ia/executor-openai";
 import { SYSTEM_PROMPT_CENTRAL_ANGARIO } from "@/lib/ia/system-prompt";
 
+/** IA-M1c-A: o uso agora carrega metadados da chamada (conteúdo testado
+    em ia-uso-metadados.test.ts); aqui basta que existam. */
+const METADADOS_USO = expect.objectContaining({ execucaoId: expect.any(String), duracaoMs: expect.any(Number) });
+
 function conclusao(
   content: string,
   finishReason: OpenAI.Chat.ChatCompletion.Choice["finish_reason"] = "stop",
@@ -91,7 +95,7 @@ describe("executor OpenAI compartilhado", () => {
       "usuario-1",
       "rascunhar-resposta-decisao",
       MODELO_TEXTO_IA,
-      resposta.usage,
+      resposta.usage, METADADOS_USO
     );
     expect(MAX_TOKENS_IA).toBe(4000);
   });

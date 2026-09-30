@@ -17,6 +17,7 @@
 
    Nenhum teste chama a OpenAI: o SDK é um objeto falso.
    ================================================================ */
+import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -116,6 +117,10 @@ const CHAVES_COM_FORMATO = ["model", "max_completion_tokens", "reasoning_effort"
 const CHAVES_SEM_FORMATO = ["model", "max_completion_tokens", "reasoning_effort", "messages"];
 
 const USO = { prompt_tokens: 111, completion_tokens: 22, total_tokens: 133 };
+
+/** IA-M1c-A: o uso agora carrega metadados da chamada (conteúdo testado
+    em ia-uso-metadados.test.ts); aqui basta que existam. */
+const METADADOS_USO = expect.objectContaining({ execucaoId: expect.any(String), duracaoMs: expect.any(Number) });
 
 /* ---------------- dados do banco (conta de teste do baseline) ---------------- */
 
@@ -386,7 +391,7 @@ describe("contrato da requisição: operações de /api/ia (F4–F9)", () => {
     expect(opcoes ?? {}).toEqual({});
 
     expect(mocks.registrarUsoDaResposta).toHaveBeenCalledTimes(1);
-    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, caso.tipo, CONFIGURACAO.operacoes.modelo, USO);
+    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, caso.tipo, CONFIGURACAO.operacoes.modelo, USO, METADADOS_USO);
     expect(mocks.criarClienteOpenAIReal).toHaveBeenCalledWith({ apiKey: "chave-ficticia" });
   });
 
@@ -429,7 +434,7 @@ describe("comportamento de falha: operações de /api/ia (F4–F9)", () => {
     const resposta = await ia(requisicao({ tipo: caso.tipo, ...caso.corpo }));
     expect(resposta.status).toBe(502);
     expect(await resposta.json()).toMatchObject({ ok: false, falha: "falha-ia" });
-    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, caso.tipo, CONFIGURACAO.operacoes.modelo, USO);
+    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, caso.tipo, CONFIGURACAO.operacoes.modelo, USO, METADADOS_USO);
     expect(mocks.registrarEvento).not.toHaveBeenCalled();
   });
 
@@ -530,13 +535,13 @@ describe("contrato da requisição: classificação da resposta (F1)", () => {
     expect(opcoes ?? {}).toEqual({});
 
     expect(mocks.registrarUsoDaResposta).toHaveBeenCalledTimes(1);
-    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, "classificar-resposta", CONFIGURACAO.classificacao.modelo, USO);
+    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, "classificar-resposta", CONFIGURACAO.classificacao.modelo, USO, METADADOS_USO);
     expect(mocks.criarClienteOpenAIReal).toHaveBeenCalledWith({ apiKey: "chave-ficticia" });
   });
 
   it("sem dono conhecido, o uso é registrado com userId nulo", async () => {
     await classificarResposta(TEXTO, HOJE);
-    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(null, "classificar-resposta", CONFIGURACAO.classificacao.modelo, USO);
+    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(null, "classificar-resposta", CONFIGURACAO.classificacao.modelo, USO, METADADOS_USO);
   });
 });
 
@@ -658,7 +663,7 @@ describe("observabilidade legada: F1", () => {
   it("sem choices: null, uso registrado e a linha de falha do F1", async () => {
     mocks.create.mockResolvedValue(semChoices());
     expect(await classificarResposta(TEXTO, HOJE, USUARIO)).toBeNull();
-    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, "classificar-resposta", CONFIGURACAO.classificacao.modelo, USO);
+    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, "classificar-resposta", CONFIGURACAO.classificacao.modelo, USO, METADADOS_USO);
     expect(erros.mock.calls).toEqual([["IA: falha ao classificar a resposta:", sanitizarErroExterno(ERRO_SEM_CHOICES, "iaTexto")]]);
     expect(mocks.registrarEvento).not.toHaveBeenCalled();
   });
@@ -677,7 +682,7 @@ describe("observabilidade legada: /api/ia", () => {
     const resposta = await ia(requisicao({ tipo: caso.tipo, ...caso.corpo }));
     expect(resposta.status).toBe(502);
     expect(await resposta.json()).toMatchObject({ ok: false, falha: "falha-ia" });
-    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, caso.tipo, CONFIGURACAO.operacoes.modelo, USO);
+    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, caso.tipo, CONFIGURACAO.operacoes.modelo, USO, METADADOS_USO);
     expect(mocks.registrarEvento).not.toHaveBeenCalled();
     expect(erros.mock.calls).toEqual([[LOG_PARSE_ESTRUTURADO[caso.tipo], sanitizarErroExterno(ERRO_SEM_CHOICES, "processarRespostaIa")]]);
   });
@@ -685,7 +690,7 @@ describe("observabilidade legada: /api/ia", () => {
   it.each(textoLivre)("$tipo sem choices: a exceção escapa da rota, com uso registrado e sem ia-falhou", async (caso) => {
     mocks.create.mockResolvedValue(semChoices());
     await expect(ia(requisicao({ tipo: caso.tipo, ...caso.corpo }))).rejects.toThrow(TypeError);
-    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, caso.tipo, CONFIGURACAO.operacoes.modelo, USO);
+    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, caso.tipo, CONFIGURACAO.operacoes.modelo, USO, METADADOS_USO);
     expect(mocks.registrarEvento).not.toHaveBeenCalled();
     expect(erros.mock.calls).toEqual([]);
   });
@@ -736,7 +741,7 @@ describe("executor: interpretação do texto", () => {
     const { conclusao: recebida } = await executor().executar({ ...pedido, interpretarTexto: false });
     expect(recebida).toBe(bruta);
     expect(erros.mock.calls).toEqual([]);
-    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, "rascunhar-resposta-decisao", CONFIGURACAO.atendimento.modelo, USO);
+    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, "rascunhar-resposta-decisao", CONFIGURACAO.atendimento.modelo, USO, METADADOS_USO);
     // A opção não entra no corpo enviado ao provedor.
     expect(Object.keys(mocks.create.mock.calls[0][0] as object)).toEqual(CHAVES_SEM_FORMATO);
   });
@@ -746,5 +751,59 @@ describe("executor: interpretação do texto", () => {
     await expect(executor().executar(pedido)).rejects.toThrow(TypeError);
     mocks.create.mockResolvedValueOnce(semChoices());
     await expect(executor().executar({ ...pedido, interpretarTexto: false })).resolves.toHaveProperty("conclusao");
+  });
+});
+
+/* ================================================================
+   IA-M1c-A: METADADOS DE USO POR FLUXO
+
+   A linha de uso diz qual rota de configuração serviu a chamada e de qual
+   versão ela veio. A configuração falsa deste arquivo é a versão 42, vinda
+   do banco, com um modelo/esforço distinto por rota.
+   ================================================================ */
+
+function metadadosDaChamada(): Record<string, unknown> {
+  expect(mocks.registrarUsoDaResposta).toHaveBeenCalledTimes(1);
+  return mocks.registrarUsoDaResposta.mock.calls[0][4] as Record<string, unknown>;
+}
+
+describe("metadados de uso por fluxo (IA-M1c-A)", () => {
+  it.each(CASOS_OPERACOES)("$tipo: rota operacoes, versão 42 do banco, modelo servido e fim da resposta", async (caso) => {
+    const resposta = await ia(requisicao({ tipo: caso.tipo, ...caso.corpo }));
+    expect(resposta.status).toBe(200);
+    expect(metadadosDaChamada()).toMatchObject({
+      rota: "operacoes",
+      esforco: CONFIGURACAO.operacoes.esforco,
+      configOrigem: "banco",
+      configVersao: 42,
+      modeloServido: "modelo-servido-qualquer",
+      motivoFim: "stop",
+      recusa: false,
+      execucaoId: expect.stringMatching(/^[0-9a-f-]{36}$/),
+    });
+  });
+
+  it("F1: rota classificacao, com a mesma versão da configuração", async () => {
+    await classificarResposta(TEXTO, HOJE, USUARIO, ANTERIORES);
+    expect(metadadosDaChamada()).toMatchObject({
+      rota: "classificacao",
+      esforco: CONFIGURACAO.classificacao.esforco,
+      configOrigem: "banco",
+      configVersao: 42,
+    });
+  });
+
+  it("uma requisição de /api/ia é uma execução; outra requisição é outra", async () => {
+    await ia(requisicao({ tipo: "resumo-dia" }));
+    await ia(requisicao({ tipo: "resumo-dia" }));
+    const ids = mocks.registrarUsoDaResposta.mock.calls.map((c) => (c[4] as { execucaoId: string }).execucaoId);
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).not.toBe(ids[1]);
+  });
+
+  it("a rota monta o executor do atendimento com a rota atendimento e o das operações com operacoes", () => {
+    const fonte = readFileSync(new URL("../app/api/ia/route.ts", import.meta.url), "utf8").replace(/\s+/g, " ");
+    expect(fonte).toContain('configuracaoIa.atendimento, contextoDaConfiguracao(configuracaoIa, "atendimento"),');
+    expect(fonte).toContain('configuracaoIa.operacoes, contextoDaConfiguracao(configuracaoIa, "operacoes"),');
   });
 });

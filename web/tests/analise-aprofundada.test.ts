@@ -403,6 +403,29 @@ describe("Análise aprofundada — orçamento de modelo", () => {
     expect(fakes.executar).toHaveBeenCalledTimes(2);
   });
 
+  it("IA-M1c-A: as duas chamadas de uma análise compartilham um execucaoId, e cada análise tem o seu", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const ids: Array<string | undefined>[] = [];
+    for (let rodada = 0; rodada < 2; rodada += 1) {
+      const fakes = dependenciasComSaidas(["{quebrado", "{quebrado"]);
+      await expect(executarAnaliseAprofundadaComDependencias(
+        pedido,
+        {} as SupabaseClient,
+        USUARIO_ID,
+        new AbortController().signal,
+        fakes.dependencias,
+      )).rejects.toThrow();
+      ids.push(fakes.pedidos.map((item) => item.execucaoId));
+    }
+    for (const daAnalise of ids) {
+      expect(daAnalise).toHaveLength(2);
+      expect(new Set(daAnalise).size).toBe(1);
+      expect(daAnalise[0]).toMatch(/^[0-9a-f-]{36}$/);
+    }
+    expect(ids[0][0]).not.toBe(ids[1][0]);
+    log.mockRestore();
+  });
+
   it("nunca aceita resposta com finish_reason length", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const conteudoCompleto = JSON.stringify(saidaValida("fato"));

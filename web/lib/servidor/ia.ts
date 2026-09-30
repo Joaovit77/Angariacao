@@ -31,7 +31,7 @@ import {
   MAX_TOKENS_CLASSIFICACAO_IA as MAX_TOKENS,
 } from "./ia/config";
 import { carregarConfiguracaoIa } from "./ia/configuracao";
-import { criarExecutorOpenAI } from "./ia/executor-openai";
+import { contextoDaConfiguracao, criarExecutorOpenAI } from "./ia/executor-openai";
 import {
   chamadaOpenAIRealAutorizada,
   criarClienteOpenAIReal,
@@ -96,7 +96,12 @@ export async function classificarResposta(
   try {
     const configuracaoIa = await carregarConfiguracaoIa();
     const openai = criarClienteOpenAIReal({ apiKey });
-    const executor = criarExecutorOpenAI(openai, userId, configuracaoIa.classificacao);
+    const executor = criarExecutorOpenAI(
+      openai,
+      userId,
+      configuracaoIa.classificacao,
+      contextoDaConfiguracao(configuracaoIa, "classificacao"),
+    );
     /* O gasto é registrado pelo executor antes de qualquer validação do
        conteúdo. Esta é a chamada de IA mais frequente do sistema — roda a
        CADA mensagem que um proprietário manda, sem ninguém pedir —, então é

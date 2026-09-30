@@ -39,9 +39,9 @@ vi.mock("@/lib/servidor/registro", async (importOriginal) => {
     ...original,
     registrarEvento: mocks.registrarEvento,
     registrarUsoIa: mocks.registrarUsoIa,
-    registrarUsoDaResposta: (userId: string | null, tipo: string, modelo: string, usage: { prompt_tokens?: number; completion_tokens?: number } | null | undefined) => {
+    registrarUsoDaResposta: (userId: string | null, tipo: string, modelo: string, usage: { prompt_tokens?: number; completion_tokens?: number } | null | undefined, metadados?: unknown) => {
       if (!usage) return;
-      mocks.registrarUsoIa({ userId, tipo, modelo, tokensEntrada: usage.prompt_tokens ?? 0, tokensSaida: usage.completion_tokens ?? 0 });
+      mocks.registrarUsoIa({ userId, tipo, modelo, tokensEntrada: usage.prompt_tokens ?? 0, tokensSaida: usage.completion_tokens ?? 0, metadados });
     },
   };
 });
@@ -295,6 +295,18 @@ describe("POST /api/prospeccao/classificar", () => {
     expect(await chamar()).toMatchObject({ status: 409, corpo: { ok: false, falha: "exclusao-em-andamento" } });
     expect(exclusao.rpc).not.toHaveBeenCalled();
     expect(mocks.registrarUsoIa).not.toHaveBeenCalled();
+  });
+
+  it("IA-M1c-A: a linha de uso do Garimpo leva a rota classificacao e a versão/origem da configuração", async () => {
+    mundo();
+    await chamar();
+    expect(mocks.registrarUsoIa).toHaveBeenCalledTimes(1);
+    expect(mocks.registrarUsoIa).toHaveBeenCalledWith(expect.objectContaining({
+      metadados: expect.objectContaining({
+        rota: "classificacao", esforco: "low", configOrigem: "banco", configVersao: 1,
+        execucaoId: expect.stringMatching(/^[0-9a-f-]{36}$/), duracaoMs: expect.any(Number),
+      }),
+    }));
   });
 
   it("sucesso: ia_uso recebe UMA linha, do tipo classificar-imovel-identificado, com o modelo da rota classificacao", async () => {

@@ -117,6 +117,44 @@ export interface EntradaUso {
   /** Tokens gravados no cache. Na família GPT-5.6 custam 1,25x a entrada. */
   tokensEntradaCacheGravacao?: number;
   tokensSaida: number;
+  /** Metadados da chamada (IA-M1c-A). Ausentes, o insert é o de sempre. */
+  metadados?: MetadadosUsoIa;
+}
+
+/** Rotas de configuração da IA, na mesma grafia de `ia_configuracoes`. */
+export type RotaIaRegistro = "operacoes" | "classificacao" | "atendimento" | "assistente";
+
+/**
+ * O que se sabe de uma chamada que voltou com `usage`. Uma linha em ia_uso
+ * continua significando SÓ "o provedor respondeu com usage e houve consumo
+ * registrado", nunca "a funcionalidade conseguiu usar a resposta".
+ *
+ * Nenhum campo carrega texto de prompt, resposta ou dado pessoal: são
+ * enums, números, ids opacos e o nome do modelo. Quem monta estes valores
+ * (o executor) já os entrega saneados.
+ */
+export interface MetadadosUsoIa {
+  /** Agrupa as chamadas de uma mesma execução (ex.: as etapas do atendimento). */
+  execucaoId: string;
+  /** Null quando o chamador não informou a rota (modelo fixo ou teste). */
+  rota: RotaIaRegistro | null;
+  /** O reasoning_effort efetivamente enviado. */
+  esforco: string | null;
+  configOrigem: "banco" | "padrao" | null;
+  /** Id da versão em ia_configuracoes; null quando vale o padrão do código. */
+  configVersao: number | null;
+  /** O `model` que a resposta do provedor declara. */
+  modeloServido: string | null;
+  /** O `x-request-id` do provedor, para suporte. Nunca os headers inteiros. */
+  requisicaoProvedorId: string | null;
+  /** Da chamada ao provedor até a resposta, incluindo retries internos do SDK. */
+  duracaoMs: number;
+  /** `finish_reason` da primeira escolha (stop, length, content_filter...). */
+  motivoFim: string | null;
+  /** Se a primeira escolha veio com recusa; null quando não houve escolha. */
+  recusa: boolean | null;
+  /** Detalhamento de `tokensSaida` (já incluídos nele e no custo). */
+  tokensRaciocinio: number | null;
 }
 
 /**
@@ -132,6 +170,22 @@ export interface EntradaUso {
  * faria o painel mostrar um custo menor que o real com cara de exato —
  * o mesmo erro que `custoDaChamada` evita devolvendo null.
  */
+function colunasDosMetadados(m: MetadadosUsoIa) {
+  return {
+    execucao_id: m.execucaoId,
+    rota: m.rota,
+    esforco: m.esforco,
+    config_origem: m.configOrigem,
+    config_versao: m.configVersao,
+    modelo_servido: m.modeloServido,
+    requisicao_provedor_id: m.requisicaoProvedorId,
+    duracao_ms: m.duracaoMs,
+    motivo_fim: m.motivoFim,
+    recusa: m.recusa,
+    tokens_raciocinio: m.tokensRaciocinio,
+  };
+}
+
 export function registrarUsoIa(entrada: EntradaUso): void {
   const sb = cliente();
   if (!sb) return;
@@ -144,6 +198,7 @@ export function registrarUsoIa(entrada: EntradaUso): void {
       tokens_entrada_cache: entrada.tokensEntradaCache ?? 0,
       tokens_entrada_cache_gravacao: entrada.tokensEntradaCacheGravacao ?? 0,
       tokens_saida: entrada.tokensSaida,
+      ...(entrada.metadados ? colunasDosMetadados(entrada.metadados) : {}),
     });
     if (error) console.error("Registro: uso de IA recusado:", sanitizarErroExterno(error, "registrar"));
   });
@@ -165,6 +220,7 @@ export function registrarUsoDaResposta(
       }
     | null
     | undefined,
+  metadados?: MetadadosUsoIa,
 ): void {
   if (!usage) return;
   registrarUsoIa({
@@ -175,6 +231,7 @@ export function registrarUsoDaResposta(
     tokensEntradaCache: usage.prompt_tokens_details?.cached_tokens ?? 0,
     tokensEntradaCacheGravacao: usage.prompt_tokens_details?.cache_write_tokens ?? 0,
     tokensSaida: usage.completion_tokens ?? 0,
+    ...(metadados ? { metadados } : {}),
   });
 }
 

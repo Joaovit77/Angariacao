@@ -3300,6 +3300,41 @@ alter table ia_uso enable row level security;
 create index if not exists idx_ia_uso_user_data on ia_uso (user_id, criado_em desc);
 create index if not exists idx_ia_uso_data on ia_uso (criado_em desc);
 
+-- IA-M1c-A: metadados da chamada. Uma linha continua significando só
+-- "o provedor respondeu com usage e houve consumo registrado", não que a
+-- funcionalidade conseguiu usar a resposta. Aditivo e anulável; check só
+-- nos valores que o código produz (ver a migration 20260930200000).
+alter table ia_uso
+  add column if not exists execucao_id uuid,
+  add column if not exists rota text,
+  add column if not exists esforco text,
+  add column if not exists config_origem text,
+  add column if not exists config_versao bigint,
+  add column if not exists modelo_servido text,
+  add column if not exists requisicao_provedor_id text,
+  add column if not exists duracao_ms integer,
+  add column if not exists motivo_fim text,
+  add column if not exists recusa boolean,
+  add column if not exists tokens_raciocinio integer;
+
+alter table ia_uso
+  drop constraint if exists ia_uso_rota_check,
+  drop constraint if exists ia_uso_esforco_check,
+  drop constraint if exists ia_uso_config_origem_check,
+  drop constraint if exists ia_uso_duracao_ms_check;
+
+alter table ia_uso
+  add constraint ia_uso_rota_check
+    check (rota in ('operacoes', 'classificacao', 'atendimento', 'assistente')),
+  add constraint ia_uso_esforco_check
+    check (esforco in ('none', 'low', 'medium', 'high', 'xhigh')),
+  add constraint ia_uso_config_origem_check
+    check (config_origem in ('banco', 'padrao')),
+  add constraint ia_uso_duracao_ms_check
+    check (duracao_ms >= 0);
+
+create index if not exists idx_ia_uso_execucao on ia_uso (execucao_id) where execucao_id is not null;
+
 -- ------------------------------------------------------------
 -- LOG DE EVENTOS (o que quebrou, e na conta de quem)
 --

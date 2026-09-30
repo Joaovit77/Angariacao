@@ -36,7 +36,11 @@ import {
   type DbImovelRow,
 } from "@/lib/persistencia/mapeadores";
 import type { AgendaItem, Imovel } from "@/lib/tipos";
-import { criarExecutorOpenAI, type ExecutorOpenAI } from "@/lib/servidor/ia/executor-openai";
+import {
+  contextoDaConfiguracao,
+  criarExecutorOpenAI,
+  type ExecutorOpenAI,
+} from "@/lib/servidor/ia/executor-openai";
 import { carregarConfiguracaoIa } from "@/lib/servidor/ia/configuracao";
 import { criarClienteOpenAIReal } from "@/lib/servidor/openai-real";
 import { registrarEvento } from "@/lib/servidor/registro";
@@ -536,6 +540,7 @@ async function criarExecutorReal(userId: string) {
       criarClienteOpenAIReal({ apiKey: process.env.OPENAI_API_KEY }),
       userId,
       configuracao.assistente,
+      contextoDaConfiguracao(configuracao, "assistente"),
     ),
     modelo: configuracao.assistente.modelo,
     esforco: configuracao.assistente.esforco,
@@ -637,12 +642,16 @@ export async function executarAnaliseAprofundadaComDependencias(
       ) as unknown as Record<string, unknown>,
     };
     let ultimoErro: unknown = null;
+    // As duas chamadas possíveis (a normal e a nova tentativa após saída
+    // inválida) são uma única execução em ia_uso.
+    const execucaoId = randomUUID();
     for (let tentativa = 0; tentativa < LIMITES_ANALISE_APROFUNDADA.chamadasMaximas; tentativa += 1) {
       if (controller.signal.aborted) throw new DOMException("Abortado", "AbortError");
       try {
         chamadas += 1;
         const resposta = await configuracao.executor.executar({
           tipo: "analise-aprofundada-imovel",
+          execucaoId,
           reasoningEffort: configuracao.esforco,
           maxCompletionTokens: LIMITES_ANALISE_APROFUNDADA.tokensSaida,
           maxRetries: 0,
