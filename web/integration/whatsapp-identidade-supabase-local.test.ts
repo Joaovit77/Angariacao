@@ -333,6 +333,43 @@ describe("origem vence o eco (sequencial)", () => {
     expect(lista[1]).not.toHaveProperty("atribuicao");
   });
 
+  it("E2. estado anômalo no mesmo imóvel (nota de origem + eco do mesmo id): só o eco é substituído", async () => {
+    // O fluxo normal não produz isto (o dedupe por linha recusa o segundo
+    // `wa-enviada:<id>` no mesmo imóvel), mas o banco não tem constraint que
+    // o impeça: dado antigo ou edição manual chegam aqui. A nota que NÃO é
+    // eco (outra origem, com campos próprios) tem que sair intacta; é o
+    // filtro `origem = 'webhook-evolution'` na substituição que garante isso.
+    const id = mid();
+    const origemPreExistente: Nota = {
+      id: `wa-enviada:${id}`, texto: "Mensagem enviada pelo WhatsApp: agendada antes", data: "2026-09-29T09:00:00",
+      direcao: "enviada", autor: "corretor", tipo: "conversation", origem: "agendamento",
+    };
+    const ecoAnomalo = eco(id, { data: "2026-09-29T09:00:05" });
+    const vizinha = { id: "manual-9", texto: "nota do corretor", data: "2026-09-29T12:00" };
+    const A = await novoImovel(userA, [origemPreExistente, ecoAnomalo, vizinha]);
+    const nova = daOrigem(id); // api-evolution, com confirmacaoVisita
+
+    const r = await origem(userA, [A], nova);
+
+    expect(r).toEqual({ resultado: "origem-reconciliou-eco", imoveis_eco: [] });
+    const lista = await notas(A);
+    // Mesmo tamanho: nada removido e nada duplicado além do que já existia.
+    expect(lista).toHaveLength(3);
+    // A nota de origem pré-existente continua exatamente igual, no lugar.
+    expect(lista[0]).toEqual(origemPreExistente);
+    // Só o eco foi trocado, no lugar, pela nota da origem.
+    expect(lista[1]).toEqual(nova);
+    expect(lista[1]).not.toHaveProperty("atribuicao");
+    expect(lista[2]).toEqual(vizinha);
+    // Nenhum eco sobrou e a ocorrência que não é eco foi preservada.
+    expect(lista.filter((n) => n.origem === "webhook-evolution")).toHaveLength(0);
+    expect(lista.filter((n) => n.origem === "agendamento")).toEqual([origemPreExistente]);
+    expect(ondeEsta(userA, id)).toEqual([
+      `${A}|wa-enviada:${id}|agendamento`,
+      `${A}|wa-enviada:${id}|api-evolution`,
+    ]);
+  });
+
   it("F. fora do conjunto há algo que não é eco: conflito, nada removido nem gravado", async () => {
     const casos: Array<(id: string) => Nota> = [
       (id) => recebida(id),
