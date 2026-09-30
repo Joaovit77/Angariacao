@@ -1455,6 +1455,27 @@ operacional trocar de imóvel, a mesma mensagem pode ser gravada em dois imóvei
 conta é a C2.1b. A consulta legada por `updated_at` segue existindo só como fallback e caminho
 de rollback.
 
+**Uma mensagem, uma identidade por conta (1a-C2.1b.1).** A identidade da mensagem é `user_id` +
+`key.id` da Evolution (há uma instância por conta: `whatsapp_instancias` tem `primary key
+(user_id)`), e a família do id é a de `idExternoDaNotaWhatsapp` (`wa:`, `wa-enviada:`,
+`wa-contexto-recebida:`, `wa-contexto-enviada:`; `wa:<id>:encerrado` é nota derivada e fica fora),
+espelhada em SQL por `whatsapp_mensagem_externa_id`. O webhook (recebida e `fromMe`) grava por
+`registrar_nota_whatsapp_conta`: sob um advisory lock por `user_id` + id, procura a mensagem em
+**todos** os imóveis da conta, direto no JSONB (notas antigas contam, sem backfill), e só grava se
+ela não existe; duplicata no mesmo ou em outro imóvel não repete IA, tentativa, follow-up, agenda
+nem encerramento, e falha da RPC não cai para a gravação por linha (log de erro, 200, nada
+gravado). O envio feito pelo próprio Angario com imóvel conhecido (painel e cron **sem**
+consolidação) grava por `registrar_nota_whatsapp_origem`, sob o mesmo lock: **a origem declarada
+vence o eco `fromMe`**: um eco (`wa-enviada:<mesmo id>` com origem `webhook-evolution`) que
+tenha caído em outro imóvel é removido de lá, e um eco no próprio alvo é substituído no lugar pela
+nota da origem (a mais rica, sem a `atribuicao` do eco); qualquer outra ocorrência fora do
+conjunto é `conflito` e nada se move. Id interno (`api:<uuid>`, `agendamento:<uuid>`, quando a
+Evolution não devolve `key.id`) não se correlaciona com eco e é marcado `fallback-interno`. A
+consolidação M3/M4 e a importação de conversa continuam pela primitiva por linha, porque
+replicam o mesmo id em N imóveis de propósito (a consolidação entrar nesta regra é a C2.1b.2).
+A garantia depende de a nota continuar no JSONB: se outro fluxo a apagar (lost update, LD-281),
+uma reentrega posterior volta a ser tratada como nova.
+
 **Fronteira com a 1b.** A resolução por canal segue a lápide (`fundido_em_contato_id`) até o
 sobrevivente como rede de segurança, mas a RPC de fusão da 1b é obrigada a reparentear os vínculos
 e a desativar/reparentear os números do absorvido, para que nada volte a resolver para ele;

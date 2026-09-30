@@ -61,7 +61,10 @@ vi.mock("@supabase/supabase-js", () => ({
 vi.mock("@/lib/servidor/registro", () => ({ registrarEvento: mocks.registrarEvento }));
 vi.mock("@/lib/servidor/envioMensagemAgendada", () => ({ enviarMensagemAgendada: mocks.enviar }));
 vi.mock("@/lib/servidor/instanciaWhatsapp", () => ({ garantirRegistroInstanciaWhatsapp: mocks.garantir }));
-vi.mock("@/lib/servidor/historicoWhatsapp", () => ({ registrarMensagemEnviada: mocks.historico }));
+vi.mock("@/lib/servidor/historicoWhatsapp", async (original) => ({
+  ...(await original<typeof import("@/lib/servidor/historicoWhatsapp")>()),
+  registrarMensagemEnviadaDeOrigem: mocks.historico,
+}));
 vi.mock("@/lib/servidor/disponibilidadeMensagem", () => ({
   revalidarVerificacaoDisponibilidade: mocks.revalidar,
   aplicarDecisaoNoBanco: mocks.aplicarDecisao,
@@ -102,9 +105,9 @@ describe("cron de mensagens agendadas", () => {
     vi.stubEnv("EVOLUTION_SERVER_URL", "https://evolution.fixture");
     mocks.rpc.mockReset();
     mocks.registrarEvento.mockReset();
-    mocks.enviar.mockReset().mockResolvedValue({ mensagemId: "wa-1" });
+    mocks.enviar.mockReset().mockResolvedValue({ mensagemId: "wa-1", idExterno: true });
     mocks.garantir.mockReset().mockResolvedValue({ ok: true, instancia: "corretora", token: "tok", criada: false, qr: null });
-    mocks.historico.mockReset().mockResolvedValue({ erro: null });
+    mocks.historico.mockReset().mockResolvedValue({ persistencia: "gravada", imoveisEco: [], erro: null });
     mocks.revalidar.mockReset();
     mocks.aplicarDecisao.mockReset().mockResolvedValue({ ok: true, detalhe: null, erro: null });
     mocks.cancelarSemImovel.mockReset().mockResolvedValue({ ok: true, detalhe: null, erro: null });
@@ -376,7 +379,7 @@ describe("cron de mensagens agendadas", () => {
   it("2. POST bem-sucedido: A + B + C elegíveis, A sai com a lista e a efetivação é UMA RPC depois do envio, com o id externo e as notas", async () => {
     preparacaoComReserva();
     const ordem: string[] = [];
-    mocks.enviar.mockImplementationOnce(async () => { ordem.push("post"); return { mensagemId: "wa-1" }; });
+    mocks.enviar.mockImplementationOnce(async () => { ordem.push("post"); return { mensagemId: "wa-1", idExterno: true }; });
     mocks.efetivar.mockImplementationOnce(async (_a: unknown, item: { id: string }, entrada: { texto: string; imoveisConsultados: string[]; mensagemExternaId: string }) => {
       ordem.push(`efetivar:${item.id}:${entrada.imoveisConsultados.join(",")}:${entrada.mensagemExternaId}`);
       return { ok: true, absorvidasIds: ["v2", "v3"], notasGravadas: 3, notasFalhas: [], erro: null };

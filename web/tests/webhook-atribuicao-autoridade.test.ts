@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { todayISO } from "@/lib/datas";
 import { ehNotaDeMensagemEnviada, ehNotaDeResposta } from "@/lib/calculo/notas";
+import { idExternoDaNotaWhatsapp } from "@/lib/calculo/importacaoConversaWhatsapp";
 
 /* Fase 1a-C2.1a — a rota do webhook com autoridade parcial do motor.
 
@@ -67,7 +68,7 @@ function criarBanco(parcial: Partial<Banco>): Banco {
   };
 }
 
-function clienteFalso(banco: Banco, opcoes: { falhar?: string[]; falharCarga?: boolean } = {}) {
+function clienteFalso(banco: Banco, opcoes: { falhar?: string[]; falharCarga?: boolean; falharRpc?: boolean } = {}) {
   const consultas: Consulta[] = [];
   const rpcs: { nome: string; args: Record<string, unknown> }[] = [];
 
@@ -140,6 +141,26 @@ function clienteFalso(banco: Banco, opcoes: { falhar?: string[]; falharCarga?: b
     from: (nome: string) => tabela(nome),
     rpc: async (nome: string, args: Record<string, unknown>) => {
       rpcs.push({ nome, args });
+      if (opcoes.falharRpc && nome === "registrar_nota_whatsapp_conta") {
+        return { data: null, error: { message: "boom" } };
+      }
+      if (nome === "registrar_nota_whatsapp_conta") {
+        // Mesma semântica da função SQL: a família do id em TODOS os imóveis
+        // da conta; nunca remove; grava no imóvel operacional se não achou.
+        const nota = args.p_nota as Linha;
+        const mid = idExternoDaNotaWhatsapp({ id: String(nota.id) });
+        const daConta = banco.imoveis.filter((i) => i.user_id === args.p_user_id);
+        const comMensagem = daConta
+          .filter((i) => ((i.notas as Linha[] | null) || []).some((n) => idExternoDaNotaWhatsapp({ id: String(n.id) }) === mid))
+          .sort((a, b) => Number(b.id === args.p_imovel_id) - Number(a.id === args.p_imovel_id));
+        if (comMensagem.length) {
+          return { data: comMensagem[0].id === args.p_imovel_id ? "duplicada-mesmo-imovel" : "duplicada-outro-imovel", error: null };
+        }
+        const alvo = daConta.find((i) => i.id === args.p_imovel_id);
+        if (!alvo) return { data: "imovel-inexistente", error: null };
+        alvo.notas = [...((alvo.notas as Linha[] | null) || []), nota];
+        return { data: "gravada", error: null };
+      }
       if (nome === "registrar_nota_whatsapp" || nome === "registrar_nota_imovel") {
         const alvo = banco.imoveis.find((i) => i.id === args.p_imovel_id && i.user_id === args.p_user_id);
         if (!alvo) return { data: false, error: null };
@@ -192,7 +213,7 @@ function evento(texto: string, opcoes: { fromMe?: boolean; id?: string } = {}) {
   };
 }
 
-async function enviar(banco: Banco, corpo: unknown, opcoes: { falhar?: string[]; falharCarga?: boolean } = {}) {
+async function enviar(banco: Banco, corpo: unknown, opcoes: { falhar?: string[]; falharCarga?: boolean; falharRpc?: boolean } = {}) {
   const falso = clienteFalso(banco, opcoes);
   mocks.createClient.mockReturnValue(falso.cliente);
   const resposta = await POST(
@@ -389,7 +410,7 @@ describe("A-I. autoridade na rota", () => {
     expect(notaGravada(banco, "imovel-l", "wa-enviada:")).toBeUndefined();
     // Saída continua sem efeito de recebimento.
     expect(mocks.classificarResposta).not.toHaveBeenCalled();
-    expect(rpcs.map((r) => r.nome)).toEqual(["registrar_nota_imovel"]);
+    expect(rpcs.map((r) => r.nome)).toEqual(["registrar_nota_whatsapp_conta"]);
     expect(eventoAtribuicao().dados).toMatchObject({ direcao: "enviada", autoridade: "motor" });
   });
 
@@ -426,7 +447,7 @@ describe("reentrega", () => {
     expect(eventoAtribuicao().dados).toMatchObject({ autoridade: "motor", operacional_imovel_id: "imovel-x" });
     // A segunda entrega para na nota recusada: nada de IA nem de follow-up de novo.
     expect(mocks.classificarResposta).not.toHaveBeenCalled();
-    expect(rpcs.map((r) => r.nome)).toEqual(["registrar_nota_whatsapp"]);
+    expect(rpcs.map((r) => r.nome)).toEqual(["registrar_nota_whatsapp_conta"]);
   });
 
   it("fromMe reentregue com a mesma decisão também fica uma nota só", async () => {
@@ -523,7 +544,7 @@ describe("L-O. efeitos", () => {
       "../lib/servidor/historicoWhatsapp.ts",
     ].map((f) => readFileSync(new URL(f, import.meta.url), "utf8"));
     for (const fonte of fontes) {
-      expect(fonte).not.toMatch(/efeitosPendentes|reatribuir_mensagem|registrar_nota_whatsapp_conta|advisory/);
+      expect(fonte).not.toMatch(/efeitosPendentes|reatribuir_mensagem/);
     }
   });
 });
@@ -653,5 +674,94 @@ describe("27. a resolução roda uma vez e com número fixo de consultas", () =>
     const banco = cenarioDivergente();
     const { consultas } = await enviar(banco, evento("x", { fromMe: true, id: "OUT3" }));
     expect(consultas.filter((c) => c.tabela === "contatos_telefones")).toHaveLength(1);
+  });
+});
+
+/* ================================================================
+   C2.1b.1 — UMA MENSAGEM, UMA IDENTIDADE POR CONTA
+
+   O banco falso emula `registrar_nota_whatsapp_conta` com a MESMA família
+   de `idExternoDaNotaWhatsapp` (a paridade SQL × TS está em
+   `whatsapp-identidade-conta.test.ts`, e o SQL de verdade roda no Postgres
+   local em `integration/whatsapp-identidade-supabase-local.test.ts`).
+   ================================================================ */
+describe("C2.1b.1 — dedupe por conta na rota", () => {
+  function efeitosRodaram(rpcs: { nome: string }[], consultas: { tabela: string; op: string }[]) {
+    return (
+      mocks.classificarResposta.mock.calls.length > 0 ||
+      rpcs.some((r) => r.nome === "processar_evento_resposta_acompanhamento") ||
+      consultas.some((c) => (c.tabela === "imoveis" && c.op === "update") || (c.tabela === "agenda" && c.op !== "select"))
+    );
+  }
+
+  it("mensagem já gravada em OUTRO imóvel da conta: não grava de novo e não repete efeito nenhum", async () => {
+    // A primeira entrega foi para L (antes de o contexto mudar); agora o
+    // motor resolve X. O dedupe por linha deixaria passar.
+    const banco = cenarioDivergente({ tentativas: [tentativaPendente()] });
+    banco.imoveis[0].notas = [{ id: "wa:MSG1", texto: "Resposta pelo WhatsApp: oi", data: "2026-09-29T10:00:00" }];
+    const { resposta, rpcs, consultas } = await enviar(banco, evento("pode ser"));
+    expect(resposta.status).toBe(200);
+    expect(notaGravada(banco, "imovel-x", "wa:")).toBeUndefined();
+    expect(efeitosRodaram(rpcs, consultas)).toBe(false);
+    expect(rpcs.map((r) => r.nome)).toEqual(["registrar_nota_whatsapp_conta"]);
+    expect(eventoAtribuicao().dados).toMatchObject({ persistencia: "duplicada-outro-imovel", autoridade: "motor" });
+  });
+
+  it("mensagem importada (wa-contexto) em outro imóvel conta como a mesma mensagem", async () => {
+    const banco = cenarioDivergente();
+    banco.imoveis[0].notas = [{ id: "wa-contexto-recebida:MSG1", texto: "Resposta pelo WhatsApp: oi", data: "2026-09-29T09:00:00" }];
+    const { rpcs, consultas } = await enviar(banco, evento("oi"));
+    expect(notaGravada(banco, "imovel-x", "wa:")).toBeUndefined();
+    expect(efeitosRodaram(rpcs, consultas)).toBe(false);
+    expect(eventoAtribuicao().dados).toMatchObject({ persistencia: "duplicada-outro-imovel" });
+  });
+
+  it("wa:<id>:encerrado não é a mensagem: não impede gravar a wa:<id>", async () => {
+    const banco = cenarioDivergente();
+    banco.imoveis[1].notas = [{ id: "wa:MSG1:encerrado", texto: "Encerrado", data: "2026-09-29T09:00:00" }];
+    await enviar(banco, evento("oi"));
+    expect(notaGravada(banco, "imovel-x", "wa:MSG1")?.id).toBe("wa:MSG1:encerrado");
+    expect(((banco.imoveis[1].notas as Linha[]) || []).map((n) => n.id)).toEqual(["wa:MSG1:encerrado", "wa:MSG1"]);
+    expect(eventoAtribuicao().dados).toMatchObject({ persistencia: "gravada" });
+  });
+
+  it("gravação normal: evento único com persistencia gravada", async () => {
+    const banco = cenarioDivergente();
+    await enviar(banco, evento("oi"));
+    const e = eventoAtribuicao();
+    expect(e.nivel).toBe("info");
+    expect(e.dados).toMatchObject({ persistencia: "gravada", autoridade: "motor" });
+  });
+
+  it("falha da RPC: 200, nada gravado, nenhum efeito, sem fallback por linha, evento de erro", async () => {
+    const banco = cenarioDivergente();
+    const { resposta, rpcs, consultas } = await enviar(banco, evento("oi"), { falharRpc: true });
+    expect(resposta.status).toBe(200);
+    expect(notaGravada(banco, "imovel-x", "wa:")).toBeUndefined();
+    expect(notaGravada(banco, "imovel-l", "wa:")).toBeUndefined();
+    expect(efeitosRodaram(rpcs, consultas)).toBe(false);
+    expect(rpcs.map((r) => r.nome)).toEqual(["registrar_nota_whatsapp_conta"]);
+    const e = eventoAtribuicao();
+    expect(e.nivel).toBe("erro");
+    expect(e.dados).toMatchObject({ persistencia: "falha" });
+  });
+
+  it("fromMe cujo envio a origem já gravou em outro imóvel: não duplica", async () => {
+    const banco = cenarioDivergente();
+    banco.imoveis[0].notas = [
+      { id: "wa-enviada:OUT7", texto: "Mensagem enviada pelo WhatsApp: x", data: "2026-09-29T10:00:00", origem: "api-evolution" },
+    ];
+    const { rpcs } = await enviar(banco, evento("x", { fromMe: true, id: "OUT7" }));
+    expect(notaGravada(banco, "imovel-x", "wa-enviada:")).toBeUndefined();
+    expect(rpcs.map((r) => r.nome)).toEqual(["registrar_nota_whatsapp_conta"]);
+    expect(eventoAtribuicao().dados).toMatchObject({ direcao: "enviada", persistencia: "duplicada-outro-imovel" });
+  });
+
+  it("fromMe com falha da RPC: registra falha, não grava por linha", async () => {
+    const banco = cenarioDivergente();
+    const { rpcs } = await enviar(banco, evento("x", { fromMe: true, id: "OUT8" }), { falharRpc: true });
+    expect(rpcs.map((r) => r.nome)).toEqual(["registrar_nota_whatsapp_conta"]);
+    expect(eventoAtribuicao().dados).toMatchObject({ persistencia: "falha" });
+    expect(mocks.registrarEvento).toHaveBeenCalledWith(expect.objectContaining({ evento: "historico-envio-falhou" }));
   });
 });

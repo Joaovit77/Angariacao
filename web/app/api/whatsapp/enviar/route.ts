@@ -30,7 +30,12 @@ import { createClient } from "@supabase/supabase-js";
 import { mensagemFalhaEnvio, numeroEvolution, type FalhaEnvio } from "@/lib/calculo/whatsapp";
 import { confirmacaoVisitaValida } from "@/lib/calculo/confirmacaoVisita";
 import { agoraISOComSegundos, todayISO } from "@/lib/datas";
-import { idMensagemEvolution, registrarMensagemEnviada } from "@/lib/servidor/historicoWhatsapp";
+import {
+  detalheDaAtribuicaoDoEnvio,
+  envioPrecisaDeEvento,
+  idMensagemEvolution,
+  registrarMensagemEnviadaDeOrigem,
+} from "@/lib/servidor/historicoWhatsapp";
 import { registrarEvento } from "@/lib/servidor/registro";
 import { instanciaWhatsappDoUsuario } from "@/lib/servidor/instanciaWhatsapp";
 import { destinoAncoradoDaConversa } from "@/lib/servidor/identidadeWhatsapp";
@@ -119,15 +124,23 @@ async function instanciaDoUsuario(
   supabaseUrl: string,
   userId: string,
 ): Promise<Awaited<ReturnType<typeof instanciaWhatsappDoUsuario>>> {
+  const admin = clienteServico(supabaseUrl);
+  if (!admin) return { ok: false, falha: "persistencia" };
+  return instanciaWhatsappDoUsuario(admin, userId);
+}
+
+/** Cliente com a service role, só para o que a sessão do corretor não
+    alcança (a instância dele e a identidade da mensagem na conta). `null`
+    quando a chave não está configurada. */
+function clienteServico(supabaseUrl: string) {
   const servico = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!servico) {
     console.error("Envio de WhatsApp: SUPABASE_SERVICE_ROLE_KEY ausente (ver web/.env.example).");
-    return { ok: false, falha: "persistencia" };
+    return null;
   }
-  const admin = createClient(supabaseUrl, servico, {
+  return createClient(supabaseUrl, servico, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  return instanciaWhatsappDoUsuario(admin, userId);
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -281,21 +294,54 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const respostaEvolution = await resposta.json().catch(() => null);
-  const mensagemId = idMensagemEvolution(respostaEvolution) || `api:${crypto.randomUUID()}`;
-  const historico = await registrarMensagemEnviada(supabase, {
-    imovelId,
-    userId: sessao.user.id,
-    mensagemId,
-    texto: mensagem,
-    data: agoraISOComSegundos(),
-    origem: "api-evolution",
-    confirmacaoVisita,
-  });
-  if (historico.erro) {
+  const idExterno = idMensagemEvolution(respostaEvolution);
+  // Sem `key.id` na resposta, o id é inventado aqui e NÃO se correlaciona
+  // com um eventual eco `fromMe`, que viria com o id real: a garantia de
+  // eco do C2.1b vale só para o id externo, e o evento diz qual foi o caso.
+  const identidade = idExterno ? "externa" as const : "fallback-interno" as const;
+  const mensagemId = idExterno || `api:${crypto.randomUUID()}`;
+  /* O ENVIO É A ORIGEM (Fase 1a-C2.1b.1). O imóvel veio do corretor, e isso
+     vence a atribuição heurística do eco `fromMe`: se o eco chegou antes e
+     caiu em outro imóvel, a RPC o remove de lá e grava esta nota aqui, sob o
+     mesmo lock da mensagem. Ela roda com a service role porque procura a
+     mensagem em TODOS os imóveis da conta — o `userId` é o da sessão
+     validada acima, e o imóvel já passou pela leitura com RLS. */
+  const servicoEnvio = clienteServico(supabaseUrl);
+  const historico = servicoEnvio
+    ? await registrarMensagemEnviadaDeOrigem(servicoEnvio, {
+      imovelIds: [imovelId],
+      userId: sessao.user.id,
+      mensagemId,
+      texto: mensagem,
+      data: agoraISOComSegundos(),
+      origem: "api-evolution",
+      confirmacaoVisita,
+    })
+    : { persistencia: null, imoveisEco: [], erro: "service-role-ausente" };
+  const persistencia = historico.persistencia ?? "falha";
+  const historicoGravado =
+    persistencia === "gravada" || persistencia === "duplicada" || persistencia === "origem-reconciliou-eco";
+  if (envioPrecisaDeEvento(persistencia, identidade)) {
+    registrarEvento({
+      userId: sessao.user.id,
+      categoria: "whatsapp",
+      nivel: persistencia === "conflito" ? "erro" : identidade === "fallback-interno" ? "aviso" : "info",
+      evento: "historico-envio-atribuicao",
+      detalhe: detalheDaAtribuicaoDoEnvio({
+        persistencia,
+        identidade,
+        origem: "painel",
+        imoveisDeclarados: [imovelId],
+        imoveisEco: historico.imoveisEco,
+      }),
+    });
+  }
+  // `conflito` já foi registrado acima, com o motivo; aqui só falha técnica.
+  if (persistencia === "falha" || persistencia === "imovel-inexistente") {
     // A Evolution já aceitou a mensagem: responder falha faria a interface
     // sugerir reenvio e poderia duplicá-la. O webhook `fromMe` ainda pode
     // recuperar o histórico; registramos apenas metadados, nunca o texto.
-    console.error("Envio de WhatsApp: mensagem enviada, mas histórico não foi persistido:", historico.erro);
+    console.error("Envio de WhatsApp: mensagem enviada, mas histórico não foi persistido:", historico.erro ?? persistencia);
     registrarEvento({
       userId: sessao.user.id,
       categoria: "whatsapp",
@@ -313,6 +359,6 @@ export async function POST(request: Request): Promise<Response> {
     detalhe: null,
   });
 
-  const okCorpo: Resposta = { ok: true, historicoPersistido: !historico.erro };
+  const okCorpo: Resposta = { ok: true, historicoPersistido: historicoGravado };
   return Response.json(okCorpo);
 }

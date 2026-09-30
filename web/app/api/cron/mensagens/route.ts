@@ -7,7 +7,11 @@ import {
   descreverFalhaSupabase,
   type FalhaSupabase,
 } from "@/lib/servidor/erroExterno";
-import { registrarMensagemEnviada } from "@/lib/servidor/historicoWhatsapp";
+import {
+  detalheDaAtribuicaoDoEnvio,
+  envioPrecisaDeEvento,
+  registrarMensagemEnviadaDeOrigem,
+} from "@/lib/servidor/historicoWhatsapp";
 import { registrarEvento } from "@/lib/servidor/registro";
 import { garantirRegistroInstanciaWhatsapp } from "@/lib/servidor/instanciaWhatsapp";
 import {
@@ -257,16 +261,38 @@ export async function GET(request: Request) {
         enviadas++;
         continue;
       }
-      for (const imovelId of imoveisDaMensagem) {
-        const historico = await registrarMensagemEnviada(admin, {
-          imovelId,
+      /* Caminho SEM consolidação: o cron é a ORIGEM e conhece o imóvel
+         (Fase 1a-C2.1b.1). A nota entra pela RPC de origem, que vence um
+         eventual eco `fromMe` atribuído a outro imóvel. A consolidação acima
+         não passa por aqui: ela grava o mesmo id em N imóveis de propósito,
+         pela própria RPC transacional. */
+      if (imoveisDaMensagem.length > 0) {
+        const identidade = envio.idExterno ? "externa" as const : "fallback-interno" as const;
+        const historico = await registrarMensagemEnviadaDeOrigem(admin, {
+          imovelIds: imoveisDaMensagem,
           userId: item.user_id,
           mensagemId: envio.mensagemId,
           texto,
           data: agoraISOComSegundos(),
           origem: "agendamento",
         });
-        if (historico.erro) {
+        const persistencia = historico.persistencia ?? "falha";
+        if (envioPrecisaDeEvento(persistencia, identidade)) {
+          registrarEvento({
+            userId: item.user_id,
+            categoria: "whatsapp",
+            nivel: persistencia === "conflito" ? "erro" : identidade === "fallback-interno" ? "aviso" : "info",
+            evento: "historico-envio-atribuicao",
+            detalhe: detalheDaAtribuicaoDoEnvio({
+              persistencia,
+              identidade,
+              origem: "cron",
+              imoveisDeclarados: imoveisDaMensagem,
+              imoveisEco: historico.imoveisEco,
+            }),
+          });
+        }
+        if (persistencia === "falha" || persistencia === "imovel-inexistente") {
           // O envio já aconteceu. Não devolver o item para a fila evita uma
           // segunda mensagem real; o webhook de saída ainda pode recuperar a nota.
           registrarEvento({

@@ -61,3 +61,153 @@ export async function registrarMensagemEnviada(
   });
   return { gravou: data === true, erro: error?.message || null };
 }
+
+/* ----------------------------------------------------------------
+   IDENTIDADE POR CONTA (Fase 1a-C2.1b.1)
+
+   As duas funções abaixo usam as RPCs que serializam pela mesma chave
+   (user_id + id externo da Evolution) e procuram a mensagem em TODOS os
+   imóveis da conta, não só no alvo. Quem grava por linha continua usando
+   `registrarMensagemEnviada` / `registrar_nota_imovel`: a consolidação
+   M3/M4 grava o mesmo id em N imóveis de propósito.
+   ---------------------------------------------------------------- */
+
+/** O que a RPC do webhook responde. Vocabulário fechado: a rota decide
+    efeito e observabilidade a partir dele. */
+export type PersistenciaConta =
+  | "gravada"
+  | "duplicada-mesmo-imovel"
+  | "duplicada-outro-imovel"
+  | "imovel-inexistente";
+
+const PERSISTENCIAS_CONTA: readonly string[] = [
+  "gravada",
+  "duplicada-mesmo-imovel",
+  "duplicada-outro-imovel",
+  "imovel-inexistente",
+];
+
+/** Qualquer resposta fora do vocabulário é tratada como falha: um retorno
+    desconhecido nunca vira "gravada" nem "duplicada" por omissão. */
+export function persistenciaContaValida(valor: unknown): PersistenciaConta | null {
+  return typeof valor === "string" && PERSISTENCIAS_CONTA.includes(valor)
+    ? (valor as PersistenciaConta)
+    : null;
+}
+
+/** A saída `fromMe` que o webhook recebeu: grava uma vez por conta, no
+    imóvel que a atribuição escolheu. Nunca remove nada; se a mensagem já
+    existe em algum imóvel da conta (inclusive gravada pela origem), não
+    grava de novo. */
+export async function registrarMensagemEnviadaDoWebhook(
+  supabase: SupabaseClient,
+  registro: RegistroMensagemEnviada,
+): Promise<{ persistencia: PersistenciaConta | null; erro: string | null }> {
+  const { data, error } = await supabase.rpc("registrar_nota_whatsapp_conta", {
+    p_user_id: registro.userId,
+    p_imovel_id: registro.imovelId,
+    p_nota: {
+      ...notaDaMensagemEnviada(
+        registro.mensagemId,
+        registro.texto,
+        registro.data,
+        registro.origem,
+        registro.tipo,
+        registro.confirmacaoVisita,
+      ),
+      ...(registro.atribuicao ? { atribuicao: registro.atribuicao } : {}),
+    },
+  });
+  if (error) return { persistencia: null, erro: error.message };
+  const persistencia = persistenciaContaValida(data);
+  return persistencia
+    ? { persistencia, erro: null }
+    : { persistencia: null, erro: "resposta-desconhecida" };
+}
+
+/** Resultado da RPC de origem. `origem-reconciliou-eco`: um eco `fromMe`
+    que tinha caído em outro imóvel (ou no próprio alvo) foi substituído
+    pela nota da origem. `conflito`: a mensagem já existe fora do conjunto
+    declarado de um jeito que não é eco; nada foi gravado nem removido. */
+export type PersistenciaOrigem =
+  | "gravada"
+  | "duplicada"
+  | "origem-reconciliou-eco"
+  | "conflito"
+  | "imovel-inexistente";
+
+const PERSISTENCIAS_ORIGEM: readonly string[] = [
+  "gravada",
+  "duplicada",
+  "origem-reconciliou-eco",
+  "conflito",
+  "imovel-inexistente",
+];
+
+export interface RegistroMensagemDeOrigem extends Omit<RegistroMensagemEnviada, "imovelId" | "atribuicao"> {
+  /** Os imóveis que o próprio Angario declarou como destino do envio. */
+  imovelIds: readonly string[];
+}
+
+/** O envio que o próprio Angario fez (painel, cron sem consolidação): a
+    ORIGEM VENCE O ECO. Ver `registrar_nota_whatsapp_origem`. */
+export async function registrarMensagemEnviadaDeOrigem(
+  supabase: SupabaseClient,
+  registro: RegistroMensagemDeOrigem,
+): Promise<{ persistencia: PersistenciaOrigem | null; imoveisEco: string[]; erro: string | null }> {
+  const { data, error } = await supabase.rpc("registrar_nota_whatsapp_origem", {
+    p_user_id: registro.userId,
+    p_imovel_ids: [...registro.imovelIds],
+    p_nota: notaDaMensagemEnviada(
+      registro.mensagemId,
+      registro.texto,
+      registro.data,
+      registro.origem,
+      registro.tipo,
+      registro.confirmacaoVisita,
+    ),
+  });
+  if (error) return { persistencia: null, imoveisEco: [], erro: error.message };
+  const corpo = objeto(data);
+  const resultado = corpo.resultado;
+  if (typeof resultado !== "string" || !PERSISTENCIAS_ORIGEM.includes(resultado)) {
+    return { persistencia: null, imoveisEco: [], erro: "resposta-desconhecida" };
+  }
+  const imoveisEco = Array.isArray(corpo.imoveis_eco)
+    ? corpo.imoveis_eco.filter((id): id is string => typeof id === "string")
+    : [];
+  return { persistencia: resultado as PersistenciaOrigem, imoveisEco, erro: null };
+}
+
+/** O detalhe do evento `historico-envio-atribuicao`, emitido só fora do
+    caso normal (reconciliação, conflito, id interno). Ids técnicos e
+    vocabulário fechado: nunca o id da mensagem, telefone ou texto. */
+export function detalheDaAtribuicaoDoEnvio(entrada: {
+  persistencia: PersistenciaOrigem | "falha";
+  identidade: "externa" | "fallback-interno";
+  origem: "painel" | "cron";
+  imoveisDeclarados: readonly string[];
+  imoveisEco: readonly string[];
+}): string {
+  return JSON.stringify({
+    persistencia: entrada.persistencia,
+    identidade: entrada.identidade,
+    origem: entrada.origem,
+    imoveis_declarados: [...entrada.imoveisDeclarados],
+    ...(entrada.imoveisEco.length ? { imovel_eco_id: entrada.imoveisEco.length === 1 ? entrada.imoveisEco[0] : [...entrada.imoveisEco] } : {}),
+  });
+}
+
+/** O envio do Angario precisa de evento próprio? Só fora do normal: eco
+    reconciliado, conflito, ou id interno (sem a garantia de eco). Falha de
+    gravação já tem o seu (`historico-envio-falhou`) e não repete aqui. */
+export function envioPrecisaDeEvento(
+  persistencia: PersistenciaOrigem | "falha",
+  identidade: "externa" | "fallback-interno",
+): boolean {
+  return (
+    identidade === "fallback-interno" ||
+    persistencia === "origem-reconciliou-eco" ||
+    persistencia === "conflito"
+  );
+}

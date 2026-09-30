@@ -385,7 +385,14 @@ export function resolucaoDaObservacao(observacao: ObservacaoShadow): ResolucaoRe
 /** O detalhe do evento: contagens, ids técnicos e vocabulário fechado.
     NUNCA telefone, nome, texto, endereço ou conteúdo de nota. As listas de
     ids ficam na nota; aqui vão só as contagens. */
-export function detalheDoEvento(observacao: ObservacaoShadow, decisao: DecisaoAutoridade): string {
+export function detalheDoEvento(
+  observacao: ObservacaoShadow,
+  decisao: DecisaoAutoridade,
+  /** O que aconteceu com a nota desta entrega (Fase 1a-C2.1b.1):
+      `gravada`, `duplicada-mesmo-imovel`, `duplicada-outro-imovel`,
+      `imovel-inexistente` ou `falha`. */
+  persistencia?: string,
+): string {
   return JSON.stringify({
     categoria: observacao.categoria,
     estado: observacao.estado,
@@ -401,6 +408,7 @@ export function detalheDoEvento(observacao: ObservacaoShadow, decisao: DecisaoAu
     operacional_imovel_id: decisao.imovelId,
     concordante: decisao.concordante,
     fallback_motivo: decisao.fallbackMotivo,
+    ...(persistencia ? { persistencia } : {}),
     ...(observacao.falha ? { falha: observacao.falha } : {}),
     ...(observacao.saltos ? { saltos: observacao.saltos } : {}),
   });
