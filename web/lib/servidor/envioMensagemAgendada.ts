@@ -7,7 +7,7 @@ export async function enviarMensagemAgendada(
   telefone: string,
   mensagem: string,
   config: ConfigEnvioAgendado,
-): Promise<{ mensagemId: string }> {
+): Promise<{ mensagemId: string; idExterno: boolean }> {
   const numero = numeroEvolution(telefone);
   if (!numero) throw new Error("numero-invalido");
   const resposta = await fetch(
@@ -17,5 +17,8 @@ export async function enviarMensagemAgendada(
   );
   if (!resposta.ok) throw new Error(`evolution-http-${resposta.status}`);
   const corpo = await resposta.json().catch(() => null);
-  return { mensagemId: idMensagemEvolution(corpo) || `agendamento:${crypto.randomUUID()}` };
+  const idExterno = idMensagemEvolution(corpo);
+  // `idExterno: false` = id inventado aqui, sem correlação com um eventual
+  // eco `fromMe` (que viria com o id real da Evolution).
+  return { mensagemId: idExterno || `agendamento:${crypto.randomUUID()}`, idExterno: !!idExterno };
 }

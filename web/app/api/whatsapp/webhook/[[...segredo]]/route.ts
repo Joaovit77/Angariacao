@@ -108,7 +108,11 @@ import {
   rebaixarParaLegado,
   type AtribuicaoNota,
 } from "@/lib/calculo/autoridadeAtribuicao";
-import { registrarMensagemEnviada } from "@/lib/servidor/historicoWhatsapp";
+import {
+  registrarMensagemEnviadaDoWebhook,
+  persistenciaContaValida,
+  type PersistenciaConta,
+} from "@/lib/servidor/historicoWhatsapp";
 import { agoraISOComHora, agoraISOComSegundos, todayISO } from "@/lib/datas";
 import type { NotaImovel, StatusHistoryEntry, Tentativa } from "@/lib/tipos";
 
@@ -324,7 +328,10 @@ async function carregarImovelOperacional(
  *   resolução relacional (canal → contato → vínculos → motor da 1a-B)
  *   → decisão de autoridade (função pura)
  *   → carga do imóvel do motor, quando ele vence e não é o do legado
- *   → um evento de observabilidade
+ *
+ * O evento de observabilidade NÃO sai daqui: a rota o registra depois de
+ * gravar, com o resultado da persistência (`registrarObservacao`), para
+ * continuar sendo um evento por entrega (Fase 1a-C2.1b.1).
  *
  * O motor só vence quando resolveu um imóvel não terminal. Pendente, sem
  * candidato, terminal, sem contato relacional, falha e estado desconhecido
@@ -337,7 +344,11 @@ async function atribuirImovelOperacional(
   userId: string,
   casamentoLegado: readonly ImovelOperacional[],
   entrada: { telefone: string; texto: string; recebidaEm: string; direcao: "recebida" | "enviada" },
-): Promise<{ imovel: ImovelOperacional; atribuicao: AtribuicaoNota }> {
+): Promise<{
+  imovel: ImovelOperacional;
+  atribuicao: AtribuicaoNota;
+  registrarObservacao: (persistencia: PersistenciaWebhook) => void;
+}> {
   const legado = casamentoLegado[0];
   let observacao: ObservacaoShadow;
   try {
@@ -363,18 +374,33 @@ async function atribuirImovelOperacional(
   }
 
   const { evento, nivel } = eventoDaObservacao(observacao);
-  registrarEvento({
-    userId,
-    categoria: "webhook",
-    // Motor que venceu e não pôde ser carregado é aviso: o legado seguiu,
-    // mas a resolução apontou um imóvel que a rota não conseguiu ler.
-    nivel: decisao.fallbackMotivo === "carregamento-imovel" ? "aviso" : nivel,
-    evento,
-    detalhe: detalheDoEvento(observacao, decisao),
-  });
+  const decisaoFinal = decisao;
+  let registrado = false;
+  const registrarObservacao = (persistencia: PersistenciaWebhook) => {
+    if (registrado) return; // um evento por entrega, mesmo se chamado duas vezes
+    registrado = true;
+    registrarEvento({
+      userId,
+      categoria: "webhook",
+      // Falha ao gravar é erro (a mensagem não entrou); imóvel sumido é
+      // aviso. Fora isso vale a leitura da C2.1a: motor que venceu e não
+      // pôde ser carregado é aviso, o resto é o nível da observação.
+      nivel:
+        persistencia === "falha"
+          ? "erro"
+          : persistencia === "imovel-inexistente" || decisaoFinal.fallbackMotivo === "carregamento-imovel"
+            ? "aviso"
+            : nivel,
+      evento,
+      detalhe: detalheDoEvento(observacao, decisaoFinal, persistencia),
+    });
+  };
 
-  return { imovel, atribuicao: metadadoDaAtribuicao(decisao, resolucao, legado.id) };
+  return { imovel, atribuicao: metadadoDaAtribuicao(decisao, resolucao, legado.id), registrarObservacao };
 }
+
+/** O que aconteceu com a nota desta entrega, para o evento da atribuição. */
+type PersistenciaWebhook = PersistenciaConta | "falha";
 
 /** Teste de vida, para quem administra a Evolution conferir a URL antes de
     apontar o webhook — sem isso a primeira validação vira adivinhação. */
@@ -501,14 +527,17 @@ export async function POST(
   // A mesma política de autoridade vale aqui: a saída fica no imóvel que
   // a atribuição escolheu, com o mesmo metadado de uma recebida.
   if (mensagem.direcao === "enviada") {
-    const { imovel, atribuicao } = await atribuirImovelOperacional(supabase, userId, casamentoLegado, {
-      telefone: mensagem.telefone,
-      texto: mensagem.texto,
-      recebidaEm,
-      direcao: "enviada",
-    });
+    const { imovel, atribuicao, registrarObservacao } = await atribuirImovelOperacional(
+      supabase,
+      userId,
+      casamentoLegado,
+      { telefone: mensagem.telefone, texto: mensagem.texto, recebidaEm, direcao: "enviada" },
+    );
     const rotulo = imovel.codigo || imovel.id;
-    const historico = await registrarMensagemEnviada(supabase, {
+    // Grava uma vez por CONTA (Fase 1a-C2.1b.1): se a origem (painel/cron)
+    // ou uma entrega anterior já gravou esta mensagem em qualquer imóvel,
+    // não grava de novo. Quem desfaz um eco mal atribuído é só a origem.
+    const historico = await registrarMensagemEnviadaDoWebhook(supabase, {
       imovelId: imovel.id,
       userId,
       mensagemId: mensagem.mensagemId,
@@ -518,6 +547,7 @@ export async function POST(
       tipo: mensagem.tipo,
       atribuicao,
     });
+    registrarObservacao(historico.persistencia ?? "falha");
     if (historico.erro) {
       console.error("Webhook do WhatsApp: falha ao gravar mensagem enviada:", historico.erro);
       registrarEvento({
@@ -527,8 +557,8 @@ export async function POST(
         evento: "historico-envio-falhou",
         detalhe: "webhook-evolution",
       });
-    } else if (!historico.gravou) {
-      console.log(`Webhook do WhatsApp: saída já registrada — imóvel ${rotulo}, ignorada.`);
+    } else if (historico.persistencia !== "gravada") {
+      console.log(`Webhook do WhatsApp: saída já registrada (${historico.persistencia}) — imóvel ${rotulo}, ignorada.`);
     }
     return Response.json({ ok: true });
   }
@@ -583,33 +613,41 @@ export async function POST(
   //      propósito: a referência explícita (N1) lê o texto, e o texto de um
   //      áudio só existe a partir daqui. Daqui para baixo `imovel` é o
   //      operacional: nota, tentativa, encerramento e agenda vão para ele.
-  const { imovel, atribuicao } = await atribuirImovelOperacional(supabase, userId, casamentoLegado, {
-    telefone: mensagem.telefone,
-    texto: mensagem.texto,
-    recebidaEm,
-    direcao: "recebida",
-  });
+  const { imovel, atribuicao, registrarObservacao } = await atribuirImovelOperacional(
+    supabase,
+    userId,
+    casamentoLegado,
+    { telefone: mensagem.telefone, texto: mensagem.texto, recebidaEm, direcao: "recebida" },
+  );
   const rotulo = imovel.codigo || imovel.id;
   const ambiguo =
     atribuicao.autoridade === "legado" && casamentoLegado.length > 1
       ? " (o proprietário tem mais de um imóvel; usando o mais recente)"
       : "";
 
-  // 4. Grava a nota. A função do banco faz a verificação de duplicata e a
-  //    escrita numa instrução só — ver registrar_nota_whatsapp no schema.
-  //    `false` = reentrega do mesmo evento: paramos aqui, senão fecharíamos
-  //    a tentativa de novo a cada retentativa da Evolution.
-  const { data: gravou, error: erroNota } = await supabase.rpc("registrar_nota_whatsapp", {
-    p_imovel_id: imovel.id,
+  // 4. Grava a nota — uma vez por CONTA (Fase 1a-C2.1b.1). A função do
+  //    banco pega o lock da mensagem, procura o id em todos os imóveis da
+  //    conta e só então grava no imóvel operacional. Qualquer coisa que não
+  //    seja `gravada` para aqui: é reentrega (no mesmo imóvel ou num imóvel
+  //    que a atribuição de uma entrega anterior escolheu), e os efeitos
+  //    abaixo já rodaram na primeira. Falha NÃO cai para a gravação por
+  //    linha: isso reabriria a duplicação que esta função fecha.
+  const { data: persistenciaBruta, error: erroNota } = await supabase.rpc("registrar_nota_whatsapp_conta", {
     p_user_id: userId,
+    p_imovel_id: imovel.id,
     p_nota: { ...notaDaResposta(mensagem, agoraISOComSegundos()), atribuicao },
   });
-  if (erroNota) {
-    console.error("Webhook do WhatsApp: falha ao gravar a nota:", erroNota.message);
+  const persistencia = erroNota ? null : persistenciaContaValida(persistenciaBruta);
+  registrarObservacao(persistencia ?? "falha");
+  if (!persistencia) {
+    console.error(
+      "Webhook do WhatsApp: falha ao gravar a nota:",
+      erroNota?.message ?? "resposta desconhecida da gravação",
+    );
     return Response.json({ ok: true });
   }
-  if (gravou !== true) {
-    console.log(`Webhook do WhatsApp: reentrega do mesmo evento — imóvel ${rotulo}, ignorado.`);
+  if (persistencia !== "gravada") {
+    console.log(`Webhook do WhatsApp: mensagem já registrada (${persistencia}) — imóvel ${rotulo}, ignorada.`);
     return Response.json({ ok: true });
   }
 

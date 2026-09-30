@@ -5,7 +5,8 @@ const mocks = vi.hoisted(() => ({
   registrarEvento: vi.fn(),
   instanciaWhatsappDoUsuario: vi.fn(),
   destinoAncoradoDaConversa: vi.fn(),
-  registrarMensagemEnviada: vi.fn(),
+  registrarMensagemEnviadaDeOrigem: vi.fn(),
+  idMensagemEvolution: vi.fn(),
 }));
 
 vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.createClient }));
@@ -16,9 +17,10 @@ vi.mock("@/lib/servidor/instanciaWhatsapp", () => ({
 vi.mock("@/lib/servidor/identidadeWhatsapp", () => ({
   destinoAncoradoDaConversa: mocks.destinoAncoradoDaConversa,
 }));
-vi.mock("@/lib/servidor/historicoWhatsapp", () => ({
-  idMensagemEvolution: () => "mensagem-saida-1",
-  registrarMensagemEnviada: mocks.registrarMensagemEnviada,
+vi.mock("@/lib/servidor/historicoWhatsapp", async (original) => ({
+  ...(await original<typeof import("@/lib/servidor/historicoWhatsapp")>()),
+  idMensagemEvolution: mocks.idMensagemEvolution,
+  registrarMensagemEnviadaDeOrigem: mocks.registrarMensagemEnviadaDeOrigem,
 }));
 
 import { POST } from "@/app/api/whatsapp/enviar/route";
@@ -44,7 +46,8 @@ describe("POST /api/whatsapp/enviar — validação do contrato", () => {
       qr: null,
     });
     mocks.destinoAncoradoDaConversa.mockResolvedValue(null);
-    mocks.registrarMensagemEnviada.mockResolvedValue({ gravou: true, erro: null });
+    mocks.registrarMensagemEnviadaDeOrigem.mockResolvedValue({ persistencia: "gravada", imoveisEco: [], erro: null });
+    mocks.idMensagemEvolution.mockReturnValue("mensagem-saida-1");
   });
 
   function clienteComImovel() {
@@ -143,7 +146,19 @@ describe("POST /api/whatsapp/enviar — validação do contrato", () => {
       number: "554398024316",
       text: "Obrigado pelo retorno.",
     });
-    expect(mocks.registrarMensagemEnviada).toHaveBeenCalledTimes(1);
+    // A nota entra pela RPC de ORIGEM, com o imóvel que o corretor escolheu
+    // e o usuário da sessão validada (Fase 1a-C2.1b.1).
+    expect(mocks.registrarMensagemEnviadaDeOrigem).toHaveBeenCalledTimes(1);
+    expect(mocks.registrarMensagemEnviadaDeOrigem.mock.calls[0][1]).toMatchObject({
+      imovelIds: ["imovel-1"],
+      userId: "usuario-1",
+      mensagemId: "mensagem-saida-1",
+      origem: "api-evolution",
+    });
+    // Envio normal com id externo: nenhum evento de atribuição extra.
+    expect(mocks.registrarEvento).not.toHaveBeenCalledWith(
+      expect.objectContaining({ evento: "historico-envio-atribuicao" }),
+    );
     expect(mocks.registrarEvento).toHaveBeenCalledWith(
       expect.objectContaining({ evento: "envio-ok", userId: "usuario-1" }),
     );
@@ -204,6 +219,80 @@ describe("POST /api/whatsapp/enviar — validação do contrato", () => {
       mensagem: expect.stringContaining("WhatsApp está desconectado"),
     });
     expect(fetcher).toHaveBeenCalledTimes(2);
-    expect(mocks.registrarMensagemEnviada).not.toHaveBeenCalled();
+    expect(mocks.registrarMensagemEnviadaDeOrigem).not.toHaveBeenCalled();
+  });
+
+  async function enviarComSucesso() {
+    mocks.createClient
+      .mockReturnValueOnce(clienteComImovel())
+      .mockReturnValueOnce({});
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json([{ exists: true, jid: "554398024316@s.whatsapp.net" }]))
+      .mockResolvedValueOnce(Response.json({ key: { id: "mensagem-saida-1" } }));
+    vi.stubGlobal("fetch", fetcher);
+    return POST(
+      new Request("http://localhost/api/whatsapp/enviar", {
+        method: "POST",
+        headers: { Authorization: "Bearer token", "Content-Type": "application/json" },
+        body: JSON.stringify({ imovelId: "imovel-1", mensagem: "Olá." }),
+      }),
+    );
+  }
+
+  function eventoAtribuicao() {
+    return mocks.registrarEvento.mock.calls
+      .map((c) => c[0] as { evento: string; nivel: string; detalhe: string })
+      .filter((e) => e.evento === "historico-envio-atribuicao");
+  }
+
+  it("origem reconciliou um eco: evento sanitizado, histórico persistido", async () => {
+    mocks.registrarMensagemEnviadaDeOrigem.mockResolvedValue({
+      persistencia: "origem-reconciliou-eco", imoveisEco: ["imovel-b"], erro: null,
+    });
+    const resposta = await enviarComSucesso();
+    expect(await resposta.json()).toEqual({ ok: true, historicoPersistido: true });
+    const eventos = eventoAtribuicao();
+    expect(eventos).toHaveLength(1);
+    expect(JSON.parse(eventos[0].detalhe)).toEqual({
+      persistencia: "origem-reconciliou-eco",
+      identidade: "externa",
+      origem: "painel",
+      imoveis_declarados: ["imovel-1"],
+      imovel_eco_id: "imovel-b",
+    });
+    expect(eventos[0].detalhe).not.toContain("mensagem-saida-1");
+  });
+
+  it("conflito: não persiste, evento de erro próprio, sem historico-envio-falhou repetido", async () => {
+    mocks.registrarMensagemEnviadaDeOrigem.mockResolvedValue({ persistencia: "conflito", imoveisEco: [], erro: null });
+    const resposta = await enviarComSucesso();
+    expect(await resposta.json()).toEqual({ ok: true, historicoPersistido: false });
+    expect(eventoAtribuicao()).toEqual([expect.objectContaining({ nivel: "erro" })]);
+    expect(mocks.registrarEvento).not.toHaveBeenCalledWith(
+      expect.objectContaining({ evento: "historico-envio-falhou" }),
+    );
+  });
+
+  it("sem key.id: id interno, marcado fallback-interno, sem alegar correlação", async () => {
+    mocks.idMensagemEvolution.mockReturnValue(null);
+    const resposta = await enviarComSucesso();
+    expect(await resposta.json()).toEqual({ ok: true, historicoPersistido: true });
+    const registro = mocks.registrarMensagemEnviadaDeOrigem.mock.calls[0][1] as { mensagemId: string };
+    expect(registro.mensagemId).toMatch(/^api:[0-9a-f-]{36}$/);
+    const eventos = eventoAtribuicao();
+    expect(eventos).toHaveLength(1);
+    expect(eventos[0].nivel).toBe("aviso");
+    expect(JSON.parse(eventos[0].detalhe)).toMatchObject({ identidade: "fallback-interno", persistencia: "gravada" });
+  });
+
+  it("falha da RPC de origem: histórico não persistido, historico-envio-falhou, sem fallback por linha", async () => {
+    mocks.registrarMensagemEnviadaDeOrigem.mockResolvedValue({ persistencia: null, imoveisEco: [], erro: "boom" });
+    const resposta = await enviarComSucesso();
+    expect(await resposta.json()).toEqual({ ok: true, historicoPersistido: false });
+    expect(mocks.registrarEvento).toHaveBeenCalledWith(
+      expect.objectContaining({ evento: "historico-envio-falhou", nivel: "erro" }),
+    );
+    expect(eventoAtribuicao()).toHaveLength(0);
   });
 });

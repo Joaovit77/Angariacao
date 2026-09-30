@@ -411,6 +411,33 @@ dropar: a fila de revisões (ambiguidades do backfill e o antigo/novo das ediç�
 atual continua na coluna), `metadados` (reconstruíveis das linhas) e qualquer histórico de
 canais/vínculos criado por SQL; `log_eventos` (`contatos-backfill`) permanece.
 
+#### Identidade da mensagem do WhatsApp por conta — Fase 1a-C2.1b.1
+
+A migration `supabase/migrations/20260929210000_registrar_nota_whatsapp_conta.sql` é aditiva: três
+funções (`whatsapp_mensagem_externa_id`, `registrar_nota_whatsapp_conta`,
+`registrar_nota_whatsapp_origem`), `security invoker`, `search_path` vazio, execute só para
+`service_role`. Sem tabela, índice, backfill ou mudança de RLS; `registrar_nota_imovel` e
+`registrar_nota_whatsapp` continuam existindo e em uso (consolidação, importação, encerramento).
+
+Ordem obrigatória: **migration antes do código.** O webhook, o envio pelo painel e o cron passam a
+chamar as RPCs novas; sem elas, a gravação da mensagem falha e, por desenho, **não** cai para a
+gravação por linha (a mensagem não é gravada). Sequência: (1) aplicar a migration em Production;
+(2) conferir em `pg_proc` as três funções com `prosecdef = false`, `proconfig =
+{search_path=""}` e ACL só `postgres`/`service_role`; (3) publicar o código; (4) validar em
+Preview; (5) Production. Rollback: voltar o código ao deploy anterior (que usa as RPCs antigas);
+as funções novas ficam sem caller e **não** são dropadas no rollback imediato.
+
+Validação local antes de Production: `supabase start` numa pasta de scratch, aplicar o baseline
+(`supabase-schema.sql` de `6015984` e as migrations de `20260921120000` em diante), aplicar a
+migration nova duas vezes (idempotente) e rodar
+`node node_modules/vitest/vitest.mjs run --config vitest.whatsapp-identidade-supabase-local.config.ts`
+em `web/` com `LOCAL_SUPABASE_URL`, `LOCAL_SUPABASE_ANON_KEY`, `LOCAL_SUPABASE_SERVICE_ROLE_KEY` e
+`LOCAL_SUPABASE_DB_CONTAINER` (o container do banco local, usado pela barreira de concorrência:
+uma sessão `psql` via `docker exec` segura as linhas e o teste só dispara a chamada seguinte
+depois de ver a anterior esperando lock em `pg_stat_activity`). Os testes de `*-supabase-local`
+que chamam `npx --no-install supabase` precisam do CLI no `node_modules`
+(`npm install --no-save supabase`).
+
 #### M6 — Aguardando smoke manual
 
 O smoke real do M3/M4/M5 ainda não foi executado. Ele roda **em Production, depois de M5
