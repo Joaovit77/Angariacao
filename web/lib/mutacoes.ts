@@ -32,6 +32,7 @@ import {
 import { deveTerVerificacaoAberta } from "./calculo/followup";
 import { dataAngariadoEfetiva, historicoComStatus } from "./calculo/motor";
 import { eventosNaoLidos, notaDaMensagemEnviada } from "./calculo/notas";
+import { podeRetirarDaCarteira } from "./calculo/retiradaCarteira";
 import { useCelebracao } from "./celebracao";
 import { MAX_PROTOCOLO_CHARS } from "./calculo/ia";
 import { ehTipoProtocolo } from "./protocolos";
@@ -85,6 +86,61 @@ export function aplicarMudancaDeStatus(
     todayISO(),
     userId ? { userId, source: "usuario" } : {},
   );
+}
+
+interface PlanoVerificacao {
+  nova: AgendaItem | null;
+  aCancelar: AgendaItem[];
+}
+
+/**
+ * A regra do cliente para o lembrete de "verificar disponibilidade" de UM
+ * imóvel, sobre o estado ATUAL dele: fora do alvo ou retirado, os abertos são
+ * cancelados; no alvo e sem nenhum aberto, nasce um. Mora fora do
+ * `salvarImovel` para a reativação (`definirRetiradoDaCarteira`) reconciliar
+ * pela mesma régua, sem uma segunda cópia dela.
+ */
+function planoVerificacaoDisponibilidade(imovel: Imovel, agenda: AgendaItem[]): PlanoVerificacao {
+  const abertas = agenda.filter(
+    (a) => a.imovelId === imovel.id && a.isVerificacaoDisponibilidade && !a.done,
+  );
+  if (imovel.retirado === true || !deveTerVerificacaoAberta(imovel.status)) {
+    return { nova: null, aCancelar: abertas };
+  }
+  if (abertas.length > 0) return { nova: null, aCancelar: [] };
+  const dataBase = dataAngariadoEfetiva(imovel) || todayISO();
+  return {
+    nova: {
+      id: uid(),
+      title: `Verificar disponibilidade — ${imovel.codigo || imovel.endereco}`,
+      type: "Follow-up",
+      date: addDaysISO(dataBase, VERIFICACAO_DISPONIBILIDADE_DIAS) as string,
+      imovelId: imovel.id,
+      notes: "Lembrete automático: imóvel angariado sem locação após 60 dias. Confirme com o proprietário se ainda está disponível.",
+      done: false,
+      isVerificacaoDisponibilidade: true,
+    },
+    aCancelar: [],
+  };
+}
+
+/** Grava o plano e devolve a agenda local que corresponde ao que o banco aceitou. */
+async function aplicarPlanoVerificacao(
+  supabase: ReturnType<typeof getSupabase>,
+  plano: PlanoVerificacao,
+  agenda: AgendaItem[],
+  userId: string,
+): Promise<AgendaItem[]> {
+  let novaAgenda = agenda;
+  if (plano.nova && (await inserirCompromisso(supabase, plano.nova, userId))) {
+    novaAgenda = [...novaAgenda, plano.nova];
+  }
+  if (plano.aCancelar.length > 0) {
+    const ids = plano.aCancelar.map((a) => a.id);
+    const { error } = await supabase.from("agenda").delete().in("id", ids);
+    if (!error) novaAgenda = novaAgenda.filter((a) => !ids.includes(a.id));
+  }
+  return novaAgenda;
 }
 
 interface ResultadoSalvarImovel {
@@ -147,6 +203,12 @@ export async function salvarImovel(
        apagaria o texto no mesmo minuto em que ele foi capturado, e com ele os
        m², o andar e a mobília que o gerador de anúncio usa. */
     if (data.textoAnuncio === undefined) data.textoAnuncio = existing.textoAnuncio;
+
+    /* E para a marca de retirado. `toDbImovel` grava `!!i.retirado`, então
+       quem monta o Imovel sem conhecer o campo devolveria à carteira ativa,
+       em silêncio, um imóvel que saiu dela. Quem muda a marca de propósito
+       usa `definirRetiradoDaCarteira`. */
+    if (data.retirado === undefined) data.retirado = existing.retirado;
   }
 
   // Se foi definida uma data de retomada e a pessoa pediu lembrete,
@@ -181,26 +243,12 @@ export async function salvarImovel(
   // `foiAngariado()`, que lê o histórico e nunca deixa de ser verdade — a
   // combinação que deixou o LD-123 cobrando disponibilidade depois de ter sido
   // dado como perdido, e que podia agendar lembrete NOVO ao encerrar um imóvel.
-  let novaVerificacao: AgendaItem | null = null;
-  let verificacoesACancelar: AgendaItem[] = [];
-  const verificacoesAbertas = agenda.filter(
-    (a) => a.imovelId === data.id && a.isVerificacaoDisponibilidade && !a.done,
-  );
-  if (!deveTerVerificacaoAberta(data.status)) {
-    verificacoesACancelar = verificacoesAbertas;
-  } else if (verificacoesAbertas.length === 0) {
-    const dataBase = dataAngariadoEfetiva(data) || todayISO();
-    novaVerificacao = {
-      id: uid(),
-      title: `Verificar disponibilidade — ${data.codigo || data.endereco}`,
-      type: "Follow-up",
-      date: addDaysISO(dataBase, VERIFICACAO_DISPONIBILIDADE_DIAS) as string,
-      imovelId: data.id,
-      notes: "Lembrete automático: imóvel angariado sem locação após 60 dias. Confirme com o proprietário se ainda está disponível.",
-      done: false,
-      isVerificacaoDisponibilidade: true,
-    };
-  }
+  //
+  // Retirado fica sempre do lado que NÃO mantém lembrete, qualquer que seja o
+  // status: é a mesma regra do banco (M3/M4) e do worker
+  // (`decisaoMensagemDisponibilidade`). Sem isso, editar um imóvel retirado
+  // em "Angariado" recriaria a verificação que o banco acabou de encerrar.
+  const planoVerificacao = planoVerificacaoDisponibilidade(data, agenda);
 
   // Atenção: o upsert grava a linha inteira, incluindo as colunas jsonb
   // (`notas`, `tentativas`, `status_history`) do objeto em memória — por isso
@@ -217,14 +265,7 @@ export async function salvarImovel(
   if (novoLembrete && (await inserirCompromisso(supabase, novoLembrete, userId))) {
     novaAgenda = [...novaAgenda, novoLembrete];
   }
-  if (novaVerificacao && (await inserirCompromisso(supabase, novaVerificacao, userId))) {
-    novaAgenda = [...novaAgenda, novaVerificacao];
-  }
-  if (verificacoesACancelar.length > 0) {
-    const ids = verificacoesACancelar.map((a) => a.id);
-    const { error: cancelErr } = await supabase.from("agenda").delete().in("id", ids);
-    if (!cancelErr) novaAgenda = novaAgenda.filter((a) => !ids.includes(a.id));
-  }
+  novaAgenda = await aplicarPlanoVerificacao(supabase, planoVerificacao, novaAgenda, userId);
   if (novaAgenda !== agenda) useAppStore.getState().setAgenda(novaAgenda);
 
   const imoveisDepois = existing
@@ -731,6 +772,64 @@ export async function marcarPerdidoNumeroNaoEncontrado(imovelId: string): Promis
         : i,
     ),
   );
+  return true;
+}
+
+/**
+ * Retira o imóvel da carteira (`retirado = true`) ou o reativa (`false`).
+ *
+ * Não é mudança de status: escreve SÓ a coluna `retirado`, em update parcial,
+ * como `marcarPerdidoNumeroNaoEncontrado`. Status, statusHistory, notas,
+ * tentativas, motivo de perda, comissão e dados do Sistema Principal ficam
+ * como estão. Reativar também não escolhe status: o imóvel volta ao Pipeline
+ * no que já tinha.
+ *
+ * Retirar: os efeitos de disponibilidade são do banco. O trigger M3/M4
+ * encerra lembretes e verificações quando `retirado` vira true; em vez de
+ * repetir essa regra aqui, o estado é recarregado do banco depois da escrita,
+ * como faz a locação em lote.
+ *
+ * Reativar: o trigger não faz nada nesse sentido, e o lembrete de
+ * disponibilidade é do cliente (`salvarImovel`). Depois da recarga, a mesma
+ * régua (`planoVerificacaoDisponibilidade`) reconcilia na hora: status no
+ * alvo ganha o lembrete; fora dele, nada nasce. Nenhuma mensagem é criada.
+ */
+export async function definirRetiradoDaCarteira(
+  imovelId: string,
+  retirado: boolean,
+  userId: string,
+): Promise<boolean> {
+  const imovel = useAppStore.getState().imoveis.find((i) => i.id === imovelId);
+  if (!imovel) return false;
+  if ((imovel.retirado === true) === retirado) return true;
+  if (retirado && !podeRetirarDaCarteira(imovel)) {
+    toast("Só um imóvel captado e ainda não locado pode ser retirado da carteira.", "error");
+    return false;
+  }
+
+  const { error } = await getSupabase().from("imoveis").update({ retirado }).eq("id", imovelId);
+  if (error) {
+    toast(
+      (retirado ? "Não foi possível retirar da carteira: " : "Não foi possível reativar: ") + error.message,
+      "error",
+    );
+    return false;
+  }
+
+  const { imoveis, setImoveis } = useAppStore.getState();
+  setImoveis(imoveis.map((i) => (i.id === imovelId ? { ...i, retirado } : i)));
+  toast(retirado ? "Imóvel retirado da carteira. Ele está na aba Retirados." : "Imóvel reativado no Pipeline.");
+  await recarregarEstado();
+
+  if (!retirado) {
+    const estado = useAppStore.getState();
+    const reativado = estado.imoveis.find((i) => i.id === imovelId);
+    if (reativado) {
+      const plano = planoVerificacaoDisponibilidade(reativado, estado.agenda);
+      const novaAgenda = await aplicarPlanoVerificacao(getSupabase(), plano, estado.agenda, userId);
+      if (novaAgenda !== estado.agenda) estado.setAgenda(novaAgenda);
+    }
+  }
   return true;
 }
 

@@ -190,3 +190,13 @@ describe("rodadaDoDia", () => {
     expect(r.total).toBe(4);
   });
 });
+
+describe("rodadaDoDia — retirado fora do follow-up", () => {
+  it("imóvel retirado não abre nem engorda a frente de follow-up", () => {
+    const soRetirados = rodadaDoDia([paraFollowUp({ retirado: true })], [], [], HOJE);
+    expect(soRetirados.itens.find((i) => i.frente === "followup")).toBeUndefined();
+
+    const misto = rodadaDoDia([paraFollowUp(), paraFollowUp({ retirado: true })], [], [], HOJE);
+    expect(misto.itens.find((i) => i.frente === "followup")?.quantos).toBe(1);
+  });
+});

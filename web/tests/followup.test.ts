@@ -907,3 +907,60 @@ describe("deveTerVerificacaoAberta", () => {
     }
   });
 });
+
+/* --- Retirado fora do follow-up --------------------------------------------
+   `retirado` é a marca de um imóvel que saiu da carteira depois de captado.
+   Ele não é público do lote em nenhum status: nem entra na fila, nem conta
+   no botão do Pipeline (`prontosFollowUp` = `elegiveis.length`), nem na
+   rodada do dia. Fica de fora em silêncio, como o status fora do alvo, e não
+   vira linha de `excluidos`. Reativado, volta pela régua de sempre. */
+describe("selecionarFollowUp — retirado não é público do lote", () => {
+  it.each(["Novo contato", "Sem resposta"])("%s + retirado não é elegível nem aparece como excluído", (status) => {
+    const saiu = imovel({ id: "saiu", status, retirado: true });
+    const selecao = selecionarFollowUp([saiu], HOJE);
+    expect(selecao.elegiveis).toEqual([]);
+    expect(selecao.excluidos).toEqual([]);
+  });
+
+  it.each(["Novo contato", "Sem resposta"])("o mesmo imóvel em %s, sem a marca, segue elegível como antes", (status) => {
+    for (const retirado of [false, null, undefined]) {
+      const ativo = imovel({ id: "ativo", status, retirado });
+      expect(selecionarFollowUp([ativo], HOJE).elegiveis.map((i) => i.id)).toEqual(["ativo"]);
+    }
+  });
+
+  it("os derivados do lote não contam retirados", () => {
+    const lista = [
+      imovel({ id: "a" }),
+      imovel({ id: "b", status: "Novo contato" }),
+      imovel({ id: "r1", retirado: true }),
+      imovel({ id: "r2", status: "Novo contato", retirado: true }),
+    ];
+    const selecao = selecionarFollowUp(lista, HOJE);
+    // É exatamente o número do botão do Pipeline e da rodada do dia.
+    expect(selecao.elegiveis.map((i) => i.id).sort()).toEqual(["a", "b"]);
+    expect(selecao.excluidos.map((e) => e.imovel.id)).toEqual([]);
+  });
+
+  it("retirado não toma o lugar do imóvel ativo do mesmo proprietário", () => {
+    const telefone = "(43) 98888-7777";
+    const lista = [
+      imovel({ id: "ativo", proprietarioTelefone: telefone, tentativas: [tentativa("2026-05-10")] }),
+      imovel({ id: "saiu", proprietarioTelefone: telefone, tentativas: [tentativa("2026-04-01")], retirado: true }),
+    ];
+    const selecao = selecionarFollowUp(lista, HOJE);
+    expect(selecao.elegiveis.map((i) => i.id)).toEqual(["ativo"]);
+    expect(selecao.excluidos).toEqual([]);
+  });
+
+  it("reativado volta à elegibilidade normal, com os outros freios intactos", () => {
+    const reativado = imovel({ id: "volta", retirado: false });
+    expect(selecionarFollowUp([reativado], HOJE).elegiveis.map((i) => i.id)).toEqual(["volta"]);
+
+    // Os freios de sempre continuam valendo depois da reativação.
+    const recente = imovel({ id: "recente", retirado: false, tentativas: [tentativa("2026-07-20")] });
+    expect(selecionarFollowUp([recente], HOJE).excluidos.map((e) => e.motivo)).toEqual(["contato-recente"]);
+    const semTelefone = imovel({ id: "sem-tel", retirado: false, proprietarioTelefone: "" });
+    expect(selecionarFollowUp([semTelefone], HOJE).excluidos.map((e) => e.motivo)).toEqual(["sem-telefone"]);
+  });
+});

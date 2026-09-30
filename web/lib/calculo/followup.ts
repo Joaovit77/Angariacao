@@ -485,6 +485,11 @@ export function selecionarFollowUp(imoveis: Imovel[], hoje: string): SelecaoFoll
 
   for (const imovel of imoveis) {
     if (!(FOLLOWUP_STATUS_ALVO as readonly string[]).includes(imovel.status)) continue;
+    // Retirado saiu da carteira: não é público de follow-up em nenhum status.
+    // Fica de fora em silêncio, como o status fora do alvo, e não em
+    // `excluidos`: aquela lista explica ao corretor o que ele pode resolver
+    // no lote, e a carteira retirada só a encheria de ruído.
+    if (imovel.retirado === true) continue;
 
     // Telefone: os dois testes são de FORMA e rodam aqui de propósito, para
     // a tela já mostrar o problema. Se o número existe mesmo no WhatsApp,
@@ -609,6 +614,10 @@ export function selecionarVerificacaoDisponibilidade(imoveis: Imovel[], hoje: st
 
   for (const imovel of imoveis) {
     if (!alvo.includes(imovel.status)) continue;
+    // Retirado saiu da carteira: a pergunta de disponibilidade não existe mais,
+    // qualquer que seja o status (mesma régua do `salvarImovel`, do worker e
+    // do banco M3/M4).
+    if (imovel.retirado === true) continue;
     // Follow-up pausado pelo corretor (viagem do proprietário, etc.): respeita.
     if (isPausado(imovel)) continue;
 

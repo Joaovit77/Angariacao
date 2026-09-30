@@ -35,7 +35,15 @@ import { urlInvestigadorDoImovel } from "@/lib/calculo/contextoInvestigador";
 import { podeDesdobrar } from "@/lib/calculo/desdobramento";
 import { descreverDuplicados, imoveisDuplicados } from "@/lib/calculo/duplicidade";
 import { unidadesDesdobradas } from "@/lib/calculo/motor";
-import { aplicarMudancaDeStatus, excluirImovel, numOrNull, salvarImovel, uid } from "@/lib/mutacoes";
+import { podeReativarNaCarteira, podeRetirarDaCarteira } from "@/lib/calculo/retiradaCarteira";
+import {
+  aplicarMudancaDeStatus,
+  definirRetiradoDaCarteira,
+  excluirImovel,
+  numOrNull,
+  salvarImovel,
+  uid,
+} from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useUiModal, type PromocaoDoGarimpo } from "@/lib/uiModal";
@@ -462,6 +470,10 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
       comissaoRecebidaData: status === "Locado" ? comissaoRecebidaData || null : null,
       // Salvar pelo modal completo confirma os dados: sai de pré-cadastro.
       preCadastro: false,
+      // O formulário não edita a marca de retirado, mas o upsert grava a linha
+      // inteira: sem carregá-la, editar um telefone devolveria à carteira ativa
+      // um imóvel que saiu dela. Quem muda a marca é "Retirar da carteira".
+      retirado: imovel ? imovel.retirado === true : false,
     };
 
     aplicarMudancaDeStatus(
@@ -488,6 +500,40 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
     if (ok) fecharModal();
   }
 
+  /** Retirar e reativar não passam pelo `salvar`: mexem só na marca de
+      retirado, sem status novo nem entrada no histórico. Por isso perguntam
+      antes, como os atalhos que deixam este modal: o que foi digitado e não
+      salvo não vai junto. */
+  async function retirarDaCarteira() {
+    if (!imovel || !usuario || !podeRetirarDaCarteira(imovel)) return;
+    const seguir = confirm(
+      "Retirar este imóvel da carteira?\n\n" +
+        "O imóvel sairá do Pipeline ativo e ficará em Retirados. A captação histórica será " +
+        "preservada: status, histórico, notas e tentativas continuam como estão.\n\n" +
+        "Alterações não salvas neste formulário serão descartadas.",
+    );
+    if (!seguir) return;
+    setSalvando(true);
+    const ok = await definirRetiradoDaCarteira(imovel.id, true, usuario.id);
+    setSalvando(false);
+    if (ok) fecharModal();
+  }
+
+  async function reativarNaCarteira() {
+    if (!imovel || !usuario || !podeReativarNaCarteira(imovel)) return;
+    const seguir = confirm(
+      "Reativar este imóvel?\n\n" +
+        `Ele volta ao Pipeline no status que já tem (${imovel.status}). Nenhum status novo é ` +
+        "escolhido e o histórico não muda.\n\n" +
+        "Alterações não salvas neste formulário serão descartadas.",
+    );
+    if (!seguir) return;
+    setSalvando(true);
+    const ok = await definirRetiradoDaCarteira(imovel.id, false, usuario.id);
+    setSalvando(false);
+    if (ok) fecharModal();
+  }
+
   return (
     <>
       <div className="modal-head">
@@ -501,6 +547,13 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
           <p className="section-note" style={{ marginBottom: "14px" }}>
             📋 Este imóvel é um <strong>pré-cadastro</strong>. Confira os dados com o que o
             proprietário respondeu e clique em <strong>Salvar alterações</strong> para confirmar.
+          </p>
+        )}
+        {imovel?.retirado && (
+          <p className="section-note" style={{ marginBottom: "14px" }} data-imovel-retirado>
+            Este imóvel está em <strong>Retirados</strong>: saiu da carteira depois de captado. Ele
+            não aparece no Pipeline ativo, e a captação continua registrada no histórico. Para
+            trazê-lo de volta no status atual, use <strong>Reativar imóvel</strong>.
           </p>
         )}
         {inicial && (
@@ -1055,6 +1108,16 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
             <button type="button" className="btn btn-ghost" onClick={irParaDesdobrar}>
               <IconeDesdobrar />
               Desdobrar em unidades
+            </button>
+          )}
+          {imovel && podeRetirarDaCarteira(imovel) && (
+            <button type="button" className="btn btn-ghost" onClick={retirarDaCarteira} disabled={salvando}>
+              Retirar da carteira
+            </button>
+          )}
+          {imovel && podeReativarNaCarteira(imovel) && (
+            <button type="button" className="btn btn-ghost" onClick={reativarNaCarteira} disabled={salvando}>
+              Reativar imóvel
             </button>
           )}
         </div>
