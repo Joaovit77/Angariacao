@@ -397,13 +397,20 @@ export interface EncerramentoAutomatico {
  * `null` quando não — e "não" é o caso normal. Também devolve `null` quando o
  * imóvel JÁ está num status terminal: reencerrar reescreveria o histórico e o
  * motivo de uma perda que já tinha explicação, possivelmente melhor que esta.
+ *
+ * E devolve `null` para imóvel RETIRADO, qualquer que seja o status ou a
+ * frase. Retirado é captação ganha que saiu da carteira: virar "Perdido" diria
+ * que a captação falhou, e o status e o histórico dele ficam como estão. A
+ * trava é pelo estado do imóvel, não pelo texto. A mensagem segue o resto do
+ * fluxo como qualquer resposta que não encerra.
  */
 export function encerramentoPorResposta(
-  imovel: { status: string; statusHistory?: StatusHistoryEntry[] | null },
+  imovel: { status: string; statusHistory?: StatusHistoryEntry[] | null; retirado?: boolean | null },
   motivoPerda: string | null | undefined,
   hoje: string,
 ): EncerramentoAutomatico | null {
   if (!motivoPerda) return null;
+  if (imovel.retirado === true) return null;
   if (imovel.status === "Locado") return null; // já deu certo: não desfazer
   // "Sem resposta" é terminal na lista, mas é justamente o estado de quem
   // acabou de responder — encerrar a partir dele é o caso mais comum. Só

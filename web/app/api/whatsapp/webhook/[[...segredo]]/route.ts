@@ -288,9 +288,12 @@ type ImovelOperacional = {
   status: string;
   status_history: StatusHistoryEntry[] | null;
   notas: NotaImovel[] | null;
+  /** Só o encerramento automático lê: imóvel retirado nunca é encerrado
+      pela resposta (ver `encerramentoPorResposta`). */
+  retirado: boolean | null;
 };
 
-const COLUNAS_IMOVEL_OPERACIONAL = "id, codigo, endereco, tentativas, status, status_history, notas";
+const COLUNAS_IMOVEL_OPERACIONAL = "id, codigo, endereco, tentativas, status, status_history, notas, retirado";
 
 /** Carrega o imóvel que o motor escolheu. Se ele já veio no casamento
     legado (que também filtrou `user_id`), reaproveita a linha; senão busca
@@ -493,7 +496,7 @@ export async function POST(
     // `notas` entra pelo contexto bidirecional da classificação (passo 5):
     // esta leitura acontece ANTES de a nota desta mensagem ser gravada, então
     // traz exatamente a conversa que a resposta atual está continuando.
-    .select("id, codigo, endereco, tentativas, status, status_history, notas")
+    .select(COLUNAS_IMOVEL_OPERACIONAL)
     .eq("user_id", userId)
     .eq("proprietario_telefone_canonico", mensagem.telefone)
     // Mais de um imóvel do mesmo proprietário é normal (investidor com vários).
@@ -746,13 +749,18 @@ export async function POST(
   //    fechada — ver encerramentoPorResposta. Nunca vira "Locado": alugado
   //    por conta própria é perda, e marcá-lo como ganho inflaria a comissão
   //    e a meta do mês com negócio que não houve.
-  const encerramento = encerramentoPorResposta(
-    { status: imovel.status, statusHistory: imovel.status_history },
+  let encerramento = encerramentoPorResposta(
+    { status: imovel.status, statusHistory: imovel.status_history, retirado: imovel.retirado },
     sugestao?.motivoPerda,
     hoje,
   );
   if (encerramento) {
-    const { error: erroStatus } = await supabase
+    // A condição "não retirado" vai NA escrita, não só na leitura acima: se
+    // o imóvel foi retirado entre as duas, o UPDATE não casa linha nenhuma e
+    // o encerramento não acontece. As linhas devolvidas provam se ele
+    // aplicou. `not is true` é a mesma régua do guard (`retirado === true`):
+    // false e um eventual null contam como não retirado.
+    const { data: encerrados, error: erroStatus } = await supabase
       .from("imoveis")
       .update({
         status: encerramento.status,
@@ -761,9 +769,16 @@ export async function POST(
         motivo_perda_outro: null,
       })
       .eq("id", imovel.id)
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .not("retirado", "is", true)
+      .select("id");
     if (erroStatus) {
       console.error("Webhook do WhatsApp: falha ao encerrar o imóvel:", erroStatus.message);
+    } else if (!Array.isArray(encerrados) || encerrados.length === 0) {
+      // Retirado no meio do caminho: nada foi gravado, e a resposta segue
+      // como a de um imóvel que não foi encerrado (mesmo caminho do guard).
+      console.log(`Webhook do WhatsApp: imóvel ${rotulo} não encerrado: retirado durante o processamento.`);
+      encerramento = null;
     } else {
       // Deixa na tela por que o status mudou. Sem isto a explicação existiria
       // só no log do servidor, que o corretor não lê.
