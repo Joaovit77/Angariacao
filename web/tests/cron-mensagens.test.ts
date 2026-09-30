@@ -493,6 +493,91 @@ describe("cron de mensagens agendadas", () => {
     expect(mocks.escritas).toEqual([]);
   });
 
+  /* --- 1a-C2.1b.2: o histórico da consolidação pela identidade por conta --- */
+
+  function eventosDaAtribuicao() {
+    return mocks.registrarEvento.mock.calls
+      .map(([evento]) => evento as { evento: string; nivel: string; detalhe: string })
+      .filter((evento) => evento.evento === "historico-envio-atribuicao");
+  }
+
+  it("caso normal (histórico gravado em S): nenhum evento além do de sempre, nunca um por imóvel", async () => {
+    preparacaoComReserva();
+    mocks.efetivar.mockResolvedValueOnce({
+      ok: true, absorvidasIds: ["v2", "v3"], notasGravadas: 3, notasFalhas: [],
+      historico: { persistencia: "gravada", imoveisEco: [] }, erro: null,
+    });
+
+    expect(await (await chamarComPausas()).json()).toMatchObject({ enviadas: 1, consolidadas: 2 });
+    expect(eventosDaAtribuicao()).toEqual([]);
+    expect(mocks.registrarEvento).not.toHaveBeenCalledWith(expect.objectContaining({ evento: "historico-envio-falhou" }));
+    expect(mocks.registrarEvento.mock.calls.map(([e]) => (e as { evento: string }).evento)).toEqual(["agendamento-consolidado"]);
+  });
+
+  it("conflito do histórico: o envio confirmado fica `enviada`, absorvidas contato-consolidado, NADA de resultado incerto, e um evento de conflito", async () => {
+    preparacaoComReserva();
+    mocks.efetivar.mockResolvedValueOnce({
+      ok: true, absorvidasIds: ["v2", "v3"], notasGravadas: 0, notasFalhas: [{ imovel_id: "", erro: "conflito" }],
+      historico: { persistencia: "conflito", imoveisEco: [] }, erro: null,
+    });
+
+    expect(await (await chamarComPausas()).json()).toMatchObject({ enviadas: 1, consolidadas: 2, falhas: 0 });
+    expect(mocks.marcarIncerta).not.toHaveBeenCalled();
+    expect(mocks.desfazer).not.toHaveBeenCalled();
+    expect(mocks.escritas).toEqual([]);
+    expect(eventosDaAtribuicao()).toEqual([{
+      userId: "u1", categoria: "whatsapp", nivel: "erro", evento: "historico-envio-atribuicao",
+      detalhe: JSON.stringify({ persistencia: "conflito", identidade: "externa", origem: "consolidacao", imoveis_declarados: ["i1", "i2", "i3"] }),
+    }]);
+    // O conflito já tem o seu evento; não repete como falha de gravação.
+    expect(mocks.registrarEvento).not.toHaveBeenCalledWith(expect.objectContaining({ evento: "historico-envio-falhou" }));
+  });
+
+  it("eco reconciliado (fora ou dentro de S): um evento só, com o imóvel de onde o eco saiu", async () => {
+    preparacaoComReserva();
+    mocks.efetivar.mockResolvedValueOnce({
+      ok: true, absorvidasIds: ["v2", "v3"], notasGravadas: 3, notasFalhas: [],
+      historico: { persistencia: "origem-reconciliou-eco", imoveisEco: ["i9"] }, erro: null,
+    });
+
+    expect(await (await chamarComPausas()).json()).toMatchObject({ enviadas: 1, consolidadas: 2 });
+    expect(eventosDaAtribuicao()).toEqual([expect.objectContaining({
+      nivel: "info",
+      detalhe: JSON.stringify({ persistencia: "origem-reconciliou-eco", identidade: "externa", origem: "consolidacao", imoveis_declarados: ["i1", "i2", "i3"], imovel_eco_id: "i9" }),
+    })]);
+  });
+
+  it("fallback interno (sem id da Evolution): N notas gravadas, evento de aviso com a garantia reduzida", async () => {
+    preparacaoComReserva();
+    mocks.enviar.mockResolvedValueOnce({ mensagemId: "agendamento:uuid-1", idExterno: false });
+    mocks.efetivar.mockResolvedValueOnce({
+      ok: true, absorvidasIds: ["v2", "v3"], notasGravadas: 3, notasFalhas: [],
+      historico: { persistencia: "gravada", imoveisEco: [] }, erro: null,
+    });
+
+    expect(await (await chamarComPausas()).json()).toMatchObject({ enviadas: 1, consolidadas: 2 });
+    expect(mocks.efetivar.mock.calls[0][2]).toMatchObject({ mensagemExternaId: "agendamento:uuid-1" });
+    expect(eventosDaAtribuicao()).toEqual([expect.objectContaining({
+      nivel: "aviso",
+      detalhe: JSON.stringify({ persistencia: "gravada", identidade: "fallback-interno", origem: "consolidacao", imoveis_declarados: ["i1", "i2", "i3"] }),
+    })]);
+  });
+
+  it("falha SQL do histórico inteiro: efeitos gravados, falha registrada, sem resultado incerto", async () => {
+    preparacaoComReserva();
+    mocks.efetivar.mockResolvedValueOnce({
+      ok: true, absorvidasIds: ["v2", "v3"], notasGravadas: 0, notasFalhas: [{ imovel_id: "", erro: "falha" }],
+      historico: { persistencia: "falha", imoveisEco: [] }, erro: null,
+    });
+
+    expect(await (await chamarComPausas()).json()).toMatchObject({ enviadas: 1, consolidadas: 2, falhas: 0 });
+    expect(mocks.marcarIncerta).not.toHaveBeenCalled();
+    expect(mocks.registrarEvento).toHaveBeenCalledWith(expect.objectContaining({
+      evento: "historico-envio-falhou", nivel: "erro", detalhe: "agendamento consolidado falha",
+    }));
+    expect(eventosDaAtribuicao()).toEqual([]);
+  });
+
   /* --- LD-163: mensagem livre vinculada a imóvel fora da carteira ----------
      Em 26/09/2026 uma livre agendada em 11/08 saiu para o LD-163, Perdido
      desde 12/08: a livre não passava por nenhuma checagem de status. */

@@ -20,6 +20,7 @@ import { notaDaMensagemEnviada } from "@/lib/calculo/notas";
 import { addDaysISO, inicioDoDiaOperacionalISO } from "@/lib/datas";
 import { fromDbMensagem, type DbMensagemAgendada } from "@/lib/mensagensAgendadas";
 import { fromDbAgenda, fromDbImovel, type DbAgendaRow, type DbImovelRow } from "@/lib/persistencia/mapeadores";
+import { imoveisDoEco, persistenciaOrigemValida, type PersistenciaOrigem } from "@/lib/servidor/historicoWhatsapp";
 import type { Imovel } from "@/lib/tipos";
 
 /* ================================================================
@@ -311,14 +312,22 @@ export interface ConsolidacaoEfetivada {
   ok: boolean;
   /** Ids das reservadas que viraram `cancelada`/`contato-consolidado`. */
   absorvidasIds: string[];
+  /** Imóveis do conjunto com a nota ao final (todos, ou zero). */
   notasGravadas: number;
-  /** Notas que não puderam ser gravadas (imóvel + sqlstate); o envio já aconteceu. */
+  /** Notas que não puderam ser gravadas (imóvel + sqlstate); o envio já aconteceu.
+      Falha do histórico inteiro vem com `imovel_id` vazio. */
   notasFalhas: Array<{ imovel_id: string; erro: string }>;
+  /** O histórico pela identidade por conta (1a-C2.1b.2): o resultado da
+      RPC de origem para o conjunto consultado. `falha` = erro SQL ou
+      resposta fora do vocabulário; `null` = nenhuma nota enviada. Conflito
+      e falha não desfazem os efeitos do envio. */
+  historico: { persistencia: PersistenciaOrigem | "falha"; imoveisEco: string[] } | null;
   erro: string | null;
 }
 
-/** As notas `wa:` da mensagem enviada, uma por imóvel consultado, no formato
-    que já pertence ao TypeScript (`notaDaMensagemEnviada`). */
+/** As notas `wa-enviada:` da mensagem enviada, uma por imóvel consultado, no
+    formato que já pertence ao TypeScript (`notaDaMensagemEnviada`). São a
+    mesma nota: o banco grava uma cópia em cada imóvel do conjunto. */
 export function notasDaConsolidacao(entrada: EntradaEfetivacao): NotaConsolidacao[] {
   return entrada.imoveisConsultados.map((imovelId) => ({
     imovel_id: imovelId,
@@ -330,9 +339,12 @@ export function notasDaConsolidacao(entrada: EntradaEfetivacao): NotaConsolidaca
  * A EFETIVAÇÃO: só depois de o POST ter sido aceito, e numa transação só
  * (RPC `efetivar_consolidacao_contato`): âncora `processando` → `enviada`
  * com o texto que saiu e `imoveis_consultados`; reservadas da âncora →
- * `cancelada`/`contato-consolidado` com a reserva limpa; notas `wa:` em
- * cada imóvel. Ou tudo, ou nada. Repetir não duplica: a âncora já não está
- * `processando` e a RPC recusa sem escrever.
+ * `cancelada`/`contato-consolidado` com a reserva limpa; a nota em cada
+ * imóvel consultado, pela identidade por conta (eco `fromMe` reconciliado,
+ * nenhuma cópia fora do conjunto). Os efeitos são tudo ou nada; o
+ * histórico é tudo ou nada à parte, e o conflito dele não desfaz o envio.
+ * Repetir não duplica: a âncora já não está `processando` e a RPC recusa
+ * sem escrever.
  */
 export async function efetivarConsolidacaoContato(
   admin: SupabaseClient,
@@ -347,10 +359,10 @@ export async function efetivarConsolidacaoContato(
     p_notas: notasDaConsolidacao(entrada),
     p_enviado_em: entrada.enviadoEm,
   });
-  if (error) return { ok: false, absorvidasIds: [], notasGravadas: 0, notasFalhas: [], erro: error.message };
+  if (error) return { ok: false, absorvidasIds: [], notasGravadas: 0, notasFalhas: [], historico: null, erro: error.message };
   const detalhe = (data && typeof data === "object" ? data : {}) as Record<string, unknown>;
   if (detalhe.ok !== true) {
-    return { ok: false, absorvidasIds: [], notasGravadas: 0, notasFalhas: [], erro: String(detalhe.motivo ?? "efetivacao-recusada") };
+    return { ok: false, absorvidasIds: [], notasGravadas: 0, notasFalhas: [], historico: null, erro: String(detalhe.motivo ?? "efetivacao-recusada") };
   }
   const absorvidas = Array.isArray(detalhe.absorvidas) ? detalhe.absorvidas.filter((id): id is string => typeof id === "string") : [];
   const falhas = Array.isArray(detalhe.notas_falhas)
@@ -361,7 +373,17 @@ export async function efetivarConsolidacaoContato(
     absorvidasIds: absorvidas,
     notasGravadas: typeof detalhe.notas_gravadas === "number" ? detalhe.notas_gravadas : 0,
     notasFalhas: falhas,
+    historico: historicoDaEfetivacao(detalhe.historico),
     erro: null,
+  };
+}
+
+function historicoDaEfetivacao(valor: unknown): ConsolidacaoEfetivada["historico"] {
+  if (!valor || typeof valor !== "object") return null;
+  const corpo = valor as Record<string, unknown>;
+  return {
+    persistencia: persistenciaOrigemValida(corpo.resultado) ?? "falha",
+    imoveisEco: imoveisDoEco(corpo.imoveis_eco),
   };
 }
 

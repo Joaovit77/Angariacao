@@ -253,9 +253,15 @@ describe("consolidação em dois tempos: preparar (reserva) → efetivar (após 
 
   it("POST bem-sucedido: efetivar é UMA chamada à RPC atômica, com âncora, conta, texto que saiu, imóveis e notas prontas", async () => {
     const { cliente, rpc, consultas } = supabaseDoProprietario();
-    rpc.mockResolvedValueOnce({ data: { ok: true, absorvidas: ["m2", "m3"], absorvidas_total: 2, notas_gravadas: 3, notas_falhas: [] }, error: null });
+    rpc.mockResolvedValueOnce({
+      data: { ok: true, absorvidas: ["m2", "m3"], absorvidas_total: 2, notas_gravadas: 3, notas_falhas: [], historico: { resultado: "gravada", imoveis_eco: [] } },
+      error: null,
+    });
     const efetivacao = await efetivarConsolidacaoContato(cliente, ancora, ENTRADA);
-    expect(efetivacao).toEqual({ ok: true, absorvidasIds: ["m2", "m3"], notasGravadas: 3, notasFalhas: [], erro: null });
+    expect(efetivacao).toEqual({
+      ok: true, absorvidasIds: ["m2", "m3"], notasGravadas: 3, notasFalhas: [],
+      historico: { persistencia: "gravada", imoveisEco: [] }, erro: null,
+    });
     expect(rpc).toHaveBeenCalledOnce();
     const [nome, params] = rpc.mock.calls[0] as unknown as [string, Record<string, unknown>];
     expect(nome).toBe("efetivar_consolidacao_contato");
@@ -287,9 +293,32 @@ describe("consolidação em dois tempos: preparar (reserva) → efetivar (após 
   it("efetivar com nota que falhou no banco continua ok (o envio e a consolidação estão gravados) e expõe a falha", async () => {
     const { cliente, rpc } = supabaseDoProprietario();
     rpc.mockResolvedValueOnce({ data: { ok: true, absorvidas: ["m2"], absorvidas_total: 1, notas_gravadas: 2, notas_falhas: [{ imovel_id: "i3", erro: "22023" }] }, error: null });
+    // Resposta do corpo anterior da RPC (sem `historico`): continua legível.
     expect(await efetivarConsolidacaoContato(cliente, ancora, ENTRADA)).toEqual({
-      ok: true, absorvidasIds: ["m2"], notasGravadas: 2, notasFalhas: [{ imovel_id: "i3", erro: "22023" }], erro: null,
+      ok: true, absorvidasIds: ["m2"], notasGravadas: 2, notasFalhas: [{ imovel_id: "i3", erro: "22023" }], historico: null, erro: null,
     });
+  });
+
+  it("1a-C2.1b.2: conflito do histórico continua ok (envio confirmado, efeitos gravados) e expõe o resultado; resposta desconhecida vira falha", async () => {
+    const { cliente, rpc } = supabaseDoProprietario();
+    rpc.mockResolvedValueOnce({
+      data: { ok: true, absorvidas: ["m2", "m3"], absorvidas_total: 2, notas_gravadas: 0, notas_falhas: [{ imovel_id: null, erro: "conflito" }], historico: { resultado: "conflito", imoveis_eco: [] } },
+      error: null,
+    });
+    expect(await efetivarConsolidacaoContato(cliente, ancora, ENTRADA)).toEqual({
+      ok: true, absorvidasIds: ["m2", "m3"], notasGravadas: 0, notasFalhas: [{ imovel_id: "", erro: "conflito" }],
+      historico: { persistencia: "conflito", imoveisEco: [] }, erro: null,
+    });
+    rpc.mockResolvedValueOnce({
+      data: { ok: true, absorvidas: [], absorvidas_total: 0, notas_gravadas: 3, notas_falhas: [], historico: { resultado: "origem-reconciliou-eco", imoveis_eco: ["i9", 7] } },
+      error: null,
+    });
+    expect((await efetivarConsolidacaoContato(cliente, ancora, ENTRADA)).historico).toEqual({ persistencia: "origem-reconciliou-eco", imoveisEco: ["i9"] });
+    rpc.mockResolvedValueOnce({
+      data: { ok: true, absorvidas: [], absorvidas_total: 0, notas_gravadas: 0, notas_falhas: [{ imovel_id: null, erro: "notas-incoerentes" }], historico: { resultado: "notas-incoerentes" } },
+      error: null,
+    });
+    expect((await efetivarConsolidacaoContato(cliente, ancora, ENTRADA)).historico).toEqual({ persistencia: "falha", imoveisEco: [] });
   });
 
   it("antes do POST: desfazer devolve B e C a `agendada`, limpa a reserva e não deixa evidência de contato", async () => {

@@ -9512,17 +9512,21 @@ create trigger trg_transicao_disponibilidade_imovel
 -- ------------------------------------------------------------
 -- 6. Efetivação atômica da consolidação (só depois do POST aceito)
 -- ------------------------------------------------------------
--- Uma transação só, ou nada: as reservadas da âncora (`reservada_para_mensagem_id`
+-- Espelho de supabase/migrations/20260930120000_consolidacao_identidade_conta.sql
+-- (Fase 1a-C2.1b.2), que substituiu o corpo original do M3/M4.
+--
+-- Uma transação só: as reservadas da âncora (`reservada_para_mensagem_id`
 -- = âncora, `processando`, mesma conta) viram `cancelada`/`contato-consolidado`
--- apontando para a âncora, com a reserva limpa; as notas `wa:` (já montadas
--- pelo servidor: o formato pertence ao TypeScript) entram por
--- `registrar_nota_imovel`; e a âncora `processando` → `enviada` com o texto
--- que de fato saiu e `imoveis_consultados`. `registrar_nota_imovel` é plpgsql
--- chamada daqui: roda na transação desta função (não existe commit autônomo
--- em função), então um erro no fim desfaz tudo, inclusive as notas. Uma nota
--- individual que falhe fica num savepoint (bloco `exception`) e é devolvida em
--- `notas_falhas`, porque o envio já aconteceu e a linha nunca volta à fila.
--- Só service_role, pelo papel do JWT (auth.role()), como nas RPCs acima.
+-- apontando para a âncora, com a reserva limpa, e a âncora `processando` →
+-- `enviada` com o texto que de fato saiu e `imoveis_consultados`. Esses são os
+-- EFEITOS DO ENVIO, exatamente uma vez. O HISTÓRICO (a mesma nota
+-- `wa-enviada:<id>` em cada imóvel consultado, formato do TypeScript) entra
+-- por `registrar_nota_whatsapp_origem`, com o mesmo advisory lock da
+-- identidade por conta: N cópias no conjunto, eco reconciliado, nenhuma cópia
+-- fora dele. O histórico roda numa subtransação (bloco `exception`): conflito
+-- ou erro o desfazem inteiro e voltam em `historico`/`notas_falhas`, sem
+-- desfazer os efeitos, porque o envio já aconteceu e a linha nunca volta à
+-- fila. Só service_role, pelo papel do JWT (auth.role()), como nas RPCs acima.
 create or replace function public.efetivar_consolidacao_contato(
   p_mensagem_id uuid,
   p_user_id uuid,
@@ -9539,8 +9543,12 @@ as $$
 declare
   v_ancora record;
   v_absorvidas uuid[] := array[]::uuid[];
-  v_nota jsonb;
+  v_entrada jsonb;
   v_imovel uuid;
+  v_conjunto uuid[];
+  v_nota jsonb;
+  v_notas_incoerentes boolean := false;
+  v_historico jsonb;
   v_notas_gravadas integer := 0;
   v_notas_falhas jsonb := '[]'::jsonb;
 begin
@@ -9596,24 +9604,51 @@ begin
   )
   select coalesce(array_agg(id), '{}'::uuid[]) into v_absorvidas from fechadas;
 
-  -- `registrar_nota_imovel` resolve `imoveis` pelo search_path: o da
-  -- transação passa a `public, pg_temp` só para estas chamadas (transação
-  -- local; a função restaura o seu ao sair).
-  perform pg_catalog.set_config('search_path', 'public, pg_temp', true);
-  for v_nota in select value from jsonb_array_elements(coalesce(p_notas, '[]'::jsonb)) loop
+  -- Histórico. S é o conjunto consultado, sem repetição. `p_notas` traz a
+  -- nota (o formato pertence ao TypeScript), a mesma para cada imóvel de
+  -- S; uma entrada fora de S é devolvida como falha e não grava nada.
+  v_conjunto := array(select distinct c.id from unnest(p_imoveis_consultados) as c(id) order by c.id);
+  for v_entrada in
+    select value from jsonb_array_elements(
+      case when jsonb_typeof(p_notas) = 'array' then p_notas else '[]'::jsonb end
+    )
+  loop
     begin
-      v_imovel := nullif(v_nota->>'imovel_id', '')::uuid;
-      if v_imovel is null or not (v_imovel = any (p_imoveis_consultados)) then
+      v_imovel := nullif(v_entrada->>'imovel_id', '')::uuid;
+      if v_imovel is null or not (v_imovel = any (v_conjunto)) then
         raise exception 'Nota fora dos imóveis consultados.' using errcode = '22023';
       end if;
-      if public.registrar_nota_imovel(v_imovel, p_user_id, v_nota->'nota') then
-        v_notas_gravadas := v_notas_gravadas + 1;
+      if v_nota is null then
+        v_nota := v_entrada->'nota';
+      elsif v_nota is distinct from v_entrada->'nota' then
+        v_notas_incoerentes := true;
+        raise exception 'Notas diferentes para a mesma mensagem.' using errcode = '22023';
       end if;
     exception when others then
-      v_notas_falhas := v_notas_falhas || jsonb_build_object('imovel_id', v_nota->>'imovel_id', 'erro', sqlstate);
+      v_notas_falhas := v_notas_falhas || jsonb_build_object('imovel_id', v_entrada->>'imovel_id', 'erro', sqlstate);
     end;
   end loop;
-  perform pg_catalog.set_config('search_path', '', true);
+
+  if v_notas_incoerentes then
+    v_historico := jsonb_build_object('resultado', 'notas-incoerentes', 'imoveis_eco', '[]'::jsonb);
+  elsif v_nota is not null then
+    -- Uma chamada, na transação desta função, pela MESMA regra e o MESMO
+    -- advisory lock da origem conhecida. O bloco com `exception` é a
+    -- subtransação: qualquer resultado que não deixe S completo desfaz
+    -- todo o histórico, nunca os efeitos acima.
+    begin
+      v_historico := public.registrar_nota_whatsapp_origem(p_user_id, v_conjunto, v_nota);
+      if coalesce(v_historico->>'resultado', '') not in ('gravada', 'duplicada', 'origem-reconciliou-eco') then
+        raise exception 'Histórico da consolidação não gravado.' using errcode = 'P0001';
+      end if;
+      v_notas_gravadas := cardinality(v_conjunto);
+    exception when others then
+      if v_historico is null then
+        v_historico := jsonb_build_object('resultado', 'falha', 'erro', sqlstate, 'imoveis_eco', '[]'::jsonb);
+      end if;
+      v_notas_falhas := v_notas_falhas || jsonb_build_object('imovel_id', null, 'erro', v_historico->>'resultado');
+    end;
+  end if;
 
   update public.mensagens_agendadas m
      set status = 'enviada',
@@ -9631,7 +9666,8 @@ begin
     'absorvidas', to_jsonb(v_absorvidas),
     'absorvidas_total', cardinality(v_absorvidas),
     'notas_gravadas', v_notas_gravadas,
-    'notas_falhas', v_notas_falhas
+    'notas_falhas', v_notas_falhas,
+    'historico', v_historico
   );
 end;
 $$;

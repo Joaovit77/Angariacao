@@ -408,8 +408,11 @@ async function reclamar(id: string) {
   expect(error).toBeNull();
 }
 
+/** A nota que o TypeScript manda (`notaDaMensagemEnviada`): `wa-enviada:<id>`.
+    Desde a 1a-C2.1b.2 a efetivação a grava pela identidade por conta, que
+    só aceita a família de mensagem enviada. */
 function nota(externoId: string, texto: string) {
-  return { id: `wa:${externoId}`, texto: `Enviado: ${texto}`, data: "2099-09-22T08:00:30", direcao: "enviada", autor: "corretor", tipo: "conversation", origem: "agendamento" };
+  return { id: `wa-enviada:${externoId}`, texto: `Enviado: ${texto}`, data: "2099-09-22T08:00:30", direcao: "enviada", autor: "corretor", tipo: "conversation", origem: "agendamento" };
 }
 
 describe("reserva de consolidação: coluna, FK por tenant, autorreserva e estados", () => {
@@ -482,7 +485,7 @@ describe("efetivar_consolidacao_contato: uma transação, ou nada", () => {
       p_enviado_em: "2099-09-22T11:00:30.000Z",
     });
     expect(error).toBeNull();
-    expect(data).toMatchObject({ ok: true, absorvidas_total: 2, notas_gravadas: 3, notas_falhas: [] });
+    expect(data).toMatchObject({ ok: true, absorvidas_total: 2, notas_gravadas: 3, notas_falhas: [], historico: { resultado: "gravada", imoveis_eco: [] } });
     expect((data as { absorvidas: string[] }).absorvidas.sort()).toEqual([mB, mC].sort());
 
     const A = await linha(ancora);
@@ -496,7 +499,7 @@ describe("efetivar_consolidacao_contato: uma transação, ou nada", () => {
     }
     for (const im of [imA, imB, imC]) {
       const notas = await notasDoImovel(im);
-      expect(notas.map((n) => n.id)).toEqual(["wa:ext-1"]);
+      expect(notas.map((n) => n.id)).toEqual(["wa-enviada:ext-1"]);
       expect(notas[0].origem).toBe("agendamento");
     }
   });
@@ -515,8 +518,11 @@ describe("efetivar_consolidacao_contato: uma transação, ou nada", () => {
     expect(repetida.data).toMatchObject({ ok: false, motivo: "ancora-nao-processando", status: "enviada" });
     expect(await linha(ancora)).toEqual(antesA);
     expect(await linha(mB)).toEqual(antesB);
-    expect((await notasDoImovel(imA)).map((n) => n.id)).toEqual(["wa:ext-2"]);
-    // Mesma nota (mesmo id externo) repetida também não duplica: registrar_nota_imovel deduplica.
+    // O conjunto consultado é a autoridade do histórico (1a-C2.1b.2): a nota
+    // entra em A, B e C, uma vez, e a repetição não toca em nada.
+    for (const im of [imA, imB, imC]) {
+      expect((await notasDoImovel(im)).map((n) => n.id)).toEqual(["wa-enviada:ext-2"]);
+    }
   });
 
   it("8. cross-user é impossível na RPC: p_user_id de outra conta não encontra a âncora, imóvel alheio na lista é recusado, e o navegador não a executa", async () => {
@@ -588,20 +594,21 @@ describe("efetivar_consolidacao_contato: uma transação, ou nada", () => {
     expect(await notasDoImovel(imB)).toEqual([]);
     // E depois de remover a injeção, a mesma chamada efetiva tudo.
     const depois = await service.rpc("efetivar_consolidacao_contato", { p_mensagem_id: ancora, p_user_id: aId, p_texto: TEXTO, p_imoveis_consultados: [imA, imB, imC], p_notas: [{ imovel_id: imA, nota: nota("ext-9", TEXTO) }] });
-    expect(depois.data).toMatchObject({ ok: true, absorvidas_total: 2, notas_gravadas: 1 });
+    expect(depois.data).toMatchObject({ ok: true, absorvidas_total: 2, notas_gravadas: 3 });
   });
 
-  it("uma nota que falha (imóvel fora da lista) fica em savepoint: o núcleo é gravado e a falha é devolvida", async () => {
+  it("uma entrada de nota fora da lista fica em savepoint: o núcleo e o histórico em S são gravados, e a falha é devolvida", async () => {
     const { imA, imB, imC, ancora, mB } = await cenarioABC();
     const imD = await criarImovel(a, aId, "D");
     const { data } = await service.rpc("efetivar_consolidacao_contato", {
       p_mensagem_id: ancora, p_user_id: aId, p_texto: TEXTO, p_imoveis_consultados: [imA, imB, imC],
       p_notas: [{ imovel_id: imA, nota: nota("ext-4", TEXTO) }, { imovel_id: imD, nota: nota("ext-4", TEXTO) }],
     });
-    expect(data).toMatchObject({ ok: true, absorvidas_total: 2, notas_gravadas: 1, notas_falhas: [{ imovel_id: imD, erro: "22023" }] });
+    expect(data).toMatchObject({ ok: true, absorvidas_total: 2, notas_gravadas: 3, notas_falhas: [{ imovel_id: imD, erro: "22023" }] });
     expect(await linha(ancora)).toMatchObject({ status: "enviada" });
     expect(await linha(mB)).toMatchObject({ status: "cancelada", cancelamento_motivo: "contato-consolidado" });
     expect(await notasDoImovel(imD)).toEqual([]);
+    for (const im of [imA, imB, imC]) expect((await notasDoImovel(im)).map((n) => n.id)).toEqual(["wa-enviada:ext-4"]);
   });
 });
 

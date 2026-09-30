@@ -144,6 +144,14 @@ const PERSISTENCIAS_ORIGEM: readonly string[] = [
   "imovel-inexistente",
 ];
 
+/** Mesma regra de `persistenciaContaValida`, para a RPC de origem (e para o
+    `historico` da efetivação da consolidação, que é a mesma RPC por dentro). */
+export function persistenciaOrigemValida(valor: unknown): PersistenciaOrigem | null {
+  return typeof valor === "string" && PERSISTENCIAS_ORIGEM.includes(valor)
+    ? (valor as PersistenciaOrigem)
+    : null;
+}
+
 export interface RegistroMensagemDeOrigem extends Omit<RegistroMensagemEnviada, "imovelId" | "atribuicao"> {
   /** Os imóveis que o próprio Angario declarou como destino do envio. */
   imovelIds: readonly string[];
@@ -169,14 +177,16 @@ export async function registrarMensagemEnviadaDeOrigem(
   });
   if (error) return { persistencia: null, imoveisEco: [], erro: error.message };
   const corpo = objeto(data);
-  const resultado = corpo.resultado;
-  if (typeof resultado !== "string" || !PERSISTENCIAS_ORIGEM.includes(resultado)) {
+  const persistencia = persistenciaOrigemValida(corpo.resultado);
+  if (!persistencia) {
     return { persistencia: null, imoveisEco: [], erro: "resposta-desconhecida" };
   }
-  const imoveisEco = Array.isArray(corpo.imoveis_eco)
-    ? corpo.imoveis_eco.filter((id): id is string => typeof id === "string")
-    : [];
-  return { persistencia: resultado as PersistenciaOrigem, imoveisEco, erro: null };
+  return { persistencia, imoveisEco: imoveisDoEco(corpo.imoveis_eco), erro: null };
+}
+
+/** Os imóveis FORA do conjunto de onde a origem tirou um eco. */
+export function imoveisDoEco(valor: unknown): string[] {
+  return Array.isArray(valor) ? valor.filter((id): id is string => typeof id === "string") : [];
 }
 
 /** O detalhe do evento `historico-envio-atribuicao`, emitido só fora do
@@ -185,7 +195,7 @@ export async function registrarMensagemEnviadaDeOrigem(
 export function detalheDaAtribuicaoDoEnvio(entrada: {
   persistencia: PersistenciaOrigem | "falha";
   identidade: "externa" | "fallback-interno";
-  origem: "painel" | "cron";
+  origem: "painel" | "cron" | "consolidacao";
   imoveisDeclarados: readonly string[];
   imoveisEco: readonly string[];
 }): string {

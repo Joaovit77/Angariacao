@@ -438,6 +438,27 @@ depois de ver a anterior esperando lock em `pg_stat_activity`). Os testes de `*-
 que chamam `npx --no-install supabase` precisam do CLI no `node_modules`
 (`npm install --no-save supabase`).
 
+#### Consolidação na identidade por conta (Fase 1a-C2.1b.2)
+
+A migration `supabase/migrations/20260930120000_consolidacao_identidade_conta.sql` só substitui o
+corpo de `efetivar_consolidacao_contato`: mesma assinatura, `security definer`, `search_path`
+vazio, execute só para `service_role`. O histórico passa a entrar por
+`registrar_nota_whatsapp_origem` (que já existe desde a 1a-C2.1b.1); a resposta ganha a chave
+`historico` e mantém as de antes. Sem tabela, índice, backfill ou mudança de RLS. As migrations
+`20260921120000` e `20260929210000` não são editadas.
+
+Ordem: migration, conferir `pg_proc` (`prosecdef = true`, `proconfig = {search_path=""}`, ACL só
+`postgres`/`service_role`), código, Preview, Production. É compatível nos dois sentidos: o código
+anterior chama a mesma assinatura e lê as mesmas chaves, e o código novo, sem `historico` na
+resposta, volta a ler só `notas_falhas`. Rollback do banco: uma migration nova que reaplique o
+corpo de `20260921120000`; o código de qualquer versão funciona com os dois corpos.
+
+Validação local: o mesmo banco de scratch da 1a-C2.1b.1 com a migration nova aplicada, e
+`node node_modules/vitest/vitest.mjs run --config vitest.consolidacao-identidade-supabase-local.config.ts`
+com as mesmas variáveis (inclusive `LOCAL_SUPABASE_DB_CONTAINER`, para a barreira de
+concorrência), além de `vitest.disponibilidade-supabase-local.config.ts` e
+`vitest.whatsapp-identidade-supabase-local.config.ts`.
+
 #### M6 — Aguardando smoke manual
 
 O smoke real do M3/M4/M5 ainda não foi executado. Ele roda **em Production, depois de M5

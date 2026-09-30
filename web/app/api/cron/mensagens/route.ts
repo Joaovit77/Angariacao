@@ -233,7 +233,10 @@ export async function GET(request: Request) {
       if (consolidacao?.reservadasIds.length) {
         // O contato aconteceu: âncora, absorvidas e notas fecham numa
         // transação só. Se a RPC recusar, nada foi gravado e a mensagem já
-        // saiu: cai no `catch` como resultado incerto (nunca reenvio).
+        // saiu: cai no `catch` como resultado incerto (nunca reenvio). As
+        // notas entram pela identidade por conta (1a-C2.1b.2): a mesma
+        // mensagem em cada imóvel consultado e em nenhum outro; um
+        // conflito do histórico não desfaz o envio confirmado.
         const efetivacao = await efetivarConsolidacaoContato(admin, item, {
           texto,
           imoveisConsultados: imoveisDaMensagem,
@@ -249,9 +252,35 @@ export async function GET(request: Request) {
           detalhe: `${item.id} absorveu ${efetivacao.absorvidasIds.length}; imoveis=${imoveisDaMensagem.length}`,
         });
         consolidadas += efetivacao.absorvidasIds.length;
-        if (efetivacao.notasFalhas.length) {
-          // O envio e a consolidação estão gravados; só a nota `wa:` de
-          // algum imóvel não entrou (o webhook de saída ainda pode gravá-la).
+        const identidade = envio.idExterno ? "externa" as const : "fallback-interno" as const;
+        // Sem `historico` (corpo anterior da RPC), vale o que `notas_falhas` diz.
+        const persistencia = efetivacao.historico?.persistencia
+          ?? (efetivacao.notasFalhas.length ? "falha" : "gravada");
+        if (envioPrecisaDeEvento(persistencia, identidade)) {
+          // Um evento por envio, só fora do normal: eco reconciliado,
+          // conflito ou id interno. Nunca um por imóvel.
+          registrarEvento({
+            userId: item.user_id,
+            categoria: "whatsapp",
+            nivel: persistencia === "conflito" ? "erro" : identidade === "fallback-interno" ? "aviso" : "info",
+            evento: "historico-envio-atribuicao",
+            detalhe: detalheDaAtribuicaoDoEnvio({
+              persistencia,
+              identidade,
+              origem: "consolidacao",
+              imoveisDeclarados: imoveisDaMensagem,
+              imoveisEco: efetivacao.historico?.imoveisEco ?? [],
+            }),
+          });
+        }
+        if (
+          persistencia === "falha"
+          || persistencia === "imovel-inexistente"
+          || efetivacao.notasFalhas.some((falha) => falha.imovel_id)
+        ) {
+          // O envio e a consolidação estão gravados; só o histórico não
+          // entrou (o webhook de saída ainda pode gravá-lo). Conflito já
+          // tem o seu evento acima.
           registrarEvento({
             userId: item.user_id, categoria: "whatsapp", nivel: "erro",
             evento: "historico-envio-falhou",

@@ -1471,10 +1471,25 @@ tenha caído em outro imóvel é removido de lá, e um eco no próprio alvo é s
 nota da origem (a mais rica, sem a `atribuicao` do eco); qualquer outra ocorrência fora do
 conjunto é `conflito` e nada se move. Id interno (`api:<uuid>`, `agendamento:<uuid>`, quando a
 Evolution não devolve `key.id`) não se correlaciona com eco e é marcado `fallback-interno`. A
-consolidação M3/M4 e a importação de conversa continuam pela primitiva por linha, porque
-replicam o mesmo id em N imóveis de propósito (a consolidação entrar nesta regra é a C2.1b.2).
-A garantia depende de a nota continuar no JSONB: se outro fluxo a apagar (lost update, LD-281),
-uma reentrega posterior volta a ser tratada como nova.
+importação de conversa continua pela primitiva por linha, porque replica o mesmo id em N imóveis
+de propósito. A garantia depende de a nota continuar no JSONB: se outro fluxo a apagar (lost
+update, LD-281), uma reentrega posterior volta a ser tratada como nova.
+
+**A consolidação entra na identidade por conta (1a-C2.1b.2).** Uma verificação consolidada
+pergunta por vários imóveis numa mensagem só, e o histórico de cada um precisa dela: para a
+identidade X e o conjunto consultado S (`imoveis_consultados`, sem repetição), ao fim da
+efetivação os imóveis que têm X são **exatamente S**. N cópias em S são deliberadas; nenhuma fora
+de S. `efetivar_consolidacao_contato` chama `registrar_nota_whatsapp_origem` uma vez, na própria
+transação, com o mesmo advisory lock do webhook, do painel e do cron simples: o eco `fromMe`
+dentro de S é substituído pela nota da origem, o eco fora de S é removido, uma ocorrência que
+não é eco dentro de S conta como já presente e fica como está, e qualquer ocorrência que não é
+eco fora de S é conflito. **Efeito do envio e cópia do histórico são separados:** a efetivação só
+roda depois de a Evolution aceitar o envio, então âncora `enviada` e absorvidas
+`contato-consolidado` acontecem exatamente uma vez (o gate é a âncora `processando` sob `for
+update`); o histórico roda numa subtransação, e conflito ou erro o desfazem inteiro, nunca os
+efeitos. Um envio confirmado nunca vira `consolidacao-resultado-incerto` por causa da nota: o
+cron registra um evento `historico-envio-atribuicao` (`origem: consolidacao`) só para conflito,
+eco reconciliado ou id interno, nunca um por imóvel.
 
 **Fronteira com a 1b.** A resolução por canal segue a lápide (`fundido_em_contato_id`) até o
 sobrevivente como rede de segurança, mas a RPC de fusão da 1b é obrigada a reparentear os vínculos

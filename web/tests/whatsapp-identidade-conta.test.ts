@@ -230,14 +230,21 @@ describe("quem chama o quê", () => {
     expect(semComentariosTs(ROTA_CRON)).not.toMatch(/registrarMensagemEnviada\(|registrar_nota_whatsapp_conta/);
   });
 
-  it("M3/M4: a consolidação não chama nenhuma RPC nova e segue gravando por linha em N imóveis", () => {
+  it("M3/M4 (1a-C2.1b.2): a efetivação entra na identidade por conta pela RPC de origem, com o mesmo lock, sem chamada nova no TypeScript", () => {
+    // O TypeScript continua chamando só a efetivação; a RPC de origem é
+    // chamada de DENTRO dela, na mesma transação.
     expect(DISPONIBILIDADE).not.toMatch(/registrar_nota_whatsapp_conta|registrar_nota_whatsapp_origem|registrarMensagemEnviadaDeOrigem/);
-    const efetivar = SCHEMA.slice(
-      SCHEMA.indexOf("create or replace function public.efetivar_consolidacao_contato("),
-    );
-    const corpo = efetivar.slice(0, efetivar.indexOf("$$;") + 3);
-    expect(corpo).toContain("public.registrar_nota_imovel(v_imovel, p_user_id, v_nota->'nota')");
-    expect(corpo).not.toMatch(/registrar_nota_whatsapp_conta|registrar_nota_whatsapp_origem|pg_advisory_xact_lock\(\s*pg_catalog\.hashtextextended\('wa-msg/);
+    const corpo = funcao(SCHEMA, "efetivar_consolidacao_contato");
+    expect(corpo).not.toContain("registrar_nota_imovel");
+    expect(corpo).not.toContain("registrar_nota_whatsapp_conta");
+    expect(corpo.match(/public\.registrar_nota_whatsapp_origem\(/g)).toHaveLength(1);
+    // Paridade do lock por construção: a chave vem só da função de origem,
+    // a mesma do webhook; a efetivação não tem lock próprio de mensagem.
+    expect(corpo).not.toMatch(/pg_advisory_xact_lock|hashtextextended|'wa-msg:/);
+    const lockOrigem = funcao(SCHEMA, "registrar_nota_whatsapp_origem").match(/pg_catalog\.pg_advisory_xact_lock\([\s\S]*?\);/)?.[0];
+    const lockConta = funcao(SCHEMA, "registrar_nota_whatsapp_conta").match(/pg_catalog\.pg_advisory_xact_lock\([\s\S]*?\);/)?.[0];
+    expect(lockOrigem).toBeTruthy();
+    expect(lockOrigem).toBe(lockConta);
     // No cron, o caminho consolidado continua pela efetivação e sai antes
     // da gravação de origem.
     const consolidado = ROTA_CRON.slice(

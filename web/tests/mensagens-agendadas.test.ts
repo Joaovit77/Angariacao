@@ -297,7 +297,15 @@ describe("M3/M4 — reserva de consolidação e efetivação atômica", () => {
     },
   );
 
-  it.each([["schema canônico", SCHEMA], ["migration M3/M4", MIGRATION_M3M4]])(
+  // A efetivação vigente é a da 1a-C2.1b.2 (mesma assinatura, mesmos
+  // efeitos; o histórico pela identidade por conta). A migration M3/M4 é
+  // imutável e segue guardando o corpo original, com as notas por linha.
+  const MIGRATION_C21B2 = readFileSync(
+    new URL("../../supabase/migrations/20260930120000_consolidacao_identidade_conta.sql", import.meta.url),
+    "utf8",
+  );
+
+  it.each([["schema canônico", SCHEMA], ["migration M3/M4", MIGRATION_M3M4], ["migration 1a-C2.1b.2", MIGRATION_C21B2]])(
     "no %s, `efetivar_consolidacao_contato` é definer com search_path vazio, só service_role, e fecha tudo pela reserva na mesma conta",
     (_, sql) => {
       const inicio = sql.indexOf("create or replace function public.efetivar_consolidacao_contato(");
@@ -320,8 +328,7 @@ describe("M3/M4 — reserva de consolidação e efetivação atômica", () => {
       expect(fn).toContain("reservada_para_mensagem_id = null");
       // Âncora: enviada, com o texto que saiu e a lista.
       expect(fn).toMatch(/set status = 'enviada',\s+enviado_em = p_enviado_em,\s+mensagem = p_texto,\s+imoveis_consultados = p_imoveis_consultados/);
-      // Notas: pelo registrar_nota_imovel (formato vem do TypeScript), em savepoint.
-      expect(fn).toContain("public.registrar_nota_imovel(v_imovel, p_user_id, v_nota->'nota')");
+      // Notas: formato vem do TypeScript; falha de nota em savepoint.
       expect(fn).not.toContain("wa:");
       expect(fn).toMatch(/exception when others then\s+v_notas_falhas/);
       const grants = sql.slice(sql.indexOf("$$;", inicio), sql.indexOf("$$;", inicio) + 600);
@@ -330,25 +337,51 @@ describe("M3/M4 — reserva de consolidação e efetivação atômica", () => {
     },
   );
 
-  it("a migration e o schema canônico definem a mesma RPC de efetivação", () => {
-    const corpo = (sql: string) => {
-      const inicio = sql.indexOf("create or replace function public.efetivar_consolidacao_contato(");
-      return sql.slice(inicio, sql.indexOf("$$;", inicio)).replace(/\s+/g, " ");
-    };
-    expect(corpo(MIGRATION_M3M4)).toBe(corpo(SCHEMA));
+  function efetivacao(sql: string): string {
+    const inicio = sql.replace(/\r\n/g, "\n").indexOf("create or replace function public.efetivar_consolidacao_contato(");
+    const texto = sql.replace(/\r\n/g, "\n");
+    return texto.slice(inicio, texto.indexOf("$$;", inicio));
+  }
+
+  it("a migration M3/M4 guarda o corpo original: notas por linha, uma por imóvel", () => {
+    expect(efetivacao(MIGRATION_M3M4)).toContain("public.registrar_nota_imovel(v_imovel, p_user_id, v_nota->'nota')");
   });
 
-  it("registrar_nota_imovel é plpgsql sem commit: chamada de dentro da RPC, participa da transação dela", () => {
-    const inicio = SCHEMA.indexOf("create or replace function registrar_nota_imovel(");
-    const fn = SCHEMA.slice(inicio, SCHEMA.indexOf("$$;", inicio));
-    expect(fn).toContain("language plpgsql");
-    expect(fn).not.toMatch(/\bcommit\b/i);
-    expect(fn).not.toMatch(/\brollback\b/i);
-    // Ela resolve `imoveis` pelo search_path; a RPC ajusta o dela só em volta das notas.
-    expect(fn).not.toContain("set search_path");
-    const rpcInicio = SCHEMA.indexOf("create or replace function public.efetivar_consolidacao_contato(");
-    const rpc = SCHEMA.slice(rpcInicio, SCHEMA.indexOf("$$;", rpcInicio));
-    expect(rpc).toContain("perform pg_catalog.set_config('search_path', 'public, pg_temp', true);");
-    expect(rpc).toContain("perform pg_catalog.set_config('search_path', '', true);");
+  it.each([["schema canônico", SCHEMA], ["migration 1a-C2.1b.2", MIGRATION_C21B2]])(
+    "no %s, o histórico da efetivação entra UMA vez pela RPC de origem, numa subtransação, sem mexer nos efeitos",
+    (_, sql) => {
+      const fn = efetivacao(sql);
+      expect(fn).not.toContain("registrar_nota_imovel");
+      expect(fn).not.toContain("set_config('search_path'");
+      // Mesmo lock e mesma regra da identidade por conta: nenhum lock próprio.
+      expect(fn).not.toContain("pg_advisory_xact_lock");
+      expect(fn.match(/public\.registrar_nota_whatsapp_origem\(/g)).toHaveLength(1);
+      expect(fn).toContain("v_historico := public.registrar_nota_whatsapp_origem(p_user_id, v_conjunto, v_nota);");
+      // S = conjunto consultado, sem repetição.
+      expect(fn).toContain("v_conjunto := array(select distinct c.id from unnest(p_imoveis_consultados) as c(id) order by c.id);");
+      // Qualquer resultado que não deixe S completo desfaz o histórico inteiro.
+      expect(fn).toMatch(/not in \('gravada', 'duplicada', 'origem-reconciliou-eco'\) then\s+raise exception/);
+      expect(fn).toMatch(/exception when others then\s+if v_historico is null then/);
+      // Os efeitos ficam fora da subtransação do histórico: absorvidas antes, âncora depois.
+      const historico = fn.indexOf("v_historico := public.registrar_nota_whatsapp_origem(");
+      expect(fn.indexOf("cancelamento_motivo = 'contato-consolidado'")).toBeLessThan(historico);
+      expect(fn.indexOf("set status = 'enviada'")).toBeGreaterThan(historico);
+      expect(fn).toContain("'historico', v_historico");
+      // Só a persistência da consolidação: nada de disponibilidade, agenda,
+      // status do imóvel, C3, 1a-D ou M5 por aqui.
+      expect(fn).not.toMatch(/update\s+public\.(imoveis|agenda)\b|disponibilidade_imovel|confirmacao_disponibilidade|aplicar_transicao|efeitosPendentes|reatribu|mover_mensagem/i);
+    },
+  );
+
+  it("a migration 1a-C2.1b.2 e o schema canônico definem a mesma RPC de efetivação", () => {
+    const corpo = (sql: string) => efetivacao(sql).replace(/\s+/g, " ");
+    expect(corpo(MIGRATION_C21B2)).toBe(corpo(SCHEMA));
+  });
+
+  it("a migration 1a-C2.1b.2 só substitui a efetivação: nenhuma tabela, índice, policy, backfill ou outra função", () => {
+    const codigo = MIGRATION_C21B2.replace(/\r\n/g, "\n").replace(/--[^\n]*/g, "");
+    expect(codigo.match(/create or replace function/g)).toHaveLength(1);
+    expect(codigo).not.toMatch(/create\s+(table|index|unique|policy|trigger)|alter\s+table|drop\s+|insert\s+into|\busing\s+gin\b/i);
+    expect(codigo).not.toMatch(/to (anon|authenticated|public)\b/);
   });
 });
