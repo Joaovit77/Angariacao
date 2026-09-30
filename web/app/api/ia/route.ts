@@ -29,7 +29,7 @@ import { autenticarRequisicao } from "@/lib/servidor/autenticacao";
 import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { agoraBoot, registrarEtapaBootServidor } from "@/lib/bootPerformance";
-import { registrarEvento, registrarUsoDaResposta } from "@/lib/servidor/registro";
+import { registrarEvento } from "@/lib/servidor/registro";
 import { desempenhoPorAbordagem, resumoTentativas } from "@/lib/calculo/abordagens";
 import { kpisDashboard } from "@/lib/calculo/dashboard";
 import { focoInteligenteDoDia } from "@/lib/calculo/focoDia";
@@ -88,7 +88,6 @@ import {
 } from "@/lib/servidor/ia/dispatcher";
 import { atenderProprietario } from "@/lib/servidor/ia/handlers/atendimento";
 import { respostaErroIa as erro } from "@/lib/servidor/ia/respostas";
-import { aplicarSystemPromptAngario } from "@/lib/ia/system-prompt";
 import { feedbackSugestoesIaHabilitado } from "@/lib/servidor/ia/feedback-config";
 import { registrarSugestaoIa } from "@/lib/servidor/ia/sugestoes";
 import {
@@ -264,6 +263,12 @@ export async function POST(request: Request): Promise<Response> {
   );
   if (respostaEspecializada) return respostaEspecializada;
 
+  // As operações abaixo passam pelo MESMO executor, na rota `operacoes`. Ele
+  // monta o corpo exatamente como as chamadas diretas montavam, aplica o
+  // System Prompt central e registra o uso antes de qualquer parse. Não recebe
+  // opção de transporte: retry e timeout continuam os do cliente.
+  const executor = criarExecutorOpenAI(openai, donoDaChamada, configuracaoIa.operacoes);
+
   // ---------------------------------------------------------------
   // 3a. Sugerir roteiros — o contexto vem do browser, mas só os campos
   //     que conhecemos, e o promptSugerirRoteiros trunca cada um.
@@ -295,33 +300,30 @@ export async function POST(request: Request): Promise<Response> {
 
     let conclusao: OpenAI.Chat.ChatCompletion;
     try {
-      conclusao = await openai.chat.completions.create({
-        model: MODELO,
-        max_completion_tokens: MAX_TOKENS,
-        reasoning_effort: ESFORCO,
+      // O gasto é registrado pelo executor assim que a chamada volta, ANTES
+      // de a resposta ser validada: token consumido é token cobrado, mesmo
+      // quando o JSON vem quebrado e a rota devolve erro. Registrar só no
+      // caminho feliz faria o painel mostrar menos que a fatura — justo nas
+      // contas que mais falham, que são as que mais interessa olhar.
+      ({ conclusao } = await executor.executar({
+        tipo: pedido,
+        interpretarTexto: false,
+        reasoningEffort: ESFORCO,
+        maxCompletionTokens: MAX_TOKENS,
         // strict: true faz o modelo aderir ao esquema, em vez de "tentar".
         // Exige que todo objeto liste tudo em `required` e traga
         // additionalProperties: false — o ESQUEMA_ROTEIROS já atende.
-        response_format: {
-          type: "json_schema",
-          json_schema: { name: "roteiros", strict: true, schema: ESQUEMA_ROTEIROS },
-        },
-        messages: aplicarSystemPromptAngario([
+        formato: { nome: "roteiros", esquema: ESQUEMA_ROTEIROS },
+        mensagens: [
           { role: "user", content: promptSugerirRoteiros(contexto, nomesExistentes) },
-        ]),
-      });
+        ],
+      }));
     } catch (e) {
       console.error("IA: falha ao sugerir roteiros:", sanitizarErroExterno(e, "iaTexto"));
       const falha = classificarErroIa(e);
       registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
       return erro(falha, 502);
     }
-    // O gasto é registrado assim que a chamada volta, ANTES de a resposta
-    // ser validada: token consumido é token cobrado, mesmo quando o JSON
-    // vem quebrado e a rota devolve erro. Registrar só no caminho feliz
-    // faria o painel mostrar menos que a fatura — justo nas contas que
-    // mais falham, que são as que mais interessa olhar.
-    registrarUsoDaResposta(donoDaChamada, pedido, MODELO, conclusao.usage);
 
     // Segurança de exibição: o structured output garante o formato, mas se a
     // resposta vier truncada (max_tokens) o JSON quebra — melhor um erro
@@ -371,23 +373,20 @@ export async function POST(request: Request): Promise<Response> {
 
     let conclusao: OpenAI.Chat.ChatCompletion;
     try {
-      conclusao = await openai.chat.completions.create({
-        model: MODELO,
-        max_completion_tokens: MAX_TOKENS,
-        reasoning_effort: ESFORCO,
-        response_format: {
-          type: "json_schema",
-          json_schema: { name: "anuncio", strict: true, schema: ESQUEMA_ANUNCIO },
-        },
-        messages: aplicarSystemPromptAngario([{ role: "user", content: conteudo }]),
-      });
+      ({ conclusao } = await executor.executar({
+        tipo: pedido,
+        interpretarTexto: false,
+        reasoningEffort: ESFORCO,
+        maxCompletionTokens: MAX_TOKENS,
+        formato: { nome: "anuncio", esquema: ESQUEMA_ANUNCIO },
+        mensagens: [{ role: "user", content: conteudo }],
+      }));
     } catch (e) {
       console.error("IA: falha ao extrair o anúncio:", sanitizarErroExterno(e, "iaTexto"));
       const falha = classificarErroIa(e);
       registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
       return erro(falha, 502);
     }
-    registrarUsoDaResposta(donoDaChamada, pedido, MODELO, conclusao.usage);
 
     try {
       const anuncio = JSON.parse(textoDaResposta(conclusao)) as AnuncioExtraido;
@@ -438,25 +437,22 @@ export async function POST(request: Request): Promise<Response> {
 
     let conclusao: OpenAI.Chat.ChatCompletion;
     try {
-      conclusao = await openai.chat.completions.create({
-        model: MODELO,
-        max_completion_tokens: MAX_TOKENS,
-        reasoning_effort: ESFORCO,
-        response_format: {
-          type: "json_schema",
-          json_schema: { name: "anuncio_gerado", strict: true, schema: ESQUEMA_ANUNCIO_GERADO },
-        },
-        messages: aplicarSystemPromptAngario([
+      ({ conclusao } = await executor.executar({
+        tipo: pedido,
+        interpretarTexto: false,
+        reasoningEffort: ESFORCO,
+        maxCompletionTokens: MAX_TOKENS,
+        formato: { nome: "anuncio_gerado", esquema: ESQUEMA_ANUNCIO_GERADO },
+        mensagens: [
           { role: "user", content: promptGerarAnuncio(imovel, caracteristicas) },
-        ]),
-      });
+        ],
+      }));
     } catch (e) {
       console.error("IA: falha ao gerar o anúncio:", sanitizarErroExterno(e, "iaTexto"));
       const falha = classificarErroIa(e);
       registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
       return erro(falha, 502);
     }
-    registrarUsoDaResposta(donoDaChamada, pedido, MODELO, conclusao.usage);
 
     try {
       const dados = JSON.parse(textoDaResposta(conclusao)) as {
@@ -513,29 +509,22 @@ export async function POST(request: Request): Promise<Response> {
 
     let conclusao: OpenAI.Chat.ChatCompletion;
     try {
-      conclusao = await openai.chat.completions.create({
-        model: MODELO,
-        max_completion_tokens: MAX_TOKENS,
-        reasoning_effort: ESFORCO,
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "abordagem_anuncio",
-            strict: true,
-            schema: ESQUEMA_ABORDAGEM_ANUNCIO,
-          },
-        },
-        messages: aplicarSystemPromptAngario([
+      ({ conclusao } = await executor.executar({
+        tipo: pedido,
+        interpretarTexto: false,
+        reasoningEffort: ESFORCO,
+        maxCompletionTokens: MAX_TOKENS,
+        formato: { nome: "abordagem_anuncio", esquema: ESQUEMA_ABORDAGEM_ANUNCIO },
+        mensagens: [
           { role: "user", content: promptAbordagemDoAnuncio(imovel) },
-        ]),
-      });
+        ],
+      }));
     } catch (e) {
       console.error("IA: falha ao escrever a abordagem do anúncio:", sanitizarErroExterno(e, "iaTexto"));
       const falha = classificarErroIa(e);
       registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
       return erro(falha, 502);
     }
-    registrarUsoDaResposta(donoDaChamada, pedido, MODELO, conclusao.usage);
 
     try {
       const dados = JSON.parse(textoDaResposta(conclusao)) as {
@@ -621,25 +610,22 @@ export async function POST(request: Request): Promise<Response> {
     if (!leitura.concentracao) return erro("sem-dados", 422);
     let conclusao: OpenAI.Chat.ChatCompletion;
     try {
-      conclusao = await openai.chat.completions.create({
-        model: MODELO,
-        max_completion_tokens: 1000,
-        reasoning_effort: ESFORCO,
-        response_format: {
-          type: "json_schema",
-          json_schema: { name: "acao_territorial", strict: true, schema: ESQUEMA_ACAO_TERRITORIAL },
-        },
-        messages: aplicarSystemPromptAngario([
+      ({ conclusao } = await executor.executar({
+        tipo: pedido,
+        interpretarTexto: false,
+        reasoningEffort: ESFORCO,
+        maxCompletionTokens: 1000,
+        formato: { nome: "acao_territorial", esquema: ESQUEMA_ACAO_TERRITORIAL },
+        mensagens: [
           { role: "user", content: promptAcaoTerritorial(leitura) },
-        ]),
-      });
+        ],
+      }));
     } catch (e) {
       console.error("IA: falha ao analisar o mapa:", sanitizarErroExterno(e, "iaTexto"));
       const falha = classificarErroIa(e);
       registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
       return erro(falha, 502);
     }
-    registrarUsoDaResposta(donoDaChamada, pedido, MODELO, conclusao.usage);
     try {
       const dados = JSON.parse(textoDaResposta(conclusao)) as { acao?: unknown };
       const acao = typeof dados.acao === "string" ? dados.acao.trim().slice(0, 180) : "";
@@ -682,19 +668,19 @@ export async function POST(request: Request): Promise<Response> {
 
   let conclusao: OpenAI.Chat.ChatCompletion;
   try {
-    conclusao = await openai.chat.completions.create({
-      model: MODELO,
-      max_completion_tokens: MAX_TOKENS,
-      reasoning_effort: ESFORCO,
-      messages: aplicarSystemPromptAngario([{ role: "user", content: prompt }]),
-    });
+    ({ conclusao } = await executor.executar({
+      tipo: pedido,
+      interpretarTexto: false,
+      reasoningEffort: ESFORCO,
+      maxCompletionTokens: MAX_TOKENS,
+      mensagens: [{ role: "user", content: prompt }],
+    }));
   } catch (e) {
     console.error(`IA: falha em ${pedido}:`, sanitizarErroExterno(e, "iaTexto"));
     const falha = classificarErroIa(e);
     registrarEvento({ userId: donoDaChamada, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${pedido}: ${falha}` });
     return erro(falha, 502);
   }
-  registrarUsoDaResposta(donoDaChamada, pedido, MODELO, conclusao.usage);
 
   const texto = textoDaResposta(conclusao);
   if (!texto) return erro("falha-ia", 502);

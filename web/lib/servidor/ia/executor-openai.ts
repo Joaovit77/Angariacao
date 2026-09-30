@@ -22,6 +22,11 @@ export interface PedidoExecutorOpenAI {
   signal?: AbortSignal;
   timeoutMs?: number;
   maxRetries?: number;
+  /** `false` só para fluxos que leem a conclusão com as próprias regras
+      (F1 e as operações de /api/ia, migrados no IA-M1b): o executor não
+      interpreta o texto (nem emite o log de recusa/truncamento dele) e
+      o chamador recebe só a conclusão. Ausente: comportamento de sempre. */
+  interpretarTexto?: false;
 }
 
 export interface ResultadoExecutorOpenAI {
@@ -30,6 +35,9 @@ export interface ResultadoExecutorOpenAI {
 }
 
 export interface ExecutorOpenAI {
+  executar(
+    pedido: PedidoExecutorOpenAI & { interpretarTexto: false },
+  ): Promise<Pick<ResultadoExecutorOpenAI, "conclusao">>;
   executar(pedido: PedidoExecutorOpenAI): Promise<ResultadoExecutorOpenAI>;
 }
 
@@ -70,7 +78,7 @@ function criarExecutor(
   clienteMockado = false,
 ): ExecutorOpenAI {
   return {
-    async executar(pedido) {
+    async executar(pedido: PedidoExecutorOpenAI): Promise<ResultadoExecutorOpenAI> {
       if (!clienteMockado) exigirAutorizacaoOpenAIReal();
       const modelo = rota?.modelo || MODELO_TEXTO_IA;
       const conclusao = await openai.chat.completions.create({
@@ -98,6 +106,7 @@ function criarExecutor(
       });
 
       registrarUsoDaResposta(userId, pedido.tipo, modelo, conclusao.usage);
+      if (pedido.interpretarTexto === false) return { conclusao, texto: "" };
       return { conclusao, texto: textoDaResposta(conclusao) };
     },
   };

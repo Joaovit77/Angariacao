@@ -27,12 +27,11 @@ import {
 } from "../calculo/ia";
 import { horaExplicitaDaMensagem, interlocutorSeDeclarouResponsavel } from "../calculo/webhookWhatsapp";
 import { RESULTADOS_TENTATIVA, type ResultadoTentativa } from "../constantes";
-import { registrarUsoDaResposta } from "./registro";
 import {
   MAX_TOKENS_CLASSIFICACAO_IA as MAX_TOKENS,
 } from "./ia/config";
 import { carregarConfiguracaoIa } from "./ia/configuracao";
-import { aplicarSystemPromptAngario } from "../ia/system-prompt";
+import { criarExecutorOpenAI } from "./ia/executor-openai";
 import {
   chamadaOpenAIRealAutorizada,
   criarClienteOpenAIReal,
@@ -96,28 +95,28 @@ export async function classificarResposta(
 
   try {
     const configuracaoIa = await carregarConfiguracaoIa();
-    const MODELO = configuracaoIa.classificacao.modelo;
     const openai = criarClienteOpenAIReal({ apiKey });
-    const conclusao = await openai.chat.completions.create({
-      model: MODELO,
-      max_completion_tokens: MAX_TOKENS,
-      reasoning_effort: configuracaoIa.classificacao.esforco,
-      response_format: {
-        type: "json_schema",
-        json_schema: { name: "classificacao", strict: true, schema: ESQUEMA_CLASSIFICACAO },
-      },
-      messages: aplicarSystemPromptAngario([
+    const executor = criarExecutorOpenAI(openai, userId, configuracaoIa.classificacao);
+    /* O gasto é registrado pelo executor antes de qualquer validação do
+       conteúdo. Esta é a chamada de IA mais frequente do sistema — roda a
+       CADA mensagem que um proprietário manda, sem ninguém pedir —, então é
+       provavelmente a maior linha da fatura, e era a mais invisível de
+       todas: as outras pelo menos nascem de um clique. Sem opção de
+       transporte: retry e timeout continuam os do cliente. */
+    const { conclusao } = await executor.executar({
+      tipo: "classificar-resposta",
+      interpretarTexto: false,
+      reasoningEffort: configuracaoIa.classificacao.esforco,
+      maxCompletionTokens: MAX_TOKENS,
+      formato: { nome: "classificacao", esquema: ESQUEMA_CLASSIFICACAO },
+      mensagens: [
         { role: "user", content: promptClassificarResposta(texto, hoje, anteriores) },
-      ]),
+      ],
     });
 
-    /* O gasto, registrado antes de qualquer validação do conteúdo.
-       Esta é a chamada de IA mais frequente do sistema — roda a CADA
-       mensagem que um proprietário manda, sem ninguém pedir —, então é
-       provavelmente a maior linha da fatura, e era a mais invisível de
-       todas: as outras pelo menos nascem de um clique. */
-    registrarUsoDaResposta(userId, "classificar-resposta", MODELO, conclusao.usage);
-
+    // A leitura da resposta continua aqui, sobre a conclusão bruta: recusa,
+    // truncamento, conteúdo vazio e resposta sem `choices` seguem as regras
+    // e os logs deste módulo (por isso o executor não interpreta o texto).
     const escolha = conclusao.choices[0];
     if (!escolha || escolha.message.refusal || escolha.finish_reason === "length") {
       console.error("IA: não classificou a resposta (recusa ou resposta truncada).");
