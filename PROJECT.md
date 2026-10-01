@@ -1257,6 +1257,30 @@ Regras permanentes:
   telefone, e cancela a linha `processando` com `imovel-indisponivel`, origem `worker`; falha de
   leitura vira `erro`/`revalidacao-falhou`. Livre sem imóvel segue como antes. A lista é
   deliberadamente mais estreita que o alvo do M4 (LD-163, 26/09/2026);
+- **`retomada-retirado` é o recontato programado de um imóvel retirado** (Retirados, Fase B). O
+  worker trabalha com lista fechada de tipos (B1, `classificarTipoParaEnvio`): `livre` e
+  `verificacao-disponibilidade` seguem como acima; `retomada-retirado` vira
+  `erro`/`retomada-envio-desabilitado` e qualquer outro valor vira `erro`/`tipo-desconhecido`,
+  sempre antes de instância, revalidação, consolidação, histórico ou envio. O banco aceita o tipo
+  desde o B2 (`20261001210000_retomada_retirado_schema.sql`), com as invariantes no próprio banco,
+  valendo também para o service role: uma retomada nasce `agendada`, para imóvel do mesmo
+  `user_id`, `retirado`, em `DISPONIBILIDADE_STATUS_ALVO`, com data futura, sem `agenda_id` (não é
+  compromisso de Agenda) e sem `imoveis_consultados`; há no máximo uma ativa
+  (`agendada`/`processando`) por imóvel; nenhuma linha entra nem sai do tipo, e o `imovel_id` de uma
+  retomada existente é imutável, mesmo para outro imóvel retirado válido (para mudar o alvo, cancela e
+  programa outra); livre ↔ verificação continua sem regra nova. A validação roda só na linha que resulta
+  `agendada`, porque o claim, a expiração e o worker atualizam em lote e uma exceção ali abortaria o
+  lote de todas as contas. Reativar o imóvel cancela as retomadas `agendada` dele
+  (`imovel-reativado`, origem `automacao`); tirá-lo do status-alvo cancela com
+  `imovel-indisponivel`, que prevalece quando as duas coisas acontecem na mesma atualização; o
+  trigger é próprio (`trg_retomada_retirado_imovel`), separado do M3/M4, e fail-open: a falha vai
+  para `log_eventos` (`retomada-cancelamento-falhou`) e, se nem o log puder ser gravado, a mudança no
+  imóvel conclui mesmo assim. Excluir o imóvel nunca falha por causa dela: pela RPC a agendada é
+  apagada como as outras; pelo DELETE direto, a FK `on delete set null` a cancela como
+  `imovel-excluido`. **Nenhum fluxo da aplicação cria retomada ainda** (não há UI nem caller), e o
+  `ModalMensagemAgendada` aceita o tipo só em TypeScript: antes de a retomada ser utilizável na tela
+  (B4), o modal precisa de guarda própria para ela, porque a trava da livre olha só `tipo ===
+  "livre"`;
 - **uma mutação só no banco.** `private.aplicar_transicao_disponibilidade(imovel, user_id, acao, …)`
   é a única implementação de "encerrar" (apaga lembretes abertos e cancela verificações pendentes) e
   de "confirmar" (conclui lembretes com `completion_reason`, garante um lembrete em E + cadência,

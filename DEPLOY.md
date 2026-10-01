@@ -459,6 +459,74 @@ com as mesmas variáveis (inclusive `LOCAL_SUPABASE_DB_CONTAINER`, para a barrei
 concorrência), além de `vitest.disponibilidade-supabase-local.config.ts` e
 `vitest.whatsapp-identidade-supabase-local.config.ts`.
 
+#### Retirados, Fase B / B2: schema da retomada de imóvel retirado
+
+A migration `supabase/migrations/20261001210000_retomada_retirado_schema.sql` faz o banco aceitar
+`tipo = 'retomada-retirado'` em `mensagens_agendadas` e proteger as invariantes dele. É aditiva e
+não toca nenhuma linha existente:
+
+- check de `tipo` com `livre`, `verificacao-disponibilidade` e `retomada-retirado`;
+- check de `cancelamento_motivo` com os cinco de antes mais `imovel-reativado` (só ele;
+  `destinatario-alterado` fica para o checkpoint que implementar a regra);
+- índice único parcial `mensagens_agendadas_retomada_ativa_idx`: uma retomada ativa
+  (`agendada`/`processando`) por imóvel;
+- três funções `private.*` (`security definer`, `search_path` vazio, execute revogado de public,
+  anon e authenticated) e três triggers: `trg_retomada_identidade_mensagem` (nada entra nem sai do
+  tipo; o `imovel_id` de uma retomada existente é imutável, mesmo para outro imóvel retirado
+  válido), `trg_retomada_validacao_mensagem` (invariantes da linha que resulta `agendada`; imóvel
+  excluído vira cancelamento `imovel-excluido`) e `trg_retomada_retirado_imovel` em `imoveis`
+  (reativação cancela com `imovel-reativado`, saída do status-alvo com `imovel-indisponivel`; se a
+  mesma atualização faz as duas coisas, prevalece `imovel-indisponivel`; fail-open, com log que
+  também é fail-safe).
+
+Não redefine claim, `aplicar_transicao_disponibilidade`, `efetivar_consolidacao_contato`, o trigger
+do destinatário nem a RLS (há teste estático). **Pré-requisito: o worker com lista fechada de tipos
+(B1) já em Production** (portão G3): qualquer retomada que chegue ao worker vira
+`erro`/`retomada-envio-desabilitado` e não é enviada. Nenhum fluxo da aplicação cria o tipo neste
+checkpoint, então a ordem migration ↔ deploy é livre; o código do B2 só muda tipos TypeScript.
+Recomendado: (1) aplicar a migration em Production; (2) conferir em `pg_constraint` os dois checks,
+em `pg_indexes` o índice, em `pg_trigger` os três triggers e em `pg_proc` as três funções com
+`prosecdef = true`, `proconfig = {search_path=""}` e ACL só `postgres`; (3) publicar o código.
+
+Validação local antes de Production: `supabase start` numa pasta de scratch (portas fora da faixa
+excluída do Windows; o storage precisa estar ligado, porque o schema cria buckets), aplicar o
+baseline (`supabase-schema.sql` de `6015984` e as migrations de `20260921120000` em diante), aplicar
+a migration nova duas vezes (idempotente: mesma estrutura) e rodar
+`node node_modules/vitest/vitest.mjs run --config vitest.retomada-retirado-supabase-local.config.ts`
+em `web/` com `LOCAL_SUPABASE_URL`, `LOCAL_SUPABASE_ANON_KEY`, `LOCAL_SUPABASE_SERVICE_ROLE_KEY` e
+`LOCAL_SUPABASE_DB_CONTAINER` (o teste desliga triggers por instantes e grava com
+`session_replication_role = replica` para montar os cenários adversariais, como o claim em lote com
+o imóvel já reativado e o fail-open com a automação e o log falhando), além das integrações de
+mensagens, disponibilidade, identidade e consolidação.
+
+Atenção ao reaplicar o `supabase-schema.sql` inteiro por cima de um banco: o bloco espelho do
+M3/M4 recria o check de motivos com os cinco valores antigos, sem condição, então, se alguma linha
+já tiver `imovel-reativado`, a reaplicação falha nesse ponto (com `--single-transaction`, nada fica
+pela metade). Production nunca reaplica o schema; o caminho é sempre a migration.
+
+Rollback (não automático; só com **zero** retomadas no banco, conferido antes com
+`select count(*) from public.mensagens_agendadas where tipo = 'retomada-retirado'`). O
+`imovel-reativado` fica no check de motivos, porque linhas canceladas com ele podem existir e são
+histórico; nenhum dado é apagado:
+
+```sql
+begin;
+drop trigger if exists trg_retomada_retirado_imovel on public.imoveis;
+drop trigger if exists trg_retomada_validacao_mensagem on public.mensagens_agendadas;
+drop trigger if exists trg_retomada_identidade_mensagem on public.mensagens_agendadas;
+drop function if exists private.reagir_retomada_retirado_imovel();
+drop function if exists private.validar_retomada_retirado();
+drop function if exists private.proteger_identidade_retomada_retirado();
+drop index if exists public.mensagens_agendadas_retomada_ativa_idx;
+alter table public.mensagens_agendadas drop constraint mensagens_agendadas_tipo_check;
+alter table public.mensagens_agendadas add constraint mensagens_agendadas_tipo_check
+  check (tipo in ('livre', 'verificacao-disponibilidade'));
+commit;
+```
+
+Se ainda houver retomada, o `add constraint` falha e a transação inteira volta atrás. O rollback de
+código (deploy anterior) independe do banco: o código anterior ao B2 já conhece o tipo (B1).
+
 #### M6 — Aguardando smoke manual
 
 O smoke real do M3/M4/M5 ainda não foi executado. Ele roda **em Production, depois de M5
