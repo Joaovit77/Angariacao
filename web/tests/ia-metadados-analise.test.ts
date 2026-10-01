@@ -29,6 +29,7 @@ vi.mock("@/lib/servidor/registro", async (importOriginal) => ({
   registrarEvento: mocks.registrarEvento,
 }));
 
+import OpenAI from "openai";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import fixtures from "./fixtures-baseline.json";
 import { executarAnaliseAprofundada } from "@/lib/servidor/assistente/analiseAprofundada";
@@ -173,5 +174,52 @@ describe("F11: metadados de configuração e correlação, comportamentais", () 
     expect(idsSegunda.size).toBe(1);
     expect([...idsSegunda][0]).toMatch(UUID);
     expect([...idsSegunda][0]).not.toBe([...idsPrimeira][0]);
+  });
+});
+
+describe("F11: falha do provedor na segunda tentativa (IA-M1c-B)", () => {
+  it("a primeira chamada grava uso, a segunda falha: mesmo execucaoId, mesma exceção e o evento legado de sempre", async () => {
+    mocks.carregarConfiguracaoIa.mockResolvedValue(DO_BANCO);
+    const timeout = new OpenAI.APIConnectionTimeoutError();
+    const invalida = mocks.create.getMockImplementation()!;
+    mocks.create.mockReset();
+    mocks.create.mockImplementationOnce(invalida).mockImplementationOnce(async () => {
+      throw timeout;
+    });
+    const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(executarAnaliseAprofundada(
+      { tipo: "analise_aprofundada", imovelId: IMOVEL_ID, incluirAtendimento: false, sessaoId: "sessao-teste-2" },
+      supabaseFalso(),
+      USUARIO_ID,
+      new AbortController().signal,
+    )).rejects.toBe(timeout);
+    erro.mockRestore();
+
+    expect(mocks.create).toHaveBeenCalledTimes(2);
+    const usos = mocks.registrarUsoDaResposta.mock.calls;
+    expect(usos).toHaveLength(1);
+    const execucaoDoSucesso = (usos[0][4] as MetadadosUsoIa).execucaoId;
+    expect(execucaoDoSucesso).toMatch(UUID);
+
+    const eventos = mocks.registrarEvento.mock.calls.map(([e]) => e as { evento: string; nivel: string; detalhe: string });
+    const falhas = eventos.filter((e) => e.evento === "ia-chamada-falhou");
+    expect(falhas).toHaveLength(1);
+    expect(falhas[0].nivel).toBe("aviso");
+    expect(JSON.parse(falhas[0].detalhe)).toMatchObject({
+      tipo: "analise-aprofundada-imovel",
+      execucao_id: execucaoDoSucesso,
+      rota: "assistente",
+      esforco: "medium",
+      config_origem: "banco",
+      config_versao: 9,
+      modelo: "gpt-5.6-sol",
+      categoria: "timeout",
+      status_http: null,
+      requisicao_provedor_id: null,
+    });
+    const legados = eventos.filter((e) => e.evento === "ia-assistente-respondido");
+    expect(legados).toHaveLength(1);
+    expect(legados[0].nivel).toBe("erro");
+    expect(JSON.parse(legados[0].detalhe)).toMatchObject({ resultado: "erro", motivo: "falha-controlada", chamadasModelo: 2 });
   });
 });

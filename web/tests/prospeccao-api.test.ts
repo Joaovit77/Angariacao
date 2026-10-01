@@ -335,6 +335,32 @@ describe("POST /api/prospeccao/classificar", () => {
     expect(mocks.registrarUsoIa).not.toHaveBeenCalled();
   });
 
+  it("IA-M1c-B: falha do executor emite ia-chamada-falhou (aviso, rota classificacao) e o ia-classificacao-falhou legado não muda", async () => {
+    mundo({ saida: new OpenAI.RateLimitError(429, { message: "rate" }, "rate", new Headers({ "x-request-id": "req_g1" })) });
+    const { status, corpo } = await chamar();
+    expect(status).toBe(429);
+    expect(corpo).toEqual({ ok: false, falha: "limite-excedido" });
+    expect(mocks.registrarUsoIa).not.toHaveBeenCalled();
+    const eventos = mocks.registrarEvento.mock.calls.map(([e]) => e as { evento: string; nivel: string; detalhe: string | null; categoria: string; userId: string | null });
+    const falhasDoProvedor = eventos.filter((e) => e.evento === "ia-chamada-falhou");
+    expect(falhasDoProvedor).toHaveLength(1);
+    expect(falhasDoProvedor[0]).toMatchObject({ userId: USUARIO, categoria: "ia", nivel: "aviso" });
+    expect(JSON.parse(String(falhasDoProvedor[0].detalhe))).toMatchObject({
+      tipo: "classificar-imovel-identificado",
+      rota: "classificacao",
+      esforco: "low",
+      config_origem: "banco",
+      config_versao: 1,
+      modelo: "gpt-5.6-luna",
+      categoria: "limite-de-taxa",
+      status_http: 429,
+      requisicao_provedor_id: "req_g1",
+    });
+    expect(eventos.filter((e) => e.evento === "ia-classificacao-falhou")).toEqual([
+      expect.objectContaining({ nivel: "erro", detalhe: "limite-excedido" }),
+    ]);
+  });
+
   it("parse inválido: 502 falha-modelo, run falha 'saida-invalida', concluir nunca é chamado — mas o uso foi registrado, porque o modelo rodou", async () => {
     const m = mundo({ saida: "{ isto não é json" });
     const { status, corpo } = await chamar();

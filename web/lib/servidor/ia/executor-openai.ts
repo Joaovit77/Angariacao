@@ -2,10 +2,12 @@ import { randomUUID } from "node:crypto";
 import OpenAI from "openai";
 import type { FalhaIa } from "@/lib/calculo/ia";
 import {
+  registrarEvento,
   registrarUsoDaResposta,
   type MetadadosUsoIa,
   type RotaIaRegistro,
 } from "@/lib/servidor/registro";
+import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import { MAX_TOKENS_IA, MODELO_TEXTO_IA } from "./config";
 import type {
   EsforcoIaPermitido,
@@ -126,6 +128,93 @@ function metadadosDaConclusao(
   };
 }
 
+/** Categoria de uma falha na chamada ao provedor (IA-M1c-B). Só telemetria:
+    o vocabulário da tela continua sendo o de `classificarErroIa`. */
+export type CategoriaFalhaProvedor =
+  | "cancelada"
+  | "timeout"
+  | "conexao"
+  | "limite-de-taxa"
+  | "autenticacao"
+  | "requisicao-recusada"
+  | "erro-do-provedor"
+  | "desconhecida";
+
+/**
+ * Ordem obrigatória: `APIConnectionTimeoutError` herda de
+ * `APIConnectionError`, então o timeout precisa ser testado antes da
+ * conexão. O status vem do saneamento de `sanitizarErroExterno`.
+ */
+export function categorizarFalhaProvedor(erro: unknown): CategoriaFalhaProvedor {
+  if (erro instanceof OpenAI.APIUserAbortError) return "cancelada";
+  if (erro instanceof OpenAI.APIConnectionTimeoutError) return "timeout";
+  if (erro instanceof OpenAI.APIConnectionError) return "conexao";
+  const status = sanitizarErroExterno(erro, "iaTexto").status;
+  if (status === 429) return "limite-de-taxa";
+  if (status === 401 || status === 403) return "autenticacao";
+  if (status === 400 || status === 404 || status === 422) return "requisicao-recusada";
+  if (status !== null && status >= 500) return "erro-do-provedor";
+  return "desconhecida";
+}
+
+/** `requestID` do erro do SDK, com o mesmo contrato do `_request_id` do
+    sucesso. Lido dentro de try: um getter malformado vira null. */
+function requisicaoDoErro(erro: unknown): string | null {
+  try {
+    return erro && typeof erro === "object" && "requestID" in erro
+      ? textoCurto(erro.requestID, 200, /^[\w.:-]+$/)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Um evento `ia-chamada-falhou` por falha do provedor: lista fechada de
+ * campos, sem mensagem, stack, corpo, cabeçalhos ou qualquer texto do erro.
+ * Nível `aviso`, para não entrar na contagem de erros do admin
+ * (`errosPorCorretor`), onde a mesma falha já conta pelo evento do fluxo.
+ * Nunca lança: quem chamou recebe a exceção original de qualquer jeito.
+ */
+function registrarFalhaDaChamada(
+  erro: unknown,
+  userId: string | null,
+  campos: {
+    tipo: string;
+    execucaoId: string;
+    rota: RotaIaRegistro | null;
+    esforco: string;
+    configOrigem: VersaoConfiguracaoIa["origem"] | null;
+    configVersao: number | null;
+    modelo: string;
+    duracaoMs: number;
+  },
+): void {
+  try {
+    registrarEvento({
+      userId,
+      categoria: "ia",
+      nivel: "aviso",
+      evento: "ia-chamada-falhou",
+      detalhe: JSON.stringify({
+        tipo: campos.tipo,
+        execucao_id: campos.execucaoId,
+        rota: campos.rota,
+        esforco: campos.esforco,
+        config_origem: campos.configOrigem,
+        config_versao: campos.configVersao,
+        modelo: campos.modelo,
+        categoria: categorizarFalhaProvedor(erro),
+        status_http: sanitizarErroExterno(erro, "iaTexto").status,
+        requisicao_provedor_id: requisicaoDoErro(erro),
+        duracao_ms: campos.duracaoMs,
+      }),
+    });
+  } catch {
+    // A telemetria nunca substitui nem mascara a falha original.
+  }
+}
+
 /**
  * Executor comum das operações OpenAI.
  *
@@ -144,37 +233,56 @@ function criarExecutor(
     async executar(pedido: PedidoExecutorOpenAI): Promise<ResultadoExecutorOpenAI> {
       if (!clienteMockado) exigirAutorizacaoOpenAIReal();
       const modelo = rota?.modelo || MODELO_TEXTO_IA;
+      const esforco = rota?.esforco || pedido.reasoningEffort;
+      const execucaoId = pedido.execucaoId || randomUUID();
       const inicio = performance.now();
-      const conclusao = await openai.chat.completions.create({
-        model: modelo,
-        max_completion_tokens: pedido.maxCompletionTokens ?? MAX_TOKENS_IA,
-        reasoning_effort: rota?.esforco || pedido.reasoningEffort,
-        ...(pedido.formato
-          ? {
-              response_format: {
-                type: "json_schema" as const,
-                json_schema: {
-                  name: pedido.formato.nome,
-                  strict: true,
-                  schema: pedido.formato.esquema,
+      // Só a chamada ao provedor fica no try: a trava de ambiente acima é a
+      // aplicação decidindo não chamar, e não gera `ia-chamada-falhou`.
+      let conclusao: OpenAI.Chat.ChatCompletion;
+      try {
+        conclusao = await openai.chat.completions.create({
+          model: modelo,
+          max_completion_tokens: pedido.maxCompletionTokens ?? MAX_TOKENS_IA,
+          reasoning_effort: esforco,
+          ...(pedido.formato
+            ? {
+                response_format: {
+                  type: "json_schema" as const,
+                  json_schema: {
+                    name: pedido.formato.nome,
+                    strict: true,
+                    schema: pedido.formato.esquema,
+                  },
                 },
-              },
-            }
-          : {}),
-        messages: aplicarSystemPromptAngario(pedido.mensagens),
-      }, {
-        ...(pedido.tipo.startsWith("rascunhar-resposta-") ? { maxRetries: 0, timeout: 45_000 } : {}),
-        ...(pedido.maxRetries != null ? { maxRetries: pedido.maxRetries } : {}),
-        ...(pedido.timeoutMs != null ? { timeout: pedido.timeoutMs } : {}),
-        ...(pedido.signal ? { signal: pedido.signal } : {}),
-      });
+              }
+            : {}),
+          messages: aplicarSystemPromptAngario(pedido.mensagens),
+        }, {
+          ...(pedido.tipo.startsWith("rascunhar-resposta-") ? { maxRetries: 0, timeout: 45_000 } : {}),
+          ...(pedido.maxRetries != null ? { maxRetries: pedido.maxRetries } : {}),
+          ...(pedido.timeoutMs != null ? { timeout: pedido.timeoutMs } : {}),
+          ...(pedido.signal ? { signal: pedido.signal } : {}),
+        });
+      } catch (erro) {
+        registrarFalhaDaChamada(erro, userId, {
+          tipo: pedido.tipo,
+          execucaoId,
+          rota: contexto?.nome ?? null,
+          esforco,
+          configOrigem: contexto?.origem ?? null,
+          configVersao: contexto?.versao ?? null,
+          modelo,
+          duracaoMs: Math.max(0, Math.round(performance.now() - inicio)),
+        });
+        throw erro;
+      }
 
       const duracaoMs = Math.max(0, Math.round(performance.now() - inicio));
 
       registrarUsoDaResposta(userId, pedido.tipo, modelo, conclusao.usage, metadadosDaConclusao(conclusao, {
-        execucaoId: pedido.execucaoId || randomUUID(),
+        execucaoId,
         rota: contexto?.nome ?? null,
-        esforco: rota?.esforco || pedido.reasoningEffort,
+        esforco,
         configOrigem: contexto?.origem ?? null,
         configVersao: contexto?.versao ?? null,
         duracaoMs,

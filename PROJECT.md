@@ -3308,6 +3308,20 @@ das rotas que já existiam.
   alguém precisaria AGIR para consertar, mais os envios (o volume que explica a fatura). Registrar
   tudo encheria a tabela de ruído, e log que ninguém consegue ler é o mesmo que não ter log — o
   erro exato que matou a faixa de "imóvel parado" no termômetro.
+  **Falha do provedor de IA (`ia-chamada-falhou`).** Quando o executor comum
+  (`lib/servidor/ia/executor-openai.ts`) inicia a chamada e ela falha, ele grava um único evento
+  `ia-chamada-falhou` (categoria `ia`, nível `aviso`) e relança a mesma exceção, sem mudar nada no
+  fluxo que chamou. O `detalhe` é um JSON de lista fechada: `tipo`, `execucao_id`, `rota`,
+  `esforco`, `config_origem`, `config_versao`, `modelo` (o pedido), `categoria`, `status_http`,
+  `requisicao_provedor_id` e `duracao_ms`. Nunca leva mensagem, stack, corpo ou cabeçalho do erro.
+  As categorias são `cancelada`, `timeout`, `conexao`, `limite-de-taxa`, `autenticacao`,
+  `requisicao-recusada`, `erro-do-provedor` e `desconhecida`. O nível é `aviso` porque o fluxo já
+  registra a sua própria falha (`ia-falhou`, `ia-atendimento-bloqueado`, `ia-classificacao-falhou`),
+  e o painel do admin conta os eventos de nível `erro`: a mesma falha não pode contar duas vezes. A
+  trava de ambiente (`ChamadaOpenAIRealNaoAutorizadaError`) não gera o evento, porque ali a
+  aplicação decidiu não chamar. Falha nunca vira linha em `ia_uso`: uma linha ali significa só "o
+  provedor respondeu com usage", e o `execucao_id` liga a falha às chamadas bem-sucedidas da mesma
+  execução.
 
 ### Cargo ≠ carteira (`admins.opera_carteira`)
 

@@ -61,6 +61,7 @@ vi.mock("@/lib/servidor/registro", async (importOriginal) => ({
   registrarEvento: mocks.registrarEvento,
 }));
 
+import OpenAI from "openai";
 import { POST as ia } from "@/app/api/ia/route";
 import { CONFIGURACAO_IA_PADRAO, type VersaoConfiguracaoIa } from "@/lib/ia/configuracao";
 import type { MetadadosUsoIa } from "@/lib/servidor/registro";
@@ -247,5 +248,51 @@ describe("F3: metadados de configuração e correlação, comportamentais", () =
     expect(idsSegunda.size).toBe(1);
     expect([...idsSegunda][0]).toMatch(UUID);
     expect([...idsSegunda][0]).not.toBe([...idsPrimeira][0]);
+  });
+});
+
+describe("F3: falha do provedor numa etapa (IA-M1c-B)", () => {
+  it("a decisão grava uso, a geração falha: o ia-chamada-falhou tem o mesmo execucaoId; resposta e evento legado iguais", async () => {
+    mocks.carregarConfiguracaoIa.mockResolvedValue(DO_BANCO);
+    const falhaDoProvedor = new OpenAI.InternalServerError(500, { message: "x" }, "x", new Headers({ "x-request-id": "req_f3" }));
+    const sucesso = mocks.create.getMockImplementation()!;
+    mocks.create.mockImplementation(async (corpo: { response_format?: { json_schema?: { name?: string } } }) => {
+      if (corpo.response_format?.json_schema?.name === "resposta_atendimento") throw falhaDoProvedor;
+      return sucesso(corpo);
+    });
+    const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+    const resposta = await ia(requisicao());
+    erro.mockRestore();
+
+    expect(resposta.status).toBe(502);
+    expect(await resposta.json()).toMatchObject({ ok: false, falha: "falha-ia" });
+
+    const usos = mocks.registrarUsoDaResposta.mock.calls;
+    expect(usos.map((c) => c[1])).toEqual(["rascunhar-resposta-decisao"]);
+    const execucaoDoSucesso = (usos[0][4] as MetadadosUsoIa).execucaoId;
+    expect(execucaoDoSucesso).toMatch(UUID);
+
+    const eventos = mocks.registrarEvento.mock.calls.map(([e]) => e as { evento: string; nivel: string; detalhe: string });
+    const falhas = eventos.filter((e) => e.evento === "ia-chamada-falhou");
+    expect(falhas).toHaveLength(1);
+    expect(falhas[0].nivel).toBe("aviso");
+    expect(JSON.parse(falhas[0].detalhe)).toMatchObject({
+      tipo: "rascunhar-resposta-geracao",
+      execucao_id: execucaoDoSucesso,
+      rota: "atendimento",
+      esforco: "xhigh",
+      config_origem: "banco",
+      config_versao: 7,
+      modelo: "gpt-5.6-terra",
+      categoria: "erro-do-provedor",
+      status_http: 500,
+      requisicao_provedor_id: "req_f3",
+    });
+    // O fluxo registra a etapa que deu certo e o bloqueio de sempre.
+    expect(eventos.filter((e) => e.evento === "ia-atendimento-etapa")).toHaveLength(1);
+    const bloqueios = eventos.filter((e) => e.evento === "ia-atendimento-bloqueado");
+    expect(bloqueios).toHaveLength(1);
+    expect(bloqueios[0].nivel).toBe("erro");
+    expect(JSON.parse(bloqueios[0].detalhe)).toMatchObject({ etapaFinal: "geracao", resultado: "erro", motivo: "falha-ia", chamadas: 2 });
   });
 });

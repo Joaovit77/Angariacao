@@ -807,3 +807,67 @@ describe("metadados de uso por fluxo (IA-M1c-A)", () => {
     expect(fonte).toContain('configuracaoIa.operacoes, contextoDaConfiguracao(configuracaoIa, "operacoes"),');
   });
 });
+
+/* ================================================================
+   IA-M1c-B: FALHA DO PROVEDOR POR FLUXO
+
+   O executor emite um `ia-chamada-falhou` (aviso) e relança; o fluxo
+   segue exatamente como antes, com os seus eventos de sempre.
+   ================================================================ */
+
+type EventoCapturado = { userId: string | null; categoria: string; nivel: string; evento: string; detalhe: string };
+const eventosCapturados = () => mocks.registrarEvento.mock.calls.map(([e]) => e as EventoCapturado);
+
+describe("falha do provedor por fluxo (IA-M1c-B)", () => {
+  it.each(CASOS_OPERACOES)("$tipo: ia-chamada-falhou antes do ia-falhou legado, que não muda; resposta e uso iguais", async (caso) => {
+    mocks.create.mockRejectedValue(new OpenAI.RateLimitError(429, { message: "rate" }, "rate", new Headers({ "x-request-id": "req_op1" })));
+    const resposta = await ia(requisicao({ tipo: caso.tipo, ...caso.corpo }));
+    expect(resposta.status).toBe(502);
+    expect(await resposta.json()).toMatchObject({ ok: false, falha: "limite-excedido" });
+    expect(mocks.registrarUsoDaResposta).not.toHaveBeenCalled();
+    const eventos = eventosCapturados();
+    expect(eventos.map((e) => e.evento)).toEqual(["ia-chamada-falhou", "ia-falhou"]);
+    expect(eventos[0]).toEqual({ userId: USUARIO, categoria: "ia", nivel: "aviso", evento: "ia-chamada-falhou", detalhe: expect.any(String) });
+    expect(JSON.parse(eventos[0].detalhe)).toEqual({
+      tipo: caso.tipo,
+      execucao_id: expect.stringMatching(/^[0-9a-f-]{36}$/),
+      rota: "operacoes",
+      esforco: CONFIGURACAO.operacoes.esforco,
+      config_origem: "banco",
+      config_versao: 42,
+      modelo: CONFIGURACAO.operacoes.modelo,
+      categoria: "limite-de-taxa",
+      status_http: 429,
+      requisicao_provedor_id: "req_op1",
+      duracao_ms: expect.any(Number),
+    });
+    expect(eventos[1]).toEqual({ userId: USUARIO, categoria: "ia", nivel: "erro", evento: "ia-falhou", detalhe: `${caso.tipo}: limite-excedido` });
+  });
+
+  it("F1: erro do provedor continua null e sem uso; o único evento é o ia-chamada-falhou da rota classificacao", async () => {
+    mocks.create.mockRejectedValue(new OpenAI.InternalServerError(500, { message: "x" }, "x", new Headers()));
+    expect(await classificarResposta(TEXTO, HOJE, USUARIO)).toBeNull();
+    expect(mocks.registrarUsoDaResposta).not.toHaveBeenCalled();
+    const eventos = eventosCapturados();
+    expect(eventos).toHaveLength(1);
+    expect(eventos[0]).toMatchObject({ userId: USUARIO, categoria: "ia", nivel: "aviso", evento: "ia-chamada-falhou" });
+    expect(JSON.parse(eventos[0].detalhe)).toMatchObject({
+      tipo: "classificar-resposta",
+      rota: "classificacao",
+      esforco: CONFIGURACAO.classificacao.esforco,
+      config_origem: "banco",
+      config_versao: 42,
+      modelo: CONFIGURACAO.classificacao.modelo,
+      categoria: "erro-do-provedor",
+      status_http: 500,
+      requisicao_provedor_id: null,
+    });
+  });
+
+  it("F1 sem autorização de ambiente: não chama o provedor e não emite evento", async () => {
+    mocks.autorizado = false;
+    expect(await classificarResposta(TEXTO, HOJE, USUARIO)).toBeNull();
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.registrarEvento).not.toHaveBeenCalled();
+  });
+});
