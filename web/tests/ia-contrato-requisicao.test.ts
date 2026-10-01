@@ -122,6 +122,24 @@ const USO = { prompt_tokens: 111, completion_tokens: 22, total_tokens: 133 };
     em ia-uso-metadados.test.ts); aqui basta que existam. */
 const METADADOS_USO = expect.objectContaining({ execucaoId: expect.any(String), duracaoMs: expect.any(Number) });
 
+/** IA-M1c-C: as 7 chaves, nesta ordem, do detalhe de `ia-resposta-rejeitada`. */
+const CHAVES_REJEICAO = ["tipo", "execucao_id", "requisicao_provedor_id", "tentativa", "categoria", "motivo", "codigos"];
+
+/** IA-M1c-C: num caminho de rejeição, o único evento é o `ia-resposta-rejeitada`
+    (ia, aviso), com o mesmo execucao_id da linha de uso. Status, corpo, logs
+    e uso continuam afirmados pelo próprio teste, como antes. */
+function esperarSoRejeicao(tipo: string, categoria: string, motivo: string) {
+  const eventos = mocks.registrarEvento.mock.calls.map(([e]) => e as { evento: string; detalhe: string });
+  expect(eventos.map((e) => e.evento)).toEqual(["ia-resposta-rejeitada"]);
+  expect(eventos[0]).toMatchObject({ userId: USUARIO, categoria: "ia", nivel: "aviso" });
+  const detalhe = JSON.parse(eventos[0].detalhe) as Record<string, unknown>;
+  expect(Object.keys(detalhe)).toEqual(CHAVES_REJEICAO);
+  expect(detalhe).toMatchObject({ tipo, categoria, motivo, tentativa: 1, codigos: [] });
+  const uso = mocks.registrarUsoDaResposta.mock.calls.at(-1)?.[4] as { execucaoId?: string } | undefined;
+  expect(detalhe.execucao_id).toMatch(/^[0-9a-f-]{36}$/);
+  expect(detalhe.execucao_id).toBe(uso?.execucaoId);
+}
+
 /* ---------------- dados do banco (conta de teste do baseline) ---------------- */
 
 const ABORDAGENS: DbAbordagemRow[] = [
@@ -435,7 +453,7 @@ describe("comportamento de falha: operações de /api/ia (F4–F9)", () => {
     expect(resposta.status).toBe(502);
     expect(await resposta.json()).toMatchObject({ ok: false, falha: "falha-ia" });
     expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, caso.tipo, CONFIGURACAO.operacoes.modelo, USO, METADADOS_USO);
-    expect(mocks.registrarEvento).not.toHaveBeenCalled();
+    esperarSoRejeicao(caso.tipo, "resposta-invalida", "json-invalido");
   });
 
   it.each(todos)("$tipo: resposta truncada é 502 falha-ia com uso registrado", async (caso) => {
@@ -650,7 +668,7 @@ describe("observabilidade legada: F1", () => {
     expect(await classificarResposta(TEXTO, HOJE, USUARIO)).toBeNull();
     expect(erros.mock.calls).toEqual([["IA: não classificou a resposta (recusa ou resposta truncada)."]]);
     expect(mocks.registrarUsoDaResposta).toHaveBeenCalledTimes(1);
-    expect(mocks.registrarEvento).not.toHaveBeenCalled();
+    esperarSoRejeicao("classificar-resposta", "resposta-invalida", "recusa");
   });
 
   it("truncamento: só a linha antiga do F1, nenhuma outra", async () => {
@@ -665,7 +683,7 @@ describe("observabilidade legada: F1", () => {
     expect(await classificarResposta(TEXTO, HOJE, USUARIO)).toBeNull();
     expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, "classificar-resposta", CONFIGURACAO.classificacao.modelo, USO, METADADOS_USO);
     expect(erros.mock.calls).toEqual([["IA: falha ao classificar a resposta:", sanitizarErroExterno(ERRO_SEM_CHOICES, "iaTexto")]]);
-    expect(mocks.registrarEvento).not.toHaveBeenCalled();
+    esperarSoRejeicao("classificar-resposta", "resposta-invalida", "sem-choices");
   });
 });
 
@@ -683,7 +701,7 @@ describe("observabilidade legada: /api/ia", () => {
     expect(resposta.status).toBe(502);
     expect(await resposta.json()).toMatchObject({ ok: false, falha: "falha-ia" });
     expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, caso.tipo, CONFIGURACAO.operacoes.modelo, USO, METADADOS_USO);
-    expect(mocks.registrarEvento).not.toHaveBeenCalled();
+    esperarSoRejeicao(caso.tipo, "resposta-invalida", "sem-choices");
     expect(erros.mock.calls).toEqual([[LOG_PARSE_ESTRUTURADO[caso.tipo], sanitizarErroExterno(ERRO_SEM_CHOICES, "processarRespostaIa")]]);
   });
 
@@ -691,7 +709,7 @@ describe("observabilidade legada: /api/ia", () => {
     mocks.create.mockResolvedValue(semChoices());
     await expect(ia(requisicao({ tipo: caso.tipo, ...caso.corpo }))).rejects.toThrow(TypeError);
     expect(mocks.registrarUsoDaResposta).toHaveBeenCalledWith(USUARIO, caso.tipo, CONFIGURACAO.operacoes.modelo, USO, METADADOS_USO);
-    expect(mocks.registrarEvento).not.toHaveBeenCalled();
+    esperarSoRejeicao(caso.tipo, "resposta-invalida", "sem-choices");
     expect(erros.mock.calls).toEqual([]);
   });
 
@@ -702,7 +720,7 @@ describe("observabilidade legada: /api/ia", () => {
     const esperado: unknown[][] = [["IA: o modelo recusou responder."]];
     if (caso.formato) esperado.push([LOG_PARSE_ESTRUTURADO[caso.tipo], sanitizarErroExterno(new SyntaxError(), "processarRespostaIa")]);
     expect(erros.mock.calls).toEqual(esperado);
-    expect(mocks.registrarEvento).not.toHaveBeenCalled();
+    esperarSoRejeicao(caso.tipo, "resposta-invalida", "recusa");
   });
 
   it.each(CASOS_OPERACOES)("$tipo truncado: só a linha de truncamento de sempre", async (caso) => {
@@ -711,7 +729,7 @@ describe("observabilidade legada: /api/ia", () => {
     const esperado: unknown[][] = [["IA: resposta truncada em MAX_TOKENS."]];
     if (caso.formato) esperado.push([LOG_PARSE_ESTRUTURADO[caso.tipo], sanitizarErroExterno(new SyntaxError(), "processarRespostaIa")]);
     expect(erros.mock.calls).toEqual(esperado);
-    expect(mocks.registrarEvento).not.toHaveBeenCalled();
+    esperarSoRejeicao(caso.tipo, "resposta-invalida", "truncada");
   });
 });
 
@@ -869,5 +887,149 @@ describe("falha do provedor por fluxo (IA-M1c-B)", () => {
     expect(await classificarResposta(TEXTO, HOJE, USUARIO)).toBeNull();
     expect(mocks.create).not.toHaveBeenCalled();
     expect(mocks.registrarEvento).not.toHaveBeenCalled();
+  });
+});
+
+/* ================================================================
+   IA-M1c-C: A APLICAÇÃO REJEITOU A RESPOSTA, POR FLUXO
+
+   O provedor respondeu (há linha de uso), mas a resposta não foi usada:
+   um `ia-resposta-rejeitada` (ia, aviso) por chamada rejeitada, com o
+   mesmo execucao_id da linha de uso. Status, corpo, retorno, exceção e
+   logs continuam os de antes.
+   ================================================================ */
+
+type EventoRejeicao = { evento: string; detalhe: string };
+const rejeicoes = () => mocks.registrarEvento.mock.calls
+  .map(([e]) => e as EventoRejeicao)
+  .filter((e) => e.evento === "ia-resposta-rejeitada")
+  .map((e) => JSON.parse(e.detalhe) as Record<string, unknown>);
+
+function comRequestId(c: OpenAI.Chat.ChatCompletion, id: unknown): OpenAI.Chat.ChatCompletion {
+  Object.defineProperty(c, "_request_id", { value: id, enumerable: false });
+  return c;
+}
+
+const caso = (tipo: string) => CASOS_OPERACOES.find((c) => c.tipo === tipo)!;
+
+describe("rejeição pela aplicação: F1 (IA-M1c-C)", () => {
+  let erros: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => { erros = vi.spyOn(console, "error").mockImplementation(() => {}); });
+  afterEach(() => erros.mockRestore());
+
+  it("sucesso: nenhum evento", async () => {
+    mocks.create.mockResolvedValue(conclusao(SAIDA_VALIDA.classificacao));
+    expect(await classificarResposta(TEXTO, HOJE, USUARIO)).not.toBeNull();
+    expect(mocks.registrarEvento).not.toHaveBeenCalled();
+  });
+
+  it("choices vazio: null, a linha de sempre e um sem-choices", async () => {
+    mocks.create.mockResolvedValue({ ...conclusao(null), choices: [] });
+    expect(await classificarResposta(TEXTO, HOJE, USUARIO)).toBeNull();
+    expect(erros.mock.calls).toEqual([["IA: não classificou a resposta (recusa ou resposta truncada)."]]);
+    esperarSoRejeicao("classificar-resposta", "resposta-invalida", "sem-choices");
+  });
+
+  it("truncada: null, a linha de sempre e um truncada", async () => {
+    mocks.create.mockResolvedValue(conclusao(saidaF1({}), "length"));
+    expect(await classificarResposta(TEXTO, HOJE, USUARIO)).toBeNull();
+    expect(erros.mock.calls).toEqual([["IA: não classificou a resposta (recusa ou resposta truncada)."]]);
+    esperarSoRejeicao("classificar-resposta", "resposta-invalida", "truncada");
+  });
+
+  it("JSON inválido: null, a mesma linha do catch externo e UM evento só", async () => {
+    mocks.create.mockResolvedValue(conclusao("{quebrado"));
+    expect(await classificarResposta(TEXTO, HOJE, USUARIO)).toBeNull();
+    expect(erros.mock.calls).toEqual([["IA: falha ao classificar a resposta:", sanitizarErroExterno(new SyntaxError(), "iaTexto")]]);
+    esperarSoRejeicao("classificar-resposta", "resposta-invalida", "json-invalido");
+  });
+
+  it("desfecho fora do vocabulário: null, a linha de sempre e um fora-do-vocabulario", async () => {
+    mocks.create.mockResolvedValue(conclusao(saidaF1({ resultado: "inventado" })));
+    expect(await classificarResposta(TEXTO, HOJE, USUARIO)).toBeNull();
+    expect(erros.mock.calls).toEqual([["IA: desfecho fora do vocabulário."]]);
+    esperarSoRejeicao("classificar-resposta", "fora-do-contrato", "fora-do-vocabulario");
+  });
+
+  it("request id válido é preservado; inválido vira null", async () => {
+    mocks.create.mockResolvedValue(comRequestId(conclusao("{quebrado"), "req_f1.ok:9"));
+    await classificarResposta(TEXTO, HOJE, USUARIO);
+    expect(rejeicoes()[0].requisicao_provedor_id).toBe("req_f1.ok:9");
+
+    mocks.registrarEvento.mockReset();
+    mocks.create.mockResolvedValue(comRequestId(conclusao("{quebrado"), "req com espaço <x>"));
+    await classificarResposta(TEXTO, HOJE, USUARIO);
+    expect(rejeicoes()[0].requisicao_provedor_id).toBeNull();
+  });
+});
+
+describe("rejeição pela aplicação: /api/ia (IA-M1c-C)", () => {
+  let erros: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => { erros = vi.spyOn(console, "error").mockImplementation(() => {}); });
+  afterEach(() => erros.mockRestore());
+
+  it.each(CASOS_OPERACOES)("$tipo com sucesso: 200 e nenhum evento", async (c) => {
+    responderValido();
+    const resposta = await ia(requisicao({ tipo: c.tipo, ...c.corpo }));
+    expect(resposta.status).toBe(200);
+    expect(mocks.registrarEvento).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { tipo: "sugerir-roteiros", conteudo: JSON.stringify({ roteiros: [] }), categoria: "fora-do-contrato", motivo: "lista-vazia" },
+    { tipo: "sugerir-roteiros", conteudo: JSON.stringify({ roteiros: "x" }), categoria: "fora-do-contrato", motivo: "estrutura-invalida" },
+    { tipo: "gerar-anuncio", conteudo: JSON.stringify({ titulo: "", descricao: "D", faltando: [] }), categoria: "fora-do-contrato", motivo: "campo-obrigatorio-ausente" },
+    { tipo: "abordagem-anuncio", conteudo: JSON.stringify({ mensagem: "  ", pontos: [] }), categoria: "fora-do-contrato", motivo: "campo-obrigatorio-ausente" },
+    { tipo: "analisar-mapa", conteudo: JSON.stringify({ acao: "" }), categoria: "fora-do-contrato", motivo: "campo-obrigatorio-ausente" },
+    { tipo: "extrair-anuncio", conteudo: "", categoria: "resposta-invalida", motivo: "vazia" },
+    { tipo: "resumo-dia", conteudo: "   ", categoria: "resposta-invalida", motivo: "vazia" },
+    { tipo: "explicar-foco", conteudo: null, categoria: "resposta-invalida", motivo: "vazia" },
+  ])("$tipo → $motivo: 502 falha-ia de sempre e um evento", async ({ tipo, conteudo, categoria, motivo }) => {
+    mocks.create.mockResolvedValue(conclusao(conteudo));
+    const resposta = await ia(requisicao({ tipo, ...caso(tipo).corpo }));
+    expect(resposta.status).toBe(502);
+    expect(await resposta.json()).toMatchObject({ ok: false, falha: "falha-ia" });
+    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledTimes(1);
+    esperarSoRejeicao(tipo, categoria, motivo);
+  });
+
+  it("abordagem-anuncio: falha no banco DEPOIS da resposta aceita não é rejeição do modelo", async () => {
+    vi.stubEnv("IA_FEEDBACK_SUGESTOES_ENABLED", "true");
+    responderValido();
+    const resposta = await ia(requisicao({ tipo: "abordagem-anuncio", ...caso("abordagem-anuncio").corpo }));
+    // O comportamento de antes: o catch largo devolve 502 falha-ia com a linha de parse.
+    expect(resposta.status).toBe(502);
+    expect(await resposta.json()).toMatchObject({ ok: false, falha: "falha-ia" });
+    expect(erros.mock.calls.map((c: unknown[]) => c[0])).toEqual([LOG_PARSE_ESTRUTURADO["abordagem-anuncio"]]);
+    expect(mocks.registrarUsoDaResposta).toHaveBeenCalledTimes(1);
+    expect(mocks.registrarEvento).not.toHaveBeenCalled();
+  });
+
+  it("abordagem-anuncio: banco recusando a sugestão (500) também não é rejeição do modelo", async () => {
+    vi.stubEnv("IA_FEEDBACK_SUGESTOES_ENABLED", "true");
+    const base = mocks.createClient.getMockImplementation()!;
+    mocks.createClient.mockImplementation((...args: unknown[]) => {
+      const cliente = base(...args) as { from: (t: string) => unknown };
+      return {
+        ...cliente,
+        from: (t: string) => t === "ia_sugestoes"
+          ? { insert: () => ({ select: () => ({ single: async () => ({ data: null, error: { message: "recusado" } }) }) }) }
+          : cliente.from(t),
+      };
+    });
+    responderValido();
+    const resposta = await ia(requisicao({ tipo: "abordagem-anuncio", ...caso("abordagem-anuncio").corpo }));
+    expect(resposta.status).toBe(500);
+    expect(await resposta.json()).toMatchObject({ ok: false, falha: "falha-ia" });
+    expect(mocks.registrarEvento).not.toHaveBeenCalled();
+  });
+
+  it("uma requisição rejeitada: o execucao_id do evento é o da sua linha de uso, e outra requisição tem outro", async () => {
+    mocks.create.mockResolvedValue(conclusao("{quebrado"));
+    await ia(requisicao({ tipo: "extrair-anuncio", ...caso("extrair-anuncio").corpo }));
+    await ia(requisicao({ tipo: "extrair-anuncio", ...caso("extrair-anuncio").corpo }));
+    const usos = mocks.registrarUsoDaResposta.mock.calls.map((c) => (c[4] as { execucaoId: string }).execucaoId);
+    expect(rejeicoes().map((r) => r.execucao_id)).toEqual(usos);
+    expect(usos[0]).not.toBe(usos[1]);
   });
 });

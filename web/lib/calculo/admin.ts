@@ -285,6 +285,7 @@ export const EVENTOS: Record<string, string> = {
   "transcricao-falhou": "Falha ao transcrever áudio",
   "ia-falhou": "Falha na chamada de IA",
   "ia-chamada-falhou": "Falha do provedor numa chamada de IA",
+  "ia-resposta-rejeitada": "Resposta da IA recusada pela aplicação",
   "ia-atendimento-bloqueado": "Sugestão de atendimento bloqueada",
   "ia-atendimento-sugerido": "Sugestão de atendimento gerada",
   "ia-assistente-respondido": "Resposta do Assistente gerada",

@@ -24,6 +24,7 @@
       cima de números forjados — e ninguém notaria, porque o texto sai
       bem escrito de qualquer jeito.
    ================================================================ */
+import { randomUUID } from "node:crypto";
 import type OpenAI from "openai";
 import { autenticarRequisicao } from "@/lib/servidor/autenticacao";
 import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
@@ -91,6 +92,7 @@ import { atenderProprietario } from "@/lib/servidor/ia/handlers/atendimento";
 import { respostaErroIa as erro } from "@/lib/servidor/ia/respostas";
 import { feedbackSugestoesIaHabilitado } from "@/lib/servidor/ia/feedback-config";
 import { registrarSugestaoIa } from "@/lib/servidor/ia/sugestoes";
+import { registrarRespostaRejeitada, type MotivoRejeicao } from "@/lib/servidor/ia/rejeicao";
 import {
   chamadaOpenAIRealAutorizada,
   criarClienteOpenAIReal,
@@ -279,6 +281,12 @@ export async function POST(request: Request): Promise<Response> {
     configuracaoIa.operacoes,
     contextoDaConfiguracao(configuracaoIa, "operacoes"),
   );
+  // IA-M1c-C: cada operação abaixo é uma execução de uma chamada. O id vai
+  // ao executor (linha de uso) e a cada rejeição da resposta, que vira um
+  // `ia-resposta-rejeitada` e segue exatamente o caminho de antes.
+  const execucaoId = randomUUID();
+  const rejeitar = (conclusao: unknown, motivo?: MotivoRejeicao) =>
+    registrarRespostaRejeitada({ userId: donoDaChamada, tipo: pedido, execucaoId, conclusao, motivo });
 
   // ---------------------------------------------------------------
   // 3a. Sugerir roteiros — o contexto vem do browser, mas só os campos
@@ -318,6 +326,7 @@ export async function POST(request: Request): Promise<Response> {
       // contas que mais falham, que são as que mais interessa olhar.
       ({ conclusao } = await executor.executar({
         tipo: pedido,
+        execucaoId,
         interpretarTexto: false,
         reasoningEffort: ESFORCO,
         maxCompletionTokens: MAX_TOKENS,
@@ -345,11 +354,15 @@ export async function POST(request: Request): Promise<Response> {
         .filter((r) => r && typeof r.nome === "string" && typeof r.roteiro === "string")
         // Rede contra o {imovel} escapado — ver corrigirMarcadores.
         .map((r) => ({ ...r, roteiro: corrigirMarcadores(r.roteiro) }));
-      if (roteiros.length === 0) return erro("falha-ia", 502);
+      if (roteiros.length === 0) {
+        rejeitar(conclusao, "lista-vazia");
+        return erro("falha-ia", 502);
+      }
       const resposta: Resposta = { ok: true, roteiros };
       return Response.json(resposta);
     } catch (e) {
       console.error("IA: resposta de roteiros não veio parseável:", sanitizarErroExterno(e, "processarRespostaIa"));
+      rejeitar(conclusao);
       return erro("falha-ia", 502);
     }
   }
@@ -386,6 +399,7 @@ export async function POST(request: Request): Promise<Response> {
     try {
       ({ conclusao } = await executor.executar({
         tipo: pedido,
+        execucaoId,
         interpretarTexto: false,
         reasoningEffort: ESFORCO,
         maxCompletionTokens: MAX_TOKENS,
@@ -405,6 +419,7 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json(resposta);
     } catch (e) {
       console.error("IA: resposta da extração não veio parseável:", sanitizarErroExterno(e, "processarRespostaIa"));
+      rejeitar(conclusao);
       return erro("falha-ia", 502);
     }
   }
@@ -450,6 +465,7 @@ export async function POST(request: Request): Promise<Response> {
     try {
       ({ conclusao } = await executor.executar({
         tipo: pedido,
+        execucaoId,
         interpretarTexto: false,
         reasoningEffort: ESFORCO,
         maxCompletionTokens: MAX_TOKENS,
@@ -475,7 +491,10 @@ export async function POST(request: Request): Promise<Response> {
       const descricao = typeof dados.descricao === "string" ? dados.descricao.trim() : "";
       // Título sozinho não serve para nada, e descrição sozinha o corretor
       // teria que completar à mão — nos dois casos é melhor errar claro.
-      if (!titulo || !descricao) return erro("falha-ia", 502);
+      if (!titulo || !descricao) {
+        rejeitar(conclusao, "campo-obrigatorio-ausente");
+        return erro("falha-ia", 502);
+      }
       /* Mesma desconfiança do `protocolosUsados`: o enum do esquema já deveria
          bastar, mas a tela transforma esta lista numa instrução ao corretor
          ("cole a ficha para incluir X"). Um rótulo fora da lista viraria um
@@ -488,6 +507,7 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json(resposta);
     } catch (e) {
       console.error("IA: anúncio gerado não veio parseável:", sanitizarErroExterno(e, "processarRespostaIa"));
+      rejeitar(conclusao);
       return erro("falha-ia", 502);
     }
   }
@@ -522,6 +542,7 @@ export async function POST(request: Request): Promise<Response> {
     try {
       ({ conclusao } = await executor.executar({
         tipo: pedido,
+        execucaoId,
         interpretarTexto: false,
         reasoningEffort: ESFORCO,
         maxCompletionTokens: MAX_TOKENS,
@@ -537,13 +558,19 @@ export async function POST(request: Request): Promise<Response> {
       return erro(falha, 502);
     }
 
+    // Depois de aceita, a resposta não é mais "rejeitada": uma falha ao
+    // registrar a sugestão (banco) cai no mesmo catch, mas não é do modelo.
+    let respostaAceita = false;
     try {
       const dados = JSON.parse(textoDaResposta(conclusao)) as {
         mensagem?: unknown;
         pontos?: unknown;
       };
       const mensagem = typeof dados.mensagem === "string" ? dados.mensagem.trim() : "";
-      if (!mensagem) return erro("falha-ia", 502);
+      if (!mensagem) {
+        rejeitar(conclusao, "campo-obrigatorio-ausente");
+        return erro("falha-ia", 502);
+      }
       /* Mesma desconfiança do `protocolosUsados`: a tela exibe estes rótulos
          como "em que a mensagem se apoiou", e um fora da lista viraria uma
          justificativa que o corretor não tem como conferir. Dois é o teto que
@@ -552,6 +579,7 @@ export async function POST(request: Request): Promise<Response> {
       const pontos = Array.isArray(dados.pontos)
         ? dados.pontos.filter((p): p is string => typeof p === "string" && permitidos.has(p)).slice(0, 2)
         : [];
+      respostaAceita = true;
       let sugestaoId: string | undefined;
       if (feedbackSugestoesIaHabilitado()) {
         sugestaoId = await registrarSugestaoIa({
@@ -574,6 +602,7 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json(resposta);
     } catch (e) {
       console.error("IA: abordagem do anúncio não veio parseável:", sanitizarErroExterno(e, "processarRespostaIa"));
+      if (!respostaAceita) rejeitar(conclusao);
       return erro("falha-ia", 502);
     }
   }
@@ -623,6 +652,7 @@ export async function POST(request: Request): Promise<Response> {
     try {
       ({ conclusao } = await executor.executar({
         tipo: pedido,
+        execucaoId,
         interpretarTexto: false,
         reasoningEffort: ESFORCO,
         maxCompletionTokens: 1000,
@@ -640,10 +670,14 @@ export async function POST(request: Request): Promise<Response> {
     try {
       const dados = JSON.parse(textoDaResposta(conclusao)) as { acao?: unknown };
       const acao = typeof dados.acao === "string" ? dados.acao.trim().slice(0, 180) : "";
-      if (!acao) return erro("falha-ia", 502);
+      if (!acao) {
+        rejeitar(conclusao, "campo-obrigatorio-ausente");
+        return erro("falha-ia", 502);
+      }
       return Response.json({ ok: true, leitura: { acao } } satisfies Resposta);
     } catch (e) {
       console.error("IA: leitura territorial não veio parseável:", sanitizarErroExterno(e, "processarRespostaIa"));
+      rejeitar(conclusao);
       return erro("falha-ia", 502);
     }
   }
@@ -681,6 +715,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     ({ conclusao } = await executor.executar({
       tipo: pedido,
+      execucaoId,
       interpretarTexto: false,
       reasoningEffort: ESFORCO,
       maxCompletionTokens: MAX_TOKENS,
@@ -693,8 +728,14 @@ export async function POST(request: Request): Promise<Response> {
     return erro(falha, 502);
   }
 
+  // Sem `choices`, `textoDaResposta` continua lançando para fora da rota,
+  // como antes; o registro só vem primeiro.
+  if (conclusao.choices == null) rejeitar(conclusao);
   const texto = textoDaResposta(conclusao);
-  if (!texto) return erro("falha-ia", 502);
+  if (!texto) {
+    rejeitar(conclusao);
+    return erro("falha-ia", 502);
+  }
   const resposta: Resposta = { ok: true, texto };
   return Response.json(resposta);
 }

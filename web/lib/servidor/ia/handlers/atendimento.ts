@@ -85,6 +85,9 @@ interface DiagnosticoAtendimento {
   origensEvidencias?: string[];
   evidenciasReconhecidas?: number;
   afirmacoes?: number;
+  /** IA-M1c-C: o id da execução nas linhas de uso; ausente antes da
+      primeira chamada ao modelo (bloqueio sem chamada não tem uso). */
+  execucaoId?: string;
 }
 
 /** Metadados operacionais apenas: nunca inclui mensagem, prompt ou chain-of-thought. */
@@ -144,6 +147,7 @@ function registrarDiagnosticoAtendimento(
       resultado,
       motivo,
       motivoFallback: base.motivoFallback ?? null,
+      execucao_id: base.execucaoId ?? null,
       execucao: metadadosExecucaoIa({
         operacao: "rascunhar-resposta",
         protocolosConsiderados: base.protocolosConsiderados,
@@ -360,6 +364,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
   // Uma execução de atendimento: todas as etapas (decisão, geração,
   // validação e a eventual regeneração) compartilham o mesmo id em ia_uso.
   const execucaoId = randomUUID();
+  diagnostico.execucaoId = execucaoId;
   const executarEtapa = async (pedido: PedidoExecutorOpenAI) => {
     if ((diagnostico.chamadas ?? 0) >= 5) throw new Error("Limite de chamadas do atendimento excedido.");
     diagnostico.chamadas = (diagnostico.chamadas ?? 0) + 1;
@@ -371,6 +376,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
       duracao_ms: Math.round(performance.now() - inicio),
       tokens_entrada: resultado.conclusao.usage?.prompt_tokens ?? null,
       tokens_saida: resultado.conclusao.usage?.completion_tokens ?? null,
+      execucao_id: execucaoId,
     }) });
     return resultado;
   };
@@ -692,6 +698,7 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
     registrarEvento({ userId, categoria: "ia", nivel: "aviso", evento: "ia-atendimento-validacao", detalhe: JSON.stringify({
       operacao: "rascunhar_resposta", tentativa: tentativa + 1, validacao: "rejeitada", codigo: motivo,
       modelo: diagnostico.modelo, decisao: "responder", duracao_ms: Math.round(performance.now() - diagnostico.iniciadoEm!),
+      execucao_id: execucaoId,
     }) });
     if (!usandoFallback && podeRegenerarAtendimento(motivo)) {
       motivoAnterior = motivo;

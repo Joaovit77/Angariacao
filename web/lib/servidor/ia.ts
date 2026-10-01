@@ -16,6 +16,7 @@
    do proprietário e devolve dado. Ainda assim é SUGESTÃO — quem grava
    o fato é o corretor, no nudge.
    ================================================================ */
+import { randomUUID } from "node:crypto";
 import { sanitizarErroExterno } from "./erroExterno";
 import {
   ESQUEMA_CLASSIFICACAO,
@@ -32,6 +33,7 @@ import {
 } from "./ia/config";
 import { carregarConfiguracaoIa } from "./ia/configuracao";
 import { contextoDaConfiguracao, criarExecutorOpenAI } from "./ia/executor-openai";
+import { registrarRespostaRejeitada } from "./ia/rejeicao";
 import {
   chamadaOpenAIRealAutorizada,
   criarClienteOpenAIReal,
@@ -108,8 +110,10 @@ export async function classificarResposta(
        provavelmente a maior linha da fatura, e era a mais invisível de
        todas: as outras pelo menos nascem de um clique. Sem opção de
        transporte: retry e timeout continuam os do cliente. */
+    const execucaoId = randomUUID();
     const { conclusao } = await executor.executar({
       tipo: "classificar-resposta",
+      execucaoId,
       interpretarTexto: false,
       reasoningEffort: configuracaoIa.classificacao.esforco,
       maxCompletionTokens: MAX_TOKENS,
@@ -122,17 +126,31 @@ export async function classificarResposta(
     // A leitura da resposta continua aqui, sobre a conclusão bruta: recusa,
     // truncamento, conteúdo vazio e resposta sem `choices` seguem as regras
     // e os logs deste módulo (por isso o executor não interpreta o texto).
+    // IA-M1c-C: cada rejeição abaixo vira um `ia-resposta-rejeitada` e segue
+    // exatamente o caminho de antes. Sem `choices`, a linha seguinte continua
+    // lançando para o catch externo, como sempre.
+    const rejeitar = (motivo?: "json-invalido" | "fora-do-vocabulario") =>
+      registrarRespostaRejeitada({ userId, tipo: "classificar-resposta", execucaoId, conclusao, motivo });
+    if (conclusao.choices == null) rejeitar();
     const escolha = conclusao.choices[0];
     if (!escolha || escolha.message.refusal || escolha.finish_reason === "length") {
+      rejeitar();
       console.error("IA: não classificou a resposta (recusa ou resposta truncada).");
       return null;
     }
 
-    const dados = JSON.parse(escolha.message.content || "{}") as RespostaClassificada;
+    let dados: RespostaClassificada;
+    try {
+      dados = JSON.parse(escolha.message.content || "{}") as RespostaClassificada;
+    } catch (e) {
+      rejeitar("json-invalido");
+      throw e;
+    }
     // O enum do esquema já restringe, mas a checagem aqui é o que garante que
     // um desfecho desconhecido nunca entre no ranking — nem que o esquema mude
     // e alguém esqueça de olhar este arquivo.
     if (!VALIDOS.includes(dados.resultado)) {
+      rejeitar("fora-do-vocabulario");
       console.error("IA: desfecho fora do vocabulário.");
       return null;
     }

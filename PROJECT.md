@@ -3322,6 +3322,25 @@ das rotas que já existiam.
   aplicação decidiu não chamar. Falha nunca vira linha em `ia_uso`: uma linha ali significa só "o
   provedor respondeu com usage", e o `execucao_id` liga a falha às chamadas bem-sucedidas da mesma
   execução.
+  **Resposta rejeitada pela aplicação (`ia-resposta-rejeitada`).** É o terceiro fato, separado dos
+  outros dois: a linha em `ia_uso` diz que o provedor respondeu, `ia-chamada-falhou` diz que ele
+  falhou, e `ia-resposta-rejeitada` diz que ele respondeu mas a aplicação não usou a resposta. Sai
+  um evento (categoria `ia`, nível `aviso`, pelo mesmo motivo do anterior) por chamada rejeitada,
+  emitido por quem leu a resposta (`lib/servidor/ia/rejeicao.ts`), no ponto em que ela é recusada e
+  sem mudar retorno, status, exceção ou log do fluxo. Cobre a classificação da resposta do
+  proprietário, as operações de `/api/ia` e a análise aprofundada; o atendimento já registra as
+  próprias rejeições e só ganha o `execucao_id` nos detalhes dos eventos `ia-atendimento-*`. O
+  `detalhe` é um JSON de lista fechada: `tipo`, `execucao_id`, `requisicao_provedor_id`,
+  `tentativa`, `categoria`, `motivo` e `codigos`. As categorias e os motivos são fechados:
+  `resposta-invalida` (`sem-choices`, `recusa`, `truncada`, `vazia`, `json-invalido`),
+  `fora-do-contrato` (`fora-do-vocabulario`, `campo-obrigatorio-ausente`, `lista-vazia`,
+  `estrutura-invalida`) e `reprovada-pela-validacao` (`validacao-reprovada`, com `codigos` vindos só
+  do vocabulário da validação da análise aprofundada). Nunca leva a resposta, o prompt, a mensagem
+  ou qualquer texto do erro. Rota, modelo e configuração não se repetem no evento: estão na linha de
+  `ia_uso` com o mesmo `execucao_id`. Como o evento é por chamada, uma execução pode ter sucesso e
+  ainda assim um evento: na análise aprofundada, uma 1ª tentativa rejeitada seguida de uma 2ª aceita
+  deixa um evento com `tentativa` 1. Uma falha posterior à aceitação (por exemplo, gravar a
+  sugestão no banco) não é rejeição da resposta.
 
 ### Cargo ≠ carteira (`admins.opera_carteira`)
 

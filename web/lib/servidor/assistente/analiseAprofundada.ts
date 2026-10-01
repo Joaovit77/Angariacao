@@ -44,6 +44,7 @@ import {
 import { carregarConfiguracaoIa } from "@/lib/servidor/ia/configuracao";
 import { criarClienteOpenAIReal } from "@/lib/servidor/openai-real";
 import { registrarEvento } from "@/lib/servidor/registro";
+import { motivoDaConclusaoRejeitada, registrarRespostaRejeitada } from "@/lib/servidor/ia/rejeicao";
 import {
   carregarCatalogoProtocolosAssistente,
   selecionarProtocolosParaAnaliseAprofundada,
@@ -664,7 +665,8 @@ export async function executarAnaliseAprofundadaComDependencias(
           ],
         });
         let bruto: unknown;
-        try { bruto = JSON.parse(resposta.texto); } catch { bruto = null; }
+        let jsonValido = true;
+        try { bruto = JSON.parse(resposta.texto); } catch { bruto = null; jsonValido = false; }
         const validacao = validarSaidaAnaliseAprofundada(
           bruto,
           dossie.fontes,
@@ -673,6 +675,22 @@ export async function executarAnaliseAprofundadaComDependencias(
           { atendimentoIncluido: dossie.atendimentoIncluido },
         );
         if (!validacao.ok) {
+          // IA-M1c-C: um evento por tentativa rejeitada; a política de nova
+          // tentativa não muda.
+          registrarRespostaRejeitada({
+            userId,
+            tipo: "analise-aprofundada-imovel",
+            execucaoId,
+            conclusao: resposta.conclusao,
+            tentativa: tentativa + 1,
+            motivo: !jsonValido
+              ? (resposta.texto.trim() === "" ? motivoDaConclusaoRejeitada(resposta.conclusao) : "json-invalido")
+              : validacao.erros.length === 1 && validacao.erros[0] === "estrutura-invalida"
+                ? "estrutura-invalida"
+                : "validacao-reprovada",
+            codigos: validacao.erros,
+            registrar: dependencias.registrarEvento,
+          });
           ultimoErro = new Error(`Resposta estruturalmente inválida: ${validacao.erros.join(",")}`);
           continue;
         }

@@ -34,6 +34,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import fixtures from "./fixtures-baseline.json";
 import { executarAnaliseAprofundada } from "@/lib/servidor/assistente/analiseAprofundada";
 import { CONFIGURACAO_IA_PADRAO, type VersaoConfiguracaoIa } from "@/lib/ia/configuracao";
+import { SECOES_ANALISE_APROFUNDADA } from "@/lib/assistente/analiseAprofundada";
+import { CODIGOS_VALIDACAO_ANALISE } from "@/lib/servidor/ia/rejeicao";
 import type { MetadadosUsoIa } from "@/lib/servidor/registro";
 
 const IMOVEL_ID = "11111111-1111-4111-8111-111111111111";
@@ -221,5 +223,138 @@ describe("F11: falha do provedor na segunda tentativa (IA-M1c-B)", () => {
     expect(legados).toHaveLength(1);
     expect(legados[0].nivel).toBe("erro");
     expect(JSON.parse(legados[0].detalhe)).toMatchObject({ resultado: "erro", motivo: "falha-controlada", chamadasModelo: 2 });
+  });
+});
+
+/* ================================================================
+   IA-M1c-C: REJEIÇÃO POR TENTATIVA NO F11
+   ================================================================ */
+
+/** Uma saída que a validação aceita: lacunas sem fonte em todas as seções. */
+const SAIDA_ACEITA = JSON.stringify({
+  secoes: SECOES_ANALISE_APROFUNDADA.map((id) => ({
+    id,
+    afirmacoes: [{
+      natureza: "lacuna",
+      texto: "Não há evidência suficiente para uma conclusão forte.",
+      fontes: [],
+      confianca: "baixa",
+      temporalidade: "desconhecida",
+    }],
+  })),
+  protocolosAplicados: [],
+});
+/** JSON válido que a validação reprova: fato sem fonte. */
+const SAIDA_REPROVADA = JSON.stringify({
+  secoes: SECOES_ANALISE_APROFUNDADA.map((id) => ({
+    id,
+    afirmacoes: [{ natureza: "fato", texto: "O imóvel está cadastrado.", fontes: [], confianca: "alta", temporalidade: "atual" }],
+  })),
+  protocolosAplicados: [],
+});
+
+function respostaF11(
+  conteudo: string | null,
+  extra: { finish?: string; refusal?: string | null; requestId?: string } = {},
+) {
+  const c = {
+    id: "chatcmpl-analise",
+    object: "chat.completion",
+    created: 1,
+    model: "modelo-servido",
+    choices: [{ index: 0, finish_reason: extra.finish ?? "stop", logprobs: null, message: { role: "assistant", content: conteudo, refusal: extra.refusal ?? null } }],
+    usage: { prompt_tokens: 900, completion_tokens: 40, total_tokens: 940 },
+  };
+  Object.defineProperty(c, "_request_id", { value: extra.requestId ?? "req_f11", enumerable: false });
+  return c;
+}
+
+async function analisar(...respostas: ReturnType<typeof respostaF11>[]) {
+  mocks.carregarConfiguracaoIa.mockResolvedValue(DO_BANCO);
+  mocks.create.mockReset();
+  for (const r of respostas) mocks.create.mockImplementationOnce(async () => r);
+  const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+  let resultado: unknown;
+  let lancado: unknown = null;
+  try {
+    resultado = await executarAnaliseAprofundada(
+      { tipo: "analise_aprofundada", imovelId: IMOVEL_ID, incluirAtendimento: false, sessaoId: "sessao-teste-3" },
+      supabaseFalso(),
+      USUARIO_ID,
+      new AbortController().signal,
+    );
+  } catch (e) {
+    lancado = e;
+  }
+  erro.mockRestore();
+  const eventos = mocks.registrarEvento.mock.calls.map(([e]) => e as { evento: string; nivel: string; categoria: string; userId: string; detalhe: string });
+  const rejeicoes = eventos.filter((e) => e.evento === "ia-resposta-rejeitada");
+  const usos = mocks.registrarUsoDaResposta.mock.calls.map((c) => (c[4] as MetadadosUsoIa).execucaoId);
+  return { resultado, lancado, eventos, rejeicoes, detalhes: rejeicoes.map((e) => JSON.parse(e.detalhe) as Record<string, unknown>), usos };
+}
+
+describe("F11: rejeição pela aplicação, por tentativa (IA-M1c-C)", () => {
+  it("tentativa 1 rejeitada e tentativa 2 aceita: a execução é sucesso e há UM evento, da tentativa 1", async () => {
+    const r = await analisar(respostaF11("{quebrado", { requestId: "req_t1" }), respostaF11(SAIDA_ACEITA, { requestId: "req_t2" }));
+    expect(r.lancado).toBeNull();
+    expect(r.resultado).toMatchObject({ mensagem: { blocos: [{ tipo: "analise_aprofundada" }] } });
+    expect(mocks.create).toHaveBeenCalledTimes(2);
+    expect(r.usos).toHaveLength(2);
+    expect(new Set(r.usos).size).toBe(1);
+    expect(r.rejeicoes).toHaveLength(1);
+    expect(r.rejeicoes[0]).toMatchObject({ userId: USUARIO_ID, categoria: "ia", nivel: "aviso" });
+    expect(Object.keys(r.detalhes[0])).toEqual(["tipo", "execucao_id", "requisicao_provedor_id", "tentativa", "categoria", "motivo", "codigos"]);
+    expect(r.detalhes[0]).toEqual({
+      tipo: "analise-aprofundada-imovel",
+      execucao_id: r.usos[0],
+      requisicao_provedor_id: "req_t1",
+      tentativa: 1,
+      categoria: "resposta-invalida",
+      motivo: "json-invalido",
+      codigos: ["estrutura-invalida"],
+    });
+    // O evento final de sempre continua um só, e de sucesso.
+    const finais = r.eventos.filter((e) => e.evento === "ia-assistente-respondido");
+    expect(finais).toHaveLength(1);
+    expect(finais[0].nivel).toBe("info");
+  });
+
+  it("as duas tentativas reprovadas pela validação: dois eventos, tentativas 1 e 2, códigos fechados", async () => {
+    const r = await analisar(respostaF11(SAIDA_REPROVADA), respostaF11(SAIDA_REPROVADA));
+    expect(r.lancado).toBeInstanceOf(Error);
+    expect(String((r.lancado as Error).message)).toContain("Resposta estruturalmente inválida");
+    expect(r.detalhes.map((d) => d.tentativa)).toEqual([1, 2]);
+    for (const d of r.detalhes) {
+      expect(d).toMatchObject({ categoria: "reprovada-pela-validacao", motivo: "validacao-reprovada", execucao_id: r.usos[0] });
+      expect(d.codigos).toContain("fato-sem-fonte");
+      for (const codigo of d.codigos as string[]) expect(CODIGOS_VALIDACAO_ANALISE.has(codigo)).toBe(true);
+    }
+    const finais = r.eventos.filter((e) => e.evento === "ia-assistente-respondido");
+    expect(finais).toHaveLength(1);
+    expect(finais[0].nivel).toBe("erro");
+  });
+
+  it.each([
+    { nome: "JSON válido fora do contrato", resposta: () => respostaF11(JSON.stringify({ outra: "coisa" })), categoria: "fora-do-contrato", motivo: "estrutura-invalida" },
+    { nome: "recusa", resposta: () => respostaF11(null, { refusal: "não posso" }), categoria: "resposta-invalida", motivo: "recusa" },
+    { nome: "truncada", resposta: () => respostaF11(SAIDA_ACEITA, { finish: "length" }), categoria: "resposta-invalida", motivo: "truncada" },
+    { nome: "vazia", resposta: () => respostaF11("   "), categoria: "resposta-invalida", motivo: "vazia" },
+  ])("$nome → $motivo", async ({ resposta, categoria, motivo }) => {
+    const r = await analisar(resposta(), resposta());
+    expect(r.lancado).toBeInstanceOf(Error);
+    expect(r.detalhes).toHaveLength(2);
+    for (const d of r.detalhes) expect(d).toMatchObject({ categoria, motivo, execucao_id: r.usos[0] });
+  });
+
+  it("sucesso na primeira tentativa: nenhum evento de rejeição", async () => {
+    const r = await analisar(respostaF11(SAIDA_ACEITA));
+    expect(r.lancado).toBeNull();
+    expect(r.rejeicoes).toHaveLength(0);
+  });
+
+  it("nenhum conteúdo da resposta vai para o evento", async () => {
+    const r = await analisar(respostaF11("{SEGREDO Maria (43) 99999-0000"), respostaF11(SAIDA_REPROVADA));
+    const serializado = JSON.stringify(r.rejeicoes);
+    for (const trecho of ["SEGREDO", "Maria", "99999", "cadastrado"]) expect(serializado).not.toContain(trecho);
   });
 });

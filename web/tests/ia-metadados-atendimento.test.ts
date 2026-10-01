@@ -65,6 +65,10 @@ import OpenAI from "openai";
 import { POST as ia } from "@/app/api/ia/route";
 import { CONFIGURACAO_IA_PADRAO, type VersaoConfiguracaoIa } from "@/lib/ia/configuracao";
 import type { MetadadosUsoIa } from "@/lib/servidor/registro";
+import { criarAtividadesIa } from "@/lib/calculo/atividadeIa";
+
+/** O status que a validação reprovada já devolvia antes do IA-M1c-C. */
+const STATUS_VALIDACAO_REPROVADA = 422;
 
 const USUARIO = "10000000-0000-4000-8000-000000000001";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -294,5 +298,78 @@ describe("F3: falha do provedor numa etapa (IA-M1c-B)", () => {
     expect(bloqueios).toHaveLength(1);
     expect(bloqueios[0].nivel).toBe("erro");
     expect(JSON.parse(bloqueios[0].detalhe)).toMatchObject({ etapaFinal: "geracao", resultado: "erro", motivo: "falha-ia", chamadas: 2 });
+  });
+});
+
+/* ================================================================
+   IA-M1c-C: CORRELAÇÃO DOS DIAGNÓSTICOS DO F3 PELO execucao_id
+
+   O F3 já registra as próprias rejeições (bloqueio, validação). Ele não
+   ganha um segundo sistema: só o `execucao_id` das linhas de uso nos
+   detalhes dos eventos `ia-atendimento-*`, que a timeline ignora.
+   ================================================================ */
+
+type EventoF3 = { evento: string; nivel: string; detalhe: string };
+const eventosF3 = () => mocks.registrarEvento.mock.calls.map(([e]) => e as EventoF3);
+
+describe("F3: execucao_id nos diagnósticos (IA-M1c-C)", () => {
+  it("sucesso: cada ia-atendimento-etapa e o ia-atendimento-sugerido levam o execucao_id das linhas de uso", async () => {
+    const etapas = await atendimentoCom(DO_BANCO);
+    const execucao = etapas[0].metadados.execucaoId;
+    const eventos = eventosF3();
+    const daEtapa = eventos.filter((e) => e.evento === "ia-atendimento-etapa");
+    expect(daEtapa).toHaveLength(etapas.length);
+    for (const e of daEtapa) {
+      // As chaves de antes, na mesma ordem, e a nova no fim.
+      expect(Object.keys(JSON.parse(e.detalhe))).toEqual([
+        "operacao", "etapa", "tentativa", "modelo", "reasoning_effort", "duracao_ms", "tokens_entrada", "tokens_saida", "execucao_id",
+      ]);
+      expect(JSON.parse(e.detalhe).execucao_id).toBe(execucao);
+    }
+    const sugeridos = eventos.filter((e) => e.evento === "ia-atendimento-sugerido");
+    expect(sugeridos).toHaveLength(1);
+    expect(JSON.parse(sugeridos[0].detalhe).execucao_id).toBe(execucao);
+    // O F3 não emite um segundo sistema de rejeição.
+    expect(eventos.some((e) => e.evento === "ia-resposta-rejeitada")).toBe(false);
+  });
+
+  it("validação reprovada: ia-atendimento-validacao e o bloqueio levam o mesmo execucao_id", async () => {
+    mocks.carregarConfiguracaoIa.mockResolvedValue(DO_BANCO);
+    const sucesso = mocks.create.getMockImplementation()!;
+    mocks.create.mockImplementation(async (corpo: { response_format?: { json_schema?: { name?: string } } }) => {
+      const resposta = await sucesso(corpo) as { choices: Array<{ message: { content: string } }> };
+      if (corpo.response_format?.json_schema?.name === "validacao_atendimento") {
+        resposta.choices[0].message.content = JSON.stringify({ problemas: ["desvio-de-assunto"] });
+      }
+      return resposta;
+    });
+    const resposta = await ia(requisicao());
+    expect(resposta.status).toBe(STATUS_VALIDACAO_REPROVADA);
+    const execucoes = new Set(mocks.registrarUsoDaResposta.mock.calls.map((c) => (c[4] as MetadadosUsoIa).execucaoId));
+    expect(execucoes.size).toBe(1);
+    const [execucao] = [...execucoes];
+    const eventos = eventosF3();
+    const validacoes = eventos.filter((e) => e.evento === "ia-atendimento-validacao");
+    expect(validacoes.length).toBeGreaterThanOrEqual(1);
+    for (const v of validacoes) expect(JSON.parse(v.detalhe)).toMatchObject({ validacao: "rejeitada", codigo: expect.any(String), execucao_id: execucao });
+    const finais = eventos.filter((e) => e.evento === "ia-atendimento-bloqueado");
+    expect(finais).toHaveLength(1);
+    expect(JSON.parse(finais[0].detalhe).execucao_id).toBe(execucao);
+    expect(eventos.some((e) => e.evento === "ia-resposta-rejeitada")).toBe(false);
+  });
+
+  it("a timeline ignora a chave nova: a mesma atividade com e sem execucao_id", async () => {
+    await atendimentoCom(DO_BANCO);
+    const linhas = eventosF3()
+      .filter((e) => e.evento === "ia-atendimento-sugerido")
+      .map((e, i) => ({ id: i + 1, evento: e.evento, detalhe: e.detalhe, criado_em: "2026-10-01T10:00:00.000Z" }));
+    const semChave = linhas.map((l) => {
+      const d = JSON.parse(l.detalhe) as Record<string, unknown>;
+      delete d.execucao_id;
+      return { ...l, detalhe: JSON.stringify(d) };
+    });
+    const usos = [{ id: 1, tipo: "rascunhar-resposta-decisao", criado_em: "2026-10-01T10:00:00.000Z" }];
+    expect(criarAtividadesIa(usos, 8, linhas)).toEqual(criarAtividadesIa(usos, 8, semChave));
+    expect(JSON.stringify(criarAtividadesIa(usos, 8, linhas))).not.toContain("execucao_id");
   });
 });
