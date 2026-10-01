@@ -3369,6 +3369,19 @@ das rotas que já existiam.
   falhas do provedor, das ferramentas, do Supabase e da aplicação, e o log diz só qual operação
   falhou (`{ operacao, codigo: "falha_ia" }`). Quem afirma que a falha foi do provedor é o evento,
   não o log.
+  **Embeddings de imóveis (`embedding-comparavel-mercado`, `embedding-consulta-avaliacao`).** Uma
+  chamada de `gerarEmbeddingsDeImoveis` (`lib/servidor/embeddingsImoveis.ts`) é uma execução: cada
+  lote de até 100 textos grava a sua linha em `ia_uso`, como antes, e todos os lotes da chamada
+  levam o mesmo `execucao_id`, que nunca vai no corpo enviado. A Embeddings API só informa o modelo
+  servido e o request id, que entram saneados como nas outras linhas (`modelo_servido` vem só do
+  `model` da resposta, sem cair no modelo pedido); `duracao_ms` mede só o `embeddings.create`; rota,
+  esforço, configuração, motivo de fim, recusa e raciocínio ficam null, porque não existem nesse
+  fluxo e o banco só aceita as rotas de `ia_configuracoes`. Quando o `embeddings.create` lança, sai
+  um `ia-chamada-falhou` com o contrato do executor comum (as mesmas 11 chaves, nível `aviso`, o
+  `tipo` da chamada, o modelo pedido, rota e esforço null) e o mesmo `execucao_id`; o lote que
+  falhou não grava uso, os anteriores ficam e a mesma exceção sobe. Os retries internos do SDK não
+  geram eventos à parte. Só o create gera o evento: a trava, a montagem do corpo, o lote incompleto
+  (que segue como erro da aplicação), a leitura da resposta e o registro de uso ficam fora dele.
 
 ### Cargo ≠ carteira (`admins.opera_carteira`)
 

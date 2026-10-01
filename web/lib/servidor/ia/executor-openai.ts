@@ -183,7 +183,7 @@ export function registrarFalhaDaChamada(
     tipo: string;
     execucaoId: string;
     rota: RotaIaRegistro | null;
-    esforco: string;
+    esforco: string | null;
     configOrigem: VersaoConfiguracaoIa["origem"] | null;
     configVersao: number | null;
     modelo: string;
