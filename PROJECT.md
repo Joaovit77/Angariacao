@@ -3341,6 +3341,24 @@ das rotas que já existiam.
   ainda assim um evento: na análise aprofundada, uma 1ª tentativa rejeitada seguida de uma 2ª aceita
   deixa um evento com `tentativa` 1. Uma falha posterior à aceitação (por exemplo, gravar a
   sugestão no banco) não é rejeição da resposta.
+  **Chat do Assistente na Responses API (`assistente-chat`).** O chat do Assistente não passa pelo
+  executor, e os metadados das suas linhas de uso são lidos da resposta da Responses API
+  (`lib/servidor/ia/metadados-responses.ts`). Um turno é uma execução: todas as rodadas dele (a
+  chamada inicial e as rodadas de ferramenta, até cinco) gravam cada uma a sua linha em `ia_uso`,
+  com o mesmo `execucao_id`, e o mesmo id vai como chave extra no `detalhe` do
+  `ia-assistente-respondido` do turno (null no caminho que responde pelo catálogo de capacidades,
+  sem chamar o modelo). O id nunca vai no corpo enviado ao provedor. A rota é `assistente`, e o
+  esforço, a origem e a versão vêm da configuração carregada; `modelo_servido` e
+  `requisicao_provedor_id` seguem o saneamento das outras linhas; `duracao_ms` mede só a chamada; e
+  `tokens_raciocinio` vem de `usage.output_tokens_details.reasoning_tokens`. A Responses API não tem
+  `finish_reason`, e `motivo_fim` usa o vocabulário da coluna, nesta ordem: saída com chamada de
+  ferramenta é `tool_calls`; `completed` é `stop`; `incomplete` por `max_output_tokens` é `length`;
+  por `content_filter` é `content_filter`; qualquer outro caso é null. `recusa` é true quando algum
+  item da saída é uma recusa, false quando há saída sem recusa e null sem saída observável; o texto
+  da recusa nunca é gravado. Esse fluxo não gera `ia-resposta-rejeitada`: texto vazio segue com o
+  texto de fallback de sempre, e truncamento e recusa aparecem em `motivo_fim` e `recusa`. A falha
+  do provedor nesse fluxo ainda não gera `ia-chamada-falhou`: a exceção sobe até a rota, que devolve
+  502 como antes.
 
 ### Cargo ≠ carteira (`admins.opera_carteira`)
 

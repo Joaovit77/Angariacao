@@ -235,7 +235,8 @@ export function registrarUsoDaResposta(
   });
 }
 
-/** Variante para a Responses API, sem alterar o contrato usado por /api/ia. */
+/** Variante para a Responses API, sem alterar o contrato usado por /api/ia.
+    Os metadados (IA-M1c-D1) são opcionais: sem eles, o insert é o de sempre. */
 export function registrarUsoDaResponsesApi(
   userId: string | null,
   tipo: string,
@@ -248,6 +249,7 @@ export function registrarUsoDaResponsesApi(
       }
     | null
     | undefined,
+  metadados?: MetadadosUsoIa,
 ): void {
   if (!usage) return;
   registrarUsoIa({
@@ -258,5 +260,6 @@ export function registrarUsoDaResponsesApi(
     tokensEntradaCache: usage.input_tokens_details?.cached_tokens ?? 0,
     tokensEntradaCacheGravacao: usage.input_tokens_details?.cache_write_tokens ?? 0,
     tokensSaida: usage.output_tokens ?? 0,
+    ...(metadados ? { metadados } : {}),
   });
 }

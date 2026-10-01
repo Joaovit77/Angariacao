@@ -128,6 +128,37 @@ describe("registro de uso: colunas de ia_uso", () => {
     });
   });
 
+  // IA-M1c-D1: a variante da Responses API (F10) ganhou o mesmo 5º parâmetro opcional.
+  const usoResponses = { input_tokens: 500, output_tokens: 60, input_tokens_details: { cached_tokens: 100 } };
+
+  it("Responses API sem metadados: o insert é exatamente o de antes do IA-M1c-D1", async () => {
+    (await registro()).registrarUsoDaResponsesApi("u1", "assistente-chat", "gpt-5.4-mini", usoResponses);
+    await flush();
+    expect(mocks.inseridos).toEqual([{
+      tabela: "ia_uso",
+      linha: {
+        user_id: "u1", tipo: "assistente-chat", modelo: "gpt-5.4-mini",
+        tokens_entrada: 500, tokens_entrada_cache: 100, tokens_entrada_cache_gravacao: 0, tokens_saida: 60,
+      },
+    }]);
+    expect(Object.keys(mocks.inseridos[0].linha)).toEqual(COLUNAS_LEGADAS);
+  });
+
+  it("Responses API com metadados: cada campo vai para a sua coluna, sem nada além disso", async () => {
+    (await registro()).registrarUsoDaResponsesApi("u1", "assistente-chat", "gpt-5.4-mini", usoResponses, { ...METADADOS, rota: "assistente" });
+    await flush();
+    expect(mocks.inseridos).toHaveLength(1);
+    const { linha } = mocks.inseridos[0];
+    expect(Object.keys(linha).sort()).toEqual([...COLUNAS_LEGADAS, ...COLUNAS_NOVAS].sort());
+    expect(linha).toMatchObject({ tipo: "assistente-chat", tokens_entrada: 500, tokens_saida: 60, execucao_id: METADADOS.execucaoId, rota: "assistente" });
+  });
+
+  it("Responses API sem usage: nada é gravado, mesmo com metadados", async () => {
+    (await registro()).registrarUsoDaResponsesApi("u1", "assistente-chat", "gpt-5.4-mini", null, METADADOS);
+    await flush();
+    expect(mocks.inseridos).toEqual([]);
+  });
+
   it("sem usage nada é gravado, mesmo com metadados: falha nunca vira linha de consumo", async () => {
     (await registro()).registrarUsoDaResposta("u1", "resumo-dia", "gpt-5.4-mini", undefined, METADADOS);
     await flush();

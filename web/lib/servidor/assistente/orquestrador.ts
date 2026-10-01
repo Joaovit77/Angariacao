@@ -14,6 +14,7 @@ import {
 import { registrarEvento, registrarUsoDaResponsesApi } from "@/lib/servidor/registro";
 import { carregarConfiguracaoIa } from "@/lib/servidor/ia/configuracao";
 import { criarClienteOpenAIReal } from "@/lib/servidor/openai-real";
+import { metadadosDaRespostaResponses } from "@/lib/servidor/ia/metadados-responses";
 import { diagnosticoContextoAssistente, metadadosExecucaoIa } from "@/lib/ia/observabilidade";
 import { instrucoesDoAssistente } from "./conhecimento";
 import {
@@ -293,7 +294,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
       categoria: "ia",
       nivel: "info",
       evento: "ia-assistente-respondido",
-      detalhe: JSON.stringify(metadadosExecucaoIa({
+      detalhe: JSON.stringify({ ...metadadosExecucaoIa({
         operacao: "assistente-chat",
         fontesDeDados: fontesContexto,
         validacoesAplicadas: [
@@ -312,7 +313,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
         caracteresContexto: contextoSerializado.length,
         tokensContextoAproximados,
         consultasReutilizadas: contextoCarregado.consultasReutilizadas,
-      })),
+      }), execucao_id: null }),
     });
     return {
       modelo: "catalogo-capacidades",
@@ -361,8 +362,25 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
     safety_identifier: idSeguro(userId),
     store: false,
   });
-  let resposta = await openai.responses.create(parametros());
-  registrarUsoDaResponsesApi(userId, "assistente-chat", modelo, resposta.usage);
+  // IA-M1c-D1: um turno é uma execução. Todas as rodadas compartilham o id,
+  // que vai só para a linha de uso e para o evento final, nunca no corpo
+  // enviado. A chamada é a mesma de antes; só se mede o tempo em volta dela.
+  const execucaoId = randomUUID();
+  const chamarModelo = async () => {
+    const inicio = performance.now();
+    const resultado = await openai.responses.create(parametros());
+    const duracaoMs = Math.max(0, Math.round(performance.now() - inicio));
+    registrarUsoDaResponsesApi(userId, "assistente-chat", modelo, resultado.usage, metadadosDaRespostaResponses(resultado, {
+      execucaoId,
+      rota: "assistente",
+      esforco: configuracao.assistente.esforco,
+      configOrigem: configuracao.origem,
+      configVersao: configuracao.versao,
+      duracaoMs,
+    }));
+    return resultado;
+  };
+  let resposta = await chamarModelo();
 
   for (let rodada = 0; rodada < 4; rodada += 1) {
     const chamadas = resposta.output.filter((x) => x.type === "function_call");
@@ -436,8 +454,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
       if (preparado.continuidade) continuidadeResposta = preparado.continuidade;
       entrada.push({ type: "function_call_output", call_id: chamada.call_id, output: preparado.output });
     }
-    resposta = await openai.responses.create(parametros());
-    registrarUsoDaResponsesApi(userId, "assistente-chat", modelo, resposta.usage);
+    resposta = await chamarModelo();
   }
 
   const textoGerado = sanitizarTextoAssistente(resposta.output_text);
@@ -469,7 +486,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
     categoria: "ia",
     nivel: "info",
     evento: "ia-assistente-respondido",
-    detalhe: JSON.stringify(metadadosExecucaoIa({
+    detalhe: JSON.stringify({ ...metadadosExecucaoIa({
       operacao: "assistente-chat",
       protocolosConsiderados: catalogoProtocolos.protocolos.map((protocolo) => protocolo.id),
       protocolosAplicados,
@@ -522,7 +539,7 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
       caracteresContexto: contextoSerializado.length,
       tokensContextoAproximados,
       consultasReutilizadas: contextoCarregado.consultasReutilizadas + cacheLeituras.acertos,
-    })),
+    }), execucao_id: execucaoId }),
   });
   return {
     modelo,
