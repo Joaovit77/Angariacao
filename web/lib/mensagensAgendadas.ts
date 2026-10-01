@@ -1,6 +1,8 @@
 export type StatusMensagemAgendada = "agendada" | "processando" | "enviada" | "erro" | "cancelada";
-/** `retomada-retirado` é conhecido, mas ainda NÃO é enviável: o banco nem
-    aceita o valor (o check do tipo chega no B2). Ver `classificarTipoParaEnvio`. */
+/** `retomada-retirado` é conhecido, mas ainda NÃO é enviável. O banco aceita o
+    valor desde o B2 (migration 20261001210000), com as invariantes da retomada,
+    e nenhum fluxo da aplicação o cria ainda; o worker recusa o envio (B1). Ver
+    `classificarTipoParaEnvio`. */
 export type TipoMensagemAgendada = "livre" | "verificacao-disponibilidade" | "retomada-retirado";
 export const TIPO_RETOMADA_RETIRADO = "retomada-retirado" as const;
 
@@ -29,7 +31,9 @@ export type MotivoCancelamentoMensagemAgendada =
   | "imovel-excluido"
   /** Absorvida por outra verificação do mesmo proprietário no mesmo dia; a
       âncora está em `consolidadaEmMensagemId`. */
-  | "contato-consolidado";
+  | "contato-consolidado"
+  /** Retomada `agendada` cancelada pelo banco quando o imóvel volta à carteira (B2). */
+  | "imovel-reativado";
 export type OrigemCancelamentoMensagemAgendada = "usuario" | "automacao" | "worker";
 /** Único motivo de reagendamento automático: a cadência recomeça na evidência
     positiva mais recente (`E + VERIFICACAO_DISPONIBILIDADE_DIAS`). */
