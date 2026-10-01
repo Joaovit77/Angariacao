@@ -176,7 +176,7 @@ function requisicaoDoErro(erro: unknown): string | null {
  * (`errosPorCorretor`), onde a mesma falha já conta pelo evento do fluxo.
  * Nunca lança: quem chamou recebe a exceção original de qualquer jeito.
  */
-function registrarFalhaDaChamada(
+export function registrarFalhaDaChamada(
   erro: unknown,
   userId: string | null,
   campos: {

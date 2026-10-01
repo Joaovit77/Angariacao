@@ -27,6 +27,16 @@ function falha(erro: string, status: number, codigo: string) {
   return NextResponse.json<RespostaAssistente>({ ok: false, erro, codigo }, { status });
 }
 
+/** O que vai para o log quando o Assistente falha (IA-M1c-D2). O catch
+    recebe falhas do provedor, das ferramentas, do Supabase e da própria
+    aplicação, então nenhum contexto de `sanitizarErroExterno` serve (cada
+    um fixa o provedor). Nada do erro é lido: nem mensagem, nem stack, nem
+    corpo, nem cabeçalhos. Quem diz que foi o provedor é o evento
+    `ia-chamada-falhou`. */
+function falhaParaLog(operacao: "assistente-chat" | "analise-aprofundada") {
+  return { operacao, codigo: "falha_ia" };
+}
+
 function respostaAcao(texto: string, acao: AcaoAssistente) {
   const mensagem: MensagemAssistente = {
     id: randomUUID(),
@@ -125,7 +135,7 @@ export async function POST(request: Request) {
       if (error instanceof ErroAnaliseAprofundada) {
         return falha(error.message, error.status, error.codigo);
       }
-      console.error("Assistente: falha na análise aprofundada:", error);
+      console.error("Assistente: falha na análise aprofundada:", falhaParaLog("analise-aprofundada"));
       return falha("Não foi possível concluir a análise agora.", 502, "falha_ia");
     }
   }
@@ -220,8 +230,8 @@ export async function POST(request: Request) {
       }
     }
     return NextResponse.json<RespostaAssistente>({ ok: true, ...resposta });
-  } catch (error) {
-    console.error("Assistente: falha ao responder:", error);
+  } catch {
+    console.error("Assistente: falha ao responder:", falhaParaLog("assistente-chat"));
     return falha("Nao foi possivel consultar o assistente agora.", 502, "falha_ia");
   }
 }

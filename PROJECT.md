@@ -3356,9 +3356,19 @@ das rotas que já existiam.
   por `content_filter` é `content_filter`; qualquer outro caso é null. `recusa` é true quando algum
   item da saída é uma recusa, false quando há saída sem recusa e null sem saída observável; o texto
   da recusa nunca é gravado. Esse fluxo não gera `ia-resposta-rejeitada`: texto vazio segue com o
-  texto de fallback de sempre, e truncamento e recusa aparecem em `motivo_fim` e `recusa`. A falha
-  do provedor nesse fluxo ainda não gera `ia-chamada-falhou`: a exceção sobe até a rota, que devolve
-  502 como antes.
+  texto de fallback de sempre, e truncamento e recusa aparecem em `motivo_fim` e `recusa`. Quando
+  `responses.create` lança, sai um `ia-chamada-falhou` com o contrato do executor comum (as mesmas
+  11 chaves, nível `aviso`, `tipo` `assistente-chat`, rota `assistente`, o modelo pedido e a
+  configuração do turno) e o `execucao_id` do turno: uma falha na terceira rodada deixa duas linhas
+  em `ia_uso` e um evento, todos com o mesmo id. A chamada que falhou não grava uso, a mesma exceção
+  sobe e a rota devolve o mesmo 502. O nível continua `aviso`; como o turno não grava evento de erro
+  próprio, essa falha segue fora da contagem de erros do admin, como já estava. Só a chamada ao
+  provedor gera o evento: a trava de ambiente, a configuração, o contexto, a montagem do corpo, as
+  ferramentas e a leitura da resposta ficam fora dele. Os dois logs de falha da rota
+  `/api/assistente` (o do chat e o da análise aprofundada) não levam nada do erro: o catch recebe
+  falhas do provedor, das ferramentas, do Supabase e da aplicação, e o log diz só qual operação
+  falhou (`{ operacao, codigo: "falha_ia" }`). Quem afirma que a falha foi do provedor é o evento,
+  não o log.
 
 ### Cargo ≠ carteira (`admins.opera_carteira`)
 

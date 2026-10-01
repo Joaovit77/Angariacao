@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { toResponseInputItems } from "openai/lib/responses/ResponseInputItems";
-import type { ResponseInputItem } from "openai/resources/responses/responses";
+import type { Response as RespostaResponses, ResponseInputItem } from "openai/resources/responses/responses";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AcaoAssistente, BlocoAssistente, ComandoUiAssistente, ContextoAssistente, MensagemAssistente, PedidoAssistente } from "@/lib/assistente/tipos";
 import { respostaParaLimiteAssistente } from "@/lib/assistente/capacidades";
@@ -15,6 +15,7 @@ import { registrarEvento, registrarUsoDaResponsesApi } from "@/lib/servidor/regi
 import { carregarConfiguracaoIa } from "@/lib/servidor/ia/configuracao";
 import { criarClienteOpenAIReal } from "@/lib/servidor/openai-real";
 import { metadadosDaRespostaResponses } from "@/lib/servidor/ia/metadados-responses";
+import { registrarFalhaDaChamada } from "@/lib/servidor/ia/executor-openai";
 import { diagnosticoContextoAssistente, metadadosExecucaoIa } from "@/lib/ia/observabilidade";
 import { instrucoesDoAssistente } from "./conhecimento";
 import {
@@ -367,8 +368,28 @@ export async function responderComAssistente(pedido: PedidoAssistente, supabase:
   // enviado. A chamada é a mesma de antes; só se mede o tempo em volta dela.
   const execucaoId = randomUUID();
   const chamarModelo = async () => {
+    // IA-M1c-D2: o corpo é montado fora do try (e dentro da duração, como
+    // no D1). Só a chamada ao provedor fica dentro, e a falha dela vira
+    // `ia-chamada-falhou` com o id do turno; a mesma exceção sobe e a
+    // rodada não grava uso.
     const inicio = performance.now();
-    const resultado = await openai.responses.create(parametros());
+    const corpo = parametros();
+    let resultado: RespostaResponses;
+    try {
+      resultado = await openai.responses.create(corpo);
+    } catch (erro) {
+      registrarFalhaDaChamada(erro, userId, {
+        tipo: "assistente-chat",
+        execucaoId,
+        rota: "assistente",
+        esforco: configuracao.assistente.esforco,
+        configOrigem: configuracao.origem,
+        configVersao: configuracao.versao,
+        modelo,
+        duracaoMs: Math.max(0, Math.round(performance.now() - inicio)),
+      });
+      throw erro;
+    }
     const duracaoMs = Math.max(0, Math.round(performance.now() - inicio));
     registrarUsoDaResponsesApi(userId, "assistente-chat", modelo, resultado.usage, metadadosDaRespostaResponses(resultado, {
       execucaoId,
