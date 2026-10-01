@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { DbMensagemAgendada } from "@/lib/mensagensAgendadas";
+import { classificarTipoParaEnvio, TIPO_RETOMADA_RETIRADO, type DbMensagemAgendada } from "@/lib/mensagensAgendadas";
 import { enviarMensagemAgendada } from "@/lib/servidor/envioMensagemAgendada";
 import { agoraISOComSegundos, agoraISOString } from "@/lib/datas";
 import {
@@ -58,6 +58,49 @@ async function reclamarLote(admin: SupabaseClient): Promise<
   }
 }
 
+/**
+ * Fecha como `erro` a linha de um tipo que o worker não envia. Só sai de
+ * `processando` (outra execução ou um cancelamento concorrente não é
+ * sobrescrito), e o evento só é registrado quando a transição aconteceu de
+ * fato. O detalhe é fechado: id técnico e um rótulo do tipo, nunca o valor
+ * cru do banco, telefone ou texto.
+ *
+ * Nunca lança: uma falha aqui não derruba o resto do lote. Se o banco recusar,
+ * a linha fica `processando` e o claim a vence como interrompida depois;
+ * em nenhum caminho ela é enviada.
+ */
+async function bloquearTipoNaoEnviavel(
+  admin: SupabaseClient,
+  item: DbMensagemAgendada,
+  classe: "retomada-bloqueada" | "desconhecido",
+): Promise<boolean> {
+  const desconhecido = classe === "desconhecido";
+  try {
+    const { data: bloqueadas, error } = await admin.from("mensagens_agendadas")
+      .update({ status: "erro", erro: desconhecido ? "tipo-desconhecido" : "retomada-envio-desabilitado", updated_at: agoraISOString() })
+      .eq("id", item.id)
+      .eq("user_id", item.user_id)
+      .eq("status", "processando")
+      .select("id");
+    if (error) {
+      console.error("[mensagens-cron] falha ao bloquear tipo não enviável", { id: item.id });
+      return false;
+    }
+    if (!Array.isArray(bloqueadas) || bloqueadas.length === 0) return false;
+  } catch {
+    console.error("[mensagens-cron] falha ao bloquear tipo não enviável", { id: item.id });
+    return false;
+  }
+  registrarEvento({
+    userId: item.user_id,
+    categoria: "whatsapp",
+    nivel: desconhecido ? "erro" : "aviso",
+    evento: desconhecido ? "agendamento-tipo-desconhecido" : "agendamento-tipo-bloqueado",
+    detalhe: `${item.id} tipo=${desconhecido ? "desconhecido" : TIPO_RETOMADA_RETIRADO}`,
+  });
+  return true;
+}
+
 export async function GET(request: Request) {
   const segredo = process.env.CRON_SECRET;
   if (!segredo) return Response.json({ ok: false, erro: "Cron não configurado." }, { status: 503 });
@@ -98,6 +141,15 @@ export async function GET(request: Request) {
   const data = claim.lote;
   let enviadas = 0, falhas = 0, suprimidas = 0, reagendadas = 0, consolidadas = 0;
   for (const item of data) {
+    // Trava por tipo (Retirados B1), ANTES de tudo: instância, Evolution,
+    // revalidação, consolidação, histórico e envio. Só os dois tipos
+    // enviáveis seguem; `retomada-retirado` ainda não sai, e um valor que o
+    // worker não conhece nunca sai. Ver `classificarTipoParaEnvio`.
+    const classe = classificarTipoParaEnvio(item.tipo);
+    if (classe === "retomada-bloqueada" || classe === "desconhecido") {
+      if (await bloquearTipoNaoEnviavel(admin, item, classe)) falhas++;
+      continue;
+    }
     const { data: instancia } = await admin.from("whatsapp_instancias").select("instancia, token, observacao")
       .eq("user_id", item.user_id).maybeSingle();
     // Reserva de consolidação desta mensagem (candidatas do mesmo proprietário

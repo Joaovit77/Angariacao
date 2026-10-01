@@ -1,5 +1,27 @@
 export type StatusMensagemAgendada = "agendada" | "processando" | "enviada" | "erro" | "cancelada";
-export type TipoMensagemAgendada = "livre" | "verificacao-disponibilidade";
+/** `retomada-retirado` é conhecido, mas ainda NÃO é enviável: o banco nem
+    aceita o valor (o check do tipo chega no B2). Ver `classificarTipoParaEnvio`. */
+export type TipoMensagemAgendada = "livre" | "verificacao-disponibilidade" | "retomada-retirado";
+export const TIPO_RETOMADA_RETIRADO = "retomada-retirado" as const;
+
+/** O que o worker faz com uma linha, decidido só pelo tipo. */
+export type ClasseEnvioMensagem = "livre" | "verificacao-disponibilidade" | "retomada-bloqueada" | "desconhecido";
+
+/**
+ * Classifica o `tipo` CRU vindo do banco, sem confiar que ele pertence à união
+ * acima. Fail-closed: só os dois tipos enviáveis passam, e só pelo valor exato.
+ *
+ * Ausente (`null`/`undefined`) continua sendo `livre`, a mesma regra do `??`
+ * de `fromDbMensagem` e do worker. Qualquer outro valor, inclusive string
+ * vazia ou um parecido ("Livre", " livre"), é `desconhecido` e nunca sai.
+ */
+export function classificarTipoParaEnvio(tipo: unknown): ClasseEnvioMensagem {
+  if (tipo === null || tipo === undefined) return "livre";
+  if (tipo === "livre") return "livre";
+  if (tipo === "verificacao-disponibilidade") return "verificacao-disponibilidade";
+  if (tipo === TIPO_RETOMADA_RETIRADO) return "retomada-bloqueada";
+  return "desconhecido";
+}
 export type MotivoCancelamentoMensagemAgendada =
   | "usuario"
   | "imovel-indisponivel"
