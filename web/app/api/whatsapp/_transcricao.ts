@@ -18,7 +18,14 @@
    throw aqui derrubaria a gravação da nota, que é o dado mais valioso
    da rota e o que garante a idempotência.
    ================================================================ */
-import { registrarUsoIa } from "@/lib/servidor/registro";
+import { randomUUID } from "node:crypto";
+import { registrarUsoIa, type MetadadosUsoIa } from "@/lib/servidor/registro";
+import {
+  categoriaDoStatusHttp,
+  type ClassificacaoFalhaProvedor,
+  registrarFalhaDaChamada,
+} from "@/lib/servidor/ia/executor-openai";
+import { requisicaoProvedorSaneada } from "@/lib/servidor/ia/metadados-chamada";
 import {
   esperaTranscricaoMs,
   type FalhaTranscricao,
@@ -77,11 +84,89 @@ async function baixarAudio(
   }
 }
 
+/* ---------------- telemetria (IA-M1c-E2) ----------------
+   Cada tentativa à OpenAI é uma chamada ao provedor. A falha dela (o fetch
+   lançou ou o status não é ok) vira um `ia-chamada-falhou` com o contrato
+   do executor comum, classificado aqui a partir do próprio fetch; o
+   sucesso leva os metadados na linha de uso. Nada disto muda retorno,
+   retry, espera ou timeout, e nada disto lança. */
+
+/** O request id do cabeçalho, saneado. Cabeçalhos hostis viram null. */
+function requisicaoDaResposta(resposta: Response): string | null {
+  try {
+    return requisicaoProvedorSaneada(resposta.headers.get("x-request-id"));
+  } catch {
+    return null;
+  }
+}
+
+/** O fetch lançou: só o tipo da exceção importa, nunca a mensagem. */
+function classificarExcecaoDoFetch(erro: unknown): ClassificacaoFalhaProvedor {
+  let categoria: ClassificacaoFalhaProvedor["categoria"] = "desconhecida";
+  try {
+    if (erro instanceof TypeError) categoria = "conexao";
+    else if (erro && typeof erro === "object" && (erro as { name?: unknown }).name === "TimeoutError") categoria = "timeout";
+  } catch {
+    // Erro hostil: fica desconhecida.
+  }
+  return { categoria, statusHttp: null, requisicaoProvedorId: null };
+}
+
+/** A OpenAI respondeu com status não-ok: o mapeamento HTTP do M1c-B. */
+function classificarRespostaNaoOk(resposta: Response): ClassificacaoFalhaProvedor {
+  return {
+    categoria: categoriaDoStatusHttp(resposta.status),
+    statusHttp: resposta.status,
+    requisicaoProvedorId: requisicaoDaResposta(resposta),
+  };
+}
+
+function registrarFalhaDaTentativa(
+  userId: string | null,
+  execucaoId: string,
+  inicio: number,
+  classificacao: () => ClassificacaoFalhaProvedor,
+): void {
+  try {
+    registrarFalhaDaChamada(null, userId, {
+      tipo: "transcricao",
+      execucaoId,
+      rota: null,
+      esforco: null,
+      configOrigem: null,
+      configVersao: null,
+      modelo: MODELO_TRANSCRICAO,
+      duracaoMs: Math.max(0, Math.round(performance.now() - inicio)),
+    }, classificacao());
+  } catch {
+    // A telemetria nunca muda o resultado da transcrição.
+  }
+}
+
+/** Metadados da tentativa que voltou com `usage`. A transcrição não informa
+    o modelo servido; rota, esforço e configuração não existem aqui. */
+function metadadosDaTentativa(resposta: Response, execucaoId: string, duracaoMs: number): MetadadosUsoIa {
+  return {
+    execucaoId,
+    rota: null,
+    esforco: null,
+    configOrigem: null,
+    configVersao: null,
+    modeloServido: null,
+    requisicaoProvedorId: requisicaoDaResposta(resposta),
+    duracaoMs,
+    motivoFim: null,
+    recusa: null,
+    tokensRaciocinio: null,
+  };
+}
+
 /** Uma chamada à OpenAI. O retry é de quem chama. */
 async function transcreverUmaVez(
   bytes: Uint8Array,
   chave: string,
   userId: string | null,
+  execucaoId: string,
 ): Promise<ResultadoTranscricao | { retentar: FalhaTranscricao }> {
   const form = new FormData();
   // A EXTENSÃO IMPORTA: a OpenAI escolhe o decoder por ela, e o WhatsApp manda
@@ -93,6 +178,7 @@ async function transcreverUmaVez(
   form.append("language", "pt");
 
   let resposta: Response;
+  const inicio = performance.now();
   try {
     resposta = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
@@ -100,11 +186,14 @@ async function transcreverUmaVez(
       body: form,
       signal: AbortSignal.timeout(TIMEOUT_TRANSCRICAO_MS),
     });
-  } catch {
+  } catch (erro) {
+    registrarFalhaDaTentativa(userId, execucaoId, inicio, () => classificarExcecaoDoFetch(erro));
     return { retentar: "sem-conexao" };
   }
 
   if (!resposta.ok) {
+    const naoOk = resposta;
+    registrarFalhaDaTentativa(userId, execucaoId, inicio, () => classificarRespostaNaoOk(naoOk));
     /* O 403 aqui é RETENTÁVEL, e isso é contraintuitivo o bastante para valer
        o comentário. A OpenAI devolve 403 `model_not_found` quando o projeto
        está sendo limitado, com a mesma mensagem de quando o modelo de fato não
@@ -120,6 +209,7 @@ async function transcreverUmaVez(
   const corpo = (await resposta.json().catch(() => null)) as
     | { text?: string; usage?: { input_tokens?: number; output_tokens?: number } }
     | null;
+  const duracaoMs = Math.max(0, Math.round(performance.now() - inicio));
 
   /* O gasto. Repare que os nomes dos campos são OUTROS aqui: a API de
      transcrição devolve `input_tokens`/`output_tokens`, enquanto a de
@@ -136,6 +226,7 @@ async function transcreverUmaVez(
       modelo: MODELO_TRANSCRICAO,
       tokensEntrada: corpo.usage.input_tokens ?? 0,
       tokensSaida: corpo.usage.output_tokens ?? 0,
+      metadados: metadadosDaTentativa(resposta, execucaoId, duracaoMs),
     });
   }
 
@@ -170,12 +261,15 @@ export async function transcreverAudio(p: PedidoTranscricao): Promise<ResultadoT
   const audio = await baixarAudio(p.serverUrl, p.instancia, p.token, p.mensagemId);
   if ("falha" in audio) return { ok: false, falha: audio.falha };
 
+  // IA-M1c-E2: um áudio é uma execução; as tentativas dele compartilham o
+  // id, que nasce depois da trava e do download (que não são provedor).
+  const execucaoId = randomUUID();
   let ultima: FalhaTranscricao = "falha-openai";
   for (let tentativa = 1; tentativa <= MAX_TENTATIVAS_TRANSCRICAO; tentativa++) {
     const espera = esperaTranscricaoMs(tentativa);
     if (espera > 0) await dormir(espera);
 
-    const r = await transcreverUmaVez(audio.bytes, p.chaveOpenai, p.userId ?? null);
+    const r = await transcreverUmaVez(audio.bytes, p.chaveOpenai, p.userId ?? null, execucaoId);
     if ("retentar" in r) {
       ultima = r.retentar;
       continue;

@@ -3382,6 +3382,23 @@ das rotas que já existiam.
   falhou não grava uso, os anteriores ficam e a mesma exceção sobe. Os retries internos do SDK não
   geram eventos à parte. Só o create gera o evento: a trava, a montagem do corpo, o lote incompleto
   (que segue como erro da aplicação), a leitura da resposta e o registro de uso ficam fora dele.
+  **Transcrição de áudio (`transcricao`).** Um áudio é uma execução: as até três tentativas de
+  `transcreverAudio` (`app/api/whatsapp/_transcricao.ts`) compartilham o `execucao_id`, que nasce
+  depois da trava e do download da Evolution. A tentativa que volta com `usage` grava a sua linha em
+  `ia_uso` como antes, agora com `duracao_ms` (do `fetch` até ler o corpo) e o `x-request-id`
+  saneado; `modelo_servido` fica null, porque a transcrição não informa o modelo, e rota, esforço,
+  configuração, motivo de fim, recusa e raciocínio também. Cada tentativa que falha (o `fetch`
+  lançou ou o status não é ok) gera um `ia-chamada-falhou` com o contrato do executor comum e o
+  mesmo `execucao_id`: um 403 seguido de sucesso deixa um evento e uma linha de uso; três falhas
+  deixam três eventos e nenhuma linha. Como o F2 chama a OpenAI por `fetch` direto, a classificação
+  é feita a partir do próprio fetch e entregue pronta ao registrador: status não-ok segue o
+  mapeamento HTTP do M1c-B, `TimeoutError` é `timeout`, `TypeError` de rede é `conexao` e o resto é
+  `desconhecida`; o registrador recebe só categoria, status e request id, nunca o erro ou a
+  resposta. A taxonomia funcional do F2 não muda (para ele um 403 é `limite-de-taxa` e repete; na
+  telemetria é `autenticacao`), nem o retorno, o retry, as esperas, o timeout ou o "nunca lança". O
+  download, a trava, o texto vazio, o JSON ilegível e o registro de uso não geram o evento. Dívida
+  conhecida: uma falha ao ler o corpo depois dos cabeçalhos continua engolida pelo `.catch` e sai
+  como `vazio`, sem evento.
 
 ### Cargo ≠ carteira (`admins.opera_carteira`)
 

@@ -149,12 +149,26 @@ export function categorizarFalhaProvedor(erro: unknown): CategoriaFalhaProvedor 
   if (erro instanceof OpenAI.APIUserAbortError) return "cancelada";
   if (erro instanceof OpenAI.APIConnectionTimeoutError) return "timeout";
   if (erro instanceof OpenAI.APIConnectionError) return "conexao";
-  const status = sanitizarErroExterno(erro, "iaTexto").status;
+  return categoriaDoStatusHttp(sanitizarErroExterno(erro, "iaTexto").status);
+}
+
+/** O mapeamento de status HTTP do M1c-B, também usado por quem chama o
+    provedor sem o SDK (a transcrição, IA-M1c-E2). */
+export function categoriaDoStatusHttp(status: number | null): CategoriaFalhaProvedor {
   if (status === 429) return "limite-de-taxa";
   if (status === 401 || status === 403) return "autenticacao";
   if (status === 400 || status === 404 || status === 422) return "requisicao-recusada";
   if (status !== null && status >= 500) return "erro-do-provedor";
   return "desconhecida";
+}
+
+/** Classificação já normalizada de uma falha, para quem não tem um erro do
+    SDK (IA-M1c-E2). Só os três campos fechados do evento: nunca o erro, a
+    resposta, o corpo, os cabeçalhos ou a mensagem. */
+export interface ClassificacaoFalhaProvedor {
+  categoria: CategoriaFalhaProvedor;
+  statusHttp: number | null;
+  requisicaoProvedorId: string | null;
 }
 
 /** `requestID` do erro do SDK, com o mesmo contrato do `_request_id` do
@@ -175,6 +189,8 @@ function requisicaoDoErro(erro: unknown): string | null {
  * Nível `aviso`, para não entrar na contagem de erros do admin
  * (`errosPorCorretor`), onde a mesma falha já conta pelo evento do fluxo.
  * Nunca lança: quem chamou recebe a exceção original de qualquer jeito.
+ * Sem `classificacao`, os três campos saem do erro, como sempre; com ela,
+ * vêm prontos de quem chamou e o erro não é lido.
  */
 export function registrarFalhaDaChamada(
   erro: unknown,
@@ -189,8 +205,14 @@ export function registrarFalhaDaChamada(
     modelo: string;
     duracaoMs: number;
   },
+  classificacao?: ClassificacaoFalhaProvedor,
 ): void {
   try {
+    const c = classificacao ?? {
+      categoria: categorizarFalhaProvedor(erro),
+      statusHttp: sanitizarErroExterno(erro, "iaTexto").status,
+      requisicaoProvedorId: requisicaoDoErro(erro),
+    };
     registrarEvento({
       userId,
       categoria: "ia",
@@ -204,9 +226,9 @@ export function registrarFalhaDaChamada(
         config_origem: campos.configOrigem,
         config_versao: campos.configVersao,
         modelo: campos.modelo,
-        categoria: categorizarFalhaProvedor(erro),
-        status_http: sanitizarErroExterno(erro, "iaTexto").status,
-        requisicao_provedor_id: requisicaoDoErro(erro),
+        categoria: c.categoria,
+        status_http: c.statusHttp,
+        requisicao_provedor_id: c.requisicaoProvedorId,
         duracao_ms: campos.duracaoMs,
       }),
     });
