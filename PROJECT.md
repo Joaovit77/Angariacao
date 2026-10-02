@@ -1428,8 +1428,9 @@ ganha; (4) exatamente um imóvel plausível. Qualquer outro caso é `pendente`. 
 candidatos encerra a busca** — não se desce para desempatar; a contagem do nível 2 é por imóvel, não
 por tentativa. **Terminal para atribuição** é `Perdido`, `Cancelado`, `Locado` ou `retirado` — lista
 própria do módulo, porque **"Sem resposta" continua plausível** aqui (é o público do follow-up, e o
-silêncio de ontem é quem responde hoje). Terminal só é alcançado por referência explícita, e o
-resultado sai marcado como histórico. `imoveis.updated_at` não participa de nenhuma decisão (ele
+silêncio de ontem é quem responde hoje). Terminal só é alcançado por referência explícita (ou, desde
+o B3 de Retirados, pelo contexto de retomada descrito adiante), e o resultado sai marcado como
+histórico. `imoveis.updated_at` não participa de nenhuma decisão (ele
 muda por motivos alheios à conversa, inclusive pela projeção de contatos); o instante de referência
 é `mensagem.recebidaEm`, vindo da entrada — mesma entrada, mesma saída, em qualquer máquina e em
 qualquer ordem de array. Endereço no texto foi avaliado e **rejeitado** como referência nesta fase:
@@ -1480,6 +1481,25 @@ continua **por linha**: se uma reentrega chegar depois de o contexto mudar e a d
 operacional trocar de imóvel, a mesma mensagem pode ser gravada em dois imóveis; o dedupe por
 conta é a C2.1b. A consulta legada por `updated_at` segue existindo só como fallback e caminho
 de rollback.
+
+**Resposta a uma retomada (Retirados, Fase B / B3).** O motor tem um nível entre a referência
+explícita e o resto, `contexto-retomada`: exatamente um imóvel vinculado **retirado** que recebeu
+uma mensagem `retomada-retirado` com status `enviada` dentro de
+`ATRIBUICAO_MENSAGEM.janelaRetomadaHoras` (48 h, a mesma semântica de janela do N3, e nunca maior
+que a janela do N3, que é a que limita a consulta dos envios) resolve nesse imóvel, marcado
+`terminal`. Ele fica **antes** da saída "sem plausíveis" (o dono que só tem o retirado não fica sem
+candidato) e antes do N2, do N3 e do N4, então vence o ativo do mesmo dono que hoje ganharia como
+único plausível; a referência explícita continua soberana. Contexto de **outro** imóvel conta como
+concorrência e vira `pendente` nesse nível: tentativa pendente elegível ou mensagem enviada na
+janela do N3 num plausível, ou retomada em outro retirado. O contexto do próprio retirado não
+concorre. Tipo e status são exigidos explícitos, então contexto sem eles (e qualquer outro tipo, ou
+retomada agendada, processando, cancelada ou em erro) se comporta como antes; uma retomada cujo
+imóvel foi reativado antes da resposta cai no N3 normal, sem regra especial. Na autoridade, é a
+**única** exceção à regra do terminal: o motor vence quando resolveu por `contexto-retomada` com
+`terminal === true`; referência explícita a um Perdido, marca ausente e qualquer outro nível seguem
+com o legado. Os efeitos de sempre vão para o retirado (nota, follow-ups, sugestão da IA e agenda),
+o encerramento automático continua barrado para retirado (B0) e nada reativa o imóvel. Sem
+retomada enviada, nada muda: o caminho só existe depois do envio da retomada (B5).
 
 **Uma mensagem, uma identidade por conta (1a-C2.1b.1).** A identidade da mensagem é `user_id` +
 `key.id` da Evolution (há uma instância por conta: `whatsapp_instancias` tem `primary key

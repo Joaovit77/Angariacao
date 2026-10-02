@@ -20,6 +20,8 @@
 
    Precedência (uma só, em ordem):
      N1 referência explícita ao imóvel no texto (código)
+     NR exatamente um imóvel RETIRADO com retomada enviada dentro da
+        janela, sem contexto concorrente em outro imóvel (Retirados B3)
      N2 exatamente um imóvel plausível com tentativa pendente elegível
      N3 exatamente um imóvel plausível com mensagem programada enviada
         dentro da janela
@@ -42,6 +44,7 @@
    ================================================================ */
 import { ATRIBUICAO_MENSAGEM } from "../constantes";
 import { daysBetween, minutosEntre } from "../datas";
+import { TIPO_RETOMADA_RETIRADO } from "../mensagensAgendadas";
 import { chaveNormalizada } from "../normalizacao";
 import { DIAS_COBRANCA_RESULTADO } from "./abordagens";
 
@@ -82,6 +85,11 @@ export interface ContextoAgendamento {
   /** Datetime local "YYYY-MM-DDTHH:mm" do envio. */
   enviadoEm: string;
   imovelIds: readonly string[];
+  /** `mensagens_agendadas.tipo` e `.status`. Só o nível da retomada (NR) os
+      lê, e exige os dois explícitos: contexto sem eles se comporta como
+      antes do B3 e nunca vira retomada. O N3 continua sem olhar para eles. */
+  tipo?: string | null;
+  status?: string | null;
 }
 
 export interface MensagemParaAtribuicao {
@@ -96,6 +104,9 @@ export interface ConfigAtribuicao {
   janelaAgendamentoHoras: number;
   /** Idade máxima da tentativa pendente (N2). Mesma janela do nudge. */
   diasTentativaPendente: number;
+  /** Janela do contexto de retomada (NR). Própria, mas nunca maior que a
+      do N3: é a do N3 que limita a consulta dos envios. */
+  janelaRetomadaHoras: number;
 }
 
 export interface EntradaAtribuicao {
@@ -116,12 +127,14 @@ export interface EntradaAtribuicao {
 
 export type NivelAtribuicao =
   | "referencia-explicita"
+  | "contexto-retomada"
   | "contexto-tentativa"
   | "contexto-agendamento"
   | "unico";
 
 export type EvidenciaAtribuicao =
   | { tipo: "codigo"; codigo: string }
+  | { tipo: "retomada"; enviadoEm: string }
   | { tipo: "tentativa"; tentativaEm: string }
   | { tipo: "agendamento"; enviadoEm: string }
   | { tipo: "unico-plausivel" };
@@ -132,9 +145,10 @@ export interface AtribuicaoResolvida {
   imovelId: string;
   nivel: NivelAtribuicao;
   /** true quando o imóvel resolvido está num estado terminal para
-      atribuição. Só acontece por referência explícita: é atribuição
-      HISTÓRICA. Quem integra usa isto para não liberar efeito nenhum —
-      responder a um imóvel perdido não o reabre. */
+      atribuição. Só acontece por referência explícita ou por contexto de
+      retomada: é atribuição HISTÓRICA. Quem integra usa isto para não
+      liberar efeito nenhum — responder a um imóvel perdido ou retirado
+      não o reabre. */
   terminal: boolean;
   evidencia: EvidenciaAtribuicao;
   /** Imóveis plausíveis considerados, ordenados por id. */
@@ -302,6 +316,40 @@ function agendamentoNaJanela(
   return minutos !== null && minutos <= janelaHoras * 60;
 }
 
+/** O envio mais recente na janela, por imóvel, considerando só os ids
+    pedidos e só os contextos que `aceita` deixa passar. É a mesma conta
+    do N3 (que aceita qualquer contexto) e do NR (que aceita só retomada
+    enviada). "Mais recente" aqui é só a EVIDÊNCIA de um imóvel já
+    escolhido, nunca desempate entre imóveis. */
+function enviosNaJanelaPorImovel(
+  contextos: readonly ContextoAgendamento[],
+  recebidaEm: string,
+  janelaHoras: number,
+  ids: readonly string[],
+  aceita: (contexto: ContextoAgendamento) => boolean,
+): Map<string, string> {
+  const porImovel = new Map<string, string>();
+  for (const contexto of contextos) {
+    if (!aceita(contexto)) continue;
+    if (!agendamentoNaJanela(contexto, recebidaEm, janelaHoras)) continue;
+    for (const imovelId of contexto.imovelIds) {
+      if (!ids.includes(imovelId)) continue;
+      const atual = porImovel.get(imovelId);
+      if (!atual || contexto.enviadoEm.localeCompare(atual) > 0) {
+        porImovel.set(imovelId, contexto.enviadoEm);
+      }
+    }
+  }
+  return porImovel;
+}
+
+/** Retomada que conta para o NR: o tipo próprio e o envio confirmado, os
+    dois explícitos. Agendada, processando, cancelada ou em erro não é
+    contexto de conversa nenhuma. */
+function ehRetomadaEnviada(contexto: ContextoAgendamento): boolean {
+  return contexto.tipo === TIPO_RETOMADA_RETIRADO && contexto.status === "enviada";
+}
+
 /* ----------------------------------------------------------------
    6. A DECISÃO
    ---------------------------------------------------------------- */
@@ -323,6 +371,8 @@ export function resolverAtribuicaoMensagem(entrada: EntradaAtribuicao): Resultad
     janelaAgendamentoHoras:
       entrada.config?.janelaAgendamentoHoras ?? ATRIBUICAO_MENSAGEM.janelaAgendamentoHoras,
     diasTentativaPendente: entrada.config?.diasTentativaPendente ?? DIAS_COBRANCA_RESULTADO,
+    janelaRetomadaHoras:
+      entrada.config?.janelaRetomadaHoras ?? ATRIBUICAO_MENSAGEM.janelaRetomadaHoras,
   };
   const { contatoId, mensagem } = entrada;
 
@@ -383,8 +433,56 @@ export function resolverAtribuicaoMensagem(entrada: EntradaAtribuicao): Resultad
   }
   if (citados.length > 1) return pendente("referencia-explicita");
 
+  // NR — contexto de retomada (Retirados, Fase B / B3). A ÚNICA exceção à
+  // regra "terminal só por referência": uma retomada é uma mensagem
+  // deliberada do Angario a um imóvel RETIRADO, e a resposta a ela é sobre
+  // ele — sem isto, um ativo do mesmo dono a levaria pelo N4. Fica antes do
+  // "sem plausíveis" abaixo, senão o dono que só tem o retirado ficaria sem
+  // candidato. Concorrência é contexto de OUTRO imóvel (tentativa do N2 ou
+  // envio do N3 num plausível): com ela, não há evidência inequívoca, e é
+  // empate. O contexto do próprio retirado não concorre: ele nem é
+  // plausível. Duas retomadas em retirados diferentes também empatam.
+  const contextos = entrada.agendamentos || [];
+  const retirados = vinculados.filter((i) => i.retirado === true);
+  const retomadaPorImovel = enviosNaJanelaPorImovel(
+    contextos,
+    mensagem.recebidaEm,
+    config.janelaRetomadaHoras,
+    ordenarIds(retirados),
+    ehRetomadaEnviada,
+  );
+  const comRetomada = retirados.filter((i) => retomadaPorImovel.has(i.id));
+  if (comRetomada.length > 1) return pendente("contexto-retomada");
+  if (comRetomada.length === 1) {
+    const alvo = comRetomada[0];
+    const enviosDosPlausiveis = enviosNaJanelaPorImovel(
+      contextos,
+      mensagem.recebidaEm,
+      config.janelaAgendamentoHoras,
+      idsPlausiveis,
+      () => true,
+    );
+    const concorrente = plausiveis.some(
+      (i) =>
+        i.id !== alvo.id &&
+        (tentativaMaisRecente(i, mensagem.recebidaEm, config.diasTentativaPendente) !== null ||
+          enviosDosPlausiveis.has(i.id)),
+    );
+    if (concorrente) return pendente("contexto-retomada");
+    return {
+      ok: true,
+      contatoId,
+      imovelId: alvo.id,
+      nivel: "contexto-retomada",
+      terminal: ehImovelTerminalParaAtribuicao(alvo),
+      evidencia: { tipo: "retomada", enviadoEm: retomadaPorImovel.get(alvo.id) || "" },
+      candidatos: idsPlausiveis,
+      terminais: idsTerminais,
+    };
+  }
+
   // Daqui para baixo só imóvel plausível: terminal não é escolhido por
-  // contexto, só por referência.
+  // contexto, só por referência (ou pela retomada acima).
   if (plausiveis.length === 0) {
     return {
       ok: false,
@@ -419,17 +517,13 @@ export function resolverAtribuicaoMensagem(entrada: EntradaAtribuicao): Resultad
   // N3 — contexto de agendamento. A consolidação é expandida: uma mensagem
   // única que perguntou por A, B e C não dá precedência a nenhum dos três.
   // Se ela cobre dois plausíveis, isso é empate — e empate encerra a busca.
-  const enviadoPorImovel = new Map<string, string>();
-  for (const contexto of entrada.agendamentos || []) {
-    if (!agendamentoNaJanela(contexto, mensagem.recebidaEm, config.janelaAgendamentoHoras)) continue;
-    for (const imovelId of contexto.imovelIds) {
-      if (!idsPlausiveis.includes(imovelId)) continue;
-      const atual = enviadoPorImovel.get(imovelId);
-      if (!atual || contexto.enviadoEm.localeCompare(atual) > 0) {
-        enviadoPorImovel.set(imovelId, contexto.enviadoEm);
-      }
-    }
-  }
+  const enviadoPorImovel = enviosNaJanelaPorImovel(
+    contextos,
+    mensagem.recebidaEm,
+    config.janelaAgendamentoHoras,
+    idsPlausiveis,
+    () => true,
+  );
   const comAgendamento = plausiveis.filter((i) => enviadoPorImovel.has(i.id));
   if (comAgendamento.length === 1) {
     const imovel = comAgendamento[0];

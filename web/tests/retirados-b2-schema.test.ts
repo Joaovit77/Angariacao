@@ -265,12 +265,18 @@ describe("a aplicação não cria retomada", () => {
       .map((f) => join(pasta, f).replace(/\\/g, "/")),
   );
 
-  it("o valor só aparece no tipo/classificador e no worker que o bloqueia", () => {
+  it("o valor só aparece no tipo/classificador, no worker que o bloqueia e no motor que o lê", () => {
     const usam = arquivos.filter((f) => {
       const texto = readFileSync(join(raiz, f), "utf8");
       return texto.includes("retomada-retirado") || texto.includes("TIPO_RETOMADA_RETIRADO");
     });
-    expect(usam.sort()).toEqual(["app/api/cron/mensagens/route.ts", "lib/mensagensAgendadas.ts"]);
+    // B3: o motor de atribuição (puro, sem escrita) só reconhece a retomada
+    // que JÁ saiu; nenhum desses três arquivos cria uma.
+    expect(usam.sort()).toEqual([
+      "app/api/cron/mensagens/route.ts",
+      "lib/calculo/atribuicaoMensagem.ts",
+      "lib/mensagensAgendadas.ts",
+    ]);
   });
 
   it("o único caller do ModalMensagemAgendada passa só livre ou verificação", () => {

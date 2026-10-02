@@ -336,7 +336,9 @@ async function carregarImovelOperacional(
  * gravar, com o resultado da persistência (`registrarObservacao`), para
  * continuar sendo um evento por entrega (Fase 1a-C2.1b.1).
  *
- * O motor só vence quando resolveu um imóvel não terminal. Pendente, sem
+ * O motor só vence quando resolveu um imóvel não terminal, ou quando
+ * resolveu um retirado pelo contexto de retomada (Retirados B3: o B0 já
+ * impede encerrá-lo pela resposta). Pendente, sem
  * candidato, terminal, sem contato relacional, falha e estado desconhecido
  * ficam com o legado — com os efeitos de sempre, porque o portão de
  * efeitos é a fatia seguinte (C3). E nada aqui lança: qualquer falha vira

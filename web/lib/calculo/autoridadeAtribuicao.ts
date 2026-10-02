@@ -7,7 +7,8 @@
    operacional, aquele que recebe a nota e os efeitos que já existem.
 
    A regra é uma só, e é deliberadamente estreita: o motor vence quando
-   resolveu (`resolvido`) e o imóvel resolvido NÃO é terminal. Em
+   resolveu (`resolvido`) e o imóvel resolvido NÃO é terminal (com a
+   exceção da retomada, descrita abaixo). Em
    qualquer outro estado o legado continua mandando, e o motivo do
    fallback fica escrito. Foi o que a sombra mediu em Production: 51 de
    51 resoluções do motor concordaram com o legado, mas em 29 de 80
@@ -27,10 +28,23 @@
      neste ponto (sem imóvel pelo telefone a mensagem nem chega aqui);
      se chegar, o resultado é `imovelId: null` e quem chama não grava.
 
+   UMA exceção controlada (Retirados, Fase B / B3): a resposta a uma
+   retomada é sobre o imóvel retirado que a recebeu, e ele é terminal por
+   desenho. Quando o motor resolveu pelo nível `contexto-retomada` e marcou
+   `terminal === true`, ele vence mesmo assim. Nenhum outro terminal ganha
+   autoridade: referência explícita a um Perdido continua com o legado.
+   O efeito perigoso nesse imóvel (encerrar como Perdido) já está fechado
+   pelo B0, e nada aqui reativa imóvel.
+
    Módulo PURO: sem Supabase, sem fetch, sem log, sem relógio. E sem
    `updated_at`: a escolha do legado já vem pronta (é ela que ainda usa
    a recência), e o motor nunca a vê.
    ================================================================ */
+import type { NivelAtribuicao } from "./atribuicaoMensagem";
+
+/** O único nível que dá autoridade a um imóvel terminal. Tipado pelo motor:
+    se o nome do nível mudar lá, isto deixa de compilar. */
+const NIVEL_TERMINAL_COM_AUTORIDADE: NivelAtribuicao = "contexto-retomada";
 
 /** Os estados da resolução relacional que esta fatia conhece. */
 export type EstadoResolucaoAtribuicao =
@@ -120,8 +134,10 @@ export function decidirImovelOperacional(
 
   if (novo.estado === "resolvido") {
     // `=== false`, não `!terminal`: um valor ausente não prova que o
-    // imóvel está vivo.
-    if (novo.terminal !== false) return legado(legadoImovelId, "terminal", novo.imovelId);
+    // imóvel está vivo. A retomada é a única exceção, e exige `=== true`:
+    // o nível sozinho, com a marca ausente ou falsa, segue a regra comum.
+    const retomada = novo.nivel === NIVEL_TERMINAL_COM_AUTORIDADE && novo.terminal === true;
+    if (novo.terminal !== false && !retomada) return legado(legadoImovelId, "terminal", novo.imovelId);
     if (!novo.imovelId) return legado(legadoImovelId, "resolucao-incompleta", null);
     return {
       autoridade: "motor",

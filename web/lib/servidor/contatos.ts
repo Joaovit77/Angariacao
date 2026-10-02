@@ -309,7 +309,11 @@ async function carregarCadeiaDeFusao(
 }
 
 /** As mensagens programadas que já saíram dentro da janela e falam de
-    algum candidato. Devolve `null` só quando a consulta falha. */
+    algum candidato. Devolve `null` só quando a consulta falha.
+
+    `tipo` e `status` vão junto para o motor (Retirados B3): o contexto de
+    retomada exige os dois explícitos. A janela da consulta é a do N3, que
+    por contrato cobre a da retomada (`ATRIBUICAO_MENSAGEM`). */
 async function carregarAgendamentos(
   supabase: SupabaseClient,
   entrada: EntradaShadow,
@@ -321,7 +325,7 @@ async function carregarAgendamentos(
   const ids = candidatos.map((c) => c.id);
   const enviadas = await supabase
     .from("mensagens_agendadas")
-    .select("imovel_id, imoveis_consultados, enviado_em")
+    .select("imovel_id, imoveis_consultados, enviado_em, tipo, status")
     .eq("user_id", entrada.userId)
     .eq("status", "enviada")
     .gte("enviado_em", desde);
@@ -337,7 +341,12 @@ async function carregarAgendamentos(
     const alvo = [...new Set([...(linha.imovel_id ? [String(linha.imovel_id)] : []), ...consultados])]
       .filter((id) => ids.includes(id));
     if (alvo.length === 0) continue;
-    contextos.push({ enviadoEm, imovelIds: alvo });
+    contextos.push({
+      enviadoEm,
+      imovelIds: alvo,
+      tipo: typeof linha.tipo === "string" ? linha.tipo : null,
+      status: typeof linha.status === "string" ? linha.status : null,
+    });
   }
   return contextos;
 }

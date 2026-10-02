@@ -765,3 +765,94 @@ describe("C2.1b.1 — dedupe por conta na rota", () => {
     expect(mocks.registrarEvento).toHaveBeenCalledWith(expect.objectContaining({ evento: "historico-envio-falhou" }));
   });
 });
+
+/* ================================================================
+   Retirados, Fase B / B3: a resposta à retomada vai para o retirado.
+   A = retirado que recebeu a retomada; B = ativo do mesmo dono, mexido
+   por último (é quem o legado escolheria pelo `updated_at`).
+   ================================================================ */
+describe("B3: resposta a uma retomada enviada", () => {
+  const JA_ALUGUEI = "Imóvel já alugado por conta própria";
+
+  function cenarioRetomada() {
+    return criarBanco({
+      imoveis: [
+        imovel("imovel-a", { codigo: "LD-RA", retirado: true, updated_at: "2026-09-01T00:00:00Z" }),
+        imovel("imovel-b", { codigo: "LD-RB", updated_at: "2026-09-30T00:00:00Z" }),
+      ],
+      imoveis_contatos: [vinculo("imovel-a"), vinculo("imovel-b")],
+      mensagens_agendadas: [
+        {
+          user_id: CONTA,
+          imovel_id: "imovel-a",
+          imoveis_consultados: null,
+          tipo: "retomada-retirado",
+          status: "enviada",
+          // Duas horas antes, em UTC como o banco grava.
+          enviado_em: new Date(Date.now() - 2 * 3_600_000).toISOString(),
+        },
+      ],
+    });
+  }
+
+  it("nota em A, B intocado, follow-up de A, autoridade do motor no nível da retomada", async () => {
+    const banco = cenarioRetomada();
+    const bAntes = structuredClone(banco.imoveis[1]);
+    const { resposta, rpcs } = await enviar(banco, evento("Oi! Tenho interesse sim, vamos conversar."));
+    expect(resposta.status).toBe(200);
+
+    expect(notaGravada(banco, "imovel-a", "wa:")).toBeDefined();
+    expect(notaGravada(banco, "imovel-b", "wa:")).toBeUndefined();
+    expect(banco.imoveis[1]).toEqual(bAntes);
+
+    expect(rpcs.find((r) => r.nome === "registrar_nota_whatsapp_conta")?.args.p_imovel_id).toBe("imovel-a");
+    expect(rpcs.find((r) => r.nome === "processar_evento_resposta_acompanhamento")?.args.p_imovel_id).toBe("imovel-a");
+
+    expect(eventoAtribuicao().dados).toMatchObject({
+      autoridade: "motor",
+      nivel: "contexto-retomada",
+      terminal: true,
+      novo_imovel_id: "imovel-a",
+      legado_imovel_id: "imovel-b",
+      operacional_imovel_id: "imovel-a",
+    });
+    expect(notaGravada(banco, "imovel-a", "wa:")?.atribuicao).toMatchObject({
+      autoridade: "motor",
+      nivel: "contexto-retomada",
+      terminal: true,
+      fallbackMotivo: null,
+    });
+    // Nenhum caminho reativa: A continua retirado.
+    expect(banco.imoveis[0]).toMatchObject({ retirado: true, status: "Publicado" });
+  });
+
+  it("'já aluguei' com motivo de perda: A não é encerrado (B0) nem reativado, e B segue intocado", async () => {
+    const banco = cenarioRetomada();
+    const bAntes = structuredClone(banco.imoveis[1]);
+    mocks.classificarResposta.mockResolvedValue({ resultado: "recusou", resumo: "Já alugou.", motivoPerda: JA_ALUGUEI, retomarEm: null });
+    const { consultas } = await enviar(banco, evento("Já aluguei por conta própria, obrigado."));
+
+    expect(notaGravada(banco, "imovel-a", "wa:")).toBeDefined();
+    expect(banco.imoveis[0]).toMatchObject({ retirado: true, status: "Publicado" });
+    expect(banco.imoveis[1]).toEqual(bAntes);
+    expect(consultas.some((c) => c.tabela === "imoveis" && c.op === "update")).toBe(false);
+    expect(eventoAtribuicao().dados).toMatchObject({ autoridade: "motor", nivel: "contexto-retomada" });
+  });
+
+  it("sem a retomada, o mesmo cenário segue o caminho de antes (B pelo N4)", async () => {
+    const banco = cenarioRetomada();
+    banco.mensagens_agendadas = [];
+    await enviar(banco, evento("Oi! Tenho interesse sim."));
+    expect(notaGravada(banco, "imovel-b", "wa:")).toBeDefined();
+    expect(notaGravada(banco, "imovel-a", "wa:")).toBeUndefined();
+    expect(eventoAtribuicao().dados).toMatchObject({ autoridade: "motor", nivel: "unico", operacional_imovel_id: "imovel-b" });
+  });
+
+  it("retomada ainda não enviada (processando) não muda nada", async () => {
+    const banco = cenarioRetomada();
+    banco.mensagens_agendadas[0].status = "processando";
+    await enviar(banco, evento("Oi! Tenho interesse sim."));
+    expect(notaGravada(banco, "imovel-b", "wa:")).toBeDefined();
+    expect(eventoAtribuicao().dados).toMatchObject({ nivel: "unico" });
+  });
+});

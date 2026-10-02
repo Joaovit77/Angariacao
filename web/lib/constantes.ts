@@ -334,10 +334,16 @@ export const VERIFICACAO_DISPONIBILIDADE_DIAS = 60;
  * proprietário que responde no dia seguinte sem transformar a mensagem da
  * semana passada em evidência.
  *
+ * `janelaRetomadaHoras`: o mesmo, para a retomada de imóvel retirado (o
+ * contexto que vence o N4 no B3 de Retirados). Própria para poder mudar sem
+ * mexer no N3, mas nunca maior que `janelaAgendamentoHoras`: é essa que
+ * limita a consulta dos envios (`carregarAgendamentos`), e há teste disso.
+ *
  * A idade da tentativa pendente NÃO mora aqui: ela é a mesma janela do nudge
  * (`DIAS_COBRANCA_RESULTADO`, em `calculo/abordagens.ts`), e duplicar o
  * número criaria duas definições de "pendente" para divergirem em silêncio.
  */
 export const ATRIBUICAO_MENSAGEM = {
   janelaAgendamentoHoras: 48,
+  janelaRetomadaHoras: 48,
 } as const;

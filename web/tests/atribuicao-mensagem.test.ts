@@ -449,9 +449,12 @@ describe("34. fronteira arquitetural do módulo", () => {
 
   it("só importa núcleo puro do próprio projeto", () => {
     const imports = [...fonte.matchAll(/from "([^"]+)"/g)].map((m) => m[1]).sort();
+    // `../mensagensAgendadas` (Retirados B3): só a constante do tipo da
+    // retomada, de um módulo que também é puro e sem import nenhum.
     expect(imports).toEqual([
       "../constantes",
       "../datas",
+      "../mensagensAgendadas",
       "../normalizacao",
       "./abordagens",
     ]);
