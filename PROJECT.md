@@ -14,6 +14,8 @@ triviais devem ficar no histórico do Git.
 - [supabase-schema.sql](supabase-schema.sql): fonte de verdade executável do schema e das políticas.
 - [DEPLOY.md](DEPLOY.md): configuração de ambientes, deploy, cutover, rollback e tarefas agendadas.
 - [docs/IA-AMBIENTES.md](docs/IA-AMBIENTES.md): política operacional única de IA real por ambiente.
+- [docs/IA_BASELINE.md](docs/IA_BASELINE.md): baseline observacional da IA (cohort, consultas fixas de
+  leitura, gate de fechamento e critérios de regressão), referência antes de qualquer troca de modelo.
 - [INTEGRACAO_SOPHIA.md](INTEGRACAO_SOPHIA.md): contrato externo da integração Sophia.
 - [MIGRATION_NEXT.md](MIGRATION_NEXT.md) e [BASELINE_ETAPA0.md](BASELINE_ETAPA0.md): histórico e
   contrato de paridade da migração para Next.js.
