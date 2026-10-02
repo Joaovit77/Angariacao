@@ -12,7 +12,7 @@
    Diferença de forma: userId entra por parâmetro em vez do global
    currentUser do app antigo.
    ================================================================ */
-import { ORIGENS_LEGADAS } from "../constantes";
+import { MOTIVOS_RETIRADA, ORIGENS_LEGADAS, type MotivoRetirada } from "../constantes";
 import type { Abordagem, AgendaItem, AnuncioCentralVisualizado, Imovel, NotaImovel, Protocolo, StatusHistoryEntry, Tentativa } from "../tipos";
 import { ehTipoProtocolo, tipoProtocoloOuPadrao, type TipoProtocolo } from "../protocolos";
 import type { PortalAngariacao } from "../calculo/centralAngariacao";
@@ -68,6 +68,12 @@ export interface DbImovelRow {
   pre_cadastro: boolean | null;
   importado: boolean | null;
   retirado: boolean | null;
+  /** Opcionais: só a retirada os escreve, e o `toDbImovel` nunca os manda
+      (o upsert do cadastro apagaria a data e o motivo). Ausentes numa linha
+      anterior à migration 20261002210000. */
+  retirado_em?: string | null;
+  retirado_motivo?: string | null;
+  retirado_observacao?: string | null;
   valor_aluguel_atraso: number | null;
   texto_anuncio: string | null;
   imovel_principal_id: string | null;
@@ -240,6 +246,12 @@ export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "create
   };
 }
 
+/** O motivo gravado, se for um dos conhecidos. O banco já recusa outro
+    valor; a guarda é para não confiar num texto cru vindo da rede. */
+function motivoRetiradaDoBanco(valor: string | null | undefined): MotivoRetirada | null {
+  return MOTIVOS_RETIRADA.find((m) => m.id === valor)?.id ?? null;
+}
+
 export function fromDbImovel(r: DbImovelRow): Imovel {
   return {
     id: r.id,
@@ -297,6 +309,9 @@ export function fromDbImovel(r: DbImovelRow): Imovel {
     preCadastro: !!r.pre_cadastro,
     importado: !!r.importado,
     retirado: !!r.retirado,
+    retiradoEm: r.retirado_em || null,
+    retiradoMotivo: motivoRetiradaDoBanco(r.retirado_motivo),
+    retiradoObservacao: r.retirado_observacao || null,
     // null, nunca "": o resto do app testa este campo por verdade/falsidade
     // para decidir se o imóvel é uma unidade desdobrada.
     imovelPrincipalId: r.imovel_principal_id || null,

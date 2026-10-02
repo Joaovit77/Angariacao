@@ -6,7 +6,7 @@
    trata todos esses casos — o tipo documenta o contrato, não o
    restringe além do que o código antigo garantia.
    ================================================================ */
-import type { ResultadoTentativa } from "./constantes";
+import type { MotivoRetirada, ResultadoTentativa } from "./constantes";
 import type { PortalAngariacao } from "./calculo/centralAngariacao";
 import type { TipoProtocolo } from "./protocolos";
 
@@ -297,6 +297,16 @@ export interface Imovel {
       captação falhou, aqui ela foi ganha e depois encerrada, e o motivo nem
       sempre é conhecido. Sai do Pipeline ativo e vive na aba Retirados. */
   retirado?: boolean | null;
+  /** Dia civil (AAAA-MM-DD, horário de Brasília) em que o imóvel saiu da
+      carteira. `null` quando não se sabe: retiradas anteriores à coluna. O
+      banco preenche com o dia de hoje quando a retirada chega sem data, e
+      apaga os três campos ao reativar. Nunca é escrito pelo `toDbImovel`:
+      o upsert do cadastro regravaria por cima do que a retirada guardou. */
+  retiradoEm?: string | null;
+  /** Por que saiu (`MOTIVOS_RETIRADA`); `null` = não informado. */
+  retiradoMotivo?: MotivoRetirada | null;
+  /** Observação da retirada; obrigatória quando o motivo é "outro". */
+  retiradoObservacao?: string | null;
   /** Valor cobrado quando o aluguel ATRASA — o anunciado mais o acréscimo da
       campanha (na carteira medida, 20% em 278 de 279 casos, mas 21,6% em um).
       NÃO é o aluguel do imóvel: `valorAluguel` é o que o proprietário quer

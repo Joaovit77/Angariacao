@@ -431,6 +431,18 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   A marca é **campo**, não texto: ela nasce da coluna RECEBIMENTO do CRM na importação, e uma
   busca por "RETIROU" dentro de `observacoes` morreria na primeira edição da observação — além de
   nunca poder marcar imóvel novo.
+  **Quando e por quê (Retirados, Fase C / C1).** Três colunas guardam a retirada:
+  `retiradoEm` (dia de Brasília; `null` = não se sabe), `retiradoMotivo` (lista fechada
+  `MOTIVOS_RETIRADA`, em `constantes.ts`; `null` = "Não informado") e `retiradoObservacao`
+  (obrigatória quando o motivo é "outro"). O banco carimba o dia de hoje só na transição real
+  para retirado (UPDATE de `false` para `true` sem data); um imóvel inserido já retirado, ou um
+  retirado antigo editado, continua com a data `null`, porque `null` é "data histórica
+  desconhecida" e o banco não fabrica data (decisão D5A). Apaga os três ao reativar e recusa dado de retirada em imóvel da carteira
+  (`20261002210000_retirada_data_motivo.sql`). O `toDbImovel` **nunca** manda essas colunas: o
+  upsert do cadastro grava a linha inteira e apagaria o que a retirada guardou. Daqui em diante,
+  imóvel **captado** que sai da carteira vira retirado, e não Perdido (lead nunca angariado
+  continua Perdido): C2 pede o motivo no "Retirar da carteira", C3 leva a retirada ao relatório,
+  C4 faz a IA retirar em vez de encerrar, C5 converte os Perdidos antigos de imóvel captado.
   **A busca é insensível a ACENTO** (`semAcento`), e os dois lados passam por ela — normalizar só o
   que o usuário digita não resolveria: "Jose" tem que achar "José" no dado gravado. A normalização
   vale só para PESQUISAR; o cadastro continua guardando e exibindo "Rua José Francisco Pereira",

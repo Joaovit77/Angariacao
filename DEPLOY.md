@@ -527,6 +527,85 @@ commit;
 Se ainda houver retomada, o `add constraint` falha e a transação inteira volta atrás. O rollback de
 código (deploy anterior) independe do banco: o código anterior ao B2 já conhece o tipo (B1).
 
+#### Retirados, Fase C / C1: data e motivo da retirada
+
+A migration `supabase/migrations/20261002210000_retirada_data_motivo.sql` dá ao imóvel retirado
+o **quando** e o **porquê** que faltavam. É aditiva e não toca nenhuma linha existente (de
+propósito: o `updated_at` dos retirados de hoje é o que o casamento legado do webhook usa para
+escolher entre imóveis do mesmo telefone):
+
+- três colunas anuláveis em `imoveis`: `retirado_em` (`date`, dia de Brasília; null = não se
+  sabe), `retirado_motivo` (`text`; null = não informado) e `retirado_observacao` (`text`);
+- quatro checks: motivo na lista fechada (`MOTIVOS_RETIRADA` de `web/lib/constantes.ts`, os 7
+  valores, sem `nao-informado`); imóvel fora de Retirados sem nenhum dos três; `outro` exige
+  observação; observação até 1000 caracteres;
+- função `private.preencher_dados_retirada_imovel()` (`search_path` vazio, sem `security
+  definer`, execute revogado de public, anon e authenticated) e o trigger
+  `trg_retirada_dados_imovel` (`before insert or update of retirado, retirado_em, retirado_motivo,
+  retirado_observacao`): a transição para retirado por UPDATE sem data recebe o dia de hoje;
+  reativar apaga os três campos; a observação é aparada.
+
+**Decisão D5A (02/10): INSERT de imóvel já retirado, sem data, fica com `retirado_em` null.**
+`null` significa "data histórica da retirada desconhecida", e o carimbo automático pertence só à
+transição real para retirado (UPDATE de `false` para `true`). Um INSERT já retirado é a linha
+proposta pelo upsert do cadastro (descartada no conflito) ou uma carga de dados antigos, e
+carimbar hoje fabricaria uma data. Nenhum fluxo do app insere imóvel já retirado. Uma importação
+futura de retirados antigos informa a data que souber, ou a deixa null; nunca inventa. A
+semântica completa, congelada pelos testes do C1:
+
+| Operação | `retirado_em` |
+|---|---|
+| INSERT com `retirado = true`, sem data | continua null |
+| UPDATE de `false` para `true`, sem data | dia civil atual em `America/Sao_Paulo` |
+| UPDATE de `true` para `true`, com data null | continua null |
+| transição para retirado com data informada | a data informada |
+| UPDATE de `true` para `false` (reativar) | null, junto com motivo e observação |
+
+Compatível com o que já está no ar: o botão "Retirar da carteira" grava só `retirado = true` e
+continua funcionando (data de hoje, motivo null); o upsert do cadastro não manda as colunas novas
+(`toDbImovel` as omite, com teste), então não as apaga. Não mexe em RLS, `status_history` nem nos
+triggers que já reagem a `retirado` (M3/M4 e retomada do B2). O código do C1 só lê as colunas, e lê
+`null` quando elas ainda não existem, então a ordem migration ↔ deploy é livre. Recomendado: (1)
+aplicar a migration em Production pelo mesmo mecanismo do B2 (`supabase db push --linked`); (2)
+conferir em `information_schema.columns` as três colunas, em `pg_constraint` os quatro checks, em
+`pg_trigger` o trigger e em `pg_proc` a função com `proconfig = {search_path=""}`, `prosecdef =
+false` e ACL só `postgres`; (3) publicar o código.
+
+Validação local: o mesmo banco de scratch do B2, a migration aplicada duas vezes (idempotente; as
+linhas que já existiam ficam com o mesmo `updated_at`) e
+`node node_modules/vitest/vitest.mjs run --config vitest.retirada-dados-supabase-local.config.ts`
+em `web/` com `LOCAL_SUPABASE_URL`, `LOCAL_SUPABASE_ANON_KEY`, `LOCAL_SUPABASE_SERVICE_ROLE_KEY` e
+`LOCAL_SUPABASE_DB_CONTAINER` (o teste grava um retirado legado com os triggers desligados e
+carimba a data com a sessão em outros fusos pelo `psql` do container), além das integrações da
+retomada (B2), da atribuição (B3) e da disponibilidade.
+
+Rollback (não automático). **Remover as colunas apaga, sem volta, toda data, motivo e observação já
+gravados** (pelo carimbo automático do botão de hoje, e depois pelo C2, C4 e C5). Antes:
+
+1. se algum checkpoint que GRAVA estas colunas (C2 em diante) já estiver no ar, voltar o código dele
+   primeiro: o PostgREST recusaria a escrita de uma coluna que não existe mais;
+2. guardar o que existir com
+   `select id, user_id, retirado_em, retirado_motivo, retirado_observacao from public.imoveis where retirado_em is not null or retirado_motivo is not null or retirado_observacao is not null`.
+
+Testado no banco local (estrutura volta ao estado anterior; reaplicar a migration depois converge):
+
+```sql
+begin;
+drop trigger if exists trg_retirada_dados_imovel on public.imoveis;
+drop function if exists private.preencher_dados_retirada_imovel();
+alter table public.imoveis drop constraint if exists imoveis_retirado_observacao_tamanho_check;
+alter table public.imoveis drop constraint if exists imoveis_retirada_outro_check;
+alter table public.imoveis drop constraint if exists imoveis_retirada_coerente_check;
+alter table public.imoveis drop constraint if exists imoveis_retirado_motivo_check;
+alter table public.imoveis drop column if exists retirado_observacao;
+alter table public.imoveis drop column if exists retirado_motivo;
+alter table public.imoveis drop column if exists retirado_em;
+commit;
+```
+
+O rollback de código (deploy anterior) independe do banco: o código anterior ao C1 não lê as
+colunas, e o upsert dele também não as manda.
+
 #### M6 — Aguardando smoke manual
 
 O smoke real do M3/M4/M5 ainda não foi executado. Ele roda **em Production, depois de M5

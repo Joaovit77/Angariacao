@@ -234,6 +234,33 @@ export const MOTIVO_PERDA_LOCADO_FORA =
  */
 export const MOTIVO_PERDA_IMOVEL_INDISPONIVEL = "Imóvel não está mais disponível";
 
+/**
+ * Por que um imóvel captado saiu da carteira (`Imovel.retiradoMotivo`).
+ *
+ * Retirado não é Perdido (ver `Imovel.retirado`): a captação foi ganha, e o
+ * motivo diz o que aconteceu depois. O `id` é o valor gravado no banco, que
+ * tem um check com exatamente esta lista (migration 20261002210000); trocar
+ * ou acrescentar um id aqui sem a migration faz o banco recusar a gravação.
+ *
+ * Não existe "Não informado" na lista: motivo desconhecido é `null` (as
+ * retiradas anteriores a esta coluna, e as feitas pelo botão antigo). A tela
+ * mostra `ROTULO_MOTIVO_RETIRADA_DESCONHECIDO` nesse caso. "Outro" exige
+ * observação, também pelo banco.
+ */
+export const MOTIVOS_RETIRADA = [
+  { id: "locado-proprietario", rotulo: "Locado pelo proprietário" },
+  { id: "locado-outra-imobiliaria", rotulo: "Locado por outra imobiliária" },
+  { id: "reservado-outra-imobiliaria", rotulo: "Reservado por outra imobiliária" },
+  { id: "vendido", rotulo: "Vendido" },
+  { id: "desistiu", rotulo: "Desistiu de alugar" },
+  { id: "nao-e-mais-proprietario", rotulo: "Não é mais o proprietário" },
+  { id: "outro", rotulo: "Outro" },
+] as const;
+
+export type MotivoRetirada = (typeof MOTIVOS_RETIRADA)[number]["id"];
+
+export const ROTULO_MOTIVO_RETIRADA_DESCONHECIDO = "Não informado";
+
 export const MOTIVOS_PERDA = [
   "Imóvel já vendido", "Imóvel já alugado por conta própria", MOTIVO_PERDA_IMOVEL_INDISPONIVEL,
   "Proprietário desistiu de alugar",
