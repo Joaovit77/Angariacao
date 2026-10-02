@@ -1,5 +1,5 @@
 import { agoraTimestamp, timestampDeIso } from "../datas";
-import { extrairCaracteristicasImovel } from "./caracteristicasImovel";
+import { extrairCaracteristicasImovel, extrairTipoImovelDeclarado } from "./caracteristicasImovel";
 import { normalizarUf, separarCidadeEUf, ufValida } from "./geografia";
 import { qualidadeLocalizacaoRadar, type CategoriaLocalizacaoRadar } from "./localizacaoRadar";
 
@@ -63,6 +63,12 @@ export interface AnuncioCentralAngariacao {
   url: string;
   descricao?: string | null;
   tipo?: string | null;
+  /** R6.0b: tipo que o próprio anúncio declara (card/JSON-LD do portal, ou
+      título + descrição), nunca o filtro da busca. `tipo` continua podendo
+      herdar o filtro; este campo é o que um filtro interno por tipo pode ler.
+      Ausente: o anúncio ainda não passou por `comCaracteristicasDoAnuncio`.
+      `null`: o anúncio não declara tipo. */
+  tipoDeclarado?: string | null;
   areaM2?: number | null;
   areaTotalM2?: number | null;
   areaTerrenoM2?: number | null;
@@ -85,13 +91,16 @@ export function comCaracteristicasDoAnuncio(
   anuncio: AnuncioCentralAngariacao,
   tipoPreferido?: string | null,
 ): AnuncioCentralAngariacao {
-  const extraidas = extrairCaracteristicasImovel(
-    [anuncio.titulo, anuncio.descricao].filter(Boolean).join(" · "),
-    anuncio.tipo || tipoPreferido,
-  );
+  const texto = [anuncio.titulo, anuncio.descricao].filter(Boolean).join(" · ");
+  const extraidas = extrairCaracteristicasImovel(texto, anuncio.tipo || tipoPreferido);
   return {
     ...anuncio,
     tipo: anuncio.tipo ?? extraidas.tipo,
+    // Só a primeira passada decide: depois dela `tipo` pode já ter herdado o
+    // filtro, e a coleta aplica esta função mais de uma vez ao mesmo anúncio.
+    tipoDeclarado: anuncio.tipoDeclarado !== undefined
+      ? anuncio.tipoDeclarado
+      : (anuncio.tipo?.trim() || extrairTipoImovelDeclarado(texto)),
     areaM2: anuncio.areaM2 ?? extraidas.areaM2,
     areaTotalM2: anuncio.areaTotalM2 ?? extraidas.areaTotalM2,
     areaTerrenoM2: anuncio.areaTerrenoM2 ?? extraidas.areaTerrenoM2,
