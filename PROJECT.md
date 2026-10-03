@@ -459,6 +459,18 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   recarregar ("O imóvel mudou enquanto a janela estava aberta"). Corrigir a retirada escreve só as
   três colunas, e só com o imóvel ainda retirado. O banco continua aceitando `{ retirado: true }`
   sozinho (uma aba aberta com a versão antiga): data de hoje, motivo `null`.
+  **Relatório de imóveis atualmente retirados (C3).** A quarta aba de `/relatorios`, Retirados,
+  apresenta uma fotografia de `retirado === true`, sem exigir status ou histórico de Angariado.
+  O núcleo puro `calculo/relatorioRetirados.ts` combina motivo e data por AND: todos os períodos
+  (padrão), intervalo inclusivo ou data não informada; motivos vêm de `MOTIVOS_RETIRADA`, com
+  "Não informado" para a ausência. Data desconhecida não pertence a um intervalo e nenhum campo
+  de cadastro, status, histórico ou nota pode substituí-la. Tabela, total, quantidade sem data,
+  distribuição por motivo e CSV usam o mesmo conjunto filtrado; os três dados da retirada ausentes
+  aparecem como "Não informado". O documento reusa a impressão do navegador e registra os filtros
+  e o recorte. Reativados ficam fora e uma nova retirada usa somente os dados atuais: as colunas
+  apagadas na reativação não constituem um histórico completo de eventos. Mensal, Semanal,
+  Completo, seus indicadores e seus CSVs conservam os contratos existentes. Não há consulta,
+  escrita, migration ou mudança de mapeador específica do relatório.
   **A busca é insensível a ACENTO** (`semAcento`), e os dois lados passam por ela — normalizar só o
   que o usuário digita não resolveria: "Jose" tem que achar "José" no dado gravado. A normalização
   vale só para PESQUISAR; o cadastro continua guardando e exibindo "Rua José Francisco Pereira",

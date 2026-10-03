@@ -8,6 +8,7 @@
 import { useMemo, useState } from "react";
 import { rotuloUsuario, useSessao } from "@/components/SessaoProvider";
 import RelatorioCompletoDoc from "@/components/relatorios/RelatorioCompletoDoc";
+import RelatorioRetiradosDoc from "@/components/relatorios/RelatorioRetiradosDoc";
 import {
   desempenhoPorAbordagem,
   resumoTentativas,
@@ -20,6 +21,15 @@ import { dateEnteredStatus } from "@/lib/calculo/motor";
 import { relatorioCompleto } from "@/lib/calculo/relatorioCompleto";
 import { relatorioMensal, relatorioSemanal, weekRangeLabel, type DadosRelatorio } from "@/lib/calculo/relatorios";
 import { gerarCsv } from "@/lib/csv";
+import { MOTIVOS_RETIRADA, ROTULO_MOTIVO_RETIRADA_DESCONHECIDO } from "@/lib/constantes";
+import {
+  CABECALHO_CSV_RETIRADOS,
+  filtrosRelatorioRetiradosVazios,
+  linhasCsvRetirados,
+  relatorioRetirados,
+  type FiltroMotivoRetirados,
+  type FiltroPeriodoRetirados,
+} from "@/lib/calculo/relatorioRetirados";
 import {
   currentMonthKey,
   monthLabelLong,
@@ -354,9 +364,10 @@ export default function RelatoriosView() {
   const abrirModal = useUiModal((s) => s.abrirModal);
   const { usuario } = useSessao();
 
-  const [modo, setModo] = useState<"mensal" | "semanal" | "completo">("mensal");
+  const [modo, setModo] = useState<"mensal" | "semanal" | "completo" | "retirados">("mensal");
   const [mesKey, setMesKey] = useState(() => currentMonthKey());
   const [semanaOffset, setSemanaOffset] = useState(0);
+  const [filtrosRetirados, setFiltrosRetirados] = useState(filtrosRelatorioRetiradosVazios);
 
   // O relatório completo é MENSAL: usa o mesmo seletor de mês, e o "semanal"
   // segue sendo só do documento de desfecho. Semana é recorte curto demais para
@@ -380,6 +391,11 @@ export default function RelatoriosView() {
           )
         : null,
     [modo, imoveis, agenda, abordagens, mesKey, hoje],
+  );
+
+  const retirados = useMemo(
+    () => modo === "retirados" ? relatorioRetirados(imoveis, filtrosRetirados) : null,
+    [modo, imoveis, filtrosRetirados],
   );
 
   // A tabela mora dentro de um relatório de período e usa a mesma coorte dele:
@@ -436,13 +452,30 @@ export default function RelatoriosView() {
     baixarCsv(`desempenho-abordagens-${todayISO()}.csv`, gerarCsv(cabecalho, linhas));
   }
 
+  function exportarRetirados() {
+    if (!retirados || retirados.erroFiltro || retirados.total === 0) return;
+    baixarCsv(
+      `imoveis-atualmente-retirados-${todayISO()}.csv`,
+      gerarCsv(CABECALHO_CSV_RETIRADOS, linhasCsvRetirados(retirados)),
+    );
+  }
+
   return (
     <>
       <div className="page-head">
         <div>
-          <p className="page-sub">Resumo de produtividade para acompanhamento e prestação de contas</p>
+          <p className="page-sub">{modo === "retirados"
+            ? "Imóveis atualmente retirados da carteira, com os dados disponíveis da retirada"
+            : "Resumo de produtividade para acompanhamento e prestação de contas"}</p>
         </div>
         <div className="page-actions">
+          {retirados ? (
+            <button type="button" className="btn" onClick={exportarRetirados}
+              disabled={retirados.total === 0 || Boolean(retirados.erroFiltro)}>
+              Exportar retirados (CSV)
+            </button>
+          ) : (
+            <>
           <button
             type="button"
             className="btn"
@@ -470,6 +503,8 @@ export default function RelatoriosView() {
           >
             Exportar abordagens (CSV)
           </button>
+            </>
+          )}
           <button type="button" className="btn" onClick={() => window.print()}>
             Imprimir / salvar PDF
           </button>
@@ -487,8 +522,12 @@ export default function RelatoriosView() {
           <button type="button" className={modo === "completo" ? "active" : ""} onClick={() => setModo("completo")}>
             Completo
           </button>
+          <button type="button" className={modo === "retirados" ? "active" : ""}
+            aria-pressed={modo === "retirados"} onClick={() => setModo("retirados")}>
+            Retirados
+          </button>
         </div>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+        {modo !== "retirados" && <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
           {modo !== "semanal" ? (
             <>
               <button type="button" className="icon-btn" onClick={() => setMesKey((k) => shiftMonthKey(k, -1))}>
@@ -519,10 +558,53 @@ export default function RelatoriosView() {
               </button>
             </>
           )}
-        </div>
+        </div>}
       </div>
 
+      {retirados && (
+        <div className="rr-filtros" aria-label="Filtros dos imóveis retirados">
+          <div className="field-group">
+            <label htmlFor="rr-motivo">Motivo da retirada</label>
+            <select id="rr-motivo" value={filtrosRetirados.motivo}
+              onChange={(e) => setFiltrosRetirados((f) => ({ ...f, motivo: e.target.value as FiltroMotivoRetirados }))}>
+              <option value="todos">Todos</option>
+              {MOTIVOS_RETIRADA.map((motivo) => <option key={motivo.id} value={motivo.id}>{motivo.rotulo}</option>)}
+              <option value="nao-informado">{ROTULO_MOTIVO_RETIRADA_DESCONHECIDO}</option>
+            </select>
+          </div>
+          <div className="field-group">
+            <label htmlFor="rr-periodo">Período de retirada</label>
+            <select id="rr-periodo" value={filtrosRetirados.periodo}
+              onChange={(e) => setFiltrosRetirados((f) => ({ ...f, periodo: e.target.value as FiltroPeriodoRetirados }))}>
+              <option value="todos">Todos os períodos</option>
+              <option value="intervalo">Intervalo</option>
+              <option value="nao-informada">Data não informada</option>
+            </select>
+          </div>
+          {filtrosRetirados.periodo === "intervalo" && (
+            <>
+              <div className="field-group">
+                <label htmlFor="rr-inicio">Data inicial</label>
+                <input id="rr-inicio" type="date" value={filtrosRetirados.inicio}
+                  onChange={(e) => setFiltrosRetirados((f) => ({ ...f, inicio: e.target.value }))} />
+              </div>
+              <div className="field-group">
+                <label htmlFor="rr-fim">Data final</label>
+                <input id="rr-fim" type="date" value={filtrosRetirados.fim}
+                  onChange={(e) => setFiltrosRetirados((f) => ({ ...f, fim: e.target.value }))} />
+              </div>
+            </>
+          )}
+          <button type="button" className="btn" onClick={() => setFiltrosRetirados(filtrosRelatorioRetiradosVazios())}>
+            Limpar filtros
+          </button>
+        </div>
+      )}
+
       <div id="report-doc">
+        {retirados ? (
+          <RelatorioRetiradosDoc r={retirados} responsavel={rotuloUsuario(usuario) || "-"} emitidoEm={fmtDate(hoje)} />
+        ) : <>
         {completo ? (
           <RelatorioCompletoDoc
             r={completo}
@@ -541,6 +623,7 @@ export default function RelatoriosView() {
           periodo={dados.period}
           aoGerenciar={() => abrirModal("abordagens")}
         />
+        </>}
       </div>
     </>
   );
