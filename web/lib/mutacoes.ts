@@ -20,7 +20,15 @@ import {
   ROTEIRO_ANALISE_ANUNCIO,
   VERIFICACAO_DISPONIBILIDADE_DIAS,
 } from "./constantes";
-import { addDaysISO, agoraISOComHora, agoraISOComSegundos, currentMonthKey, todayISO } from "./datas";
+import {
+  addDaysISO,
+  agoraISOComHora,
+  agoraISOComSegundos,
+  agoraTimestamp,
+  currentMonthKey,
+  dataOperacionalDeTimestamp,
+  todayISO,
+} from "./datas";
 import { ehTentativaDuplicada } from "./calculo/abordagens";
 import { celebracaoAoSalvar } from "./calculo/celebracao";
 import {
@@ -32,7 +40,15 @@ import {
 import { deveTerVerificacaoAberta } from "./calculo/followup";
 import { dataAngariadoEfetiva, historicoComStatus } from "./calculo/motor";
 import { eventosNaoLidos, notaDaMensagemEnviada } from "./calculo/notas";
-import { podeRetirarDaCarteira } from "./calculo/retiradaCarteira";
+import {
+  ehMotivoRetirada,
+  podeRetirarDaCarteira,
+  textoNotaReativacao,
+  textoNotaRetirada,
+  validarRetirada,
+  type DadosNovaRetirada,
+  type DadosRetirada,
+} from "./calculo/retiradaCarteira";
 import { useCelebracao } from "./celebracao";
 import { MAX_PROTOCOLO_CHARS } from "./calculo/ia";
 import { ehTipoProtocolo } from "./protocolos";
@@ -775,14 +791,40 @@ export async function marcarPerdidoNumeroNaoEncontrado(imovelId: string): Promis
   return true;
 }
 
+/** A retirada não gravou porque o imóvel mudou entre a leitura e a escrita
+    (outra aba, o webhook, outra ação): nada foi aplicado. */
+export const AVISO_CONFLITO_RETIRADA = "O imóvel mudou enquanto a janela estava aberta. Recarregue.";
+
+/** O retrato que a retirada lê antes de escrever: a versão (`updated_at`)
+    e as notas atuais do banco, nunca as da memória. */
+interface RetratoRetirada {
+  id: string;
+  retirado: boolean | null;
+  notas: NotaImovel[] | null;
+  updated_at: string | null;
+  retirado_em: string | null;
+  retirado_motivo: string | null;
+  retirado_observacao: string | null;
+}
+
 /**
  * Retira o imóvel da carteira (`retirado = true`) ou o reativa (`false`).
  *
- * Não é mudança de status: escreve SÓ a coluna `retirado`, em update parcial,
- * como `marcarPerdidoNumeroNaoEncontrado`. Status, statusHistory, notas,
- * tentativas, motivo de perda, comissão e dados do Sistema Principal ficam
- * como estão. Reativar também não escolhe status: o imóvel volta ao Pipeline
- * no que já tinha.
+ * Não é mudança de status: status, statusHistory, tentativas, motivo de
+ * perda, comissão e dados do Sistema Principal ficam como estão. Reativar
+ * também não escolhe status: o imóvel volta ao Pipeline no que já tinha.
+ *
+ * Retirar exige os dados da retirada (Retirados, Fase C / C2): motivo, data
+ * e observação vão junto com a marca, e uma nota no histórico de interações
+ * registra o que aconteceu. Reativar grava a nota da reativação, porque o
+ * banco apaga data, motivo e observação nessa transição (C1).
+ *
+ * As duas escritas são UM update condicional sobre o retrato lido do banco
+ * logo antes: `retirado` ainda no estado de origem e `updated_at` igual à
+ * versão lida. O trigger `trg_imoveis_updated_at` carimba `now()` em TODO
+ * update de `imoveis` (nota do webhook, nota manual, tentativa, cadastro),
+ * então qualquer escrita no meio troca a versão e o update não casa linha:
+ * nada é aplicado, nenhuma nota alheia é perdida e o usuário recarrega.
  *
  * Retirar: os efeitos de disponibilidade são do banco. O trigger M3/M4
  * encerra lembretes e verificações quando `retirado` vira true; em vez de
@@ -794,20 +836,89 @@ export async function marcarPerdidoNumeroNaoEncontrado(imovelId: string): Promis
  * régua (`planoVerificacaoDisponibilidade`) reconcilia na hora: status no
  * alvo ganha o lembrete; fora dele, nada nasce. Nenhuma mensagem é criada.
  */
+export function definirRetiradoDaCarteira(
+  imovelId: string,
+  retirado: true,
+  userId: string,
+  dados: DadosNovaRetirada,
+): Promise<boolean>;
+export function definirRetiradoDaCarteira(imovelId: string, retirado: false, userId: string): Promise<boolean>;
 export async function definirRetiradoDaCarteira(
   imovelId: string,
   retirado: boolean,
   userId: string,
+  dados?: DadosNovaRetirada,
 ): Promise<boolean> {
   const imovel = useAppStore.getState().imoveis.find((i) => i.id === imovelId);
   if (!imovel) return false;
-  if ((imovel.retirado === true) === retirado) return true;
   if (retirado && !podeRetirarDaCarteira(imovel)) {
     toast("Só um imóvel captado e ainda não locado pode ser retirado da carteira.", "error");
     return false;
   }
+  // Fail-closed: retirar sem dados válidos não escreve nada, mesmo que um
+  // chamador contorne a assinatura.
+  let dadosRetirada: DadosNovaRetirada | null = null;
+  if (retirado) {
+    const hoje = dataOperacionalDeTimestamp(agoraTimestamp()) || "";
+    const conferido = dados
+      ? validarRetirada(
+          { motivo: dados.motivo ?? "", observacao: dados.observacao ?? "", data: dados.data ?? "" },
+          "criar",
+          hoje,
+        )
+      : null;
+    if (!conferido || !conferido.ok || !conferido.dados.motivo || !conferido.dados.data) {
+      toast(conferido && !conferido.ok ? conferido.erro : "Informe o motivo e a data da retirada.", "error");
+      return false;
+    }
+    dadosRetirada = { motivo: conferido.dados.motivo, observacao: conferido.dados.observacao, data: conferido.dados.data };
+  }
 
-  const { error } = await getSupabase().from("imoveis").update({ retirado }).eq("id", imovelId);
+  const supabase = getSupabase();
+  const lido = await supabase
+    .from("imoveis")
+    .select("id, retirado, notas, updated_at, retirado_em, retirado_motivo, retirado_observacao")
+    .eq("id", imovelId)
+    .maybeSingle();
+  if (lido.error) {
+    toast((retirado ? "Não foi possível retirar da carteira: " : "Não foi possível reativar: ") + lido.error.message, "error");
+    return false;
+  }
+  const retrato = (lido.data ?? null) as RetratoRetirada | null;
+  if (!retrato || !retrato.updated_at || (retrato.retirado === true) === retirado) {
+    toast(AVISO_CONFLITO_RETIRADA, "error");
+    return false;
+  }
+
+  const nota: NotaImovel = {
+    id: uid(),
+    texto: dadosRetirada
+      ? textoNotaRetirada(dadosRetirada)
+      : textoNotaReativacao({
+          retiradoEm: retrato.retirado_em,
+          retiradoMotivo: ehMotivoRetirada(retrato.retirado_motivo) ? retrato.retirado_motivo : null,
+          retiradoObservacao: retrato.retirado_observacao,
+        }),
+    data: agoraISOComHora(),
+  };
+  const notas = [...(retrato.notas || []), nota];
+  const payload = dadosRetirada
+    ? {
+        retirado: true,
+        retirado_em: dadosRetirada.data,
+        retirado_motivo: dadosRetirada.motivo,
+        retirado_observacao: dadosRetirada.observacao,
+        notas,
+      }
+    : { retirado: false, notas };
+
+  const { data: gravadas, error } = await supabase
+    .from("imoveis")
+    .update(payload)
+    .eq("id", imovelId)
+    .eq("retirado", !retirado)
+    .eq("updated_at", retrato.updated_at)
+    .select("id");
   if (error) {
     toast(
       (retirado ? "Não foi possível retirar da carteira: " : "Não foi possível reativar: ") + error.message,
@@ -815,9 +926,26 @@ export async function definirRetiradoDaCarteira(
     );
     return false;
   }
+  if (!Array.isArray(gravadas) || gravadas.length === 0) {
+    toast(AVISO_CONFLITO_RETIRADA, "error");
+    return false;
+  }
 
   const { imoveis, setImoveis } = useAppStore.getState();
-  setImoveis(imoveis.map((i) => (i.id === imovelId ? { ...i, retirado } : i)));
+  setImoveis(
+    imoveis.map((i) =>
+      i.id === imovelId
+        ? {
+            ...i,
+            retirado,
+            notas,
+            retiradoEm: dadosRetirada ? dadosRetirada.data : null,
+            retiradoMotivo: dadosRetirada ? dadosRetirada.motivo : null,
+            retiradoObservacao: dadosRetirada ? dadosRetirada.observacao : null,
+          }
+        : i,
+    ),
+  );
   toast(retirado ? "Imóvel retirado da carteira. Ele está na aba Retirados." : "Imóvel reativado no Pipeline.");
   await recarregarEstado();
 
@@ -830,6 +958,54 @@ export async function definirRetiradoDaCarteira(
       if (novaAgenda !== estado.agenda) estado.setAgenda(novaAgenda);
     }
   }
+  return true;
+}
+
+/**
+ * Corrige data, motivo e observação de um imóvel JÁ retirado (C2): a
+ * retirada antiga sem dados, ou um motivo escolhido errado. Escreve só as
+ * três colunas, e só se o imóvel continuar retirado; não mexe em `retirado`,
+ * status nem histórico. Data `null` continua `null`: o banco não inventa a
+ * data de uma retirada antiga (D5A), e esta função também não.
+ */
+export async function editarRetiradaDaCarteira(imovelId: string, dados: DadosRetirada): Promise<boolean> {
+  const imovel = useAppStore.getState().imoveis.find((i) => i.id === imovelId);
+  if (!imovel || imovel.retirado !== true) return false;
+  const hoje = dataOperacionalDeTimestamp(agoraTimestamp()) || "";
+  const conferido = validarRetirada(
+    { motivo: dados.motivo ?? "", observacao: dados.observacao ?? "", data: dados.data ?? "" },
+    "editar",
+    hoje,
+  );
+  if (!conferido.ok) {
+    toast(conferido.erro, "error");
+    return false;
+  }
+  const { motivo, observacao, data } = conferido.dados;
+
+  const { data: gravadas, error } = await getSupabase()
+    .from("imoveis")
+    .update({ retirado_em: data, retirado_motivo: motivo, retirado_observacao: observacao })
+    .eq("id", imovelId)
+    .eq("retirado", true)
+    .select("id");
+  if (error) {
+    toast("Não foi possível salvar a retirada: " + error.message, "error");
+    return false;
+  }
+  if (!Array.isArray(gravadas) || gravadas.length === 0) {
+    toast(AVISO_CONFLITO_RETIRADA, "error");
+    return false;
+  }
+
+  const { imoveis, setImoveis } = useAppStore.getState();
+  setImoveis(
+    imoveis.map((i) =>
+      i.id === imovelId ? { ...i, retiradoEm: data, retiradoMotivo: motivo, retiradoObservacao: observacao } : i,
+    ),
+  );
+  toast("Retirada atualizada.");
+  await recarregarEstado();
   return true;
 }
 

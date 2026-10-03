@@ -31,6 +31,7 @@ import {
   type PipelineViewMode,
 } from "@/lib/calculo/filtros";
 import { daysInCurrentStatus, diasSemMovimento, isPausado, isStale } from "@/lib/calculo/motor";
+import { resumoRetirada } from "@/lib/calculo/retiradaCarteira";
 import { MODELOS_WHATSAPP, modeloPadraoWhatsapp } from "@/lib/calculo/whatsapp";
 import { STATUS_ALL, STATUS_COLORS, STATUS_COM_ANUNCIO, TIPOS_IMOVEL } from "@/lib/constantes";
 import { todayISO } from "@/lib/datas";
@@ -646,6 +647,9 @@ function Drawer({ imovel }: { imovel: Imovel }) {
             <InfoDrawer label="Valor" value={fmtMoney(imovel.valorAluguel)} />
             <InfoDrawer label="Status" value={imovel.status || "-"} />
             <InfoDrawer label="Data de cadastro" value={fmtDate(imovel.dataAngariacao)} />
+            {/* Só para retirado: quando e por que saiu (C2). O que não se sabe
+                aparece como "não informado", nunca inventado. */}
+            {imovel.retirado === true && <InfoDrawer label="Retirada" value={resumoRetirada(imovel)} />}
           </div>
           <div className="drawer-section">
             <div className="drawer-section-title">Pesquisa na web</div>

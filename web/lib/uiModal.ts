@@ -9,6 +9,7 @@
    ================================================================ */
 import { create } from "zustand";
 import type { ReferenciaSugestaoIa } from "@/lib/ia/feedback";
+import type { ModoRetirada } from "@/lib/calculo/retiradaCarteira";
 
 export type TipoModal =
   | "imovel"
@@ -32,7 +33,8 @@ export type TipoModal =
   | "solicitacaoAngariacao"
   | "gerarAnuncio"
   | "mensagemAgendada"
-  | "mensagemDisponibilidadeLote";
+  | "mensagemDisponibilidadeLote"
+  | "retiradaCarteira";
 
 /** Dados trazidos por uma fonte externa. São apenas valores iniciais do
     formulário: o corretor continua vendo, corrigindo e salvando tudo. */
@@ -124,6 +126,9 @@ export interface ModalAtivo {
   preCadastroInicial?: PreCadastroInicial;
   /** ModalImovel aberto pelo Garimpo em Campo para criar a oportunidade. */
   promocaoDoGarimpo?: PromocaoDoGarimpo;
+  /** Janela de retirada (Retirados C2): retirar um imóvel ativo ou corrigir
+      a retirada de um já retirado. Só existe junto com `id`. */
+  modoRetirada?: ModoRetirada;
 }
 
 interface UiModal {
@@ -168,6 +173,9 @@ interface UiModal {
       campo — e é um clique humano que chega aqui, nunca um fluxo automático. */
   abrirImovelDoGarimpo: (promocao: PromocaoDoGarimpo) => void;
   abrirLocacaoEmLote: (imovelIds: string[]) => void;
+  /** Abre a janela de retirada de UM imóvel. Ação própria e explícita: o
+      modo nunca é deduzido do estado do imóvel. Só o ModalImovel a chama. */
+  abrirRetirada: (imovelId: string, modo: ModoRetirada) => void;
   abrirRecebimentoEmLote: (repasseIds: string[]) => void;
   fecharModal: () => void;
 }
@@ -221,6 +229,7 @@ export const useUiModal = create<UiModal>((set) => ({
   abrirImovelDoGarimpo: (promocaoDoGarimpo) =>
     set({ modal: { tipo: "imovel", promocaoDoGarimpo } }),
   abrirLocacaoEmLote: (ids) => set({ modal: { tipo: "locarEmLote", ids: [...new Set(ids)] } }),
+  abrirRetirada: (imovelId, modo) => set({ modal: { tipo: "retiradaCarteira", id: imovelId, modoRetirada: modo } }),
   abrirRecebimentoEmLote: (ids) => set({ modal: { tipo: "receberRepassesEmLote", ids: [...new Set(ids)] } }),
   fecharModal: () => set({ modal: null }),
 }));

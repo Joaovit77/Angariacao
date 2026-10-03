@@ -52,26 +52,55 @@ const banco = vi.hoisted(() => ({
   retiradoEntregueAoSalvar: [] as unknown[],
 }));
 
+/** Versão de linha que muda a cada escrita, como o `trg_imoveis_updated_at`
+    (que carimba `now()` em TODO update de `imoveis`). */
+let relogioVersao = 0;
+const novaVersao = () => `2026-09-30T12:00:00.${String(++relogioVersao).padStart(6, "0")}+00:00`;
+
 function consultaFalsa(tabela: string) {
   const filtros: [string, unknown][] = [];
   let modo: Operacao["modo"] | "select" = "select";
   let payload: Linha | null = null;
+  let devolverLinhas = false;
+  let umaSo = false;
   const casa = (linha: Linha) =>
     filtros.every(([c, v]) => (Array.isArray(v) ? v.includes(linha[c]) : linha[c] === v));
   const executar = () => {
     const linhas = banco.tabelas[tabela] ?? [];
-    if (modo === "select") return { data: linhas.filter(casa), error: null };
+    if (modo === "select") {
+      const achadas = linhas.filter(casa).map((l) => structuredClone(l));
+      return { data: umaSo ? achadas[0] ?? null : achadas, error: null };
+    }
     banco.ops.push({ tabela, modo, payload: payload ? structuredClone(payload) : null, filtros: [...filtros] });
+    let afetadas: Linha[] = [];
     if (modo === "upsert" && payload) {
-      banco.tabelas[tabela] = [...linhas.filter((l) => l.id !== payload!.id), { ...payload }];
+      // Postgres: no conflito, o upsert atualiza só as colunas do payload.
+      const existente = linhas.find((l) => l.id === payload!.id);
+      if (existente) {
+        Object.assign(existente, payload);
+        if (tabela === "imoveis") existente.updated_at = novaVersao();
+      } else {
+        banco.tabelas[tabela] = [...linhas, { ...payload, ...(tabela === "imoveis" ? { updated_at: novaVersao() } : {}) }];
+      }
     } else if (modo === "insert" && payload) {
       banco.tabelas[tabela] = [...linhas, { ...payload }];
     } else if (modo === "delete") {
       banco.tabelas[tabela] = linhas.filter((l) => !casa(l));
     } else if (modo === "update" && payload) {
-      for (const linha of linhas.filter(casa)) {
+      afetadas = linhas.filter(casa);
+      for (const linha of afetadas) {
         const antes = linha.retirado === true;
         Object.assign(linha, payload);
+        if (tabela === "imoveis") {
+          linha.updated_at = novaVersao();
+          // Imitação do `trg_retirada_dados_imovel` (C1): reativar apaga os
+          // dados da retirada.
+          if (antes && linha.retirado !== true) {
+            linha.retirado_em = null;
+            linha.retirado_motivo = null;
+            linha.retirado_observacao = null;
+          }
+        }
         // Imitação do `trg_transicao_disponibilidade_imovel` (M3/M4): retirado
         // que acabou de virar true encerra os lembretes de disponibilidade.
         if (tabela === "imoveis" && linha.retirado === true && !antes) {
@@ -81,7 +110,7 @@ function consultaFalsa(tabela: string) {
         }
       }
     }
-    return { data: null, error: null };
+    return { data: devolverLinhas ? afetadas.map((l) => ({ id: l.id })) : null, error: null };
   };
   const construtor: Record<string, unknown> = {};
   const encadear = (fn: (...args: never[]) => void) => (...args: never[]) => {
@@ -89,7 +118,9 @@ function consultaFalsa(tabela: string) {
     return construtor;
   };
   Object.assign(construtor, {
-    select: encadear(() => {}),
+    // `.select()` depois de um update pede as linhas afetadas de volta.
+    select: encadear(() => { if (modo !== "select") devolverLinhas = true; }),
+    maybeSingle: encadear(() => { umaSo = true; }),
     order: encadear(() => {}),
     eq: encadear((c: string, v: unknown) => filtros.push([c, v])),
     in: encadear((c: string, v: unknown[]) => filtros.push([c, v])),
@@ -174,6 +205,9 @@ const ID = "40000000-0000-4000-8000-000000000001";
 const RAIZ = resolve(".");
 const lerRepo = (caminho: string) => readFileSync(resolve(RAIZ, "..", caminho), "utf8").replace(/\r\n/g, "\n");
 
+/** Desde o C2, retirar exige os dados da retirada. */
+const DADOS = { motivo: "locado-proprietario" as const, observacao: null, data: "2026-09-20" };
+
 const HISTORICO_CAPTADO = [
   { status: "Novo contato", date: "2026-05-01" },
   { status: "Angariado", date: "2026-05-20" },
@@ -222,7 +256,7 @@ function verificacaoAberta(imovelId = ID): AgendaItem {
 /** Semeia banco e store com o mesmo retrato, como depois de um carregamento. */
 function semear(imoveis: Imovel[], agenda: AgendaItem[] = []): void {
   banco.tabelas = {
-    imoveis: imoveis.map((i) => toDbImovel(i, USER) as unknown as Linha),
+    imoveis: imoveis.map((i) => ({ ...(toDbImovel(i, USER) as unknown as Linha), updated_at: novaVersao() })),
     agenda: agenda.map((a) => toDbAgenda(a, USER) as unknown as Linha),
   };
   banco.ops = [];
@@ -388,53 +422,63 @@ describe("elegibilidade de 'Retirar da carteira'", () => {
   });
 });
 
-describe("C. retirar da carteira escreve só a marca", () => {
-  it("pede confirmação clara, sem linguagem de perda", async () => {
+describe("C. retirar da carteira escreve a marca e os dados da retirada", () => {
+  // Retirados C2 (mudança declarada): o confirm() deu lugar à janela de
+  // retirada, que pede motivo, data e observação. O botão só ABRE a janela;
+  // a gravação é dela (ver tests/retirados-c2-retirada.test.ts).
+  it("o botão abre a janela de retirada, sem confirm() e sem escrever nada", async () => {
     semear([imovelCaptado()]);
-    const confirmar = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const confirmar = vi.spyOn(window, "confirm");
     abrirModal();
     await clicar("Retirar da carteira");
-    expect(confirmar).toHaveBeenCalledOnce();
-    const texto = confirmar.mock.calls[0][0] as string;
-    expect(texto).toContain("sairá do Pipeline ativo e ficará em Retirados");
-    expect(texto).toContain("A captação histórica será preservada");
-    expect(texto).not.toMatch(/perd/i);
-    // Recusou: nada foi escrito.
+    expect(confirmar).not.toHaveBeenCalled();
+    expect(useUiModal.getState().modal).toEqual({ tipo: "retiradaCarteira", id: ID, modoRetirada: "criar" });
     expect(banco.ops).toEqual([]);
     expect(imovelNoStore().retirado).toBe(false);
   });
 
-  it("confirmado: update parcial SÓ de `retirado`; status, histórico e dados ficam", async () => {
+  it("retirar: UM update condicional com marca, dados e nota; status, histórico e dados ficam", async () => {
     const original = imovelCaptado();
     semear([original]);
-    vi.spyOn(window, "confirm").mockReturnValue(true);
-    abrirModal();
-    await clicar("Retirar da carteira");
+    const versao = linhaNoBanco().updated_at;
+    expect(await definirRetiradoDaCarteira(ID, true, USER, DADOS)).toBe(true);
 
-    expect(escritas("imoveis")).toEqual([
-      { tabela: "imoveis", modo: "update", payload: { retirado: true }, filtros: [["id", ID]] },
-    ]);
+    const [escrita, ...resto] = escritas("imoveis");
+    expect(resto).toEqual([]);
+    expect(escrita.modo).toBe("update");
+    expect(escrita.filtros).toEqual([["id", ID], ["retirado", false], ["updated_at", versao]]);
+    expect(Object.keys(escrita.payload!).sort()).toEqual(
+      ["notas", "retirado", "retirado_em", "retirado_motivo", "retirado_observacao"],
+    );
+    expect(escrita.payload).toMatchObject({
+      retirado: true,
+      retirado_em: "2026-09-20",
+      retirado_motivo: "locado-proprietario",
+      retirado_observacao: null,
+    });
+    const notas = escrita.payload!.notas as Imovel["notas"];
+    expect(notas!.slice(0, -1)).toEqual(original.notas);
+    expect(notas!.at(-1)!.texto).toBe("Retirado da carteira em 20/09/2026. Motivo: Locado pelo proprietário.");
+
     const depois = imovelNoStore();
     expect(depois.retirado).toBe(true);
+    expect(depois).toMatchObject({ retiradoEm: "2026-09-20", retiradoMotivo: "locado-proprietario", retiradoObservacao: null });
     expect(depois.status).toBe("Publicado");
     expect(depois.statusHistory).toEqual(HISTORICO_CAPTADO);
     expect(depois.statusHistory!.some((h) => h.status === "Perdido" || h.status === "Retirado")).toBe(false);
-    expect(depois.notas).toEqual(original.notas);
     expect(depois.tentativas).toEqual(original.tentativas);
     expect(depois.textoAnuncio).toBe(original.textoAnuncio);
     expect(depois.autorizacaoAssinadaEm).toBe(original.autorizacaoAssinadaEm);
     expect(depois.motivoPerda || "").toBe("");
     expect(depois.comissaoRecebida).toBeFalsy();
     expect(foiAngariado(depois)).toBe(true);
-    // O modal fecha: o formulário aberto tinha o retrato antigo.
-    expect(useUiModal.getState().modal).toBeNull();
   });
 
   it("sem a ação ser elegível, a mutação recusa e não escreve", async () => {
     semear([imovelCaptado({ status: "Locado" })]);
-    expect(await definirRetiradoDaCarteira(ID, true, USER)).toBe(false);
+    expect(await definirRetiradoDaCarteira(ID, true, USER, DADOS)).toBe(false);
     semear([imovelCaptado({ status: "Novo contato", statusHistory: [] })]);
-    expect(await definirRetiradoDaCarteira(ID, true, USER)).toBe(false);
+    expect(await definirRetiradoDaCarteira(ID, true, USER, DADOS)).toBe(false);
     expect(banco.ops).toEqual([]);
   });
 });
@@ -443,14 +487,20 @@ describe("C. reativar desfaz só a marca", () => {
   it("volta ao status que já tinha, sem status novo, histórico novo ou mensagem", async () => {
     const retirado = imovelCaptado({ retirado: true, status: "Angariado", statusHistory: HISTORICO_CAPTADO.slice(0, 2) });
     semear([retirado]);
+    const versao = linhaNoBanco().updated_at;
     const confirmar = vi.spyOn(window, "confirm").mockReturnValue(true);
     abrirModal();
     await clicar("Reativar imóvel");
 
     expect(confirmar.mock.calls[0][0]).toContain("status que já tem (Angariado)");
-    expect(escritas("imoveis")).toEqual([
-      { tabela: "imoveis", modo: "update", payload: { retirado: false }, filtros: [["id", ID]] },
-    ]);
+    expect(confirmar.mock.calls[0][0]).toContain("A data e o motivo da retirada serão apagados.");
+    const [escrita, ...resto] = escritas("imoveis");
+    expect(resto).toEqual([]);
+    expect(escrita.filtros).toEqual([["id", ID], ["retirado", true], ["updated_at", versao]]);
+    // Só a marca e a nota da reativação; os dados da retirada o banco apaga (C1).
+    expect(Object.keys(escrita.payload!).sort()).toEqual(["notas", "retirado"]);
+    expect(escrita.payload!.retirado).toBe(false);
+    expect((escrita.payload!.notas as Imovel["notas"])!.at(-1)!.texto).toMatch(/^Reativado na carteira\./);
     // Além da marca, só o lembrete de disponibilidade que a reconciliação
     // cria (ver H). Nenhuma mensagem.
     expect(banco.ops.map((o) => o.tabela)).toEqual(["imoveis", "agenda"]);
@@ -475,7 +525,7 @@ describe("B. Pipeline: Lista, Kanban e Retirados", () => {
     semear([imovelCaptado()]);
     expect(filtra(useAppStore.getState().imoveis, "lista")).toEqual([ID]);
 
-    await definirRetiradoDaCarteira(ID, true, USER);
+    await definirRetiradoDaCarteira(ID, true, USER, DADOS);
     const retirados = useAppStore.getState().imoveis;
     expect(filtra(retirados, "lista")).toEqual([]);
     expect(filtra(retirados, "kanban")).toEqual([]);
@@ -521,7 +571,7 @@ describe("D. disponibilidade: retirado nunca ganha verificação nova", () => {
     semear([imovelCaptado()], [verificacaoAberta()]);
     expect(verificacoesNoStore()).toHaveLength(1);
 
-    await definirRetiradoDaCarteira(ID, true, USER);
+    await definirRetiradoDaCarteira(ID, true, USER, DADOS);
 
     // O cliente não apaga agenda nenhuma: só escreveu a marca.
     expect(escritas("agenda")).toEqual([]);
@@ -533,7 +583,7 @@ describe("D. disponibilidade: retirado nunca ganha verificação nova", () => {
 
   it("editar depois o imóvel retirado não recria a verificação", async () => {
     semear([imovelCaptado()], [verificacaoAberta()]);
-    await definirRetiradoDaCarteira(ID, true, USER);
+    await definirRetiradoDaCarteira(ID, true, USER, DADOS);
     banco.ops = [];
 
     abrirModal();
@@ -601,11 +651,11 @@ describe("H–K. reativar reconcilia a disponibilidade na hora, pela régua do c
     expect(lembretesAbertos()).toHaveLength(1);
 
     banco.ops = [];
-    await definirRetiradoDaCarteira(ID, true, USER);
-    // O cliente só escreveu a marca; quem encerrou foi o (imitado) trigger.
-    expect(escritas("imoveis")).toEqual([
-      { tabela: "imoveis", modo: "update", payload: { retirado: true }, filtros: [["id", ID]] },
-    ]);
+    await definirRetiradoDaCarteira(ID, true, USER, DADOS);
+    // O cliente escreveu a marca, os dados da retirada e a nota (C2); quem
+    // encerrou foi o (imitado) trigger.
+    expect(escritas("imoveis")).toHaveLength(1);
+    expect(escritas("imoveis")[0].payload).toMatchObject({ retirado: true, retirado_motivo: "locado-proprietario" });
     expect(escritas("agenda")).toEqual([]);
     expect(lembretesAbertos()).toEqual([]);
     expect(verificacoesNoStore()).toEqual([]);
@@ -614,14 +664,30 @@ describe("H–K. reativar reconcilia a disponibilidade na hora, pela régua do c
   it("K. o ciclo retirar, reativar, retirar não mexe na identidade nem no histórico", async () => {
     const original = imovelCaptado();
     semear([original]);
-    await definirRetiradoDaCarteira(ID, true, USER);
+    await definirRetiradoDaCarteira(ID, true, USER, DADOS);
     await definirRetiradoDaCarteira(ID, false, USER);
-    await definirRetiradoDaCarteira(ID, true, USER);
+    await definirRetiradoDaCarteira(ID, true, USER, DADOS);
 
     expect(imovelNoStore().retirado).toBe(true);
-    expect(semMarca(imovelNoStore())).toEqual(fromDbImovelDoBanco(original));
-    // Nenhuma escrita em imoveis além da marca.
-    expect(escritas("imoveis").map((o) => o.payload)).toEqual([{ retirado: true }, { retirado: false }, { retirado: true }]);
+    // Fora a marca, os dados da retirada e as notas que registram o ciclo (C2),
+    // o imóvel é o mesmo.
+    const semCiclo = (i: Imovel) => {
+      const copia: Partial<Imovel> = { ...semMarca(i) };
+      delete copia.notas;
+      delete copia.retiradoEm;
+      delete copia.retiradoMotivo;
+      delete copia.retiradoObservacao;
+      return copia;
+    };
+    expect(semCiclo(imovelNoStore())).toEqual(semCiclo(fromDbImovelDoBanco(original)));
+    expect(imovelNoStore().notas!.slice(0, original.notas!.length)).toEqual(original.notas);
+    expect(imovelNoStore().notas).toHaveLength(original.notas!.length + 3);
+    // Nenhuma escrita em imoveis além da marca, dos dados da retirada e das notas.
+    expect(escritas("imoveis").map((o) => Object.keys(o.payload!).sort())).toEqual([
+      ["notas", "retirado", "retirado_em", "retirado_motivo", "retirado_observacao"],
+      ["notas", "retirado"],
+      ["notas", "retirado", "retirado_em", "retirado_motivo", "retirado_observacao"],
+    ]);
   });
 });
 

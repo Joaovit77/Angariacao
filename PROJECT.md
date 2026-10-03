@@ -443,6 +443,22 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   imóvel **captado** que sai da carteira vira retirado, e não Perdido (lead nunca angariado
   continua Perdido): C2 pede o motivo no "Retirar da carteira", C3 leva a retirada ao relatório,
   C4 faz a IA retirar em vez de encerrar, C5 converte os Perdidos antigos de imóvel captado.
+  **A janela de retirada (C2).** "Retirar da carteira" abre `ModalRetirada` (modo `criar`), que
+  pede o motivo (obrigatório, nenhum pré-selecionado), a data (padrão hoje em Brasília pelo
+  `dataOperacionalDeTimestamp`, nunca o `todayISO` em UTC, que depois das 21h já é amanhã; data
+  futura recusada) e a observação (obrigatória em "outro", até 1000 caracteres contados como o
+  `char_length` do banco). "Editar retirada" abre a mesma janela no modo `editar` para um imóvel
+  já retirado: ali motivo e data podem continuar não informados, e uma data que ninguém sabe nunca
+  vira hoje. As regras moram em `calculo/retiradaCarteira.ts`; só o `ModalImovel` abre a janela,
+  pela ação explícita `abrirRetirada`. Retirar e reativar escrevem também uma nota no histórico de
+  interações (a reativação registra a retirada que o banco apaga), e por isso a gravação é UM
+  update condicional sobre o retrato lido do banco logo antes: `retirado` no estado de origem e
+  `updated_at` igual à versão lida. O `trg_imoveis_updated_at` carimba `now()` em todo update de
+  `imoveis` (nota do webhook, nota manual, tentativa, cadastro), então uma escrita no meio faz o
+  update não casar linha: nada é aplicado, nenhuma nota alheia se perde, e a janela pede para
+  recarregar ("O imóvel mudou enquanto a janela estava aberta"). Corrigir a retirada escreve só as
+  três colunas, e só com o imóvel ainda retirado. O banco continua aceitando `{ retirado: true }`
+  sozinho (uma aba aberta com a versão antiga): data de hoje, motivo `null`.
   **A busca é insensível a ACENTO** (`semAcento`), e os dois lados passam por ela — normalizar só o
   que o usuário digita não resolveria: "Jose" tem que achar "José" no dado gravado. A normalização
   vale só para PESQUISAR; o cadastro continua guardando e exibindo "Rua José Francisco Pereira",

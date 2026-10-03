@@ -35,7 +35,7 @@ import { urlInvestigadorDoImovel } from "@/lib/calculo/contextoInvestigador";
 import { podeDesdobrar } from "@/lib/calculo/desdobramento";
 import { descreverDuplicados, imoveisDuplicados } from "@/lib/calculo/duplicidade";
 import { unidadesDesdobradas } from "@/lib/calculo/motor";
-import { podeReativarNaCarteira, podeRetirarDaCarteira } from "@/lib/calculo/retiradaCarteira";
+import { podeReativarNaCarteira, podeRetirarDaCarteira, resumoRetirada } from "@/lib/calculo/retiradaCarteira";
 import {
   aplicarMudancaDeStatus,
   definirRetiradoDaCarteira,
@@ -93,6 +93,7 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
   const router = useRouter();
   const fecharModal = useUiModal((s) => s.fecharModal);
   const abrirModal = useUiModal((s) => s.abrirModal);
+  const abrirRetirada = useUiModal((s) => s.abrirRetirada);
   const { usuario } = useSessao();
   const cidadePadrao = useCidadePadraoDaConta(usuario?.id);
   const imoveis = useAppStore((s) => s.imoveis);
@@ -500,23 +501,21 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
     if (ok) fecharModal();
   }
 
-  /** Retirar e reativar não passam pelo `salvar`: mexem só na marca de
-      retirado, sem status novo nem entrada no histórico. Por isso perguntam
-      antes, como os atalhos que deixam este modal: o que foi digitado e não
-      salvo não vai junto. */
-  async function retirarDaCarteira() {
+  /** Retirar e reativar não passam pelo `salvar`: mexem na marca de retirado
+      (e nos dados da retirada), sem status novo nem entrada no histórico de
+      status. Como os atalhos que deixam este modal, o que foi digitado e não
+      salvo não vai junto.
+
+      Retirar abre a janela própria (Retirados C2), que pede motivo, data e
+      observação e faz a gravação; o mesmo para corrigir uma retirada. */
+  function retirarDaCarteira() {
     if (!imovel || !usuario || !podeRetirarDaCarteira(imovel)) return;
-    const seguir = confirm(
-      "Retirar este imóvel da carteira?\n\n" +
-        "O imóvel sairá do Pipeline ativo e ficará em Retirados. A captação histórica será " +
-        "preservada: status, histórico, notas e tentativas continuam como estão.\n\n" +
-        "Alterações não salvas neste formulário serão descartadas.",
-    );
-    if (!seguir) return;
-    setSalvando(true);
-    const ok = await definirRetiradoDaCarteira(imovel.id, true, usuario.id);
-    setSalvando(false);
-    if (ok) fecharModal();
+    abrirRetirada(imovel.id, "criar");
+  }
+
+  function editarRetirada() {
+    if (!imovel || !usuario || imovel.retirado !== true) return;
+    abrirRetirada(imovel.id, "editar");
   }
 
   async function reativarNaCarteira() {
@@ -525,6 +524,7 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
       "Reativar este imóvel?\n\n" +
         `Ele volta ao Pipeline no status que já tem (${imovel.status}). Nenhum status novo é ` +
         "escolhido e o histórico não muda.\n\n" +
+        "A data e o motivo da retirada serão apagados. Eles ficam registrados no histórico de interações.\n\n" +
         "Alterações não salvas neste formulário serão descartadas.",
     );
     if (!seguir) return;
@@ -554,6 +554,14 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
             Este imóvel está em <strong>Retirados</strong>: saiu da carteira depois de captado. Ele
             não aparece no Pipeline ativo, e a captação continua registrada no histórico. Para
             trazê-lo de volta no status atual, use <strong>Reativar imóvel</strong>.
+            <br />
+            <span data-retirada-resumo>{resumoRetirada(imovel)}</span>
+            {imovel.retiradoObservacao ? (
+              <>
+                <br />
+                <span data-retirada-observacao>Observação: {imovel.retiradoObservacao}</span>
+              </>
+            ) : null}
           </p>
         )}
         {inicial && (
@@ -1113,6 +1121,11 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
           {imovel && podeRetirarDaCarteira(imovel) && (
             <button type="button" className="btn btn-ghost" onClick={retirarDaCarteira} disabled={salvando}>
               Retirar da carteira
+            </button>
+          )}
+          {imovel && imovel.retirado === true && (
+            <button type="button" className="btn btn-ghost" onClick={editarRetirada} disabled={salvando}>
+              Editar retirada
             </button>
           )}
           {imovel && podeReativarNaCarteira(imovel) && (

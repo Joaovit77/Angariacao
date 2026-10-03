@@ -32,6 +32,7 @@ import ModalMensagemAgendada from "./ModalMensagemAgendada";
 import ModalMensagemDisponibilidadeLote from "./ModalMensagemDisponibilidadeLote";
 import ModalLocacaoLote from "./ModalLocacaoLote";
 import ModalRecebimentoRepassesLote from "./ModalRecebimentoRepassesLote";
+import ModalRetirada from "./ModalRetirada";
 
 export default function ModalOverlay() {
   const { modal, fecharModal } = useUiModal();
@@ -100,6 +101,9 @@ export default function ModalOverlay() {
           />
         )}
         {modal?.tipo === "mensagemDisponibilidadeLote" && <ModalMensagemDisponibilidadeLote />}
+        {modal?.tipo === "retiradaCarteira" && modal.id && modal.modoRetirada && (
+          <ModalRetirada imovelId={modal.id} modo={modal.modoRetirada} />
+        )}
       </div>
     </div>
   );
