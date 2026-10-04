@@ -2914,6 +2914,93 @@ do proprietário" (`ehNotaDeResposta`, com a sutileza da nota de encerramento qu
 divergir faz o casamento falhar **em silêncio**. Não vale criar o segundo par para economizar bytes
 num painel que uma pessoa abre por dia.
 
+## Vendas: domínio puro do V1-A
+
+O V1-A de Vendas existe somente em [web/lib/vendas/](web/lib/vendas/): tipos, matriz de transições,
+validadores e operações puras, com testes de [domínio](web/tests/vendas-v1-a-dominio.test.ts)
+e [fronteira](web/tests/vendas-v1-a-fronteira.test.ts).
+Não há persistência, schema, migration, API, interface, autenticação implementada ou integração.
+Esses contratos não tornam etapas posteriores disponíveis.
+
+**Agregado.** OportunidadeVenda tem identidade própria e contatoId obrigatório.
+IDs opacos e instantes são fornecidos pelo chamador; não há UUID, relógio, cadastro de comprador,
+consulta de entidades nem unicidade contato–imóvel no domínio. Uma pessoa pode ter vários negócios
+e um imóvel pode ter vários interessados. O papel de interessado pertence à oportunidade:
+não é criado vínculo em imoveis_contatos, nem alterada a projeção de proprietário.
+
+**Etapas.** A matriz é independente de Imovel.status, STATUS_FLOW e do Pipeline:
+
+| Origem | Destinos permitidos |
+| --- | --- |
+| nova | em_atendimento, perdida |
+| em_atendimento | em_negociacao, perdida |
+| em_negociacao | ganha, perdida |
+| ganha | nenhum |
+| perdida | nenhum |
+
+Não há salto direto para ganho, retorno, transição para a mesma etapa ou reabertura.
+Perda pode ocorrer em qualquer etapa aberta. Uma tentativa posterior é outra oportunidade.
+A matriz consulta somente estados; as operações também verificam pré-condições comerciais.
+
+**Imóvel tratado.** Pode estar ausente em nova e em_atendimento. Para negociar/ganhar,
+é obrigatório um dos modos explícitos: referencia com imovelId não vazio, ou manual
+com endereço e/ou referência não vazios; unidade, bloco e descrição curta são opcionais.
+Descrição ou unidade isoladas não identificam um imóvel. Misturar os modos é recusado.
+A referência não comprova existência, tenant ou disponibilidade; a identificação manual é o
+assunto do negócio, não outra carteira. Em negociação, é possível substituir a identificação
+com evento, mas não removê-la. Após encerramento, imóvel e valores não são editados.
+
+**Ganho.** Só parte de em_negociacao e exige imóvel identificado, confirmação literalmente
+true, dia civil do fato e registro textual de formalização. É negócio formalizado
+declarado manualmente pelo corretor; não comprova escritura, registro, comissão recebida,
+repasse ou evento externo e não altera o imóvel. O valor fechado é opcional e não é
+estimado a partir do previsto.
+
+**Perda.** Exige dia do fato e um dos motivos desistencia_interessado,
+condicoes_incompativeis, imovel_indisponivel, compra_outro_canal ou outro;
+outro exige justificativa não vazia. Silêncio e passagem do tempo não encerram negócio.
+
+**Valores e origem.** valorNegocioPrevisto, valorNegocioFechado e receitaPrevista
+são números finitos não negativos ou null; desconhecido é diferente de zero.
+Campos opcionais omitidos na criação/ganho viram null; retratos completos e edição
+de valores exigem campos explícitos, sem undefined. Valor fechado só entra no ganho.
+Receita prevista não representa recebimento, nem usa a comissão de locação.
+Origem comercial é opcional, declarada explicitamente como indicacao, portal,
+whatsapp, telefone, formulario, atendimento_presencial ou outro, com descrição
+opcional. Não é derivada do imóvel, contato, canal, Radar ou Sophia.
+
+**Responsabilidade e concorrência.** No V1, criadoPor e responsavelUsuarioId são o
+mesmo userId fornecido na criação; o ator das mudanças deve coincidir com ele.
+Não há operação de transferência, supervisão ou mudança de tenant/autoria.
+Essas comparações são invariantes conceituais, não substituem Auth/RLS ou validação de
+FKs futuras. A versão começa em 1; cada mudança efetiva exige versaoEsperada igual
+ao retrato e produz a próxima versão com seus eventos. A persistência futura terá de
+comparar/gravar atomicamente: o V1-A não fornece lock, CAS persistente ou deduplicação de IDs.
+
+**Datas e eventos.** Instantes de registro são UTC canônico com milissegundos;
+conversões usam somente funções determinísticas de lib/datas.ts. Registro não
+retrocede perante a última versão. Datas de fato são dias civis válidos e não podem
+ser futuras em Brasília em relação ao instante fornecido; podem anteceder o cadastro.
+A validade civil usa formato estrito AAAA-MM-DD e calendário gregoriano por componentes,
+sem converter o dia em instante nem depender do fuso local. O intervalo de anos permanece
+de 0100 a 9999; a comparação com o dia de Brasília usa o instante explícito de registro.
+Operações devolvem novo retrato e eventos conceituais, sem modificar os argumentos:
+oportunidade_criada, etapa_alterada, imovel_alterado, valor_alterado,
+oportunidade_ganha, oportunidade_perdida e oportunidade_arquivada.
+Ganho/perda já representam a transição terminal, sem evento redundante de etapa.
+Eventos não são log_eventos operacional; não há histórico persistido neste checkpoint.
+Falhas usam códigos fechados de domínio, sem mensagens livres como contrato.
+
+**Arquivamento.** Só oportunidades terminais podem ser arquivadas. Remove da futura
+visão principal pela marca arquivadaEm, preservando estado, encerramento e eventos
+já produzidos; não gera perda. Não há desarquivamento no V1. Arquivar novamente ou
+repetir uma edição sem mudança não produz evento, timestamp ou versão adicional,
+mas ainda exige contexto/versão coerentes.
+
+O domínio importa apenas seus arquivos e as conversões de datas permitidas.
+Não depende de banco, React, store, Pipeline, Agenda, WhatsApp, IA, Radar, Sophia,
+locações ou repasses; essa fronteira tem teste estrutural com casos negativos.
+
 ## Garimpo automatizado: decisões e limites
 
 O garimpo — achar o imóvel antes de ele virar cliente de outra imobiliária — é a parte do trabalho
