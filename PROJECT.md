@@ -2707,6 +2707,53 @@ sessão. Cada falha registra `[auth]` com rota, motivo, status e, quando houver,
 do SDK. Nunca registra token, header, mensagem do SDK, e-mail, telefone ou `user_id`. As demais
 rotas com Bearer ainda seguem o padrão antigo.
 
+#### Camada global do Radar — contrato R6.1
+
+`radar_universos`, `radar_anuncios_globais`, `radar_varreduras` e `radar_presencas` formam uma
+infraestrutura global separada do Radar por usuário. O schema nasce inerte: sem dados, writer,
+coleta, backfill ou ligação com `radar_buscas`, `radar_anuncios` e `comparaveis_mercado` atuais.
+As quatro tabelas têm RLS habilitada, nenhuma policy de navegador e REVOKE explícito de PUBLIC,
+anon e authenticated. A service role recebe SELECT/INSERT e UPDATE somente dos campos evolutivos
+de universo, anúncio e execução; presença não admite UPDATE e nenhuma delas recebe DELETE ou
+TRUNCATE. Identidades e fatos já registrados não podem ser reescritos por esse contrato normal.
+
+O universo v1 é a tupla obrigatória `portal + finalidade + uf + cidade + tipo_recorte +
+anunciante_recorte + versao_semantica`, única sobre valores já canonicalizados. Portais são
+`zap`, `viva-real`, `chaves-na-mao`, `olx` e `wimoveis`; finalidade é `locacao`/`venda`; UF é uma
+das siglas brasileiras maiúsculas. Cidade armazena a chave de `chaveNormalizada`, não label ou
+slug. A fronteira futura exige UF explícita, separa sufixo reconhecido de cidade/UF e rejeita
+divergência antes de canonicalizar; o SQL exige somente cidade não vazia e não cria outra
+normalização. Tipo de recorte é `casa`/`apartamento`/`todos`, categoria pública de consulta,
+sem equiparar Sobrado, Kitnet ou Studio a famílias. Anunciante é `todos`/`proprietario`, filtro
+público solicitado/aplicado, não autoria factual. Ausência de ambos os filtros é exclusivamente
+`todos`. A versão inicial é 1 e só muda por alteração incompatível da definição do recorte,
+nunca por parser, commit ou deploy. Representar venda, portal ou recorte não comprova capacidade
+de coletá-lo; filtros particulares de bairro, preço, dormitórios e publicação não integram v1.
+
+No anúncio global, `portal + id_externo` é único e significa **código nativo previamente
+qualificado pelo backend**. O banco não qualifica identidade por regex nem autoriza promover
+ID legado, fallback posicional, slug truncado, URL ou fingerprint. `tipo_declarado` é fato do
+anúncio, nunca filtro herdado; `dados_objetivos` contém somente fatos públicos, sem estado privado
+ou cópia automática do JSON legado. Primeira e última observações positivas usam timestamptz,
+com última não anterior à primeira; data de publicação não define novidade ou disponibilidade.
+
+Baseline não formado é `baseline_formado_em = NULL`; formado tem o instante de formação.
+A execução baseline em andamento representa a formação sem outra coluna de estado. Varreduras
+registram `baseline`/`hot`/`reconciliation`, início/fim, origem, `em_andamento`/`concluida`/`falha`,
+cobertura completa/parcial e contadores não negativos. Cobertura fica nula durante a execução
+e é independente do sucesso ao terminar; falha pode ter ocorrido após ler todas as páginas.
+Quando o planejamento é conhecido, páginas lidas não o excedem e cobertura completa exige
+igualdade. Presença é um fato por `varredura_id + anuncio_global_id`, com timestamp observacional;
+universo deriva da varredura, sem coluna redundante. FKs restringem exclusões e não fazem cascata.
+Ausência, desaparecimento e estado de usuário não são persistidos nessas estruturas.
+
+R6.2 implementará a fronteira de escrita e sua admissão: somente caminhos qualificados podem
+alimentar o global, conferindo também portal/contexto da presença. Hoje apenas o parser específico
+do ZAP está qualificado no recorte locação, PR, Londrina, Apartamento, sem filtro de anunciante.
+Viva Real, Chaves, OLX e Wimoveis permanecem bloqueados nessa admissão até hardening por caminho,
+incluindo a equivalência data-id/ID terminal `.html` do Wimoveis. R6.3 tratará scheduler por universo;
+R6.4 tratará assinatura e estado por usuário. Nenhuma dessas etapas está conectada ao schema R6.1.
+
 #### `api/cron/mercados` — coleta periódica de mercados monitorados
 
 O cron diário é independente do Radar e usa o mesmo `CRON_SECRET`. O executor processa **um mercado
