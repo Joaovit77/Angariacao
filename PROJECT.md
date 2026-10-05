@@ -3046,6 +3046,28 @@ contratada ainda pertencem ao B2.
 O [roteiro de validação](docs/VENDAS_V1_B1_VALIDACAO.md) distingue provas locais PostgreSQL
 da integração completa com Supabase e lista as condições para uma aplicação futura.
 
+## Vendas: operações transacionais locais do V1-B2
+
+O B2 adiciona sete RPCs comerciais na migration
+[20261005160044_vendas_v1_b2_operacoes.sql](supabase/migrations/20261005160044_vendas_v1_b2_operacoes.sql),
+espelhada no schema após B1. Inclui CAS, recibo idempotente com replay exato,
+fingerprint tipado no banco, numeric paritário com Number, datas estritas,
+evento único e rollback entre snapshot, captura de imóvel, evento e recibo.
+As portas são SECURITY DEFINER com owner postgres/search_path vazio e EXECUTE
+somente authenticated; helpers privados não ficam disponíveis a clientes.
+As ACLs de tabela B1 continuam fechadas para escrita direta.
+
+[web/lib/persistencia/vendas.ts](web/lib/persistencia/vendas.ts) usa o cliente
+Supabase autenticado e as portas específicas; os comandos e decoders fechados
+ficam em vendasComandos.ts e vendasDecodificacao.ts. Não adiciona UI ou API Route,
+nem altera o domínio V1-A. Valores numeric/versão trafegam como texto validado.
+
+A [validação B2](docs/VENDAS_V1_B2_VALIDACAO.md) documenta contratos, vetores,
+provas locais PostgreSQL descartáveis e o checkpoint Supabase preparado.
+Esta rodada não aplica B2 nem executa fixtures/smoke na stack B1 existente.
+Auth/PostgREST, concorrência com sessões reais e aplicação da migration ainda
+aguardam revisão específica. Não há autorização de deploy ou B3.
+
 ## Garimpo automatizado: decisões e limites
 
 O garimpo — achar o imóvel antes de ele virar cliente de outra imobiliária — é a parte do trabalho

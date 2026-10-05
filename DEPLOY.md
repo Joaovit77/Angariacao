@@ -10,6 +10,21 @@ Os dois são gratuitos no plano que você vai usar.
 
 ---
 
+## Vendas V1-B2 — aplicação ainda não liberada
+
+A migration [20261005160044_vendas_v1_b2_operacoes.sql](supabase/migrations/20261005160044_vendas_v1_b2_operacoes.sql)
+e seu bloco espelhado em supabase-schema.sql pertencem à implementação local B2.
+Nesta rodada, não executar essa migration nem copiar o schema completo para uma
+stack local/remota. A stack B1 `vendas-b1-5e58bded` permanece preservada, sem reset,
+fixtures ou smoke B2. Não há liberação de Preview/Production/deploy.
+
+O [checkpoint de validação B2](docs/VENDAS_V1_B2_VALIDACAO.md) separa testes
+estáticos/embedded do ensaio Supabase futuro. A config
+`web/vitest.vendas-v1-b2-supabase-local.config.ts` e a suíte correspondente estão
+preparadas, sem execução: exigem autorização posterior, URL local 55721, opt-in,
+label da stack e ledger B1+B2 exatos antes de criar contas artificiais.
+O gate real de Auth/Data API, concorrência e rollback continua pendente.
+
 ## Parte 1 — Criar o banco de dados no Supabase
 
 > Se você já tem o projeto Supabase funcionando com o app antigo, **pule esta parte**: o app
