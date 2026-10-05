@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { explicarMensagemAgendada } from "@/lib/calculo/explicacaoMensagemAgendada";
 import { agoraISOString, fmtDataHoraIso } from "@/lib/datas";
-import type { MensagemAgendada } from "@/lib/mensagensAgendadas";
+import { ehTipoMensagemComum, type MensagemAgendada } from "@/lib/mensagensAgendadas";
 import { getSupabase } from "@/lib/persistencia/supabase";
 import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
@@ -22,6 +22,10 @@ export default function MensagensAgendadasView({ incorporada = false }: { incorp
   }, [imoveis]);
 
   async function cancelar(item: MensagemAgendada) {
+    if (!ehTipoMensagemComum(item.tipo)) {
+      abrirModal("mensagemAgendada", item.id);
+      return;
+    }
     if (!confirm("Cancelar o envio desta mensagem?")) return;
     const canceladaEm = agoraISOString();
     const { error } = await getSupabase()
@@ -109,11 +113,11 @@ export default function MensagensAgendadasView({ incorporada = false }: { incorp
                     {item.status === "agendada" ? (
                       <div className="mensagem-acoes">
                         <button className="btn btn-sm" onClick={() => abrirModal("mensagemAgendada", item.id)}>
-                          Editar
+                          {ehTipoMensagemComum(item.tipo) ? "Editar" : "Ver programação"}
                         </button>
-                        <button className="btn btn-sm btn-ghost btn-danger" onClick={() => cancelar(item)}>
+                        {ehTipoMensagemComum(item.tipo) && <button className="btn btn-sm btn-ghost btn-danger" onClick={() => cancelar(item)}>
                           Cancelar
-                        </button>
+                        </button>}
                       </div>
                     ) : (
                       <button className="btn btn-sm" onClick={() => alert(item.mensagem)}>Visualizar</button>

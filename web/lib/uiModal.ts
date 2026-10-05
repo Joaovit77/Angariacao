@@ -122,6 +122,8 @@ export interface ModalAtivo {
   agendaIdMensagemAgendada?: string;
   dataMensagemAgendada?: string;
   textoMensagemAgendada?: string;
+  /** Identidade explícita do B4; não concorre com o vínculo de mensagem comum. */
+  retomadaImovelId?: string;
   /** Resultado escolhido na Central de Angariação. */
   preCadastroInicial?: PreCadastroInicial;
   /** ModalImovel aberto pelo Garimpo em Campo para criar a oportunidade. */
@@ -176,6 +178,7 @@ interface UiModal {
   /** Abre a janela de retirada de UM imóvel. Ação própria e explícita: o
       modo nunca é deduzido do estado do imóvel. Só o ModalImovel a chama. */
   abrirRetirada: (imovelId: string, modo: ModoRetirada) => void;
+  abrirRetomada: (retomadaImovelId: string) => void;
   abrirRecebimentoEmLote: (repasseIds: string[]) => void;
   fecharModal: () => void;
 }
@@ -230,6 +233,7 @@ export const useUiModal = create<UiModal>((set) => ({
     set({ modal: { tipo: "imovel", promocaoDoGarimpo } }),
   abrirLocacaoEmLote: (ids) => set({ modal: { tipo: "locarEmLote", ids: [...new Set(ids)] } }),
   abrirRetirada: (imovelId, modo) => set({ modal: { tipo: "retiradaCarteira", id: imovelId, modoRetirada: modo } }),
+  abrirRetomada: (retomadaImovelId) => set({ modal: { tipo: "mensagemAgendada", retomadaImovelId } }),
   abrirRecebimentoEmLote: (ids) => set({ modal: { tipo: "receberRepassesEmLote", ids: [...new Set(ids)] } }),
   fecharModal: () => set({ modal: null }),
 }));

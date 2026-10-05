@@ -1,10 +1,15 @@
 export type StatusMensagemAgendada = "agendada" | "processando" | "enviada" | "erro" | "cancelada";
 /** `retomada-retirado` é conhecido, mas ainda NÃO é enviável. O banco aceita o
     valor desde o B2 (migration 20261001210000), com as invariantes da retomada,
-    e nenhum fluxo da aplicação o cria ainda; o worker recusa o envio (B1). Ver
+    e o B4 o programa somente no desenvolvimento local; o worker recusa o envio (B1). Ver
     `classificarTipoParaEnvio`. */
 export type TipoMensagemAgendada = "livre" | "verificacao-disponibilidade" | "retomada-retirado";
 export const TIPO_RETOMADA_RETIRADO = "retomada-retirado" as const;
+/** Tipos permitidos no caminho comum; retomada exige contexto próprio. */
+export type TipoMensagemComum = Exclude<TipoMensagemAgendada, "retomada-retirado">;
+export function ehTipoMensagemComum(tipo: unknown): tipo is TipoMensagemComum {
+  return tipo === "livre" || tipo === "verificacao-disponibilidade";
+}
 
 /** O que o worker faz com uma linha, decidido só pelo tipo. */
 export type ClasseEnvioMensagem = "livre" | "verificacao-disponibilidade" | "retomada-bloqueada" | "desconhecido";

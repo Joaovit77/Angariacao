@@ -1,4 +1,5 @@
 "use client";
+import { useRetomadaB4 } from "@/lib/retomadaCliente";
 
 /* ================================================================
    MODAL: IMÓVEL (criação / edição)
@@ -94,6 +95,8 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
   const fecharModal = useUiModal((s) => s.fecharModal);
   const abrirModal = useUiModal((s) => s.abrirModal);
   const abrirRetirada = useUiModal((s) => s.abrirRetirada);
+  const abrirRetomada = useUiModal((s) => s.abrirRetomada);
+  const retomadaB4 = useRetomadaB4();
   const { usuario } = useSessao();
   const cidadePadrao = useCidadePadraoDaConta(usuario?.id);
   const imoveis = useAppStore((s) => s.imoveis);
@@ -1121,6 +1124,11 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
           {imovel && podeRetirarDaCarteira(imovel) && (
             <button type="button" className="btn btn-ghost" onClick={retirarDaCarteira} disabled={salvando}>
               Retirar da carteira
+            </button>
+          )}
+          {imovel && imovel.retirado === true && (
+            retomadaB4 && <button type="button" className="btn btn-ghost" onClick={() => abrirRetomada(imovel.id)} disabled={salvando}>
+              Programar retomada
             </button>
           )}
           {imovel && imovel.retirado === true && (

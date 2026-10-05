@@ -318,6 +318,17 @@ export function shiftMonthKey(key: string, delta: number): string {
   return d.toISOString().slice(0, 7);
 }
 
+/** Soma meses civis sem depender do fuso da máquina; limita o dia ao mês de destino. */
+export function addMonthsCivilISO(iso: string, meses: number): string | null {
+  if (!inicioDoDiaOperacionalISO(iso) || !Number.isInteger(meses)) return null;
+  const [ano, mes, dia] = iso.split("-").map(Number);
+  const total = ano * 12 + mes - 1 + meses;
+  const anoDestino = Math.floor(total / 12);
+  const mesDestino = ((total % 12) + 12) % 12;
+  const diaDestino = Math.min(dia, new Date(Date.UTC(anoDestino, mesDestino + 1, 0)).getUTCDate());
+  return `${String(anoDestino).padStart(4, "0")}-${String(mesDestino + 1).padStart(2, "0")}-${String(diaDestino).padStart(2, "0")}`;
+}
+
 /** Primeiro e último dia (ISO) do mês "YYYY-MM". */
 export function primeiroDiaDoMes(key: string): string {
   return `${key}-01`;
