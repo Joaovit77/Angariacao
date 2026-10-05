@@ -2919,7 +2919,8 @@ num painel que uma pessoa abre por dia.
 O V1-A de Vendas existe somente em [web/lib/vendas/](web/lib/vendas/): tipos, matriz de transições,
 validadores e operações puras, com testes de [domínio](web/tests/vendas-v1-a-dominio.test.ts)
 e [fronteira](web/tests/vendas-v1-a-fronteira.test.ts).
-Não há persistência, schema, migration, API, interface, autenticação implementada ou integração.
+O núcleo V1-A não realiza persistência, autenticação, API, interface ou integração; a fundação
+estrutural B1 é descrita separadamente abaixo.
 Esses contratos não tornam etapas posteriores disponíveis.
 
 **Agregado.** OportunidadeVenda tem identidade própria e contatoId obrigatório.
@@ -3000,6 +3001,50 @@ mas ainda exige contexto/versão coerentes.
 O domínio importa apenas seus arquivos e as conversões de datas permitidas.
 Não depende de banco, React, store, Pipeline, Agenda, WhatsApp, IA, Radar, Sophia,
 locações ou repasses; essa fronteira tem teste estrutural com casos negativos.
+
+## Vendas: fundação persistente do V1-B1
+
+O modelo aditivo está em [supabase-schema.sql](supabase-schema.sql) e na migration
+[20261005003257_vendas_v1_b1_estrutura.sql](supabase/migrations/20261005003257_vendas_v1_b1_estrutura.sql).
+O B1 fecha a fronteira de escrita; não disponibiliza criação, transição, encerramento,
+arquivamento, idempotência operacional, API ou interface. Os contratos de linhas brutas estão
+em [web/lib/persistencia/vendasTipos.ts](web/lib/persistencia/vendasTipos.ts), fora do núcleo puro.
+
+A oportunidade guarda o snapshot atual; eventos guardam histórico com unicidade
+(oportunidade_id, versao). A referência auxiliar preserva UUID original, código/referência e
+identificação mínima do imóvel. Sua FK composta para imoveis anula somente imovel_id na exclusão,
+mantendo user_id, imovel_id_original e o snapshot; não copia proprietário, telefone ou conversa.
+O modo referencia da oportunidade aponta para essa referência histórica, mesmo após a remoção
+do imóvel vivo. O adaptador futuro deve mapear imovel_id_original ao imovelId do domínio.
+Contato é obrigatório e protegido por FK (contato_id, user_id); sua exclusão física é bloqueada
+enquanto houver oportunidade. Não há vínculo de interessado em imoveis_contatos.
+
+Todas as associações entre entidades de Vendas usam FKs compostas por conta, inclusive
+recibo–evento–oportunidade. No V1, user_id = criado_por = responsavel_usuario_id e
+ator_usuario_id = user_id; isso não define a arquitetura futura de equipes.
+O arquivamento preserva linhas/histórico. A remoção administrativa de auth.users continua
+apagando os registros da própria conta em cascata; não é exclusão comercial oferecida ao usuário.
+
+As três tabelas públicas têm RLS explícita e somente SELECT próprio para authenticated.
+Não existem grants/policies de escrita direta, privilégios de anon ou concessões de service_role
+para Vendas. private.vendas_comandos tem RLS sem policies e todos os privilégios de cliente
+revogados; não altera exposição da Data API nem ACL global de private. O helper privado de texto
+útil é imutável, usa search_path vazio e tem EXECUTE revogado para clientes. Somente o owner
+conserva poder administrativo; a proteção histórica fecha os caminhos do navegador, sem
+prometer imutabilidade contra administradores do banco.
+
+Versão usa bigint entre 1 e 9007199254740991, sem default operacional. Valores usam numeric
+sem precisão/escala declaradas, nullable, finitos e não negativos, sem arredondamento monetário
+imposto. O banco pode representar magnitudes além de Number; conversão para o domínio precisa
+validar finitude e preservar o contrato no B2. Dia comercial é date (0100–9999); instantes são
+timestamptz(3). Casts do banco não validam a entrada da aplicação. O B2 deverá validar formato
+civil/UTC estrito e não-futuro em Brasília antes dos casts, além de comparar snapshot anterior,
+transições, CAS, no-op, terminalidade e atomicidade entre snapshot, evento e recibo.
+O B1 garante envelope JSON objeto; construção/decodificação fechadas de payload e resposta
+contratada ainda pertencem ao B2.
+
+O [roteiro de validação](docs/VENDAS_V1_B1_VALIDACAO.md) distingue provas locais PostgreSQL
+da integração completa com Supabase e lista as condições para uma aplicação futura.
 
 ## Garimpo automatizado: decisões e limites
 

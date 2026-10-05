@@ -37,18 +37,15 @@ const MIGRATIONS: ArquivoSql[] = readdirSync(PASTA_MIGRATIONS)
 
 const ARQUIVOS = [CANONICO, ...MIGRATIONS];
 
-/** Só `public` importa: é o único schema exposto pela anon key. O
-    `private` guarda função, nunca tabela — e a varredura confirma isso. */
+/** Toda tabela é verificada, inclusive a fundação privada de recibos do V1-B1. */
 function tabelasCriadas(sql: string): string[] {
-  const achadas = sql.matchAll(/^[ \t]*create table (?:if not exists )?(?:public\.)?(\w+)/gim);
-  return [...new Set([...achadas].map((m) => m[1]))];
+  return [...new Set([...sql.matchAll(/^[ \t]*create table (?:if not exists )?((?:\w+\.)?\w+)/gim)]
+    .map((m) => m[1].includes(".") ? m[1] : "public." + m[1]))];
 }
 
 function ligaRls(sql: string, tabela: string): boolean {
-  return new RegExp(
-    `alter table (?:if exists )?(?:public\.)?${tabela} enable row level security`,
-    "i",
-  ).test(sql);
+  const alvo = tabela.startsWith("public.") ? "(?:public\\.)?" + tabela.slice(7) : tabela.replace(".", "\\.");
+  return new RegExp("alter table (?:if exists )?" + alvo + " enable row level security", "i").test(sql);
 }
 
 describe("RLS obrigatória no schema", () => {
@@ -61,10 +58,10 @@ describe("RLS obrigatória no schema", () => {
     expect(semProtecao).toEqual([]);
   });
 
-  it("não cria tabela fora do public, onde a varredura seria cega", () => {
+  it("só permite schemas/tabelas privados explicitamente aprovados", () => {
     const foraDoPublic = ARQUIVOS.flatMap(({ nome, sql }) =>
       [...sql.matchAll(/^[ \t]*create table (?:if not exists )?(\w+)\.\w+/gim)]
-        .filter((m) => m[1].toLowerCase() !== "public")
+        .filter((m) => m[1].toLowerCase() !== "public" && !/^create table (?:if not exists )?private\.vendas_comandos\b/i.test(m[0].trim()))
         .map((m) => `${nome}: ${m[0].trim()}`),
     );
     expect(foraDoPublic).toEqual([]);
@@ -74,8 +71,11 @@ describe("RLS obrigatória no schema", () => {
      testes acima passando com lista vazia — verdes e cegos. */
   it("enxerga o schema canônico inteiro", () => {
     const tabelas = tabelasCriadas(CANONICO.sql);
-    expect(tabelas).toContain("imoveis");
-    expect(tabelas).toContain("repasses");
+    expect(tabelas).toContain("public.imoveis");
+    expect(tabelas).toContain("public.repasses");
+    expect(tabelas).toContain("private.vendas_comandos");
+    expect(ligaRls("", "private.vendas_comandos")).toBe(false);
+    expect(ligaRls("alter table private.vendas_comandos enable row level security", "private.vendas_comandos")).toBe(true);
     expect(tabelas.length).toBeGreaterThanOrEqual(29);
     expect(MIGRATIONS.length).toBeGreaterThanOrEqual(52);
   });
