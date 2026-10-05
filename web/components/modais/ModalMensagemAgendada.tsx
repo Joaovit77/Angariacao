@@ -1,14 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ModalRetomada from "./ModalRetomada";
+import { resolverContextoMensagem, ERROS_RETOMADA } from "@/lib/calculo/retomada";
 import { useSessao } from "@/components/SessaoProvider";
 import { AVISO_IMOVEL_INATIVO_MENSAGEM, imovelBloqueiaMensagemLivre } from "@/lib/calculo/mensagemLivreImovel";
 import { agoraISOString, agoraTimestamp, dataHoraLocalParaIso, fmtDataHoraIso, partesDataHoraLocal, timestampDeIso } from "@/lib/datas";
 import {
   fromDbMensagem,
   telefoneValido,
+  ehTipoMensagemComum,
   type DbMensagemAgendada,
   type TipoMensagemAgendada,
+  type TipoMensagemComum,
 } from "@/lib/mensagensAgendadas";
 import { getSupabase } from "@/lib/persistencia/supabase";
 import { useAppStore } from "@/lib/store";
@@ -22,11 +26,13 @@ export default function ModalMensagemAgendada({
   tipoInicial = "livre",
   dataInicial,
   mensagemInicial,
+  retomadaImovelId,
 }: {
   id?: string;
   imovelIdRelacionado?: string;
   agendaIdRelacionado?: string;
-  tipoInicial?: TipoMensagemAgendada;
+  tipoInicial?: TipoMensagemComum;
+  retomadaImovelId?: string;
   dataInicial?: string;
   mensagemInicial?: string;
 }) {
@@ -45,6 +51,11 @@ export default function ModalMensagemAgendada({
   const [carregando, setCarregando] = useState(!!id);
   const [salvando, setSalvando] = useState(false);
   const [tipo, setTipo] = useState<TipoMensagemAgendada>(tipoInicial);
+  const [persistida, setPersistida] = useState<{ tipo: unknown; imovelId: string | null; agendaId: string | null }>();
+  const contexto = resolverContextoMensagem({
+    tipo: id || retomadaImovelId ? undefined : tipoInicial,
+    imovelIdRelacionado, agendaIdRelacionado, retomadaImovelId, persistida,
+  });
   const imovel = imoveis.find((i) => i.id === imovelId) || null;
   // Mensagem livre vinculada a imóvel Perdido, Locado ou retirado não é
   // agendada (o worker também não a enviaria). Sem "forçar": reconquista,
@@ -57,10 +68,11 @@ export default function ModalMensagemAgendada({
     : imoveis;
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || retomadaImovelId) return;
     void getSupabase().from("mensagens_agendadas").select("*").eq("id", id).maybeSingle().then(({ data: row }) => {
       if (row) {
         const item = fromDbMensagem(row as DbMensagemAgendada);
+        setPersistida({ tipo: item.tipo, imovelId: item.imovelId, agendaId: item.agendaId });
         const partes = partesDataHoraLocal(item.dataEnvio);
         setModoDestinatario(item.imovelId ? "cadastro" : "manual");
         setTipo(item.tipo);
@@ -69,10 +81,11 @@ export default function ModalMensagemAgendada({
       }
       setCarregando(false);
     });
-  }, [id]);
+  }, [id, retomadaImovelId]);
 
   async function salvar() {
     if (!usuario) return;
+    if (contexto.modo !== "comum" || !ehTipoMensagemComum(tipo) || !ehTipoMensagemComum(tipoInicial)) return toast(ERROS_RETOMADA["estado-incompativel"], "error");
     if (modoDestinatario === "cadastro" && !imovel) return toast("Selecione um proprietário/imóvel.", "error");
     if (imovelInativo) return toast(AVISO_IMOVEL_INATIVO_MENSAGEM, "error");
     const nomeProprietario = modoDestinatario === "cadastro" ? imovel?.proprietarioNome?.trim() || "Proprietário" : nomeManual.trim();
@@ -103,6 +116,8 @@ export default function ModalMensagemAgendada({
     fecharModal();
   }
 
+  if (contexto.modo === "retomada") return <ModalRetomada key={contexto.retomadaImovelId} retomadaImovelId={contexto.retomadaImovelId} id={id} />;
+  if (contexto.modo === "invalido") return <><div className="modal-head"><div className="modal-title">Programação indisponível</div></div><div className="modal-body"><p role="alert">{ERROS_RETOMADA["estado-incompativel"]}</p></div><div className="modal-foot"><button className="btn" onClick={fecharModal}>Fechar</button></div></>;
   return <>
     <div className="modal-head"><div className="modal-title">{id ? "Editar mensagem agendada" : "Agendar mensagem"}</div>
       <button type="button" className="icon-btn" onClick={fecharModal}>✕</button></div>

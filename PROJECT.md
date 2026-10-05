@@ -1319,10 +1319,16 @@ Regras permanentes:
   para `log_eventos` (`retomada-cancelamento-falhou`) e, se nem o log puder ser gravado, a mudança no
   imóvel conclui mesmo assim. Excluir o imóvel nunca falha por causa dela: pela RPC a agendada é
   apagada como as outras; pelo DELETE direto, a FK `on delete set null` a cancela como
-  `imovel-excluido`. **Nenhum fluxo da aplicação cria retomada ainda** (não há UI nem caller), e o
-  `ModalMensagemAgendada` aceita o tipo só em TypeScript: antes de a retomada ser utilizável na tela
-  (B4), o modal precisa de guarda própria para ela, porque a trava da livre olha só `tipo ===
-  "livre"`;
+  `imovel-excluido`. O B4 oferece programação/edição no `ModalImovel` somente para retirados,
+  sem reativar nem enviar. `retomadaImovelId` é identidade explícita; o resolver puro rejeita
+  vínculos concorrentes e aceita a identidade válida de uma edição persistida. O modal comum
+  aceita apenas `TipoMensagemComum`, e retomadas da gestão de mensagens passam pela UI própria,
+  inclusive para cancelar. `/api/retomadas` autentica com o token do usuário e anon key (RLS),
+  relê o imóvel e atualiza a mesma programação por id, dono, tipo, imóvel, `agendada` e
+  `updated_at`; zero linhas é conflito. O destinatário é somente leitura, a data usa Brasília,
+  o padrão é seis meses às 09h e os atalhos 3/6/12 preenchem uma programação pontual. A flag
+  `RETOMADA_B4_LOCAL=1` exige `NODE_ENV=development`, ausência de Vercel/CI e Supabase em loopback;
+  default, Preview e Production permanecem desligados. B1 continua bloqueando todo envio;
 - **uma mutação só no banco.** `private.aplicar_transicao_disponibilidade(imovel, user_id, acao, …)`
   é a única implementação de "encerrar" (apaga lembretes abertos e cancela verificações pendentes) e
   de "confirmar" (conclui lembretes com `completion_reason`, garante um lembrete em E + cadência,

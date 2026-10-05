@@ -92,6 +92,8 @@ export default function ModalOverlay() {
         {modal?.tipo === "gerarAnuncio" && modal.id && <ModalGerarAnuncio imovelId={modal.id} />}
         {modal?.tipo === "mensagemAgendada" && (
           <ModalMensagemAgendada
+            key={modal.id || modal.retomadaImovelId || "nova"}
+            retomadaImovelId={modal.retomadaImovelId}
             id={modal.id}
             imovelIdRelacionado={modal.imovelIdRelacionado}
             agendaIdRelacionado={modal.agendaIdMensagemAgendada}

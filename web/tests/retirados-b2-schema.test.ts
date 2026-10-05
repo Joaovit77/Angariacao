@@ -257,7 +257,7 @@ describe("escopo do B2", () => {
   });
 });
 
-describe("a aplicação não cria retomada", () => {
+describe("a retomada só existe nas fronteiras explícitas aprovadas", () => {
   const raiz = fileURLToPath(new URL("..", import.meta.url));
   const arquivos = ["app", "components", "lib"].flatMap((pasta) =>
     (readdirSync(join(raiz, pasta), { recursive: true }) as string[])
@@ -265,17 +265,19 @@ describe("a aplicação não cria retomada", () => {
       .map((f) => join(pasta, f).replace(/\\/g, "/")),
   );
 
-  it("o valor só aparece no tipo/classificador, no worker que o bloqueia e no motor que o lê", () => {
+  it("o valor só aparece no contrato, no bloqueio B1, na leitura B3 e na fronteira B4", () => {
     const usam = arquivos.filter((f) => {
       const texto = readFileSync(join(raiz, f), "utf8");
       return texto.includes("retomada-retirado") || texto.includes("TIPO_RETOMADA_RETIRADO");
     });
-    // B3: o motor de atribuição (puro, sem escrita) só reconhece a retomada
-    // que JÁ saiu; nenhum desses três arquivos cria uma.
+    // B4 substitui a ausência de caller por uma fronteira local protegida.
+    // Schema, invariantes B2 e atribuição B3 continuam com o contrato anterior.
     expect(usam.sort()).toEqual([
       "app/api/cron/mensagens/route.ts",
       "lib/calculo/atribuicaoMensagem.ts",
+      "lib/calculo/retomada.ts",
       "lib/mensagensAgendadas.ts",
+      "lib/servidor/retomada.ts",
     ]);
   });
 
