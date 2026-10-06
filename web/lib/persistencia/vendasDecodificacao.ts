@@ -5,6 +5,7 @@ import { ESTADOS_VENDA, MOTIVOS_PERDA_VENDA, ORIGENS_COMERCIAIS_VENDA, type Esta
   type GanhoVenda, type ImovelTratadoVenda, type OrigemComercialVenda, type PerdaVenda, type ValoresVenda } from "../vendas/tipos";
 import { CODIGOS_ERRO_VENDA, MOTIVOS_ERRO_VENDA, type ErroOperacaoVenda, type EventoPersistidoVenda,
   type OportunidadePersistidaVenda, type RespostaOperacaoVenda } from "./vendasComandos";
+import type { AvisoContatoVenda, ResolucaoInteressadoVenda } from "./vendasInteressado";
 export class RespostaVendaInvalida extends Error {
   readonly codigo = "resposta-invalida";
   constructor() { super("Resposta incompatível com o contrato de Vendas."); }
@@ -250,4 +251,43 @@ export function decodificarLinhaEventoVenda(valor: unknown): EventoPersistidoVen
   return decodificarEventoVenda({id:e.id,userId:e.user_id,oportunidadeId:e.oportunidade_id,tipo:e.tipo,atorUsuarioId:e.ator_usuario_id,registradoEm:normalizarInstanteBancoVenda(e.registrado_em),
     dataFato:e.data_fato,versao:typeof e.versao === "number" && Number.isSafeInteger(e.versao) ? String(e.versao) : e.versao,
     chaveIdempotencia:e.chave_idempotencia,versaoContrato:payload.versaoContrato,dados:payload.dados});
+}
+
+/* Resolução do interessado (B3.2/B3.3): objeto fechado por status, só ids e marcas.
+   Qualquer desvio é resposta inválida (erro local), nunca um resultado aceito. */
+const AVISOS_INTERESSADO: readonly AvisoContatoVenda[] = ["contato-arquivado","revisao-pendente"];
+function candidatosInteressado(valor: unknown, minimo: number): string[] {
+  if (!Array.isArray(valor) || valor.length < minimo) throw new RespostaVendaInvalida();
+  const ids = valor.map(uuid);
+  // O banco ordena por collate "C": ordem de bytes, estritamente crescente (sem repetição).
+  for (let i = 1; i < ids.length; i++) if (!(ids[i-1] < ids[i])) throw new RespostaVendaInvalida();
+  return ids;
+}
+export function decodificarResolucaoInteressadoVenda(valor: unknown): ResolucaoInteressadoVenda {
+  if (!objeto(valor) || valor.contrato !== "vendas-b3-resolucao-v1") throw new RespostaVendaInvalida();
+  switch (valor.status) {
+    case "telefone-invalido": case "nao-encontrado":
+      campos(valor,["contrato","status"]); return {status:valor.status};
+    case "em-revisao": {
+      const [primeiro, ...demais] = candidatosInteressado(campos(valor,["contrato","status","candidatos"]).candidatos,1);
+      return {status:"em-revisao",candidatos:[primeiro,...demais]};
+    }
+    case "ambiguo": {
+      const [primeiro, segundo, ...demais] = candidatosInteressado(campos(valor,["contrato","status","candidatos"]).candidatos,2);
+      return {status:"ambiguo",candidatos:[primeiro,segundo,...demais]};
+    }
+    case "encontrado": {
+      const r = campos(valor,["contrato","status","contatoId","seguiuFusao","avisos"]);
+      if (typeof r.seguiuFusao !== "boolean" || !Array.isArray(r.avisos)) throw new RespostaVendaInvalida();
+      const posicoes = r.avisos.map(aviso => AVISOS_INTERESSADO.indexOf(aviso as AvisoContatoVenda));
+      if (posicoes.some((p, i) => p < 0 || (i > 0 && p <= posicoes[i-1]))) throw new RespostaVendaInvalida();
+      return {status:"encontrado",contatoId:uuid(r.contatoId),seguiuFusao:r.seguiuFusao,avisos:posicoes.map(p => AVISOS_INTERESSADO[p])};
+    }
+    case "indisponivel": {
+      const r = campos(valor,["contrato","status","motivo"]);
+      if (r.motivo !== "fusao-invalida" && r.motivo !== "contato-anonimizado") throw new RespostaVendaInvalida();
+      return {status:"indisponivel",motivo:r.motivo};
+    }
+    default: throw new RespostaVendaInvalida();
+  }
 }

@@ -98,7 +98,7 @@ describe("Vendas B3.1: compatibilidade com o criar do B2", () => {
     ]) expect(classificarIdentificacaoCriarVenda(comando)).toEqual({ ok: false, codigo: "estrutura-invalida" });
   });
 
-  it("o comando B3 não tem caminho executável: fica fora de ComandosVenda e das portas", () => {
+  it("desde o B3.3 o comando B3 é um criar válido; as sete portas que gravam continuam as mesmas", () => {
     expect(Object.entries(PORTAS_VENDAS)).toEqual([
       ["criar", "vendas_criar_oportunidade"], ["transicionar", "vendas_transicionar_oportunidade"],
       ["alterar_imovel", "vendas_alterar_imovel"], ["alterar_valores", "vendas_alterar_valores"],
@@ -106,13 +106,13 @@ describe("Vendas B3.1: compatibilidade com o criar do B2", () => {
       ["arquivar", "vendas_arquivar_oportunidade"],
     ]);
     const comandoB3: CriarComandoInteressadoVenda = { chaveIdempotencia: "k", interessado: { modo: "novo", nome: "Ana", telefone: null } };
-    // @ts-expect-error o criar executável do B2 ainda exige contatoId e não conhece interessado
-    const comandoB2: ComandosVenda["criar"] = comandoB3;
-    expect(comandoB2).toBe(comandoB3);
-    // Os códigos de erro do interessado (B3.2) podem existir no decodificador; campo, porta ou import do B3, não.
-    for (const arquivo of ["../lib/persistencia/vendas.ts", "../lib/persistencia/vendasComandos.ts", "../lib/persistencia/vendasDecodificacao.ts"]) {
-      expect(readFileSync(new URL(arquivo, import.meta.url), "utf8")).not.toMatch(/vendasInteressado|resolver_interessado|\binteressado\s*\??\s*:/);
-    }
+    const comando: ComandosVenda["criar"] = comandoB3;
+    expect(comando).toBe(comandoB3);
+    // @ts-expect-error as duas formas juntas não formam um criar
+    const ambos: ComandosVenda["criar"] = { chaveIdempotencia: "k", contatoId: C1, interessado: { modo: "existente", contatoId: C1 } };
+    expect(ambos.chaveIdempotencia).toBe("k");
+    // A persistência nunca converte o legado em interessado (o fingerprint do B2 depende disso).
+    expect(readFileSync(new URL("../lib/persistencia/vendas.ts", import.meta.url), "utf8")).not.toMatch(/modo\s*:\s*"existente"/);
   });
 });
 

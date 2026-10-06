@@ -1,4 +1,5 @@
 import type { EventoVenda, ImovelTratadoVenda, MotivoPerdaVenda, OportunidadeVenda, OrigemComercialVenda } from "../vendas/tipos";
+import type { CriarComandoInteressadoVenda, ResolucaoInteressadoVenda } from "./vendasInteressado";
 
 export const PORTAS_VENDAS = {
   criar: "vendas_criar_oportunidade",
@@ -11,11 +12,16 @@ export const PORTAS_VENDAS = {
 } as const;
 export type PortaVenda = keyof typeof PORTAS_VENDAS;
 export interface CabecalhoComandoVenda { readonly chaveIdempotencia: string; readonly oportunidadeId: string; readonly versaoEsperada: number }
-export interface CriarComandoVenda {
-  readonly chaveIdempotencia: string; readonly contatoId: string;
+/** Forma B2: o payload continua exatamente o mesmo (e o fingerprint também). */
+export interface CriarComandoLegadoVenda {
+  readonly chaveIdempotencia: string; readonly contatoId: string; readonly interessado?: never;
   readonly imovelTratado?: ImovelTratadoVenda | null; readonly origem?: OrigemComercialVenda | null;
   readonly valorNegocioPrevisto?: number | null; readonly receitaPrevista?: number | null;
 }
+/** Exatamente uma forma: `contatoId` (B2) ou `interessado` (B3). Nada converte uma na outra. */
+export type CriarComandoVenda = CriarComandoLegadoVenda | CriarComandoInteressadoVenda;
+/** Leitura do B3.2. Fica fora de PORTAS_VENDAS, que são só as sete operações que gravam. */
+export const PORTA_RESOLVER_INTERESSADO_VENDA = "vendas_resolver_interessado" as const;
 export interface ComandosVenda {
   criar: CriarComandoVenda;
   transicionar: CabecalhoComandoVenda & { readonly destino: "em_atendimento" | "em_negociacao" };
@@ -49,3 +55,7 @@ export const MOTIVOS_ERRO_VENDA = ["confirmacao-obrigatoria","formalizacao-obrig
 export type MotivoErroVenda = typeof MOTIVOS_ERRO_VENDA[number];
 export interface ErroOperacaoVenda { readonly codigo: CodigoErroVenda; readonly motivo: MotivoErroVenda | null }
 export type ResultadoOperacaoVenda = RespostaOperacaoVenda | { readonly ok: false; readonly erro: ErroOperacaoVenda };
+/** `encontrado` é só um candidato: quem chama decide, e cria pelo modo existente se o usuário confirmar. */
+export type ResultadoResolucaoInteressadoVenda =
+  | { readonly ok: true; readonly resolucao: ResolucaoInteressadoVenda }
+  | { readonly ok: false; readonly erro: ErroOperacaoVenda };

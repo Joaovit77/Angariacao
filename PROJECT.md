@@ -3080,8 +3080,7 @@ O interessado de uma oportunidade é sempre um `contatos.id`; não existe cadast
 comprador. O contrato puro está em
 [web/lib/persistencia/vendasInteressado.ts](web/lib/persistencia/vendasInteressado.ts), fora de
 `lib/vendas/` porque usa o `telefoneCanonico` e a travessia de lápide já existentes. Ele não lê
-banco e nenhuma porta da aplicação o executa: `ComandosVenda["criar"]` continua exigindo
-`contatoId`; o comando com `interessado` existe só no banco (B3.2) e nos testes.
+banco; o adaptador de persistência (B3.3) usa a validação dele antes de enviar.
 
 **Formas do `criar`.** Exatamente uma entre `contatoId` (legado B2, mesmo fingerprint) e
 `interessado`, que é `{modo:"existente",contatoId}` ou `{modo:"novo",nome,telefone|null}`,
@@ -3118,6 +3117,18 @@ criar; só a unicidade do número ativo vira `conflito-transitorio`. Contatos de
 `origem = 'vendas'` (CHECK ampliado por último, sem mexer em trigger, policy ou view) e sem
 `imoveis_contatos`; a resposta continua `vendas-b2-v1`. Detalhes e provas em
 [docs/VENDAS_V1_B3_CONTRATO.md](docs/VENDAS_V1_B3_CONTRATO.md).
+
+**Persistência (B3.3).** [web/lib/persistencia/vendas.ts](web/lib/persistencia/vendas.ts) segue
+sendo a única ponte para as RPCs de Vendas, com o cliente autenticado do navegador.
+`ComandosVenda["criar"]` é a união `contatoId` (legado, enviado exatamente como antes) ou
+`interessado` (enviado como recebido, depois de passar pela validação do B3.1); as duas formas
+juntas, nenhuma delas, ou `contatoId`/`interessado` em qualquer outra porta são recusados antes da
+rede, porque o contato da oportunidade é imutável. A chave de idempotência é sempre a do chamador.
+`consultarInteressadoVenda(telefone)` chama só `vendas_resolver_interessado` com `{telefone}`,
+devolve a resolução decodificada por objeto fechado (`decodificarResolucaoInteressadoVenda`) e
+não escolhe nada: `encontrado` é um candidato que a interface precisa confirmar pelo modo
+existente. Resposta fora do contrato vira o erro local `resposta-invalida`, nunca um resultado.
+Nenhuma tela usa esse caminho ainda (B3.4).
 
 ## Garimpo automatizado: decisões e limites
 

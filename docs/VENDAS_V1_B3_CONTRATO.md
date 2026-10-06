@@ -1,7 +1,8 @@
 # Vendas V1-B3: contrato do interessado
 
-Estado: B3.1 (contrato TypeScript puro) publicado na branch. B3.2 (banco) implementado e provado
-**localmente** (PGlite e Supabase local isolado); não aplicado em Production.
+Estado: B3.1 (contrato TypeScript puro) e B3.2 (banco) em Production desde 06/10/2026 (main
+`5e25ff5`, migration `20261006123603`). B3.3 (persistência TS) implementado localmente. Nenhuma
+tela usa o interessado ainda (B3.4).
 
 ## Decisões do B3.0
 
@@ -90,6 +91,28 @@ outras seis portas, Retirados, Radar, WhatsApp, Agenda.
 Aplicar em Production é gate separado. Como o SQL comita antes de o CLI gravar o ledger, o gate
 confere ledger e catálogo depois do `db push`; schema aplicado sem ledger é HOLD crítico, sem
 retry e sem `repair` automático.
+
+## B3.3: persistência TypeScript
+
+- `ComandosVenda["criar"]` = `CriarComandoLegadoVenda | CriarComandoInteressadoVenda`
+  (exatamente uma forma; `contatoId?: never` / `interessado?: never`). O legado sai
+  exatamente como antes, sem conversão para `interessado`, e o fingerprint do B2 fica intacto.
+- `executarComandoVenda` recusa localmente, antes da rede: as duas formas juntas, nenhuma delas,
+  `interessado` que não passa em `classificarIdentificacaoCriarVenda` (estrutura, nome, telefone)
+  e `contatoId`/`interessado` em qualquer porta que não seja `criar`. O `interessado` válido é
+  enviado como recebido; a chave de idempotência é sempre a do chamador.
+- `consultarInteressadoVenda(telefone)` envia só `{telefone}` para `vendas_resolver_interessado`
+  (telefone que não canoniza nem sai do navegador e volta como `telefone-invalido`). A resposta
+  passa por `decodificarResolucaoInteressadoVenda`: contrato, status, chaves por status, uuids,
+  candidatos em ordem estrita e avisos na ordem canônica. Qualquer desvio, inclusive campo de PII,
+  vira `resposta-invalida` (erro local). `encontrado` é candidato; a escolha é da interface.
+- Erros do banco passam pelo `decodificarErroVenda` (os 8 códigos do B3.2 com o SQLSTATE certo);
+  rede vira `transporte-indisponivel`; SQLSTATE trocado ou desconhecido vira `falha-interna`.
+- Provas: `web/tests/vendas-v1-b3-3-persistencia.test.ts` (cliente falso: payload exato das duas
+  RPCs, decodificador, erros, fronteira sem service role e sem tela) e
+  `web/integration/vendas-v1-b3-3-supabase-local.test.ts` (opt-in, stack local isolada
+  `vendas-b33-5e25ff5` com o B3.2: resolver, criar novo, encontrado, replay, conflitos, existente,
+  sem telefone, legado e sessão ausente).
 
 ## Riscos registrados
 

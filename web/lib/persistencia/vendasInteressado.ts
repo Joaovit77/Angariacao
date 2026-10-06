@@ -4,9 +4,9 @@
    Define como a criação de uma oportunidade identifica a pessoa
    interessada sem cadastro paralelo: ela é sempre um `contatos.id`. Este
    módulo só valida, normaliza e decide sobre dados já carregados; não lê
-   banco, não chama RPC e não é usado por nenhuma porta de `vendas.ts`.
-   O SQL do B3.2 (`vendas_resolver_interessado` e a evolução de
-   `vendas_criar_oportunidade`) terá de reproduzir exatamente estas regras.
+   banco e não chama RPC. O SQL do B3.2 (`vendas_resolver_interessado` e a
+   evolução de `vendas_criar_oportunidade`) reproduz exatamente estas regras,
+   e o adaptador `vendas.ts` (B3.3) usa a validação daqui antes de enviar.
 
    Regras fixas (B3.0):
    - identidade é o id; nome nunca identifica, nunca deduplica e nunca é
@@ -19,6 +19,7 @@
    ================================================================ */
 import { resolverContatoSobrevivente, type ContatoParaResolucao } from "../calculo/resolucaoContato";
 import { telefoneCanonico } from "../calculo/webhookWhatsapp";
+import type { ImovelTratadoVenda, OrigemComercialVenda } from "../vendas/tipos";
 
 /** `contatos_nome_check`: 1 a 200 caracteres depois de aparar. */
 export const LIMITE_NOME_INTERESSADO_VENDA = 200;
@@ -49,12 +50,17 @@ export type IdentificacaoCriarVenda =
   | { readonly forma: "legado-b2"; readonly contatoId: string }
   | { readonly forma: "interessado"; readonly interessado: InteressadoNormalizadoVenda };
 
-/** Formato futuro do comando de criação com interessado. Fica FORA de
-    `ComandosVenda`: até o B3.2 existir em Production não há caminho
-    executável que o envie. */
+/** Criação com interessado (B3). Mesmos campos opcionais do `criar` do B2;
+    `contatoId` é proibido aqui, porque o comando tem exatamente uma forma.
+    A chave de idempotência é do chamador (nasce com o formulário). */
 export interface CriarComandoInteressadoVenda {
   readonly chaveIdempotencia: string;
   readonly interessado: InteressadoVenda;
+  readonly contatoId?: never;
+  readonly imovelTratado?: ImovelTratadoVenda | null;
+  readonly origem?: OrigemComercialVenda | null;
+  readonly valorNegocioPrevisto?: number | null;
+  readonly receitaPrevista?: number | null;
 }
 
 /* ----------------------------------------------------------------
