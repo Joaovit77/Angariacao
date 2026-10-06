@@ -3133,8 +3133,16 @@ Nenhuma tela usa esse caminho ainda (B3.4).
 ## Imóvel de venda: finalidade no schema (IV-1)
 
 O imóvel continua sendo um só na carteira e no Pipeline; venda e locação são uma **característica**
-dele, não um segundo Pipeline nem um imóvel duplicado. O IV-1 só prepara o banco, e entra
-**inerte**: nenhuma tela, rotina, integração ou métrica lê ou grava as colunas novas.
+dele, não um segundo Pipeline nem um imóvel duplicado. As decisões de produto estão fechadas (IV-0,
+lista em [docs/IMOVEL_VENDA_CONTRATO.md](docs/IMOVEL_VENDA_CONTRATO.md)). O IV-1 só prepara o banco
+e é **inerte**: nenhuma tela, rotina, integração ou métrica lê ou grava as colunas novas, e a
+interface ainda não tem nenhum campo de venda ou finalidade.
+
+**Estado.** O IV-1 está em Production desde 2026-10-06: código na main em `43d863e` (deploy
+`dpl_3LVGfqc3aS8K9TvkQYuLXZhdaYXq`) e migration `20261006200215_imoveis_finalidade_venda` aplicada
+depois do deploy, levando o ledger a 81. No momento da aplicação havia 1044 imóveis, nenhum com
+`finalidade`, `valor_venda` ou `vendido_em` preenchidos; isso é o retrato daquele dia, não uma
+regra.
 
 A migration
 [20261006200215_imoveis_finalidade_venda.sql](supabase/migrations/20261006200215_imoveis_finalidade_venda.sql)
@@ -3142,9 +3150,10 @@ A migration
 `BEGIN/END IMOVEL VENDA IV-1`) acrescenta em `imoveis`:
 
 - `finalidade text`, nula e **sem default**, com `imoveis_finalidade_check`: `locacao`, `venda`
-  ou `locacao_venda` (mesmo vocabulário de avaliações e mercados). `null` = não informado, o
-  estado de toda a carteira existente. Nada infere a finalidade: nem a origem "anúncio de venda"
-  de uma importação vira `venda`.
+  ou `locacao_venda` (mesmo vocabulário de avaliações e mercados). `null` = não informado ou ainda
+  não classificado, o estado de toda a carteira existente. Não existe default `locacao` e não houve
+  backfill. Nada infere a finalidade: nem a origem "anúncio de venda" de uma importação vira
+  `venda`.
 - `valor_venda numeric`, nulo e sem default, com `imoveis_valor_venda_check` (sem negativo, NaN
   ou Infinity, o mesmo limite dos valores de Vendas). Independente de `valor_aluguel`; vazio é
   "não informado", diferente de R$ 0,00.
@@ -3166,6 +3175,27 @@ monta o imóvel campo a campo, gravar null por cima a cada edição. Regras para
   deixa a memória com null até recarregar, sem tocar o banco);
 - **`vendido_em` nunca passa pelo save genérico**, nem no IV-2: quem o grava é a ação própria de
   Vendido (IV-5), como a retirada faz com `retirado_*`.
+
+**Próximas fatias** (nenhuma iniciada):
+
+- **IV-2, cadastro e edição:** editar `finalidade` e `valor_venda`, preservar os dois com
+  segurança no save, tratar os imóveis antigos com `null`, desdobramento, importação e
+  pré-cadastro, e o Realtime parcial.
+- **IV-3, Pipeline:** filtro por finalidade, selo, valor certo para cada lado e visualização de
+  locação, venda e ambos.
+- **IV-4, guardas de finalidade nos fluxos existentes:** cada fluxo que hoje supõe locação passa a
+  respeitar a finalidade. Integrações externas, como a Sophia, seguem as regras do Angario; o
+  domínio não é desenhado em função delas.
+- **IV-5, Vendido:** status Vendido, marco no `status_history` e `vendido_em`, só por ação humana
+  explícita, nunca derivado de oportunidade ganha em Vendas.
+- **IV-6, métricas e relatórios:** Locados e Vendidos separados, sem misturar as fórmulas
+  financeiras de locação e de venda.
+
+**Relação com outras frentes.** Vendas B3.4a (lista e drawer só leitura) segue na branch
+`codex/vendas-v1-b3-4a-leitura` (`c8a0494`, Preview `dpl_7ENX6mYPadjnbbuKQPz8j6fSGXsX`), sem
+Production; a B3.4b espera o domínio de imóvel de venda evoluir. A migration antiga do Radar
+`20261003233240_radar_r6_1_schema_global.sql` continua **não aplicada**; se a R6.1 for reemitida,
+precisa de timestamp posterior a `20261006200215`.
 
 Detalhes e provas em [docs/IMOVEL_VENDA_CONTRATO.md](docs/IMOVEL_VENDA_CONTRATO.md).
 
