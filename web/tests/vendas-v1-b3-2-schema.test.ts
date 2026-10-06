@@ -14,8 +14,9 @@ const funcao = (nome: string) => {
 describe("Vendas B3.2: migration e espelho", () => {
   it("é a próxima migration depois do B2, com nome que não cai em filtros de outras frentes", () => {
     const pasta = readdirSync(new URL("../../supabase/migrations/", import.meta.url)).filter((f) => f.endsWith(".sql")).sort();
-    expect(pasta.at(-1)).toBe(NOME);
-    expect(pasta.at(-2)).toBe("20261005160044_vendas_v1_b2_operacoes.sql");
+    // Depois do B3.2 só o que foi aprovado depois dele (IV-1 de imóveis); nada entre o B2 e o B3.2.
+    expect(pasta.slice(pasta.indexOf(NOME) + 1)).toEqual(["20261006200215_imoveis_finalidade_venda.sql"]);
+    expect(pasta[pasta.indexOf(NOME) - 1]).toBe("20261005160044_vendas_v1_b2_operacoes.sql");
     expect(NOME).not.toMatch(/dedupe|duplic|prospeccao|radar|r6_1/);
     expect(pasta.some((f) => f.startsWith("20261003233240"))).toBe(false);
   });

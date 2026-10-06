@@ -12,7 +12,7 @@
    Diferença de forma: userId entra por parâmetro em vez do global
    currentUser do app antigo.
    ================================================================ */
-import { MOTIVOS_RETIRADA, ORIGENS_LEGADAS, type MotivoRetirada } from "../constantes";
+import { FINALIDADES_IMOVEL, MOTIVOS_RETIRADA, ORIGENS_LEGADAS, type FinalidadeImovel, type MotivoRetirada } from "../constantes";
 import type { Abordagem, AgendaItem, AnuncioCentralVisualizado, Imovel, NotaImovel, Protocolo, StatusHistoryEntry, Tentativa } from "../tipos";
 import { ehTipoProtocolo, tipoProtocoloOuPadrao, type TipoProtocolo } from "../protocolos";
 import type { PortalAngariacao } from "../calculo/centralAngariacao";
@@ -74,6 +74,13 @@ export interface DbImovelRow {
   retirado_em?: string | null;
   retirado_motivo?: string | null;
   retirado_observacao?: string | null;
+  /** Opcionais pelo mesmo motivo dos da retirada: no IV-1 o `toDbImovel` não
+      os manda (o ModalImovel monta o imóvel campo a campo e o upsert gravaria
+      null por cima), e `vendido_em` nunca será mandado por ele. Ausentes numa
+      linha anterior à migration 20261006200215 ou num select parcial. */
+  finalidade?: string | null;
+  valor_venda?: number | string | null;
+  vendido_em?: string | null;
   valor_aluguel_atraso: number | null;
   texto_anuncio: string | null;
   imovel_principal_id: string | null;
@@ -243,6 +250,12 @@ export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "create
     // Vínculo de unidade desdobrada. `|| null` e não `?? null`: string vazia
     // aqui viraria uma FK inválida, e o Postgres recusaria a linha inteira.
     imovel_principal_id: i.imovelPrincipalId || null,
+    // `finalidade`, `valor_venda` e `vendido_em` ficam de fora de propósito
+    // (IV-1, schema inerte): o save genérico ainda não edita esses campos, e o
+    // upsert só grava as colunas listadas aqui, então não mandá-las é o que as
+    // preserva. Mandá-las agora faria o ModalImovel, que monta o imóvel campo a
+    // campo, gravar null por cima a cada edição. `vendido_em` não entra aqui
+    // nem depois: quem o grava é a ação própria de Vendido (IV-5).
   };
 }
 
@@ -250,6 +263,22 @@ export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "create
     valor; a guarda é para não confiar num texto cru vindo da rede. */
 function motivoRetiradaDoBanco(valor: string | null | undefined): MotivoRetirada | null {
   return MOTIVOS_RETIRADA.find((m) => m.id === valor)?.id ?? null;
+}
+
+/** A finalidade gravada, se for uma das conhecidas; senão `null` (não
+    informado), nunca "locacao". Quem garante o valor é o check do banco; esta
+    guarda só não confia num texto cru da rede, e não derruba a carteira inteira
+    por uma linha. */
+function finalidadeDoBanco(valor: string | null | undefined): FinalidadeImovel | null {
+  return FINALIDADES_IMOVEL.find((f) => f === valor) ?? null;
+}
+
+/** `null` continua `null` ("não informado" não é zero); número que não seja
+    finito também vira `null`, nunca um valor inventado. */
+function valorVendaDoBanco(valor: number | string | null | undefined): number | null {
+  if (valor === null || valor === undefined || valor === "") return null;
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? numero : null;
 }
 
 export function fromDbImovel(r: DbImovelRow): Imovel {
@@ -312,6 +341,9 @@ export function fromDbImovel(r: DbImovelRow): Imovel {
     retiradoEm: r.retirado_em || null,
     retiradoMotivo: motivoRetiradaDoBanco(r.retirado_motivo),
     retiradoObservacao: r.retirado_observacao || null,
+    finalidade: finalidadeDoBanco(r.finalidade),
+    valorVenda: valorVendaDoBanco(r.valor_venda),
+    vendidoEm: r.vendido_em || null,
     // null, nunca "": o resto do app testa este campo por verdade/falsidade
     // para decidir se o imóvel é uma unidade desdobrada.
     imovelPrincipalId: r.imovel_principal_id || null,

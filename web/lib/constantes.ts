@@ -261,6 +261,21 @@ export type MotivoRetirada = (typeof MOTIVOS_RETIRADA)[number]["id"];
 
 export const ROTULO_MOTIVO_RETIRADA_DESCONHECIDO = "Não informado";
 
+/**
+ * Para que o imóvel está na carteira (`Imovel.finalidade`): locação, venda ou
+ * as duas. É o valor gravado no banco, que tem um check com exatamente esta
+ * lista (migration 20261006200215); trocar ou acrescentar um valor aqui sem a
+ * migration faz o banco recusar a gravação. Mesmo vocabulário de
+ * `FinalidadeAvaliacao` e `FinalidadeMercadoMonitorado`.
+ *
+ * Não existe "não informado" na lista: é `null`, o estado de toda a carteira
+ * anterior à coluna. Nada infere a finalidade (nem a origem "anúncio de
+ * venda" de uma importação): quem a define é uma pessoa.
+ */
+export const FINALIDADES_IMOVEL = ["locacao", "venda", "locacao_venda"] as const;
+
+export type FinalidadeImovel = (typeof FINALIDADES_IMOVEL)[number];
+
 export const MOTIVOS_PERDA = [
   "Imóvel já vendido", "Imóvel já alugado por conta própria", MOTIVO_PERDA_IMOVEL_INDISPONIVEL,
   "Proprietário desistiu de alugar",

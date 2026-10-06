@@ -3130,6 +3130,45 @@ não escolhe nada: `encontrado` é um candidato que a interface precisa confirma
 existente. Resposta fora do contrato vira o erro local `resposta-invalida`, nunca um resultado.
 Nenhuma tela usa esse caminho ainda (B3.4).
 
+## Imóvel de venda: finalidade no schema (IV-1)
+
+O imóvel continua sendo um só na carteira e no Pipeline; venda e locação são uma **característica**
+dele, não um segundo Pipeline nem um imóvel duplicado. O IV-1 só prepara o banco, e entra
+**inerte**: nenhuma tela, rotina, integração ou métrica lê ou grava as colunas novas.
+
+A migration
+[20261006200215_imoveis_finalidade_venda.sql](supabase/migrations/20261006200215_imoveis_finalidade_venda.sql)
+(uma transação, um único `ALTER TABLE`, espelhada no `supabase-schema.sql` entre
+`BEGIN/END IMOVEL VENDA IV-1`) acrescenta em `imoveis`:
+
+- `finalidade text`, nula e **sem default**, com `imoveis_finalidade_check`: `locacao`, `venda`
+  ou `locacao_venda` (mesmo vocabulário de avaliações e mercados). `null` = não informado, o
+  estado de toda a carteira existente. Nada infere a finalidade: nem a origem "anúncio de venda"
+  de uma importação vira `venda`.
+- `valor_venda numeric`, nulo e sem default, com `imoveis_valor_venda_check` (sem negativo, NaN
+  ou Infinity, o mesmo limite dos valores de Vendas). Independente de `valor_aluguel`; vazio é
+  "não informado", diferente de R$ 0,00.
+- `vendido_em date`, nulo, sem check nem relação com `status` por enquanto.
+
+Sem backfill, índice, policy, trigger ou função: a RLS de dono de `imoveis` cobre as colunas, e a
+publicação do Realtime (sem lista de colunas) já as transmite.
+
+**No app** (`FINALIDADES_IMOVEL` em `constantes.ts`, campos opcionais `finalidade`, `valorVenda`,
+`vendidoEm` no `Imovel`): o `fromDbImovel` lê as três (finalidade desconhecida vira `null`, nunca
+`locacao`), e o **`toDbImovel` não manda nenhuma delas**. O upsert do cadastro só grava as
+colunas listadas ali, então ficar de fora é o que as preserva; mandá-las faria o ModalImovel, que
+monta o imóvel campo a campo, gravar null por cima a cada edição. Regras para as próximas fatias:
+
+- o **IV-2** é quem passa a editar `finalidade` e `valor_venda` no cadastro, e só pode
+  mandá-las com guarda de campo presente (como `estado`) mais a rede de `undefined` do
+  `salvarImovel`; também decide a herança no desdobramento e corrige o merge do Realtime
+  (`reconciliarImovelRealtime` reconstrói a base pelo `toDbImovel`, então um payload parcial
+  deixa a memória com null até recarregar, sem tocar o banco);
+- **`vendido_em` nunca passa pelo save genérico**, nem no IV-2: quem o grava é a ação própria de
+  Vendido (IV-5), como a retirada faz com `retirado_*`.
+
+Detalhes e provas em [docs/IMOVEL_VENDA_CONTRATO.md](docs/IMOVEL_VENDA_CONTRATO.md).
+
 ## Garimpo automatizado: decisões e limites
 
 O garimpo — achar o imóvel antes de ele virar cliente de outra imobiliária — é a parte do trabalho

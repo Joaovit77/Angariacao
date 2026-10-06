@@ -6,7 +6,7 @@
    trata todos esses casos — o tipo documenta o contrato, não o
    restringe além do que o código antigo garantia.
    ================================================================ */
-import type { MotivoRetirada, ResultadoTentativa } from "./constantes";
+import type { FinalidadeImovel, MotivoRetirada, ResultadoTentativa } from "./constantes";
 import type { PortalAngariacao } from "./calculo/centralAngariacao";
 import type { TipoProtocolo } from "./protocolos";
 
@@ -307,6 +307,17 @@ export interface Imovel {
   retiradoMotivo?: MotivoRetirada | null;
   /** Observação da retirada; obrigatória quando o motivo é "outro". */
   retiradoObservacao?: string | null;
+  /** Para que o imóvel está na carteira (`FINALIDADES_IMOVEL`); `null` = não
+      informado, o estado de todo imóvel anterior à coluna. Nesta etapa (IV-1)
+      só é lido: nenhuma tela o mostra ou edita, e o `toDbImovel` não o manda. */
+  finalidade?: FinalidadeImovel | null;
+  /** Preço pedido na venda; `null` = não informado, diferente de zero. Não se
+      confunde com `valorAluguel`. Só lido no IV-1, como `finalidade`. */
+  valorVenda?: number | null;
+  /** Dia civil (AAAA-MM-DD) em que o imóvel foi vendido; `null` = não vendido
+      ou não se sabe. Nunca é escrito pelo `toDbImovel`, nem depois do IV-1:
+      quem o grava é a ação própria de Vendido (IV-5). */
+  vendidoEm?: string | null;
   /** Valor cobrado quando o aluguel ATRASA — o anunciado mais o acréscimo da
       campanha (na carteira medida, 20% em 278 de 279 casos, mas 21,6% em um).
       NÃO é o aluguel do imóvel: `valorAluguel` é o que o proprietário quer
