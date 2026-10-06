@@ -15,8 +15,9 @@ describe("Vendas V1-B1: contrato estrutural", () => {
     expect(bloco(schema)).toBe(bloco(MIGRATION_VENDAS));
   });
   it("preserva o schema anterior inteiro", () => {
-    // B2 é aditivo: remover seu bloco mantém a âncora histórica original, sem trocar o hash.
-    const anterior = schema.replace(/-- BEGIN VENDAS V1-B2[\s\S]*?-- END VENDAS V1-B2\n\n/, "")
+    // B2 e B3.2 são aditivos: remover seus blocos mantém a âncora histórica original, sem trocar o hash.
+    const anterior = schema.replace(/-- BEGIN VENDAS V1-B3\.2[\s\S]*?-- END VENDAS V1-B3\.2\n\n/, "")
+      .replace(/-- BEGIN VENDAS V1-B2[\s\S]*?-- END VENDAS V1-B2\n\n/, "")
       .replace(/-- BEGIN VENDAS V1-B1[\s\S]*?-- END VENDAS V1-B1\n\n/, "").trimEnd();
     expect(createHash("sha256").update(anterior).digest("hex")).toBe("27eedab2dd5a92811d24f370d47c1ecd32c796cd0815527f5dbcb4aad7568733");
   });

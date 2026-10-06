@@ -39,6 +39,9 @@ export const CODIGOS_ERRO_VENDA = [
   "contato-invalido","imovel-invalido","modo-imovel-invalido","imovel-obrigatorio","origem-invalida",
   "valor-invalido","valor-fechado-incompativel","data-invalida","data-futura","ganho-invalido","perda-invalida",
   "arquivamento-invalido","limite-versao","conflito-transitorio","dado-persistido-invalido","falha-interna",
+  // B3.2: identificação do interessado no criar.
+  "nome-invalido","telefone-invalido","contato-fundido","contato-anonimizado",
+  "telefone-ja-cadastrado","telefone-em-revisao","interessado-ambiguo","interessado-indisponivel",
   "resposta-invalida","transporte-indisponivel",
 ] as const;
 export type CodigoErroVenda = typeof CODIGOS_ERRO_VENDA[number];

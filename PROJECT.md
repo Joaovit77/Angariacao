@@ -3080,8 +3080,8 @@ O interessado de uma oportunidade é sempre um `contatos.id`; não existe cadast
 comprador. O contrato puro está em
 [web/lib/persistencia/vendasInteressado.ts](web/lib/persistencia/vendasInteressado.ts), fora de
 `lib/vendas/` porque usa o `telefoneCanonico` e a travessia de lápide já existentes. Ele não lê
-banco e nenhuma porta o executa: o `criar` em vigor continua aceitando só `contatoId`, e o
-comando com `interessado` só ganha caminho quando o B3.2 existir no banco.
+banco e nenhuma porta da aplicação o executa: `ComandosVenda["criar"]` continua exigindo
+`contatoId`; o comando com `interessado` existe só no banco (B3.2) e nos testes.
 
 **Formas do `criar`.** Exatamente uma entre `contatoId` (legado B2, mesmo fingerprint) e
 `interessado`, que é `{modo:"existente",contatoId}` ou `{modo:"novo",nome,telefone|null}`,
@@ -3103,8 +3103,21 @@ existente: inexistente e outra conta dão o mesmo `contato-invalido`; lápide é
 (`contato-fundido`), anonimizado também; arquivado é aceito com aviso. O B3 não funde, não renomeia
 e não acrescenta telefone a contato existente. O contato da oportunidade é imutável no V1 e Vendas
 guarda só `contato_id`. O fingerprint do legado é a árvore exata do B2; o do interessado troca o
-primeiro argumento por `["existente",id]` ou `["novo",nome aparado,canônico|null]`. A proposta do
-B3.2 está em [docs/VENDAS_V1_B3_CONTRATO.md](docs/VENDAS_V1_B3_CONTRATO.md).
+primeiro argumento por `["existente",id]` ou `["novo",nome aparado,canônico|null]`.
+
+**No banco (B3.2).** A migration
+[20261006123603_vendas_v1_b3_2_interessado.sql](supabase/migrations/20261006123603_vendas_v1_b3_2_interessado.sql)
+cria `public.vendas_resolver_interessado(p_consulta jsonb)`, **SECURITY INVOKER** e STABLE, que é a
+única implementação da resolução: não usa `private` nem `auth.users`, e toda leitura filtra
+`user_id = auth.uid()` (no navegador a RLS de contatos vale junto; dentro do executor, que roda
+como owner, o filtro explícito é a barreira). `vendas_b2_normalizar`, `vendas_b2_executar` e
+`vendas_b2_erro` são substituídos com as mesmas assinaturas: o legado `contatoId` mantém objeto
+normalizado e fingerprint, mas passa a recusar lápide e anonimizado; o modo novo com telefone trava
+`('vendas-b3-telefone-1', usuario, canônico)` depois da trava da chave e refaz a resolução antes de
+criar; só a unicidade do número ativo vira `conflito-transitorio`. Contatos de Vendas nascem com
+`origem = 'vendas'` (CHECK ampliado por último, sem mexer em trigger, policy ou view) e sem
+`imoveis_contatos`; a resposta continua `vendas-b2-v1`. Detalhes e provas em
+[docs/VENDAS_V1_B3_CONTRATO.md](docs/VENDAS_V1_B3_CONTRATO.md).
 
 ## Garimpo automatizado: decisões e limites
 

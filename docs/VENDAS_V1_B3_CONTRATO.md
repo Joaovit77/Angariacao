@@ -1,11 +1,11 @@
 # Vendas V1-B3: contrato do interessado
 
-Estado: B3.1 (contrato TypeScript puro) implementado localmente. B3.2 (banco) não existe:
-nenhuma migration, RPC ou alteração em `public.contatos` foi feita.
+Estado: B3.1 (contrato TypeScript puro) publicado na branch. B3.2 (banco) implementado e provado
+**localmente** (PGlite e Supabase local isolado); não aplicado em Production.
 
 ## Decisões do B3.0
 
-1. `contatos.origem = 'vendas'` para pessoas criadas por Vendas (entra no B3.2).
+1. `contatos.origem = 'vendas'` para pessoas criadas por Vendas.
 2. Telefone em revisão (`telefone-alterado-legado` pendente) bloqueia contato novo com esse número.
 3. Modo novo exige nome, mesmo com telefone.
 4. `vendas_oportunidades.contato_id` é imutável no V1.
@@ -19,13 +19,13 @@ nenhuma migration, RPC ou alteração em `public.contatos` foi feita.
 
 [`web/lib/persistencia/vendasInteressado.ts`](../web/lib/persistencia/vendasInteressado.ts), com
 testes em `web/tests/vendas-v1-b3-1-interessado.test.ts` (unitários e casos A a J) e
-`web/tests/vendas-v1-b3-1-paridade.test.ts` (PGlite local: telefone TS × SQL, fingerprint B2,
-recusa do formato B3 pelo B2 em vigor). O resumo das regras está no `PROJECT.md`, seção
-"Vendas: contrato do interessado (V1-B3.1)".
+`web/tests/vendas-v1-b3-1-paridade.test.ts` (PGlite local: telefone TS × SQL, fingerprint B2). O
+resumo das regras está no `PROJECT.md`, seção "Vendas: contrato do interessado (V1-B3.1)".
 
-## Catálogo de erros proposto
+## Catálogo de erros
 
-Mesmo envelope do B2 (`detail = {contrato:"vendas-b2-v1",codigo,motivo}`).
+Mesmo envelope do B2 (`detail = {contrato:"vendas-b2-v1",codigo,motivo}`), reconhecido por
+`CODIGOS_ERRO_VENDA` e `decodificarErroVenda` desde o B3.2.
 
 | Código | SQLSTATE | Origem |
 | --- | --- | --- |
@@ -37,56 +37,65 @@ Mesmo envelope do B2 (`detail = {contrato:"vendas-b2-v1",codigo,motivo}`).
 `contato-invalido` continua sendo a única resposta para id inexistente ou de outra conta. Os
 códigos de lápide e anonimização só são emitidos depois de confirmada a posse pela conta.
 
-## Proposta para o B3.2 (não implementada)
+## B3.2: migration `20261006123603_vendas_v1_b3_2_interessado.sql`
 
-**Migration única**, com timestamp maior que `20261005160044` e que qualquer migration aplicada
-antes dela (inclusive a R6.1 reemitida, se chegar primeiro; se o B3.2 chegar antes, a R6.1 é que
-precisa de timestamp posterior e do teste `.at(-1)` ajustado).
+Uma transação (`lock_timeout` 5 s, `statement_timeout` 60 s), espelhada literalmente no
+`supabase-schema.sql` como bloco `VENDAS V1-B3.2` logo depois do B2. Ordem:
 
-1. `public.contatos`: recriar `contatos_origem_check` com `'vendas'` acrescentado. Os registros
-   atuais já satisfazem a lista; espelhar em `supabase-schema.sql`.
-2. `private.vendas_b3_resolver_interessado(p_usuario uuid, p_telefone text) returns jsonb`:
-   implementação única da resolução, usada pela porta de leitura e pelo `criar`. Lê só a conta
-   recebida: canais ativos com o mesmo canônico (`public.telefone_canonico` do texto aparado),
-   revisões `telefone-alterado-legado` pendentes com `evidencia->>'canonico_novo'` igual, e a
-   cadeia de lápide até 8 saltos com detecção de ciclo. **Não reutiliza
-   `private.resolver_contato_por_canal`**: aquela para no oitavo salto e devolve o contato em que
-   parou, sem falhar; aqui cadeia longa, quebrada ou circular é `indisponivel`. EXECUTE revogado
-   de clientes.
-3. `public.vendas_resolver_interessado(p_consulta jsonb) returns jsonb`: objeto fechado
-   `{telefone}`; usuário sempre de `auth.uid()`; resposta só com status, ids e avisos, na forma de
-   `ResolucaoInteressadoVenda`. SECURITY DEFINER com owner postgres e `search_path = ''`, como as
-   portas B2, para que a resolução tenha uma só implementação. (Alternativa a decidir: INVOKER com
-   RLS, ao custo de duplicar a lógica no `criar`.)
-4. `private.vendas_b2_normalizar` e `private.vendas_b2_executar` (`create or replace`, mesmas
-   assinaturas): na porta `criar`, exatamente um entre `contatoId` e `interessado`.
-   - Legado: argumento do fingerprint inalterado (o id). Passa a recusar lápide
-     (`contato-fundido`) e anonimizado (`contato-anonimizado`), além do `contato-invalido` de hoje.
-   - Existente: argumento `["existente", id]`; mesmas checagens do legado.
-   - Novo: argumento `["novo", nome aparado, canônico|null]`. Com telefone, toma
-     `pg_advisory_xact_lock` sobre `(usuario, canônico)`, refaz a resolução e só cria quando ela
-     é `nao-encontrado`; sem telefone, cria direto. Cria `contatos(user_id, nome, origem='vendas')`
-     e, se houver número, `contatos_telefones(telefone digitado aparado, principal, motivo
-     'cadastro')`. Nenhuma ligação em `imoveis_contatos`.
-   - `unique_violation` passa a virar `conflito-transitorio` (corrida com o cadastro de imóvel,
-     que não usa o lock).
-   - Recibo, evento `oportunidade_criada` (só `contatoId`) e resposta `vendas-b2-v1` sem mudança de
-     forma. Tudo na mesma transação: falha na oportunidade desfaz o contato.
-5. Grants: EXECUTE da nova porta só para `authenticated`; nenhum grant de escrita em tabela.
+1. `create or replace private.vendas_b2_erro`: catálogo B2 intacto + 8 códigos do B3.
+2. `create public.vendas_resolver_interessado(p_consulta jsonb) returns jsonb`: **SECURITY
+   INVOKER**, STABLE, `search_path = ''`. É a única implementação da resolução. Não usa `private`
+   (o `authenticated` não tem USAGE nesse schema) nem `auth.users`; exige `auth.uid()` (PT401) e
+   o objeto fechado `{telefone: string}` (PT422). Todas as leituras filtram `user_id =
+   auth.uid()`: chamada pelo navegador, a RLS de contatos vale junto; chamada pelo executor
+   (owner), o filtro explícito é a barreira. Resposta `{contrato:"vendas-b3-resolucao-v1",
+   status, …}` com só ids e marcas, na forma de `ResolucaoInteressadoVenda`. A lápide é percorrida
+   com falha fechada (faltante, ciclo ou mais de 8 saltos); **não** reutiliza
+   `private.resolver_contato_por_canal`, que para no oitavo salto sem falhar.
+3. `create or replace private.vendas_b2_normalizar`: em `criar`, exatamente um entre
+   `contatoId` (objeto normalizado e argumento do fingerprint idênticos ao B2) e `interessado`
+   (`["existente",id]` ou `["novo",nome aparado,canônico|null]`).
+4. `create or replace private.vendas_b2_executar`: muda só a identificação do contato em `criar`.
+   - Legado e existente: `FOR SHARE` no contato da conta; lápide → `contato-fundido`,
+     anonimizado → `contato-anonimizado`, outra conta ou inexistente → `contato-invalido`.
+   - Novo com telefone: depois da trava da chave B2, trava
+     `('vendas-b3-telefone-1', usuario, canônico)`, refaz a resolução num comando posterior e só
+     cria quando ela é `nao-encontrado`. Novo sem telefone cria direto. Cria
+     `contatos(origem='vendas')` e `contatos_telefones(motivo 'cadastro')`, sem `imoveis_contatos`.
+   - Só a `unique_violation` de `contatos_telefones_ativo_unico_idx` vira `conflito-transitorio`;
+     qualquer outra segue o caminho B2 (`falha-interna`).
+   - Recibo, evento `oportunidade_criada` (só `contatoId`) e resposta `vendas-b2-v1` inalterados.
+5. Owner postgres, `revoke all` de clientes nas funções substituídas e na resolução; EXECUTE da
+   resolução só para `authenticated`.
+6. Por último, `contatos_origem_check` recriado com `'vendas'` acrescentado (lock exclusivo só até
+   o commit).
 
-**Não muda:** `imoveis`, `imoveis_contatos`, triggers de Contatos, webhook, mensagens,
-Retirados, eventos e recibos do B1. Inserir contato e telefone sem ligação não dispara projeção
-nem efeito algum.
+**Não muda:** `imoveis`, `imoveis_contatos`, `contatos_revisoes`, triggers, policies, views, as
+outras seis portas, Retirados, Radar, WhatsApp, Agenda.
 
-**Provas do B3.2:** PGlite com o schema real (criação, reaproveitamento por id, lápide,
-anonimizado, revisão, rollback, replay exato, chave conflitante, fingerprint legado igual ao B2,
-`unique_violation`); Supabase local (Docker manual) para RLS de duas contas, duas sessões
-concorrentes com o mesmo número, PostgREST e grants. Aplicar em Production é gate separado.
+## Provas locais do B3.2
+
+- `web/tests/vendas-v1-b3-2-banco.test.ts` (PGlite): recibo criado pelo B2 puro antes da
+  migration repete igual depois dela; fingerprints legados idênticos antes/depois; resolução
+  comparada caso a caso com a função TS do B3.1; todos os caminhos de `criar`; rollback sem
+  contato órfão; idempotência; as duas unicidades; ACL; origem.
+- `web/tests/vendas-v1-b3-2-schema.test.ts`: espelho literal, ordem, escopo e forma da resolução.
+- `web/integration/vendas-v1-b3-2-supabase-local.test.ts` (opt-in, config própria): stack local
+  isolada `vendas-b32-6774dce` (portas 558xx), baseline `6015984` + migrations até o B2, fase
+  `pre` (recibo B2), `migration up --local` do B3.2, fase `pos`: recibo repetido igual, RLS A/B
+  pelo PostgREST, ACL, nenhum efeito colateral com as triggers reais de Contatos, concorrência
+  real com barreira (a segunda sessão vê o commit da primeira depois da trava, então a resolução
+  STABLE fica), corrida com o cadastro de imóvel e a ordem inversa.
+
+Aplicar em Production é gate separado. Como o SQL comita antes de o CLI gravar o ledger, o gate
+confere ledger e catálogo depois do `db push`; schema aplicado sem ledger é HOLD crítico, sem
+retry e sem `repair` automático.
 
 ## Riscos registrados
 
-- Corrida entre Vendas e o cadastro de imóvel com o mesmo número novo: um dos lados recebe
-  violação de unicidade (no cadastro de imóvel isso já existe hoje entre dois cadastros).
+- Corrida entre Vendas e o cadastro de imóvel com o mesmo número novo: Vendas recebe
+  `conflito-transitorio` (provado); no sentido inverso, o cadastro de imóvel pode receber violação
+  de unicidade, como já acontece hoje entre dois cadastros.
 - Interessado sem telefone não tem deduplicação; a chave idempotente deve nascer na abertura do
   formulário, não no clique.
 - A forma canônica tira o nono dígito: fixo `43 3324-5678` e celular `43 9 3324-5678` colidem.

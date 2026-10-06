@@ -187,7 +187,9 @@ export function decodificarErroVenda(valor: unknown): ErroOperacaoVenda {
   if (!objeto(detalhe) || Object.keys(detalhe).length !== 3 || detalhe.contrato !== "vendas-b2-v1" || !membro(detalhe.codigo,CODIGOS_ERRO_VENDA) ||
     (detalhe.motivo !== null && !membro(detalhe.motivo,MOTIVOS_ERRO_VENDA))) return {codigo:"falha-interna",motivo:null};
   const esperado = detalhe.codigo === "nao-autenticado" ? "PT401" : detalhe.codigo === "nao-encontrado" ? "PT404" :
-    detalhe.codigo === "versao-conflitante" || detalhe.codigo === "chave-idempotencia-conflitante" ? "PT409" :
+    detalhe.codigo === "versao-conflitante" || detalhe.codigo === "chave-idempotencia-conflitante" ||
+    detalhe.codigo === "telefone-ja-cadastrado" || detalhe.codigo === "telefone-em-revisao" ||
+    detalhe.codigo === "interessado-ambiguo" || detalhe.codigo === "interessado-indisponivel" ? "PT409" :
     detalhe.codigo === "conflito-transitorio" ? "PT503" : detalhe.codigo === "falha-interna" || detalhe.codigo === "dado-persistido-invalido" ? "PT500" : "PT422";
   if (valor.code !== esperado || detalhe.codigo === "resposta-invalida" || detalhe.codigo === "transporte-indisponivel") return {codigo:"falha-interna",motivo:null};
   return {codigo:detalhe.codigo,motivo:detalhe.motivo};

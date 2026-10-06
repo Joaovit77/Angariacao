@@ -11,7 +11,9 @@ const hash = (texto: string) => createHash("sha256").update(texto).digest("hex")
 
 describe("Vendas B2: fronteira SQL e preservação histórica", () => {
   it("retirar B2 recupera exatamente o blob schema do HEAD B1, inclusive final de arquivo", () => {
-    const anterior = schema.replace(/-- BEGIN VENDAS V1-B2[\s\S]*?-- END VENDAS V1-B2\n\n/,"");
+    // B3.2 é aditivo e vem depois do B2: sai junto, e o hash do HEAD B1 continua o mesmo.
+    const anterior = schema.replace(/-- BEGIN VENDAS V1-B3\.2[\s\S]*?-- END VENDAS V1-B3\.2\n\n/,"")
+      .replace(/-- BEGIN VENDAS V1-B2[\s\S]*?-- END VENDAS V1-B2\n\n/,"");
     expect(hash(anterior)).toBe("5b54399f21bae4e189d24babaecfe2774fdcab060fef1089063913b3562fc64c");
   });
   it("preserva a migration B1 aprovada e espelha o bloco B2 literalmente uma única vez", () => {

@@ -109,8 +109,9 @@ describe("Vendas B3.1: compatibilidade com o criar do B2", () => {
     // @ts-expect-error o criar executável do B2 ainda exige contatoId e não conhece interessado
     const comandoB2: ComandosVenda["criar"] = comandoB3;
     expect(comandoB2).toBe(comandoB3);
+    // Os códigos de erro do interessado (B3.2) podem existir no decodificador; campo, porta ou import do B3, não.
     for (const arquivo of ["../lib/persistencia/vendas.ts", "../lib/persistencia/vendasComandos.ts", "../lib/persistencia/vendasDecodificacao.ts"]) {
-      expect(readFileSync(new URL(arquivo, import.meta.url), "utf8")).not.toMatch(/vendasInteressado|interessado|resolver_interessado/);
+      expect(readFileSync(new URL(arquivo, import.meta.url), "utf8")).not.toMatch(/vendasInteressado|resolver_interessado|\binteressado\s*\??\s*:/);
     }
   });
 });
@@ -323,15 +324,14 @@ describe("Vendas B3.1: catálogo de erros", () => {
     }
   });
 
-  it("os reaproveitados existem no B2 com o mesmo SQLSTATE; os novos não são sinônimos do B2", () => {
+  it("todos decodificam com o SQLSTATE do catálogo; os novos não existiam no catálogo SQL do B2", () => {
+    // Desde o B3.2 o decodificador conhece os códigos novos; a origem continua sendo a migration B2.
+    const catalogoB2 = readFileSync(new URL("../../supabase/migrations/20261005160044_vendas_v1_b2_operacoes.sql", import.meta.url), "utf8");
     for (const [codigo, erro] of Object.entries(ERROS_INTERESSADO_VENDA)) {
-      if (erro.origem === "b2") {
-        expect(CODIGOS_ERRO_VENDA).toContain(codigo);
-        const detalhe = JSON.stringify({ contrato: "vendas-b2-v1", codigo, motivo: null });
-        expect(decodificarErroVenda({ code: erro.estado, details: detalhe })).toEqual({ codigo, motivo: null });
-      } else {
-        expect(CODIGOS_ERRO_VENDA as readonly string[]).not.toContain(codigo);
-      }
+      expect(CODIGOS_ERRO_VENDA).toContain(codigo);
+      const detalhe = JSON.stringify({ contrato: "vendas-b2-v1", codigo, motivo: null });
+      expect(decodificarErroVenda({ code: erro.estado, details: detalhe })).toEqual({ codigo, motivo: null });
+      expect(catalogoB2.includes(`'${codigo}'`)).toBe(erro.origem === "b2");
     }
   });
 
