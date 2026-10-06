@@ -3074,6 +3074,38 @@ Esta rodada não aplica B2 nem executa fixtures/smoke na stack B1 existente.
 Auth/PostgREST, concorrência com sessões reais e aplicação da migration ainda
 aguardam revisão específica. Não há autorização de deploy ou B3.
 
+## Vendas: contrato do interessado (V1-B3.1)
+
+O interessado de uma oportunidade é sempre um `contatos.id`; não existe cadastro paralelo de
+comprador. O contrato puro está em
+[web/lib/persistencia/vendasInteressado.ts](web/lib/persistencia/vendasInteressado.ts), fora de
+`lib/vendas/` porque usa o `telefoneCanonico` e a travessia de lápide já existentes. Ele não lê
+banco e nenhuma porta o executa: o `criar` em vigor continua aceitando só `contatoId`, e o
+comando com `interessado` só ganha caminho quando o B3.2 existir no banco.
+
+**Formas do `criar`.** Exatamente uma entre `contatoId` (legado B2, mesmo fingerprint) e
+`interessado`, que é `{modo:"existente",contatoId}` ou `{modo:"novo",nome,telefone|null}`,
+objetos fechados. No modo novo o nome é obrigatório (aparado, 1 a 200 pontos de código) mesmo
+com telefone; telefone informado precisa canonizar e caber em 40 caracteres. Nome nunca identifica,
+deduplica nem escolhe pessoa; busca por nome, se houver, só serve para o usuário escolher um id.
+
+**Resolução por telefone**, sobre dados já filtrados pela conta, nesta ordem: inválido →
+`telefone-invalido`; revisão `telefone-alterado-legado` pendente com esse número →
+`em-revisao` (bloqueia contato novo); 0 canais ativos → `nao-encontrado`; 1 → `encontrado`
+(segue a lápide até o sobrevivente); 2+ → `ambiguo`; cadeia quebrada, ciclo, profundidade
+excedida ou sobrevivente anonimizado → `indisponivel`. O resultado carrega só ids e marcas
+(`contato-arquivado`, `revisao-pendente`), nunca nome ou telefone. Dado de outra conta na entrada é
+defeito do chamador e interrompe a decisão.
+
+**Gravação.** Modo novo só cria pessoa quando a resolução refeita na gravação é `nao-encontrado`
+(ou sem telefone); número conhecido volta como conflito, nunca é reaproveitado em silêncio. Modo
+existente: inexistente e outra conta dão o mesmo `contato-invalido`; lápide é recusada
+(`contato-fundido`), anonimizado também; arquivado é aceito com aviso. O B3 não funde, não renomeia
+e não acrescenta telefone a contato existente. O contato da oportunidade é imutável no V1 e Vendas
+guarda só `contato_id`. O fingerprint do legado é a árvore exata do B2; o do interessado troca o
+primeiro argumento por `["existente",id]` ou `["novo",nome aparado,canônico|null]`. A proposta do
+B3.2 está em [docs/VENDAS_V1_B3_CONTRATO.md](docs/VENDAS_V1_B3_CONTRATO.md).
+
 ## Garimpo automatizado: decisões e limites
 
 O garimpo — achar o imóvel antes de ele virar cliente de outra imobiliária — é a parte do trabalho
