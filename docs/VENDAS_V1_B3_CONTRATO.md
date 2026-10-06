@@ -1,8 +1,9 @@
 # Vendas V1-B3: contrato do interessado
 
 Estado: B3.1 (contrato TypeScript puro) e B3.2 (banco) em Production desde 06/10/2026 (main
-`5e25ff5`, migration `20261006123603`). B3.3 (persistência TS) implementado localmente. Nenhuma
-tela usa o interessado ainda (B3.4).
+`5e25ff5`, migration `20261006123603`). B3.3 (persistência TS) em Production, inerte (main
+`c69a18b`). B3.4a (tela só de leitura) implementado localmente; nenhuma tela usa o interessado
+ainda (B3.4b).
 
 ## Decisões do B3.0
 
@@ -113,6 +114,24 @@ retry e sem `repair` automático.
   `web/integration/vendas-v1-b3-3-supabase-local.test.ts` (opt-in, stack local isolada
   `vendas-b33-5e25ff5` com o B3.2: resolver, criar novo, encontrado, replay, conflitos, existente,
   sem telefone, legado e sessão ausente).
+
+## B3.4a: tela de leitura
+
+- Menu Vendas depois de Repasses, rota `/vendas`, lista com filtros no navegador e drawer de
+  detalhe com histórico, tudo só leitura (resumo no `PROJECT.md`, seção "Vendas: tela de leitura").
+- `web/lib/persistencia/vendasLeitura.ts`: SELECT sob RLS em `vendas_oportunidades`,
+  `vendas_imoveis_referencias`, `vendas_oportunidades_eventos` e `contatos` (`id,nome`), com as
+  colunas exatas dos decodificadores do B2 e `numeric`/`bigint` como texto. Nenhuma porta mutante,
+  nenhuma resolução de interessado, nenhum id de usuário vindo do chamador.
+- Provas: `web/tests/vendas-v1-b3-4a-leitura.test.ts` (consultas exatas, erros, fallbacks, ordem,
+  filtros, rótulos, fronteira estática sem escrita), `web/tests/vendas-v1-b3-4a-interface.test.ts`
+  (jsdom: lista, estados, filtros, drawer, histórico, foco, nenhuma ação mutante) e
+  `web/integration/vendas-v1-b3-4a-supabase-local.test.ts` (opt-in, stack local isolada
+  `vendas-b34a-c69a18b`): duas contas criadas pelo caminho real, cada uma lê só o que é dela,
+  inclusive com ids da outra conta enfiados nas consultas, e sem sessão a leitura é recusada.
+- O teste de fronteira do B3.3 passou de "nenhuma tela importa Vendas" para "nenhuma tela usa o
+  adaptador que grava nem a resolução, e só os quatro arquivos de leitura do B3.4a importam a
+  persistência de Vendas".
 
 ## Riscos registrados
 

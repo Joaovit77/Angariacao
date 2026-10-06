@@ -26,6 +26,7 @@ const TITULOS: Record<string, string> = {
   "/garimpo-em-campo": "Garimpo em Campo",
   "/garimpo-em-campo/catalogo": "Garimpo em Campo",
   "/repasses": "Repasses",
+  "/vendas": "Vendas",
   "/central-angariacao": "Central de Angariação",
   "/investigador-imoveis": "Investigador de Imóveis",
   "/metas": "Metas",

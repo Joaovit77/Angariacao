@@ -3128,7 +3128,38 @@ rede, porque o contato da oportunidade é imutável. A chave de idempotência é
 devolve a resolução decodificada por objeto fechado (`decodificarResolucaoInteressadoVenda`) e
 não escolhe nada: `encontrado` é um candidato que a interface precisa confirmar pelo modo
 existente. Resposta fora do contrato vira o erro local `resposta-invalida`, nunca um resultado.
-Nenhuma tela usa esse caminho ainda (B3.4).
+Nenhuma tela usa esse caminho ainda: a tela do B3.4a só lê.
+
+## Vendas: tela de leitura (V1-B3.4a)
+
+Item próprio **Vendas** no menu lateral, logo depois de Repasses (fora do grupo Angariação e do
+Pipeline: comprador não é funil de imóvel), rota `/vendas` e título no `Topbar`. A página segue o
+desenho de Repasses: [VendasView](web/components/vendas/VendasView.tsx) carrega pela persistência,
+recarrega com o evento `vendas:atualizadas` (nada o dispara ainda, e não há polling) e tem
+carregando, erro com "Tentar novamente", lista vazia e filtro vazio. **Só leitura:** não existe
+botão de criar, avançar, ganhar, perder, arquivar nem alterar, nem desabilitado; isso entra no
+B3.4b (criação com o interessado) e no B3.4c (operações).
+
+**Leitura.** [web/lib/persistencia/vendasLeitura.ts](web/lib/persistencia/vendasLeitura.ts) faz só
+SELECT com o cliente autenticado do navegador, sem RPC, service role, SQL ou rota de servidor, e
+sem `user_id` vindo do chamador: o isolamento é a RLS das quatro tabelas. Lê
+`vendas_oportunidades` (ordem `updated_at desc, id desc`), as referências e os contatos pelos ids
+dessas linhas, e os eventos de uma oportunidade (`versao` crescente). Do contato sai só `id,nome`;
+contato sem nome ou que a sessão não lê viram o mesmo "Contato sem nome", sem revelar o motivo.
+O imóvel de referência aparece pelo retrato gravado na referência (código, endereço, unidade), não
+pelo imóvel vivo. `numeric` e `bigint` vêm como texto (`::text`), porque o PostgREST os entregaria
+como número JSON e os decodificadores estritos do B2 só aceitam o decimal exato; linha fora do
+contrato derruba a leitura inteira (`resposta-invalida`), nunca aparece pela metade.
+
+**Lista e detalhe.** Colunas Interessado, Imóvel, Etapa, Valor (o fechado na venda ganha, senão o
+previsto), Atualizado em (fuso operacional) e Abrir. Filtros só no navegador
+([filtrosVenda.ts](web/components/vendas/filtrosVenda.ts)): busca em interessado e imóvel (recorte
+visual, nunca identidade), etapa (todas, abertas ou cada uma) e "Mostrar arquivadas", desligado
+por padrão. O [drawer](web/components/vendas/DrawerOportunidadeVenda.tsx) reusa `pipeline-drawer`
+e mostra interessado, etapa, imóvel, valores (vazio é "Não informado", zero é R$ 0,00), origem,
+encerramento quando terminal e o histórico pelos eventos, com rótulos humanos e sem id, chave,
+JSON ou dado do contato. Abre com o foco no fechar, fecha com Esc e devolve o foco a quem abriu.
+Textos centralizados em [rotulosVenda.ts](web/components/vendas/rotulosVenda.ts). Nenhum CSS novo.
 
 ## Garimpo automatizado: decisões e limites
 
