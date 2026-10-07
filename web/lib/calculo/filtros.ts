@@ -16,6 +16,7 @@ export interface FiltrosPipeline {
   status: string;
   responsavel: string;
   cidade: string;
+  finalidade: string;
 }
 
 /** "retirados" é o terceiro modo: os imóveis que o proprietário tirou da
@@ -86,8 +87,11 @@ export const TELEFONE_SEM = "Sem número";
     dentro da coluna, e colunas diferentes combinam em AND. */
 export type PipelineColFilters = Record<PipelineCol, string[]>;
 
+// Sentinela apenas da UI: não é uma finalidade gravável no imóvel.
+export const FILTRO_FINALIDADE_NAO_INFORMADA = "nao_informado";
+
 export function filtrosPipelineVazios(): FiltrosPipeline {
-  return { search: "", tipo: "", bairro: "", status: "", responsavel: "", cidade: "" };
+  return { search: "", tipo: "", bairro: "", status: "", responsavel: "", cidade: "", finalidade: "" };
 }
 
 export function pipelineColFiltersVazios(): PipelineColFilters {
@@ -145,6 +149,10 @@ export function filtrarImoveis(
     if (filters.status && i.status !== filters.status) return false;
     if (filters.responsavel && i.responsavel !== filters.responsavel) return false;
     if (filters.cidade && i.cidade !== filters.cidade) return false;
+    // Categorias exatas: ambos não entra em locação/venda; ausência não classifica.
+    if (filters.finalidade === FILTRO_FINALIDADE_NAO_INFORMADA) {
+      if (i.finalidade != null) return false;
+    } else if (filters.finalidade && i.finalidade !== filters.finalidade) return false;
     // Filtros de coluna (estilo Explorer) só atuam na Lista — no Kanban são
     // ignorados, para não alterar o comportamento existente do quadro.
     if (viewMode !== "kanban" && !matchesPipelineColFilters(i, colFilters)) return false;
