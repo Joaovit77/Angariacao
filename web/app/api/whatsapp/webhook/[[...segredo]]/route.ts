@@ -113,6 +113,14 @@ import {
   persistenciaContaValida,
   type PersistenciaConta,
 } from "@/lib/servidor/historicoWhatsapp";
+import { ehImovelTerminalParaAtribuicao } from "@/lib/calculo/atribuicaoMensagem";
+import {
+  avaliarPortaoEfeitos,
+  EFEITOS_PORTAO,
+  type EfeitoPortao,
+  type EntradaPortaoEfeitos,
+  type VereditoEfeito,
+} from "@/lib/calculo/portaoEfeitos";
 import { agoraISOComHora, agoraISOComSegundos, todayISO } from "@/lib/datas";
 import type { NotaImovel, StatusHistoryEntry, Tentativa } from "@/lib/tipos";
 
@@ -246,13 +254,16 @@ function espelharCompromissoDoWebhook(
   });
 }
 
+/** Devolve o que de fato aconteceu, só para o shadow do portão (C3-A2):
+    a RPC devolve os ids dos follow-ups que ELA concluiu nesta chamada, e
+    uma reentrega (`repetido`) não conclui nada de novo. */
 async function concluirFollowUpsQuePerderamSentido(
   supabase: SupabaseClient,
   userId: string,
   imovelId: string,
   eventoId: string,
   rotulo: string,
-): Promise<void> {
+): Promise<EfeitoReal> {
   const { data, error } = await supabase.rpc("processar_evento_resposta_acompanhamento", {
     p_user_id: userId,
     p_imovel_id: imovelId,
@@ -267,7 +278,7 @@ async function concluirFollowUpsQuePerderamSentido(
       evento: "followups-por-resposta-falhou",
       detalhe: "evento-idempotente",
     });
-    return;
+    return "falhou";
   }
   const resposta = data && typeof data === "object" ? data as Record<string, unknown> : {};
   const agendaIds = Array.isArray(resposta.agendaIds)
@@ -275,6 +286,104 @@ async function concluirFollowUpsQuePerderamSentido(
     : [];
   for (const agendaId of agendaIds) {
     espelharCompromissoDoWebhook(supabase, userId, agendaId, rotulo);
+  }
+  if (resposta.repetido === true) return "nao-aplicado";
+  return agendaIds.length > 0 ? "aplicado-confirmado" : "nao-aplicado";
+}
+
+/* --- Shadow do portão de efeitos (Fase 1a-C3-A2) ----------------------------
+   O portão ainda NÃO manda em nada: os efeitos abaixo rodam exatamente como
+   antes. Para cada resposta nova que chega aos efeitos, a rota registra o
+   que o portão faria (`avaliarPortaoEfeitos`) ao lado do que ela de fato
+   fez, num evento sem conteúdo. É a evidência que o C3-B precisa.
+
+   O que conta como "de fato":
+   - `nao-elegivel`: não houve gatilho (sem tentativa pendente, sem motivo de
+     perda, sem data, ou a etapa nem rodou porque o imóvel foi encerrado);
+   - `barrado`: havia gatilho e uma trava que já existe impediu (encerramento
+     de imóvel terminal ou retirado);
+   - `nao-aplicado`: a escrita rodou e provadamente não mudou nada (nenhum
+     follow-up a concluir, compromisso que já existia, retirado no meio do
+     caminho);
+   - `aplicado-confirmado`: a escrita devolveu a prova do que mudou (ids dos
+     follow-ups concluídos, linhas do encerramento);
+   - `executado-sem-confirmacao`: a escrita voltou sem erro, mas não devolve
+     linha nem contagem (tentativa, insert e hora da agenda). As escritas
+     são as de sempre: nenhum `select` foi acrescentado só para provar;
+   - `falhou`: a escrita voltou com erro. */
+type EfeitoReal =
+  | "nao-elegivel"
+  | "barrado"
+  | "nao-aplicado"
+  | "aplicado-confirmado"
+  | "executado-sem-confirmacao"
+  | "falhou";
+
+/** A leitura semântica de shadow contra realidade. O caso que importa é o
+    portão suprimir e a rota ter aplicado, e só com prova ele vira violação
+    confirmada; execução sem prova sob supressão pede revisão, sem afirmar
+    que aplicou. Suprimir algo que não tinha gatilho, ou liberar algo que
+    não tinha, é compatível. */
+type ContrasteEfeito =
+  | "compativel"
+  | "suprimiria-mas-aplicou"
+  | "suprimiria-com-execucao-sem-confirmacao"
+  | "indefinido"
+  | "real-falhou";
+
+const EVENTO_SHADOW_PORTAO = "webhook-portao-efeitos-shadow";
+
+function contrastarEfeito(shadow: VereditoEfeito, real: EfeitoReal): ContrasteEfeito {
+  if (shadow === "indefinido") return "indefinido";
+  if (real === "falhou") return "real-falhou";
+  if (shadow === "suprimiria" && real === "aplicado-confirmado") return "suprimiria-mas-aplicou";
+  if (shadow === "suprimiria" && real === "executado-sem-confirmacao") return "suprimiria-com-execucao-sem-confirmacao";
+  return "compativel";
+}
+
+/** Registra o shadow. Nunca lança e nunca muda a resposta: a observação não
+    pode custar um efeito nem uma reentrega. Só vocabulário fechado e o id
+    técnico do imóvel, como o evento da atribuição; nada de telefone, nome,
+    endereço, texto, transcrição ou saída da IA. */
+function registrarShadowPortao(
+  userId: string,
+  imovelId: string,
+  entrada: EntradaPortaoEfeitos,
+  real: Record<EfeitoPortao, EfeitoReal>,
+): void {
+  try {
+    const veredito = avaliarPortaoEfeitos(entrada);
+    const efeitos = {} as Record<EfeitoPortao, { shadow: VereditoEfeito; motivo: string; real: EfeitoReal; contraste: ContrasteEfeito }>;
+    for (const efeito of EFEITOS_PORTAO) {
+      const { decisao, motivo } = veredito.efeitos[efeito];
+      efeitos[efeito] = { shadow: decisao, motivo, real: real[efeito], contraste: contrastarEfeito(decisao, real[efeito]) };
+    }
+    registrarEvento({
+      userId,
+      categoria: "webhook",
+      nivel: "info",
+      evento: EVENTO_SHADOW_PORTAO,
+      detalhe: JSON.stringify({
+        versao: veredito.versao,
+        categoria: entrada.categoria,
+        autoridade: entrada.autoridade,
+        nivel: entrada.nivel,
+        imovel_terminal: entrada.imovelTerminal,
+        casamentos_legados: veredito.casamentosLegados,
+        pendencia: veredito.pendencia,
+        requer_resolucao: veredito.requerResolucao,
+        operacional_imovel_id: imovelId,
+        efeitos,
+        // Só aplicação confirmada; a execução sem prova vai para a lista de
+        // revisão, que não afirma que o efeito aconteceu.
+        suprimiria_mas_aplicou: EFEITOS_PORTAO.filter((e) => efeitos[e].contraste === "suprimiria-mas-aplicou"),
+        suprimiria_com_execucao_sem_confirmacao: EFEITOS_PORTAO.filter(
+          (e) => efeitos[e].contraste === "suprimiria-com-execucao-sem-confirmacao",
+        ),
+      }),
+    });
+  } catch {
+    console.error("Webhook do WhatsApp: falha ao registrar o shadow do portão de efeitos (ignorada).");
   }
 }
 
@@ -353,6 +462,8 @@ async function atribuirImovelOperacional(
   imovel: ImovelOperacional;
   atribuicao: AtribuicaoNota;
   registrarObservacao: (persistencia: PersistenciaWebhook) => void;
+  /** Só para o shadow do portão (C3-A2); não decide nada aqui. */
+  entradaPortao: EntradaPortaoEfeitos;
 }> {
   const legado = casamentoLegado[0];
   let observacao: ObservacaoShadow;
@@ -401,7 +512,22 @@ async function atribuirImovelOperacional(
     });
   };
 
-  return { imovel, atribuicao: metadadoDaAtribuicao(decisao, resolucao, legado.id), registrarObservacao };
+  // O imóvel terminal é o que receberia os efeitos, como foi lido agora,
+  // antes de qualquer efeito, pela mesma régua do motor.
+  const entradaPortao: EntradaPortaoEfeitos = {
+    categoria: observacao.categoria,
+    autoridade: decisaoFinal.autoridade,
+    nivel: observacao.nivel,
+    imovelTerminal: ehImovelTerminalParaAtribuicao({ status: imovel.status, retirado: imovel.retirado }),
+    casamentosLegados: casamentoLegado.length,
+  };
+
+  return {
+    imovel,
+    atribuicao: metadadoDaAtribuicao(decisao, resolucao, legado.id),
+    registrarObservacao,
+    entradaPortao,
+  };
 }
 
 /** O que aconteceu com a nota desta entrega, para o evento da atribuição. */
@@ -618,7 +744,7 @@ export async function POST(
   //      propósito: a referência explícita (N1) lê o texto, e o texto de um
   //      áudio só existe a partir daqui. Daqui para baixo `imovel` é o
   //      operacional: nota, tentativa, encerramento e agenda vão para ele.
-  const { imovel, atribuicao, registrarObservacao } = await atribuirImovelOperacional(
+  const { imovel, atribuicao, registrarObservacao, entradaPortao } = await atribuirImovelOperacional(
     supabase,
     userId,
     casamentoLegado,
@@ -656,10 +782,19 @@ export async function POST(
     return Response.json({ ok: true });
   }
 
+  // Daqui para baixo é a área de efeitos. O shadow do portão (C3-A2) só
+  // anota o que cada efeito de fato fez; nenhuma decisão abaixo o lê.
+  const efeitosReais: Record<EfeitoPortao, EfeitoReal> = {
+    followup: "nao-elegivel",
+    tentativa: "nao-elegivel",
+    encerramento: "nao-elegivel",
+    agenda: "nao-elegivel",
+  };
+
   // Uma resposta invalida somente os follow-ups internos que o próprio
   // Assistente criou para aguardar essa resposta. A RPC é idempotente pelo ID
   // do evento e nunca toca compromissos manuais ou mensagens programadas.
-  await concluirFollowUpsQuePerderamSentido(
+  efeitosReais.followup = await concluirFollowUpsQuePerderamSentido(
     supabase,
     userId,
     imovel.id,
@@ -731,6 +866,7 @@ export async function POST(
       .update({ tentativas: fechamento.tentativas })
       .eq("id", imovel.id)
       .eq("user_id", userId);
+    efeitosReais.tentativa = erroTentativa ? "falhou" : "executado-sem-confirmacao";
     if (erroTentativa) {
       // A nota já está gravada; perder só o fechamento é degradação aceitável
       // (o nudge volta a cobrar), e não vale desfazer o que deu certo — nem
@@ -756,6 +892,9 @@ export async function POST(
     sugestao?.motivoPerda,
     hoje,
   );
+  // Motivo de perda presente e nenhum encerramento: foi a trava do imóvel
+  // terminal ou retirado que impediu, não a falta de gatilho.
+  if (!encerramento && sugestao?.motivoPerda) efeitosReais.encerramento = "barrado";
   if (encerramento) {
     // A condição "não retirado" vai NA escrita, não só na leitura acima: se
     // o imóvel foi retirado entre as duas, o UPDATE não casa linha nenhuma e
@@ -775,13 +914,16 @@ export async function POST(
       .not("retirado", "is", true)
       .select("id");
     if (erroStatus) {
+      efeitosReais.encerramento = "falhou";
       console.error("Webhook do WhatsApp: falha ao encerrar o imóvel:", erroStatus.message);
     } else if (!Array.isArray(encerrados) || encerrados.length === 0) {
       // Retirado no meio do caminho: nada foi gravado, e a resposta segue
       // como a de um imóvel que não foi encerrado (mesmo caminho do guard).
+      efeitosReais.encerramento = "nao-aplicado";
       console.log(`Webhook do WhatsApp: imóvel ${rotulo} não encerrado: retirado durante o processamento.`);
       encerramento = null;
     } else {
+      efeitosReais.encerramento = "aplicado-confirmado";
       // Deixa na tela por que o status mudou. Sem isto a explicação existiria
       // só no log do servidor, que o corretor não lê.
       await supabase.rpc("registrar_nota_whatsapp", {
@@ -793,6 +935,9 @@ export async function POST(
         `Webhook do WhatsApp: imóvel ${rotulo} encerrado como ${encerramento.status} — ` +
           `${encerramento.motivoPerda} (lido da resposta).`,
       );
+      // A agenda nem roda quando o imóvel acabou de ser encerrado: fica
+      // `nao-elegivel`, como era.
+      registrarShadowPortao(userId, imovel.id, entradaPortao, efeitosReais);
       return Response.json({ ok: true });
     }
   }
@@ -836,11 +981,13 @@ export async function POST(
       .limit(1);
 
     if (erroBusca) {
+      efeitosReais.agenda = "falhou";
       console.error("Webhook do WhatsApp: falha ao checar a agenda:", erroBusca.message);
     } else if (jaTem && jaTem.length > 0) {
       const existente = jaTem[0] as { id: string; hora: string | null };
       const horaNova = horaParaAtualizarCompromisso(existente.hora, compromisso.hora);
       if (!horaNova) {
+        efeitosReais.agenda = "nao-aplicado";
         console.log(`Webhook do WhatsApp: imóvel ${rotulo} já tem compromisso em ${compromisso.data}.`);
       } else {
         // A service role ignora RLS: id, user_id E imóvel ficam presos à linha
@@ -851,6 +998,7 @@ export async function POST(
           .eq("id", existente.id)
           .eq("user_id", userId)
           .eq("imovel_id", imovel.id);
+        efeitosReais.agenda = erroHora ? "falhou" : "executado-sem-confirmacao";
         if (erroHora) {
           console.error("Webhook do WhatsApp: falha ao completar o horário da visita:", erroHora.message);
         } else {
@@ -881,6 +1029,7 @@ export async function POST(
           ? "visita_confirmada_pelo_proprietario"
           : "prazo_combinado_na_resposta",
       });
+      efeitosReais.agenda = erroAgenda ? "falhou" : "executado-sem-confirmacao";
       if (erroAgenda) {
         // A nota e a tentativa já estão gravadas; perder só o compromisso é
         // degradação aceitável — a data segue visível na sugestão da IA.
@@ -908,6 +1057,7 @@ export async function POST(
         : "sem tentativa a marcar") +
       `${ambiguo}.`,
   );
+  registrarShadowPortao(userId, imovel.id, entradaPortao, efeitosReais);
   // Sempre 200 para quem se autenticou. Webhook que responde erro é webhook
   // reentregue em loop — e, em algumas versões da Evolution, desativado depois
   // de tantas falhas.
