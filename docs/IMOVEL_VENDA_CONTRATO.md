@@ -2,9 +2,10 @@
 
 Estado: IV-0 (decisões de produto) fechado. IV-1 (schema inerte, tipos e mapeadores) **concluído em
 Production** em 2026-10-06; detalhes em "IV-1 em Production" abaixo. IV-2B (persistência, Realtime
-e desdobramento) e IV-2C (tela de cadastro e edição) implementados localmente, sem commit; ver
-"IV-2B" e "IV-2C" abaixo. Em Production a interface ainda não tem nenhum campo de venda ou
-finalidade. IV-3 a IV-6 não foram iniciados.
+e desdobramento) e IV-2C (tela de cadastro e edição) na branch `codex/imovel-venda-iv2b-persistencia`
+(commit `e614311`, Preview aprovada); IV-3A (valores no Pipeline) na mesma branch. Ver "IV-2B",
+"IV-2C" e "IV-3A" abaixo. Em Production a interface ainda não tem nenhum campo de venda ou
+finalidade. IV-3B a IV-6 não foram iniciados.
 
 ## Decisões fechadas (IV-0)
 
@@ -56,7 +57,7 @@ continua o mesmo), e a ordem das migrations aceita só o IV-1 depois do B3.2.
   ou o desdobramento gravam a linha. O IV-2B trocou essa regra pela de "ausente não é null"
   (abaixo).
 
-## IV-2B: persistência (local)
+## IV-2B: persistência
 
 Regra: **chave ausente** (ou `undefined`) = não altera a coluna; **chave presente com null** =
 limpa; **chave presente com valor** = grava (0 é valor). Nunca `ausente → null`.
@@ -94,7 +95,7 @@ Provas: `web/tests/imovel-venda-iv2b-persistencia.test.ts` (A a V, com mock do S
 mutações reais) e `web/integration/imovel-venda-iv2b-supabase-local.test.ts` (opt-in, mesma stack
 local isolada do IV-1, porque não há migration nova).
 
-## IV-2C: tela de cadastro e edição (local)
+## IV-2C: tela de cadastro e edição
 
 Só o `ModalImovel`. Pipeline, ModalDesdobrar, importação, pré-cadastro e fluxos de locação não
 mudam.
@@ -122,6 +123,32 @@ autocomplete, linha do tempo e `salvarImovel` trocados). O teste de ponta a pont
 Garimpo (`prospeccao-promocao.test.ts`) passou a escolher a finalidade antes de cadastrar e
 confirma que ela nasce vazia mesmo com "aluga-se" na observação.
 
+## IV-3A: valores no Pipeline
+
+Só apresentação; nada é gravado. Uma regra pura (`exibicaoValoresImovel`, em
+`web/lib/calculo/valoresImovel.ts`) decide o que o Pipeline mostra, e as três superfícies usam a
+mesma regra por `web/components/pipeline/ValoresImovelPipeline.tsx`:
+
+| Finalidade | Card do Kanban e lista | Painel lateral |
+| --- | --- | --- |
+| `locacao` | "Aluguel R$ X" | Finalidade: Locação; Valor do aluguel |
+| `venda` | "Venda R$ Y" | Finalidade: Venda; Valor de venda |
+| `locacao_venda` | "Aluguel R$ X" e "Venda R$ Y", um por linha | Finalidade: Locação e venda; os dois valores |
+| null ou ausente | o aluguel sem rótulo, como antes | Finalidade: Não informado; "Valor" (o aluguel) |
+
+- O aluguel antigo de um imóvel de venda continua no banco, mas nunca aparece como preço da
+  venda (o smoke do IV-2 viu "R$ 0" e "R$ 1.200" no card antes desta correção).
+- Venda sem valor (`null`) aparece como "—", o padrão do `fmtMoney`; 0 aparece como "R$ 0". A
+  decisão não usa verdade/falsidade.
+- Finalidade fora da lista é tratada como sem finalidade.
+- O cabeçalho da coluna da lista virou "Valor"; a classe `col-aluguel`, que alinha a coluna,
+  ficou.
+- `ROTULO_FINALIDADE_IMOVEL` (em `web/lib/constantes.ts`) é a fonte única dos rótulos, usada pelo
+  ModalImovel e pelo Pipeline.
+
+Provas: `web/tests/imovel-venda-iv3a-valores.test.ts` (regra pura, componentes em jsdom e trava de
+que o PipelineView não mostra mais `valorAluguel` direto).
+
 ## Regras para as próximas fatias
 
 - **`vendido_em` nunca passa pelo save genérico**, nem no IV-2.
@@ -133,7 +160,7 @@ confirma que ela nasce vazia mesmo com "aluga-se" na observação.
 | Fatia | Escopo |
 | --- | --- |
 | IV-2, cadastro e edição | persistência, Realtime e desdobramento no IV-2B; tela no IV-2C (os dois locais) |
-| IV-3, Pipeline | filtro por finalidade, selo, valor certo para cada lado, visualização de locação, venda e ambos |
+| IV-3, Pipeline | valor certo para cada lado no IV-3A; filtro por finalidade e o resto da visualização depois |
 | IV-4, guardas de finalidade nos fluxos existentes | cada fluxo que hoje supõe locação passa a respeitar a finalidade; integrações externas (como a Sophia) seguem as regras do Angario |
 | IV-5, Vendido | status Vendido, `status_history`, `vendido_em`, só por ação humana explícita |
 | IV-6, métricas e relatórios | Locados e Vendidos separados, sem misturar fórmulas financeiras de locação e venda |

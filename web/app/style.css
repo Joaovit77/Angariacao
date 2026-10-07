@@ -2937,6 +2937,9 @@ th.th-filter{ position:relative; }
   margin-top:1px;
 }
 .kanban-card-rent{ font-weight:700; color: var(--text); }
+/* Um valor por linha quando o imóvel tem finalidade (IV-3A): "Aluguel R$ X" e
+   "Venda R$ Y" no card do Kanban e na célula de valor da lista. */
+.valor-imovel-linha{ display:block; white-space:nowrap; }
 .kanban-card-days{
   font-size:10.5px; font-weight:600; color: var(--text-faint);
   background: var(--bg-elev-3); padding:2px 7px; border-radius:20px;

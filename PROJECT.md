@@ -3188,7 +3188,7 @@ publicação do Realtime (sem lista de colunas) já as transmite.
 
 **Próximas fatias:**
 
-- **IV-2, cadastro e edição:** persistência (IV-2B) e tela (IV-2C) implementadas localmente. No
+- **IV-2, cadastro e edição:** persistência (IV-2B) e tela (IV-2C) na branch do IV-2 (commit `e614311`, Preview aprovada). No
   ModalImovel, o campo Finalidade (Locação, Venda, Locação e venda) fica no fieldset "Dados do
   imóvel", antes dos valores. É obrigatório só ao criar (cadastro manual e promoção do Garimpo,
   aviso "Informe a finalidade do imóvel."); num cadastro novo nasce vazio, sem presumir locação.
@@ -3198,8 +3198,19 @@ publicação do Realtime (sem lista de colunas) já as transmite.
   valor de venda, Locação e venda os três; o condomínio aparece sempre. Esconder um campo não apaga
   o valor, que continua salvo. Valor de venda vazio é
   null e 0 é 0; o aluguel mantém o `|| 0` histórico. `vendidoEm` não aparece nem é mandado.
-- **IV-3, Pipeline:** filtro por finalidade, selo, valor certo para cada lado e visualização de
-  locação, venda e ambos.
+- **IV-3, Pipeline:** o valor certo para cada lado está feito (IV-3A, ver abaixo); filtro por
+  finalidade e o resto da visualização ficam para depois.
+  **IV-3A** (`exibicaoValoresImovel` em `lib/calculo/valoresImovel.ts`, apresentado por
+  `components/pipeline/ValoresImovelPipeline.tsx`): card do Kanban, lista e painel lateral usam
+  a mesma regra. Locação mostra o aluguel; Venda, o valor de venda; Locação e venda, os dois
+  (aluguel primeiro, um por linha, cada um com o nome na frente); imóvel sem finalidade mostra o
+  aluguel sem rótulo, exatamente como antes, sem ser classificado por isso. O aluguel antigo de
+  um imóvel de venda continua gravado, mas nunca aparece como preço da venda. Venda sem valor
+  aparece como "—" e 0 como "R$ 0" (sem decidir por verdade/falsidade). O painel mostra
+  "Finalidade" (ou "Não informado") e "Valor do aluguel"/"Valor de venda"; sem finalidade, o
+  "Valor" de antes. O cabeçalho da coluna da lista virou "Valor" (a classe `col-aluguel`, que
+  alinha a coluna, ficou). Os rótulos (`ROTULO_FINALIDADE_IMOVEL` em `constantes.ts`) são os
+  mesmos no cadastro e no Pipeline. Só apresentação: nada é gravado.
 - **IV-4, guardas de finalidade nos fluxos existentes:** cada fluxo que hoje supõe locação passa a
   respeitar a finalidade. Integrações externas, como a Sophia, seguem as regras do Angario; o
   domínio não é desenhado em função delas.

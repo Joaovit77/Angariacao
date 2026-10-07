@@ -35,13 +35,14 @@ import { resumoRetirada } from "@/lib/calculo/retiradaCarteira";
 import { MODELOS_WHATSAPP, modeloPadraoWhatsapp } from "@/lib/calculo/whatsapp";
 import { STATUS_ALL, STATUS_COLORS, STATUS_COM_ANUNCIO, TIPOS_IMOVEL } from "@/lib/constantes";
 import { todayISO } from "@/lib/datas";
-import { fmtDate, fmtMoney } from "@/lib/formatadores";
+import { fmtDate } from "@/lib/formatadores";
 import { aplicarMudancaDeStatus, excluirImovel, salvarImovel } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import type { Imovel } from "@/lib/tipos";
 import { useUiModal } from "@/lib/uiModal";
 import { usePipelineUi } from "@/lib/uiPipeline";
 import ColunaFiltro from "./ColunaFiltro";
+import { linhasValoresDrawer, ValoresImovelCompacto } from "./ValoresImovelPipeline";
 
 /** Diz, de relance, se dá para falar com o proprietário deste imóvel.
     Sem número não há WhatsApp, follow-up nem lote de disponibilidade — o
@@ -172,7 +173,9 @@ function CartaoKanban({
         {i.bairro ? `, ${i.bairro}` : ""}
       </div>
       <div className="kanban-card-meta">
-        <span className="kanban-card-rent">{fmtMoney(i.valorAluguel)}</span>
+        <span className="kanban-card-rent" data-valores-imovel>
+          <ValoresImovelCompacto imovel={i} />
+        </span>
         {/* Quantas vezes já falamos com ele. Só a partir da 2ª — é aí que o
             selo contradiz a coluna ("Novo contato" com 3 mensagens enviadas) e
             deixa de ser ruído. Ver `seloTentativas`. */}
@@ -491,7 +494,9 @@ function Lista({
             <ColunaFiltro col="tipo" distintos={distintos("tipo")} />
             <ColunaFiltro col="origem" distintos={distintos("origem")} />
             <ColunaFiltro col="telefone" distintos={distintos("telefone")} />
-            <th className="col-aluguel">Aluguel</th>
+            {/* "Valor" e não "Aluguel": num imóvel de venda a célula mostra a
+                venda. A classe fica `col-aluguel` porque é ela que o CSS alinha. */}
+            <th className="col-aluguel">Valor</th>
             <ColunaFiltro col="status" distintos={distintos("status")} />
             <th>Cadastro</th>
             <ColunaFiltro col="captador" distintos={distintos("captador")} />
@@ -527,7 +532,9 @@ function Lista({
               <td className="cell-telefone">
                 <SeloTelefone imovel={i} />
               </td>
-              <td className="col-aluguel">{fmtMoney(i.valorAluguel)}</td>
+              <td className="col-aluguel" data-valores-imovel>
+                <ValoresImovelCompacto imovel={i} />
+              </td>
               <td>
                 <span className="badge" data-status={i.status}>
                   <span className="dot"></span>
@@ -644,7 +651,9 @@ function Drawer({ imovel }: { imovel: Imovel }) {
             />
             <InfoDrawer label="Edifício" value={imovel.edificio || "-"} />
             <InfoDrawer label="Tipo" value={imovel.tipo || "-"} />
-            <InfoDrawer label="Valor" value={fmtMoney(imovel.valorAluguel)} />
+            {linhasValoresDrawer(imovel).map((linha) => (
+              <InfoDrawer key={linha.label} label={linha.label} value={linha.value} />
+            ))}
             <InfoDrawer label="Status" value={imovel.status || "-"} />
             <InfoDrawer label="Data de cadastro" value={fmtDate(imovel.dataAngariacao)} />
             {/* Só para retirado: quando e por que saiu (C2). O que não se sabe

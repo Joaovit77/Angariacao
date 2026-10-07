@@ -276,6 +276,14 @@ export const FINALIDADES_IMOVEL = ["locacao", "venda", "locacao_venda"] as const
 
 export type FinalidadeImovel = (typeof FINALIDADES_IMOVEL)[number];
 
+/** Como cada finalidade aparece na tela (cadastro e Pipeline). `null` não tem
+    rótulo aqui: quem mostra decide como dizer "Não informado". */
+export const ROTULO_FINALIDADE_IMOVEL: Record<FinalidadeImovel, string> = {
+  locacao: "Locação",
+  venda: "Venda",
+  locacao_venda: "Locação e venda",
+};
+
 export const MOTIVOS_PERDA = [
   "Imóvel já vendido", "Imóvel já alugado por conta própria", MOTIVO_PERDA_IMOVEL_INDISPONIVEL,
   "Proprietário desistiu de alugar",

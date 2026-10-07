@@ -54,11 +54,12 @@ describe("colunas da Lista do Pipeline", () => {
     );
   });
 
-  it("a coluna de Aluguel é a que o CSS alinha à direita", () => {
-    // Se alguém mover o Aluguel de lugar, a classe vai junto — é ela que
+  it("a coluna de valor é a que o CSS alinha à direita", () => {
+    // Se alguém mover a coluna de lugar, a classe vai junto: é ela que
     // manda, não a posição. O teste só garante que a classe existe dos dois
-    // lados: no cabeçalho e na célula.
-    expect(lista).toContain('<th className="col-aluguel">Aluguel</th>');
+    // lados: no cabeçalho e na célula. O texto passou a "Valor" no IV-3A,
+    // porque num imóvel de venda a célula mostra a venda, não o aluguel.
+    expect(lista).toContain('<th className="col-aluguel">Valor</th>');
     expect(lista).toContain('className="col-aluguel"');
     expect(CSS).toContain(".pipeline-list-card th.col-aluguel");
   });

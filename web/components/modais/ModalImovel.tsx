@@ -23,6 +23,7 @@ import {
   FINALIDADES_IMOVEL,
   FORMAS_ABORDAGEM,
   MOTIVOS_PERDA,
+  ROTULO_FINALIDADE_IMOVEL,
   STATUS_ALL,
   STATUS_TERMINAL_NEGATIVE,
   TIPOS_IMOVEL,
@@ -56,12 +57,6 @@ import type { Imovel, StatusHistoryEntry } from "@/lib/tipos";
 const MiniMapa = dynamic(() => import("./MiniMapa"), { ssr: false });
 
 const TERMINAIS: readonly string[] = STATUS_TERMINAL_NEGATIVE;
-
-const ROTULO_FINALIDADE: Record<FinalidadeImovel, string> = {
-  locacao: "Locação",
-  venda: "Venda",
-  locacao_venda: "Locação e venda",
-};
 
 /** Um status sem pausa: saídas laterais e Locado não têm follow-up a pausar. */
 const semPausa = (status: string) => TERMINAIS.includes(status) || status === "Locado";
@@ -781,7 +776,7 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
               {imovel && !finalidadeGravada && <option value="">Não informado</option>}
               {FINALIDADES_IMOVEL.map((f) => (
                 <option key={f} value={f}>
-                  {ROTULO_FINALIDADE[f]}
+                  {ROTULO_FINALIDADE_IMOVEL[f]}
                 </option>
               ))}
             </select>
