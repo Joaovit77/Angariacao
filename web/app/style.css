@@ -2504,12 +2504,15 @@ tbody tr:last-child td{ border-bottom:none; }
 }
 .pipeline-filterbar{
   display:grid;
-  grid-template-columns: minmax(150px, 190px) minmax(280px, 2fr) repeat(5, minmax(130px, 1fr));
+  grid-template-columns: minmax(150px, 190px) minmax(0, 2fr) repeat(2, minmax(150px, 1fr));
   gap:10px;
   flex:1;
   min-width:0;
 }
 .pipeline-search{ min-width:0; }
+.pipeline-filterbar > .filter-select{ min-width:0; width:100%; }
+.pipeline-finalidade-select:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+.pipeline-finalidade-mobile{ display:none; }
 .pipeline-toolbar-side{
   display:flex;
   align-items:center;
@@ -2533,11 +2536,10 @@ tbody tr:last-child td{ border-bottom:none; }
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
-/* No modo Lista, o topo mostra identificação + busca + Cidade (os demais viram
-   funis de coluna). Mantém o grid com exatamente 3 colunas — sem tracks vazios que
-   apareceriam se o grid completo do Kanban fosse reutilizado aqui. */
+/* Lista e Retirados: identificação, busca, Finalidade e Cidade. Os demais
+   filtros ficam nos cabeçalhos da tabela. */
 .pipeline-filterbar.lista{
-  grid-template-columns: minmax(150px, 190px) minmax(240px, 1fr) minmax(130px, 200px);
+  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr) repeat(2, minmax(0, 170px));
 }
 
 /* ============================================================
@@ -2719,7 +2721,7 @@ th.th-filter{ position:relative; }
   background:var(--bg-elev-1);
 }
 @media (max-width: 1150px){
-  .pipeline-filterbar{ grid-template-columns: repeat(3, minmax(150px, 1fr)); }
+  .pipeline-filterbar, .pipeline-filterbar.lista{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .pipeline-search{ grid-column:1 / -1; width:100%; }
   .pipeline-toolbar-side{ width:100%; justify-content:space-between; }
 }
@@ -4204,7 +4206,11 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
   /* Toolbar do pipeline empilha em vez de espremer */
   .pipeline-toolbar{ flex-direction:column; align-items:stretch; }
   .pipeline-toolbar > div{ width:100%; }
-  .pipeline-filterbar{ grid-template-columns:1fr; }
+  .pipeline-filterbar, .pipeline-filterbar.lista{ grid-template-columns:minmax(0, 1fr); }
+  .pipeline-finalidade-mobile{
+    display:block; margin-top:4px; color:var(--text-dim); font-size:11px;
+    line-height:1.4; white-space:normal; overflow-wrap:anywhere;
+  }
   .pipeline-search{ grid-column:auto; }
   .pipeline-toolbar-side{ flex-wrap:wrap; }
   .search-input{ width:100%; min-width:0; }

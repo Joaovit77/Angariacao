@@ -3139,8 +3139,9 @@ O imóvel continua sendo um só na carteira e no Pipeline; venda e locação sã
 dele, não um segundo Pipeline nem um imóvel duplicado. As decisões de produto estão fechadas (IV-0,
 lista em [docs/IMOVEL_VENDA_CONTRATO.md](docs/IMOVEL_VENDA_CONTRATO.md)). O IV-1 só preparou o
 banco e entrou **inerte**. O IV-2 (cadastro e edição) é o primeiro a usar as colunas: só o
-ModalImovel edita a finalidade e o valor de venda; Pipeline, Dashboard, Relatórios, Metas e os
-fluxos de locação ainda não leem esses campos (IV-3, IV-4, IV-6).
+ModalImovel edita a finalidade e o valor de venda. O Pipeline já lê os campos para apresentar
+os valores (IV-3A); guardas operacionais de locação (IV-4) e métricas de Dashboard, Relatórios
+e Metas (IV-6) permanecem para as próximas fatias.
 
 **Estado.** O IV-1 está em Production desde 2026-10-06: código na main em `43d863e` (deploy
 `dpl_3LVGfqc3aS8K9TvkQYuLXZhdaYXq`) e migration `20261006200215_imoveis_finalidade_venda` aplicada
@@ -3189,9 +3190,10 @@ publicação do Realtime (sem lista de colunas) já as transmite.
   do principal é o preço do todo). Pré-cadastro e importação não trazem o campo e gravam null;
   a importação continua lendo a coluna "valor"/"preco" como aluguel (dívida registrada).
 
-**Próximas fatias:**
+**Fatias de implementação:**
 
-- **IV-2, cadastro e edição:** persistência (IV-2B) e tela (IV-2C) na branch do IV-2 (commit `e614311`, Preview aprovada). No
+- **IV-2, cadastro e edição:** persistência (IV-2B) e tela (IV-2C) publicadas em Production,
+  assim como IV-3A e IV-3A.2, e presentes na base `df76ea2`. No
   ModalImovel, o campo Finalidade (Locação, Venda, Locação e venda) fica no fieldset "Dados do
   imóvel", antes dos valores. É obrigatório só ao criar (cadastro manual e promoção do Garimpo,
   aviso "Informe a finalidade do imóvel."); num cadastro novo nasce vazio, sem presumir locação.
@@ -3201,8 +3203,15 @@ publicação do Realtime (sem lista de colunas) já as transmite.
   valor de venda, Locação e venda os três; o condomínio aparece sempre. Esconder um campo não apaga
   o valor, que continua salvo. Valor de venda vazio é
   null e 0 é 0; o aluguel mantém o `|| 0` histórico. `vendidoEm` não aparece nem é mandado.
-- **IV-3, Pipeline:** o valor certo para cada lado está feito (IV-3A, ver abaixo); filtro por
-  finalidade e o resto da visualização ficam para depois.
+- **IV-3, Pipeline:** valores por finalidade publicados (IV-3A/IV-3A.2). O IV-3B.1 acrescenta
+  localmente um filtro client-side em Lista, Kanban e Retirados, sobre a carteira já carregada:
+  Todas não restringe; Locação, Venda e Locação e venda são categorias exatas; Não informado
+  inclui null ou campo ausente, sem inferência nem alteração dos imóveis. Combina em AND com os
+  filtros atuais e preserva OR dentro de cada coluna. O estado segue `usePipelineUi`: persiste
+  durante navegação interna, reinicia no reload e é zerado por `aplicarBusca` e
+  `aplicarFiltroColuna`; selecionar Todas limpa somente finalidade. A Lista mobile mostra o
+  rótulo abaixo do endereço, sem coluna nova no desktop. O contrato e o limite da validação
+  local estão em [docs/IMOVEL_VENDA_CONTRATO.md](docs/IMOVEL_VENDA_CONTRATO.md).
   **IV-3A** (`exibicaoValoresImovel` em `lib/calculo/valoresImovel.ts`, apresentado por
   `components/pipeline/ValoresImovelPipeline.tsx`): card do Kanban, lista e painel lateral usam
   a mesma regra. Locação mostra o aluguel; Venda, o valor de venda; Locação e venda, os dois

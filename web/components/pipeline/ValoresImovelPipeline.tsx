@@ -4,6 +4,7 @@
    como preço de um imóvel de venda. O texto de cada valor (com ou sem
    centavos) também vem de lá, para as três mostrarem o mesmo. Só leitura. */
 import { exibicaoValoresImovel } from "@/lib/calculo/valoresImovel";
+import { ROTULO_FINALIDADE_IMOVEL_DESCONHECIDA } from "@/lib/constantes";
 import type { Imovel } from "@/lib/tipos";
 
 type ImovelComValores = Pick<Imovel, "finalidade" | "valorAluguel" | "valorVenda">;
@@ -30,7 +31,7 @@ export function ValoresImovelCompacto({ imovel }: { imovel: ImovelComValores }) 
     aluguel. */
 export function linhasValoresDrawer(imovel: ImovelComValores): { label: string; value: string }[] {
   const { finalidade, rotuloFinalidade, valores } = exibicaoValoresImovel(imovel);
-  const linhaFinalidade = { label: "Finalidade", value: rotuloFinalidade ?? "Não informado" };
+  const linhaFinalidade = { label: "Finalidade", value: rotuloFinalidade ?? ROTULO_FINALIDADE_IMOVEL_DESCONHECIDA };
   if (!finalidade) return [linhaFinalidade, { label: "Valor", value: valores[0].texto }];
   return [
     linhaFinalidade,

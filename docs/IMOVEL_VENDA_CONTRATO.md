@@ -1,11 +1,12 @@
 # Imóvel de venda no Pipeline: contrato
 
-Estado: IV-0 (decisões de produto) fechado. IV-1 (schema inerte, tipos e mapeadores) **concluído em
-Production** em 2026-10-06; detalhes em "IV-1 em Production" abaixo. IV-2B (persistência, Realtime
-e desdobramento) e IV-2C (tela de cadastro e edição) na branch `codex/imovel-venda-iv2b-persistencia`
-(commit `e614311`, Preview aprovada); IV-3A (valores no Pipeline) e IV-3A.2 (centavos e largura da lista) na mesma branch. Ver "IV-2B",
-"IV-2C" e "IV-3A" abaixo. Em Production a interface ainda não tem nenhum campo de venda ou
-finalidade. IV-3B a IV-6 não foram iniciados.
+Estado: IV-0 (decisões de produto) fechado. IV-1 (schema inerte, tipos e mapeadores) publicado
+em Production em 2026-10-06; detalhes em "IV-1 em Production" abaixo. IV-2B (persistência,
+Realtime e desdobramento), IV-2C (cadastro e edição), IV-3A (valores no Pipeline) e IV-3A.2
+(centavos e largura da lista) também estão publicados, presentes na base Production/main
+`df76ea2680dafad54aae996bbcce10a7510beb7f`. IV-3B.1 aprovado localmente com carteira sintética e smoke autenticado somente leitura.
+O gate de commit e Preview permanece separado; esta documentação não afirma sua publicação.
+IV-4 a IV-6 não foram iniciados.
 
 ## Decisões fechadas (IV-0)
 
@@ -189,6 +190,46 @@ Provas: `web/tests/imovel-venda-iv3a-valores.test.ts` (casos de formatação, as
 com o mesmo texto, componente sem formatação própria) e `web/tests/pipeline-colunas.test.ts`
 (largura da coluna Valor e a regra do endereço).
 
+## IV-3B.1: filtro de finalidade e Lista mobile
+
+Select nativo com nome acessível Finalidade em Lista, Kanban e Retirados, sobre o mesmo conjunto
+já autorizado e carregado no store. Sem query adicional ou escrita no banco.
+
+| Opção | Condição |
+| --- | --- |
+| Todas | Não restringe finalidade |
+| Locação | `finalidade === "locacao"` |
+| Venda | `finalidade === "venda"` |
+| Locação e venda | `finalidade === "locacao_venda"` |
+| Não informado | `finalidade == null`, incluindo campo ausente |
+
+Locação e Venda não incluem Locação e venda. Não se infere locação para o legado nem se insere
+null nos objetos ausentes. A finalidade combina em AND com busca, cidade, tipo, status e
+captador; permanece o OR dentro de cada filtro de coluna. A busca textual conserva seus campos.
+
+O estado é compartilhado em `usePipelineUi`, sem URL ou persistência nova: troca de modo e
+navegação interna preservam; reload reinicia. Todas limpa somente finalidade. Os atalhos
+`aplicarBusca` (Insights e Assistente) e `aplicarFiltroColuna` (Insights) reiniciam finalidade
+junto com os demais filtros, preservando seu contrato. Agenda não introduz outro reset.
+
+Na Lista mobile, o texto completo aparece abaixo do endereço, pode quebrar linha e usa os
+rótulos centrais; Não informado é compartilhado pelo select, texto mobile e drawer. O desktop
+conserva 14 colunas, tabela com mínimo de 1466px, endereço com mínimo de 240px, Valor de 160px
+e Ações sticky de 78px. Cards e preços do Kanban permanecem iguais. A barra adapta o grid
+e empilha no mobile, também em Retirados, sem mudar `.main`. O contador continua X filtrados
+de Y do modo; o drawer pode permanecer aberto quando o imóvel sai do filtro.
+
+**Validação local.** Regressão automatizada, quatro mutantes restaurados e smoke sintético
+com componentes reais, CSS e stores, nos dois temas e em 390, 720, 1150, 1366 e 1920px.
+O smoke autenticado somente leitura também exercitou Lista/Kanban, a rota real da Agenda e o
+retorno ao Pipeline, reload, combinações de filtros, atalhos seguros de Insights, drawer,
+acessibilidade, desktop/mobile e os dois temas. Os registros auditados conservaram contagem,
+finalidade e `updated_at`; nenhuma fixture ou ação externa foi criada.
+
+A conta autorizada tinha apenas um imóvel com finalidade null e nenhum retirado. Categorias
+classificadas, campo ausente e Retirados permanecem cobertos pelos testes determinísticos e
+pelo smoke sintético. A aprovação local não substitui o gate da Preview nem autoriza Production.
+
 ## Regras para as próximas fatias
 
 - **`vendido_em` nunca passa pelo save genérico**, nem no IV-2.
@@ -199,8 +240,8 @@ com o mesmo texto, componente sem formatação própria) e `web/tests/pipeline-c
 
 | Fatia | Escopo |
 | --- | --- |
-| IV-2, cadastro e edição | persistência, Realtime e desdobramento no IV-2B; tela no IV-2C (os dois locais) |
-| IV-3, Pipeline | valor certo para cada lado no IV-3A; filtro por finalidade e o resto da visualização depois |
+| IV-2, cadastro e edição | persistência, Realtime e desdobramento no IV-2B; tela no IV-2C (publicados) |
+| IV-3, Pipeline | valores IV-3A/IV-3A.2 publicados; filtro e mobile IV-3B.1 aprovados localmente, aguardando gate de Preview |
 | IV-4, guardas de finalidade nos fluxos existentes | cada fluxo que hoje supõe locação passa a respeitar a finalidade; integrações externas (como a Sophia) seguem as regras do Angario |
 | IV-5, Vendido | status Vendido, `status_history`, `vendido_em`, só por ação humana explícita |
 | IV-6, métricas e relatórios | Locados e Vendidos separados, sem misturar fórmulas financeiras de locação e venda |

@@ -20,6 +20,7 @@ import { urlInvestigadorDoImovel } from "@/lib/calculo/contextoInvestigador";
 import { selecionarFollowUp, selecionarVerificacaoDisponibilidade } from "@/lib/calculo/followup";
 import { deslocarStatusKanban, moverStatusKanban, ordenarStatusKanban, type OrdemKanban } from "@/lib/calculo/kanban";
 import {
+  FILTRO_FINALIDADE_NAO_INFORMADA,
   filtrarImoveis,
   identificacaoExibidaNoPipeline,
   ordenarPipelineLista,
@@ -33,7 +34,7 @@ import {
 import { daysInCurrentStatus, diasSemMovimento, isPausado, isStale } from "@/lib/calculo/motor";
 import { resumoRetirada } from "@/lib/calculo/retiradaCarteira";
 import { MODELOS_WHATSAPP, modeloPadraoWhatsapp } from "@/lib/calculo/whatsapp";
-import { STATUS_ALL, STATUS_COLORS, STATUS_COM_ANUNCIO, TIPOS_IMOVEL } from "@/lib/constantes";
+import { FINALIDADES_IMOVEL, ROTULO_FINALIDADE_IMOVEL, ROTULO_FINALIDADE_IMOVEL_DESCONHECIDA, STATUS_ALL, STATUS_COLORS, STATUS_COM_ANUNCIO, TIPOS_IMOVEL } from "@/lib/constantes";
 import { todayISO } from "@/lib/datas";
 import { fmtDate } from "@/lib/formatadores";
 import { aplicarMudancaDeStatus, excluirImovel, salvarImovel } from "@/lib/mutacoes";
@@ -523,7 +524,12 @@ function Lista({
                 {identificacaoExibidaNoPipeline(i, identificacao) || "-"}
                 {i.preCadastro && <span className="pre-cadastro-flag">pré-cadastro</span>}
               </td>
-              <td>{i.endereco || "-"}</td>
+              <td>
+                {i.endereco || "-"}
+                <span className="pipeline-finalidade-mobile">
+                  {(i.finalidade && ROTULO_FINALIDADE_IMOVEL[i.finalidade]) || ROTULO_FINALIDADE_IMOVEL_DESCONHECIDA}
+                </span>
+              </td>
               <td className="cell-unidade">{i.unidade || "-"}</td>
               <td className="cell-unidade">{i.bloco || "-"}</td>
               <td className="cell-dim">{i.bairro || "-"}</td>
@@ -1025,6 +1031,18 @@ export default function PipelineView() {
               </select>
             </>
           )}
+          <select
+            className="filter-select pipeline-finalidade-select"
+            aria-label="Finalidade"
+            value={filters.finalidade}
+            onChange={(e) => setFiltro("finalidade", e.target.value)}
+          >
+            <option value="">Todas</option>
+            {FINALIDADES_IMOVEL.map((finalidade) => (
+              <option key={finalidade} value={finalidade}>{ROTULO_FINALIDADE_IMOVEL[finalidade]}</option>
+            ))}
+            <option value={FILTRO_FINALIDADE_NAO_INFORMADA}>{ROTULO_FINALIDADE_IMOVEL_DESCONHECIDA}</option>
+          </select>
           <select
             className="filter-select"
             value={filters.cidade}

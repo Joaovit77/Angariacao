@@ -75,7 +75,7 @@ export const usePipelineUi = create<PipelineUi>((set, get) => ({
 
   // Ao entrar na Lista, os selects single-value do topo ficam ocultos; migramos
   // seus valores ativos para os arrays de coluna equivalentes, para nenhum filtro
-  // ficar ativo e invisível. Cidade não tem coluna, então permanece no topo.
+  // ficar ativo e invisível. Cidade e Finalidade permanecem visíveis no topo.
   setViewMode: (mode) => {
     const s = get();
     if (mode === s.viewMode) return;
