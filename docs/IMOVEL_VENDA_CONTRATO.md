@@ -3,7 +3,7 @@
 Estado: IV-0 (decisões de produto) fechado. IV-1 (schema inerte, tipos e mapeadores) **concluído em
 Production** em 2026-10-06; detalhes em "IV-1 em Production" abaixo. IV-2B (persistência, Realtime
 e desdobramento) e IV-2C (tela de cadastro e edição) na branch `codex/imovel-venda-iv2b-persistencia`
-(commit `e614311`, Preview aprovada); IV-3A (valores no Pipeline) na mesma branch. Ver "IV-2B",
+(commit `e614311`, Preview aprovada); IV-3A (valores no Pipeline) e IV-3A.2 (centavos e largura da lista) na mesma branch. Ver "IV-2B",
 "IV-2C" e "IV-3A" abaixo. Em Production a interface ainda não tem nenhum campo de venda ou
 finalidade. IV-3B a IV-6 não foram iniciados.
 
@@ -138,8 +138,8 @@ mesma regra por `web/components/pipeline/ValoresImovelPipeline.tsx`:
 
 - O aluguel antigo de um imóvel de venda continua no banco, mas nunca aparece como preço da
   venda (o smoke do IV-2 viu "R$ 0" e "R$ 1.200" no card antes desta correção).
-- Venda sem valor (`null`) aparece como "—", o padrão do `fmtMoney`; 0 aparece como "R$ 0". A
-  decisão não usa verdade/falsidade.
+- Venda sem valor (`null`) aparece como "—" (não informado); 0 aparece como "R$ 0", que é valor
+  real. A decisão não usa verdade/falsidade.
 - Finalidade fora da lista é tratada como sem finalidade.
 - O cabeçalho da coluna da lista virou "Valor"; a classe `col-aluguel`, que alinha a coluna,
   ficou.
@@ -148,6 +148,46 @@ mesma regra por `web/components/pipeline/ValoresImovelPipeline.tsx`:
 
 Provas: `web/tests/imovel-venda-iv3a-valores.test.ts` (regra pura, componentes em jsdom e trava de
 que o PipelineView não mostra mais `valorAluguel` direto).
+
+### IV-3A.2: centavos e largura da lista
+
+O smoke da Preview do IV-3A achou dois defeitos de apresentação, corrigidos aqui sem tocar em
+banco nem em persistência.
+
+**Formatação.** Até o IV-3A os valores passavam pelo `fmtMoney`, que arredonda para reais
+inteiros: 450000.55 aparecia como "R$ 450.001", um preço que não é o cadastrado. Agora o texto de
+cada valor sai pronto de `fmtValorImovel` (em `web/lib/calculo/valoresImovel.ts`), a única regra
+de centavos; card do Kanban, lista e painel lateral mostram exatamente esse texto.
+
+| Valor gravado | Aparece como |
+| --- | --- |
+| 500000 | R$ 500.000 |
+| 450000.55 | R$ 450.000,55 |
+| 1500.5 | R$ 1.500,50 |
+| 0 | R$ 0 |
+| null | — |
+
+- Inteiro não mostra ",00"; centavos reais são preservados.
+- `null` é "não informado" e aparece como "—"; 0 continua sendo valor real.
+- A regra depende do valor, não da finalidade: vale igualmente para aluguel e venda (um aluguel
+  com centavos também os mostra), inclusive no imóvel sem finalidade.
+- Os centavos contam depois de arredondar para 2 casas, então um resíduo de ponto flutuante não
+  vira ",00".
+
+**Largura da lista (desktop).** A coluna Valor tinha 100px, pensada para "R$ 3.500", e cortava
+"Venda R$ 450.0". Passou para 160px: "Venda R$ 1.500.000,50", a linha mais longa prevista, mede
+129px em 13px Segoe UI, e a célula deixa 136px de texto. O endereço já estava espremido antes do
+IV-3A (as colunas fixas somavam 1166px contra `min-width` de 1180px, sobrando 14px); a regra
+estrutural agora é:
+
+> soma das colunas fixas + 240px mínimos para o Endereço ≤ `min-width` da tabela
+
+Hoje: 1226 + 240 = 1466px. Abaixo disso a tabela rola na horizontal, que é o comportamento
+previsto. No celular a coluna Valor continua escondida, como antes.
+
+Provas: `web/tests/imovel-venda-iv3a-valores.test.ts` (casos de formatação, as três superfícies
+com o mesmo texto, componente sem formatação própria) e `web/tests/pipeline-colunas.test.ts`
+(largura da coluna Valor e a regra do endereço).
 
 ## Regras para as próximas fatias
 

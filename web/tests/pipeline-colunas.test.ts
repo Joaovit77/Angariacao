@@ -64,6 +64,71 @@ describe("colunas da Lista do Pipeline", () => {
     expect(CSS).toContain(".pipeline-list-card th.col-aluguel");
   });
 
+  describe("larguras do desktop (IV-3A.2)", () => {
+    /* Só as regras fora de @media: são elas que valem no desktop. As do
+       celular redefinem posições e não entram na conta. */
+    function semMedia(css: string): string {
+      let out = "";
+      let i = 0;
+      while (i < css.length) {
+        const m = css.indexOf("@media", i);
+        if (m === -1) return out + css.slice(i);
+        out += css.slice(i, m);
+        let j = css.indexOf("{", m) + 1;
+        for (let prof = 1; prof > 0; j++) {
+          if (css[j] === "{") prof++;
+          else if (css[j] === "}") prof--;
+        }
+        i = j;
+      }
+      return out;
+    }
+    const DESKTOP = semMedia(CSS.replace(/\/\*[\s\S]*?\*\//g, ""));
+    const larguras = new Map<number, string>();
+    for (const m of DESKTOP.matchAll(
+      /\.pipeline-list-card th:nth-child\((\d+)\),\s*\.pipeline-list-card td:nth-child\(\1\)\{\s*width:\s*([^;]+);/g,
+    )) {
+      larguras.set(Number(m[1]), m[2].trim());
+    }
+    const minWidth = Number(
+      /\.pipeline-list-card table\{[^}]*min-width:\s*(\d+)px/.exec(DESKTOP)?.[1] ?? NaN,
+    );
+    /* A posição da coluna de valor vem do JSX, não de um número fixo aqui. */
+    const posicaoValor = (() => {
+      const marcas = [...lista.matchAll(/<th[\s>]|<ColunaFiltro\b|<HeaderIdentificacao\b/g)];
+      const alvo = lista.indexOf('<th className="col-aluguel">');
+      return marcas.findIndex((m) => m.index === alvo) + 1;
+    })();
+    /** Mínimo útil do endereço, o texto mais longo da linha. */
+    const ENDERECO_MINIMO = 240;
+    /** Padding horizontal da célula (12px de cada lado, border-box). */
+    const PADDING_CELULA = 24;
+    /** "Venda R$ 1.500.000,50" medido em 13px Segoe UI: 129px. */
+    const TEXTO_VALOR_MAIS_LONGO = 129;
+
+    it("só o Endereço é auto; as demais têm largura fixa em px", () => {
+      expect(larguras.size).toBe(cabecalhos);
+      for (const [pos, w] of larguras) {
+        if (pos === 3) expect(w).toBe("auto");
+        else expect(w).toMatch(/^\d+px$/);
+      }
+    });
+
+    it("a coluna de valor cabe 'Venda R$ 1.500.000,50' sem cortar", () => {
+      expect(posicaoValor).toBeGreaterThan(0);
+      const valor = parseInt(larguras.get(posicaoValor) ?? "0", 10);
+      expect(valor - PADDING_CELULA).toBeGreaterThanOrEqual(TEXTO_VALOR_MAIS_LONGO);
+    });
+
+    it("soma das fixas + mínimo do endereço cabe no min-width da tabela", () => {
+      const somaFixas = [...larguras.values()]
+        .filter((w) => w !== "auto")
+        .reduce((s, w) => s + parseInt(w, 10), 0);
+      expect(Number.isFinite(minWidth)).toBe(true);
+      expect(somaFixas + ENDERECO_MINIMO).toBeLessThanOrEqual(minWidth);
+    });
+  });
+
   it("no mobile preserva espaço para Endereço e mantém Status visível", () => {
     expect(CSS).toContain(".pipeline-list-card table{ min-width:0; width:100%; table-layout:fixed; }");
     expect(CSS).toContain(".pipeline-list-card th:nth-child(3), .pipeline-list-card td:nth-child(3){ width:auto; }");

@@ -485,7 +485,10 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   `setViewMode` (em `uiPipeline.ts`) copia os filtros campo a campo — esquecer a nova ali faz o
   filtro sumir ao trocar de aba, sem erro — e que as larguras da Lista são fixadas por `nth-child`
   no `style.css`, então inserir coluna no meio desloca todas as seguintes. `pipeline-colunas.test.ts`
-  falha quando cabeçalho, linha e CSS discordam sobre quantas colunas existem.
+  falha quando cabeçalho, linha e CSS discordam sobre quantas colunas existem. Também falha se a
+  soma das colunas fixas + 240px mínimos para o Endereço passar do `min-width` da tabela (hoje
+  1226 + 240 = 1466px); ao alargar ou criar coluna, suba o `min-width` junto. Abaixo dele a
+  tabela rola na horizontal, o que é esperado.
   O filtro **Identificação dos imóveis** escolhe o rótulo destacado nos cards, na primeira coluna e
   no drawer: código interno ou referência do CRM. A referência só é elegível depois da captação
   (`Angariado`/etapas posteriores ou histórico equivalente); antes disso o código interno permanece
@@ -3211,6 +3214,10 @@ publicação do Realtime (sem lista de colunas) já as transmite.
   "Valor" de antes. O cabeçalho da coluna da lista virou "Valor" (a classe `col-aluguel`, que
   alinha a coluna, ficou). Os rótulos (`ROTULO_FINALIDADE_IMOVEL` em `constantes.ts`) são os
   mesmos no cadastro e no Pipeline. Só apresentação: nada é gravado.
+  **IV-3A.2:** o texto de cada valor vem pronto de `fmtValorImovel` (mesmo arquivo), igual nas três
+  superfícies: inteiro sem ",00" (500000 → "R$ 500.000"), centavos preservados quando existem
+  (450000.55 → "R$ 450.000,55", nunca "R$ 450.001"), null → "—", 0 → "R$ 0". Depende do valor,
+  não da finalidade (vale para aluguel e venda). A coluna Valor da lista tem 160px.
 - **IV-4, guardas de finalidade nos fluxos existentes:** cada fluxo que hoje supõe locação passa a
   respeitar a finalidade. Integrações externas, como a Sophia, seguem as regras do Angario; o
   domínio não é desenhado em função delas.

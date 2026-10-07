@@ -9,7 +9,7 @@ import { createElement } from "react";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { linhasValoresDrawer, ValoresImovelCompacto } from "@/components/pipeline/ValoresImovelPipeline";
-import { exibicaoValoresImovel } from "@/lib/calculo/valoresImovel";
+import { exibicaoValoresImovel, fmtValorImovel } from "@/lib/calculo/valoresImovel";
 import { ROTULO_FINALIDADE_IMOVEL } from "@/lib/constantes";
 import { fmtMoney } from "@/lib/formatadores";
 import type { Imovel } from "@/lib/tipos";
@@ -17,6 +17,10 @@ import type { Imovel } from "@/lib/tipos";
 type Valores = Pick<Imovel, "finalidade" | "valorAluguel" | "valorVenda">;
 const PIPELINE = readFileSync(resolve("components/pipeline/PipelineView.tsx"), "utf8").replace(/\r\n/g, "\n");
 const MODAL = readFileSync(resolve("components/modais/ModalImovel.tsx"), "utf8");
+const COMPONENTE = readFileSync(resolve("components/pipeline/ValoresImovelPipeline.tsx"), "utf8");
+/** O Intl separa "R$" do número com espaço não separável; os literais dos
+    testes usam o espaço comum. */
+const sp = (s: string | null | undefined) => (s ?? "").replace(/ /g, " ");
 
 /* Os casos do smoke do IV-2 e os do checkpoint. */
 const LOCACAO: Valores = { finalidade: "locacao", valorAluguel: 1500 };
@@ -72,7 +76,7 @@ describe("card do Kanban e célula da lista (ValoresImovelCompacto)", () => {
 
   it("A. locação: aluguel com rótulo", () => expect(linhas(LOCACAO)).toEqual([`Aluguel ${fmtMoney(1500)}`]));
   it("B. venda com aluguel 0 mostra a venda, não R$ 0", () => {
-    expect(linhas(VENDA)).toEqual([`Venda ${fmtMoney(450000.55)}`]);
+    expect(linhas(VENDA).map(sp)).toEqual(["Venda R$ 450.000,55"]);
     expect(texto(VENDA)).not.toContain(fmtMoney(0));
   });
   it("C. venda com aluguel antigo mostra a venda, não o aluguel antigo", () => {
@@ -117,6 +121,59 @@ describe("painel lateral (linhasValoresDrawer)", () => {
       { label: "Finalidade", value: "Não informado" },
       { label: "Valor", value: fmtMoney(1200) },
     ]);
+  });
+});
+
+describe("IV-3A.2: centavos só quando existem (fmtValorImovel)", () => {
+  const f = (v: number | null | undefined) => sp(fmtValorImovel(v));
+
+  it("A. 500000 → R$ 500.000", () => expect(f(500000)).toBe("R$ 500.000"));
+  it("B. 450000.55 → R$ 450.000,55, nunca R$ 450.001", () => {
+    expect(f(450000.55)).toBe("R$ 450.000,55");
+    expect(f(450000.55)).not.toBe("R$ 450.001");
+  });
+  it("C. 1500.5 → R$ 1.500,50", () => expect(f(1500.5)).toBe("R$ 1.500,50"));
+  it("D. 0 → R$ 0 (zero é valor, não 'não informado')", () => expect(f(0)).toBe("R$ 0"));
+  it("E. null e ausente → —", () => {
+    expect(f(null)).toBe("—");
+    expect(f(undefined)).toBe("—");
+  });
+  it("1500 continua R$ 1.500, sem ',00'", () => expect(f(1500)).toBe("R$ 1.500"));
+  it("resíduo de ponto flutuante abaixo do centavo não vira ',00'", () => {
+    expect(f(1500.004)).toBe("R$ 1.500");
+    expect(f(0.1 + 0.2)).toBe("R$ 0,30");
+  });
+
+  it("F. locação e venda com um inteiro e um decimal: cada um no seu formato", () => {
+    const imovel: Valores = { finalidade: "locacao_venda", valorAluguel: 2000, valorVenda: 450000.55 };
+    expect(exibicaoValoresImovel(imovel).valores.map((v) => sp(v.texto))).toEqual(["R$ 2.000", "R$ 450.000,55"]);
+    const { container } = render(createElement("span", null, createElement(ValoresImovelCompacto, { imovel })));
+    expect([...container.querySelectorAll(".valor-imovel-linha")].map((l) => sp(l.textContent))).toEqual([
+      "Aluguel R$ 2.000",
+      "Venda R$ 450.000,55",
+    ]);
+  });
+
+  it("depende do valor, não da finalidade: aluguel com centavos também os mostra", () => {
+    expect(exibicaoValoresImovel({ finalidade: "locacao", valorAluguel: 1500.5 }).valores.map((v) => sp(v.texto))).toEqual([
+      "R$ 1.500,50",
+    ]);
+    expect(sp(linhasValoresDrawer({ finalidade: null, valorAluguel: 1500.5 })[1].value)).toBe("R$ 1.500,50");
+  });
+
+  it("card, lista e painel mostram o mesmo texto para 450000.55", () => {
+    const { container } = render(createElement("span", null, createElement(ValoresImovelCompacto, { imovel: VENDA })));
+    // card e lista são o mesmo componente; o painel vem de linhasValoresDrawer
+    expect(sp(container.textContent)).toBe("Venda R$ 450.000,55");
+    expect(linhasValoresDrawer(VENDA).map((l) => ({ ...l, value: sp(l.value) }))).toEqual([
+      { label: "Finalidade", value: "Venda" },
+      { label: "Valor de venda", value: "R$ 450.000,55" },
+    ]);
+  });
+
+  it("os componentes não formatam por conta própria: o texto vem do helper", () => {
+    expect(COMPONENTE).not.toMatch(/fmtMoney|fmtMoneyFull|Number\.isInteger/);
+    expect(COMPONENTE).toContain("v.texto");
   });
 });
 

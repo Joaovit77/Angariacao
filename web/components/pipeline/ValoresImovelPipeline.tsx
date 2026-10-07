@@ -1,9 +1,9 @@
 /* Valores do imóvel no Pipeline (Imóvel de venda, IV-3A): card do Kanban,
    célula da lista e painel lateral usam a mesma regra
    (`exibicaoValoresImovel`), para nenhuma superfície mostrar o aluguel antigo
-   como preço de um imóvel de venda. Só leitura. */
+   como preço de um imóvel de venda. O texto de cada valor (com ou sem
+   centavos) também vem de lá, para as três mostrarem o mesmo. Só leitura. */
 import { exibicaoValoresImovel } from "@/lib/calculo/valoresImovel";
-import { fmtMoney } from "@/lib/formatadores";
 import type { Imovel } from "@/lib/tipos";
 
 type ImovelComValores = Pick<Imovel, "finalidade" | "valorAluguel" | "valorVenda">;
@@ -13,12 +13,12 @@ type ImovelComValores = Pick<Imovel, "finalidade" | "valorAluguel" | "valorVenda
     venda), um por linha; "Locação e venda" mostra os dois. */
 export function ValoresImovelCompacto({ imovel }: { imovel: ImovelComValores }) {
   const { finalidade, valores } = exibicaoValoresImovel(imovel);
-  if (!finalidade) return <>{fmtMoney(valores[0].valor)}</>;
+  if (!finalidade) return <>{valores[0].texto}</>;
   return (
     <>
       {valores.map((v) => (
         <span key={v.tipo} className="valor-imovel-linha" data-valor={v.tipo}>
-          {v.rotulo} {fmtMoney(v.valor)}
+          {v.rotulo} {v.texto}
         </span>
       ))}
     </>
@@ -31,12 +31,12 @@ export function ValoresImovelCompacto({ imovel }: { imovel: ImovelComValores }) 
 export function linhasValoresDrawer(imovel: ImovelComValores): { label: string; value: string }[] {
   const { finalidade, rotuloFinalidade, valores } = exibicaoValoresImovel(imovel);
   const linhaFinalidade = { label: "Finalidade", value: rotuloFinalidade ?? "Não informado" };
-  if (!finalidade) return [linhaFinalidade, { label: "Valor", value: fmtMoney(valores[0].valor) }];
+  if (!finalidade) return [linhaFinalidade, { label: "Valor", value: valores[0].texto }];
   return [
     linhaFinalidade,
     ...valores.map((v) => ({
       label: v.tipo === "aluguel" ? "Valor do aluguel" : "Valor de venda",
-      value: fmtMoney(v.valor),
+      value: v.texto,
     })),
   ];
 }

@@ -2400,14 +2400,17 @@ tbody tr:last-child td{ border-bottom:none; }
    parecia pertencer à coluna errada. Fixar o que tem tamanho previsível —
    código, ap., bloco, telefone, aluguel, cadastro — e deixar a sobra para
    endereço e bairro, que é onde o texto varia. */
-.pipeline-list-card table{ table-layout: fixed; width:100%; min-width: 1180px; }
+.pipeline-list-card table{ table-layout: fixed; width:100%; min-width: 1466px; }
 .pipeline-list-card th, .pipeline-list-card td{ overflow:hidden; text-overflow:ellipsis; }
 /* O `min-width` acima com o `auto` do Endereço é o par que importa: as demais
-   somam ~940px, então o endereço fica com toda a sobra e nunca abaixo de
-   ~240px. Sem o min-width, numa janela estreita a soma das fixas engolia a
-   coluna inteira e o endereço saía com 86px — mais estreito que o Bairro,
-   sendo o texto mais longo da linha. Abaixo disso a tabela rola na
-   horizontal (`.table-scroll`), que é melhor que truncar o endereço. */
+   somam 1226px, então o endereço fica com toda a sobra e nunca abaixo de
+   240px (1226 + 240 = 1466). Sem o min-width, numa janela estreita a soma
+   das fixas engolia a coluna inteira e o endereço saía com 86px, mais
+   estreito que o Bairro, sendo o texto mais longo da linha. Abaixo disso a
+   tabela rola na horizontal (`.table-scroll`), que é melhor que truncar o
+   endereço. Ao mexer em qualquer largura abaixo, refazer a conta:
+   pipeline-colunas.test.ts falha se o endereço perder os 240px (já tinha
+   perdido: com 1180px e as colunas novas, sobravam 14px). */
 .pipeline-list-card th:nth-child(1),  .pipeline-list-card td:nth-child(1){ width: 38px; }   /* Seleção */
 .pipeline-list-card th:nth-child(2),  .pipeline-list-card td:nth-child(2){ width: 84px; }   /* Código */
 .pipeline-list-card th:nth-child(3),  .pipeline-list-card td:nth-child(3){ width: auto; }   /* Endereço */
@@ -2417,7 +2420,7 @@ tbody tr:last-child td{ border-bottom:none; }
 .pipeline-list-card th:nth-child(7),  .pipeline-list-card td:nth-child(7){ width: 96px; }   /* Tipo */
 .pipeline-list-card th:nth-child(8),  .pipeline-list-card td:nth-child(8){ width: 96px; }   /* Origem */
 .pipeline-list-card th:nth-child(9),  .pipeline-list-card td:nth-child(9){ width: 112px; }  /* Telefone */
-.pipeline-list-card th:nth-child(10), .pipeline-list-card td:nth-child(10){ width: 100px; } /* Aluguel */
+.pipeline-list-card th:nth-child(10), .pipeline-list-card td:nth-child(10){ width: 160px; } /* Valor */
 .pipeline-list-card th:nth-child(11), .pipeline-list-card td:nth-child(11){ width: 132px; } /* Status */
 .pipeline-list-card th:nth-child(12), .pipeline-list-card td:nth-child(12){ width: 92px; }  /* Cadastro */
 .pipeline-list-card th:nth-child(13), .pipeline-list-card td:nth-child(13){ width: 96px; }  /* Captador */
@@ -2938,8 +2941,12 @@ th.th-filter{ position:relative; }
 }
 .kanban-card-rent{ font-weight:700; color: var(--text); }
 /* Um valor por linha quando o imóvel tem finalidade (IV-3A): "Aluguel R$ X" e
-   "Venda R$ Y" no card do Kanban e na célula de valor da lista. */
-.valor-imovel-linha{ display:block; white-space:nowrap; }
+   "Venda R$ Y" no card do Kanban e na célula de valor da lista. A coluna da
+   lista tem 160px (136px de texto, tirado o padding) porque a linha mais
+   longa prevista, "Venda R$ 1.500.000,50", mede 129px em 13px Segoe UI.
+   Se algum valor ainda passar disso, a reticência avisa que há mais, em vez
+   de cortar o número calado (IV-3A.2). */
+.valor-imovel-linha{ display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .kanban-card-days{
   font-size:10.5px; font-weight:600; color: var(--text-faint);
   background: var(--bg-elev-3); padding:2px 7px; border-radius:20px;
