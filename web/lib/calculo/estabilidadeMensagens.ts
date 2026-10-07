@@ -1,6 +1,11 @@
 import type { ConversaImovel } from "./conversas";
 import type { Imovel } from "../tipos";
-import { fromDbImovel, toDbImovel, type DbImovelRow } from "../persistencia/mapeadores";
+import {
+  fromDbImovel,
+  preservarCamposSemEscritaGarantida,
+  toDbImovel,
+  type DbImovelRow,
+} from "../persistencia/mapeadores";
 
 export type LinhaParcialImovel = Partial<DbImovelRow> & Pick<DbImovelRow, "id">;
 
@@ -19,6 +24,11 @@ export function deveAplicarVersaoRealtime(ultima?: string, recebida?: string): b
  * Postgres Changes normalmente entrega a linha inteira, mas pode omitir
  * colunas grandes quando o payload excede o limite do serviço. Ausência de
  * coluna significa "não veio neste snapshot", não "apague o valor".
+ *
+ * A base do merge é a linha de ESCRITA do imóvel anterior, e ela não leva
+ * tudo: `vendido_em` e os dados da retirada nunca, `finalidade` e
+ * `valor_venda` só quando o imóvel tem o campo. Esses campos saem do payload
+ * quando vieram nele (inclusive null) e do imóvel anterior quando não vieram.
  */
 export function reconciliarImovelRealtime(
   anterior: Imovel,
@@ -26,7 +36,8 @@ export function reconciliarImovelRealtime(
   userId: string,
 ): Imovel {
   const base = toDbImovel(anterior, userId);
-  return fromDbImovel({ ...base, ...linha } as DbImovelRow);
+  const novo = fromDbImovel({ ...base, ...linha } as DbImovelRow);
+  return preservarCamposSemEscritaGarantida(novo, anterior, ({ coluna }) => Object.hasOwn(linha, coluna));
 }
 
 /** Um evento sem retrato anterior só é seguro quando traz os históricos que

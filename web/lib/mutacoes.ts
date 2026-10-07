@@ -52,7 +52,14 @@ import {
 import { useCelebracao } from "./celebracao";
 import { MAX_PROTOCOLO_CHARS } from "./calculo/ia";
 import { ehTipoProtocolo } from "./protocolos";
-import { toDbAbordagem, toDbAgenda, toDbAnuncioCentralVisualizado, toDbImovel, toDbProtocolo } from "./persistencia/mapeadores";
+import {
+  preservarCamposSemEscritaGarantida,
+  toDbAbordagem,
+  toDbAgenda,
+  toDbAnuncioCentralVisualizado,
+  toDbImovel,
+  toDbProtocolo,
+} from "./persistencia/mapeadores";
 import { sincronizarCompromisso } from "./googleAgenda";
 import { getSupabase } from "./persistencia/supabase";
 import { apagarProspeccaoDoUsuario } from "./prospeccao";
@@ -284,8 +291,17 @@ export async function salvarImovel(
   novaAgenda = await aplicarPlanoVerificacao(supabase, planoVerificacao, novaAgenda, userId);
   if (novaAgenda !== agenda) useAppStore.getState().setAgenda(novaAgenda);
 
+  // O store recebe o imóvel como o banco ficou, e não só o que o chamador
+  // montou. A rede acima repõe o que o upsert precisa mandar; esta vem DEPOIS
+  // da escrita e só mexe na memória: `finalidade`/`valorVenda` que o chamador
+  // não trouxe não foram gravados (o banco manteve os seus), e `vendidoEm` e
+  // os dados da retirada nunca são gravados por aqui. Fazer esta reposição
+  // antes do upsert transformaria "não sei" em escrita do valor da memória.
+  const salvo = existing
+    ? preservarCamposSemEscritaGarantida(data, existing, ({ campo, gravavel }) => gravavel && data[campo] !== undefined)
+    : data;
   const imoveisDepois = existing
-    ? imoveis.map((i) => (i.id === data.id ? data : i))
+    ? imoveis.map((i) => (i.id === data.id ? salvo : i))
     : [...imoveis, data];
   useAppStore.getState().setImoveis(imoveisDepois);
   toast(existing ? "Imóvel atualizado." : "Imóvel cadastrado com sucesso.");
@@ -294,7 +310,7 @@ export async function salvarImovel(
   // fechada. Vai DEPOIS da escrita e da atualização do estado: comemorar algo
   // que o Supabase recusou seria mentir para o corretor. As listas antes/depois
   // vão inteiras para o cálculo puro decidir se houve cruzamento.
-  const festa = celebracaoAoSalvar(existing, data, imoveis, imoveisDepois, metas, currentMonthKey());
+  const festa = celebracaoAoSalvar(existing, salvo, imoveis, imoveisDepois, metas, currentMonthKey());
   if (festa) useCelebracao.getState().comemorar(festa);
 
   return { ok: true, criado: !existing };

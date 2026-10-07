@@ -308,11 +308,13 @@ export interface Imovel {
   /** Observação da retirada; obrigatória quando o motivo é "outro". */
   retiradoObservacao?: string | null;
   /** Para que o imóvel está na carteira (`FINALIDADES_IMOVEL`); `null` = não
-      informado, o estado de todo imóvel anterior à coluna. Nesta etapa (IV-1)
-      só é lido: nenhuma tela o mostra ou edita, e o `toDbImovel` não o manda. */
+      informado, o estado de todo imóvel anterior à coluna. Ausente (sem a
+      chave) = não se sabe: o `toDbImovel` só grava a coluna quando o campo
+      vem, inclusive null, e nunca inventa `locacao`. */
   finalidade?: FinalidadeImovel | null;
   /** Preço pedido na venda; `null` = não informado, diferente de zero. Não se
-      confunde com `valorAluguel`. Só lido no IV-1, como `finalidade`. */
+      confunde com `valorAluguel`. Gravado pelo `toDbImovel` só quando o campo
+      vem, como `finalidade`. */
   valorVenda?: number | null;
   /** Dia civil (AAAA-MM-DD) em que o imóvel foi vendido; `null` = não vendido
       ou não se sabe. Nunca é escrito pelo `toDbImovel`, nem depois do IV-1:

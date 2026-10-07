@@ -3134,9 +3134,10 @@ Nenhuma tela usa esse caminho ainda (B3.4).
 
 O imóvel continua sendo um só na carteira e no Pipeline; venda e locação são uma **característica**
 dele, não um segundo Pipeline nem um imóvel duplicado. As decisões de produto estão fechadas (IV-0,
-lista em [docs/IMOVEL_VENDA_CONTRATO.md](docs/IMOVEL_VENDA_CONTRATO.md)). O IV-1 só prepara o banco
-e é **inerte**: nenhuma tela, rotina, integração ou métrica lê ou grava as colunas novas, e a
-interface ainda não tem nenhum campo de venda ou finalidade.
+lista em [docs/IMOVEL_VENDA_CONTRATO.md](docs/IMOVEL_VENDA_CONTRATO.md)). O IV-1 só preparou o
+banco e entrou **inerte**. O IV-2 (cadastro e edição) é o primeiro a usar as colunas: só o
+ModalImovel edita a finalidade e o valor de venda; Pipeline, Dashboard, Relatórios, Metas e os
+fluxos de locação ainda não leem esses campos (IV-3, IV-4, IV-6).
 
 **Estado.** O IV-1 está em Production desde 2026-10-06: código na main em `43d863e` (deploy
 `dpl_3LVGfqc3aS8K9TvkQYuLXZhdaYXq`) e migration `20261006200215_imoveis_finalidade_venda` aplicada
@@ -3163,24 +3164,40 @@ Sem backfill, índice, policy, trigger ou função: a RLS de dono de `imoveis` c
 publicação do Realtime (sem lista de colunas) já as transmite.
 
 **No app** (`FINALIDADES_IMOVEL` em `constantes.ts`, campos opcionais `finalidade`, `valorVenda`,
-`vendidoEm` no `Imovel`): o `fromDbImovel` lê as três (finalidade desconhecida vira `null`, nunca
-`locacao`), e o **`toDbImovel` não manda nenhuma delas**. O upsert do cadastro só grava as
-colunas listadas ali, então ficar de fora é o que as preserva; mandá-las faria o ModalImovel, que
-monta o imóvel campo a campo, gravar null por cima a cada edição. Regras para as próximas fatias:
+`vendidoEm` no `Imovel`), com a persistência do IV-2B e a tela do IV-2C. A regra é **ausente não
+é null**:
 
-- o **IV-2** é quem passa a editar `finalidade` e `valor_venda` no cadastro, e só pode
-  mandá-las com guarda de campo presente (como `estado`) mais a rede de `undefined` do
-  `salvarImovel`; também decide a herança no desdobramento e corrige o merge do Realtime
-  (`reconciliarImovelRealtime` reconstrói a base pelo `toDbImovel`, então um payload parcial
-  deixa a memória com null até recarregar, sem tocar o banco);
+- `fromDbImovel` só cria `finalidade` e `valorVenda` quando a coluna veio na linha, como `estado`
+  (finalidade desconhecida vira `null`, nunca `locacao`); `vendidoEm` segue lido como antes.
+- `toDbImovel` grava `finalidade` e `valor_venda` **só quando o imóvel traz o campo**: ausente (ou
+  `undefined`) fica fora do upsert e o banco mantém o que tem; null limpa; 0 é valor. Nenhum
+  default. O ModalImovel (IV-2C) manda os dois sempre, porque os edita; quem não os conhece não
+  os toca.
 - **`vendido_em` nunca passa pelo save genérico**, nem no IV-2: quem o grava é a ação própria de
   Vendido (IV-5), como a retirada faz com `retirado_*`.
+- `CAMPOS_IMOVEL_SEM_ESCRITA_GARANTIDA` (em `mapeadores.ts`) lista o que o `toDbImovel` não grava
+  sempre: `finalidade`, `valor_venda`, `vendido_em` e os dados da retirada. O
+  `reconciliarImovelRealtime` aplica o que veio no payload (inclusive null) e mantém o anterior no
+  que não veio; o `salvarImovel` faz o mesmo no store, **depois** do upsert, para que a memória
+  fique como o banco ficou sem transformar "não sei" em escrita. Sem isso, um payload parcial
+  deixava null na memória e o próximo arrasto no Pipeline o gravaria. Para os dados da retirada é
+  só preservação de estado; as regras de Retirados não mudam.
+- Desdobramento: a unidade herda a `finalidade` do principal e nasce com `valorVenda` null (o valor
+  do principal é o preço do todo). Pré-cadastro e importação não trazem o campo e gravam null;
+  a importação continua lendo a coluna "valor"/"preco" como aluguel (dívida registrada).
 
-**Próximas fatias** (nenhuma iniciada):
+**Próximas fatias:**
 
-- **IV-2, cadastro e edição:** editar `finalidade` e `valor_venda`, preservar os dois com
-  segurança no save, tratar os imóveis antigos com `null`, desdobramento, importação e
-  pré-cadastro, e o Realtime parcial.
+- **IV-2, cadastro e edição:** persistência (IV-2B) e tela (IV-2C) implementadas localmente. No
+  ModalImovel, o campo Finalidade (Locação, Venda, Locação e venda) fica no fieldset "Dados do
+  imóvel", antes dos valores. É obrigatório só ao criar (cadastro manual e promoção do Garimpo,
+  aviso "Informe a finalidade do imóvel."); num cadastro novo nasce vazio, sem presumir locação.
+  Imóvel existente sem finalidade (a carteira inteira, e a confirmação de pré-cadastro) aparece
+  como "Não informado", mostra o aluguel como sempre e salva null se ninguém escolher; depois de
+  classificado, "Não informado" some. Locação mostra o aluguel e o valor em caso de atraso, Venda o
+  valor de venda, Locação e venda os três; o condomínio aparece sempre. Esconder um campo não apaga
+  o valor, que continua salvo. Valor de venda vazio é
+  null e 0 é 0; o aluguel mantém o `|| 0` histórico. `vendidoEm` não aparece nem é mandado.
 - **IV-3, Pipeline:** filtro por finalidade, selo, valor certo para cada lado e visualização de
   locação, venda e ambos.
 - **IV-4, guardas de finalidade nos fluxos existentes:** cada fluxo que hoje supõe locação passa a

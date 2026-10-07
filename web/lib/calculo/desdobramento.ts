@@ -118,6 +118,15 @@ export function unidadeDesdobrada(
     tipo: spec.tipo,
     valorAluguel: spec.valorAluguel,
     valorCondominio: spec.valorCondominio,
+    // Valor de venda NÃO vem do principal: o dele é o preço do todo, e
+    // copiá-lo para cada unidade multiplicaria o valor da carteira. Nasce não
+    // informado, como o aluguel, que também é da unidade.
+    valorVenda: null,
+
+    // Herdada: a unidade foi captada para o mesmo fim que o principal. Sem o
+    // campo no principal, a unidade também fica sem ele (o banco grava null);
+    // nunca um `locacao` inventado.
+    ...(principal.finalidade !== undefined ? { finalidade: principal.finalidade } : {}),
 
     // Herdado: é literalmente o mesmo lugar e o mesmo proprietário.
     cep: principal.cep ?? "",

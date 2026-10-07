@@ -1,8 +1,10 @@
 # Imóvel de venda no Pipeline: contrato
 
 Estado: IV-0 (decisões de produto) fechado. IV-1 (schema inerte, tipos e mapeadores) **concluído em
-Production** em 2026-10-06; detalhes em "IV-1 em Production" abaixo. A interface ainda não tem
-nenhum campo de venda ou finalidade. IV-2 a IV-6 não foram iniciados.
+Production** em 2026-10-06; detalhes em "IV-1 em Production" abaixo. IV-2B (persistência, Realtime
+e desdobramento) e IV-2C (tela de cadastro e edição) implementados localmente, sem commit; ver
+"IV-2B" e "IV-2C" abaixo. Em Production a interface ainda não tem nenhum campo de venda ou
+finalidade. IV-3 a IV-6 não foram iniciados.
 
 ## Decisões fechadas (IV-0)
 
@@ -49,27 +51,88 @@ continua o mesmo), e a ordem das migrations aceita só o IV-1 depois do B3.2.
 - `DbImovelRow`: `finalidade?`, `valor_venda?`, `vendido_em?` (opcionais, como `retirado_*`).
 - `fromDbImovel`: finalidade fora da lista vira `null` (nunca `locacao`); `valor_venda` null
   fica null e número não finito vira null; `vendido_em` vazio vira null.
-- **`toDbImovel` não manda as três colunas**, de propósito. O upsert grava só as colunas listadas;
-  ficar de fora é o que as preserva quando o ModalImovel, o pré-cadastro, a importação ou o
-  desdobramento gravam a linha, para nenhum save genérico apagar ou sobrescrever campos que ainda
-  não têm tela própria.
+- **`toDbImovel` não mandava as três colunas** no IV-1, de propósito. O upsert grava só as colunas
+  listadas; ficar de fora é o que as preservava quando o ModalImovel, o pré-cadastro, a importação
+  ou o desdobramento gravam a linha. O IV-2B trocou essa regra pela de "ausente não é null"
+  (abaixo).
+
+## IV-2B: persistência (local)
+
+Regra: **chave ausente** (ou `undefined`) = não altera a coluna; **chave presente com null** =
+limpa; **chave presente com valor** = grava (0 é valor). Nunca `ausente → null`.
+
+- `fromDbImovel` só cria `finalidade` e `valorVenda` quando a coluna veio na linha (D1), como
+  `estado`. Uma linha parcial, ou anterior à migration, não ganha um null que o próximo save
+  gravaria. `vendidoEm` segue como no IV-1.
+- `toDbImovel` manda `finalidade` e `valor_venda` só quando o imóvel traz o campo, sem default
+  (`locacao`, `|| 0`). `vendido_em` e os dados da retirada continuam fora.
+- `CAMPOS_IMOVEL_SEM_ESCRITA_GARANTIDA` e `preservarCamposSemEscritaGarantida` (em
+  `mapeadores.ts`, depois do `fromDbImovel`) listam e preservam o que o `toDbImovel` não grava
+  sempre: `finalidade`, `valor_venda`, `vendido_em`, `retirado_em`, `retirado_motivo`,
+  `retirado_observacao`. O `toDbImovel` continua mapper de escrita, não serialização completa.
+- `reconciliarImovelRealtime`: o que veio no payload vale (inclusive null); o que não veio fica
+  como estava. Fecha o cenário "banco = venda, memória = null por payload parcial, próximo
+  arrasto grava null".
+- `salvarImovel`: o upsert recebe só o que o chamador trouxe; **depois** da escrita, o objeto do
+  store completa com o anterior o que não foi gravado (`finalidade`/`valorVenda` ausentes;
+  `vendidoEm` e os dados da retirada sempre). Feito antes do upsert, transformaria "não sei" em
+  escrita do valor da memória.
+- Dados da retirada (D3): só preservação de estado no Realtime e no store; antes, editar um imóvel
+  retirado pelo formulário deixava a memória sem data, motivo e observação até o eco do Realtime
+  ou um recarregamento. Regras, tela, motivos, reativação e API de Retirados não mudam.
+- Arrastar no Pipeline (`{...imovel, status}`) reenvia `finalidade` e `valor_venda` com o valor
+  real do store.
+- Desdobramento (D2): a unidade herda a `finalidade` do principal (sem o campo no principal, fica
+  sem; nunca `locacao` inventado) e nasce com `valorVenda` null.
+- Pré-cadastro e importação não trazem o campo e gravam null. A importação continua lendo a
+  coluna "valor"/"preco" como aluguel: numa planilha de venda, o preço iria para o aluguel
+  (dívida registrada, fora do IV-2).
+- Pins: `tipos.ts` e `mapeadores.ts` mudaram, e os pins do `prospeccao-fronteira.test.ts`
+  mudam junto.
+
+Provas: `web/tests/imovel-venda-iv2b-persistencia.test.ts` (A a V, com mock do Supabase e as
+mutações reais) e `web/integration/imovel-venda-iv2b-supabase-local.test.ts` (opt-in, mesma stack
+local isolada do IV-1, porque não há migration nova).
+
+## IV-2C: tela de cadastro e edição (local)
+
+Só o `ModalImovel`. Pipeline, ModalDesdobrar, importação, pré-cadastro e fluxos de locação não
+mudam.
+
+- Campo **Finalidade** no fieldset "Dados do imóvel", antes dos valores: Locação, Venda, Locação e
+  venda (`locacao`, `venda`, `locacao_venda`).
+- **Criação** (cadastro manual e promoção do Garimpo, `!imovel`): nasce vazia ("Selecione a
+  finalidade"), sem presumir locação nem inferir pela origem ou pelo anúncio; salvar sem escolher
+  mostra "Informe a finalidade do imóvel." e não grava (D4).
+- **Imóvel existente null** (toda a carteira em 2026-10-06, e a confirmação de pré-cadastro, que é
+  edição): aparece "Não informado", o aluguel continua visível como antes (compatibilidade visual,
+  não classificação), e salvar sem escolher grava null sem bloquear.
+- **Imóvel classificado**: "Não informado" não é oferecido (D5).
+- **Valores**: Locação mostra o aluguel e o valor em caso de atraso; Venda, o valor de venda;
+  Locação e venda, os três; o imóvel antigo sem finalidade, o aluguel e o atraso, como antes. O
+  condomínio aparece sempre (vale também para venda). Trocar a finalidade só esconde: o
+  valor fica no estado, é salvo de novo e reaparece ao voltar; uma dica curta avisa que ele
+  continua guardado.
+- **Gravação**: o formulário manda sempre `finalidade` (vazio vira null) e `valorVenda`
+  (`numOrNull`, sem `|| 0`: vazio é null, 0 é 0, decimal preservado). O aluguel mantém
+  `numOrNull(...) || 0`. `vendidoEm` não é campo nem é mandado.
+
+Provas: `web/tests/imovel-venda-iv2c-modal.test.ts` (jsdom, o modal real com sessão, router, mapa,
+autocomplete, linha do tempo e `salvarImovel` trocados). O teste de ponta a ponta da promoção do
+Garimpo (`prospeccao-promocao.test.ts`) passou a escolher a finalidade antes de cadastrar e
+confirma que ela nasce vazia mesmo com "aluga-se" na observação.
 
 ## Regras para as próximas fatias
 
-- **IV-2** (cadastro): passa a editar `finalidade` e `valor_venda`; só pode mandá-las no
-  `toDbImovel` com guarda de campo presente (padrão `estado`) e a rede de `undefined` do
-  `salvarImovel`. Decide a herança no desdobramento. Corrige `reconciliarImovelRealtime`, que
-  reconstrói a base pelo `toDbImovel`: hoje um payload parcial do Realtime deixa as três em null
-  na memória até recarregar (o banco não é tocado).
 - **`vendido_em` nunca passa pelo save genérico**, nem no IV-2.
 - **IV-5** (Vendido): status "Vendido", marco no `status_history` e `vendido_em`, gravados só pela
   ação humana explícita de Vendido, nunca derivados de oportunidade ganha em Vendas.
 
-## Roteiro (nenhuma fatia iniciada)
+## Roteiro
 
 | Fatia | Escopo |
 | --- | --- |
-| IV-2, cadastro e edição | editar `finalidade` e `valor_venda`; preservação segura no save; imóveis antigos com `null`; desdobramento; importação e pré-cadastro; Realtime parcial |
+| IV-2, cadastro e edição | persistência, Realtime e desdobramento no IV-2B; tela no IV-2C (os dois locais) |
 | IV-3, Pipeline | filtro por finalidade, selo, valor certo para cada lado, visualização de locação, venda e ambos |
 | IV-4, guardas de finalidade nos fluxos existentes | cada fluxo que hoje supõe locação passa a respeitar a finalidade; integrações externas (como a Sophia) seguem as regras do Angario |
 | IV-5, Vendido | status Vendido, `status_history`, `vendido_em`, só por ação humana explícita |

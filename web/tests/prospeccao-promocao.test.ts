@@ -299,6 +299,15 @@ function seletorTipo(): HTMLSelectElement {
   const rotulo = [...document.querySelectorAll("label")].find((l) => l.textContent === "Tipo do imóvel")!;
   return rotulo.parentElement!.querySelector("select")!;
 }
+/** O `<select>` de "Finalidade" (IV-2C): obrigatória ao criar, inclusive na promoção, e
+    escolhida pelo humano; o Garimpo não a infere. */
+function seletorFinalidade(): HTMLSelectElement {
+  const rotulo = [...document.querySelectorAll("label")].find((l) => l.textContent === "Finalidade")!;
+  return rotulo.parentElement!.querySelector("select")!;
+}
+function escolherFinalidade(valor = "locacao") {
+  fireEvent.change(seletorFinalidade(), { target: { value: valor } });
+}
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -388,6 +397,9 @@ describe("promoção positiva — clique humano, ModalImovel existente, vínculo
     const rotuloNome = [...document.querySelectorAll("label")].find((l) => l.textContent === "Nome do proprietário")!;
     const nome = rotuloNome.parentElement!.querySelector("input")!;
     fireEvent.change(nome, { target: { value: "Maria Silva" } });
+    // A finalidade nasce vazia, mesmo com "aluga-se" na observação: quem escolhe é o humano.
+    expect(seletorFinalidade().value).toBe("");
+    escolherFinalidade("locacao");
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Cadastrar imóvel" }));
@@ -409,6 +421,8 @@ describe("promoção positiva — clique humano, ModalImovel existente, vínculo
       observacoes: "Placa de aluga-se na janela. Casa fechada.",
       proprietario_nome: "Maria Silva",
       pre_cadastro: false,
+      finalidade: "locacao",
+      valor_venda: null,
     });
     // A data em que foi visto pertence ao Garimpo: nunca vira data de angariação.
     expect(criado.data_angariacao).not.toBe("2026-09-01");
@@ -451,6 +465,8 @@ describe("promoção positiva — clique humano, ModalImovel existente, vínculo
     expect(seletor.value).toBe("");
     expect(seletor.selectedOptions[0]?.textContent).toBe("Selecione o tipo");
     expect(seletor.selectedOptions[0]?.textContent).not.toBe("Apartamento");
+    // Finalidade escolhida antes: o bloqueio abaixo é o do tipo, que é verificado primeiro.
+    escolherFinalidade();
 
     // Sem escolha humana, o cadastro não conclui: nada no Pipeline, nada vinculado.
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Cadastrar imóvel" })); });
@@ -694,6 +710,7 @@ describe("falha parcial — nunca uma segunda oportunidade", () => {
     await carregarTela();
     fireEvent.click(screen.getByRole("button", { name: ROTULO_TRANSFORMAR }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Cadastrar imóvel" })).toBeTruthy());
+    escolherFinalidade();
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Cadastrar imóvel" }));
     });

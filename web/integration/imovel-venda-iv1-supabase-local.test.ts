@@ -110,13 +110,13 @@ describe("IV-1 local: o save genérico não apaga as colunas novas", () => {
     expect(owner(`select observacoes from public.imoveis where id='${novo.id}';`)).toBe("editado pelo formulário");
     expect(colunasNovas(novo.id)).toBe("venda|350000.5|2026-10-01");
 
-    // 2) objeto com as colunas presentes mas trocadas na memória: o toDbImovel não as manda.
+    // 2) objeto com as colunas presentes e trocadas. Desde o IV-2B o toDbImovel grava `finalidade`
+    //    e `valor_venda` quando o imóvel traz o campo; `vendido_em` continua fora do save genérico.
     const trocado: Imovel = { ...(await lerImovel(A.c, novo.id)), finalidade: "locacao", valorVenda: 1, vendidoEm: null, observacoes: "segunda edição" };
     useAppStore.setState({ imoveis: [trocado] });
     expect(await salvarImovel(trocado, A.usuario, false)).toEqual({ ok: true, criado: false });
     expect(owner(`select observacoes from public.imoveis where id='${novo.id}';`)).toBe("segunda edição");
-    expect(colunasNovas(novo.id)).toBe("venda|350000.5|2026-10-01");
-    expect(owner(`select valor_venda::text from public.imoveis where id='${novo.id}';`)).toBe("350000.5");
+    expect(colunasNovas(novo.id)).toBe("locacao|1|2026-10-01");
   });
 
   it("os checks valem pelo PostgREST: recusa com 23514, aceita null/zero/a lista", async () => {
@@ -170,7 +170,7 @@ describe("IV-1 local: importação, pré-cadastro e desdobramento seguem iguais 
     expect(colunasNovas(pre.id)).toBe("∅|∅|∅");
   });
 
-  it("desdobramento real: unidades nascem null (sem herança no IV-1) e o principal mantém as suas", async () => {
+  it("desdobramento real: unidades herdam a finalidade (IV-2B), nascem sem valor de venda, e o principal mantém as suas", async () => {
     banco.cliente = A.c;
     const principal = imovelDeFormulario({ status: "Angariado", statusHistory: [{ status: "Angariado", date: "2026-10-01", userId: A.usuario, source: "usuario" }] });
     useAppStore.setState({ imoveis: [] });
@@ -182,7 +182,7 @@ describe("IV-1 local: importação, pré-cadastro e desdobramento seguem iguais 
       { unidade: "Sala 2", tipo: "Sala", codigo: "IV1-S2-" + randomUUID().slice(0, 4), valorAluguel: 900, valorCondominio: 0 },
     ], A.usuario);
     expect(ok).toBe(true);
-    expect(owner(`select count(*)||':'||string_agg(distinct coalesce(finalidade,'∅')||'|'||coalesce(valor_venda::text,'∅')||'|'||coalesce(vendido_em::text,'∅'), ',') from public.imoveis where imovel_principal_id='${principal.id}';`)).toBe("2:∅|∅|∅");
+    expect(owner(`select count(*)||':'||string_agg(distinct coalesce(finalidade,'∅')||'|'||coalesce(valor_venda::text,'∅')||'|'||coalesce(vendido_em::text,'∅'), ',') from public.imoveis where imovel_principal_id='${principal.id}';`)).toBe("2:venda|∅|∅");
     expect(colunasNovas(principal.id)).toBe("venda|900000|∅");
   });
 });
@@ -208,7 +208,8 @@ describe("IV-1 local: Realtime", () => {
     const antes = owner(`select xmin::text from public.imoveis where id='${im.id}';`);
     const reconciliado = reconciliarImovelRealtime(anterior, publicada, A.usuario);
     expect([reconciliado.finalidade, reconciliado.valorVenda, reconciliado.vendidoEm]).toEqual(["locacao_venda", 123.45, null]);
-    for (const coluna of ["finalidade", "valor_venda", "vendido_em"]) expect(toDbImovel(reconciliado, A.usuario)).not.toHaveProperty(coluna);
+    // Desde o IV-2B o toDbImovel leva `finalidade`/`valor_venda` presentes; `vendido_em`, nunca.
+    expect(toDbImovel(reconciliado, A.usuario)).not.toHaveProperty("vendido_em");
     expect(owner(`select xmin::text from public.imoveis where id='${im.id}';`)).toBe(antes);
   });
 });

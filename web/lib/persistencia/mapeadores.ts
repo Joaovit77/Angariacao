@@ -74,10 +74,10 @@ export interface DbImovelRow {
   retirado_em?: string | null;
   retirado_motivo?: string | null;
   retirado_observacao?: string | null;
-  /** Opcionais pelo mesmo motivo dos da retirada: no IV-1 o `toDbImovel` não
-      os manda (o ModalImovel monta o imóvel campo a campo e o upsert gravaria
-      null por cima), e `vendido_em` nunca será mandado por ele. Ausentes numa
-      linha anterior à migration 20261006200215 ou num select parcial. */
+  /** Opcionais: ausentes numa linha anterior à migration 20261006200215, num
+      select parcial ou num payload parcial do Realtime. O `toDbImovel` manda
+      `finalidade` e `valor_venda` só quando o imóvel traz o campo (IV-2), e
+      `vendido_em` nunca: quem o grava é a ação própria de Vendido (IV-5). */
   finalidade?: string | null;
   valor_venda?: number | string | null;
   vendido_em?: string | null;
@@ -250,12 +250,16 @@ export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "create
     // Vínculo de unidade desdobrada. `|| null` e não `?? null`: string vazia
     // aqui viraria uma FK inválida, e o Postgres recusaria a linha inteira.
     imovel_principal_id: i.imovelPrincipalId || null,
-    // `finalidade`, `valor_venda` e `vendido_em` ficam de fora de propósito
-    // (IV-1, schema inerte): o save genérico ainda não edita esses campos, e o
-    // upsert só grava as colunas listadas aqui, então não mandá-las é o que as
-    // preserva. Mandá-las agora faria o ModalImovel, que monta o imóvel campo a
-    // campo, gravar null por cima a cada edição. `vendido_em` não entra aqui
-    // nem depois: quem o grava é a ação própria de Vendido (IV-5).
+    // `finalidade` e `valor_venda` (IV-2) só quando o imóvel traz o campo. O
+    // upsert grava apenas as colunas listadas aqui: campo ausente (ou
+    // `undefined`) fica fora, e o banco mantém o que tem. Presente, vai como
+    // está, inclusive null (o usuário limpou) e 0 (valor de verdade). Nenhum
+    // default: um `locacao` inventado classificaria a carteira, e `|| 0`
+    // apagaria a diferença entre "não informado" e zero.
+    ...(i.finalidade !== undefined ? { finalidade: i.finalidade } : {}),
+    ...(i.valorVenda !== undefined ? { valor_venda: i.valorVenda } : {}),
+    // `vendido_em` nunca entra aqui: quem o grava é a ação própria de Vendido
+    // (IV-5). Os dados da retirada também não: só a retirada os escreve.
   };
 }
 
@@ -341,13 +345,53 @@ export function fromDbImovel(r: DbImovelRow): Imovel {
     retiradoEm: r.retirado_em || null,
     retiradoMotivo: motivoRetiradaDoBanco(r.retirado_motivo),
     retiradoObservacao: r.retirado_observacao || null,
-    finalidade: finalidadeDoBanco(r.finalidade),
-    valorVenda: valorVendaDoBanco(r.valor_venda),
+    // Só cria a chave quando a coluna veio na linha, como `estado`: o
+    // `toDbImovel` grava `finalidade` e `valor_venda` sempre que o imóvel traz
+    // o campo, então uma linha parcial (ou anterior à migration) que virasse
+    // null aqui apagaria o valor real no próximo save.
+    ...("finalidade" in r ? { finalidade: finalidadeDoBanco(r.finalidade) } : {}),
+    ...("valor_venda" in r ? { valorVenda: valorVendaDoBanco(r.valor_venda) } : {}),
     vendidoEm: r.vendido_em || null,
     // null, nunca "": o resto do app testa este campo por verdade/falsidade
     // para decidir se o imóvel é uma unidade desdobrada.
     imovelPrincipalId: r.imovel_principal_id || null,
   };
+}
+
+/** Campos do imóvel que o `toDbImovel` não grava sempre: `finalidade` e
+    `valor_venda` só quando o imóvel traz o campo (`gravavel`); `vendido_em` e
+    os dados da retirada nunca. Quem conhece só parte do imóvel (um payload
+    parcial do Realtime, um chamador do `salvarImovel` que não monta o campo)
+    precisa manter o valor anterior deles, porque nem a linha de escrita nem o
+    upsert os trazem de volta. Sem isso a memória ficaria com null, e o
+    próximo save gravaria esse null no banco. */
+export const CAMPOS_IMOVEL_SEM_ESCRITA_GARANTIDA = [
+  { coluna: "finalidade", campo: "finalidade", gravavel: true },
+  { coluna: "valor_venda", campo: "valorVenda", gravavel: true },
+  { coluna: "vendido_em", campo: "vendidoEm", gravavel: false },
+  { coluna: "retirado_em", campo: "retiradoEm", gravavel: false },
+  { coluna: "retirado_motivo", campo: "retiradoMotivo", gravavel: false },
+  { coluna: "retirado_observacao", campo: "retiradoObservacao", gravavel: false },
+] as const satisfies readonly { coluna: keyof DbImovelRow; campo: keyof Imovel; gravavel: boolean }[];
+
+export type CampoImovelSemEscritaGarantida = (typeof CAMPOS_IMOVEL_SEM_ESCRITA_GARANTIDA)[number];
+
+/** `destino` com o valor de `anterior` em cada campo de
+    `CAMPOS_IMOVEL_SEM_ESCRITA_GARANTIDA` que não `veio`; os que vieram ficam
+    como estão, inclusive null. Campo que o anterior também não tinha fica
+    ausente, nunca null inventado. Não grava nada. */
+export function preservarCamposSemEscritaGarantida(
+  destino: Imovel,
+  anterior: Imovel,
+  veio: (campo: CampoImovelSemEscritaGarantida) => boolean,
+): Imovel {
+  const saida: Record<string, unknown> = { ...destino };
+  for (const c of CAMPOS_IMOVEL_SEM_ESCRITA_GARANTIDA) {
+    if (veio(c)) continue;
+    if (anterior[c.campo] === undefined) delete saida[c.campo];
+    else saida[c.campo] = anterior[c.campo];
+  }
+  return saida as unknown as Imovel;
 }
 
 export function toDbAbordagem(a: Abordagem, userId: string): Omit<DbAbordagemRow, "created_at"> {

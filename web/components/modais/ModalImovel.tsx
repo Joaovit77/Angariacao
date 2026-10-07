@@ -20,11 +20,13 @@ import EnderecoAutocompleteViaCep, {
 } from "@/components/formularios/EnderecoAutocompleteViaCep";
 import TimelineImovel from "@/components/modais/TimelineImovel";
 import {
+  FINALIDADES_IMOVEL,
   FORMAS_ABORDAGEM,
   MOTIVOS_PERDA,
   STATUS_ALL,
   STATUS_TERMINAL_NEGATIVE,
   TIPOS_IMOVEL,
+  type FinalidadeImovel,
 } from "@/lib/constantes";
 import { sugerirCodigoImovel } from "@/lib/codigoImovel";
 import { todayISO } from "@/lib/datas";
@@ -54,6 +56,12 @@ import type { Imovel, StatusHistoryEntry } from "@/lib/tipos";
 const MiniMapa = dynamic(() => import("./MiniMapa"), { ssr: false });
 
 const TERMINAIS: readonly string[] = STATUS_TERMINAL_NEGATIVE;
+
+const ROTULO_FINALIDADE: Record<FinalidadeImovel, string> = {
+  locacao: "Locação",
+  venda: "Venda",
+  locacao_venda: "Locação e venda",
+};
 
 /** Um status sem pausa: saídas laterais e Locado não têm follow-up a pausar. */
 const semPausa = (status: string) => TERMINAIS.includes(status) || status === "Locado";
@@ -130,7 +138,15 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
   const [quartos, setQuartos] = useState(imovel?.quartos != null ? String(imovel.quartos) : "");
   const [banheiros, setBanheiros] = useState(imovel?.banheiros != null ? String(imovel.banheiros) : "");
   const [vagas, setVagas] = useState(imovel?.vagas != null ? String(imovel.vagas) : "");
+  // Finalidade (IV-2): nasce VAZIA num cadastro novo, sem chutar locação, e
+  // o humano escolhe antes de salvar. Num imóvel existente vem a gravada;
+  // `null` (todo imóvel anterior à coluna) aparece como "Não informado" e
+  // pode ser classificado, mas um imóvel já classificado não volta a ele.
+  const finalidadeGravada = imovel?.finalidade ?? null;
+  const [finalidade, setFinalidade] = useState<FinalidadeImovel | "">(finalidadeGravada ?? "");
   const [valorAluguel, setValorAluguel] = useState(imovel?.valorAluguel != null ? String(imovel.valorAluguel) : "");
+  // Sem `|| 0`: em branco é "não informado", diferente de R$ 0,00.
+  const [valorVenda, setValorVenda] = useState(imovel?.valorVenda != null ? String(imovel.valorVenda) : "");
   const [valorCondominio, setValorCondominio] = useState(
     imovel?.valorCondominio != null ? String(imovel.valorCondominio) : "",
   );
@@ -217,6 +233,18 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
     imoveis,
     imovel ? imovel.id : null,
   );
+
+  // Valores por finalidade, derivados a cada render. Um imóvel existente ainda
+  // sem finalidade mostra o aluguel como sempre mostrou (compatibilidade com a
+  // carteira inteira, que é null), sem que isso o classifique como locação. Um
+  // cadastro novo sem escolha não mostra nenhum dos dois. Esconder um campo
+  // não muda o estado: o valor continua guardado e volta a ser salvo.
+  const mostraAluguel =
+    finalidade === "locacao" || finalidade === "locacao_venda" || (!!imovel && finalidade === "");
+  const mostraVenda = finalidade === "venda" || finalidade === "locacao_venda";
+  const aluguelGuardado = !mostraAluguel && (numOrNull(valorAluguel) || 0) > 0;
+  const atrasoGuardado = !mostraAluguel && numOrNull(valorAluguelAtraso) != null;
+  const vendaGuardada = !mostraVenda && numOrNull(valorVenda) != null;
 
   // Desdobramento: este imóvel é uma unidade de outro, ou tem unidades próprias?
   const principalDeste = imovel?.imovelPrincipalId
@@ -381,6 +409,12 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
       toast("Informe o tipo do imóvel.", "error");
       return;
     }
+    // Obrigatória só ao criar (cadastro manual e promoção do Garimpo). Editar,
+    // inclusive confirmar um pré-cadastro, aceita o imóvel ainda sem finalidade.
+    if (!imovel && !finalidade) {
+      toast("Informe a finalidade do imóvel.", "error");
+      return;
+    }
 
     // Impede código de imóvel repetido (comparação sem diferenciar
     // maiúsculas/minúsculas). Código é opcional: em branco não bloqueia.
@@ -439,7 +473,13 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
       quartos: numOrNull(quartos),
       banheiros: numOrNull(banheiros),
       vagas: numOrNull(vagas),
+      // Este formulário edita a finalidade e o valor de venda, então manda os
+      // dois sempre (o `toDbImovel` grava o campo presente). "Não informado"
+      // é null; o valor escondido pela finalidade vai como está, nunca apagado.
+      finalidade: finalidade || null,
       valorAluguel: numOrNull(valorAluguel) || 0,
+      // Sem `|| 0`: em branco é null, e 0 digitado é 0.
+      valorVenda: numOrNull(valorVenda),
       valorCondominio: numOrNull(valorCondominio) || 0,
       // Sem `|| 0`: campo em branco é "não informado", e a solicitação de
       // angariação precisa distinguir isso de "cobra zero no atraso".
@@ -730,28 +770,65 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
               <input type="number" min="0" value={vagas} onChange={(e) => setVagas(e.target.value)} />
             </div>
           </div>
-          <div className="field-row">
-            <div className="field-group">
-              <label>Valor do aluguel (R$)</label>
-              <input type="number" min="0" step="0.01" value={valorAluguel} onChange={(e) => setValorAluguel(e.target.value)} />
-              <div className="field-hint">O que o proprietário quer receber — é este que vai ao anúncio.</div>
-            </div>
+          <div className="field-group">
+            <label>Finalidade</label>
+            <select
+              value={finalidade}
+              onChange={(e) => setFinalidade(e.target.value as FinalidadeImovel | "")}
+              data-campo="finalidade"
+            >
+              {!imovel && <option value="" disabled>Selecione a finalidade</option>}
+              {imovel && !finalidadeGravada && <option value="">Não informado</option>}
+              {FINALIDADES_IMOVEL.map((f) => (
+                <option key={f} value={f}>
+                  {ROTULO_FINALIDADE[f]}
+                </option>
+              ))}
+            </select>
+            {(aluguelGuardado || atrasoGuardado || vendaGuardada) && (
+              <div className="field-hint" data-valor-guardado>
+                {aluguelGuardado && `O valor do aluguel (${fmtMoney(numOrNull(valorAluguel))}) continua guardado. `}
+                {atrasoGuardado && `O valor em caso de atraso (${fmtMoney(numOrNull(valorAluguelAtraso))}) continua guardado. `}
+                {vendaGuardada && `O valor de venda (${fmtMoney(numOrNull(valorVenda))}) continua guardado. `}
+                Nada é apagado ao trocar a finalidade.
+              </div>
+            )}
+          </div>
+          <div className={mostraAluguel && mostraVenda ? "field-row-3" : "field-row"}>
+            {mostraAluguel && (
+              <div className="field-group">
+                <label>Valor do aluguel (R$)</label>
+                <input type="number" min="0" step="0.01" value={valorAluguel} onChange={(e) => setValorAluguel(e.target.value)} data-campo="valor-aluguel" />
+                <div className="field-hint">O que o proprietário quer receber — é este que vai ao anúncio.</div>
+              </div>
+            )}
+            {mostraVenda && (
+              <div className="field-group">
+                <label>Valor de venda (R$)</label>
+                <input type="number" min="0" step="0.01" value={valorVenda} onChange={(e) => setValorVenda(e.target.value)} data-campo="valor-venda" />
+                <div className="field-hint">O preço pedido na venda. Em branco é não informado.</div>
+              </div>
+            )}
             <div className="field-group">
               <label>Valor do condomínio (R$)</label>
-              <input type="number" min="0" step="0.01" value={valorCondominio} onChange={(e) => setValorCondominio(e.target.value)} />
+              <input type="number" min="0" step="0.01" value={valorCondominio} onChange={(e) => setValorCondominio(e.target.value)} data-campo="valor-condominio" />
             </div>
           </div>
-          <div className="field-group">
-            <label>Valor em caso de atraso (R$)</label>
-            <input type="number" min="0" step="0.01" value={valorAluguelAtraso} onChange={(e) => setValorAluguelAtraso(e.target.value)} />
-            {/* Existe porque é a base da SOLICITAÇÃO de angariação, não do
-                anúncio. Deixar em branco não quebra nada: a solicitação cai
-                no valor do aluguel. */}
-            <div className="field-hint">
-              Aluguel mais o acréscimo da campanha. É sobre ele que a solicitação de angariação
-              calcula a comissão. Em branco, ela usa o valor do aluguel.
+          {/* O atraso é do aluguel: aparece junto com ele (inclusive no imóvel
+              antigo sem finalidade) e some numa venda pura, sem perder o valor. */}
+          {mostraAluguel && (
+            <div className="field-group">
+              <label>Valor em caso de atraso (R$)</label>
+              <input type="number" min="0" step="0.01" value={valorAluguelAtraso} onChange={(e) => setValorAluguelAtraso(e.target.value)} data-campo="valor-atraso" />
+              {/* Existe porque é a base da SOLICITAÇÃO de angariação, não do
+                  anúncio. Deixar em branco não quebra nada: a solicitação cai
+                  no valor do aluguel. */}
+              <div className="field-hint">
+                Aluguel mais o acréscimo da campanha. É sobre ele que a solicitação de angariação
+                calcula a comissão. Em branco, ela usa o valor do aluguel.
+              </div>
             </div>
-          </div>
+          )}
           <div className="field-group">
             <label>Onde encontrou o imóvel</label>
             <select value={origemImovel ?? ""} onChange={(e) => setOrigemImovel(e.target.value)}>
