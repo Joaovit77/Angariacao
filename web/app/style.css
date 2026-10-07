@@ -2426,6 +2426,28 @@ tbody tr:last-child td{ border-bottom:none; }
 .pipeline-list-card th:nth-child(13), .pipeline-list-card td:nth-child(13){ width: 96px; }  /* Captador */
 .pipeline-list-card th:nth-child(14), .pipeline-list-card td:nth-child(14){ width: 78px; }  /* ações */
 
+/* Só as ações ficam fixas no desktop; os dados continuam rolando no card.
+   O fundo opaco impede que as colunas passem por baixo dos controles. */
+@media screen and (min-width: 721px){
+  .pipeline-list-card th:last-child,
+  .pipeline-list-card td:last-child{
+    position:sticky;
+    right:0;
+    background:var(--bg-elev-1);
+    box-shadow:-1px 0 0 var(--border-soft);
+  }
+  .pipeline-list-card td:last-child{ z-index:1; }
+  .pipeline-list-card th:last-child{ z-index:2; }
+  .pipeline-list-card .pipeline-list-row:hover td:last-child{
+    background:var(--bg-elev-2);
+  }
+  .pipeline-list-card .pipeline-list-row.selected td:last-child,
+  .pipeline-list-card .pipeline-list-row.selected:hover td:last-child{
+    /* A seleção usa o mesmo véu da linha, sobre a base opaca do card. */
+    background:linear-gradient(var(--accent-soft), var(--accent-soft)), var(--bg-elev-1);
+  }
+}
+
 /* Dinheiro à direita: alinhado à esquerda, "R$ 960" e "R$ 1.920" não formam
    coluna e o olho não compara. O cabeçalho acompanha, senão o título fica
    de um lado e o número do outro — que é a queixa. */
