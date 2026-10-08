@@ -9,12 +9,12 @@ import type { Imovel } from "@/lib/tipos";
 
 type ImovelComValores = Pick<Imovel, "finalidade" | "valorAluguel" | "valorVenda">;
 
-/** Card e lista. Sem finalidade, o aluguel sozinho, como sempre foi. Com
-    finalidade, cada valor leva o rótulo (é ele que diz se é aluguel ou
-    venda), um por linha; "Locação e venda" mostra os dois. */
-export function ValoresImovelCompacto({ imovel }: { imovel: ImovelComValores }) {
+/** O card identifica cada preço. Na Lista, a finalidade tem coluna própria:
+    um preço aparece sem prefixo; dois mantêm Aluguel/Venda para distingui-los.
+    Sem finalidade, o aluguel sozinho continua como antes. */
+export function ValoresImovelCompacto({ imovel, contexto = "card" }: { imovel: ImovelComValores; contexto?: "card" | "lista" }) {
   const { finalidade, valores } = exibicaoValoresImovel(imovel);
-  if (!finalidade) return <>{valores[0].texto}</>;
+  if (!finalidade || (contexto === "lista" && valores.length === 1)) return <>{valores[0].texto}</>;
   return (
     <>
       {valores.map((v) => (

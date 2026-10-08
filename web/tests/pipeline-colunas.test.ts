@@ -133,7 +133,7 @@ describe("colunas da Lista do Pipeline", () => {
     expect(CSS).toContain(".pipeline-list-card table{ min-width:0; width:100%; table-layout:fixed; }");
     expect(CSS).toContain(".pipeline-list-card th:nth-child(3), .pipeline-list-card td:nth-child(3){ width:auto; }");
     expect(CSS).not.toContain(
-      ".pipeline-list-card th:nth-child(11), .pipeline-list-card td:nth-child(11){ display:none; }",
+      ".pipeline-list-card th:nth-child(12), .pipeline-list-card td:nth-child(12){ display:none; }",
     );
     expect(CSS).toContain(".pipeline-list-card th:nth-child(6), .pipeline-list-card td:nth-child(6){ display:none; }");
   });

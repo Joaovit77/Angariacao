@@ -487,7 +487,7 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   no `style.css`, então inserir coluna no meio desloca todas as seguintes. `pipeline-colunas.test.ts`
   falha quando cabeçalho, linha e CSS discordam sobre quantas colunas existem. Também falha se a
   soma das colunas fixas + 240px mínimos para o Endereço passar do `min-width` da tabela (hoje
-  1226 + 240 = 1466px); ao alargar ou criar coluna, suba o `min-width` junto. Abaixo dele a
+  1370 + 240 = 1610px); ao alargar ou criar coluna, suba o `min-width` junto. Abaixo dele a
   tabela rola na horizontal, o que é esperado.
   O filtro **Identificação dos imóveis** escolhe o rótulo destacado nos cards, na primeira coluna e
   no drawer: código interno ou referência do CRM. A referência só é elegível depois da captação
@@ -3209,8 +3209,9 @@ publicação do Realtime (sem lista de colunas) já as transmite.
   inclui null ou campo ausente, sem inferência nem alteração dos imóveis. Combina em AND com os
   filtros atuais e preserva OR dentro de cada coluna. O estado segue `usePipelineUi`: persiste
   durante navegação interna, reinicia no reload e é zerado por `aplicarBusca` e
-  `aplicarFiltroColuna`; selecionar Todas limpa somente finalidade. A Lista mobile mostra o
-  rótulo abaixo do endereço, sem coluna nova no desktop. O contrato e o limite da validação
+  `aplicarFiltroColuna`; selecionar Todas limpa somente finalidade. A Lista mostra o
+  rótulo abaixo do endereço no mobile e tem coluna Finalidade própria no desktop,
+  separada de Valor. O filtro tem rótulo visual Finalidade. O contrato e o limite da validação
   local estão em [docs/IMOVEL_VENDA_CONTRATO.md](docs/IMOVEL_VENDA_CONTRATO.md).
   **IV-3A** (`exibicaoValoresImovel` em `lib/calculo/valoresImovel.ts`, apresentado por
   `components/pipeline/ValoresImovelPipeline.tsx`): card do Kanban, lista e painel lateral usam
@@ -3222,7 +3223,9 @@ publicação do Realtime (sem lista de colunas) já as transmite.
   "Finalidade" (ou "Não informado") e "Valor do aluguel"/"Valor de venda"; sem finalidade, o
   "Valor" de antes. O cabeçalho da coluna da lista virou "Valor" (a classe `col-aluguel`, que
   alinha a coluna, ficou). Os rótulos (`ROTULO_FINALIDADE_IMOVEL` em `constantes.ts`) são os
-  mesmos no cadastro e no Pipeline. Só apresentação: nada é gravado.
+  mesmos no cadastro e no Pipeline. Na Lista, com Finalidade em coluna própria, um único
+  preço aparece sem prefixo; dois preços mantêm os rótulos Aluguel e Venda. Kanban e painel
+  lateral preservam seus rótulos. Só apresentação: nada é gravado.
   **IV-3A.2:** o texto de cada valor vem pronto de `fmtValorImovel` (mesmo arquivo), igual nas três
   superfícies: inteiro sem ",00" (500000 → "R$ 500.000"), centavos preservados quando existem
   (450000.55 → "R$ 450.000,55", nunca "R$ 450.001"), null → "—", 0 → "R$ 0". Depende do valor,

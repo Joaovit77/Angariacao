@@ -180,7 +180,8 @@ describe("IV-3A.2: centavos só quando existem (fmtValorImovel)", () => {
 describe("as três superfícies usam a mesma regra", () => {
   it("o PipelineView não mostra mais valorAluguel direto em lugar nenhum", () => {
     expect(PIPELINE).not.toMatch(/fmtMoney\(\s*(i|imovel)\.valorAluguel\s*\)/);
-    expect(PIPELINE.match(/<ValoresImovelCompacto imovel=\{i\} \/>/g)).toHaveLength(2); // card e lista
+    expect(PIPELINE).toContain("<ValoresImovelCompacto imovel={i} />"); // card
+    expect(PIPELINE).toContain('<ValoresImovelCompacto imovel={i} contexto="lista" />');
     expect(PIPELINE).toContain("linhasValoresDrawer(imovel).map(");
     expect(PIPELINE).toContain('<th className="col-aluguel">Valor</th>');
   });

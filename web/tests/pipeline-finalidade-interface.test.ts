@@ -30,12 +30,12 @@ describe("Finalidade no Pipeline real", () => {
       ["", "Todas"], ["locacao", "Locação"], ["venda", "Venda"], ["locacao_venda", "Locação e venda"], ["nao_informado", "Não informado"],
     ]);
   });
-  it("texto completo na célula de endereço, sem criar coluna", () => {
+  it("texto mobile no endereço e coluna própria no desktop", () => {
     const { container } = render(createElement(PipelineView));
     const textos = [...container.querySelectorAll(".pipeline-finalidade-mobile")];
     expect(textos.map((s) => s.textContent?.trim())).toEqual(["Locação", "Venda", "Locação e venda", "Não informado", "Não informado"]);
-    expect(container.querySelectorAll("thead th")).toHaveLength(14);
-    for (const span of textos) { expect((span.parentElement as HTMLTableCellElement).cellIndex).toBe(2); expect(span.parentElement?.parentElement?.children).toHaveLength(14); }
+    expect(container.querySelectorAll("thead th")).toHaveLength(15);
+    for (const span of textos) { expect((span.parentElement as HTMLTableCellElement).cellIndex).toBe(2); expect(span.parentElement?.parentElement?.children).toHaveLength(15); }
   });
   it("Venda reduz Lista e Kanban e mantém denominador e preços IV-3A", () => {
     const { container } = render(createElement(PipelineView));
@@ -43,7 +43,7 @@ describe("Finalidade no Pipeline real", () => {
     expect(container.querySelectorAll("tbody tr")).toHaveLength(1);
     expect(screen.getByText("IV-V")).toBeDefined();
     expect(container.querySelector("#pipeline-result-count")?.textContent).toMatch(/1 de 5/);
-    expect(container.querySelector("[data-valores-imovel]")?.textContent?.replace(/\u00a0/g, " ")).toBe("Venda R$ 450.000,55");
+    expect(container.querySelector("[data-valores-imovel]")?.textContent?.replace(/\u00a0/g, " ")).toBe("R$ 450.000,55");
     fireEvent.click(screen.getByRole("button", { name: "Kanban" }));
     expect(container.querySelectorAll(".kanban-card")).toHaveLength(1);
     expect(container.querySelector(".kanban-col-count")?.textContent).toBe("1");
@@ -80,5 +80,55 @@ describe("Finalidade no Pipeline real", () => {
     expect(screen.getByText("IV-N")).toBeDefined(); expect(screen.getByText("IV-U")).toBeDefined();
     expect(Object.hasOwn(useAppStore.getState().imoveis.find((i) => i.id === "ausente")!, "finalidade")).toBe(false);
     act(() => usePipelineUi.getState().setFiltro("finalidade", ""));
+  });
+});
+
+
+describe("UX da Lista: finalidade separada do preço", () => {
+  it.each(["lista", "kanban", "retirados"] as const)("identifica visualmente o filtro de finalidade em %s", (modo) => {
+    usePipelineUi.getState().setViewMode(modo);
+    const { container } = render(createElement(PipelineView));
+    const campo = container.querySelector("label.pipeline-finalidade-filter");
+    expect(campo?.querySelector("span")?.textContent).toBe("Finalidade");
+    expect(campo?.querySelector("select")).toBe(screen.getByRole("combobox", { name: "Finalidade" }));
+  });
+  it("Venda ocupa uma coluna própria e Valor mostra apenas o preço da venda", () => {
+    const { container } = render(createElement(PipelineView));
+    selecionar("venda");
+    const cabecalhos = [...container.querySelectorAll("thead th")];
+    const colunaFinalidade = cabecalhos.findIndex((th) => th.textContent?.trim() === "Finalidade");
+    const colunaValor = cabecalhos.findIndex((th) => th.textContent?.trim() === "Valor");
+    expect(colunaFinalidade).toBeGreaterThan(-1);
+    expect(colunaValor).toBeGreaterThan(colunaFinalidade);
+    const celulas = container.querySelector("tbody tr")!.children;
+    expect(celulas[colunaFinalidade].textContent).toBe("Venda");
+    expect(celulas[colunaValor].textContent?.replace(/\u00a0/g, " ")).toBe("R$ 450.000,55");
+  });
+  it("Locação mostra somente o aluguel e finalidade desconhecida permanece explícita", () => {
+    const { container } = render(createElement(PipelineView));
+    selecionar("locacao");
+    expect(container.querySelector("td.col-finalidade")?.textContent).toBe("Locação");
+    expect(container.querySelector("td.col-aluguel")?.textContent?.replace(/\u00a0/g, " ")).toBe("R$ 1.500,50");
+    selecionar("nao_informado");
+    expect([...container.querySelectorAll("td.col-finalidade")].map((td) => td.textContent)).toEqual(["Não informado", "Não informado"]);
+  });
+  it("Locação e venda mantém os dois preços identificados na coluna Valor", () => {
+    const { container } = render(createElement(PipelineView));
+    selecionar("locacao_venda");
+    expect(container.querySelector("td.col-finalidade")?.textContent).toBe("Locação e venda");
+    expect([...container.querySelectorAll("td.col-aluguel .valor-imovel-linha")].map((span) => span.textContent?.replace(/\u00a0/g, " "))).toEqual(["Aluguel R$ 1.500,50", "Venda R$ 500.000"]);
+  });
+  it("usar finalidade e trocar Lista/Kanban não chama mutações do banco", async () => {
+    const mutacoes = await import("@/lib/mutacoes");
+    vi.clearAllMocks();
+    render(createElement(PipelineView));
+    selecionar("venda");
+    fireEvent.click(screen.getByRole("button", { name: "Kanban" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lista" }));
+    selecionar("locacao");
+    selecionar("");
+    expect(mutacoes.salvarImovel).not.toHaveBeenCalled();
+    expect(mutacoes.aplicarMudancaDeStatus).not.toHaveBeenCalled();
+    expect(mutacoes.excluirImovel).not.toHaveBeenCalled();
   });
 });

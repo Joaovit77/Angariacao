@@ -71,10 +71,10 @@ describe("IV-3A.4: ações acessíveis durante o scroll da Lista", () => {
     const mobile = [...folha.cssRules].find(
       (r): r is CSSMediaRule => r instanceof CSSMediaRule && r.conditionText === "(max-width: 720px)"
         && [...r.cssRules].some((filha) => filha instanceof CSSStyleRule
-          && filha.selectorText.includes(".pipeline-list-card th:nth-child(14)")),
+          && filha.selectorText.includes(".pipeline-list-card th:nth-child(15)")),
     )!;
     for (const tag of ["th", "td"]) {
-      expect(regra(`.pipeline-list-card ${tag}:nth-child(14)`, mobile.cssRules).getPropertyValue("display")).toBe("none");
+      expect(regra(`.pipeline-list-card ${tag}:nth-child(15)`, mobile.cssRules).getPropertyValue("display")).toBe("none");
     }
   });
 
@@ -100,16 +100,16 @@ describe("IV-3A.4: ações acessíveis durante o scroll da Lista", () => {
     }
   });
 
-  it("preserva 1466px na tabela, 160px no Valor e ao menos 240px no Endereço", () => {
-    expect(regra(".pipeline-list-card table", folha.cssRules).getPropertyValue("min-width")).toBe("1466px");
-    expect(regra(".pipeline-list-card th:nth-child(10)", folha.cssRules).getPropertyValue("width")).toBe("160px");
-    expect(regra(".pipeline-list-card th:nth-child(14)", folha.cssRules).getPropertyValue("width")).toBe("78px");
+  it("preserva 1610px na tabela, 160px no Valor e ao menos 240px no Endereço", () => {
+    expect(regra(".pipeline-list-card table", folha.cssRules).getPropertyValue("min-width")).toBe("1610px");
+    expect(regra(".pipeline-list-card th:nth-child(11)", folha.cssRules).getPropertyValue("width")).toBe("160px");
+    expect(regra(".pipeline-list-card th:nth-child(15)", folha.cssRules).getPropertyValue("width")).toBe("78px");
     expect(regra(".pipeline-list-card th:nth-child(3)", folha.cssRules).getPropertyValue("width")).toBe("auto");
     let fixas = 0;
-    for (let coluna = 1; coluna <= 14; coluna++) {
+    for (let coluna = 1; coluna <= 15; coluna++) {
       if (coluna === 3) continue;
       fixas += parseFloat(regra(`.pipeline-list-card th:nth-child(${coluna})`, folha.cssRules).getPropertyValue("width"));
     }
-    expect(1466 - fixas).toBeGreaterThanOrEqual(240);
+    expect(1610 - fixas).toBeGreaterThanOrEqual(240);
   });
 });

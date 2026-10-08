@@ -495,6 +495,7 @@ function Lista({
             <ColunaFiltro col="tipo" distintos={distintos("tipo")} />
             <ColunaFiltro col="origem" distintos={distintos("origem")} />
             <ColunaFiltro col="telefone" distintos={distintos("telefone")} />
+            <th className="col-finalidade">Finalidade</th>
             {/* "Valor" e não "Aluguel": num imóvel de venda a célula mostra a
                 venda. A classe fica `col-aluguel` porque é ela que o CSS alinha. */}
             <th className="col-aluguel">Valor</th>
@@ -538,8 +539,11 @@ function Lista({
               <td className="cell-telefone">
                 <SeloTelefone imovel={i} />
               </td>
+              <td className="col-finalidade">
+                {(i.finalidade && ROTULO_FINALIDADE_IMOVEL[i.finalidade]) || ROTULO_FINALIDADE_IMOVEL_DESCONHECIDA}
+              </td>
               <td className="col-aluguel" data-valores-imovel>
-                <ValoresImovelCompacto imovel={i} />
+                <ValoresImovelCompacto imovel={i} contexto="lista" />
               </td>
               <td>
                 <span className="badge" data-status={i.status}>
@@ -1031,18 +1035,21 @@ export default function PipelineView() {
               </select>
             </>
           )}
-          <select
-            className="filter-select pipeline-finalidade-select"
-            aria-label="Finalidade"
-            value={filters.finalidade}
-            onChange={(e) => setFiltro("finalidade", e.target.value)}
-          >
-            <option value="">Todas</option>
-            {FINALIDADES_IMOVEL.map((finalidade) => (
-              <option key={finalidade} value={finalidade}>{ROTULO_FINALIDADE_IMOVEL[finalidade]}</option>
-            ))}
-            <option value={FILTRO_FINALIDADE_NAO_INFORMADA}>{ROTULO_FINALIDADE_IMOVEL_DESCONHECIDA}</option>
-          </select>
+          <label className="pipeline-finalidade-filter">
+            <span>Finalidade</span>
+            <select
+              className="filter-select pipeline-finalidade-select"
+              aria-label="Finalidade"
+              value={filters.finalidade}
+              onChange={(e) => setFiltro("finalidade", e.target.value)}
+            >
+              <option value="">Todas</option>
+              {FINALIDADES_IMOVEL.map((finalidade) => (
+                <option key={finalidade} value={finalidade}>{ROTULO_FINALIDADE_IMOVEL[finalidade]}</option>
+              ))}
+              <option value={FILTRO_FINALIDADE_NAO_INFORMADA}>{ROTULO_FINALIDADE_IMOVEL_DESCONHECIDA}</option>
+            </select>
+          </label>
           <select
             className="filter-select"
             value={filters.cidade}

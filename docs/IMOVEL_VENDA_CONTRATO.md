@@ -192,8 +192,8 @@ com o mesmo texto, componente sem formatação própria) e `web/tests/pipeline-c
 
 ## IV-3B.1: filtro de finalidade e Lista mobile
 
-Select nativo com nome acessível Finalidade em Lista, Kanban e Retirados, sobre o mesmo conjunto
-já autorizado e carregado no store. Sem query adicional ou escrita no banco.
+Select nativo com rótulo visual e nome acessível Finalidade em Lista, Kanban e Retirados, sobre o mesmo
+conjunto já autorizado e carregado no store. Sem query adicional ou escrita no banco.
 
 | Opção | Condição |
 | --- | --- |
@@ -214,8 +214,12 @@ junto com os demais filtros, preservando seu contrato. Agenda não introduz outr
 
 Na Lista mobile, o texto completo aparece abaixo do endereço, pode quebrar linha e usa os
 rótulos centrais; Não informado é compartilhado pelo select, texto mobile e drawer. O desktop
-conserva 14 colunas, tabela com mínimo de 1466px, endereço com mínimo de 240px, Valor de 160px
-e Ações sticky de 78px. Cards e preços do Kanban permanecem iguais. A barra adapta o grid
+tem 15 colunas, incluindo Finalidade separada de Valor. A tabela tem mínimo de 1610px,
+endereço com mínimo de 240px, Finalidade de 144px, Valor de 160px
+e Ações sticky de 78px. Na Lista, Locação e Venda mostram somente o preço em Valor; Locação e
+venda mantém duas linhas identificadas como Aluguel e Venda. Sem finalidade, a coluna mostra
+Não informado e o valor legado continua igual. Cards e preços do Kanban permanecem iguais.
+A barra adapta o grid
 e empilha no mobile, também em Retirados, sem mudar `.main`. O contador continua X filtrados
 de Y do modo; o drawer pode permanecer aberto quando o imóvel sai do filtro.
 

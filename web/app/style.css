@@ -2400,11 +2400,11 @@ tbody tr:last-child td{ border-bottom:none; }
    parecia pertencer à coluna errada. Fixar o que tem tamanho previsível —
    código, ap., bloco, telefone, aluguel, cadastro — e deixar a sobra para
    endereço e bairro, que é onde o texto varia. */
-.pipeline-list-card table{ table-layout: fixed; width:100%; min-width: 1466px; }
+.pipeline-list-card table{ table-layout: fixed; width:100%; min-width: 1610px; }
 .pipeline-list-card th, .pipeline-list-card td{ overflow:hidden; text-overflow:ellipsis; }
 /* O `min-width` acima com o `auto` do Endereço é o par que importa: as demais
-   somam 1226px, então o endereço fica com toda a sobra e nunca abaixo de
-   240px (1226 + 240 = 1466). Sem o min-width, numa janela estreita a soma
+   somam 1370px, então o endereço fica com toda a sobra e nunca abaixo de
+   240px (1370 + 240 = 1610). Sem o min-width, numa janela estreita a soma
    das fixas engolia a coluna inteira e o endereço saía com 86px, mais
    estreito que o Bairro, sendo o texto mais longo da linha. Abaixo disso a
    tabela rola na horizontal (`.table-scroll`), que é melhor que truncar o
@@ -2420,11 +2420,12 @@ tbody tr:last-child td{ border-bottom:none; }
 .pipeline-list-card th:nth-child(7),  .pipeline-list-card td:nth-child(7){ width: 96px; }   /* Tipo */
 .pipeline-list-card th:nth-child(8),  .pipeline-list-card td:nth-child(8){ width: 96px; }   /* Origem */
 .pipeline-list-card th:nth-child(9),  .pipeline-list-card td:nth-child(9){ width: 112px; }  /* Telefone */
-.pipeline-list-card th:nth-child(10), .pipeline-list-card td:nth-child(10){ width: 160px; } /* Valor */
-.pipeline-list-card th:nth-child(11), .pipeline-list-card td:nth-child(11){ width: 132px; } /* Status */
-.pipeline-list-card th:nth-child(12), .pipeline-list-card td:nth-child(12){ width: 92px; }  /* Cadastro */
-.pipeline-list-card th:nth-child(13), .pipeline-list-card td:nth-child(13){ width: 96px; }  /* Captador */
-.pipeline-list-card th:nth-child(14), .pipeline-list-card td:nth-child(14){ width: 78px; }  /* ações */
+.pipeline-list-card th:nth-child(10), .pipeline-list-card td:nth-child(10){ width: 144px; } /* Finalidade */
+.pipeline-list-card th:nth-child(11), .pipeline-list-card td:nth-child(11){ width: 160px; } /* Valor */
+.pipeline-list-card th:nth-child(12), .pipeline-list-card td:nth-child(12){ width: 132px; } /* Status */
+.pipeline-list-card th:nth-child(13), .pipeline-list-card td:nth-child(13){ width: 92px; }  /* Cadastro */
+.pipeline-list-card th:nth-child(14), .pipeline-list-card td:nth-child(14){ width: 96px; }  /* Captador */
+.pipeline-list-card th:nth-child(15), .pipeline-list-card td:nth-child(15){ width: 78px; }  /* ações */
 
 /* Só as ações ficam fixas no desktop; os dados continuam rolando no card.
    O fundo opaco impede que as colunas passem por baixo dos controles. */
@@ -2505,12 +2506,16 @@ tbody tr:last-child td{ border-bottom:none; }
 .pipeline-filterbar{
   display:grid;
   grid-template-columns: minmax(150px, 190px) minmax(0, 2fr) repeat(2, minmax(150px, 1fr));
+  align-items:end;
   gap:10px;
   flex:1;
   min-width:0;
 }
 .pipeline-search{ min-width:0; }
 .pipeline-filterbar > .filter-select{ min-width:0; width:100%; }
+.pipeline-finalidade-filter{ display:grid; gap:4px; min-width:0; margin:0; }
+.pipeline-finalidade-filter > span{ font-size:11px; font-weight:600; color:var(--text-dim); }
+.pipeline-finalidade-filter > select{ min-width:0; width:100%; }
 .pipeline-finalidade-select:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
 .pipeline-finalidade-mobile{ display:none; }
 .pipeline-toolbar-side{
@@ -4221,7 +4226,7 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
   /* Sem ícone no celular: "Central de Angariação" e "Investigador de Imóveis"
      não cabem em meia largura com ele, e o nome já identifica. */
   .nav-angariacao .ic{ display:none; }
-  /* A lista desktop tem 13 colunas. No celular, mantê-las todas só comprime o
+  /* A lista desktop tem 15 colunas. No celular, mantê-las todas só comprime o
      endereço até virar uma palavra por linha. A linha inteira abre o drawer,
      então a visão rápida prioriza identidade, localização e etapa atual. */
   .pipeline-list-card{ overflow:hidden; }
@@ -4232,14 +4237,15 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
   .pipeline-list-card th:nth-child(8), .pipeline-list-card td:nth-child(8),
   .pipeline-list-card th:nth-child(9), .pipeline-list-card td:nth-child(9),
   .pipeline-list-card th:nth-child(10), .pipeline-list-card td:nth-child(10),
-  .pipeline-list-card th:nth-child(12), .pipeline-list-card td:nth-child(12),
+  .pipeline-list-card th:nth-child(11), .pipeline-list-card td:nth-child(11),
   .pipeline-list-card th:nth-child(13), .pipeline-list-card td:nth-child(13),
-  .pipeline-list-card th:nth-child(14), .pipeline-list-card td:nth-child(14){ display:none; }
+  .pipeline-list-card th:nth-child(14), .pipeline-list-card td:nth-child(14),
+  .pipeline-list-card th:nth-child(15), .pipeline-list-card td:nth-child(15){ display:none; }
   .pipeline-list-card th:nth-child(1), .pipeline-list-card td:nth-child(1){ width:38px; }
   .pipeline-list-card th:nth-child(2), .pipeline-list-card td:nth-child(2){ width:76px; }
   .pipeline-list-card th:nth-child(3), .pipeline-list-card td:nth-child(3){ width:auto; }
   .pipeline-list-card th:nth-child(6), .pipeline-list-card td:nth-child(6){ width:118px; }
-  .pipeline-list-card th:nth-child(11), .pipeline-list-card td:nth-child(11){ width:126px; }
+  .pipeline-list-card th:nth-child(12), .pipeline-list-card td:nth-child(12){ width:126px; }
   .pipeline-list-card td:nth-child(3){
     overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.45;
   }
@@ -4261,7 +4267,7 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
      liberar esta faixa mantém o endereço legível sem esconder o Status. */
   .pipeline-list-card th:nth-child(6), .pipeline-list-card td:nth-child(6){ display:none; }
   .pipeline-list-card th:nth-child(2), .pipeline-list-card td:nth-child(2){ width:70px; }
-  .pipeline-list-card th:nth-child(11), .pipeline-list-card td:nth-child(11){ width:116px; }
+  .pipeline-list-card th:nth-child(12), .pipeline-list-card td:nth-child(12){ width:116px; }
   .pipeline-list-card th, .pipeline-list-card td{ padding-left:8px; padding-right:8px; }
 }
 
