@@ -3131,7 +3131,30 @@ rede, porque o contato da oportunidade é imutável. A chave de idempotência é
 devolve a resolução decodificada por objeto fechado (`decodificarResolucaoInteressadoVenda`) e
 não escolhe nada: `encontrado` é um candidato que a interface precisa confirmar pelo modo
 existente. Resposta fora do contrato vira o erro local `resposta-invalida`, nunca um resultado.
-Nenhuma tela usa esse caminho ainda (B3.4).
+A superfície B3.4a-R lê por um adaptador separado; nenhuma tela usa as operações ou a
+resolução de interessado do B3.3. Criação (B3.4b) e operações (B3.4c) permanecem futuras.
+
+## Vendas: superfície de leitura (B3.4a-R)
+
+Superfície histórica B3.4a recuperada sobre `eb6705c` e reaplicada sobre `139cb51` (IV-4A),
+sem integração de Vendas em Production.
+Menu Vendas depois de Repasses, rota `/vendas`, lista com busca, etapa e arquivadas, e detalhe
+com histórico comercial. Pipeline continua sendo a carteira de imóveis; Vendas acompanha
+interessados e oportunidades. Criação B3.4b e operações B3.4c não estão implementadas na interface.
+
+[vendasLeitura.ts](web/lib/persistencia/vendasLeitura.ts) usa somente SELECT com a sessão
+autenticada, sob as policies existentes. Lê oportunidades, referências históricas, eventos e
+contatos (`id,nome`), sem RPC, escrita, service role ou identificação de usuário do chamador.
+Valores numeric e versões são lidos como texto e passam pelos decodificadores publicados.
+O imóvel é apresentado pelo snapshot da negociação, inclusive quando saiu da carteira; não
+se filtra histórico por finalidade ou status atual. O histórico comercial não é `status_history`.
+
+[VendasView](web/components/vendas/VendasView.tsx) trata carregamento, erro com nova tentativa,
+conta vazia e filtro vazio; recarrega pelo evento `vendas:atualizadas`, sem polling.
+O [drawer](web/components/vendas/DrawerOportunidadeVenda.tsx) é um diálogo de leitura com
+histórico, fechamento por Esc e preservação de foco. Os estilos são isolados em
+[vendas.css](web/components/vendas/vendas.css), com tokens existentes e rolagem interna no mobile.
+Não há controles comerciais mutantes, cadastro paralelo, seleção de candidatos ou elegibilidade.
 
 ## Imóvel de venda: finalidade no schema (IV-1)
 
@@ -3235,7 +3258,7 @@ publicação do Realtime (sem lista de colunas) já as transmite.
   domínio não é desenhado em função delas. A regra de cada guarda mora no servidor; no app ela
   é repetida só em `lib/calculo/finalidadeOperacional.ts`, com teste amarrando TS e SQL. Imóvel
   sem finalidade (null) segue o comportamento legado em todos os fluxos: é compatibilidade, não
-  classificação como locação. **IV-4A (local, sem Production):** o ledger de locação recusa
+  classificação como locação. **IV-4A (Production):** o ledger de locação recusa
   `venda`. A migration `20261008150000_imoveis_finalidade_guarda_locacao` recria só
   `private.prever_locacoes`, ponto único da prévia (`prever_repasses_locacao`) e da confirmação
   (`locar_imoveis_em_lote`), com o erro por item `finalidade_venda` depois dos de retirado e
@@ -3249,9 +3272,14 @@ publicação do Realtime (sem lista de colunas) já as transmite.
 - **IV-6, métricas e relatórios:** Locados e Vendidos separados, sem misturar as fórmulas
   financeiras de locação e de venda.
 
+**Estado IV-4A.** Em Production na main `139cb51b62c0424a0d08475a9acbce05ed671cd6`,
+com ledger 82 e última migration `20261008150000`. A regra de venda não participar do fluxo de
+locação permanece no banco e na interface; a superfície B3.4a-R de Vendas ainda não está em Production.
+
 **Relação com outras frentes.** Vendas B3.4a (lista e drawer só leitura) segue na branch
 `codex/vendas-v1-b3-4a-leitura` (`c8a0494`, Preview `dpl_7ENX6mYPadjnbbuKQPz8j6fSGXsX`), sem
-Production; a B3.4b espera o domínio de imóvel de venda evoluir. A migration antiga do Radar
+Production; sua reconciliação B3.4a-R está na base atual, somente leitura.
+Criação B3.4b, elegibilidade e operações B3.4c seguem em checkpoints próprios. A migration antiga do Radar
 `20261003233240_radar_r6_1_schema_global.sql` continua **não aplicada**; se a R6.1 for reemitida,
 precisa de timestamp posterior a `20261006200215`.
 
