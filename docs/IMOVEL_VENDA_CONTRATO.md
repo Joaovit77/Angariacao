@@ -6,7 +6,8 @@ Realtime e desdobramento), IV-2C (cadastro e edição), IV-3A (valores no Pipeli
 (centavos e largura da lista) também estão publicados, presentes na base Production/main
 `df76ea2680dafad54aae996bbcce10a7510beb7f`. IV-3B.1 aprovado localmente com carteira sintética e smoke autenticado somente leitura.
 O gate de commit e Preview permanece separado; esta documentação não afirma sua publicação.
-IV-4 a IV-6 não foram iniciados.
+IV-4A (guarda do ledger de locação) está implementado localmente, sem commit, Preview nem
+Production; detalhes em "IV-4A" abaixo. IV-4B a IV-4F, IV-5 e IV-6 não foram iniciados.
 
 ## Decisões fechadas (IV-0)
 
@@ -234,6 +235,51 @@ A conta autorizada tinha apenas um imóvel com finalidade null e nenhum retirado
 classificadas, campo ausente e Retirados permanecem cobertos pelos testes determinísticos e
 pelo smoke sintético. A aprovação local não substitui o gate da Preview nem autoriza Production.
 
+## IV-4A: guarda do ledger de locação (local)
+
+Implementação local, sem commit, Preview nem Production. Imóvel com finalidade `venda` não entra
+no fluxo "Marcar como locado": prévia, confirmação, locação, repasse e mudança para Locado por esse
+fluxo.
+
+| Finalidade | Ledger de locação |
+| --- | --- |
+| `locacao` | permitido, como antes |
+| `locacao_venda` | permitido, como antes (depois de locado, os outros módulos ainda tratam Locado como terminal: IV-4F) |
+| null ou ausente | permitido, como antes: compatibilidade com o legado, não classificação como locação; nada é gravado na finalidade |
+| `venda` | recusado |
+
+**Servidor (fonte de verdade).** A migration `20261008150000_imoveis_finalidade_guarda_locacao.sql`
+recria `private.prever_locacoes` com o corpo da `20260908132609` mais um bloco: `if
+v_imovel.finalidade = 'venda'` (comparação explícita, nunca "diferente de locação") devolve o erro
+por item `finalidade_venda`, "Imóvel com finalidade Venda não pode ser marcado como locado.". O
+bloco vem depois dos de retirado e locação ativa (a precedência dos erros existentes não muda) e
+não depende de `p_validar_status`. A função é o ponto único da prévia (`prever_repasses_locacao`)
+e da confirmação (`locar_imoveis_em_lote`, que a chama de novo depois de travar as linhas), então
+uma chamada direta à RPC também é recusada. O lote segue tudo-ou-nada: com um item de venda, a
+confirmação não grava locação, repasse, status, `locado_em` nem apaga lembretes de disponibilidade
+de nenhum item. CREATE OR REPLACE mantém assinatura, retorno, owner, SECURITY DEFINER, search_path
+e ACL; o revoke original é repetido. Sem coluna, tabela, enum, trigger, policy, índice ou DML; o
+ledger remoto não foi tocado. O espelho fica no `supabase-schema.sql` entre `-- BEGIN IMOVEL VENDA
+IV-4A` e `-- END IMOVEL VENDA IV-4A`, logo depois do Vendas B3.2; a definição antiga, no bloco de
+repasses, continua igual, e aplicar o schema inteiro termina na nova.
+
+**App.** `podeParticiparFluxoLocacao` (em `web/lib/calculo/finalidadeOperacional.ts`, junto do
+código e do texto do erro) é a mesma regra: falso só para `venda`. A Lista não abre o modal quando
+a seleção tem imóvel de venda (aviso pedindo para desmarcar); o arrasto para Locado no Kanban avisa
+e não abre o fluxo; o modal de locação em lote mostra o erro que a prévia do banco devolve e não
+confirma lote com imóvel de venda, mesmo diante de uma prévia ok anterior.
+
+**Testes de histórico ajustados.** A migration nova deixou de fazer do IV-1 a última:
+`imovel-venda-iv1-schema` e `vendas-v1-b3-2-schema` passaram a aceitar somente o IV-4A depois do
+IV-1; `vendas-v1-b1-schema` e `vendas-v1-b2-schema` removem o bloco IV-4A antes de calcular as
+âncoras, cujos hashes continuam os mesmos.
+
+Provas: `web/tests/imovel-venda-iv4a-banco.test.ts` (PGlite: as quatro finalidades, chamada direta
+à prévia e à confirmação, lote misto, outro tenant, retirado, já locado, idempotência, rollback,
+ACL e o teste gêmeo TS × SQL), `web/tests/imovel-venda-iv4a-schema.test.ts` (forma da migration,
+corpo igual ao original mais o bloco, espelho e ordem) e `web/tests/imovel-venda-iv4a-interface.test.ts`
+(Lista, Kanban e modal reais em jsdom).
+
 ## Regras para as próximas fatias
 
 - **`vendido_em` nunca passa pelo save genérico**, nem no IV-2.
@@ -246,7 +292,7 @@ pelo smoke sintético. A aprovação local não substitui o gate da Preview nem 
 | --- | --- |
 | IV-2, cadastro e edição | persistência, Realtime e desdobramento no IV-2B; tela no IV-2C (publicados) |
 | IV-3, Pipeline | valores IV-3A/IV-3A.2 publicados; filtro e mobile IV-3B.1 aprovados localmente, aguardando gate de Preview |
-| IV-4, guardas de finalidade nos fluxos existentes | cada fluxo que hoje supõe locação passa a respeitar a finalidade; integrações externas (como a Sophia) seguem as regras do Angario |
+| IV-4, guardas de finalidade nos fluxos existentes | cada fluxo que hoje supõe locação passa a respeitar a finalidade; integrações externas (como a Sophia) seguem as regras do Angario. IV-4A (ledger de locação) implementado localmente; disponibilidade, encerramento automático, Sophia, modelos e `locacao_venda` depois de locado seguem futuros |
 | IV-5, Vendido | status Vendido, `status_history`, `vendido_em`, só por ação humana explícita |
 | IV-6, métricas e relatórios | Locados e Vendidos separados, sem misturar fórmulas financeiras de locação e venda |
 

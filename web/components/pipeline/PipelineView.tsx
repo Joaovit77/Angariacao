@@ -18,6 +18,7 @@ import BotaoAbordagemAnuncio from "./BotaoAbordagemAnuncio";
 import { resultadosPendentes, seloTentativas } from "@/lib/calculo/abordagens";
 import { urlInvestigadorDoImovel } from "@/lib/calculo/contextoInvestigador";
 import { selecionarFollowUp, selecionarVerificacaoDisponibilidade } from "@/lib/calculo/followup";
+import { MENSAGEM_FINALIDADE_VENDA_LOCACAO, podeParticiparFluxoLocacao } from "@/lib/calculo/finalidadeOperacional";
 import { deslocarStatusKanban, moverStatusKanban, ordenarStatusKanban, type OrdemKanban } from "@/lib/calculo/kanban";
 import {
   FILTRO_FINALIDADE_NAO_INFORMADA,
@@ -40,6 +41,7 @@ import { fmtDate } from "@/lib/formatadores";
 import { aplicarMudancaDeStatus, excluirImovel, salvarImovel } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
 import type { Imovel } from "@/lib/tipos";
+import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
 import { usePipelineUi } from "@/lib/uiPipeline";
 import ColunaFiltro from "./ColunaFiltro";
@@ -270,6 +272,11 @@ function Kanban({
     setStatusAlvo(null);
     if (!imovel || !usuario || imovel.status === novoStatus || movendoId) return;
     if (novoStatus === "Locado") {
+      // O banco recusa a venda na prévia; aqui o arrasto nem abre o fluxo.
+      if (!podeParticiparFluxoLocacao(imovel.finalidade)) {
+        toast(MENSAGEM_FINALIDADE_VENDA_LOCACAO, "error");
+        return;
+      }
       useUiModal.getState().abrirLocacaoEmLote([imovelId]);
       return;
     }
@@ -857,6 +864,22 @@ export default function PipelineView() {
     return () => window.removeEventListener("repasses:atualizados", limparSelecao);
   }, []);
 
+  // A seleção com algum imóvel de venda não abre o fluxo: o lote é
+  // tudo-ou-nada no banco, que o recusaria inteiro na prévia.
+  function marcarSelecionadosComoLocados() {
+    const deVenda = imoveis.filter((i) => selecionados.has(i.id) && !podeParticiparFluxoLocacao(i.finalidade));
+    if (deVenda.length > 0) {
+      toast(
+        deVenda.length === 1
+          ? `${MENSAGEM_FINALIDADE_VENDA_LOCACAO} Desmarque ${deVenda[0].codigo || deVenda[0].endereco} para continuar.`
+          : `${deVenda.length} imóveis selecionados têm finalidade Venda e não podem ser marcados como locados. Desmarque-os para continuar.`,
+        "error",
+      );
+      return;
+    }
+    abrirLocacaoEmLote([...selecionados]);
+  }
+
   const bairros = pipelineUniqueSorted(imoveis.map((i) => i.bairro));
   const cidades = pipelineUniqueSorted(imoveis.map((i) => i.cidade));
   const responsaveis = pipelineUniqueSorted(imoveis.map((i) => i.responsavel));
@@ -1067,7 +1090,7 @@ export default function PipelineView() {
           {viewMode === "lista" && selecionados.size > 0 && (
             <div className="pipeline-acoes-massa">
               <span>{selecionados.size} selecionado(s)</span>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => abrirLocacaoEmLote([...selecionados])}>
+              <button type="button" className="btn btn-primary btn-sm" onClick={marcarSelecionadosComoLocados}>
                 Marcar como locado
               </button>
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSelecionados(new Set())}>Limpar</button>

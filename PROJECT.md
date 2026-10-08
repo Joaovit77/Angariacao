@@ -3232,7 +3232,18 @@ publicação do Realtime (sem lista de colunas) já as transmite.
   não da finalidade (vale para aluguel e venda). A coluna Valor da lista tem 160px.
 - **IV-4, guardas de finalidade nos fluxos existentes:** cada fluxo que hoje supõe locação passa a
   respeitar a finalidade. Integrações externas, como a Sophia, seguem as regras do Angario; o
-  domínio não é desenhado em função delas.
+  domínio não é desenhado em função delas. A regra de cada guarda mora no servidor; no app ela
+  é repetida só em `lib/calculo/finalidadeOperacional.ts`, com teste amarrando TS e SQL. Imóvel
+  sem finalidade (null) segue o comportamento legado em todos os fluxos: é compatibilidade, não
+  classificação como locação. **IV-4A (local, sem Production):** o ledger de locação recusa
+  `venda`. A migration `20261008150000_imoveis_finalidade_guarda_locacao` recria só
+  `private.prever_locacoes`, ponto único da prévia (`prever_repasses_locacao`) e da confirmação
+  (`locar_imoveis_em_lote`), com o erro por item `finalidade_venda` depois dos de retirado e
+  locação ativa; o lote continua tudo-ou-nada, então nenhum item é gravado e nenhum lembrete de
+  disponibilidade é apagado. `locacao`, `locacao_venda` e null passam como antes. Lista, Kanban
+  e o modal de locação em lote não abrem nem confirmam o fluxo para venda
+  (`podeParticiparFluxoLocacao`). As demais guardas (disponibilidade, encerramento automático,
+  Sophia, modelos de mensagem e o `locacao_venda` depois de locado) seguem futuras.
 - **IV-5, Vendido:** status Vendido, marco no `status_history` e `vendido_em`, só por ação humana
   explícita, nunca derivado de oportunidade ganha em Vendas.
 - **IV-6, métricas e relatórios:** Locados e Vendidos separados, sem misturar as fórmulas

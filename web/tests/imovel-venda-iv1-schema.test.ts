@@ -15,10 +15,11 @@ const SCHEMA = ler("supabase-schema.sql");
 const CODIGO = MIGRATION.split("\n").filter((linha) => !/^\s*--/.test(linha)).join("\n");
 
 describe("IV-1: migration", () => {
-  it("é a última migration, posterior ao B3.2 em Production, sem a R6.1 antiga", () => {
+  it("vem logo depois do B3.2 em Production, sem a R6.1 antiga; depois dele só o IV-4A", () => {
     const pasta = readdirSync(new URL("../../supabase/migrations/", import.meta.url)).filter((f) => f.endsWith(".sql")).sort();
-    expect(pasta.at(-1)).toBe(NOME);
-    expect(pasta.at(-2)).toBe("20261006123603_vendas_v1_b3_2_interessado.sql");
+    // Era a última até o IV-4A (guarda do ledger de locação), a única aprovada depois dela.
+    expect(pasta.slice(pasta.indexOf(NOME) + 1)).toEqual(["20261008150000_imoveis_finalidade_guarda_locacao.sql"]);
+    expect(pasta[pasta.indexOf(NOME) - 1]).toBe("20261006123603_vendas_v1_b3_2_interessado.sql");
     expect(NOME.slice(0, 14) > "20261006123603").toBe(true);
     expect(pasta.some((f) => f.startsWith("20261003233240"))).toBe(false);
     expect(NOME).not.toMatch(/dedupe|duplic|prospeccao|radar|r6_1|vendas_v1/);

@@ -10,6 +10,7 @@ import {
   type PoliticaRepasse,
   type ResultadoPreviaRepasse,
 } from "@/lib/repasses";
+import { podeParticiparFluxoLocacao } from "@/lib/calculo/finalidadeOperacional";
 import { todayISO } from "@/lib/datas";
 import { fmtDate } from "@/lib/formatadores";
 import { recarregarEstado } from "@/lib/mutacoes";
@@ -50,6 +51,10 @@ export default function ModalLocacaoLote({ imovelIds }: { imovelIds: string[] })
 
   const politica = politicas.find((item) => item.id === politicaId) || null;
   const itens = useMemo(() => Object.values(linhas), [linhas]);
+  // Quem decide é o banco: a prévia volta com o erro `finalidade_venda` por
+  // item, e o texto mostrado é o dele. Isto só garante que nenhuma prévia
+  // anterior permita confirmar um lote com imóvel de venda.
+  const temImovelDeVenda = selecionados.some((imovel) => !podeParticiparFluxoLocacao(imovel.finalidade));
 
   useEffect(() => {
     let ativo = true;
@@ -140,7 +145,7 @@ export default function ModalLocacaoLote({ imovelIds }: { imovelIds: string[] })
   }
 
   async function confirmar() {
-    if (!politica || !previa?.ok || confirmando) return;
+    if (!politica || !previa?.ok || confirmando || temImovelDeVenda) return;
     setConfirmando(true);
     try {
       const resultado = await locarImoveisEmLote(operacaoId, politica.id, itens);
@@ -260,7 +265,7 @@ export default function ModalLocacaoLote({ imovelIds }: { imovelIds: string[] })
         <div></div>
         <div className="modal-foot-primary">
           <button type="button" className="btn" onClick={fecharModal}>Cancelar</button>
-          <button type="button" className="btn btn-primary" onClick={() => void confirmar()} disabled={!previa?.ok || calculando || confirmando}>{confirmando ? "Confirmando…" : "Confirmar locações"}</button>
+          <button type="button" className="btn btn-primary" onClick={() => void confirmar()} disabled={!previa?.ok || calculando || confirmando || temImovelDeVenda}>{confirmando ? "Confirmando…" : "Confirmar locações"}</button>
         </div>
       </div>
     </>
