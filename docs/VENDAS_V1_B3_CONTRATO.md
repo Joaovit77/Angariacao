@@ -1,8 +1,10 @@
 # Vendas V1-B3: contrato do interessado
 
 Estado: B3.1 (contrato TypeScript puro) e B3.2 (banco) em Production desde 06/10/2026 (main
-`5e25ff5`, migration `20261006123603`). B3.3 (persistência TS) implementado localmente. Nenhuma
-tela usa o interessado ainda (B3.4).
+`5e25ff5`, migration `20261006123603`). B3.3 (persistência TS) integra a base Production.
+B3.4a-R reconcilia a superfície de leitura sobre `eb6705c`, sem integração em Production.
+Nenhuma tela usa o fluxo de resolução ou criação de interessado:
+B3.4b (criação) ainda não iniciado; B3.4c (operações) futuro.
 
 ## Decisões do B3.0
 
@@ -113,6 +115,36 @@ retry e sem `repair` automático.
   `web/integration/vendas-v1-b3-3-supabase-local.test.ts` (opt-in, stack local isolada
   `vendas-b33-5e25ff5` com o B3.2: resolver, criar novo, encontrado, replay, conflitos, existente,
   sem telefone, legado e sessão ausente).
+
+## B3.4a-R: reconciliação da leitura
+
+Recupera o conteúdo funcional de `c8a0494` sobre `eb6705c`, sem cherry-pick integral,
+sem migration e sem mudança nos contratos B1 a B3.3. O B3.4a histórico tinha Preview própria;
+a reconciliação atual permanece somente leitura e fora de Production. Commit e Preview
+são um checkpoint separado da integração em main.
+
+- Menu Vendas logo depois de Repasses, título na barra de topo e rota autenticada `/vendas`.
+- Copy histórica: "Oportunidades de venda da sua conta, com o interessado, o imóvel e a etapa de cada uma."
+- Lista com interessado, identificação histórica do imóvel, etapa, valor, atualização e abertura.
+- Filtros de busca, etapa e mostrar arquivadas, todos locais e sem escrita.
+- Carregamento, erro/retry, conta vazia, filtro vazio e detalhe com eventos comerciais.
+- SELECT sob RLS nas três tabelas públicas de Vendas e em contatos (`id,nome`), sem RPC.
+- Valores e versões em texto, usando os decodificadores publicados; dados inválidos não são aceitos parcialmente.
+- CSS exclusivo de Vendas, tokens atuais e diálogo com foco contido, Esc e devolução de foco.
+- Fronteira B3.3 permite somente os quatro consumidores de leitura nomeados; demais telas,
+  operações, resolução de interessado e RPCs diretas continuam proibidos.
+- Nenhum seletor de imóvel, finalidade, elegibilidade ou controle de criação/edição/operação.
+
+Provas locais: `web/tests/vendas-v1-b3-4a-leitura.test.ts`,
+`web/tests/vendas-v1-b3-4a-interface.test.ts`, `web/tests/nav-angariacao.test.ts` e fronteira
+B3.3, além da regressão B1–B3.3. O ensaio de integração histórico foi preservado em
+`web/integration/vendas-v1-b3-4a-supabase-local.test.ts`; é opt-in e não autoriza criação de
+fixtures nem aplicação de migrations fora de uma stack local isolada.
+
+A aprovação automatizada e o smoke sintético não substituem a leitura autenticada com
+Auth/PostgREST reais. Antes do merge, abrir `/vendas` com uma conta segura, conferir menu,
+título e estado vazio (sem criar massa em Production), filtros/detalhe em ambiente seguro
+quando existirem oportunidades, duas contas isoladas, sessão ausente, temas e mobile.
 
 ## Riscos registrados
 

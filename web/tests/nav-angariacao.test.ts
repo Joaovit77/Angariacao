@@ -103,6 +103,16 @@ describe("Menu lateral e shell", () => {
     expect(barra).toContain("item.rotasAtivas ?? []");
   });
 
+  it("Vendas é item próprio logo depois de Repasses, com título e rota", () => {
+    const barra = ler("components/painel/BarraLateral.tsx");
+    expect(barra.match(/rota: "\/vendas"/g)).toHaveLength(1);
+    const ordem = ['rota: "/repasses"', 'rota: "/vendas"', 'rota: "/respostas"'].map((trecho) => barra.indexOf(trecho));
+    expect(ordem.every((posicao, i) => posicao > 0 && (i === 0 || posicao > ordem[i - 1]))).toBe(true);
+    expect(barra.slice(ordem[0], ordem[2]).match(/rota:/g)).toHaveLength(2);
+    expect(ler("components/painel/Topbar.tsx")).toContain('"/vendas": "Vendas",');
+    expect(ler("app/(painel)/vendas/page.tsx")).toContain("return <VendasView />;");
+  });
+
   it("o shell monta a faixa só nas rotas da área, fora do div que re-anima por pathname", () => {
     const layout = ler("app/(painel)/layout.tsx");
     expect(layout).toContain('import NavAngariacao from "@/components/painel/NavAngariacao"');
