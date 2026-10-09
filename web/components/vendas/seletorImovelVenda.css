@@ -1,0 +1,29 @@
+/* B3.4b-A: estilos exclusivos do bloco de consulta, com os tokens do painel. */
+.vendas-imoveis-seletor { min-width:0; max-width:100%; color:var(--text); font-family:var(--font-body); }
+.vendas-imoveis-cabecalho h3 { font-family:var(--font-display); font-size:18px; margin:0 0 6px; }
+.vendas-imoveis-cabecalho p, .vendas-imoveis-local, .vendas-imoveis-contagem { color:var(--text-dim); font-size:13px; }
+.vendas-imoveis-cabecalho { margin-bottom:18px; }
+.vendas-imoveis-busca { display:grid; gap:8px; font-size:13px; font-weight:600; }
+.vendas-imoveis-busca input { width:100%; min-width:0; box-sizing:border-box; }
+.vendas-imoveis-contagem { margin:12px 0; }
+.vendas-imoveis-selecao { font-size:13px; color:var(--accent); overflow-wrap:anywhere; margin:12px 0; }
+.vendas-imoveis-lista { list-style:none; padding:0; margin:0; display:grid; gap:12px; max-height:520px; overflow-y:auto; }
+.vendas-imoveis-opcao { border:1px solid var(--border); border-radius:12px; background:var(--bg-elev-1); padding:16px; min-width:0; overflow-wrap:anywhere; }
+.vendas-imoveis-opcao[data-selecionado="true"] { border-color:var(--accent); }
+.vendas-imoveis-identificacao { display:flex; gap:12px; align-items:flex-start; }
+.vendas-imoveis-identificacao > div { flex:1; min-width:0; }
+.vendas-imoveis-identificacao input { flex-shrink:0; width:18px; height:18px; margin:2px 0; accent-color:var(--accent); }
+.vendas-imoveis-identificacao input:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.vendas-imoveis-identificacao strong { font-size:14px; }
+.vendas-imoveis-identificacao p { margin:5px 0 0; font-size:13px; line-height:1.5; }
+.vendas-imoveis-retirado { flex-shrink:0; font-size:12px; font-weight:600; padding:4px 8px; border:1px solid var(--border); border-radius:6px; color:var(--text-dim); }
+.vendas-imoveis-dados { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:16px 0 0; padding-top:12px; border-top:1px solid var(--border); }
+.vendas-imoveis-dados dt { font-size:11px; color:var(--text-dim); margin-bottom:4px; }
+.vendas-imoveis-dados dd { margin:0; font-size:13px; font-weight:600; line-height:1.4; }
+.vendas-imoveis-estado { padding:20px; border:1px solid var(--border); border-radius:12px; background:var(--bg-elev-1); font-size:14px; }
+.vendas-imoveis-estado p { margin:8px 0 16px; color:var(--text-dim); }
+@media (max-width:600px) {
+  .vendas-imoveis-opcao { padding:14px; }
+  .vendas-imoveis-dados { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .vendas-imoveis-identificacao { flex-wrap:wrap; }
+}

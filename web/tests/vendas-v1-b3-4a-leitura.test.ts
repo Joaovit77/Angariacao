@@ -202,7 +202,10 @@ describe("B3.4a: fronteira de segurança e ausência de escrita", () => {
   ];
 
   it("a pasta de Vendas tem só os arquivos previstos", () => {
-    expect(readdirSync(join(RAIZ, "components/vendas")).sort()).toEqual(["DrawerOportunidadeVenda.tsx", "VendasView.tsx", "filtrosVenda.ts", "rotulosVenda.ts", "vendas.css"]);
+    expect(readdirSync(join(RAIZ, "components/vendas")).sort()).toEqual([
+      "DrawerOportunidadeVenda.tsx", "SeletorImovelVenda.tsx", "VendasView.tsx", "filtrosVenda.ts", "rotulosVenda.ts",
+      "seletorImovelVenda.css", "vendas.css",
+    ]);
   });
 
   it("componentes de Vendas não importam Supabase nem as portas que gravam: só vendasLeitura", () => {

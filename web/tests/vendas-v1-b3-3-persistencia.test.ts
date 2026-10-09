@@ -212,7 +212,7 @@ describe("B3.3: fronteira (sem service role, sem UI)", () => {
     expect(ler("lib/persistencia/supabase.ts")).not.toMatch(/SERVICE_ROLE/);
   });
 
-  it("nenhuma tela usa o adaptador que grava nem a resolução; só a leitura do B3.4a chega à interface", () => {
+  it("nenhuma tela usa o adaptador que grava nem a resolução; só B3.4a e os tipos do catálogo B3.4b-A chegam à interface", () => {
     const telas = [...arquivos("app"), ...arquivos("components")];
     expect(telas.length).toBeGreaterThan(20);
     const relativo = (arquivo: string) => relative(WEB, join(WEB, arquivo)).replace(/\\/g, "/");
@@ -221,11 +221,14 @@ describe("B3.3: fronteira (sem service role, sem UI)", () => {
     // Nenhuma tela chama RPC de Vendas direto, por nome de porta ou pelo prefixo.
     const rpcDireta = telas.filter((arquivo) => /vendas_(criar|transicionar|alterar|ganhar|perder|arquivar|resolver)_|\.rpc\(\s*["'`]vendas_/.test(ler(arquivo)));
     expect(rpcDireta.map(relativo)).toEqual([]);
-    // B3.4a: a lista e o detalhe só leem (vendasLeitura, sob RLS). Qualquer outro arquivo é HOLD.
+    // B3.4a só lê snapshots; B3.4b-A recebe tipos do catálogo neutro. Lista fechada por arquivo.
     const leem = telas.filter((arquivo) => /persistencia\/vendas/.test(ler(arquivo)));
     expect(leem.map(relativo).sort()).toEqual([
-      "components/vendas/DrawerOportunidadeVenda.tsx", "components/vendas/VendasView.tsx",
+      "components/vendas/DrawerOportunidadeVenda.tsx", "components/vendas/SeletorImovelVenda.tsx", "components/vendas/VendasView.tsx",
       "components/vendas/filtrosVenda.ts", "components/vendas/rotulosVenda.ts",
     ]);
+    const seletor = ler("components/vendas/SeletorImovelVenda.tsx");
+    expect(seletor).toMatch(/import type \{[^}]+\} from "@\/lib\/persistencia\/vendasImoveisLeitura"/);
+    expect(seletor).not.toMatch(/persistencia\/vendasComandos|persistencia\/vendasLeitura|persistencia\/vendasInteressado/);
   });
 });
