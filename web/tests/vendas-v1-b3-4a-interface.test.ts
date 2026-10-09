@@ -61,11 +61,11 @@ describe("B3.4a: VendasView", () => {
     expect(screen.getByText("3 de 4")).toBeTruthy();
   });
 
-  it("lista vazia: mensagem simples, sem ação de criar", async () => {
+  it("lista vazia: mensagem simples e única autorização nominal de criação B3.4b-B1", async () => {
     banco.tabelas = { vendas_oportunidades: [] };
     render(createElement(VendasView));
     expect(await screen.findByText("Nenhuma oportunidade de venda")).toBeTruthy();
-    expect(screen.queryAllByRole("button").filter((b) => PROIBIDOS.test(b.textContent ?? ""))).toEqual([]);
+    expect(screen.queryAllByRole("button").filter((b) => PROIBIDOS.test(b.textContent ?? ""))).toEqual([screen.getByRole("button", { name: "Nova oportunidade" })]);
   });
 
   it("erro perceptível com Tentar novamente, que recarrega", async () => {
@@ -151,7 +151,7 @@ describe("B3.4a: VendasView", () => {
     expect(await within(drawer).findByRole("list", { name: "Eventos da oportunidade" })).toBeTruthy();
   });
 
-  it("nenhuma ação mutante aparece, nem desabilitada, na lista ou no detalhe", async () => {
+  it("só criação B3.4b-B1 é autorizada; demais mutações continuam ausentes da lista e detalhe", async () => {
     await renderizar();
     for (const linha of linhas()) {
       fireEvent.click(within(linha).getByRole("button", { name: /^Abrir oportunidade/ }));
@@ -161,8 +161,9 @@ describe("B3.4a: VendasView", () => {
       fireEvent.click(within(drawer).getByRole("button", { name: "Fechar detalhes da oportunidade" }));
     }
     const botoes = screen.getAllByRole("button").map((b) => b.textContent ?? "");
-    expect(botoes.every((texto) => texto === "Abrir")).toBe(true);
-    expect(textosVisiveis()).not.toMatch(PROIBIDOS);
+    expect(botoes.filter((texto) => texto !== "Nova oportunidade").every((texto) => texto === "Abrir")).toBe(true);
+    expect(botoes.filter((texto) => texto === "Nova oportunidade")).toHaveLength(1);
+    expect(textosVisiveis().replace("Nova oportunidade", "")).not.toMatch(PROIBIDOS);
     expect(new Set(banco.consultas.map((c) => c.tabela))).toEqual(new Set(["vendas_oportunidades", "vendas_imoveis_referencias", "contatos", "vendas_oportunidades_eventos"]));
   });
 

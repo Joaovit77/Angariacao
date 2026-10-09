@@ -1,12 +1,11 @@
 "use client";
 
-/* Vendas V1 (B3.4a): lista e detalhe, só leitura. Segue o desenho de Repasses: a View carrega
-   pela camada de persistência (vendasLeitura, sob RLS), recarrega com o evento
-   `vendas:atualizadas` e mostra carregando, erro com nova tentativa e vazio. Criação e operações
-   entram nas fatias seguintes; até lá não há botão que grave. */
+/* Lista e detalhe preservam a leitura B3.4a. A criação B3.4b-B1 fica no modal dedicado,
+   usa o executor existente e relê a lista sem mudar os filtros. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listarOportunidadesVenda, type CodigoErroLeituraVenda, type OportunidadeListadaVenda } from "@/lib/persistencia/vendasLeitura";
 import DrawerOportunidadeVenda from "./DrawerOportunidadeVenda";
+import ModalCriarOportunidadeVenda from "./ModalCriarOportunidadeVenda";
 import "./vendas.css";
 import { FILTROS_ETAPA_VENDA, FILTROS_INICIAIS_VENDA, filtrarOportunidadesVenda, type FiltroEtapaVenda, type FiltrosVenda } from "./filtrosVenda";
 import {
@@ -28,6 +27,8 @@ export default function VendasView() {
   const [erro, setErro] = useState<CodigoErroLeituraVenda | null>(null);
   const [filtros, setFiltros] = useState<FiltrosVenda>(FILTROS_INICIAIS_VENDA);
   const [selecionadaId, setSelecionadaId] = useState<string | null>(null);
+  const [criando, setCriando] = useState(false);
+  const [criadaId, setCriadaId] = useState<string | null>(null);
   const pedido = useRef(0);
 
   const carregar = useCallback(async () => {
@@ -56,6 +57,13 @@ export default function VendasView() {
   // O detalhe lê da lista atual: depois de recarregar, mostra a versão nova (ou fecha, se sumiu).
   const selecionada = selecionadaId === null ? null : itens.find((item) => item.oportunidade.id === selecionadaId) ?? null;
   const fecharDetalhe = useCallback(() => setSelecionadaId(null), []);
+  const fecharCriacao = useCallback(() => setCriando(false), []);
+  function aposCriar(id: string) {
+    setCriando(false);
+    setCriadaId(id);
+    setSelecionadaId(id);
+    void carregar();
+  }
 
   function alterarFiltro<K extends keyof FiltrosVenda>(campo: K, valor: FiltrosVenda[K]) {
     setFiltros((atuais) => ({ ...atuais, [campo]: valor }));
@@ -63,9 +71,12 @@ export default function VendasView() {
 
   return (
     <section className="vendas-view" aria-label="Vendas">
-      <div className="page-head">
+      <div className="page-head vendas-criacao-topo">
         <div><p className="page-sub">Oportunidades de venda da sua conta, com o interessado, o imóvel e a etapa de cada uma.</p></div>
+        <button type="button" className="btn btn-primary vendas-criacao-acao" onClick={() => setCriando(true)}>Nova oportunidade</button>
       </div>
+
+      {criadaId && <div className="vendas-criacao-confirmada" role="status"><span>Oportunidade criada.</span><button type="button" className="btn btn-secondary btn-sm" onClick={() => { setSelecionadaId(criadaId); if (!itens.some((i) => i.oportunidade.id === criadaId)) void carregar(); }}>Abrir oportunidade criada</button></div>}
 
       <div className="vendas-toolbar">
         <input
@@ -133,7 +144,8 @@ export default function VendasView() {
         </div>
       )}
 
-      {selecionada && <DrawerOportunidadeVenda key={selecionada.oportunidade.id} item={selecionada} aoFechar={fecharDetalhe} />}
+      {selecionada && !criando && <DrawerOportunidadeVenda key={selecionada.oportunidade.id} item={selecionada} aoFechar={fecharDetalhe} />}
+      {criando && <ModalCriarOportunidadeVenda aoFechar={fecharCriacao} aoCriar={aposCriar} />}
     </section>
   );
 }

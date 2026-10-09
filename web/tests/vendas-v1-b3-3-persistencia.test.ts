@@ -212,20 +212,20 @@ describe("B3.3: fronteira (sem service role, sem UI)", () => {
     expect(ler("lib/persistencia/supabase.ts")).not.toMatch(/SERVICE_ROLE/);
   });
 
-  it("nenhuma tela usa o adaptador que grava nem a resolução; só B3.4a e os tipos do catálogo B3.4b-A chegam à interface", () => {
+  it("somente o modal B3.4b-B1 usa criar; resolução e demais portas continuam fora das telas", () => {
     const telas = [...arquivos("app"), ...arquivos("components")];
     expect(telas.length).toBeGreaterThan(20);
     const relativo = (arquivo: string) => relative(WEB, join(WEB, arquivo)).replace(/\\/g, "/");
     const gravam = telas.filter((arquivo) => /persistencia\/vendas["']|persistencia\/vendasInteressado|vendas_resolver_interessado|consultarInteressadoVenda|executarComandoVenda/.test(ler(arquivo)));
-    expect(gravam.map(relativo)).toEqual([]);
+    expect(gravam.map(relativo).sort()).toEqual(["components/vendas/ModalCriarOportunidadeVenda.tsx", "components/vendas/criacaoVenda.ts"]);
     // Nenhuma tela chama RPC de Vendas direto, por nome de porta ou pelo prefixo.
     const rpcDireta = telas.filter((arquivo) => /vendas_(criar|transicionar|alterar|ganhar|perder|arquivar|resolver)_|\.rpc\(\s*["'`]vendas_/.test(ler(arquivo)));
     expect(rpcDireta.map(relativo)).toEqual([]);
     // B3.4a só lê snapshots; B3.4b-A recebe tipos do catálogo neutro. Lista fechada por arquivo.
     const leem = telas.filter((arquivo) => /persistencia\/vendas/.test(ler(arquivo)));
     expect(leem.map(relativo).sort()).toEqual([
-      "components/vendas/DrawerOportunidadeVenda.tsx", "components/vendas/SeletorImovelVenda.tsx", "components/vendas/VendasView.tsx",
-      "components/vendas/filtrosVenda.ts", "components/vendas/rotulosVenda.ts",
+      "components/vendas/DrawerOportunidadeVenda.tsx", "components/vendas/ModalCriarOportunidadeVenda.tsx", "components/vendas/SeletorImovelVenda.tsx", "components/vendas/VendasView.tsx",
+      "components/vendas/criacaoVenda.ts", "components/vendas/filtrosVenda.ts", "components/vendas/rotulosVenda.ts",
     ]);
     const seletor = ler("components/vendas/SeletorImovelVenda.tsx");
     expect(seletor).toMatch(/import type \{[^}]+\} from "@\/lib\/persistencia\/vendasImoveisLeitura"/);

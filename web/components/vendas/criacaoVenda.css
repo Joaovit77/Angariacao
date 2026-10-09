@@ -1,0 +1,50 @@
+/* Criação de Vendas: layout isolado, com os tokens do painel. */
+.vendas-criacao-fundo { position:fixed; inset:0; z-index:var(--layer-pipeline-drawer); display:flex; align-items:center; justify-content:center; padding:24px; background:rgb(var(--sombra-rgb) / .48); }
+.vendas-criacao-modal { width:min(720px, 100%); max-height:calc(100dvh - 48px); min-width:0; display:flex; flex-direction:column; color:var(--text); background:var(--bg-elev-1); border:1px solid var(--border); border-radius:18px; box-shadow:0 24px 80px rgb(var(--sombra-rgb) / .35); }
+.vendas-criacao-cabecalho { padding:22px 26px 18px; display:flex; align-items:flex-start; gap:16px; border-bottom:1px solid var(--border); }
+.vendas-criacao-cabecalho > div { flex:1; min-width:0; }
+.vendas-criacao-cabecalho h2 { margin:4px 0 6px; font-family:var(--font-display); font-size:24px; }
+.vendas-criacao-cabecalho p, .vendas-criacao-ajuda { color:var(--text-dim); font-size:12px; line-height:1.6; }
+.vendas-criacao-sobrancelha { color:var(--text-faint); font-size:11px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; }
+.vendas-criacao-form { display:flex; flex-direction:column; min-height:0; }
+.vendas-criacao-corpo { padding:22px 26px; overflow-y:auto; min-height:0; overscroll-behavior:contain; }
+.vendas-criacao-bloco { border:0; padding:0; margin:0 0 24px; min-width:0; }
+.vendas-criacao-bloco legend, .vendas-criacao-resumo h3 { font-size:15px; font-weight:700; margin-bottom:14px; }
+.vendas-criacao-bloco label:not(.vendas-criacao-contato) { display:block; font-size:12px; font-weight:600; margin-bottom:7px; }
+.vendas-criacao-bloco input:not([type=radio]), .vendas-criacao-bloco select { box-sizing:border-box; width:100%; min-width:0; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:9px; padding:11px 12px; font:inherit; }
+.vendas-criacao-bloco input[aria-invalid=true], .vendas-criacao-bloco select[aria-invalid=true] { border-width:2px; }
+.vendas-criacao-modos { display:flex; flex-wrap:wrap; gap:16px; margin-bottom:16px; }
+.vendas-criacao-modos label { display:flex !important; align-items:center; gap:7px; }
+.vendas-criacao-grade { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-top:14px; }
+.vendas-criacao-opcional { color:var(--text-faint); font-weight:400; margin-left:5px; }
+.vendas-criacao-contatos { max-height:180px; overflow-y:auto; border:1px solid var(--border); border-radius:10px; }
+.vendas-criacao-contatos > p { padding:14px; font-size:12px; color:var(--text-dim); }
+.vendas-criacao-contato { display:flex; gap:10px; align-items:center; padding:12px 14px; cursor:pointer; border-bottom:1px solid var(--border); overflow-wrap:anywhere; }
+.vendas-criacao-contato:last-child { border-bottom:0; }
+.vendas-criacao-contato[data-selecionado=true] { background:var(--bg-elev-2); outline:1px solid var(--border); outline-offset:-1px; }
+.vendas-criacao-contato span { min-width:0; }
+.vendas-criacao-contato strong { font-size:13px; }
+.vendas-criacao-contato small { display:block; color:var(--text-dim); font-size:11px; margin-top:3px; }
+.vendas-criacao-escolhido { font-size:12px; margin-top:10px; overflow-wrap:anywhere; }
+.vendas-criacao-resumo { border:1px solid var(--border); background:var(--bg); padding:16px; border-radius:12px; overflow-wrap:anywhere; }
+.vendas-criacao-resumo h3 { margin:0 0 8px; }
+.vendas-criacao-resumo > div { display:flex; align-items:center; flex-wrap:wrap; gap:10px; font-size:12px; margin:10px 0; }
+.vendas-criacao-alerta { border:1px solid var(--border); border-left-width:4px; border-radius:8px; padding:14px; margin-bottom:18px; background:var(--bg-elev-2); font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
+.vendas-criacao-rodape { display:flex; justify-content:flex-end; gap:10px; padding:16px 26px; border-top:1px solid var(--border); flex-shrink:0; }
+.vendas-criacao-modal :focus-visible { outline:2px solid currentColor; outline-offset:3px; }
+.vendas-criacao-modal button:disabled { opacity:.55; cursor:not-allowed; }
+.vendas-criacao-acao { margin-left:auto; white-space:nowrap; }
+.vendas-criacao-topo { display:flex; align-items:center; gap:16px; }
+.vendas-criacao-confirmada { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:12px 0 18px; font-size:13px; }
+@media(max-width:720px) {
+  .vendas-criacao-fundo { padding:12px; }
+  .vendas-criacao-modal { max-height:calc(100dvh - 24px); border-radius:14px; }
+  .vendas-criacao-cabecalho { padding:18px; }
+  .vendas-criacao-cabecalho h2 { font-size:21px; }
+  .vendas-criacao-corpo { padding:18px; }
+  .vendas-criacao-grade { grid-template-columns:minmax(0,1fr); }
+  .vendas-criacao-rodape { padding:14px 18px; }
+  .vendas-criacao-rodape .btn { min-height:44px; }
+  .vendas-criacao-topo { align-items:stretch; flex-direction:column; }
+  .vendas-criacao-acao { margin-left:0; }
+}

@@ -203,7 +203,7 @@ describe("B3.4a: fronteira de segurança e ausência de escrita", () => {
 
   it("a pasta de Vendas tem só os arquivos previstos", () => {
     expect(readdirSync(join(RAIZ, "components/vendas")).sort()).toEqual([
-      "DrawerOportunidadeVenda.tsx", "SeletorImovelVenda.tsx", "VendasView.tsx", "filtrosVenda.ts", "rotulosVenda.ts",
+      "DrawerOportunidadeVenda.tsx", "ModalCriarOportunidadeVenda.tsx", "SeletorImovelVenda.tsx", "VendasView.tsx", "criacaoVenda.css", "criacaoVenda.ts", "filtrosVenda.ts", "rotulosVenda.ts",
       "seletorImovelVenda.css", "vendas.css",
     ]);
   });
