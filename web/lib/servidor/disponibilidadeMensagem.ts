@@ -156,8 +156,15 @@ export interface ConsolidacaoPreparada {
   /** Ids das candidatas reservadas (`agendada` → `processando`) para sair na
       mensagem única. Só viram `contato-consolidado` depois do POST. */
   reservadasIds: string[];
-  /** Transições aplicadas nas candidatas que não podiam ser absorvidas. */
-  transicoes: Array<{ mensagemId: string; acao: DecisaoMensagemDisponibilidade["acao"]; ok: boolean }>;
+  /** Transições aplicadas nas candidatas que não podiam ser absorvidas.
+      `causa` só no cancelamento por finalidade venda (IV-4B1), para o worker
+      registrar o evento. */
+  transicoes: Array<{
+    mensagemId: string;
+    acao: DecisaoMensagemDisponibilidade["acao"];
+    ok: boolean;
+    causa?: Extract<DecisaoMensagemDisponibilidade, { acao: "cancelar" }>["causa"];
+  }>;
   /** Imóveis pelos quais a mensagem final pergunta (âncora primeiro). */
   imoveisConsultados: Imovel[];
 }
@@ -247,7 +254,10 @@ export async function prepararConsolidacaoContato(
     const { decisao } = await revalidarVerificacaoDisponibilidade(admin, cruda);
     if (decisao.acao !== "enviar") {
       const resultado = await aplicarDecisaoNoBanco(admin, { ...cruda, status: "agendada" }, decisao);
-      transicoes.push({ mensagemId: cruda.id, acao: decisao.acao, ok: resultado.ok });
+      transicoes.push({
+        mensagemId: cruda.id, acao: decisao.acao, ok: resultado.ok,
+        ...(decisao.acao === "cancelar" && decisao.causa ? { causa: decisao.causa } : {}),
+      });
       continue;
     }
     candidatas.push({ mensagem: fromDbMensagem(cruda), imovel });
