@@ -192,6 +192,52 @@ function GrupoResultados({
   );
 }
 
+export const TITULO_NENHUM_CONFIRMADO = "Nenhum resultado confirmado";
+export const EXPLICACAO_NENHUM_CONFIRMADO =
+  "Encontramos alguns indícios, mas não há evidência suficiente para confirmar que correspondem a este imóvel.";
+
+/** INV-Q1: sem nenhum resultado confirmado, os demais ficam atrás de uma
+    ação explícita. Recolher é só apresentação: a lista recebida chega
+    inteira, na mesma ordem, quando o grupo é aberto. */
+function ResultadosNaoConfirmados({
+  itens,
+  resultado,
+  aberto,
+  onAlternar,
+}: {
+  itens: CorrespondenciaInvestigacao[];
+  resultado: ResultadoInvestigacao;
+  aberto: boolean;
+  onAlternar: () => void;
+}) {
+  return (
+    <div data-nao-confirmados={aberto ? "abertos" : "recolhidos"}>
+      <button
+        type="button"
+        className={`btn ${styles.alternarNaoConfirmados}`}
+        aria-expanded={aberto}
+        aria-controls="lista-resultados-nao-confirmados"
+        onClick={onAlternar}
+      >
+        {aberto ? "Ocultar" : "Ver"} resultados não confirmados ({itens.length})
+        <span className={styles.seta} aria-hidden="true">{aberto ? "▴" : "▾"}</span>
+      </button>
+      <div id="lista-resultados-nao-confirmados" className={styles.listaNaoConfirmados} hidden={!aberto}>
+        {aberto ? (
+          <GrupoResultados
+            id="grupo-nao-confirmados"
+            titulo="Resultados não confirmados"
+            explicacao="Pouca informação em comum com a sua consulta ou algo divergente. A faixa não confirma que é o mesmo imóvel: abra a fonte para conferir."
+            itens={itens}
+            resultado={resultado}
+            compacto
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 /** Texto da única região viva do painel. Só usa o que o stream entrega: a
     etapa atual e as pesquisas já concluídas (nunca a que está rodando). */
 export function textoAndamentoInvestigacao(etapa: EtapaVisual, pesquisasConcluidas: number): string {
@@ -305,7 +351,10 @@ export function mensagemMemoriaInvestigacao(memoria: MemoriaInvestigacao): strin
 
 /** Divide só para apresentação, pela faixa que já veio do servidor. `filter`
     é estável: cada grupo mantém exatamente a ordem recebida, e a união dos
-    dois é a lista inteira (as quatro faixas são cobertas). */
+    dois é a lista inteira (as quatro faixas são cobertas).
+    `melhores` é também o que a tela chama de confirmado (INV-Q1): forte ou
+    muito forte só sai da análise com referência, endereço ou empreendimento
+    iguais, o mesmo critério da memória (FAIXAS_ELEGIVEIS_MEMORIA). */
 export function agruparResultadosPorFaixa(resultados: readonly CorrespondenciaInvestigacao[]) {
   const melhor = (item: CorrespondenciaInvestigacao) => item.confianca === "muito-forte" || item.confianca === "forte";
   return {
@@ -326,6 +375,7 @@ export default function InvestigadorImoveisView({ imovelIdInicial, referenciaIni
   const [consultasRealizadas, setConsultasRealizadas] = useState<string[]>([]);
   const [resultado, setResultado] = useState<ResultadoInvestigacao | null>(null);
   const [erro, setErro] = useState("");
+  const [naoConfirmadosAbertos, setNaoConfirmadosAbertos] = useState(false);
 
   useEffect(() => {
     if (!origemInicial || !idInicial) return;
@@ -359,6 +409,7 @@ export default function InvestigadorImoveisView({ imovelIdInicial, referenciaIni
     setConsultasRealizadas([]);
     setResultado(null);
     setErro("");
+    setNaoConfirmadosAbertos(false);
     let falhaRecebida = "";
     try {
       // Na origem do Garimpo a referência vai junto: o servidor confere a
@@ -387,6 +438,9 @@ export default function InvestigadorImoveisView({ imovelIdInicial, referenciaIni
   }
 
   const grupos = resultado ? agruparResultadosPorFaixa(resultado.resultados) : null;
+  // Zero resultados continua no vazio original; aqui há resultados e nenhum
+  // deles é confirmado.
+  const nenhumConfirmado = Boolean(resultado?.resultados.length) && grupos?.melhores.length === 0;
   const avisoResultado = resultado?.aviso && !(resultado.resultados.length === 0 && resultado.aviso === AVISO_SEM_RESULTADOS)
     ? resultado.aviso
     : "";
@@ -444,13 +498,23 @@ export default function InvestigadorImoveisView({ imovelIdInicial, referenciaIni
 
       {resultado && grupos ? (
         <section className={styles.resultados} aria-labelledby="titulo-resultados-investigador">
-          <div className={styles.resultadosCabecalho}>
-            <span>POSSÍVEIS CORRESPONDÊNCIAS</span>
-            <h2 id="titulo-resultados-investigador">{plural(resultado.resultados.length, "resultado", "resultados")}</h2>
-            <p>
-              A faixa indica o quanto o anúncio se parece com a sua consulta. Ela não confirma que é o mesmo imóvel:
-              abra a fonte para conferir.
-            </p>
+          <div className={styles.resultadosCabecalho} data-estado={nenhumConfirmado ? "nenhum-confirmado" : undefined}>
+            {nenhumConfirmado ? (
+              <>
+                <span>RESULTADO DA INVESTIGAÇÃO</span>
+                <h2 id="titulo-resultados-investigador">{TITULO_NENHUM_CONFIRMADO}</h2>
+                <p>{EXPLICACAO_NENHUM_CONFIRMADO}</p>
+              </>
+            ) : (
+              <>
+                <span>POSSÍVEIS CORRESPONDÊNCIAS</span>
+                <h2 id="titulo-resultados-investigador">{plural(resultado.resultados.length, "resultado", "resultados")}</h2>
+                <p>
+                  A faixa indica o quanto o anúncio se parece com a sua consulta. Ela não confirma que é o mesmo imóvel:
+                  abra a fonte para conferir.
+                </p>
+              </>
+            )}
           </div>
           {avisoResultado ? <div className={styles.aviso}>{avisoResultado}</div> : null}
           {resultado.memoria ? (
@@ -467,7 +531,14 @@ export default function InvestigadorImoveisView({ imovelIdInicial, referenciaIni
               Há confirmações incompatíveis na memória; esses atributos não foram usados na comparação.
             </p>
           ) : null}
-          {resultado.resultados.length ? (
+          {nenhumConfirmado ? (
+            <ResultadosNaoConfirmados
+              itens={grupos.outros}
+              resultado={resultado}
+              aberto={naoConfirmadosAbertos}
+              onAlternar={() => setNaoConfirmadosAbertos((aberto) => !aberto)}
+            />
+          ) : resultado.resultados.length ? (
             <>
               <GrupoResultados
                 id="grupo-melhores"

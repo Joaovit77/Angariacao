@@ -113,7 +113,9 @@ describe("AB4 — agrupamento só visual, pela faixa recebida", () => {
   it("A. só com resultados fracos não inventa grupo de melhores", async () => {
     await investigarCom([{ tipo: "resultado", dados: resultadoCom([card("https://c.test/3", "indicio", "Fraco")]) }]);
     expect(document.querySelector('[data-grupo="grupo-melhores"]')).toBeNull();
-    expect(titulosDo("grupo-outros")).toEqual(["Fraco"]);
+    // INV-Q1: sem confirmado, os fracos ficam atrás do botão.
+    fireEvent.click(screen.getByRole("button", { name: /resultados não confirmados/ }));
+    expect(titulosDo("grupo-nao-confirmados")).toEqual(["Fraco"]);
   });
 });
 
@@ -217,6 +219,7 @@ describe("AB4 — card e acessibilidade", () => {
       contradicoes: ["Quantidade de vagas diferente: 4"],
     };
     await investigarCom([{ tipo: "resultado", dados: resultadoCom([comDados, card("https://b.test/2", "indicio", "Sem nada")]) }]);
+    fireEvent.click(screen.getByRole("button", { name: /resultados não confirmados/ }));
 
     const link = screen.getAllByRole("link", { name: "Abrir fonte (abre em nova aba)" })[0];
     expect(link.getAttribute("target")).toBe("_blank");

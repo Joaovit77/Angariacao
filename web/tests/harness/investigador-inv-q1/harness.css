@@ -1,0 +1,7 @@
+body { margin:0; background:var(--bg); color:var(--text); }
+.harness-inv { max-width:1180px; margin:0 auto; padding:28px 24px; box-sizing:border-box; }
+.harness-inv header small { color:var(--accent); font-size:12px; }
+.harness-inv h1 { margin:8px 0 16px; font-family:var(--font-display); font-size:22px; }
+.harness-inv-controles { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:22px; }
+.harness-inv-controles .btn[aria-pressed="true"] { border-color:var(--accent); }
+@media(max-width:600px) { .harness-inv { padding:20px 16px; } }

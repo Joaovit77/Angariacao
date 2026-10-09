@@ -148,6 +148,13 @@
 .resultadosCabecalho h2 { margin: 4px 0 6px; font-family: var(--font-display); font-size: 21px; font-weight: 680; }
 .resultadosCabecalho p { max-width: 720px; margin: 0; color: var(--text-dim); font-size: 13px; line-height: 1.5; }
 
+/* INV-Q1: sem resultado confirmado o cabeçalho deixa de usar a cor de
+   destaque, e os não confirmados ficam atrás de um botão. */
+.resultadosCabecalho[data-estado="nenhum-confirmado"] > span { color: var(--text-faint); }
+.alternarNaoConfirmados { gap: 8px; }
+.seta { color: var(--text-faint); font-size: 11px; }
+.listaNaoConfirmados { margin-top: 16px; }
+
 .grupo + .grupo { margin-top: 22px; }
 .grupoCabecalho { margin-bottom: 10px; }
 .grupoCabecalho h3 { margin: 0; font-size: 15px; font-weight: 750; }
@@ -242,6 +249,7 @@
   .processamento li small { display: none; }
   .consultas { margin-left: 0; }
   .gradeResultados { grid-template-columns: 1fr; }
+  .alternarNaoConfirmados { width: 100%; justify-content: center; }
   .resultadoCard { padding: 15px; }
   .fonte { flex-wrap: wrap; }
   .acoesResultado { flex: 1 1 100%; flex-wrap: wrap; }
