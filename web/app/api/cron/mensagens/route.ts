@@ -248,10 +248,12 @@ export async function GET(request: Request) {
             ? await cancelarMensagemSemImovel(admin, item, agoraISOString())
             : await aplicarDecisaoNoBanco(admin, item, decisao);
           if (!resultado.ok) throw new Error(`transicao-falhou:${resultado.erro ?? "desconhecido"}`);
+          // `causa` só existe no cancelamento por finalidade (IV-4B1): o motivo
+          // gravado é `imovel-indisponivel`, e o evento diz por quê.
           registrarEvento({
             userId: item.user_id, categoria: "whatsapp", nivel: "info",
             evento: "agendamento-cancelado-worker",
-            detalhe: `${item.id} ${decisao.motivo} ${decisao.evidencia?.codigo ?? "status"}`,
+            detalhe: `${item.id} ${decisao.motivo} ${decisao.causa ?? decisao.evidencia?.codigo ?? "status"}`,
           });
           suprimidas++;
           continue;
@@ -269,6 +271,19 @@ export async function GET(request: Request) {
         }
         if (contexto.imovel) {
           consolidacao = await prepararConsolidacaoContato(admin, item, contexto.imovel, agoraISOString());
+          // Candidata de venda do mesmo proprietário (IV-4B1): já saiu da
+          // mensagem e foi cancelada pela RPC na preparação; o evento é o
+          // mesmo do cancelamento individual. As outras transições das
+          // candidatas seguem sem evento, e os contadores da resposta
+          // continuam contando só as mensagens reclamadas, como antes.
+          for (const transicao of consolidacao.transicoes) {
+            if (!transicao.ok || !transicao.causa) continue;
+            registrarEvento({
+              userId: item.user_id, categoria: "whatsapp", nivel: "info",
+              evento: "agendamento-cancelado-worker",
+              detalhe: `${transicao.mensagemId} imovel-indisponivel ${transicao.causa}`,
+            });
+          }
           if (consolidacao.reservadasIds.length) {
             texto = consolidacao.plano.texto ?? texto;
             imoveisDaMensagem = consolidacao.imoveisConsultados.map((imovel) => imovel.id);

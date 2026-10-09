@@ -12,6 +12,12 @@
                   lembrete em `deveTerVerificacaoAberta`). Pergunta sem
                   sentido; cancela com motivo auditável. Cobre também o
                   `indisponivel` do M2, que só nasce desses mesmos estados.
+                  Também cancela o imóvel com finalidade `venda` (IV-4B1):
+                  a pergunta é de locação. Mesmo motivo de banco
+                  (`imovel-indisponivel`), com `causa: "finalidade-venda"`
+                  para o evento. As causas acima vêm antes: imóvel retirado,
+                  Locado ou fora da fase cancela pela régua de sempre, com a
+                  evidência de sempre, qualquer que seja a finalidade.
    - `reagendar`  há evidência positiva vigente em E e a mensagem cairia antes
                   de `E + VERIFICACAO_DISPONIBILIDADE_DIAS`: a pergunta já foi
                   respondida naquele contato, e a próxima verificação conta a
@@ -36,6 +42,10 @@ import {
 import type { MensagemAgendada, MotivoCancelamentoMensagemAgendada } from "../mensagensAgendadas";
 import type { Imovel } from "../tipos";
 import type { AvaliacaoTemporalDisponibilidade, EvidenciaDisponibilidade } from "./evidenciaDisponibilidade";
+import {
+  CAUSA_FINALIDADE_VENDA_DISPONIBILIDADE,
+  participaVerificacaoDisponibilidadeLocacao,
+} from "./finalidadeOperacional";
 import { deveTerVerificacaoAberta } from "./followup";
 
 export type DecisaoMensagemDisponibilidade =
@@ -50,6 +60,9 @@ export type DecisaoMensagemDisponibilidade =
       motivo: Extract<MotivoCancelamentoMensagemAgendada, "imovel-indisponivel" | "imovel-excluido">;
       evidencia: EvidenciaDisponibilidade | null;
       fato: string;
+      /** Só quando o cancelamento não vem do estado do imóvel, e sim da
+          finalidade `venda` (IV-4B1). Ausente nas demais causas. */
+      causa?: typeof CAUSA_FINALIDADE_VENDA_DISPONIBILIDADE;
     }
   | {
       acao: "reagendar";
@@ -97,6 +110,17 @@ export function diaDaProximaVerificacao(dataEvidencia: string): string | null {
   return addDaysISO(dataEvidencia.slice(0, 10), VERIFICACAO_DISPONIBILIDADE_DIAS);
 }
 
+/** Imóvel de venda não recebe a pergunta de locação (IV-4B1). */
+function cancelarPorFinalidadeVenda(): DecisaoMensagemDisponibilidade {
+  return {
+    acao: "cancelar",
+    motivo: "imovel-indisponivel",
+    evidencia: null,
+    fato: "Imóvel com finalidade Venda: a verificação de disponibilidade é de locação.",
+    causa: CAUSA_FINALIDADE_VENDA_DISPONIBILIDADE,
+  };
+}
+
 export function decidirMensagemDisponibilidade(
   entrada: EntradaDecisaoMensagemDisponibilidade,
 ): DecisaoMensagemDisponibilidade {
@@ -114,6 +138,9 @@ export function decidirMensagemDisponibilidade(
     };
   }
   if (!imovel || !avaliacao) {
+    // Imóvel sem avaliação (só quem chama sem o M2 chega aqui): a venda
+    // explícita não sai mesmo assim; o resto segue como sempre.
+    if (imovel && !participaVerificacaoDisponibilidadeLocacao(imovel.finalidade)) return cancelarPorFinalidadeVenda();
     // Sem imóvel vinculado não há o que reavaliar: comportamento de sempre.
     return { acao: "enviar", estado: "sem-evidencia", motivo: "sem-evidencia" };
   }
@@ -130,6 +157,10 @@ export function decidirMensagemDisponibilidade(
           : `Imóvel em "${imovel.status}", fora da fase em que se confirma disponibilidade.`),
     };
   }
+
+  // Ainda elegível pelo status: a finalidade decide antes de qualquer
+  // reagendamento ou envio (e, no worker, antes da consolidação).
+  if (!participaVerificacaoDisponibilidadeLocacao(imovel.finalidade)) return cancelarPorFinalidadeVenda();
 
   if (avaliacao.estado === "disponivel" && avaliacao.dataEvidenciaPositiva && avaliacao.positivaMaisRecente) {
     const novoDia = diaDaProximaVerificacao(avaliacao.dataEvidenciaPositiva);
