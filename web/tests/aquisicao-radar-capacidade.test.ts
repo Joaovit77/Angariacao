@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { capacidadeAquisicaoRadar, tipoRecorteObservadoRadar, tipoRecorteRadar } from "@/lib/calculo/aquisicaoRadar";
 import { capacidadeFuncionalZap, PORTAIS_CONHECIDOS } from "@/lib/calculo/centralAngariacao";
 
-describe("matriz de aquisição aprovada em R6.0c-A", () => {
+describe("matriz de aquisição aprovada, com ZAP Casa em R6.0c-B2.2", () => {
   const esperados = {
     olx: ["parcial", "parcial"],
-    zap: ["nao-suportado", "suportado"],
+    zap: ["suportado", "suportado"],
     "viva-real": ["parcial", "parcial"],
     "chaves-na-mao": ["suportado", "parcial"],
     wimoveis: ["parcial", "suportado"],

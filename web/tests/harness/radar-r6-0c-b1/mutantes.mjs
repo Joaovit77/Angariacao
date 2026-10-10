@@ -19,8 +19,8 @@ const mutantes = [
     "(tipoPreferido || anuncio.tipo?.trim() || extrairTipoImovelDeclarado(texto))"],
   ["Capacidade parcial executa", capacidade,
     'suportado: status === "suportado"', 'suportado: status !== "nao-suportado"'],
-  ["ZAP Casa liberado", capacidade,
-    'zap: { locacao: { casa: "nao-suportado"', 'zap: { locacao: { casa: "suportado"'],
+  ["ZAP Casa indevidamente liberado no legado", tipos,
+    'if (recorte !== "apartamento")', 'if (!recorte)'],
 ];
 const testes = ["tests/aquisicao-radar-capacidade.test.ts", "tests/aquisicao-radar-execucao.test.ts", "tests/aquisicao-radar-transporte.test.ts", "tests/radar-r6-tipo-declarado.test.ts"];
 const executar = () => spawnSync(process.execPath, ["node_modules/vitest/vitest.mjs", "run", ...testes, "--maxWorkers=2"], {

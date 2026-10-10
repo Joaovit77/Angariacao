@@ -880,10 +880,13 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   conhecido. Leitura de dado salvo aceita qualquer conhecido; coleta aceita só ativo e falha
   fechada para o resto, nunca com lista vazia silenciosa. Tornar um portal ativo exige coleta
   própria e é decisão explícita.
-  O ZAP é ativo com capacidade funcional **restrita** a Londrina/PR + Apartamento, sem bairro
-  (`capacidadeFuncionalZap`, usada pelo servidor e pela Central). O builder é deliberadamente a
-  única URL real comprovada; preço e dormitórios são filtrados depois da extração, só na primeira
-  página. O parser (`servidor/parserZap.ts`) parte dos cards e usa o JSON-LD só para o mesmo ID;
+  O ZAP é ativo com capacidade funcional **restrita** a Londrina/PR + locação, sem bairro.
+  O contrato explícito admite recortes Casa (tipos observados Casa ou Sobrado) e Apartamento
+  (tipo observado Apartamento); a compatibilidade legada continua restrita a Apartamento.
+  Os builders preservam URLs distintas comprovadas para Casa e Apartamento; preço e dormitórios
+  são filtrados depois da extração, só na primeira página. Isso não representa paginação completa,
+  baseline consolidado nem recência. O parser (`servidor/parserZap.ts`) parte dos cards e associa
+  Product e House/Apartment somente pelo mesmo ID nativo, recusando vínculos incompatíveis;
   o aluguel vem do `RentAction` da Offer em BRL (`Offer.price` apenas corrobora) e cidade/UF só
   do que o anúncio publica, nunca do filtro, então anúncio sem UF não vira comparável. `datePosted`
   não é recência; autoria é sempre `incerto`. Sem Playwright nem HTTP direto para o ZAP.
@@ -2611,10 +2614,12 @@ O contrato explícito de aquisição distingue `finalidade` (`locacao` ou `venda
 classifica portal × finalidade × tipo e aplica o recorte geográfico. Somente `suportado`
 executa; `parcial` e `nao-suportado` falham antes de cache, transporte ou persistência.
 Venda permanece bloqueada nos cinco portais. Em Londrina/PR, os recortes comprovados
-são ZAP/Apartamento, Chaves/Casa e Wimoveis/Apartamento, todos de locação e primeira página.
+  são ZAP/Casa, ZAP/Apartamento, Chaves/Casa e Wimoveis/Apartamento, todos de locação e primeira página.
 Isso não comprova completude nem consolida baseline. `tipoDeclarado` permanece observacional;
 o tipo solicitado e o campo legado não o substituem. Famílias de comparáveis não definem
-recortes de aquisição: sobrado, condomínio e kitnet/studio não são promovidos automaticamente.
+  recortes de aquisição. Somente no ZAP, o recorte Casa admite também Sobrado observado, preservando
+  esse subtipo; House genérico sem tipo publicado não vira Casa. Condomínio e kitnet/studio não são
+  admitidos automaticamente, e tipo ausente ou fora do recorte explícito é recusado.
 
 Filtros persistidos antigos, sem `finalidade` nem `tipoRecorte`, conservam a execução anterior
 e significam locação exclusivamente no adaptador de compatibilidade. No navegador, essa

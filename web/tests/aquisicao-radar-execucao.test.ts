@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PORTAIS_CONHECIDOS, type FiltrosAquisicaoRadar } from "@/lib/calculo/centralAngariacao";
-import { urlDaPesquisa, URL_ZAP_LONDRINA_APARTAMENTOS } from "@/lib/servidor/centralAngariacao";
+import { urlDaPesquisa, URL_ZAP_LONDRINA_APARTAMENTOS, URL_ZAP_LONDRINA_CASAS } from "@/lib/servidor/centralAngariacao";
 import { planejarColetaMercado } from "@/lib/servidor/planejadorColetaMercados";
 
 const mocks = vi.hoisted(() => ({
@@ -69,13 +69,14 @@ describe("aquisição explícita bloqueia antes de qualquer transporte", () => {
     expect(mocks.coletar).not.toHaveBeenCalled();
     expect(mocks.fetchCliente).not.toHaveBeenCalled();
   });
-  it("ZAP Casa permanece bloqueado", async () => {
-    const filtros = { ...base, portal: "zap" as const, finalidade: "locacao" as const, tipoRecorte: "casa" as const };
+  it("ZAP Casa legado permanece bloqueado: não amplia a exceção", async () => {
+    const filtros = { ...base, portal: "zap" as const, tipo: "Casa" };
     expect(() => urlDaPesquisa(filtros)).toThrow();
     expect((await POST(pedido(filtros))).status).toBe(422);
     expect(mocks.coletar).not.toHaveBeenCalled();
   });
   it.each([
+    ["zap", "casa", URL_ZAP_LONDRINA_CASAS],
     ["zap", "apartamento", URL_ZAP_LONDRINA_APARTAMENTOS],
     ["chaves-na-mao", "casa", "https://www.chavesnamao.com.br/casas-para-alugar/pr-londrina/"],
     ["wimoveis", "apartamento", "https://www.wimoveis.com.br/aluguel/apartamentos/pr/londrina"],
@@ -91,7 +92,7 @@ describe("aquisição explícita bloqueia antes de qualquer transporte", () => {
   });
   it("planejador explícito só seleciona os recortes comprovados", () => {
     const mercado = { ...base, finalidade: "locacao", segmento: "residencial" };
-    expect(planejarColetaMercado({ ...mercado, tipoRecorte: "casa" }).consultas.map((q) => q.filtros.portal)).toEqual(["chaves-na-mao"]);
+    expect(planejarColetaMercado({ ...mercado, tipoRecorte: "casa" }).consultas.map((q) => q.filtros.portal)).toEqual(["chaves-na-mao", "zap"]);
     expect(planejarColetaMercado({ ...mercado, tipoRecorte: "apartamento" }).consultas.map((q) => q.filtros.portal)).toEqual(["wimoveis", "zap"]);
     expect(planejarColetaMercado({ ...mercado, finalidade: "venda", tipoRecorte: "casa" }).consultas).toEqual([]);
     expect(planejarColetaMercado(mercado).consultas).toEqual([]);

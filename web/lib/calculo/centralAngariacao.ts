@@ -2,7 +2,7 @@ import { agoraTimestamp, timestampDeIso } from "../datas";
 import { extrairCaracteristicasImovel, extrairTipoImovelDeclarado } from "./caracteristicasImovel";
 import { normalizarUf, separarCidadeEUf, ufValida } from "./geografia";
 import { qualidadeLocalizacaoRadar, type CategoriaLocalizacaoRadar } from "./localizacaoRadar";
-import { capacidadeAquisicaoRadar, capacidadeContratoExplicitoRadar, filtrosRadarSaoLegados, tipoRecorteRadar, type FinalidadeRadar, type TipoRecorteRadar } from "./aquisicaoRadar";
+import { capacidadeContratoExplicitoRadar, filtrosRadarSaoLegados, tipoRecorteRadar, type FinalidadeRadar, type TipoRecorteRadar } from "./aquisicaoRadar";
 
 /* ================================================================
    CENTRAL DE ANGARIAÇÃO — contratos e regras puras
@@ -66,6 +66,8 @@ export interface AnuncioCentralAngariacao {
   /** Contexto da aquisição, sem inferência da finalidade pelo título. */
   finalidade?: FinalidadeRadar;
   titulo: string;
+  /** Contexto explícito de aquisição; não é evidência do tipo do anúncio. */
+  tipoRecorte?: TipoRecorteRadar;
   preco?: number | null;
   cidade?: string | null;
   estado?: string | null;
@@ -229,7 +231,8 @@ export function slugPortal(valor: string): string {
     provada no discovery: apartamentos para alugar em Londrina/PR, sem bairro.
     Tudo fora disso é recusado aqui, antes do builder, e a própria Central usa
     esta mesma regra para não oferecer combinações que o ZAP não atende. */
-export const COBERTURA_ZAP = "Londrina/PR · Apartamento";
+export const COBERTURA_ZAP = "Londrina/PR · Casa ou Apartamento";
+const COBERTURA_ZAP_LEGADA = "Londrina/PR · Apartamento";
 
 export function capacidadeFuncionalZap(
   filtros: { cidade?: string | null; estado?: string | null; tipo?: string | null; bairro?: string | null; finalidade?: FinalidadeRadar; tipoRecorte?: TipoRecorteRadar },
@@ -242,15 +245,13 @@ export function capacidadeFuncionalZap(
   }
   const recusa = (motivo: string) => ({ suportado: false, motivo });
   if (slugPortal(filtros.cidade || "") !== "londrina" || normalizarUf(filtros.estado) !== "PR") {
-    return recusa(`O ZAP Imóveis está disponível somente em Londrina/PR (${COBERTURA_ZAP}).`);
+    return recusa(`O ZAP Imóveis está disponível somente em Londrina/PR (${COBERTURA_ZAP_LEGADA}).`);
   }
   const tipo = slugPortal(filtros.tipo || "");
   const recorte = tipoRecorteRadar(tipo);
-  if (!recorte || !capacidadeAquisicaoRadar({
-    portal: "zap", finalidade: "locacao", tipoRecorte: recorte,
-    cidade: filtros.cidade || "", estado: filtros.estado || "",
-  }).suportado) {
-    return recusa(`O ZAP Imóveis está disponível somente para Apartamento (${COBERTURA_ZAP}).`);
+  // Casa só entra pelo contrato explícito. Não ampliar a exceção persistida.
+  if (recorte !== "apartamento") {
+    return recusa(`O ZAP Imóveis está disponível somente para Apartamento (${COBERTURA_ZAP_LEGADA}).`);
   }
   if (filtros.bairro?.trim()) {
     return recusa("O ZAP Imóveis ainda não aceita busca por bairro.");

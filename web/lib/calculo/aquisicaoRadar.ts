@@ -10,7 +10,7 @@ export type StatusCapacidadeRadar = "suportado" | "parcial" | "nao-suportado";
  * Londrina/PR; não atesta completude nem consolida baseline. */
 export const MATRIZ_CAPACIDADE_RADAR = {
   olx: { locacao: { casa: "parcial", apartamento: "parcial" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
-  zap: { locacao: { casa: "nao-suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
+  zap: { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
   "viva-real": { locacao: { casa: "parcial", apartamento: "parcial" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
   "chaves-na-mao": { locacao: { casa: "suportado", apartamento: "parcial" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
   wimoveis: { locacao: { casa: "parcial", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },

@@ -155,16 +155,20 @@ function urlVivaReal(f: FiltrosCentralAngariacao): string {
   return url.toString();
 }
 
-/** A única listagem do ZAP comprovada no discovery (R4.2f), gerada pelo próprio
-    site: apartamentos para alugar em Londrina/PR. O `onde` carrega coordenadas
-    que não sabemos gerar para outro recorte, então a URL é constante e a
-    capacidade recusa qualquer filtro fora dela. Preço e dormitórios nunca vão
+/** Listagem de Apartamento preservada desde R4.2f. O `onde` carrega coordenadas
+    comprovadas somente para Londrina/PR. A capacidade recusa outros mercados.
+    Preço e dormitórios nunca vão
     para a URL: são filtrados depois da extração, só sobre esta primeira página. */
 export const URL_ZAP_LONDRINA_APARTAMENTOS =
   "https://www.zapimoveis.com.br/aluguel/apartamentos/pr+londrina/?onde=%2CParan%C3%A1%2CLondrina%2C%2C%2C%2C%2Ccity%2CBR%3EParana%3ENULL%3ELondrina%2C-23.319731%2C-51.166201%2C&tipos=apartamento_residencial";
 
+/** Casa comprovada no discovery R6.0c-B2.1; mesmo território e primeira página. */
+export const URL_ZAP_LONDRINA_CASAS =
+  "https://www.zapimoveis.com.br/aluguel/casas/pr+londrina/?onde=%2CParan%C3%A1%2CLondrina%2C%2C%2C%2C%2Ccity%2CBR%3EParana%3ENULL%3ELondrina%2C-23.319731%2C-51.166201%2C&tipos=casa_residencial";
+
 function urlZap(f: FiltrosCentralAngariacao): string {
   localizacaoSegura(f);
+  if (f.finalidade === "locacao" && f.tipoRecorte === "casa") return URL_ZAP_LONDRINA_CASAS;
   return URL_ZAP_LONDRINA_APARTAMENTOS;
 }
 

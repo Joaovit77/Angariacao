@@ -6,7 +6,7 @@
      `data-cy` (smoke do R4.2h) ou em `data-testid` (discovery R4.2f), as
      duas variantes reais observadas, com um link `/imovel/{slug}-id-{n}/`;
      o ID sai desse link, nunca da posição. Item do JSON-LD sem card é ignorado;
-   - o JSON-LD só ENRIQUECE o anúncio do mesmo ID (Product/Apartment);
+   - o JSON-LD só ENRIQUECE o anúncio do mesmo ID (Product/Apartment/House);
    - aluguel = Product.offers → Offer.potentialAction(RentAction)
      → priceSpecification.price, em BRL. `Offer.price` só corrobora; qualquer
      divergência, falta de vínculo ou de BRL deixa o preço nulo. O primeiro
@@ -23,6 +23,7 @@ import {
   type FiltrosCentralAngariacao,
 } from "@/lib/calculo/centralAngariacao";
 import { normalizarUf, ufValida } from "@/lib/calculo/geografia";
+import { extrairTipoImovelDeclarado } from "@/lib/calculo/caracteristicasImovel";
 
 const ORIGEM_ZAP = "https://www.zapimoveis.com.br/";
 const SELETOR_CARD_DATA_CY_ZAP = 'li[data-cy="rp-property-cd"]';
@@ -106,11 +107,32 @@ function urlCanonicaZap(href: string): string | null {
 interface JsonLdDoAnuncio {
   produto: Objeto | null;
   apartamento: Objeto | null;
+  casa: Objeto | null;
+  identidadeInconsistente: boolean;
+}
+
+/** Referências nativas publicadas, inclusive o @id numérico observado no ZAP.
+ * Só os vínculos do próprio objeto são inspecionados, nunca objetos vizinhos. */
+function referenciasNativas(obj: Objeto): string[] {
+  const referencias = [obj.url, obj["@id"]];
+  for (const oferta of lista(obj.offers).map(objeto)) {
+    if (!oferta) continue;
+    referencias.push(oferta.url, oferta["@id"]);
+    for (const acao of lista(oferta.potentialAction).map(objeto)) {
+      if (acao) referencias.push(acao.url, acao["@id"], acao.target);
+    }
+  }
+  return referencias.flatMap((valor) => {
+    const id = idDaUrlZap(valor) ?? (typeof valor === "string" && /^\d{6,}$/.test(valor) ? valor : null);
+    return id ? [id] : [];
+  });
 }
 
 function indexarJsonLd($: CheerioAPI): Map<string, JsonLdDoAnuncio> {
   const produtos = new Map<string, Objeto[]>();
   const apartamentos = new Map<string, Objeto[]>();
+  const casas = new Map<string, Objeto[]>();
+  const inconsistentes = new Set<string>();
   const visitar = (valor: unknown, profundidade: number) => {
     if (profundidade > 12 || !valor || typeof valor !== "object") return;
     if (Array.isArray(valor)) {
@@ -119,19 +141,29 @@ function indexarJsonLd($: CheerioAPI): Map<string, JsonLdDoAnuncio> {
     }
     const obj = valor as Objeto;
     const id = idDaUrlZap(obj.url);
+    if (temTipo(obj, "Product") || temTipo(obj, "Apartment") || temTipo(obj, "House")) {
+      const referencias = new Set(referenciasNativas(obj));
+      if (referencias.size > 1) for (const referencia of referencias) inconsistentes.add(referencia);
+    }
     if (id && temTipo(obj, "Product")) produtos.set(id, [...(produtos.get(id) ?? []), obj]);
     if (id && temTipo(obj, "Apartment")) apartamentos.set(id, [...(apartamentos.get(id) ?? []), obj]);
+    if (id && temTipo(obj, "House")) casas.set(id, [...(casas.get(id) ?? []), obj]);
     for (const filho of Object.values(obj)) visitar(filho, profundidade + 1);
   };
   $('script[type="application/ld+json"]').each((_, script) => {
     try { visitar(JSON.parse($(script).text()), 0); } catch { /* bloco malformado: ignora */ }
   });
   const indice = new Map<string, JsonLdDoAnuncio>();
-  for (const id of new Set([...produtos.keys(), ...apartamentos.keys()])) {
+  for (const id of new Set([...produtos.keys(), ...apartamentos.keys(), ...casas.keys(), ...inconsistentes])) {
     const p = produtos.get(id) ?? [];
     const a = apartamentos.get(id) ?? [];
+    const c = casas.get(id) ?? [];
     // Dois Products (ou dois Apartments) para o mesmo ID: não há como escolher.
-    indice.set(id, { produto: p.length === 1 ? p[0] : null, apartamento: a.length === 1 ? a[0] : null });
+    indice.set(id, {
+      produto: p.length === 1 ? p[0] : null, apartamento: a.length === 1 ? a[0] : null,
+      casa: c.length === 1 ? c[0] : null,
+      identidadeInconsistente: inconsistentes.has(id) || c.length > 1 || (c.length > 0 && (a.length > 0 || p.length > 1)),
+    });
   }
   return indice;
 }
@@ -159,9 +191,9 @@ export function precoAluguelZap(produto: Objeto | null): number | null {
   return [...valores][0] / 100;
 }
 
-/** Campo de endereço coerente entre Apartment e Product; divergência = nulo. */
+/** Campo coerente entre House/Apartment e Product; divergência = nulo. */
 function campoEndereco(anuncio: JsonLdDoAnuncio, campo: string): { valor: string | null; divergente: boolean } {
-  const a = texto(objeto(anuncio.apartamento?.address)?.[campo]);
+  const a = texto(objeto((anuncio.apartamento ?? anuncio.casa)?.address)?.[campo]);
   const p = texto(objeto(anuncio.produto?.address)?.[campo]);
   if (a && p && !mesmaChave(a, p)) return { valor: null, divergente: true };
   return { valor: a ?? p, divergente: false };
@@ -199,7 +231,7 @@ function escaparRegex(valor: string): string {
 
 export const MOTIVOS_DESCARTE_ZAP = [
   "sem_link_imovel", "sem_id", "multiplos_ids", "url_invalida",
-  "id_duplicado", "id_inconsistente", "sem_titulo", "filtro_local",
+  "id_duplicado", "id_inconsistente", "sem_titulo", "filtro_local", "tipo_fora_recorte",
 ] as const;
 export type MotivoDescarteZap = (typeof MOTIVOS_DESCARTE_ZAP)[number];
 
@@ -590,7 +622,12 @@ export function extrairZap(
     }
     vistos.add(idLink);
 
-    const dados = jsonLd.get(idLink) ?? { produto: null, apartamento: null };
+    const dados = jsonLd.get(idLink) ?? { produto: null, apartamento: null, casa: null, identidadeInconsistente: false };
+    if (dados.identidadeInconsistente) {
+      descartes.id_inconsistente += 1;
+      return;
+    }
+    const imovel = dados.apartamento ?? dados.casa;
     const folhas = card.find("*").toArray()
       .filter((el) => $(el).children().length === 0)
       .map((el) => $(el).text().replace(/\s+/g, " ").trim())
@@ -602,12 +639,24 @@ export function extrairZap(
       titulos.comTituloHtml += 1;
     }
     const titulo = texto(dados.produto?.name)
-      ?? texto(dados.apartamento?.name)
+      ?? texto(imovel?.name)
       ?? texto(card.find("h1, h2, h3, h4").first().text())
       ?? texto(card.find("a[title]").first().attr("title"));
     if (!titulo) {
       titulos.semTitulo += 1;
       descartes.sem_titulo += 1;
+      return;
+    }
+
+    // House também representa Sobrado: o subtipo publicado prevalece. A mera
+    // presença de House e o recorte solicitado não preenchem tipo ausente.
+    const tipoDeclarado = extrairTipoImovelDeclarado([
+      titulo, texto(imovel?.name), textoCard,
+    ].filter(Boolean).join(" · ")) ?? (dados.apartamento ? "Apartamento" : null);
+    if (filtros.tipoRecorte && !(filtros.tipoRecorte === "casa"
+      ? tipoDeclarado === "Casa" || tipoDeclarado === "Sobrado"
+      : tipoDeclarado === "Apartamento")) {
+      descartes.tipo_fora_recorte += 1;
       return;
     }
 
@@ -627,13 +676,13 @@ export function extrairZap(
     const estado = !ufJsonLd.divergente && ufValida(ufNormalizada) ? ufNormalizada : null;
 
     const quartos = inteiroEntre(dados.produto?.numberOfBedrooms, 0, 30)
-      ?? inteiroEntre(dados.apartamento?.numberOfBedrooms, 0, 30)
+      ?? inteiroEntre(imovel?.numberOfBedrooms, 0, 30)
       ?? quantidadeNoTexto(textoCard, "quartos?");
     const banheiros = inteiroEntre(dados.produto?.numberOfBathroomsTotal, 0, 30)
-      ?? inteiroEntre(dados.apartamento?.numberOfBathroomsTotal, 0, 30)
+      ?? inteiroEntre(imovel?.numberOfBathroomsTotal, 0, 30)
       ?? quantidadeNoTexto(textoCard, "banheiros?");
     const areaCard = textoCard.match(/(\d{2,5})\s*m²/i);
-    const areaM2 = areaJsonLd(dados.produto?.floorSize) ?? areaJsonLd(dados.apartamento?.floorSize)
+    const areaM2 = areaJsonLd(dados.produto?.floorSize) ?? areaJsonLd(imovel?.floorSize)
       ?? (areaCard ? Number(areaCard[1]) : null);
     const vagas = quantidadeNoTexto(textoCard, "vagas?");
 
@@ -663,10 +712,14 @@ export function extrairZap(
       estado,
       bairro: bairroCidade?.[1]?.trim() ?? null,
       endereco,
-      imagem: imagemCard ?? imagemJsonLd(dados.produto?.image) ?? imagemJsonLd(dados.apartamento?.image),
+      imagem: imagemCard ?? imagemJsonLd(dados.produto?.image) ?? imagemJsonLd(imovel?.image),
       url,
       descricao: textoCard || null,
-      tipo: dados.apartamento ? "Apartamento" : undefined,
+      // Preserva o campo legado: sem House/Apartment, ele ainda pode herdar
+      // o filtro na normalização. tipoDeclarado permanece independente.
+      tipo: filtros.tipoRecorte || dados.casa ? tipoDeclarado ?? undefined : dados.apartamento ? "Apartamento" : undefined,
+      tipoDeclarado,
+      ...(filtros.tipoRecorte ? { tipoRecorte: filtros.tipoRecorte } : {}),
       areaM2,
       quartos,
       banheiros,
