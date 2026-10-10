@@ -8,6 +8,7 @@ import {
   type PortalAtivoAngariacao,
 } from "@/lib/calculo/centralAngariacao";
 import { normalizarUf, ufValida } from "@/lib/calculo/geografia";
+import { capacidadeContratoExplicitoRadar, filtrosRadarSaoLegados } from "@/lib/calculo/aquisicaoRadar";
 
 export type NivelCapacidadeGeograficaPortal =
   | "comprovado"
@@ -22,12 +23,21 @@ export interface CapacidadeGeograficaPortal {
 
 export class PortalSemCoberturaGeografica extends Error {}
 
-/** Tipo e bairro só pesam para portais cuja listagem comprovada depende deles
-    (hoje o ZAP). Os quatro portais anteriores continuam decididos só por
-    cidade e UF, exatamente como antes. */
+/** O contrato explícito aplica a matriz de aquisição. No adaptador legado,
+    tipo e bairro continuam pesando somente na capacidade do ZAP. */
 export function capacidadeGeograficaPortal(
-  filtros: Pick<FiltrosCentralAngariacao, "portal" | "cidade" | "estado" | "tipo" | "bairro">,
+  filtros: Pick<FiltrosCentralAngariacao, "portal" | "cidade" | "estado" | "tipo" | "bairro" | "finalidade" | "tipoRecorte">,
 ): CapacidadeGeograficaPortal {
+  if (!filtrosRadarSaoLegados(filtros)) {
+    const capacidade = capacidadeContratoExplicitoRadar(filtros);
+    return {
+      suportado: capacidade.suportado,
+      nivel: capacidade.status === "suportado" ? "comprovado"
+        : capacidade.status === "parcial" ? "formato-generico-a-validar" : "limitado",
+      motivo: capacidade.motivo,
+    };
+  }
+  // Compatibilidade do estado persistido anterior ao contrato explícito.
   const cidade = slugPortal(filtros.cidade);
   const estado = normalizarUf(filtros.estado);
   if (!cidade || !ufValida(estado)) {
@@ -78,9 +88,15 @@ function urlOlx(f: FiltrosCentralAngariacao): string {
   return url.toString();
 }
 
+/** O recorte explícito seleciona a categoria da URL. O campo antigo só é
+ * consultado no adaptador legado; nenhum deles declara o tipo do anúncio. */
+function tipoDaPesquisa(f: FiltrosCentralAngariacao): string | undefined {
+  return filtrosRadarSaoLegados(f) ? f.tipo : f.tipoRecorte;
+}
+
 function urlChaves(f: FiltrosCentralAngariacao): string {
   const { estado: uf, cidade } = localizacaoSegura(f);
-  const tipoNormalizado = slugPortal(f.tipo || "");
+  const tipoNormalizado = slugPortal(tipoDaPesquisa(f) || "");
   const categoria = tipoNormalizado.includes("apartamento")
     ? "apartamentos"
     : (tipoNormalizado.includes("casa") ? "casas" : "imoveis");
@@ -107,7 +123,7 @@ function urlWimoveis(f: FiltrosCentralAngariacao): string {
   const local = localizacaoSegura(f);
   const partes = [
     "https://www.wimoveis.com.br/aluguel",
-    categoriaWimoveis(f.tipo),
+    categoriaWimoveis(tipoDaPesquisa(f)),
     local.estado,
     local.cidade,
     f.bairro ? slugPortal(f.bairro) : null,
@@ -121,7 +137,7 @@ function urlVivaReal(f: FiltrosCentralAngariacao): string {
   const local = localizacaoSegura(f);
   const estados: Record<string, string> = { PR: "parana" };
   const estado = estados[local.estado.toUpperCase()];
-  const tipoNormalizado = slugPortal(f.tipo || "");
+  const tipoNormalizado = slugPortal(tipoDaPesquisa(f) || "");
   const tipo = tipoNormalizado.includes("apartamento")
     ? "apartamento_residencial"
     : (tipoNormalizado.includes("casa") ? "casa_residencial" : null);
@@ -153,6 +169,7 @@ function urlZap(f: FiltrosCentralAngariacao): string {
 }
 
 export function urlDaPesquisa(filtros: FiltrosCentralAngariacao): string {
+  exigirCapacidadeAquisicaoRadar(filtros);
   switch (filtros.portal) {
     case "olx": return urlOlx(filtros);
     case "chaves-na-mao": return urlChaves(filtros);
@@ -161,6 +178,13 @@ export function urlDaPesquisa(filtros: FiltrosCentralAngariacao): string {
     case "zap": return urlZap(filtros);
     default: throw new PortalSemCoberturaGeografica("Portal de consulta não suportado.");
   }
+}
+
+/** Gate antes de cache, transporte ou persistência. Legado só chega aqui por
+ * consumidores do estado salvo; requisições novas usam as dimensões explícitas. */
+export function exigirCapacidadeAquisicaoRadar(filtros: FiltrosCentralAngariacao): void {
+  const capacidade = capacidadeGeograficaPortal(filtros);
+  if (!capacidade.suportado) throw new PortalSemCoberturaGeografica(capacidade.motivo);
 }
 
 interface JsonLd {

@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
+import { filtrosRadarSaoLegados } from "@/lib/calculo/aquisicaoRadar";
 import {
   ehPortalAtivo,
   idExternoEhFallback,
@@ -122,9 +123,10 @@ function clienteServico(): SupabaseClient {
 function motivoParaPularBusca(row: DbBuscaRadar): MotivoBuscaPulada | null {
   // O cron só executa portal ativo; busca salva com portal inativo é pulada.
   if (!ehPortalAtivo(row.filtros?.portal)) return "portal-sem-cobertura";
-  // ZAP (R4.2h): capacidade funcional restrita; busca fora dela é pulada antes
-  // de gastar consulta. Os demais portais seguem observados como antes.
-  if (row.filtros.portal === "zap" && !capacidadeGeograficaPortal(row.filtros).suportado) return "portal-sem-cobertura";
+  // Legado preserva a seleção anterior; recortes explícitos são classificados
+  // pela matriz completa antes de iniciar a execução.
+  if ((row.filtros.portal === "zap" || !filtrosRadarSaoLegados(row.filtros))
+    && !capacidadeGeograficaPortal(row.filtros).suportado) return "portal-sem-cobertura";
   if (!row.filtros?.cidade?.trim()) return "filtros-invalidos";
   if (!buscaElegivelParaCron({
     id: row.id,

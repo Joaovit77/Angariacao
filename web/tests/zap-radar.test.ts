@@ -16,7 +16,7 @@ import {
   urlDaPesquisa,
 } from "@/lib/servidor/centralAngariacao";
 import { extrairAnunciosFirecrawl } from "@/lib/servidor/firecrawlCentralAngariacao";
-import { planejarColetaMercado } from "@/lib/servidor/planejadorColetaMercados";
+import { planejarColetaMercadoLegado as planejarColetaMercado } from "@/lib/servidor/planejadorColetaMercados";
 import { buscarComNavegador } from "@/lib/servidor/scraperCentralAngariacao";
 import { apartamento, endereco, htmlZap, produto, urlAnuncio } from "./fixtures/zap-listagem-sintetica";
 

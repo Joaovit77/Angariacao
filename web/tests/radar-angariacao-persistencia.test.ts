@@ -126,7 +126,7 @@ describe("persistência da origem do Radar no navegador", () => {
       await vi.waitFor(() => expect(requisicao).toHaveBeenCalledOnce());
       expect(banco.ordem).toEqual(["upsert_anuncios", "atualizar_busca", "fechamento"]);
       expect(mocks.buscarNaCentral).toHaveBeenCalledWith(busca.filtros,
-        origem === "navegador" ? "monitor_navegador" : "verificar_agora");
+        origem === "navegador" ? "monitor_navegador" : "verificar_agora", busca.id);
       vi.unstubAllGlobals();
     },
   );

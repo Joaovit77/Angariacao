@@ -3,7 +3,7 @@ import { gzipSync, gunzipSync } from "node:zlib";
 import { getCache } from "@vercel/functions";
 import { anuncioPertenceAoMercado, type AnuncioCentralAngariacao, type FiltrosCentralAngariacao } from "@/lib/calculo/centralAngariacao";
 import { urlAbsolutaDoCardChaves } from "@/lib/calculo/urlChavesHttp";
-import { urlDaPesquisa } from "./centralAngariacao";
+import { exigirCapacidadeAquisicaoRadar, urlDaPesquisa } from "./centralAngariacao";
 import { chaveCanonicaConsultaPortal } from "./planejadorColetaMercados";
 import {
   buscarComFirecrawl, CACHE_FIRECRAWL_TTL_SEGUNDOS, extrairAnunciosFirecrawl,
@@ -203,6 +203,7 @@ export async function buscarComFallbackHttpChaves(
       recusa), porque este fallback HTTP já é sua segunda via. */
   politicaRetry?: PoliticaRetryFirecrawl,
 ): Promise<AnuncioCentralAngariacao[]> {
+  exigirCapacidadeAquisicaoRadar(filtros);
   if (filtros.portal !== "chaves-na-mao" || urlPesquisa !== urlDaPesquisa(filtros)) {
     return buscarComFirecrawl(filtros, urlPesquisa, registrarOrigem, registrarDiagnosticoOlx, observar, politicaRetry);
   }

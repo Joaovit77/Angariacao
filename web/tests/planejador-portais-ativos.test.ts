@@ -14,7 +14,7 @@ vi.mock("@/lib/servidor/centralAngariacao", () => ({
   urlDaPesquisa: (filtros: { portal: string }) => `https://portal.test/${filtros.portal}`,
 }));
 
-import { planejarColetaMercado } from "@/lib/servidor/planejadorColetaMercados";
+import { planejarColetaMercadoLegado as planejarColetaMercado } from "@/lib/servidor/planejadorColetaMercados";
 import { PORTAIS_ATIVOS } from "@/lib/calculo/centralAngariacao";
 
 describe("planejador de mercados", () => {

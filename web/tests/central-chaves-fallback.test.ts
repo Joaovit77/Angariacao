@@ -58,9 +58,9 @@ const htmlContrato = `<a href="/imovel/casa-para-alugar-pr-londrina-centro/id-35
 const requisicao = () => new Request("http://localhost/api/central-angariacao/buscar", {
   method: "POST",
   headers: { Authorization: "Bearer token-sintetico", "Content-Type": "application/json" },
-  body: JSON.stringify({ portal: "chaves-na-mao", cidade: "Londrina", estado: "PR" }),
+  body: JSON.stringify(filtrosChaves),
 });
-const filtrosChaves = { portal: "chaves-na-mao" as const, cidade: "Londrina", estado: "PR" };
+const filtrosChaves = { portal: "chaves-na-mao" as const, finalidade: "locacao" as const, tipoRecorte: "casa" as const, cidade: "Londrina", estado: "PR" };
 
 function guardarCacheHttpChaves() {
   const chave = chaveCanonicaConsultaPortal(filtrosChaves.portal, urlDaPesquisa(filtrosChaves));

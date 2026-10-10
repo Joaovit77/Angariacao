@@ -18,7 +18,7 @@ describe("iniciador declarado pela Central", () => {
         ok: true, anuncios: [], urlPesquisa: "", execucaoId: "id-gerado-pelo-servidor",
       })));
       vi.stubGlobal("fetch", fetchFalso);
-      const filtros = { portal: "olx" as const, cidade: "Londrina", estado: "PR" };
+      const filtros = { portal: "chaves-na-mao" as const, finalidade: "locacao" as const, tipoRecorte: "casa" as const, cidade: "Londrina", estado: "PR" };
       const resposta = await buscarNaCentral(filtros, iniciador);
       const [url, opcoes] = fetchFalso.mock.calls[0] as unknown as [string, RequestInit];
       expect(url).toBe("/api/central-angariacao/buscar");

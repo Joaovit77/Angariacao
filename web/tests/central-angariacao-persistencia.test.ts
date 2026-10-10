@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { erroExternoSintetico } from "./fixtures/erroExterno";
+import { corpoBuscaLegada, lerBuscaLegada } from "./fixtures/buscaRadarLegada";
 
 const mocks = vi.hoisted(() => ({
   buscarComFirecrawl: vi.fn(),
@@ -28,6 +29,7 @@ import { POST } from "@/app/api/central-angariacao/buscar/route";
 
 describe("persistência da busca da Central", () => {
   const supabase = {
+    from: lerBuscaLegada,
     auth: {
       getUser: vi.fn().mockResolvedValue({
         data: { user: { id: "usuario-central" } },
@@ -80,7 +82,7 @@ describe("persistência da busca da Central", () => {
         Authorization: "Bearer token-valido",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
+      body: corpoBuscaLegada({
         portal: "olx",
         cidade: "Londrina",
         estado: "PR",
@@ -118,7 +120,7 @@ describe("persistência da busca da Central", () => {
     const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
       method: "POST",
       headers: { Authorization: "Bearer token-valido", "Content-Type": "application/json" },
-      body: JSON.stringify({ portal: "wimoveis", cidade: "Londrina", estado: "PR", somenteProprietario: true }),
+      body: corpoBuscaLegada({ portal: "wimoveis", cidade: "Londrina", estado: "PR", somenteProprietario: true }),
     }));
     const corpo = await resposta.json();
     expect(corpo.ok).toBe(true);
@@ -149,7 +151,7 @@ describe("persistência da busca da Central", () => {
         Authorization: "Bearer token-valido",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+      body: corpoBuscaLegada({ portal: "olx", cidade: "Londrina", estado: "PR" }),
     }));
     const corpo = await resposta.json();
 
@@ -171,7 +173,7 @@ describe("persistência da busca da Central", () => {
     mocks.buscarComFirecrawl.mockResolvedValue([null]);
     const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
       method: "POST", headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" },
-      body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+      body: corpoBuscaLegada({ portal: "olx", cidade: "Londrina", estado: "PR" }),
     }));
     expect((await resposta.json()).ok).toBe(false);
     expect(mocks.buscarComFirecrawl).toHaveBeenCalledOnce();
@@ -189,7 +191,7 @@ describe("persistência da busca da Central", () => {
     mocks.buscarComFirecrawl.mockRejectedValueOnce(erroExternoSintetico());
     const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
       method: "POST", headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" },
-      body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+      body: corpoBuscaLegada({ portal: "olx", cidade: "Londrina", estado: "PR" }),
     }));
     expect(await resposta.json()).toMatchObject({ ok: false, anuncios: [] });
     expect(mocks.buscarComNavegador).not.toHaveBeenCalled();
@@ -207,7 +209,7 @@ describe("persistência da busca da Central", () => {
       const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
         method: "POST",
         headers: { Authorization: "Bearer fixture", "Content-Type": "application/json", "x-angario-iniciador": iniciador },
-        body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+        body: corpoBuscaLegada({ portal: "olx", cidade: "Londrina", estado: "PR" }),
       }));
       const corpo = await resposta.json();
       const log = mocks.registrarEvento.mock.calls.find(([entrada]) => entrada.evento === "central-busca-ok")?.[0];
@@ -232,7 +234,7 @@ describe("persistência da busca da Central", () => {
     });
     const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
       method: "POST", headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" },
-      body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+      body: corpoBuscaLegada({ portal: "olx", cidade: "Londrina", estado: "PR" }),
     }));
     expect((await resposta.json()).ok).toBe(false);
     expect(mocks.buscarComNavegador).not.toHaveBeenCalled();
@@ -259,7 +261,7 @@ describe("persistência da busca da Central", () => {
     });
     const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
       method: "POST", headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" },
-      body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+      body: corpoBuscaLegada({ portal: "olx", cidade: "Londrina", estado: "PR" }),
     }));
     expect((await resposta.json()).ok).toBe(true);
     expect(mocks.buscarComNavegador).toHaveBeenCalledOnce();
@@ -280,7 +282,7 @@ describe("persistência da busca da Central", () => {
     vi.stubGlobal("fetch", fetchFalso);
     const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
       method: "POST", headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" },
-      body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+      body: corpoBuscaLegada({ portal: "olx", cidade: "Londrina", estado: "PR" }),
     }));
     expect((await resposta.json()).ok).toBe(false);
     expect(fetchFalso).not.toHaveBeenCalled();
@@ -300,7 +302,7 @@ describe("persistência da busca da Central", () => {
     mocks.buscarComNavegador.mockResolvedValue([]);
     const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
       method: "POST", headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" },
-      body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+      body: corpoBuscaLegada({ portal: "olx", cidade: "Londrina", estado: "PR" }),
     }));
     expect((await resposta.json()).ok).toBe(false);
     expect(mocks.salvarComparaveisMercado).not.toHaveBeenCalled();
@@ -319,7 +321,7 @@ describe("persistência da busca da Central", () => {
     vi.stubGlobal("fetch", fetchFalso);
     const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
       method: "POST", headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" },
-      body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+      body: corpoBuscaLegada({ portal: "olx", cidade: "Londrina", estado: "PR" }),
     }));
     expect((await resposta.json()).ok).toBe(true);
     expect(mocks.buscarComFirecrawl).not.toHaveBeenCalled();
@@ -342,7 +344,7 @@ describe("persistência da busca da Central", () => {
         method: "POST", headers: {
           Authorization: "Bearer fixture", "Content-Type": "application/json", "x-angario-iniciador": iniciador,
         },
-        body: JSON.stringify({ portal: "olx", cidade: "Londrina", estado: "PR" }),
+        body: corpoBuscaLegada({ portal: "olx", cidade: "Londrina", estado: "PR" }),
       }));
       const corpo = await resposta.json();
       const log = mocks.registrarEvento.mock.calls.find(([entrada]) => entrada.evento === "central-busca-ok")?.[0];

@@ -7,6 +7,7 @@ import { useSessao } from "@/components/SessaoProvider";
 import EtiquetaCarteiraSemBloqueio from "@/components/central/EtiquetaCarteiraSemBloqueio";
 import { ORIGEM_GARIMPO_SITE } from "@/lib/constantes";
 import { buscarNaCentral } from "@/lib/centralAngariacao";
+import { tipoRecorteRadar } from "@/lib/calculo/aquisicaoRadar";
 import {
   avaliarOportunidade,
   capacidadeFuncionalZap,
@@ -165,7 +166,9 @@ export default function CentralAngariacaoView() {
   const radarPendente = (item: { id: string; visto: boolean }) => (pendencias ? pendencias.ids.has(item.id) : !item.visto);
 
   // ZAP (R4.2h): mesma regra do servidor; a Central não oferece combinação que ele recusaria.
-  const capacidadeZap = portal === "zap" ? capacidadeFuncionalZap({ cidade, estado, tipo }) : null;
+  const capacidadeZap = portal === "zap" ? capacidadeFuncionalZap({
+    cidade, estado, tipo, finalidade: "locacao", tipoRecorte: tipoRecorteRadar(tipo) || undefined,
+  }) : null;
 
   async function buscar() {
     if (!cidade.trim() || !ufValida(estado)) {
@@ -176,6 +179,8 @@ export default function CentralAngariacaoView() {
     setIdsComparaveis(new Map());
     const filtros = {
       portal,
+      finalidade: "locacao",
+      tipoRecorte: tipoRecorteRadar(tipo) || undefined,
       cidade,
       estado: estado.toUpperCase(),
       bairro: portal === "zap" ? undefined : (bairro || undefined),

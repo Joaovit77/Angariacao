@@ -68,7 +68,7 @@ function pedidoBusca(corpo: unknown, authorization: string | null = "Bearer toke
   });
 }
 
-const filtrosOlx = { portal: "olx", cidade: "Londrina", estado: "PR" };
+const filtrosComprovados = { portal: "chaves-na-mao" as const, finalidade: "locacao" as const, tipoRecorte: "casa" as const, cidade: "Londrina", estado: "PR" };
 
 describe("rota /buscar: autenticação separada de erro funcional", () => {
   beforeEach(() => {
@@ -92,7 +92,7 @@ describe("rota /buscar: autenticação separada de erro funcional", () => {
   it("sessão válida chega à coleta com o cliente autenticado, validado uma vez", async () => {
     const cliente = clienteServidor(valido);
     mocks.createClient.mockReturnValue(cliente);
-    const resposta = await buscar(pedidoBusca(filtrosOlx));
+    const resposta = await buscar(pedidoBusca(filtrosComprovados));
     const corpo = await resposta.json();
     expect(resposta.status).toBe(200);
     expect(corpo.ok).toBe(true);
@@ -112,7 +112,7 @@ describe("rota /buscar: autenticação separada de erro funcional", () => {
     ["JWT recusado", "Bearer token-valido", falha(new AuthApiError("x", 403, "bad_jwt"))],
   ])("%s: 401 com o aviso de sempre e sem coleta", async (_caso, authorization, getUser) => {
     mocks.createClient.mockReturnValue(clienteServidor(getUser));
-    const resposta = await buscar(pedidoBusca(filtrosOlx, authorization));
+    const resposta = await buscar(pedidoBusca(filtrosComprovados, authorization));
     const corpo = await resposta.json();
     expect(resposta.status).toBe(401);
     expect(corpo).toMatchObject({ ok: false, anuncios: [], urlPesquisa: "", aviso: "Sessão inválida.", erro: "sessao-invalida" });
@@ -123,7 +123,7 @@ describe("rota /buscar: autenticação separada de erro funcional", () => {
 
   it("Auth indisponível: 503 que não fala em sessão expirada, sem coleta nem registro", async () => {
     mocks.createClient.mockReturnValue(clienteServidor(falha(new AuthRetryableFetchError("fetch failed", 0))));
-    const resposta = await buscar(pedidoBusca(filtrosOlx));
+    const resposta = await buscar(pedidoBusca(filtrosComprovados));
     const corpo = await resposta.json();
     expect(resposta.status).toBe(503);
     expect(corpo).toMatchObject({
@@ -137,7 +137,7 @@ describe("rota /buscar: autenticação separada de erro funcional", () => {
 
   it("env ausente: 500 erro-auth, não 401", async () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "");
-    const resposta = await buscar(pedidoBusca(filtrosOlx));
+    const resposta = await buscar(pedidoBusca(filtrosComprovados));
     expect(resposta.status).toBe(500);
     expect(await resposta.json()).toMatchObject({ ok: false, erro: "erro-auth", aviso: "Não foi possível confirmar sua sessão agora." });
     expect(mocks.createClient).not.toHaveBeenCalled();
@@ -145,7 +145,7 @@ describe("rota /buscar: autenticação separada de erro funcional", () => {
 
   it("erro de Auth não classificado: 500, não 401", async () => {
     mocks.createClient.mockReturnValue(clienteServidor(falha(new AuthApiError("x", 400, "validation_failed"))));
-    const resposta = await buscar(pedidoBusca(filtrosOlx));
+    const resposta = await buscar(pedidoBusca(filtrosComprovados));
     expect(resposta.status).toBe(500);
     expect((await resposta.json()).erro).toBe("erro-auth");
   });
@@ -166,7 +166,7 @@ describe("rota /buscar: autenticação separada de erro funcional", () => {
   it("falha de portal segue 200 ok:false sem código de auth", async () => {
     mocks.createClient.mockReturnValue(clienteServidor(valido));
     mocks.buscarComFirecrawl.mockRejectedValue(Object.assign(new Error("portal"), { status: 502 }));
-    const resposta = await buscar(pedidoBusca(filtrosOlx));
+    const resposta = await buscar(pedidoBusca(filtrosComprovados));
     const corpo = await resposta.json();
     expect(resposta.status).toBe(200);
     expect(corpo).toMatchObject({ ok: false, aviso: "O serviço de consulta não respondeu agora. A pesquisa pronta ainda pode ser aberta." });
@@ -180,7 +180,7 @@ describe("rota /buscar: autenticação separada de erro funcional", () => {
       url: "https://www.olx.com.br/imovel/novo-1", anunciante: "incerto",
     }]);
     mocks.salvarComparaveisMercado.mockRejectedValue(Object.assign(new Error("rls"), { status: 403, code: "42501" }));
-    const resposta = await buscar(pedidoBusca(filtrosOlx));
+    const resposta = await buscar(pedidoBusca(filtrosComprovados));
     const corpo = await resposta.json();
     expect(resposta.status).toBe(200);
     expect(corpo.ok).toBe(true);
@@ -279,7 +279,7 @@ describe("cliente buscarNaCentral com fetchAutenticado", () => {
 
   it("sucesso preserva Bearer, iniciador, corpo e execucaoId, sem falhaAuth", async () => {
     respostas([200, { ok: true, anuncios: [], urlPesquisa: "u", execucaoId: "exec-1" }]);
-    const filtros = { portal: "olx" as const, cidade: "Londrina", estado: "PR" };
+    const filtros = filtrosComprovados;
     const resultado = await buscarNaCentral(filtros, "verificar_agora");
     const [url, init] = fetchFalso.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("/api/central-angariacao/buscar");
@@ -294,7 +294,7 @@ describe("cliente buscarNaCentral com fetchAutenticado", () => {
   it("sem sessão local não faz fetch e marca falha de sessão", async () => {
     auth.getSession.mockResolvedValue({ data: { session: null } });
     respostas();
-    const resultado = await buscarNaCentral({ portal: "olx", cidade: "Londrina", estado: "PR" });
+    const resultado = await buscarNaCentral(filtrosComprovados);
     expect(fetchFalso).not.toHaveBeenCalled();
     expect(resultado).toMatchObject({ ok: false, aviso: "Sua sessão expirou. Entre novamente.", falhaAuth: "sessao-invalida" });
   });
@@ -305,7 +305,7 @@ describe("cliente buscarNaCentral com fetchAutenticado", () => {
       [401, { ok: false, anuncios: [], urlPesquisa: "", aviso: "Sessão inválida.", erro: "sessao-invalida", execucaoId: "e" }],
       [200, { ok: true, anuncios: [], urlPesquisa: "" }],
     );
-    const resultado = await buscarNaCentral({ portal: "olx", cidade: "Londrina", estado: "PR" }, "monitor_navegador");
+    const resultado = await buscarNaCentral(filtrosComprovados, "monitor_navegador");
     expect(fetchFalso).toHaveBeenCalledOnce();
     expect(auth.refreshSession).toHaveBeenCalledOnce();
     expect(auth.signOut).not.toHaveBeenCalled();
@@ -317,7 +317,7 @@ describe("cliente buscarNaCentral com fetchAutenticado", () => {
   it("401 com sessão revogada encerra só a sessão local, sem refresh", async () => {
     auth.getUser.mockResolvedValue({ data: { user: null }, error: new AuthSessionMissingError() });
     respostas([401, { ok: false, anuncios: [], urlPesquisa: "", aviso: "Sessão inválida.", erro: "sessao-invalida" }]);
-    const resultado = await buscarNaCentral({ portal: "olx", cidade: "Londrina", estado: "PR" });
+    const resultado = await buscarNaCentral(filtrosComprovados);
     expect(auth.signOut).toHaveBeenCalledExactlyOnceWith({ scope: "local" });
     expect(auth.refreshSession).not.toHaveBeenCalled();
     expect(fetchFalso).toHaveBeenCalledOnce();
@@ -329,7 +329,7 @@ describe("cliente buscarNaCentral com fetchAutenticado", () => {
     [500, "erro-auth"],
   ] as const)("%i não abre recuperação, não renova, não desloga e não vira 401", async (status, erro) => {
     respostas([status, { ok: false, anuncios: [], urlPesquisa: "", aviso: "Não foi possível confirmar sua sessão agora.", erro }]);
-    const resultado = await buscarNaCentral({ portal: "olx", cidade: "Londrina", estado: "PR" });
+    const resultado = await buscarNaCentral(filtrosComprovados);
     expect(auth.getUser).not.toHaveBeenCalled();
     expect(auth.refreshSession).not.toHaveBeenCalled();
     expect(auth.signOut).not.toHaveBeenCalled();
@@ -341,7 +341,7 @@ describe("cliente buscarNaCentral com fetchAutenticado", () => {
 
   it("403 é resposta normal: sem recuperação e sem virar sessão expirada", async () => {
     respostas([403, { ok: false, anuncios: [], urlPesquisa: "", aviso: "Sem permissão." }]);
-    const resultado = await buscarNaCentral({ portal: "olx", cidade: "Londrina", estado: "PR" });
+    const resultado = await buscarNaCentral(filtrosComprovados);
     expect(auth.getUser).not.toHaveBeenCalled();
     expect(auth.signOut).not.toHaveBeenCalled();
     expect(resultado).toEqual({ ok: false, anuncios: [], urlPesquisa: "", aviso: "Sem permissão." });
@@ -349,7 +349,7 @@ describe("cliente buscarNaCentral com fetchAutenticado", () => {
 
   it("código de erro desconhecido no corpo não vira falhaAuth", async () => {
     respostas([200, { ok: false, anuncios: [], urlPesquisa: "", aviso: "Portal fora.", erro: "qualquer-coisa" }]);
-    const resultado = await buscarNaCentral({ portal: "olx", cidade: "Londrina", estado: "PR" });
+    const resultado = await buscarNaCentral(filtrosComprovados);
     expect(resultado).not.toHaveProperty("falhaAuth");
   });
 });

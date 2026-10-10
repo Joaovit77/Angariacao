@@ -2,6 +2,7 @@ import { agoraTimestamp, timestampDeIso } from "../datas";
 import { extrairCaracteristicasImovel, extrairTipoImovelDeclarado } from "./caracteristicasImovel";
 import { normalizarUf, separarCidadeEUf, ufValida } from "./geografia";
 import { qualidadeLocalizacaoRadar, type CategoriaLocalizacaoRadar } from "./localizacaoRadar";
+import { capacidadeAquisicaoRadar, capacidadeContratoExplicitoRadar, filtrosRadarSaoLegados, tipoRecorteRadar, type FinalidadeRadar, type TipoRecorteRadar } from "./aquisicaoRadar";
 
 /* ================================================================
    CENTRAL DE ANGARIAÇÃO — contratos e regras puras
@@ -38,6 +39,10 @@ export type PeriodoPublicacao = (typeof PERIODOS_PUBLICACAO)[number];
 export interface FiltrosCentralAngariacao {
   /** Filtro de consulta: só portal ativo pode ser pesquisado. */
   portal: PortalAtivoAngariacao;
+  /** Ausência apenas no estado legado persistido. Novos produtores informam. */
+  finalidade?: FinalidadeRadar;
+  /** Recorte solicitado; nunca substitui tipoDeclarado do anúncio. */
+  tipoRecorte?: TipoRecorteRadar;
   cidade: string;
   estado: string;
   bairro?: string;
@@ -50,9 +55,16 @@ export interface FiltrosCentralAngariacao {
   diasPublicacao?: PeriodoPublicacao | null;
 }
 
+export interface FiltrosAquisicaoRadar extends FiltrosCentralAngariacao {
+  finalidade: FinalidadeRadar;
+  tipoRecorte: TipoRecorteRadar;
+}
+
 export interface AnuncioCentralAngariacao {
   idExterno: string;
   portal: PortalAngariacao;
+  /** Contexto da aquisição, sem inferência da finalidade pelo título. */
+  finalidade?: FinalidadeRadar;
   titulo: string;
   preco?: number | null;
   cidade?: string | null;
@@ -220,14 +232,24 @@ export function slugPortal(valor: string): string {
 export const COBERTURA_ZAP = "Londrina/PR · Apartamento";
 
 export function capacidadeFuncionalZap(
-  filtros: { cidade?: string | null; estado?: string | null; tipo?: string | null; bairro?: string | null },
+  filtros: { cidade?: string | null; estado?: string | null; tipo?: string | null; bairro?: string | null; finalidade?: FinalidadeRadar; tipoRecorte?: TipoRecorteRadar },
 ): { suportado: boolean; motivo: string } {
+  if (!filtrosRadarSaoLegados(filtros)) {
+    return capacidadeContratoExplicitoRadar({
+      ...filtros, portal: "zap", cidade: filtros.cidade || "", estado: filtros.estado || "",
+      tipo: filtros.tipo || undefined, bairro: filtros.bairro || undefined,
+    });
+  }
   const recusa = (motivo: string) => ({ suportado: false, motivo });
   if (slugPortal(filtros.cidade || "") !== "londrina" || normalizarUf(filtros.estado) !== "PR") {
     return recusa(`O ZAP Imóveis está disponível somente em Londrina/PR (${COBERTURA_ZAP}).`);
   }
   const tipo = slugPortal(filtros.tipo || "");
-  if (tipo !== "apartamento" && tipo !== "apartamentos") {
+  const recorte = tipoRecorteRadar(tipo);
+  if (!recorte || !capacidadeAquisicaoRadar({
+    portal: "zap", finalidade: "locacao", tipoRecorte: recorte,
+    cidade: filtros.cidade || "", estado: filtros.estado || "",
+  }).suportado) {
     return recusa(`O ZAP Imóveis está disponível somente para Apartamento (${COBERTURA_ZAP}).`);
   }
   if (filtros.bairro?.trim()) {

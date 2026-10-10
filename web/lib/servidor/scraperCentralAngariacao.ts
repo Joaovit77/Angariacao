@@ -7,6 +7,7 @@
    rota, a UI nem o contrato de AnuncioCentralAngariacao.
    ================================================================ */
 import { existsSync } from "node:fs";
+import { exigirCapacidadeAquisicaoRadar } from "./centralAngariacao";
 import type { Browser, Page } from "playwright-core";
 import { tituloWimoveis } from "./tituloWimoveis";
 import { dataPublicacaoOlx, dentroDoPeriodo } from "@/lib/datas";
@@ -303,6 +304,7 @@ export async function buscarComNavegador(
   urlPesquisa: string,
   observar?: (fase: "fetch_iniciado" | "resposta_recebida", statusHttp?: number) => void,
 ): Promise<AnuncioCentralAngariacao[]> {
+  exigirCapacidadeAquisicaoRadar(filtros);
   // O ZAP só tem coleta via Firecrawl (R4.2h): falha fechada antes de abrir o navegador.
   if (filtros.portal === "zap") throw new Error("Coleta local não suportada para o ZAP Imóveis.");
   const configuracao = await configuracaoNavegador();

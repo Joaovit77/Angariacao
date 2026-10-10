@@ -1,4 +1,6 @@
 import "server-only";
+import { finalidadeContextoRadar } from "@/lib/calculo/aquisicaoRadar";
+import { exigirCapacidadeAquisicaoRadar } from "./centralAngariacao";
 import { sanitizarErroExterno, type ContextoErroExterno } from "@/lib/servidor/erroExterno";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
@@ -60,6 +62,8 @@ function prepararRegistro(
   observadoEm: string,
   userId: string,
 ): RegistroPreparado | null {
+  const finalidade = finalidadeContextoRadar(filtros);
+  if (original.finalidade !== undefined && original.finalidade !== finalidade) return null;
   const anuncio = comCaracteristicasDoAnuncio(original, filtros.tipo);
   const valor = numero(anuncio.preco);
   // ZAP (R4.2h): cidade e UF só do que o anúncio publica. Sem UF comprovada o
@@ -93,7 +97,7 @@ function prepararRegistro(
   };
   const endereco = partesEndereco(anuncio.endereco);
   const textoEmbedding = textoSemanticoDoImovel({
-    finalidade: "locacao",
+    finalidade,
     tipo: anuncio.tipo,
     cidade,
     bairro: anuncio.bairro,
@@ -124,7 +128,7 @@ function prepararRegistro(
       url_canonica: urlCanonicaDeAnuncio(anuncio.url),
       anuncio_fingerprint: hashConteudoEmbedding(baseFingerprintAnuncio(sinais)),
       fingerprint_forte: fingerprintEhForte(sinais),
-      finalidade: "locacao",
+      finalidade,
       titulo: anuncio.titulo,
       descricao: anuncio.descricao || null,
       tipo: anuncio.tipo || null,
@@ -245,6 +249,7 @@ export async function salvarComparaveisMercado(
   anuncios: AnuncioCentralAngariacao[],
   filtros: FiltrosCentralAngariacao,
 ): Promise<number> {
+  exigirCapacidadeAquisicaoRadar(filtros);
   const observadoEm = agoraISOString();
   const identidades = new Set<string>();
   const preparados = anuncios

@@ -15,6 +15,7 @@ import {
 import { getSupabase } from "./persistencia/supabase";
 import { useAppStore } from "./store";
 import { agoraISOString } from "./datas";
+import { capacidadeContratoExplicitoRadar, filtrosRadarSaoLegados } from "./calculo/aquisicaoRadar";
 
 interface DbBuscaRadar {
   id: string;
@@ -174,6 +175,8 @@ export async function salvarBuscaRadar(
   filtros: FiltrosCentralAngariacao,
   baseline: AnuncioCentralAngariacao[],
 ): Promise<BuscaRadar> {
+  const capacidade = capacidadeContratoExplicitoRadar(filtros);
+  if (!capacidade.suportado) throw new Error(capacidade.motivo);
   const supabase = getSupabase();
   const agora = agoraISOString();
   const { data, error } = await supabase
@@ -209,6 +212,7 @@ export async function verificarBuscaRadar(
   const resultado = await buscarNaCentral(
     busca.filtros,
     origem === "navegador" ? "monitor_navegador" : "verificar_agora",
+    filtrosRadarSaoLegados(busca.filtros) ? busca.id : undefined,
   );
   const supabase = getSupabase();
   const agora = agoraISOString();

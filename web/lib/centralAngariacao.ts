@@ -2,6 +2,7 @@
    os hosts consultados, portanto o browser nunca escolhe uma URL arbitrária. */
 import { fetchAutenticado } from "./auth/recuperacaoSessao";
 import type { FiltrosCentralAngariacao, ResultadoBuscaCentral } from "./calculo/centralAngariacao";
+import { capacidadeContratoExplicitoRadar, filtrosRadarSaoLegados } from "./calculo/aquisicaoRadar";
 
 export type IniciadorBuscaCentral = "pesquisar" | "verificar_agora" | "monitor_navegador";
 
@@ -23,7 +24,14 @@ function falhaAuthDaResposta(erro: unknown): FalhaAuthBuscaCentral | undefined {
 export async function buscarNaCentral(
   filtros: FiltrosCentralAngariacao,
   iniciador: IniciadorBuscaCentral = "pesquisar",
+  buscaLegadaId?: string,
 ): Promise<ResultadoBuscaComExecucao> {
+  if (!filtrosRadarSaoLegados(filtros)) {
+    const capacidade = capacidadeContratoExplicitoRadar(filtros);
+    if (!capacidade.suportado) return { ok: false, anuncios: [], urlPesquisa: "", aviso: capacidade.motivo };
+  } else if (!buscaLegadaId) {
+    return { ok: false, anuncios: [], urlPesquisa: "", aviso: "Informe finalidade e tipo para uma nova aquisição." };
+  }
   try {
     // POST não é repetível: a busca coleta, grava comparáveis e observabilidade.
     // Um 401 passa pela recuperação de sessão, mas nunca refaz a consulta.
@@ -33,7 +41,7 @@ export async function buscarNaCentral(
         "Content-Type": "application/json",
         "x-angario-iniciador": iniciador,
       },
-      body: JSON.stringify(filtros),
+      body: JSON.stringify({ ...filtros, ...(buscaLegadaId ? { buscaLegadaId } : {}) }),
     }, { repetivel: false });
     if (!resposta) {
       return {

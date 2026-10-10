@@ -65,6 +65,8 @@ interface BuscaRadarTeste {
     cidade: string;
     estado: string;
     tipo: string;
+    finalidade?: import("@/lib/calculo/aquisicaoRadar").FinalidadeRadar;
+    tipoRecorte?: import("@/lib/calculo/aquisicaoRadar").TipoRecorteRadar;
   };
   ativo: boolean;
   ultimo_check: string | null;
@@ -165,6 +167,18 @@ describe("monitor agendado do Radar", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
+  });
+
+  it.each(["locacao", "venda"] as const)("recorte explícito OLX/%s/Casa não consulta nem persiste", async (finalidade) => {
+    const explicita = { ...busca, filtros: { ...busca.filtros, tipo: "Casa", finalidade, tipoRecorte: "casa" as const } };
+    const banco = clienteRadarFalso([], [explicita]);
+    mocks.createClient.mockReturnValue(banco.cliente);
+    const resumo = await executarMonitorRadar();
+    expect(resumo).toMatchObject({ candidatas: 1, elegiveis: 0, verificadas: 0, novos: 0 });
+    expect(mocks.buscarComFirecrawl).not.toHaveBeenCalled();
+    expect(mocks.salvarComparaveisMercado).not.toHaveBeenCalled();
+    expect(banco.inserirAnuncios).not.toHaveBeenCalled();
+    expect(detalheRadar("radar-busca-pulada").motivo).toBe("portal-sem-cobertura");
   });
 
   it("reaproveita uma coleta para salvar o anúncio novo e o comparável", async () => {

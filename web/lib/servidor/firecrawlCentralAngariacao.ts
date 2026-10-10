@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import { chaveCanonicaConsultaPortal } from "./planejadorColetaMercados";
 import { getCache } from "@vercel/functions";
 import { load, type CheerioAPI, type Cheerio } from "cheerio";
+import { filtrosRadarSaoLegados, finalidadeContextoRadar } from "@/lib/calculo/aquisicaoRadar";
+import { exigirCapacidadeAquisicaoRadar } from "./centralAngariacao";
 import type { AnyNode } from "domhandler";
 import { tituloWimoveis } from "./tituloWimoveis";
 import { extrairZap, type DiagnosticoZap } from "./parserZap";
@@ -406,18 +408,22 @@ export function extrairAnunciosFirecrawl(
   registrarDiagnosticoOlx?: (diagnostico: DiagnosticoPaginaOlx) => void,
   registrarDiagnosticoZap?: (diagnostico: DiagnosticoZap) => void,
 ): AnuncioCentralAngariacao[] {
+  if (!filtrosRadarSaoLegados(filtros)) exigirCapacidadeAquisicaoRadar(filtros);
+  const normalizar = (anuncio: AnuncioCentralAngariacao): AnuncioCentralAngariacao => ({
+    ...comCaracteristicasDoAnuncio(anuncio, filtros.tipo), finalidade: finalidadeContextoRadar(filtros),
+  });
   const $ = load(html);
   switch (filtros.portal) {
     case "olx": return extrairOlx($, filtros, registrarDiagnosticoOlx)
-      .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
+      .map(normalizar);
     case "chaves-na-mao": return extrairChaves($)
-      .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
+      .map(normalizar);
     case "wimoveis": return extrairWimoveis($, filtros)
-      .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
+      .map(normalizar);
     case "viva-real": return extrairVivaReal($, filtros)
-      .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
+      .map(normalizar);
     case "zap": return extrairZap($, filtros, LIMITE_RESULTADOS, registrarDiagnosticoZap, html.length)
-      .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo));
+      .map(normalizar);
   }
   // Portal conhecido e inativo (ou valor sem tipo) nunca vira lista vazia silenciosa.
   throw new Error("Portal não ativo para coleta.");
@@ -560,6 +566,7 @@ function extrairComProtecao(
 export async function buscarComFirecrawlAoVivo(
   filtros: FiltrosCentralAngariacao, urlPesquisa: string,
 ): Promise<AnuncioCentralAngariacao[]> {
+  exigirCapacidadeAquisicaoRadar(filtros);
   return extrairComProtecao((await coletarHtmlFirecrawl(urlPesquisa)).html, filtros);
 }
 
@@ -576,6 +583,7 @@ export async function buscarComFirecrawl(
   observar?: (evento: EventoConsultaFirecrawl) => void,
   politicaRetry?: PoliticaRetryFirecrawl,
 ): Promise<AnuncioCentralAngariacao[]> {
+  exigirCapacidadeAquisicaoRadar(filtros);
   const chave = chaveCanonicaConsultaPortal(filtros.portal, urlPesquisa);
   const existente = consultasEmAndamento.get(chave);
   if (existente) {

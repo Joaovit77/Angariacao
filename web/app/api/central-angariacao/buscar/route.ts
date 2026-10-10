@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { autenticarRequisicao, type ErroAutenticacao } from "@/lib/servidor/autenticacao";
 import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
+import { filtrosRadarSaoLegados } from "@/lib/calculo/aquisicaoRadar";
 import {
   anuncioPertenceAoMercado,
   ehPortalAtivo,
@@ -140,11 +141,27 @@ export async function POST(request: Request) {
     }, sessao.status, execucaoId);
   }
 
-  const filtros = (await request.json().catch(() => null)) as FiltrosCentralAngariacao | null;
+  let filtros = (await request.json().catch(() => null)) as (FiltrosCentralAngariacao & { buscaLegadaId?: unknown }) | null;
   // Só portal ativo pode ser consultado; conhecido e inativo (ZAP no R4.2g) é recusado.
   if (!filtros || !ehPortalAtivo(filtros.portal)
     || !filtros.cidade?.trim() || !ufValida(filtros.estado)) {
     return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: "Informe portal, cidade e uma UF válida." }, 400, execucaoId);
+  }
+  if (filtrosRadarSaoLegados(filtros)) {
+    if (typeof filtros.buscaLegadaId !== "string" || !filtros.buscaLegadaId.trim()) {
+      return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: "Informe finalidade e tipo para uma nova aquisição." }, 422, execucaoId);
+    }
+    // O cliente não concede a exceção: o servidor lê o estado antigo do dono
+    // autenticado e usa seus filtros, sem aceitar alterações da requisição.
+    const { data, error } = await sessao.supabase.from("radar_buscas").select("filtros")
+      .eq("id", filtros.buscaLegadaId).eq("user_id", sessao.userId).maybeSingle();
+    if (error) return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: "Não foi possível confirmar a busca salva agora." }, 503, execucaoId);
+    if (!data?.filtros || !filtrosRadarSaoLegados(data.filtros)
+      || !ehPortalAtivo(data.filtros.portal) || typeof data.filtros.cidade !== "string"
+      || !data.filtros.cidade.trim() || typeof data.filtros.estado !== "string" || !ufValida(data.filtros.estado)) {
+      return resposta({ ok: false, anuncios: [], urlPesquisa: "", aviso: "Busca legada não encontrada para esta conta." }, 422, execucaoId);
+    }
+    filtros = data.filtros as FiltrosCentralAngariacao;
   }
   const seguros: FiltrosCentralAngariacao = {
     ...filtros,

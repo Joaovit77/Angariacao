@@ -5,7 +5,7 @@ import { comCaracteristicasDoAnuncio, type AnuncioCentralAngariacao, type Portal
 import { familiaTipoMercado } from "@/lib/calculo/comparaveisMercado";
 import { buscarComFirecrawl, FirecrawlIndisponivel, LIMITE_RESULTADOS, type CodigoErroFirecrawl } from "./firecrawlCentralAngariacao";
 import { finalizarColetaCentralAngariacao } from "./finalizacaoCentralAngariacao";
-import { planejarColetaMercado } from "./planejadorColetaMercados";
+import { planejarColetaMercadoLegado } from "./planejadorColetaMercados";
 import { consultarUsoFirecrawl } from "./usoFirecrawl";
 
 // Duas ondas de até 60 s de Firecrawl deixam margem para persistência/conclusão.
@@ -76,7 +76,7 @@ export async function executarColetaMercados(dependencias: Partial<DependenciasC
   let saldo: Promise<number> | undefined;
   for (const mercado of reclamados) {
     const inicio = deps.agora();
-    const plano = planejarColetaMercado(mercado);
+    const plano = planejarColetaMercadoLegado(mercado);
     const d: DiagnosticoColetaMercado = {
       mercadoId: mercado.id, cidade: mercado.cidade, estado: mercado.estado,
       consultasPlanejadas: plano.consultas.length, consultasExecutadas: 0,

@@ -2606,6 +2606,26 @@ feito, e uma visita que some depois de realizada apaga a prova de que aconteceu.
 
 #### `api/central-angariacao/*` e `api/cron/radar` — Central e Radar
 
+O contrato explícito de aquisição distingue `finalidade` (`locacao` ou `venda`) e
+`tipoRecorte` (`casa` ou `apartamento`). A matriz pura em `calculo/aquisicaoRadar.ts`
+classifica portal × finalidade × tipo e aplica o recorte geográfico. Somente `suportado`
+executa; `parcial` e `nao-suportado` falham antes de cache, transporte ou persistência.
+Venda permanece bloqueada nos cinco portais. Em Londrina/PR, os recortes comprovados
+são ZAP/Apartamento, Chaves/Casa e Wimoveis/Apartamento, todos de locação e primeira página.
+Isso não comprova completude nem consolida baseline. `tipoDeclarado` permanece observacional;
+o tipo solicitado e o campo legado não o substituem. Famílias de comparáveis não definem
+recortes de aquisição: sobrado, condomínio e kitnet/studio não são promovidos automaticamente.
+
+Filtros persistidos antigos, sem `finalidade` nem `tipoRecorte`, conservam a execução anterior
+e significam locação exclusivamente no adaptador de compatibilidade. No navegador, essa
+exceção exige `buscaLegadaId`: o servidor lê os filtros salvos usando ID + usuário autenticado,
+sem aplicar alterações do payload. Novas buscas informam as dimensões explícitas; omiti-las
+não libera coleta. O worker de mercados monitorados conserva suas consultas amplas pelo
+adaptador nomeado `planejarColetaMercadoLegado`; o planejador novo exige tipo explícito.
+Não há backfill nem reinterpretação de anúncios históricos. A finalidade da aquisição segue
+no JSON dos anúncios novos e na coluna já existente de comparáveis; finalidade conflitante
+do anúncio não é reclassificada como aluguel.
+
 A Central faz busca sob demanda em hosts fixos; o browser fornece filtros tipados, nunca uma URL
 arbitrária. Com Firecrawl configurado, cache válido precede nova aquisição e Firecrawl permanece
 primário. Após falha classificada, somente Chaves na Mão pode usar fallback HTTP direto: o HTML

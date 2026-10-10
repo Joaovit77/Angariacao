@@ -19,7 +19,7 @@ import {
   PortalSemCoberturaGeografica,
   urlDaPesquisa,
 } from "@/lib/servidor/centralAngariacao";
-import { planejarColetaMercado } from "@/lib/servidor/planejadorColetaMercados";
+import { planejarColetaMercadoLegado as planejarColetaMercado } from "@/lib/servidor/planejadorColetaMercados";
 
 const QUATRO = ["olx", "chaves-na-mao", "wimoveis", "viva-real"];
 const LONDRINA = { cidade: "Londrina", estado: "PR" };

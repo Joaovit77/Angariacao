@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { corpoBuscaLegada, lerBuscaLegada } from "./fixtures/buscaRadarLegada";
 
 /* R5 na rota real da Central: aquisição e retry reais; banco, cache e rede
    simulados. A espera real do retry é a mínima (750 ms, jitter fixado). */
@@ -57,7 +58,7 @@ function buscar(filtros: Record<string, unknown>) {
   return POST(new Request("http://localhost/api/central-angariacao/buscar", {
     method: "POST",
     headers: { Authorization: "Bearer token-valido", "Content-Type": "application/json", "x-angario-iniciador": "pesquisar" },
-    body: JSON.stringify({ cidade: "Londrina", estado: "PR", ...filtros }),
+    body: corpoBuscaLegada({ cidade: "Londrina", estado: "PR", ...filtros }),
   }));
 }
 
@@ -75,6 +76,7 @@ describe("R5: retry na rota da Central", () => {
     vi.stubEnv("FIRECRAWL_API_KEY", "fc-sintetica");
     vi.stubEnv("VERCEL", "1");
     mocks.createClient.mockReturnValue({
+      from: lerBuscaLegada,
       auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "usuario-central" } }, error: null }) },
     });
     mocks.salvarComparaveisMercado.mockImplementation(async (_db, _usuario, anuncios: unknown[]) => anuncios.length);

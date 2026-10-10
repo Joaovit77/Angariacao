@@ -1,6 +1,7 @@
 // R4.2g/R4.2h — nas rotas: consultar exige portal ATIVO e dentro da capacidade;
 // ler dado salvo aceita portal CONHECIDO. O ZAP é consultável só no recorte comprovado.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { corpoBuscaLegada, lerBuscaLegada } from "./fixtures/buscaRadarLegada";
 
 const mocks = vi.hoisted(() => ({
   buscarComFirecrawl: vi.fn(),
@@ -39,7 +40,9 @@ function clienteComLinha(linha: unknown) {
   consulta.maybeSingle = vi.fn(async () => ({ data: linha, error: null }));
   return {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "usuario-autenticado" } }, error: null }) },
-    from: vi.fn(() => ({ select: vi.fn(() => consulta) })),
+    from: vi.fn((tabela: string) => tabela === "radar_buscas"
+      ? lerBuscaLegada(tabela, "usuario-autenticado")
+      : { select: vi.fn(() => consulta) }),
   };
 }
 
@@ -47,7 +50,7 @@ function pedidoBusca(portal: string, extra: Record<string, unknown> = {}) {
   return new Request("http://localhost/api/central-angariacao/buscar", {
     method: "POST",
     headers: { Authorization: "Bearer token-valido", "Content-Type": "application/json" },
-    body: JSON.stringify({ portal, cidade: "Londrina", estado: "PR", ...extra }),
+    body: corpoBuscaLegada({ portal, cidade: "Londrina", estado: "PR", ...extra }),
   });
 }
 

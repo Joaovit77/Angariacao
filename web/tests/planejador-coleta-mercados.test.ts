@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chaveCanonicaConsultaPortal, deduplicarConsultasPortal, planejarColetaMercado } from "@/lib/servidor/planejadorColetaMercados";
+import { chaveCanonicaConsultaPortal, deduplicarConsultasPortal, planejarColetaMercadoLegado as planejarColetaMercado } from "@/lib/servidor/planejadorColetaMercados";
 
 const mercado = { cidade: "Londrina", estado: "PR", finalidade: "locacao", segmento: "residencial" };
 describe("planejador capability-aware de mercados", () => {
