@@ -11,6 +11,7 @@ import {
 import { limitarPosicaoAssistente, type PosicaoAssistente } from "@/lib/assistente/posicao";
 import { useAssistenteFlutuanteAtivo } from "@/lib/assistente/preferenciaFlutuante";
 import { useAppStore } from "@/lib/store";
+import { useSuperficiesBloqueantes } from "@/lib/superficiesBloqueantes";
 import ConversaAssistente from "./ConversaAssistente";
 import { useEstadoAssistente } from "./AssistenteProvider";
 import { useContextoAssistenteAtual } from "./useContextoAssistenteAtual";
@@ -21,6 +22,7 @@ const LIMIAR_ARRASTE = 5;
 
 export default function Assistente() {
   const permitido = useAppStore((estado) => estado.iaDisponivel);
+  const bloqueado = useSuperficiesBloqueantes((estado) => estado.registros.size > 0);
   const [flutuanteAtivo] = useAssistenteFlutuanteAtivo();
   const { cancelarConsulta, limparConversa } = useEstadoAssistente();
   const { contexto, modalAtivo } = useContextoAssistenteAtual();
@@ -46,7 +48,7 @@ export default function Assistente() {
   }, []);
 
   useEffect(() => {
-    if (!permitido || !flutuanteAtivo) return;
+    if (!permitido || !flutuanteAtivo || bloqueado) return;
     const acionador = acionadorRef.current;
     if (!acionador) return;
     try {
@@ -64,7 +66,7 @@ export default function Assistente() {
     } catch {
       /* Armazenamento indisponível ou valor antigo inválido. */
     }
-  }, [permitido, flutuanteAtivo]);
+  }, [permitido, flutuanteAtivo, bloqueado]);
 
   useEffect(() => {
     if (!posicaoAcionador) return;
@@ -98,7 +100,7 @@ export default function Assistente() {
     return () => window.removeEventListener("resize", ajustarAoViewport);
   }, []);
 
-  if (!permitido || !flutuanteAtivo) return null;
+  if (!permitido || !flutuanteAtivo || bloqueado) return null;
 
   function fecharAssistente() {
     cancelarConsulta();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useRegistrarSuperficieBloqueante } from "@/lib/superficiesBloqueantes";
 import { executarComandoVenda } from "@/lib/persistencia/vendas";
 import { confirmarContaCriacaoVenda, listarContatosCandidatosVenda, type ResultadoContatosVenda } from "@/lib/persistencia/vendasContatosLeitura";
 import type { ComandosVenda, ResultadoOperacaoVenda } from "@/lib/persistencia/vendasComandos";
@@ -24,6 +25,7 @@ function recuperarPedido(usuarioId: string): ComandoCriacao | null {
 export default function ModalCriarOportunidadeVenda({ aoFechar, aoCriar }: {
   aoFechar: () => void; aoCriar: (oportunidadeId: string) => void;
 }) {
+  useRegistrarSuperficieBloqueante();
   const id = useId(), painel = useRef<HTMLDivElement>(null), inicial = useRef<HTMLButtonElement>(null);
   const alerta = useRef<HTMLDivElement>(null), pedido = useRef<ComandoCriacao | null>(null), trava = useRef(false);
   const usuario = useRef<string | null>(null), numeroLeitura = useRef(0);

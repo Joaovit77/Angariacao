@@ -9,10 +9,11 @@ function camada(css: string, nome: string) {
 }
 
 describe("camada visual do assistente", () => {
-  it("fica acima do drawer e do modal, abaixo do feedback global", () => {
+  it("preserva as camadas do flutuante disponível e do feedback global", () => {
     const css = readFileSync(join(process.cwd(), "app/style.css"), "utf8");
     expect(camada(css, "assistente")).toBeGreaterThan(camada(css, "pipeline-drawer"));
-    expect(camada(css, "assistente")).toBeGreaterThan(camada(css, "modal"));
+    // Modais bloqueantes suspendem a superfície (ux-assist-1.test.ts), sem trocar tokens.
+    expect(camada(css, "modal")).toBeGreaterThan(camada(css, "pipeline-drawer"));
     expect(camada(css, "assistente")).toBeLessThan(camada(css, "acao-persistente"));
   });
 

@@ -10,6 +10,7 @@
 import { useEffect } from "react";
 import { usePipelineUi } from "@/lib/uiPipeline";
 import { useUiModal } from "@/lib/uiModal";
+import { useRegistrarSuperficieBloqueante } from "@/lib/superficiesBloqueantes";
 import ModalAbordagens from "./ModalAbordagens";
 import ModalAgenda from "./ModalAgenda";
 import ModalAvistamento from "./ModalAvistamento";
@@ -36,6 +37,7 @@ import ModalRetirada from "./ModalRetirada";
 
 export default function ModalOverlay() {
   const { modal, fecharModal } = useUiModal();
+  useRegistrarSuperficieBloqueante(modal !== null);
   const drawerImovelId = usePipelineUi((s) => s.drawerImovelId);
   const fecharDrawer = usePipelineUi((s) => s.fecharDrawer);
 

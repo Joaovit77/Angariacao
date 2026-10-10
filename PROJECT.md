@@ -947,8 +947,11 @@ Configurações é uma página própria (`/configuracoes`), com navegação inte
 por seção. Ela reutiliza os modais apenas para fluxos autocontidos que já existiam (conexão do
 WhatsApp, abordagens e importação CSV); preferências continuam persistidas juntas em `user_config`.
 O `components/assistente/Assistente.tsx` é montado no layout autenticado e sobrevive à navegação.
-Seu acionador e painel podem ser arrastados; apenas a posição do acionador é preferência local do
-dispositivo. Resultados do Assistente são renderizados em blocos estruturados e Markdown seguro.
+Seu acionador e painel podem ser arrastados; a posição do acionador e a opção de exibir o flutuante
+são preferências locais do navegador. Resultados são renderizados em blocos estruturados e Markdown seguro.
+Superfícies bloqueantes registram sua presença transitória em `lib/superficiesBloqueantes.ts`:
+`ModalOverlay` e a criação de Vendas suspendem acionador e painel flutuante até o último registro
+ser liberado. A suspensão preserva o estado do Assistente e não altera a preferência local de exibição.
 
 ### Invariante do `statusHistory`
 
