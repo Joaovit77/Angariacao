@@ -1,4 +1,4 @@
-import type { FiltrosCentralAngariacao, PortalAngariacao } from "./centralAngariacao";
+import { idExternoEhFallback, type AnuncioCentralAngariacao, type FiltrosCentralAngariacao, type PortalAngariacao } from "./centralAngariacao";
 import { normalizarUf, ufValida } from "./geografia";
 import { chaveNormalizada } from "../normalizacao";
 
@@ -12,8 +12,8 @@ export const MATRIZ_CAPACIDADE_RADAR = {
   olx: { locacao: { casa: "parcial", apartamento: "parcial" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
   zap: { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
   "viva-real": { locacao: { casa: "parcial", apartamento: "parcial" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
-  "chaves-na-mao": { locacao: { casa: "suportado", apartamento: "parcial" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
-  wimoveis: { locacao: { casa: "parcial", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
+  "chaves-na-mao": { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
+  wimoveis: { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
 } as const satisfies Record<PortalAngariacao, Record<FinalidadeRadar, Record<TipoRecorteRadar, StatusCapacidadeRadar>>>;
 
 export interface RecorteAquisicaoRadar {
@@ -60,6 +60,23 @@ export function tipoRecorteRadar(valor: string | null | undefined): TipoRecorteR
  * busca e não é alternativa quando tipoDeclarado falta ou diverge. */
 export function tipoRecorteObservadoRadar(anuncio: { tipoDeclarado?: string | null }): TipoRecorteRadar | null {
   return tipoRecorteRadar(anuncio.tipoDeclarado);
+}
+
+/** R6.0c-B2.3: admissão dos dois novos recortes comprovados. O legado e os
+ * recortes anteriores mantêm seus contratos; o filtro não fabrica evidência. */
+export function anuncioAdmitidoRecorteRadar(
+  anuncio: AnuncioCentralAngariacao,
+  filtros: FiltrosCentralAngariacao,
+): boolean {
+  const novoRecorte = filtros.finalidade === "locacao" && (
+    (filtros.portal === "chaves-na-mao" && filtros.tipoRecorte === "apartamento")
+    || (filtros.portal === "wimoveis" && filtros.tipoRecorte === "casa")
+  );
+  if (!novoRecorte) return true;
+  return anuncio.portal === filtros.portal
+    && tipoRecorteObservadoRadar(anuncio) === filtros.tipoRecorte
+    && !!anuncio.idExterno?.trim()
+    && !idExternoEhFallback(anuncio.portal, anuncio.idExterno);
 }
 
 export function capacidadeAquisicaoRadar(recorte: RecorteAquisicaoRadar): CapacidadeAquisicaoRadar {

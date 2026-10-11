@@ -31,7 +31,7 @@ describe("nenhum caminho alternativo contorna o contrato explícito", () => {
     });
   }
   it.each([
-    ["olx", "casa"], ["viva-real", "apartamento"], ["chaves-na-mao", "apartamento"], ["wimoveis", "casa"],
+    ["olx", "casa"], ["viva-real", "apartamento"],
   ] as const)("%s/%s não executa capacidade parcial ou bloqueada pelo transporte direto", async (portal, tipoRecorte) => {
     await expect(buscarComFirecrawl({ portal, tipoRecorte, finalidade: "locacao", cidade: "Londrina", estado: "PR" }, "https://exemplo.test/"))
       .rejects.toThrow();

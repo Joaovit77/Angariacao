@@ -10,6 +10,7 @@ import { existsSync } from "node:fs";
 import { exigirCapacidadeAquisicaoRadar } from "./centralAngariacao";
 import type { Browser, Page } from "playwright-core";
 import { tituloWimoveis } from "./tituloWimoveis";
+import { extrairAnunciosFirecrawl } from "./firecrawlCentralAngariacao";
 import { dataPublicacaoOlx, dentroDoPeriodo } from "@/lib/datas";
 import {
   idDoAnuncio,
@@ -348,6 +349,16 @@ export async function buscarComNavegador(
     }
     // O `await` é obrigatório: sem ele o `finally` fecha o browser enquanto
     // o parser ainda espera os cards, produzindo "Target page has been closed".
+    // Os novos recortes usam o mesmo contrato observacional em qualquer transporte.
+    if (filtros.finalidade === "locacao" && (
+      (filtros.portal === "chaves-na-mao" && filtros.tipoRecorte === "apartamento")
+      || (filtros.portal === "wimoveis" && filtros.tipoRecorte === "casa")
+    )) {
+      const seletor = filtros.portal === "chaves-na-mao"
+        ? 'a[href*="/imovel/"][href*="/id-"]' : '[data-qa="posting PROPERTY"], [data-to-posting*="/propriedades/"]';
+      await esperarCards(page, seletor, filtros.portal);
+      return extrairAnunciosFirecrawl(await page.content(), filtros);
+    }
     switch (filtros.portal) {
       case "olx": return await coletarOlx(page, filtros);
       case "chaves-na-mao": return await coletarChaves(page);

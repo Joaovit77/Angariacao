@@ -29,7 +29,7 @@ const pedido = (filtros: unknown) => new Request("http://localhost/api/central-a
 });
 const parciais = [
   ["olx", "casa"], ["olx", "apartamento"], ["viva-real", "casa"],
-  ["viva-real", "apartamento"], ["chaves-na-mao", "apartamento"], ["wimoveis", "casa"],
+  ["viva-real", "apartamento"],
 ] as const;
 
 beforeEach(() => {
@@ -79,7 +79,9 @@ describe("aquisição explícita bloqueia antes de qualquer transporte", () => {
     ["zap", "casa", URL_ZAP_LONDRINA_CASAS],
     ["zap", "apartamento", URL_ZAP_LONDRINA_APARTAMENTOS],
     ["chaves-na-mao", "casa", "https://www.chavesnamao.com.br/casas-para-alugar/pr-londrina/"],
+    ["chaves-na-mao", "apartamento", "https://www.chavesnamao.com.br/apartamentos-para-alugar/pr-londrina/"],
     ["wimoveis", "apartamento", "https://www.wimoveis.com.br/aluguel/apartamentos/pr/londrina"],
+    ["wimoveis", "casa", "https://www.wimoveis.com.br/aluguel/casas/pr/londrina"],
   ] as const)("%s locação %s preserva aquisição comprovada", async (portal, tipoRecorte, url) => {
     const filtros = { ...base, portal, finalidade: "locacao" as const, tipoRecorte };
     expect(urlDaPesquisa(filtros)).toBe(url);
@@ -92,8 +94,8 @@ describe("aquisição explícita bloqueia antes de qualquer transporte", () => {
   });
   it("planejador explícito só seleciona os recortes comprovados", () => {
     const mercado = { ...base, finalidade: "locacao", segmento: "residencial" };
-    expect(planejarColetaMercado({ ...mercado, tipoRecorte: "casa" }).consultas.map((q) => q.filtros.portal)).toEqual(["chaves-na-mao", "zap"]);
-    expect(planejarColetaMercado({ ...mercado, tipoRecorte: "apartamento" }).consultas.map((q) => q.filtros.portal)).toEqual(["wimoveis", "zap"]);
+    expect(planejarColetaMercado({ ...mercado, tipoRecorte: "casa" }).consultas.map((q) => q.filtros.portal)).toEqual(["chaves-na-mao", "wimoveis", "zap"]);
+    expect(planejarColetaMercado({ ...mercado, tipoRecorte: "apartamento" }).consultas.map((q) => q.filtros.portal)).toEqual(["chaves-na-mao", "wimoveis", "zap"]);
     expect(planejarColetaMercado({ ...mercado, finalidade: "venda", tipoRecorte: "casa" }).consultas).toEqual([]);
     expect(planejarColetaMercado(mercado).consultas).toEqual([]);
   });

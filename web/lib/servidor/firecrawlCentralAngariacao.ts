@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { chaveCanonicaConsultaPortal } from "./planejadorColetaMercados";
 import { getCache } from "@vercel/functions";
 import { load, type CheerioAPI, type Cheerio } from "cheerio";
-import { filtrosRadarSaoLegados, finalidadeContextoRadar } from "@/lib/calculo/aquisicaoRadar";
+import { anuncioAdmitidoRecorteRadar, filtrosRadarSaoLegados, finalidadeContextoRadar } from "@/lib/calculo/aquisicaoRadar";
 import { exigirCapacidadeAquisicaoRadar } from "./centralAngariacao";
 import type { AnyNode } from "domhandler";
 import { tituloWimoveis } from "./tituloWimoveis";
@@ -331,7 +331,7 @@ function fotosJsonLdChaves($: CheerioAPI): Map<string, string> {
   return fotos;
 }
 
-function extrairChaves($: CheerioAPI): AnuncioCentralAngariacao[] {
+function extrairChaves($: CheerioAPI, filtros: FiltrosCentralAngariacao): AnuncioCentralAngariacao[] {
   const vistos = new Set<string>();
   const fotosJsonLd = fotosJsonLdChaves($);
   return $('a[href*="/imovel/"][href*="/id-"]').slice(0, LIMITE_RESULTADOS).toArray()
@@ -349,25 +349,52 @@ function extrairChaves($: CheerioAPI): AnuncioCentralAngariacao[] {
       const estado = localidade?.match(/\/([A-Z]{2})\b/i)?.[1]?.toUpperCase() || null;
       const local = cidadeBairro(localidade?.replace(/\/[A-Z]{2}.*$/i, "").split(",").reverse().join(", ") || "");
       const idExterno = idDoAnuncio("chaves-na-mao", url, indice);
+      const apartamentoExplicito = filtros.finalidade === "locacao" && filtros.tipoRecorte === "apartamento";
+      // Os números visuais ficam isolados; os rótulos acessíveis publicam as unidades.
+      const rotulos = apartamentoExplicito ? link.find('p[aria-label]').toArray()
+        .map((p) => $(p).attr("aria-label") || "").filter((v) => /quartos?|banheiros?|vagas?/i.test(v)) : [];
+      const precoPublicado = apartamentoExplicito
+        ? dinheiro(texto(link.find('p[aria-label="Preço"] b').first()))
+        : dinheiro(precoTexto);
+      if (apartamentoExplicito && (!url.includes("-para-alugar-") || precoPublicado == null)) return [];
       return [{
         idExterno,
         portal: "chaves-na-mao" as const,
         titulo,
-        preco: dinheiro(precoTexto),
+        preco: precoPublicado,
         cidade: local.cidade,
         estado,
         bairro: local.bairro,
         endereco: endereco || null,
         imagem: imagemDe(link) || fotosJsonLd.get(idExterno) || null,
         url,
-        descricao: textos.join(" · ") || null,
+        descricao: [...textos, ...rotulos].join(" · ") || null,
         anunciante: "incerto" as const,
       }];
     });
 }
 
+/** RentAction prova a finalidade do card pelo ID nativo da sua própria URL.
+ * Nunca associa pela posição nem usa a descrição comercial como preço. */
+function idsLocacaoWimoveis($: CheerioAPI): Map<string, string | null> {
+  const ids = new Map<string, string | null>();
+  $('script[type="application/ld+json"]').each((_, script) => {
+    try {
+      const no = JSON.parse($(script).html() || "") as { "@type"?: string; object?: { url?: string; address?: { addressRegion?: string } } };
+      if (no["@type"] !== "RentAction" || typeof no.object?.url !== "string") return;
+      const url = new URL(no.object.url);
+      if (url.protocol !== "https:" || url.hostname !== "www.wimoveis.com.br") return;
+      const id = url.pathname.match(/-(\d{6,})\.html$/)?.[1];
+      if (id) ids.set(id, no.object.address?.addressRegion || null);
+    } catch { /* JSON-LD inválido não comprova finalidade. */ }
+  });
+  return ids;
+}
+
 function extrairWimoveis($: CheerioAPI, filtros: FiltrosCentralAngariacao): AnuncioCentralAngariacao[] {
   const vistos = new Set<string>();
+  const casaExplicita = filtros.finalidade === "locacao" && filtros.tipoRecorte === "casa";
+  const idsLocacao = casaExplicita ? idsLocacaoWimoveis($) : new Map<string, string | null>();
   return $('[data-qa="posting PROPERTY"], [data-to-posting*="/propriedades/"]')
     .slice(0, LIMITE_RESULTADOS).toArray().flatMap((elemento, indice) => {
       const card = $(elemento);
@@ -375,7 +402,12 @@ function extrairWimoveis($: CheerioAPI, filtros: FiltrosCentralAngariacao): Anun
       const titulo = tituloWimoveis(card.find('img[alt]:not([alt=""])').first().attr("alt") || "");
       if (!urlParcial || !titulo) return [];
       const preco = dinheiro(texto(card.find('[data-qa="POSTING_CARD_PRICE"]').first()));
-      const caracteristicas = texto(card.find('[data-qa="POSTING_CARD_FEATURES"]').first());
+      const idNativo = card.attr("data-id") || "";
+      if (casaExplicita && (!idsLocacao.has(idNativo) || preco == null
+        || new URL(urlParcial, "https://www.wimoveis.com.br").pathname.match(/-(\d{6,})\.html$/)?.[1] !== idNativo)) return [];
+      const features = card.find('[data-qa="POSTING_CARD_FEATURES"]').first();
+      const caracteristicas = casaExplicita && features.children().length
+        ? features.children().toArray().map((e) => texto($(e))).join(" · ") : texto(features);
       if (filtros.valorMin != null && (preco == null || preco < filtros.valorMin)) return [];
       if (filtros.valorMax != null && (preco == null || preco > filtros.valorMax)) return [];
       const quartos = Number(caracteristicas.match(/(\d+)\s+quartos?/i)?.[1]);
@@ -391,7 +423,7 @@ function extrairWimoveis($: CheerioAPI, filtros: FiltrosCentralAngariacao): Anun
         titulo,
         preco,
         cidade: local.cidade,
-        estado: local.estado,
+        estado: local.estado || (casaExplicita ? idsLocacao.get(idNativo) : null),
         bairro: local.bairro,
         endereco: texto(card.find('[class*="location-address"]').first()) || null,
         imagem: imagemDe(card.find('[data-qa="POSTING_CARD_GALLERY"]').first()),
@@ -411,15 +443,19 @@ export function extrairAnunciosFirecrawl(
   if (!filtrosRadarSaoLegados(filtros)) exigirCapacidadeAquisicaoRadar(filtros);
   const normalizar = (anuncio: AnuncioCentralAngariacao): AnuncioCentralAngariacao => ({
     ...comCaracteristicasDoAnuncio(anuncio, filtros.tipo), finalidade: finalidadeContextoRadar(filtros),
+    ...((filtros.portal === "chaves-na-mao" && filtros.tipoRecorte === "apartamento")
+      || (filtros.portal === "wimoveis" && filtros.tipoRecorte === "casa")
+      ? { tipoRecorte: filtros.tipoRecorte } : {}),
   });
+  const admitir = (anuncio: AnuncioCentralAngariacao) => anuncioAdmitidoRecorteRadar(anuncio, filtros);
   const $ = load(html);
   switch (filtros.portal) {
     case "olx": return extrairOlx($, filtros, registrarDiagnosticoOlx)
       .map(normalizar);
-    case "chaves-na-mao": return extrairChaves($)
-      .map(normalizar);
+    case "chaves-na-mao": return extrairChaves($, filtros)
+      .map(normalizar).filter(admitir);
     case "wimoveis": return extrairWimoveis($, filtros)
-      .map(normalizar);
+      .map(normalizar).filter(admitir);
     case "viva-real": return extrairVivaReal($, filtros)
       .map(normalizar);
     case "zap": return extrairZap($, filtros, LIMITE_RESULTADOS, registrarDiagnosticoZap, html.length)

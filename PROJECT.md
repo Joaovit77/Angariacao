@@ -2614,7 +2614,11 @@ O contrato explícito de aquisição distingue `finalidade` (`locacao` ou `venda
 classifica portal × finalidade × tipo e aplica o recorte geográfico. Somente `suportado`
 executa; `parcial` e `nao-suportado` falham antes de cache, transporte ou persistência.
 Venda permanece bloqueada nos cinco portais. Em Londrina/PR, os recortes comprovados
-  são ZAP/Casa, ZAP/Apartamento, Chaves/Casa e Wimoveis/Apartamento, todos de locação e primeira página.
+  são ZAP/Casa, ZAP/Apartamento, Chaves/Casa, Chaves/Apartamento, Wimoveis/Casa e
+  Wimoveis/Apartamento, todos de locação e primeira página.
+  Chaves/Apartamento e Wimoveis/Casa exigem tipo observado compatível e identidade não posicional
+  também na finalização e persistência. No Wimoveis/Casa, `RentAction` deve corresponder ao
+  `data-id` e à URL individual; o preço vem do card de aluguel, nunca do título comercial.
 Isso não comprova completude nem consolida baseline. `tipoDeclarado` permanece observacional;
 o tipo solicitado e o campo legado não o substituem. Famílias de comparáveis não definem
   recortes de aquisição. Somente no ZAP, o recorte Casa admite também Sobrado observado, preservando

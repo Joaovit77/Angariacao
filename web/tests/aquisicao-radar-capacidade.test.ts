@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { capacidadeAquisicaoRadar, tipoRecorteObservadoRadar, tipoRecorteRadar } from "@/lib/calculo/aquisicaoRadar";
 import { capacidadeFuncionalZap, PORTAIS_CONHECIDOS } from "@/lib/calculo/centralAngariacao";
 
-describe("matriz de aquisição aprovada, com ZAP Casa em R6.0c-B2.2", () => {
+describe("matriz de aquisição aprovada em R6.0c-B2.3", () => {
   const esperados = {
     olx: ["parcial", "parcial"],
     zap: ["suportado", "suportado"],
     "viva-real": ["parcial", "parcial"],
-    "chaves-na-mao": ["suportado", "parcial"],
-    wimoveis: ["parcial", "suportado"],
+    "chaves-na-mao": ["suportado", "suportado"],
+    wimoveis: ["suportado", "suportado"],
   } as const;
   for (const portal of PORTAIS_CONHECIDOS) {
     for (const [indice, tipoRecorte] of (["casa", "apartamento"] as const).entries()) {

@@ -7,7 +7,7 @@ import {
   type FiltrosCentralAngariacao,
 } from "@/lib/calculo/centralAngariacao";
 import { salvarComparaveisMercado } from "@/lib/servidor/comparaveisMercado";
-import { finalidadeContextoRadar } from "@/lib/calculo/aquisicaoRadar";
+import { anuncioAdmitidoRecorteRadar, finalidadeContextoRadar } from "@/lib/calculo/aquisicaoRadar";
 import { exigirCapacidadeAquisicaoRadar } from "./centralAngariacao";
 
 export interface ColetaCentralFinalizada {
@@ -36,6 +36,7 @@ export async function finalizarColetaCentralAngariacao(
     .filter((anuncio) => anuncio.finalidade === undefined || anuncio.finalidade === finalidade)
     .map((anuncio) => ({ ...anuncio, finalidade }))
     .map((anuncio) => comCaracteristicasDoAnuncio(anuncio, filtros.tipo))
+    .filter((anuncio) => anuncioAdmitidoRecorteRadar(anuncio, filtros))
     .filter((anuncio) => anuncioPertenceAoMercado(anuncio, filtros.cidade, filtros.estado));
 
   try {
