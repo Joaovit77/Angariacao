@@ -28,7 +28,7 @@ const pedido = (filtros: unknown) => new Request("http://localhost/api/central-a
   method: "POST", body: JSON.stringify(filtros), headers: { "Content-Type": "application/json" },
 });
 const parciais = [
-  ["olx", "casa"], ["olx", "apartamento"],
+  ["chaves-na-mao", "casa"], ["chaves-na-mao", "apartamento"],
 ] as const;
 
 beforeEach(() => {
@@ -61,7 +61,7 @@ describe("aquisição explícita bloqueia antes de qualquer transporte", () => {
     }
   }
   it.each(parciais)("%s locação %s parcial não executa", async (portal, tipoRecorte) => {
-    const filtros = { ...base, portal, finalidade: "locacao" as const, tipoRecorte };
+    const filtros = { ...base, cidade: "Curitiba", portal, finalidade: "locacao" as const, tipoRecorte };
     expect(() => urlDaPesquisa(filtros)).toThrow();
     expect((await POST(pedido(filtros))).status).toBe(422);
     expect((await buscarNaCentral(filtros)).ok).toBe(false);
@@ -75,6 +75,8 @@ describe("aquisição explícita bloqueia antes de qualquer transporte", () => {
     expect(mocks.coletar).not.toHaveBeenCalled();
   });
   it.each([
+    ["olx", "casa", "https://www.olx.com.br/imoveis/aluguel/casas/estado-pr/regiao-de-londrina/londrina"],
+    ["olx", "apartamento", "https://www.olx.com.br/imoveis/aluguel/apartamentos/estado-pr/regiao-de-londrina/londrina"],
     ["zap", "casa", URL_ZAP_LONDRINA_CASAS],
     ["zap", "apartamento", URL_ZAP_LONDRINA_APARTAMENTOS],
     ["chaves-na-mao", "casa", "https://www.chavesnamao.com.br/casas-para-alugar/pr-londrina/"],

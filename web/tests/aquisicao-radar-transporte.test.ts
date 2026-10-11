@@ -31,9 +31,9 @@ describe("nenhum caminho alternativo contorna o contrato explícito", () => {
     });
   }
   it.each([
-    ["olx", "casa"], ["olx", "apartamento"],
+    ["chaves-na-mao", "casa"], ["chaves-na-mao", "apartamento"],
   ] as const)("%s/%s não executa capacidade parcial ou bloqueada pelo transporte direto", async (portal, tipoRecorte) => {
-    await expect(buscarComFirecrawl({ portal, tipoRecorte, finalidade: "locacao", cidade: "Londrina", estado: "PR" }, "https://exemplo.test/"))
+    await expect(buscarComFirecrawl({ portal, tipoRecorte, finalidade: "locacao", cidade: "Curitiba", estado: "PR" }, "https://exemplo.test/"))
       .rejects.toThrow();
     expect(fetchFalso).not.toHaveBeenCalled();
     expect(mocks.getCache).not.toHaveBeenCalled();

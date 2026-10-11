@@ -169,8 +169,8 @@ describe("monitor agendado do Radar", () => {
     vi.restoreAllMocks();
   });
 
-  it.each(["locacao", "venda"] as const)("recorte explícito OLX/%s/Casa não consulta nem persiste", async (finalidade) => {
-    const explicita = { ...busca, filtros: { ...busca.filtros, tipo: "Casa", finalidade, tipoRecorte: "casa" as const } };
+  it.each(["casa", "apartamento"] as const)("recorte explícito OLX/Venda/%s não consulta nem persiste", async (tipoRecorte) => {
+    const explicita = { ...busca, filtros: { ...busca.filtros, tipo: tipoRecorte === "casa" ? "Casa" : "Apartamento", finalidade: "venda" as const, tipoRecorte } };
     const banco = clienteRadarFalso([], [explicita]);
     mocks.createClient.mockReturnValue(banco.cliente);
     const resumo = await executarMonitorRadar();
@@ -179,6 +179,18 @@ describe("monitor agendado do Radar", () => {
     expect(mocks.salvarComparaveisMercado).not.toHaveBeenCalled();
     expect(banco.inserirAnuncios).not.toHaveBeenCalled();
     expect(detalheRadar("radar-busca-pulada").motivo).toBe("portal-sem-cobertura");
+  });
+
+  it.each(["casa", "apartamento"] as const)("OLX Locação/%s agenda a coleta comprovada e recusa anúncio sem evidência própria", async (tipoRecorte) => {
+    const explicita = { ...busca, filtros: { ...busca.filtros, tipo: tipoRecorte === "casa" ? "Casa" : "Apartamento", finalidade: "locacao" as const, tipoRecorte } };
+    const banco = clienteRadarFalso([], [explicita]);
+    mocks.createClient.mockReturnValue(banco.cliente);
+    mocks.buscarComFirecrawl.mockResolvedValue([anuncioValido]);
+    const resumo = await executarMonitorRadar();
+    expect(resumo).toMatchObject({ candidatas: 1, elegiveis: 1, verificadas: 1, novos: 0, falhas: 0 });
+    expect(mocks.buscarComFirecrawl).toHaveBeenCalledOnce();
+    expect(mocks.buscarComFirecrawl.mock.calls[0][1]).toBe(`https://www.olx.com.br/imoveis/aluguel/${tipoRecorte === "casa" ? "casas" : "apartamentos"}/estado-pr/regiao-de-londrina/londrina`);
+    expect(banco.inserirAnuncios).not.toHaveBeenCalled();
   });
 
   it("reaproveita uma coleta para salvar o anúncio novo e o comparável", async () => {

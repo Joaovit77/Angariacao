@@ -42,7 +42,10 @@ function planejar(mercado: MercadoParaPlanejamento, legado: boolean) {
   if (!cidade || !ufValida(estado)) {
     return { consultas: [], erro: "sem_portal_suportado" as const };
   }
-  const consultas = deduplicarConsultasPortal(PORTAIS_ATIVOS.map((portal) => ({
+  // A nova capacidade OLX não desloca as quatro consultas explícitas já comprovadas.
+  // O orçamento permanece igual; a ordem legada continua sendo a anterior.
+  const portais = legado ? PORTAIS_ATIVOS : [...PORTAIS_ATIVOS].sort((a, b) => Number(a === "olx") - Number(b === "olx"));
+  const consultas = deduplicarConsultasPortal(portais.map((portal) => ({
     portal, cidade, estado,
     ...(!legado ? { finalidade: "locacao" as const, tipoRecorte: mercado.tipoRecorte } : {}),
   })));

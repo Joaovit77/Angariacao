@@ -108,6 +108,10 @@ async function esperarCards(page: Page, seletor: string, portal: string) {
 }
 
 async function coletarOlx(page: Page, filtros: FiltrosCentralAngariacao): Promise<AnuncioCentralAngariacao[]> {
+  if (filtros.finalidade === "locacao") {
+    await esperarCards(page, 'a[data-testid="adcard-link"]', "olx");
+    return extrairAnunciosFirecrawl(await page.content(), filtros);
+  }
   const aceitarCookies = page.getByRole("button", { name: "Aceitar", exact: true });
   if (await aceitarCookies.isVisible().catch(() => false)) {
     await aceitarCookies.click().catch(() => undefined);

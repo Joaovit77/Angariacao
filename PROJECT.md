@@ -2615,7 +2615,8 @@ classifica portal × finalidade × tipo e aplica o recorte geográfico. Somente 
 executa; `parcial` e `nao-suportado` falham antes de cache, transporte ou persistência.
 Venda permanece bloqueada nos cinco portais. Em Londrina/PR, os recortes comprovados
   são ZAP/Casa, ZAP/Apartamento, Chaves/Casa, Chaves/Apartamento, Wimoveis/Casa,
-  Wimoveis/Apartamento, Viva Real/Casa e Viva Real/Apartamento, todos de locação e primeira página.
+  Wimoveis/Apartamento, Viva Real/Casa, Viva Real/Apartamento, OLX/Casa e OLX/Apartamento,
+  todos de locação e primeira página.
   Chaves/Apartamento e Wimoveis/Casa exigem tipo observado compatível e identidade não posicional
   também na finalização e persistência. No Wimoveis/Casa, `RentAction` deve corresponder ao
   `data-id` e à URL individual; o preço vem do card de aluguel, nunca do título comercial.
@@ -2628,6 +2629,21 @@ Venda permanece bloqueada nos cinco portais. Em Londrina/PR, os recortes comprov
   A evidência individual acompanha o anúncio até a finalização e persistência. Cards agrupados,
   subtipos não comprovados e consultas por bairro são recusados. O navegador alternativo usa
   o mesmo parser sobre o HTML completo. Paginação e ordenação por recência não são garantidas.
+  No OLX explícito, URLs distintas de aluguel/casas e aluguel/apartamentos restringem a aquisição
+  a Londrina/PR, sem bairro e sem filtro de proprietário (ainda não comprovado, bloqueado
+  antes da aquisição). O card individual deve corresponder ao `listId` e à URL do objeto
+  `ads` com propriedades próprias no estado RSC; os scripts são lidos como JSON, nunca executados.
+  Objetos completos duplicados são ambíguos; recomendações parciais e preços agregados não
+  comprovam anúncios. Categoria, `real_estate_type` de aluguel e subtipo `Padrão` devem concordar.
+  Casa em condomínio, Sobrado, Kitnet/Conjugado, Studio, Loft e títulos de Venda são recusados,
+  inclusive quando a categoria ampla é Casa. O aluguel exige `price`, `priceValue` e o bloco
+  próprio de preço do card concordantes; preço antigo/promocional, ausência ou divergência
+  mantém valor nulo, sem ingresso em comparáveis. Condomínio/IPTU são propriedades separadas.
+  A identidade e a evidência de finalidade, tipo e preço acompanham a persistência; não há
+  fallback posicional. O navegador alternativo compartilha esse parser completo. O legado
+  permanece separado. A ordenação observada é por relevância e não comprova recência.
+  O planejador explícito conserva as quatro consultas anteriores e seu limite de quatro,
+  sem deslocar o ZAP pela nova capacidade OLX; a ordem do planejador legado é preservada.
 Isso não comprova completude nem consolida baseline. `tipoDeclarado` permanece observacional;
 o tipo solicitado e o campo legado não o substituem. Famílias de comparáveis não definem
   recortes de aquisição. Somente no ZAP, o recorte Casa admite também Sobrado observado, preservando

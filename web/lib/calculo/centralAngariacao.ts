@@ -67,6 +67,8 @@ export interface AnuncioCentralAngariacao {
   finalidade?: FinalidadeRadar;
   /** Contrato individual Product/Offer/RentAction do Viva Real, sem vínculo posicional. */
   evidenciaLocacaoVivaReal?: { idExterno: string; url: string; preco: number | null };
+  /** Card OLX e propriedades individuais associados por identidade nativa. */
+  evidenciaLocacaoOlx?: { idExterno: string; url: string; tipoDeclarado: string; finalidade: "locacao"; preco: number | null };
   titulo: string;
   /** Contexto explícito de aquisição; não é evidência do tipo do anúncio. */
   tipoRecorte?: TipoRecorteRadar;

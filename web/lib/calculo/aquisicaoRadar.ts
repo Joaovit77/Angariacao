@@ -9,7 +9,7 @@ export type StatusCapacidadeRadar = "suportado" | "parcial" | "nao-suportado";
 /** Evidência de aquisição R6.0c-A. Suporte refere-se à primeira página de
  * Londrina/PR; não atesta completude nem consolida baseline. */
 export const MATRIZ_CAPACIDADE_RADAR = {
-  olx: { locacao: { casa: "parcial", apartamento: "parcial" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
+  olx: { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
   zap: { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
   "viva-real": { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
   "chaves-na-mao": { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
@@ -23,6 +23,7 @@ export interface RecorteAquisicaoRadar {
   cidade: string;
   estado: string;
   bairro?: string;
+  somenteProprietario?: boolean;
 }
 
 export interface CapacidadeAquisicaoRadar {
@@ -74,12 +75,32 @@ export function identidadeVivaReal(valor: unknown): { id: string; url: string } 
   } catch { return null; }
 }
 
-/** R6.0c-B2.4: admissão dos recortes comprovados. O legado e os
+/** Identidade nativa OLX individual no mercado comprovado. */
+export function identidadeOlx(valor: unknown): { id: string; url: string } | null {
+  if (typeof valor !== "string") return null;
+  try {
+    const url = new URL(valor);
+    const id = url.pathname.match(/^\/regiao-de-londrina\/imoveis\/[^/]+-(\d{6,})\/?$/)?.[1];
+    if (!id || url.protocol !== "https:" || url.hostname !== "pr.olx.com.br" || url.port || url.username || url.password) return null;
+    return { id, url: `${url.origin}${url.pathname.replace(/\/$/, "")}` };
+  } catch { return null; }
+}
+
+/** Admissão dos recortes comprovados. O legado e os
  * recortes anteriores mantêm seus contratos; o filtro não fabrica evidência. */
 export function anuncioAdmitidoRecorteRadar(
   anuncio: AnuncioCentralAngariacao,
   filtros: FiltrosCentralAngariacao,
 ): boolean {
+  if (filtros.portal === "olx" && filtros.finalidade === "locacao") {
+    const identidade = identidadeOlx(anuncio.url), evidencia = anuncio.evidenciaLocacaoOlx;
+    return anuncio.portal === "olx" && anuncio.finalidade === "locacao"
+      && tipoRecorteObservadoRadar(anuncio) === filtros.tipoRecorte
+      && !!identidade && identidade.id === anuncio.idExterno
+      && evidencia?.idExterno === identidade.id && evidencia.url === identidade.url
+      && evidencia.finalidade === "locacao" && evidencia.tipoDeclarado === anuncio.tipoDeclarado
+      && evidencia.preco === anuncio.preco;
+  }
   if (filtros.portal === "viva-real" && filtros.finalidade === "locacao") {
     const identidade = identidadeVivaReal(anuncio.url);
     const evidencia = anuncio.evidenciaLocacaoVivaReal;
@@ -129,6 +150,12 @@ export function capacidadeAquisicaoRadar(recorte: RecorteAquisicaoRadar): Capaci
   if (recorte.portal === "viva-real" && recorte.bairro?.trim()) {
     return resultado("nao-suportado", "O Viva Real ainda não possui aquisição comprovada por bairro.");
   }
+  if (recorte.portal === "olx" && recorte.bairro?.trim()) {
+    return resultado("nao-suportado", "A OLX ainda não possui aquisição comprovada por bairro.");
+  }
+  if (recorte.portal === "olx" && recorte.somenteProprietario) {
+    return resultado("nao-suportado", "A OLX ainda não possui aquisição comprovada somente de proprietários neste recorte.");
+  }
   if (!londrina) {
     return resultado("parcial", "Este mercado ainda requer comprovação da aquisição no portal.");
   }
@@ -138,7 +165,7 @@ export function capacidadeAquisicaoRadar(recorte: RecorteAquisicaoRadar): Capaci
 }
 
 export function capacidadeContratoExplicitoRadar(
-  filtros: Pick<FiltrosCentralAngariacao, "portal" | "finalidade" | "tipoRecorte" | "tipo" | "cidade" | "estado" | "bairro">,
+  filtros: Pick<FiltrosCentralAngariacao, "portal" | "finalidade" | "tipoRecorte" | "tipo" | "cidade" | "estado" | "bairro" | "somenteProprietario">,
 ): CapacidadeAquisicaoRadar {
   if (!ehFinalidadeRadar(filtros.finalidade)
     || (filtros.tipoRecorte !== "casa" && filtros.tipoRecorte !== "apartamento")) {

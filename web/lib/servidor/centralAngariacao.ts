@@ -26,7 +26,7 @@ export class PortalSemCoberturaGeografica extends Error {}
 /** O contrato explícito aplica a matriz de aquisição. No adaptador legado,
     tipo e bairro continuam pesando somente na capacidade do ZAP. */
 export function capacidadeGeograficaPortal(
-  filtros: Pick<FiltrosCentralAngariacao, "portal" | "cidade" | "estado" | "tipo" | "bairro" | "finalidade" | "tipoRecorte">,
+  filtros: Pick<FiltrosCentralAngariacao, "portal" | "cidade" | "estado" | "tipo" | "bairro" | "finalidade" | "tipoRecorte" | "somenteProprietario">,
 ): CapacidadeGeograficaPortal {
   if (!filtrosRadarSaoLegados(filtros)) {
     const capacidade = capacidadeContratoExplicitoRadar(filtros);
@@ -77,6 +77,10 @@ function localizacaoSegura(f: FiltrosCentralAngariacao): { cidade: string; estad
 
 function urlOlx(f: FiltrosCentralAngariacao): string {
   const { estado } = localizacaoSegura(f);
+  if (!filtrosRadarSaoLegados(f)) {
+    const categoria = f.tipoRecorte === "casa" ? "casas" : "apartamentos";
+    return `https://www.olx.com.br/imoveis/aluguel/${categoria}/estado-${estado}/regiao-de-londrina/londrina`;
+  }
   // A OLX agrupa algumas cidades por DDD/região. Londrina é o primeiro
   // recorte atendido e sua rota canônica é "regiao-de-londrina".
   const url = new URL(`https://www.olx.com.br/imoveis/aluguel/estado-${estado}/regiao-de-londrina`);
