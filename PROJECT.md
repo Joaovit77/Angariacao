@@ -2614,11 +2614,20 @@ O contrato explícito de aquisição distingue `finalidade` (`locacao` ou `venda
 classifica portal × finalidade × tipo e aplica o recorte geográfico. Somente `suportado`
 executa; `parcial` e `nao-suportado` falham antes de cache, transporte ou persistência.
 Venda permanece bloqueada nos cinco portais. Em Londrina/PR, os recortes comprovados
-  são ZAP/Casa, ZAP/Apartamento, Chaves/Casa, Chaves/Apartamento, Wimoveis/Casa e
-  Wimoveis/Apartamento, todos de locação e primeira página.
+  são ZAP/Casa, ZAP/Apartamento, Chaves/Casa, Chaves/Apartamento, Wimoveis/Casa,
+  Wimoveis/Apartamento, Viva Real/Casa e Viva Real/Apartamento, todos de locação e primeira página.
   Chaves/Apartamento e Wimoveis/Casa exigem tipo observado compatível e identidade não posicional
   também na finalização e persistência. No Wimoveis/Casa, `RentAction` deve corresponder ao
   `data-id` e à URL individual; o preço vem do card de aluguel, nunca do título comercial.
+  No Viva Real explícito, o card individual é associado ao `Product` por URL canônica e ID
+  nativo (`@id` e `-id-N/`), nunca por posição. `Offer.url` e `RentAction.target` devem
+  corresponder à mesma URL. O aluguel vem de `RentAction.priceSpecification` em BRL,
+  concordante com `Offer.price`; ausência, divergência ou ambiguidade mantém preço nulo,
+  sem ingresso em comparáveis. Condomínio e IPTU não substituem aluguel. Card e `Product.name`
+  precisam declarar o mesmo tipo textual; `House`/`Apartment` genérico não o substitui.
+  A evidência individual acompanha o anúncio até a finalização e persistência. Cards agrupados,
+  subtipos não comprovados e consultas por bairro são recusados. O navegador alternativo usa
+  o mesmo parser sobre o HTML completo. Paginação e ordenação por recência não são garantidas.
 Isso não comprova completude nem consolida baseline. `tipoDeclarado` permanece observacional;
 o tipo solicitado e o campo legado não o substituem. Famílias de comparáveis não definem
   recortes de aquisição. Somente no ZAP, o recorte Casa admite também Sobrado observado, preservando

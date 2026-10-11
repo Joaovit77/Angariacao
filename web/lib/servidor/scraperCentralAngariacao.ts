@@ -7,6 +7,7 @@
    rota, a UI nem o contrato de AnuncioCentralAngariacao.
    ================================================================ */
 import { existsSync } from "node:fs";
+import { filtrosRadarSaoLegados } from "@/lib/calculo/aquisicaoRadar";
 import { exigirCapacidadeAquisicaoRadar } from "./centralAngariacao";
 import type { Browser, Page } from "playwright-core";
 import { tituloWimoveis } from "./tituloWimoveis";
@@ -258,6 +259,7 @@ async function coletarWimoveis(page: Page, filtros: FiltrosCentralAngariacao): P
 async function coletarVivaReal(page: Page, filtros: FiltrosCentralAngariacao): Promise<AnuncioCentralAngariacao[]> {
   const seletor = 'a[href*="vivareal.com.br/imovel/"][href*="-id-"]';
   await esperarCards(page, seletor, "viva-real");
+  if (!filtrosRadarSaoLegados(filtros)) return extrairAnunciosFirecrawl(await page.content(), filtros);
   const brutos = await page.locator(seletor).evaluateAll((links, limite) =>
     links.slice(0, limite).map((elemento) => {
       const link = elemento as HTMLAnchorElement;

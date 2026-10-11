@@ -8,6 +8,7 @@ import { exigirCapacidadeAquisicaoRadar } from "./centralAngariacao";
 import type { AnyNode } from "domhandler";
 import { tituloWimoveis } from "./tituloWimoveis";
 import { extrairZap, type DiagnosticoZap } from "./parserZap";
+import { extrairVivaRealLocacao } from "./parserVivaReal";
 import { agoraTimestamp, dataPublicacaoOlx, dentroDoPeriodo, timestampDeIso } from "@/lib/datas";
 import { segundosRetryAfter } from "@/lib/calculo/retryAfter";
 import {
@@ -235,6 +236,7 @@ function extrairOlx(
 }
 
 function extrairVivaReal($: CheerioAPI, filtros: FiltrosCentralAngariacao): AnuncioCentralAngariacao[] {
+  if (!filtrosRadarSaoLegados(filtros)) return extrairVivaRealLocacao($, filtros, LIMITE_RESULTADOS);
   const vistos = new Set<string>();
   return $('a[href*="vivareal.com.br/imovel/"][href*="-id-"]').slice(0, LIMITE_RESULTADOS).toArray()
     .flatMap((elemento, indice) => {
@@ -457,7 +459,7 @@ export function extrairAnunciosFirecrawl(
     case "wimoveis": return extrairWimoveis($, filtros)
       .map(normalizar).filter(admitir);
     case "viva-real": return extrairVivaReal($, filtros)
-      .map(normalizar);
+      .map(normalizar).filter(admitir);
     case "zap": return extrairZap($, filtros, LIMITE_RESULTADOS, registrarDiagnosticoZap, html.length)
       .map(normalizar);
   }

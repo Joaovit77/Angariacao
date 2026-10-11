@@ -28,8 +28,7 @@ const pedido = (filtros: unknown) => new Request("http://localhost/api/central-a
   method: "POST", body: JSON.stringify(filtros), headers: { "Content-Type": "application/json" },
 });
 const parciais = [
-  ["olx", "casa"], ["olx", "apartamento"], ["viva-real", "casa"],
-  ["viva-real", "apartamento"],
+  ["olx", "casa"], ["olx", "apartamento"],
 ] as const;
 
 beforeEach(() => {
@@ -82,6 +81,8 @@ describe("aquisição explícita bloqueia antes de qualquer transporte", () => {
     ["chaves-na-mao", "apartamento", "https://www.chavesnamao.com.br/apartamentos-para-alugar/pr-londrina/"],
     ["wimoveis", "apartamento", "https://www.wimoveis.com.br/aluguel/apartamentos/pr/londrina"],
     ["wimoveis", "casa", "https://www.wimoveis.com.br/aluguel/casas/pr/londrina"],
+    ["viva-real", "casa", "https://www.vivareal.com.br/aluguel/parana/londrina/casa_residencial/"],
+    ["viva-real", "apartamento", "https://www.vivareal.com.br/aluguel/parana/londrina/apartamento_residencial/"],
   ] as const)("%s locação %s preserva aquisição comprovada", async (portal, tipoRecorte, url) => {
     const filtros = { ...base, portal, finalidade: "locacao" as const, tipoRecorte };
     expect(urlDaPesquisa(filtros)).toBe(url);
@@ -94,8 +95,8 @@ describe("aquisição explícita bloqueia antes de qualquer transporte", () => {
   });
   it("planejador explícito só seleciona os recortes comprovados", () => {
     const mercado = { ...base, finalidade: "locacao", segmento: "residencial" };
-    expect(planejarColetaMercado({ ...mercado, tipoRecorte: "casa" }).consultas.map((q) => q.filtros.portal)).toEqual(["chaves-na-mao", "wimoveis", "zap"]);
-    expect(planejarColetaMercado({ ...mercado, tipoRecorte: "apartamento" }).consultas.map((q) => q.filtros.portal)).toEqual(["chaves-na-mao", "wimoveis", "zap"]);
+    expect(planejarColetaMercado({ ...mercado, tipoRecorte: "casa" }).consultas.map((q) => q.filtros.portal)).toEqual(["chaves-na-mao", "wimoveis", "viva-real", "zap"]);
+    expect(planejarColetaMercado({ ...mercado, tipoRecorte: "apartamento" }).consultas.map((q) => q.filtros.portal)).toEqual(["chaves-na-mao", "wimoveis", "viva-real", "zap"]);
     expect(planejarColetaMercado({ ...mercado, finalidade: "venda", tipoRecorte: "casa" }).consultas).toEqual([]);
     expect(planejarColetaMercado(mercado).consultas).toEqual([]);
   });

@@ -65,6 +65,8 @@ export interface AnuncioCentralAngariacao {
   portal: PortalAngariacao;
   /** Contexto da aquisição, sem inferência da finalidade pelo título. */
   finalidade?: FinalidadeRadar;
+  /** Contrato individual Product/Offer/RentAction do Viva Real, sem vínculo posicional. */
+  evidenciaLocacaoVivaReal?: { idExterno: string; url: string; preco: number | null };
   titulo: string;
   /** Contexto explícito de aquisição; não é evidência do tipo do anúncio. */
   tipoRecorte?: TipoRecorteRadar;

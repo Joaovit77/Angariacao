@@ -11,7 +11,7 @@ export type StatusCapacidadeRadar = "suportado" | "parcial" | "nao-suportado";
 export const MATRIZ_CAPACIDADE_RADAR = {
   olx: { locacao: { casa: "parcial", apartamento: "parcial" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
   zap: { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
-  "viva-real": { locacao: { casa: "parcial", apartamento: "parcial" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
+  "viva-real": { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
   "chaves-na-mao": { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
   wimoveis: { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
 } as const satisfies Record<PortalAngariacao, Record<FinalidadeRadar, Record<TipoRecorteRadar, StatusCapacidadeRadar>>>;
@@ -62,12 +62,33 @@ export function tipoRecorteObservadoRadar(anuncio: { tipoDeclarado?: string | nu
   return tipoRecorteRadar(anuncio.tipoDeclarado);
 }
 
-/** R6.0c-B2.3: admissão dos dois novos recortes comprovados. O legado e os
+/** Identidade individual comprovada; query de rastreamento não participa. */
+export function identidadeVivaReal(valor: unknown): { id: string; url: string } | null {
+  if (typeof valor !== "string") return null;
+  try {
+    const url = new URL(valor);
+    const id = url.pathname.match(/^\/imovel\/[^/]+-id-(\d+)\/?$/)?.[1];
+    if (!id || url.protocol !== "https:" || url.hostname !== "www.vivareal.com.br"
+      || url.port || url.username || url.password) return null;
+    return { id, url: `${url.origin}${url.pathname.replace(/\/?$/, "/")}` };
+  } catch { return null; }
+}
+
+/** R6.0c-B2.4: admissão dos recortes comprovados. O legado e os
  * recortes anteriores mantêm seus contratos; o filtro não fabrica evidência. */
 export function anuncioAdmitidoRecorteRadar(
   anuncio: AnuncioCentralAngariacao,
   filtros: FiltrosCentralAngariacao,
 ): boolean {
+  if (filtros.portal === "viva-real" && filtros.finalidade === "locacao") {
+    const identidade = identidadeVivaReal(anuncio.url);
+    const evidencia = anuncio.evidenciaLocacaoVivaReal;
+    return anuncio.portal === "viva-real" && anuncio.finalidade === "locacao"
+      && tipoRecorteObservadoRadar(anuncio) === filtros.tipoRecorte
+      && !!identidade && identidade.id === anuncio.idExterno
+      && evidencia?.idExterno === identidade.id && evidencia.url === identidade.url
+      && evidencia.preco === anuncio.preco;
+  }
   const novoRecorte = filtros.finalidade === "locacao" && (
     (filtros.portal === "chaves-na-mao" && filtros.tipoRecorte === "apartamento")
     || (filtros.portal === "wimoveis" && filtros.tipoRecorte === "casa")
@@ -104,6 +125,9 @@ export function capacidadeAquisicaoRadar(recorte: RecorteAquisicaoRadar): Capaci
   }
   if (recorte.portal === "zap" && recorte.bairro?.trim()) {
     return resultado("nao-suportado", "O ZAP Imóveis ainda não aceita busca por bairro.");
+  }
+  if (recorte.portal === "viva-real" && recorte.bairro?.trim()) {
+    return resultado("nao-suportado", "O Viva Real ainda não possui aquisição comprovada por bairro.");
   }
   if (!londrina) {
     return resultado("parcial", "Este mercado ainda requer comprovação da aquisição no portal.");
