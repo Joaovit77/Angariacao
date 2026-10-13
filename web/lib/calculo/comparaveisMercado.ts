@@ -47,6 +47,7 @@ export interface ImovelParaRepresentacaoSemantica {
 }
 
 export interface SinaisIdentidadeAnuncio {
+  finalidade?: "locacao" | "venda";
   portal: string;
   idExterno: string;
   url: string;
@@ -128,6 +129,12 @@ export function baseFingerprintAnuncio(sinais: SinaisIdentidadeAnuncio): string 
   ].join("|");
 }
 
+/** Identidade da oferta: mantém o fingerprint físico e acrescenta a finalidade.
+ * Ausência representa exclusivamente o contrato legado de Locação. */
+export function baseFingerprintOferta(sinais: SinaisIdentidadeAnuncio): string {
+  return `oferta-v1|${sinais.finalidade ?? "locacao"}|${baseFingerprintAnuncio(sinais)}`;
+}
+
 /** Fingerprint só é usado como identidade alternativa quando há endereço
     suficientemente específico e características que reduzam falsos merges. */
 export function fingerprintEhForte(sinais: SinaisIdentidadeAnuncio): boolean {
@@ -144,6 +151,7 @@ export function anunciosRepresentamMesmaOferta(
   a: SinaisIdentidadeAnuncio,
   b: SinaisIdentidadeAnuncio,
 ): boolean {
+  if ((a.finalidade ?? "locacao") !== (b.finalidade ?? "locacao")) return false;
   const mesmoPortal = chaveNormalizada(a.portal) === chaveNormalizada(b.portal);
   if (mesmoPortal && a.idExterno.trim() && a.idExterno.trim() === b.idExterno.trim()) return true;
   const urlA = urlCanonicaDeAnuncio(a.url);
@@ -151,7 +159,7 @@ export function anunciosRepresentamMesmaOferta(
   if (urlA && urlA === urlB) return true;
   return fingerprintEhForte(a)
     && fingerprintEhForte(b)
-    && baseFingerprintAnuncio(a) === baseFingerprintAnuncio(b);
+    && baseFingerprintOferta(a) === baseFingerprintOferta(b);
 }
 
 export interface IdentidadeCandidatoComparavel {

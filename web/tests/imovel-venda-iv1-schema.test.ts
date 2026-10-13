@@ -15,10 +15,13 @@ const SCHEMA = ler("supabase-schema.sql");
 const CODIGO = MIGRATION.split("\n").filter((linha) => !/^\s*--/.test(linha)).join("\n");
 
 describe("IV-1: migration", () => {
-  it("vem logo depois do B3.2 em Production, sem a R6.1 antiga; depois dele só o IV-4A", () => {
+  it("vem logo depois do B3.2, sem a R6.1 antiga; depois dele só IV-4A e Radar B0 aprovados", () => {
     const pasta = readdirSync(new URL("../../supabase/migrations/", import.meta.url)).filter((f) => f.endsWith(".sql")).sort();
-    // Era a última até o IV-4A (guarda do ledger de locação), a única aprovada depois dela.
-    expect(pasta.slice(pasta.indexOf(NOME) + 1)).toEqual(["20261008150000_imoveis_finalidade_guarda_locacao.sql"]);
+    // Sequência fechada: qualquer migration posterior não aprovada continua falhando.
+    expect(pasta.slice(pasta.indexOf(NOME) + 1)).toEqual([
+      "20261008150000_imoveis_finalidade_guarda_locacao.sql",
+      "20261011203141_radar_ofertas_por_finalidade.sql",
+    ]);
     expect(pasta[pasta.indexOf(NOME) - 1]).toBe("20261006123603_vendas_v1_b3_2_interessado.sql");
     expect(NOME.slice(0, 14) > "20261006123603").toBe(true);
     expect(pasta.some((f) => f.startsWith("20261003233240"))).toBe(false);

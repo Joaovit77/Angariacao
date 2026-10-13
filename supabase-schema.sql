@@ -3793,8 +3793,15 @@ create table if not exists comparaveis_mercado (
   primeiro_visto_em timestamptz not null default now(),
   ultimo_visto_em timestamptz not null default now(),
   dados_originais jsonb not null default '{}'::jsonb,
-  unique (user_id, portal, id_externo)
+  constraint comparaveis_mercado_oferta_key unique (user_id, portal, id_externo, finalidade)
 );
+
+alter table comparaveis_mercado drop constraint if exists comparaveis_mercado_user_id_portal_id_externo_key;
+do $$ begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public.comparaveis_mercado'::regclass and conname = 'comparaveis_mercado_oferta_key') then
+    alter table comparaveis_mercado add constraint comparaveis_mercado_oferta_key unique (user_id, portal, id_externo, finalidade);
+  end if;
+end $$;
 
 -- A tabela nasceu na V2 com o conjunto mínimo usado pela Central. As colunas
 -- abaixo preservam essa mesma entidade e acrescentam identidade composta,
@@ -3889,10 +3896,10 @@ create index if not exists idx_comparaveis_mercado_busca
 create index if not exists idx_comparaveis_mercado_bairro_tipo
   on comparaveis_mercado (user_id, estado, cidade_chave, bairro_chave, tipo);
 create index if not exists idx_comparaveis_mercado_identidade_url
-  on comparaveis_mercado (user_id, url_canonica)
+  on comparaveis_mercado (user_id, finalidade, url_canonica)
   where url_canonica is not null;
 create index if not exists idx_comparaveis_mercado_identidade_fingerprint
-  on comparaveis_mercado (user_id, anuncio_fingerprint)
+  on comparaveis_mercado (user_id, finalidade, anuncio_fingerprint)
   where fingerprint_forte and anuncio_fingerprint is not null;
 create index if not exists idx_comparaveis_mercado_filtros_vetor
   on comparaveis_mercado (
@@ -3911,6 +3918,24 @@ create index if not exists idx_comparaveis_mercado_catalogo_bairro_tipo
 -- Uma única transação escolhe a identidade existente e a atualiza. A função
 -- é invoker: a RLS e os privilégios do chamador continuam valendo, e o user_id
 -- autenticado nunca é aceito do corpo da requisição.
+-- A finalidade e a autoria pertencem à identidade estável da oferta.
+-- Uma nova finalidade exige outra linha; nunca reclassifica o histórico existente.
+create or replace function private.proteger_identidade_oferta_comparavel()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+begin
+  if new.finalidade is distinct from old.finalidade
+    or new.user_id is distinct from old.user_id then
+    raise exception 'Finalidade e autoria da oferta são imutáveis.' using errcode = '22023';
+  end if;
+  return new;
+end;
+$$;
+revoke all on function private.proteger_identidade_oferta_comparavel() from public;
+drop trigger if exists trg_proteger_identidade_oferta_comparavel on public.comparaveis_mercado;
+create trigger trg_proteger_identidade_oferta_comparavel
+before update on public.comparaveis_mercado
+for each row execute function private.proteger_identidade_oferta_comparavel();
+
 create or replace function registrar_comparavel_mercado(p_dados jsonb)
 returns table (id uuid, criado boolean, precisa_embedding boolean)
 language plpgsql
@@ -3919,6 +3944,10 @@ set search_path = ''
 as $$
 declare
   v_user_id uuid := (select auth.uid());
+  v_finalidade text := coalesce(p_dados->>'finalidade', 'locacao');
+  v_observada text := p_dados->>'finalidade_observada';
+  v_original text := p_dados->'dados_originais'->>'finalidade';
+  v_original_observada text := p_dados->'dados_originais'->>'finalidadeObservada';
   v_id uuid;
   v_criado boolean := false;
   v_precisa_embedding boolean := true;
@@ -3937,12 +3966,18 @@ begin
     raise exception 'Sessão autenticada obrigatória.' using errcode = '42501';
   end if;
 
+  -- O legado de Locação pode omitir evidência. Venda exige observação explícita.
+  if v_finalidade not in ('locacao', 'venda')
+    or (v_observada is not null and v_observada is distinct from v_finalidade)
+    or (v_original is not null and v_original is distinct from v_finalidade)
+    or (v_original_observada is not null and v_original_observada is distinct from v_finalidade)
+    or (v_finalidade = 'venda' and v_observada is distinct from 'venda') then
+    raise exception 'Finalidade observada incompatível com a oferta.' using errcode = '22023';
+  end if;
+
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
-    v_user_id::text || '|' || coalesce(
-      v_fingerprint,
-      v_url_canonica,
-      (p_dados->>'portal') || ':' || (p_dados->>'id_externo')
-    ),
+    -- Serializa todos os aliases da oferta dentro do usuário/finalidade.
+    v_user_id::text || '|' || v_finalidade,
     0
   ));
 
@@ -3955,6 +3990,7 @@ begin
   into v_id, v_precisa_embedding
   from public.comparaveis_mercado c
   where c.user_id = v_user_id
+    and c.finalidade = v_finalidade
     and (
       (c.portal = p_dados->>'portal' and c.id_externo = p_dados->>'id_externo')
       or (v_url_canonica is not null and c.url_canonica = v_url_canonica)
@@ -3987,7 +4023,7 @@ begin
     ) values (
       v_user_id, p_dados->>'portal', p_dados->>'id_externo', p_dados->>'url',
       v_url_canonica, v_fingerprint, v_fingerprint_forte,
-      coalesce(p_dados->>'finalidade', 'locacao'), p_dados->>'titulo',
+      v_finalidade, p_dados->>'titulo',
       nullif(p_dados->>'descricao', ''), nullif(p_dados->>'tipo', ''),
       nullif(p_dados->>'tipo_familia', ''), nullif(p_dados->>'endereco', ''),
       nullif(p_dados->>'endereco_chave', ''), nullif(p_dados->>'logradouro', ''),
@@ -4019,7 +4055,6 @@ begin
       url_canonica = coalesce(v_url_canonica, c.url_canonica),
       anuncio_fingerprint = coalesce(v_fingerprint, c.anuncio_fingerprint),
       fingerprint_forte = c.fingerprint_forte or v_fingerprint_forte,
-      finalidade = coalesce(p_dados->>'finalidade', c.finalidade),
       titulo = p_dados->>'titulo',
       descricao = coalesce(nullif(p_dados->>'descricao', ''), c.descricao),
       tipo = coalesce(nullif(p_dados->>'tipo', ''), c.tipo),

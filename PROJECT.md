@@ -843,7 +843,12 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   `servidor/comparaveisMercado.ts` ·
   `api/avaliacao/comparaveis`** — identidade, representação semântica, ingestão e busca híbrida dos
   anúncios observados. A identidade aceita, em ordem, portal+código, URL canônica ou fingerprint
-  forte; preço não faz parte dela. `observacoes_comparaveis_mercado` é append-only e conserva
+  forte, sempre dentro da mesma finalidade. A oferta é identificada por usuário +
+  finalidade + identidade externa; o fingerprint físico permanece independente da finalidade.
+  Finalidade e autoria de uma oferta persistida são imutáveis. Venda exige finalidade observada
+  explícita e conflitos de evidência são rejeitados; Locação legada preserva compatibilidade.
+  Sem a RPC de registro, a escrita falha fechada, sem upsert pelo contrato V2.
+  Preço não faz parte da identidade. `observacoes_comparaveis_mercado` é append-only e conserva
   anúncio novo, mudança de preço/status e confirmação diária. Ausência nunca prova locação, venda,
   remoção ou inatividade e não altera `status_anuncio`: **ausência de observação não é observação de
   ausência**. `primeiro_visto_em` e `ultimo_visto_em` significam somente primeira e última observação

@@ -14,14 +14,16 @@ describe("Vendas V1-B1: contrato estrutural", () => {
     const bloco = (sql: string) => sql.split("-- BEGIN VENDAS V1-B1")[1].split("-- END VENDAS V1-B1")[0];
     expect(bloco(schema)).toBe(bloco(MIGRATION_VENDAS));
   });
-  it("preserva o schema anterior inteiro", () => {
-    // B2, B3.2, o IV-1 e o IV-4A de imóveis são aditivos: remover seus blocos mantém a âncora histórica original, sem trocar o hash.
+  it("preserva o schema anterior inteiro com a alteração explícita Radar B0 aprovada", () => {
+    // Remove somente os blocos aditivos conhecidos. Radar B0 altera identidade,
+    // índices, trigger e RPC de comparáveis; o hash fixa exatamente esse delta.
+    // Âncora anterior: 27eedab2dd5a92811d24f370d47c1ecd32c796cd0815527f5dbcb4aad7568733.
     const anterior = schema.replace(/-- =+\n-- IMÓVEL DE VENDA IV-4A:[\s\S]*?-- END IMOVEL VENDA IV-4A\n\n/, "")
       .replace(/-- =+\n-- IMÓVEL DE VENDA IV-1:[\s\S]*?-- END IMOVEL VENDA IV-1\n\n/, "")
       .replace(/-- BEGIN VENDAS V1-B3\.2[\s\S]*?-- END VENDAS V1-B3\.2\n\n/, "")
       .replace(/-- BEGIN VENDAS V1-B2[\s\S]*?-- END VENDAS V1-B2\n\n/, "")
       .replace(/-- BEGIN VENDAS V1-B1[\s\S]*?-- END VENDAS V1-B1\n\n/, "").trimEnd();
-    expect(createHash("sha256").update(anterior).digest("hex")).toBe("27eedab2dd5a92811d24f370d47c1ecd32c796cd0815527f5dbcb4aad7568733");
+    expect(createHash("sha256").update(anterior).digest("hex")).toBe("11ca5f5d06a1b4e2fb2d3d6caee29ab60d3df38dfa350b87f11242c885febf1a");
   });
   it("cria somente as quatro tabelas aprovadas, sem dados ou operações comerciais", () => {
     expect([...codigo.matchAll(/create table (\w+\.\w+)/g)].map(m => m[1])).toEqual(tabelas);

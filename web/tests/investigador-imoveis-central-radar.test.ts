@@ -205,7 +205,8 @@ describe("handoff Central e Radar para Investigador", () => {
       error: null,
     });
     const filtrarPortal = vi.fn().mockReturnValue({ in: executarIn });
-    const filtrarUsuario = vi.fn().mockReturnValue({ eq: filtrarPortal });
+    const filtrarFinalidade = vi.fn().mockReturnValue({ eq: filtrarPortal });
+    const filtrarUsuario = vi.fn().mockReturnValue({ eq: filtrarFinalidade });
     const select = vi.fn().mockReturnValue({ eq: filtrarUsuario });
     const from = vi.fn().mockReturnValue({ select });
     const anuncios = [
@@ -221,6 +222,7 @@ describe("handoff Central e Radar para Investigador", () => {
 
     expect(from).toHaveBeenCalledWith("comparaveis_mercado");
     expect(filtrarUsuario).toHaveBeenCalledWith("user_id", "usuario-autenticado");
+    expect(filtrarFinalidade).toHaveBeenCalledWith("finalidade", "locacao");
     expect(filtrarPortal).toHaveBeenCalledWith("portal", "olx");
     expect(executarIn).toHaveBeenCalledWith("id_externo", ["persistido", "transitorio"]);
     expect(ids.get("olx:persistido")).toBe(COMPARAVEL_ID);

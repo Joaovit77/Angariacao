@@ -319,7 +319,7 @@ describe("schema histórico e segurança", () => {
   });
 
   it("serializa identidades concorrentes e mantém a unicidade principal", () => {
-    expect(schema).toContain("unique (user_id, portal, id_externo)");
+    expect(schema).toContain("unique (user_id, portal, id_externo, finalidade)");
     expect(schema).toContain("pg_catalog.pg_advisory_xact_lock");
     expect(schema).toContain("for update;");
   });

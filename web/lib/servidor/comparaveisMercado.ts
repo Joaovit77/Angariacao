@@ -64,6 +64,7 @@ function prepararRegistro(
 ): RegistroPreparado | null {
   const finalidade = finalidadeContextoRadar(filtros);
   if (original.finalidade !== undefined && original.finalidade !== finalidade) return null;
+  if (original.finalidadeObservada !== undefined && original.finalidadeObservada !== finalidade) return null;
   const anuncio = comCaracteristicasDoAnuncio(original, filtros.tipo);
   if (!anuncioAdmitidoRecorteRadar(anuncio, filtros)) return null;
   const valor = numero(anuncio.preco);
@@ -130,6 +131,7 @@ function prepararRegistro(
       anuncio_fingerprint: hashConteudoEmbedding(baseFingerprintAnuncio(sinais)),
       fingerprint_forte: fingerprintEhForte(sinais),
       finalidade,
+      finalidade_observada: original.finalidadeObservada ?? null,
       titulo: anuncio.titulo,
       descricao: anuncio.descricao || null,
       tipo: anuncio.tipo || null,
@@ -188,47 +190,6 @@ async function mapearComConcorrencia<T, R>(
   return resultados;
 }
 
-function rpcAusente(erro: { code?: string; message?: string }): boolean {
-  return erro.code === "PGRST202"
-    || erro.code === "42883"
-    || /registrar_comparavel_mercado.*(?:schema cache|does not exist)/i.test(erro.message || "");
-}
-
-async function salvarNoSchemaV2(
-  supabase: SupabaseClient,
-  preparados: RegistroPreparado[],
-): Promise<number> {
-  const linhas = preparados.map(({ dados }) => ({
-    user_id: dados.user_id,
-    portal: dados.portal,
-    id_externo: dados.id_externo,
-    url: dados.url,
-    finalidade: dados.finalidade,
-    titulo: dados.titulo,
-    tipo: dados.tipo,
-    endereco: dados.endereco,
-    bairro: dados.bairro,
-    regiao: dados.regiao,
-    cidade: dados.cidade,
-    estado: dados.estado,
-    cidade_chave: dados.cidade_chave,
-    bairro_chave: dados.bairro_chave,
-    area_m2: dados.area_m2,
-    quartos: dados.quartos,
-    banheiros: dados.banheiros,
-    vagas: dados.vagas,
-    valor_anunciado: dados.valor_anunciado,
-    publicado_em: dados.publicado_em,
-    ultimo_visto_em: dados.observado_em,
-    dados_originais: dados.dados_originais,
-  }));
-  const { error } = await supabase
-    .from("comparaveis_mercado")
-    .upsert(linhas, { onConflict: "user_id,portal,id_externo" });
-  if (error) throw error;
-  return linhas.length;
-}
-
 async function registrarRegiaoDaColeta(
   supabase: SupabaseClient,
   userId: string,
@@ -257,7 +218,7 @@ export async function salvarComparaveisMercado(
     .map((anuncio) => prepararRegistro(anuncio, filtros, observadoEm, userId))
     .filter((item): item is RegistroPreparado => {
       if (!item) return false;
-      const identidade = `${item.dados.portal}:${item.dados.id_externo}`;
+      const identidade = `${item.dados.finalidade}:${item.dados.portal}:${item.dados.id_externo}`;
       if (identidades.has(identidade)) return false;
       identidades.add(identidade);
       return true;
@@ -265,27 +226,19 @@ export async function salvarComparaveisMercado(
   if (!preparados.length) return 0;
 
   const registros: ResultadoRegistroRpc[] = [];
-  try {
-    registros.push(...await mapearComConcorrencia(
-      preparados,
-      CONFIGURACAO_COMPARAVEIS_MERCADO.concorrenciaPersistencia,
-      async (preparado) => {
-        const { data, error } = await supabase.rpc("registrar_comparavel_mercado", {
-          p_dados: preparado.dados,
-        });
-        if (error) throw error;
-        const registro = (data as ResultadoRegistroRpc[] | null)?.[0];
-        if (!registro?.id) throw new Error("O banco não confirmou o comparável registrado.");
-        return registro;
-      },
-    ));
-  } catch (erro) {
-    if (rpcAusente(erro as { code?: string; message?: string })) {
-      // Permite publicar o código antes do schema V3 sem interromper a Central.
-      return salvarNoSchemaV2(supabase, preparados);
-    }
-    throw erro;
-  }
+  registros.push(...await mapearComConcorrencia(
+    preparados,
+    CONFIGURACAO_COMPARAVEIS_MERCADO.concorrenciaPersistencia,
+    async (preparado) => {
+      const { data, error } = await supabase.rpc("registrar_comparavel_mercado", {
+        p_dados: preparado.dados,
+      });
+      if (error) throw error;
+      const registro = (data as ResultadoRegistroRpc[] | null)?.[0];
+      if (!registro?.id) throw new Error("O banco não confirmou o comparável registrado.");
+      return registro;
+    },
+  ));
 
   const registrosPorRegiao = new Map<string, ResultadoRegistroRpc[]>();
   registros.forEach((registro, indice) => {

@@ -61,6 +61,8 @@ export interface FiltrosAquisicaoRadar extends FiltrosCentralAngariacao {
 }
 
 export interface AnuncioCentralAngariacao {
+  /** Finalidade comprovada pela origem; nunca preenchida pelo filtro solicitado. */
+  finalidadeObservada?: "locacao" | "venda";
   idExterno: string;
   portal: PortalAngariacao;
   /** Contexto da aquisição, sem inferência da finalidade pelo título. */

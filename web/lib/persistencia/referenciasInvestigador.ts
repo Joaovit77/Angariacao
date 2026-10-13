@@ -16,6 +16,7 @@ export async function carregarIdsComparaveisDosAnunciosComCliente(
 ): Promise<Map<string, string>> {
   const idsPorPortal = new Map<PortalAngariacao, Set<string>>();
   for (const anuncio of anuncios) {
+    if (anuncio.finalidade !== undefined && anuncio.finalidade !== "locacao") continue;
     const ids = idsPorPortal.get(anuncio.portal) || new Set<string>();
     ids.add(anuncio.idExterno);
     idsPorPortal.set(anuncio.portal, ids);
@@ -28,6 +29,7 @@ export async function carregarIdsComparaveisDosAnunciosComCliente(
       .from("comparaveis_mercado")
       .select("id,portal,id_externo")
       .eq("user_id", userId)
+      .eq("finalidade", "locacao")
       .eq("portal", portal)
       .in("id_externo", [...ids]);
     if (error) throw error;

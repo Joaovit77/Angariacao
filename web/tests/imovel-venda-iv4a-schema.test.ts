@@ -25,8 +25,10 @@ const GUARDA = /\n    -- IV-4A:[^\n]*\n(?:    --[^\n]*\n)*    if v_imovel\.final
 describe("IV-4A: migration", () => {
   it("vem logo depois do IV-1, com timestamp de 08/10, sem colidir com a R6.1 antiga", () => {
     const pasta = readdirSync(new URL("../../supabase/migrations/", import.meta.url)).filter((f) => f.endsWith(".sql")).sort();
-    expect(pasta.at(-1)).toBe(NOME);
-    expect(pasta.at(-2)).toBe("20261006200215_imoveis_finalidade_venda.sql");
+    expect(pasta.slice(pasta.indexOf(NOME) + 1)).toEqual([
+      "20261011203141_radar_ofertas_por_finalidade.sql",
+    ]);
+    expect(pasta[pasta.indexOf(NOME) - 1]).toBe("20261006200215_imoveis_finalidade_venda.sql");
     expect(NOME.slice(0, 14) > "20261006200215").toBe(true);
     expect(NOME.startsWith("20261008")).toBe(true);
     expect(pasta.filter((f) => f.slice(0, 14) === NOME.slice(0, 14))).toEqual([NOME]);

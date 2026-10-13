@@ -130,6 +130,7 @@ async function contextoDoRadar(
     .from("comparaveis_mercado")
     .select("id")
     .eq("user_id", acesso.userId)
+    .eq("finalidade", "locacao")
     .eq("portal", linha.portal)
     .eq("id_externo", linha.id_externo)
     .order("ultimo_visto_em", { ascending: false })

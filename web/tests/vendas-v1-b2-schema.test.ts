@@ -10,13 +10,15 @@ const sql = migration.replace(/--[^\n]*/g,"");
 const hash = (texto: string) => createHash("sha256").update(texto).digest("hex");
 
 describe("Vendas B2: fronteira SQL e preservação histórica", () => {
-  it("retirar B2 recupera exatamente o blob schema do HEAD B1, inclusive final de arquivo", () => {
-    // B3.2, o IV-1 e o IV-4A de imóveis são aditivos: saem junto, e o hash do HEAD B1 continua o mesmo.
+  it("retirar blocos aditivos preserva a âncora B1 com o delta explícito Radar B0 aprovado", () => {
+    // B3.2, IV-1 e IV-4A saem junto. Radar B0 altera somente identidade,
+    // índices, trigger e RPC de comparáveis; o hash continua guardando o restante e o EOF.
+    // Âncora anterior: 5b54399f21bae4e189d24babaecfe2774fdcab060fef1089063913b3562fc64c.
     const anterior = schema.replace(/-- =+\n-- IMÓVEL DE VENDA IV-4A:[\s\S]*?-- END IMOVEL VENDA IV-4A\n\n/,"")
       .replace(/-- =+\n-- IMÓVEL DE VENDA IV-1:[\s\S]*?-- END IMOVEL VENDA IV-1\n\n/,"")
       .replace(/-- BEGIN VENDAS V1-B3\.2[\s\S]*?-- END VENDAS V1-B3\.2\n\n/,"")
       .replace(/-- BEGIN VENDAS V1-B2[\s\S]*?-- END VENDAS V1-B2\n\n/,"");
-    expect(hash(anterior)).toBe("5b54399f21bae4e189d24babaecfe2774fdcab060fef1089063913b3562fc64c");
+    expect(hash(anterior)).toBe("f4f2f548da05396ff235ea35bf4b7e8273e5f1e9a0e53f0b2dc717f5212f2f5f");
   });
   it("preserva a migration B1 aprovada e espelha o bloco B2 literalmente uma única vez", () => {
     expect(hash(ler("supabase/migrations/20261005003257_vendas_v1_b1_estrutura.sql"))).toBe("b06dd967800894d94a6a71bcdd8f6869f6706ed3bedc9a9df9c4d53293deb4a7");
