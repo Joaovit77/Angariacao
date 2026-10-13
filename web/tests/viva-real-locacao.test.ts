@@ -136,7 +136,7 @@ for (const tipoRecorte of ["casa", "apartamento"] as const) {
       expect(await buscarComNavegador(filtros, urlDaPesquisa(filtros))).toEqual(extrair());
       expect(content).toHaveBeenCalledOnce(); expect(close).toHaveBeenCalledOnce(); expect(fetch).not.toHaveBeenCalled();
     });
-    it.each([{ finalidade: "venda" as const }, { cidade: "Curitiba" }, { estado: "SP" }, { cidade: "" }, { bairro: "Centro" }])("bloqueia recorte não comprovado antes de cache, transporte e RPC: %j", async (delta) => {
+    it.each([{ finalidade: "venda" as const, bairro: "Centro" }, { cidade: "Curitiba" }, { estado: "SP" }, { cidade: "" }, { bairro: "Centro" }])("bloqueia recorte não comprovado antes de cache, transporte e RPC: %j", async (delta) => {
       const f = { ...filtros, ...delta };
       expect(() => urlDaPesquisa(f)).toThrow();
       await expect(buscarComFirecrawl(f, "https://exemplo.invalid")).rejects.toThrow();

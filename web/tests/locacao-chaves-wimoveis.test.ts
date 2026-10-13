@@ -43,7 +43,7 @@ describe("R6.0c-B2.3: capacidade e URL somente para o mercado comprovado", () =>
   });
   for (const filtros of [apto, casa]) {
     it.each([
-      { finalidade: "venda" as const }, { cidade: "Curitiba" }, { estado: "SP" },
+      { finalidade: "venda" as const, cidade: "Curitiba" }, { cidade: "Curitiba" }, { estado: "SP" },
       { tipoRecorte: "studio" as never }, { cidade: "" },
     ])(`${filtros.portal}: recorte não comprovado bloqueia cache/transporte/RPC`, async (delta) => {
       const bloqueado = { ...filtros, ...delta };

@@ -31,7 +31,7 @@ describe("ZAP Casa: builder e capacidade explícitos", () => {
     expect(capacidadeFuncionalZap({ cidade: "Londrina", estado: "PR", tipo: "Apartamento" }).suportado).toBe(true);
   });
   it.each([
-    { ...casa, finalidade: "venda" as const }, { ...apto, finalidade: "venda" as const },
+    { ...casa, finalidade: "venda" as const, bairro: "Centro" }, { ...apto, finalidade: "venda" as const, cidade: "Curitiba" },
     { ...casa, bairro: "Centro" }, { ...casa, cidade: "Curitiba" }, { ...casa, estado: "SP" },
   ])("bloqueia $finalidade/$tipoRecorte/$cidade/$estado/$bairro antes de cache/transporte/escrita", async (filtros) => {
     expect(capacidadeContratoExplicitoRadar(filtros).suportado).toBe(false);

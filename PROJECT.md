@@ -2618,7 +2618,18 @@ O contrato explícito de aquisição distingue `finalidade` (`locacao` ou `venda
 `tipoRecorte` (`casa` ou `apartamento`). A matriz pura em `calculo/aquisicaoRadar.ts`
 classifica portal × finalidade × tipo e aplica o recorte geográfico. Somente `suportado`
 executa; `parcial` e `nao-suportado` falham antes de cache, transporte ou persistência.
-Venda permanece bloqueada nos cinco portais. Em Londrina/PR, os recortes comprovados
+Venda é suportada somente para Casa/Apartamento no ZAP, Viva Real e Chaves na Mão,
+na primeira página de Londrina/PR, sem bairro. OLX e Wimoveis permanecem bloqueados
+em Venda. `servidor/parserVendaRadar.ts` conserva um caminho separado da Locação:
+ZAP/Viva exigem Product individual, ID/URL/Offer/target coerentes e BuyAction com
+PriceSpecification BRL igual a Offer.price e ao preço principal do card. Chaves exige
+RealEstateListing/Offer/SellAction, URL individual `/imovel/.../id-N/`, itemOffered
+coerente e preço BRL igual ao principal. Agrupados, lançamentos, subtipos não
+aprovados, identidades contraditórias e preços acessórios/ambíguos são recusados.
+`finalidadeObservada=venda` nasce desses contratos, é preservada pela normalização
+e exigida pela admissão e RPC; o filtro solicitado não a fabrica. Recência e
+completude não são garantidas. O handoff atual de Avaliação continua em Locação.
+Em Londrina/PR, os recortes comprovados de Locação
   são ZAP/Casa, ZAP/Apartamento, Chaves/Casa, Chaves/Apartamento, Wimoveis/Casa,
   Wimoveis/Apartamento, Viva Real/Casa, Viva Real/Apartamento, OLX/Casa e OLX/Apartamento,
   todos de locação e primeira página.

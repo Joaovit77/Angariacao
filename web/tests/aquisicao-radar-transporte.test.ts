@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PORTAIS_CONHECIDOS } from "@/lib/calculo/centralAngariacao";
 
 const mocks = vi.hoisted(() => ({ getCache: vi.fn(), rpc: vi.fn() }));
 vi.mock("server-only", () => ({}));
@@ -15,7 +14,7 @@ beforeEach(() => { vi.clearAllMocks(); vi.stubGlobal("fetch", fetchFalso); });
 afterEach(() => vi.unstubAllGlobals());
 
 describe("nenhum caminho alternativo contorna o contrato explícito", () => {
-  for (const portal of PORTAIS_CONHECIDOS) {
+  for (const portal of ["olx", "wimoveis"] as const) {
     it(`${portal}: Venda bloqueia cache, Firecrawl, HTTP, navegador e escrita`, async () => {
       const filtros = { portal, finalidade: "venda" as const, tipoRecorte: "apartamento" as const, cidade: "Londrina", estado: "PR" };
       const urlAluguel = "https://exemplo.test/aluguel";

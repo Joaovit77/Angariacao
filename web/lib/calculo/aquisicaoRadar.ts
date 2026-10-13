@@ -1,6 +1,7 @@
 import { idExternoEhFallback, type AnuncioCentralAngariacao, type FiltrosCentralAngariacao, type PortalAngariacao } from "./centralAngariacao";
 import { normalizarUf, ufValida } from "./geografia";
 import { chaveNormalizada } from "../normalizacao";
+import { identidadeVendaRadar } from "./identidadeVendaRadar";
 
 export type FinalidadeRadar = "locacao" | "venda";
 export type TipoRecorteRadar = "casa" | "apartamento";
@@ -10,9 +11,9 @@ export type StatusCapacidadeRadar = "suportado" | "parcial" | "nao-suportado";
  * Londrina/PR; não atesta completude nem consolida baseline. */
 export const MATRIZ_CAPACIDADE_RADAR = {
   olx: { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
-  zap: { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
-  "viva-real": { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
-  "chaves-na-mao": { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
+  zap: { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "suportado", apartamento: "suportado" } },
+  "viva-real": { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "suportado", apartamento: "suportado" } },
+  "chaves-na-mao": { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "suportado", apartamento: "suportado" } },
   wimoveis: { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
 } as const satisfies Record<PortalAngariacao, Record<FinalidadeRadar, Record<TipoRecorteRadar, StatusCapacidadeRadar>>>;
 
@@ -92,6 +93,14 @@ export function anuncioAdmitidoRecorteRadar(
   anuncio: AnuncioCentralAngariacao,
   filtros: FiltrosCentralAngariacao,
 ): boolean {
+  if (filtros.finalidade === "venda") {
+    const identidade = identidadeVendaRadar(anuncio.portal, anuncio.url);
+    return anuncio.portal === filtros.portal && anuncio.finalidade === "venda"
+      && anuncio.finalidadeObservada === "venda"
+      && tipoRecorteObservadoRadar(anuncio) === filtros.tipoRecorte
+      && !!identidade && identidade.id === anuncio.idExterno
+      && typeof anuncio.preco === "number" && Number.isFinite(anuncio.preco) && anuncio.preco > 0;
+  }
   if (filtros.portal === "olx" && filtros.finalidade === "locacao") {
     const identidade = identidadeOlx(anuncio.url), evidencia = anuncio.evidenciaLocacaoOlx;
     return anuncio.portal === "olx" && anuncio.finalidade === "locacao"
@@ -138,6 +147,9 @@ export function capacidadeAquisicaoRadar(recorte: RecorteAquisicaoRadar): Capaci
     return resultado("nao-suportado", "Informe cidade e uma UF brasileira válida.");
   }
   const londrina = cidade === "londrina" && estado === "PR";
+  if (recorte.finalidade === "venda" && (!londrina || recorte.bairro?.trim())) {
+    return resultado("nao-suportado", "Venda disponível somente na primeira página de Londrina/PR, sem bairro.");
+  }
   if ((recorte.portal === "olx" || recorte.portal === "zap") && !londrina) {
     return resultado("nao-suportado", "Recorte geográfico disponível somente em Londrina/PR.");
   }

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PORTAIS_CONHECIDOS, type FiltrosAquisicaoRadar } from "@/lib/calculo/centralAngariacao";
+import { type FiltrosAquisicaoRadar } from "@/lib/calculo/centralAngariacao";
 import { urlDaPesquisa, URL_ZAP_LONDRINA_APARTAMENTOS, URL_ZAP_LONDRINA_CASAS } from "@/lib/servidor/centralAngariacao";
 import { planejarColetaMercado } from "@/lib/servidor/planejadorColetaMercados";
 
@@ -46,7 +46,7 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
 describe("aquisição explícita bloqueia antes de qualquer transporte", () => {
-  for (const portal of PORTAIS_CONHECIDOS) {
+  for (const portal of ["olx", "wimoveis"] as const) {
     for (const tipoRecorte of ["casa", "apartamento"] as const) {
       it(`${portal}: venda ${tipoRecorte} nunca usa aluguel nem dispara coleta`, async () => {
         const filtros = { ...base, portal, finalidade: "venda", tipoRecorte } satisfies FiltrosAquisicaoRadar;
@@ -125,9 +125,10 @@ describe("compatibilidade somente do estado salvo legado", () => {
   });
   it("ID legado não rebaixa Venda explícita para Locação", async () => {
     const resposta = await POST(pedido({ ...base, portal: "zap", finalidade: "venda", tipoRecorte: "apartamento", buscaLegadaId: "busca-antiga" }));
-    expect(resposta.status).toBe(422);
+    expect(resposta.status).toBe(200);
     expect(mocks.from).not.toHaveBeenCalled();
-    expect(mocks.coletar).not.toHaveBeenCalled();
+    expect(mocks.coletar).toHaveBeenCalledOnce();
+    expect(mocks.coletar.mock.calls[0][0]).toMatchObject({ finalidade: "venda", tipoRecorte: "apartamento" });
   });
   it("uma busca explícita persistida não recebe a exceção legada", async () => {
     mocks.maybeSingle.mockResolvedValue({ data: { filtros: { ...base, portal: "olx", finalidade: "locacao", tipoRecorte: "casa" } }, error: null });

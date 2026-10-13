@@ -45,7 +45,7 @@ describe("rota real → contrato → transporte falso → parser → finalizaç�
     });
   });
   it.each([
-    { tipoRecorte: "casa", finalidade: "venda" }, { tipoRecorte: "apartamento", finalidade: "venda" },
+    { tipoRecorte: "casa", finalidade: "venda", bairro: "Centro" }, { tipoRecorte: "apartamento", finalidade: "venda", cidade: "Curitiba" },
     { tipoRecorte: "casa", bairro: "Centro" }, { tipoRecorte: "casa", cidade: "Curitiba" },
     { tipoRecorte: "casa", estado: "SP" },
   ])("$tipoRecorte/$finalidade/$bairro/$cidade/$estado bloqueia antes de cache/transporte/RPC", async (delta) => {
@@ -53,5 +53,12 @@ describe("rota real → contrato → transporte falso → parser → finalizaç�
     mocks.fetch.mockImplementation(sentinela); mocks.cacheGet.mockImplementation(sentinela); mocks.rpc.mockImplementation(sentinela);
     expect((await requisitar({ ...base, ...delta })).status).toBe(422);
     expect(mocks.fetch).not.toHaveBeenCalled(); expect(mocks.cacheGet).not.toHaveBeenCalled(); expect(mocks.cacheSet).not.toHaveBeenCalled(); expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it.each(["casa", "apartamento"])("Venda %s não transforma HTML de Locação em oferta Venda", async tipoRecorte => {
+    mocks.fetch.mockResolvedValue(Response.json({ success: true, data: { rawHtml: tipoRecorte === "casa" ? casaReal : apartamentoReal, metadata: { statusCode: 200 } } }));
+    const resposta = await requisitar({ ...base, finalidade: "venda", tipoRecorte });
+    expect(resposta.status).toBe(200);
+    expect(await resposta.json()).toMatchObject({ ok: true, anuncios: [] });
+    expect(mocks.fetch).toHaveBeenCalledOnce(); expect(mocks.rpc).not.toHaveBeenCalled();
   });
 });

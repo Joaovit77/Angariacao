@@ -9,6 +9,7 @@ import type { AnyNode } from "domhandler";
 import { tituloWimoveis } from "./tituloWimoveis";
 import { extrairZap, type DiagnosticoZap } from "./parserZap";
 import { extrairVivaRealLocacao } from "./parserVivaReal";
+import { extrairVendaRadar } from "./parserVendaRadar";
 import { extrairOlxLocacao } from "./parserOlx";
 import { agoraTimestamp, dataPublicacaoOlx, dentroDoPeriodo, timestampDeIso } from "@/lib/datas";
 import { segundosRetryAfter } from "@/lib/calculo/retryAfter";
@@ -452,6 +453,8 @@ export function extrairAnunciosFirecrawl(
   });
   const admitir = (anuncio: AnuncioCentralAngariacao) => anuncioAdmitidoRecorteRadar(anuncio, filtros);
   const $ = load(html);
+  if (filtros.finalidade === "venda") return extrairVendaRadar($, filtros, LIMITE_RESULTADOS)
+    .map(anuncio => comCaracteristicasDoAnuncio(anuncio, filtros.tipo)).filter(admitir);
   switch (filtros.portal) {
     case "olx": {
       if (filtrosRadarSaoLegados(filtros)) return extrairOlx($, filtros, registrarDiagnosticoOlx).map(normalizar);

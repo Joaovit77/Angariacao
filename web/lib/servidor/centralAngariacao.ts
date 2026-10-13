@@ -109,7 +109,7 @@ function urlChaves(f: FiltrosCentralAngariacao): string {
     : "";
   const bairro = f.bairro ? `/${slugPortal(f.bairro)}` : "";
   const url = new URL(
-    `https://www.chavesnamao.com.br/${categoria}-para-alugar/${uf}-${cidade}${bairro}${dormitorios}/`,
+    `https://www.chavesnamao.com.br/${categoria}-${f.finalidade === "venda" ? "a-venda" : "para-alugar"}/${uf}-${cidade}${bairro}${dormitorios}/`,
   );
   if (f.valorMin != null) url.searchParams.set("valor_min", String(f.valorMin));
   if (f.valorMax != null) url.searchParams.set("valor_max", String(f.valorMax));
@@ -146,7 +146,7 @@ function urlVivaReal(f: FiltrosCentralAngariacao): string {
     ? "apartamento_residencial"
     : (tipoNormalizado.includes("casa") ? "casa_residencial" : null);
   const partes = [
-    "https://www.vivareal.com.br/aluguel",
+    `https://www.vivareal.com.br/${f.finalidade === "venda" ? "venda" : "aluguel"}`,
     estado,
     local.cidade,
     f.bairro ? `bairros/${slugPortal(f.bairro)}` : null,
@@ -172,6 +172,7 @@ export const URL_ZAP_LONDRINA_CASAS =
 
 function urlZap(f: FiltrosCentralAngariacao): string {
   localizacaoSegura(f);
+  if (f.finalidade === "venda") return (f.tipoRecorte === "casa" ? URL_ZAP_LONDRINA_CASAS : URL_ZAP_LONDRINA_APARTAMENTOS).replace("/aluguel/", "/venda/");
   if (f.finalidade === "locacao" && f.tipoRecorte === "casa") return URL_ZAP_LONDRINA_CASAS;
   return URL_ZAP_LONDRINA_APARTAMENTOS;
 }

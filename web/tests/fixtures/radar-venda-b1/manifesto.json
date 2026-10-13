@@ -1,0 +1,50 @@
+[
+  {
+    "arquivo": "zap-casa.html",
+    "origem": "https://www.zapimoveis.com.br/venda/casas/pr+londrina/?onde=%2CParan%C3%A1%2CLondrina%2C%2C%2C%2C%2Ccity%2CBR%3EParana%3ENULL%3ELondrina%2C-23.319731%2C-51.166201%2C&tipos=casa_residencial",
+    "hashCaptura": "8c67ce30d24c3755f3579f917398bf7901fb99bc63be34b8032c007a95df447f",
+    "hashFixture": "f8b6b0ae0ae04576a93836c8fcde6c00d5c2745d5303a4145d433ffef15aba99",
+    "id": "2583242653",
+    "preco": 485000
+  },
+  {
+    "arquivo": "zap-apartamento.html",
+    "origem": "https://www.zapimoveis.com.br/venda/apartamentos/pr+londrina/?onde=%2CParan%C3%A1%2CLondrina%2C%2C%2C%2C%2Ccity%2CBR%3EParana%3ENULL%3ELondrina%2C-23.319731%2C-51.166201%2C&tipos=apartamento_residencial",
+    "hashCaptura": "5d5d1f1728709ae0c2310c4a9af2071aff7fe185a3e9505289971c9f19cc283d",
+    "hashFixture": "c3f06565f28addcb2722f2f9ef67b8d74687641c19d42b43cfd1838022a58e91",
+    "id": "2909956601",
+    "preco": 699440
+  },
+  {
+    "arquivo": "viva-real-casa.html",
+    "origem": "https://www.vivareal.com.br/venda/parana/londrina/casa_residencial/",
+    "hashCaptura": "402937b0b3c76645955913fc8b4f02d767dc139668d3922d6b7136f136aa4bdd",
+    "hashFixture": "00081d0d505fe88be5d7aa713111fa7f3479aaab2e72b93c690f41b2c3cf07ff",
+    "id": "2916681341",
+    "preco": 349570
+  },
+  {
+    "arquivo": "viva-real-apartamento.html",
+    "origem": "https://www.vivareal.com.br/venda/parana/londrina/apartamento_residencial/",
+    "hashCaptura": "5e075de00815a2ce7b7c318387794de9aedf605bc3867161d40e43472a943616",
+    "hashFixture": "8630988fa0d476a1385d85df4b1d68f24362926c3bb9998636de97e8d679a042",
+    "id": "2901137126",
+    "preco": 720000
+  },
+  {
+    "arquivo": "chaves-na-mao-casa.html",
+    "origem": "https://www.chavesnamao.com.br/casas-a-venda/pr-londrina/",
+    "hashCaptura": "6d8576e6d28f3d6f58ecb7ddae6cd43f185fb178f8e2eea4a06d4a1a58fa0373",
+    "hashFixture": "36e70f846e917bf97ef05107108225ae609d20dd8fb915e255c1c5323dc05451",
+    "id": "46070189",
+    "preco": 265000
+  },
+  {
+    "arquivo": "chaves-na-mao-apartamento.html",
+    "origem": "https://www.chavesnamao.com.br/apartamentos-a-venda/pr-londrina/",
+    "hashCaptura": "3a09ca8448311caa19586775739bf068347a60ed7e51159c5f18f1188983ba6b",
+    "hashFixture": "b38159f60fc12a28b54b315bfe7b46df41496a7e6aefdac02a370fe814f06cd2",
+    "id": "32544589",
+    "preco": 530000
+  }
+]
