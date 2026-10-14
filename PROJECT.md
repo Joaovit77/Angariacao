@@ -2618,14 +2618,22 @@ O contrato explícito de aquisição distingue `finalidade` (`locacao` ou `venda
 `tipoRecorte` (`casa` ou `apartamento`). A matriz pura em `calculo/aquisicaoRadar.ts`
 classifica portal × finalidade × tipo e aplica o recorte geográfico. Somente `suportado`
 executa; `parcial` e `nao-suportado` falham antes de cache, transporte ou persistência.
-Venda é suportada somente para Casa/Apartamento no ZAP, Viva Real e Chaves na Mão,
-na primeira página de Londrina/PR, sem bairro. OLX e Wimoveis permanecem bloqueados
-em Venda. `servidor/parserVendaRadar.ts` conserva um caminho separado da Locação:
+Venda é suportada para Casa/Apartamento no OLX, ZAP, Viva Real, Chaves na Mão e
+Wimoveis, na primeira página de Londrina/PR, sem bairro. Os parsers de Venda
+conservam caminhos separados da Locação. `servidor/parserVendaRadar.ts`:
 ZAP/Viva exigem Product individual, ID/URL/Offer/target coerentes e BuyAction com
 PriceSpecification BRL igual a Offer.price e ao preço principal do card. Chaves exige
 RealEstateListing/Offer/SellAction, URL individual `/imovel/.../id-N/`, itemOffered
-coerente e preço BRL igual ao principal. Agrupados, lançamentos, subtipos não
-aprovados, identidades contraditórias e preços acessórios/ambíguos são recusados.
+coerente e preço BRL igual ao principal. `servidor/parserVendaOlxWimoveis.ts`
+exige no OLX card individual, listId/URL do estado RSC coerentes, real_estate_type
+observado de Venda, tipo próprio e price/priceValue/preço principal concordantes.
+No Wimoveis exige data-id/data-to-posting, postingId/URL e SellAction individuais
+coerentes, operação Venda id 1, PROPERTY sem unidades agrupadas e preço R$/currency
+id 3 concordante com o principal. DEVELOPMENT não é comparável individual.
+Concordância numérica não supera semântica de direitos, entrada, repasse, parcela,
+sinal ou financiamento. Preços antigos/promocionais ambíguos, “a partir de”,
+agrupados, lançamentos, subtipos não aprovados, identidades contraditórias e preços
+acessórios/ambíguos são recusados.
 `finalidadeObservada=venda` nasce desses contratos, é preservada pela normalização
 e exigida pela admissão e RPC; o filtro solicitado não a fabrica. Recência e
 completude não são garantidas. O handoff atual de Avaliação continua em Locação.

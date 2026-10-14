@@ -102,11 +102,11 @@ describe("B1 — seis recortes comprovados por capturas B2.6-A", () => {
       if (valido) expect(rpc.mock.calls[0]).toMatchObject(["registrar_comparavel_mercado", { p_dados: { finalidade: "venda", finalidade_observada: "venda", valor_anunciado: fonte.preco } }]);
     });
   });
-  it.each(["olx", "wimoveis"] as const)("%s continua bloqueado em ambos os recortes", portal => {
+  it.each(["olx", "wimoveis"] as const)("%s exige contrato individual B2 em ambos os recortes", portal => {
     for (const tipoRecorte of ["casa", "apartamento"] as const) {
       const f = { portal, tipoRecorte, finalidade: "venda" as const, cidade: "Londrina", estado: "PR" };
-      expect(capacidadeAquisicaoRadar(f).suportado).toBe(false);
-      expect(() => extrairAnunciosFirecrawl("", f)).toThrow();
+      expect(capacidadeAquisicaoRadar(f).suportado).toBe(true);
+      expect(extrairAnunciosFirecrawl("", f)).toEqual([]);
     }
   });
 });

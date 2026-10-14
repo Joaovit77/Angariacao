@@ -10,11 +10,11 @@ export type StatusCapacidadeRadar = "suportado" | "parcial" | "nao-suportado";
 /** Evidência de aquisição R6.0c-A. Suporte refere-se à primeira página de
  * Londrina/PR; não atesta completude nem consolida baseline. */
 export const MATRIZ_CAPACIDADE_RADAR = {
-  olx: { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
+  olx: { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "suportado", apartamento: "suportado" } },
   zap: { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "suportado", apartamento: "suportado" } },
   "viva-real": { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "suportado", apartamento: "suportado" } },
   "chaves-na-mao": { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "suportado", apartamento: "suportado" } },
-  wimoveis: { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "nao-suportado", apartamento: "nao-suportado" } },
+  wimoveis: { locacao: { casa: "suportado", apartamento: "suportado" }, venda: { casa: "suportado", apartamento: "suportado" } },
 } as const satisfies Record<PortalAngariacao, Record<FinalidadeRadar, Record<TipoRecorteRadar, StatusCapacidadeRadar>>>;
 
 export interface RecorteAquisicaoRadar {
@@ -137,7 +137,7 @@ export function capacidadeAquisicaoRadar(recorte: RecorteAquisicaoRadar): Capaci
   if (!ehFinalidadeRadar(recorte.finalidade)) {
     return resultado("nao-suportado", "Finalidade de aquisição inválida.");
   }
-  const status = MATRIZ_CAPACIDADE_RADAR[recorte.portal]?.[recorte.finalidade]?.[recorte.tipoRecorte];
+  const status = MATRIZ_CAPACIDADE_RADAR[recorte.portal]?.[recorte.finalidade]?.[recorte.tipoRecorte] as StatusCapacidadeRadar | undefined;
   if (!status || status === "nao-suportado") {
     return resultado("nao-suportado", "Combinação de portal, finalidade e tipo ainda não suportada.");
   }

@@ -169,8 +169,8 @@ describe("monitor agendado do Radar", () => {
     vi.restoreAllMocks();
   });
 
-  it.each(["casa", "apartamento"] as const)("recorte explícito OLX/Venda/%s não consulta nem persiste", async (tipoRecorte) => {
-    const explicita = { ...busca, filtros: { ...busca.filtros, tipo: tipoRecorte === "casa" ? "Casa" : "Apartamento", finalidade: "venda" as const, tipoRecorte } };
+  it.each(["casa", "apartamento"] as const)("recorte explícito OLX/Venda/%s fora de Londrina não consulta nem persiste", async (tipoRecorte) => {
+    const explicita = { ...busca, filtros: { ...busca.filtros, cidade: "Curitiba", tipo: tipoRecorte === "casa" ? "Casa" : "Apartamento", finalidade: "venda" as const, tipoRecorte } };
     const banco = clienteRadarFalso([], [explicita]);
     mocks.createClient.mockReturnValue(banco.cliente);
     const resumo = await executarMonitorRadar();

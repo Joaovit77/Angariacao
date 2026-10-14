@@ -19,7 +19,7 @@ function dinheiro(v: unknown): number | null {
 
 /** Somente dados JSON dos chunks RSC observados. Nunca executa scripts.
  * Concatenação conserva registros divididos entre chunks; registros desconhecidos falham fechados. */
-function anunciosDoEstado($: CheerioAPI): Map<string, Objeto | null> {
+export function anunciosDoEstado($: CheerioAPI): Map<string, Objeto | null> {
   let fluxo = "";
   $("script").each((_, script) => {
     const s = ($(script).html() || "").trim();

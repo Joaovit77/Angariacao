@@ -48,8 +48,8 @@ afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 describe("aquisição explícita bloqueia antes de qualquer transporte", () => {
   for (const portal of ["olx", "wimoveis"] as const) {
     for (const tipoRecorte of ["casa", "apartamento"] as const) {
-      it(`${portal}: venda ${tipoRecorte} nunca usa aluguel nem dispara coleta`, async () => {
-        const filtros = { ...base, portal, finalidade: "venda", tipoRecorte } satisfies FiltrosAquisicaoRadar;
+      it(`${portal}: venda ${tipoRecorte} fora de Londrina nunca dispara coleta`, async () => {
+        const filtros = { ...base, cidade: "Curitiba", portal, finalidade: "venda", tipoRecorte } satisfies FiltrosAquisicaoRadar;
         expect(() => urlDaPesquisa(filtros)).toThrow();
         expect((await POST(pedido(filtros))).status).toBe(422);
         expect(await buscarNaCentral(filtros)).toMatchObject({ ok: false, anuncios: [] });

@@ -145,7 +145,7 @@ for (const tipoRecorte of ["casa", "apartamento"] as const) {
       mocks.launch.mockResolvedValue({newContext:async()=>({newPage:async()=>page}),close});
       expect(await buscarComNavegador(filtros,urlDaPesquisa(filtros))).toEqual(extrair()); expect(content).toHaveBeenCalledOnce();expect(close).toHaveBeenCalledOnce();expect(fetch).not.toHaveBeenCalled();
     });
-    it.each([{finalidade:"venda" as const},{cidade:"Curitiba"},{estado:"SP"},{cidade:""},{bairro:"Centro"},{somenteProprietario:true}])("bloqueia recorte não comprovado antes de qualquer efeito: %j",async delta=>{
+    it.each([{finalidade:"venda" as const,cidade:"Curitiba"},{cidade:"Curitiba"},{estado:"SP"},{cidade:""},{bairro:"Centro"},{somenteProprietario:true}])("bloqueia recorte não comprovado antes de qualquer efeito: %j",async delta=>{
       const f={...filtros,...delta}; expect(()=>urlDaPesquisa(f)).toThrow();
       await expect(buscarComFirecrawl(f,"https://exemplo.invalid")).rejects.toThrow(); await expect(salvarComparaveisMercado(cliente as never,"dono",[],f)).rejects.toThrow();
       expect(mocks.cache).not.toHaveBeenCalled(); expect(fetch).not.toHaveBeenCalled(); expect(mocks.rpc).not.toHaveBeenCalled();

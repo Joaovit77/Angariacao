@@ -1,0 +1,38 @@
+[
+  {
+    "arquivo": "olx-casa.html",
+    "id": "1541345143",
+    "preco": 390000,
+    "origem": "https://www.olx.com.br/imoveis/venda/casas/estado-pr/regiao-de-londrina/londrina",
+    "captura": 1,
+    "hashOriginal": "07e63cac01eacfa7468b3b48f6b63cc9a46736885dc74cf14b5a65cc9af71728",
+    "hashFixture": "a3191482608df028de4d15371078924fa99d0cff49c1a879b63e772c73acfbaf"
+  },
+  {
+    "arquivo": "olx-apartamento.html",
+    "id": "1543316382",
+    "preco": 400000,
+    "origem": "https://www.olx.com.br/imoveis/venda/apartamentos/estado-pr/regiao-de-londrina/londrina",
+    "captura": 2,
+    "hashOriginal": "137cb1de24af555d06bb75957ea199d8fdc8f12b1a578626e14fe39ea2d1f515",
+    "hashFixture": "6761a15a7e6b4ede5b38548c40d9c44eeb646cc82d9c1f30fd12e235de21b7ae"
+  },
+  {
+    "arquivo": "wimoveis-casa.html",
+    "id": "3016632657",
+    "preco": 897000,
+    "origem": "https://www.wimoveis.com.br/venda/casas/pr/londrina",
+    "captura": 9,
+    "hashOriginal": "43c81f462f2aea45f40fc146df81306dc5609dc3d2b9788d2b1cf23bf93fa121",
+    "hashFixture": "47091f35d40d800e66d25e752d9e64ed9abfc7d94a2182259da7dcc0494f4399"
+  },
+  {
+    "arquivo": "wimoveis-apartamento.html",
+    "id": "3026270894",
+    "preco": 1090000,
+    "origem": "https://www.wimoveis.com.br/venda/apartamentos/pr/londrina",
+    "captura": 10,
+    "hashOriginal": "a2ac86c69c65fa478bc173a34eb6319509ebd0e6bf3d0c9930ffe7dbf16a440d",
+    "hashFixture": "47178ef323433c368e80f5699494416feaf6c9da6e41e59d1b49acc108d8b456"
+  }
+]

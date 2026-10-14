@@ -79,7 +79,7 @@ function urlOlx(f: FiltrosCentralAngariacao): string {
   const { estado } = localizacaoSegura(f);
   if (!filtrosRadarSaoLegados(f)) {
     const categoria = f.tipoRecorte === "casa" ? "casas" : "apartamentos";
-    return `https://www.olx.com.br/imoveis/aluguel/${categoria}/estado-${estado}/regiao-de-londrina/londrina`;
+    return `https://www.olx.com.br/imoveis/${f.finalidade === "venda" ? "venda" : "aluguel"}/${categoria}/estado-${estado}/regiao-de-londrina/londrina`;
   }
   // A OLX agrupa algumas cidades por DDD/região. Londrina é o primeiro
   // recorte atendido e sua rota canônica é "regiao-de-londrina".
@@ -126,7 +126,7 @@ function categoriaWimoveis(tipo?: string): string {
 function urlWimoveis(f: FiltrosCentralAngariacao): string {
   const local = localizacaoSegura(f);
   const partes = [
-    "https://www.wimoveis.com.br/aluguel",
+    `https://www.wimoveis.com.br/${f.finalidade === "venda" ? "venda" : "aluguel"}`,
     categoriaWimoveis(tipoDaPesquisa(f)),
     local.estado,
     local.cidade,

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { capacidadeAquisicaoRadar, tipoRecorteObservadoRadar, tipoRecorteRadar } from "@/lib/calculo/aquisicaoRadar";
 import { capacidadeFuncionalZap, PORTAIS_CONHECIDOS } from "@/lib/calculo/centralAngariacao";
 
-describe("matriz de aquisição aprovada em R6.0c-B2.6-B1", () => {
+describe("matriz de aquisição aprovada em R6.0c-B2.6-B2", () => {
   const esperados = {
     olx: ["suportado", "suportado"],
     zap: ["suportado", "suportado"],
@@ -17,8 +17,8 @@ describe("matriz de aquisição aprovada em R6.0c-B2.6-B1", () => {
         expect(capacidade.status).toBe(esperados[portal][indice]);
         expect(capacidade.suportado).toBe(esperados[portal][indice] === "suportado");
       });
-      it(`${portal}: venda ${tipoRecorte} respeita o escopo B1 aprovado`, () => {
-        const suportado = portal === "zap" || portal === "viva-real" || portal === "chaves-na-mao";
+      it(`${portal}: venda ${tipoRecorte} respeita o escopo B2 aprovado`, () => {
+        const suportado = true;
         expect(capacidadeAquisicaoRadar({ portal, finalidade: "venda", tipoRecorte, cidade: "Londrina", estado: "PR" }))
           .toMatchObject({ status: suportado ? "suportado" : "nao-suportado", suportado });
       });

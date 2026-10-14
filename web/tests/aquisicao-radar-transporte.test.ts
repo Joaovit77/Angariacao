@@ -15,8 +15,8 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("nenhum caminho alternativo contorna o contrato explícito", () => {
   for (const portal of ["olx", "wimoveis"] as const) {
-    it(`${portal}: Venda bloqueia cache, Firecrawl, HTTP, navegador e escrita`, async () => {
-      const filtros = { portal, finalidade: "venda" as const, tipoRecorte: "apartamento" as const, cidade: "Londrina", estado: "PR" };
+    it(`${portal}: Venda fora de Londrina bloqueia cache, Firecrawl, HTTP, navegador e escrita`, async () => {
+      const filtros = { portal, finalidade: "venda" as const, tipoRecorte: "apartamento" as const, cidade: "Curitiba", estado: "PR" };
       const urlAluguel = "https://exemplo.test/aluguel";
       await expect(buscarComFirecrawl(filtros, urlAluguel)).rejects.toThrow();
       await expect(buscarComFirecrawlAoVivo(filtros, urlAluguel)).rejects.toThrow();
