@@ -27,6 +27,7 @@ describe("IV-4A: migration", () => {
     const pasta = readdirSync(new URL("../../supabase/migrations/", import.meta.url)).filter((f) => f.endsWith(".sql")).sort();
     expect(pasta.slice(pasta.indexOf(NOME) + 1)).toEqual([
       "20261011203141_radar_ofertas_por_finalidade.sql",
+      "20261014111445_radar_r6_1_fundacao_global_ofertas.sql",
     ]);
     expect(pasta[pasta.indexOf(NOME) - 1]).toBe("20261006200215_imoveis_finalidade_venda.sql");
     expect(NOME.slice(0, 14) > "20261006200215").toBe(true);

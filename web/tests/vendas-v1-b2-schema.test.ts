@@ -14,7 +14,12 @@ describe("Vendas B2: fronteira SQL e preservação histórica", () => {
     // B3.2, IV-1 e IV-4A saem junto. Radar B0 altera somente identidade,
     // índices, trigger e RPC de comparáveis; o hash continua guardando o restante e o EOF.
     // Âncora anterior: 5b54399f21bae4e189d24babaecfe2774fdcab060fef1089063913b3562fc64c.
-    const anterior = schema.replace(/-- =+\n-- IMÓVEL DE VENDA IV-4A:[\s\S]*?-- END IMOVEL VENDA IV-4A\n\n/,"")
+    // R6.1-A sai somente pelo bloco nomeado e idêntico à migration aprovada.
+    const blocoRadar = "-- BEGIN RADAR R6.1-A\n" +
+      ler("supabase/migrations/20261014111445_radar_r6_1_fundacao_global_ofertas.sql").trimEnd() + "\n-- END RADAR R6.1-A\n";
+    expect(schema.split(blocoRadar)).toHaveLength(2);
+    const anterior = schema.replace("\n\n" + blocoRadar, "")
+      .replace(/-- =+\n-- IMÓVEL DE VENDA IV-4A:[\s\S]*?-- END IMOVEL VENDA IV-4A\n\n/,"")
       .replace(/-- =+\n-- IMÓVEL DE VENDA IV-1:[\s\S]*?-- END IMOVEL VENDA IV-1\n\n/,"")
       .replace(/-- BEGIN VENDAS V1-B3\.2[\s\S]*?-- END VENDAS V1-B3\.2\n\n/,"")
       .replace(/-- BEGIN VENDAS V1-B2[\s\S]*?-- END VENDAS V1-B2\n\n/,"");

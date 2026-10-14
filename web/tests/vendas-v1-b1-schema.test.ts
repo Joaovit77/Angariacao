@@ -18,7 +18,12 @@ describe("Vendas V1-B1: contrato estrutural", () => {
     // Remove somente os blocos aditivos conhecidos. Radar B0 altera identidade,
     // índices, trigger e RPC de comparáveis; o hash fixa exatamente esse delta.
     // Âncora anterior: 27eedab2dd5a92811d24f370d47c1ecd32c796cd0815527f5dbcb4aad7568733.
-    const anterior = schema.replace(/-- =+\n-- IMÓVEL DE VENDA IV-4A:[\s\S]*?-- END IMOVEL VENDA IV-4A\n\n/, "")
+    // R6.1-A sai somente pelo bloco nomeado e idêntico à migration aprovada.
+    const blocoRadar = "-- BEGIN RADAR R6.1-A\n" +
+      ler("supabase/migrations/20261014111445_radar_r6_1_fundacao_global_ofertas.sql").trimEnd() + "\n-- END RADAR R6.1-A\n";
+    expect(schema.split(blocoRadar)).toHaveLength(2);
+    const anterior = schema.replace("\n\n" + blocoRadar, "")
+      .replace(/-- =+\n-- IMÓVEL DE VENDA IV-4A:[\s\S]*?-- END IMOVEL VENDA IV-4A\n\n/, "")
       .replace(/-- =+\n-- IMÓVEL DE VENDA IV-1:[\s\S]*?-- END IMOVEL VENDA IV-1\n\n/, "")
       .replace(/-- BEGIN VENDAS V1-B3\.2[\s\S]*?-- END VENDAS V1-B3\.2\n\n/, "")
       .replace(/-- BEGIN VENDAS V1-B2[\s\S]*?-- END VENDAS V1-B2\n\n/, "")

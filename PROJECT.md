@@ -2797,6 +2797,48 @@ sessão. Cada falha registra `[auth]` com rota, motivo, status e, quando houver,
 do SDK. Nunca registra token, header, mensagem do SDK, e-mail, telefone ou `user_id`. As demais
 rotas com Bearer ainda seguem o padrão antigo.
 
+#### Fundação global do Radar — R6.1-A inerte
+
+A fundação global aditiva vive em `radar_universos`, `radar_anuncios_globais`,
+`radar_varreduras` e `radar_presencas`. A migration
+[20261014111445_radar_r6_1_fundacao_global_ofertas.sql](supabase/migrations/20261014111445_radar_r6_1_fundacao_global_ofertas.sql)
+e o bloco `BEGIN/END RADAR R6.1-A` do schema representam somente o R6.1-A; R6.1 completo
+não está encerrado. As tabelas nascem vazias, sem writer, caller, backfill, seed, scheduler,
+leitura pelas telas ou ligação obrigatória ao legado. RLS está habilitada sem policies;
+clientes não recebem acesso. Service role recebe SELECT/INSERT e UPDATE somente em colunas
+evolutivas; presenças não recebem UPDATE e nenhuma tabela recebe DELETE/TRUNCATE.
+
+A semântica oficial futura de **Novo no Radar** é **primeiro observado globalmente após baseline**:
+primeira observação global confirmada pela plataforma após o baseline observacional confiável
+do universo/versionamento correspondente. Isso não comprova publicação recente, entrada recente
+no portal ou imóvel novo no mercado. Se um anúncio antigo fora da primeira página aparecer
+depois do baseline pela primeira vez, será uma descoberta do Radar, sem claim de recência.
+A classificação futura deriva de identidade, primeira proveniência, baseline anterior e
+status/qualidade da execução; não há booleano mutável de novidade na oferta.
+
+O universo é único por portal + finalidade + UF + cidade canônica + tipo de recorte +
+anunciante de recorte + versão semântica. Cidade é canonicalizada na fronteira futura, não pelo
+SQL; filtros pessoais não integram a chave. Tipos iniciais: casa/apartamento; anunciante: somente
+todos. Oferta global é única por portal + finalidade + ID nativo qualificado; Locação e Venda
+do mesmo ID coexistem. URL, fingerprint, título, posição e endereço não são identidades
+alternativas automáticas. Sem ID confiável, o writer futuro deve recusar ingresso.
+
+Baseline é observacional do alcance comprovado, não snapshot integral do mercado. A FK composta
+garante que sua varredura pertence ao próprio universo; o par de campos começa nulo.
+Varreduras separam running/success/partial/failed de cobertura amostra/universo_comprovado/desconhecida:
+sucesso não significa completude, e a primeira página atual permanece amostra. A UNIQUE de
+universo + chave de idempotência e o índice de uma running por universo são apenas garantias
+estruturais. Campos de aquisição preservam espaço para proveniência de cache, ainda sem operação.
+Presenças registram fatos positivos por varredura/oferta, com snapshots mínimos; não inferem ausência.
+
+R6.1-B endurecerá baseline transacional, contexto de portal/finalidade, primeira proveniência,
+transições terminais, execução expirada e payload divergente. R6.1-C validará PostgreSQL/Supabase,
+RLS/ACL/PostgREST e concorrência reais; PGlite é complemento estrutural, não prova desses gates.
+R6.2 tratará writer/dual-write shadow/proveniência operacional; R6.3, scheduler/baseline;
+R6.4, subscriptions/estado individual; R6.4-F1, filtro de portal; R6.7, retirada do legado;
+R6.5/R6.6, agrupamento físico. Dados objetivos exigirão allowlist sanitizada no writer:
+não armazenar telefone, e-mail, proprietário, contato, HTML bruto, cookie, token ou dado privado.
+
 #### `api/cron/mercados` — coleta periódica de mercados monitorados
 
 O cron diário é independente do Radar e usa o mesmo `CRON_SECRET`. O executor processa **um mercado
