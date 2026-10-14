@@ -52,17 +52,20 @@ function funcao(nome: string, sql = MIGRATION): string {
    1. ESTRUTURA
    ================================================================ */
 describe("C13A — migration e espelho canônico", () => {
-  it("espelha C13 uma única vez, seguido somente de B3-M3 e R6.1-A no fim", () => {
+  it("espelha C13 uma única vez, seguido somente de B3-M3 e R6.1-A/B no fim", () => {
     const bloco = MIGRATION.trim();
     expect(SCHEMA.split(bloco)).toHaveLength(2);
-    // O B3-M3 continua imediatamente depois do C13. Somente o R6.1-A literal
-    // aprovado pode vir depois dele e encerrar o arquivo, sem conteúdo inesperado.
+    // O B3-M3 continua imediatamente depois do C13. Somente os blocos R6.1-A/B literais
+    // aprovados podem vir depois dele e encerrar o arquivo, sem conteúdo inesperado.
     const blocoRadar = "-- BEGIN RADAR R6.1-A\n" +
       ler(PASTA + "20261014111445_radar_r6_1_fundacao_global_ofertas.sql").trimEnd() + "\n-- END RADAR R6.1-A";
     expect(SCHEMA.split(blocoRadar)).toHaveLength(2);
+    const blocoRadarB = "-- BEGIN RADAR R6.1-B\n" +
+      ler(PASTA + "20261014130154_radar_r6_1_b_invariantes_globais.sql").trimEnd() + "\n-- END RADAR R6.1-B";
+    expect(SCHEMA.split(blocoRadarB)).toHaveLength(2);
     const depois = SCHEMA.split(bloco)[1].trim();
     expect(depois).toBe(ler("supabase/migrations/20260924210000_prospeccao_memoria_rejeicao.sql").trim() +
-      "\n\n\n" + blocoRadar);
+      "\n\n\n" + blocoRadar + "\n\n\n" + blocoRadarB);
   });
 
   it("cria exatamente as duas tabelas da memória, ambas com RLS no mesmo arquivo", () => {

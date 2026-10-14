@@ -18,7 +18,11 @@ describe("Vendas B2: fronteira SQL e preservação histórica", () => {
     const blocoRadar = "-- BEGIN RADAR R6.1-A\n" +
       ler("supabase/migrations/20261014111445_radar_r6_1_fundacao_global_ofertas.sql").trimEnd() + "\n-- END RADAR R6.1-A\n";
     expect(schema.split(blocoRadar)).toHaveLength(2);
-    const anterior = schema.replace("\n\n" + blocoRadar, "")
+    // B sai somente pelo bloco literal separado; âncora histórica permanece igual.
+    const blocoRadarB = "-- BEGIN RADAR R6.1-B\n" +
+      ler("supabase/migrations/20261014130154_radar_r6_1_b_invariantes_globais.sql").trimEnd() + "\n-- END RADAR R6.1-B\n";
+    expect(schema.split(blocoRadarB)).toHaveLength(2);
+    const anterior = schema.replace("\n\n" + blocoRadarB, "").replace("\n\n" + blocoRadar, "")
       .replace(/-- =+\n-- IMÓVEL DE VENDA IV-4A:[\s\S]*?-- END IMOVEL VENDA IV-4A\n\n/,"")
       .replace(/-- =+\n-- IMÓVEL DE VENDA IV-1:[\s\S]*?-- END IMOVEL VENDA IV-1\n\n/,"")
       .replace(/-- BEGIN VENDAS V1-B3\.2[\s\S]*?-- END VENDAS V1-B3\.2\n\n/,"")

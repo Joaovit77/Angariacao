@@ -14,12 +14,13 @@ const funcao = (nome: string) => {
 describe("Vendas B3.2: migration e espelho", () => {
   it("é a próxima migration depois do B2, com nome que não cai em filtros de outras frentes", () => {
     const pasta = readdirSync(new URL("../../supabase/migrations/", import.meta.url)).filter((f) => f.endsWith(".sql")).sort();
-    // Lista fechada aprovada: IV-1, IV-4A, Radar B0 e R6.1-A; nada entre B2 e B3.2.
+    // Lista fechada aprovada: IV-1, IV-4A, Radar B0 e R6.1-A/B; nada entre B2 e B3.2.
     expect(pasta.slice(pasta.indexOf(NOME) + 1)).toEqual([
       "20261006200215_imoveis_finalidade_venda.sql",
       "20261008150000_imoveis_finalidade_guarda_locacao.sql",
       "20261011203141_radar_ofertas_por_finalidade.sql",
       "20261014111445_radar_r6_1_fundacao_global_ofertas.sql",
+      "20261014130154_radar_r6_1_b_invariantes_globais.sql",
     ]);
     expect(pasta[pasta.indexOf(NOME) - 1]).toBe("20261005160044_vendas_v1_b2_operacoes.sql");
     expect(NOME).not.toMatch(/dedupe|duplic|prospeccao|radar|r6_1/);

@@ -2797,7 +2797,7 @@ sessão. Cada falha registra `[auth]` com rota, motivo, status e, quando houver,
 do SDK. Nunca registra token, header, mensagem do SDK, e-mail, telefone ou `user_id`. As demais
 rotas com Bearer ainda seguem o padrão antigo.
 
-#### Fundação global do Radar — R6.1-A inerte
+#### Fundação global do Radar — R6.1-A/B sem caller
 
 A fundação global aditiva vive em `radar_universos`, `radar_anuncios_globais`,
 `radar_varreduras` e `radar_presencas`. A migration
@@ -2805,8 +2805,9 @@ A fundação global aditiva vive em `radar_universos`, `radar_anuncios_globais`,
 e o bloco `BEGIN/END RADAR R6.1-A` do schema representam somente o R6.1-A; R6.1 completo
 não está encerrado. As tabelas nascem vazias, sem writer, caller, backfill, seed, scheduler,
 leitura pelas telas ou ligação obrigatória ao legado. RLS está habilitada sem policies;
-clientes não recebem acesso. Service role recebe SELECT/INSERT e UPDATE somente em colunas
-evolutivas; presenças não recebem UPDATE e nenhuma tabela recebe DELETE/TRUNCATE.
+clientes não recebem acesso. No contrato A, service role recebe SELECT/INSERT e UPDATE somente em colunas
+evolutivas; o endurecimento B abaixo restringe as operações transacionais. Nenhuma tabela
+recebe DELETE/TRUNCATE.
 
 A semântica oficial futura de **Novo no Radar** é **primeiro observado globalmente após baseline**:
 primeira observação global confirmada pela plataforma após o baseline observacional confiável
@@ -2831,9 +2832,32 @@ universo + chave de idempotência e o índice de uma running por universo são a
 estruturais. Campos de aquisição preservam espaço para proveniência de cache, ainda sem operação.
 Presenças registram fatos positivos por varredura/oferta, com snapshots mínimos; não inferem ausência.
 
-R6.1-B endurecerá baseline transacional, contexto de portal/finalidade, primeira proveniência,
-transições terminais, execução expirada e payload divergente. R6.1-C validará PostgreSQL/Supabase,
-RLS/ACL/PostgREST e concorrência reais; PGlite é complemento estrutural, não prova desses gates.
+A migration [20261014130154_radar_r6_1_b_invariantes_globais.sql](supabase/migrations/20261014130154_radar_r6_1_b_invariantes_globais.sql)
+acrescenta o R6.1-B local, ainda sem aplicação remota, caller ou mudança de produto. Triggers
+protegem identidades, primeira proveniência, aquisição já definida, estados terminais e fatos
+de presença; última observação não pode regredir e URL permanece evolutiva. O schema interno
+`radar_integridade`, de owner postgres e search_path vazio, oferece somente à service role
+quatro primitivas: `formar_baseline`, `finalizar_varredura`, `expirar_varredura` e
+`registrar_presenca`. Helpers/triggers não recebem EXECUTE do backend. Clientes seguem sem
+acesso; service role mantém SELECT, INSERT de universo/execução/oferta e os três UPDATEs
+evolutivos da oferta, sem UPDATE direto de universo/execução nem INSERT direto de presença.
+
+Baseline é operação explícita, única e transacional, separada da finalização. Exige success
+terminal do próprio universo, aquisição completa, cobertura amostra/universo_comprovado e
+contagem admitida positiva. Amostra não ganha semântica de completude. Zero admitidos é
+recusado até contrato seguro de vazio legítimo em R6.2/R6.3. Success/partial exigem contagens
+finais coerentes com presenças distintas e aquisição original temporalmente válida; cache
+antigo não é rebatizado como aquisição nova. R6.2 decidirá se e quando ele admite presença.
+
+A execução nasce running, tem prazo imutável e só termina uma vez; expiração é explícita e
+não cria scheduler. Worker expirado não finaliza, forma baseline ou registra presença na
+execução antiga. Retry final idêntico é leitura; divergente é conflito. Retry de expiração
+reusa a referência original. Presença idempotente exige execução aberta e igualdade de TODOS
+os campos observacionais, inclusive JSONB; após terminal, até o retry é recusado. Partial
+preserva fatos positivos sem baseline ou promoção retroativa a Novo por execução posterior.
+
+R6.1-C validará PostgreSQL/Supabase, RLS/ACL/PostgREST, locks e concorrência reais; PGlite
+é complemento estrutural/sequencial, não prova desses gates. R6.1 completo não está encerrado.
 R6.2 tratará writer/dual-write shadow/proveniência operacional; R6.3, scheduler/baseline;
 R6.4, subscriptions/estado individual; R6.4-F1, filtro de portal; R6.7, retirada do legado;
 R6.5/R6.6, agrupamento físico. Dados objetivos exigirão allowlist sanitizada no writer:
