@@ -1,5 +1,20 @@
 # Instruções para agentes
 
+## Memória operacional e encerramento de qualquer frente
+
+Leia [docs/ANGARIO_TABELA_MESTRE.md](docs/ANGARIO_TABELA_MESTRE.md), única fonte operacional canônica versionada,
+antes de trabalhar em qualquer frente. PROJECT.md continua canônico para arquitetura e regras.
+
+Antes de STOP, encerramento, handoff ou troca de sessão, inclusive em HOLD ou falha:
+salve relatório/checkpoint persistente da frente e atualize no mestre estado, última evidência,
+próximo gate, bloqueios e dependências. Preserve fatos separados de hipóteses e lacunas a verificar.
+Salve checkpoints em docs/checkpoints/. outputs/ é legado/snapshot e não deve receber atualizações operacionais.
+Siga a seção 4 do mestre e seu [modelo](docs/MODELO_CHECKPOINT.md); releia a versão atual antes de gravar para
+preservar alterações concorrentes. Cite os caminhos salvos no relatório final.
+
+A regra de salvar não autoriza commit, push, merge, deploy, migration ou efeito externo.
+Confira a branch antes de editar: use codex/, prefira worktree dedicado e nunca implemente em main/master.
+
 ## Documentação
 
 [`PROJECT.md`](PROJECT.md) é a fonte canônica de contexto, arquitetura, regras e decisões permanentes

@@ -10,6 +10,10 @@ triviais devem ficar no histórico do Git.
 
 ## Mapa da documentação
 
+- [docs/ANGARIO_TABELA_MESTRE.md](docs/ANGARIO_TABELA_MESTRE.md): única fonte operacional canônica versionada de estado,
+  evidências, gates e checkpoints das frentes. Atualize o mestre e salve checkpoint antes de STOP,
+  conforme AGENTS.md; este PROJECT.md permanece neutro e não se torna um changelog.
+
 - Este arquivo: visão do produto, arquitetura, invariantes e decisões permanentes.
 - [supabase-schema.sql](supabase-schema.sql): fonte de verdade executável do schema e das políticas.
 - [DEPLOY.md](DEPLOY.md): configuração de ambientes, deploy, cutover, rollback e tarefas agendadas.
