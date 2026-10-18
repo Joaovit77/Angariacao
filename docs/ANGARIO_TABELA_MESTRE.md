@@ -185,7 +185,7 @@ A frente histórica de normalização/modularização de dados buscava reduzir a
 | IA-12 | Piloto automático / catálogo de capacidades | Implementado/integrado; governança comum é proposta distinta (P/G/R) | 21f0dff; P01; R05 | Revisar política de cada capacidade antes de ampliar autonomia | Não inferir executor universal novo entregue | Confirmação, idempotência, auditoria |
 | IA-13 | Feedback, ensino supervisionado e preferências | Implementado/integrado (P/G) | 3618f65, 11bf8c4, 6d5dded, a731095; P01 | Medir efeito do ensino e preservar isolamento/hierarquia | Edição pontual não vira regra automaticamente | Protocolos, fatos, consentimento explícito |
 | IA-14 | Cérebro da IA — explicação de fontes, ações e falhas | Implementado/integrado (P/G) | e13bb45, fc99789, 5da5450; P01 §§2384+ | Manter representação fiel ao fluxo observado | Explicação visual não é portão operacional novo | Logs, capacidades, contexto |
-| IA-15 | JEV — decisão/classificação/validação no Cérebro | EXPERIMENTAL declarado somente na conversa (R) | R01; nenhum código/checkpoint específico localizado | Localizar definição, artefato, ensaio e responsável | Não há prova de aprovação Production; sigla/escopo técnico a verificar | Não tornar dependência obrigatória; regra registrada: não geração de texto |
+| IA-15 | JEV — decisão/classificação/validação no Cérebro | **HOLD / PAUSADO / NÃO AVANÇAR AGORA**; JEV-GUARD-G2-C-B1 encerrado como OBSERVABILITY_INCONCLUSIVE | [B1 encerrado](C:/Users/ciria/Desktop/sistema-angariação/Angariação/RELATORIO-JEV-GUARD-G2-C-B1.md); representação semântica independente do oracle suficientemente confiável não demonstrada; checkpoint de pausa no histórico abaixo | Possibilidade futura: revisão independente da elegibilidade e do protocolo de observabilidade — NOT_STARTED; nenhum gate ativo criado | Provider e implementação bloqueados; distinção automática GG0-29 × GG0-04/11/12 não demonstrada; completude UNKNOWN/UNRESOLVED; desempenho NOT_MEASURED | Decisão/coordenação: aguardar fechamento/reavaliação do gate corrente da frente principal de IA; reavaliação prevista em 19/10/2026, sem dependência técnica nova; retomada exige decisão humana explícita e novo gate próprio |
 | IA-16 | Política de IA por ambiente e prevenção de consumo | Integrado/documentado (G/D) | f386590, a21beed, 1d2c8ed; D09 | Preservar bloqueios Preview/CI/Codex e ensaios manuais | Credencial não autoriza teste pago | Permissões, executor e orçamento |
 | IA-17 | Langfuse, PostHog e Trigger.dev | Ideias futuras na conversa, sem implantação comprovada (R) | R01 | Discovery/decisão própria antes de adoção | Nenhuma conexão, conta, custo ou uso atual verificado | IA/Evals; métricas de produto; jobs |
 
@@ -312,3 +312,35 @@ Inconsistência textual preservada em 2026-10-16: a introdução menciona “157
 | 2026-10-16 19:41 BRT | DOC-01 / migração documental | Fonte canônica transferida de outputs para docs/ANGARIO_TABELA_MESTRE.md no Git; CON-09 e histórico preservados; origem marcada como legado/snapshot | [Checkpoint de migração](checkpoints/DOC-01_2026-10-16_1941_MIGRACAO_CHECKPOINT.md) |
 
 Atualizações futuras devem acrescentar linha sucinta aqui e apontar relatório da frente. Não transformar PROJECT.md em changelog.
+
+
+| Data | Checkpoint | Alteração | Evidência |
+|---|---|---|---|
+| 18/10/2026 BRT | IA-15 / JEV-GUARD-G2-C-B1 — encerramento e pausa | OBSERVABILITY_INCONCLUSIVE; HOLD / PAUSADO / NÃO AVANÇAR AGORA. Aguardar fechamento/reavaliação da frente principal de IA, com reavaliação prevista em 19/10/2026; dependência de decisão/coordenação. Próximo gate possível permanece NOT_STARTED, sem autorização de execução. | [B1 encerrado](C:/Users/ciria/Desktop/sistema-angariação/Angariação/RELATORIO-JEV-GUARD-G2-C-B1.md); decisão explícita do usuário nesta atualização; checkpoint documental abaixo |
+
+### IA-15 — encerramento B1 e pausa operacional
+
+Checkpoint vigente: **JEV-GUARD-G2-C-B1 — SEMANTIC OBSERVABILITY AUDIT DESIGN**. Classificação: **OBSERVABILITY_INCONCLUSIVE**. Decisão: **HOLD**. Estado operacional: **PAUSADO / NÃO AVANÇAR AGORA**. Este registro atualiza exclusivamente IA-15/JEV; não altera o gate ou estado da frente principal de IA.
+
+**Coordenação:** a frente JEV permanece pausada enquanto a frente principal de IA aguarda o fechamento de seu gate corrente. Reavaliação prevista após esse estado ser conhecido em **19/10/2026**. Trata-se de dependência de decisão/coordenação, não dependência técnica. A data não encerra gate automaticamente nem autoriza retomada.
+
+**Fatos do B1 encerrado:**
+
+- Não foi demonstrada representação semântica independente do oracle suficientemente confiável. A distinção operacional automática entre GG0-29 e GG0-04/GG0-11/GG0-12 permanece não demonstrada; completude semântica permanece **UNKNOWN/UNRESOLVED**.
+- Revisão humana estruturada foi somente desenhada; validação cega foi somente proposta. Nenhuma das duas foi executada. Desempenho semântico permanece **NOT_MEASURED**.
+- H2 e H3 continuam caminhos conceituais, sem solução certificada. H4 mantém **PROBLEM_DISPLACEMENT_RISK**. Opção F — não prosseguir com JEV Guard — permanece legítima.
+- Nenhum histórico foi corrigido retroativamente. B0 permanece INCONCLUSIVO / HOLD; conclusões herdadas de G2-B/G2-C-A, corpus, oracle e resultados anteriores permanecem preservados.
+
+**Validação encerrada, em execuções separadas:** 364 testes históricos direcionados PASS; 39 testes documentais B1 PASS; 26/26 mutantes documentais rejeitados, zero sobreviventes. Não constituem uma única suíte conjunta de 403 testes nem evidência de desempenho semântico. Preservação registrada pelo B1: **551 arquivos históricos, 769 arquivos do produto e 17 inventários**. Nenhuma dessas suítes ou mutantes foi reexecutada por esta atualização da Mestre; somente integridade documental foi conferida.
+
+**Efeitos do B1:** JEV = 0 novas chamadas; OpenAI = 0; providers remotos = 0; rede = 0; credenciais = 0; Production = 0. Angario/web/schema/RLS/UI/workers/endpoints/mensagens/Radar/prompts/geração/pipeline/banco permanecem inalterados. Nenhum guard implementado; nenhum extrator implementado; nenhum feature flag; nenhum shadow mode; nenhum G3. Os zeros são os efeitos do gate encerrado; a recuperação da fonte publicada por Git nesta atualização documental não é chamada de provider ou nova execução do B1.
+
+**Próximo gate somente possível:** revisão independente da elegibilidade e do protocolo de observabilidade — **NOT_STARTED**. Nenhum novo ID ou gate ativo criado. Não autoriza revisão humana real, dataset cego, validação cega, provider, JEV, OpenAI ou implementação. Qualquer retomada exige, nesta ordem: (1) fechamento/reavaliação da frente principal de IA; (2) decisão humana explícita sobre retomada; (3) novo gate próprio. Não iniciar agora.
+
+**Referências da evidência encerrada:** [B1 encerrado](C:/Users/ciria/Desktop/sistema-angariação/Angariação/RELATORIO-JEV-GUARD-G2-C-B1.md); [resultados das execuções](C:/Users/ciria/Desktop/sistema-angariação/Angariação/experiments/jev/guard/g2cb1/tests.json); [mutantes documentais](C:/Users/ciria/Desktop/sistema-angariação/Angariação/experiments/jev/guard/g2cb1/mutation-report.json); [preservação B1](C:/Users/ciria/Desktop/sistema-angariação/Angariação/experiments/jev/guard/g2cb1/preservation.json). São evidências locais da sessão de IA/JEV; disponibilidade em outras máquinas não é presumida. As menções anteriores à ausência de artefatos JEV ficam como retrato histórico da consolidação de 16/10/2026, sem substituição ou apagamento.
+
+**Registro IA-15 anterior, preservado como histórico:**
+
+> | IA-15 | JEV — decisão/classificação/validação no Cérebro | EXPERIMENTAL declarado somente na conversa (R) | R01; nenhum código/checkpoint específico localizado | Localizar definição, artefato, ensaio e responsável | Não há prova de aprovação Production; sigla/escopo técnico a verificar | Não tornar dependência obrigatória; regra registrada: não geração de texto |
+
+**Integridade desta atualização:** mesmo conjunto de **158 IDs antes/depois**; zero IDs novos; alteração da entrada vigente IA-15 e APPEND deste checkpoint ao histórico, sem apagar o histórico anterior. Radar/RAD-20, CON-09, Retirados, Mensagens e demais trilhas preservados. A única fonte canônica continua docs/ANGARIO_TABELA_MESTRE.md; nenhuma segunda Tabela Mestre, relatório ou arquivo de checkpoint adicional criado por esta tarefa, conforme seu escopo exclusivo. Rollback: restaurar somente a entrada IA-15 e remover este sufixo, usando como base o commit cd69693baa89897f0b6eeb4ea8082e916c3ab1d9 da branch documental publicada. Sem commit, push, merge ou deploy. **STOP.**
