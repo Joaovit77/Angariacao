@@ -1,3 +1,4 @@
+import { semBlocoRadarBaseline } from "./helpers/blocoRadarBaseline";
 // R6.1-B: evidência estrutural e sequencial em PGlite, sem APIs ou dados reais.
 // Não comprova ACL/RLS/PostgREST, locks ou concorrência PostgreSQL reais (R6.1-C).
 import { randomUUID, createHash } from "node:crypto";
@@ -67,12 +68,12 @@ afterEach(async()=>{await db.exec("rollback; reset role");});
 afterAll(async()=>{await db?.close();});
 
 describe("R6.1-B — fronteira estrutural",()=>{
-  it("preserva A congelada e espelha B uma única vez, como única sucessora",()=>{
+  it("preserva A/B congeladas, espelha B uma única vez e reconhece somente a extensão autorizada",()=>{
     expect(createHash("sha256").update(SQL_A).digest("hex")).toBe("da7c91de4737d9c1c0abb38c465663feefd8b0e3323fb72622342e752d59700c");
     const nomes=readdirSync(new URL("supabase/migrations/",RAIZ)).filter(n=>n.endsWith(".sql")).sort();
-    expect(nomes.slice(nomes.indexOf(A)+1)).toEqual([B]);
+    expect(nomes.slice(nomes.indexOf(A)+1)).toEqual([B,"20261021120000_radar_baseline_cobertura_novos.sql", "20261022180000_radar_chaves_populacao_qualificada.sql"]);
     const bloco="-- BEGIN RADAR R6.1-B\n"+SQL_B.trimEnd()+"\n-- END RADAR R6.1-B\n";
-    expect(SCHEMA.split(bloco)).toHaveLength(2); expect(SCHEMA.endsWith(bloco)).toBe(true);
+    expect(SCHEMA.split(bloco)).toHaveLength(2); expect(semBlocoRadarBaseline(SCHEMA).endsWith(bloco)).toBe(true);
     expect(SCHEMA.split("-- BEGIN RADAR R6.1-A\n")[1].split("-- END RADAR R6.1-A")[0].trim()).toBe(SQL_A.trim());
   });
   it("não cria produto, tabelas, policies, novidade, scheduler ou DML de legado",async()=>{

@@ -23,6 +23,8 @@ describe("IV-1: migration", () => {
       "20261011203141_radar_ofertas_por_finalidade.sql",
       "20261014111445_radar_r6_1_fundacao_global_ofertas.sql",
       "20261014130154_radar_r6_1_b_invariantes_globais.sql",
+      "20261021120000_radar_baseline_cobertura_novos.sql",
+      "20261022180000_radar_chaves_populacao_qualificada.sql",
     ]);
     expect(pasta[pasta.indexOf(NOME) - 1]).toBe("20261006123603_vendas_v1_b3_2_interessado.sql");
     expect(NOME.slice(0, 14) > "20261006123603").toBe(true);

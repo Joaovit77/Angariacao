@@ -277,3 +277,50 @@ describe("economia de créditos do Firecrawl", () => {
     expect(cacheFalso.size).toBe(0);
   });
 });
+
+
+describe("Radar — proveniência do HTML compartilhado", () => {
+  beforeEach(() => { cacheFalso.clear(); vi.stubEnv("FIRECRAWL_API_KEY", "fc-teste"); });
+  afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+  const filtros = { portal: "olx" as const, cidade: "Londrina", estado: "PR" };
+  function transporte() {
+    const chamada = vi.fn(async () => Response.json({ success: true, data: { rawHtml: htmlOlx, metadata: { statusCode: 200 } } }));
+    vi.stubGlobal("fetch", chamada); return chamada;
+  }
+  it("coleta nova para o Radar exige fonte fresca; cache preserva ID e instante originais", async () => {
+    const chamada = transporte(), origem = vi.fn();
+    const url = urlDaPesquisa(filtros);
+    await buscarComFirecrawl(filtros, url, undefined, undefined, undefined, undefined, origem);
+    const primeira = origem.mock.calls[0][0];
+    await buscarComFirecrawl(filtros, url, undefined, undefined, undefined, undefined, origem);
+    expect(chamada).toHaveBeenCalledOnce(); expect(origem).toHaveBeenCalledTimes(2);
+    expect(origem.mock.calls[1][0]).toEqual(primeira);
+    expect(primeira).toMatchObject({ origem: "firecrawl", confiavel: true, html: htmlOlx, em: expect.any(String) });
+    expect(JSON.parse(String((chamada.mock.calls as unknown[][])[0][1] && ((chamada.mock.calls as unknown[][])[0][1] as RequestInit).body)))
+      .toMatchObject({ maxAge: 0, proxy: "basic" });
+  });
+  it("cache antigo sem proveniência não certifica uma aquisição com data inventada", async () => {
+    const chamada = transporte(), origem = vi.fn();
+    const url = urlDaPesquisa(filtros);
+    await buscarComFirecrawl(filtros, url);
+    await buscarComFirecrawl(filtros, url, undefined, undefined, undefined, undefined, origem);
+    expect(chamada).toHaveBeenCalledOnce(); expect(origem).not.toHaveBeenCalled();
+  });
+  it("single-flight preserva a mesma aquisição entre dois consumidores Radar", async () => {
+    const chamada = transporte(), a = vi.fn(), b = vi.fn(), url = urlDaPesquisa(filtros);
+    await Promise.all([
+      buscarComFirecrawl(filtros,url,undefined,undefined,undefined,undefined,a),
+      buscarComFirecrawl(filtros,url,undefined,undefined,undefined,undefined,b),
+    ]);
+    expect(chamada).toHaveBeenCalledOnce(); expect(a).toHaveBeenCalledOnce(); expect(b).toHaveBeenCalledOnce();
+    expect(a.mock.calls[0][0]).toEqual(b.mock.calls[0][0]);
+  });
+  it("metadado de outro HTML no cache não certifica o conteúdo atual", async () => {
+    transporte(); const origem = vi.fn(), url = urlDaPesquisa(filtros);
+    await buscarComFirecrawl(filtros,url,undefined,undefined,undefined,undefined,origem);
+    for (const [chave,valor] of cacheFalso) if (chave.endsWith(":origem-radar")) cacheFalso.set(chave, { ...(valor as object), hash: "outro-html" });
+    origem.mockClear();
+    await buscarComFirecrawl(filtros,url,undefined,undefined,undefined,undefined,origem);
+    expect(origem).not.toHaveBeenCalled();
+  });
+});

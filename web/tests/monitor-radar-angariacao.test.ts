@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("server-only", () => ({}));
 vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.createClient }));
 vi.mock("@/lib/servidor/firecrawlCentralAngariacao", () => ({
+  TIMEOUT_FIRECRAWL_FETCH_MS: 60_000,
   buscarComFirecrawl: mocks.buscarComFirecrawl,
   extrairAnunciosFirecrawl: () => [],
   FirecrawlIndisponivel: class FirecrawlIndisponivel extends Error {
@@ -111,13 +112,14 @@ function clienteRadarFalso(
   const ordenarBuscas = vi.fn().mockReturnValue({ order: ordenarCriacao });
   const filtrarBuscasAtivas = vi.fn().mockReturnValue({ order: ordenarBuscas });
   const selecionarBuscas = vi.fn().mockReturnValue({ eq: filtrarBuscasAtivas });
-  const atualizarBuscaEq = vi.fn().mockResolvedValue({ error: null });
+  const atualizarBuscaEq = vi.fn(() => Object.assign(Promise.resolve({ error: null }), {
+    eq: vi.fn().mockResolvedValue({ error: null }),
+  }));
   const atualizarBusca = vi.fn().mockReturnValue({ eq: atualizarBuscaEq });
 
-  const filtrarAnunciosDaBusca = vi.fn().mockResolvedValue({
-    data: existentes,
-    error: null,
-  });
+  const filtrarAnunciosDaBusca = vi.fn(() => Object.assign(Promise.resolve({ data: existentes, error: null }), {
+    eq: vi.fn().mockResolvedValue({ data: existentes, error: null }),
+  }));
   const selecionarAnuncios = vi.fn().mockReturnValue({ eq: filtrarAnunciosDaBusca });
   const confirmarInsercao = vi.fn().mockResolvedValue({
     data: [{ id: "radar-anuncio-1" }],
@@ -136,7 +138,9 @@ function clienteRadarFalso(
   });
 
   return {
-    cliente: { from },
+    cliente: { from, rpc: vi.fn().mockResolvedValue({ data: {
+      novos: 0, anuncios: [], cobertura: "desconhecida", baselineFormada: false,
+    }, error: null }) },
     confirmarInsercao,
     inserirAnuncios,
     atualizarBusca,
@@ -198,9 +202,10 @@ describe("monitor agendado do Radar", () => {
     mocks.createClient.mockReturnValue(banco.cliente);
     mocks.buscarComFirecrawl.mockResolvedValue([anuncioValido]);
 
+    // Contrato autorizado: observações legadas não comprovam Novo sem baseline/cobertura.
     const resumo = await executarMonitorRadar();
 
-    expect(resumo).toMatchObject({ verificadas: 1, novos: 1, falhas: 0 });
+    expect(resumo).toMatchObject({ verificadas: 1, novos: 0, falhas: 0 });
     expect(mocks.buscarComFirecrawl).toHaveBeenCalledOnce();
     expect(mocks.salvarComparaveisMercado).toHaveBeenCalledWith(
       banco.cliente,
@@ -224,7 +229,7 @@ describe("monitor agendado do Radar", () => {
       portal: "olx",
       coletados: 1,
       apos_filtro: 1,
-      novos: 1,
+      novos: 0,
       origem_html: "firecrawl",
     });
     expect(banco.atualizarBusca).toHaveBeenCalledWith(expect.objectContaining({
@@ -253,7 +258,7 @@ describe("monitor agendado do Radar", () => {
     expect(detalhe).toMatchObject({
       rodada_id: rodadaId, execucao_id: expect.any(String), iniciador: "cron", aquisicao,
       chamada_propria_iniciada: iniciou, coleta_id: "48b73600-e868-46c6-a899-845b5487c2ca",
-      novos: 1,
+      novos: 0,
     });
     expect(detalhe.execucao_id).not.toBe(rodadaId);
     expect(detalhe.fases.map((item: { fase: string }) => item.fase)).toEqual(fases);
@@ -276,9 +281,10 @@ describe("monitor agendado do Radar", () => {
     mocks.buscarComFirecrawl.mockResolvedValue([{ ...anuncioValido, preco: null }]);
     mocks.salvarComparaveisMercado.mockResolvedValue(0);
 
+    // Contrato autorizado: observações legadas não comprovam Novo sem baseline/cobertura.
     const resumo = await executarMonitorRadar();
 
-    expect(resumo).toMatchObject({ novos: 1, falhas: 0 });
+    expect(resumo).toMatchObject({ novos: 0, falhas: 0 });
     expect(banco.inserirAnuncios).toHaveBeenCalledOnce();
     expect(mocks.salvarComparaveisMercado).toHaveBeenCalledWith(
       banco.cliente,
@@ -334,9 +340,10 @@ describe("monitor agendado do Radar", () => {
     mocks.buscarComFirecrawl.mockResolvedValue([anuncioValido]);
     mocks.salvarComparaveisMercado.mockRejectedValue(erroExternoSintetico());
 
+    // Contrato autorizado: observações legadas não comprovam Novo sem baseline/cobertura.
     const resumo = await executarMonitorRadar();
 
-    expect(resumo).toMatchObject({ novos: 1, falhas: 0 });
+    expect(resumo).toMatchObject({ novos: 0, falhas: 0 });
     expect(banco.inserirAnuncios).toHaveBeenCalledOnce();
     expect(console.error).toHaveBeenCalledWith(
       "[radar-cron] falha ao atualizar a base de comparáveis",
@@ -414,9 +421,10 @@ describe("monitor agendado do Radar", () => {
     mocks.buscarComFirecrawl.mockResolvedValue([anuncioValido]);
     mocks.registrarEvento.mockImplementation(() => { throw new Error("log indisponível"); });
 
+    // Contrato autorizado: observações legadas não comprovam Novo sem baseline/cobertura.
     const resumo = await executarMonitorRadar();
 
-    expect(resumo).toMatchObject({ verificadas: 1, novos: 1, falhas: 0 });
+    expect(resumo).toMatchObject({ verificadas: 1, novos: 0, falhas: 0 });
     expect(banco.inserirAnuncios).toHaveBeenCalledOnce();
     expect(console.error).toHaveBeenCalledWith(
       "[radar-cron] falha ao agendar registro de observabilidade (ignorada)",
@@ -432,12 +440,13 @@ describe("monitor agendado do Radar", () => {
       .mockRejectedValueOnce(Object.assign(new Error("falha"), { codigo: "firecrawl_429" }))
       .mockResolvedValueOnce([anuncioValido]);
 
+    // Contrato autorizado: observações legadas não comprovam Novo sem baseline/cobertura.
     const resumo = await executarMonitorRadar();
 
-    expect(resumo).toMatchObject({ verificadas: 2, novos: 1, falhas: 1 });
+    expect(resumo).toMatchObject({ verificadas: 2, novos: 0, falhas: 1 });
     expect(resumo.resultados).toEqual([
       expect.objectContaining({ buscaId: "busca-1", ok: false, codigo: "firecrawl_429" }),
-      expect.objectContaining({ buscaId: "busca-2", ok: true, novos: 1 }),
+      expect.objectContaining({ buscaId: "busca-2", ok: true, novos: 0 }),
     ]);
     expect(eventosRadar("radar-busca-falhou")).toHaveLength(1);
     expect(eventosRadar("radar-busca-ok")).toHaveLength(1);
@@ -518,9 +527,10 @@ describe("monitor agendado do Radar", () => {
     mocks.createClient.mockReturnValue(banco.cliente);
     mocks.buscarComFirecrawl.mockResolvedValue([anuncioValido]);
 
+    // Contrato autorizado: observações legadas não comprovam Novo sem baseline/cobertura.
     const resumo = await executarMonitorRadar();
 
-    expect(resumo).toMatchObject({ verificadas: 2, novos: 2, falhas: 0 });
+    expect(resumo).toMatchObject({ verificadas: 2, novos: 0, falhas: 0 });
     expect(banco.inserirAnuncios).toHaveBeenNthCalledWith(1, [
       expect.objectContaining({ user_id: "usuario-radar", busca_id: "busca-1" }),
     ], expect.any(Object));
@@ -688,7 +698,7 @@ describe("monitor agendado do Radar: observabilidade R3.1 e shadow R3.2a", () =>
       fases: [],
       coletados: 3,
       apos_filtro: 2,
-      novos: 1,
+      novos: 0,
       origem_html: "firecrawl",
       duracao_ms: expect.any(Number),
       cards_pagina: 50,
@@ -735,9 +745,10 @@ describe("monitor agendado do Radar: observabilidade R3.1 e shadow R3.2a", () =>
     const anuncioQuarto = quarto("1534620451", "Alugo quarto mobilado ");
     mocks.buscarComFirecrawl.mockResolvedValue([anuncioQuarto]);
 
+    // Contrato autorizado: observações legadas não comprovam Novo sem baseline/cobertura.
     const resumo = await executarMonitorRadar();
 
-    expect(resumo).toMatchObject({ novos: 1, falhas: 0 });
+    expect(resumo).toMatchObject({ novos: 0, falhas: 0 });
     expect(mocks.salvarComparaveisMercado).toHaveBeenCalledWith(
       banco.cliente,
       "usuario-radar",
@@ -747,7 +758,7 @@ describe("monitor agendado do Radar: observabilidade R3.1 e shadow R3.2a", () =>
     expect(banco.inserirAnuncios).toHaveBeenCalledWith([
       expect.objectContaining({ id_externo: "1534620451", visto: false }),
     ], { onConflict: "busca_id,portal,id_externo", ignoreDuplicates: true });
-    expect(detalheRadar("radar-busca-ok")).toMatchObject({ parece_quarto: 1, novos: 1 });
+    expect(detalheRadar("radar-busca-ok")).toMatchObject({ parece_quarto: 1, novos: 0 });
   });
 
   it("deduplicação não muda: quarto já conhecido é contado no shadow, mas não reinserido", async () => {
@@ -864,7 +875,7 @@ describe("monitor agendado do Radar: shadow de repetição do Chaves (R4.1a)", (
     const selecionarBuscas = vi.fn().mockReturnValue({
       eq: () => ({ order: () => ({ order: () => ({ limit: limitarBuscas }) }) }),
     });
-    const atualizarBusca = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+    const atualizarBusca = vi.fn().mockReturnValue({ eq: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) })) });
     const confirmarInsercao = vi.fn().mockResolvedValue({ data: [{ id: "radar-anuncio-1" }], error: null });
     const inserirAnuncios = vi.fn().mockReturnValue({ select: confirmarInsercao });
     const consultasShadow: string[] = [];
@@ -872,10 +883,9 @@ describe("monitor agendado do Radar: shadow de repetição do Chaves (R4.1a)", (
     const selecionarAnuncios = vi.fn((colunas: string) => {
       if (colunas === "portal,id_externo") {
         return {
-          eq: vi.fn().mockResolvedValue({
-            data: existentes.map((anuncio) => ({ portal: anuncio.portal, id_externo: anuncio.idExterno })),
-            error: null,
-          }),
+          eq: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({
+            data: existentes.map((anuncio) => ({ portal: anuncio.portal, id_externo: anuncio.idExterno })), error: null,
+          }) })),
         };
       }
       consultasShadow.push("radar_anuncios");
@@ -1024,7 +1034,7 @@ describe("monitor agendado do Radar: shadow de repetição do Chaves (R4.1a)", (
 
     const resumo = await executarMonitorRadar();
 
-    expect(resumo).toMatchObject({ verificadas: 1, novos: 1, falhas: 0 });
+    expect(resumo).toMatchObject({ verificadas: 1, novos: 0, falhas: 0 });
     // Só o bloco do shadow some; a localização (R4.2a) é independente dele.
     expect(Object.keys(detalheRadar("radar-busca-ok")).sort()).toEqual(
       ["apos_filtro", "aquisicao", "busca_id", "chamada_propria_iniciada", "coleta_id", "coletados", "duracao_ms", "execucao_id", "fases", "id_fallback", "iniciador", "localizacao", "novos", "origem_html", "portal", "resposta_recebida", "resultado_interpretado", "reutilizacao", "rodada_id", "tentativas_firecrawl"],
@@ -1196,7 +1206,7 @@ describe("monitor agendado do Radar: localização e id_fallback (R4.2a)", () =>
 
     const resultado = await executarMonitorRadar();
 
-    expect(resultado).toMatchObject({ novos: 1, falhas: 0 });
+    expect(resultado).toMatchObject({ novos: 0, falhas: 0 });
     expect(mocks.salvarComparaveisMercado).toHaveBeenCalledWith(
       banco.cliente, "usuario-radar", [expect.objectContaining({ endereco: coletado.endereco })], busca.filtros,
     );
@@ -1209,7 +1219,7 @@ describe("monitor agendado do Radar: localização e id_fallback (R4.2a)", () =>
     expect(banco.inserirAnuncios.mock.calls[0][0][0].dados).not.toHaveProperty("nota");
     expect(banco.inserirAnuncios.mock.calls[0][0][0].dados).not.toHaveProperty("motivos");
     expect(detalheRadar("radar-busca-ok")).toMatchObject({
-      coletados: 1, apos_filtro: 1, novos: 1,
+      coletados: 1, apos_filtro: 1, novos: 0,
       localizacao: { indisponivel: 1 },
     });
   });
@@ -1340,12 +1350,13 @@ describe("monitor agendado do Radar: orçamento da rodada e retry (R5)", () => {
     });
     const requisicao = vi.spyOn(globalThis, "fetch");
 
+    // Contrato autorizado: observações legadas não comprovam Novo sem baseline/cobertura.
     const resumo = await executarMonitorRadar();
 
     expect(requisicao).not.toHaveBeenCalled();
     expect(resumo.resultados).toEqual([
       expect.objectContaining({ buscaId: "busca-1", ok: false, codigo: "http_orcamento_insuficiente" }),
-      expect.objectContaining({ buscaId: "busca-2", ok: true, novos: 1 }),
+      expect.objectContaining({ buscaId: "busca-2", ok: true, novos: 0 }),
     ]);
   });
 

@@ -1,3 +1,4 @@
+import { semBlocoRadarBaseline } from "./helpers/blocoRadarBaseline";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -5,7 +6,7 @@ import { PORTAS_VENDAS } from "../lib/persistencia/vendasComandos";
 
 const ler = (arquivo: string) => readFileSync(new URL("../../" + arquivo,import.meta.url),"utf8").replace(/\r\n/g,"\n");
 const migration = ler("supabase/migrations/20261005160044_vendas_v1_b2_operacoes.sql");
-const schema = ler("supabase-schema.sql");
+const schema = semBlocoRadarBaseline(ler("supabase-schema.sql"));
 const sql = migration.replace(/--[^\n]*/g,"");
 const hash = (texto: string) => createHash("sha256").update(texto).digest("hex");
 

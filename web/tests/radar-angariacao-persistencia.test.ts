@@ -2,11 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BuscaRadar } from "@/lib/calculo/radarAngariacao";
 
 const mocks = vi.hoisted(() => ({
-  buscarNaCentral: vi.fn(),
+  respostaServidor: vi.fn(),
+  fetchAutenticado: vi.fn(),
   getSupabase: vi.fn(),
 }));
 
-vi.mock("@/lib/centralAngariacao", () => ({ buscarNaCentral: mocks.buscarNaCentral }));
+vi.mock("@/lib/auth/recuperacaoSessao", () => ({ fetchAutenticado: mocks.fetchAutenticado }));
 vi.mock("@/lib/persistencia/supabase", () => ({ getSupabase: mocks.getSupabase }));
 
 import { verificarBuscaRadar } from "@/lib/radarAngariacao";
@@ -48,10 +49,21 @@ const anuncioNovo = {
   preco: 1000, anunciante: "incerto" as const,
 };
 
+// Adaptação incremental: preserva todos os casos; a escrita agora é conferida na rota e no banco isolado.
+beforeEach(() => {
+  mocks.fetchAutenticado.mockImplementation(async () => {
+    const resultado = await mocks.respostaServidor();
+    return Response.json({ ...resultado, anuncios: resultado.ok ? (resultado.anuncios || []).map((dados: unknown) => ({
+      id: "anuncio-1", busca_id: busca.id, dados, visto: false,
+      encontrado_em: "2026-09-10T12:00:00Z", novidade_varredura_id: "varredura-confirmada",
+    })) : [] }, { status: resultado.ok ? 200 : 503 });
+  });
+});
+
 describe("persistência da origem do Radar no navegador", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.buscarNaCentral.mockResolvedValue({ ok: true, anuncios: [] });
+    mocks.respostaServidor.mockResolvedValue({ ok: true, anuncios: [] });
   });
 
   afterEach(() => {
@@ -66,51 +78,49 @@ describe("persistência da origem do Radar no navegador", () => {
 
       await verificarBuscaRadar("usuario-1", busca, origem);
 
-      expect(banco.atualizar).toHaveBeenCalledWith({
-        ultimo_check: expect.any(String),
-        ultimo_check_origem: origem,
-      });
-      expect(banco.atualizar.mock.calls[0][0]).not.toHaveProperty("ultimo_check_automatico");
+      expect(mocks.fetchAutenticado).toHaveBeenCalledWith("/api/radar/verificar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ buscaId: busca.id, origem }),
+      }, { repetivel: false });
+      expect(banco.atualizar).not.toHaveBeenCalled();
+      expect(banco.upsert).not.toHaveBeenCalled();
     },
   );
 
   it.each(["manual", "navegador"] as const)("preserva relógio de %s quando a consulta falha", async (origem) => {
     const banco = clienteFalso();
     mocks.getSupabase.mockReturnValue(banco.cliente);
-    mocks.buscarNaCentral.mockResolvedValue({ ok: false, aviso: "Portal indisponível" });
+    mocks.respostaServidor.mockResolvedValue({ ok: false, aviso: "Portal indisponível" });
 
     await expect(verificarBuscaRadar("usuario-1", busca, origem))
       .rejects.toThrow("Portal indisponível");
 
-    expect(banco.atualizar).toHaveBeenCalledWith({
-      ultimo_check: expect.any(String),
-      ultimo_check_origem: origem,
-    });
-    expect(banco.atualizar.mock.calls[0][0]).not.toHaveProperty("ultimo_check_automatico");
+    // A rota preserva o relógio da tentativa; o cliente não faz uma escrita separada.
+    expect(banco.atualizar).not.toHaveBeenCalled();
+    expect(banco.upsert).not.toHaveBeenCalled();
+    expect(mocks.fetchAutenticado.mock.calls[0][1].body).toBe(JSON.stringify({ buscaId: busca.id, origem }));
   });
 
   it("falha temporal do Chaves mantém o relógio manual sem gravar anúncio", async () => {
     const banco = clienteFalso();
     mocks.getSupabase.mockReturnValue(banco.cliente);
-    mocks.buscarNaCentral.mockResolvedValue({ ok: false,
+    mocks.respostaServidor.mockResolvedValue({ ok: false,
       aviso: "A consulta não pôde ser recuperada agora.", execucaoId: "execucao-sintetica" });
     const buscaChaves = { ...busca, filtros: { ...busca.filtros, portal: "chaves-na-mao" as const } };
 
     await expect(verificarBuscaRadar("usuario-1", buscaChaves, "manual")).rejects.toThrow();
 
-    expect(banco.atualizar).toHaveBeenCalledWith({
-      ultimo_check: expect.any(String), ultimo_check_origem: "manual",
-    });
-    expect(banco.atualizar.mock.calls[0][0]).not.toHaveProperty("ultimo_check_automatico");
+    expect(banco.atualizar).not.toHaveBeenCalled();
+    expect(mocks.fetchAutenticado).toHaveBeenCalledOnce();
     expect(banco.upsert).not.toHaveBeenCalled();
   });
 
   it.each(["manual", "navegador"] as const)(
-    "%s fecha telemetria com o ID do servidor só depois do upsert normal",
+    "%s recebe a confirmação servidora sem enviar telemetria ou gravar anúncio no cliente",
     async (origem) => {
       const banco = clienteFalso();
       mocks.getSupabase.mockReturnValue(banco.cliente);
-      mocks.buscarNaCentral.mockResolvedValue({ ok: true, anuncios: [anuncioNovo], execucaoId: "id-do-servidor" });
+      mocks.respostaServidor.mockResolvedValue({ ok: true, anuncios: [anuncioNovo], execucaoId: "id-do-servidor" });
       const requisicao = vi.fn(async (_url: string, opcoes: RequestInit) => {
         banco.ordem.push("fechamento");
         expect(JSON.parse(String(opcoes.body))).toEqual({
@@ -123,10 +133,12 @@ describe("persistência da origem do Radar no navegador", () => {
       const inseridos = await verificarBuscaRadar("usuario-1", busca, origem);
 
       expect(inseridos).toHaveLength(1);
-      await vi.waitFor(() => expect(requisicao).toHaveBeenCalledOnce());
-      expect(banco.ordem).toEqual(["upsert_anuncios", "atualizar_busca", "fechamento"]);
-      expect(mocks.buscarNaCentral).toHaveBeenCalledWith(busca.filtros,
-        origem === "navegador" ? "monitor_navegador" : "verificar_agora", busca.id);
+      expect(inseridos[0].novidade).toBe(true);
+      expect(requisicao).not.toHaveBeenCalled();
+      expect(banco.ordem).toEqual([]);
+      expect(mocks.fetchAutenticado).toHaveBeenCalledExactlyOnceWith("/api/radar/verificar", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ buscaId: busca.id, origem }),
+      }, { repetivel: false });
       vi.unstubAllGlobals();
     },
   );
@@ -134,22 +146,23 @@ describe("persistência da origem do Radar no navegador", () => {
   it("falha no fechamento não repete nem desfaz o upsert", async () => {
     const banco = clienteFalso();
     mocks.getSupabase.mockReturnValue(banco.cliente);
-    mocks.buscarNaCentral.mockResolvedValue({ ok: true, anuncios: [anuncioNovo], execucaoId: "id-do-servidor" });
+    mocks.respostaServidor.mockResolvedValue({ ok: true, anuncios: [anuncioNovo], execucaoId: "id-do-servidor" });
     vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("log indisponível"); }));
 
     const inseridos = await verificarBuscaRadar("usuario-1", busca, "manual");
 
     expect(inseridos).toHaveLength(1);
-    expect(banco.upsert).toHaveBeenCalledOnce();
-    expect(banco.ordem).toEqual(["upsert_anuncios", "atualizar_busca"]);
-    await vi.waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    expect(banco.upsert).not.toHaveBeenCalled();
+    expect(banco.ordem).toEqual([]);
+    expect(mocks.fetchAutenticado).toHaveBeenCalledOnce();
+    expect(fetch).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 
   it("fechamento lento não retém o resultado funcional do Radar", async () => {
     const banco = clienteFalso();
     mocks.getSupabase.mockReturnValue(banco.cliente);
-    mocks.buscarNaCentral.mockResolvedValue({ ok: true, anuncios: [anuncioNovo], execucaoId: "id-do-servidor" });
+    mocks.respostaServidor.mockResolvedValue({ ok: true, anuncios: [anuncioNovo], execucaoId: "id-do-servidor" });
     let liberar!: (resposta: Response) => void;
     const requisicao = vi.fn(() => new Promise<Response>((resolve) => { liberar = resolve; }));
     vi.stubGlobal("fetch", requisicao);
@@ -157,9 +170,10 @@ describe("persistência da origem do Radar no navegador", () => {
     const inseridos = await verificarBuscaRadar("usuario-1", busca, "manual");
 
     expect(inseridos).toHaveLength(1);
-    expect(banco.upsert).toHaveBeenCalledOnce();
-    await vi.waitFor(() => expect(requisicao).toHaveBeenCalledOnce());
-    liberar(new Response(JSON.stringify({ ok: true })));
+    expect(banco.upsert).not.toHaveBeenCalled();
+    expect(mocks.fetchAutenticado).toHaveBeenCalledOnce();
+    expect(requisicao).not.toHaveBeenCalled();
+    expect(liberar).toBeUndefined();
     vi.unstubAllGlobals();
   });
 });
@@ -184,7 +198,7 @@ describe("falha de autenticação no Radar (AUTH-1b)", () => {
       mocks.getSupabase.mockReturnValue(banco.cliente);
       const requisicao = vi.fn();
       vi.stubGlobal("fetch", requisicao);
-      mocks.buscarNaCentral.mockResolvedValue({
+      mocks.respostaServidor.mockResolvedValue({
         ok: false, anuncios: [], urlPesquisa: "", aviso, falhaAuth, execucaoId: "execucao-auth",
       });
 
@@ -200,7 +214,7 @@ describe("falha de autenticação no Radar (AUTH-1b)", () => {
   it("503 da autenticação nunca vira sucesso vazio", async () => {
     const banco = clienteFalso();
     mocks.getSupabase.mockReturnValue(banco.cliente);
-    mocks.buscarNaCentral.mockResolvedValue({
+    mocks.respostaServidor.mockResolvedValue({
       ok: false, anuncios: [], urlPesquisa: "", falhaAuth: "auth-indisponivel",
       aviso: "Não foi possível confirmar sua sessão agora. Tente novamente em instantes.",
     });
@@ -210,15 +224,15 @@ describe("falha de autenticação no Radar (AUTH-1b)", () => {
     await expect(verificacao).rejects.toThrow("Tente novamente em instantes.");
   });
 
-  it("falha de portal sem falhaAuth continua gravando ultimo_check (R5)", async () => {
+  it("falha de portal sem falhaAuth mantém o erro e delega ultimo_check ao servidor (R5)", async () => {
     const banco = clienteFalso();
     mocks.getSupabase.mockReturnValue(banco.cliente);
-    mocks.buscarNaCentral.mockResolvedValue({ ok: false, anuncios: [], urlPesquisa: "", aviso: "O portal bloqueou." });
+    mocks.respostaServidor.mockResolvedValue({ ok: false, anuncios: [], urlPesquisa: "", aviso: "O portal bloqueou." });
 
     await expect(verificarBuscaRadar("usuario-1", busca, "navegador")).rejects.toThrow("O portal bloqueou.");
 
-    expect(banco.atualizar).toHaveBeenCalledExactlyOnceWith({
-      ultimo_check: expect.any(String), ultimo_check_origem: "navegador",
-    });
+    // Relógio de falha do portal é testado na rota; não há segunda escrita no cliente.
+    expect(banco.atualizar).not.toHaveBeenCalled();
+    expect(mocks.fetchAutenticado).toHaveBeenCalledOnce();
   });
 });

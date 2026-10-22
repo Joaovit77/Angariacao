@@ -50,7 +50,7 @@ export function finalidadeContextoRadar(filtros: Pick<FiltrosCentralAngariacao, 
 }
 
 /** Apenas os dois tipos mínimos. Famílias de comparáveis não participam
- * deste contrato: sobrado, condomínio e kitnet/studio não são promovidos. */
+ * deste contrato: os aliases observados não ampliam os valores aceitos no filtro. */
 export function tipoRecorteRadar(valor: string | null | undefined): TipoRecorteRadar | null {
   const chave = chaveNormalizada(valor);
   if (chave === "casa" || chave === "casas") return "casa";
@@ -61,7 +61,7 @@ export function tipoRecorteRadar(valor: string | null | undefined): TipoRecorteR
 /** Somente o campo observacional decide. O tipo legado pode ter vindo da
  * busca e não é alternativa quando tipoDeclarado falta ou diverge. */
 export function tipoRecorteObservadoRadar(anuncio: { tipoDeclarado?: string | null }): TipoRecorteRadar | null {
-  return tipoRecorteRadar(anuncio.tipoDeclarado);
+  return chaveNormalizada(anuncio.tipoDeclarado) === "sobrado" ? "casa" : tipoRecorteRadar(anuncio.tipoDeclarado);
 }
 
 /** Identidade individual comprovada; query de rastreamento não participa. */
@@ -124,8 +124,9 @@ export function anuncioAdmitidoRecorteRadar(
     || (filtros.portal === "wimoveis" && filtros.tipoRecorte === "casa")
   );
   if (!novoRecorte) return true;
+  // Os contratos de aquisição anteriores mantêm a admissão estrita do tipo publicado.
   return anuncio.portal === filtros.portal
-    && tipoRecorteObservadoRadar(anuncio) === filtros.tipoRecorte
+    && tipoRecorteRadar(anuncio.tipoDeclarado) === filtros.tipoRecorte
     && !!anuncio.idExterno?.trim()
     && !idExternoEhFallback(anuncio.portal, anuncio.idExterno);
 }

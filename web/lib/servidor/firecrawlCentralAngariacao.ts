@@ -1,5 +1,7 @@
+import { exigirTempoFaseRadar, type TempoRodadaRadar, type OrcamentoRodadaRadar } from "./orcamentoRadar";
 import { gzipSync, gunzipSync } from "node:zlib";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
+import type { AquisicaoPortalRadar, TransportePaginaRadar } from "./coberturaRadar";
 import { chaveCanonicaConsultaPortal } from "./planejadorColetaMercados";
 import { getCache } from "@vercel/functions";
 import { load, type CheerioAPI, type Cheerio } from "cheerio";
@@ -12,7 +14,7 @@ import { extrairVivaRealLocacao } from "./parserVivaReal";
 import { extrairVendaRadar } from "./parserVendaRadar";
 import { extrairOlxVenda, extrairWimoveisVenda } from "./parserVendaOlxWimoveis";
 import { extrairOlxLocacao } from "./parserOlx";
-import { agoraTimestamp, dataPublicacaoOlx, dentroDoPeriodo, timestampDeIso } from "@/lib/datas";
+import { agoraISOString, agoraTimestamp, dataPublicacaoOlx, dentroDoPeriodo, timestampDeIso } from "@/lib/datas";
 import { segundosRetryAfter } from "@/lib/calculo/retryAfter";
 import {
   decidirRetryFirecrawl,
@@ -36,6 +38,7 @@ type HtmlColetado = {
   aquisicao: "cache" | "firecrawl";
   statusHttp: number | null;
   anunciosProdutor?: AnuncioCentralAngariacao[];
+  origemRadar?: AquisicaoPortalRadar;
 };
 type EstadoConsulta = {
   aquisicao: "cache" | "firecrawl" | "desconhecida";
@@ -55,7 +58,7 @@ interface RespostaFirecrawl {
   error?: string;
   data?: {
     rawHtml?: string;
-    metadata?: { statusCode?: number; title?: string };
+    metadata?: { statusCode?: number; title?: string; sourceURL?: string; url?: string };
   };
 }
 
@@ -532,7 +535,8 @@ function erroDeTimeout(erro: unknown): boolean {
 async function coletarHtmlFirecrawl(
   urlPesquisa: string,
   observar?: (fase: "fetch_iniciado" | "resposta_recebida", statusHttp?: number) => void,
-): Promise<{ html: string; statusHttp: number }> {
+  exigirNova = false,
+): Promise<{ html: string; statusHttp: number; transporte?: TransportePaginaRadar }> {
   const apiKey = process.env.FIRECRAWL_API_KEY?.trim();
   if (!apiKey) throw new FirecrawlIndisponivel("Firecrawl não configurado.");
   let resposta: Response;
@@ -549,7 +553,7 @@ async function coletarHtmlFirecrawl(
         location: { country: "BR", languages: ["pt-BR"] },
         timeout: TIMEOUT_FIRECRAWL_MS,
         storeInCache: true,
-        maxAge: CACHE_FIRECRAWL_TTL_MS,
+        maxAge: exigirNova ? 0 : CACHE_FIRECRAWL_TTL_MS,
       }),
       cache: "no-store",
       signal: AbortSignal.timeout(TIMEOUT_FIRECRAWL_FETCH_MS),
@@ -597,7 +601,12 @@ async function coletarHtmlFirecrawl(
   if (typeof corpo.data.rawHtml !== "string" || !corpo.data.rawHtml.trim()) {
     throw new FirecrawlIndisponivel("Firecrawl não retornou uma página utilizável.", "firecrawl_html_invalido");
   }
-  return { html: corpo.data.rawHtml, statusHttp: resposta.status };
+  const efetiva = typeof corpo.data.metadata?.url === "string" ? corpo.data.metadata.url : null;
+  return { html: corpo.data.rawHtml, statusHttp: resposta.status, transporte: {
+    urlSolicitada: urlPesquisa, urlEfetiva: efetiva, statusHttp: resposta.status,
+    statusPortalHttp: statusPortal ?? null, redirecionada: efetiva === null ? null : efetiva !== urlPesquisa,
+    urlFonte: typeof corpo.data.metadata?.sourceURL === "string" ? corpo.data.metadata.sourceURL : null,
+  } };
 }
 function extrairComProtecao(
   html: string,
@@ -631,6 +640,9 @@ export async function buscarComFirecrawl(
   registrarDiagnosticoOlx?: (diagnostico: DiagnosticoPaginaOlx) => void,
   observar?: (evento: EventoConsultaFirecrawl) => void,
   politicaRetry?: PoliticaRetryFirecrawl,
+  registrarAquisicao?: (aquisicao: AquisicaoPortalRadar) => void,
+  orcamentoRadar?: OrcamentoRodadaRadar,
+  tempoRadar?: TempoRodadaRadar,
 ): Promise<AnuncioCentralAngariacao[]> {
   exigirCapacidadeAquisicaoRadar(filtros);
   const chave = chaveCanonicaConsultaPortal(filtros.portal, urlPesquisa);
@@ -642,6 +654,7 @@ export async function buscarComFirecrawl(
     });
     try {
       const compartilhado = await existente.promessa;
+      if (compartilhado.origemRadar) registrarAquisicao?.(compartilhado.origemRadar);
       notificarConsulta(observar, {
         fase: "coleta_compartilhada_concluida", aquisicao: compartilhado.aquisicao,
         coletaId: existente.coletaId,
@@ -681,7 +694,15 @@ export async function buscarComFirecrawl(
         registrarOrigem?.("cache");
         estado.aquisicao = "cache";
         notificarConsulta(observar, { fase: "cache_hit", aquisicao: "cache", coletaId });
-        return { html, aquisicao: "cache" as const, statusHttp: null };
+        let origemRadar: AquisicaoPortalRadar | undefined;
+        if (registrarAquisicao) {
+          const origem = await cache.get(`${chave}:origem-radar`) as { id?: string; em?: string; hash?: string; transporte?: TransportePaginaRadar } | null;
+          if (origem?.id && origem.em && origem.hash === createHash("sha256").update(html).digest("hex")) {
+            origemRadar = { id: origem.id, em: origem.em, html, origem: "firecrawl", confiavel: true,
+              ...(filtros.portal === "chaves-na-mao" ? { transporte: origem.transporte } : {}) };
+          }
+        }
+        return { html, aquisicao: "cache" as const, statusHttp: null, origemRadar };
       }
     } catch {
       console.warn("[central-angariacao] cache regional indisponível");
@@ -691,20 +712,23 @@ export async function buscarComFirecrawl(
     estado.aquisicao = "firecrawl";
     notificarConsulta(observar, { fase: "caminho_escolhido", aquisicao: "firecrawl", coletaId });
     const tentar = (tentativa: number) => {
+      // Reconfere após cache/esperas e antes de reservar crédito ou enviar cada tentativa.
+      if (tempoRadar) exigirTempoFaseRadar(tempoRadar, TIMEOUT_FIRECRAWL_FETCH_MS);
       estado.tentativa = tentativa;
       estado.statusHttp = null;
+      orcamentoRadar?.reservarChamadaPaga();
       return coletarHtmlFirecrawl(urlPesquisa, (fase, statusHttp) => {
         if (statusHttp != null) estado.statusHttp = statusHttp;
         notificarConsulta(observar, {
           fase, aquisicao: "firecrawl", coletaId, tentativa,
           ...(statusHttp != null ? { statusHttp } : {}),
         });
-      });
+      }, !!registrarAquisicao);
     };
     // R5: no máximo uma segunda tentativa, só da aquisição. O parser roda
     // depois, uma vez, sobre o HTML final; quem aguarda no single-flight
     // recebe esse mesmo resultado sem tentativas próprias.
-    let coletado: { html: string; statusHttp: number };
+    let coletado: Awaited<ReturnType<typeof coletarHtmlFirecrawl>>;
     try {
       coletado = await tentar(1);
     } catch (erro) {
@@ -728,6 +752,10 @@ export async function buscarComFirecrawl(
       await (politicaRetry?.esperar ?? esperarMs)(decisao.esperaMs);
       coletado = await tentar(2);
     }
+    const origemRadar: AquisicaoPortalRadar | undefined = registrarAquisicao ? {
+      id: coletaId, em: agoraISOString(), html: coletado.html, origem: "firecrawl", confiavel: true,
+      ...(filtros.portal === "chaves-na-mao" ? { transporte: coletado.transporte } : {}),
+    } : undefined;
     // O HTML só entra no cache após uma interpretação sem exceção.
     const anunciosProdutor = extrairComProtecao(coletado.html, filtros, registrarDiagnosticoOlx, registrarDiagnosticoZap);
     try {
@@ -736,18 +764,23 @@ export async function buscarComFirecrawl(
         tags: ["central-firecrawl", `central-firecrawl:${filtros.portal}`],
         name: `Central: ${filtros.portal}`,
       });
+      if (origemRadar) await cache.set(`${chave}:origem-radar`, {
+        id: origemRadar.id, em: origemRadar.em, hash: createHash("sha256").update(coletado.html).digest("hex"),
+        ...(origemRadar.transporte ? { transporte: origemRadar.transporte } : {}),
+      }, { ttl: CACHE_FIRECRAWL_TTL_SEGUNDOS, tags: ["central-firecrawl"] });
     } catch {
       console.warn("[central-angariacao] consulta não armazenada no cache regional");
     }
     return {
       html: coletado.html, aquisicao: "firecrawl" as const,
-      statusHttp: coletado.statusHttp, anunciosProdutor,
+      statusHttp: coletado.statusHttp, anunciosProdutor, origemRadar,
     };
   })().finally(() => consultasEmAndamento.delete(chave));
 
   consultasEmAndamento.set(chave, { coletaId, promessa: consulta, estado });
   try {
     const coletado = await consulta;
+    if (coletado.origemRadar) registrarAquisicao?.(coletado.origemRadar);
     const anuncios = coletado.anunciosProdutor
       ?? extrairComProtecao(coletado.html, filtros, registrarDiagnosticoOlx, registrarDiagnosticoZap);
     notificarConsulta(observar, {

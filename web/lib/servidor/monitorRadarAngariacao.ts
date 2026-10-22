@@ -1,3 +1,7 @@
+import { criarOrcamentoRadar, type OrcamentoRodadaRadar } from "./orcamentoRadar";
+import { buscarColetaPaginadaRadar, type ResumoPaginacaoRadar } from "./paginacaoRadar";
+import { filtrosGlobaisRadar, persistirColetaRadar } from "./ingestaoRadar";
+import type { AquisicaoPortalRadar } from "./coberturaRadar";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import { filtrosRadarSaoLegados } from "@/lib/calculo/aquisicaoRadar";
@@ -73,6 +77,7 @@ interface ResultadoBuscaMonitorada {
   erro?: string;
   codigo?: CodigoFalhaRadar;
   origem_html?: OrigemColetaCentral;
+  coleta?: ResumoPaginacaoRadar;
 }
 
 export interface ResumoMonitorRadar {
@@ -82,6 +87,7 @@ export interface ResumoMonitorRadar {
   novos: number;
   falhas: number;
   resultados: ResultadoBuscaMonitorada[];
+  orcamento: ReturnType<OrcamentoRodadaRadar["resumo"]>;
 }
 
 type MotivoBuscaPulada =
@@ -329,6 +335,7 @@ async function verificarBusca(
   busca: DbBuscaRadar,
   rodadaId: string,
   prazoRodada: number,
+  orcamento: OrcamentoRodadaRadar,
 ): Promise<ResultadoBuscaMonitorada> {
   const agora = agoraISOString();
   const inicio = performance.now();
@@ -338,26 +345,33 @@ async function verificarBusca(
   });
   let etapa: EtapaBuscaRadar = "montagem-url";
   let origemHtml: OrigemColetaCentral | undefined;
+  let resumoPaginacao: ResumoPaginacaoRadar | undefined;
   let diagnosticoOlx: DiagnosticoPaginaOlx | undefined;
   try {
-    const urlPesquisa = urlDaPesquisa(busca.filtros);
+    const legada = filtrosRadarSaoLegados(busca.filtros);
+    const filtrosColeta = legada ? busca.filtros : filtrosGlobaisRadar(busca.filtros);
+    let aquisicao: AquisicaoPortalRadar | undefined;
+    const urlPesquisa = legada ? urlDaPesquisa(filtrosColeta) : "";
     etapa = "coleta";
     const restanteMs = () => prazoRodada - performance.now();
-    const coletados = await buscarComFallbackHttpChaves(
-      busca.filtros,
-      urlPesquisa,
-      (origem) => { origemHtml = origem; },
-      (diagnostico) => { diagnosticoOlx = diagnostico; },
-      observador.observar,
-      restanteMs,
-      { restanteMs, reservaPosAquisicaoMs: RESERVA_PROCESSAMENTO_CENTRAL_MS },
-    );
+    if (legada) orcamento.reservarPagina(`${filtrosColeta.portal}:${urlPesquisa}`);
+    const coletados = legada ? await buscarComFallbackHttpChaves(filtrosColeta, urlPesquisa,
+      (origem) => { origemHtml = origem; }, (diagnostico) => { diagnosticoOlx = diagnostico; },
+      observador.observar, restanteMs, { restanteMs, reservaPosAquisicaoMs: RESERVA_PROCESSAMENTO_CENTRAL_MS },
+      undefined, orcamento) : await (async () => {
+        const coleta = await buscarColetaPaginadaRadar(filtrosColeta, { orcamento, restanteMs,
+          registrarOrigem: (origem) => { origemHtml = origem; },
+          registrarDiagnosticoOlx: (d) => { diagnosticoOlx = d; }, observar: observador.observar,
+          politicaRetry: { restanteMs, reservaPosAquisicaoMs: RESERVA_PROCESSAMENTO_CENTRAL_MS } });
+        aquisicao = coleta.aquisicao; resumoPaginacao = coleta.resumo;
+        return coleta.anuncios;
+      })();
     etapa = "normalizacao";
     const finalizacao = await finalizarColetaCentralAngariacao(
       supabase,
       busca.user_id,
       coletados,
-      busca.filtros,
+      filtrosColeta,
     );
     if (finalizacao.erroComparaveis) {
       console.error("[radar-cron] falha ao atualizar a base de comparáveis", {
@@ -377,29 +391,29 @@ async function verificarBusca(
     const { data: existentes, error: erroExistentes } = await supabase
       .from("radar_anuncios")
       .select("portal,id_externo")
-      .eq("busca_id", busca.id);
+      .eq("busca_id", busca.id).eq("user_id", busca.user_id);
     if (erroExistentes) throw erroExistentes;
 
     const novos = selecionarAnunciosNovosRadar(anuncios, existentes || []);
     let quantidadeInserida = 0;
-    if (novos.length) {
-      const { data, error } = await supabase
-        .from("radar_anuncios")
-        .upsert(novos.map((anuncio) => linhaAnuncio(busca, anuncio)), {
-          onConflict: "busca_id,portal,id_externo",
-          ignoreDuplicates: true,
-        })
-        .select("id");
-      if (error) throw error;
-      quantidadeInserida = data?.length ?? 0;
+    if (!legada) {
+      const ingestao = await persistirColetaRadar(supabase, busca, filtrosColeta, anuncios, aquisicao, "cron");
+      quantidadeInserida = ingestao.novos;
+    } else {
+      // Legado não tem universo qualificado: mantém observações privadas como base,
+      // sem certificar novidade nem preencher tabelas globais automaticamente.
+      if (novos.length) {
+        const { error } = await supabase.from("radar_anuncios")
+          .upsert(novos.map((anuncio) => linhaAnuncio(busca, anuncio)), {
+            onConflict: "busca_id,portal,id_externo", ignoreDuplicates: true,
+          }).select("id");
+        if (error) throw error;
+      }
+      const atualizado = await supabase.from("radar_buscas").update({
+        ultimo_check: agora, ultimo_check_automatico: agora, ultimo_check_origem: "cron",
+      }).eq("id", busca.id).eq("user_id", busca.user_id);
+      if (atualizado.error) throw atualizado.error;
     }
-
-    const atualizado = await supabase.from("radar_buscas").update({
-      ultimo_check: agora,
-      ultimo_check_automatico: agora,
-      ultimo_check_origem: "cron",
-    }).eq("id", busca.id);
-    if (atualizado.error) throw atualizado.error;
     const origem = origemHtml ?? "firecrawl";
     const detalheComum = {
       busca_id: busca.id,
@@ -409,6 +423,7 @@ async function verificarBusca(
       origem_html: origem,
       duracao_ms: Math.round(performance.now() - inicio),
       ...observador.resumo(),
+      ...(resumoPaginacao ? { paginacao: resumoPaginacao } : {}),
     };
     const repeticaoChaves = coletados.length && buscaNoEscopoRepeticaoChaves(busca.filtros)
       ? await detalheShadowRepeticaoChaves(supabase, busca, novos, agora)
@@ -436,6 +451,7 @@ async function verificarBusca(
       novos: quantidadeInserida,
       ok: true,
       origem_html: origem,
+      ...(resumoPaginacao ? { coleta: resumoPaginacao } : {}),
     };
   } catch (erro) {
     // Evita uma busca quebrada consumir créditos em repetidas tentativas. A
@@ -444,7 +460,7 @@ async function verificarBusca(
       ultimo_check: agora,
       ultimo_check_automatico: agora,
       ultimo_check_origem: "cron",
-    }).eq("id", busca.id);
+    }).eq("id", busca.id).eq("user_id", busca.user_id);
     const codigo = codigoDaFalha(erro);
     registrarRadar(busca.user_id, "erro", "radar-busca-falhou", {
       busca_id: busca.id,
@@ -453,6 +469,7 @@ async function verificarBusca(
       duracao_ms: Math.round(performance.now() - inicio),
       ...(origemHtml ? { origem_html: origemHtml } : {}),
       ...observador.resumo(),
+      ...(resumoPaginacao ? { paginacao: resumoPaginacao } : {}),
     });
     return {
       buscaId: busca.id,
@@ -483,6 +500,7 @@ async function emLotes<T, R>(itens: T[], tamanho: number, tarefa: (item: T) => P
  */
 export async function executarMonitorRadar(rodadaId = novoIdExecucao()): Promise<ResumoMonitorRadar> {
   if (!process.env.FIRECRAWL_API_KEY) throw new Error("FIRECRAWL_API_KEY não configurada.");
+  const orcamento = criarOrcamentoRadar();
   const prazoRodada = performance.now() + ORCAMENTO_RODADA_RADAR_MS;
   const supabase = clienteServico();
   const { data, error } = await supabase
@@ -517,8 +535,9 @@ export async function executarMonitorRadar(rodadaId = novoIdExecucao()): Promise
       motivo: "limite-rodada",
     });
   }
-  const resultados = await emLotes(buscas, CONCORRENCIA, (busca) => verificarBusca(supabase, busca, rodadaId, prazoRodada));
+  const resultados = await emLotes(buscas, CONCORRENCIA, (busca) => verificarBusca(supabase, busca, rodadaId, prazoRodada, orcamento));
   return {
+    orcamento: orcamento.resumo(),
     candidatas: candidatas.length,
     elegiveis: elegiveis.length,
     verificadas: resultados.length,

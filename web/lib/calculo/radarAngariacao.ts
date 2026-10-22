@@ -23,6 +23,7 @@ export interface BuscaRadar {
   ultimoCheckAutomatico: string | null;
   ultimoCheckOrigem: OrigemVerificacaoRadar | null;
   criadoEm: string;
+  comparacaoDesde?: string | null;
 }
 
 export interface AnuncioRadar {
@@ -31,11 +32,15 @@ export interface AnuncioRadar {
   anuncio: AnuncioCentralAngariacao;
   visto: boolean;
   encontradoEm: string;
+  novidade?: boolean;
+  anuncioGlobalId?: string | null;
+  coberturaColeta?: "completa" | "parcial" | "desconhecida" | "truncada" | null;
 }
 
 export interface EstadoRadar {
   buscas: BuscaRadar[];
   anuncios: AnuncioRadar[];
+  proximaPagina?: number | null;
 }
 
 /**
@@ -48,7 +53,12 @@ export function selecionarAnunciosNovosRadar(
   existentes: Array<{ portal: string; id_externo: string }>,
 ): AnuncioCentralAngariacao[] {
   const chaves = new Set(existentes.map((item) => `${item.portal}:${item.id_externo}`));
-  return anuncios.filter((anuncio) => !chaves.has(`${anuncio.portal}:${anuncio.idExterno}`));
+  return anuncios.filter((anuncio) => {
+    const chave = `${anuncio.portal}:${anuncio.idExterno}`;
+    if (chaves.has(chave)) return false;
+    chaves.add(chave);
+    return true;
+  });
 }
 
 export function nomePadraoBuscaRadar(filtros: FiltrosCentralAngariacao): string {

@@ -1,3 +1,4 @@
+import type { ResumoPaginacaoRadar } from "./paginacaoRadar";
 import { randomUUID } from "node:crypto";
 import { registrarEvento } from "./registro";
 
@@ -249,6 +250,8 @@ export function criarObservadorRadar(contexto: {
     coletados?: number;
     aposFiltro?: number;
     comparaveisSalvos?: number;
+    novos?: number;
+    paginacao?: ResumoPaginacaoRadar;
     duracaoMs: number;
   }): void {
     try {
@@ -259,10 +262,11 @@ export function criarObservadorRadar(contexto: {
         evento,
         detalhe: JSON.stringify({
           ...resumo(),
+          ...(contagens.paginacao ? { paginacao: contagens.paginacao } : {}),
           coletados: contagens.coletados ?? null,
           apos_filtro: contagens.aposFiltro ?? null,
           comparaveis_salvos: contagens.comparaveisSalvos ?? null,
-          novos: contexto.iniciador === "pesquisar" ? "nao_aplicavel" : null,
+          novos: contagens.novos ?? (contexto.iniciador === "pesquisar" ? "nao_aplicavel" : null),
           duracao_ms: Math.max(0, Math.round(contagens.duracaoMs)),
         }),
       });

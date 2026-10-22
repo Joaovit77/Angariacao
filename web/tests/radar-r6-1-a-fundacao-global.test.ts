@@ -61,8 +61,8 @@ describe("R6.1-A — escopo aditivo e espelho", () => {
     const nomes = readdirSync(new URL("supabase/migrations/", RAIZ)).filter(n => n.endsWith(".sql")).sort();
     expect(nomes.filter(n => n.endsWith("_radar_r6_1_fundacao_global_ofertas.sql"))).toEqual([NOME]);
     expect(NOME.slice(0,14) > "20261011203141").toBe(true);
-    // B é a única sucessora explicitamente aprovada; A continua imutável.
-    expect(nomes.slice(nomes.indexOf(NOME)+1)).toEqual(["20261014130154_radar_r6_1_b_invariantes_globais.sql"]);
+    // A/B continuam imutáveis; somente a ponte aditiva aprovada pode sucedê-las.
+    expect(nomes.slice(nomes.indexOf(NOME)+1)).toEqual(["20261014130154_radar_r6_1_b_invariantes_globais.sql", "20261021120000_radar_baseline_cobertura_novos.sql", "20261022180000_radar_chaves_populacao_qualificada.sql"]);
     expect(nomes).not.toContain("20261003233240_radar_r6_1_schema_global.sql");
     expect(SCHEMA.split("-- BEGIN RADAR R6.1-A")).toHaveLength(2);
     expect(SCHEMA.split("-- END RADAR R6.1-A")).toHaveLength(2);

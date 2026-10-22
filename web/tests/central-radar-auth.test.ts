@@ -355,15 +355,17 @@ describe("cliente buscarNaCentral com fetchAutenticado", () => {
 });
 
 describe("fronteiras do AUTH-1b", () => {
-  it("o cliente da Central usa fetchAutenticado sem repetição; a telemetria do Radar não usa", () => {
+  it("Central e Radar usam fetchAutenticado sem repetição; a telemetria do Radar permanece no servidor", () => {
     const central = ler("lib/centralAngariacao.ts");
     expect(central).toMatch(/fetchAutenticado\("\/api\/central-angariacao\/buscar"/);
     expect(central).toMatch(/\{ repetivel: false \}/);
     expect(central).not.toMatch(/repetivel: true/);
     expect(central).not.toMatch(/getSession|Authorization/);
     const radar = ler("lib/radarAngariacao.ts");
-    expect(radar).not.toMatch(/fetchAutenticado|recuperacaoSessao/);
-    expect(radar).toMatch(/fetch\("\/api\/central-angariacao\/telemetria-radar"/);
+    expect(radar).toMatch(/fetchAutenticado\("\/api\/radar\/verificar"/);
+    expect(radar).toMatch(/\{ repetivel: false \}/);
+    expect(radar).not.toMatch(/fetch\("\/api\/central-angariacao\/telemetria-radar"/);
+    expect(radar).not.toMatch(/repetivel: true/);
   });
 
   it("as rotas da Central/Radar não validam o Bearer por conta própria", () => {

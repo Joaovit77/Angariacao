@@ -1,3 +1,4 @@
+import { semBlocoRadarBaseline } from "./helpers/blocoRadarBaseline";
 /* ================================================================
    GARIMPO EM CAMPO — C13A: núcleo persistente da memória de identidade
 
@@ -31,7 +32,7 @@ const ler = (arquivo: string) => readFileSync(new URL(arquivo, RAIZ), "utf8").re
 const PASTA = "supabase/migrations/";
 const NOME = "20260915190000_prospeccao_memoria_identidade.sql";
 const MIGRATION = ler(PASTA + NOME);
-const SCHEMA = ler("supabase-schema.sql");
+const SCHEMA = semBlocoRadarBaseline(ler("supabase-schema.sql"));
 const C2A = ler(`${PASTA}20260910184310_prospeccao_campo.sql`);
 const C2B = ler(`${PASTA}20260910190155_prospeccao_campo_rls_grants.sql`);
 const C2C = ler(`${PASTA}20260910193412_prospeccao_campo_triggers.sql`);

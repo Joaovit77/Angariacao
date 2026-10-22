@@ -2797,6 +2797,126 @@ sessão. Cada falha registra `[auth]` com rota, motivo, status e, quando houver,
 do SDK. Nunca registra token, header, mensagem do SDK, e-mail, telefone ou `user_id`. As demais
 rotas com Bearer ainda seguem o padrão antigo.
 
+#### Baseline, cobertura e novidade do Radar
+
+A verificação manual e o monitor do navegador usam `api/radar/verificar`: o servidor autentica o
+chamador e carrega os filtros da busca pelo seu `user_id`. Cron e rota compartilham a ponte de
+`servidor/ingestaoRadar.ts` e a RPC `registrar_coleta_radar`. A coleta usa portal, finalidade,
+UF/cidade, Casa/Apartamento e, quando informado, bairro como dimensão opcional do universo.
+Preço, região, proprietário e período permanecem privados; a distribuição reaplica os critérios
+das buscas ativas. O estado privado continua em `radar_anuncios`, sob RLS por usuário.
+
+A migration aditiva
+[20261021120000_radar_baseline_cobertura_novos.sql](supabase/migrations/20261021120000_radar_baseline_cobertura_novos.sql)
+conecta as primitivas A/B sem alterar suas migrations e sem backfill do legado. A transação serializa
+o universo, deduplica ofertas/presenças, conserva a primeira observação, avança a última sem regressão,
+fecha a execução, forma a primeira baseline e distribui as observações. A versão semântica 2 isola o
+contrato de cobertura integral; baselines amostrais anteriores não habilitam essa comparação.
+
+No contrato ativo, `radar_universos.bairro` contém a chave canônica ou NULL para cidade inteira.
+A identidade única inclui essa dimensão; acento, caixa, espaços e hífen de slug não criam outro bairro.
+Cidade inteira e bairro nunca compartilham baseline, marcos de comparação ou distribuição de uma
+varredura. A mesma oferta mantém identidade portal + finalidade + ID nativo e pode ter presenças em
+ambos os universos. Uma mudança servidora do contexto reinicia os marcos privados daquele universo,
+sem transformar observações conhecidas em Novos. A/B permanecem intactas; a extensão da migration da
+ponte protege a imutabilidade do bairro e não faz backfill.
+
+A aquisição de bairro usa somente rota publicada qualificada para portal/cidade/UF/tipo/finalidade,
+antes do coletor. `calculo/bairroUniversoRadar.ts` contém as rotas com evidência admitida, sem gerar
+slugs de texto livre. Inicialmente há Jardim Tókio, Londrina/PR, Chaves na Mão, Casa/Locação. Isso
+não estende automaticamente bairros a outro contexto nem altera a matriz geográfica. Sem rota
+qualificada, não há transporte nem fallback para a cidade inteira; a cobertura permanece desconhecida.
+O HTML deve comprovar a listagem no mesmo contexto qualificado. No Chaves, a URL documental
+(`RealEstateListing.url` e canonical HTML) pode apontar à base em páginas posteriores: essa diferença
+é registrada como `portal_document_url_not_pagination_aware`, sem servir como prova ordinal.
+URL de outro contexto, canonical contraditória ou listagem ambígua continuam fechando o gate.
+A RPC exige a prova servidora da rota para certificar bairro; prova ausente ou contraditória não
+retira anúncios utilizáveis da consulta privada.
+
+No recorte canônico observado do Radar, `Sobrado` pertence a `casa`. A normalização não altera
+`tipoDeclarado` nem a tipologia original persistida. Os valores dos filtros continuam somente
+Casa/Apartamento; nenhum outro alias é promovido e JSON-LD não substitui o tipo publicado no card.
+
+O adapter paginado do Chaves combina pedido ordinal exato, HTTP bem-sucedido e URL efetiva da própria
+aquisição sem retorno à base, sequência contígua, navegação publicada quando disponível, total
+positivo estável e progresso por IDs nativos qualificados. Firecrawl conserva a URL final informada
+nos metadados do provedor; HTTP direto conserva a URL final e o indicador de redirect da resposta.
+Sem URL efetiva/status suficientes não há prova de P2+. Cache conserva esses fatos junto ao ID,
+instante e hash originais; não os fabrica a partir da URL solicitada. Outros portais não herdam esse
+contrato. Patrocinados idênticos repetidos são consolidados pelo adapter; cada página deve acrescentar
+pelo menos uma identidade. A prova SQL mantém IDs únicos, atribuídos à primeira página que os
+comprovou; IDs observados, URLs documentais e avisos também acompanham a evidência persistida.
+
+No Chaves, IDs brutos do ItemList comprovam progressão e loop, enquanto a população qualificada
+para portal/finalidade/cidade/UF/tipo/bairro reconcilia o total declarado. Extras com critério explícito
+divergente permanecem na evidência e podem continuar na ingestão global apropriada; não são distribuídos
+para o bairro solicitado. Tipo, bairro ou outra prova relevante ausente mantém a identidade indeterminada.
+A rodada registra `raw_count`, `qualified_count`, `out_of_scope_count`, `indeterminate_count` e
+`declared_total`. Somente igualdade da população qualificada com total estável, zero indeterminados,
+sequência válida e fim sem continuação permitem cobertura integral. Os demais portais não herdam a regra.
+
+A migration aditiva
+[20261022180000_radar_chaves_populacao_qualificada.sql](supabase/migrations/20261022180000_radar_chaves_populacao_qualificada.sql)
+confere a prova qualificada na mesma RPC. Para esse contrato, todo ID bruto precisa estar representado
+na ingestão global admissível; os extras do bairro são reclassificados no SQL a partir dos próprios
+campos objetivos, sem aceitar ausência de bairro como exclusão. A cobertura de conjuntos que não
+satisfaçam essa representação continua fechada. A extensão não altera A/B, RLS, histórico ou regras
+de baseline/Novo. Exige aplicação explícita antes de usar esse contrato em um ambiente existente.
+
+Se não há next publicado e o total ainda não foi reconciliado, o adapter pode tentar somente o
+ordinal consecutivo da mesma rota, dentro do orçamento existente. Isso não prova o fim nem uma
+quantidade presumida de anúncios restantes. O gate exige todas as páginas admitidas, igualdade entre
+união qualificada e total, e última página sem continuação. Total atingido com next continua aberto;
+atingir o teto nunca certifica coverage. Cada página conserva o limite de
+50 itens do parser; a rodada não é truncada novamente em 50. Fontes de páginas têm proveniência
+verificável e uma janela máxima de 20 minutos. A varredura inicia no instante mais antigo do conjunto;
+cada oferta/presença conserva o instante da sua própria página. A comparação usa essa observação
+individual, impedindo que outra página em cache fabrique ou oculte novidade.
+
+`RADAR_MAX_PAGINAS_RODADA` e `RADAR_MAX_CHAMADAS_PAGAS_RODADA` configuram os tetos, ambos com
+padrão 10. No cron o orçamento é compartilhado entre buscas; na rota corresponde àquela verificação.
+Cada envio ao Firecrawl, inclusive falho/retry, reserva uma chamada antes do envio; cache e
+single-flight não geram outra chamada. O prazo existente também limita a aquisição.
+A paginação consulta o mesmo deadline absoluto da rota/rodada em todas as fases, sem reiniciá-lo por
+página. Antes de uma página/Firecrawl exige 60s do timeout de aquisição mais 35s de processamento e
+finalização. Não soma antecipadamente os 15s de fallback: após falha, reavalia o restante e só inicia
+HTTP com 15s mais os mesmos 35s. Os guards são conferidos antes dos envios e da reserva de crédito;
+cache e esperas não renovam a janela. Insuficiência retorna `limite_tempo`, preservando a base parcial.
+Retries usam o mesmo relógio e continuam sujeitos à política existente e ao teto compartilhado. Atingir qualquer
+teto antes de comprovar o fim mantém `partial`, sem baseline e sem Novo. Contagens de páginas,
+resultados, total declarado e motivo do término acompanham a resposta/log, além do orçamento da
+rodada. A prova paginada é conferida novamente na RPC. Demais formatos, truncamento, inconsistências,
+vazio sem contrato próprio e cobertura desconhecida/parcial não formam baseline nem geram Novo.
+Sucesso HTTP, capacidade de aquisição e uma primeira página por relevância não bastam. A proveniência do HTML
+é preservada por aquisição e, no cache Firecrawl, vinculada ao hash do conteúdo; cache antigo sem
+proveniência não é promovido a observação nova. Nas aquisições novas do Radar, `maxAge=0` impede
+atribuir ao momento atual conteúdo do cache externo; o cache regional e o single-flight continuam
+reutilizando a aquisição original. A Central e o cron legado conservam seu contrato anterior de cache.
+
+A primeira coleta válida forma baseline e gera zero Novos. Uma busca/assinatura sem marco de
+comparação recebe Base não revisada; adesão posterior não transforma o histórico em novidade.
+Novo exige baseline anterior compatível, cobertura integral atual, aquisição posterior aos marcos
+e primeira admissão global da identidade nessa execução. Observações em parciais permanecem
+conhecidas e não são promovidas retroativamente. Retry da mesma aquisição não duplica notificações;
+payload divergente é recusado. A identidade é portal + finalidade + ID nativo qualificado, nunca
+posição, URL ou fingerprint. Recência de publicação não é inferida.
+
+`novidade_varredura_id` é certificação servidora; `visto` permanece ação privada. A UI e o contador
+separam Base não revisada de Novo. Revisar uma oferta global marca suas cópias do mesmo usuário
+por `anuncio_global_id`, que inclui finalidade; o histórico legado de visualização por portal/ID não
+oculta outra finalidade. O cliente não pode escrever os marcos, vínculos globais ou certificação.
+Nenhuma informação de salvo, descarte, interesse, investigação ou contato integra a oferta global.
+
+O coverage gate certifica somente baseline e Novo; ele não bloqueia a consulta dos anúncios adquiridos.
+Observações utilizáveis com URL segura do portal e contexto compatível continuam na distribuição
+privada e são devolvidas em `anunciosColetados`; `anuncios` permanece reservado aos Novos certificados,
+preservando os consumidores do contador. Sem proveniência/identidade suficiente para a camada global,
+a observação fica apenas na assinatura solicitante, sem oferta global, certificação ou backfill. Essa
+escrita participa da mesma transação. `cobertura_coleta` registra a classificação da cópia privada e só
+pode ser atribuída pelo servidor. A UI mostra Base não revisada/Coleta parcial, mantém o link direto e
+permite carregar mais páginas da base; 120 é tamanho de página de leitura, sem teto total da consulta.
+A ordenação continua por `encontrado_em`, com desempate por ID para paginação estável.
+
 #### Fundação global do Radar — R6.1-A/B sem caller
 
 A fundação global aditiva vive em `radar_universos`, `radar_anuncios_globais`,
@@ -2818,8 +2938,9 @@ A classificação futura deriva de identidade, primeira proveniência, baseline 
 status/qualidade da execução; não há booleano mutável de novidade na oferta.
 
 O universo é único por portal + finalidade + UF + cidade canônica + tipo de recorte +
-anunciante de recorte + versão semântica. Cidade é canonicalizada na fronteira futura, não pelo
-SQL; filtros pessoais não integram a chave. Tipos iniciais: casa/apartamento; anunciante: somente
+anunciante de recorte + versão semântica no contrato original A/B. A extensão ativa da ponte inclui
+também bairro canônico opcional, com NULL distinto de bairro específico. Cidade é canonicalizada na
+fronteira; filtros pessoais não integram a chave. Tipos iniciais: casa/apartamento; anunciante: somente
 todos. Oferta global é única por portal + finalidade + ID nativo qualificado; Locação e Venda
 do mesmo ID coexistem. URL, fingerprint, título, posição e endereço não são identidades
 alternativas automáticas. Sem ID confiável, o writer futuro deve recusar ingresso.

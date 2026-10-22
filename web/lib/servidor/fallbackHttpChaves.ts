@@ -1,3 +1,7 @@
+import { exigirTempoFaseRadar, type TempoRodadaRadar, type OrcamentoRodadaRadar } from "./orcamentoRadar";
+import { agoraISOString } from "@/lib/datas";
+import type { AquisicaoPortalRadar, TransportePaginaRadar } from "./coberturaRadar";
+import { urlPaginaChavesRadar } from "./urlPaginaRadar";
 import { randomUUID } from "node:crypto";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { getCache } from "@vercel/functions";
@@ -30,7 +34,7 @@ export class HttpChavesIndisponivel extends Error {
   }
 }
 
-type ResultadoHttp = { html: string; anuncios: AnuncioCentralAngariacao[]; statusHttp: number };
+type ResultadoHttp = { html: string; anuncios: AnuncioCentralAngariacao[]; statusHttp: number; transporte?: TransportePaginaRadar; origemRadar?: AquisicaoPortalRadar };
 const consultasHttpEmAndamento = new Map<string, {
   coletaId: string;
   promessa: Promise<ResultadoHttp>;
@@ -99,7 +103,9 @@ async function cacheFirecrawlDisponivel(chave: string): Promise<boolean> {
 async function coletarHttpChaves(
   urlPesquisa: string,
   observar: (fase: "fetch_iniciado" | "resposta_recebida", statusHttp?: number) => void,
+  tempoRadar?: TempoRodadaRadar,
 ): Promise<ResultadoHttp> {
+  if (tempoRadar) exigirTempoFaseRadar(tempoRadar, TIMEOUT_HTTP_CHAVES_MS);
   let resposta: Response;
   try {
     observar("fetch_iniciado");
@@ -123,7 +129,10 @@ async function coletarHttpChaves(
   } catch (erro) {
     throw new HttpChavesIndisponivel(timeout(erro) ? "http_timeout" : "http_transporte_falhou", resposta.status);
   }
-  return { html, anuncios: [], statusHttp: resposta.status };
+  return { html, anuncios: [], statusHttp: resposta.status, transporte: {
+    urlSolicitada: urlPesquisa, urlEfetiva: resposta.url || null, statusHttp: resposta.status,
+    statusPortalHttp: resposta.status, redirecionada: resposta.redirected,
+  } };
 }
 
 async function buscarHttpChaves(
@@ -131,6 +140,8 @@ async function buscarHttpChaves(
   urlPesquisa: string,
   registrarOrigem?: (origem: OrigemColetaCentral) => void,
   observar?: (evento: EventoConsultaFirecrawl) => void,
+  registrarAquisicao?: (aquisicao: AquisicaoPortalRadar) => void,
+  tempoRadar?: TempoRodadaRadar,
 ): Promise<AnuncioCentralAngariacao[]> {
   const chave = chaveCanonicaConsultaPortal(filtros.portal, urlPesquisa);
   const existente = consultasHttpEmAndamento.get(chave);
@@ -140,6 +151,7 @@ async function buscarHttpChaves(
     notificar(observar, { fase: "single_flight", aquisicao: "desconhecida", coletaId: existente.coletaId });
     try {
       const compartilhado = await existente.promessa;
+      if (compartilhado.origemRadar) registrarAquisicao?.(compartilhado.origemRadar);
       notificar(observar, { fase: "coleta_compartilhada_concluida", aquisicao: "http_direto",
         coletaId: existente.coletaId, statusHttp: compartilhado.statusHttp });
       const anuncios = interpretarHttpChaves(compartilhado.html, filtros);
@@ -163,7 +175,7 @@ async function buscarHttpChaves(
       if (statusHttp != null) estado.statusHttp = statusHttp;
       notificar(observar, { fase, aquisicao: "http_direto", coletaId,
         ...(statusHttp != null ? { statusHttp } : {}) });
-    });
+    }, tempoRadar);
     const anuncios = interpretarHttpChaves(coletado.html, filtros);
     try {
       await getCache({ namespace: "central-chaves-http-html-v1" }).set(
@@ -176,11 +188,14 @@ async function buscarHttpChaves(
     } catch {
       // Falha de cache não invalida uma resposta já interpretada.
     }
-    return { ...coletado, anuncios };
+    return { ...coletado, anuncios, origemRadar: {
+      id: coletaId, em: agoraISOString(), html: coletado.html, origem: "http_direto" as const, confiavel: true, transporte: coletado.transporte,
+    } };
   })().finally(() => consultasHttpEmAndamento.delete(chave));
   consultasHttpEmAndamento.set(chave, { coletaId, promessa, estado });
   try {
     const coletado = await promessa;
+    if (coletado.origemRadar) registrarAquisicao?.(coletado.origemRadar);
     notificar(observar, { fase: "resultado_interpretado", aquisicao: "http_direto", coletaId });
     return coletado.anuncios;
   } catch (erro) {
@@ -202,18 +217,28 @@ export async function buscarComFallbackHttpChaves(
   /** R5: repassada à aquisição; o Chaves nunca repete o Firecrawl (a decisão
       recusa), porque este fallback HTTP já é sua segunda via. */
   politicaRetry?: PoliticaRetryFirecrawl,
+  registrarAquisicao?: (aquisicao: AquisicaoPortalRadar) => void,
+  orcamentoRadar?: OrcamentoRodadaRadar,
+  /** Só a paginação opta pelo orçamento temporal por fase; demais consumidores conservam o contrato. */
+  tempoRadar?: TempoRodadaRadar,
 ): Promise<AnuncioCentralAngariacao[]> {
   exigirCapacidadeAquisicaoRadar(filtros);
+  const exigirTempo = (duracaoFaseMs: number) => tempoRadar
+    ? exigirTempoFaseRadar(tempoRadar, duracaoFaseMs)
+    : exigirOrcamento(restanteMs, duracaoFaseMs + RESERVA_PROCESSAMENTO_CENTRAL_MS);
+  const numeroPagina = Number(new URL(urlPesquisa).searchParams.get("pg") || 1);
+  const paginaRadarSegura = filtros.portal === "chaves-na-mao" && !!orcamentoRadar && Number.isSafeInteger(numeroPagina) && numeroPagina >= 1
+    && urlPesquisa === urlPaginaChavesRadar(urlDaPesquisa(filtros), numeroPagina);
   if (filtros.portal !== "chaves-na-mao" || urlPesquisa !== urlDaPesquisa(filtros)) {
-    return buscarComFirecrawl(filtros, urlPesquisa, registrarOrigem, registrarDiagnosticoOlx, observar, politicaRetry);
+    if (!paginaRadarSegura) return buscarComFirecrawl(filtros, urlPesquisa, registrarOrigem, registrarDiagnosticoOlx, observar, politicaRetry, registrarAquisicao, orcamentoRadar, tempoRadar);
   }
   const chave = chaveCanonicaConsultaPortal(filtros.portal, urlPesquisa);
   if (await cacheFirecrawlDisponivel(chave)) {
-    return buscarComFirecrawl(filtros, urlPesquisa, registrarOrigem, registrarDiagnosticoOlx, observar, politicaRetry);
+    return buscarComFirecrawl(filtros, urlPesquisa, registrarOrigem, registrarDiagnosticoOlx, observar, politicaRetry, registrarAquisicao, orcamentoRadar, tempoRadar);
   }
   const armazenado = await cacheHttp(chave, filtros);
   if (armazenado) {
-    exigirOrcamento(restanteMs, RESERVA_PROCESSAMENTO_CENTRAL_MS);
+    exigirTempo(0);
     registrarOrigem?.("cache");
     const coletaId = randomUUID();
     notificar(observar, { fase: "cache_hit", aquisicao: "cache", coletaId });
@@ -221,19 +246,19 @@ export async function buscarComFallbackHttpChaves(
     return armazenado.anuncios;
   }
   try {
-    return await buscarComFirecrawl(filtros, urlPesquisa, registrarOrigem, registrarDiagnosticoOlx, observar, politicaRetry);
+    return await buscarComFirecrawl(filtros, urlPesquisa, registrarOrigem, registrarDiagnosticoOlx, observar, politicaRetry, registrarAquisicao, orcamentoRadar, tempoRadar);
   } catch (erro) {
     if (!(erro instanceof FirecrawlIndisponivel)) throw erro;
   }
   const cacheAposFalha = await cacheHttp(chave, filtros);
   if (cacheAposFalha) {
-    exigirOrcamento(restanteMs, RESERVA_PROCESSAMENTO_CENTRAL_MS);
+    exigirTempo(0);
     registrarOrigem?.("cache");
     const coletaId = randomUUID();
     notificar(observar, { fase: "cache_hit", aquisicao: "cache", coletaId });
     notificar(observar, { fase: "resultado_interpretado", aquisicao: "cache", coletaId });
     return cacheAposFalha.anuncios;
   }
-  exigirOrcamento(restanteMs, TIMEOUT_HTTP_CHAVES_MS + RESERVA_PROCESSAMENTO_CENTRAL_MS);
-  return buscarHttpChaves(filtros, urlPesquisa, registrarOrigem, observar);
+  exigirTempo(TIMEOUT_HTTP_CHAVES_MS);
+  return buscarHttpChaves(filtros, urlPesquisa, registrarOrigem, observar, registrarAquisicao, tempoRadar);
 }

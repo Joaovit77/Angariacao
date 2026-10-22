@@ -1,10 +1,9 @@
 "use client";
 
-import { buscarNaCentral } from "./centralAngariacao";
+import { fetchAutenticado } from "./auth/recuperacaoSessao";
 import { anuncioPertenceAoMercado, type AnuncioCentralAngariacao, type FiltrosCentralAngariacao } from "./calculo/centralAngariacao";
 import {
   resumirPendenciasRadar,
-  selecionarAnunciosNovosRadar,
   type AnuncioRadar,
   type BuscaRadar,
   type CandidatoPendenteRadar,
@@ -15,7 +14,7 @@ import {
 import { getSupabase } from "./persistencia/supabase";
 import { useAppStore } from "./store";
 import { agoraISOString } from "./datas";
-import { capacidadeContratoExplicitoRadar, filtrosRadarSaoLegados } from "./calculo/aquisicaoRadar";
+import { capacidadeContratoExplicitoRadar } from "./calculo/aquisicaoRadar";
 
 interface DbBuscaRadar {
   id: string;
@@ -26,6 +25,7 @@ interface DbBuscaRadar {
   ultimo_check_automatico: string | null;
   ultimo_check_origem: OrigemVerificacaoRadar | null;
   created_at: string;
+  comparacao_desde_em?: string | null;
 }
 
 interface DbAnuncioRadar {
@@ -34,6 +34,9 @@ interface DbAnuncioRadar {
   dados: AnuncioCentralAngariacao;
   visto: boolean;
   encontrado_em: string;
+  novidade_varredura_id?: string | null;
+  anuncio_global_id?: string | null;
+  cobertura_coleta?: AnuncioRadar["coberturaColeta"];
 }
 
 function fromDbBusca(row: DbBuscaRadar): BuscaRadar {
@@ -46,6 +49,7 @@ function fromDbBusca(row: DbBuscaRadar): BuscaRadar {
     ultimoCheckAutomatico: row.ultimo_check_automatico,
     ultimoCheckOrigem: row.ultimo_check_origem,
     criadoEm: row.created_at,
+    comparacaoDesde: row.comparacao_desde_em ?? null,
   };
 }
 
@@ -56,6 +60,9 @@ function fromDbAnuncio(row: DbAnuncioRadar): AnuncioRadar {
     anuncio: row.dados,
     visto: row.visto,
     encontradoEm: row.encontrado_em,
+    novidade: !!row.novidade_varredura_id,
+    anuncioGlobalId: row.anuncio_global_id ?? null,
+    coberturaColeta: row.cobertura_coleta ?? null,
   };
 }
 
@@ -76,23 +83,25 @@ function linhaAnuncio(
   };
 }
 
-export async function carregarRadar(): Promise<EstadoRadar> {
+export async function carregarRadar(inicio = 0): Promise<EstadoRadar> {
+  if (!Number.isInteger(inicio) || inicio < 0) throw new Error("Página do Radar inválida.");
   const supabase = getSupabase();
   const [buscas, anuncios] = await Promise.all([
-    supabase.from("radar_buscas").select("id,nome,filtros,ativo,ultimo_check,ultimo_check_automatico,ultimo_check_origem,created_at").order("created_at", { ascending: false }),
-    supabase.from("radar_anuncios").select("id,busca_id,dados,visto,encontrado_em").order("encontrado_em", { ascending: false }).limit(120),
+    supabase.from("radar_buscas").select("id,nome,filtros,ativo,ultimo_check,ultimo_check_automatico,ultimo_check_origem,created_at,comparacao_desde_em").order("created_at", { ascending: false }),
+    supabase.from("radar_anuncios").select("id,busca_id,dados,visto,encontrado_em,novidade_varredura_id,anuncio_global_id,cobertura_coleta").order("encontrado_em", { ascending: false }).order("id", { ascending: false }).range(inicio, inicio + 120),
   ]);
   if (buscas.error) throw buscas.error;
   if (anuncios.error) throw anuncios.error;
   const buscasMapeadas = (buscas.data as DbBuscaRadar[]).map(fromDbBusca);
   const mercadoPorBusca = new Map(buscasMapeadas.map((busca) => [busca.id, busca.filtros]));
-  const anunciosMapeados = (anuncios.data as DbAnuncioRadar[])
+  const linhas = (anuncios.data || []) as DbAnuncioRadar[];
+  const anunciosMapeados = linhas.slice(0,120)
     .map(fromDbAnuncio)
     .filter((item) => {
       const filtros = mercadoPorBusca.get(item.buscaId);
       return !!filtros && anuncioPertenceAoMercado(item.anuncio, filtros.cidade, filtros.estado);
     });
-  return { buscas: buscasMapeadas, anuncios: anunciosMapeados };
+  return { buscas: buscasMapeadas, anuncios: anunciosMapeados, proximaPagina: linhas.length > 120 ? inicio + 120 : null };
 }
 
 interface DbCandidatoPendenteRadar {
@@ -108,7 +117,7 @@ interface DbCandidatoPendenteRadar {
   estado: string | null;
 }
 
-/** Candidatos do banco inteiro, sem a janela de 120 da lista. */
+/** Candidatos do banco inteiro, independentemente da página carregada na lista. */
 export async function carregarCandidatosPendentesRadar(): Promise<CandidatoPendenteRadar[]> {
   const { data, error } = await getSupabase().rpc("candidatos_pendentes_radar");
   if (error) throw error;
@@ -188,14 +197,14 @@ export async function salvarBuscaRadar(
       ultimo_check: agora,
       ultimo_check_origem: "manual",
     })
-    .select("id,nome,filtros,ativo,ultimo_check,ultimo_check_automatico,ultimo_check_origem,created_at")
+    .select("id,nome,filtros,ativo,ultimo_check,ultimo_check_automatico,ultimo_check_origem,created_at,comparacao_desde_em")
     .single();
   if (error) throw error;
   const busca = fromDbBusca(data as DbBuscaRadar);
   if (baseline.length) {
     const salvo = await supabase
       .from("radar_anuncios")
-      .upsert(baseline.map((anuncio) => linhaAnuncio(userId, busca.id, anuncio, true)), {
+      .upsert(Array.from(new Map(baseline.map((anuncio) => [`${anuncio.portal}:${anuncio.idExterno}`, anuncio])).values()).map((anuncio) => linhaAnuncio(userId, busca.id, anuncio, false)), {
         onConflict: "busca_id,portal,id_externo",
         ignoreDuplicates: true,
       });
@@ -208,75 +217,19 @@ export async function verificarBuscaRadar(
   userId: string,
   busca: BuscaRadar,
   origem: Exclude<OrigemVerificacaoRadar, "cron">,
+  registrarCobertura?: (cobertura: string | undefined) => void,
 ) {
-  const resultado = await buscarNaCentral(
-    busca.filtros,
-    origem === "navegador" ? "monitor_navegador" : "verificar_agora",
-    filtrosRadarSaoLegados(busca.filtros) ? busca.id : undefined,
-  );
-  const supabase = getSupabase();
-  const agora = agoraISOString();
-
-  // Falha de autenticação não consultou portal nenhum: a busca não conta
-  // como verificada e continua na fila. Falha de portal segue abaixo.
-  if (resultado.falhaAuth) {
-    throw new Error(resultado.aviso || "Não foi possível confirmar sua sessão agora.");
-  }
-
-  if (!resultado.ok) {
-    await supabase.from("radar_buscas").update({
-      ultimo_check: agora,
-      ultimo_check_origem: origem,
-    }).eq("id", busca.id);
-    throw new Error(resultado.aviso || "Não foi possível consultar o portal.");
-  }
-
-  const { data: existentes, error: erroExistentes } = await supabase
-    .from("radar_anuncios")
-    .select("portal,id_externo")
-    .eq("busca_id", busca.id);
-  if (erroExistentes) throw erroExistentes;
-  const novos = selecionarAnunciosNovosRadar(resultado.anuncios, existentes || []);
-
-  let inseridos: DbAnuncioRadar[] = [];
-  if (novos.length) {
-    const { data, error } = await supabase
-      .from("radar_anuncios")
-      .upsert(novos.map((anuncio) => linhaAnuncio(userId, busca.id, anuncio, false)), {
-        onConflict: "busca_id,portal,id_externo",
-        ignoreDuplicates: true,
-      })
-      .select("id,busca_id,dados,visto,encontrado_em");
-    if (error) throw error;
-    inseridos = (data || []) as DbAnuncioRadar[];
-  }
-
-  const atualizado = await supabase.from("radar_buscas").update({
-    ultimo_check: agora,
-    ultimo_check_origem: origem,
-  }).eq("id", busca.id);
-  if (atualizado.error) throw atualizado.error;
-  if (resultado.execucaoId) {
-    void (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          await fetch("/api/central-angariacao/telemetria-radar", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({ execucaoId: resultado.execucaoId, buscaId: busca.id, novos: inseridos.length }),
-            signal: AbortSignal.timeout(3000),
-          });
-        }
-      } catch {
-        // O fechamento telemétrico jamais altera a persistência já concluída.
-      }
-    })();
-  }
-  return inseridos.map(fromDbAnuncio);
+  // O servidor descobre o dono pela sessão e lê os filtros da busca salva.
+  void userId;
+  const resposta = await fetchAutenticado("/api/radar/verificar", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ buscaId: busca.id, origem }),
+  }, { repetivel: false });
+  if (!resposta) throw new Error("Sua sessão expirou. Entre novamente.");
+  const resultado = await resposta.json() as { ok: boolean; aviso?: string; anuncios?: DbAnuncioRadar[]; cobertura?: string };
+  if (!resposta.ok || !resultado.ok) throw new Error(resultado.aviso || "Não foi possível verificar o Radar agora.");
+  registrarCobertura?.(resultado.cobertura);
+  return (resultado.anuncios || []).map(fromDbAnuncio);
 }
 
 export async function definirBuscaRadarAtiva(id: string, ativo: boolean): Promise<void> {
@@ -286,6 +239,12 @@ export async function definirBuscaRadarAtiva(id: string, ativo: boolean): Promis
 
 export async function excluirBuscaRadar(id: string): Promise<void> {
   const { error } = await getSupabase().from("radar_buscas").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/** A RLS limita a ação ao dono; a identidade global inclui portal e finalidade. */
+export async function marcarOfertaRadarComoVista(anuncioGlobalId: string): Promise<void> {
+  const { error } = await getSupabase().from("radar_anuncios").update({ visto: true }).eq("anuncio_global_id", anuncioGlobalId);
   if (error) throw error;
 }
 

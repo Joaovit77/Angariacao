@@ -932,3 +932,31 @@ Sim. Ela é pública por design — a segurança está nas políticas de Row Lev
 Porque o app novo (Next.js) vive nessa subpasta. A raiz do repositório ainda tem o app antigo
 (estático) durante o período de segurança. Apontar a Vercel para `web` é o que faz ela publicar o
 app novo em vez do antigo.
+
+
+### Limites operacionais da paginação do Radar
+
+As variáveis exclusivamente de servidor `RADAR_MAX_PAGINAS_RODADA` e
+`RADAR_MAX_CHAMADAS_PAGAS_RODADA` têm padrão **10**. Aceitam inteiros de 1 a 100; configuração
+inválida interrompe a execução sem aquisição. O máximo técnico protege tamanho/validação de payload;
+nenhuma ampliação do padrão foi autorizada nesta entrega. A mudança de limite exige decisão operacional
+sobre tempo e custo. Uma chamada básica ao Firecrawl é a unidade controlada; não há estimativa automática
+em reais nem escalada de proxy.
+
+No cron, todos os consumidores compartilham o orçamento da execução; uma verificação manual/navegador
+tem seu próprio orçamento. O controle é local à rodada/instância, não uma cota financeira distribuída
+entre execuções sobrepostas. Cache e single-flight existentes são reaproveitados por URL de página.
+Tentativas pagas falhadas e retry também contam. O fallback HTTP permanece o existente e obedece ao
+prazo da rodada. Antes de cada página, conserva-se tempo para o pior caso de aquisição e finalização;
+com prazo de 120 segundos, a rota pode terminar por tempo antes de dez páginas.
+
+**Teto não comprova cobertura.** Com páginas restantes, contagem diferente do total, falha intermediária,
+navegação ambígua ou identidade não qualificada, a coleta é parcial e o gate permanece fechado. Não se
+forma baseline nem se certifica Novo. O retorno da verificação traz `coleta` (páginas lidas, resultados,
+total declarado e motivo de término) e `orcamento`; o cron retorna o orçamento agregado e a coleta
+por busca, registrando as contagens na telemetria existente. O banco conserva a prova estrutural sem HTML.
+
+A fixture de Londrina com 3.080 ofertas excede as até 500 ofertas possíveis em dez páginas de 50;
+a coleta desse universo permanece incompleta. Não há retomada/acúmulo de páginas entre rodadas nem
+redução automática do universo. Qualquer mudança dessa estratégia depende de decisão posterior.
+Validação desta entrega permanece local/isolada: não aplicar a migration remotamente sem autorização.

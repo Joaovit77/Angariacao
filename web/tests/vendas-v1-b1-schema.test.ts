@@ -1,3 +1,4 @@
+import { semBlocoRadarBaseline } from "./helpers/blocoRadarBaseline";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -5,7 +6,7 @@ import { ESTADOS_VENDA, MOTIVOS_PERDA_VENDA, ORIGENS_COMERCIAIS_VENDA } from "..
 
 const ler = (nome: string) => readFileSync(new URL("../../" + nome, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 export const MIGRATION_VENDAS = ler("supabase/migrations/20261005003257_vendas_v1_b1_estrutura.sql");
-const schema = ler("supabase-schema.sql");
+const schema = semBlocoRadarBaseline(ler("supabase-schema.sql"));
 const codigo = MIGRATION_VENDAS.replace(/--[^\n]*/g, "");
 const tabelas = ["public.vendas_imoveis_referencias", "public.vendas_oportunidades", "public.vendas_oportunidades_eventos", "private.vendas_comandos"];
 

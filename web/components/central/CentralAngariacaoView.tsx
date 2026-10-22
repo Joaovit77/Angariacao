@@ -45,6 +45,7 @@ import {
   definirBuscaRadarAtiva,
   excluirBuscaRadar,
   marcarRadarComoVisto,
+  marcarOfertaRadarComoVista,
   publicarAtualizacaoRadar,
   salvarBuscaRadar,
   verificarBuscaRadar,
@@ -86,6 +87,7 @@ export default function CentralAngariacaoView() {
   const [filtrosResultado, setFiltrosResultado] = useState<Parameters<typeof buscarNaCentral>[0] | null>(null);
   const [radar, setRadar] = useState<EstadoRadar>({ buscas: [], anuncios: [] });
   const [carregandoRadar, setCarregandoRadar] = useState(true);
+  const [carregandoMaisRadar, setCarregandoMaisRadar] = useState(false);
   const [salvandoRadar, setSalvandoRadar] = useState(false);
   const [preparandoRadar, setPreparandoRadar] = useState(false);
   const [nomeBuscaRadar, setNomeBuscaRadar] = useState("");
@@ -111,6 +113,16 @@ export default function CentralAngariacaoView() {
     } finally {
       setCarregandoRadar(false);
     }
+  }
+
+  async function carregarMaisRadar() {
+    if (radar.proximaPagina == null || carregandoMaisRadar) return;
+    setCarregandoMaisRadar(true);
+    try {
+      const pagina = await carregarRadar(radar.proximaPagina);
+      setRadar((atual) => ({ ...pagina, anuncios: [...new Map([...atual.anuncios,...pagina.anuncios].map((item)=>[item.id,item])).values()] }));
+    } catch { toast("Não foi possível carregar mais anúncios. Tente novamente.","error"); }
+    finally { setCarregandoMaisRadar(false); }
   }
 
   useEffect(() => {
@@ -161,9 +173,9 @@ export default function CentralAngariacaoView() {
     return urlsDosImoveis(imoveis);
   }, [imoveis]);
 
-  // Mesma regra do contador geral, sobre o banco inteiro (não a janela de 120).
+  // Mesma regra do contador geral, sobre o banco inteiro, independentemente da página carregada.
   const novosPorBusca = pendencias?.porBusca ?? new Map<string, number>();
-  const radarPendente = (item: { id: string; visto: boolean }) => (pendencias ? pendencias.ids.has(item.id) : !item.visto);
+  const radarPendente = (item: { id: string; visto: boolean; novidade?: boolean }) => item.novidade === true && !item.visto && (!pendencias || pendencias.ids.has(item.id));
 
   // ZAP (R4.2h): mesma regra do servidor; a Central não oferece combinação que ele recusaria.
   const capacidadeZap = portal === "zap" ? capacidadeFuncionalZap({
@@ -235,8 +247,10 @@ export default function CentralAngariacaoView() {
     if (!busca) return;
     setVerificandoRadar(buscaId);
     try {
-      const novos = await verificarBuscaRadar(usuario.id, busca, "manual");
-      toast(novos.length ? `${novos.length} anúncio${novos.length === 1 ? " novo encontrado" : "s novos encontrados"}.` : "Radar verificado: nada novo por enquanto.");
+      let cobertura: string | undefined;
+      const novos = await verificarBuscaRadar(usuario.id, busca, "manual", (valor) => { cobertura = valor; });
+      toast(cobertura && cobertura !== "completa" ? "Coleta parcial: os anúncios encontrados estão disponíveis. Nenhuma novidade foi certificada."
+        : novos.length ? `${novos.length} anúncio${novos.length === 1 ? " novo encontrado" : "s novos encontrados"}.` : "Radar verificado: nada novo por enquanto.");
       publicarAtualizacaoRadar();
       await recarregarRadar();
     } catch (erro) {
@@ -298,6 +312,17 @@ export default function CentralAngariacaoView() {
 
   async function registrarVisualizacao(anuncio: AnuncioCentralAngariacao) {
     if (!usuario) return;
+    const oferta = radar.anuncios.find((item) => item.anuncioGlobalId && item.anuncio.portal === anuncio.portal
+      && item.anuncio.idExterno === anuncio.idExterno && item.anuncio.finalidade === anuncio.finalidade);
+    if (oferta?.anuncioGlobalId) {
+      try {
+        await marcarOfertaRadarComoVista(oferta.anuncioGlobalId);
+        setRadar((atual) => ({ ...atual, anuncios: atual.anuncios.map((item) =>
+          item.anuncioGlobalId === oferta.anuncioGlobalId ? { ...item, visto: true } : item) }));
+        atualizarPendencias();
+      } catch { toast("Não foi possível marcar o anúncio como visualizado.", "error"); }
+      return;
+    }
     const chave = chaveAnuncio(anuncio);
     if (anunciosVisualizados.has(chave)) return;
     try {
@@ -315,8 +340,10 @@ export default function CentralAngariacaoView() {
   const estaOculto = (anuncio: AnuncioCentralAngariacao) => anunciosVisualizados.has(chaveAnuncio(anuncio)) || repeticaoDo(anuncio).ocultar;
   const listaOculta = aba === "selecionados" ? [] : lista.filter(estaOculto);
   const listaVisivel = aba === "selecionados" || mostrarOcultos ? lista : lista.filter((anuncio) => !estaOculto(anuncio));
-  const anunciosRadarOcultos = radar.anuncios.filter((item) => estaOculto(item.anuncio));
-  const anunciosRadarVisiveis = mostrarOcultos ? radar.anuncios : radar.anuncios.filter((item) => !estaOculto(item.anuncio));
+  const estaOcultoRadar = (item: EstadoRadar["anuncios"][number]) =>
+    item.anuncioGlobalId ? item.visto || repeticaoDo(item.anuncio).ocultar : estaOculto(item.anuncio);
+  const anunciosRadarOcultos = radar.anuncios.filter(estaOcultoRadar);
+  const anunciosRadarVisiveis = mostrarOcultos ? radar.anuncios : radar.anuncios.filter((item) => !estaOcultoRadar(item));
 
   return (
     <>
@@ -347,7 +374,7 @@ export default function CentralAngariacaoView() {
             <div>
               <span className="central-radar-kicker">Radar Inteligente</span>
               <h3>Novas oportunidades, sem repetir anúncio</h3>
-              <p>O Radar faz uma checagem diária mesmo com o painel fechado. Enquanto você trabalha no sistema, buscas vencidas também podem ser atualizadas a cada 2 horas. O primeiro resultado vira a referência e não gera alerta.</p>
+              <p>O Radar faz uma checagem diária mesmo com o painel fechado. Enquanto você trabalha no sistema, buscas vencidas também podem ser atualizadas a cada 2 horas. Os anúncios coletados ficam disponíveis para consulta. A primeira coleta com cobertura suficiente forma a referência e não gera alerta.</p>
             </div>
             <div className="central-radar-metricas">
               <strong>{radar.buscas.filter((item) => item.ativo).length}<small>buscas ativas</small></strong>
@@ -374,6 +401,7 @@ export default function CentralAngariacaoView() {
                       <div>
                         <div className="central-card-tags"><span>{busca.filtros.portal}</span>{novos > 0 && <span className="radar-novo">{novos} novo{novos === 1 ? "" : "s"}</span>}</div>
                         <h3>{busca.nome}</h3>
+                        {!busca.comparacaoDesde && <span>Base não revisada · aguardando coleta com cobertura suficiente</span>}
                         <p>{[busca.filtros.tipo, busca.filtros.bairro, busca.filtros.cidade].filter(Boolean).join(" · ")}</p>
                         <small>{busca.ultimoCheck
                           ? `Última verificação${busca.ultimoCheckOrigem ? ` (${busca.ultimoCheckOrigem})` : ""}: ${fmtDataHoraIso(busca.ultimoCheck)}`
@@ -390,25 +418,25 @@ export default function CentralAngariacaoView() {
               </div>
 
               <div className="central-radar-lista-head">
-                <div><h3>Anúncios encontrados</h3><span>Priorizados por sinais objetivos do anúncio</span></div>
+                <div><h3>Anúncios encontrados</h3><span>Coletas parciais também ficam disponíveis para consulta e abertura no portal.</span></div>
                 <div className="central-result-actions">
                   {anunciosRadarOcultos.length > 0 && <button className="btn btn-ghost" type="button" onClick={() => setMostrarOcultos((atual) => !atual)}>{mostrarOcultos ? "Ocultar repetidos" : `Mostrar ${anunciosRadarOcultos.length} visualizado${anunciosRadarOcultos.length === 1 ? "" : "s"}/repetido${anunciosRadarOcultos.length === 1 ? "" : "s"}`}</button>}
-                  {radarNovos > 0 && <button className="btn btn-ghost" type="button" onClick={() => void marcarTodosVistos()}>Marcar todos como vistos</button>}
+                  {radar.anuncios.some((item) => !item.visto) && <button className="btn btn-ghost" type="button" onClick={() => void marcarTodosVistos()}>Marcar todos como vistos</button>}
                 </div>
               </div>
-              {!anunciosRadarVisiveis.length ? <div className="card central-empty">{radar.anuncios.length ? "Todos os anúncios encontrados já foram visualizados ou estão no pipeline." : "O histórico começará a aparecer quando o Radar encontrar anúncios novos."}</div> : (
+              {!anunciosRadarVisiveis.length ? <div className="card central-empty">{radar.anuncios.length ? "Todos os anúncios encontrados já foram visualizados ou estão no pipeline." : "A base aparecerá após uma coleta. Novidades exigem uma comparação com cobertura suficiente."}</div> : (
                 <div className="central-result-grid">
                   {anunciosRadarVisiveis.map((item) => {
                     const anuncio = item.anuncio;
                     const avaliacao = avaliarOportunidade(anuncio);
                     const repeticao = repeticaoDo(anuncio);
-                    const visualizado = anunciosVisualizados.has(chaveAnuncio(anuncio));
+                    const visualizado = item.anuncioGlobalId ? item.visto : anunciosVisualizados.has(chaveAnuncio(anuncio));
                     const duplicado = repeticao.ocultar;
                     return (
                       <article className={`card central-card${radarPendente(item) ? " radar-nao-visto" : ""}${visualizado ? " central-card-visualizado" : ""}`} key={item.id}>
                         <div className="central-card-media">{anuncio.imagem ? <Image loader={carregarImagemPortal} unoptimized src={`/api/central-angariacao/imagem?url=${encodeURIComponent(anuncio.imagem)}`} alt="" fill sizes="(max-width: 720px) 100vw, 33vw" /> : <span>Sem foto disponibilizada</span>}</div>
                         <div className="central-card-body">
-                          <div className="central-card-tags"><span>{rotuloPortal(anuncio.portal)}</span><span className={`radar-score ${avaliacao.faixa}`}>{avaliacao.nota}/100</span>{radarPendente(item) && <span className="radar-novo">Novo</span>}{visualizado && <span className="visualizado">Visualizado</span>}{repeticao.motivo === "url-na-carteira" && <span className="duplicado">Já está na carteira</span>}{repeticao.motivo === "casa-no-pipeline" && <span className="duplicado">Casa já no pipeline</span>}{repeticao.motivo === "apartamento-no-endereco" && <span className="endereco-pipeline">Endereço no pipeline</span>}<EtiquetaCarteiraSemBloqueio correspondencias={repeticao.naCarteiraSemBloqueio} /></div>
+                          <div className="central-card-tags"><span>{rotuloPortal(anuncio.portal)}</span><span className={`radar-score ${avaliacao.faixa}`}>{avaliacao.nota}/100</span>{radarPendente(item) && <span className="radar-novo">Novo</span>}{!item.novidade && !item.visto && <span>Base não revisada</span>}{item.coberturaColeta && item.coberturaColeta !== "completa" && <span title="Este anúncio está disponível, mas a coleta não comprovou cobertura completa.">Coleta parcial</span>}{visualizado && <span className="visualizado">Visualizado</span>}{repeticao.motivo === "url-na-carteira" && <span className="duplicado">Já está na carteira</span>}{repeticao.motivo === "casa-no-pipeline" && <span className="duplicado">Casa já no pipeline</span>}{repeticao.motivo === "apartamento-no-endereco" && <span className="endereco-pipeline">Endereço no pipeline</span>}<EtiquetaCarteiraSemBloqueio correspondencias={repeticao.naCarteiraSemBloqueio} /></div>
                           <h3>{anuncio.titulo}</h3>
                           <strong className="central-price">{anuncio.preco ? fmtMoney(anuncio.preco) : "Preço não informado"}</strong>
                           <p>{[anuncio.endereco, anuncio.bairro, anuncio.cidade].filter(Boolean).join(" · ") || "Localização não informada"}</p>
@@ -425,6 +453,7 @@ export default function CentralAngariacaoView() {
                   })}
                 </div>
               )}
+              {radar.proximaPagina != null && <button className="btn btn-ghost" type="button" disabled={carregandoMaisRadar} onClick={() => void carregarMaisRadar()}>{carregandoMaisRadar ? "Carregando…" : "Carregar mais anúncios"}</button>}
             </>
           )}
         </section>

@@ -130,7 +130,7 @@ describe("fronteira da qualidade de localização (R4.2a → R4.2i)", () => {
       const texto = no.getText();
       if (texto.includes('"radar_anuncios"')) leituras.push(texto.slice(texto.lastIndexOf(".order(")));
     });
-    expect(leituras).toEqual(['.order("encontrado_em", { ascending: false })']);
+    expect(leituras).toEqual(['.order("id", { ascending: false })', '.order("encontrado_em", { ascending: false })']);
   });
 
   it("o resumo só entra no evento após a persistência e não decide a seleção", () => {
