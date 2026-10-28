@@ -34,7 +34,7 @@ export function filtrosGlobaisRadar(filtros: FiltrosCentralAngariacao): FiltrosC
 export { qualificarOfertaRadar } from "./qualificacaoOfertaRadar";
 
 /** A consulta privada conserva anúncios utilizáveis, mesmo sem prova para a camada global. */
-function anuncioParaBasePrivada(anuncio: AnuncioCentralAngariacao, filtros: FiltrosCentralAngariacao): AnuncioCentralAngariacao | null {
+export function anuncioParaBasePrivada(anuncio: AnuncioCentralAngariacao, filtros: FiltrosCentralAngariacao): AnuncioCentralAngariacao | null {
   const hosts = { "chaves-na-mao":"www.chavesnamao.com.br",olx:"pr.olx.com.br",wimoveis:"www.wimoveis.com.br",zap:"www.zapimoveis.com.br","viva-real":"www.vivareal.com.br" };
   let url: URL;
   try { url = new URL(anuncio.url, `https://${hosts[anuncio.portal]}`); } catch { return null; }

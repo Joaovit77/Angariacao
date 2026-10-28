@@ -2917,6 +2917,12 @@ pode ser atribuída pelo servidor. A UI mostra Base não revisada/Coleta parcial
 permite carregar mais páginas da base; 120 é tamanho de página de leitura, sem teto total da consulta.
 A ordenação continua por `encontrado_em`, com desempate por ID para paginação estável.
 
+#### Fundação resumível passiva
+
+A [fronteira pré-H](docs/RADAR-FUNDACAO-PRE-H.md) mantém o leitor de coverage e os emissores publicados.
+O adapter resumível compõe a continuação Flight sem alterar o caminho legado; observação fresca é
+uma política explícita do motor. A fundação passiva não ativa callers nem negocia retorno leve.
+
 #### Fundação global do Radar — R6.1-A/B sem caller
 
 A fundação global aditiva vive em `radar_universos`, `radar_anuncios_globais`,

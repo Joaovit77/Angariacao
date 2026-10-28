@@ -511,6 +511,8 @@ export interface EventoConsultaFirecrawl {
  * `aleatorio` e `esperar` só existem para testes determinísticos.
  */
 export interface PoliticaRetryFirecrawl {
+  /** Aquisição resumível exige observação fresca, sem reapresentar cache como nova. */
+  exigirNova?: boolean;
   restanteMs: () => number;
   reservaPosAquisicaoMs: number;
   aleatorio?: () => number;
@@ -645,7 +647,8 @@ export async function buscarComFirecrawl(
   tempoRadar?: TempoRodadaRadar,
 ): Promise<AnuncioCentralAngariacao[]> {
   exigirCapacidadeAquisicaoRadar(filtros);
-  const chave = chaveCanonicaConsultaPortal(filtros.portal, urlPesquisa);
+  const chaveCache = chaveCanonicaConsultaPortal(filtros.portal, urlPesquisa);
+  const chave = politicaRetry?.exigirNova ? `${chaveCache}:observacao-fresca` : chaveCache;
   const existente = consultasEmAndamento.get(chave);
   if (existente) {
     registrarOrigem?.("em_andamento");
@@ -688,7 +691,7 @@ export async function buscarComFirecrawl(
   const consulta = (async () => {
     const cache = getCache({ namespace: "central-firecrawl-html-v2" });
     try {
-      const armazenado = await cache.get(chave);
+      const armazenado = politicaRetry?.exigirNova ? null : await cache.get(chave);
       if (typeof armazenado === "string") {
         const html = gunzipSync(Buffer.from(armazenado, "base64")).toString("utf8");
         registrarOrigem?.("cache");

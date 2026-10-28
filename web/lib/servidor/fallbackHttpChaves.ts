@@ -233,10 +233,10 @@ export async function buscarComFallbackHttpChaves(
     if (!paginaRadarSegura) return buscarComFirecrawl(filtros, urlPesquisa, registrarOrigem, registrarDiagnosticoOlx, observar, politicaRetry, registrarAquisicao, orcamentoRadar, tempoRadar);
   }
   const chave = chaveCanonicaConsultaPortal(filtros.portal, urlPesquisa);
-  if (await cacheFirecrawlDisponivel(chave)) {
+  if (!politicaRetry?.exigirNova && await cacheFirecrawlDisponivel(chave)) {
     return buscarComFirecrawl(filtros, urlPesquisa, registrarOrigem, registrarDiagnosticoOlx, observar, politicaRetry, registrarAquisicao, orcamentoRadar, tempoRadar);
   }
-  const armazenado = await cacheHttp(chave, filtros);
+  const armazenado = politicaRetry?.exigirNova ? null : await cacheHttp(chave, filtros);
   if (armazenado) {
     exigirTempo(0);
     registrarOrigem?.("cache");
@@ -250,7 +250,7 @@ export async function buscarComFallbackHttpChaves(
   } catch (erro) {
     if (!(erro instanceof FirecrawlIndisponivel)) throw erro;
   }
-  const cacheAposFalha = await cacheHttp(chave, filtros);
+  const cacheAposFalha = politicaRetry?.exigirNova ? null : await cacheHttp(chave, filtros);
   if (cacheAposFalha) {
     exigirTempo(0);
     registrarOrigem?.("cache");
