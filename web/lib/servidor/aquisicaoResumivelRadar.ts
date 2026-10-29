@@ -1,3 +1,4 @@
+import { CONTRATO_RETORNO_LEVE_RADAR } from "../calculo/retornoResumivelRadar";
 import type { ReceiptJanelaRadar } from "../calculo/coberturaJanelaRadar";
 import { CONTRATO_JANELA_CHAVES_RADAR } from "../calculo/coberturaJanelaRadar";
 import "server-only";
@@ -20,8 +21,11 @@ interface Reserva {
   disponivel: boolean; varreduraId: string; chave: string; reserva: string;
   url: string; pagina: number; progresso: ProgressoRadar;
 }
-export interface ResultadoResumivelRadar extends ResultadoIngestaoRadar, Partial<ReceiptJanelaRadar> { progresso: ProgressoRadar }
+export interface ResultadoResumivelRadar extends ResultadoIngestaoRadar, Partial<ReceiptJanelaRadar> {
+  progresso: ProgressoRadar; contratoRetorno?: typeof CONTRATO_RETORNO_LEVE_RADAR;
+}
 interface Opcoes {
+  incluirAnunciosColetados?: boolean;
   restanteMs: () => number; orcamento?: OrcamentoRodadaRadar;
   observar?: (evento: EventoConsultaFirecrawl) => void;
   registrarLote?: (coletados: AnuncioCentralAngariacao[], finalizacao: Awaited<ReturnType<typeof finalizarColetaCentralAngariacao>>) => void;
@@ -43,8 +47,10 @@ export async function executarAquisicaoResumivelRadar(supabase: SupabaseClient,
   if (inicio.error) throw inicio.error;
   const reserva = inicio.data as Reserva;
   const orcamento = opcoes.orcamento ?? criarOrcamentoRadar();
+  const incluirAnunciosColetados = opcoes.incluirAnunciosColetados ?? true;
+  const contratoRetorno = incluirAnunciosColetados ? {} : { contratoRetorno: CONTRATO_RETORNO_LEVE_RADAR };
   let resultado: ResultadoResumivelRadar = { novos: 0, anuncios: [], cobertura: "parcial", baselineFormada: false,
-    varreduraId: reserva.progresso.varreduraId, progresso: reserva.progresso };
+    varreduraId: reserva.progresso.varreduraId, progresso: reserva.progresso, ...contratoRetorno };
   let url: string | null = reserva.disponivel ? reserva.url : null;
   let lidas = 0, coletados = 0;
   let motivo: MotivoTerminoRadar = "limite_tempo";
@@ -53,7 +59,8 @@ export async function executarAquisicaoResumivelRadar(supabase: SupabaseClient,
     anuncios: AnuncioCentralAngariacao[] = [], basePrivada: AnuncioCentralAngariacao[] = [], parada: string | null = null) => {
     const r = await supabase.rpc("avancar_varredura_resumivel_radar", { p_user_id: busca.user_id, p_busca_id: busca.id,
       p_varredura_id: reserva.varreduraId, p_reserva: reserva.reserva, p_pagina: pagina,
-      p_anuncios: anuncios, p_anuncios_base: basePrivada, p_origem: origem, p_motivo: parada });
+      p_anuncios: anuncios, p_anuncios_base: basePrivada, p_origem: origem, p_motivo: parada,
+      ...(!incluirAnunciosColetados ? { p_incluir_anuncios_coletados: false } : {}) });
     if (r.error) throw r.error;
     resultado = r.data as ResultadoResumivelRadar;
   };

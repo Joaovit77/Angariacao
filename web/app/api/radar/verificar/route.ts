@@ -1,3 +1,4 @@
+import { CONTRATO_RETORNO_LEVE_RADAR } from "@/lib/calculo/retornoResumivelRadar";
 import { agoraISOString } from "@/lib/datas";
 import { autenticarRequisicao } from "@/lib/servidor/autenticacao";
 import { clienteServicoRadar, filtrosGlobaisRadar, persistirColetaRadar } from "@/lib/servidor/ingestaoRadar";
@@ -6,6 +7,7 @@ import { RESERVA_PROCESSAMENTO_CENTRAL_MS } from "@/lib/servidor/fallbackHttpCha
 import { finalizarColetaCentralAngariacao } from "@/lib/servidor/finalizacaoCentralAngariacao";
 import { criarObservadorRadar, novoIdExecucao } from "@/lib/servidor/observabilidadeRadar";
 import { filtrosRadarSaoLegados } from "@/lib/calculo/aquisicaoRadar";
+import { urlUniversoRadar } from "@/lib/servidor/universoRadar";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -18,6 +20,8 @@ export async function POST(request: Request) {
   const corpo = await request.json().catch(() => null);
   if (!corpo || typeof corpo.buscaId !== "string" || !/^[0-9a-f-]{36}$/i.test(corpo.buscaId)
     || !["manual", "navegador"].includes(corpo.origem)) return responder({ ok: false, aviso: "Informe uma busca salva e a origem da verificação." }, 400);
+  const retornoLeve = corpo.contratoRetorno === CONTRATO_RETORNO_LEVE_RADAR;
+  if (corpo.contratoRetorno !== undefined && !retornoLeve) return responder({ ok: false, aviso: "Contrato de retorno não suportado." }, 400);
   // Filtros, identidade do dono e evidência nunca são aceitos do browser.
   const { data: busca, error } = await sessao.supabase.from("radar_buscas").select("id,user_id,filtros,ativo")
     .eq("id", corpo.buscaId).eq("user_id", sessao.userId).maybeSingle();
@@ -30,12 +34,21 @@ export async function POST(request: Request) {
   let filtros;
   try { filtros = filtrosGlobaisRadar(busca.filtros); }
   catch { return responder({ ok: false, aviso: "Este recorte ainda não está disponível para o Radar." }, 422); }
+  if (retornoLeve && (filtros.portal !== "chaves-na-mao" || !urlUniversoRadar(filtros))) return responder({ ok: false, aviso: "Contrato de retorno indisponível para esta aquisição." }, 400);
   const inicio = performance.now();
   const observador = criarObservadorRadar({ execucaoId: novoIdExecucao(),
     iniciador: corpo.origem === "navegador" ? "monitor_navegador" : "verificar_agora", portal: filtros.portal, buscaId: busca.id });
   try {
     const supabase = clienteServicoRadar();
     const restanteMs = () => maxDuration * 1000 - (performance.now() - inicio);
+    if (retornoLeve) {
+      const { executarAquisicaoResumivelRadar } = await import("@/lib/servidor/aquisicaoResumivelRadar");
+      const resultado = await executarAquisicaoResumivelRadar(supabase, { id: busca.id, user_id: sessao.userId }, filtros,
+        corpo.origem, { restanteMs, observar: observador.observar, incluirAnunciosColetados: false });
+      observador.concluir(sessao.userId, "central-busca-ok", { novos: resultado.novos,
+        paginacao: resultado.coleta, duracaoMs: performance.now() - inicio });
+      return responder({ ok: true, ...resultado });
+    }
     const coleta = await buscarColetaPaginadaRadar(filtros, { restanteMs, observar: observador.observar,
       politicaRetry: { restanteMs, reservaPosAquisicaoMs: RESERVA_PROCESSAMENTO_CENTRAL_MS } });
     const { anuncios: coletados, aquisicao } = coleta;

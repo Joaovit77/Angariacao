@@ -1,10 +1,10 @@
 # Fundação resumível passiva do Radar — fronteira pré-H
 
-Este candidato local parte de `0d23acd3d63eb07617533ac6bb920ea358902268`. Não ativa o motor, não muda os emissores e não implementa negociação de retorno leve.
+Este documento descreve a camada de fundação isolada, que não ativa emissores. A capacidade HTTP de negociação está separada no [contrato de retorno leve](RADAR-RETORNO-LEVE.md).
 
 ## Fronteira
 
-O endpoint, navegador, monitor, cron, paginação, leitor de coverage e parser publicados permanecem na implementação de referência. A fundação acrescenta somente os módulos de aplicação do motor resumível, sem um caller ativo. Os contratos E–G são pré-requisitos de banco já instalados no alvo autorizado.
+O caminho sem opt-in do endpoint, o navegador, monitor, cron, paginação, leitor de coverage e parser preservam a implementação publicada de referência. A fundação acrescenta somente os módulos de aplicação do motor resumível, sem um caller ativo. Os contratos E–G são pré-requisitos de banco já instalados no alvo autorizado.
 
 `lerEvidenciaPaginaRadar` conserva sua semântica publicada. `lerEvidenciaPaginaResumivelRadar`, no adapter, compõe o resultado desse leitor com os literais Flight: só aceita destino publicado, preserva href e rejeita conflitos. O leitor de hidratação nunca é importado pelo caminho legado. A classificação individual continua usando a função compartilhada publicada; IDs/classes não dependem de Flight.
 
@@ -22,11 +22,11 @@ Não há feature flag, nova rota ou mecanismo de ativação. Nenhum emissor pass
 
 O ledger remoto é a autoridade: o alvo autorizado já possui E–H. Este candidato de aplicação não transporta nem reaplica essas migrations, não remove nenhuma e não altera `supabase-schema.sql` ou o diretório de migrations da base publicada. Esses arquivos da base não devem ser usados para inferir o ledger atual ou executar `db push`.
 
-O motor usa as assinaturas históricas de nove/sete argumentos. A negociação e o booleano do retorno leve não integram o candidato. A migration adicional instalada permanece sem adesão pelo aplicativo.
+Sem adesão, o motor conserva a RPC histórica de nove argumentos. O receptor com opt-in pode solicitar o overload compatível já instalado, conforme o contrato de retorno leve, sem alterar a fundação ou aplicar migrations.
 
 ## Validação reproduzível, sem rede
 
-Os testes, fixtures, SQL de ensaio e loaders pertencem a um pacote de validação separado, congelado por hash no Gate M. Não compõem o delta da aplicação. O manifesto de validação vincula o pacote aos nove hashes de runtime deste candidato.
+Os testes da fundação, fixtures, SQL de ensaio e loaders pertencem a um pacote de validação separado, congelado por hash no Gate M. Não compõem o delta da aplicação. O manifesto de validação vincula o pacote aos nove hashes de runtime deste candidato.
 
 A comparação A/B carrega módulos independentes do commit publicado pelo Git. As nove fixtures cobrem normal, href, sem next, Flight, ausência de Flight, conflito, hidratação parcial, vazio e terminal. Compara leitura, classes, sequência e coverage. Os testes do fluxo comparam aquisição, parser, fallback, cache, receipts, erros e montagem da persistência simulada. Somente IDs de aquisição gerados e duração são normalizados; dono, busca e payload funcional permanecem literais.
 
@@ -36,4 +36,4 @@ O relatório do Gate M contém os comandos, configurações, inventários e SHA2
 
 ## Limites
 
-A equivalência observável foi exercitada nos cenários determinísticos selecionados, não em todo payload possível. Baseline e marcos do A/B são simulados; o SQL/PGlite é validação local distinta. Production funcional, navegador real, cron real e portais não são exercitados neste gate. A fundação isolada exige validação e decisão posteriores antes de qualquer integração de caller ou publicação.
+A equivalência observável foi exercitada nos cenários determinísticos selecionados, não em todo payload possível. Baseline e marcos do A/B são simulados; o SQL/PGlite é validação local distinta. Production funcional, navegador real, cron real e portais não são exercitados neste gate. Ativação por emissores automáticos e publicação exigem gates próprios.
