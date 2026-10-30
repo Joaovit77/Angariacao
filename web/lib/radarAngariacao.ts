@@ -1,5 +1,7 @@
 "use client";
 
+import { CONTRATO_RETORNO_LEVE_RADAR } from "./calculo/retornoResumivelRadar";
+import { chaveBairroRadar, rotaBairroUniversoRadar } from "./calculo/bairroUniversoRadar";
 import { fetchAutenticado } from "./auth/recuperacaoSessao";
 import { anuncioPertenceAoMercado, type AnuncioCentralAngariacao, type FiltrosCentralAngariacao } from "./calculo/centralAngariacao";
 import {
@@ -221,13 +223,21 @@ export async function verificarBuscaRadar(
 ) {
   // O servidor descobre o dono pela sessão e lê os filtros da busca salva.
   void userId;
+  // Adesão desta origem; a rota revalida o contexto salvo e o dono da busca.
+  const retornoLeve = origem === "manual" && busca.filtros.portal === "chaves-na-mao"
+    && capacidadeContratoExplicitoRadar(busca.filtros).suportado
+    && (!chaveBairroRadar(busca.filtros.bairro) || !!rotaBairroUniversoRadar(busca.filtros));
   const resposta = await fetchAutenticado("/api/radar/verificar", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ buscaId: busca.id, origem }),
+    body: JSON.stringify({ buscaId: busca.id, origem,
+      ...(retornoLeve ? { contratoRetorno: CONTRATO_RETORNO_LEVE_RADAR } : {}) }),
   }, { repetivel: false });
   if (!resposta) throw new Error("Sua sessão expirou. Entre novamente.");
-  const resultado = await resposta.json() as { ok: boolean; aviso?: string; anuncios?: DbAnuncioRadar[]; cobertura?: string };
+  const resultado = await resposta.json() as { ok: boolean; aviso?: string; anuncios?: DbAnuncioRadar[]; cobertura?: string; contratoRetorno?: string };
   if (!resposta.ok || !resultado.ok) throw new Error(resultado.aviso || "Não foi possível verificar o Radar agora.");
+  if (retornoLeve && resultado.contratoRetorno !== CONTRATO_RETORNO_LEVE_RADAR) {
+    throw new Error("O Radar não confirmou o contrato de retorno solicitado.");
+  }
   registrarCobertura?.(resultado.cobertura);
   return (resultado.anuncios || []).map(fromDbAnuncio);
 }

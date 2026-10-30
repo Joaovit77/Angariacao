@@ -33,7 +33,7 @@ beforeEach(() => {
     throw new Error("Tabela não prevista pelo caller legado.");
   }), rpc: vi.fn(() => { throw new Error("RPC inesperada no ensaio do caller."); }) };
   m.clienteServidor.mockReturnValue(banco); m.clienteBrowser.mockReturnValue({}); m.resumo.mockReturnValue({});
-  m.fetchAuth.mockResolvedValue(Response.json({ ok: true, anuncios: [], novos: 0 }));
+  m.fetchAuth.mockResolvedValue(Response.json({ ok: true, anuncios: [], novos: 0, contratoRetorno: "radar_resumivel_retorno_leve_v1" }));
   m.paginar.mockResolvedValue({ anuncios: [], aquisicao: { id: "local" }, resumo: { paginasLidas: 1 }, orcamento: {} });
   m.finalizar.mockResolvedValue({ anuncios: [], comparaveisSalvos: 0, erroComparaveis: null });
   m.persistir.mockResolvedValue({ novos: 0, anuncios: [], cobertura: "parcial", baselineFormada: false });
@@ -46,11 +46,11 @@ function exigirCronLegado() {
   expect(m.importarMotor).not.toHaveBeenCalled(); expect(banco.rpc).not.toHaveBeenCalled();
   expect(m.paginar.mock.calls[0][1]).not.toHaveProperty("incluirAnunciosColetados");
 }
-describe("O — emissores Chaves continuam publicados/legados", () => {
-  it.each(["manual", "navegador"] as const)("verificarBuscaRadar %s envia somente buscaId/origem, sem H", async origem => {
+describe("U — origem manual isolada; cron permanece legado", () => {
+  it.each(["manual", "navegador"] as const)("verificarBuscaRadar %s isola contrato por origem sem ativar o cron", async origem => {
     expect(await verificarBuscaRadar("dono-confiavel", busca, origem)).toEqual([]);
     expect(m.fetchAuth).toHaveBeenCalledOnce(); const [url, opcoes, retry] = m.fetchAuth.mock.calls[0];
-    expect(url).toBe("/api/radar/verificar"); expect(JSON.parse(opcoes.body)).toEqual({ buscaId: busca.id, origem });
+    expect(url).toBe("/api/radar/verificar"); expect(JSON.parse(opcoes.body)).toEqual({ buscaId: busca.id, origem, ...(origem === "manual" ? { contratoRetorno: "radar_resumivel_retorno_leve_v1" } : {}) });
     expect(retry).toEqual({ repetivel: false }); expect(m.clienteBrowser).not.toHaveBeenCalled(); expect(m.importarMotor).not.toHaveBeenCalled();
   });
   it("executarMonitorRadar usa aquisição e writer legados para Chaves explícito", async () => {

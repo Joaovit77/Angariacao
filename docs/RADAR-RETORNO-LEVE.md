@@ -1,6 +1,6 @@
 # Radar — contrato de retorno leve com opt-in estrito
 
-A rota autenticada `POST /api/radar/verificar` negocia somente o formato/caminho explicitamente solicitado. A propriedade de negociação não é acrescentada pelos emissores automáticos.
+A rota autenticada `POST /api/radar/verificar` negocia somente o formato/caminho explicitamente solicitado. A seleção de contrato pelo caller obedece à fronteira de origem descrita abaixo.
 
 ## Requisição e seleção
 
@@ -20,12 +20,12 @@ A migration H e os overloads compatíveis são pré-requisitos do ambiente. Este
 
 ## Emissores e passividade operacional
 
-`verificarBuscaRadar`, `executarMonitorRadar`, `/api/cron/radar` e o componente global de monitoramento permanecem publicados/legados. O navegador envia somente `buscaId` e `origem`; o cron não seleciona retorno leve nem passa a usar diretamente o motor. Não há flag, novo endpoint, mudança de timer, scheduler, timeout ou budget.
+Somente a origem `manual` solicita H para Chaves com contexto suportado e rota disponível. Navegador e cron permanecem legados. Outros portais e contextos não selecionados conservam o caminho legado. A origem não é autorização: a rota valida novamente dono e filtros salvos.
 
-A capacidade no receptor só é exercida por uma requisição com opt-in explícito e válido. Adesão automática de navegador/cron exige decisão e gate próprios.
+O caller H exige o marcador de resposta correto; falha não dispara fallback FULL ou repetição automática. Cards continuam pela leitura privada paginada. Não há flag, novo endpoint, mudança de timer, seleção, scheduler, timeout ou budget. A capacidade de retorno não altera a elegibilidade.
 
 ## Validação
 
-Os testes da rota comparam o caminho sem versão ao handler do commit Production de referência e verificam ordem, argumentos, receipts, snapshot, erros, dono e negociação inválida. Um grupo isolado falha se o módulo resumível for importado pelo legado. Testes dos emissores usam Chaves explícito e exigem ausência de H.
+Os testes da rota comparam o caminho sem versão ao handler do commit Production de referência e verificam ordem, argumentos, receipts, snapshot, erros, dono e negociação inválida. Um grupo isolado falha se o módulo resumível for importado pelo legado. Testes dos emissores usam Chaves explícito e verificam adesão somente na origem selecionada, com ausência de H nas demais. Uma integração local atravessa o caller e o motor reais até a assinatura RPC simulada de dez argumentos; aquisição e banco externos permanecem bloqueados.
 
 O teste do motor verifica nove/dez argumentos e retorno sem snapshot. Os ensaios SQL/PGlite e a regressão da fundação usam fixtures locais já validadas, sem Supabase, portais ou credenciais reais. Testes reais ou publicação não são autorizados por este contrato.

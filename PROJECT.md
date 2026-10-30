@@ -2923,7 +2923,7 @@ A [fronteira pré-H](docs/RADAR-FUNDACAO-PRE-H.md) mantém o leitor de coverage 
 O adapter resumível compõe a continuação Flight sem alterar o caminho legado; observação fresca é
 uma política explícita do motor. A fundação não ativa callers. O [receptor com opt-in estrito](docs/RADAR-RETORNO-LEVE.md)
 seleciona o resumível somente com contrato explícito válido; ausência de contrato conserva o legado.
-Navegador e cron não solicitam o modo leve.
+Somente a origem `manual` solicita H para Chaves com contexto suportado e rota disponível. Navegador e cron permanecem legados.
 
 #### Fundação global do Radar — R6.1-A/B sem caller
 
