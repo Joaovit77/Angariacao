@@ -1,0 +1,23 @@
+{
+  "status": "PASS",
+  "historical_files": 486,
+  "product_files": 769,
+  "namespace_lists": 15,
+  "propagation_prefix": {
+    "bytes": 46919,
+    "sha256": "b7ffb21d3b052021535246907f643931aaa22cdc80978b8181c8ee5a65e4571e"
+  },
+  "verified_at_utc": "2026-10-18T00:17:40.912Z",
+  "g2b_execution": "PASS",
+  "full_classification": "NAO_PROMISSOR_DIAGNOSTICO",
+  "reduced_classification": "NAO_PROMISSOR_DIAGNOSTICO",
+  "comparison": "COMPARISON_INCONCLUSIVE",
+  "g2b_authorization": "CLOSED",
+  "reusable_calls": 0,
+  "product_unchanged": true,
+  "oracle_unchanged": true,
+  "scorers_unchanged": true,
+  "parser_adapters_unchanged": true,
+  "outputs_unchanged": true,
+  "propagation_append_only": true
+}

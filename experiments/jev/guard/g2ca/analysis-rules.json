@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "scope": "DOCUMENTARY_ORACLE_ASSISTED_COUNTERFACTUAL_ONLY",
+  "historical_rescoring": false,
+  "production_rule": false,
+  "confidence_changes_verdict": false,
+  "invalid_semantics": false,
+  "raw_reconstruction": false,
+  "priority": [
+    {
+      "id": 1,
+      "condition": "Envelope FULL não integralmente válido",
+      "label": "DIMENSIONS_INSUFFICIENT"
+    },
+    {
+      "id": 2,
+      "condition": "Ao menos um FAIL observado coincide com expected FAIL e a materialidade histórica é MATERIAL; uma violação material comprovada basta conforme policy G0",
+      "label": "DIMENSIONS_SUPPORT_REJECT"
+    },
+    {
+      "id": 3,
+      "condition": "Sem sinal material confirmado, há FAIL observado ou INCONCLUSIVE observado; não converter FAIL sem prova material em REJECT",
+      "label": "DIMENSIONS_MIXED"
+    },
+    {
+      "id": 4,
+      "condition": "Onze observações disponíveis, somente PASS/NOT_APPLICABLE e nenhum sinal de incerteza/FAIL",
+      "label": "DIMENSIONS_SUPPORT_APPROVE"
+    }
+  ],
+  "mixed_dimensional_correctness_separate": true,
+  "inconclusive_support": "Os rótulos pedidos não incluem SUPPORT_INCONCLUSIVE. Sinais corretos INCONCLUSIVE e FAIL espúrios são registrados separadamente; MIXED não significa certeza de REJECT nem novo verdict.",
+  "aggregation_failure": "Só registrar contradição quando um sinal material histórico é corretamente detectado no FULL e seu macro APPROVE o contradiz. Coexistência de outras dimensões erradas impede atribuição exclusiva à agregação.",
+  "limitations": "Apoio descritivo usa oracle/contexto congelados, portanto não é agregador executável sem oracle, prova de mecanismo interno, scorer novo ou correção de resultados."
+}

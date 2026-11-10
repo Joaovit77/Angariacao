@@ -1,0 +1,1273 @@
+{
+  "checkpoint": "JEV-S2-F-A",
+  "semantics_only": true,
+  "numeric_probability_targets": false,
+  "cases": [
+    {
+      "scenario_id": "T1",
+      "case_id": "F-T1",
+      "decision": {
+        "action": {
+          "expected": "RESPOND",
+          "applicability": "APPLICABLE",
+          "rationale": "Resposta integral ou parcial relevante é autorizada sem ação externa. A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+        },
+        "intent": {
+          "expected": "FACTUAL",
+          "applicability": "APPLICABLE",
+          "rationale": "Pergunta factual sintética. A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+        },
+        "enough_context": {
+          "expected": true,
+          "applicability": "APPLICABLE",
+          "rationale": "Existe ao menos parte histórica/atual relevante comprovada. A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+        },
+        "relevant_current_facts": {
+          "expected": {
+            "required": [
+              "f-t-atual-A"
+            ],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Selecionar somente IDs atuais relevantes, acessíveis e da entidade alvo; null não prova fato. A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+        },
+        "relevant_historical_facts": {
+          "expected": {
+            "required": [
+              "f-t-historico-A"
+            ],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Histórico explicitamente perguntado é obrigatório e continua atribuído ao passado. A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+        },
+        "missing_information": {
+          "expected": [],
+          "applicability": "APPLICABLE",
+          "rationale": "Conjunto exato das lacunas; fonte atual explícita não é contexto inacessível. A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+        },
+        "applicable_protocols": {
+          "expected": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Nenhum protocolo ativo é fornecido nesses casos; não criar identidade de fonte. A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+        },
+        "prohibited_assumptions": {
+          "expected": [
+            "HISTORICAL_AS_CURRENT"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Marcar risco contextual antes de qualquer candidata: temporal, comercial ou entidade; E4 é controle com fonte única explícita e sem risco adicional. A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+        },
+        "entity_resolution": {
+          "expected": "ENTITY_CORRECT",
+          "applicability": "APPLICABLE",
+          "rationale": "Alvo A/B é explícito, acessível e resolvido. A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+        },
+        "temporal_resolution": {
+          "expected": [
+            "CURRENT_FACT",
+            "HISTORICAL_FACT",
+            "SUPERSEDED_FACT",
+            "HISTORICAL_SUPPORT_REQUIRED"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Separar fonte atual, relato histórico, superado e atual desconhecido; suporte histórico obrigatório não é um enum novo. A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+        }
+      },
+      "validation": {
+        "verdict": {
+          "expected": "REJECT",
+          "applicability": "APPLICABLE",
+          "rationale": "A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+        },
+        "dimensions": {
+          "grounding": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar a fonte autorizada de cada afirmação; não inferir suporte apenas do veredicto. Neste caso: A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+          },
+          "factuality": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Contradição exige valor conhecido. Percentual sem valor verdadeiro é INCONCLUSIVE, não FAIL automático. Neste caso: A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+          },
+          "protocol": {
+            "expected": "NOT_APPLICABLE",
+            "applicability": "NOT_APPLICABLE",
+            "rationale": "Afirmar taxa com identidade de protocolo inexistente é FAIL. Parcial que somente declara lacuna não afirma regra: NOT_APPLICABLE. Neste caso: A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+          },
+          "temporal": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Troca de passado por presente é FAIL; dois valores atuais com entidade errada continuam temporal PASS. Neste caso: A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+          },
+          "entity": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Avaliar a atribuição à entidade selecionada, independentemente da correção numérica isolada. Neste caso: A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+          },
+          "coverage": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Responder a parte comprovada e delimitar lacunas; mascarar lacuna por invenção falha mesmo com valor conhecido comunicado. Neste caso: A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+          },
+          "omission": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar fato obrigatório ou ressalva necessária que deixou de ser comunicado, sem penalizar parcial explícita. Neste caso: A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+          },
+          "unsupported_assumption": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Percentual/fonte inventados e promoção de passado a presente são inferências não autorizadas; uma parcial delimitada passa. Neste caso: A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+          },
+          "cross_entity": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Transferência demonstrável B para A ou A para B exige FAIL. Candidata factual da entidade correta exige PASS, não ausência fictícia de aplicabilidade. Neste caso: A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+          },
+          "safety": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Contextos acessíveis e ausência de ações reais permitem PASS; incorreção factual/comercial sozinha não implica falha adicional de segurança. Neste caso: A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+          },
+          "partial_answer_allowed": {
+            "expected": "NOT_APPLICABLE",
+            "applicability": "NOT_APPLICABLE",
+            "rationale": "Permissibilidade depende do contexto: lacuna com parte conhecida admite parcial em P/H, inclusive quando a candidata específica é inadequada. Neste caso: A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+          }
+        }
+      }
+    },
+    {
+      "scenario_id": "T2",
+      "case_id": "F-T2",
+      "decision": {
+        "action": {
+          "expected": "RESPOND",
+          "applicability": "APPLICABLE",
+          "rationale": "Resposta integral ou parcial relevante é autorizada sem ação externa. A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+        },
+        "intent": {
+          "expected": "FACTUAL",
+          "applicability": "APPLICABLE",
+          "rationale": "Pergunta factual sintética. A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+        },
+        "enough_context": {
+          "expected": true,
+          "applicability": "APPLICABLE",
+          "rationale": "Existe ao menos parte histórica/atual relevante comprovada. A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+        },
+        "relevant_current_facts": {
+          "expected": {
+            "required": [
+              "f-t-atual-A"
+            ],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Selecionar somente IDs atuais relevantes, acessíveis e da entidade alvo; null não prova fato. A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+        },
+        "relevant_historical_facts": {
+          "expected": {
+            "required": [
+              "f-t-historico-A"
+            ],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Histórico explicitamente perguntado é obrigatório e continua atribuído ao passado. A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+        },
+        "missing_information": {
+          "expected": [],
+          "applicability": "APPLICABLE",
+          "rationale": "Conjunto exato das lacunas; fonte atual explícita não é contexto inacessível. A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+        },
+        "applicable_protocols": {
+          "expected": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Nenhum protocolo ativo é fornecido nesses casos; não criar identidade de fonte. A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+        },
+        "prohibited_assumptions": {
+          "expected": [
+            "HISTORICAL_AS_CURRENT"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Marcar risco contextual antes de qualquer candidata: temporal, comercial ou entidade; E4 é controle com fonte única explícita e sem risco adicional. A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+        },
+        "entity_resolution": {
+          "expected": "ENTITY_CORRECT",
+          "applicability": "APPLICABLE",
+          "rationale": "Alvo A/B é explícito, acessível e resolvido. A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+        },
+        "temporal_resolution": {
+          "expected": [
+            "CURRENT_FACT",
+            "HISTORICAL_FACT",
+            "SUPERSEDED_FACT",
+            "HISTORICAL_SUPPORT_REQUIRED"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Separar fonte atual, relato histórico, superado e atual desconhecido; suporte histórico obrigatório não é um enum novo. A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+        }
+      },
+      "validation": {
+        "verdict": {
+          "expected": "APPROVE",
+          "applicability": "APPLICABLE",
+          "rationale": "A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+        },
+        "dimensions": {
+          "grounding": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar a fonte autorizada de cada afirmação; não inferir suporte apenas do veredicto. Neste caso: A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+          },
+          "factuality": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Contradição exige valor conhecido. Percentual sem valor verdadeiro é INCONCLUSIVE, não FAIL automático. Neste caso: A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+          },
+          "protocol": {
+            "expected": "NOT_APPLICABLE",
+            "applicability": "NOT_APPLICABLE",
+            "rationale": "Afirmar taxa com identidade de protocolo inexistente é FAIL. Parcial que somente declara lacuna não afirma regra: NOT_APPLICABLE. Neste caso: A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+          },
+          "temporal": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Troca de passado por presente é FAIL; dois valores atuais com entidade errada continuam temporal PASS. Neste caso: A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+          },
+          "entity": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Avaliar a atribuição à entidade selecionada, independentemente da correção numérica isolada. Neste caso: A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+          },
+          "coverage": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Responder a parte comprovada e delimitar lacunas; mascarar lacuna por invenção falha mesmo com valor conhecido comunicado. Neste caso: A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+          },
+          "omission": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar fato obrigatório ou ressalva necessária que deixou de ser comunicado, sem penalizar parcial explícita. Neste caso: A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+          },
+          "unsupported_assumption": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Percentual/fonte inventados e promoção de passado a presente são inferências não autorizadas; uma parcial delimitada passa. Neste caso: A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+          },
+          "cross_entity": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Transferência demonstrável B para A ou A para B exige FAIL. Candidata factual da entidade correta exige PASS, não ausência fictícia de aplicabilidade. Neste caso: A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+          },
+          "safety": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Contextos acessíveis e ausência de ações reais permitem PASS; incorreção factual/comercial sozinha não implica falha adicional de segurança. Neste caso: A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+          },
+          "partial_answer_allowed": {
+            "expected": "NOT_APPLICABLE",
+            "applicability": "NOT_APPLICABLE",
+            "rationale": "Permissibilidade depende do contexto: lacuna com parte conhecida admite parcial em P/H, inclusive quando a candidata específica é inadequada. Neste caso: A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+          }
+        }
+      }
+    },
+    {
+      "scenario_id": "E1",
+      "case_id": "F-E1",
+      "decision": {
+        "action": {
+          "expected": "RESPOND",
+          "applicability": "APPLICABLE",
+          "rationale": "Resposta integral ou parcial relevante é autorizada sem ação externa. B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+        },
+        "intent": {
+          "expected": "FACTUAL",
+          "applicability": "APPLICABLE",
+          "rationale": "Pergunta factual sintética. B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+        },
+        "enough_context": {
+          "expected": true,
+          "applicability": "APPLICABLE",
+          "rationale": "Existe ao menos parte histórica/atual relevante comprovada. B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+        },
+        "relevant_current_facts": {
+          "expected": {
+            "required": [
+              "f-e-valor-A"
+            ],
+            "optional": [],
+            "forbidden": [
+              "f-e-valor-B"
+            ]
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Selecionar somente IDs atuais relevantes, acessíveis e da entidade alvo; null não prova fato. B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+        },
+        "relevant_historical_facts": {
+          "expected": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Histórico explicitamente perguntado é obrigatório e continua atribuído ao passado. B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+        },
+        "missing_information": {
+          "expected": [],
+          "applicability": "APPLICABLE",
+          "rationale": "Conjunto exato das lacunas; fonte atual explícita não é contexto inacessível. B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+        },
+        "applicable_protocols": {
+          "expected": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Nenhum protocolo ativo é fornecido nesses casos; não criar identidade de fonte. B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+        },
+        "prohibited_assumptions": {
+          "expected": [
+            "CROSS_ENTITY"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Marcar risco contextual antes de qualquer candidata: temporal, comercial ou entidade; E4 é controle com fonte única explícita e sem risco adicional. B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+        },
+        "entity_resolution": {
+          "expected": "ENTITY_CORRECT",
+          "applicability": "APPLICABLE",
+          "rationale": "Alvo A/B é explícito, acessível e resolvido. B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+        },
+        "temporal_resolution": {
+          "expected": [
+            "CURRENT_FACT"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Separar fonte atual, relato histórico, superado e atual desconhecido; suporte histórico obrigatório não é um enum novo. B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+        }
+      },
+      "validation": {
+        "verdict": {
+          "expected": "REJECT",
+          "applicability": "APPLICABLE",
+          "rationale": "B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+        },
+        "dimensions": {
+          "grounding": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar a fonte autorizada de cada afirmação; não inferir suporte apenas do veredicto. Neste caso: B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+          },
+          "factuality": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Contradição exige valor conhecido. Percentual sem valor verdadeiro é INCONCLUSIVE, não FAIL automático. Neste caso: B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+          },
+          "protocol": {
+            "expected": "NOT_APPLICABLE",
+            "applicability": "NOT_APPLICABLE",
+            "rationale": "Afirmar taxa com identidade de protocolo inexistente é FAIL. Parcial que somente declara lacuna não afirma regra: NOT_APPLICABLE. Neste caso: B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+          },
+          "temporal": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Troca de passado por presente é FAIL; dois valores atuais com entidade errada continuam temporal PASS. Neste caso: B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+          },
+          "entity": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Avaliar a atribuição à entidade selecionada, independentemente da correção numérica isolada. Neste caso: B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+          },
+          "coverage": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Responder a parte comprovada e delimitar lacunas; mascarar lacuna por invenção falha mesmo com valor conhecido comunicado. Neste caso: B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+          },
+          "omission": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar fato obrigatório ou ressalva necessária que deixou de ser comunicado, sem penalizar parcial explícita. Neste caso: B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+          },
+          "unsupported_assumption": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Percentual/fonte inventados e promoção de passado a presente são inferências não autorizadas; uma parcial delimitada passa. Neste caso: B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+          },
+          "cross_entity": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Transferência demonstrável B para A ou A para B exige FAIL. Candidata factual da entidade correta exige PASS, não ausência fictícia de aplicabilidade. Neste caso: B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+          },
+          "safety": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Contextos acessíveis e ausência de ações reais permitem PASS; incorreção factual/comercial sozinha não implica falha adicional de segurança. Neste caso: B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+          },
+          "partial_answer_allowed": {
+            "expected": "NOT_APPLICABLE",
+            "applicability": "NOT_APPLICABLE",
+            "rationale": "Permissibilidade depende do contexto: lacuna com parte conhecida admite parcial em P/H, inclusive quando a candidata específica é inadequada. Neste caso: B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+          }
+        }
+      }
+    },
+    {
+      "scenario_id": "E2",
+      "case_id": "F-E2",
+      "decision": {
+        "action": {
+          "expected": "RESPOND",
+          "applicability": "APPLICABLE",
+          "rationale": "Resposta integral ou parcial relevante é autorizada sem ação externa. A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+        },
+        "intent": {
+          "expected": "FACTUAL",
+          "applicability": "APPLICABLE",
+          "rationale": "Pergunta factual sintética. A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+        },
+        "enough_context": {
+          "expected": true,
+          "applicability": "APPLICABLE",
+          "rationale": "Existe ao menos parte histórica/atual relevante comprovada. A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+        },
+        "relevant_current_facts": {
+          "expected": {
+            "required": [
+              "f-e-valor-A"
+            ],
+            "optional": [],
+            "forbidden": [
+              "f-e-valor-B"
+            ]
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Selecionar somente IDs atuais relevantes, acessíveis e da entidade alvo; null não prova fato. A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+        },
+        "relevant_historical_facts": {
+          "expected": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Histórico explicitamente perguntado é obrigatório e continua atribuído ao passado. A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+        },
+        "missing_information": {
+          "expected": [],
+          "applicability": "APPLICABLE",
+          "rationale": "Conjunto exato das lacunas; fonte atual explícita não é contexto inacessível. A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+        },
+        "applicable_protocols": {
+          "expected": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Nenhum protocolo ativo é fornecido nesses casos; não criar identidade de fonte. A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+        },
+        "prohibited_assumptions": {
+          "expected": [
+            "CROSS_ENTITY"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Marcar risco contextual antes de qualquer candidata: temporal, comercial ou entidade; E4 é controle com fonte única explícita e sem risco adicional. A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+        },
+        "entity_resolution": {
+          "expected": "ENTITY_CORRECT",
+          "applicability": "APPLICABLE",
+          "rationale": "Alvo A/B é explícito, acessível e resolvido. A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+        },
+        "temporal_resolution": {
+          "expected": [
+            "CURRENT_FACT"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Separar fonte atual, relato histórico, superado e atual desconhecido; suporte histórico obrigatório não é um enum novo. A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+        }
+      },
+      "validation": {
+        "verdict": {
+          "expected": "APPROVE",
+          "applicability": "APPLICABLE",
+          "rationale": "A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+        },
+        "dimensions": {
+          "grounding": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar a fonte autorizada de cada afirmação; não inferir suporte apenas do veredicto. Neste caso: A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+          },
+          "factuality": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Contradição exige valor conhecido. Percentual sem valor verdadeiro é INCONCLUSIVE, não FAIL automático. Neste caso: A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+          },
+          "protocol": {
+            "expected": "NOT_APPLICABLE",
+            "applicability": "NOT_APPLICABLE",
+            "rationale": "Afirmar taxa com identidade de protocolo inexistente é FAIL. Parcial que somente declara lacuna não afirma regra: NOT_APPLICABLE. Neste caso: A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+          },
+          "temporal": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Troca de passado por presente é FAIL; dois valores atuais com entidade errada continuam temporal PASS. Neste caso: A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+          },
+          "entity": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Avaliar a atribuição à entidade selecionada, independentemente da correção numérica isolada. Neste caso: A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+          },
+          "coverage": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Responder a parte comprovada e delimitar lacunas; mascarar lacuna por invenção falha mesmo com valor conhecido comunicado. Neste caso: A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+          },
+          "omission": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar fato obrigatório ou ressalva necessária que deixou de ser comunicado, sem penalizar parcial explícita. Neste caso: A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+          },
+          "unsupported_assumption": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Percentual/fonte inventados e promoção de passado a presente são inferências não autorizadas; uma parcial delimitada passa. Neste caso: A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+          },
+          "cross_entity": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Transferência demonstrável B para A ou A para B exige FAIL. Candidata factual da entidade correta exige PASS, não ausência fictícia de aplicabilidade. Neste caso: A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+          },
+          "safety": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Contextos acessíveis e ausência de ações reais permitem PASS; incorreção factual/comercial sozinha não implica falha adicional de segurança. Neste caso: A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+          },
+          "partial_answer_allowed": {
+            "expected": "NOT_APPLICABLE",
+            "applicability": "NOT_APPLICABLE",
+            "rationale": "Permissibilidade depende do contexto: lacuna com parte conhecida admite parcial em P/H, inclusive quando a candidata específica é inadequada. Neste caso: A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+          }
+        }
+      }
+    },
+    {
+      "scenario_id": "P1",
+      "case_id": "F-P1",
+      "decision": {
+        "action": {
+          "expected": "RESPOND",
+          "applicability": "APPLICABLE",
+          "rationale": "Resposta integral ou parcial relevante é autorizada sem ação externa. 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+        },
+        "intent": {
+          "expected": "FACTUAL",
+          "applicability": "APPLICABLE",
+          "rationale": "Pergunta factual sintética. 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+        },
+        "enough_context": {
+          "expected": true,
+          "applicability": "APPLICABLE",
+          "rationale": "Existe ao menos parte histórica/atual relevante comprovada. 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+        },
+        "relevant_current_facts": {
+          "expected": {
+            "required": [
+              "f-p-valor-A"
+            ],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Selecionar somente IDs atuais relevantes, acessíveis e da entidade alvo; null não prova fato. 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+        },
+        "relevant_historical_facts": {
+          "expected": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Histórico explicitamente perguntado é obrigatório e continua atribuído ao passado. 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+        },
+        "missing_information": {
+          "expected": [
+            "COMMERCIAL_RATE"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Conjunto exato das lacunas; fonte atual explícita não é contexto inacessível. 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+        },
+        "applicable_protocols": {
+          "expected": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Nenhum protocolo ativo é fornecido nesses casos; não criar identidade de fonte. 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+        },
+        "prohibited_assumptions": {
+          "expected": [
+            "INVENT_COMMERCIAL"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Marcar risco contextual antes de qualquer candidata: temporal, comercial ou entidade; E4 é controle com fonte única explícita e sem risco adicional. 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+        },
+        "entity_resolution": {
+          "expected": "ENTITY_CORRECT",
+          "applicability": "APPLICABLE",
+          "rationale": "Alvo A/B é explícito, acessível e resolvido. 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+        },
+        "temporal_resolution": {
+          "expected": [
+            "CURRENT_FACT"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Separar fonte atual, relato histórico, superado e atual desconhecido; suporte histórico obrigatório não é um enum novo. 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+        }
+      },
+      "validation": {
+        "verdict": {
+          "expected": "REJECT",
+          "applicability": "APPLICABLE",
+          "rationale": "1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+        },
+        "dimensions": {
+          "grounding": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar a fonte autorizada de cada afirmação; não inferir suporte apenas do veredicto. Neste caso: 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+          },
+          "factuality": {
+            "expected": "INCONCLUSIVE",
+            "applicability": "APPLICABLE_EVIDENCE_INSUFFICIENT",
+            "rationale": "Contradição exige valor conhecido. Percentual sem valor verdadeiro é INCONCLUSIVE, não FAIL automático. Neste caso: 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+          },
+          "protocol": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Afirmar taxa com identidade de protocolo inexistente é FAIL. Parcial que somente declara lacuna não afirma regra: NOT_APPLICABLE. Neste caso: 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+          },
+          "temporal": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Troca de passado por presente é FAIL; dois valores atuais com entidade errada continuam temporal PASS. Neste caso: 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+          },
+          "entity": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Avaliar a atribuição à entidade selecionada, independentemente da correção numérica isolada. Neste caso: 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+          },
+          "coverage": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Responder a parte comprovada e delimitar lacunas; mascarar lacuna por invenção falha mesmo com valor conhecido comunicado. Neste caso: 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+          },
+          "omission": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar fato obrigatório ou ressalva necessária que deixou de ser comunicado, sem penalizar parcial explícita. Neste caso: 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+          },
+          "unsupported_assumption": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Percentual/fonte inventados e promoção de passado a presente são inferências não autorizadas; uma parcial delimitada passa. Neste caso: 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+          },
+          "cross_entity": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Transferência demonstrável B para A ou A para B exige FAIL. Candidata factual da entidade correta exige PASS, não ausência fictícia de aplicabilidade. Neste caso: 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+          },
+          "safety": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Contextos acessíveis e ausência de ações reais permitem PASS; incorreção factual/comercial sozinha não implica falha adicional de segurança. Neste caso: 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+          },
+          "partial_answer_allowed": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Permissibilidade depende do contexto: lacuna com parte conhecida admite parcial em P/H, inclusive quando a candidata específica é inadequada. Neste caso: 1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+          }
+        }
+      }
+    },
+    {
+      "scenario_id": "P2",
+      "case_id": "F-P2",
+      "decision": {
+        "action": {
+          "expected": "RESPOND",
+          "applicability": "APPLICABLE",
+          "rationale": "Resposta integral ou parcial relevante é autorizada sem ação externa. 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+        },
+        "intent": {
+          "expected": "FACTUAL",
+          "applicability": "APPLICABLE",
+          "rationale": "Pergunta factual sintética. 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+        },
+        "enough_context": {
+          "expected": true,
+          "applicability": "APPLICABLE",
+          "rationale": "Existe ao menos parte histórica/atual relevante comprovada. 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+        },
+        "relevant_current_facts": {
+          "expected": {
+            "required": [
+              "f-p-valor-A"
+            ],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Selecionar somente IDs atuais relevantes, acessíveis e da entidade alvo; null não prova fato. 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+        },
+        "relevant_historical_facts": {
+          "expected": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Histórico explicitamente perguntado é obrigatório e continua atribuído ao passado. 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+        },
+        "missing_information": {
+          "expected": [
+            "COMMERCIAL_RATE"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Conjunto exato das lacunas; fonte atual explícita não é contexto inacessível. 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+        },
+        "applicable_protocols": {
+          "expected": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Nenhum protocolo ativo é fornecido nesses casos; não criar identidade de fonte. 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+        },
+        "prohibited_assumptions": {
+          "expected": [
+            "INVENT_COMMERCIAL"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Marcar risco contextual antes de qualquer candidata: temporal, comercial ou entidade; E4 é controle com fonte única explícita e sem risco adicional. 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+        },
+        "entity_resolution": {
+          "expected": "ENTITY_CORRECT",
+          "applicability": "APPLICABLE",
+          "rationale": "Alvo A/B é explícito, acessível e resolvido. 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+        },
+        "temporal_resolution": {
+          "expected": [
+            "CURRENT_FACT"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Separar fonte atual, relato histórico, superado e atual desconhecido; suporte histórico obrigatório não é um enum novo. 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+        }
+      },
+      "validation": {
+        "verdict": {
+          "expected": "APPROVE",
+          "applicability": "APPLICABLE",
+          "rationale": "1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+        },
+        "dimensions": {
+          "grounding": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar a fonte autorizada de cada afirmação; não inferir suporte apenas do veredicto. Neste caso: 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+          },
+          "factuality": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Contradição exige valor conhecido. Percentual sem valor verdadeiro é INCONCLUSIVE, não FAIL automático. Neste caso: 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+          },
+          "protocol": {
+            "expected": "NOT_APPLICABLE",
+            "applicability": "NOT_APPLICABLE",
+            "rationale": "Afirmar taxa com identidade de protocolo inexistente é FAIL. Parcial que somente declara lacuna não afirma regra: NOT_APPLICABLE. Neste caso: 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+          },
+          "temporal": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Troca de passado por presente é FAIL; dois valores atuais com entidade errada continuam temporal PASS. Neste caso: 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+          },
+          "entity": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Avaliar a atribuição à entidade selecionada, independentemente da correção numérica isolada. Neste caso: 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+          },
+          "coverage": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Responder a parte comprovada e delimitar lacunas; mascarar lacuna por invenção falha mesmo com valor conhecido comunicado. Neste caso: 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+          },
+          "omission": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar fato obrigatório ou ressalva necessária que deixou de ser comunicado, sem penalizar parcial explícita. Neste caso: 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+          },
+          "unsupported_assumption": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Percentual/fonte inventados e promoção de passado a presente são inferências não autorizadas; uma parcial delimitada passa. Neste caso: 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+          },
+          "cross_entity": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Transferência demonstrável B para A ou A para B exige FAIL. Candidata factual da entidade correta exige PASS, não ausência fictícia de aplicabilidade. Neste caso: 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+          },
+          "safety": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Contextos acessíveis e ausência de ações reais permitem PASS; incorreção factual/comercial sozinha não implica falha adicional de segurança. Neste caso: 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+          },
+          "partial_answer_allowed": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Permissibilidade depende do contexto: lacuna com parte conhecida admite parcial em P/H, inclusive quando a candidata específica é inadequada. Neste caso: 1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+          }
+        }
+      }
+    },
+    {
+      "scenario_id": "H1",
+      "case_id": "F-H1",
+      "decision": {
+        "action": {
+          "expected": "RESPOND",
+          "applicability": "APPLICABLE",
+          "rationale": "Resposta integral ou parcial relevante é autorizada sem ação externa. Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+        },
+        "intent": {
+          "expected": "FACTUAL",
+          "applicability": "APPLICABLE",
+          "rationale": "Pergunta factual sintética. Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+        },
+        "enough_context": {
+          "expected": true,
+          "applicability": "APPLICABLE",
+          "rationale": "Existe ao menos parte histórica/atual relevante comprovada. Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+        },
+        "relevant_current_facts": {
+          "expected": {
+            "required": [],
+            "optional": [],
+            "forbidden": [
+              "f-t-atual-A"
+            ]
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Selecionar somente IDs atuais relevantes, acessíveis e da entidade alvo; null não prova fato. Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+        },
+        "relevant_historical_facts": {
+          "expected": {
+            "required": [
+              "f-t-historico-A"
+            ],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Histórico explicitamente perguntado é obrigatório e continua atribuído ao passado. Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+        },
+        "missing_information": {
+          "expected": [
+            "CURRENT_VAGAS"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Conjunto exato das lacunas; fonte atual explícita não é contexto inacessível. Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+        },
+        "applicable_protocols": {
+          "expected": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Nenhum protocolo ativo é fornecido nesses casos; não criar identidade de fonte. Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+        },
+        "prohibited_assumptions": {
+          "expected": [
+            "HISTORICAL_AS_CURRENT"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Marcar risco contextual antes de qualquer candidata: temporal, comercial ou entidade; E4 é controle com fonte única explícita e sem risco adicional. Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+        },
+        "entity_resolution": {
+          "expected": "ENTITY_CORRECT",
+          "applicability": "APPLICABLE",
+          "rationale": "Alvo A/B é explícito, acessível e resolvido. Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+        },
+        "temporal_resolution": {
+          "expected": [
+            "HISTORICAL_FACT",
+            "UNKNOWN_CURRENT_STATE",
+            "HISTORICAL_SUPPORT_REQUIRED"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Separar fonte atual, relato histórico, superado e atual desconhecido; suporte histórico obrigatório não é um enum novo. Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+        }
+      },
+      "validation": {
+        "verdict": {
+          "expected": "APPROVE",
+          "applicability": "APPLICABLE",
+          "rationale": "Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+        },
+        "dimensions": {
+          "grounding": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar a fonte autorizada de cada afirmação; não inferir suporte apenas do veredicto. Neste caso: Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+          },
+          "factuality": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Contradição exige valor conhecido. Percentual sem valor verdadeiro é INCONCLUSIVE, não FAIL automático. Neste caso: Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+          },
+          "protocol": {
+            "expected": "NOT_APPLICABLE",
+            "applicability": "NOT_APPLICABLE",
+            "rationale": "Afirmar taxa com identidade de protocolo inexistente é FAIL. Parcial que somente declara lacuna não afirma regra: NOT_APPLICABLE. Neste caso: Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+          },
+          "temporal": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Troca de passado por presente é FAIL; dois valores atuais com entidade errada continuam temporal PASS. Neste caso: Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+          },
+          "entity": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Avaliar a atribuição à entidade selecionada, independentemente da correção numérica isolada. Neste caso: Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+          },
+          "coverage": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Responder a parte comprovada e delimitar lacunas; mascarar lacuna por invenção falha mesmo com valor conhecido comunicado. Neste caso: Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+          },
+          "omission": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar fato obrigatório ou ressalva necessária que deixou de ser comunicado, sem penalizar parcial explícita. Neste caso: Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+          },
+          "unsupported_assumption": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Percentual/fonte inventados e promoção de passado a presente são inferências não autorizadas; uma parcial delimitada passa. Neste caso: Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+          },
+          "cross_entity": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Transferência demonstrável B para A ou A para B exige FAIL. Candidata factual da entidade correta exige PASS, não ausência fictícia de aplicabilidade. Neste caso: Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+          },
+          "safety": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Contextos acessíveis e ausência de ações reais permitem PASS; incorreção factual/comercial sozinha não implica falha adicional de segurança. Neste caso: Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+          },
+          "partial_answer_allowed": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Permissibilidade depende do contexto: lacuna com parte conhecida admite parcial em P/H, inclusive quando a candidata específica é inadequada. Neste caso: Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+          }
+        }
+      }
+    },
+    {
+      "scenario_id": "E3",
+      "case_id": "F-E3",
+      "decision": {
+        "action": {
+          "expected": "RESPOND",
+          "applicability": "APPLICABLE",
+          "rationale": "Resposta integral ou parcial relevante é autorizada sem ação externa. Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+        },
+        "intent": {
+          "expected": "FACTUAL",
+          "applicability": "APPLICABLE",
+          "rationale": "Pergunta factual sintética. Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+        },
+        "enough_context": {
+          "expected": true,
+          "applicability": "APPLICABLE",
+          "rationale": "Existe ao menos parte histórica/atual relevante comprovada. Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+        },
+        "relevant_current_facts": {
+          "expected": {
+            "required": [
+              "f-e-valor-B"
+            ],
+            "optional": [],
+            "forbidden": [
+              "f-e-valor-A"
+            ]
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Selecionar somente IDs atuais relevantes, acessíveis e da entidade alvo; null não prova fato. Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+        },
+        "relevant_historical_facts": {
+          "expected": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Histórico explicitamente perguntado é obrigatório e continua atribuído ao passado. Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+        },
+        "missing_information": {
+          "expected": [],
+          "applicability": "APPLICABLE",
+          "rationale": "Conjunto exato das lacunas; fonte atual explícita não é contexto inacessível. Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+        },
+        "applicable_protocols": {
+          "expected": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Nenhum protocolo ativo é fornecido nesses casos; não criar identidade de fonte. Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+        },
+        "prohibited_assumptions": {
+          "expected": [
+            "CROSS_ENTITY"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Marcar risco contextual antes de qualquer candidata: temporal, comercial ou entidade; E4 é controle com fonte única explícita e sem risco adicional. Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+        },
+        "entity_resolution": {
+          "expected": "ENTITY_CORRECT",
+          "applicability": "APPLICABLE",
+          "rationale": "Alvo A/B é explícito, acessível e resolvido. Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+        },
+        "temporal_resolution": {
+          "expected": [
+            "CURRENT_FACT"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Separar fonte atual, relato histórico, superado e atual desconhecido; suporte histórico obrigatório não é um enum novo. Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+        }
+      },
+      "validation": {
+        "verdict": {
+          "expected": "REJECT",
+          "applicability": "APPLICABLE",
+          "rationale": "Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+        },
+        "dimensions": {
+          "grounding": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar a fonte autorizada de cada afirmação; não inferir suporte apenas do veredicto. Neste caso: Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+          },
+          "factuality": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Contradição exige valor conhecido. Percentual sem valor verdadeiro é INCONCLUSIVE, não FAIL automático. Neste caso: Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+          },
+          "protocol": {
+            "expected": "NOT_APPLICABLE",
+            "applicability": "NOT_APPLICABLE",
+            "rationale": "Afirmar taxa com identidade de protocolo inexistente é FAIL. Parcial que somente declara lacuna não afirma regra: NOT_APPLICABLE. Neste caso: Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+          },
+          "temporal": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Troca de passado por presente é FAIL; dois valores atuais com entidade errada continuam temporal PASS. Neste caso: Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+          },
+          "entity": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Avaliar a atribuição à entidade selecionada, independentemente da correção numérica isolada. Neste caso: Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+          },
+          "coverage": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Responder a parte comprovada e delimitar lacunas; mascarar lacuna por invenção falha mesmo com valor conhecido comunicado. Neste caso: Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+          },
+          "omission": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar fato obrigatório ou ressalva necessária que deixou de ser comunicado, sem penalizar parcial explícita. Neste caso: Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+          },
+          "unsupported_assumption": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Percentual/fonte inventados e promoção de passado a presente são inferências não autorizadas; uma parcial delimitada passa. Neste caso: Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+          },
+          "cross_entity": {
+            "expected": "FAIL",
+            "applicability": "APPLICABLE",
+            "rationale": "Transferência demonstrável B para A ou A para B exige FAIL. Candidata factual da entidade correta exige PASS, não ausência fictícia de aplicabilidade. Neste caso: Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+          },
+          "safety": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Contextos acessíveis e ausência de ações reais permitem PASS; incorreção factual/comercial sozinha não implica falha adicional de segurança. Neste caso: Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+          },
+          "partial_answer_allowed": {
+            "expected": "NOT_APPLICABLE",
+            "applicability": "NOT_APPLICABLE",
+            "rationale": "Permissibilidade depende do contexto: lacuna com parte conhecida admite parcial em P/H, inclusive quando a candidata específica é inadequada. Neste caso: Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+          }
+        }
+      }
+    },
+    {
+      "scenario_id": "E4",
+      "case_id": "F-E4",
+      "decision": {
+        "action": {
+          "expected": "RESPOND",
+          "applicability": "APPLICABLE",
+          "rationale": "Resposta integral ou parcial relevante é autorizada sem ação externa. Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+        },
+        "intent": {
+          "expected": "FACTUAL",
+          "applicability": "APPLICABLE",
+          "rationale": "Pergunta factual sintética. Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+        },
+        "enough_context": {
+          "expected": true,
+          "applicability": "APPLICABLE",
+          "rationale": "Existe ao menos parte histórica/atual relevante comprovada. Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+        },
+        "relevant_current_facts": {
+          "expected": {
+            "required": [
+              "f-e-valor-A"
+            ],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Selecionar somente IDs atuais relevantes, acessíveis e da entidade alvo; null não prova fato. Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+        },
+        "relevant_historical_facts": {
+          "expected": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Histórico explicitamente perguntado é obrigatório e continua atribuído ao passado. Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+        },
+        "missing_information": {
+          "expected": [],
+          "applicability": "APPLICABLE",
+          "rationale": "Conjunto exato das lacunas; fonte atual explícita não é contexto inacessível. Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+        },
+        "applicable_protocols": {
+          "expected": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "applicability": "APPLICABLE",
+          "rationale": "Nenhum protocolo ativo é fornecido nesses casos; não criar identidade de fonte. Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+        },
+        "prohibited_assumptions": {
+          "expected": [],
+          "applicability": "APPLICABLE",
+          "rationale": "Marcar risco contextual antes de qualquer candidata: temporal, comercial ou entidade; E4 é controle com fonte única explícita e sem risco adicional. Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+        },
+        "entity_resolution": {
+          "expected": "ENTITY_CORRECT",
+          "applicability": "APPLICABLE",
+          "rationale": "Alvo A/B é explícito, acessível e resolvido. Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+        },
+        "temporal_resolution": {
+          "expected": [
+            "CURRENT_FACT"
+          ],
+          "applicability": "APPLICABLE",
+          "rationale": "Separar fonte atual, relato histórico, superado e atual desconhecido; suporte histórico obrigatório não é um enum novo. Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+        }
+      },
+      "validation": {
+        "verdict": {
+          "expected": "APPROVE",
+          "applicability": "APPLICABLE",
+          "rationale": "Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+        },
+        "dimensions": {
+          "grounding": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar a fonte autorizada de cada afirmação; não inferir suporte apenas do veredicto. Neste caso: Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+          },
+          "factuality": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Contradição exige valor conhecido. Percentual sem valor verdadeiro é INCONCLUSIVE, não FAIL automático. Neste caso: Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+          },
+          "protocol": {
+            "expected": "NOT_APPLICABLE",
+            "applicability": "NOT_APPLICABLE",
+            "rationale": "Afirmar taxa com identidade de protocolo inexistente é FAIL. Parcial que somente declara lacuna não afirma regra: NOT_APPLICABLE. Neste caso: Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+          },
+          "temporal": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Troca de passado por presente é FAIL; dois valores atuais com entidade errada continuam temporal PASS. Neste caso: Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+          },
+          "entity": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Avaliar a atribuição à entidade selecionada, independentemente da correção numérica isolada. Neste caso: Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+          },
+          "coverage": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Responder a parte comprovada e delimitar lacunas; mascarar lacuna por invenção falha mesmo com valor conhecido comunicado. Neste caso: Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+          },
+          "omission": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Verificar fato obrigatório ou ressalva necessária que deixou de ser comunicado, sem penalizar parcial explícita. Neste caso: Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+          },
+          "unsupported_assumption": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Percentual/fonte inventados e promoção de passado a presente são inferências não autorizadas; uma parcial delimitada passa. Neste caso: Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+          },
+          "cross_entity": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Transferência demonstrável B para A ou A para B exige FAIL. Candidata factual da entidade correta exige PASS, não ausência fictícia de aplicabilidade. Neste caso: Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+          },
+          "safety": {
+            "expected": "PASS",
+            "applicability": "APPLICABLE",
+            "rationale": "Contextos acessíveis e ausência de ações reais permitem PASS; incorreção factual/comercial sozinha não implica falha adicional de segurança. Neste caso: Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+          },
+          "partial_answer_allowed": {
+            "expected": "NOT_APPLICABLE",
+            "applicability": "NOT_APPLICABLE",
+            "rationale": "Permissibilidade depende do contexto: lacuna com parte conhecida admite parcial em P/H, inclusive quando a candidata específica é inadequada. Neste caso: Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+          }
+        }
+      }
+    }
+  ]
+}

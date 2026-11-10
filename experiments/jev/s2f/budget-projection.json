@@ -1,0 +1,54 @@
+{
+  "checkpoint": "JEV-S2-F-A",
+  "historical_source": "experiments/jev/s2e/pricing-verified.json",
+  "source_sha256": "5320181933862c8ada23df650662b7c85e5b3ce31ae3aba3bc428527746928ef",
+  "historical_verified_at": "2026-10-17T16:32:41Z",
+  "input_usd_per_million_historical": 0.042,
+  "output_usd_per_million_historical": 0,
+  "observed_s2e_input_tokens": 27366,
+  "observed_s2e_calls": 12,
+  "average_reference_usd_per_call": 0.000095781,
+  "maximum_request_tokens_reserved": 65536,
+  "projections": [
+    {
+      "calls": 12,
+      "estimated_average_cost_usd": 0.001149372,
+      "conservative_reserved_cost_usd": 0.033030144,
+      "average_input_tokens": 2280.5,
+      "price_status": "HISTORICAL_REFERENCE_ONLY",
+      "budget_authorized": false
+    },
+    {
+      "calls": 16,
+      "estimated_average_cost_usd": 0.001532496,
+      "conservative_reserved_cost_usd": 0.044040192,
+      "average_input_tokens": 2280.5,
+      "price_status": "HISTORICAL_REFERENCE_ONLY",
+      "budget_authorized": false
+    },
+    {
+      "calls": 20,
+      "estimated_average_cost_usd": 0.00191562,
+      "conservative_reserved_cost_usd": 0.05505024,
+      "average_input_tokens": 2280.5,
+      "price_status": "HISTORICAL_REFERENCE_ONLY",
+      "budget_authorized": false
+    },
+    {
+      "calls": 24,
+      "estimated_average_cost_usd": 0.002298744,
+      "conservative_reserved_cost_usd": 0.066060288,
+      "average_input_tokens": 2280.5,
+      "price_status": "HISTORICAL_REFERENCE_ONLY",
+      "budget_authorized": false
+    }
+  ],
+  "recommended_calls": 24,
+  "quantity_reason": "Dezoito chamadas dos três pares centrais; seis de histórico não superado, direção inversa e controle explícito. Repetições idênticas, sem duplicar DECISION de pares só de candidata.",
+  "minimum_full_worst_case_reservation_usd": 0.066060288,
+  "previous_cap_usd": 0.05,
+  "twenty_and_twenty_four_exceed_previous_full_reservation": true,
+  "authorization_active": false,
+  "requires_new_human_quantity_and_cap": true,
+  "requires_fresh_official_price_before_network": true
+}

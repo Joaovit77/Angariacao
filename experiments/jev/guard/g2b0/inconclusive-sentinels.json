@@ -1,0 +1,65 @@
+{
+  "planned": 6,
+  "cases": [
+    {
+      "case_id": "GG0-31",
+      "expected_verdict": "INCONCLUSIVE",
+      "critical_error": false,
+      "critical_categories": [],
+      "allowed_partial": false,
+      "rationale": "O pacote necessário está indisponível, não foi declarado cadastro completo vazio. A candidata não alega confirmação ou protocolo inexistente. Sem fonte para comprovar/refutar 1800 ou outra violação independente, suspender julgamento; não aprovar por falta de prova.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-32",
+      "expected_verdict": "INCONCLUSIVE",
+      "critical_error": false,
+      "critical_categories": [],
+      "allowed_partial": false,
+      "rationale": "Fontes atuais equivalentes divergem 1800/1900 sem fonte vencedora. Não há contradição contra um valor canônico único nem prova independente de transferência. INCONCLUSIVE é o gate para verdade não resolvida; não escolher protocolo/fonte pela conveniência.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-33",
+      "expected_verdict": "INCONCLUSIVE",
+      "critical_error": false,
+      "critical_categories": [],
+      "allowed_partial": false,
+      "rationale": "Há fontes de A/B, mas o alvo selecionado está ausente. Não presumir A pelo número da candidata. Nenhuma transferência é demonstrada antes de resolver o alvo, e ausência de entidade não vira APPROVE.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-34",
+      "expected_verdict": "INCONCLUSIVE",
+      "critical_error": false,
+      "critical_categories": [],
+      "allowed_partial": false,
+      "rationale": "A e B têm duas vagas, então a quantidade isolada coincide. Isso não resolve qual imóvel é o alvo; a validação da vinculação da resposta permanece inconclusiva. Não inventar transferência demonstrada nem tratar coincidência como identidade.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-35",
+      "expected_verdict": "INCONCLUSIVE",
+      "critical_error": false,
+      "critical_categories": [],
+      "allowed_partial": false,
+      "rationale": "Ambos os protocolos existem e podem fornecer taxas distintas, mas a modalidade aplicável não foi fornecida. A candidata não inventa identidade ou novo percentual fora do catálogo. Sem prova de qual regra se aplica, não aprovar nem rejeitar como contradição demonstrada.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-36",
+      "expected_verdict": "INCONCLUSIVE",
+      "critical_error": false,
+      "critical_categories": [],
+      "allowed_partial": false,
+      "rationale": "Existe 1800 observado, mas o tempo de validade não está confirmado. Não há fonte histórica explicitamente usada como atual nem alegação de confirmação cadastral na candidata. Falta evidência para validar o presente; INCONCLUSIVE não vira certeza nem falso temporal FAIL automático.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    }
+  ]
+}

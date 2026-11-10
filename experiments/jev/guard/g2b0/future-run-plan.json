@@ -1,0 +1,753 @@
+{
+  "checkpoint": "JEV-GUARD-G2-B",
+  "status": "PROPOSED_ONLY",
+  "run_id_pattern": "jev-guard-g2b-<timestamp>-<random>",
+  "source": "TWO_NEW_CONTEMPORANEOUS_ARMS",
+  "planned_calls": 72,
+  "calls_per_arm": 36,
+  "executed": 0,
+  "authorized_calls": 0,
+  "authorized_budget_usd": 0,
+  "model_proposed": "jev-1.14.0",
+  "model_authorized": null,
+  "concurrency": 1,
+  "repetitions": 1,
+  "retries": 0,
+  "real_data_allowed": false,
+  "integration_allowed": false,
+  "execution_allowed": false,
+  "stages": [
+    {
+      "sequence": 1,
+      "case_id": "GG0-01",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-01-FULL",
+      "request_sha256": "a36c10834760733cc3e4cafae50ba9828172bea1c578732be54b646c7d4d5668",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 2,
+      "case_id": "GG0-01",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-01-REDUCED",
+      "request_sha256": "d0c191beb3698da4563ec457fda118e0b85536bc76892fdf83c88dfeddc228b0",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 3,
+      "case_id": "GG0-02",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-02-REDUCED",
+      "request_sha256": "8906f6ac249b50e069f92ff71eda52a4ae640236dfd33a783a117471a92f5e09",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 4,
+      "case_id": "GG0-02",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-02-FULL",
+      "request_sha256": "a7fd6ce1def2cec879a9b71cd2d5e839c4ef5b473753de7d2feee573ed0c96af",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 5,
+      "case_id": "GG0-03",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-03-FULL",
+      "request_sha256": "ade78c441223b127846f313d0f70d8b52959a7923cd3599079fffc5fba5c560a",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 6,
+      "case_id": "GG0-03",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-03-REDUCED",
+      "request_sha256": "610ba134e378f72be687eda6f5455468a033eb01289f25bc22ef323357ab61b4",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 7,
+      "case_id": "GG0-04",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-04-REDUCED",
+      "request_sha256": "d796fb710c78a59aa686c00b4b50e2f47b0dfb419dd35a9b372d9b7d631b3c0f",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 8,
+      "case_id": "GG0-04",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-04-FULL",
+      "request_sha256": "84e928b746ffbf2468bf27b1e6d6921b37a958366eef63458c9d3a27251adc5e",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 9,
+      "case_id": "GG0-05",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-05-FULL",
+      "request_sha256": "399c12f7186583e4806d65714a7672a53571e133e0f5b8911f1e29a7a04b13f7",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 10,
+      "case_id": "GG0-05",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-05-REDUCED",
+      "request_sha256": "aff43e25dfec1e42bbee026cb9bde6ebd12c98fd15153d2d70384ccb90ace8cb",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 11,
+      "case_id": "GG0-06",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-06-REDUCED",
+      "request_sha256": "1c3c65511602b79657a32197cf650811890579aa8aca0ffbff2cbd7cfc2007dd",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 12,
+      "case_id": "GG0-06",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-06-FULL",
+      "request_sha256": "543f4d4c7740d02797e5d6f27dc50b8f62f1aba201993753742d3e037193393c",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 13,
+      "case_id": "GG0-07",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-07-FULL",
+      "request_sha256": "9421caa95a1ec39892f49c69ec2652068431a4628e7222deb5a325eb0e6b6d6b",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 14,
+      "case_id": "GG0-07",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-07-REDUCED",
+      "request_sha256": "74860fc36b9181ca62cd572404b4126e96be5e383c1ee443ee10a140470e3daa",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 15,
+      "case_id": "GG0-08",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-08-REDUCED",
+      "request_sha256": "05b9887962fd3616fbd78a9427234ec7513081891f81d7a9483a8e527e98bd98",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 16,
+      "case_id": "GG0-08",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-08-FULL",
+      "request_sha256": "c1992e49b0733a62b14710ae243e35e1c56c83ea8d08e721ee41112223467597",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 17,
+      "case_id": "GG0-09",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-09-FULL",
+      "request_sha256": "055b45684c7a71db8baa46d962e6cf14f217b5518ce545cabe8d6e52a775b8bf",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 18,
+      "case_id": "GG0-09",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-09-REDUCED",
+      "request_sha256": "a7c26a5fcdae56dabb4289b3c8739ca922d9bab47ed514d9542a25362b3470fb",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 19,
+      "case_id": "GG0-10",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-10-REDUCED",
+      "request_sha256": "a9d85db1f9e788124f299128d8573824fbb4fb0114fc0eabfe3cd10906077922",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 20,
+      "case_id": "GG0-10",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-10-FULL",
+      "request_sha256": "df5cafd514190e0f9df9b98bf0a020e4402bb77c8659c1185a5d136d95c5891a",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 21,
+      "case_id": "GG0-11",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-11-FULL",
+      "request_sha256": "9253fd4dbfd1d4d45e1b73ec56f237c6d963042bbb91fb5a25a5ae988e2d8829",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 22,
+      "case_id": "GG0-11",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-11-REDUCED",
+      "request_sha256": "e788465ba38f7676f20b436d4b891965869cd5d5d2e7a68e62c6af6feb0158a6",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 23,
+      "case_id": "GG0-12",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-12-REDUCED",
+      "request_sha256": "475f054ebcb18f2caede492c781acff1c13de43ac40af73880809aff4f7acf1f",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 24,
+      "case_id": "GG0-12",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-12-FULL",
+      "request_sha256": "39e789f38926095525aeeed43c077f6d3e91d64ba84741df58e70a591fe5a469",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 25,
+      "case_id": "GG0-13",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-13-FULL",
+      "request_sha256": "7d7ba8d18af53e710a847aee97a06dfcd80fba12f69ca8effbb860c2e931c9d4",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 26,
+      "case_id": "GG0-13",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-13-REDUCED",
+      "request_sha256": "aa8a27b121f4c6475e4b1e30dffa0a177e8fb7ee54408d69cc49adaea7081750",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 27,
+      "case_id": "GG0-14",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-14-REDUCED",
+      "request_sha256": "9225d48e258174e5ecbedaa779c103593819a7acce447d5f50891934a06ea41b",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 28,
+      "case_id": "GG0-14",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-14-FULL",
+      "request_sha256": "3d7c5dd39b0649562e4ac28e1710eb3b239caaf617a118627e042d259ad1e047",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 29,
+      "case_id": "GG0-15",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-15-FULL",
+      "request_sha256": "a789314e52d4a445ae89377f001bae52fe3c89b19d43cb49b7fce3b37a2d0782",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 30,
+      "case_id": "GG0-15",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-15-REDUCED",
+      "request_sha256": "0191034d77a7e71f3a971d1c7283a62912e8a9b306d230dbe28b455833c998db",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 31,
+      "case_id": "GG0-16",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-16-REDUCED",
+      "request_sha256": "5de18bc9ee0ece9903a7fee838c27261bdd7abb79a8001cceb7ef5ed272189e2",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 32,
+      "case_id": "GG0-16",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-16-FULL",
+      "request_sha256": "9fc42b376b1c128be4be82ee599f55ea352059ed5620d6a5f6d79e100d4727e7",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 33,
+      "case_id": "GG0-17",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-17-FULL",
+      "request_sha256": "5660abf04953b3f949b20382255d68d80594df2f2b0064bc931bb45ef521d787",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 34,
+      "case_id": "GG0-17",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-17-REDUCED",
+      "request_sha256": "0dadda30d17e7d9435218bb8b37538fb4505f9e363862a4c77ac701ba2b78346",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 35,
+      "case_id": "GG0-18",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-18-REDUCED",
+      "request_sha256": "67eb994841bf21c6bd8d100ea76d1e559d38566f185f0d3f1c2d767df216fb25",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 36,
+      "case_id": "GG0-18",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-18-FULL",
+      "request_sha256": "28d6c0b9fac7935af04b32a5f9a62dfbb706ff9d5829355bdf5d19a4ede48676",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 37,
+      "case_id": "GG0-19",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-19-FULL",
+      "request_sha256": "21e5448b036d3bbcead05d4db656727c5a7822c4d50d4304ecb6577b4320f633",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 38,
+      "case_id": "GG0-19",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-19-REDUCED",
+      "request_sha256": "87fe553434663f26bc103756582216c17f369fb0392e92094746b7d4c3dd9bf7",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 39,
+      "case_id": "GG0-20",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-20-REDUCED",
+      "request_sha256": "b057be9d529b6580e795127e3510e699826ec121cfaa1ed945e9c7a6ef8f53ae",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 40,
+      "case_id": "GG0-20",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-20-FULL",
+      "request_sha256": "c051990aa137538dfa0699000bc5b5320084b24695bc071d0dfdbf0aca45df97",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 41,
+      "case_id": "GG0-21",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-21-FULL",
+      "request_sha256": "996b719886a488da7de12ce668975bb9d64e734f5e4ee01511655aa2fd10527a",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 42,
+      "case_id": "GG0-21",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-21-REDUCED",
+      "request_sha256": "5dc4122424a759136a41f8a392965b9cbeab33ab091e3033b31f56fb48270a9c",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 43,
+      "case_id": "GG0-22",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-22-REDUCED",
+      "request_sha256": "cdee840a760540f2f755e9f6ec6be633c0a184223fb9902ae68e819ebd17f161",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 44,
+      "case_id": "GG0-22",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-22-FULL",
+      "request_sha256": "d66439ebebda5c5527b493c3c76f9f46926c5a313e3c764bcab704cc1aaea2a7",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 45,
+      "case_id": "GG0-23",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-23-FULL",
+      "request_sha256": "19a66dea76abfebe1eaa2330415cabc03f5c4516fb6412556ce2e28dfc8a690c",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 46,
+      "case_id": "GG0-23",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-23-REDUCED",
+      "request_sha256": "b725a0221eaadacafd6ef230f624993152e4565323e79659c5e01d0edcdb9dd3",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 47,
+      "case_id": "GG0-24",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-24-REDUCED",
+      "request_sha256": "922c64a81311f95b38fa42b538ab851eeafa78767a7089d6738d6cc2c78e1640",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 48,
+      "case_id": "GG0-24",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-24-FULL",
+      "request_sha256": "0607202d50cd23ce2caafd33697d3361811b8500f83adbed56df188345b8669c",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 49,
+      "case_id": "GG0-25",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-25-FULL",
+      "request_sha256": "3090ccf6fc20348780404bf575e40136c2c00db5db82c93a41a57a67f4e6e2fd",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 50,
+      "case_id": "GG0-25",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-25-REDUCED",
+      "request_sha256": "2575bbc9217b1e8af525f8fac803db2ce9ebaa9812c57d18aea2d950ae5b0189",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 51,
+      "case_id": "GG0-26",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-26-REDUCED",
+      "request_sha256": "faf830cea4eaabd99f9e616db9ed7512c906bb73b0b83a62cb47bc0531a3fc0c",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 52,
+      "case_id": "GG0-26",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-26-FULL",
+      "request_sha256": "3d0d307bf2ecb4172af847e40b16bd78d5fde7c4dbd8d013345aed01edd15205",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 53,
+      "case_id": "GG0-27",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-27-FULL",
+      "request_sha256": "a766306693b97d900a9e7ee7c777fb7ac270d03427f08fc49db580b5d06e1e71",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 54,
+      "case_id": "GG0-27",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-27-REDUCED",
+      "request_sha256": "828d8b95542e971b284ef1d78ccb50e0316c69bfb3a0bb5b97efbcb65aec4e0b",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 55,
+      "case_id": "GG0-28",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-28-REDUCED",
+      "request_sha256": "4c8501f7eb31c165bc165c3fe1619229e169fd3e038d7fcbd58d20f183ad39af",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 56,
+      "case_id": "GG0-28",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-28-FULL",
+      "request_sha256": "fb29bf9bdc17b9cecea00ce0e9a18b29d2a3292654e8a6b06218021a986fe0ff",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 57,
+      "case_id": "GG0-29",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-29-FULL",
+      "request_sha256": "902057c11cb0f015dad6f6fe723795652ab719e1c16414986eb60a887be0aeab",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 58,
+      "case_id": "GG0-29",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-29-REDUCED",
+      "request_sha256": "109cf5560ed7ad77811dd68aaca6c383625356f793329721770f282ff18af97e",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 59,
+      "case_id": "GG0-30",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-30-REDUCED",
+      "request_sha256": "bdd24675c825e49737037614748c5a2a6c89f9575e05b105f62281d1ab41dda6",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 60,
+      "case_id": "GG0-30",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-30-FULL",
+      "request_sha256": "413c2a1e8e131b3fd10cea1ea84e43197dc54794d035fa632fd1eff09f663328",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 61,
+      "case_id": "GG0-31",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-31-FULL",
+      "request_sha256": "534622b108abf4fded2239ceeb1eb6e2077eb7dc3c812354e46187df77b3a5dc",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 62,
+      "case_id": "GG0-31",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-31-REDUCED",
+      "request_sha256": "5a9988f0075a6d0c13bab5e6f7bf0005d398c9fc6100adeb7dbc7292e283c33a",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 63,
+      "case_id": "GG0-32",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-32-REDUCED",
+      "request_sha256": "062e9db36fa5371c6ecfbfd2714cc1219c94af14d2b8f13823299a9659c0a4fc",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 64,
+      "case_id": "GG0-32",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-32-FULL",
+      "request_sha256": "6a8bf3a5592a9144294c5f67c98da1051eafbcb065a14862013227d326ad1788",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 65,
+      "case_id": "GG0-33",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-33-FULL",
+      "request_sha256": "24e2ea5398281e8b7ebb7bab03d0866047cb3d0416aa621ce24ef0f4505889fb",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 66,
+      "case_id": "GG0-33",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-33-REDUCED",
+      "request_sha256": "27dc20c763d1f0d47b1dfca7ee610e5c056e19b80b954fb835e3eba38327133d",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 67,
+      "case_id": "GG0-34",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-34-REDUCED",
+      "request_sha256": "6f81754fd6376ab84af4c10fdb11cf036966ad74f86e9ae728515b628d359167",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 68,
+      "case_id": "GG0-34",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-34-FULL",
+      "request_sha256": "8cf3fac4e5a34510218171dc584ccc44bce56e4205a4bd0cc817a54d39adc781",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 69,
+      "case_id": "GG0-35",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-35-FULL",
+      "request_sha256": "2d6076b6cb1e8f2ddbe83bc885320dc694899d1649951fcf1c7a0b91e163c186",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 70,
+      "case_id": "GG0-35",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-35-REDUCED",
+      "request_sha256": "1de5761e48be0eb9e0ea1efc8c5478e979108e7ff7c59d28eb9ffb402ffda2d8",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 71,
+      "case_id": "GG0-36",
+      "arm": "ARM_REDUCED",
+      "request_id": "GG0-36-REDUCED",
+      "request_sha256": "4a903da2cb606e25762bb8cb6a03493311a28a650aa60080b964532fc3e5d9cf",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "sequence": 72,
+      "case_id": "GG0-36",
+      "arm": "ARM_FULL",
+      "request_id": "GG0-36-FULL",
+      "request_sha256": "d726ef5b9b7c7393584754d9f5be94537cc785550160f592f17380a219ec5630",
+      "stage": "validation",
+      "repetition": 1,
+      "status": "PROPOSED_ONLY"
+    }
+  ],
+  "requirements": [
+    "HUMAN_EXPLICIT_AUTHORIZATION",
+    "FRESH_OFFICIAL_PRICING",
+    "EXACT_MODEL",
+    "TOTAL_USD_CAP",
+    "NEW_ISOLATED_EXECUTOR",
+    "EXCLUSIVE_LOCKS",
+    "DURABLE_PRE_HTTP_LEDGER",
+    "PER_CALL_WORST_CASE_BUDGET",
+    "PRIVACY",
+    "NO_RETRY"
+  ]
+}

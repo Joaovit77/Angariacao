@@ -1,0 +1,60 @@
+{
+  "checkpoint": "JEV-GUARD-G2-A",
+  "conclusion": "REDUCED_CONTRACT_EXPERIMENT_JUSTIFIED",
+  "causal_status": "HYPOTHESIS_REQUIRES_EXPERIMENT",
+  "risks": [
+    {
+      "id": "UNKNOWN_PROVIDER_CAUSE",
+      "description": "Projeção sanitizada localiza falha, mas não demonstra mecanismo interno/precisão lexical."
+    },
+    {
+      "id": "SMALL_SINGLE_SAMPLE",
+      "description": "Uma amostra sintética por caso; associações descritivas sem causalidade."
+    },
+    {
+      "id": "EXPOSURE_IMBALANCE",
+      "description": "11 dimensões têm 11 vezes a exposição do macro; taxas agrupadas iguais."
+    },
+    {
+      "id": "INCOMPLETE_CRITICAL_COVERAGE",
+      "description": "0/8 críticos válidos não equivale 0/14; seis inválidos preservados."
+    },
+    {
+      "id": "MACRO_FALSE_ACCEPT",
+      "description": "GG0-29 válido e incorreto; reduzir dimensões não está demonstrado como correção."
+    },
+    {
+      "id": "INCONCLUSIVE_OVERREJECT",
+      "description": "Dois dos três válidos rejeitados; preservar oracle e hipótese aberta."
+    },
+    {
+      "id": "DIMENSION_LABEL_IMBALANCE",
+      "description": "Safety só PASS válido e outros erros concentrados em aplicabilidade/taxonomia."
+    },
+    {
+      "id": "DIAGNOSTIC_LOSS",
+      "description": "Redução perde omission=FAIL observado; manter comparação com FULL/eval."
+    },
+    {
+      "id": "SELECTION_BIAS",
+      "description": "Não reaproveitar macro local de envelope inválido nem selecionar subconjunto por resultado."
+    },
+    {
+      "id": "NEW_ADAPTER_REQUIRED",
+      "description": "Parser/scorer G0 não podem ser afrouxados para simular contrato reduzido."
+    },
+    {
+      "id": "FUTURE_COST_UNKNOWN",
+      "description": "Não reconfirmado offline; autorização G1 consumida e não reutilizável."
+    },
+    {
+      "id": "NO_PRODUCT_GENERALIZATION",
+      "description": "Nenhuma arquitetura promove JEV ou transfere guardas canônicas."
+    }
+  ],
+  "calls": 0,
+  "network_attempts": 0,
+  "credentials_read": 0,
+  "product_changes": 0,
+  "next_gate": "HUMAN_DECISION_ONLY"
+}

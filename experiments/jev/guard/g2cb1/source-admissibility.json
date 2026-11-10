@@ -1,0 +1,31 @@
+{
+  "status": "DOCUMENTARY_PROVENANCE_AUDIT",
+  "layers": [
+    {
+      "name": "input",
+      "admissible_for_future_review": true,
+      "scope": "Somente campos autorizados sem rótulos; contexto declarado não é verdade universal."
+    },
+    {
+      "name": "structural_derivation",
+      "admissible_for_future_review": true,
+      "scope": "Pointer/hash e transformação literal auditável, sem preencher relação semântica."
+    },
+    {
+      "name": "legacy_annotations",
+      "evidence_class": "ORACLE_ASSISTED_ONLY",
+      "admissible_as_operational_proof": false
+    },
+    {
+      "name": "oracle_rationale_expected_materiality",
+      "admissible_for_future_review": false,
+      "scope": "Custódia de avaliação separada; não gerar obrigações/claims com estes campos."
+    }
+  ],
+  "actual_human_review_in_b1": false,
+  "independent_human_evidence_present": false,
+  "historical_origin_label_preserved": "MANUAL_RETROSPECTIVE_REVIEW",
+  "origin_label_is_human_execution_certificate": false,
+  "doc_author": "Codex",
+  "doc_author_is_human_reviewer": false
+}

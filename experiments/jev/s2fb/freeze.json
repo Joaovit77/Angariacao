@@ -1,0 +1,18 @@
+{
+  "checkpoint": "JEV-S2-F-B",
+  "frozen_before_network": true,
+  "authorized_calls": 24,
+  "budget_usd": 0.08,
+  "model": "jev-1.14.0",
+  "authorization_source_sha256": "a30f5d43dce1ff0078a8e5831fcfdd49186773b6c0e59dff195f4d54f1d5ead8",
+  "files": {
+    "analysis.mjs": "9a7ece599d77b3fe3fd829d594025b771e8e14e54f4df9d6d11c5eea82d47eee",
+    "certification.json": "6d769fb6bf49714f112a9bf61e3bf46cc36813351bb6182069bee6d2d0598f85",
+    "core.mjs": "e3155374d0b127961c93c0128d72b3037adb90c9262c2bce46cff74ac5b1224a",
+    "preservation-before.json": "b642edf68d1a4b04d644441d16234f038a7fa01a829eada1dcf87dc6913274f7",
+    "pricing-verified.json": "431ccde8a0a517f1c067d76bdcea25f2e35a7c320ccabfe5d0f5c86985b7c426",
+    "README.md": "3cfc89e9cf79205daf55cb408dec5b370df9e19bc35af9cfc19705a58c022041",
+    "runner.mjs": "230691169cda0340909129359f91f16a073b728f22eee9994d3449a259facaa6",
+    "runtime.test.mjs": "3bc636a10c84132be757f7f40ca4e71bb6cd1e0383978e7ad1c9d2084e2b5f83"
+  }
+}

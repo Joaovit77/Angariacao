@@ -1,0 +1,2185 @@
+{
+  "checkpoint": "JEV-S2-G-A",
+  "mode": "OFFLINE_ONLY",
+  "basis": "Somente evidências preservadas S0–S2-F-B; maior peso ao diagnóstico F-B. Código local é usado só para localizar módulos e invariantes, não como prova de capacidade JEV.",
+  "no_aggregate_denominator": true,
+  "checkpoints": [
+    "JEV-S0",
+    "JEV-S1",
+    "JEV-S2-A",
+    "JEV-S2-B",
+    "JEV-S2-C",
+    "JEV-S2-D",
+    "JEV-S2-E",
+    "JEV-S2-F-A",
+    "JEV-S2-F-B"
+  ],
+  "entries": [
+    {
+      "evidence_id": "FB-D-action",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "DECISION action: 10/10.",
+      "value": {
+        "numerator": 10,
+        "denominator": 10,
+        "value": 1
+      },
+      "sample_size": {
+        "unit": "DECISION válida",
+        "observations": 10,
+        "unique_requests": 5,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/decision-metrics.json",
+          "sha256": "383ebd65c93c769c7a01d126a4860441cf977b84b0c2b7b7b0069e2efa308fec",
+          "json_pointer": "/field_accuracy/action"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-D-intent",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "DECISION intent: 10/10.",
+      "value": {
+        "numerator": 10,
+        "denominator": 10,
+        "value": 1
+      },
+      "sample_size": {
+        "unit": "DECISION válida",
+        "observations": 10,
+        "unique_requests": 5,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/decision-metrics.json",
+          "sha256": "383ebd65c93c769c7a01d126a4860441cf977b84b0c2b7b7b0069e2efa308fec",
+          "json_pointer": "/field_accuracy/intent"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-D-enough_context",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "DECISION enough_context: 10/10.",
+      "value": {
+        "numerator": 10,
+        "denominator": 10,
+        "value": 1
+      },
+      "sample_size": {
+        "unit": "DECISION válida",
+        "observations": 10,
+        "unique_requests": 5,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/decision-metrics.json",
+          "sha256": "383ebd65c93c769c7a01d126a4860441cf977b84b0c2b7b7b0069e2efa308fec",
+          "json_pointer": "/field_accuracy/enough_context"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-D-relevant_current_facts",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "DECISION relevant_current_facts: 8/10.",
+      "value": {
+        "numerator": 8,
+        "denominator": 10,
+        "value": 0.8
+      },
+      "sample_size": {
+        "unit": "DECISION válida",
+        "observations": 10,
+        "unique_requests": 5,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/decision-metrics.json",
+          "sha256": "383ebd65c93c769c7a01d126a4860441cf977b84b0c2b7b7b0069e2efa308fec",
+          "json_pointer": "/field_accuracy/relevant_current_facts"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-D-relevant_historical_facts",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "DECISION relevant_historical_facts: 10/10.",
+      "value": {
+        "numerator": 10,
+        "denominator": 10,
+        "value": 1
+      },
+      "sample_size": {
+        "unit": "DECISION válida",
+        "observations": 10,
+        "unique_requests": 5,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/decision-metrics.json",
+          "sha256": "383ebd65c93c769c7a01d126a4860441cf977b84b0c2b7b7b0069e2efa308fec",
+          "json_pointer": "/field_accuracy/relevant_historical_facts"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-D-missing_information",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "DECISION missing_information: 6/10.",
+      "value": {
+        "numerator": 6,
+        "denominator": 10,
+        "value": 0.6
+      },
+      "sample_size": {
+        "unit": "DECISION válida",
+        "observations": 10,
+        "unique_requests": 5,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/decision-metrics.json",
+          "sha256": "383ebd65c93c769c7a01d126a4860441cf977b84b0c2b7b7b0069e2efa308fec",
+          "json_pointer": "/field_accuracy/missing_information"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-D-applicable_protocols",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "DECISION applicable_protocols: 10/10.",
+      "value": {
+        "numerator": 10,
+        "denominator": 10,
+        "value": 1
+      },
+      "sample_size": {
+        "unit": "DECISION válida",
+        "observations": 10,
+        "unique_requests": 5,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/decision-metrics.json",
+          "sha256": "383ebd65c93c769c7a01d126a4860441cf977b84b0c2b7b7b0069e2efa308fec",
+          "json_pointer": "/field_accuracy/applicable_protocols"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-D-prohibited_assumptions",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "DECISION prohibited_assumptions: 4/10.",
+      "value": {
+        "numerator": 4,
+        "denominator": 10,
+        "value": 0.4
+      },
+      "sample_size": {
+        "unit": "DECISION válida",
+        "observations": 10,
+        "unique_requests": 5,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/decision-metrics.json",
+          "sha256": "383ebd65c93c769c7a01d126a4860441cf977b84b0c2b7b7b0069e2efa308fec",
+          "json_pointer": "/field_accuracy/prohibited_assumptions"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-D-entity_resolution",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "DECISION entity_resolution: 10/10.",
+      "value": {
+        "numerator": 10,
+        "denominator": 10,
+        "value": 1
+      },
+      "sample_size": {
+        "unit": "DECISION válida",
+        "observations": 10,
+        "unique_requests": 5,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/decision-metrics.json",
+          "sha256": "383ebd65c93c769c7a01d126a4860441cf977b84b0c2b7b7b0069e2efa308fec",
+          "json_pointer": "/field_accuracy/entity_resolution"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-D-temporal_resolution",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "DECISION temporal_resolution: 4/10.",
+      "value": {
+        "numerator": 4,
+        "denominator": 10,
+        "value": 0.4
+      },
+      "sample_size": {
+        "unit": "DECISION válida",
+        "observations": 10,
+        "unique_requests": 5,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/decision-metrics.json",
+          "sha256": "383ebd65c93c769c7a01d126a4860441cf977b84b0c2b7b7b0069e2efa308fec",
+          "json_pointer": "/field_accuracy/temporal_resolution"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-D-completeness",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "Completude 2/10; micro 82/100; contrato global NAO_PROMISSOR_DIAGNOSTICO.",
+      "value": {
+        "completeness": {
+          "numerator": 2,
+          "denominator": 10,
+          "value": 0.2
+        },
+        "micro": {
+          "numerator": 82,
+          "denominator": 100,
+          "value": 0.82
+        },
+        "classification": "NAO_PROMISSOR_DIAGNOSTICO"
+      },
+      "sample_size": {
+        "unit": "DECISION válida",
+        "observations": 10,
+        "unique_requests": 5,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/decision-metrics.json",
+          "sha256": "383ebd65c93c769c7a01d126a4860441cf977b84b0c2b7b7b0069e2efa308fec",
+          "json_pointer": "/decision_completeness"
+        },
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/decision-metrics.json",
+          "sha256": "383ebd65c93c769c7a01d126a4860441cf977b84b0c2b7b7b0069e2efa308fec",
+          "json_pointer": "/micro"
+        },
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/decision-metrics.json",
+          "sha256": "383ebd65c93c769c7a01d126a4860441cf977b84b0c2b7b7b0069e2efa308fec",
+          "json_pointer": "/classification"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-V-grounding",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "VALIDATION grounding: 14/14.",
+      "value": {
+        "numerator": 14,
+        "denominator": 14,
+        "value": 1
+      },
+      "sample_size": {
+        "unit": "VALIDATION válida",
+        "observations": 14,
+        "unique_requests": 7,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/dimension_metrics/grounding"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-V-factuality",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "VALIDATION factuality: 14/14.",
+      "value": {
+        "numerator": 14,
+        "denominator": 14,
+        "value": 1
+      },
+      "sample_size": {
+        "unit": "VALIDATION válida",
+        "observations": 14,
+        "unique_requests": 7,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/dimension_metrics/factuality"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-V-protocol",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "VALIDATION protocol: 8/14.",
+      "value": {
+        "numerator": 8,
+        "denominator": 14,
+        "value": 0.5714285714285714
+      },
+      "sample_size": {
+        "unit": "VALIDATION válida",
+        "observations": 14,
+        "unique_requests": 7,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/dimension_metrics/protocol"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-V-temporal",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "VALIDATION temporal: 8/14.",
+      "value": {
+        "numerator": 8,
+        "denominator": 14,
+        "value": 0.5714285714285714
+      },
+      "sample_size": {
+        "unit": "VALIDATION válida",
+        "observations": 14,
+        "unique_requests": 7,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/dimension_metrics/temporal"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-V-entity",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "VALIDATION entity: 14/14.",
+      "value": {
+        "numerator": 14,
+        "denominator": 14,
+        "value": 1
+      },
+      "sample_size": {
+        "unit": "VALIDATION válida",
+        "observations": 14,
+        "unique_requests": 7,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/dimension_metrics/entity"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-V-coverage",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "VALIDATION coverage: 14/14.",
+      "value": {
+        "numerator": 14,
+        "denominator": 14,
+        "value": 1
+      },
+      "sample_size": {
+        "unit": "VALIDATION válida",
+        "observations": 14,
+        "unique_requests": 7,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/dimension_metrics/coverage"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-V-omission",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "VALIDATION omission: 14/14.",
+      "value": {
+        "numerator": 14,
+        "denominator": 14,
+        "value": 1
+      },
+      "sample_size": {
+        "unit": "VALIDATION válida",
+        "observations": 14,
+        "unique_requests": 7,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/dimension_metrics/omission"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-V-unsupported_assumption",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "VALIDATION unsupported_assumption: 14/14.",
+      "value": {
+        "numerator": 14,
+        "denominator": 14,
+        "value": 1
+      },
+      "sample_size": {
+        "unit": "VALIDATION válida",
+        "observations": 14,
+        "unique_requests": 7,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/dimension_metrics/unsupported_assumption"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-V-cross_entity",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "VALIDATION cross_entity: 2/14.",
+      "value": {
+        "numerator": 2,
+        "denominator": 14,
+        "value": 0.14285714285714285
+      },
+      "sample_size": {
+        "unit": "VALIDATION válida",
+        "observations": 14,
+        "unique_requests": 7,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/dimension_metrics/cross_entity"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-V-safety",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "VALIDATION safety: 14/14.",
+      "value": {
+        "numerator": 14,
+        "denominator": 14,
+        "value": 1
+      },
+      "sample_size": {
+        "unit": "VALIDATION válida",
+        "observations": 14,
+        "unique_requests": 7,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/dimension_metrics/safety"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-V-partial_answer_allowed",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "VALIDATION partial_answer_allowed: 14/14.",
+      "value": {
+        "numerator": 14,
+        "denominator": 14,
+        "value": 1
+      },
+      "sample_size": {
+        "unit": "VALIDATION válida",
+        "observations": 14,
+        "unique_requests": 7,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/dimension_metrics/partial_answer_allowed"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-V-verdict",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "Verdict 14/14; VALIDATION global INCONCLUSIVO.",
+      "value": {
+        "accuracy": {
+          "numerator": 14,
+          "denominator": 14,
+          "value": 1
+        },
+        "classification": "INCONCLUSIVO"
+      },
+      "sample_size": {
+        "unit": "VALIDATION válida",
+        "observations": 14,
+        "unique_requests": 7,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/verdict_accuracy"
+        },
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/classification"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-POSITIVE",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "T2/E2/P2: seis APPROVE corretos, false reject 0/6; P2 é parcial correta.",
+      "value": {
+        "coverage": {
+          "numerator": 6,
+          "denominator": 6,
+          "value": 1
+        },
+        "false_reject": {
+          "numerator": 0,
+          "denominator": 6,
+          "value": 0
+        },
+        "controls": [
+          {
+            "scenario_id": "T2",
+            "planned": 2,
+            "valid": 2,
+            "approved": 2,
+            "rejected": 0,
+            "inconclusive": 0
+          },
+          {
+            "scenario_id": "E2",
+            "planned": 2,
+            "valid": 2,
+            "approved": 2,
+            "rejected": 0,
+            "inconclusive": 0
+          },
+          {
+            "scenario_id": "P2",
+            "planned": 2,
+            "valid": 2,
+            "approved": 2,
+            "rejected": 0,
+            "inconclusive": 0
+          }
+        ]
+      },
+      "sample_size": {
+        "unit": "exposição positiva",
+        "observations": 6,
+        "unique_candidates": 3,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/positive_controls"
+        },
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/false_reject_rate"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-NEGATIVE",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "T1/E1/P1/E3: oito REJECT corretos, false accept 0/8.",
+      "value": {
+        "coverage": {
+          "numerator": 8,
+          "denominator": 8,
+          "value": 1
+        },
+        "false_accept": {
+          "numerator": 0,
+          "denominator": 8,
+          "value": 0
+        }
+      },
+      "sample_size": {
+        "unit": "exposição negativa",
+        "observations": 8,
+        "unique_candidates": 4,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/negative_coverage"
+        },
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/false_accept_rate"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-H1",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "H1 selecionou fonte atual null e CURRENT_FACT indevido nos dois R; manteve histórico obrigatório e UNKNOWN_CURRENT_STATE/HISTORICAL_SUPPORT_REQUIRED.",
+      "value": {
+        "case_id": "F-H1",
+        "repeated": 2,
+        "source_value": null,
+        "selected_current": [
+          [
+            "f-t-atual-A"
+          ],
+          [
+            "f-t-atual-A"
+          ]
+        ],
+        "temporal": [
+          [
+            "CURRENT_FACT",
+            "HISTORICAL_FACT",
+            "UNKNOWN_CURRENT_STATE",
+            "HISTORICAL_SUPPORT_REQUIRED"
+          ],
+          [
+            "CURRENT_FACT",
+            "HISTORICAL_FACT",
+            "UNKNOWN_CURRENT_STATE",
+            "HISTORICAL_SUPPORT_REQUIRED"
+          ]
+        ],
+        "assessment": "OPERATIONAL_MATERIAL_ERROR"
+      },
+      "sample_size": {
+        "unit": "request H1",
+        "observations": 2,
+        "unique_requests": 1,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/ledger.json",
+          "sha256": "51bc6a78b65cb6a830ce3d6cbf1b47573d51a29e065d66111cad31e66c82533c",
+          "json_pointer": "/stages/18/record/result"
+        },
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/ledger.json",
+          "sha256": "51bc6a78b65cb6a830ce3d6cbf1b47573d51a29e065d66111cad31e66c82533c",
+          "json_pointer": "/stages/19/record/result"
+        },
+        {
+          "path": "experiments/jev/s2f/diagnostic-matrix.json",
+          "sha256": "f12d03261728da10656db753608444caee755e4653e5b6581841699f3d916ba3",
+          "json_pointer": "/cases/6/input/property_context/current_facts/0/value"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-HISTORY",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "Seleção histórica 10/10; recall obrigatório 4/4 IDs, sem histórico opcional no denominador.",
+      "value": {
+        "selection_accuracy": {
+          "numerator": 10,
+          "denominator": 10,
+          "value": 1
+        },
+        "required_history_recall": {
+          "numerator": 4,
+          "denominator": 4,
+          "value": 1
+        },
+        "irrelevant_selection_rate": {
+          "numerator": 0,
+          "denominator": 4,
+          "value": 0
+        },
+        "status": "TESTED",
+        "planned_required_id_exposures": 4,
+        "details": [
+          {
+            "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-01/R1",
+            "scenario_id": "T1",
+            "required": [
+              "f-t-historico-A"
+            ],
+            "selected": [
+              "f-t-historico-A"
+            ],
+            "temporal": [
+              "CURRENT_FACT",
+              "HISTORICAL_FACT"
+            ]
+          },
+          {
+            "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-01/R2",
+            "scenario_id": "T1",
+            "required": [
+              "f-t-historico-A"
+            ],
+            "selected": [
+              "f-t-historico-A"
+            ],
+            "temporal": [
+              "CURRENT_FACT",
+              "HISTORICAL_FACT"
+            ]
+          },
+          {
+            "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-10/R1",
+            "scenario_id": "H1",
+            "required": [
+              "f-t-historico-A"
+            ],
+            "selected": [
+              "f-t-historico-A"
+            ],
+            "temporal": [
+              "CURRENT_FACT",
+              "HISTORICAL_FACT",
+              "UNKNOWN_CURRENT_STATE",
+              "HISTORICAL_SUPPORT_REQUIRED"
+            ]
+          },
+          {
+            "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-10/R2",
+            "scenario_id": "H1",
+            "required": [
+              "f-t-historico-A"
+            ],
+            "selected": [
+              "f-t-historico-A"
+            ],
+            "temporal": [
+              "CURRENT_FACT",
+              "HISTORICAL_FACT",
+              "UNKNOWN_CURRENT_STATE",
+              "HISTORICAL_SUPPORT_REQUIRED"
+            ]
+          }
+        ]
+      },
+      "sample_size": {
+        "unit": "ID histórico obrigatório exposto",
+        "observations": 4,
+        "unique_requests": 2,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/history-metrics.json",
+          "sha256": "a8c56a7509992b0c4b09cc91c29a8f89480f204a0a4fac23abb420922bd24c5c",
+          "json_pointer": "/required_history_recall"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-CROSS-MATERIAL",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "E1 B→A e E3 A→B: cross_entity PASS indevido nos dois R, apesar da transferência demonstrada.",
+      "value": {
+        "wrong_exposures": 4,
+        "expected": "FAIL",
+        "observed": "PASS"
+      },
+      "sample_size": {
+        "unit": "candidata com transferência demonstrada",
+        "observations": 4,
+        "unique_candidates": 2,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/details/4/result/dimensions/cross_entity"
+        },
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/details/12/result/dimensions/cross_entity"
+        },
+        {
+          "path": "experiments/jev/s2f/oracle-mini.json",
+          "sha256": "561dc92869d6df591e34adcd5497a87763220864edb984999bf35048372fbfae"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-PAIRS",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "Cinco pares × dois R: 0/10 integralmente corretos; controle direcional também não passa.",
+      "value": {
+        "accuracy": {
+          "numerator": 0,
+          "denominator": 10,
+          "value": 0
+        },
+        "covered": 10,
+        "directional": [
+          {
+            "repetition": 1,
+            "both_valid": true,
+            "classification": "PAIR_FAIL"
+          },
+          {
+            "repetition": 2,
+            "both_valid": true,
+            "classification": "PAIR_FAIL"
+          }
+        ]
+      },
+      "sample_size": {
+        "unit": "par/repetição",
+        "observations": 10,
+        "unique_pairs": 5,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/pair-metrics.json",
+          "sha256": "ce13d80790a2c4f5cf5925b2b7b07459448e0881ef70507366931bd5db35a231",
+          "json_pointer": "/accuracy"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-REASONS",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "Reasons: precisão 46/56, recall 46/50, sem preencher dimensões pelo verdict.",
+      "value": {
+        "precision": {
+          "numerator": 46,
+          "denominator": 56,
+          "value": 0.8214285714285714
+        },
+        "recall": {
+          "numerator": 46,
+          "denominator": 50,
+          "value": 0.92
+        }
+      },
+      "sample_size": {
+        "unit": "VALIDATION válida",
+        "observations": 14,
+        "unique_requests": 7,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/reason_precision"
+        },
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e",
+          "json_pointer": "/reason_recall"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-STRUCTURE",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "24 transportes completos, 24 válidos; zero invalid, SUM/CHOICE, structural unknown ou erro operacional.",
+      "value": {
+        "completed": 24,
+        "valid": 24,
+        "invalid": 0,
+        "unknown": 0,
+        "operational": 0,
+        "model": "jev-1.14.0"
+      },
+      "sample_size": {
+        "unit": "chamada",
+        "observations": 24,
+        "unique_requests": 12,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/summary.json",
+          "sha256": "f13ba338a4b3e152905d90259669bd8669e3fee2a55d8cdb49d934dd13f72a16"
+        },
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/structural-analysis.json",
+          "sha256": "32162f0c31a67b76926e8d825e0a422ac4ad93b7aa037c7afc5c50efa9bf5f69"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-REPETITIONS",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "12/12 SEMANTIC_MATCH_WITH_CONFIDENCE_VARIATION; consistência também repete erros.",
+      "value": {
+        "requests": 12,
+        "classification": "SEMANTIC_MATCH_WITH_CONFIDENCE_VARIATION"
+      },
+      "sample_size": {
+        "unit": "par R1/R2",
+        "observations": 12,
+        "unique_requests": 12,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/repetition-comparison.json",
+          "sha256": "85a225461d1fd6a2a7f67630ded4fac5913548ae8347669d628be69f40373387"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FB-CONFIDENCE",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "44 erros de pergunta; sete no q75 relativo, seis materiais. INVENT_COMMERCIAL NO 0,94/0,96 e temporal FAIL 0,93 reincidem.",
+      "value": {
+        "question_errors": 44,
+        "empirical_upper_quartile_errors": 7,
+        "critical_events": 20
+      },
+      "sample_size": {
+        "unit": "pergunta retornada",
+        "observations": 414,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+          "sha256": "c61ac2f950ac7b0af98f75d796a8b1ad493a1a3b0e6acb91def01cba552487ea"
+        },
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/critical-events.json",
+          "sha256": "ac031e759e05cf697a325e5e556c5ee508e0550dab57d4519ee2218e83375988"
+        }
+      ],
+      "limitation": "Quartis empíricos descritivos; não são confidence desta recomendação nem calibração comprovada."
+    },
+    {
+      "evidence_id": "FB-COST",
+      "checkpoint": "JEV-S2-F-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "DIRECT_LATEST",
+      "statement": "Custo histórico estimado US$0,002235744; preço não reconfirmado neste checkpoint.",
+      "value": {
+        "authorized_calls": 24,
+        "cap_usd": 0.08,
+        "started_calls": 24,
+        "usage_known_calls": 24,
+        "usage_unknown_calls": 0,
+        "input_tokens": 53232,
+        "output_tokens": 17218,
+        "known_estimated_cost_usd": 0.002235744,
+        "estimated_cost_usd": 0.002235744,
+        "unknown_usage_reserved_usd": 0,
+        "estimated_upper_bound_usd": 0.002235744,
+        "worst_case_next_call_usd": 0.002752512,
+        "billed_status": "BILLED_UNKNOWN",
+        "billed_cost": null
+      },
+      "sample_size": {
+        "unit": "chamada histórica",
+        "observations": 24,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/budget.json",
+          "sha256": "35ffad935e760140203bb5f1ef730644df372ebf63f37dfb32e1c7f6befe76d7"
+        },
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/pricing.json",
+          "sha256": "431ccde8a0a517f1c067d76bdcea25f2e35a7c320ccabfe5d0f5c86985b7c426"
+        }
+      ],
+      "limitation": "Custo histórico, BILLED_UNKNOWN; correção, segurança e observabilidade precedem preço."
+    },
+    {
+      "evidence_id": "S0-MACRO",
+      "checkpoint": "JEV-S0",
+      "kind": "REAL_OBSERVATION",
+      "weight": "HISTORICAL",
+      "statement": "S0: action 10/10, verdict 9/10, false accept 0/5, false reject 1/5; temporal 6/10, entity/protocol 8/10.",
+      "value": {
+        "decision_accuracy": {
+          "numerator": 10,
+          "denominator": 10,
+          "rate": 1
+        },
+        "validation_accuracy": {
+          "numerator": 9,
+          "denominator": 10,
+          "rate": 0.9
+        },
+        "block_accuracy": {
+          "numerator": 5,
+          "denominator": 5,
+          "rate": 1
+        },
+        "false_accept": {
+          "numerator": 0,
+          "denominator": 5,
+          "rate": 0
+        },
+        "false_reject": {
+          "numerator": 1,
+          "denominator": 5,
+          "rate": 0.2
+        },
+        "inconclusive": {
+          "numerator": 0,
+          "denominator": 10,
+          "rate": 0
+        },
+        "protocol_accuracy": {
+          "numerator": 8,
+          "denominator": 10,
+          "rate": 0.8
+        },
+        "entity_accuracy": {
+          "numerator": 8,
+          "denominator": 10,
+          "rate": 0.8
+        },
+        "temporal_accuracy": {
+          "numerator": 6,
+          "denominator": 10,
+          "rate": 0.6
+        },
+        "grounding_accuracy": {
+          "numerator": 9,
+          "denominator": 10,
+          "rate": 0.9
+        }
+      },
+      "sample_size": {
+        "unit": "caso sintético",
+        "observations": 10,
+        "calls": 20,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/real-1792191699709/metrics.json",
+          "sha256": "e79264fa18a899a09880cf58de5feec3b80e0dccbaa5269ee5ffdee433ef327d"
+        },
+        {
+          "path": "RELATORIO-JEV-S0.md",
+          "sha256": "fd10a4f7a63c26b2506d1ec352eca0bcd7c2440f2c4ee80eba0fe534076c62a0"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "S0-FALSE-REJECT",
+      "checkpoint": "JEV-S0",
+      "kind": "REAL_OBSERVATION",
+      "weight": "HISTORICAL",
+      "statement": "Há falsa rejeição histórica de candidata parcial legítima: 1/5 positivas no S0.",
+      "value": {
+        "numerator": 1,
+        "denominator": 5,
+        "rate": 0.2
+      },
+      "sample_size": {
+        "unit": "candidata positiva",
+        "observations": 5,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/real-1792191699709/metrics.json",
+          "sha256": "e79264fa18a899a09880cf58de5feec3b80e0dccbaa5269ee5ffdee433ef327d",
+          "json_pointer": "/false_reject"
+        },
+        {
+          "path": "RELATORIO-JEV-S0.md",
+          "sha256": "fd10a4f7a63c26b2506d1ec352eca0bcd7c2440f2c4ee80eba0fe534076c62a0"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "S1-PLAN",
+      "checkpoint": "JEV-S1",
+      "kind": "OFFLINE_CONTRACT",
+      "weight": "CONTRACT_OR_ABSENCE",
+      "statement": "30 entradas, 22 pares, 11 mutantes e plano de 180 chamadas são desenho congelado, não execução completa.",
+      "value": {
+        "cases": 30,
+        "pairs": 22,
+        "mutants": 11,
+        "planned": 180
+      },
+      "sample_size": {
+        "unit": "desenho offline",
+        "calls": 0
+      },
+      "references": [
+        {
+          "path": "experiments/jev/v2/freeze-v2.json",
+          "sha256": "03baa866fbf1fb5fda8a065f8c6a0136c3f4679543306de8b678ed232acf2a60"
+        },
+        {
+          "path": "RELATORIO-JEV-S1.md",
+          "sha256": "8158e1927b7f49b2e5f381ff07d10558023b0ebea941dfe5763c03e8ce896427"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "A-PARSER",
+      "checkpoint": "JEV-S2-A",
+      "kind": "OFFLINE_CERTIFICATION",
+      "weight": "CONTRACT_OR_ABSENCE",
+      "statement": "Adapter/parser congelado e certificado por fixtures; não é medição de capacidade semântica real.",
+      "value": {
+        "new_tests": 46,
+        "then_total_tests": 65,
+        "calls": 0
+      },
+      "sample_size": {
+        "unit": "teste offline",
+        "observations": 46,
+        "calls": 0
+      },
+      "references": [
+        {
+          "path": "experiments/jev/v2/adapter-freeze.json",
+          "sha256": "4eada006d631cebda9a71142e9b78e592252f472176e2584f4826848e3df4c75"
+        },
+        {
+          "path": "RELATORIO-JEV-S2-A.md",
+          "sha256": "058039f9a3e5b93bd3b67c9c4b90789d0c28a91fafbd9b8d02d08487c17d1810"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "B-STRUCTURE",
+      "checkpoint": "JEV-S2-B",
+      "kind": "REAL_OBSERVATION",
+      "weight": "HISTORICAL",
+      "statement": "HOLD: 4 iniciadas, 3 normalizadas, 1 INVALID_PROBABILITIES, 176 NOT_STARTED. Causa específica NÃO DETERMINADA / NÃO RECUPERÁVEL.",
+      "value": {
+        "status": "HOLD",
+        "stage_states": {
+          "COMPLETED": 3,
+          "FAILED_OPERATIONAL": 0,
+          "FAILED_STRUCTURAL": 1,
+          "IN_PROGRESS": 0,
+          "NOT_STARTED": 176
+        },
+        "cause": "NÃO DETERMINADA / NÃO RECUPERÁVEL",
+        "partial_metrics": {
+          "action_accuracy": {
+            "numerator": 2,
+            "denominator": 2,
+            "value": 1
+          },
+          "decision_field_accuracy": {
+            "per_field": {
+              "action": {
+                "numerator": 2,
+                "denominator": 2,
+                "value": 1
+              },
+              "intent": {
+                "numerator": 2,
+                "denominator": 2,
+                "value": 1
+              },
+              "enough_context": {
+                "numerator": 2,
+                "denominator": 2,
+                "value": 1
+              },
+              "relevant_current_facts": {
+                "numerator": 2,
+                "denominator": 2,
+                "value": 1
+              },
+              "relevant_historical_facts": {
+                "numerator": 2,
+                "denominator": 2,
+                "value": 1
+              },
+              "missing_information": {
+                "numerator": 1,
+                "denominator": 2,
+                "value": 0.5
+              },
+              "applicable_protocols": {
+                "numerator": 2,
+                "denominator": 2,
+                "value": 1
+              },
+              "prohibited_assumptions": {
+                "numerator": 0,
+                "denominator": 2,
+                "value": 0
+              },
+              "entity_resolution": {
+                "numerator": 2,
+                "denominator": 2,
+                "value": 1
+              },
+              "temporal_resolution": {
+                "numerator": 0,
+                "denominator": 2,
+                "value": 0
+              }
+            },
+            "micro": {
+              "numerator": 15,
+              "denominator": 20,
+              "value": 0.75
+            }
+          },
+          "decision_completeness": {
+            "numerator": 0,
+            "denominator": 2,
+            "value": 0
+          },
+          "validation_accuracy": {
+            "numerator": 1,
+            "denominator": 1,
+            "value": 1
+          },
+          "false_accept_rate": {
+            "numerator": 0,
+            "denominator": 0,
+            "value": null
+          },
+          "false_reject_rate": {
+            "numerator": 0,
+            "denominator": 1,
+            "value": 0
+          },
+          "inconclusive_accuracy": {
+            "numerator": 0,
+            "denominator": 0,
+            "value": null
+          },
+          "inconclusive_unsafe_approvals": [],
+          "inconclusive_false_rejections": [],
+          "inconclusive_prediction_rate": {
+            "numerator": 0,
+            "denominator": 1,
+            "value": 0
+          },
+          "history_selection_accuracy": {
+            "numerator": 2,
+            "denominator": 2,
+            "value": 1
+          },
+          "history_required_recall": {
+            "numerator": 0,
+            "denominator": 0,
+            "value": null
+          },
+          "history_irrelevant_selection_rate": {
+            "numerator": 0,
+            "denominator": 0,
+            "value": null
+          },
+          "validation_field_accuracy": {
+            "grounding": {
+              "numerator": 1,
+              "denominator": 1,
+              "value": 1
+            },
+            "factuality": {
+              "numerator": 1,
+              "denominator": 1,
+              "value": 1
+            },
+            "protocol": {
+              "numerator": 1,
+              "denominator": 1,
+              "value": 1
+            },
+            "temporal": {
+              "numerator": 1,
+              "denominator": 1,
+              "value": 1
+            },
+            "entity": {
+              "numerator": 1,
+              "denominator": 1,
+              "value": 1
+            },
+            "coverage": {
+              "numerator": 1,
+              "denominator": 1,
+              "value": 1
+            },
+            "omission": {
+              "numerator": 1,
+              "denominator": 1,
+              "value": 1
+            },
+            "unsupported_assumption": {
+              "numerator": 1,
+              "denominator": 1,
+              "value": 1
+            },
+            "cross_entity": {
+              "numerator": 0,
+              "denominator": 1,
+              "value": 0
+            },
+            "safety": {
+              "numerator": 1,
+              "denominator": 1,
+              "value": 1
+            },
+            "partial_answer_allowed": {
+              "numerator": 0,
+              "denominator": 1,
+              "value": 0
+            }
+          },
+          "dimension_applicability": {
+            "grounding": {
+              "PASS": 1,
+              "FAIL": 0,
+              "INCONCLUSIVE": 0,
+              "NOT_APPLICABLE": 0
+            },
+            "factuality": {
+              "PASS": 1,
+              "FAIL": 0,
+              "INCONCLUSIVE": 0,
+              "NOT_APPLICABLE": 0
+            },
+            "protocol": {
+              "PASS": 1,
+              "FAIL": 0,
+              "INCONCLUSIVE": 0,
+              "NOT_APPLICABLE": 0
+            },
+            "temporal": {
+              "PASS": 1,
+              "FAIL": 0,
+              "INCONCLUSIVE": 0,
+              "NOT_APPLICABLE": 0
+            },
+            "entity": {
+              "PASS": 1,
+              "FAIL": 0,
+              "INCONCLUSIVE": 0,
+              "NOT_APPLICABLE": 0
+            },
+            "coverage": {
+              "PASS": 1,
+              "FAIL": 0,
+              "INCONCLUSIVE": 0,
+              "NOT_APPLICABLE": 0
+            },
+            "omission": {
+              "PASS": 1,
+              "FAIL": 0,
+              "INCONCLUSIVE": 0,
+              "NOT_APPLICABLE": 0
+            },
+            "unsupported_assumption": {
+              "PASS": 1,
+              "FAIL": 0,
+              "INCONCLUSIVE": 0,
+              "NOT_APPLICABLE": 0
+            },
+            "cross_entity": {
+              "PASS": 1,
+              "FAIL": 0,
+              "INCONCLUSIVE": 0,
+              "NOT_APPLICABLE": 0
+            },
+            "safety": {
+              "PASS": 1,
+              "FAIL": 0,
+              "INCONCLUSIVE": 0,
+              "NOT_APPLICABLE": 0
+            },
+            "partial_answer_allowed": {
+              "PASS": 0,
+              "FAIL": 0,
+              "INCONCLUSIVE": 0,
+              "NOT_APPLICABLE": 1
+            }
+          },
+          "protocol_accuracy": {
+            "numerator": 1,
+            "denominator": 1,
+            "value": 1
+          },
+          "entity_accuracy": {
+            "numerator": 1,
+            "denominator": 1,
+            "value": 1
+          },
+          "temporal_accuracy": {
+            "numerator": 1,
+            "denominator": 1,
+            "value": 1
+          },
+          "grounding_accuracy": {
+            "numerator": 1,
+            "denominator": 1,
+            "value": 1
+          },
+          "coverage_accuracy": {
+            "numerator": 1,
+            "denominator": 1,
+            "value": 1
+          },
+          "reason_precision": {
+            "numerator": 0,
+            "denominator": 0,
+            "value": null
+          },
+          "reason_recall": {
+            "numerator": 0,
+            "denominator": 0,
+            "value": null
+          },
+          "reason_dimension_consistency": {
+            "numerator": 1,
+            "denominator": 1,
+            "value": 1
+          },
+          "confidence_calibration": {
+            "decision": {
+              "confidence_correct": [
+                {
+                  "case_id": "V2-01",
+                  "repetition": 1,
+                  "confidence": 0.97
+                },
+                {
+                  "case_id": "V2-02",
+                  "repetition": 1,
+                  "confidence": 0.97
+                }
+              ],
+              "confidence_wrong": [],
+              "high_confidence_error": [],
+              "low_confidence_correct": [
+                {
+                  "case_id": "V2-01",
+                  "repetition": 1,
+                  "confidence": 0.97
+                },
+                {
+                  "case_id": "V2-02",
+                  "repetition": 1,
+                  "confidence": 0.97
+                }
+              ],
+              "descriptive_q25": 0.97,
+              "descriptive_q75": 0.97,
+              "high_confidence_error_rate": {
+                "numerator": 0,
+                "denominator": 2,
+                "value": 0
+              }
+            },
+            "validation": {
+              "confidence_correct": [
+                {
+                  "case_id": "V2-01",
+                  "repetition": 1,
+                  "confidence": 0.97
+                }
+              ],
+              "confidence_wrong": [],
+              "high_confidence_error": [],
+              "low_confidence_correct": [
+                {
+                  "case_id": "V2-01",
+                  "repetition": 1,
+                  "confidence": 0.97
+                }
+              ],
+              "descriptive_q25": 0.97,
+              "descriptive_q75": 0.97,
+              "high_confidence_error_rate": {
+                "numerator": 0,
+                "denominator": 1,
+                "value": 0
+              }
+            }
+          },
+          "high_confidence_error_rate": {
+            "decision": {
+              "numerator": 0,
+              "denominator": 2,
+              "value": 0
+            },
+            "validation": {
+              "numerator": 0,
+              "denominator": 1,
+              "value": 0
+            }
+          },
+          "consistency_between_repetitions": {
+            "action": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "verdict": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "reasons": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            }
+          },
+          "confidence_variance": [],
+          "hard_gate_false_accepts": []
+        }
+      },
+      "sample_size": {
+        "unit": "chamada iniciada",
+        "observations": 4,
+        "normalized": 3
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/summary.json",
+          "sha256": "7ea5b8a13e7872e6dcf9c8eab575223edd3031096d67974e25e7221409e7ecd2"
+        },
+        {
+          "path": "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/stage-results/004.json",
+          "sha256": "a413fbfeb2aec2fc059f7d276abc79dc5a91b1003f19c63b19df4656e2e5c317"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "C-DIAGNOSTICS",
+      "checkpoint": "JEV-S2-C",
+      "kind": "OFFLINE_CERTIFICATION",
+      "weight": "CONTRACT_OR_ABSENCE",
+      "statement": "Wrapper de diagnóstico sanitizado preserva parsed do parser; não recupera raw S2-B.",
+      "value": {
+        "new_tests": 85,
+        "then_total_tests": 157,
+        "calls": 0
+      },
+      "sample_size": {
+        "unit": "teste offline",
+        "observations": 85,
+        "calls": 0
+      },
+      "references": [
+        {
+          "path": "experiments/jev/v2/probability-diagnostics/freeze.json",
+          "sha256": "e5f0b4884d886feee9bdc1987b18260865b5c075de1ca8fb7c4fcfde29286a4d"
+        },
+        {
+          "path": "RELATORIO-JEV-S2-C.md",
+          "sha256": "a22ed7dedbc77eeb50ee303160351c29ab76145529743205407bdf11f7ed5482"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "D-STRUCTURE",
+      "checkpoint": "JEV-S2-D",
+      "kind": "REAL_OBSERVATION",
+      "weight": "HISTORICAL",
+      "statement": "Seis probes válidos; sem oráculo semântico.",
+      "value": {
+        "valid": 6,
+        "invalid": 0
+      },
+      "sample_size": {
+        "unit": "probe",
+        "observations": 6,
+        "unique_requests": 3,
+        "repetitions": 2,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2d-probdiag-jev-s2d-probdiag-1792253130113-4d03f514/summary.json",
+          "sha256": "585b049738acb9ae2c6b43e9cdf33b583a83cd3d7f065e9baf62afb63744f1c4"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "E-STRUCTURE",
+      "checkpoint": "JEV-S2-E",
+      "kind": "REAL_OBSERVATION",
+      "weight": "HISTORICAL",
+      "statement": "12 chamadas; 10 válidas; 2 INVALID_PROBABILITIES classificados, um SUM e um CHOICE. Nenhuma correção de vetor.",
+      "value": {
+        "valid": 10,
+        "invalid": 2
+      },
+      "sample_size": {
+        "unit": "chamada",
+        "observations": 12,
+        "valid": 10,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2e-jev-s2e-semantic-1792255143175-41551ba6/summary.json",
+          "sha256": "afcbad5b628683fd999cc04adf92498fa8b2bd96b31dd59a6c91c3de6fc23eb7"
+        },
+        {
+          "path": "experiments/jev/results/s2e-jev-s2e-semantic-1792255143175-41551ba6/errors.json",
+          "sha256": "f11445ea77d9f7a3582f7aa808f2c1d119f6f5fdc9f8cc2859e6b625b9b51b47"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "E-MACRO",
+      "checkpoint": "JEV-S2-E",
+      "kind": "REAL_OBSERVATION",
+      "weight": "HISTORICAL",
+      "statement": "D action 6/6, completude 0/6; V verdict 4/4 negativas válidas; positivos não testados no S2-E.",
+      "value": {
+        "decision_action": {
+          "numerator": 6,
+          "denominator": 6,
+          "value": 1
+        },
+        "decision_completeness": {
+          "numerator": 0,
+          "denominator": 6,
+          "value": 0
+        },
+        "validation_verdict": {
+          "numerator": 4,
+          "denominator": 4,
+          "value": 1
+        },
+        "false_accept": {
+          "numerator": 0,
+          "denominator": 4,
+          "value": 0
+        },
+        "false_reject": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null
+        }
+      },
+      "sample_size": {
+        "unit": "stage válido",
+        "decision": 6,
+        "validation": 4,
+        "positive_validation": 0,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2e-jev-s2e-semantic-1792255143175-41551ba6/decision-metrics.json",
+          "sha256": "665834c4c05942b74ae8e7aaf2f8d41ccbc7f8477c4c4b84b6dab9a6cf29f6de"
+        },
+        {
+          "path": "experiments/jev/results/s2e-jev-s2e-semantic-1792255143175-41551ba6/validation-metrics.json",
+          "sha256": "ab0208cbffdf2874414c8e993b8aabd7f6f361ef0661136eb50b79cf69f5162f"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "E-PROHIBITED",
+      "checkpoint": "JEV-S2-E",
+      "kind": "REAL_OBSERVATION",
+      "weight": "HISTORICAL",
+      "statement": "Prohibited assumptions 0/6; em P parcial omitiu INVENT_COMMERCIAL com 0,94.",
+      "value": {
+        "accuracy": {
+          "numerator": 0,
+          "denominator": 6,
+          "value": 0
+        }
+      },
+      "sample_size": {
+        "unit": "DECISION válida",
+        "observations": 6,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2e-jev-s2e-semantic-1792255143175-41551ba6/decision-metrics.json",
+          "sha256": "665834c4c05942b74ae8e7aaf2f8d41ccbc7f8477c4c4b84b6dab9a6cf29f6de",
+          "json_pointer": "/prohibited_assumption_accuracy"
+        },
+        {
+          "path": "experiments/jev/results/s2e-jev-s2e-semantic-1792255143175-41551ba6/probabilities-summary.json",
+          "sha256": "2454b1241e88693f7708f86e3f61435bed2bbeeb968ec56d5d0e2cb73432bfa0"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "E-TEMPORAL",
+      "checkpoint": "JEV-S2-E",
+      "kind": "REAL_OBSERVATION",
+      "weight": "HISTORICAL",
+      "statement": "Temporal D 2/6 e V 1/4; FAIL temporal indevido no caso de entidade atual.",
+      "value": {
+        "decision": {
+          "numerator": 2,
+          "denominator": 6,
+          "value": 0.3333333333333333
+        },
+        "validation": {
+          "numerator": 1,
+          "denominator": 4,
+          "value": 0.25
+        }
+      },
+      "sample_size": {
+        "unit": "stage válido",
+        "decision": 6,
+        "validation": 4,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2e-jev-s2e-semantic-1792255143175-41551ba6/decision-metrics.json",
+          "sha256": "665834c4c05942b74ae8e7aaf2f8d41ccbc7f8477c4c4b84b6dab9a6cf29f6de",
+          "json_pointer": "/temporal_accuracy"
+        },
+        {
+          "path": "experiments/jev/results/s2e-jev-s2e-semantic-1792255143175-41551ba6/validation-metrics.json",
+          "sha256": "ab0208cbffdf2874414c8e993b8aabd7f6f361ef0661136eb50b79cf69f5162f",
+          "json_pointer": "/dimension_metrics/temporal"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "E-CROSS",
+      "checkpoint": "JEV-S2-E",
+      "kind": "REAL_OBSERVATION",
+      "weight": "HISTORICAL",
+      "statement": "cross_entity 0/4 em V válida; houve PASS indevido em transferência A/B.",
+      "value": {
+        "numerator": 0,
+        "denominator": 4,
+        "value": 0
+      },
+      "sample_size": {
+        "unit": "VALIDATION válida",
+        "observations": 4,
+        "synthetic": true
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2e-jev-s2e-semantic-1792255143175-41551ba6/validation-metrics.json",
+          "sha256": "ab0208cbffdf2874414c8e993b8aabd7f6f361ef0661136eb50b79cf69f5162f",
+          "json_pointer": "/dimension_metrics/cross_entity"
+        },
+        {
+          "path": "RELATORIO-JEV-S2-E.md",
+          "sha256": "46526917192c9d6cc5905206fc03dfa2b36eb411bc63397c7379bc3efb83576c"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "FA-DESIGN",
+      "checkpoint": "JEV-S2-F-A",
+      "kind": "OFFLINE_CONTRACT",
+      "weight": "CONTRACT_OR_ABSENCE",
+      "statement": "Nove casos, cinco pares, controle direcional, positivos e histórico obrigatório; 24 chamadas somente propostas naquele gate.",
+      "value": {
+        "cases": 9,
+        "pairs": 5,
+        "proposed_calls": 24,
+        "then_tests": 248
+      },
+      "sample_size": {
+        "unit": "desenho offline",
+        "calls": 0
+      },
+      "references": [
+        {
+          "path": "experiments/jev/s2f/freeze.json",
+          "sha256": "655e651737f4187997df5337885384137bd230b36b84cf4efb218e5c8c4fbd36"
+        },
+        {
+          "path": "experiments/jev/s2f/metrics-contract.md",
+          "sha256": "570d36ecd57c718dfea69554c1da4c8275587931d61966954cb6d8e33da56c73"
+        }
+      ],
+      "limitation": "Amostra sintética pequena; repetições de um request não são casos independentes. Não somar denominadores de checkpoints."
+    },
+    {
+      "evidence_id": "SCOPE-NARROW",
+      "checkpoint": "JEV-S2-G-A",
+      "kind": "SCOPE_LIMIT",
+      "weight": "CONTRACT_OR_ABSENCE",
+      "statement": "Recorte pequeno e sintético; os dez D recentes têm RESPOND/FACTUAL/enough_context true esperados, alvos explícitos e duas repetições. Não prova generalização.",
+      "value": {
+        "limit_only": true
+      },
+      "sample_size": {
+        "unit": "escopo documental; não é amostra de desempenho",
+        "observations": null,
+        "calls": 0
+      },
+      "references": [
+        {
+          "path": "experiments/jev/s2f/oracle-mini.json",
+          "sha256": "561dc92869d6df591e34adcd5497a87763220864edb984999bf35048372fbfae"
+        },
+        {
+          "path": "experiments/jev/s2f/requests-plan.json",
+          "sha256": "5b197bd0bbc82d630ba609f69325686aadf17e5e3282508dff807d4ae2748a30"
+        }
+      ],
+      "limitation": "Ausência de evidência não é evidência de desempenho ruim; limite de escopo não apaga uma medição existente."
+    },
+    {
+      "evidence_id": "SCOPE-EMPTY-PROTOCOL",
+      "checkpoint": "JEV-S2-G-A",
+      "kind": "SCOPE_LIMIT",
+      "weight": "CONTRACT_OR_ABSENCE",
+      "statement": "Em F-B todos os catálogos de protocolos são vazios; 10/10 seleções vazias não mede ativação de protocolo.",
+      "value": {
+        "limit_only": true
+      },
+      "sample_size": {
+        "unit": "escopo documental; não é amostra de desempenho",
+        "observations": null,
+        "calls": 0
+      },
+      "references": [
+        {
+          "path": "experiments/jev/s2f/diagnostic-matrix.json",
+          "sha256": "f12d03261728da10656db753608444caee755e4653e5b6581841699f3d916ba3"
+        }
+      ],
+      "limitation": "Ausência de evidência não é evidência de desempenho ruim; limite de escopo não apaga uma medição existente."
+    },
+    {
+      "evidence_id": "SCOPE-SAFETY",
+      "checkpoint": "JEV-S2-G-A",
+      "kind": "SCOPE_LIMIT",
+      "weight": "CONTRACT_OR_ABSENCE",
+      "statement": "F-B não contém execução de ferramenta, tenant adversário ou teste de segurança operacional; safety PASS não certifica essas funções.",
+      "value": {
+        "limit_only": true
+      },
+      "sample_size": {
+        "unit": "escopo documental; não é amostra de desempenho",
+        "observations": null,
+        "calls": 0
+      },
+      "references": [
+        {
+          "path": "experiments/jev/s2f/diagnostic-matrix.json",
+          "sha256": "f12d03261728da10656db753608444caee755e4653e5b6581841699f3d916ba3"
+        }
+      ],
+      "limitation": "Ausência de evidência não é evidência de desempenho ruim; limite de escopo não apaga uma medição existente."
+    },
+    {
+      "evidence_id": "FB-V-FIELD-LIMIT",
+      "checkpoint": "JEV-S2-G-A",
+      "kind": "SCOPE_LIMIT",
+      "weight": "CONTRACT_OR_ABSENCE",
+      "statement": "Campos com 14/14 são observações separadas; onze dimensões simultâneas não são confiáveis e pares foram 0/10.",
+      "value": {
+        "limit_only": true
+      },
+      "sample_size": {
+        "unit": "escopo documental; não é amostra de desempenho",
+        "observations": null,
+        "calls": 0
+      },
+      "references": [
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+          "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e"
+        },
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/pair-metrics.json",
+          "sha256": "ce13d80790a2c4f5cf5925b2b7b07459448e0881ef70507366931bd5db35a231"
+        }
+      ],
+      "limitation": "Ausência de evidência não é evidência de desempenho ruim; limite de escopo não apaga uma medição existente."
+    },
+    {
+      "evidence_id": "NOT-TESTED-PROTOCOL",
+      "checkpoint": "JEV-S2-G-A",
+      "kind": "ABSENCE_OF_EVALUATION",
+      "weight": "CONTRACT_OR_ABSENCE",
+      "statement": "Não há execução V2 completa de catálogo conflitante/versionado. Desenho S1 não é evidência de capacidade real.",
+      "value": {
+        "evaluated": false
+      },
+      "sample_size": {
+        "unit": "escopo documental; não é amostra de desempenho",
+        "observations": null,
+        "calls": 0
+      },
+      "references": [
+        {
+          "path": "experiments/jev/v2/freeze-v2.json",
+          "sha256": "03baa866fbf1fb5fda8a065f8c6a0136c3f4679543306de8b678ed232acf2a60"
+        },
+        {
+          "path": "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/summary.json",
+          "sha256": "7ea5b8a13e7872e6dcf9c8eab575223edd3031096d67974e25e7221409e7ecd2"
+        }
+      ],
+      "limitation": "Ausência de evidência não é evidência de desempenho ruim; limite de escopo não apaga uma medição existente."
+    },
+    {
+      "evidence_id": "NOT-TESTED-DOMAIN",
+      "checkpoint": "JEV-S2-G-A",
+      "kind": "ABSENCE_OF_EVALUATION",
+      "weight": "CONTRACT_OR_ABSENCE",
+      "statement": "Não há benchmark S0–F-B de Radar, follow-up específico, match entre anúncios, comparáveis, outliers, redação livre, execução CRM ou ranking da carteira.",
+      "value": {
+        "evaluated": false
+      },
+      "sample_size": {
+        "unit": "escopo documental; não é amostra de desempenho",
+        "observations": null,
+        "calls": 0
+      },
+      "references": [
+        {
+          "path": "RELATORIO-JEV-S0.md",
+          "sha256": "fd10a4f7a63c26b2506d1ec352eca0bcd7c2440f2c4ee80eba0fe534076c62a0"
+        },
+        {
+          "path": "RELATORIO-JEV-S1.md",
+          "sha256": "8158e1927b7f49b2e5f381ff07d10558023b0ebea941dfe5763c03e8ce896427"
+        },
+        {
+          "path": "experiments/jev/s2f/diagnostic-matrix.json",
+          "sha256": "f12d03261728da10656db753608444caee755e4653e5b6581841699f3d916ba3"
+        },
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/manifest.json",
+          "sha256": "f3c86836f9cb87354f5aa9e8b508a2313282d71f6b4af7c4295dc64f241a548d"
+        }
+      ],
+      "limitation": "Ausência de evidência não é evidência de desempenho ruim; limite de escopo não apaga uma medição existente."
+    },
+    {
+      "evidence_id": "NOT-TESTED-VISION",
+      "checkpoint": "JEV-S2-G-A",
+      "kind": "ABSENCE_OF_EVALUATION",
+      "weight": "CONTRACT_OR_ABSENCE",
+      "statement": "S0–F-B não avaliaram imagens, fachada ou JEV-VISION. Não inferir desempenho visual a partir do textual.",
+      "value": {
+        "evaluated": false
+      },
+      "sample_size": {
+        "unit": "escopo documental; não é amostra de desempenho",
+        "observations": null,
+        "calls": 0
+      },
+      "references": [
+        {
+          "path": "RELATORIO-JEV-S0.md",
+          "sha256": "fd10a4f7a63c26b2506d1ec352eca0bcd7c2440f2c4ee80eba0fe534076c62a0"
+        },
+        {
+          "path": "experiments/jev/s2f/diagnostic-matrix.json",
+          "sha256": "f12d03261728da10656db753608444caee755e4653e5b6581841699f3d916ba3"
+        },
+        {
+          "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/manifest.json",
+          "sha256": "f3c86836f9cb87354f5aa9e8b508a2313282d71f6b4af7c4295dc64f241a548d"
+        }
+      ],
+      "limitation": "Ausência de evidência não é evidência de desempenho ruim; limite de escopo não apaga uma medição existente."
+    }
+  ]
+}

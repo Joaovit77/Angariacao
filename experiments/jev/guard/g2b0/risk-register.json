@@ -1,0 +1,87 @@
+{
+  "risks": [
+    {
+      "id": "POST_HOC_SIMPLIFICATION",
+      "status": "OPEN_FOR_FUTURE_EXPERIMENT",
+      "description": "G2-A observou falhas antes de sugerir redução; preservar casos/oracle e freeze para evitar ajuste por resultado."
+    },
+    {
+      "id": "STRUCTURAL_SURFACE_NOT_SEMANTIC_GAIN",
+      "status": "OPEN_FOR_FUTURE_EXPERIMENT",
+      "description": "Envelope mais frequentemente válido pode conter verdicts piores; comparação exige segurança e macro sem regressão."
+    },
+    {
+      "id": "GG0_29_PERSISTENT_FAILURE",
+      "status": "OPEN_FOR_FUTURE_EXPERIMENT",
+      "description": "Omissão essencial pode continuar aprovada; sentinela é imutável e não compensável por validade."
+    },
+    {
+      "id": "INCREASED_FALSE_ACCEPT",
+      "status": "OPEN_FOR_FUTURE_EXPERIMENT",
+      "description": "APPROVE adicional em negativa é evento material e impede REDUCED_FAVORED."
+    },
+    {
+      "id": "UNSAFE_INCONCLUSIVE_APPROVE",
+      "status": "OPEN_FOR_FUTURE_EXPERIMENT",
+      "description": "Ausência de evidência pode virar certeza; seis casos precisam de comparação individual."
+    },
+    {
+      "id": "LOSS_OF_DIAGNOSTIC_DIMENSIONS",
+      "status": "OPEN_FOR_FUTURE_EXPERIMENT",
+      "description": "REDUCED não informa a causa dimensional; NOT_COLLECTED não equivale PASS."
+    },
+    {
+      "id": "SMALL_N_36",
+      "status": "OPEN_FOR_FUTURE_EXPERIMENT",
+      "description": "Uma repetição por caso sintético limita generalização e precisão; não alegar prova estatística."
+    },
+    {
+      "id": "ORDER_AND_CARRYOVER",
+      "status": "OPEN_FOR_FUTURE_EXPERIMENT",
+      "description": "AB/BA fixo equilibra posição, mas não elimina deriva temporal ou carryover."
+    },
+    {
+      "id": "PROVIDER_VARIANCE",
+      "status": "OPEN_FOR_FUTURE_EXPERIMENT",
+      "description": "Novas amostras podem variar; ambos braços precisam ser contemporâneos e sem retry/seleção."
+    },
+    {
+      "id": "TWO_CALLS_PER_CASE",
+      "status": "OPEN_FOR_FUTURE_EXPERIMENT",
+      "description": "72 tentativas novas dobram a contagem de chamadas de um braço; não reutilizar G1 como amostra."
+    },
+    {
+      "id": "TWO_ARM_TOTAL_COST",
+      "status": "OPEN_FOR_FUTURE_EXPERIMENT",
+      "description": "Duas chamadas podem elevar custo próximo do dobro de um braço; tokens dos contratos diferem e custo real não foi medido. Reconferir preço e teto total."
+    },
+    {
+      "id": "HISTORICAL_G1_AS_CONTROL",
+      "status": "OPEN_FOR_FUTURE_EXPERIMENT",
+      "description": "Misturar G1 com REDUCED novo confunde tempo e contrato; scorer recusa run G1."
+    },
+    {
+      "id": "PARSER_DIVERGENCE",
+      "status": "OPEN_FOR_FUTURE_EXPERIMENT",
+      "description": "Novo adapter pode mudar aceitação; reutilizar parser typed congelado e provar equivalência FULL."
+    },
+    {
+      "id": "ORACLE_LEAKAGE",
+      "status": "OPEN_FOR_FUTURE_EXPERIMENT",
+      "description": "Expected/rationale/materiality/tags não podem entrar no payload; prova canônica recusa qualquer hint."
+    },
+    {
+      "id": "SUFFICIENT_COVERAGE_MAY_NOT_BE_REACHED",
+      "status": "OPEN_FOR_FUTURE_EXPERIMENT",
+      "description": "Gate conservador pode produzir COMPARISON_INCONCLUSIVE mesmo após 72 transportes; não baixar limiar após outputs."
+    },
+    {
+      "id": "UNKNOWN_FUTURE_PRICING",
+      "status": "OPEN_FOR_FUTURE_EXPERIMENT",
+      "description": "US$ 0,25 é só projeção histórica; zero autorização financeira, preço atual precisa de confirmação futura."
+    }
+  ],
+  "causal_status": "HYPOTHESIS_REQUIRES_EXPERIMENT",
+  "integration_allowed": false,
+  "execution_allowed": false
+}

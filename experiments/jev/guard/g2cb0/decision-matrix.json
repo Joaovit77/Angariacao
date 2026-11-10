@@ -1,0 +1,77 @@
+{
+  "scope": "FORMAL_DOCUMENTARY_MATRIX_NOT_EXECUTABLE_GUARD",
+  "rows": [
+    {
+      "id": "D0",
+      "priority": 0,
+      "conditions": {
+        "source_or_proof_integrity": "INVALID"
+      },
+      "verdict": null,
+      "disposition": "STOP",
+      "reason": "Integridade não é incerteza factual; suspender avaliação."
+    },
+    {
+      "id": "D1",
+      "priority": 1,
+      "conditions": {
+        "proof_integrity": "VALID",
+        "independent_material_violation": "VERIFIED",
+        "proof_independent_of_unresolved_axis": true
+      },
+      "verdict": "REJECT",
+      "disposition": "DOCUMENTARY_VERDICT_ONLY",
+      "reason": "Contradição, transferência, protocolo indevido, confirmação falsa ou omissão material demonstrada; não é voto dimensional."
+    },
+    {
+      "id": "D2",
+      "priority": 2,
+      "conditions": {
+        "candidate_semantic_inspection": "INCOMPLETE",
+        "independent_material_violation": "NOT_VERIFIED"
+      },
+      "verdict": null,
+      "disposition": "HOLD",
+      "reason": "Não observável é lacuna de avaliação; não atribuir novo verdict à candidata."
+    },
+    {
+      "id": "D3",
+      "priority": 3,
+      "conditions": {
+        "candidate_semantic_inspection": "COMPLETE_VERIFIED",
+        "independent_material_violation": "NONE_PROVEN",
+        "essential_evidence": "UNRESOLVED"
+      },
+      "verdict": "INCONCLUSIVE",
+      "disposition": "DOCUMENTARY_VERDICT_ONLY",
+      "reason": "Pacote essencial, desempate, identidade, aplicabilidade ou tempo ausentes sem violação independente comprovada."
+    },
+    {
+      "id": "D4",
+      "priority": 4,
+      "conditions": {
+        "candidate_semantic_inspection": "COMPLETE_VERIFIED",
+        "independent_material_violation": "NONE_PROVEN",
+        "essential_evidence": "SUFFICIENT_FOR_CANDIDATE",
+        "all_material_obligations": "SATISFIED_VERIFIED",
+        "all_assertions": "SUPPORTED_VERIFIED",
+        "scope_and_permissions": "RESPECTED_VERIFIED"
+      },
+      "verdict": "APPROVE",
+      "disposition": "REVIEW_ONLY_NO_ACTION",
+      "reason": "Permite prosseguir a revisão/guards independentes, nunca ação, mensagem, escrita ou publicação."
+    },
+    {
+      "id": "D5",
+      "priority": 5,
+      "conditions": {
+        "otherwise": "UNRESOLVED_ASSESSMENT_OR_DISAGREEMENT"
+      },
+      "verdict": null,
+      "disposition": "HOLD",
+      "reason": "Não reparar semanticamente provider nem selecionar resultado conveniente."
+    }
+  ],
+  "proof_observation_missing_is_verified": false,
+  "rule_execution_implemented": false
+}

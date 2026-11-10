@@ -1,0 +1,187 @@
+{
+  "checkpoint": "JEV-S2-D",
+  "files": {
+    "README.md": "bcc7940c289d0a522ddbbcefa60fd670e4a7fb8693edfcb537fce12226985ff2",
+    "certification.json": "f2ef4a544e3f15ac019f745ddd408e8d904d4ba156191c94b5b57c699e29740d",
+    "core.mjs": "8ea342a06ab087b35773f5fa3731a7a93d9f898a051548c62cab74ae9c653153",
+    "preservation-before.json": "931a283b82e40cdde4114f625a59f679b83534f18b948965bb8aa576e3b56ffa",
+    "pricing-verified.json": "f79e94f56b7d065b4a058a7006e27fa441b5a1e5bbad48f5a407dc1e6b8a6f1d",
+    "probes.mjs": "b176cd8a3b576550a20f0b2ec1b3d6385b1e4792182ab635d61a69429f444357",
+    "requests-frozen.json": "13dc7c0fdbf3599d2442f0519ca65b4cf49928d909b2c1e372b4c2e27dba20d0",
+    "runner.mjs": "c9b425a091303d58237e47b488d3a74f8fccaf202114e4f6e40442df0ff96d65",
+    "runtime.test.mjs": "839fa4a9bdb0ee8c3c06cab044f11571aa1fd5dd493c94f3bb80275c704564c2",
+    "../s2b/core.mjs": "64ac3627050a4b8d381ec43866cf03684c2e3497176649b8393cd4618b7aacd4"
+  },
+  "probes": [
+    {
+      "probe_id": "P1",
+      "task": "PROBABILITY_CONTRACT",
+      "model_requested": "jev-1.14.0",
+      "request_sha256": "dcba99c0fa0ab1ec3295f73b2f57ecd1f35e947a79ca9e54323a1d7d51d48495",
+      "request_bytes": 364,
+      "question_structure": [
+        {
+          "question_id": "flag",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        }
+      ]
+    },
+    {
+      "probe_id": "P2",
+      "task": "PROBABILITY_CONTRACT",
+      "model_requested": "jev-1.14.0",
+      "request_sha256": "a39d5d108f4fa0e119374b349a275ee4ac7d308bdf70876e2f0410758f5167a8",
+      "request_bytes": 1289,
+      "question_structure": [
+        {
+          "question_id": "flag",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "category",
+          "option_ids": [
+            "FIRST",
+            "SECOND",
+            "UNKNOWN"
+          ],
+          "option_count": 3
+        },
+        {
+          "question_id": "evidence",
+          "option_ids": [
+            "SUPPORTED",
+            "CONTRADICTED",
+            "UNDETERMINED",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        }
+      ]
+    },
+    {
+      "probe_id": "P3",
+      "task": "PROBABILITY_CONTRACT",
+      "model_requested": "jev-1.14.0",
+      "request_sha256": "4020db2e15dccb0a8d61ff3c028c74a8636194fc709688791304ce1e06483ffc",
+      "request_bytes": 4309,
+      "question_structure": [
+        {
+          "question_id": "dimension_01",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "dimension_02",
+          "option_ids": [
+            "FIRST",
+            "SECOND",
+            "UNKNOWN"
+          ],
+          "option_count": 3
+        },
+        {
+          "question_id": "dimension_03",
+          "option_ids": [
+            "SUPPORTED",
+            "CONTRADICTED",
+            "UNDETERMINED",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "dimension_04",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "dimension_05",
+          "option_ids": [
+            "FIRST",
+            "SECOND",
+            "UNKNOWN"
+          ],
+          "option_count": 3
+        },
+        {
+          "question_id": "dimension_06",
+          "option_ids": [
+            "SUPPORTED",
+            "CONTRADICTED",
+            "UNDETERMINED",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "dimension_07",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "dimension_08",
+          "option_ids": [
+            "FIRST",
+            "SECOND",
+            "UNKNOWN"
+          ],
+          "option_count": 3
+        },
+        {
+          "question_id": "dimension_09",
+          "option_ids": [
+            "SUPPORTED",
+            "CONTRADICTED",
+            "UNDETERMINED",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "dimension_10",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "dimension_11",
+          "option_ids": [
+            "FIRST",
+            "SECOND",
+            "UNKNOWN"
+          ],
+          "option_count": 3
+        },
+        {
+          "question_id": "dimension_12",
+          "option_ids": [
+            "SUPPORTED",
+            "CONTRADICTED",
+            "UNDETERMINED",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        }
+      ]
+    }
+  ]
+}

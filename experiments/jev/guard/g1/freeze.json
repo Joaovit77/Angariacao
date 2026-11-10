@@ -1,0 +1,22 @@
+{
+  "checkpoint": "JEV-GUARD-G1",
+  "status": "FROZEN_BEFORE_NETWORK",
+  "created_at_utc": "2026-10-17T20:42:33.132Z",
+  "tests": 458,
+  "authorization_source": "C:/Users/ciria/.codex/attachments/950ca106-f09b-4b68-8e60-faa04f128d05/Texto colado.txt",
+  "authorization_sha256": "9f2ad653a411f8646c4da053ce05deb474ef1a721db549bab6e8b2ad742d0e73",
+  "authorized_calls": 36,
+  "budget_usd": 0.12,
+  "model": "jev-1.14.0",
+  "retry_allowed": false,
+  "files": {
+    "analysis.mjs": "5c63c120e0a4c61c4dae42865a7a719135f2756d9c193628498e2b815e9de758",
+    "certification.json": "2370ade2b51d464d96603c21c8f311b214234d37009eb443505f3cffaea84a3b",
+    "core.mjs": "6111c0ac912519f88f0dabe63b45b961e2958b1809074f37c8e387d87f5e5f43",
+    "preservation-before.json": "e5db17166ed5c8757605d97ce3125344d1153f21c4fe6050bdd6036a2fffabb5",
+    "pricing-verified.json": "b2c9629311cf8e72a236710e4df6d9db1629418090455d864e24991aca048ed4",
+    "README.md": "ed2d91403c93d15d84f52cf396497dd43c93f81c0afefad19d572cc5f1d2fa04",
+    "runner.mjs": "a17deb37d72e39c95f690cceb72dc0da9a3fc78adb534b7ec68e0598f979ce55",
+    "runtime.test.mjs": "513b7020fca3cdd181439dd491653e156181289cc790e1b632e5948dec56a4e0"
+  }
+}

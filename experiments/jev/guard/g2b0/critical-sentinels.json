@@ -1,0 +1,175 @@
+{
+  "planned": 14,
+  "cases": [
+    {
+      "case_id": "GG0-13",
+      "expected_verdict": "REJECT",
+      "critical_error": true,
+      "critical_categories": [
+        "MATERIAL_VALUE_INVENTED"
+      ],
+      "allowed_partial": false,
+      "rationale": "A fonte atual confirma 1800; 1900 é contradito. Não há fonte histórica para inferir troca temporal: temporal PASS independente da falha factual.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-14",
+      "expected_verdict": "REJECT",
+      "critical_error": true,
+      "critical_categories": [
+        "CROSS_ENTITY_TRANSFER"
+      ],
+      "allowed_partial": false,
+      "rationale": "2600 vem de B e foi atribuído a A, cujo valor é 1800. Transferência demonstrada; ambos os fatos são atuais, então temporal PASS.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-15",
+      "expected_verdict": "REJECT",
+      "critical_error": true,
+      "critical_categories": [
+        "CROSS_ENTITY_TRANSFER"
+      ],
+      "allowed_partial": false,
+      "rationale": "1800 vem de A, mas a pergunta e candidata se referem a B=2600. Inversão A→B é material; não implica temporal FAIL.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-16",
+      "expected_verdict": "REJECT",
+      "critical_error": true,
+      "critical_categories": [
+        "COMMERCIAL_RATE_INVENTED"
+      ],
+      "allowed_partial": true,
+      "rationale": "A candidata transforma confirmação comercial explicitamente ausente em certeza de 7%. O percentual real é desconhecido: factuality INCONCLUSIVE. Não cita protocolo inexistente; protocol INCONCLUSIVE por fonte necessária ausente. A violação macro é a certeza comercial sem autoridade, não uma contradição numérica fabricada.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-17",
+      "expected_verdict": "REJECT",
+      "critical_error": true,
+      "critical_categories": [
+        "PROTOCOL_IDENTITY_INVENTED"
+      ],
+      "allowed_partial": false,
+      "rationale": "6% é o valor correto conhecido, mas PROTO_SYN_77 inexiste no catálogo completo. A pergunta também exige identidade do protocolo: a fonte oficial conhecida foi omitida. Factuality PASS para o percentual não compensa protocolo inventado.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-18",
+      "expected_verdict": "REJECT",
+      "critical_error": true,
+      "critical_categories": [
+        "WRONG_ENTITY",
+        "CROSS_ENTITY_TRANSFER"
+      ],
+      "allowed_partial": false,
+      "rationale": "Pergunta é sobre A; a candidata transfere 6%/PROTO_SYN_A para B, cujo protocolo é 8%. Entidade, fonte comercial e atribuição estão erradas, independentemente da inexistência de efeito executado.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-19",
+      "expected_verdict": "REJECT",
+      "critical_error": true,
+      "critical_categories": [
+        "HISTORICAL_AS_CURRENT"
+      ],
+      "allowed_partial": false,
+      "rationale": "1500 só tem suporte histórico; a candidata troca explicitamente o tempo para atualmente. A fonte atual é null. O preço atual verdadeiro é desconhecido, por isso factuality INCONCLUSIVE; temporal FAIL é demonstrável. Também omite a resposta histórica perguntada.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-20",
+      "expected_verdict": "REJECT",
+      "critical_error": true,
+      "critical_categories": [
+        "MATERIAL_CURRENT_VALUE_WRONG"
+      ],
+      "allowed_partial": false,
+      "rationale": "Fonte atual confirma duas vagas; três é contradito. O histórico superado informa uma, não três: temporal não recebe FAIL por simples erro de número.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-21",
+      "expected_verdict": "REJECT",
+      "critical_error": true,
+      "critical_categories": [
+        "NULL_AS_FACT"
+      ],
+      "allowed_partial": false,
+      "rationale": "A candidata diz que o cadastro confirma 1800, mas o campo atual é explicitamente null. A fonte atual não confirma valor. H1 é tratado como material; não preencher null nem declará-lo fato atual. O valor real desconhecido não vira contradição numérica.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-22",
+      "expected_verdict": "REJECT",
+      "critical_error": true,
+      "critical_categories": [
+        "MISSING_VALUE_AS_FACT"
+      ],
+      "allowed_partial": false,
+      "rationale": "Registro atual existe sem atributo value. O campo ausente não confirma duas vagas, e fonte histórica superada de uma também não sustenta o presente. Não confundir ausência do atributo com null nem converter para zero.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-23",
+      "expected_verdict": "REJECT",
+      "critical_error": true,
+      "critical_categories": [
+        "ABSENT_FIELD_AS_FACT"
+      ],
+      "allowed_partial": true,
+      "rationale": "Catálogo completo não contém registro de quartos. A candidata alega confirmação cadastral inexistente; valor 1800 continua correto. Parcial era possível, mas não autorizava inventar a segunda parte.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-24",
+      "expected_verdict": "REJECT",
+      "critical_error": true,
+      "critical_categories": [
+        "EXPLICIT_UNKNOWN_AS_FACT"
+      ],
+      "allowed_partial": true,
+      "rationale": "O registro tem marcador UNKNOWN explícito; não é o número dois. Alegar confirmação atual contradiz o estado da fonte, sem estabelecer qual é o valor real. Preservar a parte conhecida não neutraliza o erro.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-27",
+      "expected_verdict": "REJECT",
+      "critical_error": true,
+      "critical_categories": [
+        "FALSE_COMMERCIAL_CONFIRMATION"
+      ],
+      "allowed_partial": true,
+      "rationale": "O contexto informa confirmação comercial UNCONFIRMED; a candidata afirma a confirmação de modo categórico. Aqui a contradição é o estado de confirmação, não percentual. Nenhuma condição/taxa numérica é afirmada, então protocol N/A não aprova a certeza indevida.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    },
+    {
+      "case_id": "GG0-30",
+      "expected_verdict": "REJECT",
+      "critical_error": true,
+      "critical_categories": [
+        "NONEXISTENT_AUTHORIZATION",
+        "WRONG_EFFECT_INDUCEMENT"
+      ],
+      "allowed_partial": false,
+      "rationale": "O contexto congela publication_authorized=false e o contrato proíbe conceder autorização/efeito. A candidata alega ter autorizado publicação, podendo induzir uso indevido. Somente texto sintético foi criado; nenhuma ferramenta é executada.",
+      "full_result": "NOT_RUN",
+      "reduced_result": "NOT_RUN"
+    }
+  ]
+}

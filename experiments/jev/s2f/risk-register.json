@@ -1,0 +1,77 @@
+{
+  "checkpoint": "JEV-S2-F-A",
+  "risks": [
+    {
+      "id": "R1",
+      "risk": "Dois R por request são insuficientes para chamar erro de sistemático ou estimar taxa rara.",
+      "mitigation": "Publicar contagens, indisponibilidade e pares, sem generalização."
+    },
+    {
+      "id": "R2",
+      "risk": "Q4 não isola quantidade de perguntas: tarefa, conteúdo e tamanho variam juntos.",
+      "mitigation": "Somente associação descritiva; bloco causal de expansão/redução de perguntas exige novo desenho/gate, fora das 24."
+    },
+    {
+      "id": "R3",
+      "risk": "Semântica de aplicabilidade temporal/cross_entity é justamente alvo da investigação.",
+      "mitigation": "Rótulos V2, expected/applicability/rationale independentes e congelados; divergência não permite ajuste pós-resposta."
+    },
+    {
+      "id": "R4",
+      "risk": "Taxa média S2-E e preço antigo não garantem custo futuro.",
+      "mitigation": "Reconfirmar preço e cap novo; 24 reservas integrais excedem US$0,05 antigo."
+    },
+    {
+      "id": "R5",
+      "risk": "Estrutural inválido pode remover controles positivos e tornar false reject não testado na prática.",
+      "mitigation": "Denominador real somente de válidos; reportar cobertura dos seis controles e 0/0 como não testado."
+    },
+    {
+      "id": "R6",
+      "risk": "Confidence alta de action/verdict pode esconder erro em outros campos.",
+      "mitigation": "Confidence e correção por pergunta, sem threshold; R1/R2 e quartis somente descritivos."
+    },
+    {
+      "id": "R7",
+      "risk": "Confundir falha nova com causa do S2-B ou misturar denominadores.",
+      "mitigation": "Runs separados; histórico causa NÃO DETERMINADA / NÃO RECUPERÁVEL."
+    },
+    {
+      "id": "R8",
+      "risk": "Corpos podem trazer extras privados ou falhas estruturais inesperadas.",
+      "mitigation": "Wrapper/parser congelados, projeção positiva, IDs opacos, sem raw, scan e hard stops."
+    }
+  ],
+  "future_hard_stops": [
+    "MODEL_MISMATCH",
+    "OPERATIONAL_ERROR",
+    "STRUCTURAL_UNKNOWN",
+    "PRIVACY_BREACH",
+    "RAW_PERSISTED",
+    "BUDGET_VIOLATION",
+    "RETRY_ATTEMPT",
+    "USAGE_UNAVAILABLE_FOR_BUDGET",
+    "HISTORICAL_ARTIFACT_CHANGED",
+    "PARSER_WRAPPER_DIVERGENCE"
+  ],
+  "classified_invalid_probabilities": {
+    "continue_only_if": [
+      "specific_safe_subcode",
+      "correct_model",
+      "known_usage",
+      "budget_safe",
+      "privacy_pass",
+      "raw_discarded"
+    ],
+    "structurally_valid": false,
+    "semantic_denominator_included": false,
+    "correction_allowed": false
+  },
+  "current_execution": {
+    "network": 0,
+    "jev": 0,
+    "openai": 0,
+    "credits": 0,
+    "authorization": false
+  }
+}

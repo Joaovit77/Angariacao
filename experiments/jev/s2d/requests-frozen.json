@@ -1,0 +1,206 @@
+[
+  {
+    "probe_id": "P1",
+    "task": "PROBABILITY_CONTRACT",
+    "request": {
+      "model": "jev-1.14.0",
+      "state": "Registro sintético: indicador habilitado.",
+      "questions": {
+        "flag": {
+          "type": "choice",
+          "instructions": "Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.",
+          "criteria": {
+            "YES": "O registro sustenta a propriedade perguntada.",
+            "NO": "O registro não sustenta a propriedade perguntada."
+          }
+        }
+      }
+    },
+    "body": "{\"model\":\"jev-1.14.0\",\"state\":\"Registro sintético: indicador habilitado.\",\"questions\":{\"flag\":{\"type\":\"choice\",\"instructions\":\"Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.\",\"criteria\":{\"YES\":\"O registro sustenta a propriedade perguntada.\",\"NO\":\"O registro não sustenta a propriedade perguntada.\"}}}}",
+    "request_sha256": "dcba99c0fa0ab1ec3295f73b2f57ecd1f35e947a79ca9e54323a1d7d51d48495"
+  },
+  {
+    "probe_id": "P2",
+    "task": "PROBABILITY_CONTRACT",
+    "request": {
+      "model": "jev-1.14.0",
+      "state": {
+        "experiment": "Probe estrutural sintético independente, sem pessoas, imóveis, contatos ou stages históricos.",
+        "record": {
+          "category": "primeira",
+          "enabled": true,
+          "quantity": 3
+        },
+        "assertions": [
+          "O registro está habilitado.",
+          "A categoria é a primeira.",
+          "Uma dimensão adicional não foi informada."
+        ]
+      },
+      "questions": {
+        "flag": {
+          "type": "choice",
+          "instructions": "Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.",
+          "criteria": {
+            "YES": "O registro sustenta a propriedade perguntada.",
+            "NO": "O registro não sustenta a propriedade perguntada."
+          }
+        },
+        "category": {
+          "type": "choice",
+          "instructions": "Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.",
+          "criteria": {
+            "FIRST": "A primeira categoria é mais compatível.",
+            "SECOND": "A segunda categoria é mais compatível.",
+            "UNKNOWN": "Os dados não permitem decidir entre as categorias."
+          }
+        },
+        "evidence": {
+          "type": "choice",
+          "instructions": "Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.",
+          "criteria": {
+            "SUPPORTED": "A afirmação é sustentada.",
+            "CONTRADICTED": "A afirmação é contrariada.",
+            "UNDETERMINED": "Falta evidência.",
+            "NOT_APPLICABLE": "A dimensão não se aplica."
+          }
+        }
+      }
+    },
+    "body": "{\"model\":\"jev-1.14.0\",\"state\":{\"experiment\":\"Probe estrutural sintético independente, sem pessoas, imóveis, contatos ou stages históricos.\",\"record\":{\"category\":\"primeira\",\"enabled\":true,\"quantity\":3},\"assertions\":[\"O registro está habilitado.\",\"A categoria é a primeira.\",\"Uma dimensão adicional não foi informada.\"]},\"questions\":{\"flag\":{\"type\":\"choice\",\"instructions\":\"Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.\",\"criteria\":{\"YES\":\"O registro sustenta a propriedade perguntada.\",\"NO\":\"O registro não sustenta a propriedade perguntada.\"}},\"category\":{\"type\":\"choice\",\"instructions\":\"Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.\",\"criteria\":{\"FIRST\":\"A primeira categoria é mais compatível.\",\"SECOND\":\"A segunda categoria é mais compatível.\",\"UNKNOWN\":\"Os dados não permitem decidir entre as categorias.\"}},\"evidence\":{\"type\":\"choice\",\"instructions\":\"Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.\",\"criteria\":{\"SUPPORTED\":\"A afirmação é sustentada.\",\"CONTRADICTED\":\"A afirmação é contrariada.\",\"UNDETERMINED\":\"Falta evidência.\",\"NOT_APPLICABLE\":\"A dimensão não se aplica.\"}}}}",
+    "request_sha256": "a39d5d108f4fa0e119374b349a275ee4ac7d308bdf70876e2f0410758f5167a8"
+  },
+  {
+    "probe_id": "P3",
+    "task": "PROBABILITY_CONTRACT",
+    "request": {
+      "model": "jev-1.14.0",
+      "state": {
+        "experiment": "Probe estrutural sintético independente, sem pessoas, imóveis, contatos ou stages históricos.",
+        "record": {
+          "category": "primeira",
+          "enabled": true,
+          "quantity": 3
+        },
+        "assertions": [
+          "O registro está habilitado.",
+          "A categoria é a primeira.",
+          "Uma dimensão adicional não foi informada."
+        ],
+        "purpose": "Examinar somente o envelope com doze perguntas de 2, 3 e 4 opções, sem avaliação semântica."
+      },
+      "questions": {
+        "dimension_01": {
+          "type": "choice",
+          "instructions": "Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.",
+          "criteria": {
+            "YES": "O registro sustenta a propriedade perguntada.",
+            "NO": "O registro não sustenta a propriedade perguntada."
+          }
+        },
+        "dimension_02": {
+          "type": "choice",
+          "instructions": "Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.",
+          "criteria": {
+            "FIRST": "A primeira categoria é mais compatível.",
+            "SECOND": "A segunda categoria é mais compatível.",
+            "UNKNOWN": "Os dados não permitem decidir entre as categorias."
+          }
+        },
+        "dimension_03": {
+          "type": "choice",
+          "instructions": "Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.",
+          "criteria": {
+            "SUPPORTED": "A afirmação é sustentada.",
+            "CONTRADICTED": "A afirmação é contrariada.",
+            "UNDETERMINED": "Falta evidência.",
+            "NOT_APPLICABLE": "A dimensão não se aplica."
+          }
+        },
+        "dimension_04": {
+          "type": "choice",
+          "instructions": "Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.",
+          "criteria": {
+            "YES": "O registro sustenta a propriedade perguntada.",
+            "NO": "O registro não sustenta a propriedade perguntada."
+          }
+        },
+        "dimension_05": {
+          "type": "choice",
+          "instructions": "Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.",
+          "criteria": {
+            "FIRST": "A primeira categoria é mais compatível.",
+            "SECOND": "A segunda categoria é mais compatível.",
+            "UNKNOWN": "Os dados não permitem decidir entre as categorias."
+          }
+        },
+        "dimension_06": {
+          "type": "choice",
+          "instructions": "Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.",
+          "criteria": {
+            "SUPPORTED": "A afirmação é sustentada.",
+            "CONTRADICTED": "A afirmação é contrariada.",
+            "UNDETERMINED": "Falta evidência.",
+            "NOT_APPLICABLE": "A dimensão não se aplica."
+          }
+        },
+        "dimension_07": {
+          "type": "choice",
+          "instructions": "Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.",
+          "criteria": {
+            "YES": "O registro sustenta a propriedade perguntada.",
+            "NO": "O registro não sustenta a propriedade perguntada."
+          }
+        },
+        "dimension_08": {
+          "type": "choice",
+          "instructions": "Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.",
+          "criteria": {
+            "FIRST": "A primeira categoria é mais compatível.",
+            "SECOND": "A segunda categoria é mais compatível.",
+            "UNKNOWN": "Os dados não permitem decidir entre as categorias."
+          }
+        },
+        "dimension_09": {
+          "type": "choice",
+          "instructions": "Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.",
+          "criteria": {
+            "SUPPORTED": "A afirmação é sustentada.",
+            "CONTRADICTED": "A afirmação é contrariada.",
+            "UNDETERMINED": "Falta evidência.",
+            "NOT_APPLICABLE": "A dimensão não se aplica."
+          }
+        },
+        "dimension_10": {
+          "type": "choice",
+          "instructions": "Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.",
+          "criteria": {
+            "YES": "O registro sustenta a propriedade perguntada.",
+            "NO": "O registro não sustenta a propriedade perguntada."
+          }
+        },
+        "dimension_11": {
+          "type": "choice",
+          "instructions": "Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.",
+          "criteria": {
+            "FIRST": "A primeira categoria é mais compatível.",
+            "SECOND": "A segunda categoria é mais compatível.",
+            "UNKNOWN": "Os dados não permitem decidir entre as categorias."
+          }
+        },
+        "dimension_12": {
+          "type": "choice",
+          "instructions": "Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.",
+          "criteria": {
+            "SUPPORTED": "A afirmação é sustentada.",
+            "CONTRADICTED": "A afirmação é contrariada.",
+            "UNDETERMINED": "Falta evidência.",
+            "NOT_APPLICABLE": "A dimensão não se aplica."
+          }
+        }
+      }
+    },
+    "body": "{\"model\":\"jev-1.14.0\",\"state\":{\"experiment\":\"Probe estrutural sintético independente, sem pessoas, imóveis, contatos ou stages históricos.\",\"record\":{\"category\":\"primeira\",\"enabled\":true,\"quantity\":3},\"assertions\":[\"O registro está habilitado.\",\"A categoria é a primeira.\",\"Uma dimensão adicional não foi informada.\"],\"purpose\":\"Examinar somente o envelope com doze perguntas de 2, 3 e 4 opções, sem avaliação semântica.\"},\"questions\":{\"dimension_01\":{\"type\":\"choice\",\"instructions\":\"Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.\",\"criteria\":{\"YES\":\"O registro sustenta a propriedade perguntada.\",\"NO\":\"O registro não sustenta a propriedade perguntada.\"}},\"dimension_02\":{\"type\":\"choice\",\"instructions\":\"Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.\",\"criteria\":{\"FIRST\":\"A primeira categoria é mais compatível.\",\"SECOND\":\"A segunda categoria é mais compatível.\",\"UNKNOWN\":\"Os dados não permitem decidir entre as categorias.\"}},\"dimension_03\":{\"type\":\"choice\",\"instructions\":\"Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.\",\"criteria\":{\"SUPPORTED\":\"A afirmação é sustentada.\",\"CONTRADICTED\":\"A afirmação é contrariada.\",\"UNDETERMINED\":\"Falta evidência.\",\"NOT_APPLICABLE\":\"A dimensão não se aplica.\"}},\"dimension_04\":{\"type\":\"choice\",\"instructions\":\"Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.\",\"criteria\":{\"YES\":\"O registro sustenta a propriedade perguntada.\",\"NO\":\"O registro não sustenta a propriedade perguntada.\"}},\"dimension_05\":{\"type\":\"choice\",\"instructions\":\"Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.\",\"criteria\":{\"FIRST\":\"A primeira categoria é mais compatível.\",\"SECOND\":\"A segunda categoria é mais compatível.\",\"UNKNOWN\":\"Os dados não permitem decidir entre as categorias.\"}},\"dimension_06\":{\"type\":\"choice\",\"instructions\":\"Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.\",\"criteria\":{\"SUPPORTED\":\"A afirmação é sustentada.\",\"CONTRADICTED\":\"A afirmação é contrariada.\",\"UNDETERMINED\":\"Falta evidência.\",\"NOT_APPLICABLE\":\"A dimensão não se aplica.\"}},\"dimension_07\":{\"type\":\"choice\",\"instructions\":\"Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.\",\"criteria\":{\"YES\":\"O registro sustenta a propriedade perguntada.\",\"NO\":\"O registro não sustenta a propriedade perguntada.\"}},\"dimension_08\":{\"type\":\"choice\",\"instructions\":\"Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.\",\"criteria\":{\"FIRST\":\"A primeira categoria é mais compatível.\",\"SECOND\":\"A segunda categoria é mais compatível.\",\"UNKNOWN\":\"Os dados não permitem decidir entre as categorias.\"}},\"dimension_09\":{\"type\":\"choice\",\"instructions\":\"Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.\",\"criteria\":{\"SUPPORTED\":\"A afirmação é sustentada.\",\"CONTRADICTED\":\"A afirmação é contrariada.\",\"UNDETERMINED\":\"Falta evidência.\",\"NOT_APPLICABLE\":\"A dimensão não se aplica.\"}},\"dimension_10\":{\"type\":\"choice\",\"instructions\":\"Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.\",\"criteria\":{\"YES\":\"O registro sustenta a propriedade perguntada.\",\"NO\":\"O registro não sustenta a propriedade perguntada.\"}},\"dimension_11\":{\"type\":\"choice\",\"instructions\":\"Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.\",\"criteria\":{\"FIRST\":\"A primeira categoria é mais compatível.\",\"SECOND\":\"A segunda categoria é mais compatível.\",\"UNKNOWN\":\"Os dados não permitem decidir entre as categorias.\"}},\"dimension_12\":{\"type\":\"choice\",\"instructions\":\"Classifique o registro inteiramente sintético usando somente as opções fornecidas. Não execute ações.\",\"criteria\":{\"SUPPORTED\":\"A afirmação é sustentada.\",\"CONTRADICTED\":\"A afirmação é contrariada.\",\"UNDETERMINED\":\"Falta evidência.\",\"NOT_APPLICABLE\":\"A dimensão não se aplica.\"}}}}",
+    "request_sha256": "4020db2e15dccb0a8d61ff3c028c74a8636194fc709688791304ce1e06483ffc"
+  }
+]

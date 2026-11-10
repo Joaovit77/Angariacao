@@ -1,0 +1,35 @@
+{
+  "checkpoint": "JEV-S2-C",
+  "status": "PASS_OFFLINE",
+  "tests": {
+    "previous": 72,
+    "new": 85,
+    "total_pass": 157,
+    "fail": 0
+  },
+  "calls": {
+    "jev": 0,
+    "openai": 0
+  },
+  "acceptance_changed": false,
+  "previous_frozen": {
+    "matrix": "84fb8a7e1bf29a7549bf2cfe4c423fbbbf295fbeb1752459b7f164ffb172018c",
+    "requests": "fed25c670d8d06b0b793efe854d18168939d0cce77bf64868e1d570da7da7cf3",
+    "freeze": "03baa866fbf1fb5fda8a065f8c6a0136c3f4679543306de8b678ed232acf2a60",
+    "adapter": "4eada006d631cebda9a71142e9b78e592252f472176e2584f4826848e3df4c75"
+  },
+  "s2b_authorization": "CLOSED_BY_HOLD",
+  "s2b_lock_unchanged": true,
+  "files": {
+    "characterize.mjs": "be668fdf3560126d56f1101c1690560160d514e59ee9af87f4c096c607f1065d",
+    "compatibility-report.json": "db06126f4bd6114c6c48e7a9a2b929c0a2c0745ac6403011abf04b1a4016f561",
+    "preservation-before.json": "901827e48c7c07869285cadfb13a7e1f0f08387e77f2c6511cad5701ce8eab23",
+    "privacy-report.json": "45b615bde631bfd37163e2fa94d5a3249625398578908fa6065860f068c5decd",
+    "probability-contract.md": "2d864df6b43f5f2fcefed150f5a70df687600b69ee3ebdc7b095050d201e067a",
+    "probability-diagnostics.mjs": "caf30dd752dcbe036e79ebb115d86861b40a0cbd87d96b6f1945f4d872c6268f",
+    "probability-diagnostics.test.mjs": "b12140a3fcdefd5835c82b430c75ab8d31f4b8548d8253f4cdb5d7eea06348d2",
+    "probability-fixtures.mjs": "0accc4747914402898aa0965aa587ec0f1dcfd81c2cf808c1d31e3d65fc4f6ea",
+    "../../../../RELATORIO-JEV-S2-C.md": "a22ed7dedbc77eeb50ee303160351c29ab76145529743205407bdf11f7ed5482"
+  },
+  "propagation_at_checkpoint_sha256": "30a669118af88d64ff4a701bb8be4cda485b5c803cd80881ac133b5d6038be95"
+}

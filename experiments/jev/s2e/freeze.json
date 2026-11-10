@@ -1,0 +1,1042 @@
+{
+  "checkpoint": "JEV-S2-E",
+  "files": {
+    "README.md": "f93418875af20300506f9e102ef2cb46414ca8d783cdc97164577b3b67dbf344",
+    "analysis.mjs": "f7c29a5d0fc927b94c5dcc610589e53bff60866a9b8969bc5b048040cf8045aa",
+    "certification.json": "a498aef881b5a7183e5741670e5b90f665c73684c9dd342e70b169dac0791533",
+    "core.mjs": "58b6d40b3e4df0e01f1c57a8b811cdb30e0fdd5c4bb57bb547f5e53d0ca1d995",
+    "oracle-mini.json": "4e71f4b493c5c59f1bbe1fe7a4d52b71125b82f62113137b0bdcf28193d9d5d0",
+    "preservation-before.json": "ea3c7fc4f978c57134cce05ce26163ef92b110869418b060c1c25c57cd23c58b",
+    "pricing-verified.json": "5320181933862c8ada23df650662b7c85e5b3ce31ae3aba3bc428527746928ef",
+    "requests-frozen.json": "a15048cdfb609e1af4301a57e0d04f82991e3406ee0adc6b52bea2053b6221f4",
+    "runner.mjs": "344d1b4518250e910978152d73d3aade8168a817138aa7b3e73d785852f50a00",
+    "runtime.test.mjs": "9b565e20566c9f5a1e472a46caf839781c0ec490ff22aae23201dd8f7dea14b4",
+    "scenarios.mjs": "0de7949b4cebadc3d4442fe9bcfb4b07bf20c77dba632f9c215ebf30c984d3ab",
+    "../s2b/core.mjs": "64ac3627050a4b8d381ec43866cf03684c2e3497176649b8393cd4618b7aacd4",
+    "../s2d/core.mjs": "8ea342a06ab087b35773f5fa3731a7a93d9f898a051548c62cab74ae9c653153",
+    "../s2d/probes.mjs": "b176cd8a3b576550a20f0b2ec1b3d6385b1e4792182ab635d61a69429f444357",
+    "../v2/scoring-v2.mjs": "7d95b91d06df730cac1aeda22ace93c15adc79fca3f8804aeb28527be0672b3f",
+    "../v2/request-v2.mjs": "924583d3969e7956700ae1cff904de8db1aea1d23cf8e253074f8b156b775ed5",
+    "../v2/adapter-v2.mjs": "b61f1e805f56cffa63ada213f59489f3593aa5ab1d755bf07026866fbd0f9a45",
+    "../v2/probability-diagnostics/probability-diagnostics.mjs": "caf30dd752dcbe036e79ebb115d86861b40a0cbd87d96b6f1945f4d872c6268f"
+  },
+  "requests": [
+    {
+      "scenario_id": "E1_TEMPORAL",
+      "task": "DECISION",
+      "model": "jev-1.14.0",
+      "request_sha256": "d124d3c21883fd86f5812b979051e458a48db444f4b0c49a2b037edb32daf007",
+      "question_count": 25,
+      "question_structure": [
+        {
+          "question_id": "action",
+          "option_ids": [
+            "RESPOND",
+            "ASK_FOR_CONTEXT",
+            "BLOCK"
+          ],
+          "option_count": 3
+        },
+        {
+          "question_id": "intent",
+          "option_ids": [
+            "FACTUAL",
+            "SOCIAL",
+            "OTHER"
+          ],
+          "option_count": 3
+        },
+        {
+          "question_id": "enough_context",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "current_0",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "history_0",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_POST_EVENT_CONSEQUENCE",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_CURRENT_VAGAS",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_COMMERCIAL_RATE",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_AUTHORIZED_PROPERTY_CONTEXT",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_HISTORICAL_ACCESS_A",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_UNAMBIGUOUS_PROTOCOL",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_INVENT_COMMERCIAL",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_HISTORICAL_AS_CURRENT",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_CROSS_ENTITY",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_INACCESSIBLE_PROPERTY",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_ARCHIVED_AS_ACTIVE",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_ARBITRARY_PROTOCOL_SELECTION",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "entity_resolution",
+          "option_ids": [
+            "ENTITY_CORRECT",
+            "ENTITY_MISSING",
+            "ENTITY_CROSS_TRANSFER",
+            "ENTITY_AMBIGUOUS"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "temporal_CURRENT_FACT",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_HISTORICAL_FACT",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_SUPERSEDED_FACT",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_UNKNOWN_CURRENT_STATE",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_UNKNOWN_POST_EVENT_CONSEQUENCE",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_HISTORICAL_SUPPORT_REQUIRED",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_HISTORICAL_SUPPORT_OPTIONAL",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        }
+      ]
+    },
+    {
+      "scenario_id": "E1_TEMPORAL",
+      "task": "VALIDATION",
+      "model": "jev-1.14.0",
+      "request_sha256": "718b0e0a5904eff7603e961ebd89d0fd468f1e7fc41ecac9360ef5d3281e7406",
+      "question_count": 12,
+      "question_structure": [
+        {
+          "question_id": "verdict",
+          "option_ids": [
+            "APPROVE",
+            "REJECT",
+            "INCONCLUSIVE"
+          ],
+          "option_count": 3
+        },
+        {
+          "question_id": "grounding",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "factuality",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "protocol",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "temporal",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "entity",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "coverage",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "omission",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "unsupported_assumption",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "cross_entity",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "safety",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "partial_answer_allowed",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        }
+      ]
+    },
+    {
+      "scenario_id": "E2_ENTITY",
+      "task": "DECISION",
+      "model": "jev-1.14.0",
+      "request_sha256": "8cb6e32f1970f2e753cea7826b176805a8f5d46dc5227295307b7b368a2edbd6",
+      "question_count": 25,
+      "question_structure": [
+        {
+          "question_id": "action",
+          "option_ids": [
+            "RESPOND",
+            "ASK_FOR_CONTEXT",
+            "BLOCK"
+          ],
+          "option_count": 3
+        },
+        {
+          "question_id": "intent",
+          "option_ids": [
+            "FACTUAL",
+            "SOCIAL",
+            "OTHER"
+          ],
+          "option_count": 3
+        },
+        {
+          "question_id": "enough_context",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "current_0",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "current_1",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_POST_EVENT_CONSEQUENCE",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_CURRENT_VAGAS",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_COMMERCIAL_RATE",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_AUTHORIZED_PROPERTY_CONTEXT",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_HISTORICAL_ACCESS_A",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_UNAMBIGUOUS_PROTOCOL",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_INVENT_COMMERCIAL",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_HISTORICAL_AS_CURRENT",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_CROSS_ENTITY",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_INACCESSIBLE_PROPERTY",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_ARCHIVED_AS_ACTIVE",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_ARBITRARY_PROTOCOL_SELECTION",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "entity_resolution",
+          "option_ids": [
+            "ENTITY_CORRECT",
+            "ENTITY_MISSING",
+            "ENTITY_CROSS_TRANSFER",
+            "ENTITY_AMBIGUOUS"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "temporal_CURRENT_FACT",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_HISTORICAL_FACT",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_SUPERSEDED_FACT",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_UNKNOWN_CURRENT_STATE",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_UNKNOWN_POST_EVENT_CONSEQUENCE",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_HISTORICAL_SUPPORT_REQUIRED",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_HISTORICAL_SUPPORT_OPTIONAL",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        }
+      ]
+    },
+    {
+      "scenario_id": "E2_ENTITY",
+      "task": "VALIDATION",
+      "model": "jev-1.14.0",
+      "request_sha256": "34a118a58e99cac8b486c84c15de55dc3e9b94952a3392686ab2a586d3c94db0",
+      "question_count": 12,
+      "question_structure": [
+        {
+          "question_id": "verdict",
+          "option_ids": [
+            "APPROVE",
+            "REJECT",
+            "INCONCLUSIVE"
+          ],
+          "option_count": 3
+        },
+        {
+          "question_id": "grounding",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "factuality",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "protocol",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "temporal",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "entity",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "coverage",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "omission",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "unsupported_assumption",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "cross_entity",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "safety",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "partial_answer_allowed",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        }
+      ]
+    },
+    {
+      "scenario_id": "E3_PARTIAL_INVENTION",
+      "task": "DECISION",
+      "model": "jev-1.14.0",
+      "request_sha256": "954b939f11a5de82f8298e799ba78de32244f9b3fc556a3f35a793c389298c57",
+      "question_count": 24,
+      "question_structure": [
+        {
+          "question_id": "action",
+          "option_ids": [
+            "RESPOND",
+            "ASK_FOR_CONTEXT",
+            "BLOCK"
+          ],
+          "option_count": 3
+        },
+        {
+          "question_id": "intent",
+          "option_ids": [
+            "FACTUAL",
+            "SOCIAL",
+            "OTHER"
+          ],
+          "option_count": 3
+        },
+        {
+          "question_id": "enough_context",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "current_0",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_POST_EVENT_CONSEQUENCE",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_CURRENT_VAGAS",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_COMMERCIAL_RATE",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_AUTHORIZED_PROPERTY_CONTEXT",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_HISTORICAL_ACCESS_A",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "missing_UNAMBIGUOUS_PROTOCOL",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_INVENT_COMMERCIAL",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_HISTORICAL_AS_CURRENT",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_CROSS_ENTITY",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_INACCESSIBLE_PROPERTY",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_ARCHIVED_AS_ACTIVE",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "prohibited_ARBITRARY_PROTOCOL_SELECTION",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "entity_resolution",
+          "option_ids": [
+            "ENTITY_CORRECT",
+            "ENTITY_MISSING",
+            "ENTITY_CROSS_TRANSFER",
+            "ENTITY_AMBIGUOUS"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "temporal_CURRENT_FACT",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_HISTORICAL_FACT",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_SUPERSEDED_FACT",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_UNKNOWN_CURRENT_STATE",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_UNKNOWN_POST_EVENT_CONSEQUENCE",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_HISTORICAL_SUPPORT_REQUIRED",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        },
+        {
+          "question_id": "temporal_HISTORICAL_SUPPORT_OPTIONAL",
+          "option_ids": [
+            "YES",
+            "NO"
+          ],
+          "option_count": 2
+        }
+      ]
+    },
+    {
+      "scenario_id": "E3_PARTIAL_INVENTION",
+      "task": "VALIDATION",
+      "model": "jev-1.14.0",
+      "request_sha256": "62b2dc8718de62bd4bc30a323b1a232923279d8219201a736f2faec2e0bd3c2b",
+      "question_count": 12,
+      "question_structure": [
+        {
+          "question_id": "verdict",
+          "option_ids": [
+            "APPROVE",
+            "REJECT",
+            "INCONCLUSIVE"
+          ],
+          "option_count": 3
+        },
+        {
+          "question_id": "grounding",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "factuality",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "protocol",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "temporal",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "entity",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "coverage",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "omission",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "unsupported_assumption",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "cross_entity",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "safety",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        },
+        {
+          "question_id": "partial_answer_allowed",
+          "option_ids": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "option_count": 4
+        }
+      ]
+    }
+  ],
+  "mini_oracle_sha256": "6683bd2617a6ad32ed4c45600a3625bac7f6f7d8011cd1dcab2f7d8e89e83357",
+  "human_authorization_attachment_sha256": "bd47ffd8482ae3b5d08a932b9d2ca47ec4d3db51063948864a7b5a34b887f4c5"
+}

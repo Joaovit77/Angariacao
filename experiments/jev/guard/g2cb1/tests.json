@@ -1,0 +1,37 @@
+{
+  "scope": "DOCUMENTARY_CONSISTENCY_ONLY",
+  "historical_baseline": {
+    "pass": 364,
+    "fail": 0,
+    "skipped": 0,
+    "duration_ms": 2760.6842,
+    "suite_files": [
+      "guard/g0/g0.test.mjs",
+      "guard/g2a/g2a.test.mjs",
+      "guard/g2b0/g2b0.test.mjs",
+      "guard/g2ca/g2ca.test.mjs",
+      "guard/g2cb0/design-audit.test.mjs"
+    ],
+    "scope": "Cinco suítes históricas direcionadas; não rerun de toda a árvore nem execução real.",
+    "network_attempts": 0,
+    "credentials_read": 0
+  },
+  "b1": {
+    "pass": 39,
+    "fail": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "duration_ms": 800.5209,
+    "command": "node --import ./experiments/jev/s2g/offline-guard.mjs --test --test-reporter=tap experiments/jev/guard/g2cb1/document-audit.test.mjs"
+  },
+  "mutants": {
+    "executed": 26,
+    "rejected": 26,
+    "survived": 0,
+    "planned": 0
+  },
+  "network_attempts": 0,
+  "semantic_validation_executed": false,
+  "human_review_executed": false,
+  "product_tests_executed": false
+}

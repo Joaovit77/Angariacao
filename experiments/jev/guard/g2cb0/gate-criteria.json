@@ -1,0 +1,87 @@
+{
+  "current_classification": "INCONCLUSIVO",
+  "current_recommendation": "HOLD",
+  "go": {
+    "scope": "Somente revisão humana/documental; não autorização automática para gate futuro.",
+    "requirements": [
+      "Fonte estruturada confiável e não baseada no oracle para obrigações/claims/caveats, com proveniência e verificação.",
+      "Discriminar04/11/12/29 sem frase literal, com avaliação cega de extração em escopo novo autorizado.",
+      "Preservar os14 críticos como REJECT quando há prova independente, mesmo com outro eixo não resolvido.",
+      "Preservar31–36 INCONCLUSIVE sem false accepts e sem atribuir semântica a FULL inválido.",
+      "False block/allow e taxa de adiamento medidos em entradas independentes, não só annotations retrospectivas.",
+      "Todos os mutantes de integridade/precedência/observabilidade mortos; história e produto intactos."
+    ],
+    "acceptance_checks": [
+      {
+        "id": "VERIFIED_SEMANTIC_REPRESENTATION",
+        "eligible": 36,
+        "required": 36,
+        "oracle_available_to_extractor": false
+      },
+      {
+        "id": "POSITIVE_FALSE_REJECTS",
+        "denominator": 12,
+        "maximum": 0
+      },
+      {
+        "id": "POSITIVE_DEFERRALS_ON_FROZEN_CONTROLS",
+        "denominator": 12,
+        "maximum": 0
+      },
+      {
+        "id": "SAFE_PARTIAL_FALSE_REJECTS_OR_DEFERRALS",
+        "denominator": 3,
+        "maximum": 0
+      },
+      {
+        "id": "GG0_29_MATERIAL_OMISSION_PROVEN",
+        "required": true,
+        "exact_phrase_dependency": false
+      },
+      {
+        "id": "CRITICAL_REJECTS_WITH_INDEPENDENT_PROOF",
+        "denominator": 14,
+        "required": 14
+      },
+      {
+        "id": "INCONCLUSIVE_PRESERVED",
+        "denominator": 6,
+        "required": 6,
+        "unsafe_approve_maximum": 0,
+        "overreject_maximum": 0
+      },
+      {
+        "id": "INDEPENDENT_BLINDED_EXTRACTION_VALIDATION",
+        "required": true,
+        "performed_in_this_gate": false
+      },
+      {
+        "id": "CRITICAL_DOCUMENTARY_MUTANT_SURVIVORS",
+        "maximum": 0
+      }
+    ],
+    "acceptance_scope": "Critérios necessários para considerar um novo desenho/experimento; não bastam para integração e não são satisfeitos pelo replay anotado assistido por oracle."
+  },
+  "hold": {
+    "triggers": [
+      "Caveat/obrigação depende de interpretação sem especificação de origem confiável.",
+      "UNKNOWN de avaliação está sendo usado como false ou ausência material.",
+      "Apenas replay assistido por oracle disponível.",
+      "Necessidade de provider/rede para pergunta ainda não respondida: registrar pendência, não executar.",
+      "Bloqueio de disponibilidade das parciais/positivas não medido ou não resolvido."
+    ]
+  },
+  "stop": {
+    "triggers": [
+      "Qualquer chamada/rede/credencial/acesso externo não autorizado.",
+      "Mudança de oracle/scorer/prompt operacional ou história.",
+      "Regra depende da fraseGG29, trata todo UNCONFIRMED como REJECT ou falta de prova como APPROVE.",
+      "APPROVE emitido sem verificar obrigações/afirmações extras/permissões.",
+      "Violação independente comprovada rebaixada por mera incerteza em outro eixo.",
+      "Mutante crítico sobrevive ou fixture anota sucesso automático sem observabilidade."
+    ]
+  },
+  "next_possible_gate": "Proposta de auditoria offline da observabilidade e representação semântica, sujeita à decisão humana; não iniciado.",
+  "provider_authorized": false,
+  "implementation_authorized": false
+}

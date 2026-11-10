@@ -1,0 +1,59 @@
+{
+  "status": "PASS",
+  "checked_at_utc": "2026-10-18T13:01:37.575Z",
+  "markdown_files": 10,
+  "local_links_checked": 44,
+  "broken_links": [],
+  "external_links_opened": 0,
+  "privacy": {
+    "scope": "NEW_B1_ARTIFACTS_AND_MAIN_REPORT_ONLY",
+    "patterns": [
+      "private_key",
+      "provider_key",
+      "bearer_value",
+      "sensitive_assignment"
+    ],
+    "findings": [],
+    "secrets_or_env_files_read": 0,
+    "limitation": "Varredura local por padrões e inspeção de fontes; não é garantia universal de ausência de dados sensíveis."
+  },
+  "new_source_files_inspected": [
+    "experiments/jev/guard/g2cb1/document-audit.mjs",
+    "experiments/jev/guard/g2cb1/document-audit.test.mjs",
+    "experiments/jev/guard/g2cb1/mutation-probes.mjs"
+  ],
+  "documentary_files_whitespace_checked": [
+    "experiments/jev/guard/g2cb1/architecture-comparison.json",
+    "experiments/jev/guard/g2cb1/architecture-comparison.md",
+    "experiments/jev/guard/g2cb1/audit-design.json",
+    "experiments/jev/guard/g2cb1/case-analysis.md",
+    "experiments/jev/guard/g2cb1/case-references.json",
+    "experiments/jev/guard/g2cb1/controlled-representation-contract.md",
+    "experiments/jev/guard/g2cb1/document-audit.mjs",
+    "experiments/jev/guard/g2cb1/document-audit.test.mjs",
+    "experiments/jev/guard/g2cb1/document-checks.json",
+    "experiments/jev/guard/g2cb1/freeze.json",
+    "experiments/jev/guard/g2cb1/future-review-requirements.json",
+    "experiments/jev/guard/g2cb1/human-review-contract.md",
+    "experiments/jev/guard/g2cb1/leakage-and-failure-modes.md",
+    "experiments/jev/guard/g2cb1/mutants.md",
+    "experiments/jev/guard/g2cb1/mutation-probes.mjs",
+    "experiments/jev/guard/g2cb1/mutation-report.json",
+    "experiments/jev/guard/g2cb1/observability-matrix.md",
+    "experiments/jev/guard/g2cb1/preservation-before.json",
+    "experiments/jev/guard/g2cb1/preservation.json",
+    "experiments/jev/guard/g2cb1/propagation-preservation.json",
+    "experiments/jev/guard/g2cb1/README.md",
+    "experiments/jev/guard/g2cb1/semantic-families.json",
+    "experiments/jev/guard/g2cb1/semantic-families.md",
+    "experiments/jev/guard/g2cb1/source-admissibility.json",
+    "experiments/jev/guard/g2cb1/source-reading-receipt.json",
+    "experiments/jev/guard/g2cb1/tests.json",
+    "RELATORIO-JEV-GUARD-G2-C-B1.md"
+  ],
+  "git_diff_check": "PASS",
+  "product_diff": "EMPTY",
+  "network_attempts": 0,
+  "provider_calls": 0,
+  "production_accessed": false
+}

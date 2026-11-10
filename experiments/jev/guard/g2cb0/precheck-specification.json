@@ -1,0 +1,150 @@
+{
+  "status": "SPECIFICATION_ONLY",
+  "checks": [
+    {
+      "id": "E01",
+      "name": "commercial_confirmation",
+      "observability": "DIRECT_STRUCTURED",
+      "source_pointer": "/property_context/commercial_confirmation",
+      "rule": "Enum literal CONFIRMED/UNCONFIRMED/APPLICABILITY_UNKNOWN. Não prova que o assunto foi perguntado nem decide a candidata.",
+      "missing_or_unassessable": "UNKNOWN",
+      "implemented": false
+    },
+    {
+      "id": "E02",
+      "name": "authority_conflicting",
+      "observability": "DIRECT_STRUCTURED",
+      "source_pointer": "/guard_metadata/evidence_bundle_status",
+      "rule": "CONFLICTING_EQUAL_AUTHORITY é conflito declarado; não escolher primeira fonte. authority_resolved por afirmação exigiria canônico e vínculo verificados, ausentes como campo global.",
+      "missing_or_unassessable": "UNKNOWN",
+      "implemented": false
+    },
+    {
+      "id": "E03",
+      "name": "entity_resolution",
+      "observability": "DIRECT_STRUCTURED",
+      "source_pointer": "/guard_metadata/entity_resolution_status",
+      "rule": "RESOLVED/MISSING/AMBIGUOUS junto de selected_entity. Não resolver pelo mesmo número em A/B.",
+      "missing_or_unassessable": "UNKNOWN",
+      "implemented": false
+    },
+    {
+      "id": "E04",
+      "name": "temporal_fact_labels",
+      "observability": "DIRECT_STRUCTURED",
+      "source_pointer": "/property_context/current_facts",
+      "rule": "Preservar por fato CURRENT_FACT/UNKNOWN_CURRENT_STATE; presente/passado da afirmação e do pedido exigem vínculo semântico.",
+      "missing_or_unassessable": "UNKNOWN",
+      "implemented": false
+    },
+    {
+      "id": "E05",
+      "name": "evidence_bundle_status",
+      "observability": "DIRECT_STRUCTURED",
+      "source_pointer": "/guard_metadata/evidence_bundle_status",
+      "rule": "Preservar COMPLETE/INCOMPLETE/CONFLICTING_EQUAL_AUTHORITY/APPLICABILITY_UNDETERMINED/INCOMPLETE_TEMPORAL sem colapsar em booleano de verdade.",
+      "missing_or_unassessable": "UNKNOWN",
+      "implemented": false
+    },
+    {
+      "id": "E06",
+      "name": "source_catalog_status",
+      "observability": "DIRECT_STRUCTURED",
+      "source_pointer": "/guard_metadata/source_catalog_status",
+      "rule": "COMPLETE e NOT_PROVIDED são estados diferentes; array vazio não prova catálogo completo.",
+      "missing_or_unassessable": "UNKNOWN",
+      "implemented": false
+    },
+    {
+      "id": "E07",
+      "name": "fact_value_state",
+      "observability": "DIRECT_STRUCTURED",
+      "source_pointer": "/property_context/current_facts",
+      "rule": "Distinguir atributo value ausente, null, UNKNOWN e valor literal. Ausência de registro só pode ser relatada para chave identificada, dentro do catálogo declarado.",
+      "missing_or_unassessable": "UNKNOWN",
+      "implemented": false
+    },
+    {
+      "id": "E08",
+      "name": "protocol_catalog",
+      "observability": "DIRECT_STRUCTURED",
+      "source_pointer": "/available_protocols",
+      "rule": "Status/entidade/taxa/condição literais; modalidade faltante não escolhe protocolo aplicável.",
+      "missing_or_unassessable": "UNKNOWN",
+      "implemented": false
+    },
+    {
+      "id": "E09",
+      "name": "facts_accessible",
+      "observability": "DIRECT_STRUCTURED",
+      "source_pointer": "/property_context/accessible",
+      "rule": "false impede uso de fatos, mas verificar o que a candidata efetivamente usa exige leitura semântica.",
+      "missing_or_unassessable": "UNKNOWN",
+      "implemented": false
+    },
+    {
+      "id": "E10",
+      "name": "publication_authorized",
+      "observability": "DIRECT_STRUCTURED",
+      "source_pointer": "/property_context/operational_permissions/publication_authorized",
+      "rule": "Permissão literal não detecta sozinha a alegação de execução em texto.",
+      "missing_or_unassessable": "UNKNOWN",
+      "implemented": false
+    },
+    {
+      "id": "A01",
+      "name": "requested_obligations",
+      "observability": "SEMANTIC_REVIEW_REQUIRED",
+      "source_pointer": "/current_message",
+      "rule": "Slots/partes relevantes não estão estruturados. Pergunta livre não vira conjunto de obrigações por regex temática.",
+      "missing_or_unassessable": "UNKNOWN",
+      "implemented": false
+    },
+    {
+      "id": "A02",
+      "name": "required_caveat",
+      "observability": "SEMANTIC_REVIEW_REQUIRED",
+      "source_pointer": "/current_message + contexto",
+      "rule": "Requer vínculo da lacuna com obrigação perguntada e materialidade; global UNCONFIRMED é insuficiente.",
+      "missing_or_unassessable": "UNKNOWN",
+      "implemented": false
+    },
+    {
+      "id": "A03",
+      "name": "required_caveat_present_or_missing",
+      "observability": "SEMANTIC_REVIEW_REQUIRED",
+      "source_pointer": "/candidate_answer",
+      "rule": "Texto livre. Presença precisa equivalência e escopo; ausência precisa inspeção completa, não falta de metadado ou frase literal.",
+      "missing_or_unassessable": "UNKNOWN",
+      "implemented": false
+    },
+    {
+      "id": "A04",
+      "name": "candidate_assertions_and_bindings",
+      "observability": "SEMANTIC_REVIEW_REQUIRED",
+      "source_pointer": "/candidate_answer + fontes",
+      "rule": "Necessário alinhar cada afirmação a entidade, tempo, fato, protocolo e procedência. Não existe assertion AST no corpus.",
+      "missing_or_unassessable": "UNKNOWN",
+      "implemented": false
+    },
+    {
+      "id": "A05",
+      "name": "all_obligations_and_claims_checked",
+      "observability": "SEMANTIC_REVIEW_REQUIRED",
+      "source_pointer": "/candidate_answer + /current_message",
+      "rule": "Não pode receber TRUE por default ou por uma única afirmação correta. Extras materiais também contam.",
+      "missing_or_unassessable": "UNKNOWN",
+      "implemented": false
+    },
+    {
+      "id": "A06",
+      "name": "no_independent_violation_proven",
+      "observability": "SEMANTIC_REVIEW_REQUIRED",
+      "source_pointer": "candidata completa e fontes",
+      "rule": "Ausência de flag de erro não prova ausência de violação; revisão incompleta produz HOLD, não APPROVE.",
+      "missing_or_unassessable": "UNKNOWN",
+      "implemented": false
+    }
+  ],
+  "semantic_gap_hidden": false
+}

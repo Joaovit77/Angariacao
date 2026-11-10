@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "historical_files": 524,
+  "product_files": 769,
+  "namespace_lists": 16,
+  "propagation_prefix": {
+    "bytes": 50348,
+    "sha256": "ae71e9c77902795322361cb9d01c6411fa52341bbcc289d0aaef327699231c27"
+  },
+  "verified_at_utc": "2026-10-18T00:45:06.080Z",
+  "g2b_and_g2ca_unchanged": true,
+  "corpus_oracle_and_metrics_unchanged": true,
+  "locks_and_closed_authorization_unchanged": true,
+  "product_unchanged": true,
+  "propagation_append_only": true
+}

@@ -1,0 +1,14 @@
+{
+  "model": "jev-1.14.0",
+  "input_usd_per_million": 0.042,
+  "output_usd_per_million": 0,
+  "verified_at_utc": "2026-10-17T16:32:41Z",
+  "source": "https://docs.typesafe.ai/models",
+  "api_source": "https://docs.typesafe.ai/api",
+  "documented_request_context_tokens": 64000,
+  "documented_question_context_tokens": 32000,
+  "maximum_request_tokens_for_reservation": 65536,
+  "long_context_enabled": false,
+  "all_twelve_calls_conservative_usd": 0.033030144,
+  "authorized_cap_usd": 0.05
+}

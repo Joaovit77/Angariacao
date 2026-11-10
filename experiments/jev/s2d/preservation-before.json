@@ -1,0 +1,38 @@
+{
+  "frozen": {
+    "matrix": "84fb8a7e1bf29a7549bf2cfe4c423fbbbf295fbeb1752459b7f164ffb172018c",
+    "requests": "fed25c670d8d06b0b793efe854d18168939d0cce77bf64868e1d570da7da7cf3",
+    "freeze": "03baa866fbf1fb5fda8a065f8c6a0136c3f4679543306de8b678ed232acf2a60",
+    "adapter": "4eada006d631cebda9a71142e9b78e592252f472176e2584f4826848e3df4c75"
+  },
+  "files": {
+    "experiments/jev/v2/probability-diagnostics/characterize.mjs": "be668fdf3560126d56f1101c1690560160d514e59ee9af87f4c096c607f1065d",
+    "experiments/jev/v2/probability-diagnostics/compatibility-report.json": "db06126f4bd6114c6c48e7a9a2b929c0a2c0745ac6403011abf04b1a4016f561",
+    "experiments/jev/v2/probability-diagnostics/preservation-before.json": "901827e48c7c07869285cadfb13a7e1f0f08387e77f2c6511cad5701ce8eab23",
+    "experiments/jev/v2/probability-diagnostics/privacy-report.json": "45b615bde631bfd37163e2fa94d5a3249625398578908fa6065860f068c5decd",
+    "experiments/jev/v2/probability-diagnostics/probability-contract.md": "2d864df6b43f5f2fcefed150f5a70df687600b69ee3ebdc7b095050d201e067a",
+    "experiments/jev/v2/probability-diagnostics/probability-diagnostics.mjs": "caf30dd752dcbe036e79ebb115d86861b40a0cbd87d96b6f1945f4d872c6268f",
+    "experiments/jev/v2/probability-diagnostics/probability-diagnostics.test.mjs": "b12140a3fcdefd5835c82b430c75ab8d31f4b8548d8253f4cdb5d7eea06348d2",
+    "experiments/jev/v2/probability-diagnostics/probability-fixtures.mjs": "0accc4747914402898aa0965aa587ec0f1dcfd81c2cf808c1d31e3d65fc4f6ea",
+    "RELATORIO-JEV-S2-C.md": "a22ed7dedbc77eeb50ee303160351c29ab76145529743205407bdf11f7ed5482",
+    "experiments/jev/v2/probability-diagnostics/freeze.json": "e5f0b4884d886feee9bdc1987b18260865b5c075de1ca8fb7c4fcfde29286a4d",
+    "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/authorization.json": "a3eeead1c3ac6ed4c27d1b10b28ddc3eecad20c2fff4d0f2710330e6559dfdd0",
+    "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/budget.json": "bf60281c1886fab550658e00b395fc1f1f4c90484f296f60d873e958209353f7",
+    "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/consistency.json": "bfae133616f08edc84926419adb667b3e7d266b9ef87eb49dd6bbb9be2ed3f1e",
+    "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/errors.json": "06d164b2432d9b07612bdbce54b818d86c0331220bc0c6e61f0da9328fed8186",
+    "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/hashes.json": "b75a6228aa5802c7c6f5610e28446691db053e45d82e2685eb754784248b278a",
+    "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/ledger.json": "c218b7a92554d53099b589063e7078bb826db36b91d2b1c510d66ce9071168b8",
+    "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/manifest.json": "39fa022daa3da852ed1f7aa2d936e4088ad133cf5b46a6cc1540faef65290a9a",
+    "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/metrics-partial.json": "b06ecf79148a1fdb940c675f2a642e055a6cf9a57b380d379eafc319b44e5171",
+    "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/mutants.json": "a232a408332f3cc15d11ab4a882e8ae322715e1e0feb5e922ed183126af48096",
+    "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/pairs.json": "e01d6e698137aeb51c4922540a82b4fed1a69d165a00974ae3fd547efb1f618d",
+    "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/pricing.json": "628f044165a816fbbb33c80b7002a5f9a3da87fd911a6dbe32050b019fc4e665",
+    "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/privacy-check.json": "035ce24ebc5f852c276d180a9f14486170b059d7936163ce9e28c4976e70977c",
+    "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/stage-results/001.json": "26d46e83417e89ffefab9ac84ab27f02ac5926d140bcb420e0293fe98d0b553d",
+    "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/stage-results/002.json": "c601e1dea0643aaceb79c212d5f582629ad45773a7018b8f5c58e4d7e125d736",
+    "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/stage-results/003.json": "114d76adddc30fa283d9238d5a93f4f4d5834d7c803f2bb3cb7c1cd642481342",
+    "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/stage-results/004.json": "a413fbfeb2aec2fc059f7d276abc79dc5a91b1003f19c63b19df4656e2e5c317",
+    "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/summary.json": "7ea5b8a13e7872e6dcf9c8eab575223edd3031096d67974e25e7221409e7ecd2",
+    "experiments/jev/results/s2b-authorization.lock": "b2403295bf58d7a197b83754e8e729f593ed903b436be7dab34476a7fb489b2a"
+  }
+}

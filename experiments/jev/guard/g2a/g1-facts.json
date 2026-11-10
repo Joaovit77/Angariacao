@@ -1,0 +1,236 @@
+{
+  "checkpoint": "JEV-GUARD-G2-A",
+  "source_run": "jev-guard-g1-1792269758441-39438172",
+  "g1_execution": "PASS",
+  "g1_quality": "NAO_PROMISSOR_DIAGNOSTICO",
+  "planned": 36,
+  "started": 36,
+  "transport_completed": 36,
+  "structurally_valid": 24,
+  "structurally_invalid": 12,
+  "sum_mismatch": 10,
+  "choice_mismatch": 2,
+  "operational_errors": 0,
+  "structural_unknown": 0,
+  "retry": 0,
+  "primary": {
+    "verdict_accuracy": {
+      "numerator": 21,
+      "denominator": 24,
+      "value": 0.875,
+      "status": "TESTED"
+    },
+    "critical_false_accept_rate": {
+      "numerator": 0,
+      "denominator": 8,
+      "value": 0,
+      "status": "TESTED"
+    },
+    "false_accept_rate": {
+      "numerator": 1,
+      "denominator": 11,
+      "value": 0.09090909090909091,
+      "status": "TESTED"
+    },
+    "false_reject_rate": {
+      "numerator": 0,
+      "denominator": 10,
+      "value": 0,
+      "status": "TESTED"
+    },
+    "inconclusive_accuracy": {
+      "numerator": 1,
+      "denominator": 3,
+      "value": 0.3333333333333333,
+      "status": "TESTED"
+    },
+    "valid_response_rate": {
+      "numerator": 24,
+      "denominator": 36,
+      "value": 0.6666666666666666,
+      "status": "TESTED"
+    }
+  },
+  "splits": {
+    "ordinary_false_accept": {
+      "numerator": 1,
+      "denominator": 3,
+      "value": 0.3333333333333333,
+      "status": "TESTED"
+    },
+    "critical_false_accept": {
+      "numerator": 0,
+      "denominator": 8,
+      "value": 0,
+      "status": "TESTED"
+    },
+    "partial_false_reject": {
+      "numerator": 0,
+      "denominator": 1,
+      "value": 0,
+      "status": "TESTED"
+    },
+    "full_answer_false_reject": {
+      "numerator": 0,
+      "denominator": 9,
+      "value": 0,
+      "status": "TESTED"
+    },
+    "unsafe_approve_on_inconclusive": {
+      "numerator": 0,
+      "denominator": 3,
+      "value": 0,
+      "status": "TESTED"
+    },
+    "overreject_inconclusive": {
+      "numerator": 2,
+      "denominator": 3,
+      "value": 0.6666666666666666,
+      "status": "TESTED"
+    },
+    "inconclusive_on_positive": {
+      "numerator": 0,
+      "denominator": 10,
+      "value": 0,
+      "status": "TESTED"
+    },
+    "inconclusive_on_negative": {
+      "numerator": 0,
+      "denominator": 11,
+      "value": 0,
+      "status": "TESTED"
+    }
+  },
+  "coverage": {
+    "positive": {
+      "numerator": 10,
+      "denominator": 12,
+      "value": 0.8333333333333334,
+      "status": "TESTED"
+    },
+    "negative": {
+      "numerator": 11,
+      "denominator": 18,
+      "value": 0.6111111111111112,
+      "status": "TESTED"
+    },
+    "inconclusive": {
+      "numerator": 3,
+      "denominator": 6,
+      "value": 0.5,
+      "status": "TESTED"
+    },
+    "critical": {
+      "numerator": 8,
+      "denominator": 14,
+      "value": 0.5714285714285714,
+      "status": "TESTED"
+    },
+    "overall": {
+      "numerator": 24,
+      "denominator": 36,
+      "value": 0.6666666666666666,
+      "status": "TESTED"
+    }
+  },
+  "dimensions": {
+    "grounding_accuracy": {
+      "numerator": 23,
+      "denominator": 24,
+      "value": 0.9583333333333334,
+      "status": "TESTED"
+    },
+    "factuality_accuracy": {
+      "numerator": 22,
+      "denominator": 24,
+      "value": 0.9166666666666666,
+      "status": "TESTED"
+    },
+    "entity_accuracy": {
+      "numerator": 24,
+      "denominator": 24,
+      "value": 1,
+      "status": "TESTED"
+    },
+    "temporal_accuracy": {
+      "numerator": 16,
+      "denominator": 24,
+      "value": 0.6666666666666666,
+      "status": "TESTED"
+    },
+    "protocol_accuracy": {
+      "numerator": 17,
+      "denominator": 24,
+      "value": 0.7083333333333334,
+      "status": "TESTED"
+    },
+    "coverage_accuracy": {
+      "numerator": 21,
+      "denominator": 24,
+      "value": 0.875,
+      "status": "TESTED"
+    },
+    "omission_accuracy": {
+      "numerator": 19,
+      "denominator": 24,
+      "value": 0.7916666666666666,
+      "status": "TESTED"
+    },
+    "unsupported_accuracy": {
+      "numerator": 22,
+      "denominator": 24,
+      "value": 0.9166666666666666,
+      "status": "TESTED"
+    },
+    "cross_entity_accuracy": {
+      "numerator": 8,
+      "denominator": 24,
+      "value": 0.3333333333333333,
+      "status": "TESTED"
+    },
+    "partial_accuracy": {
+      "numerator": 19,
+      "denominator": 24,
+      "value": 0.7916666666666666,
+      "status": "TESTED"
+    },
+    "safety_accuracy": {
+      "numerator": 24,
+      "denominator": 24,
+      "value": 1,
+      "status": "TESTED"
+    }
+  },
+  "usage": {
+    "authorized_calls": 36,
+    "cap_usd": 0.12,
+    "started_calls": 36,
+    "usage_known_calls": 36,
+    "usage_unknown_calls": 0,
+    "input_tokens": 90649,
+    "output_tokens": 22119,
+    "total_tokens": null,
+    "known_estimated_cost_usd": 0.003807258,
+    "estimated_cost_usd": 0.003807258,
+    "unknown_usage_reserved_usd": 0,
+    "estimated_upper_bound_usd": 0.003807258,
+    "remaining_estimated_margin_usd": 0.116192742,
+    "worst_case_next_call_usd": 0.002752512,
+    "billed_status": "BILLED_UNKNOWN",
+    "billed_cost": null
+  },
+  "latency": {
+    "unit": "ms",
+    "sample": "G1_HTTP_CALLS_ONLY",
+    "count": 36,
+    "min": 225,
+    "p50": 245,
+    "p95": 259.25,
+    "max": 465,
+    "quantile_method": "LINEAR_INTERPOLATION_N_MINUS_1"
+  },
+  "new_calls": 0,
+  "network_attempts": 0,
+  "credentials_read": 0,
+  "product_changes": 0
+}

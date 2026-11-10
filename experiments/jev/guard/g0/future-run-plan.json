@@ -1,0 +1,411 @@
+{
+  "checkpoint": "JEV-GUARD-G0",
+  "next_gate": "JEV-GUARD-G1",
+  "status": "PROPOSED_ONLY",
+  "execution_authorized": false,
+  "real_shadow_authorized": false,
+  "mode": "SYNTHETIC_BENCHMARK",
+  "model_proposed": "jev-1.14.0",
+  "model_authorized": null,
+  "calls_proposed": 36,
+  "calls_authorized": 0,
+  "repetitions_proposed": 1,
+  "concurrency_proposed": 1,
+  "proposed_order": "GG0-01 a GG0-36, somente validation",
+  "recommended_design": "36 casos × 1: preserva diversidade, 18 pares, 12 positivos, 18 negativos, 6 inconclusivos e 14 críticos.",
+  "stages": [
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-01/validation/R1",
+      "order": 1,
+      "case_id": "GG0-01",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "a36c10834760733cc3e4cafae50ba9828172bea1c578732be54b646c7d4d5668",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-02/validation/R1",
+      "order": 2,
+      "case_id": "GG0-02",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "a7fd6ce1def2cec879a9b71cd2d5e839c4ef5b473753de7d2feee573ed0c96af",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-03/validation/R1",
+      "order": 3,
+      "case_id": "GG0-03",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "ade78c441223b127846f313d0f70d8b52959a7923cd3599079fffc5fba5c560a",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-04/validation/R1",
+      "order": 4,
+      "case_id": "GG0-04",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "84e928b746ffbf2468bf27b1e6d6921b37a958366eef63458c9d3a27251adc5e",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-05/validation/R1",
+      "order": 5,
+      "case_id": "GG0-05",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "399c12f7186583e4806d65714a7672a53571e133e0f5b8911f1e29a7a04b13f7",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-06/validation/R1",
+      "order": 6,
+      "case_id": "GG0-06",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "543f4d4c7740d02797e5d6f27dc50b8f62f1aba201993753742d3e037193393c",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-07/validation/R1",
+      "order": 7,
+      "case_id": "GG0-07",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "9421caa95a1ec39892f49c69ec2652068431a4628e7222deb5a325eb0e6b6d6b",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-08/validation/R1",
+      "order": 8,
+      "case_id": "GG0-08",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "c1992e49b0733a62b14710ae243e35e1c56c83ea8d08e721ee41112223467597",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-09/validation/R1",
+      "order": 9,
+      "case_id": "GG0-09",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "055b45684c7a71db8baa46d962e6cf14f217b5518ce545cabe8d6e52a775b8bf",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-10/validation/R1",
+      "order": 10,
+      "case_id": "GG0-10",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "df5cafd514190e0f9df9b98bf0a020e4402bb77c8659c1185a5d136d95c5891a",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-11/validation/R1",
+      "order": 11,
+      "case_id": "GG0-11",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "9253fd4dbfd1d4d45e1b73ec56f237c6d963042bbb91fb5a25a5ae988e2d8829",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-12/validation/R1",
+      "order": 12,
+      "case_id": "GG0-12",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "39e789f38926095525aeeed43c077f6d3e91d64ba84741df58e70a591fe5a469",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-13/validation/R1",
+      "order": 13,
+      "case_id": "GG0-13",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "7d7ba8d18af53e710a847aee97a06dfcd80fba12f69ca8effbb860c2e931c9d4",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-14/validation/R1",
+      "order": 14,
+      "case_id": "GG0-14",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "3d7c5dd39b0649562e4ac28e1710eb3b239caaf617a118627e042d259ad1e047",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-15/validation/R1",
+      "order": 15,
+      "case_id": "GG0-15",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "a789314e52d4a445ae89377f001bae52fe3c89b19d43cb49b7fce3b37a2d0782",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-16/validation/R1",
+      "order": 16,
+      "case_id": "GG0-16",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "9fc42b376b1c128be4be82ee599f55ea352059ed5620d6a5f6d79e100d4727e7",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-17/validation/R1",
+      "order": 17,
+      "case_id": "GG0-17",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "5660abf04953b3f949b20382255d68d80594df2f2b0064bc931bb45ef521d787",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-18/validation/R1",
+      "order": 18,
+      "case_id": "GG0-18",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "28d6c0b9fac7935af04b32a5f9a62dfbb706ff9d5829355bdf5d19a4ede48676",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-19/validation/R1",
+      "order": 19,
+      "case_id": "GG0-19",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "21e5448b036d3bbcead05d4db656727c5a7822c4d50d4304ecb6577b4320f633",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-20/validation/R1",
+      "order": 20,
+      "case_id": "GG0-20",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "c051990aa137538dfa0699000bc5b5320084b24695bc071d0dfdbf0aca45df97",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-21/validation/R1",
+      "order": 21,
+      "case_id": "GG0-21",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "996b719886a488da7de12ce668975bb9d64e734f5e4ee01511655aa2fd10527a",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-22/validation/R1",
+      "order": 22,
+      "case_id": "GG0-22",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "d66439ebebda5c5527b493c3c76f9f46926c5a313e3c764bcab704cc1aaea2a7",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-23/validation/R1",
+      "order": 23,
+      "case_id": "GG0-23",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "19a66dea76abfebe1eaa2330415cabc03f5c4516fb6412556ce2e28dfc8a690c",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-24/validation/R1",
+      "order": 24,
+      "case_id": "GG0-24",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "0607202d50cd23ce2caafd33697d3361811b8500f83adbed56df188345b8669c",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-25/validation/R1",
+      "order": 25,
+      "case_id": "GG0-25",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "3090ccf6fc20348780404bf575e40136c2c00db5db82c93a41a57a67f4e6e2fd",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-26/validation/R1",
+      "order": 26,
+      "case_id": "GG0-26",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "3d0d307bf2ecb4172af847e40b16bd78d5fde7c4dbd8d013345aed01edd15205",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-27/validation/R1",
+      "order": 27,
+      "case_id": "GG0-27",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "a766306693b97d900a9e7ee7c777fb7ac270d03427f08fc49db580b5d06e1e71",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-28/validation/R1",
+      "order": 28,
+      "case_id": "GG0-28",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "fb29bf9bdc17b9cecea00ce0e9a18b29d2a3292654e8a6b06218021a986fe0ff",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-29/validation/R1",
+      "order": 29,
+      "case_id": "GG0-29",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "902057c11cb0f015dad6f6fe723795652ab719e1c16414986eb60a887be0aeab",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-30/validation/R1",
+      "order": 30,
+      "case_id": "GG0-30",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "413c2a1e8e131b3fd10cea1ea84e43197dc54794d035fa632fd1eff09f663328",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-31/validation/R1",
+      "order": 31,
+      "case_id": "GG0-31",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "534622b108abf4fded2239ceeb1eb6e2077eb7dc3c812354e46187df77b3a5dc",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-32/validation/R1",
+      "order": 32,
+      "case_id": "GG0-32",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "6a8bf3a5592a9144294c5f67c98da1051eafbcb065a14862013227d326ad1788",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-33/validation/R1",
+      "order": 33,
+      "case_id": "GG0-33",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "24e2ea5398281e8b7ebb7bab03d0866047cb3d0416aa621ce24ef0f4505889fb",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-34/validation/R1",
+      "order": 34,
+      "case_id": "GG0-34",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "8cf3fac4e5a34510218171dc584ccc44bce56e4205a4bd0cc817a54d39adc781",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-35/validation/R1",
+      "order": 35,
+      "case_id": "GG0-35",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "2d6076b6cb1e8f2ddbe83bc885320dc694899d1649951fcf1c7a0b91e163c186",
+      "status": "PROPOSED_ONLY"
+    },
+    {
+      "planned_stage_id": "G1-PROPOSED/GG0-36/validation/R1",
+      "order": 36,
+      "case_id": "GG0-36",
+      "stage": "validation",
+      "repetition": 1,
+      "request_sha256": "d726ef5b9b7c7393584754d9f5be94537cc785550160f592f17380a219ec5630",
+      "status": "PROPOSED_ONLY"
+    }
+  ],
+  "alternatives": [
+    {
+      "design": "18 casos × 2",
+      "calls": 36,
+      "unique_cases": 18,
+      "example_case_ids": [
+        "GG0-01",
+        "GG0-02",
+        "GG0-04",
+        "GG0-07",
+        "GG0-08",
+        "GG0-12",
+        "GG0-13",
+        "GG0-14",
+        "GG0-16",
+        "GG0-19",
+        "GG0-20",
+        "GG0-21",
+        "GG0-22",
+        "GG0-24",
+        "GG0-29",
+        "GG0-31",
+        "GG0-33",
+        "GG0-35"
+      ],
+      "distribution_unique": {
+        "APPROVE": 6,
+        "REJECT": 9,
+        "INCONCLUSIVE": 3
+      },
+      "complete_minimal_pairs": 9,
+      "recommended": false,
+      "reason": "Mesmo número de chamadas, menor diversidade; este recorte retém somente nove pares e perde controles de protocolo, abstenção e eixos. Não é plano autorizado nem substituto do corpus."
+    },
+    {
+      "design": "36 casos × 2",
+      "calls": 72,
+      "unique_cases": 36,
+      "recommended": false,
+      "reason": "Melhora observação R1/R2, porém duplica chamadas antes de medir diversidade deste contrato novo; pode ser outro gate."
+    }
+  ],
+  "price_status": "HISTORICAL_REFERENCE_ONLY_NOT_RECONFIRMED",
+  "historical_cost_context": {
+    "source": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/pricing.json",
+    "input_usd_per_million": 0.042,
+    "output_usd_per_million": 0,
+    "reservation_tokens_per_call": 65536,
+    "reservation_36_calls_usd": 0.099090432,
+    "not_quote": true,
+    "not_authorization": true
+  },
+  "budget_authorized_usd": 0,
+  "budget_for_g1": null,
+  "required_before_network": [
+    "Nova autorização humana exclusiva G1",
+    "Quantidade, modelo versionado e teto financeiro explícitos",
+    "Preço oficial reconfirmado e reserva segura",
+    "Revisão/certificação do executor separado",
+    "Novos run/ledger/stage/attempt e locks, com persistência antes de HTTP",
+    "Parser e freezes íntegros, zero retry e privacidade sanitizada",
+    "Nenhuma integração de produto"
+  ],
+  "output_effects": "NONE",
+  "limitations": [
+    "Uma repetição não mede consistência R1/R2.",
+    "Contextos pequenos e sintéticos; não mede tráfego real.",
+    "Modelo diferente exige novo preparo/freeze antes da rede."
+  ]
+}

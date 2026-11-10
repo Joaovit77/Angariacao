@@ -1,0 +1,79 @@
+{
+  "options": [
+    {
+      "id": "A",
+      "option": "REDUCED + guard determinístico para obrigações essenciais",
+      "benefit": "Bloquear a classe de ressalva comercial ausente ilustrada por GG0-29.",
+      "risk": "Extração de obrigações e equivalência de ressalvas podem falhar; regex de frase única bloquearia parciais legítimas.",
+      "prerequisite": "Representação estruturada de obrigação/materialidade e controles GG0-04/11/12/29; desenho offline primeiro.",
+      "status": "OFFLINE_OPTION_ONLY",
+      "implemented": false,
+      "prompt_created": false,
+      "calls_authorized": 0,
+      "execution_authorized": false
+    },
+    {
+      "id": "B",
+      "option": "REDUCED com distinção explícita REJECT × INCONCLUSIVE",
+      "benefit": "Investigar o overreject GG0-31/32/35/36.",
+      "risk": "Melhorar abstinência sem preservar violações explícitas pode criar false accepts críticos.",
+      "prerequisite": "Contrastes de prova independente versus estado não resolvido, mantendo negativos críticos e oracle original.",
+      "status": "OFFLINE_OPTION_ONLY",
+      "implemented": false,
+      "prompt_created": false,
+      "calls_authorized": 0,
+      "execution_authorized": false
+    },
+    {
+      "id": "C",
+      "option": "FULL com dimensões fora do envelope obrigatório",
+      "benefit": "Separar disponibilidade do verdict e diagnóstico.",
+      "risk": "Muda o contrato e pode esconder ausência de dimensão; não autoriza recuperar qualquer FULL histórico.",
+      "prerequisite": "Novo contrato offline com estados explícitos, sem fallback retroativo e avaliação própria.",
+      "status": "OFFLINE_OPTION_ONLY",
+      "implemented": false,
+      "prompt_created": false,
+      "calls_authorized": 0,
+      "execution_authorized": false
+    },
+    {
+      "id": "D",
+      "option": "Duas etapas: verdict REDUCED e diagnóstico dimensional separado",
+      "benefit": "Coletar diagnóstico sob demanda sem condicionar o verdict ao envelope FULL.",
+      "risk": "Custo/latência adicionais e discordância entre etapas; efeito semântico não demonstrado.",
+      "prerequisite": "Critério de seleção/limites de custo e desenho de avaliação, sem executor neste gate.",
+      "status": "OFFLINE_OPTION_ONLY",
+      "implemented": false,
+      "prompt_created": false,
+      "calls_authorized": 0,
+      "execution_authorized": false
+    },
+    {
+      "id": "E",
+      "option": "Prechecks determinísticos antes do JEV",
+      "benefit": "Tornar fonte, entidade, obrigação e estado desconhecido explícitos.",
+      "risk": "Precheck que trate todo desconhecido como REJECT repetiria a falha de calibração.",
+      "prerequisite": "Matriz documental de admissibilidade e representação de fatos/obrigações; avaliar A/B e controles offline.",
+      "status": "OFFLINE_OPTION_ONLY",
+      "implemented": false,
+      "prompt_created": false,
+      "calls_authorized": 0,
+      "execution_authorized": false
+    },
+    {
+      "id": "F",
+      "option": "Não prosseguir com JEV Guard",
+      "benefit": "Evitar integrar guard ainda negativo e comparação sem cobertura suficiente.",
+      "risk": "Abandona possíveis benefícios estruturais/eficiência ainda sem valor operacional demonstrado.",
+      "prerequisite": "Decisão humana sobre utilidade, custo de manutenção e alternativa determinística.",
+      "status": "OFFLINE_OPTION_ONLY",
+      "implemented": false,
+      "prompt_created": false,
+      "calls_authorized": 0,
+      "execution_authorized": false
+    }
+  ],
+  "recommendation": "Revisão humana desta decomposição. Se houver continuidade, autorizar apenas um desenho offline A+B+E com controles positivos/negativos; nenhuma redação de prompt ou execução neste gate.",
+  "selected_for_execution": null,
+  "authorized_calls": 0
+}

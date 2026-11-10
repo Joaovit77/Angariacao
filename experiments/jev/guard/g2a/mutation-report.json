@@ -1,0 +1,65 @@
+{
+  "checkpoint": "JEV-GUARD-G2-A",
+  "mode": "OFFLINE_MUTATED_COPIES_ONLY",
+  "historical_files_modified": false,
+  "total": 11,
+  "killed": 11,
+  "survived": 0,
+  "probes": [
+    {
+      "id": "INVALID_AS_REJECT",
+      "baseline": "PASS",
+      "mutation": "KILLED"
+    },
+    {
+      "id": "INVALID_AS_APPROVE",
+      "baseline": "PASS",
+      "mutation": "KILLED"
+    },
+    {
+      "id": "CRITICAL_ZERO_OF_FOURTEEN",
+      "baseline": "PASS",
+      "mutation": "KILLED"
+    },
+    {
+      "id": "IGNORE_GG0_29",
+      "baseline": "PASS",
+      "mutation": "KILLED"
+    },
+    {
+      "id": "CHANGE_ORACLE",
+      "baseline": "PASS",
+      "mutation": "KILLED"
+    },
+    {
+      "id": "NORMALIZE_SUM",
+      "baseline": "PASS",
+      "mutation": "KILLED"
+    },
+    {
+      "id": "AUTO_MAX_CHOICE",
+      "baseline": "PASS",
+      "mutation": "KILLED"
+    },
+    {
+      "id": "DIMENSION_RECLASSIFIES_HISTORICAL_VERDICT",
+      "baseline": "PASS",
+      "mutation": "KILLED"
+    },
+    {
+      "id": "FALSE_CAUSALITY_FEWER_QUESTIONS_SOLVES",
+      "baseline": "PASS",
+      "mutation": "KILLED"
+    },
+    {
+      "id": "OVERWRITE_G1_HISTORY",
+      "baseline": "PASS",
+      "mutation": "KILLED"
+    },
+    {
+      "id": "REMOVE_INCONCLUSIVE_FROM_FUTURE_DESIGN",
+      "baseline": "PASS",
+      "mutation": "KILLED"
+    }
+  ]
+}

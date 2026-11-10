@@ -1,0 +1,10 @@
+{
+  "status": "PASS_APPEND_ONLY",
+  "prefix_bytes": 46919,
+  "prefix_sha256": "b7ffb21d3b052021535246907f643931aaa22cdc80978b8181c8ee5a65e4571e",
+  "appended_bytes": 3429,
+  "appended_sha256": "77a3ee10c299b213af4f7f97397e98a2a2ed36f38f3d377edf36ecd956b17013",
+  "propagation_final_sha256": "ae71e9c77902795322361cb9d01c6411fa52341bbcc289d0aaef327699231c27",
+  "report": "RELATORIO-JEV-GUARD-G2-C-A.md",
+  "report_sha256": "9b5a2a951c12235aed0301ca80436b9dafa687271d0d683e0eba3c4c9e740912"
+}

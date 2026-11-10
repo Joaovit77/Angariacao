@@ -1,0 +1,11 @@
+{
+  "checkpoint": "JEV-S2-F-B",
+  "existing_pass": 248,
+  "runner_pass": 44,
+  "total_pass": 292,
+  "fail": 0,
+  "network_calls": 0,
+  "previous_suite_pass": 248,
+  "completed_at_utc": "2026-10-17T17:30:56.041Z",
+  "command": "node --test experiments/jev/harness.test.mjs experiments/jev/v2/v2.test.mjs experiments/jev/v2/adapter-v2.test.mjs experiments/jev/s2b/runtime.test.mjs experiments/jev/v2/probability-diagnostics/probability-diagnostics.test.mjs experiments/jev/s2d/runtime.test.mjs experiments/jev/s2e/runtime.test.mjs experiments/jev/s2f/s2f-a.test.mjs experiments/jev/s2fb/runtime.test.mjs"
+}

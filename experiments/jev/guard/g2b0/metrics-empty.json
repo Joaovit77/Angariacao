@@ -1,0 +1,1770 @@
+{
+  "status": "NOT_RUN",
+  "arms": {
+    "ARM_FULL": {
+      "arm": "ARM_FULL",
+      "status": "NOT_RUN",
+      "planned": 36,
+      "started": 0,
+      "transport_completed": 0,
+      "structurally_valid": 0,
+      "structurally_invalid": 0,
+      "operational_error": 0,
+      "in_progress": 0,
+      "not_started": 36,
+      "primary": {
+        "valid_response_rate": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "verdict_accuracy": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "false_accept_rate": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "critical_false_accept_rate": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "ordinary_false_accept_rate": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "false_reject_rate": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "partial_false_reject_rate": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "full_false_reject_rate": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "inconclusive_accuracy": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "unsafe_approve_on_inconclusive": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "overreject_inconclusive": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "inconclusive_on_positive": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "inconclusive_on_negative": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        }
+      },
+      "coverage": {
+        "positive": {
+          "numerator": 0,
+          "denominator": 12,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "negative": {
+          "numerator": 0,
+          "denominator": 18,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "inconclusive": {
+          "numerator": 0,
+          "denominator": 6,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "critical": {
+          "numerator": 0,
+          "denominator": 14,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "overall": {
+          "numerator": 0,
+          "denominator": 36,
+          "value": 0,
+          "status": "TESTED"
+        }
+      },
+      "diagnostic_classification": "INCONCLUSIVO",
+      "details": [],
+      "telemetry": {
+        "started": 0,
+        "usage_known": 0,
+        "usage_unknown": 0,
+        "input_tokens": null,
+        "output_tokens": null,
+        "total_tokens": null,
+        "estimated_cost_usd": null,
+        "billed_status": "BILLED_UNKNOWN",
+        "latency_ms": {
+          "count": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "max": null,
+          "method": "LINEAR_N_MINUS_1"
+        }
+      },
+      "dimensions_status": "FULL_DIAGNOSTIC_ONLY"
+    },
+    "ARM_REDUCED": {
+      "arm": "ARM_REDUCED",
+      "status": "NOT_RUN",
+      "planned": 36,
+      "started": 0,
+      "transport_completed": 0,
+      "structurally_valid": 0,
+      "structurally_invalid": 0,
+      "operational_error": 0,
+      "in_progress": 0,
+      "not_started": 36,
+      "primary": {
+        "valid_response_rate": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "verdict_accuracy": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "false_accept_rate": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "critical_false_accept_rate": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "ordinary_false_accept_rate": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "false_reject_rate": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "partial_false_reject_rate": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "full_false_reject_rate": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "inconclusive_accuracy": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "unsafe_approve_on_inconclusive": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "overreject_inconclusive": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "inconclusive_on_positive": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        },
+        "inconclusive_on_negative": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "status": "NOT_TESTED"
+        }
+      },
+      "coverage": {
+        "positive": {
+          "numerator": 0,
+          "denominator": 12,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "negative": {
+          "numerator": 0,
+          "denominator": 18,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "inconclusive": {
+          "numerator": 0,
+          "denominator": 6,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "critical": {
+          "numerator": 0,
+          "denominator": 14,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "overall": {
+          "numerator": 0,
+          "denominator": 36,
+          "value": 0,
+          "status": "TESTED"
+        }
+      },
+      "diagnostic_classification": "INCONCLUSIVO",
+      "details": [],
+      "telemetry": {
+        "started": 0,
+        "usage_known": 0,
+        "usage_unknown": 0,
+        "input_tokens": null,
+        "output_tokens": null,
+        "total_tokens": null,
+        "estimated_cost_usd": null,
+        "billed_status": "BILLED_UNKNOWN",
+        "latency_ms": {
+          "count": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "max": null,
+          "method": "LINEAR_N_MINUS_1"
+        }
+      },
+      "dimensions_status": "NOT_COLLECTED"
+    }
+  },
+  "structural": {
+    "BOTH_VALID": {
+      "numerator": 0,
+      "denominator": 36,
+      "value": 0,
+      "status": "TESTED"
+    },
+    "FULL_ONLY_VALID": {
+      "numerator": 0,
+      "denominator": 36,
+      "value": 0,
+      "status": "TESTED"
+    },
+    "REDUCED_ONLY_VALID": {
+      "numerator": 0,
+      "denominator": 36,
+      "value": 0,
+      "status": "TESTED"
+    },
+    "NEITHER_VALID": {
+      "numerator": 36,
+      "denominator": 36,
+      "value": 1,
+      "status": "TESTED"
+    }
+  },
+  "semantic": {
+    "BOTH_CORRECT": {
+      "numerator": 0,
+      "denominator": 0,
+      "value": null,
+      "status": "NOT_TESTED"
+    },
+    "FULL_CORRECT_REDUCED_WRONG": {
+      "numerator": 0,
+      "denominator": 0,
+      "value": null,
+      "status": "NOT_TESTED"
+    },
+    "REDUCED_CORRECT_FULL_WRONG": {
+      "numerator": 0,
+      "denominator": 0,
+      "value": null,
+      "status": "NOT_TESTED"
+    },
+    "BOTH_WRONG_SAME": {
+      "numerator": 0,
+      "denominator": 0,
+      "value": null,
+      "status": "NOT_TESTED"
+    },
+    "BOTH_WRONG_DIFFERENT": {
+      "numerator": 0,
+      "denominator": 0,
+      "value": null,
+      "status": "NOT_TESTED"
+    }
+  },
+  "semantic_coverage": {
+    "numerator": 0,
+    "denominator": 36,
+    "value": 0,
+    "status": "TESTED"
+  },
+  "verdict_agreement": {
+    "numerator": 0,
+    "denominator": 0,
+    "value": null,
+    "status": "NOT_TESTED"
+  },
+  "pairs": [
+    {
+      "case_id": "GG0-01",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-02",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-03",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-04",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-05",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-06",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-07",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-08",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-09",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-10",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-11",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-12",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-13",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-14",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-15",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-16",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-17",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-18",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-19",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-20",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-21",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-22",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-23",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-24",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-25",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-26",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-27",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-28",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-29",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-30",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-31",
+      "expected_verdict": "INCONCLUSIVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-32",
+      "expected_verdict": "INCONCLUSIVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-33",
+      "expected_verdict": "INCONCLUSIVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-34",
+      "expected_verdict": "INCONCLUSIVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-35",
+      "expected_verdict": "INCONCLUSIVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-36",
+      "expected_verdict": "INCONCLUSIVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    }
+  ],
+  "gg0_29": {
+    "case_id": "GG0-29",
+    "expected_verdict": "REJECT",
+    "GG0_29_FULL_RESULT": {
+      "status": "NOT_STARTED",
+      "verdict": null
+    },
+    "GG0_29_REDUCED_RESULT": {
+      "status": "NOT_STARTED",
+      "verdict": null
+    },
+    "interpretation": "E_COVERAGE_INCONCLUSIVE"
+  },
+  "critical_sentinels": [
+    {
+      "case_id": "GG0-13",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-14",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-15",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-16",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-17",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-18",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-19",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-20",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-21",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-22",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-23",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-24",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-27",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-30",
+      "expected_verdict": "REJECT",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    }
+  ],
+  "inconclusive_sentinels": [
+    {
+      "case_id": "GG0-31",
+      "expected_verdict": "INCONCLUSIVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-32",
+      "expected_verdict": "INCONCLUSIVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-33",
+      "expected_verdict": "INCONCLUSIVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-34",
+      "expected_verdict": "INCONCLUSIVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-35",
+      "expected_verdict": "INCONCLUSIVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-36",
+      "expected_verdict": "INCONCLUSIVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    }
+  ],
+  "positive_sentinels": [
+    {
+      "case_id": "GG0-01",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-02",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-03",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-04",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-05",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-06",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-07",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-08",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-09",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-10",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-11",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    },
+    {
+      "case_id": "GG0-12",
+      "expected_verdict": "APPROVE",
+      "full": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "reduced": {
+        "status": "NOT_STARTED",
+        "verdict": null
+      },
+      "structural": "NEITHER_VALID",
+      "semantic": null,
+      "agreement": null
+    }
+  ],
+  "minimal_pairs": {
+    "ARM_FULL": [
+      {
+        "pair_id": "GMP-01",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-02",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-03",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-04",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-05",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-06",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-07",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-08",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-09",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-10",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-11",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-12",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-13",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-14",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-15",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-16",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-17",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-18",
+        "classification": "PAIR_INCONCLUSIVE"
+      }
+    ],
+    "ARM_REDUCED": [
+      {
+        "pair_id": "GMP-01",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-02",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-03",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-04",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-05",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-06",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-07",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-08",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-09",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-10",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-11",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-12",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-13",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-14",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-15",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-16",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-17",
+        "classification": "PAIR_INCONCLUSIVE"
+      },
+      {
+        "pair_id": "GMP-18",
+        "classification": "PAIR_INCONCLUSIVE"
+      }
+    ]
+  },
+  "comparison": {
+    "COMPARATIVE_RESULT": "COMPARISON_INCONCLUSIVE",
+    "reason": "COVERAGE_OR_OPERATIONAL_CONTROL",
+    "coverage_sufficient": false,
+    "coverage_rule": {
+      "both_valid_minimum": 30,
+      "positive_both_valid_minimum": 8,
+      "critical_both_valid_required": 14,
+      "inconclusive_both_valid_required": 6,
+      "positive_partial_both_valid_required": 3,
+      "gg0_29_both_valid_required": true,
+      "all_72_started_and_finalized_required": true
+    },
+    "both_valid": 0,
+    "material_worse_reduced": [],
+    "material_worse_full": [],
+    "new_wrong_reduced": [],
+    "new_wrong_full": [],
+    "interpretation": "OBSERVED_EXPERIMENTAL_ADVANTAGE_ONLY",
+    "general_superiority_proven": false
+  },
+  "telemetry": {
+    "pair_details": [
+      {
+        "case_id": "GG0-01",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-02",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-03",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-04",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-05",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-06",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-07",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-08",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-09",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-10",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-11",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-12",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-13",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-14",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-15",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-16",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-17",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-18",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-19",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-20",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-21",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-22",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-23",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-24",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-25",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-26",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-27",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-28",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-29",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-30",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-31",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-32",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-33",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-34",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-35",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      },
+      {
+        "case_id": "GG0-36",
+        "pair_estimated_cost_usd": null,
+        "latency_delta_ms": null
+      }
+    ],
+    "paired_latency_delta_ms": {
+      "count": 0,
+      "min": null,
+      "p50": null,
+      "p95": null,
+      "max": null,
+      "method": "LINEAR_N_MINUS_1"
+    },
+    "pair_cost_total_usd": null
+  }
+}

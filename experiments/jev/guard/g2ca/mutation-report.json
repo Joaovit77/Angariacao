@@ -1,0 +1,81 @@
+{
+  "total": 12,
+  "killed": 12,
+  "survived": 0,
+  "probes": [
+    {
+      "id": "GG29_REMOVIDO",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "historical_files_modified": false
+    },
+    {
+      "id": "INVALID_COM_VERDICT",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "historical_files_modified": false
+    },
+    {
+      "id": "ESTRUTURA_VIRA_VITORIA_SEMANTICA",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "historical_files_modified": false
+    },
+    {
+      "id": "ORACLE_ACOMODA_MODELO",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "historical_files_modified": false
+    },
+    {
+      "id": "INCONCLUSIVE_VIRA_REJECT",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "historical_files_modified": false
+    },
+    {
+      "id": "CONFIDENCE_CORRIGE_VERDICT",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "historical_files_modified": false
+    },
+    {
+      "id": "CRITICOS_FULL_DENOMINADOR_14",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "historical_files_modified": false
+    },
+    {
+      "id": "AGREEMENT_36_36",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "historical_files_modified": false
+    },
+    {
+      "id": "GG36_FULL_BACKFILL",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "historical_files_modified": false
+    },
+    {
+      "id": "ORDEM_CAUSAL",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "historical_files_modified": false
+    },
+    {
+      "id": "REASONING_INVENTADO",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "historical_files_modified": false
+    },
+    {
+      "id": "COMPARISON_RECLASSIFICADA",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "historical_files_modified": false
+    }
+  ],
+  "network_attempts": 0,
+  "historical_files_modified": false
+}

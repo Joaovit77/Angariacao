@@ -1,0 +1,14 @@
+{
+  "version": "adapter-1.0.0",
+  "checkpoint": "JEV-S2-A",
+  "offline": true,
+  "s1_freeze_sha256": "03baa866fbf1fb5fda8a065f8c6a0136c3f4679543306de8b678ed232acf2a60",
+  "s0_preservation_sha256": "ca53fd0dec7e8521ffaf0f61bab242b6e69436aebca427cb759caa8e4b6ef51c",
+  "files": {
+    "adapter-v2.mjs": "b61f1e805f56cffa63ada213f59489f3593aa5ab1d755bf07026866fbd0f9a45",
+    "adapter-run-v2.mjs": "ae8f2335d0260c788d4f900a2a2cb87fcf98b14e36f81be55e8618a849b52525",
+    "adapter-fixtures-v2.mjs": "4c742c2cb97a65898fb76b077fe088c383662fdd8b07212cf07358ddda4c9089",
+    "adapter-v2.test.mjs": "f38cfe0288d096c333a8ef2511800def766f3f7d615cad9b107b719c164ba779",
+    "adapter-contract.md": "d1bfb5cfca4ccfacf616c7f0b06ae34179548bd102d7bc12658f24e971075f49"
+  }
+}

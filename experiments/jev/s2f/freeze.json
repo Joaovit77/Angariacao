@@ -1,0 +1,43 @@
+{
+  "checkpoint": "JEV-S2-F-A",
+  "status": "PASS_OFFLINE_DESIGN",
+  "calls": {
+    "jev": 0,
+    "openai": 0,
+    "network": 0,
+    "credits": 0
+  },
+  "tests": {
+    "previous_pass": 214,
+    "new_pass": 34,
+    "total_pass": 248,
+    "fail": 0
+  },
+  "matrix_cases": 9,
+  "minimum_pairs": 5,
+  "directional_controls": 1,
+  "requests_proposed": 12,
+  "calls_proposed": 24,
+  "authorization_active": false,
+  "files": {
+    "budget-projection.json": "b4301a368e8cf7c9933d9d10c06566c013804a0a7f05e7bb1e660d195e94e395",
+    "design.mjs": "7da2b5d3350151abbeab7e1fa2263b6aa5998f75b936e4f62adbc59e9c9e4954",
+    "diagnostic-matrix.json": "f12d03261728da10656db753608444caee755e4653e5b6581841699f3d916ba3",
+    "generate.mjs": "8962fc0fe8dccebafa5f3e074e0d8dae4584fff5150224a664db7af0f5b6cf54",
+    "investigation-map.json": "e22b8f4f5dc6f3bfe4c744784994f4db256bf426ff1deae0e750d4741a93699c",
+    "metrics-contract.md": "570d36ecd57c718dfea69554c1da4c8275587931d61966954cb6d8e33da56c73",
+    "oracle-mini.json": "561dc92869d6df591e34adcd5497a87763220864edb984999bf35048372fbfae",
+    "preservation-before.json": "d61f679e9368bca427cfc0b1e383fce556949a898eb1275c3f4c999517996624",
+    "requests-plan.json": "5b197bd0bbc82d630ba609f69325686aadf17e5e3282508dff807d4ae2748a30",
+    "risk-register.json": "d2f47850effe9e30a1bf3de41ae76123b010bc53ec4a1e560d12eb229812bf78",
+    "s2e-observed-facts.json": "004ada9fed7a970b06ad309488025eb9d116182f7998759542b2d2c8904ee37c",
+    "s2f-a.test.mjs": "429fd6045a9bb1a210ea1ef08a3d514155fa26f458f55c545c53f9277965c3ac",
+    "../../../RELATORIO-JEV-S2-F-A.md": "58281e639aa3d95fa7c51ee9bb891feb1bc1b1ba8bd895eb4a48ce11adabf4bd",
+    "../v2/request-v2.mjs": "924583d3969e7956700ae1cff904de8db1aea1d23cf8e253074f8b156b775ed5",
+    "../v2/scoring-v2.mjs": "7d95b91d06df730cac1aeda22ace93c15adc79fca3f8804aeb28527be0672b3f",
+    "../v2/adapter-v2.mjs": "b61f1e805f56cffa63ada213f59489f3593aa5ab1d755bf07026866fbd0f9a45",
+    "../v2/probability-diagnostics/probability-diagnostics.mjs": "caf30dd752dcbe036e79ebb115d86861b40a0cbd87d96b6f1945f4d872c6268f"
+  },
+  "propagation_append_only": true,
+  "propagation_previous_prefix_sha256": "a9394ecb861d1286851b9c8b72a87f99ed01c0ddaeb776f55ca4740b3b0a9819"
+}

@@ -1,0 +1,1855 @@
+{
+  "checkpoint": "JEV-S2-G-A",
+  "no_level_4": true,
+  "no_current_authorization": true,
+  "levels": {
+    "0": {
+      "label": "não usar",
+      "meaning": "Capacidade bloqueada ou ainda sem avaliação; nenhuma participação operacional proposta agora."
+    },
+    "1": {
+      "label": "assistivo / visualização",
+      "meaning": "Sinal visível para revisão; sem comandar decisão ou efeito."
+    },
+    "2": {
+      "label": "shadow / recomendação",
+      "meaning": "Comparar recomendação sem efeito no fluxo, após gate humano específico."
+    },
+    "3": {
+      "label": "decisão permitida com guarda determinística",
+      "meaning": "Somente decisão de escopo limitado validada por código independente, após gate; nunca concede envio, escrita, finanças ou ferramenta externa."
+    }
+  },
+  "capabilities": [
+    {
+      "capability_id": "CAP-D-FULL",
+      "level": 0,
+      "classification": "NAO_PROMOVER",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-TIME",
+        "G-COMMERCIAL"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-V-FULL",
+      "level": 0,
+      "classification": "NAO_PROMOVER",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-TIME",
+        "G-COMMERCIAL"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-ACTION",
+      "level": 2,
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL",
+        "G-STRUCTURE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-INTENT",
+      "level": 2,
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-STRUCTURE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-ENOUGH",
+      "level": 1,
+      "classification": "SOMENTE_ASSISTIVA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-ENTITY",
+      "level": 3,
+      "classification": "APTA_COM_GUARDA_DE_CODIGO",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "CANDIDATE",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-CURRENT",
+      "level": 3,
+      "classification": "APTA_COM_GUARDA_DE_CODIGO",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE",
+        "G-TIME"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "CANDIDATE",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-HISTORY",
+      "level": 3,
+      "classification": "APTA_COM_GUARDA_DE_CODIGO",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-TIME"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "CANDIDATE",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-MISSING",
+      "level": 3,
+      "classification": "APTA_COM_GUARDA_DE_CODIGO",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "CANDIDATE",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-PROTOCOL-EMPTY",
+      "level": 1,
+      "classification": "SOMENTE_ASSISTIVA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-COMMERCIAL"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-PROTOCOL-COMPLEX",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-COMMERCIAL"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-PROHIBITED",
+      "level": 0,
+      "classification": "NAO_PROMOVER",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-COMMERCIAL",
+        "G-SOURCE",
+        "G-TIME"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-RISK-HINT",
+      "level": 1,
+      "classification": "SOMENTE_ASSISTIVA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-COMMERCIAL",
+        "G-SOURCE",
+        "G-TIME"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-TEMP-TRUTH",
+      "level": 0,
+      "classification": "NAO_PROMOVER",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-TIME"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-TEMP-LABEL",
+      "level": 1,
+      "classification": "SOMENTE_ASSISTIVA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-TIME"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-GUARD",
+      "level": 3,
+      "classification": "APTA_COM_GUARDA_DE_CODIGO",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE",
+        "G-TIME",
+        "G-COMMERCIAL",
+        "G-STRUCTURE",
+        "G-WHATSAPP"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "CANDIDATE",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-V-GROUNDING",
+      "level": 2,
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL",
+        "G-STRUCTURE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-V-FACTUALITY",
+      "level": 2,
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL",
+        "G-STRUCTURE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-V-UNSUPPORTED",
+      "level": 2,
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL",
+        "G-STRUCTURE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-V-COVERAGE",
+      "level": 2,
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL",
+        "G-STRUCTURE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-V-OMISSION",
+      "level": 2,
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL",
+        "G-STRUCTURE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-V-PARTIAL",
+      "level": 2,
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL",
+        "G-STRUCTURE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-POSITIVE",
+      "level": 2,
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-NEGATIVE",
+      "level": 2,
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-TIME",
+        "G-COMMERCIAL"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-V-PROTOCOL",
+      "level": 1,
+      "classification": "SOMENTE_ASSISTIVA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-COMMERCIAL"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-V-CROSS",
+      "level": 0,
+      "classification": "NAO_PROMOVER",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-V-TEMP",
+      "level": 0,
+      "classification": "NAO_PROMOVER",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-TIME"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-V-SAFETY",
+      "level": 1,
+      "classification": "SOMENTE_ASSISTIVA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-ACTIONS"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-REASONS",
+      "level": 1,
+      "classification": "SOMENTE_ASSISTIVA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-STRUCTURE",
+      "level": 3,
+      "classification": "APTA_COM_GUARDA_DE_CODIGO",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-STRUCTURE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "CANDIDATE",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-CONFIDENCE",
+      "level": 1,
+      "classification": "SOMENTE_ASSISTIVA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-STRUCTURE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-INCONSISTENCY",
+      "level": 1,
+      "classification": "SOMENTE_ASSISTIVA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-TIME"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-WRITE",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-CRM-EFFECT",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-FOLLOW-MACRO",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-FOLLOW-EFFECT",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-PIPELINE",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-RADAR-RELEVANCE",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-RADAR-TYPE",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-RADAR-PURPOSE",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-RADAR-DUPLICATE",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-RADAR-SAME",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-RADAR-OPPORTUNITY",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-RADAR-REVIEW",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-INVESTIGATOR",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-MATCH-TEXT",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-MATCH-ENTITY",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-MATCH-VISUAL",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-APPRAISAL-COMPS",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-APPRAISAL-OUTLIER",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-PRICE-FINAL",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-PRICE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-ADS-QUALITY",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-OPS-PRIORITY",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    },
+    {
+      "capability_id": "CAP-VISION",
+      "level": 0,
+      "classification": "NAO_AVALIADA",
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "permitted_effects_in_future_gated_experiment": [
+        "NONE"
+      ],
+      "prohibited_without_new_explicit_gate": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "module_id": "A",
+      "name": "Atendimento ao proprietário",
+      "paths": [
+        "web/lib/servidor/ia/handlers/atendimento.ts",
+        "web/lib/ia/atendimento/contexto.ts",
+        "web/lib/ia/atendimento/evidencias.ts",
+        "web/lib/ia/atendimento/validacao.ts"
+      ],
+      "boundary": "Rascunho editável, contexto autorizado, protocolo comercial e revisão antes do envio. Separar intenção, ação macro, entidade, contexto, lacunas, protocolo, efeito CRM e redação.",
+      "capability_ids": [
+        "CAP-D-FULL",
+        "CAP-ACTION",
+        "CAP-INTENT",
+        "CAP-ENOUGH",
+        "CAP-ENTITY",
+        "CAP-CURRENT",
+        "CAP-HISTORY",
+        "CAP-MISSING",
+        "CAP-PROTOCOL-EMPTY",
+        "CAP-PROTOCOL-COMPLEX",
+        "CAP-PROHIBITED",
+        "CAP-RISK-HINT",
+        "CAP-TEMP-TRUTH",
+        "CAP-GUARD",
+        "CAP-V-GROUNDING",
+        "CAP-V-FACTUALITY",
+        "CAP-V-UNSUPPORTED",
+        "CAP-V-COVERAGE",
+        "CAP-V-OMISSION",
+        "CAP-V-PARTIAL",
+        "CAP-STRUCTURE",
+        "CAP-WRITE",
+        "CAP-CRM-EFFECT"
+      ]
+    },
+    {
+      "module_id": "B",
+      "name": "IA Guard / validação de respostas",
+      "paths": [
+        "web/lib/ia/atendimento/validacao.ts",
+        "web/lib/servidor/ia/handlers/atendimento.ts"
+      ],
+      "boundary": "Possível comparação de verdict de candidata, sem substituir validações ou liberar mensagem.",
+      "capability_ids": [
+        "CAP-V-FULL",
+        "CAP-PROHIBITED",
+        "CAP-RISK-HINT",
+        "CAP-GUARD",
+        "CAP-V-GROUNDING",
+        "CAP-V-FACTUALITY",
+        "CAP-V-UNSUPPORTED",
+        "CAP-V-COVERAGE",
+        "CAP-V-OMISSION",
+        "CAP-V-PARTIAL",
+        "CAP-POSITIVE",
+        "CAP-NEGATIVE",
+        "CAP-V-PROTOCOL",
+        "CAP-V-CROSS",
+        "CAP-V-TEMP",
+        "CAP-V-SAFETY",
+        "CAP-REASONS",
+        "CAP-STRUCTURE",
+        "CAP-CONFIDENCE",
+        "CAP-INCONSISTENCY"
+      ]
+    },
+    {
+      "module_id": "C",
+      "name": "Seleção de contexto",
+      "paths": [
+        "web/lib/ia/atendimento/contexto.ts",
+        "web/lib/ia/atendimento/evidencias.ts",
+        "web/lib/servidor/assistente/contextoTipado.ts"
+      ],
+      "boundary": "Código continua dono do catálogo autorizado e das fontes obrigatórias; seleção não elimina a evidência que protege a resposta.",
+      "capability_ids": [
+        "CAP-D-FULL",
+        "CAP-ENOUGH",
+        "CAP-CURRENT",
+        "CAP-HISTORY",
+        "CAP-MISSING",
+        "CAP-STRUCTURE"
+      ]
+    },
+    {
+      "module_id": "D",
+      "name": "Entity resolution",
+      "paths": [
+        "web/lib/calculo/contextoProprietario.ts",
+        "web/lib/assistente/referencias.ts",
+        "web/lib/calculo/duplicidade.ts"
+      ],
+      "boundary": "Resolver catálogo explícito é diferente de descobrir identidade entre anúncios, titularidade e tenant.",
+      "capability_ids": [
+        "CAP-ENTITY",
+        "CAP-V-CROSS",
+        "CAP-MATCH-ENTITY"
+      ]
+    },
+    {
+      "module_id": "E",
+      "name": "Temporal / histórico",
+      "paths": [
+        "web/lib/ia/atendimento/contexto.ts",
+        "web/lib/datas.ts",
+        "web/lib/calculo/motor.ts"
+      ],
+      "boundary": "Atual, histórico, superado e ausente continuam separados; null não vira fato atual.",
+      "capability_ids": [
+        "CAP-D-FULL",
+        "CAP-HISTORY",
+        "CAP-TEMP-TRUTH",
+        "CAP-TEMP-LABEL",
+        "CAP-V-TEMP"
+      ]
+    },
+    {
+      "module_id": "F",
+      "name": "Follow-up",
+      "paths": [
+        "web/lib/calculo/respostas.ts",
+        "web/lib/calculo/statusSemResposta.ts",
+        "web/lib/assistente/politicas.ts",
+        "web/lib/servidor/assistente/acoes.ts"
+      ],
+      "boundary": "Categorias respondeu/não respondeu/falar depois/recusou/precisa acompanhamento não foram medidas. Efeito em status, motivo ou agenda exige política existente e gate próprio.",
+      "capability_ids": [
+        "CAP-FOLLOW-MACRO",
+        "CAP-FOLLOW-EFFECT"
+      ]
+    },
+    {
+      "module_id": "G",
+      "name": "Pipeline / próxima ação",
+      "paths": [
+        "web/components/pipeline/PipelineView.tsx",
+        "web/lib/mutacoes.ts",
+        "web/lib/calculo/motor.ts"
+      ],
+      "boundary": "Próxima ação sugerida não é transição persistente; preservar statusHistory, critérios e confirmação.",
+      "capability_ids": [
+        "CAP-CRM-EFFECT",
+        "CAP-FOLLOW-EFFECT",
+        "CAP-PIPELINE"
+      ]
+    },
+    {
+      "module_id": "H",
+      "name": "Radar — relevância",
+      "paths": [
+        "web/lib/calculo/centralAngariacao.ts",
+        "web/lib/servidor/centralAngariacao.ts"
+      ],
+      "boundary": "Relevância, tipo, finalidade e oportunidade no Radar são domínios não testados pelo S2.",
+      "capability_ids": [
+        "CAP-RADAR-RELEVANCE",
+        "CAP-RADAR-TYPE",
+        "CAP-RADAR-PURPOSE",
+        "CAP-RADAR-OPPORTUNITY",
+        "CAP-RADAR-REVIEW"
+      ]
+    },
+    {
+      "module_id": "I",
+      "name": "Radar — novo/duplicado",
+      "paths": [
+        "web/lib/calculo/radarAngariacao.ts",
+        "web/lib/radarAngariacao.ts",
+        "web/lib/calculo/duplicidade.ts"
+      ],
+      "boundary": "URL/ID, visto/novo e dedupe continuam no código; possível mesmo imóvel não autoriza merge.",
+      "capability_ids": [
+        "CAP-RADAR-DUPLICATE",
+        "CAP-RADAR-SAME"
+      ]
+    },
+    {
+      "module_id": "J",
+      "name": "Investigador de Imóveis",
+      "paths": [
+        "web/lib/calculo/investigadorImoveis.ts",
+        "web/lib/servidor/investigadorImoveis.ts"
+      ],
+      "boundary": "Correspondência, pontuação e evidência suficiente existentes não são certificação do JEV para investigação.",
+      "capability_ids": [
+        "CAP-RADAR-REVIEW",
+        "CAP-INVESTIGATOR"
+      ]
+    },
+    {
+      "module_id": "K",
+      "name": "Match entre anúncios",
+      "paths": [
+        "web/lib/calculo/investigadorImoveis.ts",
+        "web/lib/calculo/duplicidade.ts"
+      ],
+      "boundary": "Match textual, identidade entre registros e match visual precisam de benchmarks separados.",
+      "capability_ids": [
+        "CAP-RADAR-SAME",
+        "CAP-MATCH-TEXT",
+        "CAP-MATCH-ENTITY",
+        "CAP-MATCH-VISUAL"
+      ]
+    },
+    {
+      "module_id": "L",
+      "name": "Avaliação de imóveis",
+      "paths": [
+        "web/lib/calculo/avaliacao.ts",
+        "web/lib/calculo/contextoAvaliacao.ts",
+        "web/app/api/avaliacao/comparaveis/route.ts"
+      ],
+      "boundary": "Selecionar/rejeitar comparáveis, similaridade e outlier são hipóteses. Preço final continua no motor determinístico/estatístico.",
+      "capability_ids": [
+        "CAP-APPRAISAL-COMPS",
+        "CAP-APPRAISAL-OUTLIER",
+        "CAP-PRICE-FINAL"
+      ]
+    },
+    {
+      "module_id": "M",
+      "name": "Anúncios / qualidade cadastral",
+      "paths": [
+        "web/lib/calculo/centralAngariacao.ts",
+        "web/lib/servidor/ia/respostas.ts"
+      ],
+      "boundary": "Sugerir revisão de campos é diferente de extrair, validar e gravar dados de anúncio.",
+      "capability_ids": [
+        "CAP-ADS-QUALITY"
+      ]
+    },
+    {
+      "module_id": "N",
+      "name": "Vision / fachada",
+      "paths": [
+        "PROTOTIPOS_LOCAIS.md"
+      ],
+      "boundary": "JEV-VISION não avaliado. Referência apenas documental; protótipo local pausado não foi aberto, alterado nem incorporado e não é evidência JEV.",
+      "capability_ids": [
+        "CAP-MATCH-VISUAL",
+        "CAP-VISION"
+      ]
+    },
+    {
+      "module_id": "O",
+      "name": "Priorização operacional",
+      "paths": [
+        "web/lib/calculo/motor.ts",
+        "web/lib/assistente/capacidades.ts"
+      ],
+      "boundary": "Ranking de carteira, foco ou oportunidade precisa de utilidade própria medida, sem substituir regras de elegibilidade.",
+      "capability_ids": [
+        "CAP-PIPELINE",
+        "CAP-RADAR-OPPORTUNITY",
+        "CAP-OPS-PRIORITY"
+      ]
+    },
+    {
+      "module_id": "P",
+      "name": "Detecção de inconsistências",
+      "paths": [
+        "web/lib/ia/atendimento/validacao.ts",
+        "web/lib/calculo/investigadorImoveis.ts"
+      ],
+      "boundary": "Sinal textual de inconsistência pode pedir revisão; não corrige automaticamente fonte, preço, identidade ou cadastro.",
+      "capability_ids": [
+        "CAP-RISK-HINT",
+        "CAP-TEMP-LABEL",
+        "CAP-REASONS",
+        "CAP-CONFIDENCE",
+        "CAP-INCONSISTENCY"
+      ]
+    }
+  ]
+}

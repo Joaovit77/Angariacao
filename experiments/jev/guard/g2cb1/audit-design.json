@@ -1,0 +1,166 @@
+{
+  "checkpoint": "JEV-GUARD-G2-C-B1",
+  "scope": "SEMANTIC_OBSERVABILITY_AUDIT_DESIGN_ONLY",
+  "classification": "OBSERVABILITY_INCONCLUSIVE",
+  "recommendation": "HOLD",
+  "execution": {
+    "human_review_performed": false,
+    "blind_validation_started": false,
+    "blind_packets_created": false,
+    "new_dataset_created": false,
+    "guard_implemented": false,
+    "extractor_implemented": false,
+    "new_schema_created": false,
+    "prompt_written": false,
+    "provider_calls": 0,
+    "network_attempts": 0,
+    "credentials_read": 0,
+    "product_changes": 0,
+    "production_accessed": false,
+    "next_gate_started": false,
+    "codex_role": "DOCUMENT_AUTHOR_NOT_HUMAN_REVIEWER"
+  },
+  "inherited": {
+    "g2b_full": "NAO_PROMISSOR_DIAGNOSTICO",
+    "g2b_reduced": "NAO_PROMISSOR_DIAGNOSTICO",
+    "comparison": "COMPARISON_INCONCLUSIVE",
+    "authorization": "CLOSED",
+    "reusable_calls": 0,
+    "gg0_29": "MULTIPLE_CONTRIBUTORS",
+    "g2ca": "PASS_OFFLINE_FAILURE_DECOMPOSITION",
+    "g2cb0_classification": "INCONCLUSIVO",
+    "g2cb0_recommendation": "HOLD",
+    "b0_hold_scenario": {
+      "cases": 36,
+      "positive_deferrals": 12,
+      "safe_partial_deferrals": 3,
+      "source": "B0_FROZEN_SCENARIO_NOT_B1_EXECUTION"
+    },
+    "b0_unconfirmed_positive_controls": 10,
+    "semantic_advantage": "NOT_DEMONSTRATED",
+    "mandatory_dimensions_needed": "NOT_DEMONSTRATED",
+    "prompt_gap_primary_cause": "NOT_DEMONSTRATED",
+    "provider_internal_mechanism": "UNDETERMINED"
+  },
+  "admissibility": {
+    "input": "AVAILABLE_INPUT",
+    "literal_derivation": "STRUCTURALLY_DERIVABLE_ONLY_WITH_POINTER",
+    "legacy_annotation": "ORACLE_ASSISTED_ONLY",
+    "oracle": "EVALUATION_ONLY",
+    "rationale": "EVALUATION_ONLY",
+    "expected_verdict": "EVALUATION_ONLY",
+    "historical_materiality": "EVALUATION_ONLY",
+    "legacy_human_label_proves_independent_human_execution": false,
+    "independent_operational_certification": "NOT_DEMONSTRATED"
+  },
+  "rules": {
+    "oracle_as_input": false,
+    "rationale_as_input": false,
+    "expected_generates_obligation": false,
+    "exact_gg29_regex": false,
+    "global_unconfirmed_caveat": false,
+    "annotation_is_automatic": false,
+    "not_found_means_absent": false,
+    "completeness_requires_obligation_enumeration": true,
+    "completeness_requires_claim_enumeration": true,
+    "completeness_requires_relationship_check": true,
+    "character_coverage_proves_semantic_completeness": false,
+    "caveat_missing_requires_full_inspection": true,
+    "claim_requires_source_binding": true,
+    "binding_can_be_unresolved_without_approval": true,
+    "reject_for_missing_proof": false,
+    "approve_for_no_contradiction": false,
+    "hold_is_semantic_success": false,
+    "hold_false_block_hidden": false,
+    "other_llm_is_deterministic": false,
+    "provider_self_attestation": false,
+    "historical_reclassification": false,
+    "calls_authorized": 0,
+    "operational_prompt_change": false,
+    "cost_alone_promotes_architecture": false,
+    "confidence_is_correctness": false,
+    "controlled_renderer_certifies_old_free_text": false
+  },
+  "verification_states": [
+    "VIOLATION_PROVEN",
+    "NO_VIOLATION_FOUND_WITH_COMPLETE_INSPECTION",
+    "INSPECTION_INCOMPLETE",
+    "UNKNOWN"
+  ],
+  "no_violation_found_means_universal_absence": false,
+  "b0_matrix_reference": {
+    "path": "experiments/jev/guard/g2cb0/decision-matrix.json",
+    "sha256": "736f9c1bd67ed50be158f73f07d77bea042084ea1585c879841538ddeeee83d7",
+    "changed": false
+  },
+  "metrics": {
+    "false_block_rate": {
+      "value": null,
+      "status": "NOT_MEASURED"
+    },
+    "false_allow_rate": {
+      "value": null,
+      "status": "NOT_MEASURED"
+    },
+    "accuracy": {
+      "value": null,
+      "status": "NOT_MEASURED"
+    },
+    "precision": {
+      "value": null,
+      "status": "NOT_MEASURED"
+    },
+    "recall": {
+      "value": null,
+      "status": "NOT_MEASURED"
+    },
+    "f1": {
+      "value": null,
+      "status": "NOT_MEASURED"
+    },
+    "semantic_gain": {
+      "value": null,
+      "status": "NOT_MEASURED"
+    },
+    "latency": {
+      "value": null,
+      "status": "NOT_MEASURED"
+    },
+    "operational_cost": {
+      "value": null,
+      "status": "NOT_MEASURED"
+    },
+    "provider_improvement": {
+      "value": null,
+      "status": "NOT_MEASURED"
+    },
+    "human_agreement": {
+      "value": null,
+      "status": "NOT_MEASURED"
+    }
+  },
+  "next_gate": {
+    "description": "Revisão independente da elegibilidade e do protocolo de observabilidade, somente se solicitada pela pessoa responsável.",
+    "new_id_created": false,
+    "started": false,
+    "provider_authorized": false,
+    "implementation_authorized": false,
+    "blind_validation_authorized": false
+  },
+  "gate": {
+    "GO": "Somente após revisão independente demonstrar admissibilidade de fonte, escopo de completeness, isolamento do oracle e desenho cego auditável; não abre provider.",
+    "HOLD": [
+      "Completude semântica de texto livre não demonstrada.",
+      "Não há revisões humanas independentes ou certificados executados neste gate.",
+      "Distinção operacional04/11/12×29 continua não certificada.",
+      "Risco de exposição prévia ao corpus e annotations assistidas permanece material."
+    ],
+    "STOP": [
+      "Única solução prática é outro LLM não validado.",
+      "Representação apenas desloca o problema sem verificação independente.",
+      "Custo/complexidade se mostrar desproporcional ou não houver origem independente.",
+      "OpçãoF for escolhida como mais defensável pela revisão responsável.",
+      "Violação de escopo, histórico alterado ou mutante crítico sobrevivente."
+    ]
+  }
+}

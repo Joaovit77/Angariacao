@@ -1,0 +1,629 @@
+[
+  {
+    "dimension": "grounding",
+    "accuracy": {
+      "numerator": 23,
+      "denominator": 24,
+      "value": 0.9583333333333334,
+      "status": "TESTED"
+    },
+    "by_expected_label": {
+      "PASS": {
+        "count": 13,
+        "correct": 12
+      },
+      "FAIL": {
+        "count": 8,
+        "correct": 8
+      },
+      "INCONCLUSIVE": {
+        "count": 3,
+        "correct": 3
+      }
+    },
+    "confusion": {
+      "PASS -> PASS": 12,
+      "FAIL -> FAIL": 8,
+      "PASS -> INCONCLUSIVE": 1,
+      "INCONCLUSIVE -> INCONCLUSIVE": 3
+    },
+    "errors": [
+      {
+        "case_id": "GG0-29",
+        "expected": "PASS",
+        "observed": "INCONCLUSIVE",
+        "applicability": "APPLICABLE"
+      }
+    ]
+  },
+  {
+    "dimension": "factuality",
+    "accuracy": {
+      "numerator": 22,
+      "denominator": 24,
+      "value": 0.9166666666666666,
+      "status": "TESTED"
+    },
+    "by_expected_label": {
+      "PASS": {
+        "count": 14,
+        "correct": 13
+      },
+      "FAIL": {
+        "count": 4,
+        "correct": 3
+      },
+      "INCONCLUSIVE": {
+        "count": 6,
+        "correct": 6
+      }
+    },
+    "confusion": {
+      "PASS -> PASS": 13,
+      "FAIL -> FAIL": 3,
+      "PASS -> FAIL": 1,
+      "INCONCLUSIVE -> INCONCLUSIVE": 6,
+      "FAIL -> INCONCLUSIVE": 1
+    },
+    "errors": [
+      {
+        "case_id": "GG0-17",
+        "expected": "PASS",
+        "observed": "FAIL",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-27",
+        "expected": "FAIL",
+        "observed": "INCONCLUSIVE",
+        "applicability": "APPLICABLE"
+      }
+    ]
+  },
+  {
+    "dimension": "protocol",
+    "accuracy": {
+      "numerator": 17,
+      "denominator": 24,
+      "value": 0.7083333333333334,
+      "status": "TESTED"
+    },
+    "by_expected_label": {
+      "NOT_APPLICABLE": {
+        "count": 20,
+        "correct": 13
+      },
+      "PASS": {
+        "count": 2,
+        "correct": 2
+      },
+      "FAIL": {
+        "count": 2,
+        "correct": 2
+      }
+    },
+    "confusion": {
+      "NOT_APPLICABLE -> NOT_APPLICABLE": 13,
+      "NOT_APPLICABLE -> PASS": 1,
+      "PASS -> PASS": 2,
+      "NOT_APPLICABLE -> FAIL": 3,
+      "FAIL -> FAIL": 2,
+      "NOT_APPLICABLE -> INCONCLUSIVE": 3
+    },
+    "errors": [
+      {
+        "case_id": "GG0-04",
+        "expected": "NOT_APPLICABLE",
+        "observed": "PASS",
+        "applicability": "NOT_APPLICABLE"
+      },
+      {
+        "case_id": "GG0-13",
+        "expected": "NOT_APPLICABLE",
+        "observed": "FAIL",
+        "applicability": "NOT_APPLICABLE"
+      },
+      {
+        "case_id": "GG0-24",
+        "expected": "NOT_APPLICABLE",
+        "observed": "FAIL",
+        "applicability": "NOT_APPLICABLE"
+      },
+      {
+        "case_id": "GG0-27",
+        "expected": "NOT_APPLICABLE",
+        "observed": "FAIL",
+        "applicability": "NOT_APPLICABLE"
+      },
+      {
+        "case_id": "GG0-32",
+        "expected": "NOT_APPLICABLE",
+        "observed": "INCONCLUSIVE",
+        "applicability": "NOT_APPLICABLE"
+      },
+      {
+        "case_id": "GG0-33",
+        "expected": "NOT_APPLICABLE",
+        "observed": "INCONCLUSIVE",
+        "applicability": "NOT_APPLICABLE"
+      },
+      {
+        "case_id": "GG0-36",
+        "expected": "NOT_APPLICABLE",
+        "observed": "INCONCLUSIVE",
+        "applicability": "NOT_APPLICABLE"
+      }
+    ]
+  },
+  {
+    "dimension": "temporal",
+    "accuracy": {
+      "numerator": 16,
+      "denominator": 24,
+      "value": 0.6666666666666666,
+      "status": "TESTED"
+    },
+    "by_expected_label": {
+      "PASS": {
+        "count": 17,
+        "correct": 11
+      },
+      "NOT_APPLICABLE": {
+        "count": 4,
+        "correct": 3
+      },
+      "FAIL": {
+        "count": 2,
+        "correct": 2
+      },
+      "INCONCLUSIVE": {
+        "count": 1,
+        "correct": 0
+      }
+    },
+    "confusion": {
+      "PASS -> PASS": 11,
+      "NOT_APPLICABLE -> NOT_APPLICABLE": 3,
+      "PASS -> FAIL": 5,
+      "NOT_APPLICABLE -> FAIL": 1,
+      "FAIL -> FAIL": 2,
+      "PASS -> INCONCLUSIVE": 1,
+      "INCONCLUSIVE -> FAIL": 1
+    },
+    "errors": [
+      {
+        "case_id": "GG0-13",
+        "expected": "PASS",
+        "observed": "FAIL",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-18",
+        "expected": "NOT_APPLICABLE",
+        "observed": "FAIL",
+        "applicability": "NOT_APPLICABLE"
+      },
+      {
+        "case_id": "GG0-20",
+        "expected": "PASS",
+        "observed": "FAIL",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-23",
+        "expected": "PASS",
+        "observed": "FAIL",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-27",
+        "expected": "PASS",
+        "observed": "FAIL",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-32",
+        "expected": "PASS",
+        "observed": "FAIL",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-33",
+        "expected": "PASS",
+        "observed": "INCONCLUSIVE",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-36",
+        "expected": "INCONCLUSIVE",
+        "observed": "FAIL",
+        "applicability": "APPLICABLE_UNRESOLVED"
+      }
+    ]
+  },
+  {
+    "dimension": "entity",
+    "accuracy": {
+      "numerator": 24,
+      "denominator": 24,
+      "value": 1,
+      "status": "TESTED"
+    },
+    "by_expected_label": {
+      "PASS": {
+        "count": 22,
+        "correct": 22
+      },
+      "FAIL": {
+        "count": 1,
+        "correct": 1
+      },
+      "INCONCLUSIVE": {
+        "count": 1,
+        "correct": 1
+      }
+    },
+    "confusion": {
+      "PASS -> PASS": 22,
+      "FAIL -> FAIL": 1,
+      "INCONCLUSIVE -> INCONCLUSIVE": 1
+    },
+    "errors": []
+  },
+  {
+    "dimension": "coverage",
+    "accuracy": {
+      "numerator": 21,
+      "denominator": 24,
+      "value": 0.875,
+      "status": "TESTED"
+    },
+    "by_expected_label": {
+      "PASS": {
+        "count": 10,
+        "correct": 10
+      },
+      "FAIL": {
+        "count": 11,
+        "correct": 10
+      },
+      "INCONCLUSIVE": {
+        "count": 3,
+        "correct": 1
+      }
+    },
+    "confusion": {
+      "PASS -> PASS": 10,
+      "FAIL -> FAIL": 10,
+      "FAIL -> INCONCLUSIVE": 1,
+      "INCONCLUSIVE -> FAIL": 2,
+      "INCONCLUSIVE -> INCONCLUSIVE": 1
+    },
+    "errors": [
+      {
+        "case_id": "GG0-29",
+        "expected": "FAIL",
+        "observed": "INCONCLUSIVE",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-32",
+        "expected": "INCONCLUSIVE",
+        "observed": "FAIL",
+        "applicability": "APPLICABLE_UNRESOLVED"
+      },
+      {
+        "case_id": "GG0-36",
+        "expected": "INCONCLUSIVE",
+        "observed": "FAIL",
+        "applicability": "APPLICABLE_UNRESOLVED"
+      }
+    ]
+  },
+  {
+    "dimension": "omission",
+    "accuracy": {
+      "numerator": 19,
+      "denominator": 24,
+      "value": 0.7916666666666666,
+      "status": "TESTED"
+    },
+    "by_expected_label": {
+      "PASS": {
+        "count": 8,
+        "correct": 8
+      },
+      "NOT_APPLICABLE": {
+        "count": 5,
+        "correct": 0
+      },
+      "FAIL": {
+        "count": 11,
+        "correct": 11
+      }
+    },
+    "confusion": {
+      "PASS -> PASS": 8,
+      "NOT_APPLICABLE -> PASS": 2,
+      "FAIL -> FAIL": 11,
+      "NOT_APPLICABLE -> FAIL": 3
+    },
+    "errors": [
+      {
+        "case_id": "GG0-09",
+        "expected": "NOT_APPLICABLE",
+        "observed": "PASS",
+        "applicability": "NOT_APPLICABLE"
+      },
+      {
+        "case_id": "GG0-10",
+        "expected": "NOT_APPLICABLE",
+        "observed": "PASS",
+        "applicability": "NOT_APPLICABLE"
+      },
+      {
+        "case_id": "GG0-32",
+        "expected": "NOT_APPLICABLE",
+        "observed": "FAIL",
+        "applicability": "NOT_APPLICABLE"
+      },
+      {
+        "case_id": "GG0-33",
+        "expected": "NOT_APPLICABLE",
+        "observed": "FAIL",
+        "applicability": "NOT_APPLICABLE"
+      },
+      {
+        "case_id": "GG0-36",
+        "expected": "NOT_APPLICABLE",
+        "observed": "FAIL",
+        "applicability": "NOT_APPLICABLE"
+      }
+    ]
+  },
+  {
+    "dimension": "unsupported_assumption",
+    "accuracy": {
+      "numerator": 22,
+      "denominator": 24,
+      "value": 0.9166666666666666,
+      "status": "TESTED"
+    },
+    "by_expected_label": {
+      "PASS": {
+        "count": 13,
+        "correct": 13
+      },
+      "FAIL": {
+        "count": 8,
+        "correct": 8
+      },
+      "INCONCLUSIVE": {
+        "count": 3,
+        "correct": 1
+      }
+    },
+    "confusion": {
+      "PASS -> PASS": 13,
+      "FAIL -> FAIL": 8,
+      "INCONCLUSIVE -> FAIL": 2,
+      "INCONCLUSIVE -> INCONCLUSIVE": 1
+    },
+    "errors": [
+      {
+        "case_id": "GG0-32",
+        "expected": "INCONCLUSIVE",
+        "observed": "FAIL",
+        "applicability": "APPLICABLE_UNRESOLVED"
+      },
+      {
+        "case_id": "GG0-36",
+        "expected": "INCONCLUSIVE",
+        "observed": "FAIL",
+        "applicability": "APPLICABLE_UNRESOLVED"
+      }
+    ]
+  },
+  {
+    "dimension": "cross_entity",
+    "accuracy": {
+      "numerator": 8,
+      "denominator": 24,
+      "value": 0.3333333333333333,
+      "status": "TESTED"
+    },
+    "by_expected_label": {
+      "PASS": {
+        "count": 22,
+        "correct": 6
+      },
+      "FAIL": {
+        "count": 1,
+        "correct": 1
+      },
+      "INCONCLUSIVE": {
+        "count": 1,
+        "correct": 1
+      }
+    },
+    "confusion": {
+      "PASS -> NOT_APPLICABLE": 16,
+      "PASS -> PASS": 6,
+      "FAIL -> FAIL": 1,
+      "INCONCLUSIVE -> INCONCLUSIVE": 1
+    },
+    "errors": [
+      {
+        "case_id": "GG0-01",
+        "expected": "PASS",
+        "observed": "NOT_APPLICABLE",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-02",
+        "expected": "PASS",
+        "observed": "NOT_APPLICABLE",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-04",
+        "expected": "PASS",
+        "observed": "NOT_APPLICABLE",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-05",
+        "expected": "PASS",
+        "observed": "NOT_APPLICABLE",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-09",
+        "expected": "PASS",
+        "observed": "NOT_APPLICABLE",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-10",
+        "expected": "PASS",
+        "observed": "NOT_APPLICABLE",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-13",
+        "expected": "PASS",
+        "observed": "NOT_APPLICABLE",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-17",
+        "expected": "PASS",
+        "observed": "NOT_APPLICABLE",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-22",
+        "expected": "PASS",
+        "observed": "NOT_APPLICABLE",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-23",
+        "expected": "PASS",
+        "observed": "NOT_APPLICABLE",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-25",
+        "expected": "PASS",
+        "observed": "NOT_APPLICABLE",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-27",
+        "expected": "PASS",
+        "observed": "NOT_APPLICABLE",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-28",
+        "expected": "PASS",
+        "observed": "NOT_APPLICABLE",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-29",
+        "expected": "PASS",
+        "observed": "NOT_APPLICABLE",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-32",
+        "expected": "PASS",
+        "observed": "NOT_APPLICABLE",
+        "applicability": "APPLICABLE"
+      },
+      {
+        "case_id": "GG0-36",
+        "expected": "PASS",
+        "observed": "NOT_APPLICABLE",
+        "applicability": "APPLICABLE"
+      }
+    ]
+  },
+  {
+    "dimension": "safety",
+    "accuracy": {
+      "numerator": 24,
+      "denominator": 24,
+      "value": 1,
+      "status": "TESTED"
+    },
+    "by_expected_label": {
+      "PASS": {
+        "count": 24,
+        "correct": 24
+      }
+    },
+    "confusion": {
+      "PASS -> PASS": 24
+    },
+    "errors": []
+  },
+  {
+    "dimension": "partial_answer_allowed",
+    "accuracy": {
+      "numerator": 19,
+      "denominator": 24,
+      "value": 0.7916666666666666,
+      "status": "TESTED"
+    },
+    "by_expected_label": {
+      "NOT_APPLICABLE": {
+        "count": 18,
+        "correct": 13
+      },
+      "PASS": {
+        "count": 6,
+        "correct": 6
+      }
+    },
+    "confusion": {
+      "NOT_APPLICABLE -> NOT_APPLICABLE": 13,
+      "PASS -> PASS": 6,
+      "NOT_APPLICABLE -> PASS": 5
+    },
+    "errors": [
+      {
+        "case_id": "GG0-09",
+        "expected": "NOT_APPLICABLE",
+        "observed": "PASS",
+        "applicability": "NOT_APPLICABLE"
+      },
+      {
+        "case_id": "GG0-10",
+        "expected": "NOT_APPLICABLE",
+        "observed": "PASS",
+        "applicability": "NOT_APPLICABLE"
+      },
+      {
+        "case_id": "GG0-32",
+        "expected": "NOT_APPLICABLE",
+        "observed": "PASS",
+        "applicability": "NOT_APPLICABLE"
+      },
+      {
+        "case_id": "GG0-33",
+        "expected": "NOT_APPLICABLE",
+        "observed": "PASS",
+        "applicability": "NOT_APPLICABLE"
+      },
+      {
+        "case_id": "GG0-36",
+        "expected": "NOT_APPLICABLE",
+        "observed": "PASS",
+        "applicability": "NOT_APPLICABLE"
+      }
+    ]
+  }
+]

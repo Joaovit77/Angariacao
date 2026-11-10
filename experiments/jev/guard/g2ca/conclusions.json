@@ -1,0 +1,19 @@
+{
+  "checkpoint": "JEV-GUARD-G2-C-A",
+  "status": "PASS_OFFLINE_FAILURE_DECOMPOSITION",
+  "source_run": "jev-guard-g2b-1792280596715-d49a4dc0",
+  "PRIMARY_ROOT_CAUSE_GG0_29": "MULTIPLE_CONTRIBUTORS: VERDICT_AGGREGATION_FAILURE observável + DIMENSIONAL_REASONING_FAILURE em coverage; mecanismo compartilhado entre braços UNDETERMINED.",
+  "PRIMARY_ROOT_CAUSE_INCONCLUSIVES": "INCONCLUSIVE_CALIBRATION_FAILURE; GG0-31/32/35 combinam incerteza percebida com FAIL espúrio dimensional. GG0-36 somente REDUCED é elegível semanticamente. Mecanismo interno UNDETERMINED.",
+  "PRIMARY_ROOT_CAUSE_FULL_INVALIDS": "STRUCTURAL_SURFACE_PROBLEM / PROBABILITY_SUM_MISMATCH em quatro perguntas dimensionais adicionais; causa interna do provider UNDETERMINED.",
+  "DIMENSIONS_CURRENT_ROLE": "E: combinação de diagnóstico offline (B), telemetria descritiva a validar (C) e superfície de falha adicional observada (D). Necessidade para decisão (A) não demonstrada.",
+  "STRUCTURAL_FINDING": "REDUCED_STRUCTURAL_ADVANTAGE_OBSERVED; 36/36 versus 32/36; mecanismo do envelope documentado, causalidade geral/efeito de posição não provados.",
+  "SEMANTIC_FINDING": "SEMANTIC_ADVANTAGE NOT_DEMONSTRATED; STRONG_DESCRIPTIVE_SIGNAL de verdicts idênticos 32/32 comparáveis; ambos negativos e comparação inconclusiva preservados.",
+  "NEXT_EXPERIMENT_RECOMMENDATION": "Revisão humana desta decomposição. Se houver continuidade, autorizar apenas um desenho offline A+B+E com controles positivos/negativos; nenhuma redação de prompt ou execução neste gate.",
+  "new_calls": 0,
+  "openai": 0,
+  "network": 0,
+  "credits": 0,
+  "credentials": 0,
+  "product_changes": 0,
+  "integration": false
+}

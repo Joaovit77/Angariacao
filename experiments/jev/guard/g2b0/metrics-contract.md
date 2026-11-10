@@ -1,0 +1,15 @@
+# Métricas macro e pareadas
+
+Unidade: run G2-B novo / case_id / braço / validation / R1. IDs únicos, request hash, sequência, stage e attempt devem corresponder ao plano congelado. Run G1 é recusado, assim como mistura de runs, duplicatas, caso desconhecido, normalização em inválido ou FULL sem dimensões completas. Um scorer macro novo lê somente verdict de resultado integralmente elegível; não exige dimensão no REDUCED.
+
+Por braço, planejado 36, iniciado, transport_completed, structurally_valid/invalid, operational_error, in_progress e not_started. Valid_response_rate = valid/(valid+invalid); operacionais não são envelopes analisáveis, reportados à parte. Verdict_accuracy = macro correto/valid. False_accept = APPROVE em expected REJECT/negativos válidos; crítico/ordinário separados com seus denominadores. False_reject = REJECT em APPROVE esperado/positivos válidos; parcial/full separados. INCONCLUSIVE: acerto/unsafe APPROVE/overreject nos inconclusivos válidos. INCONCLUSIVE em positiva/negativa também é erro macro e tem split próprio. Denominador zero → null/NOT_TESTED.
+
+Coberturas fixas: positivo valid/12, negativo/18, inconclusive/6, crítico/14, total/36. Nunca 0/8 vira 0/14. REDUCED não recebe scores dimensionais. FULL dimensões servem somente diagnóstico; novo macro score reproduz métricas e classificação G0 para FULL válido, com equivalência em fixtures perfeitas e com erros de todos os tipos.
+
+36 pares causais: BOTH_VALID, FULL_ONLY_VALID, REDUCED_ONLY_VALID, NEITHER_VALID, todos /36. Não iniciado e inválido não são equivalentes no ledger, embora nenhum seja elegível. Entre ambos válidos: BOTH_CORRECT, FULL_CORRECT_REDUCED_WRONG, REDUCED_CORRECT_FULL_WRONG, BOTH_WRONG_SAME, BOTH_WRONG_DIFFERENT. Verdict agreement = iguais/ambos válidos. Pares mínimos G0 (18) permanecem avaliados separadamente por braço; não confundir com 36 pares causais.
+
+Quatorze críticos, seis inconclusivos e 12 positivos têm tabela individual FULL/REDUCED status/verdict/expected/outcome. Três parciais positivas são obrigatórias. GG0-29 possui resultados nominais explícitos e interpretação sentinela. Invalid não conta como REJECT/APPROVE; nenhuma pergunta parcial de FULL inválido é aproveitada.
+
+Classificação por braço G0 intacta: qualquer false accept em REJECT ou unsafe APPROVE em INCONCLUSIVE → NAO_PROMISSOR_DIAGNOSTICO; 36/36 elegíveis e todos macros corretos → PROMISSOR_DIAGNOSTICO; demais INCONCLUSIVO. Classificação comparativa é separada e nunca promove produto.
+
+Telemetry por braço: input/output/total_tokens quando fornecido, custo estimado mediante preço futuro explícito, usage desconhecido separado (não zero), billing BILLED_UNKNOWN sem fonte direta, latência min/p50/p95/max. Total tokens ausente não é sintetizado. Pares têm custo FULL+REDUCED só com ambos conhecidos e delta latency REDUCED−FULL só com ambas medições HTTP; distribuição descritiva por interpolação linear (n−1)×p. Quantidade de perguntas não é proxy de token real. Não estimar economia como observação.

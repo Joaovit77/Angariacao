@@ -1,0 +1,37 @@
+{
+  "design_classification": "INCONCLUSIVO",
+  "recommendation": "HOLD_PROVIDER_AND_IMPLEMENTATION",
+  "go_offline_document_review_only": true,
+  "actual_guard_exists": false,
+  "current_machine_only": {
+    "cases": 36,
+    "semantic_verdicts": 0,
+    "holds": 36,
+    "positive_deferrals": 12,
+    "safe_partial_deferrals": 3,
+    "critical_negative_deferrals": 14,
+    "automatic_gg29_reject_demonstrated": false,
+    "semantic_accuracy": null,
+    "false_block_rate": null,
+    "false_allow_rate": null,
+    "note": "Cenário conservador do desenho com verificações semânticas não disponíveis, não saídas de um guard implementado. Adiar12/12 positivas seria perda de disponibilidade se aplicado como caminho obrigatório."
+  },
+  "annotated_conditional_replay": {
+    "cases": 36,
+    "expected_consistent": 36,
+    "positive_rejects": 0,
+    "negative_approves": 0,
+    "inconclusive_rejects": 0,
+    "critical_rejects": 14,
+    "gg0_29_reject": true,
+    "safe_partial_approves": 3,
+    "independent_test": false,
+    "oracle_assisted_audit": true,
+    "is_measured_model_quality": false,
+    "note": "Coerência documental de36 rótulos revisados retrospectivamente; não mede extração, generalização, false blocks reais ou melhora do provider."
+  },
+  "historical_results_changed": false,
+  "semantic_advantage_demonstrated": false,
+  "mandatory_dimensions_needed_demonstrated": false,
+  "option_f": "Mais defensável para não gastar/integrar agora; abandono definitivo não é provado por este desenho. Continuidade só por decisão humana e novo escopo offline de observabilidade."
+}

@@ -1,0 +1,837 @@
+{
+  "eligible": 32,
+  "excluded_invalid_ids": [
+    "GG0-14",
+    "GG0-22",
+    "GG0-24",
+    "GG0-36"
+  ],
+  "denominator": 32,
+  "groups": {
+    "macro_correct_all_dimensions_correct": 3,
+    "macro_correct_some_dimension_wrong": 25,
+    "macro_wrong_dimensions_support_error": 0,
+    "macro_wrong_dimensions_support_expected": 1,
+    "macro_wrong_dimensions_mixed": 3,
+    "macro_wrong_dimensions_insufficient": 0
+  },
+  "rows": [
+    {
+      "case_id": "GG0-01",
+      "expected_verdict": "APPROVE",
+      "observed_verdict": "APPROVE",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_APPROVE",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [],
+        "spurious_fails": [],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-02",
+      "expected_verdict": "APPROVE",
+      "observed_verdict": "APPROVE",
+      "macro_correct": true,
+      "all_dimensions_correct": true,
+      "incorrect_dimensions": [],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_APPROVE",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [],
+        "spurious_fails": [],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-03",
+      "expected_verdict": "APPROVE",
+      "observed_verdict": "APPROVE",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_APPROVE",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [],
+        "spurious_fails": [],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-04",
+      "expected_verdict": "APPROVE",
+      "observed_verdict": "APPROVE",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_APPROVE",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [],
+        "spurious_fails": [],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-05",
+      "expected_verdict": "APPROVE",
+      "observed_verdict": "APPROVE",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_APPROVE",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [],
+        "spurious_fails": [],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-06",
+      "expected_verdict": "APPROVE",
+      "observed_verdict": "APPROVE",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "temporal"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_APPROVE",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [],
+        "spurious_fails": [],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-07",
+      "expected_verdict": "APPROVE",
+      "observed_verdict": "APPROVE",
+      "macro_correct": true,
+      "all_dimensions_correct": true,
+      "incorrect_dimensions": [],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_APPROVE",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [],
+        "spurious_fails": [],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-08",
+      "expected_verdict": "APPROVE",
+      "observed_verdict": "APPROVE",
+      "macro_correct": true,
+      "all_dimensions_correct": true,
+      "incorrect_dimensions": [],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_APPROVE",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [],
+        "spurious_fails": [],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-09",
+      "expected_verdict": "APPROVE",
+      "observed_verdict": "APPROVE",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "omission",
+        "cross_entity",
+        "partial_answer_allowed"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_APPROVE",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [],
+        "spurious_fails": [],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-10",
+      "expected_verdict": "APPROVE",
+      "observed_verdict": "APPROVE",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "omission",
+        "cross_entity",
+        "partial_answer_allowed"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_APPROVE",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [],
+        "spurious_fails": [],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-11",
+      "expected_verdict": "APPROVE",
+      "observed_verdict": "APPROVE",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_APPROVE",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [],
+        "spurious_fails": [],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-12",
+      "expected_verdict": "APPROVE",
+      "observed_verdict": "APPROVE",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_APPROVE",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [],
+        "spurious_fails": [],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-13",
+      "expected_verdict": "REJECT",
+      "observed_verdict": "REJECT",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "protocol",
+        "temporal",
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_REJECT",
+        "semantic_eligible": true,
+        "material_signals": [
+          "grounding",
+          "factuality",
+          "coverage",
+          "omission",
+          "unsupported_assumption"
+        ],
+        "uncertainty_signals": [],
+        "spurious_fails": [
+          "protocol",
+          "temporal"
+        ],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-15",
+      "expected_verdict": "REJECT",
+      "observed_verdict": "REJECT",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "protocol",
+        "temporal",
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_REJECT",
+        "semantic_eligible": true,
+        "material_signals": [
+          "grounding",
+          "factuality",
+          "entity",
+          "coverage",
+          "omission",
+          "unsupported_assumption"
+        ],
+        "uncertainty_signals": [],
+        "spurious_fails": [
+          "protocol",
+          "temporal"
+        ],
+        "missing_material_signals": [
+          "cross_entity"
+        ]
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-16",
+      "expected_verdict": "REJECT",
+      "observed_verdict": "REJECT",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "protocol",
+        "temporal",
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_REJECT",
+        "semantic_eligible": true,
+        "material_signals": [
+          "grounding",
+          "coverage",
+          "omission",
+          "unsupported_assumption"
+        ],
+        "uncertainty_signals": [
+          "factuality"
+        ],
+        "spurious_fails": [
+          "protocol",
+          "temporal"
+        ],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-17",
+      "expected_verdict": "REJECT",
+      "observed_verdict": "REJECT",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "factuality",
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_REJECT",
+        "semantic_eligible": true,
+        "material_signals": [
+          "grounding",
+          "protocol",
+          "coverage",
+          "omission",
+          "unsupported_assumption"
+        ],
+        "uncertainty_signals": [],
+        "spurious_fails": [
+          "factuality"
+        ],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-18",
+      "expected_verdict": "REJECT",
+      "observed_verdict": "REJECT",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "temporal",
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_REJECT",
+        "semantic_eligible": true,
+        "material_signals": [
+          "grounding",
+          "factuality",
+          "protocol",
+          "entity",
+          "coverage",
+          "omission",
+          "unsupported_assumption"
+        ],
+        "uncertainty_signals": [],
+        "spurious_fails": [
+          "temporal"
+        ],
+        "missing_material_signals": [
+          "cross_entity"
+        ]
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-19",
+      "expected_verdict": "REJECT",
+      "observed_verdict": "REJECT",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "protocol"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_REJECT",
+        "semantic_eligible": true,
+        "material_signals": [
+          "grounding",
+          "temporal",
+          "coverage",
+          "omission",
+          "unsupported_assumption"
+        ],
+        "uncertainty_signals": [
+          "factuality"
+        ],
+        "spurious_fails": [
+          "protocol"
+        ],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-20",
+      "expected_verdict": "REJECT",
+      "observed_verdict": "REJECT",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "temporal"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_REJECT",
+        "semantic_eligible": true,
+        "material_signals": [
+          "grounding",
+          "factuality",
+          "coverage",
+          "omission",
+          "unsupported_assumption"
+        ],
+        "uncertainty_signals": [],
+        "spurious_fails": [
+          "temporal"
+        ],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-21",
+      "expected_verdict": "REJECT",
+      "observed_verdict": "REJECT",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "factuality",
+        "protocol",
+        "cross_entity",
+        "partial_answer_allowed"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_REJECT",
+        "semantic_eligible": true,
+        "material_signals": [
+          "grounding",
+          "temporal",
+          "coverage",
+          "omission",
+          "unsupported_assumption"
+        ],
+        "uncertainty_signals": [],
+        "spurious_fails": [
+          "factuality",
+          "protocol"
+        ],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-23",
+      "expected_verdict": "REJECT",
+      "observed_verdict": "REJECT",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "temporal",
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_REJECT",
+        "semantic_eligible": true,
+        "material_signals": [
+          "grounding",
+          "coverage",
+          "omission",
+          "unsupported_assumption"
+        ],
+        "uncertainty_signals": [
+          "factuality"
+        ],
+        "spurious_fails": [
+          "temporal"
+        ],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-25",
+      "expected_verdict": "REJECT",
+      "observed_verdict": "REJECT",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "unsupported_assumption",
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_REJECT",
+        "semantic_eligible": true,
+        "material_signals": [
+          "coverage",
+          "omission"
+        ],
+        "uncertainty_signals": [],
+        "spurious_fails": [
+          "unsupported_assumption"
+        ],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-26",
+      "expected_verdict": "REJECT",
+      "observed_verdict": "REJECT",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "factuality",
+        "coverage",
+        "omission",
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_REJECT",
+        "semantic_eligible": true,
+        "material_signals": [
+          "grounding",
+          "unsupported_assumption"
+        ],
+        "uncertainty_signals": [],
+        "spurious_fails": [
+          "coverage",
+          "omission"
+        ],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-27",
+      "expected_verdict": "REJECT",
+      "observed_verdict": "REJECT",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "factuality",
+        "protocol",
+        "temporal",
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_REJECT",
+        "semantic_eligible": true,
+        "material_signals": [
+          "grounding",
+          "coverage",
+          "omission",
+          "unsupported_assumption"
+        ],
+        "uncertainty_signals": [],
+        "spurious_fails": [
+          "protocol",
+          "temporal"
+        ],
+        "missing_material_signals": [
+          "factuality"
+        ]
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-28",
+      "expected_verdict": "REJECT",
+      "observed_verdict": "REJECT",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_REJECT",
+        "semantic_eligible": true,
+        "material_signals": [
+          "coverage",
+          "omission"
+        ],
+        "uncertainty_signals": [],
+        "spurious_fails": [],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-29",
+      "expected_verdict": "REJECT",
+      "observed_verdict": "APPROVE",
+      "macro_correct": false,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "coverage",
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_REJECT",
+        "semantic_eligible": true,
+        "material_signals": [
+          "omission"
+        ],
+        "uncertainty_signals": [],
+        "spurious_fails": [],
+        "missing_material_signals": [
+          "coverage"
+        ]
+      },
+      "aggregation_contradiction": true
+    },
+    {
+      "case_id": "GG0-30",
+      "expected_verdict": "REJECT",
+      "observed_verdict": "REJECT",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "factuality",
+        "protocol",
+        "coverage",
+        "omission",
+        "cross_entity"
+      ],
+      "support": {
+        "label": "DIMENSIONS_SUPPORT_REJECT",
+        "semantic_eligible": true,
+        "material_signals": [
+          "grounding",
+          "unsupported_assumption",
+          "safety"
+        ],
+        "uncertainty_signals": [],
+        "spurious_fails": [
+          "protocol",
+          "coverage",
+          "omission"
+        ],
+        "missing_material_signals": [
+          "factuality"
+        ]
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-31",
+      "expected_verdict": "INCONCLUSIVE",
+      "observed_verdict": "REJECT",
+      "macro_correct": false,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "protocol",
+        "coverage",
+        "omission",
+        "cross_entity",
+        "partial_answer_allowed"
+      ],
+      "support": {
+        "label": "DIMENSIONS_MIXED",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [
+          "grounding",
+          "factuality",
+          "temporal",
+          "unsupported_assumption"
+        ],
+        "spurious_fails": [
+          "coverage",
+          "omission"
+        ],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-32",
+      "expected_verdict": "INCONCLUSIVE",
+      "observed_verdict": "REJECT",
+      "macro_correct": false,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "protocol",
+        "temporal",
+        "coverage",
+        "omission",
+        "unsupported_assumption",
+        "cross_entity",
+        "partial_answer_allowed"
+      ],
+      "support": {
+        "label": "DIMENSIONS_MIXED",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [
+          "grounding",
+          "factuality"
+        ],
+        "spurious_fails": [
+          "temporal",
+          "coverage",
+          "omission",
+          "unsupported_assumption"
+        ],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-33",
+      "expected_verdict": "INCONCLUSIVE",
+      "observed_verdict": "INCONCLUSIVE",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "protocol",
+        "temporal",
+        "omission",
+        "partial_answer_allowed"
+      ],
+      "support": {
+        "label": "DIMENSIONS_MIXED",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [
+          "grounding",
+          "factuality",
+          "entity",
+          "coverage",
+          "unsupported_assumption",
+          "cross_entity"
+        ],
+        "spurious_fails": [
+          "omission"
+        ],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-34",
+      "expected_verdict": "INCONCLUSIVE",
+      "observed_verdict": "INCONCLUSIVE",
+      "macro_correct": true,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "factuality",
+        "temporal",
+        "omission",
+        "partial_answer_allowed"
+      ],
+      "support": {
+        "label": "DIMENSIONS_MIXED",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [
+          "grounding",
+          "entity",
+          "coverage",
+          "unsupported_assumption",
+          "cross_entity"
+        ],
+        "spurious_fails": [
+          "omission"
+        ],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    },
+    {
+      "case_id": "GG0-35",
+      "expected_verdict": "INCONCLUSIVE",
+      "observed_verdict": "REJECT",
+      "macro_correct": false,
+      "all_dimensions_correct": false,
+      "incorrect_dimensions": [
+        "temporal",
+        "coverage",
+        "omission",
+        "unsupported_assumption",
+        "cross_entity",
+        "partial_answer_allowed"
+      ],
+      "support": {
+        "label": "DIMENSIONS_MIXED",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [
+          "grounding",
+          "factuality",
+          "protocol"
+        ],
+        "spurious_fails": [
+          "coverage",
+          "omission",
+          "unsupported_assumption"
+        ],
+        "missing_material_signals": []
+      },
+      "aggregation_contradiction": false
+    }
+  ]
+}

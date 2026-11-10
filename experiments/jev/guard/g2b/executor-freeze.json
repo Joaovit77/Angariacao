@@ -1,0 +1,26 @@
+{
+  "checkpoint": "JEV-GUARD-G2-B",
+  "status": "EXECUTOR_FROZEN_BEFORE_NETWORK",
+  "created_at_utc": "2026-10-17T23:39:01.259Z",
+  "authorized_calls": 72,
+  "model": "jev-1.14.0",
+  "cap_usd": 0.25,
+  "authorization_sha256": "ee4152e01660d315783b0b7613b20b92531436c60634f1548c2435ea0b220292",
+  "concurrency": 1,
+  "retries": 0,
+  "auto_resume": false,
+  "postfreeze_certification_required": true,
+  "postfreeze_certification_file": "postfreeze-certification.json",
+  "files": {
+    "analysis.mjs": "34a74cfc36c56a008d5cf554ff333df16340f8d5d1fe9a69f9359bf94a5c8895",
+    "authorization-source.json": "6a9e934f2e29f8da5ea6d9ec0ddaf1cd940c76dc2c324139c0ee4e96297890a7",
+    "certification-before-freeze.json": "5500355613451fa952d40d8ec99f00aee881610924220534c7383f3e662c2205",
+    "core.mjs": "f8f2e573ea9d42f4b689b7102fb9f6323720327b66c4cc35cd86eb52dd77a6a3",
+    "plan.mjs": "4d553706562bb8f16555acadcd015ba5348c555def4b407dbc12c5f375704125",
+    "preservation-before.json": "f225d6b90b657aea7498d7c4f11b82b4b9bdfeddfdb407ae1be883c247bbb26d",
+    "pricing-verified.json": "fe42c2ca9299893adc83674e8e733dd3d6f4ce88392cb22a5ff159bb043ddc3e",
+    "README.md": "1104f64a69555842173d4ec1a1fcc994821344a13fdc582b6c73cb74b5a1382e",
+    "runner.mjs": "25fc9df933a06da1aec8f79acfbc003ec120942fc06f7e061190fbdfbba26708",
+    "runtime.test.mjs": "d5caf19da9077a17306638673a3872f2d1d4dff4f89ae2ef216518677ad8913c"
+  }
+}

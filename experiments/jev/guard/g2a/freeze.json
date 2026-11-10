@@ -1,0 +1,76 @@
+{
+  "checkpoint": "JEV-GUARD-G2-A",
+  "status": "PASS_OFFLINE_FAILURE_ANALYSIS",
+  "created_at_utc": "2026-10-17T21:05:59.078Z",
+  "conclusion": "REDUCED_CONTRACT_EXPERIMENT_JUSTIFIED",
+  "causal_claim": "HYPOTHESIS_REQUIRES_EXPERIMENT",
+  "tests": {
+    "historical": 458,
+    "new": 46,
+    "total": 504,
+    "fail": 0
+  },
+  "mutants": {
+    "total": 11,
+    "killed": 11,
+    "survived": 0
+  },
+  "g1": {
+    "execution": "PASS",
+    "quality": "NAO_PROMISSOR_DIAGNOSTICO",
+    "run_id": "jev-guard-g1-1792269758441-39438172"
+  },
+  "preservation": {
+    "historical_files": 300,
+    "product_files": 769,
+    "status": "PASS"
+  },
+  "propagation": {
+    "append_only": true,
+    "previous_prefix_bytes": 38921,
+    "previous_prefix_sha256": "ce0e0a729a8f44992f3ba47dfd9973839122c069eb2752f0938f54599e520f13",
+    "after_prefix_sha256": "ce0e0a729a8f44992f3ba47dfd9973839122c069eb2752f0938f54599e520f13",
+    "append_sha256": "8936ece7c0fbff0d962e40afcd1cc61df312eb54b73f621c74b6f859b2083b0c"
+  },
+  "jev_calls": 0,
+  "openai_calls": 0,
+  "network_calls": 0,
+  "network_attempts": 0,
+  "credentials_read": 0,
+  "credits": 0,
+  "product_changes": 0,
+  "semantic_recovery": false,
+  "raw_reconstructed": false,
+  "execution_authorized": false,
+  "files": {
+    "analysis.mjs": "502538d88e3259e33857f871493de8497b79a7005f79176599926152f57fc74c",
+    "architecture-options.md": "ba7a34f0991b2ed199190eefe9cf1ac3756be31f6635b82be0b5893ce8fa7501",
+    "certification.json": "7a641946bd33004b394f0394cb20140c1f753d4585198ea1d06f6aaff04b0229",
+    "choice-mismatch-analysis.json": "155cacdbee872806bfa10f9c4ac06cb2c2c10131d6e30cbe6023e2aab0f7c5c8",
+    "contract-complexity-analysis.md": "482858c99262429ef72f38c71ac6980a4e0d7144f59893d012d287180a627609",
+    "dimension-review.json": "cfea17bb78969783c2292e4b86b4ee290f90da00de117bd668325ea429cf9704",
+    "dimension-utility-map.md": "04162d8e1bc0b087582377e6dd266fcaed8284c99d58fcc45f43cdd1ddcc9ac0",
+    "future-design.json": "8078643b77de5e69213706a56a66c36b0465e1661f4a694548cd3567c3d8df9f",
+    "future-experiment-design.md": "af6ce0a0e3fa3cc24320cce9ca4bfbef35f54d2f1a51d854e80203669981a988",
+    "g1-facts.json": "5d2d60de4318f8d67e4489619492b1357590b5fdf9b85c7726c4a0b49a6ffc31",
+    "g2a.test.mjs": "0240d303f6e8ad015411e1e23dbd51b29f628e056ca3dfed6e9b10b84c20457f",
+    "generate.mjs": "bacb3dd11c064c8a21a523d46ca1b08aec6eb39fe3fb2a09df494cbb9f0199d0",
+    "inconclusive-analysis.md": "dd8a69921c08a5c7e1220007eeb97b22fe60f785a48c4b84c3053b3574c516b3",
+    "invalid-analysis.json": "16bc9a5e691cea2d754f5fe6295b7f5aa00ef373ae91d9811cd3fa938dbd7e67",
+    "macro-failure-analysis.md": "227aac8b99205b167b7c7294a7a68499b8714a0ab634674386bc6c9be468bbd5",
+    "mutation-probes.mjs": "cc843dc4ec90c9557d22266508557e8c49ec734577c767577bd1f4b2c7886ad8",
+    "mutation-report.json": "64487d7c2ee7e80041d8a8cc25bdf0749a97b7249144d9b6fb0d816dfc7f219d",
+    "preservation-before.json": "dc99f6c4864f1d078309ee94e567e58c1c17e8deb8ff9e2429188c84bc06f621",
+    "privacy-check.json": "f25a79c24ec721edbf8ba30dc7fcd60d10f3fa1d5cbbeb67e8598b0aa383f15f",
+    "propagation-preservation.json": "0c24b20f53697318569f758b3e7be155314dcc58b5584b43e9d15cfa56d08983",
+    "question-failure-map.json": "b768612cacc571ae4a8e8f74a5f43f1dc09a25b0d515249eb650763f9403095a",
+    "README.md": "872946880185ea35f4c1879d53d6153f0a37a3f20378fc92dda3dab67a7f4a47",
+    "rejected-shortcuts.md": "fe204940c13a9d7a2f3a9877fb8712ae8fe3cdd4ac7aeb65798ec0bc31693239",
+    "risk-register.json": "afbf21fc96c422e695d210726ed1ebb35ad2ea1e35256c73f2a24638187add27",
+    "structural-analysis.md": "eafd1c7bc51b47bf1dc0e2f3809088ca7f368c1075938f29629d9242ca883599",
+    "sum-mismatch-analysis.json": "f7e75f595098fa964356c7e3591f5dbafe438804afd22d96783b77e657b12d8c",
+    "test-plan.md": "3fdf730b64f24298356187328d32872a3aa0ccd8ed597478e23c242b237c7671",
+    "verification.json": "3cc9f2edd4acf71ad72d1198abc60d425a201db161d041e8421493c04c37e68a",
+    "../../../../RELATORIO-JEV-GUARD-G2-A.md": "1b15e2a4ed548f3cc0cc4f286054214289db26ca9b511483cf9534e65a738e0d"
+  }
+}

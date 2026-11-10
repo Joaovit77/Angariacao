@@ -1,0 +1,263 @@
+{
+  "checkpoint": "JEV-GUARD-G0",
+  "observation_status": "NOT_RUN",
+  "model_evaluated": false,
+  "observed_model_calls": 0,
+  "metrics": {
+    "planned_stages": 36,
+    "received_records": 0,
+    "valid_stages": 0,
+    "analyzable_transports": 0,
+    "invalid_responses": 0,
+    "operational_errors": 0,
+    "not_received": 36,
+    "primary": {
+      "verdict_accuracy": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "critical_false_accept_rate": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "false_accept_rate": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "false_reject_rate": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "inconclusive_accuracy": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "valid_response_rate": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      }
+    },
+    "splits": {
+      "ordinary_false_accept": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "critical_false_accept": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "partial_false_reject": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "full_answer_false_reject": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "unsafe_approve_on_inconclusive": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "overreject_inconclusive": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "inconclusive_on_positive": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "inconclusive_on_negative": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      }
+    },
+    "coverage": {
+      "positive": {
+        "numerator": 0,
+        "denominator": 12,
+        "value": 0,
+        "status": "TESTED"
+      },
+      "negative": {
+        "numerator": 0,
+        "denominator": 18,
+        "value": 0,
+        "status": "TESTED"
+      },
+      "inconclusive": {
+        "numerator": 0,
+        "denominator": 6,
+        "value": 0,
+        "status": "TESTED"
+      },
+      "critical": {
+        "numerator": 0,
+        "denominator": 14,
+        "value": 0,
+        "status": "TESTED"
+      },
+      "overall": {
+        "numerator": 0,
+        "denominator": 36,
+        "value": 0,
+        "status": "TESTED"
+      }
+    },
+    "secondary": {
+      "grounding_accuracy": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "factuality_accuracy": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "entity_accuracy": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "temporal_accuracy": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "protocol_accuracy": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "coverage_accuracy": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "omission_accuracy": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "unsupported_accuracy": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "cross_entity_accuracy": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "partial_accuracy": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      },
+      "safety_accuracy": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null,
+        "status": "NOT_TESTED"
+      }
+    },
+    "dimension_applicability": {
+      "grounding": {
+        "APPLICABLE": 0,
+        "APPLICABLE_UNRESOLVED": 0,
+        "NOT_APPLICABLE": 0
+      },
+      "factuality": {
+        "APPLICABLE": 0,
+        "APPLICABLE_UNRESOLVED": 0,
+        "NOT_APPLICABLE": 0
+      },
+      "protocol": {
+        "APPLICABLE": 0,
+        "APPLICABLE_UNRESOLVED": 0,
+        "NOT_APPLICABLE": 0
+      },
+      "temporal": {
+        "APPLICABLE": 0,
+        "APPLICABLE_UNRESOLVED": 0,
+        "NOT_APPLICABLE": 0
+      },
+      "entity": {
+        "APPLICABLE": 0,
+        "APPLICABLE_UNRESOLVED": 0,
+        "NOT_APPLICABLE": 0
+      },
+      "coverage": {
+        "APPLICABLE": 0,
+        "APPLICABLE_UNRESOLVED": 0,
+        "NOT_APPLICABLE": 0
+      },
+      "omission": {
+        "APPLICABLE": 0,
+        "APPLICABLE_UNRESOLVED": 0,
+        "NOT_APPLICABLE": 0
+      },
+      "unsupported_assumption": {
+        "APPLICABLE": 0,
+        "APPLICABLE_UNRESOLVED": 0,
+        "NOT_APPLICABLE": 0
+      },
+      "cross_entity": {
+        "APPLICABLE": 0,
+        "APPLICABLE_UNRESOLVED": 0,
+        "NOT_APPLICABLE": 0
+      },
+      "safety": {
+        "APPLICABLE": 0,
+        "APPLICABLE_UNRESOLVED": 0,
+        "NOT_APPLICABLE": 0
+      },
+      "partial_answer_allowed": {
+        "APPLICABLE": 0,
+        "APPLICABLE_UNRESOLVED": 0,
+        "NOT_APPLICABLE": 0
+      }
+    },
+    "diagnostic_classification": "INCONCLUSIVO",
+    "confidence_use": "OBSERVATIONAL_ONLY",
+    "effect_permission": "NONE"
+  }
+}

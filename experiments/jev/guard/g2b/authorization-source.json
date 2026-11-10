@@ -1,0 +1,12 @@
+{
+  "checkpoint": "JEV-GUARD-G2-B",
+  "source_attachment": "C:/Users/ciria/.codex/attachments/767ec3f0-d11e-4307-bd6c-ea9135db6852/Texto colado.txt",
+  "authorization_sha256": "ee4152e01660d315783b0b7613b20b92531436c60634f1548c2435ea0b220292",
+  "authorized_calls": 72,
+  "model": "jev-1.14.0",
+  "cap_usd": 0.25,
+  "scope": "JEV-GUARD-G2-B REAL PAIRED EXPERIMENT ONLY",
+  "retry_allowed": false,
+  "integration_allowed": false,
+  "real_data_allowed": false
+}

@@ -1,0 +1,20 @@
+{
+  "checkpoint": "JEV-S2-G-A",
+  "status": "PASS_OFFLINE",
+  "baseline_pass": 292,
+  "new_pass": 35,
+  "total_pass": 327,
+  "fail": 0,
+  "cancelled": 0,
+  "skipped": 0,
+  "duration_ms": 38508.6174,
+  "network_calls": 0,
+  "network_attempts": 0,
+  "network_guard": "HTTP/HTTPS/fetch/sockets/TLS/UDP/DNS bloqueados; tentativa provoca falha inclusive se capturada; guard de saída ativo.",
+  "jev_calls": 0,
+  "openai_calls": 0,
+  "credits": 0,
+  "credentials_read": 0,
+  "command": "node --import ./experiments/jev/s2g/offline-guard.mjs --test experiments/jev/harness.test.mjs experiments/jev/v2/v2.test.mjs experiments/jev/v2/adapter-v2.test.mjs experiments/jev/s2b/runtime.test.mjs experiments/jev/v2/probability-diagnostics/probability-diagnostics.test.mjs experiments/jev/s2d/runtime.test.mjs experiments/jev/s2e/runtime.test.mjs experiments/jev/s2f/s2f-a.test.mjs experiments/jev/s2fb/runtime.test.mjs experiments/jev/s2g/s2g-a.test.mjs",
+  "completed_at_utc": "2026-10-17T17:57:41.214Z"
+}

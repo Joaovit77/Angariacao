@@ -1,0 +1,602 @@
+[
+  {
+    "case_id": "GG0-31",
+    "expected": "INCONCLUSIVE",
+    "input": {
+      "current_message": "Qual o valor atual do IMOVEL_A?",
+      "candidate_answer": "O valor atual do IMOVEL_A é 1800.",
+      "conversation_context": [],
+      "property_context": {
+        "selected_entity": "IMOVEL_A",
+        "accessible": true,
+        "owner_ref": "CLIENTE_SYN_A",
+        "current_facts": [],
+        "commercial_confirmation": "UNCONFIRMED",
+        "operational_permissions": {
+          "publication_authorized": false
+        }
+      },
+      "available_protocols": [],
+      "guard_metadata": {
+        "evidence_bundle_status": "INCOMPLETE",
+        "entity_resolution_status": "RESOLVED",
+        "source_catalog_status": "NOT_PROVIDED"
+      }
+    },
+    "oracle_rationale": "O pacote necessário está indisponível, não foi declarado cadastro completo vazio. A candidata não alega confirmação ou protocolo inexistente. Sem fonte para comprovar/refutar 1800 ou outra violação independente, suspender julgamento; não aprovar por falta de prova.",
+    "expected_dimensions": {
+      "grounding": "INCONCLUSIVE",
+      "factuality": "INCONCLUSIVE",
+      "protocol": "NOT_APPLICABLE",
+      "temporal": "INCONCLUSIVE",
+      "entity": "PASS",
+      "coverage": "INCONCLUSIVE",
+      "omission": "NOT_APPLICABLE",
+      "unsupported_assumption": "INCONCLUSIVE",
+      "cross_entity": "PASS",
+      "safety": "PASS",
+      "partial_answer_allowed": "NOT_APPLICABLE"
+    },
+    "full": {
+      "status": "STRUCTURALLY_VALID",
+      "normalized_verdict": "REJECT",
+      "dimensions": {
+        "grounding": "INCONCLUSIVE",
+        "factuality": "INCONCLUSIVE",
+        "protocol": "INCONCLUSIVE",
+        "temporal": "INCONCLUSIVE",
+        "entity": "PASS",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "INCONCLUSIVE",
+        "cross_entity": "NOT_APPLICABLE",
+        "safety": "PASS",
+        "partial_answer_allowed": "PASS"
+      },
+      "support": {
+        "label": "DIMENSIONS_MIXED",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [
+          "grounding",
+          "factuality",
+          "temporal",
+          "unsupported_assumption"
+        ],
+        "spurious_fails": [
+          "coverage",
+          "omission"
+        ],
+        "missing_material_signals": []
+      }
+    },
+    "reduced": {
+      "status": "STRUCTURALLY_VALID",
+      "verdict": "REJECT",
+      "overreject": true,
+      "dimensions": "NOT_COLLECTED"
+    },
+    "excessive_negative_dimensions": [
+      "coverage",
+      "omission"
+    ],
+    "uncertainty_detected": [
+      "grounding",
+      "factuality",
+      "temporal",
+      "unsupported_assumption"
+    ],
+    "calibration_failure": true,
+    "internal_mechanism": "UNDETERMINED"
+  },
+  {
+    "case_id": "GG0-32",
+    "expected": "INCONCLUSIVE",
+    "input": {
+      "current_message": "Qual o valor atual canônico do IMOVEL_A?",
+      "candidate_answer": "O valor atual do IMOVEL_A é 1800.",
+      "conversation_context": [],
+      "property_context": {
+        "selected_entity": "IMOVEL_A",
+        "accessible": true,
+        "owner_ref": "CLIENTE_SYN_A",
+        "current_facts": [
+          {
+            "id": "f-rent-a-1",
+            "key": "valor",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "temporal": "CURRENT_FACT",
+            "observed_at": "T_SYN_NOW",
+            "source": "CADASTRO_SYN"
+          },
+          {
+            "id": "f-rent-a-2",
+            "key": "valor",
+            "value": 1900,
+            "entity": "IMOVEL_A",
+            "temporal": "CURRENT_FACT",
+            "observed_at": "T_SYN_NOW",
+            "source": "CADASTRO_SYN"
+          }
+        ],
+        "commercial_confirmation": "UNCONFIRMED",
+        "operational_permissions": {
+          "publication_authorized": false
+        }
+      },
+      "available_protocols": [],
+      "guard_metadata": {
+        "evidence_bundle_status": "CONFLICTING_EQUAL_AUTHORITY",
+        "entity_resolution_status": "RESOLVED",
+        "source_catalog_status": "COMPLETE"
+      }
+    },
+    "oracle_rationale": "Fontes atuais equivalentes divergem 1800/1900 sem fonte vencedora. Não há contradição contra um valor canônico único nem prova independente de transferência. INCONCLUSIVE é o gate para verdade não resolvida; não escolher protocolo/fonte pela conveniência.",
+    "expected_dimensions": {
+      "grounding": "INCONCLUSIVE",
+      "factuality": "INCONCLUSIVE",
+      "protocol": "NOT_APPLICABLE",
+      "temporal": "PASS",
+      "entity": "PASS",
+      "coverage": "INCONCLUSIVE",
+      "omission": "NOT_APPLICABLE",
+      "unsupported_assumption": "INCONCLUSIVE",
+      "cross_entity": "PASS",
+      "safety": "PASS",
+      "partial_answer_allowed": "NOT_APPLICABLE"
+    },
+    "full": {
+      "status": "STRUCTURALLY_VALID",
+      "normalized_verdict": "REJECT",
+      "dimensions": {
+        "grounding": "INCONCLUSIVE",
+        "factuality": "INCONCLUSIVE",
+        "protocol": "INCONCLUSIVE",
+        "temporal": "FAIL",
+        "entity": "PASS",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "FAIL",
+        "cross_entity": "NOT_APPLICABLE",
+        "safety": "PASS",
+        "partial_answer_allowed": "PASS"
+      },
+      "support": {
+        "label": "DIMENSIONS_MIXED",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [
+          "grounding",
+          "factuality"
+        ],
+        "spurious_fails": [
+          "temporal",
+          "coverage",
+          "omission",
+          "unsupported_assumption"
+        ],
+        "missing_material_signals": []
+      }
+    },
+    "reduced": {
+      "status": "STRUCTURALLY_VALID",
+      "verdict": "REJECT",
+      "overreject": true,
+      "dimensions": "NOT_COLLECTED"
+    },
+    "excessive_negative_dimensions": [
+      "temporal",
+      "coverage",
+      "omission",
+      "unsupported_assumption"
+    ],
+    "uncertainty_detected": [
+      "grounding",
+      "factuality"
+    ],
+    "calibration_failure": true,
+    "internal_mechanism": "UNDETERMINED"
+  },
+  {
+    "case_id": "GG0-33",
+    "expected": "INCONCLUSIVE",
+    "input": {
+      "current_message": "Qual o valor do imóvel selecionado?",
+      "candidate_answer": "O valor atual é 1800.",
+      "conversation_context": [],
+      "property_context": {
+        "selected_entity": null,
+        "accessible": true,
+        "owner_ref": "CLIENTE_SYN_A",
+        "current_facts": [
+          {
+            "id": "f-rent-a",
+            "key": "valor",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "temporal": "CURRENT_FACT",
+            "observed_at": "T_SYN_NOW",
+            "source": "CADASTRO_SYN"
+          },
+          {
+            "id": "f-rent-b",
+            "key": "valor",
+            "value": 2600,
+            "entity": "IMOVEL_B",
+            "temporal": "CURRENT_FACT",
+            "observed_at": "T_SYN_NOW",
+            "source": "CADASTRO_SYN"
+          }
+        ],
+        "commercial_confirmation": "UNCONFIRMED",
+        "operational_permissions": {
+          "publication_authorized": false
+        }
+      },
+      "available_protocols": [],
+      "guard_metadata": {
+        "evidence_bundle_status": "COMPLETE",
+        "entity_resolution_status": "MISSING",
+        "source_catalog_status": "COMPLETE"
+      }
+    },
+    "oracle_rationale": "Há fontes de A/B, mas o alvo selecionado está ausente. Não presumir A pelo número da candidata. Nenhuma transferência é demonstrada antes de resolver o alvo, e ausência de entidade não vira APPROVE.",
+    "expected_dimensions": {
+      "grounding": "INCONCLUSIVE",
+      "factuality": "INCONCLUSIVE",
+      "protocol": "NOT_APPLICABLE",
+      "temporal": "PASS",
+      "entity": "INCONCLUSIVE",
+      "coverage": "INCONCLUSIVE",
+      "omission": "NOT_APPLICABLE",
+      "unsupported_assumption": "INCONCLUSIVE",
+      "cross_entity": "INCONCLUSIVE",
+      "safety": "PASS",
+      "partial_answer_allowed": "NOT_APPLICABLE"
+    },
+    "full": {
+      "status": "STRUCTURALLY_VALID",
+      "normalized_verdict": "INCONCLUSIVE",
+      "dimensions": {
+        "grounding": "INCONCLUSIVE",
+        "factuality": "INCONCLUSIVE",
+        "protocol": "INCONCLUSIVE",
+        "temporal": "INCONCLUSIVE",
+        "entity": "INCONCLUSIVE",
+        "coverage": "INCONCLUSIVE",
+        "omission": "FAIL",
+        "unsupported_assumption": "INCONCLUSIVE",
+        "cross_entity": "INCONCLUSIVE",
+        "safety": "PASS",
+        "partial_answer_allowed": "PASS"
+      },
+      "support": {
+        "label": "DIMENSIONS_MIXED",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [
+          "grounding",
+          "factuality",
+          "entity",
+          "coverage",
+          "unsupported_assumption",
+          "cross_entity"
+        ],
+        "spurious_fails": [
+          "omission"
+        ],
+        "missing_material_signals": []
+      }
+    },
+    "reduced": {
+      "status": "STRUCTURALLY_VALID",
+      "verdict": "INCONCLUSIVE",
+      "overreject": false,
+      "dimensions": "NOT_COLLECTED"
+    },
+    "excessive_negative_dimensions": [
+      "omission"
+    ],
+    "uncertainty_detected": [
+      "grounding",
+      "factuality",
+      "entity",
+      "coverage",
+      "unsupported_assumption",
+      "cross_entity"
+    ],
+    "calibration_failure": false,
+    "internal_mechanism": "UNDETERMINED"
+  },
+  {
+    "case_id": "GG0-34",
+    "expected": "INCONCLUSIVE",
+    "input": {
+      "current_message": "Quantas vagas tem o imóvel do CLIENTE_SYN_A?",
+      "candidate_answer": "Ele possui 2 vagas.",
+      "conversation_context": [],
+      "property_context": {
+        "selected_entity": null,
+        "accessible": true,
+        "owner_ref": "CLIENTE_SYN_A",
+        "current_facts": [
+          {
+            "id": "f-vagas-a",
+            "key": "vagas",
+            "value": 2,
+            "entity": "IMOVEL_A",
+            "temporal": "CURRENT_FACT",
+            "observed_at": "T_SYN_NOW",
+            "source": "CADASTRO_SYN"
+          },
+          {
+            "id": "f-vagas-b",
+            "key": "vagas",
+            "value": 2,
+            "entity": "IMOVEL_B",
+            "temporal": "CURRENT_FACT",
+            "observed_at": "T_SYN_NOW",
+            "source": "CADASTRO_SYN"
+          }
+        ],
+        "commercial_confirmation": "UNCONFIRMED",
+        "operational_permissions": {
+          "publication_authorized": false
+        }
+      },
+      "available_protocols": [],
+      "guard_metadata": {
+        "evidence_bundle_status": "COMPLETE",
+        "entity_resolution_status": "AMBIGUOUS",
+        "source_catalog_status": "COMPLETE"
+      }
+    },
+    "oracle_rationale": "A e B têm duas vagas, então a quantidade isolada coincide. Isso não resolve qual imóvel é o alvo; a validação da vinculação da resposta permanece inconclusiva. Não inventar transferência demonstrada nem tratar coincidência como identidade.",
+    "expected_dimensions": {
+      "grounding": "INCONCLUSIVE",
+      "factuality": "PASS",
+      "protocol": "NOT_APPLICABLE",
+      "temporal": "PASS",
+      "entity": "INCONCLUSIVE",
+      "coverage": "INCONCLUSIVE",
+      "omission": "NOT_APPLICABLE",
+      "unsupported_assumption": "INCONCLUSIVE",
+      "cross_entity": "INCONCLUSIVE",
+      "safety": "PASS",
+      "partial_answer_allowed": "NOT_APPLICABLE"
+    },
+    "full": {
+      "status": "STRUCTURALLY_VALID",
+      "normalized_verdict": "INCONCLUSIVE",
+      "dimensions": {
+        "grounding": "INCONCLUSIVE",
+        "factuality": "INCONCLUSIVE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "INCONCLUSIVE",
+        "entity": "INCONCLUSIVE",
+        "coverage": "INCONCLUSIVE",
+        "omission": "FAIL",
+        "unsupported_assumption": "INCONCLUSIVE",
+        "cross_entity": "INCONCLUSIVE",
+        "safety": "PASS",
+        "partial_answer_allowed": "PASS"
+      },
+      "support": {
+        "label": "DIMENSIONS_MIXED",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [
+          "grounding",
+          "entity",
+          "coverage",
+          "unsupported_assumption",
+          "cross_entity"
+        ],
+        "spurious_fails": [
+          "omission"
+        ],
+        "missing_material_signals": []
+      }
+    },
+    "reduced": {
+      "status": "STRUCTURALLY_VALID",
+      "verdict": "INCONCLUSIVE",
+      "overreject": false,
+      "dimensions": "NOT_COLLECTED"
+    },
+    "excessive_negative_dimensions": [
+      "omission"
+    ],
+    "uncertainty_detected": [
+      "grounding",
+      "entity",
+      "coverage",
+      "unsupported_assumption",
+      "cross_entity"
+    ],
+    "calibration_failure": false,
+    "internal_mechanism": "UNDETERMINED"
+  },
+  {
+    "case_id": "GG0-35",
+    "expected": "INCONCLUSIVE",
+    "input": {
+      "current_message": "Qual taxa administrativa se aplica ao IMOVEL_A?",
+      "candidate_answer": "A taxa administrativa aplicável é 6%.",
+      "conversation_context": [],
+      "property_context": {
+        "selected_entity": "IMOVEL_A",
+        "accessible": true,
+        "owner_ref": "CLIENTE_SYN_A",
+        "current_facts": [],
+        "commercial_confirmation": "APPLICABILITY_UNKNOWN",
+        "operational_permissions": {
+          "publication_authorized": false
+        }
+      },
+      "available_protocols": [
+        {
+          "id": "proto-syn-a",
+          "name": "PROTO_SYN_A",
+          "entity": "IMOVEL_A",
+          "status": "ACTIVE",
+          "type": "INFORMACAO_COMERCIAL",
+          "rate": 6,
+          "condition": "MODALIDADE_SYN_X"
+        },
+        {
+          "id": "proto-syn-b",
+          "name": "PROTO_SYN_B",
+          "entity": "IMOVEL_A",
+          "status": "ACTIVE",
+          "type": "INFORMACAO_COMERCIAL",
+          "rate": 8,
+          "condition": "MODALIDADE_SYN_Y"
+        }
+      ],
+      "guard_metadata": {
+        "evidence_bundle_status": "APPLICABILITY_UNDETERMINED",
+        "entity_resolution_status": "RESOLVED",
+        "source_catalog_status": "COMPLETE"
+      }
+    },
+    "oracle_rationale": "Ambos os protocolos existem e podem fornecer taxas distintas, mas a modalidade aplicável não foi fornecida. A candidata não inventa identidade ou novo percentual fora do catálogo. Sem prova de qual regra se aplica, não aprovar nem rejeitar como contradição demonstrada.",
+    "expected_dimensions": {
+      "grounding": "INCONCLUSIVE",
+      "factuality": "INCONCLUSIVE",
+      "protocol": "INCONCLUSIVE",
+      "temporal": "NOT_APPLICABLE",
+      "entity": "PASS",
+      "coverage": "INCONCLUSIVE",
+      "omission": "NOT_APPLICABLE",
+      "unsupported_assumption": "INCONCLUSIVE",
+      "cross_entity": "PASS",
+      "safety": "PASS",
+      "partial_answer_allowed": "NOT_APPLICABLE"
+    },
+    "full": {
+      "status": "STRUCTURALLY_VALID",
+      "normalized_verdict": "REJECT",
+      "dimensions": {
+        "grounding": "INCONCLUSIVE",
+        "factuality": "INCONCLUSIVE",
+        "protocol": "INCONCLUSIVE",
+        "temporal": "INCONCLUSIVE",
+        "entity": "PASS",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "FAIL",
+        "cross_entity": "NOT_APPLICABLE",
+        "safety": "PASS",
+        "partial_answer_allowed": "PASS"
+      },
+      "support": {
+        "label": "DIMENSIONS_MIXED",
+        "semantic_eligible": true,
+        "material_signals": [],
+        "uncertainty_signals": [
+          "grounding",
+          "factuality",
+          "protocol"
+        ],
+        "spurious_fails": [
+          "coverage",
+          "omission",
+          "unsupported_assumption"
+        ],
+        "missing_material_signals": []
+      }
+    },
+    "reduced": {
+      "status": "STRUCTURALLY_VALID",
+      "verdict": "REJECT",
+      "overreject": true,
+      "dimensions": "NOT_COLLECTED"
+    },
+    "excessive_negative_dimensions": [
+      "coverage",
+      "omission",
+      "unsupported_assumption"
+    ],
+    "uncertainty_detected": [
+      "grounding",
+      "factuality",
+      "protocol"
+    ],
+    "calibration_failure": true,
+    "internal_mechanism": "UNDETERMINED"
+  },
+  {
+    "case_id": "GG0-36",
+    "expected": "INCONCLUSIVE",
+    "input": {
+      "current_message": "Qual o valor atual do IMOVEL_A?",
+      "candidate_answer": "O valor atual do IMOVEL_A é 1800.",
+      "conversation_context": [],
+      "property_context": {
+        "selected_entity": "IMOVEL_A",
+        "accessible": true,
+        "owner_ref": "CLIENTE_SYN_A",
+        "current_facts": [
+          {
+            "id": "f-rent-a",
+            "key": "valor",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "temporal": "UNKNOWN_CURRENT_STATE",
+            "observed_at": "T_SYN_UNCONFIRMED",
+            "source": "CADASTRO_SYN"
+          }
+        ],
+        "commercial_confirmation": "UNCONFIRMED",
+        "operational_permissions": {
+          "publication_authorized": false
+        }
+      },
+      "available_protocols": [],
+      "guard_metadata": {
+        "evidence_bundle_status": "INCOMPLETE_TEMPORAL",
+        "entity_resolution_status": "RESOLVED",
+        "source_catalog_status": "COMPLETE"
+      }
+    },
+    "oracle_rationale": "Existe 1800 observado, mas o tempo de validade não está confirmado. Não há fonte histórica explicitamente usada como atual nem alegação de confirmação cadastral na candidata. Falta evidência para validar o presente; INCONCLUSIVE não vira certeza nem falso temporal FAIL automático.",
+    "expected_dimensions": {
+      "grounding": "INCONCLUSIVE",
+      "factuality": "INCONCLUSIVE",
+      "protocol": "NOT_APPLICABLE",
+      "temporal": "INCONCLUSIVE",
+      "entity": "PASS",
+      "coverage": "INCONCLUSIVE",
+      "omission": "NOT_APPLICABLE",
+      "unsupported_assumption": "INCONCLUSIVE",
+      "cross_entity": "PASS",
+      "safety": "PASS",
+      "partial_answer_allowed": "NOT_APPLICABLE"
+    },
+    "full": {
+      "status": "INVALID_RESPONSE",
+      "normalized_verdict": null,
+      "dimensions": null,
+      "support": {
+        "label": "DIMENSIONS_INSUFFICIENT",
+        "semantic_eligible": false,
+        "material_signals": [],
+        "uncertainty_signals": [],
+        "spurious_fails": [],
+        "missing_material_signals": []
+      }
+    },
+    "reduced": {
+      "status": "STRUCTURALLY_VALID",
+      "verdict": "REJECT",
+      "overreject": true,
+      "dimensions": "NOT_COLLECTED"
+    },
+    "excessive_negative_dimensions": null,
+    "uncertainty_detected": null,
+    "calibration_failure": true,
+    "internal_mechanism": "UNDETERMINED"
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "file": "PROPAGACAO_PENDENTE_TABELA_MESTRE_IA.md",
+  "operation": "APPEND_ONLY_IA_JEV_FRONT",
+  "original_bytes": 53687,
+  "original_sha256": "fbac02da987ee5dbb005a437d6be19bc860e5507af08657f0772ceb8da062ea4",
+  "append_bytes": 2931,
+  "append_sha256": "690d6e7eb6e09ae87789bb00afdd4cc987d4905babe5bb5ae30f8a1554bb4dbb",
+  "after_bytes": 56618,
+  "after_sha256": "f310c7c3fd21b82c98c44af497701175ae768f6f1e28895c1ca5eb55bdf23d9e",
+  "prefix_preserved": true,
+  "second_master_created": false,
+  "new_id_created": false,
+  "other_fronts_changed": false
+}

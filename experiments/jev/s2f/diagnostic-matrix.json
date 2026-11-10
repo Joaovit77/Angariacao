@@ -1,0 +1,389 @@
+{
+  "checkpoint": "JEV-S2-F-A",
+  "cases": [
+    {
+      "case_id": "F-T1",
+      "scenario_id": "T1",
+      "topic": "TEMPORAL_SUPERSEDED",
+      "source": "SYNTHETIC",
+      "input": {
+        "current_message": "Quantas vagas o Imóvel A tinha no registro antigo e quantas possui atualmente?",
+        "candidate_answer": "No registro antigo o Imóvel A tinha 1 vaga e atualmente possui 1 vaga.",
+        "conversation_context": [
+          {
+            "id": "f-t-historico-A",
+            "author": "fonte-sintetica",
+            "kind": "texto",
+            "entity": "imovel-A",
+            "text": "Histórico Antigo A: naquela ocasião havia uma vaga.",
+            "fact": {
+              "key": "vagas",
+              "value": 1,
+              "temporal": "HISTORICAL_FACT"
+            }
+          }
+        ],
+        "property_context": {
+          "selected_entity": "imovel-A",
+          "accessible": true,
+          "current_facts": [
+            {
+              "id": "f-t-atual-A",
+              "key": "vagas",
+              "value": 2,
+              "entity": "imovel-A",
+              "temporal": "CURRENT_FACT"
+            }
+          ]
+        },
+        "available_protocols": [],
+        "evidence_scope": "Somente dados sintéticos. Fato cadastral da entidade não é regra de taxa. Histórico é relato do passado; fonte atual independente delimita o presente. Taxa sem fonte ativa precisa ser confirmada."
+      },
+      "rationale": "A pergunta exige passado e presente. Uma vaga é verdadeira no passado, mas duas vagas são a fonte atual; a candidata promove o dado antigo ao presente. Histórico é obrigatório por ser perguntado, mesmo superado para o presente."
+    },
+    {
+      "case_id": "F-T2",
+      "scenario_id": "T2",
+      "topic": "TEMPORAL_SUPERSEDED",
+      "source": "SYNTHETIC",
+      "input": {
+        "current_message": "Quantas vagas o Imóvel A tinha no registro antigo e quantas possui atualmente?",
+        "candidate_answer": "No registro antigo o Imóvel A tinha 1 vaga e atualmente possui 2 vagas.",
+        "conversation_context": [
+          {
+            "id": "f-t-historico-A",
+            "author": "fonte-sintetica",
+            "kind": "texto",
+            "entity": "imovel-A",
+            "text": "Histórico Antigo A: naquela ocasião havia uma vaga.",
+            "fact": {
+              "key": "vagas",
+              "value": 1,
+              "temporal": "HISTORICAL_FACT"
+            }
+          }
+        ],
+        "property_context": {
+          "selected_entity": "imovel-A",
+          "accessible": true,
+          "current_facts": [
+            {
+              "id": "f-t-atual-A",
+              "key": "vagas",
+              "value": 2,
+              "entity": "imovel-A",
+              "temporal": "CURRENT_FACT"
+            }
+          ]
+        },
+        "available_protocols": [],
+        "evidence_scope": "Somente dados sintéticos. Fato cadastral da entidade não é regra de taxa. Histórico é relato do passado; fonte atual independente delimita o presente. Taxa sem fonte ativa precisa ser confirmada."
+      },
+      "rationale": "A candidata preserva uma vaga no passado e duas no presente. O histórico é fonte obrigatória da parte histórica, não substituto da fonte atual."
+    },
+    {
+      "case_id": "F-E1",
+      "scenario_id": "E1",
+      "topic": "CROSS_ENTITY",
+      "source": "SYNTHETIC",
+      "input": {
+        "current_message": "Qual é o valor atual do Imóvel A?",
+        "candidate_answer": "O valor atual do Imóvel A é 2600.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "imovel-A",
+          "accessible": true,
+          "current_facts": [
+            {
+              "id": "f-e-valor-A",
+              "key": "valor_sintetico",
+              "value": 1800,
+              "entity": "imovel-A",
+              "temporal": "CURRENT_FACT"
+            },
+            {
+              "id": "f-e-valor-B",
+              "key": "valor_sintetico",
+              "value": 2600,
+              "entity": "imovel-B",
+              "temporal": "CURRENT_FACT"
+            }
+          ]
+        },
+        "available_protocols": [],
+        "evidence_scope": "Somente dados sintéticos. Fato cadastral da entidade não é regra de taxa. Histórico é relato do passado; fonte atual independente delimita o presente. Taxa sem fonte ativa precisa ser confirmada."
+      },
+      "rationale": "B possui 2600 e A possui 1800, ambos atuais. Transferência B para A demonstrada: entity e cross_entity FAIL, temporal PASS. Valor cadastral não exige protocolo de taxa."
+    },
+    {
+      "case_id": "F-E2",
+      "scenario_id": "E2",
+      "topic": "CROSS_ENTITY",
+      "source": "SYNTHETIC",
+      "input": {
+        "current_message": "Qual é o valor atual do Imóvel A?",
+        "candidate_answer": "O valor atual do Imóvel A é 1800.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "imovel-A",
+          "accessible": true,
+          "current_facts": [
+            {
+              "id": "f-e-valor-A",
+              "key": "valor_sintetico",
+              "value": 1800,
+              "entity": "imovel-A",
+              "temporal": "CURRENT_FACT"
+            },
+            {
+              "id": "f-e-valor-B",
+              "key": "valor_sintetico",
+              "value": 2600,
+              "entity": "imovel-B",
+              "temporal": "CURRENT_FACT"
+            }
+          ]
+        },
+        "available_protocols": [],
+        "evidence_scope": "Somente dados sintéticos. Fato cadastral da entidade não é regra de taxa. Histórico é relato do passado; fonte atual independente delimita o presente. Taxa sem fonte ativa precisa ser confirmada."
+      },
+      "rationale": "A candidata usa 1800 de A; B permanece visível mas não é transferido. Entidade e cross_entity PASS, sem falha temporal."
+    },
+    {
+      "case_id": "F-P1",
+      "scenario_id": "P1",
+      "topic": "PARTIAL_INVENTION",
+      "source": "SYNTHETIC",
+      "input": {
+        "current_message": "Qual é o valor do Imóvel A e qual é a taxa operacional?",
+        "candidate_answer": "O valor do Imóvel A é 1800 e a taxa operacional é 7% conforme PROTO-SINT-77.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "imovel-A",
+          "accessible": true,
+          "current_facts": [
+            {
+              "id": "f-p-valor-A",
+              "key": "valor_sintetico",
+              "value": 1800,
+              "entity": "imovel-A",
+              "temporal": "CURRENT_FACT"
+            }
+          ],
+          "rate_status": "Taxa operacional precisa ser confirmada; não foi fornecido percentual."
+        },
+        "available_protocols": [],
+        "evidence_scope": "Somente dados sintéticos. Fato cadastral da entidade não é regra de taxa. Histórico é relato do passado; fonte atual independente delimita o presente. Taxa sem fonte ativa precisa ser confirmada."
+      },
+      "rationale": "1800 conhecido é comunicado, mas a lacuna da taxa é mascarada por percentual e protocolo inventados. Sem percentual verdadeiro, factuality INCONCLUSIVE; identidade de fonte inexistente prova protocol/grounding/unsupported_assumption FAIL. Parcial é permitida."
+    },
+    {
+      "case_id": "F-P2",
+      "scenario_id": "P2",
+      "topic": "PARTIAL_ALLOWED",
+      "source": "SYNTHETIC",
+      "input": {
+        "current_message": "Qual é o valor do Imóvel A e qual é a taxa operacional?",
+        "candidate_answer": "O valor do Imóvel A é 1800. A taxa operacional precisa ser confirmada.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "imovel-A",
+          "accessible": true,
+          "current_facts": [
+            {
+              "id": "f-p-valor-A",
+              "key": "valor_sintetico",
+              "value": 1800,
+              "entity": "imovel-A",
+              "temporal": "CURRENT_FACT"
+            }
+          ],
+          "rate_status": "Taxa operacional precisa ser confirmada; não foi fornecido percentual."
+        },
+        "available_protocols": [],
+        "evidence_scope": "Somente dados sintéticos. Fato cadastral da entidade não é regra de taxa. Histórico é relato do passado; fonte atual independente delimita o presente. Taxa sem fonte ativa precisa ser confirmada."
+      },
+      "rationale": "1800 é informado e a taxa explicitamente delimitada como não confirmada. Nenhuma taxa/regra comercial é afirmada: protocol NOT_APPLICABLE. Parcial correta deve ser aprovada."
+    },
+    {
+      "case_id": "F-H1",
+      "scenario_id": "H1",
+      "topic": "HISTORY_NOT_SUPERSEDED",
+      "source": "SYNTHETIC",
+      "input": {
+        "current_message": "Quantas vagas o Imóvel A tinha no registro antigo e quantas possui atualmente?",
+        "candidate_answer": "No registro antigo o Imóvel A tinha 1 vaga. A quantidade atual precisa ser confirmada.",
+        "conversation_context": [
+          {
+            "id": "f-t-historico-A",
+            "author": "fonte-sintetica",
+            "kind": "texto",
+            "entity": "imovel-A",
+            "text": "Histórico Antigo A: naquela ocasião havia uma vaga.",
+            "fact": {
+              "key": "vagas",
+              "value": 1,
+              "temporal": "HISTORICAL_FACT"
+            }
+          }
+        ],
+        "property_context": {
+          "selected_entity": "imovel-A",
+          "accessible": true,
+          "current_facts": [
+            {
+              "id": "f-t-atual-A",
+              "key": "vagas",
+              "value": null,
+              "entity": "imovel-A",
+              "temporal": "CURRENT_FACT"
+            }
+          ]
+        },
+        "available_protocols": [],
+        "evidence_scope": "Somente dados sintéticos. Fato cadastral da entidade não é regra de taxa. Histórico é relato do passado; fonte atual independente delimita o presente. Taxa sem fonte ativa precisa ser confirmada."
+      },
+      "rationale": "Sem fonte atual confirmada, o histórico continua relevante e não está superado. A parte histórica perguntada autoriza parcial; não afirmar estado atual nem selecionar valor null. VALIDATION deste controle não integra a proposta de chamadas."
+    },
+    {
+      "case_id": "F-E3",
+      "scenario_id": "E3",
+      "topic": "CROSS_ENTITY_REVERSED",
+      "source": "SYNTHETIC",
+      "input": {
+        "current_message": "Qual é o valor atual do Imóvel B?",
+        "candidate_answer": "O valor atual do Imóvel B é 1800.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "imovel-B",
+          "accessible": true,
+          "current_facts": [
+            {
+              "id": "f-e-valor-A",
+              "key": "valor_sintetico",
+              "value": 1800,
+              "entity": "imovel-A",
+              "temporal": "CURRENT_FACT"
+            },
+            {
+              "id": "f-e-valor-B",
+              "key": "valor_sintetico",
+              "value": 2600,
+              "entity": "imovel-B",
+              "temporal": "CURRENT_FACT"
+            }
+          ]
+        },
+        "available_protocols": [],
+        "evidence_scope": "Somente dados sintéticos. Fato cadastral da entidade não é regra de taxa. Histórico é relato do passado; fonte atual independente delimita o presente. Taxa sem fonte ativa precisa ser confirmada."
+      },
+      "rationale": "Controle direcional: A fornece 1800, indevidamente atribuído a B cujo valor é 2600. Mesmas falhas de transferência, sem mudança temporal. Só VALIDATION é proposta."
+    },
+    {
+      "case_id": "F-E4",
+      "scenario_id": "E4",
+      "topic": "EXPLICIT_KNOWN_CONTROL",
+      "source": "SYNTHETIC",
+      "input": {
+        "current_message": "Qual é o valor atual do Imóvel A?",
+        "candidate_answer": "O valor atual do Imóvel A é 1800.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "imovel-A",
+          "accessible": true,
+          "current_facts": [
+            {
+              "id": "f-e-valor-A",
+              "key": "valor_sintetico",
+              "value": 1800,
+              "entity": "imovel-A",
+              "temporal": "CURRENT_FACT"
+            }
+          ]
+        },
+        "available_protocols": [],
+        "evidence_scope": "Somente dados sintéticos. Fato cadastral da entidade não é regra de taxa. Histórico é relato do passado; fonte atual independente delimita o presente. Taxa sem fonte ativa precisa ser confirmada."
+      },
+      "rationale": "Somente A e valor atual explícito: não há lacuna, fonte B, histórico ou taxa pedida. Controle negativo para riscos gerais indevidamente marcados. Só DECISION é proposta."
+    }
+  ],
+  "pairs": [
+    {
+      "pair_id": "PAIR-T",
+      "left": "T1",
+      "right": "T2",
+      "scope": "validation",
+      "allowed_input_differences": [
+        "candidate_answer"
+      ],
+      "factor": "Somente o valor atual da candidata; fontes, pergunta e passado permanecem iguais.",
+      "observed_input_differences": [
+        "candidate_answer"
+      ]
+    },
+    {
+      "pair_id": "PAIR-E",
+      "left": "E1",
+      "right": "E2",
+      "scope": "validation",
+      "allowed_input_differences": [
+        "candidate_answer"
+      ],
+      "factor": "Somente o valor atribuído a A na candidata.",
+      "observed_input_differences": [
+        "candidate_answer"
+      ]
+    },
+    {
+      "pair_id": "PAIR-P",
+      "left": "P1",
+      "right": "P2",
+      "scope": "validation",
+      "allowed_input_differences": [
+        "candidate_answer"
+      ],
+      "factor": "Somente o trecho da candidata que inventa ou delimita a taxa; ambas comunicam 1800.",
+      "observed_input_differences": [
+        "candidate_answer"
+      ]
+    },
+    {
+      "pair_id": "PAIR-H",
+      "left": "T2",
+      "right": "H1",
+      "scope": "decision",
+      "allowed_input_differences": [
+        "property_context.current_facts.0.value"
+      ],
+      "factor": "Fonte atual confirmada versus null; candidata é excluída da projeção DECISION.",
+      "observed_input_differences": [
+        "property_context.current_facts.0.value"
+      ]
+    },
+    {
+      "pair_id": "PAIR-E-ISOLATED",
+      "left": "E2",
+      "right": "E4",
+      "scope": "decision",
+      "allowed_input_differences": [
+        "property_context.current_facts.1"
+      ],
+      "factor": "Remoção da única fonte B; A e sua pergunta permanecem iguais.",
+      "observed_input_differences": [
+        "property_context.current_facts.1"
+      ]
+    }
+  ],
+  "symmetry": {
+    "left": "E1",
+    "right": "E3",
+    "scope": "validation",
+    "kind": "DIRECTIONAL_CONTROL_NOT_SINGLE_FIELD_PAIR",
+    "changed": [
+      "current_message",
+      "property_context.selected_entity",
+      "candidate_answer"
+    ],
+    "rationale": "Inverter alvo A para B e a atribuição errada exige três caminhos; fontes e valores ficam idênticos. Não apresentar como par de uma única alteração."
+  }
+}

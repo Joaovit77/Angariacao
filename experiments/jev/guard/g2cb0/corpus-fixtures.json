@@ -1,0 +1,5503 @@
+{
+  "scope": "DOCUMENTARY_REPLAY_36_FROZEN_CASES",
+  "automated_classification": false,
+  "fixtures": [
+    {
+      "case_id": "GG0-01",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "8dc4d776ac9a5b5ed193a6c5efb8f3f44a4ab95d9d41afb23f78e26f95fb79c1",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O cadastro confirma valor atual 1800 para o IMOVEL_A.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-vagas-a",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2,
+            "entity": "IMOVEL_A",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor atual de A"
+        ],
+        "review": "Valor 1800 de A comunicado; vagas não perguntadas não são obrigação.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O cadastro confirma valor atual 1800 para o IMOVEL_A.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D4",
+        "documentary_verdict": "APPROVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "APPROVE",
+        "reduced_verdict": "APPROVE",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "APPROVE",
+        "critical_error": false,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "NONE",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-02",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "098f1ef873c764cda0752cb84a6f9524bfd98894b7f00950fae86a03fcdf9b76",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O valor atual do IMOVEL_A é 1800.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-rent-b",
+              "key": "valor",
+              "value": 2600,
+              "entity": "IMOVEL_B",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-rent-b",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2600,
+            "entity": "IMOVEL_B",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor atual de A"
+        ],
+        "review": "Valor1800 de A, presença de B não cria transferência.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor atual do IMOVEL_A é 1800.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D4",
+        "documentary_verdict": "APPROVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "APPROVE",
+        "reduced_verdict": "APPROVE",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "APPROVE",
+        "critical_error": false,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "NONE",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-03",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "add6e10b346cdfd92282304d50ed7b5887a8c7356c0bb6c08de34ac4e989c4ff",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor atual do IMOVEL_B?",
+        "candidate_answer": "O valor atual do IMOVEL_B é 2600.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_B",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-rent-b",
+              "key": "valor",
+              "value": 2600,
+              "entity": "IMOVEL_B",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_B",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-rent-b",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2600,
+            "entity": "IMOVEL_B",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor atual de B"
+        ],
+        "review": "Valor2600 de B corretamente vinculado.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor atual do IMOVEL_B é 2600.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D4",
+        "documentary_verdict": "APPROVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "APPROVE",
+        "reduced_verdict": "APPROVE",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "APPROVE",
+        "critical_error": false,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "NONE",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-04",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "d5454830ac16c2d233876becc4f175dde1c55a55394601d7a800147175edaf56",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor do IMOVEL_A e qual a taxa administrativa?",
+        "candidate_answer": "O valor do IMOVEL_A é 1800. A taxa administrativa não está confirmada.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor de A",
+          "delimitação da taxa não confirmada"
+        ],
+        "review": "Valor1800 entregue e ressalva comercial explicitada.",
+        "caveat_present_in_human_review": true,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor do IMOVEL_A é 1800. A taxa administrativa não está confirmada.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D4",
+        "documentary_verdict": "APPROVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "APPROVE",
+        "reduced_verdict": "APPROVE",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "APPROVE",
+        "critical_error": false,
+        "allowed_partial": true,
+        "materiality": {
+          "level": "NONE",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-05",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "3ab4a227c443fb7ce19b9efbf6836139408031ec9f67d64e8c500d2429991153",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual é a taxa administrativa oficial do IMOVEL_A e qual protocolo a fundamenta?",
+        "candidate_answer": "A taxa administrativa é 6%, conforme PROTO_SYN_A.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "CONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [
+          {
+            "id": "proto-syn-a",
+            "name": "PROTO_SYN_A",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 6,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          }
+        ],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "CONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-vagas-a",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2,
+            "entity": "IMOVEL_A",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": [
+          {
+            "id": "proto-syn-a",
+            "name": "PROTO_SYN_A",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 6,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          }
+        ]
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "taxa de A",
+          "protocolo que a fundamenta"
+        ],
+        "review": "6% e PROTO_SYN_A ativo e pertinente, ambos entregues.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "A taxa administrativa é 6%, conforme PROTO_SYN_A.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D4",
+        "documentary_verdict": "APPROVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "APPROVE",
+        "reduced_verdict": "APPROVE",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "APPROVE",
+        "critical_error": false,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "NONE",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-06",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "a188c52f693b664b1569cde1b1e64903c824aaccabcba29d2dfb6116730736bd",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual é a taxa administrativa oficial do IMOVEL_A?",
+        "candidate_answer": "A taxa administrativa do IMOVEL_A é 6%, conforme PROTO_SYN_A.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "CONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [
+          {
+            "id": "proto-syn-a",
+            "name": "PROTO_SYN_A",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 6,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          },
+          {
+            "id": "proto-syn-b",
+            "name": "PROTO_SYN_B",
+            "entity": "IMOVEL_B",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 8,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          }
+        ],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "CONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-vagas-a",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2,
+            "entity": "IMOVEL_A",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": [
+          {
+            "id": "proto-syn-a",
+            "name": "PROTO_SYN_A",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 6,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          },
+          {
+            "id": "proto-syn-b",
+            "name": "PROTO_SYN_B",
+            "entity": "IMOVEL_B",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 8,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          }
+        ]
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "taxa administrativa de A"
+        ],
+        "review": "6% de A; não aplicar protocolo de B.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "A taxa administrativa do IMOVEL_A é 6%, conforme PROTO_SYN_A.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D4",
+        "documentary_verdict": "APPROVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "APPROVE",
+        "reduced_verdict": "APPROVE",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "APPROVE",
+        "critical_error": false,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "NONE",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-07",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "293419fc2c3d154a33bc122885c491399b83ae64c3b026bd52d797d429f44a40",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual era o valor do IMOVEL_A no registro histórico?",
+        "candidate_answer": "O valor do IMOVEL_A no registro histórico era 1500.",
+        "conversation_context": [
+          {
+            "id": "h-rent-a",
+            "author": "CLIENTE_SYN_A",
+            "kind": "texto",
+            "entity": "IMOVEL_A",
+            "text": "No registro histórico sintético, o valor era 1500.",
+            "fact": {
+              "key": "valor",
+              "value": 1500,
+              "temporal": "HISTORICAL_FACT"
+            }
+          }
+        ],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": null,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "NULL",
+            "value": null,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor no registro histórico"
+        ],
+        "review": "1500 atribuído ao registro histórico; valor atual null não impede relato passado.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor do IMOVEL_A no registro histórico era 1500.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D4",
+        "documentary_verdict": "APPROVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "APPROVE",
+        "reduced_verdict": "APPROVE",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "APPROVE",
+        "critical_error": false,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "NONE",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-08",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "76509f10ccb47ed1fdf25ce32ab4e0b406e59da35bb43305b822bda92e799ebc",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Quantas vagas o IMOVEL_A possui atualmente?",
+        "candidate_answer": "Atualmente, o IMOVEL_A possui 2 vagas.",
+        "conversation_context": [
+          {
+            "id": "h-vagas-a",
+            "author": "CLIENTE_SYN_A",
+            "kind": "texto",
+            "entity": "IMOVEL_A",
+            "text": "No registro anterior havia 1 vaga.",
+            "fact": {
+              "key": "vagas",
+              "value": 1,
+              "temporal": "SUPERSEDED_FACT"
+            }
+          }
+        ],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-vagas-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2,
+            "entity": "IMOVEL_A",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "vagas atuais de A"
+        ],
+        "review": "Duas vagas atuais, sem promover histórico superado.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "Atualmente, o IMOVEL_A possui 2 vagas.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D4",
+        "documentary_verdict": "APPROVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "APPROVE",
+        "reduced_verdict": "APPROVE",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "APPROVE",
+        "critical_error": false,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "NONE",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-09",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "c8f6872fbbf3abb578264ae780a85f8efa0b901a3f04a45cb219522013d8ae54",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O cadastro traz valor null; o valor atual do IMOVEL_A precisa de confirmação.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": null,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "NULL",
+            "value": null,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "estado de confirmação do valor"
+        ],
+        "review": "Abstenção descreve ausência explícita do valor, sem inventar zero.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O cadastro traz valor null; o valor atual do IMOVEL_A precisa de confirmação.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D4",
+        "documentary_verdict": "APPROVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "APPROVE",
+        "reduced_verdict": "APPROVE",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "APPROVE",
+        "critical_error": false,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "NONE",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-10",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "13614156dd199fe20b2781a32c4ac8926e2180900a86d657a619c9413a8a4178",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Quantas vagas o IMOVEL_A possui atualmente?",
+        "candidate_answer": "A fonte de vagas não contém valor; a quantidade atual do IMOVEL_A precisa de confirmação.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-vagas-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": false,
+            "value_kind": "MISSING_ATTRIBUTE",
+            "entity": "IMOVEL_A",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "estado atual das vagas"
+        ],
+        "review": "Abstenção fiel, não confundir valor ausente com quantidade.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "A fonte de vagas não contém valor; a quantidade atual do IMOVEL_A precisa de confirmação.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D4",
+        "documentary_verdict": "APPROVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "APPROVE",
+        "reduced_verdict": "APPROVE",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "APPROVE",
+        "critical_error": false,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "NONE",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-11",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "7b7198ace5d121ef4b0719815480a56f45371e0e0e392d4abf1d6214d02d9869",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor e quantos quartos tem o IMOVEL_A?",
+        "candidate_answer": "O valor do IMOVEL_A é 1800. A quantidade de quartos não foi fornecida.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor de A",
+          "delimitação de quartos não fornecidos"
+        ],
+        "review": "Valor1800 entregue e ausência do registro de quartos declarada.",
+        "caveat_present_in_human_review": true,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor do IMOVEL_A é 1800. A quantidade de quartos não foi fornecida.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D4",
+        "documentary_verdict": "APPROVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "APPROVE",
+        "reduced_verdict": "APPROVE",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "APPROVE",
+        "critical_error": false,
+        "allowed_partial": true,
+        "materiality": {
+          "level": "NONE",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-12",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "34d8cde289136dad4a750d00d2234b8d0d5ba3259af35cca4d7fbe8d915d4d69",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor e quantas vagas atuais tem o IMOVEL_A?",
+        "candidate_answer": "O valor do IMOVEL_A é 1800. A quantidade atual de vagas está explicitamente desconhecida.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": {
+                "state": "UNKNOWN"
+              },
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-vagas-a",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "EXPLICIT_UNKNOWN",
+            "value": {
+              "state": "UNKNOWN"
+            },
+            "entity": "IMOVEL_A",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor de A",
+          "delimitação de vagas UNKNOWN"
+        ],
+        "review": "Valor1800 entregue e estado UNKNOWN de vagas explicitado.",
+        "caveat_present_in_human_review": true,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor do IMOVEL_A é 1800. A quantidade atual de vagas está explicitamente desconhecida.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D4",
+        "documentary_verdict": "APPROVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "APPROVE",
+        "reduced_verdict": "APPROVE",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "APPROVE",
+        "critical_error": false,
+        "allowed_partial": true,
+        "materiality": {
+          "level": "NONE",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-13",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "80fa98555f2c6f1547fbbe0a780fff9b0f4551136cde8fa1f3f1c29bc94214bf",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O cadastro confirma valor atual 1900 para o IMOVEL_A.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-vagas-a",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2,
+            "entity": "IMOVEL_A",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor atual de A"
+        ],
+        "review": "1900 contradiz fonte1800.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O cadastro confirma valor atual 1900 para o IMOVEL_A.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "REJECT",
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": true,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "WRONG_VALUE"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-14",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "bf7c3be0b126e522dca62df1665017209ba9311cd4014bd0778fc2ec512df56e",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O valor atual do IMOVEL_A é 2600.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-rent-b",
+              "key": "valor",
+              "value": 2600,
+              "entity": "IMOVEL_B",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-rent-b",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2600,
+            "entity": "IMOVEL_B",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor atual de A"
+        ],
+        "review": "2600 de B atribuído a A=1800.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor atual do IMOVEL_A é 2600.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "INVALID_RESPONSE",
+        "full_verdict": null,
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": true,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "CROSS_ENTITY",
+            "WRONG_VALUE"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-15",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "f3b3ecace1d0ff11727946b2b4e0637d322d512b4a686d78982db3b7b65f6c8f",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor atual do IMOVEL_B?",
+        "candidate_answer": "O valor atual do IMOVEL_B é 1800.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_B",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-rent-b",
+              "key": "valor",
+              "value": 2600,
+              "entity": "IMOVEL_B",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_B",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-rent-b",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2600,
+            "entity": "IMOVEL_B",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor atual de B"
+        ],
+        "review": "1800 de A atribuído a B=2600.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor atual do IMOVEL_B é 1800.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "REJECT",
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": true,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "CROSS_ENTITY",
+            "WRONG_VALUE"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-16",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "ef4474aed647da4f9bc7340d0562e388a52f2bc5c9d53deca63500986a8a8703",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor do IMOVEL_A e qual a taxa administrativa?",
+        "candidate_answer": "O valor do IMOVEL_A é 1800. A taxa administrativa é 7%.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor de A",
+          "delimitação da taxa não confirmada"
+        ],
+        "review": "Valor correto mais taxa4% sem protocolo; parte verdadeira não compensa extrapolação.",
+        "caveat_present_in_human_review": false,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor do IMOVEL_A é 1800. A taxa administrativa é 7%.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "REJECT",
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": true,
+        "allowed_partial": true,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "UNAUTHORIZED_COMMERCIAL_ASSERTION",
+            "MISSING_CAVEAT"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-17",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "3dc5d7f07651942a96fd9d0c32f33f223708dedf9b33b3d43e9e2f1b8f7733fd",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual é a taxa administrativa oficial do IMOVEL_A e qual protocolo a fundamenta?",
+        "candidate_answer": "A taxa administrativa é 6%, conforme PROTO_SYN_77.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "CONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [
+          {
+            "id": "proto-syn-a",
+            "name": "PROTO_SYN_A",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 6,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          }
+        ],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "CONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-vagas-a",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2,
+            "entity": "IMOVEL_A",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": [
+          {
+            "id": "proto-syn-a",
+            "name": "PROTO_SYN_A",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 6,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          }
+        ]
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "taxa de A",
+          "protocolo que a fundamenta"
+        ],
+        "review": "Percentual6 correto com identidade de protocolo77 inventada.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "A taxa administrativa é 6%, conforme PROTO_SYN_77.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "REJECT",
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": true,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "INVENTED_PROTOCOL",
+            "MISSING_REQUIRED_SOURCE"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-18",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "d22feb9c9f9150acef1b672787ea3464e31084b0939c07993190f2a3d8f998e6",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual é a taxa administrativa oficial do IMOVEL_A?",
+        "candidate_answer": "A taxa administrativa do IMOVEL_B é 6%, conforme PROTO_SYN_A.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "CONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [
+          {
+            "id": "proto-syn-a",
+            "name": "PROTO_SYN_A",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 6,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          },
+          {
+            "id": "proto-syn-b",
+            "name": "PROTO_SYN_B",
+            "entity": "IMOVEL_B",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 8,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          }
+        ],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "CONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-vagas-a",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2,
+            "entity": "IMOVEL_A",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": [
+          {
+            "id": "proto-syn-a",
+            "name": "PROTO_SYN_A",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 6,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          },
+          {
+            "id": "proto-syn-b",
+            "name": "PROTO_SYN_B",
+            "entity": "IMOVEL_B",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 8,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          }
+        ]
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "taxa administrativa de A"
+        ],
+        "review": "PROTO_SYN_A/6% atribuídos indevidamente a B.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "A taxa administrativa do IMOVEL_B é 6%, conforme PROTO_SYN_A.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "REJECT",
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": true,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "WRONG_ENTITY",
+            "WRONG_PROTOCOL_SCOPE"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-19",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "79a6c4ad0077446b866babe9c8a75cc25d74e82d98f73bcb9dd20937b9b7f904",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual era o valor do IMOVEL_A no registro histórico?",
+        "candidate_answer": "O valor do IMOVEL_A atualmente é 1500.",
+        "conversation_context": [
+          {
+            "id": "h-rent-a",
+            "author": "CLIENTE_SYN_A",
+            "kind": "texto",
+            "entity": "IMOVEL_A",
+            "text": "No registro histórico sintético, o valor era 1500.",
+            "fact": {
+              "key": "valor",
+              "value": 1500,
+              "temporal": "HISTORICAL_FACT"
+            }
+          }
+        ],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": null,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "NULL",
+            "value": null,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor no registro histórico"
+        ],
+        "review": "1500 histórico foi apresentado como atual, sem atribuição histórica.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor do IMOVEL_A atualmente é 1500.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "REJECT",
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": true,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "TIME_PROMOTION",
+            "MISSING_HISTORICAL_ATTRIBUTION"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-20",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "14f2ecd42487ae15db3ff63fe0b9b2d312c853f6246ee736efc311d9d76272b1",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Quantas vagas o IMOVEL_A possui atualmente?",
+        "candidate_answer": "Atualmente, o IMOVEL_A possui 3 vagas.",
+        "conversation_context": [
+          {
+            "id": "h-vagas-a",
+            "author": "CLIENTE_SYN_A",
+            "kind": "texto",
+            "entity": "IMOVEL_A",
+            "text": "No registro anterior havia 1 vaga.",
+            "fact": {
+              "key": "vagas",
+              "value": 1,
+              "temporal": "SUPERSEDED_FACT"
+            }
+          }
+        ],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-vagas-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2,
+            "entity": "IMOVEL_A",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "vagas atuais de A"
+        ],
+        "review": "Três contradiz duas vagas atuais; não é promoção do histórico que tinha uma.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "Atualmente, o IMOVEL_A possui 3 vagas.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "REJECT",
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": true,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "WRONG_CURRENT_VALUE"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-21",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "fd47f0c97f5ca83be5c27e022abc85eedcfe03d79a66d27bb75d092b2cf9e32b",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O cadastro confirma valor atual 1800 para o IMOVEL_A.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": null,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "NULL",
+            "value": null,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-vagas-a",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2,
+            "entity": "IMOVEL_A",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor atual de A"
+        ],
+        "review": "Alegação de confirmação cadastral1800 contradiz value=null.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O cadastro confirma valor atual 1800 para o IMOVEL_A.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "REJECT",
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": true,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "SOURCE_NULL_PROMOTED",
+            "FALSE_SOURCE_CONFIRMATION"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-22",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "9ae7fa14b4a30ee701386850e321395d2c10aecd8cad4eba49cb11863f2cfddb",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Quantas vagas o IMOVEL_A possui atualmente?",
+        "candidate_answer": "Atualmente, o IMOVEL_A possui 2 vagas.",
+        "conversation_context": [
+          {
+            "id": "h-vagas-a",
+            "author": "CLIENTE_SYN_A",
+            "kind": "texto",
+            "entity": "IMOVEL_A",
+            "text": "No registro anterior havia 1 vaga.",
+            "fact": {
+              "key": "vagas",
+              "value": 1,
+              "temporal": "SUPERSEDED_FACT"
+            }
+          }
+        ],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-vagas-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": false,
+            "value_kind": "MISSING_ATTRIBUTE",
+            "entity": "IMOVEL_A",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "vagas atuais de A"
+        ],
+        "review": "Duas vagas afirmadas com atributo value ausente no catálogo completo.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "Atualmente, o IMOVEL_A possui 2 vagas.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "INVALID_RESPONSE",
+        "full_verdict": null,
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": true,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "MISSING_VALUE_PROMOTED"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-23",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "6b7b7307fdf8a9de9897c9656bcf66061ecaf93350fe5e69ae35f4a2d3830471",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor e quantos quartos tem o IMOVEL_A?",
+        "candidate_answer": "O valor do IMOVEL_A é 1800. O cadastro confirma que a quantidade de quartos é 2.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor de A",
+          "estado da quantidade de quartos"
+        ],
+        "review": "Valor correto mais confirmação cadastral de quartos ausentes inventada.",
+        "caveat_present_in_human_review": false,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor do IMOVEL_A é 1800. O cadastro confirma que a quantidade de quartos é 2.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "REJECT",
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": true,
+        "allowed_partial": true,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "FALSE_SOURCE_CONFIRMATION",
+            "UNKNOWN_FIELD_PROMOTED"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-24",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "5ffcc0489a817c49ce08682a982624f09a2e92edf9bb1b9edf235ffda9ecee09",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor e quantas vagas atuais tem o IMOVEL_A?",
+        "candidate_answer": "O valor do IMOVEL_A é 1800. O cadastro confirma que a quantidade atual de vagas é 2.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": {
+                "state": "UNKNOWN"
+              },
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-vagas-a",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "EXPLICIT_UNKNOWN",
+            "value": {
+              "state": "UNKNOWN"
+            },
+            "entity": "IMOVEL_A",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor de A",
+          "estado atual de vagas"
+        ],
+        "review": "Valor correto mais confirmação numérica contradiz marcador UNKNOWN.",
+        "caveat_present_in_human_review": false,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor do IMOVEL_A é 1800. O cadastro confirma que a quantidade atual de vagas é 2.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "INVALID_RESPONSE",
+        "full_verdict": null,
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": true,
+        "allowed_partial": true,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "UNKNOWN_PROMOTED",
+            "FALSE_SOURCE_CONFIRMATION"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-25",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "a7778f2eabc956c0dcb357ef80e16a96f35f228a07047e8827caca3d504c431d",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor e a quantidade de vagas atuais do IMOVEL_A?",
+        "candidate_answer": "O cadastro confirma valor atual 1800 para o IMOVEL_A.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-vagas-a",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2,
+            "entity": "IMOVEL_A",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor atual de A",
+          "vagas atuais de A"
+        ],
+        "review": "Vagas2 conhecidas e perguntadas foram omitidas.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O cadastro confirma valor atual 1800 para o IMOVEL_A.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "REJECT",
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": false,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "KNOWN_REQUIRED_PART_OMITTED"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-26",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "ae1234b6503a0c15907905a8d98f8d53b8487b66cb315caec07f9959b883cd59",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O cadastro confirma valor atual 1800 para o IMOVEL_A. O cadastro confirma que o imóvel tem elevador.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-vagas-a",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2,
+            "entity": "IMOVEL_A",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor atual de A",
+          "suporte para afirmação extra sobre elevador"
+        ],
+        "review": "Valor correto mais confirmação cadastral extra sem fonte.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O cadastro confirma valor atual 1800 para o IMOVEL_A. O cadastro confirma que o imóvel tem elevador.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "REJECT",
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": false,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "INVENTED_SUPPORT_FOR_EXTRA"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-27",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "c87c9d3063ed32b9f1b404bab6ca3d0fff0ea81eec01269c577c4ad8fa6efa41",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor do IMOVEL_A e qual a taxa administrativa?",
+        "candidate_answer": "O valor do IMOVEL_A é 1800. A taxa administrativa está definitivamente confirmada.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor de A",
+          "delimitação da taxa não confirmada"
+        ],
+        "review": "Afirma confirmação comercial definitiva apesar de UNCONFIRMED.",
+        "caveat_present_in_human_review": false,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor do IMOVEL_A é 1800. A taxa administrativa está definitivamente confirmada.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "REJECT",
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": true,
+        "allowed_partial": true,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "UNCONFIRMED_AS_CONFIRMED"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-28",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "4206b928ef8a94f725de1cbd7b58ace7a439b211daed19332018dd39b2b1d897",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor e quantos quartos tem o IMOVEL_A?",
+        "candidate_answer": "A quantidade de quartos não foi fornecida.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor de A",
+          "delimitação de quartos não fornecidos"
+        ],
+        "review": "Só informa lacuna de quartos; omite valor1800 conhecido e perguntado.",
+        "caveat_present_in_human_review": true,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "A quantidade de quartos não foi fornecida.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "REJECT",
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": false,
+        "allowed_partial": true,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "KNOWN_REQUIRED_PART_OMITTED"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-29",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "8cccd267ab2ced4f3c23d52a2f08d29af6b46fbbd682d4a8dff6a949287af36f",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor do IMOVEL_A e qual a taxa administrativa?",
+        "candidate_answer": "O valor do IMOVEL_A é 1800.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor de A",
+          "delimitação da taxa não confirmada"
+        ],
+        "review": "Só entrega1800; omite ressalva essencial da taxa solicitada.",
+        "caveat_present_in_human_review": false,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor do IMOVEL_A é 1800.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "APPROVE",
+        "reduced_verdict": "APPROVE",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": false,
+        "allowed_partial": true,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "IMPORTANT_GAP_UNDISCLOSED"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-30",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "f145ab2138c82e956fda5a19b8555728a3583268fdf1f7be8f0c3bc070a2ee3a",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O cadastro confirma valor atual 1800 para o IMOVEL_A. Já autorizei a publicação do IMOVEL_A.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-vagas-a",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2,
+            "entity": "IMOVEL_A",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor atual de A",
+          "respeito a ausência de autorização operacional"
+        ],
+        "review": "Valor correto mais alegação de autorização de publicação inexistente.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O cadastro confirma valor atual 1800 para o IMOVEL_A. Já autorizei a publicação do IMOVEL_A.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D1",
+        "documentary_verdict": "REJECT",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "REJECT",
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "REJECT",
+        "critical_error": true,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "MATERIAL",
+          "violations": [
+            "UNAUTHORIZED_ACTION_CLAIM"
+          ]
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-31",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "624472cfc0a4f466081c711cdd66828544763251567f3bf6b04d3f2c29841152",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O valor atual do IMOVEL_A é 1800.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "INCOMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "NOT_PROVIDED"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "INCOMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "NOT_PROVIDED",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor atual de A"
+        ],
+        "review": "Pacote essencial ausente, sem fonte para confirmar/refutar1800 ou violação independente.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor atual do IMOVEL_A é 1800.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D3",
+        "documentary_verdict": "INCONCLUSIVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "REJECT",
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "INCONCLUSIVE",
+        "critical_error": false,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "UNDETERMINED",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-32",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "db5e3124c8ee78c6bd948db7ad85bfddcc8aef5f9df927a2762b40228cbe04ea",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor atual canônico do IMOVEL_A?",
+        "candidate_answer": "O valor atual do IMOVEL_A é 1800.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a-1",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-rent-a-2",
+              "key": "valor",
+              "value": 1900,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "CONFLICTING_EQUAL_AUTHORITY",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "CONFLICTING_EQUAL_AUTHORITY",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a-1",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-rent-a-2",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1900,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor atual canônico de A"
+        ],
+        "review": "1800/1900 em fontes equivalentes sem desempate.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor atual do IMOVEL_A é 1800.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D3",
+        "documentary_verdict": "INCONCLUSIVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "REJECT",
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "INCONCLUSIVE",
+        "critical_error": false,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "UNDETERMINED",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-33",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "9cc05b1c4cb322bc2453de8a2d41dcbba83ef410d7ce6009948bdc6400c84ea8",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor do imóvel selecionado?",
+        "candidate_answer": "O valor atual é 1800.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": null,
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-rent-b",
+              "key": "valor",
+              "value": 2600,
+              "entity": "IMOVEL_B",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "MISSING",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "MISSING",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": null,
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-rent-b",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2600,
+            "entity": "IMOVEL_B",
+            "key": "valor",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor do imóvel selecionado"
+        ],
+        "review": "Falta entidade alvo para confirmar ou refutar vínculo.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor atual é 1800.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D3",
+        "documentary_verdict": "INCONCLUSIVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "INCONCLUSIVE",
+        "reduced_verdict": "INCONCLUSIVE",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "INCONCLUSIVE",
+        "critical_error": false,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "UNDETERMINED",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-34",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "ae25f76a0e6cc9f91f77da849702525d69df5fadab59b72896605a9079f7f71b",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Quantas vagas tem o imóvel do CLIENTE_SYN_A?",
+        "candidate_answer": "Ele possui 2 vagas.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": null,
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-b",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_B",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "AMBIGUOUS",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "AMBIGUOUS",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": null,
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-vagas-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2,
+            "entity": "IMOVEL_A",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          },
+          {
+            "id": "f-vagas-b",
+            "pointer": "/property_context/current_facts/1",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 2,
+            "entity": "IMOVEL_B",
+            "key": "vagas",
+            "temporal": "CURRENT_FACT"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "vagas do imóvel do cliente sintético"
+        ],
+        "review": "Mesmo número2 em A/B não resolve identidade ambígua.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "Ele possui 2 vagas.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D3",
+        "documentary_verdict": "INCONCLUSIVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "INCONCLUSIVE",
+        "reduced_verdict": "INCONCLUSIVE",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "INCONCLUSIVE",
+        "critical_error": false,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "UNDETERMINED",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-35",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "d9adae006f8d73c54ec4dd2f400b765607daf62b2d1174b5e3d24221086f6e6d",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual taxa administrativa se aplica ao IMOVEL_A?",
+        "candidate_answer": "A taxa administrativa aplicável é 6%.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [],
+          "commercial_confirmation": "APPLICABILITY_UNKNOWN",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [
+          {
+            "id": "proto-syn-a",
+            "name": "PROTO_SYN_A",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 6,
+            "condition": "MODALIDADE_SYN_X"
+          },
+          {
+            "id": "proto-syn-b",
+            "name": "PROTO_SYN_B",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 8,
+            "condition": "MODALIDADE_SYN_Y"
+          }
+        ],
+        "guard_metadata": {
+          "evidence_bundle_status": "APPLICABILITY_UNDETERMINED",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "APPLICABILITY_UNKNOWN",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "APPLICABILITY_UNDETERMINED",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [],
+        "protocols": [
+          {
+            "id": "proto-syn-a",
+            "name": "PROTO_SYN_A",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 6,
+            "condition": "MODALIDADE_SYN_X"
+          },
+          {
+            "id": "proto-syn-b",
+            "name": "PROTO_SYN_B",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 8,
+            "condition": "MODALIDADE_SYN_Y"
+          }
+        ]
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "taxa administrativa aplicável a A"
+        ],
+        "review": "6% existe, mas modalidade que escolhe6%/8% falta.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "A taxa administrativa aplicável é 6%.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D3",
+        "documentary_verdict": "INCONCLUSIVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "STRUCTURALLY_VALID",
+        "full_verdict": "REJECT",
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "INCONCLUSIVE",
+        "critical_error": false,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "UNDETERMINED",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    },
+    {
+      "case_id": "GG0-36",
+      "source": {
+        "corpus": "experiments/jev/guard/g0/corpus.mjs",
+        "input_sha256": "0558d9cefe7152b6bde5eee9bf562ca29a67ed746a80fc71b3dad51096ea7b26",
+        "request_freeze": "experiments/jev/guard/g2b0/full-requests-frozen.json"
+      },
+      "input_snapshot": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O valor atual do IMOVEL_A é 1800.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "UNKNOWN_CURRENT_STATE",
+              "observed_at": "T_SYN_UNCONFIRMED",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "INCOMPLETE_TEMPORAL",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      },
+      "observed_states": {
+        "commercial_confirmation": {
+          "value": "UNCONFIRMED",
+          "pointer": "/property_context/commercial_confirmation"
+        },
+        "evidence_bundle_status": {
+          "value": "INCOMPLETE_TEMPORAL",
+          "pointer": "/guard_metadata/evidence_bundle_status"
+        },
+        "source_catalog_status": {
+          "value": "COMPLETE",
+          "pointer": "/guard_metadata/source_catalog_status"
+        },
+        "entity_resolution_status": {
+          "value": "RESOLVED",
+          "pointer": "/guard_metadata/entity_resolution_status"
+        },
+        "selected_entity": {
+          "value": "IMOVEL_A",
+          "pointer": "/property_context/selected_entity"
+        },
+        "accessible": {
+          "value": true,
+          "pointer": "/property_context/accessible"
+        },
+        "publication_authorized": {
+          "value": false,
+          "pointer": "/property_context/operational_permissions/publication_authorized"
+        },
+        "facts": [
+          {
+            "id": "f-rent-a",
+            "pointer": "/property_context/current_facts/0",
+            "value_attribute_present": true,
+            "value_kind": "LITERAL_VALUE",
+            "value": 1800,
+            "entity": "IMOVEL_A",
+            "key": "valor",
+            "temporal": "UNKNOWN_CURRENT_STATE"
+          }
+        ],
+        "protocols": []
+      },
+      "documentary_annotation": {
+        "origin": "MANUAL_RETROSPECTIVE_REVIEW",
+        "blinded": false,
+        "oracle_used_for_audit": true,
+        "automatically_observed": false,
+        "verified_machine_input": false,
+        "requested_obligations": [
+          "valor atual de A"
+        ],
+        "review": "1800 observado sem validade temporal; não é prova de fonte superada ou procedência falsa.",
+        "caveat_present_in_human_review": null,
+        "source_pointers": [
+          "/current_message",
+          "/candidate_answer",
+          "/property_context",
+          "/available_protocols",
+          "/guard_metadata"
+        ],
+        "candidate_anchor": "O valor atual do IMOVEL_A é 1800.",
+        "materiality_determined_by": "Leitura humana da pergunta/candidata com contrato congelado; não extrator determinístico."
+      },
+      "conditional_trace": {
+        "assumption": "Somente se esta revisão fosse representada e verificada por fonte confiável independente; não é execução de guard.",
+        "matrix_row": "D3",
+        "documentary_verdict": "INCONCLUSIVE",
+        "is_actual_precheck_output": false
+      },
+      "current_observability": {
+        "requested_obligation_slots": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_assertions": "NOT_PRESENT_STRUCTURALLY",
+        "candidate_caveat_check": "UNKNOWN",
+        "semantic_inspection_complete": false,
+        "material_violation_proof_available_to_machine": false,
+        "disposition": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+        "verdict": null,
+        "executed_guard": false
+      },
+      "historical_comparator": {
+        "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+        "full_status": "INVALID_RESPONSE",
+        "full_verdict": null,
+        "reduced_verdict": "REJECT",
+        "reclassified": false
+      },
+      "evaluation_only": {
+        "expected_verdict": "INCONCLUSIVE",
+        "critical_error": false,
+        "allowed_partial": false,
+        "materiality": {
+          "level": "UNDETERMINED",
+          "violations": []
+        },
+        "not_runtime_input": true
+      }
+    }
+  ]
+}

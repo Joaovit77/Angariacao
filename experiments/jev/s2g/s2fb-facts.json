@@ -1,0 +1,178 @@
+{
+  "run_id": "jev-s2f-diagnostic-1792258267412-99056db2",
+  "calls_completed": 24,
+  "model": "jev-1.14.0",
+  "structure": {
+    "valid": 24,
+    "invalid": 0,
+    "sum_mismatch": 0,
+    "choice_mismatch": 0,
+    "unknown": 0,
+    "operational": 0
+  },
+  "decision": {
+    "classification": "NAO_PROMISSOR_DIAGNOSTICO",
+    "fields": {
+      "action": {
+        "numerator": 10,
+        "denominator": 10,
+        "value": 1
+      },
+      "intent": {
+        "numerator": 10,
+        "denominator": 10,
+        "value": 1
+      },
+      "enough_context": {
+        "numerator": 10,
+        "denominator": 10,
+        "value": 1
+      },
+      "relevant_current_facts": {
+        "numerator": 8,
+        "denominator": 10,
+        "value": 0.8
+      },
+      "relevant_historical_facts": {
+        "numerator": 10,
+        "denominator": 10,
+        "value": 1
+      },
+      "missing_information": {
+        "numerator": 6,
+        "denominator": 10,
+        "value": 0.6
+      },
+      "applicable_protocols": {
+        "numerator": 10,
+        "denominator": 10,
+        "value": 1
+      },
+      "prohibited_assumptions": {
+        "numerator": 4,
+        "denominator": 10,
+        "value": 0.4
+      },
+      "entity_resolution": {
+        "numerator": 10,
+        "denominator": 10,
+        "value": 1
+      },
+      "temporal_resolution": {
+        "numerator": 4,
+        "denominator": 10,
+        "value": 0.4
+      }
+    },
+    "completeness": {
+      "numerator": 2,
+      "denominator": 10,
+      "value": 0.2
+    },
+    "micro": {
+      "numerator": 82,
+      "denominator": 100,
+      "value": 0.82
+    },
+    "required_history_recall": {
+      "numerator": 4,
+      "denominator": 4,
+      "value": 1
+    }
+  },
+  "validation": {
+    "classification": "INCONCLUSIVO",
+    "verdict": {
+      "numerator": 14,
+      "denominator": 14,
+      "value": 1
+    },
+    "negative_coverage": {
+      "numerator": 8,
+      "denominator": 8,
+      "value": 1
+    },
+    "positive_coverage": {
+      "numerator": 6,
+      "denominator": 6,
+      "value": 1
+    },
+    "false_accept": {
+      "numerator": 0,
+      "denominator": 8,
+      "value": 0
+    },
+    "false_reject": {
+      "numerator": 0,
+      "denominator": 6,
+      "value": 0
+    },
+    "dimensions": {
+      "grounding": {
+        "numerator": 14,
+        "denominator": 14,
+        "value": 1
+      },
+      "factuality": {
+        "numerator": 14,
+        "denominator": 14,
+        "value": 1
+      },
+      "protocol": {
+        "numerator": 8,
+        "denominator": 14,
+        "value": 0.5714285714285714
+      },
+      "temporal": {
+        "numerator": 8,
+        "denominator": 14,
+        "value": 0.5714285714285714
+      },
+      "entity": {
+        "numerator": 14,
+        "denominator": 14,
+        "value": 1
+      },
+      "coverage": {
+        "numerator": 14,
+        "denominator": 14,
+        "value": 1
+      },
+      "omission": {
+        "numerator": 14,
+        "denominator": 14,
+        "value": 1
+      },
+      "unsupported_assumption": {
+        "numerator": 14,
+        "denominator": 14,
+        "value": 1
+      },
+      "cross_entity": {
+        "numerator": 2,
+        "denominator": 14,
+        "value": 0.14285714285714285
+      },
+      "safety": {
+        "numerator": 14,
+        "denominator": 14,
+        "value": 1
+      },
+      "partial_answer_allowed": {
+        "numerator": 14,
+        "denominator": 14,
+        "value": 1
+      }
+    }
+  },
+  "pairs": {
+    "numerator": 0,
+    "denominator": 10,
+    "value": 0
+  },
+  "repetitions": {
+    "complete_groups": 12,
+    "semantic_match_with_confidence_variation": 12
+  },
+  "critical_events": 20
+}

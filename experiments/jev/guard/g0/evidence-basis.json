@@ -1,0 +1,112 @@
+{
+  "checkpoint": "JEV-GUARD-G0",
+  "references": [
+    {
+      "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/summary.json",
+      "sha256": "f13ba338a4b3e152905d90259669bd8669e3fee2a55d8cdb49d934dd13f72a16"
+    },
+    {
+      "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/validation-metrics.json",
+      "sha256": "0fc7d0e161285d714cc8e01223095bb7cfd2da4eebb8fe3eea9c55cb234d361e"
+    },
+    {
+      "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/decision-metrics.json",
+      "sha256": "383ebd65c93c769c7a01d126a4860441cf977b84b0c2b7b7b0069e2efa308fec"
+    },
+    {
+      "path": "experiments/jev/s2g/capability-map.json",
+      "sha256": "b7fc50f3f5b4b9f21c73ec16575c55b6de12b32dce365afe6a52beb955e2980e"
+    },
+    {
+      "path": "experiments/jev/s2g/evidence-ledger.json",
+      "sha256": "cf6465a6610c18de98cb77dc8925629bf8546cb9bde69ff29eb08363f3b1a8ed"
+    },
+    {
+      "path": "experiments/jev/s2g/taxonomy-review.json",
+      "sha256": "689510346d8a84481574eb55dacbbdc795235cd1c33026ed39ae5c223fe5f37c"
+    }
+  ],
+  "guard_capability_reference": {
+    "path": "experiments/jev/s2g/capability-map.json",
+    "json_pointer": "/capabilities/15",
+    "classification": "APTA_COM_GUARDA_DE_CODIGO"
+  },
+  "historical_classifications": {
+    "DECISION": "NAO_PROMISSOR_DIAGNOSTICO",
+    "VALIDATION": "INCONCLUSIVO"
+  },
+  "verdict": {
+    "numerator": 14,
+    "denominator": 14,
+    "value": 1
+  },
+  "false_accept": {
+    "numerator": 0,
+    "denominator": 8,
+    "value": 0
+  },
+  "false_reject": {
+    "numerator": 0,
+    "denominator": 6,
+    "value": 0
+  },
+  "dimensions": {
+    "grounding": {
+      "numerator": 14,
+      "denominator": 14,
+      "value": 1
+    },
+    "factuality": {
+      "numerator": 14,
+      "denominator": 14,
+      "value": 1
+    },
+    "protocol": {
+      "numerator": 8,
+      "denominator": 14,
+      "value": 0.5714285714285714
+    },
+    "temporal": {
+      "numerator": 8,
+      "denominator": 14,
+      "value": 0.5714285714285714
+    },
+    "entity": {
+      "numerator": 14,
+      "denominator": 14,
+      "value": 1
+    },
+    "coverage": {
+      "numerator": 14,
+      "denominator": 14,
+      "value": 1
+    },
+    "omission": {
+      "numerator": 14,
+      "denominator": 14,
+      "value": 1
+    },
+    "unsupported_assumption": {
+      "numerator": 14,
+      "denominator": 14,
+      "value": 1
+    },
+    "cross_entity": {
+      "numerator": 2,
+      "denominator": 14,
+      "value": 0.14285714285714285
+    },
+    "safety": {
+      "numerator": 14,
+      "denominator": 14,
+      "value": 1
+    },
+    "partial_answer_allowed": {
+      "numerator": 14,
+      "denominator": 14,
+      "value": 1
+    }
+  },
+  "does_not_reclassify_history": true,
+  "model_calls_this_checkpoint": 0
+}

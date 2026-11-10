@@ -1,0 +1,24 @@
+{
+  "checkpoint": "JEV-GUARD-G2-B",
+  "status": "PASS_BEFORE_FREEZE",
+  "historical_first": {
+    "pass": 655,
+    "fail": 0,
+    "duration_ms": 93467.4457
+  },
+  "historical_pass": 655,
+  "executor_pass": 58,
+  "total_pass": 713,
+  "fail": 0,
+  "network_attempts": 0,
+  "real_calls": 0,
+  "credentials_read": 0,
+  "full_suite_duration_ms": 190102.6701,
+  "postfreeze_required": true,
+  "postfreeze_applicable_suite": [
+    "experiments/jev/guard/g2b0/g2b0.test.mjs",
+    "experiments/jev/guard/g2b/runtime.test.mjs"
+  ],
+  "postfreeze_expected_tests": 209,
+  "created_at_utc": "2026-10-17T23:39:01.247Z"
+}

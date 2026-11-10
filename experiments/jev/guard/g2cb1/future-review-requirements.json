@@ -1,0 +1,53 @@
+{
+  "status": "PROPOSED_NOT_EXECUTED",
+  "human_review_performed": false,
+  "reviewers_recruited": false,
+  "forms_filled": 0,
+  "oracle_assisted_annotations_accepted": false,
+  "reviewer_view": {
+    "allowed_fields": [
+      "current_message",
+      "conversation_context",
+      "property_context",
+      "available_protocols",
+      "guard_metadata",
+      "versioned_global_policy"
+    ],
+    "candidate_visible_only_after_obligations_locked": true,
+    "forbidden_fields": [
+      "oracle",
+      "rationale",
+      "expected_verdict",
+      "historical_materiality",
+      "criticality",
+      "case_tags",
+      "case_titles",
+      "original_case_ids",
+      "FULL_results",
+      "REDUCED_results",
+      "confidence",
+      "historical_annotations",
+      "historical_reports",
+      "pair_membership"
+    ]
+  },
+  "reviewers_must_not_be_codex": true,
+  "independent_reviewers_required": 2,
+  "adjudication_required_on_disagreement": true,
+  "forced_consensus": false,
+  "prior_exposure_requires_quarantine": true,
+  "obligations_before_candidate": true,
+  "source_binding_mandatory": true,
+  "claim_span_required": true,
+  "all_spans_accounted_required": true,
+  "semantic_completeness_from_spans_alone": false,
+  "unassessed_items_must_be_recorded": true,
+  "coverage_certificate_level": "SCOPED_COMPLETE_INSPECTION_NOT_UNIVERSAL_TRUTH",
+  "missing_caveat_requires_complete_inspection": true,
+  "old_oracle_used_to_resolve_disagreement": false,
+  "version_history_required": true,
+  "release_labels_only_after_records_sealed": true,
+  "blind_validation_started": false,
+  "blinded_packets_created": false,
+  "new_ground_truth_created": false
+}

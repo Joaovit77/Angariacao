@@ -1,0 +1,260 @@
+{
+  "cases": [
+    {
+      "case_id": "GG0-01",
+      "full_request_id": "GG0-01-FULL",
+      "reduced_request_id": "GG0-01-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "8dc4d776ac9a5b5ed193a6c5efb8f3f44a4ab95d9d41afb23f78e26f95fb79c1"
+    },
+    {
+      "case_id": "GG0-02",
+      "full_request_id": "GG0-02-FULL",
+      "reduced_request_id": "GG0-02-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "098f1ef873c764cda0752cb84a6f9524bfd98894b7f00950fae86a03fcdf9b76"
+    },
+    {
+      "case_id": "GG0-03",
+      "full_request_id": "GG0-03-FULL",
+      "reduced_request_id": "GG0-03-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "add6e10b346cdfd92282304d50ed7b5887a8c7356c0bb6c08de34ac4e989c4ff"
+    },
+    {
+      "case_id": "GG0-04",
+      "full_request_id": "GG0-04-FULL",
+      "reduced_request_id": "GG0-04-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "d5454830ac16c2d233876becc4f175dde1c55a55394601d7a800147175edaf56"
+    },
+    {
+      "case_id": "GG0-05",
+      "full_request_id": "GG0-05-FULL",
+      "reduced_request_id": "GG0-05-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "3ab4a227c443fb7ce19b9efbf6836139408031ec9f67d64e8c500d2429991153"
+    },
+    {
+      "case_id": "GG0-06",
+      "full_request_id": "GG0-06-FULL",
+      "reduced_request_id": "GG0-06-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "a188c52f693b664b1569cde1b1e64903c824aaccabcba29d2dfb6116730736bd"
+    },
+    {
+      "case_id": "GG0-07",
+      "full_request_id": "GG0-07-FULL",
+      "reduced_request_id": "GG0-07-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "293419fc2c3d154a33bc122885c491399b83ae64c3b026bd52d797d429f44a40"
+    },
+    {
+      "case_id": "GG0-08",
+      "full_request_id": "GG0-08-FULL",
+      "reduced_request_id": "GG0-08-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "76509f10ccb47ed1fdf25ce32ab4e0b406e59da35bb43305b822bda92e799ebc"
+    },
+    {
+      "case_id": "GG0-09",
+      "full_request_id": "GG0-09-FULL",
+      "reduced_request_id": "GG0-09-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "c8f6872fbbf3abb578264ae780a85f8efa0b901a3f04a45cb219522013d8ae54"
+    },
+    {
+      "case_id": "GG0-10",
+      "full_request_id": "GG0-10-FULL",
+      "reduced_request_id": "GG0-10-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "13614156dd199fe20b2781a32c4ac8926e2180900a86d657a619c9413a8a4178"
+    },
+    {
+      "case_id": "GG0-11",
+      "full_request_id": "GG0-11-FULL",
+      "reduced_request_id": "GG0-11-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "7b7198ace5d121ef4b0719815480a56f45371e0e0e392d4abf1d6214d02d9869"
+    },
+    {
+      "case_id": "GG0-12",
+      "full_request_id": "GG0-12-FULL",
+      "reduced_request_id": "GG0-12-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "34d8cde289136dad4a750d00d2234b8d0d5ba3259af35cca4d7fbe8d915d4d69"
+    },
+    {
+      "case_id": "GG0-13",
+      "full_request_id": "GG0-13-FULL",
+      "reduced_request_id": "GG0-13-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "80fa98555f2c6f1547fbbe0a780fff9b0f4551136cde8fa1f3f1c29bc94214bf"
+    },
+    {
+      "case_id": "GG0-14",
+      "full_request_id": "GG0-14-FULL",
+      "reduced_request_id": "GG0-14-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "bf7c3be0b126e522dca62df1665017209ba9311cd4014bd0778fc2ec512df56e"
+    },
+    {
+      "case_id": "GG0-15",
+      "full_request_id": "GG0-15-FULL",
+      "reduced_request_id": "GG0-15-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "f3b3ecace1d0ff11727946b2b4e0637d322d512b4a686d78982db3b7b65f6c8f"
+    },
+    {
+      "case_id": "GG0-16",
+      "full_request_id": "GG0-16-FULL",
+      "reduced_request_id": "GG0-16-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "ef4474aed647da4f9bc7340d0562e388a52f2bc5c9d53deca63500986a8a8703"
+    },
+    {
+      "case_id": "GG0-17",
+      "full_request_id": "GG0-17-FULL",
+      "reduced_request_id": "GG0-17-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "3dc5d7f07651942a96fd9d0c32f33f223708dedf9b33b3d43e9e2f1b8f7733fd"
+    },
+    {
+      "case_id": "GG0-18",
+      "full_request_id": "GG0-18-FULL",
+      "reduced_request_id": "GG0-18-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "d22feb9c9f9150acef1b672787ea3464e31084b0939c07993190f2a3d8f998e6"
+    },
+    {
+      "case_id": "GG0-19",
+      "full_request_id": "GG0-19-FULL",
+      "reduced_request_id": "GG0-19-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "79a6c4ad0077446b866babe9c8a75cc25d74e82d98f73bcb9dd20937b9b7f904"
+    },
+    {
+      "case_id": "GG0-20",
+      "full_request_id": "GG0-20-FULL",
+      "reduced_request_id": "GG0-20-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "14f2ecd42487ae15db3ff63fe0b9b2d312c853f6246ee736efc311d9d76272b1"
+    },
+    {
+      "case_id": "GG0-21",
+      "full_request_id": "GG0-21-FULL",
+      "reduced_request_id": "GG0-21-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "fd47f0c97f5ca83be5c27e022abc85eedcfe03d79a66d27bb75d092b2cf9e32b"
+    },
+    {
+      "case_id": "GG0-22",
+      "full_request_id": "GG0-22-FULL",
+      "reduced_request_id": "GG0-22-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "9ae7fa14b4a30ee701386850e321395d2c10aecd8cad4eba49cb11863f2cfddb"
+    },
+    {
+      "case_id": "GG0-23",
+      "full_request_id": "GG0-23-FULL",
+      "reduced_request_id": "GG0-23-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "6b7b7307fdf8a9de9897c9656bcf66061ecaf93350fe5e69ae35f4a2d3830471"
+    },
+    {
+      "case_id": "GG0-24",
+      "full_request_id": "GG0-24-FULL",
+      "reduced_request_id": "GG0-24-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "5ffcc0489a817c49ce08682a982624f09a2e92edf9bb1b9edf235ffda9ecee09"
+    },
+    {
+      "case_id": "GG0-25",
+      "full_request_id": "GG0-25-FULL",
+      "reduced_request_id": "GG0-25-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "a7778f2eabc956c0dcb357ef80e16a96f35f228a07047e8827caca3d504c431d"
+    },
+    {
+      "case_id": "GG0-26",
+      "full_request_id": "GG0-26-FULL",
+      "reduced_request_id": "GG0-26-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "ae1234b6503a0c15907905a8d98f8d53b8487b66cb315caec07f9959b883cd59"
+    },
+    {
+      "case_id": "GG0-27",
+      "full_request_id": "GG0-27-FULL",
+      "reduced_request_id": "GG0-27-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "c87c9d3063ed32b9f1b404bab6ca3d0fff0ea81eec01269c577c4ad8fa6efa41"
+    },
+    {
+      "case_id": "GG0-28",
+      "full_request_id": "GG0-28-FULL",
+      "reduced_request_id": "GG0-28-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "4206b928ef8a94f725de1cbd7b58ace7a439b211daed19332018dd39b2b1d897"
+    },
+    {
+      "case_id": "GG0-29",
+      "full_request_id": "GG0-29-FULL",
+      "reduced_request_id": "GG0-29-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "8cccd267ab2ced4f3c23d52a2f08d29af6b46fbbd682d4a8dff6a949287af36f"
+    },
+    {
+      "case_id": "GG0-30",
+      "full_request_id": "GG0-30-FULL",
+      "reduced_request_id": "GG0-30-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "f145ab2138c82e956fda5a19b8555728a3583268fdf1f7be8f0c3bc070a2ee3a"
+    },
+    {
+      "case_id": "GG0-31",
+      "full_request_id": "GG0-31-FULL",
+      "reduced_request_id": "GG0-31-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "624472cfc0a4f466081c711cdd66828544763251567f3bf6b04d3f2c29841152"
+    },
+    {
+      "case_id": "GG0-32",
+      "full_request_id": "GG0-32-FULL",
+      "reduced_request_id": "GG0-32-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "db5e3124c8ee78c6bd948db7ad85bfddcc8aef5f9df927a2762b40228cbe04ea"
+    },
+    {
+      "case_id": "GG0-33",
+      "full_request_id": "GG0-33-FULL",
+      "reduced_request_id": "GG0-33-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "9cc05b1c4cb322bc2453de8a2d41dcbba83ef410d7ce6009948bdc6400c84ea8"
+    },
+    {
+      "case_id": "GG0-34",
+      "full_request_id": "GG0-34-FULL",
+      "reduced_request_id": "GG0-34-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "ae25f76a0e6cc9f91f77da849702525d69df5fadab59b72896605a9079f7f71b"
+    },
+    {
+      "case_id": "GG0-35",
+      "full_request_id": "GG0-35-FULL",
+      "reduced_request_id": "GG0-35-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "d9adae006f8d73c54ec4dd2f400b765607daf62b2d1174b5e3d24221086f6e6d"
+    },
+    {
+      "case_id": "GG0-36",
+      "full_request_id": "GG0-36-FULL",
+      "reduced_request_id": "GG0-36-REDUCED",
+      "source": "G0_SYNTHETIC_BENCHMARK",
+      "source_input_sha256": "0558d9cefe7152b6bde5eee9bf562ca29a67ed746a80fc71b3dad51096ea7b26"
+    }
+  ],
+  "count": 36,
+  "causal_pairs": 36,
+  "minimal_pairs": 18,
+  "source": "G0_UNCHANGED"
+}

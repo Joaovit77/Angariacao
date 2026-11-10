@@ -1,0 +1,146 @@
+{
+  "checkpoint": "JEV-S2-G-A",
+  "status": "RECOMMENDATION_ONLY",
+  "selection": "HUMAN",
+  "ranking": [
+    {
+      "experiment_id": "JEV-GUARD",
+      "rank": 1,
+      "impact": "HIGH",
+      "evidence": [
+        "FB-V-verdict",
+        "FB-POSITIVE",
+        "FB-NEGATIVE",
+        "S0-FALSE-REJECT"
+      ],
+      "risk": "HIGH: falso aceite material possível fora da amostra, apesar de 0/8.",
+      "experimental_cost": "LOW/MEDIUM: candidatas sintéticas e revisão humana; nenhuma cotação ou chamada autorizada.",
+      "dependencies": [
+        "G-SOURCE",
+        "G-TIME",
+        "G-COMMERCIAL",
+        "G-STRUCTURE"
+      ],
+      "proposal": "Desenhar shadow de verdict macro com positivas parciais e adversários novos; não confiar nas dimensões como justificativa automática.",
+      "status": "PROPOSED_ONLY",
+      "human_choice_required": true,
+      "started": false
+    },
+    {
+      "experiment_id": "JEV-ENTITY",
+      "rank": 2,
+      "impact": "HIGH",
+      "evidence": [
+        "FB-D-entity_resolution",
+        "FB-V-entity",
+        "FB-CROSS-MATERIAL"
+      ],
+      "risk": "HIGH se resolução for confundida com ownership, identidade entre anúncios ou mutação.",
+      "experimental_cost": "LOW/MEDIUM: catálogo sintético ambíguo e transferências direcionais.",
+      "dependencies": [
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "proposal": "Comparar somente alvo textual em catálogo autorizado; incluir ambiguidades e bloqueio independente de transferência.",
+      "status": "PROPOSED_ONLY",
+      "human_choice_required": true,
+      "started": false
+    },
+    {
+      "experiment_id": "JEV-TEMPORAL",
+      "rank": 3,
+      "impact": "HIGH",
+      "evidence": [
+        "FB-H1",
+        "FB-D-temporal_resolution",
+        "FB-V-temporal"
+      ],
+      "risk": "HIGH: H1 é bloqueador material, não capacidade aprovada.",
+      "experimental_cost": "LOW primeiro offline; novo ensaio real só com plano e autorização.",
+      "dependencies": [
+        "G-SOURCE",
+        "G-TIME"
+      ],
+      "proposal": "Priorizar correção da fronteira determinística e desenho offline de null/ausente/atual/histórico; não promover truth resolution JEV.",
+      "status": "PROPOSED_ONLY",
+      "human_choice_required": true,
+      "started": false
+    },
+    {
+      "experiment_id": "JEV-FOLLOWUP",
+      "rank": 4,
+      "impact": "HIGH",
+      "evidence": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "risk": "HIGH se rótulo disparar envio, agenda ou status; macro específica ainda não medida.",
+      "experimental_cost": "MEDIUM: taxonomia e exemplos próprios, rótulos independentes e simulação de efeito.",
+      "dependencies": [
+        "G-ACTIONS",
+        "G-CRM",
+        "G-WHATSAPP"
+      ],
+      "proposal": "Avaliar primeiro respondeu/recusou/falar depois sem efeitos; motivos e execução são contrato separado.",
+      "status": "PROPOSED_ONLY",
+      "human_choice_required": true,
+      "started": false
+    },
+    {
+      "experiment_id": "JEV-RADAR",
+      "rank": 5,
+      "impact": "MEDIUM/HIGH",
+      "evidence": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "risk": "MEDIUM/HIGH: relevância e duplicidade falsas podem ocultar oportunidade ou unir entidades.",
+      "experimental_cost": "MEDIUM: amostra própria de anúncios sintéticos/autorizados e goldens de relevância.",
+      "dependencies": [
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "proposal": "Separar relevância, tipo, finalidade, novidade, oportunidade e necessidade de revisão, sem coleta real agora.",
+      "status": "PROPOSED_ONLY",
+      "human_choice_required": true,
+      "started": false
+    },
+    {
+      "experiment_id": "JEV-MATCH",
+      "rank": 6,
+      "impact": "HIGH",
+      "evidence": [
+        "NOT-TESTED-DOMAIN",
+        "FB-D-entity_resolution"
+      ],
+      "risk": "HIGH: falsa identidade entre anúncios pode contaminar proprietário ou contato.",
+      "experimental_cost": "MEDIUM/HIGH: pares positivos/negativos, unidades vizinhas e benchmark por modalidade.",
+      "dependencies": [
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "proposal": "Benchmarks textual e entity matching separados; nenhuma extrapolação de catálogo A/B para mesmo imóvel.",
+      "status": "PROPOSED_ONLY",
+      "human_choice_required": true,
+      "started": false
+    },
+    {
+      "experiment_id": "JEV-VISION",
+      "rank": 7,
+      "impact": "POTENCIAL_HIGH",
+      "evidence": [
+        "NOT-TESTED-VISION"
+      ],
+      "risk": "DESCONHECIDO: desempenho visual não avaliado; falso match teria impacto alto.",
+      "experimental_cost": "HIGH/UNKNOWN: imagens e anotações específicas, privacidade e verificação de modelo antes de qualquer gate pago.",
+      "dependencies": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "proposal": "Benchmark próprio de fachada/interior, sinais visuais e same-property. Posição no ranking reflete dependências, não previsão de qualidade visual.",
+      "status": "PROPOSED_ONLY",
+      "human_choice_required": true,
+      "started": false
+    }
+  ],
+  "gate_order": "Guarda temporal/fonte é pré-requisito para qualquer Guard; rank de experimento não permite postergar segurança."
+}

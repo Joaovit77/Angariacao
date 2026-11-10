@@ -1,0 +1,135 @@
+[
+  {
+    "id": "Q1",
+    "question": "SUM_MISMATCH reaparece?",
+    "cases": [
+      "T1",
+      "T2",
+      "E1",
+      "P1",
+      "P2"
+    ],
+    "method": "Frequência e vetores completos por pergunta/estrutura, sem normalizar.",
+    "scope_limit": "SMALL_SAMPLE_NO_GENERALIZATION"
+  },
+  {
+    "id": "Q2",
+    "question": "CHOICE_MISMATCH reaparece?",
+    "cases": [
+      "E1",
+      "E2",
+      "E3",
+      "P1",
+      "P2"
+    ],
+    "method": "Comparar choice original à máxima, ties permitidos, sem correção.",
+    "scope_limit": "SMALL_SAMPLE_NO_GENERALIZATION"
+  },
+  {
+    "id": "Q3",
+    "question": "Falhas concentram-se em VALIDATION?",
+    "cases": [
+      "ALL"
+    ],
+    "method": "Taxas por tarefa com denominadores distintos: dez DECISION e quatorze VALIDATION planejados.",
+    "scope_limit": "SMALL_SAMPLE_NO_GENERALIZATION"
+  },
+  {
+    "id": "Q4",
+    "question": "Há associação com quantidade de perguntas?",
+    "cases": [
+      "ALL"
+    ],
+    "method": "Estratificar por tarefa e question_count. Somente associação descritiva; nenhum contraste isolado de quantidade, sem inferência causal.",
+    "scope_limit": "DESCRIPTIVE_ONLY_NOT_CAUSAL"
+  },
+  {
+    "id": "Q5",
+    "question": "Supersessão é reconhecida com distinção explícita?",
+    "cases": [
+      "T1",
+      "T2",
+      "H1"
+    ],
+    "method": "Comparar fonte atual, histórico obrigatório e estados superado versus desconhecido.",
+    "scope_limit": "SMALL_SAMPLE_NO_GENERALIZATION"
+  },
+  {
+    "id": "Q6",
+    "question": "Erro factual é separado de erro temporal?",
+    "cases": [
+      "T1",
+      "E1",
+      "E3"
+    ],
+    "method": "T1 exige temporal FAIL; transferências entre valores atuais exigem temporal PASS, mesmo com factuality FAIL.",
+    "scope_limit": "SMALL_SAMPLE_NO_GENERALIZATION"
+  },
+  {
+    "id": "Q7",
+    "question": "Transferência é detectada nos dois sentidos?",
+    "cases": [
+      "E1",
+      "E2",
+      "E3"
+    ],
+    "method": "B para A e A para B negativos, com controle correto E2; inversão é controle direcional declarado.",
+    "scope_limit": "SMALL_SAMPLE_NO_GENERALIZATION"
+  },
+  {
+    "id": "Q8",
+    "question": "Risco é marcado antes de qualquer candidata?",
+    "cases": [
+      "T1",
+      "E1",
+      "P1",
+      "H1",
+      "E4"
+    ],
+    "method": "DECISION sem candidata: riscos presentes; E4 controla marcação indevida com fonte única explícita.",
+    "scope_limit": "SMALL_SAMPLE_NO_GENERALIZATION"
+  },
+  {
+    "id": "Q9",
+    "question": "entity FAIL, cross_entity FAIL e temporal PASS coexistem?",
+    "cases": [
+      "E1",
+      "E3"
+    ],
+    "method": "Comparar onze dimensões independentes, sem derivá-las de REJECT.",
+    "scope_limit": "SMALL_SAMPLE_NO_GENERALIZATION"
+  },
+  {
+    "id": "Q10",
+    "question": "Invenção é rejeitada com parcial ainda permitida?",
+    "cases": [
+      "P1",
+      "P2"
+    ],
+    "method": "REJECT para invenção; APPROVE para parcial correta; partial_answer_allowed PASS em ambas.",
+    "scope_limit": "SMALL_SAMPLE_NO_GENERALIZATION"
+  },
+  {
+    "id": "Q11",
+    "question": "Erros de campo com confidence nativa alta se repetem?",
+    "cases": [
+      "P1",
+      "P2",
+      "E1",
+      "E3"
+    ],
+    "method": "Registar erro e confidence da própria pergunta em R1/R2. Quartil descritivo por campo; não usar confidence primária como confiança na completude.",
+    "scope_limit": "SMALL_SAMPLE_NO_GENERALIZATION"
+  },
+  {
+    "id": "Q12",
+    "question": "Candidata correta/parcial é aceita?",
+    "cases": [
+      "T2",
+      "E2",
+      "P2"
+    ],
+    "method": "Três controles APPROVE, duas repetições: seis exposições planejadas para false reject; inválidos permanecem fora da semântica.",
+    "scope_limit": "SMALL_SAMPLE_NO_GENERALIZATION"
+  }
+]

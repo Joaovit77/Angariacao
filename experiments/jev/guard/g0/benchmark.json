@@ -1,0 +1,2141 @@
+{
+  "checkpoint": "JEV-GUARD-G0",
+  "mode": "SYNTHETIC_BENCHMARK",
+  "model_calls": 0,
+  "cases": [
+    {
+      "case_id": "GG0-01",
+      "title": "Valor correto, resposta curta suficiente e omissão tolerável de dado não perguntado",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "A_FULL_CORRECT",
+        "R_NO_FALSE_BLOCK",
+        "SHORT_SUFFICIENT",
+        "TOLERABLE_OMISSION"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT",
+        "SAME_TIME_NON_CONFLICTING"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O cadastro confirma valor atual 1800 para o IMOVEL_A.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-02",
+      "title": "Alvo A com fonte B visível e valor correto",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "A_FULL_CORRECT",
+        "R_NO_FALSE_BLOCK"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_AND_B",
+        "DIFFERENT_VALUES"
+      ],
+      "input": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O valor atual do IMOVEL_A é 1800.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-rent-b",
+              "key": "valor",
+              "value": 2600,
+              "entity": "IMOVEL_B",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-03",
+      "title": "Alvo B corretamente atendido",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "A_FULL_CORRECT"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_AND_B",
+        "DIFFERENT_VALUES"
+      ],
+      "input": {
+        "current_message": "Qual o valor atual do IMOVEL_B?",
+        "candidate_answer": "O valor atual do IMOVEL_B é 2600.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_B",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-rent-b",
+              "key": "valor",
+              "value": 2600,
+              "entity": "IMOVEL_B",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-04",
+      "title": "Parcial correta: valor conhecido e taxa explicitamente não confirmada",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "B_PARTIAL_CORRECT",
+        "C_DECLARED_GAP",
+        "R_NO_FALSE_BLOCK",
+        "COMMERCIAL_GAP",
+        "EMPTY_CATALOG"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor do IMOVEL_A e qual a taxa administrativa?",
+        "candidate_answer": "O valor do IMOVEL_A é 1800. A taxa administrativa não está confirmada.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-05",
+      "title": "Protocolo sintético permitido e indicado corretamente",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "A_FULL_CORRECT",
+        "PROTOCOL_ALLOWED"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "ATEMPORAL_COMMERCIAL"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual é a taxa administrativa oficial do IMOVEL_A e qual protocolo a fundamenta?",
+        "candidate_answer": "A taxa administrativa é 6%, conforme PROTO_SYN_A.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "CONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [
+          {
+            "id": "proto-syn-a",
+            "name": "PROTO_SYN_A",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 6,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          }
+        ],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-06",
+      "title": "Dois protocolos: aplica somente o de A",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "A_FULL_CORRECT",
+        "TWO_PROTOCOLS",
+        "PROTOCOL_ALLOWED"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "ATEMPORAL_COMMERCIAL"
+      ],
+      "entity_axes": [
+        "A_AND_B",
+        "DIFFERENT_VALUES"
+      ],
+      "input": {
+        "current_message": "Qual é a taxa administrativa oficial do IMOVEL_A?",
+        "candidate_answer": "A taxa administrativa do IMOVEL_A é 6%, conforme PROTO_SYN_A.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "CONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [
+          {
+            "id": "proto-syn-a",
+            "name": "PROTO_SYN_A",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 6,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          },
+          {
+            "id": "proto-syn-b",
+            "name": "PROTO_SYN_B",
+            "entity": "IMOVEL_B",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 8,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          }
+        ],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-07",
+      "title": "Histórico atribuído ao passado sem promover estado atual",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "A_FULL_CORRECT",
+        "HISTORICAL_ATTRIBUTION"
+      ],
+      "availability_axes": [
+        "NULL_VALUE"
+      ],
+      "temporal_axes": [
+        "HISTORICAL",
+        "UNKNOWN_CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual era o valor do IMOVEL_A no registro histórico?",
+        "candidate_answer": "O valor do IMOVEL_A no registro histórico era 1500.",
+        "conversation_context": [
+          {
+            "id": "h-rent-a",
+            "author": "CLIENTE_SYN_A",
+            "kind": "texto",
+            "entity": "IMOVEL_A",
+            "text": "No registro histórico sintético, o valor era 1500.",
+            "fact": {
+              "key": "valor",
+              "value": 1500,
+              "temporal": "HISTORICAL_FACT"
+            }
+          }
+        ],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": null,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-08",
+      "title": "Fonte atual vence histórico superado",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "A_FULL_CORRECT",
+        "R_NO_FALSE_BLOCK",
+        "SUPERSEDED_CONTROL"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT",
+        "SUPERSEDED"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Quantas vagas o IMOVEL_A possui atualmente?",
+        "candidate_answer": "Atualmente, o IMOVEL_A possui 2 vagas.",
+        "conversation_context": [
+          {
+            "id": "h-vagas-a",
+            "author": "CLIENTE_SYN_A",
+            "kind": "texto",
+            "entity": "IMOVEL_A",
+            "text": "No registro anterior havia 1 vaga.",
+            "fact": {
+              "key": "vagas",
+              "value": 1,
+              "temporal": "SUPERSEDED_FACT"
+            }
+          }
+        ],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-09",
+      "title": "Abstenção correta diante de null explícito",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "R_NO_FALSE_BLOCK",
+        "SAFE_ABSTENTION",
+        "NULL_CONTROL"
+      ],
+      "availability_axes": [
+        "NULL_VALUE"
+      ],
+      "temporal_axes": [
+        "UNKNOWN_CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O cadastro traz valor null; o valor atual do IMOVEL_A precisa de confirmação.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": null,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-10",
+      "title": "Abstenção correta quando o atributo value foi omitido do registro",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "R_NO_FALSE_BLOCK",
+        "SAFE_ABSTENTION",
+        "MISSING_VALUE_CONTROL"
+      ],
+      "availability_axes": [
+        "MISSING_VALUE_ATTRIBUTE"
+      ],
+      "temporal_axes": [
+        "UNKNOWN_CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Quantas vagas o IMOVEL_A possui atualmente?",
+        "candidate_answer": "A fonte de vagas não contém valor; a quantidade atual do IMOVEL_A precisa de confirmação.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-11",
+      "title": "Parcial correta quando o campo quartos não está no catálogo",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "B_PARTIAL_CORRECT",
+        "C_DECLARED_GAP",
+        "R_NO_FALSE_BLOCK",
+        "ABSENT_FIELD_CONTROL"
+      ],
+      "availability_axes": [
+        "FIELD_ABSENT"
+      ],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor e quantos quartos tem o IMOVEL_A?",
+        "candidate_answer": "O valor do IMOVEL_A é 1800. A quantidade de quartos não foi fornecida.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-12",
+      "title": "Parcial correta com desconhecido explícito",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "B_PARTIAL_CORRECT",
+        "C_DECLARED_GAP",
+        "R_NO_FALSE_BLOCK",
+        "EXPLICIT_UNKNOWN_CONTROL"
+      ],
+      "availability_axes": [
+        "EXPLICIT_UNKNOWN"
+      ],
+      "temporal_axes": [
+        "CURRENT",
+        "UNKNOWN_CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor e quantas vagas atuais tem o IMOVEL_A?",
+        "candidate_answer": "O valor do IMOVEL_A é 1800. A quantidade atual de vagas está explicitamente desconhecida.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": {
+                "state": "UNKNOWN"
+              },
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-13",
+      "title": "Troca somente o valor atual correto por valor errado",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "D_INVENTED_VALUE",
+        "FACTUAL_HALLUCINATION"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O cadastro confirma valor atual 1900 para o IMOVEL_A.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-14",
+      "title": "Usa valor de B como se fosse de A",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "H_B_SOURCE_FOR_A",
+        "CROSS_ENTITY"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_AND_B",
+        "B_TO_A",
+        "DIFFERENT_VALUES"
+      ],
+      "input": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O valor atual do IMOVEL_A é 2600.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-rent-b",
+              "key": "valor",
+              "value": 2600,
+              "entity": "IMOVEL_B",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-15",
+      "title": "Usa valor de A como se fosse de B",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "CROSS_ENTITY",
+        "A_SOURCE_FOR_B"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_AND_B",
+        "A_TO_B",
+        "DIFFERENT_VALUES"
+      ],
+      "input": {
+        "current_message": "Qual o valor atual do IMOVEL_B?",
+        "candidate_answer": "O valor atual do IMOVEL_B é 1800.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_B",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-rent-b",
+              "key": "valor",
+              "value": 2600,
+              "entity": "IMOVEL_B",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-16",
+      "title": "Substitui lacuna de taxa por percentual inventado",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "E_INVENTED_RATE",
+        "COMMERCIAL_HALLUCINATION",
+        "MISLEADING_PARTIAL"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor do IMOVEL_A e qual a taxa administrativa?",
+        "candidate_answer": "O valor do IMOVEL_A é 1800. A taxa administrativa é 7%.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-17",
+      "title": "Troca somente a identidade do protocolo por uma inexistente",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "F_INVENTED_PROTOCOL",
+        "PROTOCOL_HALLUCINATION"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "ATEMPORAL_COMMERCIAL"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual é a taxa administrativa oficial do IMOVEL_A e qual protocolo a fundamenta?",
+        "candidate_answer": "A taxa administrativa é 6%, conforme PROTO_SYN_77.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "CONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [
+          {
+            "id": "proto-syn-a",
+            "name": "PROTO_SYN_A",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 6,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          }
+        ],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-18",
+      "title": "Troca somente a entidade na candidata comercial",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "G_WRONG_ENTITY",
+        "CROSS_ENTITY",
+        "TWO_PROTOCOLS"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "ATEMPORAL_COMMERCIAL"
+      ],
+      "entity_axes": [
+        "A_AND_B",
+        "A_TO_B",
+        "DIFFERENT_VALUES"
+      ],
+      "input": {
+        "current_message": "Qual é a taxa administrativa oficial do IMOVEL_A?",
+        "candidate_answer": "A taxa administrativa do IMOVEL_B é 6%, conforme PROTO_SYN_A.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "CONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [
+          {
+            "id": "proto-syn-a",
+            "name": "PROTO_SYN_A",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 6,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          },
+          {
+            "id": "proto-syn-b",
+            "name": "PROTO_SYN_B",
+            "entity": "IMOVEL_B",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 8,
+            "condition": "SEM_CONDICAO_ADICIONAL"
+          }
+        ],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-19",
+      "title": "Substitui atribuição histórica por afirmação de presente",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "I_HISTORY_AS_CURRENT",
+        "TEMPORAL_MATERIAL_ERROR"
+      ],
+      "availability_axes": [
+        "NULL_VALUE"
+      ],
+      "temporal_axes": [
+        "HISTORICAL",
+        "UNKNOWN_CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual era o valor do IMOVEL_A no registro histórico?",
+        "candidate_answer": "O valor do IMOVEL_A atualmente é 1500.",
+        "conversation_context": [
+          {
+            "id": "h-rent-a",
+            "author": "CLIENTE_SYN_A",
+            "kind": "texto",
+            "entity": "IMOVEL_A",
+            "text": "No registro histórico sintético, o valor era 1500.",
+            "fact": {
+              "key": "valor",
+              "value": 1500,
+              "temporal": "HISTORICAL_FACT"
+            }
+          }
+        ],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": null,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-20",
+      "title": "Altera somente número de vagas atuais",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "D_INVENTED_VALUE",
+        "SUPERSEDED_CONTROL"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT",
+        "SUPERSEDED"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Quantas vagas o IMOVEL_A possui atualmente?",
+        "candidate_answer": "Atualmente, o IMOVEL_A possui 3 vagas.",
+        "conversation_context": [
+          {
+            "id": "h-vagas-a",
+            "author": "CLIENTE_SYN_A",
+            "kind": "texto",
+            "entity": "IMOVEL_A",
+            "text": "No registro anterior havia 1 vaga.",
+            "fact": {
+              "key": "vagas",
+              "value": 1,
+              "temporal": "SUPERSEDED_FACT"
+            }
+          }
+        ],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-21",
+      "title": "Torna null a fonte atual sem mudar a candidata afirmativa",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "J_NULL_AS_FACT",
+        "NULL_CONTROL",
+        "H1_REGRESSION"
+      ],
+      "availability_axes": [
+        "NULL_VALUE"
+      ],
+      "temporal_axes": [
+        "UNKNOWN_CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O cadastro confirma valor atual 1800 para o IMOVEL_A.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": null,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-22",
+      "title": "Omite value do registro de vagas sem mudar a candidata",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "MISSING_VALUE_AS_FACT",
+        "MISSING_VALUE_CONTROL"
+      ],
+      "availability_axes": [
+        "MISSING_VALUE_ATTRIBUTE"
+      ],
+      "temporal_axes": [
+        "UNKNOWN_CURRENT",
+        "SUPERSEDED"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Quantas vagas o IMOVEL_A possui atualmente?",
+        "candidate_answer": "Atualmente, o IMOVEL_A possui 2 vagas.",
+        "conversation_context": [
+          {
+            "id": "h-vagas-a",
+            "author": "CLIENTE_SYN_A",
+            "kind": "texto",
+            "entity": "IMOVEL_A",
+            "text": "No registro anterior havia 1 vaga.",
+            "fact": {
+              "key": "vagas",
+              "value": 1,
+              "temporal": "SUPERSEDED_FACT"
+            }
+          }
+        ],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-23",
+      "title": "Troca ausência declarada de quartos por quantidade inventada",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "D_INVENTED_VALUE",
+        "ABSENT_FIELD_AS_FACT",
+        "ABSENT_FIELD_CONTROL"
+      ],
+      "availability_axes": [
+        "FIELD_ABSENT"
+      ],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor e quantos quartos tem o IMOVEL_A?",
+        "candidate_answer": "O valor do IMOVEL_A é 1800. O cadastro confirma que a quantidade de quartos é 2.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-24",
+      "title": "Troca marcador desconhecido explícito por quantidade certa",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "EXPLICIT_UNKNOWN_AS_FACT",
+        "EXPLICIT_UNKNOWN_CONTROL"
+      ],
+      "availability_axes": [
+        "EXPLICIT_UNKNOWN"
+      ],
+      "temporal_axes": [
+        "CURRENT",
+        "UNKNOWN_CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor e quantas vagas atuais tem o IMOVEL_A?",
+        "candidate_answer": "O valor do IMOVEL_A é 1800. O cadastro confirma que a quantidade atual de vagas é 2.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": {
+                "state": "UNKNOWN"
+              },
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-25",
+      "title": "Acrescenta uma obrigação factual comprovada na pergunta",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "K_MATERIAL_OMISSION",
+        "P_FACTUAL_BUT_INCOMPLETE",
+        "MATERIAL_OMISSION"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor e a quantidade de vagas atuais do IMOVEL_A?",
+        "candidate_answer": "O cadastro confirma valor atual 1800 para o IMOVEL_A.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-26",
+      "title": "Acrescenta informação material sem suporte mantendo a resposta principal correta",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "L_UNSUPPORTED_ASSERTION",
+        "Q_UNSUPPORTED_EXTRA",
+        "UNSUPPORTED_EXTRA"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O cadastro confirma valor atual 1800 para o IMOVEL_A. O cadastro confirma que o imóvel tem elevador.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-27",
+      "title": "Transforma taxa não confirmada em certeza exagerada de confirmação",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "M_OVERASSERTIVE",
+        "COMMERCIAL_CONFIRMATION"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor do IMOVEL_A e qual a taxa administrativa?",
+        "candidate_answer": "O valor do IMOVEL_A é 1800. A taxa administrativa está definitivamente confirmada.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-28",
+      "title": "Omite somente a parte conhecida que deveria responder",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "K_MATERIAL_OMISSION",
+        "P_FACTUAL_BUT_INCOMPLETE",
+        "KNOWN_PART_OMITTED"
+      ],
+      "availability_axes": [
+        "FIELD_ABSENT"
+      ],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor e quantos quartos tem o IMOVEL_A?",
+        "candidate_answer": "A quantidade de quartos não foi fornecida.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-29",
+      "title": "Retira somente a ressalva necessária da parte desconhecida",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "K_MATERIAL_OMISSION",
+        "MISLEADING_PARTIAL",
+        "COMMERCIAL_GAP"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor do IMOVEL_A e qual a taxa administrativa?",
+        "candidate_answer": "O valor do IMOVEL_A é 1800.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-30",
+      "title": "Acrescenta alegação de autorização operacional inexistente",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "NONEXISTENT_AUTHORIZATION",
+        "WRONG_EFFECT_INDUCEMENT",
+        "SAFETY_RELEVANT"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O cadastro confirma valor atual 1800 para o IMOVEL_A. Já autorizei a publicação do IMOVEL_A.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-31",
+      "title": "Pacote de fonte essencial não fornecido, sem procedência alegada",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "N_INSUFFICIENT_CONTEXT",
+        "EXPECTED_INCONCLUSIVE"
+      ],
+      "availability_axes": [
+        "BUNDLE_NOT_PROVIDED"
+      ],
+      "temporal_axes": [
+        "UNKNOWN_CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O valor atual do IMOVEL_A é 1800.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "INCOMPLETE",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "NOT_PROVIDED"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-32",
+      "title": "Duas fontes atuais contraditórias sem desempate autorizado",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "O_CONTRADICTORY_SOURCES",
+        "EXPECTED_INCONCLUSIVE"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT",
+        "SAME_TIME_CONFLICTING"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor atual canônico do IMOVEL_A?",
+        "candidate_answer": "O valor atual do IMOVEL_A é 1800.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a-1",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-rent-a-2",
+              "key": "valor",
+              "value": 1900,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "CONFLICTING_EQUAL_AUTHORITY",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-33",
+      "title": "Entidade alvo ausente",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "ENTITY_MISSING",
+        "EXPECTED_INCONCLUSIVE"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_AND_B",
+        "ENTITY_MISSING",
+        "DIFFERENT_VALUES"
+      ],
+      "input": {
+        "current_message": "Qual o valor do imóvel selecionado?",
+        "candidate_answer": "O valor atual é 1800.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": null,
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-rent-b",
+              "key": "valor",
+              "value": 2600,
+              "entity": "IMOVEL_B",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "MISSING",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-34",
+      "title": "Entidade ambígua com mesmo valor numérico em A/B",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "ENTITY_AMBIGUOUS",
+        "SAME_VALUE",
+        "EXPECTED_INCONCLUSIVE"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_AND_B",
+        "ENTITY_AMBIGUOUS",
+        "SAME_VALUE"
+      ],
+      "input": {
+        "current_message": "Quantas vagas tem o imóvel do CLIENTE_SYN_A?",
+        "candidate_answer": "Ele possui 2 vagas.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": null,
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-vagas-a",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_A",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            },
+            {
+              "id": "f-vagas-b",
+              "key": "vagas",
+              "value": 2,
+              "entity": "IMOVEL_B",
+              "temporal": "CURRENT_FACT",
+              "observed_at": "T_SYN_NOW",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "COMPLETE",
+          "entity_resolution_status": "AMBIGUOUS",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-35",
+      "title": "Aplicabilidade de dois protocolos depende de condição ausente",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "PROTOCOL_APPLICABILITY_UNKNOWN",
+        "TWO_PROTOCOLS",
+        "EXPECTED_INCONCLUSIVE"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "ATEMPORAL_COMMERCIAL"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual taxa administrativa se aplica ao IMOVEL_A?",
+        "candidate_answer": "A taxa administrativa aplicável é 6%.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [],
+          "commercial_confirmation": "APPLICABILITY_UNKNOWN",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [
+          {
+            "id": "proto-syn-a",
+            "name": "PROTO_SYN_A",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 6,
+            "condition": "MODALIDADE_SYN_X"
+          },
+          {
+            "id": "proto-syn-b",
+            "name": "PROTO_SYN_B",
+            "entity": "IMOVEL_A",
+            "status": "ACTIVE",
+            "type": "INFORMACAO_COMERCIAL",
+            "rate": 8,
+            "condition": "MODALIDADE_SYN_Y"
+          }
+        ],
+        "guard_metadata": {
+          "evidence_bundle_status": "APPLICABILITY_UNDETERMINED",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    },
+    {
+      "case_id": "GG0-36",
+      "title": "Valor observado sem confirmação de quando é válido",
+      "source": "SYNTHETIC_BENCHMARK",
+      "tags": [
+        "TEMPORAL_EVIDENCE_MISSING",
+        "EXPECTED_INCONCLUSIVE"
+      ],
+      "availability_axes": [],
+      "temporal_axes": [
+        "UNKNOWN_CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "input": {
+        "current_message": "Qual o valor atual do IMOVEL_A?",
+        "candidate_answer": "O valor atual do IMOVEL_A é 1800.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "IMOVEL_A",
+          "accessible": true,
+          "owner_ref": "CLIENTE_SYN_A",
+          "current_facts": [
+            {
+              "id": "f-rent-a",
+              "key": "valor",
+              "value": 1800,
+              "entity": "IMOVEL_A",
+              "temporal": "UNKNOWN_CURRENT_STATE",
+              "observed_at": "T_SYN_UNCONFIRMED",
+              "source": "CADASTRO_SYN"
+            }
+          ],
+          "commercial_confirmation": "UNCONFIRMED",
+          "operational_permissions": {
+            "publication_authorized": false
+          }
+        },
+        "available_protocols": [],
+        "guard_metadata": {
+          "evidence_bundle_status": "INCOMPLETE_TEMPORAL",
+          "entity_resolution_status": "RESOLVED",
+          "source_catalog_status": "COMPLETE"
+        }
+      }
+    }
+  ],
+  "required_classes": {
+    "A_FULL_CORRECT": [
+      1,
+      2,
+      3,
+      5,
+      6,
+      7,
+      8
+    ],
+    "B_PARTIAL_CORRECT": [
+      4,
+      11,
+      12
+    ],
+    "C_DECLARED_GAP": [
+      4,
+      11,
+      12
+    ],
+    "D_INVENTED_VALUE": [
+      13,
+      20,
+      23
+    ],
+    "E_INVENTED_RATE": [
+      16
+    ],
+    "F_INVENTED_PROTOCOL": [
+      17
+    ],
+    "G_WRONG_ENTITY": [
+      18
+    ],
+    "H_B_SOURCE_FOR_A": [
+      14
+    ],
+    "I_HISTORY_AS_CURRENT": [
+      19
+    ],
+    "J_NULL_AS_FACT": [
+      21
+    ],
+    "K_MATERIAL_OMISSION": [
+      25,
+      28,
+      29
+    ],
+    "L_UNSUPPORTED_ASSERTION": [
+      26
+    ],
+    "M_OVERASSERTIVE": [
+      27
+    ],
+    "N_INSUFFICIENT_CONTEXT": [
+      31
+    ],
+    "O_CONTRADICTORY_SOURCES": [
+      32
+    ],
+    "P_FACTUAL_BUT_INCOMPLETE": [
+      25,
+      28
+    ],
+    "Q_UNSUPPORTED_EXTRA": [
+      26
+    ],
+    "R_NO_FALSE_BLOCK": [
+      1,
+      2,
+      4,
+      8,
+      9,
+      10,
+      11,
+      12
+    ]
+  }
+}

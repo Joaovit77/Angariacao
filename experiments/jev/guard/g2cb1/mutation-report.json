@@ -1,0 +1,249 @@
+{
+  "scope": "DOCUMENTARY_CONSISTENCY_MUTATIONS_ONLY",
+  "baseline": {
+    "status": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+    "semantic_certification": false
+  },
+  "executed": 26,
+  "rejected": 26,
+  "survived": 0,
+  "planned": 0,
+  "results": [
+    {
+      "id": "M01",
+      "description": "Usar oracle como input",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:oracle_as_input",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M02",
+      "description": "Usar rationale como input",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:rationale_as_input",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M03",
+      "description": "Expected verdict gera obrigação",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:expected_generates_obligation",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M04",
+      "description": "Regex específica GG29",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:exact_gg29_regex",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M05",
+      "description": "UNCONFIRMED global",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:global_unconfirmed_caveat",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M06",
+      "description": "Anotação humana vira observação automática",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:annotation_is_automatic",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M07",
+      "description": "Não encontrado equivale a ausente",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:not_found_means_absent",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M08",
+      "description": "Completeness sem enumerar claims",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_EXIGIDA:completeness_requires_claim_enumeration",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M09",
+      "description": "Caveat missing sem inspeção completa",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_EXIGIDA:caveat_missing_requires_full_inspection",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M10",
+      "description": "Aceitar claim sem binding",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_EXIGIDA:claim_requires_source_binding",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M11",
+      "description": "REJECT por falta de prova",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:reject_for_missing_proof",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M12",
+      "description": "APPROVE por falta de contradição",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:approve_for_no_contradiction",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M13",
+      "description": "HOLD como acerto semântico",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:hold_is_semantic_success",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M14",
+      "description": "Esconder false block em HOLD",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:hold_false_block_hidden",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M15",
+      "description": "Outro LLM como determinístico",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:other_llm_is_deterministic",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M16",
+      "description": "Autoatestação do provider",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:provider_self_attestation",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M17",
+      "description": "Reclassificar históricos",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:historical_reclassification",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M18",
+      "description": "Abrir autorização de chamadas",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "CHAMADAS_FECHADAS",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M19",
+      "description": "Alterar prompt operacional",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:operational_prompt_change",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M20",
+      "description": "Promover só por menor custo",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:cost_alone_promotes_architecture",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M21",
+      "description": "Codex se declara revisor humano",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "Expected values to be strictly equal:",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M22",
+      "description": "Renderer certifica texto livre antigo",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:controlled_renderer_certifies_old_free_text",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M23",
+      "description": "Cobertura de caracteres prova completude semântica",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "REGRA_PROIBIDA:character_coverage_proves_semantic_completeness",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M24",
+      "description": "Alterar matriz B0 na referência",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "Expected values to be strictly equal:",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M25",
+      "description": "Inventar métrica sem execução",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "Expected values to be strictly deep-equal:",
+      "semantic_detection_test": false
+    },
+    {
+      "id": "M26",
+      "description": "Executar validação cega sem novo gate",
+      "status": "EXECUTED",
+      "baseline": "PASS_DOCUMENTARY_CONSISTENCY_ONLY",
+      "result": "REJECTED_DOCUMENTARY_MUTATION",
+      "assertion": "EXECUCAO:blind_validation_started",
+      "semantic_detection_test": false
+    }
+  ],
+  "executed_at_utc": "2026-10-18T00:59:40.117Z",
+  "network_attempts": 0
+}

@@ -1,0 +1,3545 @@
+{
+  "checkpoint": "JEV-S2-G-A",
+  "categories_defined_before_classification": {
+    "APTA_PARA_EXPERIMENTO_DE_PRODUTO": {
+      "code": "A",
+      "definition": "Evidência sintética suficiente para propor experimento isolado futuro, sem autonomia crítica, sob feature flag e shadow; não certifica produção."
+    },
+    "APTA_COM_GUARDA_DE_CODIGO": {
+      "code": "B",
+      "definition": "Sinal do JEV só pode contribuir se regras determinísticas independentes confirmarem ou limitarem a saída antes de qualquer efeito; guarda não é confidence do modelo."
+    },
+    "SOMENTE_ASSISTIVA": {
+      "code": "C",
+      "definition": "Somente sugestão, alerta, ranking ou explicação sujeitos a revisão; não comanda efeito operacional."
+    },
+    "NAO_PROMOVER": {
+      "code": "D",
+      "definition": "Erro material ou inconsistência observada impede promover esta função no contrato atual."
+    },
+    "NAO_AVALIADA": {
+      "code": "E",
+      "definition": "Falta evidência direta suficiente para esta função/domínio. Não significa desempenho bom ou ruim e não permite generalização por analogia."
+    }
+  },
+  "operational_levels": {
+    "0": {
+      "label": "não usar",
+      "meaning": "Capacidade bloqueada ou ainda sem avaliação; nenhuma participação operacional proposta agora."
+    },
+    "1": {
+      "label": "assistivo / visualização",
+      "meaning": "Sinal visível para revisão; sem comandar decisão ou efeito."
+    },
+    "2": {
+      "label": "shadow / recomendação",
+      "meaning": "Comparar recomendação sem efeito no fluxo, após gate humano específico."
+    },
+    "3": {
+      "label": "decisão permitida com guarda determinística",
+      "meaning": "Somente decisão de escopo limitado validada por código independente, após gate; nunca concede envio, escrita, finanças ou ferramenta externa."
+    }
+  },
+  "historical_classification": {
+    "DECISION": "NAO_PROMISSOR_DIAGNOSTICO",
+    "VALIDATION": "INCONCLUSIVO"
+  },
+  "confidence_scale": {
+    "HIGH": "Limite ou recomendação fortemente sustentado no escopo declarado; não certifica desempenho geral.",
+    "MEDIUM": "Sinal direto, porém amostra/contrastes limitados.",
+    "LOW": "Utilidade operacional incerta; apenas sugestão para desenho futuro."
+  },
+  "current_permission": "NONE",
+  "capabilities": [
+    {
+      "capability_id": "CAP-D-FULL",
+      "capacidade": "Contrato DECISION completo",
+      "module_ids": [
+        "A",
+        "C",
+        "E"
+      ],
+      "classification": "NAO_PROMOVER",
+      "operational_level": 0,
+      "evidence_positive": [
+        "FB-D-action"
+      ],
+      "evidence_negative": [
+        "FB-D-completeness",
+        "FB-H1",
+        "FB-PAIRS"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-TIME",
+        "G-COMMERCIAL"
+      ],
+      "rationale": "2/10 completos; erro material repetido H1 impede promover o contrato inteiro. Subcapacidades não reclassificam o resultado global.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Rever offline fronteiras de fonte/tempo e montar novo plano antes de qualquer lote.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-D-action",
+          "unit": "DECISION válida",
+          "observations": 10,
+          "unique_requests": 5,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-D-completeness",
+          "unit": "DECISION válida",
+          "observations": 10,
+          "unique_requests": 5,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-H1",
+          "unit": "request H1",
+          "observations": 2,
+          "unique_requests": 1,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-PAIRS",
+          "unit": "par/repetição",
+          "observations": 10,
+          "unique_pairs": 5,
+          "repetitions": 2,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-V-FULL",
+      "capacidade": "Contrato VALIDATION dimensional completo",
+      "module_ids": [
+        "B"
+      ],
+      "classification": "NAO_PROMOVER",
+      "operational_level": 0,
+      "evidence_positive": [
+        "FB-V-verdict"
+      ],
+      "evidence_negative": [
+        "FB-V-cross_entity",
+        "FB-V-temporal",
+        "FB-V-protocol",
+        "FB-PAIRS"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-TIME",
+        "G-COMMERCIAL"
+      ],
+      "rationale": "Verdict correto não certifica onze dimensões. Não promover validação dimensional integral; histórico global continua INCONCLUSIVO.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Benchmark separado de dimensões e aplicabilidade.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-V-verdict",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-cross_entity",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-temporal",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-protocol",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-PAIRS",
+          "unit": "par/repetição",
+          "observations": 10,
+          "unique_pairs": 5,
+          "repetitions": 2,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-ACTION",
+      "capacidade": "Ação macro RESPOND / pedir contexto / bloquear",
+      "module_ids": [
+        "A"
+      ],
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "operational_level": 2,
+      "evidence_positive": [
+        "FB-D-action",
+        "S0-MACRO",
+        "E-MACRO"
+      ],
+      "evidence_negative": [
+        "FB-D-completeness",
+        "FB-H1"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL",
+        "G-STRUCTURE"
+      ],
+      "rationale": "Acerto de action no recorte respondível justifica comparar routing em shadow; não demonstrou toda a fronteira de bloqueio.",
+      "permitted_effects": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Balancear RESPOND, ASK_FOR_CONTEXT e BLOCK, incluindo social/recusa e fontes ausentes.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-D-action",
+          "unit": "DECISION válida",
+          "observations": 10,
+          "unique_requests": 5,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "S0-MACRO",
+          "unit": "caso sintético",
+          "observations": 10,
+          "calls": 20,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "E-MACRO",
+          "unit": "stage válido",
+          "decision": 6,
+          "validation": 4,
+          "positive_validation": 0,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-D-completeness",
+          "unit": "DECISION válida",
+          "observations": 10,
+          "unique_requests": 5,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-H1",
+          "unit": "request H1",
+          "observations": 2,
+          "unique_requests": 1,
+          "repetitions": 2,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-INTENT",
+      "capacidade": "Intenção macro factual/social/outra",
+      "module_ids": [
+        "A"
+      ],
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "operational_level": 2,
+      "evidence_positive": [
+        "FB-D-intent"
+      ],
+      "evidence_negative": [
+        "SCOPE-NARROW"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-STRUCTURE"
+      ],
+      "rationale": "10/10 no lote recente, predominantemente factual. Não equivale à taxonomia de follow-up.",
+      "permitted_effects": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Conjunto independente balanceado de intenção, perguntas mistas e cortesias.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-D-intent",
+          "unit": "DECISION válida",
+          "observations": 10,
+          "unique_requests": 5,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "SCOPE-NARROW",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-ENOUGH",
+      "capacidade": "Suficiência de contexto para resposta parcial",
+      "module_ids": [
+        "A",
+        "C"
+      ],
+      "classification": "SOMENTE_ASSISTIVA",
+      "operational_level": 1,
+      "evidence_positive": [
+        "FB-D-enough_context"
+      ],
+      "evidence_negative": [
+        "FB-D-missing_information",
+        "FB-H1",
+        "SCOPE-NARROW"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE"
+      ],
+      "rationale": "Todos os dez contextos permitiam ao menos resposta parcial; não há contraste suficiente de indisponibilidade para controlar bloqueio.",
+      "permitted_effects": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "LOW",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Contrastar contexto inacessível, ausência total e parcial legítima.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-D-enough_context",
+          "unit": "DECISION válida",
+          "observations": 10,
+          "unique_requests": 5,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-D-missing_information",
+          "unit": "DECISION válida",
+          "observations": 10,
+          "unique_requests": 5,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-H1",
+          "unit": "request H1",
+          "observations": 2,
+          "unique_requests": 1,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "SCOPE-NARROW",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-ENTITY",
+      "capacidade": "Entidade textual em catálogo explícito",
+      "module_ids": [
+        "A",
+        "D"
+      ],
+      "classification": "APTA_COM_GUARDA_DE_CODIGO",
+      "operational_level": 3,
+      "evidence_positive": [
+        "FB-D-entity_resolution",
+        "FB-V-entity"
+      ],
+      "evidence_negative": [
+        "FB-V-cross_entity",
+        "SCOPE-NARROW"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Identificou alvo explícito, mas a dimensão cross_entity falhou em transferências. Catálogo, ownership e identidade precisam de verificação independente.",
+      "permitted_effects": [
+        "CANDIDATE",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Ambiguidade, múltiplos imóveis, homônimos e tentativa de transferir fonte fora do catálogo.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-D-entity_resolution",
+          "unit": "DECISION válida",
+          "observations": 10,
+          "unique_requests": 5,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-entity",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-cross_entity",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "SCOPE-NARROW",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-CURRENT",
+      "capacidade": "Seleção de fontes atuais autorizadas",
+      "module_ids": [
+        "A",
+        "C"
+      ],
+      "classification": "APTA_COM_GUARDA_DE_CODIGO",
+      "operational_level": 3,
+      "evidence_positive": [
+        "FB-D-relevant_current_facts"
+      ],
+      "evidence_negative": [
+        "FB-H1"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE",
+        "G-TIME"
+      ],
+      "rationale": "8/10; H1 seleciona null. Somente candidato entre fontes confirmadas e filtradas por código, sem excluir fontes obrigatórias.",
+      "permitted_effects": [
+        "CANDIDATE",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Contrastes null/ausente/zero e fonte conflitante, com catálogo independente.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-D-relevant_current_facts",
+          "unit": "DECISION válida",
+          "observations": 10,
+          "unique_requests": 5,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-H1",
+          "unit": "request H1",
+          "observations": 2,
+          "unique_requests": 1,
+          "repetitions": 2,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-HISTORY",
+      "capacidade": "Recuperação de histórico obrigatório",
+      "module_ids": [
+        "A",
+        "C",
+        "E"
+      ],
+      "classification": "APTA_COM_GUARDA_DE_CODIGO",
+      "operational_level": 3,
+      "evidence_positive": [
+        "FB-D-relevant_historical_facts",
+        "FB-HISTORY"
+      ],
+      "evidence_negative": [
+        "FB-D-temporal_resolution",
+        "FB-H1",
+        "SCOPE-NARROW"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-TIME"
+      ],
+      "rationale": "4/4 IDs obrigatórios em duas famílias repetidas; recuperar fonte não determina que ela continua atual.",
+      "permitted_effects": [
+        "CANDIDATE",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Histórico longo, ruído, contradição e fonte antiga necessária fora da janela.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-D-relevant_historical_facts",
+          "unit": "DECISION válida",
+          "observations": 10,
+          "unique_requests": 5,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-HISTORY",
+          "unit": "ID histórico obrigatório exposto",
+          "observations": 4,
+          "unique_requests": 2,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-D-temporal_resolution",
+          "unit": "DECISION válida",
+          "observations": 10,
+          "unique_requests": 5,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-H1",
+          "unit": "request H1",
+          "observations": 2,
+          "unique_requests": 1,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "SCOPE-NARROW",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-MISSING",
+      "capacidade": "Sinalização de informação faltante",
+      "module_ids": [
+        "A",
+        "C"
+      ],
+      "classification": "APTA_COM_GUARDA_DE_CODIGO",
+      "operational_level": 3,
+      "evidence_positive": [
+        "FB-D-missing_information"
+      ],
+      "evidence_negative": [
+        "FB-H1",
+        "FB-D-missing_information"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL"
+      ],
+      "rationale": "6/10; lacunas extras poderiam impedir resposta legítima. Código confirma presença/ausência; sinal não bloqueia sozinho.",
+      "permitted_effects": [
+        "CANDIDATE",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Falsas lacunas, parcial suficiente, null e fonte inacessível.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-D-missing_information",
+          "unit": "DECISION válida",
+          "observations": 10,
+          "unique_requests": 5,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-H1",
+          "unit": "request H1",
+          "observations": 2,
+          "unique_requests": 1,
+          "repetitions": 2,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-PROTOCOL-EMPTY",
+      "capacidade": "Abstenção de protocolo em catálogo vazio",
+      "module_ids": [
+        "A"
+      ],
+      "classification": "SOMENTE_ASSISTIVA",
+      "operational_level": 1,
+      "evidence_positive": [
+        "FB-D-applicable_protocols"
+      ],
+      "evidence_negative": [
+        "SCOPE-EMPTY-PROTOCOL",
+        "FB-V-protocol"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-COMMERCIAL"
+      ],
+      "rationale": "10/10 seleções vazias não demonstram escolha correta entre protocolos ativos; manter catálogo sob autoridade do Angario.",
+      "permitted_effects": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Catálogo ativo, arquivado, de outra entidade e conflitante.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-D-applicable_protocols",
+          "unit": "DECISION válida",
+          "observations": 10,
+          "unique_requests": 5,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "SCOPE-EMPTY-PROTOCOL",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        },
+        {
+          "evidence_id": "FB-V-protocol",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-PROTOCOL-COMPLEX",
+      "capacidade": "Seleção entre protocolos ativos conflitantes/versionados",
+      "module_ids": [
+        "A"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-PROTOCOL"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-COMMERCIAL"
+      ],
+      "rationale": "S1 contém desenho, mas o lote V2 completo não foi executado. Não há certificação desta capacidade complexa.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Benchmark de conflitos/versionamento com fonte oficial e regras determinísticas.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-PROTOCOL",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-PROHIBITED",
+      "capacidade": "Detector principal de suposições proibidas",
+      "module_ids": [
+        "A",
+        "B"
+      ],
+      "classification": "NAO_PROMOVER",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "FB-D-prohibited_assumptions",
+        "E-PROHIBITED"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-COMMERCIAL",
+        "G-SOURCE",
+        "G-TIME"
+      ],
+      "rationale": "4/10 e reincidência em HISTORICAL_AS_CURRENT, CROSS_ENTITY e INVENT_COMMERCIAL impedem função de proteção autônoma.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Regras explícitas primeiro; só então testar sinal incremental sem substituir guardas.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-D-prohibited_assumptions",
+          "unit": "DECISION válida",
+          "observations": 10,
+          "unique_requests": 5,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "E-PROHIBITED",
+          "unit": "DECISION válida",
+          "observations": 6,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-RISK-HINT",
+      "capacidade": "Sinal auxiliar de risco com regras explícitas",
+      "module_ids": [
+        "A",
+        "B",
+        "P"
+      ],
+      "classification": "SOMENTE_ASSISTIVA",
+      "operational_level": 1,
+      "evidence_positive": [
+        "FB-D-prohibited_assumptions"
+      ],
+      "evidence_negative": [
+        "FB-D-prohibited_assumptions",
+        "E-PROHIBITED"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-COMMERCIAL",
+        "G-SOURCE",
+        "G-TIME"
+      ],
+      "rationale": "Pode exibir divergência para revisão; ausência de alerta JEV não libera fato, taxa ou entidade. A proteção vem das regras.",
+      "permitted_effects": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "LOW",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Medir ganho incremental sobre guardas e alarmes falsos; nunca usar como gate único.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-D-prohibited_assumptions",
+          "unit": "DECISION válida",
+          "observations": 10,
+          "unique_requests": 5,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "E-PROHIBITED",
+          "unit": "DECISION válida",
+          "observations": 6,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-TEMP-TRUTH",
+      "capacidade": "Verdade temporal/fonte atual autônoma",
+      "module_ids": [
+        "A",
+        "E"
+      ],
+      "classification": "NAO_PROMOVER",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "FB-H1",
+        "FB-D-temporal_resolution",
+        "FB-V-temporal"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-TIME"
+      ],
+      "rationale": "H1 é material: null selecionado como atual e CURRENT_FACT indevido em ambos R. Não é mera diferença de rótulo.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Resolver temporalidade por código; novo benchmark controlado depende de gate.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-H1",
+          "unit": "request H1",
+          "observations": 2,
+          "unique_requests": 1,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-D-temporal_resolution",
+          "unit": "DECISION válida",
+          "observations": 10,
+          "unique_requests": 5,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-temporal",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-TEMP-LABEL",
+      "capacidade": "Metadados temporais como comentário assistivo",
+      "module_ids": [
+        "E",
+        "P"
+      ],
+      "classification": "SOMENTE_ASSISTIVA",
+      "operational_level": 1,
+      "evidence_positive": [
+        "FB-HISTORY"
+      ],
+      "evidence_negative": [
+        "FB-D-temporal_resolution",
+        "FB-V-temporal"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-TIME"
+      ],
+      "rationale": "Rótulos podem ser mostrados apenas em comparação com verdade determinada pelo código, sem governar contexto ou resposta.",
+      "permitted_effects": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "LOW",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Separar erro de fonte, omissão de suporte e diferença de aplicabilidade.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-HISTORY",
+          "unit": "ID histórico obrigatório exposto",
+          "observations": 4,
+          "unique_requests": 2,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-D-temporal_resolution",
+          "unit": "DECISION válida",
+          "observations": 10,
+          "unique_requests": 5,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-temporal",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-GUARD",
+      "capacidade": "Verdict macro de resposta candidata",
+      "module_ids": [
+        "A",
+        "B"
+      ],
+      "classification": "APTA_COM_GUARDA_DE_CODIGO",
+      "operational_level": 3,
+      "evidence_positive": [
+        "FB-V-verdict",
+        "FB-POSITIVE",
+        "FB-NEGATIVE"
+      ],
+      "evidence_negative": [
+        "S0-FALSE-REJECT",
+        "FB-V-cross_entity",
+        "FB-V-temporal",
+        "FB-PAIRS"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE",
+        "G-TIME",
+        "G-COMMERCIAL",
+        "G-STRUCTURE",
+        "G-WHATSAPP"
+      ],
+      "rationale": "14/14, false accept 0/8 e false reject 0/6 são promissores no recorte, mas amostra pequena e falha histórica de rejeição exigem guardas independentes e revisão.",
+      "permitted_effects": [
+        "CANDIDATE",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "JEV-GUARD em shadow com negativas novas, positivos parciais, adversários e auditoria de falso aceite.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-V-verdict",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-POSITIVE",
+          "unit": "exposição positiva",
+          "observations": 6,
+          "unique_candidates": 3,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-NEGATIVE",
+          "unit": "exposição negativa",
+          "observations": 8,
+          "unique_candidates": 4,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "S0-FALSE-REJECT",
+          "unit": "candidata positiva",
+          "observations": 5,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-cross_entity",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-temporal",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-PAIRS",
+          "unit": "par/repetição",
+          "observations": 10,
+          "unique_pairs": 5,
+          "repetitions": 2,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-V-GROUNDING",
+      "capacidade": "Vinculação textual às fontes",
+      "module_ids": [
+        "A",
+        "B"
+      ],
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "operational_level": 2,
+      "evidence_positive": [
+        "FB-V-grounding"
+      ],
+      "evidence_negative": [
+        "FB-V-FIELD-LIMIT",
+        "S0-FALSE-REJECT"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL",
+        "G-STRUCTURE"
+      ],
+      "rationale": "14/14 neste campo não generaliza para o conjunto dimensional nem para novas conversas; medir sinal isolado em shadow.",
+      "permitted_effects": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Benchmark independente deste campo com positivos/negativos, aplicabilidade e fonte ausente.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-V-grounding",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-FIELD-LIMIT",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        },
+        {
+          "evidence_id": "S0-FALSE-REJECT",
+          "unit": "candidata positiva",
+          "observations": 5,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-V-FACTUALITY",
+      "capacidade": "Factualidade da candidata",
+      "module_ids": [
+        "A",
+        "B"
+      ],
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "operational_level": 2,
+      "evidence_positive": [
+        "FB-V-factuality"
+      ],
+      "evidence_negative": [
+        "FB-V-FIELD-LIMIT",
+        "S0-FALSE-REJECT"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL",
+        "G-STRUCTURE"
+      ],
+      "rationale": "14/14 neste campo não generaliza para o conjunto dimensional nem para novas conversas; medir sinal isolado em shadow.",
+      "permitted_effects": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Benchmark independente deste campo com positivos/negativos, aplicabilidade e fonte ausente.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-V-factuality",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-FIELD-LIMIT",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        },
+        {
+          "evidence_id": "S0-FALSE-REJECT",
+          "unit": "candidata positiva",
+          "observations": 5,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-V-UNSUPPORTED",
+      "capacidade": "Detecção de afirmação sem suporte na candidata",
+      "module_ids": [
+        "A",
+        "B"
+      ],
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "operational_level": 2,
+      "evidence_positive": [
+        "FB-V-unsupported_assumption"
+      ],
+      "evidence_negative": [
+        "FB-V-FIELD-LIMIT",
+        "S0-FALSE-REJECT"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL",
+        "G-STRUCTURE"
+      ],
+      "rationale": "14/14 neste campo não generaliza para o conjunto dimensional nem para novas conversas; medir sinal isolado em shadow.",
+      "permitted_effects": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Benchmark independente deste campo com positivos/negativos, aplicabilidade e fonte ausente.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-V-unsupported_assumption",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-FIELD-LIMIT",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        },
+        {
+          "evidence_id": "S0-FALSE-REJECT",
+          "unit": "candidata positiva",
+          "observations": 5,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-V-COVERAGE",
+      "capacidade": "Cobertura da parte conhecida",
+      "module_ids": [
+        "A",
+        "B"
+      ],
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "operational_level": 2,
+      "evidence_positive": [
+        "FB-V-coverage"
+      ],
+      "evidence_negative": [
+        "FB-V-FIELD-LIMIT",
+        "S0-FALSE-REJECT"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL",
+        "G-STRUCTURE"
+      ],
+      "rationale": "14/14 neste campo não generaliza para o conjunto dimensional nem para novas conversas; medir sinal isolado em shadow.",
+      "permitted_effects": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Benchmark independente deste campo com positivos/negativos, aplicabilidade e fonte ausente.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-V-coverage",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-FIELD-LIMIT",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        },
+        {
+          "evidence_id": "S0-FALSE-REJECT",
+          "unit": "candidata positiva",
+          "observations": 5,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-V-OMISSION",
+      "capacidade": "Omissão relevante na candidata",
+      "module_ids": [
+        "A",
+        "B"
+      ],
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "operational_level": 2,
+      "evidence_positive": [
+        "FB-V-omission"
+      ],
+      "evidence_negative": [
+        "FB-V-FIELD-LIMIT",
+        "S0-FALSE-REJECT"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL",
+        "G-STRUCTURE"
+      ],
+      "rationale": "14/14 neste campo não generaliza para o conjunto dimensional nem para novas conversas; medir sinal isolado em shadow.",
+      "permitted_effects": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Benchmark independente deste campo com positivos/negativos, aplicabilidade e fonte ausente.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-V-omission",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-FIELD-LIMIT",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        },
+        {
+          "evidence_id": "S0-FALSE-REJECT",
+          "unit": "candidata positiva",
+          "observations": 5,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-V-PARTIAL",
+      "capacidade": "Permissibilidade de resposta parcial",
+      "module_ids": [
+        "A",
+        "B"
+      ],
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "operational_level": 2,
+      "evidence_positive": [
+        "FB-V-partial_answer_allowed"
+      ],
+      "evidence_negative": [
+        "FB-V-FIELD-LIMIT",
+        "S0-FALSE-REJECT"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL",
+        "G-STRUCTURE"
+      ],
+      "rationale": "14/14 neste campo não generaliza para o conjunto dimensional nem para novas conversas; medir sinal isolado em shadow.",
+      "permitted_effects": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Benchmark independente deste campo com positivos/negativos, aplicabilidade e fonte ausente.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-V-partial_answer_allowed",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-FIELD-LIMIT",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        },
+        {
+          "evidence_id": "S0-FALSE-REJECT",
+          "unit": "candidata positiva",
+          "observations": 5,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-POSITIVE",
+      "capacidade": "Aprovação de controles positivos",
+      "module_ids": [
+        "B"
+      ],
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "operational_level": 2,
+      "evidence_positive": [
+        "FB-POSITIVE"
+      ],
+      "evidence_negative": [
+        "S0-FALSE-REJECT",
+        "SCOPE-NARROW"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-COMMERCIAL"
+      ],
+      "rationale": "Seis exposições, três candidatas positivas repetidas, incluindo parcial P2. Não prova taxa de falsa rejeição em tráfego real.",
+      "permitted_effects": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Expandir positivos válidos inéditos e lacunas declaradas.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-POSITIVE",
+          "unit": "exposição positiva",
+          "observations": 6,
+          "unique_candidates": 3,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "S0-FALSE-REJECT",
+          "unit": "candidata positiva",
+          "observations": 5,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "SCOPE-NARROW",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-NEGATIVE",
+      "capacidade": "Rejeição de candidatas negativas",
+      "module_ids": [
+        "B"
+      ],
+      "classification": "APTA_PARA_EXPERIMENTO_DE_PRODUTO",
+      "operational_level": 2,
+      "evidence_positive": [
+        "FB-NEGATIVE"
+      ],
+      "evidence_negative": [
+        "SCOPE-NARROW",
+        "FB-V-cross_entity"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-TIME",
+        "G-COMMERCIAL"
+      ],
+      "rationale": "Oito exposições, quatro candidatas negativas repetidas. Não garante detectar todos os adversários ou explicar corretamente a reprovação.",
+      "permitted_effects": [
+        "SHADOW_RESULT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Ampliar negativas materiais e contrastes quase corretos.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-NEGATIVE",
+          "unit": "exposição negativa",
+          "observations": 8,
+          "unique_candidates": 4,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "SCOPE-NARROW",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        },
+        {
+          "evidence_id": "FB-V-cross_entity",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-V-PROTOCOL",
+      "capacidade": "Rótulo protocol na validação",
+      "module_ids": [
+        "B"
+      ],
+      "classification": "SOMENTE_ASSISTIVA",
+      "operational_level": 1,
+      "evidence_positive": [
+        "FB-V-protocol"
+      ],
+      "evidence_negative": [
+        "FB-V-protocol"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-COMMERCIAL"
+      ],
+      "rationale": "8/14; mistura erro de entidade com protocolo e aplica PASS a P2 sem regra comercial afirmada. Não governa autorização comercial.",
+      "permitted_effects": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "LOW",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Separar aplicabilidade, fonte inexistente e protocolo errado.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-V-protocol",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-V-CROSS",
+      "capacidade": "Detector crítico de transferência A/B na validação",
+      "module_ids": [
+        "B",
+        "D"
+      ],
+      "classification": "NAO_PROMOVER",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "FB-V-cross_entity",
+        "FB-CROSS-MATERIAL",
+        "E-CROSS"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "2/14; em E1 e E3 devolveu PASS apesar da transferência comprovada. Não reduzir o defeito material a PASS versus NOT_APPLICABLE sem transferência.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Benchmark direcional com fontes, alvo e contrafactuais independentes.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-V-cross_entity",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-CROSS-MATERIAL",
+          "unit": "candidata com transferência demonstrada",
+          "observations": 4,
+          "unique_candidates": 2,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "E-CROSS",
+          "unit": "VALIDATION válida",
+          "observations": 4,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-V-TEMP",
+      "capacidade": "Detector temporal crítico na validação",
+      "module_ids": [
+        "B",
+        "E"
+      ],
+      "classification": "NAO_PROMOVER",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "FB-V-temporal",
+        "E-TEMPORAL"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-TIME"
+      ],
+      "rationale": "8/14; atribui FAIL temporal a troca de entidade entre valores atuais. Não confiar como detector crítico independente.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Separar rótulos finos de troca real passado/presente.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-V-temporal",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "E-TEMPORAL",
+          "unit": "stage válido",
+          "decision": 6,
+          "validation": 4,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-V-SAFETY",
+      "capacidade": "Dimensão safety como sinal geral",
+      "module_ids": [
+        "B"
+      ],
+      "classification": "SOMENTE_ASSISTIVA",
+      "operational_level": 1,
+      "evidence_positive": [
+        "FB-V-safety"
+      ],
+      "evidence_negative": [
+        "SCOPE-SAFETY"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-ACTIONS"
+      ],
+      "rationale": "14/14 em fontes acessíveis sem ação externa; não avalia permissão, ataque, RLS ou segurança operacional.",
+      "permitted_effects": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "LOW",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Benchmark próprio de ações proibidas e contexto inacessível.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-V-safety",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "SCOPE-SAFETY",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-REASONS",
+      "capacidade": "Explicação por razões dimensionais",
+      "module_ids": [
+        "B",
+        "P"
+      ],
+      "classification": "SOMENTE_ASSISTIVA",
+      "operational_level": 1,
+      "evidence_positive": [
+        "FB-REASONS"
+      ],
+      "evidence_negative": [
+        "FB-V-cross_entity",
+        "FB-V-temporal",
+        "FB-V-protocol"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE"
+      ],
+      "rationale": "Precisão 46/56 e recall 46/50; repetir razão incorreta não justifica decisão. Não existe evidência de redação explicativa livre.",
+      "permitted_effects": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Revisão humana de razões e separação de dimensão inaplicável.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-REASONS",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-cross_entity",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-temporal",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-protocol",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-STRUCTURE",
+      "capacidade": "Consumo de saída estruturada",
+      "module_ids": [
+        "A",
+        "B",
+        "C"
+      ],
+      "classification": "APTA_COM_GUARDA_DE_CODIGO",
+      "operational_level": 3,
+      "evidence_positive": [
+        "FB-STRUCTURE",
+        "D-STRUCTURE",
+        "A-PARSER",
+        "C-DIAGNOSTICS"
+      ],
+      "evidence_negative": [
+        "B-STRUCTURE",
+        "E-STRUCTURE"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-STRUCTURE"
+      ],
+      "rationale": "24/24 no último run não resolve o histórico de INVALID_PROBABILITIES. Parser e descarte seguro continuam obrigatórios.",
+      "permitted_effects": [
+        "CANDIDATE",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Novo gate só se necessário; manter testes offline e observabilidade, sem relaxar tolerância.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-STRUCTURE",
+          "unit": "chamada",
+          "observations": 24,
+          "unique_requests": 12,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "D-STRUCTURE",
+          "unit": "probe",
+          "observations": 6,
+          "unique_requests": 3,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "A-PARSER",
+          "unit": "teste offline",
+          "observations": 46,
+          "calls": 0
+        },
+        {
+          "evidence_id": "C-DIAGNOSTICS",
+          "unit": "teste offline",
+          "observations": 85,
+          "calls": 0
+        },
+        {
+          "evidence_id": "B-STRUCTURE",
+          "unit": "chamada iniciada",
+          "observations": 4,
+          "normalized": 3
+        },
+        {
+          "evidence_id": "E-STRUCTURE",
+          "unit": "chamada",
+          "observations": 12,
+          "valid": 10,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-CONFIDENCE",
+      "capacidade": "Confidence nativa para observação",
+      "module_ids": [
+        "B",
+        "P"
+      ],
+      "classification": "SOMENTE_ASSISTIVA",
+      "operational_level": 1,
+      "evidence_positive": [
+        "FB-CONFIDENCE"
+      ],
+      "evidence_negative": [
+        "FB-CONFIDENCE",
+        "FB-REPETITIONS"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-STRUCTURE"
+      ],
+      "rationale": "Erros com 0,94/0,96 e 0,93 reincidem. Confidence não é autorização nem confiança desta recomendação.",
+      "permitted_effects": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "MEDIUM",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Calibração independente com erro por campo; nenhum threshold operacional aqui.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-CONFIDENCE",
+          "unit": "pergunta retornada",
+          "observations": 414,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-REPETITIONS",
+          "unit": "par R1/R2",
+          "observations": 12,
+          "unique_requests": 12,
+          "synthetic": true
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-INCONSISTENCY",
+      "capacidade": "Alerta de inconsistência factual em contexto textual autorizado",
+      "module_ids": [
+        "P",
+        "B"
+      ],
+      "classification": "SOMENTE_ASSISTIVA",
+      "operational_level": 1,
+      "evidence_positive": [
+        "FB-V-grounding",
+        "FB-V-factuality"
+      ],
+      "evidence_negative": [
+        "FB-H1",
+        "FB-V-FIELD-LIMIT"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-SOURCE",
+        "G-TIME"
+      ],
+      "rationale": "Há evidência de sinais da candidata, não de reparo cadastral geral. Usar somente sugestão de revisão.",
+      "permitted_effects": [
+        "SUGGESTION",
+        "ALERT",
+        "HUMAN_REVIEW"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "LOW",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Medir precisão de alertas e dano de falso alarme fora dos exemplos.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "FB-V-grounding",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-factuality",
+          "unit": "VALIDATION válida",
+          "observations": 14,
+          "unique_requests": 7,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-H1",
+          "unit": "request H1",
+          "observations": 2,
+          "unique_requests": 1,
+          "repetitions": 2,
+          "synthetic": true
+        },
+        {
+          "evidence_id": "FB-V-FIELD-LIMIT",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-WRITE",
+      "capacidade": "Redigir mensagem",
+      "module_ids": [
+        "A"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Escrita livre não foi tarefa dos testes Choice; o papel GPT é proposta arquitetural, sem comparação de geração.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-CRM-EFFECT",
+      "capacidade": "Escolher e executar efeito no CRM",
+      "module_ids": [
+        "A",
+        "G"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Nenhuma chamada testou mutação de CRM; action RESPOND não é ferramenta nem autorização.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-FOLLOW-MACRO",
+      "capacidade": "Classificar respondeu/recusou/falar depois/precisa follow-up",
+      "module_ids": [
+        "F"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Intenção FACTUAL/SOCIAL e RESPOND não medem a taxonomia específica de acompanhamento.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-FOLLOW-EFFECT",
+      "capacidade": "Definir motivo, encerrar, agendar ou mudar status",
+      "module_ids": [
+        "F",
+        "G"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Efeito e motivo exigem contrato próprio, não inferência a partir de intenção.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-PIPELINE",
+      "capacidade": "Recomendar próxima ação do Pipeline",
+      "module_ids": [
+        "G",
+        "O"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Não houve benchmark de próxima ação, elegibilidade ou resultado operacional.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-RADAR-RELEVANCE",
+      "capacidade": "Anúncio relevante",
+      "module_ids": [
+        "H"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "S2 não recebeu benchmark de anúncios ou relevância do Radar.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-RADAR-TYPE",
+      "capacidade": "Classificar casa/apartamento no Radar",
+      "module_ids": [
+        "H"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Tipo de anúncio não foi alvo das perguntas preservadas.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-RADAR-PURPOSE",
+      "capacidade": "Finalidade de anúncio",
+      "module_ids": [
+        "H"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Locação/venda e adequação da finalidade não foram avaliadas.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-RADAR-DUPLICATE",
+      "capacidade": "Anúncio novo/possivelmente repetido",
+      "module_ids": [
+        "I"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Nenhum benchmark temporal de coleta ou deduplicação foi realizado.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-RADAR-SAME",
+      "capacidade": "Provável mesmo imóvel no Radar",
+      "module_ids": [
+        "I",
+        "K"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Resolver alvo A/B explícito não mede identidade entre anúncios.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-RADAR-OPPORTUNITY",
+      "capacidade": "Oportunidade de captação",
+      "module_ids": [
+        "H",
+        "O"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Não há evidência de retorno, ranking ou oportunidades do Radar.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-RADAR-REVIEW",
+      "capacidade": "Identificar anúncio que precisa investigação humana",
+      "module_ids": [
+        "H",
+        "J"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "A utilidade desta triagem específica não foi medida.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-INVESTIGATOR",
+      "capacidade": "Relevância de candidato do Investigador",
+      "module_ids": [
+        "J"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Testes não executaram investigação ou pontuação de correspondências.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-MATCH-TEXT",
+      "capacidade": "Textual matching entre anúncios",
+      "module_ids": [
+        "K"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Não há pares de anúncios para similaridade textual medidos; não generalizar grounded verdict.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-MATCH-ENTITY",
+      "capacidade": "Entity matching entre registros/anúncios",
+      "module_ids": [
+        "D",
+        "K"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Entity resolution do catálogo explícito não prova descoberta de identidade entre registros.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-MATCH-VISUAL",
+      "capacidade": "Visual matching de imóveis",
+      "module_ids": [
+        "K",
+        "N"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-VISION"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Nenhuma imagem foi avaliada.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-VISION",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-APPRAISAL-COMPS",
+      "capacidade": "Selecionar/rejeitar comparáveis e classificar similaridade",
+      "module_ids": [
+        "L"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Não foram medidos comparáveis nem qualidade de similaridade para avaliação.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-APPRAISAL-OUTLIER",
+      "capacidade": "Detectar outlier na avaliação",
+      "module_ids": [
+        "L"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Não existe benchmark de outlier ou distribuição de mercado.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-PRICE-FINAL",
+      "capacidade": "Calcular preço final pelo julgamento do JEV",
+      "module_ids": [
+        "L"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-PRICE"
+      ],
+      "rationale": "Preço final não avaliado; regra do domínio exige motor determinístico/estatístico, independentemente da ausência de teste.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-ADS-QUALITY",
+      "capacidade": "Qualidade cadastral/extrair dados de anúncio",
+      "module_ids": [
+        "M"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Não foi medido extrator ou auditor cadastral completo.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-OPS-PRIORITY",
+      "capacidade": "Ranking/priorização da carteira",
+      "module_ids": [
+        "O"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-DOMAIN"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "Não há medição de utilidade operacional ou ranking comparado.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-DOMAIN",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    },
+    {
+      "capability_id": "CAP-VISION",
+      "capacidade": "JEV-VISION / fachada",
+      "module_ids": [
+        "N"
+      ],
+      "classification": "NAO_AVALIADA",
+      "operational_level": 0,
+      "evidence_positive": [],
+      "evidence_negative": [
+        "NOT-TESTED-VISION"
+      ],
+      "guard_ids": [
+        "G-EXPERIMENT",
+        "G-TENANT",
+        "G-SOURCE"
+      ],
+      "rationale": "S0–S2-F-B são textuais; nenhuma evidência visual positiva ou negativa existe neste conjunto.",
+      "permitted_effects": [
+        "NONE"
+      ],
+      "prohibited_effects": [
+        "SEND_WHATSAPP",
+        "CHANGE_STATUS",
+        "DELETE_CONTACT",
+        "PUBLISH_PROPERTY",
+        "WITHDRAW_PROPERTY",
+        "CHANGE_OWNER",
+        "CHANGE_BROKER",
+        "SET_FEE",
+        "CHANGE_PRICE",
+        "CREATE_APPOINTMENT",
+        "REGISTER_PAYMENT",
+        "CHANGE_TRANSFER",
+        "EXECUTE_EXTERNAL_TOOL"
+      ],
+      "confidence_in_recommendation": "HIGH",
+      "confidence_basis": "Análise qualitativa de evidência e limite de escopo; não é confidence nativa do JEV.",
+      "next_experiment": "Desenho e benchmark próprios, exclusivamente após escolha humana; nenhum executor ou chamada neste checkpoint.",
+      "current_permission": "NONE",
+      "future_gate_required": true,
+      "production_ready": false,
+      "sample_size": [
+        {
+          "evidence_id": "NOT-TESTED-VISION",
+          "unit": "escopo documental; não é amostra de desempenho",
+          "observations": null,
+          "calls": 0
+        }
+      ]
+    }
+  ]
+}

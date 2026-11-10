@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "files_checked": 36,
+  "forbidden_value_matches": 0,
+  "raw_persisted": false,
+  "returned_context_or_reasoning_persisted": false,
+  "real_data_persisted": false,
+  "credentials_read": 0,
+  "exact_secret_scan_performed": false,
+  "reason": "Credenciais não são lidas neste gate; varredura por campos/padrões e fontes sem transporte.",
+  "raw_reconstructed": false,
+  "internal_reasoning_reconstructed": false,
+  "phase": "BEFORE_FINAL_FREEZE",
+  "verified_at_utc": "2026-10-18T00:18:31.461Z"
+}

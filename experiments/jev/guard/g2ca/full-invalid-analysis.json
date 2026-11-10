@@ -1,0 +1,142 @@
+[
+  {
+    "case_id": "GG0-14",
+    "sequence": 28,
+    "status": "INVALID_RESPONSE",
+    "result": null,
+    "normalized_verdict": null,
+    "semantic_credit": false,
+    "arm_order": "EVEN_REDUCED_FULL",
+    "full_position": 2,
+    "expected": "REJECT",
+    "code": "INVALID_PROBABILITIES",
+    "subcode": "PROBABILITY_SUM_MISMATCH",
+    "failures": [
+      {
+        "question_id": "partial_answer_allowed",
+        "dimension": "partial_answer_allowed",
+        "question_position": 12,
+        "options": 4,
+        "probabilities": {
+          "PASS": 0.01,
+          "FAIL": 0.05,
+          "INCONCLUSIVE": 0,
+          "NOT_APPLICABLE": 0.93
+        },
+        "sum": 0.9900000000000001,
+        "delta": -0.009999999999999898,
+        "absolute_delta": 0.009999999999999898,
+        "choice": "NOT_APPLICABLE",
+        "confidence": 0.91,
+        "error_code": "PROBABILITY_SUM_MISMATCH"
+      }
+    ],
+    "full_semantics": "NOT_ANALYZED",
+    "provider_internal_cause": "UNDETERMINED"
+  },
+  {
+    "case_id": "GG0-22",
+    "sequence": 44,
+    "status": "INVALID_RESPONSE",
+    "result": null,
+    "normalized_verdict": null,
+    "semantic_credit": false,
+    "arm_order": "EVEN_REDUCED_FULL",
+    "full_position": 2,
+    "expected": "REJECT",
+    "code": "INVALID_PROBABILITIES",
+    "subcode": "PROBABILITY_SUM_MISMATCH",
+    "failures": [
+      {
+        "question_id": "omission",
+        "dimension": "omission",
+        "question_position": 8,
+        "options": 4,
+        "probabilities": {
+          "PASS": 0.05,
+          "FAIL": 0.68,
+          "INCONCLUSIVE": 0.2,
+          "NOT_APPLICABLE": 0.06
+        },
+        "sum": 0.9900000000000002,
+        "delta": -0.009999999999999787,
+        "absolute_delta": 0.009999999999999787,
+        "choice": "FAIL",
+        "confidence": 0.57,
+        "error_code": "PROBABILITY_SUM_MISMATCH"
+      }
+    ],
+    "full_semantics": "NOT_ANALYZED",
+    "provider_internal_cause": "UNDETERMINED"
+  },
+  {
+    "case_id": "GG0-24",
+    "sequence": 48,
+    "status": "INVALID_RESPONSE",
+    "result": null,
+    "normalized_verdict": null,
+    "semantic_credit": false,
+    "arm_order": "EVEN_REDUCED_FULL",
+    "full_position": 2,
+    "expected": "REJECT",
+    "code": "INVALID_PROBABILITIES",
+    "subcode": "PROBABILITY_SUM_MISMATCH",
+    "failures": [
+      {
+        "question_id": "factuality",
+        "dimension": "factuality",
+        "question_position": 3,
+        "options": 4,
+        "probabilities": {
+          "PASS": 0.02,
+          "FAIL": 0.17,
+          "INCONCLUSIVE": 0.8,
+          "NOT_APPLICABLE": 0
+        },
+        "sum": 0.99,
+        "delta": -0.010000000000000009,
+        "absolute_delta": 0.010000000000000009,
+        "choice": "INCONCLUSIVE",
+        "confidence": 0.73,
+        "error_code": "PROBABILITY_SUM_MISMATCH"
+      }
+    ],
+    "full_semantics": "NOT_ANALYZED",
+    "provider_internal_cause": "UNDETERMINED"
+  },
+  {
+    "case_id": "GG0-36",
+    "sequence": 72,
+    "status": "INVALID_RESPONSE",
+    "result": null,
+    "normalized_verdict": null,
+    "semantic_credit": false,
+    "arm_order": "EVEN_REDUCED_FULL",
+    "full_position": 2,
+    "expected": "INCONCLUSIVE",
+    "code": "INVALID_PROBABILITIES",
+    "subcode": "PROBABILITY_SUM_MISMATCH",
+    "failures": [
+      {
+        "question_id": "unsupported_assumption",
+        "dimension": "unsupported_assumption",
+        "question_position": 9,
+        "options": 4,
+        "probabilities": {
+          "PASS": 0.03,
+          "FAIL": 0.68,
+          "INCONCLUSIVE": 0.28,
+          "NOT_APPLICABLE": 0
+        },
+        "sum": 0.9900000000000001,
+        "delta": -0.009999999999999898,
+        "absolute_delta": 0.009999999999999898,
+        "choice": "FAIL",
+        "confidence": 0.57,
+        "error_code": "PROBABILITY_SUM_MISMATCH"
+      }
+    ],
+    "full_semantics": "NOT_ANALYZED",
+    "provider_internal_cause": "UNDETERMINED"
+  }
+]

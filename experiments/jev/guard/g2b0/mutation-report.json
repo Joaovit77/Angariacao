@@ -1,0 +1,110 @@
+{
+  "checkpoint": "JEV-GUARD-G2-B0",
+  "mode": "OFFLINE_MUTATED_COPIES_ONLY",
+  "historical_files_modified": false,
+  "total": 20,
+  "killed": 20,
+  "survived": 0,
+  "probes": [
+    {
+      "id": "REDUCED_EXTRA_HINT",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "FULL_WORDING_CHANGED",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "DIFFERENT_CANDIDATE",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "DIFFERENT_CONTEXT",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "ORACLE_LEAK",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "GG0_29_EXPECTED_SOFTENED",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "CRITICAL_REMOVED",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "INCONCLUSIVE_REMOVED",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "REDUCED_HIDDEN_DIMENSION",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "FULL_MISSING_DIMENSION_DEFAULT_PASS",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "FULL_INVALID_MACRO_RECOVERY",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "REDUCED_INVALID_AS_REJECT",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "G1_REUSED_AS_FULL",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "ORDER_NOT_COUNTERBALANCED",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "CRITICAL_ZERO_OF_FOURTEEN",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "CRITICAL_FALSE_ACCEPT_BAD_AGGREGATION",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "UNSAFE_APPROVE_IGNORED",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "REDUCED_FAVORED_BY_VALIDITY_ONLY",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "REDUCED_FAVORED_DESPITE_MORE_FALSE_ACCEPT",
+      "baseline": "PASS",
+      "status": "KILLED"
+    },
+    {
+      "id": "HISTORICAL_OUTPUT_OVERWRITTEN",
+      "baseline": "PASS",
+      "status": "KILLED"
+    }
+  ]
+}

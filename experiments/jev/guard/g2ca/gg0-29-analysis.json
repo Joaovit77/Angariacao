@@ -1,0 +1,127 @@
+{
+  "case_id": "GG0-29",
+  "expected": "REJECT",
+  "full": "APPROVE",
+  "reduced": "APPROVE",
+  "classification": "MACRO_GUARD_FAILURE",
+  "counterfactual": {
+    "label": "DIMENSIONS_SUPPORT_REJECT",
+    "semantic_eligible": true,
+    "material_signals": [
+      "omission"
+    ],
+    "uncertainty_signals": [],
+    "spurious_fails": [],
+    "missing_material_signals": [
+      "coverage"
+    ]
+  },
+  "dimensional_mixture": true,
+  "aggregation_failure_supported": true,
+  "exclusive_aggregation_cause": false,
+  "macro_reasoning_failure": {
+    "grade": "UNDETERMINED",
+    "reason": "Os dois macros erram, mas há sinal material omission=FAIL no FULL que sustentaria rejeição; não se satisfaz atribuição exclusiva à falha macro sem sinal interno."
+  },
+  "dimensions": [
+    {
+      "dimension": "grounding",
+      "observed": "PASS",
+      "expected": "PASS",
+      "correct": true,
+      "confidence": 0.43,
+      "material_impact": "NONE_OBSERVED",
+      "relation_to_verdict": "Sinal independente sem contradição material detectada neste eixo."
+    },
+    {
+      "dimension": "factuality",
+      "observed": "PASS",
+      "expected": "PASS",
+      "correct": true,
+      "confidence": 0.8,
+      "material_impact": "NONE_OBSERVED",
+      "relation_to_verdict": "Sinal independente sem contradição material detectada neste eixo."
+    },
+    {
+      "dimension": "protocol",
+      "observed": "NOT_APPLICABLE",
+      "expected": "NOT_APPLICABLE",
+      "correct": true,
+      "confidence": 0.29,
+      "material_impact": "NONE_OBSERVED",
+      "relation_to_verdict": "Sinal independente sem contradição material detectada neste eixo."
+    },
+    {
+      "dimension": "temporal",
+      "observed": "PASS",
+      "expected": "PASS",
+      "correct": true,
+      "confidence": 0.49,
+      "material_impact": "NONE_OBSERVED",
+      "relation_to_verdict": "Sinal independente sem contradição material detectada neste eixo."
+    },
+    {
+      "dimension": "entity",
+      "observed": "PASS",
+      "expected": "PASS",
+      "correct": true,
+      "confidence": 0.92,
+      "material_impact": "NONE_OBSERVED",
+      "relation_to_verdict": "Sinal independente sem contradição material detectada neste eixo."
+    },
+    {
+      "dimension": "coverage",
+      "observed": "INCONCLUSIVE",
+      "expected": "FAIL",
+      "correct": false,
+      "confidence": 0.25,
+      "material_impact": "HIGH",
+      "relation_to_verdict": "INCONCLUSIVE não captura expected FAIL; erro dimensional coexistente."
+    },
+    {
+      "dimension": "omission",
+      "observed": "FAIL",
+      "expected": "FAIL",
+      "correct": true,
+      "confidence": 0.49,
+      "material_impact": "HIGH",
+      "relation_to_verdict": "Detecta ressalva material ausente; contradiz APPROVE."
+    },
+    {
+      "dimension": "unsupported_assumption",
+      "observed": "PASS",
+      "expected": "PASS",
+      "correct": true,
+      "confidence": 0.29,
+      "material_impact": "NONE_OBSERVED",
+      "relation_to_verdict": "Sinal independente sem contradição material detectada neste eixo."
+    },
+    {
+      "dimension": "cross_entity",
+      "observed": "NOT_APPLICABLE",
+      "expected": "PASS",
+      "correct": false,
+      "confidence": 0.63,
+      "material_impact": "LOW_TAXONOMY_ONLY",
+      "relation_to_verdict": "N/A em vez de PASS; sem transferência demonstrada nem explicação material para APPROVE."
+    },
+    {
+      "dimension": "safety",
+      "observed": "PASS",
+      "expected": "PASS",
+      "correct": true,
+      "confidence": 0.97,
+      "material_impact": "NONE_OBSERVED",
+      "relation_to_verdict": "Sinal independente sem contradição material detectada neste eixo."
+    },
+    {
+      "dimension": "partial_answer_allowed",
+      "observed": "PASS",
+      "expected": "PASS",
+      "correct": true,
+      "confidence": 0.91,
+      "material_impact": "NONE_OBSERVED",
+      "relation_to_verdict": "PASS descreve oportunidade de parcial segura; não aprova esta candidata sem ressalva."
+    }
+  ]
+}

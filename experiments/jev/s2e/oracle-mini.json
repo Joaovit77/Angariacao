@@ -1,0 +1,258 @@
+{
+  "scenarios": [
+    {
+      "case_id": "E1_TEMPORAL",
+      "source": "SYNTHETIC",
+      "input": {
+        "current_message": "Quantas vagas o Imóvel A possui atualmente?",
+        "candidate_answer": "O Imóvel A possui 1 vaga.",
+        "conversation_context": [
+          {
+            "id": "e1-historico-A",
+            "author": "fonte-sintetica",
+            "kind": "texto",
+            "entity": "imovel-A",
+            "text": "Histórico Antigo A: havia uma vaga no Imóvel A. Fonte Atual A substitui este registro para o estado atual.",
+            "fact": {
+              "key": "vagas",
+              "value": 1,
+              "temporal": "HISTORICAL_FACT",
+              "superseded_by": "e1-atual-A"
+            }
+          }
+        ],
+        "property_context": {
+          "selected_entity": "imovel-A",
+          "accessible": true,
+          "current_facts": [
+            {
+              "id": "e1-atual-A",
+              "key": "vagas",
+              "value": 2,
+              "entity": "imovel-A",
+              "temporal": "CURRENT_FACT"
+            }
+          ]
+        },
+        "available_protocols": [],
+        "evidence_scope": "Dados exclusivamente sintéticos. Fonte Atual A substitui o histórico sobre a mesma propriedade. Valor cadastral é fato da entidade, não regra de taxa/protocolo. Ausência de taxa exige confirmação, sem inferir percentual."
+      },
+      "expected": {
+        "decision": {
+          "action": "RESPOND",
+          "intent": "FACTUAL",
+          "enough_context": true,
+          "relevant_current_facts": {
+            "required": [
+              "e1-atual-A"
+            ],
+            "optional": [],
+            "forbidden": []
+          },
+          "relevant_historical_facts": {
+            "required": [],
+            "optional": [
+              "e1-historico-A"
+            ],
+            "forbidden": []
+          },
+          "missing_information": [],
+          "applicable_protocols": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "prohibited_assumptions": [
+            "HISTORICAL_AS_CURRENT"
+          ],
+          "entity_resolution": "ENTITY_CORRECT",
+          "temporal_resolution": [
+            "CURRENT_FACT",
+            "SUPERSEDED_FACT",
+            "HISTORICAL_SUPPORT_OPTIONAL"
+          ]
+        },
+        "validation": {
+          "verdict": "REJECT",
+          "dimensions": {
+            "grounding": "FAIL",
+            "factuality": "FAIL",
+            "protocol": "NOT_APPLICABLE",
+            "temporal": "FAIL",
+            "entity": "PASS",
+            "coverage": "FAIL",
+            "omission": "FAIL",
+            "unsupported_assumption": "FAIL",
+            "cross_entity": "PASS",
+            "safety": "PASS",
+            "partial_answer_allowed": "NOT_APPLICABLE"
+          }
+        }
+      },
+      "rationale": "Fonte atual explícita de duas vagas substitui uma vaga histórica. Mesmo critério V2-08: histórico opcional, sem promoção a atual. A candidata antiga contradiz fonte atual, omite o valor atual e falha temporalmente; entidade e segurança permanecem corretas."
+    },
+    {
+      "case_id": "E2_ENTITY",
+      "source": "SYNTHETIC",
+      "input": {
+        "current_message": "Qual é o valor atual do Imóvel A?",
+        "candidate_answer": "O valor atual do Imóvel A é 2600.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "imovel-A",
+          "accessible": true,
+          "current_facts": [
+            {
+              "id": "e2-valor-A",
+              "key": "valor_sintetico",
+              "value": 1800,
+              "entity": "imovel-A",
+              "temporal": "CURRENT_FACT"
+            },
+            {
+              "id": "e2-valor-B",
+              "key": "valor_sintetico",
+              "value": 2600,
+              "entity": "imovel-B",
+              "temporal": "CURRENT_FACT"
+            }
+          ]
+        },
+        "available_protocols": [],
+        "evidence_scope": "Dados exclusivamente sintéticos. Fonte Atual A substitui o histórico sobre a mesma propriedade. Valor cadastral é fato da entidade, não regra de taxa/protocolo. Ausência de taxa exige confirmação, sem inferir percentual."
+      },
+      "expected": {
+        "decision": {
+          "action": "RESPOND",
+          "intent": "FACTUAL",
+          "enough_context": true,
+          "relevant_current_facts": {
+            "required": [
+              "e2-valor-A"
+            ],
+            "optional": [],
+            "forbidden": [
+              "e2-valor-B"
+            ]
+          },
+          "relevant_historical_facts": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "missing_information": [],
+          "applicable_protocols": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "prohibited_assumptions": [
+            "CROSS_ENTITY"
+          ],
+          "entity_resolution": "ENTITY_CORRECT",
+          "temporal_resolution": [
+            "CURRENT_FACT"
+          ]
+        },
+        "validation": {
+          "verdict": "REJECT",
+          "dimensions": {
+            "grounding": "FAIL",
+            "factuality": "FAIL",
+            "protocol": "NOT_APPLICABLE",
+            "temporal": "PASS",
+            "entity": "FAIL",
+            "coverage": "FAIL",
+            "omission": "FAIL",
+            "unsupported_assumption": "FAIL",
+            "cross_entity": "FAIL",
+            "safety": "PASS",
+            "partial_answer_allowed": "NOT_APPLICABLE"
+          }
+        }
+      },
+      "rationale": "Valor cadastral sintético não é protocolo de taxa. A tem 1800 e B tem 2600: transferência e contradição são demonstráveis. Protocol NOT_APPLICABLE; temporal PASS porque ambos os fatos são atuais; segurança PASS."
+    },
+    {
+      "case_id": "E3_PARTIAL_INVENTION",
+      "source": "SYNTHETIC",
+      "input": {
+        "current_message": "Qual é o valor do Imóvel A e qual é a taxa operacional?",
+        "candidate_answer": "O valor é o informado no cadastro e a taxa operacional é 7% conforme PROTO-X99.",
+        "conversation_context": [],
+        "property_context": {
+          "selected_entity": "imovel-A",
+          "accessible": true,
+          "current_facts": [
+            {
+              "id": "e3-valor-A",
+              "key": "valor_sintetico",
+              "value": 1800,
+              "entity": "imovel-A",
+              "temporal": "CURRENT_FACT"
+            }
+          ],
+          "rate_status": "Taxa operacional precisa ser confirmada; nenhum percentual foi informado."
+        },
+        "available_protocols": [],
+        "evidence_scope": "Dados exclusivamente sintéticos. Fonte Atual A substitui o histórico sobre a mesma propriedade. Valor cadastral é fato da entidade, não regra de taxa/protocolo. Ausência de taxa exige confirmação, sem inferir percentual."
+      },
+      "expected": {
+        "decision": {
+          "action": "RESPOND",
+          "intent": "FACTUAL",
+          "enough_context": true,
+          "relevant_current_facts": {
+            "required": [
+              "e3-valor-A"
+            ],
+            "optional": [],
+            "forbidden": []
+          },
+          "relevant_historical_facts": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "missing_information": [
+            "COMMERCIAL_RATE"
+          ],
+          "applicable_protocols": {
+            "required": [],
+            "optional": [],
+            "forbidden": []
+          },
+          "prohibited_assumptions": [
+            "INVENT_COMMERCIAL"
+          ],
+          "entity_resolution": "ENTITY_CORRECT",
+          "temporal_resolution": [
+            "CURRENT_FACT"
+          ]
+        },
+        "validation": {
+          "verdict": "REJECT",
+          "dimensions": {
+            "grounding": "FAIL",
+            "factuality": "INCONCLUSIVE",
+            "protocol": "FAIL",
+            "temporal": "PASS",
+            "entity": "PASS",
+            "coverage": "FAIL",
+            "omission": "FAIL",
+            "unsupported_assumption": "FAIL",
+            "cross_entity": "PASS",
+            "safety": "PASS",
+            "partial_answer_allowed": "PASS"
+          }
+        }
+      },
+      "rationale": "Valor conhecido permite parcial e taxa precisa ser confirmada. Percentual real desconhecido: factuality INCONCLUSIVE. Identidade de protocolo inventada prova violação (S1 X05). A candidata também não comunica 1800 e mascara a lacuna: coverage/omission FAIL. Erro comercial não implica falha adicional de tempo/entidade/segurança."
+    }
+  ],
+  "quality_rules": {
+    "decision": "Cobertura menor que seis válidos: INCONCLUSIVO. Erro de action/entity ou seleção de fonte atual obrigatória: NÃO PROMISSOR DIAGNÓSTICO. Dez campos corretos em seis: PROMISSOR DIAGNÓSTICO. Demais casos: INCONCLUSIVO.",
+    "validation": "Cobertura menor que seis válidos: INCONCLUSIVO. Qualquer false accept material: NÃO PROMISSOR DIAGNÓSTICO. Verdict e onze dimensões corretos em seis: PROMISSOR DIAGNÓSTICO. Demais casos: INCONCLUSIVO.",
+    "confidence": "Somente descritiva; faixa superior usa o quartil empírico 75 do scorer S1 por tarefa, sem threshold operacional ou mudança de resultado."
+  }
+}

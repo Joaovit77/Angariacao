@@ -1,0 +1,88 @@
+{
+  "checkpoint": "JEV-GUARD-G0",
+  "status": "PASS_OFFLINE_CONTRACT_BENCHMARK",
+  "model_evaluated": false,
+  "execution_authorized": false,
+  "integration": false,
+  "product_changes": 0,
+  "jev_calls": 0,
+  "openai_calls": 0,
+  "network_calls": 0,
+  "network_attempts": 0,
+  "credits": 0,
+  "credentials_read": 0,
+  "tests": {
+    "historical_pass": 327,
+    "new_pass": 74,
+    "total_pass": 401,
+    "fail": 0
+  },
+  "mutants": {
+    "total": 11,
+    "killed": 11,
+    "survived": 0
+  },
+  "benchmark": {
+    "cases": 36,
+    "distribution": {
+      "APPROVE": 12,
+      "REJECT": 18,
+      "INCONCLUSIVE": 6
+    },
+    "critical": 14,
+    "ordinary_negative": 4,
+    "minimal_pairs": 18
+  },
+  "proposed_g1": {
+    "calls": 36,
+    "repetitions": 1,
+    "model": "jev-1.14.0",
+    "authorized_calls": 0,
+    "budget_authorized_usd": 0
+  },
+  "historical_classification": {
+    "DECISION": "NAO_PROMISSOR_DIAGNOSTICO",
+    "VALIDATION": "INCONCLUSIVO"
+  },
+  "preservation": {
+    "historical_files_direct": 201,
+    "product_files": 769,
+    "status": "PASS"
+  },
+  "propagation": {
+    "append_only": true,
+    "previous_prefix_bytes": 34719,
+    "previous_prefix_sha256": "78f2cf545fbfa42096c4e25c75d3384b0097a3733e2a1e790ee3e75e5749e62e",
+    "after_prefix_sha256": "78f2cf545fbfa42096c4e25c75d3384b0097a3733e2a1e790ee3e75e5749e62e",
+    "append_sha256": "7b8da271dd84156421e005df4f7e86e1eb391c495700a23fc5f8229d1a7d9f11"
+  },
+  "created_at_utc": "2026-10-17T19:33:09.925Z",
+  "files": {
+    "README.md": "072f6ad541740a9ad82c3d55effe7b8696b4a278b992f43d9d80a9df99b6a894",
+    "benchmark-catalog.md": "58f9d7a0d3a56ac0c4525103b3ecfcc8241a2c59f21417542978af08e8893a5c",
+    "benchmark.json": "620f140d4347911726f929f6694129949033c4dcdfc088a33383c6a11ff4f092",
+    "certification.json": "f42883120e18f68c11709fe0edc8b2829879644a1bf2b0b1d3ffd40ba3bca26d",
+    "contract.mjs": "37f4bbb7f36c820f9687888cc23434240116adcd60071d20d668c67a3dbca11b",
+    "corpus.mjs": "56d091ba97749f7d92cc7779c17f85a76a10419e00a774a6c55df65a206d2878",
+    "critical-cases.json": "d1b25533f17e2fe5b8b2e13eb82542bed8f57994292561b6a308cf9179d6a1a5",
+    "deterministic-guards.md": "f1e3216c5ba676d644f16c1d6777d91cd63d655c3630f8106a01dcccbb02c793",
+    "evidence-basis.json": "4f84cea190cee7d804b42c5e73b5c9ea32682c8f6aed8facec221962e1728f05",
+    "future-run-plan.json": "a3469a1889a92072cca9b53494f3db2b3ef6be849ea2eca22b9370f1ff25ae92",
+    "g0.test.mjs": "6523fe69ce252e57395bbebe7b7522bebb5b73d7713ee51fb2079fb6d10f3b53",
+    "generate.mjs": "f0f3a676646278c7e84c2031be49e12cdaa098b7a061553a72854da76960de3e",
+    "guard-contract.md": "2eee887fce3237d356387645bb38af6e655fd6ed4342dd5bb16b7239f5f98d6d",
+    "metrics-contract.md": "260cb6e17daeea0397093dec77650f4316d548b3c60bfe395e2caabf655c78eb",
+    "metrics-empty.json": "60ddcca08e1dc222c6692e8b91f806de5f3dcfc079420b11c0d683fce486fada",
+    "minimal-pairs.json": "3ffe3cb1b03048e2a9a412e3163e4e55cd8792aa2b5c4662ab8a26617b57730d",
+    "mutation-probes.mjs": "d98db1f9e232ac9690b1c63cce17f3dbda7a82784c625fca8b715a018282c3e7",
+    "mutation-report.json": "a3d4f90a47a4d1565eeb53d073c8a7987ec012a0bbefee7f1e5c5e84d9533b12",
+    "offline-fixtures.mjs": "b595e38bbba95711a1b9d4a4175e124501424dcebde1692de955a93c90aef7b3",
+    "oracle.json": "6e47fcd0b95e6d6d901380c4dd9602a1666f5519f78cce868c05d129cc64b337",
+    "preservation-before.json": "50e7d4b6744c6eb66857b517781676a3d6d8a30c8bcc957d861385b05eb578d5",
+    "requests-frozen.json": "5645cdc35ed973323a30f18d002310ad7042be599d54e421187bde08873f37c9",
+    "risk-register.json": "a0f48a047282c1f780b7272b0e11ad386752d23ef8fbcd9957d935cafcc7c8d6",
+    "shadow-design.md": "18e1c2544c429f460402c9fa68d5f877e05b1c37a724bbd44bdd5fda92a129f4",
+    "test-plan.md": "b25881968d2e5541bdc7ba4b890ab94298c9665a0f4a68f7b3aa004afff17f69",
+    "../../../../RELATORIO-JEV-GUARD-G0.md": "846073b0a5cec54c0d26acb11543f70a56b75ecb7c0f2546c9465abca8bbe97f"
+  }
+}

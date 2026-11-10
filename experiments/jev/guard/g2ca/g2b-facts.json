@@ -1,0 +1,79 @@
+{
+  "run_id": "jev-guard-g2b-1792280596715-d49a4dc0",
+  "execution": "PASS",
+  "full_classification": "NAO_PROMISSOR_DIAGNOSTICO",
+  "reduced_classification": "NAO_PROMISSOR_DIAGNOSTICO",
+  "comparison": "COMPARISON_INCONCLUSIVE",
+  "full_valid": {
+    "numerator": 32,
+    "denominator": 36,
+    "value": 0.8888888888888888,
+    "status": "TESTED"
+  },
+  "reduced_valid": {
+    "numerator": 36,
+    "denominator": 36,
+    "value": 1,
+    "status": "TESTED"
+  },
+  "full_accuracy": {
+    "numerator": 28,
+    "denominator": 32,
+    "value": 0.875,
+    "status": "TESTED"
+  },
+  "reduced_accuracy": {
+    "numerator": 31,
+    "denominator": 36,
+    "value": 0.8611111111111112,
+    "status": "TESTED"
+  },
+  "agreement": {
+    "numerator": 32,
+    "denominator": 32,
+    "value": 1,
+    "status": "TESTED"
+  },
+  "critical": {
+    "full": {
+      "numerator": 0,
+      "denominator": 11,
+      "value": 0,
+      "status": "TESTED"
+    },
+    "reduced": {
+      "numerator": 0,
+      "denominator": 14,
+      "value": 0,
+      "status": "TESTED"
+    },
+    "full_coverage": {
+      "numerator": 11,
+      "denominator": 14,
+      "value": 0.7857142857142857,
+      "status": "TESTED"
+    }
+  },
+  "positive_partial_correct": {
+    "full": {
+      "numerator": 3,
+      "denominator": 3,
+      "value": 1,
+      "status": "TESTED"
+    },
+    "reduced": {
+      "numerator": 3,
+      "denominator": 3,
+      "value": 1,
+      "status": "TESTED"
+    }
+  },
+  "authorization_status": "CLOSED",
+  "reusable_calls": 0,
+  "confidence_corrects_verdict": false,
+  "new_calls": 0,
+  "openai": 0,
+  "network": 0,
+  "credits": 0,
+  "credentials": 0
+}

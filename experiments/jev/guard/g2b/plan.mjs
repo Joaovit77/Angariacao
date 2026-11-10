@@ -1,0 +1,8 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {join} from 'node:path';
+import {pairedOrder,MODEL} from '../g2b0/design.mjs';
+import {sha} from '../g0/contract.mjs';
+export {MODEL};
+export async function loadPlan(repo){const dir=join(repo,'experiments/jev/guard/g2b0'),json=async f=>JSON.parse(await readFile(join(dir,f)));const full=await json('full-requests-frozen.json'),reduced=await json('reduced-requests-frozen.json'),order=await json('paired-order.json');const data={plan:order.stages,requests:[...full.requests,...reduced.requests]};validatePlan(data);return data;}
+export function validatePlan(data){assert.deepEqual(data.plan,pairedOrder,'ORDER_GATE');assert.equal(data.requests.length,72,'REQUEST_COUNT_GATE');assert.equal(new Set(data.requests.map(r=>r.request_id)).size,72,'DUPLICATE_REQUEST_GATE');for(const p of data.plan){const r=data.requests.find(r=>r.request_id===p.request_id);assert.ok(r,'REQUEST_GATE');assert.equal(r.arm,p.arm,'ARM_GATE');assert.equal(r.case_id,p.case_id,'CASE_GATE');assert.equal(r.stage,'validation');assert.equal(r.repetition,1);assert.equal(r.model,MODEL);assert.equal(r.request.model,MODEL);assert.equal(typeof r.body,'string');assert.equal(sha(r.body),p.request_sha256,'REQUEST_HASH_GATE');assert.equal(r.request_sha256,p.request_sha256);assert.deepEqual(JSON.parse(r.body),r.request);assert.ok(Buffer.byteLength(r.body)+2048<=64000,'CONTEXT_GATE');for(const q of Object.values(r.request.questions))assert.ok(Buffer.byteLength(JSON.stringify(r.request.state))+Buffer.byteLength(JSON.stringify(q))+2048<=32000,'CONTEXT_GATE');}return true;}

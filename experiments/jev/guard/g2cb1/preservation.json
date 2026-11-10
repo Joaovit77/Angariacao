@@ -1,0 +1,21 @@
+{
+  "checkpoint": "JEV-GUARD-G2-C-B1",
+  "status": "PASS",
+  "checked_at_utc": "2026-10-18T13:00:56.217Z",
+  "historical_files": 551,
+  "product_files": 769,
+  "namespace_lists": 17,
+  "all_bytes_preserved": true,
+  "master_prefix_preserved": true,
+  "baseline_snapshot_sha256": "af7620455603903fb57c66b7da424d5e271c9f9fc93879198a2945b82bdd9687",
+  "inherited_b0_524_files_preserved": true,
+  "g2cb0_artifacts_26_and_report_preserved": true,
+  "corpus_oracle_fixtures_metrics_locks_authorizations_unchanged": true,
+  "historical_freezes_unchanged": true,
+  "excluded_new_namespace": "experiments/jev/guard/g2cb1",
+  "only_historical_append": "PROPAGACAO_PENDENTE_TABELA_MESTRE_IA.md",
+  "propagation_original_bytes": 53687,
+  "propagation_original_sha256": "fbac02da987ee5dbb005a437d6be19bc860e5507af08657f0772ceb8da062ea4",
+  "product_changes": 0,
+  "network_attempts": 0
+}

@@ -1,0 +1,82 @@
+{
+  "checkpoint": "JEV-S2-G-A",
+  "risks": [
+    {
+      "risk_id": "R-H1",
+      "severity": "HIGH",
+      "description": "Fonte null marcada atual e CURRENT_FACT indevido em R1/R2.",
+      "mitigation": "CAP-TEMP-TRUTH bloqueada; G-SOURCE/G-TIME independentes."
+    },
+    {
+      "risk_id": "R-CROSS",
+      "severity": "HIGH",
+      "description": "PASS indevido em B→A e A→B; não confundir com N/A sem transferência.",
+      "mitigation": "Bloquear promoção de detector crítico e checar catálogo/entidade."
+    },
+    {
+      "risk_id": "R-PROHIBITED",
+      "severity": "HIGH",
+      "description": "Omissão de risco com confidence nativa elevada; 4/10.",
+      "mitigation": "Risco comercial/fonte vem de regra explícita, nunca ausência de alerta."
+    },
+    {
+      "risk_id": "R-SAMPLE",
+      "severity": "HIGH",
+      "description": "Amostra pequena, sintética, repetida, com domínio estreito.",
+      "mitigation": "Shadow futuro e contrastes independentes; nenhum percentual global somado."
+    },
+    {
+      "risk_id": "R-MACRO",
+      "severity": "HIGH",
+      "description": "Action/verdict correto esconde dimensões erradas, pares 0/10.",
+      "mitigation": "Separar unidades de capacidade e observar erro por campo."
+    },
+    {
+      "risk_id": "R-STRUCTURE",
+      "severity": "HIGH",
+      "description": "B teve invalid não recuperável; E teve SUM e CHOICE.",
+      "mitigation": "Parser estrito, invalid fora da semântica; não dizer problema resolvido."
+    },
+    {
+      "risk_id": "R-UNKNOWN",
+      "severity": "HIGH",
+      "description": "Inferir Radar, Vision, matching ou follow-up por analogia textual.",
+      "mitigation": "NAO_AVALIADA e benchmark específico."
+    },
+    {
+      "risk_id": "R-AUTH",
+      "severity": "HIGH",
+      "description": "Mapa interpretado como autorização de envio, escrita ou chamada paga.",
+      "mitigation": "Permissão atual NONE; gate humano e zero executor pago."
+    },
+    {
+      "risk_id": "R-COST",
+      "severity": "MEDIUM",
+      "description": "Baixo preço histórico tratado como critério principal.",
+      "mitigation": "Correção, segurança e observabilidade antes de custo; preço não atualizado."
+    },
+    {
+      "risk_id": "R-CONFIDENCE",
+      "severity": "HIGH",
+      "description": "Confundir quartil nativo com confidence da recomendação.",
+      "mitigation": "Escala qualitativa independente, sem threshold operacional."
+    },
+    {
+      "risk_id": "R-TAXONOMY",
+      "severity": "MEDIUM",
+      "description": "Nova análise usada para perdoar erro ou alterar score.",
+      "mitigation": "Referências exatas e métricas/oráculos históricos congelados."
+    },
+    {
+      "risk_id": "R-PRIVACY",
+      "severity": "HIGH",
+      "description": "Futuro shadow copiar conversa/dados reais sem gate.",
+      "mitigation": "Pacote mínimo autorizado, isolamento e logs sanitizados; nenhum dado real neste mapa."
+    }
+  ],
+  "network_calls": 0,
+  "jev_calls": 0,
+  "openai_calls": 0,
+  "credits": 0,
+  "product_changes": 0
+}

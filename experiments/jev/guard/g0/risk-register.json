@@ -1,0 +1,72 @@
+{
+  "checkpoint": "JEV-GUARD-G0",
+  "risks": [
+    {
+      "id": "RG-01",
+      "severity": "HIGH",
+      "risk": "Verdict 14/14 histórico confundido com prontidão universal.",
+      "mitigation": "Benchmark próprio, denominadores por classe e futuro gate sem integração."
+    },
+    {
+      "id": "RG-02",
+      "severity": "HIGH",
+      "risk": "H1/null ou transferência A/B promovidos por confiança ou macrocorreção.",
+      "mitigation": "Casos críticos explícitos e guardas independentes; qualquer critical false accept separado."
+    },
+    {
+      "id": "RG-03",
+      "severity": "HIGH",
+      "risk": "Falsa rejeição de parcial/abstenção legítima.",
+      "mitigation": "12 positivas, incluindo três parciais e duas abstenções; splits de FR."
+    },
+    {
+      "id": "RG-04",
+      "severity": "HIGH",
+      "risk": "Confundir ausência declarada em catálogo completo com pacote não fornecido.",
+      "mitigation": "Estados tipados e razões por caso; inconclusivos não viram APPROVE por fallback."
+    },
+    {
+      "id": "RG-05",
+      "severity": "MEDIUM",
+      "risk": "Taxonomia dimensional domina métrica macro ou oracle é ajustado pós-resposta.",
+      "mitigation": "Verdict primário, dimensões secundárias e freeze independente antes de G1."
+    },
+    {
+      "id": "RG-06",
+      "severity": "HIGH",
+      "risk": "Invalid probabilities ou parse error aproveitados como APPROVE.",
+      "mitigation": "Parser/wrapper congelados, result=null e teste mutante de default."
+    },
+    {
+      "id": "RG-07",
+      "severity": "HIGH",
+      "risk": "Oráculo ou candidata vazam para etapa indevida.",
+      "mitigation": "Projeção positiva e mutantes específicos; nenhuma DECISION no plano Guard."
+    },
+    {
+      "id": "RG-08",
+      "severity": "HIGH",
+      "risk": "Shadow interpretado como autorização de dados reais ou efeito.",
+      "mitigation": "Separar SYNTHETIC_BENCHMARK de REAL_SHADOW e manter zero integração."
+    },
+    {
+      "id": "RG-09",
+      "severity": "MEDIUM",
+      "risk": "Poucas repetições ou seleção barata perde diversidade.",
+      "mitigation": "Recomendar 36×1; recorte 18×2 não substitui todos os eixos/pares."
+    },
+    {
+      "id": "RG-10",
+      "severity": "MEDIUM",
+      "risk": "Custo histórico usado como preço atual ou cap implícito.",
+      "mitigation": "US$0 autorizado; preço e orçamento próprios antes de G1."
+    }
+  ],
+  "calls": {
+    "jev": 0,
+    "openai": 0,
+    "network": 0,
+    "credits": 0
+  },
+  "product_changes": 0
+}

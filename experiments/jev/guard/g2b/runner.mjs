@@ -1,0 +1,25 @@
+import {readFile,mkdir} from 'node:fs/promises';
+import {createReadStream} from 'node:fs';
+import {createInterface} from 'node:readline';
+import {join,dirname,resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {randomUUID} from 'node:crypto';
+import {parseEnv} from 'node:util';
+import {atomicJson} from '../../s2b/core.mjs';
+import {sha} from '../g0/contract.mjs';
+import {loadPlan} from './plan.mjs';
+import {runCampaign,verifyAuthorization,verifyPrice,verifyHistory,claim,privacyScan} from './core.mjs';
+const here=dirname(fileURLToPath(import.meta.url)),repo=resolve(here,'../../../..');
+if(process.argv.length!==3||process.argv[2]!=='--execute-authorized-guard-g2b')throw Error('EXECUTION_NOT_AUTHORIZED');
+const json=async p=>JSON.parse(await readFile(p,'utf8')),before=await json(join(here,'preservation-before.json')),freeze=await json(join(here,'executor-freeze.json')),readinessBytes=await readFile(join(here,'postfreeze-certification.json')),readiness=JSON.parse(readinessBytes),readinessHash=sha(readinessBytes);
+const check=async()=>{await verifyHistory(repo,before);for(const[p,h]of Object.entries(freeze.files))if(sha(await readFile(join(here,p)))!==h)throw Error('EXECUTOR_OR_HISTORY_GATE');if(sha(await readFile(join(here,'postfreeze-certification.json')))!==readinessHash)throw Error('POSTFREEZE_CERTIFICATION_GATE');};await check();
+if(readiness.executor_freeze_sha256!==sha(await readFile(join(here,'executor-freeze.json')))||readiness.historical_pass!==655||readiness.executor_pass<45||readiness.total_pass!==655+readiness.executor_pass||readiness.fail!==0||readiness.network_attempts!==0||readiness.status!=='PASS_AFTER_FREEZE')throw Error('POSTFREEZE_CERTIFICATION_GATE');
+const data=await loadPlan(repo),pricing=await json(join(here,'pricing-verified.json')),authorization=await json(join(here,'authorization-source.json'));verifyAuthorization(authorization);verifyPrice(pricing);
+if(sha(await readFile(authorization.source_attachment))!==authorization.authorization_sha256)throw Error('AUTHORIZATION_SOURCE_GATE');
+// Somente a linha local autorizada é retida e interpretada, sem carregar outras variáveis.
+const matching=[];for await(const line of createInterface({input:createReadStream(join(repo,'web/.env.local'),{encoding:'utf8'}),crlfDelay:Infinity}))if(/^\s*(?:export\s+)?Angario_teste\s*=/.test(line))matching.push(line);
+if(matching.length!==1)throw Error('JEV_KEY_MISSING_OR_AMBIGUOUS');const key=parseEnv(matching[0]).Angario_teste;if(!key||key.trim()!==key||/\s/.test(key))throw Error('JEV_KEY_INVALID');if(data.requests.some(r=>r.body.includes(key)))throw Error('REQUEST_PRIVACY_GATE');
+const runId=`jev-guard-g2b-${Date.now()}-${randomUUID().slice(0,8)}`,root=join(repo,'experiments/jev/results'),directory=join(root,runId),authorizationLock=join(root,'guard-g2b-authorization.lock');await claim(root,runId,authorization);await mkdir(directory,{recursive:false});
+const freezeEvidence={executor_freeze:freeze,executor_freeze_sha256:sha(await readFile(join(here,'executor-freeze.json'))),postfreeze_certification_sha256:readinessHash,b0_freeze_sha256:sha(await readFile(join(here,'../g2b0/freeze.json'))),full_requests_sha256:sha(await readFile(join(here,'../g2b0/full-requests-frozen.json'))),reduced_requests_sha256:sha(await readFile(join(here,'../g2b0/reduced-requests-frozen.json'))),payload_equivalence_sha256:sha(await readFile(join(here,'../g2b0/payload-equivalence.json')))};
+const result=await runCampaign({directory,runId,data,pricing,authorization,freezeEvidence,preservationCheck:check,scan:p=>privacyScan(p,[key]),pause:()=>new Promise(resolve=>setTimeout(resolve,1000)),authorizationState:state=>atomicJson(authorizationLock,state),send:async body=>{const response=await fetch('https://api.typesafe.ai/v1/systemone',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body,redirect:'error',signal:AbortSignal.timeout(30000)});if(!response.ok){const status=response.status;await response.body?.cancel();return{status};}return{status:response.status,text:await response.text()};}});
+console.log(JSON.stringify({directory,...result}));

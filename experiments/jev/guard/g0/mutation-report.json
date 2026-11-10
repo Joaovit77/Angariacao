@@ -1,0 +1,98 @@
+{
+  "checkpoint": "JEV-GUARD-G0",
+  "mode": "OFFLINE_IN_MEMORY",
+  "mutants": 11,
+  "killed": 11,
+  "survived": 0,
+  "results": [
+    {
+      "mutant_id": "GM-01",
+      "defect": "APPROVE por default",
+      "baseline": "PASS",
+      "outcome": "KILLED",
+      "execution": "OFFLINE_IN_MEMORY",
+      "model_calls": 0
+    },
+    {
+      "mutant_id": "GM-02",
+      "defect": "Oráculo vazando no payload",
+      "baseline": "PASS",
+      "outcome": "KILLED",
+      "execution": "OFFLINE_IN_MEMORY",
+      "model_calls": 0
+    },
+    {
+      "mutant_id": "GM-03",
+      "defect": "Null tratado como atual confirmado",
+      "baseline": "PASS",
+      "outcome": "KILLED",
+      "execution": "OFFLINE_IN_MEMORY",
+      "model_calls": 0
+    },
+    {
+      "mutant_id": "GM-04",
+      "defect": "Entidade A/B invertida no payload",
+      "baseline": "PASS",
+      "outcome": "KILLED",
+      "execution": "OFFLINE_IN_MEMORY",
+      "model_calls": 0
+    },
+    {
+      "mutant_id": "GM-05",
+      "defect": "Protocolo inventado aceito",
+      "baseline": "PASS",
+      "outcome": "KILLED",
+      "execution": "OFFLINE_IN_MEMORY",
+      "model_calls": 0
+    },
+    {
+      "mutant_id": "GM-06",
+      "defect": "False reject ignorado no score",
+      "baseline": "PASS",
+      "outcome": "KILLED",
+      "execution": "OFFLINE_IN_MEMORY",
+      "model_calls": 0
+    },
+    {
+      "mutant_id": "GM-07",
+      "defect": "Critical false accept agregado sem distinção",
+      "baseline": "PASS",
+      "outcome": "KILLED",
+      "execution": "OFFLINE_IN_MEMORY",
+      "model_calls": 0
+    },
+    {
+      "mutant_id": "GM-08",
+      "defect": "Invalid structural tratado como APPROVE",
+      "baseline": "PASS",
+      "outcome": "KILLED",
+      "execution": "OFFLINE_IN_MEMORY",
+      "model_calls": 0
+    },
+    {
+      "mutant_id": "GM-09",
+      "defect": "Candidata ausente em validation",
+      "baseline": "PASS",
+      "outcome": "KILLED",
+      "execution": "OFFLINE_IN_MEMORY",
+      "model_calls": 0
+    },
+    {
+      "mutant_id": "GM-10",
+      "defect": "Candidata vazando em projeção decision",
+      "baseline": "PASS",
+      "outcome": "KILLED",
+      "execution": "OFFLINE_IN_MEMORY",
+      "model_calls": 0
+    },
+    {
+      "mutant_id": "GM-11",
+      "defect": "Corpus sem controles positivos",
+      "baseline": "PASS",
+      "outcome": "KILLED",
+      "execution": "OFFLINE_IN_MEMORY",
+      "model_calls": 0
+    }
+  ],
+  "not_model_evidence": true
+}

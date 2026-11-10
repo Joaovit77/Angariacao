@@ -1,0 +1,68 @@
+{
+  "checkpoint": "JEV-S2-G-A",
+  "status": "PASS_OFFLINE_CAPABILITY_MAP",
+  "created_at_utc": "2026-10-17T17:57:41.256Z",
+  "jev_calls": 0,
+  "openai_calls": 0,
+  "network_calls": 0,
+  "network_attempts": 0,
+  "credits": 0,
+  "credentials_read": 0,
+  "integration": false,
+  "product_changed": false,
+  "tests": {
+    "previous_pass": 292,
+    "new_pass": 35,
+    "total_pass": 327,
+    "fail": 0
+  },
+  "capabilities": 54,
+  "modules": 16,
+  "evidence_entries": 54,
+  "category_counts": {
+    "APTA_PARA_EXPERIMENTO_DE_PRODUTO": 10,
+    "APTA_COM_GUARDA_DE_CODIGO": 6,
+    "SOMENTE_ASSISTIVA": 9,
+    "NAO_PROMOVER": 6,
+    "NAO_AVALIADA": 23
+  },
+  "historical_classification": {
+    "DECISION": "NAO_PROMISSOR_DIAGNOSTICO",
+    "VALIDATION": "INCONCLUSIVO"
+  },
+  "historical_preservation": "PASS",
+  "product_files_preserved": 769,
+  "historical_files_directly_preserved": 177,
+  "propagation": {
+    "append_only": true,
+    "previous_prefix_bytes": 33088,
+    "previous_prefix_sha256": "41517ad03c71c06e9bba72c8e52d1e65be66491ca98098c425751c6bafef098f",
+    "after_prefix_sha256": "41517ad03c71c06e9bba72c8e52d1e65be66491ca98098c425751c6bafef098f",
+    "append_sha256": "6c9b32d622f15aacde69220470fcf765f5f35ca54fb6ab0d0bf078dad6eabfcb"
+  },
+  "files": {
+    "README.md": "e48a80be137bedd72f526243dc441bda367c77b219b94e85ac81e9b388017746",
+    "angario-module-map.md": "3d2e355a96a60df2c2d0ec0fa304a55d4f463908d0ff0f376ae3fd73021bb254",
+    "build-summary.json": "ea22a8bacc4ba8d67734ad2da8b23e3379b95bf51be72d7021b6951d2a01d662",
+    "build.mjs": "d175af5fb01c59d628d3a07034d5b9b0711539fa36cf75a830949071d4360e21",
+    "capability-map.json": "b7fc50f3f5b4b9f21c73ec16575c55b6de12b32dce365afe6a52beb955e2980e",
+    "capability-map.md": "afb08cc9f59cd6d5adad3dc041591c4c4d7990112261fea287535bfa77044609",
+    "catalog.mjs": "42ab603115d290028d296c1c2abed2f430057ef378a2152922e44be804e8dbeb",
+    "certification.json": "59ef1ef5266683e33dd4bb83edf512945a54ddd12dfdf118e064d48f1b592b04",
+    "decision-register.md": "8f663c44ed0827aa5983a6413320187614d5573c13e0e1ba0e35c84abe795f37",
+    "deterministic-guards.md": "454927cdfddffd86c74d5333651ef3c16e5ff447232db645896d8e3f20930849",
+    "evidence-ledger.json": "cf6465a6610c18de98cb77dc8925629bf8546cb9bde69ff29eb08363f3b1a8ed",
+    "experiment-priority.json": "870835f65bd799ecbfd3b55d67ffe938201b6bb94a10d4587263b2b8c51b4d1f",
+    "hybrid-architectures.md": "0dea527e74c8d7dfa690cc4a8ad4bfd2194e5640d672867cc90aec7f07fd5982",
+    "offline-guard.mjs": "0c75f89871a5b0ebab4e59b2edacb724460f91857c5bf29a037468736c991037",
+    "operational-impact-map.json": "0786f147a0f13e2fd505562806e12a0123de36c732beb5b17438ed84bdda87b8",
+    "preservation-before.json": "daef9513703092bff03f76483403cd81633f35fa1a5f6aa97397ac36a3262209",
+    "risk-register.json": "33b0c529107954dec38cd0d2861c7f3f94f9fb3f668003a6ed2755002f16f9e9",
+    "s2fb-facts.json": "d351bdf5e636582b1a5a9a4335b9a8c133b66fb8ff7e2cc78ea660162e22eb59",
+    "s2g-a.test.mjs": "0d0325f8fff864b3f8e74bf5326812436d6c1f689d35201976fe6ad072efcc7d",
+    "taxonomy-review.json": "689510346d8a84481574eb55dacbbdc795235cd1c33026ed39ae5c223fe5f37c",
+    "taxonomy-review.md": "9a6ba57ed90c5c02d003e4bc66aa80248b715185b876faa2b83d7e290a42a6c1",
+    "vision-status.md": "05a7847ce51ae873b431e6ea530183ad12935e4eb486c454512e8c8211bbae63",
+    "../../../RELATORIO-JEV-S2-G-A.md": "8087d7e58c312332352475d51c0cd47006bc93120f3ceaf894ad7d8311074cd8"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "version": "2.0.0",
+  "date": "2026-10-16",
+  "timezone": "America/Sao_Paulo",
+  "materialized_matrix_sha256": "84fb8a7e1bf29a7549bf2cfe4c423fbbbf295fbeb1752459b7f164ffb172018c",
+  "requests_sha256": "fed25c670d8d06b0b793efe854d18168939d0cce77bf64868e1d570da7da7cf3",
+  "files": {
+    "README.md": "4e92c2d2049c1331ab6f2c4996cee77678ca05362a5410a7ef1bb190999e3752",
+    "oracle-v2.md": "1296c11b4fd4f3302b7df3f447c7ef7a2d2923ecda9c9627066ffad757ee15fb",
+    "matrix-v2.mjs": "761022af5c82341c0f6dee0eed4730c88c58d3d8e3684d26875bcd2eb1e57e76",
+    "metrics-v2.md": "b82f3607953b84064efac8628c7c1634048ce0f0a68f6f8465a9184bafab0f2b",
+    "planned-run-v2.json": "7d695f8aac9fc408ed933b147a0352155581bbea88bb514dc278fdda39195690",
+    "request-v2.mjs": "924583d3969e7956700ae1cff904de8db1aea1d23cf8e253074f8b156b775ed5",
+    "scoring-v2.mjs": "7d95b91d06df730cac1aeda22ace93c15adc79fca3f8804aeb28527be0672b3f",
+    "s0-preservation.json": "ca53fd0dec7e8521ffaf0f61bab242b6e69436aebca427cb759caa8e4b6ef51c",
+    "v2.test.mjs": "d84c67f153911d0ab3ca415bde085638dd8c2c0e2e48f94ba771f46d6f056305"
+  }
+}

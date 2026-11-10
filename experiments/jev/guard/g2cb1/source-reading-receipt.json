@@ -1,0 +1,1154 @@
+{
+  "status": "FULL_FILES_READ_BEFORE_NEW_CONCLUSIONS",
+  "completed_at_utc": "2026-10-18T00:52:03.500Z",
+  "files": 190,
+  "bytes": 4990347,
+  "json_primitive_leaves_visited": 78989,
+  "duplicate_stage_identity_verified": 72,
+  "reading_method": "Leitura integral em bytes/texto e travessia JSON; cópias repetidas conferidas por igualdade/hashes; análise documental dos relatórios e representações estruturadas sem reconstruir raw.",
+  "independent_human_review_claimed": false,
+  "network_attempts": 0,
+  "credentials_read": 0,
+  "inventory": [
+    {
+      "path": "PROPAGACAO_PENDENTE_TABELA_MESTRE_IA.md",
+      "bytes": 53687,
+      "sha256": "fbac02da987ee5dbb005a437d6be19bc860e5507af08657f0772ceb8da062ea4",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "RELATORIO-JEV-GUARD-G2-B.md",
+      "bytes": 31017,
+      "sha256": "7d1e00e8052384b82780acc6ddc1e6a64b68b001eabfdd0c82aa274fa69baa4e",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "RELATORIO-JEV-GUARD-G2-C-A.md",
+      "bytes": 29766,
+      "sha256": "9b5a2a951c12235aed0301ca80436b9dafa687271d0d683e0eba3c4c9e740912",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "RELATORIO-JEV-GUARD-G2-C-B0.md",
+      "bytes": 22974,
+      "sha256": "75dfbedab0cddf720bcf587b0b6af09075acdfc8f0973ad590fc2b9fcb57a257",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g0/corpus.mjs",
+      "bytes": 28903,
+      "sha256": "56d091ba97749f7d92cc7779c17f85a76a10419e00a774a6c55df65a206d2878",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g0/oracle.json",
+      "bytes": 158475,
+      "sha256": "6e47fcd0b95e6d6d901380c4dd9602a1666f5519f78cce868c05d129cc64b337",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2b/README.md",
+      "bytes": 2815,
+      "sha256": "1104f64a69555842173d4ec1a1fcc994821344a13fdc582b6c73cb74b5a1382e",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2b/analysis.mjs",
+      "bytes": 2343,
+      "sha256": "34a74cfc36c56a008d5cf554ff333df16340f8d5d1fe9a69f9359bf94a5c8895",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2b/authorization-source.json",
+      "bytes": 460,
+      "sha256": "6a9e934f2e29f8da5ea6d9ec0ddaf1cd940c76dc2c324139c0ee4e96297890a7",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2b/certification-before-freeze.json",
+      "bytes": 607,
+      "sha256": "5500355613451fa952d40d8ec99f00aee881610924220534c7383f3e662c2205",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2b/core.mjs",
+      "bytes": 15262,
+      "sha256": "f8f2e573ea9d42f4b689b7102fb9f6323720327b66c4cc35cd86eb52dd77a6a3",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2b/executor-freeze.json",
+      "bytes": 1410,
+      "sha256": "28003de6902db67f30d63bee15176e5680d51e9f92e29ab3fe74d5188737dca0",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2b/plan.mjs",
+      "bytes": 1631,
+      "sha256": "4d553706562bb8f16555acadcd015ba5348c555def4b407dbc12c5f375704125",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2b/postfreeze-certification.json",
+      "bytes": 605,
+      "sha256": "1db3c620ddbc1d3779d33c9ad58ff14371e371d3185b17492c98402e16daeaa1",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2b/preservation-before.json",
+      "bytes": 161888,
+      "sha256": "f225d6b90b657aea7498d7c4f11b82b4b9bdfeddfdb407ae1be883c247bbb26d",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2b/pricing-verified.json",
+      "bytes": 608,
+      "sha256": "fe42c2ca9299893adc83674e8e733dd3d6f4ce88392cb22a5ff159bb043ddc3e",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2b/runner.mjs",
+      "bytes": 4148,
+      "sha256": "25fc9df933a06da1aec8f79acfbc003ec120942fc06f7e061190fbdfbba26708",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2b/runtime.test.mjs",
+      "bytes": 13896,
+      "sha256": "d5caf19da9077a17306638673a3872f2d1d4dff4f89ae2ef216518677ad8913c",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2b0/full-expected-dimensions.json",
+      "bytes": 32523,
+      "sha256": "dc95c5fd14232145c8c80bc701b9ef0e2161c604f1fa381dc1d01c4c591904b6",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2b0/full-requests-frozen.json",
+      "bytes": 697161,
+      "sha256": "f808a9d923de7382fb1662bc4c89c798aa6e78b67a9851168fd2ab36698eab33",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2b0/macro-oracle.json",
+      "bytes": 15009,
+      "sha256": "9d1297225ad8eb259de66a8335f0eef62b0b5a9ee1576878cc63ad68324520b5",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2b0/minimal-pairs.json",
+      "bytes": 8610,
+      "sha256": "65a91f1a512d340dde5701a81704973ffa263d223c6b6e21974e9fe294cce342",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2b0/reduced-requests-frozen.json",
+      "bytes": 346020,
+      "sha256": "454dc01fb627b43d37970ee8f5c753ac53b888a3d0c79d1bcdef997608238c49",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/README.md",
+      "bytes": 1019,
+      "sha256": "e57845e3dc73bc93140de86565b35f93afd763b9317e80c0db95d047fad663b3",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/analysis-rules.json",
+      "bytes": 1747,
+      "sha256": "9947254119b3f9b22f6a8d1701ae157d60efca2441c5dead9df6d6ad8f2c0095",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/analysis.json",
+      "bytes": 222206,
+      "sha256": "0d266a5536bde24afa7e3d0a0a0cf43ce6a3c2c583ba9cddbeeb11dd8665415f",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/analysis.mjs",
+      "bytes": 18994,
+      "sha256": "eeb02c173540b7d22f569526f598e70275d9c375b248a127ea3eabefe9671182",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/conclusions.json",
+      "bytes": 1687,
+      "sha256": "eb9aa96a4c68efe75351bce926add6c5136f6e5af6e6d2e8d30720d0a18dd8c6",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/deterministic-guard-opportunities.md",
+      "bytes": 1786,
+      "sha256": "78561306b1453b78161280ba380b7a942df7fe150203b18b71a6ed93d1add777",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/dimension-analysis.md",
+      "bytes": 2467,
+      "sha256": "f63f1ee61aa69e9a8166819af46f8a6dd31e4368a1a110c2125255957d41531b",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/dimension-error-map.json",
+      "bytes": 141254,
+      "sha256": "f2799f37ab9128acb329c74a72541579d9f5506d83cd28187a177f73d6ae4a7d",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/failure-taxonomy.json",
+      "bytes": 9060,
+      "sha256": "8918af3883b8e9dcbd6f5f67c0bc8974b362c48215c749fd364f3e705ed4335f",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/freeze.json",
+      "bytes": 4979,
+      "sha256": "7f2bf615ffe4a81c9d5cc0ea35f7ade0d86a0fde56df4bcc218e7bc30a786e9d",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/full-invalid-analysis.json",
+      "bytes": 3911,
+      "sha256": "673136e199830886fc5deedf3977693dab3f46d36938523dd52bc284afb45a04",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/full-invalid-analysis.md",
+      "bytes": 2051,
+      "sha256": "9d504996fb1f704a80bf2e79376ba7e7faa2514bd3298851cd1a19494ac74c45",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/g2b-facts.json",
+      "bytes": 1637,
+      "sha256": "1dd72441fbd96ad4abc52aaa87827ca71e537633e02941b7314f42272baeb1a7",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/g2ca.test.mjs",
+      "bytes": 12823,
+      "sha256": "184d219735d8b43b14649f86d43e9c74c0fa08c1fa183e05ec35a119b1c28773",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/generate.mjs",
+      "bytes": 30225,
+      "sha256": "44d52d28dab8019fa1e390693aa4abb14bce3297a2a4fbe9af68a043fbcd1158",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/gg0-29-analysis.json",
+      "bytes": 4019,
+      "sha256": "c9c627f6f8cb25b642aab8b5a9eda7b6fed40513068645c6bca3c21c3b720e66",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/gg0-29-analysis.md",
+      "bytes": 3429,
+      "sha256": "08b87d321544942029a3d0e385b10d64965972a59cadac5219ccb41db1c99677",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/inconclusive-analysis.json",
+      "bytes": 18772,
+      "sha256": "fffbb337a0e4237923c5d6a327cbb196ceb1c7d31388344bca60408a94504d4b",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/inconclusive-analysis.md",
+      "bytes": 8376,
+      "sha256": "373b665096e1ac8026d8a3d622ff541bf1927a6181e015ac52b198dcc242091b",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/io.mjs",
+      "bytes": 2026,
+      "sha256": "83b5b3686dc0e59b699c4d390a20b86e7edbb9f01316e65d88e68eaa3cfccb94",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/macro-dimension-consistency.json",
+      "bytes": 21782,
+      "sha256": "c9f2c1dc5be0610c504fca54bb2bf1bb30ca54bb659541cb53576f566c08550f",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/methodology-reference.json",
+      "bytes": 220,
+      "sha256": "18b4687d1f9469718e287349ff00de8089d6656cb087dafc3ad4e717f4c77614",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/methodology.md",
+      "bytes": 1113,
+      "sha256": "f7e4d5495bcb22d63f608c4ca876aa513be2020d397258c689657fd63500079f",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/minimal-pair-analysis.md",
+      "bytes": 1634,
+      "sha256": "0c368f2514b16ddd3f2cfb3bfb010e2b50913f5c4730b9a3f82048ee3f4fca4e",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/mutation-probes.mjs",
+      "bytes": 1743,
+      "sha256": "2533122a86a3f73dc8d0e023aac05b296b499a156e74c67dc1c830dbd45ed09f",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/mutation-report.json",
+      "bytes": 1848,
+      "sha256": "3ecda62c8432a25c8e1c0ed65ef9819ee57840e6cb9c83485e85ed148ab25a45",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/next-experiment-options.json",
+      "bytes": 3839,
+      "sha256": "5b57209449be1a4fb558ae3cf9022896855b433879ba228ac03e46af6ce65ee1",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/oracle-review.json",
+      "bytes": 5616,
+      "sha256": "2586d59c82679fd61c4561e1dead761799ffccb8dcdf10d109c76d94bcb9e4b1",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/partial-answer-taxonomy.md",
+      "bytes": 1492,
+      "sha256": "65aa56f92636a428990b7bfa884d654253313320a781a2d82ec89566cac8b068",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/preservation-before.json",
+      "bytes": 189453,
+      "sha256": "ab8a4633de74a3690d69e37024db1925f6b15f7612a8b4a3ed8a8d12c31fd282",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/preservation.json",
+      "bytes": 704,
+      "sha256": "ff5f8cce000c567dadf0314f69a0cf7f7235566b69cff881906fe88290f0924d",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/privacy-check.json",
+      "bytes": 521,
+      "sha256": "9927dc5bd9a128066865752b1e5d5855d9896a0cdcd0e99ded21c6adb202e1d2",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/prompt-contract-review.md",
+      "bytes": 2750,
+      "sha256": "0a84606638802259f7b6d9bcae29739cc014776ef9180be542a5af870d5afabc",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/propagation-preservation.json",
+      "bytes": 492,
+      "sha256": "738b99d4557bb51fd76106b0056e83d3aca40014d2f4b85fe9d587a6f29a895d",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/reject-vs-inconclusive.md",
+      "bytes": 2060,
+      "sha256": "ed1f18acf23bc27413a73062ef4cf6c649e3051a3fb58f6ec3dd0147b4bcf628",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/test-plan.md",
+      "bytes": 1020,
+      "sha256": "5be95008f460a3d41185211bf6ae21d65bf3894ab8552bf1a908bf6445f14d75",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2ca/tests.json",
+      "bytes": 1167,
+      "sha256": "38c2753a6246b74b02c60d7b3f529bfae8272931def2c2fdc38d439eb441cbb1",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/README.md",
+      "bytes": 1192,
+      "sha256": "b0eed7d4823ac5ede4f90dd21c19067650994eb670d2a1bc714879c4510caefa",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/architecture-adr.md",
+      "bytes": 3431,
+      "sha256": "b527f558381a7708290698724478a709e02e689fcf88e128fa1f07a85e6e2899",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/artifact-audit.mjs",
+      "bytes": 15384,
+      "sha256": "6f7a5b6705612d9879aa3e7d99ab0d70fa3f7533ac17e6680b96e18f59605885",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/controls.json",
+      "bytes": 1315,
+      "sha256": "409ce9acc6691f7db854d2078bba12e652c59a0118660bace73f4f9ad63e40e4",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/corpus-fixtures.json",
+      "bytes": 194327,
+      "sha256": "12a3455d4751047bcffe0421c3767924f7f8499540acbd8f41c479056f8b8522",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/decision-matrix.json",
+      "bytes": 2592,
+      "sha256": "736f9c1bd67ed50be158f73f07d77bea042084ea1585c879841538ddeeee83d7",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/decision-matrix.md",
+      "bytes": 3034,
+      "sha256": "d052b1d148ce86c0e054f1212eae056527ac2c69d5b0ff9a9f9b18e2d24df6b2",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/design-audit.test.mjs",
+      "bytes": 9734,
+      "sha256": "3c9417ae5d5706b6078c396d7741b3666952d0a83b636de908c7d8781a2c91f2",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/documentary-replay.md",
+      "bytes": 6620,
+      "sha256": "32cd01dfa780e024d40921acba581983ff7e649983ad55810cc1b2e61f9860d4",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/false-allow-analysis.md",
+      "bytes": 1678,
+      "sha256": "5e78adf4b4f4e4d69644564caea4ffc6ecee2e4585875b266d72048c5fbbc4aa",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/false-block-analysis.md",
+      "bytes": 1683,
+      "sha256": "97ef578b798fa9414327e94ff64e3ad9971d4847ea759bedc01671507be234d2",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/freeze.json",
+      "bytes": 4236,
+      "sha256": "7c3c205c3e6c1e755d341a1de124f0f7b7e1c978b27802308ea65a9d1265ea7d",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/gate-criteria.json",
+      "bytes": 3567,
+      "sha256": "a0811797283564f349965344338d9fa158cdd8a75e21bd5556a3478535fbe07a",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/hybrid-contract.json",
+      "bytes": 3429,
+      "sha256": "e039e2afe3734fd86c23758cf78edd0ce6e748bd7f8451d50a1aa4c499bc5dde",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/hybrid-contract.md",
+      "bytes": 4403,
+      "sha256": "e1b16f979632a280f6bdda9160628addae03bd9fd03a405a0183bdf8a06ed9c1",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/mutation-report.json",
+      "bytes": 3163,
+      "sha256": "132b6cb88e751aa4968849b2d4a48ad83727f0db99eef376795ee8a44a1e7db2",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/precheck-specification.json",
+      "bytes": 6277,
+      "sha256": "2dc710e8b285aa982206887058cd067c293acea7d370075f6426ea8e9e1a408f",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/prechecks.md",
+      "bytes": 5663,
+      "sha256": "e79ed93d78f132d389754df691695f5633816e1dae10c3258183d55d9034d8c2",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/preservation-before.json",
+      "bytes": 196082,
+      "sha256": "046211d8b70bce42e9f700be64a935b94b9f5a8fbe22e176dac677b58edac82a",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/preservation.json",
+      "bytes": 477,
+      "sha256": "d06baced51e6e71f22ba8ba178c6f8f3353f609b84ce947c8ca29867e9c97f23",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/privacy-check.json",
+      "bytes": 538,
+      "sha256": "0b5804d1f3fdcfcef275cda4777454b103b229abe160d51e049d1b92bf583232",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/propagation-preservation.json",
+      "bytes": 493,
+      "sha256": "8d7fb8f127cced5298648fb5107483a49fbd6e9f26429ea05543968c56a18b6e",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/replay-analysis.json",
+      "bytes": 1606,
+      "sha256": "50f15cfad14cbe01c27f57de5a0d4a2f1ad3be73e4044309e0d84390d2e38d1c",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/risk-register.md",
+      "bytes": 2252,
+      "sha256": "35f765b61853d55c9ff5ebf1c244db599ac48a92bb28915b96c094c10d8a9857",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/test-plan.md",
+      "bytes": 1169,
+      "sha256": "59dc95c581d2db17c6446fe32feb539645592a0132b26b234700e52a6843512e",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/guard/g2cb0/tests.json",
+      "bytes": 1068,
+      "sha256": "abd3da48ed8f68c8c25d565216b6af57071a483df04f5b6cbbb358af60c5d984",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/guard-g2b-authorization.lock",
+      "bytes": 714,
+      "sha256": "7d43e24a0e5fcc299b183b1ff5f6418e8c0cfed0f8a5be416252f0e578a79674",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/authorization.json",
+      "bytes": 714,
+      "sha256": "7d43e24a0e5fcc299b183b1ff5f6418e8c0cfed0f8a5be416252f0e578a79674",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/budget.json",
+      "bytes": 690,
+      "sha256": "4d1b1d5e324223f5a00c9b562c6346a4b1b7ad5d2eebcd5254982e36d5e0902d",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/comparison-result.json",
+      "bytes": 694,
+      "sha256": "a8784dcc374d2509f7783136cd5dcfff3263efad098e7271e59b22080dad4f2e",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/confidence-analysis.json",
+      "bytes": 113124,
+      "sha256": "aec3f44e8dfabe18a04d8f85f4a12b81aa4643f5e919c132189f0369116e084e",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/cost.json",
+      "bytes": 4616,
+      "sha256": "a565bbe7146dfbae7178705395e42e117cffdca4566a6a12326d0fd9777be76f",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/critical-sentinels-results.json",
+      "bytes": 5912,
+      "sha256": "cbfa83500cc6fe0d9050ae5aee0fd3e7d27ba02f7bcc6148ec6f293dc4b96186",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/errors.json",
+      "bytes": 951,
+      "sha256": "fc8d36285fbce644c2d0f26eb89cbbc5c2de15124864c485f22e2f1721bd835b",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/execution-hashes.json",
+      "bytes": 9136,
+      "sha256": "0a6afd8b72e565c452b132a3487ba4396a7b038707fc0f015a7c5de15b8d9f0b",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/executor-freeze.json",
+      "bytes": 2067,
+      "sha256": "494509534b29aa28aaabd31f632c1b708f7a20b3d0ea2740973e22dbfec8c82b",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/final-privacy-check.json",
+      "bytes": 486,
+      "sha256": "1dd5d2c4218fad257b363b87142210cbf4a7b478923725d27d194c5d63b5d339",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/full-arm-metrics.json",
+      "bytes": 9611,
+      "sha256": "533f2a0c9050e929fd8364c178901f3cefd4c6285ac747e363197fe8011900ca",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/gg0-29-result.json",
+      "bytes": 293,
+      "sha256": "fbde6b8ec798df64135c033e5efb43495a1c2061ff49df18cb56ca8ca3f19cce",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/hashes.json",
+      "bytes": 9221,
+      "sha256": "9bdfb39ea9f5c49c4ae73588cf990c4e040e9deb3295237466fa8d11d09bc6a5",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/inconclusive-sentinels-results.json",
+      "bytes": 2614,
+      "sha256": "e77005e9970c90d72a43b9188efe230e2d0c4062c5c28d1f2fbb454e1e9ecfc1",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/latency.json",
+      "bytes": 4875,
+      "sha256": "54ae3616ed552c8d15f4e92b78fa9468662da2c69b6ae8b242409653a1b1aab3",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/ledger.json",
+      "bytes": 1087935,
+      "sha256": "aa4ec215c6327f01304c432db3be0457f4e9abffd26227b8de0eacc89bdcf2ae",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/lock.json",
+      "bytes": 159,
+      "sha256": "d2210f0971d266c27ba8cb64142cfa4e3e28937ff9102c9f5ab81d7bdaab1636",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/manifest.json",
+      "bytes": 22427,
+      "sha256": "5474fac330d5f169dcf4ef13c1d909df826b5a59c7239ce5b5a655d054ac3d70",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/minimal-pair-metrics.json",
+      "bytes": 2806,
+      "sha256": "b626a76b2366380648b1e0bf300e88645df1ff7630d7bfe6c901b1943b7ffeeb",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/order-analysis.json",
+      "bytes": 1284,
+      "sha256": "b52689d82c391df0449b70c976631aa2d3cdc60ecb56fabaf3a67bdae1ddf8a5",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/paired-metrics.json",
+      "bytes": 58657,
+      "sha256": "ec3a51be7668b2d66da37bb1d63a8229dbbd94cefc577562d131a68d72d6b27d",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/partial-positive-results.json",
+      "bytes": 1284,
+      "sha256": "113fee4902f8829354c00eecce9862067f7637774b60b3913ba8164c73fc0261",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/postflight-verification.json",
+      "bytes": 2734,
+      "sha256": "0ba3469b9d0960309a676a5825f58488255817987efc0d5d8b7ecfa5655952d7",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/pricing.json",
+      "bytes": 608,
+      "sha256": "fe42c2ca9299893adc83674e8e733dd3d6f4ce88392cb22a5ff159bb043ddc3e",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/privacy-check.json",
+      "bytes": 188,
+      "sha256": "8201004b204c72aed8cd0d02d62dccba5ce15e7ceafb4a94d3a98bb3a87e543e",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/propagation-preservation.json",
+      "bytes": 539,
+      "sha256": "f01e05348363d81fc9d15db29c8242c0f48b631ff0bb201d4ca738c4e098246b",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/reduced-arm-metrics.json",
+      "bytes": 10366,
+      "sha256": "7621e44dbe89621f70d9db80c91360b9967f7190127f4c4f742e69cb7ba39ddb",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/request-freeze-verification.json",
+      "bytes": 23816,
+      "sha256": "2a83584c650d24876d8f138723a46b7e1378513fe420a504a9c15fef31f47a11",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/001.json",
+      "bytes": 16681,
+      "sha256": "c6d46f308ff89dd69324cfaa1272020f6bc3b79092ac8f35de93cc0581296bf5",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/002.json",
+      "bytes": 4024,
+      "sha256": "bce23cb002229cdeb05f0f55750ff7f04684114760ab279788df955e424687ba",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/003.json",
+      "bytes": 4009,
+      "sha256": "09d68914ff2e32d90bbe53abe4c9bd351ff7a44282b34a410c954148fd81501b",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/004.json",
+      "bytes": 16650,
+      "sha256": "9a480dab8dab8281da4a4f32b60b1ced1cac31c66b038ea2721dddf86e6849b3",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/005.json",
+      "bytes": 16694,
+      "sha256": "929ee8d4cc13cfda5d6ba61ccc2b600fe12ac4fd32dad9b940c823426696d151",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/006.json",
+      "bytes": 4018,
+      "sha256": "34d6eb4c0763a856b9e94fd18d1e346684f2aea6184ffe2519d7a4207815d9a3",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/007.json",
+      "bytes": 4014,
+      "sha256": "9f5a877499d623105fd93a74b4a08baebc66a7f6e5f89d7e7b78ec1ed61b9c41",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/008.json",
+      "bytes": 16699,
+      "sha256": "ede166e5b8dc0a82452287be82f442e66b90fb07a649068d2760b92140f09bac",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/009.json",
+      "bytes": 16898,
+      "sha256": "14a9383b88c3fc8b91ed7dbb863002e0dbc189b1c98cd834ce7a9d3486fa7975",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/010.json",
+      "bytes": 4025,
+      "sha256": "d868c69ba48882c16d39b7c0a8d0bf7bbe784b1dba30b88d149dee5033cd140f",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/011.json",
+      "bytes": 4030,
+      "sha256": "0d7394625e8f5ea3609d1823dcabfeaa192e91d101b160207c055a6192596a3a",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/012.json",
+      "bytes": 16688,
+      "sha256": "0a80aacf6a667d2f11155b2e15c96098945988386d15a411cab74be6718af982",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/013.json",
+      "bytes": 16700,
+      "sha256": "ce09960b8978f69561dbdad7fef320dee9c79951a8342e9268c10b40ee6566dc",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/014.json",
+      "bytes": 4027,
+      "sha256": "30179c72add23bc3ab508b2b173207dfb90c9b175cf12567d5312b197228ad32",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/015.json",
+      "bytes": 4030,
+      "sha256": "227f390c12080be5284b33e0b3f20f2518ad86c6a7de8b5b25aac4131aa32923",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/016.json",
+      "bytes": 16699,
+      "sha256": "b19d2042e986f1908a215b44eebcd1e9ca55e1c0f14fb3565d6994753b6f7768",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/017.json",
+      "bytes": 16749,
+      "sha256": "ae61e42c7340eed1f8fe565ce42845e836f6b832ef6fc9ab3001dae6c2a874c6",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/018.json",
+      "bytes": 4022,
+      "sha256": "3d649cd4f1e72cb2aab26e3c27cc9428fb18fc8c6fb0313c6f25cf3b09d46a92",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/019.json",
+      "bytes": 4030,
+      "sha256": "c0150d4044ed16a3662da14f3388303a54745230707c440d87d81ae9b970589b",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/020.json",
+      "bytes": 16734,
+      "sha256": "99f86904671e5fb60fe7bbd5481f291fddf6c484025fa6f2aaebfab6b7a6fadc",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/021.json",
+      "bytes": 16724,
+      "sha256": "04e1753ac29d19ff0a79fdc92792748575ca4afd630f434baea6852b73da37eb",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/022.json",
+      "bytes": 4029,
+      "sha256": "bb3b5f51e109d4f636e262aa11ee1e15a04010ad792703079054425f7a7696c9",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/023.json",
+      "bytes": 4007,
+      "sha256": "ea0312325231e71411167fde4464c187c51e1362cf1e2374d5051011b7a35ae1",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/024.json",
+      "bytes": 16619,
+      "sha256": "e9b6aef67274cd6d2699fa57c356390a33f08a0d21fb488e2195b8026442d0d0",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/025.json",
+      "bytes": 16811,
+      "sha256": "45988c0714c1f23c245b12959fa5792cb62ed270cec26bae14ca85bf353b1159",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/026.json",
+      "bytes": 4003,
+      "sha256": "83e1a5ddba9653f05e70729f6fda649a0a8aae49c34695a3660d1387275a99d9",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/027.json",
+      "bytes": 4002,
+      "sha256": "0838c1d517dd7b544855f90c7dc8267f4f870e0fa0ce995bb377686351ba5e78",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/028.json",
+      "bytes": 17174,
+      "sha256": "ed244c2f86e4f3be64b7104f1b50daa3b9d1baea26180dcb3850b964c6869d1a",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/029.json",
+      "bytes": 16816,
+      "sha256": "9ab6ad6fa06d6323c06c1ca483804f03835ff128f5dee52a6359f600d3a03630",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/030.json",
+      "bytes": 4005,
+      "sha256": "dc885e181ca52cd699dd7e03b2e8118ddf3ad1ce7599c755cdae2827b4c25546",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/031.json",
+      "bytes": 4017,
+      "sha256": "2320f47af31db90ce54aa9f3a326760ac0ea74b726dae27852656ead39f41590",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/032.json",
+      "bytes": 16856,
+      "sha256": "df6b95b664faea94c3d0e2c64b3687ebcf14a2b6fabf07afd1f807d240e2c1e6",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/033.json",
+      "bytes": 16924,
+      "sha256": "1a68d0cd04aee000404a24b8837c68e198922eb7513c8b272d96bd71c7dd480b",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/034.json",
+      "bytes": 4022,
+      "sha256": "f2bd08840eedd7906975ed2699d22b2cf3577ce01dd8a5022db64286c7bf4ec3",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/035.json",
+      "bytes": 4021,
+      "sha256": "bac123157786f8f2b5020e46e7668bd10821a5f958983abdcc4172c2bbeb83ba",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/036.json",
+      "bytes": 16835,
+      "sha256": "be691fd5d4db99628b79f8fb2b1ed94d06f5106d05066ea40d73580ef9dd26b0",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/037.json",
+      "bytes": 16851,
+      "sha256": "baca634d5072b9c0b15c810815fa1473b3d5b2d383c526b03b079b1444b69be9",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/038.json",
+      "bytes": 4020,
+      "sha256": "3336ea5112ae251ff8625cb10574a6d3c30e6bb37560bc3e4e06a0bb531b1b8d",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/039.json",
+      "bytes": 4006,
+      "sha256": "a21904418ebaf6b6fd166bcb6b619341ebd828e03f60b0e9f3da8e527c2452e3",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/040.json",
+      "bytes": 16784,
+      "sha256": "b65b44194d4271102cee1e7d1954ce6ae597037f1e5434b71b1d7692e0591402",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/041.json",
+      "bytes": 16826,
+      "sha256": "5db0bf476bc6d7201a935ecd099a9aa4e75906642a52bbe8400a98924feaf202",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/042.json",
+      "bytes": 4021,
+      "sha256": "8127db18cd46483d652ee00e27ff543f0f456e8c2e215970088271606122810e",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/043.json",
+      "bytes": 4024,
+      "sha256": "52679cdfda54ce4df47780acf957756df56c31282aa580ebadd6033060f0d292",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/044.json",
+      "bytes": 17276,
+      "sha256": "d35a512cb975e33ee1d422e125299dee035c7ab58d2509fa670474d70240a3cb",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/045.json",
+      "bytes": 16882,
+      "sha256": "e5db882e8ecec1de33515629041692806714f143426c5d43c2b397920493b7b2",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/046.json",
+      "bytes": 4050,
+      "sha256": "f6251ccaab0ccfc9d38f436e0f09f46d3a3c826cafaa580951f6a9f6ad704ebb",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/047.json",
+      "bytes": 4002,
+      "sha256": "3a0b47a8c3240819eb4c405e7534fefa5fee37d051a6752704396ee3a2900473",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/048.json",
+      "bytes": 17183,
+      "sha256": "681559f55bc511dd9df9f0142eae3b2e2a255199dd9a22005150be6cfb276a41",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/049.json",
+      "bytes": 16922,
+      "sha256": "de0e55a5b387b762fb5cffca3b86723a7e17aadd7bbe0ebbf76581d07439a717",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/050.json",
+      "bytes": 4025,
+      "sha256": "e0f453cbd821ddbaf09522acf12c580301d81fab802f217f0602cf51264517b9",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/051.json",
+      "bytes": 4021,
+      "sha256": "f6a0838429f215e1e0e3c0b6c1801696a66e85a1fd3c423875bc29a0b1405da4",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/052.json",
+      "bytes": 16855,
+      "sha256": "d973b8ecc55157de6fcda2e177572eae8bd0c6100b7de5054131f6da80863266",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/053.json",
+      "bytes": 16825,
+      "sha256": "4dc8409fafa9156fb384066c3c1ce045a0ed080da7bc5aa3aafb78fada433b0e",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/054.json",
+      "bytes": 4022,
+      "sha256": "4ec1fa291799954f146cc4a4b04c51868516a52b8b4d7f702cc417ea1efc9147",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/055.json",
+      "bytes": 4019,
+      "sha256": "972bc4b8c5da4cd13758b8d946fbcd21dbd877d9983fc32770b1e4d09829b6bc",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/056.json",
+      "bytes": 16773,
+      "sha256": "7a37cfad29e1971ae4d9ce3a79d61584b71e3d4f98a4ff4a562af315e23194c4",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/057.json",
+      "bytes": 16839,
+      "sha256": "013475be9ee6da1abc573accd9a8033eb459e9d3abbc0b17509969eeb4d855db",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/058.json",
+      "bytes": 4030,
+      "sha256": "28fd92150bd42256455ee70339daa19faf1c3f9edc0674d1521012c3f2af3612",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/059.json",
+      "bytes": 4028,
+      "sha256": "4c8e6f68b26f10e154a15079c2f977779a0d968c85e5c4ba994ba7cca1aa19cf",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/060.json",
+      "bytes": 16833,
+      "sha256": "8ab2585e772a35a802a89a1db1fc7c9218dec4b9ffd143906347635819ec0fb8",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/061.json",
+      "bytes": 16895,
+      "sha256": "d7f3b0cfdce1a274e5d60a59f0d0e7f2ef1b03d625e0a74da69223982c9ae1b4",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/062.json",
+      "bytes": 4017,
+      "sha256": "6f4f1bd2ebd7ef140fffa8a333a65a2b7a727b5f41cfd46abfecf57ca0b0b562",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/063.json",
+      "bytes": 4021,
+      "sha256": "5287962e454523adb239b8bb4ee8c06349a6bdca2467df3d3ab9328d83fb9fc8",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/064.json",
+      "bytes": 16864,
+      "sha256": "c5a80e42b7cb6aa1b35bb24f046a8d89a9bf2915eb30d157228d9077931265c7",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/065.json",
+      "bytes": 16870,
+      "sha256": "bc6ff05187d0de50d751ac56ea34b63762785df9a509242e5e4e1803e9c7f005",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/066.json",
+      "bytes": 4045,
+      "sha256": "500344cda4ae875059251f878c432c52d89a09c49929fa525ffd246d86b716de",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/067.json",
+      "bytes": 4048,
+      "sha256": "5ca8a0fbaf2a0b7ee61e00a58b2adedf13b62976021146f4947b44126807094e",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/068.json",
+      "bytes": 16972,
+      "sha256": "88aff08891b9d81aad91b1914c506802a326a68c7cae432c44c8fec6c8ab793a",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/069.json",
+      "bytes": 16950,
+      "sha256": "bd0aa23495e9420d774a23789fdc4e0f9f02e2421dafa2e8da31274b6fea5005",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/070.json",
+      "bytes": 4017,
+      "sha256": "c2cb1f1de9cb6c88e5f10ed0b57655b562322443163fa334220f06b6496689d9",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/071.json",
+      "bytes": 4020,
+      "sha256": "7e4524fc7b68624ae659b41b7df403e08ec0491afd37a0b25d058ca87e567e4a",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/stages/072.json",
+      "bytes": 17261,
+      "sha256": "65f67b3d6fd41e842cadbfd2c6c654bb217bac7e63601f6e6bb22b2d91254f10",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/structural-results.json",
+      "bytes": 22218,
+      "sha256": "ae5666397380e312f709abcd69685c0820b42dbe70d476620a25f8a7374884e5",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/summary.json",
+      "bytes": 1506,
+      "sha256": "4d1e01144923f5eadbfe960f99bb0ce2420701c86a07278833cdfa611e0a6894",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    },
+    {
+      "path": "experiments/jev/results/jev-guard-g2b-1792280596715-d49a4dc0/usage.json",
+      "bytes": 1566,
+      "sha256": "c1bcd4076e54e4b9cf30318ebb2e2e8665abafee5bf1c484f640a9b08c519536",
+      "read_mode": "FULL_FILE; JSON_ALL_NODES_VISITED_OR_COMPLETE_TEXT_READ"
+    }
+  ]
+}

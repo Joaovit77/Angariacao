@@ -1,0 +1,2643 @@
+{
+  "checkpoint": "JEV-S2-C",
+  "status": "PASS",
+  "fixtures_checked": 68,
+  "additional_private_text_variants_checked": 51,
+  "total_privacy_variants_checked": 119,
+  "fake_sentinel_count": 5,
+  "marker_matches": 0,
+  "raw_sensitive_persisted": false,
+  "unknown_ids": "SHA-256 opaco; IDs conhecidos somente do request local confiável",
+  "excluded_fields": [
+    "question_text",
+    "prompt",
+    "messages",
+    "context",
+    "candidate_answer",
+    "chain_of_thought",
+    "internal_reasoning",
+    "secret"
+  ],
+  "object_raw_hash": "null; nenhum JSON.stringify em objetos não confiáveis",
+  "hostile_objects": "Regressões específicas para getters, proxies, revogados, toJSON e identidade hostil; nenhum getter executado nem trap adicional.",
+  "diagnostics": [
+    {
+      "fixture_id": "EXACT_ONE_ZERO",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "EXACT_ONE_ZERO",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "HALF_HALF",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "HALF_HALF",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "DECIMAL_POINT_ONE_TWO_SEVEN",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "DECIMAL_POINT_ONE_TWO_SEVEN",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "MANY_DECIMALS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "MANY_DECIMALS",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NEAR_ONE_BELOW",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NEAR_ONE_BELOW",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NEAR_ONE_ABOVE",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NEAR_ONE_ABOVE",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "SUM_0999",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 0.999,
+        "sum_delta_from_1": -0.0010000000000000009,
+        "min_probability": 0,
+        "max_probability": 0.6,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_SUM_MISMATCH",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a007"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "SUM_0999",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 0.999,
+        "sum_delta_from_1": -0.0010000000000000009,
+        "min_probability": 0,
+        "max_probability": 0.6,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_SUM_MISMATCH",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "ac7e710283eac106aaa253702cce25fde214e02fae9c035d683612f622bbf40c",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a007"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "SUM_1001",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 1.001,
+        "sum_delta_from_1": 0.0009999999999998899,
+        "min_probability": 0,
+        "max_probability": 0.6,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_SUM_MISMATCH",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a008"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "SUM_1001",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 1.001,
+        "sum_delta_from_1": 0.0009999999999998899,
+        "min_probability": 0,
+        "max_probability": 0.6,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_SUM_MISMATCH",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "7f325956e793f39b1dbf6316a3eea3150cc7df48ca1449b0e7831564d2967bbb",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a008"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "EPSILON_INSIDE_BELOW",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "EPSILON_INSIDE_BELOW",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "EPSILON_OUTSIDE_BELOW",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 0.9999989999998999,
+        "sum_delta_from_1": -0.0000010000001000598502,
+        "min_probability": 0,
+        "max_probability": 0.6,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_SUM_MISMATCH",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a010"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "EPSILON_OUTSIDE_BELOW",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 0.9999989999998999,
+        "sum_delta_from_1": -0.0000010000001000598502,
+        "min_probability": 0,
+        "max_probability": 0.6,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_SUM_MISMATCH",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "fac202df25209de749890573d68553577f93b7ddae5146b6b4233cc0db2c590c",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a010"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "EPSILON_INSIDE_ABOVE",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "EPSILON_INSIDE_ABOVE",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "EPSILON_OUTSIDE_ABOVE",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 1.0000010000001,
+        "sum_delta_from_1": 0.0000010000001000598502,
+        "min_probability": 0,
+        "max_probability": 0.6,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_SUM_MISMATCH",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a012"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "EPSILON_OUTSIDE_ABOVE",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 1.0000010000001,
+        "sum_delta_from_1": 0.0000010000001000598502,
+        "min_probability": 0,
+        "max_probability": 0.6,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_SUM_MISMATCH",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "9f7932cd934828bfb5b663645c90c9e675a0dbce5cb8dc9870f94ef7bea720d7",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a012"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NOMINAL_EPSILON_BELOW",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 0.999999,
+        "sum_delta_from_1": -0.0000010000000000287557,
+        "min_probability": 0,
+        "max_probability": 0.6,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_SUM_MISMATCH",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a013"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NOMINAL_EPSILON_BELOW",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 0.999999,
+        "sum_delta_from_1": -0.0000010000000000287557,
+        "min_probability": 0,
+        "max_probability": 0.6,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_SUM_MISMATCH",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "60fb38d11b7881e64ba7aad49423954b252ef4cfab715c7804b410d229b51057",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a013"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NOMINAL_EPSILON_ABOVE",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NOMINAL_EPSILON_ABOVE",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "ALL_ZERO",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 0,
+        "sum_delta_from_1": -1,
+        "min_probability": 0,
+        "max_probability": 0,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_SUM_MISMATCH",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a015"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "ALL_ZERO",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 0,
+        "sum_delta_from_1": -1,
+        "min_probability": 0,
+        "max_probability": 0,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_SUM_MISMATCH",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "a318965d1a9354e9954f6b93fd626e0095a35873d6bb7b6dd145b43a5beb4eb7",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a015"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NEGATIVE",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 1,
+        "sum_delta_from_1": 0,
+        "min_probability": -0.1,
+        "max_probability": 1,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_BELOW_ZERO",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a016"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NEGATIVE",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 1,
+        "sum_delta_from_1": 0,
+        "min_probability": -0.1,
+        "max_probability": 1,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_BELOW_ZERO",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "ace95327d5b6abc2ac571177a7fb4e29208242cd958500c90be6f0fc3296a565",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a016"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "ABOVE_ONE",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 1.01,
+        "sum_delta_from_1": 0.010000000000000009,
+        "min_probability": 0,
+        "max_probability": 1.01,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_ABOVE_ONE",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a017"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "ABOVE_ONE",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 1.01,
+        "sum_delta_from_1": 0.010000000000000009,
+        "min_probability": 0,
+        "max_probability": 1.01,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_ABOVE_ONE",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "cb8d18fb395d4fefbd743a63e70d9e96a39e88a3ca55d24b68497437a9e94d0f",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a017"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NAN_OBJECT",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": false,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_NOT_FINITE",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a018"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "INFINITY_OBJECT",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": false,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_NOT_FINITE",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a019"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NEGATIVE_INFINITY_OBJECT",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": false,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_NOT_FINITE",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a020"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "STRING_NUMBER",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": false,
+        "value_type_summary": {
+          "string": 1,
+          "number": 2
+        },
+        "error_code": "PROBABILITY_NOT_NUMBER",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a021"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "STRING_NUMBER",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": false,
+        "value_type_summary": {
+          "string": 1,
+          "number": 2
+        },
+        "error_code": "PROBABILITY_NOT_NUMBER",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "6247ec07448c31ccf2a48f9a196d4701e7f34319214d3a19b77a8ca1b7671512",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a021"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NULL_VALUE",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": false,
+        "value_type_summary": {
+          "null": 1,
+          "number": 2
+        },
+        "error_code": "PROBABILITY_NOT_NUMBER",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a022"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NULL_VALUE",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": false,
+        "value_type_summary": {
+          "null": 1,
+          "number": 2
+        },
+        "error_code": "PROBABILITY_NOT_NUMBER",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "c9af0877543aa5e372cdb8afcc8e41cfa34aecb1a717c933311ca85726f95aa3",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a022"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "BOOLEAN_VALUE",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": false,
+        "value_type_summary": {
+          "boolean": 1,
+          "number": 2
+        },
+        "error_code": "PROBABILITY_NOT_NUMBER",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a023"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "BOOLEAN_VALUE",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": false,
+        "value_type_summary": {
+          "boolean": 1,
+          "number": 2
+        },
+        "error_code": "PROBABILITY_NOT_NUMBER",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "11cbea9e30c7034b4b20d0a3cf466c7d22d26cf77dc772210739f46d6532d9ee",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a023"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "OBJECT_VALUE",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": false,
+        "value_type_summary": {
+          "object": 1,
+          "number": 2
+        },
+        "error_code": "PROBABILITY_NOT_NUMBER",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a024"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "OBJECT_VALUE",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": false,
+        "value_type_summary": {
+          "object": 1,
+          "number": 2
+        },
+        "error_code": "PROBABILITY_NOT_NUMBER",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "ad21ec7904caab8c333441c0e63ce6055e3eb8af9ef7d01ab2729aa2ac9ce764",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a024"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "ARRAY_VALUE",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": false,
+        "value_type_summary": {
+          "object": 1,
+          "number": 2
+        },
+        "error_code": "PROBABILITY_NOT_NUMBER",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a025"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "ARRAY_VALUE",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": false,
+        "value_type_summary": {
+          "object": 1,
+          "number": 2
+        },
+        "error_code": "PROBABILITY_NOT_NUMBER",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "3117c5a02cea9cfaa78880c7bfbeef5664650e89be324df2a5dbb724c7249af2",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a025"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "UNDEFINED_VALUE",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": false,
+        "value_type_summary": {
+          "undefined": 1,
+          "number": 2
+        },
+        "error_code": "PROBABILITY_NOT_NUMBER",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a026"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "MAX_CHOSEN",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "MAX_CHOSEN",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "TIE_CHOOSE_SECOND",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "TIE_CHOOSE_SECOND",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "THREE_WAY_TIE",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "THREE_WAY_TIE",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "CHOICE_NOT_MAX",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 0.9999999999999999,
+        "sum_delta_from_1": -1.1102230246251565e-16,
+        "min_probability": 0.1,
+        "max_probability": 0.7,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "B"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_CHOICE_MISMATCH",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a030"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "CHOICE_NOT_MAX",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 0.9999999999999999,
+        "sum_delta_from_1": -1.1102230246251565e-16,
+        "min_probability": 0.1,
+        "max_probability": 0.7,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "B"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_CHOICE_MISMATCH",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "cc7003aa9ae944c072b21010233023533fbb913db497d47eb70bbaf17db0b4fa",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a030"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "SINGLE_OPTION",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "SINGLE_OPTION",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "SINGLE_OPTION_NEAR",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "SINGLE_OPTION_NEAR",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "SINGLE_OPTION_ZERO",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 1,
+        "observed_option_count": 1,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 0,
+        "sum_delta_from_1": -1,
+        "min_probability": 0,
+        "max_probability": 0,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 1
+        },
+        "error_code": "PROBABILITY_SUM_MISMATCH",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a033"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "SINGLE_OPTION_ZERO",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 1,
+        "observed_option_count": 1,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": 0,
+        "sum_delta_from_1": -1,
+        "min_probability": 0,
+        "max_probability": 0,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 1
+        },
+        "error_code": "PROBABILITY_SUM_MISMATCH",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "e90c2f89ba12a2ddaa8ffb8c2bb3243b0675d12125b564e1de4069a909718aaa",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a033"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NEGATIVE_ZERO",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NEGATIVE_ZERO",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "CHOICE_ABSENT",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "CHOICE_MISSING",
+        "category": "MISSING_REQUIRED",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a035"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "CHOICE_ABSENT",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "CHOICE_MISSING",
+        "category": "MISSING_REQUIRED",
+        "raw_sha256": "3b20062dada5110624aeb70e56a4edef5d2ef8b19982034250cb1ac8690b18fd",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a035"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "CHOICE_UNKNOWN",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "unknown-sha256:c689dd20a5c7fe58c304ff302027afd72157b65adbaaa485e8956b8cd1976a94",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "CHOICE_UNKNOWN",
+        "category": "INVALID_ENUM",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a036"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "CHOICE_UNKNOWN",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "unknown-sha256:c689dd20a5c7fe58c304ff302027afd72157b65adbaaa485e8956b8cd1976a94",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "CHOICE_UNKNOWN",
+        "category": "INVALID_ENUM",
+        "raw_sha256": "31ed32a96763abf2587c2d38e59b84b547cf268238430642d813f3f7690949b9",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a036"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "CHOICE_CASE",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "unknown-sha256:ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "CHOICE_UNKNOWN",
+        "category": "INVALID_ENUM",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a037"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "CHOICE_CASE",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "unknown-sha256:ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "CHOICE_UNKNOWN",
+        "category": "INVALID_ENUM",
+        "raw_sha256": "5e89334e4cf1737a795c1cca4a1600a4ffef62bf70a9c8e1329084742171535a",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a037"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "CHOICE_SPACE",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "unknown-sha256:e81218e5f07d70f27691b1c553a2dd44d21d35861d42a958f77f87320af7d1f9",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "CHOICE_UNKNOWN",
+        "category": "INVALID_ENUM",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a038"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "CHOICE_SPACE",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "unknown-sha256:e81218e5f07d70f27691b1c553a2dd44d21d35861d42a958f77f87320af7d1f9",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "CHOICE_UNKNOWN",
+        "category": "INVALID_ENUM",
+        "raw_sha256": "77dc0bc24656cecb452855adf36684863c90bc3221031549640324698d8491a6",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a038"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "PROBABILITIES_ABSENT",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITIES_MISSING",
+        "category": "MISSING_REQUIRED",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a039"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "PROBABILITIES_ABSENT",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITIES_MISSING",
+        "category": "MISSING_REQUIRED",
+        "raw_sha256": "c2af9e5cfe9f4bf1a22d0e448f8e56624bbc302d4b258980c38464c8d2f5d76f",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a039"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "PROBABILITIES_UNDEFINED",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITIES_NOT_OBJECT",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a040"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "PROBABILITIES_NULL",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITIES_NOT_OBJECT",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a041"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "PROBABILITIES_NULL",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITIES_NOT_OBJECT",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "9318dbebc97d1cb8fa25ac13420fec06ebdbc54583cdae3a58ad57251b1f245b",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a041"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "PROBABILITIES_ARRAY",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITIES_NOT_OBJECT",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a042"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "PROBABILITIES_ARRAY",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITIES_NOT_OBJECT",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "e58f4936c341aa5d6866fb11b6a289432b95a4d95bc17e725d85c492e20d270e",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a042"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "PROBABILITIES_STRING",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITIES_NOT_OBJECT",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a043"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "PROBABILITIES_STRING",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITIES_NOT_OBJECT",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "13d3c2257bdf70bac0d05447016bb26cc954014cfbeca7ae4359be82c560d938",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a043"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "PROBABILITIES_EMPTY",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 0,
+        "missing_option_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": true,
+        "value_type_summary": {},
+        "error_code": "PROBABILITY_EMPTY",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a044"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "PROBABILITIES_EMPTY",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 0,
+        "missing_option_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": true,
+        "value_type_summary": {},
+        "error_code": "PROBABILITY_EMPTY",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "dcde954956a217878acb45e9a64811e51479c43c19a915360abc22a267ed46b3",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a044"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "OPTION_MISSING",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 2,
+        "missing_option_ids": [
+          "B"
+        ],
+        "unknown_option_ids": [],
+        "sum": 1,
+        "sum_delta_from_1": 0,
+        "min_probability": 0,
+        "max_probability": 1,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 2
+        },
+        "error_code": "PROBABILITY_OPTION_MISSING",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a045"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "OPTION_MISSING",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 2,
+        "missing_option_ids": [
+          "B"
+        ],
+        "unknown_option_ids": [],
+        "sum": 1,
+        "sum_delta_from_1": 0,
+        "min_probability": 0,
+        "max_probability": 1,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 2
+        },
+        "error_code": "PROBABILITY_OPTION_MISSING",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "9f4324f5e10b06cb9492ecf340570e4f68bea7b2e87c757c1587471f1edd38bd",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a045"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "CHOICE_PROBABILITY_MISSING",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 2,
+        "missing_option_ids": [
+          "A"
+        ],
+        "unknown_option_ids": [],
+        "sum": 0,
+        "sum_delta_from_1": -1,
+        "min_probability": 0,
+        "max_probability": 0,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "B",
+          "C"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 2
+        },
+        "error_code": "PROBABILITY_OPTION_MISSING",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a046"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "CHOICE_PROBABILITY_MISSING",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 2,
+        "missing_option_ids": [
+          "A"
+        ],
+        "unknown_option_ids": [],
+        "sum": 0,
+        "sum_delta_from_1": -1,
+        "min_probability": 0,
+        "max_probability": 0,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "B",
+          "C"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 2
+        },
+        "error_code": "PROBABILITY_OPTION_MISSING",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "f5a13b4309a8912ce45378a0de0ee2bef135a7135f946eb62a989b39e87c8d0c",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a046"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "OPTION_EXTRA",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 4,
+        "missing_option_ids": [],
+        "unknown_option_ids": [
+          "unknown-sha256:c689dd20a5c7fe58c304ff302027afd72157b65adbaaa485e8956b8cd1976a94"
+        ],
+        "sum": 1,
+        "sum_delta_from_1": 0,
+        "min_probability": 0,
+        "max_probability": 1,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_UNKNOWN_OPTION",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a047"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "OPTION_EXTRA",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 4,
+        "missing_option_ids": [],
+        "unknown_option_ids": [
+          "unknown-sha256:c689dd20a5c7fe58c304ff302027afd72157b65adbaaa485e8956b8cd1976a94"
+        ],
+        "sum": 1,
+        "sum_delta_from_1": 0,
+        "min_probability": 0,
+        "max_probability": 1,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 3
+        },
+        "error_code": "PROBABILITY_UNKNOWN_OPTION",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "23933fb7153067ee6b54df7b737ca3a983410baa1b4e59189a02e925841de9b5",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a047"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "OPTION_REPLACED",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [
+          "C"
+        ],
+        "unknown_option_ids": [
+          "unknown-sha256:c689dd20a5c7fe58c304ff302027afd72157b65adbaaa485e8956b8cd1976a94"
+        ],
+        "sum": 1,
+        "sum_delta_from_1": 0,
+        "min_probability": 0,
+        "max_probability": 1,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 2
+        },
+        "error_code": "PROBABILITY_OPTION_MISSING",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a048"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "OPTION_REPLACED",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": 3,
+        "missing_option_ids": [
+          "C"
+        ],
+        "unknown_option_ids": [
+          "unknown-sha256:c689dd20a5c7fe58c304ff302027afd72157b65adbaaa485e8956b8cd1976a94"
+        ],
+        "sum": 1,
+        "sum_delta_from_1": 0,
+        "min_probability": 0,
+        "max_probability": 1,
+        "chosen_option": "A",
+        "max_option_ids": [
+          "A"
+        ],
+        "is_finite": true,
+        "value_type_summary": {
+          "number": 2
+        },
+        "error_code": "PROBABILITY_OPTION_MISSING",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": "9d6e8c9fd5aa36ecf23fc2628e6efe6f83bc23f3fbe6aeee531b5566b92cf871",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a048"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "QUESTION_MISSING",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": null,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITY_QUESTION_MISSING",
+        "category": "INVALID_QUESTIONS",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a049",
+        "missing_question_ids": [
+          "q"
+        ],
+        "unknown_question_ids": [],
+        "expected_question_count": 1,
+        "observed_question_count": 0
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "QUESTION_MISSING",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": null,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITY_QUESTION_MISSING",
+        "category": "INVALID_QUESTIONS",
+        "raw_sha256": "3bd212339ccab9af9e534e694b2b8b574be4e1294b9e56cf5eefc19984851d00",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a049",
+        "missing_question_ids": [
+          "q"
+        ],
+        "unknown_question_ids": [],
+        "expected_question_count": 1,
+        "observed_question_count": 0
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "QUESTION_EXTRA",
+      "diagnostic": {
+        "question_id": null,
+        "expected_option_count": null,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITY_UNKNOWN_QUESTION",
+        "category": "INVALID_QUESTIONS",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a050",
+        "missing_question_ids": [],
+        "unknown_question_ids": [
+          "unknown-sha256:c689dd20a5c7fe58c304ff302027afd72157b65adbaaa485e8956b8cd1976a94"
+        ],
+        "expected_question_count": 1,
+        "observed_question_count": 2
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "QUESTION_EXTRA",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": null,
+        "expected_option_count": null,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITY_UNKNOWN_QUESTION",
+        "category": "INVALID_QUESTIONS",
+        "raw_sha256": "dfde03b0bfb2a6275a472955539e92073b93b8e91f0d5aaa5e32bad1c6fc411d",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a050",
+        "missing_question_ids": [],
+        "unknown_question_ids": [
+          "unknown-sha256:c689dd20a5c7fe58c304ff302027afd72157b65adbaaa485e8956b8cd1976a94"
+        ],
+        "expected_question_count": 1,
+        "observed_question_count": 2
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "ANSWERS_ARRAY",
+      "diagnostic": {
+        "question_id": null,
+        "expected_option_count": null,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "INVALID_QUESTIONS",
+        "category": "INVALID_QUESTIONS",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a051"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "ANSWERS_ARRAY",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": null,
+        "expected_option_count": null,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "INVALID_QUESTIONS",
+        "category": "INVALID_QUESTIONS",
+        "raw_sha256": "12de264f8800e5cc84f73adf36445777ef0da4e1b08dac7ae335d56f6179e4ae",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a051"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "ANSWERS_EMPTY",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": null,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITY_QUESTION_MISSING",
+        "category": "INVALID_QUESTIONS",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a052",
+        "missing_question_ids": [
+          "q"
+        ],
+        "unknown_question_ids": [],
+        "expected_question_count": 1,
+        "observed_question_count": 0
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "ANSWERS_EMPTY",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": null,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITY_QUESTION_MISSING",
+        "category": "INVALID_QUESTIONS",
+        "raw_sha256": "3bd212339ccab9af9e534e694b2b8b574be4e1294b9e56cf5eefc19984851d00",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a052",
+        "missing_question_ids": [
+          "q"
+        ],
+        "unknown_question_ids": [],
+        "expected_question_count": 1,
+        "observed_question_count": 0
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "OPTION_ORDER",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "OPTION_ORDER",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "QUESTION_ORDER",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "QUESTION_ORDER",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NULL_PROTOTYPE",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "NULL_PROTOTYPE",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": null,
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "CUSTOM_PROTOTYPE",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "A",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITIES_NOT_OBJECT",
+        "category": "INVALID_PROBABILITIES",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a056"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "EMPTY_CRITERIA",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 0,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "unknown-sha256:559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "CHOICE_UNKNOWN",
+        "category": "INVALID_ENUM",
+        "raw_sha256": null,
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a057"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "EMPTY_CRITERIA",
+      "input_kind": "RAW_TEXT_WITH_PRIVATE_EXTRAS",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 0,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": "unknown-sha256:559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd",
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "CHOICE_UNKNOWN",
+        "category": "INVALID_ENUM",
+        "raw_sha256": "dcde954956a217878acb45e9a64811e51479c43c19a915360abc22a267ed46b3",
+        "model_requested": "jev-1.14.0",
+        "model_observed": "jev-1.14.0",
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a057"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "DUPLICATE_QUESTION_LITERAL",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITY_DUPLICATE_KEY",
+        "category": "DUPLICATE_KEY",
+        "raw_sha256": "ff9cc039930fed97c103ae507fb7de0c2ce5728bc295e68e59e87c9e5687d4b0",
+        "model_requested": "jev-1.14.0",
+        "model_observed": null,
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a058",
+        "duplicate_scope": "QUESTION"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "DUPLICATE_QUESTION_UNICODE",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITY_DUPLICATE_KEY",
+        "category": "DUPLICATE_KEY",
+        "raw_sha256": "047963f6673fd21319b185e3395181119c59448b446467c18b37f8541d27758f",
+        "model_requested": "jev-1.14.0",
+        "model_observed": null,
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a059",
+        "duplicate_scope": "QUESTION"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "DUPLICATE_OPTION_LITERAL",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITY_DUPLICATE_KEY",
+        "category": "DUPLICATE_KEY",
+        "raw_sha256": "8119761b9d7cc8dc6fe560a851355ab0b9cf281f04bcb7bb2d7e33e796682680",
+        "model_requested": "jev-1.14.0",
+        "model_observed": null,
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a060",
+        "duplicate_scope": "OPTION"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "DUPLICATE_OPTION_UNICODE",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITY_DUPLICATE_KEY",
+        "category": "DUPLICATE_KEY",
+        "raw_sha256": "716a24bcb8125e7c167155c92bf9019f44ef9777a75d9408d65fd5d0237dda30",
+        "model_requested": "jev-1.14.0",
+        "model_observed": null,
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a061",
+        "duplicate_scope": "OPTION"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "DUPLICATE_CHOICE_LITERAL",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITY_DUPLICATE_KEY",
+        "category": "DUPLICATE_KEY",
+        "raw_sha256": "ab5032d5f9b5bf719af2a14f84a17b2f97e63518688daaff14c234f7a18dc701",
+        "model_requested": "jev-1.14.0",
+        "model_observed": null,
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a062",
+        "duplicate_scope": "CHOICE"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "DUPLICATE_CHOICE_UNICODE",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITY_DUPLICATE_KEY",
+        "category": "DUPLICATE_KEY",
+        "raw_sha256": "0f3bbe433e9cc0b8f738f6ed65b3bea8268ef35ea9a332155046242e3e0cc1c5",
+        "model_requested": "jev-1.14.0",
+        "model_observed": null,
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a063",
+        "duplicate_scope": "CHOICE"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "DUPLICATE_PROBABILITIES_LITERAL",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITY_DUPLICATE_KEY",
+        "category": "DUPLICATE_KEY",
+        "raw_sha256": "00c8aab54caf5b8ec4095b4dfd4b2d5b12ddefd14a05c22ac081a9118d65112a",
+        "model_requested": "jev-1.14.0",
+        "model_observed": null,
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a064",
+        "duplicate_scope": "PROBABILITIES"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "DUPLICATE_PROBABILITIES_UNICODE",
+      "diagnostic": {
+        "question_id": "q",
+        "expected_option_count": 3,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "PROBABILITY_DUPLICATE_KEY",
+        "category": "DUPLICATE_KEY",
+        "raw_sha256": "8edebc10b2c9dc60e3f8fe05472bbabebf5dd835bdf911779ef04b29818ed194",
+        "model_requested": "jev-1.14.0",
+        "model_observed": null,
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a065",
+        "duplicate_scope": "PROBABILITIES"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "INVALID_JSON_NaN",
+      "diagnostic": {
+        "question_id": null,
+        "expected_option_count": null,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "INVALID_JSON",
+        "category": "INVALID_JSON",
+        "raw_sha256": "7a18df2f707dfda41618f6377486b4e6cf2a6546465c7bbd15e1ce88e64b0b31",
+        "model_requested": "jev-1.14.0",
+        "model_observed": null,
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a066"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "INVALID_JSON_Infinity",
+      "diagnostic": {
+        "question_id": null,
+        "expected_option_count": null,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "INVALID_JSON",
+        "category": "INVALID_JSON",
+        "raw_sha256": "5a26c1276fd7a0a9ad5ce9ca0ad829e98f16f1ba55c0932e66f639ec631f61d0",
+        "model_requested": "jev-1.14.0",
+        "model_observed": null,
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a067"
+      },
+      "normalized_private_marker_matches": 0
+    },
+    {
+      "fixture_id": "INVALID_JSON_1e999",
+      "diagnostic": {
+        "question_id": null,
+        "expected_option_count": null,
+        "observed_option_count": null,
+        "missing_option_ids": [],
+        "unknown_option_ids": [],
+        "sum": null,
+        "sum_delta_from_1": null,
+        "min_probability": null,
+        "max_probability": null,
+        "chosen_option": null,
+        "max_option_ids": [],
+        "is_finite": null,
+        "value_type_summary": {},
+        "error_code": "INVALID_JSON",
+        "category": "INVALID_JSON",
+        "raw_sha256": "a39b7053da14bdb9749ae503cf200ad1e29b946846f2908c41e40815d5f90cef",
+        "model_requested": "jev-1.14.0",
+        "model_observed": null,
+        "stage_id": "probability-contract",
+        "attempt_id": "s2c-offline-a068"
+      },
+      "normalized_private_marker_matches": 0
+    }
+  ]
+}

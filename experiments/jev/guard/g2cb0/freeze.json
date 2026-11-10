@@ -1,0 +1,95 @@
+{
+  "checkpoint": "JEV-GUARD-G2-C-B0",
+  "documentary_audit": "PASS",
+  "design_classification": "INCONCLUSIVO",
+  "recommendation": "HOLD_PROVIDER_AND_IMPLEMENTATION",
+  "created_at_utc": "2026-10-18T00:46:05.571Z",
+  "implementation_authorized": false,
+  "guard_implemented": false,
+  "extractor_implemented": false,
+  "prompt_created": false,
+  "provider_request_created": false,
+  "execution_authorized": false,
+  "calls_authorized": 0,
+  "new_calls": 0,
+  "openai": 0,
+  "network_attempts": 0,
+  "credits": 0,
+  "credentials_read": 0,
+  "production_accessed": false,
+  "product_changes": 0,
+  "historical_results_changed": false,
+  "source_history": {
+    "status": "PASS",
+    "historical_files": 524,
+    "product_files": 769,
+    "namespace_lists": 16,
+    "propagation_prefix": {
+      "bytes": 50348,
+      "sha256": "ae71e9c77902795322361cb9d01c6411fa52341bbcc289d0aaef327699231c27"
+    }
+  },
+  "tests": {
+    "historical_directed_pass": 314,
+    "new_documentary_pass": 50,
+    "fail": 0,
+    "skipped": 0,
+    "all_756_rerun": false,
+    "joint_rerun": false
+  },
+  "mutants": {
+    "total": 22,
+    "killed": 22,
+    "survived": 0
+  },
+  "fixtures": {
+    "cases": 36,
+    "positive": 12,
+    "negative": 18,
+    "critical": 14,
+    "inconclusive": 6,
+    "safe_partial": 3,
+    "automated_quality_test": false
+  },
+  "observability": {
+    "literal_state_families": 10,
+    "semantic_review_families": 6,
+    "automatic_gg29_resolution_demonstrated": false
+  },
+  "documentary_validation": {
+    "local_markdown_links": 92,
+    "git_diff_check": "PASS",
+    "untracked_whitespace_files_before_freeze": 27,
+    "untracked_whitespace": "PASS",
+    "tracked_product_diff": "NO_CHANGES"
+  },
+  "next_gate_started": false,
+  "files": {
+    "architecture-adr.md": "b527f558381a7708290698724478a709e02e689fcf88e128fa1f07a85e6e2899",
+    "artifact-audit.mjs": "6f7a5b6705612d9879aa3e7d99ab0d70fa3f7533ac17e6680b96e18f59605885",
+    "controls.json": "409ce9acc6691f7db854d2078bba12e652c59a0118660bace73f4f9ad63e40e4",
+    "corpus-fixtures.json": "12a3455d4751047bcffe0421c3767924f7f8499540acbd8f41c479056f8b8522",
+    "decision-matrix.json": "736f9c1bd67ed50be158f73f07d77bea042084ea1585c879841538ddeeee83d7",
+    "decision-matrix.md": "d052b1d148ce86c0e054f1212eae056527ac2c69d5b0ff9a9f9b18e2d24df6b2",
+    "design-audit.test.mjs": "3c9417ae5d5706b6078c396d7741b3666952d0a83b636de908c7d8781a2c91f2",
+    "documentary-replay.md": "32cd01dfa780e024d40921acba581983ff7e649983ad55810cc1b2e61f9860d4",
+    "false-allow-analysis.md": "5e78adf4b4f4e4d69644564caea4ffc6ecee2e4585875b266d72048c5fbbc4aa",
+    "false-block-analysis.md": "97ef578b798fa9414327e94ff64e3ad9971d4847ea759bedc01671507be234d2",
+    "gate-criteria.json": "a0811797283564f349965344338d9fa158cdd8a75e21bd5556a3478535fbe07a",
+    "hybrid-contract.json": "e039e2afe3734fd86c23758cf78edd0ce6e748bd7f8451d50a1aa4c499bc5dde",
+    "hybrid-contract.md": "e1b16f979632a280f6bdda9160628addae03bd9fd03a405a0183bdf8a06ed9c1",
+    "mutation-report.json": "132b6cb88e751aa4968849b2d4a48ad83727f0db99eef376795ee8a44a1e7db2",
+    "precheck-specification.json": "2dc710e8b285aa982206887058cd067c293acea7d370075f6426ea8e9e1a408f",
+    "prechecks.md": "e79ed93d78f132d389754df691695f5633816e1dae10c3258183d55d9034d8c2",
+    "preservation-before.json": "046211d8b70bce42e9f700be64a935b94b9f5a8fbe22e176dac677b58edac82a",
+    "preservation.json": "d06baced51e6e71f22ba8ba178c6f8f3353f609b84ce947c8ca29867e9c97f23",
+    "privacy-check.json": "0b5804d1f3fdcfcef275cda4777454b103b229abe160d51e049d1b92bf583232",
+    "propagation-preservation.json": "8d7fb8f127cced5298648fb5107483a49fbd6e9f26429ea05543968c56a18b6e",
+    "README.md": "b0eed7d4823ac5ede4f90dd21c19067650994eb670d2a1bc714879c4510caefa",
+    "replay-analysis.json": "50f15cfad14cbe01c27f57de5a0d4a2f1ad3be73e4044309e0d84390d2e38d1c",
+    "risk-register.md": "35f765b61853d55c9ff5ebf1c244db599ac48a92bb28915b96c094c10d8a9857",
+    "test-plan.md": "59dc95c581d2db17c6446fe32feb539645592a0132b26b234700e52a6843512e",
+    "tests.json": "abd3da48ed8f68c8c25d565216b6af57071a483df04f5b6cbbb358af60c5d984",
+    "../../../../RELATORIO-JEV-GUARD-G2-C-B0.md": "75dfbedab0cddf720bcf587b0b6af09075acdfc8f0973ad590fc2b9fcb57a257"
+  }
+}

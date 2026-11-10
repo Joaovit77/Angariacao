@@ -1,0 +1,159 @@
+{
+  "classes": [
+    "STRUCTURAL_SURFACE_PROBLEM",
+    "MACRO_REASONING_FAILURE",
+    "INCONCLUSIVE_CALIBRATION_FAILURE",
+    "VERDICT_AGGREGATION_FAILURE",
+    "DIMENSIONAL_REASONING_FAILURE",
+    "PROMPT_CONTRACT_GAP",
+    "ORACLE_REVIEW_NEEDED",
+    "MULTIPLE_CONTRIBUTORS",
+    "UNDETERMINED"
+  ],
+  "final_categories": [
+    "STRUCTURAL_ONLY",
+    "SEMANTIC_ONLY",
+    "STRUCTURAL_AND_SEMANTIC",
+    "CALIBRATION",
+    "AGGREGATION",
+    "PROMPT_CONTRACT",
+    "ORACLE_UNCERTAINTY",
+    "UNDETERMINED"
+  ],
+  "cases": [
+    {
+      "case_id": "GG0-14",
+      "primary_failure_class": "STRUCTURAL_SURFACE_PROBLEM",
+      "secondary_failure_class": [],
+      "final_map_category": "STRUCTURAL_ONLY",
+      "evidence_strength": "HIGH",
+      "evidence_scope": "Saídas preservadas e desvios do contrato; mecanismo interno não determinado.",
+      "macro_reasoning_grade": "UNDETERMINED",
+      "macro_reasoning_evidence_reason": "Concordância dos erros macro não identifica a etapa interna. Nos inconclusivos válidos há sinais de incerteza e FAIL espúrios; nenhuma agregação operacional sem oracle foi demonstrada como suficiente.",
+      "operational_impact": "HIGH",
+      "impact_reason": "Envelope obrigatório indisponível; reduz cobertura de sentinelas. Não significa autorização de ação nem false accept comprovado.",
+      "recommended_next_test": "Desenhar isolamento de superfície/posição em gate futuro, sem recuperar envelope.",
+      "implemented": false,
+      "internal_mechanism": "UNDETERMINED"
+    },
+    {
+      "case_id": "GG0-22",
+      "primary_failure_class": "STRUCTURAL_SURFACE_PROBLEM",
+      "secondary_failure_class": [],
+      "final_map_category": "STRUCTURAL_ONLY",
+      "evidence_strength": "HIGH",
+      "evidence_scope": "Saídas preservadas e desvios do contrato; mecanismo interno não determinado.",
+      "macro_reasoning_grade": "UNDETERMINED",
+      "macro_reasoning_evidence_reason": "Concordância dos erros macro não identifica a etapa interna. Nos inconclusivos válidos há sinais de incerteza e FAIL espúrios; nenhuma agregação operacional sem oracle foi demonstrada como suficiente.",
+      "operational_impact": "HIGH",
+      "impact_reason": "Envelope obrigatório indisponível; reduz cobertura de sentinelas. Não significa autorização de ação nem false accept comprovado.",
+      "recommended_next_test": "Desenhar isolamento de superfície/posição em gate futuro, sem recuperar envelope.",
+      "implemented": false,
+      "internal_mechanism": "UNDETERMINED"
+    },
+    {
+      "case_id": "GG0-24",
+      "primary_failure_class": "STRUCTURAL_SURFACE_PROBLEM",
+      "secondary_failure_class": [],
+      "final_map_category": "STRUCTURAL_ONLY",
+      "evidence_strength": "HIGH",
+      "evidence_scope": "Saídas preservadas e desvios do contrato; mecanismo interno não determinado.",
+      "macro_reasoning_grade": "UNDETERMINED",
+      "macro_reasoning_evidence_reason": "Concordância dos erros macro não identifica a etapa interna. Nos inconclusivos válidos há sinais de incerteza e FAIL espúrios; nenhuma agregação operacional sem oracle foi demonstrada como suficiente.",
+      "operational_impact": "HIGH",
+      "impact_reason": "Envelope obrigatório indisponível; reduz cobertura de sentinelas. Não significa autorização de ação nem false accept comprovado.",
+      "recommended_next_test": "Desenhar isolamento de superfície/posição em gate futuro, sem recuperar envelope.",
+      "implemented": false,
+      "internal_mechanism": "UNDETERMINED"
+    },
+    {
+      "case_id": "GG0-29",
+      "primary_failure_class": "MULTIPLE_CONTRIBUTORS",
+      "secondary_failure_class": [
+        "VERDICT_AGGREGATION_FAILURE",
+        "DIMENSIONAL_REASONING_FAILURE"
+      ],
+      "final_map_category": "AGGREGATION",
+      "evidence_strength": "HIGH",
+      "evidence_scope": "Saídas preservadas e desvios do contrato; mecanismo interno não determinado.",
+      "macro_reasoning_grade": "UNDETERMINED",
+      "macro_reasoning_evidence_reason": "Concordância dos erros macro não identifica a etapa interna. Nos inconclusivos válidos há sinais de incerteza e FAIL espúrios; nenhuma agregação operacional sem oracle foi demonstrada como suficiente.",
+      "operational_impact": "HIGH",
+      "impact_reason": "False APPROVE de resposta com ressalva comercial essencial ausente; não é crítico no oracle histórico, mas poderia deixar passar informação incompleta.",
+      "recommended_next_test": "Desenhar offline contraste de obrigação comercial e ressalva preservando GMP-17/positivas.",
+      "implemented": false,
+      "internal_mechanism": "UNDETERMINED"
+    },
+    {
+      "case_id": "GG0-31",
+      "primary_failure_class": "INCONCLUSIVE_CALIBRATION_FAILURE",
+      "secondary_failure_class": [
+        "DIMENSIONAL_REASONING_FAILURE",
+        "MACRO_REASONING_FAILURE"
+      ],
+      "final_map_category": "CALIBRATION",
+      "evidence_strength": "HIGH",
+      "evidence_scope": "Saídas preservadas e desvios do contrato; mecanismo interno não determinado.",
+      "macro_reasoning_grade": "PLAUSIBLE",
+      "macro_reasoning_evidence_reason": "Concordância dos erros macro não identifica a etapa interna. Nos inconclusivos válidos há sinais de incerteza e FAIL espúrios; nenhuma agregação operacional sem oracle foi demonstrada como suficiente.",
+      "operational_impact": "MEDIUM",
+      "impact_reason": "Overreject bloqueia decisão verificável apenas após mais evidência; reduz utilidade sem unsafe APPROVE observado.",
+      "recommended_next_test": "Desenhar contrastes entre prova de violação e estado não resolvido com positivos/negativos de controle.",
+      "implemented": false,
+      "internal_mechanism": "UNDETERMINED"
+    },
+    {
+      "case_id": "GG0-32",
+      "primary_failure_class": "INCONCLUSIVE_CALIBRATION_FAILURE",
+      "secondary_failure_class": [
+        "DIMENSIONAL_REASONING_FAILURE",
+        "MACRO_REASONING_FAILURE"
+      ],
+      "final_map_category": "CALIBRATION",
+      "evidence_strength": "HIGH",
+      "evidence_scope": "Saídas preservadas e desvios do contrato; mecanismo interno não determinado.",
+      "macro_reasoning_grade": "PLAUSIBLE",
+      "macro_reasoning_evidence_reason": "Concordância dos erros macro não identifica a etapa interna. Nos inconclusivos válidos há sinais de incerteza e FAIL espúrios; nenhuma agregação operacional sem oracle foi demonstrada como suficiente.",
+      "operational_impact": "MEDIUM",
+      "impact_reason": "Overreject bloqueia decisão verificável apenas após mais evidência; reduz utilidade sem unsafe APPROVE observado.",
+      "recommended_next_test": "Desenhar contrastes entre prova de violação e estado não resolvido com positivos/negativos de controle.",
+      "implemented": false,
+      "internal_mechanism": "UNDETERMINED"
+    },
+    {
+      "case_id": "GG0-35",
+      "primary_failure_class": "INCONCLUSIVE_CALIBRATION_FAILURE",
+      "secondary_failure_class": [
+        "DIMENSIONAL_REASONING_FAILURE",
+        "MACRO_REASONING_FAILURE"
+      ],
+      "final_map_category": "CALIBRATION",
+      "evidence_strength": "HIGH",
+      "evidence_scope": "Saídas preservadas e desvios do contrato; mecanismo interno não determinado.",
+      "macro_reasoning_grade": "PLAUSIBLE",
+      "macro_reasoning_evidence_reason": "Concordância dos erros macro não identifica a etapa interna. Nos inconclusivos válidos há sinais de incerteza e FAIL espúrios; nenhuma agregação operacional sem oracle foi demonstrada como suficiente.",
+      "operational_impact": "MEDIUM",
+      "impact_reason": "Overreject bloqueia decisão verificável apenas após mais evidência; reduz utilidade sem unsafe APPROVE observado.",
+      "recommended_next_test": "Desenhar contrastes entre prova de violação e estado não resolvido com positivos/negativos de controle.",
+      "implemented": false,
+      "internal_mechanism": "UNDETERMINED"
+    },
+    {
+      "case_id": "GG0-36",
+      "primary_failure_class": "STRUCTURAL_SURFACE_PROBLEM",
+      "secondary_failure_class": [
+        "INCONCLUSIVE_CALIBRATION_FAILURE"
+      ],
+      "final_map_category": "STRUCTURAL_AND_SEMANTIC",
+      "evidence_strength": "HIGH",
+      "evidence_scope": "Saídas preservadas e desvios do contrato; mecanismo interno não determinado.",
+      "macro_reasoning_grade": "UNDETERMINED",
+      "macro_reasoning_evidence_reason": "Concordância dos erros macro não identifica a etapa interna. Nos inconclusivos válidos há sinais de incerteza e FAIL espúrios; nenhuma agregação operacional sem oracle foi demonstrada como suficiente.",
+      "operational_impact": "HIGH",
+      "impact_reason": "Envelope obrigatório indisponível; reduz cobertura de sentinelas. Não significa autorização de ação nem false accept comprovado.",
+      "recommended_next_test": "Desenhar isolamento de superfície/posição em gate futuro, sem recuperar envelope.",
+      "implemented": false,
+      "internal_mechanism": "UNDETERMINED"
+    }
+  ]
+}

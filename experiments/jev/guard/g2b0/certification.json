@@ -1,0 +1,29 @@
+{
+  "checkpoint": "JEV-GUARD-G2-B0",
+  "status": "PASS_OFFLINE",
+  "historical_first": {
+    "pass": 504,
+    "fail": 0,
+    "duration_ms": 75318.9963
+  },
+  "new_pass": 151,
+  "total_pass": 655,
+  "fail": 0,
+  "skipped": 0,
+  "cancelled": 0,
+  "full_duration_ms": 77136.9036,
+  "mutants": {
+    "total": 20,
+    "killed": 20,
+    "survived": 0
+  },
+  "network_attempts": 0,
+  "network_calls": 0,
+  "jev_calls": 0,
+  "openai_calls": 0,
+  "credits": 0,
+  "credentials_read": 0,
+  "product_changes": 0,
+  "barrier": "experiments/jev/s2g/offline-guard.mjs",
+  "certified_at_utc": "2026-10-17T21:23:46.920Z"
+}

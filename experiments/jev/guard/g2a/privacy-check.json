@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "files_checked": 27,
+  "forbidden_value_matches": 0,
+  "raw_persisted": false,
+  "returned_context_or_reasoning_persisted": false,
+  "real_data_persisted": false,
+  "scope": "NEW_OFFLINE_ARTIFACTS_WITHOUT_CREDENTIAL_ACCESS",
+  "credentials_read": 0
+}

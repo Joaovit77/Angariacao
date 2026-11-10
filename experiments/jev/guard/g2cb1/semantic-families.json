@@ -1,0 +1,940 @@
+{
+  "questions": [
+    {
+      "id": 1,
+      "text": "Pode ser derivado dos dados já estruturados?"
+    },
+    {
+      "id": 2,
+      "text": "Exige interpretação de linguagem natural?"
+    },
+    {
+      "id": 3,
+      "text": "Exige comparar pergunta, contexto e candidata?"
+    },
+    {
+      "id": 4,
+      "text": "Exige materialidade?"
+    },
+    {
+      "id": 5,
+      "text": "Exige equivalência semântica?"
+    },
+    {
+      "id": 6,
+      "text": "Exige provar ausência?"
+    },
+    {
+      "id": 7,
+      "text": "Exige cobrir a candidata inteira?"
+    },
+    {
+      "id": 8,
+      "text": "Exige distinguir entidade?"
+    },
+    {
+      "id": 9,
+      "text": "Exige distinguir tempo?"
+    },
+    {
+      "id": 10,
+      "text": "Exige distinguir assunto ou termo comercial?"
+    },
+    {
+      "id": 11,
+      "text": "Pode ser certificado sem oracle?"
+    },
+    {
+      "id": 12,
+      "text": "Pode ser certificado sem o próprio provider?"
+    },
+    {
+      "id": 13,
+      "text": "Pode ser certificado sem outro LLM?"
+    },
+    {
+      "id": 14,
+      "text": "Pode ser produzido por representação controlada?"
+    },
+    {
+      "id": 15,
+      "text": "Pode ser produzido por revisão humana estruturada?"
+    },
+    {
+      "id": 16,
+      "text": "Pode ser validado cegamente?"
+    },
+    {
+      "id": 17,
+      "text": "Pode ser reproduzido?"
+    },
+    {
+      "id": 18,
+      "text": "Pode ser auditado por terceiro?"
+    },
+    {
+      "id": 19,
+      "text": "Pode distinguir GG29 das parciais seguras sem false block?"
+    },
+    {
+      "id": 20,
+      "text": "Qual o failure mode se estiver errado?"
+    }
+  ],
+  "families": [
+    {
+      "name": "requested_obligations",
+      "source": "/current_message + contexto autorizado",
+      "state": "NOT_DEMONSTRATED",
+      "meaning": "Inventário das unidades solicitadas, derivado do pedido/contexto antes de conhecer a candidata.",
+      "materiality": "SIM: necessidade/materialidade depende do pedido e policy geral, nunca do rótulo histórico.",
+      "absence": "PARCIAL: enumerar também obrigações possivelmente omitidas; falta de campo não é ausência de obrigação.",
+      "whole": "NÃO: obrigações são fixadas antes de ver a candidata; sua satisfação será avaliada depois.",
+      "comparison": "PARCIAL: pergunta×contexto; não usar candidata para inventar ou reduzir obrigações.",
+      "h3": "Pedido upstream explicitamente estruturado poderia fornecer slots; não resolve pedido originalmente livre.",
+      "failure": "Obrigação omitida permite GG29; obrigação espúria bloqueia04/11/12 ou dado não perguntado.",
+      "human": "HUMAN_REVIEW_ELIGIBLE",
+      "controlled": "CONTROLLED_REPRESENTATION_ELIGIBLE",
+      "answers": [
+        {
+          "question_id": 1,
+          "value": "NAO",
+          "basis": "Os campos literais existem, mas a família semântica completa não está representada nos36 inputs.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 2,
+          "value": "SIM",
+          "basis": "Nos inputs livres atuais. H3 só eliminaria partes da interpretação em domínio fechado futuro.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 3,
+          "value": "PARCIAL",
+          "basis": "PARCIAL: pergunta×contexto; não usar candidata para inventar ou reduzir obrigações.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 4,
+          "value": "SIM",
+          "basis": "SIM: necessidade/materialidade depende do pedido e policy geral, nunca do rótulo histórico.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 5,
+          "value": "SIM",
+          "basis": "É necessário preservar significado, escopo e relações no texto livre; H3 não valida automaticamente paráfrase histórica.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 6,
+          "value": "PARCIAL",
+          "basis": "PARCIAL: enumerar também obrigações possivelmente omitidas; falta de campo não é ausência de obrigação.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 7,
+          "value": "NAO",
+          "basis": "NÃO: obrigações são fixadas antes de ver a candidata; sua satisfação será avaliada depois.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 8,
+          "value": "SIM",
+          "basis": "Vincular à entidade selecionada ou registrar identidade não resolvida; quantidade igual não certifica vínculo.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 9,
+          "value": "SIM",
+          "basis": "Distinguir tempo de pergunta, afirmação e fonte; declarar atemporal quando justificado, sem herdar tempo pelo número.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 10,
+          "value": "SIM",
+          "basis": "Assunto/atributo e termo comercial são específicos; estado global não cria obrigação por si.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 11,
+          "value": "CONDICIONAL",
+          "basis": "H2/H3 teriam origem independente e policy global comum, sem oracle/rationale/expected. Não há certificado independente produzido neste gate.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 12,
+          "value": "CONDICIONAL",
+          "basis": "Revisores humanos independentes ou origem controlada poderiam prescindir do provider; nenhuma autoatestação é admissível.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 13,
+          "value": "CONDICIONAL",
+          "basis": "H2 e partes deH3 não exigem outro LLM. Não há demonstração empírica de confiabilidade desses processos aqui.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 14,
+          "value": "PARCIAL",
+          "basis": "Pedido upstream explicitamente estruturado poderia fornecer slots; não resolve pedido originalmente livre.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 15,
+          "value": "CONDICIONAL",
+          "basis": "Formulário, dupla revisão, evidências e adjudicação propostos; nenhuma pessoa executou revisão nesteB1, Codex não é revisor humano.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 16,
+          "value": "CONDICIONAL",
+          "basis": "Protocolo futuro com custódia de rótulos e controle de exposição; corpus conhecido não se torna cego por renomear IDs. Validação não iniciada.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 17,
+          "value": "PARCIAL",
+          "basis": "Versões, hashes e spans permitem repetir procedimentos; concordância semântica entre revisores permaneceUNKNOWN/NOT_MEASURED.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 18,
+          "value": "CONDICIONAL",
+          "basis": "Terceiro poderia verificar referências, versões, cobertura, divergências e admissibilidade. Correção semântica não é garantida pelo registro.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 19,
+          "value": "UNKNOWN",
+          "basis": "Há caminho proposto de interpretação/verificação, mas nenhum teste humano/automático independente foi executado; não afirmar detecção operacional deGG29.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 20,
+          "value": "DESCRIPTIVE",
+          "basis": "Obrigação omitida permite GG29; obrigação espúria bloqueia04/11/12 ou dado não perguntado.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        }
+      ],
+      "current_operational_certified": false,
+      "proposed_paths": [
+        "HUMAN_REVIEW_ELIGIBLE",
+        "CONTROLLED_REPRESENTATION_ELIGIBLE"
+      ],
+      "legacy_annotation_evidence_class": "ORACLE_ASSISTED_ONLY"
+    },
+    {
+      "name": "required_caveat",
+      "source": "pedido + estado da fonte + policy global",
+      "state": "NOT_DEMONSTRATED",
+      "meaning": "Obrigação contextual de delimitar lacuna, com estado REQUIRED/OPTIONAL/IRRELEVANT/UNKNOWN.",
+      "materiality": "SIM: ressalva deve ser necessária para obrigação específica, não UNCONFIRMED global.",
+      "absence": "PARCIAL: declarar ausência de ressalva requerida exige inventário de obrigações e escopo; flag ausente éUNKNOWN.",
+      "whole": "NÃO para determinar se é requerida; SIM apenas na verificação posterior da candidata.",
+      "comparison": "PARCIAL: pedido×contexto×policy; a obrigação não depende de a candidata tê-la incluído.",
+      "h3": "Slot de assunto e estado explícito poderia gerar dependência de caveat; materialidade e inventário do pedido continuam pressupostos.",
+      "failure": "Caveat irrelevante obrigatório cria false block; caveat essencial opcional permite omissão material.",
+      "human": "HUMAN_REVIEW_ELIGIBLE",
+      "controlled": "CONTROLLED_REPRESENTATION_ELIGIBLE",
+      "answers": [
+        {
+          "question_id": 1,
+          "value": "NAO",
+          "basis": "Os campos literais existem, mas a família semântica completa não está representada nos36 inputs.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 2,
+          "value": "SIM",
+          "basis": "Nos inputs livres atuais. H3 só eliminaria partes da interpretação em domínio fechado futuro.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 3,
+          "value": "PARCIAL",
+          "basis": "PARCIAL: pedido×contexto×policy; a obrigação não depende de a candidata tê-la incluído.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 4,
+          "value": "SIM",
+          "basis": "SIM: ressalva deve ser necessária para obrigação específica, não UNCONFIRMED global.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 5,
+          "value": "SIM",
+          "basis": "É necessário preservar significado, escopo e relações no texto livre; H3 não valida automaticamente paráfrase histórica.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 6,
+          "value": "PARCIAL",
+          "basis": "PARCIAL: declarar ausência de ressalva requerida exige inventário de obrigações e escopo; flag ausente éUNKNOWN.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 7,
+          "value": "NAO",
+          "basis": "NÃO para determinar se é requerida; SIM apenas na verificação posterior da candidata.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 8,
+          "value": "SIM",
+          "basis": "Vincular à entidade selecionada ou registrar identidade não resolvida; quantidade igual não certifica vínculo.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 9,
+          "value": "SIM",
+          "basis": "Distinguir tempo de pergunta, afirmação e fonte; declarar atemporal quando justificado, sem herdar tempo pelo número.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 10,
+          "value": "SIM",
+          "basis": "Assunto/atributo e termo comercial são específicos; estado global não cria obrigação por si.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 11,
+          "value": "CONDICIONAL",
+          "basis": "H2/H3 teriam origem independente e policy global comum, sem oracle/rationale/expected. Não há certificado independente produzido neste gate.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 12,
+          "value": "CONDICIONAL",
+          "basis": "Revisores humanos independentes ou origem controlada poderiam prescindir do provider; nenhuma autoatestação é admissível.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 13,
+          "value": "CONDICIONAL",
+          "basis": "H2 e partes deH3 não exigem outro LLM. Não há demonstração empírica de confiabilidade desses processos aqui.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 14,
+          "value": "PARCIAL",
+          "basis": "Slot de assunto e estado explícito poderia gerar dependência de caveat; materialidade e inventário do pedido continuam pressupostos.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 15,
+          "value": "CONDICIONAL",
+          "basis": "Formulário, dupla revisão, evidências e adjudicação propostos; nenhuma pessoa executou revisão nesteB1, Codex não é revisor humano.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 16,
+          "value": "CONDICIONAL",
+          "basis": "Protocolo futuro com custódia de rótulos e controle de exposição; corpus conhecido não se torna cego por renomear IDs. Validação não iniciada.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 17,
+          "value": "PARCIAL",
+          "basis": "Versões, hashes e spans permitem repetir procedimentos; concordância semântica entre revisores permaneceUNKNOWN/NOT_MEASURED.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 18,
+          "value": "CONDICIONAL",
+          "basis": "Terceiro poderia verificar referências, versões, cobertura, divergências e admissibilidade. Correção semântica não é garantida pelo registro.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 19,
+          "value": "UNKNOWN",
+          "basis": "Há caminho proposto de interpretação/verificação, mas nenhum teste humano/automático independente foi executado; não afirmar detecção operacional deGG29.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 20,
+          "value": "DESCRIPTIVE",
+          "basis": "Caveat irrelevante obrigatório cria false block; caveat essencial opcional permite omissão material.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        }
+      ],
+      "current_operational_certified": false,
+      "proposed_paths": [
+        "HUMAN_REVIEW_ELIGIBLE",
+        "CONTROLLED_REPRESENTATION_ELIGIBLE"
+      ],
+      "legacy_annotation_evidence_class": "ORACLE_ASSISTED_ONLY"
+    },
+    {
+      "name": "required_caveat_present_or_missing",
+      "source": "/candidate_answer inteira + obrigação contextual",
+      "state": "NOT_DEMONSTRATED",
+      "meaning": "PRESENT_VERIFIED/MISSING_VERIFIED/UNKNOWN para uma ressalva com escopo já definido.",
+      "materiality": "SIM: só testar cumprimento da ressalva realmente requerida; não qualquer frase de prudência.",
+      "absence": "SIM: MISSING_VERIFIED requer inspeção integral, equivalência, polaridade, sujeito, entidade e termo; busca lexical é insuficiente.",
+      "whole": "SIM: outra oração, negação ou atribuição pode alterar presença/ausência.",
+      "comparison": "SIM: comparar candidata inteira com pedido, obrigação e fonte.",
+      "h3": "Em linguagem fechada renderizada, manifesto poderia provar emissão por obrigação; não certifica texto livre histórico.",
+      "failure": "Equivalência perdida rejeita paráfrase segura; negação ou sujeito errado aceito permite false allow.",
+      "human": "HUMAN_REVIEW_ELIGIBLE",
+      "controlled": "CONTROLLED_REPRESENTATION_ELIGIBLE",
+      "answers": [
+        {
+          "question_id": 1,
+          "value": "NAO",
+          "basis": "Os campos literais existem, mas a família semântica completa não está representada nos36 inputs.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 2,
+          "value": "SIM",
+          "basis": "Nos inputs livres atuais. H3 só eliminaria partes da interpretação em domínio fechado futuro.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 3,
+          "value": "SIM",
+          "basis": "SIM: comparar candidata inteira com pedido, obrigação e fonte.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 4,
+          "value": "SIM",
+          "basis": "SIM: só testar cumprimento da ressalva realmente requerida; não qualquer frase de prudência.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 5,
+          "value": "SIM",
+          "basis": "É necessário preservar significado, escopo e relações no texto livre; H3 não valida automaticamente paráfrase histórica.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 6,
+          "value": "SIM",
+          "basis": "SIM: MISSING_VERIFIED requer inspeção integral, equivalência, polaridade, sujeito, entidade e termo; busca lexical é insuficiente.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 7,
+          "value": "SIM",
+          "basis": "SIM: outra oração, negação ou atribuição pode alterar presença/ausência.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 8,
+          "value": "SIM",
+          "basis": "Vincular à entidade selecionada ou registrar identidade não resolvida; quantidade igual não certifica vínculo.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 9,
+          "value": "SIM",
+          "basis": "Distinguir tempo de pergunta, afirmação e fonte; declarar atemporal quando justificado, sem herdar tempo pelo número.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 10,
+          "value": "SIM",
+          "basis": "Assunto/atributo e termo comercial são específicos; estado global não cria obrigação por si.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 11,
+          "value": "CONDICIONAL",
+          "basis": "H2/H3 teriam origem independente e policy global comum, sem oracle/rationale/expected. Não há certificado independente produzido neste gate.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 12,
+          "value": "CONDICIONAL",
+          "basis": "Revisores humanos independentes ou origem controlada poderiam prescindir do provider; nenhuma autoatestação é admissível.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 13,
+          "value": "CONDICIONAL",
+          "basis": "H2 e partes deH3 não exigem outro LLM. Não há demonstração empírica de confiabilidade desses processos aqui.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 14,
+          "value": "PARCIAL",
+          "basis": "Em linguagem fechada renderizada, manifesto poderia provar emissão por obrigação; não certifica texto livre histórico.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 15,
+          "value": "CONDICIONAL",
+          "basis": "Formulário, dupla revisão, evidências e adjudicação propostos; nenhuma pessoa executou revisão nesteB1, Codex não é revisor humano.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 16,
+          "value": "CONDICIONAL",
+          "basis": "Protocolo futuro com custódia de rótulos e controle de exposição; corpus conhecido não se torna cego por renomear IDs. Validação não iniciada.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 17,
+          "value": "PARCIAL",
+          "basis": "Versões, hashes e spans permitem repetir procedimentos; concordância semântica entre revisores permaneceUNKNOWN/NOT_MEASURED.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 18,
+          "value": "CONDICIONAL",
+          "basis": "Terceiro poderia verificar referências, versões, cobertura, divergências e admissibilidade. Correção semântica não é garantida pelo registro.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 19,
+          "value": "UNKNOWN",
+          "basis": "Há caminho proposto de interpretação/verificação, mas nenhum teste humano/automático independente foi executado; não afirmar detecção operacional deGG29.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 20,
+          "value": "DESCRIPTIVE",
+          "basis": "Equivalência perdida rejeita paráfrase segura; negação ou sujeito errado aceito permite false allow.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        }
+      ],
+      "current_operational_certified": false,
+      "proposed_paths": [
+        "HUMAN_REVIEW_ELIGIBLE",
+        "CONTROLLED_REPRESENTATION_ELIGIBLE"
+      ],
+      "legacy_annotation_evidence_class": "ORACLE_ASSISTED_ONLY"
+    },
+    {
+      "name": "candidate_assertions_and_bindings",
+      "source": "/candidate_answer + fontes autorizadas e escopo",
+      "state": "NOT_DEMONSTRATED",
+      "meaning": "Inventário de claims explícitos/implícitos materiais e seus vínculos fonte/entidade/tempo/atributo.",
+      "materiality": "PARCIAL: enumerar antes de descartar por materialidade; atribuir impacto exige contexto.",
+      "absence": "PARCIAL: cada claim precisa prova de vínculo; afirmar nenhum extra exige completude do inventário.",
+      "whole": "SIM: afirmações extras, pressuposições e ações alegadas contam mesmo sem terem sido perguntadas.",
+      "comparison": "SIM: extrair da candidata e confrontar fontes; pedido delimita obrigações, não autoriza extras.",
+      "h3": "Claims tipados antes do texto e renderização fechada poderiam preservar vínculos; sem converter candidatas históricas para esse formato.",
+      "failure": "Claim extra omitido permite falsa confirmação/ação; binding de B em A ou passado no presente cria false allow.",
+      "human": "HUMAN_REVIEW_ELIGIBLE",
+      "controlled": "CONTROLLED_REPRESENTATION_ELIGIBLE",
+      "answers": [
+        {
+          "question_id": 1,
+          "value": "NAO",
+          "basis": "Os campos literais existem, mas a família semântica completa não está representada nos36 inputs.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 2,
+          "value": "SIM",
+          "basis": "Nos inputs livres atuais. H3 só eliminaria partes da interpretação em domínio fechado futuro.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 3,
+          "value": "SIM",
+          "basis": "SIM: extrair da candidata e confrontar fontes; pedido delimita obrigações, não autoriza extras.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 4,
+          "value": "PARCIAL",
+          "basis": "PARCIAL: enumerar antes de descartar por materialidade; atribuir impacto exige contexto.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 5,
+          "value": "SIM",
+          "basis": "É necessário preservar significado, escopo e relações no texto livre; H3 não valida automaticamente paráfrase histórica.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 6,
+          "value": "PARCIAL",
+          "basis": "PARCIAL: cada claim precisa prova de vínculo; afirmar nenhum extra exige completude do inventário.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 7,
+          "value": "SIM",
+          "basis": "SIM: afirmações extras, pressuposições e ações alegadas contam mesmo sem terem sido perguntadas.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 8,
+          "value": "SIM",
+          "basis": "Vincular à entidade selecionada ou registrar identidade não resolvida; quantidade igual não certifica vínculo.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 9,
+          "value": "SIM",
+          "basis": "Distinguir tempo de pergunta, afirmação e fonte; declarar atemporal quando justificado, sem herdar tempo pelo número.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 10,
+          "value": "SIM",
+          "basis": "Assunto/atributo e termo comercial são específicos; estado global não cria obrigação por si.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 11,
+          "value": "CONDICIONAL",
+          "basis": "H2/H3 teriam origem independente e policy global comum, sem oracle/rationale/expected. Não há certificado independente produzido neste gate.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 12,
+          "value": "CONDICIONAL",
+          "basis": "Revisores humanos independentes ou origem controlada poderiam prescindir do provider; nenhuma autoatestação é admissível.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 13,
+          "value": "CONDICIONAL",
+          "basis": "H2 e partes deH3 não exigem outro LLM. Não há demonstração empírica de confiabilidade desses processos aqui.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 14,
+          "value": "PARCIAL",
+          "basis": "Claims tipados antes do texto e renderização fechada poderiam preservar vínculos; sem converter candidatas históricas para esse formato.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 15,
+          "value": "CONDICIONAL",
+          "basis": "Formulário, dupla revisão, evidências e adjudicação propostos; nenhuma pessoa executou revisão nesteB1, Codex não é revisor humano.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 16,
+          "value": "CONDICIONAL",
+          "basis": "Protocolo futuro com custódia de rótulos e controle de exposição; corpus conhecido não se torna cego por renomear IDs. Validação não iniciada.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 17,
+          "value": "PARCIAL",
+          "basis": "Versões, hashes e spans permitem repetir procedimentos; concordância semântica entre revisores permaneceUNKNOWN/NOT_MEASURED.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 18,
+          "value": "CONDICIONAL",
+          "basis": "Terceiro poderia verificar referências, versões, cobertura, divergências e admissibilidade. Correção semântica não é garantida pelo registro.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 19,
+          "value": "UNKNOWN",
+          "basis": "Há caminho proposto de interpretação/verificação, mas nenhum teste humano/automático independente foi executado; não afirmar detecção operacional deGG29.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 20,
+          "value": "DESCRIPTIVE",
+          "basis": "Claim extra omitido permite falsa confirmação/ação; binding de B em A ou passado no presente cria false allow.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        }
+      ],
+      "current_operational_certified": false,
+      "proposed_paths": [
+        "HUMAN_REVIEW_ELIGIBLE",
+        "CONTROLLED_REPRESENTATION_ELIGIBLE"
+      ],
+      "legacy_annotation_evidence_class": "ORACLE_ASSISTED_ONLY"
+    },
+    {
+      "name": "all_obligations_and_claims_checked",
+      "source": "inventários do pedido/candidata + relações + cobertura + inspeções",
+      "state": "UNRESOLVED",
+      "meaning": "Certificado limitado de inspeção completa; não prova lógica de completude semântica universal.",
+      "materiality": "SIM: não esconder item ignorado como irrelevante sem justificativa.",
+      "absence": "SIM: faltas de obrigação, claim e relação são o principal risco; cobertura de caracteres não basta.",
+      "whole": "SIM: toda candidata e todo pedido, incluindo extras e trechos não avaliados.",
+      "comparison": "SIM: matriz integral obrigação×claim×fonte e todos os resíduos.",
+      "h3": "Completude do manifesto renderizado pode ser demonstrável em domínio fechado; intenção original do usuário e semântica livre continuam lacunas.",
+      "failure": "Completeness falsa torna certificado parcial em autorização aparente; HOLD geral pode ocultar false block de disponibilidade.",
+      "human": "HUMAN_REVIEW_ELIGIBLE",
+      "controlled": "CONTROLLED_REPRESENTATION_ELIGIBLE",
+      "answers": [
+        {
+          "question_id": 1,
+          "value": "NAO",
+          "basis": "Os campos literais existem, mas a família semântica completa não está representada nos36 inputs.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 2,
+          "value": "SIM",
+          "basis": "Nos inputs livres atuais. H3 só eliminaria partes da interpretação em domínio fechado futuro.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 3,
+          "value": "SIM",
+          "basis": "SIM: matriz integral obrigação×claim×fonte e todos os resíduos.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 4,
+          "value": "SIM",
+          "basis": "SIM: não esconder item ignorado como irrelevante sem justificativa.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 5,
+          "value": "SIM",
+          "basis": "É necessário preservar significado, escopo e relações no texto livre; H3 não valida automaticamente paráfrase histórica.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 6,
+          "value": "SIM",
+          "basis": "SIM: faltas de obrigação, claim e relação são o principal risco; cobertura de caracteres não basta.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 7,
+          "value": "SIM",
+          "basis": "SIM: toda candidata e todo pedido, incluindo extras e trechos não avaliados.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 8,
+          "value": "SIM",
+          "basis": "Vincular à entidade selecionada ou registrar identidade não resolvida; quantidade igual não certifica vínculo.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 9,
+          "value": "SIM",
+          "basis": "Distinguir tempo de pergunta, afirmação e fonte; declarar atemporal quando justificado, sem herdar tempo pelo número.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 10,
+          "value": "SIM",
+          "basis": "Assunto/atributo e termo comercial são específicos; estado global não cria obrigação por si.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 11,
+          "value": "CONDICIONAL",
+          "basis": "H2/H3 teriam origem independente e policy global comum, sem oracle/rationale/expected. Não há certificado independente produzido neste gate.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 12,
+          "value": "CONDICIONAL",
+          "basis": "Revisores humanos independentes ou origem controlada poderiam prescindir do provider; nenhuma autoatestação é admissível.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 13,
+          "value": "CONDICIONAL",
+          "basis": "H2 e partes deH3 não exigem outro LLM. Não há demonstração empírica de confiabilidade desses processos aqui.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 14,
+          "value": "PARCIAL",
+          "basis": "Completude do manifesto renderizado pode ser demonstrável em domínio fechado; intenção original do usuário e semântica livre continuam lacunas.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 15,
+          "value": "CONDICIONAL",
+          "basis": "Formulário, dupla revisão, evidências e adjudicação propostos; nenhuma pessoa executou revisão nesteB1, Codex não é revisor humano.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 16,
+          "value": "CONDICIONAL",
+          "basis": "Protocolo futuro com custódia de rótulos e controle de exposição; corpus conhecido não se torna cego por renomear IDs. Validação não iniciada.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 17,
+          "value": "PARCIAL",
+          "basis": "Versões, hashes e spans permitem repetir procedimentos; concordância semântica entre revisores permaneceUNKNOWN/NOT_MEASURED.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 18,
+          "value": "CONDICIONAL",
+          "basis": "Terceiro poderia verificar referências, versões, cobertura, divergências e admissibilidade. Correção semântica não é garantida pelo registro.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 19,
+          "value": "UNKNOWN",
+          "basis": "Há caminho proposto de interpretação/verificação, mas nenhum teste humano/automático independente foi executado; não afirmar detecção operacional deGG29.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 20,
+          "value": "DESCRIPTIVE",
+          "basis": "Completeness falsa torna certificado parcial em autorização aparente; HOLD geral pode ocultar false block de disponibilidade.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        }
+      ],
+      "current_operational_certified": false,
+      "proposed_paths": [
+        "HUMAN_REVIEW_ELIGIBLE",
+        "CONTROLLED_REPRESENTATION_ELIGIBLE"
+      ],
+      "legacy_annotation_evidence_class": "ORACLE_ASSISTED_ONLY"
+    },
+    {
+      "name": "no_independent_violation_proven",
+      "source": "inspeção integral + provas materiais + eixos não resolvidos",
+      "state": "UNRESOLVED",
+      "meaning": "Separar VIOLATION_PROVEN, NO_VIOLATION_FOUND_WITH_COMPLETE_INSPECTION, INSPECTION_INCOMPLETE eUNKNOWN.",
+      "materiality": "SIM: precisa demonstrar violação e sua independência do eixo desconhecido, sem inventar materialidade histórica.",
+      "absence": "SIM apenas como ausência encontrada no escopo inspecionado; não afirmar inexistência universal.",
+      "whole": "SIM antes de atestar ausência encontrada; prova positiva de violação pode ser local, válida e independente.",
+      "comparison": "SIM: claims, obrigações, contexto e policy; ausência de detecção não é ausência de violação.",
+      "h3": "Regras enumeradas podem ser verificadas no domínio fechado; não prova ausência de toda violação em linguagem livre.",
+      "failure": "Não encontrei→não existe permite APPROVE indevido; prova incompleta→REJECT repete overreject31–36.",
+      "human": "HUMAN_REVIEW_ELIGIBLE",
+      "controlled": "CONTROLLED_REPRESENTATION_ELIGIBLE",
+      "answers": [
+        {
+          "question_id": 1,
+          "value": "NAO",
+          "basis": "Os campos literais existem, mas a família semântica completa não está representada nos36 inputs.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 2,
+          "value": "SIM",
+          "basis": "Nos inputs livres atuais. H3 só eliminaria partes da interpretação em domínio fechado futuro.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 3,
+          "value": "SIM",
+          "basis": "SIM: claims, obrigações, contexto e policy; ausência de detecção não é ausência de violação.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 4,
+          "value": "SIM",
+          "basis": "SIM: precisa demonstrar violação e sua independência do eixo desconhecido, sem inventar materialidade histórica.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 5,
+          "value": "SIM",
+          "basis": "É necessário preservar significado, escopo e relações no texto livre; H3 não valida automaticamente paráfrase histórica.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 6,
+          "value": "SIM apenas como ausência encontrada no escopo inspecionado; não afirmar inexistência universal.",
+          "basis": "SIM apenas como ausência encontrada no escopo inspecionado; não afirmar inexistência universal.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 7,
+          "value": "SIM",
+          "basis": "SIM antes de atestar ausência encontrada; prova positiva de violação pode ser local, válida e independente.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 8,
+          "value": "SIM",
+          "basis": "Vincular à entidade selecionada ou registrar identidade não resolvida; quantidade igual não certifica vínculo.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 9,
+          "value": "SIM",
+          "basis": "Distinguir tempo de pergunta, afirmação e fonte; declarar atemporal quando justificado, sem herdar tempo pelo número.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 10,
+          "value": "SIM",
+          "basis": "Assunto/atributo e termo comercial são específicos; estado global não cria obrigação por si.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 11,
+          "value": "CONDICIONAL",
+          "basis": "H2/H3 teriam origem independente e policy global comum, sem oracle/rationale/expected. Não há certificado independente produzido neste gate.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 12,
+          "value": "CONDICIONAL",
+          "basis": "Revisores humanos independentes ou origem controlada poderiam prescindir do provider; nenhuma autoatestação é admissível.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 13,
+          "value": "CONDICIONAL",
+          "basis": "H2 e partes deH3 não exigem outro LLM. Não há demonstração empírica de confiabilidade desses processos aqui.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 14,
+          "value": "PARCIAL",
+          "basis": "Regras enumeradas podem ser verificadas no domínio fechado; não prova ausência de toda violação em linguagem livre.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 15,
+          "value": "CONDICIONAL",
+          "basis": "Formulário, dupla revisão, evidências e adjudicação propostos; nenhuma pessoa executou revisão nesteB1, Codex não é revisor humano.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 16,
+          "value": "CONDICIONAL",
+          "basis": "Protocolo futuro com custódia de rótulos e controle de exposição; corpus conhecido não se torna cego por renomear IDs. Validação não iniciada.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 17,
+          "value": "PARCIAL",
+          "basis": "Versões, hashes e spans permitem repetir procedimentos; concordância semântica entre revisores permaneceUNKNOWN/NOT_MEASURED.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 18,
+          "value": "CONDICIONAL",
+          "basis": "Terceiro poderia verificar referências, versões, cobertura, divergências e admissibilidade. Correção semântica não é garantida pelo registro.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 19,
+          "value": "UNKNOWN",
+          "basis": "Há caminho proposto de interpretação/verificação, mas nenhum teste humano/automático independente foi executado; não afirmar detecção operacional deGG29.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        },
+        {
+          "question_id": 20,
+          "value": "DESCRIPTIVE",
+          "basis": "Não encontrei→não existe permite APPROVE indevido; prova incompleta→REJECT repete overreject31–36.",
+          "evidence_kind": "DOCUMENTARY_DESIGN_NOT_EXECUTED_CERTIFICATION"
+        }
+      ],
+      "current_operational_certified": false,
+      "proposed_paths": [
+        "HUMAN_REVIEW_ELIGIBLE",
+        "CONTROLLED_REPRESENTATION_ELIGIBLE"
+      ],
+      "legacy_annotation_evidence_class": "ORACLE_ASSISTED_ONLY"
+    }
+  ],
+  "answer_count": 120,
+  "scope": "SIX_FAMILY_OBSERVABILITY_AUDIT_DESIGN_ONLY"
+}

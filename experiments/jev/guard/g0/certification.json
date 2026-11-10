@@ -1,0 +1,30 @@
+{
+  "checkpoint": "JEV-GUARD-G0",
+  "status": "PASS_OFFLINE_CONTRACT_BENCHMARK",
+  "baseline": {
+    "pass": 327,
+    "fail": 0
+  },
+  "new_tests": 74,
+  "full_suite": {
+    "pass": 401,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "duration_ms": 43289.8831
+  },
+  "command": "node --import ./experiments/jev/s2g/offline-guard.mjs --test experiments/jev/harness.test.mjs experiments/jev/v2/v2.test.mjs experiments/jev/v2/adapter-v2.test.mjs experiments/jev/s2b/runtime.test.mjs experiments/jev/v2/probability-diagnostics/probability-diagnostics.test.mjs experiments/jev/s2d/runtime.test.mjs experiments/jev/s2e/runtime.test.mjs experiments/jev/s2f/s2f-a.test.mjs experiments/jev/s2fb/runtime.test.mjs experiments/jev/s2g/s2g-a.test.mjs experiments/jev/guard/g0/g0.test.mjs",
+  "network_guard": "Bloqueio HTTP/HTTPS/fetch/sockets/TLS/UDP/DNS e falha de processo se houver tentativa, inclusive capturada.",
+  "network_attempts": 0,
+  "jev_calls": 0,
+  "openai_calls": 0,
+  "credits": 0,
+  "credentials_read": 0,
+  "model_evaluated": false,
+  "mutants": {
+    "total": 11,
+    "killed": 11,
+    "survived": 0
+  },
+  "completed_at_utc": "2026-10-17T19:33:09.882Z"
+}

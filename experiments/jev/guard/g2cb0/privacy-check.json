@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "files_checked": 25,
+  "forbidden_value_matches": 0,
+  "raw_persisted": false,
+  "returned_context_or_reasoning_persisted": false,
+  "real_data_persisted": false,
+  "credentials_read": 0,
+  "exact_secret_scan_performed": false,
+  "method": "Inspeção de fontes/campos/padrões sem ler secrets; casos sintéticos congelados.",
+  "raw_reconstructed": false,
+  "reasoning_reconstructed": false,
+  "network_attempts": 0,
+  "phase": "BEFORE_FINAL_DOCUMENTARY_FREEZE",
+  "verified_at_utc": "2026-10-18T00:46:05.552Z"
+}

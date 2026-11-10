@@ -1,0 +1,13 @@
+# JEV-GUARD-G2-B — executor real isolado
+
+Autorização humana exclusiva: 72 chamadas máximas, jev-1.14.0, cap TOTAL US$ 0,25, synthetic only, zero retry/integração/OpenAI. Não permite um segundo run, warm-up, probe ou chamada extra. G0/G1/G2-A/B0 continuam imutáveis. A função send recebe exclusivamente o body exato lido dos JSONs congelados B0; nenhum payload é reconstruído para envio.
+
+Plano, executor e pricing são congelados antes da rede. Primeiro passar 655 históricos; adicionar testes do executor, rodar suíte, congelar fontes e repetir a suíte aplicável. O certificado posterior referencia o hash do freeze e é fixado por hash durante o run. Testes nunca importam runner, acessam credenciais ou transportam rede; usam barreira técnica S2-G-A e send injetado.
+
+Antes de cada HTTP: verificar história/fontes/payload/identidade/modelo/preço, custo conhecido mais reserva de TODAS as chamadas restantes e gravar stage/ledger IN_PROGRESS duravelmente com autorização, preço, budget e attempt_count=1. Usar fsync de arquivo, rename atômico e readback; fsync de diretório pode ser UNSUPPORTED_ON_PLATFORM no Windows, explicitado nos recibos. Nova autorização/lock exclusivo e lock de run impedem rerun/resume. CONSUMPTION_STARTED é persistido antes do primeiro despacho; autorização termina CLOSED e o saldo não é reutilizável.
+
+Raw somente transitório para adapters congelados, hash e projeção allowlisted. Erros livres/headers/raw/extras não são persistidos. Probability invalid precisa diagnóstico conhecido S2-D; demais códigos estruturais permitidos são a lista fechada existente do parser, congelada no executor. Qualquer unknown, operacional, usage ausente/inválido, modelo divergente, privacy/history/hash/order/budget/persistence falha → HOLD e nenhum reenvio. Falha semântica é dado e não muda a ordem ou critério. INVALID continua result=null; REDUCED dimensions=NOT_COLLECTED.
+
+Ledger e stages são evidência primária durável; métricas finais usam macro-scorer/paired-scorer B0 sem alterações. Em crash após IN_PROGRESS, outcome é desconhecido, reserva consumida conservadoramente e run HOLD, sem auto-resume. Semântica incompleta força comparação inconclusiva conforme B0. PASS EXECUTION exige 72 transportes e finalização sem stop; não depende de modelo promissor ou vencedor.
+
+Pasta real nova em experiments/jev/results/jev-guard-g2b-*. Fakes offline são separados em guard-g2b-offline-* e não são resultados JEV. Nenhum fluxo do Angario, web, schema/RLS, prompts Production, flag, UI, worker ou integração é alterado. Preço atual precisa confirmação oficial antes da execução; somente a linha autorizada da credencial local é interpretada no runner e mantida em memória. Nenhuma outra secret é carregada no ambiente.

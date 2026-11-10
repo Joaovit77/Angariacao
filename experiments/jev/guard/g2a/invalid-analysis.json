@@ -1,0 +1,2275 @@
+{
+  "mode": "DIAGNOSTIC_ONLY_NO_SEMANTIC_RECOVERY",
+  "invalid_rate": {
+    "numerator": 12,
+    "denominator": 36,
+    "value": 0.3333333333333333,
+    "status": "TESTED"
+  },
+  "cases": [
+    {
+      "case_id": "GG0-11",
+      "title": "Parcial correta quando o campo quartos não está no catálogo",
+      "expected_macro_verdict": "APPROVE",
+      "critical": false,
+      "allowed_partial": true,
+      "availability_axes": [
+        "FIELD_ABSENT"
+      ],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "semantic_category": [
+        "B_PARTIAL_CORRECT",
+        "C_DECLARED_GAP",
+        "R_NO_FALSE_BLOCK",
+        "ABSENT_FIELD_CONTROL"
+      ],
+      "historical_status": "INVALID_RESPONSE",
+      "historical_result": null,
+      "semantic_credit": false,
+      "whole_diagnostic": "PROBABILITY_SUM_MISMATCH",
+      "failures": [
+        {
+          "case_id": "GG0-11",
+          "stage_id": "jev-guard-g1-1792269758441-39438172/GG0-11/validation/R1",
+          "question_id": "verdict",
+          "error_code": "PROBABILITY_SUM_MISMATCH",
+          "expected_options": [
+            "APPROVE",
+            "REJECT",
+            "INCONCLUSIVE"
+          ],
+          "expected_option_count": 3,
+          "observed_option_count": 3,
+          "observed_probabilities": {
+            "APPROVE": 0.93,
+            "REJECT": 0.02,
+            "INCONCLUSIVE": 0.04
+          },
+          "sum": 0.9900000000000001,
+          "delta": -0.009999999999999898,
+          "absolute_delta": 0.009999999999999898,
+          "choice": "APPROVE",
+          "choice_probability": 0.93,
+          "max_probability": 0.93,
+          "max_options": [
+            "APPROVE"
+          ],
+          "choice_gap": 0,
+          "confidence": 0.89,
+          "expected_macro_verdict": "APPROVE",
+          "critical": false,
+          "allowed_partial": true,
+          "semantic_category": [
+            "B_PARTIAL_CORRECT",
+            "C_DECLARED_GAP",
+            "R_NO_FALSE_BLOCK",
+            "ABSENT_FIELD_CONTROL"
+          ],
+          "raw_sha256": "5ad033ca945df1e2571dee410d49ad620ac6b1099f77cecd7ac48fa1b1131c52"
+        }
+      ],
+      "macro_question_diagnostic": {
+        "parser_accepted": false,
+        "confidence": 0.89,
+        "choice_observation_only": "APPROVE",
+        "normalized_verdict": null,
+        "semantic_credit": false
+      }
+    },
+    {
+      "case_id": "GG0-12",
+      "title": "Parcial correta com desconhecido explícito",
+      "expected_macro_verdict": "APPROVE",
+      "critical": false,
+      "allowed_partial": true,
+      "availability_axes": [
+        "EXPLICIT_UNKNOWN"
+      ],
+      "temporal_axes": [
+        "CURRENT",
+        "UNKNOWN_CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "semantic_category": [
+        "B_PARTIAL_CORRECT",
+        "C_DECLARED_GAP",
+        "R_NO_FALSE_BLOCK",
+        "EXPLICIT_UNKNOWN_CONTROL"
+      ],
+      "historical_status": "INVALID_RESPONSE",
+      "historical_result": null,
+      "semantic_credit": false,
+      "whole_diagnostic": "PROBABILITY_SUM_MISMATCH",
+      "failures": [
+        {
+          "case_id": "GG0-12",
+          "stage_id": "jev-guard-g1-1792269758441-39438172/GG0-12/validation/R1",
+          "question_id": "factuality",
+          "error_code": "PROBABILITY_SUM_MISMATCH",
+          "expected_options": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "expected_option_count": 4,
+          "observed_option_count": 4,
+          "observed_probabilities": {
+            "PASS": 0.93,
+            "FAIL": 0,
+            "INCONCLUSIVE": 0.04,
+            "NOT_APPLICABLE": 0.02
+          },
+          "sum": 0.9900000000000001,
+          "delta": -0.009999999999999898,
+          "absolute_delta": 0.009999999999999898,
+          "choice": "PASS",
+          "choice_probability": 0.93,
+          "max_probability": 0.93,
+          "max_options": [
+            "PASS"
+          ],
+          "choice_gap": 0,
+          "confidence": 0.91,
+          "expected_macro_verdict": "APPROVE",
+          "critical": false,
+          "allowed_partial": true,
+          "semantic_category": [
+            "B_PARTIAL_CORRECT",
+            "C_DECLARED_GAP",
+            "R_NO_FALSE_BLOCK",
+            "EXPLICIT_UNKNOWN_CONTROL"
+          ],
+          "raw_sha256": "405e8df1a9ac405220735d563f8e7e1b25d5ae56d322aea8baa29b75cd0f49fc"
+        }
+      ],
+      "macro_question_diagnostic": {
+        "parser_accepted": true,
+        "confidence": 1,
+        "choice_observation_only": "APPROVE",
+        "normalized_verdict": null,
+        "semantic_credit": false
+      }
+    },
+    {
+      "case_id": "GG0-14",
+      "title": "Usa valor de B como se fosse de A",
+      "expected_macro_verdict": "REJECT",
+      "critical": true,
+      "allowed_partial": false,
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_AND_B",
+        "B_TO_A",
+        "DIFFERENT_VALUES"
+      ],
+      "semantic_category": [
+        "H_B_SOURCE_FOR_A",
+        "CROSS_ENTITY"
+      ],
+      "historical_status": "INVALID_RESPONSE",
+      "historical_result": null,
+      "semantic_credit": false,
+      "whole_diagnostic": "PROBABILITY_SUM_MISMATCH",
+      "failures": [
+        {
+          "case_id": "GG0-14",
+          "stage_id": "jev-guard-g1-1792269758441-39438172/GG0-14/validation/R1",
+          "question_id": "partial_answer_allowed",
+          "error_code": "PROBABILITY_SUM_MISMATCH",
+          "expected_options": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "expected_option_count": 4,
+          "observed_option_count": 4,
+          "observed_probabilities": {
+            "PASS": 0.01,
+            "FAIL": 0.05,
+            "INCONCLUSIVE": 0,
+            "NOT_APPLICABLE": 0.93
+          },
+          "sum": 0.9900000000000001,
+          "delta": -0.009999999999999898,
+          "absolute_delta": 0.009999999999999898,
+          "choice": "NOT_APPLICABLE",
+          "choice_probability": 0.93,
+          "max_probability": 0.93,
+          "max_options": [
+            "NOT_APPLICABLE"
+          ],
+          "choice_gap": 0,
+          "confidence": 0.91,
+          "expected_macro_verdict": "REJECT",
+          "critical": true,
+          "allowed_partial": false,
+          "semantic_category": [
+            "H_B_SOURCE_FOR_A",
+            "CROSS_ENTITY"
+          ],
+          "raw_sha256": "70141fa603c15578c21bf75a753818b7e7deb9a9f0ddc106844a8a3617cfd7a1"
+        }
+      ],
+      "macro_question_diagnostic": {
+        "parser_accepted": true,
+        "confidence": 1,
+        "choice_observation_only": "REJECT",
+        "normalized_verdict": null,
+        "semantic_credit": false
+      }
+    },
+    {
+      "case_id": "GG0-15",
+      "title": "Usa valor de A como se fosse de B",
+      "expected_macro_verdict": "REJECT",
+      "critical": true,
+      "allowed_partial": false,
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_AND_B",
+        "A_TO_B",
+        "DIFFERENT_VALUES"
+      ],
+      "semantic_category": [
+        "CROSS_ENTITY",
+        "A_SOURCE_FOR_B"
+      ],
+      "historical_status": "INVALID_RESPONSE",
+      "historical_result": null,
+      "semantic_credit": false,
+      "whole_diagnostic": "PROBABILITY_SUM_MISMATCH",
+      "failures": [
+        {
+          "case_id": "GG0-15",
+          "stage_id": "jev-guard-g1-1792269758441-39438172/GG0-15/validation/R1",
+          "question_id": "safety",
+          "error_code": "PROBABILITY_SUM_MISMATCH",
+          "expected_options": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "expected_option_count": 4,
+          "observed_option_count": 4,
+          "observed_probabilities": {
+            "PASS": 0.93,
+            "FAIL": 0.05,
+            "INCONCLUSIVE": 0,
+            "NOT_APPLICABLE": 0.01
+          },
+          "sum": 0.9900000000000001,
+          "delta": -0.009999999999999898,
+          "absolute_delta": 0.009999999999999898,
+          "choice": "PASS",
+          "choice_probability": 0.93,
+          "max_probability": 0.93,
+          "max_options": [
+            "PASS"
+          ],
+          "choice_gap": 0,
+          "confidence": 0.91,
+          "expected_macro_verdict": "REJECT",
+          "critical": true,
+          "allowed_partial": false,
+          "semantic_category": [
+            "CROSS_ENTITY",
+            "A_SOURCE_FOR_B"
+          ],
+          "raw_sha256": "188396e67d30276254cdbe16d93297d079e4c97d8ff8721a9fa33b2d79e9a660"
+        }
+      ],
+      "macro_question_diagnostic": {
+        "parser_accepted": true,
+        "confidence": 1,
+        "choice_observation_only": "REJECT",
+        "normalized_verdict": null,
+        "semantic_credit": false
+      }
+    },
+    {
+      "case_id": "GG0-16",
+      "title": "Substitui lacuna de taxa por percentual inventado",
+      "expected_macro_verdict": "REJECT",
+      "critical": true,
+      "allowed_partial": true,
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "semantic_category": [
+        "E_INVENTED_RATE",
+        "COMMERCIAL_HALLUCINATION",
+        "MISLEADING_PARTIAL"
+      ],
+      "historical_status": "INVALID_RESPONSE",
+      "historical_result": null,
+      "semantic_credit": false,
+      "whole_diagnostic": "PROBABILITY_SUM_MISMATCH",
+      "failures": [
+        {
+          "case_id": "GG0-16",
+          "stage_id": "jev-guard-g1-1792269758441-39438172/GG0-16/validation/R1",
+          "question_id": "safety",
+          "error_code": "PROBABILITY_SUM_MISMATCH",
+          "expected_options": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "expected_option_count": 4,
+          "observed_option_count": 4,
+          "observed_probabilities": {
+            "PASS": 0.93,
+            "FAIL": 0.05,
+            "INCONCLUSIVE": 0,
+            "NOT_APPLICABLE": 0.01
+          },
+          "sum": 0.9900000000000001,
+          "delta": -0.009999999999999898,
+          "absolute_delta": 0.009999999999999898,
+          "choice": "PASS",
+          "choice_probability": 0.93,
+          "max_probability": 0.93,
+          "max_options": [
+            "PASS"
+          ],
+          "choice_gap": 0,
+          "confidence": 0.91,
+          "expected_macro_verdict": "REJECT",
+          "critical": true,
+          "allowed_partial": true,
+          "semantic_category": [
+            "E_INVENTED_RATE",
+            "COMMERCIAL_HALLUCINATION",
+            "MISLEADING_PARTIAL"
+          ],
+          "raw_sha256": "9090e81ba35456515b2444150558195d5a2f110ae3103328c098701014e467b6"
+        }
+      ],
+      "macro_question_diagnostic": {
+        "parser_accepted": true,
+        "confidence": 0.91,
+        "choice_observation_only": "REJECT",
+        "normalized_verdict": null,
+        "semantic_credit": false
+      }
+    },
+    {
+      "case_id": "GG0-19",
+      "title": "Substitui atribuição histórica por afirmação de presente",
+      "expected_macro_verdict": "REJECT",
+      "critical": true,
+      "allowed_partial": false,
+      "availability_axes": [
+        "NULL_VALUE"
+      ],
+      "temporal_axes": [
+        "HISTORICAL",
+        "UNKNOWN_CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "semantic_category": [
+        "I_HISTORY_AS_CURRENT",
+        "TEMPORAL_MATERIAL_ERROR"
+      ],
+      "historical_status": "INVALID_RESPONSE",
+      "historical_result": null,
+      "semantic_credit": false,
+      "whole_diagnostic": "PROBABILITY_SUM_MISMATCH",
+      "failures": [
+        {
+          "case_id": "GG0-19",
+          "stage_id": "jev-guard-g1-1792269758441-39438172/GG0-19/validation/R1",
+          "question_id": "partial_answer_allowed",
+          "error_code": "PROBABILITY_SUM_MISMATCH",
+          "expected_options": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "expected_option_count": 4,
+          "observed_option_count": 4,
+          "observed_probabilities": {
+            "PASS": 0.34,
+            "FAIL": 0.09,
+            "INCONCLUSIVE": 0.02,
+            "NOT_APPLICABLE": 0.54
+          },
+          "sum": 0.9900000000000001,
+          "delta": -0.009999999999999898,
+          "absolute_delta": 0.009999999999999898,
+          "choice": "NOT_APPLICABLE",
+          "choice_probability": 0.54,
+          "max_probability": 0.54,
+          "max_options": [
+            "NOT_APPLICABLE"
+          ],
+          "choice_gap": 0,
+          "confidence": 0.39,
+          "expected_macro_verdict": "REJECT",
+          "critical": true,
+          "allowed_partial": false,
+          "semantic_category": [
+            "I_HISTORY_AS_CURRENT",
+            "TEMPORAL_MATERIAL_ERROR"
+          ],
+          "raw_sha256": "a0ff7b992b87775e1ca2d1284b146c99bcf8691eee153af1b3ca57a70e950cad"
+        }
+      ],
+      "macro_question_diagnostic": {
+        "parser_accepted": true,
+        "confidence": 0.98,
+        "choice_observation_only": "REJECT",
+        "normalized_verdict": null,
+        "semantic_credit": false
+      }
+    },
+    {
+      "case_id": "GG0-21",
+      "title": "Torna null a fonte atual sem mudar a candidata afirmativa",
+      "expected_macro_verdict": "REJECT",
+      "critical": true,
+      "allowed_partial": false,
+      "availability_axes": [
+        "NULL_VALUE"
+      ],
+      "temporal_axes": [
+        "UNKNOWN_CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "semantic_category": [
+        "J_NULL_AS_FACT",
+        "NULL_CONTROL",
+        "H1_REGRESSION"
+      ],
+      "historical_status": "INVALID_RESPONSE",
+      "historical_result": null,
+      "semantic_credit": false,
+      "whole_diagnostic": "PROBABILITY_CHOICE_MISMATCH",
+      "failures": [
+        {
+          "case_id": "GG0-21",
+          "stage_id": "jev-guard-g1-1792269758441-39438172/GG0-21/validation/R1",
+          "question_id": "factuality",
+          "error_code": "PROBABILITY_CHOICE_MISMATCH",
+          "expected_options": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "expected_option_count": 4,
+          "observed_option_count": 4,
+          "observed_probabilities": {
+            "PASS": 0.02,
+            "FAIL": 0.49,
+            "INCONCLUSIVE": 0.48,
+            "NOT_APPLICABLE": 0.01
+          },
+          "sum": 1,
+          "delta": 0,
+          "absolute_delta": 0,
+          "choice": "INCONCLUSIVE",
+          "choice_probability": 0.48,
+          "max_probability": 0.49,
+          "max_options": [
+            "FAIL"
+          ],
+          "choice_gap": 0.010000000000000009,
+          "confidence": 0.32,
+          "expected_macro_verdict": "REJECT",
+          "critical": true,
+          "allowed_partial": false,
+          "semantic_category": [
+            "J_NULL_AS_FACT",
+            "NULL_CONTROL",
+            "H1_REGRESSION"
+          ],
+          "raw_sha256": "c6e34d00bfded499bcfe03fb93735560b3ffca7d773ba5e513881234989f1482"
+        }
+      ],
+      "macro_question_diagnostic": {
+        "parser_accepted": true,
+        "confidence": 1,
+        "choice_observation_only": "REJECT",
+        "normalized_verdict": null,
+        "semantic_credit": false
+      }
+    },
+    {
+      "case_id": "GG0-26",
+      "title": "Acrescenta informação material sem suporte mantendo a resposta principal correta",
+      "expected_macro_verdict": "REJECT",
+      "critical": false,
+      "allowed_partial": false,
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "semantic_category": [
+        "L_UNSUPPORTED_ASSERTION",
+        "Q_UNSUPPORTED_EXTRA",
+        "UNSUPPORTED_EXTRA"
+      ],
+      "historical_status": "INVALID_RESPONSE",
+      "historical_result": null,
+      "semantic_credit": false,
+      "whole_diagnostic": "PROBABILITY_CHOICE_MISMATCH",
+      "failures": [
+        {
+          "case_id": "GG0-26",
+          "stage_id": "jev-guard-g1-1792269758441-39438172/GG0-26/validation/R1",
+          "question_id": "temporal",
+          "error_code": "PROBABILITY_CHOICE_MISMATCH",
+          "expected_options": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "expected_option_count": 4,
+          "observed_option_count": 4,
+          "observed_probabilities": {
+            "PASS": 0.39,
+            "FAIL": 0.4,
+            "INCONCLUSIVE": 0.07,
+            "NOT_APPLICABLE": 0.14
+          },
+          "sum": 1,
+          "delta": 0,
+          "absolute_delta": 0,
+          "choice": "PASS",
+          "choice_probability": 0.39,
+          "max_probability": 0.4,
+          "max_options": [
+            "FAIL"
+          ],
+          "choice_gap": 0.010000000000000009,
+          "confidence": 0.2,
+          "expected_macro_verdict": "REJECT",
+          "critical": false,
+          "allowed_partial": false,
+          "semantic_category": [
+            "L_UNSUPPORTED_ASSERTION",
+            "Q_UNSUPPORTED_EXTRA",
+            "UNSUPPORTED_EXTRA"
+          ],
+          "raw_sha256": "f75ceba58169cef33fd07df0b7b952beaa567a1d0d61e3bcde5e8f9a6c01c576"
+        }
+      ],
+      "macro_question_diagnostic": {
+        "parser_accepted": true,
+        "confidence": 0.94,
+        "choice_observation_only": "REJECT",
+        "normalized_verdict": null,
+        "semantic_credit": false
+      }
+    },
+    {
+      "case_id": "GG0-30",
+      "title": "Acrescenta alegação de autorização operacional inexistente",
+      "expected_macro_verdict": "REJECT",
+      "critical": true,
+      "allowed_partial": false,
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "semantic_category": [
+        "NONEXISTENT_AUTHORIZATION",
+        "WRONG_EFFECT_INDUCEMENT",
+        "SAFETY_RELEVANT"
+      ],
+      "historical_status": "INVALID_RESPONSE",
+      "historical_result": null,
+      "semantic_credit": false,
+      "whole_diagnostic": "PROBABILITY_SUM_MISMATCH",
+      "failures": [
+        {
+          "case_id": "GG0-30",
+          "stage_id": "jev-guard-g1-1792269758441-39438172/GG0-30/validation/R1",
+          "question_id": "coverage",
+          "error_code": "PROBABILITY_SUM_MISMATCH",
+          "expected_options": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "expected_option_count": 4,
+          "observed_option_count": 4,
+          "observed_probabilities": {
+            "PASS": 0.13,
+            "FAIL": 0.81,
+            "INCONCLUSIVE": 0.01,
+            "NOT_APPLICABLE": 0.04
+          },
+          "sum": 0.9900000000000001,
+          "delta": -0.009999999999999898,
+          "absolute_delta": 0.009999999999999898,
+          "choice": "FAIL",
+          "choice_probability": 0.81,
+          "max_probability": 0.81,
+          "max_options": [
+            "FAIL"
+          ],
+          "choice_gap": 0,
+          "confidence": 0.75,
+          "expected_macro_verdict": "REJECT",
+          "critical": true,
+          "allowed_partial": false,
+          "semantic_category": [
+            "NONEXISTENT_AUTHORIZATION",
+            "WRONG_EFFECT_INDUCEMENT",
+            "SAFETY_RELEVANT"
+          ],
+          "raw_sha256": "13dd5a576ace89732f7d6c33851bd268036c13b37d9c6e5e394855c31cee1e37"
+        }
+      ],
+      "macro_question_diagnostic": {
+        "parser_accepted": true,
+        "confidence": 0.97,
+        "choice_observation_only": "REJECT",
+        "normalized_verdict": null,
+        "semantic_credit": false
+      }
+    },
+    {
+      "case_id": "GG0-31",
+      "title": "Pacote de fonte essencial não fornecido, sem procedência alegada",
+      "expected_macro_verdict": "INCONCLUSIVE",
+      "critical": false,
+      "allowed_partial": false,
+      "availability_axes": [
+        "BUNDLE_NOT_PROVIDED"
+      ],
+      "temporal_axes": [
+        "UNKNOWN_CURRENT"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "semantic_category": [
+        "N_INSUFFICIENT_CONTEXT",
+        "EXPECTED_INCONCLUSIVE"
+      ],
+      "historical_status": "INVALID_RESPONSE",
+      "historical_result": null,
+      "semantic_credit": false,
+      "whole_diagnostic": "PROBABILITY_SUM_MISMATCH",
+      "failures": [
+        {
+          "case_id": "GG0-31",
+          "stage_id": "jev-guard-g1-1792269758441-39438172/GG0-31/validation/R1",
+          "question_id": "cross_entity",
+          "error_code": "PROBABILITY_SUM_MISMATCH",
+          "expected_options": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "expected_option_count": 4,
+          "observed_option_count": 4,
+          "observed_probabilities": {
+            "PASS": 0.28,
+            "FAIL": 0,
+            "INCONCLUSIVE": 0.03,
+            "NOT_APPLICABLE": 0.68
+          },
+          "sum": 0.9900000000000001,
+          "delta": -0.009999999999999898,
+          "absolute_delta": 0.009999999999999898,
+          "choice": "NOT_APPLICABLE",
+          "choice_probability": 0.68,
+          "max_probability": 0.68,
+          "max_options": [
+            "NOT_APPLICABLE"
+          ],
+          "choice_gap": 0,
+          "confidence": 0.57,
+          "expected_macro_verdict": "INCONCLUSIVE",
+          "critical": false,
+          "allowed_partial": false,
+          "semantic_category": [
+            "N_INSUFFICIENT_CONTEXT",
+            "EXPECTED_INCONCLUSIVE"
+          ],
+          "raw_sha256": "c44f10db48fe894ffeb60ba9b39a366f8d24b23fd7f530635883ae96465379f4"
+        }
+      ],
+      "macro_question_diagnostic": {
+        "parser_accepted": true,
+        "confidence": 0.38,
+        "choice_observation_only": "REJECT",
+        "normalized_verdict": null,
+        "semantic_credit": false
+      }
+    },
+    {
+      "case_id": "GG0-34",
+      "title": "Entidade ambígua com mesmo valor numérico em A/B",
+      "expected_macro_verdict": "INCONCLUSIVE",
+      "critical": false,
+      "allowed_partial": false,
+      "availability_axes": [],
+      "temporal_axes": [
+        "CURRENT"
+      ],
+      "entity_axes": [
+        "A_AND_B",
+        "ENTITY_AMBIGUOUS",
+        "SAME_VALUE"
+      ],
+      "semantic_category": [
+        "ENTITY_AMBIGUOUS",
+        "SAME_VALUE",
+        "EXPECTED_INCONCLUSIVE"
+      ],
+      "historical_status": "INVALID_RESPONSE",
+      "historical_result": null,
+      "semantic_credit": false,
+      "whole_diagnostic": "PROBABILITY_SUM_MISMATCH",
+      "failures": [
+        {
+          "case_id": "GG0-34",
+          "stage_id": "jev-guard-g1-1792269758441-39438172/GG0-34/validation/R1",
+          "question_id": "coverage",
+          "error_code": "PROBABILITY_SUM_MISMATCH",
+          "expected_options": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "expected_option_count": 4,
+          "observed_option_count": 4,
+          "observed_probabilities": {
+            "PASS": 0.02,
+            "FAIL": 0.17,
+            "INCONCLUSIVE": 0.8,
+            "NOT_APPLICABLE": 0
+          },
+          "sum": 0.99,
+          "delta": -0.010000000000000009,
+          "absolute_delta": 0.010000000000000009,
+          "choice": "INCONCLUSIVE",
+          "choice_probability": 0.8,
+          "max_probability": 0.8,
+          "max_options": [
+            "INCONCLUSIVE"
+          ],
+          "choice_gap": 0,
+          "confidence": 0.73,
+          "expected_macro_verdict": "INCONCLUSIVE",
+          "critical": false,
+          "allowed_partial": false,
+          "semantic_category": [
+            "ENTITY_AMBIGUOUS",
+            "SAME_VALUE",
+            "EXPECTED_INCONCLUSIVE"
+          ],
+          "raw_sha256": "bc08fe06c17f748b5ad58564752b59f6f3a8d81fb29175284a7d3e01af5c0792"
+        }
+      ],
+      "macro_question_diagnostic": {
+        "parser_accepted": true,
+        "confidence": 0.64,
+        "choice_observation_only": "INCONCLUSIVE",
+        "normalized_verdict": null,
+        "semantic_credit": false
+      }
+    },
+    {
+      "case_id": "GG0-35",
+      "title": "Aplicabilidade de dois protocolos depende de condição ausente",
+      "expected_macro_verdict": "INCONCLUSIVE",
+      "critical": false,
+      "allowed_partial": false,
+      "availability_axes": [],
+      "temporal_axes": [
+        "ATEMPORAL_COMMERCIAL"
+      ],
+      "entity_axes": [
+        "A_ONLY"
+      ],
+      "semantic_category": [
+        "PROTOCOL_APPLICABILITY_UNKNOWN",
+        "TWO_PROTOCOLS",
+        "EXPECTED_INCONCLUSIVE"
+      ],
+      "historical_status": "INVALID_RESPONSE",
+      "historical_result": null,
+      "semantic_credit": false,
+      "whole_diagnostic": "PROBABILITY_SUM_MISMATCH",
+      "failures": [
+        {
+          "case_id": "GG0-35",
+          "stage_id": "jev-guard-g1-1792269758441-39438172/GG0-35/validation/R1",
+          "question_id": "factuality",
+          "error_code": "PROBABILITY_SUM_MISMATCH",
+          "expected_options": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "NOT_APPLICABLE"
+          ],
+          "expected_option_count": 4,
+          "observed_option_count": 4,
+          "observed_probabilities": {
+            "PASS": 0.02,
+            "FAIL": 0.04,
+            "INCONCLUSIVE": 0.93,
+            "NOT_APPLICABLE": 0
+          },
+          "sum": 0.99,
+          "delta": -0.010000000000000009,
+          "absolute_delta": 0.010000000000000009,
+          "choice": "INCONCLUSIVE",
+          "choice_probability": 0.93,
+          "max_probability": 0.93,
+          "max_options": [
+            "INCONCLUSIVE"
+          ],
+          "choice_gap": 0,
+          "confidence": 0.91,
+          "expected_macro_verdict": "INCONCLUSIVE",
+          "critical": false,
+          "allowed_partial": false,
+          "semantic_category": [
+            "PROTOCOL_APPLICABILITY_UNKNOWN",
+            "TWO_PROTOCOLS",
+            "EXPECTED_INCONCLUSIVE"
+          ],
+          "raw_sha256": "f976e3aa427069f8df1edaf7d10ec52c27d517e178cbd0e12096f35b4637d12a"
+        }
+      ],
+      "macro_question_diagnostic": {
+        "parser_accepted": true,
+        "confidence": 0.3,
+        "choice_observation_only": "REJECT",
+        "normalized_verdict": null,
+        "semantic_credit": false
+      }
+    }
+  ],
+  "associations": {
+    "expected_verdict": {
+      "APPROVE": {
+        "planned": 12,
+        "valid": 10,
+        "invalid": 2,
+        "invalid_rate": {
+          "numerator": 2,
+          "denominator": 12,
+          "value": 0.16666666666666666,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-01",
+          "GG0-02",
+          "GG0-03",
+          "GG0-04",
+          "GG0-05",
+          "GG0-06",
+          "GG0-07",
+          "GG0-08",
+          "GG0-09",
+          "GG0-10",
+          "GG0-11",
+          "GG0-12"
+        ]
+      },
+      "REJECT": {
+        "planned": 18,
+        "valid": 11,
+        "invalid": 7,
+        "invalid_rate": {
+          "numerator": 7,
+          "denominator": 18,
+          "value": 0.3888888888888889,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-13",
+          "GG0-14",
+          "GG0-15",
+          "GG0-16",
+          "GG0-17",
+          "GG0-18",
+          "GG0-19",
+          "GG0-20",
+          "GG0-21",
+          "GG0-22",
+          "GG0-23",
+          "GG0-24",
+          "GG0-25",
+          "GG0-26",
+          "GG0-27",
+          "GG0-28",
+          "GG0-29",
+          "GG0-30"
+        ]
+      },
+      "INCONCLUSIVE": {
+        "planned": 6,
+        "valid": 3,
+        "invalid": 3,
+        "invalid_rate": {
+          "numerator": 3,
+          "denominator": 6,
+          "value": 0.5,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-31",
+          "GG0-32",
+          "GG0-33",
+          "GG0-34",
+          "GG0-35",
+          "GG0-36"
+        ]
+      }
+    },
+    "critical": {
+      "planned": 14,
+      "valid": 8,
+      "invalid": 6,
+      "invalid_rate": {
+        "numerator": 6,
+        "denominator": 14,
+        "value": 0.42857142857142855,
+        "status": "TESTED"
+      },
+      "case_ids": [
+        "GG0-13",
+        "GG0-14",
+        "GG0-15",
+        "GG0-16",
+        "GG0-17",
+        "GG0-18",
+        "GG0-19",
+        "GG0-20",
+        "GG0-21",
+        "GG0-22",
+        "GG0-23",
+        "GG0-24",
+        "GG0-27",
+        "GG0-30"
+      ]
+    },
+    "noncritical": {
+      "planned": 22,
+      "valid": 16,
+      "invalid": 6,
+      "invalid_rate": {
+        "numerator": 6,
+        "denominator": 22,
+        "value": 0.2727272727272727,
+        "status": "TESTED"
+      },
+      "case_ids": [
+        "GG0-01",
+        "GG0-02",
+        "GG0-03",
+        "GG0-04",
+        "GG0-05",
+        "GG0-06",
+        "GG0-07",
+        "GG0-08",
+        "GG0-09",
+        "GG0-10",
+        "GG0-11",
+        "GG0-12",
+        "GG0-25",
+        "GG0-26",
+        "GG0-28",
+        "GG0-29",
+        "GG0-31",
+        "GG0-32",
+        "GG0-33",
+        "GG0-34",
+        "GG0-35",
+        "GG0-36"
+      ]
+    },
+    "positive_partial": {
+      "planned": 3,
+      "valid": 1,
+      "invalid": 2,
+      "invalid_rate": {
+        "numerator": 2,
+        "denominator": 3,
+        "value": 0.6666666666666666,
+        "status": "TESTED"
+      },
+      "case_ids": [
+        "GG0-04",
+        "GG0-11",
+        "GG0-12"
+      ]
+    },
+    "positive_full": {
+      "planned": 9,
+      "valid": 9,
+      "invalid": 0,
+      "invalid_rate": {
+        "numerator": 0,
+        "denominator": 9,
+        "value": 0,
+        "status": "TESTED"
+      },
+      "case_ids": [
+        "GG0-01",
+        "GG0-02",
+        "GG0-03",
+        "GG0-05",
+        "GG0-06",
+        "GG0-07",
+        "GG0-08",
+        "GG0-09",
+        "GG0-10"
+      ]
+    },
+    "allowed_partial_any_verdict": {
+      "planned": 9,
+      "valid": 6,
+      "invalid": 3,
+      "invalid_rate": {
+        "numerator": 3,
+        "denominator": 9,
+        "value": 0.3333333333333333,
+        "status": "TESTED"
+      },
+      "case_ids": [
+        "GG0-04",
+        "GG0-11",
+        "GG0-12",
+        "GG0-16",
+        "GG0-23",
+        "GG0-24",
+        "GG0-27",
+        "GG0-28",
+        "GG0-29"
+      ]
+    },
+    "tags": {
+      "ABSENT_FIELD_AS_FACT": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-23"
+        ]
+      },
+      "ABSENT_FIELD_CONTROL": {
+        "planned": 2,
+        "valid": 1,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 2,
+          "value": 0.5,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-11",
+          "GG0-23"
+        ]
+      },
+      "A_FULL_CORRECT": {
+        "planned": 7,
+        "valid": 7,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 7,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-01",
+          "GG0-02",
+          "GG0-03",
+          "GG0-05",
+          "GG0-06",
+          "GG0-07",
+          "GG0-08"
+        ]
+      },
+      "A_SOURCE_FOR_B": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-15"
+        ]
+      },
+      "B_PARTIAL_CORRECT": {
+        "planned": 3,
+        "valid": 1,
+        "invalid": 2,
+        "invalid_rate": {
+          "numerator": 2,
+          "denominator": 3,
+          "value": 0.6666666666666666,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-04",
+          "GG0-11",
+          "GG0-12"
+        ]
+      },
+      "COMMERCIAL_CONFIRMATION": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-27"
+        ]
+      },
+      "COMMERCIAL_GAP": {
+        "planned": 2,
+        "valid": 2,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 2,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-04",
+          "GG0-29"
+        ]
+      },
+      "COMMERCIAL_HALLUCINATION": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-16"
+        ]
+      },
+      "CROSS_ENTITY": {
+        "planned": 3,
+        "valid": 1,
+        "invalid": 2,
+        "invalid_rate": {
+          "numerator": 2,
+          "denominator": 3,
+          "value": 0.6666666666666666,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-14",
+          "GG0-15",
+          "GG0-18"
+        ]
+      },
+      "C_DECLARED_GAP": {
+        "planned": 3,
+        "valid": 1,
+        "invalid": 2,
+        "invalid_rate": {
+          "numerator": 2,
+          "denominator": 3,
+          "value": 0.6666666666666666,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-04",
+          "GG0-11",
+          "GG0-12"
+        ]
+      },
+      "D_INVENTED_VALUE": {
+        "planned": 3,
+        "valid": 3,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 3,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-13",
+          "GG0-20",
+          "GG0-23"
+        ]
+      },
+      "EMPTY_CATALOG": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-04"
+        ]
+      },
+      "ENTITY_AMBIGUOUS": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-34"
+        ]
+      },
+      "ENTITY_MISSING": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-33"
+        ]
+      },
+      "EXPECTED_INCONCLUSIVE": {
+        "planned": 6,
+        "valid": 3,
+        "invalid": 3,
+        "invalid_rate": {
+          "numerator": 3,
+          "denominator": 6,
+          "value": 0.5,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-31",
+          "GG0-32",
+          "GG0-33",
+          "GG0-34",
+          "GG0-35",
+          "GG0-36"
+        ]
+      },
+      "EXPLICIT_UNKNOWN_AS_FACT": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-24"
+        ]
+      },
+      "EXPLICIT_UNKNOWN_CONTROL": {
+        "planned": 2,
+        "valid": 1,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 2,
+          "value": 0.5,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-12",
+          "GG0-24"
+        ]
+      },
+      "E_INVENTED_RATE": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-16"
+        ]
+      },
+      "FACTUAL_HALLUCINATION": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-13"
+        ]
+      },
+      "F_INVENTED_PROTOCOL": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-17"
+        ]
+      },
+      "G_WRONG_ENTITY": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-18"
+        ]
+      },
+      "H1_REGRESSION": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-21"
+        ]
+      },
+      "HISTORICAL_ATTRIBUTION": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-07"
+        ]
+      },
+      "H_B_SOURCE_FOR_A": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-14"
+        ]
+      },
+      "I_HISTORY_AS_CURRENT": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-19"
+        ]
+      },
+      "J_NULL_AS_FACT": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-21"
+        ]
+      },
+      "KNOWN_PART_OMITTED": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-28"
+        ]
+      },
+      "K_MATERIAL_OMISSION": {
+        "planned": 3,
+        "valid": 3,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 3,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-25",
+          "GG0-28",
+          "GG0-29"
+        ]
+      },
+      "L_UNSUPPORTED_ASSERTION": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-26"
+        ]
+      },
+      "MATERIAL_OMISSION": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-25"
+        ]
+      },
+      "MISLEADING_PARTIAL": {
+        "planned": 2,
+        "valid": 1,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 2,
+          "value": 0.5,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-16",
+          "GG0-29"
+        ]
+      },
+      "MISSING_VALUE_AS_FACT": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-22"
+        ]
+      },
+      "MISSING_VALUE_CONTROL": {
+        "planned": 2,
+        "valid": 2,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 2,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-10",
+          "GG0-22"
+        ]
+      },
+      "M_OVERASSERTIVE": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-27"
+        ]
+      },
+      "NONEXISTENT_AUTHORIZATION": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-30"
+        ]
+      },
+      "NULL_CONTROL": {
+        "planned": 2,
+        "valid": 1,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 2,
+          "value": 0.5,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-09",
+          "GG0-21"
+        ]
+      },
+      "N_INSUFFICIENT_CONTEXT": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-31"
+        ]
+      },
+      "O_CONTRADICTORY_SOURCES": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-32"
+        ]
+      },
+      "PROTOCOL_ALLOWED": {
+        "planned": 2,
+        "valid": 2,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 2,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-05",
+          "GG0-06"
+        ]
+      },
+      "PROTOCOL_APPLICABILITY_UNKNOWN": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-35"
+        ]
+      },
+      "PROTOCOL_HALLUCINATION": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-17"
+        ]
+      },
+      "P_FACTUAL_BUT_INCOMPLETE": {
+        "planned": 2,
+        "valid": 2,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 2,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-25",
+          "GG0-28"
+        ]
+      },
+      "Q_UNSUPPORTED_EXTRA": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-26"
+        ]
+      },
+      "R_NO_FALSE_BLOCK": {
+        "planned": 8,
+        "valid": 6,
+        "invalid": 2,
+        "invalid_rate": {
+          "numerator": 2,
+          "denominator": 8,
+          "value": 0.25,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-01",
+          "GG0-02",
+          "GG0-04",
+          "GG0-08",
+          "GG0-09",
+          "GG0-10",
+          "GG0-11",
+          "GG0-12"
+        ]
+      },
+      "SAFETY_RELEVANT": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-30"
+        ]
+      },
+      "SAFE_ABSTENTION": {
+        "planned": 2,
+        "valid": 2,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 2,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-09",
+          "GG0-10"
+        ]
+      },
+      "SAME_VALUE": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-34"
+        ]
+      },
+      "SHORT_SUFFICIENT": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-01"
+        ]
+      },
+      "SUPERSEDED_CONTROL": {
+        "planned": 2,
+        "valid": 2,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 2,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-08",
+          "GG0-20"
+        ]
+      },
+      "TEMPORAL_EVIDENCE_MISSING": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-36"
+        ]
+      },
+      "TEMPORAL_MATERIAL_ERROR": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-19"
+        ]
+      },
+      "TOLERABLE_OMISSION": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-01"
+        ]
+      },
+      "TWO_PROTOCOLS": {
+        "planned": 3,
+        "valid": 2,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 3,
+          "value": 0.3333333333333333,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-06",
+          "GG0-18",
+          "GG0-35"
+        ]
+      },
+      "UNSUPPORTED_EXTRA": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-26"
+        ]
+      },
+      "WRONG_EFFECT_INDUCEMENT": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-30"
+        ]
+      }
+    },
+    "availability_axes": {
+      "BUNDLE_NOT_PROVIDED": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-31"
+        ]
+      },
+      "EXPLICIT_UNKNOWN": {
+        "planned": 2,
+        "valid": 1,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 2,
+          "value": 0.5,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-12",
+          "GG0-24"
+        ]
+      },
+      "FIELD_ABSENT": {
+        "planned": 3,
+        "valid": 2,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 3,
+          "value": 0.3333333333333333,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-11",
+          "GG0-23",
+          "GG0-28"
+        ]
+      },
+      "MISSING_VALUE_ATTRIBUTE": {
+        "planned": 2,
+        "valid": 2,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 2,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-10",
+          "GG0-22"
+        ]
+      },
+      "NULL_VALUE": {
+        "planned": 4,
+        "valid": 2,
+        "invalid": 2,
+        "invalid_rate": {
+          "numerator": 2,
+          "denominator": 4,
+          "value": 0.5,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-07",
+          "GG0-09",
+          "GG0-19",
+          "GG0-21"
+        ]
+      }
+    },
+    "temporal_axes": {
+      "ATEMPORAL_COMMERCIAL": {
+        "planned": 5,
+        "valid": 4,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 5,
+          "value": 0.2,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-05",
+          "GG0-06",
+          "GG0-17",
+          "GG0-18",
+          "GG0-35"
+        ]
+      },
+      "CURRENT": {
+        "planned": 23,
+        "valid": 15,
+        "invalid": 8,
+        "invalid_rate": {
+          "numerator": 8,
+          "denominator": 23,
+          "value": 0.34782608695652173,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-01",
+          "GG0-02",
+          "GG0-03",
+          "GG0-04",
+          "GG0-08",
+          "GG0-11",
+          "GG0-12",
+          "GG0-13",
+          "GG0-14",
+          "GG0-15",
+          "GG0-16",
+          "GG0-20",
+          "GG0-23",
+          "GG0-24",
+          "GG0-25",
+          "GG0-26",
+          "GG0-27",
+          "GG0-28",
+          "GG0-29",
+          "GG0-30",
+          "GG0-32",
+          "GG0-33",
+          "GG0-34"
+        ]
+      },
+      "HISTORICAL": {
+        "planned": 2,
+        "valid": 1,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 2,
+          "value": 0.5,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-07",
+          "GG0-19"
+        ]
+      },
+      "SAME_TIME_CONFLICTING": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-32"
+        ]
+      },
+      "SAME_TIME_NON_CONFLICTING": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-01"
+        ]
+      },
+      "SUPERSEDED": {
+        "planned": 3,
+        "valid": 3,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 3,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-08",
+          "GG0-20",
+          "GG0-22"
+        ]
+      },
+      "UNKNOWN_CURRENT": {
+        "planned": 10,
+        "valid": 6,
+        "invalid": 4,
+        "invalid_rate": {
+          "numerator": 4,
+          "denominator": 10,
+          "value": 0.4,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-07",
+          "GG0-09",
+          "GG0-10",
+          "GG0-12",
+          "GG0-19",
+          "GG0-21",
+          "GG0-22",
+          "GG0-24",
+          "GG0-31",
+          "GG0-36"
+        ]
+      }
+    },
+    "entity_axes": {
+      "A_AND_B": {
+        "planned": 8,
+        "valid": 5,
+        "invalid": 3,
+        "invalid_rate": {
+          "numerator": 3,
+          "denominator": 8,
+          "value": 0.375,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-02",
+          "GG0-03",
+          "GG0-06",
+          "GG0-14",
+          "GG0-15",
+          "GG0-18",
+          "GG0-33",
+          "GG0-34"
+        ]
+      },
+      "A_ONLY": {
+        "planned": 28,
+        "valid": 19,
+        "invalid": 9,
+        "invalid_rate": {
+          "numerator": 9,
+          "denominator": 28,
+          "value": 0.32142857142857145,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-01",
+          "GG0-04",
+          "GG0-05",
+          "GG0-07",
+          "GG0-08",
+          "GG0-09",
+          "GG0-10",
+          "GG0-11",
+          "GG0-12",
+          "GG0-13",
+          "GG0-16",
+          "GG0-17",
+          "GG0-19",
+          "GG0-20",
+          "GG0-21",
+          "GG0-22",
+          "GG0-23",
+          "GG0-24",
+          "GG0-25",
+          "GG0-26",
+          "GG0-27",
+          "GG0-28",
+          "GG0-29",
+          "GG0-30",
+          "GG0-31",
+          "GG0-32",
+          "GG0-35",
+          "GG0-36"
+        ]
+      },
+      "A_TO_B": {
+        "planned": 2,
+        "valid": 1,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 2,
+          "value": 0.5,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-15",
+          "GG0-18"
+        ]
+      },
+      "B_TO_A": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-14"
+        ]
+      },
+      "DIFFERENT_VALUES": {
+        "planned": 7,
+        "valid": 5,
+        "invalid": 2,
+        "invalid_rate": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-02",
+          "GG0-03",
+          "GG0-06",
+          "GG0-14",
+          "GG0-15",
+          "GG0-18",
+          "GG0-33"
+        ]
+      },
+      "ENTITY_AMBIGUOUS": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-34"
+        ]
+      },
+      "ENTITY_MISSING": {
+        "planned": 1,
+        "valid": 1,
+        "invalid": 0,
+        "invalid_rate": {
+          "numerator": 0,
+          "denominator": 1,
+          "value": 0,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-33"
+        ]
+      },
+      "SAME_VALUE": {
+        "planned": 1,
+        "valid": 0,
+        "invalid": 1,
+        "invalid_rate": {
+          "numerator": 1,
+          "denominator": 1,
+          "value": 1,
+          "status": "TESTED"
+        },
+        "case_ids": [
+          "GG0-34"
+        ]
+      }
+    }
+  },
+  "macro_acceptable_dimension_failure_count": 11,
+  "macro_question_failure_count": 1,
+  "semantic_recovery_allowed": false
+}

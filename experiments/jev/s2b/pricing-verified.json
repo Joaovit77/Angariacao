@@ -1,0 +1,17 @@
+{
+  "model": "jev-1.14.0",
+  "input_usd_per_million": 0.042,
+  "output_usd_per_million": 0,
+  "verified_at_utc": "2026-10-16T23:57:42Z",
+  "source": "https://docs.typesafe.ai/models",
+  "api_source": "https://docs.typesafe.ai/api",
+  "documented_request_context_tokens": 64000,
+  "documented_question_context_tokens": 32000,
+  "maximum_request_tokens_for_reservation": 65536,
+  "maximum_body_bytes": 33554432,
+  "long_context_enabled": false,
+  "rate_limits": "Por organização; nenhuma cadência numérica pública. Execução serial com pausa de um segundo; HTTP 429 encerra sem retry.",
+  "all_180_calls_conservative_usd": 0.49545216,
+  "authorized_cap_usd": 0.50,
+  "output_free_confirmed": true
+}

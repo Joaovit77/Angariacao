@@ -1,0 +1,141 @@
+{
+  "scope": "DOCUMENTARY_CONTRACT_MUTANTS_NOT_RUNTIME_GUARD_TESTS",
+  "total": 22,
+  "killed": 22,
+  "survived": 0,
+  "probes": [
+    {
+      "id": "FRASE_ESPECIFICA",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "UNCONFIRMED_REJEITA_TUDO",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "UNKNOWN_VIRA_FALSE",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "ANNOTATION_AUSENTE_VIRA_OMISSAO",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "FALTA_PROVA_VIRA_REJECT",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "FALTA_PROVA_VIRA_APPROVE",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "VIOLACAO_REBAIXADA",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "INCERTEZA_SUPERA_PROVA",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "ANNOTATION_COMO_EXTRACAO",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "RESSALVA_NAO_AVALIAVEL_COMO_AUSENTE",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "GG29_LIBERADO",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "PARCIAL_SEGURA_REJEITADA",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "INCONCLUSIVO_OVERREJECT",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "PACOTE_AUSENTE_COMO_COMPLETO",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "ENTIDADE_POR_NUMERO_IGUAL",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "ORACLE_NO_INPUT",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "PROVIDER_OVERRIDE_PROVA",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "CONFIDENCE_COMO_CORRECTNESS",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "FULL_INVALIDO_RECUPERADO",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "REPLAY_COMO_GANHO_REAL",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "AUTORIZACAO_REABERTA",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    },
+    {
+      "id": "ADIAMENTOS_POSITIVOS_OCULTOS",
+      "baseline": "PASS",
+      "status": "KILLED",
+      "mutated_copy_only": true
+    }
+  ],
+  "source_files_modified": false
+}

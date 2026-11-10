@@ -1,0 +1,18 @@
+{
+  "model": "jev-1.14.0",
+  "input_usd_per_million": 0.042,
+  "output_usd_per_million": 0,
+  "verified_at_utc": "2026-10-17T20:37:51.047Z",
+  "source": "https://docs.typesafe.ai/models",
+  "documented_request_context_tokens": 64000,
+  "documented_question_context_tokens": 32000,
+  "maximum_request_tokens_for_reservation": 65536,
+  "long_context_enabled": false,
+  "long_context_header_sent": false,
+  "long_context_opt_in_limits": 262000,
+  "long_context_price_change": false,
+  "output_free_confirmed": true,
+  "changes_from_previous_price": "NONE",
+  "all_36_calls_conservative_usd": 0.099090432,
+  "authorized_cap_usd": 0.12
+}

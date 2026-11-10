@@ -1,0 +1,249 @@
+{
+  "scope": "QUALITATIVE_DESIGN_COMPARISON_NOT_BENCHMARK",
+  "scale": [
+    "LOW",
+    "MEDIUM",
+    "HIGH",
+    "UNKNOWN"
+  ],
+  "interpretation": "Valores descrevem exigência/carga/risco potencial; não são métricas de desempenho. LOW não significa segurança comprovada. ParaH5, riscos do produto existente continuam não medidos.",
+  "approaches": [
+    {
+      "id": "H1",
+      "name": "Campos atuais apenas",
+      "status": "NOT_DEMONSTRATED",
+      "finding": "Estados literais observáveis não enumeram pedido/candidata ou completude.",
+      "problem_displacement": false
+    },
+    {
+      "id": "H2",
+      "name": "Revisão humana estruturada proposta",
+      "status": "HUMAN_REVIEW_ELIGIBLE",
+      "finding": "Protocolo auditável proposto, sem revisores recrutados ou resultados; completude semântica permanece a validar.",
+      "problem_displacement": false
+    },
+    {
+      "id": "H3",
+      "name": "Representação/renderização controlada conceitual",
+      "status": "CONTROLLED_REPRESENTATION_ELIGIBLE",
+      "finding": "Pode preservar claims/ressalvas codificados em domínio fechado; não prova intenção do pedido livre e não certifica candidatas históricas.",
+      "problem_displacement": false
+    },
+    {
+      "id": "H4",
+      "name": "Extração automática conceitual",
+      "status": "NOT_DEMONSTRATED",
+      "finding": "PROBLEM_DISPLACEMENT_RISK se outro LLM apenas preencher prechecks; ground truth independente e inspeção são pré-condições.",
+      "problem_displacement": true
+    },
+    {
+      "id": "H5",
+      "name": "F — abandonar JEV Guard",
+      "status": "VALID_ALTERNATIVE",
+      "finding": "Alternativa legítima para não gastar/integrar; custos herdados e benefício perdido desconhecidos; não produz semântica nem alegação de sucesso.",
+      "problem_displacement": false
+    }
+  ],
+  "axes": [
+    {
+      "name": "required_precision",
+      "meaning": "Precisão exigida, não alcançada",
+      "ratings": {
+        "H1": "HIGH",
+        "H2": "HIGH",
+        "H3": "HIGH",
+        "H4": "HIGH",
+        "H5": "UNKNOWN"
+      }
+    },
+    {
+      "name": "independence_risk",
+      "meaning": "Risco para independência",
+      "ratings": {
+        "H1": "LOW",
+        "H2": "MEDIUM",
+        "H3": "MEDIUM",
+        "H4": "HIGH",
+        "H5": "LOW"
+      }
+    },
+    {
+      "name": "auditability_burden",
+      "meaning": "Carga para auditabilidade semântica",
+      "ratings": {
+        "H1": "HIGH",
+        "H2": "HIGH",
+        "H3": "MEDIUM",
+        "H4": "HIGH",
+        "H5": "LOW"
+      }
+    },
+    {
+      "name": "oracle_leakage_risk",
+      "meaning": "Risco de exposição/contaminação",
+      "ratings": {
+        "H1": "LOW",
+        "H2": "HIGH",
+        "H3": "MEDIUM",
+        "H4": "HIGH",
+        "H5": "LOW"
+      }
+    },
+    {
+      "name": "human_cost_burden",
+      "meaning": "Carga humana potencial",
+      "ratings": {
+        "H1": "LOW",
+        "H2": "HIGH",
+        "H3": "MEDIUM",
+        "H4": "MEDIUM",
+        "H5": "UNKNOWN"
+      }
+    },
+    {
+      "name": "computational_cost_burden",
+      "meaning": "Carga computacional potencial",
+      "ratings": {
+        "H1": "LOW",
+        "H2": "LOW",
+        "H3": "MEDIUM",
+        "H4": "UNKNOWN",
+        "H5": "LOW"
+      }
+    },
+    {
+      "name": "latency",
+      "meaning": "Latência operacional não medida",
+      "ratings": {
+        "H1": "UNKNOWN",
+        "H2": "UNKNOWN",
+        "H3": "UNKNOWN",
+        "H4": "UNKNOWN",
+        "H5": "UNKNOWN"
+      }
+    },
+    {
+      "name": "failure_surface",
+      "meaning": "Superfície adicional de falha",
+      "ratings": {
+        "H1": "LOW",
+        "H2": "HIGH",
+        "H3": "HIGH",
+        "H4": "HIGH",
+        "H5": "LOW"
+      }
+    },
+    {
+      "name": "false_block_risk",
+      "meaning": "Risco de false block de um mecanismo não executado",
+      "ratings": {
+        "H1": "HIGH",
+        "H2": "UNKNOWN",
+        "H3": "UNKNOWN",
+        "H4": "UNKNOWN",
+        "H5": "UNKNOWN"
+      }
+    },
+    {
+      "name": "false_allow_risk",
+      "meaning": "Risco de false allow de um mecanismo não executado",
+      "ratings": {
+        "H1": "UNKNOWN",
+        "H2": "UNKNOWN",
+        "H3": "UNKNOWN",
+        "H4": "UNKNOWN",
+        "H5": "UNKNOWN"
+      }
+    },
+    {
+      "name": "availability",
+      "meaning": "Disponibilidade real não medida",
+      "ratings": {
+        "H1": "UNKNOWN",
+        "H2": "UNKNOWN",
+        "H3": "UNKNOWN",
+        "H4": "UNKNOWN",
+        "H5": "UNKNOWN"
+      }
+    },
+    {
+      "name": "maintenance_burden",
+      "meaning": "Carga de manutenção potencial",
+      "ratings": {
+        "H1": "LOW",
+        "H2": "HIGH",
+        "H3": "HIGH",
+        "H4": "HIGH",
+        "H5": "LOW"
+      }
+    },
+    {
+      "name": "angario_change_burden",
+      "meaning": "Carga de compatibilidade/mudança futura",
+      "ratings": {
+        "H1": "LOW",
+        "H2": "LOW",
+        "H3": "HIGH",
+        "H4": "MEDIUM",
+        "H5": "LOW"
+      }
+    },
+    {
+      "name": "provider_dependency",
+      "meaning": "Necessidade eventual de provider",
+      "ratings": {
+        "H1": "LOW",
+        "H2": "LOW",
+        "H3": "LOW",
+        "H4": "HIGH",
+        "H5": "LOW"
+      }
+    },
+    {
+      "name": "new_schema_dependency",
+      "meaning": "Necessidade futura de representação/contrato novo",
+      "ratings": {
+        "H1": "LOW",
+        "H2": "MEDIUM",
+        "H3": "HIGH",
+        "H4": "HIGH",
+        "H5": "LOW"
+      }
+    },
+    {
+      "name": "generation_change_dependency",
+      "meaning": "Necessidade de alterar geração futuramente",
+      "ratings": {
+        "H1": "LOW",
+        "H2": "LOW",
+        "H3": "HIGH",
+        "H4": "MEDIUM",
+        "H5": "LOW"
+      }
+    },
+    {
+      "name": "blind_test_difficulty",
+      "meaning": "Dificuldade de teste cego posterior",
+      "ratings": {
+        "H1": "HIGH",
+        "H2": "HIGH",
+        "H3": "MEDIUM",
+        "H4": "HIGH",
+        "H5": "UNKNOWN"
+      }
+    },
+    {
+      "name": "reversal_burden",
+      "meaning": "Carga para reverter uma proposta futura",
+      "ratings": {
+        "H1": "LOW",
+        "H2": "LOW",
+        "H3": "MEDIUM",
+        "H4": "MEDIUM",
+        "H5": "LOW"
+      }
+    }
+  ],
+  "promoted_architecture": null,
+  "cost_is_promotion_criterion": false
+}

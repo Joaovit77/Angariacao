@@ -1,0 +1,86 @@
+{
+  "checkpoint": "JEV-GUARD-G2-C-B0",
+  "status": "PROPOSED_OFFLINE_DESIGN_ONLY",
+  "architecture": "A+B+E",
+  "implementation_authorized": false,
+  "guard_implemented": false,
+  "extractor_implemented": false,
+  "prompt_created": false,
+  "provider_request_created": false,
+  "execution_authorized": false,
+  "calls_authorized": 0,
+  "inherited": {
+    "g2b_execution": "PASS",
+    "full": "NAO_PROMISSOR_DIAGNOSTICO",
+    "reduced": "NAO_PROMISSOR_DIAGNOSTICO",
+    "comparison": "COMPARISON_INCONCLUSIVE",
+    "authorization": "CLOSED",
+    "reusable_calls": 0,
+    "g2ca": "PASS_OFFLINE_FAILURE_DECOMPOSITION",
+    "gg0_29": "MULTIPLE_CONTRIBUTORS",
+    "aggregation": "OBSERVABLE_OUTPUT_CONTRADICTION",
+    "dimensional_failure": "COEXISTS",
+    "inconclusives": "INCONCLUSIVE_CALIBRATION_FAILURE",
+    "invalid_full": "STRUCTURAL_SURFACE_PROBLEM",
+    "semantic_advantage": "NOT_DEMONSTRATED",
+    "dimensions_required_for_decision": "NOT_DEMONSTRATED",
+    "prompt_gap_primary_cause": "NOT_DEMONSTRATED",
+    "provider_internal_mechanism": "UNDETERMINED"
+  },
+  "A": {
+    "purpose": "Identificar obrigação material e verificar delimitação de lacuna antes de possível verdict.",
+    "caveat_detection": "VERIFIED_STRUCTURED_OBLIGATION_AND_CANDIDATE_REPRESENTATION_REQUIRED",
+    "exact_phrase_matching_allowed": false,
+    "unconfirmed_alone_rejects": false,
+    "partial_opportunity_implies_candidate_approval": false,
+    "missing_annotation_implies_missing_caveat": false,
+    "unknown_check_is_false": false
+  },
+  "B": {
+    "semantics": [
+      "REJECT",
+      "INCONCLUSIVE",
+      "APPROVE"
+    ],
+    "control_dispositions": [
+      "HOLD",
+      "STOP"
+    ],
+    "control_disposition_is_verdict": false,
+    "independent_proven_violation_precedes_unresolved_evidence": true,
+    "lack_of_proof_implies_reject": false,
+    "lack_of_proof_implies_approve": false,
+    "confidence_is_correctness": false,
+    "approve_authorizes_action": false
+  },
+  "E": {
+    "representation": "LITERAL_SOURCE_STATES_PLUS_PROVENANCE; semantic relation marked unavailable until independently verified.",
+    "boolean_check_values": [
+      "TRUE",
+      "FALSE",
+      "UNKNOWN"
+    ],
+    "unknown_fact_is_unknown_assessment": false,
+    "missing_value_defaults_to_zero": false,
+    "semantic_annotations_machine_observed": false,
+    "verification_required_for_negative_presence_claim": true
+  },
+  "boundaries": {
+    "runtime_inputs": "Somente fontes e candidata; nenhum oracle, criticality, expected ou tags.",
+    "fixture_annotations": "Revisão humana retrospectiva; não saída de extrator, não disponível automaticamente, não entrada autorizada de provider.",
+    "current_safe_action": "HOLD_REQUIRES_VERIFIED_SEMANTIC_REPRESENTATION",
+    "provider_approve_overrides_verified_reject": false,
+    "provider_reject_proves_material_violation": false,
+    "provider_can_resolve_absent_authority": false,
+    "full_invalid_recovery": false,
+    "history_reclassification": false
+  },
+  "limitations": {
+    "raw_available": false,
+    "raw_reconstruction": false,
+    "internal_reasoning_inferred": false,
+    "order_causality_proven": false,
+    "semantic_automation_demonstrated": false
+  },
+  "observability_blocker": "Não há slots estruturados da pergunta, obrigações materiais ou assertions/caveats da candidata nos inputs congelados. Não chamar annotation retrospectiva de precheck determinístico."
+}

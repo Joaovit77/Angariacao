@@ -1,0 +1,208 @@
+{
+  "ranking": [
+    {
+      "question_id": "factuality",
+      "observations": 36,
+      "invalid_count": 3,
+      "sum_mismatch": 2,
+      "choice_mismatch": 1,
+      "invalid_rate": {
+        "numerator": 3,
+        "denominator": 36,
+        "value": 0.08333333333333333,
+        "status": "TESTED"
+      }
+    },
+    {
+      "question_id": "coverage",
+      "observations": 36,
+      "invalid_count": 2,
+      "sum_mismatch": 2,
+      "choice_mismatch": 0,
+      "invalid_rate": {
+        "numerator": 2,
+        "denominator": 36,
+        "value": 0.05555555555555555,
+        "status": "TESTED"
+      }
+    },
+    {
+      "question_id": "partial_answer_allowed",
+      "observations": 36,
+      "invalid_count": 2,
+      "sum_mismatch": 2,
+      "choice_mismatch": 0,
+      "invalid_rate": {
+        "numerator": 2,
+        "denominator": 36,
+        "value": 0.05555555555555555,
+        "status": "TESTED"
+      }
+    },
+    {
+      "question_id": "safety",
+      "observations": 36,
+      "invalid_count": 2,
+      "sum_mismatch": 2,
+      "choice_mismatch": 0,
+      "invalid_rate": {
+        "numerator": 2,
+        "denominator": 36,
+        "value": 0.05555555555555555,
+        "status": "TESTED"
+      }
+    },
+    {
+      "question_id": "cross_entity",
+      "observations": 36,
+      "invalid_count": 1,
+      "sum_mismatch": 1,
+      "choice_mismatch": 0,
+      "invalid_rate": {
+        "numerator": 1,
+        "denominator": 36,
+        "value": 0.027777777777777776,
+        "status": "TESTED"
+      }
+    },
+    {
+      "question_id": "temporal",
+      "observations": 36,
+      "invalid_count": 1,
+      "sum_mismatch": 0,
+      "choice_mismatch": 1,
+      "invalid_rate": {
+        "numerator": 1,
+        "denominator": 36,
+        "value": 0.027777777777777776,
+        "status": "TESTED"
+      }
+    },
+    {
+      "question_id": "verdict",
+      "observations": 36,
+      "invalid_count": 1,
+      "sum_mismatch": 1,
+      "choice_mismatch": 0,
+      "invalid_rate": {
+        "numerator": 1,
+        "denominator": 36,
+        "value": 0.027777777777777776,
+        "status": "TESTED"
+      }
+    },
+    {
+      "question_id": "entity",
+      "observations": 36,
+      "invalid_count": 0,
+      "sum_mismatch": 0,
+      "choice_mismatch": 0,
+      "invalid_rate": {
+        "numerator": 0,
+        "denominator": 36,
+        "value": 0,
+        "status": "TESTED"
+      }
+    },
+    {
+      "question_id": "grounding",
+      "observations": 36,
+      "invalid_count": 0,
+      "sum_mismatch": 0,
+      "choice_mismatch": 0,
+      "invalid_rate": {
+        "numerator": 0,
+        "denominator": 36,
+        "value": 0,
+        "status": "TESTED"
+      }
+    },
+    {
+      "question_id": "omission",
+      "observations": 36,
+      "invalid_count": 0,
+      "sum_mismatch": 0,
+      "choice_mismatch": 0,
+      "invalid_rate": {
+        "numerator": 0,
+        "denominator": 36,
+        "value": 0,
+        "status": "TESTED"
+      }
+    },
+    {
+      "question_id": "protocol",
+      "observations": 36,
+      "invalid_count": 0,
+      "sum_mismatch": 0,
+      "choice_mismatch": 0,
+      "invalid_rate": {
+        "numerator": 0,
+        "denominator": 36,
+        "value": 0,
+        "status": "TESTED"
+      }
+    },
+    {
+      "question_id": "unsupported_assumption",
+      "observations": 36,
+      "invalid_count": 0,
+      "sum_mismatch": 0,
+      "choice_mismatch": 0,
+      "invalid_rate": {
+        "numerator": 0,
+        "denominator": 36,
+        "value": 0,
+        "status": "TESTED"
+      }
+    }
+  ],
+  "question_observations": 432,
+  "accepted_questions": 420,
+  "rejected_questions": 12,
+  "macro": {
+    "observations": 36,
+    "invalid": 1,
+    "invalid_rate": {
+      "numerator": 1,
+      "denominator": 36,
+      "value": 0.027777777777777776,
+      "status": "TESTED"
+    }
+  },
+  "dimensional": {
+    "observations": 396,
+    "invalid": 11,
+    "invalid_rate": {
+      "numerator": 11,
+      "denominator": 396,
+      "value": 0.027777777777777776,
+      "status": "TESTED"
+    }
+  },
+  "option_counts": [
+    {
+      "options": 3,
+      "observations": 36,
+      "invalid": 1,
+      "invalid_rate": {
+        "numerator": 1,
+        "denominator": 36,
+        "value": 0.027777777777777776,
+        "status": "TESTED"
+      }
+    },
+    {
+      "options": 4,
+      "observations": 396,
+      "invalid": 11,
+      "invalid_rate": {
+        "numerator": 11,
+        "denominator": 396,
+        "value": 0.027777777777777776,
+        "status": "TESTED"
+      }
+    }
+  ],
+  "causal_claim": "HYPOTHESIS_REQUIRES_EXPERIMENT"
+}

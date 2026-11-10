@@ -1,0 +1,20 @@
+{
+  "checkpoint": "JEV-GUARD-G2-B",
+  "status": "PASS_AFTER_FREEZE",
+  "executor_freeze_sha256": "28003de6902db67f30d63bee15176e5680d51e9f92e29ab3fe74d5188737dca0",
+  "historical_pass": 655,
+  "executor_pass": 58,
+  "total_pass": 713,
+  "fail": 0,
+  "network_attempts": 0,
+  "real_calls": 0,
+  "credentials_read": 0,
+  "postfreeze_applicable_pass": 209,
+  "postfreeze_applicable_fail": 0,
+  "postfreeze_suite": [
+    "experiments/jev/guard/g2b0/g2b0.test.mjs",
+    "experiments/jev/guard/g2b/runtime.test.mjs"
+  ],
+  "postfreeze_duration_ms": 153671.184,
+  "verified_at_utc": "2026-10-17T23:42:33.186Z"
+}

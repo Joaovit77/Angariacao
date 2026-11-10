@@ -1,0 +1,1013 @@
+{
+  "checkpoint": "JEV-S2-G-A",
+  "new_analysis_only": true,
+  "does_not_change": [
+    "oracle",
+    "expected",
+    "score",
+    "PASS/HOLD",
+    "historical_metrics"
+  ],
+  "categories": {
+    "OPERATIONAL_MATERIAL_ERROR": "Divergência material de fonte, verdade atual ou transferência demonstrada; uso operacional seria inseguro. Não significa falha HTTP histórica.",
+    "SEMANTIC_FIELD_ERROR": "Campo erra conteúdo/presença ou risco esperado, sem prova de efeito externo ocorrido.",
+    "TAXONOMY_COMPATIBILITY_ISSUE": "Rótulo fino mistura conceitos apesar de fonte principal correta; impacto precisa ser delimitado, sem perdoar score.",
+    "APPLICABILITY_DISAGREEMENT": "Diferença de aplicabilidade (PASS versus NOT_APPLICABLE) sem transferência material demonstrada no caso.",
+    "LOW_IMPACT_LABEL_DIFFERENCE": "Só se equivalência e baixo impacto forem demonstrados. Não forçar esta categoria para suavizar um erro.",
+    "UNCERTAIN": "Evidência insuficiente para distinguir causas; não preencher por hipótese."
+  },
+  "latest_reviewed_question_errors": 44,
+  "reviews": [
+    {
+      "review_id": "GA-DIV-001",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/0"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-01/R1",
+      "scenario_id": "T1",
+      "repetition": 1,
+      "task": "DECISION",
+      "question_id": "prohibited_HISTORICAL_AS_CURRENT",
+      "expected_choices": [
+        "YES"
+      ],
+      "observed_choice": "NO",
+      "native_confidence": 0.46,
+      "analysis_classification": "SEMANTIC_FIELD_ERROR",
+      "reason": "Risco contextual esperado foi omitido, inclusive INVENT_COMMERCIAL 0,94/0,96.",
+      "operational_impact": "Metadado incorreto pode omitir proteção ou bloquear resposta parcial. Não usar como comando operacional."
+    },
+    {
+      "review_id": "GA-DIV-002",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/1"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-01/R1",
+      "scenario_id": "T1",
+      "repetition": 1,
+      "task": "DECISION",
+      "question_id": "temporal_SUPERSEDED_FACT",
+      "expected_choices": [
+        "YES"
+      ],
+      "observed_choice": "NO",
+      "native_confidence": 0.74,
+      "analysis_classification": "SEMANTIC_FIELD_ERROR",
+      "reason": "Omitiu supersessão/suporte histórico requerido; a fonte principal deste item não é a falha null de H1.",
+      "operational_impact": "Metadado incorreto pode omitir proteção ou bloquear resposta parcial. Não usar como comando operacional."
+    },
+    {
+      "review_id": "GA-DIV-003",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/2"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-01/R1",
+      "scenario_id": "T1",
+      "repetition": 1,
+      "task": "DECISION",
+      "question_id": "temporal_HISTORICAL_SUPPORT_REQUIRED",
+      "expected_choices": [
+        "YES"
+      ],
+      "observed_choice": "NO",
+      "native_confidence": 0.2,
+      "analysis_classification": "SEMANTIC_FIELD_ERROR",
+      "reason": "Omitiu supersessão/suporte histórico requerido; a fonte principal deste item não é a falha null de H1.",
+      "operational_impact": "Metadado incorreto pode omitir proteção ou bloquear resposta parcial. Não usar como comando operacional."
+    },
+    {
+      "review_id": "GA-DIV-004",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/3"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-01/R2",
+      "scenario_id": "T1",
+      "repetition": 2,
+      "task": "DECISION",
+      "question_id": "prohibited_HISTORICAL_AS_CURRENT",
+      "expected_choices": [
+        "YES"
+      ],
+      "observed_choice": "NO",
+      "native_confidence": 0.5,
+      "analysis_classification": "SEMANTIC_FIELD_ERROR",
+      "reason": "Risco contextual esperado foi omitido, inclusive INVENT_COMMERCIAL 0,94/0,96.",
+      "operational_impact": "Metadado incorreto pode omitir proteção ou bloquear resposta parcial. Não usar como comando operacional."
+    },
+    {
+      "review_id": "GA-DIV-005",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/4"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-01/R2",
+      "scenario_id": "T1",
+      "repetition": 2,
+      "task": "DECISION",
+      "question_id": "temporal_SUPERSEDED_FACT",
+      "expected_choices": [
+        "YES"
+      ],
+      "observed_choice": "NO",
+      "native_confidence": 0.66,
+      "analysis_classification": "SEMANTIC_FIELD_ERROR",
+      "reason": "Omitiu supersessão/suporte histórico requerido; a fonte principal deste item não é a falha null de H1.",
+      "operational_impact": "Metadado incorreto pode omitir proteção ou bloquear resposta parcial. Não usar como comando operacional."
+    },
+    {
+      "review_id": "GA-DIV-006",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/5"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-01/R2",
+      "scenario_id": "T1",
+      "repetition": 2,
+      "task": "DECISION",
+      "question_id": "temporal_HISTORICAL_SUPPORT_REQUIRED",
+      "expected_choices": [
+        "YES"
+      ],
+      "observed_choice": "NO",
+      "native_confidence": 0.24,
+      "analysis_classification": "SEMANTIC_FIELD_ERROR",
+      "reason": "Omitiu supersessão/suporte histórico requerido; a fonte principal deste item não é a falha null de H1.",
+      "operational_impact": "Metadado incorreto pode omitir proteção ou bloquear resposta parcial. Não usar como comando operacional."
+    },
+    {
+      "review_id": "GA-DIV-007",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/6"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-04/R1",
+      "scenario_id": "E1",
+      "repetition": 1,
+      "task": "DECISION",
+      "question_id": "prohibited_CROSS_ENTITY",
+      "expected_choices": [
+        "YES"
+      ],
+      "observed_choice": "NO",
+      "native_confidence": 0.28,
+      "analysis_classification": "SEMANTIC_FIELD_ERROR",
+      "reason": "Risco contextual esperado foi omitido, inclusive INVENT_COMMERCIAL 0,94/0,96.",
+      "operational_impact": "Metadado incorreto pode omitir proteção ou bloquear resposta parcial. Não usar como comando operacional."
+    },
+    {
+      "review_id": "GA-DIV-008",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/7"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-04/R2",
+      "scenario_id": "E1",
+      "repetition": 2,
+      "task": "DECISION",
+      "question_id": "prohibited_CROSS_ENTITY",
+      "expected_choices": [
+        "YES"
+      ],
+      "observed_choice": "NO",
+      "native_confidence": 0.3,
+      "analysis_classification": "SEMANTIC_FIELD_ERROR",
+      "reason": "Risco contextual esperado foi omitido, inclusive INVENT_COMMERCIAL 0,94/0,96.",
+      "operational_impact": "Metadado incorreto pode omitir proteção ou bloquear resposta parcial. Não usar como comando operacional."
+    },
+    {
+      "review_id": "GA-DIV-009",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/8"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-07/R1",
+      "scenario_id": "P1",
+      "repetition": 1,
+      "task": "DECISION",
+      "question_id": "missing_AUTHORIZED_PROPERTY_CONTEXT",
+      "expected_choices": [
+        "NO"
+      ],
+      "observed_choice": "YES",
+      "native_confidence": 0.66,
+      "analysis_classification": "SEMANTIC_FIELD_ERROR",
+      "reason": "Lacuna AUTHORIZED_PROPERTY_CONTEXT acrescentada apesar de contexto acessível.",
+      "operational_impact": "Metadado incorreto pode omitir proteção ou bloquear resposta parcial. Não usar como comando operacional."
+    },
+    {
+      "review_id": "GA-DIV-010",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/9"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-07/R1",
+      "scenario_id": "P1",
+      "repetition": 1,
+      "task": "DECISION",
+      "question_id": "prohibited_INVENT_COMMERCIAL",
+      "expected_choices": [
+        "YES"
+      ],
+      "observed_choice": "NO",
+      "native_confidence": 0.94,
+      "analysis_classification": "SEMANTIC_FIELD_ERROR",
+      "reason": "Risco contextual esperado foi omitido, inclusive INVENT_COMMERCIAL 0,94/0,96.",
+      "operational_impact": "Metadado incorreto pode omitir proteção ou bloquear resposta parcial. Não usar como comando operacional."
+    },
+    {
+      "review_id": "GA-DIV-011",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/10"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-07/R1",
+      "scenario_id": "P1",
+      "repetition": 1,
+      "task": "DECISION",
+      "question_id": "temporal_UNKNOWN_CURRENT_STATE",
+      "expected_choices": [
+        "NO"
+      ],
+      "observed_choice": "YES",
+      "native_confidence": 0.76,
+      "analysis_classification": "TAXONOMY_COMPATIBILITY_ISSUE",
+      "reason": "Fonte principal não foi promovida neste item: entidade/valor atual contaminou rótulo temporal/protocolo, ou taxa desconhecida contaminou estado atual.",
+      "operational_impact": "Pode produzir motivo de bloqueio ou diagnóstico errado; código deve separar o conceito. Não é isenção do erro de campo."
+    },
+    {
+      "review_id": "GA-DIV-012",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/11"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-07/R2",
+      "scenario_id": "P1",
+      "repetition": 2,
+      "task": "DECISION",
+      "question_id": "missing_AUTHORIZED_PROPERTY_CONTEXT",
+      "expected_choices": [
+        "NO"
+      ],
+      "observed_choice": "YES",
+      "native_confidence": 0.56,
+      "analysis_classification": "SEMANTIC_FIELD_ERROR",
+      "reason": "Lacuna AUTHORIZED_PROPERTY_CONTEXT acrescentada apesar de contexto acessível.",
+      "operational_impact": "Metadado incorreto pode omitir proteção ou bloquear resposta parcial. Não usar como comando operacional."
+    },
+    {
+      "review_id": "GA-DIV-013",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/12"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-07/R2",
+      "scenario_id": "P1",
+      "repetition": 2,
+      "task": "DECISION",
+      "question_id": "prohibited_INVENT_COMMERCIAL",
+      "expected_choices": [
+        "YES"
+      ],
+      "observed_choice": "NO",
+      "native_confidence": 0.96,
+      "analysis_classification": "SEMANTIC_FIELD_ERROR",
+      "reason": "Risco contextual esperado foi omitido, inclusive INVENT_COMMERCIAL 0,94/0,96.",
+      "operational_impact": "Metadado incorreto pode omitir proteção ou bloquear resposta parcial. Não usar como comando operacional."
+    },
+    {
+      "review_id": "GA-DIV-014",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/13"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-07/R2",
+      "scenario_id": "P1",
+      "repetition": 2,
+      "task": "DECISION",
+      "question_id": "temporal_UNKNOWN_CURRENT_STATE",
+      "expected_choices": [
+        "NO"
+      ],
+      "observed_choice": "YES",
+      "native_confidence": 0.7,
+      "analysis_classification": "TAXONOMY_COMPATIBILITY_ISSUE",
+      "reason": "Fonte principal não foi promovida neste item: entidade/valor atual contaminou rótulo temporal/protocolo, ou taxa desconhecida contaminou estado atual.",
+      "operational_impact": "Pode produzir motivo de bloqueio ou diagnóstico errado; código deve separar o conceito. Não é isenção do erro de campo."
+    },
+    {
+      "review_id": "GA-DIV-015",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/14"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-10/R1",
+      "scenario_id": "H1",
+      "repetition": 1,
+      "task": "DECISION",
+      "question_id": "current_0",
+      "expected_choices": [
+        "NO"
+      ],
+      "observed_choice": "YES",
+      "native_confidence": 0.06,
+      "analysis_classification": "OPERATIONAL_MATERIAL_ERROR",
+      "reason": "Valor null selecionado como atual ou CURRENT_FACT indevido nos dois R; não é atrito de taxonomia.",
+      "operational_impact": "Poderia sustentar resposta atual sem fonte confirmada; bloquear promoção desta função."
+    },
+    {
+      "review_id": "GA-DIV-016",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/15"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-10/R1",
+      "scenario_id": "H1",
+      "repetition": 1,
+      "task": "DECISION",
+      "question_id": "missing_AUTHORIZED_PROPERTY_CONTEXT",
+      "expected_choices": [
+        "NO"
+      ],
+      "observed_choice": "YES",
+      "native_confidence": 0.82,
+      "analysis_classification": "SEMANTIC_FIELD_ERROR",
+      "reason": "Lacuna AUTHORIZED_PROPERTY_CONTEXT acrescentada apesar de contexto acessível.",
+      "operational_impact": "Metadado incorreto pode omitir proteção ou bloquear resposta parcial. Não usar como comando operacional."
+    },
+    {
+      "review_id": "GA-DIV-017",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/16"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-10/R1",
+      "scenario_id": "H1",
+      "repetition": 1,
+      "task": "DECISION",
+      "question_id": "temporal_CURRENT_FACT",
+      "expected_choices": [
+        "NO"
+      ],
+      "observed_choice": "YES",
+      "native_confidence": 0.96,
+      "analysis_classification": "OPERATIONAL_MATERIAL_ERROR",
+      "reason": "Valor null selecionado como atual ou CURRENT_FACT indevido nos dois R; não é atrito de taxonomia.",
+      "operational_impact": "Poderia sustentar resposta atual sem fonte confirmada; bloquear promoção desta função."
+    },
+    {
+      "review_id": "GA-DIV-018",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/17"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-10/R2",
+      "scenario_id": "H1",
+      "repetition": 2,
+      "task": "DECISION",
+      "question_id": "current_0",
+      "expected_choices": [
+        "NO"
+      ],
+      "observed_choice": "YES",
+      "native_confidence": 0.02,
+      "analysis_classification": "OPERATIONAL_MATERIAL_ERROR",
+      "reason": "Valor null selecionado como atual ou CURRENT_FACT indevido nos dois R; não é atrito de taxonomia.",
+      "operational_impact": "Poderia sustentar resposta atual sem fonte confirmada; bloquear promoção desta função."
+    },
+    {
+      "review_id": "GA-DIV-019",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/18"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-10/R2",
+      "scenario_id": "H1",
+      "repetition": 2,
+      "task": "DECISION",
+      "question_id": "missing_AUTHORIZED_PROPERTY_CONTEXT",
+      "expected_choices": [
+        "NO"
+      ],
+      "observed_choice": "YES",
+      "native_confidence": 0.9,
+      "analysis_classification": "SEMANTIC_FIELD_ERROR",
+      "reason": "Lacuna AUTHORIZED_PROPERTY_CONTEXT acrescentada apesar de contexto acessível.",
+      "operational_impact": "Metadado incorreto pode omitir proteção ou bloquear resposta parcial. Não usar como comando operacional."
+    },
+    {
+      "review_id": "GA-DIV-020",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/19"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-10/R2",
+      "scenario_id": "H1",
+      "repetition": 2,
+      "task": "DECISION",
+      "question_id": "temporal_CURRENT_FACT",
+      "expected_choices": [
+        "NO"
+      ],
+      "observed_choice": "YES",
+      "native_confidence": 0.94,
+      "analysis_classification": "OPERATIONAL_MATERIAL_ERROR",
+      "reason": "Valor null selecionado como atual ou CURRENT_FACT indevido nos dois R; não é atrito de taxonomia.",
+      "operational_impact": "Poderia sustentar resposta atual sem fonte confirmada; bloquear promoção desta função."
+    },
+    {
+      "review_id": "GA-DIV-021",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/20"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-02/R1",
+      "scenario_id": "T1",
+      "repetition": 1,
+      "task": "VALIDATION",
+      "question_id": "cross_entity",
+      "expected_choices": [
+        "PASS"
+      ],
+      "observed_choice": "NOT_APPLICABLE",
+      "native_confidence": 0.53,
+      "analysis_classification": "APPLICABILITY_DISAGREEMENT",
+      "reason": "Sem transferência material: cross_entity NOT_APPLICABLE versus PASS; ou P2 protocol PASS versus NOT_APPLICABLE porque só declara lacuna.",
+      "operational_impact": "Afeta comparabilidade/explicação dimensional; não prova troca de fonte neste caso e não altera a pontuação."
+    },
+    {
+      "review_id": "GA-DIV-022",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/21"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-02/R2",
+      "scenario_id": "T1",
+      "repetition": 2,
+      "task": "VALIDATION",
+      "question_id": "cross_entity",
+      "expected_choices": [
+        "PASS"
+      ],
+      "observed_choice": "NOT_APPLICABLE",
+      "native_confidence": 0.51,
+      "analysis_classification": "APPLICABILITY_DISAGREEMENT",
+      "reason": "Sem transferência material: cross_entity NOT_APPLICABLE versus PASS; ou P2 protocol PASS versus NOT_APPLICABLE porque só declara lacuna.",
+      "operational_impact": "Afeta comparabilidade/explicação dimensional; não prova troca de fonte neste caso e não altera a pontuação."
+    },
+    {
+      "review_id": "GA-DIV-023",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/22"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-03/R1",
+      "scenario_id": "T2",
+      "repetition": 1,
+      "task": "VALIDATION",
+      "question_id": "cross_entity",
+      "expected_choices": [
+        "PASS"
+      ],
+      "observed_choice": "NOT_APPLICABLE",
+      "native_confidence": 0.45,
+      "analysis_classification": "APPLICABILITY_DISAGREEMENT",
+      "reason": "Sem transferência material: cross_entity NOT_APPLICABLE versus PASS; ou P2 protocol PASS versus NOT_APPLICABLE porque só declara lacuna.",
+      "operational_impact": "Afeta comparabilidade/explicação dimensional; não prova troca de fonte neste caso e não altera a pontuação."
+    },
+    {
+      "review_id": "GA-DIV-024",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/23"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-03/R2",
+      "scenario_id": "T2",
+      "repetition": 2,
+      "task": "VALIDATION",
+      "question_id": "cross_entity",
+      "expected_choices": [
+        "PASS"
+      ],
+      "observed_choice": "NOT_APPLICABLE",
+      "native_confidence": 0.35,
+      "analysis_classification": "APPLICABILITY_DISAGREEMENT",
+      "reason": "Sem transferência material: cross_entity NOT_APPLICABLE versus PASS; ou P2 protocol PASS versus NOT_APPLICABLE porque só declara lacuna.",
+      "operational_impact": "Afeta comparabilidade/explicação dimensional; não prova troca de fonte neste caso e não altera a pontuação."
+    },
+    {
+      "review_id": "GA-DIV-025",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/24"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-05/R1",
+      "scenario_id": "E1",
+      "repetition": 1,
+      "task": "VALIDATION",
+      "question_id": "protocol",
+      "expected_choices": [
+        "NOT_APPLICABLE"
+      ],
+      "observed_choice": "FAIL",
+      "native_confidence": 0.48,
+      "analysis_classification": "TAXONOMY_COMPATIBILITY_ISSUE",
+      "reason": "Fonte principal não foi promovida neste item: entidade/valor atual contaminou rótulo temporal/protocolo, ou taxa desconhecida contaminou estado atual.",
+      "operational_impact": "Pode produzir motivo de bloqueio ou diagnóstico errado; código deve separar o conceito. Não é isenção do erro de campo."
+    },
+    {
+      "review_id": "GA-DIV-026",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/25"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-05/R1",
+      "scenario_id": "E1",
+      "repetition": 1,
+      "task": "VALIDATION",
+      "question_id": "temporal",
+      "expected_choices": [
+        "PASS"
+      ],
+      "observed_choice": "FAIL",
+      "native_confidence": 0.93,
+      "analysis_classification": "TAXONOMY_COMPATIBILITY_ISSUE",
+      "reason": "Fonte principal não foi promovida neste item: entidade/valor atual contaminou rótulo temporal/protocolo, ou taxa desconhecida contaminou estado atual.",
+      "operational_impact": "Pode produzir motivo de bloqueio ou diagnóstico errado; código deve separar o conceito. Não é isenção do erro de campo."
+    },
+    {
+      "review_id": "GA-DIV-027",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/26"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-05/R1",
+      "scenario_id": "E1",
+      "repetition": 1,
+      "task": "VALIDATION",
+      "question_id": "cross_entity",
+      "expected_choices": [
+        "FAIL"
+      ],
+      "observed_choice": "PASS",
+      "native_confidence": 0.6,
+      "analysis_classification": "OPERATIONAL_MATERIAL_ERROR",
+      "reason": "Transferência B→A/A→B demonstrada, mas cross_entity PASS em vez de FAIL.",
+      "operational_impact": "Gate crítico de entidade poderia liberar fonte de outro imóvel; verdict correto não compensa."
+    },
+    {
+      "review_id": "GA-DIV-028",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/27"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-05/R2",
+      "scenario_id": "E1",
+      "repetition": 2,
+      "task": "VALIDATION",
+      "question_id": "protocol",
+      "expected_choices": [
+        "NOT_APPLICABLE"
+      ],
+      "observed_choice": "FAIL",
+      "native_confidence": 0.55,
+      "analysis_classification": "TAXONOMY_COMPATIBILITY_ISSUE",
+      "reason": "Fonte principal não foi promovida neste item: entidade/valor atual contaminou rótulo temporal/protocolo, ou taxa desconhecida contaminou estado atual.",
+      "operational_impact": "Pode produzir motivo de bloqueio ou diagnóstico errado; código deve separar o conceito. Não é isenção do erro de campo."
+    },
+    {
+      "review_id": "GA-DIV-029",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/28"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-05/R2",
+      "scenario_id": "E1",
+      "repetition": 2,
+      "task": "VALIDATION",
+      "question_id": "temporal",
+      "expected_choices": [
+        "PASS"
+      ],
+      "observed_choice": "FAIL",
+      "native_confidence": 0.93,
+      "analysis_classification": "TAXONOMY_COMPATIBILITY_ISSUE",
+      "reason": "Fonte principal não foi promovida neste item: entidade/valor atual contaminou rótulo temporal/protocolo, ou taxa desconhecida contaminou estado atual.",
+      "operational_impact": "Pode produzir motivo de bloqueio ou diagnóstico errado; código deve separar o conceito. Não é isenção do erro de campo."
+    },
+    {
+      "review_id": "GA-DIV-030",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/29"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-05/R2",
+      "scenario_id": "E1",
+      "repetition": 2,
+      "task": "VALIDATION",
+      "question_id": "cross_entity",
+      "expected_choices": [
+        "FAIL"
+      ],
+      "observed_choice": "PASS",
+      "native_confidence": 0.57,
+      "analysis_classification": "OPERATIONAL_MATERIAL_ERROR",
+      "reason": "Transferência B→A/A→B demonstrada, mas cross_entity PASS em vez de FAIL.",
+      "operational_impact": "Gate crítico de entidade poderia liberar fonte de outro imóvel; verdict correto não compensa."
+    },
+    {
+      "review_id": "GA-DIV-031",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/30"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-08/R1",
+      "scenario_id": "P1",
+      "repetition": 1,
+      "task": "VALIDATION",
+      "question_id": "temporal",
+      "expected_choices": [
+        "PASS"
+      ],
+      "observed_choice": "FAIL",
+      "native_confidence": 0.72,
+      "analysis_classification": "TAXONOMY_COMPATIBILITY_ISSUE",
+      "reason": "Fonte principal não foi promovida neste item: entidade/valor atual contaminou rótulo temporal/protocolo, ou taxa desconhecida contaminou estado atual.",
+      "operational_impact": "Pode produzir motivo de bloqueio ou diagnóstico errado; código deve separar o conceito. Não é isenção do erro de campo."
+    },
+    {
+      "review_id": "GA-DIV-032",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/31"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-08/R1",
+      "scenario_id": "P1",
+      "repetition": 1,
+      "task": "VALIDATION",
+      "question_id": "cross_entity",
+      "expected_choices": [
+        "PASS"
+      ],
+      "observed_choice": "NOT_APPLICABLE",
+      "native_confidence": 0.55,
+      "analysis_classification": "APPLICABILITY_DISAGREEMENT",
+      "reason": "Sem transferência material: cross_entity NOT_APPLICABLE versus PASS; ou P2 protocol PASS versus NOT_APPLICABLE porque só declara lacuna.",
+      "operational_impact": "Afeta comparabilidade/explicação dimensional; não prova troca de fonte neste caso e não altera a pontuação."
+    },
+    {
+      "review_id": "GA-DIV-033",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/32"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-08/R2",
+      "scenario_id": "P1",
+      "repetition": 2,
+      "task": "VALIDATION",
+      "question_id": "temporal",
+      "expected_choices": [
+        "PASS"
+      ],
+      "observed_choice": "FAIL",
+      "native_confidence": 0.67,
+      "analysis_classification": "TAXONOMY_COMPATIBILITY_ISSUE",
+      "reason": "Fonte principal não foi promovida neste item: entidade/valor atual contaminou rótulo temporal/protocolo, ou taxa desconhecida contaminou estado atual.",
+      "operational_impact": "Pode produzir motivo de bloqueio ou diagnóstico errado; código deve separar o conceito. Não é isenção do erro de campo."
+    },
+    {
+      "review_id": "GA-DIV-034",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/33"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-08/R2",
+      "scenario_id": "P1",
+      "repetition": 2,
+      "task": "VALIDATION",
+      "question_id": "cross_entity",
+      "expected_choices": [
+        "PASS"
+      ],
+      "observed_choice": "NOT_APPLICABLE",
+      "native_confidence": 0.52,
+      "analysis_classification": "APPLICABILITY_DISAGREEMENT",
+      "reason": "Sem transferência material: cross_entity NOT_APPLICABLE versus PASS; ou P2 protocol PASS versus NOT_APPLICABLE porque só declara lacuna.",
+      "operational_impact": "Afeta comparabilidade/explicação dimensional; não prova troca de fonte neste caso e não altera a pontuação."
+    },
+    {
+      "review_id": "GA-DIV-035",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/34"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-09/R1",
+      "scenario_id": "P2",
+      "repetition": 1,
+      "task": "VALIDATION",
+      "question_id": "protocol",
+      "expected_choices": [
+        "NOT_APPLICABLE"
+      ],
+      "observed_choice": "PASS",
+      "native_confidence": 0.29,
+      "analysis_classification": "APPLICABILITY_DISAGREEMENT",
+      "reason": "Sem transferência material: cross_entity NOT_APPLICABLE versus PASS; ou P2 protocol PASS versus NOT_APPLICABLE porque só declara lacuna.",
+      "operational_impact": "Afeta comparabilidade/explicação dimensional; não prova troca de fonte neste caso e não altera a pontuação."
+    },
+    {
+      "review_id": "GA-DIV-036",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/35"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-09/R1",
+      "scenario_id": "P2",
+      "repetition": 1,
+      "task": "VALIDATION",
+      "question_id": "cross_entity",
+      "expected_choices": [
+        "PASS"
+      ],
+      "observed_choice": "NOT_APPLICABLE",
+      "native_confidence": 0.59,
+      "analysis_classification": "APPLICABILITY_DISAGREEMENT",
+      "reason": "Sem transferência material: cross_entity NOT_APPLICABLE versus PASS; ou P2 protocol PASS versus NOT_APPLICABLE porque só declara lacuna.",
+      "operational_impact": "Afeta comparabilidade/explicação dimensional; não prova troca de fonte neste caso e não altera a pontuação."
+    },
+    {
+      "review_id": "GA-DIV-037",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/36"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-09/R2",
+      "scenario_id": "P2",
+      "repetition": 2,
+      "task": "VALIDATION",
+      "question_id": "protocol",
+      "expected_choices": [
+        "NOT_APPLICABLE"
+      ],
+      "observed_choice": "PASS",
+      "native_confidence": 0.17,
+      "analysis_classification": "APPLICABILITY_DISAGREEMENT",
+      "reason": "Sem transferência material: cross_entity NOT_APPLICABLE versus PASS; ou P2 protocol PASS versus NOT_APPLICABLE porque só declara lacuna.",
+      "operational_impact": "Afeta comparabilidade/explicação dimensional; não prova troca de fonte neste caso e não altera a pontuação."
+    },
+    {
+      "review_id": "GA-DIV-038",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/37"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-09/R2",
+      "scenario_id": "P2",
+      "repetition": 2,
+      "task": "VALIDATION",
+      "question_id": "cross_entity",
+      "expected_choices": [
+        "PASS"
+      ],
+      "observed_choice": "NOT_APPLICABLE",
+      "native_confidence": 0.72,
+      "analysis_classification": "APPLICABILITY_DISAGREEMENT",
+      "reason": "Sem transferência material: cross_entity NOT_APPLICABLE versus PASS; ou P2 protocol PASS versus NOT_APPLICABLE porque só declara lacuna.",
+      "operational_impact": "Afeta comparabilidade/explicação dimensional; não prova troca de fonte neste caso e não altera a pontuação."
+    },
+    {
+      "review_id": "GA-DIV-039",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/38"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-11/R1",
+      "scenario_id": "E3",
+      "repetition": 1,
+      "task": "VALIDATION",
+      "question_id": "protocol",
+      "expected_choices": [
+        "NOT_APPLICABLE"
+      ],
+      "observed_choice": "FAIL",
+      "native_confidence": 0.31,
+      "analysis_classification": "TAXONOMY_COMPATIBILITY_ISSUE",
+      "reason": "Fonte principal não foi promovida neste item: entidade/valor atual contaminou rótulo temporal/protocolo, ou taxa desconhecida contaminou estado atual.",
+      "operational_impact": "Pode produzir motivo de bloqueio ou diagnóstico errado; código deve separar o conceito. Não é isenção do erro de campo."
+    },
+    {
+      "review_id": "GA-DIV-040",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/39"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-11/R1",
+      "scenario_id": "E3",
+      "repetition": 1,
+      "task": "VALIDATION",
+      "question_id": "temporal",
+      "expected_choices": [
+        "PASS"
+      ],
+      "observed_choice": "FAIL",
+      "native_confidence": 0.93,
+      "analysis_classification": "TAXONOMY_COMPATIBILITY_ISSUE",
+      "reason": "Fonte principal não foi promovida neste item: entidade/valor atual contaminou rótulo temporal/protocolo, ou taxa desconhecida contaminou estado atual.",
+      "operational_impact": "Pode produzir motivo de bloqueio ou diagnóstico errado; código deve separar o conceito. Não é isenção do erro de campo."
+    },
+    {
+      "review_id": "GA-DIV-041",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/40"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-11/R1",
+      "scenario_id": "E3",
+      "repetition": 1,
+      "task": "VALIDATION",
+      "question_id": "cross_entity",
+      "expected_choices": [
+        "FAIL"
+      ],
+      "observed_choice": "PASS",
+      "native_confidence": 0.57,
+      "analysis_classification": "OPERATIONAL_MATERIAL_ERROR",
+      "reason": "Transferência B→A/A→B demonstrada, mas cross_entity PASS em vez de FAIL.",
+      "operational_impact": "Gate crítico de entidade poderia liberar fonte de outro imóvel; verdict correto não compensa."
+    },
+    {
+      "review_id": "GA-DIV-042",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/41"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-11/R2",
+      "scenario_id": "E3",
+      "repetition": 2,
+      "task": "VALIDATION",
+      "question_id": "protocol",
+      "expected_choices": [
+        "NOT_APPLICABLE"
+      ],
+      "observed_choice": "FAIL",
+      "native_confidence": 0.44,
+      "analysis_classification": "TAXONOMY_COMPATIBILITY_ISSUE",
+      "reason": "Fonte principal não foi promovida neste item: entidade/valor atual contaminou rótulo temporal/protocolo, ou taxa desconhecida contaminou estado atual.",
+      "operational_impact": "Pode produzir motivo de bloqueio ou diagnóstico errado; código deve separar o conceito. Não é isenção do erro de campo."
+    },
+    {
+      "review_id": "GA-DIV-043",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/42"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-11/R2",
+      "scenario_id": "E3",
+      "repetition": 2,
+      "task": "VALIDATION",
+      "question_id": "temporal",
+      "expected_choices": [
+        "PASS"
+      ],
+      "observed_choice": "FAIL",
+      "native_confidence": 0.93,
+      "analysis_classification": "TAXONOMY_COMPATIBILITY_ISSUE",
+      "reason": "Fonte principal não foi promovida neste item: entidade/valor atual contaminou rótulo temporal/protocolo, ou taxa desconhecida contaminou estado atual.",
+      "operational_impact": "Pode produzir motivo de bloqueio ou diagnóstico errado; código deve separar o conceito. Não é isenção do erro de campo."
+    },
+    {
+      "review_id": "GA-DIV-044",
+      "new_analysis_only": true,
+      "historical_score_unchanged": true,
+      "source": {
+        "path": "experiments/jev/results/s2fb-jev-s2f-diagnostic-1792258267412-99056db2/confidence-analysis.json",
+        "json_pointer": "/errors/43"
+      },
+      "stage_id": "jev-s2f-diagnostic-1792258267412-99056db2/FREQ-11/R2",
+      "scenario_id": "E3",
+      "repetition": 2,
+      "task": "VALIDATION",
+      "question_id": "cross_entity",
+      "expected_choices": [
+        "FAIL"
+      ],
+      "observed_choice": "PASS",
+      "native_confidence": 0.57,
+      "analysis_classification": "OPERATIONAL_MATERIAL_ERROR",
+      "reason": "Transferência B→A/A→B demonstrada, mas cross_entity PASS em vez de FAIL.",
+      "operational_impact": "Gate crítico de entidade poderia liberar fonte de outro imóvel; verdict correto não compensa."
+    }
+  ],
+  "historical_notes": [
+    {
+      "checkpoint": "JEV-S2-B",
+      "classification": "UNCERTAIN",
+      "reason": "INVALID_PROBABILITIES específico NÃO DETERMINADO / NÃO RECUPERÁVEL; raw não existe.",
+      "reference": "experiments/jev/results/s2b-jev-s2b-1792195299496-15869859/stage-results/004.json"
+    },
+    {
+      "checkpoint": "JEV-S2-E",
+      "classification": "SEMANTIC_FIELD_ERROR",
+      "reason": "Prohibited 0/6 e temporal D 2/6/V 1/4 são recorrências; cross_entity PASS diante de transferência permanece material, distinto de N/A sem transferência.",
+      "references": [
+        "experiments/jev/results/s2e-jev-s2e-semantic-1792255143175-41551ba6/decision-metrics.json",
+        "experiments/jev/results/s2e-jev-s2e-semantic-1792255143175-41551ba6/validation-metrics.json"
+      ]
+    },
+    {
+      "checkpoint": "JEV-S0",
+      "classification": "UNCERTAIN",
+      "reason": "Rejeição parcial histórica preservada 1/5. S1 refinou o futuro oráculo; esta revisão não recalcula nem perdoa S0.",
+      "reference": "RELATORIO-JEV-S1.md"
+    }
+  ]
+}

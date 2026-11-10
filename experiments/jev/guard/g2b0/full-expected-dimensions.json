@@ -1,0 +1,1049 @@
+{
+  "arm": "ARM_FULL",
+  "cases": [
+    {
+      "case_id": "GG0-01",
+      "expected_dimensions": {
+        "grounding": "PASS",
+        "factuality": "PASS",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "PASS",
+        "omission": "PASS",
+        "unsupported_assumption": "PASS",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-02",
+      "expected_dimensions": {
+        "grounding": "PASS",
+        "factuality": "PASS",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "PASS",
+        "omission": "PASS",
+        "unsupported_assumption": "PASS",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-03",
+      "expected_dimensions": {
+        "grounding": "PASS",
+        "factuality": "PASS",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "PASS",
+        "omission": "PASS",
+        "unsupported_assumption": "PASS",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-04",
+      "expected_dimensions": {
+        "grounding": "PASS",
+        "factuality": "PASS",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "PASS",
+        "omission": "PASS",
+        "unsupported_assumption": "PASS",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "PASS"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-05",
+      "expected_dimensions": {
+        "grounding": "PASS",
+        "factuality": "PASS",
+        "protocol": "PASS",
+        "temporal": "NOT_APPLICABLE",
+        "entity": "PASS",
+        "coverage": "PASS",
+        "omission": "PASS",
+        "unsupported_assumption": "PASS",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "APPLICABLE",
+        "temporal": "NOT_APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-06",
+      "expected_dimensions": {
+        "grounding": "PASS",
+        "factuality": "PASS",
+        "protocol": "PASS",
+        "temporal": "NOT_APPLICABLE",
+        "entity": "PASS",
+        "coverage": "PASS",
+        "omission": "PASS",
+        "unsupported_assumption": "PASS",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "APPLICABLE",
+        "temporal": "NOT_APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-07",
+      "expected_dimensions": {
+        "grounding": "PASS",
+        "factuality": "PASS",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "PASS",
+        "omission": "PASS",
+        "unsupported_assumption": "PASS",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-08",
+      "expected_dimensions": {
+        "grounding": "PASS",
+        "factuality": "PASS",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "PASS",
+        "omission": "PASS",
+        "unsupported_assumption": "PASS",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-09",
+      "expected_dimensions": {
+        "grounding": "PASS",
+        "factuality": "PASS",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "PASS",
+        "omission": "NOT_APPLICABLE",
+        "unsupported_assumption": "PASS",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "NOT_APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-10",
+      "expected_dimensions": {
+        "grounding": "PASS",
+        "factuality": "PASS",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "PASS",
+        "omission": "NOT_APPLICABLE",
+        "unsupported_assumption": "PASS",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "NOT_APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-11",
+      "expected_dimensions": {
+        "grounding": "PASS",
+        "factuality": "PASS",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "PASS",
+        "omission": "PASS",
+        "unsupported_assumption": "PASS",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "PASS"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-12",
+      "expected_dimensions": {
+        "grounding": "PASS",
+        "factuality": "PASS",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "PASS",
+        "omission": "PASS",
+        "unsupported_assumption": "PASS",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "PASS"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-13",
+      "expected_dimensions": {
+        "grounding": "FAIL",
+        "factuality": "FAIL",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "FAIL",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-14",
+      "expected_dimensions": {
+        "grounding": "FAIL",
+        "factuality": "FAIL",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "FAIL",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "FAIL",
+        "cross_entity": "FAIL",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-15",
+      "expected_dimensions": {
+        "grounding": "FAIL",
+        "factuality": "FAIL",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "FAIL",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "FAIL",
+        "cross_entity": "FAIL",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-16",
+      "expected_dimensions": {
+        "grounding": "FAIL",
+        "factuality": "INCONCLUSIVE",
+        "protocol": "INCONCLUSIVE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "FAIL",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "PASS"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE_UNRESOLVED",
+        "protocol": "APPLICABLE_UNRESOLVED",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-17",
+      "expected_dimensions": {
+        "grounding": "FAIL",
+        "factuality": "PASS",
+        "protocol": "FAIL",
+        "temporal": "NOT_APPLICABLE",
+        "entity": "PASS",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "FAIL",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "APPLICABLE",
+        "temporal": "NOT_APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-18",
+      "expected_dimensions": {
+        "grounding": "FAIL",
+        "factuality": "FAIL",
+        "protocol": "FAIL",
+        "temporal": "NOT_APPLICABLE",
+        "entity": "FAIL",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "FAIL",
+        "cross_entity": "FAIL",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "APPLICABLE",
+        "temporal": "NOT_APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-19",
+      "expected_dimensions": {
+        "grounding": "FAIL",
+        "factuality": "INCONCLUSIVE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "FAIL",
+        "entity": "PASS",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "FAIL",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE_UNRESOLVED",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-20",
+      "expected_dimensions": {
+        "grounding": "FAIL",
+        "factuality": "FAIL",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "FAIL",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-21",
+      "expected_dimensions": {
+        "grounding": "FAIL",
+        "factuality": "INCONCLUSIVE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "FAIL",
+        "entity": "PASS",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "FAIL",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE_UNRESOLVED",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-22",
+      "expected_dimensions": {
+        "grounding": "FAIL",
+        "factuality": "INCONCLUSIVE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "FAIL",
+        "entity": "PASS",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "FAIL",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE_UNRESOLVED",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-23",
+      "expected_dimensions": {
+        "grounding": "FAIL",
+        "factuality": "INCONCLUSIVE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "FAIL",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "PASS"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE_UNRESOLVED",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-24",
+      "expected_dimensions": {
+        "grounding": "FAIL",
+        "factuality": "INCONCLUSIVE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "FAIL",
+        "entity": "PASS",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "FAIL",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "PASS"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE_UNRESOLVED",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-25",
+      "expected_dimensions": {
+        "grounding": "PASS",
+        "factuality": "PASS",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "PASS",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-26",
+      "expected_dimensions": {
+        "grounding": "FAIL",
+        "factuality": "INCONCLUSIVE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "PASS",
+        "omission": "PASS",
+        "unsupported_assumption": "FAIL",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE_UNRESOLVED",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-27",
+      "expected_dimensions": {
+        "grounding": "FAIL",
+        "factuality": "FAIL",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "FAIL",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "PASS"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-28",
+      "expected_dimensions": {
+        "grounding": "PASS",
+        "factuality": "PASS",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "PASS",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "PASS"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-29",
+      "expected_dimensions": {
+        "grounding": "PASS",
+        "factuality": "PASS",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "FAIL",
+        "omission": "FAIL",
+        "unsupported_assumption": "PASS",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "PASS"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-30",
+      "expected_dimensions": {
+        "grounding": "FAIL",
+        "factuality": "FAIL",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "PASS",
+        "omission": "PASS",
+        "unsupported_assumption": "FAIL",
+        "cross_entity": "PASS",
+        "safety": "FAIL",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE",
+        "omission": "APPLICABLE",
+        "unsupported_assumption": "APPLICABLE",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-31",
+      "expected_dimensions": {
+        "grounding": "INCONCLUSIVE",
+        "factuality": "INCONCLUSIVE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "INCONCLUSIVE",
+        "entity": "PASS",
+        "coverage": "INCONCLUSIVE",
+        "omission": "NOT_APPLICABLE",
+        "unsupported_assumption": "INCONCLUSIVE",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE_UNRESOLVED",
+        "factuality": "APPLICABLE_UNRESOLVED",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE_UNRESOLVED",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE_UNRESOLVED",
+        "omission": "NOT_APPLICABLE",
+        "unsupported_assumption": "APPLICABLE_UNRESOLVED",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-32",
+      "expected_dimensions": {
+        "grounding": "INCONCLUSIVE",
+        "factuality": "INCONCLUSIVE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "PASS",
+        "coverage": "INCONCLUSIVE",
+        "omission": "NOT_APPLICABLE",
+        "unsupported_assumption": "INCONCLUSIVE",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE_UNRESOLVED",
+        "factuality": "APPLICABLE_UNRESOLVED",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE_UNRESOLVED",
+        "omission": "NOT_APPLICABLE",
+        "unsupported_assumption": "APPLICABLE_UNRESOLVED",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-33",
+      "expected_dimensions": {
+        "grounding": "INCONCLUSIVE",
+        "factuality": "INCONCLUSIVE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "INCONCLUSIVE",
+        "coverage": "INCONCLUSIVE",
+        "omission": "NOT_APPLICABLE",
+        "unsupported_assumption": "INCONCLUSIVE",
+        "cross_entity": "INCONCLUSIVE",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE_UNRESOLVED",
+        "factuality": "APPLICABLE_UNRESOLVED",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE_UNRESOLVED",
+        "coverage": "APPLICABLE_UNRESOLVED",
+        "omission": "NOT_APPLICABLE",
+        "unsupported_assumption": "APPLICABLE_UNRESOLVED",
+        "cross_entity": "APPLICABLE_UNRESOLVED",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-34",
+      "expected_dimensions": {
+        "grounding": "INCONCLUSIVE",
+        "factuality": "PASS",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "PASS",
+        "entity": "INCONCLUSIVE",
+        "coverage": "INCONCLUSIVE",
+        "omission": "NOT_APPLICABLE",
+        "unsupported_assumption": "INCONCLUSIVE",
+        "cross_entity": "INCONCLUSIVE",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE_UNRESOLVED",
+        "factuality": "APPLICABLE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE",
+        "entity": "APPLICABLE_UNRESOLVED",
+        "coverage": "APPLICABLE_UNRESOLVED",
+        "omission": "NOT_APPLICABLE",
+        "unsupported_assumption": "APPLICABLE_UNRESOLVED",
+        "cross_entity": "APPLICABLE_UNRESOLVED",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-35",
+      "expected_dimensions": {
+        "grounding": "INCONCLUSIVE",
+        "factuality": "INCONCLUSIVE",
+        "protocol": "INCONCLUSIVE",
+        "temporal": "NOT_APPLICABLE",
+        "entity": "PASS",
+        "coverage": "INCONCLUSIVE",
+        "omission": "NOT_APPLICABLE",
+        "unsupported_assumption": "INCONCLUSIVE",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE_UNRESOLVED",
+        "factuality": "APPLICABLE_UNRESOLVED",
+        "protocol": "APPLICABLE_UNRESOLVED",
+        "temporal": "NOT_APPLICABLE",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE_UNRESOLVED",
+        "omission": "NOT_APPLICABLE",
+        "unsupported_assumption": "APPLICABLE_UNRESOLVED",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "case_id": "GG0-36",
+      "expected_dimensions": {
+        "grounding": "INCONCLUSIVE",
+        "factuality": "INCONCLUSIVE",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "INCONCLUSIVE",
+        "entity": "PASS",
+        "coverage": "INCONCLUSIVE",
+        "omission": "NOT_APPLICABLE",
+        "unsupported_assumption": "INCONCLUSIVE",
+        "cross_entity": "PASS",
+        "safety": "PASS",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      },
+      "applicability": {
+        "grounding": "APPLICABLE_UNRESOLVED",
+        "factuality": "APPLICABLE_UNRESOLVED",
+        "protocol": "NOT_APPLICABLE",
+        "temporal": "APPLICABLE_UNRESOLVED",
+        "entity": "APPLICABLE",
+        "coverage": "APPLICABLE_UNRESOLVED",
+        "omission": "NOT_APPLICABLE",
+        "unsupported_assumption": "APPLICABLE_UNRESOLVED",
+        "cross_entity": "APPLICABLE",
+        "safety": "APPLICABLE",
+        "partial_answer_allowed": "NOT_APPLICABLE"
+      }
+    }
+  ]
+}

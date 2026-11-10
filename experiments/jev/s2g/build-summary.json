@@ -1,0 +1,28 @@
+{
+  "checkpoint": "JEV-S2-G-A",
+  "status": "OFFLINE_ARTIFACTS_READY",
+  "capabilities": 54,
+  "modules": 16,
+  "evidence_entries": 54,
+  "category_counts": {
+    "APTA_PARA_EXPERIMENTO_DE_PRODUTO": 10,
+    "APTA_COM_GUARDA_DE_CODIGO": 6,
+    "SOMENTE_ASSISTIVA": 9,
+    "NAO_PROMOVER": 6,
+    "NAO_AVALIADA": 23
+  },
+  "taxonomy_counts": {
+    "OPERATIONAL_MATERIAL_ERROR": 8,
+    "SEMANTIC_FIELD_ERROR": 14,
+    "TAXONOMY_COMPATIBILITY_ISSUE": 12,
+    "APPLICABILITY_DISAGREEMENT": 10,
+    "LOW_IMPACT_LABEL_DIFFERENCE": 0,
+    "UNCERTAIN": 0
+  },
+  "network_calls": 0,
+  "jev_calls": 0,
+  "openai_calls": 0,
+  "credits": 0,
+  "historical_metrics_changed": false,
+  "product_changed": false
+}

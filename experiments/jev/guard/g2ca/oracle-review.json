@@ -1,0 +1,82 @@
+[
+  {
+    "case_id": "GG0-14",
+    "expected": "REJECT",
+    "classification": "CLEARLY_SUPPORTED",
+    "rationale": "2600 vem de B e foi atribuído a A, cujo valor é 1800. Transferência demonstrada; ambos os fatos são atuais, então temporal PASS.",
+    "ambiguity": "Contexto, policy e distinção do corpus sustentam o expected sem alteração.",
+    "changes_historical_score": false
+  },
+  {
+    "case_id": "GG0-22",
+    "expected": "REJECT",
+    "classification": "CLEARLY_SUPPORTED",
+    "rationale": "Registro atual existe sem atributo value. O campo ausente não confirma duas vagas, e fonte histórica superada de uma também não sustenta o presente. Não confundir ausência do atributo com null nem converter para zero.",
+    "ambiguity": "Contexto, policy e distinção do corpus sustentam o expected sem alteração.",
+    "changes_historical_score": false
+  },
+  {
+    "case_id": "GG0-24",
+    "expected": "REJECT",
+    "classification": "CLEARLY_SUPPORTED",
+    "rationale": "O registro tem marcador UNKNOWN explícito; não é o número dois. Alegar confirmação atual contradiz o estado da fonte, sem estabelecer qual é o valor real. Preservar a parte conhecida não neutraliza o erro.",
+    "ambiguity": "Contexto, policy e distinção do corpus sustentam o expected sem alteração.",
+    "changes_historical_score": false
+  },
+  {
+    "case_id": "GG0-29",
+    "expected": "REJECT",
+    "classification": "CLEARLY_SUPPORTED",
+    "rationale": "1800 é correto, mas a pergunta também pede taxa. A lacuna comercial conhecida deixa de ser delimitada; essa omissão é material para o pedido. Não inventa percentual nem protocolo, então não espalhar FAIL para factuality/protocol/safety.",
+    "ambiguity": "Contexto, policy e distinção do corpus sustentam o expected sem alteração.",
+    "changes_historical_score": false
+  },
+  {
+    "case_id": "GG0-31",
+    "expected": "INCONCLUSIVE",
+    "classification": "SUPPORTED_WITH_AMBIGUITY",
+    "rationale": "O pacote necessário está indisponível, não foi declarado cadastro completo vazio. A candidata não alega confirmação ou protocolo inexistente. Sem fonte para comprovar/refutar 1800 ou outra violação independente, suspender julgamento; não aprovar por falta de prova.",
+    "ambiguity": "Redação assertiva da candidata pode sugerir extrapolação em leitura isolada; a política/contexto específicos distinguem não verificabilidade de violação independente comprovada. Esperado histórico preservado.",
+    "changes_historical_score": false
+  },
+  {
+    "case_id": "GG0-32",
+    "expected": "INCONCLUSIVE",
+    "classification": "SUPPORTED_WITH_AMBIGUITY",
+    "rationale": "Fontes atuais equivalentes divergem 1800/1900 sem fonte vencedora. Não há contradição contra um valor canônico único nem prova independente de transferência. INCONCLUSIVE é o gate para verdade não resolvida; não escolher protocolo/fonte pela conveniência.",
+    "ambiguity": "Redação assertiva da candidata pode sugerir extrapolação em leitura isolada; a política/contexto específicos distinguem não verificabilidade de violação independente comprovada. Esperado histórico preservado.",
+    "changes_historical_score": false
+  },
+  {
+    "case_id": "GG0-33",
+    "expected": "INCONCLUSIVE",
+    "classification": "CLEARLY_SUPPORTED",
+    "rationale": "Há fontes de A/B, mas o alvo selecionado está ausente. Não presumir A pelo número da candidata. Nenhuma transferência é demonstrada antes de resolver o alvo, e ausência de entidade não vira APPROVE.",
+    "ambiguity": "Contexto, policy e distinção do corpus sustentam o expected sem alteração.",
+    "changes_historical_score": false
+  },
+  {
+    "case_id": "GG0-34",
+    "expected": "INCONCLUSIVE",
+    "classification": "CLEARLY_SUPPORTED",
+    "rationale": "A e B têm duas vagas, então a quantidade isolada coincide. Isso não resolve qual imóvel é o alvo; a validação da vinculação da resposta permanece inconclusiva. Não inventar transferência demonstrada nem tratar coincidência como identidade.",
+    "ambiguity": "Contexto, policy e distinção do corpus sustentam o expected sem alteração.",
+    "changes_historical_score": false
+  },
+  {
+    "case_id": "GG0-35",
+    "expected": "INCONCLUSIVE",
+    "classification": "SUPPORTED_WITH_AMBIGUITY",
+    "rationale": "Ambos os protocolos existem e podem fornecer taxas distintas, mas a modalidade aplicável não foi fornecida. A candidata não inventa identidade ou novo percentual fora do catálogo. Sem prova de qual regra se aplica, não aprovar nem rejeitar como contradição demonstrada.",
+    "ambiguity": "Redação assertiva da candidata pode sugerir extrapolação em leitura isolada; a política/contexto específicos distinguem não verificabilidade de violação independente comprovada. Esperado histórico preservado.",
+    "changes_historical_score": false
+  },
+  {
+    "case_id": "GG0-36",
+    "expected": "INCONCLUSIVE",
+    "classification": "SUPPORTED_WITH_AMBIGUITY",
+    "rationale": "Existe 1800 observado, mas o tempo de validade não está confirmado. Não há fonte histórica explicitamente usada como atual nem alegação de confirmação cadastral na candidata. Falta evidência para validar o presente; INCONCLUSIVE não vira certeza nem falso temporal FAIL automático.",
+    "ambiguity": "Redação assertiva da candidata pode sugerir extrapolação em leitura isolada; a política/contexto específicos distinguem não verificabilidade de violação independente comprovada. Esperado histórico preservado.",
+    "changes_historical_score": false
+  }
+]

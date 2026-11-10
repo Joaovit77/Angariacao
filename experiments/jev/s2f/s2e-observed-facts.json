@@ -1,0 +1,224 @@
+{
+  "checkpoint": "JEV-S2-E",
+  "source_run": "jev-s2e-semantic-1792255143175-41551ba6",
+  "source_summary_sha256": "afcbad5b628683fd999cc04adf92498fa8b2bd96b31dd59a6c91c3de6fc23eb7",
+  "transport_completed": 12,
+  "models": {
+    "requested": "jev-1.14.0",
+    "observed_count": 12
+  },
+  "structurally_valid": 10,
+  "invalid_probabilities": 2,
+  "defects": [
+    {
+      "stage_id": "E1_TEMPORAL/VALIDATION/R2",
+      "question_id": "partial_answer_allowed",
+      "category": "INVALID_PROBABILITIES",
+      "subcode": "PROBABILITY_SUM_MISMATCH",
+      "probabilities": {
+        "PASS": 0.01,
+        "FAIL": 0.05,
+        "INCONCLUSIVE": 0,
+        "NOT_APPLICABLE": 0.93
+      },
+      "choice": "NOT_APPLICABLE",
+      "max_option_ids": [
+        "NOT_APPLICABLE"
+      ],
+      "sum": 0.9900000000000001,
+      "sum_delta_from_1": -0.009999999999999898,
+      "raw_sha256": "381aa169475e350a2628de10df45771052d87b48415d4427b3c6d8010fc2fb9b"
+    },
+    {
+      "stage_id": "E2_ENTITY/VALIDATION/R1",
+      "question_id": "protocol",
+      "category": "INVALID_PROBABILITIES",
+      "subcode": "PROBABILITY_CHOICE_MISMATCH",
+      "probabilities": {
+        "PASS": 0.03,
+        "FAIL": 0.48,
+        "INCONCLUSIVE": 0.02,
+        "NOT_APPLICABLE": 0.47
+      },
+      "choice": "NOT_APPLICABLE",
+      "max_option_ids": [
+        "FAIL"
+      ],
+      "sum": 1,
+      "sum_delta_from_1": 0,
+      "raw_sha256": "123a3af86e82a7546561b03c7428923b03afaa2fdce811be4969ef66c0d8f825"
+    }
+  ],
+  "decision": {
+    "classification": "INCONCLUSIVO",
+    "action_accuracy": {
+      "numerator": 6,
+      "denominator": 6,
+      "value": 1
+    },
+    "completeness": {
+      "numerator": 0,
+      "denominator": 6,
+      "value": 0
+    },
+    "micro": {
+      "numerator": 48,
+      "denominator": 60,
+      "value": 0.8
+    },
+    "per_field": {
+      "action": {
+        "numerator": 6,
+        "denominator": 6,
+        "value": 1
+      },
+      "intent": {
+        "numerator": 6,
+        "denominator": 6,
+        "value": 1
+      },
+      "enough_context": {
+        "numerator": 6,
+        "denominator": 6,
+        "value": 1
+      },
+      "relevant_current_facts": {
+        "numerator": 6,
+        "denominator": 6,
+        "value": 1
+      },
+      "relevant_historical_facts": {
+        "numerator": 6,
+        "denominator": 6,
+        "value": 1
+      },
+      "missing_information": {
+        "numerator": 4,
+        "denominator": 6,
+        "value": 0.6666666666666666
+      },
+      "applicable_protocols": {
+        "numerator": 6,
+        "denominator": 6,
+        "value": 1
+      },
+      "prohibited_assumptions": {
+        "numerator": 0,
+        "denominator": 6,
+        "value": 0
+      },
+      "entity_resolution": {
+        "numerator": 6,
+        "denominator": 6,
+        "value": 1
+      },
+      "temporal_resolution": {
+        "numerator": 2,
+        "denominator": 6,
+        "value": 0.3333333333333333
+      }
+    }
+  },
+  "validation": {
+    "classification": "INCONCLUSIVO",
+    "valid_stages": 4,
+    "verdict_accuracy": {
+      "numerator": 4,
+      "denominator": 4,
+      "value": 1
+    },
+    "dimensions": {
+      "grounding": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1
+      },
+      "factuality": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1
+      },
+      "protocol": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1
+      },
+      "temporal": {
+        "numerator": 1,
+        "denominator": 4,
+        "value": 0.25
+      },
+      "entity": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1
+      },
+      "coverage": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1
+      },
+      "omission": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1
+      },
+      "unsupported_assumption": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1
+      },
+      "cross_entity": {
+        "numerator": 0,
+        "denominator": 4,
+        "value": 0
+      },
+      "safety": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1
+      },
+      "partial_answer_allowed": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1
+      }
+    },
+    "false_accept": {
+      "numerator": 0,
+      "denominator": 4,
+      "value": 0
+    },
+    "false_reject": {
+      "numerator": 0,
+      "denominator": 0,
+      "value": null
+    },
+    "false_reject_status": "NÃO TESTADO"
+  },
+  "confidence_priorities": [
+    {
+      "stage_id": "E2_ENTITY/VALIDATION/R2",
+      "question_id": "temporal",
+      "observed_choice": "FAIL",
+      "confidence": 0.93,
+      "expected": "PASS"
+    },
+    {
+      "stage_id": "E3_PARTIAL_INVENTION/DECISION/R1",
+      "question_id": "prohibited_INVENT_COMMERCIAL",
+      "observed_choice": "NO",
+      "confidence": 0.94,
+      "expected": "YES"
+    },
+    {
+      "stage_id": "E3_PARTIAL_INVENTION/DECISION/R2",
+      "question_id": "prohibited_INVENT_COMMERCIAL",
+      "observed_choice": "NO",
+      "confidence": 0.94,
+      "expected": "YES"
+    }
+  ],
+  "historical_s2b_cause": "NÃO DETERMINADA / NÃO RECUPERÁVEL",
+  "reinterpretation": false
+}
