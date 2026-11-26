@@ -3046,8 +3046,8 @@ nunca altera status nem gera observação artificial**. Métricas de inventário
 #### `api/investigador-imoveis` — possíveis correspondências na web
 
 O Investigador é uma superfície autenticada e sem persistência: recebe de 3 a 500 caracteres sobre
-um imóvel, planeja até três pesquisas determinísticas e progressivas e chama a Google Search API do
-RapidAPI sequencialmente, da mais restrita para a mais ampla: a referência exata (ou, sem ela, o
+um imóvel, planeja até três pesquisas determinísticas e progressivas e chama o Firecrawl Search
+(`POST https://api.firecrawl.dev/v2/search`, com `country: "BR"`, `location: "Brazil"`, `sources: [{ type: "web" }]` e sem `scrapeOptions`) sequencialmente, da mais restrita para a mais ampla: a referência exata (ou, sem ela, o
 texto completo); o texto sem detalhes restritivos (área, quartos, vagas, unidade, bloco, código,
 anúncio); e o mesmo núcleo sem o número do logradouro. Só há ampliação quando existe âncora explícita
 — logradouro com número ou condomínio/edifício rotulado — e, na terceira etapa, contexto além do nome
@@ -3055,10 +3055,10 @@ da rua; texto sem âncora gera uma única pesquisa. Etapas que repetem uma consu
 existem. Depois de cada resposta, o núcleo normaliza e classifica os candidatos; uma
 correspondência muito forte com ao menos duas evidências independentes e sem contradições encerra a
 fila, enquanto resultado inconclusivo avança até o teto de três. Referência isolada não interrompe
-as consultas seguintes. A chave `RAPIDAPI_KEY` existe somente em
-`lib/servidor/investigadorImoveis.ts`; o browser conhece apenas a rota interna e envia o Bearer da
-própria sessão. O host do provider é fixo (`google-search-api7.p.rapidapi.com`), com timeout
-individual de até 22 s, tratamento específico de 429 e no máximo dez resultados orgânicos por consulta.
+as consultas seguintes. A chave `FIRECRAWL_API_KEY` existe somente em
+`lib/servidor/investigadorImoveis.ts` (mesma chave do Radar); o browser conhece apenas a rota interna e envia o Bearer da
+própria sessão. O host do provider é fixo (`api.firecrawl.dev`), com timeout
+individual de até 22 s, tratamento específico de 429 e 402 e no máximo dez resultados web por consulta.
 A rota tem `maxDuration` de 60 s e encerra as buscas até 42 s após a entrada: orçamento total de
 52 s, dos quais 10 s são reservados para finalização e 8 s separam o orçamento do teto da plataforma.
 Cada consulta usa o menor prazo entre 22 s e o tempo restante até essa reserva; com menos de 3,5 s,
@@ -3077,11 +3077,13 @@ separadamente evidências favoráveis e contradições.
 
 Sobre o conjunto deduplicado, um gate de relevância determinístico retira só o ruído com evidência
 concreta, antes da regra de parada, da UI e da memória: endereço com número divergente (a mesma rua
-com outro número, ou outra rua nomeada sem que a procurada apareça), conteúdo sem nenhum sinal
-imobiliário e com marcador explícito de outro assunto, ou sem nenhum sinal imobiliário e sem nenhuma
-âncora da entrada (rua, empreendimento, referência). Referência, endereço ou empreendimento iguais
-sempre mantêm o resultado; ausência de dado nunca descarta. O gate não pontua, não reordena, não
-cria pesquisa além do plano e só expõe contagens e códigos no log.
+com outro número, ou outra rua nomeada sem que a procurada apareça), UF brasileira explicitamente
+divergente entre entrada e resultado (`localidade-divergente`), página genérica de busca/categoria
+de portal com contagem plural de imóveis ou ofertas no título (`listagem-generica`), conteúdo sem
+nenhum sinal imobiliário e com marcador explícito de outro assunto, ou sem nenhum sinal imobiliário
+e sem nenhuma âncora da entrada (rua, empreendimento, referência). Referência, endereço ou
+empreendimento iguais sempre mantêm o resultado; ausência de dado nunca descarta. O gate não pontua,
+não reordena, não cria pesquisa além do plano e só expõe contagens e códigos no log.
 
 Entre os mantidos, a ordem exibida é faixa → score → menos contradições → mais evidências → título
 → URL (esta só por determinismo). O score (versão `b3.1-v1`) soma pesos fixos sobre os sinais

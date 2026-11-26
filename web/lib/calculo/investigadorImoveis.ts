@@ -645,6 +645,12 @@ export type MotivoDescarteInvestigacao =
   /** Endereço com número diferente do procurado: a mesma rua com outro
       número, ou outra rua sem que a procurada apareça no resultado. */
   | "endereco-divergente"
+  /** Entrada e resultado declaram explicitamente UFs brasileiras
+      diferentes (ex.: SP × RS, PR × SP), sem sinal positivo de identidade. */
+  | "localidade-divergente"
+  /** Página genérica de busca/categoria de portal com contagem plural de
+      ofertas/imóveis no título, sem sinal positivo de identidade. */
+  | "listagem-generica"
   /** Nenhum sinal de imóvel e marcador explícito de outro assunto
       (música, vídeo, enciclopédia, biografia). */
   | "conteudo-nao-imobiliario"
@@ -744,8 +750,47 @@ function temSinalImobiliario(resultado: ResultadoWebInvestigacao, texto: string,
   return campoEstruturado || VOCABULARIO_IMOBILIARIO.test(texto) || URL_IMOBILIARIA.test(url);
 }
 
+const UFS_BRASIL = "AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO";
+const PADRAO_UF_EXPLICITA = new RegExp(
+  `(?:,\\s*|\\s+[-–/]\\s*|/|\\()(${UFS_BRASIL})(?=$|[\\s,.)|\\-–;:])`,
+  "g",
+);
+
+/** Extrai UF brasileira somente quando aparece em maiúsculas após separador
+    geográfico claro (", PR", "- RS", "/SP", "(PR)") e é única no texto. */
+function extrairUfExplicita(textoOriginal: string): string | null {
+  const encontradas: string[] = [];
+  for (const ocorrencia of textoOriginal.matchAll(PADRAO_UF_EXPLICITA)) {
+    const uf = ocorrencia[1];
+    const fim = (ocorrencia.index ?? 0) + ocorrencia[0].length;
+    if (uf === "AP" && /^\s*\d/.test(textoOriginal.slice(fim))) continue;
+    encontradas.push(uf);
+  }
+  return unico(encontradas);
+}
+
+const PADRAO_LISTAGEM_OFERTAS = /\b(\d{1,3}(?:\.\d{3})*|\d+)\s+(?:anuncios|ofertas|resultados)\b/g;
+const PADRAO_LISTAGEM_IMOVEIS = /\b(\d{1,3}(?:\.\d{3})*|\d+)\s+(?:imoveis|apartamentos|aptos|casas|sobrados|coberturas|kitnets|kitinetes|studios|terrenos|lotes|chacaras|salas|lojas|galpoes)\b(?:\s+(?:a venda|para alugar|para locacao|de aluguel|em)\b)?/g;
+
+function ehListagemGenericaNoTitulo(tituloOriginal: string): boolean {
+  const normalizado = chaveNormalizada(tituloOriginal);
+  for (const ocorrencia of normalizado.matchAll(PADRAO_LISTAGEM_OFERTAS)) {
+    const quantidade = Number(ocorrencia[1].replace(/\./g, ""));
+    if (Number.isFinite(quantidade) && quantidade >= 2) return true;
+  }
+  for (const ocorrencia of normalizado.matchAll(PADRAO_LISTAGEM_IMOVEIS)) {
+    const quantidade = Number(ocorrencia[1].replace(/\./g, ""));
+    const comVerboBusca = /\b(?:a venda|para alugar|para locacao|de aluguel|em)$/.test(ocorrencia[0]);
+    if (Number.isFinite(quantidade) && (quantidade >= 10 || (quantidade >= 2 && comVerboBusca))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function avaliarRelevancia(
   entrada: CamposImovelEncontrados,
+  ufEntrada: string | null,
   ancoras: string[],
   correspondencia: CorrespondenciaInvestigacao,
   sinais: SinaisCorrespondencia,
@@ -773,6 +818,22 @@ function avaliarRelevancia(
     }
   }
 
+  // Localidade: quando tanto a entrada quanto o resultado declaram
+  // explicitamente uma UF brasileira e elas divergem, trata-se de homônimo
+  // em outro estado (ex.: rua com mesmo nome em PR × SP ou SP × RS).
+  if (ufEntrada) {
+    const ufResultado = extrairUfExplicita(`${correspondencia.titulo} ${correspondencia.descricao}`);
+    if (ufResultado && ufResultado !== ufEntrada) {
+      return { relevancia: "irrelevante", motivo: "localidade-divergente" };
+    }
+  }
+
+  // Páginas agregadoras/categoria de portais ("1.200 apartamentos à venda
+  // em Londrina", "350 ofertas") sem sinal positivo de identidade.
+  if (ehListagemGenericaNoTitulo(correspondencia.titulo)) {
+    return { relevancia: "irrelevante", motivo: "listagem-generica" };
+  }
+
   if (!temSinalImobiliario(correspondencia, texto, url)) {
     if (MARCADOR_OUTRO_ASSUNTO.test(texto)) {
       return { relevancia: "irrelevante", motivo: "conteudo-nao-imobiliario" };
@@ -794,6 +855,7 @@ export function triarCorrespondenciasInvestigacao(
   resultados: ResultadoWebInvestigacao[],
 ): TriagemInvestigacao {
   const { entrada, condominioInformado, comparacoes } = compararComEntrada(consultaOriginal, resultados);
+  const ufEntrada = extrairUfExplicita(consultaOriginal);
   // O que identifica o imóvel na entrada, como expressão inteira. Sem
   // nenhuma âncora (ex.: "Casa 3 quartos Londrina") a regra de relação
   // com a entrada não se aplica.
@@ -806,7 +868,7 @@ export function triarCorrespondenciasInvestigacao(
   const itens = comparacoes
     .map(({ correspondencia, sinais }) => ({
       correspondencia,
-      ...avaliarRelevancia(entrada, ancoras, correspondencia, sinais),
+      ...avaliarRelevancia(entrada, ufEntrada, ancoras, correspondencia, sinais),
       sinais,
     }))
     .sort((a, b) => ordemDasCorrespondencias(a.correspondencia, b.correspondencia));

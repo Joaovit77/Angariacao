@@ -13,19 +13,24 @@ const mocks = vi.hoisted(() => ({ getSupabase: vi.fn() }));
 vi.mock("@/lib/persistencia/supabase", () => ({ getSupabase: mocks.getSupabase }));
 import { investigarImovel } from "@/lib/investigadorImoveis";
 
-const chaveAnterior = process.env.RAPIDAPI_KEY;
+const chaveAnterior = process.env.FIRECRAWL_API_KEY;
 const consultas = ["busca um", "busca dois", "busca tres"];
 
 function resposta(indice: number): Response {
-  return new Response(JSON.stringify({ organic_results: [{
-    title: `Imóvel genérico ${indice}`,
-    description: "Anúncio sem identidade suficiente.",
-    link: `https://portal.test/anuncio/${indice}`,
-  }] }), { status: 200 });
+  return new Response(JSON.stringify({
+    success: true,
+    data: {
+      web: [{
+        title: `Imóvel genérico ${indice}`,
+        description: "Anúncio sem identidade suficiente.",
+        url: `https://portal.test/anuncio/${indice}`,
+      }],
+    },
+  }), { status: 200 });
 }
 
 beforeEach(() => {
-  process.env.RAPIDAPI_KEY = "chave-local-simulada";
+  process.env.FIRECRAWL_API_KEY = "chave-local-simulada";
   mocks.getSupabase.mockReturnValue({
     auth: { getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: "token-local" } } }) },
   });
@@ -36,8 +41,8 @@ afterEach(() => {
   mocks.getSupabase.mockReset();
 });
 afterAll(() => {
-  if (chaveAnterior === undefined) delete process.env.RAPIDAPI_KEY;
-  else process.env.RAPIDAPI_KEY = chaveAnterior;
+  if (chaveAnterior === undefined) delete process.env.FIRECRAWL_API_KEY;
+  else process.env.FIRECRAWL_API_KEY = chaveAnterior;
 });
 
 describe("orçamento global das consultas", () => {

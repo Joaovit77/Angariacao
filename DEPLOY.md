@@ -750,28 +750,22 @@ OPENAI_EMBEDDING_MODEL=text-embedding-3-small
   chave por chamada avulsa durante testes automatizados, em CI, no Codex ou em Preview. Quando uma
   validação real for indispensável, siga o smoke local manual de `docs/IA-AMBIENTES.md`.
 
-### RapidAPI (Investigador de Imóveis) — opcional
+### Firecrawl Search (Investigador de Imóveis) — opcional
 
-O Investigador pesquisa possíveis correspondências na web pela Google Search API do RapidAPI
-(`google-search-api7.p.rapidapi.com`). Configure uma única chave, sempre como segredo de servidor:
+O Investigador pesquisa possíveis correspondências na web pelo endpoint **Firecrawl Search**
+(`POST https://api.firecrawl.dev/v2/search`), reutilizando a mesma chave de servidor já usada no Radar:
 
 ```
-RAPIDAPI_KEY=
+FIRECRAWL_API_KEY=fc-...
 ```
 
-- A assinatura e a franquia são geridas no painel do RapidAPI. Cada investigação faz até três
-  pesquisas sequenciais e encerra antes quando encontra ao menos duas evidências independentes
-  suficientes, sem contradições.
-  Vale configurar limite rígido de uso no plano.
-- **Nunca** crie `NEXT_PUBLIC_RAPIDAPI_KEY`: qualquer valor com esse prefixo entra no bundle do
-  navegador. A chave é lida somente por `web/lib/servidor/investigadorImoveis.ts`.
-- O endpoint usado é `GET /search`, com os parâmetros documentados `keyword` e `device=Desktop`,
-  e os headers `x-rapidapi-key` e `x-rapidapi-host`.
-- Em 27/08/2026, a página pública do provider informava 500 chamadas/mês no Basic e 1.000/hora;
-  a resposta real da conta local confirmou `x-ratelimit-requests-limit: 500` e expôs os headers
-  de restante/reset. O painel e os headers da assinatura ativa são a fonte operacional, pois planos
-  antigos podem permanecer diferentes. Em 429, confira `Retry-After` e os headers
-  `x-ratelimit-*`; não presuma janela por segundo ou minuto quando o provider não a publicar.
+- Cada investigação faz até três pesquisas sequenciais (`limit: 10`, `sources: [{ type: "web" }]`,
+  `country: "BR"`, `location: "Brazil"`, sem `scrapeOptions`, custando 2 créditos por consulta) e
+  encerra antes quando encontra ao menos duas evidências independentes suficientes, sem contradições.
+- **Nunca** crie `NEXT_PUBLIC_FIRECRAWL_API_KEY`: qualquer valor com esse prefixo entra no bundle do
+  navegador. A chave é lida somente no servidor (`web/lib/servidor/investigadorImoveis.ts`).
+- Respostas `429` (rate limit) e `402` (créditos esgotados) encerram a fila preservando resultados
+  anteriores e informam limite atingido ao usuário.
 - **Se você não configurar:** o restante do Angario continua funcionando; somente a página do
   Investigador informa que o serviço ainda não está configurado.
 

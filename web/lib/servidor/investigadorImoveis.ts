@@ -16,25 +16,23 @@ import {
   type ResumoEtapaPesquisa,
 } from "@/lib/servidor/investigadorObservabilidade";
 
-const HOST_RAPIDAPI = "google-search-api7.p.rapidapi.com";
-const URL_BUSCA_RAPIDAPI = `https://${HOST_RAPIDAPI}/search`;
+const HOST_FIRECRAWL = "api.firecrawl.dev";
+const URL_BUSCA_FIRECRAWL = `https://${HOST_FIRECRAWL}/v2/search`;
 const TIMEOUT_BUSCA_MS = 22_000;
-const TIMEOUT_LINK_MS = 3_500;
 const MAXIMO_RESULTADOS_POR_BUSCA = 10;
-const MINIMO_TEMPO_CONSULTA_MS = TIMEOUT_LINK_MS;
+const MINIMO_TEMPO_CONSULTA_MS = 3_500;
 
-interface ResultadoOrganicoRapidApi {
+interface ResultadoWebFirecrawl {
   title?: unknown;
   description?: unknown;
-  desc?: unknown;
-  link?: unknown;
+  markdown?: unknown;
   url?: unknown;
-  displayedLink?: unknown;
+  link?: unknown;
 }
 
-interface RespostaRapidApi {
-  organic_results?: unknown;
-  data?: { organic_results?: unknown };
+interface RespostaFirecrawlSearch {
+  success?: unknown;
+  data?: unknown;
 }
 
 /** Contagens da fila no momento em que a busca desistiu; só números, para
@@ -78,12 +76,12 @@ export interface ResultadoBuscaWebInvestigacao {
 
 const HEADERS_RATE_LIMIT_SEGUROS = [
   "retry-after",
+  "x-ratelimit-limit",
+  "x-ratelimit-remaining",
+  "x-ratelimit-reset",
   "x-ratelimit-requests-limit",
   "x-ratelimit-requests-remaining",
   "x-ratelimit-requests-reset",
-  "x-rate-limit-rapid-free-plans-hard-limit-limit",
-  "x-rate-limit-rapid-free-plans-hard-limit-remaining",
-  "x-rate-limit-rapid-free-plans-hard-limit-reset",
 ] as const;
 
 function diagnosticoHeaders(resposta: Response): Record<string, string> {
@@ -102,45 +100,32 @@ function texto(valor: unknown, limite: number): string {
   return typeof valor === "string" ? valor.replace(/\s+/g, " ").trim().slice(0, limite) : "";
 }
 
-function dominioExibido(valor: unknown): string {
-  const exibido = texto(valor, 300).replace(/^https?:\/\//i, "").split(/[ ›/]/)[0];
-  return exibido.toLowerCase().replace(/^www\./, "");
-}
-
-function dominioDaUrl(valor: string, fallback = ""): string {
+function dominioDaUrl(valor: string): string {
   try {
     return new URL(valor).hostname.toLowerCase().replace(/^www\./, "");
   } catch {
-    return fallback;
+    return "";
   }
 }
 
-async function resolverUrlOriginal(link: string, fetcher: typeof fetch, sinalConsulta: AbortSignal): Promise<string> {
-  if (!link.startsWith("/goto?")) return /^https?:\/\//i.test(link) ? link : "";
-  const redirecionamento = `https://www.google.com${link}`;
-  try {
-    const resposta = await fetcher(redirecionamento, {
-      method: "GET",
-      redirect: "manual",
-      signal: AbortSignal.any([sinalConsulta, AbortSignal.timeout(TIMEOUT_LINK_MS)]),
-      cache: "no-store",
-    });
-    const destino = resposta.headers.get("location");
-    if (destino && /^https?:\/\//i.test(destino)) return destino;
-  } catch {
-    /* O redirecionamento do Google continua clicável como fallback. */
+function urlHttpSegura(valor: string): string {
+  return /^https?:\/\//i.test(valor) ? valor : "";
+}
+
+/** Lista bruta como veio do Firecrawl `/v2/search`, ou null quando o corpo
+    não tem `data.web` (ou `data` array) utilizável ou declara `success: false`. */
+function listaWebBruta(corpo: RespostaFirecrawlSearch | null): ResultadoWebFirecrawl[] | null {
+  if (!corpo || typeof corpo !== "object" || Array.isArray(corpo)) return null;
+  if (corpo.success === false) return null;
+  if (Array.isArray(corpo.data)) return corpo.data as ResultadoWebFirecrawl[];
+  if (corpo.data && typeof corpo.data === "object" && !Array.isArray(corpo.data)) {
+    const web = (corpo.data as { web?: unknown }).web;
+    if (Array.isArray(web)) return web as ResultadoWebFirecrawl[];
   }
-  return redirecionamento;
+  return null;
 }
 
-/** Lista bruta como veio, ou null quando o corpo não tem `organic_results`
-    utilizável (JSON inválido, campo ausente ou de outro tipo). */
-function listaOrganicaBruta(corpo: RespostaRapidApi | null): ResultadoOrganicoRapidApi[] | null {
-  const valor = corpo?.organic_results ?? corpo?.data?.organic_results;
-  return Array.isArray(valor) ? valor as ResultadoOrganicoRapidApi[] : null;
-}
-
-async function buscarConsultaNoGoogle(
+async function buscarConsultaNoFirecrawl(
   consulta: string,
   indiceConsulta: number,
   apiKey: string,
@@ -148,22 +133,25 @@ async function buscarConsultaNoGoogle(
   execucao: string | null,
   timeoutMs: number,
 ): Promise<ResultadoWebInvestigacao[]> {
-  const url = new URL(URL_BUSCA_RAPIDAPI);
-  url.searchParams.set("keyword", consulta);
-  url.searchParams.set("device", "Desktop");
-
   const inicio = performance.now();
   const sinalConsulta = AbortSignal.timeout(timeoutMs);
   const prazoLimitado = timeoutMs < TIMEOUT_BUSCA_MS;
   let resposta: Response;
   try {
-    resposta = await fetcher(url, {
-      method: "GET",
+    resposta = await fetcher(URL_BUSCA_FIRECRAWL, {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-rapidapi-key": apiKey,
-        "x-rapidapi-host": HOST_RAPIDAPI,
+        Authorization: `Bearer ${apiKey}`,
       },
+      body: JSON.stringify({
+        query: consulta,
+        limit: MAXIMO_RESULTADOS_POR_BUSCA,
+        sources: [{ type: "web" }],
+        country: "BR",
+        location: "Brazil",
+        timeout: timeoutMs,
+      }),
       signal: sinalConsulta,
       cache: "no-store",
     });
@@ -181,8 +169,8 @@ async function buscarConsultaNoGoogle(
     });
     throw new BuscaWebIndisponivel("O provider não respondeu.", "indisponivel");
   }
-  if (resposta.status === 429) {
-    const retryAfterSegundos = retryAfterEmSegundos(resposta);
+  if (resposta.status === 429 || resposta.status === 402) {
+    const retryAfterSegundos = resposta.status === 429 ? retryAfterEmSegundos(resposta) : undefined;
     registrarFalhaProvider({
       execucao,
       indiceConsulta,
@@ -206,7 +194,7 @@ async function buscarConsultaNoGoogle(
     });
     throw new BuscaWebIndisponivel(`Provider respondeu ${resposta.status}.`, "indisponivel");
   }
-  const corpo = await resposta.json().catch(() => null) as RespostaRapidApi | null;
+  const corpo = await resposta.json().catch(() => null) as RespostaFirecrawlSearch | null;
   if (sinalConsulta.aborted) {
     registrarFalhaProvider({
       execucao, indiceConsulta, duracaoMs: performance.now() - inicio,
@@ -216,7 +204,7 @@ async function buscarConsultaNoGoogle(
     throw new BuscaWebIndisponivel("A pesquisa excedeu o tempo disponível.", "indisponivel");
   }
   const duracaoMs = performance.now() - inicio;
-  const lista = listaOrganicaBruta(corpo);
+  const lista = listaWebBruta(corpo);
   if (lista === null) {
     // 200 sem lista utilizável. O comportamento entregue continua o mesmo
     // (zero resultados, sem contar falha); só deixa de ser silencioso.
@@ -238,27 +226,27 @@ async function buscarConsultaNoGoogle(
       resultadosBrutos: lista.length,
     });
   }
-  const organicos = (lista ?? []).slice(0, MAXIMO_RESULTADOS_POR_BUSCA);
+  const web = (lista ?? []).slice(0, MAXIMO_RESULTADOS_POR_BUSCA);
 
-  return Promise.all(organicos.map(async (item) => {
-    const titulo = texto(item.title, 300);
-    const descricao = texto(item.description ?? item.desc, 1_000);
-    const linkRecebido = texto(item.link ?? item.url, 2_000);
-    const urlOriginal = linkRecebido ? await resolverUrlOriginal(linkRecebido, fetcher, sinalConsulta) : "";
-    const dominioFallback = dominioExibido(item.displayedLink);
-    const campos = extrairCamposInvestigacao(`${titulo} ${descricao}`);
-    return {
-      titulo,
-      url: urlOriginal,
-      dominio: dominioDaUrl(urlOriginal, dominioFallback),
-      descricao,
-      consultas: [consulta],
-      ...campos,
-    };
-  })).then((itens) => itens.filter((item) => item.titulo && item.url && item.dominio));
+  return web
+    .map((item) => {
+      const titulo = texto(item.title, 300);
+      const descricao = texto(item.description ?? item.markdown, 1_000);
+      const urlOriginal = urlHttpSegura(texto(item.url ?? item.link, 2_000));
+      const campos = extrairCamposInvestigacao(`${titulo} ${descricao}`);
+      return {
+        titulo,
+        url: urlOriginal,
+        dominio: dominioDaUrl(urlOriginal),
+        descricao,
+        consultas: [consulta],
+        ...campos,
+      };
+    })
+    .filter((item) => item.titulo && item.url && item.dominio);
 }
 
-/** Fronteira interna do Investigador. Nenhum componente conhece RapidAPI. */
+/** Fronteira interna do Investigador. Nenhum componente conhece o Firecrawl. */
 export interface OpcoesBuscaWebInvestigacao {
   /** Id da execução gerado pela rota; amarra todas as linhas de log. */
   execucao?: string;
@@ -277,9 +265,9 @@ export async function buscarImovelNaWeb(
 ): Promise<ResultadoBuscaWebInvestigacao> {
   const execucao = opcoes.execucao ?? null;
   const agoraMs = opcoes.agoraMs ?? (() => performance.now());
-  const apiKey = process.env.RAPIDAPI_KEY?.trim();
+  const apiKey = process.env.FIRECRAWL_API_KEY?.trim();
   if (!apiKey) {
-    throw new BuscaWebIndisponivel("RAPIDAPI_KEY não configurada.", "configuracao");
+    throw new BuscaWebIndisponivel("FIRECRAWL_API_KEY não configurada.", "configuracao");
   }
 
   const fila = consultas.slice(0, MAXIMO_BUSCAS_POR_INVESTIGACAO);
@@ -317,7 +305,7 @@ export async function buscarImovelNaWeb(
     let daEtapa: ResultadoWebInvestigacao[] = [];
     let falhou = false;
     try {
-      daEtapa = await buscarConsultaNoGoogle(consulta, indice + 1, apiKey, fetcher, execucao, timeoutMs);
+      daEtapa = await buscarConsultaNoFirecrawl(consulta, indice + 1, apiKey, fetcher, execucao, timeoutMs);
       resultados.push(...daEtapa);
     } catch (erro) {
       falhas += 1;

@@ -10,16 +10,17 @@ const rota = readFileSync(join(raiz, "app/api/investigador-imoveis/route.ts"), "
 
 describe("segurança estrutural do Investigador", () => {
   it("mantém a chave exclusivamente na fronteira de servidor", () => {
-    expect(servidor).toContain("process.env.RAPIDAPI_KEY");
+    expect(servidor).toContain("process.env.FIRECRAWL_API_KEY");
+    expect(`${servidor}\n${cliente}\n${componente}`).not.toContain("NEXT_PUBLIC_FIRECRAWL_API_KEY");
     expect(`${servidor}\n${cliente}\n${componente}`).not.toContain("NEXT_PUBLIC_RAPIDAPI_KEY");
-    expect(cliente).not.toContain("RAPIDAPI_KEY");
-    expect(componente).not.toContain("RAPIDAPI_KEY");
+    expect(cliente).not.toContain("FIRECRAWL_API_KEY");
+    expect(componente).not.toContain("FIRECRAWL_API_KEY");
   });
 
   it("fixa o host externo no servidor e limita as pesquisas", () => {
-    expect(servidor).toContain('const HOST_RAPIDAPI = "google-search-api7.p.rapidapi.com"');
-    expect(cliente).not.toContain("rapidapi.com");
-    expect(componente).not.toContain("rapidapi.com");
+    expect(servidor).toContain('const HOST_FIRECRAWL = "api.firecrawl.dev"');
+    expect(cliente).not.toContain("firecrawl.dev");
+    expect(componente).not.toContain("firecrawl.dev");
     expect(rota).toContain("investigacoesEmAndamento");
     expect(rota).toContain("status: 409");
   });

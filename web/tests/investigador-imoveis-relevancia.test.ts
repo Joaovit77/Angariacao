@@ -191,6 +191,42 @@ describe("casos obrigatórios do gate", () => {
       motivosDescarte: { "conteudo-nao-imobiliario": 1 },
     });
   });
+
+  describe("M. localidade (UF) explicitamente divergente", () => {
+    it("entrada em PR e resultado em SP ou RS sem sinal positivo de identidade: descartado", () => {
+      expect(triar("Rua Michigan, 610, Londrina, PR", "Casa na Rua Michigan, São Paulo - SP", "3 quartos."))
+        .toMatchObject({ relevancia: "irrelevante", motivo: "localidade-divergente" });
+      expect(triar("Rua Michigan, 610, Londrina/PR", "Casa na Rua Michigan - Porto Alegre (RS)", "3 quartos."))
+        .toMatchObject({ relevancia: "irrelevante", motivo: "localidade-divergente" });
+    });
+
+    it("mesma UF, ausência de UF ou sigla de apartamento (AP 52) não descartam por engano", () => {
+      expect(triar("Rua Michigan, 610, Londrina, PR", "Casa na Rua Michigan - Londrina/PR", "3 quartos."))
+        .toMatchObject({ relevancia: "inconclusivo", motivo: null });
+      expect(triar("Rua Michigan, 610, Londrina", "Casa na Rua Michigan, São Paulo - SP", "3 quartos."))
+        .toMatchObject({ relevancia: "inconclusivo", motivo: null });
+      expect(triar("Rua Michigan, 610, AP 52, Londrina, PR", "Apartamento na Rua Michigan, AP 101, Londrina, PR"))
+        .toMatchObject({ relevancia: "inconclusivo", motivo: null });
+    });
+  });
+
+  describe("N. página genérica de listagem/categoria de portal", () => {
+    it("título com contagem plural de imóveis ou ofertas sem identidade positiva: descartado", () => {
+      expect(triar(MICHIGAN, "1.245 apartamentos à venda em Londrina - ZAP Imóveis", "Veja opções."))
+        .toMatchObject({ relevancia: "irrelevante", motivo: "listagem-generica" });
+      expect(triar(MICHIGAN, "Imóveis à venda em Londrina - 482 ofertas", "Chaves na Mão."))
+        .toMatchObject({ relevancia: "irrelevante", motivo: "listagem-generica" });
+      expect(triar(MICHIGAN, "18 casas para alugar no Jardim Presidente", "Confira."))
+        .toMatchObject({ relevancia: "irrelevante", motivo: "listagem-generica" });
+    });
+
+    it("imóvel individual com 2 casas no terreno ou endereço idêntico não é descartado", () => {
+      expect(triar(MICHIGAN, "Terreno com 2 casas no Jardim Presidente", "Ótima oportunidade."))
+        .toMatchObject({ relevancia: "inconclusivo", motivo: null });
+      expect(triar(MICHIGAN, "Condomínio com 20 casas na Rua Michigan, 610", "3 quartos."))
+        .toMatchObject({ relevancia: "relevante", motivo: null });
+    });
+  });
 });
 
 describe("o gate só retira: não mexe na análise nem na regra de parada", () => {
@@ -265,16 +301,16 @@ describe("simulação antes × depois nas fixtures", () => {
       {
         nome: "Pipeline (referência + endereço + edifício)",
         brutos: 7, unicos: 7, exibidosAntes: 7,
-        analisados: 7, mantidos: 5, relevantes: 2, inconclusivos: 3, descartados: 2,
-        motivosDescarte: { "endereco-divergente": 1, "conteudo-nao-imobiliario": 1 },
-        confiancaMantidos: ["muito-forte", "muito-forte", "possivel", "indicio", "indicio"],
+        analisados: 7, mantidos: 4, relevantes: 2, inconclusivos: 2, descartados: 3,
+        motivosDescarte: { "endereco-divergente": 1, "localidade-divergente": 1, "conteudo-nao-imobiliario": 1 },
+        confiancaMantidos: ["muito-forte", "muito-forte", "possivel", "indicio"],
       },
       {
         nome: "Radar (endereço + características + anúncio)",
         brutos: 7, unicos: 7, exibidosAntes: 7,
-        analisados: 7, mantidos: 4, relevantes: 1, inconclusivos: 3, descartados: 3,
-        motivosDescarte: { "conteudo-nao-imobiliario": 3 },
-        confiancaMantidos: ["muito-forte", "indicio", "indicio", "indicio"],
+        analisados: 7, mantidos: 3, relevantes: 1, inconclusivos: 2, descartados: 4,
+        motivosDescarte: { "conteudo-nao-imobiliario": 3, "localidade-divergente": 1 },
+        confiancaMantidos: ["muito-forte", "indicio", "indicio"],
       },
       {
         nome: "Garimpo (rua com número, sem detalhes)",
@@ -291,32 +327,32 @@ describe("simulação antes × depois nas fixtures", () => {
    Fila (B1 + A2) com o gate: ruído não encerra a fila, e o gate não
    cria pesquisa além do plano.
    ------------------------------------------------------------------ */
-const chaveAnterior = process.env.RAPIDAPI_KEY;
+const chaveAnterior = process.env.FIRECRAWL_API_KEY;
 
 const RUIDO = [
-  { title: "Oscar Freire - Ao Vivo (Clipe Oficial)", description: "Ouça a música.", link: "https://video.test/v/1" },
-  { title: "Oscar Freire (médico) – Wikipédia", description: "Nasceu em Salvador.", link: "https://enciclopedia.test/of" },
+  { title: "Oscar Freire - Ao Vivo (Clipe Oficial)", description: "Ouça a música.", url: "https://video.test/v/1" },
+  { title: "Oscar Freire (médico) – Wikipédia", description: "Nasceu em Salvador.", url: "https://enciclopedia.test/of" },
 ];
 const CERTO = {
   title: "Apartamento 2 quartos Rua Oscar Freire, 900 - Jardim Paulista",
   description: "75 m², 1 vaga.",
-  link: "https://portal.test/anuncio/of900",
+  url: "https://portal.test/anuncio/of900",
 };
 
 function resposta(organicos: unknown[]): Response {
-  return new Response(JSON.stringify({ organic_results: organicos }), { status: 200 });
+  return new Response(JSON.stringify({ success: true, data: { web: organicos } }), { status: 200 });
 }
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  process.env.RAPIDAPI_KEY = "chave-local-simulada";
+  process.env.FIRECRAWL_API_KEY = "chave-local-simulada";
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
   vi.spyOn(console, "info").mockImplementation(() => undefined);
 });
 afterEach(() => vi.unstubAllGlobals());
 afterAll(() => {
-  if (chaveAnterior === undefined) delete process.env.RAPIDAPI_KEY;
-  else process.env.RAPIDAPI_KEY = chaveAnterior;
+  if (chaveAnterior === undefined) delete process.env.FIRECRAWL_API_KEY;
+  else process.env.FIRECRAWL_API_KEY = chaveAnterior;
 });
 
 describe("fila progressiva com o gate", () => {

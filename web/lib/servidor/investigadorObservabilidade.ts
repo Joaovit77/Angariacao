@@ -17,7 +17,7 @@
 import type { ResumoPontuacaoInvestigacao } from "@/lib/calculo/investigadorImoveis";
 import type { ResumoContextoConfirmado } from "@/lib/calculo/contextoConfirmadoInvestigador";
 
-export const PROVIDER_INVESTIGADOR = "rapidapi";
+export const PROVIDER_INVESTIGADOR = "firecrawl";
 export const OPERACAO_PESQUISAR_IMOVEL = "pesquisar_imovel";
 
 /** Como a chamada ao provider terminou mal. `timeout-provider` é o teto

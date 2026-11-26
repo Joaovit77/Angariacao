@@ -230,16 +230,21 @@ async function executarRota(linhas: LinhaBanco[], comImovel = true) {
 }
 
 describe("B3.2a — barreira depois da persistência real da rota", () => {
-  const anterior = process.env.RAPIDAPI_KEY;
+  const anterior = process.env.FIRECRAWL_API_KEY;
   let info: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    vi.stubEnv("RAPIDAPI_KEY", "chave-simulada");
+    vi.stubEnv("FIRECRAWL_API_KEY", "chave-simulada");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://projeto.supabase.co");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-simulada");
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ organic_results: [
-      { title: "Apartamento na Rua Michigan, 610, 3 quartos", description: "Rua Michigan, 610, 3 quartos", link: "https://portal.test/imovel" },
-    ] }), { status: 200 })));
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      success: true,
+      data: {
+        web: [
+          { title: "Apartamento na Rua Michigan, 610, 3 quartos", description: "Rua Michigan, 610, 3 quartos", url: "https://portal.test/imovel" },
+        ],
+      },
+    }), { status: 200 })));
     info = vi.spyOn(console, "info").mockImplementation(() => undefined);
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
   });
@@ -247,7 +252,7 @@ describe("B3.2a — barreira depois da persistência real da rota", () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
-    if (anterior === undefined) delete process.env.RAPIDAPI_KEY;
+    if (anterior === undefined) delete process.env.FIRECRAWL_API_KEY;
   });
 
   it("sem contexto, hipótese apenas e rejeição apenas mantêm a resposta sem metadado", async () => {

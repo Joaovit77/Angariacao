@@ -22,7 +22,7 @@ vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.createClient }));
 
 import { POST } from "@/app/api/investigador-imoveis/route";
 
-const chaveAnterior = process.env.RAPIDAPI_KEY;
+const chaveAnterior = process.env.FIRECRAWL_API_KEY;
 
 const PIPELINE_BELA_CINTRA = "Rua Bela Cintra, 986, unidade 52, bloco A, Consolação, São Paulo, SP, "
   + "Edifício Bela Vista, Apartamento, 2 quartos, 1 banheiro, 1 vaga, referência 01860.001";
@@ -36,7 +36,7 @@ const CONSULTA_COM_EVIDENCIA = "Ed. Vivere Palhano, 79 m², 3 quartos, Gleba Pal
 const ORGANICO_COM_EVIDENCIA = {
   title: "Ed. Vivere Palhano 79 m²",
   description: "Ed. Vivere Palhano com 79 m² e 3 quartos.",
-  link: "https://imobiliaria.test/imovel/vivere",
+  url: "https://imobiliaria.test/imovel/vivere",
 };
 
 function organicoGenerico(indice: number) {
@@ -44,28 +44,32 @@ function organicoGenerico(indice: number) {
   return {
     title: `Imóvel genérico ${indice} ${textos[indice % 4]}`,
     description: `Anúncio ${indice} sem identidade, ${textos[indice % 4]}.`,
-    link: `https://portal.test/anuncio/${indice}`,
+    url: `https://portal.test/anuncio/${indice}`,
   };
 }
 
 function resposta(organicos: unknown[]): Response {
-  return new Response(JSON.stringify({ organic_results: organicos }), { status: 200 });
+  return new Response(JSON.stringify({ success: true, data: { web: organicos } }), { status: 200 });
 }
 
-function palavrasDaConsulta(consulta: string) {
-  return new URL(consulta).searchParams.get("keyword");
+function palavrasDaConsulta(_url: unknown, init?: RequestInit) {
+  try {
+    return (JSON.parse(String(init?.body ?? "{}")) as { query?: string }).query ?? null;
+  } catch {
+    return null;
+  }
 }
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  process.env.RAPIDAPI_KEY = "chave-local-simulada";
+  process.env.FIRECRAWL_API_KEY = "chave-local-simulada";
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
   vi.spyOn(console, "info").mockImplementation(() => undefined);
 });
 afterEach(() => vi.unstubAllGlobals());
 afterAll(() => {
-  if (chaveAnterior === undefined) delete process.env.RAPIDAPI_KEY;
-  else process.env.RAPIDAPI_KEY = chaveAnterior;
+  if (chaveAnterior === undefined) delete process.env.FIRECRAWL_API_KEY;
+  else process.env.FIRECRAWL_API_KEY = chaveAnterior;
 });
 
 describe("planejarPesquisasInvestigacao: plano progressivo e determinístico", () => {
@@ -213,7 +217,7 @@ describe("fila progressiva: quantas chamadas e por quê", () => {
       .mockResolvedValueOnce(resposta([ORGANICO_COM_EVIDENCIA]));
     const busca = await buscarImovelNaWeb(CONSULTA_COM_EVIDENCIA, fila, fetcher);
     expect(fetcher).toHaveBeenCalledTimes(2);
-    expect(fetcher.mock.calls.map(([url]) => palavrasDaConsulta(String(url)))).toEqual(["etapa 1", "etapa 2"]);
+    expect(fetcher.mock.calls.map(([url, init]) => palavrasDaConsulta(url, init as RequestInit))).toEqual(["etapa 1", "etapa 2"]);
     expect(busca.motivoParada).toBe("evidencia-suficiente");
     expect(busca.etapas.map((etapa) => [etapa.resultados, etapa.novos])).toEqual([[0, 0], [1, 1]]);
   });
@@ -306,7 +310,7 @@ describe("fila progressiva: quantas chamadas e por quê", () => {
   it("caso F — o mesmo anúncio em duas etapas conta como novo só uma vez", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(resposta([organicoGenerico(1)]))
-      .mockResolvedValueOnce(resposta([{ ...organicoGenerico(1), link: "https://www.portal.test/anuncio/1/?utm_source=google" }, organicoGenerico(2)]));
+      .mockResolvedValueOnce(resposta([{ ...organicoGenerico(1), url: "https://www.portal.test/anuncio/1/?utm_source=google" }, organicoGenerico(2)]));
     const busca = await buscarImovelNaWeb(CONSULTA_COM_EVIDENCIA, fila.slice(0, 2), fetcher);
     expect(busca.etapas.map((etapa) => [etapa.resultados, etapa.novos])).toEqual([[1, 1], [2, 1]]);
   });
@@ -363,7 +367,7 @@ describe("rota POST com pesquisas progressivas", () => {
 
     const eventos = await eventosDe(await POST(requisicao(RADAR_OSCAR_FREIRE)));
     const plano = planejarPesquisasInvestigacao(RADAR_OSCAR_FREIRE).map((item) => item.consulta);
-    expect(fetcher.mock.calls.map(([url]) => palavrasDaConsulta(String(url)))).toEqual(plano);
+    expect(fetcher.mock.calls.map(([url, init]) => palavrasDaConsulta(url, init as RequestInit))).toEqual(plano);
     const final = eventos.at(-1);
     expect(final.tipo).toBe("resultado");
     expect(final.dados.consultas).toEqual(plano);
@@ -398,7 +402,7 @@ describe("rota POST com pesquisas progressivas", () => {
 
     const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos Londrina")));
     expect(fetcher).toHaveBeenCalledTimes(1);
-    expect(palavrasDaConsulta(String(fetcher.mock.calls[0][0]))).toBe("Casa 3 quartos Londrina imóvel");
+    expect(palavrasDaConsulta(fetcher.mock.calls[0][0], fetcher.mock.calls[0][1] as RequestInit)).toBe("Casa 3 quartos Londrina imóvel");
     expect(eventos.at(-1)).toMatchObject({ tipo: "resultado", dados: { pesquisasEvitadas: 0, encerramentoAntecipado: false } });
     expect(conclusoes(info)[0]).toMatchObject({
       consultas: 1, etapasPlanejadas: 1, motivoParada: "plano-esgotado", encerramento: "concluida",

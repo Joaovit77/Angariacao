@@ -11,7 +11,7 @@ import {
 } from "@/lib/calculo/investigadorImoveis";
 import { buscarImovelNaWeb, BuscaWebIndisponivel } from "@/lib/servidor/investigadorImoveis";
 
-const chaveAnterior = process.env.RAPIDAPI_KEY;
+const chaveAnterior = process.env.FIRECRAWL_API_KEY;
 
 function resultado(parcial: Partial<ResultadoWebInvestigacao> = {}): ResultadoWebInvestigacao {
   return {
@@ -31,25 +31,26 @@ function resultado(parcial: Partial<ResultadoWebInvestigacao> = {}): ResultadoWe
   };
 }
 
-function respostaRapid(
+function respostaFirecrawl(
   titulo: string,
   descricao: string,
-  link = "https://imobiliaria.test/imovel/123",
+  url = "https://imobiliaria.test/imovel/123",
 ): Response {
   return new Response(JSON.stringify({
-    organic_results: [{ title: titulo, description: descricao, link }],
+    success: true,
+    data: { web: [{ title: titulo, description: descricao, url }] },
   }), { status: 200, headers: { "Content-Type": "application/json" } });
 }
 
 describe("Investigador de Imóveis", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    process.env.RAPIDAPI_KEY = "segredo-de-teste";
+    process.env.FIRECRAWL_API_KEY = "segredo-de-teste";
   });
 
   afterAll(() => {
-    if (chaveAnterior == null) delete process.env.RAPIDAPI_KEY;
-    else process.env.RAPIDAPI_KEY = chaveAnterior;
+    if (chaveAnterior == null) delete process.env.FIRECRAWL_API_KEY;
+    else process.env.FIRECRAWL_API_KEY = chaveAnterior;
   });
 
   it("conserva a referência exata como primeira pesquisa e não amplia sem âncora", () => {
@@ -130,7 +131,7 @@ describe("Investigador de Imóveis", () => {
 
   it("permite preço e referência explícitos no mesmo título e descrição", async () => {
     const fetcher = vi.fn().mockResolvedValue(
-      respostaRapid(
+      respostaFirecrawl(
         "Casa para alugar - R$ 2.700",
         "Ref. 01860.001 em condomínio residencial.",
       ),
@@ -283,44 +284,51 @@ describe("Investigador de Imóveis", () => {
 
   it("descarta esquema de URL inseguro mesmo quando o provider o devolve", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      organic_results: [{
-        title: "Resultado inválido",
-        description: "Não deve chegar à interface.",
-        link: "javascript:alert(1)",
-        displayedLink: "https://imobiliaria.test",
-      }],
+      success: true,
+      data: {
+        web: [{
+          title: "Resultado inválido",
+          description: "Não deve chegar à interface.",
+          url: "javascript:alert(1)",
+        }],
+      },
     }), { status: 200 }));
     const busca = await buscarImovelNaWeb("consulta", ["consulta"], fetcher);
     expect(busca.resultados).toEqual([]);
   });
 
-  it("usa o contrato real do provider e resolve o redirecionamento do Google", async () => {
+  it("usa o contrato real do Firecrawl /v2/search com país BR e sem scrapeOptions", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({
-        meta: {},
-        organic_results: [{
-          title: "Vivere Palhano 79 m²",
-          description: "Apartamento com 3 quartos em Londrina.",
-          link: "/goto?url=token",
-          displayedLink: "https://imobiliaria.test › imovel",
-          position: 1,
-        }],
-      }), { status: 200, headers: { "Content-Type": "application/json" } }))
-      .mockResolvedValueOnce(new Response(null, {
-        status: 302,
-        headers: { location: "https://imobiliaria.test/imovel/123?utm_source=google" },
-      }));
+        success: true,
+        data: {
+          web: [{
+            title: "Vivere Palhano 79 m²",
+            description: "Apartamento com 3 quartos em Londrina.",
+            url: "https://imobiliaria.test/imovel/123?utm_source=google",
+            position: 1,
+          }],
+        },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }));
 
     const busca = await buscarImovelNaWeb("Vivere Palhano", ["Vivere Palhano"], fetcher);
     const chamada = new URL(String(fetcher.mock.calls[0][0]));
     const opcoes = fetcher.mock.calls[0][1] as RequestInit;
-    expect(chamada.hostname).toBe("google-search-api7.p.rapidapi.com");
-    expect(chamada.searchParams.get("keyword")).toBe("Vivere Palhano");
-    expect(chamada.searchParams.get("device")).toBe("Desktop");
+    const corpo = JSON.parse(String(opcoes.body));
+    expect(chamada.href).toBe("https://api.firecrawl.dev/v2/search");
+    expect(opcoes.method).toBe("POST");
     expect(opcoes.headers).toMatchObject({
-      "x-rapidapi-key": "segredo-de-teste",
-      "x-rapidapi-host": "google-search-api7.p.rapidapi.com",
+      "Content-Type": "application/json",
+      Authorization: "Bearer segredo-de-teste",
     });
+    expect(corpo).toMatchObject({
+      query: "Vivere Palhano",
+      limit: 10,
+      sources: [{ type: "web" }],
+      country: "BR",
+      location: "Brazil",
+    });
+    expect(corpo).not.toHaveProperty("scrapeOptions");
     expect(busca.resultados[0]).toMatchObject({
       titulo: "Vivere Palhano 79 m²",
       url: "https://imobiliaria.test/imovel/123?utm_source=google",
@@ -332,7 +340,7 @@ describe("Investigador de Imóveis", () => {
 
   it("para após a primeira pesquisa quando há evidência suficiente", async () => {
     const fetcher = vi.fn().mockResolvedValue(
-      respostaRapid("Vivere Palhano 79 m²", "Vivere Palhano com 79 m² e 3 quartos."),
+      respostaFirecrawl("Vivere Palhano 79 m²", "Vivere Palhano com 79 m² e 3 quartos."),
     );
     const busca = await buscarImovelNaWeb(
       "Vivere Palhano 79 m² 3 quartos",
@@ -347,8 +355,8 @@ describe("Investigador de Imóveis", () => {
 
   it("executa a segunda pesquisa quando a primeira é inconclusiva", async () => {
     const fetcher = vi.fn()
-      .mockResolvedValueOnce(respostaRapid("Imóvel no Centro", "Anúncio sem características.", "https://portal.test/1"))
-      .mockResolvedValueOnce(respostaRapid("Vivere Palhano 79 m²", "Vivere Palhano com 79 m² e 3 quartos."));
+      .mockResolvedValueOnce(respostaFirecrawl("Imóvel no Centro", "Anúncio sem características.", "https://portal.test/1"))
+      .mockResolvedValueOnce(respostaFirecrawl("Vivere Palhano 79 m²", "Vivere Palhano com 79 m² e 3 quartos."));
     const busca = await buscarImovelNaWeb(
       "Vivere Palhano 79 m² 3 quartos",
       ["busca 1", "busca 2", "busca 3"],
@@ -361,7 +369,7 @@ describe("Investigador de Imóveis", () => {
 
   it("executa no máximo três pesquisas quando nenhuma é conclusiva", async () => {
     const fetcher = vi.fn().mockImplementation(() =>
-      Promise.resolve(respostaRapid("Imóvel genérico", "Sem coincidências.", "https://portal.test/imovel"))
+      Promise.resolve(respostaFirecrawl("Imóvel genérico", "Sem coincidências.", "https://portal.test/imovel"))
     );
     const busca = await buscarImovelNaWeb(
       "Vivere Palhano 79 m² 3 quartos",
@@ -375,9 +383,9 @@ describe("Investigador de Imóveis", () => {
 
   it("mantém resposta parcial quando uma pesquisa intermediária falha", async () => {
     const fetcher = vi.fn()
-      .mockResolvedValueOnce(respostaRapid("Imóvel no Centro", "Anúncio genérico.", "https://portal.test/1"))
+      .mockResolvedValueOnce(respostaFirecrawl("Imóvel no Centro", "Anúncio genérico.", "https://portal.test/1"))
       .mockResolvedValueOnce(new Response(null, { status: 503 }))
-      .mockResolvedValueOnce(respostaRapid("Vivere Palhano 79 m²", "Vivere Palhano com 79 m² e 3 quartos."));
+      .mockResolvedValueOnce(respostaFirecrawl("Vivere Palhano 79 m²", "Vivere Palhano com 79 m² e 3 quartos."));
     const busca = await buscarImovelNaWeb(
       "Vivere Palhano 79 m² 3 quartos",
       ["busca 1", "busca 2", "busca 3"],
@@ -388,12 +396,12 @@ describe("Investigador de Imóveis", () => {
     expect(busca.consultasExecutadas).toHaveLength(3);
   });
 
-  it("para após 429 e preserva os resultados obtidos anteriormente", async () => {
+  it("para após 429 ou 402 (créditos esgotados) e preserva os resultados obtidos anteriormente", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const fetcher = vi.fn()
-      .mockResolvedValueOnce(respostaRapid("Imóvel no Centro", "Anúncio genérico.", "https://portal.test/1"))
+      .mockResolvedValueOnce(respostaFirecrawl("Imóvel no Centro", "Anúncio genérico.", "https://portal.test/1"))
       .mockResolvedValueOnce(new Response(null, { status: 429 }))
-      .mockResolvedValueOnce(respostaRapid("Não deve executar", "Terceira pesquisa."));
+      .mockResolvedValueOnce(respostaFirecrawl("Não deve executar", "Terceira pesquisa."));
     const busca = await buscarImovelNaWeb(
       "Vivere Palhano 79 m² 3 quartos",
       ["busca 1", "busca 2", "busca 3"],
@@ -403,6 +411,13 @@ describe("Investigador de Imóveis", () => {
     expect(busca.limiteAtingido).toBe(true);
     expect(busca.resultados).toHaveLength(1);
     expect(busca.pesquisasEvitadas).toBe(1);
+
+    const semCreditos = vi.fn().mockResolvedValue(new Response(null, { status: 402 }));
+    await expect(buscarImovelNaWeb("consulta", ["consulta", "busca 2"], semCreditos)).rejects.toMatchObject({
+      motivo: "limite",
+      retryAfterSegundos: undefined,
+    } satisfies Partial<BuscaWebIndisponivel>);
+    expect(semCreditos).toHaveBeenCalledTimes(1);
   });
 
   it("trata 429 e só utiliza Retry-After quando o header existe", async () => {

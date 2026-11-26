@@ -22,15 +22,23 @@ vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.createClient }));
 
 import { POST } from "@/app/api/investigador-imoveis/route";
 
-const chaveAnterior = process.env.RAPIDAPI_KEY;
+const chaveAnterior = process.env.FIRECRAWL_API_KEY;
 const CHAVE = "segredo-de-teste-a1";
 const CONSULTA_PRIVADA = "Rua Francisco Bernardino Leite, Califórnia, Londrina";
 
-function respostaRapid(organicos: unknown, status = 200): Response {
-  return new Response(JSON.stringify({ organic_results: organicos }), {
+function respostaFirecrawl(organicos: unknown, status = 200): Response {
+  return new Response(JSON.stringify({ success: true, data: { web: organicos } }), {
     status,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+function queryDaChamada(_url: unknown, init?: RequestInit): string | null {
+  try {
+    return (JSON.parse(String(init?.body ?? "{}")) as { query?: string }).query ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** Cada índice tem texto próprio: o dedupe por conteúdo do núcleo junta
@@ -40,7 +48,7 @@ function organico(indice: number) {
   return {
     title: `Casa ${indice} no bairro ${bairros[indice % 3]}`,
     description: `Residência térrea, ${bairros[indice % 3]}, ${["esquina arborizada", "próxima ao parque", "rua tranquila"][indice % 3]}. 3 quartos, 80 m², 2 vagas, R$ 2.400 por mês.`,
-    link: `https://imobiliaria.test/imovel/${indice}`,
+    url: `https://imobiliaria.test/imovel/${indice}`,
   };
 }
 
@@ -67,12 +75,12 @@ function capturarLogs() {
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  process.env.RAPIDAPI_KEY = CHAVE;
+  process.env.FIRECRAWL_API_KEY = CHAVE;
 });
 afterEach(() => vi.unstubAllGlobals());
 afterAll(() => {
-  if (chaveAnterior == null) delete process.env.RAPIDAPI_KEY;
-  else process.env.RAPIDAPI_KEY = chaveAnterior;
+  if (chaveAnterior == null) delete process.env.FIRECRAWL_API_KEY;
+  else process.env.FIRECRAWL_API_KEY = chaveAnterior;
 });
 
 describe("classificarErroFetch: guarda só o nome do erro e um código curto", () => {
@@ -105,7 +113,7 @@ describe("log de falha do provider: causa, índice da consulta e nada de retry",
 
     const [falha] = logs.falhas();
     expect(falha).toMatchObject({
-      provider: "rapidapi",
+      provider: "firecrawl",
       operation: "pesquisar_imovel",
       indiceConsulta: 1,
       status: null,
@@ -145,18 +153,18 @@ describe("log de falha do provider: causa, índice da consulta e nada de retry",
     const fetcher = vi.fn().mockRejectedValue(new DOMException("t", "TimeoutError"));
     await expect(buscarImovelNaWeb(CONSULTA_PRIVADA, ["b1", "b2", "b3"], fetcher)).rejects.toBeInstanceOf(BuscaWebIndisponivel);
     expect(fetcher).toHaveBeenCalledTimes(3);
-    expect(fetcher.mock.calls.map(([url]) => new URL(String(url)).searchParams.get("keyword"))).toEqual(["b1", "b2", "b3"]);
+    expect(fetcher.mock.calls.map(([url, init]) => queryDaChamada(url, init as RequestInit))).toEqual(["b1", "b2", "b3"]);
     expect(logs.falhas().map((f) => f.indiceConsulta)).toEqual([1, 2, 3]);
   });
 });
 
 describe("resposta inválida e sucesso do provider", () => {
-  it("HTTP 200 sem organic_results válido → causa resposta-invalida; comportamento continua zero resultados sem falha", async () => {
+  it("HTTP 200 sem data.web válido ou com success: false → causa resposta-invalida; comportamento continua zero resultados sem falha", async () => {
     const logs = capturarLogs();
     const fetcher = vi.fn()
       .mockResolvedValueOnce(new Response("{}", { status: 200 }))
       .mockResolvedValueOnce(new Response("isto não é json", { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ organic_results: "texto" }), { status: 200 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify({ success: false, data: { web: [organico(1)] } }), { status: 200 }));
     const busca = await buscarImovelNaWeb(CONSULTA_PRIVADA, ["b1", "b2", "b3"], fetcher);
 
     // Contrato funcional inalterado: nada de resultado, nada de falha, nada de exceção.
@@ -172,13 +180,13 @@ describe("resposta inválida e sucesso do provider", () => {
   it("HTTP 200 válido → log de sucesso com duração e resultados brutos (antes do corte de 10)", async () => {
     const logs = capturarLogs();
     const doze = Array.from({ length: 12 }, (_, i) => organico(i + 1));
-    const fetcher = vi.fn().mockResolvedValueOnce(respostaRapid(doze));
+    const fetcher = vi.fn().mockResolvedValueOnce(respostaFirecrawl(doze));
     const busca = await buscarImovelNaWeb(CONSULTA_PRIVADA, ["b1"], fetcher);
 
     expect(busca.resultados).toHaveLength(10);
     const [sucesso] = logs.sucessos();
     expect(sucesso).toMatchObject({
-      provider: "rapidapi",
+      provider: "firecrawl",
       operation: "pesquisar_imovel",
       execucao: null,
       indiceConsulta: 1,
@@ -192,7 +200,7 @@ describe("resposta inválida e sucesso do provider", () => {
 
   it("lista vazia é sucesso com resultadosBrutos 0, não resposta inválida", async () => {
     const logs = capturarLogs();
-    const fetcher = vi.fn().mockResolvedValueOnce(respostaRapid([]));
+    const fetcher = vi.fn().mockResolvedValueOnce(respostaFirecrawl([]));
     await buscarImovelNaWeb(CONSULTA_PRIVADA, ["b1"], fetcher);
     expect(logs.sucessos()[0]).toMatchObject({ resultadosBrutos: 0, status: 200 });
     expect(logs.falhas()).toHaveLength(0);
@@ -202,7 +210,7 @@ describe("resposta inválida e sucesso do provider", () => {
     const logs = capturarLogs();
     const fetcher = vi.fn()
       .mockResolvedValueOnce(new Response(null, { status: 503 }))
-      .mockResolvedValueOnce(respostaRapid([organico(1)]));
+      .mockResolvedValueOnce(respostaFirecrawl([organico(1)]));
     await buscarImovelNaWeb(CONSULTA_PRIVADA, ["b1", "b2"], fetcher, undefined, { execucao: "exec-123" });
     expect(logs.falhas()[0]).toMatchObject({ execucao: "exec-123", indiceConsulta: 1 });
     expect(logs.sucessos()[0]).toMatchObject({ execucao: "exec-123", indiceConsulta: 2 });
@@ -218,7 +226,7 @@ describe("o que nunca entra no log", () => {
         headers: { "x-rapidapi-key": "segredo-vazado", authorization: "Bearer token-vazado" },
       }))
       .mockRejectedValueOnce(new TypeError(`fetch failed ao chamar ${CONSULTA_PRIVADA} com ${CHAVE}`))
-      .mockResolvedValueOnce(respostaRapid([{ ...organico(1), title: "Título privado", description: "Descrição privada" }]));
+      .mockResolvedValueOnce(respostaFirecrawl([{ ...organico(1), title: "Título privado", description: "Descrição privada" }]));
     await buscarImovelNaWeb(CONSULTA_PRIVADA, [`${CONSULTA_PRIVADA} imóvel`, "consulta-dois", "consulta-tres"], fetcher);
 
     const texto = logs.texto();
@@ -281,8 +289,8 @@ describe("rota POST: conclusão e execução", () => {
     const logs = capturarLogs();
     const fetcher = vi.fn()
       .mockResolvedValueOnce(new Response(null, { status: 503 }))
-      .mockResolvedValueOnce(respostaRapid([organico(1), organico(2)]))
-      .mockResolvedValueOnce(respostaRapid([organico(2)]));
+      .mockResolvedValueOnce(respostaFirecrawl([organico(1), organico(2)]))
+      .mockResolvedValueOnce(respostaFirecrawl([organico(2)]));
     vi.stubGlobal("fetch", fetcher);
 
     const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos 80 m² 2 vagas Rua Privada, 10, Londrina")));
@@ -310,10 +318,10 @@ describe("rota POST: conclusão e execução", () => {
 
   it("parada antecipada por evidência suficiente registra encerramento evidencia-suficiente", async () => {
     const logs = capturarLogs();
-    const fetcher = vi.fn().mockResolvedValueOnce(respostaRapid([{
+    const fetcher = vi.fn().mockResolvedValueOnce(respostaFirecrawl([{
       title: "Apartamento Ref. AP-0917 no Ed Vivere Palhano",
       description: "Referência AP-0917, Ed Vivere Palhano, 79 m², 3 quartos, 2 vagas.",
-      link: "https://imobiliaria.test/imovel/ap-0917",
+      url: "https://imobiliaria.test/imovel/ap-0917",
     }]));
     vi.stubGlobal("fetch", fetcher);
 
@@ -353,9 +361,9 @@ describe("rota POST: conclusão e execução", () => {
     expect(logs.conclusoes()[0]).toMatchObject({ consultas: 1, falhas: 1, encerramento: "limite-provider" });
   });
 
-  it("sem RAPIDAPI_KEY: conclusão configuracao, sem chamada de rede", async () => {
+  it("sem FIRECRAWL_API_KEY: conclusão configuracao, sem chamada de rede", async () => {
     const logs = capturarLogs();
-    delete process.env.RAPIDAPI_KEY;
+    delete process.env.FIRECRAWL_API_KEY;
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
     const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos Rua Privada, 10, Londrina")));
@@ -368,8 +376,8 @@ describe("rota POST: conclusão e execução", () => {
     capturarLogs();
     const fetcher = vi.fn()
       .mockResolvedValueOnce(new Response(null, { status: 503 }))
-      .mockResolvedValueOnce(respostaRapid([organico(1)]))
-      .mockResolvedValueOnce(respostaRapid([]));
+      .mockResolvedValueOnce(respostaFirecrawl([organico(1)]))
+      .mockResolvedValueOnce(respostaFirecrawl([]));
     vi.stubGlobal("fetch", fetcher);
 
     const eventos = await eventosDe(await POST(requisicao("Casa 3 quartos 80 m² Rua Privada, 10, Londrina")));
@@ -414,7 +422,7 @@ describe("rota POST: conclusão e execução", () => {
     vi.spyOn(performance, "now").mockImplementation(() => agora);
     const fetcher = vi.fn(async () => {
       agora += 21_000;
-      return respostaRapid([organico(agora)]);
+      return respostaFirecrawl([organico(agora)]);
     });
     vi.stubGlobal("fetch", fetcher);
 

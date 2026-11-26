@@ -174,23 +174,28 @@ describe("rua sem número não vira condomínio", () => {
   });
 
   it("a fila não para antes do fim por coincidência só de nome de rua", async () => {
-    const chaveAnterior = process.env.RAPIDAPI_KEY;
-    process.env.RAPIDAPI_KEY = "chave-local-simulada";
+    const chaveAnterior = process.env.FIRECRAWL_API_KEY;
+    process.env.FIRECRAWL_API_KEY = "chave-local-simulada";
     vi.spyOn(console, "info").mockImplementation(() => undefined);
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
     try {
-      const fetcher = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ organic_results: [{
-        title: "Casa Rua Michigan, 610, Londrina, 3 quartos, 2 vagas",
-        description: "",
-        link: "https://imobiliaria.test/imovel/610",
-      }] }), { status: 200 }));
+      const fetcher = vi.fn().mockImplementation(async () => new Response(JSON.stringify({
+        success: true,
+        data: {
+          web: [{
+            title: "Casa Rua Michigan, 610, Londrina, 3 quartos, 2 vagas",
+            description: "",
+            url: "https://imobiliaria.test/imovel/610",
+          }],
+        },
+      }), { status: 200 }));
       const busca = await buscarImovelNaWeb("Rua Michigan, 3 quartos, 2 vagas, Londrina", ["etapa 1", "etapa 2"], fetcher);
       expect(fetcher).toHaveBeenCalledTimes(2);
       expect(busca).toMatchObject({ motivoParada: "plano-esgotado", encerramentoAntecipado: false });
     } finally {
       vi.restoreAllMocks();
-      if (chaveAnterior === undefined) delete process.env.RAPIDAPI_KEY;
-      else process.env.RAPIDAPI_KEY = chaveAnterior;
+      if (chaveAnterior === undefined) delete process.env.FIRECRAWL_API_KEY;
+      else process.env.FIRECRAWL_API_KEY = chaveAnterior;
     }
   });
 

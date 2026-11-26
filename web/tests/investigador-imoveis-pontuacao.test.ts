@@ -351,14 +351,14 @@ describe("resumo da pontuação", () => {
 /* ------------------------------------------------------------------
    Rota: cliente recebe a ordem nova; memória recebe o mesmo de antes.
    ------------------------------------------------------------------ */
-const chaveAnterior = process.env.RAPIDAPI_KEY;
+const chaveAnterior = process.env.FIRECRAWL_API_KEY;
 const USUARIO_ID = "11111111-1111-4111-8111-111111111111";
 const IDENTIFICADO = "55555555-5555-4555-8555-555555555555";
 
 const ORGANICOS_CASO_B = [
-  { title: "Casa na Rua Michigan, 610 - Jardim Presidente", description: "3 quartos.", link: "https://portal-d.test/b1" },
-  { title: "Rua Michigan 610", description: "Área 120 m², 2 vagas.", link: "https://portal-e.test/b2" },
-  { title: "Rua Michigan, 610", description: "", link: "https://portal-f.test/b3" },
+  { title: "Casa na Rua Michigan, 610 - Jardim Presidente", description: "3 quartos.", url: "https://portal-d.test/b1" },
+  { title: "Rua Michigan 610", description: "Área 120 m², 2 vagas.", url: "https://portal-e.test/b2" },
+  { title: "Rua Michigan, 610", description: "", url: "https://portal-f.test/b3" },
 ];
 
 function clienteSupabase() {
@@ -386,7 +386,7 @@ async function eventosDe(resposta: Response) {
 describe("rota POST com o B3", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    process.env.RAPIDAPI_KEY = "chave-local-simulada";
+    process.env.FIRECRAWL_API_KEY = "chave-local-simulada";
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://projeto.supabase.co");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon");
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -394,15 +394,15 @@ describe("rota POST com o B3", () => {
     mocks.persistirMemoria.mockReset().mockResolvedValue({
       estado: "salva", execucaoId: "x", atributosSalvos: 1, atributosRecusados: 0,
     });
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ organic_results: ORGANICOS_CASO_B }), { status: 200 })));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true, data: { web: ORGANICOS_CASO_B } }), { status: 200 })));
   });
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
   });
   afterAll(() => {
-    if (chaveAnterior === undefined) delete process.env.RAPIDAPI_KEY;
-    else process.env.RAPIDAPI_KEY = chaveAnterior;
+    if (chaveAnterior === undefined) delete process.env.FIRECRAWL_API_KEY;
+    else process.env.FIRECRAWL_API_KEY = chaveAnterior;
   });
 
   it("cliente recebe a ordem do B3; memória recebe a lista do B2, com o mesmo conteúdo e a mesma ordem", async () => {
@@ -416,7 +416,7 @@ describe("rota POST com o B3", () => {
     // O que a memória recebia antes do B3: os mantidos do B2, montados
     // como o servidor monta, na ordem da análise.
     const [primeira] = planejarPesquisasInvestigacao(ENTRADA_MICHIGAN);
-    const comoOServidorMonta = ORGANICOS_CASO_B.map((o) => resultadoWeb(o.link, o.title, o.description, [primeira.consulta]));
+    const comoOServidorMonta = ORGANICOS_CASO_B.map((o) => resultadoWeb(o.url, o.title, o.description, [primeira.consulta]));
     const esperado = triarCorrespondenciasInvestigacao(ENTRADA_MICHIGAN, deduplicarResultadosInvestigacao(comoOServidorMonta)).mantidos;
 
     expect(mocks.persistirMemoria).toHaveBeenCalledTimes(1);

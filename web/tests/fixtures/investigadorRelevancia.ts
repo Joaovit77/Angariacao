@@ -101,9 +101,8 @@ export const CONJUNTOS_RELEVANCIA: { nome: string; entrada: string; fixtures: Fi
         titulo: "Casa à venda na Rua Bela Cintra, Porto Alegre - RS",
         descricao: "Casa com 3 dormitórios e pátio.",
         url: "https://portal-e.test/poa/casa-bela-cintra",
-        // Sem cidade/UF estruturada na entrada não há como afirmar o
-        // homônimo: fica como está (limitação declarada, não regra nova).
-        esperado: "inconclusivo",
+        // Entrada declara SP e resultado declara RS: homônimo em outra UF.
+        esperado: "irrelevante",
       },
     ],
   },
@@ -167,7 +166,7 @@ export const CONJUNTOS_RELEVANCIA: { nome: string; entrada: string; fixtures: Fi
         titulo: "Rua Oscar Freire - Pelotas, RS",
         descricao: "CEP 96010-000, Centro, Pelotas.",
         url: "https://cep.test/rs/pelotas/rua-oscar-freire",
-        esperado: "inconclusivo",
+        esperado: "irrelevante",
       },
     ],
   },
