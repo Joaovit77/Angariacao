@@ -193,24 +193,34 @@ describe("Investigador de Imóveis", () => {
     ]));
   });
 
-  it("desembrulha redirecionamentos do Google (/url?q= ou ?url=) para exibir o domínio real da fonte", async () => {
-    const fetcher = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
-      success: true,
-      data: {
-        web: [
-          {
-            title: "Casa Residencial com 4 quartos no Universitario em Londrina",
-            description: "Ref. 03630.001 em Londrina - PR.",
-            url: "https://www.google.com/url?esrc=s&q=&rct=j&sa=U&url=https://www.imobiliariaatual.com.br/imovel/03630-001",
-          },
-          {
-            title: "Casa no Universitario",
-            description: "Ref. 03630.001.",
-            url: "https://www.google.com/url?q=https://portal.test/imovel/99&sa=U",
-          },
-        ],
-      },
-    }), { status: 200 }));
+  it("desembrulha redirecionamentos do Google (parâmetro ou HTTP 302) para exibir o domínio real da fonte", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        success: true,
+        data: {
+          web: [
+            {
+              title: "Casa Residencial com 4 quartos no Universitario em Londrina",
+              description: "Ref. 03630.001 em Londrina - PR.",
+              url: "https://www.google.com/url?esrc=s&q=&rct=j&sa=U&url=https://www.imobiliariaatual.com.br/imovel/03630-001",
+            },
+            {
+              title: "Casa no Universitario",
+              description: "Ref. 03630.001.",
+              url: "https://www.google.com/url?q=https://portal.test/imovel/99&sa=U",
+            },
+            {
+              title: "Casa redirecionada por HTTP 302",
+              description: "Ref. 03630.001 em Londrina.",
+              url: "https://www.google.com/goto?token=opaco",
+            },
+          ],
+        },
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, {
+        status: 302,
+        headers: { location: "https://www.imobiliariaatual.com.br/imovel/casa-residencial-4-quartos?ref=03630.001" },
+      }));
 
     const busca = await buscarImovelNaWeb("03630.001", ['"03630.001" imóvel'], fetcher);
     expect(busca.resultados[0]).toMatchObject({
@@ -220,6 +230,10 @@ describe("Investigador de Imóveis", () => {
     expect(busca.resultados[1]).toMatchObject({
       url: "https://portal.test/imovel/99",
       dominio: "portal.test",
+    });
+    expect(busca.resultados[2]).toMatchObject({
+      url: "https://www.imobiliariaatual.com.br/imovel/casa-residencial-4-quartos?ref=03630.001",
+      dominio: "imobiliariaatual.com.br",
     });
   });
 

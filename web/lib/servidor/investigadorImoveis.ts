@@ -19,8 +19,10 @@ import {
 const HOST_FIRECRAWL = "api.firecrawl.dev";
 const URL_BUSCA_FIRECRAWL = `https://${HOST_FIRECRAWL}/v2/search`;
 const TIMEOUT_BUSCA_MS = 22_000;
+const TIMEOUT_LINK_MS = 3_500;
 const MAXIMO_RESULTADOS_POR_BUSCA = 10;
-const MINIMO_TEMPO_CONSULTA_MS = 3_500;
+const MINIMO_TEMPO_CONSULTA_MS = TIMEOUT_LINK_MS;
+const HOSTS_REDIRECIONAMENTO_GOOGLE = new Set(["google.com", "google.com.br", "share.google"]);
 
 interface ResultadoWebFirecrawl {
   title?: unknown;
@@ -108,19 +110,46 @@ function dominioDaUrl(valor: string): string {
   }
 }
 
-function urlHttpSegura(valor: string): string {
+function desembrulharParametroGoogle(valor: string): string {
   if (!/^https?:\/\//i.test(valor)) return "";
   try {
     const analisada = new URL(valor);
     const host = analisada.hostname.toLowerCase().replace(/^www\./, "");
-    if ((host === "google.com" || host === "google.com.br") && (analisada.pathname === "/url" || analisada.pathname === "/goto")) {
-      const destino = analisada.searchParams.get("url") || analisada.searchParams.get("q") || "";
-      if (/^https?:\/\//i.test(destino)) return destino;
+    if (HOSTS_REDIRECIONAMENTO_GOOGLE.has(host)) {
+      for (const parametro of ["url", "q", "adurl", "u"]) {
+        const destino = analisada.searchParams.get(parametro) || "";
+        if (/^https?:\/\//i.test(destino)) return destino;
+      }
     }
     return valor;
   } catch {
     return "";
   }
+}
+
+async function resolverUrlResultado(
+  valor: string,
+  fetcher: typeof fetch,
+  sinalConsulta: AbortSignal,
+): Promise<string> {
+  const inicial = desembrulharParametroGoogle(valor);
+  if (!inicial) return "";
+  try {
+    const host = new URL(inicial).hostname.toLowerCase().replace(/^www\./, "");
+    if (!HOSTS_REDIRECIONAMENTO_GOOGLE.has(host)) return inicial;
+    const resposta = await fetcher(inicial, {
+      method: "GET",
+      redirect: "manual",
+      signal: AbortSignal.any([sinalConsulta, AbortSignal.timeout(TIMEOUT_LINK_MS)]),
+      cache: "no-store",
+    });
+    const destino = resposta.headers.get("location") || "";
+    const resolvido = desembrulharParametroGoogle(destino);
+    if (resolvido) return resolvido;
+  } catch {
+    /* Mantém o link original clicável como fallback. */
+  }
+  return inicial;
 }
 
 /** Lista bruta como veio do Firecrawl `/v2/search`, ou null quando o corpo
@@ -239,22 +268,21 @@ async function buscarConsultaNoFirecrawl(
   }
   const web = (lista ?? []).slice(0, MAXIMO_RESULTADOS_POR_BUSCA);
 
-  return web
-    .map((item) => {
-      const titulo = texto(item.title, 300);
-      const descricao = texto(item.description ?? item.markdown, 1_000);
-      const urlOriginal = urlHttpSegura(texto(item.url ?? item.link, 2_000));
-      const campos = extrairCamposInvestigacao(`${titulo} ${descricao}`);
-      return {
-        titulo,
-        url: urlOriginal,
-        dominio: dominioDaUrl(urlOriginal),
-        descricao,
-        consultas: [consulta],
-        ...campos,
-      };
-    })
-    .filter((item) => item.titulo && item.url && item.dominio);
+  return Promise.all(web.map(async (item) => {
+    const titulo = texto(item.title, 300);
+    const descricao = texto(item.description ?? item.markdown, 1_000);
+    const urlRecebida = texto(item.url ?? item.link, 2_000);
+    const urlOriginal = urlRecebida ? await resolverUrlResultado(urlRecebida, fetcher, sinalConsulta) : "";
+    const campos = extrairCamposInvestigacao(`${titulo} ${descricao}`);
+    return {
+      titulo,
+      url: urlOriginal,
+      dominio: dominioDaUrl(urlOriginal),
+      descricao,
+      consultas: [consulta],
+      ...campos,
+    };
+  })).then((itens) => itens.filter((item) => item.titulo && item.url && item.dominio));
 }
 
 /** Fronteira interna do Investigador. Nenhum componente conhece o Firecrawl. */
