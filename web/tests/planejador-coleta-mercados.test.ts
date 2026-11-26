@@ -7,7 +7,7 @@ describe("planejador capability-aware de mercados", () => {
     const plano = planejarColetaMercado(mercado);
     expect(plano.erro).toBeNull();
     expect(plano.consultas).toHaveLength(4);
-    expect(plano.consultas[0].url).toBe("https://www.olx.com.br/imoveis/aluguel/estado-pr/regiao-de-londrina");
+    expect(plano.consultas[0].url).toBe("https://www.olx.com.br/imoveis/aluguel/estado-pr/londrina?sf=1");
     for (const { filtros } of plano.consultas) {
       expect(Object.keys(filtros).sort()).toEqual(["cidade", "estado", "portal"]);
     }

@@ -128,6 +128,12 @@ async function coletarOlx(page: Page, filtros: FiltrosCentralAngariacao): Promis
     cards.slice(0, limite).map((card) => {
       const link = card.querySelector<HTMLAnchorElement>('a[data-testid="adcard-link"]');
       const imagem = card.querySelector<HTMLImageElement>("img");
+      const badgesEl = card.querySelector(".olx-adcard__badges");
+      const rotulosBadges = badgesEl
+        ? [...badgesEl.querySelectorAll("[aria-label]")]
+            .map((el) => el.getAttribute("aria-label") || "")
+            .filter(Boolean)
+        : [];
       return {
         url: link?.href || "",
         titulo: link?.getAttribute("title") || link?.textContent?.trim() || "",
@@ -136,11 +142,24 @@ async function coletarOlx(page: Page, filtros: FiltrosCentralAngariacao): Promis
         imagem: imagem?.currentSrc || imagem?.src || imagem?.getAttribute("data-src") || imagem?.getAttribute("data-lazy-src") || "",
         descricao: card.querySelector(".olx-adcard__details")?.textContent?.trim() || "",
         publicadoTexto: card.querySelector(".olx-adcard__date")?.textContent?.trim() || "",
+        badges: [badgesEl?.textContent?.trim() || "", ...rotulosBadges].filter(Boolean).join(" "),
       };
     }), LIMITE_RESULTADOS);
 
   return brutos.flatMap((item, indice) => {
     if (!item.url || !item.titulo || !/\d{6,}(?:\?|$)/.test(item.url)) return [];
+    const sinaisBadge = item.badges
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+    const anunciante: AnuncioCentralAngariacao["anunciante"] = /\b(profissional|imobiliaria|corretor|creci)\b/.test(sinaisBadge)
+      ? "imobiliaria"
+      : (sinaisBadge.includes("direto com o proprietario") || /\bparticular\b/.test(sinaisBadge) || filtroParticularConfirmado
+          ? "proprietario"
+          : "incerto");
+    if (filtros.somenteProprietario && anunciante === "imobiliaria") return [];
     const local = cidadeBairro(item.local);
     const publicado = dataPublicacaoOlx(item.publicadoTexto);
     const publicadoEm = publicado?.toISOString() || null;
@@ -158,7 +177,7 @@ async function coletarOlx(page: Page, filtros: FiltrosCentralAngariacao): Promis
       descricao: item.descricao || null,
       publicadoEm,
       publicadoTexto: item.publicadoTexto || null,
-      anunciante: filtroParticularConfirmado ? "proprietario" as const : "incerto" as const,
+      anunciante,
     }];
   });
 }

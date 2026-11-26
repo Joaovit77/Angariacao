@@ -337,7 +337,7 @@ export default function CentralAngariacaoView() {
                   return (
                     <article className="card central-radar-busca" key={busca.id}>
                       <div>
-                        <div className="central-card-tags"><span>{busca.filtros.portal}</span>{novos > 0 && <span className="radar-novo">{novos} novo{novos === 1 ? "" : "s"}</span>}</div>
+                        <div className="central-card-tags"><span>{rotuloPortal(busca.filtros.portal)}</span>{busca.filtros.somenteProprietario && <span>Só proprietário</span>}{novos > 0 && <span className="radar-novo">{novos} novo{novos === 1 ? "" : "s"}</span>}</div>
                         <h3>{busca.nome}</h3>
                         <p>{[busca.filtros.tipo, busca.filtros.bairro, busca.filtros.cidade].filter(Boolean).join(" · ")}</p>
                         <small>{busca.ultimoCheck ? `Última verificação: ${fmtDataHoraIso(busca.ultimoCheck)}` : "Ainda não verificada"}</small>
@@ -502,6 +502,7 @@ export default function CentralAngariacaoView() {
                       <div className="central-card-tags">
                         <span>{rotuloPortal(anuncio.portal)}</span>
                         <span className={`radar-score ${avaliacao.faixa}`}>Oportunidade {avaliacao.nota}/100</span>
+                        {anuncio.anunciante === "proprietario" && <span>Direto com proprietário</span>}
                         {anuncio.publicadoTexto && <span>{anuncio.publicadoTexto}</span>}
                         {visualizado && <span className="visualizado">Visualizado</span>}
                         {repeticao.motivo === "url-na-carteira" && <span className="duplicado">Já está na carteira</span>}

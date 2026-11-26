@@ -150,4 +150,37 @@ describe("persistência da busca da Central", () => {
     expect(mocks.buscarComNavegador).not.toHaveBeenCalled();
     expect(log.mock.calls[0][1]).toEqual({ provider: "firecrawl", operation: "coletar", error_code: "collection_failed", status: 403 });
   });
+
+  it("omite o aviso de filtro não confirmado quando a OLX retorna anúncios confirmados como proprietário", async () => {
+    mocks.buscarComFirecrawl.mockResolvedValue([{
+      idExterno: "dono-1",
+      portal: "olx",
+      titulo: "Casa direto com proprietário",
+      preco: 2000,
+      cidade: "Londrina",
+      url: "https://pr.olx.com.br/imoveis/casa-1525177790",
+      anunciante: "proprietario",
+    }]);
+
+    const resposta = await POST(new Request("http://localhost/api/central-angariacao/buscar", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer token-valido",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        portal: "olx",
+        cidade: "Londrina",
+        estado: "PR",
+        somenteProprietario: true,
+      }),
+    }));
+    const corpo = await resposta.json();
+
+    expect(resposta.status).toBe(200);
+    expect(corpo.ok).toBe(true);
+    expect(corpo.urlPesquisa).toBe("https://www.olx.com.br/imoveis/aluguel/estado-pr/londrina?sf=1&f=p");
+    expect(corpo.aviso).toBeUndefined();
+    expect(corpo.anuncios[0]?.anunciante).toBe("proprietario");
+  });
 });

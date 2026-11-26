@@ -74,15 +74,21 @@ describe("Central de Angariação", () => {
     expect(vivaReal).toContain("precoMinimo=1000");
   });
 
-  it("inclui o filtro de anunciante particular da OLX quando solicitado", () => {
-    const url = new URL(urlDaPesquisa({
+  it("inclui rota direta da cidade, ordenação por recentes e filtro particular da OLX", () => {
+    const comProprietario = urlDaPesquisa({
       portal: "olx",
       cidade: "Londrina",
       estado: "PR",
       somenteProprietario: true,
-    }));
+    });
+    const geral = urlDaPesquisa({
+      portal: "olx",
+      cidade: "Londrina",
+      estado: "PR",
+    });
 
-    expect(url.searchParams.get("f")).toBe("p");
+    expect(comProprietario).toBe("https://www.olx.com.br/imoveis/aluguel/estado-pr/londrina?sf=1&f=p");
+    expect(geral).toBe("https://www.olx.com.br/imoveis/aluguel/estado-pr/londrina?sf=1");
   });
 
   it("modela capacidades regionais sem inventar slugs de outras cidades", () => {
@@ -242,7 +248,69 @@ describe("Central de Angariação", () => {
       tipo: "Casa",
       areaM2: 70,
       quartos: 2,
+      anunciante: "incerto",
     })]);
+  });
+
+  it("confirma anunciante proprietário na OLX pelo selo do card ou pelo filtro Particular marcado no HTML", () => {
+    const htmlComSelo = `<section class="olx-adcard">
+      <a data-testid="adcard-link" title="Casa no Gleba" href="https://pr.olx.com.br/imoveis/casa-1525177785">Casa no Gleba</a>
+      <div class="olx-adcard__badges"><span class="desktopOnly"><div class="olx-core-badge" aria-label="Direto com o proprietário">Direto com o proprietário</div></span></div>
+      <span class="olx-adcard__price">R$ 2.800</span>
+      <span class="olx-adcard__location">Londrina, Gleba Palhano</span>
+    </section>`;
+    const htmlComCheckbox = `<input id="chips-id-company_ad-Particular" name="Particular" type="checkbox" checked />
+    <section class="olx-adcard">
+      <a data-testid="adcard-link" title="Apartamento Centro" href="https://pr.olx.com.br/imoveis/apto-1525177786">Apartamento Centro</a>
+      <span class="olx-adcard__price">R$ 1.900</span>
+      <span class="olx-adcard__location">Londrina, Centro</span>
+    </section>`;
+
+    expect(extrairAnunciosFirecrawl(htmlComSelo, {
+      portal: "olx",
+      cidade: "Londrina",
+      estado: "PR",
+      somenteProprietario: true,
+    })[0]?.anunciante).toBe("proprietario");
+
+    expect(extrairAnunciosFirecrawl(htmlComCheckbox, {
+      portal: "olx",
+      cidade: "Londrina",
+      estado: "PR",
+      somenteProprietario: true,
+    })[0]?.anunciante).toBe("proprietario");
+  });
+
+  it("descarta anúncios marcados como profissionais na OLX quando somenteProprietario está ativo", () => {
+    const htmlMisto = `<section class="olx-adcard">
+      <a data-testid="adcard-link" title="Anúncio de imobiliária" href="https://pr.olx.com.br/imoveis/casa-1525177787">Anúncio de imobiliária</a>
+      <div class="olx-adcard__badges"><div class="olx-core-badge" aria-label="Profissional">Profissional</div></div>
+      <span class="olx-adcard__price">R$ 3.000</span>
+      <span class="olx-adcard__location">Londrina, Centro</span>
+    </section>
+    <section class="olx-adcard">
+      <a data-testid="adcard-link" title="Anúncio do proprietário" href="https://pr.olx.com.br/imoveis/casa-1525177788">Anúncio do proprietário</a>
+      <div class="olx-adcard__badges"><div class="olx-core-badge" aria-label="Direto com o proprietário">Direto com o proprietário</div></div>
+      <span class="olx-adcard__price">R$ 2.100</span>
+      <span class="olx-adcard__location">Londrina, Centro</span>
+    </section>`;
+
+    const somenteDonos = extrairAnunciosFirecrawl(htmlMisto, {
+      portal: "olx",
+      cidade: "Londrina",
+      estado: "PR",
+      somenteProprietario: true,
+    });
+    expect(somenteDonos).toHaveLength(1);
+    expect(somenteDonos[0]).toMatchObject({ idExterno: "1525177788", anunciante: "proprietario" });
+
+    const todos = extrairAnunciosFirecrawl(htmlMisto, {
+      portal: "olx",
+      cidade: "Londrina",
+      estado: "PR",
+      somenteProprietario: false,
+    });
+    expect(todos.map((item) => item.anunciante)).toEqual(["imobiliaria", "proprietario"]);
   });
 
   it("transforma os cards renderizados do Viva Real pelo Firecrawl", () => {

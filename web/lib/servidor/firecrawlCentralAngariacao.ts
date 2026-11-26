@@ -68,13 +68,49 @@ function cidadeBairroWimoveis(valor: string): { cidade: string | null; bairro: s
   return { cidade: partes.at(-1) || null, bairro: partes.slice(0, -1).join(", ") || null, estado: null };
 }
 
+function normalizarTexto(valor: string): string {
+  return valor
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function anuncianteOlx(
+  badgesTexto: string,
+  filtroParticularConfirmado: boolean,
+): AnuncioCentralAngariacao["anunciante"] {
+  const sinais = normalizarTexto(badgesTexto);
+  if (/\b(profissional|imobiliaria|corretor|creci)\b/.test(sinais)) return "imobiliaria";
+  if (sinais.includes("direto com o proprietario") || /\bparticular\b/.test(sinais)) return "proprietario";
+  return filtroParticularConfirmado ? "proprietario" : "incerto";
+}
+
+function badgesDoCardOlx($: CheerioAPI, card: Cheerio<AnyNode>): string {
+  const container = card.find(".olx-adcard__badges");
+  if (!container.length) return "";
+  const rotulos = container
+    .find("[aria-label]")
+    .toArray()
+    .map((el) => $(el).attr("aria-label") || "")
+    .filter(Boolean);
+  return [texto(container), ...rotulos].filter(Boolean).join(" ");
+}
+
 function extrairOlx($: CheerioAPI, filtros: FiltrosCentralAngariacao): AnuncioCentralAngariacao[] {
+  const filtroParticularConfirmado = Boolean(
+    filtros.somenteProprietario
+    && $('input#chips-id-company_ad-Particular[checked], input[type="checkbox"][name="Particular"][checked]').length > 0,
+  );
   return $("section.olx-adcard").slice(0, LIMITE_RESULTADOS).toArray().flatMap((elemento, indice) => {
     const card = $(elemento);
     const link = card.find('a[data-testid="adcard-link"]').first();
     const url = link.attr("href") || "";
     const titulo = link.attr("title") || texto(link);
     if (!url || !titulo || !/\d{6,}(?:\?|$)/.test(url)) return [];
+    const anunciante = anuncianteOlx(badgesDoCardOlx($, card), filtroParticularConfirmado);
+    if (filtros.somenteProprietario && anunciante === "imobiliaria") return [];
     const local = cidadeBairro(texto(card.find(".olx-adcard__location").first()));
     const publicadoTexto = texto(card.find(".olx-adcard__date").first());
     const publicadoEm = dataPublicacaoOlx(publicadoTexto)?.toISOString() || null;
@@ -92,7 +128,7 @@ function extrairOlx($: CheerioAPI, filtros: FiltrosCentralAngariacao): AnuncioCe
       descricao: texto(card.find(".olx-adcard__details").first()) || null,
       publicadoEm,
       publicadoTexto: publicadoTexto || null,
-      anunciante: "incerto" as const,
+      anunciante,
     }];
   });
 }

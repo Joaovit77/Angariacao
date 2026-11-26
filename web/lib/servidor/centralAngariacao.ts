@@ -52,14 +52,16 @@ function localizacaoSegura(f: FiltrosCentralAngariacao): { cidade: string; estad
 }
 
 function urlOlx(f: FiltrosCentralAngariacao): string {
-  const { estado } = localizacaoSegura(f);
-  // A OLX agrupa algumas cidades por DDD/região. Londrina é o primeiro
-  // recorte atendido e sua rota canônica é "regiao-de-londrina".
-  const url = new URL(`https://www.olx.com.br/imoveis/aluguel/estado-${estado}/regiao-de-londrina`);
+  const { cidade, estado } = localizacaoSegura(f);
+  // Rota direta da cidade na OLX (Londrina/PR comprovada) ordenada pelos
+  // anúncios mais recentes (`sf=1`), evitando misturar cidades vizinhas e
+  // anúncios antigos em destaque.
+  const url = new URL(`https://www.olx.com.br/imoveis/aluguel/estado-${estado}/${cidade}`);
+  url.searchParams.set("sf", "1");
   if (f.valorMin != null) url.searchParams.set("pe", String(f.valorMin));
   if (f.valorMax != null) url.searchParams.set("ps", String(f.valorMax));
   if (f.bairro) url.searchParams.set("q", f.bairro);
-  // Parâmetro usado pela própria OLX ao selecionar o chip "Particular".
+  // Parâmetro usado pela própria OLX ao selecionar o filtro "Particular".
   if (f.somenteProprietario) url.searchParams.set("f", "p");
   return url.toString();
 }
