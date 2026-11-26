@@ -750,6 +750,22 @@ OPENAI_EMBEDDING_MODEL=text-embedding-3-small
   chave por chamada avulsa durante testes automatizados, em CI, no Codex ou em Preview. Quando uma
   validação real for indispensável, siga o smoke local manual de `docs/IA-AMBIENTES.md`.
 
+### IA tipada (JEV / Typesafe AI) — opcional
+
+O JEV (`jev-1.14.0`, `POST https://api.typesafe.ai/v1/systemone`) é usado em duas fronteiras exclusivamente de servidor:
+
+1. **Garimpo em Campo (`POST /api/prospeccao/classificar`):** classifica o catálogo fechado de etiquetas e o tipo do imóvel a partir da observação relida do banco, mantendo a validação determinística (`validarEtiquetasClassificadas`) e **fallback automático para a OpenAI** em caso de indisponibilidade ou erro do JEV.
+2. **Atendimento WhatsApp (`rascunhar-resposta`, modo shadow):** executa a auditoria tipada V2 (veredito + 11 dimensões) em paralelo com a validação atual do GPT, sem alterar a resposta entregue ao corretor (fail-open, timeout curto de 6 s), gravando apenas telemetria comparativa em `log_eventos` (`ia-atendimento-validacao-jev-shadow`, sem texto de conversa ou PII).
+
+```
+JEV_API_KEY=...
+```
+
+- **Política de ambiente (igual à OpenAI):** ativa automaticamente apenas em **Production na Vercel** quando `JEV_API_KEY` (ou alias local `API_JEV`) está presente. Preview, CI e Codex falham fechados mesmo que haja chave; em desenvolvimento local exige opt-in explícito `ALLOW_REAL_JEV=1`.
+- **Nunca** crie `NEXT_PUBLIC_JEV_API_KEY` nem coloque `ALLOW_REAL_JEV` na Vercel.
+- **Interruptores opcionais de servidor:** `JEV_GARIMPO_ENABLED=0` desativa o JEV no Garimpo (mantendo apenas OpenAI) e `JEV_ATENDIMENTO_SHADOW_ENABLED=0` desativa a auditoria shadow no atendimento.
+- **Se você não configurar:** o sistema continua funcionando integralmente com a OpenAI.
+
 ### Firecrawl Search (Investigador de Imóveis) — opcional
 
 O Investigador pesquisa possíveis correspondências na web pelo endpoint **Firecrawl Search**
@@ -858,8 +874,9 @@ que a **raiz do projeto é `web`**. O resto ela detecta sozinha (é um projeto N
 5. **Environment Variables:** adicione as duas da Parte 2
    (`NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`). Se for usar o envio direto de
    WhatsApp, adicione as variáveis da Evolution descritas na Parte 2. Se for usar IA real, adicione
-   `OPENAI_API_KEY` somente em Production; nunca crie `ALLOW_REAL_OPENAI` na Vercel. Para usar o
-   Investigador de Imóveis, adicione também `RAPIDAPI_KEY`.
+   `OPENAI_API_KEY` (e opcionalmente `JEV_API_KEY`) somente em Production; nunca crie
+   `ALLOW_REAL_OPENAI` nem `ALLOW_REAL_JEV` na Vercel. Para usar o Investigador de Imóveis e o
+   Radar, adicione também `FIRECRAWL_API_KEY`.
 6. Clique em **Deploy**. Em 1–2 minutos a Vercel te dá um link
    (ex.: `https://angariacoes-web.vercel.app`).
 7. Volte no Supabase (Parte 1, passo 7) e confirme que a **Site URL** aponta para esse endereço.

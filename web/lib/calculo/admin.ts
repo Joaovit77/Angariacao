@@ -288,6 +288,7 @@ export const EVENTOS: Record<string, string> = {
   "ia-resposta-rejeitada": "Resposta da IA recusada pela aplicação",
   "ia-atendimento-bloqueado": "Sugestão de atendimento bloqueada",
   "ia-atendimento-sugerido": "Sugestão de atendimento gerada",
+  "ia-atendimento-validacao-jev-shadow": "Auditoria shadow de atendimento (JEV)",
   "ia-assistente-respondido": "Resposta do Assistente gerada",
   "ia-assistente-acao-preparada": "Ação do Assistente preparada",
   "ia-assistente-acao-executada": "Ação do Assistente executada",
@@ -298,6 +299,8 @@ export const EVENTOS: Record<string, string> = {
      texto da observação. Só o código e contadores no detalhe — nunca a
      observação, o endereço ou a resposta bruta do modelo. */
   "ia-classificacao-concluida": "Avistamento classificado por IA",
+  "ia-classificacao-jev-concluida": "Avistamento classificado por IA (JEV)",
+  "ia-classificacao-jev-fallback": "Classificação do Garimpo usou fallback OpenAI após falha do JEV",
   "ia-classificacao-falhou": "Falha ao classificar avistamento",
   "ia-classificacao-limite-diario": "Teto diário de classificações atingido",
   "google-expirado": "Autorização do Google Agenda expirou",

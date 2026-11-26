@@ -49,7 +49,9 @@ import { sanitizarErroExterno } from "@/lib/servidor/erroExterno";
 import { MAX_TOKENS_CLASSIFICACAO_IA } from "@/lib/servidor/ia/config";
 import { classificarErroIa, type ExecutorOpenAI } from "@/lib/servidor/ia/executor-openai";
 import { podeUsarIa } from "@/lib/servidor/iaAcesso";
-import { registrarEvento } from "@/lib/servidor/registro";
+import { MODELO_JEV_PADRAO } from "@/lib/servidor/jev";
+import type { ClassificadorGarimpoJev } from "@/lib/servidor/jevGarimpo";
+import { registrarEvento, registrarUsoIa } from "@/lib/servidor/registro";
 import { ChamadaOpenAIRealNaoAutorizadaError } from "@/lib/servidor/openai-real";
 
 /** O `tipo` gravado em `ia_uso` e o nome do pedido no executor. */
@@ -117,6 +119,9 @@ export interface DependenciasClassificacao {
   /** `null` quando o ambiente não libera IA real (sem chave, Preview, CI):
       o run termina `indisponivel` e isso é o comportamento CORRETO. */
   executor: ExecutorOpenAI | null;
+  /** Classificador tipado JEV para catálogo fechado. Quando presente, é
+      tentado antes da OpenAI; em falha operacional, cai para `executor`. */
+  classificadorJev?: ClassificadorGarimpoJev | null;
   configuracao: VersaoConfiguracaoIa;
   /** O teto do dia (`tetoDiarioClassificacao()`); `null` só em teste, para
       isolar o resto do ciclo. */
@@ -358,9 +363,9 @@ async function executarModelo(
     return { ok: false, falha: "sem-permissao" };
   }
 
-  // 2. Ambiente: sem executor não há IA real aqui (dev, Preview, CI). O run
-  //    fica `indisponivel` e a tela diz "aguardando classificação".
-  if (!deps.executor) {
+  // 2. Ambiente: sem executor nem JEV não há IA real aqui (dev, Preview, CI).
+  //    O run fica `indisponivel` e a tela diz "aguardando classificação".
+  if (!deps.executor && !deps.classificadorJev) {
     await falhar(deps, claim, "indisponivel");
     registrar(deps, "info", "ia-classificacao-falhou", "indisponivel");
     return { ok: false, falha: "nao-configurado" };
@@ -371,6 +376,77 @@ async function executarModelo(
     await falhar(deps, claim, "limite-diario");
     registrar(deps, "aviso", "ia-classificacao-limite-diario", `teto=${deps.tetoDiario.maximo}`);
     return { ok: false, falha: "limite-diario" };
+  }
+
+  // 3b. JEV (`jev-1.14.0`, catálogo fechado): quando disponível, classifica
+  //     primeiro. Em falha operacional ou estrutural, faz fallback limpo para
+  //     a OpenAI; sem executor OpenAI, encerra o run com falha sanitizada.
+  if (deps.classificadorJev) {
+    const resultadoJev = await deps.classificadorJev(avistamento.observacao);
+    if (resultadoJev.ok) {
+      if (
+        resultadoJev.usage
+        && (resultadoJev.usage.inputTokens !== null || resultadoJev.usage.outputTokens !== null)
+      ) {
+        registrarUsoIa({
+          userId: deps.userId,
+          tipo: TIPO_PEDIDO_CLASSIFICACAO,
+          modelo: resultadoJev.modelo,
+          tokensEntrada: resultadoJev.usage.inputTokens ?? 0,
+          tokensSaida: resultadoJev.usage.outputTokens ?? 0,
+        });
+      }
+      const validacao = validarEtiquetasClassificadas(
+        resultadoJev.etiquetas,
+        avistamento.observacao,
+        CONFIANCA_MINIMA_ETIQUETA,
+      );
+      const tipo = resultadoJev.tipo
+        ? { sugerido: resultadoJev.tipo, confianca: resultadoJev.tipoConfianca }
+        : null;
+      registrar(
+        deps,
+        "info",
+        "ia-classificacao-jev-concluida",
+        `modelo=${resultadoJev.modelo} duracao_ms=${resultadoJev.duracaoMs} etiquetas=${validacao.etiquetas.length}`,
+      );
+      return concluir(deps, claim, tipo, validacao.etiquetas, validacao.contadores);
+    }
+
+    if (deps.executor) {
+      registrar(
+        deps,
+        "aviso",
+        "ia-classificacao-jev-fallback",
+        `status=${resultadoJev.status} erro=${resultadoJev.codigoErro ?? "desconhecido"}`,
+      );
+    } else {
+      const codigoFalha =
+        resultadoJev.status === "NAO_AUTORIZADO"
+          ? "indisponivel"
+          : resultadoJev.statusHttp === 429
+            ? "limite-excedido"
+            : resultadoJev.status === "INVALID_RESPONSE"
+              ? "saida-invalida"
+              : "falha-ia";
+      const falhaResposta: FalhaIa =
+        codigoFalha === "indisponivel"
+          ? "nao-configurado"
+          : codigoFalha === "limite-excedido"
+            ? "limite-excedido"
+            : codigoFalha === "saida-invalida"
+              ? "falha-modelo"
+              : "falha-ia";
+      await falhar(deps, claim, codigoFalha);
+      registrar(deps, codigoFalha === "indisponivel" ? "info" : "erro", "ia-classificacao-falhou", `jev:${codigoFalha}`);
+      return { ok: false, falha: falhaResposta };
+    }
+  }
+
+  if (!deps.executor) {
+    await falhar(deps, claim, "indisponivel");
+    registrar(deps, "info", "ia-classificacao-falhou", "indisponivel");
+    return { ok: false, falha: "nao-configurado" };
   }
 
   // 4. UMA chamada. O executor registra o uso em `ia_uso` por dentro — é a
@@ -438,6 +514,7 @@ export async function classificarAvistamento(
   // há nenhuma. O recomendado do /admin é proposta, não fallback. O Garimpo
   // não tem configuração própria de modelo, e não deve ganhar uma.
   const rota = deps.configuracao.classificacao;
+  const modeloClassificacao = deps.classificadorJev ? MODELO_JEV_PADRAO : rota.modelo;
   const fingerprint = fingerprintClassificacao(materialFingerprintClassificacao({
     observacao: avistamento.observacao,
     // Só o tipo que um humano declarou entra na chave: o inferido pela IA é
@@ -445,7 +522,7 @@ export async function classificarAvistamento(
     tipoDeclarado: identidade.tipoOrigem === "manual" ? identidade.tipo : null,
     versaoCatalogo: VERSAO_CATALOGO_ETIQUETAS,
     versaoClassificador: VERSAO_CLASSIFICADOR_ETIQUETAS,
-    modelo: rota.modelo,
+    modelo: modeloClassificacao,
     confiancaMinima: CONFIANCA_MINIMA_ETIQUETA,
   }));
 
@@ -456,7 +533,7 @@ export async function classificarAvistamento(
     p_user_id: deps.userId,
     p_avistamento_id: avistamento.id,
     p_fingerprint: fingerprint,
-    p_modelo: rota.modelo,
+    p_modelo: modeloClassificacao,
     p_esforco: rota.esforco,
     p_versao_catalogo: VERSAO_CATALOGO_ETIQUETAS,
     p_versao_classificador: VERSAO_CLASSIFICADOR_ETIQUETAS,

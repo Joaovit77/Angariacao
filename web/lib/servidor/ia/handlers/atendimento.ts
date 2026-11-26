@@ -51,6 +51,11 @@ import {
 import { normalizarOrigemSugestaoIa } from "@/lib/ia/feedback";
 import { feedbackSugestoesIaHabilitado } from "@/lib/servidor/ia/feedback-config";
 import { registrarSugestaoIa } from "@/lib/servidor/ia/sugestoes";
+import {
+  executarValidacaoShadowJev,
+  registrarTelemetriaShadowJev,
+  shadowAtendimentoJevHabilitado,
+} from "@/lib/servidor/jevAtendimentoShadow";
 
 type EtapaAtendimento = "contexto" | "decisao" | "geracao" | "validacao" | "sugestao";
 
@@ -580,6 +585,16 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
 
     if (!motivo) {
       diagnostico.validacao = "erro";
+      const validacaoShadowJev = shadowAtendimentoJevHabilitado()
+        ? executarValidacaoShadowJev({
+            mensagemAtual: mensagemProp,
+            contextoImovel: contexto,
+            conversa,
+            protocolos: informacoesComerciaisConsideradas,
+            rascunhoCandidato: rascunho,
+            protocolosUsados,
+          }).catch(() => null)
+        : null;
       let textoValidacao: string;
       try {
         ({ texto: textoValidacao } = await executarEtapa({
@@ -644,6 +659,21 @@ export const atenderProprietario: HandlerIa<"rascunhar-resposta"> = async ({
       );
       motivo = motivoReprovacaoValidacaoAtendimento(validacaoNormalizada) ?? null;
       etapaBloqueio = "validacao";
+
+      if (validacaoShadowJev) {
+        const resultadoShadowJev = await validacaoShadowJev;
+        if (resultadoShadowJev) {
+          registrarTelemetriaShadowJev({
+            userId,
+            imovelId,
+            execucaoId,
+            tentativa: tentativa + 1,
+            vereditoGpt: motivo ? "rejeitada" : "aprovada",
+            motivoGpt: motivo,
+            resultadoJev: resultadoShadowJev,
+          });
+        }
+      }
     }
 
     diagnostico.validacao = motivo ? "rejeitada" : "aprovada";

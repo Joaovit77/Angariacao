@@ -33,6 +33,11 @@ import {
   type ContextoConfiguracaoExecutor,
   type ExecutorOpenAI,
 } from "@/lib/servidor/ia/executor-openai";
+import { jevDisponivel } from "@/lib/servidor/jev";
+import {
+  classificarObservacaoComJev,
+  type ClassificadorGarimpoJev,
+} from "@/lib/servidor/jevGarimpo";
 import { chamadaOpenAIRealAutorizada, criarClienteOpenAIReal } from "@/lib/servidor/openai-real";
 
 export const runtime = "nodejs";
@@ -99,6 +104,13 @@ function executorSeAutorizado(
   return criarExecutorOpenAI(criarClienteOpenAIReal({ apiKey }), userId, rota, contexto);
 }
 
+function classificadorJevSeAutorizado(): ClassificadorGarimpoJev | null {
+  const flag = process.env.JEV_GARIMPO_ENABLED?.trim().toLowerCase();
+  if (flag === "0" || flag === "false" || flag === "off" || flag === "no") return null;
+  if (!jevDisponivel()) return null;
+  return (observacao) => classificarObservacaoComJev(observacao);
+}
+
 export async function POST(request: Request): Promise<Response> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -133,6 +145,7 @@ export async function POST(request: Request): Promise<Response> {
           configuracao.classificacao,
           contextoDaConfiguracao(configuracao, "classificacao"),
         ),
+        classificadorJev: classificadorJevSeAutorizado(),
         configuracao,
         // 200 execuções com modelo por usuário por dia operacional, contadas
         // em `ia_uso` no servidor; o dia vira à meia-noite do fuso canônico.

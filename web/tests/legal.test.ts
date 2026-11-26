@@ -58,7 +58,7 @@ describe("conteúdo", () => {
        fornecedor não é um texto incompleto — é uma informação errada ao
        titular. Ao ligar uma integração nova, este teste falha até que
        alguém a declare. */
-    for (const fornecedor of ["Supabase", "Vercel", "Evolution", "OpenAI", "Firecrawl", "Google", "ViaCEP", "OpenStreetMap"]) {
+    for (const fornecedor of ["Supabase", "Vercel", "Evolution", "OpenAI", "Typesafe AI", "Firecrawl", "Google", "ViaCEP", "OpenStreetMap"]) {
       expect(PRIVACIDADE.secoes.some((s) => s.paragrafos.join(" ").includes(fornecedor)), fornecedor).toBe(true);
     }
   });

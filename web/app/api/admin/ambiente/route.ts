@@ -21,6 +21,7 @@
    responde é "está lá?", não "qual é".
    ================================================================ */
 import { exigirAdmin } from "../_comum";
+import { jevDisponivel } from "@/lib/servidor/jev";
 import { chamadaOpenAIRealAutorizada } from "@/lib/servidor/openai-real";
 
 /** Uma capacidade do sistema e o que ela deixa de funcionar sem a
@@ -96,6 +97,14 @@ export async function GET(request: Request): Promise<Response> {
       variavel: "OPENAI_API_KEY em Production; ALLOW_REAL_OPENAI somente local",
       configurado: tem("OPENAI_API_KEY") && chamadaOpenAIRealAutorizada(),
       semEla: "Sem transcrição de áudio, sem classificação de resposta e sem rascunho.",
+      essencial: false,
+    },
+    {
+      chave: "jev",
+      nome: "IA tipada (JEV / Typesafe AI)",
+      variavel: "JEV_API_KEY em Production; ALLOW_REAL_JEV somente local",
+      configurado: jevDisponivel(),
+      semEla: "A classificação do Garimpo usa apenas OpenAI e a auditoria shadow do atendimento fica inativa.",
       essencial: false,
     },
     {

@@ -4293,9 +4293,18 @@ caixa há trinta segundos não pode ser recebido com um pedido para aceitar de n
 - **Bibliotecas novas via npm** em `web/`, fixando a mesma major das existentes quando fizer sentido
   (Chart.js 4, Leaflet 1.9, Supabase JS 2, Zustand 5).
 - **Sem segredo no cliente além da anon key.** Segredo mora no servidor (é o caso de credenciais da
-  Evolution/Google, `OPENAI_API_KEY`, `FIRECRAWL_API_KEY`, `RAPIDAPI_KEY`, `CRON_SECRET` e
+  Evolution/Google, `OPENAI_API_KEY`, `JEV_API_KEY`, `FIRECRAWL_API_KEY`, `CRON_SECRET` e
   `SUPABASE_SERVICE_ROLE_KEY`); código que chega ao browser, nunca. Na prática: variável com
   `NEXT_PUBLIC_` é pública — se é segredo, não leva o prefixo.
+- **IA tipada JEV (`lib/servidor/jev.ts`, `jevGarimpo.ts`, `jevAtendimentoShadow.ts`).** Motor de
+  perguntas fechadas (`Choice`, `jev-1.14.0`, sem geração de texto livre) usado exclusivamente no
+  servidor sob a mesma política fail-closed de `docs/IA-AMBIENTES.md` (Production na Vercel ou
+  `ALLOW_REAL_JEV=1` somente local; Preview/CI/Codex sempre bloqueados). Atua em duas fronteiras:
+  (1) classificação do catálogo fechado de etiquetas e tipo no Garimpo em Campo
+  (`POST /api/prospeccao/classificar`), preservando validação determinística e fallback automático
+  para a OpenAI; (2) auditoria paralela em modo shadow na validação de `rascunhar-resposta`
+  (fail-open, timeout de 6 s, sem impacto na resposta entregue ao corretor, registrando apenas
+  telemetria comparativa sem PII em `log_eventos`).
 - **A service role é a exceção mais perigosa do projeto.** Ela ignora a RLS por completo e só pode
   existir em código exclusivo do servidor. A regra que a segura: o dono/ator nunca é aceito de uma
   requisição não confiável. No webhook do WhatsApp nasce da instância; no envio, de `auth.getUser()`;

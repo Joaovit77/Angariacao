@@ -106,6 +106,7 @@ export const PRIVACIDADE: Documento = {
         `- **Vercel** — hospedagem da aplicação.`,
         `- **Evolution API** — envio e recebimento das mensagens de WhatsApp, a partir do número de WhatsApp vinculado à sua conta.`,
         `- **OpenAI** — transcrição dos áudios recebidos, interpretação das respostas dos proprietários, geração dos textos sugeridos e, no Garimpo em Campo, a leitura das observações que você escreve sobre um imóvel para sugerir sinais de um catálogo fechado. Isso significa que o conteúdo das mensagens recebidas, incluindo áudios, e o texto dessas observações são enviados a esse fornecedor para processamento. Pelos termos de uso da API que utilizamos, esse conteúdo não é usado para treinar modelos.`,
+        `- **Typesafe AI (JEV)** — motor de classificação fechada usado no Garimpo em Campo para identificar sinais de um catálogo fechado a partir da observação do imóvel e na auditoria técnica (em modo shadow) de rascunhos de atendimento, sem geração de texto livre. A chave dessa integração permanece exclusivamente no servidor.`,
         `- **Firecrawl** — recebe somente os termos que você enviar ao Investigador de Imóveis e as URLs públicas monitoradas no Radar, devolvendo resultados públicos da web. A chave dessa integração não é exposta ao navegador.`,
         `- **Google** — se você conectar o Google Agenda, para criar e atualizar os seus compromissos; e, no Investigador, como mecanismo de pesquisa e redirecionamento para as fontes públicas encontradas.`,
         `- **ViaCEP** — recebe apenas o CEP digitado ou a combinação de UF, cidade e trecho do nome da rua, para sugerir e completar endereços de imóveis. Não recebe coordenadas, fotos, observações nem dados de proprietários.`,
@@ -213,7 +214,7 @@ export const TERMOS: Documento = {
       titulo: "6. Disponibilidade e dependências",
       paragrafos: [
         `Trabalhamos para manter o serviço disponível, mas ele não é oferecido com garantia de disponibilidade ininterrupta. Podem ocorrer interrupções para manutenção, correção ou por falha de fornecedores.`,
-        `O sistema depende de serviços de terceiros — WhatsApp, provedor de envio de mensagens, provedor de IA, Firecrawl, pesquisa do Google, Google Agenda, consulta de CEP e de endereços (ViaCEP e OpenStreetMap), banco de dados e hospedagem. A indisponibilidade de qualquer um deles pode afetar total ou parcialmente o funcionamento, sem que isso configure descumprimento por nossa parte.`,
+        `O sistema depende de serviços de terceiros — WhatsApp, provedor de envio de mensagens, provedores de IA (OpenAI e Typesafe AI), Firecrawl, pesquisa do Google, Google Agenda, consulta de CEP e de endereços (ViaCEP e OpenStreetMap), banco de dados e hospedagem. A indisponibilidade de qualquer um deles pode afetar total ou parcialmente o funcionamento, sem que isso configure descumprimento por nossa parte.`,
       ],
     },
     {
