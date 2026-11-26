@@ -73,9 +73,9 @@ afterAll(() => {
 });
 
 describe("planejarPesquisasInvestigacao: plano progressivo e determinístico", () => {
-  it("Pipeline com referência: referência exata, depois endereço e contexto, depois a rua sem número", () => {
+  it("Pipeline com referência: referência + cidade primeiro, depois endereço e contexto, depois a rua sem número", () => {
     expect(planejarPesquisasInvestigacao(PIPELINE_BELA_CINTRA)).toEqual([
-      { etapa: "especifica", consulta: '"01860.001" imóvel' },
+      { etapa: "especifica", consulta: '"01860.001" "São Paulo" imóvel' },
       {
         etapa: "nucleo",
         consulta: "Rua Bela Cintra, 986, Consolação, São Paulo, SP, Edifício Bela Vista, Apartamento imóvel",
@@ -84,6 +84,14 @@ describe("planejarPesquisasInvestigacao: plano progressivo e determinístico", (
         etapa: "logradouro",
         consulta: "Rua Bela Cintra, Consolação, São Paulo, SP, Edifício Bela Vista, Apartamento imóvel",
       },
+    ]);
+  });
+
+  it("referência com rua sem número e cidade trava na cidade na etapa 1 e limpa detalhes na etapa 2", () => {
+    const entrada = "Casa residencial Rua Presidente Wilson Universitario Londrina - PR 03630.001 Aluguel 3 banheiros 4 vagas 250m² total 250m² útil";
+    expect(planejarPesquisasInvestigacao(entrada)).toEqual([
+      { etapa: "especifica", consulta: '"03630.001" "Londrina" imóvel' },
+      { etapa: "nucleo", consulta: "Casa residencial Rua Presidente Wilson Universitario Londrina - PR imóvel" },
     ]);
   });
 

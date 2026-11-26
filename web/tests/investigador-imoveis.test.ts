@@ -393,9 +393,11 @@ describe("Investigador de Imóveis", () => {
     expect(correspondencia.contradicoes).toContain("Quantidade de quartos diferente: 2");
   });
 
-  it("canonicaliza tracking, remove repetição no mesmo domínio e preserva outra fonte", () => {
+  it("canonicaliza tracking sem remover ref do imóvel, remove repetição no mesmo domínio e preserva outra fonte", () => {
     expect(canonicalizarUrlInvestigacao("https://www.Exemplo.com/imovel/1/?utm_source=x#foto"))
       .toBe("https://exemplo.com/imovel/1");
+    expect(canonicalizarUrlInvestigacao("https://www.imobiliariaatual.com.br/imovel/casa?id=15230&ref=03630.001&utm_source=google"))
+      .toBe("https://imobiliariaatual.com.br/imovel/casa?id=15230&ref=03630.001");
     const duplicado = resultado({
       url: "https://imobiliaria.test/imovel/123?utm_source=google",
       consultas: ["segunda busca"],

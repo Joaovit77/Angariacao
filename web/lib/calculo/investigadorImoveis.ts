@@ -180,12 +180,14 @@ export interface PesquisaPlanejadaInvestigacao {
 // costumam omiti-los ou escrevê-los de outro jeito. O nome do tipo fica,
 // porque não restringe e pode fazer parte do nome de um condomínio.
 const DETALHES_RESTRITIVOS = [
-  /\b\d{1,4}(?:[.,]\d{1,2})?\s*m(?:²|2)(?![\p{L}\d])/giu,
+  /\b\d{1,4}(?:[.,]\d{1,2})?\s*m(?:²|2)(?:\s+(?:total|totais|[uú]til|[uú]teis|privativa|constru[ií]da))?(?![\p{L}\d])/giu,
   /\b\d{1,2}\s+(?:quartos?|dormit[oó]rios?|su[ií]tes?|banheiros?|vagas?(?:\s+de\s+garagem)?|garagens?)(?![\p{L}\d])/giu,
   /\b(?:unidade|bloco)\s+[\p{L}\d-]{1,10}/giu,
   /\bapto\.?\s*\d[\p{L}\d-]*/giu,
   /\b(?:refer[eê]ncia|ref|c[oó]digo|c[oó]d)(?![\p{L}\d])\.?(?:\s+do\s+im[oó]vel)?\s*[:#-]?\s*[\p{L}\d][\p{L}\d./-]*/giu,
   /\ban[uú]ncio(?![\p{L}\d])[^,]*/giu,
+  /\b0\d{4,}(?:[./-]\d{2,})+\b/giu,
+  /\b(?:aluguel|loca[cç][aã]o)\b/giu,
 ];
 
 const PALAVRAS_DE_TIPO = new Set([
@@ -234,12 +236,18 @@ export function planejarPesquisasInvestigacao(entrada: string): PesquisaPlanejad
   // virar a mesma string truncada em todas as etapas.
   const base = limparConsulta(entrada).slice(0, LIMITE_CONSULTA_INVESTIGADOR - 30).trim();
   const referencia = extrairReferenciaInvestigacao(base);
+  const localidade = extrairCidadeUfExplicita(base);
   const nucleo = semDetalhesRestritivos(base);
   const endereco = logradouroComNumero(nucleo);
-  const ancorado = Boolean(endereco || extrairCondominioExplicito(nucleo));
+  const temRuaComCidade = Boolean(TIPO_DE_LOGRADOURO.test(nucleo) && localidade?.cidade);
+  const ancorado = Boolean(endereco || extrairCondominioExplicito(nucleo) || (temRuaComCidade && nucleo !== base));
+
+  const consultaReferencia = referencia
+    ? (localidade?.cidade ? `"${referencia}" "${localidade.cidade}" imóvel` : `"${referencia}" imóvel`)
+    : null;
 
   const candidatas: PesquisaPlanejadaInvestigacao[] = [
-    { etapa: "especifica", consulta: referencia ? `"${referencia}" imóvel` : `${base} imóvel` },
+    { etapa: "especifica", consulta: consultaReferencia ?? `${base} imóvel` },
   ];
   if (ancorado) candidatas.push({ etapa: "nucleo", consulta: `${nucleo} imóvel` });
   if (endereco) {
@@ -434,7 +442,7 @@ export function canonicalizarUrlInvestigacao(valor: string): string {
     const url = new URL(valor);
     url.hash = "";
     for (const chave of [...url.searchParams.keys()]) {
-      if (/^(?:utm_.+|gclid|fbclid|ref|source)$/i.test(chave)) url.searchParams.delete(chave);
+      if (/^(?:utm_.+|gclid|fbclid|source)$/i.test(chave)) url.searchParams.delete(chave);
     }
     url.hostname = url.hostname.toLowerCase().replace(/^www\./, "");
     url.pathname = url.pathname.replace(/\/+$/, "") || "/";
@@ -807,17 +815,140 @@ const PADRAO_UF_EXPLICITA = new RegExp(
   "g",
 );
 
-/** Extrai UF brasileira somente quando aparece em maiúsculas após separador
-    geográfico claro (", PR", "- RS", "/SP", "(PR)") e é única no texto. */
-function extrairUfExplicita(textoOriginal: string): string | null {
-  const encontradas: string[] = [];
+const PREFIXOS_CIDADE_COMPOSTA = new Set([
+  "sao", "santa", "santo", "porto", "ponta", "belo", "foz", "rio", "nova", "novo",
+  "campo", "boa", "tres", "duque", "juiz", "montes", "ribeirao", "balneario",
+  "passo", "caxias", "volta", "feira", "vitoria", "aparecida", "praia", "cabo",
+  "varzea", "sete", "pouso", "pocos", "barra", "angra", "campos", "bento", "cruz",
+  "lauro", "governador", "senador", "teofilo", "patos", "presidente", "mogi",
+]);
+
+const CONECTORES_CIDADE = new Set(["de", "da", "do", "dos", "das", "e"]);
+
+const PALAVRAS_NAO_CIDADE_SEGMENTO = new Set([
+  "rua", "avenida", "av", "alameda", "travessa", "rodovia", "estrada",
+  "jardim", "vila", "parque", "conjunto", "residencial", "condominio", "edificio",
+  "bairro", "centro", "casa", "apartamento", "sobrado", "terreno", "imovel",
+]);
+
+function extrairNomeCidadeAntesDaUf(trechoAntes: string): string | null {
+  const segmento = trechoAntes
+    .split(/[,;|\n–-]/)
+    .at(-1)
+    ?.replace(/^\s*(?:em|de|no|na)\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!segmento) return null;
+  const palavras = segmento.split(" ").filter((p) => /^[\p{L}'-]+$/u.test(p));
+  if (!palavras.length) return null;
+  const primeiraChave = chaveNormalizada(palavras[0]);
+  if (palavras.length <= 3 && !PALAVRAS_NAO_CIDADE_SEGMENTO.has(primeiraChave)) {
+    return palavras.join(" ");
+  }
+  // Sem vírgula separando bairro/rua da cidade (ex.: "Rua X Universitario Londrina - PR"):
+  // captura a última palavra e, se aplicável, conectores/prefixos de cidade composta.
+  const escolhidas = [palavras.at(-1)!];
+  for (let i = palavras.length - 2; i >= Math.max(0, palavras.length - 4); i -= 1) {
+    const atual = chaveNormalizada(palavras[i]);
+    if (CONECTORES_CIDADE.has(atual) || PREFIXOS_CIDADE_COMPOSTA.has(atual)) {
+      escolhidas.unshift(palavras[i]);
+      if (PREFIXOS_CIDADE_COMPOSTA.has(atual)) break;
+    } else if (CONECTORES_CIDADE.has(chaveNormalizada(escolhidas[0]))) {
+      escolhidas.unshift(palavras[i]);
+    } else {
+      break;
+    }
+  }
+  const candidata = escolhidas.join(" ").trim();
+  return candidata.length >= 3 && !PALAVRAS_NAO_CIDADE_SEGMENTO.has(chaveNormalizada(candidata))
+    ? candidata
+    : null;
+}
+
+interface LocalidadeExplicita {
+  cidade: string | null;
+  uf: string | null;
+}
+
+/** Extrai UF brasileira (e a cidade imediatamente anterior, quando houver)
+    somente quando a UF aparece em maiúsculas após separador geográfico claro. */
+function extrairCidadeUfExplicita(textoOriginal: string): LocalidadeExplicita | null {
+  const ufs: string[] = [];
+  const cidades: string[] = [];
   for (const ocorrencia of textoOriginal.matchAll(PADRAO_UF_EXPLICITA)) {
     const uf = ocorrencia[1];
-    const fim = (ocorrencia.index ?? 0) + ocorrencia[0].length;
+    const inicio = ocorrencia.index ?? 0;
+    const fim = inicio + ocorrencia[0].length;
     if (uf === "AP" && /^\s*\d/.test(textoOriginal.slice(fim))) continue;
-    encontradas.push(uf);
+    ufs.push(uf);
+    const cidade = extrairNomeCidadeAntesDaUf(textoOriginal.slice(0, inicio));
+    if (cidade) cidades.push(cidade);
   }
-  return unico(encontradas);
+  const uf = unico(ufs);
+  if (!uf) return null;
+  const cidadesChave = new Map<string, string>();
+  for (const cidade of cidades) {
+    cidadesChave.set(chaveNormalizada(cidade), cidade);
+  }
+  return {
+    cidade: cidadesChave.size === 1 ? [...cidadesChave.values()][0] : null,
+    uf,
+  };
+}
+
+const SLUGS_NAO_CIDADE = new Set([
+  "imovel", "imoveis", "alugar", "aluguel", "locacao", "venda", "vender", "comprar",
+  "casa", "casas", "apartamento", "apartamentos", "sobrado", "terreno", "kitnet",
+  "studio", "comercial", "residencial", "pagina", "page", "busca", "todos", "brasil",
+]);
+
+const CIDADES_SLUG_CONHECIDAS = new RegExp(
+  "(?:^|[-/_+])(" + [
+    "ponta-grossa", "ponta_grossa", "londrina", "curitiba", "maringa", "cascavel",
+    "foz-do-iguacu", "foz_do_iguacu", "cambe", "ibipora", "arapongas", "apucarana",
+    "sao-paulo", "sao_paulo", "campinas", "ribeirao-preto", "sao-jose-dos-campos",
+    "rio-de-janeiro", "rio_de_janeiro", "belo-horizonte", "belo_horizonte",
+    "porto-alegre", "porto_alegre", "pelotas", "florianopolis", "joinville", "blumenau",
+    "brasilia", "goiania", "salvador", "recife", "fortaleza", "manaus", "belem",
+  ].join("|") + ")(?=$|[-/_+])",
+);
+
+function extrairCidadeDeUrl(urlOriginal: string): string | null {
+  try {
+    const { pathname } = new URL(urlOriginal);
+    const caminho = chaveNormalizada(decodeURIComponent(pathname));
+    const conhecida = caminho.match(CIDADES_SLUG_CONHECIDAS)?.[1];
+    if (conhecida) return conhecida.replace(/[_-]+/g, " ").trim();
+    const rotaPortal = caminho.match(/\/(?:imoveis\/(?:alugar|venda|locacao|comprar)|(?:locacao|aluguel|venda))\/([a-z0-9_-]{3,40})(?:-pagina-\d+|\/|$)/);
+    const segmento = rotaPortal?.[1]?.replace(/[_-]+/g, " ").trim();
+    if (segmento && segmento.length >= 3 && !/^[a-z]{2}$/.test(segmento) && !SLUGS_NAO_CIDADE.has(segmento)) {
+      return segmento;
+    }
+  } catch {
+    /* URL inválida não gera cidade */
+  }
+  return null;
+}
+
+const PADRAO_URL_PAGINADA = /(?:[-/](?:pagina|page)[-_=/]?\d+|[?&](?:pagina|page)=\d+)(?=$|[/?&#])/i;
+
+function ehUrlPaginada(urlOriginal: string): boolean {
+  return PADRAO_URL_PAGINADA.test(urlOriginal);
+}
+
+const DOMINIOS_VIDEO_SOCIAL = new Set(["youtube.com", "m.youtube.com", "youtu.be", "tiktok.com"]);
+
+function ehCanalOuVideoSocial(correspondencia: CorrespondenciaInvestigacao, sinais: SinaisCorrespondencia): boolean {
+  const dominio = correspondencia.dominio.toLowerCase().replace(/^www\./, "");
+  if (!DOMINIOS_VIDEO_SOCIAL.has(dominio)) return false;
+  try {
+    const { pathname } = new URL(correspondencia.url);
+    // Canal ou playlist nunca é página de anúncio de um imóvel específico.
+    if (/^\/(?:@|channel\/|c\/|user\/|playlist\b)/i.test(pathname)) return true;
+  } catch {
+    /* segue validação abaixo */
+  }
+  return !sinais.enderecoIdentico && !sinais.referenciaIdentica;
 }
 
 const PADRAO_LISTAGEM_OFERTAS = /\b(\d{1,3}(?:\.\d{3})*|\d+)\s+(?:anuncios|ofertas|resultados)\b/g;
@@ -841,18 +972,47 @@ function ehListagemGenericaNoTitulo(tituloOriginal: string): boolean {
 
 function avaliarRelevancia(
   entrada: CamposImovelEncontrados,
-  ufEntrada: string | null,
+  localidadeEntrada: LocalidadeExplicita | null,
   ancoras: string[],
   correspondencia: CorrespondenciaInvestigacao,
   sinais: SinaisCorrespondencia,
 ): Omit<ItemTriagemInvestigacao, "correspondencia" | "sinais"> {
-  if (sinais.referenciaIdentica || sinais.enderecoIdentico || sinais.condominioIdentico) {
-    return { relevancia: "relevante", motivo: null };
-  }
-
   const texto = textoComparavel(`${correspondencia.titulo} ${correspondencia.descricao}`);
   const url = urlComparavel(correspondencia.url);
   const textoComUrl = `${texto} ${textoComparavel(url)}`;
+
+  // Canal/vídeo social (YouTube/TikTok) sem endereço/referência ou página de canal.
+  if (ehCanalOuVideoSocial(correspondencia, sinais)) {
+    return { relevancia: "irrelevante", motivo: "conteudo-nao-imobiliario" };
+  }
+
+  // Página paginada de listagem (ex.: /imoveis/locacao-pagina-4, /ponta-grossa-pagina-8)
+  // não é anúncio individual; sem endereço exato, sai como listagem genérica.
+  if (!sinais.enderecoIdentico && ehUrlPaginada(correspondencia.url)) {
+    return { relevancia: "irrelevante", motivo: "listagem-generica" };
+  }
+
+  // Localidade: se entrada e resultado declaram UF ou cidade diferentes
+  // (mesmo compartilhando código de referência de CRM entre imobiliárias
+  // de cidades distintas), descarta quando não há endereço/condomínio idêntico.
+  if (localidadeEntrada && !sinais.enderecoIdentico && !sinais.condominioIdentico) {
+    const localidadeResultado = extrairCidadeUfExplicita(`${correspondencia.titulo} ${correspondencia.descricao}`);
+    if (localidadeEntrada.uf && localidadeResultado?.uf && localidadeResultado.uf !== localidadeEntrada.uf) {
+      return { relevancia: "irrelevante", motivo: "localidade-divergente" };
+    }
+    const cidadeEntradaChave = textoComparavel(localidadeEntrada.cidade);
+    if (cidadeEntradaChave && !contemExpressao(textoComUrl, cidadeEntradaChave)) {
+      const cidadeResultadoChave = textoComparavel(localidadeResultado?.cidade)
+        || textoComparavel(extrairCidadeDeUrl(correspondencia.url));
+      if (cidadeResultadoChave && cidadeResultadoChave !== cidadeEntradaChave) {
+        return { relevancia: "irrelevante", motivo: "localidade-divergente" };
+      }
+    }
+  }
+
+  if (sinais.referenciaIdentica || sinais.enderecoIdentico || sinais.condominioIdentico) {
+    return { relevancia: "relevante", motivo: null };
+  }
 
   // Endereço: o resultado declara outro número. Se é a mesma rua, é outro
   // imóvel. Se é outra rua, só descarta quando ela tem cara de nome próprio
@@ -866,16 +1026,6 @@ function avaliarRelevancia(
       && !contemExpressao(textoComUrl, ruaProcurada);
     if (ruaProcurada && (mesmaRua || outraRuaNomeada)) {
       return { relevancia: "irrelevante", motivo: "endereco-divergente" };
-    }
-  }
-
-  // Localidade: quando tanto a entrada quanto o resultado declaram
-  // explicitamente uma UF brasileira e elas divergem, trata-se de homônimo
-  // em outro estado (ex.: rua com mesmo nome em PR × SP ou SP × RS).
-  if (ufEntrada) {
-    const ufResultado = extrairUfExplicita(`${correspondencia.titulo} ${correspondencia.descricao}`);
-    if (ufResultado && ufResultado !== ufEntrada) {
-      return { relevancia: "irrelevante", motivo: "localidade-divergente" };
     }
   }
 
@@ -906,7 +1056,7 @@ export function triarCorrespondenciasInvestigacao(
   resultados: ResultadoWebInvestigacao[],
 ): TriagemInvestigacao {
   const { entrada, condominioInformado, comparacoes } = compararComEntrada(consultaOriginal, resultados);
-  const ufEntrada = extrairUfExplicita(consultaOriginal);
+  const localidadeEntrada = extrairCidadeUfExplicita(consultaOriginal);
   // O que identifica o imóvel na entrada, como expressão inteira. Sem
   // nenhuma âncora (ex.: "Casa 3 quartos Londrina") a regra de relação
   // com a entrada não se aplica.
@@ -919,7 +1069,7 @@ export function triarCorrespondenciasInvestigacao(
   const itens = comparacoes
     .map(({ correspondencia, sinais }) => ({
       correspondencia,
-      ...avaliarRelevancia(entrada, ufEntrada, ancoras, correspondencia, sinais),
+      ...avaliarRelevancia(entrada, localidadeEntrada, ancoras, correspondencia, sinais),
       sinais,
     }))
     .sort((a, b) => ordemDasCorrespondencias(a.correspondencia, b.correspondencia));

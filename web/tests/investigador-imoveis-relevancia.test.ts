@@ -226,6 +226,47 @@ describe("casos obrigatórios do gate", () => {
       expect(triar(MICHIGAN, "Condomínio com 20 casas na Rua Michigan, 610", "3 quartos."))
         .toMatchObject({ relevancia: "relevante", motivo: null });
     });
+
+    it("descarta URL paginada, cidade divergente (mesmo com mesma referência CRM) e canal/vídeo de YouTube, mantendo só o anúncio real", () => {
+      const entrada = "Casa residencial Rua Presidente Wilson Universitario Londrina - PR 03630.001 Aluguel 3 banheiros 4 vagas 250m² total 250m² útil";
+      const resultados = [
+        resultado(
+          "Imóveis para locação",
+          "... 03630.001. Casa Residencial. Universitario. 4 quartos. 4 vagas. 250m² útil. Aluguel: R$ 5.500,00.",
+          "https://imobiliariaatual.com.br/imoveis/locacao-pagina-4",
+        ),
+        resultado(
+          "Casa Residencial com 4 quartos no Universitario em Londrina",
+          "... 03630.001. Casa Residencial. Rua. Presidente Wilson. Universitario Londrina - PR.",
+          "https://www.imobiliariaatual.com.br/imovel/casa-residencial-4-quartos-universitario-londrina-com-garagem-250m2-locacao-rs-5500?id=15230&ref=03630.001&search=0",
+        ),
+        resultado(
+          "Casa para alugar 3 quartos, 242 m² em Jardim Carvalho, Ponta Grossa",
+          "... 03630.001.",
+          "https://chavefacil.com.br/imovel/alugar-casa-3-quartos-jardim-carvalho-ponta-grossa-03452001/4459709",
+        ),
+        resultado(
+          "Casas Padrão para alugar nos bairros Jardim Carvalho",
+          "... 03630.001.",
+          "https://chavefacil.com.br/imoveis/alugar/ponta_grossa/jardim_carvalho/casa_padrao",
+        ),
+        resultado(
+          "Locação Ponta Grossa",
+          "... 03630.001.",
+          "https://kikina.com.br/locacao/ponta-grossa-pagina-8",
+        ),
+        resultado(
+          "Imobiliária Atual Londrina - YouTube",
+          "Canal oficial da imobiliária com imóveis em Londrina.",
+          "https://www.youtube.com/@imobiliariaatual",
+        ),
+      ];
+      const triagem = triarCorrespondenciasInvestigacao(entrada, resultados);
+      expect(triagem.mantidos.map((item) => item.url)).toEqual([
+        "https://www.imobiliariaatual.com.br/imovel/casa-residencial-4-quartos-universitario-londrina-com-garagem-250m2-locacao-rs-5500?id=15230&ref=03630.001&search=0",
+      ]);
+      expect(triagem.mantidos[0].confianca).toBe("muito-forte");
+    });
   });
 });
 
