@@ -266,6 +266,20 @@ describe("casos obrigatórios do gate", () => {
         "https://www.imobiliariaatual.com.br/imovel/casa-residencial-4-quartos-universitario-londrina-com-garagem-250m2-locacao-rs-5500?id=15230&ref=03630.001&search=0",
       ]);
       expect(triagem.mantidos[0].confianca).toBe("muito-forte");
+
+      // Funciona estruturalmente para qualquer cidade do Brasil (sem lista fixa de cidades).
+      expect(triar(
+        "Rua das Acácias, 120, Centro, Uberlândia - MG, Ref. 04512.001",
+        "Casa para alugar 3 quartos em Abadia, Uberaba",
+        "Ref. 04512.001.",
+        "https://portal.test/imovel/casa-3-quartos-abadia",
+      )).toMatchObject({ relevancia: "irrelevante", motivo: "localidade-divergente" });
+      expect(triar(
+        "Rua das Acácias, 120, Centro, Sorocaba - SP, Ref. 04512.001",
+        "Casas para alugar no Centro",
+        "Ref. 04512.001.",
+        "https://portal.test/imoveis/alugar/bauru/centro/casa",
+      )).toMatchObject({ relevancia: "irrelevante", motivo: "localidade-divergente" });
     });
   });
 });

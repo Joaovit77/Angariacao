@@ -902,32 +902,44 @@ const SLUGS_NAO_CIDADE = new Set([
   "studio", "comercial", "residencial", "pagina", "page", "busca", "todos", "brasil",
 ]);
 
-const CIDADES_SLUG_CONHECIDAS = new RegExp(
-  "(?:^|[-/_+])(" + [
-    "ponta-grossa", "ponta_grossa", "londrina", "curitiba", "maringa", "cascavel",
-    "foz-do-iguacu", "foz_do_iguacu", "cambe", "ibipora", "arapongas", "apucarana",
-    "sao-paulo", "sao_paulo", "campinas", "ribeirao-preto", "sao-jose-dos-campos",
-    "rio-de-janeiro", "rio_de_janeiro", "belo-horizonte", "belo_horizonte",
-    "porto-alegre", "porto_alegre", "pelotas", "florianopolis", "joinville", "blumenau",
-    "brasilia", "goiania", "salvador", "recife", "fortaleza", "manaus", "belem",
-  ].join("|") + ")(?=$|[-/_+])",
-);
+const UFS_MINUSCULA = UFS_BRASIL.toLowerCase();
+const ROTA_UF_CIDADE = new RegExp(`/(?:${UFS_MINUSCULA})[+_/-]([a-z0-9_-]{3,40})(?:/|$)`);
 
+/** Extrai cidade de forma puramente estrutural da URL de portais brasileiros
+    (sem lista fixa de cidades): `/imoveis/alugar/<cidade>/`,
+    `/locacao/<cidade>-pagina-N` ou `/<uf>+<cidade>/` (ZAP/VivaReal/Chaves). */
 function extrairCidadeDeUrl(urlOriginal: string): string | null {
   try {
     const { pathname } = new URL(urlOriginal);
     const caminho = chaveNormalizada(decodeURIComponent(pathname));
-    const conhecida = caminho.match(CIDADES_SLUG_CONHECIDAS)?.[1];
-    if (conhecida) return conhecida.replace(/[_-]+/g, " ").trim();
-    const rotaPortal = caminho.match(/\/(?:imoveis\/(?:alugar|venda|locacao|comprar)|(?:locacao|aluguel|venda))\/([a-z0-9_-]{3,40})(?:-pagina-\d+|\/|$)/);
-    const segmento = rotaPortal?.[1]?.replace(/[_-]+/g, " ").trim();
-    if (segmento && segmento.length >= 3 && !/^[a-z]{2}$/.test(segmento) && !SLUGS_NAO_CIDADE.has(segmento)) {
-      return segmento;
+    const candidatos = [
+      caminho.match(ROTA_UF_CIDADE)?.[1],
+      caminho.match(/\/(?:imoveis\/(?:alugar|aluguel|venda|locacao|comprar)|(?:locacao|aluguel|alugar|venda))\/([a-z0-9_-]{3,40})(?:-pagina-\d+|\/|$)/)?.[1],
+    ];
+    for (const bruto of candidatos) {
+      const segmento = bruto?.replace(/[_-]+/g, " ").trim();
+      if (segmento && segmento.length >= 3 && !/^[a-z]{2}$/.test(segmento) && !/^\d+$/.test(segmento) && !SLUGS_NAO_CIDADE.has(segmento)) {
+        return segmento;
+      }
     }
   } catch {
     /* URL inválida não gera cidade */
   }
   return null;
+}
+
+const PADRAO_EM_BAIRRO_CIDADE =
+  /\bem\s+[\p{L}\d '.-]{2,40},\s*([A-ZÀ-Ú][\p{L}'-]+(?:\s+(?:d[aeo]s?\s+)?[A-ZÀ-Ú][\p{L}'-]+){0,3})(?=\s*(?:[-–|]|$))/gu;
+
+function extrairCidadeDeFraseEmBairroCidade(textoOriginal: string): string | null {
+  const encontradas: string[] = [];
+  for (const ocorrencia of textoOriginal.matchAll(PADRAO_EM_BAIRRO_CIDADE)) {
+    const candidata = ocorrencia[1]?.replace(/\s+/g, " ").trim() ?? "";
+    const chave = chaveNormalizada(candidata);
+    if (candidata.length < 3 || /^[A-Z]{2}$/.test(candidata) || PALAVRAS_NAO_CIDADE_SEGMENTO.has(chave)) continue;
+    encontradas.push(candidata);
+  }
+  return unico(encontradas);
 }
 
 const PADRAO_URL_PAGINADA = /(?:[-/](?:pagina|page)[-_=/]?\d+|[?&](?:pagina|page)=\d+)(?=$|[/?&#])/i;
@@ -1003,6 +1015,8 @@ function avaliarRelevancia(
     const cidadeEntradaChave = textoComparavel(localidadeEntrada.cidade);
     if (cidadeEntradaChave && !contemExpressao(textoComUrl, cidadeEntradaChave)) {
       const cidadeResultadoChave = textoComparavel(localidadeResultado?.cidade)
+        || textoComparavel(extrairCidadeDeFraseEmBairroCidade(correspondencia.titulo))
+        || textoComparavel(extrairCidadeDeFraseEmBairroCidade(correspondencia.descricao))
         || textoComparavel(extrairCidadeDeUrl(correspondencia.url));
       if (cidadeResultadoChave && cidadeResultadoChave !== cidadeEntradaChave) {
         return { relevancia: "irrelevante", motivo: "localidade-divergente" };
