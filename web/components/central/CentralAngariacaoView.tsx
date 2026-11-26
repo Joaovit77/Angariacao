@@ -187,12 +187,17 @@ export default function CentralAngariacaoView() {
       toast("Informe a cidade e uma UF válida.", "error");
       return;
     }
+    const tipoRecorte = tipoRecorteRadar(tipo);
+    if (!tipoRecorte) {
+      toast("Selecione o tipo do imóvel (Apartamento ou Casa).", "error");
+      return;
+    }
     setBuscando(true);
     setIdsComparaveis(new Map());
     const filtros = {
       portal,
       finalidade: "locacao",
-      tipoRecorte: tipoRecorteRadar(tipo) || undefined,
+      tipoRecorte,
       cidade,
       estado: estado.toUpperCase(),
       bairro: portal === "zap" ? undefined : (bairro || undefined),
@@ -399,7 +404,7 @@ export default function CentralAngariacaoView() {
                   return (
                     <article className="card central-radar-busca" key={busca.id}>
                       <div>
-                        <div className="central-card-tags"><span>{busca.filtros.portal}</span>{novos > 0 && <span className="radar-novo">{novos} novo{novos === 1 ? "" : "s"}</span>}</div>
+                        <div className="central-card-tags"><span>{rotuloPortal(busca.filtros.portal)}</span>{busca.filtros.somenteProprietario && <span>Só proprietário</span>}{novos > 0 && <span className="radar-novo">{novos} novo{novos === 1 ? "" : "s"}</span>}</div>
                         <h3>{busca.nome}</h3>
                         {!busca.comparacaoDesde && <span>Base não revisada · aguardando coleta com cobertura suficiente</span>}
                         <p>{[busca.filtros.tipo, busca.filtros.bairro, busca.filtros.cidade].filter(Boolean).join(" · ")}</p>
@@ -486,7 +491,14 @@ export default function CentralAngariacaoView() {
             <label>Cidade<input value={cidade} onChange={(e) => { cidadeEstadoProtegidos.current = true; setCidade(e.target.value); }} /></label>
             <label>UF<select value={estado} onChange={(e) => { cidadeEstadoProtegidos.current = true; setEstado(e.target.value); }}><option value="">Selecione</option>{UFS_BRASIL.map((uf) => <option key={uf} value={uf}>{uf}</option>)}</select></label>
             <label>Bairro<input value={portal === "zap" ? "" : bairro} onChange={(e) => setBairro(e.target.value)} placeholder={portal === "zap" ? "Indisponível no ZAP" : "Todos"} disabled={portal === "zap"} /></label>
-            <label>Tipo<input value={tipo} onChange={(e) => setTipo(e.target.value)} placeholder="Apartamento, casa…" /></label>
+            <label>
+              Tipo
+              <select value={tipo} onChange={(e) => setTipo(e.target.value)}>
+                <option value="">Selecione</option>
+                <option value="Apartamento">Apartamento</option>
+                <option value="Casa">Casa</option>
+              </select>
+            </label>
             <label>Valor mínimo<input inputMode="numeric" value={valorMin} onChange={(e) => setValorMin(e.target.value)} placeholder="R$ 0" /></label>
             <label>Valor máximo<input inputMode="numeric" value={valorMax} onChange={(e) => setValorMax(e.target.value)} placeholder="Sem limite" /></label>
             <label>Dormitórios<input inputMode="numeric" value={dormitorios} onChange={(e) => setDormitorios(e.target.value)} placeholder="Todos" /></label>
@@ -575,6 +587,7 @@ export default function CentralAngariacaoView() {
                       <div className="central-card-tags">
                         <span>{rotuloPortal(anuncio.portal)}</span>
                         <span className={`radar-score ${avaliacao.faixa}`}>Oportunidade {avaliacao.nota}/100</span>
+                        {anuncio.anunciante === "proprietario" && <span>Direto com proprietário</span>}
                         {anuncio.publicadoTexto && <span>{anuncio.publicadoTexto}</span>}
                         {visualizado && <span className="visualizado">Visualizado</span>}
                         {repeticao.motivo === "url-na-carteira" && <span className="duplicado">Já está na carteira</span>}

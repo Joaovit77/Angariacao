@@ -145,7 +145,37 @@ for (const tipoRecorte of ["casa", "apartamento"] as const) {
       mocks.launch.mockResolvedValue({newContext:async()=>({newPage:async()=>page}),close});
       expect(await buscarComNavegador(filtros,urlDaPesquisa(filtros))).toEqual(extrair()); expect(content).toHaveBeenCalledOnce();expect(close).toHaveBeenCalledOnce();expect(fetch).not.toHaveBeenCalled();
     });
-    it.each([{finalidade:"venda" as const,cidade:"Curitiba"},{cidade:"Curitiba"},{estado:"SP"},{cidade:""},{bairro:"Centro"},{somenteProprietario:true}])("bloqueia recorte não comprovado antes de qualquer efeito: %j",async delta=>{
+    it("suporta somenteProprietario com rota direta da cidade, ordenação recente e detecção factual do anunciante", () => {
+      const somenteProp = { ...filtros, somenteProprietario: true };
+      expect(capacidadeContratoExplicitoRadar(somenteProp).suportado).toBe(true);
+      expect(urlDaPesquisa(somenteProp)).toBe(
+        `https://www.olx.com.br/imoveis/aluguel/${tipoRecorte === "casa" ? "casas" : "apartamentos"}/estado-pr/londrina?sf=1&f=p`,
+      );
+
+      // Sem evidência no HTML nem no estado RSC, permanece honestamente "incerto".
+      expect(extrairAnunciosFirecrawl(html, somenteProp).every((item) => item.anunciante === "incerto")).toBe(true);
+
+      // Selo "Direto com o proprietário" no card confirma anunciante proprietário (inclusive na coleta global sem f=p).
+      const comSelo = alterar(html, ($) => {
+        $("section.olx-adcard").first().append('<div class="olx-adcard__badges"><div class="olx-core-badge" aria-label="Direto com o proprietário">Direto com o proprietário</div></div>');
+        $("section.olx-adcard").last().append('<div class="olx-adcard__badges"><div class="olx-core-badge" aria-label="Profissional">Profissional</div></div>');
+      });
+      const filtrados = extrairAnunciosFirecrawl(comSelo, somenteProp);
+      expect(filtrados.map((item) => ({ id: item.idExterno, anunciante: item.anunciante }))).toEqual([
+        { id: ids[0], anunciante: "proprietario" },
+      ]);
+      expect(extrairAnunciosFirecrawl(comSelo, filtros).map((item) => item.anunciante)).toEqual([
+        "proprietario",
+        "imobiliaria",
+      ]);
+
+      // Checkbox "Particular" marcado no HTML confirma proprietário quando não há selo profissional.
+      const comCheckbox = alterar(html, ($) => {
+        $("body").prepend('<input id="chips-id-company_ad-Particular" name="Particular" type="checkbox" checked />');
+      });
+      expect(extrairAnunciosFirecrawl(comCheckbox, somenteProp).every((item) => item.anunciante === "proprietario")).toBe(true);
+    });
+    it.each([{finalidade:"venda" as const,cidade:"Curitiba"},{cidade:"Curitiba"},{estado:"SP"},{cidade:""},{bairro:"Centro"}])("bloqueia recorte não comprovado antes de qualquer efeito: %j",async delta=>{
       const f={...filtros,...delta}; expect(()=>urlDaPesquisa(f)).toThrow();
       await expect(buscarComFirecrawl(f,"https://exemplo.invalid")).rejects.toThrow(); await expect(salvarComparaveisMercado(cliente as never,"dono",[],f)).rejects.toThrow();
       expect(mocks.cache).not.toHaveBeenCalled(); expect(fetch).not.toHaveBeenCalled(); expect(mocks.rpc).not.toHaveBeenCalled();

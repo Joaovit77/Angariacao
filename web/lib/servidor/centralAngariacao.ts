@@ -79,16 +79,25 @@ function urlOlx(f: FiltrosCentralAngariacao): string {
   const { estado } = localizacaoSegura(f);
   if (!filtrosRadarSaoLegados(f)) {
     const categoria = f.tipoRecorte === "casa" ? "casas" : "apartamentos";
-    return `https://www.olx.com.br/imoveis/${f.finalidade === "venda" ? "venda" : "aluguel"}/${categoria}/estado-${estado}/regiao-de-londrina/londrina`;
+    const finalidade = f.finalidade === "venda" ? "venda" : "aluguel";
+    if (!f.somenteProprietario) {
+      return `https://www.olx.com.br/imoveis/${finalidade}/${categoria}/estado-${estado}/regiao-de-londrina/londrina`;
+    }
+    const url = new URL(`https://www.olx.com.br/imoveis/${finalidade}/${categoria}/estado-${estado}/londrina`);
+    url.searchParams.set("sf", "1");
+    url.searchParams.set("f", "p");
+    return url.toString();
   }
-  // A OLX agrupa algumas cidades por DDD/região. Londrina é o primeiro
-  // recorte atendido e sua rota canônica é "regiao-de-londrina".
+  // Compatibilidade legada: mantém rota e parâmetros usados pelas buscas salvas antigas.
   const url = new URL(`https://www.olx.com.br/imoveis/aluguel/estado-${estado}/regiao-de-londrina`);
   if (f.valorMin != null) url.searchParams.set("pe", String(f.valorMin));
   if (f.valorMax != null) url.searchParams.set("ps", String(f.valorMax));
   if (f.bairro) url.searchParams.set("q", f.bairro);
   // Parâmetro usado pela própria OLX ao selecionar o chip "Particular".
-  if (f.somenteProprietario) url.searchParams.set("f", "p");
+  if (f.somenteProprietario) {
+    url.searchParams.set("sf", "1");
+    url.searchParams.set("f", "p");
+  }
   return url.toString();
 }
 

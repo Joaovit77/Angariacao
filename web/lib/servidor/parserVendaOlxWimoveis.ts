@@ -2,7 +2,7 @@ import type { CheerioAPI } from "cheerio";
 import type { AnuncioCentralAngariacao, FiltrosCentralAngariacao } from "@/lib/calculo/centralAngariacao";
 import { extrairTipoImovelDeclarado } from "@/lib/calculo/caracteristicasImovel";
 import { identidadeVendaRadar } from "@/lib/calculo/identidadeVendaRadar";
-import { anunciosDoEstado } from "./parserOlx";
+import { anuncianteDoCardOlx, anunciosDoEstado, filtroParticularConfirmadoOlx } from "./parserOlx";
 import { tituloWimoveis } from "./tituloWimoveis";
 
 type Objeto = Record<string, unknown>;
@@ -54,6 +54,7 @@ function estadoWimoveis($: CheerioAPI): Objeto[] {
 export function extrairOlxVenda($: CheerioAPI, filtros: FiltrosCentralAngariacao, limite: number): AnuncioCentralAngariacao[] {
   if (filtros.finalidade !== "venda") return [];
   const estado = anunciosDoEstado($), candidatos: AnuncioCentralAngariacao[] = [];
+  const particularConfirmado = Boolean(filtros.somenteProprietario && filtroParticularConfirmadoOlx($));
   $("section.olx-adcard").slice(0, limite).each((_, el) => {
     const card = $(el), links = card.find('a[data-testid="adcard-link"]');
     if (links.length !== 1) return;
@@ -61,6 +62,8 @@ export function extrairOlxVenda($: CheerioAPI, filtros: FiltrosCentralAngariacao
     if (!identidade) return;
     const a = estado.get(identidade.id);
     if (!a || String(a.listId) !== identidade.id || identidadeVendaRadar("olx", a.url)?.url !== identidade.url) return;
+    const anunciante = anuncianteDoCardOlx($, card, a, particularConfirmado);
+    if (filtros.somenteProprietario && anunciante === "imobiliaria") return;
     const props = new Map<string, string | null>();
     for (const valor of lista(a.properties)) {
       const p = objeto(valor), nome = texto(p.name);
@@ -92,7 +95,7 @@ export function extrairOlxVenda($: CheerioAPI, filtros: FiltrosCentralAngariacao
       areaM2: area ? positivo(area[1].replace(",", ".")) : null, quartos,
       banheiros: positivo(props.get("bathrooms")), vagas: positivo(props.get("garage_spaces")),
       valorCondominio: dinheiro(props.get("condominio")), valorIptu: dinheiro(props.get("iptu")),
-      descricao: texto(a.description) || null, imagem: card.find("img").first().attr("src") || null, anunciante: "incerto" });
+      descricao: texto(a.description) || null, imagem: card.find("img").first().attr("src") || null, anunciante });
   });
   return semIdentidadeRepetida(candidatos);
 }

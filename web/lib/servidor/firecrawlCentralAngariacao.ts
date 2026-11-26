@@ -13,7 +13,7 @@ import { extrairZap, type DiagnosticoZap } from "./parserZap";
 import { extrairVivaRealLocacao } from "./parserVivaReal";
 import { extrairVendaRadar } from "./parserVendaRadar";
 import { extrairOlxVenda, extrairWimoveisVenda } from "./parserVendaOlxWimoveis";
-import { extrairOlxLocacao } from "./parserOlx";
+import { anuncianteDoCardOlx, extrairOlxLocacao, filtroParticularConfirmadoOlx } from "./parserOlx";
 import { agoraISOString, agoraTimestamp, dataPublicacaoOlx, dentroDoPeriodo, timestampDeIso } from "@/lib/datas";
 import { segundosRetryAfter } from "@/lib/calculo/retryAfter";
 import {
@@ -142,6 +142,7 @@ interface PaginaOlx {
 function lerPaginaOlx($: CheerioAPI, filtros: FiltrosCentralAngariacao): PaginaOlx {
   const agora = agoraTimestamp();
   const todos = $("section.olx-adcard");
+  const particularConfirmado = Boolean(filtros.somenteProprietario && filtroParticularConfirmadoOlx($));
   const cards = todos.slice(0, LIMITE_RESULTADOS).toArray().map((elemento, indice): CardOlx => {
     const posicao = indice + 1;
     const card = $(elemento);
@@ -149,6 +150,10 @@ function lerPaginaOlx($: CheerioAPI, filtros: FiltrosCentralAngariacao): PaginaO
     const url = link.attr("href") || "";
     const titulo = link.attr("title") || texto(link);
     if (!url || !titulo || !/\d{6,}(?:\?|$)/.test(url)) {
+      return { posicao, anuncio: null, noPeriodo: false, antigo: false };
+    }
+    const anunciante = anuncianteDoCardOlx($, card, null, particularConfirmado);
+    if (filtros.somenteProprietario && anunciante === "imobiliaria") {
       return { posicao, anuncio: null, noPeriodo: false, antigo: false };
     }
     const local = cidadeBairro(texto(card.find(".olx-adcard__location").first()));
@@ -176,7 +181,7 @@ function lerPaginaOlx($: CheerioAPI, filtros: FiltrosCentralAngariacao): PaginaO
         descricao: texto(card.find(".olx-adcard__details").first()) || null,
         publicadoEm,
         publicadoTexto: publicadoTexto || null,
-        anunciante: "incerto" as const,
+        anunciante,
       },
     };
   });

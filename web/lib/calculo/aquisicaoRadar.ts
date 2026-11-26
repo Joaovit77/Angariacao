@@ -166,9 +166,6 @@ export function capacidadeAquisicaoRadar(recorte: RecorteAquisicaoRadar): Capaci
   if (recorte.portal === "olx" && recorte.bairro?.trim()) {
     return resultado("nao-suportado", "A OLX ainda não possui aquisição comprovada por bairro.");
   }
-  if (recorte.portal === "olx" && recorte.somenteProprietario) {
-    return resultado("nao-suportado", "A OLX ainda não possui aquisição comprovada somente de proprietários neste recorte.");
-  }
   if (!londrina) {
     return resultado("parcial", "Este mercado ainda requer comprovação da aquisição no portal.");
   }

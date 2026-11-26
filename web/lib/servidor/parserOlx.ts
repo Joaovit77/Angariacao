@@ -1,4 +1,5 @@
-import type { CheerioAPI } from "cheerio";
+import type { Cheerio, CheerioAPI } from "cheerio";
+import type { AnyNode } from "domhandler";
 import type { AnuncioCentralAngariacao, FiltrosCentralAngariacao } from "@/lib/calculo/centralAngariacao";
 import { identidadeOlx } from "@/lib/calculo/aquisicaoRadar";
 import { extrairTipoImovelDeclarado } from "@/lib/calculo/caracteristicasImovel";
@@ -51,9 +52,47 @@ export function anunciosDoEstado($: CheerioAPI): Map<string, Objeto | null> {
   return anuncios;
 }
 
+/** Confirma se o HTML da listagem OLX trouxe o filtro Particular marcado. */
+export function filtroParticularConfirmadoOlx($: CheerioAPI): boolean {
+  return $('input#chips-id-company_ad-Particular[checked], input[type="checkbox"][name="Particular"][checked]').length > 0;
+}
+
+/** Deriva o tipo de anunciante apenas de sinais observados no estado RSC, nos
+ * selos do card (`.olx-adcard__badges`) ou na confirmação do filtro da página. */
+export function anuncianteDoCardOlx(
+  $: CheerioAPI,
+  card: Cheerio<AnyNode>,
+  anuncioEstado: Objeto | null,
+  filtroParticularConfirmado: boolean,
+): AnuncioCentralAngariacao["anunciante"] {
+  if (anuncioEstado) {
+    if (anuncioEstado.professionalAd === true || anuncioEstado.isProfessional === true) return "imobiliaria";
+    if (anuncioEstado.professionalAd === false || anuncioEstado.isProfessional === false) return "proprietario";
+  }
+  const badges = card.find(".olx-adcard__badges");
+  if (badges.length) {
+    const rotulos = badges
+      .find("[aria-label]")
+      .toArray()
+      .map((el) => $(el).attr("aria-label") || "")
+      .filter(Boolean);
+    const sinais = [badges.text(), ...rotulos]
+      .join(" ")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+    if (/\b(profissional|imobiliaria|corretor|creci)\b/.test(sinais)) return "imobiliaria";
+    if (sinais.includes("direto com o proprietario") || /\bparticular\b/.test(sinais)) return "proprietario";
+  }
+  return filtroParticularConfirmado ? "proprietario" : "incerto";
+}
+
 /** Card individual + estado pelo mesmo ID e URL. Tipo/finalidade são propriedades do anúncio. */
 export function extrairOlxLocacao($: CheerioAPI, filtros: FiltrosCentralAngariacao, limite: number): AnuncioCentralAngariacao[] {
   const estado = anunciosDoEstado($), vistos = new Set<string>();
+  const particularConfirmado = Boolean(filtros.somenteProprietario && filtroParticularConfirmadoOlx($));
   return $("section.olx-adcard").slice(0, limite).toArray().flatMap(elemento => {
     const card = $(elemento), links = card.find('a[data-testid="adcard-link"]');
     if (links.length !== 1) return [];
@@ -61,6 +100,8 @@ export function extrairOlxLocacao($: CheerioAPI, filtros: FiltrosCentralAngariac
     if (!identidade || vistos.has(identidade.id)) return [];
     const a = estado.get(identidade.id);
     if (!a || identidadeOlx(a.url)?.url !== identidade.url || String(a.listId) !== identidade.id) return [];
+    const anunciante = anuncianteDoCardOlx($, card, a, particularConfirmado);
+    if (filtros.somenteProprietario && anunciante === "imobiliaria") return [];
     const props = new Map<string, string | null>();
     for (const valor of a.properties as unknown[]) {
       const p = objeto(valor), nome = texto(p.name);
@@ -102,7 +143,7 @@ export function extrairOlxLocacao($: CheerioAPI, filtros: FiltrosCentralAngariac
       areaM2: tamanho ? Number(tamanho[1].replace(",", ".")) : null, quartos,
       banheiros: inteiro(props.get("bathrooms")), vagas: inteiro(props.get("garage_spaces")),
       valorCondominio: dinheiro(props.get("condominio")), valorIptu: dinheiro(props.get("iptu")),
-      publicadoEm, publicadoTexto: publicadoTexto || null, anunciante: "incerto" as const,
+      publicadoEm, publicadoTexto: publicadoTexto || null, anunciante,
     }];
   });
 }
