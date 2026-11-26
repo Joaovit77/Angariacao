@@ -109,7 +109,18 @@ function dominioDaUrl(valor: string): string {
 }
 
 function urlHttpSegura(valor: string): string {
-  return /^https?:\/\//i.test(valor) ? valor : "";
+  if (!/^https?:\/\//i.test(valor)) return "";
+  try {
+    const analisada = new URL(valor);
+    const host = analisada.hostname.toLowerCase().replace(/^www\./, "");
+    if ((host === "google.com" || host === "google.com.br") && (analisada.pathname === "/url" || analisada.pathname === "/goto")) {
+      const destino = analisada.searchParams.get("url") || analisada.searchParams.get("q") || "";
+      if (/^https?:\/\//i.test(destino)) return destino;
+    }
+    return valor;
+  } catch {
+    return "";
+  }
 }
 
 /** Lista bruta como veio do Firecrawl `/v2/search`, ou null quando o corpo

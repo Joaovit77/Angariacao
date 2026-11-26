@@ -113,6 +113,98 @@ describe("Investigador de Imóveis", () => {
     });
   });
 
+  it("não confunde quantidade de quartos após 'alugar' ou 'venda' com preço", () => {
+    expect(extrairCamposInvestigacao("Casa para alugar 3 quartos, 242 m² em Jardim Carvalho")).toMatchObject({
+      preco: null,
+      quartos: 3,
+      area: 242,
+    });
+    expect(extrairCamposInvestigacao("Casa para venda 4 quartos, 250 m²")).toMatchObject({
+      preco: null,
+      quartos: 4,
+      area: 250,
+    });
+  });
+
+  it("não confunde 'Casa Residencial' ou adjetivo residencial com nome de empreendimento", () => {
+    const entrada = "Casa residencial Rua Presidente Wilson Universitario Londrina - PR 03630.001 Aluguel 3 banheiros 4 vagas 250m² total 250m² útil";
+    expect(extrairCamposInvestigacao(entrada)).toMatchObject({
+      condominio: null,
+      referencia: "03630.001",
+      vagas: 4,
+      area: 250,
+    });
+    expect(extrairCamposInvestigacao("Casa Residencial com 4 quartos no Universitario em Londrina")).toMatchObject({
+      condominio: null,
+      quartos: 4,
+    });
+    expect(extrairCamposInvestigacao("03630.001. Casa Residencial. Universitario. 4 quartos sendo 1 suíte. 4 vagas. 250m² útil. Aluguel: R$ 5.500,00.")).toMatchObject({
+      condominio: null,
+      referencia: "03630.001",
+      preco: 5_500,
+    });
+    // Quando há um condomínio real depois de "Casa residencial", ele continua sendo extraído.
+    expect(extrairCamposInvestigacao("Casa residencial no Condomínio Ilha do Sol, 3 quartos").condominio)
+      .toBe("Condomínio Ilha do Sol");
+    expect(extrairCamposInvestigacao("Apartamento no Residencial Aurora, 120 m²").condominio)
+      .toBe("Residencial Aurora");
+
+    const resultados: ResultadoWebInvestigacao[] = [
+      {
+        titulo: "Imóveis para locação",
+        url: "https://imobiliariaatual.com.br/locacao",
+        dominio: "imobiliariaatual.com.br",
+        descricao: "... 03630.001. Casa Residencial. Universitario. 4 quartos sendo 1 suíte. 4 vagas. 250m² útil. Aluguel: R$ 5.500,00.",
+        consultas: ['"03630.001" imóvel'],
+        ...extrairCamposInvestigacao("Imóveis para locação ... 03630.001. Casa Residencial. Universitario. 4 quartos sendo 1 suíte. 4 vagas. 250m² útil. Aluguel: R$ 5.500,00."),
+      },
+      {
+        titulo: "Casa Residencial com 4 quartos no Universitario em Londrina",
+        url: "https://imobiliariaatual.com.br/imovel/03630-001",
+        dominio: "imobiliariaatual.com.br",
+        descricao: "... 03630.001. Casa Residencial. Rua. Presidente Wilson. Universitario Londrina - PR. 4 quartos.",
+        consultas: ['"03630.001" imóvel'],
+        ...extrairCamposInvestigacao("Casa Residencial com 4 quartos no Universitario em Londrina ... 03630.001. Casa Residencial. Rua. Presidente Wilson. Universitario Londrina - PR. 4 quartos."),
+      },
+    ];
+    const analisados = analisarCorrespondenciasInvestigacao(entrada, resultados);
+    for (const item of analisados) {
+      expect(item.contradicoes).toEqual([]);
+      expect(item.confianca).toBe("muito-forte");
+      expect(item.condominio).toBeNull();
+    }
+  });
+
+  it("desembrulha redirecionamentos do Google (/url?q= ou ?url=) para exibir o domínio real da fonte", async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
+      success: true,
+      data: {
+        web: [
+          {
+            title: "Casa Residencial com 4 quartos no Universitario em Londrina",
+            description: "Ref. 03630.001 em Londrina - PR.",
+            url: "https://www.google.com/url?esrc=s&q=&rct=j&sa=U&url=https://www.imobiliariaatual.com.br/imovel/03630-001",
+          },
+          {
+            title: "Casa no Universitario",
+            description: "Ref. 03630.001.",
+            url: "https://www.google.com/url?q=https://portal.test/imovel/99&sa=U",
+          },
+        ],
+      },
+    }), { status: 200 }));
+
+    const busca = await buscarImovelNaWeb("03630.001", ['"03630.001" imóvel'], fetcher);
+    expect(busca.resultados[0]).toMatchObject({
+      url: "https://www.imobiliariaatual.com.br/imovel/03630-001",
+      dominio: "imobiliariaatual.com.br",
+    });
+    expect(busca.resultados[1]).toMatchObject({
+      url: "https://portal.test/imovel/99",
+      dominio: "portal.test",
+    });
+  });
+
   it.each([
     "2.700",
     "670.000",

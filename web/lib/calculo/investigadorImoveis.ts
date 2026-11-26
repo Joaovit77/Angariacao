@@ -97,29 +97,44 @@ export function consultaInvestigadorValida(valor: unknown): valor is string {
 }
 
 const PADRAO_VALOR_MONETARIO = "\\d{1,3}(?:\\.\\d{3})+(?:,\\d{1,2})?|\\d+(?:,\\d{1,2})?";
+const UNIDADE_NAO_MONETARIA =
+  "(?:quartos?|qtos?|dormit[oó]rios?|dorms?|su[ií]tes?|banheiros?|vagas?|garagens?|m(?:²|2)|metros?|hectares?|andares?|pisos?|salas?|torres?|blocos?|unidades?|casas?|apartamentos?|aptos?|im[oó]veis|ofertas?|an[uú]ncios?|dias?|meses?|anos?|km\\b|%)";
 
 function valoresMonetariosComContexto(texto: string): string[] {
-  const padroes = [
-    new RegExp("R\\$\\s*(" + PADRAO_VALOR_MONETARIO + ")", "gi"),
+  const comMoeda = [...texto.matchAll(new RegExp("R\\$\\s*(" + PADRAO_VALOR_MONETARIO + ")", "gi"))]
+    .map((ocorrencia) => ocorrencia[1])
+    .filter(Boolean);
+  const semMoedaObrigatoria = [
     new RegExp(
       "\\b(?:aluguel|alugar|loca[cç][aã]o|venda|valor|pre[cç]o)\\b"
       + "(?:\\s+(?:mensal|mensais|por|de|a\\s+partir\\s+de)){0,3}"
-      + "\\s*[:=-]?\\s*(?:R\\$\\s*)?(" + PADRAO_VALOR_MONETARIO + ")",
+      + "\\s*[:=-]?\\s*(R\\$\\s*)?(" + PADRAO_VALOR_MONETARIO + ")"
+      + "(?![\\d.,])(?!\\s*" + UNIDADE_NAO_MONETARIA + ")",
       "gi",
     ),
     new RegExp(
-      "(" + PADRAO_VALOR_MONETARIO + ")\\s*"
+      "(R\\$\\s*)?(" + PADRAO_VALOR_MONETARIO + ")\\s*"
       + "(?:\\/\\s*m[eê]s|\\bpor\\s+m[eê]s\\b|\\bmensais?\\b)",
       "gi",
     ),
     new RegExp(
-      "\\bmensais?\\b\\s*[:=-]?\\s*(?:R\\$\\s*)?(" + PADRAO_VALOR_MONETARIO + ")",
+      "\\bmensais?\\b\\s*[:=-]?\\s*(R\\$\\s*)?(" + PADRAO_VALOR_MONETARIO + ")"
+      + "(?![\\d.,])(?!\\s*" + UNIDADE_NAO_MONETARIA + ")",
       "gi",
     ),
-  ];
-  return padroes.flatMap((padrao) =>
-    [...texto.matchAll(padrao)].map((ocorrencia) => ocorrencia[1]).filter(Boolean)
+  ].flatMap((padrao) =>
+    [...texto.matchAll(padrao)]
+      .filter((ocorrencia) => {
+        const valor = ocorrencia[2];
+        if (!valor) return false;
+        const temSimbolo = Boolean(ocorrencia[1]);
+        if (temSimbolo) return true;
+        const numero = numeroMonetario(valor);
+        return numero !== null && numero >= 100;
+      })
+      .map((ocorrencia) => ocorrencia[2])
   );
+  return [...comMoeda, ...semMoedaObrigatoria];
 }
 
 export function extrairReferenciaInvestigacao(texto: string): string | null {
@@ -327,9 +342,31 @@ function textoContemEndereco(texto: string, endereco: string): boolean {
   return new RegExp(escapado + String.raw`(?![\p{L}\d])`, "u").test(chaveEndereco(texto));
 }
 
+const TIPO_ANTES_DE_RESIDENCIAL =
+  /\b(?:casa|casas|apartamento|apartamentos|apto\.?|sobrado|sobrados|im[oó]vel|im[oó]veis|terreno|terrenos|lote|lotes|ch[aá]cara|kitnet|kitinete|studio|cobertura|sala|pr[eé]dio|ponto|[aá]rea|zona|bairro|uso)\s+$/iu;
+
+const INICIO_NAO_EMPREENDIMENTO =
+  /^(?:com|para|em|no|na|nos|nas|de|do|da|dos|das|a|à|por|e|ou|aluguel|alugar|venda|vender|loca[cç][aã]o|compartilhe|visualizado|rua|avenida|av\.?|alameda|travessa|rodovia|estrada)(?![\p{L}\d])/iu;
+
+const ROTULO_CONDOMINIO = /\b(condom[ií]nio|residencial|edif[ií]cio|ed\.?)\s+/giu;
+const NOME_CONDOMINIO =
+  /^([\p{L}\d][\p{L}\d '-]{1,70}?)(?=\.(?:\s|$)|\s+\d{1,4}(?:[.,]\d+)?\s*m(?:²|2)|\s+\d{1,2}\s+(?:quartos?|dormit[oó]rios?|banheiros?|vagas?)|\s+(?:com\s+\d|para\s+(?:alugar|loca[cç][aã]o|venda)|[àa]\s+venda)|[|,;:]|$)/iu;
+
 function extrairCondominioExplicito(texto: string): string | null {
-  const valor = texto.match(/\b(?:condom[ií]nio|residencial|edif[ií]cio|ed\.?)\s+([\p{L}\d][\p{L}\d .'-]{2,70}?)(?=\s+\d{1,4}(?:[.,]\d+)?\s*m(?:²|2)|\s+\d{1,2}\s+(?:quartos?|dormit[oó]rios?)|[|,;:]|$)/iu)?.[0];
-  return valor?.replace(/\s+/g, " ").trim() || null;
+  for (const inicio of texto.matchAll(ROTULO_CONDOMINIO)) {
+    const rotulo = inicio[1];
+    const indice = inicio.index ?? 0;
+    if (/^residencial$/i.test(rotulo) && TIPO_ANTES_DE_RESIDENCIAL.test(texto.slice(0, indice))) {
+      continue;
+    }
+    const resto = texto.slice(indice + inicio[0].length);
+    const nome = resto.match(NOME_CONDOMINIO)?.[1]?.replace(/\s+/g, " ").trim() ?? "";
+    if (nome.length < 3 || INICIO_NAO_EMPREENDIMENTO.test(nome)) {
+      continue;
+    }
+    return `${rotulo} ${nome}`.replace(/\s+/g, " ").trim();
+  }
+  return null;
 }
 
 // Os mesmos tipos de via que o extrator de endereço reconhece.
