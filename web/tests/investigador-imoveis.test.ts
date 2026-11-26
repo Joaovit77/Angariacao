@@ -159,6 +159,14 @@ describe("Investigador de Imóveis", () => {
         ...extrairCamposInvestigacao("Imóveis para locação ... 03630.001. Casa Residencial. Universitario. 4 quartos sendo 1 suíte. 4 vagas. 250m² útil. Aluguel: R$ 5.500,00."),
       },
       {
+        titulo: "Casa para alugar 3 quartos, 242 m² em Jardim Carvalho, Ponta Grossa",
+        url: "https://outro-portal.test/ponta-grossa",
+        dominio: "outro-portal.test",
+        descricao: "... 03630.001.",
+        consultas: ['"03630.001" imóvel'],
+        ...extrairCamposInvestigacao("Casa para alugar 3 quartos, 242 m² em Jardim Carvalho, Ponta Grossa ... 03630.001."),
+      },
+      {
         titulo: "Casa Residencial com 4 quartos no Universitario em Londrina",
         url: "https://imobiliariaatual.com.br/imovel/03630-001",
         dominio: "imobiliariaatual.com.br",
@@ -173,6 +181,16 @@ describe("Investigador de Imóveis", () => {
       expect(item.confianca).toBe("muito-forte");
       expect(item.condominio).toBeNull();
     }
+    // Os dois cards da imobiliária em Londrina devem ficar acima do homônimo de Ponta Grossa.
+    expect(analisados.map((item) => item.url)).toEqual([
+      "https://imobiliariaatual.com.br/locacao",
+      "https://imobiliariaatual.com.br/imovel/03630-001",
+      "https://outro-portal.test/ponta-grossa",
+    ]);
+    expect(analisados[1].evidencias).toEqual(expect.arrayContaining([
+      "Referência idêntica: 03630.001",
+      expect.stringMatching(/^Termos principais encontrados:.*londrina/),
+    ]));
   });
 
   it("desembrulha redirecionamentos do Google (/url?q= ou ?url=) para exibir o domínio real da fonte", async () => {

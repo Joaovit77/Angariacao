@@ -415,6 +415,20 @@ function termosRelevantes(texto: string): Set<string> {
     .filter((item) => item.length >= 4 && !ignorados.has(item) && !/^\d+$/.test(item)));
 }
 
+const TERMOS_ATRIBUTO_ENTRADA = new Set([
+  "residencial", "comercial", "alugar", "locacao", "vender",
+  "banheiro", "banheiros", "suite", "suites", "dormitorio", "dormitorios",
+  "area", "total", "util", "privativa", "construida", "metros", "quadrados",
+]);
+
+function termosIdentidadeEntrada(texto: string): Set<string> {
+  return new Set(
+    [...termosRelevantes(texto)].filter((termo) =>
+      !TERMOS_ATRIBUTO_ENTRADA.has(termo) && !/^\d+m2?$/.test(termo)
+    ),
+  );
+}
+
 export function canonicalizarUrlInvestigacao(valor: string): string {
   try {
     const url = new URL(valor);
@@ -514,7 +528,7 @@ function compararComEntrada(
 ): ComparacaoComEntrada {
   const entrada = extrairCamposInvestigacao(consultaOriginal);
   const condominioInformado = entrada.condominio || expressaoPrincipal(consultaOriginal);
-  const termosEntrada = termosRelevantes(consultaOriginal);
+  const termosEntrada = termosIdentidadeEntrada(consultaOriginal);
   const referenciaEntrada = chaveNormalizada(entrada.referencia);
   const resultadosComMesmaReferencia = referenciaEntrada
     ? resultados.filter((resultado) => chaveNormalizada(resultado.referencia) === referenciaEntrada)
