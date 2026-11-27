@@ -11,6 +11,7 @@ export const MODELOS_IA_PERMITIDOS = [
   "gpt-5.6-luna",
   "gpt-5.6-terra",
   "gpt-5.6-sol",
+  "gpt-6-luna",
 ] as const;
 
 export type ModeloIaPermitido = (typeof MODELOS_IA_PERMITIDOS)[number];
@@ -68,6 +69,7 @@ export const INFO_MODELOS_IA: Record<ModeloIaPermitido, {
   "gpt-5.6-luna": { nome: "GPT-5.6 Luna", perfil: "volume e velocidade", entradaUsd: 0.2, saidaUsd: 1.2 },
   "gpt-5.6-terra": { nome: "GPT-5.6 Terra", perfil: "equilíbrio", entradaUsd: 2, saidaUsd: 12 },
   "gpt-5.6-sol": { nome: "GPT-5.6 Sol", perfil: "qualidade máxima", entradaUsd: 4, saidaUsd: 20 },
+  "gpt-6-luna": { nome: "GPT-6 Luna", perfil: "volume e velocidade", entradaUsd: 0.1, saidaUsd: 0.5 },
 };
 
 export function ehModeloIaPermitido(valor: unknown): valor is ModeloIaPermitido {

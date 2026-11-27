@@ -109,6 +109,12 @@ export const PRECOS: Record<string, PrecoModelo> = {
     saidaPor1M: 20,
     conferidoEm: "2026-08-26",
   },
+  "gpt-6-luna": {
+    entradaPor1M: 0.1,
+    entradaCachePor1M: 0.01,
+    saidaPor1M: 0.5,
+    conferidoEm: "2026-11-27",
+  },
   // A API de transcrição não publica preço de cache (e não cacheia
   // áudio): sem `entradaCachePor1M`, token cacheado — se algum dia vier —
   // é cobrado como entrada normal.

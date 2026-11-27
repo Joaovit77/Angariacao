@@ -22,6 +22,16 @@ describe("configuração operacional da IA", () => {
     expect(CONFIGURACAO_IA_PADRAO.atendimento.modelo).not.toBe(CONFIGURACAO_IA_RECOMENDADA.atendimento.modelo);
   });
 
+  it("aceita gpt-6-luna nas rotas do ADM", () => {
+    const normalizada = normalizarConfiguracaoIa({
+      ...CONFIGURACAO_IA_PADRAO,
+      classificacao: { modelo: "gpt-6-luna", esforco: "low" },
+      atendimento: { modelo: "gpt-6-luna", esforco: "low" },
+    });
+    expect(normalizada?.classificacao).toEqual({ modelo: "gpt-6-luna", esforco: "low" });
+    expect(normalizada?.atendimento).toEqual({ modelo: "gpt-6-luna", esforco: "low" });
+  });
+
   it("recusa modelo, esforço ou instrução fora do contrato do ADM", () => {
     expect(normalizarConfiguracaoIa({ ...CONFIGURACAO_IA_PADRAO, atendimento: { modelo: "modelo-inventado", esforco: "low" } })).toBeNull();
     expect(normalizarConfiguracaoIa({ ...CONFIGURACAO_IA_PADRAO, operacoes: { modelo: "gpt-5.4-mini", esforco: "max" } })).toBeNull();
