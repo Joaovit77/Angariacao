@@ -23,6 +23,7 @@ import {
 
 export type FinalidadeAvaliacao = "locacao" | "venda";
 export type ConservacaoAvaliacao = "Regular" | "Bom" | "Excelente";
+export type BaseAreaAvaliacao = "util" | "total";
 import { extrairAreaM2Declarada } from "./caracteristicasImovel";
 export type NivelConfiancaAvaliacao = "Baixa" | "Moderada" | "Boa" | "Alta";
 export type OrigemComparavelAvaliacao = "interno" | "externo";
@@ -50,7 +51,12 @@ export interface EntradaAvaliacao {
   estado?: string | null;
   edificio?: string | null;
   tipo: string;
+  /** Área útil/privativa em m² (ou base principal quando área útil não foi separada). */
   areaM2: number;
+  /** Área total (ou terreno/construção total) em m². Opcional. */
+  areaTotalM2?: number | null;
+  /** Base de área usada para comparar porte e R$/m². Padrão: "util". */
+  baseArea?: BaseAreaAvaliacao;
   quartos: number;
   banheiros?: number | null;
   vagas: number;
@@ -87,6 +93,7 @@ export interface ComparavelAvaliacao {
   edificio?: string | null;
   tipo: string;
   areaM2?: number | null;
+  areaTotalM2?: number | null;
   quartos?: number | null;
   banheiros?: number | null;
   vagas?: number | null;
@@ -153,6 +160,7 @@ export interface MetodologiaAvaliacao {
   outliersRemovidos: number;
   medianaPonderada: number | null;
   medianaValorM2: number | null;
+  baseAreaAplicada?: BaseAreaAvaliacao;
   dispersao: number | null;
   pesos: typeof CONFIGURACAO_AVALIACAO.pesos;
   pesosComparabilidade: typeof CONFIGURACAO_AVALIACAO.pesosComparabilidade;
@@ -333,6 +341,63 @@ function familiaTipo(tipo: string | null | undefined): string {
   if (TIPOS_COMERCIAL.has(chave)) return "comercial";
   return chave;
 }
+function baseAreaEfetiva(entrada: EntradaAvaliacao): BaseAreaAvaliacao {
+  return entrada.baseArea === "total" && entrada.areaTotalM2 && entrada.areaTotalM2 > 0
+    ? "total"
+    : "util";
+}
+
+function areaReferenciaEntrada(entrada: EntradaAvaliacao): number {
+  return baseAreaEfetiva(entrada) === "total" && entrada.areaTotalM2 && entrada.areaTotalM2 > 0
+    ? entrada.areaTotalM2
+    : entrada.areaM2;
+}
+
+function areaReferenciaComparavel(
+  entrada: EntradaAvaliacao,
+  comparavel: ComparavelAvaliacao,
+): number | null {
+  if (baseAreaEfetiva(entrada) === "total") {
+    if (comparavel.areaTotalM2 && comparavel.areaTotalM2 > 0) return comparavel.areaTotalM2;
+    return comparavel.areaM2 && comparavel.areaM2 > 0 ? comparavel.areaM2 : null;
+  }
+  return comparavel.areaM2 && comparavel.areaM2 > 0 ? comparavel.areaM2 : null;
+}
+
+function scoreAreaComposta(
+  entrada: EntradaAvaliacao,
+  comparavel: ComparavelAvaliacao,
+): number {
+  const base = baseAreaEfetiva(entrada);
+  const areaPrincipalEntrada = areaReferenciaEntrada(entrada);
+  const areaPrincipalComparavel = areaReferenciaComparavel(entrada, comparavel);
+  const scorePrincipal = scoreProporcao(areaPrincipalEntrada, areaPrincipalComparavel);
+
+  if (
+    base === "util"
+    && entrada.areaTotalM2 && entrada.areaTotalM2 > 0
+    && comparavel.areaTotalM2 && comparavel.areaTotalM2 > 0
+  ) {
+    const scoreTotal = scoreProporcao(entrada.areaTotalM2, comparavel.areaTotalM2);
+    // Para casas, sobrados, terrenos e comercial a área total pesa mais na similaridade;
+    // para apartamentos o peso principal permanece na área útil/privativa.
+    const pesoTotal = TIPOS_APARTAMENTO.has(chaveNormalizada(entrada.tipo)) ? 0.15 : 0.3;
+    return scorePrincipal * (1 - pesoTotal) + scoreTotal * pesoTotal;
+  }
+
+  if (
+    base === "total"
+    && entrada.areaM2 > 0
+    && comparavel.areaM2 && comparavel.areaM2 > 0
+    && comparavel.areaTotalM2 && comparavel.areaTotalM2 > 0
+  ) {
+    const scoreUtil = scoreProporcao(entrada.areaM2, comparavel.areaM2);
+    return scorePrincipal * 0.75 + scoreUtil * 0.25;
+  }
+
+  return scorePrincipal;
+}
+
 function comparavelAtendeCriteriosMinimos(
   entrada: EntradaAvaliacao,
   comparavel: ComparavelAvaliacao,
@@ -341,8 +406,10 @@ function comparavelAtendeCriteriosMinimos(
     return false;
   }
   if (!mesmoMercadoGeografico(entrada, comparavel)) return false;
-  if (!(comparavel.areaM2 && comparavel.areaM2 > 0)) return false;
-  if (Math.abs(entrada.areaM2 - comparavel.areaM2) / entrada.areaM2 > 0.55) return false;
+  const areaEntrada = areaReferenciaEntrada(entrada);
+  const areaComparavel = areaReferenciaComparavel(entrada, comparavel);
+  if (!(areaComparavel && areaComparavel > 0)) return false;
+  if (Math.abs(areaEntrada - areaComparavel) / areaEntrada > 0.55) return false;
   if (comparavel.quartos == null || Math.abs(entrada.quartos - comparavel.quartos) > 1) return false;
 
   return true;
@@ -463,7 +530,7 @@ export function calcularSimilaridade(
   const componentes: ComponentesSimilaridade = {
     localizacao: scoreLocalizacao(entrada, comparavel, distanciaKm),
     tipo: scoreTipo(entrada.tipo, comparavel.tipo),
-    area: scoreProporcao(entrada.areaM2, comparavel.areaM2),
+    area: scoreAreaComposta(entrada, comparavel),
     quartos: scoreQuantidade(entrada.quartos, comparavel.quartos),
     banheiros: scoreQuantidade(entrada.banheiros, comparavel.banheiros),
     vagas: scoreQuantidade(entrada.vagas, comparavel.vagas),
@@ -487,10 +554,11 @@ export function calcularSimilaridade(
       (similaridadeEstrutural * pesosComparabilidade.estrutural
         + similaridadeVetorial * pesosComparabilidade.vetorial) / 100,
     );
-  const areaComparavel = comparavel.areaM2 && comparavel.areaM2 > 0 ? comparavel.areaM2 : null;
+  const areaEntrada = areaReferenciaEntrada(entrada);
+  const areaComparavel = areaReferenciaComparavel(entrada, comparavel);
   const valorM2 = areaComparavel ? comparavel.valorAnunciado / areaComparavel : null;
   const proporcaoArea = areaComparavel
-    ? limitar(entrada.areaM2 / areaComparavel, 0.65, 1.5)
+    ? limitar(areaEntrada / areaComparavel, 0.65, 1.5)
     : 1;
   // Ajuste parcial: preço/m² corrige porte, mas 35% do valor bruto preserva
   // economias de escala (um imóvel duas vezes maior raramente custa 2x).
@@ -595,13 +663,21 @@ function explicacaoResultado(
   const maisProximos = comparaveis.slice(0, Math.min(7, comparaveis.length));
   const menor = Math.min(...maisProximos.map((item) => item.valorAjustado));
   const maior = Math.max(...maisProximos.map((item) => item.valorAjustado));
-  const areaMedia = media(comparaveis.map((item) => item.areaM2 || 0).filter((area) => area > 0));
+  const areaEntrada = areaReferenciaEntrada(entrada);
+  const areaMedia = media(
+    comparaveis.map((item) => areaReferenciaComparavel(entrada, item) || 0).filter((area) => area > 0),
+  );
   const vagasMedia = media(comparaveis.map((item) => item.vagas ?? 0));
   const linhas = [
     `${comparaveis.length} imóveis semelhantes passaram pelos critérios objetivos de tipo, cidade, área e quartos.`,
     `Os ${maisProximos.length} comparáveis mais fortes apontam valores ajustados entre ${arredondar(menor)} e ${arredondar(maior)} reais.`,
     `A mediana ponderada por similaridade e recência ficou em ${recomendado} reais.`,
   ];
+  if (baseAreaEfetiva(entrada) === "total") {
+    linhas.push("O cálculo de porte e R$/m² utilizou a área total informada como referência principal.");
+  } else if (entrada.areaTotalM2 && entrada.areaTotalM2 > 0) {
+    linhas.push("O cálculo de R$/m² utilizou a área útil como base principal, com a área total reforçando a similaridade quando disponível nos comparáveis.");
+  }
   if (preliminar) {
     linhas.unshift(
       amostraRegional
@@ -612,7 +688,7 @@ function explicacaoResultado(
     );
   }
   if (areaMedia > 0) {
-    const diferenca = (entrada.areaM2 - areaMedia) / areaMedia;
+    const diferenca = (areaEntrada - areaMedia) / areaMedia;
     if (Math.abs(diferenca) >= 0.08) {
       linhas.push(
         diferenca > 0
@@ -764,6 +840,7 @@ export function avaliarImovel(
       ...metodologiaBase,
       medianaPonderada: Math.round(medianaPonderada),
       medianaValorM2: medianaValorM2 > 0 ? Math.round(medianaValorM2) : null,
+      baseAreaAplicada: baseAreaEfetiva(entrada),
       dispersao: Math.round(dispersao * 1000) / 1000,
     },
   };
@@ -818,7 +895,8 @@ export const internalComparablesProvider: ComparaveisProvider<ContextoComparavei
         estado: imovel.estado,
         edificio: imovel.edificio,
         tipo: imovel.tipo || "Outro",
-        areaM2: extrairAreaM2(imovel.textoAnuncio),
+        areaM2: imovel.areaUtilM2 ?? extrairAreaM2(imovel.textoAnuncio),
+        areaTotalM2: imovel.areaTotalM2 ?? null,
         quartos: imovel.quartos,
         banheiros: imovel.banheiros,
         vagas: imovel.vagas,
@@ -846,7 +924,8 @@ export function entradaDeImovel(
     estado: imovel.estado,
     edificio: imovel.edificio,
     tipo: imovel.tipo || "Apartamento",
-    areaM2: extrairAreaM2(imovel.textoAnuncio) || undefined,
+    areaM2: imovel.areaUtilM2 ?? extrairAreaM2(imovel.textoAnuncio) ?? undefined,
+    areaTotalM2: imovel.areaTotalM2 ?? null,
     quartos: imovel.quartos ?? 0,
     banheiros: imovel.banheiros,
     vagas: imovel.vagas ?? 0,

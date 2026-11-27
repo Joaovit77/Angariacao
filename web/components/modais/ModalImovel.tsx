@@ -133,6 +133,8 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
   const [quartos, setQuartos] = useState(imovel?.quartos != null ? String(imovel.quartos) : "");
   const [banheiros, setBanheiros] = useState(imovel?.banheiros != null ? String(imovel.banheiros) : "");
   const [vagas, setVagas] = useState(imovel?.vagas != null ? String(imovel.vagas) : "");
+  const [areaUtilM2, setAreaUtilM2] = useState(imovel?.areaUtilM2 != null ? String(imovel.areaUtilM2) : "");
+  const [areaTotalM2, setAreaTotalM2] = useState(imovel?.areaTotalM2 != null ? String(imovel.areaTotalM2) : "");
   // Finalidade (IV-2): nasce VAZIA num cadastro novo, sem chutar locação, e
   // o humano escolhe antes de salvar. Num imóvel existente vem a gravada;
   // `null` (todo imóvel anterior à coluna) aparece como "Não informado" e
@@ -468,6 +470,14 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
       quartos: numOrNull(quartos),
       banheiros: numOrNull(banheiros),
       vagas: numOrNull(vagas),
+      areaUtilM2: (() => {
+        const valor = numOrNull(areaUtilM2.replace(",", "."));
+        return valor != null && valor > 0 ? valor : null;
+      })(),
+      areaTotalM2: (() => {
+        const valor = numOrNull(areaTotalM2.replace(",", "."));
+        return valor != null && valor > 0 ? valor : null;
+      })(),
       // Este formulário edita a finalidade e o valor de venda, então manda os
       // dois sempre (o `toDbImovel` grava o campo presente). "Não informado"
       // é null; o valor escondido pela finalidade vai como está, nunca apagado.
@@ -763,6 +773,38 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
             <div className="field-group">
               <label>Vagas de garagem</label>
               <input type="number" min="0" value={vagas} onChange={(e) => setVagas(e.target.value)} />
+            </div>
+          </div>
+          <div className="field-row">
+            <div className="field-group">
+              <label>Área útil (m²)</label>
+              <input
+                type="number"
+                min="1"
+                max="100000"
+                step="0.1"
+                inputMode="decimal"
+                value={areaUtilM2}
+                onChange={(e) => setAreaUtilM2(e.target.value)}
+                placeholder="Ex.: 72"
+                data-campo="area-util-m2"
+              />
+              <div className="field-hint">Área privativa ou construída.</div>
+            </div>
+            <div className="field-group">
+              <label>Área total (m²)</label>
+              <input
+                type="number"
+                min="1"
+                max="1000000"
+                step="0.1"
+                inputMode="decimal"
+                value={areaTotalM2}
+                onChange={(e) => setAreaTotalM2(e.target.value)}
+                placeholder="Ex.: 180"
+                data-campo="area-total-m2"
+              />
+              <div className="field-hint">Inclui terreno ou áreas comuns — usada também na Avaliação.</div>
             </div>
           </div>
           <div className="field-group">

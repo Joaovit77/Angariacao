@@ -87,6 +87,13 @@ alter table imoveis add column if not exists referencia_crm text;
 -- dados estruturados do ViaCEP e a UF não tinha onde persistir.
 alter table imoveis add column if not exists estado text;
 
+-- Área útil (privativa/construída) e área total em m² — opcionais, alimentam
+-- o cadastro de imóveis e o preenchimento automático da Avaliação.
+alter table imoveis add column if not exists area_util_m2 numeric
+  check (area_util_m2 is null or (area_util_m2 >= 1 and area_util_m2 <= 100000));
+alter table imoveis add column if not exists area_total_m2 numeric
+  check (area_total_m2 is null or (area_total_m2 >= 1 and area_total_m2 <= 1000000));
+
 -- Histórico de interações (notas) com o proprietário — mesmo padrão do
 -- status_history: jsonb na própria linha, herdando as políticas de RLS.
 alter table imoveis add column if not exists notas jsonb not null default '[]'::jsonb;

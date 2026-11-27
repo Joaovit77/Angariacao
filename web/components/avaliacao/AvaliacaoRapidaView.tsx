@@ -13,6 +13,7 @@ import {
   descricaoSemanticaComDiferenciais,
   entradaDeImovel,
   internalComparablesProvider,
+  type BaseAreaAvaliacao,
   type ConservacaoAvaliacao,
   type DiferencialAvaliacao,
   type EntradaAvaliacao,
@@ -53,6 +54,8 @@ interface FormularioAvaliacao {
   edificio: string;
   tipo: string;
   areaM2: string;
+  areaTotalM2: string;
+  baseArea: BaseAreaAvaliacao;
   quartos: number;
   banheiros: number;
   vagas: number;
@@ -94,6 +97,8 @@ const FORMULARIO_VAZIO: FormularioAvaliacao = {
   edificio: "",
   tipo: "Apartamento",
   areaM2: "",
+  areaTotalM2: "",
+  baseArea: "util",
   quartos: 0,
   banheiros: 0,
   vagas: 0,
@@ -120,6 +125,8 @@ function formularioDoImovel(imovel: Imovel, finalidade: FinalidadeAvaliacao): Fo
     edificio: entrada.edificio || "",
     tipo: entrada.tipo || "Apartamento",
     areaM2: entrada.areaM2 ? String(entrada.areaM2) : "",
+    areaTotalM2: entrada.areaTotalM2 ? String(entrada.areaTotalM2) : "",
+    baseArea: !entrada.areaM2 && entrada.areaTotalM2 ? "total" : "util",
     quartos: entrada.quartos ?? 0,
     banheiros: entrada.banheiros ?? 0,
     vagas: entrada.vagas ?? 0,
@@ -144,6 +151,8 @@ function formularioDaAvaliacao(
     edificio: entrada.edificio || "",
     tipo: entrada.tipo || "Apartamento",
     areaM2: entrada.areaM2 > 0 ? String(entrada.areaM2) : "",
+    areaTotalM2: entrada.areaTotalM2 && entrada.areaTotalM2 > 0 ? String(entrada.areaTotalM2) : "",
+    baseArea: entrada.baseArea === "total" ? "total" : "util",
     quartos: entrada.quartos ?? 0,
     banheiros: entrada.banheiros ?? 0,
     vagas: entrada.vagas ?? 0,
@@ -172,6 +181,8 @@ function formularioDoContexto(prefill: PrefillAvaliacao): FormularioAvaliacao {
     estado: ufValida(prefill.estado) ? normalizarUf(prefill.estado) : FORMULARIO_VAZIO.estado,
     tipo: prefill.tipo || FORMULARIO_VAZIO.tipo,
     areaM2: prefill.areaM2 && prefill.areaM2 > 0 ? String(prefill.areaM2) : "",
+    areaTotalM2: prefill.areaTotalM2 && prefill.areaTotalM2 > 0 ? String(prefill.areaTotalM2) : "",
+    baseArea: !prefill.areaM2 && prefill.areaTotalM2 && prefill.areaTotalM2 > 0 ? "total" : "util",
     quartos: prefill.quartos ?? 0,
     banheiros: prefill.banheiros ?? 0,
     vagas: prefill.vagas ?? 0,
@@ -328,14 +339,24 @@ export default function AvaliacaoRapidaView({
   async function calcular(evento: FormEvent) {
     evento.preventDefault();
     if (!usuario) return;
-    const areaM2 = Number(formulario.areaM2.replace(",", "."));
+    const areaUtil = Number(formulario.areaM2.replace(",", "."));
+    const areaTotalBruta = Number(formulario.areaTotalM2.replace(",", "."));
+    const temAreaUtil = Number.isFinite(areaUtil) && areaUtil >= 10;
+    const temAreaTotal = Number.isFinite(areaTotalBruta) && areaTotalBruta >= 10;
     if (!formulario.endereco.trim()) return toast("Informe o endereço do imóvel.", "error");
     if (!formulario.cidade.trim()) return toast("Informe a cidade do imóvel.", "error");
     if (!ufValida(formulario.estado)) return toast("Informe uma UF válida para buscar comparáveis.", "error");
     if (!formulario.tipo.trim()) return toast("Informe o tipo do imóvel.", "error");
-    if (!Number.isFinite(areaM2) || areaM2 < 10) {
-      return toast("Informe uma área válida, a partir de 10 m².", "error");
+    if (!temAreaUtil && !temAreaTotal) {
+      return toast("Informe a área útil ou a área total, a partir de 10 m².", "error");
     }
+    const baseArea: BaseAreaAvaliacao = !temAreaUtil
+      ? "total"
+      : temAreaTotal
+        ? formulario.baseArea
+        : "util";
+    const areaM2 = temAreaUtil ? areaUtil : areaTotalBruta;
+    const areaTotalM2 = temAreaTotal ? areaTotalBruta : null;
 
     setProcessando(true);
     setFase("Buscando imóveis semelhantes…");
@@ -369,6 +390,8 @@ export default function AvaliacaoRapidaView({
       edificio: formulario.edificio.trim() || null,
       tipo: formulario.tipo,
       areaM2,
+      areaTotalM2,
+      baseArea,
       quartos: formulario.quartos,
       banheiros: refinamentoAberto ? formulario.banheiros : null,
       vagas: formulario.vagas,
@@ -652,18 +675,50 @@ export default function AvaliacaoRapidaView({
               <span>2</span>
               <div><h2>Características principais</h2><p>Leva menos de um minuto.</p></div>
             </div>
+            <div className="field-group">
+              <label>Tipo de imóvel</label>
+              <select value={formulario.tipo} onChange={(e) => atualizar("tipo", e.target.value)}>
+                {TIPOS_IMOVEL.map((tipo) => <option key={tipo} value={tipo}>{tipo}</option>)}
+              </select>
+            </div>
             <div className="avaliacao-grade-campos">
               <div className="field-group">
-                <label>Tipo de imóvel</label>
-                <select value={formulario.tipo} onChange={(e) => atualizar("tipo", e.target.value)}>
-                  {TIPOS_IMOVEL.map((tipo) => <option key={tipo} value={tipo}>{tipo}</option>)}
-                </select>
+                <label>Área útil (m²)</label>
+                <input type="number" min="10" max="100000" step="0.1" inputMode="decimal" value={formulario.areaM2} onChange={(e) => atualizar("areaM2", e.target.value)} placeholder="Ex.: 72" />
+                <div className="field-hint">Área privativa ou construída.</div>
               </div>
               <div className="field-group">
-                <label>Área privativa (m²)</label>
-                <input type="number" min="10" max="10000" step="0.1" inputMode="decimal" value={formulario.areaM2} onChange={(e) => atualizar("areaM2", e.target.value)} placeholder="Ex.: 72" />
+                <label>Área total (m²)</label>
+                <input type="number" min="10" max="1000000" step="0.1" inputMode="decimal" value={formulario.areaTotalM2} onChange={(e) => atualizar("areaTotalM2", e.target.value)} placeholder="Ex.: 180 (opcional)" />
+                <div className="field-hint">Terreno ou área total do imóvel.</div>
               </div>
             </div>
+            {Number(formulario.areaTotalM2.replace(",", ".")) >= 10 && Number(formulario.areaM2.replace(",", ".")) >= 10 && (
+              <div className="field-group">
+                <label>Base principal para R$/m²</label>
+                <div className="avaliacao-finalidade" role="group" aria-label="Base principal de área para o cálculo">
+                  <button
+                    type="button"
+                    className={formulario.baseArea === "util" ? "ativo" : ""}
+                    onClick={() => atualizar("baseArea", "util")}
+                  >
+                    Área útil (padrão)
+                  </button>
+                  <button
+                    type="button"
+                    className={formulario.baseArea === "total" ? "ativo" : ""}
+                    onClick={() => atualizar("baseArea", "total")}
+                  >
+                    Área total
+                  </button>
+                </div>
+                <div className="field-hint">
+                  {formulario.baseArea === "util"
+                    ? "Recomendado para apartamentos e uso geral: o R$/m² usa a área útil e a área total entra como reforço na similaridade."
+                    : "Ideal para casas, sobrados e terrenos: prioriza a área total no porte e no R$/m², com fallback para área útil quando o comparável não informar área total."}
+                </div>
+              </div>
+            )}
             <div className="avaliacao-contadores">
               <ControleQuantidade rotulo="Quartos" valor={formulario.quartos} aoMudar={(valor) => atualizar("quartos", valor)} />
               <ControleQuantidade rotulo="Vagas" valor={formulario.vagas} aoMudar={(valor) => atualizar("vagas", valor)} />
@@ -839,7 +894,24 @@ export default function AvaliacaoRapidaView({
               {resultado?.comparaveis.length ? resultado.comparaveis.map((comparavel) => (
                 <article className="avaliacao-comparavel" key={`${comparavel.origem}-${comparavel.id}`}>
                   <div><strong>{comparavel.codigo || comparavel.endereco}</strong><span>{[comparavel.bairro, comparavel.cidade].filter(Boolean).join(" · ")}</span></div>
-                  <div className="avaliacao-comparavel-dados"><span>{comparavel.origem === "interno" ? "Fonte: carteira interna" : "Fonte externa"}</span><span>{comparavel.regiao || resultado.metodologia.regiaoReferencia || "Região não identificada"}</span><span>{comparavel.tipo}</span><span>{comparavel.areaM2 ? `${comparavel.areaM2} m²` : "Área não informada"}</span><span>{comparavel.quartos ?? "—"} quartos</span><span>{comparavel.vagas ?? "—"} vagas</span><span>{comparavel.distanciaKm == null ? "Distância aproximada" : `${comparavel.distanciaKm} km`}</span><span>Referência em {fmtDate(comparavel.dataInformacao)}</span></div>
+                  <div className="avaliacao-comparavel-dados">
+                    <span>{comparavel.origem === "interno" ? "Fonte: carteira interna" : "Fonte externa"}</span>
+                    <span>{comparavel.regiao || resultado.metodologia.regiaoReferencia || "Região não identificada"}</span>
+                    <span>{comparavel.tipo}</span>
+                    <span>
+                      {comparavel.areaM2 && comparavel.areaTotalM2
+                        ? `${comparavel.areaM2} m² útil · ${comparavel.areaTotalM2} m² total`
+                        : comparavel.areaM2
+                          ? `${comparavel.areaM2} m² útil`
+                          : comparavel.areaTotalM2
+                            ? `${comparavel.areaTotalM2} m² total`
+                            : "Área não informada"}
+                    </span>
+                    <span>{comparavel.quartos ?? "—"} quartos</span>
+                    <span>{comparavel.vagas ?? "—"} vagas</span>
+                    <span>{comparavel.distanciaKm == null ? "Distância aproximada" : `${comparavel.distanciaKm} km`}</span>
+                    <span>Referência em {fmtDate(comparavel.dataInformacao)}</span>
+                  </div>
                   <div className="avaliacao-comparavel-valor"><strong>{fmtMoney(comparavel.valorAnunciado)}</strong><span>{comparavel.valorM2 ? `${fmtMoney(comparavel.valorM2)}/m²` : "Sem preço/m²"}</span></div>
                   {comparavel.origem === "externo" && (
                     <ComparavelHistorico historico={comparavel.historico} hoje={hoje} />

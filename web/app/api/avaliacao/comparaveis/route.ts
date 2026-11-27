@@ -50,11 +50,16 @@ async function autenticado(request: Request): Promise<SessaoAutenticada | null> 
 function entradaValida(valor: unknown): valor is EntradaAvaliacao {
   if (!valor || typeof valor !== "object") return false;
   const item = valor as Partial<EntradaAvaliacao>;
+  const areaTotalValida = item.areaTotalM2 == null
+    || (typeof item.areaTotalM2 === "number" && Number.isFinite(item.areaTotalM2) && item.areaTotalM2 >= 10 && item.areaTotalM2 <= 1_000_000);
+  const baseAreaValida = item.baseArea == null || item.baseArea === "util" || item.baseArea === "total";
   return (item.finalidade === "locacao" || item.finalidade === "venda")
     && typeof item.cidade === "string"
     && typeof item.estado === "string" && ufValida(item.estado)
     && typeof item.tipo === "string"
-    && typeof item.areaM2 === "number" && item.areaM2 >= 10 && item.areaM2 <= 10000
+    && typeof item.areaM2 === "number" && item.areaM2 >= 10 && item.areaM2 <= 100000
+    && areaTotalValida
+    && baseAreaValida
     && typeof item.quartos === "number" && Number.isInteger(item.quartos)
     && item.quartos >= 0 && item.quartos <= 30
     && origemExternaValida(item.origemExterna);
@@ -136,6 +141,7 @@ export async function POST(request: Request) {
       endereco: entrada.endereco,
       edificio: entrada.edificio,
       areaPrivativaM2: entrada.areaM2,
+      areaTotalM2: entrada.areaTotalM2 ?? null,
       quartos: entrada.quartos,
       banheiros: entrada.banheiros,
       vagas: entrada.vagas,
@@ -172,7 +178,7 @@ export async function POST(request: Request) {
     if (vetoriais.length) {
       const { data: metadados, error: erroMetadados } = await sessao.supabase
         .from("comparaveis_mercado")
-        .select("id, portal, id_externo, url, url_canonica, fingerprint_forte, cidade, estado, cidade_chave, primeiro_visto_em, ultimo_visto_em, regiao, observacoes_comparaveis_mercado(observado_em, tipo_evento, valor_anunciado, status_anuncio, dados_snapshot)")
+        .select("id, portal, id_externo, url, url_canonica, fingerprint_forte, cidade, estado, cidade_chave, primeiro_visto_em, ultimo_visto_em, regiao, area_total_m2, observacoes_comparaveis_mercado(observado_em, tipo_evento, valor_anunciado, status_anuncio, dados_snapshot)")
         .in("id", vetoriais.map((item) => item.id));
       if (erroMetadados) throw erroMetadados;
       const metadadosPorId = new Map(
@@ -181,6 +187,10 @@ export async function POST(request: Request) {
       vetoriais.forEach((item) => {
         const metadado = metadadosPorId.get(item.id);
         item.regiao = (metadado?.regiao as string | null | undefined) ?? item.regiao ?? null;
+        if (metadado?.area_total_m2 != null) {
+          const total = Number(metadado.area_total_m2);
+          if (Number.isFinite(total) && total > 0) item.areaTotalM2 = total;
+        }
         item.historico = metadado
           ? mapearFatosHistoricosComparavelMercado(
             metadado as Parameters<typeof mapearFatosHistoricosComparavelMercado>[0],

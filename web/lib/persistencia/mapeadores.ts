@@ -36,6 +36,9 @@ export interface DbImovelRow {
   quartos: number | null;
   banheiros: number | null;
   vagas: number | null;
+  /** Opcionais: ausentes em linhas anteriores à migration 20261127140000. */
+  area_util_m2?: number | string | null;
+  area_total_m2?: number | string | null;
   valor_aluguel: number | string | null;
   valor_condominio: number | string | null;
   proprietario_nome: string | null;
@@ -258,6 +261,8 @@ export function toDbImovel(i: Imovel, userId: string): Omit<DbImovelRow, "create
     // apagaria a diferença entre "não informado" e zero.
     ...(i.finalidade !== undefined ? { finalidade: i.finalidade } : {}),
     ...(i.valorVenda !== undefined ? { valor_venda: i.valorVenda } : {}),
+    ...(i.areaUtilM2 !== undefined ? { area_util_m2: i.areaUtilM2 } : {}),
+    ...(i.areaTotalM2 !== undefined ? { area_total_m2: i.areaTotalM2 } : {}),
     // `vendido_em` nunca entra aqui: quem o grava é a ação própria de Vendido
     // (IV-5). Os dados da retirada também não: só a retirada os escreve.
   };
@@ -283,6 +288,11 @@ function valorVendaDoBanco(valor: number | string | null | undefined): number | 
   if (valor === null || valor === undefined || valor === "") return null;
   const numero = Number(valor);
   return Number.isFinite(numero) ? numero : null;
+}
+
+function areaPositivaDoBanco(valor: number | string | null | undefined): number | null {
+  const numero = valorVendaDoBanco(valor);
+  return numero !== null && numero > 0 ? numero : null;
 }
 
 export function fromDbImovel(r: DbImovelRow): Imovel {
@@ -351,6 +361,8 @@ export function fromDbImovel(r: DbImovelRow): Imovel {
     // null aqui apagaria o valor real no próximo save.
     ...("finalidade" in r ? { finalidade: finalidadeDoBanco(r.finalidade) } : {}),
     ...("valor_venda" in r ? { valorVenda: valorVendaDoBanco(r.valor_venda) } : {}),
+    ...("area_util_m2" in r ? { areaUtilM2: areaPositivaDoBanco(r.area_util_m2) } : {}),
+    ...("area_total_m2" in r ? { areaTotalM2: areaPositivaDoBanco(r.area_total_m2) } : {}),
     vendidoEm: r.vendido_em || null,
     // null, nunca "": o resto do app testa este campo por verdade/falsidade
     // para decidir se o imóvel é uma unidade desdobrada.

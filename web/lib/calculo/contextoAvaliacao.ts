@@ -15,6 +15,7 @@ export interface PrefillAvaliacao {
   estado: string | null;
   tipo: string | null;
   areaM2: number | null;
+  areaTotalM2?: number | null;
   quartos: number | null;
   banheiros: number | null;
   vagas: number | null;

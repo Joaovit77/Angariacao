@@ -25,6 +25,7 @@ interface LinhaComparavelAvaliacao {
   estado: string | null;
   tipo: string | null;
   area_privativa_m2: number | string | null;
+  area_total_m2?: number | string | null;
   area_m2: number | string | null;
   quartos: number | null;
   banheiros: number | null;
@@ -95,6 +96,7 @@ function respostaContextoIndisponivel(status: number): Response {
 function contextoDoComparavel(linha: LinhaComparavelAvaliacao): ContextoExternoAvaliacao | null {
   if (!portalValido(linha.portal)) return null;
   const areaM2 = numero(linha.area_privativa_m2) ?? numero(linha.area_m2);
+  const areaTotalM2 = numero(linha.area_total_m2);
   const prefill: PrefillAvaliacao = {
     finalidade: linha.finalidade,
     endereco: linha.endereco,
@@ -103,6 +105,7 @@ function contextoDoComparavel(linha: LinhaComparavelAvaliacao): ContextoExternoA
     estado: linha.estado,
     tipo: linha.tipo,
     areaM2,
+    ...(areaTotalM2 != null ? { areaTotalM2 } : {}),
     quartos: linha.quartos,
     banheiros: linha.banheiros,
     vagas: linha.vagas,
@@ -148,6 +151,7 @@ async function contextoDoRadar(
       estado: textoDoObjeto(dados, "estado"),
       tipo: textoDoObjeto(dados, "tipo"),
       areaM2: numeroDoObjeto(dados, "areaM2"),
+      ...(numeroDoObjeto(dados, "areaTotalM2") != null ? { areaTotalM2: numeroDoObjeto(dados, "areaTotalM2") } : {}),
       quartos: numeroDoObjeto(dados, "quartos"),
       banheiros: numeroDoObjeto(dados, "banheiros"),
       vagas: numeroDoObjeto(dados, "vagas"),
@@ -176,7 +180,7 @@ export async function GET(request: Request): Promise<Response> {
 
   const tabela = referencia.origem === "comparavel" ? "comparaveis_mercado" : "radar_anuncios";
   const campos = referencia.origem === "comparavel"
-    ? "id,portal,id_externo,finalidade,endereco,bairro,cidade,estado,tipo,area_privativa_m2,area_m2,quartos,banheiros,vagas"
+    ? "id,portal,id_externo,finalidade,endereco,bairro,cidade,estado,tipo,area_privativa_m2,area_total_m2,area_m2,quartos,banheiros,vagas"
     : "id,portal,id_externo,dados";
   const { data, error } = await acesso.supabase
     .from(tabela)

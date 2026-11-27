@@ -43,6 +43,8 @@ interface LinhaComparavelMercado {
   estado: string | null;
   regiao?: string | null;
   area_m2: number | string | null;
+  area_privativa_m2?: number | string | null;
+  area_total_m2?: number | string | null;
   quartos: number | null;
   banheiros: number | null;
   vagas: number | null;
@@ -141,7 +143,8 @@ export function mapearComparaveisMercado(
     regiao: linha.regiao,
     edificio: null,
     tipo: linha.tipo || "Outro",
-    areaM2: numero(linha.area_m2),
+    areaM2: numero(linha.area_privativa_m2) ?? numero(linha.area_m2),
+    areaTotalM2: numero(linha.area_total_m2),
     quartos: linha.quartos,
     banheiros: linha.banheiros,
     vagas: linha.vagas,
@@ -167,17 +170,31 @@ export async function carregarComparaveisMercadoComCliente(
   const estado = normalizarUf(entrada.estado);
   if (!cidadeChave || !ufValida(estado)) return [];
 
-  const { data, error } = await supabase
+  let consulta = supabase
     .from("comparaveis_mercado")
-    .select("id, portal, id_externo, url, url_canonica, fingerprint_forte, titulo, tipo, endereco, bairro, cidade, estado, cidade_chave, regiao, area_m2, quartos, banheiros, vagas, valor_anunciado, publicado_em, primeiro_visto_em, ultimo_visto_em, status_anuncio, observacoes_comparaveis_mercado(observado_em, tipo_evento, valor_anunciado, status_anuncio, dados_snapshot)")
+    .select("id, portal, id_externo, url, url_canonica, fingerprint_forte, titulo, tipo, endereco, bairro, cidade, estado, cidade_chave, regiao, area_m2, area_privativa_m2, area_total_m2, quartos, banheiros, vagas, valor_anunciado, publicado_em, primeiro_visto_em, ultimo_visto_em, status_anuncio, observacoes_comparaveis_mercado(observado_em, tipo_evento, valor_anunciado, status_anuncio, dados_snapshot)")
     .eq("finalidade", entrada.finalidade)
     .eq("estado", estado)
     .eq("cidade_chave", cidadeChave)
     // Replica no banco os cortes mínimos do motor. Buscar primeiro os 500
     // mais recentes da cidade escondia o imóvel certo quando a base crescia.
-    .in("tipo", tiposCompativeis(entrada.tipo))
-    .gte("area_m2", entrada.areaM2 * 0.45)
-    .lte("area_m2", entrada.areaM2 * 1.55)
+    .in("tipo", tiposCompativeis(entrada.tipo));
+
+  if (entrada.baseArea === "total" && entrada.areaTotalM2 && entrada.areaTotalM2 > 0) {
+    const totalMin = entrada.areaTotalM2 * 0.45;
+    const totalMax = entrada.areaTotalM2 * 1.55;
+    const utilMin = entrada.areaM2 * 0.45;
+    const utilMax = entrada.areaM2 * 1.55;
+    consulta = consulta.or(
+      `and(area_total_m2.gte.${totalMin},area_total_m2.lte.${totalMax}),and(area_m2.gte.${utilMin},area_m2.lte.${utilMax})`,
+    );
+  } else {
+    consulta = consulta
+      .gte("area_m2", entrada.areaM2 * 0.45)
+      .lte("area_m2", entrada.areaM2 * 1.55);
+  }
+
+  const { data, error } = await consulta
     .gte("quartos", Math.max(0, entrada.quartos - 1))
     .lte("quartos", entrada.quartos + 1)
     .order("ultimo_visto_em", { ascending: false })

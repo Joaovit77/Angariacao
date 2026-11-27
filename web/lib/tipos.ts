@@ -218,6 +218,10 @@ export interface Imovel {
   quartos?: number | null;
   banheiros?: number | null;
   vagas?: number | null;
+  /** Área útil/privativa em m². Ausente/null = não informado. */
+  areaUtilM2?: number | null;
+  /** Área total (ou terreno/construção total) em m². Ausente/null = não informado. */
+  areaTotalM2?: number | null;
   valorAluguel?: number | null;
   valorCondominio?: number | null;
   proprietarioNome?: string | null;
