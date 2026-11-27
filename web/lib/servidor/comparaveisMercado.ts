@@ -28,6 +28,8 @@ import {
 } from "./embeddingsImoveis";
 
 interface RegistroPreparado {
+  portal: AnuncioCentralAngariacao["portal"];
+  idExterno: string;
   dados: Record<string, unknown>;
   textoEmbedding: string;
   hashEmbedding: string;
@@ -39,10 +41,95 @@ interface ResultadoRegistroRpc {
   precisa_embedding: boolean;
 }
 
+/** Limites das check constraints de `comparaveis_mercado` em `supabase-schema.sql`. */
+export const LIMITES_COMPARAVEL_BANCO = {
+  areaPrivativaM2: { min: 10, max: 10_000 },
+  areaTotalM2: { min: 10, max: 100_000 },
+  areaTerrenoM2: { min: 10, max: 1_000_000 },
+  comodo: { min: 0, max: 30 },
+  andar: { min: -10, max: 300 },
+  pavimentos: { min: 1, max: 300 },
+} as const;
+
+export type MotivoFalhaComparavel =
+  | "restricao-banco"
+  | "permissao-banco"
+  | "timeout-ou-rede"
+  | "resposta-invalida"
+  | "erro-banco";
+
+export interface FalhaPersistenciaComparavel {
+  portal: AnuncioCentralAngariacao["portal"];
+  idExterno: string;
+  motivo: MotivoFalhaComparavel;
+  codigoSql: string | null;
+}
+
+export interface ResultadoPersistenciaComparaveis {
+  tentados: number;
+  salvos: number;
+  falhas: FalhaPersistenciaComparavel[];
+  falhasPorMotivo: Partial<Record<MotivoFalhaComparavel, number>>;
+  parcial: boolean;
+  primeiroErro: unknown | null;
+}
+
 function numero(valor: number | string | null | undefined): number | null {
   if (valor == null) return null;
   const convertido = Number(valor);
   return Number.isFinite(convertido) ? convertido : null;
+}
+
+/** Valida número dentro da faixa aceita pelo banco; fora da faixa vira null
+    sem descartar o anúncio nem alterar `dados_originais`. */
+export function numeroNaFaixa(
+  valor: number | string | null | undefined,
+  min: number,
+  max: number,
+): number | null {
+  const convertido = numero(valor);
+  if (convertido === null || convertido < min || convertido > max) return null;
+  return convertido;
+}
+
+function inteiroNaFaixa(
+  valor: number | string | null | undefined,
+  min: number,
+  max: number,
+): number | null {
+  const convertido = numero(valor);
+  if (convertido === null || !Number.isInteger(convertido) || convertido < min || convertido > max) {
+    return null;
+  }
+  return convertido;
+}
+
+function valorNaoNegativo(valor: number | string | null | undefined): number | null {
+  const convertido = numero(valor);
+  if (convertido === null || convertido < 0) return null;
+  return convertido;
+}
+
+function classificarFalhaPersistencia(erro: unknown): {
+  motivo: MotivoFalhaComparavel;
+  codigoSql: string | null;
+} {
+  if (erro && typeof erro === "object") {
+    const registro = erro as { code?: unknown; status?: unknown; name?: unknown };
+    const codigoSql = typeof registro.code === "string" && /^[0-9A-Z]{5}$/.test(registro.code)
+      ? registro.code
+      : null;
+    if (codigoSql?.startsWith("23")) return { motivo: "restricao-banco", codigoSql };
+    if (codigoSql === "42501" || registro.status === 401 || registro.status === 403) {
+      return { motivo: "permissao-banco", codigoSql };
+    }
+    const nome = typeof registro.name === "string" ? registro.name : "";
+    if (nome === "AbortError" || nome === "TimeoutError" || nome === "TypeError") {
+      return { motivo: "timeout-ou-rede", codigoSql };
+    }
+    return { motivo: "erro-banco", codigoSql };
+  }
+  return { motivo: "erro-banco", codigoSql: null };
 }
 
 function partesEndereco(endereco: string | null | undefined): { logradouro: string | null; numero: string | null } {
@@ -84,6 +171,30 @@ function prepararRegistro(
       ? filtros.regiao
       : null)) : null;
 
+  const areaPrivativaM2 = numeroNaFaixa(
+    anuncio.areaM2,
+    LIMITES_COMPARAVEL_BANCO.areaPrivativaM2.min,
+    LIMITES_COMPARAVEL_BANCO.areaPrivativaM2.max,
+  );
+  const areaTotalM2 = numeroNaFaixa(
+    anuncio.areaTotalM2,
+    LIMITES_COMPARAVEL_BANCO.areaTotalM2.min,
+    LIMITES_COMPARAVEL_BANCO.areaTotalM2.max,
+  );
+  const areaTerrenoM2 = numeroNaFaixa(
+    anuncio.areaTerrenoM2,
+    LIMITES_COMPARAVEL_BANCO.areaTerrenoM2.min,
+    LIMITES_COMPARAVEL_BANCO.areaTerrenoM2.max,
+  );
+  const quartos = inteiroNaFaixa(anuncio.quartos, LIMITES_COMPARAVEL_BANCO.comodo.min, LIMITES_COMPARAVEL_BANCO.comodo.max);
+  const suites = inteiroNaFaixa(anuncio.suites, LIMITES_COMPARAVEL_BANCO.comodo.min, LIMITES_COMPARAVEL_BANCO.comodo.max);
+  const banheiros = inteiroNaFaixa(anuncio.banheiros, LIMITES_COMPARAVEL_BANCO.comodo.min, LIMITES_COMPARAVEL_BANCO.comodo.max);
+  const vagas = inteiroNaFaixa(anuncio.vagas, LIMITES_COMPARAVEL_BANCO.comodo.min, LIMITES_COMPARAVEL_BANCO.comodo.max);
+  const andar = inteiroNaFaixa(anuncio.andar, LIMITES_COMPARAVEL_BANCO.andar.min, LIMITES_COMPARAVEL_BANCO.andar.max);
+  const pavimentos = inteiroNaFaixa(anuncio.pavimentos, LIMITES_COMPARAVEL_BANCO.pavimentos.min, LIMITES_COMPARAVEL_BANCO.pavimentos.max);
+  const valorCondominio = valorNaoNegativo(anuncio.valorCondominio);
+  const valorIptu = valorNaoNegativo(anuncio.valorIptu);
+
   const sinais = {
     portal: anuncio.portal,
     idExterno: anuncio.idExterno,
@@ -93,8 +204,8 @@ function prepararRegistro(
     bairro: anuncio.bairro,
     endereco: anuncio.endereco,
     tipo: anuncio.tipo,
-    areaM2: anuncio.areaM2,
-    quartos: anuncio.quartos,
+    areaM2: areaPrivativaM2,
+    quartos,
     anunciante: anuncio.anunciante,
   };
   const endereco = partesEndereco(anuncio.endereco);
@@ -105,21 +216,23 @@ function prepararRegistro(
     bairro: anuncio.bairro,
     regiao,
     endereco: anuncio.endereco,
-    areaPrivativaM2: anuncio.areaM2,
-    areaTotalM2: anuncio.areaTotalM2,
-    areaTerrenoM2: anuncio.areaTerrenoM2,
-    quartos: anuncio.quartos,
-    suites: anuncio.suites,
-    banheiros: anuncio.banheiros,
-    vagas: anuncio.vagas,
-    andar: anuncio.andar,
-    pavimentos: anuncio.pavimentos,
+    areaPrivativaM2,
+    areaTotalM2,
+    areaTerrenoM2,
+    quartos,
+    suites,
+    banheiros,
+    vagas,
+    andar,
+    pavimentos,
     mobiliado: anuncio.mobiliado,
     titulo: anuncio.titulo,
     descricao: anuncio.descricao,
   });
   const hashEmbedding = hashConteudoEmbedding(textoEmbedding);
   return {
+    portal: anuncio.portal,
+    idExterno: anuncio.idExterno,
     textoEmbedding,
     hashEmbedding,
     dados: {
@@ -146,20 +259,20 @@ function prepararRegistro(
       estado,
       cidade_chave: cidadeChave,
       bairro_chave: chaveNormalizada(anuncio.bairro) || null,
-      area_privativa_m2: anuncio.areaM2 ?? null,
-      area_total_m2: anuncio.areaTotalM2 ?? null,
-      area_terreno_m2: anuncio.areaTerrenoM2 ?? null,
-      area_m2: anuncio.areaM2 ?? null, // compatibilidade com a V2
-      quartos: anuncio.quartos ?? null,
-      suites: anuncio.suites ?? null,
-      banheiros: anuncio.banheiros ?? null,
-      vagas: anuncio.vagas ?? null,
-      andar: anuncio.andar ?? null,
-      pavimentos: anuncio.pavimentos ?? null,
+      area_privativa_m2: areaPrivativaM2,
+      area_total_m2: areaTotalM2,
+      area_terreno_m2: areaTerrenoM2,
+      area_m2: areaPrivativaM2, // compatibilidade com a V2
+      quartos,
+      suites,
+      banheiros,
+      vagas,
+      andar,
+      pavimentos,
       mobiliado: anuncio.mobiliado ?? null,
       valor_anunciado: valor,
-      valor_condominio: anuncio.valorCondominio ?? null,
-      valor_iptu: anuncio.valorIptu ?? null,
+      valor_condominio: valorCondominio,
+      valor_iptu: valorIptu,
       publicado_em: anuncio.publicadoEm || null,
       observado_em: observadoEm,
       anunciante_tipo: anuncio.anunciante,
@@ -205,12 +318,16 @@ async function registrarRegiaoDaColeta(
   if (error) throw error;
 }
 
-export async function salvarComparaveisMercado(
+type ResultadoItemPersistencia =
+  | { ok: true; registro: ResultadoRegistroRpc; preparado: RegistroPreparado }
+  | { ok: false; falha: FalhaPersistenciaComparavel; erro: unknown };
+
+export async function salvarComparaveisMercadoDetalhado(
   supabase: SupabaseClient,
   userId: string,
   anuncios: AnuncioCentralAngariacao[],
   filtros: FiltrosCentralAngariacao,
-): Promise<number> {
+): Promise<ResultadoPersistenciaComparaveis> {
   exigirCapacidadeAquisicaoRadar(filtros);
   const observadoEm = agoraISOString();
   const identidades = new Set<string>();
@@ -223,66 +340,157 @@ export async function salvarComparaveisMercado(
       identidades.add(identidade);
       return true;
     });
-  if (!preparados.length) return 0;
+  if (!preparados.length) {
+    return {
+      tentados: 0,
+      salvos: 0,
+      falhas: [],
+      falhasPorMotivo: {},
+      parcial: false,
+      primeiroErro: null,
+    };
+  }
 
-  const registros: ResultadoRegistroRpc[] = [];
-  registros.push(...await mapearComConcorrencia(
+  // Isolamento por anúncio: uma falha de RPC em um card nunca aborta nem
+  // descarta os demais anúncios válidos da mesma coleta.
+  const resultados = await mapearComConcorrencia<RegistroPreparado, ResultadoItemPersistencia>(
     preparados,
     CONFIGURACAO_COMPARAVEIS_MERCADO.concorrenciaPersistencia,
     async (preparado) => {
-      const { data, error } = await supabase.rpc("registrar_comparavel_mercado", {
-        p_dados: preparado.dados,
-      });
-      if (error) throw error;
-      const registro = (data as ResultadoRegistroRpc[] | null)?.[0];
-      if (!registro?.id) throw new Error("O banco não confirmou o comparável registrado.");
-      return registro;
+      try {
+        const { data, error } = await supabase.rpc("registrar_comparavel_mercado", {
+          p_dados: preparado.dados,
+        });
+        if (error) {
+          const { motivo, codigoSql } = classificarFalhaPersistencia(error);
+          return {
+            ok: false,
+            falha: { portal: preparado.portal, idExterno: preparado.idExterno, motivo, codigoSql },
+            erro: error,
+          };
+        }
+        const registro = (data as ResultadoRegistroRpc[] | null)?.[0];
+        if (!registro?.id) {
+          const erroResposta = new Error("O banco não confirmou o comparável registrado.");
+          return {
+            ok: false,
+            falha: {
+              portal: preparado.portal,
+              idExterno: preparado.idExterno,
+              motivo: "resposta-invalida",
+              codigoSql: null,
+            },
+            erro: erroResposta,
+          };
+        }
+        return { ok: true, registro, preparado };
+      } catch (erro) {
+        const { motivo, codigoSql } = classificarFalhaPersistencia(erro);
+        return {
+          ok: false,
+          falha: { portal: preparado.portal, idExterno: preparado.idExterno, motivo, codigoSql },
+          erro,
+        };
+      }
     },
-  ));
+  );
+
+  const salvosItens = resultados.filter(
+    (item): item is Extract<ResultadoItemPersistencia, { ok: true }> => item.ok,
+  );
+  const falhosItens = resultados.filter(
+    (item): item is Extract<ResultadoItemPersistencia, { ok: false }> => !item.ok,
+  );
+  const falhas = falhosItens.map((item) => item.falha);
+  const falhasPorMotivo: Partial<Record<MotivoFalhaComparavel, number>> = {};
+  for (const falha of falhas) {
+    falhasPorMotivo[falha.motivo] = (falhasPorMotivo[falha.motivo] ?? 0) + 1;
+  }
+  const primeiroErro = falhosItens[0]?.erro ?? null;
+  const parcial = salvosItens.length > 0 && falhas.length > 0;
+
+  if (parcial) {
+    console.error("[comparaveis-mercado] persistência parcial de comparáveis", {
+      tentados: preparados.length,
+      salvos: salvosItens.length,
+      falhas: falhas.length,
+      motivos: falhasPorMotivo,
+    });
+  }
+
+  if (!salvosItens.length) {
+    return {
+      tentados: preparados.length,
+      salvos: 0,
+      falhas,
+      falhasPorMotivo,
+      parcial: false,
+      primeiroErro,
+    };
+  }
 
   const registrosPorRegiao = new Map<string, ResultadoRegistroRpc[]>();
-  registros.forEach((registro, indice) => {
-    const regiao = preparados[indice].dados.regiao;
-    if (typeof regiao !== "string" || !regiao) return;
-    registrosPorRegiao.set(regiao, [...(registrosPorRegiao.get(regiao) || []), registro]);
-  });
+  for (const item of salvosItens) {
+    const regiao = item.preparado.dados.regiao;
+    if (typeof regiao !== "string" || !regiao) continue;
+    registrosPorRegiao.set(regiao, [...(registrosPorRegiao.get(regiao) || []), item.registro]);
+  }
   for (const [regiao, registrosDaRegiao] of registrosPorRegiao) {
     await registrarRegiaoDaColeta(supabase, userId, regiao, registrosDaRegiao);
   }
 
-  const pendentes = registros.flatMap((registro, indice) =>
-    registro.precisa_embedding ? [{ registro, preparado: preparados[indice] }] : []
-  );
-  if (!pendentes.length || !process.env.OPENAI_API_KEY) return registros.length;
-
-  let contextoErro: ContextoErroExterno = "embedding";
-  try {
-    const vetores = await gerarEmbeddingsDeImoveis(
-      pendentes.map((item) => item.preparado.textoEmbedding),
-      userId,
-      "embedding-comparavel-mercado",
-    );
-    contextoErro = "persistirEmbedding";
-    await mapearComConcorrencia(
-      pendentes,
-      CONFIGURACAO_COMPARAVEIS_MERCADO.concorrenciaPersistencia,
-      async (item) => {
-        const indice = pendentes.indexOf(item);
-        const vetor = vetores[indice];
-        if (!vetor) return;
-        const { error } = await supabase
-          .from("comparaveis_mercado")
-          .update({ embedding: vetor, embedding_gerado_em: agoraISOString() })
-          .eq("id", item.registro.id)
-          .eq("user_id", userId)
-          .eq("embedding_hash", item.preparado.hashEmbedding);
-        if (error) throw error;
-      },
-    );
-  } catch (erro) {
-    // Persistência estruturada e histórico continuam válidos. A próxima coleta
-    // tenta novamente porque o embedding permaneceu nulo.
-    console.error("[comparaveis-mercado] falha ao gerar embeddings", sanitizarErroExterno(erro, contextoErro));
+  const pendentes = salvosItens.filter((item) => item.registro.precisa_embedding);
+  if (pendentes.length && process.env.OPENAI_API_KEY) {
+    let contextoErro: ContextoErroExterno = "embedding";
+    try {
+      const vetores = await gerarEmbeddingsDeImoveis(
+        pendentes.map((item) => item.preparado.textoEmbedding),
+        userId,
+        "embedding-comparavel-mercado",
+      );
+      contextoErro = "persistirEmbedding";
+      await mapearComConcorrencia(
+        pendentes,
+        CONFIGURACAO_COMPARAVEIS_MERCADO.concorrenciaPersistencia,
+        async (item) => {
+          const indice = pendentes.indexOf(item);
+          const vetor = vetores[indice];
+          if (!vetor) return;
+          const { error } = await supabase
+            .from("comparaveis_mercado")
+            .update({ embedding: vetor, embedding_gerado_em: agoraISOString() })
+            .eq("id", item.registro.id)
+            .eq("user_id", userId)
+            .eq("embedding_hash", item.preparado.hashEmbedding);
+          if (error) throw error;
+        },
+      );
+    } catch (erro) {
+      // Persistência estruturada e histórico continuam válidos. A próxima coleta
+      // tenta novamente porque o embedding permaneceu nulo.
+      console.error("[comparaveis-mercado] falha ao gerar embeddings", sanitizarErroExterno(erro, contextoErro));
+    }
   }
-  return registros.length;
+
+  return {
+    tentados: preparados.length,
+    salvos: salvosItens.length,
+    falhas,
+    falhasPorMotivo,
+    parcial,
+    primeiroErro,
+  };
+}
+
+export async function salvarComparaveisMercado(
+  supabase: SupabaseClient,
+  userId: string,
+  anuncios: AnuncioCentralAngariacao[],
+  filtros: FiltrosCentralAngariacao,
+): Promise<number> {
+  const resultado = await salvarComparaveisMercadoDetalhado(supabase, userId, anuncios, filtros);
+  if (resultado.salvos === 0 && resultado.primeiroErro) {
+    throw resultado.primeiroErro;
+  }
+  return resultado.salvos;
 }

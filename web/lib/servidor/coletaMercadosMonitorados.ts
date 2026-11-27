@@ -117,17 +117,19 @@ export async function executarColetaMercados(dependencias: Partial<DependenciasC
             }
           }));
         }
+        let persistenciaParcial = false;
         if (coletados.length) {
           try {
             // Única finalização: UF/cidade explícitas, owner do claim, sem Radar.
             const resultado = await deps.finalizar(deps.supabase, mercado.user_id, coletados, plano.consultas[0].filtros);
             d.resultadosNormalizados = resultado.anuncios.length;
             d.comparaveisFinalizados = resultado.comparaveisSalvos;
+            persistenciaParcial = resultado.comparaveisParcial === true;
             if (resultado.erroComparaveis) d.erro = "persistencia_falhou";
           } catch { d.erro = "persistencia_falhou"; }
         }
         if (d.comparaveisFinalizados > 0 && !d.erro) {
-          d.status = d.falhasPorPortal.length ? "parcial" : "sucesso";
+          d.status = (d.falhasPorPortal.length || persistenciaParcial) ? "parcial" : "sucesso";
         } else {
           d.erro ??= d.falhasPorPortal.length === plano.consultas.length
             ? d.falhasPorPortal[0]?.codigo ?? "falha_total" : "sem_resultados";

@@ -87,6 +87,17 @@ async function finalizarRespostaColeta(
       resultado.aviso,
       "Os resultados apareceram, mas não foi possível atualizar a base histórica agora.",
     ].filter(Boolean).join(" ");
+  } else if (finalizacao.comparaveisParcial) {
+    console.error("[central-angariacao] base de comparáveis atualizada parcialmente", {
+      portal: seguros.portal,
+      salvos: finalizacao.comparaveisSalvos,
+      falhos: finalizacao.comparaveisFalhos ?? 0,
+      motivos: finalizacao.comparaveisFalhasPorMotivo ?? {},
+    });
+    resultado.aviso = [
+      resultado.aviso,
+      "Os resultados apareceram e a base histórica foi atualizada parcialmente.",
+    ].filter(Boolean).join(" ");
   } else {
     console.info("[central-angariacao] comparáveis atualizados", {
       portal: seguros.portal,

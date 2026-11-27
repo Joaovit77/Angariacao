@@ -379,6 +379,14 @@ async function verificarBusca(
         portal: busca.filtros.portal,
         erro: sanitizarErroExterno(finalizacao.erroComparaveis, "persistirComparaveis"),
       });
+    } else if (finalizacao.comparaveisParcial) {
+      console.error("[radar-cron] base de comparáveis atualizada parcialmente", {
+        buscaId: busca.id,
+        portal: busca.filtros.portal,
+        salvos: finalizacao.comparaveisSalvos,
+        falhos: finalizacao.comparaveisFalhos ?? 0,
+        motivos: finalizacao.comparaveisFalhasPorMotivo ?? {},
+      });
     } else {
       console.info("[radar-cron] comparáveis atualizados", {
         buscaId: busca.id,
