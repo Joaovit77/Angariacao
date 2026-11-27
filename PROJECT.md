@@ -471,6 +471,15 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   apagadas na reativação não constituem um histórico completo de eventos. Mensal, Semanal,
   Completo, seus indicadores e seus CSVs conservam os contratos existentes. Não há consulta,
   escrita, migration ou mudança de mapeador específica do relatório.
+  **Retirada automática pelo webhook (C4).** Quando a classificação de resposta no webhook do
+  WhatsApp encontra um motivo terminal da lista fechada (`MOTIVOS_PERDA_IA`), `encerramentoPorResposta`
+  consulta `podeRetirarDaCarteira` (a mesma régua da UI: status em `DISPONIBILIDADE_STATUS_ALVO` e
+  `captacaoGanha`). Se o imóvel já foi captado, o webhook marca `retirado = true`, `retirado_em`
+  no dia civil de Brasília (`dataOperacionalDeTimestamp`), `retirado_motivo` da lista fechada
+  (`motivoRetiradaPorResposta`) e `retirado_observacao` obrigatória quando `"outro"`, preservando
+  `status` e `status_history` intactos, sob a mesma guarda de escrita `.not("retirado", "is", true)`
+  e com a nota explicativa `wa:<id>:encerrado`. Leads ainda não captados mantêm o encerramento
+  como `"Perdido"` e imóveis já retirados continuam imutáveis (B0).
   **A busca é insensível a ACENTO** (`semAcento`), e os dois lados passam por ela — normalizar só o
   que o usuário digita não resolveria: "Jose" tem que achar "José" no dado gravado. A normalização
   vale só para PESQUISAR; o cadastro continua guardando e exibindo "Rua José Francisco Pereira",

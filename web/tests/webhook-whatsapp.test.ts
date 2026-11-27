@@ -373,16 +373,18 @@ describe("encerramentoPorResposta", () => {
 
   it("encerra como Perdido, com o motivo lido da mensagem", () => {
     const r = encerramentoPorResposta({ status: "Sem resposta", statusHistory: [] }, MOTIVO, HOJE);
-    expect(r?.status).toBe("Perdido");
-    expect(r?.motivoPerda).toBe(MOTIVO);
+    expect(r).toMatchObject({ acao: "encerrar", status: "Perdido", motivoPerda: MOTIVO });
   });
 
   it("NUNCA produz Locado — alugado por conta própria é perda, não ganho", () => {
     // Se virasse Locado, entraria na conversão, no tempo médio, na comissão e
     // na meta do mês um negócio que a imobiliária não fez.
     const r = encerramentoPorResposta({ status: "Novo contato", statusHistory: [] }, MOTIVO, HOJE);
-    expect(r?.status).not.toBe("Locado");
-    expect(r?.status).toBe("Perdido");
+    expect(r?.acao).toBe("encerrar");
+    if (r?.acao === "encerrar") {
+      expect(r.status).not.toBe("Locado");
+      expect(r.status).toBe("Perdido");
+    }
   });
 
   it("registra a transição no statusHistory", () => {
@@ -391,10 +393,13 @@ describe("encerramentoPorResposta", () => {
       MOTIVO,
       HOJE,
     );
-    expect(r?.statusHistory).toEqual([
-      { status: "Novo contato", date: "2026-07-01" },
-      { status: "Perdido", date: HOJE },
-    ]);
+    expect(r?.acao).toBe("encerrar");
+    if (r?.acao === "encerrar") {
+      expect(r.statusHistory).toEqual([
+        { status: "Novo contato", date: "2026-07-01" },
+        { status: "Perdido", date: HOJE },
+      ]);
+    }
   });
 
   it("age a partir de 'Sem resposta' — é o estado de quem acabou de responder", () => {
@@ -447,13 +452,30 @@ describe("motivoPerdaPelaFase", () => {
     expect(motivoPerdaPelaFase(HIST_CAPTADO, "Imóvel já vendido")).toBe("Imóvel já vendido");
   });
 
-  it("o encerramento automático aplica a correção", () => {
-    const r = encerramentoPorResposta(
+  it("o encerramento automático aplica a correção fora da carteira e retira quando está em carteira (C4)", () => {
+    // Fora de DISPONIBILIDADE_STATUS_ALVO (ex.: "Sem resposta" com histórico
+    // de Angariado), não é elegível para retirada automática e preserva a
+    // correção de motivo pela fase.
+    const foraDaCarteira = encerramentoPorResposta(
+      { status: "Sem resposta", statusHistory: HIST_CAPTADO },
+      "Optou por outra imobiliária",
+      HOJE,
+    );
+    expect(foraDaCarteira).toMatchObject({ acao: "encerrar", motivoPerda: MOTIVO_PERDA_LOCADO_FORA });
+
+    // Já em carteira (Angariado com captação ganha), a Fase C4 retira em vez
+    // de marcar Perdido.
+    const emCarteira = encerramentoPorResposta(
       { status: "Angariado", statusHistory: HIST_CAPTADO },
       "Optou por outra imobiliária",
       HOJE,
     );
-    expect(r?.motivoPerda).toBe(MOTIVO_PERDA_LOCADO_FORA);
+    expect(emCarteira).toMatchObject({
+      acao: "retirar",
+      retirado: true,
+      retiradoMotivo: "outro",
+      retiradoObservacao: "Exclusividade vigente com outra imobiliária",
+    });
   });
 
   it("o motivo corrigido existe no seletor do cadastro", () => {

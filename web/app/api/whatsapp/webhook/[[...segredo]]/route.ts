@@ -121,7 +121,7 @@ import {
   type EntradaPortaoEfeitos,
   type VereditoEfeito,
 } from "@/lib/calculo/portaoEfeitos";
-import { agoraISOComHora, agoraISOComSegundos, todayISO } from "@/lib/datas";
+import { agoraISOComHora, agoraISOComSegundos, agoraTimestamp, dataOperacionalDeTimestamp, todayISO } from "@/lib/datas";
 import type { NotaImovel, StatusHistoryEntry, Tentativa } from "@/lib/tipos";
 
 /* --- Log sem conteúdo -------------------------------------------------------
@@ -880,17 +880,19 @@ export async function POST(
     );
   }
 
-  // 6. Encerra o imóvel quando a resposta não deixou nada a fazer ("já
-  //    aluguei", exclusividade vigente explícita, indisponibilidade terminal).
-  //    Outra imobiliária sem exclusividade não encerra. É a ÚNICA coisa aqui que
-  //    a IA muda sem confirmação, e o que a segura é o motivo vir de lista
-  //    fechada — ver encerramentoPorResposta. Nunca vira "Locado": alugado
-  //    por conta própria é perda, e marcá-lo como ganho inflaria a comissão
-  //    e a meta do mês com negócio que não houve.
+  // 6. Encerra (lead) ou retira da carteira (imóvel já captado — Fase C4)
+  //    quando a resposta não deixou nada a fazer ("já aluguei", exclusividade
+  //    vigente explícita, indisponibilidade terminal). Outra imobiliária sem
+  //    exclusividade não dispara. É a ÚNICA coisa aqui que a IA muda sem
+  //    confirmação, e o que a segura é o motivo vir de lista fechada — ver
+  //    encerramentoPorResposta. Nunca vira "Locado": alugado por conta própria
+  //    não é ganho da imobiliária.
+  const hojeBrasilia = dataOperacionalDeTimestamp(agoraTimestamp()) || hoje;
   let encerramento = encerramentoPorResposta(
     { status: imovel.status, statusHistory: imovel.status_history, retirado: imovel.retirado },
     sugestao?.motivoPerda,
     hoje,
+    { textoMensagem: mensagem.texto, hojeBrasilia },
   );
   // Motivo de perda presente e nenhum encerramento: foi a trava do imóvel
   // terminal ou retirado que impediu, não a falta de gatilho.
@@ -898,45 +900,67 @@ export async function POST(
   if (encerramento) {
     // A condição "não retirado" vai NA escrita, não só na leitura acima: se
     // o imóvel foi retirado entre as duas, o UPDATE não casa linha nenhuma e
-    // o encerramento não acontece. As linhas devolvidas provam se ele
-    // aplicou. `not is true` é a mesma régua do guard (`retirado === true`):
-    // false e um eventual null contam como não retirado.
+    // nem encerramento nem retirada automática sobrescrevem o dado manual. As
+    // linhas devolvidas provam se aplicou. `not is true` é a mesma régua do
+    // guard (`retirado === true`): false e um eventual null contam como não
+    // retirado.
+    const dadosAtualizacao =
+      encerramento.acao === "retirar"
+        ? {
+            retirado: true,
+            retirado_em: encerramento.retiradoEm,
+            retirado_motivo: encerramento.retiradoMotivo,
+            retirado_observacao: encerramento.retiradoObservacao,
+          }
+        : {
+            status: encerramento.status,
+            status_history: encerramento.statusHistory,
+            motivo_perda: encerramento.motivoPerda,
+            motivo_perda_outro: null,
+          };
     const { data: encerrados, error: erroStatus } = await supabase
       .from("imoveis")
-      .update({
-        status: encerramento.status,
-        status_history: encerramento.statusHistory,
-        motivo_perda: encerramento.motivoPerda,
-        motivo_perda_outro: null,
-      })
+      .update(dadosAtualizacao)
       .eq("id", imovel.id)
       .eq("user_id", userId)
       .not("retirado", "is", true)
       .select("id");
     if (erroStatus) {
       efeitosReais.encerramento = "falhou";
-      console.error("Webhook do WhatsApp: falha ao encerrar o imóvel:", erroStatus.message);
+      console.error(
+        encerramento.acao === "retirar"
+          ? "Webhook do WhatsApp: falha ao retirar o imóvel da carteira:"
+          : "Webhook do WhatsApp: falha ao encerrar o imóvel:",
+        erroStatus.message,
+      );
     } else if (!Array.isArray(encerrados) || encerrados.length === 0) {
       // Retirado no meio do caminho: nada foi gravado, e a resposta segue
       // como a de um imóvel que não foi encerrado (mesmo caminho do guard).
       efeitosReais.encerramento = "nao-aplicado";
-      console.log(`Webhook do WhatsApp: imóvel ${rotulo} não encerrado: retirado durante o processamento.`);
+      console.log(`Webhook do WhatsApp: imóvel ${rotulo} não atualizado: retirado durante o processamento.`);
       encerramento = null;
     } else {
       efeitosReais.encerramento = "aplicado-confirmado";
-      // Deixa na tela por que o status mudou. Sem isto a explicação existiria
+      // Deixa na tela por que o estado mudou. Sem isto a explicação existiria
       // só no log do servidor, que o corretor não lê.
       await supabase.rpc("registrar_nota_whatsapp", {
         p_imovel_id: imovel.id,
         p_user_id: userId,
         p_nota: notaDoEncerramento(mensagem.mensagemId, encerramento, agoraISOComHora()),
       });
-      console.log(
-        `Webhook do WhatsApp: imóvel ${rotulo} encerrado como ${encerramento.status} — ` +
-          `${encerramento.motivoPerda} (lido da resposta).`,
-      );
-      // A agenda nem roda quando o imóvel acabou de ser encerrado: fica
-      // `nao-elegivel`, como era.
+      if (encerramento.acao === "retirar") {
+        console.log(
+          `Webhook do WhatsApp: imóvel ${rotulo} retirado da carteira automaticamente — ` +
+            `${encerramento.retiradoMotivo} (lido da resposta).`,
+        );
+      } else {
+        console.log(
+          `Webhook do WhatsApp: imóvel ${rotulo} encerrado como ${encerramento.status} — ` +
+            `${encerramento.motivoPerda} (lido da resposta).`,
+        );
+      }
+      // A agenda nem roda quando o imóvel acabou de ser encerrado ou retirado:
+      // fica `nao-elegivel`, como era.
       registrarShadowPortao(userId, imovel.id, entradaPortao, efeitosReais);
       return Response.json({ ok: true });
     }

@@ -42,14 +42,20 @@ describe("encerramentoPorResposta — imóvel retirado", () => {
     }
   });
 
-  it("o mesmo imóvel sem a marca continua encerrando exatamente como antes", () => {
+  it("o mesmo imóvel sem a marca retira da carteira quando já captado (C4) e encerra como Perdido quando é lead", () => {
     for (const retirado of [false, null, undefined]) {
       const r = encerramentoPorResposta({ status: "Angariado", statusHistory: HIST_CAPTADO, retirado }, JA_ALUGUEI, HOJE);
-      expect(r?.status).toBe(STATUS_ENCERRAMENTO_IA);
-      expect(r?.statusHistory).toEqual([...HIST_CAPTADO, { status: "Perdido", date: HOJE }]);
+      expect(r).toEqual({
+        acao: "retirar",
+        retirado: true,
+        retiradoEm: HOJE,
+        retiradoMotivo: "locado-proprietario",
+        retiradoObservacao: null,
+      });
     }
-    // E quem chama sem conhecer o campo (assinatura antiga) também.
-    expect(encerramentoPorResposta({ status: "Sem resposta", statusHistory: [] }, JA_ALUGUEI, HOJE)?.status).toBe("Perdido");
+    // Lead não captado (e quem chama sem conhecer o campo) continua virando Perdido.
+    const lead = encerramentoPorResposta({ status: "Sem resposta", statusHistory: [] }, JA_ALUGUEI, HOJE);
+    expect(lead).toMatchObject({ acao: "encerrar", status: STATUS_ENCERRAMENTO_IA });
   });
 
   it("as barreiras antigas continuam valendo para quem não é retirado", () => {
@@ -135,7 +141,9 @@ function clienteFalso(banco: Banco, opcoes: { antesDaEscritaDeStatus?: () => voi
 
     const executar = (): { data: unknown; error: unknown } => {
       if (payloadUpdate) {
-        if (nome === "imoveis" && "status" in payloadUpdate) opcoes.antesDaEscritaDeStatus?.();
+        if (nome === "imoveis" && ("status" in payloadUpdate || "retirado" in payloadUpdate)) {
+          opcoes.antesDaEscritaDeStatus?.();
+        }
         // Os filtros valem NA escrita, como no Postgres: só as linhas que
         // ainda casam são alteradas e devolvidas.
         const alvo = linhas();
@@ -338,38 +346,61 @@ describe("webhook — resposta que encerraria, num imóvel retirado", () => {
   });
 });
 
-describe("webhook — o mesmo cenário num imóvel que NÃO é retirado (regressão)", () => {
-  it("C/E. continua encerrando como Perdido, com uma entrada nova no histórico e a nota de encerramento", async () => {
+describe("webhook — o mesmo cenário num imóvel que NÃO é retirado (regressão B0 + C4)", () => {
+  it("C/E. imóvel captado sem a marca é retirado da carteira (C4) preservando status e histórico, com nota :encerrado", async () => {
     for (const retirado of [false, null]) {
       const b = banco({ retirado });
       const { updates } = await receber(b, "Já aluguei, obrigado.");
       const linha = linhaDoImovel(b);
-      expect(linha.status).toBe("Perdido");
-      expect(linha.status_history).toEqual([...HIST_CAPTADO, { status: "Perdido", date: HOJE }]);
+      expect(linha.retirado).toBe(true);
+      expect(linha.retirado_motivo).toBe("locado-proprietario");
+      expect(linha.retirado_observacao).toBeNull();
+      expect(linha.status).toBe("Angariado");
+      expect(linha.status_history).toEqual(HIST_CAPTADO);
+      expect(updates.filter((u) => u.tabela === "imoveis" && "status" in u.payload)).toHaveLength(0);
       expect(updatesDeStatus(updates)).toHaveLength(1);
+      expect(updates.filter((u) => u.tabela === "imoveis" && "retirado" in u.payload)).toHaveLength(1);
       expect(idsDasNotas(b).some((id) => id.endsWith(":encerrado"))).toBe(true);
     }
+  });
+
+  it("lead não captado sem a marca continua encerrando como Perdido, com entrada nova no histórico e nota :encerrado", async () => {
+    const b = banco({ retirado: false, status: "Novo contato", status_history: [{ status: "Novo contato", date: "2026-05-01" }] });
+    const { updates } = await receber(b, "Já aluguei, obrigado.");
+    const linha = linhaDoImovel(b);
+    expect(linha.status).toBe("Perdido");
+    expect(linha.retirado).toBe(false);
+    expect(linha.status_history).toEqual([
+      { status: "Novo contato", date: "2026-05-01" },
+      { status: "Perdido", date: HOJE },
+    ]);
+    expect(updatesDeStatus(updates)).toHaveLength(1);
+    expect(idsDasNotas(b).some((id) => id.endsWith(":encerrado"))).toBe(true);
   });
 });
 
 describe("webhook — retirada concorrente entre a leitura e a escrita do encerramento", () => {
-  it("lido como não retirado, retirado antes do UPDATE: nada de status, histórico, motivo ou nota", async () => {
+  it("lido como não retirado, retirado antes do UPDATE: nada de status, histórico, motivo manual ou nota", async () => {
     const b = banco({ retirado: false });
     const { updates } = await receber(b, "Já aluguei, obrigado.", {
       // O corretor clica em "Retirar da carteira" enquanto o webhook processa.
       antesDaEscritaDeStatus: () => {
         b.imoveis[0].retirado = true;
+        b.imoveis[0].retirado_motivo = "vendido";
+        b.imoveis[0].retirado_em = "2026-06-01";
       },
     });
 
     const linha = linhaDoImovel(b);
-    // A rota chegou a TENTAR o encerramento (a leitura dizia não retirado)...
-    const tentativa = updates.filter((u) => u.tabela === "imoveis" && "status" in u.payload);
+    // A rota chegou a TENTAR a retirada (a leitura dizia não retirado)...
+    const tentativa = updates.filter((u) => u.tabela === "imoveis" && ("status" in u.payload || "retirado" in u.payload));
     expect(tentativa).toHaveLength(1);
-    // ...mas a condição da escrita não casou linha nenhuma.
+    // ...mas a condição `.not("retirado", "is", true)` não casou linha nenhuma.
     expect(tentativa[0].afetadas).toBe(0);
     expect(linha.status).toBe("Angariado");
     expect(linha.retirado).toBe(true);
+    expect(linha.retirado_motivo).toBe("vendido");
+    expect(linha.retirado_em).toBe("2026-06-01");
     expect(linha.status_history).toEqual(HIST_CAPTADO);
     expect(linha.motivo_perda).toBeNull();
     expect(idsDasNotas(b).some((id) => id.endsWith(":encerrado"))).toBe(false);
@@ -377,10 +408,11 @@ describe("webhook — retirada concorrente entre a leitura e a escrita do encerr
     expect(idsDasNotas(b)).toContain("wa:MSG1");
   });
 
-  it("sem retirada no meio, o mesmo cenário encerra normalmente (a condição não bloqueia o fluxo normal)", async () => {
+  it("sem retirada no meio, o mesmo cenário aplica a retirada normalmente (a condição não bloqueia o fluxo normal)", async () => {
     const b = banco({ retirado: false });
     await receber(b, "Já aluguei, obrigado.", { antesDaEscritaDeStatus: () => undefined });
-    expect(linhaDoImovel(b).status).toBe("Perdido");
+    expect(linhaDoImovel(b).retirado).toBe(true);
+    expect(linhaDoImovel(b).status).toBe("Angariado");
     expect(idsDasNotas(b).some((id) => id.endsWith(":encerrado"))).toBe(true);
   });
 });

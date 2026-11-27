@@ -19,6 +19,7 @@
    processada, não é gravada e não é registrada em log.
    ================================================================ */
 import { DIAS_COBRANCA_RESULTADO } from "./abordagens";
+import { imovelAlugadoPorOutraImobiliaria } from "./ia";
 import { historicoComStatus, motivoPerdaPelaFase } from "./motor";
 import {
   PREFIXO_TEXTO_RESPOSTA,
@@ -26,8 +27,14 @@ import {
   ehTipoDeReacaoWhatsapp,
   idNotaDaMensagem,
 } from "./notas";
+import { podeRetirarDaCarteira, rotuloMotivoRetirada } from "./retiradaCarteira";
+import {
+  MOTIVO_PERDA_IMOVEL_INDISPONIVEL,
+  MOTIVO_PERDA_LOCADO_FORA,
+  type MotivoRetirada,
+} from "../constantes";
 import { addDaysISO, daysBetween } from "../datas";
-import type { NotaImovel, StatusHistoryEntry, Tentativa } from "../tipos";
+import type { Imovel, NotaImovel, StatusHistoryEntry, Tentativa } from "../tipos";
 
 /* ----------------------------------------------------------------
    TELEFONE EM FORMA CANÔNICA
@@ -265,9 +272,20 @@ export function notaDaResposta(mensagem: MensagemRecebida, agora: string): NotaI
  */
 export function notaDoEncerramento(
   mensagemId: string,
-  encerrou: { status: string; motivoPerda: string },
+  encerrou: EncerramentoAutomatico | { acao?: "encerrar"; status: string; motivoPerda: string },
   agora: string,
 ): NotaImovel {
+  if ("acao" in encerrou && encerrou.acao === "retirar") {
+    const rotulo = rotuloMotivoRetirada(encerrou.retiradoMotivo);
+    const detalhe = encerrou.retiradoObservacao ? `${rotulo} — ${encerrou.retiradoObservacao}` : rotulo;
+    return {
+      id: `${idNotaDaMensagem(mensagemId)}${SUFIXO_ID_ENCERRAMENTO}`,
+      texto:
+        `Imóvel retirado da carteira automaticamente a partir da resposta acima ` +
+        `(motivo: ${detalhe}). Se não foi isso, reative o imóvel no cadastro.`,
+      data: agora,
+    };
+  }
   return {
     id: `${idNotaDaMensagem(mensagemId)}${SUFIXO_ID_ENCERRAMENTO}`,
     texto:
@@ -382,32 +400,87 @@ export function fecharTentativaPendente(
    mês um negócio que não existiu, e o corretor passaria a confiar num número
    inflado. O domínio já registra isso como motivo de PERDA. */
 
-/** Status terminal aplicado pelo encerramento automático. */
+/** Status terminal aplicado pelo encerramento automático de leads não captados. */
 export const STATUS_ENCERRAMENTO_IA = "Perdido";
 
-export interface EncerramentoAutomatico {
+export interface EncerramentoPorPerda {
+  acao: "encerrar";
   status: string;
   motivoPerda: string;
   statusHistory: StatusHistoryEntry[];
 }
 
+export interface EncerramentoPorRetirada {
+  acao: "retirar";
+  retirado: true;
+  retiradoEm: string;
+  retiradoMotivo: MotivoRetirada;
+  retiradoObservacao: string | null;
+}
+
+export type EncerramentoAutomatico = EncerramentoPorPerda | EncerramentoPorRetirada;
+
 /**
- * O imóvel deve ser encerrado por causa desta resposta?
+ * Traduz o motivo de perda lido pela IA para a lista fechada de motivos de
+ * retirada (`MOTIVOS_RETIRADA`) quando o imóvel já foi captado (Retirados,
+ * Fase C4). Garante as invariantes do banco: `motivo` sempre da lista fechada
+ * e `observacao` obrigatória (<= 1000 chars) sempre que `motivo === "outro"`.
+ */
+export function motivoRetiradaPorResposta(
+  motivoPerda: string,
+  textoMensagem?: string | null,
+): { motivo: MotivoRetirada; observacao: string | null } {
+  const texto = textoMensagem || "";
+  switch (motivoPerda) {
+    case "Imóvel já alugado por conta própria":
+      return { motivo: "locado-proprietario", observacao: null };
+    case "Imóvel já vendido":
+      return { motivo: "vendido", observacao: null };
+    case "Proprietário desistiu de alugar":
+      return { motivo: "desistiu", observacao: null };
+    case "Não é mais o proprietário":
+      return { motivo: "nao-e-mais-proprietario", observacao: null };
+    case "Optou por outra imobiliária":
+      if (texto && imovelAlugadoPorOutraImobiliaria(texto)) {
+        return { motivo: "locado-outra-imobiliaria", observacao: null };
+      }
+      return { motivo: "outro", observacao: "Exclusividade vigente com outra imobiliária" };
+    case MOTIVO_PERDA_IMOVEL_INDISPONIVEL:
+      return { motivo: "outro", observacao: "Imóvel não está mais disponível" };
+    case MOTIVO_PERDA_LOCADO_FORA:
+      if (texto && imovelAlugadoPorOutraImobiliaria(texto)) {
+        return { motivo: "locado-outra-imobiliaria", observacao: null };
+      }
+      return { motivo: "locado-proprietario", observacao: null };
+    default: {
+      const limpo = motivoPerda.trim();
+      const observacao = limpo ? [...limpo].slice(0, 1000).join("") : "Retirado automaticamente via WhatsApp";
+      return { motivo: "outro", observacao };
+    }
+  }
+}
+
+/**
+ * O imóvel deve ser encerrado ou retirado da carteira por causa desta resposta?
  *
  * `null` quando não — e "não" é o caso normal. Também devolve `null` quando o
  * imóvel JÁ está num status terminal: reencerrar reescreveria o histórico e o
  * motivo de uma perda que já tinha explicação, possivelmente melhor que esta.
  *
- * E devolve `null` para imóvel RETIRADO, qualquer que seja o status ou a
- * frase. Retirado é captação ganha que saiu da carteira: virar "Perdido" diria
- * que a captação falhou, e o status e o histórico dele ficam como estão. A
- * trava é pelo estado do imóvel, não pelo texto. A mensagem segue o resto do
- * fluxo como qualquer resposta que não encerra.
+ * Devolve `null` para imóvel JÁ RETIRADO, qualquer que seja o status ou a
+ * frase: o status, o histórico e os dados da retirada anterior ficam intocados.
+ *
+ * Para imóvel **já captado** e elegível para retirada (`podeRetirarDaCarteira`:
+ * Angariado, Autorização assinada ou Publicado com captação ganha), devolve
+ * `acao: "retirar"` (Retirados, Fase C4): marca `retirado = true` com data de
+ * Brasília e motivo da lista fechada, preservando `status` e `statusHistory`.
+ * Para lead ainda não captado, mantém `acao: "encerrar"` (`status = "Perdido"`).
  */
 export function encerramentoPorResposta(
   imovel: { status: string; statusHistory?: StatusHistoryEntry[] | null; retirado?: boolean | null },
   motivoPerda: string | null | undefined,
   hoje: string,
+  opcoes?: { textoMensagem?: string | null; hojeBrasilia?: string | null },
 ): EncerramentoAutomatico | null {
   if (!motivoPerda) return null;
   if (imovel.retirado === true) return null;
@@ -416,7 +489,25 @@ export function encerramentoPorResposta(
   // acabou de responder — encerrar a partir dele é o caso mais comum. Só
   // "Perdido" e "Cancelado" barram, porque ali já existe um desfecho escrito.
   if (imovel.status === "Perdido" || imovel.status === "Cancelado") return null;
+
+  const elegivelRetirada = podeRetirarDaCarteira({
+    status: imovel.status,
+    statusHistory: imovel.statusHistory || [],
+    retirado: false,
+  } as Imovel);
+  if (elegivelRetirada) {
+    const { motivo, observacao } = motivoRetiradaPorResposta(motivoPerda, opcoes?.textoMensagem);
+    return {
+      acao: "retirar",
+      retirado: true,
+      retiradoEm: opcoes?.hojeBrasilia || hoje,
+      retiradoMotivo: motivo,
+      retiradoObservacao: observacao,
+    };
+  }
+
   return {
+    acao: "encerrar",
     status: STATUS_ENCERRAMENTO_IA,
     // A IA lê uma frase solta e não sabe onde o imóvel está no funil; o
     // statusHistory sabe. Ver `motivoPerdaPelaFase`, no motor — o relatório

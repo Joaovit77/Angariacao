@@ -608,22 +608,28 @@ describe("fronteiras", () => {
   const ler = (f: string) => readFileSync(join(raiz, f), "utf8").replace(/\r\n/g, "\n");
   const semComentarios = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
 
-  it("só mutacoes.ts escreve as colunas da retirada; o mapeador só lê", () => {
+  it("só mutacoes.ts e o webhook (C4) escrevem as colunas da retirada; o mapeador só lê", () => {
     const usam = arquivos.filter((f) => /retirado_(em|motivo|observacao)\b/.test(semComentarios(ler(f))));
-    expect(usam.sort()).toEqual(["lib/mutacoes.ts", "lib/persistencia/mapeadores.ts"]);
+    expect(usam.sort()).toEqual([
+      "app/api/whatsapp/webhook/[[...segredo]]/route.ts",
+      "lib/mutacoes.ts",
+      "lib/persistencia/mapeadores.ts",
+    ]);
     const mapeador = semComentarios(ler("lib/persistencia/mapeadores.ts"));
     const toDb = mapeador.slice(mapeador.indexOf("export function toDbImovel"), mapeador.indexOf("export function fromDbImovel"));
     expect(toDb).not.toMatch(/retirado_(em|motivo|observacao)/);
   });
 
-  it("webhook, IA, assistente e Sophia não gravam a retirada", () => {
-    const proibidos = arquivos.filter((f) =>
-      /^(app\/api\/(whatsapp|sophia|ia|assistente)|lib\/servidor|lib\/ia)\//.test(f),
+  it("IA, assistente, Sophia e rotas fora do webhook não gravam a retirada", () => {
+    const rotaWebhook = "app/api/whatsapp/webhook/[[...segredo]]/route.ts";
+    const proibidos = arquivos.filter(
+      (f) => f !== rotaWebhook && /^(app\/api\/(whatsapp|sophia|ia|assistente)|lib\/servidor|lib\/ia)\//.test(f),
     );
     for (const f of proibidos) {
       const t = semComentarios(ler(f));
       expect(t, f).not.toMatch(/retirado_(em|motivo|observacao)|definirRetiradoDaCarteira|editarRetiradaDaCarteira/);
     }
+    expect(semComentarios(ler(rotaWebhook))).not.toMatch(/definirRetiradoDaCarteira|editarRetiradaDaCarteira/);
   });
 
   it("a janela só nasce pelo ModalOverlay e só o ModalImovel a abre", () => {

@@ -172,7 +172,9 @@ function Linha({ linha, imovel }: { linha: LinhaResposta; imovel: Imovel }) {
           a partir de uma destas mensagens. */}
       {linha.encerradoAutomaticamente && (
         <div className="resp-auto">
-          ⚠ Este imóvel foi encerrado automaticamente a partir de uma destas respostas.
+          {imovel.retirado
+            ? "⚠ Este imóvel foi retirado da carteira automaticamente a partir de uma destas respostas."
+            : "⚠ Este imóvel foi encerrado automaticamente a partir de uma destas respostas."}
         </div>
       )}
 

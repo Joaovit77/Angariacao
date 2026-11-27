@@ -777,7 +777,7 @@ export function desistenciaAluguelExplicita(texto: string): boolean {
   return renunciaDireta || vendaExclusiva || usoProprio;
 }
 
-function imovelAlugadoPorOutraImobiliaria(texto: string): boolean {
+export function imovelAlugadoPorOutraImobiliaria(texto: string): boolean {
   const normalizado = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   return /\b(?:ja\s+)?(?:foi|esta|ta)\s+alugad[oa]\b/.test(normalizado) && /\bimobiliaria\b/.test(normalizado);
 }
