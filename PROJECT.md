@@ -480,6 +480,13 @@ helpers de data. Código com efeitos fica nas fronteiras (`persistencia`, `mutac
   `status` e `status_history` intactos, sob a mesma guarda de escrita `.not("retirado", "is", true)`
   e com a nota explicativa `wa:<id>:encerrado`. Leads ainda não captados mantêm o encerramento
   como `"Perdido"` e imóveis já retirados continuam imutáveis (B0).
+  **Migração histórica por conta (C5).** O runbook parametrizado
+  `supabase/scripts/retirados-c5-migrar-perdidos-captados.sql` converte, em transação única e
+  idempotente (fail-closed por e-mail de conta), imóveis antigos com `status = 'Perdido'` que já
+  passaram por `Angariado` ou `Autorização assinada` para `retirado = true`, restaurando o último
+  status de carteira, removendo apenas o `'Perdido'` final do `status_history`, preservando a data
+  original em `retirado_em` e mapeando `motivo_perda` para a lista fechada C1 com nota de auditoria
+  `c5:migracao-retirado`.
   **A busca é insensível a ACENTO** (`semAcento`), e os dois lados passam por ela — normalizar só o
   que o usuário digita não resolveria: "Jose" tem que achar "José" no dado gravado. A normalização
   vale só para PESQUISAR; o cadastro continua guardando e exibindo "Rua José Francisco Pereira",
