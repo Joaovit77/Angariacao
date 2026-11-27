@@ -77,6 +77,12 @@ export function semAcento(texto: string): string {
     .toLowerCase();
 }
 
+/** Chave canônica para deduplicar e comparar nomes de cidade/bairro ignorando
+    maiúsculas, acentos e espaços repetidos, sem alterar o dado salvo. */
+export function chaveFiltroLocalizacao(texto: string | null | undefined): string {
+  return semAcento((texto || "").trim()).replace(/\s+/g, " ");
+}
+
 /** Os dois estados da coluna Telefone. São rótulo de exibição E valor de
     filtro ao mesmo tempo — a coluna reusa o menu de filtro das outras, e o
     que aparece no cabeçalho tem que ser o que casa na linha. */
@@ -145,10 +151,10 @@ export function filtrarImoveis(
        Lista concordarem sem cada um ter que lembrar da regra. */
     if (viewMode === "retirados" ? !i.retirado : !!i.retirado) return false;
     if (filters.tipo && i.tipo !== filters.tipo) return false;
-    if (filters.bairro && i.bairro !== filters.bairro) return false;
+    if (filters.bairro && !chaveFiltroLocalizacao(i.bairro).includes(chaveFiltroLocalizacao(filters.bairro))) return false;
     if (filters.status && i.status !== filters.status) return false;
     if (filters.responsavel && i.responsavel !== filters.responsavel) return false;
-    if (filters.cidade && i.cidade !== filters.cidade) return false;
+    if (filters.cidade && chaveFiltroLocalizacao(i.cidade) !== chaveFiltroLocalizacao(filters.cidade)) return false;
     // Categorias exatas: ambos não entra em locação/venda; ausência não classifica.
     if (filters.finalidade === FILTRO_FINALIDADE_NAO_INFORMADA) {
       if (i.finalidade != null) return false;
@@ -223,4 +229,65 @@ export function ordenarPipelineLista(imoveis: Imovel[], colSort: PipelineColSort
 
 export function pipelineUniqueSorted(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.map((v) => (v || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+/** Deduplica valores textuais (como cidades e bairros) pela chave canônica
+    sem acento/caixa, preservando a grafia mais frequente e legível. */
+export function pipelineUniqueCanonical(values: Array<string | null | undefined>): string[] {
+  const grupos = new Map<string, Map<string, number>>();
+  for (const bruto of values) {
+    const limpo = (bruto || "").trim().replace(/\s+/g, " ");
+    if (!limpo) continue;
+    const chave = chaveFiltroLocalizacao(limpo);
+    if (!chave) continue;
+    let contagem = grupos.get(chave);
+    if (!contagem) {
+      contagem = new Map<string, number>();
+      grupos.set(chave, contagem);
+    }
+    contagem.set(limpo, (contagem.get(limpo) || 0) + 1);
+  }
+
+  const pontuarLegibilidade = (rotulo: string): number => {
+    const temAcento = rotulo !== rotulo.normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const misto = rotulo !== rotulo.toLowerCase() && rotulo !== rotulo.toUpperCase();
+    return (misto ? 2 : 0) + (temAcento ? 1 : 0);
+  };
+
+  return [...grupos.values()]
+    .map((variantes) =>
+      [...variantes.entries()].sort((a, b) => {
+        if (b[1] !== a[1]) return b[1] - a[1];
+        const scoreDiff = pontuarLegibilidade(b[0]) - pontuarLegibilidade(a[0]);
+        if (scoreDiff !== 0) return scoreDiff;
+        return a[0].localeCompare(b[0], "pt-BR");
+      })[0][0],
+    )
+    .sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+export interface PaginaLista<T> {
+  itens: T[];
+  paginaAtual: number;
+  totalPaginas: number;
+  inicio: number;
+  fim: number;
+  total: number;
+}
+
+export function paginarLista<T>(itens: readonly T[], pagina: number, porPagina: number): PaginaLista<T> {
+  const tamanho = Math.max(1, Math.floor(porPagina));
+  const total = itens.length;
+  const totalPaginas = Math.max(1, Math.ceil(total / tamanho));
+  const paginaAtual = Math.min(Math.max(1, Math.floor(pagina) || 1), totalPaginas);
+  const offset = (paginaAtual - 1) * tamanho;
+  const fatia = itens.slice(offset, offset + tamanho);
+  return {
+    itens: fatia,
+    paginaAtual,
+    totalPaginas,
+    inicio: total === 0 ? 0 : offset + 1,
+    fim: offset + fatia.length,
+    total,
+  };
 }

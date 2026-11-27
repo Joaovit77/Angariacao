@@ -665,7 +665,7 @@ export default function CerebroIaView() {
     <div className={styles.pagina}>
       <header className={styles.cabecalhoPagina}>
         <div>
-          <h1>Cérebro da IA</h1>
+          <h2>Cérebro da IA</h2>
           <p>Selecione uma execução para ver o caminho operacional percorrido pela IA do Angario.</p>
         </div>
       </header>

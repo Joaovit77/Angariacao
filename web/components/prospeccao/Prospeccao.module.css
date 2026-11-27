@@ -800,7 +800,7 @@
   }
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1180px) {
   .conteudo {
     grid-template-columns: 1fr;
   }
@@ -1606,13 +1606,21 @@
 .alternador a.alternadorAtivo { background: var(--accent-soft); color: var(--accent-strong); }
 .catalogoFiltros {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-columns: minmax(260px, 1fr) auto auto auto;
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
   border: 1px solid var(--border-soft);
   border-radius: 14px;
   background: var(--bg-elev-1);
+}
+@media (max-width: 1080px) {
+  .catalogoFiltros {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  }
+  .catalogoBusca {
+    grid-column: 1 / -1;
+  }
 }
 .catalogoFiltros select,
 .catalogoBusca {

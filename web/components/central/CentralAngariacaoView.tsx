@@ -62,6 +62,20 @@ import { useCidadePadraoDaConta } from "@/lib/useCidadePadraoDaConta";
 
 const carregarImagemPortal = ({ src }: ImageLoaderProps) => src;
 
+/** Identifica ressalvas (sinais que pedem confirmação) para nunca usar ícone
+    positivo verde (`✓`) quando o texto alerta que falta checar algo. */
+export function motivoEhRessalva(motivo: string): boolean {
+  return /precisa ser confirmado|n[aã]o informad|sem foto|parcial|incerto/i.test(motivo);
+}
+
+export function rotuloOrigemVerificacaoRadar(origem: string | null | undefined): string {
+  if (!origem) return "";
+  if (origem === "navegador") return "automática com o painel aberto";
+  if (origem === "manual") return "manual";
+  if (origem === "cron" || origem === "automatico") return "automática diária";
+  return origem;
+}
+
 type Aba = "buscar" | "resultados" | "selecionados" | "radar";
 
 export default function CentralAngariacaoView() {
@@ -357,7 +371,7 @@ export default function CentralAngariacaoView() {
           <h2 className="page-title">Central de Angariação</h2>
           <p className="page-sub">Encontre oportunidades nos portais e revise antes de enviar ao Pipeline.</p>
         </div>
-        <span className="central-badge">Busca sob demanda</span>
+        <span className="central-badge">{aba === "radar" ? "Monitoramento automático" : "Busca sob demanda"}</span>
       </div>
 
       <div className="central-tabs" role="tablist" aria-label="Central de Angariação">
@@ -406,10 +420,10 @@ export default function CentralAngariacaoView() {
                       <div>
                         <div className="central-card-tags"><span>{rotuloPortal(busca.filtros.portal)}</span>{busca.filtros.somenteProprietario && <span>Só proprietário</span>}{novos > 0 && <span className="radar-novo">{novos} novo{novos === 1 ? "" : "s"}</span>}</div>
                         <h3>{busca.nome}</h3>
-                        {!busca.comparacaoDesde && <span>Base não revisada · aguardando coleta com cobertura suficiente</span>}
+                        {!busca.comparacaoDesde && <span>Aguardando coleta completa para começar a sinalizar novidades</span>}
                         <p>{[busca.filtros.tipo, busca.filtros.bairro, busca.filtros.cidade].filter(Boolean).join(" · ")}</p>
                         <small>{busca.ultimoCheck
-                          ? `Última verificação${busca.ultimoCheckOrigem ? ` (${busca.ultimoCheckOrigem})` : ""}: ${fmtDataHoraIso(busca.ultimoCheck)}`
+                          ? `Última verificação${busca.ultimoCheckOrigem ? ` (${rotuloOrigemVerificacaoRadar(busca.ultimoCheckOrigem)})` : ""}: ${fmtDataHoraIso(busca.ultimoCheck)}`
                           : "Ainda não verificada"}</small>
                       </div>
                       <div className="central-radar-actions">
@@ -445,7 +459,16 @@ export default function CentralAngariacaoView() {
                           <h3>{anuncio.titulo}</h3>
                           <strong className="central-price">{anuncio.preco ? fmtMoney(anuncio.preco) : "Preço não informado"}</strong>
                           <p>{[anuncio.endereco, anuncio.bairro, anuncio.cidade].filter(Boolean).join(" · ") || "Localização não informada"}</p>
-                          <div className="central-radar-motivos">{avaliacao.motivos.slice(0, 3).map((motivo) => <span key={motivo}>✓ {motivo}</span>)}</div>
+                          <div className="central-radar-motivos">
+                            {avaliacao.motivos.slice(0, 3).map((motivo) => {
+                              const ressalva = motivoEhRessalva(motivo);
+                              return (
+                                <span key={motivo} className={ressalva ? "motivo-atencao" : undefined}>
+                                  {ressalva ? "⚠" : "✓"} {motivo}
+                                </span>
+                              );
+                            })}
+                          </div>
                           <div className="central-card-actions">
                             <a className="btn btn-ghost" href={anuncio.url} target="_blank" rel="noreferrer" onClick={() => void registrarVisualizacao(anuncio)}>Ver anúncio ↗</a>
                             <Link className="btn btn-ghost" href={urlInvestigadorDoRadarAnuncio(item.id)}>Investigar na web</Link>

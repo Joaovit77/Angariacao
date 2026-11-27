@@ -1,7 +1,7 @@
 .pagina {
   --cerebro-card: color-mix(in srgb, var(--bg-elev-1) 92%, var(--accent) 8%);
-  --cerebro-linha: color-mix(in srgb, var(--accent) 60%, transparent);
-  --cerebro-linha-suave: color-mix(in srgb, var(--accent) 12%, transparent);
+  --cerebro-linha: color-mix(in srgb, var(--accent-strong) 76%, transparent);
+  --cerebro-linha-suave: color-mix(in srgb, var(--accent) 28%, transparent);
   color: var(--text);
 }
 
@@ -13,13 +13,13 @@
   margin-bottom: 20px;
 }
 
-.cabecalhoPagina h1 {
+.cabecalhoPagina h2 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(29px, 3vw, 38px);
+  font-size: clamp(24px, 2.6vw, 32px);
   font-weight: 650;
   letter-spacing: -.02em;
-  line-height: 1.08;
+  line-height: 1.1;
 }
 
 .cabecalhoPagina p {
@@ -118,7 +118,7 @@
 }
 
 .cabecalhoMapa small {
-  color: var(--text-faint);
+  color: var(--text-dim);
   white-space: nowrap;
 }
 
@@ -138,7 +138,7 @@
   background-size: 24px 24px;
   content: "";
   mask-image: radial-gradient(circle at center, black, transparent 78%);
-  opacity: .6;
+  opacity: .72;
 }
 
 .conexoes {
@@ -160,20 +160,20 @@
 
 .trilhasPrincipais path {
   stroke: var(--cerebro-linha);
-  stroke-width: 1.5;
+  stroke-width: 1.8;
   filter: drop-shadow(0 0 4px var(--accent));
   transition: opacity .24s ease, stroke-width .24s ease;
 }
 
 .trilhasSecundarias path {
   stroke: var(--cerebro-linha-suave);
-  stroke-width: 1;
+  stroke-width: 1.2;
   transition: opacity .24s ease;
 }
 
-.mapaEmExecucao .trilhasSecundarias { opacity: .28; }
-.trilhasPrincipais .trilhaInativa { opacity: .12; filter: none; }
-.trilhasPrincipais .trilhaUsada { stroke-width: 2; opacity: .72; }
+.mapaEmExecucao .trilhasSecundarias { opacity: .42; }
+.trilhasPrincipais .trilhaInativa { opacity: .28; filter: none; }
+.trilhasPrincipais .trilhaUsada { stroke-width: 2.2; opacity: .88; }
 
 .trilhasExecucao path {
   stroke: var(--accent-strong);
@@ -248,8 +248,8 @@
 
 .nucleo small {
   margin-top: 4px;
-  color: var(--text-faint);
-  font-size: 7.5px;
+  color: var(--text-dim);
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: .05em;
   text-transform: uppercase;
@@ -269,10 +269,11 @@
   justify-content: center;
   gap: 9px;
   padding: 10px 12px;
-  border: 1px solid var(--accent-borda);
+  border: 1px solid color-mix(in srgb, var(--accent-borda-forte) 72%, var(--border));
   border-radius: 11px;
-  background: color-mix(in srgb, var(--bg-elev-2) 92%, transparent);
-  color: var(--text-dim);
+  background: var(--bg-elev-2);
+  color: var(--text);
+  box-shadow: 0 4px 14px rgb(var(--sombra-rgb) / .18);
   font: inherit;
   font-size: 12px;
   font-weight: 680;
@@ -304,15 +305,15 @@
 
 .noInativo {
   cursor: default;
-  opacity: .28;
-  filter: saturate(.4);
+  opacity: .56;
+  filter: saturate(.65);
 }
 
 .noInativo:hover,
 .noInativo:focus-visible {
-  border-color: var(--accent-borda);
-  background: color-mix(in srgb, var(--bg-elev-2) 92%, transparent);
-  box-shadow: none;
+  border-color: color-mix(in srgb, var(--accent-borda-forte) 72%, var(--border));
+  background: var(--bg-elev-2);
+  box-shadow: 0 4px 14px rgb(var(--sombra-rgb) / .18);
   transform: translate(-50%, -50%);
 }
 
@@ -370,8 +371,8 @@
 }
 
 .explicacaoNo small {
-  color: var(--text-faint);
-  font-size: 9px;
+  color: var(--text-dim);
+  font-size: 9.5px;
   font-weight: 750;
   letter-spacing: .06em;
   text-transform: uppercase;

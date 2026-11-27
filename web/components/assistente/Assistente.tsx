@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { usePathname } from "next/navigation";
 import { limitarPosicaoAssistente, type PosicaoAssistente } from "@/lib/assistente/posicao";
 import { useAssistenteFlutuanteAtivo } from "@/lib/assistente/preferenciaFlutuante";
 import { useAppStore } from "@/lib/store";
@@ -21,6 +22,8 @@ const CHAVE_POSICAO_ACIONADOR = "angariacao:assistente:posicao-acionador";
 const LIMIAR_ARRASTE = 5;
 
 export default function Assistente() {
+  const pathname = usePathname();
+  const naPaginaAssistente = pathname === "/assistente";
   const permitido = useAppStore((estado) => estado.iaDisponivel);
   const bloqueado = useSuperficiesBloqueantes((estado) => estado.registros.size > 0);
   const [flutuanteAtivo] = useAssistenteFlutuanteAtivo();
@@ -48,7 +51,7 @@ export default function Assistente() {
   }, []);
 
   useEffect(() => {
-    if (!permitido || !flutuanteAtivo || bloqueado) return;
+    if (!permitido || !flutuanteAtivo || bloqueado || naPaginaAssistente) return;
     const acionador = acionadorRef.current;
     if (!acionador) return;
     try {
@@ -66,7 +69,7 @@ export default function Assistente() {
     } catch {
       /* Armazenamento indisponível ou valor antigo inválido. */
     }
-  }, [permitido, flutuanteAtivo, bloqueado]);
+  }, [permitido, flutuanteAtivo, bloqueado, naPaginaAssistente]);
 
   useEffect(() => {
     if (!posicaoAcionador) return;
@@ -100,7 +103,7 @@ export default function Assistente() {
     return () => window.removeEventListener("resize", ajustarAoViewport);
   }, []);
 
-  if (!permitido || !flutuanteAtivo || bloqueado) return null;
+  if (!permitido || !flutuanteAtivo || bloqueado || naPaginaAssistente) return null;
 
   function fecharAssistente() {
     cancelarConsulta();

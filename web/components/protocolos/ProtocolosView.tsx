@@ -105,7 +105,6 @@ export default function ProtocolosView() {
     <>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Protocolos</h1>
           <p className="page-sub">Fontes oficiais e regras que orientam o atendimento por IA</p>
         </div>
         {!edicao && (

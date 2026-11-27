@@ -209,7 +209,7 @@ export default function AgendaView() {
                 <option value="">Todos os imóveis</option>
                 {imoveisFiltro.map((i) => (
                   <option key={i.id} value={i.id}>
-                    {i.codigo || i.endereco}
+                    {[i.codigo, i.endereco, i.bairro].filter(Boolean).join(" · ")}
                   </option>
                 ))}
               </select>

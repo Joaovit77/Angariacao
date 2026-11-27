@@ -103,7 +103,8 @@ function ReportDoc({ d, responsavel }: { d: DadosRelatorio; responsavel: string 
       </div>
       <p className="section-note" style={{ marginBottom: "18px" }}>
         &quot;Angariações&quot; conta apenas imóveis que chegaram na etapa Angariado no período — não
-        os contatos ainda em andamento.
+        os contatos ainda em andamento. &quot;Conversão&quot; compara locados ÷ angariados deste período
+        (escopo mensal/semanal, diferente da conversão histórica geral do Dashboard).
       </p>
 
       {perdasPosCaptacao && (

@@ -85,7 +85,14 @@ export default function CardIdentificado({
       onClick={() => aoSelecionar(identificado.id)}
     >
       <span className={styles.cardTopo}>
-        {situacao ? <span className={styles.situacao}>{situacao}</span> : null}
+        {situacao ? (
+          <span
+            className={styles.situacao}
+            title={identificado.situacao === "promovido" ? "Enviado ao Pipeline" : undefined}
+          >
+            {situacao}
+          </span>
+        ) : null}
         {identificado.exclusaoSolicitadaEm ? (
           <span className={styles.exclusaoPendente}>Exclusão pendente</span>
         ) : null}

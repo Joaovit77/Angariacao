@@ -24,6 +24,13 @@ import {
 
 const STATUS_FUNIL: readonly string[] = STATUS_FLOW;
 
+const TOOLTIP_BADGES: Record<Badge, string> = {
+  pipeline: "Imóveis ativos no funil (exclui Locado, Perdido, Cancelado e Retirados)",
+  agenda: "Compromissos pendentes na agenda",
+  respostas: "Conversas com respostas ainda não lidas",
+  radar: "Novos anúncios encontrados no Radar",
+};
+
 interface ItemNav {
   rota: string;
   texto: string;
@@ -324,7 +331,11 @@ export default function BarraLateral({
             {/* Rótulo em span: some quando a barra recolhe (vira só ícones);
                 o data-tip vira tooltip no hover nesse estado. */}
             <span className="nav-item-txt">{item.texto}</span>
-            {item.badge && <span className="nav-item-badge">{badges[item.badge]}</span>}
+            {item.badge && (
+              <span className="nav-item-badge" title={TOOLTIP_BADGES[item.badge]}>
+                {badges[item.badge]}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -333,9 +344,9 @@ export default function BarraLateral({
         <div className="sidebar-user" id="sidebar-user">
           {rotuloUsuario(usuario)}
         </div>
-        Dados salvos na nuvem
+        Dados sincronizados na nuvem,
         <br />
-        (Supabase), por login.
+        por login.
       </div>
     </aside>
   );

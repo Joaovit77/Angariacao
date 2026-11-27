@@ -202,7 +202,9 @@ export default function CatalogoVisualView({
         >
           <option value="">Todas as situações</option>
           {SITUACOES_FILTRO_CATALOGO.map((opcao) => (
-            <option value={opcao} key={opcao}>{ROTULOS_SITUACAO[opcao] || "Só no Garimpo"}</option>
+            <option value={opcao} key={opcao}>
+              {opcao === "promovido" ? "Promovido (no Pipeline)" : (ROTULOS_SITUACAO[opcao] || "Só no Garimpo")}
+            </option>
           ))}
         </select>
         {estado.fase === "pronto" ? (

@@ -25,7 +25,9 @@ import {
   filtrarImoveis,
   identificacaoExibidaNoPipeline,
   ordenarPipelineLista,
+  paginarLista,
   pipelineColDistinct,
+  pipelineUniqueCanonical,
   pipelineUniqueSorted,
   temTelefone,
   type PipelineCol,
@@ -452,11 +454,14 @@ function HeaderIdentificacao({ identificacao }: { identificacao: PipelineIdentif
   );
 }
 
+const PIPELINE_LISTA_POR_PAGINA = 50;
+
 function Lista({
   imoveis,
   todos,
   selecionados,
   permitirSelecao,
+  assinaturaFiltros,
   aoAlternar,
   aoAlternarTodos,
 }: {
@@ -464,10 +469,12 @@ function Lista({
   todos: Imovel[];
   selecionados: Set<string>;
   permitirSelecao: boolean;
+  assinaturaFiltros: string;
   aoAlternar: (id: string) => void;
   aoAlternarTodos: (ids: string[], marcar: boolean) => void;
 }) {
   const { drawerImovelId, abrirDrawer, identificacao } = usePipelineUi();
+  const [paginacao, setPaginacao] = useState({ assinatura: assinaturaFiltros, pagina: 1 });
 
   if (imoveis.length === 0) {
     return (
@@ -478,42 +485,49 @@ function Lista({
     );
   }
 
+  const paginaSolicitada = paginacao.assinatura === assinaturaFiltros ? paginacao.pagina : 1;
+  const paginaLista = paginarLista(imoveis, paginaSolicitada, PIPELINE_LISTA_POR_PAGINA);
+  const visiveis = paginaLista.itens;
   const distintos = (col: PipelineCol) => pipelineColDistinct(todos, col);
-  const todosMarcados = imoveis.length > 0 && imoveis.every((imovel) => selecionados.has(imovel.id));
+  const todosMarcados = visiveis.length > 0 && visiveis.every((imovel) => selecionados.has(imovel.id));
+  const irParaPagina = (proxima: number) => {
+    setPaginacao({ assinatura: assinaturaFiltros, pagina: proxima });
+  };
 
   return (
-    <div className="card table-scroll pipeline-list-card">
-      <table>
-        <thead>
-          <tr>
-            <th className="pipeline-selecao-col">
-              {permitirSelecao && <input
-                type="checkbox"
-                aria-label="Selecionar todos os imóveis exibidos"
-                checked={todosMarcados}
-                onChange={(evento) => aoAlternarTodos(imoveis.map((imovel) => imovel.id), evento.target.checked)}
-              />}
-            </th>
-            <HeaderIdentificacao identificacao={identificacao} />
-            <th>Endereço</th>
-            <ColunaFiltro col="unidade" distintos={distintos("unidade")} />
-            <ColunaFiltro col="bloco" distintos={distintos("bloco")} />
-            <ColunaFiltro col="bairro" distintos={distintos("bairro")} />
-            <ColunaFiltro col="tipo" distintos={distintos("tipo")} />
-            <ColunaFiltro col="origem" distintos={distintos("origem")} />
-            <ColunaFiltro col="telefone" distintos={distintos("telefone")} />
-            <th className="col-finalidade">Finalidade</th>
-            {/* "Valor" e não "Aluguel": num imóvel de venda a célula mostra a
-                venda. A classe fica `col-aluguel` porque é ela que o CSS alinha. */}
-            <th className="col-aluguel">Valor</th>
-            <ColunaFiltro col="status" distintos={distintos("status")} />
-            <th>Cadastro</th>
-            <ColunaFiltro col="captador" distintos={distintos("captador")} />
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {imoveis.map((i) => (
+    <div className="card pipeline-list-card">
+      <div className="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th className="pipeline-selecao-col">
+                {permitirSelecao && <input
+                  type="checkbox"
+                  aria-label="Selecionar todos os imóveis desta página"
+                  checked={todosMarcados}
+                  onChange={(evento) => aoAlternarTodos(visiveis.map((imovel) => imovel.id), evento.target.checked)}
+                />}
+              </th>
+              <HeaderIdentificacao identificacao={identificacao} />
+              <th>Endereço</th>
+              <ColunaFiltro col="unidade" distintos={distintos("unidade")} />
+              <ColunaFiltro col="bloco" distintos={distintos("bloco")} />
+              <ColunaFiltro col="bairro" distintos={distintos("bairro")} />
+              <ColunaFiltro col="tipo" distintos={distintos("tipo")} />
+              <ColunaFiltro col="origem" distintos={distintos("origem")} />
+              <ColunaFiltro col="telefone" distintos={distintos("telefone")} />
+              <th className="col-finalidade">Finalidade</th>
+              {/* "Valor" e não "Aluguel": num imóvel de venda a célula mostra a
+                  venda. A classe fica `col-aluguel` porque é ela que o CSS alinha. */}
+              <th className="col-aluguel">Valor</th>
+              <ColunaFiltro col="status" distintos={distintos("status")} />
+              <th>Cadastro</th>
+              <ColunaFiltro col="captador" distintos={distintos("captador")} />
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {visiveis.map((i) => (
             <tr
               key={i.id}
               className={`pipeline-list-row ${drawerImovelId === i.id ? "selected" : ""}`}
@@ -606,10 +620,39 @@ function Lista({
                   </button>
                 </div>
               </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {paginaLista.totalPaginas > 1 && (
+        <div className="pipeline-paginacao" role="navigation" aria-label="Paginação da lista de imóveis">
+          <span>
+            Mostrando {paginaLista.inicio}–{paginaLista.fim} de {paginaLista.total} imóveis
+          </span>
+          <div className="pipeline-paginacao-controles">
+            <button
+              type="button"
+              className="btn btn-sm"
+              disabled={paginaLista.paginaAtual <= 1}
+              onClick={() => irParaPagina(paginaLista.paginaAtual - 1)}
+            >
+              Anterior
+            </button>
+            <span className="pipeline-paginacao-pagina">
+              Página {paginaLista.paginaAtual} de {paginaLista.totalPaginas}
+            </span>
+            <button
+              type="button"
+              className="btn btn-sm"
+              disabled={paginaLista.paginaAtual >= paginaLista.totalPaginas}
+              onClick={() => irParaPagina(paginaLista.paginaAtual + 1)}
+            >
+              Próxima
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -880,10 +923,11 @@ export default function PipelineView() {
     abrirLocacaoEmLote([...selecionados]);
   }
 
-  const bairros = pipelineUniqueSorted(imoveis.map((i) => i.bairro));
-  const cidades = pipelineUniqueSorted(imoveis.map((i) => i.cidade));
+  const bairros = pipelineUniqueCanonical(imoveis.map((i) => i.bairro));
+  const cidades = pipelineUniqueCanonical(imoveis.map((i) => i.cidade));
   const responsaveis = pipelineUniqueSorted(imoveis.map((i) => i.responsavel));
   const filtrados = filtrarImoveis(imoveis, filters, viewMode, colFilters);
+  const assinaturaFiltros = JSON.stringify([viewMode, filters, colFilters, colSort]);
   const totalRetirados = useMemo(() => imoveis.filter((i) => i.retirado).length, [imoveis]);
   // Quantos proprietários sem retorno estão prontos para uma cutucada. O botão
   // só aparece quando há alguém — com a fila vazia ele seria só ruído.
@@ -943,7 +987,7 @@ export default function PipelineView() {
       <div className="page-head">
         <div>
           <p className="page-sub">
-            {imoveis.length - totalRetirados} imóveis na carteira
+            {imoveis.length - totalRetirados} imóveis na carteira (todos os status)
             {totalRetirados > 0 && ` · ${totalRetirados} retirados`}
           </p>
         </div>
@@ -1020,18 +1064,20 @@ export default function PipelineView() {
                   </option>
                 ))}
               </select>
-              <select
+              <input
+                type="search"
                 className="filter-select"
+                list="pipeline-bairros-list"
+                placeholder="Filtrar bairro..."
+                aria-label="Filtrar por bairro"
                 value={filters.bairro}
                 onChange={(e) => setFiltro("bairro", e.target.value)}
-              >
-                <option value="">Todos os bairros</option>
+              />
+              <datalist id="pipeline-bairros-list">
                 {bairros.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
+                  <option key={b} value={b} />
                 ))}
-              </select>
+              </datalist>
               <select
                 className="filter-select"
                 value={filters.status}
@@ -1147,6 +1193,7 @@ export default function PipelineView() {
               todos={imoveis}
               selecionados={selecionados}
               permitirSelecao={viewMode === "lista"}
+              assinaturaFiltros={assinaturaFiltros}
               aoAlternar={alternarSelecionado}
               aoAlternarTodos={alternarTodos}
             />

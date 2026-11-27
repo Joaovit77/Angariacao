@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { semAcento } from "@/lib/calculo/filtros";
 import { useSessao } from "@/components/SessaoProvider";
 import ComparavelHistorico from "@/components/avaliacao/ComparavelHistorico";
 import EnderecoAutocompleteViaCep, {
@@ -546,18 +547,37 @@ export default function AvaliacaoRapidaView({
     .filter((item) => avaliacao?.entrada.diferenciais?.includes(item.id))
     .map((item) => item.rotulo);
 
+  const [buscaImovel, setBuscaImovel] = useState("");
+  const imoveisFiltrados = useMemo(() => {
+    const termo = semAcento(buscaImovel).trim();
+    if (!termo) return imoveis;
+    return imoveis.filter((imovel) => {
+      if (imovel.id === formulario.imovelId) return true;
+      const texto = semAcento([
+        imovel.codigo,
+        imovel.referenciaCrm,
+        imovel.endereco,
+        imovel.unidade,
+        imovel.bairro,
+        imovel.cidade,
+        imovel.proprietarioNome,
+      ].filter(Boolean).join(" "));
+      return texto.includes(termo);
+    });
+  }, [imoveis, buscaImovel, formulario.imovelId]);
+
   const relacaoPretensao = compararPretensao(avaliacao?.valorProprietario, resultado?.valorRecomendado);
   const diferencaRefinamento = resultado?.valorRecomendado && avaliacao?.valorAnterior
     ? resultado.valorRecomendado - avaliacao.valorAnterior
     : 0;
 
   return (
-    <main className="avaliacao-pagina">
+    <div className="avaliacao-pagina">
       <header className="avaliacao-cabecalho">
         <div className="avaliacao-cabecalho-icone"><IconeAvaliacao /></div>
         <div className="avaliacao-cabecalho-texto">
           <span className="avaliacao-sobretitulo">Apoio à angariação</span>
-          <h1>Avaliação Rápida de Imóvel</h1>
+          <h2>Avaliação Rápida de Imóvel</h2>
           <p>Uma faixa objetiva baseada na sua carteira e no histórico observado do mercado.</p>
         </div>
         <button type="button" className="btn btn-ghost avaliacao-historico-atalho" onClick={alternarHistorico} disabled={carregandoHistorico}>
@@ -610,15 +630,34 @@ export default function AvaliacaoRapidaView({
               <div><h2>Qual imóvel vamos avaliar?</h2><p>Use um cadastro existente ou preencha manualmente.</p></div>
             </div>
             <div className="field-group">
-              <label>Imóvel cadastrado</label>
-              <select value={formulario.imovelId} onChange={(evento) => selecionarImovel(evento.target.value)}>
+              <label htmlFor="avaliacao-imovel-select">Imóvel cadastrado</label>
+              {imoveis.length > 0 && (
+                <input
+                  type="search"
+                  className="avaliacao-busca-imovel"
+                  value={buscaImovel}
+                  onChange={(evento) => setBuscaImovel(evento.target.value)}
+                  placeholder="Filtrar por código, endereço, bairro ou proprietário..."
+                  aria-label="Filtrar imóvel cadastrado"
+                />
+              )}
+              <select
+                id="avaliacao-imovel-select"
+                value={formulario.imovelId}
+                onChange={(evento) => selecionarImovel(evento.target.value)}
+              >
                 <option value="">Preencher um novo endereço</option>
-                {imoveis.map((imovel) => (
+                {imoveisFiltrados.map((imovel) => (
                   <option key={imovel.id} value={imovel.id}>
-                    {[imovel.codigo, imovel.endereco, imovel.unidade].filter(Boolean).join(" · ")}
+                    {[imovel.codigo, imovel.endereco, imovel.unidade, imovel.bairro].filter(Boolean).join(" · ")}
                   </option>
                 ))}
               </select>
+              {buscaImovel.trim() && (
+                <div className="field-hint">
+                  Mostrando {imoveisFiltrados.length} de {imoveis.length} imóveis cadastrados
+                </div>
+              )}
             </div>
             <div className="avaliacao-finalidade" role="group" aria-label="Finalidade da avaliação">
               {(["locacao", "venda"] as const).map((finalidade) => (
@@ -938,6 +977,6 @@ export default function AvaliacaoRapidaView({
           <button type="button" className="avaliacao-link avaliacao-nova" onClick={() => { setAvaliacao(null); setReferenciaEdicao(null); setEditorValorFinalAberto(false); }}>Fazer outra avaliação</button>
         </section>
       )}
-    </main>
+    </div>
   );
 }

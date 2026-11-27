@@ -187,12 +187,12 @@ export default function InsightsView() {
           <div className="insight-kpi info">
             <span>Conversão em locação</span>
             <strong>{resumo.conversaoLocacao != null ? `${Math.round(resumo.conversaoLocacao)}%` : "—"}</strong>
-            <small>entre processos encerrados</small>
+            <small>locados ÷ processos encerrados (histórico total)</small>
           </div>
           <div className="insight-kpi neutral">
             <span>Em andamento</span>
             <strong><Contador valor={resumo.emAndamento} /></strong>
-            <small>imóveis ainda ativos</small>
+            <small>no funil ativo (fora encerrados)</small>
           </div>
         </div>
       </section>

@@ -16,7 +16,6 @@ export default function AssistenteView() {
     <>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Assistente</h1>
           <p className="page-sub">Consulte sua operação e execute ações com controles claros</p>
         </div>
         {permitido && (

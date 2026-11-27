@@ -423,9 +423,9 @@ export default function DashboardView() {
           hint="Angariado ÷ captações com desfecho"
           description={`${kpis.captacao.angariados} de ${kpis.captacao.decididos} decididas · ${kpis.captacao.emAberto} em disputa`}
         />
-        <KpiCard label="Taxa de conversão" value={<Contador valor={overall.conversaoFechados} formatar={(n) => Math.round(n) + "%"} />} hint="Locado ÷ processos fechados" />
+        <KpiCard label="Taxa de conversão" value={<Contador valor={overall.conversaoFechados} formatar={(n) => Math.round(n) + "%"} />} hint="Locado ÷ processos fechados (histórico total)" />
         <KpiCard label="Tempo médio até locação" value={overall.tempoMedio != null ? <Contador valor={overall.tempoMedio} /> : "—"} unit="dias" />
-        <KpiCard label="Em andamento agora" value={<Contador valor={kpis.emAndamento} />} unit="imóveis" />
+        <KpiCard label="Em andamento agora" value={<Contador valor={kpis.emAndamento} />} unit="imóveis" description="No funil ativo (exclui Locado, Perdido e Cancelado)" />
         <KpiCard label="Comissão estimada (mês)" value={<Contador valor={kpis.comissaoEstMes} formatar={fmtMoney} />} />
         <KpiCard label="Comissão recebida (mês)" value={<Contador valor={kpis.comissaoRecMes} formatar={fmtMoney} />} />
         <KpiCard label="Valor médio de aluguel" value={<Contador valor={overall.valorMedioAluguel} formatar={fmtMoney} />} />

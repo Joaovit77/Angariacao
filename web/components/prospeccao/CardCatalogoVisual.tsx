@@ -86,7 +86,14 @@ export default function CardCatalogoVisual({
         ) : (
           <span className={styles.imagemIndisponivel}>Imagem indisponível</span>
         )}
-        {situacao ? <span className={styles.cardCatalogoSituacao}>{situacao}</span> : null}
+        {situacao ? (
+          <span
+            className={styles.cardCatalogoSituacao}
+            title={identificado.situacao === "promovido" ? "Enviado ao Pipeline" : undefined}
+          >
+            {situacao}
+          </span>
+        ) : null}
       </span>
       <span className={styles.cardCatalogoTexto}>
         <strong className={styles.cardCatalogoEndereco}>{enderecoDoIdentificado(identificado)}</strong>

@@ -181,7 +181,6 @@ export default function ConfiguracoesView({ secaoInicial }: { secaoInicial?: str
     <>
       <div className="page-head config-page-head">
         <div>
-          <h1 className="page-title">Configurações</h1>
           <p className="page-sub">Gerencie preferências, integrações e dados do sistema.</p>
         </div>
       </div>
