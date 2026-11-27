@@ -5744,7 +5744,7 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
 .mensagens-busca:focus-within{ border-color:var(--accent-borda-forte); box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 12%,transparent); color:var(--text-dim); }
 .mensagens-busca input{ width:100%; min-width:0; border:0; outline:0; background:transparent; color:var(--text); font-size:13px; }
 .mensagens-busca input::placeholder{ color:var(--text-faint); }
-.mensagens-filtros{ display:flex; gap:6px; margin-top:10px; overflow-x:auto; scrollbar-width:none; }
+.mensagens-filtros{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; overflow-x:visible; }
 .mensagens-filtros::-webkit-scrollbar{ display:none; }
 .mensagens-filtros button{ flex:0 0 auto; min-height:32px; display:flex; align-items:center; gap:5px; padding:7px 8px; border:1px solid transparent; border-radius:7px; background:transparent; color:var(--text-dim); font:inherit; font-size:12px; line-height:1.25; font-weight:650; letter-spacing:-.01em; white-space:nowrap; }
 .mensagens-filtros.principais{ gap:4px; }
