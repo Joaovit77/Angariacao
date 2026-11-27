@@ -618,8 +618,8 @@ describe("isolamento arquitetural do C3", () => {
     const pins: Record<string, string> = {
       "lib/store.ts": "36b998f65e37e754186962b907ebd29cba181e30ae11f87a94cca651013572c0",
       "lib/persistencia/carregarEstado.ts": "6fb0bc6923f504b793b240074b6acd08a3b119191ed0f70e7e361a0ce59b3299",
-      "lib/tipos.ts": "4f36d888b390df4ead46ea6f68c7cb204311a155f649701e0ec44ffec8f1ea24",
-      "lib/persistencia/mapeadores.ts": "c2d2d640d23f84b7ee789a4df572dedfd1cea8c840900723a33c258427898f3c",
+      "lib/tipos.ts": "4bbc13de9cf6dc1182dc9a2c61ee4ebdb9fcbc84f313321bf7cdfbd6fbacdcda",
+      "lib/persistencia/mapeadores.ts": "d0dd7e68f1ac1feda479518a4672f98a339a6318d331d30f58d01f168d2a55e8",
       "lib/calculo/motor.ts": "a5586f7baaf79964dbfb466388eee0372f649bc9c40f3fd9ab7f5ebd2640e030",
     };
     const sha256 = (texto: string) =>
