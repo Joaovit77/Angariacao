@@ -1495,7 +1495,9 @@ diferente do confirmado vira `nome-divergente-importacao` por imóvel.
 **A qual imóvel a mensagem pertence (motor da 1a-B).** Resolver a pessoa não resolve o assunto:
 uma pessoa pode ter vários imóveis. `web/lib/calculo/atribuicaoMensagem.ts` é a função **pura** que
 decide isso, e nada a chama ainda — a integração com o webhook é fatia própria. Precedência única:
-(1) **referência explícita** no texto ao **código** de um imóvel vinculado; (2) exatamente um imóvel
+(1) **referência explícita** no texto ao **código** ou ao **endereço/edifício/unidade/bairro**
+inequívoco de um imóvel vinculado (regra conservadora: dois imóveis na mesma rua sem número ou
+unidade continuam em empate `pendente`; número solto não casa unidade sem marcador `ap`/`bloco`); (2) exatamente um imóvel
 plausível com **tentativa pendente** elegível (mesma regra do nudge: `aguardandoResultado` dentro de
 `DIAS_COBRANCA_RESULTADO`); (3) exatamente um imóvel plausível com **mensagem programada enviada**
 dentro de `ATRIBUICAO_MENSAGEM.janelaAgendamentoHoras` (48 h), expandindo a consolidação

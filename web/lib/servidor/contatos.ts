@@ -190,7 +190,7 @@ export async function observarAtribuicao(
     if (imovelIds.length > 0) {
       const imoveis = await supabase
         .from("imoveis")
-        .select("id, user_id, codigo, status, retirado, tentativas")
+        .select("id, user_id, codigo, endereco, bairro, edificio, unidade, bloco, status, retirado, tentativas")
         .eq("user_id", entrada.userId)
         .in("id", imovelIds);
       if (imoveis.error) return falha("consulta-imoveis", entrada);
@@ -198,6 +198,11 @@ export async function observarAtribuicao(
         id: String(linha.id),
         userId: String(linha.user_id),
         codigo: (linha.codigo as string | null) ?? null,
+        endereco: (linha.endereco as string | null) ?? null,
+        bairro: (linha.bairro as string | null) ?? null,
+        edificio: (linha.edificio as string | null) ?? null,
+        unidade: (linha.unidade as string | null) ?? null,
+        bloco: (linha.bloco as string | null) ?? null,
         status: String(linha.status ?? ""),
         retirado: (linha.retirado as boolean | null) ?? null,
         tentativas: Array.isArray(linha.tentativas)

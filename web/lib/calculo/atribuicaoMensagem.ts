@@ -69,9 +69,15 @@ export interface ImovelParaAtribuicao {
   id: string;
   /** Dono da linha. Candidato de outra conta é descartado aqui mesmo. */
   userId: string;
-  /** Código visível ("LD-225"), quando existe. É a única referência
-      explícita reconhecida nesta fatia. */
+  /** Código visível ("LD-225"), quando existe. */
   codigo?: string | null;
+  /** Campos de localização opcionais para desempate conservador quando o
+      proprietário cita a rua, edifício, unidade ou bairro no WhatsApp. */
+  endereco?: string | null;
+  bairro?: string | null;
+  edificio?: string | null;
+  unidade?: string | null;
+  bloco?: string | null;
   /** Status do funil, como está gravado. */
   status: string;
   retirado?: boolean | null;
@@ -134,6 +140,7 @@ export type NivelAtribuicao =
 
 export type EvidenciaAtribuicao =
   | { tipo: "codigo"; codigo: string }
+  | { tipo: "endereco"; criterio: "logradouro" | "edificio" | "unidade" | "bairro" }
   | { tipo: "retomada"; enviadoEm: string }
   | { tipo: "tentativa"; tentativaEm: string }
   | { tipo: "agendamento"; enviadoEm: string }
@@ -264,6 +271,277 @@ export function textoCitaCodigo(texto: string, codigo: string | null | undefined
     }
   }
   return false;
+}
+
+/* ----------------------------------------------------------------
+   4b. REFERÊNCIA EXPLÍCITA POR ENDEREÇO / EDIFÍCIO / UNIDADE / BAIRRO
+
+   O proprietário raramente conhece o código interno do CRM ("LD-464"); na
+   conversa real ele fala a rua ("o da Achiro Kawasaki"), o prédio ("o do
+   Edifício Solar"), o apartamento ("o ap 202") ou o bairro ("o do Jardim
+   Tókio"). A regra aqui é estritamente CONSERVADORA: só resolve quando a
+   referência identifica INEQUIVOCAMENTE exatamente 1 imóvel do contato. Dois
+   imóveis na mesma rua sem número/unidade continuam em empate (`pendente`),
+   nunca no chute.
+   ---------------------------------------------------------------- */
+const CONECTORES_LOCAL = new Set(["de", "da", "do", "das", "dos", "e"]);
+const PREFIXOS_VIA = new Set([
+  "r", "rua", "av", "avenida", "al", "alameda", "trav", "travessa", "tv",
+  "estr", "estrada", "rod", "rodovia", "praca", "pc", "largo", "lgo",
+  "via", "viela", "servidao", "beco", "passagem",
+]);
+const PREFIXOS_EDIFICIO = new Set([
+  "ed", "edif", "edificio", "cond", "condominio", "res", "residencial",
+  "torre", "torres", "conjunto", "conj",
+]);
+const PREFIXOS_BAIRRO = new Set([
+  "jd", "jardim", "pq", "parque", "vl", "vila", "cj", "conjunto", "res", "residencial",
+]);
+const STOPWORDS_LOCAL = new Set([
+  "centro", "londrina", "parana", "brasil", "santos", "paulo", "pedro", "maria",
+  "joao", "jose", "carlos", "antonio", "aluguel", "aluguei", "alugado", "alugada",
+  "locado", "locada", "locacao", "venda", "vendi", "vendido", "vendida", "imovel",
+  "imoveis", "casa", "apartamento", "apto", "sobrado", "terreno", "sala", "galpao",
+  "comercial", "imobiliaria", "proprietario", "proprietaria", "disponivel",
+  "indisponivel", "obrigado", "obrigada", "desisti", "exclusividade", "contrato",
+  "visita", "horario", "amanha", "hoje", "tarde", "manha", "noite", "conta",
+  "propria", "outra", "outro", "teste", "numero", "bloco", "torre", "andar",
+  "frente", "fundo", "fundos", "lote", "quadra", "unidade", "bairro", "cidade",
+]);
+const MARCADORES_UNIDADE = new Set(["ap", "apto", "apartamento", "unidade", "un", "sala", "casa", "lote"]);
+const MARCADORES_BLOCO = new Set(["bloco", "bl", "torre"]);
+
+function semConectores(lista: readonly string[]): string[] {
+  return lista.filter((t) => !CONECTORES_LOCAL.has(t));
+}
+
+function removerPrefixo(lista: readonly string[], prefixos: ReadonlySet<string>): string[] {
+  let i = 0;
+  while (i < lista.length && prefixos.has(lista[i])) i += 1;
+  return lista.slice(i);
+}
+
+function contemSequencia(textoTokens: readonly string[], alvo: readonly string[]): boolean {
+  if (alvo.length === 0 || alvo.length > textoTokens.length) return false;
+  for (let i = 0; i <= textoTokens.length - alvo.length; i += 1) {
+    let ok = true;
+    for (let j = 0; j < alvo.length; j += 1) {
+      if (textoTokens[i + j] !== alvo[j]) {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) return true;
+  }
+  return false;
+}
+
+function tamanhoTokens(lista: readonly string[]): number {
+  return lista.reduce((soma, t) => soma + t.length, 0);
+}
+
+function sequenciaElegivel(lista: readonly string[]): boolean {
+  if (lista.length === 0) return false;
+  if (tamanhoTokens(lista) < 4) return false;
+  if (lista.length === 1 && (STOPWORDS_LOCAL.has(lista[0]) || /^\d+$/.test(lista[0]))) return false;
+  return true;
+}
+
+interface DescritorEndereco {
+  imovel: ImovelParaAtribuicao;
+  tokensRua: string[];
+  numeroPorta: string | null;
+  tokensEdificio: string[];
+  tokensBairroCompleto: string[];
+  tokensBairroCurto: string[];
+  unidade: string | null;
+  bloco: string | null;
+}
+
+function descreverEndereco(imovel: ImovelParaAtribuicao): DescritorEndereco {
+  const bruto = (imovel.endereco || "").trim();
+  let parteVia = bruto;
+  let numeroPorta: string | null = null;
+  const comVirgula = bruto.match(/^([^,]+),\s*(\d{1,6})\b/);
+  if (comVirgula) {
+    parteVia = comVirgula[1];
+    numeroPorta = comVirgula[2];
+  } else {
+    const numeroFim = bruto.match(/^(.*?)\s+(?:n[º°o.]?\s*)?(\d{1,6})(?:\s+[a-z])?$/i);
+    if (numeroFim && tokens(numeroFim[1]).length > 0) {
+      parteVia = numeroFim[1];
+      numeroPorta = numeroFim[2];
+    }
+  }
+
+  const tokensRua = semConectores(removerPrefixo(tokens(parteVia), PREFIXOS_VIA));
+  const tokensEdificio = semConectores(removerPrefixo(tokens(imovel.edificio), PREFIXOS_EDIFICIO));
+  const tokensBairroCompleto = semConectores(tokens(imovel.bairro));
+  const tokensBairroCurto = semConectores(removerPrefixo(tokens(imovel.bairro), PREFIXOS_BAIRRO));
+
+  const unidadeTokens = tokens(imovel.unidade).filter((t) => !MARCADORES_UNIDADE.has(t));
+  const blocoTokens = tokens(imovel.bloco).filter((t) => !MARCADORES_BLOCO.has(t));
+
+  return {
+    imovel,
+    tokensRua,
+    numeroPorta,
+    tokensEdificio,
+    tokensBairroCompleto,
+    tokensBairroCurto,
+    unidade: unidadeTokens.length > 0 ? unidadeTokens.join("") : null,
+    bloco: blocoTokens.length > 0 ? blocoTokens.join("") : null,
+  };
+}
+
+function textoCitaMarcadorValor(
+  textoTokensBrutos: readonly string[],
+  marcadores: ReadonlySet<string>,
+  valor: string | null,
+): boolean {
+  if (!valor) return false;
+  for (let i = 0; i < textoTokensBrutos.length - 1; i += 1) {
+    if (!marcadores.has(textoTokensBrutos[i])) continue;
+    if (textoTokensBrutos[i + 1] === valor) return true;
+    if (i + 2 < textoTokensBrutos.length && textoTokensBrutos[i + 1] + textoTokensBrutos[i + 2] === valor) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function textoCitaNumeroPorta(textoTokensBrutos: readonly string[], numero: string | null): boolean {
+  if (!numero) return false;
+  const ignorarAntes = new Set(["dia", "as", "pelas", "r", "rs", "reais", "valor", "aluguel", "condominio", "iptu"]);
+  for (let i = 0; i < textoTokensBrutos.length; i += 1) {
+    if (textoTokensBrutos[i] !== numero) continue;
+    const anterior = i > 0 ? textoTokensBrutos[i - 1] : "";
+    const proximo = i + 1 < textoTokensBrutos.length ? textoTokensBrutos[i + 1] : "";
+    if (ignorarAntes.has(anterior)) continue;
+    if (proximo === "h" || proximo === "horas" || proximo === "reais" || proximo === "dias") continue;
+    return true;
+  }
+  return false;
+}
+
+function refinarPorNumeroOuUnidade(
+  candidatos: readonly DescritorEndereco[],
+  textoTokensBrutos: readonly string[],
+): DescritorEndereco[] {
+  const porUnidade = candidatos.filter(
+    (d) =>
+      textoCitaMarcadorValor(textoTokensBrutos, MARCADORES_UNIDADE, d.unidade) ||
+      textoCitaMarcadorValor(textoTokensBrutos, MARCADORES_BLOCO, d.bloco),
+  );
+  if (porUnidade.length > 0) return porUnidade;
+
+  const porNumero = candidatos.filter((d) => textoCitaNumeroPorta(textoTokensBrutos, d.numeroPorta));
+  if (porNumero.length > 0) return porNumero;
+
+  return [...candidatos];
+}
+
+export type ResultadoReferenciaEndereco =
+  | { ok: true; imovel: ImovelParaAtribuicao; criterio: "logradouro" | "edificio" | "unidade" | "bairro" }
+  | { ok: false; empate: boolean };
+
+/**
+ * Tenta identificar inequivocamente um único imóvel do contato a partir do
+ * endereço (logradouro + número), edifício, unidade/bloco ou bairro citados
+ * no texto da mensagem. Nunca chuta em caso de ambiguidade.
+ */
+export function referenciaPorEndereco(
+  texto: string,
+  vinculados: readonly ImovelParaAtribuicao[],
+): ResultadoReferenciaEndereco {
+  const textoTokensBrutos = tokens(texto);
+  if (textoTokensBrutos.length === 0) return { ok: false, empate: false };
+  const textoSemConectores = semConectores(textoTokensBrutos);
+  const descritores = vinculados.map(descreverEndereco);
+
+  // Camada 1: frase completa de logradouro ou edifício.
+  const porLogradouroOuEdificio = descritores.filter((d) => {
+    const casouRua = sequenciaElegivel(d.tokensRua) && contemSequencia(textoSemConectores, d.tokensRua);
+    const casouEd = sequenciaElegivel(d.tokensEdificio) && contemSequencia(textoSemConectores, d.tokensEdificio);
+    return casouRua || casouEd;
+  });
+  if (porLogradouroOuEdificio.length === 1) {
+    const unico = porLogradouroOuEdificio[0];
+    const casouEd =
+      sequenciaElegivel(unico.tokensEdificio) && contemSequencia(textoSemConectores, unico.tokensEdificio);
+    return { ok: true, imovel: unico.imovel, criterio: casouEd ? "edificio" : "logradouro" };
+  }
+  if (porLogradouroOuEdificio.length > 1) {
+    const refinados = refinarPorNumeroOuUnidade(porLogradouroOuEdificio, textoTokensBrutos);
+    if (refinados.length === 1) {
+      return { ok: true, imovel: refinados[0].imovel, criterio: "logradouro" };
+    }
+    return { ok: false, empate: true };
+  }
+
+  // Camada 2: token distintivo (>= 5 letras, fora de stopwords) do logradouro
+  // ou edifício (ex.: "o da Kawasaki" -> "Rua Achiro Kawasaki").
+  if (descritores.length >= 2) {
+    const conjuntoTexto = new Set(textoSemConectores);
+    const tokensDistintivos = (lista: readonly string[]) =>
+      lista.filter((t) => t.length >= 5 && !/^\d+$/.test(t) && !STOPWORDS_LOCAL.has(t));
+    const porTokenDistintivo = descritores.filter((d) => {
+      const dist = [...tokensDistintivos(d.tokensRua), ...tokensDistintivos(d.tokensEdificio)];
+      return dist.some((t) => conjuntoTexto.has(t));
+    });
+    if (porTokenDistintivo.length === 1) {
+      const unico = porTokenDistintivo[0];
+      const casouEd = tokensDistintivos(unico.tokensEdificio).some((t) => conjuntoTexto.has(t));
+      return { ok: true, imovel: unico.imovel, criterio: casouEd ? "edificio" : "logradouro" };
+    }
+    if (porTokenDistintivo.length > 1) {
+      const refinados = refinarPorNumeroOuUnidade(porTokenDistintivo, textoTokensBrutos);
+      if (refinados.length === 1) {
+        return { ok: true, imovel: refinados[0].imovel, criterio: "logradouro" };
+      }
+      return { ok: false, empate: true };
+    }
+  }
+
+  // Camada 3: unidade ou bloco explícito ("ap 701", "bloco b").
+  const porUnidade = descritores.filter(
+    (d) =>
+      textoCitaMarcadorValor(textoTokensBrutos, MARCADORES_UNIDADE, d.unidade) ||
+      textoCitaMarcadorValor(textoTokensBrutos, MARCADORES_BLOCO, d.bloco),
+  );
+  if (porUnidade.length === 1) {
+    return { ok: true, imovel: porUnidade[0].imovel, criterio: "unidade" };
+  }
+  if (porUnidade.length > 1) {
+    return { ok: false, empate: true };
+  }
+
+  // Camada 4: bairro único entre os imóveis vinculados (somente com 2+ imóveis).
+  if (descritores.length >= 2) {
+    const porBairro = descritores.filter((d) => {
+      if (sequenciaElegivel(d.tokensBairroCompleto) && contemSequencia(textoSemConectores, d.tokensBairroCompleto)) {
+        return true;
+      }
+      if (sequenciaElegivel(d.tokensBairroCurto) && contemSequencia(textoSemConectores, d.tokensBairroCurto)) {
+        return true;
+      }
+      // Caso especial "Centro": só aceita se acompanhado de preposição de lugar ("no centro", "do centro").
+      if (
+        d.tokensBairroCompleto.length === 1 &&
+        d.tokensBairroCompleto[0] === "centro" &&
+        (contemSequencia(textoTokensBrutos, ["no", "centro"]) ||
+          contemSequencia(textoTokensBrutos, ["do", "centro"]))
+      ) {
+        return true;
+      }
+      return false;
+    });
+    if (porBairro.length === 1) {
+      return { ok: true, imovel: porBairro[0].imovel, criterio: "bairro" };
+    }
+  }
+
+  return { ok: false, empate: false };
 }
 
 /* ----------------------------------------------------------------
@@ -414,9 +692,10 @@ export function resolverAtribuicaoMensagem(entrada: EntradaAtribuicao): Resultad
     terminais: idsTerminais,
   });
 
-  // N1 — referência explícita. Considera TAMBÉM os terminais: uma resposta
-  // que cita o imóvel perdido é sobre ele, e é assim que o histórico fica
-  // no lugar certo (sem efeito nenhum, marcado por `terminal`).
+  // N1 — referência explícita (código interno OU endereço/edifício/unidade/bairro
+  // inequívoco). Considera TAMBÉM os terminais: uma resposta que cita o imóvel
+  // perdido ou retirado é sobre ele, e é assim que o histórico fica no lugar
+  // certo (sem efeito nenhum, marcado por `terminal`).
   const citados = vinculados.filter((i) => textoCitaCodigo(mensagem.texto, i.codigo));
   if (citados.length === 1) {
     const imovel = citados[0];
@@ -432,6 +711,22 @@ export function resolverAtribuicaoMensagem(entrada: EntradaAtribuicao): Resultad
     };
   }
   if (citados.length > 1) return pendente("referencia-explicita");
+
+  const citadoPorEndereco = referenciaPorEndereco(mensagem.texto, vinculados);
+  if (citadoPorEndereco.ok) {
+    const { imovel, criterio } = citadoPorEndereco;
+    return {
+      ok: true,
+      contatoId,
+      imovelId: imovel.id,
+      nivel: "referencia-explicita",
+      terminal: ehImovelTerminalParaAtribuicao(imovel),
+      evidencia: { tipo: "endereco", criterio },
+      candidatos: idsPlausiveis,
+      terminais: idsTerminais,
+    };
+  }
+  if (citadoPorEndereco.empate) return pendente("referencia-explicita");
 
   // NR — contexto de retomada (Retirados, Fase B / B3). A ÚNICA exceção à
   // regra "terminal só por referência": uma retomada é uma mensagem

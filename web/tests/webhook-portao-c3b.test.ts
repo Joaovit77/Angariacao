@@ -284,6 +284,25 @@ describe("Webhook C3-B — proteção no empate de múltiplos imóveis", () => {
     expect(mocks.classificarResposta).toHaveBeenCalledTimes(1);
   });
 
+  it("2 imóveis ativos + endereço no texto ('Já aluguei o da Rua Achiro Kawasaki'): resolve pelo endereço sem precisar do código", async () => {
+    const banco = criarBancoDoisImoveis(
+      { endereco: "Rua Yoshikawa Koji, 750", bairro: "Jardim Tókio" },
+      { endereco: "Rua Achiro Kawasaki, 641", bairro: "Jardim Tókio" },
+    );
+
+    const { resposta } = await enviar(banco, "Já aluguei o da Rua Achiro Kawasaki por conta própria", "MSG-END");
+    expect(resposta.status).toBe(200);
+
+    // LD-200 (mais recente no legado!) permanece intacto; LD-202 (Achiro Kawasaki) é retirado!
+    expect(banco.imoveis[0]).toMatchObject({ codigo: "LD-200", status: "Publicado", retirado: false });
+    expect(banco.imoveis[1]).toMatchObject({
+      codigo: "LD-202",
+      status: "Publicado",
+      retirado: true,
+      retirado_motivo: "locado-proprietario",
+    });
+  });
+
   it("2 imóveis vinculados onde apenas 1 está ativo (outro já Retirado): resolve o único ativo e aplica C4 normalmente", async () => {
     const banco = criarBancoDoisImoveis({ retirado: true, retirado_motivo: "vendido" }, { retirado: false });
 
