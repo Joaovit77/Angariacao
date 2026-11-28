@@ -5875,7 +5875,7 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
 .mensagens-contexto-campo.amplo{ grid-column:1/-1; }
 .mensagens-contexto-retirada{ margin:6px 0 2px; padding:9px 11px; border:1px solid color-mix(in srgb,var(--warn) 34%,var(--border)); border-radius:7px; background:color-mix(in srgb,var(--warn) 9%,var(--bg-elev-2)); }
 .mensagens-contexto-retirada strong{ color:var(--warn); }
-.mensagens-multi-imoveis{ padding:1px 6px; border:1px solid color-mix(in srgb,var(--accent) 42%,var(--border)); border-radius:999px; background:color-mix(in srgb,var(--accent) 12%,transparent); color:var(--accent-strong); font-size:10px; font-weight:750; white-space:nowrap; }
+.mensagens-multi-imoveis{ flex:0 0 auto; overflow:visible; padding:1px 6px; border:1px solid color-mix(in srgb,var(--accent) 42%,var(--border)); border-radius:999px; background:color-mix(in srgb,var(--accent) 12%,transparent); color:var(--accent-strong); font-size:10px; font-weight:750; white-space:nowrap; }
 .mensagens-outros-lista,.proprietario-outros-lista{ display:flex; flex-direction:column; gap:6px; }
 .mensagens-outro-imovel,.proprietario-outro-item{ display:flex; flex-direction:column; gap:3px; width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:7px; background:var(--bg-elev-2); color:var(--text); text-align:left; cursor:pointer; transition:border-color .15s ease,background-color .15s ease; }
 .mensagens-outro-imovel:hover,.proprietario-outro-item:hover{ border-color:var(--accent-borda-forte); background:var(--bg-elev-1); }

@@ -43,6 +43,7 @@ import { todayISO } from "@/lib/datas";
 import { fmtDate } from "@/lib/formatadores";
 import { aplicarMudancaDeStatus, excluirImovel, salvarImovel } from "@/lib/mutacoes";
 import { useAppStore } from "@/lib/store";
+import { useRegistrarSuperficieBloqueante } from "@/lib/superficiesBloqueantes";
 import type { Imovel } from "@/lib/tipos";
 import { toast } from "@/lib/toast";
 import { useUiModal } from "@/lib/uiModal";
@@ -668,6 +669,7 @@ function InfoDrawer({ label, value }: { label: string; value: string }) {
 }
 
 function Drawer({ imovel }: { imovel: Imovel }) {
+  useRegistrarSuperficieBloqueante(true);
   const abrirDrawer = usePipelineUi((s) => s.abrirDrawer);
   const fecharDrawer = usePipelineUi((s) => s.fecharDrawer);
   const identificacao = usePipelineUi((s) => s.identificacao);
