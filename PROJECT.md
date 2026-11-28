@@ -1550,13 +1550,15 @@ regra vale para recebidas e para saídas `fromMe`, e a nota `wa:`/`wa-enviada:` 
 metadado opcional `atribuicao` (autoridade, estado, nível ou nível do empate, contato, ids de
 candidatos e terminais, imóvel do legado e do motor, motivo do fallback), sem migration e fora
 de `tipos.ts`; nota antiga sem o campo continua válida. O evento por mensagem passou a ser
-`webhook-atribuicao` (falha segue `webhook-atribuicao-falhou`). O que **não** mudou: pendente e
-sem candidatos ainda não bloqueiam efeito nenhum (IA, tentativa, encerramento, agenda e
-follow-ups seguem no imóvel do legado), e o portão de efeitos continua sendo a C3. O dedupe
-continua **por linha**: se uma reentrega chegar depois de o contexto mudar e a decisão
-operacional trocar de imóvel, a mesma mensagem pode ser gravada em dois imóveis; o dedupe por
-conta é a C2.1b. A consulta legada por `updated_at` segue existindo só como fallback e caminho
-de rollback.
+`webhook-atribuicao` (falha segue `webhook-atribuicao-falhou`). **Portão de efeitos no empate
+(1a-C3-B):** quando `avaliarPortaoEfeitos` devolve `pendencia === true` (`novo-pendente`, 2+
+imóveis plausíveis sem contexto inequívoco), o webhook grava a mensagem no histórico com o
+metadado `atribuicao` (`estado: "pendente"` e `candidatos`), suprime os quatro efeitos
+operacionais (`followup`, `tentativa`, `encerramento`/retirada e `agenda` ficam `barrado`),
+evita chamada desnecessária à IA e a tela de Mensagens sinaliza a ambiguidade com links para os
+imóveis candidatos. Nos demais estados (`concordante`, `divergente`, `contexto-retomada`,
+`sem-contato-relacional`, `falha`), o fluxo segue sem regressão. A consulta legada por
+`updated_at` segue existindo só como fallback e caminho de rollback.
 
 **Resposta a uma retomada (Retirados, Fase B / B3).** O motor tem um nível entre a referência
 explícita e o resto, `contexto-retomada`: exatamente um imóvel vinculado **retirado** que recebeu

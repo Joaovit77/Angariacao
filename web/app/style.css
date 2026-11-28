@@ -5876,6 +5876,14 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
 .mensagens-contexto-retirada{ margin:6px 0 2px; padding:9px 11px; border:1px solid color-mix(in srgb,var(--warn) 34%,var(--border)); border-radius:7px; background:color-mix(in srgb,var(--warn) 9%,var(--bg-elev-2)); }
 .mensagens-contexto-retirada strong{ color:var(--warn); }
 .mensagens-multi-imoveis{ flex:0 0 auto; overflow:visible; padding:1px 6px; border:1px solid color-mix(in srgb,var(--accent) 42%,var(--border)); border-radius:999px; background:color-mix(in srgb,var(--accent) 12%,transparent); color:var(--accent-strong); font-size:10px; font-weight:750; white-space:nowrap; }
+.mensagens-pendencia-tag{ flex:0 0 auto; overflow:visible; padding:1px 6px; border:1px solid color-mix(in srgb,var(--warn) 46%,var(--border)); border-radius:999px; background:color-mix(in srgb,var(--warn) 15%,transparent); color:var(--warn); font-size:10px; font-weight:750; white-space:nowrap; }
+.mensagens-banner-pendencia{ display:flex; flex-direction:column; gap:7px; margin-bottom:10px; padding:11px 14px; border:1px solid color-mix(in srgb,var(--warn) 38%,var(--border)); border-radius:9px; background:color-mix(in srgb,var(--warn) 10%,var(--bg-elev-2)); font-size:12px; color:var(--text); }
+.mensagens-banner-pendencia strong{ color:var(--warn); font-size:12.5px; }
+.mensagens-banner-pendencia p{ margin:0; color:var(--text-dim); font-size:11.5px; line-height:1.45; }
+.mensagens-banner-candidatos{ display:flex; flex-wrap:wrap; gap:6px; }
+.mensagens-banner-candidatos button{ padding:4px 9px; border:1px solid color-mix(in srgb,var(--warn) 38%,var(--border)); border-radius:6px; background:var(--bg-elev-1); color:var(--text); font-size:11px; font-weight:700; cursor:pointer; }
+.mensagens-banner-candidatos button:hover{ border-color:var(--warn); background:var(--bg-elev-2); }
+.mensagens-balao-pendencia{ display:block; margin-top:4px; color:var(--warn); font-size:10.5px; font-weight:700; }
 .mensagens-outros-lista,.proprietario-outros-lista{ display:flex; flex-direction:column; gap:6px; }
 .mensagens-outro-imovel,.proprietario-outro-item{ display:flex; flex-direction:column; gap:3px; width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:7px; background:var(--bg-elev-2); color:var(--text); text-align:left; cursor:pointer; transition:border-color .15s ease,background-color .15s ease; }
 .mensagens-outro-imovel:hover,.proprietario-outro-item:hover{ border-color:var(--accent-borda-forte); background:var(--bg-elev-1); }

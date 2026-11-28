@@ -300,6 +300,14 @@ function ListaConversas({
                         +{outros.length} {outros.length === 1 ? "imóvel" : "imóveis"}
                       </span>
                     ) : null}
+                    {conversa.pendenciaAtribuicao ? (
+                      <span
+                        className="mensagens-pendencia-tag"
+                        title="Última mensagem chegou em empate entre vários imóveis — ações automáticas foram seguradas"
+                      >
+                        Confirmar imóvel
+                      </span>
+                    ) : null}
                     {imovel.bairro || imovel.edificio ? <><i>·</i><span>{imovel.bairro || imovel.edificio}</span></> : null}
                     {imovel.responsavel ? <><i>·</i><span>{imovel.responsavel}</span></> : null}
                   </span>
@@ -318,7 +326,15 @@ function ListaConversas({
   );
 }
 
-function Timeline({ conversa, aoAbrirWhatsapp }: { conversa: ConversaImovel; aoAbrirWhatsapp: () => void }) {
+function Timeline({
+  conversa,
+  bannerPendencia,
+  aoAbrirWhatsapp,
+}: {
+  conversa: ConversaImovel;
+  bannerPendencia?: React.ReactNode;
+  aoAbrirWhatsapp: () => void;
+}) {
   const fimRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     fimRef.current?.scrollIntoView({ block: "end" });
@@ -326,6 +342,7 @@ function Timeline({ conversa, aoAbrirWhatsapp }: { conversa: ConversaImovel; aoA
 
   return (
     <div className="mensagens-timeline" aria-label="Histórico da conversa">
+      {bannerPendencia}
       {conversa.mensagens.map((mensagem, indice) => {
         const novoDia = indice === 0 || conversa.mensagens[indice - 1].dia !== mensagem.dia;
         const descricao = descricaoConteudo(mensagem);
@@ -357,6 +374,11 @@ function Timeline({ conversa, aoAbrirWhatsapp }: { conversa: ConversaImovel; aoA
                 {mensagem.importada ? <span>Histórico importado</span> : null}
                 <time>{horaMensagem(mensagem.data)}</time>
               </div>
+              {mensagem.atribuicaoPendente ? (
+                <span className="mensagens-balao-pendencia">
+                  Mensagem ambígua entre {mensagem.atribuicaoPendente.candidatos.length} imóveis — ações automáticas seguradas
+                </span>
+              ) : null}
             </div>
           </div>
         );
@@ -710,15 +732,26 @@ function Contexto({
 
 function ConversaSelecionada({
   conversa,
+  imoveis,
+  idsComConversa,
+  aoSelecionarConversa,
   aoVoltar,
   aoAbrirContexto,
 }: {
   conversa: ConversaImovel;
+  imoveis: Imovel[];
+  idsComConversa: ReadonlySet<string>;
+  aoSelecionarConversa: (id: string) => void;
   aoVoltar: () => void;
   aoAbrirContexto: () => void;
 }) {
   const abrirModal = useUiModal((estado) => estado.abrirModal);
   const whatsapp = linkWhatsapp(conversa.imovel, "");
+  const candidatosPendencia = conversa.pendenciaAtribuicao
+    ? conversa.pendenciaAtribuicao.candidatos
+        .map((id) => imoveis.find((item) => item.id === id))
+        .filter((item): item is Imovel => Boolean(item))
+    : [];
   return (
     <section className="mensagens-conversa" aria-label={`Conversa com ${nomeConversa(conversa.imovel)}`}>
       <header className="mensagens-conversa-head">
@@ -756,7 +789,45 @@ function ConversaSelecionada({
           </button>
         </div>
       </header>
-      <Timeline conversa={conversa} aoAbrirWhatsapp={() => whatsapp && window.open(whatsapp, "_blank", "noopener")} />
+      <Timeline
+        conversa={conversa}
+        bannerPendencia={
+          conversa.pendenciaAtribuicao ? (
+            <div className="mensagens-banner-pendencia" role="status">
+              <strong>
+                Mensagem ambígua entre {conversa.pendenciaAtribuicao.candidatos.length} imóveis deste proprietário
+              </strong>
+              <p>
+                Ações automáticas (retirada, encerramento e agenda) foram seguradas para evitar alterar o imóvel
+                errado. Confira de qual imóvel se trata:
+              </p>
+              {candidatosPendencia.length > 0 ? (
+                <div className="mensagens-banner-candidatos">
+                  {candidatosPendencia.map((candidato) => {
+                    const temConversa = idsComConversa.has(candidato.id);
+                    const atual = candidato.id === conversa.imovel.id;
+                    return (
+                      <button
+                        key={candidato.id}
+                        type="button"
+                        onClick={() =>
+                          atual || !temConversa
+                            ? abrirModal("imovel", candidato.id)
+                            : aoSelecionarConversa(candidato.id)
+                        }
+                      >
+                        {codigoImovel(candidato)} · {candidato.retirado ? "Retirado" : candidato.status}
+                        {atual ? " (atual · abrir cadastro)" : temConversa ? " · abrir conversa" : " · abrir cadastro"}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          ) : null
+        }
+        aoAbrirWhatsapp={() => whatsapp && window.open(whatsapp, "_blank", "noopener")}
+      />
       <Compositor key={conversa.imovel.id} conversa={conversa} />
     </section>
   );
@@ -926,6 +997,9 @@ function CentralMensagensCarregada({
         <>
           <ConversaSelecionada
             conversa={selecionada}
+            imoveis={imoveis}
+            idsComConversa={idsComConversa}
+            aoSelecionarConversa={selecionar}
             aoVoltar={() => setMobileAberta(false)}
             aoAbrirContexto={() => setContextoAberto(true)}
           />

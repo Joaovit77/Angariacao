@@ -396,7 +396,7 @@ describe("B. terminal: o portão suprimiria, o legado executa, e o evento separa
 });
 
 describe("C. novo-pendente", () => {
-  it("dois plausíveis sem contexto: pendência no shadow, efeitos legados no imóvel mais recente", async () => {
+  it("dois plausíveis sem contexto: portão C3-B suprime os 4 efeitos (barrado) mantendo a mensagem gravada", async () => {
     const banco = criarBanco({
       imoveis: [
         imovel("imovel-a", { updated_at: "2026-09-28T00:00:00Z", tentativas: [tentativaPendente()] }),
@@ -415,14 +415,14 @@ describe("C. novo-pendente", () => {
       operacional_imovel_id: "imovel-a",
     });
     expect(campo(d, "shadow")).toEqual({ followup: "suprimiria", tentativa: "suprimiria", encerramento: "suprimiria", agenda: "suprimiria" });
-    expect(d.efeitos.tentativa).toMatchObject({
-      motivo: "atribuicao-pendente",
-      real: "executado-sem-confirmacao",
-      contraste: "suprimiria-com-execucao-sem-confirmacao",
-    });
+    expect(campo(d, "real")).toEqual({ followup: "barrado", tentativa: "barrado", encerramento: "barrado", agenda: "barrado" });
+    expect(campo(d, "contraste")).toEqual({ followup: "compativel", tentativa: "compativel", encerramento: "compativel", agenda: "compativel" });
     expect(d.suprimiria_mas_aplicou).toEqual([]);
-    expect(d.suprimiria_com_execucao_sem_confirmacao).toEqual(["tentativa"]);
-    expect(updates.find((u) => u.tabela === "imoveis")?.eq).toEqual(expect.arrayContaining([["id", "imovel-a"]]));
+    expect(d.suprimiria_com_execucao_sem_confirmacao).toEqual([]);
+    // A nota continua gravada no imóvel operacional, mas nenhum efeito altera tentativas/status/agenda.
+    expect(((banco.imoveis[0].notas as Linha[]) || []).length).toBe(1);
+    expect(updates.filter((u) => u.tabela === "imoveis")).toHaveLength(0);
+    expect(banco.agenda).toHaveLength(0);
   });
 });
 

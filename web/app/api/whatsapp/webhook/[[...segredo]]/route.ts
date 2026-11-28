@@ -782,14 +782,32 @@ export async function POST(
     return Response.json({ ok: true });
   }
 
-  // Daqui para baixo é a área de efeitos. O shadow do portão (C3-A2) só
-  // anota o que cada efeito de fato fez; nenhuma decisão abaixo o lê.
+  // Daqui para baixo é a área de efeitos. O portão (Fase 1a-C3-B) agora atua
+  // na pendência de atribuição (`novo-pendente`): quando o proprietário tem 2+
+  // imóveis plausíveis sem contexto inequívoco, a mensagem já ficou gravada no
+  // histórico (com `atribuicao.estado = "pendente"` e os `candidatos`), mas os
+  // quatro efeitos automáticos são barrados para nunca retirar, encerrar,
+  // alterar tentativa ou agendar no imóvel errado por chute.
+  const vereditoPortao = avaliarPortaoEfeitos(entradaPortao);
   const efeitosReais: Record<EfeitoPortao, EfeitoReal> = {
     followup: "nao-elegivel",
     tentativa: "nao-elegivel",
     encerramento: "nao-elegivel",
     agenda: "nao-elegivel",
   };
+
+  if (vereditoPortao.pendencia) {
+    efeitosReais.followup = "barrado";
+    efeitosReais.tentativa = "barrado";
+    efeitosReais.encerramento = "barrado";
+    efeitosReais.agenda = "barrado";
+    console.log(
+      `Webhook do WhatsApp: atribuição pendente (${atribuicao.candidatos.length} imóveis candidatos) — ` +
+        `mensagem gravada em ${rotulo}, efeitos automáticos suprimidos pelo portão (C3-B).`,
+    );
+    registrarShadowPortao(userId, imovel.id, entradaPortao, efeitosReais);
+    return Response.json({ ok: true });
+  }
 
   // Uma resposta invalida somente os follow-ups internos que o próprio
   // Assistente criou para aguardar essa resposta. A RPC é idempotente pelo ID

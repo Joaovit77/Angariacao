@@ -21,6 +21,16 @@ export interface FiltrosConversas {
   agendadas: boolean;
 }
 
+export interface AtribuicaoPendenteMensagem {
+  candidatos: string[];
+  nivelEmpate: string | null;
+}
+
+export interface PendenciaAtribuicaoConversa extends AtribuicaoPendenteMensagem {
+  mensagemId: string;
+  data: string;
+}
+
 export interface MensagemConversa {
   id: string;
   texto: string;
@@ -30,6 +40,7 @@ export interface MensagemConversa {
   tipo: string;
   soMidia: boolean;
   importada: boolean;
+  atribuicaoPendente?: AtribuicaoPendenteMensagem | null;
 }
 
 export interface ConversaImovel {
@@ -39,6 +50,9 @@ export interface ConversaImovel {
   naoLidas: number;
   emAndamento: boolean;
   naoRespondida: boolean;
+  /** Última mensagem recebida chegou em empate entre 2+ imóveis (C3-B) e ainda
+      não teve resposta posterior do corretor nesta conversa. */
+  pendenciaAtribuicao?: PendenciaAtribuicaoConversa | null;
 }
 
 export interface ContagensConversas {
@@ -73,6 +87,21 @@ export function valorMonetarioContexto(
   return { texto: fmtMoneyFull(valor), informado: true };
 }
 
+/** Lê o metadado opcional `atribuicao` gravado pelo webhook no JSONB da nota
+    quando a mensagem chegou em empate (`estado === "pendente"`). */
+function atribuicaoPendenteDaNota(nota: NotaImovel): AtribuicaoPendenteMensagem | null {
+  const bruto = (nota as NotaImovel & { atribuicao?: unknown }).atribuicao;
+  if (!bruto || typeof bruto !== "object") return null;
+  const reg = bruto as Record<string, unknown>;
+  if (reg.estado !== "pendente" || !Array.isArray(reg.candidatos)) return null;
+  const candidatos = reg.candidatos.filter((id): id is string => typeof id === "string" && id.trim().length > 0);
+  if (candidatos.length < 2) return null;
+  return {
+    candidatos,
+    nivelEmpate: typeof reg.nivelEmpate === "string" ? reg.nivelEmpate : null,
+  };
+}
+
 function mensagemDaNota(nota: NotaImovel): MensagemConversa | null {
   if (ehTipoDeReacaoWhatsapp(nota.tipo)) return null;
   const recebida = ehNotaRecebidaNaConversa(nota);
@@ -91,6 +120,7 @@ function mensagemDaNota(nota: NotaImovel): MensagemConversa | null {
     tipo: nota.tipo || "conversation",
     soMidia: ehSoMidia(texto),
     importada: nota.origem === "importacao-evolution",
+    atribuicaoPendente: direcao === "recebida" ? atribuicaoPendenteDaNota(nota) : null,
   };
 }
 
@@ -114,19 +144,34 @@ export function conversasDosImoveis(imoveis: Imovel[], hoje: string): ConversaIm
   );
 
   return imoveis
-    .map((imovel) => {
+    .map((imovel): ConversaImovel | null => {
       const mensagens = mensagensDaConversa(imovel);
       if (mensagens.length === 0) return null;
       const ativa = negociacaoAtiva(imovel);
       const temRecebida = mensagens.some((mensagem) => mensagem.direcao === "recebida");
       const temEnviada = mensagens.some((mensagem) => mensagem.direcao === "enviada");
+      const ultima = mensagens[mensagens.length - 1];
+      const ultimaRecebida = [...mensagens].reverse().find((m) => m.direcao === "recebida") || null;
+      const temRespostaDoCorretorDepois =
+        ultimaRecebida !== null &&
+        mensagens.some((m) => m.direcao === "enviada" && m.data > ultimaRecebida.data);
+      const pendenciaAtribuicao: PendenciaAtribuicaoConversa | null =
+        ultimaRecebida?.atribuicaoPendente && !temRespostaDoCorretorDepois
+          ? {
+              mensagemId: ultimaRecebida.id,
+              data: ultimaRecebida.data,
+              candidatos: ultimaRecebida.atribuicaoPendente.candidatos,
+              nivelEmpate: ultimaRecebida.atribuicaoPendente.nivelEmpate,
+            }
+          : null;
       return {
         imovel,
         mensagens,
-        ultima: mensagens[mensagens.length - 1],
+        ultima,
         naoLidas: naoLidasPorImovel.get(imovel.id) || 0,
         emAndamento: ativa && temRecebida,
         naoRespondida: ativa && temEnviada && !temRecebida,
+        pendenciaAtribuicao,
       } satisfies ConversaImovel;
     })
     .filter((conversa): conversa is ConversaImovel => conversa !== null)

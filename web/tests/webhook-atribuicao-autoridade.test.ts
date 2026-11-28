@@ -497,8 +497,10 @@ describe("L-O. efeitos", () => {
     expect(mocks.classificarResposta).toHaveBeenCalledTimes(1);
   });
 
-  it("M. pendente NÃO suprime efeitos: IA, tentativa e follow-ups rodam no legado", async () => {
-    // Tentativa pendente nos dois: empate no N2, que não desce.
+  it("M. pendente suprime efeitos pelo portão C3-B: nota gravada no legado, mas sem IA, tentativa ou follow-up", async () => {
+    // Tentativa pendente nos dois: empate no N2, que não desce. Com o portão
+    // C3-B ativo, a nota continua gravada com o metadado de pendência, mas os
+    // efeitos automáticos são barrados para não atuar no imóvel errado.
     const banco = criarBanco({
       imoveis: [
         imovel("imovel-a", { updated_at: "2026-09-28T00:00:00Z", tentativas: [tentativaPendente()] }),
@@ -512,10 +514,9 @@ describe("L-O. efeitos", () => {
       estado: "pendente",
       nivelEmpate: "contexto-tentativa",
     });
-    expect(mocks.classificarResposta).toHaveBeenCalledTimes(1);
-    const tentativa = consultas.find((c) => c.tabela === "imoveis" && c.op === "update")!;
-    expect(tentativa.eq).toEqual(expect.arrayContaining([["id", "imovel-a"]]));
-    expect(rpcs.find((r) => r.nome === "processar_evento_resposta_acompanhamento")?.args.p_imovel_id).toBe("imovel-a");
+    expect(mocks.classificarResposta).not.toHaveBeenCalled();
+    expect(consultas.find((c) => c.tabela === "imoveis" && c.op === "update")).toBeUndefined();
+    expect(rpcs.find((r) => r.nome === "processar_evento_resposta_acompanhamento")).toBeUndefined();
   });
 
   it("M2. sem-candidatos e terminal também mantêm os efeitos atuais no legado", async () => {
