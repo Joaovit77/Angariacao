@@ -5875,6 +5875,18 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
 .mensagens-contexto-campo.amplo{ grid-column:1/-1; }
 .mensagens-contexto-retirada{ margin:6px 0 2px; padding:9px 11px; border:1px solid color-mix(in srgb,var(--warn) 34%,var(--border)); border-radius:7px; background:color-mix(in srgb,var(--warn) 9%,var(--bg-elev-2)); }
 .mensagens-contexto-retirada strong{ color:var(--warn); }
+.mensagens-multi-imoveis{ padding:1px 6px; border:1px solid color-mix(in srgb,var(--accent) 42%,var(--border)); border-radius:999px; background:color-mix(in srgb,var(--accent) 12%,transparent); color:var(--accent-strong); font-size:10px; font-weight:750; white-space:nowrap; }
+.mensagens-outros-lista,.proprietario-outros-lista{ display:flex; flex-direction:column; gap:6px; }
+.mensagens-outro-imovel,.proprietario-outro-item{ display:flex; flex-direction:column; gap:3px; width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:7px; background:var(--bg-elev-2); color:var(--text); text-align:left; cursor:pointer; transition:border-color .15s ease,background-color .15s ease; }
+.mensagens-outro-imovel:hover,.proprietario-outro-item:hover{ border-color:var(--accent-borda-forte); background:var(--bg-elev-1); }
+.mensagens-outro-topo,.proprietario-outro-topo{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.mensagens-outro-topo strong,.proprietario-outro-topo strong{ font:750 12px var(--font-mono); color:var(--text); }
+.mensagens-outro-status,.proprietario-outro-status{ padding:1px 6px; border:1px solid var(--border); border-radius:999px; color:var(--text-dim); font-size:10px; font-weight:750; white-space:nowrap; }
+.mensagens-outro-status.retirado,.proprietario-outro-status.retirado{ border-color:color-mix(in srgb,var(--warn) 42%,var(--border)); background:color-mix(in srgb,var(--warn) 14%,transparent); color:var(--warn); }
+.mensagens-outro-endereco,.proprietario-outro-endereco{ overflow:hidden; color:var(--text-dim); font-size:11.5px; line-height:1.35; text-overflow:ellipsis; white-space:nowrap; }
+.mensagens-outro-acao{ color:var(--accent-strong); font-size:10.5px; font-weight:750; }
+.proprietario-vinculados-box{ margin:10px 0 12px; padding:10px 12px; border:1px solid color-mix(in srgb,var(--accent) 32%,var(--border)); border-radius:var(--radius-sm); background:color-mix(in srgb,var(--accent) 7%,var(--bg-elev-1)); }
+.proprietario-vinculados-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:8px; font-size:12px; color:var(--text); }
 .mensagens-contexto-campo > span{ color:var(--text-dim); font-size:10.5px; font-weight:750; text-transform:uppercase; letter-spacing:.04em; }
 .mensagens-contexto-campo strong{ overflow:hidden; color:var(--text); font-size:12px; text-overflow:ellipsis; }
 .mensagens-contexto-campo small{ color:var(--text-dim); font-size:11px; }

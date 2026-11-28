@@ -17,6 +17,7 @@ import { useSessao } from "@/components/SessaoProvider";
 import BotaoAbordagemAnuncio from "./BotaoAbordagemAnuncio";
 import { resultadosPendentes, seloTentativas } from "@/lib/calculo/abordagens";
 import { urlInvestigadorDoImovel } from "@/lib/calculo/contextoInvestigador";
+import { outrosImoveisDoProprietario } from "@/lib/calculo/contextoProprietario";
 import { selecionarFollowUp, selecionarVerificacaoDisponibilidade } from "@/lib/calculo/followup";
 import { MENSAGEM_FINALIDADE_VENDA_LOCACAO, podeParticiparFluxoLocacao } from "@/lib/calculo/finalidadeOperacional";
 import { deslocarStatusKanban, moverStatusKanban, ordenarStatusKanban, type OrdemKanban } from "@/lib/calculo/kanban";
@@ -667,9 +668,15 @@ function InfoDrawer({ label, value }: { label: string; value: string }) {
 }
 
 function Drawer({ imovel }: { imovel: Imovel }) {
+  const abrirDrawer = usePipelineUi((s) => s.abrirDrawer);
   const fecharDrawer = usePipelineUi((s) => s.fecharDrawer);
   const identificacao = usePipelineUi((s) => s.identificacao);
   const abrirModal = useUiModal((s) => s.abrirModal);
+  const imoveis = useAppStore((s) => s.imoveis);
+  const outrosDoProprietario = useMemo(
+    () => outrosImoveisDoProprietario(imovel, imoveis),
+    [imovel, imoveis],
+  );
   const enderecoCompleto = [imovel.endereco, imovel.bairro, imovel.cidade].filter(Boolean).join(", ");
   const totalNotas = (imovel.notas || []).length;
   const totalTentativas = (imovel.tentativas || []).length;
@@ -720,6 +727,35 @@ function Drawer({ imovel }: { imovel: Imovel }) {
                 aparece como "não informado", nunca inventado. */}
             {imovel.retirado === true && <InfoDrawer label="Retirada" value={resumoRetirada(imovel)} />}
           </div>
+          {outrosDoProprietario.length > 0 && (
+            <div className="drawer-section" aria-label="Outros imóveis deste proprietário">
+              <div className="drawer-section-title">
+                Outros imóveis deste proprietário ({outrosDoProprietario.length})
+              </div>
+              <div className="proprietario-outros-lista">
+                {outrosDoProprietario.map((outro) => {
+                  const rotulo = identificacaoExibidaNoPipeline(outro, identificacao) || outro.codigo || "Sem código";
+                  const local = [outro.endereco, outro.bairro].filter(Boolean).join(" · ") || "Sem endereço";
+                  return (
+                    <button
+                      key={outro.id}
+                      type="button"
+                      className="proprietario-outro-item"
+                      onClick={() => abrirDrawer(outro.id)}
+                    >
+                      <span className="proprietario-outro-topo">
+                        <strong>{rotulo}</strong>
+                        <span className={`proprietario-outro-status${outro.retirado ? " retirado" : ""}`}>
+                          {outro.retirado ? "Retirado" : outro.status || "-"}
+                        </span>
+                      </span>
+                      <span className="proprietario-outro-endereco">{local}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="drawer-section">
             <div className="drawer-section-title">Pesquisa na web</div>
             <div className="drawer-notas-resumo">

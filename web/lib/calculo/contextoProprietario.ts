@@ -195,3 +195,93 @@ export function agruparVerificacoesPorProprietario(
   return contextoDosProprietarios(itens, agenda, mensagens)
     .filter((contexto) => contexto.verificacoesPendentes.length > 0);
 }
+
+const comparadorNatural = new Intl.Collator("pt-BR", { numeric: true, sensitivity: "base" });
+
+function prioridadeNoCartaoProprietario(imovel: Imovel): number {
+  if (imovel.retirado === true) return 2;
+  if (imovel.status === "Locado") return 1;
+  if (imovel.status === "Perdido" || imovel.status === "Cancelado") return 3;
+  return 0;
+}
+
+function ordenarImoveisDoProprietario(lista: readonly Imovel[]): Imovel[] {
+  return [...lista].sort((a, b) => {
+    const prio = prioridadeNoCartaoProprietario(a) - prioridadeNoCartaoProprietario(b);
+    if (prio !== 0) return prio;
+    const data = (b.dataAngariacao || "").localeCompare(a.dataAngariacao || "");
+    if (data !== 0) return data;
+    const cod = comparadorNatural.compare(a.codigo || a.referenciaCrm || "", b.codigo || b.referenciaCrm || "");
+    if (cod !== 0) return cod;
+    return a.id.localeCompare(b.id);
+  });
+}
+
+/**
+ * Outros imóveis da carteira que compartilham o mesmo telefone canônico
+ * (mesmo proprietário/canal), excluindo opcionalmente o imóvel atual.
+ *
+ * Nunca agrupa por nome nem por telefone inválido/vazio. Ordena imóveis ativos
+ * primeiro, seguidos de Locado, Retirados e Perdido/Cancelado.
+ */
+export function outrosImoveisPorTelefone(
+  telefone: string | null | undefined,
+  todos: readonly Imovel[],
+  ignorarImovelId?: string | null,
+): Imovel[] {
+  const alvo = telefoneCanonico(telefone);
+  if (!alvo) return [];
+  const encontrados = todos.filter(
+    (item) => item.id !== ignorarImovelId && telefoneCanonico(item.proprietarioTelefone) === alvo,
+  );
+  return ordenarImoveisDoProprietario(encontrados);
+}
+
+/** Outros imóveis do mesmo proprietário (pelo telefone canônico do imóvel). */
+export function outrosImoveisDoProprietario(
+  imovel: Pick<Imovel, "id" | "proprietarioTelefone">,
+  todos: readonly Imovel[],
+): Imovel[] {
+  return outrosImoveisPorTelefone(imovel.proprietarioTelefone, todos, imovel.id);
+}
+
+/**
+ * Índice O(n) de outros imóveis do mesmo proprietário por `imovel.id`.
+ * Usado pela tela de Mensagens para exibir contagens e links sem varrer a
+ * carteira inteira a cada card da lista.
+ */
+export function mapaOutrosImoveisPorId(todos: readonly Imovel[]): Map<string, Imovel[]> {
+  const porTelefone = new Map<string, Imovel[]>();
+  for (const imovel of todos) {
+    const tel = telefoneCanonico(imovel.proprietarioTelefone);
+    if (!tel) continue;
+    const grupo = porTelefone.get(tel);
+    if (grupo) grupo.push(imovel);
+    else porTelefone.set(tel, [imovel]);
+  }
+  const resultado = new Map<string, Imovel[]>();
+  for (const grupo of porTelefone.values()) {
+    if (grupo.length < 2) continue;
+    const ordenados = ordenarImoveisDoProprietario(grupo);
+    for (const imovel of ordenados) {
+      resultado.set(imovel.id, ordenados.filter((outro) => outro.id !== imovel.id));
+    }
+  }
+  return resultado;
+}
+
+/**
+ * Nome único já cadastrado para este telefone na carteira. Devolve `null`
+ * quando nenhum imóvel tem nome ou quando há nomes diferentes (não chuta nem
+ * mascara divergência entre cadastros).
+ */
+export function nomeSugeridoDoProprietario(imoveis: readonly Imovel[]): string | null {
+  const nomes = new Map<string, string>();
+  for (const item of imoveis) {
+    const limpo = (item.proprietarioNome || "").trim();
+    if (!limpo) continue;
+    const chave = limpo.toLocaleLowerCase("pt-BR");
+    if (!nomes.has(chave)) nomes.set(chave, limpo);
+  }
+  return nomes.size === 1 ? [...nomes.values()][0] : null;
+}

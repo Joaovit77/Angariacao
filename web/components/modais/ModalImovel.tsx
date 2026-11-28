@@ -36,6 +36,7 @@ import { buscarCep, geocodeEndereco, maskCEP } from "@/lib/geo";
 import { canonizarValor, distintosCanonizados, nomeProprio } from "@/lib/normalizacao";
 import { canalObservado } from "@/lib/calculo/abordagens";
 import { urlInvestigadorDoImovel } from "@/lib/calculo/contextoInvestigador";
+import { nomeSugeridoDoProprietario, outrosImoveisPorTelefone } from "@/lib/calculo/contextoProprietario";
 import { podeDesdobrar } from "@/lib/calculo/desdobramento";
 import { descreverDuplicados, imoveisDuplicados } from "@/lib/calculo/duplicidade";
 import { unidadesDesdobradas } from "@/lib/calculo/motor";
@@ -1007,6 +1008,53 @@ export default function ModalImovel({ id, promocao }: { id?: string; promocao?: 
               />
             </div>
           </div>
+          {(() => {
+            const outros = outrosImoveisPorTelefone(proprietarioTelefone, imoveis, imovel?.id ?? null);
+            if (outros.length === 0) return null;
+            const nomeSugerido = !proprietarioNome.trim() ? nomeSugeridoDoProprietario(outros) : null;
+            return (
+              <div className="proprietario-vinculados-box" role="status">
+                <div className="proprietario-vinculados-head">
+                  <strong>
+                    {imovel
+                      ? `Este proprietário possui ${outros.length} outro${outros.length > 1 ? "s imóveis" : " imóvel"} na carteira`
+                      : `Telefone já cadastrado na carteira (${outros.length} ${outros.length > 1 ? "imóveis" : "imóvel"})`}
+                  </strong>
+                  {nomeSugerido && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-ghost"
+                      onClick={() => setProprietarioNome(nomeProprio(nomeSugerido))}
+                    >
+                      Usar nome &ldquo;{nomeSugerido}&rdquo;
+                    </button>
+                  )}
+                </div>
+                <div className="proprietario-outros-lista">
+                  {outros.map((outro) => {
+                    const rotulo = outro.codigo || outro.referenciaCrm || "Sem código";
+                    const local = [outro.endereco, outro.bairro].filter(Boolean).join(" · ") || "Sem endereço";
+                    return (
+                      <button
+                        key={outro.id}
+                        type="button"
+                        className="proprietario-outro-item"
+                        onClick={() => abrirModal("imovel", outro.id)}
+                      >
+                        <span className="proprietario-outro-topo">
+                          <strong>{rotulo}</strong>
+                          <span className={`proprietario-outro-status${outro.retirado ? " retirado" : ""}`}>
+                            {outro.retirado ? "Retirado" : outro.status || "-"}
+                          </span>
+                        </span>
+                        <span className="proprietario-outro-endereco">{local}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
           <div className="field-group">
             <label>Forma de abordagem</label>
             <select value={formaAbordagem ?? ""} onChange={(e) => setFormaAbordagem(e.target.value)}>

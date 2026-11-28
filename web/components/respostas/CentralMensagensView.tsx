@@ -15,6 +15,7 @@ import {
   type FiltrosConversas,
   type MensagemConversa,
 } from "@/lib/calculo/conversas";
+import { mapaOutrosImoveisPorId } from "@/lib/calculo/contextoProprietario";
 import { conversaSelecionadaEstavel } from "@/lib/calculo/estabilidadeMensagens";
 import { resumoRetirada } from "@/lib/calculo/retiradaCarteira";
 import { aplicarModeloUsuario, linkWhatsapp, mensagemFalhaEnvio } from "@/lib/calculo/whatsapp";
@@ -146,6 +147,7 @@ function mensagemEstadoVazio(busca: string, filtros: FiltrosConversas): {
 
 function ListaConversas({
   conversas,
+  outrosPorImovel,
   selecionadaId,
   busca,
   filtros,
@@ -162,6 +164,7 @@ function ListaConversas({
   aoAbrirAgendadas,
 }: {
   conversas: ConversaImovel[];
+  outrosPorImovel: ReadonlyMap<string, Imovel[]>;
   selecionadaId: string | null;
   busca: string;
   filtros: FiltrosConversas;
@@ -271,6 +274,7 @@ function ListaConversas({
           conversas.map((conversa) => {
             const { imovel } = conversa;
             const selecionada = selecionadaId === imovel.id;
+            const outros = outrosPorImovel.get(imovel.id) || [];
             return (
               <button
                 type="button"
@@ -288,6 +292,14 @@ function ListaConversas({
                   <span className="mensagens-previa">{previaMensagem(conversa.ultima)}</span>
                   <span className="mensagens-item-meta">
                     <span>{codigoImovel(imovel)}</span>
+                    {outros.length > 0 ? (
+                      <span
+                        className="mensagens-multi-imoveis"
+                        title={`Este proprietário tem mais ${outros.length} ${outros.length === 1 ? "imóvel" : "imóveis"}: ${outros.map((item) => codigoImovel(item)).join(", ")}`}
+                      >
+                        +{outros.length} {outros.length === 1 ? "imóvel" : "imóveis"}
+                      </span>
+                    ) : null}
                     {imovel.bairro || imovel.edificio ? <><i>·</i><span>{imovel.bairro || imovel.edificio}</span></> : null}
                     {imovel.responsavel ? <><i>·</i><span>{imovel.responsavel}</span></> : null}
                   </span>
@@ -553,10 +565,16 @@ function ValorContexto({
 function Contexto({
   conversa,
   agenda,
+  outrosImoveis,
+  idsComConversa,
+  aoSelecionarConversa,
   aoFechar,
 }: {
   conversa: ConversaImovel;
   agenda: AgendaItem[];
+  outrosImoveis: Imovel[];
+  idsComConversa: ReadonlySet<string>;
+  aoSelecionarConversa: (id: string) => void;
   aoFechar: () => void;
 }) {
   const abrirModal = useUiModal((estado) => estado.abrirModal);
@@ -613,6 +631,37 @@ function Contexto({
             </div>
           </div>
         </section>
+
+        {outrosImoveis.length > 0 ? (
+          <section className="mensagens-contexto-secao" aria-label="Outros imóveis deste proprietário">
+            <h3>Outros imóveis deste proprietário ({outrosImoveis.length})</h3>
+            <div className="mensagens-outros-lista">
+              {outrosImoveis.map((outro) => {
+                const temConversa = idsComConversa.has(outro.id);
+                const subtitulo = [outro.endereco, outro.bairro].filter(Boolean).join(" · ") || "Endereço não informado";
+                return (
+                  <button
+                    key={outro.id}
+                    type="button"
+                    className="mensagens-outro-imovel"
+                    onClick={() => (temConversa ? aoSelecionarConversa(outro.id) : abrirModal("imovel", outro.id))}
+                  >
+                    <span className="mensagens-outro-topo">
+                      <strong>{codigoImovel(outro)}</strong>
+                      <span className={`mensagens-outro-status${outro.retirado ? " retirado" : ""}`}>
+                        {outro.retirado ? "Retirado" : outro.status || "-"}
+                      </span>
+                    </span>
+                    <span className="mensagens-outro-endereco">{subtitulo}</span>
+                    <span className="mensagens-outro-acao">
+                      {temConversa ? "Abrir conversa" : "Abrir cadastro"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
 
         <section className="mensagens-contexto-secao negociacao">
           <h3>Negociação</h3>
@@ -755,6 +804,8 @@ function CentralMensagensCarregada({
     () => imoveisComAgendamentoAtivo(mensagensAgendadas),
     [mensagensAgendadas],
   );
+  const outrosPorImovel = useMemo(() => mapaOutrosImoveisPorId(imoveis), [imoveis]);
+  const idsComConversa = useMemo(() => new Set(conversas.map((item) => item.imovel.id)), [conversas]);
   const visiveis = useMemo(
     () => filtrarConversas(conversas, buscaAdiada, filtros, agendadasPorImovel),
     [conversas, buscaAdiada, filtros, agendadasPorImovel],
@@ -855,6 +906,7 @@ function CentralMensagensCarregada({
     >
       <ListaConversas
         conversas={visiveis}
+        outrosPorImovel={outrosPorImovel}
         selecionadaId={selecionada?.imovel.id || null}
         busca={busca}
         filtros={filtros}
@@ -877,7 +929,14 @@ function CentralMensagensCarregada({
             aoVoltar={() => setMobileAberta(false)}
             aoAbrirContexto={() => setContextoAberto(true)}
           />
-          <Contexto conversa={selecionada} agenda={agenda} aoFechar={() => setContextoAberto(false)} />
+          <Contexto
+            conversa={selecionada}
+            agenda={agenda}
+            outrosImoveis={outrosPorImovel.get(selecionada.imovel.id) || []}
+            idsComConversa={idsComConversa}
+            aoSelecionarConversa={selecionar}
+            aoFechar={() => setContextoAberto(false)}
+          />
           <button
             type="button"
             className="mensagens-contexto-backdrop"
