@@ -2,11 +2,32 @@ import { MOTIVO_PERDA_LOCADO_FORA } from "../constantes";
 import { daysBetween } from "../datas";
 import type { Imovel } from "../tipos";
 import {
+  captacaoGanha,
   currentStatusSince,
   dataAngariadoEfetiva,
   foiAngariado,
   motivoPerdaPelaFase,
 } from "./motor";
+
+const MOTIVOS_RETIRADA_LOCADO_FORA = new Set(["locado-proprietario", "locado-outra-imobiliaria"]);
+const OBSERVACAO_MIGRACAO_LOCADO_FORA = /locado por outra imobili[aá]ria ou pelo propriet[aá]rio/i;
+
+/**
+ * Imóvel retirado da carteira (Fases C2/C4/C5) por locação fora da
+ * imobiliária: motivo direto (`locado-proprietario` / `locado-outra-imobiliaria`)
+ * ou registro migrado de `Perdido` na Fase C5 cuja observação preserva o
+ * motivo histórico de locação fora. Motivos como `vendido`, `desistiu` ou
+ * `nao-e-mais-proprietario` ficam de fora.
+ */
+function ehRetiradoLocadoFora(imovel: Imovel): boolean {
+  if (imovel.retirado !== true) return false;
+  if (imovel.status === "Locado" || imovel.status === "Perdido" || imovel.status === "Cancelado") {
+    return false;
+  }
+  if (!captacaoGanha(imovel)) return false;
+  if (imovel.retiradoMotivo && MOTIVOS_RETIRADA_LOCADO_FORA.has(imovel.retiradoMotivo)) return true;
+  return imovel.retiradoMotivo === "outro" && OBSERVACAO_MIGRACAO_LOCADO_FORA.test(imovel.retiradoObservacao || "");
+}
 
 export interface FaixaTempoAnunciado {
   rotulo: string;
@@ -33,14 +54,13 @@ export interface ImovelPerdidoPosCaptacao {
 }
 
 /**
- * Imóveis captados que terminaram alugados fora da imobiliária.
- *
- * O motivo é normalizado pela fase para também reconhecer registros antigos
- * gravados como "já alugado por conta própria" ou "optou por outra
- * imobiliária" depois de o imóvel já ter passado por Angariado.
+ * Imóveis captados que terminaram alugados fora da imobiliária — tanto pelo
+ * fluxo atual de Retirados (Fases C2/C4/C5) quanto por registros legados ainda
+ * em `Perdido`/`Cancelado`.
  */
 export function imoveisLocadosFora(imoveis: Imovel[]): Imovel[] {
   return imoveis.filter((imovel) => {
+    if (ehRetiradoLocadoFora(imovel)) return true;
     if (imovel.status !== "Perdido" && imovel.status !== "Cancelado") return false;
     if (!foiAngariado(imovel)) return false;
     return motivoPerdaPelaFase(imovel.statusHistory, imovel.motivoPerda || "") === MOTIVO_PERDA_LOCADO_FORA;
@@ -52,7 +72,9 @@ export function estatisticasPerdaPosCaptacao(imoveis: Imovel[]): EstatisticasPer
   const detalhes = perdidosFora
     .map((imovel): ImovelPerdidoPosCaptacao => {
       const anunciadoDesde = dataAngariadoEfetiva(imovel);
-      const encerradoEm = currentStatusSince(imovel);
+      const encerradoEm = ehRetiradoLocadoFora(imovel)
+        ? imovel.retiradoEm || null
+        : currentStatusSince(imovel);
       return {
         id: imovel.id,
         referenciaCrm: imovel.referenciaCrm || "",

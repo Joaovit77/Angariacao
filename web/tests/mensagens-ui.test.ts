@@ -109,4 +109,14 @@ describe("acabamento da central de mensagens", () => {
     expect(central).toContain("conversaInicialMarcada");
     expect(central).toContain("marcarAoVisualizar(conversa.imovel.id, conversa.naoLidas)");
   });
+
+  it("sinaliza imóveis retirados da carteira no painel de contexto com data e motivo", () => {
+    const central = fonte("components/respostas/CentralMensagensView.tsx");
+    const css = fonte("app/style.css");
+    expect(central).toContain("resumoRetirada(imovel)");
+    expect(central).toContain('className="mensagens-tag-retirado"');
+    expect(central).toContain("Retirado da carteira");
+    expect(css).toContain(".mensagens-imovel-titulo .mensagens-tag-retirado");
+    expect(css).toContain(".mensagens-contexto-retirada");
+  });
 });

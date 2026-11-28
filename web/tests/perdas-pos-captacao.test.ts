@@ -102,4 +102,84 @@ describe("perdas depois da angariação", () => {
       "CRM-101",
     ]);
   });
+
+  it("inclui imóveis Retirados locados fora (C4/C5) usando retiradoEm e exclui outros motivos de retirada", () => {
+    const carteira = [
+      // Retirado por locação direta (C2/C4)
+      imovel({
+        referenciaCrm: "CRM-RET-1",
+        status: "Publicado",
+        retirado: true,
+        retiradoEm: "2026-10-16",
+        retiradoMotivo: "locado-proprietario",
+        statusHistory: [
+          { status: "Angariado", date: "2026-10-01" },
+          { status: "Publicado", date: "2026-10-02" },
+        ],
+      }),
+      // Retirado por locação em outra imobiliária (C2/C4)
+      imovel({
+        referenciaCrm: "CRM-RET-2",
+        status: "Angariado",
+        retirado: true,
+        retiradoEm: "2026-10-11",
+        retiradoMotivo: "locado-outra-imobiliaria",
+        statusHistory: [{ status: "Angariado", date: "2026-10-01" }],
+      }),
+      // Retirado migrado na Fase C5 ("outro" com observação preservada de locado fora)
+      imovel({
+        referenciaCrm: "CRM-C5",
+        status: "Publicado",
+        retirado: true,
+        retiradoEm: "2026-11-23",
+        retiradoMotivo: "outro",
+        retiradoObservacao: "Locado por outra imobiliária ou pelo proprietário (migrado de Perdido)",
+        statusHistory: [
+          { status: "Angariado", date: "2026-10-26" },
+          { status: "Publicado", date: "2026-10-27" },
+        ],
+      }),
+      // Retirados por OUTROS motivos -> NÃO entram em "locados fora"
+      imovel({
+        referenciaCrm: "CRM-VENDIDO",
+        status: "Publicado",
+        retirado: true,
+        retiradoEm: "2026-11-05",
+        retiradoMotivo: "vendido",
+        statusHistory: [{ status: "Angariado", date: "2026-10-01" }],
+      }),
+      imovel({
+        referenciaCrm: "CRM-DESISTIU",
+        status: "Publicado",
+        retirado: true,
+        retiradoEm: "2026-11-06",
+        retiradoMotivo: "desistiu",
+        statusHistory: [{ status: "Angariado", date: "2026-10-01" }],
+      }),
+      imovel({
+        referenciaCrm: "CRM-SEM-MOTIVO",
+        status: "Publicado",
+        retirado: true,
+        retiradoEm: null,
+        retiradoMotivo: null,
+        statusHistory: [{ status: "Angariado", date: "2026-10-01" }],
+      }),
+      imovel({ status: "Locado" }),
+    ];
+
+    const resultado = estatisticasPerdaPosCaptacao(carteira);
+    expect(resultado.total).toBe(3);
+    expect(resultado.comTempoCalculavel).toBe(3);
+    expect(resultado.taxaPerdaCarteira).toBe(75);
+    expect(resultado.imoveis.map((i) => ({ ref: i.referenciaCrm, encerradoEm: i.encerradoEm, dias: i.diasAnunciado }))).toEqual([
+      { ref: "CRM-C5", encerradoEm: "2026-11-23", dias: 28 },
+      { ref: "CRM-RET-1", encerradoEm: "2026-10-16", dias: 15 },
+      { ref: "CRM-RET-2", encerradoEm: "2026-10-11", dias: 10 },
+    ]);
+    expect(perdasPosCaptacaoNoMes(carteira, "2026-11").map((i) => i.referenciaCrm)).toEqual(["CRM-C5"]);
+    expect(perdasPosCaptacaoNoMes(carteira, "2026-10").map((i) => i.referenciaCrm)).toEqual([
+      "CRM-RET-1",
+      "CRM-RET-2",
+    ]);
+  });
 });

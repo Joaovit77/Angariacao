@@ -16,6 +16,7 @@ import {
   type MensagemConversa,
 } from "@/lib/calculo/conversas";
 import { conversaSelecionadaEstavel } from "@/lib/calculo/estabilidadeMensagens";
+import { resumoRetirada } from "@/lib/calculo/retiradaCarteira";
 import { aplicarModeloUsuario, linkWhatsapp, mensagemFalhaEnvio } from "@/lib/calculo/whatsapp";
 import { todayISO } from "@/lib/datas";
 import { deveOferecerEnsinoAposFeedback } from "@/lib/ensinarIaAcoes";
@@ -600,6 +601,7 @@ function Contexto({
               <div className="mensagens-imovel-titulo">
                 <strong>{codigoImovel(imovel)}</strong>
                 {imovel.tipo ? <span>{imovel.tipo}</span> : null}
+                {imovel.retirado ? <span className="mensagens-tag-retirado">Retirado</span> : null}
               </div>
               {imovel.edificio ? <p>{imovel.edificio}</p> : null}
               <p>{imovel.endereco || "Endereço não informado"}</p>
@@ -621,6 +623,14 @@ function Contexto({
             <div className="mensagens-contexto-campo">
               <span>Responsável</span><strong>{imovel.responsavel || "Não atribuído"}</strong>
             </div>
+            {imovel.retirado ? (
+              <div className="mensagens-contexto-campo amplo mensagens-contexto-retirada" role="status">
+                <span>Situação na carteira</span>
+                <strong>Retirado da carteira</strong>
+                <small>{resumoRetirada(imovel)}</small>
+                {imovel.retiradoObservacao ? <small>{imovel.retiradoObservacao}</small> : null}
+              </div>
+            ) : null}
             <div className="mensagens-contexto-campo amplo">
               <span>Próxima ação</span>
               {proxima ? (

@@ -5864,6 +5864,7 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
 .mensagens-imovel-titulo{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-bottom:5px; }
 .mensagens-imovel-titulo strong{ font:750 13px var(--font-mono); color:var(--text); }
 .mensagens-imovel-titulo span{ padding:2px 6px; border:1px solid var(--border); border-radius:4px; background:transparent; color:var(--text-dim); font-size:10.5px; font-weight:800; }
+.mensagens-imovel-titulo .mensagens-tag-retirado{ border-color:color-mix(in srgb,var(--warn) 42%,var(--border)); background:color-mix(in srgb,var(--warn) 14%,transparent); color:var(--warn); }
 .mensagens-imovel-dados p{ margin:3px 0; color:var(--text-dim); font-size:11.5px; line-height:1.45; }
 .mensagens-imovel-dados .mensagens-valor{ display:block; margin-top:7px; color:var(--text); font-size:14px; }
 .mensagens-imovel-dados .nao-informado{ color:var(--text-dim); font-size:11.5px; font-weight:600; }
@@ -5872,6 +5873,8 @@ label.importacao-conversa-item:has(input:disabled){ cursor:default; opacity:.72;
 .mensagens-contexto-grade{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:14px; }
 .mensagens-contexto-campo{ display:flex; min-width:0; flex-direction:column; gap:3px; padding:9px 0; border-top:1px solid var(--border-soft); }
 .mensagens-contexto-campo.amplo{ grid-column:1/-1; }
+.mensagens-contexto-retirada{ margin:6px 0 2px; padding:9px 11px; border:1px solid color-mix(in srgb,var(--warn) 34%,var(--border)); border-radius:7px; background:color-mix(in srgb,var(--warn) 9%,var(--bg-elev-2)); }
+.mensagens-contexto-retirada strong{ color:var(--warn); }
 .mensagens-contexto-campo > span{ color:var(--text-dim); font-size:10.5px; font-weight:750; text-transform:uppercase; letter-spacing:.04em; }
 .mensagens-contexto-campo strong{ overflow:hidden; color:var(--text); font-size:12px; text-overflow:ellipsis; }
 .mensagens-contexto-campo small{ color:var(--text-dim); font-size:11px; }

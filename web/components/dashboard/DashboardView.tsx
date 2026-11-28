@@ -437,7 +437,7 @@ export default function DashboardView() {
           <span className="section-note">outra imobiliária ou direto pelo proprietário</span>
         </div>
         <p className="section-note" style={{ marginBottom: "14px" }}>
-          O tempo anunciado vai da entrada em Angariado até o encerramento do imóvel.
+          O tempo anunciado vai da entrada em Angariado até o encerramento ou retirada do imóvel.
         </p>
         <div className="grid grid-3 anim-stagger" style={{ marginBottom: "16px" }}>
           <KpiCard label="Locados fora" value={<Contador valor={perdasPosCaptacao.total} />} unit="imóveis" />
